@@ -107,6 +107,7 @@ Finished pages, in order (worker session):
 3. [[rust|Rust]]
 4. [[roc|Roc]]
 5. [[koka|Koka]]
+6. [[austral|Austral]]
 
 ## Related
 - [[language-landscape]]

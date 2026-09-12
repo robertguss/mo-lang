@@ -312,6 +312,60 @@
       "url": "https://potanin.github.io/files/CraigPotaninGrovesAldrichICFEM2018.pdf",
       "title": "Capabilities: Effects for Free (Craig, Potanin, Groves, Aldrich; ICFEM 2018)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 53,
+      "url": "https://austral-lang.org/spec/spec.html",
+      "title": "The Austral Language Specification",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 54,
+      "url": "https://austral-lang.org/tutorial/capability-based-security",
+      "title": "Austral tutorial: Capability-Based Security",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 55,
+      "url": "https://austral-lang.org/tutorial/linear-types",
+      "title": "Austral tutorial: Linear Types",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 56,
+      "url": "https://borretti.me/article/introducing-austral",
+      "title": "Introducing Austral (Borretti, 2022)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 57,
+      "url": "https://borretti.me/article/how-capabilities-work-austral",
+      "title": "How Capabilities Work in Austral (Borretti, 2023)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 58,
+      "url": "https://github.com/austral/austral",
+      "title": "Austral compiler repository",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 59,
+      "url": "https://dl.acm.org/doi/10.1145/3510003.3510107",
+      "title": "Garbage Collection Makes Rust Easier to Use: an RCT of the Bronze GC (ICSE 2022)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 60,
+      "url": "https://doi.org/10.1145/3527313",
+      "title": "Linear Types for Large-Scale Systems Verification (OOPSLA 2022)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 61,
+      "url": "https://github.com/austral/austral/commits/master",
+      "title": "Austral commit history (last commit 28 Jul 2025, checked 12 Sep 2026)",
+      "accessed": "2026-09-12"
     }
   ]
 }
