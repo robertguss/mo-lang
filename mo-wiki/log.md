@@ -129,3 +129,6 @@
 
 ## [2026-09-12] restructure | wiki/ renamed to mo-wiki/
 - Robert: rename. git mv; SCHEMA, README, HANDOFF, .gitignore updated.
+
+## [2026-09-12] create | docs/grammar.md
+- v0 grammar in EBNF, 11 sections plus semantic rules; chapter 6 recipe example aligned to `test rejects`.

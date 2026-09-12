@@ -16,7 +16,7 @@ recipe RateLimiter
     ensures result.0.tokens(id) <= l.capacity
   end
   test "refills at the declared rate" ... end
-  rejects "a burst beyond capacity" ... end
+  test rejects "a burst beyond capacity" ... end
 end
 ```
 
