@@ -468,6 +468,132 @@
       "url": "https://www.unison-lang.org/docs/usage-topics/workflow-how-tos/update-code",
       "title": "Unison: Common workflows for updating code",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 79,
+      "url": "https://www.moonbitlang.com/blog/intro-moonbit-pilot",
+      "title": "Introducing MoonBit Pilot (2025)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 80,
+      "url": "https://www.moonbitlang.com/blog/moonbit-ai",
+      "title": "Exploring the design of an AI-Native Language Toolchain (MoonBit, 2024)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 81,
+      "url": "https://conf.researchr.org/details/icse-2024/llm4code-2024-papers/9/MoonBit-Explore-the-Design-of-an-AI-Friendly-Programming-Language",
+      "title": "MoonBit: Explore the Design of an AI-Friendly Programming Language (Fei et al., LLM4Code@ICSE 2024)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 82,
+      "url": "https://www.moonbitlang.com/updates/2026/06/08/moonbit-0-10-0-release",
+      "title": "MoonBit v0.10.0 release (Jun 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 83,
+      "url": "https://www.moonbitlang.com/updates/2026/08/19/index",
+      "title": "MoonBit v0.10.9 release (Aug 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 84,
+      "url": "https://www.moonbitlang.com/blog/seekmoon-from-ide-to-ade",
+      "title": "SeekMoon: From IDE to ADE (MoonBit, Sep 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 85,
+      "url": "https://www.moonbitlang.com/blog/moonbit-multiple-targets",
+      "title": "One Language, Multiple Targets (MoonBit, 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 86,
+      "url": "https://docs.moonbitlang.com/en/latest/language/error-handling.html",
+      "title": "MoonBit docs: Error handling",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 87,
+      "url": "https://docs.moonbitlang.com/en/latest/language/fundamentals.html",
+      "title": "MoonBit docs: Fundamentals",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 88,
+      "url": "https://www.moonbitlang.com/blog/moonbit-value-type",
+      "title": "Value type and bits pattern in MoonBit (2025)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 89,
+      "url": "https://robotsatlas.com/posts/moonbit-jezyk-programowania-pod-ere-ai-z-chin",
+      "title": "MoonBit: a language designed for the AI era (Robots Atlas, 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 90,
+      "url": "https://arxiv.org/abs/2606.16827",
+      "title": "No Resource, No Benchmarks, No Problem? Evaluating and Improving LLMs for Code Generation in No-Resource Languages (accepted IEEE TSE)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 91,
+      "url": "https://arxiv.org/abs/2602.09447",
+      "title": "SWE-AGI: Benchmarking Specification-Driven Software Construction with MoonBit",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 92,
+      "url": "https://github.com/BosqueLanguage/BosqueCore",
+      "title": "BosqueCore repository (README, 2.0 plans)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 93,
+      "url": "https://github.com/microsoft/BosqueLanguage",
+      "title": "microsoft/BosqueLanguage (archived)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 94,
+      "url": "https://microsoft.com/en-us/research/publication/regularized-programming-with-the-bosque-language",
+      "title": "Regularized Programming with the Bosque Language (Marron, MSR 2019)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 95,
+      "url": "https://arxiv.org/abs/2407.06356",
+      "title": "Toward Programming Languages for Reasoning: Humans, Symbolic Systems, and AI Agents (Marron, Onward! 2024)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 96,
+      "url": "https://bosquelanguage.github.io/2024/11/20/go-for-1_0.html",
+      "title": "Go for 1.0!!! (Bosque blog, Nov 2024)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 97,
+      "url": "https://bosquelanguage.github.io/2026/03/19/going-where-no-gc-has-gone.html",
+      "title": "Going Where No GC Has Gone Before (Bosque blog, Mar 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 98,
+      "url": "https://github.com/BosqueLanguage/BosqueCore/discussions/66",
+      "title": "BosqueCore discussion #66: current state of the project",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 99,
+      "url": "https://arxiv.org/abs/2509.13429",
+      "title": "Catalpa: GC for a Low-Variance Software Stack (2025)",
+      "accessed": "2026-09-12"
     }
   ]
 }

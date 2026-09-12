@@ -110,6 +110,7 @@ Finished pages, in order (worker session):
 6. [[austral|Austral]]
 7. [[hylo|Hylo]]
 8. [[unison|Unison]]
+9. [[moonbit|MoonBit]]
 
 ## Related
 - [[language-landscape]]
