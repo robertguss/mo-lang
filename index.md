@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 108
+> Last updated: 2026-09-12 | Total pages: 109
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -55,7 +55,7 @@
 - [[q14-first-real-program|Q14: The first real program]] — ✅ in — Options (from session 1): agent harness / backend service with a DB / infrastructure component (queue, KV store, proxy) / the Mo toolchai…
 - [[q15-the-name|Q15: The name]] — ✅ in — Question: is "Mo" it, and what's the story?
 - [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✅ in — Question: parked in session 1: laws with no override, ever?
-- [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✅ in (ordering B) — Raised by Robert (session 2), flagged as very important
+- [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✅ in (session 3: six-layer design, plus aube additions) — Raised by Robert (session 2), flagged as very important
 
 ## Decisions
 *(none yet)*
@@ -117,6 +117,7 @@
 - [[bosque|Mo vs Bosque]] — comparison: design by removal, no loops, escape-free lambdas, validation levels, small-model verification, why it slowed
 - [[spark-ada-and-dafny|Mo vs SPARK Ada and Dafny]] — comparison: contracts that run and prove, assurance levels, contract shapes LLMs discharge, loop invariants
 - [[agent-native-cluster|Mo vs the agent-native cluster]] — comparison: 13 agent-first languages in short entries, and what 42 catalogued attempts converged on
+- [[aube|Mo vs aube]] — comparison: the Node package manager's security defaults (trust no-downgrade, age gates, reputation signals, jail) and the seven things Mo takes
 - [[verse|Mo vs Verse]] — comparison: failure as control flow, transactional rollback, structured concurrency; transactions vs crash-and-restart
 - [[comparison-synthesis-draft|Comparison synthesis (draft)]] — ⚠️ tensions across the 13 comparisons, top ten steals, open questions for Robert; draft for Fable
 - [[supply-chain-defenses|Supply-chain defenses]] — Q17 input: defenses that exist, the 2024–26 incident record (20 of 47) with impact/trend ranking, Mo mapped against it, six package-system design options (no recommendation)

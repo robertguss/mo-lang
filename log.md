@@ -111,3 +111,6 @@
 
 ## [2026-09-12] session | Session 3: tensions 3–7 decided by Claude at Robert's request
 - Robert: stop speculating, decide, then build and test. Notes on q04, q08, q07, q01, q13, synthesis draft. New directions/d32-proving-is-a-separate-tool.md, directions/d33-bounded-mailboxes.md (confidence: low, first-tested-by on each).
+
+## [2026-09-12] session | Session 3: Q17 answered; aube reviewed
+- Q17: Robert in on the six-layer package design (questions/q17 Session 3 answer). Robert asked for https://aube.sh to be reviewed → raw/articles/aube-security-docs-2026-09-12.md (ledger [152]), research/comparisons/aube.md; seven additions folded into the Q17 answer.
