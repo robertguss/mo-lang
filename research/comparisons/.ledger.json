@@ -60,6 +60,90 @@
       "url": "https://survey.stackoverflow.co/2025/technology",
       "title": "Stack Overflow Developer Survey 2025: Technology",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 11,
+      "url": "https://go.dev/blog/error-syntax",
+      "title": "[ On | No ] syntactic support for error handling (Go blog, 2025)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 12,
+      "url": "https://go.dev/blog/go1.27",
+      "title": "Go 1.27 is released",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 13,
+      "url": "https://go.dev/blog/module-mirror-launch",
+      "title": "Module Mirror and Checksum Database Launched (Go blog)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 14,
+      "url": "https://go.googlesource.com/proposal/+/refs/heads/master/design/25530-sumdb.md",
+      "title": "Proposal: Secure the Public Go Module Ecosystem (sumdb)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 15,
+      "url": "https://socket.dev/blog/malicious-package-exploits-go-module-proxy-caching-for-persistence",
+      "title": "Malicious package exploits Go Module Proxy caching (Socket)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 16,
+      "url": "https://go.dev/talks/2012/splash.article",
+      "title": "Go at Google: Language Design in the Service of Software Engineering (Pike)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 17,
+      "url": "https://go.dev/doc/go1compat",
+      "title": "Go 1 and the Future of Go Programs",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 18,
+      "url": "https://research.swtch.com/deps",
+      "title": "Our Software Dependency Problem (Cox)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 19,
+      "url": "https://go.dev/blog/supply-chain",
+      "title": "How Go Mitigates Supply Chain Attacks (Go blog)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 20,
+      "url": "https://go.googlesource.com/proposal/+/HEAD/design/43651-type-parameters.md",
+      "title": "Type Parameters Proposal (Go)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 21,
+      "url": "https://songlh.github.io/paper/go-study.pdf",
+      "title": "Understanding Real-World Concurrency Bugs in Go (Tu et al., ASPLOS 2019)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 22,
+      "url": "https://go.dev/blog/survey2025",
+      "title": "Results from the 2025 Go Developer Survey",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 23,
+      "url": "https://go.dev/blog/go1.18",
+      "title": "Go 1.18 is released (generics)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 24,
+      "url": "https://go.dev/blog/testing-time",
+      "title": "Testing Time (and other asynchronicities) — Go synctest",
+      "accessed": "2026-09-12"
     }
   ]
 }
