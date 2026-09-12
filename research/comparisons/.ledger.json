@@ -144,6 +144,66 @@
       "url": "https://go.dev/blog/testing-time",
       "title": "Testing Time (and other asynchronicities) — Go synctest",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 25,
+      "url": "https://songlh.github.io/paper/survey.pdf",
+      "title": "Learning and Programming Challenges of Rust: A Mixed-Methods Study (Zhu et al., ICSE 2022)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 26,
+      "url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2024/08/paper.pdf",
+      "title": "RustAssistant: Using LLMs to Fix Compilation Errors in Rust Code (Microsoft Research)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 27,
+      "url": "https://blog.rust-lang.org/2025/09/10/rust-compiler-performance-survey-2025-results",
+      "title": "Rust compiler performance survey 2025 results",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 28,
+      "url": "https://blog.rust-lang.org/2026/03/02/2025-State-Of-Rust-Survey-results",
+      "title": "2025 State of Rust Survey Results",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 29,
+      "url": "https://blog.rust-lang.org/2026/08/20/Rust-1.98.0",
+      "title": "Announcing Rust 1.98.0",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 30,
+      "url": "https://blog.google/security/rust-in-android-move-fast-fix-things",
+      "title": "Rust in Android: move fast and fix things (Google, 2025)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 31,
+      "url": "https://blog.rust-lang.org/2026/08/21/enabling-next-solver-on-nightly",
+      "title": "Enabling the next-generation trait solver on nightly (Rust blog, 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 32,
+      "url": "https://blog.rust-lang.org/2026/08/04/enabling-polonius-alpha-on-nightly",
+      "title": "Enabling the next iteration of the borrow checker on nightly (Rust blog, 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 33,
+      "url": "https://arxiv.org/abs/2504.15254",
+      "title": "CRUST-Bench: A Comprehensive Benchmark for C-to-safe-Rust Transpilation",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 34,
+      "url": "https://www.itpro.com/software/development/google-devs-ditched-c-for-rust-heres-what-happened",
+      "title": "Google devs ditched C++ for Rust (IT Pro, Bergstrom talk)",
+      "accessed": "2026-09-12"
     }
   ]
 }
