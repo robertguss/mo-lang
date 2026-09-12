@@ -1,3 +1,10 @@
+---
+tool: Perplexity
+prompt: prompts-q17-supply-chain / prompt 1 (incidents 2024–2026, rephrased)
+run: 2026-09-12
+run_by: Robert
+sha256: df8b116d36b73ee2bbea2b22dd9c1dca72b1b54b3702c0aadda6ab0d722bfe2d
+---
 # Software Supply-Chain Incidents in Package Ecosystems, January 2024 – September 12, 2026
 
 **Purpose.** Evidence base for package-manager threat modeling (Mo Lang). Every value below was taken from a page fetched during this research session, and the source link sits next to the value it supports. Cells marked `n.a.` could not be confirmed from a fetched primary source. Where two sources give different numbers for the same thing, both are reported.
