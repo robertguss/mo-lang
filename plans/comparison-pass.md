@@ -111,6 +111,7 @@ Finished pages, in order (worker session):
 7. [[hylo|Hylo]]
 8. [[unison|Unison]]
 9. [[moonbit|MoonBit]]
+10. [[bosque|Bosque]]
 
 ## Related
 - [[language-landscape]]

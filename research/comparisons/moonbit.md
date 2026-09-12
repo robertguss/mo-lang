@@ -53,7 +53,7 @@ MoonBit launched in October 2022, alongside ChatGPT. It was conceived as a whole
 
 ## Evidence
 
-- **Zero-shot is near zero on hard tasks.** The paper was accepted to IEEE TSE and has about 400 MoonBit repos on GitHub.[90] With GPT-4o, MoonBit scored 12.60% on HumanEval and 0.88% on McEval-Hard, against 91.23% and 77.67% for Python. The authors: no-resource languages score "below 20% in most cases, and close to 0% for hard coding tasks".[90] Further pre-training on the little data available helped most.[90] A secondary report quotes 32.60% (MoonBit) against 26.08% (Gleam) for a tuned Qwen model.[89] That figure was not found in the extracted paper text.
+- **Zero-shot is near zero on hard tasks.** The study (reported as accepted to IEEE TSE[89]) counts about 400 MoonBit repositories on GitHub.[90] With GPT-4o, MoonBit scored 12.60% on HumanEval and 0.88% on McEval-Hard, against 91.23% and 77.67% for Python. The authors: no-resource languages score "below 20% in most cases, and close to 0% for hard coding tasks".[90] Further pre-training on the little data available helped most.[90] A secondary report quotes 32.60% (MoonBit) against 26.08% (Gleam) for a tuned Qwen model.[89] That figure was not found in the extracted paper text.
 - **With a toolchain loop, agents build real systems.** SWE-AGI has 22 specification-driven MoonBit tasks: parsers, protocols, a JS front end. Every agent solved all 6 easy tasks. GPT-5.3-codex solved 19 of 22, Claude Opus 4.6 15, Opus 4.5 10.[91] One failed run took 42 hours and wrote more than 30,000 lines.[91]
 - **Sampler:** better compile rates at about a 3% speed cost.[80]
 - **Pilot vs Cursor and Codex:** vendor-run and not independent.[79]
