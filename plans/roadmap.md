@@ -21,6 +21,7 @@ Once you've gone through [[q01-comments|Q1]]–[[q16-escape-hatch|Q16]], here is
 Steps 1–4 are days. Step 5 is weeks. Step 6 is where we find out if the idea is right.
 
 ## Related
+- [[program-menu]]
 - [[q14-first-real-program]]
 - [[q13-implementation-language]]
 - [[session-02]]

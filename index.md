@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 81
+> Last updated: 2026-09-12 | Total pages: 82
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -46,12 +46,12 @@
 - [[q08-verification-tiers|Q8: The verification dial in practice]] — ✅ in — Question: what checks run when, and what does an agent wait for?
 - [[q09-compiler-diagnostics|Q9: Compiler diagnostics as the agent's teacher]] — ✅ in — Question: what does an error look like?
 - [[q10-semantic-ids-and-editing|Q10: Semantic IDs and how agents edit Mo]] — ✅ in — Question: do agents edit text, or the tree?
-- [[q11-platform-and-stdlib|Q11: The platform concept and the standard library]] — ✍️ pending — Question: where do I/O primitives live, and how batteries-included is Mo?
-- [[q12-law-numbers|Q12: Law numbers]] — ✍️ pending — Question: the concrete limits behind the laws
-- [[q13-implementation-language|Q13: Implementation language for the Mo toolchain]] — ✍️ pending — Options: Zig / Rust / OCaml / Go
-- [[q14-first-real-program|Q14: The first real program]] — ✍️ pending — Options (from session 1): agent harness / backend service with a DB / infrastructure component (queue, KV store, proxy) / the Mo toolchai…
-- [[q15-the-name|Q15: The name]] — ✍️ pending — Question: is "Mo" it, and what's the story?
-- [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✍️ pending — Question: parked in session 1: laws with no override, ever?
+- [[q11-platform-and-stdlib|Q11: The platform concept and the standard library]] — ✅ in — Question: where do I/O primitives live, and how batteries-included is Mo?
+- [[q12-law-numbers|Q12: Law numbers]] — ↩ counter — Question: the concrete limits behind the laws
+- [[q13-implementation-language|Q13: Implementation language for the Mo toolchain]] — ✅ in — Options: Zig / Rust / OCaml / Go
+- [[q14-first-real-program|Q14: The first real program]] — ✅ in — Options (from session 1): agent harness / backend service with a DB / infrastructure component (queue, KV store, proxy) / the Mo toolchai…
+- [[q15-the-name|Q15: The name]] — ✅ in — Question: is "Mo" it, and what's the story?
+- [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✅ in — Question: parked in session 1: laws with no override, ever?
 - [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✍️ pending — Raised by Robert (session 2), flagged as very important
 
 ## Decisions
@@ -93,6 +93,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[program-menu|Program menu: what we build to put Mo through its paces]] — seven programs of different kinds, and what each measures
 - [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
 
 ## Sessions

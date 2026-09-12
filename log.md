@@ -15,3 +15,7 @@
 ## [2026-09-12] session | Session 2
 - Q1–Q10 answered (in). Directions 28–30 added. Q17 added. Q11–Q17 pending.
 - See sessions/session-02.md.
+
+## [2026-09-12] update | Q11–Q16 answered
+- Q11 in (after unpacking "platform"), Q12 counter (70 lines, not 40), Q13 in, Q14 in + program menu, Q15 in (keep Mo, no story), Q16 in.
+- Created plans/program-menu.md. Files: questions/q11–q16, plans/program-menu.md, plans/roadmap.md, index.md.

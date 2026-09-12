@@ -6,8 +6,8 @@ type: question
 tags: [meta]
 sources: [raw/notion/open-questions-2026-09-12.md]
 number: 15
-status: pending
-answer: pending
+status: answered
+answer: in
 asked: 2026-09-12
 ---
 
@@ -16,7 +16,10 @@ asked: 2026-09-12
 **Question:** is "Mo" it, and what's the story?
 **Recommendation:** keep **Mo**. Two letters, pronounceable in every language, the file extension `.mo` is free in practice (gettext uses it for binary catalogs, which never collide with source files), and `mo` as a CLI name is short. Story candidates: "Mo" as in *more with less*, or *modus*, or simply a name that isn't an acronym. The only thing to check before committing: existing projects named Mo in the language space (there is a small "Mo" scripting language from years ago, essentially dormant).
 **Why:** Names that are words fail search; names that are two syllables and mean nothing (Go, Zig, Roc, Elm) win. Mo is in that family.
-✍️ **Robert (in / no / counter, and the story if you have one):**
+
+## Answer
+
+✅ **Robert: IN** (session 2). Keep "Mo". No story — he just wanted the shortest name possible, easy to type and remember. Not married to it; good enough for now.
 
 ## Related
 - [[session-01]]

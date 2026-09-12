@@ -6,8 +6,8 @@ type: question
 tags: [roadmap]
 sources: [raw/notion/open-questions-2026-09-12.md]
 number: 14
-status: pending
-answer: pending
+status: answered
+answer: in
 asked: 2026-09-12
 ---
 
@@ -16,7 +16,10 @@ asked: 2026-09-12
 **Options** (from session 1): agent harness / backend service with a DB / infrastructure component (queue, KV store, proxy) / the Mo toolchain itself.
 **Recommendation:** **a durable job queue with a small HTTP API.** Enqueue jobs, workers pull them, retries with backoff, dead-letter, exactly-once delivery as a `never`.
 **Why:** It exercises every distinctive feature at once: processes with real state, supervision, deadlines, capabilities (DB, network, clock), `never` clauses that matter (never lose a job, never run one twice), simulation with fault injection, and events. It's small enough to finish and real enough that people would use it. It's also the backbone of an agent harness, so it leads naturally to option one without betting on it.
-✍️ **Robert (in / no / counter):**
+
+## Answer
+
+✅ **Robert: IN, extended** (session 2). Job queue first, but Robert wants a **menu of programs** of different kinds to find Mo's strengths and weaknesses and to collect real benchmark data (direction 28). See [[program-menu]].
 
 ## Related
 - [[roadmap]]
