@@ -1,0 +1,104 @@
+# Mo Lang — Index
+
+> Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
+> Last updated: 2026-09-12 | Total pages: 81
+
+## Directions we like
+- [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
+- [[d02-spec-altitude|Direction 2: Human-readable, but at a higher altitude]] — Mo stays readable by humans because it is the shared language of understanding, but humans read intent, contracts, and effects, not bodies
+- [[d03-source-carries-its-evidence|Direction 3: The source carries its own evidence]] — Since review is gone, trust comes from what the compiler can check: contracts, effects, tests bound to requirements, proofs
+- [[d04-style-rules-become-laws|Direction 4: Style rules become laws, possibly with no escape hatch]] — Everything Tiger Style and Power of 10 enforce socially, Mo's compiler enforces
+- [[d05-old-ideas-rethought-ai-first|Direction 5: Old ideas, rethought AI-first]] — Much of what works is decades old (Tiger Style, Power of 10, contracts, simulation testing)
+- [[d06-never-oop|Direction 6: Never OOP. No classes]] — Functional and procedural style
+- [[d07-elixir-flavored-functional|Direction 7: Elixir-flavored functional, not Haskell-pure]] — Pragmatic functional style
+- [[d08-beam-qualities-without-the-beam|Direction 8: BEAM qualities without the BEAM]] — Compile to a single static binary, memory-efficient like Rust or Go
+- [[d09-primary-inspirations|Direction 9: Primary inspirations: Rust, Go, Elixir/BEAM, Elm]] — , plus anything else worth stealing
+- [[d10-immutable-by-default|Direction 10: Immutable data by default]] — Gives agents locality of reasoning: to understand a function you need only the function
+- [[d11-statically-typed|Direction 11: Statically typed]] — Inferred inside bodies, required at every function boundary
+- [[d12-concurrency-at-the-edges|Direction 12: Concurrency at the edges, like Go]] — Most code is plain functions on immutable data; isolated processes are a tool for concurrency and fault isolation, not the primary progra…
+- [[d13-local-var-and-inout|Direction 13: Local `var` with mutable value semantics, plus `inout` parameters]] — In
+- [[d14-processes-are-the-only-identity|Direction 14: Processes are the only identity, and each is an Elm-shaped state machine]] — State + message type + pure `update` returning new state and effect commands
+- [[d15-effects-via-capabilities|Direction 15: Effects via capabilities, no effect type system]] — A function is pure unless it takes a capability parameter
+- [[d16-direct-style-io|Direction 16: Direct-style I/O with runtime interception]] — `fs.read(path)` reads like Go and blocks like Erlang, but compiles to "suspend, hand a command to the runtime, resume with result." The r…
+- [[d17-mandatory-deadlines|Direction 17: Every effectful call carries a mandatory deadline]] — Bounded waits, extending Power of Ten's bounded loops
+- [[d18-two-kinds-of-failure|Direction 18: Two kinds of failure, two mechanisms, never crossing]] — Expected failure ("rain") is an `Err` value, exhaustive, in the signature, handled by the caller
+- [[d19-negative-space-is-the-contract|Direction 19: Negative space is the human-agent contract]] — Humans write nothing, not even the spec
+- [[d20-human-pulled-in-when-shape-changes|Direction 20: A human is pulled in when the shape changes]] — Agents add, rewrite, and refactor freely
+- [[d21-autonomous-crash-fixing|Direction 21: Production crashes are fully autonomous]] — A tripped `never` or contract crashes the process, the supervisor restarts it, and the agent takes the crash as a task and fixes it with …
+- [[d22-rust-plus-refinements-types|Direction 22: Type system: Rust-plus-refinements from day one]] — Traits (without the deep solver machinery), enums with data, generics with bounds, exhaustive matching, plus refinement types on primitiv…
+- [[d23-compile-speed-first-class|Direction 23: Compile speed is a first-class requirement]] — The compile time is the latency of the agent's loop; a slow teacher gets ignored
+- [[d24-compile-to-c-via-zig|Direction 24: Compilation target: C via the Zig toolchain for release, own fast backend for the edit loop]] — Zig toolchain as the only dependency (Tiger Style), trivial cross-compilation and static linking
+- [[d25-interpreter-for-the-edit-loop|Direction 25: Fast path is an interpreter, never shipped]] — Build order: (1) bytecode interpreter for the edit loop, also the executable reference semantics and the host for the simulator, replay, …
+- [[d26-developer-and-agent-happiness|Direction 26: Optimize for developer happiness AND agent happiness]] — Robert's favorite language to read and write is Ruby (Matz's "developer happiness")
+- [[d27-simple-and-elegant-like-ruby|Direction 27: Design principle (Robert's words)]] — the language needs to be as simple as possible and elegant like Ruby and Python
+- [[d28-nothing-final-until-measured|Direction 28: Nothing is final until it is measured]] — (Robert, session 2) Every decision here — especially the performance-shaped ones — stands only until a benchmark, eval, or test says othe…
+- [[d29-edit-by-declaration-id|Direction 29: Agents edit by declaration ID, not by text position]] — (Robert: in, session 2, “fascinating”) Every declaration gets a stable ID in a toolchain-owned `.mo.ids` sidecar; source stays plain text…
+- [[d30-supply-chain-security|Direction 30: Supply-chain security is a first-class design goal]] — (Robert, session 2, very important) AI has made package-ecosystem attacks (npm, PyPI, and the rest) massive and unlike anything before
+
+## Open questions
+- [[q01-comments|Q1: Comments]] — ✅ in — Options: `#` (Ruby, Python, Elixir) or `//` (Rust, Go, C)
+- [[q02-strings-and-interpolation|Q2: Strings and interpolation]] — ✅ in — Options: Ruby `"Hello #{name}"` / Python `f"Hello {name}"` / Rust `format!("Hello {name}")`
+- [[q03-numbers-and-units|Q3: Numbers and units]] — ✅ in — Options: plain numerals only / numerals with unit suffixes as methods (`200.ms`, `90.days`) / a full units system
+- [[q04-integer-types-and-overflow|Q4: Integer types and overflow]] — ✅ in — Options: wrap silently (C, Go) / crash on overflow (Rust debug, Zig safe modes) / checked types that return `Option`
+- [[q05-option-and-no-nil|Q5: Option and the absence of nil]] — ✅ in — Options: `Option(T)` with `Some`/`None` (Rust) / `Maybe` with `Just`/`Nothing` (Haskell, Elm) / a `T?` shorthand (Swift, Kotlin)
+- [[q06-verified-line|Q6: The `verified by` line]] — ✅ in — Options: written by the agent as a claim / computed by the compiler and displayed / both
+- [[q07-process-api|Q7: Process API syntax: spawn, send, receive, supervise]] — ✅ in — Recommendation:
+- [[q08-verification-tiers|Q8: The verification dial in practice]] — ✅ in — Question: what checks run when, and what does an agent wait for?
+- [[q09-compiler-diagnostics|Q9: Compiler diagnostics as the agent's teacher]] — ✅ in — Question: what does an error look like?
+- [[q10-semantic-ids-and-editing|Q10: Semantic IDs and how agents edit Mo]] — ✅ in — Question: do agents edit text, or the tree?
+- [[q11-platform-and-stdlib|Q11: The platform concept and the standard library]] — ✍️ pending — Question: where do I/O primitives live, and how batteries-included is Mo?
+- [[q12-law-numbers|Q12: Law numbers]] — ✍️ pending — Question: the concrete limits behind the laws
+- [[q13-implementation-language|Q13: Implementation language for the Mo toolchain]] — ✍️ pending — Options: Zig / Rust / OCaml / Go
+- [[q14-first-real-program|Q14: The first real program]] — ✍️ pending — Options (from session 1): agent harness / backend service with a DB / infrastructure component (queue, KV store, proxy) / the Mo toolchai…
+- [[q15-the-name|Q15: The name]] — ✍️ pending — Question: is "Mo" it, and what's the story?
+- [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✍️ pending — Question: parked in session 1: laws with no override, ever?
+- [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✍️ pending — Raised by Robert (session 2), flagged as very important
+
+## Decisions
+*(none yet)*
+
+## Syntax picks and examples
+- [[base-example|Current base example (Robert's style)]] — ```ruby
+- [[draft-example-ruby-shaped|Draft example, Ruby-shaped (superseded)]] — ```ruby
+- [[full-example-q1-q7|Full example with Q1–Q7 applied]] — This is the base with every pick applied, including Q1–Q7 above
+- [[p01-blocks-keyword-end|Syntax pick 1: Blocks: keyword ... `end`]] — Robert first rejected `def`/`end`, then braces, then wrote his own version with `fn 
+- [[p02-definition-line|Syntax pick 2: Definition line]] — `fn refund(db: Ledger, clock: Clock) : Result(Refund, RefundError)`
+- [[p03-bindings|Syntax pick 3: Bindings]] — bare `now = clock.now` is an immutable binding, bound exactly once per scope; rebinding is a compile error; `var` is the only way to get …
+- [[p04-conditionals|Syntax pick 4: Conditionals]] — `if` is an expression, no parens around the condition, braces
+- [[p05-pattern-matching|Syntax pick 5: Pattern matching]] — `case value 
+- [[p06-results-and-propagation|Syntax pick 6: Results and propagation]] — predicates end in `?` (`charge.refunded?`); propagation is the `try` prefix (`charge = try db.find_charge(id, within: 200.ms)`), never po…
+- [[p07-types-struct-enum-refinement|Syntax pick 7: Types]] — `struct Charge 
+- [[p08-contracts|Syntax pick 8: Contracts]] — `requires` / `ensures` lines come directly after the signature line, then a blank line, then the body, all inside the `fn 
+- [[p09-module-header-and-never|Syntax pick 9: Module header and `never`]] — `module Payments.Refund` with dot paths (Robert's pick; `::` rejected, one symbol one idea, Elixir made the same call)
+- [[p10-process|Syntax pick 10: Process]] — `process Name(db: Ledger, clock: Clock) 
+- [[p11-loops-and-anonymous-functions|Syntax pick 11: Loops and anonymous functions]] — `for x in xs 
+- [[p12-tests|Syntax pick 12: Tests]] — in the same file as the code, under it
+- [[p13-capabilities-and-logging|Syntax pick 13: Capabilities and logging]] — capabilities are ordinary types obtained only at the program root (`fn main(platform: Platform)`), passed down explicitly, narrowed on th…
+- [[p14-modules|Syntax pick 14: Modules]] — private by default, `pub` to expose (the `pub` lines are the spec altitude's table of contents)
+- [[p15-methods-traits-generics|Syntax pick 15: Methods without objects, traits, generics]] — dot calls are sugar for first-argument functions (`charge.within_window?(now)` is `within_window?(charge, now)`), uniform function call s…
+- [[syntax-overview|Syntax: how we got to Ruby's look with Go's discipline]] — AI-first constraint: Mo has zero corpus, so bodies borrow shapes models know cold; novelty is spent only where semantics need it (`intent…
+
+## Deep dives
+- [[compilation-target-and-compile-speed|Compilation target and compile speed]] — 1
+- [[effects-and-capabilities|Effects and capabilities]] — - Effect: what a function does beyond computing (reads clock, writes ledger, sends to a process, calls network)
+- [[errors-and-failure|Errors and failure: rain vs broken roof]] — Rain vs broken roof
+- [[fork-in-the-road|The fork in the road: three products called 'a language for AI']] — "A language for AI" means three different products:
+- [[id-addressed-editing|ID-addressed editing]] — The problem: agent editing tools today use `str_replace` (fails on non-unique or already-changed text), line ranges (wrong the moment any…
+- [[idea-backlog|Idea backlog (Claude's early proposals)]] — - Stable semantic IDs on every declaration so agents edit by ID instead of fragile text diffs
+- [[negative-space-programming|Negative space programming]] — Source: [Negative Space Programming](https://double-trouble.dev/post/negativ-space-programming/)
+- [[research-summary-2026-09|Research summary, Sep 2026]] — Nobody has built this yet
+- [[state-model|State model]] — Not mutation itself
+- [[steal-list|Steal list: what to take from other languages]] — Framing: Go ships a scheduler and GC inside every binary and nobody calls it a VM
+- [[tiger-style-and-power-of-ten|Tiger Style + Power of 10, rethought AI-first]] — Key move: both documents are style guides enforced socially by review
+- [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
+
+## Plans
+- [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
+
+## Sessions
+- [[session-01|Session 1 — 12 Sep 2026 (night)]] — - 12 Sep 2026, session 1 (cont)
+- [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
+
+## Research
+*(none yet)*
+

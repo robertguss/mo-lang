@@ -1,6 +1,6 @@
 # Mo Lang — Session Handoff
 
-Written 12 Sep 2026 at the end of session 1; refreshed during session 2. Read this first in any new session.
+Written 12 Sep 2026 at the end of session 1; rewritten during session 2 when the record moved from Notion to this vault. Read this first in any new session.
 
 ## What this project is
 
@@ -8,29 +8,26 @@ Robert and Claude are co-designing **Mo**, a from-scratch programming language f
 
 ## Where everything lives
 
-- **Mo Lang hub (Notion, the front door: status, page map, session log):**
-  https://app.notion.com/p/3d96bcfa7c7581c99fddeecb9c495c5e
-  Page ID `3d96bcfa-7c75-81c9-9fdd-eecb9c495c5e`. Every Mo page is nested under it. Read its "Where new things go" section before creating any Notion page.
-- **Design Journal (Notion, the record of everything agreed):**
-  https://app.notion.com/p/3d96bcfa7c75815e9d88f6b686b43c6c
-  Page ID `3d96bcfa-7c75-815e-9d88-f6b686b43c6c`
-- **Open Questions & Recommendations (Notion, the decision queue):**
-  https://app.notion.com/p/3d96bcfa7c7581288f6bfde6a5b81865
-  Page ID `3d96bcfa-7c75-8128-8f6b-fde6a5b81865`
-- **Decisions (Notion, empty until the v0 lock):** https://app.notion.com/p/3d96bcfa7c7581a5ae50e621ee3c9c1d
-- **Research (Notion, one sub-page per researched topic):** https://app.notion.com/p/3d96bcfa7c758165987ce2b0d2de0da3
-- All private in Robert's Notion. Fetch the hub, the Journal, and Open Questions with `notion-fetch` before doing anything.
-- **This repo** (`~/Projects/mo-lang`, git): `README.md` (map), `docs/` (design doc, grammar, error catalog), `research/` (notes with sources), `examples/` (program corpus). Notion holds conversation and decisions; the repo holds artifacts.
+**This repo is the record.** It is a git repo and an Obsidian vault following the LLM-wiki pattern. Notion is retired for this project (it was Robert's *work* workspace; the two pages were exported verbatim to `raw/notion/` and are to be deleted by Robert).
+
+Orientation at the start of every session, in this order:
+1. `SCHEMA.md` — layout, page types, frontmatter, tag taxonomy, how work flows through the vault.
+2. `index.md` — every page, one line each.
+3. `log.md` — last 20 entries.
+4. `sessions/` — the most recent session page.
+
+The skill that defines the wiki conventions is at `.claude/skills/llm-wiki/SKILL.md` (Hermes `llm-wiki`, adapted). Search with `qmd query "..."` (collection `mo-lang`). Lint with `python3 tools/lint.py`.
 
 ## How Robert wants to work (non-negotiable)
 
 1. **One question at a time.** Never ask two.
-2. **Exploration mode.** Nothing is formally decided; capture things he likes as "directions we like." Formal locking happens later in one sitting.
-3. **Show code, don't describe.** He decides by seeing snippets. Give options as short code, a recommendation, the why, then one question.
-4. When he says "unpack this" or "ELI5", give full reasoning with concrete code before asking again.
-5. **Update the Notion journal at checkpoints**, not after every exchange. When editing Notion with `update_content`, match on distinctive plain-text fragments; numbered-list prefixes and bold-with-backticks do not match reliably.
-6. Do fresh **web research** rather than relying on training data when a topic calls for it.
-7. He reads on his phone; keep Notion content phone-friendly.
+2. **Exploration mode.** Nothing is formally decided; capture things he likes as directions. Formal locking happens later in one sitting (→ `decisions/`).
+3. **Show code, don't describe.** Options as short code, a recommendation, the why, then one question.
+4. "Unpack this" / "ELI5" → full reasoning with concrete code before asking again.
+5. **Update the vault at checkpoints**, not after every exchange: edit pages, bump `updated:`, update `index.md` if pages were added, one `log.md` entry, commit.
+6. Fresh **web research** over training data when a topic calls for it; save sources to `raw/`.
+7. He reads on his phone (Obsidian mobile); keep pages short, snippets under 20 lines, no wide tables.
+8. **Nothing is final until measured** (direction 28). Performance claims are hypotheses with a named check.
 
 ## His taste (learned the hard way)
 
@@ -38,20 +35,23 @@ Robert and Claude are co-designing **Mo**, a from-scratch programming language f
 - Rejected on sight: Rust/Gleam braces syntax; `def`/`end`; `end` label comments; `.with(...)` for updates; `->` case arms; `::` module paths.
 - Chose: `fn name(arg: Type) : Ret ... end` blocks with no braces; bare `x = ...` immutable bindings with `var` for mutable; `case v ... Pattern: expr ... end`; `module Payments.Refund`; plain `state.count = 0` inside process `update`; `try` prefix for propagation; predicate `?` methods.
 - Hates OOP and classes. Loves Elixir/BEAM, Go, Rust qualities, Elm. Wants a single static binary and a **fast compiler** (Rust's slowness is the anti-pattern).
+- Cares a lot about **supply-chain security** (direction 30, Q17) and a Go-like batteries-included stdlib.
 
-## State of the design after session 1 (summary; the journal has all detail)
+## State of the design
 
-**Directions we like (27 items in the journal), in short:**
-agents write ~100%; humans read at spec altitude; source carries its own evidence; style rules become compiler laws (possibly no escape hatch); never OOP; Elixir-flavored functional; BEAM qualities without the BEAM (small linked-in runtime OK, no VM); immutable by default with local `var` + `inout`; statically typed, Rust-plus-refinements from day one; concurrency at the edges like Go; processes are the only identity, each an Elm-shaped state machine (state + messages + pure `update`); effects via capability parameters, no effect type system; direct-style I/O with runtime interception, green threads, no async keyword; every effectful call has a mandatory deadline; two failure kinds (expected = `Error` value, bug = process crash), **no try-catch**, supervisor restart, agent fixes crashes autonomously with no human; negative space (`never` clauses) is the human-agent contract, humans speak it, agents write it, humans read it, humans pulled in only when the shape changes; compile speed is a hard requirement; interpreter for the edit loop, C via Zig for release, native backend only if proven necessary.
+30 directions in `directions/`, 15 syntax picks in `syntax/`, 12 deep dives in `deep-dives/`. Q1–Q10 answered **in** (see each `questions/qNN-*.md`, `answer:` in frontmatter). The current base example is `syntax/base-example.md`; the fuller one with Q1–Q7 applied is `syntax/full-example-q1-q7.md`.
 
-**Syntax pieces chosen (15, in the journal under "Syntax picks, piece by piece")** and a **current base example** in Robert's style is in the journal. A regenerated full example with all picks applied is in Part B of the Open Questions page.
+## Where we stopped (session 2, 12 Sep 2026)
 
-## Where we stopped
+See `sessions/session-02.md`. Q11–Q17 are **pending**; Robert was reading them on his phone. The vault was built at the end of the session. Not yet done: pushing to a private GitHub repo (needs Robert to run `gh auth login`), and Robert deleting the two work-Notion pages plus the hub page (IDs in `raw/notion/*` frontmatter and `3d96bcfa-7c75-81c9-9fdd-eecb9c495c5e`, `3d96bcfa-7c75-81a5-ae50-e621ee3c9c1d`, `3d96bcfa-7c75-8165-987c-e2b0d2de0da3`).
 
-**Session 2 (12 Sep 2026):** Q1–Q10 answered, all **in**, recorded with ✅ on the Open Questions page. Q10 (ID-addressed editing) was unpacked in full; it is now direction 29 and its own Journal section. Robert added two standing principles: **nothing is final until measured** (direction 28: benchmarks/evals for every performance claim) and **supply-chain security is a first-class goal** (direction 30, new **Q17** on package management). Q11–Q17 have ✍️ answer lines on the Open Questions page; Robert was answering them on his phone.
+## Next
 
-**Next:** fetch the Open Questions page, read Robert's Q11–Q17 answers, fold them into the Journal (✅ lines + directions), then start Part D step 1: the design document v0 in `docs/design-v0.md`. Q17 needs a research pass (`research/supply-chain.md`) before a recommendation.
+1. Get Robert's Q11–Q17 answers (in chat, or he edits the question pages). Set `answer:`/`status:` in frontmatter and add a `## Answer` section with the settled details.
+2. `plans/roadmap.md` step 1: write `docs/design-v0.md` from the vault.
+3. Q17 research pass → `raw/articles/` + `research/concepts/supply-chain-attacks-2025-26.md` before recommending a package design.
+4. Then the comparison pass (`research/comparisons/`, one page per language).
 
 ## Prompt to paste into the new session
 
-> We're continuing the Mo language design. Read `HANDOFF.md` in this directory, then fetch the Notion hub, Design Journal, and Open Questions pages it links. Pick up from "Where we stopped" and "Next" in the handoff. One question per message; capture in Notion at checkpoints.
+> We're continuing the Mo language design. Read `HANDOFF.md`, then `SCHEMA.md`, `index.md`, the tail of `log.md`, and the latest `sessions/` page. Pick up from "Next" in the handoff. One question per message; checkpoint the vault and commit at natural breaks.
