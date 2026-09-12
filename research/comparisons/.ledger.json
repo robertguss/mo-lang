@@ -846,6 +846,48 @@
       "url": "https://arxiv.org/abs/2403.01632",
       "title": "SynCode: LLM Generation with Grammar Augmentation",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 142,
+      "url": "raw/research-runs/pl-ideas-that-did-not-win.pplx.md",
+      "title": "Robert's research run: Programming Language Ideas That Did Not Win (Perplexity, landscape prompt 2)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 143,
+      "url": "https://bracha.org/newspeak-modules.pdf",
+      "title": "Modules as Objects in Newspeak (Bracha et al., ECOOP 2010)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 144,
+      "url": "https://www.ndss-symposium.org/wp-content/uploads/2017/09/met.pdf",
+      "title": "Joe-E: A Security-Oriented Subset of Java (Mettler, Wagner, Close; NDSS 2010)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 145,
+      "url": "https://www.cs.cmu.edu/~aldrich/papers/ecoop14-tsls.pdf",
+      "title": "Safely Composable Type-Specific Languages (Omar et al., ECOOP 2014)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 146,
+      "url": "https://potanin.github.io/files/MelicherShiPotaninAldrichECOOP2017.pdf",
+      "title": "A Capability-Based Module System for Authority Control (Melicher, Shi, Potanin, Aldrich; ECOOP 2017)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 147,
+      "url": "https://www.cs.utexas.edu/~witchel/380L/papers/hardy88confused.pdf",
+      "title": "The Confused Deputy (Norm Hardy, 1988)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 148,
+      "url": "https://www.vitanuova.com/inferno/papers/descent.pdf",
+      "title": "A Descent into Limbo (Brian Kernighan)",
+      "accessed": "2026-09-12"
     }
   ]
 }

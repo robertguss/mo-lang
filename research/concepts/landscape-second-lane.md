@@ -100,6 +100,7 @@ Claude's lane is [[language-landscape]] (web + catalogue, 12 Sep 2026) plus the 
 ## Related
 - [[motoko]] (follow-up comparison)
 - [[case-against-new-languages]] (follow-up concept)
+- [[capability-module-lineage]] (follow-up concept)
 - [[language-landscape]]
 - [[comparison-synthesis-draft]]
 - [[comparison-pass]]

@@ -87,3 +87,6 @@
 
 ## [2026-09-12] create | Concept: the case against new languages
 - research/concepts/case-against-new-languages.md, follow-up from landscape-second-lane. Null hypothesis + what Mo would have to show; no verdict.
+
+## [2026-09-12] create | Concept: capability module lineage
+- research/concepts/capability-module-lineage.md, follow-up from landscape-second-lane. Newspeak's platform argument, Joe-E's tamed subset, Wyvern TSLs + non-transitive authority, Limbo load-time checks, the confused deputy; mapped to p13 / Q16 / Q17.
