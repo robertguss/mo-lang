@@ -116,7 +116,7 @@
 - [[agent-native-cluster|Mo vs the agent-native cluster]] — comparison: 13 agent-first languages in short entries, and what 42 catalogued attempts converged on
 - [[verse|Mo vs Verse]] — comparison: failure as control flow, transactional rollback, structured concurrency; transactions vs crash-and-restart
 - [[comparison-synthesis-draft|Comparison synthesis (draft)]] — ⚠️ tensions across the 13 comparisons, top ten steals, open questions for Robert; draft for Fable
-- [[supply-chain-defenses|Supply-chain defenses]] — Q17 input: defenses that exist, the 2025–26 incident shape, Mo mapped against it, six package-system design options (no recommendation)
+- [[supply-chain-defenses|Supply-chain defenses]] — Q17 input: defenses that exist, the 2024–26 incident record (20 of 47) with impact/trend ranking, Mo mapped against it, six package-system design options (no recommendation)
 - [[landscape-second-lane|Landscape, second lane]] — what Robert's three landscape research runs add or dispute vs Claude's survey; shortlist arguments
 - [[motoko|Mo vs Motoko]] — comparison: actor isolation, trap-reverts-to-commit-point, upgrade-safe persistence, the 'designed for AI agents' claim (Caffeine)
 - [[case-against-new-languages|The case against new languages]] — the null hypothesis the v0 design doc must answer: Quasar, CodeAct, SynCode, token sugar, cold start, ilo, Aether, BHC/hx

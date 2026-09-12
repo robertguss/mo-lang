@@ -96,3 +96,6 @@
 
 ## [2026-09-12] update | Comparison: MoonBit, FFT rebuttal
 - Evidence gains Chris Allen's rebuttal of "faster than Rust" (corrected Rust 3.2–3.4× faster; unmerged baseline fixes) and the run's mimalloc note.
+
+## [2026-09-12] ingest | Q17 incidents run into supply-chain-defenses
+- raw/research-runs/supply-chain-incidents-2024-2026.pplx.md (ledger [151]). Section (b) rewritten: 20 of 47 incidents (ecosystem, date, reporters' category, reach, detection, mitigation, stopped/not stopped), category ranking by impact and trend, defenses with evidence. Gap note removed.
