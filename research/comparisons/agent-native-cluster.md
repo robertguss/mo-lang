@@ -4,7 +4,7 @@ created: 2026-09-12
 updated: 2026-09-12
 type: comparison
 tags: [research, agents, verification]
-sources: [raw/articles/agentlanguages-dev-llms-full-2026-09-12.md, raw/articles/agentlanguages-dev-catalogue-2026-09-12.md, raw/articles/ntnt-github-repo.md, raw/articles/ntnt-about.md, raw/articles/neam-github-repo.md]
+sources: [raw/articles/agentlanguages-dev-llms-full-2026-09-12.md, raw/research-runs/llm-authored-programming-languages.pplx.md, raw/articles/verabench-repo.md, raw/articles/agentlanguages-dev-catalogue-2026-09-12.md, raw/articles/ntnt-github-repo.md, raw/articles/ntnt-about.md, raw/articles/neam-github-repo.md]
 confidence: medium
 ---
 
@@ -21,7 +21,7 @@ The catalogue tracks 42 languages whose designers explicitly target LLMs or agen
 **Verification camp**
 - **Intent** (Go; v0.2.0, 5 stars). Every function has `requires`/`ensures`, and loops carry `invariant`/`decreases`. An `intent` block links a natural-language goal to contract clauses through `verified_by`, and an unresolved link is a compile error. Z3 proves what it can; the rest becomes runtime checks.[111]
   - *Overlap / verdict:* Mo's `intent` and `never` sentence-plus-block ([[p09-module-header-and-never|pick 9]]) and the tiers ([[q08-verification-tiers|Q8]]). **Already have.**
-- **Vera** (Python; about 2,400 commits, 9,382 tests). Mandatory `requires`/`ensures`/`effects`, discharged by Z3 in the decidable fragment and as a runtime guard otherwise. Parameters have no names, only typed slots (`@Int.0`). LLM inference is a typed effect.[111]
+- **Vera** (Python; about 2,400 commits, 9,382 tests, 413 stars live).[137] Mandatory `requires`/`ensures`/`effects`, discharged by Z3 in the decidable fragment and as a runtime guard otherwise. Parameters have no names, only typed slots (`@Int.0`). LLM inference is a typed effect.[111]
   - *Overlap / verdict:* tiers and effects, yes. **Reject** unnamed slots: they cost human readability ([[d02-spec-altitude|direction 2]]).
 - **Thermite** (Rust + Lean 4; June 2026). Mandatory `req`/`ens`/`fx`, plus loop `inv`/`dec`. The Forge tool records *per obligation* whether a clause was proved, bounded-checked, runtime-enforced or trusted. "The project-level headline is the minimum", and counterexamples stay failures.[111]
   ```
@@ -35,7 +35,7 @@ The catalogue tracks 42 languages whose designers explicitly target LLMs or agen
   - *Overlap / verdict:* Q9 plus crash reports ([[d21-autonomous-crash-fixing|direction 21]]). **Steal** the blame field and the version-matched skill.
 - **Aver** (Rust; v0.21). Every function has a prose intent (`?`), declared effects (`!`), and a colocated `verify` block. That block runs as samples, as hostile checks, or exports to Lean 4 or Dafny, and "the four readings can disagree".[111]
   - *Overlap / verdict:* same-file tests ([[p12-tests|pick 12]]). **Already have.** Aver shows the risk of several verification readings of one block.
-- **AILANG** (Go; 110 releases, 26 stars). Pure functional, with row-polymorphic effects. Capability categories (`IO`, `FS`, `Net`, `Clock`, `AI`) are granted at launch with `--caps`. No loops. The compiler itself is written by AI agents.[111]
+- **AILANG** (Go; 110 releases, 26 stars at cataloguing, 34 live).[137] Pure functional, with row-polymorphic effects. Capability categories (`IO`, `FS`, `Net`, `Clock`, `AI`) are granted at launch with `--caps`. No loops. The compiler itself is written by AI agents.[111]
   - *Overlap / verdict:* capabilities ([[d15-effects-via-capabilities|direction 15]]); Bosque's no-loops move ([[bosque]]). **Open:** operator-granted capabilities at launch.
 - **Hale** (Rust; May 2026). One primitive, the "locus", replaces class, module, actor and service, and loci talk over a typed topic bus. Contracts range from `@no_syscall` up to program-wide `forbid reaches(A, B)`, answered with countermodel witnesses. No async colouring, lifetimes or locks. An MCP server ships in the compiler.[111]
   - *Overlap / verdict:* processes ([[d14-processes-are-the-only-identity|direction 14]]) and `flows(...)` ([[p09-module-header-and-never|pick 9]]). **Open:** `forbid reaches` as the general form of `flows`.
@@ -43,11 +43,11 @@ The catalogue tracks 42 languages whose designers explicitly target LLMs or agen
 **Syntactic camp (and the verification crossovers)**
 - **Tacit** (Rust; v0.7.7, 3 stars). The AST is authoritative and serializes to exactly one canonical text. Definitions are BLAKE3-addressed, names live in a JSON sidecar, and malformed code becomes typed `Hole` nodes instead of a parse failure.[111]
   - *Overlap / verdict:* the inverse of Q10, which keeps names in text and IDs in a sidecar. **Reject** the sidecar names. **Open:** typed holes, so diagnostics keep working on partial files.
-- **Zero** (Vercel Labs; C bootstrap; v0.1.1, 3.3k stars). Stable diagnostic codes (`NAM003`), typed repair plans (`zero fix --plan --json`), and guidance served by the CLI and pinned to the installed version. Capability objects on `main`, no hidden allocator. A "pre-1 experiment".[111]
+- **Zero** (Vercel Labs; C bootstrap; v0.1.1, 3.3k stars at cataloguing, 5,360 live, last commit 30 May 2026).[137] Stable diagnostic codes (`NAM003`), typed repair plans (`zero fix --plan --json`), and guidance served by the CLI and pinned to the installed version. Capability objects on `main`, no hidden allocator. A "pre-1 experiment".[111]
   - *Overlap / verdict:* this is [[q09-compiler-diagnostics|Q9]] plus [[p13-capabilities-and-logging|pick 13]]. **Already have** by design; Zero is the backed competitor on this axis.
-- **Codong** (Go; v0.1.3, 67 stars). One canonical function per task. Nine bundled modules and zero dependencies. JSON errors carry `fix` and `retry` fields. Compiles through Go.[111]
+- **Codong** (Go; v0.1.3, 67 stars at cataloguing, 73 live, no activity for five months).[137] One canonical function per task. Nine bundled modules and zero dependencies. JSON errors carry `fix` and `retry` fields. Compiles through Go.[111]
   - *Overlap / verdict:* a batteries-included stdlib ([[q11-platform-and-stdlib|Q11]]), Q9. **Already have.**
-- **Axis** (Rust; 3 stars, one initial commit). Aimed at 1B–7B models: twelve constructs for a backend, an LL(1) grammar, and grammar-aware logit masks shipped as JSON. "Failure is syntax": missing auth and unindexed queries are compile errors.[111]
+- **Axis** (Rust; 3 stars, one initial commit). **Dormant:** last push 28 May 2026, four days after launch, and no benchmark has ever tested its small-model claim.[137] Aimed at 1B–7B models: twelve constructs for a backend, an LL(1) grammar, and grammar-aware logit masks shipped as JSON. "Failure is syntax": missing auth and unindexed queries are compile errors.[111]
   - *Overlap / verdict:* laws ([[d04-style-rules-become-laws|direction 4]]). **Open:** constrained decoding, as on [[moonbit]].
 
 **Outside the catalogue**
@@ -75,9 +75,10 @@ The catalogue tracks 42 languages whose designers explicitly target LLMs or agen
 
 - **Size of the field:** 42 catalogued, by camp as above.[111]
 - **Engineering signals:** Vera's 9,382 tests, Codong's 1,427, AILANG's 110 releases.[111]
-- **Adoption:** stars only. Zero at 3.3k is the outlier. No usage data found.[111][112][114]
-- **LLM benchmarks comparing these languages:** none found.
-- **Source caveat:** the catalogue's maintainer also authors Vera.[111]
+- **Adoption, live stars on 12 Sep 2026 (Robert's agent-languages run):** Zero 5,360, Vera 413, Codong 73, Aver 60, Thermite 53, Hale 35, AILANG 34, Vow 8, Intent 7, Tacit 4 (Phase 6 frozen), Axis 3. No usage data found.[137][112][114]
+- **LLM benchmarks (corrected: the first pass found none).** VeraBench runs 9 models on 60 problems. Vera averages 98.7%, "ahead of Python's 96.7% and a point behind TypeScript's 99.7%". The README itself notes TypeScript has "no headroom", so there "the benchmark is measuring the models rather than the languages".[149] On a 5-model zero-training subset, AILANG scored 96.8% and Aver 92.4%, against 97.0% for Python.[137] **Conflict of interest:** VeraBench is written and graded by Alasdair Allan, who authors Vera and maintains the catalogue. No third-party reproduction exists for any entry.[137][149]
+- **ilo, a self-reported failure.** In ilo's August 2026 CI baseline on Haiku 4.5, 1 of 13 scripted personas produced working code, 1 partial, and 11 failed. Its spec grew from about 16K to about 51K tokens. See [[case-against-new-languages]].[137]
+- **Source caveat:** the catalogue's maintainer also authors Vera and VeraBench.[111][149]
 
 ## What Mo should take from this
 
@@ -91,7 +92,7 @@ The catalogue tracks 42 languages whose designers explicitly target LLMs or agen
 - **Proposal:** `mo` serves version-pinned agent guidance itself (Zero, Vow), alongside the MCP server proposed on [[unison]].[111]
 - **Question for Robert:** should operators also grant capabilities at launch (AILANG's `--caps`), on top of narrowing inside the code? It is an input for [[q17-package-management-and-supply-chain|Q17]].[111]
 - **Question for Robert:** adopt Hale's `forbid reaches(A, B)` as the general form of `flows(...)`?[111]
-- **Watch:** Zero, the only entry with corporate backing and real attention.[111]
+- **Watch:** Zero, the only entry with corporate backing and real attention, though its last commit was on 30 May 2026.[111][137]
 
 ## Related
 - [[language-landscape]]
@@ -109,3 +110,5 @@ The catalogue tracks 42 languages whose designers explicitly target LLMs or agen
 [112] https://github.com/ntntlang/ntnt — NTNT: agent-native language with Intent-Driven Development (GitHub)
 [113] https://ntnt-lang.org/about — About NTNT
 [114] https://github.com/neam-lang/Neam — Neam: compiled DSL for AI agent systems (GitHub)
+[137] raw/research-runs/llm-authored-programming-languages.pplx.md — Robert's research run: LLM-Authored Programming Languages, evidence base 2023–2026 (Perplexity, landscape prompt 3)
+[149] https://github.com/aallan/vera-bench — VeraBench: benchmark for Vera vs Python/TypeScript (Alasdair Allan)

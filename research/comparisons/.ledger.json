@@ -888,6 +888,18 @@
       "url": "https://www.vitanuova.com/inferno/papers/descent.pdf",
       "title": "A Descent into Limbo (Brian Kernighan)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 149,
+      "url": "https://github.com/aallan/vera-bench",
+      "title": "VeraBench: benchmark for Vera vs Python/TypeScript (Alasdair Allan)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 150,
+      "url": "https://bitemyapp.com/blog/moonbit-developers-are-lying-to-you",
+      "title": "MoonBit developers are lying to you (Chris Allen, Sep 2025)",
+      "accessed": "2026-09-12"
     }
   ]
 }

@@ -90,3 +90,6 @@
 
 ## [2026-09-12] create | Concept: capability module lineage
 - research/concepts/capability-module-lineage.md, follow-up from landscape-second-lane. Newspeak's platform argument, Joe-E's tamed subset, Wyvern TSLs + non-transitive authority, Limbo load-time checks, the confused deputy; mapped to p13 / Q16 / Q17.
+
+## [2026-09-12] update | Comparison refresh: agent-native cluster
+- VeraBench numbers (grader conflict noted), ilo's self-reported failure, live star counts, Axis dormancy, from the agent-languages run and the VeraBench README.
