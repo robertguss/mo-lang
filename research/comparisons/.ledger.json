@@ -264,6 +264,54 @@
       "url": "https://raw.githubusercontent.com/lukewilliamboswell/roc-platform-template-rust/main/platform/main.roc",
       "title": "Roc platform template: platform/main.roc",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 45,
+      "url": "https://koka-lang.github.io/koka/doc/book.html",
+      "title": "The Koka Programming Language (book)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 46,
+      "url": "https://github.com/koka-lang/koka/releases/tag/v3.2.3",
+      "title": "Koka v3.2.3 release",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 47,
+      "url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2020/11/perceus-tr-v4.pdf",
+      "title": "Perceus: Garbage Free Reference Counting with Reuse (Reinking, Xie, Leijen, Swamy; PLDI 2021)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 48,
+      "url": "https://webspace.science.uu.nl/~swier004/publications/2023-icfp.pdf",
+      "title": "FP2: Fully in-Place Functional Programming (Lorenzen, Leijen, Swierstra; ICFP 2023)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 49,
+      "url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2021/08/genev-icfp21.pdf",
+      "title": "Generalized Evidence Passing for Effect Handlers (Xie, Leijen; ICFP 2021)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 50,
+      "url": "https://dl.acm.org/doi/10.1145/3428194",
+      "title": "Effects as Capabilities: Effect Handlers and Lightweight Effect Polymorphism (Brachthäuser, Schuster, Ostermann; OOPSLA 2020)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 51,
+      "url": "https://se.informatik.uni-tuebingen.de/publications/brachthaeuser22effects.pdf",
+      "title": "Effects, Capabilities, and Boxes (Brachthäuser et al.; OOPSLA 2022)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 52,
+      "url": "https://potanin.github.io/files/CraigPotaninGrovesAldrichICFEM2018.pdf",
+      "title": "Capabilities: Effects for Free (Craig, Potanin, Groves, Aldrich; ICFEM 2018)",
+      "accessed": "2026-09-12"
     }
   ]
 }

@@ -33,7 +33,7 @@ Roc is a pure functional language with automatic memory management through refer
 
 - **Purity by arrow, not by capability.** Pure function types use `->` and effectful ones `=>`, and effectful names end in `!`.[40] Pure code cannot call effectful code. The compiler infers which is which. Roc has no effect polymorphism "by design".[40] Roc dropped its old `Task` design for direct calls. The platform decides whether effects run as blocking or async I/O.[38]
   - *Mo today:* pure unless a capability is passed ([[d15-effects-via-capabilities|direction 15]]). Direct-style I/O with runtime interception ([[d16-direct-style-io|direction 16]]).
-  - *Verdict:* **already have**, with finer grain. Roc's move away from `Task` is independent support for [[d16-direct-style-io|direction 16]]. Its missing effect polymorphism has a cost: `Try.map_ok` and `Try.map_ok!` both exist.[40] Mo's capability parameters avoid the duplication.
+  - *Verdict:* **already have**, with finer grain. Roc's move away from `Task` is independent support for [[d16-direct-style-io|direction 16]]. Its missing effect polymorphism has a cost: `Try.map_ok` and `Try.map_ok!` both exist.[40] Mo avoids the duplication only because a closure can capture a capability, and that capture hides effects from signatures (see [[koka]]).
 
 - **Compile-time evaluation of pure code.** "All top-level values are evaluated at compile time." A crash during that evaluation becomes a compile error.[40]
   - *Mo today:* not discussed. There are no globals ([[d14-processes-are-the-only-identity|direction 14]]), but constants are unaddressed.
@@ -53,7 +53,7 @@ Roc is a pure functional language with automatic memory management through refer
 
 ## What it gives up
 
-- **Effect polymorphism.** Higher-order helpers come in pure and `!` pairs.[40] Mo avoids this with capability parameters.
+- **Effect polymorphism.** Higher-order helpers come in pure and `!` pairs.[40] Mo avoids this through closure capture, at a cost to purity reasoning ([[koka]]).
 - **Dynamic dispatch.** None at all.[39] Mo makes the same cut for v1.
 - **Stability.** No numbered release yet, and most platforms are on the old compiler.[42] The Zig toolchain treats backwards compatibility as a non-goal at this stage.[35] Mo takes on this same risk by choosing Zig.
 - **Warnings.** A missing `!` or a wrong purity annotation is only a warning.[40] Mo has no warnings ([[q09-compiler-diagnostics|Q9]]).

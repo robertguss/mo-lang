@@ -106,6 +106,7 @@ Finished pages, in order (worker session):
 2. [[go|Go]]
 3. [[rust|Rust]]
 4. [[roc|Roc]]
+5. [[koka|Koka]]
 
 ## Related
 - [[language-landscape]]
