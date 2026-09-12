@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 111
+> Last updated: 2026-09-12 | Total pages: 112
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -105,6 +105,7 @@
 ## Sessions
 - [[session-01|Session 1 — 12 Sep 2026 (night)]] — - 12 Sep 2026, session 1 (cont)
 - [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
+- [[session-03|Session 3 — 12 Sep 2026]] — tensions 1–7, Q17, aube, recipes and the ecosystem (d31–d35), design-v0 folder
 
 ## Research
 - [[elixir|Mo vs Elixir]] — comparison: inference-first gradual types, OTP supervision shapes vs Q7, typed processes

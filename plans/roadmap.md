@@ -32,3 +32,4 @@ Robert: `docs/design-v0` is a folder of files, one per chapter, not one document
 - [[q15-the-name]]
 - [[language-landscape]]
 - [[comparison-pass]]
+- [[session-03]]

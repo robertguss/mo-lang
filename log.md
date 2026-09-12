@@ -120,3 +120,6 @@
 
 ## [2026-09-12] create | docs/design-v0/ (eight chapters)
 - 00-readme, 01-premise, 02-laws, 03-semantics, 04-syntax, 05-verification, 06-packages, 07-toolchain, 08-milestone. Draft; every session-3 bet listed with its first test in 08.
+
+## [2026-09-12] session | Session 3 closeout bookkeeping
+- sessions/session-03.md, HANDOFF.md (session 4 prompt), index. Lint: 112 pages, only the low-confidence review flags on d32/d33/d34.
