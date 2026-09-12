@@ -25,7 +25,7 @@ The second model is Phoenix's `mix phx.gen.auth` and shadcn: a feature ships as 
 
 Source-code packages from outside remain the last resort, under [[q17-package-management-and-supply-chain|Q17]].
 
-One mechanism serves shelves 2 and 3: a recipe with bodies. Trust in the publisher decides whether the agent copies the bodies or treats them as examples.
+One mechanism serves shelves 2 and 3: a recipe with bodies. Trust in the publisher decides whether the agent copies the bodies or treats them as examples. **Robert: in** (session 3) on this unification: one format, one registry, one set of rules, and the trust tier is the only dial.
 
 ## Related
 - [[d34-packages-are-recipes]]
