@@ -690,6 +690,60 @@
       "url": "https://negroniventurestudios.com/2026/05/20/three-camps-alike-in-dignity",
       "title": "Three camps alike in dignity (Alasdair Allan, May 2026)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 116,
+      "url": "https://verselang.github.io/book/00_overview",
+      "title": "Book of Verse: Overview",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 117,
+      "url": "https://verselang.github.io/book/08_failure",
+      "title": "Book of Verse: Failure",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 118,
+      "url": "https://verselang.github.io/book/13_effects",
+      "title": "Book of Verse: Effects",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 119,
+      "url": "https://verselang.github.io/book/14_concurrency",
+      "title": "Book of Verse: Concurrency",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 120,
+      "url": "https://simon.peytonjones.org/assets/pdfs/verse-icfp23.pdf",
+      "title": "The Verse Calculus: A Core Calculus for Deterministic Functional Logic Programming (Augustsson et al., ICFP 2023)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 121,
+      "url": "https://www.unrealengine.com/news/the-road-to-ue-6",
+      "title": "The road to Unreal Engine 6 (Epic, June 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 122,
+      "url": "https://www.gamedeveloper.com/programming/unreal-engine-6-will-merge-ue5-and-uefn-into-a-single-unified-engine-",
+      "title": "Unreal Engine 6 will merge UE5 and UEFN (Game Developer, June 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 123,
+      "url": "https://www.unrealengine.com/tech-blog/bringing-verse-transactional-memory-semantics-to-c",
+      "title": "Bringing Verse Transactional Memory Semantics to C++ (AutoRTFM, Epic, 2024)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 124,
+      "url": "https://simon.peytonjones.org/oplss-26",
+      "title": "The Verse Language: Types, Semantics, and Verification (Peyton Jones, OPLSS 2026)",
+      "accessed": "2026-09-12"
     }
   ]
 }

@@ -114,6 +114,7 @@ Finished pages, in order (worker session):
 10. [[bosque|Bosque]]
 11. [[spark-ada-and-dafny|SPARK Ada + Dafny]]
 12. [[agent-native-cluster|Agent-native cluster]]
+13. [[verse|Verse]]
 
 ## Related
 - [[language-landscape]]

@@ -34,3 +34,42 @@
 
 ## [2026-09-12] create | plans/comparison-pass.md
 - Brief for an Opus worker session run via Herdr: template, tools, 13 briefs, order, done-criteria.
+
+## [2026-09-12] ingest | Comparison: Elixir
+- research/comparisons/elixir.md. Inference-first gradual types ("verified bugs"), OTP supervision strategies vs Q7 (no strategy field), typed processes via Gleam. ⚠️ tension with Q1 (doc comments).
+
+## [2026-09-12] ingest | Comparison: Go
+- research/comparisons/go.md. gofmt/gofix, error-syntax post-mortem (restrict `try` position?), goroutine bug study, synctest, module supply chain + BoltDB typosquat. ⚠️ Q7 unbounded mailbox vs d04.
+
+## [2026-09-12] ingest | Comparison: Rust
+- research/comparisons/rust.md. Lifetimes are where humans fail (ICSE'22), compile-time survey, Android evidence, LLM fix vs whole-program rates. Open: trait coherence.
+
+## [2026-09-12] ingest | Comparison: Roc
+- research/comparisons/roc.md. Platform header anatomy, purity by arrow, static dispatch, Zig rewrite table. ⚠️ nuance to Q13's "100x faster" reason.
+
+## [2026-09-12] ingest | Comparison: Koka
+- research/comparisons/koka.md. Effect types vs capabilities research, Perceus, fip. ⚠️ d15 wording: closures can capture capabilities. Roc page corrected to match.
+
+## [2026-09-12] ingest | Comparison: Austral
+- research/comparisons/austral.md. Linear capabilities from a root, unsafe modules, crash-the-program rationale. ⚠️ Q8 SMT prover vs d24/Q11 zero-dependency toolchain.
+
+## [2026-09-12] ingest | Comparison: Hylo
+- research/comparisons/hylo.md. Parameter conventions, exclusivity, projections, a coherence rule to adopt, colorless concurrency.
+
+## [2026-09-12] ingest | Comparison: Unison
+- research/comparisons/unison.md. Hash recipe, never-invalidated caches, coexisting versions and patches, the documented cost of dropping text, MCP tooling.
+
+## [2026-09-12] ingest | Comparison: MoonBit
+- research/comparisons/moonbit.md. Pilot, semantics-aware sampler, SeekMoon, no-resource LLM study (near-zero zero-shot) vs SWE-AGI (agents build systems with a toolchain loop).
+
+## [2026-09-12] ingest | Comparison: Bosque
+- research/comparisons/bosque.md. Design by removal, escape-free lambdas, validation levels, small-model verification, why it slowed. ⚠️ p11 loops vs Q8 tier 3.
+
+## [2026-09-12] ingest | Comparison: SPARK Ada and Dafny
+- research/comparisons/spark-ada-and-dafny.md. Executable contracts, assurance levels, contract shapes LLMs discharge, loop invariants with solver feedback. ⚠️ Q4 sized ints vs d22's Dafny-level expectation.
+
+## [2026-09-12] ingest | Comparison: agent-native cluster
+- research/comparisons/agent-native-cluster.md. 13 languages (11 catalogued + Neam, NTNT verified). Convergence: mandatory contracts + solver + runtime fallback, agent diagnostics, toolchain-served guidance.
+
+## [2026-09-12] ingest | Comparison: Verse
+- research/comparisons/verse.md. Failure/rollback vs uncatchable runtime errors (confirms d18), AutoRTFM, frozen time, structured concurrency. Transactions complement, not replace, crash-and-restart.
