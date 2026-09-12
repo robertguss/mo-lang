@@ -14,7 +14,7 @@ Five ideas, one per layer. Each is chosen so that a function can be understood f
 
 - Pure by default. Dot calls are sugar for first-argument functions: `charge.refunded?` is `refunded?(charge)`.
 - Contracts (`requires`, `ensures`) sit between the signature and the body and are part of the spec altitude. They run in every build. Contract expressions are evaluated in unbounded mathematical integers so the spec itself cannot overflow.
-- Traits list functions a type promises; `impl` provides them. One `impl` per type and trait pair, and a `pub` impl lives only in the type's or the trait's module. No inheritance, no trait objects in v0.
+- Traits list functions a type promises; `impl` provides them. One `impl` per type and trait pair, and an exposed impl lives only in the type's or the trait's module. No inheritance, no trait objects in v0.
 - Anonymous functions exist only as call arguments (`xs.filter(fn(x) x > 0 end)`). Named functions are first-class values and carry their capabilities in their own signatures.
 
 ## Effects

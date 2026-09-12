@@ -6,6 +6,7 @@ The refund module is the running example. Read it top to bottom; the sections af
 
 ```ruby
 module Payments.Refund
+expose Refund, RefundError, apply_refund, refund, RefundQueue
 
 use Payments.Ledger.{Charge, ChargeId, Money}
 
@@ -20,13 +21,13 @@ never "a card number reaches an event"
   flows(CardNumber, into: Events)
 end
 
-pub struct Refund
+struct Refund
   charge: ChargeId
   amount: Money
   at: Time
 end
 
-pub enum RefundError
+enum RefundError
   AlreadyRefunded(id: ChargeId)
   WindowExpired(captured_at: Time, now: Time)
   Timeout
@@ -38,7 +39,7 @@ fn within_window?(charge: Charge, now: Time) : Bool
   now - charge.captured_at <= 90.days
 end
 
-pub fn apply_refund(charge: Charge, amount: Money) : Result(Charge, RefundError)
+fn apply_refund(charge: Charge, amount: Money) : Result(Charge, RefundError)
   requires amount <= charge.captured_amount
   ensures  result is Ok(c) implies c.refunded?
 
@@ -49,7 +50,7 @@ pub fn apply_refund(charge: Charge, amount: Money) : Result(Charge, RefundError)
   Ok(updated)
 end
 
-pub fn refund(db: Ledger, clock: Clock, id: ChargeId, amount: Money) : Result(Refund, RefundError)
+fn refund(db: Ledger, clock: Clock, id: ChargeId, amount: Money) : Result(Refund, RefundError)
   requires amount > Money.zero
   ensures  result is Ok(r) implies r.amount == amount
 
@@ -66,7 +67,7 @@ pub fn refund(db: Ledger, clock: Clock, id: ChargeId, amount: Money) : Result(Re
   Ok(Refund(charge: id, amount: amount, at: now))
 end
 
-pub process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
+process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
   state
     pending: List(RefundRequest) where size <= 1_000
     done: UInt32
@@ -122,7 +123,7 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 
 ## The rules, one line each
 
-- **Module:** `module A.B`, one per file, path equals file path. `use A.B` or `use A.B.{X, Y}`; no wildcards, no aliases. Private by default, `pub` to expose. The `pub` lines are the spec altitude's table of contents.
+- **Module:** `module A.B`, one per file, path equals file path. `use A.B` or `use A.B.{X, Y}`; no wildcards, no aliases. Private by default. One `expose a, b, C` line directly under the module header names everything public; declarations carry no marker. The `expose` line is the spec altitude's table of contents.
 - **Intent and never:** `intent "..."` once per module. `never "sentence" ... end` is a sentence plus a block that is true when the bad thing happened. `flows(T, into: Cap)` is a checkable information-flow rule.
 - **Definition line:** `fn name(arg: Type) : Ret`. No space before the colon in `arg: Type`, `:` for the return type, generics in parens: `Result(Charge, RefundError)`, `List(T)`.
 - **Contracts:** `requires` and `ensures` directly after the signature, a blank line, then the body. `result` is the return value, `old(x)` the entry value, `is` an inline pattern test, `implies` the connective.
@@ -138,3 +139,7 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 - **Tests:** same file, under the code. `test "sentence"`, `test rejects "sentence"`, `property "sentence"` with `any(Type)`.
 - **`verified:` line:** at the bottom, computed by the toolchain, a compile error to edit by hand.
 - **Recipes:** `recipe Name ... end`, chapter 6.
+
+## Session 4 note
+
+Robert (session 4): `pub` has OOP vibes. **In** on the Elm-style `expose` line: privacy by default, one line under `module` lists the public names, no marker on any declaration. Every `pub` in these chapters, `grammar.md`, and pick 14 now reads as "named on the `expose` line".

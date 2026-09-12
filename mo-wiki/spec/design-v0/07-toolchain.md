@@ -18,7 +18,7 @@ Compile time is the latency of the agent's loop. Targets: under 50 ms for tier 1
 - An MCP server over edit-by-ID, diagnostics, and history. No Mo-specific agent; any agent uses the tools.
 - Version-pinned guidance served by `mo` itself, so a model that has never seen Mo gets the rules, the error catalog, and the idioms from the toolchain, not from training data.
 - `mo fix` from day one: every language change ships with a rewriter, and every published package version carries an old-hash to new-hash patch.
-- The spec-altitude view: `pub` signatures, contracts, tests, and the `verified:` line, rendered as a document. A shape diff between versions is what a human reviews.
+- The spec-altitude view: exposed signatures, contracts, tests, and the `verified:` line, rendered as a document. A shape diff between versions is what a human reviews.
 
 ## Memory and performance bets
 

@@ -15,7 +15,7 @@ Static proving is **not** in the v0 toolchain. It lives in `mo prove`, a separat
 
 ## The `verified:` line
 
-Computed by the toolchain, in the file, at the bottom, part of a `pub` module's published interface. Fixed vocabulary:
+Computed by the toolchain, in the file, at the bottom, part of a module's exposed interface. Fixed vocabulary:
 
 ```
 verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
@@ -26,7 +26,7 @@ The headline is the weakest obligation, so a human can watch it climb. Editing i
 
 ## Failure is a work queue
 
-A tier-3 failure on merged code is a bug, not a flag. A failed property is a found counterexample with seed and log; the agent takes it as a fix task. A crash in production is the same object. Nothing is filed for a human unless the fix changes a `pub` signature, a contract, or a `never`.
+A tier-3 failure on merged code is a bug, not a flag. A failed property is a found counterexample with seed and log; the agent takes it as a fix task. A crash in production is the same object. Nothing is filed for a human unless the fix changes an exposed signature, a contract, or a `never`.
 
 Two guards against gaming: a change that edits a contract or test while its proof or test is failing is rejected; and when an agent changes a body, the `test` and `ensures` blocks of that declaration stay untouched in the same change.
 

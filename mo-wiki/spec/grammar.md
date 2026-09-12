@@ -14,7 +14,7 @@ float       = int "." digit+
 string      = '"' (char | "#{" expr "}")* '"'
             | '"""' NL (line NL)* '"""'        # common indentation stripped
 atom        = ":" ident                        # only where the grammar names it
-keyword     = module use intent never pub fn requires ensures var if else end
+keyword     = module use intent never expose fn requires ensures var if else end
               case for in break return try and or implies is old result
               struct enum type where trait impl process state invariant message
               supervisor child per recipe needs test rejects property any
@@ -26,7 +26,9 @@ No block comments, no single-quoted strings, no literal type suffixes. Every str
 ## 2. Module
 
 ```
-module      = "module" path NL use* intent? never* decl* test* verified?
+module      = "module" path NL expose? use* intent? never* decl* test* verified?
+expose      = "expose" name ("," name)* NL     # the exposed surface; everything else is private
+name        = ident | TypeName
 use         = "use" path ("." "{" TypeName ("," TypeName)* "}")? NL
 intent      = "intent" string NL
 never       = "never" string NL comprehension NL "end" NL
@@ -42,20 +44,20 @@ One module per file; the file path equals the module path.
 typeexpr    = path ("(" typeexpr ("," typeexpr)* ")")?      # Result(Charge, RefundError)
             | "(" typeexpr ("," typeexpr)+ ")"              # tuple
             | typeexpr "where" expr                         # refinement: List(T) where size <= 1_000
-struct      = "pub"? "struct" TypeName NL field+ "end" NL
+struct      = "struct" TypeName NL field+ "end" NL
 field       = ident ":" typeexpr NL
-enum        = "pub"? "enum" TypeName NL variant+ "end" NL
+enum        = "enum" TypeName NL variant+ "end" NL
 variant     = TypeName ("(" field_list ")")? NL
 field_list  = ident ":" typeexpr ("," ident ":" typeexpr)*
-typedef     = "pub"? "type" TypeName "=" typeexpr NL         # type Money = UInt64 where value <= ...
-trait       = "pub"? "trait" TypeName NL signature+ "end" NL
-impl        = "pub"? "impl" TypeName "for" typeexpr NL fn+ "end" NL
+typedef     = "type" TypeName "=" typeexpr NL         # type Money = UInt64 where value <= ...
+trait       = "trait" TypeName NL signature+ "end" NL
+impl        = "impl" TypeName "for" typeexpr NL fn+ "end" NL
 ```
 
 ## 4. Functions and contracts
 
 ```
-fn          = "pub"? signature NL contract* NL? block "end" NL
+fn          = signature NL contract* NL? block "end" NL
 signature   = "fn" ident "(" params? ")" ":" typeexpr generics?
 params      = param ("," param)*
 param       = "inout"? ident ":" typeexpr
@@ -131,7 +133,7 @@ gen           = ident "in" expr                                # r in Refund.all
 ## 9. Processes and supervisors
 
 ```
-process     = "pub"? "process" TypeName "(" params? ")" ("mailbox:" int)? NL
+process     = "process" TypeName "(" params? ")" ("mailbox:" int)? NL
               state invariant* message+ update "end" NL
 state       = "state" NL field+ "end" NL
 invariant   = "invariant" string NL expr NL "end" NL
@@ -156,7 +158,7 @@ assert      = "assert" expr NL                                  # a stmt inside 
 ```
 recipe      = "recipe" TypeName NL intent needs signature_only* test* "end" NL
 needs       = "needs" (TypeName ("," TypeName)* | "nothing") NL
-signature_only = "pub"? signature NL contract* "end" NL         # no body
+signature_only = signature NL contract* "end" NL         # no body
 ```
 
 ## Semantic rules the grammar does not express
@@ -165,4 +167,5 @@ signature_only = "pub"? signature NL contract* "end" NL         # no body
 - `case` is exhaustive. `try` applies only to `Result` and `Option`. `or` on an `Option(T)` yields `T`.
 - Function bodies are at most 70 lines, nesting at most 3, parameters at most 6, files at most 500 lines, process state at most 12 fields.
 - Every `requires` has a `test rejects` that trips it. Every effectful call passes `within:`.
-- `pub` signatures, contracts, `never`, and `verified:` form the spec altitude; changing them is a breaking change.
+- The `expose` line, the exposed signatures, contracts, `never`, and `verified:` form the spec altitude; changing them is a breaking change. Every name on `expose` must be declared in the module; an undeclared or duplicated name is an error.
+- Session 4: `pub` replaced by the `expose` line (Robert: `pub` has OOP vibes).

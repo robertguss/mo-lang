@@ -12,7 +12,7 @@ Packages were built by humans for humans, to avoid rewriting what someone else a
 recipe RateLimiter
   intent "Token bucket per client; refills from the clock; never blocks"
   needs Clock
-  pub fn allow?(l: Limiter, id: ClientId, now: Time) : (Limiter, Bool)
+  fn allow?(l: Limiter, id: ClientId, now: Time) : (Limiter, Bool)
     ensures result.0.tokens(id) <= l.capacity
   end
   test "refills at the declared rate" ... end

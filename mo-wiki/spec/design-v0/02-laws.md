@@ -29,7 +29,7 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 
 - A `never` is a quoted sentence plus a block that evaluates true when the bad thing has happened. Both are mandatory. A `never` that cannot be checked does not compile.
 - Every `requires` has a `rejects` test that trips it. The compiler checks the pair exists.
-- Any change to a `pub` signature, a contract, or a `never` is a breaking change, and the toolchain pulls a human in. Agents may change bodies freely.
+- Any change to an exposed signature or the `expose` line, a contract, or a `never` is a breaking change, and the toolchain pulls a human in. Agents may change bodies freely.
 
 ## The formatter
 

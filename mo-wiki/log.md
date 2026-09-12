@@ -138,3 +138,6 @@
 
 ## [2026-09-12] session | Session 3 end: pub question pending, phone references removed
 - Robert dislikes `pub`; expose-line recommendation pending → HANDOFF. Robert: phones are not a design criterion; spec and SCHEMA cleaned. Session page updated.
+
+## [2026-09-12] session | Session 4: `pub` replaced by the `expose` line
+- Robert in on Elm-style `expose a, b, C` under `module`; privacy by default, no marker on declarations. Applied to spec/design-v0 (02–07), spec/grammar.md, syntax/p14 as Session 4 notes.
