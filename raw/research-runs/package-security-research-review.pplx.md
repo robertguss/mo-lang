@@ -1,3 +1,10 @@
+---
+tool: Perplexity
+prompt: prompts-q17-supply-chain / prompt 3 (the academic view)
+run: 2026-09-12
+run_by: Robert
+sha256: b746db1c3e8580910f575c0bba9883a2f3c62b424dc95fd34334806efebaef60
+---
 # Language-Based Security for Package Dependencies: A Literature Review (2019–2026)
 
 ## Object-Capability Security Applied to Package/Dependency Management

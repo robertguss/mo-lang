@@ -1,3 +1,10 @@
+---
+tool: Perplexity
+prompt: prompts-q17-supply-chain / prompt 2 (defenses that exist)
+run: 2026-09-12
+run_by: Robert
+sha256: 835d23c96ed1ff4b984af1991561539cf950eb504aa0663ef19a9b7c7a6408d7
+---
 # A Survey of Software Supply-Chain Defenses: Registries, Build Trust, and Language-Level Capabilities
 
 ## Overview
