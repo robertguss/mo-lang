@@ -105,3 +105,6 @@
 
 ## [2026-09-12] session | Session 3: tension 1 answered
 - Closure capture: Robert in on Bosque's rule → directions/d31-effects-never-hide-in-a-value.md; Session 3 notes on d15, p11, comparison-synthesis-draft.
+
+## [2026-09-12] session | Session 3: tension 2 answered
+- Loops vs tier 3: Robert in on loops kept, no invariant syntax, small-model checking + honest verified: line. Notes on q08, p11, synthesis draft.

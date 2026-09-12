@@ -21,6 +21,10 @@ asked: 2026-09-12
 **Why:** It keeps the agent loop fast ([[d23-compile-speed-first-class|direction 23]]) without lowering the bar. The Dafny numbers say off-the-shelf models discharge contract-style proofs 82% of the time, so tier 3 will succeed often and quietly.
 ✅ **Robert: IN** (session 2). Also settled: a tier-3 failure on merged code is a bug, not a flag — a failed property is a found counterexample with seed + log, so the agent takes it as a fix task with no human involved ([[d21-autonomous-crash-fixing|direction 21]]); a human is pulled in only if the fix changes a `never`. The 50ms / 100ms numbers are hypotheses that go into the benchmark suite on day one ([[d28-nothing-final-until-measured|direction 28]]).
 
+## Session 3 note (tension 2: loops vs tier 3)
+
+Loops need invariants to prove `ensures`, and no general technique exists ([[bosque]]). Robert: **in** on keeping `for` with no invariant syntax. Tier 3 first tries small-model checking (bounded unrolling, counterexample search) and simple invariant inference; when that fails the function's `verified:` line says "tested, not proven" ([[q06-verified-line|Q6]]). An `invariant` line inside loops is a later add-on only if measurement ([[d28-nothing-final-until-measured|direction 28]]) shows agents need it. Evidence so far ([[spark-ada-and-dafny]]) is benchmark-sized only.
+
 ## Related
 - [[d23-compile-speed-first-class]]
 - [[q06-verified-line]]

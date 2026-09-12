@@ -111,6 +111,7 @@ Collected from the pages, for Fable to order and ask **one at a time**.
 ## Session 3 answers
 
 1. Closure capture: **in** on option (c), Bosque's rule → [[d31-effects-never-hide-in-a-value|direction 31]].
+2. Loops vs tier 3: **in** on keeping loops with no invariant syntax; tier 3 does small-model checking, unproven loops show as "tested, not proven". `invariant` line deferred until measured. Noted on [[q08-verification-tiers|Q8]] and [[p11-loops-and-anonymous-functions|pick 11]].
 
 ## Related
 - [[comparison-pass]]

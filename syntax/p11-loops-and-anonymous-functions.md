@@ -18,6 +18,10 @@ chosen_by: Robert
 
 Robert: **in** on restricting anonymous functions to call arguments. `pred = fn(c) ... end` and returning an anonymous `fn` are compile errors; captures are read-only. Named functions remain first-class values (`handlers = [on_refund]`). See [[d31-effects-never-hide-in-a-value|direction 31]].
 
+## Session 3 note (tension 2)
+
+Robert: **in** on keeping bounded `for` loops as they are; no `invariant` syntax for now. Unproven loops are reported honestly by the `verified:` line, never blocked. See [[q08-verification-tiers|Q8]].
+
 ## Related
 - [[tiger-style-and-power-of-ten]]
 - [[base-example]]
