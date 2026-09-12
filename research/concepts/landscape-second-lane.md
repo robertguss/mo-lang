@@ -10,7 +10,7 @@ confidence: medium
 
 # Landscape, second lane: what Robert's research runs add
 
-Claude's lane is [[language-landscape]] (web + catalogue, 12 Sep 2026) plus the 13 comparison pages. Robert's lane is three deep-research runs against [[prompts-language-landscape]]. The **emerging-languages run** answers prompt 1; its tool isn't recorded yet ("Robert to fill in"). The **did-not-win run** (Perplexity) answers prompt 2, and the **agent-languages run** (Perplexity) answers prompt 3. This page records only what the runs add or dispute. Judgments marked *Claude's recommendation* are Claude's, not Robert's.
+Claude's lane is [[language-landscape]] (web + catalogue, 12 Sep 2026) plus the 13 comparison pages. Robert's lane is three deep-research runs against [[prompts-language-landscape]]. The **emerging-languages run** (Perplexity) answers prompt 1. The **did-not-win run** (Perplexity) answers prompt 2, and the **agent-languages run** (Perplexity) answers prompt 3. This page records only what the runs add or dispute. Judgments marked *Claude's recommendation* are Claude's, not Robert's.
 
 ## Languages Robert's lane found that Claude's lane missed
 
