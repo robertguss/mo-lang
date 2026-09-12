@@ -113,6 +113,14 @@ Collected from the pages, for Fable to order and ask **one at a time**.
 1. Closure capture: **in** on option (c), Bosque's rule → [[d31-effects-never-hide-in-a-value|direction 31]].
 2. Loops vs tier 3: **in** on keeping loops with no invariant syntax; tier 3 does small-model checking, unproven loops show as "tested, not proven". `invariant` line deferred until measured. Noted on [[q08-verification-tiers|Q8]] and [[p11-loops-and-anonymous-functions|pick 11]].
 
+Robert then asked to stop speculating on untested issues and start building; tensions 3–7 are Claude's provisional decisions at his request ("your decisions are as good as mine"), each marked with what first tests it.
+
+3. Sized ints vs proof rate: unbounded math in contracts only, two obligations on the `verified:` line. On [[q04-integer-types-and-overflow|Q4]].
+4. Prover vs zero deps: tier 3 v0 = property tests + simulation in the interpreter; proving is a separate `mo prove` binary with a vendored solver → [[d32-proving-is-a-separate-tool|direction 32]]. On [[q08-verification-tiers|Q8]].
+5. Mailboxes: bounded, declared per process, `send` never blocks, overflow crashes the sender → [[d33-bounded-mailboxes|direction 33]]. On [[q07-process-api|Q7]].
+6. Doc examples: no change, `test` blocks are the examples. On [[q01-comments|Q1]].
+7. Q13 rationale corrected, decision stands. On [[q13-implementation-language|Q13]].
+
 ## Related
 - [[comparison-pass]]
 - [[language-landscape]]

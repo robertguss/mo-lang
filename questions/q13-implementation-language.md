@@ -21,6 +21,10 @@ asked: 2026-09-12
 
 ✅ **Robert: IN** (session 2). Zig.
 
+## Session 3 note (tension 7: the stated reason)
+
+Robert (session 3): "I want you to decide 3 through 7 because we need an answer and then we need to test everything, so your decisions are as good as mine." So this is Claude's call, provisional, and marked with what tests it. **Decision:** Zig stands. The *why* is corrected: Roc's 35ms incremental rebuild needs a Zig nightly on x86-64; on stable Zig at parity Roc measured 8.6s against Rust's 3.4s ([[roc]]). The reasons that hold: one toolchain that is also the C cross-compiler, TigerBeetle culture, no second dependency. Steal Roc's pointer-free index-based compiler data with a memcpy-speed disk cache from day one. **First tested by:** the Mo interpreter's own incremental build time, tracked from the first commit.
+
 ## Related
 - [[d24-compile-to-c-via-zig]]
 - [[d23-compile-speed-first-class]]

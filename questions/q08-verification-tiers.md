@@ -25,6 +25,10 @@ asked: 2026-09-12
 
 Loops need invariants to prove `ensures`, and no general technique exists ([[bosque]]). Robert: **in** on keeping `for` with no invariant syntax. Tier 3 first tries small-model checking (bounded unrolling, counterexample search) and simple invariant inference; when that fails the function's `verified:` line says "tested, not proven" ([[q06-verified-line|Q6]]). An `invariant` line inside loops is a later add-on only if measurement ([[d28-nothing-final-until-measured|direction 28]]) shows agents need it. Evidence so far ([[spark-ada-and-dafny]]) is benchmark-sized only.
 
+## Session 3 note (tension 4: SMT prover vs zero-dependency toolchain)
+
+Robert (session 3): "I want you to decide 3 through 7 because we need an answer and then we need to test everything, so your decisions are as good as mine." So this is Claude's call, provisional, and marked with what tests it. **Decision:** tier 3 in v0 is property testing under many seeds plus simulation with fault injection, all run by the interpreter, zero dependencies. Static proving is a separate optional binary, `mo prove`, which vendors a pinned, hashed, statically linked solver and is never in the build path of a user program. "Zig as the only dependency" ([[d24-compile-to-c-via-zig|direction 24]], [[q11-platform-and-stdlib|Q11]]) applies to building Mo programs and the core toolchain, not to the background prover. Bosque-style small-model checking written in Zig may later cover enough that `mo prove` stays rare. → [[d32-proving-is-a-separate-tool|direction 32]]. **First tested by:** how far the interpreter's property tests get on the corpus before anyone misses a prover.
+
 ## Related
 - [[d23-compile-speed-first-class]]
 - [[q06-verified-line]]

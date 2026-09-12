@@ -108,3 +108,6 @@
 
 ## [2026-09-12] session | Session 3: tension 2 answered
 - Loops vs tier 3: Robert in on loops kept, no invariant syntax, small-model checking + honest verified: line. Notes on q08, p11, synthesis draft.
+
+## [2026-09-12] session | Session 3: tensions 3–7 decided by Claude at Robert's request
+- Robert: stop speculating, decide, then build and test. Notes on q04, q08, q07, q01, q13, synthesis draft. New directions/d32-proving-is-a-separate-tool.md, directions/d33-bounded-mailboxes.md (confidence: low, first-tested-by on each).

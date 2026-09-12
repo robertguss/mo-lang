@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 106
+> Last updated: 2026-09-12 | Total pages: 108
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -35,6 +35,8 @@
 - [[d29-edit-by-declaration-id|Direction 29: Agents edit by declaration ID, not by text position]] — (Robert: in, session 2, “fascinating”) Every declaration gets a stable ID in a toolchain-owned `.mo.ids` sidecar; source stays plain text…
 - [[d30-supply-chain-security|Direction 30: Supply-chain security is a first-class design goal]] — (Robert, session 2, very important) AI has made package-ecosystem attacks (npm, PyPI, and the rest) massive and unlike anything before
 - [[d31-effects-never-hide-in-a-value|Direction 31: Effects never hide in a value]] — (session 3, tension 1) anonymous fns are call-arguments only, captures read-only; a captured capability can't outlive the call
+- [[d32-proving-is-a-separate-tool|Direction 32: Proving is a separate tool; tier 3 v0 is testing in the interpreter]] — (session 3, tension 4) property tests + simulation in the interpreter; `mo prove` vendors a solver outside the zero-dep law
+- [[d33-bounded-mailboxes|Direction 33: Bounded mailboxes; `send` never blocks; overflow is a roof]] — (session 3, tension 5) `mailbox: N` per process, sender crashes on overflow, backpressure via `ask`
 
 ## Open questions
 - [[q01-comments|Q1: Comments]] — ✅ in — Options: `#` (Ruby, Python, Elixir) or `//` (Rust, Go, C)
