@@ -77,7 +77,9 @@ Mo is squarely in the verification camp with a syntactic conscience. The ones to
 
 Also relevant papers surfaced: "Specifications: the missing link to making the development of LLM systems an engineering discipline" (2024),[31] and the vericoding benchmark itself.[29]
 
-## Proposed shortlist for the comparison pass
+## Shortlist for the comparison pass
+
+✅ **Robert: IN** (session 2). These 13 are the comparison pass.
 
 One page each, in `research/comparisons/`. Chosen for *overlap with a Mo decision*, not popularity.
 

@@ -40,5 +40,6 @@ Exploration phase. Session 2 (12 Sep 2026): Q1–Q10 answered (all in), Q11–Q1
 ## Tooling
 
 - `python3 tools/lint.py` — broken links, orphans, frontmatter, index, raw drift.
+- `python3 tools/exa.py search|contents|answer|research ...` — web research via Exa (needs `EXA_API_KEY`).
 - `qmd query "..."` — hybrid search over the vault (collection `mo-lang`); `qmd update && qmd embed` after adding pages.
 - Open the repo root in Obsidian for graph view and wikilinks.
