@@ -366,6 +366,66 @@
       "url": "https://github.com/austral/austral/commits/master",
       "title": "Austral commit history (last commit 28 Jul 2025, checked 12 Sep 2026)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 62,
+      "url": "https://hylo-lang.org/introduction",
+      "title": "Introduction to Hylo",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 63,
+      "url": "https://docs.hylo-lang.org/language-tour/functions-and-methods",
+      "title": "Hylo language tour: Functions and methods (parameter conventions)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 64,
+      "url": "https://docs.hylo-lang.org/language-tour/bindings",
+      "title": "Hylo language tour: Bindings",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 65,
+      "url": "https://hylo-lang.org/docs/user/language-tour/subscripts",
+      "title": "Hylo language tour: Subscripts",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 66,
+      "url": "https://github.com/hylo-lang/hylo-new",
+      "title": "hylo-new: the new Hylo compiler (GitHub)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 67,
+      "url": "https://kyouko-taiga.github.io/assets/papers/jot2022-mvs.pdf",
+      "title": "Implementation Strategies for Mutable Value Semantics (Racordon et al., JOT 2022)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 68,
+      "url": "https://arxiv.org/abs/2106.12678",
+      "title": "Native Implementation of Mutable Value Semantics (Racordon, Shabalin, Zheng, Abrahams, Saeta)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 69,
+      "url": "https://github.com/hylo-lang/hylo",
+      "title": "Hylo compiler repository (GitHub)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 70,
+      "url": "https://docs.hylo-lang.org/language-tour/concurrency",
+      "title": "Hylo language tour: Concurrency",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 71,
+      "url": "https://github.com/hylo-lang/specification/blob/main/spec.md",
+      "title": "Hylo Language Specification (trait conformance)",
+      "accessed": "2026-09-12"
     }
   ]
 }
