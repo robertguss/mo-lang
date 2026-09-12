@@ -27,3 +27,4 @@ Steps 1–4 are days. Step 5 is weeks. Step 6 is where we find out if the idea i
 - [[session-02]]
 - [[q15-the-name]]
 - [[language-landscape]]
+- [[comparison-pass]]
