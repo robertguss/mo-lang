@@ -756,6 +756,66 @@
       "url": "raw/research-runs/package-security-research-review.pplx.md",
       "title": "Robert's research run: Language-Based Security for Package Dependencies, literature review 2019–2026 (Perplexity, Q17 prompt 3, 12 Sep 2026)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 127,
+      "url": "raw/research-runs/emerging_languages_2022_2026.md",
+      "title": "Robert's research run: Emerging Programming Languages 2022–2026 (Perplexity, landscape prompt 1)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 128,
+      "url": "https://docs.internetcomputer.org/motoko/home",
+      "title": "Motoko documentation home",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 129,
+      "url": "https://docs.internetcomputer.org/languages/motoko/fundamentals/actors/actors-async",
+      "title": "Motoko: Actors & async data",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 130,
+      "url": "https://docs.internetcomputer.org/guides/canister-calls/inter-canister-calls",
+      "title": "ICP: Inter-canister calls",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 131,
+      "url": "https://docs.internetcomputer.org/languages/motoko/fundamentals/actors/compatibility",
+      "title": "Motoko: Verifying upgrade compatibility",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 132,
+      "url": "https://docs.internetcomputer.org/languages/motoko/reference/changelog",
+      "title": "Motoko changelog",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 133,
+      "url": "https://github.com/caffeinelabs/motoko",
+      "title": "caffeinelabs/motoko repository",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 134,
+      "url": "https://help.caffeine.ai/hc/en-us/articles/46899814439700-How-Caffeine-Works",
+      "title": "How Caffeine Works (Caffeine help centre)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 135,
+      "url": "https://venturebeat.com/technology/dfinity-launches-caffeine-an-ai-platform-that-builds-production-apps-from",
+      "title": "Dfinity launches Caffeine (VentureBeat, Oct 2025)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 136,
+      "url": "https://motoko-book.dev/advanced-concepts/async-programming.html",
+      "title": "Motoko Book: Async programming",
+      "accessed": "2026-09-12"
     }
   ]
 }
