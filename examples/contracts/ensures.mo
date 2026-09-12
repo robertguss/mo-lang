@@ -30,8 +30,7 @@ end
 
 test "add changes the cart the caller holds"
   var cart = Cart(items: 0, total: 0)
-  total = add(cart, 500)
-  assert total == 500
+  assert add(cart, 500) == 500
   assert cart.items == 1
 end
 
