@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 109
+> Last updated: 2026-09-12 | Total pages: 111
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -37,6 +37,8 @@
 - [[d31-effects-never-hide-in-a-value|Direction 31: Effects never hide in a value]] — (session 3, tension 1) anonymous fns are call-arguments only, captures read-only; a captured capability can't outlive the call
 - [[d32-proving-is-a-separate-tool|Direction 32: Proving is a separate tool; tier 3 v0 is testing in the interpreter]] — (session 3, tension 4) property tests + simulation in the interpreter; `mo prove` vendors a solver outside the zero-dep law
 - [[d33-bounded-mailboxes|Direction 33: Bounded mailboxes; `send` never blocks; overflow is a roof]] — (session 3, tension 5) `mailbox: N` per process, sender crashes on overflow, backpressure via `ask`
+- [[d34-packages-are-recipes|Direction 34: Packages are recipes; the spec is shared, the bodies are yours]] — (Robert, session 3, to be proven) stdlib is the bricks, a package is the booklet, the agent builds it in your repo; zero dependencies by construction
+- [[d35-mo-is-an-ecosystem|Direction 35: Mo is an ecosystem; first-party batteries you own]] — (Robert, session 3) Laravel model for first-party tooling, Phoenix-auth/shadcn model for kits you own; three shelves: bricks, kits, recipes
 
 ## Open questions
 - [[q01-comments|Q1: Comments]] — ✅ in — Options: `#` (Ruby, Python, Elixir) or `//` (Rust, Go, C)

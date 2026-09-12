@@ -114,3 +114,6 @@
 
 ## [2026-09-12] session | Session 3: Q17 answered; aube reviewed
 - Q17: Robert in on the six-layer package design (questions/q17 Session 3 answer). Robert asked for https://aube.sh to be reviewed → raw/articles/aube-security-docs-2026-09-12.md (ledger [152]), research/comparisons/aube.md; seven additions folded into the Q17 answer.
+
+## [2026-09-12] session | Session 3: directions 34, 35 (recipes, ecosystem)
+- Robert's first-principles reframe of packages → directions/d34-packages-are-recipes.md, directions/d35-mo-is-an-ecosystem.md. Notes on q17, q11 (DB driver is a brick), roadmap (design-v0 is a folder).

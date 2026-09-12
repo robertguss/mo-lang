@@ -22,6 +22,10 @@ asked: 2026-09-12
 
 ✅ **Robert: IN** (session 2). Reached after an unpack of what a *platform* is: in Ruby `File.read` is built into the language, so any code can touch the OS; in Mo the language cannot touch the OS at all and `main(platform: Platform)` *receives* that ability as a value from the platform package. Stdlib = pure code (`List`, `Json`, `Regex`, HTTP parsing); platform = the only thing that touches the OS.
 
+## Session 3 note
+
+Robert: a database driver (Postgres wire protocol, pooling, TLS) is a **brick**, i.e. stdlib/platform, not a recipe. Rule for the line ([[d34-packages-are-recipes|direction 34]]): if a bug in it is a security or data-loss event, it is first-party code. The stdlib ceiling rises accordingly.
+
 ## Related
 - [[q16-escape-hatch]]
 - [[q17-package-management-and-supply-chain]]

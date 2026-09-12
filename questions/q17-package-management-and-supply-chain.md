@@ -45,6 +45,10 @@ Deferred until measured: cargo-vet-style shared audits; two versions of one pack
 
 First tested by: a registry prototype and `mo add` against the example corpus.
 
+## Session 3, later: recipes and the ecosystem
+
+Robert then reframed packages from first principles → [[d34-packages-are-recipes|direction 34]] (packages are recipes: spec shared, bodies owned) and [[d35-mo-is-an-ecosystem|direction 35]] (first-party bricks and kits, Laravel and Phoenix-auth style). The six-layer answer above still governs the registry, now guarding mostly spec text plus first-party kits; outside source packages are the last resort.
+
 ## Related
 - [[d30-supply-chain-security]]
 - [[q11-platform-and-stdlib]]

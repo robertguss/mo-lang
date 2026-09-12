@@ -20,6 +20,10 @@ Once you've gone through [[q01-comments|Q1]]–[[q16-escape-hatch|Q16]], here is
 7. **Then** the C backend, the simulator, the SMT pass, and the platform split, in whatever order the first program demands.
 Steps 1–4 are days. Step 5 is weeks. Step 6 is where we find out if the idea is right.
 
+## Session 3 note
+
+Robert: `docs/design-v0` is a folder of files, one per chapter, not one document. Outline agreed: premise and null hypothesis; laws; semantics (values, functions, effects, processes, failure); syntax with the refund example; verification tiers and `verified:`; packages (now [[d34-packages-are-recipes|direction 34]] and [[d35-mo-is-an-ecosystem|direction 35]]); toolchain and build order; what the interpreter milestone must prove, listing every "first tested by".
+
 ## Related
 - [[program-menu]]
 - [[q14-first-real-program]]
