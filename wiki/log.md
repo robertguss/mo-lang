@@ -123,3 +123,6 @@
 
 ## [2026-09-12] session | Session 3 closeout bookkeeping
 - sessions/session-03.md, HANDOFF.md (session 4 prompt), index. Lint: 112 pages, only the low-confidence review flags on d32/d33/d34.
+
+## [2026-09-12] restructure | Vault moved to wiki/ (monorepo)
+- Robert: keep docs/research cleanly separate from code; Obsidian syncs only the vault. Everything wiki moved under wiki/ (git mv, history kept). Root keeps README.md, HANDOFF.md, docs/, examples/, toolchain/ (later). SCHEMA layout, README, HANDOFF updated; .obsidian/workspace.json untracked.

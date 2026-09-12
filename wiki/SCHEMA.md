@@ -6,33 +6,34 @@ Read this first, every session. Then `index.md`, then the last 20 entries of `lo
 
 The design of **Mo**, a from-scratch programming language for the AI era, co-designed by Robert Guss and Claude. This vault is the single record of the design: what we like, what is asked, what is decided, what we researched, and what happened in each session. It replaces the two Notion pages that held sessions 1–2 (exported verbatim into `raw/notion/`).
 
-This repo is also the project repo: `docs/`, `examples/`, and (later) the toolchain source live alongside the wiki. Open the repo root as an Obsidian vault.
+This repo is a monorepo (Robert, session 3). The wiki lives in `wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. Code and artifacts live beside it and never inside it: `docs/` (the spec), `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `docs/` and `examples/`; nothing outside `wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `wiki/`.
 
 ## Layout
 
 ```
-SCHEMA.md            this file
-index.md             every wiki page, one line each, by section
-log.md               append-only action log
-HANDOFF.md           the prompt that starts the next session (nothing else)
-README.md            front door for humans
-
-directions/          one page per "direction we like" (d01–d30, numbered, never renumbered)
-questions/           one page per open question (q01–q17), answer in frontmatter
-decisions/           one page per locked decision (empty until the v0 lock)
-syntax/              the 15 syntax picks (p01–p15) + the example programs
-deep-dives/          long-form explorations of one topic
-plans/               roadmap and other plans
-sessions/            one page per design session
-research/            comparisons/ and concepts/ — pages backed by web research
-raw/                 immutable sources: notion/ exports, articles/, papers/, assets/
-
-docs/                artifacts: design doc, grammar, laws, error catalog (not wiki pages)
+README.md            front door for humans (repo root)
+HANDOFF.md           the prompt that starts the next session (repo root, nothing else)
+docs/                artifacts: design-v0/, grammar, laws, error catalog (not wiki pages)
 examples/            the Mo program corpus (not wiki pages)
-tools/               lint.py and other vault tooling
+toolchain/           the Zig compiler, runtime, platforms, benchmarks (later)
+
+wiki/                the Obsidian vault root; everything below is relative to it
+  SCHEMA.md          this file
+  index.md           every wiki page, one line each, by section
+  log.md             append-only action log
+  directions/        one page per "direction we like" (d01–d35, numbered, never renumbered)
+  questions/         one page per open question (q01–q17), answer in frontmatter
+  decisions/         one page per locked decision (empty until the v0 lock)
+  syntax/            the 15 syntax picks (p01–p15) + the example programs
+  deep-dives/        long-form explorations of one topic
+  plans/             roadmap and other plans
+  sessions/          one page per design session
+  research/          comparisons/ and concepts/ — pages backed by web research
+  raw/               immutable sources: notion/ exports, articles/, papers/, research-runs/
+  tools/             lint.py, exa.py and other vault tooling
 ```
 
-Wiki pages are the `.md` files in `directions/ questions/ decisions/ syntax/ deep-dives/ plans/ sessions/ research/`. Everything else is either raw, an artifact, or tooling.
+Wiki pages are the `.md` files in `wiki/{directions,questions,decisions,syntax,deep-dives,plans,sessions,research}`. Everything else is either raw, an artifact, or tooling.
 
 ## Page types
 
@@ -102,7 +103,7 @@ Add a tag here before using it. Keep it under 25.
 3. **A long unpack** → `deep-dives/slug.md`, linked from the direction or question it serves.
 4. **Research** is a two-lane job. Claude does web research and saves sources to `raw/articles/` or `raw/papers/` with frontmatter. Robert runs deep-research tools of his own: Claude writes the prompts (short, one topic each, filed in `research/prompts/`), Robert runs them and drops the results in `raw/research-runs/<date>-<topic>.md`. Both lanes must include academic papers (arXiv, conference proceedings), not only blog posts. Findings are synthesized into `research/concepts/` or `research/comparisons/` pages that cite the raw files.
 5. **The v0 lock** → each locked rule becomes `decisions/DNN-slug.md` with `reopen if:`; the source direction gets `status: locked` and a link. History is never rewritten.
-6. **Every session** → `sessions/session-NN.md` written at the end (what happened, what is next), `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended.
+6. **Every session** → `sessions/session-NN.md` written at the end (what happened, what is next), the root `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended.
 
 ## Working agreements with Robert (non-negotiable)
 
@@ -131,8 +132,8 @@ When something new contradicts an existing page: keep both with dates, mark `con
 
 ## Lint
 
-`python3 tools/lint.py` checks: broken wikilinks, orphans, index completeness, required frontmatter, tags in taxonomy, raw sha256 drift, contested/low-confidence pages, pages over 200 lines, log size. Run it at the end of every session and record the result in `log.md`.
+`python3 wiki/tools/lint.py` (from the repo root) checks: broken wikilinks, orphans, index completeness, required frontmatter, tags in taxonomy, raw sha256 drift, contested/low-confidence pages, pages over 200 lines, log size. Run it at the end of every session and record the result in `log.md`.
 
 ## Search
 
-`qmd` is installed and the repo is a collection named `mo-lang`. `qmd query "..."` for hybrid search, `qmd search "..."` for keyword. Run `qmd update && qmd embed` after a session adds pages.
+`qmd` is installed and `wiki/` is a collection named `mo-lang`. `qmd query "..."` for hybrid search, `qmd search "..."` for keyword. Run `qmd update && qmd embed` after a session adds pages.
