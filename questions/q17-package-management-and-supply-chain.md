@@ -32,4 +32,4 @@ asked: 2026-09-12
 - [[d30-supply-chain-security]]
 - [[q11-platform-and-stdlib]]
 - [[q16-escape-hatch]]
-- [[q17-supply-chain|research prompts]]
+- [[prompts-q17-supply-chain|research prompts]]
