@@ -13,7 +13,7 @@ It is a git repo, an Obsidian vault, and (later) the toolchain's source tree, al
 | `SCHEMA.md` | how the vault is organized and the conventions (read first) |
 | `index.md` | every page, one line each |
 | `log.md` | what changed, when |
-| `HANDOFF.md` | for Claude: where the last session stopped, what's next |
+| `HANDOFF.md` | the prompt that starts the next session |
 
 | The design | |
 |---|---|

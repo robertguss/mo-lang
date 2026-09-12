@@ -14,7 +14,7 @@ This repo is also the project repo: `docs/`, `examples/`, and (later) the toolch
 SCHEMA.md            this file
 index.md             every wiki page, one line each, by section
 log.md               append-only action log
-HANDOFF.md           session handoff for Claude (what happened, what's next)
+HANDOFF.md           the prompt that starts the next session (nothing else)
 README.md            front door for humans
 
 directions/          one page per "direction we like" (d01–d30, numbered, never renumbered)
@@ -102,7 +102,24 @@ Add a tag here before using it. Keep it under 25.
 3. **A long unpack** → `deep-dives/slug.md`, linked from the direction or question it serves.
 4. **Research** is a two-lane job. Claude does web research and saves sources to `raw/articles/` or `raw/papers/` with frontmatter. Robert runs deep-research tools of his own: Claude writes the prompts (short, one topic each, filed in `research/prompts/`), Robert runs them and drops the results in `raw/research-runs/<date>-<topic>.md`. Both lanes must include academic papers (arXiv, conference proceedings), not only blog posts. Findings are synthesized into `research/concepts/` or `research/comparisons/` pages that cite the raw files.
 5. **The v0 lock** → each locked rule becomes `decisions/DNN-slug.md` with `reopen if:`; the source direction gets `status: locked` and a link. History is never rewritten.
-6. **Every session** → `sessions/session-NN.md` written at the end, `HANDOFF.md` refreshed, `log.md` appended.
+6. **Every session** → `sessions/session-NN.md` written at the end (what happened, what is next), `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended.
+
+## Working agreements with Robert (non-negotiable)
+
+1. **One question at a time.** Never ask two.
+2. **Exploration mode.** Nothing is formally decided; capture things he likes as directions. Formal locking happens later in one sitting (→ `decisions/`).
+3. **Show code, don't describe.** Options as short code, a recommendation, the why, then one question. Be concise; define any PL-design term in ≤3 lines before using it — he is a strong SWE but new to the vocabulary, and he skips long essays.
+4. "Unpack this" / "ELI5" → deeper, still in tight bullets with a snippet.
+5. Fresh **web research** over training data when a topic calls for it; two lanes — Claude writes prompts into `research/prompts/`, Robert runs them (Perplexity) into `raw/research-runs/`; papers required.
+6. **Nothing is final until measured** (direction 28).
+7. **Cost rule:** mechanical research and page-writing go to an Opus worker session in Herdr (`herdr agent start worker --kind claude --pane <id> -- --model opus --dangerously-skip-permissions`; answer the trust dialog with `down enter`; hand it a plan page such as `plans/comparison-pass.md`). The expensive model keeps judgment: tensions, syntheses, Q17, design-v0. Both share one working tree: `git pull --rebase --autostash` before pushing.
+8. Notion is retired for this project (it was his work workspace). Never write Mo content there. The old pages are exported in `raw/notion/`; deleting them is his call.
+
+## Robert's taste (learned the hard way)
+
+- Ruby is his favorite language. Mo must be as simple and elegant as Ruby/Python: borrow what he likes, keep out what he doesn't. Hates OOP and classes. Loves Elixir/BEAM, Go, Rust qualities, Elm. Wants a single static binary and a fast compiler (Rust's slowness is the anti-pattern). Cares a lot about supply-chain security and a Go-like stdlib.
+- Rejected on sight: Rust/Gleam braces; `def`/`end`; `end` label comments; `.with(...)`; `->` case arms; `::` module paths; 40-line function limit (70 it is); phone-fit as a design criterion.
+- Chose: `fn name(arg: Type) : Ret ... end`, bare `x = ...` immutable bindings with `var`, `case v ... Pattern: expr ... end`, `module Payments.Refund`, `state.count = 0` inside `update`, `try` prefix, predicate `?` methods.
 
 ## Checkpoints
 
