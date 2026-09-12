@@ -1,7 +1,7 @@
 ---
 source_url: https://github.com/koka-lang/koka/releases/tag/v3.2.3
 ingested: 2026-09-12
-sha256: 37cad66eef83e07ea5a5a56893511c1b8481872cf8e6d97232752343b774bddc
+sha256: 660b6b554be1f5a68de4947893d692ab5afbc779b6d0d266e07d1baac74ca0ac
 ---
 # v3.2.3
 
