@@ -31,3 +31,6 @@
 ## [2026-09-12] update | Comparison-pass shortlist approved; Exa wired in
 - Robert approved the 13-entry shortlist in research/concepts/language-landscape.md. Comparison pages go in research/comparisons/, one per entry.
 - tools/exa.py: search / contents / answer / research against Exa (key in ~/.zshenv, never in the repo). First Exa query surfaced Neam and NTNT, absent from the agentlanguages.dev catalogue — to be checked.
+
+## [2026-09-12] create | plans/comparison-pass.md
+- Brief for an Opus worker session run via Herdr: template, tools, 13 briefs, order, done-criteria.

@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 85
+> Last updated: 2026-09-12 | Total pages: 86
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -93,6 +93,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[comparison-pass|Comparison pass: brief for the worker session]] — template, tools, and the 13 briefs for the Opus worker
 - [[program-menu|Program menu: what we build to put Mo through its paces]] — seven programs of different kinds, and what each measures
 - [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
 
