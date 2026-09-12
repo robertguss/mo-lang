@@ -6,8 +6,8 @@ type: question
 tags: [security, stdlib]
 sources: [raw/notion/open-questions-2026-09-12.md]
 number: 17
-status: pending
-answer: pending
+status: answered
+answer: in
 asked: 2026-09-12
 ---
 
@@ -23,7 +23,10 @@ asked: 2026-09-12
 - **Content-addressed declarations ([[q10-semantic-ids-and-editing|Q10]]).** Every function has a hash; a package is a set of hashes, so "what changed in this version" is exact and "the registry served different bytes" is detectable.
 - **`flows(...)` checks.** Information-flow rules can state that no secret reaches a dependency's outputs.
 **Open sub-questions for the design pass:** registry model (central vs. vendored vs. Go-style URL modules); immutable versions and a transparency log; signing and who signs; capability manifests as part of a package's published interface, with any widening being a breaking change a human sees (the same rule as `never` clauses); minimum-privilege by default when adding a dep; typosquat resistance (namespacing, name reservation, similarity checks); how the toolchain audits a platform, since platforms are the trusted layer; whether the stdlib ceiling ([[q11-platform-and-stdlib|Q11]]) should be raised to keep more of the common surface first-party. Needs fresh web research on 2025–2026 supply-chain incidents and on what Go, Deno, and cargo-vet have tried.
-✍️ **Robert:**
+
+## Answer
+
+✅ **Robert: IN on ordering B** (session 2): start `docs/design-v0.md` now, research Q17 in parallel, slot the package chapter in when it lands. No package design is recommended until the research pass is done. Robert will run deep-research prompts with his own tools and share results back (see SCHEMA, "Research"). Research must include academic papers (arXiv etc.), not only blog posts and incident reports.
 
 ## Related
 - [[d30-supply-chain-security]]

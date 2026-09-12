@@ -100,7 +100,7 @@ Add a tag here before using it. Keep it under 25.
 1. **An idea Robert reacts well to** → new `directions/dNN-slug.md`, `status: liked`, and a line in `index.md`.
 2. **Something needing his call** → new `questions/qNN-slug.md` with options, recommendation, why, and `answer: pending`. Robert answers in chat (or by editing the page on his phone). Claude sets `answer:` and `status:`, appends the settled details under a `## Answer` heading.
 3. **A long unpack** → `deep-dives/slug.md`, linked from the direction or question it serves.
-4. **Web research** → source saved in `raw/articles/` or `raw/papers/` with frontmatter, then a `research/concepts/` or `research/comparisons/` page that cites it.
+4. **Research** is a two-lane job. Claude does web research and saves sources to `raw/articles/` or `raw/papers/` with frontmatter. Robert runs deep-research tools of his own: Claude writes the prompts (short, one topic each, filed in `research/prompts/`), Robert runs them and drops the results in `raw/research-runs/<date>-<topic>.md`. Both lanes must include academic papers (arXiv, conference proceedings), not only blog posts. Findings are synthesized into `research/concepts/` or `research/comparisons/` pages that cite the raw files.
 5. **The v0 lock** → each locked rule becomes `decisions/DNN-slug.md` with `reopen if:`; the source direction gets `status: locked` and a link. History is never rewritten.
 6. **Every session** → `sessions/session-NN.md` written at the end, `HANDOFF.md` refreshed, `log.md` appended.
 

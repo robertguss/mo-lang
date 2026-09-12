@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 82
+> Last updated: 2026-09-12 | Total pages: 83
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -52,7 +52,7 @@
 - [[q14-first-real-program|Q14: The first real program]] — ✅ in — Options (from session 1): agent harness / backend service with a DB / infrastructure component (queue, KV store, proxy) / the Mo toolchai…
 - [[q15-the-name|Q15: The name]] — ✅ in — Question: is "Mo" it, and what's the story?
 - [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✅ in — Question: parked in session 1: laws with no override, ever?
-- [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✍️ pending — Raised by Robert (session 2), flagged as very important
+- [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✅ in (ordering B) — Raised by Robert (session 2), flagged as very important
 
 ## Decisions
 *(none yet)*
@@ -101,5 +101,5 @@
 - [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
 
 ## Research
-*(none yet)*
+- [[q17-supply-chain|Research prompts: Q17 supply-chain security and package management]] — three prompts for Robert's deep-research tools
 
