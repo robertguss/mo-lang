@@ -204,6 +204,66 @@
       "url": "https://www.itpro.com/software/development/google-devs-ditched-c-for-rust-heres-what-happened",
       "title": "Google devs ditched C++ for Rust (IT Pro, Bergstrom talk)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 35,
+      "url": "https://rtfeldman.com/rust-to-zig",
+      "title": "How Our Rust-to-Zig Rewrite is Going (Feldman, 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 36,
+      "url": "https://www.roc-lang.org/docs/main/langref/platforms",
+      "title": "Roc language reference: Platforms",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 37,
+      "url": "https://www.roc-lang.org/platforms",
+      "title": "Roc: Platforms and Apps",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 38,
+      "url": "https://www.roc-lang.org/functional",
+      "title": "Roc: Functional",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 39,
+      "url": "https://www.roc-lang.org/docs/main/langref/static-dispatch",
+      "title": "Roc language reference: Static Dispatch",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 40,
+      "url": "https://www.roc-lang.org/docs/main/langref/functions",
+      "title": "Roc language reference: Functions (purity inference)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 41,
+      "url": "https://www.roc-lang.org/docs/main/langref/expressions",
+      "title": "Roc language reference: Expressions (opportunistic mutation)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 42,
+      "url": "https://github.com/roc-lang/roc/blob/main/docs/mini-tutorial-new-compiler.md",
+      "title": "Roc mini-tutorial for the new compiler",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 43,
+      "url": "https://github.com/lukewilliamboswell/roc-platform-template-rust",
+      "title": "Roc platform template (Rust host)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 44,
+      "url": "https://raw.githubusercontent.com/lukewilliamboswell/roc-platform-template-rust/main/platform/main.roc",
+      "title": "Roc platform template: platform/main.roc",
+      "accessed": "2026-09-12"
     }
   ]
 }

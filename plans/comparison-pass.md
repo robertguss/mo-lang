@@ -105,6 +105,7 @@ Finished pages, in order (worker session):
 1. [[elixir|Elixir]]
 2. [[go|Go]]
 3. [[rust|Rust]]
+4. [[roc|Roc]]
 
 ## Related
 - [[language-landscape]]
