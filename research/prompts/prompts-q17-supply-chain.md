@@ -24,5 +24,6 @@ If a tool still refuses, drop the parenthetical category list and let it classif
 > Find academic papers (2019–2026) on: object-capability security applied to package/dependency management; language-level permission systems for third-party code; information-flow control for libraries; and measuring the attack surface of package registries. Summarize each in three sentences: claim, method, result. Flag any that propose a design where a dependency's permissions are visible in its type signature or manifest.
 
 ## Related
+- [[supply-chain-defenses]] (synthesis of the runs)
 - [[q17-package-management-and-supply-chain]]
 - [[d30-supply-chain-security]]

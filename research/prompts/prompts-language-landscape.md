@@ -24,6 +24,7 @@ Context to paste with each prompt: *"Mo is a statically typed, Ruby-looking, Eli
 > Find every programming language, DSL, or serious proposal (2023–2026) explicitly designed for LLMs or AI agents as the primary authors of code — including the GitHub catalogue "aallan/agentlanguages", Pel, MoonBit's AI-native toolchain, PACT-Lang, and any others. Classify each as syntactic (easier for models to emit), verification-oriented (contracts, proofs, checkable specs), or orchestration-oriented (agents calling agents). For each: status, what it claims, evidence it works, and its biggest weakness. Include academic papers on LLM-friendly language design and grammar constraints for constrained decoding.
 
 ## Related
+- [[landscape-second-lane]] (synthesis of the runs)
 - [[prompts-q17-supply-chain]]
 - [[steal-list]]
 - [[roadmap]]

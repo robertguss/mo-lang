@@ -744,6 +744,18 @@
       "url": "https://simon.peytonjones.org/oplss-26",
       "title": "The Verse Language: Types, Semantics, and Verification (Peyton Jones, OPLSS 2026)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 125,
+      "url": "raw/research-runs/supply-chain-defenses-survey.pplx.md",
+      "title": "Robert's research run: A Survey of Software Supply-Chain Defenses (Perplexity, Q17 prompt 2, 12 Sep 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 126,
+      "url": "raw/research-runs/package-security-research-review.pplx.md",
+      "title": "Robert's research run: Language-Based Security for Package Dependencies, literature review 2019–2026 (Perplexity, Q17 prompt 3, 12 Sep 2026)",
+      "accessed": "2026-09-12"
     }
   ]
 }
