@@ -190,6 +190,7 @@
   },
   "active": "9d526841483da658",
   "lastOpenFiles": [
+    "raw/research-runs/supply-chain-incidents-2024-2026.pplx.md",
     "research/concepts/comparison-synthesis-draft.md",
     "research/comparisons/verse.md",
     "research/comparisons/unison.md",
@@ -215,7 +216,6 @@
     "raw/papers/implementation-strategies-mutable-value-semantics-jot22.md",
     "raw/papers/dafnybench.md",
     "raw/papers/dafnybench-part2.md",
-    "raw/papers/dafny-as-verification-aware-il.md",
     "research/comparisons",
     "raw/papers",
     "tools/exa.py",
