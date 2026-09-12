@@ -41,16 +41,22 @@ The skill that defines the wiki conventions is at `.claude/skills/llm-wiki/SKILL
 
 30 directions in `directions/`, 15 syntax picks in `syntax/`, 12 deep dives in `deep-dives/`. Q1–Q10 answered **in** (see each `questions/qNN-*.md`, `answer:` in frontmatter). The current base example is `syntax/base-example.md`; the fuller one with Q1–Q7 applied is `syntax/full-example-q1-q7.md`.
 
-## Where we stopped (session 2, 12 Sep 2026)
+## Where we stopped (comparison pass, 12 Sep 2026)
 
-See `sessions/session-02.md`. Q11–Q17 are **pending**; Robert was reading them on his phone. The vault was built at the end of the session. Not yet done: pushing to a private GitHub repo (needs Robert to run `gh auth login`), and Robert deleting the two work-Notion pages plus the hub page (IDs in `raw/notion/*` frontmatter and `3d96bcfa-7c75-81c9-9fdd-eecb9c495c5e`, `3d96bcfa-7c75-81a5-ae50-e621ee3c9c1d`, `3d96bcfa-7c75-8165-987c-e2b0d2de0da3`).
+A worker session (Opus) ran the comparison pass from `plans/comparison-pass.md`. Done:
+- 13 pages in `research/comparisons/`: elixir, go, rust, roc, koka, austral, hylo, unison, moonbit, bosque, spark-ada-and-dafny, agent-native-cluster, verse. Each is cited through the shared ledger `research/comparisons/.ledger.json` (124 sources), with raw sources in `raw/articles/` and `raw/papers/`.
+- `research/concepts/comparison-synthesis-draft.md`: 7 ⚠️ tensions with existing pages, top ten steals, and about 20 open questions for Robert. **A draft for Fable to finish, not a decision.**
+- `index.md`, `log.md` and the plan's Progress list are updated; lint is clean; everything is committed and pushed.
+- No page under `directions/`, `questions/` or `syntax/` was edited. Contradictions are surfaced with ⚠️ on the comparison pages only.
+
+The earlier session-2 state is in `sessions/session-02.md`. Q1–Q17 are answered (see `index.md`).
 
 ## Next
 
 1. Get Robert's Q11–Q17 answers (in chat, or he edits the question pages). Set `answer:`/`status:` in frontmatter and add a `## Answer` section with the settled details.
 2. `plans/roadmap.md` step 1: write `docs/design-v0.md` from the vault.
 3. Q17 research pass → `raw/articles/` + `research/concepts/supply-chain-attacks-2025-26.md` before recommending a package design.
-4. Then the comparison pass (`research/comparisons/`, one page per language).
+4. Comparison pass: **done** (12 Sep 2026). Next: Fable finishes `research/concepts/comparison-synthesis-draft.md`, then walks Robert through its ⚠️ list and questions, one at a time.
 
 ## Prompt to paste into the new session
 

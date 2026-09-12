@@ -73,3 +73,7 @@
 
 ## [2026-09-12] ingest | Comparison: Verse
 - research/comparisons/verse.md. Failure/rollback vs uncatchable runtime errors (confirms d18), AutoRTFM, frozen time, structured concurrency. Transactions complement, not replace, crash-and-restart.
+
+## [2026-09-12] create | Comparison synthesis draft; comparison pass done
+- research/concepts/comparison-synthesis-draft.md: 7 ⚠️ tensions (d15 closure capture, p11 vs Q8, Q4 vs d22, Q8 vs zero-dep toolchain, Q7 mailbox vs d04, Q1, Q13 rationale), top ten steals, open questions grouped for one-at-a-time asking. Draft for Fable.
+- plans/comparison-pass.md status: done. HANDOFF.md "Where we stopped" updated.

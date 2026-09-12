@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [roadmap, research]
 sources: [raw/articles/agentlanguages-dev-catalogue-2026-09-12.md]
-status: in-progress
+status: done
 ---
 
 # Comparison pass: brief for the worker session
@@ -115,6 +115,8 @@ Finished pages, in order (worker session):
 11. [[spark-ada-and-dafny|SPARK Ada + Dafny]]
 12. [[agent-native-cluster|Agent-native cluster]]
 13. [[verse|Verse]]
+
+Synthesis draft for Fable: [[comparison-synthesis-draft]]
 
 ## Related
 - [[language-landscape]]
