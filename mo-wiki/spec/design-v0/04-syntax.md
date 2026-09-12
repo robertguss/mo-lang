@@ -134,7 +134,7 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 - **Matching:** `case v ... Pattern: expr ... end`. Arms run until the next `Pattern:` or `end`. Exhaustive; guards with `if` on the arm; nested destructuring.
 - **Results:** `Ok(x)`, `Error(e)`, `Some(x)`, `None`. `try expr` propagates. `x or default` for `Option`. Predicates end in `?`.
 - **Types:** `struct`, `enum` with data variants, `type Money = UInt64 where value <= ...`. Construction is call-style with named fields, never positional. Change a struct only via `var copy = x` then `copy.field = v`.
-- **Loops:** `for x in xs ... end`, `for i in 0..n ... end`, `break` allowed. Every `for` closes with `end`, in a body, a `never`, or a `property` alike. A pure body is written with `map`, `filter`, or `reduce` instead; `for` is for bodies with effects, `try`, `break`, or `return`. The formatter enforces the split.
+- **Loops:** `for x in xs ... end`, `for i in 0..n ... end`, `break` allowed. Every `for` closes with `end`, in a body, a `never`, or a `property` alike. A pure body is written with `map`, `filter`, or `reduce` instead (`charges.filter(fn(c) c.refunded? end)`); `for` is for bodies with effects, `try`, `break`, or `return`, like the `Drain` arm above. The formatter enforces the split.
 - **Anonymous functions:** `fn(x) expr end`, call arguments only.
 - **Numbers and strings:** `10_000`, `200.ms`, `90.days` (dot-call functions, extensible). `"Hello #{name}"`, double quotes only, `"""` for multi-line. No literal suffixes.
 - **Process and supervisor:** as in the example. `state`, `invariant`, `message`, `update`. `mailbox: N` in the header.
@@ -142,7 +142,9 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 - **`verified:` line:** at the bottom, computed by the toolchain, a compile error to edit by hand.
 - **Recipes:** `recipe Name ... end`, chapter 6.
 
-## Session 4 note
+## Session 4 changes
+
+The example and rules above already reflect these; this section is the record of what changed and why.
 
 Robert (session 4): `pub` has OOP vibes. **In** on the Elm-style `expose` line: privacy by default, one line under `module` lists the public names, no marker on any declaration. Every `pub` in these chapters, `grammar.md`, and pick 14 now reads as "named on the `expose` line".
 
