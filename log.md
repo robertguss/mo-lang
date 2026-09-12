@@ -99,3 +99,6 @@
 
 ## [2026-09-12] ingest | Q17 incidents run into supply-chain-defenses
 - raw/research-runs/supply-chain-incidents-2024-2026.pplx.md (ledger [151]). Section (b) rewritten: 20 of 47 incidents (ecosystem, date, reporters' category, reach, detection, mitigation, stopped/not stopped), category ranking by impact and trend, defenses with evidence. Gap note removed.
+
+## [2026-09-12] session | Session 2 closeout bookkeeping
+- sessions/session-02.md and HANDOFF.md updated with the second half of the session (Q11–Q17, two-lane research, Herdr worker, syntheses). Next: the 7 tensions, one at a time.

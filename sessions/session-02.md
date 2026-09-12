@@ -22,6 +22,14 @@ session: 2
 - Built this vault: both Notion pages exported verbatim to `raw/notion/`, 80 wiki pages generated from them, `SCHEMA.md`, `index.md`, `log.md`, `tools/lint.py`. Installed `qmd` (Robert's suggestion) with the repo as a collection.
 - Robert accidentally trashed `.claude/` (the llm-wiki skill); restored with `trash-restore`.
 
+## Later in the session (after the vault was built)
+
+- Q11–Q17 answered: Q11 in (after unpacking "platform"), **Q12 counter: 70 lines, not 40**, Q13 in, Q14 in plus a [[program-menu]], Q15 in (keep Mo, no story), Q16 in, Q17 ordering: research first.
+- Robert: **research before the design doc**, not after; a broader survey of languages old, obscure, and brand-new; papers included; he runs deep-research prompts himself (Perplexity) and I write them → two-lane research, `research/prompts/` and `raw/research-runs/`.
+- Landscape survey → [[language-landscape]]; agentlanguages.dev catalogue (42 agent-native languages) ingested; Exa wired in (`tools/exa.py`).
+- Robert: use a cheaper model for mechanical work. An **Opus worker session run via Herdr** wrote the 13 comparison pages from [[comparison-pass]], the [[comparison-synthesis-draft]] (7 ⚠️ tensions, 10 steals, ~20 questions), then [[supply-chain-defenses]] and [[landscape-second-lane]] from Robert's six Perplexity runs, then Motoko, [[case-against-new-languages]], [[capability-module-lineage]], and refreshes.
+- Robert's lane caught two stale facts in mine (Gleam version; MoonBit's Rust benchmark, refuted) and produced the "three kinds of cost" framing: annotation cost collapses when agents write code; proof, runtime, and cultural costs don't.
+
 ## Decided about how we work
 
 - Vault in the repo is the record. Notion is retired for this project once Robert deletes the work-Notion pages.
@@ -29,10 +37,10 @@ session: 2
 
 ## Next
 
-1. Robert answers Q11–Q17 (chat or by editing the question pages).
-2. Fold answers in; then [[roadmap]] step 1: `docs/design-v0.md`.
-3. [[q17-package-management-and-supply-chain|Q17]] needs a research pass (`research/concepts/supply-chain-attacks-2025-26.md`) before a recommendation.
-4. Push to a private GitHub repo (`gh auth login` needed from Robert).
+1. Fable walks Robert through the 7 ⚠️ tensions in [[comparison-synthesis-draft]], one per message, with a recommendation each; then the open questions it lists.
+2. Fable finishes the synthesis and the Q17 recommendation from [[supply-chain-defenses]].
+3. Then [[roadmap]] step 1: `docs/design-v0.md`, which must also answer [[case-against-new-languages]].
+4. Notion pages: still to be deleted by Robert (left alone on his request).
 
 ## Related
 - [[session-01]]

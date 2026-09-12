@@ -53,10 +53,13 @@ The earlier session-2 state is in `sessions/session-02.md`. Q1–Q17 are answere
 
 ## Next
 
-1. Get Robert's Q11–Q17 answers (in chat, or he edits the question pages). Set `answer:`/`status:` in frontmatter and add a `## Answer` section with the settled details.
-2. `plans/roadmap.md` step 1: write `docs/design-v0.md` from the vault.
-3. Q17 research pass → `raw/articles/` + `research/concepts/supply-chain-attacks-2025-26.md` before recommending a package design.
-4. Comparison pass: **done** (12 Sep 2026). Next: Fable finishes `research/concepts/comparison-synthesis-draft.md`, then walks Robert through its ⚠️ list and questions, one at a time.
+1. Walk Robert through the 7 ⚠️ tensions in `research/concepts/comparison-synthesis-draft.md`, one per message, recommendation each. Record answers on the pages they touch (a `## Session 3` note under the direction/question) — never rewrite history.
+2. Then the synthesis draft's open questions, ordered by Fable.
+3. Q17 recommendation from `research/concepts/supply-chain-defenses.md` (six design options, all evidence in place; the closure-capture hole must be settled first — it's tension 1).
+4. Then `docs/design-v0.md`, which must answer `research/concepts/case-against-new-languages.md`.
+5. Housekeeping: Robert still owes the Notion deletions. All six of Robert's Perplexity runs are ingested and synthesized.
+
+**Cost rule (Robert):** mechanical research/writing goes to an Opus worker session in Herdr (`herdr agent start worker --kind claude --pane <id> -- --model opus --dangerously-skip-permissions`; answer the trust dialog with `down enter`; give it a plan page like `plans/comparison-pass.md`). Fable keeps judgment: tensions, synthesis, Q17, design-v0. Both share one working tree, so `git pull --rebase --autostash` before pushing.
 
 ## Prompt to paste into the new session
 
