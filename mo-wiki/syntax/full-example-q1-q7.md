@@ -13,7 +13,7 @@ This is the base with every pick applied, including [[q01-comments|Q1]]–[[q07-
 ```ruby
 module Payments.Refund
 
-use Payments.Ledger.{Charge, ChargeId, Money}
+use Payments.Ledger{Charge, ChargeId, Money}
 
 intent "Refund a captured charge, at most once, within 90 days of capture."
 

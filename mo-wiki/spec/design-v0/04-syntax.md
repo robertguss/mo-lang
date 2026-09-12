@@ -8,7 +8,7 @@ The refund module is the running example. Read it top to bottom; the sections af
 module Payments.Refund
 expose Refund, RefundError, apply_refund, refund, RefundQueue
 
-use Payments.Ledger.{Charge, ChargeId, Money}
+use Payments.Ledger{Charge, ChargeId, Money}
 
 intent "Refund a captured charge, at most once, within 90 days of capture."
 
@@ -123,7 +123,7 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 
 ## The rules, one line each
 
-- **Module:** `module A.B`, one per file, path equals file path. `use A.B` or `use A.B.{X, Y}`; no wildcards, no aliases. Private by default. One `expose a, b, C` line directly under the module header names everything public; declarations carry no marker. The `expose` line is the spec altitude's table of contents.
+- **Module:** `module A.B`, one per file, path equals file path. `use A.B` or `use A.B{X, Y}`; no wildcards, no aliases. Private by default. One `expose a, b, C` line directly under the module header names everything public; declarations carry no marker. The `expose` line is the spec altitude's table of contents.
 - **Intent and never:** `intent "..."` once per module. `never "sentence" ... end` is a sentence plus a block that is true when the bad thing happened. `flows(T, into: Cap)` is a checkable information-flow rule.
 - **Definition line:** `fn name(arg: Type) : Ret`. No space before the colon in `arg: Type`, `:` for the return type, generics in parens: `Result(Charge, RefundError)`, `List(T)`.
 - **Contracts:** `requires` and `ensures` directly after the signature, a blank line, then the body. `result` is the return value, `old(x)` the entry value, `is` an inline pattern test, `implies` the connective.
@@ -143,3 +143,5 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 ## Session 4 note
 
 Robert (session 4): `pub` has OOP vibes. **In** on the Elm-style `expose` line: privacy by default, one line under `module` lists the public names, no marker on any declaration. Every `pub` in these chapters, `grammar.md`, and pick 14 now reads as "named on the `expose` line".
+
+Robert (session 4): `use A.B{X, Y}`, no dot before the braces. Applied here, in `grammar.md`, and in pick 14.

@@ -141,3 +141,6 @@
 
 ## [2026-09-12] session | Session 4: `pub` replaced by the `expose` line
 - Robert in on Elm-style `expose a, b, C` under `module`; privacy by default, no marker on declarations. Applied to spec/design-v0 (02–07), spec/grammar.md, syntax/p14 as Session 4 notes.
+
+## [2026-09-12] session | Session 4: `use A.B{X, Y}` drops the dot
+- Robert: no dot before the import braces. Applied to design-v0/04, grammar.md, p14, full-example-q1-q7.

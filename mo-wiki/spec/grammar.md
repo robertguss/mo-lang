@@ -29,7 +29,7 @@ No block comments, no single-quoted strings, no literal type suffixes. Every str
 module      = "module" path NL expose? use* intent? never* decl* test* verified?
 expose      = "expose" name ("," name)* NL     # the exposed surface; everything else is private
 name        = ident | TypeName
-use         = "use" path ("." "{" TypeName ("," TypeName)* "}")? NL
+use         = "use" path ("{" TypeName ("," TypeName)* "}")? NL
 intent      = "intent" string NL
 never       = "never" string NL comprehension NL "end" NL
 verified    = "verified:" any* NL                # toolchain-owned; hand edits are errors
@@ -168,4 +168,4 @@ signature_only = signature NL contract* "end" NL         # no body
 - Function bodies are at most 70 lines, nesting at most 3, parameters at most 6, files at most 500 lines, process state at most 12 fields.
 - Every `requires` has a `test rejects` that trips it. Every effectful call passes `within:`.
 - The `expose` line, the exposed signatures, contracts, `never`, and `verified:` form the spec altitude; changing them is a breaking change. Every name on `expose` must be declared in the module; an undeclared or duplicated name is an error.
-- Session 4: `pub` replaced by the `expose` line (Robert: `pub` has OOP vibes).
+- Session 4: `pub` replaced by the `expose` line (Robert: `pub` has OOP vibes). `use A.B{X, Y}` lost the dot before the braces (Robert).

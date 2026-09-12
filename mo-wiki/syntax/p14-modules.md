@@ -25,6 +25,8 @@ expose Refund, RefundError, apply_refund, refund, RefundQueue
 
 The `expose` line is now the spec altitude's table of contents; a breaking change is a diff to that line or to an exposed signature. Alternatives not taken: a Ruby `private` section (implicit API, reordering changes it) and renaming to `export` (still a per-declaration marker).
 
+Robert (session 4): the `use` list drops the dot: `use Payments.Ledger{Charge, Money}`.
+
 ## Related
 - [[p09-module-header-and-never]]
 - [[q17-package-management-and-supply-chain]]
