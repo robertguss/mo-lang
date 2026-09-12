@@ -26,3 +26,6 @@ Each line names a missing or conflicting rule and the default used; these are op
 - `processes/mailbox.mo`: No API can pause a consumer or inspect sender crashes; state the sender-crashes rule in intent and test the numeric bound, without pretending to exercise overflow.
 - `processes/invariant.mo`: Grammar prose restricts `old` to ensures, while chapter 4 and the brief require `old(state.x)` in invariants; use the documented invariant form and its true-means-violation semantics.
 - `processes/supervisor.mo`: Restart-window boundaries and supervision test controls are undefined; use the chapter 4 restart declaration and test the worker's pure reset operation.
+- `processes/pipeline.mo`: `send` is named in chapter 3 but has no signature; use an ordinary handle dot call and the law-required `within:`, without `try`, because sends are documented as nonblocking.
+- `processes/pipeline.mo`: Supervisor child declarations cannot supply a dependent handle, and startup wiring is unspecified; declare the source's typed handle parameter and both children, leaving harness wiring unresolved rather than inventing startup syntax.
+- `tests/property.mo`: The comprehension production permits an expression but chapter 4 uses `assert` in property bodies; follow the documented property example, keeping the generator guard well below overflow.
