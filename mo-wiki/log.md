@@ -153,3 +153,8 @@
 
 ## [2026-09-12] session | Session 5: design-v0 review complete
 - Robert reviewed chapters 1, 2, 3, 5, 6, 7, 8 with no edits ("good" each). Status line in design-v0/00-readme.md notes the review. Next: the corpus (roadmap step 4).
+
+## [2026-09-12] session | Session 5: corpus worker, toolchain layout, bake-off
+- plans/corpus.md written; Opus worker started in Herdr on it. Robert: work goes on a feature branch → session-05 (the two earlier session-5 commits stay on main).
+- toolchain/ laid out in Zig 0.16: stubs per stage, mo CLI, corpus test, mo-bench, bench/rebuild.sh (first incremental rebuild 127 ms). `zig build test` green.
+- Robert: compare Opus, Grok, and Codex as workers, Fable delegates and reviews → plans/model-bakeoff.md; Grok and Codex started on the same brief in worktrees on corpus-grok and corpus-codex.

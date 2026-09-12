@@ -98,6 +98,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[model-bakeoff|Model bake-off: Opus vs Grok vs Codex as workers]] — same corpus brief to three models, one rubric, Robert picks
 - [[corpus|Corpus: brief for the worker session]] — 50 tiny programs in examples/, one construct each, plus rejects/ that must not compile
 - [[comparison-pass|Comparison pass: brief for the worker session]] — template, tools, and the 13 briefs for the Opus worker
 - [[program-menu|Program menu: what we build to put Mo through its paces]] — seven programs of different kinds, and what each measures
