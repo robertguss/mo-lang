@@ -15,6 +15,7 @@ intent "Refund a captured charge, at most once, within 90 days of capture."
 never "a refund exceeds its charge"
   for r in Refund.all, c in Charge.all if r.charge == c.id
     r.amount > c.captured_amount
+  end
 end
 
 never "a card number reaches an event"
@@ -116,6 +117,7 @@ end
 property "any valid refund leaves the charge refunded"
   for charge in any(Charge), amount in any(Money) if amount <= charge.captured_amount
     assert charge.apply_refund(amount) is Ok(c) and c.refunded?
+  end
 end
 
 verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
@@ -124,7 +126,7 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 ## The rules, one line each
 
 - **Module:** `module A.B`, one per file, path equals file path. `use A.B` or `use A.B{X, Y}`; no wildcards, no aliases. Private by default. One `expose a, b, C` line directly under the module header names everything public; declarations carry no marker. The `expose` line is the spec altitude's table of contents.
-- **Intent and never:** `intent "..."` once per module. `never "sentence" ... end` is a sentence plus a block that is true when the bad thing happened. `flows(T, into: Cap)` is a checkable information-flow rule.
+- **Intent and never:** `intent "..."` once per module. `never "sentence" ... end` is a sentence plus a `for ... end` block whose body is true when the bad thing happened. `flows(T, into: Cap)` is a checkable information-flow rule.
 - **Definition line:** `fn name(arg: Type) : Ret`. No space before the colon in `arg: Type`, `:` for the return type, generics in parens: `Result(Charge, RefundError)`, `List(T)`.
 - **Contracts:** `requires` and `ensures` directly after the signature, a blank line, then the body. `result` is the return value, `old(x)` the entry value, `is` an inline pattern test, `implies` the connective.
 - **Bindings:** `x = expr` binds once. `var x = expr` may change. Rebinding or an unused binding is an error.
@@ -132,7 +134,7 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 - **Matching:** `case v ... Pattern: expr ... end`. Arms run until the next `Pattern:` or `end`. Exhaustive; guards with `if` on the arm; nested destructuring.
 - **Results:** `Ok(x)`, `Error(e)`, `Some(x)`, `None`. `try expr` propagates. `x or default` for `Option`. Predicates end in `?`.
 - **Types:** `struct`, `enum` with data variants, `type Money = UInt64 where value <= ...`. Construction is call-style with named fields, never positional. Change a struct only via `var copy = x` then `copy.field = v`.
-- **Loops:** `for x in xs ... end`, `for i in 0..n ... end`, `break` allowed. Nothing else.
+- **Loops:** `for x in xs ... end`, `for i in 0..n ... end`, `break` allowed. Every `for` closes with `end`, in a body, a `never`, or a `property` alike. A pure body is written with `map`, `filter`, or `reduce` instead; `for` is for bodies with effects, `try`, `break`, or `return`. The formatter enforces the split.
 - **Anonymous functions:** `fn(x) expr end`, call arguments only.
 - **Numbers and strings:** `10_000`, `200.ms`, `90.days` (dot-call functions, extensible). `"Hello #{name}"`, double quotes only, `"""` for multi-line. No literal suffixes.
 - **Process and supervisor:** as in the example. `state`, `invariant`, `message`, `update`. `mailbox: N` in the header.
@@ -145,3 +147,5 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 Robert (session 4): `pub` has OOP vibes. **In** on the Elm-style `expose` line: privacy by default, one line under `module` lists the public names, no marker on any declaration. Every `pub` in these chapters, `grammar.md`, and pick 14 now reads as "named on the `expose` line".
 
 Robert (session 4): `use A.B{X, Y}`, no dot before the braces. Applied here, in `grammar.md`, and in pick 14.
+
+Robert (session 4): the comprehension `for` inside `never` and `property` had no `end`, which looked like whitespace sensitivity. Every `for` now closes with `end`. Robert also asked whether `for` should go entirely in favour of `map`/`filter`/`reduce`; **in** on keeping both with one rule: pure bodies use the combinators, `for` is only for effects, `try`, `break`, or `return`, and the formatter enforces it. First tested by the `examples/` corpus.

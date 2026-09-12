@@ -144,3 +144,6 @@
 
 ## [2026-09-12] session | Session 4: `use A.B{X, Y}` drops the dot
 - Robert: no dot before the import braces. Applied to design-v0/04, grammar.md, p14, full-example-q1-q7.
+
+## [2026-09-12] session | Session 4: every `for` closes with `end`; loops vs combinators
+- Robert: comprehension `for` looked whitespace-sensitive → `end` added (design-v0/04, grammar). In on keeping `for` + map/filter/reduce with a formatter rule (pure body → combinator). Notes on p11.

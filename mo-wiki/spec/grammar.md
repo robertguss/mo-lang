@@ -31,7 +31,7 @@ expose      = "expose" name ("," name)* NL     # the exposed surface; everything
 name        = ident | TypeName
 use         = "use" path ("{" TypeName ("," TypeName)* "}")? NL
 intent      = "intent" string NL
-never       = "never" string NL comprehension NL "end" NL
+never       = "never" string NL comprehension NL "end" NL          # comprehension carries its own end
 verified    = "verified:" any* NL                # toolchain-owned; hand edits are errors
 decl        = struct | enum | typedef | trait | impl | fn | process | supervisor | recipe
 ```
@@ -126,7 +126,7 @@ pattern     = "_" | ident | literal
 ## 8. Comprehensions (never, property)
 
 ```
-comprehension = "for" gen ("," gen)* ("if" expr)? NL expr
+comprehension = "for" gen ("," gen)* ("if" expr)? NL expr NL "end"    # every for closes with end
 gen           = ident "in" expr                                # r in Refund.all, x in any(Money)
 ```
 
@@ -168,4 +168,4 @@ signature_only = signature NL contract* "end" NL         # no body
 - Function bodies are at most 70 lines, nesting at most 3, parameters at most 6, files at most 500 lines, process state at most 12 fields.
 - Every `requires` has a `test rejects` that trips it. Every effectful call passes `within:`.
 - The `expose` line, the exposed signatures, contracts, `never`, and `verified:` form the spec altitude; changing them is a breaking change. Every name on `expose` must be declared in the module; an undeclared or duplicated name is an error.
-- Session 4: `pub` replaced by the `expose` line (Robert: `pub` has OOP vibes). `use A.B{X, Y}` lost the dot before the braces (Robert).
+- Session 4: `pub` replaced by the `expose` line (Robert: `pub` has OOP vibes). `use A.B{X, Y}` lost the dot before the braces (Robert). Comprehensions close with `end` (Robert: no implicit block ends). Formatter rule: a `for` whose body is a pure expression is rewritten to `map`/`filter`/`reduce`; `for` stays for effects, `try`, `break`, `return`.
