@@ -117,3 +117,6 @@
 
 ## [2026-09-12] session | Session 3: directions 34, 35 (recipes, ecosystem)
 - Robert's first-principles reframe of packages → directions/d34-packages-are-recipes.md, directions/d35-mo-is-an-ecosystem.md. Notes on q17, q11 (DB driver is a brick), roadmap (design-v0 is a folder).
+
+## [2026-09-12] create | docs/design-v0/ (eight chapters)
+- 00-readme, 01-premise, 02-laws, 03-semantics, 04-syntax, 05-verification, 06-packages, 07-toolchain, 08-milestone. Draft; every session-3 bet listed with its first test in 08.
