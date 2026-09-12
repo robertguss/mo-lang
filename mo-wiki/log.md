@@ -147,3 +147,6 @@
 
 ## [2026-09-12] session | Session 4: every `for` closes with `end`; loops vs combinators
 - Robert: comprehension `for` looked whitespace-sensitive → `end` added (design-v0/04, grammar). In on keeping `for` + map/filter/reduce with a formatter rule (pure body → combinator). Notes on p11.
+
+## [2026-09-12] session | Session 4 closeout: moving to the laptop
+- sessions/session-04.md, HANDOFF.md (session 5 prompt), index. Lint: 113 pages, only the low-confidence flags on d32/d33/d34.
