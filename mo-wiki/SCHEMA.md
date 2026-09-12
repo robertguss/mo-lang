@@ -6,7 +6,7 @@ Read this first, every session. Then `index.md`, then the last 20 entries of `lo
 
 The design of **Mo**, a from-scratch programming language for the AI era, co-designed by Robert Guss and Claude. This vault is the single record of the design: what we like, what is asked, what is decided, what we researched, and what happened in each session. It replaces the two Notion pages that held sessions 1–2 (exported verbatim into `raw/notion/`).
 
-This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. The spec (`mo-wiki/spec/`: design-v0, grammar, error catalog) is prose humans read on a phone, so it lives inside the vault as an artifact folder, like `raw/`. Code lives beside the vault and never inside it: `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `spec/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`.
+This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. The spec (`mo-wiki/spec/`: design-v0, grammar, error catalog) is prose humans read, so it lives inside the vault as an artifact folder, like `raw/`. Code lives beside the vault and never inside it: `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `spec/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`.
 
 ## Layout
 
@@ -92,7 +92,7 @@ Add a tag here before using it. Keep it under 25.
 - Numbers are stable, so text may refer to "direction 13" or "Q8"; always also link: `[[d13-local-var-and-inout|direction 13]]`.
 - Code is shown in fenced blocks with the `ruby` hint (closest highlighter to Mo's look).
 - Robert's words are quoted as his; Claude's recommendations are marked as recommendations. Never blur who said what.
-- Phone-friendly: short paragraphs, no wide tables (three columns max), snippets under 20 lines.
+- Readable prose: short paragraphs, narrow tables (three columns max), snippets under 20 lines. This is about Robert reading comfortably, nothing more.
 - `updated:` is bumped on every edit. `created:` never changes.
 - **Provenance:** a claim that comes from a specific raw source gets `^[raw/...]` at the end of the paragraph when the page draws on 3+ sources; single-source pages rely on `sources:`.
 - `raw/` is immutable. Corrections go on wiki pages. Each raw file carries `source_url`, `exported`/`ingested`, and a `sha256` of its body so drift is detectable.
@@ -100,7 +100,7 @@ Add a tag here before using it. Keep it under 25.
 ## How the design work flows through the vault
 
 1. **An idea Robert reacts well to** → new `directions/dNN-slug.md`, `status: liked`, and a line in `index.md`.
-2. **Something needing his call** → new `questions/qNN-slug.md` with options, recommendation, why, and `answer: pending`. Robert answers in chat (or by editing the page on his phone). Claude sets `answer:` and `status:`, appends the settled details under a `## Answer` heading.
+2. **Something needing his call** → new `questions/qNN-slug.md` with options, recommendation, why, and `answer: pending`. Robert answers in chat (or by editing the page). Claude sets `answer:` and `status:`, appends the settled details under a `## Answer` heading.
 3. **A long unpack** → `deep-dives/slug.md`, linked from the direction or question it serves.
 4. **Research** is a two-lane job. Claude does web research and saves sources to `raw/articles/` or `raw/papers/` with frontmatter. Robert runs deep-research tools of his own: Claude writes the prompts (short, one topic each, filed in `research/prompts/`), Robert runs them and drops the results in `raw/research-runs/<date>-<topic>.md`. Both lanes must include academic papers (arXiv, conference proceedings), not only blog posts. Findings are synthesized into `research/concepts/` or `research/comparisons/` pages that cite the raw files.
 5. **The v0 lock** → each locked rule becomes `decisions/DNN-slug.md` with `reopen if:`; the source direction gets `status: locked` and a link. History is never rewritten.
@@ -120,7 +120,7 @@ Add a tag here before using it. Keep it under 25.
 ## Robert's taste (learned the hard way)
 
 - Ruby is his favorite language. Mo must be as simple and elegant as Ruby/Python: borrow what he likes, keep out what he doesn't. Hates OOP and classes. Loves Elixir/BEAM, Go, Rust qualities, Elm. Wants a single static binary and a fast compiler (Rust's slowness is the anti-pattern). Cares a lot about supply-chain security and a Go-like stdlib.
-- Rejected on sight: Rust/Gleam braces; `def`/`end`; `end` label comments; `.with(...)`; `->` case arms; `::` module paths; 40-line function limit (70 it is); phone-fit as a design criterion.
+- Rejected on sight: Rust/Gleam braces; `def`/`end`; `end` label comments; `.with(...)`; `->` case arms; `::` module paths; 40-line function limit (70 it is); phone-fit as a design criterion. **Phones are not a thing in this project** (Robert, session 3, firmly): never justify a language, spec, or tooling choice by mobile reading; he only mentions his phone when prose is hard to read there.
 - Chose: `fn name(arg: Type) : Ret ... end`, bare `x = ...` immutable bindings with `var`, `case v ... Pattern: expr ... end`, `module Payments.Refund`, `state.count = 0` inside `update`, `try` prefix, predicate `?` methods.
 
 ## Checkpoints

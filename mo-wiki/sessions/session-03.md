@@ -20,6 +20,13 @@ session: 3
 - Robert's first-principles reframe: packages are recipes (spec shared, bodies owned), the stdlib is the box of bricks, Laravel-style first-party ecosystem, Phoenix-auth/shadcn-style kits you own → [[d34-packages-are-recipes|direction 34]], [[d35-mo-is-an-ecosystem|direction 35]]. Robert **in** on kits = recipes with trusted bodies. A database driver is a brick.
 - `spec/design-v0/` written as a folder of eight chapters (Robert: not one massive file). Chapter 8 lists every bet and what first tests it.
 
+## Late in the session
+
+- Repo restructured into a monorepo: vault at `mo-wiki/` (Obsidian syncs only that), spec at `mo-wiki/spec/`, code in `examples/` and `toolchain/`. `spec/grammar.md` written.
+- Robert: `pub` has OOP vibes and he doesn't like it. Claude recommended an Elm-style `expose` line in the module header; **unanswered**, first item for session 4.
+- Robert, firmly: stop optimizing for a phone. Phones have nothing to do with the language; he only mentions his phone when prose is hard to read there. Phone references removed from the spec and SCHEMA.
+- Context blown out; session ended here.
+
 ## Next
 
 1. Robert reads `spec/design-v0/` on his phone and edits by taste; corrections land as Session notes on the pages they touch.

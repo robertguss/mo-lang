@@ -135,3 +135,6 @@
 
 ## [2026-09-12] restructure | docs/ moved into the vault as mo-wiki/spec/
 - Robert: the spec must sync to his phone; `docs/` is a confusing name inside a wiki. git mv docs → mo-wiki/spec; references updated in README, HANDOFF, SCHEMA, wiki pages.
+
+## [2026-09-12] session | Session 3 end: pub question pending, phone references removed
+- Robert dislikes `pub`; expose-line recommendation pending → HANDOFF. Robert: phones are not a design criterion; spec and SCHEMA cleaned. Session page updated.

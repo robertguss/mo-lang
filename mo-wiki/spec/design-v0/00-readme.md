@@ -15,4 +15,4 @@ Mo is a programming language for a world where agents write nearly all the code 
 | `07-toolchain.md` | the interpreter, the compiler, the agent interface |
 | `08-milestone.md` | what the first interpreter must prove, and every open bet |
 
-Read on a phone, top to bottom, in about twenty minutes.
+Read top to bottom, in about twenty minutes.

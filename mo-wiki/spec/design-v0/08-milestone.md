@@ -22,7 +22,7 @@ Every provisional decision from session 3, and what tests it.
 | The stdlib ceiling | stdlib misses on programs 2 and 4 of the menu |
 | Law numbers (70, 500, 6, 3, 12) | lines-per-function distribution on the corpus |
 | 50 ms and 100 ms targets | the benchmark suite, from day one |
-| Spec altitude is readable | a timed reading study with Robert on program 1 |
+| Spec altitude is readable | a timed reading study on program 1 |
 
 ## The control run
 
