@@ -1,0 +1,32 @@
+//! The stages in order, as one function the CLI, the corpus test, and the benchmark
+//! harness all call. `runTo` stops after `stage` so each can be timed on its own.
+const std = @import("std");
+const lexer = @import("lexer.zig");
+const parser = @import("parser.zig");
+const check = @import("check.zig");
+const caps = @import("caps.zig");
+const bytecode = @import("bytecode.zig");
+const vm = @import("vm.zig");
+const diag = @import("diag.zig");
+
+pub const Stage = enum { lex, parse, check, lower, run };
+
+pub const stages = [_]Stage{ .lex, .parse, .check, .lower, .run };
+
+pub const Error = error{ NotImplemented, OutOfMemory, Crash, Rejected };
+
+/// Runs the stages up to and including `stage`. `Rejected` means a diagnostic was
+/// produced; the records are in `diags`.
+pub fn runTo(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *diag.List) Error!void {
+    const tokens = try lexer.lex(gpa, source);
+    if (stage == .lex) return;
+    const tree = try parser.parse(gpa, source, tokens);
+    if (stage == .parse) return;
+    try check.check(gpa, tree, diags);
+    try caps.check(gpa, tree, diags);
+    if (diags.items.len > 0) return error.Rejected;
+    if (stage == .check) return;
+    const chunk = try bytecode.lower(gpa, tree);
+    if (stage == .lower) return;
+    try vm.run(gpa, chunk);
+}
