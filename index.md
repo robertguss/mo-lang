@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 93
+> Last updated: 2026-09-12 | Total pages: 94
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -109,6 +109,7 @@
 - [[koka|Mo vs Koka]] — comparison: effect types and handlers vs capabilities, the closure-capture gap in d15, Perceus, fip
 - [[austral|Mo vs Austral]] — comparison: linear capabilities from a root, unsafe modules, crash-on-contract-violation, what linearity would buy Mo
 - [[hylo|Mo vs Hylo]] — comparison: mutable value semantics precisely, parameter conventions, projections, a coherence rule, colorless concurrency
+- [[unison|Mo vs Unison]] — comparison: hash-identified definitions, never-invalidated caches, no dependency conflicts, the cost of dropping text
 - [[language-landscape|Language landscape: which languages deserve a deep comparison]] — 40+ languages in seven groups with the idea to steal from each, plus a 13-entry shortlist for the comparison pass
 - [[prompts-language-landscape|Research prompts: the language landscape]] — three prompts for Robert's deep-research tools
 - [[prompts-q17-supply-chain|Research prompts: Q17 supply-chain security and package management]] — three prompts for Robert's deep-research tools

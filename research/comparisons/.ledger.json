@@ -426,6 +426,48 @@
       "url": "https://github.com/hylo-lang/specification/blob/main/spec.md",
       "title": "Hylo Language Specification (trait conformance)",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 72,
+      "url": "https://www.unison-lang.org/docs/the-big-idea",
+      "title": "Unison: The big idea",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 73,
+      "url": "https://www.unison-lang.org/unison-1-0",
+      "title": "Announcing Unison 1.0",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 74,
+      "url": "https://lwn.net/Articles/978955",
+      "title": "Programming in Unison (LWN.net)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 75,
+      "url": "https://www.unison-lang.org/docs/tour/_scratch-files",
+      "title": "Unison's interactive scratch files",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 76,
+      "url": "https://github.com/unisonweb/unison/releases/tag/release/1.1.0",
+      "title": "Unison release 1.1.0",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 77,
+      "url": "https://newreleases.io/project/github/unisonweb/unison/release/release%2F1.4.0",
+      "title": "Unison release 1.4.0 (Aug 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 78,
+      "url": "https://www.unison-lang.org/docs/usage-topics/workflow-how-tos/update-code",
+      "title": "Unison: Common workflows for updating code",
+      "accessed": "2026-09-12"
     }
   ]
 }
