@@ -660,6 +660,36 @@
       "url": "https://docs.adacore.com/spark2014-docs/html/ug/en/gnatprove.html",
       "title": "SPARK User's Guide: Formal Verification with GNATprove",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 111,
+      "url": "https://agentlanguages.dev/llms-full.txt",
+      "title": "agentlanguages.dev full catalogue (llms-full.txt)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 112,
+      "url": "https://github.com/ntntlang/ntnt",
+      "title": "NTNT: agent-native language with Intent-Driven Development (GitHub)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 113,
+      "url": "https://ntnt-lang.org/about",
+      "title": "About NTNT",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 114,
+      "url": "https://github.com/neam-lang/Neam",
+      "title": "Neam: compiled DSL for AI agent systems (GitHub)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 115,
+      "url": "https://negroniventurestudios.com/2026/05/20/three-camps-alike-in-dignity",
+      "title": "Three camps alike in dignity (Alasdair Allan, May 2026)",
+      "accessed": "2026-09-12"
     }
   ]
 }
