@@ -14,6 +14,10 @@ chosen_by: Robert
 
 `for x in xs ... end` and `for i in 0..n ... end` are the only loops, bounded by construction; no `while`, no `loop`; `break` allowed within a bounded loop. Anonymous functions reuse the keyword: `fn(r) r.charge == c.id end`, Elixir-style. Ruby trailing `do |x|` blocks rejected as a second way.
 
+## Session 3 note (tension 1)
+
+Robert: **in** on restricting anonymous functions to call arguments. `pred = fn(c) ... end` and returning an anonymous `fn` are compile errors; captures are read-only. Named functions remain first-class values (`handlers = [on_refund]`). See [[d31-effects-never-hide-in-a-value|direction 31]].
+
 ## Related
 - [[tiger-style-and-power-of-ten]]
 - [[base-example]]

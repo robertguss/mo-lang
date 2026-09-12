@@ -108,6 +108,10 @@ Collected from the pages, for Fable to order and ask **one at a time**.
   - MoonBit: the IEEE TSE acceptance is marked as a secondary-source claim.
 - No page under `directions/`, `questions/` or `syntax/` was changed.
 
+## Session 3 answers
+
+1. Closure capture: **in** on option (c), Bosque's rule → [[d31-effects-never-hide-in-a-value|direction 31]].
+
 ## Related
 - [[comparison-pass]]
 - [[language-landscape]]

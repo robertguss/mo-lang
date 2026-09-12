@@ -102,3 +102,6 @@
 
 ## [2026-09-12] session | Session 2 closeout bookkeeping
 - sessions/session-02.md and HANDOFF.md updated with the second half of the session (Q11–Q17, two-lane research, Herdr worker, syntheses). Next: the 7 tensions, one at a time.
+
+## [2026-09-12] session | Session 3: tension 1 answered
+- Closure capture: Robert in on Bosque's rule → directions/d31-effects-never-hide-in-a-value.md; Session 3 notes on d15, p11, comparison-synthesis-draft.
