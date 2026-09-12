@@ -12,3 +12,5 @@ Each line names a missing or conflicting rule and the default used; these are op
 - `basics/for.mo`: Range endpoint inclusion is unspecified; break before the endpoint so either interpretation gives the same tested result.
 - `types/refinement.mo`: The draft does not settle whether an invalid literal at a refinement boundary is a static error or a runtime rejects case; use the brief's boundary call in `test rejects`, without inventing a constructor.
 - `types/generics.mo`: Traits lack a defined name for their implementing type; use the already-documented generic `T` in the trait signature, pending a binding rule, and test the independent unbounded `first` function.
+- `contracts/ensures.mo` (and later `assert ... is` examples): EBNF `cmp` incorrectly demands a following range after `is pattern`, and `stmt` omits the separately defined `assert`; use chapter 4's `result is Ok(c) implies ...` and test assertions, including its pattern-binding scope.
+- `contracts/ensures.mo`: The grammar specifies `inout` only on parameters and gives no caller marker; pass the local `var` as an ordinary argument.
