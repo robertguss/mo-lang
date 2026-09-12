@@ -6,14 +6,14 @@ Read this first, every session. Then `index.md`, then the last 20 entries of `lo
 
 The design of **Mo**, a from-scratch programming language for the AI era, co-designed by Robert Guss and Claude. This vault is the single record of the design: what we like, what is asked, what is decided, what we researched, and what happened in each session. It replaces the two Notion pages that held sessions 1–2 (exported verbatim into `raw/notion/`).
 
-This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. Code and artifacts live beside it and never inside it: `docs/` (the spec), `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `docs/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`.
+This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. The spec (`mo-wiki/spec/`: design-v0, grammar, error catalog) is prose humans read on a phone, so it lives inside the vault as an artifact folder, like `raw/`. Code lives beside the vault and never inside it: `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `spec/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`.
 
 ## Layout
 
 ```
 README.md            front door for humans (repo root)
 HANDOFF.md           the prompt that starts the next session (repo root, nothing else)
-docs/                artifacts: design-v0/, grammar, laws, error catalog (not wiki pages)
+
 examples/            the Mo program corpus (not wiki pages)
 toolchain/           the Zig compiler, runtime, platforms, benchmarks (later)
 
@@ -30,6 +30,7 @@ mo-wiki/                the Obsidian vault root; everything below is relative to
   sessions/          one page per design session
   research/          comparisons/ and concepts/ — pages backed by web research
   raw/               immutable sources: notion/ exports, articles/, papers/, research-runs/
+  spec/              artifacts humans read: design-v0/, grammar.md, laws, error catalog (not wiki pages)
   tools/             lint.py, exa.py and other vault tooling
 ```
 

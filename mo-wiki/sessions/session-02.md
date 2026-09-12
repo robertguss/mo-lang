@@ -39,7 +39,7 @@ session: 2
 
 1. Fable walks Robert through the 7 ⚠️ tensions in [[comparison-synthesis-draft]], one per message, with a recommendation each; then the open questions it lists.
 2. Fable finishes the synthesis and the Q17 recommendation from [[supply-chain-defenses]].
-3. Then [[roadmap]] step 1: `docs/design-v0.md`, which must also answer [[case-against-new-languages]].
+3. Then [[roadmap]] step 1: `spec/design-v0.md`, which must also answer [[case-against-new-languages]].
 4. Notion pages: still to be deleted by Robert (left alone on his request).
 
 ## Related

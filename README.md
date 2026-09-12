@@ -6,7 +6,7 @@ A from-scratch programming language for the AI era, co-designed by Robert Guss a
 
 ## This repo is the record
 
-It is a monorepo: the design wiki in `mo-wiki/` (an Obsidian vault, the only part Obsidian syncs), the spec in `docs/`, the Mo corpus in `examples/`, and later the Zig toolchain in `toolchain/`. The design lives here as a wiki of small linked markdown pages following [Karpathy's LLM-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): Claude maintains it, Robert reads and decides.
+It is a monorepo: the design wiki in `mo-wiki/` (an Obsidian vault, the only part Obsidian syncs), the spec in `mo-wiki/spec/`, the Mo corpus in `examples/`, and later the Zig toolchain in `toolchain/`. The design lives here as a wiki of small linked markdown pages following [Karpathy's LLM-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): Claude maintains it, Robert reads and decides.
 
 | Start here | |
 |---|---|
@@ -28,7 +28,7 @@ It is a monorepo: the design wiki in `mo-wiki/` (an Obsidian vault, the only par
 
 | Artifacts | |
 |---|---|
-| `docs/` | `design-v0/` (eight chapters), grammar, laws, error catalog |
+| `mo-wiki/spec/` | `design-v0/` (eight chapters), `grammar.md`, later the error catalog; prose inside the vault |
 | `toolchain/` | the Zig compiler and runtime (not yet started) |
 | `examples/` | the Mo program corpus |
 | `mo-wiki/raw/` | immutable sources: Notion exports, articles, papers |
@@ -36,7 +36,7 @@ It is a monorepo: the design wiki in `mo-wiki/` (an Obsidian vault, the only par
 
 ## Status
 
-Exploration phase. Session 3 (12 Sep 2026): all questions answered, the 7 research tensions resolved, packages reframed as recipes, `docs/design-v0/` drafted. Next: grammar, example corpus, then the Zig interpreter.
+Exploration phase. Session 3 (12 Sep 2026): all questions answered, the 7 research tensions resolved, packages reframed as recipes, `spec/design-v0/` drafted. Next: grammar, example corpus, then the Zig interpreter.
 
 ## Tooling
 

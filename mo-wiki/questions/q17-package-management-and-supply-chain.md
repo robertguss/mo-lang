@@ -26,7 +26,7 @@ asked: 2026-09-12
 
 ## Answer
 
-✅ **Robert: IN on ordering B** (session 2): start `docs/design-v0.md` now, research Q17 in parallel, slot the package chapter in when it lands. No package design is recommended until the research pass is done. Robert will run deep-research prompts with his own tools and share results back (see SCHEMA, "Research"). Research must include academic papers (arXiv etc.), not only blog posts and incident reports.
+✅ **Robert: IN on ordering B** (session 2): start `spec/design-v0.md` now, research Q17 in parallel, slot the package chapter in when it lands. No package design is recommended until the research pass is done. Robert will run deep-research prompts with his own tools and share results back (see SCHEMA, "Research"). Research must include academic papers (arXiv etc.), not only blog posts and incident reports.
 
 ## Session 3 answer: the package design
 
