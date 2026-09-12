@@ -1,3 +1,10 @@
+---
+tool: Perplexity
+prompt: prompts-language-landscape / prompt 3 (languages built for AI authors)
+run: 2026-09-12
+run_by: Robert
+sha256: de1326f48c9af9deffd072e6c90abd7d3a3e02e80464f1b9a8c5b146298101a0
+---
 # LLM-Authored Programming Languages: Evidence Base (2023–2026)
 
 ## Executive summary

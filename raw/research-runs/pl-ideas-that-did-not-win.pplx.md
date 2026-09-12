@@ -1,3 +1,10 @@
+---
+tool: Perplexity
+prompt: prompts-language-landscape / prompt 2 (older and obscure languages)
+run: 2026-09-12
+run_by: Robert
+sha256: 510f8eec6bc2608e8ec7c7c852f4fde23404453de85eab7c7dc9d238341856e3
+---
 # Programming Language Ideas That Did Not Win — And Which Ones Get a Second Chance When Agents Write the Code
 
 ## Framing: what "did not win" actually means

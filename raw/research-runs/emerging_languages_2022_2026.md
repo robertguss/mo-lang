@@ -1,3 +1,10 @@
+---
+tool: unknown (Robert to fill in)
+prompt: prompts-language-landscape / prompt 1 (new and beta languages 2022–2026)
+run: 2026-09-12
+run_by: Robert
+sha256: 47af81a202232d8236a3b42ec86759ec3dd6c56e3e95cfeb41567eb35a15dd43
+---
 # Emerging Programming Languages 2022–2026
 
 A survey of programming languages that had their first public release, or a substantial redesign / major version, between 2022 and 2026 (inclusive). Present date: **September 12, 2026**.
