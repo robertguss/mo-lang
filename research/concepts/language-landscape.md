@@ -49,7 +49,7 @@ Status labels are as of Sep 2026 from the cited source. `confidence: medium` bec
 ## E. Fault tolerance and processes
 
 - **Erlang / Elixir** — processes, supervision, let-it-crash. Elixir v1.20 (Jun 2026) is now *gradually typed with full inference and no annotations*, reporting "verified bugs" with very low false positives; type signatures come later.[22] Watch: their inference-first approach vs Mo's annotate-every-boundary.
-- **Gleam** — static types on the BEAM, v1.16 (Apr 2026), 2nd most-admired language in the 2025 Stack Overflow survey; most users come from outside the BEAM.[23] Evidence that "typed BEAM" has an audience; Mo's syntax rejection of Gleam still stands.
+- **Gleam** — static types on the BEAM, v1.18 (Jul 2026; Robert's lane), 2nd most-admired language in the 2025 Stack Overflow survey; most users come from outside the BEAM.[23] Evidence that "typed BEAM" has an audience; Mo's syntax rejection of Gleam still stands.
 - **Verse** (Epic, with Simon Peyton Jones) — functional *logic* language: every function runs inside a transaction that can roll back and be resimulated; distributed transactional memory planned for UE6 (2027).[8][9] Wild idea to study: transactional semantics as the failure story instead of crash-and-restart.
 
 ## F. Simplicity by law, and tooling as language
