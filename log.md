@@ -93,3 +93,6 @@
 
 ## [2026-09-12] update | Comparison refresh: agent-native cluster
 - VeraBench numbers (grader conflict noted), ilo's self-reported failure, live star counts, Axis dormancy, from the agent-languages run and the VeraBench README.
+
+## [2026-09-12] update | Comparison: MoonBit, FFT rebuttal
+- Evidence gains Chris Allen's rebuttal of "faster than Rust" (corrected Rust 3.2–3.4× faster; unmerged baseline fixes) and the run's mimalloc note.

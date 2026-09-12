@@ -4,7 +4,7 @@ created: 2026-09-12
 updated: 2026-09-12
 type: comparison
 tags: [research, agents, tooling]
-sources: [raw/articles/moonbit-pilot-intro.md, raw/articles/moonbit-ai-native-toolchain-2024.md, raw/papers/moonbit-ai-friendly-language-llm4code24.md, raw/articles/moonbit-0-10-0-release.md, raw/articles/moonbit-0-10-9-release.md, raw/articles/moonbit-seekmoon-ide-to-ade.md, raw/articles/moonbit-multiple-targets.md, raw/articles/moonbit-docs-error-handling.md, raw/articles/moonbit-docs-fundamentals.md, raw/articles/moonbit-value-type-benchmark.md, raw/articles/robotsatlas-moonbit-2026.md, raw/papers/no-resource-no-benchmarks-gleam-moonbit.md, raw/papers/swe-agi-moonbit-benchmark.md]
+sources: [raw/articles/moonbit-pilot-intro.md, raw/articles/moonbit-ai-native-toolchain-2024.md, raw/papers/moonbit-ai-friendly-language-llm4code24.md, raw/articles/moonbit-0-10-0-release.md, raw/articles/moonbit-0-10-9-release.md, raw/articles/moonbit-seekmoon-ide-to-ade.md, raw/articles/moonbit-multiple-targets.md, raw/articles/moonbit-docs-error-handling.md, raw/articles/moonbit-docs-fundamentals.md, raw/articles/moonbit-value-type-benchmark.md, raw/articles/robotsatlas-moonbit-2026.md, raw/papers/no-resource-no-benchmarks-gleam-moonbit.md, raw/papers/swe-agi-moonbit-benchmark.md, raw/articles/allen-moonbit-fft-rebuttal.md, raw/research-runs/llm-authored-programming-languages.pplx.md]
 confidence: medium
 ---
 
@@ -43,7 +43,7 @@ MoonBit launched in October 2022, alongside ChatGPT. It was conceived as a whole
 
 - **Several backends, Perceus on native.** One codebase targets native, JS and Wasm, and packages declare `supported_targets`.[85] Value types (`#valtype`) avoid heap allocation. On MoonBit's own FFT benchmark (Apple M1 Pro), it ran 33% faster than Rust.[88]
   - *Mo today:* Perceus ([[d10-immutable-by-default|direction 10]]), C via Zig, WASM deferred ([[d24-compile-to-c-via-zig|direction 24]]).
-  - *Verdict:* **already have** the memory bet. MoonBit is a second shipping Perceus-native compiler, after Koka ([[koka]]). Treat the Rust comparison as a vendor number.
+  - *Verdict:* **already have** the memory bet. MoonBit is a second shipping Perceus-native compiler, after Koka ([[koka]]). Treat the Rust comparison as a vendor number, and a disputed one (see Evidence).
 
 ## What it gives up
 
@@ -57,6 +57,7 @@ MoonBit launched in October 2022, alongside ChatGPT. It was conceived as a whole
 - **With a toolchain loop, agents build real systems.** SWE-AGI has 22 specification-driven MoonBit tasks: parsers, protocols, a JS front end. Every agent solved all 6 easy tasks. GPT-5.3-codex solved 19 of 22, Claude Opus 4.6 15, Opus 4.5 10.[91] One failed run took 42 hours and wrote more than 30,000 lines.[91]
 - **Sampler:** better compile rates at about a 3% speed cost.[80]
 - **Pilot vs Cursor and Codex:** vendor-run and not independent.[79]
+- **"Faster than Rust" on FFT: rebutted.** Chris Allen calls the claim "a lie by omission": the benchmark used a weak Rust baseline. His corrected Rust is 3.2–3.4× *faster* than MoonBit, and a Rust version GPT-5 wrote in five minutes was 2.33× faster. PRs fixing the baseline sat unmerged for about two weeks.[150] Per Robert's agent-languages run, a Hacker News commenter attributes the original gap to mimalloc.[137]
 - **Verification:** a secondary source says the toolchain includes Hoare-triple verification.[89] It was not confirmed from a MoonBit primary source this pass.
 
 ## What Mo should take from this
@@ -93,3 +94,5 @@ MoonBit launched in October 2022, alongside ChatGPT. It was conceived as a whole
 [89] https://robotsatlas.com/posts/moonbit-jezyk-programowania-pod-ere-ai-z-chin — MoonBit: a language designed for the AI era (Robots Atlas, 2026)
 [90] https://arxiv.org/abs/2606.16827 — No Resource, No Benchmarks, No Problem? Evaluating and Improving LLMs for Code Generation in No-Resource Languages (accepted IEEE TSE)
 [91] https://arxiv.org/abs/2602.09447 — SWE-AGI: Benchmarking Specification-Driven Software Construction with MoonBit
+[137] raw/research-runs/llm-authored-programming-languages.pplx.md — Robert's research run: LLM-Authored Programming Languages, evidence base 2023–2026 (Perplexity, landscape prompt 3)
+[150] https://bitemyapp.com/blog/moonbit-developers-are-lying-to-you — MoonBit developers are lying to you (Chris Allen, Sep 2025)
