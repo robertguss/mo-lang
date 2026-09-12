@@ -112,6 +112,7 @@ Finished pages, in order (worker session):
 8. [[unison|Unison]]
 9. [[moonbit|MoonBit]]
 10. [[bosque|Bosque]]
+11. [[spark-ada-and-dafny|SPARK Ada + Dafny]]
 
 ## Related
 - [[language-landscape]]
