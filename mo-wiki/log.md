@@ -126,3 +126,6 @@
 
 ## [2026-09-12] restructure | Vault moved to wiki/ (monorepo)
 - Robert: keep docs/research cleanly separate from code; Obsidian syncs only the vault. Everything wiki moved under wiki/ (git mv, history kept). Root keeps README.md, HANDOFF.md, docs/, examples/, toolchain/ (later). SCHEMA layout, README, HANDOFF updated; .obsidian/workspace.json untracked.
+
+## [2026-09-12] restructure | wiki/ renamed to mo-wiki/
+- Robert: rename. git mv; SCHEMA, README, HANDOFF, .gitignore updated.

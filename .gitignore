@@ -2,4 +2,4 @@
 *.swp
 zig-cache/
 zig-out/
-wiki/.obsidian/workspace.json
+mo-wiki/.obsidian/workspace.json

@@ -6,7 +6,7 @@ Read this first, every session. Then `index.md`, then the last 20 entries of `lo
 
 The design of **Mo**, a from-scratch programming language for the AI era, co-designed by Robert Guss and Claude. This vault is the single record of the design: what we like, what is asked, what is decided, what we researched, and what happened in each session. It replaces the two Notion pages that held sessions 1–2 (exported verbatim into `raw/notion/`).
 
-This repo is a monorepo (Robert, session 3). The wiki lives in `wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. Code and artifacts live beside it and never inside it: `docs/` (the spec), `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `docs/` and `examples/`; nothing outside `wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `wiki/`.
+This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. Code and artifacts live beside it and never inside it: `docs/` (the spec), `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `docs/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`.
 
 ## Layout
 
@@ -17,7 +17,7 @@ docs/                artifacts: design-v0/, grammar, laws, error catalog (not wi
 examples/            the Mo program corpus (not wiki pages)
 toolchain/           the Zig compiler, runtime, platforms, benchmarks (later)
 
-wiki/                the Obsidian vault root; everything below is relative to it
+mo-wiki/                the Obsidian vault root; everything below is relative to it
   SCHEMA.md          this file
   index.md           every wiki page, one line each, by section
   log.md             append-only action log
@@ -33,7 +33,7 @@ wiki/                the Obsidian vault root; everything below is relative to it
   tools/             lint.py, exa.py and other vault tooling
 ```
 
-Wiki pages are the `.md` files in `wiki/{directions,questions,decisions,syntax,deep-dives,plans,sessions,research}`. Everything else is either raw, an artifact, or tooling.
+Wiki pages are the `.md` files in `mo-wiki/{directions,questions,decisions,syntax,deep-dives,plans,sessions,research}`. Everything else is either raw, an artifact, or tooling.
 
 ## Page types
 
@@ -132,8 +132,8 @@ When something new contradicts an existing page: keep both with dates, mark `con
 
 ## Lint
 
-`python3 wiki/tools/lint.py` (from the repo root) checks: broken wikilinks, orphans, index completeness, required frontmatter, tags in taxonomy, raw sha256 drift, contested/low-confidence pages, pages over 200 lines, log size. Run it at the end of every session and record the result in `log.md`.
+`python3 mo-wiki/tools/lint.py` (from the repo root) checks: broken wikilinks, orphans, index completeness, required frontmatter, tags in taxonomy, raw sha256 drift, contested/low-confidence pages, pages over 200 lines, log size. Run it at the end of every session and record the result in `log.md`.
 
 ## Search
 
-`qmd` is installed and `wiki/` is a collection named `mo-lang`. `qmd query "..."` for hybrid search, `qmd search "..."` for keyword. Run `qmd update && qmd embed` after a session adds pages.
+`qmd` is installed and `mo-wiki/` is a collection named `mo-lang`. `qmd query "..."` for hybrid search, `qmd search "..."` for keyword. Run `qmd update && qmd embed` after a session adds pages.
