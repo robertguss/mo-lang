@@ -99,6 +99,11 @@ Do them in the order above (1 → 13). One page at a time, commit after each. If
 - Write `research/concepts/comparison-synthesis-draft.md`: the ⚠️ contradictions across all 13, the top ten steals, and open questions for Robert — a *draft* for Fable to finish, not a decision.
 - Update `HANDOFF.md` "Where we stopped".
 
+## Progress
+
+Finished pages, in order (worker session):
+1. [[elixir|Elixir]]
+
 ## Related
 - [[language-landscape]]
 - [[roadmap]]

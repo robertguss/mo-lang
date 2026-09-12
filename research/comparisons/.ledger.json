@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://elixir-lang.org/blog/2026/06/03/elixir-v1-20-0-released",
+      "title": "Elixir v1.20 released: now a gradually typed language",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 2,
+      "url": "https://elixir-lang.org/blog/2026/01/09/type-inference-of-all-and-next-15",
+      "title": "Type inference of all constructs and the next 15 months (Elixir blog)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 3,
+      "url": "https://arxiv.org/abs/2306.06391",
+      "title": "The Design Principles of the Elixir Type System (Castagna, Duboc, Valim)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 4,
+      "url": "https://arxiv.org/abs/2408.14345",
+      "title": "Guard Analysis and Safe Erasure Gradual Typing: a Type System for Elixir",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 5,
+      "url": "https://hexdocs.pm/elixir/Supervisor.html",
+      "title": "Elixir Supervisor docs",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 6,
+      "url": "https://dashbit.co/blog/why-elixir-best-language-for-ai",
+      "title": "Why Elixir is the best language for AI (Valim)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 7,
+      "url": "https://lukabreitig.com/blog/llms-write-elixir",
+      "title": "Do LLMs really write better Elixir than Python? (Breitig)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 8,
+      "url": "https://arxiv.org/abs/2508.09101",
+      "title": "AutoCodeBench: LLMs are automatic code benchmark generators",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 9,
+      "url": "https://github.com/gleam-lang/otp",
+      "title": "Gleam OTP README",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 10,
+      "url": "https://survey.stackoverflow.co/2025/technology",
+      "title": "Stack Overflow Developer Survey 2025: Technology",
+      "accessed": "2026-09-12"
+    }
+  ]
+}

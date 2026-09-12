@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 86
+> Last updated: 2026-09-12 | Total pages: 87
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -102,6 +102,7 @@
 - [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
 
 ## Research
+- [[elixir|Mo vs Elixir]] — comparison: inference-first gradual types, OTP supervision shapes vs Q7, typed processes
 - [[language-landscape|Language landscape: which languages deserve a deep comparison]] — 40+ languages in seven groups with the idea to steal from each, plus a 13-entry shortlist for the comparison pass
 - [[prompts-language-landscape|Research prompts: the language landscape]] — three prompts for Robert's deep-research tools
 - [[prompts-q17-supply-chain|Research prompts: Q17 supply-chain security and package management]] — three prompts for Robert's deep-research tools
