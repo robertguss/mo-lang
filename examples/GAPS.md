@@ -26,3 +26,11 @@ Places where a program needed something `spec/grammar.md` and `spec/design-v0/04
 - `effects/pure-vs-effectful.mo`: no way to make a `Time` value without a clock (chapter 4's `t0` is undefined). Default: `Time.fixture()`.
 - `effects/timeout.mo`: `Fs` has no operations named beyond `scoped` and `read_only`. Default: `fs.read(path, within: d)`, giving the file's text as a `String`.
 - `effects/timeout.mo`: no way to make a fixture capability slow. Default: `Fs.fixture(delay: 1.minute)` times out every call, and a plain `Fs.fixture()` is an empty file system where every read is `Missing(path:)`.
+- `effects/narrowing.mo`: no type is given for a narrowed capability, and nothing says whether narrowing needs `within:`. Default: `fs.scoped(...).read_only` is still an `Fs`, and narrowing performs no effect, so it takes no `within:`.
+- `effects/sim.mo`: the surface of `Mo.Sim` is undefined, and so is what a bare `use Mo.Sim` brings in. Default: the `use` line swaps in the simulated platform for this module's tests, and the test uses the same `Clock.fixture()` as the other files.
+- `processes/counter.mo`: `state` fields have no initial values. Default: each field starts at its type's zero (`0`, `""`, `[]`).
+- `processes/counter.mo`: nothing shows how a test starts a process or sends to one (`main` is outside the corpus). Default: `Counter.start()` (chapter 3's `Name.start(caps...)`) and `handle.send(Message)`.
+- `processes/counter.mo`: `send` has no stated result, and a process's state cannot be read without `ask`. Default: `send` is a statement with no value, and this file's test has no `assert`.
+- `processes/ask.mo`: nothing says how `update` replies to an `ask`. Default: the arm for a message with a reply type ends in the reply value (`Total: state.votes`).
+- `processes/ask.mo`: the error type of `ask` and the order of messages are not given. Default: `handle.ask(Message, within: d)` returns a `Result` checked with `is Ok(...)`, and messages from one sender arrive in the order sent.
+- `processes/mailbox.mo`: no integer type is given for `size`. Default: `UInt32`.
