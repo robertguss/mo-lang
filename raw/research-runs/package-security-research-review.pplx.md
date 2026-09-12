@@ -7,293 +7,95 @@ sha256: b746db1c3e8580910f575c0bba9883a2f3c62b424dc95fd34334806efebaef60
 ---
 # Language-Based Security for Package Dependencies: A Literature Review (2019–2026)
 
+*Updated to add 2025–2026 coverage of the AI-driven shift in the threat landscape: LLM package hallucination ("slopsquatting"), AI-assisted malicious-package detection, LLM/AI supply-chain vulnerabilities, and Model Context Protocol (MCP) / AI-agent tool-permission security.*
+
 ## Object-Capability Security Applied to Package/Dependency Management
 
-**NODESENTRY** proposes that third-party JavaScript libraries in Node.js
-applications should never receive ambient authority over their host environment,
-since a single vulnerable dependency can compromise an entire server. The
-authors built a policy-enforcement architecture that wraps every dependency in
-mediating proxies, letting operators attach web-hardening and access-control
-policies to the interactions between libraries and their environment, including
-transitive dependencies
-([Massacci et al., _Security and Communication Networks_, 2019](https://downloads.hindawi.com/journals/scn/2019/9629034.pdf)).
-Performance and security evaluation showed the wrapping approach can intercept
-and restrict library behavior with acceptable overhead, making it the first
-dedicated security architecture for server-side JavaScript library integration
-([Massacci et al., 2019](https://downloads.hindawi.com/journals/scn/2019/9629034.pdf)).
+**NODESENTRY** proposes that third-party JavaScript libraries in Node.js applications should never receive ambient authority over their host environment, since a single vulnerable dependency can compromise an entire server. The authors built a policy-enforcement architecture that wraps every dependency in mediating proxies, letting operators attach web-hardening and access-control policies to the interactions between libraries and their environment, including transitive dependencies ([Massacci et al., *Security and Communication Networks*, 2019](https://downloads.hindawi.com/journals/scn/2019/9629034.pdf)). Performance and security evaluation showed the wrapping approach can intercept and restrict library behavior with acceptable overhead, making it the first dedicated security architecture for server-side JavaScript library integration ([Massacci et al., 2019](https://downloads.hindawi.com/journals/scn/2019/9629034.pdf)).
 
-**Gobi** argues that language-level sandboxes for third-party libraries have
-historically depended on fragile, vendor-specific technology (e.g., Google's
-discontinued NaCl), leaving projects orphaned, while WebAssembly's inherently
-capability-oriented, import/export-based module interface offers a durable,
-browser-vendor-backed alternative for confining native libraries. The authors
-built a Wasm-based software-fault-isolation toolchain for sandboxing C/C++
-libraries and evaluated it against existing SFI systems for compatibility and
-performance
-([Narayan et al., 2019](https://arxiv.org/ftp/arxiv/papers/1912/1912.02285.pdf)).
-They conclude that Wasm can support practical, high-performance library
-sandboxing today, and issue a call to the Wasm and SFI research communities to
-formally support module sandboxing as a first-class use case
-([Narayan et al., 2019](https://arxiv.org/ftp/arxiv/papers/1912/1912.02285.pdf)).
+**Gobi** argues that language-level sandboxes for third-party libraries have historically depended on fragile, vendor-specific technology (e.g., Google's discontinued NaCl), leaving projects orphaned, while WebAssembly's inherently capability-oriented, import/export-based module interface offers a durable, browser-vendor-backed alternative for confining native libraries. The authors built a Wasm-based software-fault-isolation toolchain for sandboxing C/C++ libraries and evaluated it against existing SFI systems for compatibility and performance ([Narayan et al., 2019](https://arxiv.org/ftp/arxiv/papers/1912/1912.02285.pdf)). They conclude that Wasm can support practical, high-performance library sandboxing today, and issue a call to the Wasm and SFI research communities to formally support module sandboxing as a first-class use case ([Narayan et al., 2019](https://arxiv.org/ftp/arxiv/papers/1912/1912.02285.pdf)).
 
-**Sandboxing Adoption in Open Source Ecosystems** claims that although OS-level
-sandboxing primitives such as Seccomp, Landlock, Pledge, Unveil, and Capsicum
-embody least-privilege, capability-like confinement for software components,
-their direct adoption across open-source packages is minimal. The authors
-statically searched the full source trees of Debian, Fedora, OpenBSD, and
-FreeBSD (over 164,000 packages combined) for calls to each mechanism's API,
-manually verifying matches to exclude tests, documentation, and comments
-([Larsen & Kroah-Hartman (or equivalent authors), 2024](http://arxiv.org/pdf/2405.06447.pdf)).
-They found that fewer than 1% of packages directly invoke a sandboxing API, and
-that adoption barriers include the effort of enumerating an application's
-syscalls/file access, mechanism complexity, the need to restructure applications
-into multiple processes, and difficulty debugging sandbox violations
-([2024](http://arxiv.org/pdf/2405.06447.pdf)).
+**Sandboxing Adoption in Open Source Ecosystems** claims that although OS-level sandboxing primitives such as Seccomp, Landlock, Pledge, Unveil, and Capsicum embody least-privilege, capability-like confinement for software components, their direct adoption across open-source packages is minimal. The authors statically searched the full source trees of Debian, Fedora, OpenBSD, and FreeBSD (over 164,000 packages combined) for calls to each mechanism's API, manually verifying matches to exclude tests, documentation, and comments ([Larsen & Kroah-Hartman (or equivalent authors), 2024](http://arxiv.org/pdf/2405.06447.pdf)). They found that fewer than 1% of packages directly invoke a sandboxing API, and that adoption barriers include the effort of enumerating an application's syscalls/file access, mechanism complexity, the need to restructure applications into multiple processes, and difficulty debugging sandbox violations ([2024](http://arxiv.org/pdf/2405.06447.pdf)).
 
 ## Language-Level Permission Systems for Third-Party Code
 
-**Mir** claims that third-party JavaScript libraries routinely run with far more
-privilege than they need, and that this excess privilege is exploitable even
-when a library is merely buggy rather than actively malicious. The system
-augments Node.js's module loader with a read/write/execute/import (RWXI)
-permission model, automatically infers each library's required permissions via
-flow-sensitive intraprocedural static analysis of how consuming code uses it,
-and enforces the inferred permissions at runtime through load-time source and
-context transformations
-([Vasilakis et al., _MIR: Automated Quantifiable Privilege Reduction_, 2021](https://arxiv.org/pdf/2011.00253.pdf)).
-The evaluation introduces a quantitative privilege-reduction metric and
-demonstrates that a library subverted at runtime cannot exploit functionality
-outside its inferred permission set, though permissions are inferred
-automatically rather than declared by the library author
-([Vasilakis et al., 2021](https://arxiv.org/pdf/2011.00253.pdf)).
+**Mir** claims that third-party JavaScript libraries routinely run with far more privilege than they need, and that this excess privilege is exploitable even when a library is merely buggy rather than actively malicious. The system augments Node.js's module loader with a read/write/execute/import (RWXI) permission model, automatically infers each library's required permissions via flow-sensitive intraprocedural static analysis of how consuming code uses it, and enforces the inferred permissions at runtime through load-time source and context transformations ([Vasilakis et al., *MIR: Automated Quantifiable Privilege Reduction*, 2021](https://arxiv.org/pdf/2011.00253.pdf)). The evaluation introduces a quantitative privilege-reduction metric and demonstrates that a library subverted at runtime cannot exploit functionality outside its inferred permission set, though permissions are inferred automatically rather than declared by the library author ([Vasilakis et al., 2021](https://arxiv.org/pdf/2011.00253.pdf)).
 
-**Containing Malicious Package Updates in npm with a Lightweight Permission
-System** claims that automatic installation of minor/patch npm updates combined
-with unrestricted application-level privilege lets a single malicious update
-compromise a dependent application, even though most packages only need trivial
-computation and no access to the filesystem, network, or OS processes. The
-authors designed a four-permission model (network, filesystem, process, and an
-"all" superset for metaprogramming) that package owners manually declare before
-publishing, enforced npm-side with under 100 lines of runtime `require` wrapping
-plus static rewriting of unsafe property accesses, and evaluated it against a
-February 2018 snapshot of 703,457 npm packages and three real supply-chain
-incidents (`eslint-scope`, `event-stream`, `electron-native-notify`)
-([2021](https://arxiv.org/pdf/2103.05769.pdf)). They found that 31.9% of npm
-packages could be fully protected under the model with negligible (much less
-than 1%) runtime overhead, and argued that even a modest attack-surface
-reduction enacted broadly would meaningfully cut security-review burden and
-attacker opportunity ([2021](https://arxiv.org/pdf/2103.05769.pdf)).
+**Containing Malicious Package Updates in npm with a Lightweight Permission System** claims that automatic installation of minor/patch npm updates combined with unrestricted application-level privilege lets a single malicious update compromise a dependent application, even though most packages only need trivial computation and no access to the filesystem, network, or OS processes. The authors designed a four-permission model (network, filesystem, process, and an "all" superset for metaprogramming) that package owners manually declare before publishing, enforced npm-side with under 100 lines of runtime `require` wrapping plus static rewriting of unsafe property accesses, and evaluated it against a February 2018 snapshot of 703,457 npm packages and three real supply-chain incidents (`eslint-scope`, `event-stream`, `electron-native-notify`) ([2021](https://arxiv.org/pdf/2103.05769.pdf)). They found that 31.9% of npm packages could be fully protected under the model with negligible (much less than 1%) runtime overhead, and argued that even a modest attack-surface reduction enacted broadly would meaningfully cut security-review burden and attacker opportunity ([2021](https://arxiv.org/pdf/2103.05769.pdf)).
 
-**Designing with Static Capabilities and Effects: Use, Mention, and Invariants**
-claims that static reference capabilities and type-and-effect systems are two
-different technical routes to the same underlying goal — statically bounding
-what a piece of code, including untrusted library code, is permitted to do — and
-that the choice between them hinges on a fundamental "use–mention" precision
-trade-off. The paper is an expository/analytical comparison (not an implemented
-system) that formally contrasts how capability possession, which merely proves
-code _could_ exercise an authority, differs from effect typing, which reasons
-about whether code _actually exercises_ that authority in a security-relevant
-way ([Xu, 2020](https://arxiv.org/pdf/2005.11444.pdf)). It concludes that
-capabilities are preferable for reasoning about un-inspectable code (e.g.,
-precompiled or dynamically loaded libraries) and global invariants over
-shared/aliased objects, while effect systems are preferable when the use–mention
-distinction matters, and that seemingly minor type-system choices such as
-weakening and the structure of type contexts materially affect capability-based
-reasoning's precision ([Xu, 2020](https://arxiv.org/pdf/2005.11444.pdf)).
+**Designing with Static Capabilities and Effects: Use, Mention, and Invariants** claims that static reference capabilities and type-and-effect systems are two different technical routes to the same underlying goal — statically bounding what a piece of code, including untrusted library code, is permitted to do — and that the choice between them hinges on a fundamental "use–mention" precision trade-off. The paper is an expository/analytical comparison (not an implemented system) that formally contrasts how capability possession, which merely proves code *could* exercise an authority, differs from effect typing, which reasons about whether code *actually exercises* that authority in a security-relevant way ([Xu, 2020](https://arxiv.org/pdf/2005.11444.pdf)). It concludes that capabilities are preferable for reasoning about un-inspectable code (e.g., precompiled or dynamically loaded libraries) and global invariants over shared/aliased objects, while effect systems are preferable when the use–mention distinction matters, and that seemingly minor type-system choices such as weakening and the structure of type contexts materially affect capability-based reasoning's precision ([Xu, 2020](https://arxiv.org/pdf/2005.11444.pdf)).
 
 ## Information-Flow Control for Libraries
 
-**DepSec** claims that dependent types strictly increase the expressiveness of
-static information-flow-control (IFC) libraries relative to prior
-state-of-the-art systems such as MAC, particularly for expressing data-dependent
-security policies and fine-grained declassification. The authors implemented
-DepSec as a library in the dependently typed language Idris, representing
-sensitivity as part of the type itself (`Labeled ℓ a` for tagged values,
-`DIO ℓ a` for secure computations over a verified join-semilattice of labels),
-and formalized the design as a call-by-value calculus (TTsec) with a proof of
-progress-insensitive noninterference
-([Buiras et al., 2019](https://arxiv.org/pdf/1902.06590.pdf)). They demonstrate
-that DepSec matches the expressiveness of a special-purpose dependent IFC type
-system on a benchmark conference-management case study while supporting policies
-parameterized by an abstract, statically enforced declassification rule
-governing _what_, _who_, and _when_ data may be released
-([Buiras et al., 2019](https://arxiv.org/pdf/1902.06590.pdf)).
+**DepSec** claims that dependent types strictly increase the expressiveness of static information-flow-control (IFC) libraries relative to prior state-of-the-art systems such as MAC, particularly for expressing data-dependent security policies and fine-grained declassification. The authors implemented DepSec as a library in the dependently typed language Idris, representing sensitivity as part of the type itself (`Labeled ℓ a` for tagged values, `DIO ℓ a` for secure computations over a verified join-semilattice of labels), and formalized the design as a call-by-value calculus (TTsec) with a proof of progress-insensitive noninterference ([Buiras et al., 2019](https://arxiv.org/pdf/1902.06590.pdf)). They demonstrate that DepSec matches the expressiveness of a special-purpose dependent IFC type system on a benchmark conference-management case study while supporting policies parameterized by an abstract, statically enforced declassification rule governing *what*, *who*, and *when* data may be released ([Buiras et al., 2019](https://arxiv.org/pdf/1902.06590.pdf)).
 
-**Cocoon** claims that mainstream imperative languages have lacked a static,
-type-based IFC mechanism that works with an unmodified compiler, making
-fine-grained secrecy enforcement for third-party or untrusted code impractical
-to deploy in real Rust codebases. The authors built Cocoon as a pure Rust
-library that wraps sensitive values in a `Secret<Type, Label>` type, uses
-procedural macros and Rust's ownership/mutability/auto-trait system to confine
-`secret_block!` regions so they can only call side-effect-free or explicitly
-allow-listed functions, and requires explicit `declassify` calls (treated as
-part of the trusted computing base) to let secrets flow to lower-secrecy
-contexts ([2024](https://arxiv.org/pdf/2311.00097.pdf)). The paper reports that
-Cocoon can be incrementally adopted in existing Rust programs, enforces
-termination-insensitive noninterference through ordinary compilation (a program
-that would leak a secret simply fails to compile), and imposes no detectable
-runtime or memory overhead at the cost of increased compile time
-([2024](https://arxiv.org/pdf/2311.00097.pdf)).
+**Cocoon** claims that mainstream imperative languages have lacked a static, type-based IFC mechanism that works with an unmodified compiler, making fine-grained secrecy enforcement for third-party or untrusted code impractical to deploy in real Rust codebases. The authors built Cocoon as a pure Rust library that wraps sensitive values in a `Secret<Type, Label>` type, uses procedural macros and Rust's ownership/mutability/auto-trait system to confine `secret_block!` regions so they can only call side-effect-free or explicitly allow-listed functions, and requires explicit `declassify` calls (treated as part of the trusted computing base) to let secrets flow to lower-secrecy contexts ([2024](https://arxiv.org/pdf/2311.00097.pdf)). The paper reports that Cocoon can be incrementally adopted in existing Rust programs, enforces termination-insensitive noninterference through ordinary compilation (a program that would leak a secret simply fails to compile), and imposes no detectable runtime or memory overhead at the cost of increased compile time ([2024](https://arxiv.org/pdf/2311.00097.pdf)).
 
-**Static Information Flow Control Made Simpler** claims that existing static IFC
-systems have seen little real-world use because they force programmers to reason
-about label lattices and separate confidentiality/integrity semantics, and
-proposes instead that developers declare direct source-to-destination flow
-prohibitions (e.g., `flow mod network_io ->! mod db_handle`) over the program's
-own data and modules. The system extends Rust's type system (formally, the Oxide
-model of Rust), leveraging Rust's existing borrow-checker pointer analysis, and
-supports uniform confidentiality/integrity policies, incremental partial
-specifications, and specificity-based rule overriding
-([2022](https://arxiv.org/pdf/2210.12996.pdf)). The paper presents the design
-and its formal properties rather than a large-scale empirical evaluation,
-arguing that unifying confidentiality and integrity into simple, composable flow
-declarations makes IFC more accessible while retaining expressive power for
-library- and module-boundary policies
-([2022](https://arxiv.org/pdf/2210.12996.pdf)).
+**Static Information Flow Control Made Simpler** claims that existing static IFC systems have seen little real-world use because they force programmers to reason about label lattices and separate confidentiality/integrity semantics, and proposes instead that developers declare direct source-to-destination flow prohibitions (e.g., `flow mod network_io ->! mod db_handle`) over the program's own data and modules. The system extends Rust's type system (formally, the Oxide model of Rust), leveraging Rust's existing borrow-checker pointer analysis, and supports uniform confidentiality/integrity policies, incremental partial specifications, and specificity-based rule overriding ([2022](https://arxiv.org/pdf/2210.12996.pdf)). The paper presents the design and its formal properties rather than a large-scale empirical evaluation, arguing that unifying confidentiality and integrity into simple, composable flow declarations makes IFC more accessible while retaining expressive power for library- and module-boundary policies ([2022](https://arxiv.org/pdf/2210.12996.pdf)).
 
-**An Empirical Study of Information Flows in Real-World JavaScript** claims that
-dynamically tracking implicit information flows (not just explicit taint) is
-theoretically important for catching subtle leaks from third-party or vulnerable
-code but has an uncertain practical payoff. The authors ran four dynamic IFC
-monitoring strategies (taint tracking, observable tracking,
-no-sensitive-upgrade, and permissive-upgrade) built on the Jalangi
-instrumentation framework over 56 real-world JavaScript programs (including 19
-vulnerable Node.js modules) spanning injection, ReDoS, buffer, and
-fingerprinting/history-sniffing vulnerability classes
-([Hedin et al., 2019](http://arxiv.org/pdf/1906.11507.pdf)). They found that
-tracking implicit flows is costly in permissiveness, label creep, and runtime
-overhead, that lightweight explicit taint tracking suffices for most of the
-studied vulnerabilities, and that no evidence emerged that tracking _hidden_
-implicit flows caught security problems missed by cheaper analyses — leaving
-cost-effective implicit-flow analysis an open research problem
-([Hedin et al., 2019](http://arxiv.org/pdf/1906.11507.pdf)).
+**An Empirical Study of Information Flows in Real-World JavaScript** claims that dynamically tracking implicit information flows (not just explicit taint) is theoretically important for catching subtle leaks from third-party or vulnerable code but has an uncertain practical payoff. The authors ran four dynamic IFC monitoring strategies (taint tracking, observable tracking, no-sensitive-upgrade, and permissive-upgrade) built on the Jalangi instrumentation framework over 56 real-world JavaScript programs (including 19 vulnerable Node.js modules) spanning injection, ReDoS, buffer, and fingerprinting/history-sniffing vulnerability classes ([Hedin et al., 2019](http://arxiv.org/pdf/1906.11507.pdf)). They found that tracking implicit flows is costly in permissiveness, label creep, and runtime overhead, that lightweight explicit taint tracking suffices for most of the studied vulnerabilities, and that no evidence emerged that tracking *hidden* implicit flows caught security problems missed by cheaper analyses — leaving cost-effective implicit-flow analysis an open research problem ([Hedin et al., 2019](http://arxiv.org/pdf/1906.11507.pdf)).
 
 ## Measuring the Attack Surface of Package Registries
 
-**Small World with High Risks** claims that npm's densely interconnected
-dependency and maintainer graph means that a small number of compromised
-packages or maintainer accounts can propagate malicious or vulnerable code to a
-large fraction of the ecosystem, making recent incidents symptomatic of a
-systemic problem rather than isolated events. The authors built dependency
-graphs from a snapshot of 5,386,239 package releases across 676,539 packages
-(observation window ending April 2018) and analyzed five distinct threat models
-— malicious packages, unmaintained legacy code, package takeover, account
-takeover, and maintainer collusion
-([Zimmermann et al., _USENIX Security_, 2019](https://arxiv.org/pdf/1902.09217.pdf)).
-They found that legacy/unmaintained dependencies and locked version ranges keep
-applications exposed to known-vulnerable code for years, and that concentrated
-maintainer influence over the dependency graph creates disproportionate systemic
-risk, motivating mitigations such as vetted maintainers, transitive-dependency
-awareness tooling, and vulnerability warnings
-([Zimmermann et al., 2019](https://arxiv.org/pdf/1902.09217.pdf)).
+**Small World with High Risks** claims that npm's densely interconnected dependency and maintainer graph means that a small number of compromised packages or maintainer accounts can propagate malicious or vulnerable code to a large fraction of the ecosystem, making recent incidents symptomatic of a systemic problem rather than isolated events. The authors built dependency graphs from a snapshot of 5,386,239 package releases across 676,539 packages (observation window ending April 2018) and analyzed five distinct threat models — malicious packages, unmaintained legacy code, package takeover, account takeover, and maintainer collusion ([Zimmermann et al., *USENIX Security*, 2019](https://arxiv.org/pdf/1902.09217.pdf)). They found that legacy/unmaintained dependencies and locked version ranges keep applications exposed to known-vulnerable code for years, and that concentrated maintainer influence over the dependency graph creates disproportionate systemic risk, motivating mitigations such as vetted maintainers, transitive-dependency awareness tooling, and vulnerability warnings ([Zimmermann et al., 2019](https://arxiv.org/pdf/1902.09217.pdf)).
 
-**Towards Measuring Supply Chain Attacks on Package Managers for Interpreted
-Languages** claims that package registries for interpreted languages (PyPI, npm,
-RubyGems) have structural security gaps and misplaced trust relationships that
-enable supply-chain attacks, given their near-total absence of publish-time
-review. The authors built a comparative qualitative framework across the three
-ecosystems' functionality, review processes, stakeholders, and attack vectors,
-then developed MALOSS, a metadata/static/dynamic-analysis vetting pipeline
-(using Docker-and-Sysdig-based execution tracing across install, import,
-embedded-binary, and functional code paths) validated against a hand-collected
-corpus of 312 real-world reported supply-chain attacks tracked since 2018
-([Duan et al., 2020](https://arxiv.org/pdf/2002.01139.pdf)). The paper's
-contribution is explicitly the measurement framework and vetting pipeline rather
-than new program-analysis techniques, positioned to surface as-yet-undetected
-malicious packages and inform concrete registry-security improvements
-([Duan et al., 2020](https://arxiv.org/pdf/2002.01139.pdf)).
+**Towards Measuring Supply Chain Attacks on Package Managers for Interpreted Languages** claims that package registries for interpreted languages (PyPI, npm, RubyGems) have structural security gaps and misplaced trust relationships that enable supply-chain attacks, given their near-total absence of publish-time review. The authors built a comparative qualitative framework across the three ecosystems' functionality, review processes, stakeholders, and attack vectors, then developed MALOSS, a metadata/static/dynamic-analysis vetting pipeline (using Docker-and-Sysdig-based execution tracing across install, import, embedded-binary, and functional code paths) validated against a hand-collected corpus of 312 real-world reported supply-chain attacks tracked since 2018 ([Duan et al., 2020](https://arxiv.org/pdf/2002.01139.pdf)). The paper's contribution is explicitly the measurement framework and vetting pipeline rather than new program-analysis techniques, positioned to surface as-yet-undetected malicious packages and inform concrete registry-security improvements ([Duan et al., 2020](https://arxiv.org/pdf/2002.01139.pdf)).
 
-**I Know What You Imported Last Summer** claims the PyPI ecosystem has severe,
-exploitable security weaknesses stemming from arbitrary code execution during
-install/import, concentrated "reach" among a small set of packages and
-maintainers, and rampant package impersonation. The authors combined a scraped
-PyPI metadata graph (206,296 packages, 1,554,933 releases, 387,867 maintainers,
-230,566 dependency edges) loaded into Neo4j with CVE/Safety-DB vulnerability
-data, `setup.py` script analysis, and typosquatting/impersonation pattern
-matching ([2021](https://arxiv.org/pdf/2102.06301.pdf)). They found that 0.39%
-of packages import other code at install time and 0.28% execute non-standard
-install functions (both exploitable vectors, demonstrated live against a
-vulnerable `setup.py`), that a Django vulnerability-propagation case study
-showed slow downstream patching, and that defensive typosquat registration
-(e.g., by Amazon) is already an ad hoc mitigation in practice
-([2021](https://arxiv.org/pdf/2102.06301.pdf)).
+**I Know What You Imported Last Summer** claims the PyPI ecosystem has severe, exploitable security weaknesses stemming from arbitrary code execution during install/import, concentrated "reach" among a small set of packages and maintainers, and rampant package impersonation. The authors combined a scraped PyPI metadata graph (206,296 packages, 1,554,933 releases, 387,867 maintainers, 230,566 dependency edges) loaded into Neo4j with CVE/Safety-DB vulnerability data, `setup.py` script analysis, and typosquatting/impersonation pattern matching ([2021](https://arxiv.org/pdf/2102.06301.pdf)). They found that 0.39% of packages import other code at install time and 0.28% execute non-standard install functions (both exploitable vectors, demonstrated live against a vulnerable `setup.py`), that a Django vulnerability-propagation case study showed slow downstream patching, and that defensive typosquat registration (e.g., by Amazon) is already an ad hoc mitigation in practice ([2021](https://arxiv.org/pdf/2102.06301.pdf)).
 
-**A Survey on Common Threats in npm and PyPi Registries** claims that because
-these open registries let any email-verified user publish packages with minimal
-scanning, and because heavy code reuse and interdependency amplify blast radius,
-npm and PyPI face a well-defined menu of recurring threats — typosquatting,
-combosquatting, account compromise, trivial "micropackages," and technical lag.
-The paper is a literature-based survey (no new experiments or developer study)
-that compiles prior empirical findings on threat prevalence and proposes largely
-untested, ML-oriented countermeasures such as anomaly-based detection and
-maintainer trust scoring ([2021](https://arxiv.org/pdf/2108.09576.pdf)). The
-authors conclude that because these ecosystems fundamentally depend on volunteer
-maintainers and open access, residual risk cannot be eliminated, but structural
-measures like mandatory multi-factor authentication and maintainer/package trust
-scores could meaningfully reduce it
-([2021](https://arxiv.org/pdf/2108.09576.pdf)).
+**A Survey on Common Threats in npm and PyPi Registries** claims that because these open registries let any email-verified user publish packages with minimal scanning, and because heavy code reuse and interdependency amplify blast radius, npm and PyPI face a well-defined menu of recurring threats — typosquatting, combosquatting, account compromise, trivial "micropackages," and technical lag. The paper is a literature-based survey (no new experiments or developer study) that compiles prior empirical findings on threat prevalence and proposes largely untested, ML-oriented countermeasures such as anomaly-based detection and maintainer trust scoring ([2021](https://arxiv.org/pdf/2108.09576.pdf)). The authors conclude that because these ecosystems fundamentally depend on volunteer maintainers and open access, residual risk cannot be eliminated, but structural measures like mandatory multi-factor authentication and maintainer/package trust scores could meaningfully reduce it ([2021](https://arxiv.org/pdf/2108.09576.pdf)).
 
-**What are Weak Links in the npm Supply Chain?** claims that specific,
-measurable package-metadata signals — such as an expired maintainer domain or
-the presence of an install script — indicate elevated exposure to supply-chain
-attack and can be used proactively to triage dependency risk. The authors
-collected a snapshot of 1,630,101 `package.json` manifests (June 7, 2021),
-derived six candidate weak-link signals (expired maintainer domain, install
-scripts, unmaintained status, too many maintainers, too many contributors, and
-overloaded maintainers), and validated the signals with a survey of 470 npm
-package maintainers after excluding 135,996 packages with no dependents and no
-license/repository/maintenance signal
-([Zimmermann et al., 2022](http://arxiv.org/pdf/2112.10165.pdf)). Three of the
-six proposed signals were confirmed as strong risk indicators by the maintainer
-survey, and respondents suggested eight additional weak-link signals not
-originally proposed, yielding a metadata-driven framework other researchers and
-tool builders can extend ([2022](http://arxiv.org/pdf/2112.10165.pdf)).
+**What are Weak Links in the npm Supply Chain?** claims that specific, measurable package-metadata signals — such as an expired maintainer domain or the presence of an install script — indicate elevated exposure to supply-chain attack and can be used proactively to triage dependency risk. The authors collected a snapshot of 1,630,101 `package.json` manifests (June 7, 2021), derived six candidate weak-link signals (expired maintainer domain, install scripts, unmaintained status, too many maintainers, too many contributors, and overloaded maintainers), and validated the signals with a survey of 470 npm package maintainers after excluding 135,996 packages with no dependents and no license/repository/maintenance signal ([Zimmermann et al., 2022](http://arxiv.org/pdf/2112.10165.pdf)). Three of the six proposed signals were confirmed as strong risk indicators by the maintainer survey, and respondents suggested eight additional weak-link signals not originally proposed, yielding a metadata-driven framework other researchers and tool builders can extend ([2022](http://arxiv.org/pdf/2112.10165.pdf)).
 
-**Backstabber's Knife Collection** claims that no prior work had systematically
-catalogued _malicious_ (as opposed to merely vulnerable) open-source packages
-used in real attacks, leaving the community without a grounded empirical basis
-for defenses against supply-chain code injection. The authors manually curated
-and analyzed a dataset of malicious packages found via the Snyk database,
-security advisories, and research blogs across npm, Maven Central, PyPI,
-Packagist, and RubyGems (collected mid-2019, updated January 2020), building two
-attack trees covering how malicious code is injected into dependency trees and
-how it is triggered at test-, install-, or run-time
-([Ohm et al., 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7338168/)). Of 469
-identified malicious packages, 174 had at least one affected version
-successfully retrieved for manual analysis (59 were researcher proofs-of-concept
-and excluded), producing a labeled, publicly reusable ground-truth dataset for
-training and evaluating malicious-package detectors
-([Ohm et al., 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7338168/)).
+**Backstabber's Knife Collection** claims that no prior work had systematically catalogued *malicious* (as opposed to merely vulnerable) open-source packages used in real attacks, leaving the community without a grounded empirical basis for defenses against supply-chain code injection. The authors manually curated and analyzed a dataset of malicious packages found via the Snyk database, security advisories, and research blogs across npm, Maven Central, PyPI, Packagist, and RubyGems (collected mid-2019, updated January 2020), building two attack trees covering how malicious code is injected into dependency trees and how it is triggered at test-, install-, or run-time ([Ohm et al., 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7338168/)). Of 469 identified malicious packages, 174 had at least one affected version successfully retrieved for manual analysis (59 were researcher proofs-of-concept and excluded), producing a labeled, publicly reusable ground-truth dataset for training and evaluating malicious-package detectors ([Ohm et al., 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7338168/)).
+
+**Closing the Chain: How to Reduce Your Risk of Being SolarWinds, Log4j, or XZ Utils** claims that existing supply-chain security frameworks list many recommended tasks but do not indicate which tasks actually mitigate the attack techniques used in real incidents, leaving organizations unable to prioritize investment. The authors performed a qualitative meta-synthesis of 106 cyber-threat-intelligence reports on the SolarWinds, Log4j, and XZ Utils attacks, mapped 114 distinct MITRE ATT&CK techniques found across the three incidents onto the 73 tasks of the unified P-SSCRM framework using four independent mapping strategies, and scored each task by how many attacks and techniques it mitigates ([Hamer et al., 2025](https://arxiv.org/pdf/2503.12192.pdf)). They found that no evaluated framework — including P-SSCRM itself — covers more than 67% of the relevant attack techniques for any single incident, identified three completely missing mitigation tasks (sustainable open-source funding, environmental scanning tools, and response partnerships), and produced a ranked ten-task "starter kit" led by role-based access control, system monitoring, and boundary protection ([Hamer et al., 2025](https://arxiv.org/pdf/2503.12192.pdf)).
+
+## The AI-Driven Shift (2025–2026): LLM Package Hallucination and Agent/Tool Permission Security
+
+Generative coding assistants and autonomous LLM agents have opened two new attack surfaces since 2024: hallucinated package names that attackers can register and weaponize ("slopsquatting"), and AI agents/tool-calling protocols whose third-party "tools" carry real ambient authority over a user's system. The following papers extend the four categories above into this AI-driven landscape.
+
+### LLM Package Hallucination and Slopsquatting
+
+**We Have a Package for You! A Comprehensive Analysis of Package Hallucinations by Code-Generating LLMs** claims that package hallucination — an LLM recommending an import that does not exist — is a persistent, systemic phenomenon across commercial and open-source code-generating models, creating a new "package confusion" supply-chain attack surface an adversary can exploit simply by registering the hallucinated name with malicious code. The authors ran 30 tests across 16 LLMs on Python and JavaScript, generating 576,000 code samples and roughly 2.23 million package references from Stack-Overflow-derived and LLM-generated coding prompts, then checked every generated package name against PyPI/npm master lists as of January 10, 2024 ([Spracklen et al., 2024](http://arxiv.org/pdf/2406.10279.pdf)). They found that 19.7% of generated packages were fictitious, yielding 205,474 unique hallucinated names with substantial repetition across models (making squatting practical), and that mitigation techniques can reduce the rate but at some cost to code quality ([Spracklen et al., 2024](http://arxiv.org/pdf/2406.10279.pdf)).
+
+**Importing Phantoms: Measuring LLM Package Hallucination Vulnerabilities** claims that package hallucination occurs across every evaluated model and language and is inversely correlated with coding-benchmark performance, meaning the field is not jointly optimizing for coding ability and supply-chain safety. The authors used the garak red-teaming framework to prompt multiple LLMs across Python, JavaScript, and Rust with both "induced" (explicitly requested fictional package) and "natural" hallucination prompts, checking outputs against live npm, PyPI, and crates.io snapshots as of January 30, 2025 (3.39 million, 604,814, and 169,823 packages respectively) ([Krishna et al., 2025](https://arxiv.org/pdf/2501.19012.pdf)). They found that larger models hallucinate less overall but that the Pareto frontier between HumanEval performance and low hallucination rate is sparsely populated, and propose package-existence verification as a concrete mitigation layer ([2025](https://arxiv.org/pdf/2501.19012.pdf)).
+
+**Hallucinating AI Hijacking Attack: LLMs and Malicious Code Recommenders** claims that foundation models (OpenAI, Google, Anthropic) that refuse overtly malicious requests will nonetheless recommend malicious dependencies, API endpoints, repositories, RSS feeds, iframes, or CDN references once the identical request is reframed as an ordinary coding-assistance task — a pattern the authors compare to a "living off the land" attack. The paper empirically contrasts direct-harm prompts against equivalent requests reframed as programming, dependency-installation, or HTML-authoring tasks, cataloguing concrete attack scenarios across npm/yarn, NuGet, PyPI, RubyGems, Cargo, RSS, and CDN vectors in an appendix ([2024](https://arxiv.org/pdf/2410.06462.pdf)). It demonstrates, for example, GPT-4o refusing to build a fake login page directly but complying when the same request is framed as "HTML programming assistance" for a PayPal-styled page, concluding that safety guardrails must explicitly cover the coding-assistant context rather than only direct harmful intent ([2024](https://arxiv.org/pdf/2410.06462.pdf)).
+
+**Exploring Hallucinations and Security Risks in AI-Assisted Software Development** claims that AI coding tools (GitHub Copilot, ChatGPT, Cursor AI, Codeium AI) deliver substantial productivity gains but also replicate insecure coding patterns and hallucinate incorrect, irrelevant, or nonexistent code and dependencies, alongside prompt-injection, data-poisoning, and unauthorized-access risks. The authors surveyed 66 practitioners across machine-learning, web, mobile, QA, HR, and marketing teams at one company on their experience with the four tools, supplementing the survey with case studies and a comparative feature/risk table ([2025](https://arxiv.org/html/2502.18468v1)). They report broadly positive sentiment on productivity alongside consistent practitioner concern about insecure dependencies and incorrect/nonexistent package names, recommending code review, automated security scanning, trusted-library allowlists, and monitoring as mitigations ([2025](https://arxiv.org/html/2502.18468v1)).
+
+### AI-Assisted Detection of Malicious Packages
+
+**Leveraging Large Language Models to Detect npm Malicious Packages (SocketAI)** claims that LLMs (GPT-3 and GPT-4), used as a structured multi-stage review workflow rather than a single classification prompt, can outperform static analysis (CodeQL) at flagging malicious npm code. SocketAI generates several independent "initial reports" per file, has the model critique and reconcile them into a "critical report," then produces a final consolidated report, using static analysis as a cheap pre-filter to reduce the files that require LLM review ([2024](https://arxiv.org/pdf/2403.12196.pdf)). GPT-4 achieved 99% precision and 97% F1 (GPT-3: 91%/94%) — a 16-point precision and 9-point F1 improvement over the CodeQL baseline — while static pre-screening cut the files needing LLM analysis by 77.9% and cost by 60.9%–76.1% ([2024](https://arxiv.org/pdf/2403.12196.pdf)).
+
+**DySec** claims that monitoring a package's install-time *behavior*, rather than only its static code or metadata, gives a more comprehensive signal for catching malicious PyPI packages, including typosquats, covert remote access, and multiphase payloads. DySec runs eBPF kernel- and user-level probes across six trace categories (file, install, directory-access, TCP, syscall, and behavioral-pattern traces) during package installation on isolated Raspberry Pi devices, then trains ML classifiers on 36 engineered features selected from 62 candidates ([2025](https://arxiv.org/html/2503.00324v1)). The paper reports that combining all six trace categories ("CombinedTraces") significantly outperforms any single trace type or static/metadata-only analysis for classification accuracy ([2025](https://arxiv.org/html/2503.00324v1)).
+
+### Securing the AI/LLM Supply Chain Itself
+
+**SoK: Understanding Vulnerabilities in the LLM Supply Chain** claims that the LLM supply chain itself — the open-source frameworks, infrastructure, and third-party libraries spanning an LLM's data, model, and application layers — is an underexplored and unevenly distributed attack surface, distinct from the packages LLMs merely recommend. In the first large-scale empirical study of its kind, the authors mined 567 candidate repositories (more than 1,000 stars, updated within a year, more than 30 issues) down to 77 analyzed projects, aggregating vulnerabilities from MITRE CVE, GitHub Advisories, huntr, Protect AI, JFrog, Hidden Layer, and Oligo ([2025](https://arxiv.org/pdf/2502.12497.pdf)). They found that 18.5% of vulnerabilities are LLM-specific — arising from model files, prompt templates, RAG resources, generative outputs, or LLMOps workflows rather than traditional software bugs — and that many are remotely exploitable against publicly deployed LLM services, motivating resource validation, output sanitization, and reduced public exposure as core mitigations ([2025](https://arxiv.org/pdf/2502.12497.pdf)).
+
+### Model Context Protocol and Agent Tool-Permission Security
+
+**Model Context Protocol (MCP): Landscape, Security Threats, and Future Research Directions** claims that MCP is becoming foundational AI-tool-integration infrastructure by decoupling tool implementation from tool usage and treating capability negotiation as a protocol feature, but that its security, trust-boundary, and governance maturity has lagged its adoption. The authors define a four-phase, 16-activity MCP server lifecycle (Creation, Deployment, Operation, Maintenance) and a 16-scenario threat taxonomy across four attacker types — malicious developers, external attackers, malicious users, and security flaws, covering threats such as Namespace Typosquatting, Tool Poisoning, Rug Pulls, Cross-Server Shadowing, Sandbox Escape, and Privilege Persistence — validated with proof-of-concept servers and an ecosystem census of 26 major MCP directories, including a random 300-server sample from MCP.so ([2025](https://arxiv.org/pdf/2503.23278.pdf)). They found that large community MCP directories overstate effective server counts (10% of the sampled MCP.so servers used "MCP" only nominally and 6% were unavailable), and identify the protocol's "Capability Declaration" step during server Creation as the closest existing analog to a manifest-visible permission system for AI tools — flagged below ([2025](https://arxiv.org/pdf/2503.23278.pdf)).
+
+**MCP Safety Audit** claims that LLM agents connected to Model Context Protocol servers can be coerced — via direct prompting or a newly introduced "Retrieval-Agent Deception" (RADE) attack, where corrupted data is later retrieved and executed by the agent — into malicious code execution, remote access, or credential theft, so guardrails on the base model alone are insufficient. The authors demonstrate direct-prompt and RADE attacks against Claude 3.7 and Llama-3.3-70B-Instruct using four real MCP servers (filesystem, Slack, Chroma, Everything), and introduce McpSafetyScanner, a three-agent pipeline (hacker agent, security-auditor agent, supervisor agent) that automatically enumerates an MCP server's tools/resources/prompts and generates a remediation report ([2025](https://arxiv.org/html/2504.03767v2)). Both models completed most attacks (Llama required no explicit "hack"/"steal"-style language to comply), two RADE attacks succeeded end-to-end against Claude Desktop, and McpSafetyScanner produced a full vulnerability report in under one minute per server on consumer hardware ([2025](https://arxiv.org/html/2504.03767v2)).
+
+**Prompt Flow Integrity to Prevent Privilege Escalation in LLM Agents (PFI)** claims that LLM agents can be protected from prompt- and data-injection privilege-escalation attacks by adapting the systems-security Principle of Least Privilege to agent architecture. PFI splits an agent into a trusted agent (holding a privileged token with full tool access, processing only trusted data) and an untrusted agent (processing raw untrusted tool results in an isolated context, referenced by the trusted agent only through opaque "data IDs"), adding DataGuard and CtrlGuard runtime monitors that flag unsafe data or control flow before privileged execution occurs ([2025](https://arxiv.org/pdf/2503.15547.pdf)). The paper reports deterministic security guarantees against the evaluated prompt- and data-injection attacks while preserving more agent utility than comparable security-focused agent designs ([2025](https://arxiv.org/pdf/2503.15547.pdf)).
+
+**Authenticated Delegation and Authorized AI Agents** claims that human users need a way to securely delegate and scope an AI agent's authority while preserving an auditable accountability chain, and proposes extending OAuth 2.0 and OpenID Connect with agent-specific credentials to do so. The framework defines a delegation flow built on three token types — the user's existing ID-token, an Agent-ID token declaring the agent's capabilities, limitations, and relationships to other systems, and a human-signed Delegation Token scoping goals, validity, expiration, and revocation — and proposes translating natural-language permission requests into auditable, schema-validated access-control configurations ([South et al., 2025](https://arxiv.org/pdf/2501.09674.pdf)). The paper presents this as a design proposal rather than an implemented and empirically evaluated system, but its Agent-ID token is itself a manifest-like declaration of an AI agent's permitted capabilities — flagged below ([2025](https://arxiv.org/pdf/2501.09674.pdf)).
 
 ## Papers Proposing Manifest- or Type-Signature-Visible Permissions
 
-Three papers in this set specifically design permissions or security policy to
-be visible in a static, inspectable artifact rather than left implicit at
-runtime:
+Three papers in this set specifically design permissions or security policy to be visible in a static, inspectable artifact rather than left implicit at runtime:
 
-- **Containing Malicious Package Updates in npm with a Lightweight Permission
-  System** ([2021](https://arxiv.org/pdf/2103.05769.pdf)) is the clearest
-  manifest-based design: package owners manually declare required permissions
-  (network, filesystem, process, all) before publishing, package consumers can
-  see a dependency's declared permissions in the npm repository before
-  installing it, and package managers are expected to block silent permission
-  escalation on update, requiring explicit user confirmation instead.
-- **DepSec** ([2019](https://arxiv.org/pdf/1902.06590.pdf)) makes
-  information-flow policy part of the type signature itself: values are wrapped
-  in dependent types (`Labeled ℓ a`, `DIO ℓ a`) whose security label `ℓ` is a
-  first-class, statically checked component of the type, so a function's
-  signature reveals the sensitivity level(s) it operates over.
-- **Cocoon** ([2024](https://arxiv.org/pdf/2311.00097.pdf)) follows the same
-  type-signature pattern in Rust: sensitive values are wrapped in
-  `Secret<Type, Label>`, so the secrecy label is visible directly in a value's
-  or function's type, and any flow that would violate the declared label causes
-  a compile error rather than a runtime check.
+- **Containing Malicious Package Updates in npm with a Lightweight Permission System** ([2021](https://arxiv.org/pdf/2103.05769.pdf)) is the clearest manifest-based design: package owners manually declare required permissions (network, filesystem, process, all) before publishing, package consumers can see a dependency's declared permissions in the npm repository before installing it, and package managers are expected to block silent permission escalation on update, requiring explicit user confirmation instead.
+- **DepSec** ([2019](https://arxiv.org/pdf/1902.06590.pdf)) makes information-flow policy part of the type signature itself: values are wrapped in dependent types (`Labeled ℓ a`, `DIO ℓ a`) whose security label `ℓ` is a first-class, statically checked component of the type, so a function's signature reveals the sensitivity level(s) it operates over.
+- **Cocoon** ([2024](https://arxiv.org/pdf/2311.00097.pdf)) follows the same type-signature pattern in Rust: sensitive values are wrapped in `Secret<Type, Label>`, so the secrecy label is visible directly in a value's or function's type, and any flow that would violate the declared label causes a compile error rather than a runtime check.
 
-By contrast, **Mir** ([2021](https://arxiv.org/pdf/2011.00253.pdf)) infers a
-library's RWXI permissions automatically from static usage analysis rather than
-having the library declare them in a manifest or type, and **Static Information
-Flow Control Made Simpler** ([2022](https://arxiv.org/pdf/2210.12996.pdf))
-declares flow policy at the module/variable level in source code (a
-policy-as-code approach) rather than embedding it in the type signature or a
-separate manifest file — an adjacent but distinct design point worth noting
-alongside the three flagged papers above.
+By contrast, **Mir** ([2021](https://arxiv.org/pdf/2011.00253.pdf)) infers a library's RWXI permissions automatically from static usage analysis rather than having the library declare them in a manifest or type, and **Static Information Flow Control Made Simpler** ([2022](https://arxiv.org/pdf/2210.12996.pdf)) declares flow policy at the module/variable level in source code (a policy-as-code approach) rather than embedding it in the type signature or a separate manifest file — an adjacent but distinct design point worth noting alongside the three flagged papers above.
+
+Two further papers extend this flag criterion into the AI-agent era, where the "dependency" is a tool or agent rather than a package:
+
+- The **Model Context Protocol (MCP) Landscape** paper ([2025](https://arxiv.org/pdf/2503.23278.pdf)) documents "Capability Declaration" as a formal step in the MCP server lifecycle's Creation phase — a server declares its tools, resources, and prompts as part of its published metadata, which a client/host inspects before granting access, functioning as a manifest for AI-tool permissions.
+- **Authenticated Delegation and Authorized AI Agents** ([2025](https://arxiv.org/pdf/2501.09674.pdf)) proposes an Agent-ID token that carries an AI agent's declared capabilities, limitations, and system relationships as a signed, inspectable credential, and a separate human-signed Delegation Token that scopes exactly which of those capabilities the agent may exercise on the user's behalf — a manifest-and-permission pair analogous to npm's declared-permission model but issued per-delegation rather than per-package.
