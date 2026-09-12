@@ -7,3 +7,6 @@ Each line names a missing or conflicting rule and the default used; these are op
 - All `.mo` files: The toolchain currently documents unimplemented stages; examples are source fixtures checked against the draft, not claimed compiled or executed.
 - `basics/option.mo`, `basics/result.mo` (and later Option/Result examples): EBNF patterns require named payloads and the prose bans positional construction, but chapter 4 explicitly uses `Some(x)`, `Ok(x)`, and `Error(e)` without defining field names; retain those documented built-in forms only, with named fields for user-defined variants.
 - `basics/lists.mo`: List combinator signatures are not declared; use the ordinary seed-first `reduce(seed, fn(total, item) ... end)` call shape and record it as provisional.
+- `basics/anonymous-functions.mo` (and later hyphenated paths): Module-to-file mapping does not define hyphenated basenames; use `AnonymousFunctions` for `anonymous-functions.mo`, consistently converting CapCase words to lowercase hyphenated names.
+- `basics/anonymous-functions.mo`: EBNF references undefined `params_untyped`; use the chapter 4 `fn(x)` spelling and the grammar's newline block alternative.
+- `basics/for.mo`: Range endpoint inclusion is unspecified; break before the endpoint so either interpretation gives the same tested result.
