@@ -1,6 +1,6 @@
 # Mo design, v0
 
-**Status:** draft, 12 Sep 2026, session 3. Nothing here is locked (see `decisions/`, still empty). Every claim is a hypothesis until the interpreter milestone in `08-milestone.md` measures it.
+**Status:** draft, 12 Sep 2026, session 3; reviewed chapter by chapter by Robert in sessions 4 and 5 with no further edits (chapter 4's changes are recorded at its foot). Nothing here is locked (see `decisions/`, still empty). Every claim is a hypothesis until the interpreter milestone in `08-milestone.md` measures it.
 
 Mo is a programming language for a world where agents write nearly all the code and humans read only the parts that state intent. This folder is the design in eight short chapters. The wiki around this folder (`directions/`, `questions/`, `syntax/`, `research/`) holds the reasoning and the history; these chapters hold only the result.
 

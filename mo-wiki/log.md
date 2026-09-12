@@ -150,3 +150,6 @@
 
 ## [2026-09-12] session | Session 4 closeout: moving to the laptop
 - sessions/session-04.md, HANDOFF.md (session 5 prompt), index. Lint: 113 pages, only the low-confidence flags on d32/d33/d34.
+
+## [2026-09-12] session | Session 5: design-v0 review complete
+- Robert reviewed chapters 1, 2, 3, 5, 6, 7, 8 with no edits ("good" each). Status line in design-v0/00-readme.md notes the review. Next: the corpus (roadmap step 4).
