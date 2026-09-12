@@ -98,6 +98,8 @@ Claude's lane is [[language-landscape]] (web + catalogue, 12 Sep 2026) plus the 
 - **Not recommended:** Mojo (not agent-authored by its own FAQ), the smart-contract and ZK languages, Forth, Curry.
 
 ## Related
+- [[motoko]] (follow-up comparison)
+- [[case-against-new-languages]] (follow-up concept)
 - [[language-landscape]]
 - [[comparison-synthesis-draft]]
 - [[comparison-pass]]

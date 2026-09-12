@@ -84,3 +84,6 @@
 
 ## [2026-09-12] ingest | Comparison: Motoko
 - research/comparisons/motoko.md, follow-up from landscape-second-lane. Actors, commit points (trap reverts a message), await splits atomicity, stable-variable upgrade checks, Caffeine as the AI-authorship context.
+
+## [2026-09-12] create | Concept: the case against new languages
+- research/concepts/case-against-new-languages.md, follow-up from landscape-second-lane. Null hypothesis + what Mo would have to show; no verdict.

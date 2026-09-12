@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 103
+> Last updated: 2026-09-12 | Total pages: 104
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -119,6 +119,7 @@
 - [[supply-chain-defenses|Supply-chain defenses]] — Q17 input: defenses that exist, the 2025–26 incident shape, Mo mapped against it, six package-system design options (no recommendation)
 - [[landscape-second-lane|Landscape, second lane]] — what Robert's three landscape research runs add or dispute vs Claude's survey; shortlist arguments
 - [[motoko|Mo vs Motoko]] — comparison: actor isolation, trap-reverts-to-commit-point, upgrade-safe persistence, the 'designed for AI agents' claim (Caffeine)
+- [[case-against-new-languages|The case against new languages]] — the null hypothesis the v0 design doc must answer: Quasar, CodeAct, SynCode, token sugar, cold start, ilo, Aether, BHC/hx
 - [[language-landscape|Language landscape: which languages deserve a deep comparison]] — 40+ languages in seven groups with the idea to steal from each, plus a 13-entry shortlist for the comparison pass
 - [[prompts-language-landscape|Research prompts: the language landscape]] — three prompts for Robert's deep-research tools
 - [[prompts-q17-supply-chain|Research prompts: Q17 supply-chain security and package management]] — three prompts for Robert's deep-research tools

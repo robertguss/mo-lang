@@ -816,6 +816,36 @@
       "url": "https://motoko-book.dev/advanced-concepts/async-programming.html",
       "title": "Motoko Book: Async programming",
       "accessed": "2026-09-12"
+    },
+    {
+      "id": 137,
+      "url": "raw/research-runs/llm-authored-programming-languages.pplx.md",
+      "title": "Robert's research run: LLM-Authored Programming Languages, evidence base 2023–2026 (Perplexity, landscape prompt 3)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 138,
+      "url": "https://lucumr.pocoo.org/2026/2/9/a-language-for-agents",
+      "title": "A Language For Agents (Armin Ronacher, Feb 2026)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 139,
+      "url": "https://www.anup.io/til-markov-language",
+      "title": "TIL: Markov language, and the cold-start problem (anup.io)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 140,
+      "url": "https://arxiv.org/abs/2402.01030",
+      "title": "Executable Code Actions Elicit Better LLM Agents (CodeAct)",
+      "accessed": "2026-09-12"
+    },
+    {
+      "id": 141,
+      "url": "https://arxiv.org/abs/2403.01632",
+      "title": "SynCode: LLM Generation with Grammar Augmentation",
+      "accessed": "2026-09-12"
     }
   ]
 }
