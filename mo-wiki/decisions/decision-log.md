@@ -88,6 +88,10 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | The simulated clock does not advance in step 4, so restart windows never slide | Fable, from Opus's default | provisional | the simulator step |
 | `Ledger.fixture()` finds every id as an unrefunded 10_000 charge and every save succeeds | Fable, from Opus's default | provisional | program 1 |
 | Wanted: `for _ in 0..n` for a loop whose index is unused; today the unused-binding law rejects `i` | Fable | provisional | step 5 |
+| Formatter rules fixed in `toolchain/FORMAT.md`: 2-space indent, column 100, one blank line between declarations and after `expose`, `use` sorted, tests at the bottom, comments never moved | Fable | provisional | program 1 |
+| The loop rule (pure body → combinator) is a diagnostic `MO0501`, not a rewrite; rewriting is `mo fix` | Fable | provisional | program 1 |
+| `for _ in 0..n` allowed; `_` as the loop binder | Fable | provisional | the corpus |
+| A `state` field with no zero value and no initializer is `MO0319` at check time | Fable | provisional | the corpus |
 
 ## Related
 - [[session-05]]
