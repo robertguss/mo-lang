@@ -3,6 +3,8 @@
 //!   mo test  <file.mo>   tier 2 (run the file's tests)  → one line per test, the
 //!                        summary, and the verified: line; exit 1 when a test fails
 //!     --all              runs the tests of every module the file loads
+//!     --write            also writes the verified: line at the bottom of the file and
+//!                        records it in .mo.ids at the program root (ids.zig)
 //!     --sim [N]          tier 3: each test that starts a process runs N more times
 //!                        (default 100), each on a seeded Mo.Sim
 //!     --seed S           the first of those seeds; by default the file's hash
@@ -26,7 +28,7 @@ const mo = @import("mo");
 
 const usage =
     \\usage: mo check <file.mo> [--json]
-    \\       mo test [--all] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
+    \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\
@@ -53,6 +55,7 @@ pub fn main(init: std.process.Init) !void {
 
     var json = false;
     var all = false;
+    var write = false;
     var fmt_mode: FmtMode = .write;
     var positional: std.ArrayList([]const u8) = .empty;
     // Everything after `--` belongs to the program `mo run` runs.
@@ -90,6 +93,8 @@ pub fn main(init: std.process.Init) !void {
             json = true;
         } else if (std.mem.eql(u8, a, "--all")) {
             all = true;
+        } else if (std.mem.eql(u8, a, "--write")) {
+            write = true;
         } else if (std.mem.eql(u8, a, "--check")) {
             fmt_mode = .check;
         } else if (std.mem.eql(u8, a, "--stdout")) {
@@ -104,6 +109,8 @@ pub fn main(init: std.process.Init) !void {
     const is_run = std.mem.eql(u8, command, "run");
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
+    // The line is one file's: --all's summary covers the modules it loads too.
+    if (write and (all or !std.mem.eql(u8, command, "test"))) return usageExit(err);
     // A seed and faults shape a simulated run, so they mean nothing without --sim.
     if (sim_runs != null and !std.mem.eql(u8, command, "test")) return usageExit(err);
     if ((seed != null or faults != null) and sim_runs == null) return usageExit(err);
@@ -172,13 +179,22 @@ pub fn main(init: std.process.Init) !void {
             .sim_seed = seed orelse mo.runner.seedOf(program.main().source),
             .fault_percent = faults orelse mo.runner.default_fault_percent,
         };
+        // --write replaces the file's line, so the line it has now is no finding.
+        const last = program.files.len - 1;
+        if (write and last < program.verified_lines.len) program.verified_lines[last] = .recorded;
         const r = mo.pipeline.testProgram(arena, program, all, options, &diags) catch |e| switch (e) {
             error.Rejected => return reject(out, err, program.files, diags.items, json),
             else => return e,
         };
         for (r.results) |result| try mo.runner.writeResult(out, program.files, result);
         try mo.runner.writeSummary(out, r.summary);
-        try mo.verified.render(out, r.summary);
+        var line: Io.Writer.Allocating = .init(arena);
+        try mo.verified.render(&line.writer, r.summary);
+        try out.writeAll(line.written());
+        if (write) {
+            const main_file = program.main();
+            try mo.ids.write(arena, io, program.root, main_file.path, program.keys[last], main_file.source, line.written());
+        }
         try out.flush();
         if (r.summary.failures > 0) std.process.exit(1);
         return;

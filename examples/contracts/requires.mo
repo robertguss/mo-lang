@@ -16,3 +16,6 @@ end
 test rejects "splitting a bill among nobody"
   split(90, 0)
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

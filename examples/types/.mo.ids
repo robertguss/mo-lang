@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "enum.mo",
+      "module": "Types.Enum",
+      "declarations": [
+        { "id": "d32971815923", "name": "module Types.Enum", "hash": "f0c4e8c15f1c0319" },
+        { "id": "731cc163433d", "name": "expose", "hash": "09e9689bb57c1fb0" },
+        { "id": "0bc4d4e045d5", "name": "intent", "hash": "f4b02a3ff9410dbc" },
+        { "id": "5f2871c380d1", "name": "enum Payment", "hash": "75da94eb6cb44f08" },
+        { "id": "59896c146078", "name": "fn fee", "hash": "a6dd92d746cab8a0" },
+        { "id": "b053d0a5e00d", "name": "fn label", "hash": "b26465627e3b68ab" },
+        { "id": "96920f7073c0", "name": "test \"each form has its own fee\"", "hash": "3f7704563edc755c" },
+        { "id": "b2f0f505dbb0", "name": "test \"data carried by a variant can be read back\"", "hash": "042559ebbceb1cab" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "51e55abe3dcbc5cb" }
+    },
+    {
+      "path": "generics.mo",
+      "module": "Types.Generics",
+      "declarations": [
+        { "id": "15dea5898e4f", "name": "module Types.Generics", "hash": "07b7bcf6aa571453" },
+        { "id": "19393d6f6e09", "name": "expose", "hash": "e7c882f4cf463555" },
+        { "id": "83bf123ff7fb", "name": "intent", "hash": "a092ffbb357c97f6" },
+        { "id": "a38e562bc5e5", "name": "trait Weighed", "hash": "0af574828a74efbb" },
+        { "id": "63fa855a0f2e", "name": "struct Parcel", "hash": "88982497fdc3bf74" },
+        { "id": "abdf6244e65b", "name": "impl Weighed for Parcel", "hash": "d82fa2dc0f2c26cc" },
+        { "id": "0b96ff2e6292", "name": "fn first", "hash": "92b692383a2dc6b0" },
+        { "id": "5c70a48eaeae", "name": "fn total_weight", "hash": "3a709077e00ea04c" },
+        { "id": "b8f7c515dc84", "name": "test \"first works for any element type\"", "hash": "779fd06a3d0282da" },
+        { "id": "4cd72682ed90", "name": "test \"the bound lets the body call weight\"", "hash": "88e9898d2b66869d" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "77fb65e5542cf247" }
+    },
+    {
+      "path": "nested.mo",
+      "module": "Types.Nested",
+      "declarations": [
+        { "id": "d46471987f38", "name": "module Types.Nested", "hash": "a84d849739146be3" },
+        { "id": "cce505e011a7", "name": "expose", "hash": "3ce94f614f9231c5" },
+        { "id": "34b842a79d67", "name": "intent", "hash": "1de579dac4311a70" },
+        { "id": "e33ba96ed920", "name": "enum LookupError", "hash": "873d85b68c13dae5" },
+        { "id": "01e6615587b2", "name": "fn lookup", "hash": "96ecbde1711a7425" },
+        { "id": "9a9b0c96d361", "name": "fn show", "hash": "4cac19ebe01768d1" },
+        { "id": "083b4ac1ab3c", "name": "test \"every outcome has its own arm\"", "hash": "07872dc910a8cc7f" },
+        { "id": "19c76fbf6bf3", "name": "test \"the nested value matches in one pattern\"", "hash": "d20a1471a2a67eae" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "ecb21f55feb65ceb" }
+    },
+    {
+      "path": "refinement.mo",
+      "module": "Types.Refinement",
+      "declarations": [
+        { "id": "3a47a7d9f773", "name": "module Types.Refinement", "hash": "d76c9953645ec166" },
+        { "id": "643816b4a1bd", "name": "expose", "hash": "966de4bdbb28005d" },
+        { "id": "2d20ce284cd5", "name": "intent", "hash": "174140504b49b78d" },
+        { "id": "ee5a7105f56d", "name": "type Percent", "hash": "c33540fbeee40e40" },
+        { "id": "749d6af1a7f5", "name": "fn discount", "hash": "bb0a7e48b6883c9c" },
+        { "id": "c52b7cf9b1fd", "name": "test \"ten percent off\"", "hash": "143624f8bbd15205" },
+        { "id": "d350ed9163bb", "name": "test \"both edges of the range are allowed\"", "hash": "94c20c595f6a2c6a" },
+        { "id": "606f0f6f60c8", "name": "test rejects \"a percent above one hundred\"", "hash": "d0e985169075f3d8" }
+      ],
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "6f19bf4f1c43a2f4" }
+    },
+    {
+      "path": "struct.mo",
+      "module": "Types.Struct",
+      "declarations": [
+        { "id": "9a9e5124913f", "name": "module Types.Struct", "hash": "b099d5ea647dea14" },
+        { "id": "356375eff282", "name": "expose", "hash": "3a91093f26fcba71" },
+        { "id": "39504eb3bbb3", "name": "intent", "hash": "63062584657839a3" },
+        { "id": "97c8475a1f9a", "name": "struct User", "hash": "85f62b106b4e7e3b" },
+        { "id": "79a711e0f002", "name": "fn rename", "hash": "fa32397daf01a8c6" },
+        { "id": "e131d8156572", "name": "fn visit", "hash": "00bbe7dd0a9532bc" },
+        { "id": "c13bad9c660b", "name": "test \"the copy changes and the original does not\"", "hash": "63ddeb8d36f4ad75" },
+        { "id": "4023ec8645d0", "name": "test \"a field on the copy can be added to\"", "hash": "37af1fe280443c32" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "3d9df952b8d44194" }
+    },
+    {
+      "path": "trait.mo",
+      "module": "Types.Trait",
+      "declarations": [
+        { "id": "6cd2a323f172", "name": "module Types.Trait", "hash": "3156bb6968e61f91" },
+        { "id": "236c4f67124a", "name": "expose", "hash": "ce991a399ca2c24b" },
+        { "id": "e293cca02173", "name": "intent", "hash": "77c5198b4fb5e4f2" },
+        { "id": "756f127bacb6", "name": "trait Describe", "hash": "3f6b36fab84c9e0f" },
+        { "id": "0e9e9ae94e43", "name": "struct Book", "hash": "7d17e69a557ea065" },
+        { "id": "871d560d6225", "name": "impl Describe for Book", "hash": "19ad02681057b737" },
+        { "id": "a9e1d2d4d4de", "name": "test \"the impl gives the type its describe\"", "hash": "61366991c2f43b5f" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "be254cc28bd51388" }
+    }
+  ]
+}

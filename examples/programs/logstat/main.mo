@@ -213,3 +213,6 @@ end
 test rejects "a line handed to the tally with its newline"
   tally_line(start(5, None), "a\nb")
 end
+
+verified: types, contracts, tests (8), property (0 seeds), sim (not run)
+          proven: not run

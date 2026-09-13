@@ -71,3 +71,6 @@ property "any Json value survives encode then decode"
     assert Json.decode(Json.encode(json)) == Ok(json)
   end
 end
+
+verified: types, contracts, tests (5), property (200 seeds), sim (not run)
+          proven: not run

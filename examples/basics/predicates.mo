@@ -26,3 +26,6 @@ test "an unpaid order is not ready"
   order = Order(items: 2, paid: false)
   assert !order.ready?
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

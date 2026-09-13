@@ -35,3 +35,6 @@ end
 test "floats divide without rounding"
   assert average(10.0, 4.0) == 2.5
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

@@ -47,3 +47,6 @@ end
 test rejects "a percent of nothing"
   percent(1, 0)
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

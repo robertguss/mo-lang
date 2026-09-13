@@ -131,3 +131,6 @@ property "any valid refund leaves the charge refunded"
     assert charge.apply_refund(amount) is Ok(c) and c.refunded?
   end
 end
+
+verified: types, contracts, tests (6), property (200 seeds), sim (100 runs)
+          proven: not run

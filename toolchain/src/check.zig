@@ -101,7 +101,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .var_captured = .{ .code = "MO0314", .category = .laws, .why = "A var is never aliased (chapter 3, values): an anonymous function captures read-only, so it cannot hold a var." },
     .var_to_process = .{ .code = "MO0315", .category = .laws, .why = "A var is never aliased (chapter 3, values): a process that received one would see a value its owner still changes." },
     .unsupervised = .{ .code = "MO0316", .category = .laws, .why = "A process not under a supervisor does not compile (chapter 3, processes): every crash has someone to restart it." },
-    .hand_verified = .{ .code = "MO0317", .category = .laws, .why = "The verified: line belongs to the toolchain (chapter 5). Until tier 2 computes and writes it, a verified: line in source was written by hand." },
+    .hand_verified = .{ .code = "MO0317", .category = .laws, .why = "The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code." },
     .no_zero = .{ .code = "MO0319", .category = .laws, .why = "A state field starts at its type's zero value (0, \"\", [], None, false, and tuples and structs of those) unless it writes = expr (grammar, Session 5). An enum, a Time, a capability, a handle, or a refinement that refuses zero has none, so the process could not start." },
     .use_cycle = .{ .code = "MO0318", .category = .laws, .why = "Modules have no import cycles (chapter 2, shape laws), so each module is understood, checked, and cached after the ones it uses." },
     .two_mains = .{ .code = "MO0320", .category = .laws, .why = "A program has one root, fn main(platform: Platform), in one of its modules (chapter 3, effects; Q18): its capabilities come from one place, and it starts in one place." },
@@ -247,16 +247,29 @@ pub const Checked = struct {
     }
 };
 
+/// What the sidecar (ids.zig) says of a module's `verified:` line. A module past the
+/// end of the slice given to checkProgram has no record, so its line is hand-written.
+pub const VerifiedLine = union(enum) {
+    /// No record: written by hand, or copied from elsewhere. A file with no line is
+    /// `recorded`, since there is nothing to be wrong.
+    hand_written,
+    recorded,
+    line_changed,
+    /// The names of the declarations that changed since the line was recorded.
+    declarations_changed: []const u8,
+};
+
 pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Checked {
-    return checkProgram(gpa, tree, &.{0}, out);
+    return checkProgram(gpa, tree, &.{0}, &.{}, out);
 }
 
 /// A program's modules in one tree (parser.parseProgram), in dependency order; `bases`
 /// holds where each module's file starts in the source. Every pass runs module by
 /// module, and each module sees the prelude, its own declarations, and what its use
 /// lines name.
-pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, out: *diag.List) Error!Checked {
-    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa) };
+/// `verified_lines` holds what the sidecar says of each module's `verified:` line.
+pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, out: *diag.List) Error!Checked {
+    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines };
     c.node_types = try gpa.alloc(Id, tree.nodes.len);
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
@@ -414,6 +427,8 @@ const Checker = struct {
     line_starts: std.ArrayList(u32) = .empty,
     /// Above zero while checking what is sent to a process.
     process_args: u32 = 0,
+    /// What the sidecar says of each module's `verified:` line.
+    verified_lines: []const VerifiedLine = &.{},
 
     // ---- small helpers
 
@@ -1687,7 +1702,12 @@ const Checker = struct {
                 .use => if (std.mem.eql(u8, c.pathText(n.lhs), module_path)) {
                     try c.reportTok(.use_cycle, n.main_token, try c.print("{s} uses itself; a module never imports its own path.", .{module_path}));
                 },
-                .verified => try c.reportTok(.hand_verified, n.main_token, "the verified: line was written by hand; delete it and let the toolchain compute it."),
+                .verified => switch (if (c.module < c.verified_lines.len) c.verified_lines[c.module] else .hand_written) {
+                    .recorded => {},
+                    .hand_written => try c.reportTok(.hand_verified, n.main_token, "the verified: line was written by hand; delete it and let the toolchain compute it."),
+                    .line_changed => try c.reportTok(.hand_verified, n.main_token, "the verified: line is not the one mo test --write recorded in .mo.ids; run mo test --write to compute it again."),
+                    .declarations_changed => |names| try c.reportTok(.hand_verified, n.main_token, try c.print("{s} changed since mo test --write computed the verified: line; run mo test --write to compute it again.", .{names})),
+                },
                 else => {},
             }
         }
@@ -3582,7 +3602,7 @@ fn expectProgramCodes(files: []const []const u8, codes: []const []const u8) !voi
     var diags: diag.List = .empty;
     const tokens = try lexer.lex(arena, source.items, &diags);
     const tree = try parser.parseProgram(arena, source.items, tokens, &diags);
-    _ = try checkProgram(arena, tree, bases.items, &diags);
+    _ = try checkProgram(arena, tree, bases.items, &.{}, &diags);
     var ok = diags.items.len == codes.len;
     if (ok) for (diags.items, codes) |d, code| {
         if (!std.mem.eql(u8, d.code, code)) ok = false;

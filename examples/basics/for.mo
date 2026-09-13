@@ -30,3 +30,6 @@ end
 test "break stops the range early"
   assert boxes_that_fit(30, 100) == 3
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

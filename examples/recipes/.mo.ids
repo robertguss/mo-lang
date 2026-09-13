@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "pure-recipe.mo",
+      "module": "Recipes.PureRecipe",
+      "declarations": [
+        { "id": "4230a982d65e", "name": "module Recipes.PureRecipe", "hash": "4f4349d91fac6c30" },
+        { "id": "77d102a8f0ec", "name": "expose", "hash": "751e811990312a56" },
+        { "id": "4cc08f198799", "name": "intent", "hash": "280eb1f2f053bbae" },
+        { "id": "cf5ed98c815d", "name": "recipe Slug", "hash": "ceb176c04eddcc06" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "8e0e51464606ba1f" }
+    },
+    {
+      "path": "rate-limiter.mo",
+      "module": "Recipes.RateLimiter",
+      "declarations": [
+        { "id": "98f129f96565", "name": "module Recipes.RateLimiter", "hash": "ff0edff57635f24d" },
+        { "id": "b7485bc8e4d3", "name": "expose", "hash": "a06b3ea9d453f3ef" },
+        { "id": "5c766ffbbd78", "name": "intent", "hash": "539fb1e40f8b7f8c" },
+        { "id": "0e269529eb09", "name": "type ClientId", "hash": "d6cb7c61a78dff3b" },
+        { "id": "9940828d36dd", "name": "recipe RateLimiter", "hash": "599ba36913ed5631" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "17a7dc659f703c31" }
+    }
+  ]
+}

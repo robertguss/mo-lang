@@ -34,3 +34,6 @@ test "driving only ever adds to the reading"
   odometer.send(Drive(km: 30))
   assert odometer.ask(Reading, within: 100.ms) is Ok(42)
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (100 runs)
+          proven: not run

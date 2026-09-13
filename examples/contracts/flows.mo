@@ -26,3 +26,6 @@ test "a receipt keeps the amount and leaves the card behind"
   payment = Payment(card: "4242424242424242", cents: 500)
   assert receipt(payment) == Receipt(cents: 500)
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

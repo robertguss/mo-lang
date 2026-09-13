@@ -48,3 +48,6 @@ test "what the source sends, the sink receives"
   assert source.ask(Produce, within: 100.ms) is Ok(1)
   assert sink.ask(Taken, within: 100.ms) is Ok(1)
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (100 runs)
+          proven: not run

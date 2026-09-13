@@ -32,3 +32,6 @@ test "a field on the copy can be added to"
   ada = User(name: "Ada", email: "ada@example.com", visits: 2)
   assert visit(ada).visits == 3
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

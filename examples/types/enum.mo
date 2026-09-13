@@ -34,3 +34,6 @@ end
 test "data carried by a variant can be read back"
   assert Card(last4: "4242").label == "card ending 4242"
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

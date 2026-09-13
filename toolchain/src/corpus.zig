@@ -270,6 +270,12 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
     // A rejects/ file breaks a law, so it must lex and parse; only the checker rejects it.
     const expect_reject = isRejectsPath(rel) and @intFromEnum(stage) >= @intFromEnum(pipeline.Stage.check);
     if (stage == .run and !expect_reject) {
+        // The toolchain's line is in the file; the checker says whether it is current.
+        if (std.mem.indexOf(u8, source, "\nverified: ") == null) {
+            tally.failed += 1;
+            std.debug.print("corpus: {s} has no verified: line; run mo test --write --sim 100 on it\n", .{rel});
+            return;
+        }
         const options: runner.Options = .{ .sim_runs = sim_runs, .sim_seed = runner.seedOf(source) };
         if (pipeline.testProgram(arena, prog, false, options, &diags)) |r| {
             if (std.mem.eql(u8, rel, racy)) return checkRacy(arena, prog, r, tally);

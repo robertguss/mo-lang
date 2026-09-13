@@ -35,3 +35,6 @@ test "if gives a value"
   assert note(4_000) == "1000 cents to free shipping"
   assert note(9_000) == "0 cents to free shipping"
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

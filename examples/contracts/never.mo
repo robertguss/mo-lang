@@ -32,3 +32,6 @@ test "a taken seat cannot be booked again"
   held = [Booking(seat: "12A", guest: "Ada")]
   assert book(held, "12A", "Bob") is Error(SeatTaken("12A"))
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

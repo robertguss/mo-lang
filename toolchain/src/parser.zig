@@ -303,6 +303,12 @@ const Parser = struct {
         _ = try p.expect(.colon);
         while (p.peek() != .newline and p.peek() != .eof) _ = p.next();
         try p.endLine();
+        // Chapter 5's second line, `proven: ...`, belongs to the same node.
+        const t = p.toks.items[p.tok];
+        if (t.kind == .ident and std.mem.eql(u8, p.source[t.start..t.end], "proven")) {
+            while (p.peek() != .newline and p.peek() != .eof) _ = p.next();
+            try p.endLine();
+        }
         return p.addNode(.{ .kind = .verified, .main_token = kw });
     }
 

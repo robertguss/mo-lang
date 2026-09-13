@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "count-lines.mo",
+      "module": "Programs.CountLines",
+      "declarations": [
+        { "id": "cca7c7b76fb0", "name": "module Programs.CountLines", "hash": "827e4b6473bcd085" },
+        { "id": "37955b303791", "name": "expose", "hash": "1a68172f41f7f439" },
+        { "id": "40d8f17eaa0e", "name": "intent", "hash": "2b94fb4766b53ba8" },
+        { "id": "9079c46681a2", "name": "fn count_lines", "hash": "1a3e88d1873221f3" },
+        { "id": "6249a829a21a", "name": "fn main", "hash": "5e89706bc98830f1" },
+        { "id": "cfc55861a72b", "name": "test \"a line ends at a newline\"", "hash": "3c7e3b85cd987a14" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "f59883370ef7ecf6" }
+    },
+    {
+      "path": "exit-code.mo",
+      "module": "Programs.ExitCode",
+      "declarations": [
+        { "id": "ad2bea2d5a1a", "name": "module Programs.ExitCode", "hash": "da415c9442ae3b9c" },
+        { "id": "1080da91e946", "name": "expose", "hash": "e7cea8d8c129f040" },
+        { "id": "656f18fdaea6", "name": "intent", "hash": "69f3f0bf51627813" },
+        { "id": "66349d04f6fd", "name": "fn exit_code", "hash": "c41f94993bc5b67d" },
+        { "id": "724708accf2c", "name": "fn main", "hash": "621ec47f9c70d3a0" },
+        { "id": "fc78e504ebb5", "name": "test \"no problems is success, and any problem is 3\"", "hash": "99c1448ab3ce26d3" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "530d9bffed0a7910" }
+    },
+    {
+      "path": "hello.mo",
+      "module": "Programs.Hello",
+      "declarations": [
+        { "id": "b5943c21c2b3", "name": "module Programs.Hello", "hash": "64c872b09e0b3ca5" },
+        { "id": "59660dc63e4d", "name": "expose", "hash": "e4e01b8cc850f9cd" },
+        { "id": "440888ce2398", "name": "intent", "hash": "94fbaf711c7a32e7" },
+        { "id": "d8b30fe8a811", "name": "fn greeting", "hash": "ac7f50b3fe2ee549" },
+        { "id": "29370d52cfac", "name": "fn main", "hash": "3a4bbed416ed837f" },
+        { "id": "aa4608d6744d", "name": "test \"greets the name it is given\"", "hash": "5622fdac8fedb6d0" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "02f616d4cb3dda98" }
+    },
+    {
+      "path": "lines-per-file.mo",
+      "module": "Programs.LinesPerFile",
+      "declarations": [
+        { "id": "eb1f98e7d9d6", "name": "module Programs.LinesPerFile", "hash": "7f3cab45219cd178" },
+        { "id": "917ec7be0a28", "name": "expose", "hash": "e41b3d1a4cde329b" },
+        { "id": "56bfa4bb5c7d", "name": "intent", "hash": "2779dad06e662e37" },
+        { "id": "8fa5f4062b76", "name": "fn described_line", "hash": "2f726b71c8dd0c5a" },
+        { "id": "7d21490a249f", "name": "fn described", "hash": "5b0aa5c0aef2667a" },
+        { "id": "3c220f3859a4", "name": "fn main", "hash": "de36942d2c02957e" },
+        { "id": "d898d4b348c4", "name": "test \"a line is padded to a column\"", "hash": "7d22aa3307c906aa" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "5a68a9e573419455" }
+    },
+    {
+      "path": "logstat/main.mo",
+      "module": "Logstat.Main",
+      "declarations": [
+        { "id": "8987005ccc46", "name": "module Logstat.Main", "hash": "f95d967e82f8dc49" },
+        { "id": "d409a86a7aba", "name": "expose", "hash": "0ee567eb64af2564" },
+        { "id": "63d503cd7ecd", "name": "use Logstat.Parse", "hash": "3aeacd90033adcb1" },
+        { "id": "a24397c8c6a0", "name": "use Logstat.Report", "hash": "43220db3e2b28680" },
+        { "id": "bec9331fc123", "name": "use Logstat.Stats", "hash": "c3fca040b9c36e59" },
+        { "id": "4988b000d854", "name": "intent", "hash": "f718decb19d39b58" },
+        { "id": "fbe9a859a63e", "name": "struct Options", "hash": "58fc47de95af571d" },
+        { "id": "384abfe88058", "name": "enum Problem", "hash": "73e84bb9dbc9a34e" },
+        { "id": "6dc6dca0ed77", "name": "fn usage", "hash": "908e7e25ae9d8efe" },
+        { "id": "d26ee070e361", "name": "fn analyze", "hash": "ff34f4a204a0f185" },
+        { "id": "029dab99ca93", "name": "fn log_names", "hash": "30c3290efd18dc70" },
+        { "id": "bc61c53f6e14", "name": "fn logged", "hash": "309b4b46d6ccbabf" },
+        { "id": "307f447ddf1f", "name": "fn read_log", "hash": "bcbdbc20f4b4334b" },
+        { "id": "838e50df2730", "name": "fn options", "hash": "348167eb5f71d282" },
+        { "id": "5150b8a59c47", "name": "fn step", "hash": "433323412238ac85" },
+        { "id": "2b0d7e7f8117", "name": "fn top_of", "hash": "1783340d5bb5c5ca" },
+        { "id": "b74f870a3f84", "name": "fn since_of", "hash": "7785020f9efc56ed" },
+        { "id": "acebf8bdfd38", "name": "fn tally_lines", "hash": "dbb97db729f51dd8" },
+        { "id": "2d9a57cc9322", "name": "fn tally_line", "hash": "6ba75509a1444778" },
+        { "id": "7f35cf8e4bb0", "name": "fn main", "hash": "da9543c97af2eb5b" },
+        { "id": "a79b94a67388", "name": "test \"the defaults are the top five, no since, and text\"", "hash": "08c8bcf23921eb1c" },
+        { "id": "5debc62a8279", "name": "test \"flags may come in any order around the directory\"", "hash": "a671c29f4198eb9f" },
+        { "id": "14b12f55d4b7", "name": "test \"a top outside 1 to 100 is a usage error, not a clamp\"", "hash": "5d9b13092d0cd1f8" },
+        { "id": "cb0cdcea3fbf", "name": "test \"a bad since, an unknown flag, a flag with no value, and one directory too many or too few\"", "hash": "631828c628292a22" },
+        { "id": "4e59d8ee28cc", "name": "test \"only names ending in .log are read, in name order\"", "hash": "9514292aaa777960" },
+        { "id": "6067fdbc915b", "name": "test \"a file folds line by line past a CRLF, a blank line, and a malformed line\"", "hash": "6494604118b5a2bf" },
+        { "id": "b406873d4f88", "name": "test \"no log file, a slow directory, and a usage error each end the run with their problem\"", "hash": "33c57b1bd64753f7" },
+        { "id": "9aced823e5c3", "name": "test rejects \"a line handed to the tally with its newline\"", "hash": "15e3df11eaa336a2" }
+      ],
+      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "b83c4308c3b8d295" }
+    },
+    {
+      "path": "logstat/parse.mo",
+      "module": "Logstat.Parse",
+      "declarations": [
+        { "id": "2824a0e4f743", "name": "module Logstat.Parse", "hash": "a9a9122f443826ae" },
+        { "id": "c7069c5b93a0", "name": "expose", "hash": "5cd8c20630e9fa3d" },
+        { "id": "05a54bfc4ea4", "name": "intent", "hash": "4df146cb29bb1762" },
+        { "id": "6b64441ecb63", "name": "type Status", "hash": "d49bdafd83a509da" },
+        { "id": "9e556decc725", "name": "struct Record", "hash": "42abe368bbd1fbc5" },
+        { "id": "ff449380a226", "name": "enum Malformed", "hash": "52139570d86c835a" },
+        { "id": "95b9218892f5", "name": "fn parse_line", "hash": "c0330b91a492a2fb" },
+        { "id": "4330ce6f16a7", "name": "fn timestamp_of", "hash": "ebfcb9f24803f593" },
+        { "id": "de0becd01465", "name": "fn method_of", "hash": "3078300ffc37f384" },
+        { "id": "33edf5ca79f8", "name": "fn path_of", "hash": "83f5b894aa0c9369" },
+        { "id": "1e238dadac9a", "name": "fn status_of", "hash": "5bb4ede982fd1ba7" },
+        { "id": "a1917f32562e", "name": "fn ms_of", "hash": "bb232173a95b6ad5" },
+        { "id": "4ffe00c4aa91", "name": "fn masked_cards", "hash": "2e90b1749601a865" },
+        { "id": "d53acca7f49c", "name": "fn starred", "hash": "3bf0544c9cfb1456" },
+        { "id": "e19e60aaf64c", "name": "fn card?", "hash": "6a96a3f2e74819f8" },
+        { "id": "25b19ebe5f39", "name": "fn digit?", "hash": "3fe89f74e1dfa757" },
+        { "id": "1c45661edf47", "name": "test \"a line in the common format is a record\"", "hash": "66d45a1913ba7fe1" },
+        { "id": "d211b4576a8c", "name": "test \"a line that does not fit names the field that broke\"", "hash": "934e502b5d7ba2ea" },
+        { "id": "aee3ee126e25", "name": "test \"the edges of status and duration are records\"", "hash": "5e9d3d6980bd013e" },
+        { "id": "b92e998a9771", "name": "test \"a card number in a path is starred out, and shorter numbers are not\"", "hash": "f51ced7237935ce9" },
+        { "id": "1e3628a6b939", "name": "test rejects \"a line that still holds its newline\"", "hash": "db4f381bf63672db" },
+        { "id": "a4abc09c8934", "name": "property \"no sixteen-digit run survives a parse\"", "hash": "9a6e997218cfb41e" }
+      ],
+      "verified": { "hash": "18fceb276ed6537c", "declarations": "57eaee8859b88096" }
+    },
+    {
+      "path": "logstat/report.mo",
+      "module": "Logstat.Report",
+      "declarations": [
+        { "id": "8f53b4db4fb0", "name": "module Logstat.Report", "hash": "82209c96f4c5260e" },
+        { "id": "8c1346d00df4", "name": "expose", "hash": "662fff6c5f4242c9" },
+        { "id": "c45b67bfc140", "name": "use Logstat.Parse", "hash": "c9a15cbdef3e2246" },
+        { "id": "0d54975be81d", "name": "use Logstat.Stats", "hash": "7ced7af45da3a2b8" },
+        { "id": "f582f0946239", "name": "intent", "hash": "8bd95eb57514aef6" },
+        { "id": "82b80fce6c55", "name": "struct JsonSummary", "hash": "2700ba304584f223" },
+        { "id": "fd8ff1cd8f3e", "name": "struct JsonSlow", "hash": "5a85924851521f95" },
+        { "id": "210e63924f48", "name": "fn text", "hash": "4de89196e48b638d" },
+        { "id": "d9adeb68521c", "name": "fn head_lines", "hash": "02dc72a9d7e1980c" },
+        { "id": "9fb91b8c4b29", "name": "fn slowest_lines", "hash": "0b5840e2e6cc89ab" },
+        { "id": "f35a241c9311", "name": "fn busiest_lines", "hash": "b52c41f31eeca249" },
+        { "id": "cde2cc441be6", "name": "fn json", "hash": "8834f3bf39a1e76f" },
+        { "id": "6836d4eb6994", "name": "fn grouped", "hash": "d55a522225adca5d" },
+        { "id": "4fb0f8eac321", "name": "fn one_decimal", "hash": "a6adbbd39c293b9d" },
+        { "id": "0de12439aaf1", "name": "fn widest", "hash": "29e8928d6af73970" },
+        { "id": "a3a24b24d368", "name": "fn lines_text", "hash": "9dee06ee0f7fc32f" },
+        { "id": "41af027565cf", "name": "fn example_summary", "hash": "4df30ea62be5e3d7" },
+        { "id": "681ab6057acf", "name": "test \"the counts line up on their right edge\"", "hash": "ecc53e018123ab8f" },
+        { "id": "5357b4b5f9df", "name": "test \"the slowest section lines up durations and requests\"", "hash": "68f247c20ab1f263" },
+        { "id": "1f7d9ec0a840", "name": "test \"the busiest section lines up counts, and a card number is already starred\"", "hash": "afd0ecb5fdd7ad23" },
+        { "id": "7b5d06125a64", "name": "test \"the text report is the three sections with a blank line between\"", "hash": "58cb993ddc0195a9" },
+        { "id": "7ae927e5089b", "name": "test \"the JSON form is one object on one line\"", "hash": "0be72913da282d84" },
+        { "id": "0500d0165429", "name": "test \"numbers group by thousands and rates keep one decimal\"", "hash": "a2ece8b338c115c7" },
+        { "id": "faab49be1fcc", "name": "test rejects \"a negative rate has no decimal text\"", "hash": "568cde69044c927b" }
+      ],
+      "verified": { "hash": "12e60bd49f90b827", "declarations": "9b392dfe47882973" }
+    },
+    {
+      "path": "logstat/stats.mo",
+      "module": "Logstat.Stats",
+      "declarations": [
+        { "id": "f82426698c31", "name": "module Logstat.Stats", "hash": "99baf355d163c827" },
+        { "id": "3c35b30989af", "name": "expose", "hash": "8d145112f11409d8" },
+        { "id": "8aa812abfe49", "name": "use Logstat.Parse", "hash": "0797c686dbf55e71" },
+        { "id": "07483b8002ce", "name": "intent", "hash": "fed7d62edb7f4235" },
+        { "id": "66b88db28abd", "name": "type Top", "hash": "54834cdddcfb097d" },
+        { "id": "6c9dbbb118b3", "name": "struct Count", "hash": "3077307f18e15b45" },
+        { "id": "2e872a5c5b89", "name": "struct Tally", "hash": "7a88ffc9fd69afdd" },
+        { "id": "816c2c571ab1", "name": "struct Summary", "hash": "4b2b393a6edb7024" },
+        { "id": "4614f5843da8", "name": "fn start", "hash": "28066743073c9864" },
+        { "id": "734dc745c5be", "name": "fn add", "hash": "5561321e9da13e57" },
+        { "id": "25a5297aedab", "name": "fn add_malformed", "hash": "cbcbf3cf54d0f865" },
+        { "id": "ac1d7f117c45", "name": "fn summarize", "hash": "0f9acd48f92c799b" },
+        { "id": "0711ff58f81a", "name": "fn rate", "hash": "bcc58fa129bedf21" },
+        { "id": "7489d11af2a8", "name": "fn per_minute", "hash": "6528fa48285ebd7e" },
+        { "id": "69d79789f984", "name": "fn slow_key", "hash": "c40f2c27c9f8fc3b" },
+        { "id": "da09dc2a31ea", "name": "fn kept_slowest", "hash": "681218d83083d65e" },
+        { "id": "0d303815e642", "name": "fn ranked", "hash": "31e2c7455e6555b1" },
+        { "id": "7ed139eba28f", "name": "fn sample", "hash": "92e53bc63f504e68" },
+        { "id": "2a02f332dbcf", "name": "test \"requests split into errors and successes, and malformed lines are counted apart\"", "hash": "b87e59cd41b10646" },
+        { "id": "d876146a010f", "name": "test \"per minute is requests over the span in minutes, and one request is 0.0\"", "hash": "20161e3b7d434692" },
+        { "id": "056cb98bbb69", "name": "test \"slowest keeps the top N by duration, then by timestamp\"", "hash": "89fff4b50f186e56" },
+        { "id": "e80127f599a1", "name": "test \"busiest ranks by count, then path, then method, and keeps the top N\"", "hash": "d70ad1fe0af2191e" },
+        { "id": "504ee0d28d29", "name": "test \"a record before since is not counted\"", "hash": "7b7bdd7b0a1a11e0" },
+        { "id": "4b9e30dd6d07", "name": "test rejects \"a part larger than its whole\"", "hash": "b0bc9b93eeb45357" },
+        { "id": "3822400ad8ce", "name": "test rejects \"a span whose last instant comes before its first\"", "hash": "e5d9b1b16b6b2d05" },
+        { "id": "d78bfd3ce764", "name": "test rejects \"a top of zero\"", "hash": "c4fc976ebd157749" },
+        { "id": "3ac4c5c95790", "name": "test rejects \"a top above one hundred\"", "hash": "c03f90d3892b2476" },
+        { "id": "a84d0e466567", "name": "property \"errors never exceed requests, for any list of records\"", "hash": "9e9d18c492d327bc" }
+      ],
+      "verified": { "hash": "cfa8e82649159ef9", "declarations": "f95b3f11149f2c14" }
+    }
+  ]
+}

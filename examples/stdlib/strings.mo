@@ -55,3 +55,6 @@ end
 test rejects "a card too short to mask"
   masked("123")
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

@@ -52,3 +52,6 @@ test "zip, enumerate, flat_map, and unique keep order"
   assert [1, 2].flat_map(fn(x) [x, x * 10] end) == [1, 10, 2, 20]
   assert [3, 1, 3, 2, 1].unique == [3, 1, 2]
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

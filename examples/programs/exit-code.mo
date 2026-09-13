@@ -20,3 +20,6 @@ test "no problems is success, and any problem is 3"
   assert exit_code(0) == 0
   assert exit_code(2) == 3
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

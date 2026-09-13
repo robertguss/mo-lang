@@ -709,13 +709,18 @@ const Printer = struct {
         try p.nl();
     }
 
-    /// The `verified:` line's text is the toolchain's, printed as written (N2).
+    /// The `verified:` line's text, and its `proven:` line, are the toolchain's, printed
+    /// as written (N2).
     fn verified(p: *Printer) E!void {
         const kw = try p.tk(.kw_verified);
+        const toks = p.tree.tokens;
         var last = kw;
         var i = kw + 1;
-        while (p.tree.tokens[i].kind != .newline and p.tree.tokens[i].kind != .eof) : (i += 1) last = i;
-        const toks = p.tree.tokens;
+        while (toks[i].kind != .newline and toks[i].kind != .eof) : (i += 1) last = i;
+        if (toks[i].kind == .newline and toks[i + 1].kind == .ident and std.mem.eql(u8, p.tree.tokenText(i + 1), "proven")) {
+            i += 1;
+            while (toks[i].kind != .newline and toks[i].kind != .eof) : (i += 1) last = i;
+        }
         try p.text(p.tree.source[toks[kw].end..toks[last].end]);
         p.cur = last + 1;
         p.pending = p.tv.trail[last];

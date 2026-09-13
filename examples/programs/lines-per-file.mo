@@ -33,3 +33,6 @@ end
 test "a line is padded to a column"
   assert described_line("a.txt", 2, 10) == "a.txt        2 lines, 10 bytes"
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

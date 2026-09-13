@@ -22,3 +22,6 @@ test "the impl gives the type its describe"
   book = Book(title: "Dune", author: "Frank Herbert")
   assert book.describe == "Dune by Frank Herbert"
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

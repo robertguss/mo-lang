@@ -37,3 +37,6 @@ test "the calendar counts leap days, and the years before 1970"
   assert Time.parse("2000-02-29T00:00:00Z") is Some(_)
   assert Time.from_parts(1969, 12, 31, 23, 59, 59).to_iso8601 == "1969-12-31T23:59:59Z"
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

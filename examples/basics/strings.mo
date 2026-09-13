@@ -27,3 +27,6 @@ test "size counts graphemes and bytes counts bytes"
   assert word.size == 4
   assert word.bytes.size == 5
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

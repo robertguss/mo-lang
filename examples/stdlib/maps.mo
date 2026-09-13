@@ -74,3 +74,6 @@ property "a map's keys never repeat, and its size counts them"
     assert m.size == m.keys.size
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

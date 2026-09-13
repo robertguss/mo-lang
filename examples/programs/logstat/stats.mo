@@ -210,3 +210,6 @@ property "errors never exceed requests, for any list of records"
     assert summary.requests == records.size
   end
 end
+
+verified: types, contracts, tests (10), property (200 seeds), sim (not run)
+          proven: not run

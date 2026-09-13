@@ -31,3 +31,6 @@ test "case handles both forms"
   assert find_price("pear") is Some(95)
   assert label("kiwi") == "kiwi is not sold here"
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

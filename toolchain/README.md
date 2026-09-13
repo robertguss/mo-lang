@@ -4,7 +4,7 @@ The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolc
 
 ```
 zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
-                                                mo test [--all] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
+                                                mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo fmt [--check | --stdout] <file.mo>
                                                 ReleaseSafe; zig build -Ddebug for Debug
@@ -38,6 +38,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/server.zig` | Mo.Server: the real platform `mo run` gives `main` (args, env, streams, a scoped `Fs`, the wall clock, exit) | ch. 3, Q18 |
 | `src/diag.zig` | structured diagnostics, no warnings | ch. 5 |
 | `src/verified.zig` | the `verified:` line | ch. 5 |
+| `src/ids.zig` | the `.mo.ids` sidecar: a stable id and a content hash per declaration, and the `verified:` line `mo test --write` recorded; `MO0317` when the line is not that one | ch. 5, 7 |
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |
 | `src/program.zig` | a program: the file given and every module it uses, by path under the `mo.root` root, in dependency order | grammar, Session 5 |
 | `src/fmt.zig` | `mo fmt`: the tree printed in its one shape (`FORMAT.md` is the rule table) | ch. 2, 4 |

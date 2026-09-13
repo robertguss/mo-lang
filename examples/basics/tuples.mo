@@ -27,3 +27,6 @@ test "a pair is built in order and read two ways"
   assert low(pair) == 4
   assert spread(pair) == 5
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
