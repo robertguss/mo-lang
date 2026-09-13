@@ -49,7 +49,7 @@ pub fn formatTree(gpa: std.mem.Allocator, tree: ast.Tree, diags: *diag.List) Err
 }
 
 fn reject(gpa: std.mem.Allocator, diags: *diag.List, at: u32) Error {
-    try diags.append(gpa, .{ .code = "MO0502", .category = .syntax, .at = at, .what = "this comment sits inside a line the formatter joins; move it above the line", .why = why_comment });
+    try diags.append(gpa, .{ .code = "MO0502", .category = .format, .at = at, .what = "this comment sits inside a line the formatter joins; move it above the line", .why = why_comment });
     return error.Rejected;
 }
 

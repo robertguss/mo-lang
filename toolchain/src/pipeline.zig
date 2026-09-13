@@ -5,6 +5,7 @@ const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const check = @import("check.zig");
 const caps = @import("caps.zig");
+const loops = @import("loops.zig");
 const bytecode = @import("bytecode.zig");
 const runner = @import("runner.zig");
 const diag = @import("diag.zig");
@@ -39,6 +40,16 @@ pub fn testSource(gpa: std.mem.Allocator, source: []const u8, diags: *diag.List)
     return runner.run(gpa, program);
 }
 
+/// MO0501 alone, for `mo fmt --check`: the loop rule over a file that parses, whatever
+/// else the checker finds in it.
+pub fn loopFindings(gpa: std.mem.Allocator, source: []const u8, out: *diag.List) Error!void {
+    var scratch: diag.List = .empty;
+    const tokens = try lexer.lex(gpa, source, &scratch);
+    const tree = try parser.parse(gpa, source, tokens, &scratch);
+    const checked = try check.check(gpa, tree, &scratch);
+    try loops.check(gpa, checked, out);
+}
+
 /// The stages through check; null when `stage` stops before lowering.
 fn front(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *diag.List) Error!?check.Checked {
     const tokens = try lexer.lex(gpa, source, diags);
@@ -47,6 +58,7 @@ fn front(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *diag.
     if (stage == .parse) return null;
     const checked = try check.check(gpa, tree, diags);
     try caps.check(gpa, checked, diags);
+    try loops.check(gpa, checked, diags);
     if (diags.items.len > 0) return error.Rejected;
     if (stage == .check) return null;
     return checked;

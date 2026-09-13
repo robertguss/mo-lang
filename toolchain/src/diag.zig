@@ -4,7 +4,8 @@
 //! Rendered as prose for humans and JSON for agents. There are no warnings.
 const std = @import("std");
 
-pub const Category = enum { syntax, types, laws, capabilities, contracts, tests, verified };
+/// `format`: the formatter's findings (toolchain/FORMAT.md), MO05xx.
+pub const Category = enum { syntax, types, laws, capabilities, contracts, tests, verified, format };
 
 pub const Fix = struct {
     description: []const u8,

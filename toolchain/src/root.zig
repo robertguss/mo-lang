@@ -14,6 +14,7 @@ pub const prelude = @import("prelude.zig");
 pub const types = @import("types.zig");
 pub const check = @import("check.zig");
 pub const caps = @import("caps.zig");
+pub const loops = @import("loops.zig");
 pub const bytecode = @import("bytecode.zig");
 pub const vm = @import("vm.zig");
 pub const sim = @import("sim.zig");

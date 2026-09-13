@@ -5,7 +5,7 @@
 //!   mo run   <file.mo>   runs the module's tests too, until `main` exists
 //!   mo fmt   <file.mo>   rewrites the file in its one shape (toolchain/FORMAT.md)
 //!     --check            changes nothing; exit 1 with a unified diff when the file
-//!                        is not formatted
+//!                        is not formatted, or with MO0501 for a pure for body
 //!     --stdout           prints the formatted file instead of writing it
 //! Diagnostics render as prose on stderr, or with --json as one JSON record per line
 //! on stdout. A file that does not parse is never rewritten.
@@ -66,10 +66,13 @@ pub fn main(init: std.process.Init) !void {
             .write => if (!std.mem.eql(u8, source, formatted)) {
                 try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = formatted });
             },
-            .check => if (!std.mem.eql(u8, source, formatted)) {
-                try mo.diff.unified(arena, out, path, source, formatted);
-                try out.flush();
-                std.process.exit(1);
+            .check => {
+                // The loop rule (MO0501) is the formatter's to enforce, and the checker's.
+                var findings: mo.diag.List = .empty;
+                try mo.pipeline.loopFindings(arena, source, &findings);
+                const changed = !std.mem.eql(u8, source, formatted);
+                if (changed) try mo.diff.unified(arena, out, path, source, formatted);
+                if (changed or findings.items.len > 0) return reject(out, err, path, source, findings.items, json);
             },
         }
         return;
