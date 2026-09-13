@@ -94,6 +94,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A `state` field with no zero value and no initializer is `MO0319` at check time | Fable | provisional | the corpus |
 | `main` is a known shape, `fn main(platform: Platform)`, no return type; minimal `Platform` (args, env, stdout, stderr, fs, clock, exit) (Q18) | Robert | provisional | program 2 |
 | The CLI log analyzer (menu program 2) is built before the job queue (amends Q14) | Robert | provisional | program 2 |
+| Overnight run: Fable directs, Opus builds, Fable decides alone and records every decision; merge to `main` after each accepted step; whatever it takes on the worker side; Fable stays on briefs, verification, decisions, logs | Robert | locked for this run | the morning review |
+| Roadmap rewritten to the 14-step list on [[roadmap]] | Fable | provisional | each step |
 
 ## Related
 - [[session-05]]

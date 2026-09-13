@@ -1,6 +1,7 @@
 //! The benchmark harness, from day one (design-v0/08: "50 ms and 100 ms targets:
 //! the benchmark suite, from day one"). Times every pipeline stage over every file
-//! in the corpus, best of N iterations, and prints one row per stage. Stages that
+//! in the corpus, best of N iterations, and prints one row per stage, then a `fmt`
+//! row: every file lexed, parsed, and formatted to memory (`mo fmt` without the write). Stages that
 //! are not implemented print "n/a" and the row lights up when the stage lands.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
@@ -98,6 +99,21 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
+    var fmt_best: i96 = std.math.maxInt(i96);
+    var fmt_it: u32 = 0;
+    while (fmt_it < iters) : (fmt_it += 1) {
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        for (sources) |src| {
+            _ = scratch.reset(.retain_capacity);
+            var diags: mo.diag.List = .empty;
+            _ = mo.fmt.format(scratch.allocator(), src, &diags) catch {};
+        }
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ns < fmt_best) fmt_best = ns;
+    }
+    const fmt_per: i96 = if (paths.len == 0) 0 else @divTrunc(fmt_best, @as(i96, @intCast(paths.len)));
+    try out.print("{s:<8} {d:>9} µs {d:>9} µs\n", .{ "fmt", @as(u64, @intCast(@divTrunc(fmt_best, 1000))), @as(u64, @intCast(@divTrunc(fmt_per, 1000))) });
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -106,11 +122,12 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best);
 }
 
-/// One row per stage: date, stage, files, best total µs ("n/a" when unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize) !void {
+/// One row per stage, then the fmt row: date, stage, files, best total µs ("n/a" when
+/// unimplemented).
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -126,4 +143,5 @@ fn appendResults(io: Io, rows: []const Row, files: usize) !void {
             try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), @tagName(r.stage), files });
         }
     }
+    try w.interface.print("{d}\tfmt\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), files, @as(u64, @intCast(@divTrunc(fmt_ns, 1000))) });
 }
