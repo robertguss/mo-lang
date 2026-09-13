@@ -211,3 +211,6 @@
 
 ## [2026-09-13] session | Morning: step 12b accepted, merged; step 13 (C backend) started
 - Fable verified: suite green, never-trips.mo trips without --sim, memo.zig gone, logstat-4k 80 ms. Two rows marked overturned, two added. Merged to main. C backend to a fresh session.
+
+## [2026-09-13] session | Morning: control run round 2
+- Mo 11.8 min, 0 loops to green, 791 lines, median 3 lines per function; Go 8.2; Python 7.9. All three verified. Branches control2-* kept as evidence, not merged. Two decision rows. Three round-2 sessions closed.

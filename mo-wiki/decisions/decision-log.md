@@ -164,6 +164,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `Out.written` is tests-only and `Out.flush` is a no-op in tests | Fable, from Opus's default | provisional | program 4 |
 | Step 12b accepted: memoization removed (logstat-4k 12 → 80 ms, accepted), every `never` runs at the end of every test over recorded values, `MO0324` for an uncheckable `never`, a `never` trip satisfies `test rejects`; 25 minutes | Fable | — | step 13 |
 | Values are recorded where held (bindings, parameters, binders, constructions, state fields), inside collections; a type the recorder cannot see (a generic `T`) is a gap, not an error | Fable, from Opus's default | provisional | program 4 |
+| Control run round 2 recorded: Mo 11.8 min (from 25.5), Go 8.2, Python 7.9; Mo zero loops to green; the rest of the gap is `mo fmt` line breaking and five stdlib rows | Fable | — | round 3 after the formatter fixes |
+| Formatter follow-ups (from round 2): break long list literals and calls outside parentheses; keep one-line anonymous functions inside long calls; `sort_by` descending, two-value `min`/`max`, streaming read | Fable | provisional | step 14 |
 
 ## Related
 - [[session-05]]
