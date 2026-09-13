@@ -176,7 +176,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
-| `Fs` | `read_only` | | `Fs` | | | grammar |
+| `Fs` | `read_only` | | `Fs`, read-only: its own type, going wherever an `Fs` goes, refused by the checker where a write reaches it (`MO0404`) | | | grammar |
 | `Fs` | `write` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `append` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `remove` | `String` | `Result(none, FsError)` | yes | | stdlib (09) |
