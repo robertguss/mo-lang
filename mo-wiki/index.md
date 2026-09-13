@@ -91,6 +91,9 @@
 - [[fork-in-the-road|The fork in the road: three products called 'a language for AI']] — "A language for AI" means three different products:
 - [[id-addressed-editing|ID-addressed editing]] — The problem: agent editing tools today use `str_replace` (fails on non-unique or already-changed text), line ranges (wrong the moment any…
 - [[idea-backlog|Idea backlog (Claude's early proposals)]] — - Stable semantic IDs on every declaration so agents edit by ID instead of fragile text diffs
+- [[outside-review-2026-09-13-response|Outside review, 13 Sep 2026: Fable's response and the baselines]] — the calls per item, Robert's decision, the numbers to compare against
+- [[outside-review-2026-09-13|Outside review, 13 Sep 2026: what to keep, revise, drop]] — Amp + oracle + librarian; verdict, ranked disagreements, keep/revise/drop table, next five moves
+- [[outside-review-2026-09-13-evidence|Outside review, 13 Sep 2026: evidence]] — thirteen probes against the day-two toolchain and kv corpus, with file and line references
 - [[negative-space-programming|Negative space programming]] — Source: [Negative Space Programming](https://double-trouble.dev/post/negativ-space-programming/)
 - [[research-summary-2026-09|Research summary, Sep 2026]] — Nobody has built this yet
 - [[state-model|State model]] — Not mutation itself
@@ -99,6 +102,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-18|Step 18: the outside review's no-compat fixes, brief for the worker]] — invariant polarity, handles as authority, capture, recursion, grouped patterns, equality, cache key, faults that stop
 - [[interpreter-step-17|Step 17: the round 3 follow-ups, brief for the worker]] — `any(T)` under refinements, `NotText`, a fold over lines, six diagnostics reworded
 - [[interpreter-step-16|Step 16: HTTP in the stdlib, brief for the worker]] — `Http` over `Net`, server and client, fixture, both runtimes, differential
 - [[interpreter-step-15|Step 15: processes and Net in the C backend, brief for the worker]] — the scheduler and sockets in C, kv and echo native, differential
@@ -106,6 +110,7 @@
 - [[interpreter-step-13|Step 13: the C backend, brief for the worker]] — C runtime, emitter, mo build, differential tests against the interpreter
 - [[interpreter-step-12b|Step 12b: two ratified defaults, undone, brief for the worker]] — memoization out of the reference interpreter; every never runs on every test
 - [[interpreter-step-12|Step 12: the runtime under real programs, brief for the worker]] — program discovery, hashed maps, in-place state, per-request freeing, file writes, three language decisions, fmt fuzz
+- [[program-4|Program 4: notes in Mo, brief for the worker]] — the first program over HTTP, built from two recipes
 - [[program-3|Program 3: kv in Mo, brief for the worker]] — the second real program, a TCP key-value store
 - [[interpreter-step-11|Step 11: Net, a TCP capability, brief for the worker]] — processes under mo run, sockets, direct style over blocking calls, Net.fixture
 - [[interpreter-step-10|Step 10: the verified sidecar, mo fix, the error catalog, the README, brief for the worker]] — four tooling promises from chapters 5 and 7

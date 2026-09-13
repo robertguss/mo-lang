@@ -224,6 +224,7 @@ fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
     Ok(lines): Ok(lines)
     Error(Missing(_)): Error(Unopened(dir: script, why: "is not a script kv can read"))
     Error(Timeout): Error(Unopened(dir: script, why: "took longer than 10 seconds to read"))
+    Error(NotText): Error(Unopened(dir: script, why: "is not UTF-8 text"))
   end
 end
 

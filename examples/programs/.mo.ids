@@ -9,10 +9,10 @@
         { "id": "37955b303791", "name": "expose", "hash": "1a68172f41f7f439" },
         { "id": "40d8f17eaa0e", "name": "intent", "hash": "2b94fb4766b53ba8" },
         { "id": "9079c46681a2", "name": "fn count_lines", "hash": "1a3e88d1873221f3" },
-        { "id": "6249a829a21a", "name": "fn main", "hash": "5e89706bc98830f1" },
+        { "id": "6249a829a21a", "name": "fn main", "hash": "7f2fab8b0323dafc" },
         { "id": "cfc55861a72b", "name": "test \"a line ends at a newline\"", "hash": "3c7e3b85cd987a14" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "f59883370ef7ecf6" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "15fccd6fd8ce7c11" }
     },
     {
       "path": "each-line.mo",
@@ -22,10 +22,10 @@
         { "id": "587f7729483a", "name": "expose", "hash": "1643fa714ce2d021" },
         { "id": "159a939fbca6", "name": "intent", "hash": "dbdc7729314aae9e" },
         { "id": "f72419852b9d", "name": "fn quoted", "hash": "fbbf45d0afbd5e9f" },
-        { "id": "6d57752812b2", "name": "fn main", "hash": "373a180124e15e15" },
+        { "id": "6d57752812b2", "name": "fn main", "hash": "cc07223090689dc2" },
         { "id": "a9128b5019d5", "name": "test \"a line is quoted as it is\"", "hash": "fe915f43ba0df039" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "8406f87e0e49cabb" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "488b6abdd4a94a48" }
     },
     {
       "path": "echo/main.mo",
@@ -143,9 +143,9 @@
         { "id": "04d410fe3c32", "name": "fn reopen", "hash": "c6a96dfad8875ec7" },
         { "id": "d64718512ee1", "name": "fn compacted", "hash": "d4e5a44aff0e0550" },
         { "id": "c62dd19e55d8", "name": "fn open", "hash": "6f9f2143965f1ba0" },
-        { "id": "00a59261c12b", "name": "fn names_in", "hash": "bc268bb21d4c50dc" },
-        { "id": "ec6caecd947d", "name": "fn text_of", "hash": "e7a61c4e8e92394a" },
-        { "id": "327a609ff3a5", "name": "fn size_of", "hash": "5f4c7840fe4bb31e" },
+        { "id": "00a59261c12b", "name": "fn names_in", "hash": "c2885d6fba1a6b09" },
+        { "id": "ec6caecd947d", "name": "fn text_of", "hash": "d136099f0d7664bf" },
+        { "id": "327a609ff3a5", "name": "fn size_of", "hash": "e817caa5b49c6e59" },
         { "id": "4e920ab6b183", "name": "test \"a set key reads back, and setting it again still counts one key\"", "hash": "f18907b429698cf3" },
         { "id": "ea4a811d3281", "name": "test \"a dropped key is gone, and dropping a key the table lacks changes nothing\"", "hash": "22931b684685a4d5" },
         { "id": "1cf88bc1d36d", "name": "test \"keys under a prefix come from every bucket, in byte order\"", "hash": "84c6734096d9dc8d" },
@@ -160,7 +160,7 @@
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
       ],
-      "verified": { "hash": "087094673077814e", "declarations": "dc8ab7b37c432c92" }
+      "verified": { "hash": "9f42df5ce2b765e5", "declarations": "75101848ea745932" }
     },
     {
       "path": "kv/main.mo",
@@ -194,7 +194,7 @@
         { "id": "f1d2d7b8b91f", "name": "fn check", "hash": "a3634327cafc6f61" },
         { "id": "4c392bd21d3e", "name": "fn checked_on", "hash": "e624e39fc25ee0a2" },
         { "id": "7b922cba6d2f", "name": "fn shown", "hash": "87186c333ce7ec5f" },
-        { "id": "713c955080a0", "name": "fn script_of", "hash": "ef4693a5d3373611" },
+        { "id": "713c955080a0", "name": "fn script_of", "hash": "06814f9702609a27" },
         { "id": "7631472b7b73", "name": "fn opened_log", "hash": "d998082c7158c15d" },
         { "id": "07abd27a1f81", "name": "fn said", "hash": "5e56cdc1b26d3ec0" },
         { "id": "2e659132ece9", "name": "fn code_of", "hash": "a24bda912ebe306c" },
@@ -205,7 +205,7 @@
         { "id": "ea0c28fa451d", "name": "test \"a log whose last line was cut short opens without it, and says so on the error stream\"", "hash": "ffff617e572ae283" },
         { "id": "ef06a248ca70", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "6bb9c596f9e1c213" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "20f806be1c5f53ed" }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "eff457c5895600fb" }
     },
     {
       "path": "kv/protocol.mo",
@@ -360,9 +360,9 @@
         { "id": "384abfe88058", "name": "enum Problem", "hash": "73e84bb9dbc9a34e" },
         { "id": "6dc6dca0ed77", "name": "fn usage", "hash": "908e7e25ae9d8efe" },
         { "id": "d26ee070e361", "name": "fn analyze", "hash": "ff34f4a204a0f185" },
-        { "id": "029dab99ca93", "name": "fn log_names", "hash": "30c3290efd18dc70" },
+        { "id": "029dab99ca93", "name": "fn log_names", "hash": "2ff3415b4ed81ebb" },
         { "id": "bc61c53f6e14", "name": "fn logged", "hash": "309b4b46d6ccbabf" },
-        { "id": "307f447ddf1f", "name": "fn read_log", "hash": "bcbdbc20f4b4334b" },
+        { "id": "307f447ddf1f", "name": "fn read_log", "hash": "e711dc9eef8088b2" },
         { "id": "838e50df2730", "name": "fn options", "hash": "348167eb5f71d282" },
         { "id": "5150b8a59c47", "name": "fn step", "hash": "433323412238ac85" },
         { "id": "2b0d7e7f8117", "name": "fn top_of", "hash": "1783340d5bb5c5ca" },
@@ -379,7 +379,7 @@
         { "id": "b406873d4f88", "name": "test \"no log file, a slow directory, and a usage error each end the run with their problem\"", "hash": "33c57b1bd64753f7" },
         { "id": "9aced823e5c3", "name": "test rejects \"a line handed to the tally with its newline\"", "hash": "15e3df11eaa336a2" }
       ],
-      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "b83c4308c3b8d295" }
+      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "4a2d019ded722869" }
     },
     {
       "path": "logstat/parse.mo",
@@ -475,6 +475,19 @@
         { "id": "a84d0e466567", "name": "property \"errors never exceed requests, for any list of records\"", "hash": "9e9d18c492d327bc" }
       ],
       "verified": { "hash": "cfa8e82649159ef9", "declarations": "f95b3f11149f2c14" }
+    },
+    {
+      "path": "not-text.mo",
+      "module": "Programs.NotText",
+      "declarations": [
+        { "id": "9887fe5aa1dc", "name": "module Programs.NotText", "hash": "fbad095edd195e69" },
+        { "id": "70f8024b5f6b", "name": "expose", "hash": "b5a721f19c08d482" },
+        { "id": "086942e61c29", "name": "intent", "hash": "d941892c2c73318a" },
+        { "id": "90e6ec478fb7", "name": "fn said", "hash": "9f2bd164d3fa15d0" },
+        { "id": "139ff541261a", "name": "fn main", "hash": "550f8cc5be709210" },
+        { "id": "08fdc935b574", "name": "test \"a file the fixture does not hold is missing\"", "hash": "4601e1008b4474c7" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "3f4308314c342095" }
     }
   ]
 }

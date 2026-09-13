@@ -50,12 +50,12 @@
         { "id": "0b7238324546", "name": "module Effects.Narrowing", "hash": "d94dad8ef94a0744" },
         { "id": "01fb381d6a73", "name": "expose", "hash": "2e231b09b05c5c36" },
         { "id": "ccee27b4daaa", "name": "intent", "hash": "ce7ba618cbb3bd9b" },
-        { "id": "55ac1a00e476", "name": "enum ReportError", "hash": "b5f5a03f3d4e50b7" },
+        { "id": "55ac1a00e476", "name": "enum ReportError", "hash": "0225a3feb491d0ef" },
         { "id": "cf9e7a529dd5", "name": "fn read_report", "hash": "60941c0d11684ca0" },
         { "id": "c03160e07046", "name": "fn report", "hash": "cad3469bbca9f9e2" },
         { "id": "3d4d23ab9845", "name": "test \"a report that is not in the folder is Missing\"", "hash": "9df9f6c62c9097a1" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "362434342ba32f26" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "05725e5dfc0235b8" }
     },
     {
       "path": "net.mo",
@@ -110,13 +110,13 @@
         { "id": "3033c7ba94b6", "name": "module Effects.Timeout", "hash": "5c56cc321620166c" },
         { "id": "04d50c2347d8", "name": "expose", "hash": "19f432d4294124b5" },
         { "id": "0635110d288c", "name": "intent", "hash": "56d3280f30972810" },
-        { "id": "c6a899a1a54b", "name": "enum ReadError", "hash": "e58850bbcee94f0f" },
+        { "id": "c6a899a1a54b", "name": "enum ReadError", "hash": "bfe836cfcc309a11" },
         { "id": "5957f074b3e0", "name": "fn load", "hash": "9101c46e4ab164a6" },
-        { "id": "94fb0eb9099d", "name": "fn config", "hash": "8c1d42f1ab83fa5b" },
+        { "id": "94fb0eb9099d", "name": "fn config", "hash": "604be0940e8b501b" },
         { "id": "f3c445427274", "name": "test \"a missing file falls back to the defaults\"", "hash": "6654407b7fdbda51" },
         { "id": "3ab9144f9253", "name": "test \"a timeout is passed on, not papered over\"", "hash": "c6933d6a23d501b7" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "b907c5515ef81483" }
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "b37ed02760ac14a7" }
     }
   ]
 }

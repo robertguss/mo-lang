@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [tooling, stdlib, contracts, laws]
 sources: [plans/control-run-3.md, decisions/decision-log.md, spec/design-v0/05-verification.md]
-status: in-progress
+status: done
 ---
 
 # Step 17: the round 3 follow-ups

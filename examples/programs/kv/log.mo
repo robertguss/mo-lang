@@ -214,6 +214,7 @@ fn names_in(dir: Fs) : Result(List(String), LogError)
     Ok(names): Ok(names)
     Error(Missing(_)): Error(NoFolder)
     Error(Timeout): Error(Slow)
+    Error(NotText): Error(NoFolder)
   end
 end
 
@@ -222,6 +223,7 @@ fn text_of(dir: Fs) : Result(String, LogError)
     Ok(text): Ok(text)
     Error(Missing(_)): Error(Unreadable)
     Error(Timeout): Error(Slow)
+    Error(NotText): Error(Unreadable)
   end
 end
 
@@ -230,6 +232,7 @@ fn size_of(dir: Fs) : Result(UInt64, LogError)
     Ok(bytes): Ok(bytes)
     Error(Missing(_)): Error(Unreadable)
     Error(Timeout): Error(Slow)
+    Error(NotText): Error(Unreadable)
   end
 end
 
@@ -335,5 +338,5 @@ test rejects "a value over 60 KiB"
   put(empty(), "big", "x".repeat(61_441))
 end
 
-verified: types, contracts, tests (13), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (13), property (0 seeds), sim (not run)
           proven: not run

@@ -2787,8 +2787,22 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME };
-static const char *const fs_row_names[] = {"read", "read_lines", "size", "list", "each_line", "write", "append", "remove", "rename"};
+enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME };
+static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "each_line", "fold_lines", "write", "append", "remove", "rename"};
+
+static MoValue not_text(void) { return error_of(mo_variant(MO_N_NOT_TEXT, 0, NULL)); }
+
+/* What read, read_lines, and read_bytes give for a file's bytes: its text, its lines, or its
+ * bytes; NotText for text or lines that are not UTF-8 (stdlib.zig, readResult). */
+static MoValue read_result(int which, MoValue s) {
+    if (which == FS_READ_BYTES) {
+        MoValue *out = mo_alloc_values(s.aux);
+        for (uint32_t i = 0; i < s.aux; i++) out[i] = mo_i64((unsigned char)s.as.s[i]);
+        return ok_of(mo_list(out, s.aux));
+    }
+    if (!utf8_valid(s.as.s, s.aux)) return not_text();
+    return ok_of(which == FS_READ ? s : lines_of(s));
+}
 
 /* Fs.each_line: bytes as they are read, split as String.lines splits a whole text, each line
  * handed to the function in turn with a safe point after it that keeps nothing, so a file of
@@ -2797,13 +2811,30 @@ typedef struct {
     MoValue f;
     size_t from, kept;
     Buf partial;
+    /* A line was not UTF-8: no line after it is handed, and the call is NotText. */
+    bool not_text;
+    /* Fs.fold_lines: the value so far, from its init, handed with each line and replaced by what
+     * the call gives, the safe point's one root. */
+    bool folds;
+    MoValue acc[1];
 } LineFeed;
 
 static void feed_line(LineFeed *l, const char *s, size_t n) {
     if (n > 0 && s[n - 1] == '\r') n--;
+    if (l->not_text) return;
+    if (!utf8_valid(s, n)) {
+        l->not_text = true;
+        return;
+    }
     MoValue line = heap_string(s, n);
-    mo_invoke(l->f, &line);
-    l->kept = iterate(l->from, NULL, 0, l->kept);
+    if (l->folds) {
+        MoValue args[2] = {l->acc[0], line};
+        l->acc[0] = mo_invoke(l->f, args);
+        l->kept = iterate(l->from, l->acc, 1, l->kept);
+    } else {
+        mo_invoke(l->f, &line);
+        l->kept = iterate(l->from, NULL, 0, l->kept);
+    }
 }
 
 static void feed_bytes(LineFeed *l, const char *s, size_t n) {
@@ -2835,7 +2866,7 @@ static MoValue string_list(char **names, size_t n) {
 
 static MoValue fixture_files(int which, const MoValue *a) {
     FixScope scope = fix_scope_of(a[0]);
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
@@ -2872,25 +2903,27 @@ static MoValue fixture_files(int which, const MoValue *a) {
     char *full = fix_path_in(&scope, S(path));
     if (!full) return missing(path);
     switch (which) {
-    case FS_EACH_LINE: {
+    case FS_EACH_LINE:
+    case FS_FOLD_LINES: {
         FixFile *f = fix_find(sys, full);
         free(full);
         if (!f) return missing(path);
         MoValue text = f->text;
-        LineFeed l = {.f = a[2], .from = mo_mark()};
+        bool folds = which == FS_FOLD_LINES;
+        LineFeed l = {.f = folds ? a[3] : a[2], .from = mo_mark(), .folds = folds, .acc = {folds ? a[2] : MO_NONE_V}};
         feed_bytes(&l, text.as.s, text.aux);
         feed_end(&l);
-        return ok_none();
+        return l.not_text ? not_text() : ok_of(l.acc[0]);
     }
     case FS_READ:
     case FS_READ_LINES:
+    case FS_READ_BYTES:
     case FS_SIZE: {
         FixFile *f = fix_find(sys, full);
         free(full);
         if (!f) return missing(path);
-        if (which == FS_READ) return ok_of(f->text);
         if (which == FS_SIZE) return ok_of(mo_u64(f->text.aux));
-        return ok_of(lines_of(f->text));
+        return read_result(which, f->text);
     }
     case FS_WRITE: fix_put(sys, full, a[2]); break;
     case FS_APPEND: {
@@ -2934,14 +2967,15 @@ static MoValue fixture_files(int which, const MoValue *a) {
 static MoValue server_files(int which, const MoValue *a) {
     const Scope *scope = &scopes[mo_cap_handle(a[0])];
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
     if (which >= FS_WRITE && scope->read_only) {
         mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     }
     int64_t t0 = awake_ns();
     switch (which) {
     case FS_READ:
-    case FS_READ_LINES: {
+    case FS_READ_LINES:
+    case FS_READ_BYTES: {
         size_t len = 0;
         char *text = read_scoped(scope, S(path), &len);
         if (late(t0, within)) {
@@ -2951,17 +2985,19 @@ static MoValue server_files(int which, const MoValue *a) {
         if (!text) return missing(path);
         MoValue s = heap_string(text, len);
         free(text);
-        return ok_of(which == FS_READ ? s : lines_of(s));
+        return read_result(which, s);
     }
-    case FS_EACH_LINE: {
+    case FS_EACH_LINE:
+    case FS_FOLD_LINES: {
         char *real = real_scoped(scope, S(path));
         int fd = real ? open(real, O_RDONLY) : -1;
         free(real);
         if (fd < 0) return late(t0, within) ? timed_out() : missing(path);
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
-        enum { READING, DONE, LATE, FAILED } ended = READING;
-        LineFeed l = {.f = a[2], .from = mo_mark()};
+        enum { READING, DONE, LATE, FAILED, NOT_TEXT } ended = READING;
+        bool folds = which == FS_FOLD_LINES;
+        LineFeed l = {.f = folds ? a[3] : a[2], .from = mo_mark(), .folds = folds, .acc = {folds ? a[2] : MO_NONE_V}};
         char chunk[1 << 16];
         while (ended == READING) {
             if (late(t0, within)) {
@@ -2973,12 +3009,14 @@ static MoValue server_files(int which, const MoValue *a) {
             if (r < 0) ended = FAILED;
             else if (r == 0) ended = DONE;
             else feed_bytes(&l, chunk, (size_t)r);
-            if (l.partial.len > READ_LIMIT) ended = FAILED;
+            if (l.not_text) ended = NOT_TEXT;
+            else if (l.partial.len > READ_LIMIT) ended = FAILED;
         }
         close(fd);
         if (ended == DONE) feed_end(&l);
         else free(l.partial.p);
-        return ended == DONE ? ok_none() : ended == LATE ? timed_out() : missing(path);
+        if (l.not_text) return not_text();
+        return ended == DONE ? ok_of(l.acc[0]) : ended == LATE ? timed_out() : missing(path);
     }
     case FS_SIZE: {
         char *real = real_scoped(scope, S(path));
@@ -3065,7 +3103,9 @@ static MoValue files(int which, const MoValue *a) { return server_mode ? server_
 
 MO_ROW(mo_r_Fs_read) { (void)kind; return files(FS_READ, a); }
 MO_ROW(mo_r_Fs_read_lines) { (void)kind; return files(FS_READ_LINES, a); }
+MO_ROW(mo_r_Fs_read_bytes) { (void)kind; return files(FS_READ_BYTES, a); }
 MO_ROW(mo_r_Fs_each_line) { (void)kind; return files(FS_EACH_LINE, a); }
+MO_ROW(mo_r_Fs_fold_lines) { (void)kind; return files(FS_FOLD_LINES, a); }
 MO_ROW(mo_r_Fs_size) { (void)kind; return files(FS_SIZE, a); }
 MO_ROW(mo_r_Fs_list) { (void)kind; return files(FS_LIST, a); }
 MO_ROW(mo_r_Fs_write) { (void)kind; return files(FS_WRITE, a); }
@@ -3743,6 +3783,22 @@ static double rng_float(void) {
     return f;
 }
 
+/* contracts.refined_base_candidates and refined_candidates. */
+#define REFINED_BASE_CANDIDATES 100
+#define REFINED_CANDIDATES 200
+
+/* A generated integer from lo to hi: each edge a fifth of the time, else uniform. */
+static __int128 between(__int128 lo, __int128 hi) {
+    switch (rng_less_than(8, 5)) {
+    case 0: return lo;
+    case 1: return hi;
+    default: {
+        uint64_t span = (uint64_t)(hi - lo);
+        return lo + (__int128)(span == UINT64_MAX ? rng_bits(64) : rng_less_than(64, span + 1));
+    }
+    }
+}
+
 /* The values any(T) produced in this attempt, in order, for a property's report. */
 typedef struct { const char *name; MoValue value; } Generated;
 static Generated *generated;
@@ -3807,13 +3863,15 @@ static MoValue generate(uint32_t t, uint32_t depth) {
         return m;
     }
     case MO_T_ALIAS: {
+        /* Only what the alias admits: the base type's candidates, then its bounds', then MO0325. */
         const MoDecl *d = &mo_decls[ty->a];
-        for (uint32_t attempt = 0;; attempt++) {
-            MoValue v = generate(ty->b, depth);
+        for (uint32_t attempt = 0; attempt < REFINED_CANDIDATES; attempt++) {
+            MoValue v = attempt >= REFINED_BASE_CANDIDATES && d->bounded ? mo_i128(between(d->lo, d->hi)) : generate(ty->b, depth);
             bool holds = true;
             for (uint32_t r = 0; r < d->nrefines && holds; r++) holds = d->refines[r](v).as.b;
-            if (holds || attempt == 100) return v;
+            if (holds) return v;
         }
+        mo_crash(d->none_admitted);
     }
     case MO_T_DECL: {
         const MoDecl *d = &mo_decls[ty->a];

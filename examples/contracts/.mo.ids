@@ -65,6 +65,22 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "039608dc9c5ab9c4" }
     },
     {
+      "path": "property-refined.mo",
+      "module": "Contracts.PropertyRefined",
+      "declarations": [
+        { "id": "d9c0f4748fa6", "name": "module Contracts.PropertyRefined", "hash": "e78dbadd60a3fb10" },
+        { "id": "6d84a4315590", "name": "expose", "hash": "2c337f0c32796028" },
+        { "id": "3b06817784be", "name": "intent", "hash": "05f3a7832a29bfa4" },
+        { "id": "8fbc09444687", "name": "type Percent", "hash": "c061a5b62d0da1de" },
+        { "id": "924180981914", "name": "type Status", "hash": "996bd3fe081dae25" },
+        { "id": "987e5df7467f", "name": "fn share", "hash": "6a0d91d120a51b3a" },
+        { "id": "a10ff25895cb", "name": "fn class_of", "hash": "f6323119cd3c1fce" },
+        { "id": "e9c92d8a9d3a", "name": "property \"a share of a total is never more than the total\"", "hash": "4e498408ad5f0b8f" },
+        { "id": "e2ebf4d44888", "name": "property \"every status is in one of the five classes\"", "hash": "e66e508f8248f7d3" }
+      ],
+      "verified": { "hash": "c89d0b56b139923f", "declarations": "cc8bae4b3db2e633" }
+    },
+    {
       "path": "requires.mo",
       "module": "Contracts.Requires",
       "declarations": [

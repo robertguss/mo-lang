@@ -63,6 +63,8 @@ pub const Code = enum {
     not_exposed,
     no_module,
     never_unchecked,
+    /// Given by the property runner, not the checker (vm.zig and mo_rt.c, generate).
+    none_admitted,
 };
 
 pub const Entry = diag.Entry;
@@ -94,7 +96,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .rebinding = .{ .code = "MO0306", .category = .laws, .what = "<name> is bound twice in one scope; make it var <name>, or pick a new name.", .why = "A name bound with = is bound once (chapter 2, honesty laws), so a reader never has to ask which value it holds. A value that changes is a var.", .fixes = &.{} },
     .unused_binding = .{ .code = "MO0307", .category = .laws, .what = "<name> is bound but never used.", .why = "Every binding is read (chapter 2, honesty laws): an unused one is dead code, or a bug where another name was used instead.", .fixes = &.{"delete the line that binds the name, when its value holds no capability call, try, or process start, and no comment sits on the line"} },
     .not_exhaustive = .{ .code = "MO0308", .category = .laws, .what = "this case does not cover <pattern>; add an arm for it.", .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash.", .fixes = &.{} },
-    .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <variants>; name each variant of <Type>.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
+    .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <patterns> of <Type>; write an arm for each of them in its place.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
     .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles.", .fixes = &.{} },
     .requires_untested = .{ .code = "MO0311", .category = .laws, .what = "<function> has requires <condition>, but no test rejects trips it.", .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips.", .fixes = &.{} },
     .default_param = .{ .code = "MO0312", .category = .laws, .what = "<name> has a default value; parameters have no defaults, so pass <value> at the call.", .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives.", .fixes = &.{"drop the default, and pass it at every call in the file that leaves the parameter out"} },
@@ -102,7 +104,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .var_captured = .{ .code = "MO0314", .category = .laws, .what = "<name> is a var and cannot be captured by the anonymous function; bind a plain name first.", .why = "A var is never aliased (chapter 3, values): an anonymous function captures read-only, so it cannot hold a var.", .fixes = &.{} },
     .var_to_process = .{ .code = "MO0315", .category = .laws, .what = "<name> is a var and cannot be sent to a process; bind a plain name first.", .why = "A var is never aliased (chapter 3, values): a process that received one would see a value its owner still changes.", .fixes = &.{} },
     .unsupervised = .{ .code = "MO0316", .category = .laws, .what = "<Process> is not a child of any supervisor; add a supervisor with child <Process>.", .why = "A process not under a supervisor does not compile (chapter 3, processes): every crash has someone to restart it.", .fixes = &.{} },
-    .hand_verified = .{ .code = "MO0317", .category = .laws, .what = "the verified: line was written by hand; delete it and let the toolchain compute it.", .why = "The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.", .fixes = &.{} },
+    .hand_verified = .{ .code = "MO0317", .category = .laws, .what = "no mo test --write recorded this verified: line; delete it and run mo test --write on this file, which writes the line.", .why = "The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.", .fixes = &.{} },
     .no_zero = .{ .code = "MO0319", .category = .laws, .what = "the state field <name> is a <Type>, which has no zero value; give it = expr.", .why = "A state field starts at its type's zero value (0, \"\", [], None, false, and tuples and structs of those) unless it writes = expr (grammar, Session 5). An enum, a Time, a capability, a handle, or a refinement that refuses zero has none, so the process could not start.", .fixes = &.{} },
     .use_cycle = .{ .code = "MO0318", .category = .laws, .what = "<Module> uses <Module> uses <Module>; modules have no import cycles.", .why = "Modules have no import cycles (chapter 2, shape laws), so each module is understood, checked, and cached after the ones it uses.", .fixes = &.{} },
     .two_mains = .{ .code = "MO0320", .category = .laws, .what = "<Module> declares fn main, and so does <Module>; a program starts in one place.", .why = "A program has one root, fn main(platform: Platform), in one of its modules (chapter 3, effects; Q18): its capabilities come from one place, and it starts in one place.", .fixes = &.{} },
@@ -110,6 +112,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .not_exposed = .{ .code = "MO0322", .category = .laws, .what = "<Module> does not expose <name>; a use names only what is on a module's expose line.", .why = "A module's expose line is its whole public surface (grammar §2); everything else is private, so a use names only what the module exposes.", .fixes = &.{} },
     .no_module = .{ .code = "MO0323", .category = .laws, .what = "<Module> is not a module of this program: there is no <path> under the program root.", .why = "A program is a tree of files: A.B is a/b.mo under the program root, the nearest directory holding a mo.root file, else the main file's own directory (grammar, Session 5). A use names a module of the program.", .fixes = &.{} },
     .never_unchecked = .{ .code = "MO0324", .category = .laws, .what = "this never cannot be checked: a run records no <Type> values, only structs, enums, and primitive values.", .why = "A never is checked at the end of every test, test rejects, and property run, over the values of each type it reads with T.all that the run held (chapter 2, contract laws). A run records structs, enums, aliases, and primitive values; a capability, a trait, or an opaque type is not recorded, so a never over one would pass without checking anything, and a never that cannot be checked does not compile.", .fixes = &.{} },
+    .none_admitted = .{ .code = "MO0325", .category = .tests, .what = "the refinement of <Type> admits none of the 200 values any(<Type>) generated; write its where as a range, such as value >= 1 and value <= 9, or generate the base type and build the value in the property.", .why = "A property checks its claim over the values a type admits (chapter 4). any(T) of a refined type generates the base type and keeps what the where admits; when none of the first 100 candidates passes and the where compares value with integer literals, it generates between those bounds. When none of 200 passes, the property would check nothing, so it fails instead.", .fixes = &.{} },
 });
 
 // ---- what the checker hands on
@@ -1729,9 +1732,9 @@ const Checker = struct {
                 },
                 .verified => switch (if (c.module < c.verified_lines.len) c.verified_lines[c.module] else .hand_written) {
                     .recorded => {},
-                    .hand_written => try c.reportTok(.hand_verified, n.main_token, "the verified: line was written by hand; delete it and let the toolchain compute it."),
-                    .line_changed => try c.reportTok(.hand_verified, n.main_token, "the verified: line is not the one mo test --write recorded in .mo.ids; run mo test --write to compute it again."),
-                    .declarations_changed => |names| try c.reportTok(.hand_verified, n.main_token, try c.print("{s} changed since mo test --write computed the verified: line; run mo test --write to compute it again.", .{names})),
+                    .hand_written => try c.reportTok(.hand_verified, n.main_token, "no mo test --write recorded this verified: line; delete it and run mo test --write on this file, which writes the line."),
+                    .line_changed => try c.reportTok(.hand_verified, n.main_token, "this verified: line is not the one mo test --write recorded; leave the line to the toolchain and run mo test --write on this file, which writes it again."),
+                    .declarations_changed => |names| try c.reportTok(.hand_verified, n.main_token, try c.print("{s} changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.", .{names})),
                 },
                 else => {},
             }
@@ -1938,6 +1941,38 @@ const Checker = struct {
         return null;
     }
 
+    /// The pattern an arm for a constructor starts with: `Red`, `Some(_)`, `Rect(size: _, at: _)`.
+    fn armPattern(c: *Checker, k: Ctor) Error![]const u8 {
+        if (k.fields.len == 0) return k.name;
+        var out: std.ArrayList(u8) = .empty;
+        try out.print(c.gpa, "{s}(", .{k.name});
+        for (k.fields, 0..) |_, i| {
+            if (i > 0) try out.appendSlice(c.gpa, ", ");
+            if (k.fields.len > 1 and k.field_names.len == k.fields.len) try out.print(c.gpa, "{s}: ", .{k.field_names[i]});
+            try out.append(c.gpa, '_');
+        }
+        try out.append(c.gpa, ')');
+        return out.items;
+    }
+
+    /// The token that closes the `(` just after `tok`, or the last one before the line ends.
+    fn closingParen(c: *Checker, tok: u32) u32 {
+        var depth: u32 = 0;
+        var i = tok + 1;
+        while (i + 1 < c.tree.tokens.len) : (i += 1) {
+            switch (c.tree.tokens[i].kind) {
+                .l_paren => depth += 1,
+                .r_paren => {
+                    depth -|= 1;
+                    if (depth == 0) return i;
+                },
+                .newline, .eof => return i - 1,
+                else => {},
+            }
+        }
+        return i;
+    }
+
     fn joinAnd(c: *Checker, names: []const []const u8) Error![]const u8 {
         return switch (names.len) {
             0 => "",
@@ -1972,13 +2007,13 @@ const Checker = struct {
                     const named = for (arms) |other| {
                         if (other != a and c.headMatches(c.node(other).lhs, k)) break true;
                     } else false;
-                    if (!named) try hidden.append(c.gpa, k.name);
+                    if (!named) try hidden.append(c.gpa, try c.armPattern(k));
                 }
                 const arm = c.text(c.node(pat).main_token);
                 const what = if (hidden.items.len == 0)
                     try c.print("the {s} arm catches no variant of {s}; remove it.", .{ arm, try c.tn(subject) })
                 else
-                    try c.print("the {s} arm hides {s}; name each variant of {s}.", .{ arm, try c.joinAnd(hidden.items), try c.tn(subject) });
+                    try c.print("the {s} arm hides {s} of {s}; write an arm for each of them in its place.", .{ arm, try c.joinAnd(hidden.items), try c.tn(subject) });
                 try c.reportTok(.catch_all, c.node(pat).main_token, what);
                 return;
             }
@@ -2380,7 +2415,14 @@ const Checker = struct {
                 return;
             }
             fields = c.variants.items[v].fields;
-            if (fields.len() == 1) try c.reportTok(.bad_pattern, n.main_token, try c.print("{s} has one field, so it is matched by position: {s}(_)", .{ name, name }));
+            if (fields.len() == 1) {
+                // Say it as the writer's own binding: Circle(r), not Circle(radius: r).
+                const close = c.closingParen(n.main_token);
+                const toks = c.tree.tokens;
+                const written = c.tree.source[toks[n.main_token].start..toks[close].end];
+                const inner = if (pfields.len == 1) std.mem.trim(u8, c.tree.source[toks[c.node(c.node(pfields[0]).lhs).main_token].start..toks[close].start], " ") else "_";
+                try c.reportTok(.bad_pattern, n.main_token, try c.print("{s} has one field, so it is matched by position: write {s}({s}), not {s}", .{ name, name, inner, written }));
+            }
         } else if (c.type_names.get(name)) |d| {
             if (c.decls.items[d].kind != .struct_ or !c.pool.unify(subject, c.decls.items[d].type)) {
                 try c.reportTok(.bad_pattern, n.main_token, try c.print("{s} cannot match {s}", .{ name, try c.tn(subject) }));
@@ -3578,7 +3620,34 @@ test "case: a missing variant is named; a catch-all arm on an enum names what it
         \\    _: false
         \\  end
         \\end
-    , "MO0309", "the _ arm hides B and C; name each variant of L.");
+    , "MO0309", "the _ arm hides B and C of L; write an arm for each of them in its place.");
+    try expectWhat(
+        \\module T.OneField
+        \\enum Shape
+        \\  Circle(radius: UInt8)
+        \\  Rect(w: UInt8, h: UInt8)
+        \\end
+        \\fn f(s: Shape) : UInt8
+        \\  case s
+        \\    Circle(radius: r): r
+        \\    Rect(w: w, h: _): w
+        \\  end
+        \\end
+    , "MO0212", "Circle has one field, so it is matched by position: write Circle(r), not Circle(radius: r)");
+    try expectWhat(
+        \\module T.CatchAllFields
+        \\enum Shape
+        \\  Dot
+        \\  Circle(radius: UInt8)
+        \\  Rect(w: UInt8, h: UInt8)
+        \\end
+        \\fn f(s: Shape) : UInt8
+        \\  case s
+        \\    Dot: 0
+        \\    _: 1
+        \\  end
+        \\end
+    , "MO0309", "the _ arm hides Circle(_) and Rect(w: _, h: _) of Shape; write an arm for each of them in its place.");
     try expectWhat(
         \\module T.Ints
         \\fn f(n: UInt32) : Bool

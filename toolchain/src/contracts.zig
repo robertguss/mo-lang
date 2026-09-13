@@ -9,6 +9,18 @@ const std = @import("std");
 /// A bignum replaces it when a contract needs one. bytecode.Num.unbounded marks it.
 pub const Unbounded = i128;
 
+/// `any(T)` of a refined type (vm.zig and mo_rt.c, generate) keeps only what the refinement
+/// admits: candidates of the base type, and once `refined_base_candidates` of them pass
+/// none, candidates between the integer bounds the `where` states (bytecode.Bounds), when it
+/// states any. After `refined_candidates` with none passing, the property fails with MO0325.
+pub const refined_base_candidates: u32 = 100;
+pub const refined_candidates: u32 = 200;
+
+/// MO0325's finding for a refined type none of whose generated candidates pass.
+pub fn noneAdmitted(gpa: std.mem.Allocator, type_name: []const u8) error{OutOfMemory}![]const u8 {
+    return std.fmt.allocPrint(gpa, "MO0325 the refinement of {s} admits none of the 200 values any({s}) generated; write its where as a range, such as value >= 1 and value <= 9, or generate the base type and build the value in the property.", .{ type_name, type_name });
+}
+
 /// What stopped a run.
 pub const Kind = enum {
     requires,

@@ -1199,17 +1199,23 @@ pub const Vm = struct {
                 return if (stride == 2) .{ .map = m } else .{ .set = m };
             },
             .alias => {
-                // A refined alias generates values that satisfy it; after 100 misses the
-                // last one stands, and the boundary check reports it.
+                // A refined alias generates only what it admits (contracts.refined_candidates):
+                // the base type's candidates, then its bounds', then MO0325.
                 const refs = vm.program.alias_refinements[ty.a];
-                var attempt: u32 = 0;
-                while (true) : (attempt += 1) {
-                    const v = try vm.generate(ty.b, depth);
+                const range = vm.boundsOf(ty.b, refs);
+                for (0..contracts.refined_candidates) |attempt| {
+                    const v: Value = if (attempt >= contracts.refined_base_candidates and range != null)
+                        .{ .int = between(rand, range.?.lo, range.?.hi) }
+                    else
+                        try vm.generate(ty.b, depth);
                     const holds = for (refs) |r| {
                         if (!(try vm.call(vm.program.refinements[r].function, &.{v})).bool) break false;
                     } else true;
-                    if (holds or attempt == 100) return v;
+                    if (holds) return v;
                 }
+                const at = vm.program.clauses[vm.program.refinements[refs[0]].clause].at;
+                vm.report = .{ .kind = .other, .clause = try contracts.noneAdmitted(vm.gpa, k.decls[ty.a].name), .within = "", .at = at };
+                return error.Crash;
             },
             .decl => {
                 const d = k.decls[ty.a];
@@ -1234,6 +1240,18 @@ pub const Vm = struct {
         }
         vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "any({s}) does not generate values yet", .{try k.pool.name(vm.gpa, t)}), .within = "", .at = 0 };
         return error.Crash;
+    }
+
+    /// The range a refined alias's refinements state, over the integer type under `base`, or
+    /// null when they state none or the base is not an integer.
+    fn boundsOf(vm: *Vm, base: types.Id, refs: []const u32) ?bytecode.Range {
+        const k = vm.checked();
+        var t = k.pool.get(k.pool.resolve(base));
+        while (t.tag == .alias) t = k.pool.get(k.pool.resolve(t.b));
+        if (t.tag != .int) return null;
+        var b: bytecode.Bounds = .{};
+        for (refs) |r| b.meet(vm.program.refinements[r].bounds);
+        return b.within(@enumFromInt(t.a));
     }
 
     // ---- rendering
@@ -1478,6 +1496,18 @@ pub fn maxOf(kind: types.IntKind) i128 {
         .u16 => std.math.maxInt(u16),
         .u32 => std.math.maxInt(u32),
         .u64 => std.math.maxInt(u64),
+    };
+}
+
+/// A generated integer from lo to hi: each edge a fifth of the time, else uniform.
+fn between(rand: std.Random, lo: i128, hi: i128) i128 {
+    return switch (rand.uintLessThan(u8, 5)) {
+        0 => lo,
+        1 => hi,
+        else => blk: {
+            const span: u64 = @intCast(hi - lo);
+            break :blk lo + if (span == std.math.maxInt(u64)) rand.int(u64) else rand.uintLessThan(u64, span + 1);
+        },
     };
 }
 

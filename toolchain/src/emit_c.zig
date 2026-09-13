@@ -43,7 +43,7 @@ pub const Options = struct {
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
@@ -97,7 +97,7 @@ const Builder = struct {
     reads_old: bool = false,
 };
 
-const Refinement = struct { cname: []const u8, clause: u32 };
+const Refinement = struct { cname: []const u8, clause: u32, bounds: bytecode.Bounds = .{} };
 
 const Clause = struct { kind: contracts.Kind, text: []const u8, at: u32, within: []const u8, skip: bool = false };
 
@@ -633,7 +633,7 @@ const Emitter = struct {
         const cl = try e.clause(.refinement, n.main_token);
         try e.finish(&b, "MoValue L0");
         e.b = saved;
-        const r: Refinement = .{ .cname = b.cname, .clause = cl };
+        const r: Refinement = .{ .cname = b.cname, .clause = cl, .bounds = .of(&e.tree, n.rhs) };
         try e.refinement_of.put(e.gpa, refined, r);
         return r;
     }
@@ -1950,7 +1950,20 @@ const Emitter = struct {
             try tables.print(gpa, "static const MoRefineFn decl_refines_{d}[] = {{", .{di});
             for (refs) |r| try tables.print(gpa, "{s}, ", .{r.cname});
             try tables.appendSlice(gpa, "NULL};\n");
-            try decl_rows.print(gpa, "    {{{s}, {d}, {d}, decl_fields_{d}, {d}, {d}, {d}, decl_refines_{d}}},\n", .{ try cString(gpa, d.name), @intFromEnum(d.kind), d.fields.len(), di, d.variants.start, d.variants.len(), refs.len, di });
+            // What any(T) of a refined alias generates from once its base type's candidates
+            // pass none, and the clause it crashes with when none of its candidates pass.
+            var bounds: bytecode.Bounds = .{};
+            for (refs) |r| bounds.meet(r.bounds);
+            var range: ?bytecode.Range = null;
+            var none_admitted: u32 = std.math.maxInt(u32);
+            if (refs.len > 0) {
+                var t = k.pool.get(k.pool.resolve(d.type));
+                while (t.tag == .alias) t = k.pool.get(k.pool.resolve(t.b));
+                if (t.tag == .int) range = bounds.within(@enumFromInt(t.a));
+                none_admitted = try e.addClause(.{ .kind = .other, .text = try contracts.noneAdmitted(gpa, d.name), .at = e.clauses.items[refs[0].clause].at, .within = "" });
+            }
+            const r = range orelse bytecode.Range{ .lo = 0, .hi = 0 };
+            try decl_rows.print(gpa, "    {{{s}, {d}, {d}, decl_fields_{d}, {d}, {d}, {d}, decl_refines_{d}, {s}, {s}, {s}, {d}}},\n", .{ try cString(gpa, d.name), @intFromEnum(d.kind), d.fields.len(), di, d.variants.start, d.variants.len(), refs.len, di, if (range != null) "true" else "false", try int128(gpa, r.lo), try int128(gpa, r.hi), none_admitted });
         }
         var variant_rows: std.ArrayList(u8) = .empty;
         for (k.variants, 0..) |v, vi| {
@@ -1959,7 +1972,7 @@ const Emitter = struct {
             try tables.appendSlice(gpa, "{NULL, 0}};\n");
             try variant_rows.print(gpa, "    {{{d}, {d}, variant_fields_{d}}},\n", .{ try e.nameId(v.name), v.fields.len(), vi });
         }
-        try tables.print(gpa, "const MoDecl mo_decls[] = {{\n{s}    {{NULL, 0, 0, NULL, 0, 0, 0, NULL}}\n}};\n", .{decl_rows.items});
+        try tables.print(gpa, "const MoDecl mo_decls[] = {{\n{s}    {{NULL, 0, 0, NULL, 0, 0, 0, NULL, false, 0, 0, 0}}\n}};\n", .{decl_rows.items});
         try tables.print(gpa, "const MoVariantDef mo_variants[] = {{\n{s}    {{0, 0, NULL}}\n}};\nconst uint32_t mo_nvariants = {d};\n", .{ variant_rows.items, k.variants.len });
         // Nothing past this point names a type the descriptors do not have yet.
         for (e.descs.items, 0..) |d, di| {
@@ -2068,6 +2081,11 @@ fn intConst(gpa: std.mem.Allocator, v: i128) Error![]const u8 {
 
 /// A C string literal holding `s` exactly: quotes, backslashes, question marks (trigraphs),
 /// and every byte outside printable ASCII escaped in octal.
+/// An __int128 constant within the 64-bit integer types' range, which C has no literal for.
+fn int128(gpa: std.mem.Allocator, v: i128) Error![]const u8 {
+    return std.fmt.allocPrint(gpa, "{s}(__int128){d}ull", .{ if (v < 0) "-" else "", @abs(v) });
+}
+
 fn cString(gpa: std.mem.Allocator, s: []const u8) Error![]const u8 {
     var out: std.ArrayList(u8) = .empty;
     try out.append(gpa, '"');

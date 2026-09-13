@@ -721,6 +721,7 @@ test "a call that can wait needs within:, and one that cannot takes none" {
         \\enum E
         \\  Missing(path: String)
         \\  Timeout
+        \\  NotText
         \\end
         \\fn load(fs: Fs, clock: Clock) : Result(Time, E)
         \\  text = try fs.read("/a")
