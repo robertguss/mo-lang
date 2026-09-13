@@ -5,11 +5,14 @@
 //! crashes; the only skips are recipe tests that reach a signature no agent has
 //! implemented. Until a stage exists it returns NotImplemented and the file
 //! counts as skipped, so this test is green on day one and tightens as stages land.
+//! Every file, rejects/ included, also passes `mo fmt --check`: it is already in its
+//! one shape (toolchain/FORMAT.md) and has no pure for body (MO0501).
 const std = @import("std");
 const Io = std.Io;
 const pipeline = @import("pipeline.zig");
 const runner = @import("runner.zig");
 const diag = @import("diag.zig");
+const fmt = @import("fmt.zig");
 
 pub const Tally = struct {
     passed: u32 = 0,
@@ -66,6 +69,39 @@ test "a rejects file names the code its first diagnostic carries" {
     try std.testing.expectEqualStrings("MO0306", expectedCode("module A\n# expect MO0306: base is bound twice.\n").?);
     try std.testing.expect(expectedCode("module A\n# expect error: something\n") == null);
     try std.testing.expect(expectedCode("x = 1 # expect MO0306: not at a line start\n") == null);
+}
+
+/// `mo fmt --check` on one file: true when formatting changes nothing and the loop
+/// rule finds nothing.
+pub fn fmtCheck(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8) !bool {
+    var dir = try Io.Dir.cwd().openDir(io, root, .{});
+    defer dir.close(io);
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
+    var diags: diag.List = .empty;
+    const formatted = fmt.format(arena, source, &diags) catch |err| switch (err) {
+        error.Rejected => {
+            std.debug.print("corpus: {s} does not format: {s} {s}\n", .{ rel, diags.items[0].code, diags.items[0].what });
+            return false;
+        },
+        else => return err,
+    };
+    if (!std.mem.eql(u8, source, formatted)) {
+        std.debug.print("corpus: {s} is not formatted; run mo fmt on it\n", .{rel});
+        return false;
+    }
+    var findings: diag.List = .empty;
+    pipeline.loopFindings(arena, source, &findings) catch |err| switch (err) {
+        error.Rejected => {},
+        else => return err,
+    };
+    if (findings.items.len > 0) {
+        std.debug.print("corpus: {s} at byte {d}: {s} {s}\n", .{ rel, findings.items[0].at, findings.items[0].code, findings.items[0].what });
+        return false;
+    }
+    return true;
 }
 
 pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8, stage: pipeline.Stage, tally: *Tally) !void {
@@ -162,6 +198,13 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         // No test is skipped for a process reason: the four recipe tests are the only skips.
         try std.testing.expectEqual(@as(u32, 4), tally.skipped_tests);
     }
+
+    // `mo fmt --check` over every file.
+    var unformatted: u32 = 0;
+    for (paths) |rel| {
+        if (!try fmtCheck(gpa, io, root, rel)) unformatted += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 0), unformatted);
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.
     var beyond: Tally = .{};

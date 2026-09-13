@@ -4,6 +4,7 @@ The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolc
 
 ```
 zig build              → zig-out/bin/mo         mo check|test|run <file.mo> [--json]
+                                                mo fmt [--check | --stdout] <file.mo>
 zig build test         → every stage's tests + the corpus test over ../examples
 zig build bench        → zig-out/bin/mo-bench   times every stage over ../examples
 bench/rebuild.sh       → the toolchain's own incremental build time
@@ -21,6 +22,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/types.zig` | the checker's type pool, unification, inference variables | ch. 5 |
 | `src/check.zig` | tier 1: types, exhaustiveness, the laws | ch. 2, 5 |
 | `src/caps.zig` | capabilities and `flows` | ch. 3 |
+| `src/loops.zig` | MO0501: a `for` with a pure body | ch. 4 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
@@ -29,6 +31,8 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/diag.zig` | structured diagnostics, no warnings | ch. 5 |
 | `src/verified.zig` | the `verified:` line | ch. 5 |
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |
+| `src/fmt.zig` | `mo fmt`: the tree printed in its one shape (`FORMAT.md` is the rule table) | ch. 2, 4 |
+| `src/diff.zig` | the unified diff `mo fmt --check` prints | |
 | `src/corpus.zig` | the corpus test: `examples/` passes, `examples/rejects/` is rejected | |
 | `src/main.zig` | the `mo` CLI | |
 | `src/bench.zig` | the benchmark harness | ch. 8 |
