@@ -2,8 +2,8 @@ module Rejects.MissingWithin
 expose ReadError, load
 
 intent "Every effectful call carries a deadline; a capability call without within: does not compile."
-# expect MO0401: fs.read has no within: deadline; add one, such as within: 100.ms.
 
+# expect MO0401: fs.read has no within: deadline; add one, such as within: 100.ms.
 enum ReadError
   Missing(path: String)
   Timeout

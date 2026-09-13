@@ -2,8 +2,8 @@ module Rejects.UnconsumedResult
 expose SaveError, save, touch
 
 intent "Every Result is consumed; calling a function and dropping its Result does not compile."
-# expect MO0310: the Result from save(count) is dropped; match it with case or pass it up with try.
 
+# expect MO0310: the Result from save(count) is dropped; match it with case or pass it up with try.
 enum SaveError
   Full
 end

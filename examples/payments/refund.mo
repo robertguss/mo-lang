@@ -35,7 +35,7 @@ end
 
 fn apply_refund(charge: Charge, amount: Money) : Result(Charge, RefundError)
   requires amount <= charge.captured_amount
-  ensures  result is Ok(c) implies c.refunded?
+  ensures result is Ok(c) implies c.refunded?
 
   return Error(AlreadyRefunded(id: charge.id)) if charge.refunded?
 
@@ -46,7 +46,7 @@ end
 
 fn refund(db: Ledger, clock: Clock, id: ChargeId, amount: Money) : Result(Refund, RefundError)
   requires amount > Money.zero
-  ensures  result is Ok(r) implies r.amount == amount
+  ensures result is Ok(r) implies r.amount == amount
 
   now = clock.now
   charge = try db.find_charge(id, within: 200.ms)

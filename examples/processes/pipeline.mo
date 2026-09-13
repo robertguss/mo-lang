@@ -7,8 +7,10 @@ process Sink()
   state
     taken: UInt32
   end
+
   message Take
   message Taken : UInt32
+
   fn update(state, message)
     case message
       Take:
@@ -22,7 +24,9 @@ process Source(sink: Handle(Sink))
   state
     sent: UInt32
   end
+
   message Produce : UInt32
+
   fn update(state, message)
     case message
       Produce:
