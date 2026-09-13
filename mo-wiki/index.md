@@ -102,6 +102,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-20|Step 20: the runtime owns the loop, brief for the worker]] — serve and lines rows, capabilities in declared message fields, the four servers rewritten
 - [[interpreter-step-19|Step 19: what program 4 found, brief for the worker]] — freeing finished processes, the held-send deadlock, recipe conformance, mkdir, a fixed clock, diagnostics, each_line, mutation tests
 - [[interpreter-step-18|Step 18: the outside review's no-compat fixes, brief for the worker]] — invariant polarity, handles as authority, capture, recursion, grouped patterns, equality, cache key, faults that stop
 - [[interpreter-step-17|Step 17: the round 3 follow-ups, brief for the worker]] — `any(T)` under refinements, `NotText`, a fold over lines, six diagnostics reworded

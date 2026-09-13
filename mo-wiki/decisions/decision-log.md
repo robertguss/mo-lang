@@ -229,6 +229,11 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A capability cannot travel in a message; a process gets one only as a start argument (chapter 3); program 4 wanted to hand an `Exchange` to a live worker, and the answer is freeing finished processes, not capabilities in messages | Fable | provisional, re-read after step 19 | program 1 |
 | Program-level defaults the worker chose (a refill-all-at-once limiter, ids reserved in blocks of 100, `<token>/n_<id>` store keys, 404 across clients, 503 on a torn log, 30 s from acceptor to service) stand as `notes`'s own; none is a language rule | Fable, from Opus's defaults | provisional | program 1's shape |
 
+| Robert (13 Sep, evening, after Fable unpacked the three answers to the fictional-bound loops): the runtime owns the loop; no `loop` keyword; the laws stay | Robert | locked until round 4 re-evaluates the laws | step 20 |
+| `semantic`: `Net.serve(listener, into: handle, idle:)`, `Conn.lines(into: handle, idle:)`, and `Http.serve(listener, into: handle, idle:)` make the runtime accept, read, and deliver: each connection, line, or exchange arrives at the named process as a message (`Accepted`, `Line`, `Closed`, `Idle`); the runtime stops reading a socket while the target mailbox is near its bound, so overload is backpressure, not a crash | Fable, Robert agreed | provisional | step 20, program 1 |
+| `semantic`: a message may carry a capability or a handle when its `message` line declares the field, and a sender may put in it only what it holds; the process's protocol shows what authority it receives, so direction 31 holds; step 18's refusal of capability fields in messages is reversed for declared message fields only, struct and state fields stay refused | Fable, Robert agreed | provisional | step 20, program 1 |
+| Threads: a process is still an OS thread, so a process per connection holds to a few thousand connections; green threads are the chapter 7 memory step, after step 20 | Fable | provisional, the number to measure | step 20's rows, the memory step |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

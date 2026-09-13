@@ -30,7 +30,7 @@ Fable read [[outside-review-2026-09-13]] and its evidence the afternoon it lande
 | deadlines as budgets | agree; program 4's experiment | program 4 |
 | governance of worker defaults | agree in part: a `semantic` tag and an expiry, not an approver before acceptance | the log, from step 18 |
 | shape laws as policy with an override | disagree; Robert: stay, measure | control runs |
-| no `while` | disagree; rows that drive their own loops first; Robert: stay, measure | program 4 |
+| no `while` | disagree; rows that drive their own loops first; Robert: stay, measure. Program 4 made it three programs with a fictional bound; Robert (evening) chose the runtime owning the loop over a `loop` keyword | [[interpreter-step-20]] |
 | default parameters | Robert rejected them on sight; stays | — |
 | recipes as security | the review says what direction 34 says: unproven; program 4 tests it | program 4 |
 | spec altitude replacing review | agree on a risk rule for persistence, auth, concurrency; the altitude stays the default view | the failure model |
