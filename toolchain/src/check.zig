@@ -97,7 +97,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .unused_binding = .{ .code = "MO0307", .category = .laws, .what = "<name> is bound but never used.", .why = "Every binding is read (chapter 2, honesty laws): an unused one is dead code, or a bug where another name was used instead.", .fixes = &.{"delete the line that binds the name, when its value holds no capability call, try, or process start, and no comment sits on the line"} },
     .not_exhaustive = .{ .code = "MO0308", .category = .laws, .what = "this case does not cover <pattern>; add an arm for it.", .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash.", .fixes = &.{} },
     .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <patterns> of <Type>; write an arm for each of them in its place.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
-    .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles.", .fixes = &.{} },
+    .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake.", .fixes = &.{} },
     .requires_untested = .{ .code = "MO0311", .category = .laws, .what = "<function> has requires <condition>, but no test rejects trips it.", .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips.", .fixes = &.{} },
     .default_param = .{ .code = "MO0312", .category = .laws, .what = "<name> has a default value; parameters have no defaults, so pass <value> at the call.", .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives.", .fixes = &.{"drop the default, and pass it at every call in the file that leaves the parameter out"} },
     .anon_stored = .{ .code = "MO0313", .category = .laws, .what = "an anonymous function is bound to <name>; pass it straight into <call> instead.", .why = "An anonymous function is a call argument only, never stored or returned (chapter 2), so effects never hide in a value.", .fixes = &.{} },
@@ -198,6 +198,26 @@ pub const Impl = struct { trait: u32, for_type: Id, sigs: Range, node: Index };
 
 pub const Callee = union(enum) { none, prelude: u32, user: u32 };
 
+/// A name an anonymous function reads from outside itself, for caps.zig.
+pub const Capture = struct { token: u32, name: []const u8, type: Id };
+
+/// The first capability or handle inside `t`, looking through lists, options, sets, results,
+/// maps, and tuples: the authority a value of type `t` carries (chapter 3, effects).
+pub fn authorityIn(pool: *const types.Pool, t: Id, depth: u8) ?Id {
+    if (depth > 8) return null;
+    const r = pool.base(t);
+    const b = pool.get(r);
+    return switch (b.tag) {
+        .cap, .handle => r,
+        .list, .option, .set => authorityIn(pool, b.a, depth + 1),
+        .result, .map => authorityIn(pool, b.a, depth + 1) orelse authorityIn(pool, b.b, depth + 1),
+        .tuple => for (pool.elems(b)) |e| {
+            if (authorityIn(pool, e, depth + 1)) |x| break x;
+        } else null,
+        else => null,
+    };
+}
+
 pub const Checked = struct {
     tree: ast.Tree,
     pool: types.Pool,
@@ -212,6 +232,8 @@ pub const Checked = struct {
     impls: []const Impl,
     /// `never` bodies that are a flows(...) rule, for caps.zig.
     flows: []const Index,
+    /// Every read of an outside name inside an anonymous function, for caps.zig.
+    captures: []const Capture = &.{},
     /// Every module, in dependency order; one for a single file.
     modules: []const Module = &.{},
 
@@ -322,6 +344,7 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
         .sigs = c.sigs.items,
         .impls = c.impls.items,
         .flows = c.flows.items,
+        .captures = c.captures.items,
         .modules = c.modules.items,
     };
 }
@@ -418,6 +441,7 @@ const Checker = struct {
     impls: std.ArrayList(Impl) = .empty,
     refinements: std.ArrayList(Refinement) = .empty,
     flows: std.ArrayList(Index) = .empty,
+    captures: std.ArrayList(Capture) = .empty,
 
     /// The current module's names (Module.type_names and fn_names), swapped by `enter`.
     type_names: std.StringHashMapUnmanaged(u32) = .empty,
@@ -1701,9 +1725,33 @@ const Checker = struct {
         }
     }
 
+    /// Whether call `i` reaches a pure function: one that takes no capability or handle, so the
+    /// value it gives is all it does.
+    fn pureCall(c: *Checker, i: Index) bool {
+        const n = c.node(i);
+        // `xs.size` is `size(xs)`: a dot call without parentheses is a call too.
+        if (n.kind != .call and n.kind != .member_call and n.kind != .member) return false;
+        switch (c.callee[i]) {
+            .none => return false,
+            .user => |s| {
+                const r = c.sigs.items[s].params;
+                for (c.params.items[r.start..r.end]) |p| if (authorityIn(&c.pool, p.type, 0) != null) return false;
+                return true;
+            },
+            .prelude => |k| {
+                const row = prelude.fns[k];
+                if (row.on_type and (std.mem.eql(u8, row.recv, "Process") or std.mem.eql(u8, row.recv, "Supervisor"))) return false;
+                if (prelude.findType(row.recv)) |t| if (t.kind == .capability) return false;
+                if (n.kind != .call and authorityIn(&c.pool, c.node_types[n.lhs], 0) != null) return false;
+                return true;
+            },
+        }
+    }
+
     fn useBinding(c: *Checker, b: u32, tok: u32) Error!void {
         c.bindings.items[b].used = true;
         const binding = c.bindings.items[b];
+        if (binding.anon_depth < c.frame.anon_depth) try c.captures.append(c.gpa, .{ .token = tok, .name = binding.name, .type = binding.type });
         if (binding.kind != .var_) return;
         if (binding.anon_depth < c.frame.anon_depth) {
             try c.reportTok(.var_captured, tok, try c.print("{s} is a var and cannot be captured by the anonymous function; bind a plain name first.", .{binding.name}));
@@ -2084,6 +2132,8 @@ const Checker = struct {
                 // A test rejects drops its call's value on purpose: the call is meant to trip.
                 if ((b.tag == .result or b.tag == .option) and !c.frame.in_rejects) {
                     try c.reportNode(.unconsumed, n.lhs, try c.print("the {s} from {s} is dropped; match it with case or pass it up with try.", .{ if (b.tag == .result) "Result" else "Option", c.exprText(n.lhs) }));
+                } else if (b.tag != .none and b.tag != .never and b.tag != .unknown and b.tag != .variable and !c.frame.in_rejects and c.pureCall(n.lhs)) {
+                    try c.reportNode(.unconsumed, n.lhs, try c.print("the {s} from {s} is dropped, and a pure call does nothing else; bind it and use it, or remove the call.", .{ try c.tn(t), c.exprText(n.lhs) }));
                 }
             },
             .binding => try c.bindingStmt(s),
@@ -3665,6 +3715,33 @@ test "case: a missing variant is named; a catch-all arm on an enum names what it
         \\  end
         \\end
     , &.{"MO0308"});
+}
+
+test "values: the value of a pure call is dropped; an effectful call's is not" {
+    try expectWhat(
+        \\module T.DroppedValue
+        \\fn shout(out: Out, xs: List(String)) : UInt64
+        \\  xs.map(fn(x) x.size end)
+        \\  xs.size
+        \\end
+    , "MO0310", "the List(UInt64) from xs.map(fn(x) x.size end) is dropped, and a pure call does nothing else; bind it and use it, or remove the call.");
+    try expectCodes(
+        \\module T.DroppedValues
+        \\fn double(n: UInt8) : UInt8
+        \\  n * 2
+        \\end
+        \\fn told(out: Out) : UInt8
+        \\  out.write_line("told")
+        \\  1
+        \\end
+        \\fn shout(out: Out) : UInt8
+        \\  double(1)
+        \\  told(out)
+        \\  "x".size
+        \\  out.write_line("done")
+        \\  2
+        \\end
+    , &.{ "MO0310", "MO0310" });
 }
 
 test "values: a dropped Result, a stored or returned anonymous function, a default parameter" {

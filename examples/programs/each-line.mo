@@ -14,7 +14,12 @@ fn main(platform: Platform)
   data = platform.fs.scoped("data").read_only
   name = platform.args.first or "lines.txt"
   out = platform.stdout
-  case data.each_line(name, within: 1.minute, fn(line) out.write_line(quoted(line)) end)
+  # The anonymous function captures no capability, so out is handed on as fold_lines' value.
+  printed = data.fold_lines(name, out, within: 1.minute, fn(to, line)
+    to.write_line(quoted(line))
+    to
+  end)
+  case printed
     Ok(_): out.flush()
     Error(Missing(path)):
       platform.stderr.write("there is no #{path} in data/\n")

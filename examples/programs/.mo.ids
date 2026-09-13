@@ -22,10 +22,10 @@
         { "id": "587f7729483a", "name": "expose", "hash": "1643fa714ce2d021" },
         { "id": "159a939fbca6", "name": "intent", "hash": "dbdc7729314aae9e" },
         { "id": "f72419852b9d", "name": "fn quoted", "hash": "fbbf45d0afbd5e9f" },
-        { "id": "6d57752812b2", "name": "fn main", "hash": "cc07223090689dc2" },
+        { "id": "6d57752812b2", "name": "fn main", "hash": "6221e26f76b54fcb" },
         { "id": "a9128b5019d5", "name": "test \"a line is quoted as it is\"", "hash": "fe915f43ba0df039" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "488b6abdd4a94a48" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "d5fc51b5b4ee518c" }
     },
     {
       "path": "echo/main.mo",
@@ -484,10 +484,10 @@
         { "id": "70f8024b5f6b", "name": "expose", "hash": "b5a721f19c08d482" },
         { "id": "086942e61c29", "name": "intent", "hash": "d941892c2c73318a" },
         { "id": "90e6ec478fb7", "name": "fn said", "hash": "9f2bd164d3fa15d0" },
-        { "id": "139ff541261a", "name": "fn main", "hash": "550f8cc5be709210" },
+        { "id": "139ff541261a", "name": "fn main", "hash": "e12b696a98d2e825" },
         { "id": "08fdc935b574", "name": "test \"a file the fixture does not hold is missing\"", "hash": "4601e1008b4474c7" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "3f4308314c342095" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "5be52a11425351a1" }
     }
   ]
 }
