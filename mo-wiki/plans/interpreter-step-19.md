@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, processes, compiler, stdlib, contracts]
 sources: [plans/program-4.md, decisions/decision-log.md, spec/design-v0/03-semantics.md, spec/design-v0/06-packages.md]
-status: in-progress
+status: done
 ---
 
 # Step 19: what program 4 found

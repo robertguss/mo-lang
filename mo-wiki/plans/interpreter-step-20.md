@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, processes, stdlib, laws]
 sources: [decisions/decision-log.md, deep-dives/outside-review-2026-09-13-response.md, plans/program-4.md, spec/design-v0/03-semantics.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 20: the runtime owns the loop
@@ -36,9 +36,13 @@ Rewrite `echo`, `kv`, `httpd`, `notes`, `effects/net.mo`, and `effects/http.mo` 
 
 For each server: lines before and after, fictional bounds before and after (must be zero after), and `kv-10k-get`, `kv-10k-get-c`, `http-1k`, `http-1k-c` before and after; a 32-client run of kv and notes; the connection count at which a process per connection fails today, recorded as the memory step's target.
 
+## Part E: three findings from step 19's acceptance
+
+A plain `mo check file.mo` honours the file's `# recipe:` line as the corpus test does. An `invariant` that mentions `old(state)` needs a `test rejects` that trips it, as a `requires` needs one: a new `MO03xx` in the catalog, and the corpus files that lack one gain it. A process may start any process its own supervisor names as a `child` without holding a capability; a function outside a process still needs a capability parameter to start one (`caps.zig`; the rule line in `03-semantics.md` with a step 20 note).
+
 ## Done when
 
-Green, no `for` around a waiting call in `examples/`, the rows in both runtimes and both spec tables, the fixture and faults, the numbers, pushed, decisions listed.
+Green, no `for` around a waiting call in `examples/`, the three part E findings, the rows in both runtimes and both spec tables, the fixture and faults, the numbers, pushed, decisions listed.
 
 ## Related
 - [[interpreter-step-19]]

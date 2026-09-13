@@ -21,8 +21,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | The design, the corpus, the interpreter milestone (sessions 1–5) | done | — |
 | The toolchain under real programs: formatter, stdlib, `Net`, `Http`, the C backend, three review rounds (steps 5–18) | done | — |
 | Programs 2, 3, 4: logstat, kv, notes | done | — |
-| Step 19, what program 4 found | running | 1 |
-| Step 20, the runtime owns the loop | next | 1 |
+| Step 19, what program 4 found | done | — |
+| Step 20, the runtime owns the loop | running | 1 |
 | Round 4 of the control run | queued | 1 (three sessions) |
 | Memory and green threads (chapter 7) | queued | 1–2 |
 | Program 1, the job queue, and its follow-ups | queued | 2–3 |
@@ -63,8 +63,8 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 17 | done: round 3 follow-ups ([[interpreter-step-17]]) | — |
 | 18 | done: the outside review's no-compat fixes ([[interpreter-step-18]], [[outside-review-2026-09-13-response]]); the failure model in chapter 3 | — |
 | 18b | done: program 4, `notes`; native 23,692 gets/s with 32 clients; the recipes saved a design and exposed the conformance gap ([[program-4]]) | — |
-| 20 | the runtime owns the loop: `serve`, `lines`, capabilities in declared message fields, the four servers rewritten with no fictional bound ([[interpreter-step-20]]) | lines removed, bounds left, throughput before and after |
-| 19 | what program 4 found: freeing finished processes, the held-send deadlock, recipe conformance and `never`, `Fs.mkdir`, a fixed clock, three diagnostics, the dead `each_line` row, mutation tests of the contract machinery ([[interpreter-step-19]]) | program 1 |
+| 20 | running: the runtime owns the loop: `serve`, `lines`, capabilities in declared message fields, the four servers rewritten with no fictional bound ([[interpreter-step-20]]) | lines removed, bounds left, throughput before and after |
+| 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
 | 18 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 

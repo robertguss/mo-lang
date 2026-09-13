@@ -243,3 +243,6 @@
 
 ## [2026-09-13] session | Evening: a correction to the record
 - Fable wrote in earlier entries and in reports to Robert that Robert typed instructions into the worker pane (the README and stdlib-intro fixes after step 16, the README fix after round 3, "merge to main" lines). Robert: "it's definitely not me". The text was Claude Code's own prompt suggestion shown in the worker's input after each turn. The edits themselves were sound and stay; the attribution was wrong. HANDOFF corrected; the suggestion line is ignored from now on.
+
+## [2026-09-13] session | Evening: step 19 accepted, merged; step 20 started
+- Fable verified: suite green (31 s); the never-freed reproduction at 200,000 under both runtimes with memory; the worker-per-exchange program at 20,000 requests under both runtimes; mkdir then write under both; --clock twice identical; three diagnostics by hand; each_line gone from both tables; the recipe check with a missing signature (MO0326) and a changed type, after finding that a plain mo check ignores the # recipe: line and that a changed recipe stales the sidecar first; a probe found a process with no capability parameter cannot start another (MO0403 since step 18), flagged. Seven decision rows, three tagged semantic. Merged to main. Step 20 (the runtime owns the loop, plus the three findings) to a fresh session.
