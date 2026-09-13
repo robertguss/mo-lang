@@ -2048,12 +2048,15 @@ enum { EDGE_CHECKED, EDGE_SATURATING, EDGE_WRAPPING };
 /* checked_, saturating_, and wrapping_: the only behaviours at an integer's edge besides the crash. */
 static MoValue edge(int how, int op, uint32_t k, MoValue l, MoValue r) {
     __int128 x = mo_wide(l), y = mo_wide(r), exact;
+    /* Only UInt64.max squared passes an __int128. The builtin then leaves the low 128 bits in
+     * exact, which are still wrapping's answer; the product is past every width. */
     bool past = op == MO_OP_ADD ? __builtin_add_overflow(x, y, &exact) : op == MO_OP_SUB ? __builtin_sub_overflow(x, y, &exact) : __builtin_mul_overflow(x, y, &exact);
-    if (past) exact = ((x < 0) != (y < 0) && op == MO_OP_MUL) ? kind_min(MO_I64) - 1 : (__int128)UINT64_MAX + 1;
     bool fits = !past && exact >= kind_min(k) && exact <= kind_max(k);
     switch (how) {
     case EDGE_CHECKED: return option_of(fits, mo_i128(exact));
-    case EDGE_SATURATING: return mo_i128(exact < kind_min(k) ? kind_min(k) : exact > kind_max(k) ? kind_max(k) : exact);
+    case EDGE_SATURATING:
+        if (past) return mo_i128((x < 0) != (y < 0) ? kind_min(k) : kind_max(k));
+        return mo_i128(exact < kind_min(k) ? kind_min(k) : exact > kind_max(k) ? kind_max(k) : exact);
     default: return mo_i128(wrap_kind(k, exact));
     }
 }

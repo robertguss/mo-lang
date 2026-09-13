@@ -1178,7 +1178,8 @@ fn parseWhole(s: []const u8, signed: bool, kind: types.IntKind) ?i128 {
     var v: i128 = 0;
     for (digits) |d| {
         if (!std.ascii.isDigit(d)) return null;
-        v = v * 10 + (d - '0');
+        // Past every width it stays past them all, so 40 digits cannot overflow the i128.
+        v = if (v > 1 << 120) 1 << 121 else v * 10 + (d - '0');
     }
     if (negative) v = -v;
     if (v < vm_mod.minOf(kind) or v > vm_mod.maxOf(kind)) return null;

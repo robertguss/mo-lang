@@ -1104,15 +1104,21 @@ pub const Vm = struct {
     /// checked_, saturating_, and wrapping_: the only behaviours at an integer's edge
     /// besides the crash.
     fn edge(vm: *Vm, p: Prim, kind: types.IntKind, a: i128, b: i128) Error!Value {
+        // Two 64-bit operands always add and subtract within an i128, but UInt64.max squared
+        // does not multiply within one: then the product is past every width, and its low
+        // 128 bits, which @mulWithOverflow leaves, are still wrapping's answer.
+        const product = @mulWithOverflow(a, b);
+        const past = product[1] == 1;
         const exact: i128 = switch (p) {
             .checked_add, .saturating_add, .wrapping_add => a + b,
             .checked_sub, .saturating_sub, .wrapping_sub => a - b,
-            else => a * b,
+            else => product[0],
         };
-        const fits = exact >= minOf(kind) and exact <= maxOf(kind);
+        const fits = !past and exact >= minOf(kind) and exact <= maxOf(kind);
         return switch (p) {
             .checked_add, .checked_sub, .checked_mul => if (fits) vm.variant("Some", &.{.{ .int = exact }}) else vm.variant("None", &.{}),
-            .saturating_add, .saturating_sub, .saturating_mul => .{ .int = std.math.clamp(exact, minOf(kind), maxOf(kind)) },
+            .saturating_add, .saturating_sub => .{ .int = std.math.clamp(exact, minOf(kind), maxOf(kind)) },
+            .saturating_mul => .{ .int = if (past) (if ((a < 0) != (b < 0)) minOf(kind) else maxOf(kind)) else std.math.clamp(exact, minOf(kind), maxOf(kind)) },
             else => .{ .int = wrap(kind, exact) },
         };
     }
@@ -1396,7 +1402,9 @@ fn compare(op: Op, l: Value, r: Value) bool {
         else => {},
     }
     const ord: std.math.Order = switch (l) {
-        .float => |a| std.math.order(a, r.float),
+        // A NaN is not less than, greater than, or equal to anything, so every ordering with
+        // one is false, as it is in C; only sort, min, and max put it last (order).
+        .float => |a| if (std.math.isNan(a) or std.math.isNan(r.float)) return false else std.math.order(a, r.float),
         else => order(l, r),
     };
     return switch (op) {
