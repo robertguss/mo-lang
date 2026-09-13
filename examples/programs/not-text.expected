@@ -1,0 +1,5 @@
+read: not text
+read_lines: not text
+| first line
+each_line: not text
+read_bytes: 36 bytes, 1 past ASCII

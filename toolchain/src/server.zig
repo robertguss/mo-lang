@@ -215,11 +215,17 @@ pub const Server = struct {
     /// measured, and one that took longer than `d` is `Timeout`, its text dropped. True
     /// cancellation comes with the async runtime, which suspends the call at its deadline.
     pub fn read(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
+        return s.readAs(vm, fs, path, within_ms, .text);
+    }
+
+    /// `read`, `read_lines`, and `read_bytes`: the file read whole, then given as `as` says;
+    /// `NotText` for text or lines that are not UTF-8 (stdlib.readResult).
+    pub fn readAs(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, within_ms: i64, as: stdlib.ReadAs) Error!Value {
         const t0 = Io.Clock.Timestamp.now(s.io, .awake);
         const text = try s.readScoped(s.scopes.items[fs.handle], path);
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const got = text orelse return missing(vm, path);
-        return vm.variant("Ok", &.{.{ .string = got }});
+        return stdlib.readResult(vm, got, as);
     }
 
     /// `fs.each_line(path, within: d, f)`: each line of a file inside the scope handed to `f` as
@@ -243,10 +249,11 @@ pub const Server = struct {
                 else => return missing(vm, path),
             };
             try feed.bytes(chunk[0..n]);
+            if (feed.not_text) return stdlib.notText(vm);
             if (feed.partial.items.len > read_limit) return missing(vm, path);
         }
         try feed.end();
-        return vm.variant("Ok", &.{.none});
+        return if (feed.not_text) stdlib.notText(vm) else vm.variant("Ok", &.{.none});
     }
 
     /// `fs.size(path, within: d)`: `Ok(bytes)` of a file inside the scope; anything else
@@ -487,6 +494,7 @@ test "main on Mo.Server: args, env, both streams, a scoped read that cannot esca
         \\    Ok(text): "ok #{text}"
         \\    Error(Missing(path)): "missing #{path}\n"
         \\    Error(Timeout): "timeout\n"
+        \\    Error(NotText): "not text\n"
         \\  end
         \\end
         \\fn main(platform: Platform)
@@ -545,6 +553,7 @@ test "Fs.list, read_lines, and size stay inside the scope, and write_line ends a
         \\    Ok(xs): String.join(xs, ",")
         \\    Error(Missing(path)): "missing #{path}"
         \\    Error(Timeout): "timeout"
+        \\    Error(NotText): "not text"
         \\  end
         \\end
         \\fn bytes(r: Result(UInt64, FsError)) : String
@@ -552,6 +561,7 @@ test "Fs.list, read_lines, and size stay inside the scope, and write_line ends a
         \\    Ok(n): "#{n}"
         \\    Error(Missing(path)): "missing #{path}"
         \\    Error(Timeout): "timeout"
+        \\    Error(NotText): "not text"
         \\  end
         \\end
         \\fn main(platform: Platform)
@@ -605,6 +615,7 @@ test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope
         \\    Ok(_): "ok"
         \\    Error(Missing(path)): "missing #{path}"
         \\    Error(Timeout): "timeout"
+        \\    Error(NotText): "not text"
         \\  end
         \\end
         \\fn text(r: Result(String, FsError)) : String

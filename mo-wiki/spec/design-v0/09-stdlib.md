@@ -126,13 +126,14 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 
 ## Files
 
-Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to the scope the `Fs` was narrowed to (`fs.scoped("logs").read_only`), and nothing outside the scope is reachable; a path that leaves it, or anything that is not a readable file, is `Missing(path)` with the path as the program wrote it.
+Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to the scope the `Fs` was narrowed to (`fs.scoped("logs").read_only`), and nothing outside the scope is reachable; a path that leaves it, or anything that is not a readable file, is `Missing(path)` with the path as the program wrote it. A `String` is UTF-8, so a row that gives one gives only text: a file whose bytes are not UTF-8 is `NotText`, and `read_bytes` gives any file's bytes.
 
 | receiver | name | parameters | returns | |
 |---|---|---|---|---|
-| `Fs` | `read` | `path: String` | `Result(String, FsError)` | the whole file |
-| `Fs` | `read_lines` | `path: String` | `Result(List(String), FsError)` | the file split as `String.lines` splits it |
-| `Fs` | `each_line` | `path: String`, `fn(String) none` | `Result(none, FsError)` | the file's lines, split as `String.lines` splits it, each handed to the function in turn as the file is read, so no more of the file than its longest line is held; `Ok` once the last line's call returns, `Missing(path)` before any line when the file cannot be read or has a line of more than 64 MiB. The deadline is checked before each read of the file: past it the call is `Timeout`, and the lines already handed stay handed. Written `logs.each_line(name, within: 1.minute, fn(line) out.write_line(line) end)` |
+| `Fs` | `read` | `path: String` | `Result(String, FsError)` | the whole file; `NotText` when it is not UTF-8 |
+| `Fs` | `read_lines` | `path: String` | `Result(List(String), FsError)` | the file split as `String.lines` splits it; `NotText` when it is not UTF-8 |
+| `Fs` | `read_bytes` | `path: String` | `Result(List(UInt8), FsError)` | the whole file's bytes, UTF-8 or not, for a program that wants the bytes; `Missing` and `Timeout` as `read` answers them, and on an `Fs.fixture()` the bytes of the text written |
+| `Fs` | `each_line` | `path: String`, `fn(String) none` | `Result(none, FsError)` | the file's lines, split as `String.lines` splits it, each handed to the function in turn as the file is read, so no more of the file than its longest line is held; `Ok` once the last line's call returns, `Missing(path)` before any line when the file cannot be read or has a line of more than 64 MiB. A line that is not UTF-8 is not handed: the call is `NotText` there, and the lines before it stay handed. The deadline is checked before each read of the file: past it the call is `Timeout`, and the lines already handed stay handed. Written `logs.each_line(name, within: 1.minute, fn(line) out.write_line(line) end)` |
 | `Fs` | `size` | `path: String` | `Result(UInt64, FsError)` | the file's length in bytes |
 | `Fs` | `list` | | `Result(List(String), FsError)` | the names of the files and folders directly inside the scope, sorted byte by byte; `Missing(".")` when the scope is not a readable folder |
 | `Fs` | `scoped` | `String` | `Fs` | narrowed to a folder inside this scope |

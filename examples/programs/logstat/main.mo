@@ -55,6 +55,7 @@ fn log_names(logs: Fs, dir: String) : Result(List(String), Problem)
       Ok(found)
     Error(Missing(_)): Error(NoLogs(dir: dir))
     Error(Timeout): Error(Slow(name: dir))
+    Error(NotText): Error(NoLogs(dir: dir))
   end
 end
 
@@ -69,6 +70,7 @@ fn read_log(logs: Fs, name: String) : Result(List(String), Problem)
     Ok(lines): Ok(lines)
     Error(Missing(path)): Error(Unread(name: path))
     Error(Timeout): Error(Slow(name: name))
+    Error(NotText): Error(Unread(name: name))
   end
 end
 

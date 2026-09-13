@@ -7,6 +7,7 @@ intent "Every effectful call carries a deadline; a capability call without withi
 enum ReadError
   Missing(path: String)
   Timeout
+  NotText
 end
 
 fn load(fs: Fs, path: String) : Result(String, ReadError)

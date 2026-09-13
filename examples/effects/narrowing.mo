@@ -6,6 +6,7 @@ intent "Hand a helper only the slice of the file system it needs: one folder, re
 enum ReportError
   Missing(path: String)
   Timeout
+  NotText
 end
 
 fn read_report(reports: Fs, name: String) : Result(String, ReportError)

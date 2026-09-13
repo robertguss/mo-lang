@@ -83,7 +83,7 @@ enum {
     MO_N_SOME, MO_N_NONE, MO_N_OK, MO_N_ERROR, MO_N_MISSING, MO_N_TIMEOUT, MO_N_SYNTAX,
     MO_N_OBJECT, MO_N_ARRAY, MO_N_STRING, MO_N_NUMBER, MO_N_BOOL, MO_N_NULL, MO_N_DOWN,
     MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY, MO_N_MALFORMED, MO_N_TOO_LARGE,
-    MO_N_UNSUPPORTED, MO_N_FIXED
+    MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -464,7 +464,7 @@ MO_ROW(mo_r_Int_ms); MO_ROW(mo_r_Int_minute); MO_ROW(mo_r_Int_days);
 MO_ROW(mo_r_Time_fixture); MO_ROW(mo_r_Time_parse); MO_ROW(mo_r_Time_from_parts); MO_ROW(mo_r_Time_to_iso8601);
 MO_ROW(mo_r_Time_since); MO_ROW(mo_r_Duration_ms); MO_ROW(mo_r_Duration_seconds); MO_ROW(mo_r_Duration_minutes);
 MO_ROW(mo_r_Clock_now); MO_ROW(mo_r_Clock_fixture);
-MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_each_line); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
+MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_read_bytes); MO_ROW(mo_r_Fs_each_line); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
 MO_ROW(mo_r_Fs_scoped); MO_ROW(mo_r_Fs_read_only); MO_ROW(mo_r_Fs_write); MO_ROW(mo_r_Fs_append);
 MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
 MO_ROW(mo_r_Events_emit); MO_ROW(mo_r_Events_fixture); MO_ROW(mo_r_Ledger_fixture);

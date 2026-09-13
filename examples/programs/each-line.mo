@@ -22,6 +22,9 @@ fn main(platform: Platform)
     Error(Timeout):
       platform.stderr.write("reading #{name} took longer than a minute\n")
       platform.exit(1)
+    Error(NotText):
+      platform.stderr.write("#{name} in data/ is not UTF-8 text\n")
+      platform.exit(1)
   end
 end
 

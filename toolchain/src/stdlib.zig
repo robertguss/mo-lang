@@ -94,6 +94,7 @@ pub const Row = enum {
     duration_seconds,
     duration_minutes,
     fs_read_lines,
+    fs_read_bytes,
     fs_each_line,
     fs_size,
     fs_list,
@@ -140,7 +141,7 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Set.has?", .set_has },                    .{ "Set.to_list", .set_to_list },           .{ "Time.parse", .time_parse },
     .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
     .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
-    .{ "Fs.read_lines", .fs_read_lines },
+    .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.read_bytes", .fs_read_bytes },
     .{ "Fs.each_line", .fs_each_line },
             .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
@@ -183,7 +184,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .duration_ms => .{ .int = a[0].duration },
         .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
         .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
-        .fs_read_lines, .fs_each_line, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
+        .fs_read_lines, .fs_read_bytes, .fs_each_line, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
             try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
@@ -476,6 +477,8 @@ pub const LineFeed = struct {
     kept: usize = 0,
     /// A line begun in bytes read so far, waiting for its "\n".
     partial: std.ArrayList(u8) = .empty,
+    /// A line was not UTF-8: no line after it is handed, and the call is `NotText`.
+    not_text: bool = false,
 
     pub fn init(vm: *Vm, f: Value.Func) LineFeed {
         return .{ .vm = vm, .f = f, .from = vm.mark() };
@@ -501,6 +504,11 @@ pub const LineFeed = struct {
 
     fn line(l: *LineFeed, raw: []const u8) Error!void {
         const text = if (raw.len > 0 and raw[raw.len - 1] == '\r') raw[0 .. raw.len - 1] else raw;
+        if (l.not_text) return;
+        if (!std.unicode.utf8ValidateSlice(text)) {
+            l.not_text = true;
+            return;
+        }
         _ = try l.vm.invoke(l.f, &.{.{ .string = try vm_mod.rawDupe(l.vm.heap, u8, text) }});
         var roots: [0]Value = .{};
         l.kept = try l.vm.iterate(l.from, &roots, l.kept);
@@ -851,11 +859,8 @@ fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
     const path: []const u8 = if (which == .fs_list) "." else a[1].string;
     const s = vm.server orelse return fixtureFiles(vm, row, which, a);
     return switch (which) {
-        .fs_read_lines => blk: {
-            const got = try s.read(vm, fs, path, within);
-            if (!std.mem.eql(u8, got.variant.name, "Ok")) break :blk got;
-            break :blk vm.variant("Ok", &.{try lines(vm, got.variant.fields[0].string)});
-        },
+        .fs_read_lines => s.readAs(vm, fs, path, within, .lines),
+        .fs_read_bytes => s.readAs(vm, fs, path, within, .bytes),
         .fs_each_line => s.eachLine(vm, fs, path, a[2].func, within),
         .fs_size => s.size(vm, fs, path, within),
         .fs_list => s.list(vm, fs, within),
@@ -970,15 +975,16 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             var feed: LineFeed = .init(vm, a[2].func);
             try feed.bytes(text);
             try feed.end();
-            return vm.variant("Ok", &.{.none});
+            return if (feed.not_text) notText(vm) else vm.variant("Ok", &.{.none});
         },
-        .fs_read, .fs_read_lines, .fs_size => {
+        .fs_read, .fs_read_lines, .fs_read_bytes, .fs_size => {
             const text = all.get(full) orelse return missed(vm, path);
-            return vm.variant("Ok", &.{switch (which) {
-                .fs_read => .{ .string = text },
-                .fs_size => .{ .int = text.len },
-                else => try lines(vm, text),
-            }});
+            return switch (which) {
+                .fs_read => readResult(vm, text, .text),
+                .fs_read_lines => readResult(vm, text, .lines),
+                .fs_read_bytes => readResult(vm, text, .bytes),
+                else => vm.variant("Ok", &.{.{ .int = text.len }}),
+            };
         },
         .fs_write => try all.put(gpa, full, try gpa.dupe(u8, a[2].string)),
         .fs_append => {
@@ -995,6 +1001,25 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
         else => unreachable,
     }
     return vm.variant("Ok", &.{.none});
+}
+
+pub const ReadAs = enum { text, lines, bytes };
+
+/// What `read`, `read_lines`, and `read_bytes` give for a file's bytes: its text, its lines,
+/// or its bytes as a `List(UInt8)`; `NotText` for text or lines that are not UTF-8, since a
+/// `String` is.
+pub fn readResult(vm: *Vm, file: []const u8, as: ReadAs) Error!Value {
+    if (as == .bytes) {
+        const out = try vm_mod.rawAlloc(vm.heap, Value, file.len);
+        for (file, out) |byte, *o| o.* = .{ .int = byte };
+        return vm.variant("Ok", &.{.{ .list = out }});
+    }
+    if (!std.unicode.utf8ValidateSlice(file)) return notText(vm);
+    return vm.variant("Ok", &.{if (as == .text) .{ .string = file } else try lines(vm, file)});
+}
+
+pub fn notText(vm: *Vm) Error!Value {
+    return vm.variant("Error", &.{try vm.variant("NotText", &.{})});
 }
 
 fn missed(vm: *Vm, path: []const u8) Error!Value {

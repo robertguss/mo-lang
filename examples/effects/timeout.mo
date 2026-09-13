@@ -6,6 +6,7 @@ intent "A slow read is an ordinary error value, and the caller decides what a ti
 enum ReadError
   Missing(path: String)
   Timeout
+  NotText
 end
 
 fn load(fs: Fs, path: String) : Result(String, ReadError)
@@ -18,6 +19,7 @@ fn config(fs: Fs) : Result(String, ReadError)
     Ok(text): Ok(text)
     Error(Missing(_)): Ok("defaults")
     Error(Timeout): Error(Timeout)
+    Error(NotText): Error(NotText)
   end
 end
 

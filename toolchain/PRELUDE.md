@@ -36,7 +36,7 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `HttpListener` | | capability: a port that accepts HTTP exchanges | stdlib (09) |
 | `Exchange` | | capability: one HTTP request and its one response | stdlib (09) |
 | `Request`, `Response` | | struct (`## Http`) | stdlib (09) |
-| `FsError` | | error enum | grammar (name); variants corpus-only |
+| `FsError` | | error enum | grammar (name); `Missing` and `Timeout` corpus-only, `NotText` stdlib (09) |
 | `AskError` | | error enum | grammar |
 | `LedgerError` | | error enum | corpus-only |
 | `Json` | | enum: a JSON value | stdlib (09) |
@@ -76,6 +76,7 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `Result(T, E)` | `Error` | one positional `E` | grammar |
 | `FsError` | `Missing` | `path: String` | corpus-only |
 | `FsError` | `Timeout` | | corpus-only |
+| `FsError` | `NotText` | | stdlib (09) |
 | `AskError` | `Timeout` | | grammar |
 | `AskError` | `Down` | | grammar |
 | `LedgerError` | `Timeout` | | corpus-only |
@@ -182,9 +183,10 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Duration` | `seconds`, `minutes` | | `Float64` | | | stdlib (09) |
 | `Clock` | `now` | | `Time` | | | grammar |
 | `Clock` (on type) | `fixture` | | `Clock` | | tests | grammar |
-| `Fs` | `read` | `String` | `Result(String, FsError)` | yes | | grammar |
-| `Fs` | `read_lines` | `String` | `Result(List(String), FsError)` | yes | | stdlib (09) |
-| `Fs` | `each_line` | `String`, `fn(String) none` | `Result(none, FsError)` | yes | | stdlib (09) |
+| `Fs` | `read` | `String` | `Result(String, FsError)`, `NotText` for a file that is not UTF-8 | yes | | grammar |
+| `Fs` | `read_lines` | `String` | `Result(List(String), FsError)`, `NotText` for a file that is not UTF-8 | yes | | stdlib (09) |
+| `Fs` | `read_bytes` | `String` | `Result(List(UInt8), FsError)`: the file's bytes, UTF-8 or not | yes | | stdlib (09) |
+| `Fs` | `each_line` | `String`, `fn(String) none` | `Result(none, FsError)`, `NotText` at the first line that is not UTF-8 | yes | | stdlib (09) |
 | `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
