@@ -1,0 +1,12 @@
+requests     6
+errors       2  (33.3%)
+malformed    3
+per minute 4.7
+
+slowest
+  2_210 ms  GET /api/users     2026-09-12T10:01:00Z
+    340 ms  PUT /api/users/42  2026-09-12T10:00:45Z
+
+busiest
+  3  GET /api/users
+  2  POST /api/orders
