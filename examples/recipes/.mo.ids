@@ -31,14 +31,12 @@
         { "id": "fb6a59ad475f", "name": "module Recipes.Store", "hash": "dfd6da034c84d756" },
         { "id": "e4316874a4e4", "name": "expose", "hash": "2c4a6853cb489564" },
         { "id": "41ba3b9295d8", "name": "intent", "hash": "a2e94b7876ef4895" },
-        { "id": "dc1e2cb9fd68", "name": "never \"a value read is not the last one written\"", "hash": "f3abd00cb8308832" },
-        { "id": "f95a08e68eaf", "name": "never \"a replay changes the number of live keys\"", "hash": "6b0208d7d26126a4" },
         { "id": "3e81f30e5ef7", "name": "enum StoreError", "hash": "f8037c1757b727e1" },
         { "id": "bb4fbd74ff53", "name": "struct Read", "hash": "7b2f40069b87dccc" },
         { "id": "dde2fbdb87d4", "name": "struct Reopened", "hash": "3a9dc4a0fb71e5f6" },
-        { "id": "df325b920821", "name": "recipe Store", "hash": "920fa484cfa5a31d" }
+        { "id": "df325b920821", "name": "recipe Store", "hash": "ce38496d3c8a545b" }
       ],
-      "verified": { "hash": "f8bcd71959e486d5", "declarations": "b094ba9003c3ebec" }
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "510b69aa950c073e" }
     }
   ]
 }

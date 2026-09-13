@@ -24,7 +24,7 @@ recipe RateLimiter
 end
 ```
 
-Your agent implements the bodies in your repo from the bricks. The compiler checks the result against the recipe: shape, tests, and that its capabilities stay under `needs`. It is then your code, and no dependency exists.
+Your agent implements the bodies in your repo from the bricks. `mo check --recipe Module.Recipe file.mo` checks the result against the recipe: the file exposes each of the recipe's signatures with the same parameters, result, and requires, and at least its ensures, so its capabilities stay under `needs`; and the recipe's tests and nevers pass when run against the file. A difference is `MO0326`. It is then your code, and no dependency exists.
 
 Kits and recipes are one mechanism. A recipe may carry full reference bodies. When the publisher is first-party, the agent copies them, which keeps behavior identical across projects and saves tokens. When the publisher is the community, the bodies are examples and the agent regenerates. Either way the code is compiled and capability-checked as yours.
 
@@ -50,3 +50,5 @@ Copy a function rather than add a dependency. Build your own rather than import.
 ## Session 5 changes
 
 Claude (session 5): the recipe example gained a `limiter` constructor with a `requires`, because a `test rejects` must trip a `requires` and the old "burst beyond capacity" test had none to trip. Found by the corpus.
+
+Session 5, step 19: the check in the paragraph under the example is `mo check --recipe`, and a recipe may hold `never` blocks, after program 4 found that nothing held an implementation to its recipe, so its copies of the recipe's tests could drift.

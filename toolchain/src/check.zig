@@ -65,6 +65,8 @@ pub const Code = enum {
     never_unchecked,
     /// Given by the property runner, not the checker (vm.zig and mo_rt.c, generate).
     none_admitted,
+    /// Given by `mo check --recipe` (recipe.zig), not the checker.
+    recipe_mismatch,
 };
 
 pub const Entry = diag.Entry;
@@ -113,6 +115,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .no_module = .{ .code = "MO0323", .category = .laws, .what = "<Module> is not a module of this program: there is no <path> under the program root.", .why = "A program is a tree of files: A.B is a/b.mo under the program root, the nearest directory holding a mo.root file, else the main file's own directory (grammar, Session 5). A use names a module of the program.", .fixes = &.{} },
     .never_unchecked = .{ .code = "MO0324", .category = .laws, .what = "this never cannot be checked: a run records no <Type> values, only structs, enums, and primitive values.", .why = "A never is checked at the end of every test, test rejects, and property run, over the values of each type it reads with T.all that the run held (chapter 2, contract laws). A run records structs, enums, aliases, and primitive values; a capability, a trait, or an opaque type is not recorded, so a never over one would pass without checking anything, and a never that cannot be checked does not compile.", .fixes = &.{} },
     .none_admitted = .{ .code = "MO0325", .category = .tests, .what = "the refinement of <Type> admits none of the 200 values any(<Type>) generated; write its where as a range, such as value >= 1 and value <= 9, or generate the base type and build the value in the property.", .why = "A property checks its claim over the values a type admits (chapter 4). any(T) of a refined type generates the base type and keeps what the where admits; when none of the first 100 candidates passes and the where compares value with integer literals, it generates between those bounds. When none of 200 passes, the property would check nothing, so it fails instead.", .fixes = &.{} },
+    .recipe_mismatch = .{ .code = "MO0326", .category = .tests, .what = "<function> takes (<parameters>) here and (<parameters>) in recipe <Recipe>; take what the recipe takes.", .why = "A recipe is the spec altitude of a module (chapter 6), and mo check --recipe holds an implementation to it: each of the recipe's signatures is a function the implementation exposes with the same parameters, result, and requires, and at least the same ensures, and the recipe's tests and nevers run against the implementation. A test or never the implementation keeps under a recipe's name is the recipe's, line for line. So a recipe and its implementations cannot drift apart.", .fixes = &.{} },
 });
 
 // ---- what the checker hands on
@@ -215,6 +218,23 @@ pub fn authorityIn(pool: *const types.Pool, t: Id, depth: u8) ?Id {
             if (authorityIn(pool, e, depth + 1)) |x| break x;
         } else null,
         else => null,
+    };
+}
+
+/// Whether a value of type `t` can hold a process's handle, looking through what authorityIn
+/// looks through: a function whose frame holds one is scanned when finished processes are
+/// freed (sim.zig, sweep).
+pub fn handleIn(pool: *const types.Pool, t: Id, depth: u8) bool {
+    if (depth > 8) return false;
+    const b = pool.get(pool.base(t));
+    return switch (b.tag) {
+        .handle => true,
+        .list, .option, .set => handleIn(pool, b.a, depth + 1),
+        .result, .map => handleIn(pool, b.a, depth + 1) or handleIn(pool, b.b, depth + 1),
+        .tuple => for (pool.elems(b)) |e| {
+            if (handleIn(pool, e, depth + 1)) break true;
+        } else false,
+        else => false,
     };
 }
 
@@ -844,6 +864,10 @@ const Checker = struct {
             };
             const found = if (is_type) m.type_names.get(name) else m.fn_names.get(name);
             if (!c.exposes(m, name) or found == null) {
+                if (is_type) if (c.messageOwner(m, name)) |process| {
+                    try c.reportTok(.not_exposed, tok, try c.print("{s} is a message of {s}, and a use names the process, not its messages; write use {s}{{{s}}}, which brings its messages with it.", .{ name, process, path, process }));
+                    continue;
+                };
                 try c.reportTok(.not_exposed, tok, try c.print("{s} does not expose {s}; a use names only what is on a module's expose line.", .{ path, name }));
                 continue;
             }
@@ -852,6 +876,21 @@ const Checker = struct {
                 try c.reportTok(.declared_twice, tok, try c.print("{s} is already in scope, so it cannot also come from {s}", .{ name, path }));
             } else gop.value_ptr.* = found.?;
         }
+    }
+
+    /// The process of module `m` that declares message `name`, by its name; read from the tree,
+    /// since a used module's messages may not be resolved when a use line is.
+    fn messageOwner(c: *Checker, m: Module, name: []const u8) ?[]const u8 {
+        var it = m.type_names.valueIterator();
+        while (it.next()) |d| {
+            const decl = c.decls.items[d.*];
+            if (decl.kind != .process or decl.node == 0) continue;
+            const data = c.tree.extraData(ast.Process, c.node(decl.node).lhs);
+            for (c.tree.span(data.messages_start, data.messages_end)) |msg| {
+                if (std.mem.eql(u8, c.text(c.node(msg).main_token), name)) return decl.name;
+            }
+        }
+        return null;
     }
 
     fn exposes(c: *Checker, m: Module, name: []const u8) bool {
@@ -957,6 +996,21 @@ const Checker = struct {
         }
         // Impls last, so every trait they name is resolved.
         for (c.items()) |it| if (c.node(it).kind == .impl_decl) try c.resolveImpl(it);
+        try c.checkVariantNames();
+    }
+
+    /// A struct and a variant or message of this module that share a name: `Read(...)` could
+    /// build either, so the variant is refused.
+    fn checkVariantNames(c: *Checker) Error!void {
+        for (c.decls.items) |d| {
+            if (d.module != c.module or (d.kind != .enum_ and d.kind != .process)) continue;
+            for (c.variants.items[d.variants.start..d.variants.end]) |v| {
+                const s = c.type_names.get(v.name) orelse continue;
+                const other = c.decls.items[s];
+                if (other.kind != .struct_ or other.module != c.module) continue;
+                try c.reportTok(.declared_twice, c.node(v.node).main_token, try c.print("{s} is a struct and a {s} of {s}; rename one, since {s}(...) could build either.", .{ v.name, if (d.kind == .process) "message" else "variant", d.name, v.name }));
+            }
+        }
     }
 
     fn resolveFields(c: *Checker, field_nodes: []const u32) Error!Range {
@@ -1316,6 +1370,8 @@ const Checker = struct {
                 .recipe_decl => {
                     const r = c.tree.extraData(ast.Recipe, n.lhs);
                     for (c.tree.span(r.sigs_start, r.sigs_end)) |s| try c.checkFn(c.sig_of_node.get(s).?);
+                    // Checked here, run only against an implementation (recipe.zig).
+                    for (c.tree.span(r.nevers_start, r.nevers_end)) |nv| try c.checkNever(nv);
                     for (c.tree.span(r.tests_start, r.tests_end)) |t| try c.checkTest(t);
                 },
                 .never => try c.checkNever(it),
@@ -2644,6 +2700,11 @@ const Checker = struct {
                 const lt = try c.expr(n.lhs, types.unknown);
                 const b = c.bt(lt);
                 if (b.tag == .option) return c.expr(n.rhs, b.a);
+                if (b.tag == .result) {
+                    try c.reportNode(.mismatch, n.lhs, try c.print("or gives a default only for an Option, and this is a {s}; write a case with an Error(_) arm that gives the default.", .{try c.tn(lt)}));
+                    _ = try c.expr(n.rhs, types.unknown);
+                    return types.unknown;
+                }
                 if (b.tag != .variable and b.tag != .unknown and b.tag != .bool) try c.mismatch(n.lhs, types.bool_, lt);
                 _ = try c.expr(n.rhs, types.bool_);
                 return types.bool_;
@@ -4125,4 +4186,62 @@ test "MO0308 names the type of an integer or string scrutinee, and a literal's t
         \\  end
         \\end
     , "MO0308", "this case does not cover every integer; add a _ arm.");
+}
+
+test "or on a Result, a struct and a variant of one name, and a use of a message each say what to write instead" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const or_result = try checkSource(arena,
+        \\module T.Or
+        \\fn parsed(text: String) : Result(UInt64, String)
+        \\  case text.to_u64
+        \\    Some(n): Ok(n)
+        \\    None: Error("not a number")
+        \\  end
+        \\end
+        \\fn value(text: String) : UInt64
+        \\  parsed(text) or 0
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 1), or_result.len);
+    try std.testing.expectEqualStrings("MO0206", or_result[0].code);
+    try std.testing.expectEqualStrings("or gives a default only for an Option, and this is a Result(UInt64, String); write a case with an Error(_) arm that gives the default.", or_result[0].what);
+
+    const clash = try checkSource(arena,
+        \\module T.Clash
+        \\struct Read
+        \\  key: String
+        \\end
+        \\enum Event
+        \\  Read(key: String)
+        \\  Wrote
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 1), clash.len);
+    try std.testing.expectEqualStrings("MO0205", clash[0].code);
+    try std.testing.expectEqualStrings("Read is a struct and a variant of Event; rename one, since Read(...) could build either.", clash[0].what);
+
+    try expectProgramCodes(&.{
+        \\module A.Idle
+        \\expose Idle, Idles
+        \\process Idle()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Poke
+        \\  fn update(state, message)
+        \\    case message
+        \\      Poke:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Idles
+        \\  child Idle, restart: :always
+        \\end
+        ,
+        \\module A.App
+        \\use A.Idle{Poke}
+    }, &.{"MO0322"});
 }

@@ -36,6 +36,7 @@ extern char **environ;
 /* ==== memory (vm.zig: regions, push in place, owned buffers, compaction) ============== */
 
 MoRegion mo_heap;
+MoHandleFrame *mo_handle_frames;
 bool mo_compacts;
 bool mo_records;
 bool mo_contracts;
@@ -2446,10 +2447,13 @@ MO_ROW(mo_r_Duration_ms) { (void)kind; return mo_i64(a[0].as.i); }
 MO_ROW(mo_r_Duration_seconds) { (void)kind; return mo_f64((double)a[0].as.i / 1000.0); }
 MO_ROW(mo_r_Duration_minutes) { (void)kind; return mo_f64((double)a[0].as.i / 60000.0); }
 
+/* MO_CLOCK: how far main's clock is from the wall's (server.zig, startClock). */
+static int64_t clock_offset;
+
 static int64_t wall_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + clock_offset;
 }
 
 static int64_t awake_ns(void) {
@@ -2810,8 +2814,8 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME };
-static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "each_line", "fold_lines", "write", "append", "remove", "rename"};
+enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
+static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
 
 static MoValue not_text(void) { return error_of(mo_variant(MO_N_NOT_TEXT, 0, NULL)); }
 
@@ -2827,18 +2831,17 @@ static MoValue read_result(int which, MoValue s) {
     return ok_of(which == FS_READ ? s : lines_of(s));
 }
 
-/* Fs.each_line: bytes as they are read, split as String.lines splits a whole text, each line
- * handed to the function in turn with a safe point after it that keeps nothing, so a file of
- * any size is read in the memory of its longest line (stdlib.zig, LineFeed). */
+/* Fs.fold_lines: bytes as they are read, split as String.lines splits a whole text, each line
+ * handed to the function in turn with the value so far, so a file of any size is read in the
+ * memory of its longest line and the value (stdlib.zig, LineFeed). */
 typedef struct {
     MoValue f;
     size_t from, kept;
     Buf partial;
     /* A line was not UTF-8: no line after it is handed, and the call is NotText. */
     bool not_text;
-    /* Fs.fold_lines: the value so far, from its init, handed with each line and replaced by what
-     * the call gives, the safe point's one root. */
-    bool folds;
+    /* The value so far, from its init, handed with each line and replaced by what the call gives,
+     * the safe point's one root. */
     MoValue acc[1];
 } LineFeed;
 
@@ -2850,14 +2853,9 @@ static void feed_line(LineFeed *l, const char *s, size_t n) {
         return;
     }
     MoValue line = heap_string(s, n);
-    if (l->folds) {
-        MoValue args[2] = {l->acc[0], line};
-        l->acc[0] = mo_invoke(l->f, args);
-        l->kept = iterate(l->from, l->acc, 1, l->kept);
-    } else {
-        mo_invoke(l->f, &line);
-        l->kept = iterate(l->from, NULL, 0, l->kept);
-    }
+    MoValue args[2] = {l->acc[0], line};
+    l->acc[0] = mo_invoke(l->f, args);
+    l->kept = iterate(l->from, l->acc, 1, l->kept);
 }
 
 static void feed_bytes(LineFeed *l, const char *s, size_t n) {
@@ -2889,7 +2887,7 @@ static MoValue string_list(char **names, size_t n) {
 
 static MoValue fixture_files(int which, const MoValue *a) {
     FixScope scope = fix_scope_of(a[0]);
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
@@ -2907,6 +2905,8 @@ static MoValue fixture_files(int which, const MoValue *a) {
             const char *rest = key + plen;
             const char *slash = strchr(rest, '/');
             size_t len = slash ? (size_t)(slash - rest) : strlen(rest);
+            /* A folder's own mark (mkdir) under the listed folder names nothing. */
+            if (len == 0) continue;
             bool seen = false;
             for (size_t k = 0; k < count; k++) seen = seen || (strlen(names[k]) == len && strncmp(names[k], rest, len) == 0);
             if (seen) continue;
@@ -2926,14 +2926,12 @@ static MoValue fixture_files(int which, const MoValue *a) {
     char *full = fix_path_in(&scope, S(path));
     if (!full) return missing(path);
     switch (which) {
-    case FS_EACH_LINE:
     case FS_FOLD_LINES: {
         FixFile *f = fix_find(sys, full);
         free(full);
         if (!f) return missing(path);
         MoValue text = f->text;
-        bool folds = which == FS_FOLD_LINES;
-        LineFeed l = {.f = folds ? a[3] : a[2], .from = mo_mark(), .folds = folds, .acc = {folds ? a[2] : MO_NONE_V}};
+        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
         feed_bytes(&l, text.as.s, text.aux);
         feed_end(&l);
         return l.not_text ? not_text() : ok_of(l.acc[0]);
@@ -2964,6 +2962,18 @@ static MoValue fixture_files(int which, const MoValue *a) {
         if (!gone) return missing(path);
         break;
     }
+    case FS_MKDIR: {
+        /* A folder is a mark, its path and a slash, so list shows it before a file is in it. */
+        if (fix_find(sys, full)) {
+            free(full);
+            return missing(path);
+        }
+        char *mark = path_join(full, "");
+        free(full);
+        if (fix_find(sys, mark)) free(mark);
+        else fix_put(sys, mark, mo_str("", 0));
+        break;
+    }
     default: {
         FixFile *f = fix_find(sys, full);
         if (!f) {
@@ -2990,7 +3000,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
 static MoValue server_files(int which, const MoValue *a) {
     const Scope *scope = &scopes[mo_cap_handle(a[0])];
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
     if (which >= FS_WRITE && scope->read_only) {
         mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     }
@@ -3010,7 +3020,6 @@ static MoValue server_files(int which, const MoValue *a) {
         free(text);
         return read_result(which, s);
     }
-    case FS_EACH_LINE:
     case FS_FOLD_LINES: {
         char *real = real_scoped(scope, S(path));
         int fd = real ? open(real, O_RDONLY) : -1;
@@ -3019,8 +3028,7 @@ static MoValue server_files(int which, const MoValue *a) {
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
         enum { READING, DONE, LATE, FAILED, NOT_TEXT } ended = READING;
-        bool folds = which == FS_FOLD_LINES;
-        LineFeed l = {.f = folds ? a[3] : a[2], .from = mo_mark(), .folds = folds, .acc = {folds ? a[2] : MO_NONE_V}};
+        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
         char chunk[1 << 16];
         while (ended == READING) {
             if (late(t0, within)) {
@@ -3100,6 +3108,15 @@ static MoValue server_files(int which, const MoValue *a) {
         if (!wrote) return missing(path);
         return ok_none();
     }
+    case FS_MKDIR: {
+        char *target = target_scoped(scope, S(path));
+        struct stat st;
+        bool made = target && (mkdir(target, 0777) == 0 || (errno == EEXIST && stat(target, &st) == 0 && S_ISDIR(st.st_mode)));
+        free(target);
+        if (late(t0, within)) return timed_out();
+        if (!made) return missing(path);
+        return ok_none();
+    }
     case FS_REMOVE: {
         char *real = file_scoped(scope, S(path));
         bool gone = real && unlink(real) == 0;
@@ -3127,7 +3144,6 @@ static MoValue files(int which, const MoValue *a) { return server_mode ? server_
 MO_ROW(mo_r_Fs_read) { (void)kind; return files(FS_READ, a); }
 MO_ROW(mo_r_Fs_read_lines) { (void)kind; return files(FS_READ_LINES, a); }
 MO_ROW(mo_r_Fs_read_bytes) { (void)kind; return files(FS_READ_BYTES, a); }
-MO_ROW(mo_r_Fs_each_line) { (void)kind; return files(FS_EACH_LINE, a); }
 MO_ROW(mo_r_Fs_fold_lines) { (void)kind; return files(FS_FOLD_LINES, a); }
 MO_ROW(mo_r_Fs_size) { (void)kind; return files(FS_SIZE, a); }
 MO_ROW(mo_r_Fs_list) { (void)kind; return files(FS_LIST, a); }
@@ -3135,6 +3151,7 @@ MO_ROW(mo_r_Fs_write) { (void)kind; return files(FS_WRITE, a); }
 MO_ROW(mo_r_Fs_append) { (void)kind; return files(FS_APPEND, a); }
 MO_ROW(mo_r_Fs_remove) { (void)kind; return files(FS_REMOVE, a); }
 MO_ROW(mo_r_Fs_rename) { (void)kind; return files(FS_RENAME, a); }
+MO_ROW(mo_r_Fs_mkdir) { (void)kind; return files(FS_MKDIR, a); }
 
 /* `fs.scoped(path)` and `fs.read_only`: a new scope, never a wider one. */
 static MoValue narrow(MoValue fs, bool read_only, MoValue path) {
@@ -4071,6 +4088,10 @@ MoValue mo_all(uint32_t index) {
 /* A process's thread's stack, as a Zig thread's. */
 #define WORKER_STACK ((size_t)16 << 20)
 
+/* A call a process's update waits in on a peer: a listener's next client or a connection's next
+ * line, by handle, and the call as a report names it (sim.zig, Wait). */
+typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
+
 /* A message in a mailbox or an outbox; under main it came in a parcel the mailbox, then the
  * log, owns. */
 typedef struct { MoValue message; uint64_t seq; Parcel *parcel; } Entry;
@@ -4104,6 +4125,16 @@ typedef struct {
     size_t noutbox, capoutbox;
     /* Under main, the wall clock when its running update began: clock.now is frozen per update. */
     int64_t now;
+    /* Under main, a sweep ended it: its id waits in free_ids. */
+    bool ended;
+    /* Its update waits in an ask to this process, or NOBODY; or in a call on a peer. */
+    uint32_t asking;
+    bool has_wait;
+    Wait wait;
+    /* A wait elsewhere found that this update's ask can end only after a send it holds: the ask
+     * crashes the update with `doom` when it returns. */
+    bool doomed;
+    Report doom;
 } Proc;
 
 static Proc **procs;
@@ -4127,13 +4158,30 @@ static const char *test_name = "";
 static bool packs;
 /* Under main with processes: each process's updates run on a thread of its own, taking turns. */
 static bool turns_on;
+/* Under main, the ids of processes a sweep ended, the last ended last: the next start takes the
+ * last one (turns.zig, sweep). */
+static uint32_t *free_ids;
+static size_t nfree_ids, capfree_ids;
+/* The fewest quiet events between two sweeps, and the ended processes whose threads and regions
+ * wait for the next processes given their ids, at most. */
+#define SWEEP_MIN 64
+#define KEPT_THREADS 64
+/* Under main, events after which a process a start call began may have finished: its start, and
+ * each update of it that left its mailbox empty. A sweep runs at sweep_at. */
+static uint32_t quiet;
+static uint32_t sweep_at = SWEEP_MIN;
 
 static MoValue turns_ask(uint32_t to, MoValue message, int64_t within);
 static void turns_settle(void);
 static bool turns_awaits(uint64_t seq);
 static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel);
 static void turns_wake_all(void);
+static void turns_spawning(void);
 static void close_held(const MoValue *args, uint32_t n);
+static bool connection_of(uint32_t h, uint32_t *listener);
+static bool unanswered_conn(uint32_t exchange, uint32_t *conn);
+/* Sends held in every outbox: while none is, no wait looks for one. */
+static size_t held;
 
 static const char *handle_name(int64_t id) {
     return id >= 0 && id < (int64_t)nprocs ? mo_processes[procs[id]->process].name : NULL;
@@ -4166,6 +4214,8 @@ static void reset_processes(void) {
         free(p);
     }
     nprocs = nsups = 0;
+    nfree_ids = 0;
+    held = 0;
     running = NOBODY;
     next_seq = 0;
     gave_up = crashed_once = false;
@@ -4193,8 +4243,12 @@ static int64_t window_of(const MoChild *c) { return c->per ? c->per(NULL, NULL).
 static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, uint32_t supervisor, Policy policy) {
     MoValue *kept = dupe_values(args, n);
     MoValue state = mo_processes[process].init(NULL, kept);
-    Proc *p = calloc(1, sizeof(Proc));
+    bool reused = nfree_ids > 0;
+    uint32_t id = reused ? free_ids[--nfree_ids] : nprocs;
+    Proc *p = reused ? procs[id] : calloc(1, sizeof(Proc));
     if (!p) out_of_memory();
+    p->ended = false;
+    p->asking = NOBODY;
     p->process = process;
     p->args = kept;
     p->nargs = n;
@@ -4211,14 +4265,20 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
         p->args = p->start->value.as.xs;
         p->state = p->start->value.as.xs[n];
     }
-    GROW_ARRAY(procs, nprocs, capprocs);
-    procs[nprocs] = p;
-    return nprocs++;
+    if (!reused) {
+        GROW_ARRAY(procs, nprocs, capprocs);
+        procs[nprocs++] = p;
+    }
+    if (turns_on && supervisor == NOBODY) quiet++;
+    return id;
 }
 
 /* `Name.start(args)`: the test runner, or main, supervises it with :always, and with the
  * max_restarts of a child line that names the process. */
 MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
+    /* Under main, main starting processes faster than a statement settles them hands out their
+     * turns first, so the ones that finished end. */
+    if (turns_on) turns_spawning();
     Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS};
     for (uint32_t s = 0; s < mo_nsupervisors; s++) {
         const MoSupervisor *sup = &mo_supervisors[s];
@@ -4292,6 +4352,7 @@ MoValue mo_send(MoValue handle, MoValue message) {
         Proc *from = procs[running];
         GROW_ARRAY(from->outbox, from->noutbox, from->capoutbox);
         from->outbox[from->noutbox++] = (Outgoing){to, sent, parcel};
+        held++;
     } else {
         enqueue(to, sent, parcel);
     }
@@ -4311,13 +4372,161 @@ static int64_t delay_of(uint32_t id) {
 typedef struct { uint64_t seq; bool has_reply; MoValue reply; } Delivered;
 static Delivered deliver(uint32_t id);
 
+/* ---- held sends (sim.zig, step 19) */
+
+/* A send an update holds (`holder`'s outbox) to `to`, which a wait can hear from only after it. */
+typedef struct { bool found; uint32_t holder, to; MoValue message; } Held;
+
+/* Process `to` was started with a connection a wait on `w` hears from only through it: one still
+ * open that the listener `w` names accepted, or the connection `w` names. An exchange counts while
+ * it is unanswered. */
+static bool ties(uint32_t to, const Wait *w) {
+    const Proc *p = procs[to];
+    for (uint32_t i = 0; i < p->nargs; i++) {
+        MoValue a = p->args[i];
+        if (a.tag != MO_CAP) continue;
+        uint32_t kind = mo_cap_kind(a), conn = mo_cap_handle(a), from = 0;
+        if (kind == MO_CAP_EXCHANGE) {
+            if (!unanswered_conn(conn, &conn)) continue;
+        } else if (kind != MO_CAP_CONN) {
+            continue;
+        }
+        bool open = connection_of(conn, &from);
+        if (open && (w->listener ? from == w->handle : conn == w->handle)) return true;
+    }
+    return false;
+}
+
+/* The first send, of `waiter`'s update and then of each update waiting on it through asks, to a
+ * process started with a connection a wait on `w` hears from only through it. */
+static Held held_for(uint32_t waiter, const Wait *w) {
+    Held h = {false, 0, 0, MO_NONE_V};
+    uint32_t *queue = NULL;
+    size_t n = 0, cap = 0;
+    GROW_ARRAY(queue, n, cap);
+    queue[n++] = waiter;
+    for (size_t i = 0; i < n && !h.found; i++) {
+        const Proc *x = procs[queue[i]];
+        for (size_t k = 0; k < x->noutbox; k++) {
+            if (!ties(x->outbox[k].to, w)) continue;
+            h = (Held){true, queue[i], x->outbox[k].to, x->outbox[k].message};
+            break;
+        }
+        if (h.found) break;
+        for (uint32_t id = 0; id < nprocs; id++) {
+            const Proc *p = procs[id];
+            if (!p->busy || p->asking != queue[i]) continue;
+            bool seen = false;
+            for (size_t j = 0; j < n; j++) seen = seen || queue[j] == id;
+            if (seen) continue;
+            GROW_ARRAY(queue, n, cap);
+            queue[n++] = id;
+        }
+    }
+    free(queue);
+    return h;
+}
+
+static Report held_report(Held h, uint32_t waiter, const Wait *w) {
+    const char *holder = name_of(h.holder), *target = name_of(h.to);
+    const char *call = h.holder == waiter ? w->call : text_of("ask, and %s waits in %s,", name_of(waiter), w->call);
+    const char *with = w->listener ? "a connection from that listener that it cannot answer until then" : "that connection, which it cannot write to until then";
+    Involved *values = xmalloc(sizeof(Involved));
+    values[0] = (Involved){"message", render(h.message)};
+    Report r = {MO_R_HELD, text_of("%s waits in %s while it holds a send to %s #%u, and sends are held until its update ends: %s #%u was started with %s", holder, call, target, h.to, target, h.to, with), holder, NULL, values, 1, NULL, 0, NULL, 0, NULL};
+    return r;
+}
+
+/* `holder`'s update waits in an ask: the ask crashes it when it returns, and under main at once. */
+static void doom(uint32_t holder, Report r) {
+    Proc *p = procs[holder];
+    if (!p->doomed) {
+        p->doomed = true;
+        p->doom = r;
+    }
+    if (turns_on) turns_wake_all();
+}
+
+/* The running update is about to wait in `w.call` on a peer (sim.zig, waitOn). */
+static void wait_on(Wait w) {
+    if (running == NOBODY) return;
+    uint32_t me = running;
+    procs[me]->wait = w;
+    procs[me]->has_wait = true;
+    if (held == 0) return;
+    Held h = held_for(me, &w);
+    if (!h.found) return;
+    Report r = held_report(h, me, &w);
+    if (h.holder != me) {
+        doom(h.holder, r);
+        return;
+    }
+    procs[me]->has_wait = false;
+    raise_report(r, JUMP_CRASH);
+}
+
+static void end_wait(void) {
+    if (running != NOBODY) procs[running]->has_wait = false;
+}
+
+/* The running update is about to wait in an ask to `to` (sim.zig, askOn). */
+static void ask_on(uint32_t to) {
+    if (running == NOBODY) return;
+    uint32_t me = running;
+    procs[me]->asking = to;
+    if (held == 0) return;
+    uint32_t x = to;
+    const Wait *w = NULL;
+    for (uint32_t steps = 0; steps < nprocs && !w; steps++) {
+        const Proc *q = procs[x];
+        if (!q->busy) return;
+        if (q->has_wait) {
+            w = &q->wait;
+        } else {
+            if (q->asking == NOBODY) return;
+            x = q->asking;
+        }
+    }
+    if (!w) return;
+    Held h = held_for(x, w);
+    /* The waiter's own send was found when its wait began. */
+    if (!h.found || h.holder == x) return;
+    Report r = held_report(h, x, w);
+    if (h.holder != me) {
+        doom(h.holder, r);
+        return;
+    }
+    procs[me]->asking = NOBODY;
+    raise_report(r, JUMP_CRASH);
+}
+
+static void end_ask(void) {
+    if (running != NOBODY) procs[running]->asking = NOBODY;
+}
+
+static void check_doomed(void) {
+    if (running == NOBODY || !procs[running]->doomed) return;
+    Proc *p = procs[running];
+    p->doomed = false;
+    raise_report(p->doom, JUMP_CRASH);
+}
+
+static MoValue ask_inline(uint32_t to, MoValue message, MoValue within);
+
 /* `h.ask(message, within: d)`: the target's waiting messages run, then this one, and the
  * reply is the value of its arm. Timeout when the target's fixtures are slower than d, or its
  * fixture calls waited longer than d while it answered; Down when the target is down or
  * crashed before replying. A Timeout's message still arrives. */
 MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
     uint32_t to = (uint32_t)handle.as.i;
-    if (turns_on) return turns_ask(to, message, within.as.i);
+    ask_on(to);
+    MoValue reply = turns_on ? turns_ask(to, message, within.as.i) : ask_inline(to, message, within);
+    end_ask();
+    check_doomed();
+    return reply;
+}
+
+static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     if (!procs[to]->up) return ask_error(MO_N_DOWN);
     /* A target whose update is on the stack is waiting on this very call. */
     if (procs[to]->busy) return ask_error(MO_N_TIMEOUT);
@@ -4412,10 +4621,15 @@ static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out
     jmp_buf here;
     jmp_buf *saved = crash_jump;
     uint32_t depth = mo_depth;
+    MoHandleFrame *frames = mo_handle_frames;
     crash_jump = &here;
     int jumped = setjmp(here);
-    if (jumped == 0) *out = update(id, message, before);
-    else mo_depth = depth;
+    if (jumped == 0) {
+        *out = update(id, message, before);
+    } else {
+        mo_depth = depth;
+        mo_handle_frames = frames;
+    }
     crash_jump = saved;
     return jumped;
 }
@@ -4471,10 +4685,15 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     jmp_buf here;
     jmp_buf *saved = crash_jump;
     uint32_t depth = mo_depth;
+    MoHandleFrame *frames = mo_handle_frames;
     crash_jump = &here;
     int jumped = setjmp(here);
-    if (jumped == 0) *out = mo_processes[process].init(NULL, args);
-    else mo_depth = depth;
+    if (jumped == 0) {
+        *out = mo_processes[process].init(NULL, args);
+    } else {
+        mo_depth = depth;
+        mo_handle_frames = frames;
+    }
     crash_jump = saved;
     if (jumped != 0 && jumped != JUMP_CRASH) raise_report(last_report, jumped);
     return jumped == 0;
@@ -4567,7 +4786,10 @@ static Delivered deliver(uint32_t id) {
         if (jumped != JUMP_CRASH) raise_report(last_report, jumped);
         rollback();
         for (size_t i = 0; i < p->noutbox; i++) parcel_free(p->outbox[i].parcel);
+        held -= p->noutbox;
         p->noutbox = 0;
+        p->has_wait = p->doomed = false;
+        p->asking = NOBODY;
         if (gave_up) raise_report(last_report, JUMP_CRASH);
         crashed(id, before);
         if (turns_on) turns_answer(entry.seq, false, MO_NONE_V, NULL);
@@ -4577,6 +4799,7 @@ static Delivered deliver(uint32_t id) {
     undo_mark = frozen_below = 0;
     nundos = 0;
     p->state = after.as.xs[1];
+    held -= p->noutbox;
     for (size_t i = 0; i < p->noutbox; i++) {
         Outgoing o = p->outbox[i];
         if (procs[o.to]->up) enqueue(o.to, o.message, o.parcel);
@@ -4666,6 +4889,7 @@ typedef struct {
     uintptr_t undo_mark, frozen_below;
     size_t full_kept;
     jmp_buf *crash_jump;
+    MoHandleFrame *handle_frames;
 } VmState;
 
 static void save_vm(VmState *s) {
@@ -4684,6 +4908,7 @@ static void save_vm(VmState *s) {
     s->frozen_below = frozen_below;
     s->full_kept = full_kept;
     s->crash_jump = crash_jump;
+    s->handle_frames = mo_handle_frames;
 }
 
 static void load_vm(const VmState *s) {
@@ -4702,6 +4927,21 @@ static void load_vm(const VmState *s) {
     frozen_below = s->frozen_below;
     full_kept = s->full_kept;
     crash_jump = s->crash_jump;
+    mo_handle_frames = s->handle_frames;
+}
+
+/* A vm handed to a process on a thread whose last process ended: what it kept is cleared, its
+ * lists keep their room, and its region is the caller's to set. */
+static void reuse_vm(VmState *s) {
+    Remembered *rem = s->remembered;
+    size_t caprem = s->capremembered;
+    Undo *u = s->undos;
+    size_t capu = s->capundos;
+    memset(s, 0, sizeof *s);
+    s->remembered = rem;
+    s->capremembered = caprem;
+    s->undos = u;
+    s->capundos = capu;
 }
 
 enum { JOB_DELIVER, JOB_GO_ON, JOB_EXIT };
@@ -4721,6 +4961,9 @@ typedef struct {
     /* How its turn ended when a crash left it, for whoever gets the turn back. */
     int failed;
     Report report;
+    /* Its thread has returned and its region is released, after a sweep ended its process and
+     * more than KEPT_THREADS had ended since; the next process given its id starts a thread. */
+    bool ended;
 } Worker;
 
 typedef struct { uint32_t id; int64_t deadline; } Parked;
@@ -4781,12 +5024,21 @@ static Worker *worker_of(uint32_t id) {
         GROW_ARRAY(workers, nworkers, capworkers);
         workers[nworkers++] = NULL;
     }
-    if (workers[id]) return workers[id];
-    Worker *w = calloc(1, sizeof(Worker));
-    if (!w) out_of_memory();
+    if (workers[id] && !workers[id]->ended) return workers[id];
+    Worker *w = workers[id];
+    if (w) {
+        /* The worker of an ended process: its lists keep their room. */
+        reuse_vm(&w->vm);
+        w->failed = 0;
+        w->phase = PHASE_IDLE;
+        w->ended = false;
+    } else {
+        w = calloc(1, sizeof(Worker));
+        if (!w) out_of_memory();
+        event_init(&w->wake);
+    }
     w->id = id;
     w->caller = MAIN_TURN;
-    event_init(&w->wake);
     if (packs && !reserve_up_to(&w->vm.heap, PROCESS_REGION)) w->vm.heap = (MoRegion){0, 0, 0};
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -4834,10 +5086,13 @@ static void *work(void *arg) {
                 deliver(w->id);
             } else {
                 mo_depth = 0;
+                mo_handle_frames = NULL;
                 w->failed = jumped;
                 w->report = last_report;
             }
             crash_jump = NULL;
+            const Proc *p = procs[w->id];
+            if (p->supervisor == NOBODY && queued(p) == 0) quiet++;
         }
         w->phase = PHASE_IDLE;
         save_vm(&w->vm);
@@ -4891,9 +5146,158 @@ static void idle(Event *also, bool bounded, int64_t deadline) {
     if (left > 0) event_wait_ms(&main_wake, left);
 }
 
+/* ---- ending finished processes (turns.zig, sweep) */
+
+static bool *marks;
+static size_t capmarks;
+static uint32_t *worklist;
+static size_t nworklist, capworklist;
+
+static void mark_id(uint32_t id) {
+    if (id >= nprocs || marks[id]) return;
+    marks[id] = true;
+    GROW_ARRAY(worklist, nworklist, capworklist);
+    worklist[nworklist++] = id;
+}
+
+static bool may_hold_handle(MoValue v) {
+    switch (v.tag) {
+    case MO_HANDLE: case MO_TUPLE: case MO_VARIANT: case MO_LIST: case MO_SET: case MO_MAP: return true;
+    default: return false;
+    }
+}
+
+static void mark_value(MoValue v);
+
+static void mark_values(const MoValue *xs, size_t n) {
+    for (size_t i = 0; i < n; i++) mark_value(xs[i]);
+}
+
+/* Every handle inside `v`. A list, a set, or a map's keys or values whose first element cannot
+ * hold a handle hold none, since their elements share a type. */
+static void mark_value(MoValue v) {
+    switch (v.tag) {
+    case MO_HANDLE: mark_id((uint32_t)v.as.i); return;
+    case MO_TUPLE: mark_values(v.as.xs, v.aux); return;
+    case MO_VARIANT: mark_values(v.as.xs, mo_vcount(v)); return;
+    case MO_LIST:
+        if (v.aux > 0 && may_hold_handle(v.as.xs[0])) mark_values(v.as.xs, v.aux);
+        return;
+    case MO_SET:
+        if (v.as.m && v.as.m->len > 0 && may_hold_handle(v.as.m->entries[0])) mark_values(v.as.m->entries, v.as.m->len);
+        return;
+    case MO_MAP:
+        if (v.as.m && v.as.m->len > 1) {
+            bool keys = may_hold_handle(v.as.m->entries[0]), values = may_hold_handle(v.as.m->entries[1]);
+            for (size_t k = 0; k + 1 < v.as.m->len; k += 2) {
+                if (keys) mark_value(v.as.m->entries[k]);
+                if (values) mark_value(v.as.m->entries[k + 1]);
+            }
+        }
+        return;
+    default: return;
+    }
+}
+
+static void mark_frames(const MoHandleFrame *f) {
+    for (; f; f = f->next) {
+        for (uint32_t i = 0; i < f->n; i++) mark_value(*f->slots[i]);
+    }
+}
+
+/* Began by a start call, nothing waiting for it, and no update of it on a stack. */
+static bool finished(const Proc *p) { return p->supervisor == NOBODY && !p->busy && queued(p) == 0; }
+
+/* Everything allocated goes back to the system, the reservation kept (region.zig, decommit). */
+static void decommit(MoRegion *r) {
+    size_t page = (size_t)sysconf(_SC_PAGESIZE);
+    size_t used = ((r->top - r->base) + page - 1) & ~(page - 1);
+    if (used > 0) mmap((void *)r->base, used, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+    r->top = r->base;
+}
+
+/* Process `id` has finished: what it held is freed, and its thread and emptied region wait for the
+ * next process given its id. */
+static void end_process(uint32_t id) {
+    Proc *p = procs[id];
+    if (id < nworkers && workers[id] && !workers[id]->ended) {
+        Worker *w = workers[id];
+        MoRegion heap = w->vm.heap;
+        if (heap.end != 0) decommit(&heap);
+        reuse_vm(&w->vm);
+        w->vm.heap = heap;
+    }
+    parcel_free(p->start);
+    for (size_t i = 0; i < p->nlog_parcels; i++) parcel_free(p->log_parcels[i]);
+    free(p->mailbox);
+    free(p->log);
+    free(p->restarts);
+    free(p->outbox);
+    memset(p, 0, sizeof *p);
+    p->supervisor = NOBODY;
+    p->ended = true;
+    GROW_ARRAY(free_ids, nfree_ids, capfree_ids);
+    free_ids[nfree_ids++] = id;
+}
+
+/* The thread kept for ended process `id` returns, and its region is released. */
+static void release_worker(uint32_t id) {
+    if (id >= nworkers || !workers[id] || workers[id]->ended) return;
+    Worker *w = workers[id];
+    hand_to(id, JOB_EXIT);
+    pthread_join(w->thread, NULL);
+    if (w->vm.heap.end != 0) munmap((void *)w->vm.heap.base, w->vm.heap.end - w->vm.heap.base);
+    w->vm.heap = (MoRegion){0, 0, 0};
+    w->ended = true;
+}
+
+/* From main's thread, holding the turn: ends every process that has finished. One has when a start
+ * call began it (a child line's never ends), its mailbox is empty, no update of it is on a stack,
+ * and no handle to it is where anything could use it: in a frame of main or of an update on a
+ * stack, in the start arguments of a process that has not finished, in a send an update holds, or
+ * in a reply not yet taken. */
+static void sweep(void) {
+    if (capmarks < nprocs) {
+        marks = xrealloc(marks, nprocs * sizeof(bool));
+        capmarks = nprocs;
+    }
+    memset(marks, 0, nprocs * sizeof(bool));
+    nworklist = 0;
+    /* main's frames: only main's thread sweeps. */
+    mark_frames(mo_handle_frames);
+    for (uint32_t id = 0; id < nprocs; id++) {
+        const Proc *p = procs[id];
+        if (p->ended || finished(p)) continue;
+        mark_values(p->args, p->nargs);
+        if (!p->busy) continue;
+        mark_frames(workers[id]->vm.handle_frames);
+        for (size_t i = 0; i < p->noutbox; i++) mark_id(p->outbox[i].to);
+    }
+    for (size_t i = 0; i < nanswers; i++) {
+        if (answers[i].has) mark_value(answers[i].value);
+    }
+    while (nworklist > 0) {
+        const Proc *p = procs[worklist[--nworklist]];
+        mark_values(p->args, p->nargs);
+    }
+    uint32_t still = 0;
+    for (uint32_t id = 0; id < nprocs; id++) {
+        const Proc *p = procs[id];
+        if (p->ended || p->supervisor != NOBODY) continue;
+        if (finished(p) && !marks[id]) end_process(id);
+        else still++;
+    }
+    if (nfree_ids > KEPT_THREADS) {
+        for (size_t i = 0; i < nfree_ids - KEPT_THREADS; i++) release_worker(free_ids[i]);
+    }
+    quiet = 0;
+    sweep_at = 2 * still > SWEEP_MIN ? 2 * still : SWEEP_MIN;
+}
+
 /* One turn handed out, from main's thread: to a process whose wait ended, else to the next
  * process with a message waiting. False when there is none. */
 static bool step(void) {
+    if (quiet >= sweep_at) sweep();
     int64_t now = now_ms();
     size_t k = 0;
     while (k < nparked) {
@@ -4950,6 +5354,11 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     awaiting[nawaiting++] = (Awaiting){seq, holder};
     int64_t deadline = now_ms() + (within > 0 ? within : 0);
     for (;;) {
+        /* A wait elsewhere doomed this ask (held sends): mo_ask crashes the update. */
+        if (running != NOBODY && procs[running]->doomed) {
+            forget_awaiting(seq);
+            return ask_error(MO_N_DOWN);
+        }
         for (size_t i = 0; i < nanswers; i++) {
             if (answers[i].seq != seq) continue;
             Answer got = answers[i];
@@ -4981,6 +5390,11 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
 /* Between two of main's statements: every turn there is to hand out, without waiting. */
 static void turns_settle(void) {
     while (step()) {}
+}
+
+/* main is about to start a process: past sweep_at quiet events, it settles first. */
+static void turns_spawning(void) {
+    if (holder == MAIN_TURN && quiet >= sweep_at) turns_settle();
 }
 
 /* main returned: turns go on being handed out until no message waits and no update is in
@@ -5116,6 +5530,8 @@ typedef struct {
     /* After LineTooLong, the rest of that line is dropped. */
     bool skipping;
     bool reading, writing;
+    /* The listener that accepted it, or UINT32_MAX (held sends). */
+    uint32_t listener;
 } Conn;
 
 static Listener **listeners;
@@ -5206,6 +5622,7 @@ static uint32_t adopt(int fd) {
     Conn *c = calloc(1, sizeof(Conn));
     if (!c) out_of_memory();
     c->fd = fd;
+    c->listener = UINT32_MAX;
     GROW_ARRAY(conns, nconns, capconns);
     conns[nconns] = c;
     return (uint32_t)nconns++;
@@ -5325,6 +5742,9 @@ static int64_t net_accept_conn(Listener *l, int64_t ms) {
         int fd = accept(l->fd, NULL, NULL);
         if (fd >= 0) {
             out = adopt(fd);
+            for (size_t i = 0; i < nlisteners; i++) {
+                if (listeners[i] == l) conns[out]->listener = (uint32_t)i;
+            }
             break;
         }
         if (errno == EINTR || errno == ECONNABORTED) continue;
@@ -5479,6 +5899,8 @@ typedef struct {
     char *inbound;
     size_t len, cap, start;
     bool closed, skipping;
+    /* The listener whose backlog it went into, or UINT32_MAX for a client's end. */
+    uint32_t listener;
 } FixConn;
 
 static FixListener *fix_listeners;
@@ -5522,9 +5944,9 @@ static MoValue fix_connect(uint16_t port) {
     if (!l) return net_fail(NET_REFUSED);
     uint32_t client = (uint32_t)nfix_conns;
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false, UINT32_MAX};
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false, (uint32_t)(l - fix_listeners)};
     GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
     l->backlog[l->nbacklog++] = client + 1;
     return ok_of(mo_cap(MO_CAP_CONN, client, 0));
@@ -5591,7 +6013,10 @@ MO_ROW(mo_r_Net_connect) {
 
 MO_ROW(mo_r_Listener_accept) {
     (void)kind;
-    return server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
+    wait_on((Wait){true, mo_cap_handle(a[0]), "Listener.accept"});
+    MoValue out = server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
+    end_wait();
+    return out;
 }
 
 MO_ROW(mo_r_Listener_port) {
@@ -5601,7 +6026,10 @@ MO_ROW(mo_r_Listener_port) {
 
 MO_ROW(mo_r_Conn_read_line) {
     (void)kind;
-    return server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
+    wait_on((Wait){false, mo_cap_handle(a[0]), "Conn.read_line"});
+    MoValue out = server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
+    end_wait();
+    return out;
 }
 
 MO_ROW(mo_r_Conn_write) {
@@ -6255,9 +6683,9 @@ static MoValue fix_http_send(MoValue request, MoValue host, int64_t port, int64_
     }
     uint32_t client = (uint32_t)nfix_conns;
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false, UINT32_MAX};
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false, (uint32_t)(l - fix_listeners)};
     GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
     l->backlog[l->nbacklog++] = client + 1;
     fix_append(client + 1, b.p, b.len);
@@ -6296,7 +6724,10 @@ MO_ROW(mo_r_HttpListener_port) { return mo_r_Listener_port(a, kind); }
 MO_ROW(mo_r_HttpListener_accept) {
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
-    return server_mode ? http_accept(listeners[h], a[1].as.i) : fix_http_accept(h, a[1].as.i);
+    wait_on((Wait){true, h, "HttpListener.accept"});
+    MoValue out = server_mode ? http_accept(listeners[h], a[1].as.i) : fix_http_accept(h, a[1].as.i);
+    end_wait();
+    return out;
 }
 
 MO_ROW(mo_r_Exchange_request) {
@@ -6318,6 +6749,23 @@ MO_ROW(mo_r_Http_send) {
 }
 
 MO_ROW(mo_r_Http_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_HTTP, 0, 0); }
+
+/* Whether connection `h` is open, and the listener that accepted it (sim.zig, connection). */
+static bool connection_of(uint32_t h, uint32_t *listener) {
+    if (server_mode) {
+        *listener = conns[h]->listener;
+        return !conns[h]->closed;
+    }
+    *listener = fix_conns[h].listener;
+    return !fix_conns[h].closed;
+}
+
+static bool unanswered_conn(uint32_t exchange, uint32_t *conn) {
+    const HttpExchange *e = server_mode ? &exchanges[exchange] : &fix_exchanges[exchange];
+    if (e->answered) return false;
+    *conn = e->conn;
+    return true;
+}
 
 /* A process holding these arguments stopped: every Conn and Exchange among them closes. */
 static void close_held(const MoValue *args, uint32_t n) {
@@ -6369,7 +6817,7 @@ static void check_nevers(void) {
 }
 
 static bool trips_rejects(uint8_t kind) {
-    return kind == MO_R_REQUIRES || kind == MO_R_REFINEMENT || kind == MO_R_INVARIANT || kind == MO_R_NEVER;
+    return kind == MO_R_REQUIRES || kind == MO_R_REFINEMENT || kind == MO_R_INVARIANT || kind == MO_R_NEVER || kind == MO_R_HELD;
 }
 
 /* A crash is the verdict: a test rejects passes when it tripped what rejects expects. */
@@ -6396,7 +6844,10 @@ static Result run_test(const MoTest *t) {
     crash_jump = &here;
     mo_depth = 0;
     int jumped = setjmp(here);
-    if (jumped != 0) mo_depth = 0;
+    if (jumped != 0) {
+        mo_depth = 0;
+        mo_handle_frames = NULL;
+    }
     if (jumped == 0) {
         t->fn();
         drain();
@@ -6434,7 +6885,10 @@ static Result run_property(const MoTest *t) {
             crash_jump = &here;
             mo_depth = 0;
             int jumped = setjmp(here);
-            if (jumped != 0) mo_depth = 0;
+            if (jumped != 0) {
+                mo_depth = 0;
+                mo_handle_frames = NULL;
+            }
             if (jumped == 0) {
                 t->fn();
                 check_nevers();
@@ -6563,6 +7017,16 @@ void mo_program_start(int argc, char **argv) {
     sim_seed = 0;
     turns_on = mo_nprocesses > 0;
     packs = turns_on && mo_compacts;
+    /* MO_CLOCK fixes where main's clock starts, as mo run --clock does. */
+    const char *clock = getenv("MO_CLOCK");
+    if (clock) {
+        int64_t start;
+        if (!parse_time(clock, strlen(clock), &start)) {
+            fprintf(stderr, "%s: %s is not an ISO-8601 time such as 2026-01-01T00:00:00Z\n", argc > 0 ? argv[0] : "mo", clock);
+            exit(2);
+        }
+        clock_offset = start - wall_ms();
+    }
     program_argc = argc > 0 ? argc - 1 : 0;
     program_argv = argv + 1;
     char *cwd = getcwd(NULL, 0);

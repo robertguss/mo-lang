@@ -49,6 +49,22 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "a62a8aed6deca161" }
     },
     {
+      "path": "ends/main.mo",
+      "module": "Ends.Main",
+      "declarations": [
+        { "id": "b7b2a065ccd7", "name": "module Ends.Main", "hash": "385aea7f74058816" },
+        { "id": "11149ee9df56", "name": "expose", "hash": "120978c84d294cd7" },
+        { "id": "5ed04cb925d7", "name": "intent", "hash": "387a0420c72255fb" },
+        { "id": "695ea440808b", "name": "process Idle", "hash": "72c461233d3540a6" },
+        { "id": "922166d413c9", "name": "process Keeper", "hash": "00cdeba554eb32fc" },
+        { "id": "79d9d6a91466", "name": "process Relay", "hash": "2f801a0807898ff8" },
+        { "id": "9a1296a0debf", "name": "supervisor Ends", "hash": "7f19dfa107343acc" },
+        { "id": "67bd8fed0578", "name": "fn started", "hash": "8375693ac208c7f7" },
+        { "id": "f44054833cdf", "name": "fn main", "hash": "35b4be39ed8e7384" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "22042a3a2af93f7e" }
+    },
+    {
       "path": "exit-code.mo",
       "module": "Programs.ExitCode",
       "declarations": [
@@ -60,6 +76,19 @@
         { "id": "fc78e504ebb5", "name": "test \"no problems is success, and any problem is 3\"", "hash": "99c1448ab3ce26d3" }
       ],
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "530d9bffed0a7910" }
+    },
+    {
+      "path": "folders/main.mo",
+      "module": "Folders",
+      "declarations": [
+        { "id": "d7d41ecd6812", "name": "module Folders", "hash": "5974354171042e94" },
+        { "id": "3c754767379d", "name": "expose", "hash": "95bf671b762ab9cb" },
+        { "id": "61e24e7a0090", "name": "intent", "hash": "e25031c777236672" },
+        { "id": "3f73285c604f", "name": "fn said", "hash": "9f2bd164d3fa15d0" },
+        { "id": "1495fcf2a79e", "name": "fn main", "hash": "f650cb74e4c9de3c" },
+        { "id": "79d654a43f06", "name": "test \"a folder made is listed before a file is in it, again is Ok, and a file in the way is Missing\"", "hash": "73c932965f2988f4" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "dd726178366c19e3" }
     },
     {
       "path": "halves.mo",
@@ -548,15 +577,13 @@
         { "id": "4e1ccef83e63", "name": "fn token_byte?", "hash": "0fe6db9de67b8c60" },
         { "id": "0523c11e9912", "name": "fn refilled", "hash": "2ceddc624f9a0391" },
         { "id": "58d6e214efb4", "name": "fn kept", "hash": "803fd72623346355" },
-        { "id": "5686654902cf", "name": "test \"a burst beyond capacity is refused\"", "hash": "cd343bee9e10fd8c" },
-        { "id": "bde1a3cacbc8", "name": "test \"refills at the declared rate\"", "hash": "429bcb0ac0de3a32" },
         { "id": "4a014e187c84", "name": "test rejects \"a limiter with no capacity\"", "hash": "0f9337d5b1c5fa43" },
         { "id": "f3d43c755bfa", "name": "test \"sixty requests pass in a minute, and the sixty-first is refused without taking a token\"", "hash": "e48376d8a1bfc9c4" },
         { "id": "f8aa5f1f1dc9", "name": "test \"each client has a bucket of its own\"", "hash": "cab2a87c32e6a261" },
         { "id": "e351954817de", "name": "test \"a token is 1 to 64 letters, digits, - and _\"", "hash": "940ede87b93d69a7" },
         { "id": "64b0e0156831", "name": "property \"no run of requests leaves a client more tokens than the capacity\"", "hash": "68e26c7c63445219" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "c275bcbb3349fa96" }
+      "verified": { "hash": "e83258a2991fdaee", "declarations": "62e7f5ba95451a37" }
     },
     {
       "path": "notes/main.mo",
@@ -779,11 +806,6 @@
         { "id": "ddf8ad78b9e6", "name": "fn replayed_from", "hash": "e379484b52f24739" },
         { "id": "05776c16c34e", "name": "fn names_in", "hash": "de99d4d95f44ab11" },
         { "id": "5f2ab0135bb4", "name": "fn size_of", "hash": "3660b751276384e9" },
-        { "id": "8eadd427c013", "name": "test \"a value put reads back, and reads back again once the store is opened again\"", "hash": "df2f70354f61f581" },
-        { "id": "c1a59f5d0fa8", "name": "test \"a deleted key is gone, and stays gone once the store is opened again\"", "hash": "aa7d9d57b447ea77" },
-        { "id": "0adb86a6c46a", "name": "test \"keys under a prefix come in byte order\"", "hash": "67cc71e84a0308c2" },
-        { "id": "d3b7040c67e8", "name": "test \"a last line cut short is left out, and a compacted store takes changes again\"", "hash": "74e40ec6039368ac" },
-        { "id": "723cbfe1593f", "name": "test \"a folder too slow to read is Slow\"", "hash": "c723d38c0ab184bd" },
         { "id": "b5f1dd57380d", "name": "test rejects \"a key with a space in it\"", "hash": "246cd32632e02e93" },
         { "id": "0381cf8ff0eb", "name": "test rejects \"a value with a newline in it\"", "hash": "20af740ebd4c024b" },
         { "id": "5dd027740fb4", "name": "test \"replay applies SET and DEL in order, and stops open at a line that is neither\"", "hash": "3a5883486cca2e17" },
@@ -792,7 +814,7 @@
         { "id": "0fc532547aa1", "name": "test \"a store writing to another log keeps its keys and leaves the first log alone\"", "hash": "2bbd8301ec609365" },
         { "id": "1930a836c89a", "name": "property \"any valid key and value read back as written, and again once the store is opened again\"", "hash": "74fc9e19a1af45c4" }
       ],
-      "verified": { "hash": "22b16a2670e83016", "declarations": "159f0b24724db456" }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "fcff0eec406dbbfc" }
     },
     {
       "path": "runaway.mo",
@@ -806,6 +828,24 @@
         { "id": "ea9cd009920e", "name": "test \"a count goes as many calls down as it counts\"", "hash": "33d51e7d49b5ffe3" }
       ],
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "6266134e768db2e2" }
+    },
+    {
+      "path": "workers/main.mo",
+      "module": "Workers.Main",
+      "declarations": [
+        { "id": "d1a641e321e5", "name": "module Workers.Main", "hash": "711598277b358f20" },
+        { "id": "6c402da6dfe6", "name": "expose", "hash": "3cd1e6e17ac88094" },
+        { "id": "343262ff155b", "name": "intent", "hash": "2300766de995d02e" },
+        { "id": "4549032087db", "name": "process Worker", "hash": "7098033e2d78ec73" },
+        { "id": "79a2f57d7aad", "name": "process Acceptor", "hash": "ccd2591cd76b0334" },
+        { "id": "1e4779b47120", "name": "supervisor Exchanges", "hash": "538d7276e4fc1b71" },
+        { "id": "e8149539bf40", "name": "fn answer", "hash": "50af093d30a60071" },
+        { "id": "aab278d383a2", "name": "fn answered?", "hash": "f4ac2ddb743b2db1" },
+        { "id": "7cea591137f0", "name": "fn served", "hash": "9e835c5a01d2c05a" },
+        { "id": "08b655803481", "name": "fn main", "hash": "6dcc5e29f2ae09eb" },
+        { "id": "252cb198cf08", "name": "test \"a worker answers with the n its request's query gives\"", "hash": "f53928e914abc654" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "aec422ff594b9b33" }
     }
   ]
 }

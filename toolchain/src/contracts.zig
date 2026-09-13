@@ -58,6 +58,8 @@ pub const Kind = enum {
     supervisor,
     /// A value no arm matched, or an operation this step does not run.
     other,
+    /// An update waited on what could come only after a send it held (sim.zig, step 19).
+    held,
 };
 
 /// One value a report shows, already rendered as Mo source.
@@ -89,6 +91,6 @@ pub const Report = struct {
 
     /// A `test rejects` passes only on these.
     pub fn tripsRejects(r: Report) bool {
-        return r.kind == .requires or r.kind == .refinement or r.kind == .invariant or r.kind == .never;
+        return r.kind == .requires or r.kind == .refinement or r.kind == .invariant or r.kind == .never or r.kind == .held;
     }
 };

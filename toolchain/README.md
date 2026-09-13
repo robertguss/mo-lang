@@ -3,9 +3,9 @@
 The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolchain.md`: interpreter first, C via Zig for release (step 13, `mo build`), a native backend only if a real program demands it. The milestone is `mo-wiki/spec/design-v0/08-milestone.md`: lex, parse, typecheck, and run `examples/payments/refund.mo` with its tests, contracts at tier 2, `rejects` tests tripping, the `verified:` line computed.
 
 ```
-zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
+zig build              → zig-out/bin/mo         mo check [--recipe Module.Recipe] <file.mo> [--json]
                                                 mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
-                                                mo run <file.mo> [-- args...]   main on Mo.Server
+                                                mo run [--clock ISO-8601] <file.mo> [-- args...]   main on Mo.Server
                                                 mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple]
                                                                                  C via zig cc: zig-out/mo-build/<name>/<name>
                                                 mo fmt [--check | --stdout] <file.mo>
@@ -21,12 +21,12 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 
 `mo build file.mo` checks the program (tier 1; `MO0408` without a `main` unless `--tests`), emits its C (`src/emit_c.zig`), and compiles it with the runtime (`runtime/mo_rt.c`, embedded in `mo`) by `zig cc -std=c11 -Wall -Werror -O2` into one binary that runs `main` on Mo.Server. The C, the runtime, and the binary go to `zig-out/mo-build/<name>/` under the working directory, and the binary's path is printed. The name is the file's, or its folder's for a `main.mo`; `-o` gives another.
 
-- **Contracts run in every build** (chapter 3): `requires`, `ensures`, and refinements are checked in the binary, as `mo run` checks them. `--no-contracts` turns them off for a measurement and says so on stderr; `MO_CONTRACTS=0` or `1` overrides a build at run time. A test binary always checks them.
+- **Contracts run in every build** (chapter 3): `requires`, `ensures`, and refinements are checked in the binary, as `mo run` checks them. `--no-contracts` turns them off for a measurement and says so on stderr; `MO_CONTRACTS=0` or `1` overrides a build at run time, and `MO_CLOCK=<ISO-8601>` starts `main`'s clock there, advancing with the wall, as `mo run --clock` does (step 19). A test binary always checks them.
 - **Overflow traps and asserts** are on in every binary; there is no flag.
 - `--tests` builds a binary that runs the file's tests and prints what `mo test` prints.
 - `--target <zig triple>` cross-compiles. A Linux target links statically against musl; a macOS binary links only libSystem, which Apple ships no static form of.
 - `zig` is found next to the running `mo`, else on PATH; it is the only dependency.
-- **Processes, `Net`, and `Http` compile** (steps 15 and 16). The scheduler `mo run` uses (`sim.zig`, `turns.zig`) is the runtime's: under `main` each process runs its updates on a thread of its own, the threads take turns, and a call that waits gives up its turn. `Net` and `Http` are POSIX sockets under `main` and their fixtures in a test binary. `--tests` runs process tests in the fixed order; `mo test --sim` has no compiled form.
+- **Processes, `Net`, and `Http` compile** (steps 15 and 16). The scheduler `mo run` uses (`sim.zig`, `turns.zig`) is the runtime's: under `main` each process runs its updates on a thread of its own, the threads take turns, and a call that waits gives up its turn. A process a start call began ends once its mailbox is empty, no update of it runs, and no handle to it is reachable (step 19): functions that can hold a handle list their frame's locals, and main's thread sweeps them, the live processes' start arguments, held sends, and waiting replies every 64 quiet events or more, freeing the process's parcels and region and keeping the threads of the last 64 ended ids for the next starts. An update about to wait in `accept`, `read_line`, or `ask` on what only a send it holds could bring (a process it sent to holds the unanswered exchange or connection that wait hears from) crashes with a report naming the send and the call, in a test as under `main` (step 19). `Net` and `Http` are POSIX sockets under `main` and their fixtures in a test binary. `--tests` runs process tests in the fixed order; `mo test --sim` has no compiled form.
 - The interpreter is the reference. `zig build test` builds every corpus module with `--tests` and every program, and each must print and exit exactly as `mo test` and `mo run` do. `bench/results.tsv` records the compiled logstat (`logstat-4k-c`) beside the interpreter (`logstat-4k`), without overflow checks (`-wrap`), and without contracts (`-nocontracts`); the compiled echo and kv (`echo-1k-c`, `kv-10k-get-c`) beside theirs; kv's resident memory after 50,000 SETs under `mo run` and as a binary (`kv-50k-set-rss-kib`, `kv-50k-set-rss-kib-c`, in KiB); and 1,000 `GET /hello` round trips to `httpd serve` under `mo run` and as a binary (`http-1k`, `http-1k-c`), with each server's resident memory after them (`http-1k-rss-kib`, `http-1k-rss-kib-c`).
 
 ## Layout
@@ -49,6 +49,8 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
+| `src/recipe.zig` | `mo check --recipe`: an implementation against its recipe's signatures (`MO0326`), then the recipe's tests and nevers run against it; the corpus test runs it for each file whose first lines say `# recipe: Module.Recipe` | ch. 6 |
+| `src/mutation.zig` | mutation tests of the contract machinery: mutants of a `never`, an `ensures`, and an `invariant` in three corpus files, each caught by `mo test` but the survivors it lists | ch. 5 |
 | `src/net.zig` | `Net`: TCP over std.Io for `mo run`, and `Net.fixture()` for `mo test` | 09 |
 | `src/http.zig` | `Http`: HTTP/1.1 over `Net`, the request and response reader and writer, and `Http.fixture()` | 09 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |

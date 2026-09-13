@@ -1,3 +1,4 @@
+# recipe: Recipes.RateLimiter.RateLimiter
 module Notes.Limits
 expose ClientId, Bucket, Limiter, limiter, tokens, allow?, retry_after, token?
 
@@ -76,20 +77,8 @@ fn kept(l: Limiter, id: ClientId, bucket: Bucket) : Limiter
   Limiter(capacity: l.capacity, refill: l.refill, buckets: l.buckets.set(id, bucket))
 end
 
-# The recipe's three tests, copied by hand: nothing runs a recipe's tests against an
-# implementation (GAPS.md).
-test "a burst beyond capacity is refused"
-  t0 = Time.fixture()
-  assert allow?(limiter(1, 1.minute), "ada", t0) is (spent, true)
-  assert allow?(spent, "ada", t0) is (_, false)
-end
-
-test "refills at the declared rate"
-  t0 = Time.fixture()
-  assert allow?(limiter(1, 1.minute), "ada", t0) is (spent, true)
-  assert allow?(spent, "ada", t0 + 1.minute) is (_, true)
-end
-
+# The recipe's test rejects, here as well since every requires has one in its own module;
+# mo check --recipe holds it to the recipe's, line for line.
 test rejects "a limiter with no capacity"
   limiter(0, 1.minute)
 end
@@ -142,5 +131,5 @@ property "no run of requests leaves a client more tokens than the capacity"
   end
 end
 
-verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+verified: types, contracts, tests (5), property (200 seeds), sim (not run)
           proven: not run

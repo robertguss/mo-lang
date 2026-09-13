@@ -1385,13 +1385,18 @@ const Parser = struct {
         while (p.peek() == .kw_fn) try p.push(try p.parseSignatureOnly());
         const sigs = try p.spanFrom(sig_top);
 
+        // A recipe's nevers run against an implementation (recipe.zig), step 19.
+        const never_top = p.scratch.items.len;
+        while (p.peek() == .kw_never) try p.push(try p.parseNever());
+        const nevers = try p.spanFrom(never_top);
+
         const test_top = p.scratch.items.len;
         while (p.peek() == .kw_test or p.peek() == .kw_property) try p.push(try p.parseTest());
         const tests = try p.spanFrom(test_top);
 
         _ = try p.expect(.kw_end);
         try p.endLine();
-        const data = try p.addExtra(ast.Recipe{ .intent = intent, .needs = needs, .sigs_start = sigs.start, .sigs_end = sigs.end, .tests_start = tests.start, .tests_end = tests.end });
+        const data = try p.addExtra(ast.Recipe{ .intent = intent, .needs = needs, .sigs_start = sigs.start, .sigs_end = sigs.end, .nevers_start = nevers.start, .nevers_end = nevers.end, .tests_start = tests.start, .tests_end = tests.end });
         return p.addNode(.{ .kind = .recipe_decl, .main_token = name, .lhs = data });
     }
 

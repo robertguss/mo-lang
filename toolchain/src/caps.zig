@@ -192,6 +192,10 @@ const Caps = struct {
                         try c.addUnit(.{ .kind = .recipe_sig, .name = c.text(c.node(s).main_token), .first = p + 1, .last = s });
                         p = s;
                     }
+                    for (c.k.tree.span(r.nevers_start, r.nevers_end)) |nv| {
+                        try c.addUnit(.{ .kind = .never, .first = p + 1, .last = nv });
+                        p = nv;
+                    }
                     for (c.k.tree.span(r.tests_start, r.tests_end)) |t| {
                         try c.addUnit(.{ .kind = .test_block, .first = p + 1, .last = t });
                         p = t;
@@ -516,7 +520,7 @@ const Caps = struct {
     /// The Fs rows that change the file system.
     fn writesFiles(row: prelude.Fn) bool {
         if (!std.mem.eql(u8, row.recv, "Fs")) return false;
-        for ([_][]const u8{ "write", "append", "remove", "rename" }) |name| {
+        for ([_][]const u8{ "write", "append", "remove", "rename", "mkdir" }) |name| {
             if (std.mem.eql(u8, row.name, name)) return true;
         }
         return false;

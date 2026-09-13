@@ -59,6 +59,16 @@ end
 
 The same shape over HTTP, an acceptor that starts `Worker.start(exchange)` for each exchange and sends it `Answer` (the shape of `examples/effects/http.mo`), served 5,000 requests from one client at 6,069 a second and then held 5,006 threads (`ps -M`) and 437 MiB resident. During a second run of 15,000 requests it stopped after about 3,000 more: every later connection was refused, the process had exited, and its `served` line was never printed.
 
+Fixed in step 19: a process a start call began ends once its mailbox is empty, no update of it runs, and nothing can reach its handle, and its id, thread, and emptied region go to the next process started. The reproduction above is `programs/ends` (with a keeper reachable only through a relay's start arguments, which never ends), and the shape over HTTP is `programs/workers`:
+
+| run | `mo run` | `mo build` binary |
+|---|---|---|
+| this reproduction, 200,000 | exit 0, 20 MiB peak (the interpreter's `0..n` list is most of it), 2.2 s | exit 0, 8 MiB, 2.5 s |
+| `programs/workers`, 20,000 requests, a worker each | 16 MiB, 2.9 s | 6 MiB, 2.7 s |
+| the same 20,000 before step 19 | `error: OutOfMemory` at 654 MiB | |
+
+The corpus runs `programs/workers` with 2,000 requests, not 20,000: a request is a connection, and one run of 20,000 leaves about 16,000 sockets in TIME_WAIT for 30 seconds, nearly all of macOS's 16,384 ephemeral ports, so the interpreter's run and the binary's back to back, or the benchmark's echo after them, find no port to connect from.
+
 What it costs notes: the brief's shape, a worker process per exchange, cannot serve more than a few thousand requests. Workaround: `Notes.Server.Acceptor` answers each exchange itself, in the update that accepted it, as `programs/httpd` does, so notes starts two processes in its life. Its exchanges are answered one at a time; the measurements in the final report are of that shape.
 
 ## 2. A process that starts a worker and sends it a message inside a long update deadlocks
@@ -66,3 +76,11 @@ What it costs notes: the brief's shape, a worker process per exchange, cannot se
 Not a bug in the runtime, which does what chapter 3 says, but a trap the toolchain does not flag: an update that loops over `listener.accept`, starting a worker and sending it `Answer` for each exchange, never answers anyone. The sends are buffered until the update ends (an update is a transaction), so the first client waits for a reply that is not sent while the acceptor waits in `accept` for the second. `mo check` and `mo test` accept the file; under `mo run` the server sits at 0% CPU with one connection established.
 
 Workaround: one `accept` per message, and a loop outside the process that asks for the next (`Notes.Main.accepted_awhile`), as kv does.
+
+Fixed in step 19: before `accept`, `read_line`, or `ask` waits, the runtime looks at the sends the waiting update holds, and those of any update waiting on it through asks; one to a process started with an open connection that wait can hear from only through it (an unanswered exchange or a connection from the same listener, or the same connection) crashes the update that holds it. The shape above now ends its update with, under `mo run` and as a binary alike:
+
+```
+process crashed: Acceptor waits in HttpListener.accept while it holds a send to Worker #1, and sends are held until its update ends: Worker #1 was started with a connection from that listener that it cannot answer until then; message = Answer
+```
+
+`processes/held-send.mo` has the `test rejects`; `test rejects` passes on this crash as on a tripped `invariant`.

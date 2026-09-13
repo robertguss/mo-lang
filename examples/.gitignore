@@ -1,1 +1,3 @@
 zig-out/
+# The folder programs/folders makes beside its main.mo each time the corpus runs it.
+programs/folders/made/

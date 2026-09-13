@@ -155,6 +155,9 @@ pub const Function = struct {
     inouts: []const u32,
     /// Slots a closure's captured values are copied into, in order.
     captures: []const u32,
+    /// Some parameter or expression of it can hold a process's handle, so a sweep reads its
+    /// frame's locals (sim.zig, sweep).
+    scans_handles: bool = false,
 };
 
 pub const Refinement = struct { function: u32, clause: u32, bounds: Bounds = .{} };
@@ -530,6 +533,8 @@ const Builder = struct {
     contract: bool = false,
     /// Inside an invariant: the slot of the state before the message, which `old` reads.
     old_state: u32 = none,
+    /// A parameter or an expression can hold a handle (Function.scans_handles).
+    handles: bool = false,
 };
 
 const Lower = struct {
@@ -586,6 +591,11 @@ const Lower = struct {
 
     fn baseType(l: *Lower, t: Id) types.Type {
         return l.k.pool.get(l.k.pool.base(t));
+    }
+
+    /// A value of type `t` is held in the function being lowered.
+    fn holds(l: *Lower, t: Id) void {
+        if (!l.b.handles and check.handleIn(&l.k.pool, t, 0)) l.b.handles = true;
     }
 
     fn numOf(l: *Lower, t: Id) Num {
@@ -701,6 +711,7 @@ const Lower = struct {
             .code = b.code.items,
             .inouts = b.inouts.items,
             .captures = captures,
+            .scans_handles = b.handles,
         };
     }
 
@@ -748,6 +759,7 @@ const Lower = struct {
         const params = l.k.params[s.params.start..s.params.end];
         for (params) |p| {
             const at = try l.bindName(p.name, p.inout);
+            l.holds(p.type);
             try b.param_names.append(l.gpa, p.name);
             if (p.inout) try b.inouts.append(l.gpa, at);
         }
@@ -1033,6 +1045,7 @@ const Lower = struct {
     fn bindParams(l: *Lower, r: check.Range) Error!void {
         for (l.k.params[r.start..r.end]) |p| {
             _ = try l.bindName(p.name, false);
+            l.holds(p.type);
             try l.b.param_names.append(l.gpa, p.name);
         }
     }
@@ -1592,6 +1605,7 @@ const Lower = struct {
 
     fn expr(l: *Lower, i: Index) Error!void {
         const n = l.node(i);
+        l.holds(l.typeOf(i));
         switch (n.kind) {
             .int_lit, .float_lit, .true_lit, .false_lit => try l.pushConst(switch (n.kind) {
                 .int_lit => .{ .int = parseInt(l.text(n.main_token)) },

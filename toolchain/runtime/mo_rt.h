@@ -148,7 +148,7 @@ extern const MoVariantDef mo_variants[];
 extern const uint32_t mo_nvariants;
 
 /* contracts.Kind, in its order. */
-enum { MO_R_REQUIRES, MO_R_ENSURES, MO_R_REFINEMENT, MO_R_INVARIANT, MO_R_NEVER, MO_R_ASSERT, MO_R_OVERFLOW, MO_R_DIVIDE_BY_ZERO, MO_R_MAILBOX, MO_R_SUPERVISOR, MO_R_OTHER };
+enum { MO_R_REQUIRES, MO_R_ENSURES, MO_R_REFINEMENT, MO_R_INVARIANT, MO_R_NEVER, MO_R_ASSERT, MO_R_OVERFLOW, MO_R_DIVIDE_BY_ZERO, MO_R_MAILBOX, MO_R_SUPERVISOR, MO_R_OTHER, MO_R_HELD };
 
 typedef struct {
     uint8_t kind;
@@ -234,6 +234,10 @@ static inline bool mo_frame_due(size_t frame) {
 }
 /* Keeps what `roots` reach past `from`, frees the rest; roots then hold the copies. */
 void mo_compact(size_t from, MoValue *roots, size_t n);
+/* The locals of a frame whose function can hold a process's handle, innermost first: what a
+ * sweep reads under main to end the processes nothing can reach (mo_rt.c, processes). */
+typedef struct MoHandleFrame { struct MoHandleFrame *next; MoValue *const *slots; uint32_t n; } MoHandleFrame;
+extern MoHandleFrame *mo_handle_frames;
 /* A read of a var other than by an update of it: a map or set it holds may be held twice. */
 void mo_disown_in(MoValue v);
 
@@ -469,9 +473,9 @@ MO_ROW(mo_r_Int_ms); MO_ROW(mo_r_Int_minute); MO_ROW(mo_r_Int_days);
 MO_ROW(mo_r_Time_fixture); MO_ROW(mo_r_Time_parse); MO_ROW(mo_r_Time_from_parts); MO_ROW(mo_r_Time_to_iso8601);
 MO_ROW(mo_r_Time_since); MO_ROW(mo_r_Duration_ms); MO_ROW(mo_r_Duration_seconds); MO_ROW(mo_r_Duration_minutes);
 MO_ROW(mo_r_Clock_now); MO_ROW(mo_r_Clock_fixture);
-MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_read_bytes); MO_ROW(mo_r_Fs_each_line); MO_ROW(mo_r_Fs_fold_lines); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
+MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_read_bytes); MO_ROW(mo_r_Fs_fold_lines); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
 MO_ROW(mo_r_Fs_scoped); MO_ROW(mo_r_Fs_read_only); MO_ROW(mo_r_Fs_write); MO_ROW(mo_r_Fs_append);
-MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
+MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_mkdir); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
 MO_ROW(mo_r_Events_emit); MO_ROW(mo_r_Events_fixture); MO_ROW(mo_r_Ledger_fixture);
 MO_ROW(mo_r_Ledger_find_charge); MO_ROW(mo_r_Ledger_save_charge);
 MO_ROW(mo_r_Platform_args); MO_ROW(mo_r_Platform_env); MO_ROW(mo_r_Platform_stdout); MO_ROW(mo_r_Platform_stderr);

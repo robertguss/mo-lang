@@ -787,6 +787,7 @@ const Printer = struct {
                 try p.line(item, data.intent);
                 try p.line(item, data.needs);
                 for (p.tree.span(data.sigs_start, data.sigs_end)) |s| try p.line(item, s);
+                for (p.tree.span(data.nevers_start, data.nevers_end)) |nv| try p.line(item, nv);
                 for (p.tree.span(data.tests_start, data.tests_end)) |t| try p.line(item, t);
                 try p.closeBlock(.kw_end);
             },
@@ -1634,6 +1635,7 @@ pub fn dump(w: *std.Io.Writer, tree: ast.Tree, i: Index) std.Io.Writer.Error!voi
             try D.one(w, tree, d.intent);
             try D.one(w, tree, d.needs);
             try D.nodes(w, tree, d.sigs_start, d.sigs_end);
+            try D.nodes(w, tree, d.nevers_start, d.nevers_end);
             try D.nodes(w, tree, d.tests_start, d.tests_end);
         },
         .verified, .break_stmt, .name_ref, .type_name_ref, .int_lit, .float_lit, .string_lit, .true_lit, .false_lit, .result_ref, .pat_wildcard, .pat_bind, .pat_literal, .string_part => {},

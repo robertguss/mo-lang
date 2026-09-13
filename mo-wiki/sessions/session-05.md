@@ -36,7 +36,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 
 ## Afternoon (13 Sep, from 11:30, a fresh Fable context)
 
-- [[interpreter-step-15]]: processes and `Net` in the C runtime; `mo build` compiles everything; native kv 1.4× the interpreter at half the memory. [[interpreter-step-16]]: `Http` over `Net` in both runtimes, `httpd`; native 1.7× the interpreter. [[control-run-3]]: Mo 9 loops (6 syntax diagnostics), a real bug caught by a test and a `never`, timing void (the machine slept). [[interpreter-step-17]]: the round 3 follow-ups. The [[outside-review-2026-09-13|outside review]] arrived on `main`; Fable's [[outside-review-2026-09-13-response|response]]; Robert: laws stay, test and re-evaluate. [[interpreter-step-18]]: the review's no-compat fixes, all five, both runtimes; Fable wrote the failure model into chapter 3. [[program-4]]: `notes` in 55 minutes, the first program over HTTP and from two recipes; native 23,692 gets/s; a started process is never freed and a held send can deadlock, both to [[interpreter-step-19]].
+- [[interpreter-step-15]]: processes and `Net` in the C runtime; `mo build` compiles everything; native kv 1.4× the interpreter at half the memory. [[interpreter-step-16]]: `Http` over `Net` in both runtimes, `httpd`; native 1.7× the interpreter. [[control-run-3]]: Mo 9 loops (6 syntax diagnostics), a real bug caught by a test and a `never`, timing void (the machine slept). [[interpreter-step-17]]: the round 3 follow-ups. The [[outside-review-2026-09-13|outside review]] arrived on `main`; Fable's [[outside-review-2026-09-13-response|response]]; Robert: laws stay, test and re-evaluate. [[interpreter-step-18]]: the review's no-compat fixes, all five, both runtimes; Fable wrote the failure model into chapter 3. [[program-4]]: `notes` in 55 minutes, the first program over HTTP and from two recipes; native 23,692 gets/s; a started process is never freed and a held send can deadlock, both to [[interpreter-step-19]], which fixed them (200,000 processes at 9 MB native) and added recipe conformance, `mkdir`, a fixed clock, and mutation tests. Robert chose the runtime owning the loop over a `loop` keyword after Fable unpacked three answers to the fictional-bound loops; [[interpreter-step-20]] started. The outside review page's suggested-prompt lines in the worker pane were Claude Code's, not Robert's; the record was corrected.
 
 ## Numbers at the end of the session
 
@@ -89,6 +89,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-18]]
 - [[program-4]]
 - [[interpreter-step-19]]
+- [[interpreter-step-20]]
 - [[outside-review-2026-09-13-response]]
 - [[program-2]]
 - [[program-3]]

@@ -156,6 +156,9 @@ pub const Vm = struct {
     sim: ?*sim_mod.Sim = null,
     /// The real platform `mo run` gives main; null under `mo test`.
     server: ?*server_mod.Server = null,
+    /// The locals of every frame on this vm's stack whose function can hold a handle
+    /// (Function.scans_handles), innermost last: what a sweep reads (sim.zig).
+    handle_frames: std.ArrayList([]Value) = .empty,
 
     pub fn init(gpa: std.mem.Allocator, program: *const bytecode.Program, seed: u64) Vm {
         return .{ .gpa = gpa, .heap = gpa, .program = program, .rng = .init(seed) };
@@ -167,6 +170,28 @@ pub const Vm = struct {
         vm.region = values;
         vm.scratch = scratch;
         vm.heap = values.allocator();
+    }
+
+    /// A vm handed to a process on a thread whose last process ended (turns.zig): what it kept
+    /// is cleared, and its lists keep their room. Its regions come from useRegions again.
+    pub fn reuse(vm: *Vm) void {
+        vm.stack.clearRetainingCapacity();
+        vm.growth = [_]Growth{.{}} ** 16;
+        vm.growth_next = 0;
+        vm.owned = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 16;
+        vm.owned_next = 0;
+        vm.forward.clearRetainingCapacity();
+        vm.remembered.clearRetainingCapacity();
+        vm.undo.clearRetainingCapacity();
+        vm.undo_mark = 0;
+        vm.frozen_below = 0;
+        vm.full_kept = 0;
+        vm.report = null;
+        vm.generated.clearRetainingCapacity();
+        vm.handle_frames.clearRetainingCapacity();
+        vm.region = null;
+        vm.scratch = null;
+        vm.heap = vm.gpa;
     }
 
     const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
@@ -253,6 +278,10 @@ pub const Vm = struct {
         @memcpy(locals[0..args.len], args);
         @memset(locals[args.len..], .none);
         for (f.captures, captures) |slot, v| locals[slot] = v;
+        if (f.scans_handles) try vm.handle_frames.append(vm.gpa, locals);
+        defer if (f.scans_handles) {
+            vm.handle_frames.items.len -= 1;
+        };
         const base = vm.stack.items.len;
         var pc: u32 = 0;
         while (true) {
@@ -1097,6 +1126,14 @@ pub const Vm = struct {
     /// A Net, Listener, or Conn row: real sockets under mo run, or in a test a
     /// Net.fixture()'s, in memory (net.zig).
     fn netRow(vm: *Vm, which: net_mod.Row, a: []const Value) Error!Value {
+        // A call that waits on a peer: first, whether a send the update holds is what it waits on.
+        const wait: ?sim_mod.Wait = switch (which) {
+            .accept => .{ .listener = true, .handle = a[0].cap.handle, .call = "Listener.accept" },
+            .read_line => .{ .listener = false, .handle = a[0].cap.handle, .call = "Conn.read_line" },
+            else => null,
+        };
+        defer if (wait != null) if (vm.sim) |s| s.endWait();
+        if (wait) |w| if (vm.sim) |s| try s.waitOn(w);
         if (vm.server) |s| return s.sockets.call(vm, which, a);
         if (vm.sim) |s| return s.fixture.call(vm, s, which, a);
         vm.report = .{ .kind = .other, .clause = "Net runs only under mo run", .within = @tagName(which), .at = 0 };
@@ -1106,6 +1143,9 @@ pub const Vm = struct {
     /// An Http, HttpListener, or Exchange row: real sockets under mo run, or in a test an
     /// Http.fixture()'s, on Net.fixture()'s network (http.zig).
     fn httpRow(vm: *Vm, which: http_mod.Row, a: []const Value) Error!Value {
+        const accepting = which == .accept;
+        defer if (accepting) if (vm.sim) |s| s.endWait();
+        if (accepting) if (vm.sim) |s| try s.waitOn(.{ .listener = true, .handle = a[0].cap.handle, .call = "HttpListener.accept" });
         if (vm.server) |s| return http_mod.call(&s.sockets, vm, which, a);
         if (vm.sim) |s| return http_mod.fixtureCall(&s.fixture, vm, s, which, a);
         vm.report = .{ .kind = .other, .clause = "Http runs only under mo run", .within = @tagName(which), .at = 0 };

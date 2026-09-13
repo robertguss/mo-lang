@@ -165,10 +165,12 @@ assert      = "assert" expr NL                                  # a stmt inside 
 ## 11. Recipes
 
 ```
-recipe      = "recipe" TypeName NL intent needs signature_only* test* "end" NL
+recipe      = "recipe" TypeName NL intent needs signature_only* never* test* "end" NL
 needs       = "needs" (TypeName ("," TypeName)* | "nothing") NL
 signature_only = signature NL contract* "end" NL         # no body
 ```
+
+Session 5, step 19: a recipe may hold `never` blocks, after its signatures and before its tests. They are checked in the recipe's module and run only against an implementation, with the recipe's tests, by `mo check --recipe` (design-v0/06); before, a recipe's nevers sat at its module's head and nothing ran them.
 
 ## Semantic rules the grammar does not express
 

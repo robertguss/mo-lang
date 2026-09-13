@@ -95,6 +95,9 @@ const Builder = struct {
     /// In an invariant: the state before the message, which `old` reads, and whether it did.
     old_state: ?[]const u8 = null,
     reads_old: bool = false,
+    /// A parameter or an expression can hold a process's handle, so the function registers its
+    /// locals for a sweep (bytecode.zig, Function.scans_handles).
+    handles: bool = false,
 };
 
 const Refinement = struct { cname: []const u8, clause: u32, bounds: bytecode.Bounds = .{} };
@@ -185,6 +188,11 @@ const Emitter = struct {
 
     fn baseType(e: *Emitter, t: Id) types.Type {
         return e.k.pool.get(e.k.pool.base(t));
+    }
+
+    /// A value of type `t` is held in the function being written.
+    fn holds(e: *Emitter, t: Id) void {
+        if (!e.b.handles and check.handleIn(&e.k.pool, t, 0)) e.b.handles = true;
     }
 
     fn intKind(e: *Emitter, t: Id) u32 {
@@ -452,6 +460,12 @@ const Emitter = struct {
         // Every call counts its depth (contracts.depth_limit), as the vm's exec does.
         try out.print(gpa, "    if (++mo_depth > MO_DEPTH_LIMIT) mo_too_deep({s});\n", .{try cString(gpa, b.name)});
         for (b.locals.items) |l| try out.print(gpa, "    MoValue {s} MO_U = MO_NONE_V;\n", .{l});
+        // A function that can hold a handle lists its locals where a sweep reads them (mo_rt.c).
+        if (b.handles) {
+            try out.appendSlice(gpa, "    MoValue *const H_[] = {");
+            for (roots.items, 0..) |r, i| try out.print(gpa, "{s}&{s}", .{ if (i > 0) ", " else "", r });
+            try out.print(gpa, "}};\n    MoHandleFrame HF_ = {{mo_handle_frames, H_, {d}}};\n    mo_handle_frames = &HF_;\n", .{roots.items.len});
+        }
         try out.appendSlice(gpa, b.pre.items);
         try out.appendSlice(gpa, b.code.items);
         // A frame that allocated more than its budget keeps its result and inouts, and frees the rest.
@@ -461,6 +475,7 @@ const Emitter = struct {
         for (b.inouts.items, 1..) |k, i| try out.print(gpa, "        L{d} = r_[{d}];\n", .{ k, i });
         try out.appendSlice(gpa, "    }\n");
         for (b.inouts.items) |k| try out.print(gpa, "    *io{d} = L{d};\n", .{ k, k });
+        if (b.handles) try out.appendSlice(gpa, "    mo_handle_frames = HF_.next;\n");
         try out.appendSlice(gpa, "    mo_depth--;\n    return R;\n}\n");
         if (b.has_loops) try out.print(gpa, "#undef ROOTS_{s}\n", .{b.cname});
     }
@@ -491,6 +506,7 @@ const Emitter = struct {
             }
             try b.names.append(e.gpa, .{ .name = p.name, .cvar = cvar, .mutable = p.inout });
             try b.params.append(e.gpa, .{ .name = p.name, .cvar = cvar, .mutable = p.inout });
+            e.holds(p.type);
         }
         // Locals are numbered past every parameter.
         if (params.len > 0 and b.value_params.items.len + b.locals.items.len != params.len) unreachable;
@@ -785,6 +801,7 @@ const Emitter = struct {
         const cvars = try e.gpa.alloc([]const u8, params.len);
         for (params, cvars, 0..) |p, *cvar, k| {
             cvar.* = try e.bindName(p.name, false);
+            e.holds(p.type);
             try e.b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ cvar.*, k });
         }
         return cvars;
@@ -1373,6 +1390,7 @@ const Emitter = struct {
 
     fn expr(e: *Emitter, i: Index) Error![]const u8 {
         const n = e.node(i);
+        e.holds(e.typeOf(i));
         switch (n.kind) {
             .int_lit => return e.constant(.{ .int = parseInt(e.text(n.main_token)) }),
             .float_lit => return e.constant(.{ .float = std.fmt.parseFloat(f64, e.text(n.main_token)) catch 0 }),
