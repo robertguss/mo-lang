@@ -12,6 +12,27 @@ status: in-progress
 
 Rewritten in session 5 after the interpreter milestone was met. Each step is one brief on a plan page, one fresh worker session, Fable's verification, one commit that updates [[decision-log]], `CHANGELOG.md`, and `log.md`, then a merge to `main`. Done steps keep their rows.
 
+## Where we are
+
+Updated at every acceptance. A step is one brief to one fresh worker session, numbered in the order it ran, not a count toward an end; this table is the count.
+
+| phase | status | briefs left, roughly |
+|---|---|---|
+| The design, the corpus, the interpreter milestone (sessions 1–5) | done | — |
+| The toolchain under real programs: formatter, stdlib, `Net`, `Http`, the C backend, three review rounds (steps 5–18) | done | — |
+| Programs 2, 3, 4: logstat, kv, notes | done | — |
+| Step 19, what program 4 found | running | 1 |
+| Step 20, the runtime owns the loop | next | 1 |
+| Round 4 of the control run | queued | 1 (three sessions) |
+| Memory and green threads (chapter 7) | queued | 1–2 |
+| Program 1, the job queue, and its follow-ups | queued | 2–3 |
+| Tier 3 proving, `mo prove` | queued | 2–3 |
+| Programs 5 and 6, the agent harness and the ledger | queued | 3–4 |
+| The package registry | deferred until an outsider runs a real service | — |
+| Program 7, the toolchain in Mo | late | — |
+
+About ten to fifteen briefs to the end of the roadmap as written, at roughly one an hour of worker time plus verification. A program that finds a runtime hole adds one; round 4 may send a law back.
+
 ## Done
 
 | step | what | evidence |

@@ -118,7 +118,8 @@ Add a tag here before using it. Keep it under 25.
 6. **Nothing is final until measured** (direction 28).
 7. **Cost rule:** mechanical research and page-writing go to an Opus worker session in Herdr (`herdr agent start worker --kind claude --pane <id> -- --model opus --dangerously-skip-permissions`; answer the trust dialog with `down enter`; hand it a plan page such as `plans/comparison-pass.md`). The expensive model keeps judgment: tensions, syntheses, Q17, design-v0. Both share one working tree: `git pull --rebase --autostash` before pushing. **Every phase (one plan page) runs in a fresh worker session** (Robert, session 5): end the worker with `/exit` (`herdr agent prompt <name> "/exit"`) and `herdr agent start` a new one before handing over the next brief. Name the worker `mo-<model>` so it never collides with a worker in another workspace.
 8. **Fable decides** (Robert, session 5): Fable's recommendation is the decision, made without waiting, always as a decision-log row with who, status, and first tested by. Robert reviews the log, not the queue. Overturning is cheap and expected; nothing is a mistake at this stage.
-9. Notion is retired for this project (it was his work workspace). Never write Mo content there. The old pages are exported in `raw/notion/`; deleting them is his call.
+9. **Frame every report** (Robert, session 5, evening): each report on a worker's result says where that work sits in the whole, in a sentence or two: what phase it belongs to, what it unblocks, and what is left, against the "Where we are" table on `plans/roadmap.md`, which is updated at every acceptance.
+10. Notion is retired for this project (it was his work workspace). Never write Mo content there. The old pages are exported in `raw/notion/`; deleting them is his call.
 
 ## Robert's taste (learned the hard way)
 
