@@ -490,6 +490,34 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "5be52a11425351a1" }
     },
     {
+      "path": "notes/limits.mo",
+      "module": "Notes.Limits",
+      "declarations": [
+        { "id": "b12e055d6520", "name": "module Notes.Limits", "hash": "76728e404cf49649" },
+        { "id": "6bc677bae0bb", "name": "expose", "hash": "fdb28dd52a778549" },
+        { "id": "195e146a61b4", "name": "intent", "hash": "9e4e2e34ae89be4d" },
+        { "id": "e277bdcf7490", "name": "type ClientId", "hash": "d6cb7c61a78dff3b" },
+        { "id": "1166e13e3b2c", "name": "struct Bucket", "hash": "42f8b5e1418634d7" },
+        { "id": "22ea58ba265e", "name": "struct Limiter", "hash": "c7359c9325375309" },
+        { "id": "975eb5405184", "name": "fn limiter", "hash": "af16cee4062de374" },
+        { "id": "0dee4b85629c", "name": "fn tokens", "hash": "310e9e6ba60ade3a" },
+        { "id": "54f8e5b7169c", "name": "fn allow?", "hash": "fa1cf8c0d3f197dd" },
+        { "id": "d552194952af", "name": "fn retry_after", "hash": "2516853cebbbd656" },
+        { "id": "f255b3247a8e", "name": "fn token?", "hash": "44774484e9dea517" },
+        { "id": "4e1ccef83e63", "name": "fn token_byte?", "hash": "0fe6db9de67b8c60" },
+        { "id": "0523c11e9912", "name": "fn refilled", "hash": "2ceddc624f9a0391" },
+        { "id": "58d6e214efb4", "name": "fn kept", "hash": "803fd72623346355" },
+        { "id": "5686654902cf", "name": "test \"a burst beyond capacity is refused\"", "hash": "cd343bee9e10fd8c" },
+        { "id": "bde1a3cacbc8", "name": "test \"refills at the declared rate\"", "hash": "429bcb0ac0de3a32" },
+        { "id": "4a014e187c84", "name": "test rejects \"a limiter with no capacity\"", "hash": "0f9337d5b1c5fa43" },
+        { "id": "f3d43c755bfa", "name": "test \"sixty requests pass in a minute, and the sixty-first is refused without taking a token\"", "hash": "e48376d8a1bfc9c4" },
+        { "id": "f8aa5f1f1dc9", "name": "test \"each client has a bucket of its own\"", "hash": "cab2a87c32e6a261" },
+        { "id": "e351954817de", "name": "test \"a token is 1 to 64 letters, digits, - and _\"", "hash": "940ede87b93d69a7" },
+        { "id": "64b0e0156831", "name": "property \"no run of requests leaves a client more tokens than the capacity\"", "hash": "68e26c7c63445219" }
+      ],
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "c275bcbb3349fa96" }
+    },
+    {
       "path": "runaway.mo",
       "module": "Programs.Runaway",
       "declarations": [
