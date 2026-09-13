@@ -6,6 +6,8 @@
 //!     --sim [N]          tier 3: each test that starts a process runs N more times
 //!                        (default 100), each on a seeded Mo.Sim
 //!     --seed S           the first of those seeds; by default the file's hash
+//!     --faults P         the percent chance a fixture call fails in a seeded run
+//!                        (default 5; 0 for none)
 //!   mo run   <file.mo> [-- args...]
 //!                        tier 1, then `main` on Mo.Server with the args after `--`;
 //!                        no test runs. Exit 0, or the last platform.exit(code), or 70
@@ -24,7 +26,7 @@ const mo = @import("mo");
 
 const usage =
     \\usage: mo check <file.mo> [--json]
-    \\       mo test [--all] [--sim [N]] [--seed S] <file.mo> [--json]
+    \\       mo test [--all] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\
@@ -57,6 +59,7 @@ pub fn main(init: std.process.Init) !void {
     var program_args: ?[]const []const u8 = null;
     var sim_runs: ?u32 = null;
     var seed: ?u64 = null;
+    var faults: ?u32 = null;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const a = args[i];
@@ -77,6 +80,12 @@ pub fn main(init: std.process.Init) !void {
             i += 1;
             if (i == args.len) return usageExit(err);
             seed = std.fmt.parseInt(u64, args[i], 10) catch return usageExit(err);
+        } else if (std.mem.eql(u8, a, "--faults")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            const percent = std.fmt.parseInt(u32, args[i], 10) catch return usageExit(err);
+            if (percent > 100) return usageExit(err);
+            faults = percent;
         } else if (std.mem.eql(u8, a, "--json")) {
             json = true;
         } else if (std.mem.eql(u8, a, "--all")) {
@@ -95,9 +104,9 @@ pub fn main(init: std.process.Init) !void {
     const is_run = std.mem.eql(u8, command, "run");
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
-    // A seed chooses a simulated run's order, so it means nothing without --sim.
+    // A seed and faults shape a simulated run, so they mean nothing without --sim.
     if (sim_runs != null and !std.mem.eql(u8, command, "test")) return usageExit(err);
-    if (seed != null and sim_runs == null) return usageExit(err);
+    if ((seed != null or faults != null) and sim_runs == null) return usageExit(err);
 
     var diags: mo.diag.List = .empty;
 
@@ -158,7 +167,11 @@ pub fn main(init: std.process.Init) !void {
         return usageExit(err);
 
     if (stage == .run) {
-        const options: mo.runner.Options = .{ .sim_runs = sim_runs orelse 0, .sim_seed = seed orelse mo.runner.seedOf(program.main().source) };
+        const options: mo.runner.Options = .{
+            .sim_runs = sim_runs orelse 0,
+            .sim_seed = seed orelse mo.runner.seedOf(program.main().source),
+            .fault_percent = faults orelse mo.runner.default_fault_percent,
+        };
         const r = mo.pipeline.testProgram(arena, program, all, options, &diags) catch |e| switch (e) {
             error.Rejected => return reject(out, err, program.files, diags.items, json),
             else => return e,

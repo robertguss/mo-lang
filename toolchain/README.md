@@ -4,7 +4,7 @@ The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolc
 
 ```
 zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
-                                                mo test [--all] [--sim [N]] [--seed S] <file.mo> [--json]
+                                                mo test [--all] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo fmt [--check | --stdout] <file.mo>
                                                 ReleaseSafe; zig build -Ddebug for Debug

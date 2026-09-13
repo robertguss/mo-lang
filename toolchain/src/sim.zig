@@ -10,6 +10,8 @@
 //! message, whether a statement's sends are delivered before the next statement or after
 //! it, and how far the clock moves before each update (0 to 10 ms). Its deliveries are
 //! kept in order, so a failure prints the interleaving that found it.
+//! With faults, a seeded run's fixtures can fail or be slow, each call by the seed's
+//! draw (`fault`), and an `ask` whose target waited past its deadline is a Timeout.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
@@ -29,6 +31,10 @@ pub const settle_limit: u32 = 1_000_000;
 pub const test_runner: u32 = none;
 /// The most a seeded run's clock moves before one update.
 pub const max_tick_ms: i64 = 10;
+/// Mixed into the seed for the fault draws, so they are a stream apart from the schedule.
+const fault_stream: u64 = 0x6661_756c_7473;
+
+pub const Fault = enum { timeout, missing };
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
@@ -92,6 +98,18 @@ pub const Sim = struct {
     trace: std.ArrayList(Step) = .empty,
     /// The visiting order of one settle round, kept between settles.
     order: std.ArrayList(u32) = .empty,
+    /// The fault draws of a seeded run, apart from the schedule's, so the same seed
+    /// without faults delivers in the same order; null when no fixture fails.
+    faults: ?std.Random.DefaultPrng = null,
+    /// The chance, in percent, that a fixture call fails, and again that one that
+    /// answers is slow.
+    fault_percent: u32 = 0,
+    /// Faults drawn so far: failures and slow calls.
+    injected: u32 = 0,
+    /// Milliseconds fixture calls have waited in all, and the part the clock has not
+    /// moved by yet (it moves before the next update).
+    waited: i64 = 0,
+    lag: i64 = 0,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -99,9 +117,43 @@ pub const Sim = struct {
         return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name };
     }
 
-    /// A seeded run: the same rules, with the scheduler's choices drawn from `seed`.
-    pub fn seeded(vm: *Vm, seed: u64, test_name: []const u8) Sim {
-        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .schedule = .init(seed) };
+    /// A seeded run: the same rules, with the scheduler's choices drawn from `seed`, and
+    /// fixtures that fail at `fault_percent`.
+    pub fn seeded(vm: *Vm, seed: u64, test_name: []const u8, fault_percent: u32) Sim {
+        return .{
+            .gpa = vm.gpa,
+            .vm = vm,
+            .seed = seed,
+            .test_name = test_name,
+            .schedule = .init(seed),
+            .faults = if (fault_percent > 0) .init(seed ^ fault_stream) else null,
+            .fault_percent = fault_percent,
+        };
+    }
+
+    /// A fixture call's fate in a seeded run with faults. With the run's chance it fails:
+    /// Missing at once when it names a path (`can_miss`), else Timeout after waiting its
+    /// whole deadline. With the same chance a call that answers is slow, and waits up to
+    /// its deadline. What calls wait moves the clock before the next update and counts
+    /// against an ask in flight. Null: the call answers as the fixture does.
+    pub fn fault(sim: *Sim, can_miss: bool, within: i64) ?Fault {
+        const rng = if (sim.faults) |*r| r.random() else return null;
+        if (rng.uintLessThan(u32, 100) < sim.fault_percent) {
+            sim.injected += 1;
+            if (can_miss and rng.boolean()) return .missing;
+            sim.wait(within);
+            return .timeout;
+        }
+        if (within > 0 and rng.uintLessThan(u32, 100) < sim.fault_percent) {
+            sim.injected += 1;
+            sim.wait(rng.intRangeAtMost(i64, 1, within));
+        }
+        return null;
+    }
+
+    fn wait(sim: *Sim, ms: i64) void {
+        sim.waited += ms;
+        sim.lag += ms;
     }
 
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
@@ -167,11 +219,13 @@ pub const Sim = struct {
 
     /// `h.ask(message, within: d)`: the target's waiting messages run, then this one, and
     /// the reply is the value of its arm. `Timeout` when the target's fixtures are slower
-    /// than `d`; `Down` when the target is down or crashed before replying.
+    /// than `d`, or its fixture calls waited longer than `d` while it answered; `Down` when
+    /// the target is down or crashed before replying. A Timeout's message still arrives.
     pub fn ask(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         if (!sim.procs.items[to].up) return sim.askError("Down");
         // A target whose update is on the stack is waiting on this very call.
         if (sim.procs.items[to].busy) return sim.askError("Timeout");
+        const waited = sim.waited;
         try sim.roomFor(to, message);
         const seq = try sim.enqueue(sim.running orelse test_runner, to, message);
         const reply = while (true) {
@@ -181,7 +235,7 @@ pub const Sim = struct {
             const d = try sim.deliver(to);
             if (d.seq == seq) break d.reply orelse return sim.askError("Down");
         };
-        if (sim.delayOf(to) > within) return sim.askError("Timeout");
+        if (sim.delayOf(to) + (sim.waited - waited) > within) return sim.askError("Timeout");
         return sim.vm.variant("Ok", &.{reply});
     }
 
@@ -290,7 +344,8 @@ pub const Sim = struct {
         }
         try p.log.append(sim.gpa, entry.message);
         if (sim.schedule) |*rng| {
-            sim.now += rng.random().intRangeAtMost(i64, 0, max_tick_ms);
+            sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
+            sim.lag = 0;
             try sim.trace.append(sim.gpa, .{ .from = id, .to = id, .message = entry.message, .took = true });
         }
         const before = p.state;
@@ -511,7 +566,7 @@ test "a seeded run makes the same choices for the same seed, and its clock moves
     var nows: [2]i64 = undefined;
     for (&nows) |*now| {
         var machine: Vm = .init(arena, program, 7);
-        var s: Sim = .seeded(&machine, 99, "in order");
+        var s: Sim = .seeded(&machine, 99, "in order", 0);
         machine.sim = &s;
         _ = try machine.call(program.tests[0].function, &.{});
         try s.finish();
@@ -524,6 +579,65 @@ test "a seeded run makes the same choices for the same seed, and its clock moves
         now.* = s.now;
     }
     try std.testing.expectEqual(nows[0], nows[1]);
+}
+
+const loader_src =
+    \\module T.Faults
+    \\process Loader(fs: Fs)
+    \\  state
+    \\    loads: UInt32
+    \\    timeouts: UInt32
+    \\  end
+    \\  message Load
+    \\  message Loads : UInt32
+    \\  fn update(state, message)
+    \\    case message
+    \\      Load:
+    \\        state.loads += 1
+    \\        if fs.read("/etc/app.conf", within: 50.ms) is Error(Timeout)
+    \\          state.timeouts += 1
+    \\        end
+    \\      Loads: state.loads
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Loaders(fs: Fs)
+    \\  child Loader(fs), restart: :always
+    \\end
+    \\test "a load is counted"
+    \\  loader = Loader.start(Fs.fixture())
+    \\  loader.send(Load)
+    \\  assert loader.ask(Loads, within: 1.minute) is Ok(1)
+    \\end
+;
+
+test "under faults a fixture call fails, and an ask whose target waited past its deadline is a Timeout" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, loader_src);
+    var timed_out: u32 = 0;
+    for (0..32) |seed| {
+        var machine: Vm = .init(arena, program, 7);
+        // Every call fails: Missing at once, or Timeout after its 50 ms.
+        var s: Sim = .seeded(&machine, seed, "a load is counted", 100);
+        machine.sim = &s;
+        const loader = try s.start(0, &.{.{ .cap = .{ .kind = .fs } }});
+        try s.send(loader, try machine.variant("Load", &.{}));
+        const reply = try s.ask(loader, try machine.variant("Loads", &.{}), 40);
+        try std.testing.expectEqual(@as(u32, 1), s.injected);
+        const state = s.procs.items[loader].state.record.fields;
+        // The Load arrived either way, and so did the ask's own message.
+        try std.testing.expectEqual(@as(i128, 1), state[0].int);
+        try std.testing.expectEqual(@as(usize, 2), s.procs.items[loader].log.items.len);
+        const timeout = state[1].int == 1;
+        try std.testing.expectEqualStrings(if (timeout) "Error" else "Ok", reply.variant.name);
+        try std.testing.expectEqual(@as(i64, if (timeout) 50 else 0), s.waited);
+        // The Loads update ran after the wait: the clock moved past it.
+        try std.testing.expect(s.now >= vm_mod.fixture_time + s.waited);
+        timed_out += @intFromBool(timeout);
+    }
+    try std.testing.expect(timed_out > 0 and timed_out < 32);
 }
 
 test "an ask past the target's fixture delay is a Timeout, and the message still arrives" {

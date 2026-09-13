@@ -829,6 +829,8 @@ pub const Vm = struct {
                 try s.read(vm, a[0].cap, a[1].string, a[2].duration)
             else if (a[0].cap.delay > a[2].duration)
                 try vm.variant("Error", &.{try vm.variant("Timeout", &.{})})
+            else if (try vm.fixtureFault(true, a[1].string, a[2].duration)) |failed|
+                failed
             else
                 try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = a[1].string }})}),
             .fs_narrow => if (vm.server) |s| try s.narrow(a[0].cap, row.name, if (row.params.len == 1) a[1].string else "") else a[0],
@@ -840,8 +842,10 @@ pub const Vm = struct {
             .events_fixture => .{ .cap = .{ .kind = .events } },
             .ledger_fixture => .{ .cap = .{ .kind = .ledger } },
             // A fixture Ledger finds every id as an unrefunded charge of 10_000 captured at
-            // Time.fixture(), and every save succeeds.
-            .ledger_call => if (std.mem.eql(u8, row.name, "find_charge")) blk: {
+            // Time.fixture(), and every save succeeds, unless a seeded run's fault says not.
+            .ledger_call => if (try vm.fixtureFault(false, "", a[a.len - 1].duration)) |failed|
+                failed
+            else if (std.mem.eql(u8, row.name, "find_charge")) blk: {
                 const decl = vm.checked().findDecl("Charge").?;
                 const fields = try vm.heap.alloc(Value, 4);
                 fields[0] = a[1];
@@ -890,6 +894,16 @@ pub const Vm = struct {
             },
         };
         try vm.push(result);
+    }
+
+    /// A fixture call in a seeded run with faults (sim.zig): the error it fails with, or
+    /// null when it answers as the fixture does. `can_miss`: the call names a path.
+    pub fn fixtureFault(vm: *Vm, can_miss: bool, path: []const u8, within: i64) Error!?Value {
+        const s = vm.sim orelse return null;
+        return switch (s.fault(can_miss, within) orelse return null) {
+            .timeout => try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}),
+            .missing => try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})}),
+        };
     }
 
     pub fn variant(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {
