@@ -336,6 +336,7 @@ const Caps = struct {
     }
 
     fn bodies(c: *Caps) Error!void {
+        const writes = try c.writesThrough();
         for (c.units.items) |u| {
             var pure_reported = false;
             // The names bound in this unit to an Fs narrowed to read_only.
@@ -377,8 +378,9 @@ const Caps = struct {
                             try c.report(.needless_within, n.main_token, try c.print("{s} cannot wait, so it takes no within:; remove the deadline.", .{try c.callLabel(n, row)}));
                         }
                     },
-                    .user => |s| if (c.hasWithin(n)) {
-                        try c.report(.needless_within, c.firstToken(i), try c.print("{s} does not wait itself, so it takes no within:; the calls inside it carry their own.", .{c.k.sigs[s].name}));
+                    .user => |s| {
+                        if (c.hasWithin(n)) try c.report(.needless_within, c.firstToken(i), try c.print("{s} does not wait itself, so it takes no within:; the calls inside it carry their own.", .{c.k.sigs[s].name}));
+                        try c.handedReadOnly(i, s, writes, read_only.items);
                     },
                     .none => {},
                 }
@@ -390,6 +392,124 @@ const Caps = struct {
                     }
                 }
             }
+        }
+    }
+
+    // ---- a read-only Fs handed to a function that writes through it
+
+    const Bound = struct { name: []const u8, param: u32 };
+
+    /// Per signature, per parameter: whether the function writes files through the parameter,
+    /// directly, through a scope of it, or by handing either to a function that does. Settles
+    /// over the call graph, so recursion and calls to later functions are followed.
+    fn writesThrough(c: *Caps) Error![]const []bool {
+        const k = c.k;
+        const out = try c.gpa.alloc([]bool, k.sigs.len);
+        for (k.sigs, out) |s, *w| {
+            w.* = try c.gpa.alloc(bool, s.params.len());
+            @memset(w.*, false);
+        }
+        var changed = true;
+        while (changed) {
+            changed = false;
+            for (c.units.items) |u| {
+                if (u.kind != .function) continue;
+                const si = c.sigIndexOf(u.last) orelse continue;
+                const s = k.sigs[si];
+                const params = k.params[s.params.start..s.params.end];
+                var bound: std.ArrayList(Bound) = .empty;
+                var i = u.first;
+                while (i <= u.last) : (i += 1) {
+                    const n = c.node(i);
+                    if (n.kind == .binding or n.kind == .var_binding) {
+                        if (c.paramRoot(n.lhs, params, bound.items)) |p| try bound.append(c.gpa, .{ .name = c.text(n.main_token), .param = p });
+                    }
+                    switch (k.callee[i]) {
+                        .prelude => |r| if (writesFiles(prelude.fns[r])) {
+                            const p = c.paramRoot(n.lhs, params, bound.items) orelse continue;
+                            if (!out[si][p]) {
+                                out[si][p] = true;
+                                changed = true;
+                            }
+                        },
+                        .user => |callee| for (try c.callArgs(i), 0..) |a, j| {
+                            if (j >= out[callee].len or !out[callee][j]) continue;
+                            const p = c.paramRoot(a, params, bound.items) orelse continue;
+                            if (!out[si][p]) {
+                                out[si][p] = true;
+                                changed = true;
+                            }
+                        },
+                        .none => {},
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    fn sigIndexOf(c: *Caps, n: Index) ?u32 {
+        for (c.k.sigs, 0..) |s, si| if (s.node == n) return @intCast(si);
+        return null;
+    }
+
+    /// The Fs parameter an expression reaches: the parameter by name, a local bound to one,
+    /// or `scoped` on either. Not through `read_only`, whose writes are refused where they are.
+    fn paramRoot(c: *Caps, i: Index, params: []const checker.Param, bound: []const Bound) ?u32 {
+        const n = c.node(i);
+        switch (n.kind) {
+            .name_ref => {
+                const name = c.text(n.main_token);
+                var k = bound.len;
+                while (k > 0) {
+                    k -= 1;
+                    if (std.mem.eql(u8, bound[k].name, name)) return bound[k].param;
+                }
+                for (params, 0..) |p, pk| {
+                    if (std.mem.eql(u8, p.name, name) and c.baseTag(p.type).tag == .cap and c.baseTag(p.type).a == @intFromEnum(types.CapKind.fs)) return @intCast(pk);
+                }
+                return null;
+            },
+            .member, .member_call => switch (c.k.callee[i]) {
+                .prelude => |r| {
+                    const row = prelude.fns[r];
+                    if (!std.mem.eql(u8, row.recv, "Fs") or !std.mem.eql(u8, row.name, "scoped")) return null;
+                    return c.paramRoot(n.lhs, params, bound);
+                },
+                else => return null,
+            },
+            else => return null,
+        }
+    }
+
+    /// A user call's arguments by parameter position: the receiver of a dot call first.
+    fn callArgs(c: *Caps, i: Index) Error![]const Index {
+        const n = c.node(i);
+        var out: std.ArrayList(Index) = .empty;
+        switch (n.kind) {
+            .member => try out.append(c.gpa, n.lhs),
+            .member_call => {
+                try out.append(c.gpa, n.lhs);
+                for (c.spanAt(n.rhs)) |a| if (c.node(a).kind != .named_arg) try out.append(c.gpa, a);
+            },
+            .call => for (c.spanAt(n.rhs)) |a| if (c.node(a).kind != .named_arg) try out.append(c.gpa, a),
+            else => {},
+        }
+        return out.items;
+    }
+
+    /// Call `i` to signature `si` hands an Fs narrowed to read_only to a parameter the
+    /// function writes through: refused here, at the argument, not when the write runs. The
+    /// argument is read-only by what this unit saw bound (a name), or by its type.
+    fn handedReadOnly(c: *Caps, i: Index, si: u32, writes: []const []const bool, names: []const []const u8) Error!void {
+        const s = c.k.sigs[si];
+        const params = c.k.params[s.params.start..s.params.end];
+        for (try c.callArgs(i), 0..) |a, j| {
+            if (j >= writes[si].len or !writes[si][j]) continue;
+            const by_type = c.node(a).kind != .name_ref and c.k.pool.resolve(c.k.typeOf(a)) == types.fs_read_only;
+            if (!by_type and !c.readOnly(a, names)) continue;
+            const arg = c.argText(a);
+            try c.report(.flows_violated, c.firstToken(a), try c.print("{s} writes through its parameter {s}, and {s} was narrowed to read_only and only reads; hand it the Fs {s} was narrowed from.", .{ s.name, params[j].name, arg, arg }));
         }
     }
 
@@ -706,6 +826,45 @@ test "a write through an Fs narrowed to read_only, where the function can see it
         \\  wrote and kept and gone and moved
         \\end
     , &.{ "MO0404", "MO0404" });
+}
+
+test "a read-only Fs handed to a function that writes through it, or through a scope of it further down, is refused at the call" {
+    try expectCodes(
+        \\module T.Handed
+        \\fn copy(logs: Fs) : Bool
+        \\  logs.write("x.log", "no", within: 1.minute) is Ok(_)
+        \\end
+        \\fn deeper(folder: Fs) : Bool
+        \\  archive = folder.scoped("archive")
+        \\  copy(archive)
+        \\end
+        \\fn reads(folder: Fs) : Bool
+        \\  folder.read("x.log", within: 1.minute) is Ok(_)
+        \\end
+        \\fn main(platform: Platform)
+        \\  data = platform.fs.scoped("data").read_only
+        \\  var back = platform.fs.read_only
+        \\  back = platform.fs
+        \\  if copy(data) and deeper(platform.fs.read_only.scoped("x")) and reads(data) and copy(platform.fs) and copy(back)
+        \\    platform.exit(1)
+        \\  end
+        \\end
+    , &.{ "MO0404", "MO0404" });
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try capsOf(arena_state.allocator(),
+        \\module T.Named
+        \\fn copy(logs: Fs) : Bool
+        \\  logs.append("x.log", "no", within: 1.minute) is Ok(_)
+        \\end
+        \\fn main(platform: Platform)
+        \\  if copy(platform.fs.scoped("data").read_only)
+        \\    platform.exit(1)
+        \\  end
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 1), found.len);
+    try std.testing.expectEqualStrings("copy writes through its parameter logs, and platform.fs.scoped(\"data\").read_only was narrowed to read_only and only reads; hand it the Fs platform.fs.scoped(\"data\").read_only was narrowed from.", found[0].what);
 }
 
 test "a recipe's signatures take only the capabilities its needs line names" {

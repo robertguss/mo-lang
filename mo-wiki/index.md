@@ -99,6 +99,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-14|Step 14: the follow-ups from round 2 and the C backend, brief for the worker]] — contracts on in every build, three suspected panics, formatter shapes, four stdlib rows, housekeeping
 - [[interpreter-step-13|Step 13: the C backend, brief for the worker]] — C runtime, emitter, mo build, differential tests against the interpreter
 - [[interpreter-step-12b|Step 12b: two ratified defaults, undone, brief for the worker]] — memoization out of the reference interpreter; every never runs on every test
 - [[interpreter-step-12|Step 12: the runtime under real programs, brief for the worker]] — program discovery, hashed maps, in-place state, per-request freeing, file writes, three language decisions, fmt fuzz
@@ -108,6 +109,7 @@
 - [[interpreter-step-9|Step 9: Mo.Sim with seeds and fault injection, brief for the worker]] — seeded scheduling, injected failures, never over Type.all, sim (N runs)
 - [[interpreter-step-8|Step 8: the stdlib, brief for the worker]] — strings, lists, maps, sets, time, fs listing, JSON; 09-stdlib.md; logstat rewritten
 - [[interpreter-step-7|Step 7: programs of many modules, brief for the worker]] — use imports functions, program root, multi-file corpus programs, push in place, interpreter speed
+- [[control-run-2|The control run, round 2: logstat again on today's toolchain]] — same spec, same model, fresh sessions, after steps 7–12b
 - [[control-run|The control run: logstat in Go and Python, brief for the worker]] — same spec, same model, chapter 8's null hypothesis
 - [[program-2|Program 2: logstat in Mo, brief for the worker]] — the first real program, written from a spec, the founding-premise experiment
 - [[interpreter-step-6|Step 6: main and Mo.Server, brief for the worker]] — main in the language, the real platform over std.Io, mo run, three programs with expected output

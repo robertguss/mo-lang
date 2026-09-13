@@ -64,17 +64,30 @@ pub const Main = struct { program: *const bytecode.Program, main: u32 };
 /// program without `fn main(platform: Platform)` is MO0408.
 pub fn mainProgram(gpa: std.mem.Allocator, prog: program.Program, diags: *diag.List) Error!Main {
     const checked = (try front(gpa, prog, .run, diags)).?;
-    const sig = checked.mainSig() orelse {
+    const sig = try requireMain(gpa, checked, "this module has no fn main(platform: Platform), so mo run has nothing to run; mo test runs its tests", diags);
+    const lowered = try gpa.create(bytecode.Program);
+    lowered.* = try bytecode.lower(gpa, checked);
+    return .{ .program = lowered, .main = lowered.fn_of_sig[sig] };
+}
+
+/// Checks (tier 1) a program for `mo build`; no test runs and nothing is lowered to bytecode.
+/// A build of `main` needs one (MO0408); a build of the tests does not.
+pub fn buildable(gpa: std.mem.Allocator, prog: program.Program, tests: bool, diags: *diag.List) Error!check.Checked {
+    const checked = (try front(gpa, prog, .run, diags)).?;
+    if (!tests) _ = try requireMain(gpa, checked, "this module has no fn main(platform: Platform), so mo build has nothing to compile; mo build --tests compiles its tests", diags);
+    return checked;
+}
+
+/// The signature of `fn main(platform: Platform)`, or MO0408 saying `what`.
+fn requireMain(gpa: std.mem.Allocator, checked: check.Checked, what: []const u8, diags: *diag.List) Error!u32 {
+    return checked.mainSig() orelse {
         const e = caps.catalog.get(.no_main);
         const given = checked.modules[checked.modules.len - 1];
         const root = checked.tree.nodes[0];
         const module_decl = checked.tree.nodes[checked.tree.span(root.lhs, root.rhs)[given.items.start]];
-        try diags.append(gpa, .{ .code = e.code, .category = e.category, .at = checked.tree.tokens[module_decl.main_token].start, .what = "this module has no fn main(platform: Platform), so mo run has nothing to run; mo test runs its tests", .why = e.why });
+        try diags.append(gpa, .{ .code = e.code, .category = e.category, .at = checked.tree.tokens[module_decl.main_token].start, .what = what, .why = e.why });
         return error.Rejected;
     };
-    const lowered = try gpa.create(bytecode.Program);
-    lowered.* = try bytecode.lower(gpa, checked);
-    return .{ .program = lowered, .main = lowered.fn_of_sig[sig] };
 }
 
 test "mo run needs fn main: a module without one is MO0408" {

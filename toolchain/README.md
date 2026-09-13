@@ -1,15 +1,17 @@
 # toolchain/
 
-The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolchain.md`: interpreter first, C via Zig for release later, a native backend only if a real program demands it. The milestone is `mo-wiki/spec/design-v0/08-milestone.md`: lex, parse, typecheck, and run `examples/payments/refund.mo` with its tests, contracts at tier 2, `rejects` tests tripping, the `verified:` line computed.
+The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolchain.md`: interpreter first, C via Zig for release (step 13, `mo build`), a native backend only if a real program demands it. The milestone is `mo-wiki/spec/design-v0/08-milestone.md`: lex, parse, typecheck, and run `examples/payments/refund.mo` with its tests, contracts at tier 2, `rejects` tests tripping, the `verified:` line computed.
 
 ```
 zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
                                                 mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
+                                                mo build <file.mo> [-o name] [--contracts] [--tests] [--target triple]
+                                                                                 C via zig cc: zig-out/mo-build/<name>/<name>
                                                 mo fmt [--check | --stdout] <file.mo>
                                                 mo fix [--dry-run] <file.mo>     every fix of confidence 100
                                                 ReleaseSafe; zig build -Ddebug for Debug
-zig build test         → every stage's tests + the corpus test over ../examples
+zig build test         → every stage's tests + the corpus test over ../examples, the interpreter and mo build side by side
 zig build bench        → zig-out/bin/mo-bench   times every stage over ../examples
 zig build errors       → ../mo-wiki/spec/errors.md, the error catalog, rendered from the diagnostic tables
 bench/rebuild.sh       → the toolchain's own incremental build time
@@ -36,6 +38,9 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |
+| `src/emit_c.zig` | the C backend: the checked tree as one C11 translation unit, lowered construct for construct as `bytecode.zig` lowers it | ch. 7 |
+| `src/cbuild.zig` | `mo build`: writes the C beside the runtime and compiles it with `zig cc` (`-std=c11 -Wall -Werror -O2`; static on Linux) | ch. 7 |
+| `runtime/mo_rt.h`, `runtime/mo_rt.c` | the C runtime a built program links, embedded in `mo`: values, the stdlib rows, overflow traps, crash reports, regions freed at the vm's safe points, Mo.Server's platform parts, and the test runner | ch. 7, 09 |
 | `src/server.zig` | Mo.Server: the real platform `mo run` gives `main` (args, env, streams, a scoped `Fs`, the wall clock, exit) | ch. 3, Q18 |
 | `src/diag.zig` | structured diagnostics, no warnings; a fix's edits; the catalog row every table uses | ch. 5 |
 | `src/errors.zig` | the error catalog: every table's rows in code order, rendered as `mo-wiki/spec/errors.md` (`src/errors_gen.zig` writes it) | ch. 5 |
@@ -46,7 +51,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/fmt.zig` | `mo fmt`: the tree printed in its one shape (`FORMAT.md` is the rule table) | ch. 2, 4 |
 | `src/fix.zig` | `mo fix`: the fixes of MO0307 and MO0312, and applying every fix of confidence 100 until none applies | ch. 5, 7 |
 | `src/diff.zig` | the unified diff `mo fmt --check` and `mo fix --dry-run` print | |
-| `src/corpus.zig` | the corpus test: `examples/` passes, `examples/rejects/` is rejected | |
+| `src/corpus.zig` | the corpus test: `examples/` passes, `examples/rejects/` is rejected; every module's tests and every program built by `mo build` print what the interpreter prints | |
 | `src/main.zig` | the `mo` CLI | |
 | `src/bench.zig` | the benchmark harness | ch. 8 |
 | `bench/results.tsv` | one row per stage per recorded run | ch. 8 |
@@ -57,6 +62,6 @@ Every stage that is not built yet returns `error.NotImplemented`. The corpus tes
 ## Rules
 
 - Pointer-free, index-based data everywhere in the compiler (Roc's lesson, Q13).
-- Overflow traps in every build mode of the interpreter, because Mo's semantics say so.
+- Overflow traps in every build mode of the interpreter and in every binary `mo build` makes, because Mo's semantics say so. The interpreter is the reference: a difference between a built binary and `mo run` or `mo test` is a bug, and the interpreter wins unless it is shown to be the one that is wrong.
 - Record a benchmark row (`zig build bench -- ../examples 20 --record`, `bench/rebuild.sh --record`) whenever a stage lands or a number moves. The targets are 50 ms for tier 1 incremental and 100 ms per changed function for tier 2.
 - No dependency but Zig. `build.zig.zon` stays empty of packages.

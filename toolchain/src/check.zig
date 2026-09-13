@@ -1255,6 +1255,9 @@ const Checker = struct {
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
         const p = primitive(head) orelse return false;
+        // A capability is its kind: a read-only Fs is an Fs.
+        const pt = c.pool.get(p);
+        if (pt.tag == .cap) return b.tag == .cap and b.a == pt.a;
         return c.pool.base(t) == p;
     }
 
@@ -2826,6 +2829,10 @@ const Checker = struct {
         if (row.ordered.len > 0) try c.defer_(.{ .kind = .ordered, .node = i, .type = env.letters[row.ordered[0] - 'A'] });
         if (row.integer.len > 0) try c.defer_(.{ .kind = .integer, .node = i, .type = env.letters[row.integer[0] - 'A'] });
         c.callee[i] = .{ .prelude = @intCast(k) };
+        // A narrowing to read_only stays in the type, and so does a scope of one.
+        if (std.mem.eql(u8, row.recv, "Fs") and (std.mem.eql(u8, row.name, "read_only") or (std.mem.eql(u8, row.name, "scoped") and c.pool.resolve(t) == types.fs_read_only))) {
+            return types.fs_read_only;
+        }
         return c.parseTs(row.ret, &env);
     }
 
