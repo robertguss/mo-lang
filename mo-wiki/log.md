@@ -229,3 +229,6 @@
 
 ## [2026-09-13] session | Afternoon: control run round 3 recorded; step 17 started
 - Fable verified all three: Mo's four modules green, five runs against expected files, fmt clean, corpus test green in the worktree; Go check.sh, go test, go vet; Python check.sh and 69 tests. Wall-clock void for Mo and Go (the machine slept). Mo 9 loops (6 diagnostics), a real bug caught by a test and a never. Four decision rows, one locked (any(T) honours refinements). Branches control3-* kept as evidence. Three round-3 sessions closed. Step 17 (round 3 follow-ups) to a fresh session; program 4 spec next.
+
+## [2026-09-13] session | Afternoon: outside review (Amp)
+- Robert asked an outside agent for a full critique with the oracle and librarian. Two deep dives added: outside-review-2026-09-13 (verdict, ranked disagreements, keep/revise/drop, next five moves) and its evidence page (13 probes: unbounded recursion passes check, for-only loops give fictional bounds, invariant polarity, vacuous fault-injection asserts, handles not classified as capabilities, update-as-transaction not holding across ask/fs, durability never checks self-built witnesses, Roc platform precedent). Nothing merged or decided; pages marked contested for Robert to answer.
