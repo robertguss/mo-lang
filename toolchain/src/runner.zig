@@ -706,6 +706,34 @@ test "every never is checked at the end of every test, test rejects, and propert
     try std.testing.expectEqual(contracts.Kind.never, r.results[4].report.?.kind);
 }
 
+test "any(T) of a refined type gives only what the refinement admits, from its bounds when few pass, else MO0325" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const r = try runSource(arena,
+        \\module T.Refined
+        \\type Code = UInt16 where value >= 100 and value <= 599
+        \\type Odd = UInt32 where value % 1_000_000 == 7
+        \\struct Row
+        \\  code: Code
+        \\end
+        \\property "a code and a row's code are in range"
+        \\  for code in any(Code), row in any(Row)
+        \\    assert code >= 100 and code <= 599
+        \\    assert row.code >= 100 and row.code <= 599
+        \\  end
+        \\end
+        \\property "an odd one"
+        \\  for x in any(Odd)
+        \\    assert x % 1_000_000 == 7
+        \\  end
+        \\end
+    );
+    try std.testing.expectEqual(Outcome.passed, r.results[0].outcome);
+    try std.testing.expectEqual(Outcome.failed, r.results[1].outcome);
+    try std.testing.expect(std.mem.startsWith(u8, r.results[1].report.?.clause, "MO0325 the refinement of Odd admits none of the 200 values any(Odd) generated;"));
+}
+
 test "under faults a test holds, or passes only without faults, and the summary counts each" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();

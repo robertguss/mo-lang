@@ -135,6 +135,12 @@ typedef struct {
     /* An alias's refinements, which any(T) keeps to. */
     uint32_t nrefines;
     const MoRefineFn *refines;
+    /* The integer bounds they state (bytecode.Bounds), clamped to the base type, when they
+     * state any and lo <= hi; and the clause any(T) crashes with when none of its candidates
+     * pass (MO0325). */
+    bool bounded;
+    __int128 lo, hi;
+    uint32_t none_admitted;
 } MoDecl;
 extern const MoDecl mo_decls[];
 /* Every variant the checker knows, in its order (vm.formatValue looks through them). */

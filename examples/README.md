@@ -48,6 +48,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 21. `contracts/never.mo`: a two-generator `never` with a guard
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
 62. `contracts/never-trips.mo`: a `never` that plain test data breaks, tripping a `test rejects` under `mo test` without `--sim`
+65. `contracts/property-refined.mo`: properties over refined types; `any(Percent)` never gives 65,535, and `any(Status)`, whose `where` few `UInt16` values pass, generates between its bounds
 
 ## effects
 23. `effects/clock.mo`: a function that takes a `Clock`; `clock.now` cannot wait, so it takes no `within:`

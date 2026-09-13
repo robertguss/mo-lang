@@ -63,6 +63,8 @@ pub const Code = enum {
     not_exposed,
     no_module,
     never_unchecked,
+    /// Given by the property runner, not the checker (vm.zig and mo_rt.c, generate).
+    none_admitted,
 };
 
 pub const Entry = diag.Entry;
@@ -110,6 +112,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .not_exposed = .{ .code = "MO0322", .category = .laws, .what = "<Module> does not expose <name>; a use names only what is on a module's expose line.", .why = "A module's expose line is its whole public surface (grammar §2); everything else is private, so a use names only what the module exposes.", .fixes = &.{} },
     .no_module = .{ .code = "MO0323", .category = .laws, .what = "<Module> is not a module of this program: there is no <path> under the program root.", .why = "A program is a tree of files: A.B is a/b.mo under the program root, the nearest directory holding a mo.root file, else the main file's own directory (grammar, Session 5). A use names a module of the program.", .fixes = &.{} },
     .never_unchecked = .{ .code = "MO0324", .category = .laws, .what = "this never cannot be checked: a run records no <Type> values, only structs, enums, and primitive values.", .why = "A never is checked at the end of every test, test rejects, and property run, over the values of each type it reads with T.all that the run held (chapter 2, contract laws). A run records structs, enums, aliases, and primitive values; a capability, a trait, or an opaque type is not recorded, so a never over one would pass without checking anything, and a never that cannot be checked does not compile.", .fixes = &.{} },
+    .none_admitted = .{ .code = "MO0325", .category = .tests, .what = "the refinement of <Type> admits none of the 200 values any(<Type>) generated; write its where as a range, such as value >= 1 and value <= 9, or generate the base type and build the value in the property.", .why = "A property checks its claim over the values a type admits (chapter 4). any(T) of a refined type generates the base type and keeps what the where admits; when none of the first 100 candidates passes and the where compares value with integer literals, it generates between those bounds. When none of 200 passes, the property would check nothing, so it fails instead.", .fixes = &.{} },
 });
 
 // ---- what the checker hands on

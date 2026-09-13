@@ -157,7 +157,133 @@ pub const Function = struct {
     captures: []const u32,
 };
 
-pub const Refinement = struct { function: u32, clause: u32 };
+pub const Refinement = struct { function: u32, clause: u32, bounds: Bounds = .{} };
+
+pub const Range = struct { lo: i128, hi: i128 };
+
+/// The integer bounds a `where` states, each side null when it states none: every conjunct
+/// `value <op> literal` or `literal <op> value` (op one of == < <= > >=) narrows them, and
+/// any other conjunct, an `or` included, narrows nothing. `any(T)` generates between them
+/// when few of its base type's values pass (contracts.refined_base_candidates).
+pub const Bounds = struct {
+    lo: ?i128 = null,
+    hi: ?i128 = null,
+
+    pub fn of(tree: *const ast.Tree, cond: Index) Bounds {
+        var b: Bounds = .{};
+        b.narrow(tree, cond);
+        return b;
+    }
+
+    /// The bounds clamped to an integer kind's, or null when they state none or no integer
+    /// of the kind is between them.
+    pub fn within(b: Bounds, kind: types.IntKind) ?Range {
+        if (b.lo == null and b.hi == null) return null;
+        const bits: u7 = switch (kind) {
+            .i8, .u8 => 8,
+            .i16, .u16 => 16,
+            .i32, .u32 => 32,
+            .i64, .u64 => 64,
+        };
+        const signed = @intFromEnum(kind) <= @intFromEnum(types.IntKind.i64);
+        const min: i128 = if (signed) -(@as(i128, 1) << (bits - 1)) else 0;
+        const max: i128 = (@as(i128, 1) << (if (signed) bits - 1 else bits)) - 1;
+        const lo = @max(b.lo orelse min, min);
+        const hi = @min(b.hi orelse max, max);
+        return if (lo <= hi) .{ .lo = lo, .hi = hi } else null;
+    }
+
+    /// Both bounds at once: the higher low and the lower high.
+    pub fn meet(b: *Bounds, other: Bounds) void {
+        if (other.lo) |v| b.lo = if (b.lo) |w| @max(v, w) else v;
+        if (other.hi) |v| b.hi = if (b.hi) |w| @min(v, w) else v;
+    }
+
+    fn narrow(b: *Bounds, tree: *const ast.Tree, cond: Index) void {
+        const n = tree.nodes[cond];
+        switch (n.kind) {
+            .and_expr => {
+                b.narrow(tree, n.lhs);
+                b.narrow(tree, n.rhs);
+            },
+            .compare => {
+                const op = tree.tokenText(n.main_token);
+                if (isValue(tree, n.lhs)) {
+                    if (intOf(tree, n.rhs)) |v| b.bound(op, v);
+                } else if (isValue(tree, n.rhs)) {
+                    if (intOf(tree, n.lhs)) |v| b.bound(flipped(op), v);
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn bound(b: *Bounds, op: []const u8, v: i128) void {
+        const lo: ?i128, const hi: ?i128 = if (std.mem.eql(u8, op, "=="))
+            .{ v, v }
+        else if (std.mem.eql(u8, op, "<"))
+            .{ null, v -| 1 }
+        else if (std.mem.eql(u8, op, "<="))
+            .{ null, v }
+        else if (std.mem.eql(u8, op, ">"))
+            .{ v +| 1, null }
+        else if (std.mem.eql(u8, op, ">="))
+            .{ v, null }
+        else
+            .{ null, null };
+        b.meet(.{ .lo = lo, .hi = hi });
+    }
+
+    fn flipped(op: []const u8) []const u8 {
+        if (std.mem.eql(u8, op, "<")) return ">";
+        if (std.mem.eql(u8, op, "<=")) return ">=";
+        if (std.mem.eql(u8, op, ">")) return "<";
+        if (std.mem.eql(u8, op, ">=")) return "<=";
+        return op;
+    }
+
+    fn isValue(tree: *const ast.Tree, i: Index) bool {
+        const n = tree.nodes[i];
+        return n.kind == .name_ref and std.mem.eql(u8, tree.tokenText(n.main_token), "value");
+    }
+
+    fn intOf(tree: *const ast.Tree, i: Index) ?i128 {
+        const n = tree.nodes[i];
+        return switch (n.kind) {
+            .int_lit => Lower.parseInt(tree.tokenText(n.main_token)),
+            .negate => if (tree.nodes[n.lhs].kind == .int_lit) -Lower.parseInt(tree.tokenText(tree.nodes[n.lhs].main_token)) else null,
+            else => null,
+        };
+    }
+};
+
+test "a where's bounds are its comparisons of value with a literal" {
+    const lexer = @import("lexer.zig");
+    const parser = @import("parser.zig");
+    const diag = @import("diag.zig");
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const cases = [_]struct { src: []const u8, lo: ?i128, hi: ?i128 }{
+        .{ .src = "value <= 100", .lo = null, .hi = 100 },
+        .{ .src = "value >= 100 and value <= 599", .lo = 100, .hi = 599 },
+        .{ .src = "0 < value and value < 10 and value.even?", .lo = 1, .hi = 9 },
+        .{ .src = "value > -5 and value != 3", .lo = -4, .hi = null },
+        .{ .src = "value <= 9 or value >= 90", .lo = null, .hi = null },
+    };
+    for (cases) |c| {
+        var diags: diag.List = .empty;
+        const src = try std.fmt.allocPrint(arena, "module M\ntype T = Int32 where {s}\n", .{c.src});
+        const tokens = try lexer.lex(arena, src, &diags);
+        const tree = try parser.parse(arena, src, tokens, &diags);
+        const refined = for (tree.nodes, 0..) |n, i| {
+            if (n.kind == .type_refined) break i;
+        } else unreachable;
+        const b = Bounds.of(&tree, tree.nodes[refined].rhs);
+        try std.testing.expectEqual(c.lo, b.lo);
+        try std.testing.expectEqual(c.hi, b.hi);
+    }
+}
 
 pub const TestKind = enum { test_, rejects, property };
 
@@ -760,7 +886,7 @@ const Lower = struct {
         l.b = saved;
         l.functions.items[fi] = try l.finish(&b);
         const r: u32 = @intCast(l.refinements.items.len);
-        try l.refinements.append(l.gpa, .{ .function = fi, .clause = cl });
+        try l.refinements.append(l.gpa, .{ .function = fi, .clause = cl, .bounds = .of(&l.tree, n.rhs) });
         try l.refinement_of.put(l.gpa, refined, r);
         return r;
     }

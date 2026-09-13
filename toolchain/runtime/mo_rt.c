@@ -3743,6 +3743,22 @@ static double rng_float(void) {
     return f;
 }
 
+/* contracts.refined_base_candidates and refined_candidates. */
+#define REFINED_BASE_CANDIDATES 100
+#define REFINED_CANDIDATES 200
+
+/* A generated integer from lo to hi: each edge a fifth of the time, else uniform. */
+static __int128 between(__int128 lo, __int128 hi) {
+    switch (rng_less_than(8, 5)) {
+    case 0: return lo;
+    case 1: return hi;
+    default: {
+        uint64_t span = (uint64_t)(hi - lo);
+        return lo + (__int128)(span == UINT64_MAX ? rng_bits(64) : rng_less_than(64, span + 1));
+    }
+    }
+}
+
 /* The values any(T) produced in this attempt, in order, for a property's report. */
 typedef struct { const char *name; MoValue value; } Generated;
 static Generated *generated;
@@ -3807,13 +3823,15 @@ static MoValue generate(uint32_t t, uint32_t depth) {
         return m;
     }
     case MO_T_ALIAS: {
+        /* Only what the alias admits: the base type's candidates, then its bounds', then MO0325. */
         const MoDecl *d = &mo_decls[ty->a];
-        for (uint32_t attempt = 0;; attempt++) {
-            MoValue v = generate(ty->b, depth);
+        for (uint32_t attempt = 0; attempt < REFINED_CANDIDATES; attempt++) {
+            MoValue v = attempt >= REFINED_BASE_CANDIDATES && d->bounded ? mo_i128(between(d->lo, d->hi)) : generate(ty->b, depth);
             bool holds = true;
             for (uint32_t r = 0; r < d->nrefines && holds; r++) holds = d->refines[r](v).as.b;
-            if (holds || attempt == 100) return v;
+            if (holds) return v;
         }
+        mo_crash(d->none_admitted);
     }
     case MO_T_DECL: {
         const MoDecl *d = &mo_decls[ty->a];
