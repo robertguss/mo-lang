@@ -4,3 +4,4 @@ Places where a program needed something `spec/grammar.md` and `spec/design-v0/04
 
 - `types/generics.mo`: no stdlib trait names exist (pick 15's `Comparable` is only an example). Default: the bound names a trait declared in the same file.
 - `recipes/rate-limiter.mo`: chapter 6 uses `Limiter`, `ClientId`, and `tokens` without declaring them, and nothing names a type whose fields the implementer chooses. Default: `type ClientId = String` in the module; `tokens` and `limiter` are body-less signatures in the recipe; `Limiter` and `l.capacity` stay undeclared, as in chapter 6.
+- `effects/timeout.mo`: grammar gives `Fs.read` the error type `FsError` but never lists its variants, and `try` needs them to match the caller's error enum. Default: `FsError` is `Missing(path: String) | Timeout`, marked corpus-only in `toolchain/PRELUDE.md`.
