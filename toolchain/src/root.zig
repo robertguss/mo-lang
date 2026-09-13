@@ -23,6 +23,7 @@ pub const diag = @import("diag.zig");
 pub const verified = @import("verified.zig");
 pub const pipeline = @import("pipeline.zig");
 pub const corpus = @import("corpus.zig");
+pub const fmt = @import("fmt.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());
