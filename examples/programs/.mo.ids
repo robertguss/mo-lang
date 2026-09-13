@@ -518,6 +518,38 @@
       "verified": { "hash": "bd9f734dadccc02e", "declarations": "c275bcbb3349fa96" }
     },
     {
+      "path": "notes/note.mo",
+      "module": "Notes.Note",
+      "declarations": [
+        { "id": "34ff7a9781b0", "name": "module Notes.Note", "hash": "a94bc9034056ad2f" },
+        { "id": "b20d3f95dc25", "name": "expose", "hash": "8356df8b046006f8" },
+        { "id": "5dd1edff42fa", "name": "use Notes.Limits", "hash": "c16a804da0022dca" },
+        { "id": "ad093b55b846", "name": "intent", "hash": "bc8078fdee2fdfc6" },
+        { "id": "0053bc13d192", "name": "struct Note", "hash": "63823071217f25c5" },
+        { "id": "e6fa0b82589a", "name": "enum Command", "hash": "edece581c88fabcd" },
+        { "id": "01d10b98519d", "name": "struct Call", "hash": "4ef931d213dd21e7" },
+        { "id": "b521e3449491", "name": "enum Outcome", "hash": "36204b23e084d42b" },
+        { "id": "ab82e85762f8", "name": "struct Counts", "hash": "212a8cc6aa2f13c9" },
+        { "id": "aec594fa74e5", "name": "fn note", "hash": "62002545dfedf412" },
+        { "id": "66af9290bc64", "name": "fn note_of", "hash": "fca22f2cf63a0609" },
+        { "id": "7d987a216062", "name": "fn text_in", "hash": "3e4d8a82afa97303" },
+        { "id": "d7bfb9254230", "name": "fn key_of", "hash": "66a2e72a416cc8c7" },
+        { "id": "e9c5ed5e15b4", "name": "fn id_number", "hash": "88c4dad4a4149f87" },
+        { "id": "2437a1c62728", "name": "fn title?", "hash": "f45411a257ef45b7" },
+        { "id": "9c95c6228a14", "name": "fn body?", "hash": "cd45b2ee903c2ffe" },
+        { "id": "92b68692699a", "name": "fn plain?", "hash": "55065deb71549563" },
+        { "id": "15f57a9dc265", "name": "fn c1?", "hash": "3ef1953999d06cd9" },
+        { "id": "d8ddb088e423", "name": "test \"a title is 1 to 200 bytes and a body up to 60 KiB, with no control character but a newline in the body\"", "hash": "fb7d62257c2f1e73" },
+        { "id": "ff4d2fa20189", "name": "test \"a note keeps its shape through the store's JSON\"", "hash": "7f8c5afbc8b96ecb" },
+        { "id": "9abecf0b3d07", "name": "test \"an id is n_ and a number, and a key is the token, a slash, and the id\"", "hash": "9b1dcee5ed83f522" },
+        { "id": "3be4ee1be0a6", "name": "test rejects \"a key for a token with a slash in it\"", "hash": "82623ace91841ff8" },
+        { "id": "f85466bac14e", "name": "test rejects \"a note with an empty title\"", "hash": "cf5b67e6b1e9fa64" },
+        { "id": "fc621af844c2", "name": "test rejects \"a note with a body over 60 KiB\"", "hash": "699e502790f0804e" },
+        { "id": "f0cf5d7ebb6e", "name": "property \"any valid title and body survive the store's JSON\"", "hash": "2a411f21b6d35699" }
+      ],
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "0559462eeeea70fa", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }] }
+    },
+    {
       "path": "notes/store.mo",
       "module": "Notes.Store",
       "declarations": [
