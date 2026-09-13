@@ -1277,6 +1277,12 @@ _Noreturn void mo_fail(uint8_t kind, const char *within, const char *format, ...
     raise_report((Report){kind, text, within, NULL, NULL, 0}, JUMP_CRASH);
 }
 
+_Thread_local uint32_t mo_depth;
+
+_Noreturn void mo_too_deep(const char *name) {
+    mo_fail(MO_R_OTHER, name, "%s is called %u calls deep, and calls nest at most %u deep", name, (unsigned)MO_DEPTH_LIMIT + 1, (unsigned)MO_DEPTH_LIMIT);
+}
+
 _Noreturn void mo_discard(void) {
     if (crash_jump) longjmp(*crash_jump, JUMP_DISCARD);
     mo_fail(MO_R_OTHER, "", "a property's guard ran outside a property");
@@ -4388,9 +4394,11 @@ static MoValue update(uint32_t id, MoValue message, MoValue before) {
 static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out) {
     jmp_buf here;
     jmp_buf *saved = crash_jump;
+    uint32_t depth = mo_depth;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) *out = update(id, message, before);
+    else mo_depth = depth;
     crash_jump = saved;
     return jumped;
 }
@@ -4445,9 +4453,11 @@ _Noreturn static void give_up(uint32_t id, Report last) {
 static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     jmp_buf here;
     jmp_buf *saved = crash_jump;
+    uint32_t depth = mo_depth;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) *out = mo_processes[process].init(NULL, args);
+    else mo_depth = depth;
     crash_jump = saved;
     if (jumped != 0 && jumped != JUMP_CRASH) raise_report(last_report, jumped);
     return jumped == 0;
@@ -4806,6 +4816,7 @@ static void *work(void *arg) {
             if (jumped == 0) {
                 deliver(w->id);
             } else {
+                mo_depth = 0;
                 w->failed = jumped;
                 w->report = last_report;
             }
@@ -6366,7 +6377,9 @@ static Result run_test(const MoTest *t) {
     test_name = t->name;
     jmp_buf here;
     crash_jump = &here;
+    mo_depth = 0;
     int jumped = setjmp(here);
+    if (jumped != 0) mo_depth = 0;
     if (jumped == 0) {
         t->fn();
         drain();
@@ -6402,7 +6415,9 @@ static Result run_property(const MoTest *t) {
             test_name = t->name;
             jmp_buf here;
             crash_jump = &here;
+            mo_depth = 0;
             int jumped = setjmp(here);
+            if (jumped != 0) mo_depth = 0;
             if (jumped == 0) {
                 t->fn();
                 check_nevers();

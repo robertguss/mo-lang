@@ -20,6 +20,7 @@
 //! green threads would replace both.
 const std = @import("std");
 const Io = std.Io;
+const contracts = @import("contracts.zig");
 const net = @import("net.zig");
 const sim_mod = @import("sim.zig");
 const vm_mod = @import("vm.zig");
@@ -158,7 +159,7 @@ pub const Turns = struct {
         const room = t.ready.ensureTotalCapacity(t.gpa, t.workers.items.len);
         t.mutex.unlock(t.io);
         try room;
-        w.thread = std.Thread.spawn(.{}, work, .{ t, sim, id, w }) catch return error.OutOfMemory;
+        w.thread = std.Thread.spawn(.{ .stack_size = contracts.vm_stack_bytes }, work, .{ t, sim, id, w }) catch return error.OutOfMemory;
         t.workers.items[id] = w;
         return w;
     }

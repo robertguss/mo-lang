@@ -268,6 +268,11 @@ _Noreturn void mo_crash_arith(uint8_t kind, uint32_t clause, uint32_t n, const M
 _Noreturn void mo_trip(uint32_t clause, uint32_t n, const MoValue *values);
 /* A report made by the runtime: no clause, no place. */
 _Noreturn void mo_fail(uint8_t kind, const char *within, const char *format, ...);
+/* Calls nest at most this deep (contracts.depth_limit): every function counts itself in
+ * mo_depth on entry and out on return, and the call past the limit crashes naming `name`. */
+#define MO_DEPTH_LIMIT 10000
+extern _Thread_local uint32_t mo_depth;
+_Noreturn void mo_too_deep(const char *name);
 /* A property attempt whose guard is false. */
 _Noreturn void mo_discard(void);
 /* No impl of a trait signature for this receiver. */

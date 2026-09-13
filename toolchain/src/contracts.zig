@@ -21,6 +21,25 @@ pub fn noneAdmitted(gpa: std.mem.Allocator, type_name: []const u8) error{OutOfMe
     return std.fmt.allocPrint(gpa, "MO0325 the refinement of {s} admits none of the 200 values any({s}) generated; write its where as a range, such as value >= 1 and value <= 9, or generate the base type and build the value in the property.", .{ type_name, type_name });
 }
 
+/// Calls nest at most this deep (step 18). The call past it crashes with a report naming the
+/// function, as any crash does, in the interpreter (vm.zig) and in a built binary (mo_rt.h's
+/// MO_DEPTH_LIMIT, the same number), so recursion that does not end is a Mo crash and never
+/// a stack overflow.
+pub const depth_limit: u32 = 10_000;
+/// The stack of every thread `mo` runs Mo code on (main.zig, turns.zig): room for
+/// `depth_limit` nested calls of the vm, whose frames are larger than a built binary's.
+pub const vm_stack_bytes: usize = 256 << 20;
+
+/// The report's sentence for the call past `depth_limit`, into `name`.
+pub fn tooDeep(gpa: std.mem.Allocator, name: []const u8) error{OutOfMemory}![]const u8 {
+    return std.fmt.allocPrint(gpa, "{s} is called {d} calls deep, and calls nest at most {d} deep", .{ name, depth_limit + 1, depth_limit });
+}
+
+test "the C runtime's depth limit is the interpreter's" {
+    const line = std.fmt.comptimePrint("#define MO_DEPTH_LIMIT {d}\n", .{depth_limit});
+    try std.testing.expect(std.mem.indexOf(u8, @import("cbuild.zig").runtime_h, line) != null);
+}
+
 /// What stopped a run.
 pub const Kind = enum {
     requires,

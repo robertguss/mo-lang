@@ -54,7 +54,20 @@ const FmtMode = enum { write, check, stdout };
 /// A crashed `main` exits with this code (Q18; EX_SOFTWARE in sysexits.h).
 const crash_exit: u8 = 70;
 
+/// Mo code runs on a thread with room for contracts.depth_limit nested calls, so recursion
+/// that does not end is a crash report, never a stack overflow (step 18).
 pub fn main(init: std.process.Init) !void {
+    var result: anyerror!void = {};
+    const thread = try std.Thread.spawn(.{ .stack_size = mo.contracts.vm_stack_bytes }, onStack, .{ init, &result });
+    thread.join();
+    return result;
+}
+
+fn onStack(init: std.process.Init, result: *anyerror!void) void {
+    result.* = run(init);
+}
+
+fn run(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     const io = init.io;
     const args = try init.minimal.args.toSlice(arena);

@@ -105,6 +105,10 @@ pub const Parcel = struct {
     }
 };
 
+/// How many calls this thread is inside (contracts.depth_limit). Per thread, since each process
+/// under `mo run` runs on a thread of its own and gives up its turn in the middle of a call.
+threadlocal var call_depth: u32 = 0;
+
 pub const Vm = struct {
     /// Reports, rendered values, and the vm's own lists: everything that is not a value.
     gpa: std.mem.Allocator,
@@ -238,6 +242,12 @@ pub const Vm = struct {
     /// inout parameter, in order.
     fn exec(vm: *Vm, fi: u32, args: []const Value, captures: []const Value) Error!void {
         const f = vm.program.functions[fi];
+        if (call_depth >= contracts.depth_limit) {
+            vm.report = .{ .kind = .other, .clause = try contracts.tooDeep(vm.gpa, f.name), .within = f.name, .at = 0 };
+            return error.Crash;
+        }
+        call_depth += 1;
+        defer call_depth -= 1;
         const frame = vm.mark();
         const locals = try vm.allocValues(f.locals);
         @memcpy(locals[0..args.len], args);

@@ -488,6 +488,19 @@
         { "id": "08fdc935b574", "name": "test \"a file the fixture does not hold is missing\"", "hash": "4601e1008b4474c7" }
       ],
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "5be52a11425351a1" }
+    },
+    {
+      "path": "runaway.mo",
+      "module": "Programs.Runaway",
+      "declarations": [
+        { "id": "5d4924e79133", "name": "module Programs.Runaway", "hash": "0c63b2ff643863c4" },
+        { "id": "1d321bb4b620", "name": "expose", "hash": "ba436f65732d8a42" },
+        { "id": "e6ffe328003c", "name": "intent", "hash": "13583b42d3fc3b4b" },
+        { "id": "6e3dcc36118c", "name": "fn depth", "hash": "244abbb2a2240a1e" },
+        { "id": "667558166af3", "name": "fn main", "hash": "f99b93e949eb4c64" },
+        { "id": "ea9cd009920e", "name": "test \"a count goes as many calls down as it counts\"", "hash": "33d51e7d49b5ffe3" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "6266134e768db2e2" }
     }
   ]
 }

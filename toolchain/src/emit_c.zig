@@ -449,6 +449,8 @@ const Emitter = struct {
             try out.appendSlice(gpa, " k = mo_heap.top - m; } } while (0)\n");
         }
         try out.print(gpa, "MO_U static MoValue {s}({s}) {{\n    size_t F_ MO_U = mo_mark();\n    MoValue R MO_U = MO_NONE_V;\n", .{ b.cname, head });
+        // Every call counts its depth (contracts.depth_limit), as the vm's exec does.
+        try out.print(gpa, "    if (++mo_depth > MO_DEPTH_LIMIT) mo_too_deep({s});\n", .{try cString(gpa, b.name)});
         for (b.locals.items) |l| try out.print(gpa, "    MoValue {s} MO_U = MO_NONE_V;\n", .{l});
         try out.appendSlice(gpa, b.pre.items);
         try out.appendSlice(gpa, b.code.items);
@@ -459,7 +461,7 @@ const Emitter = struct {
         for (b.inouts.items, 1..) |k, i| try out.print(gpa, "        L{d} = r_[{d}];\n", .{ k, i });
         try out.appendSlice(gpa, "    }\n");
         for (b.inouts.items) |k| try out.print(gpa, "    *io{d} = L{d};\n", .{ k, k });
-        try out.appendSlice(gpa, "    return R;\n}\n");
+        try out.appendSlice(gpa, "    mo_depth--;\n    return R;\n}\n");
         if (b.has_loops) try out.print(gpa, "#undef ROOTS_{s}\n", .{b.cname});
     }
 
