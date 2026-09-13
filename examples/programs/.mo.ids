@@ -150,6 +150,40 @@
       "verified": { "hash": "c905d6dcb9f94cdc", "declarations": "43523d0ddc3e30c6" }
     },
     {
+      "path": "kv/server.mo",
+      "module": "Kv.Server",
+      "declarations": [
+        { "id": "80e008714ba8", "name": "module Kv.Server", "hash": "59077687e8d7b870" },
+        { "id": "d37672a9e3c5", "name": "expose", "hash": "acc46cb9962a2797" },
+        { "id": "ffcde1bc4f48", "name": "use Kv.Log", "hash": "aa9c0cc861b5719f" },
+        { "id": "0e4c6939f2eb", "name": "use Kv.Protocol", "hash": "6206fdf2a4a96cfd" },
+        { "id": "3d6fa7af6cda", "name": "use Kv.Store", "hash": "2a62bbbdfc9a3e8c" },
+        { "id": "c03fbcebfbb5", "name": "intent", "hash": "a8cec2cf51036383" },
+        { "id": "317cfe98409a", "name": "process Gate", "hash": "6437fb91b11fa434" },
+        { "id": "58a7e8abcc15", "name": "process Worker", "hash": "f0cb8b5073eabba2" },
+        { "id": "5b5e8a68af97", "name": "process Listening", "hash": "9cce2e42d141322b" },
+        { "id": "d829147acdfc", "name": "supervisor Servers", "hash": "60673a61c790d6ff" },
+        { "id": "4ad1bf3c1950", "name": "fn admitted", "hash": "d7e5899a2a3262af" },
+        { "id": "2bed6753d188", "name": "fn talk", "hash": "598819df31a4612f" },
+        { "id": "51535593e8de", "name": "fn talk_awhile", "hash": "9c9bc016266df11f" },
+        { "id": "b23d7c917dea", "name": "fn exchange", "hash": "5002862a26d38ec9" },
+        { "id": "b511b1faf863", "name": "fn answered", "hash": "782dc88a525c3898" },
+        { "id": "fe1efeff41e6", "name": "fn answer", "hash": "177a5752443e8c89" },
+        { "id": "fe3299098b77", "name": "fn asked", "hash": "40f599ecc1c96911" },
+        { "id": "8ca5a532de4b", "name": "fn sent", "hash": "d75817de927dff6f" },
+        { "id": "23f69088f18a", "name": "fn conversation", "hash": "233dc042fcdd4ebd" },
+        { "id": "72920c6aaa7a", "name": "fn heard_all", "hash": "c58a1b1b582f132c" },
+        { "id": "0759eeb11e2b", "name": "fn heard_so_far?", "hash": "6b0690b59a540812" },
+        { "id": "9cfe74af6594", "name": "fn store_for_tests", "hash": "c2201692796a87db" },
+        { "id": "ecee6f7bfe33", "name": "test \"a client's requests get the store's answers, and QUIT says BYE and closes\"", "hash": "1d316eea7b88d446" },
+        { "id": "1cce7aa18b30", "name": "test \"a line over 64 KiB is malformed, and the connection goes on\"", "hash": "556fe24807a71a06" },
+        { "id": "b6f989cac5b4", "name": "test \"the gate lets 64 clients in, turns the next away, and takes one more when one leaves\"", "hash": "44d687e3e48f45e0" },
+        { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "4d67d31ebdaa1397" },
+        { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "17838304b928bc8b" }
+      ],
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "7ca789725899d8f9" }
+    },
+    {
       "path": "kv/store.mo",
       "module": "Kv.Store",
       "declarations": [
@@ -192,11 +226,12 @@
         { "id": "3ba2af1ca23f", "name": "test \"STATS answers the counts the store passes in\"", "hash": "6a67c738c53f4b7f" },
         { "id": "ffd8c27bef32", "name": "test \"INCR adds to a decimal value, starts a missing key at 0, and refuses a word or an overflow\"", "hash": "6be30c557a40b576" },
         { "id": "54d72de46ccb", "name": "test \"a new key is refused when the table holds a million, and an existing key is not\"", "hash": "ebbb7634c7155e7a" },
-        { "id": "c94df1a4b7b9", "name": "test \"every answer is the table's, or ERR io with the table unchanged, when the journal is slow\"", "hash": "0080ac1558af7bf1" },
+        { "id": "76a4e5052ff2", "name": "test \"every answer is the one the table gives, through the journal\"", "hash": "1376c421f46aaf05" },
+        { "id": "4ab1f488bd3c", "name": "test \"a store whose journal never answers in time answers each change ERR io, and changes nothing\"", "hash": "b4199738660ea1ec" },
         { "id": "34e6c0e421f2", "name": "test \"a store started again from what its journal held reads what the first one wrote\"", "hash": "0cfeb279b7e8c576" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "91f66b3b860beb16", "declarations": "aa5d976796c07034" }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "596fa9f635457d87" }
     },
     {
       "path": "lines-per-file.mo",

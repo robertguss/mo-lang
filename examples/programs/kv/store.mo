@@ -316,10 +316,21 @@ test "a new key is refused when the table holds a million, and an existing key i
   assert decide(full, counted_nothing(), Set(key: "a", value: "2")) is Write(_)
 end
 
-test "every answer is the table's, or ERR io with the table unchanged, when the journal is slow"
+test "every answer is the one the table gives, through the journal"
   journal = Journal.start(0)
-  store = Store.start(journal, Clock.fixture(), opened(empty(), Time.fixture(), 5.ms))
+  store = Store.start(journal, Clock.fixture(), opened(empty(), Time.fixture(), 60_000.ms))
   assert faithful?(store, script())
+end
+
+test "a store whose journal never answers in time answers each change ERR io, and changes nothing"
+  never_in_time = 0.ms - 1.ms
+  store = Store.start(Journal.start(0), Clock.fixture(), opened(empty(), Time.fixture(),
+    never_in_time))
+  assert faithful?(store, script())
+  set = store.ask(Serve(request: Set(key: "a", value: "1")), within: 60_000.ms)
+  got = store.ask(Serve(request: Get(key: "a")), within: 60_000.ms)
+  assert set is Ok(Failed(Io)) or set is Error(_)
+  assert got is Ok(Absent) or got is Error(_)
 end
 
 test "a store started again from what its journal held reads what the first one wrote"
@@ -352,5 +363,5 @@ property "a SET then a GET gives back any valid key's value"
   end
 end
 
-verified: types, contracts, tests (7), property (200 seeds), sim (100 runs)
+verified: types, contracts, tests (8), property (200 seeds), sim (100 runs)
           proven: not run
