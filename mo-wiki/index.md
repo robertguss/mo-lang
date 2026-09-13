@@ -58,9 +58,10 @@
 - [[q15-the-name|Q15: The name]] — ✅ in — Question: is "Mo" it, and what's the story?
 - [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✅ in — Question: parked in session 1: laws with no override, ever?
 - [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✅ in (session 3: six-layer design, plus aube additions) — Raised by Robert (session 2), flagged as very important
+- [[q18-main-and-the-platform|Q18: The shape of main and the first real platform]] — main as a known shape like update; minimal Platform; CLI log analyzer before the job queue
 
 ## Decisions
-*(none yet)*
+- [[decision-log|Decision log]] — every choice in order, who made it, status, what first tests it
 
 ## Syntax picks and examples
 - [[base-example|Current base example (Robert's style)]] — ```ruby
@@ -98,12 +99,20 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-6|Step 6: main and Mo.Server, brief for the worker]] — main in the language, the real platform over std.Io, mo run, three programs with expected output
+- [[interpreter-step-5|Step 5: the formatter, brief for the worker]] — FORMAT.md rules, mo fmt, the loop rule as MO0501, for _, MO0319, corpus formatted
+- [[interpreter-step-4|Interpreter step 4: processes and supervisors, brief for the worker]] — Mo.Sim scheduler, update as a transaction, invariants, mailbox bounds, supervisors, the refund queue test
+- [[interpreter-step-3|Interpreter step 3: run the tests, brief for the worker]] — refund module joins the corpus, bytecode, VM, tier-2 contracts, test runner, verified line
+- [[interpreter-step-2|Interpreter step 2: the tier-1 checker, brief for the worker]] — prelude, names and types, the laws, capabilities, rejects/ fails by code
+- [[interpreter-step-1|Interpreter step 1: lexer and parser, brief for the worker]] — corpus catches up with the Session 5 decisions, then lexer, parser, corpus test, bench rows
+- [[model-bakeoff|Model bake-off: Opus vs Grok vs Codex as workers]] — same corpus brief to three models, one rubric, Robert picks
 - [[corpus|Corpus: brief for the worker session]] — 50 tiny programs in examples/, one construct each, plus rejects/ that must not compile
 - [[comparison-pass|Comparison pass: brief for the worker session]] — template, tools, and the 13 briefs for the Opus worker
 - [[program-menu|Program menu: what we build to put Mo through its paces]] — seven programs of different kinds, and what each measures
 - [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
 
 ## Sessions
+- [[session-05|Session 5 — 12 Sep 2026]] — review closed, corpus and toolchain begun, bake-off, build-first process, gap decisions
 - [[session-01|Session 1 — 12 Sep 2026 (night)]] — - 12 Sep 2026, session 1 (cont)
 - [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
 - [[session-03|Session 3 — 12 Sep 2026]] — tensions 1–7, Q17, aube, recipes and the ecosystem (d31–d35), design-v0 folder

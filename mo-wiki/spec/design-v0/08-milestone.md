@@ -6,6 +6,10 @@ Lex, parse, typecheck, and run `Payments.Refund` from chapter 4 with its tests. 
 
 This is where every syntax pick meets reality. What breaks gets fixed on the pick's page as a Session note, never by rewriting history.
 
+## Session 5: the milestone is met
+
+12 Sep 2026, four worker steps, about two hours of Opus time. `mo test examples/payments/refund.mo` lexes, parses, checks, runs six tests (three `rejects` tripping their `requires`), a property under 200 seeds, and the refund queue as a process under `Mo.Sim`, then prints the `verified:` line. All 52 corpus files behave as declared. What broke and got fixed on the way is in chapter 4's Session 5 notes and `decisions/decision-log.md`. No solver, no C backend, `sim (not run)` until fault injection exists.
+
 ## First tested by
 
 Every provisional decision from session 3, and what tests it.

@@ -11,7 +11,7 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 ## Bounding laws
 
 - Loops iterate a finite collection or a range. No `while`, no `loop`. Recursion: structural only, proved terminating; to be confirmed in the interpreter.
-- Every effectful call carries a deadline (`within:`). Timeout is an ordinary error variant the caller must handle.
+- Every effectful call that can wait carries a deadline (`within:`) and returns a `Result`; the platform marks which calls can wait (`clock.now` and `events.emit` cannot). Timeout is an ordinary error variant the caller must handle.
 - Every mailbox has a declared bound. Overflow is a bug (see chapter 3).
 - Integers are explicitly sized. Overflow is a bug and crashes, in every build. Named `checked_`, `saturating_`, `wrapping_` variants state any other intent.
 
@@ -34,3 +34,9 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 ## The formatter
 
 Ruby offers five ways to write everything. Mo offers one. Column limits, indent width, blank lines, and ordering are the formatter's job and never a choice.
+
+## Session 5 changes
+
+The rules above already reflect this; this section is the changelog.
+
+Claude (session 5, deciding on Robert's instruction): the deadline law now reads "every effectful call that can wait". The corpus showed that `clock.now(within: 10.ms)` returning a `Result` made every clock read a `try`, and chapter 4 had never written it that way. First tested by `Mo.Sim`, which marks which operations wait.

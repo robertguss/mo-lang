@@ -13,6 +13,7 @@ This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which
 ```
 README.md            front door for humans (repo root)
 HANDOFF.md           the prompt that starts the next session (repo root, nothing else)
+CHANGELOG.md         what shipped, per session (repo root)
 
 examples/            the Mo program corpus (not wiki pages)
 toolchain/           the Zig compiler, runtime, platforms, benchmarks (later)
@@ -23,7 +24,7 @@ mo-wiki/                the Obsidian vault root; everything below is relative to
   log.md             append-only action log
   directions/        one page per "direction we like" (d01–d35, numbered, never renumbered)
   questions/         one page per open question (q01–q17), answer in frontmatter
-  decisions/         one page per locked decision (empty until the v0 lock)
+  decisions/         decision-log.md (every choice, in order, with status) + one page per locked decision at the v0 lock
   syntax/            the 15 syntax picks (p01–p15) + the example programs
   deep-dives/        long-form explorations of one topic
   plans/             roadmap and other plans
@@ -104,7 +105,8 @@ Add a tag here before using it. Keep it under 25.
 3. **A long unpack** → `deep-dives/slug.md`, linked from the direction or question it serves.
 4. **Research** is a two-lane job. Claude does web research and saves sources to `raw/articles/` or `raw/papers/` with frontmatter. Robert runs deep-research tools of his own: Claude writes the prompts (short, one topic each, filed in `research/prompts/`), Robert runs them and drops the results in `raw/research-runs/<date>-<topic>.md`. Both lanes must include academic papers (arXiv, conference proceedings), not only blog posts. Findings are synthesized into `research/concepts/` or `research/comparisons/` pages that cite the raw files.
 5. **The v0 lock** → each locked rule becomes `decisions/DNN-slug.md` with `reopen if:`; the source direction gets `status: locked` and a link. History is never rewritten.
-6. **Every session** → `sessions/session-NN.md` written at the end (what happened, what is next), the root `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended.
+6. **Every session** → `sessions/session-NN.md` written at the end (what happened, what is next), the root `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended, `CHANGELOG.md` gets its entry.
+7. **Every decision, Robert's or Claude's** → a row in `decisions/decision-log.md` at the checkpoint it was made, with who, status, and what first tests it (Robert, session 5: the log must show how things change over time). Status changes are appended, never rewritten.
 
 ## Working agreements with Robert (non-negotiable)
 
@@ -114,7 +116,7 @@ Add a tag here before using it. Keep it under 25.
 4. "Unpack this" / "ELI5" → deeper, still in tight bullets with a snippet.
 5. Fresh **web research** over training data when a topic calls for it; two lanes — Claude writes prompts into `research/prompts/`, Robert runs them (Perplexity) into `raw/research-runs/`; papers required.
 6. **Nothing is final until measured** (direction 28).
-7. **Cost rule:** mechanical research and page-writing go to an Opus worker session in Herdr (`herdr agent start worker --kind claude --pane <id> -- --model opus --dangerously-skip-permissions`; answer the trust dialog with `down enter`; hand it a plan page such as `plans/comparison-pass.md`). The expensive model keeps judgment: tensions, syntheses, Q17, design-v0. Both share one working tree: `git pull --rebase --autostash` before pushing.
+7. **Cost rule:** mechanical research and page-writing go to an Opus worker session in Herdr (`herdr agent start worker --kind claude --pane <id> -- --model opus --dangerously-skip-permissions`; answer the trust dialog with `down enter`; hand it a plan page such as `plans/comparison-pass.md`). The expensive model keeps judgment: tensions, syntheses, Q17, design-v0. Both share one working tree: `git pull --rebase --autostash` before pushing. **Every phase (one plan page) runs in a fresh worker session** (Robert, session 5): end the worker with `/exit` (`herdr agent prompt <name> "/exit"`) and `herdr agent start` a new one before handing over the next brief. Name the worker `mo-<model>` so it never collides with a worker in another workspace.
 8. Notion is retired for this project (it was his work workspace). Never write Mo content there. The old pages are exported in `raw/notion/`; deleting them is his call.
 
 ## Robert's taste (learned the hard way)

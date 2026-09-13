@@ -1,35 +1,50 @@
 ---
-title: "Roadmap: the path after alignment"
+title: "Roadmap"
 created: 2026-09-12
 updated: 2026-09-12
 type: plan
 tags: [roadmap]
-sources: [raw/notion/open-questions-2026-09-12.md]
-status: proposed
+sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
+status: in-progress
 ---
 
-# Roadmap: the path after alignment
+# Roadmap
 
-Once you've gone through [[q01-comments|Q1]]–[[q16-escape-hatch|Q16]], here is the path I'd propose. Each step produces something you can read or run.
-1. **Write the Mo design document, v0.** Not a formal spec: a 15-page narrative that states the philosophy, the laws, the semantics, and the syntax, with the refund example as the running thread. This is the artifact we compare against other languages and show to people. I'd draft it from the journal; you'd edit by taste, the way you did with the syntax.
-2. **The comparison pass.** Take the v0 doc and hold it against Elixir, Go, Rust, Gleam, Roc, Koka, Austral, Zig, and Elm, one page each: what Mo does differently, what it gives up, what it should steal that we missed. This is the research you asked for at the start, done against a concrete design instead of in the abstract.
-3. **Lock v0.** After the comparison, convert "directions we like" into decisions, in one sitting.
-4. **Write the grammar.** A formal grammar for the syntax, small enough to print on two pages, and a corpus of 30–50 tiny Mo programs that exercise every construct. The corpus doubles as the first training material for agents.
-5. **Build the interpreter.** In Zig. Lexer, parser, type checker, capability checker, contract runtime, tests runner. Milestone: the refund module runs and its tests pass, `rejects` included. This is where an agent starts writing Mo for real, and where the design meets reality.
-6. **Build the first program** ([[q14-first-real-program|Q14]]) in Mo, using agents, with you reading at the spec altitude only. This is the test of the founding premise.
-7. **Then** the C backend, the simulator, the SMT pass, and the platform split, in whatever order the first program demands.
-Steps 1–4 are days. Step 5 is weeks. Step 6 is where we find out if the idea is right.
+Rewritten in session 5 after the interpreter milestone was met. Each step is one brief on a plan page, one fresh worker session, Fable's verification, one commit that updates [[decision-log]], `CHANGELOG.md`, and `log.md`, then a merge to `main`. Done steps keep their rows.
+
+## Done
+
+| step | what | evidence |
+|---|---|---|
+| 1–3 (sessions 1–3) | the wiki, design v0, the grammar, 13 comparisons | `mo-wiki/` |
+| 4 (session 5) | the corpus, 52 programs, three-model bake-off | [[corpus]], [[model-bakeoff]] |
+| 5.1–5.4 (session 5) | lexer, parser, tier-1 checker, VM, tier-2 contracts, test runner, processes, supervisors, `Mo.Sim` scheduler: **the milestone** | [[interpreter-step-1]] … [[interpreter-step-4]], `08-milestone.md` |
+
+## Next, in order (the overnight run of session 5 starts here)
+
+| step | what | measures |
+|---|---|---|
+| 5.5 | the formatter, `mo fmt`, loop rule as a diagnostic | one shape for every file |
+| 5.6 | `main` and `Mo.Server`: Mo runs programs ([[q18-main-and-the-platform]]) | three programs with expected output |
+| 6 | **program 2, the CLI log analyzer, written in Mo by a worker from a spec**; Robert reads the spec altitude only | loops to green, gaps hit, lines per function |
+| 6c | the control run: same spec in Go and Python, same worker | chapter 8's null hypothesis, first number |
+| 7 | the stdlib chapter: every gap becomes a built-in and a row | stdlib misses per program |
+| 8 | `Mo.Sim` seeds and fault injection; `sim (N runs)` real | counterexamples found |
+| 9 | `verified:` written to the file via the sidecar; `mo fix` for the loop rule | hand-edit detection |
+| 10 | the error catalog from the codes; the README front door | a model that has never seen Mo |
+| 11 | program 3, the KV store over TCP | hot loops, overflow-check cost |
+| 12 | the C backend via Zig for release, differential-tested | single binary; speed |
+| 13 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
+| 14 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 
 ## Session 3 note
 
-Robert: `spec/design-v0` is a folder of files, one per chapter, not one document. Outline agreed: premise and null hypothesis; laws; semantics (values, functions, effects, processes, failure); syntax with the refund example; verification tiers and `verified:`; packages (now [[d34-packages-are-recipes|direction 34]] and [[d35-mo-is-an-ecosystem|direction 35]]); toolchain and build order; what the interpreter milestone must prove, listing every "first tested by".
+Robert: `spec/design-v0` is a folder of files, one per chapter. Kept.
 
 ## Related
 - [[program-menu]]
 - [[q14-first-real-program]]
 - [[q13-implementation-language]]
-- [[session-02]]
-- [[q15-the-name]]
-- [[language-landscape]]
+- [[session-05]]
+- [[decision-log]]
 - [[comparison-pass]]
-- [[session-03]]

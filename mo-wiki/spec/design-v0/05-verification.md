@@ -18,7 +18,7 @@ Static proving is **not** in the v0 toolchain. It lives in `mo prove`, a separat
 Computed by the toolchain, in the file, at the bottom, part of a module's exposed interface. Fixed vocabulary:
 
 ```
-verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
+verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
           proven: not run
 ```
 
