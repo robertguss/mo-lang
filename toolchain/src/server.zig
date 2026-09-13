@@ -17,6 +17,7 @@ const Io = std.Io;
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
+const net = @import("net.zig");
 const runner = @import("runner.zig");
 const Sim = @import("sim.zig").Sim;
 const vm_mod = @import("vm.zig");
@@ -62,11 +63,13 @@ pub const Server = struct {
     exit_code: u8 = 0,
     /// The program's files, so a process crash reported on stderr names its line.
     files: []const diag.File = &.{},
+    /// `platform.net`'s listeners and connections (net.zig).
+    sockets: net.Net,
 
     /// `cwd` is the absolute working directory a relative path starts from. Nothing is
     /// freed: pass an arena.
     pub fn init(gpa: std.mem.Allocator, io: Io, cwd: []const u8, args: []const []const u8, environ: *const std.process.Environ.Map, stdout: *Io.Writer, stderr: *Io.Writer) Error!Server {
-        var s: Server = .{ .gpa = gpa, .io = io, .args = args, .environ = environ, .stdout = stdout, .stderr = stderr };
+        var s: Server = .{ .gpa = gpa, .io = io, .args = args, .environ = environ, .stdout = stdout, .stderr = stderr, .sockets = .{ .io = io, .gpa = gpa } };
         try s.scopes.append(gpa, .{ .base = cwd, .root = "/" });
         return s;
     }
@@ -95,6 +98,7 @@ pub const Server = struct {
         var memo: ?Memo = if (processes) null else try .init(s.gpa, program.functions.len);
         defer if (memo) |*m| m.deinit();
         if (memo) |*m| machine.memo = m;
+        defer s.sockets.closeAll();
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
             // A recipe signature with no body stops main as surely as a crash does.
@@ -138,6 +142,8 @@ pub const Server = struct {
             .{ .kind = .out, .handle = stderr_handle }
         else if (std.mem.eql(u8, name, "fs"))
             .{ .kind = .fs }
+        else if (std.mem.eql(u8, name, "net"))
+            .{ .kind = .net }
         else
             .{ .kind = .clock };
         return .{ .cap = cap };
@@ -445,6 +451,93 @@ test "a crash in main comes back with its report" {
     const ran = try server.run(program, program.findFunction("main").?);
     try std.testing.expectEqual(contracts.Kind.overflow, ran.crashed.kind);
     try std.testing.expectEqualStrings("", out.written());
+}
+
+const net_src =
+    \\module T.Net
+    \\fn describe(r: Result(Option(String), NetError)) : String
+    \\  case r
+    \\    Ok(Some(line)): "line #{line.size}: #{line.slice(0, 12)}"
+    \\    Ok(None): "end"
+    \\    Error(e): "error #{e}"
+    \\  end
+    \\end
+    \\fn talk(out: Out, net: Net, listener: Listener) : Result(UInt32, NetError)
+    \\  client = try net.connect("localhost", listener.port, within: 5_000.ms)
+    \\  try client.write("hello\nwor", within: 5_000.ms)
+    \\  conn = try listener.accept(within: 5_000.ms)
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  out.write_line(describe(conn.read_line(within: 50.ms)))
+    \\  long = "x".repeat(70_000)
+    \\  try client.write("ld\r\n#{long}\n#{long.slice(0, 65_536)}\nnext\n", within: 5_000.ms)
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  try conn.write("bye\n", within: 5_000.ms)
+    \\  out.write_line(describe(client.read_line(within: 5_000.ms)))
+    \\  try client.write("tail", within: 5_000.ms)
+    \\  client.close
+    \\  out.write_line(describe(client.read_line(within: 5_000.ms)))
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  conn.close
+    \\  out.write_line(describe(conn.read_line(within: 5_000.ms)))
+    \\  Ok(1)
+    \\end
+    \\fn main(platform: Platform)
+    \\  out = platform.stdout
+    \\  net = platform.net
+    \\  case net.listen(0, within: 1_000.ms)
+    \\    Ok(listener): out.write_line("talked: #{talk(out, net, listener) is Ok(_)}")
+    \\    Error(e): out.write_line("listen: #{e}")
+    \\  end
+    \\  case net.connect("127.0.0.1", 1, within: 1_000.ms)
+    \\    Ok(_): out.write_line("port 1 answered")
+    \\    Error(e): out.write_line("port 1: #{e}")
+    \\  end
+    \\end
+;
+
+test "Net over a real loopback socket: lines, a deadline, a line too long, the end of the stream, close, and a refusal" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, net_src);
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, std.testing.io, "/", &.{}, &environ, &out.writer, &out.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    try std.testing.expectEqualStrings(
+        \\line 5: hello
+        \\error Timeout
+        \\line 5: world
+        \\error LineTooLong
+        \\line 65536: xxxxxxxxxxxx
+        \\line 4: next
+        \\line 3: bye
+        \\error Closed
+        \\line 4: tail
+        \\end
+        \\error Closed
+        \\talked: true
+        \\port 1: Refused
+        \\
+    , out.written());
+}
+
+test "a port a listener holds is Busy" {
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    var machine: Vm = .init(arena_state.allocator(), undefined, 0);
+    var sockets: net.Net = .{ .io = io, .gpa = arena_state.allocator() };
+    defer sockets.closeAll();
+    const first = try sockets.call(&machine, .listen, &.{ .none, .{ .int = 0 }, .{ .duration = 1 } });
+    const port = sockets.listeners.items[first.variant.fields[0].cap.handle].port;
+    const second = try sockets.call(&machine, .listen, &.{ .none, .{ .int = port }, .{ .duration = 1 } });
+    try std.testing.expectEqualStrings("Busy", second.variant.fields[0].variant.name);
 }
 
 const procs_src =

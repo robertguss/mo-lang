@@ -3165,6 +3165,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Clock", types.cap(.clock) },
         .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
+        .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

@@ -59,11 +59,15 @@ pub const types = [_]Type{
     .{ .name = "Platform", .kind = .capability },
     .{ .name = "Env", .kind = .capability },
     .{ .name = "Out", .kind = .capability },
+    .{ .name = "Net", .kind = .capability, .origin = .stdlib },
+    .{ .name = "Listener", .kind = .capability, .origin = .stdlib },
+    .{ .name = "Conn", .kind = .capability, .origin = .stdlib },
     .{ .name = "FsError", .kind = .error_enum },
     .{ .name = "AskError", .kind = .error_enum },
     .{ .name = "LedgerError", .kind = .error_enum, .origin = .corpus_only },
     .{ .name = "Json", .kind = .enum_, .origin = .stdlib },
     .{ .name = "JsonError", .kind = .error_enum, .origin = .stdlib },
+    .{ .name = "NetError", .kind = .error_enum, .origin = .stdlib },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -132,6 +136,11 @@ pub const variants = [_]Variant{
     .{ .owner = "Json", .name = "Bool", .fields = &.{.{ .name = "value", .type = "Bool" }}, .origin = .stdlib },
     .{ .owner = "Json", .name = "Null", .origin = .stdlib },
     .{ .owner = "JsonError", .name = "Syntax", .fields = &.{.{ .name = "at", .type = "UInt64" }}, .origin = .stdlib },
+    .{ .owner = "NetError", .name = "Timeout", .origin = .stdlib },
+    .{ .owner = "NetError", .name = "Refused", .origin = .stdlib },
+    .{ .owner = "NetError", .name = "Closed", .origin = .stdlib },
+    .{ .owner = "NetError", .name = "LineTooLong", .origin = .stdlib },
+    .{ .owner = "NetError", .name = "Busy", .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -293,10 +302,20 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "stderr", .ret = "Out" },
     .{ .recv = "Platform", .name = "fs", .ret = "Fs" },
     .{ .recv = "Platform", .name = "clock", .ret = "Clock" },
+    .{ .recv = "Platform", .name = "net", .ret = "Net", .origin = .stdlib },
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
     .{ .recv = "Out", .name = "write_line", .params = &.{"String"}, .ret = "none", .origin = .stdlib },
+    // TCP (step 11): every call that can wait takes within:; a Listener and a Conn are
+    // capabilities, passed down like any other.
+    .{ .recv = "Net", .name = "listen", .params = &.{"UInt16"}, .ret = "Result(Listener, NetError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Net", .name = "connect", .params = &.{ "String", "UInt16" }, .ret = "Result(Conn, NetError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Listener", .name = "accept", .ret = "Result(Conn, NetError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Listener", .name = "port", .ret = "UInt16", .origin = .stdlib },
+    .{ .recv = "Conn", .name = "read_line", .ret = "Result(Option(String), NetError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Conn", .name = "write", .params = &.{"String"}, .ret = "Result(none, NetError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Conn", .name = "close", .ret = "none", .origin = .stdlib },
     // JSON
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },

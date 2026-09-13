@@ -29,11 +29,15 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `Platform` | | capability: `fn main`'s one parameter, and nowhere else | grammar (Q18) |
 | `Env` | | capability: the process's environment variables | grammar (Q18) |
 | `Out` | | capability: a standard stream, `stdout` or `stderr` | grammar (Q18) |
+| `Net` | | capability: TCP, `platform.net` | stdlib (09) |
+| `Listener` | | capability: a listening TCP port | stdlib (09) |
+| `Conn` | | capability: a TCP connection | stdlib (09) |
 | `FsError` | | error enum | grammar (name); variants corpus-only |
 | `AskError` | | error enum | grammar |
 | `LedgerError` | | error enum | corpus-only |
 | `Json` | | enum: a JSON value | stdlib (09) |
 | `JsonError` | | error enum | stdlib (09) |
+| `NetError` | | error enum | stdlib (09) |
 
 ## Stand-ins
 
@@ -77,6 +81,11 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `Json` | `Bool` | `value: Bool` | stdlib (09) |
 | `Json` | `Null` | | stdlib (09) |
 | `JsonError` | `Syntax` | `at: UInt64` | stdlib (09) |
+| `NetError` | `Timeout` | | stdlib (09) |
+| `NetError` | `Refused` | | stdlib (09) |
+| `NetError` | `Closed` | | stdlib (09) |
+| `NetError` | `LineTooLong` | | stdlib (09) |
+| `NetError` | `Busy` | | stdlib (09) |
 
 ## Functions
 
@@ -176,10 +185,18 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `stdout`, `stderr` | | `Out` | | `main` | grammar (Q18) |
 | `Platform` | `fs` | | `Fs` | | `main` | grammar (Q18) |
 | `Platform` | `clock` | | `Clock` | | `main` | grammar (Q18) |
+| `Platform` | `net` | | `Net` | | `main` | stdlib (09) |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
 | `Out` | `write_line` | `String` | none | | | stdlib (09) |
+| `Net` | `listen` | `UInt16` | `Result(Listener, NetError)` | yes | | stdlib (09) |
+| `Net` | `connect` | `String`, `UInt16` | `Result(Conn, NetError)` | yes | | stdlib (09) |
+| `Listener` | `accept` | | `Result(Conn, NetError)` | yes | | stdlib (09) |
+| `Listener` | `port` | | `UInt16` | | | stdlib (09) |
+| `Conn` | `read_line` | | `Result(Option(String), NetError)` | yes | | stdlib (09) |
+| `Conn` | `write` | `String` | `Result(none, NetError)` | yes | | stdlib (09) |
+| `Conn` | `close` | | none | | | stdlib (09) |
 | `Json` (on type) | `encode` | `T` | `String` | | | stdlib (09) |
 | `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | | | stdlib (09) |
 | `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |

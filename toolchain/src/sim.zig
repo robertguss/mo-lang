@@ -458,7 +458,11 @@ pub const Sim = struct {
         for (p.log.items, log) |m, *o| o.* = try vm.render(m);
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
         try sim.crashes.append(sim.gpa, report);
-        if (sim.server) |s| s.processCrashed(report);
+        if (sim.server) |s| {
+            s.processCrashed(report);
+            // A connection closes when the process holding it stops, restarted or not.
+            s.sockets.closeHeld(p.args);
+        }
         if (p.policy.restart == .never) {
             p.up = false;
             return;
@@ -489,7 +493,9 @@ pub const Sim = struct {
         const p = sim.procs.items[id];
         const sup_name = if (p.supervisor == test_runner) (if (sim.server != null) "main" else "the test runner") else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
         for (sim.procs.items) |*q| {
-            if (q.supervisor == p.supervisor) q.up = false;
+            if (q.supervisor != p.supervisor) continue;
+            q.up = false;
+            if (sim.server) |s| s.sockets.closeHeld(q.args);
         }
         sim.gave_up = true;
         const values = try sim.gpa.alloc(contracts.Involved, 1);

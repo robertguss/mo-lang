@@ -11,7 +11,8 @@ pub const Id = u32;
 pub const IntKind = enum(u8) { i8, i16, i32, i64, u8, u16, u32, u64 };
 
 /// `platform`, `env`, and `out` are Mo.Server's (Q18): `main`'s parameter and its parts.
-pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out };
+/// `net` is `platform.net`; a `listener` and a `conn` come from its calls (step 11).
+pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out, net, listener, conn };
 
 pub const Tag = enum(u8) {
     /// Error recovery and "no expectation": unifies with everything.
@@ -322,6 +323,9 @@ pub const Pool = struct {
                 .platform => "Platform",
                 .env => "Env",
                 .out => "Out",
+                .net => "Net",
+                .listener => "Listener",
+                .conn => "Conn",
             }),
             .list, .option, .set => {
                 try w.writeAll(switch (t.tag) {
