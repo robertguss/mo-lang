@@ -32,6 +32,8 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `FsError` | | error enum | grammar (name); variants corpus-only |
 | `AskError` | | error enum | grammar |
 | `LedgerError` | | error enum | corpus-only |
+| `Json` | | enum: a JSON value | stdlib (09) |
+| `JsonError` | | error enum | stdlib (09) |
 
 ## Stand-ins
 
@@ -68,6 +70,13 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `AskError` | `Timeout` | | grammar |
 | `AskError` | `Down` | | grammar |
 | `LedgerError` | `Timeout` | | corpus-only |
+| `Json` | `Object` | `fields: Map(String, Json)` | stdlib (09) |
+| `Json` | `Array` | `items: List(Json)` | stdlib (09) |
+| `Json` | `String` | `text: String` | stdlib (09) |
+| `Json` | `Number` | `value: Float64` | stdlib (09) |
+| `Json` | `Bool` | `value: Bool` | stdlib (09) |
+| `Json` | `Null` | | stdlib (09) |
+| `JsonError` | `Syntax` | `at: UInt64` | stdlib (09) |
 
 ## Functions
 
@@ -171,6 +180,8 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
 | `Out` | `write_line` | `String` | none | | | stdlib (09) |
+| `Json` (on type) | `encode` | `T` | `String` | | | stdlib (09) |
+| `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | | | stdlib (09) |
 | `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |
 | `Charge` (on type) | `fixture` | `captured_at: Time`, `captured_amount: Money` | `Charge` | | tests | corpus-only |
 | `Charge` | `refunded?` | | `Bool` | | | corpus-only |

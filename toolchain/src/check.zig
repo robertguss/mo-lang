@@ -649,7 +649,7 @@ const Checker = struct {
             d.fields = .{ .start = fstart, .end = @intCast(c.fields.items.len) };
         }
         for (prelude.types) |pt| {
-            if (pt.kind != .error_enum) continue;
+            if (pt.kind != .error_enum and pt.kind != .enum_) continue;
             const d = try c.addDecl(.{ .kind = .prelude_enum, .name = pt.name });
             c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
             const vstart: u32 = @intCast(c.variants.items.len);
@@ -1090,7 +1090,7 @@ const Checker = struct {
                 .result => c.pool.result(try c.resolveType(args[0], ctx), try c.resolveType(args[1], ctx)),
                 .map => c.pool.add(.{ .tag = .map, .a = try c.resolveType(args[0], ctx), .b = try c.resolveType(args[1], ctx) }),
                 .set => c.pool.list1(.set, try c.resolveType(args[0], ctx)),
-                .error_enum => c.preludeEnum(name),
+                .error_enum, .enum_ => c.preludeEnum(name),
                 .handle => {
                     const an = c.node(args[0]);
                     if (an.kind == .type_ref) {
@@ -1215,7 +1215,7 @@ const Checker = struct {
         if (std.mem.eql(u8, word, "Result")) return c.pool.result(args.items[0], args.items[1]);
         if (std.mem.eql(u8, word, "Map")) return c.pool.add(.{ .tag = .map, .a = args.items[0], .b = args.items[1] });
         if (std.mem.eql(u8, word, "Set")) return c.pool.list1(.set, args.items[0]);
-        if (prelude.findType(word)) |pt| if (pt.kind == .error_enum) return c.preludeEnum(word);
+        if (prelude.findType(word)) |pt| if (pt.kind == .error_enum or pt.kind == .enum_) return c.preludeEnum(word);
         if (c.type_names.get(word)) |d| return c.decls.items[d].type;
         return primitive(word) orelse types.unknown;
     }

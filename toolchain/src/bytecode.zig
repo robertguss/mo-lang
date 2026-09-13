@@ -1466,6 +1466,13 @@ const Lower = struct {
             }
         }
         for (args) |a| if (l.node(a).kind != .named_arg) try l.expr(a);
+        // Json.encode spells its argument by the argument's checked type.
+        if (row.on_type and std.mem.eql(u8, row.recv, "Json") and std.mem.eql(u8, row.name, "encode")) {
+            for (args) |a| if (l.node(a).kind != .named_arg) {
+                kind = l.typeOf(a);
+                break;
+            };
+        }
         for (row.named) |f| {
             for (args) |a| {
                 const an = l.node(a);

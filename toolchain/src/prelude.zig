@@ -19,7 +19,9 @@ const std = @import("std");
 /// are listed in examples/GAPS.md.
 pub const Origin = enum { grammar, stdlib, corpus_only };
 
-pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, map, set, handle, capability, error_enum };
+/// `error_enum` and `enum_` are both enums whose variants are rows below; an error enum
+/// is what a capability call fails with.
+pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, map, set, handle, capability, error_enum, enum_ };
 
 pub const Type = struct {
     name: []const u8,
@@ -60,6 +62,8 @@ pub const types = [_]Type{
     .{ .name = "FsError", .kind = .error_enum },
     .{ .name = "AskError", .kind = .error_enum },
     .{ .name = "LedgerError", .kind = .error_enum, .origin = .corpus_only },
+    .{ .name = "Json", .kind = .enum_, .origin = .stdlib },
+    .{ .name = "JsonError", .kind = .error_enum, .origin = .stdlib },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -121,6 +125,13 @@ pub const variants = [_]Variant{
     .{ .owner = "AskError", .name = "Timeout" },
     .{ .owner = "AskError", .name = "Down" },
     .{ .owner = "LedgerError", .name = "Timeout", .origin = .corpus_only },
+    .{ .owner = "Json", .name = "Object", .fields = &.{.{ .name = "fields", .type = "Map(String, Json)" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Array", .fields = &.{.{ .name = "items", .type = "List(Json)" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "String", .fields = &.{.{ .name = "text", .type = "String" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Number", .fields = &.{.{ .name = "value", .type = "Float64" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Bool", .fields = &.{.{ .name = "value", .type = "Bool" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Null", .origin = .stdlib },
+    .{ .owner = "JsonError", .name = "Syntax", .fields = &.{.{ .name = "at", .type = "UInt64" }}, .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -286,6 +297,9 @@ pub const fns = [_]Fn{
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
     .{ .recv = "Out", .name = "write_line", .params = &.{"String"}, .ret = "none", .origin = .stdlib },
+    // JSON
+    .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
+    .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },

@@ -10,6 +10,7 @@
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
+const json = @import("json.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
 const vm_mod = @import("vm.zig");
@@ -91,6 +92,8 @@ pub const Row = enum {
     fs_size,
     fs_list,
     out_write_line,
+    json_encode,
+    json_decode,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -120,7 +123,7 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
     .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
     .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
-    .{ "Out.write_line", .out_write_line },
+    .{ "Out.write_line", .out_write_line },       .{ "Json.encode", .json_encode },           .{ "Json.decode", .json_decode },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -139,6 +142,8 @@ pub const row_of = blk: {
 pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u32) Error!Value {
     return switch (which) {
         .none => unreachable,
+        .json_encode => json.encode(vm, a[0], int_kind),
+        .json_decode => json.decode(vm, a[0].string),
         .time_parse => if (parseTime(a[0].string)) |t| vm.variant("Some", &.{.{ .time = t }}) else vm.variant("None", &.{}),
         .time_from_parts => blk: {
             var parts: [6]i64 = undefined;
@@ -716,7 +721,7 @@ fn parseTime(s: []const u8) ?i64 {
 }
 
 /// `2026-09-12T10:00:02Z`, with `.mmm` when the milliseconds are not zero.
-fn iso8601(buf: *[40]u8, t: i64) []const u8 {
+pub fn iso8601(buf: *[40]u8, t: i64) []const u8 {
     const c = civilFromDays(@divFloor(t, ms_per_day));
     const in_day: u64 = @intCast(@mod(t, ms_per_day));
     var w: std.Io.Writer = .fixed(buf);
