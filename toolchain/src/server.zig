@@ -20,6 +20,7 @@ const diag = @import("diag.zig");
 const net = @import("net.zig");
 const runner = @import("runner.zig");
 const Sim = @import("sim.zig").Sim;
+const Turns = @import("turns.zig").Turns;
 const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
@@ -99,6 +100,11 @@ pub const Server = struct {
         defer if (memo) |*m| m.deinit();
         if (memo) |*m| machine.memo = m;
         defer s.sockets.closeAll();
+        // Each process runs its updates on a thread of its own, and the threads take turns,
+        // so one waiting on the network does not hold up the rest (turns.zig).
+        var turns: Turns = .{ .io = s.io, .gpa = s.gpa };
+        if (processes) scheduler.turns = &turns;
+        defer if (processes) turns.stop(&scheduler);
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
             // A recipe signature with no body stops main as surely as a crash does.
@@ -538,6 +544,97 @@ test "a port a listener holds is Busy" {
     const port = sockets.listeners.items[first.variant.fields[0].cap.handle].port;
     const second = try sockets.call(&machine, .listen, &.{ .none, .{ .int = port }, .{ .duration = 1 } });
     try std.testing.expectEqualStrings("Busy", second.variant.fields[0].variant.name);
+}
+
+const turns_src =
+    \\module T.Turns
+    \\process Reader(conn: Conn, out: Out, name: String)
+    \\  state
+    \\    reads: UInt32
+    \\  end
+    \\  message Read : UInt32
+    \\  fn update(state, message)
+    \\    case message
+    \\      Read:
+    \\        if echo(conn, out, name) is Ok(_)
+    \\          state.reads += 1
+    \\        end
+    \\        state.reads
+    \\    end
+    \\  end
+    \\end
+    \\process Harness(net: Net, out: Out)
+    \\  state
+    \\    runs: UInt32
+    \\  end
+    \\  message Run
+    \\  fn update(state, message)
+    \\    case message
+    \\      Run:
+    \\        state.runs += 1
+    \\        if run(net, out) is Error(e)
+    \\          out.write_line("harness failed: #{e}")
+    \\        end
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Top(conn: Conn, net: Net, out: Out)
+    \\  child Reader(conn, out, "reader"), restart: :always
+    \\  child Harness(net, out), restart: :always
+    \\end
+    \\fn echo(conn: Conn, out: Out, name: String) : Result(UInt32, NetError)
+    \\  line = try conn.read_line(within: 5_000.ms)
+    \\  text = line or "nothing"
+    \\  out.write_line("#{name} read #{text}")
+    \\  try conn.write("#{text} back\n", within: 1_000.ms)
+    \\  Ok(1)
+    \\end
+    \\fn run(net: Net, out: Out) : Result(UInt32, NetError)
+    \\  listener = try net.listen(0, within: 1_000.ms)
+    \\  client_a = try net.connect("127.0.0.1", listener.port, within: 1_000.ms)
+    \\  conn_a = try listener.accept(within: 1_000.ms)
+    \\  client_b = try net.connect("127.0.0.1", listener.port, within: 1_000.ms)
+    \\  conn_b = try listener.accept(within: 1_000.ms)
+    \\  b = Reader.start(conn_b, out, "b")
+    \\  a = Reader.start(conn_a, out, "a")
+    \\  out.write_line("b: #{b.ask(Read, within: 20.ms)}")
+    \\  out.write_line("a: #{a.ask(Read, within: 20.ms)}")
+    \\  try client_b.write("ping\n", within: 1_000.ms)
+    \\  heard = try client_b.read_line(within: 3_000.ms)
+    \\  said = heard or "nothing"
+    \\  out.write_line("harness heard #{said}")
+    \\  try client_a.write("done\n", within: 1_000.ms)
+    \\  Ok(1)
+    \\end
+    \\fn main(platform: Platform)
+    \\  harness = Harness.start(platform.net, platform.stdout)
+    \\  harness.send(Run)
+    \\end
+;
+
+test "a process waiting on the network gives up its turn: the one that waited first finishes last, and nothing waits for a deadline" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, turns_src);
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, std.testing.io, "/", &.{}, &environ, &out.writer, &out.writer);
+    const t0 = Io.Clock.Timestamp.now(std.testing.io, .awake);
+    const ran = try server.run(program, program.findFunction("main").?);
+    const ms = t0.durationTo(Io.Clock.Timestamp.now(std.testing.io, .awake)).raw.toMilliseconds();
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    // b waits in read_line first, then a; the harness's asks time out while they wait. b
+    // hears ping and answers while a still waits, and a hears done only after that.
+    try std.testing.expectEqualStrings(
+        \\b: Error(Timeout)
+        \\a: Error(Timeout)
+        \\b read ping
+        \\harness heard ping back
+        \\a read done
+        \\
+    , out.written());
+    try std.testing.expect(ms < 2_000);
 }
 
 const procs_src =

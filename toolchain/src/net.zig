@@ -5,7 +5,8 @@
 //! a thread under std.Io.Threaded) and waits for it at most its deadline. Past the
 //! deadline the task is canceled, which interrupts its system call, and the call is
 //! `Timeout`. A task that finished as it was canceled keeps its result, so a connection
-//! already accepted, or bytes already read, are never dropped.
+//! already accepted, or bytes already read, are never dropped. While a process waits it
+//! gives up its turn, so the other processes go on (turns.zig).
 //!
 //! What a call past its deadline leaves: `accept` leaves the listener listening; `connect`
 //! leaves no connection; `read_line` keeps the bytes of an unfinished line for the next
@@ -88,6 +89,24 @@ fn withoutCr(line: []const u8) []const u8 {
     return if (line.len > 0 and line[line.len - 1] == '\r') line[0 .. line.len - 1] else line;
 }
 
+/// Set when a call's task ends; also wakes main's thread when it hands out turns while it
+/// waits (turns.zig).
+pub const Waker = struct {
+    done: Io.Event = .unset,
+    main: ?*Io.Event = null,
+
+    fn set(w: *Waker, io: Io) void {
+        w.done.set(io);
+        if (w.main) |m| m.set(io);
+    }
+};
+
+fn wakerFor(vm: *Vm) Waker {
+    const s = vm.sim orelse return .{};
+    const t = s.turns orelse return .{};
+    return .{ .main = &t.main_wake };
+}
+
 pub const Net = struct {
     io: Io,
     gpa: std.mem.Allocator,
@@ -124,9 +143,12 @@ pub const Net = struct {
     }
 
     fn connect(n: *Net, vm: *Vm, host: []const u8, port: u16, ms: i64) Error!Value {
-        var done: Io.Event = .unset;
-        var task = n.io.concurrent(connectTask, .{ n.io, host, port, &done }) catch return fail(vm, .Busy);
-        const in_time = n.wait(vm, &done, ms);
+        var waker = wakerFor(vm);
+        var task = n.io.concurrent(connectTask, .{ n.io, host, port, &waker }) catch return fail(vm, .Busy);
+        const in_time = n.wait(vm, &waker, ms) catch |err| {
+            if (task.cancel(n.io)) |s| s.close(n.io) else |_| {}
+            return err;
+        };
         const r = if (in_time) task.await(n.io) else task.cancel(n.io);
         const stream = r catch |err| return fail(vm, switch (err) {
             error.Canceled, error.Timeout => .Timeout,
@@ -139,14 +161,14 @@ pub const Net = struct {
     fn accept(n: *Net, vm: *Vm, l: *Listener, ms: i64) Error!Value {
         if (l.accepting) return fail(vm, .Busy);
         l.accepting = true;
-        var done: Io.Event = .unset;
-        var task = n.io.concurrent(acceptTask, .{ n.io, &l.server, &done }) catch {
-            l.accepting = false;
-            return fail(vm, .Busy);
+        defer l.accepting = false;
+        var waker = wakerFor(vm);
+        var task = n.io.concurrent(acceptTask, .{ n.io, &l.server, &waker }) catch return fail(vm, .Busy);
+        const in_time = n.wait(vm, &waker, ms) catch |err| {
+            if (task.cancel(n.io)) |s| s.close(n.io) else |_| {}
+            return err;
         };
-        const in_time = n.wait(vm, &done, ms);
         const r = if (in_time) task.await(n.io) else task.cancel(n.io);
-        l.accepting = false;
         const stream = r catch |err| return fail(vm, switch (err) {
             error.Canceled => .Timeout,
             error.SocketNotListening => .Closed,
@@ -184,12 +206,16 @@ pub const Net = struct {
                 c.start = 0;
             }
             c.reading = true;
-            var done: Io.Event = .unset;
-            var task = n.io.concurrent(readTask, .{ n.io, c.stream, c.buf[c.end..], &done }) catch {
+            var waker = wakerFor(vm);
+            var task = n.io.concurrent(readTask, .{ n.io, c.stream, c.buf[c.end..], &waker }) catch {
                 c.reading = false;
                 return fail(vm, .Busy);
             };
-            const in_time = n.wait(vm, &done, left);
+            const in_time = n.wait(vm, &waker, left) catch |err| {
+                _ = task.cancel(n.io) catch 0;
+                c.reading = false;
+                return err;
+            };
             const r = if (in_time) task.await(n.io) else task.cancel(n.io);
             c.reading = false;
             if (c.closed) {
@@ -210,12 +236,16 @@ pub const Net = struct {
         if (c.closed) return fail(vm, .Closed);
         if (c.writing) return fail(vm, .Busy);
         c.writing = true;
-        var done: Io.Event = .unset;
-        var task = n.io.concurrent(writeTask, .{ n.io, c.stream, text, &done }) catch {
+        var waker = wakerFor(vm);
+        var task = n.io.concurrent(writeTask, .{ n.io, c.stream, text, &waker }) catch {
             c.writing = false;
             return fail(vm, .Busy);
         };
-        const in_time = n.wait(vm, &done, ms);
+        const in_time = n.wait(vm, &waker, ms) catch |err| {
+            task.cancel(n.io) catch {};
+            c.writing = false;
+            return err;
+        };
         const r = if (in_time) task.await(n.io) else task.cancel(n.io);
         c.writing = false;
         if (c.closed) {
@@ -261,19 +291,24 @@ pub const Net = struct {
         n.listeners.clearRetainingCapacity();
     }
 
-    /// Waits for `done` at most `ms` milliseconds; false when the deadline came first.
-    fn wait(n: *Net, vm: *Vm, done: *Io.Event, ms: i64) bool {
-        _ = vm;
-        const deadline = (Io.Timeout{ .duration = .{ .raw = .fromMilliseconds(@max(ms, 0)), .clock = .awake } }).toDeadline(n.io);
-        while (!done.isSet()) {
-            done.waitTimeout(n.io, deadline) catch |err| switch (err) {
-                error.Timeout => if (deadline.deadline.durationFromNow(n.io).raw.toNanoseconds() <= 0) return done.isSet(),
-                error.Canceled => return done.isSet(),
-            };
-        }
-        return true;
+    /// Waits for a task; under Mo.Server with processes the wait gives up the turn.
+    fn wait(n: *Net, vm: *Vm, waker: *Waker, ms: i64) Error!bool {
+        if (vm.sim) |s| if (s.turns) |t| return t.block(s, waker, ms);
+        return waitFor(n.io, &waker.done, ms);
     }
 };
+
+/// Waits for `event` at most `ms` milliseconds; false when the deadline came first.
+pub fn waitFor(io: Io, event: *Io.Event, ms: i64) bool {
+    const deadline = (Io.Timeout{ .duration = .{ .raw = .fromMilliseconds(@max(ms, 0)), .clock = .awake } }).toDeadline(io);
+    while (!event.isSet()) {
+        event.waitTimeout(io, deadline) catch |err| switch (err) {
+            error.Timeout => if (deadline.deadline.durationFromNow(io).raw.toNanoseconds() <= 0) return event.isSet(),
+            error.Canceled => return event.isSet(),
+        };
+    }
+    return true;
+}
 
 fn fail(vm: *Vm, f: Failure) Error!Value {
     return vm.variant("Error", &.{try vm.variant(@tagName(f), &.{})});
@@ -281,8 +316,8 @@ fn fail(vm: *Vm, f: Failure) Error!Value {
 
 // ---- the blocking parts, each on a thread of its own
 
-fn connectTask(io: Io, host: []const u8, port: u16, done: *Io.Event) anyerror!Io.net.Stream {
-    defer done.set(io);
+fn connectTask(io: Io, host: []const u8, port: u16, waker: *Waker) anyerror!Io.net.Stream {
+    defer waker.set(io);
     if (Io.net.IpAddress.parse(host, port)) |addr| {
         return addr.connect(io, .{ .mode = .stream });
     } else |_| {}
@@ -290,8 +325,8 @@ fn connectTask(io: Io, host: []const u8, port: u16, done: *Io.Event) anyerror!Io
     return name.connect(io, port, .{ .mode = .stream });
 }
 
-fn acceptTask(io: Io, server: *Io.net.Server, done: *Io.Event) Io.net.Server.AcceptError!Io.net.Stream {
-    defer done.set(io);
+fn acceptTask(io: Io, server: *Io.net.Server, waker: *Waker) Io.net.Server.AcceptError!Io.net.Stream {
+    defer waker.set(io);
     while (true) {
         return server.accept(io) catch |err| {
             if (err == error.ConnectionAborted) continue;
@@ -300,14 +335,14 @@ fn acceptTask(io: Io, server: *Io.net.Server, done: *Io.Event) Io.net.Server.Acc
     }
 }
 
-fn readTask(io: Io, stream: Io.net.Stream, dest: []u8, done: *Io.Event) Io.net.Stream.Reader.Error!usize {
-    defer done.set(io);
+fn readTask(io: Io, stream: Io.net.Stream, dest: []u8, waker: *Waker) Io.net.Stream.Reader.Error!usize {
+    defer waker.set(io);
     var data = [_][]u8{dest};
     return io.vtable.netRead(io.userdata, stream.socket.handle, &data);
 }
 
-fn writeTask(io: Io, stream: Io.net.Stream, text: []const u8, done: *Io.Event) anyerror!void {
-    defer done.set(io);
+fn writeTask(io: Io, stream: Io.net.Stream, text: []const u8, waker: *Waker) anyerror!void {
+    defer waker.set(io);
     var w = stream.writer(io, &.{});
     w.interface.writeAll(text) catch return w.err orelse error.WriteFailed;
 }
