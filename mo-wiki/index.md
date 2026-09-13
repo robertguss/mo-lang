@@ -60,6 +60,7 @@
 - [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✅ in (session 3: six-layer design, plus aube additions) — Raised by Robert (session 2), flagged as very important
 
 ## Decisions
+- [[decision-log|Decision log]] — every choice in order, who made it, status, what first tests it
 *(none yet)*
 
 ## Syntax picks and examples
@@ -106,6 +107,7 @@
 - [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
 
 ## Sessions
+- [[session-05|Session 5 — 12 Sep 2026]] — review closed, corpus and toolchain begun, bake-off, build-first process, gap decisions
 - [[session-01|Session 1 — 12 Sep 2026 (night)]] — - 12 Sep 2026, session 1 (cont)
 - [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
 - [[session-03|Session 3 — 12 Sep 2026]] — tensions 1–7, Q17, aube, recipes and the ecosystem (d31–d35), design-v0 folder
