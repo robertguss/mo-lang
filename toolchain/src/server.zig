@@ -647,6 +647,104 @@ test "a process waiting on the network gives up its turn: the one that waited fi
     try std.testing.expect(ms < 2_000);
 }
 
+const regions_src =
+    \\module T.Regions
+    \\process Store()
+    \\  state
+    \\    data: Map(String, String)
+    \\    n: UInt8
+    \\  end
+    \\  message Put(key: String, value: String) : Bool
+    \\  message Get(key: String) : String
+    \\  message Boom(key: String)
+    \\  fn update(state, message)
+    \\    case message
+    \\      Put(key: key, value: value):
+    \\        state.data = state.data.set(key, value)
+    \\        true
+    \\      Get(key): state.data.get(key) or "none"
+    \\      Boom(key):
+    \\        state.data = state.data.set(key, "boom")
+    \\        state.n -= 1
+    \\    end
+    \\  end
+    \\end
+    \\process Tally()
+    \\  state
+    \\    data: Map(String, String)
+    \\  end
+    \\  invariant "a value never goes back to empty"
+    \\    state.data.get("a") == Some("") and old(state.data.get("a")) == Some("1")
+    \\  end
+    \\  message Note(key: String, value: String)
+    \\  message Read(key: String) : String
+    \\  fn update(state, message)
+    \\    case message
+    \\      Note(key: key, value: value):
+    \\        state.data = state.data.set(key, value)
+    \\      Read(key): state.data.get(key) or "none"
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Stores
+    \\  child Store, restart: :always
+    \\  child Tally, restart: :always
+    \\end
+    \\fn shown(r: Result(String, AskError)) : String
+    \\  case r
+    \\    Ok(text): text.slice(0, 6)
+    \\    Error(_): "error"
+    \\  end
+    \\end
+    \\fn main(platform: Platform)
+    \\  out = platform.stdout
+    \\  store = Store.start()
+    \\  pad = "x".repeat(100)
+    \\  var failed = 0
+    \\  for i in 0..60_000
+    \\    if store.ask(Put(key: "k#{i % 500}", value: "v#{i}#{pad}"), within: 1.minute) is Error(_)
+    \\      failed += 1
+    \\    end
+    \\  end
+    \\  out.write_line("failed #{failed}")
+    \\  out.write_line(shown(store.ask(Get(key: "k7"), within: 1.minute)))
+    \\  store.send(Boom(key: "k7"))
+    \\  out.write_line(shown(store.ask(Get(key: "k7"), within: 1.minute)))
+    \\  tally = Tally.start()
+    \\  tally.send(Note(key: "a", value: "1"))
+    \\  tally.send(Note(key: "a", value: ""))
+    \\  out.write_line("tally #{shown(tally.ask(Read(key: "a"), within: 1.minute))}")
+    \\end
+;
+
+test "processes under mo run free what their state does not reach, write their state in place, and a crash still shows the state before" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, regions_src);
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var err: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, std.testing.io, "/", &.{}, &environ, &out.writer, &err.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    // 60,000 values of 106 bytes went through the store, and the last one per key is what it
+    // holds. Boom set k7 in place and crashed: the store restarted empty, and the report shows
+    // k7 as it was, not "boom". Tally's invariant saw the old "1" and tripped.
+    try std.testing.expectEqualStrings(
+        \\failed 0
+        \\v59507
+        \\none
+        \\tally none
+        \\
+    , out.written());
+    const said = err.written();
+    try std.testing.expect(std.mem.indexOf(u8, said, "state before the last message: Store(data: Map.new().set(\"k0\", \"v59500x") != null);
+    try std.testing.expect(std.mem.indexOf(u8, said, ".set(\"k7\", \"v59507x") != null);
+    try std.testing.expect(std.mem.indexOf(u8, said, "\"boom\"") == null);
+    try std.testing.expect(std.mem.indexOf(u8, said, "invariant \"a value never goes back to empty\"") != null);
+}
+
 const procs_src =
     \\module T.Procs
     \\process Counter(out: Out)
