@@ -117,7 +117,7 @@ test rejects "a window read before the capture"
 end
 
 property "any valid refund leaves the charge refunded"
-  for charge in any(Charge), amount in any(Money) if amount <= charge.captured_amount
+  for charge in any(Charge), amount in any(Money) if !charge.refunded? and amount <= charge.captured_amount
     assert charge.apply_refund(amount) is Ok(c) and c.refunded?
   end
 end

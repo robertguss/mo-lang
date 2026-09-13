@@ -640,7 +640,12 @@ pub const Vm = struct {
             .int => |i| try w.print("{d}", .{i}),
             .float => |f| try w.print("{d}", .{f}),
             .string => |s| try w.print("\"{s}\"", .{s}),
-            .time => |t| if (t == fixture_time) try w.writeAll("Time.fixture()") else try w.print("Time.fixture() + {d}.ms", .{t - fixture_time}),
+            .time => |t| if (t == fixture_time)
+                try w.writeAll("Time.fixture()")
+            else if (t > fixture_time)
+                try w.print("Time.fixture() + {d}.ms", .{t - fixture_time})
+            else
+                try w.print("Time.fixture() - {d}.ms", .{fixture_time - t}),
             .duration => |d| try w.print("{d}.ms", .{d}),
             .list, .tuple => |elems| {
                 try w.writeAll(if (v == .list) "[" else "(");

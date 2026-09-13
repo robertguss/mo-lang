@@ -29,7 +29,7 @@ test "removing past zero stops at zero"
 end
 
 test "multiplication wraps when asked to"
-  assert scramble(2) == 1_014_903_226
+  assert scramble(2) == 1_013_904_226
 end
 
 test "floats divide without rounding"

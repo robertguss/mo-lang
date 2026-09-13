@@ -1,7 +1,8 @@
 //! `mo`: the toolchain CLI. Subcommands land with their stages:
 //!   mo check <file.mo>   tier 1 (lex, parse, check, caps) → exit 0 or diagnostics
-//!   mo test  <file.mo>   tier 2 (run the module's tests)  → summary + verified: line
-//!   mo run   <file.mo>   run the module on the interpreter
+//!   mo test  <file.mo>   tier 2 (run the module's tests)  → one line per test, the
+//!                        summary, and the verified: line; exit 1 when a test fails
+//!   mo run   <file.mo>   runs the module's tests too, until `main` exists
 //! Diagnostics render as prose on stderr, or with --json as one JSON record per line
 //! on stdout.
 const std = @import("std");
@@ -51,20 +52,31 @@ pub fn main(init: std.process.Init) !void {
 
     const source = try Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(1 << 20));
     var diags: mo.diag.List = .empty;
-    mo.pipeline.runTo(arena, source, stage, &diags) catch |e| switch (e) {
-        error.NotImplemented => {
-            try err.print("mo {s}: {s} passes {t}; the stages after it are not implemented yet (see toolchain/README.md for the build order)\n", .{ command, path, mo.pipeline.implemented });
-            try err.flush();
-            std.process.exit(3);
-        },
-        error.Rejected => {
-            for (diags.items) |d| {
-                if (json) try mo.diag.renderJson(out, path, source, d) else try mo.diag.renderProse(err, path, source, d);
-            }
+    const rejected = rejected: {
+        if (stage == .run) {
+            const r = mo.pipeline.testSource(arena, source, &diags) catch |e| switch (e) {
+                error.Rejected => break :rejected true,
+                else => return e,
+            };
+            for (r.results) |result| try mo.runner.writeResult(out, path, source, result);
+            try mo.runner.writeSummary(out, r.summary);
+            try mo.verified.render(out, r.summary);
             try out.flush();
-            try err.flush();
-            std.process.exit(1);
-        },
-        else => return e,
+            if (r.summary.failures > 0) std.process.exit(1);
+            return;
+        }
+        mo.pipeline.runTo(arena, source, stage, &diags) catch |e| switch (e) {
+            error.Rejected => break :rejected true,
+            else => return e,
+        };
+        break :rejected false;
     };
+    if (rejected) {
+        for (diags.items) |d| {
+            if (json) try mo.diag.renderJson(out, path, source, d) else try mo.diag.renderProse(err, path, source, d);
+        }
+        try out.flush();
+        try err.flush();
+        std.process.exit(1);
+    }
 }
