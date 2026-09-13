@@ -57,3 +57,22 @@ long.mo:501:1: MO0302 this file is 503 lines long and the limit is 500; split it
 ```
 
 The law is right for a module, and the fix it names does not exist: a second module cannot be loaded (bug 1). Together they cap a runnable program at 500 lines. logstat's declarations alone are about 600 lines across four modules before any test, so the joined file of bug 1's workaround is refused too.
+
+How logstat was verified anyway: a scratch copy of the toolchain, never committed, whose only change is `lines > 500` to `lines > 5000` on `check.zig` line 1473, runs `MO=<that mo> examples/programs/logstat/check.sh` green. The joined file passes 43 tests, 14 `test rejects`, and 2 properties; both runs match `logstat.expected` and `logstat-json.expected` byte for byte; `--top 0` exits 2 with one line on stderr and no `.log` name exits 1. The two `.expected` files came from an independent Python reading of the spec, not from the Mo program's output. With the official toolchain, `check.sh` stops at MO0302 and exits 1.
+
+## 4. `push` copies the whole list, so a list built by pushing is quadratic
+
+```
+module P.Push
+
+intent "probe"
+
+fn main(platform: Platform)
+  big = (0..8_000).reduce([], fn(acc, i) acc.push(i) end)
+  platform.stdout.write("#{big.size}\n")
+end
+```
+
+2_000 pushes take 0.09 s, 4_000 take 0.17 s, 8_000 take 0.63 s, and 200_000 took 3 min 10 s. `push` is the only way to grow a list, so any program that builds one element by element pays this.
+
+Workaround: logstat never builds a list longer than one line's bytes, the `--top` records, or the distinct paths; a file is folded into the tally line by line. Its run time is then linear, about 3.7 ms per log line on this machine (500 lines 1.8 s, 1_000 3.7 s, 2_000 7.4 s, 4_000 15.2 s). The spec's 100 MB file, about 2.2 million lines, would take about 2.3 hours, and `contents.bytes` would hold it as 100 million values. The time per line was not profiled; the per-byte table lookup in `text_of` and the tuple rebuilt by every `reduce` step are the likely costs.
