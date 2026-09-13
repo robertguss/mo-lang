@@ -1,0 +1,85 @@
+- GET /health
+- GET /notes
+ada GET /notes
+ada GET /notes?prefix=to
+ada GET /notes/n_1
+grace GET /notes/n_1
+ada GET /notes/n_2
+grace GET /notes/n_5
+ada POST /notes {"title": "call home", "body": "sunday\nafter lunch"}
+ada PUT /notes/n_101 {"title": "call home again", "body": "next sunday"}
+grace PUT /notes/n_101 {"title": "not yours", "body": ""}
+grace DELETE /notes/n_101
+ada GET /notes/n_101
+ada DELETE /notes/n_4
+ada DELETE /notes/n_4
+ada POST /notes this is not json
+ada POST /notes {"title": "", "body": "an empty title"}
+ada POST /notes {"body": "no title at all"}
+ada POST /notes {"title": 7, "body": ""}
+ada PATCH /notes/n_1
+ada GET /nowhere
+bad.token GET /notes
+- GET /health
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+busy GET /notes
+ada GET /notes

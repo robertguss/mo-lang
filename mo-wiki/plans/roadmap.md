@@ -41,7 +41,8 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 | 16b | done: round 3 of the control run; Mo's checks caught a real bug, six syntax loops, timing void ([[control-run-3]]) | — |
 | 17 | done: round 3 follow-ups ([[interpreter-step-17]]) | — |
 | 18 | done: the outside review's no-compat fixes ([[interpreter-step-18]], [[outside-review-2026-09-13-response]]); the failure model in chapter 3 | — |
-| 18b | running: program 4, `notes`, the web backend from two recipes ([[program-4]], `spec/programs/04-web-backend.md`) | the package story in practice, requests per second |
+| 18b | done: program 4, `notes`; native 23,692 gets/s with 32 clients; the recipes saved a design and exposed the conformance gap ([[program-4]]) | — |
+| 19 | what program 4 found: freeing finished processes, the held-send deadlock, recipe conformance and `never`, `Fs.mkdir`, a fixed clock, three diagnostics, the dead `each_line` row, mutation tests of the contract machinery ([[interpreter-step-19]]) | program 1 |
 | 18 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 
