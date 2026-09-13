@@ -12,6 +12,7 @@ const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const prelude = @import("prelude.zig");
+const server_mod = @import("server.zig");
 const sim_mod = @import("sim.zig");
 const types = @import("types.zig");
 
@@ -48,7 +49,8 @@ pub const Value = union(enum) {
     /// A variant is known by its name, so `try` re-tags an error without converting it.
     pub const Variant = struct { name: []const u8, fields: []const Value };
     pub const Func = struct { function: u32, captures: []const Value };
-    pub const Cap = struct { kind: types.CapKind, delay: i64 = 0 };
+    /// `handle` names a real resource under Mo.Server: an Fs's scope, or an Out's stream.
+    pub const Cap = struct { kind: types.CapKind, delay: i64 = 0, handle: u32 = 0 };
 };
 
 /// `Time.fixture()` and a fixture clock's frozen `now`: 2026-01-01T00:00:00Z.
@@ -67,6 +69,8 @@ pub const Vm = struct {
     generated: std.ArrayList(Generated) = .empty,
     /// The scheduler processes run on; the runner sets it for every test.
     sim: ?*sim_mod.Sim = null,
+    /// The real platform `mo run` gives main; null under `mo test`.
+    server: ?*server_mod.Server = null,
 
     pub fn init(gpa: std.mem.Allocator, program: *const bytecode.Program, seed: u64) Vm {
         return .{ .gpa = gpa, .program = program, .rng = .init(seed) };
@@ -545,14 +549,17 @@ pub const Vm = struct {
                 break :blk .{ .duration = @intCast(ms) };
             },
             .time_fixture => .{ .time = fixture_time },
-            .clock_now => .{ .time = if (vm.sim) |s| s.now else fixture_time },
+            .clock_now => .{ .time = if (vm.server) |s| s.now() else if (vm.sim) |s| s.now else fixture_time },
             .clock_fixture => .{ .cap = .{ .kind = .clock } },
-            // A fixture Fs is empty; one built with delay: answers after the delay.
-            .fs_read => if (a[0].cap.delay > a[2].duration)
+            // Under mo run the file system is real (server.zig). A fixture Fs is empty; one
+            // built with delay: answers after the delay.
+            .fs_read => if (vm.server) |s|
+                try s.read(vm, a[0].cap, a[1].string, a[2].duration)
+            else if (a[0].cap.delay > a[2].duration)
                 try vm.variant("Error", &.{try vm.variant("Timeout", &.{})})
             else
                 try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = a[1].string }})}),
-            .fs_narrow => a[0],
+            .fs_narrow => if (vm.server) |s| try s.narrow(a[0].cap, row.name, if (row.params.len == 1) a[1].string else "") else a[0],
             .fs_fixture => .{ .cap = .{ .kind = .fs, .delay = if (row.named.len == 1) a[0].duration else 0 } },
             .events_emit => blk: {
                 if (vm.sim) |s| try s.emit(a[1]);
@@ -583,10 +590,24 @@ pub const Vm = struct {
             .charge_refunded => a[0].record.fields[3],
             .money_cents => a[0],
             .money_zero => .{ .int = 0 },
-            // A Platform exists only in main, and only `mo run` calls main (Q18).
-            .platform_part, .platform_exit, .env_get, .out_write => {
-                vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "{s}.{s} runs only under mo run", .{ row.recv, row.name }), .within = row.name, .at = 0 };
-                return error.Crash;
+            // A Platform exists only in main, and only `mo run` calls main, on Mo.Server (Q18).
+            .platform_part, .platform_exit, .env_get, .out_write => blk: {
+                const s = vm.server orelse {
+                    vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "{s}.{s} runs only under mo run", .{ row.recv, row.name }), .within = row.name, .at = 0 };
+                    return error.Crash;
+                };
+                break :blk switch (prim_of[row_index]) {
+                    .platform_part => try s.part(vm, row.name),
+                    .platform_exit => exit: {
+                        s.exit(a[1].int);
+                        break :exit .none;
+                    },
+                    .env_get => try s.envGet(vm, a[1].string),
+                    else => write: {
+                        s.write(a[0].cap, a[1].string);
+                        break :write .none;
+                    },
+                };
             },
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
@@ -759,13 +780,13 @@ pub const Vm = struct {
             },
             .func => try w.writeAll("a function"),
             .cap => |c| try w.writeAll(switch (c.kind) {
-                .clock => "Clock.fixture()",
-                .fs => "Fs.fixture()",
+                .clock => if (vm.server != null) "a Clock" else "Clock.fixture()",
+                .fs => if (vm.server != null) "an Fs" else "Fs.fixture()",
                 .events => "Events.fixture()",
                 .ledger => "Ledger.fixture()",
                 .platform => "the Platform",
                 .env => "an Env",
-                .out => "an Out",
+                .out => if (c.handle == server_mod.stderr_handle) "an Out (stderr)" else "an Out (stdout)",
             }),
             .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
         }
@@ -808,7 +829,7 @@ pub fn equal(a: Value, b: Value) bool {
         .record => |x| x.decl == b.record.decl and allEqual(x.fields, b.record.fields),
         .variant => |x| std.mem.eql(u8, x.name, b.variant.name) and allEqual(x.fields, b.variant.fields),
         .func => |x| x.function == b.func.function and allEqual(x.captures, b.func.captures),
-        .cap => |x| x.kind == b.cap.kind and x.delay == b.cap.delay,
+        .cap => |x| x.kind == b.cap.kind and x.delay == b.cap.delay and x.handle == b.cap.handle,
         .handle => |x| x == b.handle,
     };
 }

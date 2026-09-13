@@ -18,6 +18,7 @@ pub const loops = @import("loops.zig");
 pub const bytecode = @import("bytecode.zig");
 pub const vm = @import("vm.zig");
 pub const sim = @import("sim.zig");
+pub const server = @import("server.zig");
 pub const contracts = @import("contracts.zig");
 pub const runner = @import("runner.zig");
 pub const diag = @import("diag.zig");
