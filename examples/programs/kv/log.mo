@@ -172,12 +172,8 @@ fn applied(table: Table, line: String, number: UInt64) : Result(Table, LogError)
   case parse(line)
     Ok(Set(key: key, value: value)): Ok(put(table, key, value))
     Ok(Del(key)): Ok(drop(table, key))
-    Ok(Get(_)): Error(BadLine(number: number))
-    Ok(Incr(key: _, by: _)): Error(BadLine(number: number))
-    Ok(Keys(_)): Error(BadLine(number: number))
-    Ok(Stats): Error(BadLine(number: number))
-    Ok(Quit): Error(BadLine(number: number))
-    Error(_): Error(BadLine(number: number))
+    Ok(Get(_)) | Ok(Incr(key: _, by: _)) | Ok(Keys(_)) | Ok(Stats) | Ok(Quit) | Error(_):
+      Error(BadLine(number: number))
   end
 end
 
@@ -338,5 +334,5 @@ test rejects "a value over 60 KiB"
   put(empty(), "big", "x".repeat(61_441))
 end
 
-verified: types, contracts, tests (13), property (0 seeds), sim (not run)
+verified: types, contracts, tests (13), property (0 seeds), sim (100 runs)
           proven: not run

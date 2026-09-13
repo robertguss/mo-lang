@@ -139,7 +139,7 @@
         { "id": "2abcbe4d987e", "name": "fn keys_with", "hash": "f07c69661e2d165c" },
         { "id": "389f6ce35158", "name": "fn entry", "hash": "7d7b70f3e6b6e5ac" },
         { "id": "8ed3a98fe6ed", "name": "fn replay", "hash": "d0c6da2c235fe885" },
-        { "id": "5726666c0cf4", "name": "fn applied", "hash": "7fdcbca545a9c055" },
+        { "id": "5726666c0cf4", "name": "fn applied", "hash": "ca50b612a8a100b5" },
         { "id": "04d410fe3c32", "name": "fn reopen", "hash": "c6a96dfad8875ec7" },
         { "id": "d64718512ee1", "name": "fn compacted", "hash": "d4e5a44aff0e0550" },
         { "id": "c62dd19e55d8", "name": "fn open", "hash": "6f9f2143965f1ba0" },
@@ -160,7 +160,7 @@
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
       ],
-      "verified": { "hash": "9f42df5ce2b765e5", "declarations": "c4496f0aba315c11" }
+      "verified": { "hash": "087094673077814e", "declarations": "ef8f4203e90d69b6" }
     },
     {
       "path": "kv/main.mo",

@@ -35,6 +35,8 @@ pub const Kind = enum {
     star,
     slash,
     percent,
+    /// `|` between the alternatives of a grouped arm (step 18).
+    pipe,
     plus_eq,
     minus_eq,
     newline,

@@ -36,11 +36,11 @@
         { "id": "bc8961983910", "name": "expose", "hash": "9711c295a0c50696" },
         { "id": "9a6472c1ffb2", "name": "intent", "hash": "e726c7132d1ef829" },
         { "id": "50115c9d101f", "name": "enum Shape", "hash": "440d942aa9035e83" },
-        { "id": "600d24f35f08", "name": "fn describe", "hash": "ab7417165e7341aa" },
+        { "id": "600d24f35f08", "name": "fn describe", "hash": "b367cda0036af4e1" },
         { "id": "4b03328b90c9", "name": "test \"literal arms and guards\"", "hash": "55a76ad222aedc66" },
-        { "id": "70a05fe55978", "name": "test \"a tuple destructured inside a variant\"", "hash": "b5dd64d44ec97b99" }
+        { "id": "5566976c4293", "name": "test \"a tuple destructured inside a variant, and a grouped arm binding the same name either way\"", "hash": "4a55289f76505d2e" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "1c73b6a573ae884a" }
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "cdc09efc17ad76c1" }
     },
     {
       "path": "for.mo",

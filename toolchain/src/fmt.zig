@@ -1308,6 +1308,11 @@ const Printer = struct {
                 }
                 _ = try p.tk(.r_paren);
             },
+            // C5.
+            .pat_or => for (p.tree.span(n.lhs, n.rhs), 0..) |alt, k| {
+                if (k > 0) try p.op(.pipe);
+                try p.pattern(alt);
+            },
             else => unreachable,
         }
     }
@@ -1546,7 +1551,7 @@ pub fn dump(w: *std.Io.Writer, tree: ast.Tree, i: Index) std.Io.Writer.Error!voi
             for (items.items) |u| try w.print("(uses {s})", .{u});
             try w.writeAll("]");
         },
-        .struct_decl, .enum_decl, .trait_decl, .variant, .type_tuple, .string_interp, .tuple, .list, .pat_record, .pat_tuple, .state_block, .test_decl, .test_rejects => try D.nodes(w, tree, n.lhs, n.rhs),
+        .struct_decl, .enum_decl, .trait_decl, .variant, .type_tuple, .string_interp, .tuple, .list, .pat_record, .pat_tuple, .pat_or, .state_block, .test_decl, .test_rejects => try D.nodes(w, tree, n.lhs, n.rhs),
         .expose, .needs => try D.toks(w, tree, n.lhs, n.rhs),
         .path => try D.tok(w, tree, n.lhs),
         .use => {

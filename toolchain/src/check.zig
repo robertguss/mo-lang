@@ -2047,14 +2047,14 @@ const Checker = struct {
         };
         if (closed) {
             const ctors = (try c.constructors(subject)).?;
-            for (arms) |a| {
-                const pat = c.node(a).lhs;
+            for (arms) |a| for (try c.alternatives(c.node(a).lhs)) |pat| {
                 if (!c.isWild(pat)) continue;
                 var hidden: std.ArrayList([]const u8) = .empty;
                 for (ctors) |k| {
-                    const named = for (arms) |other| {
-                        if (other != a and c.headMatches(c.node(other).lhs, k)) break true;
-                    } else false;
+                    var named = false;
+                    for (arms) |other| for (try c.alternatives(c.node(other).lhs)) |op| {
+                        if (op != pat and c.headMatches(op, k)) named = true;
+                    };
                     if (!named) try hidden.append(c.gpa, try c.armPattern(k));
                 }
                 const arm = c.text(c.node(pat).main_token);
@@ -2064,13 +2064,14 @@ const Checker = struct {
                     try c.print("the {s} arm hides {s} of {s}; write an arm for each of them in its place.", .{ arm, try c.joinAnd(hidden.items), try c.tn(subject) });
                 try c.reportTok(.catch_all, c.node(pat).main_token, what);
                 return;
-            }
+            };
         }
         var rows: std.ArrayList([]const u32) = .empty;
         for (arms) |a| {
             const an = c.node(a);
             if (c.tree.extraData(ast.Arm, an.rhs).guard != 0) continue;
-            try rows.append(c.gpa, try c.gpa.dupe(u32, &.{an.lhs}));
+            // Each alternative of `A | B` is a row of its own.
+            for (try c.alternatives(an.lhs)) |pat| try rows.append(c.gpa, try c.gpa.dupe(u32, &.{pat}));
         }
         if (try c.uncovered(rows.items, &.{subject})) |w| {
             // An integer or a string has too many values to name one; say which type.
@@ -2331,7 +2332,12 @@ const Checker = struct {
                     if (result == types.unknown or c.pool.resolve(result) == types.never) result = t;
                 },
                 .update => if (is_update) {
-                    _ = try c.blockValue(body, c.replyOfPattern(an.lhs, subject) orelse types.none);
+                    const reply = c.replyOfPattern(an.lhs, subject) orelse types.none;
+                    if (c.node(an.lhs).kind == .pat_or) for (c.spanOf(c.node(an.lhs))[1..]) |alt| {
+                        const other = c.replyOfPattern(alt, subject) orelse types.none;
+                        if (!c.pool.unify(reply, other)) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("{s} replies with {s} and the first alternative with {s}, so it takes an arm of its own", .{ c.text(c.node(alt).main_token), try c.tn(other), try c.tn(reply) }));
+                    };
+                    _ = try c.blockValue(body, reply);
                 } else try c.blockStmts(body),
             }
             try c.popScope(mark);
@@ -2343,6 +2349,7 @@ const Checker = struct {
 
     fn replyOfPattern(c: *Checker, pat: Index, subject: Id) ?Id {
         const pn = c.node(pat);
+        if (pn.kind == .pat_or) return c.replyOfPattern(c.spanOf(pn)[0], subject);
         if (pn.kind != .pat_variant and pn.kind != .pat_record) return null;
         const v = c.findVariant(c.text(pn.main_token), subject) orelse return null;
         return c.variants.items[v].reply;
@@ -2371,6 +2378,7 @@ const Checker = struct {
             },
             .pat_variant => try c.variantPattern(i, subject),
             .pat_record => try c.recordPattern(i, subject),
+            .pat_or => try c.orPattern(i, subject),
             .pat_tuple => {
                 const elems = c.spanOf(n);
                 var b = c.bt(subject);
@@ -2391,6 +2399,44 @@ const Checker = struct {
             },
             else => unreachable,
         }
+    }
+
+    /// `A | B | C`: every alternative matches the subject and binds the same names, of the same
+    /// types, or none; the body sees the first alternative's.
+    fn orPattern(c: *Checker, i: Index, subject: Id) Error!void {
+        const alts = c.spanOf(c.node(i));
+        const mark = c.pushScope();
+        try c.pattern(alts[0], subject);
+        const first = try c.gpa.dupe(Binding, c.bindings.items[mark..]);
+        for (alts[1..]) |alt| {
+            c.bindings.shrinkRetainingCapacity(mark);
+            try c.pattern(alt, subject);
+            const these = c.bindings.items[mark..];
+            var same = these.len == first.len;
+            for (these) |b| {
+                const twin = for (first) |f| {
+                    if (std.mem.eql(u8, f.name, b.name)) break f;
+                } else null;
+                if (twin == null or !c.pool.unify(twin.?.type, b.type)) same = false;
+            }
+            if (!same) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("this alternative binds {s} and the first binds {s}; every alternative of an arm binds the same names, of the same types, or none", .{ try c.boundNames(these), try c.boundNames(first) }));
+        }
+        c.bindings.shrinkRetainingCapacity(mark);
+        try c.bindings.appendSlice(c.gpa, first);
+    }
+
+    fn boundNames(c: *Checker, bound: []const Binding) Error![]const u8 {
+        if (bound.len == 0) return "no names";
+        var names: std.ArrayList([]const u8) = .empty;
+        for (bound) |b| try names.append(c.gpa, b.name);
+        return c.joinAnd(names.items);
+    }
+
+    /// An arm's alternatives: those of `A | B`, or its one pattern.
+    fn alternatives(c: *Checker, p: Index) Error![]const u32 {
+        const n = c.node(p);
+        if (n.kind == .pat_or) return c.spanOf(n);
+        return c.gpa.dupe(u32, &.{p});
     }
 
     fn builtinVariant(name: []const u8) ?enum { some, none, ok, err } {
@@ -3715,6 +3761,68 @@ test "case: a missing variant is named; a catch-all arm on an enum names what it
         \\  end
         \\end
     , &.{"MO0308"});
+}
+
+test "grouped patterns: each alternative is an arm for exhaustiveness, and all bind the same names" {
+    try expectCodes(
+        \\module T.Grouped
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\  Dot
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n) | Square(n): n
+        \\    Dot: 0
+        \\  end
+        \\end
+        \\fn round?(s: Shape) : Bool
+        \\  case s
+        \\    Circle(_): true
+        \\    Square(_) | Dot: false
+        \\  end
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.GroupedMissing
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\  Dot
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n) | Square(n): n
+        \\  end
+        \\end
+    , &.{"MO0308"});
+    try expectWhat(
+        \\module T.GroupedNames
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n) | Square(_): n
+        \\  end
+        \\end
+    , "MO0212", "this alternative binds no names and the first binds n; every alternative of an arm binds the same names, of the same types, or none");
+    try expectCodes(
+        \\module T.GroupedCatchAll
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\  Dot
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n): n
+        \\    Dot | _: 0
+        \\  end
+        \\end
+    , &.{"MO0309"});
 }
 
 test "values: the value of a pure call is dropped; an effectful call's is not" {

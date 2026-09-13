@@ -1430,8 +1430,39 @@ const Lower = struct {
                 }
             },
             .pat_tuple => for (l.tree.span(n.lhs, n.rhs), 0..) |e, k| try l.subPattern(subject, @intCast(k), e, fails),
+            .pat_or => try l.orPattern(n, subject, fails),
             else => unreachable,
         }
+    }
+
+    /// `A | B | C`: each alternative in turn, until one matches. A later alternative stores
+    /// its names into the slots the first one bound, so the body reads them whichever matched.
+    fn orPattern(l: *Lower, n: ast.Node, subject: u32, fails: *std.ArrayList(u32)) Error!void {
+        const alts = l.tree.span(n.lhs, n.rhs);
+        const first = l.b.names.items.len;
+        var first_end = first;
+        var matched: std.ArrayList(u32) = .empty;
+        for (alts, 0..) |alt, k| {
+            const mark = l.b.names.items.len;
+            const last = k + 1 == alts.len;
+            var alt_fails: std.ArrayList(u32) = .empty;
+            try l.pattern(alt, subject, if (last) fails else &alt_fails);
+            if (k == 0) {
+                first_end = l.b.names.items.len;
+            } else {
+                for (l.b.names.items[mark..]) |bound| for (l.b.names.items[first..first_end]) |want| {
+                    if (!std.mem.eql(u8, want.name, bound.name)) continue;
+                    _ = try l.emit(.load, bound.slot, 0);
+                    _ = try l.emit(.store, want.slot, 0);
+                };
+                l.b.names.shrinkRetainingCapacity(first_end);
+            }
+            if (!last) {
+                try matched.append(l.gpa, try l.emit(.jump, 0, 0));
+                for (alt_fails.items) |f| l.patch(f);
+            }
+        }
+        for (matched.items) |m| l.patch(m);
     }
 
     fn variantTest(l: *Lower, subject: u32, name: []const u8, fails: *std.ArrayList(u32)) Error!void {

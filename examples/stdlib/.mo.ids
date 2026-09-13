@@ -90,13 +90,13 @@
         { "id": "6feec4c7816c", "name": "fn counted", "hash": "e64538d245782ef2" },
         { "id": "b021ffc5a935", "name": "test \"a map keeps the order its keys were first added\"", "hash": "6c9febd261dfdff2" },
         { "id": "fbc8da3a3250", "name": "test \"set keeps a key's place, and a key removed and set again goes last\"", "hash": "375df3f748f69243" },
-        { "id": "b1ef10503c03", "name": "test \"equal maps hold equal entries in the same order\"", "hash": "b889b27d86574692" },
+        { "id": "4c10c7119df7", "name": "test \"maps and sets are equal when they hold the same, in any order\"", "hash": "a80d729745a79899" },
         { "id": "bb93d801addc", "name": "test \"a set holds each element once, in the order first added\"", "hash": "f2cf209b9d41b93f" },
         { "id": "71a8a2647b8b", "name": "test \"group_by gathers elements under their key, keys in the order first seen\"", "hash": "eb32a64ca71b93bb" },
         { "id": "bc1f122de548", "name": "test \"a var updated in place never changes a copy taken before\"", "hash": "a6892d3f355cd421" },
         { "id": "79bde98b3394", "name": "property \"a map's keys never repeat, and its size counts them\"", "hash": "e873eb029f8e5116" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "6609be2660719676" }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "7cb49cfbb1cbedba" }
     },
     {
       "path": "numbers.mo",

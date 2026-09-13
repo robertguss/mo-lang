@@ -1191,8 +1191,38 @@ const Emitter = struct {
                 }
             },
             .pat_tuple => for (e.tree.span(n.lhs, n.rhs), 0..) |x, k| try e.subPattern(subject, @intCast(k), x, fail),
+            .pat_or => try e.orPattern(n, subject, fail),
             else => unreachable,
         }
+    }
+
+    /// `A | B | C`, as bytecode.zig lowers it: each alternative in turn, and a later one
+    /// copies its names into the first one's.
+    fn orPattern(e: *Emitter, n: ast.Node, subject: []const u8, fail: *Label) Error!void {
+        const alts = e.tree.span(n.lhs, n.rhs);
+        const first = e.b.names.items.len;
+        var first_end = first;
+        var matched = e.label();
+        for (alts, 0..) |alt, k| {
+            const mark = e.b.names.items.len;
+            const last = k + 1 == alts.len;
+            var alt_fail = e.label();
+            try e.pattern(alt, subject, if (last) fail else &alt_fail);
+            if (k == 0) {
+                first_end = e.b.names.items.len;
+            } else {
+                for (e.b.names.items[mark..]) |bound| for (e.b.names.items[first..first_end]) |want| {
+                    if (std.mem.eql(u8, want.name, bound.name)) try e.line("{s} = {s};", .{ want.cvar, bound.cvar });
+                };
+                e.b.names.shrinkRetainingCapacity(first_end);
+            }
+            if (!last) {
+                matched.used = true;
+                try e.line("goto E{d};", .{matched.id});
+                if (alt_fail.used) try e.line("F{d}:;", .{alt_fail.id});
+            }
+        }
+        if (matched.used) try e.line("E{d}:;", .{matched.id});
     }
 
     fn variantTest(e: *Emitter, subject: []const u8, name: []const u8, fail: *Label) Error!void {

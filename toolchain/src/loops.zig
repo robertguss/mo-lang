@@ -392,7 +392,7 @@ const Children = struct {
                 c.add(d.guard);
                 c.spans[0] = tree.span(d.body_start, d.body_end);
             },
-            .tuple, .list, .string_interp, .pat_record, .pat_tuple => c.spans[0] = tree.span(n.lhs, n.rhs),
+            .tuple, .list, .string_interp, .pat_record, .pat_tuple, .pat_or => c.spans[0] = tree.span(n.lhs, n.rhs),
             .anon_fn => {
                 const d = tree.extraData(ast.AnonFn, n.lhs);
                 c.spans[0] = tree.span(d.body_start, d.body_end);

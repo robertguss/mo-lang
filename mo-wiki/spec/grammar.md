@@ -82,8 +82,10 @@ return      = "return" expr ("if" expr)? NL                   # trailing if only
 for         = "for" (ident | "_") "in" expr NL block "end" NL   # _ when the index is unused
 if_stmt     = "if" expr NL block ("else" NL block)? "end" NL
 case        = "case" expr NL arm+ "end" NL
-arm         = pattern ("if" expr)? ":" (expr NL | NL block)   # runs until the next arm or end
+arm         = pattern ("|" pattern)* ("if" expr)? ":" (expr NL | NL block)   # runs until the next arm or end
 ```
+
+Session 5, step 18: an arm may group alternatives, `A | B | C: body`, so a closed enum's arms that share a body are one arm and still name every variant.
 
 ## 6. Expressions
 
@@ -126,6 +128,8 @@ pattern     = "_" | ident | "-"? literal
 ```
 
 `_` is allowed inside a pattern, never as a whole arm on a closed enum (a semantic rule).
+
+Session 5, step 18: the alternatives of a grouped arm (`arm`, §5) are each a whole `pattern`; they bind the same names, of the same types, or none, and each counts toward exhaustiveness as an arm of its own. A grouped pattern is an arm's only; `is` takes one pattern.
 
 ## 8. Comprehensions (never, property)
 

@@ -563,6 +563,8 @@ static bool all_equal(const MoValue *a, const MoValue *b, size_t n) {
     return true;
 }
 
+static size_t map_find(const MoMap *m, size_t stride, MoValue key);
+
 bool mo_equal(MoValue a, MoValue b) {
     if (a.tag != b.tag) return false;
     switch (a.tag) {
@@ -579,8 +581,16 @@ bool mo_equal(MoValue a, MoValue b) {
     case MO_TUPLE: return a.aux == b.aux && all_equal(a.as.xs, b.as.xs, a.aux);
     case MO_MAP:
     case MO_SET: {
+        /* Equal keys with equal values, or equal elements, in any order (design-v0/09, step 18). */
         uint32_t la = a.as.m ? a.as.m->len : 0, lb = b.as.m ? b.as.m->len : 0;
-        return la == lb && (la == 0 || all_equal(a.as.m->entries, b.as.m->entries, la));
+        if (la != lb) return false;
+        size_t stride = a.tag == MO_MAP ? 2 : 1;
+        for (size_t k = 0; k < la; k += stride) {
+            size_t at = map_find(b.as.m, stride, a.as.m->entries[k]);
+            if (at == SIZE_MAX) return false;
+            if (stride == 2 && !mo_equal(a.as.m->entries[k + 1], b.as.m->entries[at + 1])) return false;
+        }
+        return true;
     }
     case MO_RECORD: return a.aux == b.aux && all_equal(a.as.xs, b.as.xs, mo_decls[a.aux].nfields);
     case MO_VARIANT: return a.aux == b.aux && all_equal(a.as.xs, b.as.xs, mo_vcount(a));
@@ -670,10 +680,17 @@ static uint64_t hash_value(MoValue v) {
         return h;
     case MO_MAP:
     case MO_SET: {
+        /* Equal maps and sets can hold their entries in different orders (mo_equal), so each
+         * entry hashes on its own and the hashes add up. */
         uint32_t n = v.as.m ? v.as.m->len : 0;
-        h = mix(h, n);
-        for (uint32_t i = 0; i < n; i++) h = mix(h, hash_value(v.as.m->entries[i]));
-        return h;
+        size_t stride = v.tag == MO_MAP ? 2 : 1;
+        uint64_t sum = 0;
+        for (size_t i = 0; i < n; i += stride) {
+            uint64_t one = hash_value(v.as.m->entries[i]);
+            if (stride == 2) one = mix(one, hash_value(v.as.m->entries[i + 1]));
+            sum += one;
+        }
+        return mix(mix(h, n), sum);
     }
     case MO_RECORD:
     case MO_VARIANT: {

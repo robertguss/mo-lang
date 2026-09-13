@@ -12,7 +12,7 @@ This is the part of the box the first three programs need (`examples/GAPS.md`), 
 - **Indices and sizes are `UInt64`.** String positions count graphemes, as `size` does; `bytes` is the escape hatch to bytes.
 - **Clamped, not crashed.** `slice`, `take`, and `drop` clamp their bounds to the value they cut, so `"abc".slice(1, 99)` is `"bc"` and `[1, 2].drop(5)` is `[]`.
 - **One order.** The natural order `sort`, `min`, and `max` use is the order of `<`: integers and floats by value, strings byte by byte (which is code point order for UTF-8), `Time` and `Duration` by value, and tuples of those left to right. Bools, structs, enums, lists, maps, and sets have no order, and the checker rejects them there. `sort` is stable. A float NaN sorts after every number.
-- **Defined order for maps and sets.** Keys iterate in the order they were first added. Setting an existing key keeps its place; removing a key and adding it again puts it last. Two maps are equal when they hold equal entries in the same order.
+- **Defined order for maps and sets.** Keys iterate in the order they were first added. Setting an existing key keeps its place; removing a key and adding it again puts it last. Two maps are equal when they hold equal keys with equal values, and two sets when they hold equal elements, in any order. Session 5, step 18: equality by content, where it was by order.
 
 Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the receiver's own integer type. An argument written `fn(T) U` is an anonymous function (a signature cannot name a function type, so a row that needs a comparison takes a key function instead).
 

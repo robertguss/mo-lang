@@ -28,9 +28,17 @@ test "set keeps a key's place, and a key removed and set again goes last"
   assert m.remove("absent") == m
 end
 
-test "equal maps hold equal entries in the same order"
-  assert Map.new().set("a", 1).set("b", 2) == Map.new().set("a", 1).set("b", 2)
-  assert Map.new().set("a", 1).set("b", 2) != Map.new().set("b", 2).set("a", 1)
+test "maps and sets are equal when they hold the same, in any order"
+  ab = Map.new().set("a", 1).set("b", 2)
+  ba = Map.new().set("b", 2).set("a", 1)
+  assert ab == ba
+  assert ab.keys != ba.keys
+  assert ab != Map.new().set("a", 1).set("b", 3)
+  assert ab != Map.new().set("a", 1)
+  assert Set.new().add(1).add(2) == Set.new().add(2).add(1)
+  assert Set.new().add(1).add(2) != Set.new().add(1).add(3)
+  assert Set.new().add(ab).has?(ba)
+  assert Map.new().set(ba, "found").get(ab) is Some("found")
 end
 
 test "a set holds each element once, in the order first added"

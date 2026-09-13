@@ -1221,6 +1221,20 @@ pub const ValueContext = struct {
     }
 };
 
+/// Equal maps and sets can hold their entries in different orders (vm.equal), so each entry
+/// hashes on its own and the hashes add up.
+fn hashUnordered(h: *std.hash.Wyhash, entries: []const Value, stride: usize) void {
+    var sum: u64 = 0;
+    var k: usize = 0;
+    while (k < entries.len) : (k += stride) {
+        var one: std.hash.Wyhash = .init(0);
+        for (entries[k .. k + stride]) |v| hashInto(&one, v);
+        sum +%= one.final();
+    }
+    h.update(std.mem.asBytes(&entries.len));
+    h.update(std.mem.asBytes(&sum));
+}
+
 fn hashInto(h: *std.hash.Wyhash, v: Value) void {
     h.update(&.{@intFromEnum(std.meta.activeTag(v))});
     switch (v) {
@@ -1235,7 +1249,8 @@ fn hashInto(h: *std.hash.Wyhash, v: Value) void {
         },
         .time, .duration => |t| h.update(std.mem.asBytes(&t)),
         .list, .tuple => |xs| hashAll(h, xs),
-        .map, .set => |m| hashAll(h, m.entries),
+        .map => |m| hashUnordered(h, m.entries, 2),
+        .set => |m| hashUnordered(h, m.entries, 1),
         .record => |r| {
             h.update(std.mem.asBytes(&r.decl));
             hashAll(h, r.fields);
