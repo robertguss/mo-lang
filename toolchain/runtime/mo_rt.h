@@ -82,7 +82,8 @@ extern const uint32_t mo_nnames;
 enum {
     MO_N_SOME, MO_N_NONE, MO_N_OK, MO_N_ERROR, MO_N_MISSING, MO_N_TIMEOUT, MO_N_SYNTAX,
     MO_N_OBJECT, MO_N_ARRAY, MO_N_STRING, MO_N_NUMBER, MO_N_BOOL, MO_N_NULL, MO_N_DOWN,
-    MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY, MO_N_FIXED
+    MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY, MO_N_MALFORMED, MO_N_TOO_LARGE,
+    MO_N_UNSUPPORTED, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -100,7 +101,10 @@ enum { MO_I8, MO_I16, MO_I32, MO_I64, MO_U8, MO_U16, MO_U32, MO_U64 };
 #define MO_KIND_UNIQUE (UINT32_MAX - 1)
 
 /* types.CapKind, in its order. */
-enum { MO_CAP_CLOCK, MO_CAP_FS, MO_CAP_EVENTS, MO_CAP_LEDGER, MO_CAP_PLATFORM, MO_CAP_ENV, MO_CAP_OUT, MO_CAP_NET, MO_CAP_LISTENER, MO_CAP_CONN };
+enum {
+    MO_CAP_CLOCK, MO_CAP_FS, MO_CAP_EVENTS, MO_CAP_LEDGER, MO_CAP_PLATFORM, MO_CAP_ENV, MO_CAP_OUT, MO_CAP_NET,
+    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE
+};
 
 /* check.DeclKind, in its order. */
 enum { MO_D_STRUCT, MO_D_ENUM, MO_D_ALIAS, MO_D_OPAQUE, MO_D_TRAIT, MO_D_PROCESS, MO_D_SUPERVISOR, MO_D_RECIPE, MO_D_PRELUDE_ENUM };
@@ -162,6 +166,9 @@ extern const uint32_t mo_nnevers;
 extern const uint32_t mo_nrecorded;
 /* The refund module's Charge stand-in (prelude.zig), or UINT32_MAX when no module has one. */
 extern const uint32_t mo_charge_decl;
+/* The prelude's Request and Response structs (Http). */
+extern const uint32_t mo_request_decl;
+extern const uint32_t mo_response_decl;
 
 /* Contracts (requires, ensures, refinements) are checked when this is set: in every binary
  * `mo build` makes unless it was built --no-contracts, and always in a test binary.
@@ -460,6 +467,8 @@ MO_ROW(mo_r_Platform_args); MO_ROW(mo_r_Platform_env); MO_ROW(mo_r_Platform_stdo
 MO_ROW(mo_r_Platform_fs); MO_ROW(mo_r_Platform_clock); MO_ROW(mo_r_Platform_net); MO_ROW(mo_r_Platform_exit);
 MO_ROW(mo_r_Net_listen); MO_ROW(mo_r_Net_connect); MO_ROW(mo_r_Net_fixture); MO_ROW(mo_r_Listener_accept);
 MO_ROW(mo_r_Listener_port); MO_ROW(mo_r_Conn_read_line); MO_ROW(mo_r_Conn_write); MO_ROW(mo_r_Conn_close);
+MO_ROW(mo_r_Platform_http); MO_ROW(mo_r_Http_listen); MO_ROW(mo_r_Http_send); MO_ROW(mo_r_Http_fixture);
+MO_ROW(mo_r_HttpListener_accept); MO_ROW(mo_r_HttpListener_port); MO_ROW(mo_r_Exchange_request); MO_ROW(mo_r_Exchange_reply);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
 MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode);

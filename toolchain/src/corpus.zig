@@ -539,8 +539,6 @@ test "corpus: every module's tests and every program, built by mo build, print w
     var outside_rejects: u32 = 0;
     for (paths) |rel| {
         if (isRejectsPath(rel)) continue;
-        // Step 16 part A: Http runs in the interpreter only until part B ports it to C.
-        if (std.mem.eql(u8, rel, "effects/http.mo") or std.mem.eql(u8, rel, "stdlib/http.mo")) continue;
         outside_rejects += 1;
         try checkBuiltTests(gpa, io, mo_exe, root, rel, &modules);
     }

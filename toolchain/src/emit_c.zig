@@ -17,7 +17,7 @@
 //! function each for its first state, its update, and each invariant, and a supervisor's child
 //! line one for its arguments and one for its window, in tables the runtime's scheduler reads
 //! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. The Net
-//! rows are the runtime's: real sockets under main, Net.fixture() in a test binary.
+//! and Http rows are the runtime's: real sockets under main, their fixtures in a test binary.
 const std = @import("std");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
@@ -43,7 +43,7 @@ pub const Options = struct {
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
@@ -2039,6 +2039,7 @@ const Emitter = struct {
 
         const charge = k.findDecl("Charge");
         try tables.print(gpa, "const uint32_t mo_charge_decl = {s};\n", .{if (charge) |c| try e.print("{d}", .{c}) else "UINT32_MAX"});
+        try tables.print(gpa, "const uint32_t mo_request_decl = {d};\nconst uint32_t mo_response_decl = {d};\n", .{ k.preludeStruct("Request").?, k.preludeStruct("Response").? });
         try tables.print(gpa, "const bool mo_contracts_built = {s};\n\n", .{if (e.options.contracts or e.options.tests) "true" else "false"});
 
         try out.appendSlice(gpa, e.protos.items);

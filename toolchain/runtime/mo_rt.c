@@ -1069,7 +1069,10 @@ static void format_value(Buf *b, MoValue v) {
         case MO_CAP_OUT: buf_str(b, !server_mode ? "Out.fixture()" : mo_cap_handle(v) == 2 ? "an Out (stderr)" : "an Out (stdout)"); return;
         case MO_CAP_NET: buf_str(b, server_mode ? "a Net" : "Net.fixture()"); return;
         case MO_CAP_LISTENER: buf_str(b, "a Listener"); return;
-        default: buf_str(b, "a Conn"); return;
+        case MO_CAP_CONN: buf_str(b, "a Conn"); return;
+        case MO_CAP_HTTP: buf_str(b, server_mode ? "an Http" : "Http.fixture()"); return;
+        case MO_CAP_HTTP_LISTENER: buf_str(b, "an HttpListener"); return;
+        default: buf_str(b, "an Exchange"); return;
         }
     case MO_HANDLE:
         if (handle_name(v.as.i)) buf_printf(b, "%s #%lld", handle_name(v.as.i), (long long)v.as.i);
@@ -2462,6 +2465,7 @@ MO_ROW(mo_r_Platform_stderr) { (void)a; (void)kind; platform_only("Platform", "s
 MO_ROW(mo_r_Platform_fs) { (void)a; (void)kind; platform_only("Platform", "fs"); return mo_cap(MO_CAP_FS, 0, 0); }
 MO_ROW(mo_r_Platform_clock) { (void)a; (void)kind; platform_only("Platform", "clock"); return mo_cap(MO_CAP_CLOCK, 0, 0); }
 MO_ROW(mo_r_Platform_net) { (void)a; (void)kind; platform_only("Platform", "net"); return mo_cap(MO_CAP_NET, 0, 0); }
+MO_ROW(mo_r_Platform_http) { (void)a; (void)kind; platform_only("Platform", "http"); return mo_cap(MO_CAP_HTTP, 0, 0); }
 
 /* The last platform.exit(code) is the exit code when main returns. */
 MO_ROW(mo_r_Platform_exit) {
@@ -4255,25 +4259,29 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
     return ok_of(reply);
 }
 
-/* Delivers waiting messages, one per process per round in start order, until every mailbox
- * is empty. A process an update starts waits for the next round. */
-static void drain(void) {
-    uint32_t delivered = 0;
-    bool progressed = true;
-    while (progressed) {
-        progressed = false;
-        uint32_t n = nprocs;
-        for (uint32_t id = 0; id < n; id++) {
-            Proc *p = procs[id];
-            if (!p->up || p->busy || queued(p) == 0) continue;
-            deliver(id);
-            progressed = true;
-            delivered++;
-            if (delivered == SETTLE_LIMIT && !server_mode) {
-                mo_fail(MO_R_OTHER, test_name, "the processes did not settle: a million messages delivered and mailboxes still waiting");
-            }
+/* One message to each waiting process that is up and not on a stack, in start order; true when
+ * one was delivered. A process an update starts waits for the next round. `delivered` counts the
+ * messages across a settle's rounds, or a fixture call's (Http.fixture()'s send), up to
+ * SETTLE_LIMIT. */
+static bool deliver_round(uint32_t *delivered) {
+    bool progressed = false;
+    uint32_t n = nprocs;
+    for (uint32_t id = 0; id < n; id++) {
+        Proc *p = procs[id];
+        if (!p->up || p->busy || queued(p) == 0) continue;
+        deliver(id);
+        progressed = true;
+        if (++*delivered == SETTLE_LIMIT && !server_mode) {
+            mo_fail(MO_R_OTHER, test_name, "the processes did not settle: a million messages delivered and mailboxes still waiting");
         }
     }
+    return progressed;
+}
+
+/* Delivers waiting messages a round at a time until every mailbox is empty. */
+static void drain(void) {
+    uint32_t delivered = 0;
+    while (deliver_round(&delivered)) {}
 }
 
 void mo_settle(void) {
@@ -5010,9 +5018,9 @@ static bool line_result(Scan s, MoValue *out) {
 typedef struct { int fd; uint16_t port; bool accepting; } Listener;
 typedef struct {
     int fd;
-    /* Bytes read and not yet given out are buf[start..end]; allocated at the first read. */
+    /* Bytes read and not yet given out are buf[start..end] of cap; allocated at the first read. */
     char *buf;
-    size_t start, end;
+    size_t start, end, cap;
     /* The other side closed its end: what is buffered is the rest of the stream. */
     bool eof;
     /* close ran, a write timed out, the stream broke, or the process holding it stopped. */
@@ -5028,6 +5036,21 @@ static Listener **listeners;
 static size_t nlisteners, caplisteners;
 static Conn **conns;
 static size_t nconns, capconns;
+
+/* An Exchange (Http): the connection it answers on, and until it is answered the request's bytes,
+ * which exchange.request reads. Its handle is its index here, or in fix_exchanges in a test. */
+typedef struct { uint32_t conn; char *request; size_t len; bool answered; } HttpExchange;
+static HttpExchange *exchanges;
+static size_t nexchanges, capexchanges;
+static HttpExchange *fix_exchanges;
+static size_t nfix_exchanges, capfix_exchanges;
+
+/* Answered: the request's bytes are no longer kept. */
+static void exchange_forget(HttpExchange *e) {
+    if (!e->answered) free(e->request);
+    e->answered = true;
+    e->request = NULL;
+}
 
 static int64_t max0(int64_t ms) { return ms > 0 ? ms : 0; }
 
@@ -5092,14 +5115,21 @@ static void nonblocking(int fd) {
     fcntl(fd, F_SETFD, FD_CLOEXEC);
 }
 
-static MoValue adopt(int fd) {
+static uint32_t adopt(int fd) {
     nonblocking(fd);
     Conn *c = calloc(1, sizeof(Conn));
     if (!c) out_of_memory();
     c->fd = fd;
     GROW_ARRAY(conns, nconns, capconns);
     conns[nconns] = c;
-    return mo_cap(MO_CAP_CONN, (uint32_t)nconns++, 0);
+    return (uint32_t)nconns++;
+}
+
+/* A call that gives a connection gives its handle, or -1 - why not. */
+static int64_t failed_conn(int f) { return -1 - (int64_t)f; }
+
+static MoValue conn_result(int64_t h) {
+    return h >= 0 ? ok_of(mo_cap(MO_CAP_CONN, (uint32_t)h, 0)) : net_fail((int)(-1 - h));
 }
 
 /* Closes the descriptor once no call is waiting on it. */
@@ -5109,7 +5139,7 @@ static void net_release(Conn *c) {
     close(c->fd);
     free(c->buf);
     c->buf = NULL;
-    c->start = c->end = 0;
+    c->start = c->end = c->cap = 0;
 }
 
 /* `conn.close`: a call waiting on the connection ends, and every later call is Closed. */
@@ -5152,7 +5182,7 @@ static MoValue net_listen(uint16_t port) {
     return ok_of(mo_cap(MO_CAP_LISTENER, (uint32_t)nlisteners++, 0));
 }
 
-static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) {
+static int64_t net_connect_conn(MoValue host, uint16_t port, int64_t ms) {
     int64_t deadline = now_ms() + max0(ms);
     char *name = xmalloc(host.aux + 1);
     memcpy(name, host.as.s, host.aux);
@@ -5166,7 +5196,7 @@ static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) {
     struct addrinfo *found = NULL;
     int gai = strlen(name) == host.aux ? getaddrinfo(name, service, &hints, &found) : EAI_NONAME;
     free(name);
-    if (gai != 0) return net_fail(gai == EAI_MEMORY ? NET_BUSY : NET_REFUSED);
+    if (gai != 0) return failed_conn(gai == EAI_MEMORY ? NET_BUSY : NET_REFUSED);
     int why = NET_REFUSED;
     for (struct addrinfo *ai = found; ai; ai = ai->ai_next) {
         int fd = socket(ai->ai_family, SOCK_STREAM, 0);
@@ -5189,34 +5219,36 @@ static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) {
         }
         if (r == 0) {
             freeaddrinfo(found);
-            return ok_of(adopt(fd));
+            return adopt(fd);
         }
         close(fd);
     }
     freeaddrinfo(found);
-    return net_fail(why);
+    return failed_conn(why);
 }
 
+static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) { return conn_result(net_connect_conn(host, port, ms)); }
+
 /* A call past its deadline leaves the listener listening. */
-static MoValue net_accept(Listener *l, int64_t ms) {
-    if (l->accepting) return net_fail(NET_BUSY);
+static int64_t net_accept_conn(Listener *l, int64_t ms) {
+    if (l->accepting) return failed_conn(NET_BUSY);
     l->accepting = true;
     int64_t deadline = now_ms() + max0(ms);
-    MoValue out;
+    int64_t out;
     for (;;) {
         int fd = accept(l->fd, NULL, NULL);
         if (fd >= 0) {
-            out = ok_of(adopt(fd));
+            out = adopt(fd);
             break;
         }
         if (errno == EINTR || errno == ECONNABORTED) continue;
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            out = net_fail(errno == EINVAL ? NET_CLOSED : NET_BUSY);
+            out = failed_conn(errno == EINVAL ? NET_CLOSED : NET_BUSY);
             break;
         }
         int64_t left = deadline - now_ms();
         if (left <= 0 || !net_wait(l->fd, POLLIN, left)) {
-            out = net_fail(NET_TIMEOUT);
+            out = failed_conn(NET_TIMEOUT);
             break;
         }
     }
@@ -5224,12 +5256,65 @@ static MoValue net_accept(Listener *l, int64_t ms) {
     return out;
 }
 
+static MoValue net_accept(Listener *l, int64_t ms) { return conn_result(net_accept_conn(l, ms)); }
+
 /* `conn.read_line`: the next line, None at the end of the stream, or why not. A call past its
  * deadline keeps the bytes of an unfinished line for the next call. */
+enum { FILL_GOT, FILL_EOF, FILL_TIMEOUT, FILL_CLOSED, FILL_FULL };
+
+/* Reads what arrives next on `c` into its buffer, waiting at most `ms`. The buffer is `initial`
+ * bytes at the first read and grows to at most `cap`; FILL_FULL when it holds `cap` bytes not
+ * given out. A read past its deadline keeps what was buffered; a stream that broke closes the
+ * connection. */
+static int net_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
+    if (c->start > 0) {
+        memmove(c->buf, c->buf + c->start, c->end - c->start);
+        c->end -= c->start;
+        c->start = 0;
+    }
+    if (c->end == c->cap) {
+        if (c->cap >= cap) return FILL_FULL;
+        size_t size = c->cap == 0 ? initial : 2 * c->cap < cap ? 2 * c->cap : cap;
+        c->buf = xrealloc(c->buf, size);
+        c->cap = size;
+    }
+    int64_t deadline = now_ms() + max0(ms);
+    c->reading = true;
+    ssize_t got;
+    bool in_time = true;
+    for (;;) {
+        got = read(c->fd, c->buf + c->end, c->cap - c->end);
+        if (got >= 0) break;
+        if (errno == EINTR) continue;
+        if (errno != EAGAIN && errno != EWOULDBLOCK) break;
+        in_time = net_wait(c->fd, POLLIN, deadline - now_ms());
+        if (!in_time || c->closed) break;
+    }
+    c->reading = false;
+    if (c->closed) {
+        net_release(c);
+        return FILL_CLOSED;
+    }
+    if (!in_time) return FILL_TIMEOUT;
+    if (got < 0) {
+        net_close(c);
+        return FILL_CLOSED;
+    }
+    if (got == 0) {
+        c->eof = true;
+        return FILL_EOF;
+    }
+    c->end += (size_t)got;
+    return FILL_GOT;
+}
+
 static MoValue net_read_line(Conn *c, int64_t ms) {
     if (c->closed) return net_fail(NET_CLOSED);
     if (c->reading) return net_fail(NET_BUSY);
-    if (!c->buf) c->buf = xmalloc(2 * LINE_LIMIT);
+    if (!c->buf) {
+        c->buf = xmalloc(2 * LINE_LIMIT);
+        c->cap = 2 * LINE_LIMIT;
+    }
     int64_t t0 = now_ms();
     for (;;) {
         Scan s = scan_line(c->buf + c->start, c->end - c->start, c->eof, &c->skipping);
@@ -5240,48 +5325,26 @@ static MoValue net_read_line(Conn *c, int64_t ms) {
         if (given) return out;
         int64_t left = ms - (now_ms() - t0);
         if (left <= 0) return net_fail(NET_TIMEOUT);
-        if (c->start > 0) {
-            memmove(c->buf, c->buf + c->start, c->end - c->start);
-            c->end -= c->start;
-            c->start = 0;
+        /* A line too long is taken before the buffer fills. */
+        switch (net_fill(c, left, 2 * LINE_LIMIT, 2 * LINE_LIMIT)) {
+        case FILL_TIMEOUT: return net_fail(NET_TIMEOUT);
+        case FILL_CLOSED: return net_fail(NET_CLOSED);
+        default: break;
         }
-        c->reading = true;
-        ssize_t got;
-        bool in_time = true;
-        for (;;) {
-            got = read(c->fd, c->buf + c->end, 2 * LINE_LIMIT - c->end);
-            if (got >= 0) break;
-            if (errno == EINTR) continue;
-            if (errno != EAGAIN && errno != EWOULDBLOCK) break;
-            in_time = net_wait(c->fd, POLLIN, ms - (now_ms() - t0));
-            if (!in_time || c->closed) break;
-        }
-        c->reading = false;
-        if (c->closed) {
-            net_release(c);
-            return net_fail(NET_CLOSED);
-        }
-        if (!in_time) return net_fail(NET_TIMEOUT);
-        if (got < 0) {
-            net_close(c);
-            return net_fail(NET_CLOSED);
-        }
-        if (got == 0) c->eof = true;
-        else c->end += (size_t)got;
     }
 }
 
-/* `conn.write(text)`: all of the text, or why not. A call past its deadline closes the
- * connection, since part of the text may have gone. */
-static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
-    if (c->closed) return net_fail(NET_CLOSED);
-    if (c->writing) return net_fail(NET_BUSY);
+/* All of `text` on `c`: -1, or why not. A call past its deadline closes the connection, since part
+ * of the text may have gone. */
+static int net_write_all(Conn *c, const char *text, size_t n, int64_t ms) {
+    if (c->closed) return NET_CLOSED;
+    if (c->writing) return NET_BUSY;
     c->writing = true;
     int64_t deadline = now_ms() + max0(ms);
     size_t done = 0;
     int failed = -1;
-    while (done < text.aux) {
-        ssize_t w = write(c->fd, text.as.s + done, text.aux - done);
+    while (done < n) {
+        ssize_t w = write(c->fd, text + done, n - done);
         if (w > 0) {
             done += (size_t)w;
             continue;
@@ -5302,13 +5365,19 @@ static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
     c->writing = false;
     if (c->closed) {
         net_release(c);
-        return net_fail(NET_CLOSED);
+        return NET_CLOSED;
     }
     if (failed >= 0) {
         net_close(c);
-        return net_fail(failed);
+        return failed;
     }
-    return ok_none();
+    return -1;
+}
+
+/* `conn.write(text)`: all of the text, or why not. */
+static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
+    int f = net_write_all(c, text.as.s, text.aux, ms);
+    return f >= 0 ? net_fail(f) : ok_none();
 }
 
 /* ---- Net.fixture(): one network in memory per test (net.zig, Fixture). What one end writes
@@ -5336,7 +5405,8 @@ static uint16_t fix_next_port = 49152;
 static void reset_net_fixture(void) {
     for (size_t i = 0; i < nfix_listeners; i++) free(fix_listeners[i].backlog);
     for (size_t i = 0; i < nfix_conns; i++) free(fix_conns[i].inbound);
-    nfix_listeners = nfix_conns = 0;
+    for (size_t i = 0; i < nfix_exchanges; i++) exchange_forget(&fix_exchanges[i]);
+    nfix_listeners = nfix_conns = nfix_exchanges = 0;
     fix_next_port = 49152;
 }
 
@@ -5398,6 +5468,17 @@ static MoValue fix_read_line(uint32_t h, int64_t within) {
     return out;
 }
 
+/* What one end writes, waiting for connection `to` to read it. */
+static void fix_append(uint32_t to, const char *text, size_t n) {
+    FixConn *c = &fix_conns[to];
+    while (c->len + n > c->cap) {
+        c->cap = c->cap ? 2 * c->cap : 256;
+        c->inbound = xrealloc(c->inbound, c->cap);
+    }
+    if (n) memcpy(c->inbound + c->len, text, n);
+    c->len += n;
+}
+
 static MoValue fix_write(uint32_t h, MoValue text) {
     FixConn *c = &fix_conns[h];
     FixConn *peer = &fix_conns[c->peer];
@@ -5406,12 +5487,7 @@ static MoValue fix_write(uint32_t h, MoValue text) {
         c->closed = true;
         return net_fail(NET_CLOSED);
     }
-    while (peer->len + text.aux > peer->cap) {
-        peer->cap = peer->cap ? 2 * peer->cap : 256;
-        peer->inbound = xrealloc(peer->inbound, peer->cap);
-    }
-    if (text.aux) memcpy(peer->inbound + peer->len, text.as.s, text.aux);
-    peer->len += text.aux;
+    fix_append(c->peer, text.as.s, text.aux);
     return ok_none();
 }
 
@@ -5456,12 +5532,716 @@ MO_ROW(mo_r_Conn_close) {
 
 MO_ROW(mo_r_Net_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_NET, 0, 0); }
 
-/* A process holding these arguments stopped: every Conn among them closes. */
+/* ==== Http: HTTP/1.1 over Net, real sockets under main and Net.fixture()'s network in a test (http.zig)
+ * An HttpListener is a Listener, its handle the same index. One request per connection: accept reads
+ * one whole request, reply writes the one response and closes the connection, and send connects,
+ * writes one request, and reads the response to the end. */
+
+/* The most a request line, the header lines together, or a body may be. */
+#define HTTP_LIMIT ((size_t)1 << 20)
+/* A connection's buffer at its first read, and at most: a message at every limit. */
+#define HTTP_BUFFER_INITIAL ((size_t)16 << 10)
+#define HTTP_BUFFER_CAP (3 * HTTP_LIMIT + 8)
+
+/* HttpError's variants. */
+enum { HTTP_TIMEOUT, HTTP_REFUSED, HTTP_CLOSED, HTTP_BUSY, HTTP_MALFORMED, HTTP_TOO_LARGE, HTTP_UNSUPPORTED };
+
+static MoValue http_fail(int f) {
+    static const uint32_t names[] = {MO_N_TIMEOUT, MO_N_REFUSED, MO_N_CLOSED, MO_N_BUSY, MO_N_MALFORMED, MO_N_TOO_LARGE, MO_N_UNSUPPORTED};
+    return error_of(mo_variant(names[f], 0, NULL));
+}
+
+static int http_from_net(int f) {
+    switch (f) {
+    case NET_TIMEOUT: return HTTP_TIMEOUT;
+    case NET_REFUSED: return HTTP_REFUSED;
+    case NET_BUSY: return HTTP_BUSY;
+    default: return HTTP_CLOSED;
+    }
+}
+
+static bool http_digit(char c) { return c >= '0' && c <= '9'; }
+
+static unsigned char http_lower(unsigned char c) { return c >= 'A' && c <= 'Z' ? (unsigned char)(c + 32) : c; }
+
+static bool http_same(const char *a, size_t n, const char *name) {
+    if (strlen(name) != n) return false;
+    for (size_t i = 0; i < n; i++) {
+        if (http_lower((unsigned char)a[i]) != (unsigned char)name[i]) return false;
+    }
+    return true;
+}
+
+/* A token (RFC 9110): a method, or a header name. */
+static bool http_token(const char *s, size_t n) {
+    if (n == 0) return false;
+    for (size_t i = 0; i < n; i++) {
+        unsigned char ch = (unsigned char)s[i];
+        bool alnum = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+        if (!alnum && (ch == 0 || !strchr("!#$%&'*+-.^_`|~", ch))) return false;
+    }
+    return true;
+}
+
+/* A header value: no control character but a tab. */
+static bool http_value_ok(const char *s, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        unsigned char ch = (unsigned char)s[i];
+        if ((ch < 0x20 && ch != '\t') || ch == 0x7f) return false;
+    }
+    return true;
+}
+
+/* HTTP/1.0 or HTTP/1.1: -1; another HTTP/d.d is Unsupported, anything else Malformed. */
+static int http_version(const char *s, size_t n) {
+    if (n != 8 || memcmp(s, "HTTP/", 5) != 0 || !http_digit(s[5]) || s[6] != '.' || !http_digit(s[7])) return HTTP_MALFORMED;
+    if (memcmp(s, "HTTP/1.1", 8) == 0 || memcmp(s, "HTTP/1.0", 8) == 0) return -1;
+    return HTTP_UNSUPPORTED;
+}
+
+/* A target in origin form: a /, then no space or control character. */
+static bool http_target(const char *s, size_t n) {
+    if (n == 0 || s[0] != '/') return false;
+    for (size_t i = 0; i < n; i++) {
+        if ((unsigned char)s[i] <= 0x20 || s[i] == 0x7f) return false;
+    }
+    return true;
+}
+
+static int http_hex(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+/* Whether every % in s begins two hex digits. */
+static bool http_decodable(const char *s, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (s[i] != '%') continue;
+        if (i + 2 >= n || http_hex(s[i + 1]) < 0 || http_hex(s[i + 2]) < 0) return false;
+        i += 2;
+    }
+    return true;
+}
+
+typedef struct { const char *method; size_t method_len; const char *target; size_t target_len; } HttpRequestLine;
+
+/* -1, or why the line is not a request line. */
+static int http_request_line(const char *line, size_t n, HttpRequestLine *out) {
+    const char *sp1 = memchr(line, ' ', n);
+    if (!sp1) return HTTP_MALFORMED;
+    const char *rest = sp1 + 1;
+    size_t rest_len = n - (size_t)(rest - line);
+    const char *sp2 = memchr(rest, ' ', rest_len);
+    if (!sp2) return HTTP_MALFORMED;
+    out->method = line;
+    out->method_len = (size_t)(sp1 - line);
+    out->target = rest;
+    out->target_len = (size_t)(sp2 - rest);
+    if (!http_token(out->method, out->method_len) || !http_target(out->target, out->target_len)) return HTTP_MALFORMED;
+    int v = http_version(sp2 + 1, rest_len - out->target_len - 1);
+    if (v >= 0) return v;
+    const char *q = memchr(out->target, '?', out->target_len);
+    if (q) {
+        const char *p = q + 1, *end = out->target + out->target_len;
+        for (;;) {
+            const char *amp = memchr(p, '&', (size_t)(end - p));
+            const char *stop = amp ? amp : end;
+            if (!http_decodable(p, (size_t)(stop - p))) return HTTP_MALFORMED;
+            if (!amp) break;
+            p = amp + 1;
+        }
+    }
+    return -1;
+}
+
+/* -1 and the status, 100 to 599, or why the line is not a status line. */
+static int http_status_line(const char *line, size_t n, uint16_t *status) {
+    const char *sp = memchr(line, ' ', n);
+    if (!sp) return HTTP_MALFORMED;
+    int v = http_version(line, (size_t)(sp - line));
+    if (v >= 0) return v;
+    const char *rest = sp + 1;
+    size_t rest_len = n - (size_t)(rest - line);
+    if (rest_len < 3 || (rest_len > 3 && rest[3] != ' ')) return HTTP_MALFORMED;
+    if (!http_digit(rest[0]) || !http_digit(rest[1]) || !http_digit(rest[2])) return HTTP_MALFORMED;
+    unsigned s = (unsigned)((rest[0] - '0') * 100 + (rest[1] - '0') * 10 + (rest[2] - '0'));
+    if (s < 100 || s > 599) return HTTP_MALFORMED;
+    *status = (uint16_t)s;
+    return -1;
+}
+
+typedef struct { const char *name; size_t name_len; const char *value; size_t value_len; } HttpField;
+
+static bool http_field(const char *line, size_t n, HttpField *f) {
+    const char *colon = memchr(line, ':', n);
+    if (!colon) return false;
+    const char *v = colon + 1, *end = line + n;
+    while (v < end && (*v == ' ' || *v == '\t')) v++;
+    while (end > v && (end[-1] == ' ' || end[-1] == '\t')) end--;
+    f->name = line;
+    f->name_len = (size_t)(colon - line);
+    f->value = v;
+    f->value_len = (size_t)(end - v);
+    return http_token(f->name, f->name_len) && http_value_ok(f->value, f->value_len);
+}
+
+enum { PARSE_MORE, PARSE_FAILED, PARSE_WHOLE };
+
+/* A whole message in the bytes of a stream: its start line, its header lines (each with its line
+ * end), its body, and the bytes it takes; or not yet, or why not. */
+typedef struct {
+    int what, failed;
+    const char *start;
+    size_t start_len;
+    const char *headers;
+    size_t headers_len;
+    const char *body;
+    size_t body_len, len;
+} HttpParsed;
+
+static HttpParsed parse_failed(int f) { return (HttpParsed){PARSE_FAILED, f, NULL, 0, NULL, 0, NULL, 0, 0}; }
+static HttpParsed parse_more(bool eof) { return eof ? parse_failed(HTTP_CLOSED) : (HttpParsed){PARSE_MORE, 0, NULL, 0, NULL, 0, NULL, 0, 0}; }
+
+/* What the bytes of a stream so far hold (http.zig, parse). `eof`: nothing follows. A response with
+ * no content-length runs to the end of the stream; a request with none has no body. */
+static HttpParsed http_parse(const char *bytes, size_t n, bool eof, bool response) {
+    const char *nl = n ? memchr(bytes, '\n', n) : NULL;
+    if (!nl) {
+        if (n > HTTP_LIMIT + 1) return parse_failed(HTTP_TOO_LARGE);
+        return parse_more(eof);
+    }
+    size_t start_end = (size_t)(nl - bytes);
+    size_t start_len = without_cr(bytes, start_end);
+    if (start_len > HTTP_LIMIT) return parse_failed(HTTP_TOO_LARGE);
+    int f;
+    if (response) {
+        uint16_t status;
+        f = http_status_line(bytes, start_len, &status);
+    } else {
+        HttpRequestLine line;
+        f = http_request_line(bytes, start_len, &line);
+    }
+    if (f >= 0) return parse_failed(f);
+    size_t headers_start = start_end + 1, at = headers_start, headers_end;
+    bool has_length = false;
+    uint64_t length = 0;
+    for (;;) {
+        const char *rest = bytes + at;
+        size_t rest_len = n - at;
+        const char *k = rest_len ? memchr(rest, '\n', rest_len) : NULL;
+        if (!k) {
+            if (at - headers_start + rest_len > HTTP_LIMIT) return parse_failed(HTTP_TOO_LARGE);
+            return parse_more(eof);
+        }
+        size_t line_len = without_cr(rest, (size_t)(k - rest));
+        size_t line_start = at;
+        at += (size_t)(k - rest) + 1;
+        if (line_len == 0) {
+            headers_end = line_start;
+            break;
+        }
+        if (at - headers_start > HTTP_LIMIT) return parse_failed(HTTP_TOO_LARGE);
+        HttpField fl;
+        if (!http_field(rest, line_len, &fl)) return parse_failed(HTTP_MALFORMED);
+        if (http_same(fl.name, fl.name_len, "transfer-encoding")) return parse_failed(HTTP_UNSUPPORTED);
+        if (http_same(fl.name, fl.name_len, "content-length")) {
+            if (fl.value_len == 0 || fl.value_len > 19) return parse_failed(fl.value_len == 0 ? HTTP_MALFORMED : HTTP_TOO_LARGE);
+            uint64_t v = 0;
+            for (size_t i = 0; i < fl.value_len; i++) {
+                if (!http_digit(fl.value[i])) return parse_failed(HTTP_MALFORMED);
+                v = v * 10 + (uint64_t)(fl.value[i] - '0');
+            }
+            if (has_length && v != length) return parse_failed(HTTP_MALFORMED);
+            has_length = true;
+            length = v;
+        }
+    }
+    HttpParsed p = {PARSE_WHOLE, 0, bytes, start_len, bytes + headers_start, headers_end - headers_start, bytes + at, 0, at};
+    if (has_length) {
+        if (length > HTTP_LIMIT) return parse_failed(HTTP_TOO_LARGE);
+        if (n - at < length) return parse_more(eof);
+        p.body_len = (size_t)length;
+        p.len = at + (size_t)length;
+        return p;
+    }
+    if (!response) return p;
+    if (n - at > HTTP_LIMIT) return parse_failed(HTTP_TOO_LARGE);
+    if (!eof) return parse_more(false);
+    p.body_len = n - at;
+    p.len = n;
+    return p;
+}
+
+/* Sets `key` in `entries` (a map's, key then value), or when it is there already joins `value` to
+ * its value with ", " (a repeated header) or replaces it (a repeated query key). */
+static void http_set_entry(Values *entries, MoValue key, MoValue value, bool join) {
+    for (size_t i = 0; i < entries->n; i += 2) {
+        MoValue k = entries->xs[i];
+        if (k.aux != key.aux || (key.aux && memcmp(k.as.s, key.as.s, key.aux) != 0)) continue;
+        if (join) {
+            MoValue old = entries->xs[i + 1];
+            size_t len = (size_t)old.aux + 2 + value.aux;
+            char *p = mo_alloc_bytes(len);
+            if (old.aux) memcpy(p, old.as.s, old.aux);
+            memcpy(p + old.aux, ", ", 2);
+            if (value.aux) memcpy(p + old.aux + 2, value.as.s, value.aux);
+            entries->xs[i + 1] = mo_str(p, (uint32_t)len);
+        } else {
+            entries->xs[i + 1] = value;
+        }
+        return;
+    }
+    values_push(entries, key);
+    values_push(entries, value);
+}
+
+static MoValue http_map(Values *entries) {
+    MoValue m = map_value(MO_MAP, entries->n ? map_of(dupe_values(entries->xs, entries->n), entries->n, 2) : NULL);
+    free(entries->xs);
+    return m;
+}
+
+/* The header lines as a map, names lower-cased. */
+static MoValue http_headers_value(const char *headers, size_t n) {
+    Values entries = {0};
+    size_t at = 0;
+    while (at < n) {
+        const char *nl = memchr(headers + at, '\n', n - at);
+        HttpField f;
+        http_field(headers + at, without_cr(headers + at, (size_t)(nl - (headers + at))), &f);
+        char *name = mo_alloc_bytes(f.name_len);
+        for (size_t i = 0; i < f.name_len; i++) name[i] = (char)http_lower((unsigned char)f.name[i]);
+        http_set_entry(&entries, mo_str(name, (uint32_t)f.name_len), heap_string(f.value, f.value_len), true);
+        at = (size_t)(nl - headers) + 1;
+    }
+    return http_map(&entries);
+}
+
+/* A query key or value as it was before it was sent: + is a space, %XX its byte. */
+static MoValue http_decode(const char *s, size_t n) {
+    char *out = mo_alloc_bytes(n);
+    size_t k = 0;
+    for (size_t i = 0; i < n; i++) {
+        if (s[i] == '+') {
+            out[k++] = ' ';
+        } else if (s[i] == '%') {
+            out[k++] = (char)(http_hex(s[i + 1]) * 16 + http_hex(s[i + 2]));
+            i += 2;
+        } else {
+            out[k++] = s[i];
+        }
+    }
+    return mo_str(out, (uint32_t)k);
+}
+
+/* The Request a whole request's bytes spell. */
+static MoValue http_request_value(const char *bytes, size_t n) {
+    HttpParsed m = http_parse(bytes, n, true, false);
+    HttpRequestLine line;
+    http_request_line(m.start, m.start_len, &line);
+    const char *q = memchr(line.target, '?', line.target_len);
+    Values query = {0};
+    if (q) {
+        const char *p = q + 1, *end = line.target + line.target_len;
+        for (;;) {
+            const char *amp = memchr(p, '&', (size_t)(end - p));
+            const char *stop = amp ? amp : end;
+            if (stop > p) {
+                const char *eq = memchr(p, '=', (size_t)(stop - p));
+                MoValue key = http_decode(p, (size_t)((eq ? eq : stop) - p));
+                MoValue value = eq ? http_decode(eq + 1, (size_t)(stop - eq - 1)) : mo_str("", 0);
+                http_set_entry(&query, key, value, false);
+            }
+            if (!amp) break;
+            p = amp + 1;
+        }
+    }
+    MoValue fields[5];
+    fields[0] = heap_string(line.method, line.method_len);
+    fields[1] = heap_string(line.target, q ? (size_t)(q - line.target) : line.target_len);
+    fields[2] = http_map(&query);
+    fields[3] = http_headers_value(m.headers, m.headers_len);
+    fields[4] = heap_string(m.body, m.body_len);
+    return mo_record(mo_request_decl, 5, fields);
+}
+
+/* The Response a whole response's bytes spell. */
+static MoValue http_response_value(const char *bytes, size_t n) {
+    HttpParsed m = http_parse(bytes, n, true, true);
+    uint16_t status = 0;
+    http_status_line(m.start, m.start_len, &status);
+    MoValue fields[3];
+    fields[0] = mo_i64(status);
+    fields[1] = http_headers_value(m.headers, m.headers_len);
+    fields[2] = heap_string(m.body, m.body_len);
+    return mo_record(mo_response_decl, 3, fields);
+}
+
+/* The reason phrase a status line gives a status; empty for one not listed. */
+static const char *http_reason(int64_t status) {
+    switch (status) {
+    case 100: return "Continue";
+    case 101: return "Switching Protocols";
+    case 200: return "OK";
+    case 201: return "Created";
+    case 202: return "Accepted";
+    case 204: return "No Content";
+    case 301: return "Moved Permanently";
+    case 302: return "Found";
+    case 303: return "See Other";
+    case 304: return "Not Modified";
+    case 307: return "Temporary Redirect";
+    case 308: return "Permanent Redirect";
+    case 400: return "Bad Request";
+    case 401: return "Unauthorized";
+    case 403: return "Forbidden";
+    case 404: return "Not Found";
+    case 405: return "Method Not Allowed";
+    case 409: return "Conflict";
+    case 411: return "Length Required";
+    case 413: return "Content Too Large";
+    case 415: return "Unsupported Media Type";
+    case 422: return "Unprocessable Content";
+    case 429: return "Too Many Requests";
+    case 500: return "Internal Server Error";
+    case 501: return "Not Implemented";
+    case 502: return "Bad Gateway";
+    case 503: return "Service Unavailable";
+    case 504: return "Gateway Timeout";
+    default: return "";
+    }
+}
+
+/* The program's headers as `name: value`, but content-length and connection, which the runtime
+ * writes; false when a name is not a token or a value holds a control character. */
+static bool http_write_headers(Buf *b, MoValue headers) {
+    MoMap *m = headers.as.m;
+    for (uint32_t i = 0; m && i + 1 < m->len; i += 2) {
+        MoValue name = m->entries[i], value = m->entries[i + 1];
+        if (!http_token(name.as.s, name.aux) || !http_value_ok(value.as.s, value.aux)) return false;
+        if (http_same(name.as.s, name.aux, "content-length") || http_same(name.as.s, name.aux, "connection")) continue;
+        buf_put(b, name.as.s, name.aux);
+        buf_str(b, ": ");
+        buf_put(b, value.as.s, value.aux);
+        buf_str(b, "\r\n");
+    }
+    return true;
+}
+
+static bool http_has_header(MoValue headers, const char *name) {
+    MoMap *m = headers.as.m;
+    for (uint32_t i = 0; m && i + 1 < m->len; i += 2) {
+        if (http_same(m->entries[i].as.s, m->entries[i].aux, name)) return true;
+    }
+    return false;
+}
+
+/* A Response as it goes on the wire; false when it is Malformed. */
+static bool http_response_bytes(Buf *b, MoValue response) {
+    const MoValue *f = response.as.xs;
+    int64_t status = f[0].as.i;
+    if (status < 100 || status > 599) return false;
+    buf_printf(b, "HTTP/1.1 %lld %s\r\n", (long long)status, http_reason(status));
+    if (!http_write_headers(b, f[1])) return false;
+    buf_printf(b, "content-length: %u\r\nconnection: close\r\n\r\n", (unsigned)f[2].aux);
+    buf_put(b, f[2].as.s, f[2].aux);
+    return true;
+}
+
+/* `s` as a query key or value is sent: every byte but a letter, a digit, and -._~ as %XX. */
+static void http_encode(Buf *b, MoValue s) {
+    for (uint32_t i = 0; i < s.aux; i++) {
+        unsigned char ch = (unsigned char)s.as.s[i];
+        bool plain = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '.' || ch == '_' || ch == '~';
+        if (plain) buf_byte(b, (char)ch);
+        else buf_printf(b, "%%%02X", ch);
+    }
+}
+
+/* A Request to `host` at `port` as it goes on the wire; false when it is Malformed. */
+static bool http_request_bytes(Buf *b, MoValue request, MoValue host, int64_t port) {
+    const MoValue *f = request.as.xs;
+    MoValue method = f[0], path = f[1];
+    if (!http_token(method.as.s, method.aux) || !http_target(path.as.s, path.aux)) return false;
+    buf_put(b, method.as.s, method.aux);
+    buf_byte(b, ' ');
+    buf_put(b, path.as.s, path.aux);
+    MoMap *q = f[2].as.m;
+    bool has_q = memchr(path.as.s, '?', path.aux) != NULL;
+    for (uint32_t i = 0; q && i + 1 < q->len; i += 2) {
+        buf_byte(b, i > 0 || has_q ? '&' : '?');
+        http_encode(b, q->entries[i]);
+        buf_byte(b, '=');
+        http_encode(b, q->entries[i + 1]);
+    }
+    buf_str(b, " HTTP/1.1\r\n");
+    if (!http_has_header(f[3], "host")) {
+        buf_str(b, "host: ");
+        buf_put(b, host.as.s, host.aux);
+        buf_printf(b, ":%lld\r\n", (long long)port);
+    }
+    if (!http_write_headers(b, f[3])) return false;
+    buf_printf(b, "content-length: %u\r\nconnection: close\r\n\r\n", (unsigned)f[4].aux);
+    buf_put(b, f[4].as.s, f[4].aux);
+    return true;
+}
+
+/* The response a request that is not HTTP gets before its connection closes. */
+static const char *http_refusal(int f) {
+    switch (f) {
+    case HTTP_MALFORMED: return "HTTP/1.1 400 Bad Request\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
+    case HTTP_TOO_LARGE: return "HTTP/1.1 413 Content Too Large\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
+    case HTTP_UNSUPPORTED: return "HTTP/1.1 501 Not Implemented\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
+    default: return NULL;
+    }
+}
+
+static MoValue exchange_cap(HttpExchange **table, size_t *n, size_t *cap, uint32_t conn, const char *bytes, size_t len) {
+    char *copy = xmalloc(len ? len : 1);
+    memcpy(copy, bytes, len);
+    GROW_ARRAY(*table, *n, *cap);
+    (*table)[*n] = (HttpExchange){conn, copy, len, false};
+    return ok_of(mo_cap(MO_CAP_EXCHANGE, (uint32_t)(*n)++, 0));
+}
+
+/* ---- real sockets */
+
+/* One whole message from `c`, at most `ms`: -1 and the bytes it takes at the front of the buffer,
+ * or why not. */
+static int http_read_message(Conn *c, bool response, int64_t ms, size_t *len) {
+    if (c->closed) return HTTP_CLOSED;
+    if (c->reading) return HTTP_BUSY;
+    int64_t t0 = now_ms();
+    for (;;) {
+        HttpParsed p = http_parse(c->buf ? c->buf + c->start : "", c->end - c->start, c->eof, response);
+        if (p.what == PARSE_WHOLE) {
+            *len = p.len;
+            return -1;
+        }
+        if (p.what == PARSE_FAILED) return p.failed;
+        int64_t left = ms - (now_ms() - t0);
+        if (left <= 0) return HTTP_TIMEOUT;
+        switch (net_fill(c, left, HTTP_BUFFER_INITIAL, HTTP_BUFFER_CAP)) {
+        case FILL_TIMEOUT: return HTTP_TIMEOUT;
+        case FILL_CLOSED: return HTTP_CLOSED;
+        case FILL_FULL: return HTTP_TOO_LARGE;
+        default: break;
+        }
+    }
+}
+
+/* `listener.accept`: the next client's whole request, as an Exchange. A client whose request does
+ * not arrive in time, or is not HTTP, is closed, and the listener goes on listening. */
+static MoValue http_accept(Listener *l, int64_t ms) {
+    int64_t t0 = now_ms();
+    int64_t h = net_accept_conn(l, ms);
+    if (h < 0) return http_fail(http_from_net((int)(-1 - h)));
+    Conn *c = conns[h];
+    size_t len = 0;
+    int f = http_read_message(c, false, ms - (now_ms() - t0), &len);
+    if (f < 0) {
+        MoValue out = exchange_cap(&exchanges, &nexchanges, &capexchanges, (uint32_t)h, c->buf + c->start, len);
+        c->start += len;
+        return out;
+    }
+    const char *text = http_refusal(f);
+    if (text) {
+        int64_t left = ms - (now_ms() - t0);
+        net_write_all(c, text, strlen(text), left > 100 ? left : 100);
+    }
+    net_close(c);
+    return http_fail(f);
+}
+
+/* `exchange.reply(response)`: the response, then the connection closes. A second reply is Closed;
+ * a Malformed response leaves the exchange unanswered. */
+static MoValue http_reply(uint32_t handle, MoValue response, int64_t ms) {
+    if (exchanges[handle].answered) return http_fail(HTTP_CLOSED);
+    Buf b = {0};
+    if (!http_response_bytes(&b, response)) {
+        free(b.p);
+        return http_fail(HTTP_MALFORMED);
+    }
+    Conn *c = conns[exchanges[handle].conn];
+    int f = net_write_all(c, b.p, b.len, ms);
+    free(b.p);
+    if (f == NET_BUSY) return http_fail(HTTP_BUSY);
+    exchange_forget(&exchanges[handle]);
+    net_close(c);
+    return f >= 0 ? http_fail(http_from_net(f)) : ok_none();
+}
+
+/* `http.send(request, host:, port:)`: connects, writes the request, and reads the whole response;
+ * the connection closes either way. */
+static MoValue http_send(MoValue request, MoValue host, int64_t port, int64_t ms) {
+    Buf b = {0};
+    if (!http_request_bytes(&b, request, host, port)) {
+        free(b.p);
+        return http_fail(HTTP_MALFORMED);
+    }
+    int64_t t0 = now_ms();
+    int64_t h = net_connect_conn(host, (uint16_t)port, ms);
+    if (h < 0) {
+        free(b.p);
+        return http_fail(http_from_net((int)(-1 - h)));
+    }
+    Conn *c = conns[h];
+    MoValue out;
+    int64_t left = ms - (now_ms() - t0);
+    int f;
+    size_t len = 0;
+    if (left <= 0) {
+        out = http_fail(HTTP_TIMEOUT);
+    } else if ((f = net_write_all(c, b.p, b.len, left)) >= 0) {
+        out = http_fail(http_from_net(f));
+    } else if ((f = http_read_message(c, true, ms - (now_ms() - t0), &len)) >= 0) {
+        out = http_fail(f);
+    } else {
+        out = ok_of(http_response_value(c->buf + c->start, len));
+    }
+    free(b.p);
+    net_close(c);
+    return out;
+}
+
+/* ---- Http.fixture(), on Net.fixture()'s network. As a Net fixture call, one with nothing to take
+ * waits its whole deadline and is Timeout; a send delivers the processes' waiting messages a round
+ * at a time while its response is not whole, and is Timeout when none is waiting. */
+
+static MoValue fix_http_accept(uint32_t lh, int64_t within) {
+    FixListener *l = &fix_listeners[lh];
+    if (l->head == l->nbacklog) {
+        sim_waited += within;
+        return http_fail(HTTP_TIMEOUT);
+    }
+    uint32_t h = l->backlog[l->head++];
+    FixConn *c = &fix_conns[h];
+    bool peer_closed = fix_conns[c->peer].closed;
+    HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, peer_closed, false);
+    if (p.what == PARSE_WHOLE) {
+        MoValue out = exchange_cap(&fix_exchanges, &nfix_exchanges, &capfix_exchanges, h, c->inbound + c->start, p.len);
+        fix_conns[h].start += p.len;
+        return out;
+    }
+    if (p.what == PARSE_MORE) {
+        sim_waited += within;
+        c->closed = true;
+        return http_fail(HTTP_TIMEOUT);
+    }
+    const char *text = http_refusal(p.failed);
+    if (text && !peer_closed) fix_append(c->peer, text, strlen(text));
+    fix_conns[h].closed = true;
+    return http_fail(p.failed);
+}
+
+static MoValue fix_http_reply(uint32_t handle, MoValue response) {
+    if (fix_exchanges[handle].answered) return http_fail(HTTP_CLOSED);
+    Buf b = {0};
+    if (!http_response_bytes(&b, response)) {
+        free(b.p);
+        return http_fail(HTTP_MALFORMED);
+    }
+    uint32_t h = fix_exchanges[handle].conn;
+    exchange_forget(&fix_exchanges[handle]);
+    uint32_t peer = fix_conns[h].peer;
+    bool was_closed = fix_conns[h].closed || fix_conns[peer].closed;
+    fix_conns[h].closed = true;
+    if (!was_closed) fix_append(peer, b.p, b.len);
+    free(b.p);
+    return was_closed ? http_fail(HTTP_CLOSED) : ok_none();
+}
+
+static MoValue fix_http_send(MoValue request, MoValue host, int64_t port, int64_t within) {
+    Buf b = {0};
+    if (!http_request_bytes(&b, request, host, port)) {
+        free(b.p);
+        return http_fail(HTTP_MALFORMED);
+    }
+    FixListener *l = NULL;
+    for (size_t i = 0; i < nfix_listeners && !l; i++) {
+        if (fix_listeners[i].port == (uint16_t)port) l = &fix_listeners[i];
+    }
+    if (!l) {
+        free(b.p);
+        return http_fail(HTTP_REFUSED);
+    }
+    uint32_t client = (uint32_t)nfix_conns;
+    GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
+    l->backlog[l->nbacklog++] = client + 1;
+    fix_append(client + 1, b.p, b.len);
+    free(b.p);
+    uint32_t delivered = 0;
+    for (;;) {
+        FixConn *c = &fix_conns[client];
+        HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, fix_conns[c->peer].closed, true);
+        if (p.what == PARSE_WHOLE) {
+            c->closed = true;
+            return ok_of(http_response_value(c->inbound + c->start, p.len));
+        }
+        if (p.what == PARSE_FAILED) {
+            c->closed = true;
+            return http_fail(p.failed);
+        }
+        if (!deliver_round(&delivered)) {
+            sim_waited += within;
+            fix_conns[client].closed = true;
+            return http_fail(HTTP_TIMEOUT);
+        }
+    }
+}
+
+/* ---- the rows: real sockets under main, the fixture's in a test */
+
+static MoValue as_http_listener(MoValue listened) {
+    if (!mo_is(listened, MO_N_OK)) return listened;
+    return ok_of(mo_cap(MO_CAP_HTTP_LISTENER, mo_cap_handle(listened.as.xs[0]), 0));
+}
+
+MO_ROW(mo_r_Http_listen) { return as_http_listener(mo_r_Net_listen(a, kind)); }
+
+MO_ROW(mo_r_HttpListener_port) { return mo_r_Listener_port(a, kind); }
+
+MO_ROW(mo_r_HttpListener_accept) {
+    (void)kind;
+    uint32_t h = mo_cap_handle(a[0]);
+    return server_mode ? http_accept(listeners[h], a[1].as.i) : fix_http_accept(h, a[1].as.i);
+}
+
+MO_ROW(mo_r_Exchange_request) {
+    (void)kind;
+    const HttpExchange *e = server_mode ? &exchanges[mo_cap_handle(a[0])] : &fix_exchanges[mo_cap_handle(a[0])];
+    if (e->answered) mo_fail(MO_R_OTHER, "request", "exchange.request after the exchange was answered: read the request before replying");
+    return http_request_value(e->request, e->len);
+}
+
+MO_ROW(mo_r_Exchange_reply) {
+    (void)kind;
+    uint32_t h = mo_cap_handle(a[0]);
+    return server_mode ? http_reply(h, a[1], a[2].as.i) : fix_http_reply(h, a[1]);
+}
+
+MO_ROW(mo_r_Http_send) {
+    (void)kind;
+    return server_mode ? http_send(a[1], a[2], a[3].as.i, a[4].as.i) : fix_http_send(a[1], a[2], a[3].as.i, a[4].as.i);
+}
+
+MO_ROW(mo_r_Http_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_HTTP, 0, 0); }
+
+/* A process holding these arguments stopped: every Conn and Exchange among them closes. */
 static void close_held(const MoValue *args, uint32_t n) {
     for (uint32_t i = 0; i < n; i++) {
-        if (args[i].tag != MO_CAP || mo_cap_kind(args[i]) != MO_CAP_CONN) continue;
-        if (server_mode) net_close(conns[mo_cap_handle(args[i])]);
-        else fix_conns[mo_cap_handle(args[i])].closed = true;
+        if (args[i].tag != MO_CAP) continue;
+        uint32_t kind = mo_cap_kind(args[i]), h = mo_cap_handle(args[i]);
+        if (kind == MO_CAP_EXCHANGE) h = server_mode ? exchanges[h].conn : fix_exchanges[h].conn;
+        else if (kind != MO_CAP_CONN) continue;
+        if (server_mode) net_close(conns[h]);
+        else fix_conns[h].closed = true;
     }
 }
 
