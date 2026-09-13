@@ -67,7 +67,7 @@ pub const Code = enum {
 pub const Entry = struct { code: []const u8, category: diag.Category, why: []const u8 };
 
 pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
-    .unknown_name = .{ .code = "MO0201", .category = .types, .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module or the prelude (toolchain/PRELUDE.md). Nothing else exists." },
+    .unknown_name = .{ .code = "MO0201", .category = .types, .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists." },
     .unknown_type = .{ .code = "MO0202", .category = .types, .why = "A type is a prelude type, a type declared in this module, a name brought in by use, or a one-letter type parameter in a function signature." },
     .expose_undeclared = .{ .code = "MO0203", .category = .types, .why = "The expose line is the module's table of contents; every name on it must be declared in the module (grammar, semantic rules)." },
     .expose_twice = .{ .code = "MO0204", .category = .types, .why = "The expose line names each public declaration exactly once." },

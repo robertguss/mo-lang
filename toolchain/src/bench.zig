@@ -1,10 +1,11 @@
 //! The benchmark harness, from day one (design-v0/08: "50 ms and 100 ms targets:
 //! the benchmark suite, from day one"). Times every pipeline stage over every file
-//! in the corpus, best of N iterations, and prints one row per stage. Stages that
-//! are not implemented print "n/a" and the row lights up when the stage lands. A
-//! last `fmt` row times every file lexed, parsed, and formatted to memory (`mo fmt`
-//! without the write), and a `run-programs` row times every program in programs/ end to
-//! end through `mo run` (MO_EXE), process start included.
+//! in the corpus, each loaded with the modules it uses, best of N iterations, and
+//! prints one row per stage. Stages that are not implemented print "n/a" and the row
+//! lights up when the stage lands. A last `fmt` row times every file lexed, parsed, and
+//! formatted to memory (`mo fmt` without the write), and a `run-programs` row times every
+//! run of every program in programs/ end to end through `mo run` (MO_EXE), process
+//! start included.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -44,13 +45,13 @@ pub fn main(init: std.process.Init) !void {
     defer out.flush() catch {};
 
     const paths = try mo.corpus.collect(arena, io, root);
-    var sources = try arena.alloc([]const u8, paths.len);
-    var dir = try Io.Dir.cwd().openDir(io, root, .{});
-    defer dir.close(io);
+    // Each file with the modules it uses, read once, so a row times the stages and not the disk.
+    var programs = try arena.alloc(mo.program.Program, paths.len);
     var total_bytes: usize = 0;
     for (paths, 0..) |rel, i| {
-        sources[i] = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
-        total_bytes += sources[i].len;
+        var load_diags: mo.diag.List = .empty;
+        programs[i] = try mo.program.load(arena, io, try std.fs.path.join(arena, &.{ root, rel }), &load_diags);
+        total_bytes += programs[i].main().source.len;
     }
 
     try out.print("mo-bench: {d} files, {d} bytes, best of {d}\n", .{ paths.len, total_bytes, iters });
@@ -72,11 +73,11 @@ pub fn main(init: std.process.Init) !void {
         var it: u32 = 0;
         while (it < iters and implemented) : (it += 1) {
             const t0 = Io.Clock.Timestamp.now(io, .awake);
-            for (sources, 0..) |src, fi| {
+            for (programs, 0..) |prog, fi| {
                 _ = scratch.reset(.retain_capacity);
                 var diags: mo.diag.List = .empty;
                 const f0 = if (stage == .run) Io.Clock.Timestamp.now(io, .awake) else t0;
-                mo.pipeline.runTo(scratch.allocator(), src, stage, &diags) catch |e| switch (e) {
+                mo.pipeline.runTo(scratch.allocator(), prog, stage, &diags) catch |e| switch (e) {
                     error.NotImplemented => {
                         implemented = false;
                         break;
@@ -105,10 +106,10 @@ pub fn main(init: std.process.Init) !void {
     var fmt_it: u32 = 0;
     while (fmt_it < iters) : (fmt_it += 1) {
         const t0 = Io.Clock.Timestamp.now(io, .awake);
-        for (sources) |src| {
+        for (programs) |prog| {
             _ = scratch.reset(.retain_capacity);
             var diags: mo.diag.List = .empty;
-            _ = mo.fmt.format(scratch.allocator(), src, &diags) catch {};
+            _ = mo.fmt.format(scratch.allocator(), prog.main().source, &diags) catch {};
         }
         const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
         if (ns < fmt_best) fmt_best = ns;
@@ -116,8 +117,8 @@ pub fn main(init: std.process.Init) !void {
     const fmt_per: i96 = if (paths.len == 0) 0 else @divTrunc(fmt_best, @as(i96, @intCast(paths.len)));
     try out.print("{s:<8} {d:>9} µs {d:>9} µs\n", .{ "fmt", @as(u64, @intCast(@divTrunc(fmt_best, 1000))), @as(u64, @intCast(@divTrunc(fmt_per, 1000))) });
 
-    // Each program as a user runs it: a fresh `mo run` process that lexes, checks, lowers,
-    // and runs main on Mo.Server.
+    // Each program as a user runs it: a fresh `mo run` process per `# run:` line that
+    // loads, checks, lowers, and runs main on Mo.Server.
     const mo_exe = try mo.corpus.moExe(arena, io, init.environ_map.get("MO_EXE"));
     var program_count: usize = 0;
     for (paths) |rel| program_count += @intFromBool(mo.corpus.isProgramPath(rel));
@@ -125,10 +126,12 @@ pub fn main(init: std.process.Init) !void {
     var programs_it: u32 = 0;
     while (program_count > 0 and programs_it < iters) : (programs_it += 1) {
         const t0 = Io.Clock.Timestamp.now(io, .awake);
-        for (paths, sources) |rel, src| {
+        for (paths, programs) |rel, prog| {
             if (!mo.corpus.isProgramPath(rel)) continue;
             _ = scratch.reset(.retain_capacity);
-            _ = try mo.corpus.runProgram(scratch.allocator(), io, mo_exe, root, rel, src);
+            for (try mo.corpus.runs(scratch.allocator(), prog.main().source)) |run| {
+                _ = try mo.corpus.runProgram(scratch.allocator(), io, mo_exe, root, rel, run.args);
+            }
         }
         const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
         if (ns < programs_best) programs_best = ns;

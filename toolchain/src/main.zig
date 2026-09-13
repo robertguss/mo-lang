@@ -1,7 +1,8 @@
 //! `mo`: the toolchain CLI. Subcommands land with their stages:
 //!   mo check <file.mo>   tier 1 (lex, parse, check, caps) → exit 0 or diagnostics
-//!   mo test  <file.mo>   tier 2 (run the module's tests)  → one line per test, the
+//!   mo test  <file.mo>   tier 2 (run the file's tests)  → one line per test, the
 //!                        summary, and the verified: line; exit 1 when a test fails
+//!     --all              runs the tests of every module the file loads
 //!   mo run   <file.mo> [-- args...]
 //!                        tier 1, then `main` on Mo.Server with the args after `--`;
 //!                        no test runs. Exit 0, or the last platform.exit(code), or 70
@@ -10,14 +11,17 @@
 //!     --check            changes nothing; exit 1 with a unified diff when the file
 //!                        is not formatted, or with MO0501 for a pure for body
 //!     --stdout           prints the formatted file instead of writing it
-//! Diagnostics render as prose on stderr, or with --json as one JSON record per line
-//! on stdout. A file that does not parse is never rewritten.
+//! check, test, and run load the file and every module it uses (program.zig); fmt
+//! reads the one file. Diagnostics render as prose on stderr, or with --json as one
+//! JSON record per line on stdout, each in the file it points into. A file that does
+//! not parse is never rewritten.
 const std = @import("std");
 const Io = std.Io;
 const mo = @import("mo");
 
 const usage =
-    \\usage: mo <check|test> <file.mo> [--json]
+    \\usage: mo check <file.mo> [--json]
+    \\       mo test [--all] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\
@@ -43,6 +47,7 @@ pub fn main(init: std.process.Init) !void {
     defer out.flush() catch {};
 
     var json = false;
+    var all = false;
     var fmt_mode: FmtMode = .write;
     var positional: std.ArrayList([]const u8) = .empty;
     // Everything after `--` belongs to the program `mo run` runs.
@@ -55,6 +60,8 @@ pub fn main(init: std.process.Init) !void {
             break;
         } else if (std.mem.eql(u8, a, "--json")) {
             json = true;
+        } else if (std.mem.eql(u8, a, "--all")) {
+            all = true;
         } else if (std.mem.eql(u8, a, "--check")) {
             fmt_mode = .check;
         } else if (std.mem.eql(u8, a, "--stdout")) {
@@ -68,13 +75,15 @@ pub fn main(init: std.process.Init) !void {
     if (!is_fmt and fmt_mode != .write) return usageExit(err);
     const is_run = std.mem.eql(u8, command, "run");
     if (!is_run and program_args != null) return usageExit(err);
+    if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
 
-    const source = try Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(1 << 20));
     var diags: mo.diag.List = .empty;
 
     if (is_fmt) {
+        const source = try Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(1 << 20));
+        const files: []const mo.diag.File = &.{.{ .path = path, .source = source }};
         const formatted = mo.fmt.format(arena, source, &diags) catch |e| switch (e) {
-            error.Rejected => return reject(out, err, path, source, diags.items, json),
+            error.Rejected => return reject(out, err, files, diags.items, json),
             else => return e,
         };
         switch (fmt_mode) {
@@ -88,15 +97,18 @@ pub fn main(init: std.process.Init) !void {
                 try mo.pipeline.loopFindings(arena, source, &findings);
                 const changed = !std.mem.eql(u8, source, formatted);
                 if (changed) try mo.diff.unified(arena, out, path, source, formatted);
-                if (changed or findings.items.len > 0) return reject(out, err, path, source, findings.items, json);
+                if (changed or findings.items.len > 0) return reject(out, err, files, findings.items, json);
             },
         }
         return;
     }
 
+    // The file and every module it uses, from the program root.
+    const program = try mo.program.load(arena, io, path, &diags);
+
     if (is_run) {
-        const m = mo.pipeline.mainProgram(arena, source, &diags) catch |e| switch (e) {
-            error.Rejected => return reject(out, err, path, source, diags.items, json),
+        const m = mo.pipeline.mainProgram(arena, program, &diags) catch |e| switch (e) {
+            error.Rejected => return reject(out, err, program.files, diags.items, json),
             else => return e,
         };
         const cwd = try std.process.currentPathAlloc(io, arena);
@@ -106,7 +118,7 @@ pub fn main(init: std.process.Init) !void {
             .crashed => |report| blk: {
                 out.flush() catch {};
                 try err.writeAll("main crashed: ");
-                try mo.runner.writeReport(err, path, source, report);
+                try mo.runner.writeReport(err, program.files, report);
                 try err.writeAll("\n");
                 break :blk crash_exit;
             },
@@ -124,19 +136,19 @@ pub fn main(init: std.process.Init) !void {
         return usageExit(err);
 
     if (stage == .run) {
-        const r = mo.pipeline.testSource(arena, source, &diags) catch |e| switch (e) {
-            error.Rejected => return reject(out, err, path, source, diags.items, json),
+        const r = mo.pipeline.testProgram(arena, program, all, &diags) catch |e| switch (e) {
+            error.Rejected => return reject(out, err, program.files, diags.items, json),
             else => return e,
         };
-        for (r.results) |result| try mo.runner.writeResult(out, path, source, result);
+        for (r.results) |result| try mo.runner.writeResult(out, program.files, result);
         try mo.runner.writeSummary(out, r.summary);
         try mo.verified.render(out, r.summary);
         try out.flush();
         if (r.summary.failures > 0) std.process.exit(1);
         return;
     }
-    mo.pipeline.runTo(arena, source, stage, &diags) catch |e| switch (e) {
-        error.Rejected => return reject(out, err, path, source, diags.items, json),
+    mo.pipeline.runTo(arena, program, stage, &diags) catch |e| switch (e) {
+        error.Rejected => return reject(out, err, program.files, diags.items, json),
         else => return e,
     };
 }
@@ -147,9 +159,12 @@ fn usageExit(err: *Io.Writer) !void {
     std.process.exit(2);
 }
 
-fn reject(out: *Io.Writer, err: *Io.Writer, path: []const u8, source: []const u8, records: []const mo.diag.Record, json: bool) !void {
+fn reject(out: *Io.Writer, err: *Io.Writer, files: []const mo.diag.File, records: []const mo.diag.Record, json: bool) !void {
     for (records) |d| {
-        if (json) try mo.diag.renderJson(out, path, source, d) else try mo.diag.renderProse(err, path, source, d);
+        const loc = mo.diag.locate(files, d.at);
+        var r = d;
+        r.at = loc.at;
+        if (json) try mo.diag.renderJson(out, loc.path, loc.source, r) else try mo.diag.renderProse(err, loc.path, loc.source, r);
     }
     try out.flush();
     try err.flush();
