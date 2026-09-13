@@ -392,6 +392,7 @@ pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Rep
     switch (r.kind) {
         .assert => try w.print("{s} failed", .{r.clause}),
         .requires, .ensures, .refinement, .invariant => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
+        .never => try w.print("{s} tripped", .{r.clause}),
         .overflow => try w.print("overflow in {s}", .{r.clause}),
         .divide_by_zero => try w.print("division by zero in {s}", .{r.clause}),
         .mailbox, .supervisor, .other => try w.print("{s}", .{r.clause}),
@@ -558,6 +559,71 @@ test "sends a seed leaves waiting fill a mailbox the fixed order empties, and re
     // The ask's own message never got in.
     try std.testing.expectEqual(@as(usize, 1), r.interleaving.len);
     try std.testing.expectEqualStrings("the test sent Write to Journal #0 3 times", r.interleaving[0]);
+}
+
+test "under --sim a never over T.all is checked when each run ends, over every value the run made" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src =
+        \\module T.Never
+        \\never "a seat holds two bookings"
+        \\  for a in Booking.all, b in Booking.all if a.seat == b.seat
+        \\    a.guest != b.guest
+        \\  end
+        \\end
+        \\struct Booking
+        \\  seat: String
+        \\  guest: String
+        \\end
+        \\process Desk()
+        \\  state
+        \\    held: List(Booking)
+        \\  end
+        \\  message Book(booking: Booking)
+        \\  message Held : UInt64
+        \\  fn update(state, message)
+        \\    case message
+        \\      Book(booking):
+        \\        state.held = state.held.push(booking)
+        \\      Held: state.held.size
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Desks
+        \\  child Desk, restart: :always
+        \\end
+        \\test "two guests book one seat"
+        \\  desk = Desk.start()
+        \\  desk.send(Book(booking: Booking(seat: "12A", guest: "Ada")))
+        \\  desk.send(Book(booking: Booking(seat: "12A", guest: "Bob")))
+        \\  assert desk.ask(Held, within: 100.ms) is Ok(2)
+        \\end
+        \\test "two guests book two seats"
+        \\  desk = Desk.start()
+        \\  desk.send(Book(booking: Booking(seat: "12A", guest: "Ada")))
+        \\  desk.send(Book(booking: Booking(seat: "12B", guest: "Bob")))
+        \\  assert desk.ask(Held, within: 100.ms) is Ok(2)
+        \\end
+    ;
+    const program = try compileSource(arena, src);
+    try std.testing.expectEqual(@as(usize, 1), program.nevers.len);
+    // The fixed order does not check nevers: that is tier 3's.
+    try std.testing.expectEqual(@as(u32, 0), (try run(arena, program, .{})).summary.failures);
+
+    const r = try run(arena, program, .{ .sim_runs = 3, .sim_seed = 9 });
+    const tripped = r.results[0];
+    try std.testing.expectEqual(Outcome.failed, tripped.outcome);
+    try std.testing.expectEqual(@as(u64, 9), tripped.sim_seed.?);
+    try std.testing.expectEqual(contracts.Kind.never, tripped.report.?.kind);
+    try std.testing.expectEqual(Outcome.passed, r.results[1].outcome);
+    try std.testing.expectEqual(@as(u32, 3), r.results[1].sim_runs);
+
+    var buf: [2048]u8 = undefined;
+    var w: std.Io.Writer = .fixed(&buf);
+    try writeResult(&w, &.{.{ .path = "never.mo", .source = src }}, tripped);
+    const want = "FAIL  test \"two guests book one seat\": simulated run 1, seed 9: never.mo:2:1: never \"a seat holds two bookings\" tripped; a = Booking(seat: \"12A\", guest: \"Ada\"), b = Booking(seat: \"12A\", guest: \"Bob\")\n      interleaving: ";
+    try std.testing.expect(std.mem.startsWith(u8, w.buffered(), want));
 }
 
 test "under faults a test holds, or passes only without faults, and the summary counts each" {

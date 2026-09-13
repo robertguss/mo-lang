@@ -12,6 +12,8 @@
 //! kept in order, so a failure prints the interleaving that found it.
 //! With faults, a seeded run's fixtures can fail or be slow, each call by the seed's
 //! draw (`fault`), and an `ask` whose target waited past its deadline is a Timeout.
+//! A seeded run of a program with a `never` over `T.all` keeps every distinct struct
+//! value of such a T it made, and checks each never over them when the test ends.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
@@ -110,6 +112,10 @@ pub const Sim = struct {
     /// moved by yet (it moves before the next update).
     waited: i64 = 0,
     lag: i64 = 0,
+    /// A seeded run of a program with a never: the distinct values of each struct decl a
+    /// never reads with `T.all`, in the order they were first made.
+    records: bool = false,
+    produced: std.AutoHashMapUnmanaged(u32, std.ArrayList(Value)) = .empty,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -128,7 +134,23 @@ pub const Sim = struct {
             .schedule = .init(seed),
             .faults = if (fault_percent > 0) .init(seed ^ fault_stream) else null,
             .fault_percent = fault_percent,
+            .records = vm.program.nevers.len > 0,
         };
+    }
+
+    /// A struct value the run made: kept once when a never reads its type.
+    pub fn record(sim: *Sim, v: Value) Error!void {
+        const decl = v.record.decl;
+        if (std.mem.indexOfScalar(u32, sim.vm.program.never_decls, decl) == null) return;
+        const kept = try sim.produced.getOrPut(sim.gpa, decl);
+        if (!kept.found_existing) kept.value_ptr.* = .empty;
+        for (kept.value_ptr.items) |x| if (vm_mod.equal(x, v)) return;
+        try kept.value_ptr.append(sim.gpa, v);
+    }
+
+    /// `T.all` in a never: every distinct value of struct decl `decl` the run made.
+    pub fn all(sim: *const Sim, decl: u32) []const Value {
+        return if (sim.produced.get(decl)) |kept| kept.items else &.{};
     }
 
     /// A fixture call's fate in a seeded run with faults. With the run's chance it fails:
@@ -246,9 +268,12 @@ pub const Sim = struct {
         return sim.drain();
     }
 
-    /// The test's body is done: every waiting message is delivered, whatever the seed.
+    /// The test's body is done: every waiting message is delivered, whatever the seed;
+    /// then, in a seeded run, every never is checked against what the run produced.
     pub fn finish(sim: *Sim) Error!void {
-        return sim.drain();
+        try sim.drain();
+        if (!sim.records) return;
+        for (sim.vm.program.nevers) |n| _ = try sim.vm.call(n.function, &.{});
     }
 
     /// Delivers waiting messages, one per process per round, until every mailbox is
