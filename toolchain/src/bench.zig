@@ -36,7 +36,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     var stdout_buffer: [4096]u8 = undefined;
-    var stdout_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
+    var stdout_writer: Io.File.Writer = .initStreaming(.stdout(), io, &stdout_buffer);
     const out = &stdout_writer.interface;
     defer out.flush() catch {};
 
@@ -53,6 +53,10 @@ pub fn main(init: std.process.Init) !void {
     try out.print("mo-bench: {d} files, {d} bytes, best of {d}\n", .{ paths.len, total_bytes, iters });
     try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "stage", "total", "per file" });
 
+    // One arena, reset per file and kept warm, so a row times the stage and not the page faults.
+    var scratch = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer scratch.deinit();
+
     var rows: [mo.pipeline.stages.len]Row = undefined;
     for (mo.pipeline.stages, 0..) |stage, si| {
         var best: i96 = std.math.maxInt(i96);
@@ -61,9 +65,9 @@ pub fn main(init: std.process.Init) !void {
         while (it < iters and implemented) : (it += 1) {
             const t0 = Io.Clock.Timestamp.now(io, .awake);
             for (sources) |src| {
+                _ = scratch.reset(.retain_capacity);
                 var diags: mo.diag.List = .empty;
-                defer diags.deinit(arena);
-                mo.pipeline.runTo(arena, src, stage, &diags) catch |e| switch (e) {
+                mo.pipeline.runTo(scratch.allocator(), src, stage, &diags) catch |e| switch (e) {
                     error.NotImplemented => {
                         implemented = false;
                         break;
