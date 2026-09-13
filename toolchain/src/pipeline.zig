@@ -6,7 +6,6 @@ const parser = @import("parser.zig");
 const check = @import("check.zig");
 const caps = @import("caps.zig");
 const bytecode = @import("bytecode.zig");
-const vm = @import("vm.zig");
 const diag = @import("diag.zig");
 
 pub const Stage = enum { lex, parse, check, lower, run };
@@ -31,7 +30,7 @@ pub fn runTo(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *d
     try caps.check(gpa, checked, diags);
     if (diags.items.len > 0) return error.Rejected;
     if (stage == .check) return;
-    const chunk = try bytecode.lower(gpa, tree);
+    _ = try bytecode.lower(gpa, checked);
     if (stage == .lower) return;
-    try vm.run(gpa, chunk);
+    return error.NotImplemented;
 }

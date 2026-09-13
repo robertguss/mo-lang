@@ -172,6 +172,8 @@ pub const Checked = struct {
     variants: []const Variant,
     params: []const Param,
     sigs: []const FnSig,
+    /// Every impl, so the vm can dispatch a call through a trait bound.
+    impls: []const Impl,
     /// `never` bodies that are a flows(...) rule, for caps.zig.
     flows: []const Index,
 
@@ -210,6 +212,7 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
         .variants = c.variants.items,
         .params = c.params.items,
         .sigs = c.sigs.items,
+        .impls = c.impls.items,
         .flows = c.flows.items,
     };
 }
