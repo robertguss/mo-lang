@@ -24,15 +24,15 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 
 | step | what | measures |
 |---|---|---|
-| 5.5 | the formatter, `mo fmt`, loop rule as a diagnostic | one shape for every file |
-| 5.6 | `main` and `Mo.Server`: Mo runs programs ([[q18-main-and-the-platform]]) | three programs with expected output |
-| 6 | **program 2, the CLI log analyzer, written in Mo by a worker from a spec**; Robert reads the spec altitude only | loops to green, gaps hit, lines per function |
-| 6c | the control run: same spec in Go and Python, same worker | chapter 8's null hypothesis, first number |
-| 7 | the stdlib chapter: every gap becomes a built-in and a row | stdlib misses per program |
-| 8 | `Mo.Sim` seeds and fault injection; `sim (N runs)` real | counterexamples found |
-| 9 | `verified:` written to the file via the sidecar; `mo fix` for the loop rule | hand-edit detection |
-| 10 | the error catalog from the codes; the README front door | a model that has never seen Mo |
-| 11 | program 3, the KV store over TCP | hot loops, overflow-check cost |
+| 5.5 | done: the formatter | [[interpreter-step-5]] |
+| 5.6 | done: `main` and `Mo.Server` | [[interpreter-step-6]] |
+| 6 | done: program 2, `logstat`, in Mo from a spec | [[program-2]] |
+| 6c | done: the control run in Go and Python | [[control-run]] |
+| 7 | done: programs of many modules, memory, speed | [[interpreter-step-7]] |
+| 7b | done: the stdlib, `09-stdlib.md` | [[interpreter-step-8]] |
+| 8 | `Mo.Sim` seeds and fault injection; `sim (N runs)` real ([[interpreter-step-9]]) | counterexamples found |
+| 9, 10 | the sidecar, `mo fix`, the error catalog, the README ([[interpreter-step-10]]) | hand-edit detection; a model that has never seen Mo |
+| 11 | `Net` and processes under `mo run` ([[interpreter-step-11]]); then program 3, the KV store ([[program-3]]) | hot loops, overflow-check cost, requests per second |
 | 12 | the C backend via Zig for release, differential-tested | single binary; speed |
 | 13 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 14 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
