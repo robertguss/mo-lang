@@ -3,6 +3,12 @@
 //! integers so the spec cannot overflow. Target: under 100 ms per changed function.
 const std = @import("std");
 
+/// Contract expressions evaluate in unbounded integers (chapter 3). i128 stands in for
+/// them in this step: every sized operand fits with room to spare, and contract
+/// arithmetic that passes i128 crashes with an overflow report instead of wrapping.
+/// A bignum replaces it when a contract needs one. bytecode.Num.unbounded marks it.
+pub const Unbounded = i128;
+
 /// What stopped a run.
 pub const Kind = enum {
     requires,

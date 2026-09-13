@@ -579,7 +579,19 @@ pub const Vm = struct {
                 for (elems, out) |e, *o| o.* = try vm.generate(e, depth + 1);
                 return .{ .tuple = out };
             },
-            .alias => return vm.generate(ty.b, depth),
+            .alias => {
+                // A refined alias generates values that satisfy it; after 100 misses the
+                // last one stands, and the boundary check reports it.
+                const refs = vm.program.alias_refinements[ty.a];
+                var attempt: u32 = 0;
+                while (true) : (attempt += 1) {
+                    const v = try vm.generate(ty.b, depth);
+                    const holds = for (refs) |r| {
+                        if (!(try vm.call(vm.program.refinements[r].function, &.{v})).bool) break false;
+                    } else true;
+                    if (holds or attempt == 100) return v;
+                }
+            },
             .decl => {
                 const d = k.decls[ty.a];
                 switch (d.kind) {
@@ -858,6 +870,63 @@ test "a var copy never aliases, and inout writes back on return" {
     const pair = try callNamed(&vm, "twice", &.{});
     try std.testing.expectEqual(@as(i128, 3), pair.tuple[0].int);
     try std.testing.expectEqual(@as(i128, 7), pair.tuple[1].int);
+}
+
+test "contracts: requires on entry, ensures with old and result, refinements at the boundary" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Contracts
+        \\type Percent = UInt32 where value <= 100
+        \\struct Cart
+        \\  items: UInt32
+        \\end
+        \\fn split(total: UInt32, people: UInt32) : UInt32
+        \\  requires people > 0
+        \\
+        \\  total / people
+        \\end
+        \\fn add(inout cart: Cart, n: UInt32) : UInt32
+        \\  ensures cart.items == old(cart.items) + n
+        \\  ensures result + 1 > old(cart.items)
+        \\
+        \\  cart.items += n
+        \\  cart.items
+        \\end
+        \\fn wrong(inout cart: Cart) : UInt32
+        \\  ensures cart.items == old(cart.items) + 1
+        \\
+        \\  cart.items
+        \\end
+        \\fn off(p: Percent) : UInt32
+        \\  p
+        \\end
+        \\test rejects "nobody"
+        \\  split(1, 0)
+        \\end
+    );
+    var vm: Vm = .init(arena, &program, 0);
+    try std.testing.expectError(error.Crash, callNamed(&vm, "split", &.{ .{ .int = 1 }, .{ .int = 0 } }));
+    try std.testing.expectEqual(contracts.Kind.requires, vm.report.?.kind);
+    try std.testing.expectEqualStrings("requires people > 0", vm.report.?.clause);
+    try std.testing.expectEqualStrings("0", vm.report.?.values[1].value);
+
+    const cart_decl = program.checked.findDecl("Cart").?;
+    const max: Value = .{ .record = .{ .decl = cart_decl, .fields = &.{.{ .int = std.math.maxInt(u32) }} } };
+    // result + 1 passes UInt32 here, and a contract does not overflow.
+    try std.testing.expectEqual(@as(i128, std.math.maxInt(u32)), (try callNamed(&vm, "add", &.{ max, .{ .int = 0 } })).int);
+    try std.testing.expectError(error.Crash, callNamed(&vm, "wrong", &.{max}));
+    try std.testing.expectEqual(contracts.Kind.ensures, vm.report.?.kind);
+    try std.testing.expectEqualStrings("ensures cart.items == old(cart.items) + 1", vm.report.?.clause);
+
+    try std.testing.expectEqual(@as(i128, 100), (try callNamed(&vm, "off", &.{.{ .int = 100 }})).int);
+    try std.testing.expectError(error.Crash, callNamed(&vm, "off", &.{.{ .int = 101 }}));
+    try std.testing.expectEqual(contracts.Kind.refinement, vm.report.?.kind);
+    try std.testing.expectEqualStrings("where value <= 100", vm.report.?.clause);
+
+    const percent = program.checked.decls[program.checked.findDecl("Percent").?].type;
+    for (0..50) |_| try std.testing.expect((try vm.generate(percent, 0)).int <= 100);
 }
 
 test "closures, patterns, strings, and try" {

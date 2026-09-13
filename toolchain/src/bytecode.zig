@@ -140,6 +140,8 @@ pub const Program = struct {
     tests: []const Test,
     /// Checked signature index → function index, or `none` (a trait's signatures).
     fn_of_sig: []const u32,
+    /// Checked decl index → the refinements a value of that alias satisfies.
+    alias_refinements: []const []const u32,
 
     pub fn findFunction(p: *const Program, name: []const u8) ?u32 {
         for (p.checked.sigs, 0..) |s, si| {
@@ -161,6 +163,10 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         if (s.kind != .trait) l.fn_of_sig[si] = try l.reserve();
         if ((s.kind == .module or s.kind == .recipe) and !l.fn_names.contains(s.name)) try l.fn_names.put(gpa, s.name, @intCast(si));
     }
+    const alias_refinements = try gpa.alloc([]const u32, checked.decls.len);
+    for (checked.decls, alias_refinements) |d, *refs| {
+        refs.* = if (d.kind == .alias and d.node != 0) try l.refinementsOf(l.node(d.node).lhs, d.name) else &.{};
+    }
     for (checked.sigs, 0..) |s, si| if (s.kind != .trait) try l.lowerFn(@intCast(si));
     for (l.items()) |it| {
         const n = l.node(it);
@@ -181,6 +187,7 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         .refinements = l.refinements.items,
         .tests = l.tests.items,
         .fn_of_sig = l.fn_of_sig,
+        .alias_refinements = alias_refinements,
     };
 }
 
@@ -219,6 +226,10 @@ const Lower = struct {
     tests: std.ArrayList(Test) = .empty,
     fn_of_sig: []u32 = &.{},
     fn_names: std.StringHashMapUnmanaged(u32) = .empty,
+    /// A `where` node → its index in `refinements`, lowered once.
+    refinement_of: std.AutoHashMapUnmanaged(Index, u32) = .empty,
+    /// An `old(...)` node → the slot its operand was stored in on entry.
+    old_slots: std.AutoHashMapUnmanaged(Index, u32) = .empty,
     b: *Builder = undefined,
 
     // ---- small helpers
@@ -388,14 +399,41 @@ const Lower = struct {
     fn lowerFn(l: *Lower, si: u32) Error!void {
         const s = l.k.sigs[si];
         const n = l.node(s.node);
+        const sig = l.tree.extraData(ast.Signature, n.lhs);
         var b: Builder = .{ .name = s.name };
         l.b = &b;
-        for (l.k.params[s.params.start..s.params.end]) |p| {
+        const params = l.k.params[s.params.start..s.params.end];
+        for (params) |p| {
             const at = try l.bindName(p.name, p.inout);
             try b.param_names.append(l.gpa, p.name);
             if (p.inout) try b.inouts.append(l.gpa, at);
         }
         b.result = l.slot();
+
+        // On entry: each argument crosses into its parameter's refinement, then requires,
+        // then every old(...) operand is kept for ensures.
+        for (params, 0..) |p, k| {
+            const refs = try l.refinementsOf(l.node(p.node).lhs, s.name);
+            if (refs.len == 0) continue;
+            _ = try l.emit(.load, @intCast(k), 0);
+            for (refs) |r| _ = try l.emit(.refine, r, 0);
+            _ = try l.emit(.pop, 0, 0);
+        }
+        const contract_nodes = l.tree.span(sig.contracts_start, sig.contracts_end);
+        for (contract_nodes) |c| if (l.node(c).kind == .requires) try l.contract(c, .requires);
+        for (contract_nodes) |c| if (l.node(c).kind == .ensures) {
+            var olds: std.ArrayList(Index) = .empty;
+            try l.collectOld(l.node(c).lhs, &olds);
+            for (olds.items) |o| {
+                b.contract = true;
+                try l.expr(l.node(o).lhs);
+                b.contract = false;
+                const at = l.slot();
+                _ = try l.emit(.store, at, 0);
+                try l.old_slots.put(l.gpa, o, at);
+            }
+        };
+
         if (n.kind == .fn_decl) {
             const body = l.tree.extraData(ast.FnBody, n.rhs);
             try l.blockValue(l.tree.span(body.start, body.end));
@@ -404,9 +442,103 @@ const Lower = struct {
             try l.halt(s.node, try std.fmt.allocPrint(l.gpa, "{s} is a recipe signature with no body until an agent implements the recipe", .{s.name}), true);
         }
         for (b.exits.items) |e| l.patch(e);
+
+        // On exit, from every return: the result crosses into the return type's
+        // refinement, then ensures.
+        const ret_refs = try l.refinementsOf(sig.ret, s.name);
+        if (ret_refs.len > 0) {
+            _ = try l.emit(.load, b.result, 0);
+            for (ret_refs) |r| _ = try l.emit(.refine, r, 0);
+            _ = try l.emit(.pop, 0, 0);
+        }
+        for (contract_nodes) |c| if (l.node(c).kind == .ensures) try l.contract(c, .ensures);
         _ = try l.emit(.load, b.result, 0);
         _ = try l.emit(.ret, 0, 0);
         l.functions.items[l.fn_of_sig[si]] = try l.finish(&b);
+    }
+
+    /// A requires or ensures: its expression in unbounded integers, then a check that
+    /// crashes naming the clause.
+    fn contract(l: *Lower, c: Index, kind: contracts.Kind) Error!void {
+        const n = l.node(c);
+        const mark = l.b.names.items.len;
+        l.b.contract = true;
+        try l.expr(n.lhs);
+        l.b.contract = false;
+        _ = try l.emit(.check, try l.clause(kind, n.main_token), 0);
+        l.b.names.shrinkRetainingCapacity(mark);
+    }
+
+    /// Every old(...) inside a contract expression.
+    fn collectOld(l: *Lower, i: Index, out: *std.ArrayList(Index)) Error!void {
+        if (i == 0) return;
+        const n = l.node(i);
+        switch (n.kind) {
+            .old_expr => try out.append(l.gpa, i),
+            .implies, .or_expr, .and_expr, .compare, .add, .mul, .range => {
+                try l.collectOld(n.lhs, out);
+                try l.collectOld(n.rhs, out);
+            },
+            .is_expr, .not_expr, .negate, .try_expr, .member, .tuple_index, .named_arg => try l.collectOld(n.lhs, out),
+            .member_call, .call => {
+                try l.collectOld(n.lhs, out);
+                for (l.spanAt(n.rhs)) |a| try l.collectOld(a, out);
+            },
+            .tuple, .list, .string_interp => for (l.tree.span(n.lhs, n.rhs)) |e| try l.collectOld(e, out),
+            else => {},
+        }
+    }
+
+    /// The refinements a value of the type at `type_node` must satisfy: its own `where`
+    /// clauses, then its alias's. `within` names the function or type for reports.
+    fn refinementsOf(l: *Lower, type_node: Index, within: []const u8) Error![]const u32 {
+        var out: std.ArrayList(u32) = .empty;
+        var cur = type_node;
+        while (cur != 0) {
+            const n = l.node(cur);
+            switch (n.kind) {
+                .type_refined => {
+                    try out.append(l.gpa, try l.refinement(cur, within));
+                    cur = n.lhs;
+                },
+                .type_ref => {
+                    const d = l.k.findDecl(l.text(l.node(n.lhs).main_token)) orelse break;
+                    const decl = l.k.decls[d];
+                    if (decl.kind == .alias and decl.node != 0) try out.appendSlice(l.gpa, try l.refinementsOf(l.node(decl.node).lhs, decl.name));
+                    break;
+                },
+                else => break,
+            }
+        }
+        return out.items;
+    }
+
+    /// A `where` clause as a function of `value` (local 0) that gives a Bool.
+    fn refinement(l: *Lower, refined: Index, within: []const u8) Error!u32 {
+        if (l.refinement_of.get(refined)) |r| return r;
+        const n = l.node(refined);
+        const saved = l.b;
+        var b: Builder = .{ .name = within, .contract = true };
+        const fi = try l.reserve();
+        l.b = &b;
+        _ = try l.bindName("value", false);
+        try b.param_names.append(l.gpa, "value");
+        b.result = l.slot();
+        try l.expr(n.rhs);
+        _ = try l.emit(.ret, 0, 0);
+        const cl = try l.clause(.refinement, n.main_token);
+        l.b = saved;
+        l.functions.items[fi] = try l.finish(&b);
+        const r: u32 = @intCast(l.refinements.items.len);
+        try l.refinements.append(l.gpa, .{ .function = fi, .clause = cl });
+        try l.refinement_of.put(l.gpa, refined, r);
+        return r;
+    }
+
+    /// Checks the value on top against the refinements of a struct or variant field.
+    fn refineField(l: *Lower, f: check.Field, within: []const u8) Error!void {
+        if (f.node == 0) return;
+        for (try l.refinementsOf(l.node(f.node).lhs, within)) |r| _ = try l.emit(.refine, r, 0);
     }
 
     fn lowerTest(l: *Lower, it: Index) Error!void {
@@ -581,6 +713,8 @@ const Lower = struct {
             },
             .member => {
                 const k = l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token)) orelse return l.halt(i, "", false);
+                const d = l.k.decls[l.baseType(l.typeOf(n.lhs)).a];
+                try l.refineField(l.k.fields[d.fields.start + k], d.name);
                 try l.expr(n.lhs);
                 _ = try l.emit(.swap, 0, 0);
                 _ = try l.emit(.set_field, k, 0);
@@ -977,7 +1111,10 @@ const Lower = struct {
             .if_expr => try l.ifLower(i, true),
             .case_expr => try l.caseLower(i, true),
             .anon_fn => try l.anonFn(i),
-            .old_expr => try l.expr(n.lhs),
+            .old_expr => if (l.old_slots.get(i)) |at| {
+                _ = try l.emit(.load, at, 0);
+            } else try l.expr(n.lhs),
+            .result_ref => _ = try l.emit(.load, l.b.result, 0),
             else => try l.halt(i, "", false),
         }
     }
@@ -1090,7 +1227,10 @@ const Lower = struct {
                 const an = l.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), f.name)) break an.lhs;
             } else 0;
-            if (arg == 0) try l.pushConst(.none) else try l.expr(arg);
+            if (arg == 0) try l.pushConst(.none) else {
+                try l.expr(arg);
+                try l.refineField(f, d.name);
+            }
         }
         if (d.kind == .struct_) {
             _ = try l.emit(.record, t.a, fields.len());
