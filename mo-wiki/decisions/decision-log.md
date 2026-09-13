@@ -123,6 +123,13 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A `# exit:` line after a `# run:` line gives the expected exit code; stderr is not compared | Fable, from Opus's default | provisional | — |
 | `MO0311` counts only `rejects` tests in the function's own module | Fable, from Opus's default | provisional | program 3 |
 | `zig build` should install `mo` as ReleaseSafe by default: Mo's own overflow checks live in the VM (step 8 item) | Fable | provisional | step 8 |
+| Step 8 accepted: the stdlib (numbers, strings, lists, maps, sets, time, files, output, JSON) as `09-stdlib.md` plus built-ins and seven corpus files; logstat 1,174 → 758 lines; 200k lines 60 s → 0.95 s, 440 → 38 MB; ReleaseSafe `mo`; 60 minutes | Fable | — | program 3 |
+| Stdlib rules: deterministic, values in and out, rain is a value and a bug is a crash, indices are `UInt64`, slices clamp, one natural order (`<`), maps and sets iterate in insertion order and compare by order | Fable, from the chapter Opus wrote | provisional | program 3 |
+| `round` and `to_string` round half away from zero on the shortest decimal spelling | Fable, from Opus's default | provisional | program 3 |
+| `String.to_u64` accepts ASCII digits only, no sign, no `_`; `to_upper`/`to_lower` are ASCII-only; a grapheme is a code point plus following combining marks | Fable, from Opus's default | provisional | the stdlib chapter's next pass |
+| JSON: a variant encodes as `{"Name": {fields}}`, maps with non-string keys as pairs, NaN as null; decode keeps the last value of a repeated key; depth over 512 is a syntax error | Fable, from Opus's default | provisional | program 3 |
+| `Time.parse` accepts full RFC 3339, fractions truncated to ms, leap seconds are `None` | Fable, from Opus's default | provisional | program 3 |
+| `Fs.list` returns files and folders sorted byte by byte | Fable, from Opus's default | provisional | program 3 |
 
 ## Related
 - [[session-05]]

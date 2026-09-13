@@ -14,11 +14,14 @@
 //!   none                                            no value (a statement-only call)
 const std = @import("std");
 
-/// `grammar` rows are named by spec/grammar.md or design-v0; `corpus_only` rows exist
-/// because a corpus file needs them and are listed in examples/GAPS.md.
-pub const Origin = enum { grammar, corpus_only };
+/// `grammar` rows are named by spec/grammar.md or design-v0; `stdlib` rows by
+/// design-v0/09-stdlib.md; `corpus_only` rows exist because a corpus file needs them and
+/// are listed in examples/GAPS.md.
+pub const Origin = enum { grammar, stdlib, corpus_only };
 
-pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, handle, capability, error_enum };
+/// `error_enum` and `enum_` are both enums whose variants are rows below; an error enum
+/// is what a capability call fails with.
+pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, map, set, handle, capability, error_enum, enum_ };
 
 pub const Type = struct {
     name: []const u8,
@@ -46,6 +49,8 @@ pub const types = [_]Type{
     .{ .name = "List", .arity = 1, .kind = .list },
     .{ .name = "Option", .arity = 1, .kind = .option },
     .{ .name = "Result", .arity = 2, .kind = .result },
+    .{ .name = "Map", .arity = 2, .kind = .map, .origin = .stdlib },
+    .{ .name = "Set", .arity = 1, .kind = .set, .origin = .stdlib },
     .{ .name = "Handle", .arity = 1, .kind = .handle },
     .{ .name = "Clock", .kind = .capability },
     .{ .name = "Fs", .kind = .capability },
@@ -57,6 +62,8 @@ pub const types = [_]Type{
     .{ .name = "FsError", .kind = .error_enum },
     .{ .name = "AskError", .kind = .error_enum },
     .{ .name = "LedgerError", .kind = .error_enum, .origin = .corpus_only },
+    .{ .name = "Json", .kind = .enum_, .origin = .stdlib },
+    .{ .name = "JsonError", .kind = .error_enum, .origin = .stdlib },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -118,6 +125,13 @@ pub const variants = [_]Variant{
     .{ .owner = "AskError", .name = "Timeout" },
     .{ .owner = "AskError", .name = "Down" },
     .{ .owner = "LedgerError", .name = "Timeout", .origin = .corpus_only },
+    .{ .owner = "Json", .name = "Object", .fields = &.{.{ .name = "fields", .type = "Map(String, Json)" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Array", .fields = &.{.{ .name = "items", .type = "List(Json)" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "String", .fields = &.{.{ .name = "text", .type = "String" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Number", .fields = &.{.{ .name = "value", .type = "Float64" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Bool", .fields = &.{.{ .name = "value", .type = "Bool" }}, .origin = .stdlib },
+    .{ .owner = "Json", .name = "Null", .origin = .stdlib },
+    .{ .owner = "JsonError", .name = "Syntax", .fields = &.{.{ .name = "at", .type = "UInt64" }}, .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -140,6 +154,11 @@ pub const Fn = struct {
     can_wait: bool = false,
     only: Only = .anywhere,
     origin: Origin = .grammar,
+    /// The type variable (`T`, `K`) the call orders: it must have the natural order of
+    /// design-v0/09 (numbers, strings, times, durations, and tuples of those).
+    ordered: []const u8 = "",
+    /// The type variable that must be an integer type.
+    integer: []const u8 = "",
 };
 
 pub const fns = [_]Fn{
@@ -152,10 +171,81 @@ pub const fns = [_]Fn{
     .{ .recv = "List(T)", .name = "contains?", .params = &.{"T"}, .ret = "Bool" },
     .{ .recv = "List(T)", .name = "first", .ret = "Option(T)" },
     .{ .recv = "List(T)", .name = "last", .ret = "Option(T)" },
+    .{ .recv = "List(T)", .name = "get", .params = &.{"UInt64"}, .ret = "Option(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "slice", .params = &.{ "UInt64", "UInt64" }, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "take", .params = &.{"UInt64"}, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "drop", .params = &.{"UInt64"}, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "concat", .params = &.{"List(T)"}, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "reverse", .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "flat_map", .params = &.{"fn(T) List(U)"}, .ret = "List(U)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "any?", .params = &.{"fn(T) Bool"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "all?", .params = &.{"fn(T) Bool"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "find", .params = &.{"fn(T) Bool"}, .ret = "Option(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "count", .params = &.{"fn(T) Bool"}, .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "sort", .ret = "List(T)", .ordered = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "sort_by", .params = &.{"fn(T) K"}, .ret = "List(T)", .ordered = "K", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "min", .ret = "Option(T)", .ordered = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "max", .ret = "Option(T)", .ordered = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "sum", .ret = "T", .integer = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "zip", .params = &.{"List(U)"}, .ret = "List((T, U))", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "enumerate", .ret = "List((UInt64, T))", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "unique", .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "group_by", .params = &.{"fn(T) K"}, .ret = "Map(K, List(T))", .origin = .stdlib },
+    // Maps and sets: values whose keys keep the order they were first added
+    .{ .recv = "Map", .on_type = true, .name = "new", .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "size", .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "get", .params = &.{"K"}, .ret = "Option(V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "has?", .params = &.{"K"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "set", .params = &.{ "K", "V" }, .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "update", .params = &.{ "K", "V", "fn(V) V" }, .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "remove", .params = &.{"K"}, .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "keys", .ret = "List(K)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "values", .ret = "List(V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "entries", .ret = "List((K, V))", .origin = .stdlib },
+    .{ .recv = "Set", .on_type = true, .name = "new", .ret = "Set(T)", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "size", .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "add", .params = &.{"T"}, .ret = "Set(T)", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "remove", .params = &.{"T"}, .ret = "Set(T)", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "has?", .params = &.{"T"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "to_list", .ret = "List(T)", .origin = .stdlib },
     // Strings
     .{ .recv = "String", .name = "size", .ret = "UInt64" },
     .{ .recv = "String", .name = "bytes", .ret = "List(UInt8)" },
     .{ .recv = "String", .name = "starts_with?", .params = &.{"String"}, .ret = "Bool" },
+    .{ .recv = "String", .on_type = true, .name = "from_bytes", .params = &.{"List(UInt8)"}, .ret = "Option(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "chars", .ret = "List(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "split", .params = &.{"String"}, .ret = "List(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "lines", .ret = "List(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "trim", .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "ends_with?", .params = &.{"String"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "String", .name = "contains?", .params = &.{"String"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "String", .name = "index_of", .params = &.{"String"}, .ret = "Option(UInt64)", .origin = .stdlib },
+    .{ .recv = "String", .name = "slice", .params = &.{ "UInt64", "UInt64" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "replace", .params = &.{ "String", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_upper", .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_lower", .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "pad_left", .params = &.{ "UInt64", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "pad_right", .params = &.{ "UInt64", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "repeat", .params = &.{"UInt64"}, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .on_type = true, .name = "join", .params = &.{ "List(String)", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_u64", .ret = "Option(UInt64)", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_i64", .ret = "Option(Int64)", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_f64", .ret = "Option(Float64)", .origin = .stdlib },
+    // Integers: named conversions across widths; a value that does not fit is a crash
+    .{ .recv = "Int", .name = "to_u8", .ret = "UInt8", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_u16", .ret = "UInt16", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_u32", .ret = "UInt32", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_u64", .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_i64", .ret = "Int64", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u8", .ret = "Option(UInt8)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u16", .ret = "Option(UInt16)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u32", .ret = "Option(UInt32)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u64", .ret = "Option(UInt64)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_i64", .ret = "Option(Int64)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_f64", .ret = "Float64", .origin = .stdlib },
+    // Floats
+    .{ .recv = "Float64", .name = "round", .params = &.{"UInt64"}, .ret = "Float64", .origin = .stdlib },
+    .{ .recv = "Float64", .name = "to_string", .params = &.{"UInt64"}, .ret = "String", .origin = .stdlib },
     // Integers: the named edge behaviours
     .{ .recv = "Int", .name = "checked_add", .params = &.{"N"}, .ret = "Option(N)" },
     .{ .recv = "Int", .name = "checked_sub", .params = &.{"N"}, .ret = "Option(N)" },
@@ -172,10 +262,20 @@ pub const fns = [_]Fn{
     .{ .recv = "Int", .name = "days", .ret = "Duration" },
     // Time
     .{ .recv = "Time", .on_type = true, .name = "fixture", .ret = "Time", .only = .tests },
+    .{ .recv = "Time", .on_type = true, .name = "parse", .params = &.{"String"}, .ret = "Option(Time)", .origin = .stdlib },
+    .{ .recv = "Time", .on_type = true, .name = "from_parts", .params = &.{ "UInt64", "UInt64", "UInt64", "UInt64", "UInt64", "UInt64" }, .ret = "Time", .origin = .stdlib },
+    .{ .recv = "Time", .name = "to_iso8601", .ret = "String", .origin = .stdlib },
+    .{ .recv = "Time", .name = "since", .params = &.{"Time"}, .ret = "Duration", .origin = .stdlib },
+    .{ .recv = "Duration", .name = "ms", .ret = "Int64", .origin = .stdlib },
+    .{ .recv = "Duration", .name = "seconds", .ret = "Float64", .origin = .stdlib },
+    .{ .recv = "Duration", .name = "minutes", .ret = "Float64", .origin = .stdlib },
     // Capabilities
     .{ .recv = "Clock", .name = "now", .ret = "Time" },
     .{ .recv = "Clock", .on_type = true, .name = "fixture", .ret = "Clock", .only = .tests },
     .{ .recv = "Fs", .name = "read", .params = &.{"String"}, .ret = "Result(String, FsError)", .can_wait = true },
+    .{ .recv = "Fs", .name = "read_lines", .params = &.{"String"}, .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "size", .params = &.{"String"}, .ret = "Result(UInt64, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "list", .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "scoped", .params = &.{"String"}, .ret = "Fs" },
     .{ .recv = "Fs", .name = "read_only", .ret = "Fs" },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .ret = "Fs", .only = .tests },
@@ -196,6 +296,10 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
+    .{ .recv = "Out", .name = "write_line", .params = &.{"String"}, .ret = "none", .origin = .stdlib },
+    // JSON
+    .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
+    .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },
@@ -235,7 +339,7 @@ pub fn findStandIn(name: []const u8) bool {
 }
 
 /// Words a type string may use that are not type names.
-const type_string_words = [_][]const u8{ "T", "U", "A", "E", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
+const type_string_words = [_][]const u8{ "T", "U", "A", "E", "K", "V", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
 
 test "every name in a prelude type string is a prelude type or a type-string word" {
     var strings: std.ArrayList([]const u8) = .empty;

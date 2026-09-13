@@ -99,6 +99,8 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-10|Step 10: the verified sidecar, mo fix, the error catalog, the README, brief for the worker]] — four tooling promises from chapters 5 and 7
+- [[interpreter-step-9|Step 9: Mo.Sim with seeds and fault injection, brief for the worker]] — seeded scheduling, injected failures, never over Type.all, sim (N runs)
 - [[interpreter-step-8|Step 8: the stdlib, brief for the worker]] — strings, lists, maps, sets, time, fs listing, JSON; 09-stdlib.md; logstat rewritten
 - [[interpreter-step-7|Step 7: programs of many modules, brief for the worker]] — use imports functions, program root, multi-file corpus programs, push in place, interpreter speed
 - [[control-run|The control run: logstat in Go and Python, brief for the worker]] — same spec, same model, chapter 8's null hypothesis

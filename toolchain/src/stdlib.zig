@@ -1,0 +1,1023 @@
+//! The standard library's rows (design-v0/09-stdlib.md) that vm.zig does not run itself:
+//! prelude.zig lists each one, `names` maps it to a `Row`, and `call` runs it on the
+//! vm's values. Every row is deterministic: nothing here reads a clock, a random source,
+//! or an address. A row whose input comes from outside the program gives an Option or a
+//! Result; a row the caller misused crashes with a report, as a tripped contract does.
+//!
+//! Strings are UTF-8 and counted in graphemes, approximated as a code point with the
+//! combining marks after it (`Graphemes`), the same count `size` gives. A result that is
+//! part of its receiver is a slice of it: values are immutable, so nothing can tell.
+const std = @import("std");
+const bytecode = @import("bytecode.zig");
+const contracts = @import("contracts.zig");
+const json = @import("json.zig");
+const prelude = @import("prelude.zig");
+const types = @import("types.zig");
+const vm_mod = @import("vm.zig");
+
+const Vm = vm_mod.Vm;
+const Value = vm_mod.Value;
+const Error = vm_mod.Error;
+
+pub const Row = enum {
+    none,
+    string_from_bytes,
+    string_chars,
+    string_split,
+    string_lines,
+    string_trim,
+    string_ends_with,
+    string_contains,
+    string_index_of,
+    string_slice,
+    string_replace,
+    string_to_upper,
+    string_to_lower,
+    string_pad_left,
+    string_pad_right,
+    string_repeat,
+    string_join,
+    string_to_u64,
+    string_to_i64,
+    string_to_f64,
+    int_to,
+    int_checked_to,
+    int_to_f64,
+    float_round,
+    float_to_string,
+    list_get,
+    list_slice,
+    list_take,
+    list_drop,
+    list_concat,
+    list_reverse,
+    list_flat_map,
+    list_any,
+    list_all,
+    list_find,
+    list_count,
+    list_sort,
+    list_sort_by,
+    list_min,
+    list_max,
+    list_sum,
+    list_zip,
+    list_enumerate,
+    list_unique,
+    list_group_by,
+    map_new,
+    map_size,
+    map_get,
+    map_has,
+    map_set,
+    map_update,
+    map_remove,
+    map_keys,
+    map_values,
+    map_entries,
+    set_new,
+    set_size,
+    set_add,
+    set_remove,
+    set_has,
+    set_to_list,
+    time_parse,
+    time_from_parts,
+    time_to_iso8601,
+    time_since,
+    duration_ms,
+    duration_seconds,
+    duration_minutes,
+    fs_read_lines,
+    fs_size,
+    fs_list,
+    out_write_line,
+    json_encode,
+    json_decode,
+};
+
+pub const names = std.StaticStringMap(Row).initComptime(.{
+    .{ "String.from_bytes", .string_from_bytes }, .{ "String.chars", .string_chars },         .{ "String.split", .string_split },
+    .{ "String.lines", .string_lines },           .{ "String.trim", .string_trim },           .{ "String.ends_with?", .string_ends_with },
+    .{ "String.contains?", .string_contains },    .{ "String.index_of", .string_index_of },   .{ "String.slice", .string_slice },
+    .{ "String.replace", .string_replace },       .{ "String.to_upper", .string_to_upper },   .{ "String.to_lower", .string_to_lower },
+    .{ "String.pad_left", .string_pad_left },     .{ "String.pad_right", .string_pad_right }, .{ "String.repeat", .string_repeat },
+    .{ "String.join", .string_join },             .{ "String.to_u64", .string_to_u64 },       .{ "String.to_i64", .string_to_i64 },
+    .{ "String.to_f64", .string_to_f64 },         .{ "Int.to_u8", .int_to },                  .{ "Int.to_u16", .int_to },
+    .{ "Int.to_u32", .int_to },                   .{ "Int.to_u64", .int_to },                 .{ "Int.to_i64", .int_to },
+    .{ "Int.checked_to_u8", .int_checked_to },    .{ "Int.checked_to_u16", .int_checked_to }, .{ "Int.checked_to_u32", .int_checked_to },
+    .{ "Int.checked_to_u64", .int_checked_to },   .{ "Int.checked_to_i64", .int_checked_to }, .{ "Int.to_f64", .int_to_f64 },
+    .{ "Float64.round", .float_round },           .{ "Float64.to_string", .float_to_string }, .{ "List.get", .list_get },
+    .{ "List.slice", .list_slice },               .{ "List.take", .list_take },               .{ "List.drop", .list_drop },
+    .{ "List.concat", .list_concat },             .{ "List.reverse", .list_reverse },         .{ "List.flat_map", .list_flat_map },
+    .{ "List.any?", .list_any },                  .{ "List.all?", .list_all },                .{ "List.find", .list_find },
+    .{ "List.count", .list_count },               .{ "List.sort", .list_sort },               .{ "List.sort_by", .list_sort_by },
+    .{ "List.min", .list_min },                   .{ "List.max", .list_max },                 .{ "List.sum", .list_sum },
+    .{ "List.zip", .list_zip },                   .{ "List.enumerate", .list_enumerate },     .{ "List.unique", .list_unique },
+    .{ "List.group_by", .list_group_by },         .{ "Map.new", .map_new },                   .{ "Map.size", .map_size },
+    .{ "Map.get", .map_get },                     .{ "Map.has?", .map_has },                  .{ "Map.set", .map_set },
+    .{ "Map.update", .map_update },               .{ "Map.remove", .map_remove },             .{ "Map.keys", .map_keys },
+    .{ "Map.values", .map_values },               .{ "Map.entries", .map_entries },           .{ "Set.new", .set_new },
+    .{ "Set.size", .set_size },                   .{ "Set.add", .set_add },                   .{ "Set.remove", .set_remove },
+    .{ "Set.has?", .set_has },                    .{ "Set.to_list", .set_to_list },           .{ "Time.parse", .time_parse },
+    .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
+    .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
+    .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
+    .{ "Out.write_line", .out_write_line },       .{ "Json.encode", .json_encode },           .{ "Json.decode", .json_decode },
+});
+
+/// The row each prelude function is, or `none` for the rows vm.zig runs.
+pub const row_of = blk: {
+    @setEvalBranchQuota(20_000);
+    var table: [prelude.fns.len]Row = undefined;
+    for (prelude.fns, 0..) |f, i| {
+        const head = f.recv[0 .. std.mem.indexOfScalar(u8, f.recv, '(') orelse f.recv.len];
+        table[i] = names.get(head ++ "." ++ f.name) orelse .none;
+    }
+    break :blk table;
+};
+
+/// Runs `row` on its arguments, the receiver first. `int_kind` is the receiver's integer
+/// kind (a list's element's), or bytecode.none.
+pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u32) Error!Value {
+    return switch (which) {
+        .none => unreachable,
+        .json_encode => json.encode(vm, a[0], int_kind),
+        .json_decode => json.decode(vm, a[0].string),
+        .time_parse => if (parseTime(a[0].string)) |t| vm.variant("Some", &.{.{ .time = t }}) else vm.variant("None", &.{}),
+        .time_from_parts => blk: {
+            var parts: [6]i64 = undefined;
+            for (&parts, a[0..6]) |*p, v| p.* = std.math.cast(i64, v.int) orelse std.math.maxInt(i64);
+            const t = instant(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]) orelse
+                return fail(vm, .other, row, "{d}-{d}-{d} {d}:{d}:{d} is not a date and time in the years 0 to 9999", .{ a[0].int, a[1].int, a[2].int, a[3].int, a[4].int, a[5].int });
+            break :blk .{ .time = t };
+        },
+        .time_to_iso8601 => blk: {
+            var buf: [40]u8 = undefined;
+            break :blk .{ .string = try vm.heap.dupe(u8, iso8601(&buf, a[0].time)) };
+        },
+        .time_since => .{ .duration = std.math.sub(i64, a[0].time, a[1].time) catch return fail(vm, .overflow, row, "the span does not fit a Duration", .{}) },
+        .duration_ms => .{ .int = a[0].duration },
+        .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
+        .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
+        .fs_read_lines, .fs_size, .fs_list => files(vm, which, a),
+        .out_write_line => blk: {
+            const s = vm.server orelse return fail(vm, .other, row, "Out.write_line runs only under mo run", .{});
+            s.write(a[0].cap, a[1].string);
+            s.write(a[0].cap, "\n");
+            break :blk .none;
+        },
+        .list_group_by => groupBy(vm, a[0].list, a[1].func),
+        .map_new => .{ .map = &.{} },
+        .set_new => .{ .set = &.{} },
+        .map_size => .{ .int = @intCast(a[0].map.len / 2) },
+        .set_size => .{ .int = @intCast(a[0].set.len) },
+        .map_get => if (indexOf(a[0].map, 2, a[1])) |k| vm.variant("Some", &.{a[0].map[k + 1]}) else vm.variant("None", &.{}),
+        .map_has => .{ .bool = indexOf(a[0].map, 2, a[1]) != null },
+        .set_has => .{ .bool = indexOf(a[0].set, 1, a[1]) != null },
+        .map_set => .{ .map = try put(vm, a[0].map, 2, a[1], a[2], int_kind) },
+        .map_update => blk: {
+            const current = if (indexOf(a[0].map, 2, a[1])) |k| a[0].map[k + 1] else a[2];
+            const next = try vm.invoke(a[3].func, &.{current});
+            break :blk .{ .map = try put(vm, a[0].map, 2, a[1], next, int_kind) };
+        },
+        .set_add => .{ .set = try put(vm, a[0].set, 1, a[1], .none, int_kind) },
+        .map_remove => .{ .map = try without(vm, a[0].map, 2, a[1], int_kind) },
+        .set_remove => .{ .set = try without(vm, a[0].set, 1, a[1], int_kind) },
+        .map_keys, .map_values => blk: {
+            const xs = a[0].map;
+            const out = try vm.heap.alloc(Value, xs.len / 2);
+            const offset: usize = if (which == .map_keys) 0 else 1;
+            for (out, 0..) |*o, k| o.* = xs[2 * k + offset];
+            break :blk .{ .list = out };
+        },
+        .map_entries => blk: {
+            const xs = a[0].map;
+            const pairs = try vm.heap.dupe(Value, xs);
+            const out = try vm.heap.alloc(Value, xs.len / 2);
+            for (out, 0..) |*o, k| o.* = .{ .tuple = pairs[2 * k .. 2 * k + 2] };
+            break :blk .{ .list = out };
+        },
+        .set_to_list => .{ .list = try vm.heap.dupe(Value, a[0].set) },
+        .list_get => if (a[1].int < a[0].list.len) vm.variant("Some", &.{a[0].list[@intCast(a[1].int)]}) else vm.variant("None", &.{}),
+        .list_slice => .{ .list = cut(a[0].list, a[1].int, a[2].int) },
+        .list_take => .{ .list = cut(a[0].list, 0, a[1].int) },
+        .list_drop => .{ .list = cut(a[0].list, a[1].int, a[0].list.len) },
+        .list_concat => .{ .list = try concat(vm, a[0].list, a[1].list) },
+        .list_reverse => blk: {
+            const xs = a[0].list;
+            const out = try vm.heap.alloc(Value, xs.len);
+            for (xs, 0..) |x, k| out[xs.len - 1 - k] = x;
+            break :blk .{ .list = out };
+        },
+        .list_flat_map => flatMap(vm, a[0].list, a[1].func),
+        .list_any, .list_all, .list_find, .list_count => scan(vm, which, a[0].list, a[1].func),
+        .list_sort => blk: {
+            const out = try vm.heap.alloc(Value, a[0].list.len);
+            @memcpy(out, a[0].list);
+            std.sort.block(Value, out, {}, before);
+            break :blk .{ .list = out };
+        },
+        .list_sort_by => sortBy(vm, a[0].list, a[1].func),
+        .list_min, .list_max => blk: {
+            const xs = a[0].list;
+            if (xs.len == 0) break :blk vm.variant("None", &.{});
+            const want: std.math.Order = if (which == .list_min) .lt else .gt;
+            var best = xs[0];
+            for (xs[1..]) |x| if (vm_mod.order(x, best) == want) {
+                best = x;
+            };
+            break :blk vm.variant("Some", &.{best});
+        },
+        .list_sum => blk: {
+            var total: i128 = 0;
+            for (a[0].list) |x| {
+                total = std.math.add(i128, total, x.int) catch return fail(vm, .overflow, row, "the sum passes every integer", .{});
+                if (int_kind == bytecode.none) continue;
+                const k: types.IntKind = @enumFromInt(int_kind);
+                if (total < vm_mod.minOf(k) or total > vm_mod.maxOf(k)) return fail(vm, .overflow, row, "the sum reaches {d}, past its {t} elements", .{ total, k });
+            }
+            break :blk .{ .int = total };
+        },
+        .list_zip, .list_enumerate => blk: {
+            const xs = a[0].list;
+            const n = if (which == .list_zip) @min(xs.len, a[1].list.len) else xs.len;
+            const pairs = try vm.heap.alloc(Value, 2 * n);
+            const out = try vm.heap.alloc(Value, n);
+            for (out, 0..) |*o, k| {
+                pairs[2 * k] = if (which == .list_zip) xs[k] else .{ .int = @intCast(k) };
+                pairs[2 * k + 1] = if (which == .list_zip) a[1].list[k] else xs[k];
+                o.* = .{ .tuple = pairs[2 * k .. 2 * k + 2] };
+            }
+            break :blk .{ .list = out };
+        },
+        .list_unique => blk: {
+            var seen: std.HashMapUnmanaged(Value, void, ValueContext, 80) = .empty;
+            defer seen.deinit(vm.gpa);
+            const out = try vm.heap.alloc(Value, a[0].list.len);
+            var n: usize = 0;
+            for (a[0].list) |x| {
+                if ((try seen.getOrPut(vm.gpa, x)).found_existing) continue;
+                out[n] = x;
+                n += 1;
+            }
+            break :blk .{ .list = out[0..n] };
+        },
+        .string_from_bytes => fromBytes(vm, a[0].list),
+        .string_chars => .{ .list = try chars(vm, a[0].string) },
+        .string_split => split(vm, a[0].string, a[1].string),
+        .string_lines => lines(vm, a[0].string),
+        .string_trim => .{ .string = trim(a[0].string) },
+        .string_ends_with => .{ .bool = std.mem.endsWith(u8, a[0].string, a[1].string) },
+        .string_contains => .{ .bool = std.mem.indexOf(u8, a[0].string, a[1].string) != null },
+        .string_index_of => if (std.mem.indexOf(u8, a[0].string, a[1].string)) |at|
+            vm.variant("Some", &.{.{ .int = count(a[0].string[0..at]) }})
+        else
+            vm.variant("None", &.{}),
+        .string_slice => .{ .string = slice(a[0].string, a[1].int, a[2].int) },
+        .string_replace => replace(vm, a[0].string, a[1].string, a[2].string),
+        .string_to_upper, .string_to_lower => blk: {
+            const out = try vm.heap.alloc(u8, a[0].string.len);
+            if (which == .string_to_upper) _ = std.ascii.upperString(out, a[0].string) else _ = std.ascii.lowerString(out, a[0].string);
+            break :blk .{ .string = out };
+        },
+        .string_pad_left, .string_pad_right => pad(vm, row, a[0].string, a[1].int, a[2].string, which == .string_pad_left),
+        .string_repeat => repeat(vm, row, a[0].string, a[1].int),
+        .string_join => join(vm, row, a[0].list, a[1].string),
+        .string_to_u64 => option(vm, parseWhole(a[0].string, false, .u64)),
+        .string_to_i64 => option(vm, parseWhole(a[0].string, true, .i64)),
+        .string_to_f64 => if (parseFloat(a[0].string)) |x| vm.variant("Some", &.{.{ .float = x }}) else vm.variant("None", &.{}),
+        .int_to => blk: {
+            const kind = targetKind(row.name);
+            if (a[0].int < vm_mod.minOf(kind) or a[0].int > vm_mod.maxOf(kind)) {
+                return fail(vm, .overflow, row, "{d}.{s} does not fit {s}", .{ a[0].int, row.name, row.ret });
+            }
+            break :blk a[0];
+        },
+        .int_checked_to => blk: {
+            const kind = targetKind(row.name);
+            const fits = a[0].int >= vm_mod.minOf(kind) and a[0].int <= vm_mod.maxOf(kind);
+            break :blk if (fits) vm.variant("Some", &.{a[0]}) else vm.variant("None", &.{});
+        },
+        .int_to_f64 => .{ .float = @floatFromInt(a[0].int) },
+        .float_round, .float_to_string => blk: {
+            const x = a[0].float;
+            const places = a[1].int;
+            if (places > max_places) return fail(vm, .other, row, "{s}({d}) rounds to at most {d} places", .{ row.name, places, max_places });
+            if (std.math.isNan(x) or std.math.isInf(x)) {
+                if (which == .float_round) break :blk a[0];
+                break :blk .{ .string = if (std.math.isNan(x)) "NaN" else if (x > 0) "Infinity" else "-Infinity" };
+            }
+            var buf: [decimal_buffer]u8 = undefined;
+            const text = rounded(&buf, x, @intCast(places));
+            if (which == .float_round) break :blk .{ .float = std.fmt.parseFloat(f64, text) catch unreachable };
+            break :blk .{ .string = try vm.heap.dupe(u8, text) };
+        },
+    };
+}
+
+fn fail(vm: *Vm, kind: contracts.Kind, row: prelude.Fn, comptime format: []const u8, args: anytype) Error {
+    vm.report = .{ .kind = kind, .clause = try std.fmt.allocPrint(vm.gpa, format, args), .within = row.name, .at = 0 };
+    return error.Crash;
+}
+
+fn option(vm: *Vm, v: ?i128) Error!Value {
+    return if (v) |x| vm.variant("Some", &.{.{ .int = x }}) else vm.variant("None", &.{});
+}
+
+// ---- graphemes
+
+/// A string's graphemes, in order: each is one code point and the combining marks after
+/// it. A byte that does not start valid UTF-8 is a grapheme of its own.
+pub const Graphemes = struct {
+    s: []const u8,
+    i: usize = 0,
+
+    pub fn next(g: *Graphemes) ?[]const u8 {
+        if (g.i >= g.s.len) return null;
+        const start = g.i;
+        g.i += codePoint(g.s, g.i).len;
+        while (g.i < g.s.len) {
+            const cp = codePoint(g.s, g.i);
+            if (!combining(cp.value)) break;
+            g.i += cp.len;
+        }
+        return g.s[start..g.i];
+    }
+};
+
+const CodePoint = struct { value: u21, len: usize };
+
+/// The code point at byte `i`; an invalid byte reads as U+FFFD, one byte long.
+fn codePoint(s: []const u8, i: usize) CodePoint {
+    const bad: CodePoint = .{ .value = 0xFFFD, .len = 1 };
+    const len = std.unicode.utf8ByteSequenceLength(s[i]) catch return bad;
+    if (i + len > s.len) return bad;
+    const value = std.unicode.utf8Decode(s[i .. i + len]) catch return bad;
+    return .{ .value = value, .len = len };
+}
+
+fn combining(cp: u21) bool {
+    return (cp >= 0x300 and cp <= 0x36F) or (cp >= 0x1AB0 and cp <= 0x1AFF) or (cp >= 0x1DC0 and cp <= 0x1DFF) or (cp >= 0x20D0 and cp <= 0x20FF) or (cp >= 0xFE20 and cp <= 0xFE2F);
+}
+
+/// Graphemes in `s`: what `size` gives.
+pub fn count(s: []const u8) i128 {
+    var g: Graphemes = .{ .s = s };
+    var n: i128 = 0;
+    while (g.next() != null) n += 1;
+    return n;
+}
+
+/// The byte offset where grapheme `index` starts, or `s.len` past the last.
+fn byteOffset(s: []const u8, index: i128) usize {
+    var g: Graphemes = .{ .s = s };
+    var n: i128 = 0;
+    while (n < index) : (n += 1) {
+        if (g.next() == null) break;
+    }
+    return g.i;
+}
+
+fn whitespace(cp: u21) bool {
+    return switch (cp) {
+        0x09...0x0D, 0x20, 0x85, 0xA0, 0x1680, 0x2000...0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000 => true,
+        else => false,
+    };
+}
+
+// ---- strings
+
+fn fromBytes(vm: *Vm, bytes: []const Value) Error!Value {
+    const out = try vm.heap.alloc(u8, bytes.len);
+    for (bytes, out) |b, *o| o.* = @intCast(b.int);
+    if (!std.unicode.utf8ValidateSlice(out)) return vm.variant("None", &.{});
+    return vm.variant("Some", &.{.{ .string = out }});
+}
+
+fn chars(vm: *Vm, s: []const u8) Error![]const Value {
+    const out = try vm.heap.alloc(Value, @intCast(count(s)));
+    var g: Graphemes = .{ .s = s };
+    for (out) |*o| o.* = .{ .string = g.next().? };
+    return out;
+}
+
+fn split(vm: *Vm, s: []const u8, sep: []const u8) Error!Value {
+    if (sep.len == 0) return .{ .list = try chars(vm, s) };
+    const out = try vm.heap.alloc(Value, std.mem.count(u8, s, sep) + 1);
+    var it = std.mem.splitSequence(u8, s, sep);
+    for (out) |*o| o.* = .{ .string = it.next().? };
+    return .{ .list = out };
+}
+
+fn lines(vm: *Vm, s: []const u8) Error!Value {
+    if (s.len == 0) return .{ .list = &.{} };
+    const body = if (s[s.len - 1] == '\n') s[0 .. s.len - 1] else s;
+    const out = try vm.heap.alloc(Value, std.mem.count(u8, body, "\n") + 1);
+    var it = std.mem.splitScalar(u8, body, '\n');
+    for (out) |*o| {
+        const line = it.next().?;
+        o.* = .{ .string = if (line.len > 0 and line[line.len - 1] == '\r') line[0 .. line.len - 1] else line };
+    }
+    return .{ .list = out };
+}
+
+fn trim(s: []const u8) []const u8 {
+    var start: ?usize = null;
+    var end: usize = 0;
+    var i: usize = 0;
+    while (i < s.len) {
+        const cp = codePoint(s, i);
+        if (!whitespace(cp.value)) {
+            if (start == null) start = i;
+            end = i + cp.len;
+        }
+        i += cp.len;
+    }
+    return if (start) |from| s[from..end] else s[0..0];
+}
+
+fn slice(s: []const u8, from: i128, to: i128) []const u8 {
+    const end = byteOffset(s, to);
+    const start = byteOffset(s, @min(from, to));
+    return s[@min(start, end)..end];
+}
+
+fn replace(vm: *Vm, s: []const u8, a: []const u8, b: []const u8) Error!Value {
+    if (a.len == 0) return .{ .string = s };
+    const n = std.mem.count(u8, s, a);
+    if (n == 0) return .{ .string = s };
+    const out = try vm.heap.alloc(u8, s.len - n * a.len + n * b.len);
+    _ = std.mem.replace(u8, s, a, b, out);
+    return .{ .string = out };
+}
+
+fn pad(vm: *Vm, row: prelude.Fn, s: []const u8, n: i128, ch: []const u8, left: bool) Error!Value {
+    if (count(ch) != 1) return fail(vm, .other, row, "{s} pads with one grapheme, not \"{s}\"", .{ row.name, ch });
+    const size = count(s);
+    if (size >= n) return .{ .string = s };
+    const missing: usize = @intCast(n - size);
+    const extra = std.math.mul(usize, missing, ch.len) catch return fail(vm, .overflow, row, "{s}({d}) is too long a string", .{ row.name, n });
+    const out = try vm.heap.alloc(u8, s.len + extra);
+    const fill = if (left) out[0..extra] else out[s.len..];
+    for (0..missing) |k| @memcpy(fill[k * ch.len ..][0..ch.len], ch);
+    @memcpy(if (left) out[extra..] else out[0..s.len], s);
+    return .{ .string = out };
+}
+
+fn repeat(vm: *Vm, row: prelude.Fn, s: []const u8, n: i128) Error!Value {
+    const times = std.math.cast(usize, n) orelse return fail(vm, .overflow, row, "repeat({d}) is too long a string", .{n});
+    const len = std.math.mul(usize, s.len, times) catch return fail(vm, .overflow, row, "repeat({d}) is too long a string", .{n});
+    const out = try vm.heap.alloc(u8, len);
+    for (0..times) |k| @memcpy(out[k * s.len ..][0..s.len], s);
+    return .{ .string = out };
+}
+
+fn join(vm: *Vm, row: prelude.Fn, xs: []const Value, sep: []const u8) Error!Value {
+    _ = row;
+    if (xs.len == 0) return .{ .string = "" };
+    var len: usize = sep.len * (xs.len - 1);
+    for (xs) |x| len += x.string.len;
+    const out = try vm.heap.alloc(u8, len);
+    var at: usize = 0;
+    for (xs, 0..) |x, k| {
+        if (k > 0) {
+            @memcpy(out[at..][0..sep.len], sep);
+            at += sep.len;
+        }
+        @memcpy(out[at..][0..x.string.len], x.string);
+        at += x.string.len;
+    }
+    return .{ .string = out };
+}
+
+// ---- lists
+
+/// `xs[from..to]` with both bounds clamped to the list.
+fn cut(xs: []const Value, from: i128, to: i128) []const Value {
+    const hi: usize = @intCast(@min(to, @as(i128, @intCast(xs.len))));
+    const lo: usize = @intCast(@min(from, @as(i128, @intCast(hi))));
+    return xs[lo..hi];
+}
+
+fn concat(vm: *Vm, xs: []const Value, ys: []const Value) Error![]const Value {
+    if (ys.len == 0) return xs;
+    if (xs.len == 0) return ys;
+    const out = try vm.heap.alloc(Value, xs.len + ys.len);
+    @memcpy(out[0..xs.len], xs);
+    @memcpy(out[xs.len..], ys);
+    return out;
+}
+
+fn before(_: void, a: Value, b: Value) bool {
+    return vm_mod.order(a, b) == .lt;
+}
+
+/// Nothing survives a step of `scan`: its only state is a count.
+var no_roots: [0]Value = .{};
+
+/// `any?`, `all?`, `find`, and `count`: each step is a safe point, and the first three stop
+/// at the element that settles them.
+fn scan(vm: *Vm, which: Row, xs: []const Value, f: Value.Func) Error!Value {
+    const from = vm.mark();
+    var kept: usize = 0;
+    var n: i128 = 0;
+    for (xs) |x| {
+        const hit = (try vm.invoke(f, &.{x})).bool;
+        switch (which) {
+            .list_any => if (hit) return .{ .bool = true },
+            .list_all => if (!hit) return .{ .bool = false },
+            .list_find => if (hit) return vm.variant("Some", &.{x}),
+            else => n += @intFromBool(hit),
+        }
+        kept = try vm.iterate(from, &no_roots, kept);
+    }
+    return switch (which) {
+        .list_any => .{ .bool = false },
+        .list_all => .{ .bool = true },
+        .list_find => vm.variant("None", &.{}),
+        else => .{ .int = n },
+    };
+}
+
+fn flatMap(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+    const parts = try vm.heap.alloc(Value, xs.len);
+    const from = vm.mark();
+    var kept: usize = 0;
+    var len: usize = 0;
+    for (xs, 0..) |x, i| {
+        parts[i] = try vm.invoke(f, &.{x});
+        len += parts[i].list.len;
+        kept = try vm.iterate(from, parts[0 .. i + 1], kept);
+    }
+    const out = try vm.heap.alloc(Value, len);
+    var at: usize = 0;
+    for (parts) |p| {
+        @memcpy(out[at..][0..p.list.len], p.list);
+        at += p.list.len;
+    }
+    return .{ .list = out };
+}
+
+/// Each key is computed once; the positions are sorted by key, stably.
+fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+    const keys = try vm.heap.alloc(Value, xs.len);
+    const from = vm.mark();
+    var kept: usize = 0;
+    for (xs, 0..) |x, i| {
+        keys[i] = try vm.invoke(f, &.{x});
+        kept = try vm.iterate(from, keys[0 .. i + 1], kept);
+    }
+    const positions = try vm.gpa.alloc(u32, xs.len);
+    defer vm.gpa.free(positions);
+    for (positions, 0..) |*p, i| p.* = @intCast(i);
+    std.sort.block(u32, positions, keys, struct {
+        fn lt(k: []const Value, a: u32, b: u32) bool {
+            return vm_mod.order(k[a], k[b]) == .lt;
+        }
+    }.lt);
+    const out = try vm.heap.alloc(Value, xs.len);
+    for (positions, out) |p, *o| o.* = xs[p];
+    return .{ .list = out };
+}
+
+fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+    const keys = try vm.heap.alloc(Value, xs.len);
+    const from = vm.mark();
+    var kept: usize = 0;
+    for (xs, 0..) |x, i| {
+        keys[i] = try vm.invoke(f, &.{x});
+        kept = try vm.iterate(from, keys[0 .. i + 1], kept);
+    }
+    const gpa = vm.gpa;
+    var index: std.HashMapUnmanaged(Value, u32, ValueContext, 80) = .empty;
+    defer index.deinit(gpa);
+    // Per group: its first element's position and its size; per element: its group.
+    var firsts: std.ArrayList(u32) = .empty;
+    defer firsts.deinit(gpa);
+    var sizes: std.ArrayList(u32) = .empty;
+    defer sizes.deinit(gpa);
+    const group_of = try gpa.alloc(u32, xs.len);
+    defer gpa.free(group_of);
+    for (keys, 0..) |key, i| {
+        const found = try index.getOrPut(gpa, key);
+        if (!found.found_existing) {
+            found.value_ptr.* = @intCast(firsts.items.len);
+            try firsts.append(gpa, @intCast(i));
+            try sizes.append(gpa, 0);
+        }
+        group_of[i] = found.value_ptr.*;
+        sizes.items[found.value_ptr.*] += 1;
+    }
+    // Every group's list is a run of one block, in element order.
+    const block = try vm.heap.alloc(Value, xs.len);
+    const entries = try vm.heap.alloc(Value, 2 * firsts.items.len);
+    const filled = try gpa.alloc(u32, firsts.items.len);
+    defer gpa.free(filled);
+    var start: usize = 0;
+    for (firsts.items, sizes.items, filled, 0..) |first, size, *fill, g| {
+        fill.* = @intCast(start);
+        entries[2 * g] = keys[first];
+        entries[2 * g + 1] = .{ .list = block[start .. start + size] };
+        start += size;
+    }
+    for (xs, group_of) |x, g| {
+        block[filled[g]] = x;
+        filled[g] += 1;
+    }
+    return .{ .map = entries };
+}
+
+// ---- time
+
+const ms_per_day: i64 = 86_400_000;
+
+/// Days from 1970-01-01 to a date of the proleptic Gregorian calendar (Hinnant's
+/// days_from_civil).
+fn daysFromCivil(year: i64, month: i64, day: i64) i64 {
+    const y = if (month <= 2) year - 1 else year;
+    const era = @divFloor(y, 400);
+    const of_era = y - era * 400;
+    const of_year = @divFloor(153 * @mod(month + 9, 12) + 2, 5) + day - 1;
+    const days = of_era * 365 + @divFloor(of_era, 4) - @divFloor(of_era, 100) + of_year;
+    return era * 146_097 + days - 719_468;
+}
+
+const Civil = struct { year: i64, month: i64, day: i64 };
+
+/// The date `days` after 1970-01-01 (Hinnant's civil_from_days).
+fn civilFromDays(days: i64) Civil {
+    const z = days + 719_468;
+    const era = @divFloor(z, 146_097);
+    const of_era = z - era * 146_097;
+    const year_of_era = @divFloor(of_era - @divFloor(of_era, 1460) + @divFloor(of_era, 36_524) - @divFloor(of_era, 146_096), 365);
+    const of_year = of_era - (365 * year_of_era + @divFloor(year_of_era, 4) - @divFloor(year_of_era, 100));
+    const mp = @divFloor(5 * of_year + 2, 153);
+    const month = if (mp < 10) mp + 3 else mp - 9;
+    return .{ .year = year_of_era + era * 400 + @intFromBool(month <= 2), .month = month, .day = of_year - @divFloor(153 * mp + 2, 5) + 1 };
+}
+
+fn daysIn(year: i64, month: i64) i64 {
+    return switch (month) {
+        2 => if (@mod(year, 4) == 0 and (@mod(year, 100) != 0 or @mod(year, 400) == 0)) 29 else 28,
+        4, 6, 9, 11 => 30,
+        else => 31,
+    };
+}
+
+/// Milliseconds since the epoch of a UTC date and time that exist in the years 0 to 9999;
+/// null for any other.
+fn instant(year: i64, month: i64, day: i64, hour: i64, minute: i64, second: i64) ?i64 {
+    if (year < 0 or year > 9999 or month < 1 or month > 12 or day < 1 or day > daysIn(year, month)) return null;
+    if (hour < 0 or hour > 23 or minute < 0 or minute > 59 or second < 0 or second > 59) return null;
+    return ((daysFromCivil(year, month, day) * 24 + hour) * 60 + minute) * 60_000 + second * 1000;
+}
+
+/// Digits only, as a number; null when any byte is not a digit.
+fn fixedDigits(digits: []const u8) ?i64 {
+    var v: i64 = 0;
+    for (digits) |d| {
+        if (!std.ascii.isDigit(d)) return null;
+        v = v * 10 + (d - '0');
+    }
+    return v;
+}
+
+/// RFC 3339: `2026-09-12T10:00:02Z`, optional fractional seconds kept to the millisecond,
+/// and `Z` or an offset `+02:00`.
+fn parseTime(s: []const u8) ?i64 {
+    if (s.len < 20) return null;
+    if (s[4] != '-' or s[7] != '-' or (s[10] != 'T' and s[10] != 't') or s[13] != ':' or s[16] != ':') return null;
+    const year = fixedDigits(s[0..4]) orelse return null;
+    const month = fixedDigits(s[5..7]) orelse return null;
+    const day = fixedDigits(s[8..10]) orelse return null;
+    const hour = fixedDigits(s[11..13]) orelse return null;
+    const minute = fixedDigits(s[14..16]) orelse return null;
+    const second = fixedDigits(s[17..19]) orelse return null;
+    var i: usize = 19;
+    var ms: i64 = 0;
+    if (s[i] == '.') {
+        i += 1;
+        const start = i;
+        while (i < s.len and std.ascii.isDigit(s[i])) i += 1;
+        if (i == start or i - start > 9) return null;
+        for (0..3) |k| ms = ms * 10 + (if (start + k < i) @as(i64, s[start + k] - '0') else 0);
+    }
+    if (i >= s.len) return null;
+    var offset: i64 = 0;
+    if (s[i] == 'Z' or s[i] == 'z') {
+        i += 1;
+    } else if (s[i] == '+' or s[i] == '-') {
+        if (s.len - i != 6 or s[i + 3] != ':') return null;
+        const hours = fixedDigits(s[i + 1 .. i + 3]) orelse return null;
+        const minutes = fixedDigits(s[i + 4 .. i + 6]) orelse return null;
+        if (hours > 23 or minutes > 59) return null;
+        offset = (hours * 60 + minutes) * 60_000;
+        if (s[i] == '-') offset = -offset;
+        i += 6;
+    } else return null;
+    if (i != s.len) return null;
+    return (instant(year, month, day, hour, minute, second) orelse return null) + ms - offset;
+}
+
+/// `2026-09-12T10:00:02Z`, with `.mmm` when the milliseconds are not zero.
+pub fn iso8601(buf: *[40]u8, t: i64) []const u8 {
+    const c = civilFromDays(@divFloor(t, ms_per_day));
+    const in_day: u64 = @intCast(@mod(t, ms_per_day));
+    var w: std.Io.Writer = .fixed(buf);
+    if (c.year >= 0 and c.year <= 9999) {
+        w.print("{d:0>4}", .{@as(u64, @intCast(c.year))}) catch unreachable;
+    } else {
+        w.print("{d}", .{c.year}) catch unreachable;
+    }
+    w.print("-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}", .{ @as(u64, @intCast(c.month)), @as(u64, @intCast(c.day)), in_day / 3_600_000, in_day / 60_000 % 60, in_day / 1000 % 60 }) catch unreachable;
+    if (in_day % 1000 != 0) w.print(".{d:0>3}", .{in_day % 1000}) catch unreachable;
+    w.writeAll("Z") catch unreachable;
+    return w.buffered();
+}
+
+test "the calendar round-trips, leap days and the years before 1970 included" {
+    var buf: [40]u8 = undefined;
+    try std.testing.expectEqual(@as(?i64, 0), parseTime("1970-01-01T00:00:00Z"));
+    try std.testing.expectEqualStrings("1969-12-31T23:59:59.999Z", iso8601(&buf, -1));
+    try std.testing.expectEqualStrings("2026-01-01T00:00:00Z", iso8601(&buf, vm_mod.fixture_time));
+    try std.testing.expectEqual(parseTime("2026-09-12T10:00:02Z"), parseTime("2026-09-12T12:00:02+02:00"));
+    try std.testing.expectEqual(@as(?i64, null), parseTime("2023-02-29T00:00:00Z"));
+    try std.testing.expectEqual(@as(?i64, null), parseTime("2026-09-12T10:00:60Z"));
+    try std.testing.expectEqual(@as(?i64, null), parseTime("2026-09-12T10:00:02.Z"));
+    var day: i64 = -800_000;
+    while (day < 800_000) : (day += 997) {
+        const c = civilFromDays(day);
+        try std.testing.expectEqual(day, daysFromCivil(c.year, c.month, c.day));
+    }
+    const back = parseTime(iso8601(&buf, 1_789_200_123_456)).?;
+    try std.testing.expectEqual(@as(i64, 1_789_200_123_456), back);
+}
+
+// ---- files
+
+/// `read_lines`, `size`, and `list`. Under mo run the file system is real (server.zig); a
+/// fixture Fs is empty, and one built with delay: answers after the delay.
+fn files(vm: *Vm, which: Row, a: []const Value) Error!Value {
+    const fs = a[0].cap;
+    const within = a[a.len - 1].duration;
+    const path: []const u8 = if (which == .fs_list) "." else a[1].string;
+    const s = vm.server orelse {
+        if (fs.delay > within) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+        if (which == .fs_list) return vm.variant("Ok", &.{.{ .list = &.{} }});
+        return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
+    };
+    return switch (which) {
+        .fs_read_lines => blk: {
+            const got = try s.read(vm, fs, path, within);
+            if (!std.mem.eql(u8, got.variant.name, "Ok")) break :blk got;
+            break :blk vm.variant("Ok", &.{try lines(vm, got.variant.fields[0].string)});
+        },
+        .fs_size => s.size(vm, fs, path, within),
+        else => s.list(vm, fs, within),
+    };
+}
+
+// ---- maps and sets
+
+/// Where `key` is in `xs`, whose entries are `stride` values wide (a map's are 2).
+pub fn indexOf(xs: []const Value, stride: usize, key: Value) ?usize {
+    var k: usize = 0;
+    while (k < xs.len) : (k += stride) {
+        if (vm_mod.equal(xs[k], key)) return k;
+    }
+    return null;
+}
+
+/// `xs` with `key` set to `value` (a set passes stride 1, and no value): an existing key
+/// keeps its place, a new one goes last. When the lowering marked the call `unique`
+/// (`m = m.set(k, v)` on a var) and the var owns the buffer, the row writes in place.
+fn put(vm: *Vm, xs: []const Value, stride: usize, key: Value, value: Value, int_kind: u32) Error![]const Value {
+    const on_var = int_kind == bytecode.unique;
+    const mine = on_var and vm.isOwned(xs);
+    if (indexOf(xs, stride, key)) |k| {
+        if (stride == 1) return xs;
+        if (mine and vm.writable(@intFromPtr(xs.ptr), value)) {
+            @constCast(xs)[k + 1] = value;
+            return xs;
+        }
+        const out = try vm.heap.dupe(Value, xs);
+        out[k + 1] = value;
+        if (on_var) vm.own(out);
+        return out;
+    }
+    var out = try vm.pushList(xs, key);
+    if (stride == 2) out = try vm.pushList(out, value);
+    // Grown in place from a buffer others may share a prefix of, a result is not owned.
+    if (on_var and (mine or out.ptr != xs.ptr)) {
+        vm.disown(xs);
+        vm.own(out);
+    }
+    return out;
+}
+
+/// `xs` without `key`; unchanged when it is absent.
+fn without(vm: *Vm, xs: []const Value, stride: usize, key: Value, int_kind: u32) Error![]const Value {
+    const k = indexOf(xs, stride, key) orelse return xs;
+    const on_var = int_kind == bytecode.unique;
+    if (on_var and vm.isOwned(xs)) {
+        const buf = @constCast(xs);
+        std.mem.copyForwards(Value, buf[k .. xs.len - stride], buf[k + stride ..]);
+        vm.disown(xs);
+        vm.own(xs[0 .. xs.len - stride]);
+        return xs[0 .. xs.len - stride];
+    }
+    const out = try vm.heap.alloc(Value, xs.len - stride);
+    @memcpy(out[0..k], xs[0..k]);
+    @memcpy(out[k..], xs[k + stride ..]);
+    if (on_var) vm.own(out);
+    return out;
+}
+
+/// Hashes a value so that equal values (vm.equal) hash alike.
+pub const ValueContext = struct {
+    pub fn hash(_: ValueContext, v: Value) u64 {
+        var h: std.hash.Wyhash = .init(0);
+        hashInto(&h, v);
+        return h.final();
+    }
+
+    pub fn eql(_: ValueContext, a: Value, b: Value) bool {
+        return vm_mod.equal(a, b);
+    }
+};
+
+fn hashInto(h: *std.hash.Wyhash, v: Value) void {
+    h.update(&.{@intFromEnum(std.meta.activeTag(v))});
+    switch (v) {
+        .none => {},
+        .bool => |b| h.update(&.{@intFromBool(b)}),
+        .int => |i| h.update(std.mem.asBytes(&i)),
+        // 0.0 and -0.0 are equal, so they hash alike.
+        .float => |x| h.update(std.mem.asBytes(&(if (x == 0) @as(f64, 0) else x))),
+        .string => |s| {
+            h.update(std.mem.asBytes(&s.len));
+            h.update(s);
+        },
+        .time, .duration => |t| h.update(std.mem.asBytes(&t)),
+        .list, .tuple, .map, .set => |xs| hashAll(h, xs),
+        .record => |r| {
+            h.update(std.mem.asBytes(&r.decl));
+            hashAll(h, r.fields);
+        },
+        .variant => |r| {
+            h.update(std.mem.asBytes(&r.name.len));
+            h.update(r.name);
+            hashAll(h, r.fields);
+        },
+        .func => |f| {
+            h.update(std.mem.asBytes(&f.function));
+            hashAll(h, f.captures);
+        },
+        .cap => |c| {
+            h.update(&.{@intFromEnum(c.kind)});
+            h.update(std.mem.asBytes(&c.delay));
+            h.update(std.mem.asBytes(&c.handle));
+        },
+        .handle => |x| h.update(std.mem.asBytes(&x)),
+    }
+}
+
+fn hashAll(h: *std.hash.Wyhash, xs: []const Value) void {
+    h.update(std.mem.asBytes(&xs.len));
+    for (xs) |x| hashInto(h, x);
+}
+
+// ---- numbers
+
+/// `to_u8` and `checked_to_u8` name their target by the name's last part.
+fn targetKind(name: []const u8) types.IntKind {
+    const suffix = name[std.mem.lastIndexOfScalar(u8, name, '_').? + 1 ..];
+    return std.meta.stringToEnum(types.IntKind, suffix).?;
+}
+
+/// Whole-number text: ASCII digits, at least one, with one leading `-` when `signed`.
+fn parseWhole(s: []const u8, signed: bool, kind: types.IntKind) ?i128 {
+    const negative = signed and s.len > 0 and s[0] == '-';
+    const digits = s[@intFromBool(negative)..];
+    if (digits.len == 0 or digits.len > 40) return null;
+    var v: i128 = 0;
+    for (digits) |d| {
+        if (!std.ascii.isDigit(d)) return null;
+        v = v * 10 + (d - '0');
+    }
+    if (negative) v = -v;
+    if (v < vm_mod.minOf(kind) or v > vm_mod.maxOf(kind)) return null;
+    return v;
+}
+
+/// Float text: `-`?, digits, then `.` and digits, then `e` or `E`, a sign, and digits,
+/// the last two parts optional. A value too large for a Float64 is not a number.
+fn parseFloat(s: []const u8) ?f64 {
+    var i: usize = 0;
+    if (i < s.len and s[i] == '-') i += 1;
+    i = digitsFrom(s, i) orelse return null;
+    if (i < s.len and s[i] == '.') i = digitsFrom(s, i + 1) orelse return null;
+    if (i < s.len and (s[i] == 'e' or s[i] == 'E')) {
+        i += 1;
+        if (i < s.len and (s[i] == '+' or s[i] == '-')) i += 1;
+        i = digitsFrom(s, i) orelse return null;
+    }
+    if (i != s.len) return null;
+    const x = std.fmt.parseFloat(f64, s) catch return null;
+    return if (std.math.isInf(x)) null else x;
+}
+
+/// Past one or more digits starting at `i`, or null when there are none.
+fn digitsFrom(s: []const u8, i: usize) ?usize {
+    var j = i;
+    while (j < s.len and std.ascii.isDigit(s[j])) j += 1;
+    return if (j == i) null else j;
+}
+
+const max_places = 15;
+/// A finite f64's shortest decimal spelling has at most 309 whole digits or 324 decimals.
+const decimal_buffer = 400;
+
+/// `x` with exactly `places` decimals, rounded half away from zero on its shortest
+/// decimal spelling, into `buf`. Zero is never negative.
+fn rounded(buf: *[decimal_buffer]u8, x: f64, places: usize) []const u8 {
+    var spelled: [decimal_buffer]u8 = undefined;
+    const text = std.fmt.bufPrint(&spelled, "{d}", .{@abs(x)}) catch unreachable;
+    const dot = std.mem.indexOfScalar(u8, text, '.') orelse text.len;
+    const whole = text[0..dot];
+    const fraction = if (dot < text.len) text[dot + 1 ..] else "";
+    // Digits, whole then `places` of fraction, with room for a carry in front.
+    var digits: [decimal_buffer]u8 = undefined;
+    digits[0] = '0';
+    var n: usize = 1;
+    @memcpy(digits[n..][0..whole.len], whole);
+    n += whole.len;
+    for (0..places) |k| {
+        digits[n] = if (k < fraction.len) fraction[k] else '0';
+        n += 1;
+    }
+    if (places < fraction.len and fraction[places] >= '5') {
+        var k = n;
+        while (k > 0) {
+            k -= 1;
+            if (digits[k] == '9') {
+                digits[k] = '0';
+                continue;
+            }
+            digits[k] += 1;
+            break;
+        }
+    }
+    var first: usize = 0;
+    while (first + 1 < n - places and digits[first] == '0') first += 1;
+    const zero = for (digits[first..n]) |d| {
+        if (d != '0') break false;
+    } else true;
+    var len: usize = 0;
+    if (x < 0 and !zero) {
+        buf[0] = '-';
+        len = 1;
+    }
+    const whole_len = n - places - first;
+    @memcpy(buf[len..][0..whole_len], digits[first .. n - places]);
+    len += whole_len;
+    if (places > 0) {
+        buf[len] = '.';
+        len += 1;
+        @memcpy(buf[len..][0..places], digits[n - places .. n]);
+        len += places;
+    }
+    return buf[0..len];
+}
+
+test "rounding happens on the shortest decimal spelling, half away from zero" {
+    var buf: [decimal_buffer]u8 = undefined;
+    try std.testing.expectEqualStrings("2.68", rounded(&buf, 2.675, 2));
+    try std.testing.expectEqualStrings("-3", rounded(&buf, -2.5, 0));
+    try std.testing.expectEqualStrings("10.0", rounded(&buf, 9.96, 1));
+    try std.testing.expectEqualStrings("0.00", rounded(&buf, -0.001, 2));
+    try std.testing.expectEqualStrings("100.000", rounded(&buf, 99.9995, 3));
+    try std.testing.expectEqualStrings("0.0", rounded(&buf, 0.0, 1));
+    try std.testing.expectEqualStrings("1000000000000000000000", rounded(&buf, 1e21, 0));
+}
+
+test "numbers are read only from text that spells one" {
+    try std.testing.expectEqual(@as(?i128, 42), parseWhole("42", false, .u64));
+    try std.testing.expectEqual(@as(?i128, null), parseWhole("-42", false, .u64));
+    try std.testing.expectEqual(@as(?i128, -42), parseWhole("-42", true, .i64));
+    try std.testing.expectEqual(@as(?i128, null), parseWhole("18446744073709551616", false, .u64));
+    try std.testing.expectEqual(@as(?i128, null), parseWhole("1_000", false, .u64));
+    try std.testing.expectEqual(@as(?f64, 2500), parseFloat("2.5e3"));
+    for ([_][]const u8{ ".5", "5.", "+1", "inf", "nan", "0x10", "1e999", "" }) |t| try std.testing.expectEqual(@as(?f64, null), parseFloat(t));
+}
+
+test "graphemes carry their combining marks, and trim takes Unicode whitespace" {
+    try std.testing.expectEqual(@as(i128, 4), count("cafe\u{301}"));
+    try std.testing.expectEqual(@as(i128, 4), count("café"));
+    try std.testing.expectEqualStrings("e\u{301}", slice("cafe\u{301}!", 3, 4));
+    try std.testing.expectEqualStrings("", slice("abc", 2, 1));
+    try std.testing.expectEqualStrings("bc", slice("abc", 1, 99));
+    try std.testing.expectEqualStrings("a b", trim("\u{3000} a b\t\n"));
+    try std.testing.expectEqualStrings("", trim(" \n"));
+}

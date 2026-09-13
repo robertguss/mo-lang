@@ -166,7 +166,7 @@ fn hash(h: *Hasher, v: Value, budget: *u32) bool {
             h.add(tag);
             h.addBytes(str);
         },
-        .list, .tuple => |xs| {
+        .list, .tuple, .map, .set => |xs| {
             h.add(tag ^ xs.len);
             return hashEach(h, xs, budget);
         },
@@ -211,6 +211,8 @@ fn copy(a: std.mem.Allocator, v: Value, budget: *u32) error{OutOfMemory}!?Value 
         },
         .list => |xs| .{ .list = try copySlice(a, xs, budget) orelse return null },
         .tuple => |xs| .{ .tuple = try copySlice(a, xs, budget) orelse return null },
+        .map => |xs| .{ .map = try copySlice(a, xs, budget) orelse return null },
+        .set => |xs| .{ .set = try copySlice(a, xs, budget) orelse return null },
         .record => |r| .{ .record = .{ .decl = r.decl, .fields = try copySlice(a, r.fields, budget) orelse return null } },
         .variant => |r| .{ .variant = .{ .name = r.name, .fields = try copySlice(a, r.fields, budget) orelse return null } },
         .func => |f| .{ .func = .{ .function = f.function, .captures = try copySlice(a, f.captures, budget) orelse return null } },

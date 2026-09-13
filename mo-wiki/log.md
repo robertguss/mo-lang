@@ -190,3 +190,6 @@
 
 ## [2026-09-13] session | Overnight: step 7 accepted, merged; step 8 started
 - Fable verified: 43 logstat tests from four files, text and JSON match, 200k pushes 0.15 s / 59 MB, 200k-line log 60 s in Debug at 440 MB bounded. Seven decision rows (memoization flagged "watch closely"). Merged to main. Step 8 (stdlib, plus ReleaseSafe default) to a fresh session.
+
+## [2026-09-13] session | Overnight: step 8 accepted, merged; step 9 started
+- Fable verified: tests green, logstat text matches on `logstat <dir>`, 200k lines 0.95 s / 38 MB on the ReleaseSafe binary, 118 stdlib rows, 8 gaps left. Seven decision rows. Merged to main. Step 9 (Mo.Sim seeds and fault injection) to a fresh session.

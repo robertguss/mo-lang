@@ -191,7 +191,7 @@ fn logstat4k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
             std.debug.print("logstat-4k: {t}: {s}\n", .{ e, if (diags.items.len > 0) diags.items[0].what else "" });
             return null;
         };
-        var server: mo.server.Server = try .init(a, io, cwd, &.{ log_dir, log_name }, environ, &discard_out.writer, &discard_err.writer);
+        var server: mo.server.Server = try .init(a, io, cwd, &.{log_dir}, environ, &discard_out.writer, &discard_err.writer);
         switch (try server.run(m.program, m.main)) {
             .exited => |code| if (code != 0) {
                 std.debug.print("logstat-4k: main exited {d}\n", .{code});

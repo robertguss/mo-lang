@@ -353,7 +353,7 @@ const Frame = struct {
 };
 
 const Deferred = struct {
-    kind: enum { literal, numeric, ordered, bound },
+    kind: enum { literal, numeric, ordered, integer, bound },
     node: Index,
     type: Id,
     trait: u32 = 0,
@@ -545,12 +545,12 @@ const Checker = struct {
             .numeric => if (!c.pool.isNumeric(d.type)) {
                 try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} needs numbers, found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) }));
             },
-            .ordered => {
-                const t = c.bt(d.type);
-                switch (t.tag) {
-                    .int, .float, .string, .time, .duration, .unknown, .variable, .never => {},
-                    else => try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} compares numbers, strings, times, and durations; found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) })),
-                }
+            .ordered => if (!c.orderable(d.type, 0)) {
+                try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} compares numbers, strings, times, durations, and tuples of those; found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) }));
+            },
+            .integer => switch (c.bt(d.type).tag) {
+                .int, .unknown, .variable, .never => {},
+                else => try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} adds integers; found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) })),
             },
             .bound => try c.checkBound(d),
             .literal => {},
@@ -649,7 +649,7 @@ const Checker = struct {
             d.fields = .{ .start = fstart, .end = @intCast(c.fields.items.len) };
         }
         for (prelude.types) |pt| {
-            if (pt.kind != .error_enum) continue;
+            if (pt.kind != .error_enum and pt.kind != .enum_) continue;
             const d = try c.addDecl(.{ .kind = .prelude_enum, .name = pt.name });
             c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
             const vstart: u32 = @intCast(c.variants.items.len);
@@ -1088,7 +1088,9 @@ const Checker = struct {
                 .list => c.pool.list1(.list, try c.resolveType(args[0], ctx)),
                 .option => c.pool.list1(.option, try c.resolveType(args[0], ctx)),
                 .result => c.pool.result(try c.resolveType(args[0], ctx), try c.resolveType(args[1], ctx)),
-                .error_enum => c.preludeEnum(name),
+                .map => c.pool.add(.{ .tag = .map, .a = try c.resolveType(args[0], ctx), .b = try c.resolveType(args[1], ctx) }),
+                .set => c.pool.list1(.set, try c.resolveType(args[0], ctx)),
+                .error_enum, .enum_ => c.preludeEnum(name),
                 .handle => {
                     const an = c.node(args[0]);
                     if (an.kind == .type_ref) {
@@ -1211,7 +1213,9 @@ const Checker = struct {
         if (std.mem.eql(u8, word, "List")) return c.pool.list1(.list, args.items[0]);
         if (std.mem.eql(u8, word, "Option")) return c.pool.list1(.option, args.items[0]);
         if (std.mem.eql(u8, word, "Result")) return c.pool.result(args.items[0], args.items[1]);
-        if (prelude.findType(word)) |pt| if (pt.kind == .error_enum) return c.preludeEnum(word);
+        if (std.mem.eql(u8, word, "Map")) return c.pool.add(.{ .tag = .map, .a = args.items[0], .b = args.items[1] });
+        if (std.mem.eql(u8, word, "Set")) return c.pool.list1(.set, args.items[0]);
+        if (prelude.findType(word)) |pt| if (pt.kind == .error_enum or pt.kind == .enum_) return c.preludeEnum(word);
         if (c.type_names.get(word)) |d| return c.decls.items[d].type;
         return primitive(word) orelse types.unknown;
     }
@@ -1221,6 +1225,8 @@ const Checker = struct {
         const b = c.bt(t);
         if (std.mem.eql(u8, head, "Int")) return b.tag == .int or c.pool.isIntLiteralVar(t);
         if (std.mem.eql(u8, head, "List")) return b.tag == .list;
+        if (std.mem.eql(u8, head, "Map")) return b.tag == .map;
+        if (std.mem.eql(u8, head, "Set")) return b.tag == .set;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
         const p = primitive(head) orelse return false;
@@ -1351,6 +1357,20 @@ const Checker = struct {
         try c.endFrame(saved);
     }
 
+    /// What `<` and the stdlib's natural order compare (design-v0/09): numbers, strings,
+    /// times, durations, and tuples of those, left to right.
+    fn orderable(c: *Checker, t: Id, depth: u8) bool {
+        if (depth > 8) return true;
+        const b = c.bt(t);
+        return switch (b.tag) {
+            .int, .float, .string, .time, .duration, .unknown, .variable, .never => true,
+            .tuple => for (c.pool.elems(b)) |e| {
+                if (!c.orderable(e, depth + 1)) break false;
+            } else true,
+            else => false,
+        };
+    }
+
     /// The zero values of grammar Session 5, the same table as vm.zero: numbers, Bool,
     /// String, Duration, List, Option, and tuples and structs of those.
     fn hasZero(c: *Checker, t: Id, depth: u8) bool {
@@ -1359,7 +1379,7 @@ const Checker = struct {
         switch (ty.tag) {
             // Already reported, or not known yet: nothing more to say.
             .unknown, .variable, .never => return true,
-            .int, .float, .bool, .string, .duration, .list, .option => return true,
+            .int, .float, .bool, .string, .duration, .list, .option, .map, .set => return true,
             .tuple => {
                 for (c.pool.elems(ty)) |e| if (!c.hasZero(e, depth + 1)) return false;
                 return true;
@@ -2773,6 +2793,8 @@ const Checker = struct {
         if (std.mem.indexOf(u8, row.ret, "Reply") != null) {
             env.reply = if (positional.items.len > 0) try c.replyOfArg(positional.items[0], env.process) else types.unknown;
         }
+        if (row.ordered.len > 0) try c.defer_(.{ .kind = .ordered, .node = i, .type = env.letters[row.ordered[0] - 'A'] });
+        if (row.integer.len > 0) try c.defer_(.{ .kind = .integer, .node = i, .type = env.letters[row.integer[0] - 'A'] });
         c.callee[i] = .{ .prelude = @intCast(k) };
         return c.parseTs(row.ret, &env);
     }

@@ -25,6 +25,7 @@ const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
 const sim_mod = @import("sim.zig");
+const stdlib = @import("stdlib.zig");
 const types = @import("types.zig");
 
 const Op = bytecode.Op;
@@ -49,6 +50,11 @@ pub const Value = union(enum) {
     duration: i64,
     list: []const Value,
     tuple: []const Value,
+    /// A map's entries, each key then its value, in the order the keys were first added
+    /// (design-v0/09).
+    map: []const Value,
+    /// A set's elements, in the order they were first added.
+    set: []const Value,
     record: Record,
     variant: Variant,
     func: Func,
@@ -83,6 +89,11 @@ pub const Vm = struct {
     /// The lists push can grow in place: the eight it grew last.
     growth: [8]Growth = [_]Growth{.{}} ** 8,
     growth_next: usize = 0,
+    /// Map and set buffers a `var` holds alone: an update (`m = m.set(k, v)`) made them
+    /// and nothing has read the var since (a read is `load_shared`). stdlib.zig writes
+    /// into these in place, so an update on a var is not a copy (design-v0/09).
+    owned: [8]SliceKey = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 8,
+    owned_next: usize = 0,
     /// A compaction's copies, so a slice reached twice is copied once.
     forward: std.AutoHashMapUnmanaged(SliceKey, [*]Value) = .empty,
     /// Region bytes a returning frame may leave behind before it compacts its result.
@@ -211,6 +222,14 @@ pub const Vm = struct {
                     std.mem.swap(Value, &s[s.len - 1], &s[s.len - 2]);
                 },
                 .load => try vm.push(locals[inst.a]),
+                .load_shared => {
+                    const v = locals[inst.a];
+                    switch (v) {
+                        .map, .set => |xs| vm.disown(xs),
+                        else => {},
+                    }
+                    try vm.push(v);
+                },
                 .store => locals[inst.a] = vm.pop(),
                 .jump => pc = inst.a,
                 .jump_if_false => if (!vm.pop().bool) {
@@ -379,6 +398,8 @@ pub const Vm = struct {
             .duration => return .{ .duration = 0 },
             .list => return .{ .list = &.{} },
             .option => return try vm.variant("None", &.{}),
+            .map => return .{ .map = &.{} },
+            .set => return .{ .set = &.{} },
             .tuple => {
                 const elems = k.pool.elems(ty);
                 const out = try vm.heap.alloc(Value, elems.len);
@@ -418,14 +439,14 @@ pub const Vm = struct {
     }
 
     /// Where the region's allocations stand: the mark a frame or a loop frees back to.
-    fn mark(vm: *const Vm) usize {
+    pub fn mark(vm: *const Vm) usize {
         return if (vm.region) |r| r.top else 0;
     }
 
     /// A loop's safe point. Once it has allocated more than twice what it kept at its last
     /// compaction, plus loop_budget, everything past `from` that `roots` do not reach is
     /// freed. Gives what is kept.
-    fn iterate(vm: *Vm, from: usize, roots: []Value, kept: usize) Error!usize {
+    pub fn iterate(vm: *Vm, from: usize, roots: []Value, kept: usize) Error!usize {
         const r = vm.region orelse return 0;
         if (r.top -| from <= 2 * kept + vm.loop_budget) return kept;
         try vm.compact(from, roots);
@@ -456,6 +477,8 @@ pub const Vm = struct {
             .string => |s| if (s.len > 0 and @intFromPtr(s.ptr) >= lo and @intFromPtr(s.ptr) < hi) .{ .string = try dest.allocator().dupe(u8, s) } else v,
             .list => |xs| .{ .list = try vm.copySlice(xs, lo, hi, dest, true) },
             .tuple => |xs| .{ .tuple = try vm.copySlice(xs, lo, hi, dest, false) },
+            .map => |xs| .{ .map = try vm.copySlice(xs, lo, hi, dest, true) },
+            .set => |xs| .{ .set = try vm.copySlice(xs, lo, hi, dest, true) },
             .record => |x| .{ .record = .{ .decl = x.decl, .fields = try vm.copySlice(x.fields, lo, hi, dest, false) } },
             .variant => |x| .{ .variant = .{ .name = x.name, .fields = try vm.copySlice(x.fields, lo, hi, dest, false) } },
             .func => |x| .{ .func = .{ .function = x.function, .captures = try vm.copySlice(x.captures, lo, hi, dest, false) } },
@@ -489,11 +512,36 @@ pub const Vm = struct {
         for (&vm.growth) |*g| {
             if (g.ptr >= lo and g.ptr < hi) g.* = .{};
         }
+        for (&vm.owned) |*o| {
+            if (o.ptr >= lo and o.ptr < hi) o.* = .{ .ptr = 0, .len = 0 };
+        }
+    }
+
+    /// Whether `xs` is a map or set buffer only one `var` holds (vm.owned).
+    pub fn isOwned(vm: *const Vm, xs: []const Value) bool {
+        if (xs.len == 0) return false;
+        for (vm.owned) |o| if (o.ptr == @intFromPtr(xs.ptr) and o.len == xs.len) return true;
+        return false;
+    }
+
+    /// `xs` was just built by an update on a `var`, from a fresh buffer or one the var
+    /// already owned, so nothing else holds it.
+    pub fn own(vm: *Vm, xs: []const Value) void {
+        if (xs.len == 0 or vm.isOwned(xs)) return;
+        vm.owned[vm.owned_next] = .{ .ptr = @intFromPtr(xs.ptr), .len = xs.len };
+        vm.owned_next = (vm.owned_next + 1) % vm.owned.len;
+    }
+
+    /// Something other than an update read `xs`, so it may now be held twice.
+    pub fn disown(vm: *Vm, xs: []const Value) void {
+        for (&vm.owned) |*o| {
+            if (o.ptr == @intFromPtr(xs.ptr) and o.len == xs.len) o.* = .{ .ptr = 0, .len = 0 };
+        }
     }
 
     /// `xs.push(x)`: in place when xs ends where its buffer's last push left it and there is
     /// room, a copy with room to grow otherwise.
-    fn pushList(vm: *Vm, xs: []const Value, x: Value) Error![]const Value {
+    pub fn pushList(vm: *Vm, xs: []const Value, x: Value) Error![]const Value {
         if (xs.len > 0) {
             if (vm.growthOf(@intFromPtr(xs.ptr), xs.len)) |g| {
                 if (g.len < g.cap and vm.writable(g.ptr, x)) {
@@ -515,7 +563,7 @@ pub const Vm = struct {
 
     /// Whether `x` may be written into the buffer at `buf`: under a region, only when what
     /// it points to is older than the buffer, so no compaction past the buffer frees it.
-    fn writable(vm: *const Vm, buf: usize, x: Value) bool {
+    pub fn writable(vm: *const Vm, buf: usize, x: Value) bool {
         const r = vm.region orelse return true;
         const p = payloadOf(x) orelse return true;
         return !r.contains(p) or p < buf;
@@ -668,6 +716,8 @@ pub const Vm = struct {
         out_write,
         process,
         never_only,
+        /// A design-v0/09 row stdlib.zig runs.
+        stdlib,
     };
 
     const prim_names = std.StaticStringMap(Prim).initComptime(.{
@@ -693,11 +743,11 @@ pub const Vm = struct {
 
     /// Every prelude row has an implementation, or the toolchain does not build.
     const prim_of = blk: {
-        @setEvalBranchQuota(4000);
+        @setEvalBranchQuota(20_000);
         var table: [prelude.fns.len]Prim = undefined;
         for (prelude.fns, 0..) |f, i| {
             const head = f.recv[0 .. std.mem.indexOfScalar(u8, f.recv, '(') orelse f.recv.len];
-            table[i] = prim_names.get(head ++ "." ++ f.name) orelse @compileError("vm.zig has no implementation of prelude row " ++ head ++ "." ++ f.name);
+            table[i] = prim_names.get(head ++ "." ++ f.name) orelse if (stdlib.row_of[i] != .none) .stdlib else @compileError("vm.zig has no implementation of prelude row " ++ head ++ "." ++ f.name);
         }
         break :blk table;
     };
@@ -831,6 +881,7 @@ pub const Vm = struct {
                     },
                 };
             },
+            .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
             .never_only => {
@@ -906,6 +957,18 @@ pub const Vm = struct {
                 const out = try vm.gpa.alloc(Value, elems.len);
                 for (elems, out) |e, *o| o.* = try vm.generate(e, depth + 1);
                 return .{ .tuple = out };
+            },
+            .map, .set => {
+                const stride: usize = if (ty.tag == .map) 2 else 1;
+                const tries = if (depth > 3) 0 else rand.uintLessThan(usize, 7);
+                var out: std.ArrayList(Value) = .empty;
+                for (0..tries) |_| {
+                    const key = try vm.generate(ty.a, depth + 1);
+                    if (stdlib.indexOf(out.items, stride, key) != null) continue;
+                    try out.append(vm.gpa, key);
+                    if (stride == 2) try out.append(vm.gpa, try vm.generate(ty.b, depth + 1));
+                }
+                return if (stride == 2) .{ .map = out.items } else .{ .set = out.items };
             },
             .alias => {
                 // A refined alias generates values that satisfy it; after 100 misses the
@@ -1002,6 +1065,25 @@ pub const Vm = struct {
                     try w.writeAll(")");
                 } else try vm.formatFields(w, r.name, r.fields, defs);
             },
+            .map => |xs| {
+                try w.writeAll("Map.new()");
+                var at: usize = 0;
+                while (at < xs.len) : (at += 2) {
+                    try w.writeAll(".set(");
+                    try vm.formatValue(w, xs[at]);
+                    try w.writeAll(", ");
+                    try vm.formatValue(w, xs[at + 1]);
+                    try w.writeAll(")");
+                }
+            },
+            .set => |xs| {
+                try w.writeAll("Set.new()");
+                for (xs) |x| {
+                    try w.writeAll(".add(");
+                    try vm.formatValue(w, x);
+                    try w.writeAll(")");
+                }
+            },
             .func => try w.writeAll("a function"),
             .cap => |c| try w.writeAll(switch (c.kind) {
                 .clock => if (vm.server != null) "a Clock" else "Clock.fixture()",
@@ -1033,7 +1115,7 @@ pub const Vm = struct {
 fn payloadOf(v: Value) ?usize {
     const addr: usize, const len: usize = switch (v) {
         .string => |s| .{ @intFromPtr(s.ptr), s.len },
-        .list, .tuple => |xs| .{ @intFromPtr(xs.ptr), xs.len },
+        .list, .tuple, .map, .set => |xs| .{ @intFromPtr(xs.ptr), xs.len },
         .record => |x| .{ @intFromPtr(x.fields.ptr), x.fields.len },
         .variant => |x| .{ @intFromPtr(x.fields.ptr), x.fields.len },
         .func => |x| .{ @intFromPtr(x.captures.ptr), x.captures.len },
@@ -1046,7 +1128,7 @@ fn fieldsOf(v: Value) []const Value {
     return switch (v) {
         .record => |r| r.fields,
         .variant => |r| r.fields,
-        .tuple, .list => |elems| elems,
+        .tuple, .list, .map, .set => |elems| elems,
         else => unreachable,
     };
 }
@@ -1062,7 +1144,8 @@ pub fn equal(a: Value, b: Value) bool {
         .string => |x| std.mem.eql(u8, x, b.string),
         .time => |x| x == b.time,
         .duration => |x| x == b.duration,
-        .list, .tuple => |x| allEqual(x, if (b == .list) b.list else b.tuple),
+        // Two maps or sets are equal when they hold equal entries in the same order.
+        .list, .tuple, .map, .set => |x| allEqual(x, fieldsOf(b)),
         .record => |x| x.decl == b.record.decl and allEqual(x.fields, b.record.fields),
         .variant => |x| std.mem.eql(u8, x.name, b.variant.name) and allEqual(x.fields, b.variant.fields),
         .func => |x| x.function == b.func.function and allEqual(x.captures, b.func.captures),
@@ -1083,19 +1166,37 @@ fn compare(op: Op, l: Value, r: Value) bool {
         .ne => return !equal(l, r),
         else => {},
     }
-    const order: std.math.Order = switch (l) {
-        .int => |a| std.math.order(a, r.int),
+    const ord: std.math.Order = switch (l) {
         .float => |a| std.math.order(a, r.float),
+        else => order(l, r),
+    };
+    return switch (op) {
+        .lt => ord == .lt,
+        .le => ord != .gt,
+        .gt => ord == .gt,
+        else => ord != .lt,
+    };
+}
+
+/// The natural order (design-v0/09): numbers, strings byte by byte, times, durations, and
+/// tuples of those left to right. A NaN orders after every number and level with another
+/// NaN, so a sort is total.
+pub fn order(l: Value, r: Value) std.math.Order {
+    return switch (l) {
+        .int => |a| std.math.order(a, r.int),
+        .float => |a| blk: {
+            const an = std.math.isNan(a);
+            const bn = std.math.isNan(r.float);
+            break :blk if (an or bn) std.math.order(@intFromBool(an), @intFromBool(bn)) else std.math.order(a, r.float);
+        },
         .string => |a| std.mem.order(u8, a, r.string),
         .time => |a| std.math.order(a, r.time),
         .duration => |a| std.math.order(a, r.duration),
+        .tuple => |xs| for (xs, r.tuple) |x, y| {
+            const o = order(x, y);
+            if (o != .eq) break o;
+        } else .eq,
         else => unreachable,
-    };
-    return switch (op) {
-        .lt => order == .lt,
-        .le => order != .gt,
-        .gt => order == .gt,
-        else => order != .lt,
     };
 }
 
@@ -1136,17 +1237,10 @@ fn wrap(kind: types.IntKind, v: i128) i128 {
     };
 }
 
-/// Graphemes, approximated as code points that are not combining marks: `café` is 4
-/// however it is encoded. Full segmentation (emoji sequences) waits for the stdlib.
+/// Graphemes, approximated as a code point with the combining marks after it: `café` is
+/// 4 however it is encoded (stdlib.Graphemes). Full segmentation (emoji sequences) waits.
 fn graphemes(s: []const u8) i128 {
-    const view = std.unicode.Utf8View.init(s) catch return @intCast(s.len);
-    var it = view.iterator();
-    var n: i128 = 0;
-    while (it.nextCodepoint()) |cp| {
-        const combining = (cp >= 0x300 and cp <= 0x36F) or (cp >= 0x1AB0 and cp <= 0x1AFF) or (cp >= 0x1DC0 and cp <= 0x1DFF) or (cp >= 0x20D0 and cp <= 0x20FF) or (cp >= 0xFE20 and cp <= 0xFE2F);
-        if (!combining) n += 1;
-    }
-    return n;
+    return stdlib.count(s);
 }
 
 // ---- tests

@@ -14,5 +14,6 @@ Mo is a programming language for a world where agents write nearly all the code 
 | `06-packages.md` | bricks, kits, recipes; the registry |
 | `07-toolchain.md` | the interpreter, the compiler, the agent interface |
 | `08-milestone.md` | what the first interpreter must prove, and every open bet |
+| `09-stdlib.md` | the standard library table (session 5, written from the first program's gaps) |
 
 Read top to bottom, in about twenty minutes.

@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [stdlib, runtime]
 sources: [examples/GAPS.md, spec/design-v0/06-packages.md]
-status: in-progress
+status: done
 ---
 
 # Step 8: the stdlib, brief for the worker

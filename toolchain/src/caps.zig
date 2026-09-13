@@ -144,8 +144,8 @@ const Caps = struct {
         const b = c.k.pool.get(r);
         return switch (b.tag) {
             .cap => r,
-            .list, .option => c.capIn(b.a, depth + 1),
-            .result => c.capIn(b.a, depth + 1) orelse c.capIn(b.b, depth + 1),
+            .list, .option, .set => c.capIn(b.a, depth + 1),
+            .result, .map => c.capIn(b.a, depth + 1) orelse c.capIn(b.b, depth + 1),
             .tuple => for (c.k.pool.elems(b)) |e| {
                 if (c.capIn(e, depth + 1)) |x| break x;
             } else null,
@@ -261,8 +261,8 @@ const Caps = struct {
         const b = c.k.pool.get(r);
         return switch (b.tag) {
             .cap => r == types.cap(.platform),
-            .list, .option => c.platformIn(b.a, depth + 1),
-            .result => c.platformIn(b.a, depth + 1) or c.platformIn(b.b, depth + 1),
+            .list, .option, .set => c.platformIn(b.a, depth + 1),
+            .result, .map => c.platformIn(b.a, depth + 1) or c.platformIn(b.b, depth + 1),
             .tuple => for (c.k.pool.elems(b)) |e| {
                 if (c.platformIn(e, depth + 1)) break true;
             } else false,
@@ -504,7 +504,7 @@ const Caps = struct {
             .option => return c.holds(a.a, subject, depth + 1),
             .result => return c.holds(a.a, subject, depth + 1) or c.holds(a.b, subject, depth + 1),
             // Tier 1 does not chase through collections.
-            .list => return false,
+            .list, .map, .set => return false,
             else => return s.tag == a.tag and s.tag != .alias and s.tag != .decl and a.a == s.a and a.tag != .unknown and a.tag != .variable,
         }
     }

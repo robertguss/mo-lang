@@ -22,6 +22,9 @@ pub const Op = enum(u8) {
     swap,
     /// push locals[a]
     load,
+    /// push locals[a], a var holding a map or set, which gives up its claim on the buffer
+    /// (vm.owned): the next update on the var copies
+    load_shared,
     /// pop into locals[a]
     store,
     /// continue at instruction a
@@ -201,6 +204,10 @@ pub const Program = struct {
 
 pub const none: u32 = std.math.maxInt(u32);
 
+/// A `prim`'s b in `m = m.set(k, v)` on a var map or set: the receiver was read without
+/// giving up the var's claim, so the row may write into a buffer the var owns.
+pub const unique: u32 = none - 1;
+
 pub const Error = error{OutOfMemory};
 
 pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
@@ -299,6 +306,8 @@ const Lower = struct {
     /// An `old(...)` node → the slot its operand was stored in on entry.
     old_slots: std.AutoHashMapUnmanaged(Index, u32) = .empty,
     b: *Builder = undefined,
+    /// While `m = m.set(k, v)` is lowered: its call node and the name it assigns.
+    in_place: struct { call: Index = 0, name: []const u8 = "" } = .{},
 
     // ---- small helpers
 
@@ -848,7 +857,9 @@ const Lower = struct {
             },
             .binding => {
                 const name = l.text(n.main_token);
+                l.in_place = .{ .call = n.lhs, .name = name };
                 try l.expr(n.lhs);
+                l.in_place = .{};
                 // `x = e` on a var is an assignment; the two are the same text.
                 const target = if (l.localVar(name)) |v| v.slot else try l.bindName(name, false);
                 _ = try l.emit(.store, target, 0);
@@ -860,7 +871,10 @@ const Lower = struct {
             .assign => {
                 const op = l.text(n.main_token);
                 if (op.len == 1) {
+                    const lhs = l.node(n.lhs);
+                    if (lhs.kind == .name_ref) l.in_place = .{ .call = n.rhs, .name = l.text(lhs.main_token) };
                     try l.expr(n.rhs);
+                    l.in_place = .{};
                 } else {
                     try l.expr(n.lhs);
                     try l.expr(n.rhs);
@@ -1356,7 +1370,8 @@ const Lower = struct {
         const n = l.node(i);
         const name = l.text(n.main_token);
         if (try l.resolve(name)) |v| {
-            _ = try l.emit(.load, v.slot, 0);
+            const t = l.baseType(l.typeOf(i));
+            _ = try l.emit(if (v.mutable and (t.tag == .map or t.tag == .set)) .load_shared else .load, v.slot, 0);
             return;
         }
         switch (l.k.callee[i]) {
@@ -1436,14 +1451,28 @@ const Lower = struct {
         var kind: u32 = none;
         if (!row.on_type) {
             if (recv) |r| {
-                try l.expr(r);
-                kind = l.intKind(l.typeOf(r));
+                if (l.inPlaceSlot(i, r, row)) |s| {
+                    _ = try l.emit(.load, s, 0);
+                    kind = unique;
+                } else {
+                    try l.expr(r);
+                    // A list's row (`sum`) checks against its element's integer type.
+                    const rt = l.baseType(l.typeOf(r));
+                    kind = if (rt.tag == .list) l.intKind(rt.a) else l.intKind(l.typeOf(r));
+                }
             } else {
                 // A bare name inside `where`: the refined value is local 0.
                 _ = try l.emit(.load, 0, 0);
             }
         }
         for (args) |a| if (l.node(a).kind != .named_arg) try l.expr(a);
+        // Json.encode spells its argument by the argument's checked type.
+        if (row.on_type and std.mem.eql(u8, row.recv, "Json") and std.mem.eql(u8, row.name, "encode")) {
+            for (args) |a| if (l.node(a).kind != .named_arg) {
+                kind = l.typeOf(a);
+                break;
+            };
+        }
         for (row.named) |f| {
             for (args) |a| {
                 const an = l.node(a);
@@ -1458,6 +1487,20 @@ const Lower = struct {
             if (within != 0) try l.expr(within) else try l.pushConst(.none);
         }
         _ = try l.emit(.prim, k, kind);
+    }
+
+    /// The var's slot when call `i` is the right side of `m = m.set(k, v)`, `update`, or
+    /// `remove` on a var map, or `s = s.add(x)` or `remove` on a var set, and `r` reads
+    /// that var; the old value is overwritten, so the row may write in place.
+    fn inPlaceSlot(l: *Lower, i: Index, r: Index, row: prelude.Fn) ?u32 {
+        if (i != l.in_place.call) return null;
+        const rn = l.node(r);
+        if (rn.kind != .name_ref or !std.mem.eql(u8, l.text(rn.main_token), l.in_place.name)) return null;
+        const map_row = std.mem.startsWith(u8, row.recv, "Map(") and (std.mem.eql(u8, row.name, "set") or std.mem.eql(u8, row.name, "update") or std.mem.eql(u8, row.name, "remove"));
+        const set_row = std.mem.startsWith(u8, row.recv, "Set(") and (std.mem.eql(u8, row.name, "add") or std.mem.eql(u8, row.name, "remove"));
+        if (!map_row and !set_row) return null;
+        const v = l.localVar(l.in_place.name) orelse return null;
+        return v.slot;
     }
 
     fn construct(l: *Lower, i: Index) Error!void {

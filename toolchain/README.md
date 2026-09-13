@@ -7,6 +7,7 @@ zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
                                                 mo test [--all] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo fmt [--check | --stdout] <file.mo>
+                                                ReleaseSafe; zig build -Ddebug for Debug
 zig build test         → every stage's tests + the corpus test over ../examples
 zig build bench        → zig-out/bin/mo-bench   times every stage over ../examples
 bench/rebuild.sh       → the toolchain's own incremental build time
@@ -27,6 +28,8 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/loops.zig` | MO0501: a `for` with a pure body | ch. 4 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |
+| `src/stdlib.zig` | the stdlib rows of design-v0/09: numbers, strings, lists, maps and sets, time, files, output | ch. 6, 09 |
+| `src/json.zig` | `Json.encode` and `Json.decode` | 09 |
 | `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
 | `src/memo.zig` | `mo run` remembers a pure call it has seen: no capability in, so equal arguments give an equal result | ch. 3, 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
