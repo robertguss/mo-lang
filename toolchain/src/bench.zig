@@ -3,7 +3,8 @@
 //! in the corpus, best of N iterations, and prints one row per stage. Stages that
 //! are not implemented print "n/a" and the row lights up when the stage lands. A
 //! last `fmt` row times every file lexed, parsed, and formatted to memory (`mo fmt`
-//! without the write).
+//! without the write), and a `run-programs` row times every program in programs/ end to
+//! end through `mo run` (MO_EXE), process start included.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -115,6 +116,30 @@ pub fn main(init: std.process.Init) !void {
     const fmt_per: i96 = if (paths.len == 0) 0 else @divTrunc(fmt_best, @as(i96, @intCast(paths.len)));
     try out.print("{s:<8} {d:>9} µs {d:>9} µs\n", .{ "fmt", @as(u64, @intCast(@divTrunc(fmt_best, 1000))), @as(u64, @intCast(@divTrunc(fmt_per, 1000))) });
 
+    // Each program as a user runs it: a fresh `mo run` process that lexes, checks, lowers,
+    // and runs main on Mo.Server.
+    const mo_exe = try mo.corpus.moExe(arena, io, init.environ_map.get("MO_EXE"));
+    var program_count: usize = 0;
+    for (paths) |rel| program_count += @intFromBool(mo.corpus.isProgramPath(rel));
+    var programs_best: i96 = std.math.maxInt(i96);
+    var programs_it: u32 = 0;
+    while (program_count > 0 and programs_it < iters) : (programs_it += 1) {
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        for (paths, sources) |rel, src| {
+            if (!mo.corpus.isProgramPath(rel)) continue;
+            _ = scratch.reset(.retain_capacity);
+            _ = try mo.corpus.runProgram(scratch.allocator(), io, mo_exe, root, rel, src);
+        }
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ns < programs_best) programs_best = ns;
+    }
+    if (program_count > 0) {
+        const per: i96 = @divTrunc(programs_best, @as(i96, @intCast(program_count)));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs  ({d} programs)\n", .{ "run-programs", @as(u64, @intCast(@divTrunc(programs_best, 1000))), @as(u64, @intCast(@divTrunc(per, 1000))), program_count });
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "run-programs", "n/a", "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -123,12 +148,12 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best);
 }
 
-/// One row per stage, then the fmt row: date, stage, files, best total µs ("n/a" when
-/// unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96) !void {
+/// One row per stage, then the fmt row, then the run-programs row (its count is the
+/// programs): date, stage, files, best total µs ("n/a" when unimplemented).
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -145,4 +170,9 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96) !void {
         }
     }
     try w.interface.print("{d}\tfmt\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), files, @as(u64, @intCast(@divTrunc(fmt_ns, 1000))) });
+    if (programs > 0) {
+        try w.interface.print("{d}\trun-programs\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), programs, @as(u64, @intCast(@divTrunc(programs_ns, 1000))) });
+    } else {
+        try w.interface.print("{d}\trun-programs\t0\tn/a\n", .{@as(u64, @intCast(day))});
+    }
 }
