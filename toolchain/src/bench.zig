@@ -7,7 +7,9 @@
 //! run of every program in programs/ end to end through `mo run` (MO_EXE), process
 //! start included. A `logstat-4k` row times program 2 over 4_000 generated log lines in
 //! this process: its four modules loaded and checked, then main on Mo.Server with its
-//! output discarded, so the runtime has a permanent number.
+//! output discarded, so the runtime has a permanent number. A `sim-100` row times
+//! payments/refund.mo's tests as `mo test --sim 100` runs them, in this process, with the
+//! same file without --sim beside it, so a seeded run's cost reads off the difference.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -153,6 +155,16 @@ pub fn main(init: std.process.Init) !void {
         try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "logstat-4k", "n/a", "n/a" });
     }
 
+    const sim = try sim100(io, paths, programs, iters, &scratch);
+    if (sim) |t| {
+        const us: u64 = @intCast(@divTrunc(t.sim_ns, 1000));
+        const per_run: u64 = @intCast(@divTrunc(@max(t.sim_ns - t.fixed_ns, 0), 1000 * sim_seeds));
+        const fixed_us: u64 = @intCast(@divTrunc(t.fixed_ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a seeded run  ({s}, {d} seeds; {d} µs without --sim)\n", .{ "sim-100", us, per_run, sim_file, sim_seeds, fixed_us });
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "sim-100", "n/a", "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -161,7 +173,44 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null);
+}
+
+const sim_seeds = 100;
+const sim_file = "payments/refund.mo";
+
+const SimTimes = struct { sim_ns: i96 = std.math.maxInt(i96), fixed_ns: i96 = std.math.maxInt(i96) };
+
+/// The best of `iters` runs of refund.mo's tests from its loaded program to their results
+/// (check, lower, and every test), under --sim 100 and without it; null when the corpus
+/// has no refund.mo or one of its tests fails.
+fn sim100(io: Io, paths: []const []const u8, programs: []const mo.program.Program, iters: u32, scratch: *std.heap.ArenaAllocator) !?SimTimes {
+    const k = for (paths, 0..) |rel, i| {
+        if (std.mem.eql(u8, rel, sim_file)) break i;
+    } else return null;
+    const prog = programs[k];
+    var times: SimTimes = .{};
+    for ([_]u32{ 0, sim_seeds }) |runs| {
+        const best = if (runs == 0) &times.fixed_ns else &times.sim_ns;
+        var it: u32 = 0;
+        while (it < iters) : (it += 1) {
+            _ = scratch.reset(.retain_capacity);
+            var diags: mo.diag.List = .empty;
+            const options: mo.runner.Options = .{ .sim_runs = runs, .sim_seed = mo.runner.seedOf(prog.main().source) };
+            const t0 = Io.Clock.Timestamp.now(io, .awake);
+            const r = mo.pipeline.testProgram(scratch.allocator(), prog, false, options, &diags) catch |e| {
+                std.debug.print("sim-100: {s}: {t}\n", .{ sim_file, e });
+                return null;
+            };
+            const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+            if (r.summary.failures > 0) {
+                std.debug.print("sim-100: {s} has a failing test\n", .{sim_file});
+                return null;
+            }
+            if (ns < best.*) best.* = ns;
+        }
+    }
+    return times;
 }
 
 const log_lines = 4_000;
@@ -240,9 +289,9 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 }
 
 /// One row per stage, then the fmt row, the run-programs row (its count is the programs),
-/// and the logstat-4k row (its count is the lines): date, stage, count, best total µs
-/// ("n/a" when unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96) !void {
+/// the logstat-4k row (its count is the lines), and the sim-100 row (its count is the
+/// seeds): date, stage, count, best total µs ("n/a" when unimplemented).
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -268,5 +317,10 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         try w.interface.print("{d}\tlogstat-4k\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), log_lines, @as(u64, @intCast(@divTrunc(ns, 1000))) });
     } else {
         try w.interface.print("{d}\tlogstat-4k\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), log_lines });
+    }
+    if (sim_ns) |ns| {
+        try w.interface.print("{d}\tsim-100\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), sim_seeds, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+    } else {
+        try w.interface.print("{d}\tsim-100\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), sim_seeds });
     }
 }
