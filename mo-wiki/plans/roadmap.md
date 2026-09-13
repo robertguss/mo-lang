@@ -1,7 +1,7 @@
 ---
 title: "Roadmap"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -35,10 +35,13 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 | 11 | done: `Net`, program 3 `kv`, the runtime under real programs, two defaults undone | [[interpreter-step-11]], [[program-3]], [[interpreter-step-12]], [[interpreter-step-12b]] |
 | 12 | done: control run round 2, Mo 11.8 min from 25.5 | [[control-run-2]] |
 | 13 | done: the C backend, native logstat 7× the interpreter | [[interpreter-step-13]] |
-| 14 | follow-ups: contracts in every build, formatter shapes, stdlib rows ([[interpreter-step-14]]) | round 3 of the control run |
-| 15 | processes and `Net` in the C backend; kv as a native binary | requests per second, native |
-| 13 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
-| 14 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
+| 14 | done: follow-ups, contracts in every build, formatter shapes, stdlib rows ([[interpreter-step-14]]) | round 3 of the control run |
+| 15 | done: processes and `Net` in the C backend; native kv 1.4× the interpreter at half the memory ([[interpreter-step-15]]) | — |
+| 16 | HTTP in the stdlib ([[interpreter-step-16]]) | a native hello server, requests per second |
+| 16b | round 3 of the control run, in worktrees | the formatter's gap from round 2 |
+| 17 | program 4, the web backend, from its spec (`spec/programs/04-*.md`) | the founding premise with HTTP |
+| 18 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
+| 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 
 ## Session 3 note
 

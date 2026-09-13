@@ -32,7 +32,11 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-12b]] undid two ratified defaults Fable had flagged: memoization left the reference interpreter, every `never` runs on every test.
 - [[interpreter-step-13]]: the C backend, differential-tested, zero differences; native logstat 7× the interpreter. A contracts-off default overturned on acceptance.
 - [[control-run-2]]: Mo 11.8 min (from 25.5), zero loops to green, median 3 lines per function; Go 8.2, Python 7.9.
-- [[interpreter-step-14]] started: contracts in every build, the formatter's round-2 shapes, four stdlib rows.
+- [[interpreter-step-14]]: contracts in every build, the formatter's round-2 shapes, four stdlib rows.
+
+## Afternoon (13 Sep, from 11:30, a fresh Fable context)
+
+- [[interpreter-step-15]]: processes and `Net` in the C runtime; `mo build` compiles everything; native kv 1.4× the interpreter at half the memory. [[interpreter-step-16]] (HTTP) started.
 
 ## Numbers at the end of the session
 
@@ -79,6 +83,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-13]]
 - [[interpreter-step-14]]
 - [[interpreter-step-15]]
+- [[interpreter-step-16]]
 - [[program-2]]
 - [[program-3]]
 - [[control-run]]

@@ -220,3 +220,6 @@
 
 ## [2026-09-13] session | Late morning: step 14 accepted, merged; step 15 started
 - Fable verified: suite green, a failing ensures reported by a native test binary, four stdlib rows present, build in usage. Two decision rows. Merged to main. Step 15 (processes and Net in C) to a fresh session.
+
+## [2026-09-13] session | Afternoon: step 15 accepted, merged; step 16 started
+- Fable verified: suite green (20.7 s), native kv over a real socket identical to `mo run` on malformed lines, a 70 KB line, a half line then close, and 20k SETs (native 12.5 MB resident, interpreter 27.3); two crashing programs of Fable's own (an invariant past its restart limit, a mailbox overflow from `main`) print the same report and exit 70 under both; a failing process test module identical as a test binary; aarch64 Linux static binary. Nine decision rows. Merged to main. Step 16 (HTTP in the stdlib) to a fresh session; round 3 of the control run after it.
