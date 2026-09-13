@@ -390,10 +390,14 @@ const Harness = struct {
     machine: Vm,
     sim: Sim,
 
-    fn run(h: *Harness, arena: std.mem.Allocator, program: *const bytecode.Program, name: []const u8) Error!void {
+    fn begin(h: *Harness, arena: std.mem.Allocator, program: *const bytecode.Program, name: []const u8) void {
         h.machine = .init(arena, program, 7);
         h.sim = .init(&h.machine, 7, name);
         h.machine.sim = &h.sim;
+    }
+
+    fn run(h: *Harness, arena: std.mem.Allocator, program: *const bytecode.Program, name: []const u8) Error!void {
+        h.begin(arena, program, name);
         const t = for (program.tests) |t| {
             if (std.mem.eql(u8, t.name, name)) break t;
         } else unreachable;
@@ -608,4 +612,116 @@ test "a mailbox at its bound crashes the sender, a test or a process, and names 
     // The receiver did not crash, and the two sends that fit went with the sender's update.
     try std.testing.expectEqual(@as(usize, 1), h.sim.crashes.items.len);
     try std.testing.expectEqual(@as(usize, 0), h.sim.procs.items[0].log.items.len);
+}
+
+const sup_src =
+    \\module T.Sup
+    \\process Beat()
+    \\  state
+    \\    n: UInt8
+    \\  end
+    \\  message Up
+    \\  message Drop
+    \\  message Count : UInt8
+    \\  fn update(state, message)
+    \\    case message
+    \\      Up:
+    \\        state.n += 1
+    \\      Drop:
+    \\        state.n -= 1
+    \\      Count: state.n
+    \\    end
+    \\  end
+    \\end
+    \\process Reader(fs: Fs)
+    \\  state
+    \\    reads: UInt8
+    \\  end
+    \\  message Slip
+    \\  message Reads : UInt8
+    \\  fn update(state, message)
+    \\    case message
+    \\      Slip:
+    \\        state.reads -= 1
+    \\      Reads: state.reads
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Pulse(fs: Fs)
+    \\  child Beat, restart: :always, max_restarts: 2 per 1.minute
+    \\  child Reader(fs), restart: :never
+    \\end
+    \\test "two restarts are allowed"
+    \\  beat = Beat.start()
+    \\  beat.send(Drop)
+    \\  beat.send(Drop)
+    \\  beat.send(Up)
+    \\end
+    \\test "the third crash is one too many"
+    \\  beat = Beat.start()
+    \\  beat.send(Drop)
+    \\  beat.send(Drop)
+    \\  beat.send(Drop)
+    \\  beat.send(Up)
+    \\end
+;
+
+test "the test runner supervises a process it starts with :always and the child line's max_restarts" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, sup_src);
+    var h: Harness = undefined;
+    try h.run(arena, program, "two restarts are allowed");
+    const beat = h.sim.procs.items[0];
+    try std.testing.expectEqual(@as(usize, 2), h.sim.crashes.items.len);
+    try std.testing.expectEqual(@as(usize, 2), beat.restarts.items.len);
+    try std.testing.expectEqual(@as(i128, 1), beat.state.record.fields[0].int);
+    try std.testing.expectEqual(@as(i64, 60_000), beat.policy.window_ms);
+
+    try std.testing.expectError(error.Crash, h.run(arena, program, "the third crash is one too many"));
+    try std.testing.expect(h.sim.gave_up);
+    const report = h.machine.report.?;
+    try std.testing.expectEqual(contracts.Kind.supervisor, report.kind);
+    try std.testing.expectEqualStrings("the test runner gave up: Beat crashed more than 2 times within 60000.ms", report.clause);
+    try std.testing.expectEqualStrings("state.n -= 1", report.values[0].value);
+    try std.testing.expectEqualStrings("Drop", report.process.?.log[0]);
+    try std.testing.expect(!h.sim.procs.items[0].up);
+
+    // Through the runner: a crash fails a test, and a supervisor that gave up reports itself.
+    const r = try runner.run(arena, program);
+    try std.testing.expectEqual(contracts.Kind.overflow, r.results[0].report.?.kind);
+    try std.testing.expectEqual(contracts.Kind.supervisor, r.results[1].report.?.kind);
+    try std.testing.expectEqual(@as(u32, 2), r.summary.failures);
+}
+
+test "a supervisor starts its children with the arguments its lines pass, and follows each line" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, sup_src);
+    var h: Harness = undefined;
+    h.begin(arena, program, "Pulse");
+    const fs: Value = .{ .cap = .{ .kind = .fs, .delay = 3 } };
+    _ = try h.sim.startSupervisor(0, &.{fs});
+    try std.testing.expectEqual(@as(usize, 2), h.sim.procs.items.len);
+    try std.testing.expectEqualStrings("Reader", h.sim.nameOf(1));
+    try std.testing.expect(vm_mod.equal(fs, h.sim.procs.items[1].args[0]));
+
+    // restart: :never leaves the child down, and an ask to it is Down.
+    try h.sim.send(1, try h.machine.variant("Slip", &.{}));
+    try h.sim.settle();
+    try std.testing.expect(!h.sim.procs.items[1].up);
+    const down = try h.sim.ask(1, try h.machine.variant("Reads", &.{}), 100);
+    try std.testing.expectEqualStrings("Down", down.variant.fields[0].variant.name);
+
+    // Beat's line allows two restarts in a minute; the third crash takes Pulse down.
+    for (0..2) |_| {
+        try h.sim.send(0, try h.machine.variant("Drop", &.{}));
+        try h.sim.settle();
+    }
+    try h.sim.send(0, try h.machine.variant("Drop", &.{}));
+    try std.testing.expectError(error.Crash, h.sim.settle());
+    try std.testing.expectEqualStrings("Pulse gave up: Beat crashed more than 2 times within 60000.ms", h.machine.report.?.clause);
+    try std.testing.expect(!h.sim.procs.items[0].up);
 }

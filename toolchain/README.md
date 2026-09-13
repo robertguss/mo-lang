@@ -25,6 +25,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
+| `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |
 | `src/diag.zig` | structured diagnostics, no warnings | ch. 5 |
 | `src/verified.zig` | the `verified:` line | ch. 5 |
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |
