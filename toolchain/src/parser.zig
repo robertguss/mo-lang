@@ -483,13 +483,14 @@ const Parser = struct {
 
     fn parseFn(p: *Parser) Error!Index {
         const head = try p.parseSignature();
+        const open = p.tok;
         try p.endLine();
         const contracts = try p.parseContracts();
         const body = try p.parseBlock(false);
-        _ = try p.expect(.kw_end);
+        const end = try p.expect(.kw_end);
         try p.endLine();
         const sig = try p.addSignature(head, contracts);
-        const body_span = try p.addExtra(body);
+        const body_span = try p.addExtra(ast.FnBody{ .start = body.start, .end = body.end, .open_token = open, .end_token = end });
         return p.addNode(.{ .kind = .fn_decl, .main_token = head.name, .lhs = sig, .rhs = body_span });
     }
 
@@ -1187,9 +1188,9 @@ const Parser = struct {
         _ = try p.expect(.r_paren);
         try p.endLine();
         const body = try p.parseCaseStmt();
-        _ = try p.expect(.kw_end);
+        const end = try p.expect(.kw_end);
         try p.endLine();
-        return p.addNode(.{ .kind = .update_fn, .main_token = kw, .lhs = body });
+        return p.addNode(.{ .kind = .update_fn, .main_token = kw, .lhs = body, .rhs = end });
     }
 
     fn parseSupervisor(p: *Parser) Error!Index {

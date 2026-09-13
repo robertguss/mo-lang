@@ -1,7 +1,8 @@
 //! Stage 3, tier 1 (design-v0/05): names and types. Declarations are registered,
 //! then every signature and declared type is resolved, then every body is checked
 //! in source order with local inference (literals typed from use, generics fresh per
-//! call). Every finding is a diag.Record with a stable MO02xx code, never a warning.
+//! call), and the laws of chapter 2 that need no runtime are checked on the way
+//! (MO03xx). Every finding is a diag.Record with a stable code, never a warning.
 //! The checked facts (a type per node, the function each call resolved to) go to
 //! caps.zig in `Checked`.
 const std = @import("std");
@@ -37,6 +38,25 @@ pub const Code = enum {
     impl_mismatch,
     unnamed_fields,
     literal_range,
+    // the laws, chapter 2
+    body_lines,
+    file_lines,
+    too_many_params,
+    nesting,
+    state_fields,
+    rebinding,
+    unused_binding,
+    not_exhaustive,
+    catch_all,
+    unconsumed,
+    requires_untested,
+    default_param,
+    anon_stored,
+    var_captured,
+    var_to_process,
+    unsupervised,
+    hand_verified,
+    use_cycle,
 };
 
 pub const Entry = struct { code: []const u8, category: diag.Category, why: []const u8 };
@@ -60,6 +80,24 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .impl_mismatch = .{ .code = "MO0216", .category = .types, .why = "An impl keeps the trait's promise exactly: every function the trait lists, with Self replaced by the implementing type, and nothing else." },
     .unnamed_fields = .{ .code = "MO0222", .category = .types, .why = "Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values." },
     .literal_range = .{ .code = "MO0217", .category = .types, .why = "Integers are sized; a literal must fit the type it is given, and overflow is never implicit." },
+    .body_lines = .{ .code = "MO0301", .category = .laws, .why = "A function body is at most 70 lines (chapter 2, shape laws), so a whole function is read at once. The fix is named helper functions." },
+    .file_lines = .{ .code = "MO0302", .category = .laws, .why = "A file is at most 500 lines (chapter 2, shape laws), so a module is read in one sitting. The fix is a second module." },
+    .too_many_params = .{ .code = "MO0303", .category = .laws, .why = "A function takes at most 6 parameters (chapter 2, shape laws); past that, the values belong together in a struct." },
+    .nesting = .{ .code = "MO0304", .category = .laws, .why = "Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function." },
+    .state_fields = .{ .code = "MO0305", .category = .laws, .why = "A process state has at most 12 fields (chapter 2, shape laws); a bigger box is a struct field or a second process." },
+    .rebinding = .{ .code = "MO0306", .category = .laws, .why = "A name bound with = is bound once (chapter 2, honesty laws), so a reader never has to ask which value it holds. A value that changes is a var." },
+    .unused_binding = .{ .code = "MO0307", .category = .laws, .why = "Every binding is read (chapter 2, honesty laws): an unused one is dead code, or a bug where another name was used instead." },
+    .not_exhaustive = .{ .code = "MO0308", .category = .laws, .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash." },
+    .catch_all = .{ .code = "MO0309", .category = .laws, .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later." },
+    .unconsumed = .{ .code = "MO0310", .category = .laws, .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles." },
+    .requires_untested = .{ .code = "MO0311", .category = .laws, .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips." },
+    .default_param = .{ .code = "MO0312", .category = .laws, .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives." },
+    .anon_stored = .{ .code = "MO0313", .category = .laws, .why = "An anonymous function is a call argument only, never stored or returned (chapter 2), so effects never hide in a value." },
+    .var_captured = .{ .code = "MO0314", .category = .laws, .why = "A var is never aliased (chapter 3, values): an anonymous function captures read-only, so it cannot hold a var." },
+    .var_to_process = .{ .code = "MO0315", .category = .laws, .why = "A var is never aliased (chapter 3, values): a process that received one would see a value its owner still changes." },
+    .unsupervised = .{ .code = "MO0316", .category = .laws, .why = "A process not under a supervisor does not compile (chapter 3, processes): every crash has someone to restart it." },
+    .hand_verified = .{ .code = "MO0317", .category = .laws, .why = "The verified: line belongs to the toolchain (chapter 5). Until tier 2 computes and writes it, a verified: line in source was written by hand." },
+    .use_cycle = .{ .code = "MO0318", .category = .laws, .why = "Modules have no import cycles (chapter 2, shape laws), so each module is understood, checked, and cached after the ones it uses." },
 });
 
 // ---- what the checker hands on
@@ -153,10 +191,15 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
     @memset(c.callee, .none);
+    try c.line_starts.append(gpa, 0);
+    for (tree.source, 0..) |ch, k| if (ch == '\n') try c.line_starts.append(gpa, @intCast(k + 1));
     try c.registerPrelude();
     try c.registerModule();
     try c.resolveModule();
+    c.tripped = try gpa.alloc(bool, c.sigs.items.len);
+    @memset(c.tripped, false);
     try c.checkModule();
+    try c.checkModuleLaws();
     return .{
         .tree = tree,
         .pool = c.pool,
@@ -201,6 +244,9 @@ const Frame = struct {
     loop_depth: u32 = 0,
     anon_depth: u32 = 0,
     deferred_start: u32 = 0,
+    in_rejects: bool = false,
+    nest: u32 = 0,
+    nest_reported: bool = false,
 };
 
 const Deferred = struct {
@@ -255,6 +301,12 @@ const Checker = struct {
     /// The one node allowed to be an anonymous function right now: the argument
     /// being checked.
     anon_ok: Index = 0,
+    /// Signatures a test rejects calls directly.
+    tripped: []bool = &.{},
+    /// Byte offset where each line starts.
+    line_starts: std.ArrayList(u32) = .empty,
+    /// Above zero while checking what is sent to a process.
+    process_args: u32 = 0,
 
     // ---- small helpers
 
@@ -335,10 +387,21 @@ const Checker = struct {
     }
 
     fn popScope(c: *Checker, mark: u32) Error!void {
+        for (c.bindings.items[mark..]) |b| {
+            if (b.used or b.kind == .param or b.kind == .inout or b.kind == .state) continue;
+            try c.reportTok(.unused_binding, b.token, try c.print("{s} is bound but never used.", .{b.name}));
+        }
         c.bindings.shrinkRetainingCapacity(mark);
     }
 
     fn bind(c: *Checker, name: []const u8, t: Id, kind: BindKind, token: u32) Error!void {
+        // One name, one binding, across every scope of the function being checked.
+        if (kind == .let or kind == .var_ or kind == .pattern) {
+            for (c.bindings.items[c.frame.scope_base..]) |b| if (std.mem.eql(u8, b.name, name)) {
+                try c.reportTok(.rebinding, token, try c.print("{s} is bound twice in one scope; make it var {s}, or pick a new name.", .{ name, name }));
+                break;
+            };
+        }
         try c.bindings.append(c.gpa, .{ .name = name, .type = t, .kind = kind, .token = token, .anon_depth = c.frame.anon_depth });
     }
 
@@ -592,6 +655,7 @@ const Checker = struct {
                     if (c.decls.items[d].node != it) continue;
                     var ctx: TypeCtx = .{};
                     c.decls.items[d].params = try c.resolveParams(c.spanAt(n.lhs), &ctx);
+                    try c.paramLimit(n.main_token, c.decls.items[d].name, c.decls.items[d].params);
                 },
                 .recipe_decl => {
                     const r = c.tree.extraData(ast.Recipe, n.lhs);
@@ -623,6 +687,7 @@ const Checker = struct {
         try c.params.appendNTimes(c.gpa, undefined, param_nodes.len);
         for (param_nodes, 0..) |p, i| {
             const pn = c.node(p);
+            if (pn.rhs != 0) try c.reportTok(.default_param, pn.main_token, try c.print("{s} has a default value; parameters have no defaults, so pass {s} at the call.", .{ c.text(pn.main_token), c.exprText(pn.rhs) }));
             c.params.items[start + i] = .{ .name = c.text(pn.main_token), .type = try c.resolveType(pn.lhs, ctx), .inout = pn.kind == .param_inout, .node = p };
         }
         return .{ .start = start, .end = @intCast(c.params.items.len) };
@@ -635,7 +700,10 @@ const Checker = struct {
         const data = c.tree.extraData(ast.Process, n.lhs);
         var ctx: TypeCtx = .{};
         c.decls.items[d].params = try c.resolveParams(c.tree.span(data.params_start, data.params_end), &ctx);
+        try c.paramLimit(n.main_token, c.decls.items[d].name, c.decls.items[d].params);
         c.decls.items[d].fields = try c.resolveFields(c.spanOf(c.node(data.state)));
+        const nfields = c.decls.items[d].fields.len();
+        if (nfields > 12) try c.reportTok(.state_fields, n.main_token, try c.print("{s} keeps {d} state fields and the limit is 12; move related fields into a struct or a second process.", .{ c.decls.items[d].name, nfields }));
         const ms = c.tree.span(data.messages_start, data.messages_end);
         const vstart: u32 = @intCast(c.variants.items.len);
         try c.variants.appendNTimes(c.gpa, undefined, ms.len);
@@ -658,6 +726,7 @@ const Checker = struct {
         var gens: std.ArrayList(u32) = .empty;
         var ctx: TypeCtx = .{ .generics = &gens, .self_ok = s.kind == .trait, .recipe = s.kind == .recipe };
         const params = try c.resolveParams(c.tree.span(sig.params_start, sig.params_end), &ctx);
+        try c.paramLimit(n.main_token, s.name, params);
         const ret = try c.resolveType(sig.ret, &ctx);
         for (c.tree.span(sig.bounds_start, sig.bounds_end)) |b| {
             const bn = c.node(b);
@@ -987,7 +1056,8 @@ const Checker = struct {
             try c.popScope(inner);
         }
         if (n.kind == .fn_decl) {
-            const body = c.tree.extraData(ast.Span, n.rhs);
+            const body = c.tree.extraData(ast.FnBody, n.rhs);
+            try c.bodyLimit(n.main_token, s.name, body.open_token, body.end_token);
             _ = try c.blockValue(c.tree.span(body.start, body.end), s.ret);
         }
         try c.popScope(mark);
@@ -1033,6 +1103,7 @@ const Checker = struct {
         }
 
         const update = c.node(data.update);
+        try c.bodyLimit(update.main_token, try c.print("update in {s}", .{decl.name}), update.main_token, update.rhs);
         saved = c.beginFrame(.update, decl.name);
         mark = c.pushScope();
         try c.bindParams(decl.params);
@@ -1077,6 +1148,7 @@ const Checker = struct {
         const n = c.node(it);
         const saved = c.beginFrame(.test_block, c.text(n.main_token));
         c.frame.in_test = true;
+        c.frame.in_rejects = n.kind == .test_rejects;
         const mark = c.pushScope();
         if (n.kind == .property) {
             c.frame.in_property = true;
@@ -1137,6 +1209,357 @@ const Checker = struct {
         }
     }
 
+    // ---- the laws (chapter 2) that are not checked where they happen
+
+    /// The 1-based line of a byte offset.
+    fn lineOf(c: *Checker, offset: u32) u32 {
+        const starts = c.line_starts.items;
+        var lo: usize = 0;
+        var hi: usize = starts.len;
+        while (hi - lo > 1) {
+            const mid = (lo + hi) / 2;
+            if (starts[mid] <= offset) lo = mid else hi = mid;
+        }
+        return @intCast(lo + 1);
+    }
+
+    /// The source of an expression, for a message: from its first token to a `,` or a
+    /// closing delimiter it did not open, a comment, or the end of the line.
+    fn exprText(c: *Checker, i: Index) []const u8 {
+        const src = c.tree.source;
+        const start = c.tree.tokens[c.firstToken(i)].start;
+        var depth: u32 = 0;
+        var in_string = false;
+        var k: usize = start;
+        while (k < src.len) : (k += 1) {
+            const ch = src[k];
+            if (in_string) {
+                if (ch == '\\') k += 1 else if (ch == '"') in_string = false;
+                continue;
+            }
+            switch (ch) {
+                '"' => in_string = true,
+                '(', '[', '{' => depth += 1,
+                ')', ']', '}' => {
+                    if (depth == 0) break;
+                    depth -= 1;
+                },
+                ',' => if (depth == 0) break,
+                '\n', '#' => break,
+                else => {},
+            }
+        }
+        return std.mem.trimEnd(u8, src[start..k], " \t\r");
+    }
+
+    fn pathText(c: *Checker, path: Index) []const u8 {
+        const p = c.node(path);
+        return c.tree.source[c.tree.tokens[p.main_token].start..c.tree.tokens[p.lhs].end];
+    }
+
+    fn paramLimit(c: *Checker, tok: u32, name: []const u8, params: Range) Error!void {
+        if (params.len() > 6) try c.reportTok(.too_many_params, tok, try c.print("{s} takes {d} parameters and the limit is 6; group them in a struct.", .{ name, params.len() }));
+    }
+
+    fn bodyLimit(c: *Checker, tok: u32, name: []const u8, open: u32, end: u32) Error!void {
+        const lines = c.lineOf(c.tree.tokens[end].start) -| c.lineOf(c.tree.tokens[open].start) -| 1;
+        if (lines > 70) try c.reportTok(.body_lines, tok, try c.print("{s} has a body of {d} lines and the limit is 70; split it into named functions.", .{ name, lines }));
+    }
+
+    fn nestEnter(c: *Checker, tok: u32) Error!void {
+        c.frame.nest += 1;
+        if (c.frame.nest > 3 and !c.frame.nest_reported) {
+            c.frame.nest_reported = true;
+            try c.reportTok(.nesting, tok, try c.print("this {s} is nested {d} deep in {s}; the limit is 3, so move the inner block into its own function.", .{ c.text(tok), c.frame.nest, c.frame.name }));
+        }
+    }
+
+    fn useBinding(c: *Checker, b: u32, tok: u32) Error!void {
+        c.bindings.items[b].used = true;
+        const binding = c.bindings.items[b];
+        if (binding.kind != .var_) return;
+        if (binding.anon_depth < c.frame.anon_depth) {
+            try c.reportTok(.var_captured, tok, try c.print("{s} is a var and cannot be captured by the anonymous function; bind a plain name first.", .{binding.name}));
+        } else if (c.process_args > 0) {
+            try c.reportTok(.var_to_process, tok, try c.print("{s} is a var and cannot be sent to a process; bind a plain name first.", .{binding.name}));
+        }
+    }
+
+    fn checkModuleLaws(c: *Checker) Error!void {
+        const src = c.tree.source;
+        var lines: u32 = @intCast(c.line_starts.items.len);
+        if (src.len > 0 and src[src.len - 1] == '\n') lines -= 1;
+        if (lines > 500) try c.report(.file_lines, c.line_starts.items[500], try c.print("this file is {d} lines long and the limit is 500; split it into modules.", .{lines}));
+
+        var module_path: []const u8 = "";
+        for (c.items()) |it| {
+            const n = c.node(it);
+            switch (n.kind) {
+                .module_decl => module_path = c.pathText(n.lhs),
+                // One file sees one module; a driver that loads imports calls useCycle.
+                .use => if (std.mem.eql(u8, c.pathText(n.lhs), module_path)) {
+                    try c.reportTok(.use_cycle, n.main_token, try c.print("{s} uses itself; a module never imports its own path.", .{module_path}));
+                },
+                .verified => try c.reportTok(.hand_verified, n.main_token, "the verified: line was written by hand; delete it and let the toolchain compute it."),
+                else => {},
+            }
+        }
+
+        for (c.sigs.items, 0..) |s, si| {
+            if (s.kind == .trait or c.tripped[si]) continue;
+            const n = c.node(s.node);
+            const sig = c.tree.extraData(ast.Signature, n.lhs);
+            for (c.tree.span(sig.contracts_start, sig.contracts_end)) |k| {
+                const kn = c.node(k);
+                if (kn.kind != .requires) continue;
+                try c.reportTok(.requires_untested, n.main_token, try c.print("{s} has requires {s}, but no test rejects trips it.", .{ s.name, c.exprText(kn.lhs) }));
+                break;
+            }
+        }
+
+        for (c.decls.items) |d| {
+            if (d.kind != .process) continue;
+            var supervised = false;
+            for (c.items()) |it| {
+                const n = c.node(it);
+                if (n.kind != .supervisor_decl) continue;
+                for (c.spanAt(n.rhs)) |ch| {
+                    if (std.mem.eql(u8, c.text(c.node(ch).main_token), d.name)) supervised = true;
+                }
+            }
+            if (!supervised) try c.reportTok(.unsupervised, c.node(d.node).main_token, try c.print("{s} is not a child of any supervisor; add a supervisor with child {s}.", .{ d.name, d.name }));
+        }
+    }
+
+    // ---- exhaustiveness: Maranget's usefulness over the arms without guards
+
+    const Ctor = struct {
+        name: []const u8,
+        kind: enum { variant, some, none, ok, err, tuple, true_, false_ },
+        fields: []const Id = &.{},
+        field_names: []const []const u8 = &.{},
+    };
+
+    fn isWild(c: *Checker, p: Index) bool {
+        if (p == 0) return true;
+        const k = c.node(p).kind;
+        return k == .pat_wildcard or k == .pat_bind;
+    }
+
+    /// Every constructor of a closed type, or null for a type with unbounded values.
+    fn constructors(c: *Checker, t: Id) Error!?[]const Ctor {
+        const b = c.bt(t);
+        var out: std.ArrayList(Ctor) = .empty;
+        switch (b.tag) {
+            .bool => {
+                try out.append(c.gpa, .{ .name = "true", .kind = .true_ });
+                try out.append(c.gpa, .{ .name = "false", .kind = .false_ });
+            },
+            .option => {
+                try out.append(c.gpa, .{ .name = "Some", .kind = .some, .fields = try c.gpa.dupe(Id, &.{b.a}) });
+                try out.append(c.gpa, .{ .name = "None", .kind = .none });
+            },
+            .result => {
+                try out.append(c.gpa, .{ .name = "Ok", .kind = .ok, .fields = try c.gpa.dupe(Id, &.{b.a}) });
+                try out.append(c.gpa, .{ .name = "Error", .kind = .err, .fields = try c.gpa.dupe(Id, &.{b.b}) });
+            },
+            .tuple => try out.append(c.gpa, .{ .name = "", .kind = .tuple, .fields = try c.gpa.dupe(Id, c.pool.elems(b)) }),
+            .decl, .message => {
+                const d = c.decls.items[b.a];
+                const one = [_]Range{d.fields};
+                const ranges: []const Range = switch (d.kind) {
+                    .enum_, .prelude_enum, .process => &.{},
+                    .struct_ => &one,
+                    else => return null,
+                };
+                if (ranges.len == 1) {
+                    try out.append(c.gpa, try c.ctorOf(d.name, d.fields));
+                } else for (d.variants.start..d.variants.end) |v| {
+                    try out.append(c.gpa, try c.ctorOf(c.variants.items[v].name, c.variants.items[v].fields));
+                }
+            },
+            else => return null,
+        }
+        return out.items;
+    }
+
+    fn ctorOf(c: *Checker, name: []const u8, fields: Range) Error!Ctor {
+        const defs = c.fields.items[fields.start..fields.end];
+        const ts = try c.gpa.alloc(Id, defs.len);
+        const names = try c.gpa.alloc([]const u8, defs.len);
+        for (defs, 0..) |f, k| {
+            ts[k] = f.type;
+            names[k] = f.name;
+        }
+        return .{ .name = name, .kind = .variant, .fields = ts, .field_names = names };
+    }
+
+    fn headMatches(c: *Checker, p: Index, k: Ctor) bool {
+        if (c.isWild(p)) return false;
+        const pn = c.node(p);
+        return switch (pn.kind) {
+            .pat_variant, .pat_record => std.mem.eql(u8, c.text(pn.main_token), k.name),
+            .pat_tuple => k.kind == .tuple,
+            .pat_literal => switch (c.tree.tokens[pn.main_token].kind) {
+                .kw_true => k.kind == .true_,
+                .kw_false => k.kind == .false_,
+                else => false,
+            },
+            else => false,
+        };
+    }
+
+    /// The patterns under constructor `k` in `p`, one per field; 0 is a wildcard.
+    fn subPatterns(c: *Checker, p: Index, k: Ctor) Error![]u32 {
+        const out = try c.gpa.alloc(u32, k.fields.len);
+        @memset(out, 0);
+        if (c.isWild(p)) return out;
+        const pn = c.node(p);
+        switch (pn.kind) {
+            .pat_variant => if (out.len == 1) {
+                out[0] = pn.lhs;
+            },
+            .pat_record => for (c.spanOf(pn)) |pf| {
+                const fname = c.text(c.node(pf).main_token);
+                for (k.field_names, 0..) |nm, idx| {
+                    if (std.mem.eql(u8, nm, fname)) out[idx] = c.node(pf).lhs;
+                }
+            },
+            .pat_tuple => {
+                const elems = c.spanOf(pn);
+                if (elems.len == out.len) @memcpy(out, elems);
+            },
+            else => {},
+        }
+        return out;
+    }
+
+    fn defaultRows(c: *Checker, rows: []const []const u32) Error![]const []const u32 {
+        var out: std.ArrayList([]const u32) = .empty;
+        for (rows) |r| if (c.isWild(r[0])) try out.append(c.gpa, r[1..]);
+        return out.items;
+    }
+
+    fn prepend(c: *Checker, head: []const u8, rest: []const []const u8) Error![]const []const u8 {
+        const out = try c.gpa.alloc([]const u8, rest.len + 1);
+        out[0] = head;
+        @memcpy(out[1..], rest);
+        return out;
+    }
+
+    fn renderCtor(c: *Checker, k: Ctor, args: []const []const u8) Error![]const u8 {
+        switch (k.kind) {
+            .true_, .false_, .none => return k.name,
+            .some, .ok, .err => return c.print("{s}({s})", .{ k.name, args[0] }),
+            .tuple, .variant => {
+                if (k.kind == .variant and args.len == 0) return k.name;
+                var aw: std.Io.Writer.Allocating = .init(c.gpa);
+                const w = &aw.writer;
+                w.writeAll(k.name) catch return error.OutOfMemory;
+                w.writeAll("(") catch return error.OutOfMemory;
+                for (args, 0..) |a, idx| {
+                    if (idx > 0) w.writeAll(", ") catch return error.OutOfMemory;
+                    if (k.kind == .variant and args.len > 1) w.print("{s}: ", .{k.field_names[idx]}) catch return error.OutOfMemory;
+                    w.writeAll(a) catch return error.OutOfMemory;
+                }
+                w.writeAll(")") catch return error.OutOfMemory;
+                return aw.toOwnedSlice();
+            },
+        }
+    }
+
+    /// A witness no row matches, one pattern per column, or null when the rows cover
+    /// every value of `tys`.
+    fn uncovered(c: *Checker, rows: []const []const u32, tys: []const Id) Error!?[]const []const u8 {
+        if (tys.len == 0) return if (rows.len == 0) &.{} else null;
+        const ctors = try c.constructors(tys[0]) orelse {
+            const w = try c.uncovered(try c.defaultRows(rows), tys[1..]) orelse return null;
+            return try c.prepend("_", w);
+        };
+        for (ctors) |k| {
+            const present = for (rows) |r| {
+                if (c.headMatches(r[0], k)) break true;
+            } else false;
+            if (present) continue;
+            const w = try c.uncovered(try c.defaultRows(rows), tys[1..]) orelse return null;
+            const blanks = try c.gpa.alloc([]const u8, k.fields.len);
+            @memset(blanks, "_");
+            return try c.prepend(try c.renderCtor(k, blanks), w);
+        }
+        for (ctors) |k| {
+            var spec: std.ArrayList([]const u32) = .empty;
+            for (rows) |r| {
+                if (!c.isWild(r[0]) and !c.headMatches(r[0], k)) continue;
+                const sub = try c.subPatterns(r[0], k);
+                const row = try c.gpa.alloc(u32, sub.len + r.len - 1);
+                @memcpy(row[0..sub.len], sub);
+                @memcpy(row[sub.len..], r[1..]);
+                try spec.append(c.gpa, row);
+            }
+            const sub_tys = try c.gpa.alloc(Id, k.fields.len + tys.len - 1);
+            @memcpy(sub_tys[0..k.fields.len], k.fields);
+            @memcpy(sub_tys[k.fields.len..], tys[1..]);
+            if (try c.uncovered(spec.items, sub_tys)) |w| {
+                return try c.prepend(try c.renderCtor(k, w[0..k.fields.len]), w[k.fields.len..]);
+            }
+        }
+        return null;
+    }
+
+    fn joinAnd(c: *Checker, names: []const []const u8) Error![]const u8 {
+        return switch (names.len) {
+            0 => "",
+            1 => names[0],
+            2 => c.print("{s} and {s}", .{ names[0], names[1] }),
+            else => blk: {
+                const head = try std.mem.join(c.gpa, ", ", names[0 .. names.len - 1]);
+                break :blk c.print("{s}, and {s}", .{ head, names[names.len - 1] });
+            },
+        };
+    }
+
+    fn caseLaws(c: *Checker, s: Index, subject: Id) Error!void {
+        const n = c.node(s);
+        const b = c.bt(subject);
+        if (b.tag == .unknown or b.tag == .variable) return;
+        const arms = c.spanAt(n.rhs);
+        const closed = switch (b.tag) {
+            .option, .result, .message => true,
+            .decl => c.decls.items[b.a].kind == .enum_ or c.decls.items[b.a].kind == .prelude_enum,
+            else => false,
+        };
+        if (closed) {
+            const ctors = (try c.constructors(subject)).?;
+            for (arms) |a| {
+                const pat = c.node(a).lhs;
+                if (!c.isWild(pat)) continue;
+                var hidden: std.ArrayList([]const u8) = .empty;
+                for (ctors) |k| {
+                    const named = for (arms) |other| {
+                        if (other != a and c.headMatches(c.node(other).lhs, k)) break true;
+                    } else false;
+                    if (!named) try hidden.append(c.gpa, k.name);
+                }
+                const arm = c.text(c.node(pat).main_token);
+                const what = if (hidden.items.len == 0)
+                    try c.print("the {s} arm catches no variant of {s}; remove it.", .{ arm, try c.tn(subject) })
+                else
+                    try c.print("the {s} arm hides {s}; name each variant of {s}.", .{ arm, try c.joinAnd(hidden.items), try c.tn(subject) });
+                try c.reportTok(.catch_all, c.node(pat).main_token, what);
+                return;
+            }
+        }
+        var rows: std.ArrayList([]const u32) = .empty;
+        for (arms) |a| {
+            const an = c.node(a);
+            if (c.tree.extraData(ast.Arm, an.rhs).guard != 0) continue;
+            try rows.append(c.gpa, try c.gpa.dupe(u32, &.{an.lhs}));
+        }
+        if (try c.uncovered(rows.items, &.{subject})) |w| {
+            try c.reportTok(.not_exhaustive, n.main_token, try c.print("this case does not cover {s}; add an arm for it.", .{w[0]}));
+        }
+    }
+
     // ---- statements
 
     fn blockStmts(c: *Checker, stmts: []const u32) Error!void {
@@ -1151,6 +1574,11 @@ const Checker = struct {
     }
 
     fn stmtValue(c: *Checker, s: Index, expected: Id) Error!Id {
+        // Where no value is wanted, the last line is one more statement.
+        if (expected == types.none) {
+            try c.stmt(s);
+            return types.none;
+        }
         const n = c.node(s);
         switch (n.kind) {
             .expr_stmt => return c.expr(n.lhs, expected),
@@ -1174,10 +1602,17 @@ const Checker = struct {
     fn stmt(c: *Checker, s: Index) Error!void {
         const n = c.node(s);
         switch (n.kind) {
-            .expr_stmt => _ = try c.expr(n.lhs, types.unknown),
+            .expr_stmt => {
+                const t = try c.expr(n.lhs, types.unknown);
+                const b = c.bt(t);
+                // A test rejects drops its call's value on purpose: the call is meant to trip.
+                if ((b.tag == .result or b.tag == .option) and !c.frame.in_rejects) {
+                    try c.reportNode(.unconsumed, n.lhs, try c.print("the {s} from {s} is dropped; match it with case or pass it up with try.", .{ if (b.tag == .result) "Result" else "Option", c.exprText(n.lhs) }));
+                }
+            },
             .binding => try c.bindingStmt(s),
             .var_binding => {
-                const t = try c.expr(n.lhs, types.unknown);
+                const t = try c.boundValue(s);
                 try c.bind(c.text(n.main_token), t, .var_, n.main_token);
             },
             .assign => try c.assignStmt(s),
@@ -1213,8 +1648,34 @@ const Checker = struct {
                 return;
             }
         }
-        const t = try c.expr(n.lhs, types.unknown);
+        const t = try c.boundValue(s);
         try c.bind(name, t, .let, n.main_token);
+    }
+
+    /// The value of `x = e` or `var x = e`. An anonymous function there is stored.
+    fn boundValue(c: *Checker, s: Index) Error!Id {
+        const n = c.node(s);
+        if (c.node(n.lhs).kind == .anon_fn) {
+            const name = c.text(n.main_token);
+            try c.reportTok(.anon_stored, c.node(n.lhs).main_token, try c.print("an anonymous function is bound to {s}; pass it straight into {s} instead.", .{ name, c.consumerOf(s, name) }));
+            c.anon_ok = n.lhs;
+        }
+        return c.expr(n.lhs, types.unknown);
+    }
+
+    /// The first call after `s` that passes `name` as an argument, to name in a message.
+    fn consumerOf(c: *Checker, s: Index, name: []const u8) []const u8 {
+        for (c.tree.nodes[s + 1 ..]) |call| {
+            if (call.kind != .call and call.kind != .member_call) continue;
+            for (c.spanAt(call.rhs)) |a| {
+                const an = c.node(a);
+                if (an.kind != .name_ref or !std.mem.eql(u8, c.text(an.main_token), name)) continue;
+                if (call.kind == .member_call) return c.text(call.main_token);
+                const callee = c.node(call.lhs);
+                if (callee.kind == .name_ref) return c.text(callee.main_token);
+            }
+        }
+        return "the call that uses it";
     }
 
     fn assignStmt(c: *Checker, s: Index) Error!void {
@@ -1236,8 +1697,12 @@ const Checker = struct {
                     try c.reportTok(.unknown_name, n.main_token, try c.print("there is no {s} in scope", .{name}));
                     return types.unknown;
                 };
+                if (reads) {
+                    try c.useBinding(b, n.main_token);
+                } else if (c.bindings.items[b].kind == .var_ and c.bindings.items[b].anon_depth < c.frame.anon_depth) {
+                    try c.reportTok(.var_captured, n.main_token, try c.print("{s} is a var and cannot be captured by the anonymous function; bind a plain name first.", .{name}));
+                }
                 const binding = &c.bindings.items[b];
-                if (reads) binding.used = true;
                 switch (binding.kind) {
                     .var_, .inout, .state => {},
                     else => try c.reportTok(.not_assignable, n.main_token, try c.print("{s} is not a var, so it cannot be assigned; bind a new name or make it var {s}", .{ name, name })),
@@ -1281,8 +1746,10 @@ const Checker = struct {
         const elem = try c.elementOf(n.lhs, iter);
         const mark = c.pushScope();
         c.frame.loop_depth += 1;
+        try c.nestEnter(c.firstToken(s));
         try c.bind(c.text(n.main_token), elem, .let, n.main_token);
         try c.blockStmts(c.spanAt(n.rhs));
+        c.frame.nest -= 1;
         c.frame.loop_depth -= 1;
         try c.popScope(mark);
     }
@@ -1294,6 +1761,7 @@ const Checker = struct {
         // Names bound by `is` in the condition are in scope for the then-block only.
         const mark = c.pushScope();
         _ = try c.expr(n.lhs, types.bool_);
+        try c.nestEnter(n.main_token);
         const then_mark = c.pushScope();
         const then_stmts = c.tree.span(data.then_start, data.then_end);
         var t: Id = types.none;
@@ -1309,6 +1777,7 @@ const Checker = struct {
             } else try c.blockStmts(else_stmts);
             try c.popScope(else_mark);
         }
+        c.frame.nest -= 1;
         if (value and !has_else) return c.expectType(s, expected, types.none);
         return if (value) t else types.none;
     }
@@ -1320,6 +1789,7 @@ const Checker = struct {
         const subject = try c.expr(n.lhs, types.unknown);
         var result = expected;
         const is_update = mode == .update and c.pool.get(c.pool.resolve(subject)).tag == .message;
+        try c.nestEnter(n.main_token);
         for (c.spanAt(n.rhs)) |a| {
             const an = c.node(a);
             const data = c.tree.extraData(ast.Arm, an.rhs);
@@ -1339,6 +1809,8 @@ const Checker = struct {
             }
             try c.popScope(mark);
         }
+        c.frame.nest -= 1;
+        try c.caseLaws(s, subject);
         return if (mode == .value) result else types.none;
     }
 
@@ -1667,7 +2139,7 @@ const Checker = struct {
         const n = c.node(i);
         const name = c.text(n.main_token);
         if (c.lookup(name)) |b| {
-            c.bindings.items[b].used = true;
+            try c.useBinding(b, n.main_token);
             return c.bindings.items[b].type;
         }
         if (c.fn_names.get(name)) |s| return c.instantiateFn(i, s);
@@ -1904,6 +2376,11 @@ const Checker = struct {
             _ = try c.expr(an.lhs, try c.parseTs(f.type, &env));
         }
         const label = try c.callLabel(i, recv, row.name);
+        const to_process = std.mem.startsWith(u8, row.recv, "Handle");
+        if (to_process) c.process_args += 1;
+        defer if (to_process) {
+            c.process_args -= 1;
+        };
         if (positional.items.len != row.params.len) {
             try c.reportTok(.arity, c.node(i).main_token, try c.print("{s} takes {d} argument{s}, found {d}", .{ label, row.params.len, if (row.params.len == 1) "" else "s", positional.items.len }));
             for (positional.items) |a| _ = try c.argExpr(a, types.unknown);
@@ -1957,7 +2434,9 @@ const Checker = struct {
                     try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no function {s}; a process is started with {s}.start(...)", .{ tname, name, tname }));
                     return types.unknown;
                 }
+                c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
+                c.process_args -= 1;
                 for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Process")) {
                     c.callee[i] = .{ .prelude = @intCast(k) };
                 };
@@ -1992,6 +2471,7 @@ const Checker = struct {
         const inst = try c.instantiate(i, s, self_type);
         try c.positionalArgs(i, s.name, recv, args, s.params, inst.from, inst.to);
         c.callee[i] = .{ .user = si };
+        if (c.frame.in_rejects) c.tripped[si] = true;
         return c.pool.subst(s.ret, inst.from, inst.to);
     }
 
@@ -2198,19 +2678,23 @@ const Checker = struct {
             for (ptypes) |*p| p.* = try c.pool.fresh(false);
             ret = try c.pool.fresh(false);
         }
+        if (c.anon_ok != i) try c.reportTok(.anon_stored, n.main_token, "an anonymous function is used as a value here; pass it straight into a call instead.");
+        const body_stmts = c.tree.span(data.body_start, data.body_end);
+        const block_form = body_stmts.len > 0 and c.lineOf(c.tree.tokens[c.firstToken(body_stmts[0])].start) > c.lineOf(c.tree.tokens[n.main_token].start);
         const saved = c.frame;
         c.frame.kind = .anon;
         c.frame.has_ret = false;
         c.frame.loop_depth = 0;
         c.frame.anon_depth += 1;
         c.frame.result = null;
+        if (block_form) try c.nestEnter(n.main_token);
         const mark = c.pushScope();
         for (names, ptypes) |tok, p| try c.bind(c.text(tok), p, .let, tok);
         _ = try c.blockValue(c.tree.span(data.body_start, data.body_end), ret);
         try c.popScope(mark);
-        const deferred_start = c.frame.deferred_start;
+        const inner_reported = c.frame.nest_reported;
         c.frame = saved;
-        c.frame.deferred_start = deferred_start;
+        c.frame.nest_reported = c.frame.nest_reported or inner_reported;
         // A parameter-count mismatch is already reported; do not report the type again.
         if (exp.tag == .func and exp.b != names.len) return types.unknown;
         return c.pool.func(ptypes, ret);
@@ -2227,6 +2711,44 @@ fn primitive(name: []const u8) ?Id {
         .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
+    return null;
+}
+
+pub const ModuleUses = struct { path: []const u8, uses: []const []const u8 };
+
+/// The first `use` cycle among `modules`: the paths around it, the first repeated at
+/// the end. `mo check` sees one file, so on its own it finds only a module that uses
+/// itself; a driver that loads a module's imports passes every module here.
+pub fn useCycle(gpa: std.mem.Allocator, modules: []const ModuleUses) Error!?[]const []const u8 {
+    const color = try gpa.alloc(u8, modules.len);
+    defer gpa.free(color);
+    @memset(color, 0);
+    var stack: std.ArrayList(usize) = .empty;
+    defer stack.deinit(gpa);
+    for (0..modules.len) |root| {
+        if (color[root] == 0) if (try visitUses(gpa, modules, color, &stack, root)) |cycle| return cycle;
+    }
+    return null;
+}
+
+fn visitUses(gpa: std.mem.Allocator, modules: []const ModuleUses, color: []u8, stack: *std.ArrayList(usize), i: usize) Error!?[]const []const u8 {
+    color[i] = 1;
+    try stack.append(gpa, i);
+    for (modules[i].uses) |u| {
+        const j = for (modules, 0..) |m, k| {
+            if (std.mem.eql(u8, m.path, u)) break k;
+        } else continue;
+        if (color[j] == 1) {
+            const pos = std.mem.indexOfScalar(usize, stack.items, j).?;
+            const out = try gpa.alloc([]const u8, stack.items.len - pos + 1);
+            for (stack.items[pos..], 0..) |k, n| out[n] = modules[k].path;
+            out[out.len - 1] = modules[j].path;
+            return out;
+        }
+        if (color[j] == 0) if (try visitUses(gpa, modules, color, stack, j)) |cycle| return cycle;
+    }
+    _ = stack.pop();
+    color[i] = 2;
     return null;
 }
 
@@ -2379,4 +2901,229 @@ test "assert outside a test and result outside ensures are misplaced" {
         \\  result
         \\end
     , &.{ "MO0214", "MO0214" });
+}
+
+fn expectWhat(src: []const u8, code: []const u8, what: []const u8) !void {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try checkSource(arena_state.allocator(), src);
+    for (found) |d| if (std.mem.eql(u8, d.code, code) and std.mem.eql(u8, d.what, what)) return;
+    std.debug.print("expected {s} \"{s}\", found:\n", .{ code, what });
+    for (found) |d| std.debug.print("  {s}: {s}\n", .{ d.code, d.what });
+    return error.TestExpectedEqual;
+}
+
+test "the shape laws: parameters, body lines, nesting, state fields, file lines" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    try expectCodes(
+        \\module T.Params
+        \\fn f(a: UInt8, b: UInt8, c: UInt8, d: UInt8, e: UInt8, g: UInt8, h: UInt8) : UInt8
+        \\  a + b + c + d + e + g + h
+        \\end
+    , &.{"MO0303"});
+    try expectCodes("module T.Long\nfn f() : UInt8\n" ++ "\n" ** 70 ++ "  1\nend\n", &.{"MO0301"});
+    try expectCodes("module T.Fits\nfn f() : UInt8\n" ++ "\n" ** 69 ++ "  1\nend\n", &.{});
+    try expectCodes(
+        \\module T.Deep
+        \\fn f(a: Bool) : UInt8
+        \\  if a
+        \\    if a
+        \\      if a
+        \\        if a
+        \\          return 1
+        \\        end
+        \\      end
+        \\    end
+        \\  end
+        \\  0
+        \\end
+    , &.{"MO0304"});
+    var state: std.ArrayList(u8) = .empty;
+    try state.appendSlice(arena, "module T.Big\nprocess Big()\n  state\n");
+    for (0..13) |k| try state.print(arena, "    f{d}: UInt8\n", .{k});
+    try state.appendSlice(arena, "  end\n  message Go\n  fn update(state, message)\n    case message\n      Go:\n        state.f0 += 1\n    end\n  end\nend\nsupervisor Top\n  child Big, restart: :always\nend\n");
+    try expectCodes(state.items, &.{"MO0305"});
+    try expectCodes("module T.File\n" ++ "\n" ** 500, &.{"MO0302"});
+}
+
+test "bindings: rebinding, unused, a captured var, a var sent to a process" {
+    try expectWhat(
+        \\module T.Twice
+        \\fn f(a: UInt8) : UInt8
+        \\  b = a
+        \\  b = b + 1
+        \\  b
+        \\end
+    , "MO0306", "b is bound twice in one scope; make it var b, or pick a new name.");
+    try expectWhat(
+        \\module T.Unused
+        \\fn f(a: UInt8) : UInt8
+        \\  b = a
+        \\  a
+        \\end
+    , "MO0307", "b is bound but never used.");
+    try expectCodes(
+        \\module T.Captured
+        \\fn f(xs: List(UInt8)) : List(UInt8)
+        \\  var n = 1
+        \\  n += 1
+        \\  xs.map(fn(x) x + n end)
+        \\end
+    , &.{"MO0314"});
+    try expectCodes(
+        \\module T.Sent
+        \\process P()
+        \\  state
+        \\    n: UInt8
+        \\  end
+        \\  message Add(n: UInt8)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Add(k):
+        \\        state.n += k
+        \\    end
+        \\  end
+        \\end
+        \\supervisor S
+        \\  child P, restart: :always
+        \\end
+        \\test "a var is not sent"
+        \\  var k = 1
+        \\  k += 1
+        \\  p = P.start()
+        \\  p.send(Add(n: k))
+        \\end
+    , &.{"MO0315"});
+}
+
+test "case: a missing variant is named; a catch-all arm on an enum names what it hides" {
+    try expectWhat(
+        \\module T.Missing
+        \\enum E
+        \\  Gone(path: String)
+        \\  Late
+        \\end
+        \\fn f(r: Result(UInt8, E)) : UInt8
+        \\  case r
+        \\    Ok(n): n
+        \\    Error(Gone(_)): 0
+        \\  end
+        \\end
+    , "MO0308", "this case does not cover Error(Late); add an arm for it.");
+    try expectWhat(
+        \\module T.CatchAll
+        \\enum L
+        \\  A
+        \\  B
+        \\  C
+        \\end
+        \\fn f(l: L) : Bool
+        \\  case l
+        \\    A: true
+        \\    _: false
+        \\  end
+        \\end
+    , "MO0309", "the _ arm hides B and C; name each variant of L.");
+    try expectCodes(
+        \\module T.Guards
+        \\fn f(n: UInt8, flag: Bool) : UInt8
+        \\  case flag
+        \\    true if n > 1: 1
+        \\    false: 0
+        \\  end
+        \\end
+    , &.{"MO0308"});
+}
+
+test "values: a dropped Result, a stored or returned anonymous function, a default parameter" {
+    try expectWhat(
+        \\module T.Dropped
+        \\fn g() : Option(UInt8)
+        \\  None
+        \\end
+        \\fn f() : UInt8
+        \\  g()
+        \\  1
+        \\end
+    , "MO0310", "the Option from g() is dropped; match it with case or pass it up with try.");
+    try expectWhat(
+        \\module T.Stored
+        \\fn f(xs: List(UInt8)) : List(UInt8)
+        \\  keep = fn(x) x > 1 end
+        \\  xs.filter(keep)
+        \\end
+    , "MO0313", "an anonymous function is bound to keep; pass it straight into filter instead.");
+    try expectCodes(
+        \\module T.Returned
+        \\fn f() : UInt8
+        \\  [fn(x) x end]
+        \\  1
+        \\end
+    , &.{"MO0313"});
+    try expectWhat(
+        \\module T.Default
+        \\fn f(n: UInt8 = 3) : UInt8
+        \\  n
+        \\end
+    , "MO0312", "n has a default value; parameters have no defaults, so pass 3 at the call.");
+}
+
+test "module laws: requires needs a test rejects, processes need a supervisor, verified: is the toolchain's, no self-use" {
+    try expectWhat(
+        \\module T.Req
+        \\fn f(n: UInt8) : UInt8
+        \\  requires n > 0
+        \\
+        \\  n
+        \\end
+        \\test "calls it, but not as a rejects"
+        \\  assert f(1) == 1
+        \\end
+    , "MO0311", "f has requires n > 0, but no test rejects trips it.");
+    try expectCodes(
+        \\module T.Req
+        \\fn f(n: UInt8) : UInt8
+        \\  requires n > 0
+        \\
+        \\  n
+        \\end
+        \\test rejects "zero"
+        \\  f(0)
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.Alone
+        \\use T.Alone
+        \\process P()
+        \\  state
+        \\    n: UInt8
+        \\  end
+        \\  message Go
+        \\  fn update(state, message)
+        \\    case message
+        \\      Go:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\verified: types
+    , &.{ "MO0318", "MO0317", "MO0316" });
+}
+
+test "a use cycle across modules is found and named" {
+    const gpa = std.testing.allocator;
+    const modules = [_]ModuleUses{
+        .{ .path = "A", .uses = &.{"B"} },
+        .{ .path = "B", .uses = &.{"C"} },
+        .{ .path = "C", .uses = &.{ "D", "A" } },
+        .{ .path = "D", .uses = &.{} },
+    };
+    const cycle = (try useCycle(gpa, &modules)).?;
+    defer gpa.free(cycle);
+    try std.testing.expectEqual(@as(usize, 4), cycle.len);
+    try std.testing.expectEqualStrings("A", cycle[0]);
+    try std.testing.expectEqualStrings("A", cycle[3]);
+    try std.testing.expect(try useCycle(gpa, modules[3..]) == null);
 }

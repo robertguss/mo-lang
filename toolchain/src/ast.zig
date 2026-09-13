@@ -62,7 +62,7 @@ pub const Node = struct {
         type_refined,
 
         // §4 functions and contracts
-        /// name token; lhs extra Signature; rhs extra Span of body statements.
+        /// name token; lhs extra Signature; rhs extra FnBody.
         fn_decl,
         /// A body-less signature (trait, recipe): name token; lhs extra Signature.
         fn_signature,
@@ -194,7 +194,7 @@ pub const Node = struct {
         invariant,
         /// name token; lhs extra Span of field, or none; rhs reply type, or none.
         message_decl,
-        /// `fn update(state, message)`: lhs case_stmt.
+        /// `fn update(state, message)`: lhs case_stmt; rhs its `end` token.
         update_fn,
         /// name token; lhs extra Span of param; rhs extra Span of child.
         supervisor_decl,
@@ -218,6 +218,11 @@ pub const Node = struct {
 };
 
 pub const Span = struct { start: u32, end: u32 };
+
+/// A function body: its statements (first, so extraData(Span) reads them too), the
+/// newline that ends the signature, and the `end` token. The shape laws count the
+/// lines between those two.
+pub const FnBody = struct { start: u32, end: u32, open_token: u32, end_token: u32 };
 
 pub const Signature = struct {
     params_start: u32,
