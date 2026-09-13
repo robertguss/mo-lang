@@ -99,6 +99,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-6|Step 6: main and Mo.Server, brief for the worker]] — main in the language, the real platform over std.Io, mo run, three programs with expected output
 - [[interpreter-step-5|Step 5: the formatter, brief for the worker]] — FORMAT.md rules, mo fmt, the loop rule as MO0501, for _, MO0319, corpus formatted
 - [[interpreter-step-4|Interpreter step 4: processes and supervisors, brief for the worker]] — Mo.Sim scheduler, update as a transaction, invariants, mailbox bounds, supervisors, the refund queue test
 - [[interpreter-step-3|Interpreter step 3: run the tests, brief for the worker]] — refund module joins the corpus, bytecode, VM, tier-2 contracts, test runner, verified line
