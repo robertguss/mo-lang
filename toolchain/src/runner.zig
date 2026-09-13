@@ -186,7 +186,7 @@ fn keep(gpa: std.mem.Allocator, r: contracts.Report) Error!contracts.Report {
 }
 
 /// One line per test: `pass`, `skip`, or `FAIL`, the test, and what happened.
-pub fn writeResult(w: *std.Io.Writer, path: []const u8, source: []const u8, r: Result) std.Io.Writer.Error!void {
+pub fn writeResult(w: *std.Io.Writer, files: []const diag.File, r: Result) std.Io.Writer.Error!void {
     const tag = switch (r.outcome) {
         .passed, .tripped_as_expected => "pass",
         .skipped => "skip",
@@ -209,7 +209,7 @@ pub fn writeResult(w: *std.Io.Writer, path: []const u8, source: []const u8, r: R
                 for (r.generated, 0..) |g, i| try w.print("{s}{s} = {s}", .{ if (i == 0) " with " else ", ", g.name, g.value });
                 try w.writeAll(": ");
             }
-            if (r.report) |report| try writeReport(w, path, source, report) else try w.writeAll(r.note);
+            if (r.report) |report| try writeReport(w, files, report) else try w.writeAll(r.note);
         },
     }
     try w.writeAll("\n");
@@ -218,10 +218,11 @@ pub fn writeResult(w: *std.Io.Writer, path: []const u8, source: []const u8, r: R
 /// A crash as prose: where, what tripped, and the values involved. A crash inside a
 /// process goes on with chapter 3's report: the seed, every message since the process
 /// started, and its state before the last one.
-pub fn writeReport(w: *std.Io.Writer, path: []const u8, source: []const u8, r: contracts.Report) std.Io.Writer.Error!void {
+pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Report) std.Io.Writer.Error!void {
     if (r.at != 0) {
-        const pos = diag.position(source, r.at);
-        try w.print("{s}:{d}:{d}: ", .{ path, pos.line, pos.column });
+        const loc = diag.locate(files, r.at);
+        const pos = diag.position(loc.source, loc.at);
+        try w.print("{s}:{d}:{d}: ", .{ loc.path, pos.line, pos.column });
     }
     switch (r.kind) {
         .assert => try w.print("{s} failed", .{r.clause}),
@@ -340,7 +341,7 @@ test "mo test prints a process crash with its seed, message log, and state befor
     try std.testing.expectEqual(Outcome.failed, r.results[0].outcome);
     var buf: [1024]u8 = undefined;
     var w: std.Io.Writer = .fixed(&buf);
-    try writeResult(&w, "report.mo", src, r.results[0]);
+    try writeResult(&w, &.{.{ .path = "report.mo", .source = src }}, r.results[0]);
     try std.testing.expectEqualStrings(
         \\FAIL  test "too much": report.mo:10:9: overflow in state.n += k; left = 200, right = 100
         \\      in process Meter, seed 1299120131

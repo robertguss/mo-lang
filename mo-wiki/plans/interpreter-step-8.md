@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [stdlib, runtime]
 sources: [examples/GAPS.md, spec/design-v0/06-packages.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 8: the stdlib, brief for the worker
@@ -33,7 +33,9 @@ Program 2 hit nine stdlib gaps and wrote insertion sort, digit tables, and fixed
 
 Every function is deterministic. Everything is a row in `09-stdlib.md` with its signature and one line; the corpus gets one file per group under `examples/stdlib/` with tests.
 
-## Part G: `logstat` rewritten
+## Part G: `logstat` rewritten and a release `mo`
+
+Also: make `zig build` install `mo` built ReleaseSafe by default (Mo's overflow checks are the VM's own; Zig's safety checks stay on), keep a `zig build -Ddebug` for a Debug binary, and record the `logstat` 200k-line wall time before and after (60 s in Debug today).
 
 Replace each workaround in `examples/programs/logstat/` with the stdlib call; the program should lose about a third of its lines. Delete the settled lines from `GAPS.md`. `zig build test` green, corpus test green.
 

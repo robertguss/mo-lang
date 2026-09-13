@@ -1,25 +1,11 @@
 module Logstat.Stats
 expose Top, Count, Tally, Summary, start, add, add_malformed, summarize, rate, per_minute_tenths
 
+use Logstat.Parse{Millis, Record, Status}
+
 intent "Fold records into a tally one at a time, then summarize it: counts, rates, the slowest requests, and the busiest paths."
 
 type Top = UInt64 where value >= 1 and value <= 100
-
-# copy of Logstat.Parse
-type Status = UInt64 where value >= 100 and value <= 599
-
-# copy of Logstat.Parse
-type Millis = UInt64 where value <= 4_294_967_295
-
-# copy of Logstat.Parse
-struct Record
-  at: String
-  seconds: UInt64
-  method: String
-  path: String
-  status: Status
-  ms: Millis
-end
 
 struct Count
   method: String

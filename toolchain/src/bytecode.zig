@@ -53,6 +53,8 @@ pub const Op = enum(u8) {
     variant,
     /// pop a struct, a variant, or a tuple; push its field a
     field,
+    /// push field b of the struct, variant, or tuple in locals[a]
+    load_field,
     /// pop v, then a struct, variant, or tuple; push it with field a set to v
     set_field,
     /// pop a value; push whether it is the variant named constants[a]
@@ -100,6 +102,11 @@ pub const Op = enum(u8) {
     settle,
     /// push the zero value of type a; crash with clauses[b] when the type has none
     zero,
+    /// a loop begins: store where the vm's region stands in locals[a], and 0 in locals[b]
+    mark,
+    /// a loop's safe point: when it has allocated enough since the mark in locals[a], keep
+    /// what the frame's locals reach and free the rest; locals[b] holds what was kept
+    collect,
 };
 
 /// The numbers an arithmetic instruction works in: a sized integer kind, a contract's
@@ -202,7 +209,6 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     @memset(l.fn_of_sig, none);
     for (checked.sigs, 0..) |s, si| {
         if (s.kind != .trait) l.fn_of_sig[si] = try l.reserve();
-        if ((s.kind == .module or s.kind == .recipe) and !l.fn_names.contains(s.name)) try l.fn_names.put(gpa, s.name, @intCast(si));
     }
     const alias_refinements = try gpa.alloc([]const u32, checked.decls.len);
     for (checked.decls, alias_refinements) |d, *refs| {
@@ -288,7 +294,6 @@ const Lower = struct {
     /// Checked decl index → index in `processes`, or `none`.
     process_of: []u32 = &.{},
     fn_of_sig: []u32 = &.{},
-    fn_names: std.StringHashMapUnmanaged(u32) = .empty,
     /// A `where` node → its index in `refinements`, lowered once.
     refinement_of: std.AutoHashMapUnmanaged(Index, u32) = .empty,
     /// An `old(...)` node → the slot its operand was stored in on entry.
@@ -565,7 +570,7 @@ const Lower = struct {
                     cur = n.lhs;
                 },
                 .type_ref => {
-                    const d = l.k.findDecl(l.text(l.node(n.lhs).main_token)) orelse break;
+                    const d = l.k.findDeclAt(n.lhs, l.text(l.node(n.lhs).main_token)) orelse break;
                     const decl = l.k.decls[d];
                     if (decl.kind == .alias and decl.node != 0) try out.appendSlice(l.gpa, try l.refinementsOf(l.node(decl.node).lhs, decl.name));
                     break;
@@ -686,7 +691,7 @@ const Lower = struct {
 
     fn lowerProcess(l: *Lower, it: Index) Error!void {
         const n = l.node(it);
-        const di = l.k.findDecl(l.text(n.main_token)) orelse return;
+        const di = l.k.findDeclAt(it, l.text(n.main_token)) orelse return;
         const d = l.k.decls[di];
         if (d.node != it) return;
         const data = l.tree.extraData(ast.Process, n.lhs);
@@ -761,14 +766,14 @@ const Lower = struct {
 
     fn lowerSupervisor(l: *Lower, it: Index) Error!void {
         const n = l.node(it);
-        const di = l.k.findDecl(l.text(n.main_token)) orelse return;
+        const di = l.k.findDeclAt(it, l.text(n.main_token)) orelse return;
         const d = l.k.decls[di];
         if (d.node != it) return;
         var children: std.ArrayList(Child) = .empty;
         for (l.spanAt(n.rhs)) |ch| {
             const cn = l.node(ch);
             const data = l.tree.extraData(ast.Child, cn.lhs);
-            const pd = l.k.findDecl(l.text(cn.main_token)) orelse continue;
+            const pd = l.k.findDeclAt(ch, l.text(cn.main_token)) orelse continue;
             if (l.process_of[pd] == none) continue;
 
             var b: Builder = .{ .name = d.name };
@@ -931,7 +936,7 @@ const Lower = struct {
         }
     }
 
-    const Loop = struct { list: u32, index: u32, top: u32, exit: u32 };
+    const Loop = struct { list: u32, index: u32, top: u32, exit: u32, mark: u32, kept: u32 };
 
     fn loopBegin(l: *Lower, iter: Index, name_tok: u32) Error!Loop {
         try l.expr(iter);
@@ -940,6 +945,10 @@ const Lower = struct {
         try l.pushConst(.{ .int = 0 });
         const index = l.slot();
         _ = try l.emit(.store, index, 0);
+        // Each iteration ends at a safe point (vm.zig, collect).
+        const mark = l.slot();
+        const kept = l.slot();
+        _ = try l.emit(.mark, mark, kept);
         const top = l.here();
         _ = try l.emit(.load, index, 0);
         _ = try l.emit(.load, list, 0);
@@ -952,7 +961,7 @@ const Lower = struct {
         const binder = if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
         _ = try l.emit(.store, binder, 0);
         try l.b.loops.append(l.gpa, @intCast(l.b.breaks.items.len));
-        return .{ .list = list, .index = index, .top = top, .exit = exit };
+        return .{ .list = list, .index = index, .top = top, .exit = exit, .mark = mark, .kept = kept };
     }
 
     fn loopEnd(l: *Lower, loop: Loop) Error!void {
@@ -960,6 +969,7 @@ const Lower = struct {
         try l.pushConst(.{ .int = 1 });
         _ = try l.emit(.add, @intFromEnum(Num.u64), none);
         _ = try l.emit(.store, loop.index, 0);
+        _ = try l.emit(.collect, loop.mark, loop.kept);
         _ = try l.emit(.jump, loop.top, 0);
         l.patch(loop.exit);
         const start = l.b.loops.pop().?;
@@ -1300,14 +1310,10 @@ const Lower = struct {
             .member => {
                 if (l.k.callee[i] != .none) return l.callNode(i, n.lhs, &.{});
                 const k = l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token)) orelse return l.halt(i, try std.fmt.allocPrint(l.gpa, "{s} is a field of a type tier 2 cannot see", .{l.text(n.main_token)}), false);
-                try l.expr(n.lhs);
-                _ = try l.emit(.field, k, 0);
+                try l.fieldOf(n.lhs, k);
             },
             .member_call => try l.callNode(i, n.lhs, l.spanAt(n.rhs)),
-            .tuple_index => {
-                try l.expr(n.lhs);
-                _ = try l.emit(.field, @intCast(parseInt(l.text(n.main_token))), 0);
-            },
+            .tuple_index => try l.fieldOf(n.lhs, @intCast(parseInt(l.text(n.main_token)))),
             .call => {
                 const callee = l.node(n.lhs);
                 const args = l.spanAt(n.rhs);
@@ -1333,6 +1339,19 @@ const Lower = struct {
         }
     }
 
+    /// Field k of `obj`: one instruction when obj is a local, as `acc.0` in a fold is.
+    fn fieldOf(l: *Lower, obj: Index, k: u32) Error!void {
+        const on = l.node(obj);
+        if (on.kind == .name_ref) {
+            if (try l.resolve(l.text(on.main_token))) |v| {
+                _ = try l.emit(.load_field, v.slot, k);
+                return;
+            }
+        }
+        try l.expr(obj);
+        _ = try l.emit(.field, k, 0);
+    }
+
     fn nameRef(l: *Lower, i: Index) Error!void {
         const n = l.node(i);
         const name = l.text(n.main_token);
@@ -1345,7 +1364,7 @@ const Lower = struct {
             .prelude => |row| return l.preludeCall(i, row, null, &.{}),
             else => {},
         }
-        if (l.fn_names.get(name)) |si| {
+        if (l.k.findFnAt(i, name)) |si| {
             _ = try l.emit(.closure, l.fn_of_sig[si], 0);
             return;
         }

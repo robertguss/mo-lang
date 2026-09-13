@@ -577,7 +577,7 @@ const Printer = struct {
                     _ = try p.tk(.l_brace);
                     for (p.spanAt(n.rhs), 0..) |_, k| {
                         if (k > 0) try p.comma();
-                        _ = try p.tk(.type_name);
+                        _ = try p.tk(null);
                     }
                     _ = try p.tk(.r_brace);
                 }

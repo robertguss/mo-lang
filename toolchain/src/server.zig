@@ -14,6 +14,8 @@ const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
+const Region = @import("region.zig").Region;
+const Memo = @import("memo.zig").Memo;
 
 /// The vm's errors, since the rows build values with it; only OutOfMemory comes from here.
 pub const Error = vm_mod.Error;
@@ -63,6 +65,18 @@ pub const Server = struct {
     pub fn run(s: *Server, program: *const bytecode.Program, main_fn: u32) Error!Ran {
         var machine: Vm = .init(s.gpa, program, 0);
         machine.server = s;
+        // Values live in a region freed at safe points (vm.zig); without the address space
+        // for one, every value lives until the run ends.
+        var values: ?Region = Region.reserve() catch null;
+        defer if (values) |*r| r.release();
+        var scratch: ?Region = Region.reserve() catch null;
+        defer if (scratch) |*r| r.release();
+        if (values != null and scratch != null) machine.useRegions(&values.?, &scratch.?);
+        // Only main's calls run here, and a call reaches the world only through a capability,
+        // so a pure call seen before can be answered from memory (memo.zig).
+        var memo: Memo = try .init(s.gpa, program.functions.len);
+        defer memo.deinit();
+        machine.memo = &memo;
         _ = machine.call(main_fn, &.{.{ .cap = .{ .kind = .platform } }}) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
             // A recipe signature with no body stops main as surely as a crash does.
@@ -78,7 +92,7 @@ pub const Server = struct {
     /// `platform.args`, `.env`, `.stdout`, `.stderr`, `.fs`, `.clock`.
     pub fn part(s: *Server, vm: *Vm, name: []const u8) Error!Value {
         if (std.mem.eql(u8, name, "args")) {
-            const out = try vm.gpa.alloc(Value, s.args.len);
+            const out = try vm.heap.alloc(Value, s.args.len);
             for (s.args, out) |a, *o| o.* = .{ .string = a };
             return .{ .list = out };
         }

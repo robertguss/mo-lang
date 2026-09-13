@@ -1,10 +1,15 @@
 # run: fixture a.log b.log c.log notes.txt
+# run: fixture c.log b.log a.log --top 3 --since 2026-09-12T10:00:10Z --json
+# run: fixture a.log --top 0
+# exit: 2
+# run: fixture notes.txt
+# exit: 1
 module Logstat.Main
 expose Options, Problem, options, analyze, main
 
-use Logstat.Parse
-use Logstat.Report
-use Logstat.Stats{Tally, Top}
+use Logstat.Parse{digits?, number, parse_bytes, slice, timestamp}
+use Logstat.Report{json, text}
+use Logstat.Stats{Tally, Top, add, add_malformed, start, summarize}
 
 intent "Summarize the .log files named in a directory, one file at a time, as text or JSON; a usage error exits 2 and no log file exits 1."
 

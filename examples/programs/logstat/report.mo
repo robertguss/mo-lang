@@ -1,42 +1,10 @@
 module Logstat.Report
 expose text, json, grouped, tenths_text, permille_text
 
+use Logstat.Parse{Record}
+use Logstat.Stats{Count, Summary}
+
 intent "Print a summary as the text report or as one JSON object, and never show a card number in either."
-
-# copy of Logstat.Parse
-type Status = UInt64 where value >= 100 and value <= 599
-
-# copy of Logstat.Parse
-type Millis = UInt64 where value <= 4_294_967_295
-
-# copy of Logstat.Parse
-struct Record
-  at: String
-  seconds: UInt64
-  method: String
-  path: String
-  status: Status
-  ms: Millis
-end
-
-# copy of Logstat.Stats
-struct Count
-  method: String
-  path: String
-  count: UInt64
-end
-
-# copy of Logstat.Stats
-struct Summary
-  requests: UInt64
-  errors: UInt64
-  successes: UInt64
-  malformed: UInt64
-  error_permille: UInt64
-  per_minute_tenths: UInt64
-  slowest: List(Record)
-  busiest: List(Count)
-end
 
 fn text(summary: Summary) : String
   ensures !shows_card?(result)

@@ -59,12 +59,15 @@ pub const Code = enum {
     use_cycle,
     no_zero,
     two_mains,
+    bare_use,
+    not_exposed,
+    no_module,
 };
 
 pub const Entry = struct { code: []const u8, category: diag.Category, why: []const u8 };
 
 pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
-    .unknown_name = .{ .code = "MO0201", .category = .types, .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module or the prelude (toolchain/PRELUDE.md). Nothing else exists." },
+    .unknown_name = .{ .code = "MO0201", .category = .types, .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists." },
     .unknown_type = .{ .code = "MO0202", .category = .types, .why = "A type is a prelude type, a type declared in this module, a name brought in by use, or a one-letter type parameter in a function signature." },
     .expose_undeclared = .{ .code = "MO0203", .category = .types, .why = "The expose line is the module's table of contents; every name on it must be declared in the module (grammar, semantic rules)." },
     .expose_twice = .{ .code = "MO0204", .category = .types, .why = "The expose line names each public declaration exactly once." },
@@ -102,6 +105,9 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .no_zero = .{ .code = "MO0319", .category = .laws, .why = "A state field starts at its type's zero value (0, \"\", [], None, false, and tuples and structs of those) unless it writes = expr (grammar, Session 5). An enum, a Time, a capability, a handle, or a refinement that refuses zero has none, so the process could not start." },
     .use_cycle = .{ .code = "MO0318", .category = .laws, .why = "Modules have no import cycles (chapter 2, shape laws), so each module is understood, checked, and cached after the ones it uses." },
     .two_mains = .{ .code = "MO0320", .category = .laws, .why = "A program has one root, fn main(platform: Platform), in one of its modules (chapter 3, effects; Q18): its capabilities come from one place, and it starts in one place." },
+    .bare_use = .{ .code = "MO0321", .category = .laws, .why = "A use line names what it brings in, types and functions from the module's expose line (grammar, Session 5), so every bare name in a file is found on its own use lines. There are no wildcards and no aliases." },
+    .not_exposed = .{ .code = "MO0322", .category = .laws, .why = "A module's expose line is its whole public surface (grammar §2); everything else is private, so a use names only what the module exposes." },
+    .no_module = .{ .code = "MO0323", .category = .laws, .why = "A program is a tree of files: A.B is a/b.mo under the program root, the nearest directory holding a mo.root file, else the main file's own directory (grammar, Session 5). A use names a module of the program." },
 });
 
 // ---- what the checker hands on
@@ -130,6 +136,8 @@ pub const Decl = struct {
     /// A trait's signatures.
     sigs: Range = .{},
     resolving: bool = false,
+    /// The module that declares it.
+    module: u32 = 0,
 };
 
 pub const Field = struct { name: []const u8, type: Id, node: Index = 0 };
@@ -156,6 +164,24 @@ pub const FnSig = struct {
     ret: Id = types.unknown,
     /// Indices into `generics`.
     generics: Range = .{},
+    /// The module that declares it.
+    module: u32 = 0,
+};
+
+/// One module of a program: its file's items, and the names in scope inside it.
+pub const Module = struct {
+    path: []const u8,
+    /// A run of the root's items.
+    items: Range,
+    /// The module's nodes run from here to the next module's first node.
+    first_node: Index,
+    /// Where the module's file starts in the program's source.
+    base: u32,
+    expose: Index = 0,
+    /// The prelude's types, the module's own, and those its use lines name.
+    type_names: std.StringHashMapUnmanaged(u32) = .empty,
+    /// The module's functions and those its use lines name.
+    fn_names: std.StringHashMapUnmanaged(u32) = .empty,
 };
 
 pub const Generic = struct { name: []const u8, type: Id };
@@ -180,6 +206,8 @@ pub const Checked = struct {
     impls: []const Impl,
     /// `never` bodies that are a flows(...) rule, for caps.zig.
     flows: []const Index,
+    /// Every module, in dependency order; one for a single file.
+    modules: []const Module = &.{},
 
     pub fn typeOf(c: *const Checked, node: Index) Id {
         return c.pool.resolve(c.node_types[node]);
@@ -190,6 +218,28 @@ pub const Checked = struct {
         return null;
     }
 
+    /// The module a node belongs to.
+    pub fn moduleOf(c: *const Checked, node: Index) u32 {
+        var m: u32 = 0;
+        for (c.modules, 0..) |mod, k| {
+            if (node >= mod.first_node) m = @intCast(k);
+        }
+        return m;
+    }
+
+    /// The declaration `name` means where `node` is: private names repeat across modules.
+    pub fn findDeclAt(c: *const Checked, node: Index, name: []const u8) ?u32 {
+        if (c.modules.len == 0) return c.findDecl(name);
+        const d = c.modules[c.moduleOf(node)].type_names.get(name) orelse return null;
+        return if (c.decls[d].kind == .prelude_enum) null else d;
+    }
+
+    /// The module function `name` means where `node` is.
+    pub fn findFnAt(c: *const Checked, node: Index, name: []const u8) ?u32 {
+        if (c.modules.len == 0) return null;
+        return c.modules[c.moduleOf(node)].fn_names.get(name);
+    }
+
     /// The signature of `fn main(platform: Platform)`, the program's root, if the module has one.
     pub fn mainSig(c: *const Checked) ?u32 {
         for (c.sigs, 0..) |s, i| if (s.kind == .module and std.mem.eql(u8, s.name, "main")) return @intCast(i);
@@ -198,6 +248,14 @@ pub const Checked = struct {
 };
 
 pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Checked {
+    return checkProgram(gpa, tree, &.{0}, out);
+}
+
+/// A program's modules in one tree (parser.parseProgram), in dependency order; `bases`
+/// holds where each module's file starts in the source. Every pass runs module by
+/// module, and each module sees the prelude, its own declarations, and what its use
+/// lines name.
+pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, out: *diag.List) Error!Checked {
     var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa) };
     c.node_types = try gpa.alloc(Id, tree.nodes.len);
     @memset(c.node_types, types.unknown);
@@ -206,12 +264,27 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
     try c.line_starts.append(gpa, 0);
     for (tree.source, 0..) |ch, k| if (ch == '\n') try c.line_starts.append(gpa, @intCast(k + 1));
     try c.registerPrelude();
-    try c.registerModule();
-    try c.resolveModule();
+    try c.splitModules(bases);
+    const n = c.modules.items.len;
+    for (0..n) |k| {
+        c.enter(k);
+        try c.registerModule();
+    }
+    for (0..n) |k| {
+        c.enter(k);
+        try c.resolveModule();
+    }
     c.tripped = try gpa.alloc(bool, c.sigs.items.len);
     @memset(c.tripped, false);
-    try c.checkModule();
-    try c.checkModuleLaws();
+    for (0..n) |k| {
+        c.enter(k);
+        try c.checkModule();
+    }
+    for (0..n) |k| {
+        c.enter(k);
+        try c.checkModuleLaws();
+    }
+    c.enter(c.module);
     return .{
         .tree = tree,
         .pool = c.pool,
@@ -224,7 +297,24 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
         .sigs = c.sigs.items,
         .impls = c.impls.items,
         .flows = c.flows.items,
+        .modules = c.modules.items,
     };
+}
+
+/// The file a module path names under the program root: each segment lowercase and
+/// hyphen-separated, so `Basics.AnonymousFunctions` is `basics/anonymous-functions.mo`.
+pub fn moduleFile(gpa: std.mem.Allocator, path: []const u8) Error![]const u8 {
+    var out: std.ArrayList(u8) = .empty;
+    for (path, 0..) |ch, i| {
+        if (ch == '.') {
+            try out.append(gpa, '/');
+        } else if (std.ascii.isUpper(ch)) {
+            if (i > 0 and path[i - 1] != '.') try out.append(gpa, '-');
+            try out.append(gpa, std.ascii.toLower(ch));
+        } else try out.append(gpa, ch);
+    }
+    try out.appendSlice(gpa, ".mo");
+    return out.toOwnedSlice(gpa);
 }
 
 // ---- the checker
@@ -269,7 +359,7 @@ const Deferred = struct {
     trait: u32 = 0,
 };
 
-const Refinement = struct { node: Index, base: Id };
+const Refinement = struct { node: Index, base: Id, module: u32 };
 
 const TypeCtx = struct {
     generics: ?*std.ArrayList(u32) = null,
@@ -304,9 +394,13 @@ const Checker = struct {
     refinements: std.ArrayList(Refinement) = .empty,
     flows: std.ArrayList(Index) = .empty,
 
+    /// The current module's names (Module.type_names and fn_names), swapped by `enter`.
     type_names: std.StringHashMapUnmanaged(u32) = .empty,
     fn_names: std.StringHashMapUnmanaged(u32) = .empty,
     sig_of_node: std.AutoHashMapUnmanaged(Index, u32) = .empty,
+    modules: std.ArrayList(Module) = .empty,
+    /// The module whose items are being registered, resolved, or checked.
+    module: u32 = 0,
 
     bindings: std.ArrayList(Binding) = .empty,
     deferred: std.ArrayList(Deferred) = .empty,
@@ -513,14 +607,16 @@ const Checker = struct {
     fn addDecl(c: *Checker, d: Decl) Error!u32 {
         const i = try c.pool.addDecl(d.name);
         std.debug.assert(i == c.decls.items.len);
-        try c.decls.append(c.gpa, d);
+        var decl = d;
+        decl.module = c.module;
+        try c.decls.append(c.gpa, decl);
         return i;
     }
 
     fn registerPrelude(c: *Checker) Error!void {
         // A module's own declaration of a stand-in's name is the one it means.
         var declared: std.StringHashMapUnmanaged(void) = .empty;
-        for (c.items()) |it| {
+        for (c.allItems()) |it| {
             const n = c.node(it);
             switch (n.kind) {
                 .struct_decl, .enum_decl, .type_decl, .trait_decl, .process_decl, .supervisor_decl, .recipe_decl => try declared.put(c.gpa, c.text(n.main_token), {}),
@@ -576,8 +672,9 @@ const Checker = struct {
             try c.reportTok(.declared_twice, name_tok, try c.print("{s} is already a prelude type", .{name}));
             return null;
         }
-        if (c.type_names.get(name) != null) {
-            try c.reportTok(.declared_twice, name_tok, try c.print("{s} is declared twice in this module", .{name}));
+        if (c.type_names.get(name)) |prev| {
+            const how = if (c.decls.items[prev].module != c.module) "declared here and brought in by a use line" else "declared twice in this module";
+            try c.reportTok(.declared_twice, name_tok, try c.print("{s} is {s}", .{ name, how }));
             return null;
         }
         const d = try c.addDecl(.{ .kind = kind, .name = name, .node = n });
@@ -592,20 +689,114 @@ const Checker = struct {
 
     fn registerFn(c: *Checker, name_tok: u32, n: Index, kind: SigKind, owner: u32) Error!u32 {
         const i: u32 = @intCast(c.sigs.items.len);
-        try c.sigs.append(c.gpa, .{ .name = c.text(name_tok), .node = n, .kind = kind, .owner = owner });
+        try c.sigs.append(c.gpa, .{ .name = c.text(name_tok), .node = n, .kind = kind, .owner = owner, .module = c.module });
         try c.sig_of_node.put(c.gpa, n, i);
         if (kind == .module or kind == .recipe) {
             const gop = try c.fn_names.getOrPut(c.gpa, c.text(name_tok));
             if (gop.found_existing) {
-                try c.reportTok(.declared_twice, name_tok, try c.print("{s} is declared twice in this module", .{c.text(name_tok)}));
+                const how = if (c.sigs.items[gop.value_ptr.*].module != c.module) "declared here and brought in by a use line" else "declared twice in this module";
+                try c.reportTok(.declared_twice, name_tok, try c.print("{s} is {s}", .{ c.text(name_tok), how }));
             } else gop.value_ptr.* = i;
         }
         return i;
     }
 
-    fn items(c: *Checker) []const u32 {
+    /// Every module's items.
+    fn allItems(c: *Checker) []const u32 {
         const root = c.node(0);
         return c.tree.span(root.lhs, root.rhs);
+    }
+
+    /// The current module's items.
+    fn items(c: *Checker) []const u32 {
+        const r = c.modules.items[c.module].items;
+        return c.allItems()[r.start..r.end];
+    }
+
+    /// One Module per module_decl. Each starts with the prelude's type names, which
+    /// registerPrelude left in `type_names`.
+    fn splitModules(c: *Checker, bases: []const u32) Error!void {
+        const all = c.allItems();
+        var start: u32 = 0;
+        var first_node: Index = 1;
+        for (all, 0..) |it, idx| {
+            const last = idx + 1 == all.len;
+            if (!last and c.node(all[idx + 1]).kind != .module_decl) continue;
+            const end: u32 = @intCast(idx + 1);
+            try c.addModule(start, end, first_node, bases);
+            start = end;
+            first_node = it + 1;
+        }
+        if (c.modules.items.len == 0) try c.addModule(0, 0, 1, bases);
+        c.module = 0;
+        c.type_names = c.modules.items[0].type_names;
+        c.fn_names = c.modules.items[0].fn_names;
+    }
+
+    fn addModule(c: *Checker, start: u32, end: u32, first_node: Index, bases: []const u32) Error!void {
+        const k = c.modules.items.len;
+        var m: Module = .{
+            .path = "",
+            .items = .{ .start = start, .end = end },
+            .first_node = first_node,
+            .base = if (k < bases.len) bases[k] else 0,
+            .type_names = try c.type_names.clone(c.gpa),
+        };
+        for (c.allItems()[start..end]) |it| switch (c.node(it).kind) {
+            .module_decl => m.path = c.pathText(c.node(it).lhs),
+            .expose => m.expose = it,
+            else => {},
+        };
+        try c.modules.append(c.gpa, m);
+    }
+
+    /// Makes module `k` the one whose names are in scope, keeping the current one's.
+    fn enter(c: *Checker, k: usize) void {
+        c.modules.items[c.module].type_names = c.type_names;
+        c.modules.items[c.module].fn_names = c.fn_names;
+        c.module = @intCast(k);
+        c.type_names = c.modules.items[k].type_names;
+        c.fn_names = c.modules.items[k].fn_names;
+    }
+
+    /// A use line: each name it lists comes into scope from the module it names, which
+    /// the program holds earlier in dependency order.
+    fn registerUse(c: *Checker, it: Index) Error!void {
+        const n = c.node(it);
+        const path = c.pathText(n.lhs);
+        if (n.rhs == 0) {
+            return c.reportTok(.bare_use, n.main_token, try c.print("use {s} brings nothing into scope; name what you use, as in use {s}{{Type, function}}.", .{ path, path }));
+        }
+        // A module that uses itself is MO0318, in the module laws.
+        if (std.mem.eql(u8, path, c.modules.items[c.module].path)) return;
+        const from: ?Module = for (c.modules.items[0..c.module]) |m| {
+            if (std.mem.eql(u8, m.path, path)) break m;
+        } else null;
+        for (c.spanAt(n.rhs)) |tok| {
+            const name = c.text(tok);
+            const is_type = c.tree.tokens[tok].kind == .type_name;
+            const m = from orelse {
+                // The refund module's stand-ins stand for a module not written yet (PRELUDE.md).
+                if (is_type and prelude.findStandIn(name)) continue;
+                try c.reportTok(.no_module, tok, try c.print("{s} is not a module of this program: there is no {s} under the program root.", .{ path, try moduleFile(c.gpa, path) }));
+                return;
+            };
+            const found = if (is_type) m.type_names.get(name) else m.fn_names.get(name);
+            if (!c.exposes(m, name) or found == null) {
+                try c.reportTok(.not_exposed, tok, try c.print("{s} does not expose {s}; a use names only what is on a module's expose line.", .{ path, name }));
+                continue;
+            }
+            const gop = try (if (is_type) &c.type_names else &c.fn_names).getOrPut(c.gpa, name);
+            if (gop.found_existing and gop.value_ptr.* != found.?) {
+                try c.reportTok(.declared_twice, tok, try c.print("{s} is already in scope, so it cannot also come from {s}", .{ name, path }));
+            } else gop.value_ptr.* = found.?;
+        }
+    }
+
+    fn exposes(c: *Checker, m: Module, name: []const u8) bool {
+        if (m.expose == 0) return false;
+        for (c.spanOf(c.node(m.expose))) |tok| if (std.mem.eql(u8, c.text(tok), name)) return true;
+        return false;
     }
 
     fn registerModule(c: *Checker) Error!void {
@@ -624,15 +815,7 @@ const Checker = struct {
                     for (c.tree.span(r.sigs_start, r.sigs_end)) |s| _ = try c.registerFn(c.node(s).main_token, s, .recipe, 0);
                 },
                 .fn_decl => _ = try c.registerFn(n.main_token, it, .module, 0),
-                .use => if (n.rhs != 0) {
-                    for (c.spanAt(n.rhs)) |tok| {
-                        const name = c.text(tok);
-                        if (c.type_names.get(name) != null) continue;
-                        const d = try c.addDecl(.{ .kind = .opaque_, .name = name, .node = it });
-                        c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
-                        try c.type_names.put(c.gpa, name, d);
-                    }
-                },
+                .use => try c.registerUse(it),
                 else => {},
             }
         }
@@ -651,8 +834,8 @@ const Checker = struct {
                     break;
                 };
                 const declared = if (c.tree.tokens[tok].kind == .type_name)
-                    if (c.type_names.get(name)) |d| c.decls.items[d].kind != .opaque_ and c.decls.items[d].node != 0 else false
-                else if (c.fn_names.get(name)) |s| c.sigs.items[s].kind == .module else false;
+                    if (c.type_names.get(name)) |d| c.decls.items[d].kind != .opaque_ and c.decls.items[d].node != 0 and c.decls.items[d].module == c.module else false
+                else if (c.fn_names.get(name)) |s| c.sigs.items[s].kind == .module and c.sigs.items[s].module == c.module else false;
                 if (!declared) try c.reportTok(.expose_undeclared, tok, try c.print("{s} is exposed but not declared in this module", .{name}));
             }
         }
@@ -881,7 +1064,7 @@ const Checker = struct {
             },
             .type_refined => {
                 const base = try c.resolveType(n.lhs, ctx);
-                try c.refinements.append(c.gpa, .{ .node = i, .base = base });
+                try c.refinements.append(c.gpa, .{ .node = i, .base = base, .module = c.module });
                 return base;
             },
             .type_ref => {},
@@ -1047,7 +1230,7 @@ const Checker = struct {
     // ---- pass 3: bodies
 
     fn checkModule(c: *Checker) Error!void {
-        for (c.refinements.items) |r| try c.checkRefinement(r);
+        for (c.refinements.items) |r| if (r.module == c.module) try c.checkRefinement(r);
         for (c.items()) |it| {
             const n = c.node(it);
             switch (n.kind) {
@@ -1467,10 +1650,13 @@ const Checker = struct {
     }
 
     fn checkModuleLaws(c: *Checker) Error!void {
-        const src = c.tree.source;
-        var lines: u32 = @intCast(c.line_starts.items.len);
-        if (src.len > 0 and src[src.len - 1] == '\n') lines -= 1;
-        if (lines > 500) try c.report(.file_lines, c.line_starts.items[500], try c.print("this file is {d} lines long and the limit is 500; split it into modules.", .{lines}));
+        // Each file keeps its own 500 lines.
+        const m = c.modules.items[c.module];
+        const file_end = if (c.module + 1 < c.modules.items.len) c.modules.items[c.module + 1].base else c.tree.source.len;
+        const file = c.tree.source[m.base..file_end];
+        var lines: u32 = @intCast(std.mem.count(u8, file, "\n"));
+        if (file.len > 0 and file[file.len - 1] != '\n') lines += 1;
+        if (lines > 500) try c.report(.file_lines, c.line_starts.items[c.lineOf(m.base) + 500], try c.print("this file is {d} lines long and the limit is 500; split it into modules.", .{lines}));
 
         var module_path: []const u8 = "";
         for (c.items()) |it| {
@@ -1487,7 +1673,7 @@ const Checker = struct {
         }
 
         for (c.sigs.items, 0..) |s, si| {
-            if (s.kind == .trait or c.tripped[si]) continue;
+            if (s.kind == .trait or c.tripped[si] or s.module != c.module) continue;
             const n = c.node(s.node);
             const sig = c.tree.extraData(ast.Signature, n.lhs);
             for (c.tree.span(sig.contracts_start, sig.contracts_end)) |k| {
@@ -1499,7 +1685,7 @@ const Checker = struct {
         }
 
         for (c.decls.items) |d| {
-            if (d.kind != .process) continue;
+            if (d.kind != .process or d.module != c.module) continue;
             var supervised = false;
             for (c.items()) |it| {
                 const n = c.node(it);
@@ -2178,9 +2364,10 @@ const Checker = struct {
             for (r.start..r.end) |v| if (std.mem.eql(u8, c.variants.items[v].name, name)) return @intCast(v);
             return null;
         }
-        // No expectation to go on: this module's enums and messages first, then the prelude's.
+        // No expectation to go on: the enums and messages in scope first, then the prelude's.
         for (c.variants.items, 0..) |v, i| {
-            if (c.decls.items[v.owner].kind != .prelude_enum and std.mem.eql(u8, v.name, name)) return @intCast(i);
+            const owner = c.decls.items[v.owner];
+            if (owner.kind != .prelude_enum and std.mem.eql(u8, v.name, name) and c.type_names.get(owner.name) == v.owner) return @intCast(i);
         }
         for (c.variants.items, 0..) |v, i| {
             if (std.mem.eql(u8, v.name, name)) return @intCast(i);
@@ -2667,7 +2854,8 @@ const Checker = struct {
         const inst = try c.instantiate(i, s, self_type);
         try c.positionalArgs(i, s.name, recv, args, s.params, inst.from, inst.to);
         c.callee[i] = .{ .user = si };
-        if (c.frame.in_rejects) c.tripped[si] = true;
+        // A requires is tested by a test rejects in its own module.
+        if (c.frame.in_rejects and s.module == c.module) c.tripped[si] = true;
         return c.pool.subst(s.ret, inst.from, inst.to);
     }
 
@@ -3324,7 +3512,7 @@ test "module laws: requires needs a test rejects, processes need a supervisor, v
     , &.{});
     try expectCodes(
         \\module T.Alone
-        \\use T.Alone
+        \\use T.Alone{P}
         \\process P()
         \\  state
         \\    n: UInt8
@@ -3355,6 +3543,114 @@ test "a use cycle across modules is found and named" {
     try std.testing.expectEqualStrings("A", cycle[0]);
     try std.testing.expectEqualStrings("A", cycle[3]);
     try std.testing.expect(try useCycle(gpa, modules[3..]) == null);
+}
+
+/// Checks `files` as one program, joined in the order given.
+fn expectProgramCodes(files: []const []const u8, codes: []const []const u8) !void {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var source: std.ArrayList(u8) = .empty;
+    var bases: std.ArrayList(u32) = .empty;
+    for (files) |f| {
+        try bases.append(arena, @intCast(source.items.len));
+        try source.appendSlice(arena, f);
+        try source.append(arena, '\n');
+    }
+    var diags: diag.List = .empty;
+    const tokens = try lexer.lex(arena, source.items, &diags);
+    const tree = try parser.parseProgram(arena, source.items, tokens, &diags);
+    _ = try checkProgram(arena, tree, bases.items, &diags);
+    var ok = diags.items.len == codes.len;
+    if (ok) for (diags.items, codes) |d, code| {
+        if (!std.mem.eql(u8, d.code, code)) ok = false;
+    };
+    if (!ok) {
+        std.debug.print("expected {d} diagnostics, found:\n", .{codes.len});
+        for (diags.items) |d| std.debug.print("  {s} at {d}: {s}\n", .{ d.code, d.at, d.what });
+        return error.TestUnexpectedResult;
+    }
+}
+
+const lib_module =
+    \\module A.Lib
+    \\expose Pair, Shade, twice
+    \\
+    \\struct Pair
+    \\  x: UInt32
+    \\end
+    \\
+    \\enum Shade
+    \\  Dark
+    \\  Light
+    \\end
+    \\
+    \\fn twice(n: UInt32) : UInt32
+    \\  helper(n) * 2
+    \\end
+    \\
+    \\fn helper(n: UInt32) : UInt32
+    \\  n
+    \\end
+;
+
+test "use brings in the types and functions a module exposes, by bare name" {
+    try expectProgramCodes(&.{ lib_module,
+        \\module A.App
+        \\expose doubled, dark?
+        \\
+        \\use A.Lib{Pair, Shade, twice}
+        \\
+        \\fn doubled(p: Pair) : UInt32
+        \\  twice(helper(p.x))
+        \\end
+        \\
+        \\fn dark?(s: Shade) : Bool
+        \\  s == Dark
+        \\end
+        \\
+        \\# A private name repeats across modules: each module sees its own.
+        \\fn helper(n: UInt32) : UInt32
+        \\  n + 1
+        \\end
+    }, &.{});
+}
+
+test "a private name, a bare use, and a module the program does not hold" {
+    try expectProgramCodes(&.{ lib_module,
+        \\module A.App
+        \\use A.Lib{Pair, helper}
+        \\fn f(p: Pair) : UInt32
+        \\  helper(p.x)
+        \\end
+    }, &.{ "MO0322", "MO0201" });
+    try expectProgramCodes(&.{ lib_module,
+        \\module A.App
+        \\use A.Lib
+        \\fn f() : UInt32
+        \\  twice(2)
+        \\end
+    }, &.{ "MO0321", "MO0201" });
+    try expectProgramCodes(&.{
+        \\module A.App
+        \\use A.Missing{Thing}
+        \\fn f() : UInt32
+        \\  2
+        \\end
+    }, &.{"MO0323"});
+}
+
+test "each file of a program keeps its own 500 lines" {
+    const long = "module A.Long\n" ++ "\n" ** 400;
+    try expectProgramCodes(&.{ long, long }, &.{});
+    try expectProgramCodes(&.{ long, "module A.Longer\n" ++ "\n" ** 500 }, &.{"MO0302"});
+}
+
+test "a module path names its file under the program root" {
+    const gpa = std.testing.allocator;
+    const file = try moduleFile(gpa, "Basics.AnonymousFunctions");
+    defer gpa.free(file);
+    try std.testing.expectEqualStrings("basics/anonymous-functions.mo", file);
 }
 
 fn countCode(src: []const u8, code: []const u8) !usize {

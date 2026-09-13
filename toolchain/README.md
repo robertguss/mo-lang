@@ -3,7 +3,8 @@
 The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolchain.md`: interpreter first, C via Zig for release later, a native backend only if a real program demands it. The milestone is `mo-wiki/spec/design-v0/08-milestone.md`: lex, parse, typecheck, and run `examples/payments/refund.mo` with its tests, contracts at tier 2, `rejects` tests tripping, the `verified:` line computed.
 
 ```
-zig build              → zig-out/bin/mo         mo check|test <file.mo> [--json]
+zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
+                                                mo test [--all] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo fmt [--check | --stdout] <file.mo>
 zig build test         → every stage's tests + the corpus test over ../examples
@@ -26,6 +27,8 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/loops.zig` | MO0501: a `for` with a pure body | ch. 4 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |
+| `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
+| `src/memo.zig` | `mo run` remembers a pure call it has seen: no capability in, so equal arguments give an equal result | ch. 3, 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |
@@ -33,6 +36,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/diag.zig` | structured diagnostics, no warnings | ch. 5 |
 | `src/verified.zig` | the `verified:` line | ch. 5 |
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |
+| `src/program.zig` | a program: the file given and every module it uses, by path under the `mo.root` root, in dependency order | grammar, Session 5 |
 | `src/fmt.zig` | `mo fmt`: the tree printed in its one shape (`FORMAT.md` is the rule table) | ch. 2, 4 |
 | `src/diff.zig` | the unified diff `mo fmt --check` prints | |
 | `src/corpus.zig` | the corpus test: `examples/` passes, `examples/rejects/` is rejected | |

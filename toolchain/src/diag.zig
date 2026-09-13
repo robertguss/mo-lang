@@ -24,6 +24,21 @@ pub const Record = struct {
 
 pub const List = std.ArrayList(Record);
 
+/// One file of a program, and where it starts in the program's joined source.
+pub const File = struct { path: []const u8, source: []const u8, base: u32 = 0 };
+
+pub const Located = struct { path: []const u8, source: []const u8, at: u32 };
+
+/// The file an offset into a program's joined source falls in, and the offset in it.
+pub fn locate(files: []const File, at: u32) Located {
+    var f = files[0];
+    for (files[1..]) |next| {
+        if (next.base > at) break;
+        f = next;
+    }
+    return .{ .path = f.path, .source = f.source, .at = at - f.base };
+}
+
 pub const Position = struct { line: usize, column: usize, line_start: usize, line_end: usize };
 
 /// The 1-based line and column of a byte offset, and the bounds of its line.

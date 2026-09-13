@@ -70,7 +70,17 @@ const expected_what = blk: {
 };
 
 pub fn parse(gpa: std.mem.Allocator, source: []const u8, tokens: []const token.Token, diags: *diag.List) Error!ast.Tree {
-    var p: Parser = .{ .gpa = gpa, .source = source, .diags = diags };
+    return parseModules(gpa, source, tokens, diags, false);
+}
+
+/// A program's files joined into one source, each a whole module: one root whose items
+/// are every module's, in order. Each file parses alone first, so this finds nothing new.
+pub fn parseProgram(gpa: std.mem.Allocator, source: []const u8, tokens: []const token.Token, diags: *diag.List) Error!ast.Tree {
+    return parseModules(gpa, source, tokens, diags, true);
+}
+
+fn parseModules(gpa: std.mem.Allocator, source: []const u8, tokens: []const token.Token, diags: *diag.List, program: bool) Error!ast.Tree {
+    var p: Parser = .{ .gpa = gpa, .source = source, .diags = diags, .program = program };
     defer p.scratch.deinit(gpa);
     errdefer {
         p.toks.deinit(gpa);
@@ -99,6 +109,8 @@ const Parser = struct {
     extra: std.ArrayList(u32) = .empty,
     /// Children collect here, then move into `extra` as one span.
     scratch: std.ArrayList(u32) = .empty,
+    /// More than one module may follow another.
+    program: bool = false,
 
     // ---- cursor
 
@@ -194,15 +206,19 @@ const Parser = struct {
 
     fn parseModule(p: *Parser) Error!void {
         const top = p.scratch.items.len;
-        p.skipNewlines();
-        try p.push(try p.parseModuleDecl());
-        if (p.peek() == .kw_expose) try p.push(try p.parseExpose());
-        while (p.peek() == .kw_use) try p.push(try p.parseUse());
-        if (p.peek() == .kw_intent) try p.push(try p.parseIntent());
-        while (p.peek() == .kw_never) try p.push(try p.parseNever());
-        while (isDeclStart(p.peek())) try p.push(try p.parseDecl());
-        while (p.peek() == .kw_test or p.peek() == .kw_property) try p.push(try p.parseTest());
-        if (p.peek() == .kw_verified) try p.push(try p.parseVerified());
+        while (true) {
+            p.skipNewlines();
+            try p.push(try p.parseModuleDecl());
+            if (p.peek() == .kw_expose) try p.push(try p.parseExpose());
+            while (p.peek() == .kw_use) try p.push(try p.parseUse());
+            if (p.peek() == .kw_intent) try p.push(try p.parseIntent());
+            while (p.peek() == .kw_never) try p.push(try p.parseNever());
+            while (isDeclStart(p.peek())) try p.push(try p.parseDecl());
+            while (p.peek() == .kw_test or p.peek() == .kw_property) try p.push(try p.parseTest());
+            if (p.peek() == .kw_verified) try p.push(try p.parseVerified());
+            // A program's files, joined in dependency order, are one module after another.
+            if (!p.program or p.peek() != .kw_module) break;
+        }
         if (p.peek() != .eof) {
             if (isDeclStart(p.peek())) return p.fail("MO0105", "a declaration after the tests", why_order);
             return p.fail("MO0105", "expected a declaration, a test, or the end of the file", why_order);
@@ -250,7 +266,10 @@ const Parser = struct {
         if (p.eat(.l_brace)) |_| {
             const top = p.scratch.items.len;
             while (true) {
-                try p.push(try p.expect(.type_name));
+                switch (p.peek()) {
+                    .ident, .type_name => try p.push(p.next()),
+                    else => return p.fail("MO0101", "expected a type or function name to use", why_token),
+                }
                 if (p.eat(.comma) == null) break;
             }
             _ = try p.expect(.r_brace);
