@@ -116,6 +116,13 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | The VM tracks unique ownership so `push` on an unaliased `var` list is in place (Perceus-lite, chapter 7) | Fable | provisional | step 7's numbers |
 | The stdlib table in `09-stdlib.md` is the worker's one wiki write; `sort_by` takes a key function because function types cannot be named; maps keep insertion order; no map literal yet | Fable | provisional | step 8 |
 | Interpreter speed target for a log line: under 50 µs before optimizing further | Fable | provisional | step 7 |
+| Step 7 accepted: `use` imports functions, program root, multi-file corpus programs, `push` in place, 39 µs per log line in ReleaseFast; 67 minutes | Fable | — | program 3 |
+| `push` grows in place when the list ends where its buffer's last push stopped; older copies keep their length (no unique-owner bit needed under the loop rule) | Fable, from Opus's default | provisional | program 3 |
+| Under `mo run`, values live in a region cleaned at safe points (return, loop iteration, combinator step); `mo test` keeps one arena per test | Fable, from Opus's default | provisional | program 3 |
+| Under `mo run`, a pure call (no capability, no `inout`) is memoized on equal arguments, cache capped at 16 MiB, contract trips never cached | Fable, from Opus's default | provisional, watch closely | program 3; revisit if any semantic surprise appears |
+| A `# exit:` line after a `# run:` line gives the expected exit code; stderr is not compared | Fable, from Opus's default | provisional | — |
+| `MO0311` counts only `rejects` tests in the function's own module | Fable, from Opus's default | provisional | program 3 |
+| `zig build` should install `mo` as ReleaseSafe by default: Mo's own overflow checks live in the VM (step 8 item) | Fable | provisional | step 8 |
 
 ## Related
 - [[session-05]]

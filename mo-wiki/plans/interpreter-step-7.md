@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [compiler, runtime, performance]
 sources: [examples/programs/logstat/TOOLCHAIN-BUGS.md, spec/design-v0/07-toolchain.md]
-status: in-progress
+status: done
 ---
 
 # Step 7: programs of many modules, and the runtime that can hold them

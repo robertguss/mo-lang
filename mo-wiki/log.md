@@ -187,3 +187,6 @@
 
 ## [2026-09-13] session | Overnight: program 2 and the control run done; step 7 briefed
 - Mo logstat verified with the file law lifted (four modules, tests, text and JSON match); Go and Python verified with their check.sh and tests. Control branches merged into session-05. Result table on plans/control-run.md. Three toolchain bugs → plans/interpreter-step-7.md (use imports functions, program root, multi-file corpus programs, push in place, speed); nine gaps → plans/interpreter-step-8.md (the stdlib). Grammar: use production changed. Six decision rows. Merged to main.
+
+## [2026-09-13] session | Overnight: step 7 accepted, merged; step 8 started
+- Fable verified: 43 logstat tests from four files, text and JSON match, 200k pushes 0.15 s / 59 MB, 200k-line log 60 s in Debug at 440 MB bounded. Seven decision rows (memoization flagged "watch closely"). Merged to main. Step 8 (stdlib, plus ReleaseSafe default) to a fresh session.
