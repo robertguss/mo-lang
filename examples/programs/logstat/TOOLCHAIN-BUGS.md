@@ -46,3 +46,14 @@ Workaround: `check.sh` joins the four modules into one file (declarations in dep
 `corpus.zig` treats every `.mo` under `programs/` as a program: its first line must be `# run:`, its output is `<name>.expected`, and the test expects exactly 3 programs (`expectEqual(@as(u32, 3), programs)`). `parse.mo`, `stats.mo`, and `report.mo` have no `main` and no `# run:` line, and `main.mo` cannot run alone (bug 1), so `zig build test` fails on `examples/programs/logstat/` for four reasons at once.
 
 Workaround: the program-level check is the shell line in `examples/README.md`, `examples/programs/logstat/check.sh`.
+
+## 3. MO0302 says "split it into modules", which bug 1 makes impossible, so no program over 500 lines can run
+
+A file of 503 lines with a `main`:
+
+```
+long.mo:501:1: MO0302 this file is 503 lines long and the limit is 500; split it into modules.
+  why: A file is at most 500 lines (chapter 2, shape laws), so a module is read in one sitting. The fix is a second module.
+```
+
+The law is right for a module, and the fix it names does not exist: a second module cannot be loaded (bug 1). Together they cap a runnable program at 500 lines. logstat's declarations alone are about 600 lines across four modules before any test, so the joined file of bug 1's workaround is refused too.
