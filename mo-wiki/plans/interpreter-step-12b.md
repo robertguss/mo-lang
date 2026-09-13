@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, verification, laws]
 sources: [decisions/decision-log.md, spec/design-v0/02-laws.md, spec/design-v0/05-verification.md]
-status: in-progress
+status: done
 ---
 
 # Step 12b: two ratified defaults, undone

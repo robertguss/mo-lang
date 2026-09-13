@@ -208,3 +208,6 @@
 
 ## [2026-09-13] session | Morning: step 12 accepted, merged; step 12b started
 - Fable verified: suite green (kv in the corpus by discovery), kv keys survive a restart, 50k SETs → 19 MB resident, map-100k 47 ms, kv-10k-get 512 ms. Six decision rows. Merged to main. Step 12b (memoization out, never on every test) to a fresh session.
+
+## [2026-09-13] session | Morning: step 12b accepted, merged; step 13 (C backend) started
+- Fable verified: suite green, never-trips.mo trips without --sim, memo.zig gone, logstat-4k 80 ms. Two rows marked overturned, two added. Merged to main. C backend to a fresh session.
