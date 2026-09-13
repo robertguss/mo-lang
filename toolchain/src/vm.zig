@@ -262,7 +262,11 @@ pub const Vm = struct {
                     const elems = try vm.take(inst.a);
                     try vm.push(if (inst.op == .list) .{ .list = elems } else .{ .tuple = elems });
                 },
-                .record => try vm.push(.{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } }),
+                .record => {
+                    const v: Value = .{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } };
+                    try vm.produced(v);
+                    try vm.push(v);
+                },
                 .variant => try vm.push(.{ .variant = .{ .name = vm.program.constants[inst.a].string, .fields = try vm.take(inst.b) } }),
                 .field => try vm.push(fieldsOf(vm.pop())[inst.a]),
                 .load_field => try vm.push(fieldsOf(locals[inst.a])[inst.b]),
@@ -272,12 +276,14 @@ pub const Vm = struct {
                     const fields = try vm.allocValues(fieldsOf(obj).len);
                     @memcpy(fields, fieldsOf(obj));
                     fields[inst.a] = v;
-                    try vm.push(switch (obj) {
+                    const changed: Value = switch (obj) {
                         .record => |r| .{ .record = .{ .decl = r.decl, .fields = fields } },
                         .variant => |r| .{ .variant = .{ .name = r.name, .fields = fields } },
                         .tuple => .{ .tuple = fields },
                         else => unreachable,
-                    });
+                    };
+                    if (changed == .record) try vm.produced(changed);
+                    try vm.push(changed);
                 },
                 .is_variant => {
                     const v = vm.pop();
@@ -379,6 +385,12 @@ pub const Vm = struct {
                     try vm.push(try (try vm.simulator()).ask(to, message, within));
                 },
                 .settle => if (vm.sim) |s| try s.settle(),
+                .all => try vm.push(.{ .list = if (vm.sim) |s| s.all(inst.a) else &.{} }),
+                .trip => {
+                    const broken = vm.pop().bool;
+                    const values = try vm.take(inst.b);
+                    if (broken) return vm.tripNever(inst.a, values);
+                },
                 .zero => try vm.push(try vm.zero(inst.a) orelse return vm.crash(inst.b, f, locals, &.{})),
             }
         }
@@ -599,6 +611,23 @@ pub const Vm = struct {
         try values.appendSlice(vm.gpa, extra);
         vm.report = .{ .kind = c.kind, .clause = c.text, .within = c.within, .at = c.at, .values = values.items };
         return error.Crash;
+    }
+
+    /// A never's body was true: the report names each value its generators gave.
+    fn tripNever(vm: *Vm, clause_index: u32, values: []const Value) Error {
+        const never = for (vm.program.nevers) |n| {
+            if (n.clause == clause_index) break n;
+        } else unreachable;
+        const involved = try vm.gpa.alloc(contracts.Involved, values.len);
+        for (values, never.names, involved) |v, name, *o| o.* = .{ .name = name, .value = try vm.render(v) };
+        const c = vm.program.clauses[clause_index];
+        vm.report = .{ .kind = c.kind, .clause = c.text, .within = c.within, .at = c.at, .values = involved };
+        return error.Crash;
+    }
+
+    /// A struct value the run made, kept for a never's `T.all` (sim.zig).
+    fn produced(vm: *Vm, v: Value) Error!void {
+        if (vm.sim) |s| if (s.records) try s.record(v);
     }
 
     fn crashWith(vm: *Vm, kind: contracts.Kind, clause_index: u32, values: []const Value) Error {
@@ -829,6 +858,8 @@ pub const Vm = struct {
                 try s.read(vm, a[0].cap, a[1].string, a[2].duration)
             else if (a[0].cap.delay > a[2].duration)
                 try vm.variant("Error", &.{try vm.variant("Timeout", &.{})})
+            else if (try vm.fixtureFault(true, a[1].string, a[2].duration)) |failed|
+                failed
             else
                 try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = a[1].string }})}),
             .fs_narrow => if (vm.server) |s| try s.narrow(a[0].cap, row.name, if (row.params.len == 1) a[1].string else "") else a[0],
@@ -840,15 +871,19 @@ pub const Vm = struct {
             .events_fixture => .{ .cap = .{ .kind = .events } },
             .ledger_fixture => .{ .cap = .{ .kind = .ledger } },
             // A fixture Ledger finds every id as an unrefunded charge of 10_000 captured at
-            // Time.fixture(), and every save succeeds.
-            .ledger_call => if (std.mem.eql(u8, row.name, "find_charge")) blk: {
+            // Time.fixture(), and every save succeeds, unless a seeded run's fault says not.
+            .ledger_call => if (try vm.fixtureFault(false, "", a[a.len - 1].duration)) |failed|
+                failed
+            else if (std.mem.eql(u8, row.name, "find_charge")) blk: {
                 const decl = vm.checked().findDecl("Charge").?;
                 const fields = try vm.heap.alloc(Value, 4);
                 fields[0] = a[1];
                 fields[1] = .{ .time = fixture_time };
                 fields[2] = .{ .int = 10_000 };
                 fields[3] = .{ .bool = false };
-                break :blk try vm.variant("Ok", &.{.{ .record = .{ .decl = decl, .fields = fields } }});
+                const charge: Value = .{ .record = .{ .decl = decl, .fields = fields } };
+                try vm.produced(charge);
+                break :blk try vm.variant("Ok", &.{charge});
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
                 const decl = vm.checked().findDecl("Charge").?;
@@ -857,7 +892,9 @@ pub const Vm = struct {
                 fields[1] = if (row.named.len == 2) a[0] else .{ .time = fixture_time };
                 fields[2] = a[row.named.len - 1];
                 fields[3] = .{ .bool = false };
-                break :blk .{ .record = .{ .decl = decl, .fields = fields } };
+                const charge: Value = .{ .record = .{ .decl = decl, .fields = fields } };
+                try vm.produced(charge);
+                break :blk charge;
             },
             .charge_refunded => a[0].record.fields[3],
             .money_cents => a[0],
@@ -890,6 +927,16 @@ pub const Vm = struct {
             },
         };
         try vm.push(result);
+    }
+
+    /// A fixture call in a seeded run with faults (sim.zig): the error it fails with, or
+    /// null when it answers as the fixture does. `can_miss`: the call names a path.
+    pub fn fixtureFault(vm: *Vm, can_miss: bool, path: []const u8, within: i64) Error!?Value {
+        const s = vm.sim orelse return null;
+        return switch (s.fault(can_miss, within) orelse return null) {
+            .timeout => try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}),
+            .missing => try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})}),
+        };
     }
 
     pub fn variant(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {

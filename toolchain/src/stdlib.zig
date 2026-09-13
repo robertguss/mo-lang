@@ -764,6 +764,7 @@ fn files(vm: *Vm, which: Row, a: []const Value) Error!Value {
     const path: []const u8 = if (which == .fs_list) "." else a[1].string;
     const s = vm.server orelse {
         if (fs.delay > within) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+        if (try vm.fixtureFault(which != .fs_list, path, within)) |failed| return failed;
         if (which == .fs_list) return vm.variant("Ok", &.{.{ .list = &.{} }});
         return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
     };

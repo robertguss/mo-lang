@@ -103,6 +103,11 @@ pub const Op = enum(u8) {
     ask,
     /// deliver waiting messages, in start order, until every mailbox is empty
     settle,
+    /// push the values of struct decl a the run produced, as a list (a never's `T.all`)
+    all,
+    /// pop a Bool, then b values; crash with clauses[a], a never's, naming the values by
+    /// its generators, when the Bool is true
+    trip,
     /// push the zero value of type a; crash with clauses[b] when the type has none
     zero,
     /// a loop begins: store where the vm's region stands in locals[a], and 0 in locals[b]
@@ -180,6 +185,10 @@ pub const Supervisor = struct { name: []const u8, decl: u32, children: []const C
 
 pub const Test = struct { kind: TestKind, name: []const u8, function: u32, at: u32 };
 
+/// A `never` over `T.all`: `function` takes nothing, walks its generators over what a
+/// seeded run produced, and trips `clause` naming each generated value by `names`.
+pub const Never = struct { function: u32, clause: u32, names: []const []const u8 };
+
 pub const Program = struct {
     checked: check.Checked,
     functions: []const Function,
@@ -193,6 +202,9 @@ pub const Program = struct {
     alias_refinements: []const []const u32,
     processes: []const Process = &.{},
     supervisors: []const Supervisor = &.{},
+    nevers: []const Never = &.{},
+    /// The struct decls some never reads with `T.all`: the values a seeded run keeps.
+    never_decls: []const u32 = &.{},
 
     pub fn findFunction(p: *const Program, name: []const u8) ?u32 {
         for (p.checked.sigs, 0..) |s, si| {
@@ -233,6 +245,7 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         switch (n.kind) {
             .process_decl => try l.lowerProcess(it),
             .supervisor_decl => try l.lowerSupervisor(it),
+            .never => try l.lowerNever(it),
             else => {},
         }
     }
@@ -258,6 +271,8 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         .alias_refinements = alias_refinements,
         .processes = l.processes.items,
         .supervisors = l.supervisors.items,
+        .nevers = l.nevers.items,
+        .never_decls = l.never_decls.items,
     };
 }
 
@@ -298,6 +313,8 @@ const Lower = struct {
     tests: std.ArrayList(Test) = .empty,
     processes: std.ArrayList(Process) = .empty,
     supervisors: std.ArrayList(Supervisor) = .empty,
+    nevers: std.ArrayList(Never) = .empty,
+    never_decls: std.ArrayList(u32) = .empty,
     /// Checked decl index → index in `processes`, or `none`.
     process_of: []u32 = &.{},
     fn_of_sig: []u32 = &.{},
@@ -686,6 +703,59 @@ const Lower = struct {
         }
         const loop = try l.loopBegin(g.lhs, g.main_token);
         try l.generators(gens[1..], data);
+        try l.loopEnd(loop);
+    }
+
+    /// A `never` whose body walks generators (`for a in Refund.all, ...`): a function of
+    /// nothing that the end of a seeded run calls, and that trips the never's clause on
+    /// the first values its guard admits and its body is true for. A `flows` rule is
+    /// tier 1's (caps.zig) and lowers to nothing.
+    fn lowerNever(l: *Lower, it: Index) Error!void {
+        const n = l.node(it);
+        const body = l.node(n.rhs);
+        if (body.kind != .comprehension) return;
+        const quoted = l.text(n.lhs);
+        var b: Builder = .{ .name = quoted[1 .. quoted.len - 1], .contract = true };
+        l.b = &b;
+        const fi = try l.reserve();
+        b.result = l.slot();
+        const cl = try l.clause(.never, n.main_token);
+        const data = l.tree.extraData(ast.Comprehension, body.lhs);
+        const gens = l.tree.span(data.gens_start, data.gens_end);
+        var names: std.ArrayList([]const u8) = .empty;
+        for (gens) |g| {
+            const tok = l.node(g).main_token;
+            if (l.tree.tokens[tok].kind != .underscore) try names.append(l.gpa, l.text(tok));
+        }
+        var binders: std.ArrayList(u32) = .empty;
+        try l.neverGenerators(gens, data, cl, &binders);
+        try l.pushConst(.none);
+        _ = try l.emit(.ret, 0, 0);
+        l.functions.items[fi] = try l.finish(&b);
+        try l.nevers.append(l.gpa, .{ .function = fi, .clause = cl, .names = names.items });
+    }
+
+    /// One loop per generator; innermost, the guard, then the generated values and the
+    /// body's Bool for `trip`.
+    fn neverGenerators(l: *Lower, gens: []const u32, data: ast.Comprehension, cl: u32, binders: *std.ArrayList(u32)) Error!void {
+        if (gens.len == 0) {
+            var skip: ?u32 = null;
+            if (data.guard != 0) {
+                try l.expr(data.guard);
+                skip = try l.emit(.jump_if_false, 0, 0);
+            }
+            for (binders.items) |s| _ = try l.emit(.load, s, 0);
+            try l.blockValue(l.tree.span(data.body_start, data.body_end));
+            _ = try l.emit(.trip, cl, @intCast(binders.items.len));
+            if (skip) |j| l.patch(j);
+            return;
+        }
+        const g = l.node(gens[0]);
+        const loop = try l.loopBegin(g.lhs, g.main_token);
+        const named = l.tree.tokens[g.main_token].kind != .underscore;
+        if (named) try binders.append(l.gpa, l.b.names.items[l.b.names.items.len - 1].slot);
+        try l.neverGenerators(gens[1..], data, cl, binders);
+        if (named) _ = binders.pop();
         try l.loopEnd(loop);
     }
 
@@ -1447,7 +1517,16 @@ const Lower = struct {
             _ = try l.emit(.ask, 0, 0);
             return;
         }
-        if (row.only == .never) return l.halt(i, "", false);
+        if (row.only == .never) {
+            // `T.all` of a struct T: the values the run produced. An enum's values do not
+            // carry their type, so they are not kept.
+            const elem = l.baseType(l.baseType(l.typeOf(i)).a);
+            const is_struct = elem.tag == .decl and l.k.decls[elem.a].kind == .struct_;
+            if (!std.mem.eql(u8, row.recv, "Type") or !is_struct) return l.halt(i, "", false);
+            if (std.mem.indexOfScalar(u32, l.never_decls.items, elem.a) == null) try l.never_decls.append(l.gpa, elem.a);
+            _ = try l.emit(.all, elem.a, 0);
+            return;
+        }
         var kind: u32 = none;
         if (!row.on_type) {
             if (recv) |r| {

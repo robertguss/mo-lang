@@ -16,6 +16,8 @@ pub const Kind = enum {
     refinement,
     /// A process's `invariant` block was true after an `update`.
     invariant,
+    /// A `never` over `T.all` was true for values a seeded run produced.
+    never,
     assert,
     overflow,
     divide_by_zero,

@@ -193,3 +193,6 @@
 
 ## [2026-09-13] session | Overnight: step 8 accepted, merged; step 9 started
 - Fable verified: tests green, logstat text matches on `logstat <dir>`, 200k lines 0.95 s / 38 MB on the ReleaseSafe binary, 118 stdlib rows, 8 gaps left. Seven decision rows. Merged to main. Step 9 (Mo.Sim seeds and fault injection) to a fresh session.
+
+## [2026-09-13] session | Overnight: step 9 accepted, merged; step 10 started
+- Fable verified: tests green, refund under 100 seeds with faults holds (`sim (100 runs)`), racy.mo passes plain and fails under sim with interleaving and replay line. Five decision rows. Merged to main. Step 10 (sidecar, mo fix, error catalog, README) to a fresh session.

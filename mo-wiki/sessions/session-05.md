@@ -42,5 +42,7 @@ Recorded in `HANDOFF.md` at session end.
 - [[interpreter-step-8]]
 - [[interpreter-step-9]]
 - [[interpreter-step-10]]
+- [[interpreter-step-11]]
+- [[program-3]]
 - [[model-bakeoff]]
 - [[corpus]]

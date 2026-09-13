@@ -130,6 +130,11 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | JSON: a variant encodes as `{"Name": {fields}}`, maps with non-string keys as pairs, NaN as null; decode keeps the last value of a repeated key; depth over 512 is a syntax error | Fable, from Opus's default | provisional | program 3 |
 | `Time.parse` accepts full RFC 3339, fractions truncated to ms, leap seconds are `None` | Fable, from Opus's default | provisional | program 3 |
 | `Fs.list` returns files and folders sorted byte by byte | Fable, from Opus's default | provisional | program 3 |
+| Step 9 accepted: seeded scheduling, fault injection, `never` over `T.all` under sim, `sim (N runs)`; refund holds under 100 seeds; racy.mo fails only under sim with an interleaving and a replay command; 45 minutes | Fable | — | program 3 |
+| `--sim N` (default 100) runs after the fixed-order run passes; run i uses seed S+i; `--seed S` replays one; `--faults P` (default 5%); scheduling and faults draw separate streams | Fable, from Opus's default | provisional | program 3 |
+| An `ask` times out only when its target spent past the deadline on slow or failed capability calls, never by chance | Fable, from Opus's default | provisional | program 3 |
+| "Passes only without faults" counts as a pass, printed with its seed; `never` blocks are checked only at the end of seeded runs | Fable, from Opus's default | provisional, revisit: a never should also run in plain `mo test` when cheap | program 3 |
+| `T.all` records struct constructions, copies, fixtures, and capability results; enums and primitives are not yet recordable | Fable, from Opus's default | provisional | program 3 |
 
 ## Related
 - [[session-05]]

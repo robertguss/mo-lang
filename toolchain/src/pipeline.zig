@@ -35,18 +35,18 @@ pub fn runTo(gpa: std.mem.Allocator, prog: program.Program, stage: Stage, diags:
     lowered.* = try bytecode.lower(gpa, checked);
     if (stage == .lower) return;
     try ownTests(gpa, lowered, prog);
-    const r = try runner.run(gpa, lowered);
+    const r = try runner.run(gpa, lowered, .{});
     if (r.summary.failures > 0) return error.TestsFailed;
 }
 
 /// Checks and lowers a program, then runs the tests of the file it was loaded from, or
 /// with `all` the tests of every module it loads, for `mo test` and the corpus test.
-pub fn testProgram(gpa: std.mem.Allocator, prog: program.Program, all: bool, diags: *diag.List) Error!runner.Run {
+pub fn testProgram(gpa: std.mem.Allocator, prog: program.Program, all: bool, options: runner.Options, diags: *diag.List) Error!runner.Run {
     const checked = (try front(gpa, prog, .run, diags)).?;
     const lowered = try gpa.create(bytecode.Program);
     lowered.* = try bytecode.lower(gpa, checked);
     if (!all) try ownTests(gpa, lowered, prog);
-    return runner.run(gpa, lowered);
+    return runner.run(gpa, lowered, options);
 }
 
 /// Keeps the tests of the file the program was loaded from: it comes last, so its tests
