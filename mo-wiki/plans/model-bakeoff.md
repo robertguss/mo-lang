@@ -34,7 +34,25 @@ Started: Opus at 19:34, Grok and Codex at 19:46 (12 Sep 2026). All three ran wit
 6. **Process.** Wrote only inside `examples/`; committed every five files; pushed; stopped when done; no wiki edits.
 7. **Cost.** Wall-clock from first to last commit, and tokens or dollars where the CLI reports them.
 
-Scores land here as a table when all three finish. The winning `examples/` is merged into `session-05`; the others stay on their branches as evidence.
+## Round 1 scores (Fable, 12 Sep 2026, 19:55)
+
+All three delivered 50 files, `README.md`, `GAPS.md`, and 12 `rejects/` files with an `# expect error:` line, in ten to thirteen commits, and touched nothing outside `examples/`. Scored 1–5 after reading the same twelve files from each worker plus every `GAPS.md`.
+
+| criterion | Opus | Grok | Codex |
+|---|---|---|---|
+| Completeness | 5 | 5 | 5 |
+| Grammar adherence | 4 | 3 | 4 |
+| Law adherence | 4 | 3 | 5 |
+| Gap discipline | 5 | 3 | 5 |
+| Taste | 5 | 2 | 3 |
+| Process | 5 | 5 | 5 |
+| Wall-clock, first to last commit | 8 min | 6 min | 9 min |
+
+- **Opus.** Real domains (an invoice, seat bookings, a session clock), intent lines that teach, tests that mean something, the cleanest `ask` reply form. 39 gaps, one decision per line, readable. Slips: one file at 46 lines (recorded), `assert x is Ok(start)` binds a name out of an assert (a scope gap Codex caught and Opus did not), `contains?` and `Duration` assumed.
+- **Grok.** Fastest and shortest, but ten tautological asserts (`assert t == t`, `assert h == h`), nine tests named "never reached", `state.n = state.n` to fill an arm, a `rejects` test that trips no `requires`, `within:` passed to a plain function. 17 gaps; several holes it hit went unrecorded. Not competitive on this task.
+- **Codex.** The most careful reader of the grammar: found that `cmp` demands a range after `is pattern`, that `assert` is missing from `stmt`, and that `old` is restricted to `ensures` while `invariant` needs it. Law-clean. But it dodges the construct under test (the clock file tests a budget number, the counter file tests a pure helper), runs declarations together with no blank lines, and its gap prose is dense.
+
+**Result:** Opus's `examples/` is the base. Codex's grammar findings go into `grammar.md` as Session 5 fixes. Grok's branch stays as evidence.
 
 ## Round 2 (proposed): the lexer
 
