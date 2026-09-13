@@ -2701,7 +2701,7 @@ const Checker = struct {
     }
 };
 
-fn primitive(name: []const u8) ?Id {
+pub fn primitive(name: []const u8) ?Id {
     const table = [_]struct { []const u8, Id }{
         .{ "Int8", types.int(.i8) },         .{ "Int16", types.int(.i16) },   .{ "Int32", types.int(.i32) },
         .{ "Int64", types.int(.i64) },       .{ "UInt8", types.int(.u8) },    .{ "UInt16", types.int(.u16) },
