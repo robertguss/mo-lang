@@ -10,7 +10,9 @@
 | L2 | No trailing whitespace on any line. | `x = 1` | `x = 1··` |
 | L3 | The file ends with exactly one newline. | `end⏎` | `end`, `end⏎⏎` |
 | L4 | The column limit is 100, counted in characters, with the indent and without a trailing comment. | | |
-| L5 | A line over the limit breaks after a comma inside parentheses opened on that line, as late as still fits; each continuation line is indented one level deeper than the line it continues. A line with no such comma stays long. | `··f(aaa, bbb,`⏎`····ccc)` | `··f(aaa,`⏎`ccc)` |
+| L5 | A line over the limit breaks after a comma inside parentheses or brackets opened on that line; each continuation line is indented one level deeper than the line it continues. A line with no such comma stays long. | `··f(aaa, bbb,`⏎`····ccc)` | `··f(aaa,`⏎`ccc)` |
+| L6 | The breaks go after the outermost commas first, each as late as still fits. A piece that still does not fit breaks after the commas one level in, and only then: a nested call is never split across lines by itself. | `··g(aaa, bbb,`⏎`····h(ccc, ddd))` | `··g(aaa, bbb, h(ccc,`⏎`····ddd))` |
+| L7 | A list literal that breaks after one of its commas breaks after all of them, one element per line; the first element stays after the `[`. A list that fits on its piece does not break. | `··xs = ["aaa",`⏎`····"bbb",`⏎`····"ccc"]` | `··xs = ["aaa", "bbb",`⏎`····"ccc"]` |
 
 ## Blank lines
 
@@ -38,7 +40,7 @@
 | S5 | No space before a comma, one after. | `f(a, b)` | `f(a ,b)`, `f(a,b)` |
 | S6 | No space between a name and its `(`: calls, signatures, variants, `old(`, `any(`, `fn(`. `use` braces follow the path directly. | `use A.B{X, Y}` | `f (x)`, `use A.B {X}` |
 | S7 | Everything else is separated by exactly one space. | `ensures result is Ok(c)` | `ensures··result` |
-| S8 | An anonymous function whose body is one expression is written on one line, `fn(x) x > 0 end`, when that line fits the limit and no comment sits inside it; otherwise it is the block form, body on the lines below, `end` at the indent of the line that opened it. | | |
+| S8 | An anonymous function whose body is one expression is written on one line, `fn(x) x > 0 end`, when that line fits the limit and no comment sits inside it, and is never broken inside. When its line is over the limit, the line breaks around it (L5) if every piece then fits, so a long call puts the function on a continuation line of its own; otherwise it is the block form, body on the lines below, `end` at the indent of the line that opened it. | `··xs.reduce(start,`⏎`····fn(acc, x) acc + x end)` | `··xs.reduce(start, fn(acc, x)`⏎`····acc + x`⏎`··end)` for a call that fits once broken |
 | S9 | Parentheses that only group an expression or a pattern stay exactly as the author wrote them; the formatter neither adds nor removes any. | | |
 | S10 | A supervisor or `child` line with no arguments has no parentheses. | `child Counter, restart: :always` | `child Counter(), restart: :always` |
 

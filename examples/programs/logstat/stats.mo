@@ -174,8 +174,8 @@ test "busiest ranks by count, then path, then method, and keeps the top N"
   tally = add(tally, sample(4, "GET", "/c", 200, 1))
   tally = add(tally, sample(5, "GET", "/c", 200, 1))
   busiest = summarize(tally).busiest
-  assert busiest == [Count(count: 2, method: "GET", path: "/c"), Count(count: 1, method: "GET",
-    path: "/a")]
+  assert busiest == [Count(count: 2, method: "GET", path: "/c"),
+    Count(count: 1, method: "GET", path: "/a")]
 end
 
 test "a record before since is not counted"
