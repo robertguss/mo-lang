@@ -202,3 +202,6 @@
 
 ## [2026-09-13] session | Overnight: step 11 accepted, merged; program 3 started
 - Fable verified: tests green, echo over a real socket with three clients, echo-1k 56 ms, Net rows in 09-stdlib.md and PRELUDE.md, usage text lists fmt and fix. Seven decision rows. Merged to main. Program 3 (kv over TCP) to a fresh session from its spec.
+
+## [2026-09-13] session | Morning: program 3 done, corpus red, step 12 started
+- kv written (five modules, 38 tests, sim green, 15k GETs/s) but the corpus test hard-codes counts (bug 1) so `zig build test` is red on session-05; not merged. Six bugs and eight gaps → plans/interpreter-step-12.md (runtime under real programs); the C backend renumbered to step 13. Grammar: optional return type, negative literal patterns. Seven decision rows.

@@ -147,6 +147,13 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `listen` binds 127.0.0.1 only; port 0 picks a free port and `listener.port` reports it; `SO_REUSEADDR` only | Fable, from Opus's default | provisional | program 3 |
 | Deadline outcomes: `accept` keeps listening, `connect` leaves nothing, `read_line` keeps the partial line, `write` closes the connection | Fable, from Opus's default | provisional | program 3 |
 | A `Conn` in a process's start arguments closes when that process crashes or its supervisor gives up; listeners stay open | Fable, from Opus's default | provisional | program 3 |
+| Program 3 accepted as an experiment: kv answers 15k GETs/s, holds under sim, but cannot persist (no file write) and leaks per request; six toolchain bugs; corpus test red until fixed | Fable | — | step 12 |
+| `main` stays green: session-05 is not merged while `zig build test` fails | Fable | locked | — |
+| The runtime under real programs (step 12) comes before the C backend (now step 13) | Fable | provisional | step 12's numbers |
+| A function may omit its return type when it returns nothing, like `main` | Fable | provisional | step 12, the corpus |
+| A negative integer literal is a pattern | Fable | provisional | step 12 |
+| `String.byte_size`; `Fs.write`, `append` (fsync), `remove`, `rename`; `Out.flush`; `Out.fixture()` with `out.written` | Fable | provisional | step 12, kv's replay test |
+| Maps and sets gain a hash index; insertion-order semantics unchanged | Fable | provisional | step 12's `map-100k` row |
 
 ## Related
 - [[session-05]]

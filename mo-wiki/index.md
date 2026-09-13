@@ -99,7 +99,8 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
-- [[interpreter-step-12|Step 12: the C backend, brief for the worker]] — C runtime, emitter, mo build, differential tests against the interpreter
+- [[interpreter-step-13|Step 13: the C backend, brief for the worker]] — C runtime, emitter, mo build, differential tests against the interpreter
+- [[interpreter-step-12|Step 12: the runtime under real programs, brief for the worker]] — program discovery, hashed maps, in-place state, per-request freeing, file writes, three language decisions, fmt fuzz
 - [[program-3|Program 3: kv in Mo, brief for the worker]] — the second real program, a TCP key-value store
 - [[interpreter-step-11|Step 11: Net, a TCP capability, brief for the worker]] — processes under mo run, sockets, direct style over blocking calls, Net.fixture
 - [[interpreter-step-10|Step 10: the verified sidecar, mo fix, the error catalog, the README, brief for the worker]] — four tooling promises from chapters 5 and 7

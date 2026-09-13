@@ -60,7 +60,7 @@ impl        = "impl" TypeName "for" typeexpr NL fn+ "end" NL
 ```
 fn          = signature NL contract* NL? block "end" NL
 params_untyped = ident ("," ident)*                       # anonymous function parameters: fn(acc, x)
-signature   = "fn" ident "(" params? ")" ":" typeexpr generics?
+signature   = "fn" ident "(" params? ")" (":" typeexpr)? generics?   # no return type: returns nothing, like main
 params      = param ("," param)*
 param       = "inout"? ident ":" typeexpr
 generics    = "where" TypeName ":" path ("," TypeName ":" path)*
@@ -119,7 +119,7 @@ Anonymous functions may appear only as an `arg`. Construction is always by named
 ## 7. Patterns
 
 ```
-pattern     = "_" | ident | literal
+pattern     = "_" | ident | "-"? literal
             | TypeName ("(" pattern ")")?                    # one-field variant, positional: Ok(c), Some(x), Enqueue(request)
             | TypeName "(" ident ":" pattern ("," ident ":" pattern)* ")"   # named fields: WindowExpired(now: n)
             | "(" pattern ("," pattern)* ")"
@@ -206,3 +206,4 @@ Grammar bugs found by the corpus, fixed above: `cmp` demanded an operand after `
 - **`for _ in 0..n`.** `_` as the loop binder says the index is unused; the unused-binding law does not fire. Found by Fable testing mailbox bounds in step 4.
 - **`use` names functions too.** `use A.B{X, y}` brings the named types and functions into scope by bare name; every name must be on `A.B`'s `expose` line; a bare `use A.B` is `MO0321`. A program is a tree of files under a `mo.root` marker (or the main file's directory); `A.B` is `a/b.mo`. Found by program 2 (toolchain bug 1). First tested by step 7.
 - **Program root and module files (step 7).** `mo.root` marks the program root (`examples/programs/mo.root` for the corpus). `MO0322`: a `use` names something not on the module's `expose` line. `MO0323`: the module has no file under the root, or its file declares a different module. A `use` of a module with no file is allowed only when every name is a prelude stand-in.
+- **Step 12 decisions (from program 3).** A function may omit its return type when it returns nothing; a negative integer literal is a pattern; `String.byte_size` is a stdlib row. Found by `kv` (`examples/programs/kv/GAPS` lines). First tested by step 12.
