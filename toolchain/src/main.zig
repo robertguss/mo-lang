@@ -172,6 +172,7 @@ pub fn main(init: std.process.Init) !void {
         };
         const cwd = try std.process.currentPathAlloc(io, arena);
         var server: mo.server.Server = try .init(arena, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
+        server.files = program.files;
         const code: u8 = switch (try server.run(m.program, m.main)) {
             .exited => |c| c,
             .crashed => |report| blk: {

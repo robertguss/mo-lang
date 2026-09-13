@@ -97,6 +97,9 @@ pub const Op = enum(u8) {
     halt,
     /// pop b arguments; start processes[a] with the test runner as its supervisor; push its Handle
     spawn,
+    /// pop b arguments; start supervisors[a] with its children; push the one child's
+    /// Handle, a tuple of them in child order, or no value
+    start_supervisor,
     /// pop a message, then a Handle; append the message to its mailbox; push no value
     send,
     /// pop the deadline, a message, then a Handle; push Ok(reply), Error(Timeout), or Error(Down)
@@ -239,6 +242,12 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         l.process_of[di] = @intCast(l.processes.items.len);
         try l.processes.append(gpa, undefined);
     };
+    l.supervisor_of = try gpa.alloc(u32, checked.decls.len);
+    @memset(l.supervisor_of, none);
+    for (checked.decls, 0..) |d, di| if (d.kind == .supervisor) {
+        l.supervisor_of[di] = @intCast(l.supervisors.items.len);
+        try l.supervisors.append(gpa, undefined);
+    };
     for (checked.sigs, 0..) |s, si| if (s.kind != .trait) try l.lowerFn(@intCast(si));
     for (l.items()) |it| {
         const n = l.node(it);
@@ -317,6 +326,8 @@ const Lower = struct {
     never_decls: std.ArrayList(u32) = .empty,
     /// Checked decl index → index in `processes`, or `none`.
     process_of: []u32 = &.{},
+    /// Checked decl index → index in `supervisors`, or `none`.
+    supervisor_of: []u32 = &.{},
     fn_of_sig: []u32 = &.{},
     /// A `where` node → its index in `refinements`, lowered once.
     refinement_of: std.AutoHashMapUnmanaged(Index, u32) = .empty,
@@ -528,7 +539,19 @@ const Lower = struct {
             }
         };
 
-        if (n.kind == .fn_decl) {
+        if (n.kind == .fn_decl and l.processes.items.len > 0 and l.k.mainSig() == si) {
+            // main is the root supervisor: its sends are delivered before its next
+            // statement runs, as a test's are (Mo.Server runs Mo.Sim's scheduler).
+            const body = l.tree.extraData(ast.FnBody, n.rhs);
+            const mark = b.names.items.len;
+            for (l.tree.span(body.start, body.end)) |st| {
+                try l.stmt(st);
+                _ = try l.emit(.settle, 0, 0);
+            }
+            b.names.shrinkRetainingCapacity(mark);
+            try l.pushConst(.none);
+            _ = try l.emit(.store, b.result, 0);
+        } else if (n.kind == .fn_decl) {
             const body = l.tree.extraData(ast.FnBody, n.rhs);
             try l.blockValue(l.tree.span(body.start, body.end));
             _ = try l.emit(.store, b.result, 0);
@@ -888,7 +911,7 @@ const Lower = struct {
                 .per = per_fn,
             });
         }
-        try l.supervisors.append(l.gpa, .{ .name = d.name, .decl = di, .children = children.items });
+        l.supervisors.items[l.supervisor_of[di]] = .{ .name = d.name, .decl = di, .children = children.items };
     }
 
     // ---- statements
@@ -1501,6 +1524,12 @@ const Lower = struct {
             if (!positional) return l.halt(i, "", false);
             for (args) |a| try l.expr(a);
             _ = try l.emit(.spawn, l.process_of[l.baseType(l.typeOf(i)).a], @intCast(args.len));
+            return;
+        }
+        if (std.mem.eql(u8, row.recv, "Supervisor")) {
+            const d = l.k.findDeclAt(i, l.text(l.node(recv.?).main_token)) orelse return l.halt(i, "", false);
+            for (args) |a| try l.expr(a);
+            _ = try l.emit(.start_supervisor, l.supervisor_of[d], @intCast(args.len));
             return;
         }
         if (std.mem.startsWith(u8, row.recv, "Handle")) {

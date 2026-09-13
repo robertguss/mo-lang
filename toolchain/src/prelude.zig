@@ -308,6 +308,9 @@ pub const fns = [_]Fn{
     .{ .recv = "Money", .on_type = true, .name = "zero", .ret = "Money", .origin = .corpus_only },
     // Processes (grammar: Processes)
     .{ .recv = "Process", .on_type = true, .name = "start", .ret = "Handle(P)" },
+    // A supervisor starts its children and gives their handles: the one child's Handle,
+    // or a tuple of them in child-line order. Nothing names the supervisor itself.
+    .{ .recv = "Supervisor", .on_type = true, .name = "start", .ret = "Handle(P)" },
     .{ .recv = "Handle(P)", .name = "send", .params = &.{"Message(P)"}, .ret = "none" },
     .{ .recv = "Handle(P)", .name = "ask", .params = &.{"Message(P)"}, .ret = "Result(Reply, AskError)", .can_wait = true },
     // Inside `never` only
@@ -346,7 +349,7 @@ test "every name in a prelude type string is a prelude type or a type-string wor
     defer strings.deinit(std.testing.allocator);
     const gpa = std.testing.allocator;
     for (fns) |f| {
-        if (f.recv.len > 0 and !std.mem.eql(u8, f.recv, "Int") and !std.mem.eql(u8, f.recv, "Process") and !std.mem.eql(u8, f.recv, "Type")) try strings.append(gpa, f.recv);
+        if (f.recv.len > 0 and !std.mem.eql(u8, f.recv, "Int") and !std.mem.eql(u8, f.recv, "Process") and !std.mem.eql(u8, f.recv, "Supervisor") and !std.mem.eql(u8, f.recv, "Type")) try strings.append(gpa, f.recv);
         for (f.params) |p| try strings.append(gpa, p);
         for (f.named) |n| try strings.append(gpa, n.type);
         try strings.append(gpa, f.ret);

@@ -2827,6 +2827,22 @@ const Checker = struct {
         return name;
     }
 
+    /// What `Sup.start(...)` gives: the Handle of its one child, or a tuple of its
+    /// children's handles in child-line order; no value when it has no child.
+    fn childHandles(c: *Checker, decl: Decl) Error!Id {
+        var handles: std.ArrayList(Id) = .empty;
+        for (c.spanAt(c.node(decl.node).rhs)) |ch| {
+            const pd = c.type_names.get(c.text(c.node(ch).main_token)) orelse continue;
+            if (c.decls.items[pd].kind != .process) continue;
+            try handles.append(c.gpa, c.decls.items[pd].type);
+        }
+        return switch (handles.items.len) {
+            0 => types.none,
+            1 => handles.items[0],
+            else => c.pool.tuple(handles.items),
+        };
+    }
+
     fn replyOfArg(c: *Checker, arg: Index, process: ?u32) Error!Id {
         const p = process orelse return types.unknown;
         var an = c.node(arg);
@@ -2866,6 +2882,19 @@ const Checker = struct {
                     c.callee[i] = .{ .prelude = @intCast(k) };
                 };
                 return decl.type;
+            }
+            if (decl.kind == .supervisor) {
+                if (!std.mem.eql(u8, name, "start")) {
+                    try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no function {s}; a supervisor is started with {s}.start(...)", .{ tname, name, tname }));
+                    return types.unknown;
+                }
+                c.process_args += 1;
+                try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
+                c.process_args -= 1;
+                for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Supervisor")) {
+                    c.callee[i] = .{ .prelude = @intCast(k) };
+                };
+                return c.childHandles(decl);
             }
         }
         if (std.mem.eql(u8, name, "all")) {

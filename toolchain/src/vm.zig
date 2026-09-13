@@ -372,6 +372,20 @@ pub const Vm = struct {
                     const args_now = try vm.take(inst.b);
                     try vm.push(.{ .handle = try (try vm.simulator()).start(inst.a, args_now) });
                 },
+                .start_supervisor => {
+                    const args_now = try vm.take(inst.b);
+                    const children = try (try vm.simulator()).startSupervisor(inst.a, args_now);
+                    const handles: Value = switch (children.len) {
+                        0 => .none,
+                        1 => .{ .handle = children[0] },
+                        else => blk: {
+                            const out = try vm.allocValues(children.len);
+                            for (children, out) |id, *o| o.* = .{ .handle = id };
+                            break :blk .{ .tuple = out };
+                        },
+                    };
+                    try vm.push(handles);
+                },
                 .send => {
                     const message = vm.pop();
                     const to = vm.pop().handle;
@@ -764,6 +778,7 @@ pub const Vm = struct {
         .{ "Ledger.find_charge", .ledger_call },    .{ "Ledger.save_charge", .ledger_call },      .{ "Charge.fixture", .charge_fixture },
         .{ "Charge.refunded?", .charge_refunded },  .{ "Money.cents", .money_cents },             .{ "Money.zero", .money_zero },
         .{ "Process.start", .process },             .{ "Handle.send", .process },                 .{ "Handle.ask", .process },
+        .{ "Supervisor.start", .process },
         .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
@@ -850,7 +865,7 @@ pub const Vm = struct {
                 break :blk .{ .duration = @intCast(ms) };
             },
             .time_fixture => .{ .time = fixture_time },
-            .clock_now => .{ .time = if (vm.server) |s| s.now() else if (vm.sim) |s| s.now else fixture_time },
+            .clock_now => .{ .time = if (vm.sim) |s| s.clockNow() else if (vm.server) |s| s.now() else fixture_time },
             .clock_fixture => .{ .cap = .{ .kind = .clock } },
             // Under mo run the file system is real (server.zig). A fixture Fs is empty; one
             // built with delay: answers after the delay.

@@ -17,6 +17,7 @@
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
+const server_mod = @import("server.zig");
 const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
@@ -66,6 +67,9 @@ pub const Proc = struct {
     /// Sends and emits of the running update, delivered only when it commits.
     outbox: std.ArrayList(Outgoing) = .empty,
     emits: std.ArrayList(Value) = .empty,
+    /// Under Mo.Server, the wall clock when its running update began: `clock.now` is
+    /// frozen per update.
+    now: i64 = 0,
 
     pub fn queued(p: *const Proc) usize {
         return p.mailbox.items.len - p.head;
@@ -116,6 +120,10 @@ pub const Sim = struct {
     /// never reads with `T.all`, in the order they were first made.
     records: bool = false,
     produced: std.AutoHashMapUnmanaged(u32, std.ArrayList(Value)) = .empty,
+    /// Under `mo run`, the real platform: main is the root supervisor, `clock.now` is the
+    /// wall clock frozen per update, a process crash is reported on stderr as it happens,
+    /// and a run that goes on delivering is a server, not a livelock.
+    server: ?*server_mod.Server = null,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -178,6 +186,13 @@ pub const Sim = struct {
         sim.lag += ms;
     }
 
+    /// `clock.now`: the simulated clock, or under Mo.Server the wall clock, frozen when the
+    /// running update began.
+    pub fn clockNow(sim: *const Sim) i64 {
+        const s = sim.server orelse return sim.now;
+        return if (sim.running) |id| sim.procs.items[id].now else s.now();
+    }
+
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
         return if (sim.crashes.items.len > 0) sim.crashes.items[0] else null;
     }
@@ -202,16 +217,18 @@ pub const Sim = struct {
     }
 
     /// Starts supervisors[index]: each child in order, with the arguments its line passes.
-    pub fn startSupervisor(sim: *Sim, index: u32, args: []const Value) Error!u32 {
+    /// Gives the children, in child order.
+    pub fn startSupervisor(sim: *Sim, index: u32, args: []const Value) Error![]const u32 {
         const s = sim.vm.program.supervisors[index];
         const sid: u32 = @intCast(sim.supervisors.items.len);
         try sim.supervisors.append(sim.gpa, .{ .index = index });
-        for (s.children) |c| {
+        const ids = try sim.gpa.alloc(u32, s.children.len);
+        for (s.children, ids) |c, *id| {
             const child_args = (try sim.vm.call(c.args, args)).tuple;
             const max = if (c.max_restarts == none) default_max_restarts else c.max_restarts;
-            _ = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c) });
+            id.* = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c) });
         }
-        return sid;
+        return ids;
     }
 
     fn window(sim: *Sim, c: bytecode.Child) Error!i64 {
@@ -294,7 +311,7 @@ pub const Sim = struct {
                 _ = try sim.deliver(id);
                 progressed = true;
                 delivered += 1;
-                if (delivered == settle_limit) {
+                if (delivered == settle_limit and sim.server == null) {
                     sim.vm.report = .{ .kind = .other, .clause = "the processes did not settle: a million messages delivered and mailboxes still waiting", .within = sim.test_name, .at = 0 };
                     return error.Crash;
                 }
@@ -326,7 +343,7 @@ pub const Sim = struct {
         }
         const bound = sim.vm.program.processes[target.process].mailbox;
         if (waiting < bound) return;
-        const from_name = if (sim.running) |from| sim.nameOf(from) else try std.fmt.allocPrint(sim.gpa, "the test \"{s}\"", .{sim.test_name});
+        const from_name = if (sim.running) |from| sim.nameOf(from) else if (sim.server != null) "main" else try std.fmt.allocPrint(sim.gpa, "the test \"{s}\"", .{sim.test_name});
         const values = try sim.gpa.alloc(contracts.Involved, 1);
         values[0] = .{ .name = "message", .value = try sim.vm.render(message) };
         sim.vm.report = .{
@@ -368,6 +385,7 @@ pub const Sim = struct {
             p.head = 0;
         }
         try p.log.append(sim.gpa, entry.message);
+        if (sim.server) |s| p.now = s.now();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
@@ -440,6 +458,7 @@ pub const Sim = struct {
         for (p.log.items, log) |m, *o| o.* = try vm.render(m);
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
         try sim.crashes.append(sim.gpa, report);
+        if (sim.server) |s| s.processCrashed(report);
         if (p.policy.restart == .never) {
             p.up = false;
             return;
@@ -468,7 +487,7 @@ pub const Sim = struct {
     fn giveUp(sim: *Sim, id: u32, last: contracts.Report) Error {
         const vm = sim.vm;
         const p = sim.procs.items[id];
-        const sup_name = if (p.supervisor == test_runner) "the test runner" else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
+        const sup_name = if (p.supervisor == test_runner) (if (sim.server != null) "main" else "the test runner") else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
         for (sim.procs.items) |*q| {
             if (q.supervisor == p.supervisor) q.up = false;
         }

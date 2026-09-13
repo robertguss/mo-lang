@@ -188,6 +188,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Money` (on type) | `cents` | `UInt64` | `Money` | | | corpus-only |
 | `Money` (on type) | `zero` | | `Money` | | | corpus-only |
 | a process `P` (on type) | `start` | the process's parameters | `Handle(P)` | | | grammar |
+| a supervisor `S` (on type) | `start` | the supervisor's parameters | its one child's `Handle`, or a tuple of its children's handles in child-line order; none when it has no child | | | grammar (step 11) |
 | `Handle(P)` | `send` | `Message(P)` | none | | | grammar |
 | `Handle(P)` | `ask` | `Message(P)` | `Result(Reply, AskError)` | yes | | grammar |
 | any declared type `T` (on type) | `all` | | `List(T)` | | `never` | grammar |
