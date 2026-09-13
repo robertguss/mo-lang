@@ -141,6 +141,11 @@ pub const Fn = struct {
     can_wait: bool = false,
     only: Only = .anywhere,
     origin: Origin = .grammar,
+    /// The type variable (`T`, `K`) the call orders: it must have the natural order of
+    /// design-v0/09 (numbers, strings, times, durations, and tuples of those).
+    ordered: []const u8 = "",
+    /// The type variable that must be an integer type.
+    integer: []const u8 = "",
 };
 
 pub const fns = [_]Fn{
@@ -153,6 +158,25 @@ pub const fns = [_]Fn{
     .{ .recv = "List(T)", .name = "contains?", .params = &.{"T"}, .ret = "Bool" },
     .{ .recv = "List(T)", .name = "first", .ret = "Option(T)" },
     .{ .recv = "List(T)", .name = "last", .ret = "Option(T)" },
+    .{ .recv = "List(T)", .name = "get", .params = &.{"UInt64"}, .ret = "Option(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "slice", .params = &.{ "UInt64", "UInt64" }, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "take", .params = &.{"UInt64"}, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "drop", .params = &.{"UInt64"}, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "concat", .params = &.{"List(T)"}, .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "reverse", .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "flat_map", .params = &.{"fn(T) List(U)"}, .ret = "List(U)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "any?", .params = &.{"fn(T) Bool"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "all?", .params = &.{"fn(T) Bool"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "find", .params = &.{"fn(T) Bool"}, .ret = "Option(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "count", .params = &.{"fn(T) Bool"}, .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "sort", .ret = "List(T)", .ordered = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "sort_by", .params = &.{"fn(T) K"}, .ret = "List(T)", .ordered = "K", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "min", .ret = "Option(T)", .ordered = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "max", .ret = "Option(T)", .ordered = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "sum", .ret = "T", .integer = "T", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "zip", .params = &.{"List(U)"}, .ret = "List((T, U))", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "enumerate", .ret = "List((UInt64, T))", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "unique", .ret = "List(T)", .origin = .stdlib },
     // Strings
     .{ .recv = "String", .name = "size", .ret = "UInt64" },
     .{ .recv = "String", .name = "bytes", .ret = "List(UInt8)" },
@@ -270,7 +294,7 @@ pub fn findStandIn(name: []const u8) bool {
 }
 
 /// Words a type string may use that are not type names.
-const type_string_words = [_][]const u8{ "T", "U", "A", "E", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
+const type_string_words = [_][]const u8{ "T", "U", "A", "E", "K", "V", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
 
 test "every name in a prelude type string is a prelude type or a type-string word" {
     var strings: std.ArrayList([]const u8) = .empty;

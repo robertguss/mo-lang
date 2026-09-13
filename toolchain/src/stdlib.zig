@@ -8,6 +8,7 @@
 //! combining marks after it (`Graphemes`), the same count `size` gives. A result that is
 //! part of its receiver is a slice of it: values are immutable, so nothing can tell.
 const std = @import("std");
+const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
@@ -43,6 +44,25 @@ pub const Row = enum {
     int_to_f64,
     float_round,
     float_to_string,
+    list_get,
+    list_slice,
+    list_take,
+    list_drop,
+    list_concat,
+    list_reverse,
+    list_flat_map,
+    list_any,
+    list_all,
+    list_find,
+    list_count,
+    list_sort,
+    list_sort_by,
+    list_min,
+    list_max,
+    list_sum,
+    list_zip,
+    list_enumerate,
+    list_unique,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -56,7 +76,13 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Int.to_u32", .int_to },                   .{ "Int.to_u64", .int_to },                 .{ "Int.to_i64", .int_to },
     .{ "Int.checked_to_u8", .int_checked_to },    .{ "Int.checked_to_u16", .int_checked_to }, .{ "Int.checked_to_u32", .int_checked_to },
     .{ "Int.checked_to_u64", .int_checked_to },   .{ "Int.checked_to_i64", .int_checked_to }, .{ "Int.to_f64", .int_to_f64 },
-    .{ "Float64.round", .float_round },           .{ "Float64.to_string", .float_to_string },
+    .{ "Float64.round", .float_round },           .{ "Float64.to_string", .float_to_string }, .{ "List.get", .list_get },
+    .{ "List.slice", .list_slice },               .{ "List.take", .list_take },               .{ "List.drop", .list_drop },
+    .{ "List.concat", .list_concat },             .{ "List.reverse", .list_reverse },         .{ "List.flat_map", .list_flat_map },
+    .{ "List.any?", .list_any },                  .{ "List.all?", .list_all },                .{ "List.find", .list_find },
+    .{ "List.count", .list_count },               .{ "List.sort", .list_sort },               .{ "List.sort_by", .list_sort_by },
+    .{ "List.min", .list_min },                   .{ "List.max", .list_max },                 .{ "List.sum", .list_sum },
+    .{ "List.zip", .list_zip },                   .{ "List.enumerate", .list_enumerate },     .{ "List.unique", .list_unique },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -70,10 +96,75 @@ pub const row_of = blk: {
     break :blk table;
 };
 
-/// Runs `row` on its arguments, the receiver first.
-pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
+/// Runs `row` on its arguments, the receiver first. `int_kind` is the receiver's integer
+/// kind (a list's element's), or bytecode.none.
+pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u32) Error!Value {
     return switch (which) {
         .none => unreachable,
+        .list_get => if (a[1].int < a[0].list.len) vm.variant("Some", &.{a[0].list[@intCast(a[1].int)]}) else vm.variant("None", &.{}),
+        .list_slice => .{ .list = cut(a[0].list, a[1].int, a[2].int) },
+        .list_take => .{ .list = cut(a[0].list, 0, a[1].int) },
+        .list_drop => .{ .list = cut(a[0].list, a[1].int, a[0].list.len) },
+        .list_concat => .{ .list = try concat(vm, a[0].list, a[1].list) },
+        .list_reverse => blk: {
+            const xs = a[0].list;
+            const out = try vm.heap.alloc(Value, xs.len);
+            for (xs, 0..) |x, k| out[xs.len - 1 - k] = x;
+            break :blk .{ .list = out };
+        },
+        .list_flat_map => flatMap(vm, a[0].list, a[1].func),
+        .list_any, .list_all, .list_find, .list_count => scan(vm, which, a[0].list, a[1].func),
+        .list_sort => blk: {
+            const out = try vm.heap.alloc(Value, a[0].list.len);
+            @memcpy(out, a[0].list);
+            std.sort.block(Value, out, {}, before);
+            break :blk .{ .list = out };
+        },
+        .list_sort_by => sortBy(vm, a[0].list, a[1].func),
+        .list_min, .list_max => blk: {
+            const xs = a[0].list;
+            if (xs.len == 0) break :blk vm.variant("None", &.{});
+            const want: std.math.Order = if (which == .list_min) .lt else .gt;
+            var best = xs[0];
+            for (xs[1..]) |x| if (vm_mod.order(x, best) == want) {
+                best = x;
+            };
+            break :blk vm.variant("Some", &.{best});
+        },
+        .list_sum => blk: {
+            var total: i128 = 0;
+            for (a[0].list) |x| {
+                total = std.math.add(i128, total, x.int) catch return fail(vm, .overflow, row, "the sum passes every integer", .{});
+                if (int_kind == bytecode.none) continue;
+                const k: types.IntKind = @enumFromInt(int_kind);
+                if (total < vm_mod.minOf(k) or total > vm_mod.maxOf(k)) return fail(vm, .overflow, row, "the sum reaches {d}, past its {t} elements", .{ total, k });
+            }
+            break :blk .{ .int = total };
+        },
+        .list_zip, .list_enumerate => blk: {
+            const xs = a[0].list;
+            const n = if (which == .list_zip) @min(xs.len, a[1].list.len) else xs.len;
+            const pairs = try vm.heap.alloc(Value, 2 * n);
+            const out = try vm.heap.alloc(Value, n);
+            for (out, 0..) |*o, k| {
+                pairs[2 * k] = if (which == .list_zip) xs[k] else .{ .int = @intCast(k) };
+                pairs[2 * k + 1] = if (which == .list_zip) a[1].list[k] else xs[k];
+                o.* = .{ .tuple = pairs[2 * k .. 2 * k + 2] };
+            }
+            break :blk .{ .list = out };
+        },
+        .list_unique => blk: {
+            var seen: std.HashMapUnmanaged(Value, void, ValueContext, 80) = .empty;
+            defer seen.deinit(vm.gpa);
+            const out = try vm.heap.alloc(Value, a[0].list.len);
+            var n: usize = 0;
+            for (a[0].list) |x| {
+                if ((try seen.getOrPut(vm.gpa, x)).found_existing) continue;
+                out[n] = x;
+                n += 1;
+            }
+            break :blk .{ .list = out[0..n] };
+        },
         .string_from_bytes => fromBytes(vm, a[0].list),
         .string_chars => .{ .list = try chars(vm, a[0].string) },
         .string_split => split(vm, a[0].string, a[1].string),
@@ -300,6 +391,150 @@ fn join(vm: *Vm, row: prelude.Fn, xs: []const Value, sep: []const u8) Error!Valu
         at += x.string.len;
     }
     return .{ .string = out };
+}
+
+// ---- lists
+
+/// `xs[from..to]` with both bounds clamped to the list.
+fn cut(xs: []const Value, from: i128, to: i128) []const Value {
+    const hi: usize = @intCast(@min(to, @as(i128, @intCast(xs.len))));
+    const lo: usize = @intCast(@min(from, @as(i128, @intCast(hi))));
+    return xs[lo..hi];
+}
+
+fn concat(vm: *Vm, xs: []const Value, ys: []const Value) Error![]const Value {
+    if (ys.len == 0) return xs;
+    if (xs.len == 0) return ys;
+    const out = try vm.heap.alloc(Value, xs.len + ys.len);
+    @memcpy(out[0..xs.len], xs);
+    @memcpy(out[xs.len..], ys);
+    return out;
+}
+
+fn before(_: void, a: Value, b: Value) bool {
+    return vm_mod.order(a, b) == .lt;
+}
+
+/// Nothing survives a step of `scan`: its only state is a count.
+var no_roots: [0]Value = .{};
+
+/// `any?`, `all?`, `find`, and `count`: each step is a safe point, and the first three stop
+/// at the element that settles them.
+fn scan(vm: *Vm, which: Row, xs: []const Value, f: Value.Func) Error!Value {
+    const from = vm.mark();
+    var kept: usize = 0;
+    var n: i128 = 0;
+    for (xs) |x| {
+        const hit = (try vm.invoke(f, &.{x})).bool;
+        switch (which) {
+            .list_any => if (hit) return .{ .bool = true },
+            .list_all => if (!hit) return .{ .bool = false },
+            .list_find => if (hit) return vm.variant("Some", &.{x}),
+            else => n += @intFromBool(hit),
+        }
+        kept = try vm.iterate(from, &no_roots, kept);
+    }
+    return switch (which) {
+        .list_any => .{ .bool = false },
+        .list_all => .{ .bool = true },
+        .list_find => vm.variant("None", &.{}),
+        else => .{ .int = n },
+    };
+}
+
+fn flatMap(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+    const parts = try vm.heap.alloc(Value, xs.len);
+    const from = vm.mark();
+    var kept: usize = 0;
+    var len: usize = 0;
+    for (xs, 0..) |x, i| {
+        parts[i] = try vm.invoke(f, &.{x});
+        len += parts[i].list.len;
+        kept = try vm.iterate(from, parts[0 .. i + 1], kept);
+    }
+    const out = try vm.heap.alloc(Value, len);
+    var at: usize = 0;
+    for (parts) |p| {
+        @memcpy(out[at..][0..p.list.len], p.list);
+        at += p.list.len;
+    }
+    return .{ .list = out };
+}
+
+/// Each key is computed once; the positions are sorted by key, stably.
+fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+    const keys = try vm.heap.alloc(Value, xs.len);
+    const from = vm.mark();
+    var kept: usize = 0;
+    for (xs, 0..) |x, i| {
+        keys[i] = try vm.invoke(f, &.{x});
+        kept = try vm.iterate(from, keys[0 .. i + 1], kept);
+    }
+    const positions = try vm.gpa.alloc(u32, xs.len);
+    defer vm.gpa.free(positions);
+    for (positions, 0..) |*p, i| p.* = @intCast(i);
+    std.sort.block(u32, positions, keys, struct {
+        fn lt(k: []const Value, a: u32, b: u32) bool {
+            return vm_mod.order(k[a], k[b]) == .lt;
+        }
+    }.lt);
+    const out = try vm.heap.alloc(Value, xs.len);
+    for (positions, out) |p, *o| o.* = xs[p];
+    return .{ .list = out };
+}
+
+/// Hashes a value so that equal values (vm.equal) hash alike.
+pub const ValueContext = struct {
+    pub fn hash(_: ValueContext, v: Value) u64 {
+        var h: std.hash.Wyhash = .init(0);
+        hashInto(&h, v);
+        return h.final();
+    }
+
+    pub fn eql(_: ValueContext, a: Value, b: Value) bool {
+        return vm_mod.equal(a, b);
+    }
+};
+
+fn hashInto(h: *std.hash.Wyhash, v: Value) void {
+    h.update(&.{@intFromEnum(std.meta.activeTag(v))});
+    switch (v) {
+        .none => {},
+        .bool => |b| h.update(&.{@intFromBool(b)}),
+        .int => |i| h.update(std.mem.asBytes(&i)),
+        // 0.0 and -0.0 are equal, so they hash alike.
+        .float => |x| h.update(std.mem.asBytes(&(if (x == 0) @as(f64, 0) else x))),
+        .string => |s| {
+            h.update(std.mem.asBytes(&s.len));
+            h.update(s);
+        },
+        .time, .duration => |t| h.update(std.mem.asBytes(&t)),
+        .list, .tuple => |xs| hashAll(h, xs),
+        .record => |r| {
+            h.update(std.mem.asBytes(&r.decl));
+            hashAll(h, r.fields);
+        },
+        .variant => |r| {
+            h.update(std.mem.asBytes(&r.name.len));
+            h.update(r.name);
+            hashAll(h, r.fields);
+        },
+        .func => |f| {
+            h.update(std.mem.asBytes(&f.function));
+            hashAll(h, f.captures);
+        },
+        .cap => |c| {
+            h.update(&.{@intFromEnum(c.kind)});
+            h.update(std.mem.asBytes(&c.delay));
+            h.update(std.mem.asBytes(&c.handle));
+        },
+        .handle => |x| h.update(std.mem.asBytes(&x)),
+    }
+}
+
+fn hashAll(h: *std.hash.Wyhash, xs: []const Value) void {
+    h.update(std.mem.asBytes(&xs.len));
+    for (xs) |x| hashInto(h, x);
 }
 
 // ---- numbers

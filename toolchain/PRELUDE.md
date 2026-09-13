@@ -2,7 +2,7 @@
 
 Every stdlib type, variant, function, and operator a Mo module may use without declaring it. The same rows live as data in `src/prelude.zig`; the checker reads nothing else. **Nothing outside these tables exists.** A row marked *stdlib (09)* is named by `mo-wiki/spec/design-v0/09-stdlib.md`, which says what each one does; `src/stdlib.zig` runs it. A row marked *corpus-only* is not named by `mo-wiki/spec/grammar.md` or design-v0: a corpus file needs it, and `examples/GAPS.md` records it until the stdlib chapter settles it.
 
-Type strings: `T`, `U`, `A`, `E` are type variables fresh at each call; `N` is the receiver's own integer type; `P` is the process a handle or message belongs to; `Message(P)` is one of P's `message` lines; `Reply` is the reply type of the message passed; `none` is no value (the call is a statement).
+Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call (*ordered* means the checker requires the natural order of design-v0/09: numbers, strings, times, durations, and tuples of those); `N` is the receiver's own integer type; `P` is the process a handle or message belongs to; `Message(P)` is one of P's `message` lines; `Reply` is the reply type of the message passed; `none` is no value (the call is a statement).
 
 ## Types
 
@@ -81,6 +81,21 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `List(T)` | `contains?` | `T` | `Bool` | | | grammar |
 | `List(T)` | `first` | | `Option(T)` | | | grammar |
 | `List(T)` | `last` | | `Option(T)` | | | grammar |
+| `List(T)` | `get` | `UInt64` | `Option(T)` | | | stdlib (09) |
+| `List(T)` | `slice` | `UInt64`, `UInt64` | `List(T)` | | | stdlib (09) |
+| `List(T)` | `take`, `drop` | `UInt64` | `List(T)` | | | stdlib (09) |
+| `List(T)` | `concat` | `List(T)` | `List(T)` | | | stdlib (09) |
+| `List(T)` | `reverse`, `unique` | | `List(T)` | | | stdlib (09) |
+| `List(T)` | `flat_map` | `fn(T) List(U)` | `List(U)` | | | stdlib (09) |
+| `List(T)` | `any?`, `all?` | `fn(T) Bool` | `Bool` | | | stdlib (09) |
+| `List(T)` | `find` | `fn(T) Bool` | `Option(T)` | | | stdlib (09) |
+| `List(T)` | `count` | `fn(T) Bool` | `UInt64` | | | stdlib (09) |
+| `List(T)`, `T` ordered | `sort` | | `List(T)` | | | stdlib (09) |
+| `List(T)` | `sort_by` | `fn(T) K`, `K` ordered | `List(T)` | | | stdlib (09) |
+| `List(T)`, `T` ordered | `min`, `max` | | `Option(T)` | | | stdlib (09) |
+| `List(T)`, `T` an integer | `sum` | | `T` | | | stdlib (09) |
+| `List(T)` | `zip` | `List(U)` | `List((T, U))` | | | stdlib (09) |
+| `List(T)` | `enumerate` | | `List((UInt64, T))` | | | stdlib (09) |
 | `String` | `size` | | `UInt64` (graphemes) | | | grammar |
 | `String` | `bytes` | | `List(UInt8)` | | | grammar |
 | `String` | `starts_with?` | `String` | `Bool` | | | grammar |

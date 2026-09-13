@@ -353,7 +353,7 @@ const Frame = struct {
 };
 
 const Deferred = struct {
-    kind: enum { literal, numeric, ordered, bound },
+    kind: enum { literal, numeric, ordered, integer, bound },
     node: Index,
     type: Id,
     trait: u32 = 0,
@@ -545,12 +545,12 @@ const Checker = struct {
             .numeric => if (!c.pool.isNumeric(d.type)) {
                 try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} needs numbers, found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) }));
             },
-            .ordered => {
-                const t = c.bt(d.type);
-                switch (t.tag) {
-                    .int, .float, .string, .time, .duration, .unknown, .variable, .never => {},
-                    else => try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} compares numbers, strings, times, and durations; found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) })),
-                }
+            .ordered => if (!c.orderable(d.type, 0)) {
+                try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} compares numbers, strings, times, durations, and tuples of those; found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) }));
+            },
+            .integer => switch (c.bt(d.type).tag) {
+                .int, .unknown, .variable, .never => {},
+                else => try c.reportTok(.mismatch, c.node(d.node).main_token, try c.print("{s} adds integers; found {s}", .{ c.text(c.node(d.node).main_token), try c.tn(d.type) })),
             },
             .bound => try c.checkBound(d),
             .literal => {},
@@ -1349,6 +1349,20 @@ const Checker = struct {
         _ = try c.caseCheck(update.lhs, types.unknown, .update);
         try c.popScope(mark);
         try c.endFrame(saved);
+    }
+
+    /// What `<` and the stdlib's natural order compare (design-v0/09): numbers, strings,
+    /// times, durations, and tuples of those, left to right.
+    fn orderable(c: *Checker, t: Id, depth: u8) bool {
+        if (depth > 8) return true;
+        const b = c.bt(t);
+        return switch (b.tag) {
+            .int, .float, .string, .time, .duration, .unknown, .variable, .never => true,
+            .tuple => for (c.pool.elems(b)) |e| {
+                if (!c.orderable(e, depth + 1)) break false;
+            } else true,
+            else => false,
+        };
     }
 
     /// The zero values of grammar Session 5, the same table as vm.zero: numbers, Bool,
@@ -2773,6 +2787,8 @@ const Checker = struct {
         if (std.mem.indexOf(u8, row.ret, "Reply") != null) {
             env.reply = if (positional.items.len > 0) try c.replyOfArg(positional.items[0], env.process) else types.unknown;
         }
+        if (row.ordered.len > 0) try c.defer_(.{ .kind = .ordered, .node = i, .type = env.letters[row.ordered[0] - 'A'] });
+        if (row.integer.len > 0) try c.defer_(.{ .kind = .integer, .node = i, .type = env.letters[row.integer[0] - 'A'] });
         c.callee[i] = .{ .prelude = @intCast(k) };
         return c.parseTs(row.ret, &env);
     }

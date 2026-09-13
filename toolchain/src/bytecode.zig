@@ -1437,7 +1437,9 @@ const Lower = struct {
         if (!row.on_type) {
             if (recv) |r| {
                 try l.expr(r);
-                kind = l.intKind(l.typeOf(r));
+                // A list's row (`sum`) checks against its element's integer type.
+                const rt = l.baseType(l.typeOf(r));
+                kind = if (rt.tag == .list) l.intKind(rt.a) else l.intKind(l.typeOf(r));
             } else {
                 // A bare name inside `where`: the refined value is local 0.
                 _ = try l.emit(.load, 0, 0);

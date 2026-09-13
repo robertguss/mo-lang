@@ -419,14 +419,14 @@ pub const Vm = struct {
     }
 
     /// Where the region's allocations stand: the mark a frame or a loop frees back to.
-    fn mark(vm: *const Vm) usize {
+    pub fn mark(vm: *const Vm) usize {
         return if (vm.region) |r| r.top else 0;
     }
 
     /// A loop's safe point. Once it has allocated more than twice what it kept at its last
     /// compaction, plus loop_budget, everything past `from` that `roots` do not reach is
     /// freed. Gives what is kept.
-    fn iterate(vm: *Vm, from: usize, roots: []Value, kept: usize) Error!usize {
+    pub fn iterate(vm: *Vm, from: usize, roots: []Value, kept: usize) Error!usize {
         const r = vm.region orelse return 0;
         if (r.top -| from <= 2 * kept + vm.loop_budget) return kept;
         try vm.compact(from, roots);
@@ -834,7 +834,7 @@ pub const Vm = struct {
                     },
                 };
             },
-            .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a),
+            .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
             .never_only => {
@@ -1087,19 +1087,37 @@ fn compare(op: Op, l: Value, r: Value) bool {
         .ne => return !equal(l, r),
         else => {},
     }
-    const order: std.math.Order = switch (l) {
-        .int => |a| std.math.order(a, r.int),
+    const ord: std.math.Order = switch (l) {
         .float => |a| std.math.order(a, r.float),
+        else => order(l, r),
+    };
+    return switch (op) {
+        .lt => ord == .lt,
+        .le => ord != .gt,
+        .gt => ord == .gt,
+        else => ord != .lt,
+    };
+}
+
+/// The natural order (design-v0/09): numbers, strings byte by byte, times, durations, and
+/// tuples of those left to right. A NaN orders after every number and level with another
+/// NaN, so a sort is total.
+pub fn order(l: Value, r: Value) std.math.Order {
+    return switch (l) {
+        .int => |a| std.math.order(a, r.int),
+        .float => |a| blk: {
+            const an = std.math.isNan(a);
+            const bn = std.math.isNan(r.float);
+            break :blk if (an or bn) std.math.order(@intFromBool(an), @intFromBool(bn)) else std.math.order(a, r.float);
+        },
         .string => |a| std.mem.order(u8, a, r.string),
         .time => |a| std.math.order(a, r.time),
         .duration => |a| std.math.order(a, r.duration),
+        .tuple => |xs| for (xs, r.tuple) |x, y| {
+            const o = order(x, y);
+            if (o != .eq) break o;
+        } else .eq,
         else => unreachable,
-    };
-    return switch (op) {
-        .lt => order == .lt,
-        .le => order != .gt,
-        .gt => order == .gt,
-        else => order != .lt,
     };
 }
 
