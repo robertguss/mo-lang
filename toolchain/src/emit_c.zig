@@ -1827,7 +1827,11 @@ const Emitter = struct {
                 const an = e.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), f.name)) break an.lhs;
             } else 0;
-            if (arg == 0) {
+            if (arg == 0 and f.optional) {
+                // A stdlib struct's field left out is empty (prelude.zig).
+                const empty = if (e.k.pool.get(e.k.pool.base(f.type)).tag == .map) "mo_r_Map_new(NULL, MO_KIND_NONE)" else "mo_str(\"\", 0)";
+                try operands.append(e.gpa, try e.temp("{s}", .{empty}));
+            } else if (arg == 0) {
                 try operands.append(e.gpa, "MO_NONE_V");
             } else {
                 const v = try e.expr(arg);

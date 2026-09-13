@@ -62,12 +62,16 @@ pub const types = [_]Type{
     .{ .name = "Net", .kind = .capability, .origin = .stdlib },
     .{ .name = "Listener", .kind = .capability, .origin = .stdlib },
     .{ .name = "Conn", .kind = .capability, .origin = .stdlib },
+    .{ .name = "Http", .kind = .capability, .origin = .stdlib },
+    .{ .name = "HttpListener", .kind = .capability, .origin = .stdlib },
+    .{ .name = "Exchange", .kind = .capability, .origin = .stdlib },
     .{ .name = "FsError", .kind = .error_enum },
     .{ .name = "AskError", .kind = .error_enum },
     .{ .name = "LedgerError", .kind = .error_enum, .origin = .corpus_only },
     .{ .name = "Json", .kind = .enum_, .origin = .stdlib },
     .{ .name = "JsonError", .kind = .error_enum, .origin = .stdlib },
     .{ .name = "NetError", .kind = .error_enum, .origin = .stdlib },
+    .{ .name = "HttpError", .kind = .error_enum, .origin = .stdlib },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -81,6 +85,10 @@ pub const aliases = [_]Alias{
     .{ .name = "CardNumber", .base = "String" },
 };
 
+/// A struct the prelude declares: a stand-in (corpus-only), or a stdlib struct (`Request`,
+/// `Response`). A module's own declaration of a stand-in's name is the one every use of the
+/// name means; a module's own `Request` hides the stdlib's from its code, and the stdlib's
+/// rows still mean the stdlib's.
 pub const Struct = struct { name: []const u8, fields: []const Field, origin: Origin = .corpus_only };
 
 pub const structs = [_]Struct{
@@ -95,6 +103,20 @@ pub const structs = [_]Struct{
     // variables, bound by the one module that builds them.
     .{ .name = "RefundCompleted", .fields = &.{.{ .name = "refund", .type = "T" }} },
     .{ .name = "RefundFailed", .fields = &.{ .{ .name = "request", .type = "RefundRequest" }, .{ .name = "reason", .type = "E" } } },
+    // HTTP (step 16): a field marked optional may be left out when the struct is built, and
+    // is then empty.
+    .{ .name = "Request", .origin = .stdlib, .fields = &.{
+        .{ .name = "method", .type = "String" },
+        .{ .name = "path", .type = "String" },
+        .{ .name = "query", .type = "Map(String, String)", .optional = true },
+        .{ .name = "headers", .type = "Map(String, String)", .optional = true },
+        .{ .name = "body", .type = "String", .optional = true },
+    } },
+    .{ .name = "Response", .origin = .stdlib, .fields = &.{
+        .{ .name = "status", .type = "UInt16" },
+        .{ .name = "headers", .type = "Map(String, String)", .optional = true },
+        .{ .name = "body", .type = "String" },
+    } },
 };
 
 /// Named values: a name that is neither a binding nor a function.
@@ -109,7 +131,8 @@ pub fn findValue(name: []const u8) ?Value {
     return null;
 }
 
-pub const Field = struct { name: []const u8, type: []const u8 };
+/// `optional`: a stdlib struct's field that may be left out when the struct is built.
+pub const Field = struct { name: []const u8, type: []const u8, optional: bool = false };
 
 pub const Variant = struct {
     owner: []const u8,
@@ -141,6 +164,13 @@ pub const variants = [_]Variant{
     .{ .owner = "NetError", .name = "Closed", .origin = .stdlib },
     .{ .owner = "NetError", .name = "LineTooLong", .origin = .stdlib },
     .{ .owner = "NetError", .name = "Busy", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "Timeout", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "Refused", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "Closed", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "Busy", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "Malformed", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "TooLarge", .origin = .stdlib },
+    .{ .owner = "HttpError", .name = "Unsupported", .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -313,6 +343,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "fs", .ret = "Fs" },
     .{ .recv = "Platform", .name = "clock", .ret = "Clock" },
     .{ .recv = "Platform", .name = "net", .ret = "Net", .origin = .stdlib },
+    .{ .recv = "Platform", .name = "http", .ret = "Http", .origin = .stdlib },
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
@@ -330,6 +361,15 @@ pub const fns = [_]Fn{
     .{ .recv = "Conn", .name = "write", .params = &.{"String"}, .ret = "Result(none, NetError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Conn", .name = "close", .ret = "none", .origin = .stdlib },
     .{ .recv = "Net", .on_type = true, .name = "fixture", .ret = "Net", .only = .tests, .origin = .stdlib },
+    // HTTP/1.1 over TCP (step 16): one request per connection; an HttpListener and an
+    // Exchange are capabilities, and an Exchange closes when the process holding it stops.
+    .{ .recv = "Http", .name = "listen", .params = &.{"UInt16"}, .ret = "Result(HttpListener, HttpError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "HttpListener", .name = "accept", .ret = "Result(Exchange, HttpError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "HttpListener", .name = "port", .ret = "UInt16", .origin = .stdlib },
+    .{ .recv = "Exchange", .name = "request", .ret = "Request", .origin = .stdlib },
+    .{ .recv = "Exchange", .name = "reply", .params = &.{"Response"}, .ret = "Result(none, HttpError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Http", .name = "send", .params = &.{"Request"}, .named = &.{ .{ .name = "host", .type = "String" }, .{ .name = "port", .type = "UInt16" } }, .ret = "Result(Response, HttpError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Http", .on_type = true, .name = "fixture", .ret = "Http", .only = .tests, .origin = .stdlib },
     // JSON
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
@@ -365,6 +405,13 @@ pub const operators = [_]Operator{
 pub fn findType(name: []const u8) ?Type {
     for (types) |t| if (std.mem.eql(u8, t.name, name)) return t;
     return null;
+}
+
+/// Whether `name` is a struct the stdlib declares (`Request`, `Response`): a prelude type
+/// string that names it means the prelude's, whatever a module declares.
+pub fn findStdStruct(name: []const u8) bool {
+    for (structs) |s| if (s.origin == .stdlib and std.mem.eql(u8, s.name, name)) return true;
+    return false;
 }
 
 /// Whether `name` is an alias or struct stand-in.

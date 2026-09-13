@@ -229,3 +229,55 @@ end
 | `Net` (on type) | `fixture` | | `Net` | a network in memory, shared by every fixture in the test; tests only |
 
 A `Net.fixture()` lets a test start a server process, connect a client, and drive the protocol with no real socket. What one end writes waits for the other end to read it, and a closed end is the end of the stream for the other. `listen(0)` picks a port from 49152 up; `connect` to a port nothing listens on is `Refused`; the host is not looked at. A simulated call cannot wait for something to happen, so a call with nothing to take (an `accept` with no client, a `read_line` with no whole line) waits its whole deadline and is `Timeout`. Under `mo test --sim`, a fixture call that can wait times out by the seed, and a `read_line` or `write` finds its connection `Closed` by the seed; each leaves the connection as the real call would.
+
+## Http
+
+`Http` is HTTP/1.1 over TCP, `platform.http` in `main` (step 16): a server accepts exchanges and a client sends requests, with no new syntax. No TLS, and one request per connection: every request and response the runtime writes says `connection: close`, and the connection closes once the response is written or read. An `HttpListener` and an `Exchange` are capabilities, as a `Listener` and a `Conn` are: an `Http` call gives them, they travel only as parameters (an acceptor hands each exchange to a worker with `Worker.start(exchange)`), and an `Exchange` closes when the process holding it stops, restarted or not. Every row that can wait takes `within: Duration`; a call past its deadline is `Timeout`, and leaves the listener or the exchange as its row says. A process waiting in a call does not hold up the others.
+
+```ruby
+struct Request
+  method: String
+  path: String
+  query: Map(String, String)
+  headers: Map(String, String)
+  body: String
+end
+
+struct Response
+  status: UInt16
+  headers: Map(String, String)
+  body: String
+end
+
+enum HttpError
+  Timeout
+  Refused
+  Closed
+  Busy
+  Malformed
+  TooLarge
+  Unsupported
+end
+```
+
+`Request` and `Response` are prelude structs. Building one needs only what the caller has: a `Response` its `status` and `body`, a `Request` its `method` and `path`; a field left out (`headers`, `query`, a request's `body`) is empty. A module that declares its own `Request` or `Response` means its own by the name, and the `Http` rows still take and give the prelude's.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Http` | `listen` | `port: UInt16` | `Result(HttpListener, HttpError)` | as `Net.listen`: 127.0.0.1 at `port`, or at a free port the system picks when `port` is 0; `Busy` when another listener holds the port, `Refused` when the system will not bind it; binding does not wait |
+| `HttpListener` | `accept` | | `Result(Exchange, HttpError)` | the next client and its whole request, both within the deadline; `Timeout` when no client or no whole request arrives in time, and a client that came closes; `Malformed`, `TooLarge`, or `Unsupported` when what came is not a request this row reads, after the client is answered `400`, `413`, or `501` and closed; `Closed` when the client's stream ends first; `Busy` when another `accept` is already waiting on it; each leaves the listener listening |
+| `HttpListener` | `port` | | `UInt16` | the port it listens on |
+| `Exchange` | `request` | | `Request` | the request it holds; reading it after the exchange is answered is a crash |
+| `Exchange` | `reply` | `Response` | `Result(none, HttpError)` | the response, written whole, then the connection closes; `Malformed` for a status outside 100 to 599 or a header that is not one, which writes nothing and leaves the exchange unanswered; `Closed` when the client is gone or the exchange is answered already; `Timeout` closes the connection; `Busy` when another `reply` is waiting on it |
+| `Http` | `send` | `Request`, `host: String`, `port: UInt16` | `Result(Response, HttpError)` | connects to an IP address or a host name, writes the request, and reads the whole response, all within the deadline; the connection closes either way; `Refused` when nothing listens there or the host is not found; `Malformed` for a request that is not one, before connecting, or a response that is not HTTP; `Closed` when the stream ends before the whole response; `TooLarge` and `Unsupported` as `accept` reads them |
+| `Http` (on type) | `fixture` | | `Http` | HTTP on `Net.fixture()`'s network; tests only |
+
+The wire, read and written the same way by both runtimes:
+
+- **Reading.** A request line is `METHOD /target HTTP/1.1` (`HTTP/1.0` is read too; another version is `Unsupported`), a status line `HTTP/1.1 200 reason`. Each line ends in `"\n"`, with one `"\r"` before it or none, and the headers end at an empty line. A request line of more than 1 MiB, header lines of more than 1 MiB together, or a body of more than 1 MiB is `TooLarge`, the body as soon as its `content-length` says so. The body is `content-length` bytes; a request with none has an empty body, and a response with none runs to the end of the stream. A `transfer-encoding` header (chunked) is `Unsupported`. A method or header name that is not a token, a target that does not begin with `/`, a header line with no `:`, a header value with a control character, two `content-length` headers that differ, and a query `%` not followed by two hex digits are `Malformed`.
+- **A request's fields.** `path` is the target before its first `?`, as it came. `query` is the target after it, split at `&` into `key=value` pairs, each decoded with `+` as a space and `%XX` as its byte; a pair with no `=` has the value `""`, an empty pair is skipped, and a repeated key keeps its last value in its first key's place. `headers` holds each header by its name lower-cased, its value without the spaces and tabs around it; a repeated header's values are joined with `", "` in the first one's place. A response's `headers` are read the same way. Every string holds the bytes as they came, as `Conn.read_line` gives them.
+- **Writing.** A response is `HTTP/1.1 <status> <reason>` (the reason phrase for a common status, none for another), the response's headers as `name: value` in map order, then `content-length` and `connection: close`, then the body. A request is `METHOD <path> HTTP/1.1`, its query's keys and values percent-encoded (every byte but letters, digits, and `-._~`) after a `?`, or after an `&` when the path holds a `?`; then `host: <host>:<port>` unless the request has a `host` header, its headers, `content-length`, `connection: close`, and the body. A `content-length` or `connection` header the program gives is not written; the runtime's are. A method that is not a token, a path that does not begin with `/` or holds a space or control character, or a header whose name is not a token or whose value holds a control character is `Malformed`.
+
+`accept` reads the whole request before it gives the exchange, so a listener waits on one slow client at a time: a server that must not keep the others waiting passes each client a short deadline. The body is read by its count from the connection's buffer, so `Conn` gains no row.
+
+An `Http.fixture()` runs on the network `Net.fixture()` does, so a test can connect with a `Net` fixture to an `HttpListener` and write a request by hand. As on `Net`, a call with nothing to take (an `accept` with no client, or with a request cut short) waits its whole deadline and is `Timeout`. `send` alone does not wait for nothing: while its response is not whole it delivers the processes' waiting messages a round at a time, as a settle does, and it is `Timeout` when no message is waiting. So a test that sends a server process a message to accept, then sends a request in the same statement, gets the server's response. Under `mo test --sim`, `accept` and `send` time out by the seed, and `reply` and `send` find their connection `Closed` by the seed.

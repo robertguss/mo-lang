@@ -20,6 +20,25 @@
       "verified": { "hash": "d077f8946b30c29c", "declarations": "fedff205aef3e0e3" }
     },
     {
+      "path": "http.mo",
+      "module": "Stdlib.Http",
+      "declarations": [
+        { "id": "01c16114adb4", "name": "module Stdlib.Http", "hash": "923acfaa32afbad4" },
+        { "id": "b128ac21c22f", "name": "expose", "hash": "7cd1381fa8d3e5cc" },
+        { "id": "f7dd19552f04", "name": "intent", "hash": "6a3fd2f841419f06" },
+        { "id": "dabf7335d277", "name": "struct Heard", "hash": "f4c92a29a8eceefd" },
+        { "id": "577f9d273ce0", "name": "fn request_of", "hash": "f7828196623998ab" },
+        { "id": "7aa9770d9af4", "name": "fn status_of", "hash": "f031effe94886f6d" },
+        { "id": "48ae468a09f9", "name": "fn exchanged", "hash": "8634dc947403f426" },
+        { "id": "c5eb88ec7180", "name": "test \"a request with no body has its method, path, and lower-cased headers, and an empty query and body\"", "hash": "0975f2dfaccd33cf" },
+        { "id": "cac2cd0290f1", "name": "test \"a body is read by its content-length, and a repeated header joins its values\"", "hash": "b087dc74c742690a" },
+        { "id": "d56e506d7c01", "name": "test \"a query is split into its keys and values, each decoded\"", "hash": "7390a6b9d0a7b10d" },
+        { "id": "b41c86e3ef3d", "name": "test \"a request that is not HTTP is Malformed or Unsupported, and the client hears why\"", "hash": "8d5d231181cfba52" },
+        { "id": "512ee37679c2", "name": "test \"a body or a request line over 1 MiB is TooLarge, and a request cut short times out\"", "hash": "f93df1317c9e44a5" }
+      ],
+      "verified": { "hash": "de657c2be21ef419", "declarations": "eb18b8ed8ab6eab6" }
+    },
+    {
       "path": "json.mo",
       "module": "Stdlib.Json",
       "declarations": [

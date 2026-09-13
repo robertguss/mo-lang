@@ -142,7 +142,8 @@ pub const Decl = struct {
     module: u32 = 0,
 };
 
-pub const Field = struct { name: []const u8, type: Id, node: Index = 0 };
+/// `optional`: a stdlib struct's field that may be left out when it is built (prelude.zig).
+pub const Field = struct { name: []const u8, type: Id, node: Index = 0, optional: bool = false };
 
 pub const Variant = struct {
     name: []const u8,
@@ -217,6 +218,12 @@ pub const Checked = struct {
 
     pub fn findDecl(c: *const Checked, name: []const u8) ?u32 {
         for (c.decls, 0..) |d, i| if (std.mem.eql(u8, d.name, name) and d.kind != .prelude_enum) return @intCast(i);
+        return null;
+    }
+
+    /// A struct the prelude declares (`Request`, `Response`), whatever a module declares.
+    pub fn preludeStruct(c: *const Checked, name: []const u8) ?u32 {
+        for (c.decls, 0..) |d, i| if (d.node == 0 and d.kind == .struct_ and std.mem.eql(u8, d.name, name)) return @intCast(i);
         return null;
     }
 
@@ -656,10 +663,12 @@ const Checker = struct {
         }
         const struct_start: u32 = @intCast(c.decls.items.len);
         for (prelude.structs) |ps| {
-            if (declared.contains(ps.name)) continue;
+            // A stdlib struct exists whatever a module declares, for the rows that take or
+            // give it; a module's own declaration of its name only hides it from the module.
+            if (declared.contains(ps.name) and ps.origin != .stdlib) continue;
             const d = try c.addDecl(.{ .kind = .struct_, .name = ps.name });
             c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
-            try c.type_names.put(c.gpa, ps.name, d);
+            if (!declared.contains(ps.name)) try c.type_names.put(c.gpa, ps.name, d);
         }
         // Fields once every stand-in has a name, so a field may name another.
         for (c.decls.items[struct_start..]) |*d| {
@@ -669,7 +678,7 @@ const Checker = struct {
             const fstart: u32 = @intCast(c.fields.items.len);
             for (ps.fields) |f| {
                 var env: Env = .{};
-                try c.fields.append(c.gpa, .{ .name = f.name, .type = try c.parseTs(f.type, &env) });
+                try c.fields.append(c.gpa, .{ .name = f.name, .type = try c.parseTs(f.type, &env), .optional = f.optional });
             }
             d.fields = .{ .start = fstart, .end = @intCast(c.fields.items.len) };
         }
@@ -1241,6 +1250,9 @@ const Checker = struct {
         if (std.mem.eql(u8, word, "Map")) return c.pool.add(.{ .tag = .map, .a = args.items[0], .b = args.items[1] });
         if (std.mem.eql(u8, word, "Set")) return c.pool.list1(.set, args.items[0]);
         if (prelude.findType(word)) |pt| if (pt.kind == .error_enum or pt.kind == .enum_) return c.preludeEnum(word);
+        if (prelude.findStdStruct(word)) {
+            for (c.decls.items) |d| if (d.node == 0 and d.kind == .struct_ and std.mem.eql(u8, d.name, word)) return d.type;
+        }
         if (c.type_names.get(word)) |d| return c.decls.items[d].type;
         return primitive(word) orelse types.unknown;
     }
@@ -3148,7 +3160,7 @@ const Checker = struct {
             seen[k] = true;
             _ = try c.expr(an.lhs, defs[k].type);
         }
-        for (defs, seen) |d, s| if (!s) {
+        for (defs, seen) |d, s| if (!s and !d.optional) {
             try c.reportTok(.bad_named_arg, tok, try c.print("{s} needs {s}: every field is given when it is built", .{ label, d.name }));
             break;
         };
@@ -3202,6 +3214,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
+        .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

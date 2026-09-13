@@ -1846,7 +1846,15 @@ const Lower = struct {
                 const an = l.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), f.name)) break an.lhs;
             } else 0;
-            if (arg == 0) try l.pushConst(.none) else {
+            if (arg == 0 and f.optional) {
+                // A stdlib struct's field left out is empty (prelude.zig).
+                if (l.k.pool.get(l.k.pool.base(f.type)).tag == .map) {
+                    const k = for (prelude.fns, 0..) |row, k| {
+                        if (std.mem.eql(u8, row.recv, "Map") and std.mem.eql(u8, row.name, "new")) break k;
+                    } else unreachable;
+                    _ = try l.emit(.prim, @intCast(k), none);
+                } else try l.pushConst(.{ .string = "" });
+            } else if (arg == 0) try l.pushConst(.none) else {
                 try l.expr(arg);
                 try l.refineField(f, d.name);
             }
