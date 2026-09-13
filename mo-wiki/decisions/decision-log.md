@@ -166,6 +166,13 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Values are recorded where held (bindings, parameters, binders, constructions, state fields), inside collections; a type the recorder cannot see (a generic `T`) is a gap, not an error | Fable, from Opus's default | provisional | program 4 |
 | Control run round 2 recorded: Mo 11.8 min (from 25.5), Go 8.2, Python 7.9; Mo zero loops to green; the rest of the gap is `mo fmt` line breaking and five stdlib rows | Fable | — | round 3 after the formatter fixes |
 | Formatter follow-ups (from round 2): break long list literals and calls outside parentheses; keep one-line anonymous functions inside long calls; `sort_by` descending, two-value `min`/`max`, streaming read | Fable | provisional | step 14 |
+| Step 13 accepted: C runtime, emitter from the checked tree, `mo build` via `zig cc`, differential tests over the corpus (57 identical, 0 differences), read-only `Fs` refused at check time; logstat native: 200k lines in 0.14 s (interpreter 0.95 s), logstat-4k 6.8 ms vs 44.6 ms; 83 minutes | Fable | — | program 4 |
+| Contracts off by default in `mo build` | Opus's default | **overturned** on acceptance: chapter 3 says contracts run in every build; step 14 makes them on by default with `--no-contracts` for measurement | step 14 |
+| One 16-byte tagged value in C; `case` as test chains; Mo locals at the top of each C function for the compactor; the interpreter's region model ported as is | Fable, from Opus's default | provisional | program 4 |
+| Processes and `Net` are refused by `mo build` in this step, not compiled to crash | Fable, from Opus's default | provisional | step 15: processes in the C backend |
+| Linux targets link static musl; macOS links libSystem only; `zig` found next to `mo` then on PATH; nothing cached between builds | Fable, from Opus's default | provisional | program 4 |
+| Overflow checks and asserts are always on in every binary | Fable, from Opus's default | locked (chapter 2) | — |
+| A read-only `Fs` is its own type unifying with `Fs`; the checker infers which functions write through which `Fs` parameters; not followed through `Process.start` | Fable, from Opus's default | provisional | step 15 |
 
 ## Related
 - [[session-05]]

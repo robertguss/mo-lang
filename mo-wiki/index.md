@@ -99,6 +99,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-14|Step 14: the follow-ups from round 2 and the C backend, brief for the worker]] — contracts on in every build, three suspected panics, formatter shapes, four stdlib rows, housekeeping
 - [[interpreter-step-13|Step 13: the C backend, brief for the worker]] — C runtime, emitter, mo build, differential tests against the interpreter
 - [[interpreter-step-12b|Step 12b: two ratified defaults, undone, brief for the worker]] — memoization out of the reference interpreter; every never runs on every test
 - [[interpreter-step-12|Step 12: the runtime under real programs, brief for the worker]] — program discovery, hashed maps, in-place state, per-request freeing, file writes, three language decisions, fmt fuzz

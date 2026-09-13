@@ -30,11 +30,13 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 | 6c | done: the control run in Go and Python | [[control-run]] |
 | 7 | done: programs of many modules, memory, speed | [[interpreter-step-7]] |
 | 7b | done: the stdlib, `09-stdlib.md` | [[interpreter-step-8]] |
-| 8 | `Mo.Sim` seeds and fault injection; `sim (N runs)` real ([[interpreter-step-9]]) | counterexamples found |
-| 9, 10 | the sidecar, `mo fix`, the error catalog, the README ([[interpreter-step-10]]) | hand-edit detection; a model that has never seen Mo |
-| 11 | `Net` and processes under `mo run` ([[interpreter-step-11]]); then program 3, the KV store ([[program-3]]) | hot loops, overflow-check cost, requests per second |
-| 12 | the runtime under real programs ([[interpreter-step-12]]): kv's six bugs, file writes | a server that runs for a day |
-| 13 | the C backend via Zig for release, differential-tested ([[interpreter-step-13]]) | single binary; speed |
+| 8 | done: `Mo.Sim` seeds and faults | [[interpreter-step-9]] |
+| 9, 10 | done: sidecar, `mo fix`, error catalog, README | [[interpreter-step-10]] |
+| 11 | done: `Net`, program 3 `kv`, the runtime under real programs, two defaults undone | [[interpreter-step-11]], [[program-3]], [[interpreter-step-12]], [[interpreter-step-12b]] |
+| 12 | done: control run round 2, Mo 11.8 min from 25.5 | [[control-run-2]] |
+| 13 | done: the C backend, native logstat 7× the interpreter | [[interpreter-step-13]] |
+| 14 | follow-ups: contracts in every build, formatter shapes, stdlib rows ([[interpreter-step-14]]) | round 3 of the control run |
+| 15 | processes and `Net` in the C backend; kv as a native binary | requests per second, native |
 | 13 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 14 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 

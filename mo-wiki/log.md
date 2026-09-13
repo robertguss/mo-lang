@@ -214,3 +214,6 @@
 
 ## [2026-09-13] session | Morning: control run round 2
 - Mo 11.8 min, 0 loops to green, 791 lines, median 3 lines per function; Go 8.2; Python 7.9. All three verified. Branches control2-* kept as evidence, not merged. Two decision rows. Three round-2 sessions closed.
+
+## [2026-09-13] session | Morning: step 13 (C backend) accepted, merged; step 14 started
+- Fable verified: suite green, native logstat matches expected text and JSON, 200k lines 0.14 s / 37 MB, crash parity (same report, exit 70). Contracts-off default overturned on acceptance. Seven decision rows. Merged to main. Step 14 (follow-ups) to a fresh session. Roadmap rows updated.
