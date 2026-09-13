@@ -24,10 +24,16 @@ const net = @import("net.zig");
 const sim_mod = @import("sim.zig");
 const vm_mod = @import("vm.zig");
 
+const Region = @import("region.zig").Region;
+
 const Sim = sim_mod.Sim;
 const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
+const Parcel = vm_mod.Parcel;
 const Error = vm_mod.Error;
+
+/// The address space a process's region reserves, at most: many processes each reserve one.
+pub const process_region: usize = 16 << 30;
 
 /// `Turns.holder` when main's thread holds the turn.
 pub const main_turn: u32 = std.math.maxInt(u32);
@@ -37,6 +43,8 @@ const Job = enum { deliver, go_on, exit };
 pub const Worker = struct {
     thread: std.Thread = undefined,
     vm: Vm,
+    /// Under `mo run`, where its vm allocates.
+    values: ?Region = null,
     /// Set when the turn is handed to it.
     wake: Io.Event = .unset,
     /// Who handed it the turn, and gets it back.
@@ -49,6 +57,9 @@ pub const Worker = struct {
 };
 
 const Parked = struct { id: u32, deadline: i64 };
+
+/// An ask's reply, in the parcel it came back in under `mo run`.
+pub const Reply = struct { value: Value, parcel: ?*Parcel };
 
 pub const Turns = struct {
     io: Io,
@@ -67,7 +78,10 @@ pub const Turns = struct {
     awaiting: std.AutoHashMapUnmanaged(u64, u32) = .empty,
     /// Replies that came: seq → the reply, or null when the target crashed on the message
     /// or a restart dropped it.
-    answers: std.AutoHashMapUnmanaged(u64, ?Value) = .empty,
+    answers: std.AutoHashMapUnmanaged(u64, ?Reply) = .empty,
+    /// Under `mo run`, the scratch region every process's vm compacts through: only the
+    /// thread holding the turn runs Mo code, so one is enough.
+    scratch: ?*Region = null,
     /// Processes parked in an ask, each with its deadline.
     parked: std.ArrayList(Parked) = .empty,
     /// Where the next round of deliveries starts.
@@ -132,6 +146,10 @@ pub const Turns = struct {
         if (t.workers.items[id]) |w| return w;
         const w = try t.gpa.create(Worker);
         w.* = .{ .vm = .init(sim.gpa, sim.vm.program, 0) };
+        if (t.scratch) |s| {
+            w.values = Region.reserveUpTo(process_region) catch null;
+            if (w.values) |*r| w.vm.useRegions(r, s);
+        }
         w.vm.sim = sim;
         w.vm.server = sim.vm.server;
         t.mutex.lockUncancelable(t.io);
@@ -267,12 +285,17 @@ pub const Turns = struct {
     pub fn ask(t: *Turns, sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         if (!sim.procs.items[to].up) return sim.askError("Down");
         try sim.roomFor(to, message);
-        const seq = try sim.enqueue(sim.running orelse sim_mod.test_runner, to, message);
+        const parcel: ?*Parcel = if (sim.packs) try sim.vm.pack(message) else null;
+        const seq = try sim.enqueue(sim.running orelse sim_mod.test_runner, to, if (parcel) |p| p.value else message, parcel);
         try t.awaiting.put(t.gpa, seq, t.holder);
         const deadline = t.now() + @max(within, 0);
         while (true) {
             if (t.answers.fetchRemove(seq)) |kv| {
-                const reply = kv.value orelse return sim.askError("Down");
+                const got = kv.value orelse return sim.askError("Down");
+                const reply = if (got.parcel) |p| blk: {
+                    defer p.free();
+                    break :blk try sim.vm.unpack(p);
+                } else got.value;
                 return sim.vm.variant("Ok", &.{reply});
             }
             const p = &sim.procs.items[to];
@@ -309,10 +332,19 @@ pub const Turns = struct {
         }
     }
 
-    /// An update that took message `seq` ended: with its reply, or null when it crashed.
-    pub fn answer(t: *Turns, seq: u64, reply: ?Value) Error!void {
-        const kv = t.awaiting.fetchRemove(seq) orelse return;
-        try t.answers.put(t.gpa, seq, reply);
+    /// Whether an ask still waits for the reply to message `seq`.
+    pub fn awaits(t: *const Turns, seq: u64) bool {
+        return t.awaiting.contains(seq);
+    }
+
+    /// An update that took message `seq` ended: with its reply, packed under `mo run`, or
+    /// null when it crashed. The asker takes the parcel.
+    pub fn answer(t: *Turns, seq: u64, reply: ?Value, parcel: ?*Parcel) Error!void {
+        const kv = t.awaiting.fetchRemove(seq) orelse {
+            if (parcel) |p| p.free();
+            return;
+        };
+        try t.answers.put(t.gpa, seq, if (reply) |v| .{ .value = v, .parcel = parcel } else null);
         if (kv.value == main_turn) return t.main_wake.set(t.io);
         for (t.parked.items, 0..) |p, k| if (p.id == kv.value) {
             _ = t.parked.swapRemove(k);
@@ -337,6 +369,7 @@ pub const Turns = struct {
             }
             t.handTo(sim, @intCast(id), .exit) catch {};
             w.thread.join();
+            if (w.values) |*r| r.release();
         }
     }
 };

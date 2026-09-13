@@ -9,7 +9,9 @@
 //! before its next statement runs, an update may use the capabilities its process was
 //! started with, and when main returns the run goes on until no message is waiting. A
 //! process crash is reported on stderr as it happens and its supervisor restarts it; a
-//! supervisor that gives up crashes main.
+//! supervisor that gives up crashes main. main and every process free what they no longer
+//! reach at safe points (vm.zig), and a process keeps nothing of an update past what its
+//! new state reaches (sim.zig, settleRegion).
 //!
 //! An Fs value is pointer-free: `Value.Cap.handle` is its index in `Server.scopes`.
 const std = @import("std");
@@ -83,16 +85,18 @@ pub const Server = struct {
         var scheduler: Sim = .init(&machine, 0, "main");
         scheduler.server = s;
         machine.sim = &scheduler;
-        // Values live in a region freed at safe points (vm.zig); without the address space
-        // for one, every value lives until the run ends. A program with processes keeps
-        // every value: a message main sends, or a process's state, is reached from a
-        // mailbox the region's compaction does not see.
+        // Values live in regions freed at safe points (vm.zig): main's here, and each
+        // process's in one of its own (turns.zig), all compacting through one scratch
+        // region. A value that goes from one vm to another goes packed (Sim.packs), so no
+        // compaction needs to see another vm's values. Without the address space for the
+        // regions, every value lives until the run ends.
         const processes = program.processes.len > 0;
-        var values: ?Region = if (processes) null else Region.reserve() catch null;
+        var values: ?Region = Region.reserve() catch null;
         defer if (values) |*r| r.release();
-        var scratch: ?Region = if (processes) null else Region.reserve() catch null;
+        var scratch: ?Region = if (values != null) Region.reserve() catch null else null;
         defer if (scratch) |*r| r.release();
-        if (values != null and scratch != null) machine.useRegions(&values.?, &scratch.?);
+        const regions = values != null and scratch != null;
+        if (regions) machine.useRegions(&values.?, &scratch.?);
         // A call reaches the world only through a capability, so a pure call seen before can
         // be answered from memory (memo.zig). Starting a process or sending to one needs no
         // capability, so a program with processes remembers nothing.
@@ -103,7 +107,13 @@ pub const Server = struct {
         // Each process runs its updates on a thread of its own, and the threads take turns,
         // so one waiting on the network does not hold up the rest (turns.zig).
         var turns: Turns = .{ .io = s.io, .gpa = s.gpa };
-        if (processes) scheduler.turns = &turns;
+        if (processes) {
+            scheduler.turns = &turns;
+            if (regions) {
+                scheduler.packs = true;
+                turns.scratch = &scratch.?;
+            }
+        }
         defer if (processes) turns.stop(&scheduler);
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,

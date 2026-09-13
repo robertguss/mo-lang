@@ -154,6 +154,7 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A negative integer literal is a pattern | Fable | provisional | step 12 |
 | `String.byte_size`; `Fs.write`, `append` (fsync), `remove`, `rename`; `Out.flush`; `Out.fixture()` with `out.written` | Fable | provisional | step 12, kv's replay test |
 | Maps and sets gain a hash index; insertion-order semantics unchanged | Fable | provisional | step 12's `map-100k` row |
+| Memoization and never-only-under-sim to be reversed in step 12b: the reference interpreter runs every body and every contract every time; every `never` runs on every test, and one that cannot be checked is `MO0324` | Fable, after unpacking both for Robert | provisional, overturns two earlier rows when 12b lands | step 12b |
 
 ## Related
 - [[session-05]]

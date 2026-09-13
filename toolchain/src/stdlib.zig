@@ -168,16 +168,16 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
             break :blk .none;
         },
         .list_group_by => groupBy(vm, a[0].list, a[1].func),
-        .map_new => .{ .map = &.{} },
-        .set_new => .{ .set = &.{} },
-        .map_size => .{ .int = @intCast(a[0].map.len / 2) },
-        .set_size => .{ .int = @intCast(a[0].set.len) },
-        .map_get => if (indexOf(a[0].map, 2, a[1])) |k| vm.variant("Some", &.{a[0].map[k + 1]}) else vm.variant("None", &.{}),
-        .map_has => .{ .bool = indexOf(a[0].map, 2, a[1]) != null },
-        .set_has => .{ .bool = indexOf(a[0].set, 1, a[1]) != null },
+        .map_new => .{ .map = .{ .entries = &.{} } },
+        .set_new => .{ .set = .{ .entries = &.{} } },
+        .map_size => .{ .int = @intCast(a[0].map.entries.len / 2) },
+        .set_size => .{ .int = @intCast(a[0].set.entries.len) },
+        .map_get => if (find(a[0].map, 2, a[1])) |k| vm.variant("Some", &.{a[0].map.entries[k + 1]}) else vm.variant("None", &.{}),
+        .map_has => .{ .bool = find(a[0].map, 2, a[1]) != null },
+        .set_has => .{ .bool = find(a[0].set, 1, a[1]) != null },
         .map_set => .{ .map = try put(vm, a[0].map, 2, a[1], a[2], int_kind) },
         .map_update => blk: {
-            const current = if (indexOf(a[0].map, 2, a[1])) |k| a[0].map[k + 1] else a[2];
+            const current = if (find(a[0].map, 2, a[1])) |k| a[0].map.entries[k + 1] else a[2];
             const next = try vm.invoke(a[3].func, &.{current});
             break :blk .{ .map = try put(vm, a[0].map, 2, a[1], next, int_kind) };
         },
@@ -185,20 +185,20 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .map_remove => .{ .map = try without(vm, a[0].map, 2, a[1], int_kind) },
         .set_remove => .{ .set = try without(vm, a[0].set, 1, a[1], int_kind) },
         .map_keys, .map_values => blk: {
-            const xs = a[0].map;
+            const xs = a[0].map.entries;
             const out = try vm.heap.alloc(Value, xs.len / 2);
             const offset: usize = if (which == .map_keys) 0 else 1;
             for (out, 0..) |*o, k| o.* = xs[2 * k + offset];
             break :blk .{ .list = out };
         },
         .map_entries => blk: {
-            const xs = a[0].map;
+            const xs = a[0].map.entries;
             const pairs = try vm.heap.dupe(Value, xs);
             const out = try vm.heap.alloc(Value, xs.len / 2);
             for (out, 0..) |*o, k| o.* = .{ .tuple = pairs[2 * k .. 2 * k + 2] };
             break :blk .{ .list = out };
         },
-        .set_to_list => .{ .list = try vm.heap.dupe(Value, a[0].set) },
+        .set_to_list => .{ .list = try vm.heap.dupe(Value, a[0].set.entries) },
         .list_get => if (a[1].int < a[0].list.len) vm.variant("Some", &.{a[0].list[@intCast(a[1].int)]}) else vm.variant("None", &.{}),
         .list_slice => .{ .list = cut(a[0].list, a[1].int, a[2].int) },
         .list_take => .{ .list = cut(a[0].list, 0, a[1].int) },
@@ -625,7 +625,7 @@ fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
         block[filled[g]] = x;
         filled[g] += 1;
     }
-    return .{ .map = entries };
+    return .{ .map = try mapOf(vm.heap, entries, 2) };
 }
 
 // ---- time
@@ -781,7 +781,8 @@ fn files(vm: *Vm, which: Row, a: []const Value) Error!Value {
 
 // ---- maps and sets
 
-/// Where `key` is in `xs`, whose entries are `stride` values wide (a map's are 2).
+/// Where `key` is in `xs`, whose entries are `stride` values wide (a map's are 2), by
+/// looking at each.
 pub fn indexOf(xs: []const Value, stride: usize, key: Value) ?usize {
     var k: usize = 0;
     while (k < xs.len) : (k += stride) {
@@ -790,49 +791,115 @@ pub fn indexOf(xs: []const Value, stride: usize, key: Value) ?usize {
     return null;
 }
 
-/// `xs` with `key` set to `value` (a set passes stride 1, and no value): an existing key
+/// A map or set of fewer keys than this is searched from the front; one this big has an
+/// index.
+pub const index_from = 8;
+
+/// Where `key` is in a map or set: through its index, or from the front when it has none.
+/// A table holds at most half its slots, so a probe always reaches an empty one.
+pub fn find(m: Value.Map, stride: usize, key: Value) ?usize {
+    if (m.index.len == 0) return indexOf(m.entries, stride, key);
+    const mask = m.index.len - 1;
+    var i: usize = @intCast(ValueContext.hash(.{}, key) & mask);
+    while (true) : (i = (i + 1) & mask) {
+        const slot = m.index[i];
+        if (slot == 0) return null;
+        const at = (slot - 1) * stride;
+        if (at < m.entries.len and vm_mod.equal(m.entries[at], key)) return at;
+    }
+}
+
+fn insertOrdinal(index: []u32, entries: []const Value, stride: usize, ordinal: usize) void {
+    const mask = index.len - 1;
+    var i: usize = @intCast(ValueContext.hash(.{}, entries[ordinal * stride]) & mask);
+    while (index[i] != 0) i = (i + 1) & mask;
+    index[i] = @intCast(ordinal + 1);
+}
+
+/// An index over `entries` of at least `min_slots` slots and twice the keys, or none for a
+/// map too small to need one.
+pub fn buildIndex(a: std.mem.Allocator, entries: []const Value, stride: usize, min_slots: usize) error{OutOfMemory}![]const u32 {
+    const keys = entries.len / stride;
+    if (keys < index_from) return &.{};
+    var slots: usize = @max(16, min_slots);
+    while (slots < 2 * keys) slots *= 2;
+    const index = try a.alloc(u32, slots);
+    @memset(index, 0);
+    for (0..keys) |ordinal| insertOrdinal(index, entries, stride, ordinal);
+    return index;
+}
+
+/// A map or set of these entries, with the index it needs.
+pub fn mapOf(a: std.mem.Allocator, entries: []const Value, stride: usize) error{OutOfMemory}!Value.Map {
+    return .{ .entries = entries, .index = try buildIndex(a, entries, stride, 0) };
+}
+
+/// `m` with `key` set to `value` (a set passes stride 1, and no value): an existing key
 /// keeps its place, a new one goes last. When the lowering marked the call `unique`
-/// (`m = m.set(k, v)` on a var) and the var owns the buffer, the row writes in place.
-fn put(vm: *Vm, xs: []const Value, stride: usize, key: Value, value: Value, int_kind: u32) Error![]const Value {
+/// (`m = m.set(k, v)` on a var, or on a field of one) and the var owns the buffer, the row
+/// writes in place.
+fn put(vm: *Vm, m: Value.Map, stride: usize, key: Value, value: Value, int_kind: u32) Error!Value.Map {
+    const xs = m.entries;
     const on_var = int_kind == bytecode.unique;
     const mine = on_var and vm.isOwned(xs);
-    if (indexOf(xs, stride, key)) |k| {
-        if (stride == 1) return xs;
-        if (mine and vm.writable(@intFromPtr(xs.ptr), value)) {
-            @constCast(xs)[k + 1] = value;
-            return xs;
+    if (find(m, stride, key)) |k| {
+        if (stride == 1) return m;
+        if (mine and vm.overwritable(@intFromPtr(xs.ptr))) {
+            try vm.overwrite(@constCast(&xs[k + 1]), value);
+            return m;
         }
+        // The keys and their places are the same, so the copy shares the index: its
+        // entries never grow in place, so nothing inserts into the table for them.
         const out = try vm.heap.dupe(Value, xs);
         out[k + 1] = value;
         if (on_var) vm.own(out);
-        return out;
+        return .{ .entries = out, .index = m.index };
     }
     var out = try vm.pushList(xs, key);
     if (stride == 2) out = try vm.pushList(out, value);
+    const keys = out.len / stride;
+    // Grown in place, the entries keep their table while it has room: every value that
+    // shares the buffer is a prefix of it, and skips the ordinals past its own.
+    const index: []const u32 = if (out.ptr == xs.ptr and m.index.len >= 2 * keys) blk: {
+        insertOrdinal(@constCast(m.index), out, stride, keys - 1);
+        break :blk m.index;
+    } else try buildIndex(vm.heap, out, stride, 0);
     // Grown in place from a buffer others may share a prefix of, a result is not owned.
     if (on_var and (mine or out.ptr != xs.ptr)) {
         vm.disown(xs);
         vm.own(out);
     }
-    return out;
+    return .{ .entries = out, .index = index };
 }
 
-/// `xs` without `key`; unchanged when it is absent.
-fn without(vm: *Vm, xs: []const Value, stride: usize, key: Value, int_kind: u32) Error![]const Value {
-    const k = indexOf(xs, stride, key) orelse return xs;
+/// `m` without `key`; unchanged when it is absent.
+fn without(vm: *Vm, m: Value.Map, stride: usize, key: Value, int_kind: u32) Error!Value.Map {
+    const xs = m.entries;
+    const k = find(m, stride, key) orelse return m;
     const on_var = int_kind == bytecode.unique;
-    if (on_var and vm.isOwned(xs)) {
-        const buf = @constCast(xs);
-        std.mem.copyForwards(Value, buf[k .. xs.len - stride], buf[k + stride ..]);
-        vm.disown(xs);
-        vm.own(xs[0 .. xs.len - stride]);
-        return xs[0 .. xs.len - stride];
+    const rest = xs.len - stride;
+    // The last key comes off as a shorter view: the table's ordinal past it is skipped.
+    if (k == rest) {
+        if (on_var and vm.isOwned(xs)) {
+            vm.disown(xs);
+            vm.own(xs[0..rest]);
+        }
+        return .{ .entries = xs[0..rest], .index = m.index };
     }
-    const out = try vm.heap.alloc(Value, xs.len - stride);
+    if (on_var and vm.isOwned(xs) and vm.movable(@intFromPtr(xs.ptr))) {
+        const buf = @constCast(xs);
+        std.mem.copyForwards(Value, buf[k..rest], buf[k + stride ..]);
+        try vm.rememberWrite(@intFromPtr(buf.ptr) + k * @sizeOf(Value), rest - k, null);
+        vm.disown(xs);
+        vm.own(xs[0..rest]);
+        // The ordinals moved, and the table may be shared with a copy, so it is built anew.
+        return .{ .entries = xs[0..rest], .index = try buildIndex(vm.heap, xs[0..rest], stride, m.index.len) };
+    }
+    const out = try vm.heap.alloc(Value, rest);
     @memcpy(out[0..k], xs[0..k]);
     @memcpy(out[k..], xs[k + stride ..]);
     if (on_var) vm.own(out);
-    return out;
+    return .{ .entries = out, .index = try buildIndex(vm.heap, out, stride, m.index.len) };
 }
 
 /// Hashes a value so that equal values (vm.equal) hash alike.
@@ -861,7 +928,8 @@ fn hashInto(h: *std.hash.Wyhash, v: Value) void {
             h.update(s);
         },
         .time, .duration => |t| h.update(std.mem.asBytes(&t)),
-        .list, .tuple, .map, .set => |xs| hashAll(h, xs),
+        .list, .tuple => |xs| hashAll(h, xs),
+        .map, .set => |m| hashAll(h, m.entries),
         .record => |r| {
             h.update(std.mem.asBytes(&r.decl));
             hashAll(h, r.fields);

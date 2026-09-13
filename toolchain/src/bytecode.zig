@@ -171,6 +171,9 @@ pub const Process = struct {
     init: u32,
     update: u32,
     invariants: []const Invariant,
+    /// An invariant reads old(state), so an update never overwrites the state before it in
+    /// place (sim.zig).
+    reads_old: bool = false,
 };
 
 /// A `child` line: `args` takes the supervisor's parameters and gives the child's
@@ -334,8 +337,9 @@ const Lower = struct {
     /// An `old(...)` node → the slot its operand was stored in on entry.
     old_slots: std.AutoHashMapUnmanaged(Index, u32) = .empty,
     b: *Builder = undefined,
-    /// While `m = m.set(k, v)` is lowered: its call node and the name it assigns.
-    in_place: struct { call: Index = 0, name: []const u8 = "" } = .{},
+    /// While `m = m.set(k, v)` or `s.f = s.f.set(k, v)` is lowered: its call node, the name
+    /// it assigns, and for an assignment the place on its left.
+    in_place: struct { call: Index = 0, name: []const u8 = "", path: Index = 0 } = .{},
 
     // ---- small helpers
 
@@ -841,6 +845,7 @@ const Lower = struct {
         const update_fn = fi;
 
         var invariants: std.ArrayList(Invariant) = .empty;
+        var reads_old = false;
         for (l.tree.span(data.invariants_start, data.invariants_end)) |inv| {
             b = .{ .name = d.name, .contract = true };
             l.b = &b;
@@ -850,6 +855,10 @@ const Lower = struct {
             b.old_state = l.slot();
             b.result = l.slot();
             try l.expr(l.node(inv).rhs);
+            for (b.code.items) |in| switch (in.op) {
+                .load, .load_field, .load_shared => reads_old = reads_old or in.a == b.old_state,
+                else => {},
+            };
             _ = try l.emit(.ret, 0, 0);
             const cl = try l.clause(.invariant, l.node(inv).main_token);
             l.functions.items[fi] = try l.finish(&b);
@@ -863,6 +872,7 @@ const Lower = struct {
             .init = init_fn,
             .update = update_fn,
             .invariants = invariants.items,
+            .reads_old = reads_old,
         };
     }
 
@@ -965,7 +975,7 @@ const Lower = struct {
                 const op = l.text(n.main_token);
                 if (op.len == 1) {
                     const lhs = l.node(n.lhs);
-                    if (lhs.kind == .name_ref) l.in_place = .{ .call = n.rhs, .name = l.text(lhs.main_token) };
+                    if (lhs.kind == .name_ref or lhs.kind == .member) l.in_place = .{ .call = n.rhs, .path = n.lhs };
                     try l.expr(n.rhs);
                     l.in_place = .{};
                 } else {
@@ -1034,7 +1044,8 @@ const Lower = struct {
                 const k = l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token)) orelse return l.halt(i, "", false);
                 const d = l.k.decls[l.baseType(l.typeOf(n.lhs)).a];
                 try l.refineField(l.k.fields[d.fields.start + k], d.name);
-                try l.expr(n.lhs);
+                // The old struct is only rebuilt with the field set: not a read that shares it.
+                try l.loadPlace(n.lhs);
                 _ = try l.emit(.swap, 0, 0);
                 _ = try l.emit(.set_field, k, 0);
                 try l.assignPlace(n.lhs);
@@ -1417,7 +1428,12 @@ const Lower = struct {
             .member => {
                 if (l.k.callee[i] != .none) return l.callNode(i, n.lhs, &.{});
                 const k = l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token)) orelse return l.halt(i, try std.fmt.allocPrint(l.gpa, "{s} is a field of a type tier 2 cannot see", .{l.text(n.main_token)}), false);
-                try l.fieldOf(n.lhs, k);
+                // A field that holds a map or set is read through its var's load_shared: the
+                // buffer may now be held twice.
+                if (l.holdsMap(l.typeOf(i))) {
+                    try l.expr(n.lhs);
+                    _ = try l.emit(.field, k, 0);
+                } else try l.fieldOf(n.lhs, k);
             },
             .member_call => try l.callNode(i, n.lhs, l.spanAt(n.rhs)),
             .tuple_index => try l.fieldOf(n.lhs, @intCast(parseInt(l.text(n.main_token)))),
@@ -1463,8 +1479,7 @@ const Lower = struct {
         const n = l.node(i);
         const name = l.text(n.main_token);
         if (try l.resolve(name)) |v| {
-            const t = l.baseType(l.typeOf(i));
-            _ = try l.emit(if (v.mutable and (t.tag == .map or t.tag == .set)) .load_shared else .load, v.slot, 0);
+            _ = try l.emit(if (v.mutable and l.holdsMap(l.typeOf(i))) .load_shared else .load, v.slot, 0);
             return;
         }
         switch (l.k.callee[i]) {
@@ -1559,11 +1574,12 @@ const Lower = struct {
         var kind: u32 = none;
         if (!row.on_type) {
             if (recv) |r| {
-                if (l.inPlaceSlot(i, r, row)) |s| {
-                    _ = try l.emit(.load, s, 0);
+                if (l.inPlace(i, r, row)) {
+                    try l.loadPlace(r);
                     kind = unique;
                 } else {
-                    try l.expr(r);
+                    // A row that only looks at a map or set shares none of its buffer.
+                    if (looksOnly(row)) try l.loadPlace(r) else try l.expr(r);
                     // A list's row (`sum`) checks against its element's integer type.
                     const rt = l.baseType(l.typeOf(r));
                     kind = if (rt.tag == .list) l.intKind(rt.a) else l.intKind(l.typeOf(r));
@@ -1597,18 +1613,84 @@ const Lower = struct {
         _ = try l.emit(.prim, k, kind);
     }
 
-    /// The var's slot when call `i` is the right side of `m = m.set(k, v)`, `update`, or
-    /// `remove` on a var map, or `s = s.add(x)` or `remove` on a var set, and `r` reads
-    /// that var; the old value is overwritten, so the row may write in place.
-    fn inPlaceSlot(l: *Lower, i: Index, r: Index, row: prelude.Fn) ?u32 {
-        if (i != l.in_place.call) return null;
-        const rn = l.node(r);
-        if (rn.kind != .name_ref or !std.mem.eql(u8, l.text(rn.main_token), l.in_place.name)) return null;
+    /// Whether call `i` is the right side of `m = m.set(k, v)`, `update`, or `remove` on a
+    /// var map, or `s = s.add(x)` or `remove` on a var set, or the same on a field path under
+    /// a var (`state.data = state.data.set(k, v)`), and `r` reads that place: the old value
+    /// is overwritten, so the row may write in place.
+    fn inPlace(l: *Lower, i: Index, r: Index, row: prelude.Fn) bool {
+        if (i != l.in_place.call) return false;
         const map_row = std.mem.startsWith(u8, row.recv, "Map(") and (std.mem.eql(u8, row.name, "set") or std.mem.eql(u8, row.name, "update") or std.mem.eql(u8, row.name, "remove"));
         const set_row = std.mem.startsWith(u8, row.recv, "Set(") and (std.mem.eql(u8, row.name, "add") or std.mem.eql(u8, row.name, "remove"));
-        if (!map_row and !set_row) return null;
-        const v = l.localVar(l.in_place.name) orelse return null;
-        return v.slot;
+        if (!map_row and !set_row) return false;
+        if (l.in_place.path != 0) return l.samePlace(r, l.in_place.path);
+        const rn = l.node(r);
+        return rn.kind == .name_ref and std.mem.eql(u8, l.text(rn.main_token), l.in_place.name) and l.localVar(l.in_place.name) != null;
+    }
+
+    /// Whether two expressions name the same place: one var, or one field path under it.
+    fn samePlace(l: *Lower, a: Index, b: Index) bool {
+        const an = l.node(a);
+        const bn = l.node(b);
+        if (an.kind != bn.kind or !std.mem.eql(u8, l.text(an.main_token), l.text(bn.main_token))) return false;
+        return switch (an.kind) {
+            .name_ref => l.localVar(l.text(an.main_token)) != null,
+            .member => l.k.callee[a] == .none and l.k.callee[b] == .none and l.samePlace(an.lhs, bn.lhs),
+            else => false,
+        };
+    }
+
+    /// A place's value, a name or a field path under one, read without giving up a var's
+    /// claim on the buffers it holds; any other expression as it is.
+    fn loadPlace(l: *Lower, i: Index) Error!void {
+        const n = l.node(i);
+        switch (n.kind) {
+            .name_ref => if (try l.resolve(l.text(n.main_token))) |v| {
+                _ = try l.emit(.load, v.slot, 0);
+                return;
+            },
+            .member => if (l.k.callee[i] == .none) {
+                if (l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token))) |k| {
+                    try l.loadPlace(n.lhs);
+                    _ = try l.emit(.field, k, 0);
+                    return;
+                }
+            },
+            else => {},
+        }
+        try l.expr(i);
+    }
+
+    /// The map and set rows that give sizes, elements, or new lists, and never the buffer.
+    fn looksOnly(row: prelude.Fn) bool {
+        const on_map = std.mem.startsWith(u8, row.recv, "Map(") or std.mem.startsWith(u8, row.recv, "Set(");
+        if (!on_map) return false;
+        for ([_][]const u8{ "size", "get", "has?", "keys", "values", "entries", "to_list" }) |name| {
+            if (std.mem.eql(u8, row.name, name)) return true;
+        }
+        return false;
+    }
+
+    /// Whether a value of this type can hold a map or set a var owns: it is one, or a
+    /// struct with a field that can.
+    fn holdsMap(l: *Lower, t: Id) bool {
+        return l.holdsMapWithin(t, 0);
+    }
+
+    fn holdsMapWithin(l: *Lower, t: Id, depth: u32) bool {
+        if (depth > 8) return false;
+        const ty = l.baseType(t);
+        switch (ty.tag) {
+            .map, .set => return true,
+            .decl => {
+                const d = l.k.decls[ty.a];
+                if (d.kind != .struct_) return false;
+                for (l.k.fields[d.fields.start..d.fields.end]) |f| {
+                    if (l.holdsMapWithin(f.type, depth + 1)) return true;
+                }
+                return false;
+            },
+            else => return false,
+        }
     }
 
     fn construct(l: *Lower, i: Index) Error!void {

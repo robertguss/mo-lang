@@ -5,17 +5,22 @@
 //!
 //! Values are immutable: a list, a tuple, a struct, or a variant is a slice nothing
 //! else writes, and changing a field builds a new one, so a `var` copied from another
-//! name can never alias it. The one exception keeps that promise: `push` appends in
-//! place when the list ends where its buffer's last push left it, so every earlier value
-//! of the list is a prefix that never sees the new element, and a list built by pushing
-//! is linear.
+//! name can never alias it. Two exceptions keep that promise. `push` appends in place when
+//! the list ends where its buffer's last push left it, so every earlier value of the list
+//! is a prefix that never sees the new element, and a list built by pushing is linear. And
+//! `set`, `update`, `remove`, and `add` on a map or set that one var, or one field path
+//! under a var, holds alone (`owned`) write into its buffer: nothing else can see it.
+//! A map or set carries a hash index beside its entries (stdlib.zig, find).
 //!
 //! Values are allocated from `heap`. The runner gives each test its own arena and frees
 //! it whole. `mo run` gives the vm a region (region.zig, useRegions): each frame, each
 //! `for` iteration, and each step of `map`, `filter`, and `reduce` is a safe point, and
 //! once enough has been allocated since it began, what its result, its locals, or its
-//! accumulator reach is copied down and everything else is freed (compact). `mo run` also
-//! gives it a Memo (memo.zig), which answers a pure call it has seen before.
+//! accumulator reach is copied down and everything else is freed (compact). A write in
+//! place can put a newer value into an older buffer, so each such slot is remembered and
+//! a compaction reaches through it. Under processes each process's vm has a region of its
+//! own, and values cross between vms packed (Parcel, sim.zig). `mo run` gives a program
+//! without processes a Memo (memo.zig), which answers a pure call it has seen before.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
@@ -52,10 +57,10 @@ pub const Value = union(enum) {
     list: []const Value,
     tuple: []const Value,
     /// A map's entries, each key then its value, in the order the keys were first added
-    /// (design-v0/09).
-    map: []const Value,
-    /// A set's elements, in the order they were first added.
-    set: []const Value,
+    /// (design-v0/09), and the hash index beside them.
+    map: Map,
+    /// A set's elements, in the order they were first added, and their index.
+    set: Map,
     record: Record,
     variant: Variant,
     func: Func,
@@ -63,6 +68,11 @@ pub const Value = union(enum) {
     /// A started process: its index in the run's `Sim.procs`.
     handle: u32,
 
+    /// Entries in the order they were added, `stride` values each (a map's are 2), and once
+    /// there are enough of them an open-addressing table over them: each slot holds an
+    /// entry's ordinal plus one, 0 when empty (stdlib.zig, find). A table may hold
+    /// ordinals past the entries a value sees, so a lookup always compares the key.
+    pub const Map = struct { entries: []const Value, index: []const u32 = &.{} };
     pub const Record = struct { decl: u32, fields: []const Value };
     /// A variant is known by its name, so `try` re-tags an error without converting it.
     pub const Variant = struct { name: []const u8, fields: []const Value };
@@ -76,6 +86,19 @@ pub const fixture_time: i64 = 1_767_225_600_000;
 
 pub const Generated = struct { name: []const u8, value: Value };
 
+/// A value copied whole into memory of its own (Vm.pack), so it outlives the region it was
+/// made in: under `mo run`, a message on its way to another process's vm, a reply on its
+/// way back, and a process's start arguments and first state (sim.zig).
+pub const Parcel = struct {
+    arena: std.heap.ArenaAllocator,
+    value: Value = .none,
+
+    pub fn free(p: *Parcel) void {
+        p.arena.deinit();
+        std.heap.smp_allocator.destroy(p);
+    }
+};
+
 pub const Vm = struct {
     /// Reports, rendered values, and the vm's own lists: everything that is not a value.
     gpa: std.mem.Allocator,
@@ -87,16 +110,29 @@ pub const Vm = struct {
     region: ?*Region = null,
     /// What a compaction keeps passes through here on its way back into `region`.
     scratch: ?*Region = null,
-    /// The lists push can grow in place: the eight it grew last.
-    growth: [8]Growth = [_]Growth{.{}} ** 8,
+    /// The lists push can grow in place: the sixteen it grew last.
+    growth: [16]Growth = [_]Growth{.{}} ** 16,
     growth_next: usize = 0,
     /// Map and set buffers a `var` holds alone: an update (`m = m.set(k, v)`) made them
     /// and nothing has read the var since (a read is `load_shared`). stdlib.zig writes
     /// into these in place, so an update on a var is not a copy (design-v0/09).
-    owned: [8]SliceKey = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 8,
+    owned: [16]SliceKey = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 16,
     owned_next: usize = 0,
     /// A compaction's copies, so a slice reached twice is copied once.
     forward: std.AutoHashMapUnmanaged(SliceKey, [*]Value) = .empty,
+    /// Slots a row wrote in place with a value that may be newer than the slot (rememberWrite):
+    /// a compaction from between the two finds the value only through here. In order of
+    /// `at`, so a compaction looks only at those written since.
+    remembered: std.ArrayList(Remembered) = .empty,
+    /// Under an update (sim.zig), what each slot below `undo_mark` held before the update
+    /// overwrote it, so a crash shows the state as it was. 0: no update keeps one.
+    undo: std.ArrayList(Undo) = .empty,
+    undo_mark: usize = 0,
+    /// Buffers below this address are never overwritten in place: a process whose
+    /// invariants read old(state) keeps the state before each update whole.
+    frozen_below: usize = 0,
+    /// What a process's region held after its last full compaction (sim.zig).
+    full_kept: usize = 0,
     /// Region bytes a returning frame may leave behind before it compacts its result.
     frame_budget: usize = 1 << 20,
     /// Region bytes a loop may allocate past twice what it kept at its last compaction.
@@ -130,6 +166,11 @@ pub const Vm = struct {
     const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
 
     const SliceKey = struct { ptr: usize, len: usize };
+
+    /// `len` slots from `slot` were written in place; `at` is where the region's top stood
+    /// then, or where a compaction that moved their values left it.
+    const Remembered = struct { slot: usize, len: usize, at: usize };
+    const Undo = struct { slot: usize, old: Value };
 
     fn simulator(vm: *Vm) Error!*sim_mod.Sim {
         if (vm.sim) |s| return s;
@@ -225,10 +266,7 @@ pub const Vm = struct {
                 .load => try vm.push(locals[inst.a]),
                 .load_shared => {
                     const v = locals[inst.a];
-                    switch (v) {
-                        .map, .set => |xs| vm.disown(xs),
-                        else => {},
-                    }
+                    vm.disownIn(v);
                     try vm.push(v);
                 },
                 .store => locals[inst.a] = vm.pop(),
@@ -425,8 +463,8 @@ pub const Vm = struct {
             .duration => return .{ .duration = 0 },
             .list => return .{ .list = &.{} },
             .option => return try vm.variant("None", &.{}),
-            .map => return .{ .map = &.{} },
-            .set => return .{ .set = &.{} },
+            .map => return .{ .map = .{ .entries = &.{} } },
+            .set => return .{ .set = .{ .entries = &.{} } },
             .tuple => {
                 const elems = k.pool.elems(ty);
                 const out = try vm.heap.alloc(Value, elems.len);
@@ -481,50 +519,97 @@ pub const Vm = struct {
     }
 
     /// Copies what `roots` reach past `from` into the scratch region, frees everything past
-    /// `from`, and copies it back; `roots` then hold the copies. Nothing allocated before
-    /// `from` points past it, so what `roots` reach is everything kept: values only point
-    /// at older values, and push writes in place only what is older than its buffer.
-    fn compact(vm: *Vm, from: usize, roots: []Value) Error!void {
+    /// `from`, and copies it back; `roots` then hold the copies. A value points only at
+    /// older values, except where a row wrote into an older buffer in place, and those slots
+    /// are remembered: so what `roots` and the remembered slots below `from` reach is
+    /// everything kept.
+    pub fn compact(vm: *Vm, from: usize, roots: []Value) Error!void {
         const r = vm.region.?;
         const s = vm.scratch.?;
         const old_top = r.top;
+        // Only slots written since the top last stood at `from` can hold a value past it. Of
+        // those, a slot past `from` is freed or copied with its buffer; one below is a root.
+        var first = vm.remembered.items.len;
+        while (first > 0 and vm.remembered.items[first - 1].at > from) first -= 1;
+        var n = first;
+        for (vm.remembered.items[first..]) |e| {
+            if (e.slot >= from and e.slot < old_top) continue;
+            vm.remembered.items[n] = e;
+            n += 1;
+        }
+        vm.remembered.shrinkRetainingCapacity(n);
+        const below = vm.remembered.items[first..];
         s.top = s.base;
         vm.forward.clearRetainingCapacity();
-        for (roots) |*v| v.* = try vm.copyOut(v.*, from, old_top, s);
+        try vm.copyRoots(roots, below, .{ .lo = from, .hi = old_top, .dest = s.allocator(), .moves = true });
         r.top = from;
         vm.dropGrowth(from, old_top);
         vm.forward.clearRetainingCapacity();
-        for (roots) |*v| v.* = try vm.copyOut(v.*, s.base, s.top, r);
+        try vm.copyRoots(roots, below, .{ .lo = s.base, .hi = s.top, .dest = r.allocator(), .moves = true, .fresh = true });
         vm.dropGrowth(s.base, s.end);
+        for (below) |*e| e.at = r.top;
     }
 
-    /// `v` with every part allocated in [lo, hi) copied into `dest`.
-    fn copyOut(vm: *Vm, v: Value, lo: usize, hi: usize, dest: *Region) Error!Value {
+    fn copyRoots(vm: *Vm, roots: []Value, slots: []const Remembered, c: Copy) Error!void {
+        for (roots) |*v| v.* = try vm.copyOut(v.*, c);
+        for (slots) |e| {
+            const xs: [*]Value = @ptrFromInt(e.slot);
+            for (xs[0..e.len]) |*v| v.* = try vm.copyOut(v.*, c);
+        }
+    }
+
+    /// A copy takes every part allocated in [lo, hi) into `dest`. `moves`: a compaction,
+    /// whose copies carry on the buffers push can grow and a var owns. `fresh`: every map
+    /// index in the range was built by the copy before, so it is copied as it is.
+    const Copy = struct { lo: usize, hi: usize, dest: std.mem.Allocator, moves: bool = false, fresh: bool = false };
+
+    fn inside(addr: usize, c: Copy) bool {
+        return addr >= c.lo and addr < c.hi;
+    }
+
+    /// `v` with every part allocated in the copy's range copied.
+    fn copyOut(vm: *Vm, v: Value, c: Copy) Error!Value {
         return switch (v) {
-            .string => |s| if (s.len > 0 and @intFromPtr(s.ptr) >= lo and @intFromPtr(s.ptr) < hi) .{ .string = try dest.allocator().dupe(u8, s) } else v,
-            .list => |xs| .{ .list = try vm.copySlice(xs, lo, hi, dest, true) },
-            .tuple => |xs| .{ .tuple = try vm.copySlice(xs, lo, hi, dest, false) },
-            .map => |xs| .{ .map = try vm.copySlice(xs, lo, hi, dest, true) },
-            .set => |xs| .{ .set = try vm.copySlice(xs, lo, hi, dest, true) },
-            .record => |x| .{ .record = .{ .decl = x.decl, .fields = try vm.copySlice(x.fields, lo, hi, dest, false) } },
-            .variant => |x| .{ .variant = .{ .name = x.name, .fields = try vm.copySlice(x.fields, lo, hi, dest, false) } },
-            .func => |x| .{ .func = .{ .function = x.function, .captures = try vm.copySlice(x.captures, lo, hi, dest, false) } },
+            .string => |s| if (s.len > 0 and inside(@intFromPtr(s.ptr), c)) .{ .string = try c.dest.dupe(u8, s) } else v,
+            .list => |xs| .{ .list = try vm.copySlice(xs, c, true) },
+            .tuple => |xs| .{ .tuple = try vm.copySlice(xs, c, false) },
+            .map => |m| .{ .map = try vm.copyMap(m, 2, c) },
+            .set => |m| .{ .set = try vm.copyMap(m, 1, c) },
+            .record => |x| .{ .record = .{ .decl = x.decl, .fields = try vm.copySlice(x.fields, c, false) } },
+            .variant => |x| .{ .variant = .{ .name = x.name, .fields = try vm.copySlice(x.fields, c, false) } },
+            .func => |x| .{ .func = .{ .function = x.function, .captures = try vm.copySlice(x.captures, c, false) } },
             else => v,
         };
     }
 
-    /// A list push can still grow keeps its spare room, and push keeps growing the copy.
-    fn copySlice(vm: *Vm, xs: []const Value, lo: usize, hi: usize, dest: *Region, list: bool) Error![]const Value {
+    /// A buffer push can still grow keeps its spare room under a compaction, and push and
+    /// the var that owned it keep using the copy.
+    fn copySlice(vm: *Vm, xs: []const Value, c: Copy, grows: bool) Error![]const Value {
         const addr = @intFromPtr(xs.ptr);
-        if (xs.len == 0 or addr < lo or addr >= hi) return xs;
+        if (xs.len == 0 or !inside(addr, c)) return xs;
         const key: SliceKey = .{ .ptr = addr, .len = xs.len };
         if (vm.forward.get(key)) |copied| return copied[0..xs.len];
-        const growth = if (list) vm.growthOf(addr, xs.len) else null;
-        const out = try dest.allocator().alloc(Value, if (growth) |g| g.cap else xs.len);
+        const growth = if (grows and c.moves) vm.growthOf(addr, xs.len) else null;
+        const out = try c.dest.alloc(Value, if (growth) |g| g.cap else xs.len);
         try vm.forward.put(vm.gpa, key, out.ptr);
-        for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, lo, hi, dest);
+        for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, c);
         if (growth) |g| g.ptr = @intFromPtr(out.ptr);
+        if (c.moves) for (&vm.owned) |*o| {
+            if (o.ptr == addr and o.len == xs.len) o.ptr = @intFromPtr(out.ptr);
+        };
         return out[0..xs.len];
+    }
+
+    /// A map's entries and its index. A compaction's first copy builds each index again, so
+    /// no table it keeps holds an ordinal past its entries; any other copy takes the table
+    /// as it is, and a lookup skips such an ordinal.
+    fn copyMap(vm: *Vm, m: Value.Map, stride: usize, c: Copy) Error!Value.Map {
+        const entries = try vm.copySlice(m.entries, c, true);
+        if (m.index.len == 0) return .{ .entries = entries };
+        const index_inside = inside(@intFromPtr(m.index.ptr), c);
+        if (entries.ptr == m.entries.ptr and !index_inside) return .{ .entries = entries, .index = m.index };
+        if (!c.moves or c.fresh) return .{ .entries = entries, .index = try c.dest.dupe(u32, m.index) };
+        return .{ .entries = entries, .index = try stdlib.buildIndex(c.dest, entries, stride, m.index.len) };
     }
 
     fn growthOf(vm: *Vm, addr: usize, len: usize) ?*Growth {
@@ -566,13 +651,83 @@ pub const Vm = struct {
         }
     }
 
+    /// `v` was read other than by an update of the var or field holding it: every map or
+    /// set it holds, itself or in a struct's fields, may now be held twice. An owned buffer
+    /// is only ever at a var or a field path under one (bytecode.zig, inPlaceSlot).
+    pub fn disownIn(vm: *Vm, v: Value) void {
+        switch (v) {
+            .map, .set => |m| vm.disown(m.entries),
+            .record => |r| for (r.fields) |f| vm.disownIn(f),
+            else => {},
+        }
+    }
+
+    /// A row wrote `n` slots from `slot` in place; `x` is the value when it wrote one. When
+    /// what they hold may be newer than the slots, a compaction from a mark between the two
+    /// would not reach it through the buffer, so the slots are remembered.
+    pub fn rememberWrite(vm: *Vm, slot: usize, n: usize, x: ?Value) Error!void {
+        const r = vm.region orelse return;
+        if (!r.contains(slot)) return;
+        if (x) |v| {
+            const p = newestOf(v) orelse return;
+            if (!r.contains(p) or p < slot) return;
+        }
+        try vm.remembered.append(vm.gpa, .{ .slot = slot, .len = n, .at = r.top });
+    }
+
+    /// Whether a row may overwrite a buffer at `buf` in place.
+    pub fn overwritable(vm: *const Vm, buf: usize) bool {
+        return buf >= vm.frozen_below;
+    }
+
+    /// Whether a row may move a buffer's slots in place (`remove`): an update's undo keeps
+    /// single overwrites only, so a buffer from before the update is copied instead.
+    pub fn movable(vm: *const Vm, buf: usize) bool {
+        return buf >= vm.frozen_below and buf >= vm.undo_mark;
+    }
+
+    /// Writes `x` into a slot in place: remembered for compaction, and under an update what
+    /// the slot held before, when that is older than the update and so still there on a crash.
+    pub fn overwrite(vm: *Vm, slot: *Value, x: Value) Error!void {
+        const addr = @intFromPtr(slot);
+        if (addr < vm.undo_mark) {
+            const old = slot.*;
+            const p = newestOf(old);
+            if (p == null or !vm.region.?.contains(p.?) or p.? < vm.undo_mark) try vm.undo.append(vm.gpa, .{ .slot = addr, .old = old });
+        }
+        try vm.rememberWrite(addr, 1, x);
+        slot.* = x;
+    }
+
+    /// A crashed update's overwrites taken back, the last first.
+    pub fn rollBack(vm: *Vm) void {
+        while (vm.undo.pop()) |u| @as(*Value, @ptrFromInt(u.slot)).* = u.old;
+    }
+
+    /// `v` copied whole into a parcel of its own, which outlives every region.
+    pub fn pack(vm: *Vm, v: Value) Error!*Parcel {
+        const p = std.heap.smp_allocator.create(Parcel) catch return error.OutOfMemory;
+        p.* = .{ .arena = .init(std.heap.smp_allocator) };
+        errdefer p.free();
+        vm.forward.clearRetainingCapacity();
+        p.value = try vm.copyOut(v, .{ .lo = 0, .hi = std.math.maxInt(usize), .dest = p.arena.allocator() });
+        return p;
+    }
+
+    /// A parcel's value copied whole onto this vm's heap, so the parcel can be freed.
+    pub fn unpack(vm: *Vm, p: *const Parcel) Error!Value {
+        vm.forward.clearRetainingCapacity();
+        return vm.copyOut(p.value, .{ .lo = 0, .hi = std.math.maxInt(usize), .dest = vm.heap });
+    }
+
     /// `xs.push(x)`: in place when xs ends where its buffer's last push left it and there is
     /// room, a copy with room to grow otherwise.
     pub fn pushList(vm: *Vm, xs: []const Value, x: Value) Error![]const Value {
         if (xs.len > 0) {
             if (vm.growthOf(@intFromPtr(xs.ptr), xs.len)) |g| {
-                if (g.len < g.cap and vm.writable(g.ptr, x)) {
+                if (g.len < g.cap) {
                     const buf: [*]Value = @ptrFromInt(g.ptr);
+                    try vm.rememberWrite(g.ptr + g.len * @sizeOf(Value), 1, x);
                     buf[g.len] = x;
                     g.len += 1;
                     return buf[0..g.len];
@@ -586,14 +741,6 @@ pub const Vm = struct {
         vm.growth[vm.growth_next] = .{ .ptr = @intFromPtr(out.ptr), .len = xs.len + 1, .cap = cap };
         vm.growth_next = (vm.growth_next + 1) % vm.growth.len;
         return out[0 .. xs.len + 1];
-    }
-
-    /// Whether `x` may be written into the buffer at `buf`: under a region, only when what
-    /// it points to is older than the buffer, so no compaction past the buffer frees it.
-    pub fn writable(vm: *const Vm, buf: usize, x: Value) bool {
-        const r = vm.region orelse return true;
-        const p = payloadOf(x) orelse return true;
-        return !r.contains(p) or p < buf;
     }
 
     /// The impl function a trait signature reaches for a value of this type.
@@ -1049,7 +1196,8 @@ pub const Vm = struct {
                     try out.append(vm.gpa, key);
                     if (stride == 2) try out.append(vm.gpa, try vm.generate(ty.b, depth + 1));
                 }
-                return if (stride == 2) .{ .map = out.items } else .{ .set = out.items };
+                const m = try stdlib.mapOf(vm.gpa, out.items, stride);
+                return if (stride == 2) .{ .map = m } else .{ .set = m };
             },
             .alias => {
                 // A refined alias generates values that satisfy it; after 100 misses the
@@ -1146,7 +1294,8 @@ pub const Vm = struct {
                     try w.writeAll(")");
                 } else try vm.formatFields(w, r.name, r.fields, defs);
             },
-            .map => |xs| {
+            .map => |m| {
+                const xs = m.entries;
                 try w.writeAll("Map.new()");
                 var at: usize = 0;
                 while (at < xs.len) : (at += 2) {
@@ -1157,9 +1306,9 @@ pub const Vm = struct {
                     try w.writeAll(")");
                 }
             },
-            .set => |xs| {
+            .set => |m| {
                 try w.writeAll("Set.new()");
-                for (xs) |x| {
+                for (m.entries) |x| {
                     try w.writeAll(".add(");
                     try vm.formatValue(w, x);
                     try w.writeAll(")");
@@ -1195,11 +1344,13 @@ pub const Vm = struct {
     }
 };
 
-/// The address a value's slice starts at, when it has a non-empty one.
-fn payloadOf(v: Value) ?usize {
+/// The newest address a value's own parts start at, when it has a non-empty one: a map's
+/// index can be newer than its entries.
+fn newestOf(v: Value) ?usize {
     const addr: usize, const len: usize = switch (v) {
         .string => |s| .{ @intFromPtr(s.ptr), s.len },
-        .list, .tuple, .map, .set => |xs| .{ @intFromPtr(xs.ptr), xs.len },
+        .list, .tuple => |xs| .{ @intFromPtr(xs.ptr), xs.len },
+        .map, .set => |m| return if (m.entries.len == 0) null else if (m.index.len == 0) @intFromPtr(m.entries.ptr) else @max(@intFromPtr(m.entries.ptr), @intFromPtr(m.index.ptr)),
         .record => |x| .{ @intFromPtr(x.fields.ptr), x.fields.len },
         .variant => |x| .{ @intFromPtr(x.fields.ptr), x.fields.len },
         .func => |x| .{ @intFromPtr(x.captures.ptr), x.captures.len },
@@ -1212,7 +1363,8 @@ fn fieldsOf(v: Value) []const Value {
     return switch (v) {
         .record => |r| r.fields,
         .variant => |r| r.fields,
-        .tuple, .list, .map, .set => |elems| elems,
+        .tuple, .list => |elems| elems,
+        .map, .set => |m| m.entries,
         else => unreachable,
     };
 }
@@ -1229,7 +1381,8 @@ pub fn equal(a: Value, b: Value) bool {
         .time => |x| x == b.time,
         .duration => |x| x == b.duration,
         // Two maps or sets are equal when they hold equal entries in the same order.
-        .list, .tuple, .map, .set => |x| allEqual(x, fieldsOf(b)),
+        .list, .tuple => |x| allEqual(x, fieldsOf(b)),
+        .map, .set => |x| allEqual(x.entries, fieldsOf(b)),
         .record => |x| x.decl == b.record.decl and allEqual(x.fields, b.record.fields),
         .variant => |x| std.mem.eql(u8, x.name, b.variant.name) and allEqual(x.fields, b.variant.fields),
         .func => |x| x.function == b.func.function and allEqual(x.captures, b.func.captures),
@@ -1536,6 +1689,83 @@ test "under a region, push is linear, loops free what they do not keep, and comp
         try std.testing.expectEqualStrings("b!", shopped[1].list[1].string);
 
         try std.testing.expectEqualStrings("22", (try callNamed(&vm, "looped", &.{.{ .int = 3 }})).string);
+    }
+}
+
+test "maps and sets keep their order and find through their index; a var or a field path writes in place, and a copy taken before never sees it" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Maps
+        \\struct Box
+        \\  data: Map(String, UInt64)
+        \\  seen: Set(UInt64)
+        \\end
+        \\fn built(n: UInt64) : Map(String, UInt64)
+        \\  var m = Map.new()
+        \\  for i in 0..n
+        \\    m = m.set("k#{i}", i)
+        \\  end
+        \\  for i in 0..n
+        \\    if i % 3 == 0
+        \\      m = m.remove("k#{i}")
+        \\    end
+        \\  end
+        \\  m
+        \\end
+        \\fn present(m: Map(String, UInt64), n: UInt64) : UInt64
+        \\  (0..n).count(fn(i) m.has?("k#{i}") end)
+        \\end
+        \\fn boxed(n: UInt64) : (Box, Map(String, UInt64))
+        \\  var box = Box(data: Map.new(), seen: Set.new())
+        \\  var early = box.data
+        \\  for i in 0..n
+        \\    box.data = box.data.set("k#{i % 50}", i)
+        \\    box.seen = box.seen.add(i % 20)
+        \\    if i == 60
+        \\      early = box.data
+        \\    end
+        \\  end
+        \\  (box, early)
+        \\end
+    );
+    var values = try Region.reserve();
+    defer values.release();
+    var scratch = try Region.reserve();
+    defer scratch.release();
+    // Without a region, then under one compacting at every safe point, and under the default.
+    for ([_]?usize{ null, 0, 1 << 20 }) |budget| {
+        values.top = values.base;
+        var vm: Vm = .init(arena, &program, 0);
+        if (budget) |b| {
+            vm.useRegions(&values, &scratch);
+            vm.frame_budget = b;
+            vm.loop_budget = b;
+        }
+        const m = (try callNamed(&vm, "built", &.{.{ .int = 100 }})).map;
+        try std.testing.expectEqual(@as(usize, 2 * 66), m.entries.len);
+        try std.testing.expect(m.index.len >= 2 * 66);
+        for (0..66) |k| {
+            const i = 3 * k / 2 + 1;
+            var buf: [8]u8 = undefined;
+            try std.testing.expectEqualStrings(try std.fmt.bufPrint(&buf, "k{d}", .{i}), m.entries[2 * k].string);
+            try std.testing.expectEqual(@as(i128, @intCast(i)), m.entries[2 * k + 1].int);
+        }
+        try std.testing.expectEqual(@as(i128, 66), (try callNamed(&vm, "present", &.{ .{ .map = m }, .{ .int = 100 } })).int);
+
+        const pair = (try callNamed(&vm, "boxed", &.{.{ .int = 200 }})).tuple;
+        const data = pair[0].record.fields[0].map.entries;
+        const early = pair[1].map.entries;
+        try std.testing.expectEqual(@as(usize, 100), data.len);
+        try std.testing.expectEqualStrings("k10", data[20].string);
+        try std.testing.expectEqual(@as(i128, 160), data[21].int);
+        try std.testing.expectEqual(@as(i128, 161), data[23].int);
+        try std.testing.expectEqual(@as(i128, 60), early[21].int);
+        try std.testing.expectEqual(@as(i128, 11), early[23].int);
+        const seen = pair[0].record.fields[1].set.entries;
+        try std.testing.expectEqual(@as(usize, 20), seen.len);
+        for (seen, 0..) |x, k| try std.testing.expectEqual(@as(i128, @intCast(k)), x.int);
     }
 }
 

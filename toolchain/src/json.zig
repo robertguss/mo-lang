@@ -62,7 +62,8 @@ const Encoder = struct {
                 try writeString(e.w, stdlib.iso8601(&buf, ms));
             },
             .duration => |ms| try e.w.print("{d}", .{ms}),
-            .list, .set => |xs| {
+            .list, .set => {
+                const xs = if (v == .list) v.list else v.set.entries;
                 const elem: ?types.Id = if (ty) |x| (if (x.tag == .list or x.tag == .set) x.a else null) else null;
                 try e.w.writeAll("[");
                 for (xs, 0..) |x, i| {
@@ -80,7 +81,7 @@ const Encoder = struct {
                 }
                 try e.w.writeAll("]");
             },
-            .map => |xs| try e.map(xs, ty),
+            .map => |m| try e.map(m.entries, ty),
             .record => |r| {
                 const d = e.k.decls[r.decl];
                 try e.fields(r.fields, e.k.fields[d.fields.start..d.fields.end]);
@@ -195,11 +196,11 @@ const Encoder = struct {
         if (std.mem.eql(u8, r.name, "Object")) {
             try e.w.writeAll("{");
             var at: usize = 0;
-            while (at < f.map.len) : (at += 2) {
+            while (at < f.map.entries.len) : (at += 2) {
                 if (at > 0) try e.w.writeAll(", ");
-                try writeString(e.w, f.map[at].string);
+                try writeString(e.w, f.map.entries[at].string);
                 try e.w.writeAll(": ");
-                try e.json(f.map[at + 1].variant);
+                try e.json(f.map.entries[at + 1].variant);
             }
             return e.w.writeAll("}");
         }
@@ -328,7 +329,7 @@ const Decoder = struct {
             if (try d.more('}')) continue;
             break;
         }
-        return d.vm.variant("Object", &.{.{ .map = try d.vm.heap.dupe(Value, entries.items) }});
+        return d.vm.variant("Object", &.{.{ .map = try stdlib.mapOf(d.vm.heap, try d.vm.heap.dupe(Value, entries.items), 2) }});
     }
 
     fn array(d: *Decoder, depth: u32) Fail!Value {
