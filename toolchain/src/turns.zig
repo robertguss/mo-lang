@@ -74,7 +74,9 @@ pub const Turns = struct {
     ready: std.ArrayList(u32) = .empty,
     /// One per process, made at its first delivery; indexed by process id.
     workers: std.ArrayList(?*Worker) = .empty,
-    /// Asks waiting for their reply: the message's seq → who asked.
+    /// Asks waiting for their reply: the message's seq → who asked. This map, `answers`,
+    /// and `parked` change with every ask, so they live in `std.heap.smp_allocator`, which
+    /// frees, and not in the run's arena, which would keep each table a rehash leaves.
     awaiting: std.AutoHashMapUnmanaged(u64, u32) = .empty,
     /// Replies that came: seq → the reply, or null when the target crashed on the message
     /// or a restart dropped it.
@@ -216,7 +218,7 @@ pub const Turns = struct {
         const w = t.workers.items[id].?;
         const vm = sim.vm;
         const running = sim.running;
-        try t.parked.append(t.gpa, .{ .id = id, .deadline = deadline });
+        try t.parked.append(std.heap.smp_allocator, .{ .id = id, .deadline = deadline });
         w.phase = .waiting;
         t.pass(w.caller, t.eventOf(w.caller));
         t.awaitTurn(id, &w.wake);
@@ -287,7 +289,7 @@ pub const Turns = struct {
         try sim.roomFor(to, message);
         const parcel: ?*Parcel = if (sim.packs) try sim.vm.pack(message) else null;
         const seq = try sim.enqueue(sim.running orelse sim_mod.test_runner, to, if (parcel) |p| p.value else message, parcel);
-        try t.awaiting.put(t.gpa, seq, t.holder);
+        try t.awaiting.put(std.heap.smp_allocator, seq, t.holder);
         const deadline = t.now() + @max(within, 0);
         while (true) {
             if (t.answers.fetchRemove(seq)) |kv| {
@@ -344,7 +346,7 @@ pub const Turns = struct {
             if (parcel) |p| p.free();
             return;
         };
-        try t.answers.put(t.gpa, seq, if (reply) |v| .{ .value = v, .parcel = parcel } else null);
+        try t.answers.put(std.heap.smp_allocator, seq, if (reply) |v| .{ .value = v, .parcel = parcel } else null);
         if (kv.value == main_turn) return t.main_wake.set(t.io);
         for (t.parked.items, 0..) |p, k| if (p.id == kv.value) {
             _ = t.parked.swapRemove(k);
