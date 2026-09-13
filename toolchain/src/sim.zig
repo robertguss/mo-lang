@@ -17,6 +17,7 @@
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
+const net_mod = @import("net.zig");
 const server_mod = @import("server.zig");
 const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
@@ -38,7 +39,7 @@ pub const max_tick_ms: i64 = 10;
 /// Mixed into the seed for the fault draws, so they are a stream apart from the schedule.
 const fault_stream: u64 = 0x6661_756c_7473;
 
-pub const Fault = enum { timeout, missing };
+pub const Fault = enum { timeout, missing, closed };
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
@@ -128,6 +129,8 @@ pub const Sim = struct {
     /// Under `mo run` with processes: each process's updates run on its own thread, and
     /// the threads take turns (turns.zig). Asks, settles, and the end of main go through it.
     turns: ?*turns_mod.Turns = null,
+    /// The in-memory network every `Net.fixture()` of the run shares (net.zig).
+    fixture: net_mod.Fixture = .{},
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -166,15 +169,16 @@ pub const Sim = struct {
     }
 
     /// A fixture call's fate in a seeded run with faults. With the run's chance it fails:
-    /// Missing at once when it names a path (`can_miss`), else Timeout after waiting its
-    /// whole deadline. With the same chance a call that answers is slow, and waits up to
-    /// its deadline. What calls wait moves the clock before the next update and counts
+    /// half the time with `other` at once when the call has another way to fail (Missing
+    /// for a call that names a path, Closed for a connection's), else Timeout after waiting
+    /// its whole deadline. With the same chance a call that answers is slow, and waits up
+    /// to its deadline. What calls wait moves the clock before the next update and counts
     /// against an ask in flight. Null: the call answers as the fixture does.
-    pub fn fault(sim: *Sim, can_miss: bool, within: i64) ?Fault {
+    pub fn fault(sim: *Sim, other: ?Fault, within: i64) ?Fault {
         const rng = if (sim.faults) |*r| r.random() else return null;
         if (rng.uintLessThan(u32, 100) < sim.fault_percent) {
             sim.injected += 1;
-            if (can_miss and rng.boolean()) return .missing;
+            if (other) |o| if (rng.boolean()) return o;
             sim.wait(within);
             return .timeout;
         }
@@ -185,7 +189,9 @@ pub const Sim = struct {
         return null;
     }
 
-    fn wait(sim: *Sim, ms: i64) void {
+    /// A fixture call waited `ms`: the clock moves before the next update, and an ask in
+    /// flight counts it.
+    pub fn wait(sim: *Sim, ms: i64) void {
         sim.waited += ms;
         sim.lag += ms;
     }
@@ -471,7 +477,7 @@ pub const Sim = struct {
             s.processCrashed(report);
             // A connection closes when the process holding it stops, restarted or not.
             s.sockets.closeHeld(p.args);
-        }
+        } else sim.fixture.closeHeld(p.args);
         if (sim.turns) |t| t.wakeAll();
         if (p.policy.restart == .never) {
             p.up = false;
@@ -509,7 +515,7 @@ pub const Sim = struct {
         for (sim.procs.items) |*q| {
             if (q.supervisor != p.supervisor) continue;
             q.up = false;
-            if (sim.server) |s| s.sockets.closeHeld(q.args);
+            if (sim.server) |s| s.sockets.closeHeld(q.args) else sim.fixture.closeHeld(q.args);
         }
         sim.gave_up = true;
         const values = try sim.gpa.alloc(contracts.Involved, 1);
@@ -857,6 +863,105 @@ test "a mailbox at its bound crashes the sender, a test or a process, and names 
     // The receiver did not crash, and the two sends that fit went with the sender's update.
     try std.testing.expectEqual(@as(usize, 1), h.sim.crashes.items.len);
     try std.testing.expectEqual(@as(usize, 0), h.sim.procs.items[0].log.items.len);
+}
+
+const echo_src =
+    \\module T.Echo
+    \\process Echo(conn: Conn)
+    \\  state
+    \\    lines: UInt32
+    \\  end
+    \\  message Serve : UInt32
+    \\  fn update(state, message)
+    \\    case message
+    \\      Serve:
+    \\        state.lines += serve(conn)
+    \\        state.lines
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Echoes(conn: Conn)
+    \\  child Echo(conn), restart: :always
+    \\end
+    \\fn serve(conn: Conn) : UInt32
+    \\  var lines = 0
+    \\  for _ in 0..100
+    \\    case echo_once(conn)
+    \\      Ok(true):
+    \\        lines += 1
+    \\      Ok(false):
+    \\        break
+    \\      Error(_):
+    \\        break
+    \\    end
+    \\  end
+    \\  lines
+    \\end
+    \\fn echo_once(conn: Conn) : Result(Bool, NetError)
+    \\  line = try conn.read_line(within: 1.minute)
+    \\  case line
+    \\    Some(text):
+    \\      try conn.write("#{text}\n", within: 1.minute)
+    \\      Ok(true)
+    \\    None: Ok(false)
+    \\  end
+    \\end
+    \\fn round_trip(net: Net, sent: List(String)) : Result(List(String), NetError)
+    \\  listener = try net.listen(0, within: 1.minute)
+    \\  client = try net.connect("localhost", listener.port, within: 1.minute)
+    \\  conn = try listener.accept(within: 1.minute)
+    \\  worker = Echo.start(conn)
+    \\  for line in sent
+    \\    try client.write("#{line}\n", within: 1.minute)
+    \\  end
+    \\  if worker.ask(Serve, within: 10.minute) is Error(_)
+    \\    return Error(Timeout)
+    \\  end
+    \\  var heard = sent.take(0)
+    \\  for _ in sent
+    \\    case try client.read_line(within: 1.minute)
+    \\      Some(text):
+    \\        heard = heard.push(text)
+    \\      None:
+    \\        return Error(Closed)
+    \\    end
+    \\  end
+    \\  Ok(heard)
+    \\end
+    \\fn echoed?(heard: Result(List(String), NetError), sent: List(String)) : Bool
+    \\  case heard
+    \\    Ok(lines): lines == sent
+    \\    Error(_): true
+    \\  end
+    \\end
+    \\
+;
+
+test "a server process echoes a fixture client's lines, and under faults each round trip is whole or fails and says so" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const exact = try compile(arena, echo_src ++
+        \\test "every line comes back"
+        \\  sent = ["hello", "wide world", ""]
+        \\  assert round_trip(Net.fixture(), sent) == Ok(sent)
+        \\end
+    );
+    const fixed = try runner.run(arena, exact, .{});
+    try std.testing.expectEqual(runner.Outcome.passed, fixed.results[0].outcome);
+
+    const tolerant = try compile(arena, echo_src ++
+        \\test "every line comes back, unless the connection fails and says so"
+        \\  sent = ["hello", "wide world", ""]
+        \\  assert echoed?(round_trip(Net.fixture(), sent), sent)
+        \\end
+    );
+    const r = try runner.run(arena, tolerant, .{ .sim_runs = 100, .sim_seed = 11, .fault_percent = 20 });
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[0].outcome);
+    try std.testing.expectEqual(@as(u32, 1), r.summary.held_under_faults);
+    // The exact test is a design smell under faults: it holds only where nothing fails.
+    const smell = try runner.run(arena, exact, .{ .sim_runs = 100, .sim_seed = 11, .fault_percent = 20 });
+    try std.testing.expectEqual(@as(u32, 1), smell.summary.fault_free_only);
 }
 
 const sup_src =

@@ -316,6 +316,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Conn", .name = "read_line", .ret = "Result(Option(String), NetError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Conn", .name = "write", .params = &.{"String"}, .ret = "Result(none, NetError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Conn", .name = "close", .ret = "none", .origin = .stdlib },
+    .{ .recv = "Net", .on_type = true, .name = "fixture", .ret = "Net", .only = .tests, .origin = .stdlib },
     // JSON
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },

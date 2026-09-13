@@ -760,6 +760,7 @@ pub const Vm = struct {
         out_write,
         /// A Net, Listener, or Conn row (net.zig).
         net_row,
+        net_fixture,
         process,
         never_only,
         /// A design-v0/09 row stdlib.zig runs.
@@ -784,6 +785,7 @@ pub const Vm = struct {
         .{ "Supervisor.start", .process },          .{ "Platform.net", .platform_part },          .{ "Net.listen", .net_row },
         .{ "Net.connect", .net_row },               .{ "Listener.accept", .net_row },             .{ "Listener.port", .net_row },
         .{ "Conn.read_line", .net_row },            .{ "Conn.write", .net_row },                  .{ "Conn.close", .net_row },
+        .{ "Net.fixture", .net_fixture },
         .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
@@ -939,6 +941,7 @@ pub const Vm = struct {
                 };
             },
             .net_row => try vm.netRow(std.meta.stringToEnum(net_mod.Row, row.name).?, a),
+            .net_fixture => .{ .cap = .{ .kind = .net } },
             .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
@@ -950,9 +953,11 @@ pub const Vm = struct {
         try vm.push(result);
     }
 
-    /// A Net, Listener, or Conn row: real sockets under mo run (net.zig).
+    /// A Net, Listener, or Conn row: real sockets under mo run, or in a test a
+    /// Net.fixture()'s, in memory (net.zig).
     fn netRow(vm: *Vm, which: net_mod.Row, a: []const Value) Error!Value {
         if (vm.server) |s| return s.sockets.call(vm, which, a);
+        if (vm.sim) |s| return s.fixture.call(vm, s, which, a);
         vm.report = .{ .kind = .other, .clause = "Net runs only under mo run", .within = @tagName(which), .at = 0 };
         return error.Crash;
     }
@@ -961,9 +966,10 @@ pub const Vm = struct {
     /// null when it answers as the fixture does. `can_miss`: the call names a path.
     pub fn fixtureFault(vm: *Vm, can_miss: bool, path: []const u8, within: i64) Error!?Value {
         const s = vm.sim orelse return null;
-        return switch (s.fault(can_miss, within) orelse return null) {
+        return switch (s.fault(if (can_miss) .missing else null, within) orelse return null) {
             .timeout => try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}),
             .missing => try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})}),
+            .closed => unreachable,
         };
     }
 
@@ -1168,7 +1174,7 @@ pub const Vm = struct {
                 .platform => "the Platform",
                 .env => "an Env",
                 .out => if (c.handle == server_mod.stderr_handle) "an Out (stderr)" else "an Out (stdout)",
-                .net => "a Net",
+                .net => if (vm.server != null) "a Net" else "Net.fixture()",
                 .listener => "a Listener",
                 .conn => "a Conn",
             }),

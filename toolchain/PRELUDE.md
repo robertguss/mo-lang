@@ -197,6 +197,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Conn` | `read_line` | | `Result(Option(String), NetError)` | yes | | stdlib (09) |
 | `Conn` | `write` | `String` | `Result(none, NetError)` | yes | | stdlib (09) |
 | `Conn` | `close` | | none | | | stdlib (09) |
+| `Net` (on type) | `fixture` | | `Net` | | tests | stdlib (09) |
 | `Json` (on type) | `encode` | `T` | `String` | | | stdlib (09) |
 | `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | | | stdlib (09) |
 | `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |

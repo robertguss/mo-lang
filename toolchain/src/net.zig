@@ -1,10 +1,11 @@
-//! Net: TCP for `mo run` (design-v0/09, Net), over std.Io. A Listener or a Conn is a
-//! capability; its `Value.Cap.handle` is its index in `Net.listeners` or `Net.conns`.
+//! Net: TCP for `mo run` (design-v0/09, Net), over std.Io, and `Net.fixture()` for
+//! `mo test`. A Listener or a Conn is a capability; its `Value.Cap.handle` is its index in
+//! `Net.listeners` or `Net.conns`, or under the simulator in `Fixture`'s.
 //!
-//! Every call that can wait runs its blocking part as a concurrent task (`io.concurrent`:
-//! a thread under std.Io.Threaded) and waits for it at most its deadline. Past the
-//! deadline the task is canceled, which interrupts its system call, and the call is
-//! `Timeout`. A task that finished as it was canceled keeps its result, so a connection
+//! Every real call that can wait runs its blocking part as a concurrent task
+//! (`io.concurrent`: a thread under std.Io.Threaded) and waits for it at most its deadline.
+//! Past the deadline the task is canceled, which interrupts its system call, and the call
+//! is `Timeout`. A task that finished as it was canceled keeps its result, so a connection
 //! already accepted, or bytes already read, are never dropped. While a process waits it
 //! gives up its turn, so the other processes go on (turns.zig).
 //!
@@ -14,6 +15,7 @@
 const std = @import("std");
 const Io = std.Io;
 const posix = std.posix;
+const sim_mod = @import("sim.zig");
 const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
@@ -29,6 +31,51 @@ pub const Row = enum { listen, connect, accept, port, read_line, write, close };
 
 /// NetError's variants, by name.
 pub const Failure = enum { Timeout, Refused, Closed, LineTooLong, Busy };
+
+const Scan = union(enum) { line: []const u8, too_long, end, more };
+
+/// The next line in `pending`, the bytes of the stream so far not given out: how many
+/// bytes it takes, and the line, what stands in its way, or `more` to read first. `eof`:
+/// nothing follows `pending`. A line of more than 64 KiB is too long, and the bytes up to
+/// its newline are taken, at once or as they arrive (`skipping`).
+fn scanLine(pending: []const u8, eof: bool, skipping: *bool) struct { usize, Scan } {
+    var off: usize = 0;
+    while (true) {
+        const rest = pending[off..];
+        if (std.mem.indexOfScalar(u8, rest, '\n')) |k| {
+            off += k + 1;
+            if (skipping.*) {
+                skipping.* = false;
+                continue;
+            }
+            if (k > line_limit) return .{ off, .too_long };
+            return .{ off, .{ .line = withoutCr(rest[0..k]) } };
+        }
+        if (skipping.* or rest.len > line_limit) {
+            const first = !skipping.*;
+            skipping.* = !eof;
+            if (first) return .{ pending.len, .too_long };
+            return .{ pending.len, if (eof) .end else .more };
+        }
+        if (!eof) return .{ off, .more };
+        if (rest.len == 0) return .{ off, .end };
+        return .{ pending.len, .{ .line = withoutCr(rest) } };
+    }
+}
+
+fn withoutCr(line: []const u8) []const u8 {
+    return if (line.len > 0 and line[line.len - 1] == '\r') line[0 .. line.len - 1] else line;
+}
+
+/// `Ok(Some(line))`, `LineTooLong`, `Ok(None)`, or null for `more`.
+fn lineResult(vm: *Vm, what: Scan) Error!?Value {
+    return switch (what) {
+        .line => |line| try vm.variant("Ok", &.{try vm.variant("Some", &.{.{ .string = try vm.heap.dupe(u8, line) }})}),
+        .too_long => try fail(vm, .LineTooLong),
+        .end => try vm.variant("Ok", &.{try vm.variant("None", &.{})}),
+        .more => null,
+    };
+}
 
 pub const Listener = struct {
     server: Io.net.Server,
@@ -54,40 +101,16 @@ pub const Conn = struct {
     reading: bool = false,
     writing: bool = false,
 
-    const Scan = union(enum) { line: []const u8, too_long, end, more };
-
-    /// The next line in the buffer, what stands in its way, or `more` bytes to read.
     fn scan(c: *Conn) Scan {
-        while (true) {
-            const pending = c.buf[c.start..c.end];
-            if (std.mem.indexOfScalar(u8, pending, '\n')) |k| {
-                c.start += k + 1;
-                if (c.skipping) {
-                    c.skipping = false;
-                    continue;
-                }
-                if (k > line_limit) return .too_long;
-                return .{ .line = withoutCr(pending[0..k]) };
-            }
-            if (c.skipping or pending.len > line_limit) {
-                const first = !c.skipping;
-                c.start = 0;
-                c.end = 0;
-                c.skipping = !c.eof;
-                if (first) return .too_long;
-                return if (c.eof) .end else .more;
-            }
-            if (!c.eof) return .more;
-            if (pending.len == 0) return .end;
-            c.start = c.end;
-            return .{ .line = withoutCr(pending) };
+        const taken, const what = scanLine(c.buf[c.start..c.end], c.eof, &c.skipping);
+        c.start += taken;
+        if (c.start == c.end) {
+            c.start = 0;
+            c.end = 0;
         }
+        return what;
     }
 };
-
-fn withoutCr(line: []const u8) []const u8 {
-    return if (line.len > 0 and line[line.len - 1] == '\r') line[0 .. line.len - 1] else line;
-}
 
 /// Set when a call's task ends; also wakes main's thread when it hands out turns while it
 /// waits (turns.zig).
@@ -192,12 +215,7 @@ pub const Net = struct {
         if (c.buf.len == 0) c.buf = std.heap.page_allocator.alloc(u8, 2 * line_limit) catch return error.OutOfMemory;
         const t0 = Io.Clock.Timestamp.now(n.io, .awake);
         while (true) {
-            switch (c.scan()) {
-                .line => |line| return vm.variant("Ok", &.{try vm.variant("Some", &.{.{ .string = try vm.heap.dupe(u8, line) }})}),
-                .too_long => return fail(vm, .LineTooLong),
-                .end => return vm.variant("Ok", &.{try vm.variant("None", &.{})}),
-                .more => {},
-            }
+            if (try lineResult(vm, c.scan())) |v| return v;
             const left = ms - t0.durationTo(Io.Clock.Timestamp.now(n.io, .awake)).raw.toMilliseconds();
             if (left <= 0) return fail(vm, .Timeout);
             if (c.start > 0) {
@@ -368,6 +386,132 @@ fn bindLoopback(port: u16) error{ AddressInUse, Refused }!struct { fd: posix.soc
     return .{ .fd = fd, .port = std.mem.bigToNative(u16, addr.port) };
 }
 
+// ---- Net.fixture()
+
+/// `Net.fixture()`: one network in memory per test run (sim.zig), for a test that starts a
+/// server process, connects a client, and drives the protocol with no real socket. What
+/// one end writes waits for the other end to read it, and a closed end is the end of the
+/// stream for the other. Nothing happens while a simulated call waits, so a call with
+/// nothing to take (an accept with no client, a read with no whole line) waits its whole
+/// deadline and is `Timeout`, as a real one would be.
+/// In a seeded run with faults (step 9), a call that can wait can time out by the seed, and
+/// a read or a write can find its connection `Closed`; each leaves the connection as the
+/// real call would. `listen` does not wait, so it never fails that way.
+pub const Fixture = struct {
+    listeners: std.ArrayList(FixtureListener) = .empty,
+    conns: std.ArrayList(FixtureConn) = .empty,
+    /// The port `listen(0)` tries next.
+    next_port: u16 = 49_152,
+
+    const FixtureListener = struct { port: u16, backlog: std.ArrayList(u32) = .empty, head: usize = 0 };
+
+    const FixtureConn = struct {
+        /// The other end of the connection.
+        peer: u32,
+        /// What the peer wrote that this end has not read: inbound.items[start..].
+        inbound: std.ArrayList(u8) = .empty,
+        start: usize = 0,
+        closed: bool = false,
+        skipping: bool = false,
+    };
+
+    pub fn call(f: *Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: []const Value) Error!Value {
+        const gpa = sim.gpa;
+        switch (which) {
+            .listen => {
+                var port: u16 = @intCast(a[1].int);
+                if (port == 0) {
+                    while (f.portTaken(f.next_port)) f.next_port +%= 1;
+                    port = f.next_port;
+                }
+                if (f.portTaken(port)) return fail(vm, .Busy);
+                try f.listeners.append(gpa, .{ .port = port });
+                return vm.variant("Ok", &.{.{ .cap = .{ .kind = .listener, .handle = @intCast(f.listeners.items.len - 1) } }});
+            },
+            .port => return .{ .int = f.listeners.items[a[0].cap.handle].port },
+            .connect => {
+                if (sim.fault(null, a[3].duration) != null) return fail(vm, .Timeout);
+                const port: u16 = @intCast(a[2].int);
+                const l = for (f.listeners.items) |*l| {
+                    if (l.port == port) break l;
+                } else return fail(vm, .Refused);
+                const client: u32 = @intCast(f.conns.items.len);
+                try f.conns.append(gpa, .{ .peer = client + 1 });
+                try f.conns.append(gpa, .{ .peer = client });
+                try l.backlog.append(gpa, client + 1);
+                return vm.variant("Ok", &.{.{ .cap = .{ .kind = .conn, .handle = client } }});
+            },
+            .accept => {
+                const within = a[1].duration;
+                if (sim.fault(null, within) != null) return fail(vm, .Timeout);
+                const l = &f.listeners.items[a[0].cap.handle];
+                if (l.head == l.backlog.items.len) {
+                    sim.wait(within);
+                    return fail(vm, .Timeout);
+                }
+                l.head += 1;
+                return vm.variant("Ok", &.{.{ .cap = .{ .kind = .conn, .handle = l.backlog.items[l.head - 1] } }});
+            },
+            .read_line => {
+                const h = a[0].cap.handle;
+                const within = a[1].duration;
+                if (f.conns.items[h].closed) return fail(vm, .Closed);
+                if (sim.fault(.closed, within)) |fault| {
+                    if (fault == .timeout) return fail(vm, .Timeout);
+                    f.conns.items[h].closed = true;
+                    return fail(vm, .Closed);
+                }
+                const c = &f.conns.items[h];
+                const taken, const what = scanLine(c.inbound.items[c.start..], f.conns.items[c.peer].closed, &c.skipping);
+                c.start += taken;
+                const got = try lineResult(vm, what) orelse {
+                    sim.wait(within);
+                    return fail(vm, .Timeout);
+                };
+                if (c.start == c.inbound.items.len) {
+                    c.inbound.clearRetainingCapacity();
+                    c.start = 0;
+                }
+                return got;
+            },
+            .write => {
+                const h = a[0].cap.handle;
+                const peer = f.conns.items[h].peer;
+                if (f.conns.items[h].closed) return fail(vm, .Closed);
+                if (f.conns.items[peer].closed) {
+                    f.conns.items[h].closed = true;
+                    return fail(vm, .Closed);
+                }
+                // A write that times out closes the connection, as a real one does.
+                if (sim.fault(.closed, a[2].duration)) |fault| {
+                    f.conns.items[h].closed = true;
+                    return fail(vm, if (fault == .timeout) .Timeout else .Closed);
+                }
+                try f.conns.items[peer].inbound.appendSlice(gpa, a[1].string);
+                return vm.variant("Ok", &.{.none});
+            },
+            .close => {
+                f.conns.items[a[0].cap.handle].closed = true;
+                return .none;
+            },
+        }
+    }
+
+    fn portTaken(f: *const Fixture, port: u16) bool {
+        for (f.listeners.items) |l| if (l.port == port) return true;
+        return false;
+    }
+
+    /// A process holding these arguments stopped: every Conn among them closes.
+    pub fn closeHeld(f: *Fixture, args: []const Value) void {
+        for (args) |a| if (a == .cap and a.cap.kind == .conn) {
+            f.conns.items[a.cap.handle].closed = true;
+        };
+    }
+};
+
+// ---- tests
+
 test "a line is cut at its newline, keeps no \\r, and one past 64 KiB is dropped through its newline" {
     var buf: [4 * line_limit]u8 = undefined;
     var c: Conn = .{ .stream = undefined, .buf = &buf };
@@ -390,4 +534,50 @@ test "a line is cut at its newline, keeps no \\r, and one past 64 KiB is dropped
     c.eof = true;
     try std.testing.expectEqualStrings("z", c.scan().line);
     try std.testing.expect(c.scan() == .end);
+}
+
+fn named(v: Value) []const u8 {
+    const inner = v.variant.fields[0];
+    return if (inner == .variant) inner.variant.name else v.variant.name;
+}
+
+test "Net.fixture: bytes one end writes reach the other, lines are cut as on a socket, nothing to take waits its deadline, and close ends the stream" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var machine: Vm = .init(arena, undefined, 0);
+    var s: sim_mod.Sim = .init(&machine, 0, "fixture");
+    machine.sim = &s;
+    const f = &s.fixture;
+    const net_cap: Value = .{ .cap = .{ .kind = .net } };
+    const d: Value = .{ .duration = 100 };
+
+    const listener = (try f.call(&machine, &s, .listen, &.{ net_cap, .{ .int = 0 }, d })).variant.fields[0];
+    const port = (try f.call(&machine, &s, .port, &.{listener})).int;
+    try std.testing.expectEqualStrings("Busy", named(try f.call(&machine, &s, .listen, &.{ net_cap, .{ .int = port }, d })));
+    try std.testing.expectEqualStrings("Refused", named(try f.call(&machine, &s, .connect, &.{ net_cap, .{ .string = "localhost" }, .{ .int = 1 }, d })));
+    try std.testing.expectEqualStrings("Timeout", named(try f.call(&machine, &s, .accept, &.{ listener, d })));
+    try std.testing.expectEqual(@as(i64, 100), s.waited);
+
+    const client = (try f.call(&machine, &s, .connect, &.{ net_cap, .{ .string = "localhost" }, .{ .int = port }, d })).variant.fields[0];
+    _ = try f.call(&machine, &s, .write, &.{ client, .{ .string = "a\r\nb" }, d });
+    const conn = (try f.call(&machine, &s, .accept, &.{ listener, d })).variant.fields[0];
+    const read: []const Value = &.{ conn, d };
+    try std.testing.expectEqualStrings("a", (try f.call(&machine, &s, .read_line, read)).variant.fields[0].variant.fields[0].string);
+    try std.testing.expectEqualStrings("Timeout", named(try f.call(&machine, &s, .read_line, read)));
+    try std.testing.expectEqual(@as(i64, 200), s.waited);
+    const long = try arena.alloc(u8, line_limit + 3);
+    @memset(long, 'x');
+    long[0] = '\n';
+    long[long.len - 1] = '\n';
+    _ = try f.call(&machine, &s, .write, &.{ client, .{ .string = long }, d });
+    _ = try f.call(&machine, &s, .write, &.{ client, .{ .string = "c\n" }, d });
+    try std.testing.expectEqualStrings("b", (try f.call(&machine, &s, .read_line, read)).variant.fields[0].variant.fields[0].string);
+    try std.testing.expectEqualStrings("LineTooLong", named(try f.call(&machine, &s, .read_line, read)));
+    try std.testing.expectEqualStrings("c", (try f.call(&machine, &s, .read_line, read)).variant.fields[0].variant.fields[0].string);
+
+    _ = try f.call(&machine, &s, .close, &.{client});
+    try std.testing.expectEqualStrings("None", (try f.call(&machine, &s, .read_line, read)).variant.fields[0].variant.name);
+    try std.testing.expectEqualStrings("Closed", named(try f.call(&machine, &s, .write, &.{ conn, .{ .string = "late" }, d })));
+    try std.testing.expectEqualStrings("Closed", named(try f.call(&machine, &s, .read_line, &.{ client, d })));
 }
