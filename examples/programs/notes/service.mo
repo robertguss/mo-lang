@@ -451,11 +451,11 @@ test "a service started again from its log lists what the first one wrote, and r
       assert record.after == record.before or live(first) is None
       second = Service.start(fs, Clock.fixture(), again)
       assert ask(second, "ada", Listing(prefix: "")) == before
+      spent = ids.map(fn(i) id_number(i) or 0 end).max or 0
+      made = ask(second, "ada", Create(title: "after", body: ""))
+      record_id = Issued(id: id_number(made_id(made)) or spent + 1, floor: spent + 1)
+      assert record_id.id >= record_id.floor
     end
-    spent = ids.map(fn(i) id_number(i) or 0 end).max or 0
-    fresh = id_number(made_id(ask(second, "ada", Create(title: "after", body: "")))) or spent + 1
-    record_id = Issued(id: fresh, floor: spent + 1)
-    assert record_id.id >= record_id.floor
   end
 end
 
@@ -475,3 +475,6 @@ property "a create then a read gives back any valid title and body"
     end
   end
 end
+
+verified: types, contracts, tests (6), property (200 seeds), sim (100 runs)
+          proven: not run
