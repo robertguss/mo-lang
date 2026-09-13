@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-12 | Total pages: 113
+> Last updated: 2026-09-13 | Total pages: 135
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -96,6 +96,14 @@
 - [[outside-review-2026-09-13-evidence|Outside review, 13 Sep 2026: evidence]] — thirteen probes against the day-two toolchain and kv corpus, with file and line references
 - [[negative-space-programming|Negative space programming]] — Source: [Negative Space Programming](https://double-trouble.dev/post/negativ-space-programming/)
 - [[research-summary-2026-09|Research summary, Sep 2026]] — Nobody has built this yet
+- [[plang-history-2026-09-index|PL history research, Sep 2026: bundle index]] — entry point for the 168k-word bundle: history eras, camps, deep dives, Mo synthesis, decision matrix
+- [[plang-history-lambda-to-1970s|PL history: lambda calculus through the 1970s]] — Church/Turing, Fortran, Lisp, ALGOL, Simula, C, Smalltalk, ML, Prolog, Scheme, Forth; lessons for Mo
+- [[plang-history-1980s-to-2000s|PL history: 1980s through 2000s]] — C++, Ada, Eiffel, Haskell, Erlang, Self, Python, Ruby, Java, JS, C#, Scala, Clojure, Coq/Agda/Idris; lessons for Mo
+- [[plang-history-2010-to-2026|PL history: 2010 to 2026, the modern era]] — Go, Rust, Swift, Kotlin, Elixir, Julia, TS, Zig, Koka, Unison, Roc, Austral, Vale, Hylo, Carbon, Mojo, Lean 4, AI era
+- [[plang-design-camps|The eight camps of language design]] — paradigm, types, memory, concurrency, syntax, compilation, philosophy, ecosystem — Mo's stance on each
+- [[plang-implementation-menu|Implementation menu: what a language builder chooses]] — parsers, IRs, type-check algorithms, GC, VMs/JITs, package managers, verification, bootstrapping
+- [[plang-mo-synthesis|Mo synthesis: what history says to Mo]] — camp-by-camp mapping to Mo's directions with reasoning
+- [[plang-decision-matrix|PL design decision matrix for Mo]] — 18 design axes as a compact table: Options | Mo direction | Rationale
 - [[state-model|State model]] — Not mutation itself
 - [[steal-list|Steal list: what to take from other languages]] — Framing: Go ships a scheduler and GC inside every binary and nobody calls it a VM
 - [[tiger-style-and-power-of-ten|Tiger Style + Power of 10, rethought AI-first]] — Key move: both documents are style guides enforced socially by review
@@ -165,4 +173,20 @@
 - [[language-landscape|Language landscape: which languages deserve a deep comparison]] — 40+ languages in seven groups with the idea to steal from each, plus a 13-entry shortlist for the comparison pass
 - [[prompts-language-landscape|Research prompts: the language landscape]] — three prompts for Robert's deep-research tools
 - [[prompts-q17-supply-chain|Research prompts: Q17 supply-chain security and package management]] — three prompts for Robert's deep-research tools
+- [[plang-landscape-2026|The PL landscape circa 2026]] — what's alive, growing, fading, and where the interesting design work is happening; extends [[language-landscape]]
+
+### Language surveys (history + design + Mo lesson)
+- [[c|C]] — Ritchie 1972, Unix's portable assembler, why it won and what it cost; what Mo takes and rejects
+- [[lisp|Lisp / Scheme / Common Lisp]] — McCarthy 1958, homoiconicity, macros, why it never dominated; what Mo takes
+- [[smalltalk|Smalltalk]] — Kay/Ingalls/Goldberg, pure message-passing OO, image-based dev; why Mo is [[d06-never-oop]] but respects the insight
+- [[ml|ML / Standard ML / OCaml]] — Milner 1973, Hindley-Milner, ADTs, functors; what Mo takes
+- [[haskell|Haskell]] — 1990 committee, laziness, monads, type classes; why Mo is [[d07-elixir-flavored-functional]] not Haskell-pure
+- [[erlang|Erlang / BEAM]] — Armstrong 1986, actor model, let-it-crash; the model behind [[d08-beam-qualities-without-the-beam]]
+- [[cpp|C++]] — Stroustrup 1985, RAII and templates, the complexity lesson Mo rejects
+- [[java|Java]] — Gosling 1995, JVM, generics-via-erasure, the ecosystem-wins lesson
+- [[python|Python]] — van Rossum 1991, indentation, Python 2→3 and PyPI supply-chain lessons
+- [[javascript|JavaScript / TypeScript]] — Eich's 10 days, gradual typing win, npm as the negative example for [[d30-supply-chain-security]]
+- [[go-history|Go (survey)]] — Pike/Thompson/Griesemer, simplicity discipline, gofmt culture, MVS, mandatory checksums (see also [[go|Mo vs Go]])
+- [[zig|Zig]] — Kelley 2016, comptime, no hidden control flow, the raw-C-hazard lesson; toolchain choice for [[d24-compile-to-c-via-zig]]
+- [[dependent-types|Dependent types: Lean 4, Idris 2, Agda]] — the case for and against dependent types in general-purpose languages; where Mo's [[q08-verification-tiers]] fits
 
