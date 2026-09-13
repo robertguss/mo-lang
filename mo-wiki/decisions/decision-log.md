@@ -196,6 +196,11 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | The http bench rows: 1,000 `GET /hello` to `httpd serve`, one connection per request, from a Zig client, interpreter and binary; resident memory by `ps` after them, in KiB, both runtimes | Fable, from Opus's default | locked as the method | every later http row |
 | Round 3 of the control run starts after step 16: worktrees `control3-mo|go|python` from `session-05`, the round 2 implementations removed, the same briefs, agents `mo-r3-*` | Fable | — | round 3's table |
 
+| Control run round 3 recorded: Mo 9 loops to green (6 of them syntax or law diagnostics, 1 real bug, 2 test mistakes) against Go 2 and Python 1; Mo's checks caught a real bug twice (a test and a `never`), the first time in any round; wall-clock void for Mo and Go, the machine slept mid-run; 851 Mo lines to Go's 1,387 | Fable | — | round 4 after step 17 |
+| `any(T)` for a refined `T` generates only values the refinement admits; a refinement that admits none of the candidates is a diagnostic, never a value that breaks it | Fable | locked (chapter 5: a refinement is a contract) | step 17 |
+| A `String` is UTF-8: an `Fs` row that reads text returns `NotText` for a file that is not, and a program that wants the bytes asks for them by a row that says so | Fable | provisional | step 17 |
+| Step 17, the round 3 follow-ups (`any(T)` under refinements, `NotText`, a fold over lines, `MO0101` and the other five diagnostics the run tripped reworded), comes before program 4; the program 4 spec is written meanwhile | Fable | provisional | program 4 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

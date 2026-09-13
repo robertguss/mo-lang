@@ -36,7 +36,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 
 ## Afternoon (13 Sep, from 11:30, a fresh Fable context)
 
-- [[interpreter-step-15]]: processes and `Net` in the C runtime; `mo build` compiles everything; native kv 1.4× the interpreter at half the memory. [[interpreter-step-16]]: `Http` over `Net` in both runtimes, `httpd`; native 1.7× the interpreter. [[control-run-3]] started.
+- [[interpreter-step-15]]: processes and `Net` in the C runtime; `mo build` compiles everything; native kv 1.4× the interpreter at half the memory. [[interpreter-step-16]]: `Http` over `Net` in both runtimes, `httpd`; native 1.7× the interpreter. [[control-run-3]]: Mo 9 loops (6 syntax diagnostics), a real bug caught by a test and a `never`, timing void (the machine slept). [[interpreter-step-17]] started.
 
 ## Numbers at the end of the session
 
@@ -85,6 +85,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-15]]
 - [[interpreter-step-16]]
 - [[control-run-3]]
+- [[interpreter-step-17]]
 - [[program-2]]
 - [[program-3]]
 - [[control-run]]
