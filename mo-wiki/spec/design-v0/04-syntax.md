@@ -114,13 +114,22 @@ test rejects "amount above captured"
   charge.apply_refund(Money.cents(999))
 end
 
+test rejects "a refund of nothing"
+  refund(Ledger.fixture(), Clock.fixture(), "ch_1", Money.zero)
+end
+
+test rejects "a window read before the capture"
+  charge = Charge.fixture(captured_at: t0, captured_amount: Money.cents(500))
+  charge.within_window?(t0 - 1.minute)
+end
+
 property "any valid refund leaves the charge refunded"
   for charge in any(Charge), amount in any(Money) if amount <= charge.captured_amount
     assert charge.apply_refund(amount) is Ok(c) and c.refunded?
   end
 end
 
-verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
+verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
 ```
 
 ## The rules, one line each
@@ -157,3 +166,5 @@ Robert (session 4): the comprehension `for` inside `never` and `property` had no
 The example and rules above already reflect these; this section is the changelog.
 
 Claude (session 5, deciding on Robert's instruction to build first): the supervisor takes parameters and passes them on the `child` line, the one addition of syntax; one-field variants match positionally; `a..b` excludes `b`; `state` fields start at zero; literals are typed from use. The three-worker corpus (`examples/`, `plans/model-bakeoff.md`) found every one of these; the full list with what tests each is at the foot of `grammar.md`.
+
+Claude (session 5, from the interpreter): the example broke its own law. `within_window?` and `refund` each have a `requires` with no `test rejects`, and `mo check` refused the file with `MO0311`. Two `rejects` tests added; the `verified:` line counts 5. The compiler reviewing the spec is the point of the milestone.

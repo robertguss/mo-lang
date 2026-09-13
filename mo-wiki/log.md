@@ -169,3 +169,6 @@
 
 ## [2026-09-12] session | Session 5: step 2 accepted, step 3 briefed
 - Opus (fresh session): prelude, types, laws, caps, corpus test at .check, bench (check 251 µs over 50 files, rebuild 121 ms). Fable verified with the 12 rejects plus a type mismatch, a try across mismatched enums, an effect in a pure function, a non-exhaustive case, a clean nested-pattern file. Accepted. Opus's three defaults ruled on in the decision log. plans/interpreter-step-3.md written (VM, tier-2 contracts, test runner, verified line; processes deferred to step 4).
+
+## [2026-09-12] session | Session 5: step 3 accepted, step 4 briefed
+- Opus (fresh session): refund.mo in the corpus, bytecode, VM, tier-2 contracts, runner, mo test, corpus test at .run, bench (run 538 µs over 51 files, slowest refund.mo 204 µs). Fable verified with overflow, failing ensures, non-tripping rejects, refinement boundary, old/inout; all right, exit codes right. Accepted. Chapter 4 example gained the two rejects tests the compiler demanded. plans/interpreter-step-4.md (processes, supervisors, Mo.Sim scheduler) written.

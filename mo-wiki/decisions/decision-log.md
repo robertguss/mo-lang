@@ -69,6 +69,15 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `test rejects` passes only by tripping a `requires` or a refinement; any other crash fails it | Fable | provisional | the corpus tests |
 | `mo run` runs a module's tests until `main` exists | Fable | provisional | program 1 |
 | Grok's and Codex's corpora stay on their branches as evidence, never merged | Fable | locked | — |
+| Step 3 accepted: VM, tier-2 contracts, test runner by Opus; refund module runs its tests; 36 minutes | Fable | — | step 4 |
+| Chapter 4's example gains two `rejects` tests: `mo check` found it broke its own law (`MO0311`) | Fable, found by the compiler | locked | — |
+| A test is skipped only when it starts or messages a process, not because its file declares one | Fable, from Opus's default | provisional | step 4 removes the skip |
+| Recipe tests that call a body-less signature are skipped until an agent implements it | Fable, from Opus's default | provisional | the three-recipe test |
+| A failing test shortens the `verified:` line to `verified: types` and `mo test` exits 1 | Fable, from Opus's default | provisional | tier 3 |
+| `String.size` counts code points minus combining marks, a stand-in for graphemes | Fable, from Opus's default | provisional | the stdlib chapter |
+| `test rejects` also passes on a tripped `invariant` | Fable | provisional | step 4 |
+| Default mailbox bound is 1_000 | Fable | provisional | `Mo.Sim` with a slow consumer |
+| `ask` on a crashed, unrestarted process returns `Error(Down)` | Fable | provisional | step 4 |
 
 ## Related
 - [[session-05]]

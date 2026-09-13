@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [compiler, runtime, contracts]
 sources: [spec/design-v0/05-verification.md, spec/design-v0/08-milestone.md, spec/grammar.md]
-status: in-progress
+status: done
 ---
 
 # Interpreter step 3: run the tests, brief for the worker
