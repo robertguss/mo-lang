@@ -44,7 +44,7 @@ class TextTest(unittest.TestCase):
         head = render_text(summarize(records, 1)).split("\n\n")[0]
         self.assertEqual(
             head,
-            "requests    12_000\nerrors      12_000  (100.0%)\nmalformed        0\nper minute  6_050.4",
+            "requests    12_000\nerrors      12_000  (100.0%)\nmalformed        0\nper minute 6_050.4",
         )
 
     def test_empty_summary_has_empty_lists(self) -> None:
