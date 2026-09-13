@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, effects, processes]
 sources: [spec/programs/03-kv-store.md, spec/design-v0/03-semantics.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 11: `Net`, a TCP capability
@@ -39,6 +39,10 @@ Chapter 3: `conn.read_line(within: 30.s)` reads like Go and blocks like Erlang. 
 ## Part E: corpus and numbers
 
 `examples/effects/net.mo`: an echo server process and a client test under `Mo.Sim`; `examples/programs/echo/` runs a real socket echo through `mo run` with a test client (two `# run:` lines: server in the background is not possible from the corpus test, so the program spawns its own client process in `main`, talks to itself over localhost, and prints the round trip). Bench row `echo-1k`: 1,000 round trips over localhost.
+
+## Also
+
+The `usage:` text in `main.zig` must list `fmt` and `fix`.
 
 ## Done when
 

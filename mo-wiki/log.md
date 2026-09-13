@@ -196,3 +196,6 @@
 
 ## [2026-09-13] session | Overnight: step 9 accepted, merged; step 10 started
 - Fable verified: tests green, refund under 100 seeds with faults holds (`sim (100 runs)`), racy.mo passes plain and fails under sim with interleaving and replay line. Five decision rows. Merged to main. Step 10 (sidecar, mo fix, error catalog, README) to a fresh session.
+
+## [2026-09-13] session | Overnight: step 10 accepted, merged; step 11 started
+- Fable verified: tests green, hand-edited verified line caught by MO0317 against the sidecar, mo fix rewrites a push loop to concat(map), errors.md has 59 rows, README tour reads well. Five decision rows. Merged to main. Step 11 (Net, processes under mo run) to a fresh session.
