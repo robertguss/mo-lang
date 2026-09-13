@@ -181,3 +181,9 @@
 
 ## [2026-09-13] session | Overnight: step 6 accepted, merged; program 2 and the control runs started
 - Opus: main, Mo.Server, mo run, three programs. Fable verified: expected output and exit codes match, scope escape blocked, crash in main exits 70, no-main file gives MO0408. Accepted; nine decision rows. Merged to main. Program 2 (logstat in Mo) to a fresh mo-opus session; Go and Python control runs to fresh sessions in worktrees control-go and control-python.
+
+## [2026-09-13] session | Overnight: first toolchain finding from program 2
+- A `mo run` of a worker probe reached 21 GB in three minutes and Fable killed it. The worker was measuring `push` at 2k/4k/8k elements: value-semantic append copies the whole list, and the per-run arena never frees, so a loop that builds a list is quadratic in memory. Chapter 7's Perceus-style in-place reuse for a unique `var` is exactly the missing piece; until then, runtime step 7 must give `push` on a `var` in-place growth and free per iteration. Background waits were killed by the memory pressure; the scheduled wakeup is the only signal now.
+
+## [2026-09-13] session | Overnight: program 2 and the control run done; step 7 briefed
+- Mo logstat verified with the file law lifted (four modules, tests, text and JSON match); Go and Python verified with their check.sh and tests. Control branches merged into session-05. Result table on plans/control-run.md. Three toolchain bugs → plans/interpreter-step-7.md (use imports functions, program root, multi-file corpus programs, push in place, speed); nine gaps → plans/interpreter-step-8.md (the stdlib). Grammar: use production changed. Six decision rows. Merged to main.

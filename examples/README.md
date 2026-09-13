@@ -87,3 +87,4 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 53. `programs/hello.mo`: `fn main(platform: Platform)`, an argument, and `stdout`
 54. `programs/count-lines.mo`: `platform.fs.scoped("data").read_only` and a real read with `within:`
 55. `programs/exit-code.mo`: a line on `stderr` and `platform.exit(3)`
+56. `programs/logstat/`: program 2 (`mo-wiki/spec/programs/02-log-analyzer.md`) in four modules, `parse.mo`, `stats.mo`, `report.mo`, and `main.mo`, over the three logs in `fixture/`. The corpus test cannot run a program made of several modules, and `zig build test` fails on this folder until it can (`programs/logstat/TOOLCHAIN-BUGS.md`). The program-level check is the shell line `examples/programs/logstat/check.sh`.

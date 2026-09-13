@@ -29,7 +29,7 @@ No block comments, no single-quoted strings, no literal type suffixes. Every str
 module      = "module" path NL expose? use* intent? never* decl* test* verified?
 expose      = "expose" name ("," name)* NL     # the exposed surface; everything else is private
 name        = ident | TypeName
-use         = "use" path ("{" TypeName ("," TypeName)* "}")? NL
+use         = "use" path "{" name ("," name)* "}" NL      # types and functions from the expose line; no bare use, no wildcards, no aliases
 intent      = "intent" string NL
 never       = "never" string NL (comprehension | expr NL) "end" NL   # a comprehension, or one checkable call such as flows(...)
 verified    = "verified:" any* NL                # toolchain-owned; hand edits are errors
@@ -204,3 +204,4 @@ Grammar bugs found by the corpus, fixed above: `cmp` demanded an operand after `
 - **Sibling handles.** A supervisor that must give one child another's handle takes it as a parameter (`supervisor Line(sink: Handle(Sink))`, `child Source(sink)`); who starts `Sink` first is `main`'s job. First tested by program 1.
 - **Line budget.** A corpus file with two processes may exceed 40 lines; the 70-line function law is the real bound.
 - **`for _ in 0..n`.** `_` as the loop binder says the index is unused; the unused-binding law does not fire. Found by Fable testing mailbox bounds in step 4.
+- **`use` names functions too.** `use A.B{X, y}` brings the named types and functions into scope by bare name; every name must be on `A.B`'s `expose` line; a bare `use A.B` is `MO0321`. A program is a tree of files under a `mo.root` marker (or the main file's directory); `A.B` is `a/b.mo`. Found by program 2 (toolchain bug 1). First tested by step 7.

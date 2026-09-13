@@ -110,6 +110,12 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Every read failure is `Missing(path)`; over 64 MiB is `Missing`; a read that is both missing and late is `Timeout` | Fable, from Opus's default | provisional | program 2 |
 | `Name.start` under `Mo.Server` crashes: no scheduler outside the test runner yet | Fable, from Opus's default | provisional | program 1 |
 | Program 2 and the Go and Python control runs run in parallel, three fresh Opus sessions in three worktrees | Fable | — | the morning review |
+| Program 2 accepted as an experiment result (correct with the file law lifted); the control run recorded: Mo 25.5 min, Go 12.9, Python 8; all of Mo's loss is toolchain | Fable | — | round 2 after step 8 |
+| `use A.B{X, y}` imports functions as well as types; bare `use` is an error; program root is a `mo.root` marker or the main file's directory | Fable | provisional | step 7 |
+| Each file keeps the 500-line law; a program is many files | Fable | locked | — |
+| The VM tracks unique ownership so `push` on an unaliased `var` list is in place (Perceus-lite, chapter 7) | Fable | provisional | step 7's numbers |
+| The stdlib table in `09-stdlib.md` is the worker's one wiki write; `sort_by` takes a key function because function types cannot be named; maps keep insertion order; no map literal yet | Fable | provisional | step 8 |
+| Interpreter speed target for a log line: under 50 µs before optimizing further | Fable | provisional | step 7 |
 
 ## Related
 - [[session-05]]
