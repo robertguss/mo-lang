@@ -292,11 +292,7 @@ pub const Vm = struct {
                     const elems = try vm.take(inst.a);
                     try vm.push(if (inst.op == .list) .{ .list = elems } else .{ .tuple = elems });
                 },
-                .record => {
-                    const v: Value = .{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } };
-                    try vm.produced(v);
-                    try vm.push(v);
-                },
+                .record => try vm.push(.{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } }),
                 .variant => try vm.push(.{ .variant = .{ .name = vm.program.constants[inst.a].string, .fields = try vm.take(inst.b) } }),
                 .field => try vm.push(fieldsOf(vm.pop())[inst.a]),
                 .load_field => try vm.push(fieldsOf(locals[inst.a])[inst.b]),
@@ -312,7 +308,6 @@ pub const Vm = struct {
                         .tuple => .{ .tuple = fields },
                         else => unreachable,
                     };
-                    if (changed == .record) try vm.produced(changed);
                     try vm.push(changed);
                 },
                 .is_variant => {
@@ -427,6 +422,7 @@ pub const Vm = struct {
                     try vm.push(try (try vm.simulator()).ask(to, message, within));
                 },
                 .settle => if (vm.sim) |s| try s.settle(),
+                .observe => if (vm.sim) |s| if (s.records) try s.observe(vm.stack.items[vm.stack.items.len - 1], inst.a),
                 .all => try vm.push(.{ .list = if (vm.sim) |s| s.all(inst.a) else &.{} }),
                 .trip => {
                     const broken = vm.pop().bool;
@@ -777,11 +773,6 @@ pub const Vm = struct {
         return error.Crash;
     }
 
-    /// A struct value the run made, kept for a never's `T.all` (sim.zig).
-    fn produced(vm: *Vm, v: Value) Error!void {
-        if (vm.sim) |s| if (s.records) try s.record(v);
-    }
-
     fn crashWith(vm: *Vm, kind: contracts.Kind, clause_index: u32, values: []const Value) Error {
         var involved: std.ArrayList(contracts.Involved) = .empty;
         const names = [_][]const u8{ "left", "right" };
@@ -1037,7 +1028,6 @@ pub const Vm = struct {
                 fields[2] = .{ .int = 10_000 };
                 fields[3] = .{ .bool = false };
                 const charge: Value = .{ .record = .{ .decl = decl, .fields = fields } };
-                try vm.produced(charge);
                 break :blk try vm.variant("Ok", &.{charge});
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
@@ -1048,7 +1038,6 @@ pub const Vm = struct {
                 fields[2] = a[row.named.len - 1];
                 fields[3] = .{ .bool = false };
                 const charge: Value = .{ .record = .{ .decl = decl, .fields = fields } };
-                try vm.produced(charge);
                 break :blk charge;
             },
             .charge_refunded => a[0].record.fields[3],

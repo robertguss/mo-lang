@@ -12,8 +12,10 @@
 //! kept in order, so a failure prints the interleaving that found it.
 //! With faults, a seeded run's fixtures can fail or be slow, each call by the seed's
 //! draw (`fault`), and an `ask` whose target waited past its deadline is a Timeout.
-//! A seeded run of a program with a `never` over `T.all` keeps every distinct struct
-//! value of such a T it made, and checks each never over them when the test ends.
+//! Every test and property run of a program with a `never`, seeded or not, keeps each
+//! distinct value of a type a never reads with `T.all` that the run held in a binding, a
+//! field, a message, or state (`observe`), and checks every never over them when the run
+//! ends (`checkNevers`).
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
@@ -132,8 +134,9 @@ pub const Sim = struct {
     /// moved by yet (it moves before the next update).
     waited: i64 = 0,
     lag: i64 = 0,
-    /// A seeded run of a program with a never: the distinct values of each struct decl a
-    /// never reads with `T.all`, in the order they were first made.
+    /// A test or property run of a program with a never (the runner sets it): the distinct
+    /// values of each type a never reads with `T.all`, by its index among them
+    /// (bytecode.Program.recorded_as), in the order the run first held them.
     records: bool = false,
     produced: std.AutoHashMapUnmanaged(u32, std.ArrayList(Value)) = .empty,
     /// Under `mo run`, the real platform: main is the root supervisor, `clock.now` is the
@@ -172,23 +175,73 @@ pub const Sim = struct {
             .schedule = .init(seed),
             .faults = if (fault_percent > 0) .init(seed ^ fault_stream) else null,
             .fault_percent = fault_percent,
-            .records = vm.program.nevers.len > 0,
         };
     }
 
-    /// A struct value the run made: kept once when a never reads its type.
-    pub fn record(sim: *Sim, v: Value) Error!void {
-        const decl = v.record.decl;
-        if (std.mem.indexOfScalar(u32, sim.vm.program.never_decls, decl) == null) return;
-        const kept = try sim.produced.getOrPut(sim.gpa, decl);
+    /// `v`, of checker type `t`, is held by a binding, a field, a message, or state: it and
+    /// every value inside it of a type a never reads with `T.all` are kept once each.
+    pub fn observe(sim: *Sim, v: Value, t: u32) Error!void {
+        const p = sim.vm.program;
+        const k = &p.checked;
+        const r = k.pool.resolve(t);
+        if (!p.may_hold[r]) return;
+        if (p.recorded_as[r] != none) try sim.keep(p.recorded_as[r], v);
+        const ty = k.pool.get(r);
+        switch (ty.tag) {
+            .alias => try sim.observe(v, ty.b),
+            .list => if (v == .list) for (v.list) |x| try sim.observe(x, ty.a),
+            .set => if (v == .set) for (v.set.entries) |x| try sim.observe(x, ty.a),
+            .map => if (v == .map) {
+                // Keys and values alternate in a map's entries.
+                var i: usize = 0;
+                while (i + 1 < v.map.entries.len) : (i += 2) {
+                    try sim.observe(v.map.entries[i], ty.a);
+                    try sim.observe(v.map.entries[i + 1], ty.b);
+                }
+            },
+            .option => if (v == .variant and v.variant.fields.len == 1) try sim.observe(v.variant.fields[0], ty.a),
+            .result => if (v == .variant and v.variant.fields.len == 1) {
+                try sim.observe(v.variant.fields[0], if (std.mem.eql(u8, v.variant.name, "Ok")) ty.a else ty.b);
+            },
+            .tuple => if (v == .tuple and v.tuple.len == ty.b) for (k.pool.elems(ty), v.tuple) |e, x| try sim.observe(x, e),
+            .decl, .state, .message => {
+                const d = k.decls[ty.a];
+                switch (v) {
+                    .record => |rec| try sim.observeFields(rec.fields, k.fields[d.fields.start..d.fields.end]),
+                    .variant => |var_| for (k.variants[d.variants.start..d.variants.end]) |def| {
+                        if (std.mem.eql(u8, def.name, var_.name)) break try sim.observeFields(var_.fields, k.fields[def.fields.start..def.fields.end]);
+                    },
+                    else => {},
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn observeFields(sim: *Sim, values: []const Value, defs: []const @import("check.zig").Field) Error!void {
+        if (values.len != defs.len) return;
+        for (values, defs) |x, def| try sim.observe(x, def.type);
+    }
+
+    fn keep(sim: *Sim, index: u32, v: Value) Error!void {
+        const kept = try sim.produced.getOrPut(sim.gpa, index);
         if (!kept.found_existing) kept.value_ptr.* = .empty;
         for (kept.value_ptr.items) |x| if (vm_mod.equal(x, v)) return;
         try kept.value_ptr.append(sim.gpa, v);
     }
 
-    /// `T.all` in a never: every distinct value of struct decl `decl` the run made.
-    pub fn all(sim: *const Sim, decl: u32) []const Value {
-        return if (sim.produced.get(decl)) |kept| kept.items else &.{};
+    /// `T.all` in a never: every distinct value of recorded type `index` the run held.
+    pub fn all(sim: *const Sim, index: u32) []const Value {
+        return if (sim.produced.get(index)) |kept| kept.items else &.{};
+    }
+
+    /// Every never, over the values the run held; the first that is true crashes the run.
+    pub fn checkNevers(sim: *Sim) Error!void {
+        if (!sim.records) return;
+        // What a never's own body holds is not the run's.
+        sim.records = false;
+        defer sim.records = true;
+        for (sim.vm.program.nevers) |n| _ = try sim.vm.call(n.function, &.{});
     }
 
     /// A fixture call's fate in a seeded run with faults. With the run's chance it fails:
@@ -339,12 +392,11 @@ pub const Sim = struct {
     }
 
     /// The test's body is done: every waiting message is delivered, whatever the seed;
-    /// then, in a seeded run, every never is checked against what the run produced.
+    /// then every never is checked against what the run held.
     pub fn finish(sim: *Sim) Error!void {
         if (sim.turns) |t| return t.finish(sim);
         try sim.drain();
-        if (!sim.records) return;
-        for (sim.vm.program.nevers) |n| _ = try sim.vm.call(n.function, &.{});
+        try sim.checkNevers();
     }
 
     /// Delivers waiting messages, one per process per round, until every mailbox is

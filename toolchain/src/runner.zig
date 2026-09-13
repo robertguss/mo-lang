@@ -1,5 +1,7 @@
 //! Runs `test`, `test rejects`, and `property` blocks of a module on the vm.
-//! A `rejects` test passes only when it trips a `requires`, a refinement, or an `invariant`.
+//! A `rejects` test passes only when it trips a `requires`, a refinement, an `invariant`,
+//! or a `never`. Every never is checked when a test's body ends and when a property's
+//! attempt ends, in the fixed order and under seeds alike (sim.zig, checkNevers).
 //! Property tests run under N seeds; results feed verified.zig. Every test runs on its
 //! own Mo.Sim (sim.zig): a process it starts has the runner as its supervisor, and the
 //! first crash, in a process or in the body, is the verdict.
@@ -187,6 +189,7 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
     var machine: vm.Vm = .init(arena, program, seed orelse base_seed);
     var simulator: sim.Sim = if (seed) |s| .seeded(&machine, s, t.name, fault_percent) else .init(&machine, base_seed, t.name);
     machine.sim = &simulator;
+    simulator.records = program.nevers.len > 0;
     var r: Result = .{ .kind = t.kind, .name = t.name, .at = t.at, .outcome = .passed };
     const ran = body(&machine, &simulator, t.function);
     r.processes = @intCast(simulator.procs.items.len);
@@ -196,7 +199,7 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
             try verdict(gpa, &r, report);
         } else if (t.kind == .rejects) {
             r.outcome = .did_not_trip;
-            r.note = "the body ran to its end without tripping a requires, a refinement, or an invariant";
+            r.note = "the body ran to its end without tripping a requires, a refinement, an invariant, or a never";
         }
     } else |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
@@ -211,10 +214,17 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
     return r;
 }
 
-/// The body, then every message still waiting.
+/// The body, then every message still waiting, then every never.
 fn body(machine: *vm.Vm, simulator: *sim.Sim, function: u32) vm.Error!void {
     _ = try machine.call(function, &.{});
     try simulator.finish();
+}
+
+/// One attempt of a property, then every never over what the attempt held. An attempt
+/// its guard discards ends before the nevers.
+fn propertyAttempt(machine: *vm.Vm, simulator: *sim.Sim, function: u32) vm.Error!void {
+    _ = try machine.call(function, &.{});
+    try simulator.checkNevers();
 }
 
 /// A seeded run's messages, oldest first: `the test sent Go to Writer #1`, `Writer #1 took
@@ -274,7 +284,8 @@ fn runProperty(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const
             machine.generated.clearRetainingCapacity();
             var simulator: sim.Sim = .init(&machine, seed, t.name);
             machine.sim = &simulator;
-            const ran = machine.call(t.function, &.{});
+            simulator.records = program.nevers.len > 0;
+            const ran = propertyAttempt(&machine, &simulator, t.function);
             r.processes = @max(r.processes, @as(u32, @intCast(simulator.procs.items.len)));
             const crash: ?contracts.Report = if (ran) |_| simulator.firstCrash() else |err| switch (err) {
                 error.Crash => crashOf(&machine, &simulator),
@@ -567,7 +578,7 @@ test "sends a seed leaves waiting fill a mailbox the fixed order empties, and re
     try std.testing.expectEqualStrings("the test sent Write to Journal #0 3 times", r.interleaving[0]);
 }
 
-test "under --sim a never over T.all is checked when each run ends, over every value the run made" {
+test "a never over T.all is checked when every test ends, in the fixed order as under --sim" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -614,22 +625,85 @@ test "under --sim a never over T.all is checked when each run ends, over every v
     ;
     const program = try compileSource(arena, src);
     try std.testing.expectEqual(@as(usize, 1), program.nevers.len);
-    // The fixed order does not check nevers: that is tier 3's.
-    try std.testing.expectEqual(@as(u32, 0), (try run(arena, program, .{})).summary.failures);
-
-    const r = try run(arena, program, .{ .sim_runs = 3, .sim_seed = 9 });
-    const tripped = r.results[0];
+    const fixed = try run(arena, program, .{});
+    const tripped = fixed.results[0];
     try std.testing.expectEqual(Outcome.failed, tripped.outcome);
-    try std.testing.expectEqual(@as(u64, 9), tripped.sim_seed.?);
     try std.testing.expectEqual(contracts.Kind.never, tripped.report.?.kind);
+    try std.testing.expectEqual(Outcome.passed, fixed.results[1].outcome);
+
+    // Under --sim the fixed-order run already fails; a test that holds there checks its
+    // nevers under every seed as well.
+    const r = try run(arena, program, .{ .sim_runs = 3, .sim_seed = 9 });
+    try std.testing.expectEqual(Outcome.failed, r.results[0].outcome);
+    try std.testing.expect(r.results[0].sim_seed == null);
     try std.testing.expectEqual(Outcome.passed, r.results[1].outcome);
     try std.testing.expectEqual(@as(u32, 3), r.results[1].sim_runs);
 
     var buf: [2048]u8 = undefined;
     var w: std.Io.Writer = .fixed(&buf);
     try writeResult(&w, &.{.{ .path = "never.mo", .source = src }}, tripped);
-    const want = "FAIL  test \"two guests book one seat\": simulated run 1, seed 9: never.mo:2:1: never \"a seat holds two bookings\" tripped; a = Booking(seat: \"12A\", guest: \"Ada\"), b = Booking(seat: \"12A\", guest: \"Bob\")\n      interleaving: ";
-    try std.testing.expect(std.mem.startsWith(u8, w.buffered(), want));
+    try std.testing.expectEqualStrings("FAIL  test \"two guests book one seat\": never.mo:2:1: never \"a seat holds two bookings\" tripped; a = Booking(seat: \"12A\", guest: \"Ada\"), b = Booking(seat: \"12A\", guest: \"Bob\")\n", w.buffered());
+}
+
+test "every never is checked at the end of every test, test rejects, and property, over enums and primitives the run held" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compileSource(arena,
+        \\module T.Held
+        \\never "a level is past its cap"
+        \\  for n in UInt8.all
+        \\    n > 200
+        \\  end
+        \\end
+        \\never "a light is red"
+        \\  for light in Light.all
+        \\    light is Red
+        \\  end
+        \\end
+        \\enum Light
+        \\  Green
+        \\  Red
+        \\end
+        \\fn next(n: UInt8) : UInt8
+        \\  n + 1
+        \\end
+        \\test "one step, under a green light"
+        \\  light = Green
+        \\  assert light is Green
+        \\  assert next(1) == 2
+        \\end
+        \\test rejects "a level raised past the cap"
+        \\  var level = next(1)
+        \\  level += 240
+        \\  assert level == 242
+        \\end
+        \\test rejects "a red light"
+        \\  light = Red
+        \\  assert light is Red
+        \\end
+        \\property "small steps hold"
+        \\  for n in any(UInt8) if n < 100
+        \\    assert next(n) > n
+        \\  end
+        \\end
+        \\property "a step from past the cap"
+        \\  for n in any(UInt8) if n > 220 and n < 250
+        \\    assert next(n) > n
+        \\  end
+        \\end
+    );
+    const r = try run(arena, program, .{});
+    try std.testing.expectEqual(Outcome.passed, r.results[0].outcome);
+    for (r.results[1..3]) |t| {
+        try std.testing.expectEqual(Outcome.tripped_as_expected, t.outcome);
+        try std.testing.expectEqual(contracts.Kind.never, t.report.?.kind);
+    }
+    try std.testing.expectEqualStrings("never \"a level is past its cap\"", r.results[1].report.?.clause);
+    try std.testing.expectEqualStrings("never \"a light is red\"", r.results[2].report.?.clause);
+    try std.testing.expectEqual(Outcome.passed, r.results[3].outcome);
+    try std.testing.expectEqual(Outcome.failed, r.results[4].outcome);
+    try std.testing.expectEqual(contracts.Kind.never, r.results[4].report.?.kind);
 }
 
 test "under faults a test holds, or passes only without faults, and the summary counts each" {
