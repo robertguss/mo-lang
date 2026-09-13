@@ -61,7 +61,6 @@
 
 ## Decisions
 - [[decision-log|Decision log]] — every choice in order, who made it, status, what first tests it
-*(none yet)*
 
 ## Syntax picks and examples
 - [[base-example|Current base example (Robert's style)]] — ```ruby
