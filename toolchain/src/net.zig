@@ -90,6 +90,9 @@ fn lineResult(vm: *Vm, what: Scan) Error!?Value {
     };
 }
 
+/// `Conn.listener` of a connection no listener accepted.
+pub const no_listener: u32 = std.math.maxInt(u32);
+
 pub const Listener = struct {
     server: Io.net.Server,
     port: u16,
@@ -113,6 +116,9 @@ pub const Conn = struct {
     skipping: bool = false,
     reading: bool = false,
     writing: bool = false,
+    /// The listener that accepted it, or no_listener: a wait on that listener can hear from
+    /// a process holding it only after that process acts (sim.zig, held sends).
+    listener: u32 = no_listener,
 
     fn scan(c: *Conn) Scan {
         const taken, const what = scanLine(c.buf[c.start..c.end], c.eof, &c.skipping);
@@ -237,7 +243,11 @@ pub const Net = struct {
             error.SocketNotListening => .Closed,
             else => .Busy,
         } };
-        return .{ .ok = try n.adopt(stream) };
+        const h = try n.adopt(stream);
+        for (n.listeners.items, 0..) |x, i| if (x == l) {
+            n.conns.items[h].listener = @intCast(i);
+        };
+        return .{ .ok = h };
     }
 
     fn adopt(n: *Net, stream: Io.net.Stream) Error!u32 {
@@ -492,6 +502,8 @@ pub const Fixture = struct {
         start: usize = 0,
         closed: bool = false,
         skipping: bool = false,
+        /// The listener whose backlog it went into, or no_listener for a client's end.
+        listener: u32 = no_listener,
     };
 
     pub fn call(f: *Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: []const Value) Error!Value {
@@ -511,12 +523,13 @@ pub const Fixture = struct {
             .connect => {
                 if (sim.fault(null, a[3].duration) != null) return fail(vm, .Timeout);
                 const port: u16 = @intCast(a[2].int);
-                const l = for (f.listeners.items) |*l| {
-                    if (l.port == port) break l;
+                const li = for (f.listeners.items, 0..) |l, i| {
+                    if (l.port == port) break i;
                 } else return fail(vm, .Refused);
+                const l = &f.listeners.items[li];
                 const client: u32 = @intCast(f.conns.items.len);
                 try f.conns.append(gpa, .{ .peer = client + 1 });
-                try f.conns.append(gpa, .{ .peer = client });
+                try f.conns.append(gpa, .{ .peer = client, .listener = @intCast(li) });
                 try l.backlog.append(gpa, client + 1);
                 return vm.variant("Ok", &.{.{ .cap = .{ .kind = .conn, .handle = client } }});
             },

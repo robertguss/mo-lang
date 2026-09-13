@@ -1126,6 +1126,14 @@ pub const Vm = struct {
     /// A Net, Listener, or Conn row: real sockets under mo run, or in a test a
     /// Net.fixture()'s, in memory (net.zig).
     fn netRow(vm: *Vm, which: net_mod.Row, a: []const Value) Error!Value {
+        // A call that waits on a peer: first, whether a send the update holds is what it waits on.
+        const wait: ?sim_mod.Wait = switch (which) {
+            .accept => .{ .listener = true, .handle = a[0].cap.handle, .call = "Listener.accept" },
+            .read_line => .{ .listener = false, .handle = a[0].cap.handle, .call = "Conn.read_line" },
+            else => null,
+        };
+        defer if (wait != null) if (vm.sim) |s| s.endWait();
+        if (wait) |w| if (vm.sim) |s| try s.waitOn(w);
         if (vm.server) |s| return s.sockets.call(vm, which, a);
         if (vm.sim) |s| return s.fixture.call(vm, s, which, a);
         vm.report = .{ .kind = .other, .clause = "Net runs only under mo run", .within = @tagName(which), .at = 0 };
@@ -1135,6 +1143,9 @@ pub const Vm = struct {
     /// An Http, HttpListener, or Exchange row: real sockets under mo run, or in a test an
     /// Http.fixture()'s, on Net.fixture()'s network (http.zig).
     fn httpRow(vm: *Vm, which: http_mod.Row, a: []const Value) Error!Value {
+        const accepting = which == .accept;
+        defer if (accepting) if (vm.sim) |s| s.endWait();
+        if (accepting) if (vm.sim) |s| try s.waitOn(.{ .listener = true, .handle = a[0].cap.handle, .call = "HttpListener.accept" });
         if (vm.server) |s| return http_mod.call(&s.sockets, vm, which, a);
         if (vm.sim) |s| return http_mod.fixtureCall(&s.fixture, vm, s, which, a);
         vm.report = .{ .kind = .other, .clause = "Http runs only under mo run", .within = @tagName(which), .at = 0 };

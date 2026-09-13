@@ -1,6 +1,7 @@
 //! Runs `test`, `test rejects`, and `property` blocks of a module on the vm.
 //! A `rejects` test passes only when it trips a `requires`, a refinement, an `invariant`,
-//! or a `never`. Every never is checked when a test's body ends and when a property's
+//! or a `never`, or a process crashes waiting on what only a send it holds could bring
+//! (sim.zig, held sends). Every never is checked when a test's body ends and when a property's
 //! attempt ends, in the fixed order and under seeds alike (sim.zig, checkNevers).
 //! Property tests run under N seeds; results feed verified.zig. Every test runs on its
 //! own Mo.Sim (sim.zig): a process it starts has the runner as its supervisor, and the
@@ -434,7 +435,7 @@ pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Rep
         .never => try w.print("{s} tripped", .{r.clause}),
         .overflow => try w.print("overflow in {s}", .{r.clause}),
         .divide_by_zero => try w.print("division by zero in {s}", .{r.clause}),
-        .mailbox, .supervisor, .other => try w.print("{s}", .{r.clause}),
+        .mailbox, .supervisor, .other, .held => try w.print("{s}", .{r.clause}),
     }
     for (r.values, 0..) |v, i| try w.print("{s}{s} = {s}", .{ if (i == 0) "; " else ", ", v.name, v.value });
     if (r.process) |p| {

@@ -148,7 +148,7 @@ extern const MoVariantDef mo_variants[];
 extern const uint32_t mo_nvariants;
 
 /* contracts.Kind, in its order. */
-enum { MO_R_REQUIRES, MO_R_ENSURES, MO_R_REFINEMENT, MO_R_INVARIANT, MO_R_NEVER, MO_R_ASSERT, MO_R_OVERFLOW, MO_R_DIVIDE_BY_ZERO, MO_R_MAILBOX, MO_R_SUPERVISOR, MO_R_OTHER };
+enum { MO_R_REQUIRES, MO_R_ENSURES, MO_R_REFINEMENT, MO_R_INVARIANT, MO_R_NEVER, MO_R_ASSERT, MO_R_OVERFLOW, MO_R_DIVIDE_BY_ZERO, MO_R_MAILBOX, MO_R_SUPERVISOR, MO_R_OTHER, MO_R_HELD };
 
 typedef struct {
     uint8_t kind;

@@ -52,6 +52,13 @@ pub const Fault = enum { timeout, missing, closed };
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
+/// A call a process's update waits in on a peer: a listener's next client (`accept`) or a
+/// connection's next line (`read_line`), by handle, and the call as a report names it.
+pub const Wait = struct { listener: bool, handle: u32, call: []const u8 };
+
+/// A send an update holds (`holder`'s outbox) to `to`, which a wait can hear from only after it.
+const Held = struct { holder: u32, to: u32, message: Value };
+
 /// A message in a mailbox or an outbox. Under `mo run` it came in a parcel (Sim.packs),
 /// which the mailbox, and then the process's log, owns.
 const Entry = struct { message: Value, seq: u64, parcel: ?*Parcel = null };
@@ -90,6 +97,12 @@ pub const Proc = struct {
     now: i64 = 0,
     /// Under `mo run`, a sweep ended it (turns.zig): its id waits in `Sim.free_ids`.
     ended: bool = false,
+    /// Its update waits in an ask to this process, or none; or in a call on a peer.
+    asking: u32 = none,
+    wait: ?Wait = null,
+    /// A wait elsewhere found that this update's ask can end only after a send it holds: the
+    /// ask crashes the update with this report when it returns.
+    doomed: ?contracts.Report = null,
 
     pub fn queued(p: *const Proc) usize {
         return p.mailbox.items.len - p.head;
@@ -166,6 +179,8 @@ pub const Sim = struct {
     /// Under `mo run`, the ids of processes a sweep ended, the last ended last: the next
     /// start takes the last one (turns.zig, sweep).
     free_ids: std.ArrayList(u32) = .empty,
+    /// Sends held in every outbox: while none is, no wait looks for one.
+    held: usize = 0,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -383,6 +398,7 @@ pub const Sim = struct {
         const sent = if (parcel) |p| p.value else message;
         if (sim.running) |from| {
             try sim.procs.items[from].outbox.append(sim.gpa, .{ .to = to, .message = sent, .parcel = parcel });
+            sim.held += 1;
         } else _ = try sim.enqueue(test_runner, to, sent, parcel);
     }
 
@@ -391,7 +407,14 @@ pub const Sim = struct {
     /// than `d`, or its fixture calls waited longer than `d` while it answered; `Down` when
     /// the target is down or crashed before replying. A Timeout's message still arrives.
     pub fn ask(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
-        if (sim.turns) |t| return t.ask(sim, to, message, within);
+        defer sim.endAsk();
+        try sim.askOn(to);
+        const reply = if (sim.turns) |t| try t.ask(sim, to, message, within) else try sim.askInline(to, message, within);
+        try sim.checkDoomed();
+        return reply;
+    }
+
+    fn askInline(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         if (!sim.procs.items[to].up) return sim.askError("Down");
         // A target whose update is on the stack is waiting on this very call.
         if (sim.procs.items[to].busy) return sim.askError("Timeout");
@@ -573,8 +596,12 @@ pub const Sim = struct {
                 vm.stack.shrinkRetainingCapacity(base);
                 vm.rollBack();
                 for (p.outbox.items) |o| if (o.parcel) |x| x.free();
+                sim.held -= p.outbox.items.len;
                 p.outbox.clearRetainingCapacity();
                 p.emits.clearRetainingCapacity();
+                p.wait = null;
+                p.asking = none;
+                p.doomed = null;
                 if (sim.gave_up) return error.Crash;
                 try sim.crashed(id, before);
                 if (sim.turns) |t| try t.answer(entry.seq, null, null);
@@ -585,6 +612,7 @@ pub const Sim = struct {
         };
         vm.undo.clearRetainingCapacity();
         p.state = after.tuple[1];
+        sim.held -= p.outbox.items.len;
         for (p.outbox.items) |o| {
             if (sim.procs.items[o.to].up) {
                 _ = try sim.enqueue(id, o.to, o.message, o.parcel);
@@ -653,6 +681,141 @@ pub const Sim = struct {
             return error.Crash;
         }
         return out;
+    }
+
+    // ---- held sends (step 19)
+
+    /// The running update is about to wait in `w.call` on a peer. When that update, or one
+    /// waiting on it through asks, holds a send to a process started with a connection this
+    /// wait can hear from only through that process, the wait could end only after the update
+    /// does, since its sends are held until then: the update that holds the send crashes, at
+    /// once when it is this one, else when its ask returns.
+    pub fn waitOn(sim: *Sim, w: Wait) Error!void {
+        const me = sim.running orelse return;
+        sim.procs.items[me].wait = w;
+        if (sim.held == 0) return;
+        const found = try sim.heldFor(me, w) orelse return;
+        const report = try sim.heldReport(found, me, w);
+        if (found.holder != me) return sim.doom(found.holder, report);
+        sim.vm.report = report;
+        return error.Crash;
+    }
+
+    pub fn endWait(sim: *Sim) void {
+        if (sim.running) |me| sim.procs.items[me].wait = null;
+    }
+
+    /// The running update is about to wait in an ask to `to`. Followed through the asks it waits
+    /// in, when the target waits on a peer that a send this update, or one waiting on it, holds
+    /// is what it hears from, the same holds as for waitOn.
+    fn askOn(sim: *Sim, to: u32) Error!void {
+        const me = sim.running orelse return;
+        sim.procs.items[me].asking = to;
+        if (sim.held == 0) return;
+        var x = to;
+        const w = for (0..sim.procs.items.len) |_| {
+            const q = sim.procs.items[x];
+            if (!q.busy) return;
+            if (q.wait) |w| break w;
+            if (q.asking == none) return;
+            x = q.asking;
+        } else return;
+        const found = try sim.heldFor(x, w) orelse return;
+        // The waiter's own send was found when its wait began.
+        if (found.holder == x) return;
+        const report = try sim.heldReport(found, x, w);
+        if (found.holder != me) return sim.doom(found.holder, report);
+        sim.vm.report = report;
+        return error.Crash;
+    }
+
+    fn endAsk(sim: *Sim) void {
+        if (sim.running) |me| sim.procs.items[me].asking = none;
+    }
+
+    /// The first send, of `waiter`'s update and then of each update waiting on it through asks,
+    /// to a process started with a connection a wait on `w` hears from only through it.
+    fn heldFor(sim: *Sim, waiter: u32, w: Wait) Error!?Held {
+        const gpa = std.heap.smp_allocator;
+        var queue: std.ArrayList(u32) = .empty;
+        defer queue.deinit(gpa);
+        try queue.append(gpa, waiter);
+        var i: usize = 0;
+        while (i < queue.items.len) : (i += 1) {
+            const x = queue.items[i];
+            for (sim.procs.items[x].outbox.items) |o| {
+                if (sim.ties(o.to, w)) return .{ .holder = x, .to = o.to, .message = o.message };
+            }
+            for (sim.procs.items, 0..) |p, id| {
+                if (!p.busy or p.asking != x or std.mem.indexOfScalar(u32, queue.items, @intCast(id)) != null) continue;
+                try queue.append(gpa, @intCast(id));
+            }
+        }
+        return null;
+    }
+
+    /// Process `to` was started with a connection a wait on `w` hears from only through it: one
+    /// still open that the listener `w` names accepted, or the connection `w` names. An
+    /// exchange counts while it is unanswered.
+    fn ties(sim: *const Sim, to: u32, w: Wait) bool {
+        for (sim.procs.items[to].args) |a| {
+            if (a != .cap) continue;
+            const conn = switch (a.cap.kind) {
+                .conn => a.cap.handle,
+                .exchange => sim.unanswered(a.cap.handle) orelse continue,
+                else => continue,
+            };
+            const open, const from = sim.connection(conn);
+            if (open and (if (w.listener) from == w.handle else conn == w.handle)) return true;
+        }
+        return false;
+    }
+
+    fn unanswered(sim: *const Sim, exchange: u32) ?u32 {
+        const e = if (sim.server) |s| s.sockets.exchanges.items[exchange] else sim.fixture.exchanges.items[exchange];
+        return if (e.answered) null else e.conn;
+    }
+
+    /// Whether connection `h` is open, and the listener that accepted it.
+    fn connection(sim: *const Sim, h: u32) struct { bool, u32 } {
+        if (sim.server) |s| {
+            const c = s.sockets.conns.items[h];
+            return .{ !c.closed, c.listener };
+        }
+        const c = sim.fixture.conns.items[h];
+        return .{ !c.closed, c.listener };
+    }
+
+    fn heldReport(sim: *Sim, h: Held, waiter: u32, w: Wait) Error!contracts.Report {
+        const holder = sim.nameOf(h.holder);
+        const target = sim.nameOf(h.to);
+        const call = if (h.holder == waiter) w.call else try std.fmt.allocPrint(sim.gpa, "ask, and {s} waits in {s},", .{ sim.nameOf(waiter), w.call });
+        const with = if (w.listener) "a connection from that listener that it cannot answer until then" else "that connection, which it cannot write to until then";
+        const values = try sim.gpa.alloc(contracts.Involved, 1);
+        values[0] = .{ .name = "message", .value = try sim.vm.render(h.message) };
+        return .{
+            .kind = .held,
+            .clause = try std.fmt.allocPrint(sim.gpa, "{s} waits in {s} while it holds a send to {s} #{d}, and sends are held until its update ends: {s} #{d} was started with {s}", .{ holder, call, target, h.to, target, h.to, with }),
+            .within = holder,
+            .at = 0,
+            .values = values,
+        };
+    }
+
+    /// `holder`'s update waits in an ask: the ask crashes it when it returns, and under
+    /// Mo.Server it returns at once.
+    fn doom(sim: *Sim, holder: u32, report: contracts.Report) void {
+        const p = &sim.procs.items[holder];
+        if (p.doomed == null) p.doomed = report;
+        if (sim.turns) |t| t.wakeAll();
+    }
+
+    fn checkDoomed(sim: *Sim) Error!void {
+        const me = sim.running orelse return;
+        const report = sim.procs.items[me].doomed orelse return;
+        sim.procs.items[me].doomed = null;
+        sim.vm.report = report;
+        return error.Crash;
     }
 
     // ---- failure
@@ -1355,4 +1518,82 @@ test "a supervisor starts its children with the arguments its lines pass, and fo
     try std.testing.expectError(error.Crash, h.sim.settle());
     try std.testing.expectEqualStrings("Pulse gave up: Beat crashed more than 2 times within 60000.ms", h.machine.report.?.clause);
     try std.testing.expect(!h.sim.procs.items[0].up);
+}
+
+const held_src =
+    \\module T.Held
+    \\process Worker(exchange: Exchange)
+    \\  state
+    \\    answered: Bool
+    \\  end
+    \\  message Answer
+    \\  fn update(state, message)
+    \\    case message
+    \\      Answer:
+    \\        state.answered = exchange.reply(Response(status: 200, body: "hi"), within: 1.minute) is Ok(_)
+    \\    end
+    \\  end
+    \\end
+    \\process Acceptor(listener: HttpListener)
+    \\  state
+    \\    accepted: UInt64
+    \\  end
+    \\  message Serve : UInt64
+    \\  fn update(state, message)
+    \\    case message
+    \\      Serve:
+    \\        if listener.accept(within: 1.minute) is Ok(_)
+    \\          state.accepted += 1
+    \\        end
+    \\        state.accepted
+    \\    end
+    \\  end
+    \\end
+    \\process Relay(listener: HttpListener, acceptor: Handle(Acceptor))
+    \\  state
+    \\    asked: Bool
+    \\  end
+    \\  message Go
+    \\  fn update(state, message)
+    \\    case message
+    \\      Go:
+    \\        if listener.accept(within: 1.minute) is Ok(exchange)
+    \\          worker = Worker.start(exchange)
+    \\          worker.send(Answer)
+    \\        end
+    \\        state.asked = acceptor.ask(Serve, within: 1.minute) is Ok(_)
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Held(listener: HttpListener, exchange: Exchange, acceptor: Handle(Acceptor))
+    \\  child Worker(exchange), restart: :always
+    \\  child Acceptor(listener), restart: :always
+    \\  child Relay(listener, acceptor), restart: :always
+    \\end
+    \\fn fetched(http: Http, relay: Handle(Relay), port: UInt16) : Result(Response, HttpError)
+    \\  relay.send(Go)
+    \\  http.send(Request(method: "GET", path: "/"), host: "localhost", port: port, within: 1.minute)
+    \\end
+    \\test rejects "an ask to a process that waits on a client the asker's held send keeps waiting"
+    \\  http = Http.fixture()
+    \\  assert http.listen(0, within: 1.ms) is Ok(listener)
+    \\  relay = Relay.start(listener, Acceptor.start(listener))
+    \\  assert fetched(http, relay, listener.port) is Error(_)
+    \\end
+;
+
+test "an update that waits on what only a send it holds could bring crashes, and one whose ask waits on such a wait crashes when the ask returns" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, held_src);
+    const r = try runner.run(arena, program, .{});
+    try std.testing.expectEqual(runner.Outcome.tripped_as_expected, r.results[0].outcome);
+    const report = r.results[0].report.?;
+    try std.testing.expectEqual(contracts.Kind.held, report.kind);
+    // The Acceptor waits in accept for a client; the Relay asked it while holding Answer for
+    // the Worker it gave the first exchange, so the Relay's ask is what crashes.
+    try std.testing.expectEqualStrings("Relay waits in ask, and Acceptor waits in HttpListener.accept, while it holds a send to Worker #2, and sends are held until its update ends: Worker #2 was started with a connection from that listener that it cannot answer until then", report.clause);
+    try std.testing.expectEqualStrings("Answer", report.values[0].value);
+    try std.testing.expectEqualStrings("Relay", report.process.?.process);
 }

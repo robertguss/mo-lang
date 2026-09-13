@@ -76,3 +76,11 @@ What it costs notes: the brief's shape, a worker process per exchange, cannot se
 Not a bug in the runtime, which does what chapter 3 says, but a trap the toolchain does not flag: an update that loops over `listener.accept`, starting a worker and sending it `Answer` for each exchange, never answers anyone. The sends are buffered until the update ends (an update is a transaction), so the first client waits for a reply that is not sent while the acceptor waits in `accept` for the second. `mo check` and `mo test` accept the file; under `mo run` the server sits at 0% CPU with one connection established.
 
 Workaround: one `accept` per message, and a loop outside the process that asks for the next (`Notes.Main.accepted_awhile`), as kv does.
+
+Fixed in step 19: before `accept`, `read_line`, or `ask` waits, the runtime looks at the sends the waiting update holds, and those of any update waiting on it through asks; one to a process started with an open connection that wait can hear from only through it (an unanswered exchange or a connection from the same listener, or the same connection) crashes the update that holds it. The shape above now ends its update with, under `mo run` and as a binary alike:
+
+```
+process crashed: Acceptor waits in HttpListener.accept while it holds a send to Worker #1, and sends are held until its update ends: Worker #1 was started with a connection from that listener that it cannot answer until then; message = Answer
+```
+
+`processes/held-send.mo` has the `test rejects`; `test rejects` passes on this crash as on a tripped `invariant`.

@@ -448,6 +448,11 @@ pub const Turns = struct {
         try t.awaiting.put(std.heap.smp_allocator, seq, t.holder);
         const deadline = t.now() + @max(within, 0);
         while (true) {
+            // A wait elsewhere doomed this ask (sim.zig, held sends): Sim.ask crashes the update.
+            if (sim.running) |me| if (sim.procs.items[me].doomed != null) {
+                _ = t.awaiting.remove(seq);
+                return sim.askError("Down");
+            };
             if (t.answers.fetchRemove(seq)) |kv| {
                 const got = kv.value orelse return sim.askError("Down");
                 const reply = if (got.parcel) |p| blk: {

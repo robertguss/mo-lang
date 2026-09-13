@@ -4072,6 +4072,10 @@ MoValue mo_all(uint32_t index) {
 /* A process's thread's stack, as a Zig thread's. */
 #define WORKER_STACK ((size_t)16 << 20)
 
+/* A call a process's update waits in on a peer: a listener's next client or a connection's next
+ * line, by handle, and the call as a report names it (sim.zig, Wait). */
+typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
+
 /* A message in a mailbox or an outbox; under main it came in a parcel the mailbox, then the
  * log, owns. */
 typedef struct { MoValue message; uint64_t seq; Parcel *parcel; } Entry;
@@ -4107,6 +4111,14 @@ typedef struct {
     int64_t now;
     /* Under main, a sweep ended it: its id waits in free_ids. */
     bool ended;
+    /* Its update waits in an ask to this process, or NOBODY; or in a call on a peer. */
+    uint32_t asking;
+    bool has_wait;
+    Wait wait;
+    /* A wait elsewhere found that this update's ask can end only after a send it holds: the ask
+     * crashes the update with `doom` when it returns. */
+    bool doomed;
+    Report doom;
 } Proc;
 
 static Proc **procs;
@@ -4150,6 +4162,10 @@ static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel);
 static void turns_wake_all(void);
 static void turns_spawning(void);
 static void close_held(const MoValue *args, uint32_t n);
+static bool connection_of(uint32_t h, uint32_t *listener);
+static bool unanswered_conn(uint32_t exchange, uint32_t *conn);
+/* Sends held in every outbox: while none is, no wait looks for one. */
+static size_t held;
 
 static const char *handle_name(int64_t id) {
     return id >= 0 && id < (int64_t)nprocs ? mo_processes[procs[id]->process].name : NULL;
@@ -4183,6 +4199,7 @@ static void reset_processes(void) {
     }
     nprocs = nsups = 0;
     nfree_ids = 0;
+    held = 0;
     running = NOBODY;
     next_seq = 0;
     gave_up = crashed_once = false;
@@ -4215,6 +4232,7 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
     Proc *p = reused ? procs[id] : calloc(1, sizeof(Proc));
     if (!p) out_of_memory();
     p->ended = false;
+    p->asking = NOBODY;
     p->process = process;
     p->args = kept;
     p->nargs = n;
@@ -4318,6 +4336,7 @@ MoValue mo_send(MoValue handle, MoValue message) {
         Proc *from = procs[running];
         GROW_ARRAY(from->outbox, from->noutbox, from->capoutbox);
         from->outbox[from->noutbox++] = (Outgoing){to, sent, parcel};
+        held++;
     } else {
         enqueue(to, sent, parcel);
     }
@@ -4337,13 +4356,161 @@ static int64_t delay_of(uint32_t id) {
 typedef struct { uint64_t seq; bool has_reply; MoValue reply; } Delivered;
 static Delivered deliver(uint32_t id);
 
+/* ---- held sends (sim.zig, step 19) */
+
+/* A send an update holds (`holder`'s outbox) to `to`, which a wait can hear from only after it. */
+typedef struct { bool found; uint32_t holder, to; MoValue message; } Held;
+
+/* Process `to` was started with a connection a wait on `w` hears from only through it: one still
+ * open that the listener `w` names accepted, or the connection `w` names. An exchange counts while
+ * it is unanswered. */
+static bool ties(uint32_t to, const Wait *w) {
+    const Proc *p = procs[to];
+    for (uint32_t i = 0; i < p->nargs; i++) {
+        MoValue a = p->args[i];
+        if (a.tag != MO_CAP) continue;
+        uint32_t kind = mo_cap_kind(a), conn = mo_cap_handle(a), from = 0;
+        if (kind == MO_CAP_EXCHANGE) {
+            if (!unanswered_conn(conn, &conn)) continue;
+        } else if (kind != MO_CAP_CONN) {
+            continue;
+        }
+        bool open = connection_of(conn, &from);
+        if (open && (w->listener ? from == w->handle : conn == w->handle)) return true;
+    }
+    return false;
+}
+
+/* The first send, of `waiter`'s update and then of each update waiting on it through asks, to a
+ * process started with a connection a wait on `w` hears from only through it. */
+static Held held_for(uint32_t waiter, const Wait *w) {
+    Held h = {false, 0, 0, MO_NONE_V};
+    uint32_t *queue = NULL;
+    size_t n = 0, cap = 0;
+    GROW_ARRAY(queue, n, cap);
+    queue[n++] = waiter;
+    for (size_t i = 0; i < n && !h.found; i++) {
+        const Proc *x = procs[queue[i]];
+        for (size_t k = 0; k < x->noutbox; k++) {
+            if (!ties(x->outbox[k].to, w)) continue;
+            h = (Held){true, queue[i], x->outbox[k].to, x->outbox[k].message};
+            break;
+        }
+        if (h.found) break;
+        for (uint32_t id = 0; id < nprocs; id++) {
+            const Proc *p = procs[id];
+            if (!p->busy || p->asking != queue[i]) continue;
+            bool seen = false;
+            for (size_t j = 0; j < n; j++) seen = seen || queue[j] == id;
+            if (seen) continue;
+            GROW_ARRAY(queue, n, cap);
+            queue[n++] = id;
+        }
+    }
+    free(queue);
+    return h;
+}
+
+static Report held_report(Held h, uint32_t waiter, const Wait *w) {
+    const char *holder = name_of(h.holder), *target = name_of(h.to);
+    const char *call = h.holder == waiter ? w->call : text_of("ask, and %s waits in %s,", name_of(waiter), w->call);
+    const char *with = w->listener ? "a connection from that listener that it cannot answer until then" : "that connection, which it cannot write to until then";
+    Involved *values = xmalloc(sizeof(Involved));
+    values[0] = (Involved){"message", render(h.message)};
+    Report r = {MO_R_HELD, text_of("%s waits in %s while it holds a send to %s #%u, and sends are held until its update ends: %s #%u was started with %s", holder, call, target, h.to, target, h.to, with), holder, NULL, values, 1, NULL, 0, NULL, 0, NULL};
+    return r;
+}
+
+/* `holder`'s update waits in an ask: the ask crashes it when it returns, and under main at once. */
+static void doom(uint32_t holder, Report r) {
+    Proc *p = procs[holder];
+    if (!p->doomed) {
+        p->doomed = true;
+        p->doom = r;
+    }
+    if (turns_on) turns_wake_all();
+}
+
+/* The running update is about to wait in `w.call` on a peer (sim.zig, waitOn). */
+static void wait_on(Wait w) {
+    if (running == NOBODY) return;
+    uint32_t me = running;
+    procs[me]->wait = w;
+    procs[me]->has_wait = true;
+    if (held == 0) return;
+    Held h = held_for(me, &w);
+    if (!h.found) return;
+    Report r = held_report(h, me, &w);
+    if (h.holder != me) {
+        doom(h.holder, r);
+        return;
+    }
+    procs[me]->has_wait = false;
+    raise_report(r, JUMP_CRASH);
+}
+
+static void end_wait(void) {
+    if (running != NOBODY) procs[running]->has_wait = false;
+}
+
+/* The running update is about to wait in an ask to `to` (sim.zig, askOn). */
+static void ask_on(uint32_t to) {
+    if (running == NOBODY) return;
+    uint32_t me = running;
+    procs[me]->asking = to;
+    if (held == 0) return;
+    uint32_t x = to;
+    const Wait *w = NULL;
+    for (uint32_t steps = 0; steps < nprocs && !w; steps++) {
+        const Proc *q = procs[x];
+        if (!q->busy) return;
+        if (q->has_wait) {
+            w = &q->wait;
+        } else {
+            if (q->asking == NOBODY) return;
+            x = q->asking;
+        }
+    }
+    if (!w) return;
+    Held h = held_for(x, w);
+    /* The waiter's own send was found when its wait began. */
+    if (!h.found || h.holder == x) return;
+    Report r = held_report(h, x, w);
+    if (h.holder != me) {
+        doom(h.holder, r);
+        return;
+    }
+    procs[me]->asking = NOBODY;
+    raise_report(r, JUMP_CRASH);
+}
+
+static void end_ask(void) {
+    if (running != NOBODY) procs[running]->asking = NOBODY;
+}
+
+static void check_doomed(void) {
+    if (running == NOBODY || !procs[running]->doomed) return;
+    Proc *p = procs[running];
+    p->doomed = false;
+    raise_report(p->doom, JUMP_CRASH);
+}
+
+static MoValue ask_inline(uint32_t to, MoValue message, MoValue within);
+
 /* `h.ask(message, within: d)`: the target's waiting messages run, then this one, and the
  * reply is the value of its arm. Timeout when the target's fixtures are slower than d, or its
  * fixture calls waited longer than d while it answered; Down when the target is down or
  * crashed before replying. A Timeout's message still arrives. */
 MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
     uint32_t to = (uint32_t)handle.as.i;
-    if (turns_on) return turns_ask(to, message, within.as.i);
+    ask_on(to);
+    MoValue reply = turns_on ? turns_ask(to, message, within.as.i) : ask_inline(to, message, within);
+    end_ask();
+    check_doomed();
+    return reply;
+}
+
+static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     if (!procs[to]->up) return ask_error(MO_N_DOWN);
     /* A target whose update is on the stack is waiting on this very call. */
     if (procs[to]->busy) return ask_error(MO_N_TIMEOUT);
@@ -4603,7 +4770,10 @@ static Delivered deliver(uint32_t id) {
         if (jumped != JUMP_CRASH) raise_report(last_report, jumped);
         rollback();
         for (size_t i = 0; i < p->noutbox; i++) parcel_free(p->outbox[i].parcel);
+        held -= p->noutbox;
         p->noutbox = 0;
+        p->has_wait = p->doomed = false;
+        p->asking = NOBODY;
         if (gave_up) raise_report(last_report, JUMP_CRASH);
         crashed(id, before);
         if (turns_on) turns_answer(entry.seq, false, MO_NONE_V, NULL);
@@ -4613,6 +4783,7 @@ static Delivered deliver(uint32_t id) {
     undo_mark = frozen_below = 0;
     nundos = 0;
     p->state = after.as.xs[1];
+    held -= p->noutbox;
     for (size_t i = 0; i < p->noutbox; i++) {
         Outgoing o = p->outbox[i];
         if (procs[o.to]->up) enqueue(o.to, o.message, o.parcel);
@@ -5167,6 +5338,11 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     awaiting[nawaiting++] = (Awaiting){seq, holder};
     int64_t deadline = now_ms() + (within > 0 ? within : 0);
     for (;;) {
+        /* A wait elsewhere doomed this ask (held sends): mo_ask crashes the update. */
+        if (running != NOBODY && procs[running]->doomed) {
+            forget_awaiting(seq);
+            return ask_error(MO_N_DOWN);
+        }
         for (size_t i = 0; i < nanswers; i++) {
             if (answers[i].seq != seq) continue;
             Answer got = answers[i];
@@ -5338,6 +5514,8 @@ typedef struct {
     /* After LineTooLong, the rest of that line is dropped. */
     bool skipping;
     bool reading, writing;
+    /* The listener that accepted it, or UINT32_MAX (held sends). */
+    uint32_t listener;
 } Conn;
 
 static Listener **listeners;
@@ -5428,6 +5606,7 @@ static uint32_t adopt(int fd) {
     Conn *c = calloc(1, sizeof(Conn));
     if (!c) out_of_memory();
     c->fd = fd;
+    c->listener = UINT32_MAX;
     GROW_ARRAY(conns, nconns, capconns);
     conns[nconns] = c;
     return (uint32_t)nconns++;
@@ -5547,6 +5726,9 @@ static int64_t net_accept_conn(Listener *l, int64_t ms) {
         int fd = accept(l->fd, NULL, NULL);
         if (fd >= 0) {
             out = adopt(fd);
+            for (size_t i = 0; i < nlisteners; i++) {
+                if (listeners[i] == l) conns[out]->listener = (uint32_t)i;
+            }
             break;
         }
         if (errno == EINTR || errno == ECONNABORTED) continue;
@@ -5701,6 +5883,8 @@ typedef struct {
     char *inbound;
     size_t len, cap, start;
     bool closed, skipping;
+    /* The listener whose backlog it went into, or UINT32_MAX for a client's end. */
+    uint32_t listener;
 } FixConn;
 
 static FixListener *fix_listeners;
@@ -5744,9 +5928,9 @@ static MoValue fix_connect(uint16_t port) {
     if (!l) return net_fail(NET_REFUSED);
     uint32_t client = (uint32_t)nfix_conns;
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false, UINT32_MAX};
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false, (uint32_t)(l - fix_listeners)};
     GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
     l->backlog[l->nbacklog++] = client + 1;
     return ok_of(mo_cap(MO_CAP_CONN, client, 0));
@@ -5813,7 +5997,10 @@ MO_ROW(mo_r_Net_connect) {
 
 MO_ROW(mo_r_Listener_accept) {
     (void)kind;
-    return server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
+    wait_on((Wait){true, mo_cap_handle(a[0]), "Listener.accept"});
+    MoValue out = server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
+    end_wait();
+    return out;
 }
 
 MO_ROW(mo_r_Listener_port) {
@@ -5823,7 +6010,10 @@ MO_ROW(mo_r_Listener_port) {
 
 MO_ROW(mo_r_Conn_read_line) {
     (void)kind;
-    return server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
+    wait_on((Wait){false, mo_cap_handle(a[0]), "Conn.read_line"});
+    MoValue out = server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
+    end_wait();
+    return out;
 }
 
 MO_ROW(mo_r_Conn_write) {
@@ -6477,9 +6667,9 @@ static MoValue fix_http_send(MoValue request, MoValue host, int64_t port, int64_
     }
     uint32_t client = (uint32_t)nfix_conns;
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false, UINT32_MAX};
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false, (uint32_t)(l - fix_listeners)};
     GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
     l->backlog[l->nbacklog++] = client + 1;
     fix_append(client + 1, b.p, b.len);
@@ -6518,7 +6708,10 @@ MO_ROW(mo_r_HttpListener_port) { return mo_r_Listener_port(a, kind); }
 MO_ROW(mo_r_HttpListener_accept) {
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
-    return server_mode ? http_accept(listeners[h], a[1].as.i) : fix_http_accept(h, a[1].as.i);
+    wait_on((Wait){true, h, "HttpListener.accept"});
+    MoValue out = server_mode ? http_accept(listeners[h], a[1].as.i) : fix_http_accept(h, a[1].as.i);
+    end_wait();
+    return out;
 }
 
 MO_ROW(mo_r_Exchange_request) {
@@ -6540,6 +6733,23 @@ MO_ROW(mo_r_Http_send) {
 }
 
 MO_ROW(mo_r_Http_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_HTTP, 0, 0); }
+
+/* Whether connection `h` is open, and the listener that accepted it (sim.zig, connection). */
+static bool connection_of(uint32_t h, uint32_t *listener) {
+    if (server_mode) {
+        *listener = conns[h]->listener;
+        return !conns[h]->closed;
+    }
+    *listener = fix_conns[h].listener;
+    return !fix_conns[h].closed;
+}
+
+static bool unanswered_conn(uint32_t exchange, uint32_t *conn) {
+    const HttpExchange *e = server_mode ? &exchanges[exchange] : &fix_exchanges[exchange];
+    if (e->answered) return false;
+    *conn = e->conn;
+    return true;
+}
 
 /* A process holding these arguments stopped: every Conn and Exchange among them closes. */
 static void close_held(const MoValue *args, uint32_t n) {
@@ -6591,7 +6801,7 @@ static void check_nevers(void) {
 }
 
 static bool trips_rejects(uint8_t kind) {
-    return kind == MO_R_REQUIRES || kind == MO_R_REFINEMENT || kind == MO_R_INVARIANT || kind == MO_R_NEVER;
+    return kind == MO_R_REQUIRES || kind == MO_R_REFINEMENT || kind == MO_R_INVARIANT || kind == MO_R_NEVER || kind == MO_R_HELD;
 }
 
 /* A crash is the verdict: a test rejects passes when it tripped what rejects expects. */

@@ -623,7 +623,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
             } else return fail(vm, .Refused);
             const client: u32 = @intCast(f.conns.items.len);
             try f.conns.append(gpa, .{ .peer = client + 1 });
-            try f.conns.append(gpa, .{ .peer = client });
+            try f.conns.append(gpa, .{ .peer = client, .listener = @intCast(li) });
             try f.listeners.items[li].backlog.append(gpa, client + 1);
             try f.conns.items[client + 1].inbound.appendSlice(gpa, bytes);
             var delivered: u32 = 0;
