@@ -58,7 +58,7 @@ long.mo:501:1: MO0302 this file is 503 lines long and the limit is 500; split it
 
 The law is right for a module, and the fix it names does not exist: a second module cannot be loaded (bug 1). Together they cap a runnable program at 500 lines. logstat's declarations alone are about 600 lines across four modules before any test, so the joined file of bug 1's workaround is refused too.
 
-How logstat was verified anyway: a scratch copy of the toolchain, never committed, whose only change is `lines > 500` to `lines > 5000` on `check.zig` line 1473, runs `MO=<that mo> examples/programs/logstat/check.sh` green. The joined file passes 43 tests, 14 `test rejects`, and 2 properties; both runs match `logstat.expected` and `logstat-json.expected` byte for byte; `--top 0` exits 2 with one line on stderr and no `.log` name exits 1. The two `.expected` files came from an independent Python reading of the spec, not from the Mo program's output. With the official toolchain, `check.sh` stops at MO0302 and exits 1.
+How logstat was verified anyway: a scratch copy of the toolchain, never committed, whose only change is `lines > 500` to `lines > 5000` on `check.zig` line 1473, runs `MO=<that mo> examples/programs/logstat/check.sh` green. The joined file passes all 43 of its tests, 18 of them `test rejects` and 2 properties of 200 seeds; both runs match `logstat.expected` and `logstat-json.expected` byte for byte; `--top 0` exits 2 with one line on stderr and no `.log` name exits 1. The two `.expected` files came from an independent Python reading of the spec, not from the Mo program's output. With the official toolchain, `check.sh` stops at MO0302 and exits 1.
 
 ## 4. `push` copies the whole list, so a list built by pushing is quadratic
 
