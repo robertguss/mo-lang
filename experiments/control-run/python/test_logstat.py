@@ -39,7 +39,7 @@ class ArgsTest(unittest.TestCase):
         self.assertEqual(parse_args(["logs", "--top", "1"]).top, 1)
 
     def test_rejects_bad_usage(self) -> None:
-        bad = (
+        bad: tuple[list[str], ...] = (
             [],
             ["a", "b"],
             ["logs", "--top"],
