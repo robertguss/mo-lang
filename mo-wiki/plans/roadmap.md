@@ -40,7 +40,7 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 | 16 | done: HTTP in the stdlib, native httpd 1.7× the interpreter ([[interpreter-step-16]]) | — |
 | 16b | done: round 3 of the control run; Mo's checks caught a real bug, six syntax loops, timing void ([[control-run-3]]) | — |
 | 17 | round 3 follow-ups: `any(T)` under refinements, `NotText`, a fold over lines, diagnostics reworded ([[interpreter-step-17]]) | round 4's loops |
-| 17b | program 4, the web backend, from its spec (`spec/programs/04-*.md`) | the founding premise with HTTP |
+| 17b | program 4, `notes`, the web backend from two recipes ([[program-4]], `spec/programs/04-web-backend.md`) | the package story in practice, requests per second |
 | 18 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 
