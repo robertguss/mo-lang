@@ -202,7 +202,6 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     @memset(l.fn_of_sig, none);
     for (checked.sigs, 0..) |s, si| {
         if (s.kind != .trait) l.fn_of_sig[si] = try l.reserve();
-        if ((s.kind == .module or s.kind == .recipe) and !l.fn_names.contains(s.name)) try l.fn_names.put(gpa, s.name, @intCast(si));
     }
     const alias_refinements = try gpa.alloc([]const u32, checked.decls.len);
     for (checked.decls, alias_refinements) |d, *refs| {
@@ -288,7 +287,6 @@ const Lower = struct {
     /// Checked decl index → index in `processes`, or `none`.
     process_of: []u32 = &.{},
     fn_of_sig: []u32 = &.{},
-    fn_names: std.StringHashMapUnmanaged(u32) = .empty,
     /// A `where` node → its index in `refinements`, lowered once.
     refinement_of: std.AutoHashMapUnmanaged(Index, u32) = .empty,
     /// An `old(...)` node → the slot its operand was stored in on entry.
@@ -565,7 +563,7 @@ const Lower = struct {
                     cur = n.lhs;
                 },
                 .type_ref => {
-                    const d = l.k.findDecl(l.text(l.node(n.lhs).main_token)) orelse break;
+                    const d = l.k.findDeclAt(n.lhs, l.text(l.node(n.lhs).main_token)) orelse break;
                     const decl = l.k.decls[d];
                     if (decl.kind == .alias and decl.node != 0) try out.appendSlice(l.gpa, try l.refinementsOf(l.node(decl.node).lhs, decl.name));
                     break;
@@ -686,7 +684,7 @@ const Lower = struct {
 
     fn lowerProcess(l: *Lower, it: Index) Error!void {
         const n = l.node(it);
-        const di = l.k.findDecl(l.text(n.main_token)) orelse return;
+        const di = l.k.findDeclAt(it, l.text(n.main_token)) orelse return;
         const d = l.k.decls[di];
         if (d.node != it) return;
         const data = l.tree.extraData(ast.Process, n.lhs);
@@ -761,14 +759,14 @@ const Lower = struct {
 
     fn lowerSupervisor(l: *Lower, it: Index) Error!void {
         const n = l.node(it);
-        const di = l.k.findDecl(l.text(n.main_token)) orelse return;
+        const di = l.k.findDeclAt(it, l.text(n.main_token)) orelse return;
         const d = l.k.decls[di];
         if (d.node != it) return;
         var children: std.ArrayList(Child) = .empty;
         for (l.spanAt(n.rhs)) |ch| {
             const cn = l.node(ch);
             const data = l.tree.extraData(ast.Child, cn.lhs);
-            const pd = l.k.findDecl(l.text(cn.main_token)) orelse continue;
+            const pd = l.k.findDeclAt(ch, l.text(cn.main_token)) orelse continue;
             if (l.process_of[pd] == none) continue;
 
             var b: Builder = .{ .name = d.name };
@@ -1345,7 +1343,7 @@ const Lower = struct {
             .prelude => |row| return l.preludeCall(i, row, null, &.{}),
             else => {},
         }
-        if (l.fn_names.get(name)) |si| {
+        if (l.k.findFnAt(i, name)) |si| {
             _ = try l.emit(.closure, l.fn_of_sig[si], 0);
             return;
         }

@@ -1,5 +1,5 @@
 module Logstat.Parse
-expose Record, Malformed, Status, Millis, parse_line, parse_bytes, timestamp, card?, slice, text_of
+expose Record, Malformed, Status, Millis, parse_line, parse_bytes, timestamp, card?, slice, text_of, digits?, number
 
 intent "Turn one log line into a record, or name why it is malformed; no line of bytes crashes it."
 

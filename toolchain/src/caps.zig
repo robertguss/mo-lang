@@ -201,7 +201,7 @@ const Caps = struct {
                 .test_decl, .test_rejects, .property => try c.addUnit(.{ .kind = .test_block, .first = prev + 1, .last = it }),
                 .never => try c.addUnit(.{ .kind = .never, .first = prev + 1, .last = it }),
                 .process_decl, .supervisor_decl => {
-                    const d = c.k.findDecl(c.text(n.main_token));
+                    const d = c.k.findDeclAt(it, c.text(n.main_token));
                     const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) else false;
                     try c.addUnit(.{ .kind = if (n.kind == .process_decl) .process else .supervisor, .name = c.text(n.main_token), .first = prev + 1, .last = it, .has_caps = has });
                 },
@@ -398,7 +398,7 @@ const Caps = struct {
                     const t = checker.primitive(c.text(v.main_token)) orelse continue;
                     if (c.k.pool.get(t).tag == .cap) into = t;
                 } else if (subject == null and an.kind == .type_name_ref) {
-                    subject = c.typeNamed(c.text(an.main_token));
+                    subject = c.typeNamed(a, c.text(an.main_token));
                 }
             }
             if (subject == null) {
@@ -413,8 +413,8 @@ const Caps = struct {
         }
     }
 
-    fn typeNamed(c: *Caps, name: []const u8) ?Id {
-        if (c.k.findDecl(name)) |d| {
+    fn typeNamed(c: *Caps, at: Index, name: []const u8) ?Id {
+        if (c.k.findDeclAt(at, name)) |d| {
             const decl = c.k.decls[d];
             return switch (decl.kind) {
                 .struct_, .enum_, .alias, .opaque_ => decl.type,
