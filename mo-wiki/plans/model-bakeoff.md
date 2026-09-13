@@ -52,7 +52,7 @@ All three delivered 50 files, `README.md`, `GAPS.md`, and 12 `rejects/` files wi
 - **Grok.** Fastest and shortest, but ten tautological asserts (`assert t == t`, `assert h == h`), nine tests named "never reached", `state.n = state.n` to fill an arm, a `rejects` test that trips no `requires`, `within:` passed to a plain function. 17 gaps; several holes it hit went unrecorded. Not competitive on this task.
 - **Codex.** The most careful reader of the grammar: found that `cmp` demands a range after `is pattern`, that `assert` is missing from `stmt`, and that `old` is restricted to `ensures` while `invariant` needs it. Law-clean. But it dodges the construct under test (the clock file tests a budget number, the counter file tests a pure helper), runs declarations together with no blank lines, and its gap prose is dense.
 
-**Result:** Opus's `examples/` is the base. Codex's grammar findings go into `grammar.md` as Session 5 fixes. Grok's branch stays as evidence.
+**Result:** Opus's `examples/` is the base. Robert (session 5): Fable chooses the worker model for all building and writing from here; Fable chose **Opus**, on taste and gap discipline, with Codex-style grammar rigour supplied in Fable's review. Codex's grammar findings go into `grammar.md` as Session 5 fixes. Grok's branch stays as evidence.
 
 ## Round 2 (proposed): the lexer
 
