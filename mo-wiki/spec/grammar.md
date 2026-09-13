@@ -33,7 +33,8 @@ use         = "use" path ("{" TypeName ("," TypeName)* "}")? NL
 intent      = "intent" string NL
 never       = "never" string NL (comprehension | expr NL) "end" NL   # a comprehension, or one checkable call such as flows(...)
 verified    = "verified:" any* NL                # toolchain-owned; hand edits are errors
-decl        = struct | enum | typedef | trait | impl | fn | process | supervisor | recipe
+decl        = struct | enum | typedef | trait | impl | fn | main | process | supervisor | recipe
+main        = "fn" "main" "(" ident ":" "Platform" ")" NL block "end" NL   # no return type, like update; once per program
 ```
 
 One module per file; the file path equals the module path.
@@ -195,7 +196,7 @@ Grammar bugs found by the corpus, fixed above: `cmp` demanded an operand after `
 - **Platforms.** `mo test` always runs on `Mo.Sim`, `mo run` on the real platform; a module never names its platform, so the `use Mo.Sim` line in chapter 3 is withdrawn. In tests, every capability has a `fixture` constructor (`Clock.fixture()`, frozen; `Fs.fixture()`, empty; `Fs.fixture(delay: 1.minute)`, times out) and `Time.fixture()` is a fixed instant. Narrowing (`fs.scoped(...).read_only`) is pure and keeps the type.
 - **Processes.** `state` fields start at the type's zero value (`0`, `""`, `[]`, `None`); a field whose type has no zero (an enum, a refinement excluding zero) must write `= expr`. `Name.start(args)` gives `Handle(Name)`; `h.send(Msg)` is a statement; `h.ask(Msg, within: d)` returns `Result(Reply, AskError)` with `AskError` = `Timeout | Down`. The arm for a message with a reply type evaluates to the reply. Messages from one sender arrive in order. A test may `start` a process without a supervisor; the test runner is its supervisor.
 - **Supervisors.** A supervisor takes parameters like a process and passes them on the `child` line: `supervisor Payments(db: Ledger, clock: Clock, events: Events)` … `child RefundQueue(db, clock, events), restart: :always`. The one piece of new syntax in this list; nothing else could say where a child's capabilities come from. First tested by program 1's `main`.
-- **`main`.** Out of the milestone. Shape to be settled by program 1.
+- **`main`.** Robert (Q18): `fn main(platform: Platform)` with no return type, like `update`; exit code 0, or the last `platform.exit(code)`, or 70 on a crash. `Platform` holds `args`, `env`, `stdout`, `stderr`, `fs`, `clock`, `exit`. `mo run file.mo -- args` runs it on `Mo.Server`.
 - **Files.** A CapCase module segment maps to a lowercase, hyphen-separated file name: `Basics.AnonymousFunctions` is `basics/anonymous-functions.mo`.
 - **Recipes.** A recipe's tests are the file's tests. A `test rejects` inside a recipe must trip a `requires` declared in the recipe (chapter 6's example is corrected).
 - **Stdlib names the corpus may assume.** Lists: `size`, `push`, `map`, `filter`, `reduce`, `contains?`, `first`, `last`. Strings: `size`, `bytes`, `starts_with?`. `Fs`: `read(path, within:)` giving `Result(String, FsError)`. Integers: `checked_add`, `saturating_sub`, `wrapping_mul` and their siblings (`checked_` returns `Option`). Everything else is a gap until the stdlib chapter exists.

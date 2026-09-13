@@ -6,8 +6,8 @@ type: question
 tags: [effects, runtime, syntax]
 sources: [spec/design-v0/03-semantics.md, spec/grammar.md]
 number: 18
-status: pending
-answer: pending
+status: answered
+answer: in
 asked: 2026-09-12
 ---
 
@@ -51,6 +51,10 @@ end
 ## Which program first
 
 Q14 put the job queue first, but it needs HTTP and a database before the first line runs. **Recommendation:** program 2 from the [[program-menu]], the CLI log analyzer, first: it needs only the minimal platform above, is pure code otherwise, and tests "is Mo pleasant with no concurrency" and the stdlib ceiling before anything else. The job queue follows as soon as the platform grows a socket.
+
+## Answer
+
+✅ **Robert: IN** (session 5). `main` is a known shape like `update`, the minimal platform as listed, the CLI log analyzer before the job queue.
 
 ## Related
 - [[q14-first-real-program]]

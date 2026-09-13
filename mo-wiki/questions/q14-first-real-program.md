@@ -21,6 +21,10 @@ asked: 2026-09-12
 
 ✅ **Robert: IN, extended** (session 2). Job queue first, but Robert wants a **menu of programs** of different kinds to find Mo's strengths and weaknesses and to collect real benchmark data (direction 28). See [[program-menu]].
 
+## Session 5 note
+
+Robert (session 5, [[q18-main-and-the-platform|Q18]]): the CLI log analyzer (menu program 2) goes first because it needs only the minimal platform; the job queue follows once the platform has a socket.
+
 ## Related
 - [[roadmap]]
 - [[d01-agents-write-the-code]]

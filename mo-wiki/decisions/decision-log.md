@@ -92,6 +92,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | The loop rule (pure body → combinator) is a diagnostic `MO0501`, not a rewrite; rewriting is `mo fix` | Fable | provisional | program 1 |
 | `for _ in 0..n` allowed; `_` as the loop binder | Fable | provisional | the corpus |
 | A `state` field with no zero value and no initializer is `MO0319` at check time | Fable | provisional | the corpus |
+| `main` is a known shape, `fn main(platform: Platform)`, no return type; minimal `Platform` (args, env, stdout, stderr, fs, clock, exit) (Q18) | Robert | provisional | program 2 |
+| The CLI log analyzer (menu program 2) is built before the job queue (amends Q14) | Robert | provisional | program 2 |
 
 ## Related
 - [[session-05]]
