@@ -258,7 +258,9 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         l.supervisor_of[di] = @intCast(l.supervisors.items.len);
         try l.supervisors.append(gpa, undefined);
     };
-    try l.findRecorded();
+    const recorded = try recordedTypes(gpa, &checked);
+    l.recorded_as = recorded.recorded_as;
+    l.may_hold = recorded.may_hold;
     for (checked.sigs, 0..) |s, si| if (s.kind != .trait) try l.lowerFn(@intCast(si));
     for (l.items()) |it| {
         const n = l.node(it);
@@ -309,6 +311,72 @@ fn recordKey(k: *const check.Checked, id: Id) ?u64 {
             else => null,
         },
         else => null,
+    };
+}
+
+/// What each test and property run keeps for a never's `T.all` (sim.zig, observe), by checker
+/// type id: its index among the types some never reads with `T.all`, or `none`, and whether a
+/// value of it can hold a value of one. The interpreter's lowering and the C backend
+/// (emit_c.zig) both read it.
+pub const Recorded = struct { recorded_as: []u32, may_hold: []bool };
+
+/// Every `T.all` in the program names a type whose values each test and property run keeps;
+/// then every type that can hold one of those, so its values are observed.
+pub fn recordedTypes(gpa: std.mem.Allocator, k: *const check.Checked) Error!Recorded {
+    const pool = &k.pool;
+    const n = pool.list.items.len;
+    const recorded_as = try gpa.alloc(u32, n);
+    @memset(recorded_as, none);
+    const may_hold = try gpa.alloc(bool, n);
+    @memset(may_hold, false);
+    var keys: std.ArrayList(u64) = .empty;
+    for (k.callee, 0..) |callee, i| {
+        if (callee != .prelude) continue;
+        const row = prelude.fns[callee.prelude];
+        if (row.only != .never or !std.mem.eql(u8, row.name, "all")) continue;
+        const list = pool.get(k.typeOf(@intCast(i)));
+        if (list.tag != .list) continue;
+        const key = recordKey(k, list.a) orelse continue;
+        if (std.mem.indexOfScalar(u64, keys.items, key) == null) try keys.append(gpa, key);
+    }
+    if (keys.items.len == 0) return .{ .recorded_as = recorded_as, .may_hold = may_hold };
+    for (0..n) |id| {
+        const key = recordKey(k, @intCast(id)) orelse continue;
+        if (std.mem.indexOfScalar(u64, keys.items, key)) |x| recorded_as[id] = @intCast(x);
+    }
+    // A type holds a recorded one when a part of it does; recursive types settle.
+    var changed = true;
+    while (changed) {
+        changed = false;
+        for (0..n) |id| {
+            if (may_hold[id] or (recorded_as[id] == none and !partHolds(k, may_hold, @intCast(id)))) continue;
+            may_hold[id] = true;
+            changed = true;
+        }
+    }
+    return .{ .recorded_as = recorded_as, .may_hold = may_hold };
+}
+
+fn partHolds(k: *const check.Checked, h: []const bool, id: Id) bool {
+    const r = k.pool.resolve(id);
+    if (r != id) return h[r];
+    const t = k.pool.get(r);
+    return switch (t.tag) {
+        .alias => h[t.b],
+        .list, .option, .set => h[t.a],
+        .result, .map => h[t.a] or h[t.b],
+        .tuple => for (k.pool.elems(t)) |e| {
+            if (h[e]) break true;
+        } else false,
+        .decl, .state, .message => blk: {
+            const d = k.decls[t.a];
+            for (k.fields[d.fields.start..d.fields.end]) |f| if (h[f.type]) break :blk true;
+            for (k.variants[d.variants.start..d.variants.end]) |v| {
+                for (k.fields[v.fields.start..v.fields.end]) |f| if (h[f.type]) break :blk true;
+            }
+            break :blk false;
+        },
+        else => false,
     };
 }
 
@@ -404,69 +472,6 @@ const Lower = struct {
     fn intKind(l: *Lower, t: Id) u32 {
         const b = l.baseType(t);
         return if (b.tag == .int) b.a else none;
-    }
-
-    // ---- what a run records for `T.all`
-
-    /// Every `T.all` in the program names a type whose values each test and property run
-    /// keeps; then every type that can hold one of those, so its values are observed.
-    fn findRecorded(l: *Lower) Error!void {
-        const pool = &l.k.pool;
-        const n = pool.list.items.len;
-        l.recorded_as = try l.gpa.alloc(u32, n);
-        @memset(l.recorded_as, none);
-        l.may_hold = try l.gpa.alloc(bool, n);
-        @memset(l.may_hold, false);
-        var keys: std.ArrayList(u64) = .empty;
-        for (l.k.callee, 0..) |callee, i| {
-            if (callee != .prelude) continue;
-            const row = prelude.fns[callee.prelude];
-            if (row.only != .never or !std.mem.eql(u8, row.name, "all")) continue;
-            const list = pool.get(l.typeOf(@intCast(i)));
-            if (list.tag != .list) continue;
-            const key = recordKey(l.k, list.a) orelse continue;
-            if (std.mem.indexOfScalar(u64, keys.items, key) == null) try keys.append(l.gpa, key);
-        }
-        if (keys.items.len == 0) return;
-        for (0..n) |id| {
-            const key = recordKey(l.k, @intCast(id)) orelse continue;
-            if (std.mem.indexOfScalar(u64, keys.items, key)) |k| l.recorded_as[id] = @intCast(k);
-        }
-        // A type holds a recorded one when a part of it does; recursive types settle.
-        var changed = true;
-        while (changed) {
-            changed = false;
-            for (0..n) |id| {
-                if (l.may_hold[id] or (l.recorded_as[id] == none and !l.partHolds(@intCast(id)))) continue;
-                l.may_hold[id] = true;
-                changed = true;
-            }
-        }
-    }
-
-    fn partHolds(l: *Lower, id: Id) bool {
-        const k = l.k;
-        const r = k.pool.resolve(id);
-        if (r != id) return l.may_hold[r];
-        const t = k.pool.get(r);
-        const h = l.may_hold;
-        return switch (t.tag) {
-            .alias => h[t.b],
-            .list, .option, .set => h[t.a],
-            .result, .map => h[t.a] or h[t.b],
-            .tuple => for (k.pool.elems(t)) |e| {
-                if (h[e]) break true;
-            } else false,
-            .decl, .state, .message => blk: {
-                const d = k.decls[t.a];
-                for (k.fields[d.fields.start..d.fields.end]) |f| if (h[f.type]) break :blk true;
-                for (k.variants[d.variants.start..d.variants.end]) |v| {
-                    for (k.fields[v.fields.start..v.fields.end]) |f| if (h[f.type]) break :blk true;
-                }
-                break :blk false;
-            },
-            else => false,
-        };
     }
 
     /// The value on top, of type `t`, is held where a run can see it: in a binding, a

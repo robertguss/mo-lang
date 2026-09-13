@@ -799,9 +799,20 @@ static void fmt_i128(Buf *b, __int128 x) {
 }
 
 static void fmt_int(Buf *b, MoValue v) {
-    if (v.tag == MO_INT) buf_printf(b, "%lld", (long long)v.as.i);
-    else if (v.tag == MO_UINT) buf_printf(b, "%llu", (unsigned long long)v.as.u);
-    else fmt_i128(b, *v.as.big);
+    if (v.tag == MO_BIG) {
+        fmt_i128(b, *v.as.big);
+        return;
+    }
+    char digits[24];
+    int n = sizeof digits;
+    bool negative = v.tag == MO_INT && v.as.i < 0;
+    uint64_t u = negative ? (uint64_t)0 - v.as.u : v.as.u;
+    do {
+        digits[--n] = (char)('0' + u % 10);
+        u /= 10;
+    } while (u != 0);
+    if (negative) digits[--n] = '-';
+    buf_put(b, digits + n, sizeof digits - (size_t)n);
 }
 
 /* A float as Zig's `{d}` spells it: the shortest digits that read back as the same float,
@@ -987,11 +998,11 @@ static MoValue heap_string(const char *s, size_t n) {
 }
 
 MoValue mo_concat(uint32_t n, const MoValue *parts) {
-    Buf b = {0};
+    /* Formatting runs no Mo code, so one buffer serves every interpolation. */
+    static Buf b;
+    b.len = 0;
     for (uint32_t i = 0; i < n; i++) format_text(&b, parts[i]);
-    MoValue s = heap_string(b.p ? b.p : "", b.len);
-    free(b.p);
-    return s;
+    return heap_string(b.p ? b.p : "", b.len);
 }
 
 MoValue mo_range(MoValue lo, MoValue hi) {
