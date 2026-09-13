@@ -1,4 +1,1 @@
-SET greeting hello wide world
-SET hits 41
-SET user:1 ada
-SET user:3 barbara
+kv: compacted data/compact/kv.log from 4 lines to 4

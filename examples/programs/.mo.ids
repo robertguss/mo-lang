@@ -76,8 +76,8 @@
         { "id": "5b371981d0ad", "name": "struct Reopened", "hash": "1211e4b464578b57" },
         { "id": "7f01fc828c57", "name": "struct Opened", "hash": "dcdfb3f2ff0ea4d1" },
         { "id": "5d6b2c5bbf88", "name": "enum LogError", "hash": "4b443dba21db2838" },
-        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "d3c4578d9fe0312f" },
-        { "id": "6a649c511348", "name": "supervisor Journals", "hash": "01210ce61b611788" },
+        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "551d1383caa2cdcd" },
+        { "id": "6a649c511348", "name": "supervisor Journals", "hash": "dc3751228e7316a0" },
         { "id": "59bbc9e5e657", "name": "fn empty", "hash": "2c73eee8dd09832d" },
         { "id": "9667256f3198", "name": "fn bucket_of", "hash": "acdb5dbcf3ebc12c" },
         { "id": "a7bb3ff1abcf", "name": "fn mixed", "hash": "e2cd73de828c4fcc" },
@@ -103,12 +103,12 @@
         { "id": "c430ac3184cb", "name": "test \"a change is a SET line with its value, or a DEL line\"", "hash": "aeb538e49044e19a" },
         { "id": "e38ace7ec897", "name": "test \"compaction keeps one line per live key, and replays to the same keys and values\"", "hash": "412bed04406ed1f9" },
         { "id": "67a16f5ebe93", "name": "test \"a folder with no log opens empty, and a slow one says so\"", "hash": "786083107c7923c2" },
-        { "id": "35a8a1be0321", "name": "test \"the journal counts the bytes it appended, and holds the lines in order\"", "hash": "620049216c5cff8d" },
-        { "id": "8e1eadaf87ac", "name": "test \"what a journal held replays to the keys the store had\"", "hash": "4659c420b1f88bad" },
+        { "id": "048633c10bd0", "name": "test \"the journal appends each line to its file, and counts the bytes it appended\"", "hash": "c66ce8dc23ebcc46" },
+        { "id": "f5a69d37d220", "name": "test \"a log read back replays to the keys the store had\"", "hash": "6dd87d66deedbe73" },
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
       ],
-      "verified": { "hash": "087094673077814e", "declarations": "f750e8b485dec963" }
+      "verified": { "hash": "087094673077814e", "declarations": "8946f89bf622fa4c" }
     },
     {
       "path": "kv/main.mo",
@@ -131,27 +131,29 @@
         { "id": "90034f6683c4", "name": "fn checking", "hash": "d4100e703a3ce31f" },
         { "id": "41ee66d2302c", "name": "fn dir_of", "hash": "8f551bd719d35933" },
         { "id": "6d29998647bb", "name": "fn port_of", "hash": "d0a6efda928a988f" },
-        { "id": "fe4b30cb9d4a", "name": "fn ran", "hash": "466649c8ee4eafc7" },
-        { "id": "5f1b65185f11", "name": "fn serve", "hash": "7899c536de769b08" },
-        { "id": "76009bd99467", "name": "fn served_on", "hash": "69b3f26bd2f259d9" },
+        { "id": "fe4b30cb9d4a", "name": "fn ran", "hash": "9b7e20da34d5a1fd" },
+        { "id": "5f1b65185f11", "name": "fn serve", "hash": "50e7902a974f0724" },
+        { "id": "eede83df8171", "name": "fn compact", "hash": "d8376145e3e4af38" },
+        { "id": "76009bd99467", "name": "fn served_on", "hash": "410198a3d9382189" },
         { "id": "156b5a9a99fb", "name": "fn accepted_awhile", "hash": "6459c81106a40443" },
-        { "id": "f2afe6f981b2", "name": "fn started", "hash": "1401305e822edb9a" },
+        { "id": "f2afe6f981b2", "name": "fn started", "hash": "1d914be343865563" },
         { "id": "dde79987fea7", "name": "fn client", "hash": "0a783bbe9a3784d5" },
         { "id": "48528daad723", "name": "fn exchanged", "hash": "e3329eb6feefe1cb" },
-        { "id": "f1d2d7b8b91f", "name": "fn check", "hash": "7a05476a6a953101" },
-        { "id": "4c392bd21d3e", "name": "fn checked_on", "hash": "b10a9266f86b9a05" },
+        { "id": "f1d2d7b8b91f", "name": "fn check", "hash": "a3634327cafc6f61" },
+        { "id": "4c392bd21d3e", "name": "fn checked_on", "hash": "e624e39fc25ee0a2" },
         { "id": "7b922cba6d2f", "name": "fn shown", "hash": "87186c333ce7ec5f" },
         { "id": "713c955080a0", "name": "fn script_of", "hash": "ef4693a5d3373611" },
-        { "id": "7631472b7b73", "name": "fn opened_log", "hash": "438e283e60c265fe" },
+        { "id": "7631472b7b73", "name": "fn opened_log", "hash": "d998082c7158c15d" },
         { "id": "07abd27a1f81", "name": "fn said", "hash": "5e56cdc1b26d3ec0" },
         { "id": "2e659132ece9", "name": "fn code_of", "hash": "a24bda912ebe306c" },
         { "id": "5f36f754416b", "name": "fn main", "hash": "d88e7e2ba4ef461f" },
         { "id": "5e55e3c2eeda", "name": "test \"serve takes a folder and an optional port, 7700 by default\"", "hash": "b0229ace7b1ad965" },
         { "id": "4ff00e5593a4", "name": "test \"a missing folder, a bad port, or an unknown command is a usage error\"", "hash": "9643ef66d1f888e9" },
         { "id": "b8313e542a05", "name": "test \"client joins the rest of its arguments into one line\"", "hash": "94b9d1095604a427" },
+        { "id": "ea0c28fa451d", "name": "test \"a log whose last line was cut short opens without it, and says so on the error stream\"", "hash": "ffff617e572ae283" },
         { "id": "ef06a248ca70", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "6bb9c596f9e1c213" }
       ],
-      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "12279bfb575876fc" }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "20f806be1c5f53ed" }
     },
     {
       "path": "kv/protocol.mo",
@@ -217,14 +219,14 @@
         { "id": "23f69088f18a", "name": "fn conversation", "hash": "233dc042fcdd4ebd" },
         { "id": "72920c6aaa7a", "name": "fn heard_all", "hash": "c58a1b1b582f132c" },
         { "id": "0759eeb11e2b", "name": "fn heard_so_far?", "hash": "6b0690b59a540812" },
-        { "id": "9cfe74af6594", "name": "fn store_for_tests", "hash": "c2201692796a87db" },
-        { "id": "ecee6f7bfe33", "name": "test \"a client's requests get the store's answers, and QUIT says BYE and closes\"", "hash": "1d316eea7b88d446" },
-        { "id": "1cce7aa18b30", "name": "test \"a line over 64 KiB is malformed, and the connection goes on\"", "hash": "556fe24807a71a06" },
+        { "id": "9cfe74af6594", "name": "fn store_for_tests", "hash": "24cafbeff06327e3" },
+        { "id": "ecee6f7bfe33", "name": "test \"a client's requests get the store's answers, and QUIT says BYE and closes\"", "hash": "608669e60d10e8cc" },
+        { "id": "1cce7aa18b30", "name": "test \"a line over 64 KiB is malformed, and the connection goes on\"", "hash": "70edd83c993153f1" },
         { "id": "b6f989cac5b4", "name": "test \"the gate lets 64 clients in, turns the next away, and takes one more when one leaves\"", "hash": "44d687e3e48f45e0" },
-        { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "4d67d31ebdaa1397" },
-        { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "17838304b928bc8b" }
+        { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "0c4514424619787b" },
+        { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "cf20b633982a5576" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "7ca789725899d8f9" }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "8bf94f5d79796a73" }
     },
     {
       "path": "kv/store.mo",
@@ -232,7 +234,7 @@
       "declarations": [
         { "id": "07489c8cd315", "name": "module Kv.Store", "hash": "8deae9124da5624c" },
         { "id": "ca3bfba287ef", "name": "expose", "hash": "214dba74bccfb8a7" },
-        { "id": "e80f2eeedd86", "name": "use Kv.Log", "hash": "230b0dd487306bbc" },
+        { "id": "e80f2eeedd86", "name": "use Kv.Log", "hash": "a04417c8dca05841" },
         { "id": "feff4c3ac336", "name": "use Kv.Protocol", "hash": "76af09b34338ce65" },
         { "id": "39660093d354", "name": "intent", "hash": "d968d70bd0a5c107" },
         { "id": "8536197e6730", "name": "never \"a change is answered before its log line is durable\"", "hash": "7920c93a59559045" },
@@ -256,7 +258,8 @@
         { "id": "992f773a1c05", "name": "fn number", "hash": "e56ec6f57d2828d7" },
         { "id": "6317d2d0f55c", "name": "fn answered", "hash": "53fa06797fa2616f" },
         { "id": "b2539bc0b43e", "name": "fn key_of", "hash": "0454fbe837095dcc" },
-        { "id": "3137ad7ba307", "name": "fn committed", "hash": "2102b7fd035ee7db" },
+        { "id": "3137ad7ba307", "name": "fn committed", "hash": "b4d578d73f50eaff" },
+        { "id": "b0977cf7305a", "name": "fn unlogged", "hash": "e0f0820c0635d37a" },
         { "id": "80ec5eee49da", "name": "fn applied", "hash": "cd9d93b088d9afaa" },
         { "id": "2ab2f811b905", "name": "fn sets_in", "hash": "c98c663b7a17854c" },
         { "id": "ace11eead1ea", "name": "fn gets_in", "hash": "48fdd24e97a1404e" },
@@ -269,12 +272,12 @@
         { "id": "3ba2af1ca23f", "name": "test \"STATS answers the counts the store passes in\"", "hash": "6a67c738c53f4b7f" },
         { "id": "ffd8c27bef32", "name": "test \"INCR adds to a decimal value, starts a missing key at 0, and refuses a word or an overflow\"", "hash": "6be30c557a40b576" },
         { "id": "54d72de46ccb", "name": "test \"a new key is refused when the table holds a million, and an existing key is not\"", "hash": "ebbb7634c7155e7a" },
-        { "id": "76a4e5052ff2", "name": "test \"every answer is the one the table gives, through the journal\"", "hash": "1376c421f46aaf05" },
-        { "id": "4ab1f488bd3c", "name": "test \"a store whose journal never answers in time answers each change ERR io, and changes nothing\"", "hash": "b4199738660ea1ec" },
-        { "id": "34e6c0e421f2", "name": "test \"a store started again from what its journal held reads what the first one wrote\"", "hash": "0cfeb279b7e8c576" },
+        { "id": "76a4e5052ff2", "name": "test \"every answer is the one the table gives, through the journal\"", "hash": "04e048b6df46ab6a" },
+        { "id": "4ab1f488bd3c", "name": "test \"a store whose journal never answers in time answers each change ERR io, and changes nothing\"", "hash": "d43e623e91027ab5" },
+        { "id": "188c9b4c6dff", "name": "test \"a store started again from its log reads what the first one wrote\"", "hash": "59ab036010260f7a" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "596fa9f635457d87" }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "7a533a4a2b2da912" }
     },
     {
       "path": "lines-per-file.mo",

@@ -196,15 +196,15 @@ fn heard_so_far?(heard: Result(List(String), NetError), expected: List(String)) 
   end
 end
 
-fn store_for_tests(clock: Clock, opening: Opening) : Handle(Store)
-  Store.start(Journal.start(0), clock, opening)
+fn store_for_tests(dir: Fs, clock: Clock, opening: Opening) : Handle(Store)
+  Store.start(Journal.start(dir, "kv.log", 0), clock, opening)
 end
 
 test "a client's requests get the store's answers, and QUIT says BYE and closes"
   opening = Opening(table: empty(), log_bytes: 0, at: Time.fixture(), log_within: 1.minute)
   lines = ["SET a 1", "GET a", "INCR a 2", "nonsense", "KEYS", "DEL b", "QUIT", "GET a"]
-  heard = conversation(Net.fixture(), store_for_tests(Clock.fixture(), opening), Gate.start(),
-    lines)
+  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening),
+    Gate.start(), lines)
   expected = ["OK", "VALUE 1", "VALUE 3", "ERR malformed", "KEYS 1", "a", "MISSING", "BYE"]
   assert heard_so_far?(heard, expected)
 end
@@ -212,8 +212,8 @@ end
 test "a line over 64 KiB is malformed, and the connection goes on"
   opening = Opening(table: empty(), log_bytes: 0, at: Time.fixture(), log_within: 1.minute)
   lines = ["SET a #{"x".repeat(65_536)}", "GET a", "QUIT"]
-  heard = conversation(Net.fixture(), store_for_tests(Clock.fixture(), opening), Gate.start(),
-    lines)
+  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening),
+    Gate.start(), lines)
   assert heard_so_far?(heard, ["ERR malformed", "MISSING", "BYE"])
 end
 
@@ -237,13 +237,15 @@ test "a client that finds 64 inside hears ERR busy, and is closed"
   for _ in 0..64
     gate.send(Enter)
   end
-  heard = conversation(Net.fixture(), store_for_tests(Clock.fixture(), opening), gate, ["GET a"])
+  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening), gate,
+    ["GET a"])
   assert heard_so_far?(heard, ["ERR busy"])
 end
 
 test "a silent client is closed, and hears nothing"
   opening = Opening(table: empty(), log_bytes: 0, at: Time.fixture(), log_within: 1.minute)
-  heard = conversation(Net.fixture(), store_for_tests(Clock.fixture(), opening), Gate.start(), [])
+  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening),
+    Gate.start(), [])
   assert heard_so_far?(heard, [])
 end
 

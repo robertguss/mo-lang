@@ -1,7 +1,7 @@
 module Kv.Store
 expose Store, Stores, Opening, Step, Change, Plan, Served, decide, incremented, number, applied, faithful?
 
-use Kv.Log{Table, Journal, empty, lookup, put, drop, keys_with, entry, reopen}
+use Kv.Log{Table, Logged, Journal, empty, lookup, put, drop, keys_with, entry, reopen}
 use Kv.Protocol{Request, Response, Refusal, Counts, key?}
 
 intent "The store process: each request is decided against the table, a change is appended to the journal before it is applied or answered, and a change the journal did not take in time is ERR io with the table unchanged."
@@ -195,25 +195,29 @@ fn key_of(request: Request) : Option(String)
   end
 end
 
-# The journal takes the change's line first; only then is the change applied and answered.
-# A journal that does not take it in time is ERR io, and the table stays as it was. A line
-# the journal takes after its deadline is still in the log, as a write that finished late
-# would be.
+# The journal puts the change's line on disk first; only then is the change applied and
+# answered. A journal that does not answer in time, or whose append failed, is ERR io, and
+# the table stays as it was. A line the journal appends after the store's deadline is still
+# in the log, as a write that finished late would be.
 fn committed(journal: Handle(Journal), within: Duration, table: Table, log_bytes: UInt64,
   change: Change) : Served
   before = lookup(table, change.key)
   after = applied(table, change)
   line = entry(change.key, change.value)
   case journal.ask(Append(line: line, keys: after.size), within: within)
-    Ok(bytes):
+    Ok(Ok(bytes)):
       step = Step(key: change.key, before: before, after: change.value, logged: true,
         response: change.response)
       Served(table: after, response: step.response, log_bytes: bytes)
-    Error(_):
-      step = Step(key: change.key, before: before, after: before, logged: false,
-        response: Failed(reason: Io))
-      Served(table: table, response: step.response, log_bytes: log_bytes)
+    Ok(Error(_)): unlogged(table, log_bytes, change, before)
+    Error(_): unlogged(table, log_bytes, change, before)
   end
+end
+
+fn unlogged(table: Table, log_bytes: UInt64, change: Change, before: Option(String)) : Served
+  step = Step(key: change.key, before: before, after: before, logged: false,
+    response: Failed(reason: Io))
+  Served(table: table, response: step.response, log_bytes: log_bytes)
 end
 
 fn applied(table: Table, change: Change) : Table
@@ -317,15 +321,15 @@ test "a new key is refused when the table holds a million, and an existing key i
 end
 
 test "every answer is the one the table gives, through the journal"
-  journal = Journal.start(0)
+  journal = Journal.start(Fs.fixture(), "kv.log", 0)
   store = Store.start(journal, Clock.fixture(), opened(empty(), Time.fixture(), 60_000.ms))
   assert faithful?(store, script())
 end
 
 test "a store whose journal never answers in time answers each change ERR io, and changes nothing"
   never_in_time = 0.ms - 1.ms
-  store = Store.start(Journal.start(0), Clock.fixture(), opened(empty(), Time.fixture(),
-    never_in_time))
+  store = Store.start(Journal.start(Fs.fixture(), "kv.log", 0), Clock.fixture(), opened(empty(),
+    Time.fixture(), never_in_time))
   assert faithful?(store, script())
   set = store.ask(Serve(request: Set(key: "a", value: "1")), within: 60_000.ms)
   got = store.ask(Serve(request: Get(key: "a")), within: 60_000.ms)
@@ -333,19 +337,26 @@ test "a store whose journal never answers in time answers each change ERR io, an
   assert got is Ok(Absent) or got is Error(_)
 end
 
-test "a store started again from what its journal held reads what the first one wrote"
-  journal = Journal.start(0)
-  first = Store.start(journal, Clock.fixture(), opened(empty(), Time.fixture(), 60_000.ms))
+# The replay test: a store writes its log, stops, and a store started again from that log
+# reads what the first one wrote. An append a fault failed was answered ERR io and is not in
+# the log, so the two stores still agree.
+test "a store started again from its log reads what the first one wrote"
+  dir = Fs.fixture()
+  first = Store.start(Journal.start(dir, "kv.log", 0), Clock.fixture(), opened(empty(),
+    Time.fixture(), 60_000.ms))
   assert faithful?(first, script())
-  logged = journal.ask(Written, within: 60_000.ms)
-  if logged is Ok(text)
-    assert reopen(text) is Ok(reopened)
-    second = Store.start(Journal.start(0), Clock.fixture(), opened(reopened.table, Time.fixture(),
-      60_000.ms))
-    for request in [Get(key: "a"), Get(key: "big"), Get(key: "new"), Keys(prefix: "")]
-      one = first.ask(Serve(request: request), within: 60_000.ms)
-      two = second.ask(Serve(request: request), within: 60_000.ms)
-      assert one == two or one is Error(_) or two is Error(_)
+  counted = first.ask(Serve(request: Stats), within: 60_000.ms)
+  text = dir.read("kv.log", within: 60_000.ms)
+  if counted is Ok(Counted(counts))
+    if text is Ok(log)
+      assert reopen(Logged(text: log, keys: counts.keys)) is Ok(reopened)
+      second = Store.start(Journal.start(dir, "kv.log", 0), Clock.fixture(), opened(reopened.table,
+        Time.fixture(), 60_000.ms))
+      for request in [Get(key: "a"), Get(key: "big"), Get(key: "new"), Keys(prefix: "")]
+        one = first.ask(Serve(request: request), within: 60_000.ms)
+        two = second.ask(Serve(request: request), within: 60_000.ms)
+        assert one == two or one is Error(_) or two is Error(_)
+      end
     end
   end
 end

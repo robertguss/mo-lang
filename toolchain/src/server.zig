@@ -1,8 +1,9 @@
 //! Mo.Server: the real platform `mo run` gives `main` (design-v0/03, effects; Q18), over
 //! std.Io. `args` and `env` come from the process; `Out.write` goes to the real streams,
-//! buffered, and the caller flushes them at exit; `Fs.read` reads the real file system
-//! under the scope `scoped(...)` gave; `clock.now` is the wall clock; `exit(code)` is
-//! recorded and applied when `main` returns. No database and no writes to the file system.
+//! buffered, and flushed by `Out.flush` and at exit; the `Fs` rows read and write the real
+//! file system under the scope `scoped(...)` gave, each write on disk (fsync) before it
+//! answers; `clock.now` is the wall clock; `exit(code)` is recorded and applied when `main`
+//! returns. No database.
 //!
 //! main is the root supervisor: a process it starts, directly or through a supervisor,
 //! runs on Mo.Sim's scheduler in its fixed order (sim.zig). main's sends are delivered
@@ -20,6 +21,7 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
 const net = @import("net.zig");
+const prelude = @import("prelude.zig");
 const runner = @import("runner.zig");
 const Sim = @import("sim.zig").Sim;
 const Turns = @import("turns.zig").Turns;
@@ -45,7 +47,7 @@ pub const Scope = struct {
     base: []const u8,
     /// Nothing outside this folder is read. "/" for `platform.fs` itself.
     root: []const u8,
-    /// Nothing writes yet, so this refuses nothing at run time; the checker would.
+    /// A write through it crashes; tier 1 refuses the ones it can see (MO0404).
     read_only: bool = false,
     /// `scoped` was given a path outside the scope it narrowed, so nothing is readable.
     empty: bool = false,
@@ -181,6 +183,12 @@ pub const Server = struct {
         w.writeAll(text) catch {};
     }
 
+    /// `out.flush`: what the stream holds goes out now, not when main returns.
+    pub fn flush(s: *Server, out: Value.Cap) void {
+        const w = if (out.handle == stderr_handle) s.stderr else s.stdout;
+        w.flush() catch {};
+    }
+
     /// Milliseconds since the Unix epoch, as `Value.time` counts.
     pub fn now(s: *Server) i64 {
         return Io.Clock.real.now(s.io).toMilliseconds();
@@ -244,6 +252,97 @@ pub const Server = struct {
         return vm.variant("Ok", &.{.{ .list = out }});
     }
 
+    /// `fs.write(path, text)` and `fs.append(path, text)`: the file holds the text, or has it
+    /// added at its end, created when it is not there, and is on disk (fsync) before `Ok`.
+    /// `Missing(path)` for a path that leaves the scope, a folder that is not there, or
+    /// anything that is not a file. The deadline is enforced after the fact, as `read`'s is:
+    /// a write that took longer is `Timeout`, and is on disk all the same.
+    pub fn writeFile(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, text: []const u8, within_ms: i64, append: bool) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, path);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        // Paths are resolved in an arena of the call's own: a server appends on every change.
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const wrote = try s.writeScoped(scratch.allocator(), scope, path, text, append);
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (!wrote) return missing(vm, path);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    fn writeScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8, text: []const u8, append: bool) Error!bool {
+        const target = try s.targetScoped(gpa, scope, path) orelse return false;
+        var file = Io.Dir.cwd().createFile(s.io, target, .{ .truncate = !append }) catch return false;
+        defer file.close(s.io);
+        const at: u64 = if (append) file.length(s.io) catch return false else 0;
+        file.writePositionalAll(s.io, text, at) catch return false;
+        file.sync(s.io) catch return false;
+        return true;
+    }
+
+    /// `fs.remove(path)`: the file is gone; `Missing(path)` when no such file is in the scope.
+    pub fn remove(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, path);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const gone = blk: {
+            const real = try s.fileScoped(scratch.allocator(), scope, path) orelse break :blk false;
+            Io.Dir.cwd().deleteFile(s.io, real) catch break :blk false;
+            break :blk true;
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (!gone) return missing(vm, path);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// `fs.rename(from, to)`: the file at `from` is at `to`, replacing a file there.
+    /// `Missing(from)` when no such file is in the scope, `Missing(to)` when `to` leaves it
+    /// or names a folder that is not there.
+    pub fn rename(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, from: []const u8, to: []const u8, within_ms: i64) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, from);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const gpa = scratch.allocator();
+        const missed: ?[]const u8 = blk: {
+            const real = try s.fileScoped(gpa, scope, from) orelse break :blk from;
+            const target = try s.targetScoped(gpa, scope, to) orelse break :blk to;
+            Io.Dir.rename(Io.Dir.cwd(), real, Io.Dir.cwd(), target, s.io) catch break :blk to;
+            break :blk null;
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (missed) |p| return missing(vm, p);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// The real path of a file (not a folder) inside the scope, or null.
+    fn fileScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
+        const real = try s.realScopedIn(gpa, scope, path) orelse return null;
+        const stat = Io.Dir.cwd().statFile(s.io, real, .{}) catch return null;
+        return if (stat.kind == .file) real else null;
+    }
+
+    /// Where a write to `path` lands: its folder's real path and its name, when that folder is
+    /// inside the scope, and a name already there, which may be a link, leads inside it too.
+    fn targetScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
+        if (scope.empty) return null;
+        const full = try std.fs.path.resolve(gpa, &.{ scope.base, path });
+        if (!within(scope.root, full) or std.mem.eql(u8, full, scope.root)) return null;
+        const cwd = Io.Dir.cwd();
+        const real_root = cwd.realPathFileAlloc(s.io, scope.root, gpa) catch |err| return unreadable(err);
+        const folder = std.fs.path.dirname(full) orelse return null;
+        const real_folder = cwd.realPathFileAlloc(s.io, folder, gpa) catch |err| return unreadable(err);
+        if (!within(real_root, real_folder)) return null;
+        const target = try std.fs.path.join(gpa, &.{ real_folder, std.fs.path.basename(full) });
+        if (cwd.realPathFileAlloc(s.io, target, gpa)) |real| {
+            if (!within(real_root, real)) return null;
+        } else |err| if (err == error.OutOfMemory) return error.OutOfMemory;
+        return target;
+    }
+
     /// Whether a call that began at `t0` took longer than its deadline. Enforced after the
     /// fact in this step (see `read`).
     fn late(s: *Server, t0: Io.Clock.Timestamp, within_ms: i64) bool {
@@ -255,12 +354,16 @@ pub const Server = struct {
     /// is not there. Compared again as real paths, so a symbolic link inside the scope
     /// cannot reach out.
     fn realScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
+        return s.realScopedIn(s.gpa, scope, path);
+    }
+
+    fn realScopedIn(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
         if (scope.empty) return null;
-        const full = try std.fs.path.resolve(s.gpa, &.{ scope.base, path });
+        const full = try std.fs.path.resolve(gpa, &.{ scope.base, path });
         if (!within(scope.root, full)) return null;
         const cwd = Io.Dir.cwd();
-        const real_root = cwd.realPathFileAlloc(s.io, scope.root, s.gpa) catch |err| return unreadable(err);
-        const real = cwd.realPathFileAlloc(s.io, full, s.gpa) catch |err| return unreadable(err);
+        const real_root = cwd.realPathFileAlloc(s.io, scope.root, gpa) catch |err| return unreadable(err);
+        const real = cwd.realPathFileAlloc(s.io, full, gpa) catch |err| return unreadable(err);
         if (!within(real_root, real)) return null;
         return real;
     }
@@ -290,12 +393,23 @@ fn missing(vm: *Vm, path: []const u8) Error!Value {
     return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
 }
 
+fn timeout(vm: *Vm) Error!Value {
+    return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+}
+
+/// A write through an Fs narrowed to read_only: the caller broke the scope's rule, which
+/// tier 1 refuses where it can see the narrowing (caps.zig, MO0404).
+fn refuse(vm: *Vm, row: prelude.Fn, path: []const u8) Error!Value {
+    vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path }), .within = row.name, .at = 0 };
+    return error.Crash;
+}
+
 fn unreadable(err: anyerror) Error!?[]const u8 {
     return if (err == error.OutOfMemory) error.OutOfMemory else null;
 }
 
 /// Whether the resolved absolute `path` is `root` or inside it.
-fn within(root: []const u8, path: []const u8) bool {
+pub fn within(root: []const u8, path: []const u8) bool {
     if (std.mem.eql(u8, root, "/")) return true;
     if (!std.mem.startsWith(u8, path, root)) return false;
     return path.len == root.len or path[root.len] == '/';
@@ -448,6 +562,77 @@ test "Fs.list, read_lines, and size stay inside the scope, and write_line ends a
         \\timeout
         \\
     , out.written());
+}
+
+test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope, Missing outside it, flush, and a read_only Fs refuses" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const io = std.testing.io;
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(io, "data");
+    const cwd = try tmp.dir.realPathFileAlloc(io, ".", arena);
+
+    const program = try compile(arena,
+        \\module T.Writes
+        \\fn said(r: Result(T, FsError)) : String
+        \\  case r
+        \\    Ok(_): "ok"
+        \\    Error(Missing(path)): "missing #{path}"
+        \\    Error(Timeout): "timeout"
+        \\  end
+        \\end
+        \\fn text(r: Result(String, FsError)) : String
+        \\  case r
+        \\    Ok(t): t
+        \\    Error(_): "unread\n"
+        \\  end
+        \\end
+        \\fn copy(logs: Fs) : String
+        \\  said(logs.write("x.log", "no", within: 1.minute))
+        \\end
+        \\fn main(platform: Platform)
+        \\  data = platform.fs.scoped("data")
+        \\  out = platform.stdout
+        \\  out.write_line(said(data.write("a.log", "one\n", within: 1.minute)))
+        \\  out.write_line(said(data.append("a.log", "two\n", within: 1.minute)))
+        \\  out.write_line(said(data.append("b.log", "new\n", within: 1.minute)))
+        \\  out.write(text(data.read("a.log", within: 1.minute)))
+        \\  out.write_line(said(data.write("../escape.log", "no", within: 1.minute)))
+        \\  out.write_line(said(data.write("nofolder/c.log", "no", within: 1.minute)))
+        \\  out.write_line(said(data.rename("b.log", "c.log", within: 1.minute)))
+        \\  out.write_line(said(data.remove("b.log", within: 1.minute)))
+        \\  out.write_line(said(data.remove("a.log", within: 1.minute)))
+        \\  out.flush
+        \\  out.write(text(data.read("c.log", within: 1.minute)))
+        \\  out.write_line(copy(data.read_only))
+        \\end
+    );
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, io, cwd, &.{}, &environ, &out.writer, &out.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqualStrings("fs.write(\"x.log\") writes through an Fs narrowed to read_only, which only reads", ran.crashed.clause);
+    try std.testing.expectEqualStrings(
+        \\ok
+        \\ok
+        \\ok
+        \\one
+        \\two
+        \\missing ../escape.log
+        \\missing nofolder/c.log
+        \\ok
+        \\missing b.log
+        \\ok
+        \\new
+        \\
+    , out.written());
+    const kept = try tmp.dir.readFileAlloc(io, "data/c.log", arena, .limited(64));
+    try std.testing.expectEqualStrings("new\n", kept);
+    try std.testing.expectError(error.FileNotFound, tmp.dir.readFileAlloc(io, "escape.log", arena, .limited(64)));
+    try std.testing.expectError(error.FileNotFound, tmp.dir.readFileAlloc(io, "data/x.log", arena, .limited(64)));
 }
 
 test "a crash in main comes back with its report" {

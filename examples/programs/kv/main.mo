@@ -1,5 +1,5 @@
 # run: check data/demo data/session.txt
-# run: compact data/demo
+# run: compact data/compact
 # run: serve
 # exit: 2
 # run: serve data/nowhere
@@ -94,32 +94,45 @@ fn ran(net: Net, fs: Fs, clock: Clock, err: Out, args: List(String)) : Result(St
   given = try command(args)
   case given
     Serving(dir: dir, port: port):
-      opened = try opened_log(fs.scoped(dir), err, dir)
-      serve(net, clock, opened, port)
-    # No stdlib row writes a file (GAPS.md), so compact prints the log it would write:
-    # kv compact d > new && mv new d/kv.log.
+      folder = fs.scoped(dir)
+      opened = try opened_log(folder, err, dir)
+      serve(net, folder, clock, opened, port)
     Compacting(dir):
-      opened = try opened_log(fs.scoped(dir).read_only, err, dir)
-      Ok(compacted(opened.replayed.table))
+      folder = fs.scoped(dir)
+      opened = try opened_log(folder, err, dir)
+      compact(folder, dir, opened)
     Asking(host: host, port: port, line: line): client(net, host, port, line)
     Checking(dir: dir, script: script):
       lines = try script_of(fs, script)
-      opened = try opened_log(fs.scoped(dir).read_only, err, dir)
-      check(net, clock, opened, lines)
+      folder = fs.scoped(dir)
+      opened = try opened_log(folder.read_only, err, dir)
+      check(net, folder, clock, opened, lines)
   end
 end
 
-fn serve(net: Net, clock: Clock, opened: Opened, port: UInt16) : Result(String, Problem)
+fn serve(net: Net, folder: Fs, clock: Clock, opened: Opened, port: UInt16) : Result(String, Problem)
   case net.listen(port, within: 5_000.ms)
-    Ok(listener): Ok(served_on(listener, clock, opened))
+    Ok(listener): Ok(served_on(listener, folder, clock, opened))
     Error(_): Error(Unbound(port: port))
   end
 end
 
+# The log rewritten as one line per live key: written whole beside the log, then renamed over
+# it, so a compaction cut short leaves the old log as it was.
+fn compact(folder: Fs, dir: String, opened: Opened) : Result(String, Problem)
+  table = opened.replayed.table
+  wrote = folder.write("kv.log.new", compacted(table), within: 60_000.ms)
+  moved = folder.rename("kv.log.new", "kv.log", within: 10_000.ms)
+  if wrote is Error(_) or moved is Error(_)
+    return Error(Unopened(dir: dir, why: "holds a kv.log kv could not rewrite"))
+  end
+  Ok("kv: compacted #{dir}/kv.log from #{opened.replayed.lines} lines to #{table.size}\n")
+end
+
 # Hands every client to the listening process until kv is stopped; a for needs a range to
 # repeat, so after 100 million accepts it returns (GAPS.md).
-fn served_on(listener: Listener, clock: Clock, opened: Opened) : String
-  listening = started(listener, opened, clock)
+fn served_on(listener: Listener, folder: Fs, clock: Clock, opened: Opened) : String
+  listening = started(listener, folder, "kv.log", opened, clock)
   var taken = 0
   for _ in 0..10_000
     taken += accepted_awhile(listening)
@@ -137,9 +150,11 @@ fn accepted_awhile(listening: Handle(Listening)) : UInt64
   taken
 end
 
-# The store, its journal, the gate, and the listening process, over a log just opened.
-fn started(listener: Listener, opened: Opened, clock: Clock) : Handle(Listening)
-  journal = Journal.start(opened.bytes)
+# The store, its journal appending to the file `log` in the folder, the gate, and the
+# listening process, over a log just opened.
+fn started(listener: Listener, folder: Fs, log: String, opened: Opened,
+  clock: Clock) : Handle(Listening)
+  journal = Journal.start(folder, log, opened.bytes)
   table = opened.replayed.table
   opening = Opening(table: table, log_bytes: opened.bytes, at: clock.now, log_within: 1_000.ms)
   store = Store.start(journal, clock, opening)
@@ -170,17 +185,24 @@ fn exchanged(net: Net, host: String, port: UInt16, line: String) : Result(String
 end
 
 # Serves a folder's log on a free port and plays a script through kv's own client, each line
-# over a connection of its own; the transcript is every line sent and what came back.
-fn check(net: Net, clock: Clock, opened: Opened, lines: List(String)) : Result(String, Problem)
+# over a connection of its own; the transcript is every line sent and what came back. The
+# folder's log is only read: the changes go to kv.check.log beside it, removed at the end.
+fn check(net: Net, folder: Fs, clock: Clock, opened: Opened, lines: List(String)) : Result(String,
+  Problem)
   case net.listen(0, within: 5_000.ms)
-    Ok(listener): Ok(checked_on(net, listener, clock, opened, lines))
+    Ok(listener):
+      transcript = checked_on(net, listener, folder, clock, opened, lines)
+      if folder.remove("kv.check.log", within: 10_000.ms) is Error(_)
+        return Ok(transcript)
+      end
+      Ok(transcript)
     Error(_): Error(Unbound(port: 0))
   end
 end
 
-fn checked_on(net: Net, listener: Listener, clock: Clock, opened: Opened,
+fn checked_on(net: Net, listener: Listener, folder: Fs, clock: Clock, opened: Opened,
   lines: List(String)) : String
-  listening = started(listener, opened, clock)
+  listening = started(listener, folder, "kv.check.log", opened, clock)
   var transcript = ""
   for line in lines
     listening.send(Accept)
@@ -205,12 +227,14 @@ fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
   end
 end
 
-# The folder's log, replayed. A last line cut short is left out and said on stderr, once.
+# The folder's log, replayed. A last line cut short is left out and said on stderr, once, at
+# once.
 fn opened_log(dir: Fs, err: Out, name: String) : Result(Opened, Problem)
   case open(dir)
     Ok(opened):
       if opened.replayed.truncated
         err.write_line("kv: the last line of #{name}/kv.log was cut short, so it is left out")
+        err.flush
       end
       Ok(opened)
     Error(NoFolder): Error(Unopened(dir: name, why: "is not a folder kv can read"))
@@ -274,6 +298,15 @@ test "client joins the rest of its arguments into one line"
   assert command(["check", "data", "s.txt"]) == Ok(Checking(dir: "data", script: "s.txt"))
 end
 
+test "a log whose last line was cut short opens without it, and says so on the error stream"
+  dir = Fs.fixture()
+  err = Out.fixture()
+  assert dir.write("kv.log", "SET a 1\nSET b 2", within: 1_000.ms) is Ok(_)
+  assert opened_log(dir, err, "d") is Ok(opened)
+  assert opened.replayed.lines == 1
+  assert err.written == ["kv: the last line of d/kv.log was cut short, so it is left out\n"]
+end
+
 test "a usage error exits 2, and a folder or port that cannot be had exits 1"
   assert code_of(Usage(detail: "x")) == 2
   assert code_of(Unopened(dir: "d", why: "w")) == 1
@@ -281,5 +314,5 @@ test "a usage error exits 2, and a folder or port that cannot be had exits 1"
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
           proven: not run

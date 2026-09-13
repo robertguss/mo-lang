@@ -19,6 +19,7 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const net_mod = @import("net.zig");
 const server_mod = @import("server.zig");
+const stdlib = @import("stdlib.zig");
 const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
 
@@ -144,6 +145,10 @@ pub const Sim = struct {
     turns: ?*turns_mod.Turns = null,
     /// The in-memory network every `Net.fixture()` of the run shares (net.zig).
     fixture: net_mod.Fixture = .{},
+    /// The files of each `Fs.fixture()` in the run, which keep what the test writes.
+    files: stdlib.FixtureFs = .{},
+    /// What each `Out.fixture()` of the run was given, one text per call.
+    outs: std.ArrayList(std.ArrayList([]const u8)) = .empty,
     /// Under `mo run`, every vm allocates in a region of its own, so a value that goes from
     /// one vm to another goes packed (Vm.pack): a message, a reply, and a process's start
     /// arguments and first state. After each update the process's region keeps only what
@@ -1115,6 +1120,89 @@ const sup_src =
     \\  beat.send(Up)
     \\end
 ;
+
+test "a fixture Fs keeps what a test writes, shared by every Fs narrowed from it; an Out.fixture keeps each write; a faulted write changes nothing" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Fixtures
+        \\process Writer(fs: Fs)
+        \\  state
+        \\    tries: UInt32
+        \\  end
+        \\  message Note : Bool
+        \\  fn update(state, message)
+        \\    case message
+        \\      Note:
+        \\        state.tries += 1
+        \\        ok(fs.append("x.log", "1\n", within: 1.minute))
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Writers(fs: Fs)
+        \\  child Writer(fs), restart: :always
+        \\end
+        \\fn ok(r: Result(T, FsError)) : Bool
+        \\  r is Ok(_)
+        \\end
+        \\fn log(out: Out, fs: Fs) : Bool
+        \\  out.write("a")
+        \\  out.write_line("b")
+        \\  out.flush
+        \\  ok(fs.append("x.log", "1\n", within: 1.minute))
+        \\end
+        \\test "writes read back"
+        \\  fs = Fs.fixture()
+        \\  data = fs.scoped("data")
+        \\  assert ok(data.write("a.log", "one\n", within: 1.minute))
+        \\  assert ok(data.append("a.log", "two\n", within: 1.minute))
+        \\  assert fs.read("data/a.log", within: 1.minute) == Ok("one\ntwo\n")
+        \\  assert data.read_lines("a.log", within: 1.minute) == Ok(["one", "two"])
+        \\  assert fs.list(within: 1.minute) == Ok(["data"])
+        \\  assert ok(data.rename("a.log", "b.log", within: 1.minute))
+        \\  assert data.list(within: 1.minute) == Ok(["b.log"])
+        \\  assert data.size("b.log", within: 1.minute) == Ok(8)
+        \\  assert data.remove("a.log", within: 1.minute) is Error(Missing("a.log"))
+        \\  assert data.write("../x", "no", within: 1.minute) is Error(Missing("../x"))
+        \\  assert Fs.fixture().read("data/b.log", within: 1.minute) is Error(Missing(_))
+        \\  assert Fs.fixture(delay: 2.minute).write("a", "b", within: 1.minute) is Error(Timeout)
+        \\end
+        \\test "an Out fixture keeps each write"
+        \\  out = Out.fixture()
+        \\  fs = Fs.fixture()
+        \\  assert log(out, fs)
+        \\  assert out.written == ["a", "b\n"]
+        \\  assert fs.read("x.log", within: 1.minute) == Ok("1\n")
+        \\end
+        \\test "a write through a read_only Fs crashes"
+        \\  assert log(Out.fixture(), Fs.fixture().read_only)
+        \\end
+        \\test "a writer appends"
+        \\  writer = Writer.start(Fs.fixture())
+        \\  assert writer.ask(Note, within: 1.minute) is Ok(_)
+        \\end
+    );
+    const r = try runner.run(arena, program, .{});
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[0].outcome);
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[1].outcome);
+    try std.testing.expectEqual(runner.Outcome.failed, r.results[2].outcome);
+    try std.testing.expectEqualStrings("fs.append(\"x.log\") writes through an Fs narrowed to read_only, which only reads", r.results[2].report.?.clause);
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[3].outcome);
+
+    // Every fixture call fails in these runs: the append is Missing or Timeout, and the file
+    // system keeps nothing of it.
+    for (0..8) |seed| {
+        var machine: Vm = .init(arena, program, 7);
+        var s: Sim = .seeded(&machine, seed, "a writer appends", 100);
+        machine.sim = &s;
+        const fs = try stdlib.fixtureFs(&machine, 0);
+        const writer = try s.start(0, &.{fs});
+        const reply = try s.ask(writer, try machine.variant("Note", &.{}), 60_000);
+        try std.testing.expect(!reply.variant.fields[0].bool);
+        try std.testing.expectEqual(@as(usize, 0), s.files.systems.items[0].count());
+    }
+}
 
 test "the test runner supervises a process it starts with :always and the child line's max_restarts" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);

@@ -12,14 +12,13 @@ never "a replay changes the number of live keys"
 end
 
 # The keys and values a log describes, spread over 256 small maps, so that setting a key
-# copies one small map and not every key (TOOLCHAIN-BUGS.md).
+# copies one small map and not every key.
 struct Table
   buckets: Map(UInt64, Map(String, String))
   size: UInt64
 end
 
-# What a journal holds: the lines appended since the log was opened, and the live keys the
-# store had after the last of them.
+# A log's text as it was read back, and the live keys the store had after its last line.
 struct Logged
   text: String
   keys: UInt64
@@ -33,7 +32,7 @@ struct Replayed
   truncated: Bool
 end
 
-# What a journal held, replayed, beside the live keys the store had before it stopped.
+# A log read back and replayed, beside the live keys the store had before it stopped.
 struct Reopened
   table: Table
   keys_before: UInt64
@@ -53,37 +52,38 @@ enum LogError
   BadLine(number: UInt64)
 end
 
-# The log the store appends each change to before it answers. No stdlib row writes a file
-# (GAPS.md), so the journal keeps the lines appended since the log was opened; its byte
-# count starts at the size of that log.
-process Journal(opened_bytes: UInt64)
+# The log the store appends each change to before it answers: the file `name` in the folder
+# `dir`, each line on disk before the journal replies with the log's size in bytes, which
+# starts at the size of the log it opened. An append that fails is its error, and the line
+# is not counted.
+process Journal(dir: Fs, name: String, opened_bytes: UInt64)
   state
     bytes: UInt64 = opened_bytes
     keys: UInt64
-    lines: List(String)
   end
 
   invariant "the log never shrinks"
     state.bytes < old(state.bytes)
   end
 
-  message Append(line: String, keys: UInt64) : UInt64
-  message Written : Logged
+  message Append(line: String, keys: UInt64) : Result(UInt64, FsError)
 
   fn update(state, message)
     case message
       Append(line: line, keys: keys):
-        state.lines = state.lines.push(line)
-        state.bytes += line.bytes.size
-        state.keys = keys
-        state.bytes
-      Written: Logged(text: String.join(state.lines, ""), keys: state.keys)
+        case dir.append(name, line, within: 10_000.ms)
+          Ok(_):
+            state.bytes += line.bytes.size
+            state.keys = keys
+            Ok(state.bytes)
+          Error(problem): Error(problem)
+        end
     end
   end
 end
 
-supervisor Journals(opened_bytes: UInt64)
-  child Journal(opened_bytes), restart: :always
+supervisor Journals(dir: Fs, name: String, opened_bytes: UInt64)
+  child Journal(dir, name, opened_bytes), restart: :always
 end
 
 fn empty() : Table
@@ -181,7 +181,7 @@ fn applied(table: Table, line: String, number: UInt64) : Result(Table, LogError)
   end
 end
 
-# What a journal held, replayed as a restart replays it.
+# A log read back, replayed as a restart replays it.
 fn reopen(logged: Logged) : Result(Reopened, LogError)
   replayed = try replay(logged.text)
   size = replayed.table.size
@@ -306,17 +306,22 @@ test "a folder with no log opens empty, and a slow one says so"
   assert open(Fs.fixture(delay: 1.minute)) is Error(Slow)
 end
 
-test "the journal counts the bytes it appended, and holds the lines in order"
-  journal = Journal.start(100)
+test "the journal appends each line to its file, and counts the bytes it appended"
+  dir = Fs.fixture()
+  journal = Journal.start(dir, "kv.log", 100)
   first = journal.ask(Append(line: "SET a 1\n", keys: 1), within: 1_000.ms)
   second = journal.ask(Append(line: "SET é 2\n", keys: 2), within: 1_000.ms)
-  written = journal.ask(Written, within: 1_000.ms)
-  assert first is Ok(108) or first is Error(_)
-  assert second is Ok(117) or second is Error(_)
-  assert written is Ok(Logged(text: "SET a 1\nSET é 2\n", keys: 2)) or written is Error(_)
+  assert first is Ok(Ok(108)) or first is Ok(Error(_)) or first is Error(_)
+  if first is Ok(Ok(_))
+    assert second is Ok(Ok(117)) or second is Ok(Error(_)) or second is Error(_)
+  end
+  if first is Ok(Ok(_)) and second is Ok(Ok(_))
+    text = dir.read("kv.log", within: 1_000.ms)
+    assert text == Ok("SET a 1\nSET é 2\n") or text is Error(_)
+  end
 end
 
-test "what a journal held replays to the keys the store had"
+test "a log read back replays to the keys the store had"
   logged = Logged(text: "SET a 1\nSET b 2\nDEL a\n", keys: 1)
   assert reopen(logged) is Ok(reopened)
   assert reopened.keys_after == 1

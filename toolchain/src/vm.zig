@@ -1023,18 +1023,14 @@ pub const Vm = struct {
             .time_fixture => .{ .time = fixture_time },
             .clock_now => .{ .time = if (vm.sim) |s| s.clockNow() else if (vm.server) |s| s.now() else fixture_time },
             .clock_fixture => .{ .cap = .{ .kind = .clock } },
-            // Under mo run the file system is real (server.zig). A fixture Fs is empty; one
-            // built with delay: answers after the delay.
+            // Under mo run the file system is real (server.zig); in a test it is a fixture's,
+            // in memory (stdlib.FixtureFs), and one built with delay: answers after the delay.
             .fs_read => if (vm.server) |s|
                 try s.read(vm, a[0].cap, a[1].string, a[2].duration)
-            else if (a[0].cap.delay > a[2].duration)
-                try vm.variant("Error", &.{try vm.variant("Timeout", &.{})})
-            else if (try vm.fixtureFault(true, a[1].string, a[2].duration)) |failed|
-                failed
             else
-                try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = a[1].string }})}),
-            .fs_narrow => if (vm.server) |s| try s.narrow(a[0].cap, row.name, if (row.params.len == 1) a[1].string else "") else a[0],
-            .fs_fixture => .{ .cap = .{ .kind = .fs, .delay = if (row.named.len == 1) a[0].duration else 0 } },
+                try stdlib.call(vm, row, .fs_read, a, kind_raw),
+            .fs_narrow => if (vm.server) |s| try s.narrow(a[0].cap, row.name, if (row.params.len == 1) a[1].string else "") else try stdlib.fixtureNarrow(vm, a[0].cap, row.name, if (row.params.len == 1) a[1].string else ""),
+            .fs_fixture => try stdlib.fixtureFs(vm, if (row.named.len == 1) a[0].duration else 0),
             .events_emit => blk: {
                 if (vm.sim) |s| try s.emit(a[1]);
                 break :blk .none;
@@ -1071,7 +1067,7 @@ pub const Vm = struct {
             .money_cents => a[0],
             .money_zero => .{ .int = 0 },
             // A Platform exists only in main, and only `mo run` calls main, on Mo.Server (Q18).
-            .platform_part, .platform_exit, .env_get, .out_write => blk: {
+            .platform_part, .platform_exit, .env_get => blk: {
                 const s = vm.server orelse {
                     vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "{s}.{s} runs only under mo run", .{ row.recv, row.name }), .within = row.name, .at = 0 };
                     return error.Crash;
@@ -1082,12 +1078,12 @@ pub const Vm = struct {
                         s.exit(a[1].int);
                         break :exit .none;
                     },
-                    .env_get => try s.envGet(vm, a[1].string),
-                    else => write: {
-                        s.write(a[0].cap, a[1].string);
-                        break :write .none;
-                    },
+                    else => try s.envGet(vm, a[1].string),
                 };
+            },
+            .out_write => blk: {
+                try stdlib.writeOut(vm, row, a[0].cap, a[1].string, false);
+                break :blk .none;
             },
             .net_row => try vm.netRow(std.meta.stringToEnum(net_mod.Row, row.name).?, a),
             .net_fixture => .{ .cap = .{ .kind = .net } },
@@ -1324,7 +1320,7 @@ pub const Vm = struct {
                 .ledger => "Ledger.fixture()",
                 .platform => "the Platform",
                 .env => "an Env",
-                .out => if (c.handle == server_mod.stderr_handle) "an Out (stderr)" else "an Out (stdout)",
+                .out => if (vm.server == null) "Out.fixture()" else if (c.handle == server_mod.stderr_handle) "an Out (stderr)" else "an Out (stdout)",
                 .net => if (vm.server != null) "a Net" else "Net.fixture()",
                 .listener => "a Listener",
                 .conn => "a Conn",

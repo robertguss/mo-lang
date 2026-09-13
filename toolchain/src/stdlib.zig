@@ -12,6 +12,7 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const json = @import("json.zig");
 const prelude = @import("prelude.zig");
+const server_mod = @import("server.zig");
 const types = @import("types.zig");
 const vm_mod = @import("vm.zig");
 
@@ -91,7 +92,16 @@ pub const Row = enum {
     fs_read_lines,
     fs_size,
     fs_list,
+    fs_write,
+    fs_append,
+    fs_remove,
+    fs_rename,
+    /// `Fs.read`, which vm.zig runs; here only for a fixture's files.
+    fs_read,
     out_write_line,
+    out_flush,
+    out_fixture,
+    out_written,
     json_encode,
     json_decode,
 };
@@ -123,7 +133,10 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
     .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
     .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
-    .{ "Out.write_line", .out_write_line },       .{ "Json.encode", .json_encode },           .{ "Json.decode", .json_decode },
+    .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
+    .{ "Fs.rename", .fs_rename },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
+    .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
+    .{ "Json.decode", .json_decode },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -160,12 +173,28 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .duration_ms => .{ .int = a[0].duration },
         .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
         .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
-        .fs_read_lines, .fs_size, .fs_list => files(vm, which, a),
+        .fs_read_lines, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
-            const s = vm.server orelse return fail(vm, .other, row, "Out.write_line runs only under mo run", .{});
-            s.write(a[0].cap, a[1].string);
-            s.write(a[0].cap, "\n");
+            try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
+        },
+        .out_flush => blk: {
+            if (vm.server) |s| s.flush(a[0].cap);
+            break :blk .none;
+        },
+        .out_fixture => blk: {
+            const sim = vm.sim orelse return fail(vm, .other, row, "Out.fixture() runs only in a test", .{});
+            try sim.outs.append(sim.gpa, .empty);
+            break :blk .{ .cap = .{ .kind = .out, .handle = @intCast(sim.outs.items.len) } };
+        },
+        .out_written => blk: {
+            const sim = vm.sim orelse break :blk .{ .list = &.{} };
+            const h = a[0].cap.handle;
+            if (vm.server != null or h == 0 or h > sim.outs.items.len) break :blk .{ .list = &.{} };
+            const kept = sim.outs.items[h - 1].items;
+            const out = try vm_mod.rawAlloc(vm.heap, Value, kept.len);
+            for (kept, out) |text, *o| o.* = .{ .string = text };
+            break :blk .{ .list = out };
         },
         .list_group_by => groupBy(vm, a[0].list, a[1].func),
         .map_new => .{ .map = .{ .entries = &.{} } },
@@ -756,18 +785,13 @@ test "the calendar round-trips, leap days and the years before 1970 included" {
 
 // ---- files
 
-/// `read_lines`, `size`, and `list`. Under mo run the file system is real (server.zig); a
-/// fixture Fs is empty, and one built with delay: answers after the delay.
-fn files(vm: *Vm, which: Row, a: []const Value) Error!Value {
+/// The `Fs` rows but `read`, `scoped`, and `read_only`, and `read` too for a fixture. Under
+/// mo run the file system is real (server.zig); in a test it is a fixture's, in memory.
+fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
     const fs = a[0].cap;
     const within = a[a.len - 1].duration;
     const path: []const u8 = if (which == .fs_list) "." else a[1].string;
-    const s = vm.server orelse {
-        if (fs.delay > within) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
-        if (try vm.fixtureFault(which != .fs_list, path, within)) |failed| return failed;
-        if (which == .fs_list) return vm.variant("Ok", &.{.{ .list = &.{} }});
-        return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
-    };
+    const s = vm.server orelse return fixtureFiles(vm, row, which, a);
     return switch (which) {
         .fs_read_lines => blk: {
             const got = try s.read(vm, fs, path, within);
@@ -775,8 +799,160 @@ fn files(vm: *Vm, which: Row, a: []const Value) Error!Value {
             break :blk vm.variant("Ok", &.{try lines(vm, got.variant.fields[0].string)});
         },
         .fs_size => s.size(vm, fs, path, within),
-        else => s.list(vm, fs, within),
+        .fs_list => s.list(vm, fs, within),
+        .fs_write, .fs_append => s.writeFile(vm, row, fs, path, a[2].string, within, which == .fs_append),
+        .fs_remove => s.remove(vm, row, fs, path, within),
+        .fs_rename => s.rename(vm, row, fs, path, a[2].string, within),
+        else => unreachable,
     };
+}
+
+/// The file system every `Fs.fixture()` of a test gives (design-v0/09, Files): files in
+/// memory, by their path from the fixture's root, which keep what the test writes and which
+/// every Fs narrowed from the fixture shares. A folder is any path a file is under, so it is
+/// there once a file is. A call that a seeded run's fault fails changes nothing.
+pub const FixtureFs = struct {
+    /// Each fixture's files: one set per `Fs.fixture()` call.
+    systems: std.ArrayList(std.StringArrayHashMapUnmanaged([]const u8)) = .empty,
+    /// Each fixture Fs value, by `Value.Cap.handle - 1`. Handle 0, a capability made by hand,
+    /// is an empty file system that keeps nothing.
+    scopes: std.ArrayList(Scope) = .empty,
+
+    pub const Scope = struct {
+        /// Index in `systems`, or null for handle 0.
+        system: ?u32 = null,
+        /// The folder the Fs was scoped to, an absolute path from the fixture's root.
+        folder: []const u8 = "/",
+        read_only: bool = false,
+        /// `scoped` was given a path outside the scope it narrowed: nothing is there.
+        empty: bool = false,
+        delay: i64 = 0,
+    };
+
+    fn scopeOf(f: *const FixtureFs, cap: Value.Cap) Scope {
+        if (cap.handle == 0 or cap.handle > f.scopes.items.len) return .{ .delay = cap.delay };
+        return f.scopes.items[cap.handle - 1];
+    }
+
+    fn add(f: *FixtureFs, gpa: std.mem.Allocator, scope: Scope) Error!Value {
+        try f.scopes.append(gpa, scope);
+        return .{ .cap = .{ .kind = .fs, .delay = scope.delay, .handle = @intCast(f.scopes.items.len) } };
+    }
+
+    /// The path a name in the scope is at, or null when it leaves the scope.
+    fn pathIn(gpa: std.mem.Allocator, scope: Scope, name: []const u8) Error!?[]const u8 {
+        if (scope.system == null or scope.empty) return null;
+        const full = try std.fs.path.resolvePosix(gpa, &.{ scope.folder, name });
+        return if (server_mod.within(scope.folder, full)) full else null;
+    }
+};
+
+/// `Fs.fixture()` and `Fs.fixture(delay: d)`: a new file system in memory, empty.
+pub fn fixtureFs(vm: *Vm, delay: i64) Error!Value {
+    const sim = vm.sim orelse return .{ .cap = .{ .kind = .fs, .delay = delay } };
+    try sim.files.systems.append(sim.gpa, .empty);
+    return sim.files.add(sim.gpa, .{ .system = @intCast(sim.files.systems.items.len - 1), .delay = delay });
+}
+
+/// `scoped(path)` and `read_only` on a fixture Fs: a new scope on the same files.
+pub fn fixtureNarrow(vm: *Vm, cap: Value.Cap, name: []const u8, path: []const u8) Error!Value {
+    const sim = vm.sim orelse return .{ .cap = cap };
+    var scope = sim.files.scopeOf(cap);
+    if (std.mem.eql(u8, name, "read_only")) {
+        scope.read_only = true;
+    } else if (try FixtureFs.pathIn(sim.gpa, scope, path)) |folder| {
+        scope.folder = folder;
+    } else scope.empty = true;
+    return sim.files.add(sim.gpa, scope);
+}
+
+fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
+    const sim = vm.sim orelse return fail(vm, .other, row, "an Fs.fixture() works only in a test", .{});
+    const gpa = sim.gpa;
+    const scope = sim.files.scopeOf(a[0].cap);
+    const within = a[a.len - 1].duration;
+    const path: []const u8 = if (which == .fs_list) "." else a[1].string;
+    const writes = switch (which) {
+        .fs_write, .fs_append, .fs_remove, .fs_rename => true,
+        else => false,
+    };
+    if (writes and scope.read_only) return fail(vm, .other, row, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path });
+    if (scope.delay > within) return timedOut(vm);
+    if (try vm.fixtureFault(which != .fs_list, path, within)) |failed| return failed;
+    const system: ?*std.StringArrayHashMapUnmanaged([]const u8) = if (scope.system) |i| &sim.files.systems.items[i] else null;
+    if (which == .fs_list) {
+        const all = system orelse return vm.variant("Ok", &.{.{ .list = &.{} }});
+        if (scope.empty) return vm.variant("Ok", &.{.{ .list = &.{} }});
+        const prefix = if (std.mem.eql(u8, scope.folder, "/")) "/" else try std.fmt.allocPrint(gpa, "{s}/", .{scope.folder});
+        var listed: std.ArrayList([]const u8) = .empty;
+        for (all.keys()) |key| {
+            if (!std.mem.startsWith(u8, key, prefix)) continue;
+            const rest = key[prefix.len..];
+            const name = rest[0 .. std.mem.indexOfScalar(u8, rest, '/') orelse rest.len];
+            const seen = for (listed.items) |n| {
+                if (std.mem.eql(u8, n, name)) break true;
+            } else false;
+            if (!seen) try listed.append(gpa, name);
+        }
+        std.mem.sort([]const u8, listed.items, {}, struct {
+            fn lt(_: void, x: []const u8, y: []const u8) bool {
+                return std.mem.lessThan(u8, x, y);
+            }
+        }.lt);
+        const out = try vm_mod.rawAlloc(vm.heap, Value, listed.items.len);
+        for (listed.items, out) |n, *o| o.* = .{ .string = n };
+        return vm.variant("Ok", &.{.{ .list = out }});
+    }
+    const all = system orelse return missed(vm, path);
+    const full = try FixtureFs.pathIn(gpa, scope, path) orelse return missed(vm, path);
+    switch (which) {
+        .fs_read, .fs_read_lines, .fs_size => {
+            const text = all.get(full) orelse return missed(vm, path);
+            return vm.variant("Ok", &.{switch (which) {
+                .fs_read => .{ .string = text },
+                .fs_size => .{ .int = text.len },
+                else => try lines(vm, text),
+            }});
+        },
+        .fs_write => try all.put(gpa, full, try gpa.dupe(u8, a[2].string)),
+        .fs_append => {
+            const held = all.get(full) orelse "";
+            try all.put(gpa, full, try std.mem.concat(gpa, u8, &.{ held, a[2].string }));
+        },
+        .fs_remove => if (!all.orderedRemove(full)) return missed(vm, path),
+        .fs_rename => {
+            const text = all.get(full) orelse return missed(vm, path);
+            const to = try FixtureFs.pathIn(gpa, scope, a[2].string) orelse return missed(vm, a[2].string);
+            _ = all.orderedRemove(full);
+            try all.put(gpa, to, text);
+        },
+        else => unreachable,
+    }
+    return vm.variant("Ok", &.{.none});
+}
+
+fn missed(vm: *Vm, path: []const u8) Error!Value {
+    return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
+}
+
+fn timedOut(vm: *Vm) Error!Value {
+    return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+}
+
+// ---- output
+
+/// `out.write(text)` and `out.write_line(text)`: to the real stream under mo run; in a test,
+/// to an `Out.fixture()`, whose `written` keeps each call's text, a line with its "\n".
+pub fn writeOut(vm: *Vm, row: prelude.Fn, out: Value.Cap, text: []const u8, line: bool) Error!void {
+    if (vm.server) |s| {
+        s.write(out, text);
+        if (line) s.write(out, "\n");
+        return;
+    }
+    const sim = vm.sim orelse return fail(vm, .other, row, "Out.{s} runs only under mo run, or on an Out.fixture() in a test", .{row.name});
+    if (out.handle == 0 or out.handle > sim.outs.items.len) return;
+    const kept = if (line) try std.fmt.allocPrint(sim.gpa, "{s}\n", .{text}) else try sim.gpa.dupe(u8, text);
+    try sim.outs.items[out.handle - 1].append(sim.gpa, kept);
 }
 
 // ---- maps and sets

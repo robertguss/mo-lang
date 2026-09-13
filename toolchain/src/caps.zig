@@ -338,14 +338,33 @@ const Caps = struct {
     fn bodies(c: *Caps) Error!void {
         for (c.units.items) |u| {
             var pure_reported = false;
+            // The names bound in this unit to an Fs narrowed to read_only.
+            var read_only: std.ArrayList([]const u8) = .empty;
             var i = u.first;
             while (i <= u.last) : (i += 1) {
                 const n = c.node(i);
+                if (n.kind == .binding or n.kind == .var_binding) {
+                    const name = c.text(n.main_token);
+                    var k: usize = 0;
+                    while (k < read_only.items.len) {
+                        if (std.mem.eql(u8, read_only.items[k], name)) _ = read_only.swapRemove(k) else k += 1;
+                    }
+                    if (c.readOnly(n.lhs, read_only.items)) try read_only.append(c.gpa, name);
+                }
                 switch (c.k.callee[i]) {
                     .prelude => |p| {
                         const row = prelude.fns[p];
+                        if (writesFiles(row) and c.readOnly(n.lhs, read_only.items)) {
+                            const src = c.k.tree.source;
+                            const receiver = std.mem.trim(u8, src[c.k.tree.tokens[c.firstToken(n.lhs)].start..c.k.tree.tokens[n.main_token - 1].start], " \t\r\n");
+                            try c.report(.flows_violated, n.main_token, try c.print("{s} writes through {s}, which was narrowed to read_only and only reads; write through the Fs it was narrowed from.", .{ try c.callLabel(n, row), receiver }));
+                        }
                         if (row.only == .tests and u.kind != .test_block) {
-                            try c.report(.outside_params, n.main_token, try c.print("{s}.fixture() builds a capability for tests; outside a test, take a {s} parameter instead.", .{ row.recv, row.recv }));
+                            const what = if (std.mem.eql(u8, row.name, "fixture"))
+                                try c.print("{s}.fixture() builds a capability for tests; outside a test, take a {s} parameter instead.", .{ row.recv, row.recv })
+                            else
+                                try c.print("{s}.{s} reads what an {s}.fixture() kept, which only a test has.", .{ row.recv, row.name, row.recv });
+                            try c.report(.outside_params, n.main_token, what);
                             pure_reported = true;
                         }
                         const within = c.hasWithin(n);
@@ -368,6 +387,38 @@ const Caps = struct {
                     }
                 }
             }
+        }
+    }
+
+    /// The Fs rows that change the file system.
+    fn writesFiles(row: prelude.Fn) bool {
+        if (!std.mem.eql(u8, row.recv, "Fs")) return false;
+        for ([_][]const u8{ "write", "append", "remove", "rename" }) |name| {
+            if (std.mem.eql(u8, row.name, name)) return true;
+        }
+        return false;
+    }
+
+    /// Whether an Fs expression is narrowed to read_only where this unit can see it:
+    /// `x.read_only`, `scoped` on one, or a name bound to one. An Fs parameter may be
+    /// either, so it is not; the run refuses a write through one (stdlib.zig, server.zig).
+    fn readOnly(c: *Caps, i: Index, names: []const []const u8) bool {
+        const n = c.node(i);
+        switch (n.kind) {
+            .member, .member_call => switch (c.k.callee[i]) {
+                .prelude => |p| {
+                    const row = prelude.fns[p];
+                    if (!std.mem.eql(u8, row.recv, "Fs")) return false;
+                    if (std.mem.eql(u8, row.name, "read_only")) return true;
+                    return std.mem.eql(u8, row.name, "scoped") and c.readOnly(n.lhs, names);
+                },
+                else => return false,
+            },
+            .name_ref => {
+                for (names) |name| if (std.mem.eql(u8, name, c.text(n.main_token))) return true;
+                return false;
+            },
+            else => return false,
         }
     }
 
@@ -620,6 +671,21 @@ test "flows: a T reaching the capability by field, interpolation, or a bound nam
         \\  flows(Nothing, into: Clock)
         \\end
     , &.{"MO0405"});
+}
+
+test "a write through an Fs narrowed to read_only, where the function can see it, is refused" {
+    try expectCodes(
+        \\module T.ReadOnly
+        \\fn save(fs: Fs, text: String) : Bool
+        \\  var logs = fs.scoped("logs").read_only
+        \\  wrote = fs.write("a.txt", text, within: 1.minute) is Ok(_)
+        \\  kept = logs.scoped("old").append("b.txt", text, within: 1.minute) is Ok(_)
+        \\  gone = fs.read_only.remove("c.txt", within: 1.minute) is Ok(_)
+        \\  logs = fs
+        \\  moved = logs.rename("a.txt", "b.txt", within: 1.minute) is Ok(_)
+        \\  wrote and kept and gone and moved
+        \\end
+    , &.{ "MO0404", "MO0404" });
 }
 
 test "a recipe's signatures take only the capabilities its needs line names" {

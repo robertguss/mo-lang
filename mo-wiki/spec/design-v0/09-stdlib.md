@@ -135,6 +135,10 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 | `Fs` | `read_only` | | `Fs` | narrowed to reading |
 | `Fs` (on type) | `fixture` | | `Fs` | an empty file system: every read is `Missing`, `list` is `Ok([])`; tests only |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | every call that waits less than `delay` is `Timeout`; tests only |
+| `Fs` | `write` | `path: String`, `text: String` | `Result(none, FsError)` | the file holds exactly the text, created when it is not there, and is on disk (`fsync`) before `Ok`; `Missing(path)` for a path outside the scope, a folder that is not there, or anything that is not a file. On an `Fs.fixture()` the files are in memory and every read sees what was written; a call that fails changes nothing. On an `Fs` narrowed to `read_only`, this row and the three below are refused by the checker (`MO0404`) where it sees the narrowing, and crash where it cannot |
+| `Fs` | `append` | `path: String`, `text: String` | `Result(none, FsError)` | the text added at the end of the file, created when it is not there; durable (`fsync`) before it returns `Ok`; a call past its deadline is `Timeout`, and what it wrote stays |
+| `Fs` | `remove` | `path: String` | `Result(none, FsError)` | the file is gone; `Missing(path)` when no such file is in the scope |
+| `Fs` | `rename` | `from: String`, `to: String` | `Result(none, FsError)` | the file at `from` is at `to`, replacing a file there; `Missing(from)` when no such file is in the scope, `Missing(to)` when `to` is outside it or in a folder that is not there |
 
 ## Output
 
@@ -142,6 +146,9 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 |---|---|---|---|---|
 | `Out` | `write` | `String` | none | the text, as it is |
 | `Out` | `write_line` | `String` | none | the text, then `"\n"` |
+| `Out` | `flush` | | none | what was written goes out now, not when `main` returns |
+| `Out` (on type) | `fixture` | | `Out` | an `Out` that keeps what is written to it; tests only |
+| `Out` | `written` | | `List(String)` | what a fixture `Out` was given, one string per `write` or `write_line` (a line with its `"\n"`); tests only |
 
 ## JSON
 
