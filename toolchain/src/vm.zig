@@ -25,6 +25,7 @@ const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
 const sim_mod = @import("sim.zig");
+const stdlib = @import("stdlib.zig");
 const types = @import("types.zig");
 
 const Op = bytecode.Op;
@@ -668,6 +669,8 @@ pub const Vm = struct {
         out_write,
         process,
         never_only,
+        /// A design-v0/09 row stdlib.zig runs.
+        stdlib,
     };
 
     const prim_names = std.StaticStringMap(Prim).initComptime(.{
@@ -693,11 +696,11 @@ pub const Vm = struct {
 
     /// Every prelude row has an implementation, or the toolchain does not build.
     const prim_of = blk: {
-        @setEvalBranchQuota(4000);
+        @setEvalBranchQuota(20_000);
         var table: [prelude.fns.len]Prim = undefined;
         for (prelude.fns, 0..) |f, i| {
             const head = f.recv[0 .. std.mem.indexOfScalar(u8, f.recv, '(') orelse f.recv.len];
-            table[i] = prim_names.get(head ++ "." ++ f.name) orelse @compileError("vm.zig has no implementation of prelude row " ++ head ++ "." ++ f.name);
+            table[i] = prim_names.get(head ++ "." ++ f.name) orelse if (stdlib.row_of[i] != .none) .stdlib else @compileError("vm.zig has no implementation of prelude row " ++ head ++ "." ++ f.name);
         }
         break :blk table;
     };
@@ -831,6 +834,7 @@ pub const Vm = struct {
                     },
                 };
             },
+            .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
             .never_only => {
@@ -1136,17 +1140,10 @@ fn wrap(kind: types.IntKind, v: i128) i128 {
     };
 }
 
-/// Graphemes, approximated as code points that are not combining marks: `café` is 4
-/// however it is encoded. Full segmentation (emoji sequences) waits for the stdlib.
+/// Graphemes, approximated as a code point with the combining marks after it: `café` is
+/// 4 however it is encoded (stdlib.Graphemes). Full segmentation (emoji sequences) waits.
 fn graphemes(s: []const u8) i128 {
-    const view = std.unicode.Utf8View.init(s) catch return @intCast(s.len);
-    var it = view.iterator();
-    var n: i128 = 0;
-    while (it.nextCodepoint()) |cp| {
-        const combining = (cp >= 0x300 and cp <= 0x36F) or (cp >= 0x1AB0 and cp <= 0x1AFF) or (cp >= 0x1DC0 and cp <= 0x1DFF) or (cp >= 0x20D0 and cp <= 0x20FF) or (cp >= 0xFE20 and cp <= 0xFE2F);
-        if (!combining) n += 1;
-    }
-    return n;
+    return stdlib.count(s);
 }
 
 // ---- tests

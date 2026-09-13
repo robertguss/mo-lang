@@ -17,6 +17,7 @@ pub const caps = @import("caps.zig");
 pub const loops = @import("loops.zig");
 pub const bytecode = @import("bytecode.zig");
 pub const vm = @import("vm.zig");
+pub const stdlib = @import("stdlib.zig");
 pub const region = @import("region.zig");
 pub const memo = @import("memo.zig");
 pub const sim = @import("sim.zig");

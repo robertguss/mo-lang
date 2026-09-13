@@ -14,9 +14,10 @@
 //!   none                                            no value (a statement-only call)
 const std = @import("std");
 
-/// `grammar` rows are named by spec/grammar.md or design-v0; `corpus_only` rows exist
-/// because a corpus file needs them and are listed in examples/GAPS.md.
-pub const Origin = enum { grammar, corpus_only };
+/// `grammar` rows are named by spec/grammar.md or design-v0; `stdlib` rows by
+/// design-v0/09-stdlib.md; `corpus_only` rows exist because a corpus file needs them and
+/// are listed in examples/GAPS.md.
+pub const Origin = enum { grammar, stdlib, corpus_only };
 
 pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, handle, capability, error_enum };
 
@@ -156,6 +157,40 @@ pub const fns = [_]Fn{
     .{ .recv = "String", .name = "size", .ret = "UInt64" },
     .{ .recv = "String", .name = "bytes", .ret = "List(UInt8)" },
     .{ .recv = "String", .name = "starts_with?", .params = &.{"String"}, .ret = "Bool" },
+    .{ .recv = "String", .on_type = true, .name = "from_bytes", .params = &.{"List(UInt8)"}, .ret = "Option(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "chars", .ret = "List(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "split", .params = &.{"String"}, .ret = "List(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "lines", .ret = "List(String)", .origin = .stdlib },
+    .{ .recv = "String", .name = "trim", .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "ends_with?", .params = &.{"String"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "String", .name = "contains?", .params = &.{"String"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "String", .name = "index_of", .params = &.{"String"}, .ret = "Option(UInt64)", .origin = .stdlib },
+    .{ .recv = "String", .name = "slice", .params = &.{ "UInt64", "UInt64" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "replace", .params = &.{ "String", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_upper", .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_lower", .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "pad_left", .params = &.{ "UInt64", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "pad_right", .params = &.{ "UInt64", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "repeat", .params = &.{"UInt64"}, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .on_type = true, .name = "join", .params = &.{ "List(String)", "String" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_u64", .ret = "Option(UInt64)", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_i64", .ret = "Option(Int64)", .origin = .stdlib },
+    .{ .recv = "String", .name = "to_f64", .ret = "Option(Float64)", .origin = .stdlib },
+    // Integers: named conversions across widths; a value that does not fit is a crash
+    .{ .recv = "Int", .name = "to_u8", .ret = "UInt8", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_u16", .ret = "UInt16", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_u32", .ret = "UInt32", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_u64", .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_i64", .ret = "Int64", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u8", .ret = "Option(UInt8)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u16", .ret = "Option(UInt16)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u32", .ret = "Option(UInt32)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_u64", .ret = "Option(UInt64)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "checked_to_i64", .ret = "Option(Int64)", .origin = .stdlib },
+    .{ .recv = "Int", .name = "to_f64", .ret = "Float64", .origin = .stdlib },
+    // Floats
+    .{ .recv = "Float64", .name = "round", .params = &.{"UInt64"}, .ret = "Float64", .origin = .stdlib },
+    .{ .recv = "Float64", .name = "to_string", .params = &.{"UInt64"}, .ret = "String", .origin = .stdlib },
     // Integers: the named edge behaviours
     .{ .recv = "Int", .name = "checked_add", .params = &.{"N"}, .ret = "Option(N)" },
     .{ .recv = "Int", .name = "checked_sub", .params = &.{"N"}, .ret = "Option(N)" },

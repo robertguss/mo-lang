@@ -1,6 +1,6 @@
 # The prelude
 
-Every stdlib type, variant, function, and operator a Mo module may use without declaring it. The same rows live as data in `src/prelude.zig`; the checker reads nothing else. **Nothing outside these tables exists.** A row marked *corpus-only* is not named by `mo-wiki/spec/grammar.md` or design-v0: a corpus file needs it, and `examples/GAPS.md` records it until the stdlib chapter settles it.
+Every stdlib type, variant, function, and operator a Mo module may use without declaring it. The same rows live as data in `src/prelude.zig`; the checker reads nothing else. **Nothing outside these tables exists.** A row marked *stdlib (09)* is named by `mo-wiki/spec/design-v0/09-stdlib.md`, which says what each one does; `src/stdlib.zig` runs it. A row marked *corpus-only* is not named by `mo-wiki/spec/grammar.md` or design-v0: a corpus file needs it, and `examples/GAPS.md` records it until the stdlib chapter settles it.
 
 Type strings: `T`, `U`, `A`, `E` are type variables fresh at each call; `N` is the receiver's own integer type; `P` is the process a handle or message belongs to; `Message(P)` is one of P's `message` lines; `Reply` is the reply type of the message passed; `none` is no value (the call is a statement).
 
@@ -84,6 +84,25 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `String` | `size` | | `UInt64` (graphemes) | | | grammar |
 | `String` | `bytes` | | `List(UInt8)` | | | grammar |
 | `String` | `starts_with?` | `String` | `Bool` | | | grammar |
+| `String` (on type) | `from_bytes` | `List(UInt8)` | `Option(String)` | | | stdlib (09) |
+| `String` | `chars`, `lines` | | `List(String)` | | | stdlib (09) |
+| `String` | `split` | `String` | `List(String)` | | | stdlib (09) |
+| `String` | `trim`, `to_upper`, `to_lower` | | `String` | | | stdlib (09) |
+| `String` | `ends_with?`, `contains?` | `String` | `Bool` | | | stdlib (09) |
+| `String` | `index_of` | `String` | `Option(UInt64)` | | | stdlib (09) |
+| `String` | `slice` | `UInt64`, `UInt64` | `String` | | | stdlib (09) |
+| `String` | `replace` | `String`, `String` | `String` | | | stdlib (09) |
+| `String` | `pad_left`, `pad_right` | `UInt64`, `String` | `String` | | | stdlib (09) |
+| `String` | `repeat` | `UInt64` | `String` | | | stdlib (09) |
+| `String` (on type) | `join` | `List(String)`, `String` | `String` | | | stdlib (09) |
+| `String` | `to_u64` | | `Option(UInt64)` | | | stdlib (09) |
+| `String` | `to_i64` | | `Option(Int64)` | | | stdlib (09) |
+| `String` | `to_f64` | | `Option(Float64)` | | | stdlib (09) |
+| any integer | `to_u8`, `to_u16`, `to_u32`, `to_u64`, `to_i64` | | that type | | | stdlib (09) |
+| any integer | `checked_to_u8`, `checked_to_u16`, `checked_to_u32`, `checked_to_u64`, `checked_to_i64` | | `Option` of that type | | | stdlib (09) |
+| any integer | `to_f64` | | `Float64` | | | stdlib (09) |
+| `Float64` | `round` | `UInt64` | `Float64` | | | stdlib (09) |
+| `Float64` | `to_string` | `UInt64` | `String` | | | stdlib (09) |
 | any integer `N` | `checked_add`, `checked_sub`, `checked_mul` | `N` | `Option(N)` | | | grammar |
 | any integer `N` | `saturating_add`, `saturating_sub`, `saturating_mul` | `N` | `N` | | | grammar |
 | any integer `N` | `wrapping_add`, `wrapping_sub`, `wrapping_mul` | `N` | `N` | | | grammar |
