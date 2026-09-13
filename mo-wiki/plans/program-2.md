@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [agents, roadmap, stdlib]
 sources: [spec/programs/02-log-analyzer.md, plans/program-menu.md]
-status: in-progress
+status: done
 ---
 
 # Program 2: `logstat` in Mo, brief for the worker
@@ -31,6 +31,10 @@ Modules under `examples/programs/logstat/`: `Logstat.Parse` (line to record), `L
 ## Done when
 
 `mo test` passes on every module, `mo run` on the fixture matches the expected output for the text and the JSON form, `mo fmt --check` is clean, everything is pushed, and the final message contains the measurements the spec asks for plus every decision the spec left open.
+
+## Result
+
+Written in 25.5 minutes: four modules, 78 functions, median 4.5 lines, max 21. Verified by Fable: tests pass, text and JSON match the expected output, once the 500-line file law is lifted for the joined file. Three toolchain bugs recorded in `examples/programs/logstat/TOOLCHAIN-BUGS.md`: one file sees one module (`use` imports no functions), the corpus test cannot hold a multi-file program, and the file limit plus bug 1 cap a program at 500 lines. Nine stdlib gaps in `GAPS.md`. The interpreter is slow (3.7 ms per line) and `push` is quadratic. All four go to [[interpreter-step-7]] and [[interpreter-step-8]].
 
 ## Related
 - [[program-menu]]

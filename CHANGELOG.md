@@ -2,6 +2,11 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Session 5, overnight — 13 Sep 2026
+
+- **Program 2, `logstat`, in Mo.** Written by Opus from `spec/programs/02-log-analyzer.md` in 25.5 minutes: four modules, 78 functions, median 4.5 lines. Correct end to end once the file law is lifted for the joined file. Three toolchain bugs and nine stdlib gaps recorded.
+- **The control run.** The same spec in Go (12.9 min) and Python (8 min) by the same model; all three verified. Result and reading on `plans/control-run.md`.
+
 ## Session 5 — 12 Sep 2026
 
 - **Spec.** `grammar.md`: seven productions fixed (`cmp`, `assert`, `old`, `never`, `add`, `params_untyped`, comprehension) and a "Session 5 decisions" section settling every gap the corpus found. Chapter 2: deadline law narrowed to calls that can wait. Chapter 3: platform chosen by the toolchain; supervisors take parameters. Chapter 4: example and rules updated to match. Chapter 6: recipe example gains a `requires` for its `rejects` test.
