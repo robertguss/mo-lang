@@ -20,7 +20,6 @@ pub const vm = @import("vm.zig");
 pub const stdlib = @import("stdlib.zig");
 pub const json = @import("json.zig");
 pub const region = @import("region.zig");
-pub const memo = @import("memo.zig");
 pub const sim = @import("sim.zig");
 pub const server = @import("server.zig");
 pub const net = @import("net.zig");
