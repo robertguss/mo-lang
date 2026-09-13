@@ -1,0 +1,7 @@
+2026-09-12T10:00:30Z POST /payments/4111111111111111/capture 200 480
+this line is not a log line
+2026-09-12T10:01:00Z GET /api/users 200 11
+2026-09-12T10:01:30Z POST /api/orders 99 20
+
+2026-09-12T10:03:00Z GET /payments/4111111111111111/capture 500 340
+2026-09-12T10:02:30Z GET /api/users 200

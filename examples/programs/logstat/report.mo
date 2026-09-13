@@ -145,8 +145,7 @@ test "the busiest section, and the three sections apart by one blank line"
 end
 
 test "an empty summary still has every section"
-  assert text(empty(),
-    5) == lines(["requests       0",
+  expected = lines(["requests       0",
     "errors         0  (0.0%)",
     "malformed      0",
     "per minute   0.0",
@@ -154,13 +153,14 @@ test "an empty summary still has every section"
     "slowest",
     "",
     "busiest"])
+  assert text(empty(), 5) == expected
 end
 
 test "the JSON form is one object in the spec's field order"
   expected = "{\"requests\": 4, \"errors\": 1, \"error_rate\": 0.25, \"malformed\": 1, \"per_minute\": 2.0, \"slowest\": [{\"ms\": 1340, \"method\": \"POST\", \"path\": \"/api/orders\", \"at\": \"2026-09-12T10:00:30Z\"}, {\"ms\": 340, \"method\": \"GET\", \"path\": \"/cards/****************\", \"at\": \"2026-09-12T10:02:00Z\"}], \"busiest\": [{\"count\": 2, \"method\": \"GET\", \"path\": \"/api/users\"}, {\"count\": 1, \"method\": \"POST\", \"path\": \"/api/orders\"}]}\n"
   assert json(fixture(), 2) == expected
-  assert json(empty(),
-    5) == "{\"requests\": 0, \"errors\": 0, \"error_rate\": 0.0, \"malformed\": 0, \"per_minute\": 0.0, \"slowest\": [], \"busiest\": []}\n"
+  nothing = "{\"requests\": 0, \"errors\": 0, \"error_rate\": 0.0, \"malformed\": 0, \"per_minute\": 0.0, \"slowest\": [], \"busiest\": []}\n"
+  assert json(empty(), 5) == nothing
 end
 
 test "integers group by thousands, and a decimal groups its whole part"
