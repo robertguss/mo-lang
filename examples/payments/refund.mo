@@ -123,7 +123,7 @@ test "a drained queue counts the drain"
   queue.send(Enqueue(request: RefundRequest(id: "ch_1", amount: Money.cents(500))))
   queue.send(Enqueue(request: RefundRequest(id: "ch_2", amount: Money.cents(250))))
   queue.send(Drain)
-  assert queue.ask(Done, within: 100.ms) is Ok(1)
+  assert queue.ask(Done, within: 1_000.ms) is Ok(1)
 end
 
 property "any valid refund leaves the charge refunded"

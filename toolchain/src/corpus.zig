@@ -3,7 +3,10 @@
 //! file's `# expect MO0xxx: sentence` line. At the run stage every test of every
 //! other file passes, every `test rejects` trips, every property holds, and no process
 //! crashes; the only skips are recipe tests that reach a signature no agent has
-//! implemented. Until a stage exists it returns NotImplemented and the file
+//! implemented. Every test that starts a process also runs under 100 seeds with faults
+//! (`mo test --sim 100`, seeded by the file's hash) and holds under them, except
+//! `processes/racy.mo`, whose tests must fail under --sim and pass without it.
+//! Until a stage exists it returns NotImplemented and the file
 //! counts as skipped, so this test is green on day one and tightens as stages land.
 //! Each file is loaded with every module it uses (program.zig), and its own tests run.
 //! Every file, rejects/ included, also passes `mo fmt --check`: it is already in its
@@ -30,9 +33,18 @@ pub const Tally = struct {
     /// Files whose tests start a process.
     process_files: u32 = 0,
     skipped_tests: u32 = 0,
+    /// Process tests that held under 100 seeds with faults, and those that passed only
+    /// without faults.
+    held_under_faults: u32 = 0,
+    fault_free_only: u32 = 0,
 };
 
 pub const recipe_skip = "until an agent implements the recipe";
+
+/// Seeded runs of every process test in the corpus test.
+pub const sim_runs: u32 = 100;
+/// The corpus's race: its tests hold in the fixed order and fail under --sim.
+pub const racy = "processes/racy.mo";
 
 pub fn isRejectsPath(path: []const u8) bool {
     return std.mem.startsWith(u8, path, "rejects/") or std.mem.indexOf(u8, path, "/rejects/") != null;
@@ -225,6 +237,22 @@ pub fn fmtCheck(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u
     return true;
 }
 
+/// racy.mo under --sim: every test failed in a seeded run (so it held in the fixed order
+/// first), and every test passes when the file runs without --sim.
+fn checkRacy(arena: std.mem.Allocator, prog: program.Program, simulated: runner.Run, tally: *Tally) !void {
+    var diags: diag.List = .empty;
+    const fixed = try pipeline.testProgram(arena, prog, false, .{}, &diags);
+    var ok = simulated.results.len > 0 and fixed.summary.failures == 0;
+    for (simulated.results) |result| {
+        if (result.outcome != .failed or result.sim_seed == null) ok = false;
+    }
+    if (simulated.summary.processes > 0) tally.process_files += 1;
+    if (ok) tally.passed += 1 else {
+        tally.failed += 1;
+        std.debug.print("corpus: {s} must hold without --sim and fail under it\n", .{racy});
+    }
+}
+
 /// A diagnostic, in the file it points into.
 fn printFinding(prog: program.Program, d: diag.Record) void {
     const loc = diag.locate(prog.files, d.at);
@@ -242,12 +270,17 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
     // A rejects/ file breaks a law, so it must lex and parse; only the checker rejects it.
     const expect_reject = isRejectsPath(rel) and @intFromEnum(stage) >= @intFromEnum(pipeline.Stage.check);
     if (stage == .run and !expect_reject) {
-        if (pipeline.testProgram(arena, prog, false, .{}, &diags)) |r| {
+        const options: runner.Options = .{ .sim_runs = sim_runs, .sim_seed = runner.seedOf(source) };
+        if (pipeline.testProgram(arena, prog, false, options, &diags)) |r| {
+            if (std.mem.eql(u8, rel, racy)) return checkRacy(arena, prog, r, tally);
+            tally.held_under_faults += r.summary.held_under_faults;
+            tally.fault_free_only += r.summary.fault_free_only;
             var ok = r.summary.failures == 0;
             for (r.results) |result| {
                 const reason = if (result.report) |report| report.clause else "";
                 switch (result.outcome) {
-                    .passed, .tripped_as_expected => continue,
+                    // A test that passes only without faults is shown, and counted.
+                    .passed, .tripped_as_expected => if (result.fault_seed == null) continue,
                     .skipped => {
                         tally.skipped_tests += 1;
                         if (std.mem.startsWith(u8, rel, "recipes/") and std.mem.endsWith(u8, reason, recipe_skip)) continue;
@@ -317,9 +350,13 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
-    // The seven processes/ files and the refund queue start processes and run their tests.
+    // The eight processes/ files and the refund queue start processes and run their tests.
     if (pipeline.implemented == .run) {
-        try std.testing.expectEqual(@as(u32, 8), tally.process_files);
+        try std.testing.expectEqual(@as(u32, 9), tally.process_files);
+        // Each of the ten process tests outside racy.mo held under 100 seeds with faults,
+        // and none needs a world where nothing fails.
+        try std.testing.expectEqual(@as(u32, 10), tally.held_under_faults);
+        try std.testing.expectEqual(@as(u32, 0), tally.fault_free_only);
         // No test is skipped for a process reason: the four recipe tests are the only skips.
         try std.testing.expectEqual(@as(u32, 4), tally.skipped_tests);
     }

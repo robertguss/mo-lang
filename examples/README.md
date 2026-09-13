@@ -11,6 +11,8 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 
 `mo test <file>` runs a file's tests on the interpreter today, with processes on the deterministic `Mo.Sim` scheduler. Every `test` must pass with no crash in any process it starts, every `test rejects` must trip a `requires`, a refinement, or an `invariant`, and every `property` must hold under 200 seeds. It then prints the `verified:` line. A recipe test that calls a signature no agent has implemented yet is skipped.
 
+`mo test --sim N <file>` is tier 3: every test that starts a process runs N more times (default 100), each under a seed that chooses the delivery order, whether a statement's sends are delivered before the next statement, the clock's advance, and which fixture calls fail or are slow. A failure prints its seed and the interleaving; a test that holds only when no fixture fails is reported as passing only without faults. The corpus test runs every file with `--sim 100`: every process test holds under faults, except `processes/racy.mo`, whose test must fail under `--sim` and pass without it.
+
 `mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
 
 ## basics
@@ -56,6 +58,7 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 32. `processes/supervisor.mo`: `supervisor` with `restart:` and `max_restarts:`
 33. `processes/pipeline.mo`: two processes, one sending to the other
 52. `processes/invariant-trips.mo`: chapter 4's `invariant "done never goes backwards"` tripping a `test rejects`
+57. `processes/racy.mo`: a race the fixed order hides; its test passes under `mo test` and fails under `mo test --sim`
 
 ## tests
 34. `tests/test.mo`: `assert`, and `assert x is Ok(user)`

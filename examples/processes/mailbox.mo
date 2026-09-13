@@ -31,10 +31,10 @@ test "writes within the bound all arrive"
   assert journal.ask(Count, within: 100.ms) is Ok(2)
 end
 
-test "a full mailbox delivers every write"
+test "99 writes and the ask fill the mailbox, and every write arrives"
   journal = Journal.start()
-  for _ in 0..100
+  for _ in 0..99
     journal.send(Write(text: "line"))
   end
-  assert journal.ask(Count, within: 100.ms) is Ok(100)
+  assert journal.ask(Count, within: 100.ms) is Ok(99)
 end
