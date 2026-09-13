@@ -30,7 +30,6 @@ const vm_mod = @import("vm.zig");
 const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
 const Region = @import("region.zig").Region;
-const Memo = @import("memo.zig").Memo;
 
 /// The vm's errors, since the rows build values with it; only OutOfMemory comes from here.
 pub const Error = vm_mod.Error;
@@ -99,12 +98,6 @@ pub const Server = struct {
         defer if (scratch) |*r| r.release();
         const regions = values != null and scratch != null;
         if (regions) machine.useRegions(&values.?, &scratch.?);
-        // A call reaches the world only through a capability, so a pure call seen before can
-        // be answered from memory (memo.zig). Starting a process or sending to one needs no
-        // capability, so a program with processes remembers nothing.
-        var memo: ?Memo = if (processes) null else try .init(s.gpa, program.functions.len);
-        defer if (memo) |*m| m.deinit();
-        if (memo) |*m| machine.memo = m;
         defer s.sockets.closeAll();
         // Each process runs its updates on a thread of its own, and the threads take turns,
         // so one waiting on the network does not hold up the rest (turns.zig).

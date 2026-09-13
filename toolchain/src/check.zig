@@ -62,6 +62,7 @@ pub const Code = enum {
     bare_use,
     not_exposed,
     no_module,
+    never_unchecked,
 };
 
 pub const Entry = diag.Entry;
@@ -108,6 +109,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .bare_use = .{ .code = "MO0321", .category = .laws, .what = "use <Module> brings nothing into scope; name what you use, as in use <Module>{Type, function}.", .why = "A use line names what it brings in, types and functions from the module's expose line (grammar, Session 5), so every bare name in a file is found on its own use lines. There are no wildcards and no aliases.", .fixes = &.{} },
     .not_exposed = .{ .code = "MO0322", .category = .laws, .what = "<Module> does not expose <name>; a use names only what is on a module's expose line.", .why = "A module's expose line is its whole public surface (grammar §2); everything else is private, so a use names only what the module exposes.", .fixes = &.{} },
     .no_module = .{ .code = "MO0323", .category = .laws, .what = "<Module> is not a module of this program: there is no <path> under the program root.", .why = "A program is a tree of files: A.B is a/b.mo under the program root, the nearest directory holding a mo.root file, else the main file's own directory (grammar, Session 5). A use names a module of the program.", .fixes = &.{} },
+    .never_unchecked = .{ .code = "MO0324", .category = .laws, .what = "this never cannot be checked: a run records no <Type> values, only structs, enums, and primitive values.", .why = "A never is checked at the end of every test, test rejects, and property run, over the values of each type it reads with T.all that the run held (chapter 2, contract laws). A run records structs, enums, aliases, and primitive values; a capability, a trait, or an opaque type is not recorded, so a never over one would pass without checking anything, and a never that cannot be checked does not compile.", .fixes = &.{} },
 });
 
 // ---- what the checker hands on
@@ -2873,6 +2875,17 @@ const Checker = struct {
         return c.expr(a, expected);
     }
 
+    /// Whether a run records values of the type named `tname` for `T.all` (sim.zig): a
+    /// struct, an enum, an alias, or a primitive value type.
+    fn recordable(c: *Checker, tname: []const u8) bool {
+        if (c.type_names.get(tname)) |d| return switch (c.decls.items[d].kind) {
+            .struct_, .enum_, .alias, .prelude_enum => true,
+            .opaque_, .trait, .process, .supervisor, .recipe => false,
+        };
+        const p = primitive(tname) orelse return false;
+        return c.pool.get(p).tag != .cap;
+    }
+
     fn staticCall(c: *Checker, i: Index, recv: Index, name: []const u8, args: []const u32) Error!Id {
         const tname = c.text(c.node(recv).main_token);
         c.node_types[recv] = types.unknown;
@@ -2906,7 +2919,11 @@ const Checker = struct {
             }
         }
         if (std.mem.eql(u8, name, "all")) {
-            if (!c.frame.in_never) try c.reportTok(.misplaced, c.node(i).main_token, try c.print("{s}.all names every {s} the program holds, so it appears only inside a never", .{ tname, tname }));
+            if (!c.frame.in_never) {
+                try c.reportTok(.misplaced, c.node(i).main_token, try c.print("{s}.all names every {s} the program holds, so it appears only inside a never", .{ tname, tname }));
+            } else if (!c.recordable(tname)) {
+                try c.reportTok(.never_unchecked, c.node(i).main_token, try c.print("this never cannot be checked: a run records no {s} values, only structs, enums, and primitive values.", .{tname}));
+            }
             for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Type")) {
                 c.callee[i] = .{ .prelude = @intCast(k) };
             };
@@ -3435,6 +3452,29 @@ test "the shape laws: parameters, body lines, nesting, state fields, file lines"
     try state.appendSlice(arena, "  end\n  message Go\n  fn update(state, message)\n    case message\n      Go:\n        state.f0 += 1\n    end\n  end\nend\nsupervisor Top\n  child Big, restart: :always\nend\n");
     try expectCodes(state.items, &.{"MO0305"});
     try expectCodes("module T.File\n" ++ "\n" ** 500, &.{"MO0302"});
+}
+
+test "a never over a type a run cannot record does not compile" {
+    try expectWhat(
+        \\module T.Unchecked
+        \\never "a clock reads two times at once"
+        \\  for clock in Clock.all
+        \\    clock.now != clock.now
+        \\  end
+        \\end
+    , "MO0324", "this never cannot be checked: a run records no Clock values, only structs, enums, and primitive values.");
+    try expectCodes(
+        \\module T.Checked
+        \\never "a red light shows past level 200"
+        \\  for n in UInt8.all, light in Light.all
+        \\    n > 200 and light is Red
+        \\  end
+        \\end
+        \\enum Light
+        \\  Green
+        \\  Red
+        \\end
+    , &.{});
 }
 
 test "bindings: rebinding, unused, a captured var, a var sent to a process" {

@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [compiler, performance, runtime]
 sources: [spec/design-v0/07-toolchain.md, directions/d24-compile-to-c-via-zig.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 13: the C backend

@@ -19,13 +19,17 @@
 //! accumulator reach is copied down and everything else is freed (compact). A write in
 //! place can put a newer value into an older buffer, so each such slot is remembered and
 //! a compaction reaches through it. Under processes each process's vm has a region of its
-//! own, and values cross between vms packed (Parcel, sim.zig). `mo run` gives a program
-//! without processes a Memo (memo.zig), which answers a pure call it has seen before.
+//! own, and values cross between vms packed (Parcel, sim.zig).
+//!
+//! Every call runs its body and checks its contracts, every time, under `mo run` as under
+//! `mo test`: this is the reference semantics, so it answers nothing from a cache. Step 7
+//! remembered pure calls here; its profile of logstat put 75% of the instructions in one
+//! table lookup that a cache hid, and what remained was the dispatch loop. Speed comes
+//! from the C backend (step 13), not from the reference.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
-const Memo = @import("memo.zig").Memo;
 const net_mod = @import("net.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
@@ -138,10 +142,6 @@ pub const Vm = struct {
     frame_budget: usize = 1 << 20,
     /// Region bytes a loop may allocate past twice what it kept at its last compaction.
     loop_budget: usize = 256 << 10,
-    /// Under `mo run`, the calls to pure functions it remembers.
-    memo: ?*Memo = null,
-    /// Instructions run so far; a Memo reads what a call cost from it.
-    steps: u64 = 0,
     /// Set when a call fails with Crash or Skip.
     report: ?contracts.Report = null,
     rng: std.Random.DefaultPrng,
@@ -237,15 +237,6 @@ pub const Vm = struct {
     /// inout parameter, in order.
     fn exec(vm: *Vm, fi: u32, args: []const Value, captures: []const Value) Error!void {
         const f = vm.program.functions[fi];
-        // A remembered call is answered without running; `remember` is the key a result
-        // this call returns is kept under.
-        var remember: ?u64 = null;
-        if (vm.memo) |m| switch (m.lookup(fi, f, args, captures)) {
-            .hit => |v| return vm.push(v),
-            .miss => |key| remember = key,
-            .skip => {},
-        };
-        const steps = vm.steps;
         const frame = vm.mark();
         const locals = try vm.allocValues(f.locals);
         @memcpy(locals[0..args.len], args);
@@ -256,7 +247,6 @@ pub const Vm = struct {
         while (true) {
             const inst = f.code[pc];
             pc += 1;
-            vm.steps += 1;
             switch (inst.op) {
                 .constant => try vm.push(vm.constant(inst.a)),
                 .pop => _ = vm.pop(),
@@ -302,11 +292,7 @@ pub const Vm = struct {
                     const elems = try vm.take(inst.a);
                     try vm.push(if (inst.op == .list) .{ .list = elems } else .{ .tuple = elems });
                 },
-                .record => {
-                    const v: Value = .{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } };
-                    try vm.produced(v);
-                    try vm.push(v);
-                },
+                .record => try vm.push(.{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } }),
                 .variant => try vm.push(.{ .variant = .{ .name = vm.program.constants[inst.a].string, .fields = try vm.take(inst.b) } }),
                 .field => try vm.push(fieldsOf(vm.pop())[inst.a]),
                 .load_field => try vm.push(fieldsOf(locals[inst.a])[inst.b]),
@@ -322,7 +308,6 @@ pub const Vm = struct {
                         .tuple => .{ .tuple = fields },
                         else => unreachable,
                     };
-                    if (changed == .record) try vm.produced(changed);
                     try vm.push(changed);
                 },
                 .is_variant => {
@@ -366,8 +351,6 @@ pub const Vm = struct {
                     vm.stack.shrinkRetainingCapacity(base);
                     try vm.push(v);
                     for (f.inouts) |slot| try vm.push(locals[slot]);
-                    // Parameters are bound once, so the first locals are still the arguments.
-                    if (vm.memo) |m| try m.finish(fi, vm.steps - steps, remember, locals[0..args.len], captures, v);
                     if (vm.region) |r| if (r.top -| frame > vm.frame_budget) try vm.compact(frame, vm.stack.items[base..]);
                     return;
                 },
@@ -439,6 +422,7 @@ pub const Vm = struct {
                     try vm.push(try (try vm.simulator()).ask(to, message, within));
                 },
                 .settle => if (vm.sim) |s| try s.settle(),
+                .observe => if (vm.sim) |s| if (s.records) try s.observe(vm.stack.items[vm.stack.items.len - 1], inst.a),
                 .all => try vm.push(.{ .list = if (vm.sim) |s| s.all(inst.a) else &.{} }),
                 .trip => {
                     const broken = vm.pop().bool;
@@ -789,11 +773,6 @@ pub const Vm = struct {
         return error.Crash;
     }
 
-    /// A struct value the run made, kept for a never's `T.all` (sim.zig).
-    fn produced(vm: *Vm, v: Value) Error!void {
-        if (vm.sim) |s| if (s.records) try s.record(v);
-    }
-
     fn crashWith(vm: *Vm, kind: contracts.Kind, clause_index: u32, values: []const Value) Error {
         var involved: std.ArrayList(contracts.Involved) = .empty;
         const names = [_][]const u8{ "left", "right" };
@@ -1049,7 +1028,6 @@ pub const Vm = struct {
                 fields[2] = .{ .int = 10_000 };
                 fields[3] = .{ .bool = false };
                 const charge: Value = .{ .record = .{ .decl = decl, .fields = fields } };
-                try vm.produced(charge);
                 break :blk try vm.variant("Ok", &.{charge});
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
@@ -1060,7 +1038,6 @@ pub const Vm = struct {
                 fields[2] = a[row.named.len - 1];
                 fields[3] = .{ .bool = false };
                 const charge: Value = .{ .record = .{ .decl = decl, .fields = fields } };
-                try vm.produced(charge);
                 break :blk charge;
             },
             .charge_refunded => a[0].record.fields[3],
@@ -1782,41 +1759,6 @@ test "maps and sets keep their order and find through their index; a var or a fi
         try std.testing.expectEqual(@as(usize, 20), seen.len);
         for (seen, 0..) |x, k| try std.testing.expectEqual(@as(i128, @intCast(k)), x.int);
     }
-}
-
-test "a remembered call gives what running it gives, and a call that trips still trips" {
-    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena_state.deinit();
-    const arena = arena_state.allocator();
-    const program = try compile(arena,
-        \\module T.Memo
-        \\fn digits(n: UInt32) : String
-        \\  requires n < 100
-        \\
-        \\  (0..n).reduce("", fn(text, i) "#{text}#{i % 10}" end)
-        \\end
-        \\fn both(n: UInt32) : (String, String)
-        \\  (digits(n % 7), digits(n % 7 + 1))
-        \\end
-        \\test rejects "a hundred digits"
-        \\  digits(100)
-        \\end
-    );
-    var memo: Memo = try .init(arena, program.functions.len);
-    defer memo.deinit();
-    memo.watch_calls = 2;
-    memo.min_steps = 1;
-    var vm: Vm = .init(arena, &program, 0);
-    vm.memo = &memo;
-    const all = "0123456789";
-    for (0..50) |i| {
-        const pair = (try callNamed(&vm, "both", &.{.{ .int = i }})).tuple;
-        try std.testing.expectEqualStrings(all[0 .. i % 7], pair[0].string);
-        try std.testing.expectEqualStrings(all[0 .. i % 7 + 1], pair[1].string);
-    }
-    try std.testing.expect(memo.stats[program.findFunction("digits").?].hits > 40);
-    try std.testing.expectError(error.Crash, callNamed(&vm, "digits", &.{.{ .int = 100 }}));
-    try std.testing.expectEqual(contracts.Kind.requires, vm.report.?.kind);
 }
 
 test "a negative number is a pattern, and byte_size counts bytes" {

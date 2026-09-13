@@ -119,7 +119,7 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Step 7 accepted: `use` imports functions, program root, multi-file corpus programs, `push` in place, 39 µs per log line in ReleaseFast; 67 minutes | Fable | — | program 3 |
 | `push` grows in place when the list ends where its buffer's last push stopped; older copies keep their length (no unique-owner bit needed under the loop rule) | Fable, from Opus's default | provisional | program 3 |
 | Under `mo run`, values live in a region cleaned at safe points (return, loop iteration, combinator step); `mo test` keeps one arena per test | Fable, from Opus's default | provisional | program 3 |
-| Under `mo run`, a pure call (no capability, no `inout`) is memoized on equal arguments, cache capped at 16 MiB, contract trips never cached | Fable, from Opus's default | provisional, watch closely | program 3; revisit if any semantic surprise appears |
+| Under `mo run`, a pure call (no capability, no `inout`) is memoized on equal arguments, cache capped at 16 MiB, contract trips never cached | Fable, from Opus's default | **overturned** in step 12b: the reference interpreter runs every body and every contract every time | — |
 | A `# exit:` line after a `# run:` line gives the expected exit code; stderr is not compared | Fable, from Opus's default | provisional | — |
 | `MO0311` counts only `rejects` tests in the function's own module | Fable, from Opus's default | provisional | program 3 |
 | `zig build` should install `mo` as ReleaseSafe by default: Mo's own overflow checks live in the VM (step 8 item) | Fable | provisional | step 8 |
@@ -133,7 +133,7 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Step 9 accepted: seeded scheduling, fault injection, `never` over `T.all` under sim, `sim (N runs)`; refund holds under 100 seeds; racy.mo fails only under sim with an interleaving and a replay command; 45 minutes | Fable | — | program 3 |
 | `--sim N` (default 100) runs after the fixed-order run passes; run i uses seed S+i; `--seed S` replays one; `--faults P` (default 5%); scheduling and faults draw separate streams | Fable, from Opus's default | provisional | program 3 |
 | An `ask` times out only when its target spent past the deadline on slow or failed capability calls, never by chance | Fable, from Opus's default | provisional | program 3 |
-| "Passes only without faults" counts as a pass, printed with its seed; `never` blocks are checked only at the end of seeded runs | Fable, from Opus's default | provisional, revisit: a never should also run in plain `mo test` when cheap | program 3 |
+| "Passes only without faults" counts as a pass, printed with its seed; `never` blocks are checked only at the end of seeded runs | Fable, from Opus's default | **overturned** in step 12b for the second half: every `never` runs on every test | — |
 | `T.all` records struct constructions, copies, fixtures, and capability results; enums and primitives are not yet recordable | Fable, from Opus's default | provisional | program 3 |
 | Step 10 accepted: `.mo.ids` sidecar and `mo test --write`, `mo fix` (three loop shapes, unused binding, default parameter), `spec/errors.md` generated from the tables (59 codes), README front door; 60 minutes | Fable | — | program 3 |
 | Sidecar: one `.mo.ids` per program root, JSON, declaration ids are 12 hex digits of a hash of module and name, declaration hash is SHA-256/64 over tokens; a `verified:` line is stale only when its own file's declarations change | Fable, from Opus's default | provisional | program 3 |
@@ -162,6 +162,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Messages, replies, start arguments, and first state are deep-copied between processes; each process reserves up to 16 GiB of address space; the region compacts when it doubles | Fable, from Opus's default | provisional | a day-long kv run |
 | `Fs.write` and `append` fsync; a write past its deadline stays written; rename replaces; a read-only `Fs` passed as a parameter is enforced at run time, not check time | Fable, from Opus's default | provisional, the check-time gap is a step 13 item | step 13 |
 | `Out.written` is tests-only and `Out.flush` is a no-op in tests | Fable, from Opus's default | provisional | program 4 |
+| Step 12b accepted: memoization removed (logstat-4k 12 → 80 ms, accepted), every `never` runs at the end of every test over recorded values, `MO0324` for an uncheckable `never`, a `never` trip satisfies `test rejects`; 25 minutes | Fable | — | step 13 |
+| Values are recorded where held (bindings, parameters, binders, constructions, state fields), inside collections; a type the recorder cannot see (a generic `T`) is a gap, not an error | Fable, from Opus's default | provisional | program 4 |
 
 ## Related
 - [[session-05]]

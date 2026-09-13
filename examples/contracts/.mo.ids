@@ -34,6 +34,21 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "8117e22d272d10a0" }
     },
     {
+      "path": "never-trips.mo",
+      "module": "Contracts.NeverTrips",
+      "declarations": [
+        { "id": "052d817b370e", "name": "module Contracts.NeverTrips", "hash": "72ec56c2492ea4ba" },
+        { "id": "d2ae1234718b", "name": "expose", "hash": "d0c2008f96569734" },
+        { "id": "c471f6972127", "name": "intent", "hash": "e28d73250c3af861" },
+        { "id": "dd1070d657d3", "name": "never \"a seat is given to a guest with no name\"", "hash": "aad6f001fb7376bd" },
+        { "id": "09e4d12c8de7", "name": "struct Seat", "hash": "1724526ca902563f" },
+        { "id": "ca285e4fa555", "name": "fn assign", "hash": "68af0944b9598300" },
+        { "id": "41cef2f8fefa", "name": "test \"a named guest takes a seat\"", "hash": "3b15e4da059cf8da" },
+        { "id": "38408a0d6d7a", "name": "test rejects \"a guest with no name trips the never\"", "hash": "765ff372e46250c8" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "df95981ccdb3b2c3" }
+    },
+    {
       "path": "never.mo",
       "module": "Contracts.Never",
       "declarations": [

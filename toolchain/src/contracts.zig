@@ -16,7 +16,7 @@ pub const Kind = enum {
     refinement,
     /// A process's `invariant` block was true after an `update`.
     invariant,
-    /// A `never` over `T.all` was true for values a seeded run produced.
+    /// A `never` was true for the values a test or property run held.
     never,
     assert,
     overflow,
@@ -58,6 +58,6 @@ pub const Report = struct {
 
     /// A `test rejects` passes only on these.
     pub fn tripsRejects(r: Report) bool {
-        return r.kind == .requires or r.kind == .refinement or r.kind == .invariant;
+        return r.kind == .requires or r.kind == .refinement or r.kind == .invariant or r.kind == .never;
     }
 };

@@ -33,7 +33,6 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/stdlib.zig` | the stdlib rows of design-v0/09: numbers, strings, lists, maps and sets, time, files, output | ch. 6, 09 |
 | `src/json.zig` | `Json.encode` and `Json.decode` | 09 |
 | `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
-| `src/memo.zig` | `mo run` remembers a pure call it has seen: no capability in, so equal arguments give an equal result | ch. 3, 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |

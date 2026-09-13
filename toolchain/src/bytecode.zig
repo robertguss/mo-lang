@@ -106,8 +106,12 @@ pub const Op = enum(u8) {
     ask,
     /// deliver waiting messages, in start order, until every mailbox is empty
     settle,
-    /// push the values of struct decl a the run produced, as a list (a never's `T.all`)
+    /// push the distinct values of recorded type a (Program.recorded_as) the run held, as
+    /// a list (a never's `T.all`)
     all,
+    /// the value on top stays; a test or property run keeps every value inside it, walked
+    /// by checker type a, of a type some never reads with `T.all` (sim.zig, observe)
+    observe,
     /// pop a Bool, then b values; crash with clauses[a], a never's, naming the values by
     /// its generators, when the Bool is true
     trip,
@@ -191,8 +195,8 @@ pub const Supervisor = struct { name: []const u8, decl: u32, children: []const C
 
 pub const Test = struct { kind: TestKind, name: []const u8, function: u32, at: u32 };
 
-/// A `never` over `T.all`: `function` takes nothing, walks its generators over what a
-/// seeded run produced, and trips `clause` naming each generated value by `names`.
+/// A `never`: `function` takes nothing, walks its generators over what a test or property
+/// run held, and trips `clause` naming each generated value by `names`.
 pub const Never = struct { function: u32, clause: u32, names: []const []const u8 };
 
 pub const Program = struct {
@@ -209,8 +213,11 @@ pub const Program = struct {
     processes: []const Process = &.{},
     supervisors: []const Supervisor = &.{},
     nevers: []const Never = &.{},
-    /// The struct decls some never reads with `T.all`: the values a seeded run keeps.
-    never_decls: []const u32 = &.{},
+    /// Checker type id → its index among the types some never reads with `T.all`, whose
+    /// values each test and property run keeps, or `none`.
+    recorded_as: []const u32 = &.{},
+    /// Checker type id → whether a value of it can hold a value of a recorded type.
+    may_hold: []const bool = &.{},
 
     pub fn findFunction(p: *const Program, name: []const u8) ?u32 {
         for (p.checked.sigs, 0..) |s, si| {
@@ -251,6 +258,7 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         l.supervisor_of[di] = @intCast(l.supervisors.items.len);
         try l.supervisors.append(gpa, undefined);
     };
+    try l.findRecorded();
     for (checked.sigs, 0..) |s, si| if (s.kind != .trait) try l.lowerFn(@intCast(si));
     for (l.items()) |it| {
         const n = l.node(it);
@@ -284,7 +292,23 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         .processes = l.processes.items,
         .supervisors = l.supervisors.items,
         .nevers = l.nevers.items,
-        .never_decls = l.never_decls.items,
+        .recorded_as = l.recorded_as,
+        .may_hold = l.may_hold,
+    };
+}
+
+/// What `T.all` keeps values of, told apart: a struct, an enum, an alias, or a primitive
+/// value type; null for any other type, which MO0324 refuses.
+fn recordKey(k: *const check.Checked, id: Id) ?u64 {
+    const t = k.pool.get(k.pool.resolve(id));
+    const key = (@as(u64, @intFromEnum(t.tag)) << 32) | t.a;
+    return switch (t.tag) {
+        .bool, .string, .time, .duration, .int, .float, .alias => key,
+        .decl => switch (k.decls[t.a].kind) {
+            .struct_, .enum_, .prelude_enum => key,
+            else => null,
+        },
+        else => null,
     };
 }
 
@@ -326,7 +350,8 @@ const Lower = struct {
     processes: std.ArrayList(Process) = .empty,
     supervisors: std.ArrayList(Supervisor) = .empty,
     nevers: std.ArrayList(Never) = .empty,
-    never_decls: std.ArrayList(u32) = .empty,
+    recorded_as: []u32 = &.{},
+    may_hold: []bool = &.{},
     /// Checked decl index → index in `processes`, or `none`.
     process_of: []u32 = &.{},
     /// Checked decl index → index in `supervisors`, or `none`.
@@ -379,6 +404,84 @@ const Lower = struct {
     fn intKind(l: *Lower, t: Id) u32 {
         const b = l.baseType(t);
         return if (b.tag == .int) b.a else none;
+    }
+
+    // ---- what a run records for `T.all`
+
+    /// Every `T.all` in the program names a type whose values each test and property run
+    /// keeps; then every type that can hold one of those, so its values are observed.
+    fn findRecorded(l: *Lower) Error!void {
+        const pool = &l.k.pool;
+        const n = pool.list.items.len;
+        l.recorded_as = try l.gpa.alloc(u32, n);
+        @memset(l.recorded_as, none);
+        l.may_hold = try l.gpa.alloc(bool, n);
+        @memset(l.may_hold, false);
+        var keys: std.ArrayList(u64) = .empty;
+        for (l.k.callee, 0..) |callee, i| {
+            if (callee != .prelude) continue;
+            const row = prelude.fns[callee.prelude];
+            if (row.only != .never or !std.mem.eql(u8, row.name, "all")) continue;
+            const list = pool.get(l.typeOf(@intCast(i)));
+            if (list.tag != .list) continue;
+            const key = recordKey(l.k, list.a) orelse continue;
+            if (std.mem.indexOfScalar(u64, keys.items, key) == null) try keys.append(l.gpa, key);
+        }
+        if (keys.items.len == 0) return;
+        for (0..n) |id| {
+            const key = recordKey(l.k, @intCast(id)) orelse continue;
+            if (std.mem.indexOfScalar(u64, keys.items, key)) |k| l.recorded_as[id] = @intCast(k);
+        }
+        // A type holds a recorded one when a part of it does; recursive types settle.
+        var changed = true;
+        while (changed) {
+            changed = false;
+            for (0..n) |id| {
+                if (l.may_hold[id] or (l.recorded_as[id] == none and !l.partHolds(@intCast(id)))) continue;
+                l.may_hold[id] = true;
+                changed = true;
+            }
+        }
+    }
+
+    fn partHolds(l: *Lower, id: Id) bool {
+        const k = l.k;
+        const r = k.pool.resolve(id);
+        if (r != id) return l.may_hold[r];
+        const t = k.pool.get(r);
+        const h = l.may_hold;
+        return switch (t.tag) {
+            .alias => h[t.b],
+            .list, .option, .set => h[t.a],
+            .result, .map => h[t.a] or h[t.b],
+            .tuple => for (k.pool.elems(t)) |e| {
+                if (h[e]) break true;
+            } else false,
+            .decl, .state, .message => blk: {
+                const d = k.decls[t.a];
+                for (k.fields[d.fields.start..d.fields.end]) |f| if (h[f.type]) break :blk true;
+                for (k.variants[d.variants.start..d.variants.end]) |v| {
+                    for (k.fields[v.fields.start..v.fields.end]) |f| if (h[f.type]) break :blk true;
+                }
+                break :blk false;
+            },
+            else => false,
+        };
+    }
+
+    /// The value on top, of type `t`, is held where a run can see it: in a binding, a
+    /// field, a message, or state. A type that cannot hold a recorded value emits nothing.
+    fn observe(l: *Lower, t: Id) Error!void {
+        const r = l.k.pool.resolve(t);
+        if (l.may_hold[r]) _ = try l.emit(.observe, r, 0);
+    }
+
+    /// A parameter in locals[at], of type `t`, holds its argument.
+    fn observeLocal(l: *Lower, at: u32, t: Id) Error!void {
+        if (!l.may_hold[l.k.pool.resolve(t)]) return;
+        _ = try l.emit(.load, at, 0);
+        try l.observe(t);
+        _ = try l.emit(.pop, 0, 0);
     }
 
     fn firstToken(l: *Lower, i: Index) u32 {
@@ -518,6 +621,7 @@ const Lower = struct {
             if (p.inout) try b.inouts.append(l.gpa, at);
         }
         b.result = l.slot();
+        for (params, 0..) |p, k| try l.observeLocal(@intCast(k), p.type);
 
         // On entry: each argument crosses into its parameter's refinement, then requires,
         // then every old(...) operand is kept for ensures.
@@ -725,6 +829,7 @@ const Lower = struct {
         if (l.node(g.lhs).kind == .any_expr) {
             const elem = l.baseType(l.typeOf(g.lhs)).a;
             _ = try l.emit(.generate, elem, try l.constant(.{ .string = l.text(g.main_token) }));
+            try l.observe(elem);
             _ = try l.emit(.store, try l.bindName(l.text(g.main_token), false), 0);
             return l.generators(gens[1..], data);
         }
@@ -733,29 +838,35 @@ const Lower = struct {
         try l.loopEnd(loop);
     }
 
-    /// A `never` whose body walks generators (`for a in Refund.all, ...`): a function of
-    /// nothing that the end of a seeded run calls, and that trips the never's clause on
-    /// the first values its guard admits and its body is true for. A `flows` rule is
-    /// tier 1's (caps.zig) and lowers to nothing.
+    /// A `never`: a function of nothing that the end of every test and property run calls
+    /// (sim.zig, checkNevers). One whose body walks generators (`for a in Refund.all, ...`)
+    /// trips the never's clause on the first values its guard admits and its body is true
+    /// for; one whose body is an expression trips when it is true. A `flows` rule is tier
+    /// 1's (caps.zig) and lowers to nothing.
     fn lowerNever(l: *Lower, it: Index) Error!void {
         const n = l.node(it);
         const body = l.node(n.rhs);
-        if (body.kind != .comprehension) return;
+        if (std.mem.indexOfScalar(Index, l.k.flows, n.rhs) != null) return;
         const quoted = l.text(n.lhs);
         var b: Builder = .{ .name = quoted[1 .. quoted.len - 1], .contract = true };
         l.b = &b;
         const fi = try l.reserve();
         b.result = l.slot();
         const cl = try l.clause(.never, n.main_token);
-        const data = l.tree.extraData(ast.Comprehension, body.lhs);
-        const gens = l.tree.span(data.gens_start, data.gens_end);
         var names: std.ArrayList([]const u8) = .empty;
-        for (gens) |g| {
-            const tok = l.node(g).main_token;
-            if (l.tree.tokens[tok].kind != .underscore) try names.append(l.gpa, l.text(tok));
+        if (body.kind == .comprehension) {
+            const data = l.tree.extraData(ast.Comprehension, body.lhs);
+            const gens = l.tree.span(data.gens_start, data.gens_end);
+            for (gens) |g| {
+                const tok = l.node(g).main_token;
+                if (l.tree.tokens[tok].kind != .underscore) try names.append(l.gpa, l.text(tok));
+            }
+            var binders: std.ArrayList(u32) = .empty;
+            try l.neverGenerators(gens, data, cl, &binders);
+        } else {
+            try l.expr(n.rhs);
+            _ = try l.emit(.trip, cl, 0);
         }
-        var binders: std.ArrayList(u32) = .empty;
-        try l.neverGenerators(gens, data, cl, &binders);
         try l.pushConst(.none);
         _ = try l.emit(.ret, 0, 0);
         l.functions.items[fi] = try l.finish(&b);
@@ -808,6 +919,7 @@ const Lower = struct {
         var fi = try l.reserve();
         try l.bindParams(d.params);
         b.result = l.slot();
+        for (l.k.params[d.params.start..d.params.end], 0..) |p, k| try l.observeLocal(@intCast(k), p.type);
         for (l.k.fields[d.fields.start..d.fields.end]) |f| {
             const init = l.node(f.node).rhs;
             if (init != 0) {
@@ -818,6 +930,7 @@ const Lower = struct {
                 try l.clauses.append(l.gpa, .{ .kind = .other, .text = try std.fmt.allocPrint(l.gpa, "the state field {s} has no zero value; give it = expr", .{f.name}), .at = l.tree.tokens[tok].start, .within = d.name });
                 _ = try l.emit(.zero, f.type, cl);
             }
+            try l.observe(f.type);
             try l.refineField(f, d.name);
         }
         _ = try l.emit(.record, di, d.fields.len());
@@ -963,12 +1076,14 @@ const Lower = struct {
                 l.in_place = .{ .call = n.lhs, .name = name };
                 try l.expr(n.lhs);
                 l.in_place = .{};
+                try l.observe(l.typeOf(n.lhs));
                 // `x = e` on a var is an assignment; the two are the same text.
                 const target = if (l.localVar(name)) |v| v.slot else try l.bindName(name, false);
                 _ = try l.emit(.store, target, 0);
             },
             .var_binding => {
                 try l.expr(n.lhs);
+                try l.observe(l.typeOf(n.lhs));
                 _ = try l.emit(.store, try l.bindName(l.text(n.main_token), true), 0);
             },
             .assign => {
@@ -1038,6 +1153,7 @@ const Lower = struct {
         switch (n.kind) {
             .name_ref => {
                 const target = (try l.resolve(l.text(n.main_token))).?;
+                try l.observe(l.typeOf(i));
                 _ = try l.emit(.store, target.slot, 0);
             },
             .member => {
@@ -1076,7 +1192,9 @@ const Lower = struct {
         _ = try l.emit(.load, list, 0);
         _ = try l.emit(.load, index, 0);
         _ = try l.emit(.index, 0, 0);
-        const binder = if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
+        const iterated = l.baseType(l.typeOf(iter));
+        if (iterated.tag == .list) try l.observe(iterated.a);
+        const binder =if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
         _ = try l.emit(.store, binder, 0);
         try l.b.loops.append(l.gpa, @intCast(l.b.breaks.items.len));
         return .{ .list = list, .index = index, .top = top, .exit = exit, .mark = mark, .kept = kept };
@@ -1149,6 +1267,7 @@ const Lower = struct {
             .pat_wildcard => {},
             .pat_bind => {
                 _ = try l.emit(.load, subject, 0);
+                try l.observe(l.typeOf(p));
                 _ = try l.emit(.store, try l.bindName(l.text(n.main_token), false), 0);
             },
             .pat_literal => {
@@ -1330,7 +1449,10 @@ const Lower = struct {
                 _ = try l.emit(.concat, @intCast(parts.len), 0);
             },
             .name_ref => try l.nameRef(i),
-            .type_name_ref => _ = try l.emit(.variant, try l.constant(.{ .string = l.text(n.main_token) }), 0),
+            .type_name_ref => {
+                _ = try l.emit(.variant, try l.constant(.{ .string = l.text(n.main_token) }), 0);
+                try l.observe(l.typeOf(i));
+            },
             .tuple, .list => {
                 const elems = l.tree.span(n.lhs, n.rhs);
                 for (elems) |e| try l.expr(e);
@@ -1568,13 +1690,11 @@ const Lower = struct {
             return;
         }
         if (row.only == .never) {
-            // `T.all` of a struct T: the values the run produced. An enum's values do not
-            // carry their type, so they are not kept.
-            const elem = l.baseType(l.baseType(l.typeOf(i)).a);
-            const is_struct = elem.tag == .decl and l.k.decls[elem.a].kind == .struct_;
-            if (!std.mem.eql(u8, row.recv, "Type") or !is_struct) return l.halt(i, "", false);
-            if (std.mem.indexOfScalar(u32, l.never_decls.items, elem.a) == null) try l.never_decls.append(l.gpa, elem.a);
-            _ = try l.emit(.all, elem.a, 0);
+            // `T.all`: the distinct values of T the run held (sim.zig).
+            const list = l.k.pool.get(l.typeOf(i));
+            const kept = if (list.tag == .list) l.recorded_as[l.k.pool.resolve(list.a)] else none;
+            if (!std.mem.eql(u8, row.recv, "Type") or kept == none) return l.halt(i, "", false);
+            _ = try l.emit(.all, kept, 0);
             return;
         }
         var kind: u32 = none;
@@ -1706,7 +1826,7 @@ const Lower = struct {
         for ([_][]const u8{ "Some", "Ok", "Error" }) |builtin| if (std.mem.eql(u8, name, builtin)) {
             try l.expr(args[0]);
             _ = try l.emit(.variant, try l.constant(.{ .string = name }), 1);
-            return;
+            return l.observe(l.typeOf(i));
         };
         const t = l.baseType(l.typeOf(i));
         if (t.tag != .decl and t.tag != .message) return l.halt(i, "", false);
@@ -1730,6 +1850,7 @@ const Lower = struct {
         } else {
             _ = try l.emit(.variant, try l.constant(.{ .string = name }), fields.len());
         }
+        try l.observe(l.typeOf(i));
     }
 
     fn anonFn(l: *Lower, i: Index) Error!void {
@@ -1743,6 +1864,8 @@ const Lower = struct {
             try b.param_names.append(l.gpa, l.text(tok));
         }
         b.result = l.slot();
+        const ft = l.k.pool.get(l.typeOf(i));
+        if (ft.tag == .func) for (l.k.pool.elems(ft), 0..) |t, k| try l.observeLocal(@intCast(k), t);
         try l.blockValue(l.tree.span(data.body_start, data.body_end));
         _ = try l.emit(.ret, 0, 0);
         l.b = parent;

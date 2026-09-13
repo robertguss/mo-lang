@@ -9,7 +9,7 @@ Two rules a reader needs:
 
 Where the grammar and chapter 4 ran out, the corpus used the plainest option and recorded it in `GAPS.md`.
 
-`mo test <file>` runs a file's tests on the interpreter today, with processes on the deterministic `Mo.Sim` scheduler. Every `test` must pass with no crash in any process it starts, every `test rejects` must trip a `requires`, a refinement, or an `invariant`, and every `property` must hold under 200 seeds. It then prints the `verified:` line. A recipe test that calls a signature no agent has implemented yet is skipped.
+`mo test <file>` runs a file's tests on the interpreter today, with processes on the deterministic `Mo.Sim` scheduler. Every `test` must pass with no crash in any process it starts, every `test rejects` must trip a `requires`, a refinement, an `invariant`, or a `never`, and every `property` must hold under 200 seeds. Every `never` is checked at the end of every test, `test rejects`, and property run, over the values the run held, with or without `--sim`. It then prints the `verified:` line. A recipe test that calls a signature no agent has implemented yet is skipped.
 
 Every file outside `rejects/` ends with its `verified:` line, written by `mo test --write --sim 100 <file>` and recorded in the `.mo.ids` sidecar at its program root (the file's own folder, or `programs/` for the programs). The sidecar is the toolchain's: a stable id and a content hash per declaration, and the hash of the line. Editing a declaration, or the line, without running `mo test --write` again is `MO0317`, so the corpus test fails on a stale line. `processes/racy.mo` records `verified: types`, since its test fails under `--sim`.
 
@@ -45,6 +45,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 20. `contracts/ensures.mo`: `result`, `old`, `is`, `implies`
 21. `contracts/never.mo`: a two-generator `never` with a guard
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
+62. `contracts/never-trips.mo`: a `never` that plain test data breaks, tripping a `test rejects` under `mo test` without `--sim`
 
 ## effects
 23. `effects/clock.mo`: a function that takes a `Clock`; `clock.now` cannot wait, so it takes no `within:`

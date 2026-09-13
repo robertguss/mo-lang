@@ -5,6 +5,8 @@ const std = @import("std");
 const runner = @import("runner.zig");
 
 /// The line for a module whose tests ran. A failing test earns nothing past types.
+/// `contracts` means every contract the tests reached held, and every never was checked
+/// at the end of every test, test rejects, and property run (runner.zig).
 /// `sim (N runs)` when `mo test --sim N` ran at least one test under seeds with no
 /// failure; `sim (not run)` without --sim, or when no test starts a process. A test that
 /// passes only without faults is a pass, so it does not hold the line back.
