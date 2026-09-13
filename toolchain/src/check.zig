@@ -58,6 +58,7 @@ pub const Code = enum {
     hand_verified,
     use_cycle,
     no_zero,
+    two_mains,
 };
 
 pub const Entry = struct { code: []const u8, category: diag.Category, why: []const u8 };
@@ -100,6 +101,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .hand_verified = .{ .code = "MO0317", .category = .laws, .why = "The verified: line belongs to the toolchain (chapter 5). Until tier 2 computes and writes it, a verified: line in source was written by hand." },
     .no_zero = .{ .code = "MO0319", .category = .laws, .why = "A state field starts at its type's zero value (0, \"\", [], None, false, and tuples and structs of those) unless it writes = expr (grammar, Session 5). An enum, a Time, a capability, a handle, or a refinement that refuses zero has none, so the process could not start." },
     .use_cycle = .{ .code = "MO0318", .category = .laws, .why = "Modules have no import cycles (chapter 2, shape laws), so each module is understood, checked, and cached after the ones it uses." },
+    .two_mains = .{ .code = "MO0320", .category = .laws, .why = "A program has one root, fn main(platform: Platform), in one of its modules (chapter 3, effects; Q18): its capabilities come from one place, and it starts in one place." },
 });
 
 // ---- what the checker hands on
@@ -185,6 +187,12 @@ pub const Checked = struct {
 
     pub fn findDecl(c: *const Checked, name: []const u8) ?u32 {
         for (c.decls, 0..) |d, i| if (std.mem.eql(u8, d.name, name) and d.kind != .prelude_enum) return @intCast(i);
+        return null;
+    }
+
+    /// The signature of `fn main(platform: Platform)`, the program's root, if the module has one.
+    pub fn mainSig(c: *const Checked) ?u32 {
+        for (c.sigs, 0..) |s, i| if (s.kind == .module and std.mem.eql(u8, s.name, "main")) return @intCast(i);
         return null;
     }
 };
@@ -766,7 +774,8 @@ const Checker = struct {
         var ctx: TypeCtx = .{ .generics = &gens, .self_ok = s.kind == .trait, .recipe = s.kind == .recipe };
         const params = try c.resolveParams(c.tree.span(sig.params_start, sig.params_end), &ctx);
         try c.paramLimit(n.main_token, s.name, params);
-        const ret = try c.resolveType(sig.ret, &ctx);
+        // `fn main` has no return type: its body's last line is one more statement.
+        const ret = if (sig.ret == ast.none) types.none else try c.resolveType(sig.ret, &ctx);
         for (c.tree.span(sig.bounds_start, sig.bounds_end)) |b| {
             const bn = c.node(b);
             const gname = c.text(bn.main_token);
@@ -2896,6 +2905,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Float64", types.float64 },       .{ "Bool", types.bool_ },        .{ "String", types.string },
         .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Clock", types.cap(.clock) },
         .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
+        .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;
@@ -2916,6 +2926,30 @@ pub fn useCycle(gpa: std.mem.Allocator, modules: []const ModuleUses) Error!?[]co
         if (color[root] == 0) if (try visitUses(gpa, modules, color, &stack, root)) |cycle| return cycle;
     }
     return null;
+}
+
+pub const ModuleMain = struct { path: []const u8, has_main: bool };
+
+/// The first two modules of a program that declare `fn main`, for MO0320. Inside one
+/// module a second main is MO0205; `mo run` sees one file, so a driver that loads a
+/// program's modules passes every one here, as it does for useCycle.
+pub fn twoMains(modules: []const ModuleMain) ?[2][]const u8 {
+    var first: ?[]const u8 = null;
+    for (modules) |m| {
+        if (!m.has_main) continue;
+        if (first) |f| return .{ f, m.path };
+        first = m.path;
+    }
+    return null;
+}
+
+test "a program has fn main in one module" {
+    const one = [_]ModuleMain{ .{ .path = "App", .has_main = true }, .{ .path = "App.Report", .has_main = false } };
+    try std.testing.expect(twoMains(&one) == null);
+    const two = [_]ModuleMain{ .{ .path = "App", .has_main = true }, .{ .path = "App.Report", .has_main = false }, .{ .path = "Tool", .has_main = true } };
+    const found = twoMains(&two).?;
+    try std.testing.expectEqualStrings("App", found[0]);
+    try std.testing.expectEqualStrings("Tool", found[1]);
 }
 
 fn visitUses(gpa: std.mem.Allocator, modules: []const ModuleUses, color: []u8, stack: *std.ArrayList(usize), i: usize) Error!?[]const []const u8 {

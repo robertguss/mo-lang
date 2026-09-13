@@ -2,7 +2,10 @@
 //!   mo check <file.mo>   tier 1 (lex, parse, check, caps) → exit 0 or diagnostics
 //!   mo test  <file.mo>   tier 2 (run the module's tests)  → one line per test, the
 //!                        summary, and the verified: line; exit 1 when a test fails
-//!   mo run   <file.mo>   runs the module's tests too, until `main` exists
+//!   mo run   <file.mo> [-- args...]
+//!                        tier 1, then `main` on Mo.Server with the args after `--`;
+//!                        no test runs. Exit 0, or the last platform.exit(code), or 70
+//!                        with the crash report on stderr; MO0408 when there is no main
 //!   mo fmt   <file.mo>   rewrites the file in its one shape (toolchain/FORMAT.md)
 //!     --check            changes nothing; exit 1 with a unified diff when the file
 //!                        is not formatted, or with MO0501 for a pure for body
@@ -14,12 +17,16 @@ const Io = std.Io;
 const mo = @import("mo");
 
 const usage =
-    \\usage: mo <check|test|run> <file.mo> [--json]
+    \\usage: mo <check|test> <file.mo> [--json]
+    \\       mo run <file.mo> [--json] [-- args...]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\
 ;
 
 const FmtMode = enum { write, check, stdout };
+
+/// A crashed `main` exits with this code (Q18; EX_SOFTWARE in sysexits.h).
+const crash_exit: u8 = 70;
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -38,8 +45,15 @@ pub fn main(init: std.process.Init) !void {
     var json = false;
     var fmt_mode: FmtMode = .write;
     var positional: std.ArrayList([]const u8) = .empty;
-    for (args[1..]) |a| {
-        if (std.mem.eql(u8, a, "--json")) {
+    // Everything after `--` belongs to the program `mo run` runs.
+    var program_args: ?[]const []const u8 = null;
+    for (args[1..], 1..) |a, i| {
+        if (std.mem.eql(u8, a, "--")) {
+            const rest = try arena.alloc([]const u8, args.len - i - 1);
+            for (args[i + 1 ..], rest) |r, *o| o.* = r;
+            program_args = rest;
+            break;
+        } else if (std.mem.eql(u8, a, "--json")) {
             json = true;
         } else if (std.mem.eql(u8, a, "--check")) {
             fmt_mode = .check;
@@ -52,6 +66,8 @@ pub fn main(init: std.process.Init) !void {
     const path = positional.items[1];
     const is_fmt = std.mem.eql(u8, command, "fmt");
     if (!is_fmt and fmt_mode != .write) return usageExit(err);
+    const is_run = std.mem.eql(u8, command, "run");
+    if (!is_run and program_args != null) return usageExit(err);
 
     const source = try Io.Dir.cwd().readFileAlloc(io, path, arena, .limited(1 << 20));
     var diags: mo.diag.List = .empty;
@@ -78,9 +94,31 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
 
+    if (is_run) {
+        const m = mo.pipeline.mainProgram(arena, source, &diags) catch |e| switch (e) {
+            error.Rejected => return reject(out, err, path, source, diags.items, json),
+            else => return e,
+        };
+        const cwd = try std.process.currentPathAlloc(io, arena);
+        var server: mo.server.Server = try .init(arena, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
+        const code: u8 = switch (try server.run(m.program, m.main)) {
+            .exited => |c| c,
+            .crashed => |report| blk: {
+                out.flush() catch {};
+                try err.writeAll("main crashed: ");
+                try mo.runner.writeReport(err, path, source, report);
+                try err.writeAll("\n");
+                break :blk crash_exit;
+            },
+        };
+        out.flush() catch {};
+        err.flush() catch {};
+        std.process.exit(code);
+    }
+
     const stage: mo.pipeline.Stage = if (std.mem.eql(u8, command, "check"))
         .check
-    else if (std.mem.eql(u8, command, "test") or std.mem.eql(u8, command, "run"))
+    else if (std.mem.eql(u8, command, "test"))
         .run
     else
         return usageExit(err);

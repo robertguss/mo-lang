@@ -800,8 +800,11 @@ const Printer = struct {
             try p.param(a);
         }
         _ = try p.tk(.r_paren);
-        try p.op(.colon);
-        try p.typ(sig.ret);
+        // `fn main(platform: Platform)` has no return type (grammar §2).
+        if (sig.ret != ast.none) {
+            try p.op(.colon);
+            try p.typ(sig.ret);
+        }
         for (p.tree.span(sig.bounds_start, sig.bounds_end), 0..) |b, k| {
             if (k == 0) try p.op(.kw_where) else try p.comma();
             _ = try p.tk(.type_name);

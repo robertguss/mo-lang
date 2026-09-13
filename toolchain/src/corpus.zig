@@ -7,6 +7,9 @@
 //! counts as skipped, so this test is green on day one and tightens as stages land.
 //! Every file, rejects/ included, also passes `mo fmt --check`: it is already in its
 //! one shape (toolchain/FORMAT.md) and has no pure for body (MO0501).
+//! Every program in `examples/programs/` also runs through `mo run`, on Mo.Server, as a
+//! subprocess of the test: its stdout must equal `<name>.expected` and its exit code
+//! the one on its `# exit:` line, or 0.
 const std = @import("std");
 const Io = std.Io;
 const pipeline = @import("pipeline.zig");
@@ -69,6 +72,90 @@ test "a rejects file names the code its first diagnostic carries" {
     try std.testing.expectEqualStrings("MO0306", expectedCode("module A\n# expect MO0306: base is bound twice.\n").?);
     try std.testing.expect(expectedCode("module A\n# expect error: something\n") == null);
     try std.testing.expect(expectedCode("x = 1 # expect MO0306: not at a line start\n") == null);
+}
+
+pub fn isProgramPath(path: []const u8) bool {
+    return std.mem.startsWith(u8, path, "programs/");
+}
+
+/// A program's first line, `# run: arg1 arg2`: the arguments `mo run` passes after `--`.
+pub fn runArgs(gpa: std.mem.Allocator, source: []const u8) !?[]const []const u8 {
+    const marker = "# run:";
+    if (!std.mem.startsWith(u8, source, marker)) return null;
+    const line_end = std.mem.indexOfScalar(u8, source, '\n') orelse source.len;
+    var args: std.ArrayList([]const u8) = .empty;
+    var it = std.mem.tokenizeScalar(u8, source[marker.len..line_end], ' ');
+    while (it.next()) |a| try args.append(gpa, a);
+    return try args.toOwnedSlice(gpa);
+}
+
+/// The code on a program's `# exit: N` line, or 0 when it has none.
+pub fn expectedExit(source: []const u8) !u8 {
+    const marker = "\n# exit: ";
+    const at = std.mem.indexOf(u8, source, marker) orelse return 0;
+    const rest = source[at + marker.len ..];
+    return std.fmt.parseInt(u8, rest[0 .. std.mem.indexOfScalar(u8, rest, '\n') orelse rest.len], 10);
+}
+
+test "a program names its arguments on its first line and its exit code on an # exit: line" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src = "# run: a  b\n# exit: 3\nmodule P\n";
+    const args = (try runArgs(arena, src)).?;
+    try std.testing.expectEqual(@as(usize, 2), args.len);
+    try std.testing.expectEqualStrings("b", args[1]);
+    try std.testing.expectEqual(@as(u8, 3), try expectedExit(src));
+    try std.testing.expectEqual(@as(usize, 0), (try runArgs(arena, "# run:\nmodule P\n")).?.len);
+    try std.testing.expectEqual(@as(u8, 0), try expectedExit("# run:\nmodule P\n"));
+    try std.testing.expect(try runArgs(arena, "module P\n# run: a\n") == null);
+}
+
+/// The `mo` build.zig installed and named in MO_EXE (or zig-out/bin/mo), made absolute
+/// so a program can run in its own folder.
+pub fn moExe(gpa: std.mem.Allocator, io: Io, from_environ: ?[]const u8) ![:0]u8 {
+    return Io.Dir.cwd().realPathFileAlloc(io, from_environ orelse "zig-out/bin/mo", gpa);
+}
+
+/// `mo run <program> -- <its # run: arguments>`, with the program's own folder as the
+/// working directory, so it names its data/ folder by that relative path.
+pub fn runProgram(arena: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const u8, rel: []const u8, source: []const u8) !std.process.RunResult {
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(arena, &.{ mo_exe, "run", std.fs.path.basename(rel), "--" });
+    try argv.appendSlice(arena, (try runArgs(arena, source)) orelse &.{});
+    const cwd = try std.fs.path.join(arena, &.{ root, std.fs.path.dirname(rel) orelse "." });
+    return std.process.run(arena, io, .{ .argv = argv.items, .cwd = .{ .path = cwd } });
+}
+
+/// Runs one program: true when its stdout equals `<name>.expected` and its exit code the
+/// one its `# exit:` line names.
+pub fn checkProgram(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const u8, rel: []const u8) !bool {
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var dir = try Io.Dir.cwd().openDir(io, root, .{});
+    defer dir.close(io);
+    const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
+    if ((try runArgs(arena, source)) == null) {
+        std.debug.print("corpus: {s} is a program, so its first line is # run: and its arguments\n", .{rel});
+        return false;
+    }
+    const expected_path = try std.fmt.allocPrint(arena, "{s}.expected", .{rel[0 .. rel.len - ".mo".len]});
+    const expected = dir.readFileAlloc(io, expected_path, arena, .limited(1 << 20)) catch |err| {
+        std.debug.print("corpus: {s} has no {s} beside it: {t}\n", .{ rel, expected_path, err });
+        return false;
+    };
+    const r = try runProgram(arena, io, mo_exe, root, rel, source);
+    const want = try expectedExit(source);
+    if (r.term != .exited or r.term.exited != want) {
+        std.debug.print("corpus: {s} ended with {any}, not exit {d}; its stderr:\n{s}\n", .{ rel, r.term, want, r.stderr });
+        return false;
+    }
+    if (!std.mem.eql(u8, r.stdout, expected)) {
+        std.debug.print("corpus: {s} printed\n{s}\nbut {s} holds\n{s}\n", .{ rel, r.stdout, expected_path, expected });
+        return false;
+    }
+    return true;
 }
 
 /// `mo fmt --check` on one file: true when formatting changes nothing and the loop
@@ -205,6 +292,21 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         if (!try fmtCheck(gpa, io, root, rel)) unformatted += 1;
     }
     try std.testing.expectEqual(@as(u32, 0), unformatted);
+
+    // Every program runs through the installed `mo run`, on Mo.Server.
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    var programs: u32 = 0;
+    var wrong: u32 = 0;
+    for (paths) |rel| {
+        if (!isProgramPath(rel)) continue;
+        programs += 1;
+        if (!try checkProgram(gpa, io, mo_exe, root, rel)) wrong += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 3), programs);
+    try std.testing.expectEqual(@as(u32, 0), wrong);
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.
     var beyond: Tally = .{};

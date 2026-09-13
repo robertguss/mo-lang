@@ -3,7 +3,8 @@
 The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolchain.md`: interpreter first, C via Zig for release later, a native backend only if a real program demands it. The milestone is `mo-wiki/spec/design-v0/08-milestone.md`: lex, parse, typecheck, and run `examples/payments/refund.mo` with its tests, contracts at tier 2, `rejects` tests tripping, the `verified:` line computed.
 
 ```
-zig build              → zig-out/bin/mo         mo check|test|run <file.mo> [--json]
+zig build              → zig-out/bin/mo         mo check|test <file.mo> [--json]
+                                                mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo fmt [--check | --stdout] <file.mo>
 zig build test         → every stage's tests + the corpus test over ../examples
 zig build bench        → zig-out/bin/mo-bench   times every stage over ../examples
@@ -28,6 +29,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |
+| `src/server.zig` | Mo.Server: the real platform `mo run` gives `main` (args, env, streams, a scoped `Fs`, the wall clock, exit) | ch. 3, Q18 |
 | `src/diag.zig` | structured diagnostics, no warnings | ch. 5 |
 | `src/verified.zig` | the `verified:` line | ch. 5 |
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |

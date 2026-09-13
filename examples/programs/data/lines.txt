@@ -1,0 +1,5 @@
+2026-09-12T08:00:01Z INFO  started
+2026-09-12T08:00:02Z INFO  listening on :8080
+2026-09-12T08:03:17Z WARN  slow request: 812 ms
+2026-09-12T08:05:40Z ERROR refund ch_1 timed out
+2026-09-12T08:05:41Z INFO  refund ch_1 retried
