@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [agents, research, roadmap]
 sources: [spec/programs/02-log-analyzer.md, spec/design-v0/08-milestone.md]
-status: proposed
+status: in-progress
 ---
 
 # The control run: `logstat` in Go and Python, brief for the worker

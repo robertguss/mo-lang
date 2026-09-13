@@ -101,6 +101,15 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A comment inside a multi-line paren refuses the file (`MO0502`) rather than being moved | Fable, from Opus's default | provisional | program 2 |
 | Long lines break only at commas inside parens opened on that line; other long lines stay long | Fable, from Opus's default | provisional | program 2 |
 | `MO0501` counts `send`, `ask`, `start`, and any call passing a capability or handle as effectful; a `break`, `return`, or `try` anywhere in the body makes it effectful | Fable, from Opus's default | provisional | program 2 |
+| Step 6 accepted: `main`, `Mo.Server`, `mo run`, three programs with expected output; 21 minutes | Fable | — | program 2 |
+| `Platform` is confined to `platform.<part>` reads (`MO0407`); the parts (`Out`, `Env`, `Fs`, `Clock`) are ordinary capabilities that can be passed down | Fable, from Opus's default | provisional | program 2 |
+| `fn main` at module level is always the `main` production; a second `main` in a program is `MO0320` | Fable, from Opus's default | provisional | program 2 |
+| `platform.exit(code)` does not stop `main`; the last code wins on return; a crash exits 70 regardless | Fable, from Opus's default | provisional | program 2 |
+| `Out.write` adds no newline; a failed write is dropped | Fable, from Opus's default | provisional | program 2 |
+| `fs.scoped(path)` that leaves the current scope yields an `Fs` that reads nothing; containment is checked on resolved and real paths, symlinks out are `Missing` | Fable, from Opus's default | provisional | program 2 |
+| Every read failure is `Missing(path)`; over 64 MiB is `Missing`; a read that is both missing and late is `Timeout` | Fable, from Opus's default | provisional | program 2 |
+| `Name.start` under `Mo.Server` crashes: no scheduler outside the test runner yet | Fable, from Opus's default | provisional | program 1 |
+| Program 2 and the Go and Python control runs run in parallel, three fresh Opus sessions in three worktrees | Fable | — | the morning review |
 
 ## Related
 - [[session-05]]

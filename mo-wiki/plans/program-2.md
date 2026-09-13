@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [agents, roadmap, stdlib]
 sources: [spec/programs/02-log-analyzer.md, plans/program-menu.md]
-status: proposed
+status: in-progress
 ---
 
 # Program 2: `logstat` in Mo, brief for the worker

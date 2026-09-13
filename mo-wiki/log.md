@@ -178,3 +178,6 @@
 
 ## [2026-09-12] session | Overnight: step 5 accepted, merged to main, step 6 started
 - Opus (fresh session): FORMAT.md, fmt.zig, MO0501/MO0502, MO0319, corpus formatted. Fable verified: all 52 files pass --check, a messy file formats to the rules, MO0501 fires on a pure body and not on an accumulating one, tests green. Accepted; five decision rows. session-05 merged to main. Step 6 (main, Mo.Server) handed to a fresh session.
+
+## [2026-09-13] session | Overnight: step 6 accepted, merged; program 2 and the control runs started
+- Opus: main, Mo.Server, mo run, three programs. Fable verified: expected output and exit codes match, scope escape blocked, crash in main exits 70, no-main file gives MO0408. Accepted; nine decision rows. Merged to main. Program 2 (logstat in Mo) to a fresh mo-opus session; Go and Python control runs to fresh sessions in worktrees control-go and control-python.
