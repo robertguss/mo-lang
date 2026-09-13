@@ -1,8 +1,9 @@
 //! The benchmark harness, from day one (design-v0/08: "50 ms and 100 ms targets:
 //! the benchmark suite, from day one"). Times every pipeline stage over every file
-//! in the corpus, best of N iterations, and prints one row per stage, then a `fmt`
-//! row: every file lexed, parsed, and formatted to memory (`mo fmt` without the write). Stages that
-//! are not implemented print "n/a" and the row lights up when the stage lands.
+//! in the corpus, best of N iterations, and prints one row per stage. Stages that
+//! are not implemented print "n/a" and the row lights up when the stage lands. A
+//! last `fmt` row times every file lexed, parsed, and formatted to memory (`mo fmt`
+//! without the write).
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
