@@ -24,6 +24,12 @@
 //! (`logstat-4k-c-nocontracts`), so the contracts' cost does. A `build-logstat` row times `mo build` of program 2, best of three: loading,
 //! checking, and emitting the C, then `zig cc`, each build a real compile (a define that
 //! changes every time keeps zig cc from answering out of its cache).
+//! `echo-1k-c` and `kv-10k-get-c` time programs/echo and programs/kv built by `mo build`,
+//! contracts on: echo's binary given the same 1_000 lines, a process of its own with its output
+//! discarded, and the same 10_000 GETs to kv's binary serving the same log; each names its ratio
+//! to the interpreter's row. `kv-50k-set-rss-kib` and `kv-50k-set-rss-kib-c` are kv's resident
+//! memory in KiB, `mo run` and the binary, after 50_000 SETs of distinct keys from one client
+//! over one socket, served from an empty log, each SET waiting for its OK.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -217,6 +223,36 @@ pub fn main(init: std.process.Init) !void {
         try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "kv-10k-get", "n/a", "n/a" });
     }
 
+    const echo_c_ns = try echo1kC(arena, io, init.environ_map, root, iters);
+    if (echo_c_ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a round trip  ({d} round trips, the mo build binary, a process of its own", .{ "echo-1k-c", us, us / echo_trips, echo_trips });
+        if (echo_ns) |i| try out.print("; the interpreter's echo-1k takes {d:.1}x as long", .{ratio(i, ns)});
+        try out.writeAll(")\n");
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "echo-1k-c", "n/a", "n/a" });
+    }
+
+    const kv_binary = try buildNative(arena, io, init.environ_map, root, "kv");
+    const kv_c_ns = if (kv_binary) |binary| try kvGets(arena, io, &.{binary}, iters) else null;
+    if (kv_c_ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a GET  ({d} GETs over 127.0.0.1 from one client to the mo build binary", .{ "kv-10k-get-c", us, us / kv_gets, kv_gets });
+        if (kv_ns) |i| try out.print("; the interpreter's kv-10k-get takes {d:.1}x as long", .{ratio(i, ns)});
+        try out.writeAll(")\n");
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "kv-10k-get-c", "n/a", "n/a" });
+    }
+
+    const kv_main = try kvMain(arena, io, root);
+    const rss_kib = if (kv_main) |m| try kvSetsRss(arena, io, &.{ mo_exe, "run", m, "--" }) else null;
+    const rss_c_kib = if (kv_binary) |binary| try kvSetsRss(arena, io, &.{binary}) else null;
+    for ([_]?u64{ rss_kib, rss_c_kib }, [_][]const u8{ "kv-50k-set-rss-kib", "kv-50k-set-rss-kib-c" }, [_][]const u8{ "mo run", "the mo build binary" }) |kib, row, who| {
+        if (kib) |k| {
+            try out.print("{s:<8} {d:>9} KiB  ({s}'s resident memory after {d} SETs of distinct keys)\n", .{ row, k, who, kv_sets });
+        } else try out.print("{s:<8} {s:>12}\n", .{ row, "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -225,7 +261,11 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib });
+}
+
+fn ratio(slow: i96, fast: i96) f64 {
+    return @as(f64, @floatFromInt(slow)) / @as(f64, @floatFromInt(fast));
 }
 
 const sim_seeds = 100;
@@ -309,6 +349,9 @@ fn logstat4k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
     return best;
 }
 
+/// The compiled echo and kv (echo-1k-c, kv-10k-get-c), and kv's resident memory after 50_000 SETs.
+const Native = struct { echo_ns: ?i96, kv_ns: ?i96, rss_kib: ?u64, rss_c_kib: ?u64 };
+
 const LogstatC = struct { run_ns: i96, wrap_ns: i96, nocontracts_ns: i96, emit_ns: i96, cc_ns: i96 };
 
 /// The three builds of the compiled logstat: as `mo build` makes it, without overflow checks,
@@ -359,7 +402,7 @@ fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envi
                         result.cc_ns = @min(result.cc_ns, built.cc_ns);
                     }
                 },
-                .refused, .failed => |why| {
+                .failed => |why| {
                     std.debug.print("logstat-4k-c: {s}\n", .{why});
                     return null;
                 },
@@ -386,6 +429,48 @@ fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envi
 }
 
 const echo_trips = 1_000;
+
+/// programs/<name>/main.mo built by `mo build` as it ships, contracts on: its binary, or null when
+/// the corpus has no such program or the build fails.
+fn buildNative(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, name: []const u8) !?[]const u8 {
+    const main_path = try std.fs.path.join(arena, &.{ root, "programs", name, "main.mo" });
+    Io.Dir.cwd().access(io, main_path, .{}) catch return null;
+    var diags: mo.diag.List = .empty;
+    const program = try mo.program.load(arena, io, main_path, &diags);
+    const checked = mo.pipeline.buildable(arena, program, false, &diags) catch |e| {
+        std.debug.print("{s}: {t}: {s}\n", .{ name, e, if (diags.items.len > 0) diags.items[0].what else "" });
+        return null;
+    };
+    switch (try mo.cbuild.build(arena, io, environ, program, &checked, .{ .name = name, .out_dir = build_dir })) {
+        .built => |built| return built.binary,
+        .failed => |why| {
+            std.debug.print("{s}: {s}\n", .{ name, why });
+            return null;
+        },
+    }
+}
+
+/// The best of `iters` runs of echo's binary given the 1_000 lines echo-1k gives it, each a
+/// process of its own with its output discarded; null when a run does not exit 0.
+fn echo1kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, iters: u32) !?i96 {
+    const binary = try buildNative(arena, io, environ, root, "echo") orelse return null;
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.append(arena, binary);
+    for (0..echo_trips) |_| try argv.append(arena, "x");
+    var best: i96 = std.math.maxInt(i96);
+    var it: u32 = 0;
+    while (it < iters) : (it += 1) {
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        const ran = try std.process.run(arena, io, .{ .argv = argv.items });
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ran.term != .exited or ran.term.exited != 0) {
+            std.debug.print("echo-1k-c: {s} ended with {any}: {s}\n", .{ binary, ran.term, ran.stderr });
+            return null;
+        }
+        if (ns < best) best = ns;
+    }
+    return best;
+}
 
 /// The best of `iters` runs of programs/echo/main.mo given 1_000 lines: its one client
 /// process sends each line and reads it back from its worker over a real socket on
@@ -512,30 +597,48 @@ const kv_dir = ".zig-cache/bench/kv";
 /// each GET is written, then its answer read, before the next. Null when the corpus has no
 /// kv or kv does not answer.
 fn kv10kGet(arena: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const u8, iters: u32) !?i96 {
+    const main_abs = try kvMain(arena, io, root) orelse return null;
+    return kvGets(arena, io, &.{ mo_exe, "run", main_abs, "--" }, iters);
+}
+
+/// programs/kv/main.mo's absolute path, or null when the corpus has no kv.
+fn kvMain(arena: std.mem.Allocator, io: Io, root: []const u8) !?[]const u8 {
     const main_path = try std.fs.path.join(arena, &.{ root, "programs/kv/main.mo" });
     Io.Dir.cwd().access(io, main_path, .{}) catch return null;
-    try Io.Dir.cwd().createDirPath(io, kv_dir);
-    try Io.Dir.cwd().writeFile(io, .{ .sub_path = kv_dir ++ "/kv.log", .data = "SET greeting hello wide world\n" });
+    return try Io.Dir.cwd().realPathFileAlloc(io, main_path, arena);
+}
+
+const Kv = struct { child: std.process.Child, fd: posix.socket_t };
+
+/// kv serving the folder `data` on a free port, started by `prefix` then `serve`, and one client
+/// connected once it listens; null when it does not listen.
+fn serveKv(arena: std.mem.Allocator, io: Io, prefix: []const []const u8, data: []const u8) !?Kv {
     const port = freePort() orelse return null;
-    var port_buf: [8]u8 = undefined;
-    const port_text = try std.fmt.bufPrint(&port_buf, "{d}", .{port});
-    const main_abs = try Io.Dir.cwd().realPathFileAlloc(io, main_path, arena);
-    const data = try Io.Dir.cwd().realPathFileAlloc(io, kv_dir, arena);
-    var child = try std.process.spawn(io, .{
-        .argv = &.{ mo_exe, "run", main_abs, "--", "serve", data, "--port", port_text },
-        .stdin = .ignore,
-        .stdout = .ignore,
-        .stderr = .ignore,
-    });
-    defer child.kill(io);
+    const port_text = try std.fmt.allocPrint(arena, "{d}", .{port});
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(arena, prefix);
+    try argv.appendSlice(arena, &.{ "serve", data, "--port", port_text });
+    var child = try std.process.spawn(io, .{ .argv = argv.items, .stdin = .ignore, .stdout = .ignore, .stderr = .ignore });
     // kv listens once it has replayed its log.
     const fd = for (0..500) |_| {
         if (connectLoopback(port)) |fd| break fd;
         io.sleep(.fromMilliseconds(20), .awake) catch {};
     } else {
-        std.debug.print("kv-10k-get: kv did not listen on port {d}\n", .{port});
+        std.debug.print("kv: {s} did not listen on port {d}\n", .{ prefix[0], port });
+        child.kill(io);
         return null;
     };
+    return .{ .child = child, .fd = fd };
+}
+
+/// The best of `iters` passes of kv-10k-get's GETs to kv started by `prefix`.
+fn kvGets(arena: std.mem.Allocator, io: Io, prefix: []const []const u8, iters: u32) !?i96 {
+    try Io.Dir.cwd().createDirPath(io, kv_dir);
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = kv_dir ++ "/kv.log", .data = "SET greeting hello wide world\n" });
+    const data = try Io.Dir.cwd().realPathFileAlloc(io, kv_dir, arena);
+    var kv = try serveKv(arena, io, prefix, data) orelse return null;
+    defer kv.child.kill(io);
+    const fd = kv.fd;
     defer _ = posix.system.close(fd);
     var reply: [256]u8 = undefined;
     var best: i96 = std.math.maxInt(i96);
@@ -556,6 +659,37 @@ fn kv10kGet(arena: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const 
         if (ns < best) best = ns;
     }
     return best;
+}
+
+const kv_sets = 50_000;
+const kv_sets_dir = ".zig-cache/bench/kv-sets";
+
+/// kv's resident memory in KiB after 50_000 SETs of distinct keys from one client over one socket,
+/// each waiting for its OK, served from an empty log by kv started with `prefix`; null when kv does
+/// not answer OK.
+fn kvSetsRss(arena: std.mem.Allocator, io: Io, prefix: []const []const u8) !?u64 {
+    Io.Dir.cwd().deleteTree(io, kv_sets_dir) catch {};
+    try Io.Dir.cwd().createDirPath(io, kv_sets_dir);
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = kv_sets_dir ++ "/kv.log", .data = "" });
+    const data = try Io.Dir.cwd().realPathFileAlloc(io, kv_sets_dir, arena);
+    var kv = try serveKv(arena, io, prefix, data) orelse return null;
+    defer kv.child.kill(io);
+    defer _ = posix.system.close(kv.fd);
+    var reply: [256]u8 = undefined;
+    var request: [64]u8 = undefined;
+    for (0..kv_sets) |i| {
+        const line = exchange(kv.fd, try std.fmt.bufPrint(&request, "SET key{d} value{d}\n", .{ i, i }), &reply) orelse {
+            std.debug.print("kv-50k-set: the connection ended\n", .{});
+            return null;
+        };
+        if (!std.mem.eql(u8, line, "OK\n")) {
+            std.debug.print("kv-50k-set: kv answered {s}\n", .{line});
+            return null;
+        }
+    }
+    const pid = try std.fmt.allocPrint(arena, "{d}", .{kv.child.id.?});
+    const ps = try std.process.run(arena, io, .{ .argv = &.{ "ps", "-o", "rss=", "-p", pid } });
+    return std.fmt.parseInt(u64, std.mem.trim(u8, ps.stdout, " \n"), 10) catch null;
 }
 
 /// A port on 127.0.0.1 nothing listens on, as the system picks one.
@@ -639,9 +773,10 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 /// One row per stage, then the fmt row, the run-programs row (its count is the programs),
 /// the logstat-4k row (its count is the lines), the sim-100 row (its count is the seeds),
 /// the echo-1k row (its count is the round trips), the map-100k row (its count is the keys),
-/// and the kv-10k-get row (its count is the GETs): date, stage, count, best total µs ("n/a"
-/// when unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC) !void {
+/// the kv-10k-get row (its count is the GETs), the compiled logstat's rows, and the compiled
+/// echo and kv: date, stage, count, best total µs ("n/a" when unimplemented), except the two
+/// kv-50k-set-rss-kib rows, whose count is the SETs and whose number is KiB.
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC, native: Native) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -707,5 +842,19 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         for ([_][]const u8{ "logstat-4k-c", "logstat-4k-c-wrap", "logstat-4k-c-nocontracts", "build-logstat", "build-logstat-emit", "build-logstat-cc" }) |row| {
             try w.interface.print("{d}\t{s}\tn/a\tn/a\n", .{ @as(u64, @intCast(day)), row });
         }
+    }
+    const timed = [_]struct { name: []const u8, count: u64, ns: ?i96 }{
+        .{ .name = "echo-1k-c", .count = echo_trips, .ns = native.echo_ns },
+        .{ .name = "kv-10k-get-c", .count = kv_gets, .ns = native.kv_ns },
+    };
+    for (timed) |t| {
+        if (t.ns) |ns| {
+            try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), t.name, t.count, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+        } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), t.name, t.count });
+    }
+    for ([_]?u64{ native.rss_kib, native.rss_c_kib }, [_][]const u8{ "kv-50k-set-rss-kib", "kv-50k-set-rss-kib-c" }) |kib, name| {
+        if (kib) |k| {
+            try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), name, kv_sets, k });
+        } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), name, kv_sets });
     }
 }

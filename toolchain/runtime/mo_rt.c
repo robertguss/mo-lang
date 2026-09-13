@@ -9,11 +9,16 @@
 #endif
 #include "mo_rt.h"
 
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <math.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <pthread.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -21,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -47,15 +53,23 @@ static void *xmalloc(size_t n) {
     return p;
 }
 
+#define GROW_ARRAY(ptr, n, cap)                                                              \
+    do {                                                                                     \
+        if ((n) == (cap)) {                                                                  \
+            (cap) = (cap) ? 2 * (cap) : 8;                                                   \
+            (ptr) = xrealloc((ptr), (cap) * sizeof *(ptr));                                  \
+        }                                                                                    \
+    } while (0)
+
 static void *xrealloc(void *p, size_t n) {
     void *q = realloc(p, n ? n : 1);
     if (!q) out_of_memory();
     return q;
 }
 
-/* As much address space as the system gives, from 64 GiB down to 256 MiB (region.zig). */
-static bool reserve(MoRegion *r) {
-    for (size_t size = (size_t)64 << 30; size >= (size_t)256 << 20; size /= 2) {
+/* As much address space as the system gives, from `most` down to 256 MiB (region.zig). */
+static bool reserve_up_to(MoRegion *r, size_t most) {
+    for (size_t size = most; size >= (size_t)256 << 20; size /= 2) {
         void *mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         if (mem == MAP_FAILED) continue;
         r->base = r->top = (uintptr_t)mem;
@@ -64,6 +78,8 @@ static bool reserve(MoRegion *r) {
     }
     return false;
 }
+
+static bool reserve(MoRegion *r) { return reserve_up_to(r, (size_t)64 << 30); }
 
 static void *region_alloc(MoRegion *r, size_t n) {
     uintptr_t start = (r->top + 7) & ~(uintptr_t)7;
@@ -101,6 +117,16 @@ static unsigned owned_next;
 typedef struct { uintptr_t slot; size_t len; uintptr_t at; } Remembered;
 static Remembered *remembered;
 static size_t nremembered, capremembered;
+
+/* Under an update (sim.zig): what each slot older than the update held before the update wrote
+ * it, so a crash shows the state as it was. undo_mark is 0 when no update keeps one; buffers
+ * older than frozen_below are never written in place (an invariant reads old(state)). */
+typedef struct { uintptr_t slot; MoValue old; } Undo;
+static Undo *undos;
+static size_t nundos, capundos;
+static uintptr_t undo_mark, frozen_below;
+/* What the region held after its last full compaction (sim.zig, settleRegion). */
+static size_t full_kept;
 
 /* Forgets every buffer a test's memory held: the next test starts a fresh vm. */
 static void reset_memory(void) {
@@ -199,8 +225,28 @@ static void remember_write(uintptr_t slot, size_t n, const MoValue *x) {
     remembered[nremembered++] = (Remembered){slot, n, mo_heap.top};
 }
 
+/* Whether `addr` was allocated since `mark` in the region. */
+static bool since(uintptr_t mark, uintptr_t addr) { return addr >= mark && addr < mo_heap.end; }
+
+/* Whether a row may overwrite a buffer at `buf` in place. */
+static bool overwritable(uintptr_t buf) { return frozen_below == 0 || since(frozen_below, buf); }
+
+/* Whether a row may move a buffer's slots in place: an update's undo keeps single overwrites
+ * only, so a buffer from before the update is copied instead. */
+static bool movable(uintptr_t buf) { return overwritable(buf) && (undo_mark == 0 || since(undo_mark, buf)); }
+
+/* Writes `x` into a slot in place: remembered for compaction, and under an update what the slot
+ * held before, when that is older than the update and so still there on a crash. */
 static void overwrite(MoValue *slot, MoValue x) {
-    remember_write((uintptr_t)slot, 1, &x);
+    uintptr_t addr = (uintptr_t)slot;
+    if (undo_mark != 0 && !since(undo_mark, addr)) {
+        uintptr_t p = newest_of(*slot);
+        if (p == 0 || !since(undo_mark, p)) {
+            GROW_ARRAY(undos, nundos, capundos);
+            undos[nundos++] = (Undo){addr, *slot};
+        }
+    }
+    remember_write(addr, 1, &x);
     *slot = x;
 }
 
@@ -280,7 +326,41 @@ static void forward_put(uintptr_t ptr, size_t len, MoValue *to) {
 
 /* ---- compaction */
 
-typedef struct { uintptr_t lo, hi; MoRegion *dest; bool moves, fresh; } Copy;
+/* A value copied whole into memory of its own (vm.zig, Parcel), so it outlives the region it
+ * was made in: under main, a message on its way to another process, a reply on its way back, and
+ * a process's start arguments and first state. */
+typedef struct Chunk { struct Chunk *next; size_t used, cap; } Chunk;
+typedef struct { MoValue value; Chunk *chunks; } Parcel;
+
+static void *parcel_alloc(Parcel *p, size_t n) {
+    size_t need = (n + 7) & ~(size_t)7;
+    Chunk *c = p->chunks;
+    if (!c || c->used + need > c->cap) {
+        size_t cap = need > 4072 ? need : 4072;
+        c = xmalloc(sizeof(Chunk) + cap);
+        c->next = p->chunks;
+        c->used = 0;
+        c->cap = cap;
+        p->chunks = c;
+    }
+    void *out = (char *)(c + 1) + c->used;
+    c->used += need;
+    return out;
+}
+
+static void parcel_free(Parcel *p) {
+    if (!p) return;
+    while (p->chunks) {
+        Chunk *next = p->chunks->next;
+        free(p->chunks);
+        p->chunks = next;
+    }
+    free(p);
+}
+
+typedef struct { uintptr_t lo, hi; MoRegion *dest; bool moves, fresh; Parcel *parcel; } Copy;
+
+static void *copy_alloc(const Copy *c, size_t n) { return c->parcel ? parcel_alloc(c->parcel, n) : region_alloc((c)->dest, n); }
 
 static bool inside(uintptr_t addr, const Copy *c) { return addr >= c->lo && addr < c->hi; }
 
@@ -293,7 +373,7 @@ static MoValue *copy_slice(MoValue *xs, size_t len, const Copy *c, bool grows) {
     MoValue *copied = forward_get(addr, len);
     if (copied) return copied;
     Growth *g = grows && c->moves ? growth_of(addr, len) : NULL;
-    MoValue *out = region_alloc(c->dest, (g ? g->cap : len) * sizeof(MoValue));
+    MoValue *out = copy_alloc(c, (g ? g->cap : len) * sizeof(MoValue));
     forward_put(addr, len, out);
     for (size_t i = 0; i < len; i++) out[i] = copy_out(xs[i], c);
     if (g) g->ptr = (uintptr_t)out;
@@ -317,7 +397,7 @@ static MoMap *copy_map(MoMap *m, size_t stride, const Copy *c) {
             index = m->index;
             index_len = m->index_len;
         } else if (!c->moves || c->fresh || m->index[0] == m->len / stride) {
-            index = region_alloc(c->dest, m->index_len * sizeof(uint32_t));
+            index = copy_alloc(c, m->index_len * sizeof(uint32_t));
             memcpy(index, m->index, m->index_len * sizeof(uint32_t));
             index_len = m->index_len;
         } else {
@@ -325,7 +405,7 @@ static MoMap *copy_map(MoMap *m, size_t stride, const Copy *c) {
         }
     }
     if (!header_inside && entries == m->entries && index == m->index) return m;
-    MoMap *out = region_alloc(c->dest, sizeof(MoMap));
+    MoMap *out = copy_alloc(c, sizeof(MoMap));
     *out = (MoMap){entries, m->len, index_len, index};
     return out;
 }
@@ -334,14 +414,14 @@ static MoValue copy_out(MoValue v, const Copy *c) {
     switch (v.tag) {
     case MO_STRING:
         if (v.aux > 0 && inside((uintptr_t)v.as.s, c)) {
-            char *s = region_alloc(c->dest, v.aux);
+            char *s = copy_alloc(c, v.aux);
             memcpy(s, v.as.s, v.aux);
             v.as.s = s;
         }
         return v;
     case MO_BIG:
         if (inside((uintptr_t)v.as.big, c)) {
-            __int128 *b = region_alloc(c->dest, sizeof(__int128));
+            __int128 *b = copy_alloc(c, sizeof(__int128));
             *b = *v.as.big;
             v.as.big = b;
         }
@@ -355,7 +435,7 @@ static MoValue copy_out(MoValue v, const Copy *c) {
     case MO_FUNC:
         if (inside((uintptr_t)v.as.fn, c)) {
             MoFunc *f = v.as.fn;
-            MoFunc *out = region_alloc(c->dest, sizeof(MoFunc) + f->ncap * sizeof(MoValue));
+            MoFunc *out = copy_alloc(c, sizeof(MoFunc) + f->ncap * sizeof(MoValue));
             out->code = f->code;
             out->id = f->id;
             out->ncap = f->ncap;
@@ -405,6 +485,23 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     copy_roots(roots, n, below, nbelow, &back);
     drop_growth(scratch.base, scratch.end);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
+}
+
+/* `v` copied whole into a parcel of its own. */
+static Parcel *pack(MoValue v) {
+    Parcel *p = xmalloc(sizeof(Parcel));
+    p->chunks = NULL;
+    forward_clear();
+    Copy c = {0, UINTPTR_MAX, NULL, false, false, p};
+    p->value = copy_out(v, &c);
+    return p;
+}
+
+/* A parcel's value copied whole onto this vm's heap, so the parcel can be freed. */
+static MoValue unpack(const Parcel *p) {
+    forward_clear();
+    Copy c = {0, UINTPTR_MAX, &mo_heap, false, false, NULL};
+    return copy_out(p->value, &c);
 }
 
 /* ==== values: building, equality, order, hashing (vm.zig, stdlib.zig) ================== */
@@ -668,7 +765,7 @@ static MoMap *map_put(MoMap *m, size_t stride, MoValue key, MoValue value, uint3
     size_t k = map_find(m, stride, key);
     if (k != SIZE_MAX) {
         if (stride == 1) return m;
-        if (mine) {
+        if (mine && overwritable((uintptr_t)xs)) {
             overwrite(&xs[k + 1], value);
             return m;
         }
@@ -722,7 +819,7 @@ static MoMap *map_without(MoMap *m, size_t stride, MoValue key, uint32_t kind) {
         return map_header(xs, rest, m->index, m->index_len);
     }
     uint32_t index_len;
-    if (on_var && is_owned(xs, len)) {
+    if (on_var && is_owned(xs, len) && movable((uintptr_t)xs)) {
         memmove(&xs[k], &xs[k + stride], (rest - k) * sizeof(MoValue));
         remember_write((uintptr_t)&xs[k], rest - k, NULL);
         disown(xs, len);
@@ -869,6 +966,7 @@ static void fmt_float(Buf *b, double x) {
 static bool server_mode;
 
 static void format_value(Buf *b, MoValue v);
+static const char *handle_name(int64_t id);
 
 static void format_fields(Buf *b, const char *name, const MoValue *values, uint32_t n, const MoField *defs, uint32_t ndefs) {
     buf_str(b, name);
@@ -973,7 +1071,10 @@ static void format_value(Buf *b, MoValue v) {
         case MO_CAP_LISTENER: buf_str(b, "a Listener"); return;
         default: buf_str(b, "a Conn"); return;
         }
-    case MO_HANDLE: buf_printf(b, "a handle #%lld", (long long)v.as.i); return;
+    case MO_HANDLE:
+        if (handle_name(v.as.i)) buf_printf(b, "%s #%lld", handle_name(v.as.i), (long long)v.as.i);
+        else buf_printf(b, "a handle #%lld", (long long)v.as.i);
+        return;
     default: return;
     }
 }
@@ -1061,6 +1162,13 @@ typedef struct {
     const char *where;
     Involved *values;
     uint32_t nvalues;
+    /* A crash inside a process: the process, the seed, every message since it started, and its
+     * state before the last one (chapter 3, failure). */
+    const char *process;
+    uint64_t seed;
+    char **log;
+    uint32_t nlog;
+    char *state;
 } Report;
 
 /* Where a crash, a skip, or a discarded attempt goes in a test; NULL under main. */
@@ -1083,6 +1191,11 @@ static void report_text(Buf *b, const Report *r) {
     default: buf_str(b, r->clause); break;
     }
     for (uint32_t i = 0; i < r->nvalues; i++) buf_printf(b, "%s%s = %s", i == 0 ? "; " : ", ", r->values[i].name, r->values[i].value);
+    if (r->process) {
+        buf_printf(b, "\n      in process %s, seed %llu\n      messages since it started: ", r->process, (unsigned long long)r->seed);
+        for (uint32_t i = 0; i < r->nlog; i++) buf_printf(b, "%s%s", i == 0 ? "" : ", ", r->log[i]);
+        buf_printf(b, "\n      state before the last message: %s", r->state);
+    }
 }
 
 _Noreturn static void raise_report(Report r, int jump) {
@@ -2319,7 +2432,9 @@ static int64_t awake_ns(void) {
     return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
 
-MO_ROW(mo_r_Clock_now) { (void)a; (void)kind; return mo_time(server_mode ? wall_ms() : FIXTURE_TIME); }
+/* Under main, the wall clock, frozen for the running update; in a test, the fixture's. */
+static int64_t clock_now_ms(void);
+MO_ROW(mo_r_Clock_now) { (void)a; (void)kind; return mo_time(clock_now_ms()); }
 MO_ROW(mo_r_Clock_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_CLOCK, 0, 0); }
 
 /* ---- the platform (server.zig) */
@@ -3853,6 +3968,1503 @@ MoValue mo_all(uint32_t index) {
     return mo_list(produced[index].xs, (uint32_t)produced[index].n);
 }
 
+/* ==== processes: Mo.Sim's scheduler, and under main Mo.Server's turns (sim.zig, turns.zig) ==== */
+
+/* A child line with no max_restarts: three restarts within five seconds. */
+#define DEFAULT_MAX_RESTARTS 3
+#define DEFAULT_WINDOW_MS 5000
+/* Deliveries one settle makes in a test before the processes count as never settling. */
+#define SETTLE_LIMIT 1000000
+/* The test runner, or main, as a supervisor; no process as the one running. */
+#define NOBODY UINT32_MAX
+/* Under main, the messages a process's log keeps for a crash report: the last ones. */
+#define LOG_KEPT 16
+/* Region bytes a process may leave past twice what its last full compaction kept. */
+#define FULL_BUDGET ((size_t)4 << 20)
+/* The address space a process's region reserves, at most: many processes each reserve one. */
+#define PROCESS_REGION ((size_t)16 << 30)
+/* A process's thread's stack, as a Zig thread's. */
+#define WORKER_STACK ((size_t)16 << 20)
+
+/* A message in a mailbox or an outbox; under main it came in a parcel the mailbox, then the
+ * log, owns. */
+typedef struct { MoValue message; uint64_t seq; Parcel *parcel; } Entry;
+typedef struct { uint32_t to; MoValue message; Parcel *parcel; } Outgoing;
+typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; } Policy;
+
+typedef struct {
+    uint32_t process;
+    MoValue *args;
+    uint32_t nargs;
+    MoValue state;
+    /* Index in `sups`, or NOBODY. */
+    uint32_t supervisor;
+    Policy policy;
+    Entry *mailbox;
+    size_t mailbox_len, mailbox_cap, head;
+    /* Every message since the last (re)start; under main the last LOG_KEPT, in their parcels. */
+    MoValue *log;
+    size_t nlog, caplog;
+    Parcel *log_parcels[LOG_KEPT];
+    size_t nlog_parcels;
+    /* Under main, the parcel its start arguments and first state live in for the run. */
+    Parcel *start;
+    int64_t *restarts;
+    size_t nrestarts, caprestarts;
+    bool up;
+    /* Its update is on a stack. */
+    bool busy;
+    /* The running update's sends, delivered only when it commits. */
+    Outgoing *outbox;
+    size_t noutbox, capoutbox;
+    /* Under main, the wall clock when its running update began: clock.now is frozen per update. */
+    int64_t now;
+} Proc;
+
+static Proc **procs;
+static uint32_t nprocs, capprocs;
+/* Each started supervisor's index in mo_supervisors. */
+static uint32_t *sups;
+static uint32_t nsups, capsups;
+static uint32_t running = NOBODY;
+static uint64_t next_seq;
+/* A supervisor gave up: last_report says which, and the run stops. */
+static bool gave_up;
+/* The first process crash of a test, its report complete. */
+static Report first_crash;
+static bool crashed_once;
+/* Milliseconds fixture calls have waited in a test: an ask in flight counts them. */
+static int64_t sim_waited;
+/* The seed a crash report names: the test runner's, or 0 under main. */
+static uint64_t sim_seed;
+static const char *test_name = "";
+/* Under main with regions: a value that goes from one process to another goes packed. */
+static bool packs;
+/* Under main with processes: each process's updates run on a thread of its own, taking turns. */
+static bool turns_on;
+
+static MoValue turns_ask(uint32_t to, MoValue message, int64_t within);
+static void turns_settle(void);
+static bool turns_awaits(uint64_t seq);
+static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel);
+static void turns_wake_all(void);
+static void close_held(const MoValue *args, uint32_t n);
+
+static const char *handle_name(int64_t id) {
+    return id >= 0 && id < (int64_t)nprocs ? mo_processes[procs[id]->process].name : NULL;
+}
+
+static int64_t clock_now_ms(void) {
+    if (!server_mode) return FIXTURE_TIME;
+    return running != NOBODY ? procs[running]->now : wall_ms();
+}
+
+static const char *name_of(uint32_t id) { return mo_processes[procs[id]->process].name; }
+static size_t queued(const Proc *p) { return p->mailbox_len - p->head; }
+
+static MoValue handle_value(uint32_t id) {
+    MoValue v = {MO_HANDLE, 0, {0}};
+    v.as.i = id;
+    return v;
+}
+
+static MoValue ask_error(uint32_t name) { return error_of(mo_variant(name, 0, NULL)); }
+
+/* A test starts with no process. */
+static void reset_processes(void) {
+    for (uint32_t i = 0; i < nprocs; i++) {
+        Proc *p = procs[i];
+        free(p->mailbox);
+        free(p->log);
+        free(p->restarts);
+        free(p->outbox);
+        free(p);
+    }
+    nprocs = nsups = 0;
+    running = NOBODY;
+    next_seq = 0;
+    gave_up = crashed_once = false;
+    sim_waited = 0;
+}
+
+static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));
+static char *text_of(const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    int n = vsnprintf(NULL, 0, format, ap);
+    va_end(ap);
+    char *text = xmalloc((size_t)(n > 0 ? n : 0) + 1);
+    va_start(ap, format);
+    vsnprintf(text, (size_t)(n > 0 ? n : 0) + 1, format, ap);
+    va_end(ap);
+    return text;
+}
+
+/* ---- starting */
+
+static int64_t window_of(const MoChild *c) { return c->per ? c->per(NULL, NULL).as.i : DEFAULT_WINDOW_MS; }
+
+/* A state that cannot be built crashes whoever called start: the process never began. */
+static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, uint32_t supervisor, Policy policy) {
+    MoValue *kept = dupe_values(args, n);
+    MoValue state = mo_processes[process].init(NULL, kept);
+    Proc *p = calloc(1, sizeof(Proc));
+    if (!p) out_of_memory();
+    p->process = process;
+    p->args = kept;
+    p->nargs = n;
+    p->state = state;
+    p->supervisor = supervisor;
+    p->policy = policy;
+    p->up = true;
+    if (packs) {
+        /* Packed together, what the state shares with the arguments is copied once. */
+        MoValue *both = mo_alloc_values(n + 1);
+        if (n) memcpy(both, kept, n * sizeof(MoValue));
+        both[n] = state;
+        p->start = pack(mo_tuple_of(both, n + 1));
+        p->args = p->start->value.as.xs;
+        p->state = p->start->value.as.xs[n];
+    }
+    GROW_ARRAY(procs, nprocs, capprocs);
+    procs[nprocs] = p;
+    return nprocs++;
+}
+
+/* `Name.start(args)`: the test runner, or main, supervises it with :always, and with the
+ * max_restarts of a child line that names the process. */
+MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
+    Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS};
+    for (uint32_t s = 0; s < mo_nsupervisors; s++) {
+        const MoSupervisor *sup = &mo_supervisors[s];
+        for (uint32_t k = 0; k < sup->nchildren; k++) {
+            const MoChild *c = &sup->children[k];
+            if (c->process == process && c->max_restarts != UINT32_MAX) {
+                policy = (Policy){MO_RESTART_ALWAYS, c->max_restarts, window_of(c)};
+                break;
+            }
+        }
+    }
+    return handle_value(start_under(process, n, args, NOBODY, policy));
+}
+
+/* Each child in order, with the arguments its line passes. */
+MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args) {
+    (void)n;
+    const MoSupervisor *s = &mo_supervisors[supervisor];
+    uint32_t sid = nsups;
+    GROW_ARRAY(sups, nsups, capsups);
+    sups[nsups++] = supervisor;
+    MoValue *ids = mo_alloc_values(s->nchildren);
+    for (uint32_t k = 0; k < s->nchildren; k++) {
+        const MoChild *c = &s->children[k];
+        MoValue child = c->args(NULL, args);
+        uint32_t max = c->max_restarts == UINT32_MAX ? DEFAULT_MAX_RESTARTS : c->max_restarts;
+        Policy policy = {c->restart, max, window_of(c)};
+        ids[k] = handle_value(start_under(c->process, child.aux, child.as.xs, sid, policy));
+    }
+    if (s->nchildren == 0) return MO_NONE_V;
+    if (s->nchildren == 1) return ids[0];
+    return mo_tuple_of(ids, s->nchildren);
+}
+
+/* ---- messages */
+
+static uint64_t enqueue(uint32_t to, MoValue message, Parcel *parcel) {
+    uint64_t seq = next_seq++;
+    Proc *p = procs[to];
+    GROW_ARRAY(p->mailbox, p->mailbox_len, p->mailbox_cap);
+    p->mailbox[p->mailbox_len++] = (Entry){message, seq, parcel};
+    return seq;
+}
+
+/* A mailbox at its bound crashes the sender, and the report names both (d33). */
+static void room_for(uint32_t to, MoValue message) {
+    Proc *target = procs[to];
+    size_t waiting = queued(target);
+    if (running != NOBODY) {
+        Proc *from = procs[running];
+        for (size_t i = 0; i < from->noutbox; i++) waiting += from->outbox[i].to == to;
+    }
+    uint32_t bound = mo_processes[target->process].mailbox;
+    if (waiting < bound) return;
+    const char *from = running != NOBODY ? name_of(running) : server_mode ? "main" : text_of("the test \"%s\"", test_name);
+    Involved *values = xmalloc(sizeof(Involved));
+    values[0] = (Involved){"message", render(message)};
+    Report r = {MO_R_MAILBOX, text_of("%s sent to %s, whose mailbox is full at its bound of %u", from, name_of(to), bound), from, NULL, values, 1, NULL, 0, NULL, 0, NULL};
+    raise_report(r, JUMP_CRASH);
+}
+
+/* `h.send(message)`: never blocks. From inside an update the message waits in the sender's
+ * outbox until the update commits. A target that is down drops it. */
+MoValue mo_send(MoValue handle, MoValue message) {
+    uint32_t to = (uint32_t)handle.as.i;
+    if (!procs[to]->up) return MO_NONE_V;
+    room_for(to, message);
+    Parcel *parcel = packs ? pack(message) : NULL;
+    MoValue sent = parcel ? parcel->value : message;
+    if (running != NOBODY) {
+        Proc *from = procs[running];
+        GROW_ARRAY(from->outbox, from->noutbox, from->capoutbox);
+        from->outbox[from->noutbox++] = (Outgoing){to, sent, parcel};
+    } else {
+        enqueue(to, sent, parcel);
+    }
+    return MO_NONE_V;
+}
+
+/* The slowest fixture the process was started with. */
+static int64_t delay_of(uint32_t id) {
+    int64_t delay = 0;
+    const Proc *p = procs[id];
+    for (uint32_t i = 0; i < p->nargs; i++) {
+        if (p->args[i].tag == MO_CAP && p->args[i].as.i > delay) delay = p->args[i].as.i;
+    }
+    return delay;
+}
+
+typedef struct { uint64_t seq; bool has_reply; MoValue reply; } Delivered;
+static Delivered deliver(uint32_t id);
+
+/* `h.ask(message, within: d)`: the target's waiting messages run, then this one, and the
+ * reply is the value of its arm. Timeout when the target's fixtures are slower than d, or its
+ * fixture calls waited longer than d while it answered; Down when the target is down or
+ * crashed before replying. A Timeout's message still arrives. */
+MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
+    uint32_t to = (uint32_t)handle.as.i;
+    if (turns_on) return turns_ask(to, message, within.as.i);
+    if (!procs[to]->up) return ask_error(MO_N_DOWN);
+    /* A target whose update is on the stack is waiting on this very call. */
+    if (procs[to]->busy) return ask_error(MO_N_TIMEOUT);
+    int64_t waited = sim_waited;
+    room_for(to, message);
+    uint64_t seq = enqueue(to, message, NULL);
+    MoValue reply;
+    for (;;) {
+        Proc *p = procs[to];
+        /* A restart empties the mailbox, this message with it. */
+        if (!p->up || queued(p) == 0 || p->mailbox[p->head].seq > seq) return ask_error(MO_N_DOWN);
+        Delivered d = deliver(to);
+        if (d.seq == seq) {
+            if (!d.has_reply) return ask_error(MO_N_DOWN);
+            reply = d.reply;
+            break;
+        }
+    }
+    if (delay_of(to) + (sim_waited - waited) > within.as.i) return ask_error(MO_N_TIMEOUT);
+    return ok_of(reply);
+}
+
+/* Delivers waiting messages, one per process per round in start order, until every mailbox
+ * is empty. A process an update starts waits for the next round. */
+static void drain(void) {
+    uint32_t delivered = 0;
+    bool progressed = true;
+    while (progressed) {
+        progressed = false;
+        uint32_t n = nprocs;
+        for (uint32_t id = 0; id < n; id++) {
+            Proc *p = procs[id];
+            if (!p->up || p->busy || queued(p) == 0) continue;
+            deliver(id);
+            progressed = true;
+            delivered++;
+            if (delivered == SETTLE_LIMIT && !server_mode) {
+                mo_fail(MO_R_OTHER, test_name, "the processes did not settle: a million messages delivered and mailboxes still waiting");
+            }
+        }
+    }
+}
+
+void mo_settle(void) {
+    if (turns_on) turns_settle();
+    else drain();
+}
+
+/* ---- one message */
+
+static void log_message(Proc *p, Entry e) {
+    if (e.parcel) {
+        if (p->nlog_parcels == LOG_KEPT) {
+            parcel_free(p->log_parcels[0]);
+            memmove(p->log_parcels, p->log_parcels + 1, (LOG_KEPT - 1) * sizeof(Parcel *));
+            p->nlog_parcels--;
+            memmove(p->log, p->log + 1, (p->nlog - 1) * sizeof(MoValue));
+            p->nlog--;
+        }
+        p->log_parcels[p->nlog_parcels++] = e.parcel;
+    }
+    GROW_ARRAY(p->log, p->nlog, p->caplog);
+    p->log[p->nlog++] = e.message;
+}
+
+/* One update, then every invariant against the state before it. Gives (reply, state). */
+static MoValue update(uint32_t id, MoValue message, MoValue before) {
+    const Proc *p = procs[id];
+    const MoProcess *def = &mo_processes[p->process];
+    uint32_t n = p->nargs;
+    MoValue *args = mo_alloc_values(n + 2);
+    if (n) memcpy(args, p->args, n * sizeof(MoValue));
+    args[n] = before;
+    args[n + 1] = message;
+    MoValue out = def->update(NULL, args);
+    args[n] = out.as.xs[1];
+    args[n + 1] = before;
+    for (uint32_t k = 0; k < def->ninvariants; k++) {
+        if (!def->invariants[k].fn(NULL, args).as.b) continue;
+        static const char *const state_name[] = {"state"};
+        mo_crash_values(def->invariants[k].clause, 1, state_name, &out.as.xs[1]);
+    }
+    return out;
+}
+
+/* The update, with its crash caught: 0 when it committed, else how it jumped. */
+static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out) {
+    jmp_buf here;
+    jmp_buf *saved = crash_jump;
+    crash_jump = &here;
+    int jumped = setjmp(here);
+    if (jumped == 0) *out = update(id, message, before);
+    crash_jump = saved;
+    return jumped;
+}
+
+static void rollback(void) {
+    while (nundos > 0) {
+        nundos--;
+        *(MoValue *)undos[nundos].slot = undos[nundos].old;
+    }
+}
+
+/* After an update under main: what it allocated that the new state does not reach is freed,
+ * message, reply, and outgoing messages included, since those left packed. Once the region
+ * holds more than twice what its last full compaction kept, it is compacted whole. */
+static void settle_region(uint32_t id, size_t mark) {
+    MoValue roots[1] = {procs[id]->state};
+    if (mo_heap.top > mark) mo_compact(mark, roots, 1);
+    if (mo_heap.top - mo_heap.base > 2 * full_kept + FULL_BUDGET) {
+        mo_compact(mo_heap.base, roots, 1);
+        full_kept = mo_heap.top - mo_heap.base;
+    }
+    procs[id]->state = roots[0];
+}
+
+static void process_crashed(const Report *r) {
+    Buf b = {0};
+    buf_str(&b, "process crashed: ");
+    report_text(&b, r);
+    buf_byte(&b, '\n');
+    stream_write(&err_stream, b.p, b.len);
+    free(b.p);
+}
+
+/* The child crashed more than max_restarts times within the window: its supervisor crashes,
+ * every child of that supervisor goes down, and the run stops. */
+_Noreturn static void give_up(uint32_t id, Report last) {
+    const Proc *p = procs[id];
+    const char *sup = p->supervisor == NOBODY ? (server_mode ? "main" : "the test runner") : mo_supervisors[sups[p->supervisor]].name;
+    for (uint32_t i = 0; i < nprocs; i++) {
+        Proc *q = procs[i];
+        if (q->supervisor != p->supervisor) continue;
+        q->up = false;
+        close_held(q->args, q->nargs);
+    }
+    gave_up = true;
+    Involved *values = xmalloc(sizeof(Involved));
+    values[0] = (Involved){"last crash", (char *)last.clause};
+    Report r = {MO_R_SUPERVISOR, text_of("%s gave up: %s crashed more than %u times within %lld.ms", sup, name_of(id), p->policy.max_restarts, (long long)p->policy.window_ms), sup, last.where, values, 1, last.process, last.seed, last.log, last.nlog, last.state};
+    raise_report(r, JUMP_CRASH);
+}
+
+static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
+    jmp_buf here;
+    jmp_buf *saved = crash_jump;
+    crash_jump = &here;
+    int jumped = setjmp(here);
+    if (jumped == 0) *out = mo_processes[process].init(NULL, args);
+    crash_jump = saved;
+    if (jumped != 0 && jumped != JUMP_CRASH) raise_report(last_report, jumped);
+    return jumped == 0;
+}
+
+/* Keeps the crash with its complete report, then does what the child line says. :always and
+ * :on_crash restart alike: an update never ends a process but by crashing. */
+static void crashed(uint32_t id, MoValue before) {
+    Report report = last_report;
+    Proc *p = procs[id];
+    report.process = name_of(id);
+    report.seed = sim_seed;
+    report.log = xmalloc((p->nlog ? p->nlog : 1) * sizeof(char *));
+    report.nlog = (uint32_t)p->nlog;
+    for (size_t i = 0; i < p->nlog; i++) report.log[i] = render(p->log[i]);
+    report.state = render(before);
+    if (!crashed_once) {
+        first_crash = report;
+        crashed_once = true;
+    }
+    if (server_mode) process_crashed(&report);
+    /* A connection closes when the process holding it stops, restarted or not. */
+    close_held(p->args, p->nargs);
+    if (turns_on) turns_wake_all();
+    if (p->policy.restart == MO_RESTART_NEVER) {
+        p->up = false;
+        return;
+    }
+    /* Restarts are counted in simulated time under a test, and wall-clock time under main. */
+    int64_t at = server_mode ? wall_ms() : FIXTURE_TIME;
+    size_t kept = 0;
+    for (size_t i = 0; i < p->nrestarts; i++) {
+        if (p->restarts[i] > at - p->policy.window_ms) p->restarts[kept++] = p->restarts[i];
+    }
+    p->nrestarts = kept;
+    if (kept >= p->policy.max_restarts) give_up(id, report);
+    GROW_ARRAY(p->restarts, p->nrestarts, p->caprestarts);
+    p->restarts[p->nrestarts++] = at;
+    /* An ask whose message the restart drops is Down. */
+    if (turns_on) {
+        for (size_t i = p->head; i < p->mailbox_len; i++) turns_answer(p->mailbox[i].seq, false, MO_NONE_V, NULL);
+    }
+    for (size_t i = p->head; i < p->mailbox_len; i++) parcel_free(p->mailbox[i].parcel);
+    p->mailbox_len = p->head = 0;
+    p->nlog = 0;
+    for (size_t i = 0; i < p->nlog_parcels; i++) parcel_free(p->log_parcels[i]);
+    p->nlog_parcels = 0;
+    MoValue state;
+    if (!run_init(p->process, p->args, &state)) give_up(id, last_report);
+    procs[id]->state = state;
+}
+
+/* Runs the next message in the mailbox of `id` as one transaction. No reply: it crashed. */
+static Delivered deliver(uint32_t id) {
+    Proc *p = procs[id];
+    Entry entry = p->mailbox[p->head];
+    p->head++;
+    if (p->head == p->mailbox_len) {
+        p->mailbox_len = p->head = 0;
+    } else if (p->head >= 64 && 2 * p->head >= p->mailbox_len) {
+        /* A mailbox that never empties does not grow: what was taken is dropped. */
+        size_t waiting = p->mailbox_len - p->head;
+        memmove(p->mailbox, p->mailbox + p->head, waiting * sizeof(Entry));
+        p->mailbox_len = waiting;
+        p->head = 0;
+    }
+    log_message(p, entry);
+    if (server_mode) p->now = wall_ms();
+    MoValue before = p->state;
+    /* Under main, everything the update allocates is past this mark, the message copied out of
+     * its parcel first. What it overwrites older than the mark is undone on a crash, and not
+     * overwritten at all when an invariant reads old(state). */
+    size_t mark = mo_mark();
+    bool regioned = mo_compacts && mo_heap.end != 0;
+    MoValue message = entry.parcel ? unpack(entry.parcel) : entry.message;
+    if (regioned) {
+        undo_mark = mark;
+        frozen_below = mo_processes[p->process].reads_old ? mark : 0;
+    }
+    uint32_t outer = running;
+    running = id;
+    p->busy = true;
+    MoValue after = MO_NONE_V;
+    int jumped = run_update(id, message, before, &after);
+    p = procs[id];
+    p->busy = false;
+    running = outer;
+    if (jumped != 0) {
+        undo_mark = frozen_below = 0;
+        if (jumped != JUMP_CRASH) raise_report(last_report, jumped);
+        rollback();
+        for (size_t i = 0; i < p->noutbox; i++) parcel_free(p->outbox[i].parcel);
+        p->noutbox = 0;
+        if (gave_up) raise_report(last_report, JUMP_CRASH);
+        crashed(id, before);
+        if (turns_on) turns_answer(entry.seq, false, MO_NONE_V, NULL);
+        if (regioned) settle_region(id, mark);
+        return (Delivered){entry.seq, false, MO_NONE_V};
+    }
+    undo_mark = frozen_below = 0;
+    nundos = 0;
+    p->state = after.as.xs[1];
+    for (size_t i = 0; i < p->noutbox; i++) {
+        Outgoing o = p->outbox[i];
+        if (procs[o.to]->up) enqueue(o.to, o.message, o.parcel);
+        else parcel_free(o.parcel);
+    }
+    p->noutbox = 0;
+    MoValue reply = after.as.xs[0];
+    if (turns_on && turns_awaits(entry.seq)) {
+        Parcel *parcel = packs ? pack(reply) : NULL;
+        turns_answer(entry.seq, true, parcel ? parcel->value : reply, parcel);
+    }
+    if (regioned) settle_region(id, mark);
+    return (Delivered){entry.seq, true, reply};
+}
+
+/* ---- turns: under main, each process runs its updates on a thread of its own, with a vm of its
+ * own, and the threads take turns: the one holding the turn runs Mo code, the others wait for it
+ * (turns.zig). A process gives up its turn when it waits, in a Net call or in an ask its target
+ * cannot answer yet, and asks for one again when its wait ends. main's thread holds the turn
+ * whenever no process does, and hands turns out: first to a process whose wait ended, then to the
+ * next process with a message waiting, round by round in start order. */
+
+#define MAIN_TURN UINT32_MAX
+
+static int64_t now_ms(void) { return awake_ns() / 1000000; }
+
+/* Set wakes a thread waiting on it; it stays set until reset. */
+typedef struct { pthread_mutex_t mu; pthread_cond_t cv; bool set; } Event;
+
+static void event_init(Event *e) {
+    pthread_mutex_init(&e->mu, NULL);
+    pthread_cond_init(&e->cv, NULL);
+    e->set = false;
+}
+
+static void event_set(Event *e) {
+    pthread_mutex_lock(&e->mu);
+    e->set = true;
+    pthread_cond_broadcast(&e->cv);
+    pthread_mutex_unlock(&e->mu);
+}
+
+static void event_reset(Event *e) {
+    pthread_mutex_lock(&e->mu);
+    e->set = false;
+    pthread_mutex_unlock(&e->mu);
+}
+
+static bool event_is_set(Event *e) {
+    pthread_mutex_lock(&e->mu);
+    bool set = e->set;
+    pthread_mutex_unlock(&e->mu);
+    return set;
+}
+
+static void event_wait(Event *e) {
+    pthread_mutex_lock(&e->mu);
+    while (!e->set) pthread_cond_wait(&e->cv, &e->mu);
+    pthread_mutex_unlock(&e->mu);
+}
+
+/* Waits at most `ms`. */
+static void event_wait_ms(Event *e, int64_t ms) {
+    struct timespec until;
+    clock_gettime(CLOCK_REALTIME, &until);
+    int64_t ns = until.tv_nsec + (ms % 1000) * 1000000;
+    until.tv_sec += (time_t)(ms / 1000 + ns / 1000000000);
+    until.tv_nsec = (long)(ns % 1000000000);
+    pthread_mutex_lock(&e->mu);
+    while (!e->set) {
+        if (pthread_cond_timedwait(&e->cv, &e->mu, &until) == ETIMEDOUT) break;
+    }
+    pthread_mutex_unlock(&e->mu);
+}
+
+/* What a vm keeps that is not a value: swapped in by the thread that takes the turn. */
+typedef struct {
+    MoRegion heap;
+    Growth growth[16];
+    unsigned growth_next;
+    SliceKey owned[16];
+    unsigned owned_next;
+    Remembered *remembered;
+    size_t nremembered, capremembered;
+    Undo *undos;
+    size_t nundos, capundos;
+    uintptr_t undo_mark, frozen_below;
+    size_t full_kept;
+    jmp_buf *crash_jump;
+} VmState;
+
+static void save_vm(VmState *s) {
+    s->heap = mo_heap;
+    memcpy(s->growth, growth, sizeof growth);
+    s->growth_next = growth_next;
+    memcpy(s->owned, owned, sizeof owned);
+    s->owned_next = owned_next;
+    s->remembered = remembered;
+    s->nremembered = nremembered;
+    s->capremembered = capremembered;
+    s->undos = undos;
+    s->nundos = nundos;
+    s->capundos = capundos;
+    s->undo_mark = undo_mark;
+    s->frozen_below = frozen_below;
+    s->full_kept = full_kept;
+    s->crash_jump = crash_jump;
+}
+
+static void load_vm(const VmState *s) {
+    mo_heap = s->heap;
+    memcpy(growth, s->growth, sizeof growth);
+    growth_next = s->growth_next;
+    memcpy(owned, s->owned, sizeof owned);
+    owned_next = s->owned_next;
+    remembered = s->remembered;
+    nremembered = s->nremembered;
+    capremembered = s->capremembered;
+    undos = s->undos;
+    nundos = s->nundos;
+    capundos = s->capundos;
+    undo_mark = s->undo_mark;
+    frozen_below = s->frozen_below;
+    full_kept = s->full_kept;
+    crash_jump = s->crash_jump;
+}
+
+enum { JOB_DELIVER, JOB_GO_ON, JOB_EXIT };
+enum { PHASE_IDLE, PHASE_RUNNING, PHASE_WAITING };
+
+typedef struct {
+    pthread_t thread;
+    uint32_t id;
+    VmState vm;
+    /* Set when the turn is handed to it. */
+    Event wake;
+    /* Who handed it the turn, and gets it back. */
+    uint32_t caller;
+    int job;
+    /* PHASE_RUNNING: it holds the turn, or waits for one it handed on to come back. */
+    int phase;
+    /* How its turn ended when a crash left it, for whoever gets the turn back. */
+    int failed;
+    Report report;
+} Worker;
+
+typedef struct { uint32_t id; int64_t deadline; } Parked;
+typedef struct { uint64_t seq; uint32_t who; } Awaiting;
+typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer;
+
+static pthread_mutex_t turns_mu = PTHREAD_MUTEX_INITIALIZER;
+static uint32_t holder = MAIN_TURN;
+/* main's thread: set when the turn comes back to it, or when a process's wait ends. */
+static Event main_wake;
+/* Processes whose wait ended, oldest first; a process adds itself off the turn, so every use
+ * holds turns_mu. */
+static uint32_t *ready;
+static size_t nready, capready;
+/* One per process, made at its first delivery; indexed by process id. */
+static Worker **workers;
+static size_t nworkers, capworkers;
+/* Asks waiting for their reply, the replies that came, and processes parked in an ask. */
+static Awaiting *awaiting;
+static size_t nawaiting, capawaiting;
+static Answer *answers;
+static size_t nanswers, capanswers;
+static Parked *parked;
+static size_t nparked, capparked;
+/* Where the next round of deliveries starts. */
+static uint32_t cursor;
+static VmState main_vm;
+static _Thread_local VmState *my_vm;
+
+static Event *event_of(uint32_t id) { return id == MAIN_TURN ? &main_wake : &workers[id]->wake; }
+
+/* Gives the turn to `to` and wakes it. Only the holder calls this. */
+static void pass(uint32_t to, Event *e) {
+    pthread_mutex_lock(&turns_mu);
+    holder = to;
+    pthread_mutex_unlock(&turns_mu);
+    event_set(e);
+}
+
+/* Waits until the turn is `me`'s. */
+static void await_turn(uint32_t me, Event *e) {
+    for (;;) {
+        pthread_mutex_lock(&turns_mu);
+        if (holder == me) {
+            pthread_mutex_unlock(&turns_mu);
+            return;
+        }
+        event_reset(e);
+        pthread_mutex_unlock(&turns_mu);
+        event_wait(e);
+    }
+}
+
+static void *work(void *arg);
+
+static Worker *worker_of(uint32_t id) {
+    while (nworkers <= id) {
+        GROW_ARRAY(workers, nworkers, capworkers);
+        workers[nworkers++] = NULL;
+    }
+    if (workers[id]) return workers[id];
+    Worker *w = calloc(1, sizeof(Worker));
+    if (!w) out_of_memory();
+    w->id = id;
+    w->caller = MAIN_TURN;
+    event_init(&w->wake);
+    if (packs && !reserve_up_to(&w->vm.heap, PROCESS_REGION)) w->vm.heap = (MoRegion){0, 0, 0};
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, WORKER_STACK);
+    if (pthread_create(&w->thread, &attr, work, w) != 0) out_of_memory();
+    pthread_attr_destroy(&attr);
+    workers[id] = w;
+    return w;
+}
+
+/* The holder hands the turn to process `id`, to deliver its next message or to go on after a
+ * wait, and has it back when the update ends or waits again. */
+static void hand_to(uint32_t id, int job) {
+    Worker *w = worker_of(id);
+    uint32_t me = holder;
+    uint32_t was_running = running;
+    w->caller = me;
+    w->job = job;
+    w->phase = PHASE_RUNNING;
+    save_vm(my_vm);
+    pass(id, &w->wake);
+    await_turn(me, event_of(me));
+    load_vm(my_vm);
+    running = was_running;
+    if (w->failed) {
+        int jumped = w->failed;
+        w->failed = 0;
+        raise_report(w->report, jumped);
+    }
+}
+
+/* A process's thread: each turn it is handed delivers one message. */
+static void *work(void *arg) {
+    Worker *w = arg;
+    my_vm = &w->vm;
+    for (;;) {
+        await_turn(w->id, &w->wake);
+        load_vm(&w->vm);
+        int job = w->job;
+        if (job == JOB_DELIVER) {
+            jmp_buf here;
+            crash_jump = &here;
+            int jumped = setjmp(here);
+            if (jumped == 0) {
+                deliver(w->id);
+            } else {
+                w->failed = jumped;
+                w->report = last_report;
+            }
+            crash_jump = NULL;
+        }
+        w->phase = PHASE_IDLE;
+        save_vm(&w->vm);
+        pass(w->caller, event_of(w->caller));
+        if (job == JOB_EXIT) return NULL;
+    }
+}
+
+static void make_ready(uint32_t id) {
+    pthread_mutex_lock(&turns_mu);
+    GROW_ARRAY(ready, nready, capready);
+    ready[nready++] = id;
+    pthread_mutex_unlock(&turns_mu);
+    event_set(&main_wake);
+}
+
+/* A process parks in an ask until the reply comes, the target goes down, or `deadline`. */
+static void park(int64_t deadline) {
+    uint32_t id = holder;
+    Worker *w = workers[id];
+    uint32_t was_running = running;
+    GROW_ARRAY(parked, nparked, capparked);
+    parked[nparked++] = (Parked){id, deadline};
+    w->phase = PHASE_WAITING;
+    save_vm(my_vm);
+    pass(w->caller, event_of(w->caller));
+    await_turn(id, &w->wake);
+    load_vm(my_vm);
+    running = was_running;
+}
+
+/* main's thread, with no turn to hand out: waits until a process's wait ends, `also` is set,
+ * or the earliest deadline passes. */
+static void idle(Event *also, bool bounded, int64_t deadline) {
+    int64_t until = deadline;
+    for (size_t i = 0; i < nparked; i++) {
+        if (!bounded || parked[i].deadline < until) until = parked[i].deadline;
+        bounded = true;
+    }
+    pthread_mutex_lock(&turns_mu);
+    bool any_ready = nready > 0;
+    if (!any_ready) event_reset(&main_wake);
+    pthread_mutex_unlock(&turns_mu);
+    if (any_ready) return;
+    if (also && event_is_set(also)) return;
+    if (!bounded) {
+        event_wait(&main_wake);
+        return;
+    }
+    int64_t left = until - now_ms();
+    if (left > 0) event_wait_ms(&main_wake, left);
+}
+
+/* One turn handed out, from main's thread: to a process whose wait ended, else to the next
+ * process with a message waiting. False when there is none. */
+static bool step(void) {
+    int64_t now = now_ms();
+    size_t k = 0;
+    while (k < nparked) {
+        if (parked[k].deadline <= now) {
+            uint32_t id = parked[k].id;
+            parked[k] = parked[--nparked];
+            make_ready(id);
+        } else {
+            k++;
+        }
+    }
+    pthread_mutex_lock(&turns_mu);
+    bool has = nready > 0;
+    uint32_t next = has ? ready[0] : 0;
+    if (has) {
+        memmove(ready, ready + 1, (nready - 1) * sizeof(uint32_t));
+        nready--;
+    }
+    pthread_mutex_unlock(&turns_mu);
+    if (has) {
+        hand_to(next, JOB_GO_ON);
+        return true;
+    }
+    uint32_t n = nprocs;
+    for (uint32_t j = 0; j < n; j++) {
+        uint32_t id = (cursor + j) % n;
+        const Proc *p = procs[id];
+        if (!p->up || p->busy || queued(p) == 0) continue;
+        cursor = id + 1;
+        hand_to(id, JOB_DELIVER);
+        return true;
+    }
+    return false;
+}
+
+static void forget_awaiting(uint64_t seq) {
+    for (size_t i = 0; i < nawaiting; i++) {
+        if (awaiting[i].seq != seq) continue;
+        awaiting[i] = awaiting[--nawaiting];
+        return;
+    }
+}
+
+/* `h.ask(message, within: d)` under main, with d in wall-clock time. The target's waiting
+ * messages are delivered first; while it cannot answer, main hands out turns and a process
+ * parks. Timeout at the deadline, or at once when the target's update is itself waiting on
+ * this call; Down when the target is down, crashed on the message, or dropped it restarting. */
+static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
+    if (!procs[to]->up) return ask_error(MO_N_DOWN);
+    room_for(to, message);
+    Parcel *parcel = packs ? pack(message) : NULL;
+    uint64_t seq = enqueue(to, parcel ? parcel->value : message, parcel);
+    GROW_ARRAY(awaiting, nawaiting, capawaiting);
+    awaiting[nawaiting++] = (Awaiting){seq, holder};
+    int64_t deadline = now_ms() + (within > 0 ? within : 0);
+    for (;;) {
+        for (size_t i = 0; i < nanswers; i++) {
+            if (answers[i].seq != seq) continue;
+            Answer got = answers[i];
+            answers[i] = answers[--nanswers];
+            if (!got.has) return ask_error(MO_N_DOWN);
+            MoValue reply = got.value;
+            if (got.parcel) {
+                reply = unpack(got.parcel);
+                parcel_free(got.parcel);
+            }
+            return ok_of(reply);
+        }
+        const Proc *p = procs[to];
+        bool updating = p->busy && to < nworkers && workers[to] && workers[to]->phase == PHASE_RUNNING;
+        if (!p->up || updating || now_ms() >= deadline) {
+            forget_awaiting(seq);
+            return ask_error(p->up ? MO_N_TIMEOUT : MO_N_DOWN);
+        }
+        if (!p->busy && queued(p) > 0) {
+            hand_to(to, JOB_DELIVER);
+        } else if (holder != MAIN_TURN) {
+            park(deadline);
+        } else if (!step()) {
+            idle(NULL, true, deadline);
+        }
+    }
+}
+
+/* Between two of main's statements: every turn there is to hand out, without waiting. */
+static void turns_settle(void) {
+    while (step()) {}
+}
+
+/* main returned: turns go on being handed out until no message waits and no update is in
+ * progress. */
+static void turns_finish(void) {
+    for (;;) {
+        if (step()) continue;
+        bool pending = false;
+        for (uint32_t i = 0; i < nprocs && !pending; i++) {
+            const Proc *p = procs[i];
+            pending = p->busy || (p->up && queued(p) > 0);
+        }
+        if (!pending) return;
+        idle(NULL, false, 0);
+    }
+}
+
+static bool turns_awaits(uint64_t seq) {
+    for (size_t i = 0; i < nawaiting; i++) {
+        if (awaiting[i].seq == seq) return true;
+    }
+    return false;
+}
+
+/* An update that took message `seq` ended: with its reply, packed under main, or none when it
+ * crashed. The asker takes the parcel. */
+static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel) {
+    size_t i = 0;
+    while (i < nawaiting && awaiting[i].seq != seq) i++;
+    if (i == nawaiting) {
+        parcel_free(parcel);
+        return;
+    }
+    uint32_t who = awaiting[i].who;
+    awaiting[i] = awaiting[--nawaiting];
+    GROW_ARRAY(answers, nanswers, capanswers);
+    answers[nanswers++] = (Answer){seq, has, reply, parcel};
+    if (who == MAIN_TURN) {
+        event_set(&main_wake);
+        return;
+    }
+    for (size_t k = 0; k < nparked; k++) {
+        if (parked[k].id != who) continue;
+        parked[k] = parked[--nparked];
+        make_ready(who);
+        return;
+    }
+}
+
+/* A process crashed: every parked ask looks at its target again. */
+static void turns_wake_all(void) {
+    while (nparked > 0) make_ready(parked[--nparked].id);
+    event_set(&main_wake);
+}
+
+
+/* ==== Net: TCP under a program's main, and Net.fixture() in its tests (net.zig) ============ */
+
+/* The longest line read_line gives: 64 KiB before its newline. */
+#define LINE_LIMIT ((size_t)64 << 10)
+/* Connections the kernel queues for a listener before accept takes them. */
+#define BACKLOG 128
+
+/* NetError's variants. */
+enum { NET_TIMEOUT, NET_REFUSED, NET_CLOSED, NET_LINE_TOO_LONG, NET_BUSY };
+
+static MoValue net_fail(int f) {
+    static const uint32_t names[] = {MO_N_TIMEOUT, MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY};
+    return error_of(mo_variant(names[f], 0, NULL));
+}
+
+enum { SCAN_LINE, SCAN_TOO_LONG, SCAN_END, SCAN_MORE };
+typedef struct { int what; size_t taken; const char *line; size_t len; } Scan;
+
+static size_t without_cr(const char *line, size_t len) { return len > 0 && line[len - 1] == '\r' ? len - 1 : len; }
+
+/* The next line in `pending`, the bytes of the stream so far not given out: how many bytes it
+ * takes, and the line, what stands in its way, or more to read first. `eof`: nothing follows. A
+ * line of more than 64 KiB is too long, and the bytes up to its newline are taken, at once or as
+ * they arrive (`skipping`). */
+static Scan scan_line(const char *pending, size_t n, bool eof, bool *skipping) {
+    size_t off = 0;
+    for (;;) {
+        const char *rest = pending + off;
+        size_t left = n - off;
+        const char *nl = left ? memchr(rest, '\n', left) : NULL;
+        if (nl) {
+            size_t k = (size_t)(nl - rest);
+            off += k + 1;
+            if (*skipping) {
+                *skipping = false;
+                continue;
+            }
+            if (k > LINE_LIMIT) return (Scan){SCAN_TOO_LONG, off, NULL, 0};
+            return (Scan){SCAN_LINE, off, rest, without_cr(rest, k)};
+        }
+        if (*skipping || left > LINE_LIMIT) {
+            bool first = !*skipping;
+            *skipping = !eof;
+            if (first) return (Scan){SCAN_TOO_LONG, n, NULL, 0};
+            return (Scan){eof ? SCAN_END : SCAN_MORE, n, NULL, 0};
+        }
+        if (!eof) return (Scan){SCAN_MORE, off, NULL, 0};
+        if (left == 0) return (Scan){SCAN_END, off, NULL, 0};
+        return (Scan){SCAN_LINE, n, rest, without_cr(rest, left)};
+    }
+}
+
+/* Ok(Some(line)), LineTooLong, or Ok(None); false for more. The line is copied out first. */
+static bool line_result(Scan s, MoValue *out) {
+    switch (s.what) {
+    case SCAN_LINE: *out = ok_of(mo_some(heap_string(s.line, s.len))); return true;
+    case SCAN_TOO_LONG: *out = net_fail(NET_LINE_TOO_LONG); return true;
+    case SCAN_END: *out = ok_of(mo_nothing()); return true;
+    default: return false;
+    }
+}
+
+/* ---- real sockets: a Listener's or a Conn's handle is its index here */
+
+typedef struct { int fd; uint16_t port; bool accepting; } Listener;
+typedef struct {
+    int fd;
+    /* Bytes read and not yet given out are buf[start..end]; allocated at the first read. */
+    char *buf;
+    size_t start, end;
+    /* The other side closed its end: what is buffered is the rest of the stream. */
+    bool eof;
+    /* close ran, a write timed out, the stream broke, or the process holding it stopped. */
+    bool closed;
+    /* The descriptor is closed: at once, or when the call waiting on it returns. */
+    bool released;
+    /* After LineTooLong, the rest of that line is dropped. */
+    bool skipping;
+    bool reading, writing;
+} Conn;
+
+static Listener **listeners;
+static size_t nlisteners, caplisteners;
+static Conn **conns;
+static size_t nconns, capconns;
+
+static int64_t max0(int64_t ms) { return ms > 0 ? ms : 0; }
+
+/* Waits for `fd` until `deadline` (awake ms); true when it is ready, or broke. */
+static bool poll_until(int fd, short events, int64_t deadline) {
+    for (;;) {
+        int64_t left = max0(deadline - now_ms());
+        struct pollfd p = {fd, events, 0};
+        int r = poll(&p, 1, left > INT_MAX ? INT_MAX : (int)left);
+        if (r > 0) return true;
+        if (r < 0 && errno != EINTR) return true;
+        if (r == 0 && now_ms() >= deadline) return false;
+    }
+}
+
+/* What waits on the network for main while it hands out turns: one thread per blocked call. */
+typedef struct { int fd; short events; int64_t deadline; Event done; } FdWait;
+
+static void *fd_wait(void *arg) {
+    FdWait *w = arg;
+    if (poll_until(w->fd, w->events, w->deadline)) event_set(&w->done);
+    event_set(&main_wake);
+    return NULL;
+}
+
+/* A Net call's wait, at most `ms` (net.zig, wait; turns.zig, block). Under main with processes
+ * the waiter gives up nothing it holds: main's thread hands out turns until the call's thread
+ * says the socket is ready, and a process hands its turn back, waits off it, and asks for a turn
+ * again when the wait ends. True when the socket was ready in time. */
+static bool net_wait(int fd, short events, int64_t ms) {
+    int64_t deadline = now_ms() + max0(ms);
+    if (!turns_on) return poll_until(fd, events, deadline);
+    if (holder == MAIN_TURN) {
+        FdWait w = {.fd = fd, .events = events, .deadline = deadline};
+        event_init(&w.done);
+        pthread_t t;
+        if (pthread_create(&t, NULL, fd_wait, &w) != 0) return poll_until(fd, events, deadline);
+        for (;;) {
+            if (event_is_set(&w.done) || now_ms() >= deadline) break;
+            if (step()) continue;
+            idle(&w.done, true, deadline);
+        }
+        pthread_join(t, NULL);
+        return event_is_set(&w.done);
+    }
+    uint32_t id = holder;
+    Worker *wk = workers[id];
+    uint32_t was_running = running;
+    wk->phase = PHASE_WAITING;
+    save_vm(my_vm);
+    pass(wk->caller, event_of(wk->caller));
+    bool in_time = poll_until(fd, events, deadline);
+    make_ready(id);
+    await_turn(id, &wk->wake);
+    load_vm(my_vm);
+    running = was_running;
+    return in_time;
+}
+
+static void nonblocking(int fd) {
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+}
+
+static MoValue adopt(int fd) {
+    nonblocking(fd);
+    Conn *c = calloc(1, sizeof(Conn));
+    if (!c) out_of_memory();
+    c->fd = fd;
+    GROW_ARRAY(conns, nconns, capconns);
+    conns[nconns] = c;
+    return mo_cap(MO_CAP_CONN, (uint32_t)nconns++, 0);
+}
+
+/* Closes the descriptor once no call is waiting on it. */
+static void net_release(Conn *c) {
+    if (c->released || c->reading || c->writing) return;
+    c->released = true;
+    close(c->fd);
+    free(c->buf);
+    c->buf = NULL;
+    c->start = c->end = 0;
+}
+
+/* `conn.close`: a call waiting on the connection ends, and every later call is Closed. */
+static void net_close(Conn *c) {
+    if (!c->closed) {
+        c->closed = true;
+        shutdown(c->fd, SHUT_RDWR);
+    }
+    net_release(c);
+}
+
+/* `net.listen(port)`: TCP on 127.0.0.1, at `port` or, given 0, at a free port. Binding does not
+ * wait. SO_REUSEADDR alone: a port another listener holds is Busy, and a server that restarts at
+ * once binds again. */
+static MoValue net_listen(uint16_t port) {
+    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd < 0) return net_fail(NET_REFUSED);
+    int one = 1;
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof addr);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(0x7f000001);
+    socklen_t len = sizeof addr;
+    int failed = -1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one) != 0) failed = NET_REFUSED;
+    else if (bind(fd, (struct sockaddr *)&addr, sizeof addr) != 0) failed = errno == EADDRINUSE ? NET_BUSY : NET_REFUSED;
+    else if (listen(fd, BACKLOG) != 0 || getsockname(fd, (struct sockaddr *)&addr, &len) != 0) failed = NET_REFUSED;
+    if (failed >= 0) {
+        close(fd);
+        return net_fail(failed);
+    }
+    nonblocking(fd);
+    Listener *l = calloc(1, sizeof(Listener));
+    if (!l) out_of_memory();
+    l->fd = fd;
+    l->port = ntohs(addr.sin_port);
+    GROW_ARRAY(listeners, nlisteners, caplisteners);
+    listeners[nlisteners] = l;
+    return ok_of(mo_cap(MO_CAP_LISTENER, (uint32_t)nlisteners++, 0));
+}
+
+static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) {
+    int64_t deadline = now_ms() + max0(ms);
+    char *name = xmalloc(host.aux + 1);
+    memcpy(name, host.as.s, host.aux);
+    name[host.aux] = 0;
+    char service[8];
+    snprintf(service, sizeof service, "%u", (unsigned)port);
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo *found = NULL;
+    int gai = strlen(name) == host.aux ? getaddrinfo(name, service, &hints, &found) : EAI_NONAME;
+    free(name);
+    if (gai != 0) return net_fail(gai == EAI_MEMORY ? NET_BUSY : NET_REFUSED);
+    int why = NET_REFUSED;
+    for (struct addrinfo *ai = found; ai; ai = ai->ai_next) {
+        int fd = socket(ai->ai_family, SOCK_STREAM, 0);
+        if (fd < 0) {
+            why = errno == EMFILE || errno == ENFILE || errno == ENOBUFS || errno == ENOMEM ? NET_BUSY : NET_REFUSED;
+            continue;
+        }
+        nonblocking(fd);
+        int r = connect(fd, ai->ai_addr, ai->ai_addrlen);
+        if (r != 0 && errno == EINPROGRESS) {
+            if (!net_wait(fd, POLLOUT, deadline - now_ms())) {
+                close(fd);
+                why = NET_TIMEOUT;
+                break;
+            }
+            int err = 0;
+            socklen_t len = sizeof err;
+            getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
+            r = err == 0 ? 0 : -1;
+        }
+        if (r == 0) {
+            freeaddrinfo(found);
+            return ok_of(adopt(fd));
+        }
+        close(fd);
+    }
+    freeaddrinfo(found);
+    return net_fail(why);
+}
+
+/* A call past its deadline leaves the listener listening. */
+static MoValue net_accept(Listener *l, int64_t ms) {
+    if (l->accepting) return net_fail(NET_BUSY);
+    l->accepting = true;
+    int64_t deadline = now_ms() + max0(ms);
+    MoValue out;
+    for (;;) {
+        int fd = accept(l->fd, NULL, NULL);
+        if (fd >= 0) {
+            out = ok_of(adopt(fd));
+            break;
+        }
+        if (errno == EINTR || errno == ECONNABORTED) continue;
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            out = net_fail(errno == EINVAL ? NET_CLOSED : NET_BUSY);
+            break;
+        }
+        int64_t left = deadline - now_ms();
+        if (left <= 0 || !net_wait(l->fd, POLLIN, left)) {
+            out = net_fail(NET_TIMEOUT);
+            break;
+        }
+    }
+    l->accepting = false;
+    return out;
+}
+
+/* `conn.read_line`: the next line, None at the end of the stream, or why not. A call past its
+ * deadline keeps the bytes of an unfinished line for the next call. */
+static MoValue net_read_line(Conn *c, int64_t ms) {
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (c->reading) return net_fail(NET_BUSY);
+    if (!c->buf) c->buf = xmalloc(2 * LINE_LIMIT);
+    int64_t t0 = now_ms();
+    for (;;) {
+        Scan s = scan_line(c->buf + c->start, c->end - c->start, c->eof, &c->skipping);
+        c->start += s.taken;
+        MoValue out;
+        bool given = line_result(s, &out);
+        if (c->start == c->end) c->start = c->end = 0;
+        if (given) return out;
+        int64_t left = ms - (now_ms() - t0);
+        if (left <= 0) return net_fail(NET_TIMEOUT);
+        if (c->start > 0) {
+            memmove(c->buf, c->buf + c->start, c->end - c->start);
+            c->end -= c->start;
+            c->start = 0;
+        }
+        c->reading = true;
+        ssize_t got;
+        bool in_time = true;
+        for (;;) {
+            got = read(c->fd, c->buf + c->end, 2 * LINE_LIMIT - c->end);
+            if (got >= 0) break;
+            if (errno == EINTR) continue;
+            if (errno != EAGAIN && errno != EWOULDBLOCK) break;
+            in_time = net_wait(c->fd, POLLIN, ms - (now_ms() - t0));
+            if (!in_time || c->closed) break;
+        }
+        c->reading = false;
+        if (c->closed) {
+            net_release(c);
+            return net_fail(NET_CLOSED);
+        }
+        if (!in_time) return net_fail(NET_TIMEOUT);
+        if (got < 0) {
+            net_close(c);
+            return net_fail(NET_CLOSED);
+        }
+        if (got == 0) c->eof = true;
+        else c->end += (size_t)got;
+    }
+}
+
+/* `conn.write(text)`: all of the text, or why not. A call past its deadline closes the
+ * connection, since part of the text may have gone. */
+static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (c->writing) return net_fail(NET_BUSY);
+    c->writing = true;
+    int64_t deadline = now_ms() + max0(ms);
+    size_t done = 0;
+    int failed = -1;
+    while (done < text.aux) {
+        ssize_t w = write(c->fd, text.as.s + done, text.aux - done);
+        if (w > 0) {
+            done += (size_t)w;
+            continue;
+        }
+        if (w < 0 && errno == EINTR) continue;
+        if (w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            int64_t left = deadline - now_ms();
+            if (left <= 0 || !net_wait(c->fd, POLLOUT, left)) {
+                failed = NET_TIMEOUT;
+                break;
+            }
+            if (c->closed) break;
+            continue;
+        }
+        failed = NET_CLOSED;
+        break;
+    }
+    c->writing = false;
+    if (c->closed) {
+        net_release(c);
+        return net_fail(NET_CLOSED);
+    }
+    if (failed >= 0) {
+        net_close(c);
+        return net_fail(failed);
+    }
+    return ok_none();
+}
+
+/* ---- Net.fixture(): one network in memory per test (net.zig, Fixture). What one end writes
+ * waits for the other end to read it, and a closed end is the end of the stream for the other.
+ * Nothing happens while a simulated call waits, so a call with nothing to take waits its whole
+ * deadline and is Timeout, as a real one would be. */
+
+typedef struct { uint16_t port; uint32_t *backlog; size_t nbacklog, capbacklog, head; } FixListener;
+typedef struct {
+    /* The other end of the connection. */
+    uint32_t peer;
+    /* What the peer wrote that this end has not read: inbound[start..len]. */
+    char *inbound;
+    size_t len, cap, start;
+    bool closed, skipping;
+} FixConn;
+
+static FixListener *fix_listeners;
+static size_t nfix_listeners, capfix_listeners;
+static FixConn *fix_conns;
+static size_t nfix_conns, capfix_conns;
+/* The port listen(0) tries next. */
+static uint16_t fix_next_port = 49152;
+
+static void reset_net_fixture(void) {
+    for (size_t i = 0; i < nfix_listeners; i++) free(fix_listeners[i].backlog);
+    for (size_t i = 0; i < nfix_conns; i++) free(fix_conns[i].inbound);
+    nfix_listeners = nfix_conns = 0;
+    fix_next_port = 49152;
+}
+
+static bool fix_port_taken(uint16_t port) {
+    for (size_t i = 0; i < nfix_listeners; i++) {
+        if (fix_listeners[i].port == port) return true;
+    }
+    return false;
+}
+
+static MoValue fix_listen(uint16_t port) {
+    if (port == 0) {
+        while (fix_port_taken(fix_next_port)) fix_next_port++;
+        port = fix_next_port;
+    }
+    if (fix_port_taken(port)) return net_fail(NET_BUSY);
+    GROW_ARRAY(fix_listeners, nfix_listeners, capfix_listeners);
+    fix_listeners[nfix_listeners] = (FixListener){port, NULL, 0, 0, 0};
+    return ok_of(mo_cap(MO_CAP_LISTENER, (uint32_t)nfix_listeners++, 0));
+}
+
+static MoValue fix_connect(uint16_t port) {
+    FixListener *l = NULL;
+    for (size_t i = 0; i < nfix_listeners && !l; i++) {
+        if (fix_listeners[i].port == port) l = &fix_listeners[i];
+    }
+    if (!l) return net_fail(NET_REFUSED);
+    uint32_t client = (uint32_t)nfix_conns;
+    GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
+    l->backlog[l->nbacklog++] = client + 1;
+    return ok_of(mo_cap(MO_CAP_CONN, client, 0));
+}
+
+static MoValue fix_accept(uint32_t h, int64_t within) {
+    FixListener *l = &fix_listeners[h];
+    if (l->head == l->nbacklog) {
+        sim_waited += within;
+        return net_fail(NET_TIMEOUT);
+    }
+    l->head++;
+    return ok_of(mo_cap(MO_CAP_CONN, l->backlog[l->head - 1], 0));
+}
+
+static MoValue fix_read_line(uint32_t h, int64_t within) {
+    FixConn *c = &fix_conns[h];
+    if (c->closed) return net_fail(NET_CLOSED);
+    Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_conns[c->peer].closed, &c->skipping);
+    c->start += s.taken;
+    MoValue out;
+    if (!line_result(s, &out)) {
+        sim_waited += within;
+        return net_fail(NET_TIMEOUT);
+    }
+    if (c->start == c->len) c->start = c->len = 0;
+    return out;
+}
+
+static MoValue fix_write(uint32_t h, MoValue text) {
+    FixConn *c = &fix_conns[h];
+    FixConn *peer = &fix_conns[c->peer];
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (peer->closed) {
+        c->closed = true;
+        return net_fail(NET_CLOSED);
+    }
+    while (peer->len + text.aux > peer->cap) {
+        peer->cap = peer->cap ? 2 * peer->cap : 256;
+        peer->inbound = xrealloc(peer->inbound, peer->cap);
+    }
+    if (text.aux) memcpy(peer->inbound + peer->len, text.as.s, text.aux);
+    peer->len += text.aux;
+    return ok_none();
+}
+
+/* ---- the rows: real sockets under main, the fixture's in a test */
+
+MO_ROW(mo_r_Net_listen) {
+    (void)kind;
+    return server_mode ? net_listen((uint16_t)a[1].as.u) : fix_listen((uint16_t)a[1].as.u);
+}
+
+MO_ROW(mo_r_Net_connect) {
+    (void)kind;
+    return server_mode ? net_connect(a[1], (uint16_t)a[2].as.u, a[3].as.i) : fix_connect((uint16_t)a[2].as.u);
+}
+
+MO_ROW(mo_r_Listener_accept) {
+    (void)kind;
+    return server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
+}
+
+MO_ROW(mo_r_Listener_port) {
+    (void)kind;
+    return mo_u64(server_mode ? listeners[mo_cap_handle(a[0])]->port : fix_listeners[mo_cap_handle(a[0])].port);
+}
+
+MO_ROW(mo_r_Conn_read_line) {
+    (void)kind;
+    return server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
+}
+
+MO_ROW(mo_r_Conn_write) {
+    (void)kind;
+    return server_mode ? net_write(conns[mo_cap_handle(a[0])], a[1], a[2].as.i) : fix_write(mo_cap_handle(a[0]), a[1]);
+}
+
+MO_ROW(mo_r_Conn_close) {
+    (void)kind;
+    if (server_mode) net_close(conns[mo_cap_handle(a[0])]);
+    else fix_conns[mo_cap_handle(a[0])].closed = true;
+    return MO_NONE_V;
+}
+
+MO_ROW(mo_r_Net_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_NET, 0, 0); }
+
+/* A process holding these arguments stopped: every Conn among them closes. */
+static void close_held(const MoValue *args, uint32_t n) {
+    for (uint32_t i = 0; i < n; i++) {
+        if (args[i].tag != MO_CAP || mo_cap_kind(args[i]) != MO_CAP_CONN) continue;
+        if (server_mode) net_close(conns[mo_cap_handle(args[i])]);
+        else fix_conns[mo_cap_handle(args[i])].closed = true;
+    }
+}
+
 /* ==== the test runner (runner.zig) ======================================================= */
 
 #define SEEDS_PER_PROPERTY 200
@@ -3873,6 +5485,8 @@ typedef struct {
 /* A test or property run starts from nothing: its memory, fixtures, and records. */
 static void fresh_run(void) {
     reset_fixtures();
+    reset_processes();
+    reset_net_fixture();
     mo_records = mo_nnevers > 0;
     if (mo_nrecorded > 0) {
         if (!produced) produced = calloc(mo_nrecorded, sizeof(Values));
@@ -3892,18 +5506,36 @@ static bool trips_rejects(uint8_t kind) {
     return kind == MO_R_REQUIRES || kind == MO_R_REFINEMENT || kind == MO_R_INVARIANT || kind == MO_R_NEVER;
 }
 
+/* A crash is the verdict: a test rejects passes when it tripped what rejects expects. */
+static void verdict(Result *r, const MoTest *t, Report report) {
+    r->has_report = true;
+    r->report = report;
+    r->outcome = t->kind == MO_TEST_REJECTS && trips_rejects(report.kind) ? TRIPPED_AS_EXPECTED : FAILED;
+}
+
+/* What stopped a run: a supervisor that gave up, else the first crash in a process, else the
+ * body's own. */
+static Report crash_of(void) { return gave_up ? last_report : crashed_once ? first_crash : last_report; }
+
+/* The body, then every message still waiting, then every never; the first crash, in a process
+ * or in the body, is the verdict. */
 static Result run_test(const MoTest *t) {
     Result r = {PASSED, false, {0}, 0, NULL, NULL};
     reset_memory();
     fresh_run();
     rng_seed(BASE_SEED);
+    sim_seed = BASE_SEED;
+    test_name = t->name;
     jmp_buf here;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) {
         t->fn();
+        drain();
         check_nevers();
-        if (t->kind == MO_TEST_REJECTS) {
+        if (crashed_once) {
+            verdict(&r, t, first_crash);
+        } else if (t->kind == MO_TEST_REJECTS) {
             r.outcome = DID_NOT_TRIP;
             r.note = "the body ran to its end without tripping a requires, a refinement, an invariant, or a never";
         }
@@ -3912,9 +5544,7 @@ static Result run_test(const MoTest *t) {
         r.has_report = true;
         r.report = last_report;
     } else {
-        r.has_report = true;
-        r.report = last_report;
-        r.outcome = t->kind == MO_TEST_REJECTS && trips_rejects(last_report.kind) ? TRIPPED_AS_EXPECTED : FAILED;
+        verdict(&r, t, crash_of());
     }
     crash_jump = NULL;
     return r;
@@ -3930,6 +5560,8 @@ static Result run_property(const MoTest *t) {
         for (uint32_t attempt = 0; attempt < ATTEMPTS_PER_SEED; attempt++) {
             ngenerated = 0;
             fresh_run();
+            sim_seed = seed;
+            test_name = t->name;
             jmp_buf here;
             crash_jump = &here;
             int jumped = setjmp(here);
@@ -3937,8 +5569,11 @@ static Result run_property(const MoTest *t) {
                 t->fn();
                 check_nevers();
                 crash_jump = NULL;
-                held++;
-                break;
+                if (!crashed_once) {
+                    held++;
+                    break;
+                }
+                jumped = JUMP_CRASH;
             }
             crash_jump = NULL;
             if (jumped == JUMP_DISCARD) continue;
@@ -3950,7 +5585,7 @@ static Result run_property(const MoTest *t) {
             }
             r.outcome = FAILED;
             r.has_report = true;
-            r.report = last_report;
+            r.report = crash_of();
             r.seed = seed;
             Buf b = {0};
             for (size_t g = 0; g < ngenerated; g++) {
@@ -4051,6 +5686,13 @@ void mo_program_start(int argc, char **argv) {
         mo_heap = scratch = (MoRegion){0, 0, 0};
         mo_compacts = false;
     }
+    /* Each process runs its updates on a thread of its own, and the threads take turns; a value
+     * that goes from one to another goes packed when values live in regions. */
+    event_init(&main_wake);
+    my_vm = &main_vm;
+    sim_seed = 0;
+    turns_on = mo_nprocesses > 0;
+    packs = turns_on && mo_compacts;
     program_argc = argc > 0 ? argc - 1 : 0;
     program_argv = argv + 1;
     char *cwd = getcwd(NULL, 0);
@@ -4058,6 +5700,8 @@ void mo_program_start(int argc, char **argv) {
 }
 
 int mo_program_end(void) {
+    /* main returned: the run goes on until no message is waiting. */
+    if (turns_on) turns_finish();
     stream_flush(&out_stream);
     stream_flush(&err_stream);
     return exit_code;

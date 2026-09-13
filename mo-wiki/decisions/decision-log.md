@@ -1,7 +1,7 @@
 ---
 title: "Decision log"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 type: decision
 tags: [meta, laws]
 sources: [spec/grammar.md, plans/model-bakeoff.md]
@@ -175,6 +175,16 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A read-only `Fs` is its own type unifying with `Fs`; the checker infers which functions write through which `Fs` parameters; not followed through `Process.start` | Fable, from Opus's default | provisional | step 15 |
 | Step 14 accepted: contracts on in every build (`--no-contracts` for measurement; logstat-4k-c 8.9 ms with, 6.2 ms without), three interpreter panics reproduced and fixed, the formatter's round-2 shapes, `sort_by_desc`, `min_of`, `max_of`, `Fs.each_line`, housekeeping; 45 minutes | Fable | — | round 3 of the control run |
 | Contract cost in native code is measured at about 40 percent on logstat's hot path; recover by contract-proved bound elision later (chapter 7), never by turning contracts off | Fable | provisional | tier 3 proving |
+
+| Step 15 accepted: the scheduler and `Net` in the C runtime, `mo build` compiles every program, the differential test covers every process module and `echo` and `kv`; native echo-1k 33.9 ms (interpreter 52.2), kv-10k-get 345 ms (476), kv after 50k SETs 19.2 MiB (37.4); crash reports, deadline outcomes, and a failing test binary identical to the interpreter on programs the brief did not name; aarch64 Linux static binary; 40 minutes | Fable | — | program 4 |
+| Under `main`, each process runs on a thread of its own with a 16 MiB stack and the threads take turns; a call that waits gives up its turn; while `main` waits, one thread per blocked call watches the socket | Fable, from Opus's default | provisional, a cost to measure | a day-long kv run |
+| A native socket call tries its socket first and gives up its turn only when it is not ready; the interpreter always gives up the turn; the two must print the same | Fable, from Opus's default | provisional | the differential test under load |
+| Undo of a crashed `update` in the C runtime treats as older anything not allocated in the current region since the update began; the interpreter compares addresses | Fable, from Opus's default | provisional | program 4 |
+| `mo test --sim` has no compiled form: a `--tests` binary runs the fixed order only, the seeded runs stay the interpreter's | Fable, from Opus's default | provisional | — |
+| kv's memory row is 50,000 SETs of distinct keys from one client, each waiting for its OK, on an empty log; `kv-50k-set-rss-kib` holds KiB and its name says so | Fable, from Opus's default | locked as the method | every later kv row |
+| Two interpreter behaviours ported as they are: a process started directly with no single matching child line takes the last supervisor with one; a skip inside `update` propagates as a skip | Fable, from Opus's default | provisional; the first is a smell and becomes a check-time diagnostic (one child line per process) in a later step | program 4 |
+| Step 16 is HTTP in the stdlib, before round 3 of the control run, so program 4's spec can follow; round 3 runs after step 16 in its own worktrees | Fable | provisional | step 16 |
+| HTTP v0: `Http` over `Net`, HTTP/1.1 only, no TLS, one request per connection (`Connection: close`), bodies by `Content-Length` only, `Request` and `Response` as structs, a server that `accept`s exchanges and a client that `send`s requests, `Http.fixture()` in tests, both runtimes, differential | Fable | provisional | step 16, program 4 |
 
 ## Related
 - [[session-05]]

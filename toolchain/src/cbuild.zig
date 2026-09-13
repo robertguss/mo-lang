@@ -12,8 +12,14 @@
 //!
 //! Contracts run in every build (chapter 3): `requires`, `ensures`, and refinements are compiled
 //! in and checked unless the build is `--no-contracts`, a measurement; `MO_CONTRACTS=0` or `1`
-//! overrides the build at run time. A `never` and a process `invariant` are compiled in as the
-//! tests that check them: a test binary runs every `never`, and processes are refused.
+//! overrides the build at run time. A `never` is compiled in as the tests that check it: a test
+//! binary runs every one. A process `invariant` runs after every update, in a test binary and
+//! under main alike.
+//!
+//! Every program compiles, processes and Net included (mo_rt.c): under main each process runs its
+//! updates on a thread of its own, the threads taking turns as under `mo run`, and a test binary
+//! runs process tests in the fixed order. The seeded runs of `mo test --sim` are the
+//! interpreter's and have no compiled form.
 //!
 //! `zig` is found next to the running `mo`, else on PATH.
 const std = @import("std");
@@ -52,8 +58,6 @@ pub const Built = struct {
 
 pub const Outcome = union(enum) {
     built: Built,
-    /// What the program uses that does not compile to C yet.
-    refused: []const u8,
     /// No zig, or zig cc failed: why, with what it printed.
     failed: []const u8,
 };
@@ -71,10 +75,7 @@ pub fn defaultName(path: []const u8) []const u8 {
 /// Emits, writes, and compiles. Nothing is freed: pass an arena.
 pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, prog: program.Program, checked: *const check.Checked, options: Options) !Outcome {
     const t0 = Io.Clock.Timestamp.now(io, .awake);
-    const c = switch (try emit_c.emit(gpa, checked, prog, .{ .tests = options.tests, .contracts = options.contracts })) {
-        .c => |text| text,
-        .refused => |why| return .{ .refused = why },
-    };
+    const c = try emit_c.emit(gpa, checked, prog, .{ .tests = options.tests, .contracts = options.contracts });
     const dir = try std.fs.path.join(gpa, &.{ options.out_dir, options.name });
     const cwd = Io.Dir.cwd();
     try cwd.createDirPath(io, dir);
