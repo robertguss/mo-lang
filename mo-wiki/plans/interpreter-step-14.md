@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [tooling, stdlib, compiler, laws]
 sources: [plans/control-run-2.md, plans/interpreter-step-13.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Step 14: the follow-ups from round 2 and the C backend

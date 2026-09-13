@@ -173,6 +173,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Linux targets link static musl; macOS links libSystem only; `zig` found next to `mo` then on PATH; nothing cached between builds | Fable, from Opus's default | provisional | program 4 |
 | Overflow checks and asserts are always on in every binary | Fable, from Opus's default | locked (chapter 2) | — |
 | A read-only `Fs` is its own type unifying with `Fs`; the checker infers which functions write through which `Fs` parameters; not followed through `Process.start` | Fable, from Opus's default | provisional | step 15 |
+| Step 14 accepted: contracts on in every build (`--no-contracts` for measurement; logstat-4k-c 8.9 ms with, 6.2 ms without), three interpreter panics reproduced and fixed, the formatter's round-2 shapes, `sort_by_desc`, `min_of`, `max_of`, `Fs.each_line`, housekeeping; 45 minutes | Fable | — | round 3 of the control run |
+| Contract cost in native code is measured at about 40 percent on logstat's hot path; recover by contract-proved bound elision later (chapter 7), never by turning contracts off | Fable | provisional | tier 3 proving |
 
 ## Related
 - [[session-05]]

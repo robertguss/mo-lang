@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [compiler, runtime, processes]
 sources: [plans/interpreter-step-13.md, plans/interpreter-step-11.md, spec/design-v0/03-semantics.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 15: processes and `Net` in the C backend
