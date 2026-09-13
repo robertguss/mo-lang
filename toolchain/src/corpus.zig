@@ -39,6 +39,10 @@ pub const Tally = struct {
     /// without faults.
     held_under_faults: u32 = 0,
     fault_free_only: u32 = 0,
+    /// Process tests outside racy.mo that ran under seeds: each must be held under faults.
+    simulated: u32 = 0,
+    /// Recipe tests skipped until an agent implements the recipe: the only skips allowed.
+    recipe_skips: u32 = 0,
 };
 
 pub const recipe_skip = "until an agent implements the recipe";
@@ -299,6 +303,7 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
             if (std.mem.eql(u8, rel, racy)) return checkRacy(arena, prog, r, tally);
             tally.held_under_faults += r.summary.held_under_faults;
             tally.fault_free_only += r.summary.fault_free_only;
+            tally.simulated += r.summary.simulated;
             var ok = r.summary.failures == 0;
             for (r.results) |result| {
                 const reason = if (result.report) |report| report.clause else "";
@@ -307,7 +312,10 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
                     .passed, .tripped_as_expected => if (result.fault_seed == null) continue,
                     .skipped => {
                         tally.skipped_tests += 1;
-                        if (std.mem.startsWith(u8, rel, "recipes/") and std.mem.endsWith(u8, reason, recipe_skip)) continue;
+                        if (std.mem.startsWith(u8, rel, "recipes/") and std.mem.endsWith(u8, reason, recipe_skip)) {
+                            tally.recipe_skips += 1;
+                            continue;
+                        }
                         ok = false;
                     },
                     .failed, .did_not_trip => {},
@@ -374,16 +382,16 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
-    // The eight processes/ files, the refund queue, and effects/net.mo's echo server start
-    // processes and run their tests.
+    // Nothing here names a file or counts the corpus: the counts are what the files hold.
     if (pipeline.implemented == .run) {
-        try std.testing.expectEqual(@as(u32, 10), tally.process_files);
-        // Each of the eleven process tests outside racy.mo held under 100 seeds with faults,
-        // and none needs a world where nothing fails.
-        try std.testing.expectEqual(@as(u32, 11), tally.held_under_faults);
+        // racy.mo's tests start processes, so at least one file does.
+        try std.testing.expect(tally.process_files > 0);
+        // Every process test outside racy.mo ran under 100 seeds with faults and held under
+        // them, and none needs a world where nothing fails.
+        try std.testing.expectEqual(tally.simulated, tally.held_under_faults);
         try std.testing.expectEqual(@as(u32, 0), tally.fault_free_only);
-        // No test is skipped for a process reason: the four recipe tests are the only skips.
-        try std.testing.expectEqual(@as(u32, 4), tally.skipped_tests);
+        // No test is skipped for a process reason: recipe tests are the only skips.
+        try std.testing.expectEqual(tally.recipe_skips, tally.skipped_tests);
     }
 
     // `mo fmt --check` over every file.
@@ -401,17 +409,15 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     defer if (from_environ) |e| gpa.free(e);
     const mo_exe = try moExe(gpa, io, from_environ);
     defer gpa.free(mo_exe);
-    var programs: std.ArrayList([]const u8) = .empty;
-    defer programs.deinit(gpa);
+    // A program is found, not named: every programs/<name>.mo and programs/<name>/main.mo.
+    var programs: u32 = 0;
     var wrong: u32 = 0;
     for (paths) |rel| {
         if (!isProgramPath(rel)) continue;
-        try programs.append(gpa, programName(rel));
+        programs += 1;
         if (!try checkProgram(gpa, io, mo_exe, root, rel)) wrong += 1;
     }
-    const want = [_][]const u8{ "count-lines", "echo", "exit-code", "hello", "lines-per-file", "logstat" };
-    try std.testing.expectEqual(want.len, programs.items.len);
-    for (want, programs.items) |w, found| try std.testing.expectEqualStrings(w, found);
+    try std.testing.expect(programs > 0);
     try std.testing.expectEqual(@as(u32, 0), wrong);
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.
