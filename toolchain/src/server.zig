@@ -557,7 +557,7 @@ test "Fs.list, read_lines, and size stay inside the scope, and write_line ends a
     , out.written());
 }
 
-test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope, Missing outside it, flush, and a read_only Fs refuses" {
+test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope, Missing outside it, and flush" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -583,9 +583,6 @@ test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope
         \\    Error(_): "unread\n"
         \\  end
         \\end
-        \\fn copy(logs: Fs) : String
-        \\  said(logs.write("x.log", "no", within: 1.minute))
-        \\end
         \\fn main(platform: Platform)
         \\  data = platform.fs.scoped("data")
         \\  out = platform.stdout
@@ -600,14 +597,13 @@ test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope
         \\  out.write_line(said(data.remove("a.log", within: 1.minute)))
         \\  out.flush
         \\  out.write(text(data.read("c.log", within: 1.minute)))
-        \\  out.write_line(copy(data.read_only))
         \\end
     );
     var environ: std.process.Environ.Map = .init(arena);
     var out: Io.Writer.Allocating = .init(arena);
     var server: Server = try .init(arena, io, cwd, &.{}, &environ, &out.writer, &out.writer);
     const ran = try server.run(program, program.findFunction("main").?);
-    try std.testing.expectEqualStrings("fs.write(\"x.log\") writes through an Fs narrowed to read_only, which only reads", ran.crashed.clause);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
     try std.testing.expectEqualStrings(
         \\ok
         \\ok

@@ -1227,8 +1227,9 @@ test "a fixture Fs keeps what a test writes, shared by every Fs narrowed from it
         \\  assert out.written == ["a", "b\n"]
         \\  assert fs.read("x.log", within: 1.minute) == Ok("1\n")
         \\end
-        \\test "a write through a read_only Fs crashes"
-        \\  assert log(Out.fixture(), Fs.fixture().read_only)
+        \\test "a write through a read_only Fs crashes where the checker cannot see it"
+        \\  writer = Writer.start(Fs.fixture().read_only)
+        \\  assert writer.ask(Note, within: 1.minute) is Ok(_)
         \\end
         \\test "a writer appends"
         \\  writer = Writer.start(Fs.fixture())

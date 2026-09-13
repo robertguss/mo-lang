@@ -85,6 +85,10 @@ const int_base: Id = 8;
 pub const float32: Id = 16;
 pub const float64: Id = 17;
 const cap_base: Id = 18;
+/// An Fs narrowed to read_only (`fs.read_only`, or `scoped` on one): a capability of kind fs
+/// with `b` 1. It unifies with Fs, so it goes wherever an Fs goes, and caps.zig refuses it
+/// where a write reaches it, directly or through a parameter a function writes through (MO0404).
+pub const fs_read_only: Id = cap_base + @typeInfo(CapKind).@"enum".fields.len;
 
 pub fn int(kind: IntKind) Id {
     return int_base + @intFromEnum(kind);
@@ -110,7 +114,8 @@ pub const Pool = struct {
         try p.list.append(gpa, .{ .tag = .float, .a = 64 });
         const caps = @typeInfo(CapKind).@"enum".fields.len;
         for (0..caps) |k| try p.list.append(gpa, .{ .tag = .cap, .a = @intCast(k) });
-        std.debug.assert(p.list.items.len == cap_base + caps);
+        try p.list.append(gpa, .{ .tag = .cap, .a = @intFromEnum(CapKind.fs), .b = 1 });
+        std.debug.assert(p.list.items.len == fs_read_only + 1);
         return p;
     }
 
