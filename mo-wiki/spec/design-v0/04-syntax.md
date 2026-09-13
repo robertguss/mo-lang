@@ -75,7 +75,7 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
   end
 
   invariant "done never goes backwards"
-    state.done < old(state.done)
+    state.done >= old(state.done)
   end
 
   message Enqueue(request: RefundRequest)
@@ -148,7 +148,7 @@ verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
 - **Loops:** `for x in xs ... end`, `for i in 0..n ... end` (`n` excluded), `break` allowed. Every `for` closes with `end`, in a body, a `never`, or a `property` alike. A pure body is written with `map`, `filter`, or `reduce` instead (`charges.filter(fn(c) c.refunded? end)`); `for` is for bodies with effects, `try`, `break`, or `return`, like the `Drain` arm above. The formatter enforces the split.
 - **Anonymous functions:** `fn(x) expr end`, call arguments only.
 - **Numbers and strings:** `10_000` (typed from its uses, else `Int64`), `200.ms`, `90.days` (`Duration`, dot-call functions, extensible). `"Hello #{name}"`, double quotes only, `"""` for multi-line. No literal suffixes.
-- **Process and supervisor:** as in the example. `state` (fields start at their type's zero, or write `= expr`), `invariant`, `message`, `update`. `mailbox: N` in the header. A supervisor takes the capabilities its children need and passes them on each `child` line.
+- **Process and supervisor:** as in the example. `state` (fields start at their type's zero, or write `= expr`), `invariant` (the condition that holds after every `update`), `message`, `update`. `mailbox: N` in the header. A supervisor takes the capabilities its children need and passes them on each `child` line.
 - **Tests:** same file, under the code. `test "sentence"`, `test rejects "sentence"`, `property "sentence"` with `any(Type)`.
 - **`verified:` line:** at the bottom, computed by the toolchain, a compile error to edit by hand.
 - **Recipes:** `recipe Name ... end`, chapter 6.
@@ -172,3 +172,5 @@ Claude (session 5, deciding on Robert's instruction to build first): the supervi
 Claude (session 5, from the interpreter): the example broke its own law. `within_window?` and `refund` each have a `requires` with no `test rejects`, and `mo check` refused the file with `MO0311`. Two `rejects` tests added; the `verified:` line counts 5. The compiler reviewing the spec is the point of the milestone.
 
 Claude (session 5, from the interpreter, second pass): three more corrections the toolchain forced on the example. `result` is a keyword, so the first test binds `outcome`. The property was false: `any(Charge)` generates refunded charges, which `apply_refund` rightly refuses, so the guard gains `!charge.refunded?`. `RefundQueue` gains `message Done : UInt32` so a test can `ask` for the count; the corpus copy at `examples/payments/refund.mo` carries that test. Chapter 4 now compiles and runs as written, minus the `verified:` line, which the toolchain prints.
+
+Session 5, step 18: the example's `invariant` body reads `state.done >= old(state.done)`, the condition that holds, not the one that breaks it.

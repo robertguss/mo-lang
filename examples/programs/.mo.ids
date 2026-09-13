@@ -128,7 +128,7 @@
         { "id": "5b371981d0ad", "name": "struct Reopened", "hash": "1211e4b464578b57" },
         { "id": "7f01fc828c57", "name": "struct Opened", "hash": "dcdfb3f2ff0ea4d1" },
         { "id": "5d6b2c5bbf88", "name": "enum LogError", "hash": "4b443dba21db2838" },
-        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "4d332e4a20b9981e" },
+        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "ee78b869f9c49c99" },
         { "id": "6a649c511348", "name": "supervisor Journals", "hash": "dc3751228e7316a0" },
         { "id": "59bbc9e5e657", "name": "fn empty", "hash": "2c73eee8dd09832d" },
         { "id": "9667256f3198", "name": "fn bucket_of", "hash": "acdb5dbcf3ebc12c" },
@@ -160,7 +160,7 @@
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
       ],
-      "verified": { "hash": "9f42df5ce2b765e5", "declarations": "75101848ea745932" }
+      "verified": { "hash": "9f42df5ce2b765e5", "declarations": "c4496f0aba315c11" }
     },
     {
       "path": "kv/main.mo",
@@ -256,7 +256,7 @@
         { "id": "0e4c6939f2eb", "name": "use Kv.Protocol", "hash": "6206fdf2a4a96cfd" },
         { "id": "3d6fa7af6cda", "name": "use Kv.Store", "hash": "2a62bbbdfc9a3e8c" },
         { "id": "c03fbcebfbb5", "name": "intent", "hash": "a8cec2cf51036383" },
-        { "id": "317cfe98409a", "name": "process Gate", "hash": "6437fb91b11fa434" },
+        { "id": "317cfe98409a", "name": "process Gate", "hash": "1386f8e742f4b63b" },
         { "id": "58a7e8abcc15", "name": "process Worker", "hash": "f0cb8b5073eabba2" },
         { "id": "5b5e8a68af97", "name": "process Listening", "hash": "9cce2e42d141322b" },
         { "id": "d829147acdfc", "name": "supervisor Servers", "hash": "60673a61c790d6ff" },
@@ -279,7 +279,7 @@
         { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "0c4514424619787b" },
         { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "cf20b633982a5576" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "05adf4cc2bbf04b4" }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "266816db52e79399" }
     },
     {
       "path": "kv/store.mo",
@@ -298,7 +298,7 @@
         { "id": "8be60f90b192", "name": "enum Plan", "hash": "952da8cca27f33db" },
         { "id": "a1d8c746ee88", "name": "struct Served", "hash": "08281234a9b959bd" },
         { "id": "69c5af355746", "name": "struct Opening", "hash": "1e2eea8853ecbeec" },
-        { "id": "3a8915512708", "name": "process Store", "hash": "1d59c5cac06bddec" },
+        { "id": "3a8915512708", "name": "process Store", "hash": "3e5958dea63bc9fd" },
         { "id": "cb6b6c9f5169", "name": "supervisor Stores", "hash": "88c469d3793f54ab" },
         { "id": "d6e359320806", "name": "fn served", "hash": "f4df93c9da62ed37" },
         { "id": "e53299825bb1", "name": "fn decide", "hash": "54b5f514ebc1777e" },
@@ -330,7 +330,7 @@
         { "id": "188c9b4c6dff", "name": "test \"a store started again from its log reads what the first one wrote\"", "hash": "59ab036010260f7a" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "b8b4aa7893c80fed" }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "432b5dfa5b9aaf27" }
     },
     {
       "path": "lines-per-file.mo",

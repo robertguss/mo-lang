@@ -408,7 +408,8 @@ pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Rep
     }
     switch (r.kind) {
         .assert => try w.print("{s} failed", .{r.clause}),
-        .requires, .ensures, .refinement, .invariant => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
+        .requires, .ensures, .refinement => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
+        .invariant => try w.print("{s} no longer holds in {s}", .{ r.clause, r.within }),
         .never => try w.print("{s} tripped", .{r.clause}),
         .overflow => try w.print("overflow in {s}", .{r.clause}),
         .divide_by_zero => try w.print("division by zero in {s}", .{r.clause}),

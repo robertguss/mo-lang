@@ -71,7 +71,7 @@ process Store(journal: Handle(Journal), clock: Clock, opening: Opening)
   end
 
   invariant "the store never holds more than a million keys"
-    state.table.size > 1_000_000
+    state.table.size <= 1_000_000
   end
 
   message Serve(request: Request) : Response

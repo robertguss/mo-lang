@@ -619,7 +619,7 @@ pub const Sim = struct {
         args[n] = out.tuple[1];
         args[n + 1] = before;
         for (p.invariants) |inv| {
-            if (!(try vm.call(inv.function, args)).bool) continue;
+            if ((try vm.call(inv.function, args)).bool) continue;
             const c = vm.program.clauses[inv.clause];
             const values = try sim.gpa.alloc(contracts.Involved, 1);
             values[0] = .{ .name = "state", .value = try vm.render(out.tuple[1]) };
@@ -898,7 +898,7 @@ const tx_src =
     \\    n: UInt8
     \\  end
     \\  invariant "n never goes backwards"
-    \\    state.n < old(state.n)
+    \\    state.n >= old(state.n)
     \\  end
     \\  message Add(k: UInt8)
     \\  message Back
@@ -990,7 +990,7 @@ test "update is a transaction: a crash drops its state writes, sends, and emits,
     try std.testing.expectEqual(@as(u64, 7), crash.process.?.seed);
 }
 
-test "an invariant is true when broken, reads old(state), and trips a test rejects" {
+test "an invariant is false when broken, reads old(state), and trips a test rejects" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();

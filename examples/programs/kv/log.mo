@@ -63,7 +63,7 @@ process Journal(dir: Fs, name: String, opened_bytes: UInt64)
   end
 
   invariant "the log never shrinks"
-    state.bytes < old(state.bytes)
+    state.bytes >= old(state.bytes)
   end
 
   message Append(line: String, keys: UInt64) : Result(UInt64, FsError)

@@ -13,7 +13,7 @@ process Gate()
   end
 
   invariant "the gate never lets in more than 64 clients"
-    state.inside > 64
+    state.inside <= 64
   end
 
   message Enter : Bool

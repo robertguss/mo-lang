@@ -1944,7 +1944,7 @@ test "a process, a supervisor, and a recipe" {
         \\    m: UInt32 = 1
         \\  end
         \\  invariant "n never drops"
-        \\    state.n < old(state.n)
+        \\    state.n >= old(state.n)
         \\  end
         \\
         \\  message Up
@@ -1980,7 +1980,7 @@ test "a process, a supervisor, and a recipe" {
         \\  end
         \\
         \\  invariant "n never drops"
-        \\    state.n < old(state.n)
+        \\    state.n >= old(state.n)
         \\  end
         \\
         \\  message Up

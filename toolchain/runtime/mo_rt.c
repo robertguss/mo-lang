@@ -1186,8 +1186,8 @@ static void report_text(Buf *b, const Report *r) {
     case MO_R_ASSERT: buf_printf(b, "%s failed", r->clause); break;
     case MO_R_REQUIRES:
     case MO_R_ENSURES:
-    case MO_R_REFINEMENT:
-    case MO_R_INVARIANT: buf_printf(b, "%s tripped in %s", r->clause, r->within); break;
+    case MO_R_REFINEMENT: buf_printf(b, "%s tripped in %s", r->clause, r->within); break;
+    case MO_R_INVARIANT: buf_printf(b, "%s no longer holds in %s", r->clause, r->within); break;
     case MO_R_NEVER: buf_printf(b, "%s tripped", r->clause); break;
     case MO_R_OVERFLOW: buf_printf(b, "overflow in %s", r->clause); break;
     case MO_R_DIVIDE_BY_ZERO: buf_printf(b, "division by zero in %s", r->clause); break;
@@ -4377,7 +4377,7 @@ static MoValue update(uint32_t id, MoValue message, MoValue before) {
     args[n] = out.as.xs[1];
     args[n + 1] = before;
     for (uint32_t k = 0; k < def->ninvariants; k++) {
-        if (!def->invariants[k].fn(NULL, args).as.b) continue;
+        if (def->invariants[k].fn(NULL, args).as.b) continue;
         static const char *const state_name[] = {"state"};
         mo_crash_values(def->invariants[k].clause, 1, state_name, &out.as.xs[1]);
     }

@@ -26,7 +26,7 @@ pub const Kind = enum {
     requires,
     ensures,
     refinement,
-    /// A process's `invariant` block was true after an `update`.
+    /// A process's `invariant` block was false after an `update`.
     invariant,
     /// A `never` was true for the values a test or property run held.
     never,

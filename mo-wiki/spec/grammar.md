@@ -141,7 +141,7 @@ process     = "process" TypeName "(" params? ")" ("mailbox:" int)? NL
               state invariant* message+ update "end" NL
 state       = "state" NL state_field+ "end" NL
 state_field = ident ":" typeexpr ("=" expr)? NL              # "= expr" required when the type has no zero value
-invariant   = "invariant" string NL expr NL "end" NL
+invariant   = "invariant" string NL expr NL "end" NL                 # the condition that holds after every update
 message     = "message" TypeName ("(" field_list ")")? (":" typeexpr)? NL   # reply type for ask
 update      = "fn" "update" "(" "state" "," "message" ")" NL case "end" NL
 supervisor  = "supervisor" TypeName ("(" params? ")")? NL child+ "end" NL
@@ -200,7 +200,7 @@ Grammar bugs found by the corpus, fixed above: `cmp` demanded an operand after `
 - **Files.** A CapCase module segment maps to a lowercase, hyphen-separated file name: `Basics.AnonymousFunctions` is `basics/anonymous-functions.mo`.
 - **Recipes.** A recipe's tests are the file's tests. A `test rejects` inside a recipe must trip a `requires` declared in the recipe (chapter 6's example is corrected).
 - **Stdlib names the corpus may assume.** Lists: `size`, `push`, `map`, `filter`, `reduce`, `contains?`, `first`, `last`. Strings: `size`, `bytes`, `starts_with?`. `Fs`: `read(path, within:)` giving `Result(String, FsError)`. Integers: `checked_add`, `saturating_sub`, `wrapping_mul` and their siblings (`checked_` returns `Option`). Everything else is a gap until the stdlib chapter exists.
-- **`invariant` reads like `never`.** The block is true when the invariant is broken (`state.done < old(state.done)` under "done never goes backwards"), so the sentence and the block say the same thing. Decided after step 1; first tested by tier 2.
+- **`invariant` stays true.** The block is the condition that holds after every `update` (`state.done >= old(state.done)` under "done never goes backwards"), and it trips when the block is false; `never` keeps the negative form. Session 5, step 18: flipped from "true when broken", which the outside review of 13 Sep showed reads backwards (`state.count <= 3` tripped on a count of 1). First tested by `processes/invariant-trips.mo` under both runtimes.
 - **Sibling handles.** A supervisor that must give one child another's handle takes it as a parameter (`supervisor Line(sink: Handle(Sink))`, `child Source(sink)`); who starts `Sink` first is `main`'s job. First tested by program 1.
 - **Line budget.** A corpus file with two processes may exceed 40 lines; the 70-line function law is the real bound.
 - **`for _ in 0..n`.** `_` as the loop binder says the index is unused; the unused-binding law does not fire. Found by Fable testing mailbox bounds in step 4.
