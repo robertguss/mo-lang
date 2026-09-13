@@ -17,7 +17,7 @@ def rec(second: int, ms: int, status: int = 200, path: str = "/a", method: str =
 
 class CountsTest(unittest.TestCase):
     def test_requests_errors_and_malformed(self) -> None:
-        parsed = [rec(0, 1, 200), rec(1, 1, 500), rec(2, 1, 599), rec(3, 1, 404), Malformed("x")]
+        parsed: list[Record | Malformed] = [rec(0, 1, 200), rec(1, 1, 500), rec(2, 1, 599), rec(3, 1, 404), Malformed("x")]
         summary = summarize(parsed, 5)
         self.assertEqual((summary.requests, summary.errors, summary.malformed), (4, 2, 1))
         self.assertEqual(summary.successes, 2)
