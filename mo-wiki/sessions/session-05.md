@@ -37,5 +37,6 @@ Recorded in `HANDOFF.md` at session end.
 - [[q18-main-and-the-platform]]
 - [[interpreter-step-6]]
 - [[program-2]]
+- [[control-run]]
 - [[model-bakeoff]]
 - [[corpus]]
