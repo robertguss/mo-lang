@@ -162,8 +162,8 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
-    // The six processes/ files start processes and run their tests.
-    if (pipeline.implemented == .run) try std.testing.expectEqual(@as(u32, 6), tally.process_files);
+    // The seven processes/ files and the refund queue start processes and run their tests.
+    if (pipeline.implemented == .run) try std.testing.expectEqual(@as(u32, 8), tally.process_files);
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.
     var beyond: Tally = .{};

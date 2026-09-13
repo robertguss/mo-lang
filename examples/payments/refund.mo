@@ -73,6 +73,7 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
 
   message Enqueue(request: RefundRequest)
   message Drain
+  message Done : UInt32
 
   fn update(state, message)
     case message
@@ -87,6 +88,7 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
         end
         state.pending = []
         state.done += 1
+      Done: state.done
     end
   end
 end
@@ -114,6 +116,14 @@ end
 test rejects "a window read before the capture"
   charge = Charge.fixture(captured_at: t0, captured_amount: Money.cents(500))
   charge.within_window?(t0 - 1.minute)
+end
+
+test "a drained queue counts the drain"
+  queue = RefundQueue.start(Ledger.fixture(), Clock.fixture(), Events.fixture())
+  queue.send(Enqueue(request: RefundRequest(id: "ch_1", amount: Money.cents(500))))
+  queue.send(Enqueue(request: RefundRequest(id: "ch_2", amount: Money.cents(250))))
+  queue.send(Drain)
+  assert queue.ask(Done, within: 100.ms) is Ok(1)
 end
 
 property "any valid refund leaves the charge refunded"

@@ -9,7 +9,7 @@ Two rules a reader needs:
 
 Where the grammar and chapter 4 ran out, the corpus used the plainest option and recorded it in `GAPS.md`.
 
-`mo test <file>` runs a file's tests on the interpreter today. Every `test` must pass, every `test rejects` must trip a `requires` or a refinement, and every `property` must hold under 200 seeds. It then prints the `verified:` line. A test that starts a process is skipped until step 4, as is a recipe test that calls a signature no agent has implemented yet.
+`mo test <file>` runs a file's tests on the interpreter today, with processes on the deterministic `Mo.Sim` scheduler. Every `test` must pass with no crash in any process it starts, every `test rejects` must trip a `requires`, a refinement, or an `invariant`, and every `property` must hold under 200 seeds. It then prints the `verified:` line. A recipe test that calls a signature no agent has implemented yet is skipped.
 
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
@@ -53,6 +53,7 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 31. `processes/invariant.mo`: `invariant` with `old(state.km)`
 32. `processes/supervisor.mo`: `supervisor` with `restart:` and `max_restarts:`
 33. `processes/pipeline.mo`: two processes, one sending to the other
+52. `processes/invariant-trips.mo`: chapter 4's `invariant "done never goes backwards"` tripping a `test rejects`
 
 ## tests
 34. `tests/test.mo`: `assert`, and `assert x is Ok(user)`
