@@ -98,8 +98,8 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
   end
 end
 
-supervisor Payments
-  child RefundQueue, restart: :always, max_restarts: 5 per 1.minute
+supervisor Payments(db: Ledger, clock: Clock, events: Events)
+  child RefundQueue(db, clock, events), restart: :always, max_restarts: 5 per 1.minute
 end
 
 test "refund within window succeeds"
@@ -131,13 +131,13 @@ verified: types, contracts, tests (3), property (200 seeds), sim (1_000 runs)
 - **Contracts:** `requires` and `ensures` directly after the signature, a blank line, then the body. `result` is the return value, `old(x)` the entry value, `is` an inline pattern test, `implies` the connective.
 - **Bindings:** `x = expr` binds once. `var x = expr` may change. Rebinding or an unused binding is an error.
 - **Conditionals:** `if cond ... end`, an expression, no parens. Trailing `if` only on a one-line `return`.
-- **Matching:** `case v ... Pattern: expr ... end`. Arms run until the next `Pattern:` or `end`. Exhaustive; guards with `if` on the arm; nested destructuring.
+- **Matching:** `case v ... Pattern: expr ... end`. Arms run until the next `Pattern:` or `end`. Exhaustive; guards with `if` on the arm; nested destructuring. A one-field variant matches positionally (`Ok(c)`, `Enqueue(request)`); more fields match by name.
 - **Results:** `Ok(x)`, `Error(e)`, `Some(x)`, `None`. `try expr` propagates. `x or default` for `Option`. Predicates end in `?`.
 - **Types:** `struct`, `enum` with data variants, `type Money = UInt64 where value <= ...`. Construction is call-style with named fields, never positional. Change a struct only via `var copy = x` then `copy.field = v`.
-- **Loops:** `for x in xs ... end`, `for i in 0..n ... end`, `break` allowed. Every `for` closes with `end`, in a body, a `never`, or a `property` alike. A pure body is written with `map`, `filter`, or `reduce` instead (`charges.filter(fn(c) c.refunded? end)`); `for` is for bodies with effects, `try`, `break`, or `return`, like the `Drain` arm above. The formatter enforces the split.
+- **Loops:** `for x in xs ... end`, `for i in 0..n ... end` (`n` excluded), `break` allowed. Every `for` closes with `end`, in a body, a `never`, or a `property` alike. A pure body is written with `map`, `filter`, or `reduce` instead (`charges.filter(fn(c) c.refunded? end)`); `for` is for bodies with effects, `try`, `break`, or `return`, like the `Drain` arm above. The formatter enforces the split.
 - **Anonymous functions:** `fn(x) expr end`, call arguments only.
-- **Numbers and strings:** `10_000`, `200.ms`, `90.days` (dot-call functions, extensible). `"Hello #{name}"`, double quotes only, `"""` for multi-line. No literal suffixes.
-- **Process and supervisor:** as in the example. `state`, `invariant`, `message`, `update`. `mailbox: N` in the header.
+- **Numbers and strings:** `10_000` (typed from its uses, else `Int64`), `200.ms`, `90.days` (`Duration`, dot-call functions, extensible). `"Hello #{name}"`, double quotes only, `"""` for multi-line. No literal suffixes.
+- **Process and supervisor:** as in the example. `state` (fields start at their type's zero, or write `= expr`), `invariant`, `message`, `update`. `mailbox: N` in the header. A supervisor takes the capabilities its children need and passes them on each `child` line.
 - **Tests:** same file, under the code. `test "sentence"`, `test rejects "sentence"`, `property "sentence"` with `any(Type)`.
 - **`verified:` line:** at the bottom, computed by the toolchain, a compile error to edit by hand.
 - **Recipes:** `recipe Name ... end`, chapter 6.
@@ -151,3 +151,9 @@ Robert (session 4): `pub` has OOP vibes. **In** on the Elm-style `expose` line: 
 Robert (session 4): `use A.B{X, Y}`, no dot before the braces. Applied here, in `grammar.md`, and in pick 14.
 
 Robert (session 4): the comprehension `for` inside `never` and `property` had no `end`, which looked like whitespace sensitivity. Every `for` now closes with `end`. Robert also asked whether `for` should go entirely in favour of `map`/`filter`/`reduce`; **in** on keeping both with one rule: pure bodies use the combinators, `for` is only for effects, `try`, `break`, or `return`, and the formatter enforces it. First tested by the `examples/` corpus.
+
+## Session 5 changes
+
+The example and rules above already reflect these; this section is the changelog.
+
+Claude (session 5, deciding on Robert's instruction to build first): the supervisor takes parameters and passes them on the `child` line, the one addition of syntax; one-field variants match positionally; `a..b` excludes `b`; `state` fields start at zero; literals are typed from use. The three-worker corpus (`examples/`, `plans/model-bakeoff.md`) found every one of these; the full list with what tests each is at the foot of `grammar.md`.

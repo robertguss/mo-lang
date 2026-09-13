@@ -22,7 +22,7 @@ Five ideas, one per layer. Each is chosen so that a function can be understood f
 - A **capability** is an unforgeable value (`Ledger`, `Clock`, `Fs`, `Network`, `Events`) that must be held to perform an effect. Capabilities are obtained only at the program root, `fn main(platform: Platform)`, passed down explicitly, and narrowed on the way (`fs.scoped("/var/app").read_only`).
 - A function with no capability parameter is provably pure. The signature is the proof, and chapter 2's closure law keeps it honest.
 - Effectful calls are direct style: `db.find_charge(id, within: 200.ms)` reads like Go and blocks like Erlang. Under the hood it suspends, hands a command to the runtime, and resumes. The runtime is the single interception point for capability checks, replay logging, deadlines, and fault injection. Green threads; no `async`, no function coloring.
-- The language has no I/O. A **platform** package provides `Platform` and implements the runtime hooks. `Mo.Server` is the real one; `Mo.Sim` is deterministic everything, swapped in with one `use` line.
+- The language has no I/O. A **platform** package provides `Platform` and implements the runtime hooks. `Mo.Server` is the real one; `Mo.Sim` is deterministic everything. A module never names its platform: `mo test` runs on `Mo.Sim`, `mo run` on the real one.
 
 ## Processes
 
@@ -30,7 +30,7 @@ Five ideas, one per layer. Each is chosen so that a function can be understood f
 - `Name.start(caps...)` returns a typed `Handle(Name)`. `send` never blocks and has no `try`. `ask` blocks with a mandatory deadline and returns a `Result`.
 - Every mailbox is bounded (`mailbox: N` in the header, default from the laws). A full mailbox crashes the **sender**: overflow means the design lacks flow control, and the fix is `ask` or a larger bound.
 - `update` is a transaction. On a crash, that message's state writes and buffered outgoing effects are discarded. `clock.now` is frozen per `update`.
-- Supervisors are declared, not coded: `child RefundQueue, restart: :always, max_restarts: 5 per 1.minute`. A process not under a supervisor does not compile. `main` is the root supervisor. No links, monitors, or `receive` in user code.
+- Supervisors are declared, not coded. A supervisor takes the capabilities its children need and hands them down: `child RefundQueue(db, clock, events), restart: :always, max_restarts: 5 per 1.minute`. A process not under a supervisor does not compile. `main` is the root supervisor. No links, monitors, or `receive` in user code.
 - Every process is replayable from a snapshot plus its message log. The stdlib is deterministic by law (stable sort, defined map order) so replay is exact.
 
 ## Failure
@@ -38,3 +38,9 @@ Five ideas, one per layer. Each is chosen so that a function can be understood f
 - **Rain** is expected failure: missing file, timeout, bad input. It is an `Error` value in the signature, exhaustive, handled by the caller. Anything from outside the program is rain.
 - **A broken roof** is a bug: a `requires`, `ensures`, `invariant`, `never`, overflow, or mailbox overflow tripped. Nobody handles it. The process crashes, the supervisor restarts it from known-good state, and the runtime emits a complete report: seed, message log, state snapshot, the violated clause and its contract chain.
 - An agent takes the crash as a task and fixes it. A fix is acceptable only if it passes all tests and contracts and weakens no `never`. If the fix changes the shape, a human is pulled in. That is the only time a human is involved.
+
+## Session 5 changes
+
+The rules above already reflect these; this section is the changelog.
+
+Claude (session 5): platform selection moved from a `use Mo.Sim` line to the toolchain (`mo test` is always simulated), because a module that names its platform is a module that can be run against the wrong one. Supervisors take parameters and pass them on `child` lines, because nothing else said where a child's capabilities come from. Both first tested by the interpreter milestone and program 1. The full list of session 5 decisions is at the foot of `grammar.md`.

@@ -158,3 +158,8 @@
 - plans/corpus.md written; Opus worker started in Herdr on it. Robert: work goes on a feature branch → session-05 (the two earlier session-5 commits stay on main).
 - toolchain/ laid out in Zig 0.16: stubs per stage, mo CLI, corpus test, mo-bench, bench/rebuild.sh (first incremental rebuild 127 ms). `zig build test` green.
 - Robert: compare Opus, Grok, and Codex as workers, Fable delegates and reviews → plans/model-bakeoff.md; Grok and Codex started on the same brief in worktrees on corpus-grok and corpus-codex.
+
+## [2026-09-12] session | Session 5: build first; gaps decided; step 1 brief
+- Robert: no taste review of the corpus now; build, measure, evaluate; Fable may decide alone. Fable chose Opus as the code worker (bake-off round 1: Opus 5/5 taste, Codex found three grammar bugs, Grok not competitive).
+- Fable decided every corpus gap: grammar.md productions fixed in place, "Session 5 decisions" at its foot; chapters 2 (deadline law), 3 (platform selection, supervisor params), 4 (example + rules), 6 (recipe example) amended with Session 5 notes.
+- plans/interpreter-step-1.md: Opus brings the corpus up to date, then lexer + parser, corpus test tightens, bench rows.

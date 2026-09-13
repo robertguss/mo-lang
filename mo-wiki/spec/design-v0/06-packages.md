@@ -12,11 +12,15 @@ Packages were built by humans for humans, to avoid rewriting what someone else a
 recipe RateLimiter
   intent "Token bucket per client; refills from the clock; never blocks"
   needs Clock
+  fn limiter(capacity: UInt32, refill: Duration) : Limiter
+    requires capacity > 0
+  end
   fn allow?(l: Limiter, id: ClientId, now: Time) : (Limiter, Bool)
     ensures result.0.tokens(id) <= l.capacity
   end
   test "refills at the declared rate" ... end
-  test rejects "a burst beyond capacity" ... end
+  test "a burst beyond capacity is refused" ... end
+  test rejects "a limiter with no capacity" ... end
 end
 ```
 
@@ -42,3 +46,7 @@ Each check has a documented boundary (fail, warn, or opt-in) and a stable error 
 ## The norm
 
 Copy a function rather than add a dependency. Build your own rather than import. The stdlib and kits are the first choice, recipes the second, outside code the last. The goal is for software to rely less and less on the outside world.
+
+## Session 5 changes
+
+Claude (session 5): the recipe example gained a `limiter` constructor with a `requires`, because a `test rejects` must trip a `requires` and the old "burst beyond capacity" test had none to trip. Found by the corpus.
