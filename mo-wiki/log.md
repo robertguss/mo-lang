@@ -240,3 +240,6 @@
 
 ## [2026-09-13] session | Evening: program 4 accepted, merged; step 19 started
 - Fable verified: suite green (26 s), every notes module green under 100 seeds with faults, fmt clean, five run lines identical under both runtimes, a curl session of fourteen cases (401, cross-client 404, bad JSON, 405, 429 after 60, 413 on 2 MiB, 400 on a 62 KB field, title bounds, a control character), replay across restart, 20k notes at 48 MB. Seven decision rows, two tagged `semantic` (freeing finished processes; the held-send deadlock). Merged to main. Step 19 (what program 4 found, the dead each_line row, mutation tests) to a fresh session. Note: Robert's shell aliases `tr` to trash; Fable's probe hit it once, nothing was moved.
+
+## [2026-09-13] session | Evening: a correction to the record
+- Fable wrote in earlier entries and in reports to Robert that Robert typed instructions into the worker pane (the README and stdlib-intro fixes after step 16, the README fix after round 3, "merge to main" lines). Robert: "it's definitely not me". The text was Claude Code's own prompt suggestion shown in the worker's input after each turn. The edits themselves were sound and stay; the attribution was wrong. HANDOFF corrected; the suggestion line is ignored from now on.
