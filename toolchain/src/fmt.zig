@@ -1833,3 +1833,40 @@ test "a comment the formatter would have to move rejects the file" {
     try std.testing.expectEqualStrings("MO0502", diags.items[0].code);
     try std.testing.expectEqual(@as(u32, 26), diags.items[0].at);
 }
+
+test "every corpus file: formatting is idempotent and keeps the tree" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    const corpus = @import("corpus.zig");
+    const root = "../examples";
+    const paths = corpus.collect(gpa, io, root) catch |err| switch (err) {
+        error.FileNotFound => return, // no corpus checked out beside the toolchain
+        else => return err,
+    };
+    defer {
+        for (paths) |p| gpa.free(p);
+        gpa.free(paths);
+    }
+    var dir = try std.Io.Dir.cwd().openDir(io, root, .{});
+    defer dir.close(io);
+    for (paths) |rel| {
+        var arena_state = std.heap.ArenaAllocator.init(gpa);
+        defer arena_state.deinit();
+        const arena = arena_state.allocator();
+        const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
+        var diags: diag.List = .empty;
+        const once = format(arena, source, &diags) catch |err| {
+            for (diags.items) |d| std.debug.print("fmt: {s} at byte {d}: {s} {s}\n", .{ rel, d.at, d.code, d.what });
+            return err;
+        };
+        const twice = try format(arena, once, &diags);
+        std.testing.expectEqualStrings(once, twice) catch |err| {
+            std.debug.print("fmt: {s} is not idempotent\n", .{rel});
+            return err;
+        };
+        std.testing.expectEqualStrings((try dumpSource(arena, source)).?, (try dumpSource(arena, once)).?) catch |err| {
+            std.debug.print("fmt: {s} formats to a different tree\n", .{rel});
+            return err;
+        };
+    }
+}

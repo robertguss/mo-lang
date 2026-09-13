@@ -68,7 +68,7 @@
 | K2 | A comment above an `end` or `else` is printed at the indent of the block it closes. A comment at the end of the file stays at the end. |
 | K3 | A comment after code stays on its line, after the code and two spaces. |
 | K4 | Comment text is never changed, apart from trailing whitespace (L2). |
-| K5 | The formatter never moves or drops a comment. A comment that sits inside a line the formatter would join (inside a one-line anonymous function or arm, that form is not used; inside parentheses that span lines, the file is refused with `MO0502` and left unchanged). |
+| K5 | The formatter never moves or drops a comment. A comment inside what would be a one-line anonymous function or arm keeps that construct in block form. A comment inside parentheses that span lines, which the formatter joins, refuses the file with `MO0502` and leaves it unchanged. |
 | K6 | A `use` line moves with its comments when O2 sorts it. |
 
 ## Never changed
