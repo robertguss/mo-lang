@@ -24,15 +24,18 @@ pub const implemented: Stage = .run;
 /// `TestsFailed`: the run stage ran every test and at least one failed.
 pub const Error = error{ NotImplemented, OutOfMemory, Crash, Rejected, TestsFailed };
 
-/// Runs the stages up to and including `stage`; `run` means every test of every module.
-/// `Rejected` means a diagnostic was produced, by the loader or a stage; the records
-/// are in `diags`, at offsets into the program's source. Nothing is freed: pass an
-/// arena, and append to `diags` with the same allocator.
+/// Runs the stages up to and including `stage`; `run` means every test of the file the
+/// program was loaded from, as `mo test` runs them. `Rejected` means a diagnostic was
+/// produced, by the loader or a stage; the records are in `diags`, at offsets into the
+/// program's source. Nothing is freed: pass an arena, and append to `diags` with the
+/// same allocator.
 pub fn runTo(gpa: std.mem.Allocator, prog: program.Program, stage: Stage, diags: *diag.List) Error!void {
     const checked = try front(gpa, prog, stage, diags) orelse return;
-    const lowered = try bytecode.lower(gpa, checked);
+    const lowered = try gpa.create(bytecode.Program);
+    lowered.* = try bytecode.lower(gpa, checked);
     if (stage == .lower) return;
-    const r = try runner.run(gpa, &lowered);
+    try ownTests(gpa, lowered, prog);
+    const r = try runner.run(gpa, lowered);
     if (r.summary.failures > 0) return error.TestsFailed;
 }
 
@@ -42,13 +45,16 @@ pub fn testProgram(gpa: std.mem.Allocator, prog: program.Program, all: bool, dia
     const checked = (try front(gpa, prog, .run, diags)).?;
     const lowered = try gpa.create(bytecode.Program);
     lowered.* = try bytecode.lower(gpa, checked);
-    if (!all) {
-        // The given file comes last, so its tests are the ones past its base.
-        var mine: std.ArrayList(bytecode.Test) = .empty;
-        for (lowered.tests) |t| if (t.at >= prog.main().base) try mine.append(gpa, t);
-        lowered.tests = mine.items;
-    }
+    if (!all) try ownTests(gpa, lowered, prog);
     return runner.run(gpa, lowered);
+}
+
+/// Keeps the tests of the file the program was loaded from: it comes last, so its tests
+/// are the ones past its base.
+fn ownTests(gpa: std.mem.Allocator, lowered: *bytecode.Program, prog: program.Program) Error!void {
+    var mine: std.ArrayList(bytecode.Test) = .empty;
+    for (lowered.tests) |t| if (t.at >= prog.main().base) try mine.append(gpa, t);
+    lowered.tests = mine.items;
 }
 
 pub const Main = struct { program: *const bytecode.Program, main: u32 };
