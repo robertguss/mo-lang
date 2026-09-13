@@ -160,6 +160,8 @@ extern const MoNever mo_nevers[];
 extern const uint32_t mo_nnevers;
 /* Types some never reads with T.all. */
 extern const uint32_t mo_nrecorded;
+/* The refund module's Charge stand-in (prelude.zig), or UINT32_MAX when no module has one. */
+extern const uint32_t mo_charge_decl;
 
 /* Contracts (requires, ensures, refinements) are checked when this is set: by
  * `mo build --contracts`, in every test binary, or by MO_CONTRACTS=1 at run time. */
