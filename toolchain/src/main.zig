@@ -18,6 +18,9 @@
 //!     --check            changes nothing; exit 1 with a unified diff when the file
 //!                        is not formatted, or with MO0501 for a pure for body
 //!     --stdout           prints the formatted file instead of writing it
+//!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
+//!                        MO0312), formats, and rewrites the file; one line per fix
+//!     --dry-run          changes nothing; prints the unified diff it would apply
 //! check, test, and run load the file and every module it uses (program.zig); fmt
 //! reads the one file. Diagnostics render as prose on stderr, or with --json as one
 //! JSON record per line on stdout, each in the file it points into. A file that does
@@ -31,6 +34,7 @@ const usage =
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
+    \\       mo fix [--dry-run] <file.mo> [--json]
     \\
 ;
 
@@ -56,6 +60,7 @@ pub fn main(init: std.process.Init) !void {
     var json = false;
     var all = false;
     var write = false;
+    var dry_run = false;
     var fmt_mode: FmtMode = .write;
     var positional: std.ArrayList([]const u8) = .empty;
     // Everything after `--` belongs to the program `mo run` runs.
@@ -95,6 +100,8 @@ pub fn main(init: std.process.Init) !void {
             all = true;
         } else if (std.mem.eql(u8, a, "--write")) {
             write = true;
+        } else if (std.mem.eql(u8, a, "--dry-run")) {
+            dry_run = true;
         } else if (std.mem.eql(u8, a, "--check")) {
             fmt_mode = .check;
         } else if (std.mem.eql(u8, a, "--stdout")) {
@@ -107,6 +114,8 @@ pub fn main(init: std.process.Init) !void {
     const is_fmt = std.mem.eql(u8, command, "fmt");
     if (!is_fmt and fmt_mode != .write) return usageExit(err);
     const is_run = std.mem.eql(u8, command, "run");
+    const is_fix = std.mem.eql(u8, command, "fix");
+    if (dry_run and !is_fix) return usageExit(err);
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
     // The line is one file's: --all's summary covers the modules it loads too.
@@ -143,6 +152,18 @@ pub fn main(init: std.process.Init) !void {
 
     // The file and every module it uses, from the program root.
     const program = try mo.program.load(arena, io, path, &diags);
+
+    if (is_fix) {
+        // A file that does not parse has nothing to fix.
+        if (diags.items.len > 0) return reject(out, err, program.files, diags.items, json);
+        const outcome = try mo.fix.run(arena, program);
+        const before = program.main().source;
+        if (std.mem.eql(u8, before, outcome.source)) return;
+        if (dry_run) return mo.diff.labeled(arena, out, path, "fixed", before, outcome.source);
+        try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = outcome.source });
+        for (outcome.taken) |t| try out.print("{s}:{d}: {s} {s}\n", .{ path, t.line, t.code, t.description });
+        return;
+    }
 
     if (is_run) {
         const m = mo.pipeline.mainProgram(arena, program, &diags) catch |e| switch (e) {
@@ -216,9 +237,23 @@ fn reject(out: *Io.Writer, err: *Io.Writer, files: []const mo.diag.File, records
         const loc = mo.diag.locate(files, d.at);
         var r = d;
         r.at = loc.at;
+        // A fix's edits point into the program's source too.
+        if (json and d.fixes.len > 0) r.fixes = try rebase(d.fixes, d.at - loc.at);
         if (json) try mo.diag.renderJson(out, loc.path, loc.source, r) else try mo.diag.renderProse(err, loc.path, loc.source, r);
     }
     try out.flush();
     try err.flush();
     std.process.exit(1);
+}
+
+/// Fixes with each edit moved back by `shift`, into the file it points into.
+fn rebase(fixes: []const mo.diag.Fix, shift: u32) ![]const mo.diag.Fix {
+    const gpa = std.heap.page_allocator;
+    const out = try gpa.dupe(mo.diag.Fix, fixes);
+    for (out) |*f| {
+        const edits = try gpa.dupe(mo.diag.Edit, f.edits);
+        for (edits) |*e| e.at -= shift;
+        f.edits = edits;
+    }
+    return out;
 }

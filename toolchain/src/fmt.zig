@@ -29,6 +29,11 @@ pub const Error = error{ OutOfMemory, Rejected };
 
 pub const why_comment = "The formatter never moves or drops a comment (toolchain/FORMAT.md, K5), and this one sits inside a line the formatter joins, such as parentheses that span lines. Put it on its own line above the statement.";
 
+/// The formatter's row of the error catalog; the loop rule's is loops.entry.
+pub const catalog = [_]diag.Entry{
+    .{ .code = "MO0502", .category = .format, .why = why_comment, .fixes = &.{} },
+};
+
 /// Formats `source`, or rejects it with the lexer's, the parser's, or MO0502's record.
 /// Nothing is freed: pass an arena.
 pub fn format(gpa: std.mem.Allocator, source: []const u8, diags: *diag.List) Error![]u8 {

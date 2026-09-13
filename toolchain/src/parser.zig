@@ -20,6 +20,16 @@ const why_type = "A type is a type name such as UInt32 or List(T), or a tuple of
 const why_pattern = "A pattern is _, a name, a literal, a variant such as Some(x) or Short(by: n), or a tuple of patterns.";
 const why_order = "A module is its header (module, expose, use, intent, never), then declarations, then tests, then the verified: line.";
 const why_place = "Only a name or a field path such as copy.name can be assigned.";
+/// The parser's rows of the error catalog. MO0101 also stands for a malformed
+/// `fn main` line, with why_main as its why.
+pub const catalog = [_]diag.Entry{
+    .{ .code = "MO0101", .category = .syntax, .why = why_token, .fixes = &.{} },
+    .{ .code = "MO0102", .category = .syntax, .why = why_expr, .fixes = &.{} },
+    .{ .code = "MO0103", .category = .syntax, .why = why_type, .fixes = &.{} },
+    .{ .code = "MO0104", .category = .syntax, .why = why_pattern, .fixes = &.{} },
+    .{ .code = "MO0105", .category = .syntax, .why = why_order, .fixes = &.{} },
+    .{ .code = "MO0106", .category = .syntax, .why = why_place, .fixes = &.{} },
+};
 const why_main = "fn main is the program's root (grammar §2, Q18): it takes one parameter, platform: Platform, and has no return type, like update.";
 const main_param = "fn main takes one parameter, platform: Platform";
 

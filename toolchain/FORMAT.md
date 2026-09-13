@@ -80,7 +80,17 @@
 
 ## Loops (MO0501)
 
-Chapter 4's rule: a pure body is written with `map`, `filter`, or `reduce`; `for` is for effects, `try`, `break`, or `return`. `mo check` and `mo fmt --check` report a `for` statement whose body is pure as `MO0501` ("this for has a pure body; write it as map, filter, or reduce"). The formatter does not rewrite it; `mo fix` will. A body is pure when it contains no capability call, no `try`, no `break`, no `return`, and no assignment to a name declared outside the loop. A capability call is a call on a capability or a process handle, or a call that passes one as an argument. The comprehension `for` of a `never` or a `property` is not a `for` statement and is not checked.
+Chapter 4's rule: a pure body is written with `map`, `filter`, or `reduce`; `for` is for effects, `try`, `break`, or `return`. `mo check` and `mo fmt --check` report a `for` statement whose body is pure as `MO0501` ("this for has a pure body; write it as map, filter, or reduce"). The formatter does not rewrite it. A body is pure when it contains no capability call, no `try`, no `break`, no `return`, and no assignment to a name declared outside the loop. A capability call is a call on a capability or a process handle, or a call that passes one as an argument. The comprehension `for` of a `never` or a `property` is not a `for` statement and is not checked.
+
+The rule also reports three loops over a list whose one statement builds a `var` declared outside the loop, and `mo fix` rewrites them (`src/fix.zig`):
+
+| loop body | becomes |
+|---|---|
+| `acc = acc.push(e)` | `acc = acc.concat(xs.map(fn(x) e end))` |
+| `if c` around `acc = acc.push(x)` | `acc = acc.concat(xs.filter(fn(x) c end))` |
+| `acc = e` where `e` reads `acc`; `acc += e`; `acc -= e` | `acc = xs.reduce(acc, fn(so_far, x) e end)` with `acc` read as `so_far`; `so_far + e`; `so_far - e` |
+
+A loop is one of the three only when the rewrite means the same and compiles: `xs` is a list, not a range; the loop reads its element; `e` and `c` are pure, fit on one line, and read no `var` but `acc` (an anonymous function cannot capture one, `MO0314`); map and filter do not read `acc`; and no comment sits in the loop. Any other pure body is reported with no fix.
 
 ## The two properties
 

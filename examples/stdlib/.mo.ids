@@ -59,7 +59,7 @@
         { "id": "1d8cf0eb3758", "name": "module Stdlib.Maps", "hash": "ab78d3683fc87777" },
         { "id": "f06db5c87eaf", "name": "expose", "hash": "5f26595550baaf8d" },
         { "id": "78300327d658", "name": "intent", "hash": "899bba3c3f461323" },
-        { "id": "6feec4c7816c", "name": "fn counted", "hash": "54e0b3265c374a48" },
+        { "id": "6feec4c7816c", "name": "fn counted", "hash": "e64538d245782ef2" },
         { "id": "b021ffc5a935", "name": "test \"a map keeps the order its keys were first added\"", "hash": "6c9febd261dfdff2" },
         { "id": "fbc8da3a3250", "name": "test \"set keeps a key's place, and a key removed and set again goes last\"", "hash": "375df3f748f69243" },
         { "id": "b1ef10503c03", "name": "test \"equal maps hold equal entries in the same order\"", "hash": "b889b27d86574692" },
@@ -68,7 +68,7 @@
         { "id": "bc1f122de548", "name": "test \"a var updated in place never changes a copy taken before\"", "hash": "a6892d3f355cd421" },
         { "id": "79bde98b3394", "name": "property \"a map's keys never repeat, and its size counts them\"", "hash": "e873eb029f8e5116" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "6d0f8cf0ace04856" }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "6609be2660719676" }
     },
     {
       "path": "numbers.mo",

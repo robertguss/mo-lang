@@ -5,9 +5,7 @@ intent "Count, group, and look up with maps and sets, whose keys keep the order 
 
 fn counted(words: List(String)) : Map(String, UInt64)
   var counts = Map.new()
-  for word in words
-    counts = counts.update(word, 0, fn(n) n + 1 end)
-  end
+  counts = words.reduce(counts, fn(so_far, word) so_far.update(word, 0, fn(n) n + 1 end) end)
   counts
 end
 

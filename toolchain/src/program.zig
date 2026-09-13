@@ -44,6 +44,17 @@ pub fn single(gpa: std.mem.Allocator, path: []const u8, source: []const u8) erro
     return join(gpa, files);
 }
 
+/// The program with its main file's text replaced, for `mo fix` between passes.
+pub fn withMain(gpa: std.mem.Allocator, p: Program, source: []const u8) error{OutOfMemory}!Program {
+    const files = try gpa.dupe(diag.File, p.files);
+    files[files.len - 1].source = source;
+    var q = try join(gpa, files);
+    q.root = p.root;
+    q.keys = p.keys;
+    q.verified_lines = p.verified_lines;
+    return q;
+}
+
 /// Reads `path` and every module it uses. What stops loading (a file that does not lex
 /// or parse, a use cycle, a used file that declares another module) goes to `diags` at
 /// its offset in the program's source, and the program holds the files read so far. A

@@ -7,6 +7,7 @@ zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
                                                 mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo fmt [--check | --stdout] <file.mo>
+                                                mo fix [--dry-run] <file.mo>     every fix of confidence 100
                                                 ReleaseSafe; zig build -Ddebug for Debug
 zig build test         → every stage's tests + the corpus test over ../examples
 zig build bench        → zig-out/bin/mo-bench   times every stage over ../examples
@@ -25,7 +26,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/types.zig` | the checker's type pool, unification, inference variables | ch. 5 |
 | `src/check.zig` | tier 1: types, exhaustiveness, the laws | ch. 2, 5 |
 | `src/caps.zig` | capabilities and `flows` | ch. 3 |
-| `src/loops.zig` | MO0501: a `for` with a pure body | ch. 4 |
+| `src/loops.zig` | MO0501: a `for` with a pure body, and the three accumulator loops `mo fix` rewrites | ch. 4 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |
 | `src/stdlib.zig` | the stdlib rows of design-v0/09: numbers, strings, lists, maps and sets, time, files, output | ch. 6, 09 |
@@ -42,7 +43,8 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |
 | `src/program.zig` | a program: the file given and every module it uses, by path under the `mo.root` root, in dependency order | grammar, Session 5 |
 | `src/fmt.zig` | `mo fmt`: the tree printed in its one shape (`FORMAT.md` is the rule table) | ch. 2, 4 |
-| `src/diff.zig` | the unified diff `mo fmt --check` prints | |
+| `src/fix.zig` | `mo fix`: the fixes of MO0307 and MO0312, and applying every fix of confidence 100 until none applies | ch. 5, 7 |
+| `src/diff.zig` | the unified diff `mo fmt --check` and `mo fix --dry-run` print | |
 | `src/corpus.zig` | the corpus test: `examples/` passes, `examples/rejects/` is rejected | |
 | `src/main.zig` | the `mo` CLI | |
 | `src/bench.zig` | the benchmark harness | ch. 8 |

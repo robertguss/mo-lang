@@ -12,6 +12,7 @@ const bytecode = @import("bytecode.zig");
 const runner = @import("runner.zig");
 const diag = @import("diag.zig");
 const program = @import("program.zig");
+const fix = @import("fix.zig");
 
 pub const Stage = enum { lex, parse, check, lower, run };
 
@@ -115,7 +116,10 @@ fn front(gpa: std.mem.Allocator, prog: program.Program, stage: Stage, diags: *di
     try oneMain(gpa, checked, diags);
     try caps.check(gpa, checked, diags);
     try loops.check(gpa, checked, diags);
-    if (diags.items.len > 0) return error.Rejected;
+    if (diags.items.len > 0) {
+        try fix.attach(gpa, checked, diags.items);
+        return error.Rejected;
+    }
     if (stage == .check) return null;
     return checked;
 }

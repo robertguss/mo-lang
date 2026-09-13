@@ -32,6 +32,7 @@ pub const pipeline = @import("pipeline.zig");
 pub const program = @import("program.zig");
 pub const corpus = @import("corpus.zig");
 pub const fmt = @import("fmt.zig");
+pub const fix = @import("fix.zig");
 pub const diff = @import("diff.zig");
 
 test {
