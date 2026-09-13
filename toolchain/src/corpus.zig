@@ -10,7 +10,8 @@
 //! counts as skipped, so this test is green on day one and tightens as stages land.
 //! Each file is loaded with every module it uses (program.zig), and its own tests run.
 //! Every file, rejects/ included, also passes `mo fmt --check`: it is already in its
-//! one shape (toolchain/FORMAT.md) and has no pure for body (MO0501).
+//! one shape (toolchain/FORMAT.md) and has no pure for body (MO0501). The error catalog
+//! page, mo-wiki/spec/errors.md, is what the diagnostic tables render.
 //! Every program in `examples/programs/` also runs through `mo run`, on Mo.Server, as a
 //! subprocess of the test. A program is `programs/<name>.mo`, or `programs/<name>/main.mo`
 //! beside the modules it uses. Each `# run:` line at the top of its main file is one
@@ -24,6 +25,7 @@ const program = @import("program.zig");
 const runner = @import("runner.zig");
 const diag = @import("diag.zig");
 const fmt = @import("fmt.zig");
+const errors = @import("errors.zig");
 
 pub const Tally = struct {
     passed: u32 = 0,
@@ -237,6 +239,22 @@ pub fn fmtCheck(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u
     return true;
 }
 
+/// Whether mo-wiki/spec/errors.md is what the diagnostic tables render.
+pub fn catalogCurrent(gpa: std.mem.Allocator, io: Io) !bool {
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const on_disk = Io.Dir.cwd().readFileAlloc(io, errors.page, arena, .limited(1 << 20)) catch |err| {
+        std.debug.print("corpus: {s}: {t}; run zig build errors\n", .{ errors.page, err });
+        return false;
+    };
+    var rendered: Io.Writer.Allocating = .init(arena);
+    try errors.render(&rendered.writer, try errors.rows(arena));
+    if (std.mem.eql(u8, on_disk, rendered.written())) return true;
+    std.debug.print("corpus: {s} is not what the diagnostic tables render; run zig build errors\n", .{errors.page});
+    return false;
+}
+
 /// racy.mo under --sim: every test failed in a seeded run (so it held in the fixed order
 /// first), and every test passes when the file runs without --sim.
 fn checkRacy(arena: std.mem.Allocator, prog: program.Program, simulated: runner.Run, tally: *Tally) !void {
@@ -373,6 +391,9 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         if (!try fmtCheck(gpa, io, root, rel)) unformatted += 1;
     }
     try std.testing.expectEqual(@as(u32, 0), unformatted);
+
+    // The error catalog page is what the diagnostic tables render (zig build errors).
+    try std.testing.expect(try catalogCurrent(gpa, io));
 
     // Every program runs through the installed `mo run`, on Mo.Server, once per # run: line.
     const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;

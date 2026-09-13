@@ -17,12 +17,15 @@ pub const Fix = struct {
     edits: []const Edit = &.{},
 };
 
-/// A row of an error catalog: the code, its category, the `why` written once for it,
+/// A row of an error catalog: the code, its category, its `what`, the `why` written once for it,
 /// and what `mo fix` does for it, one line per fix. `fixes` has no default, so every
 /// row says, even when it is `&.{}`.
 pub const Entry = struct {
     code: []const u8,
     category: Category,
+    /// The sentence printed at a finding, each `<placeholder>` filled in there; a code
+    /// whose findings take several shapes gives its most common (errors.zig).
+    what: []const u8,
     why: []const u8,
     fixes: []const []const u8,
 };

@@ -38,7 +38,7 @@ pub const what = "this for has a pure body; write it as map, filter, or reduce";
 pub const why = "A pure loop body is written with map, filter, or reduce, so a for always says an effect, a try, a break, or a return is inside (chapter 4, loops). mo fix rewrites the three accumulator loops (push into a list, push when a condition holds, fold into a var); any other pure body is rewritten by hand.";
 
 /// The loop rule's row of the error catalog.
-pub const entry: diag.Entry = .{ .code = code, .category = .format, .why = why, .fixes = &.{
+pub const entry: diag.Entry = .{ .code = code, .category = .format, .what = what, .why = why, .fixes = &.{
     "acc = acc.push(e) in a for over xs becomes acc = acc.concat(xs.map(fn(x) e end))",
     "if c around acc = acc.push(x) becomes acc = acc.concat(xs.filter(fn(x) c end))",
     "acc = e reading acc, acc += e, or acc -= e becomes acc = xs.reduce(acc, fn(so_far, x) ... end)",

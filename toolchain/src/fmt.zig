@@ -31,7 +31,7 @@ pub const why_comment = "The formatter never moves or drops a comment (toolchain
 
 /// The formatter's row of the error catalog; the loop rule's is loops.entry.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0502", .category = .format, .why = why_comment, .fixes = &.{} },
+    .{ .code = "MO0502", .category = .format, .what = "this comment sits inside a line the formatter joins; move it above the line", .why = why_comment, .fixes = &.{} },
 };
 
 /// Formats `source`, or rejects it with the lexer's, the parser's, or MO0502's record.

@@ -11,6 +11,7 @@ zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
                                                 ReleaseSafe; zig build -Ddebug for Debug
 zig build test         → every stage's tests + the corpus test over ../examples
 zig build bench        → zig-out/bin/mo-bench   times every stage over ../examples
+zig build errors       → ../mo-wiki/spec/errors.md, the error catalog, rendered from the diagnostic tables
 bench/rebuild.sh       → the toolchain's own incremental build time
 ```
 
@@ -37,7 +38,8 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |
 | `src/server.zig` | Mo.Server: the real platform `mo run` gives `main` (args, env, streams, a scoped `Fs`, the wall clock, exit) | ch. 3, Q18 |
-| `src/diag.zig` | structured diagnostics, no warnings | ch. 5 |
+| `src/diag.zig` | structured diagnostics, no warnings; a fix's edits; the catalog row every table uses | ch. 5 |
+| `src/errors.zig` | the error catalog: every table's rows in code order, rendered as `mo-wiki/spec/errors.md` (`src/errors_gen.zig` writes it) | ch. 5 |
 | `src/verified.zig` | the `verified:` line | ch. 5 |
 | `src/ids.zig` | the `.mo.ids` sidecar: a stable id and a content hash per declaration, and the `verified:` line `mo test --write` recorded; `MO0317` when the line is not that one | ch. 5, 7 |
 | `src/pipeline.zig` | the stages in order, `runTo(stage)` | |

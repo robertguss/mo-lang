@@ -34,6 +34,7 @@ pub const corpus = @import("corpus.zig");
 pub const fmt = @import("fmt.zig");
 pub const fix = @import("fix.zig");
 pub const diff = @import("diff.zig");
+pub const errors = @import("errors.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

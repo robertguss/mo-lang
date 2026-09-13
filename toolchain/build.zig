@@ -1,11 +1,12 @@
 const std = @import("std");
 
-// Two executables and two steps.
+// Three executables and three steps.
 //   zig build          → zig-out/bin/mo        the toolchain CLI (check, test, run), ReleaseSafe
 //   zig build -Ddebug  → zig-out/bin/mo        the same, Debug
 //   zig build test     → unit tests of every stage, plus the corpus test, which runs
 //                        examples/programs/ through the installed mo (MO_EXE)
 //   zig build bench    → zig-out/bin/mo-bench  the benchmark harness, run against ../examples
+//   zig build errors   → ../mo-wiki/spec/errors.md, the error catalog, from the diagnostic tables
 // Compile speed is a first-class requirement (design-v0/07), so the harness exists
 // before any stage does. bench/rebuild.sh times this build file itself.
 pub fn build(b: *std.Build) void {
@@ -45,6 +46,22 @@ pub fn build(b: *std.Build) void {
     run_tests.setEnvironmentVariable("MO_EXE", mo_path);
     run_tests.step.dependOn(&install_exe.step);
     test_step.dependOn(&run_tests.step);
+
+    // The error catalog page, rendered from the diagnostic tables (src/errors.zig). The
+    // corpus test fails when the page on disk is not this.
+    const errors_exe = b.addExecutable(.{
+        .name = "mo-errors",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/errors_gen.zig"),
+            .target = target,
+            .imports = &.{.{ .name = "mo", .module = mo }},
+        }),
+    });
+    const errors_step = b.step("errors", "Regenerate ../mo-wiki/spec/errors.md from the diagnostic tables");
+    const errors_cmd = b.addRunArtifact(errors_exe);
+    errors_cmd.setCwd(b.path("."));
+    errors_cmd.addArg("../mo-wiki/spec/errors.md");
+    errors_step.dependOn(&errors_cmd.step);
 
     const bench_exe = b.addExecutable(.{
         .name = "mo-bench",
