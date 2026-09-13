@@ -949,7 +949,8 @@ const Lower = struct {
         _ = try l.emit(.load, list, 0);
         _ = try l.emit(.load, index, 0);
         _ = try l.emit(.index, 0, 0);
-        _ = try l.emit(.store, try l.bindName(l.text(name_tok), false), 0);
+        const binder = if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
+        _ = try l.emit(.store, binder, 0);
         try l.b.loops.append(l.gpa, @intCast(l.b.breaks.items.len));
         return .{ .list = list, .index = index, .top = top, .exit = exit };
     }

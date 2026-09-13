@@ -612,7 +612,9 @@ const Parser = struct {
 
     fn parseFor(p: *Parser) Error!Index {
         _ = try p.expect(.kw_for);
-        const name = try p.expect(.ident);
+        // `for _ in 0..n`: `_` says the index is unused (step 5). The grammar's `for`
+        // production takes ident | "_"; the unused-binding law has nothing to bind.
+        const name = p.eat(.underscore) orelse try p.expect(.ident);
         _ = try p.expect(.kw_in);
         const iter = try p.parseExpr();
         _ = try p.expect(.newline);

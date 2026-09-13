@@ -57,6 +57,7 @@ pub const Code = enum {
     unsupervised,
     hand_verified,
     use_cycle,
+    no_zero,
 };
 
 pub const Entry = struct { code: []const u8, category: diag.Category, why: []const u8 };
@@ -97,6 +98,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .var_to_process = .{ .code = "MO0315", .category = .laws, .why = "A var is never aliased (chapter 3, values): a process that received one would see a value its owner still changes." },
     .unsupervised = .{ .code = "MO0316", .category = .laws, .why = "A process not under a supervisor does not compile (chapter 3, processes): every crash has someone to restart it." },
     .hand_verified = .{ .code = "MO0317", .category = .laws, .why = "The verified: line belongs to the toolchain (chapter 5). Until tier 2 computes and writes it, a verified: line in source was written by hand." },
+    .no_zero = .{ .code = "MO0319", .category = .laws, .why = "A state field starts at its type's zero value (0, \"\", [], None, false, and tuples and structs of those) unless it writes = expr (grammar, Session 5). An enum, a Time, a capability, a handle, or a refinement that refuses zero has none, so the process could not start." },
     .use_cycle = .{ .code = "MO0318", .category = .laws, .why = "Modules have no import cycles (chapter 2, shape laws), so each module is understood, checked, and cached after the ones it uses." },
 });
 
@@ -1125,7 +1127,11 @@ const Checker = struct {
         try c.bindParams(decl.params);
         for (c.fields.items[decl.fields.start..decl.fields.end]) |f| {
             const init = c.node(f.node).rhs;
-            if (init != 0) _ = try c.expr(init, f.type);
+            if (init != 0) {
+                _ = try c.expr(init, f.type);
+            } else if (!c.hasZero(f.type, 0) or c.zeroRefused(c.node(f.node).lhs, 0)) {
+                try c.reportTok(.no_zero, c.node(f.node).main_token, try c.print("the state field {s} is a {s}, which has no zero value; give it = expr.", .{ f.name, try c.tn(f.type) }));
+            }
         }
         try c.popScope(mark);
         try c.endFrame(saved);
@@ -1151,6 +1157,133 @@ const Checker = struct {
         _ = try c.caseCheck(update.lhs, types.unknown, .update);
         try c.popScope(mark);
         try c.endFrame(saved);
+    }
+
+    /// The zero values of grammar Session 5, the same table as vm.zero: numbers, Bool,
+    /// String, Duration, List, Option, and tuples and structs of those.
+    fn hasZero(c: *Checker, t: Id, depth: u8) bool {
+        if (depth > 8) return true;
+        const ty = c.pool.get(c.pool.base(t));
+        switch (ty.tag) {
+            // Already reported, or not known yet: nothing more to say.
+            .unknown, .variable, .never => return true,
+            .int, .float, .bool, .string, .duration, .list, .option => return true,
+            .tuple => {
+                for (c.pool.elems(ty)) |e| if (!c.hasZero(e, depth + 1)) return false;
+                return true;
+            },
+            .decl => {
+                const d = c.decls.items[ty.a];
+                if (d.kind != .struct_) return false;
+                for (c.fields.items[d.fields.start..d.fields.end]) |f| if (!c.hasZero(f.type, depth + 1)) return false;
+                return true;
+            },
+            else => return false,
+        }
+    }
+
+    /// A `where` on the field's type, or on the alias it names, that is false at zero.
+    fn zeroRefused(c: *Checker, type_node: Index, depth: u8) bool {
+        if (depth > 8 or type_node == 0) return false;
+        const n = c.node(type_node);
+        switch (n.kind) {
+            .type_refined => {
+                if (c.zeroValue(n.rhs, 0)) |v| if (v == .boolean and !v.boolean) return true;
+                return c.zeroRefused(n.lhs, depth + 1);
+            },
+            .type_ref => {
+                const d = c.type_names.get(c.text(c.node(n.lhs).main_token)) orelse return false;
+                const decl = c.decls.items[d];
+                if (decl.kind != .alias or decl.node == 0) return false;
+                return c.zeroRefused(c.node(decl.node).lhs, depth + 1);
+            },
+            else => return false,
+        }
+    }
+
+    const ZeroValue = union(enum) { int: i128, boolean: bool };
+
+    /// A refinement clause at the zero of its base, where `value` and `size` are 0,
+    /// when the clause is literals, comparisons, + - *, and and, or, !. Null otherwise.
+    fn zeroValue(c: *Checker, i: Index, depth: u8) ?ZeroValue {
+        if (depth > 32) return null;
+        const n = c.node(i);
+        switch (n.kind) {
+            .int_lit => {
+                var v: i128 = 0;
+                for (c.text(n.main_token)) |ch| {
+                    if (ch == '_') continue;
+                    v = std.math.mul(i128, v, 10) catch return null;
+                    v = std.math.add(i128, v, @as(i128, ch - '0')) catch return null;
+                }
+                return .{ .int = v };
+            },
+            .true_lit => return .{ .boolean = true },
+            .false_lit => return .{ .boolean = false },
+            .name_ref => {
+                const name = c.text(n.main_token);
+                return if (std.mem.eql(u8, name, "value") or std.mem.eql(u8, name, "size")) .{ .int = 0 } else null;
+            },
+            .member => {
+                const inner = c.zeroValue(n.lhs, depth + 1) orelse return null;
+                return if (inner == .int and std.mem.eql(u8, c.text(n.main_token), "size")) .{ .int = 0 } else null;
+            },
+            .negate => {
+                const v = c.zeroValue(n.lhs, depth + 1) orelse return null;
+                return if (v == .int) .{ .int = -v.int } else null;
+            },
+            .not_expr => {
+                const v = c.zeroValue(n.lhs, depth + 1) orelse return null;
+                return if (v == .boolean) .{ .boolean = !v.boolean } else null;
+            },
+            .and_expr, .or_expr => {
+                const a = c.zeroValue(n.lhs, depth + 1) orelse return null;
+                const b = c.zeroValue(n.rhs, depth + 1) orelse return null;
+                if (a != .boolean or b != .boolean) return null;
+                return .{ .boolean = if (n.kind == .and_expr) a.boolean and b.boolean else a.boolean or b.boolean };
+            },
+            .add, .mul => {
+                const a = c.zeroValue(n.lhs, depth + 1) orelse return null;
+                const b = c.zeroValue(n.rhs, depth + 1) orelse return null;
+                if (a != .int or b != .int) return null;
+                const op = c.text(n.main_token);
+                const v = if (std.mem.eql(u8, op, "+"))
+                    std.math.add(i128, a.int, b.int)
+                else if (std.mem.eql(u8, op, "-"))
+                    std.math.sub(i128, a.int, b.int)
+                else if (std.mem.eql(u8, op, "*"))
+                    std.math.mul(i128, a.int, b.int)
+                else
+                    return null;
+                return .{ .int = v catch return null };
+            },
+            .compare => {
+                const a = c.zeroValue(n.lhs, depth + 1) orelse return null;
+                const b = c.zeroValue(n.rhs, depth + 1) orelse return null;
+                const op = c.text(n.main_token);
+                if (a == .boolean and b == .boolean) {
+                    if (std.mem.eql(u8, op, "==")) return .{ .boolean = a.boolean == b.boolean };
+                    if (std.mem.eql(u8, op, "!=")) return .{ .boolean = a.boolean != b.boolean };
+                    return null;
+                }
+                if (a != .int or b != .int) return null;
+                const order = std.math.order(a.int, b.int);
+                const result = if (std.mem.eql(u8, op, "=="))
+                    order == .eq
+                else if (std.mem.eql(u8, op, "!="))
+                    order != .eq
+                else if (std.mem.eql(u8, op, "<"))
+                    order == .lt
+                else if (std.mem.eql(u8, op, "<="))
+                    order != .gt
+                else if (std.mem.eql(u8, op, ">"))
+                    order == .gt
+                else
+                    order != .lt;
+                return .{ .boolean = result };
+            },
+            else => return null,
+        }
     }
 
     fn checkSupervisor(c: *Checker, it: Index) Error!void {
@@ -1560,7 +1693,9 @@ const Checker = struct {
     fn caseLaws(c: *Checker, s: Index, subject: Id) Error!void {
         const n = c.node(s);
         const b = c.bt(subject);
-        if (b.tag == .unknown or b.tag == .variable) return;
+        // An integer literal not yet given a width still has every integer to cover.
+        const literal = c.pool.isIntLiteralVar(subject);
+        if (b.tag == .unknown or (b.tag == .variable and !literal)) return;
         const arms = c.spanAt(n.rhs);
         const closed = switch (b.tag) {
             .option, .result, .message => true,
@@ -1596,7 +1731,9 @@ const Checker = struct {
         }
         if (try c.uncovered(rows.items, &.{subject})) |w| {
             // An integer or a string has too many values to name one; say which type.
-            const what = if (std.mem.eql(u8, w[0], "_") and (b.tag == .int or b.tag == .string))
+            const what = if (std.mem.eql(u8, w[0], "_") and literal)
+                try c.print("this case does not cover every integer; add a _ arm.", .{})
+            else if (std.mem.eql(u8, w[0], "_") and (b.tag == .int or b.tag == .string))
                 try c.print("this case does not cover every {s}; add a _ arm.", .{try c.tn(subject)})
             else
                 try c.print("this case does not cover {s}; add an arm for it.", .{w[0]});
@@ -1791,7 +1928,8 @@ const Checker = struct {
         const mark = c.pushScope();
         c.frame.loop_depth += 1;
         try c.nestEnter(c.firstToken(s));
-        try c.bind(c.text(n.main_token), elem, .let, n.main_token);
+        // `for _ in`: nothing is bound, so MO0307 has nothing to report.
+        if (c.tree.tokens[n.main_token].kind == .ident) try c.bind(c.text(n.main_token), elem, .let, n.main_token);
         try c.blockStmts(c.spanAt(n.rhs));
         c.frame.nest -= 1;
         c.frame.loop_depth -= 1;
@@ -3183,4 +3321,80 @@ test "a use cycle across modules is found and named" {
     try std.testing.expectEqualStrings("A", cycle[0]);
     try std.testing.expectEqualStrings("A", cycle[3]);
     try std.testing.expect(try useCycle(gpa, modules[3..]) == null);
+}
+
+fn countCode(src: []const u8, code: []const u8) !usize {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    var n: usize = 0;
+    for (try checkSource(arena_state.allocator(), src)) |d| {
+        if (std.mem.eql(u8, d.code, code)) n += 1;
+    }
+    return n;
+}
+
+test "for _ in binds nothing, so the unused-binding law has nothing to report" {
+    try expectCodes(
+        \\module T.Underscore
+        \\fn thrice(n: UInt32) : UInt32
+        \\  var total = 0
+        \\  for _ in 0..3
+        \\    total += n
+        \\  end
+        \\  total
+        \\end
+    , &.{});
+}
+
+test "a state field with no zero value and no = expr" {
+    const src =
+        \\module T.Zero
+        \\enum Light
+        \\  Red
+        \\  Green
+        \\end
+        \\type Positive = UInt32 where value > 0
+        \\type Small = UInt32 where value <= 10
+        \\process Lamp()
+        \\  state
+        \\    light: Light
+        \\    count: Positive
+        \\    level: Small
+        \\    lines: List(UInt32) where size <= 10
+        \\    ready: Light = Red
+        \\  end
+        \\
+        \\  message Toggle
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Toggle:
+        \\        state.ready = Green
+        \\    end
+        \\  end
+        \\end
+    ;
+    try expectWhat(src, "MO0319", "the state field light is a Light, which has no zero value; give it = expr.");
+    try expectWhat(src, "MO0319", "the state field count is a Positive, which has no zero value; give it = expr.");
+    try std.testing.expectEqual(@as(usize, 2), try countCode(src, "MO0319"));
+}
+
+test "MO0308 names the type of an integer or string scrutinee, and a literal's too" {
+    try expectWhat(
+        \\module T.Strs
+        \\fn f(s: String) : Bool
+        \\  case s
+        \\    "a": true
+        \\  end
+        \\end
+    , "MO0308", "this case does not cover every String; add a _ arm.");
+    try expectWhat(
+        \\module T.Lit
+        \\fn f() : Bool
+        \\  n = 3
+        \\  case n
+        \\    0: true
+        \\  end
+        \\end
+    , "MO0308", "this case does not cover every integer; add a _ arm.");
 }
