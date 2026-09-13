@@ -10,6 +10,7 @@ pub const Kind = enum {
     float,
     string, // whole string including interpolation holes; the parser splits #{}
     atom, // :always
+    underscore, // _ in patterns
     // punctuation
     l_paren,
     r_paren,

@@ -36,12 +36,14 @@ pub fn collect(gpa: std.mem.Allocator, io: Io, root: []const u8) ![][]const u8 {
 pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8, stage: pipeline.Stage, tally: *Tally) !void {
     var dir = try Io.Dir.cwd().openDir(io, root, .{});
     defer dir.close(io);
-    const source = try dir.readFileAlloc(io, rel, gpa, .limited(1 << 20));
-    defer gpa.free(source);
+    // Everything a stage allocates, diagnostics included, lives in one arena per file.
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
     var diags: diag.List = .empty;
-    defer diags.deinit(gpa);
     const expect_reject = isRejectsPath(rel);
-    if (pipeline.runTo(gpa, source, stage, &diags)) {
+    if (pipeline.runTo(arena, source, stage, &diags)) {
         if (expect_reject) tally.failed += 1 else tally.passed += 1;
     } else |err| switch (err) {
         error.NotImplemented => tally.skipped += 1,

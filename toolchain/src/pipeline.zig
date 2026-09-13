@@ -18,7 +18,7 @@ pub const Error = error{ NotImplemented, OutOfMemory, Crash, Rejected };
 /// Runs the stages up to and including `stage`. `Rejected` means a diagnostic was
 /// produced; the records are in `diags`.
 pub fn runTo(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *diag.List) Error!void {
-    const tokens = try lexer.lex(gpa, source);
+    const tokens = try lexer.lex(gpa, source, diags);
     if (stage == .lex) return;
     const tree = try parser.parse(gpa, source, tokens);
     if (stage == .parse) return;
