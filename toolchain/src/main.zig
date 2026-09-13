@@ -18,6 +18,13 @@
 //!     --check            changes nothing; exit 1 with a unified diff when the file
 //!                        is not formatted, or with MO0501 for a pure for body
 //!     --stdout           prints the formatted file instead of writing it
+//!   mo build <file.mo>   tier 1, then the program as C (emit_c.zig) compiled by zig cc into one
+//!                        binary that runs main on Mo.Server (cbuild.zig): the C in
+//!                        zig-out/mo-build/<name>/, the binary beside it, its path on stdout
+//!     -o <name>          the build's name; by default the file's, or its folder's for main.mo
+//!     --contracts        the binary checks requires, ensures, and refinements
+//!     --tests            the binary runs the file's tests and prints what mo test prints
+//!     --target <triple>  cross-compiles for a zig target, such as x86_64-linux-musl
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
 //!                        MO0312), formats, and rewrites the file; one line per fix
 //!     --dry-run          changes nothing; prints the unified diff it would apply
@@ -33,6 +40,7 @@ const usage =
     \\usage: mo check <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
+    \\       mo build <file.mo> [-o name] [--contracts] [--tests] [--target triple] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\       mo fix [--dry-run] <file.mo> [--json]
     \\
@@ -68,6 +76,10 @@ pub fn main(init: std.process.Init) !void {
     var sim_runs: ?u32 = null;
     var seed: ?u64 = null;
     var faults: ?u32 = null;
+    var build_name: ?[]const u8 = null;
+    var target: ?[]const u8 = null;
+    var contracts = false;
+    var tests = false;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const a = args[i];
@@ -94,6 +106,18 @@ pub fn main(init: std.process.Init) !void {
             const percent = std.fmt.parseInt(u32, args[i], 10) catch return usageExit(err);
             if (percent > 100) return usageExit(err);
             faults = percent;
+        } else if (std.mem.eql(u8, a, "-o")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            build_name = args[i];
+        } else if (std.mem.eql(u8, a, "--target")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            target = args[i];
+        } else if (std.mem.eql(u8, a, "--contracts")) {
+            contracts = true;
+        } else if (std.mem.eql(u8, a, "--tests")) {
+            tests = true;
         } else if (std.mem.eql(u8, a, "--json")) {
             json = true;
         } else if (std.mem.eql(u8, a, "--all")) {
@@ -116,6 +140,8 @@ pub fn main(init: std.process.Init) !void {
     const is_run = std.mem.eql(u8, command, "run");
     const is_fix = std.mem.eql(u8, command, "fix");
     if (dry_run and !is_fix) return usageExit(err);
+    const is_build = std.mem.eql(u8, command, "build");
+    if (!is_build and (build_name != null or target != null or contracts or tests)) return usageExit(err);
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
     // The line is one file's: --all's summary covers the modules it loads too.
@@ -162,6 +188,33 @@ pub fn main(init: std.process.Init) !void {
         if (dry_run) return mo.diff.labeled(arena, out, path, "fixed", before, outcome.source);
         try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = outcome.source });
         for (outcome.taken) |t| try out.print("{s}:{d}: {s} {s}\n", .{ path, t.line, t.code, t.description });
+        return;
+    }
+
+    if (is_build) {
+        const checked = mo.pipeline.buildable(arena, program, tests, &diags) catch |e| switch (e) {
+            error.Rejected => return reject(out, err, program.files, diags.items, json),
+            else => return e,
+        };
+        const options: mo.cbuild.Options = .{
+            .name = build_name orelse mo.cbuild.defaultName(path),
+            .contracts = contracts,
+            .tests = tests,
+            .target = target,
+        };
+        switch (try mo.cbuild.build(arena, io, init.environ_map, program, &checked, options)) {
+            .built => |b| try out.print("{s}\n", .{b.binary}),
+            .refused => |why| {
+                try err.print("mo build: {s}: {s}\n", .{ path, why });
+                err.flush() catch {};
+                std.process.exit(1);
+            },
+            .failed => |why| {
+                try err.print("mo build: {s}: {s}\n", .{ path, why });
+                err.flush() catch {};
+                std.process.exit(1);
+            },
+        }
         return;
     }
 

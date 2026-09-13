@@ -20,6 +20,9 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
     });
+    // mo build writes the C runtime beside every program's C (src/cbuild.zig).
+    mo.addAnonymousImport("mo_rt.c", .{ .root_source_file = b.path("runtime/mo_rt.c") });
+    mo.addAnonymousImport("mo_rt.h", .{ .root_source_file = b.path("runtime/mo_rt.h") });
 
     const exe = b.addExecutable(.{
         .name = "mo",

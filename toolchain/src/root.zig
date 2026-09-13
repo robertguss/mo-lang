@@ -17,6 +17,7 @@ pub const caps = @import("caps.zig");
 pub const loops = @import("loops.zig");
 pub const bytecode = @import("bytecode.zig");
 pub const emit_c = @import("emit_c.zig");
+pub const cbuild = @import("cbuild.zig");
 pub const vm = @import("vm.zig");
 pub const stdlib = @import("stdlib.zig");
 pub const json = @import("json.zig");
