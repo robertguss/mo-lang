@@ -34,6 +34,7 @@ pub const verified = @import("verified.zig");
 pub const ids = @import("ids.zig");
 pub const pipeline = @import("pipeline.zig");
 pub const recipe = @import("recipe.zig");
+pub const mutation = @import("mutation.zig");
 pub const program = @import("program.zig");
 pub const corpus = @import("corpus.zig");
 pub const fmt = @import("fmt.zig");
