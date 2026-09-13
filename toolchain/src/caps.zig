@@ -360,10 +360,13 @@ const Caps = struct {
                             try c.report(.flows_violated, n.main_token, try c.print("{s} writes through {s}, which was narrowed to read_only and only reads; write through the Fs it was narrowed from.", .{ try c.callLabel(n, row), receiver }));
                         }
                         if (row.only == .tests and u.kind != .test_block) {
-                            const what = if (std.mem.eql(u8, row.name, "fixture"))
+                            const capability = if (prelude.findType(row.recv)) |t| t.kind == .capability else false;
+                            const what = if (!std.mem.eql(u8, row.name, "fixture"))
+                                try c.print("{s}.{s} reads what an {s}.fixture() kept, which only a test has.", .{ row.recv, row.name, row.recv })
+                            else if (capability)
                                 try c.print("{s}.fixture() builds a capability for tests; outside a test, take a {s} parameter instead.", .{ row.recv, row.recv })
                             else
-                                try c.print("{s}.{s} reads what an {s}.fixture() kept, which only a test has.", .{ row.recv, row.name, row.recv });
+                                try c.print("{s}.fixture() is a {s} for tests; outside a test, take a {s} parameter instead.", .{ row.recv, row.recv, row.recv });
                             try c.report(.outside_params, n.main_token, what);
                             pure_reported = true;
                         }
@@ -623,6 +626,23 @@ test "a capability comes only from a parameter: no fixture outside tests, none i
         \\  assert Clock.fixture().now == Clock.fixture().now
         \\end
     , &.{ "MO0403", "MO0403", "MO0403" });
+}
+
+test "a fixture outside a test names what it builds: a capability, or a value such as a Time" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try capsOf(arena_state.allocator(),
+        \\module T.Fixtures
+        \\fn epoch() : Time
+        \\  Time.fixture()
+        \\end
+        \\fn clock() : Time
+        \\  Clock.fixture().now
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 2), found.len);
+    try std.testing.expectEqualStrings("Time.fixture() is a Time for tests; outside a test, take a Time parameter instead.", found[0].what);
+    try std.testing.expectEqualStrings("Clock.fixture() builds a capability for tests; outside a test, take a Clock parameter instead.", found[1].what);
 }
 
 test "a function without a capability parameter is pure" {
