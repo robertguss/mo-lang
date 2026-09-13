@@ -27,7 +27,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 - `--target <zig triple>` cross-compiles. A Linux target links statically against musl; a macOS binary links only libSystem, which Apple ships no static form of.
 - `zig` is found next to the running `mo`, else on PATH; it is the only dependency.
 - **Processes and `Net` compile** (step 15). The scheduler `mo run` uses (`sim.zig`, `turns.zig`) is the runtime's: under `main` each process runs its updates on a thread of its own, the threads take turns, and a call that waits gives up its turn. `Net` is POSIX sockets under `main` and `Net.fixture()` in a test binary. `--tests` runs process tests in the fixed order; `mo test --sim` has no compiled form.
-- The interpreter is the reference. `zig build test` builds every corpus module with `--tests` and every program, and each must print and exit exactly as `mo test` and `mo run` do. `bench/results.tsv` records the compiled logstat (`logstat-4k-c`) beside the interpreter (`logstat-4k`), without overflow checks (`-wrap`), and without contracts (`-nocontracts`).
+- The interpreter is the reference. `zig build test` builds every corpus module with `--tests` and every program, and each must print and exit exactly as `mo test` and `mo run` do. `bench/results.tsv` records the compiled logstat (`logstat-4k-c`) beside the interpreter (`logstat-4k`), without overflow checks (`-wrap`), and without contracts (`-nocontracts`); the compiled echo and kv (`echo-1k-c`, `kv-10k-get-c`) beside theirs; and kv's resident memory after 50,000 SETs under `mo run` and as a binary (`kv-50k-set-rss-kib`, `kv-50k-set-rss-kib-c`, in KiB).
 
 ## Layout
 
