@@ -180,6 +180,67 @@ With a call inside the parentheses (`fn(hash, b) (hash * 31 + b.to_u64) % 256 en
 
 Workaround: `Kv.Log.bucket_of` calls a named function, `mixed`, whose body is the parenthesised expression.
 
+## 6. A program that declares a process frees nothing, not even in `main`'s loops
+
+Probably the cause of bug 4. The same pure loop, in a file with a process declared and never started, keeps everything it allocates:
+
+```
+module Probe.KvProcess
+expose Idle, Idles
+
+intent "probe"
+
+process Idle()
+  state
+    n: UInt64
+  end
+
+  message Poke
+
+  fn update(state, message)
+    case message
+      Poke:
+        state.n += 1
+    end
+  end
+end
+
+supervisor Idles
+  child Idle, restart: :always
+end
+
+struct Table
+  buckets: Map(UInt64, Map(String, String))
+  size: UInt64
+end
+
+fn mixed(hash: UInt64, b: UInt8) : UInt64
+  (hash * 31 + b.to_u64) % 256
+end
+
+fn put(table: Table, key: String, value: String) : Table
+  at = key.bytes.reduce(0, fn(hash, b) mixed(hash, b) end)
+  bucket = table.buckets.get(at) or Map.new()
+  Table(buckets: table.buckets.set(at, bucket.set(key, value)), size: table.size + 1)
+end
+
+fn filled(n: UInt64) : Table
+  var table = Table(buckets: Map.new(), size: 0)
+  for i in 0..n
+    table = put(table, "key#{i}", "#{i}")
+  end
+  table
+end
+
+fn main(platform: Platform)
+  platform.stdout.write_line("#{filled(20_000).size}")
+end
+```
+
+With the process and supervisor: 608 MiB resident, 0.31 s. Without them, the same file: 9.9 MiB, 0.60 s. Splitting the table into its own module, adding a `never`, or adding contracts changes neither number; only the declared process does. Twice as fast and sixty times the memory reads as the vm's region never being compacted.
+
+What it costs kv: every module of kv is loaded with `Kv.Log`, which declares the journal, so `kv serve`'s replay keeps about 70 KiB a log line before it listens. A log of 10_000 lines replays in 0.27 s to 453 MiB, 25_000 in 0.71 s to 1.33 GiB, 50_000 in 1.64 s to 3.33 GiB, and 100_000 lines over 1_000 keys in 2.07 s to 3.57 GiB; a 1_000_000-line log passed 4 GiB after 2.4 s and was killed, so the spec's replay of a million lines cannot be run in kv today. No workaround in the program: kv needs its processes.
+
 ## How kv was verified against bug 1
 
 A scratch copy of `toolchain/` at `12b7a88`, never committed, with `examples/` and `mo-wiki/` linked beside it, and three changes to `src/corpus.zig`: `"kv"` in the program list, `13` process files (the ten before, and `kv/log.mo`, `kv/store.mo`, `kv/server.mo`), and `20` tests held under faults (the eleven before, and kv's one journal test, three store tests, and five server tests). `zig build test` on that copy: 121 of 121 tests passed, the corpus test among them, so every kv file passes every stage, holds under `--sim 100` with faults, is formatted, and every `# run:` line of `kv/main.mo` matches its expected file and exit code through `mo run`. As a control, the same copy with the process-file count put back to `10` fails with `expected 10, found 13`.
