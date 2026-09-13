@@ -40,6 +40,36 @@ pub fn testSource(gpa: std.mem.Allocator, source: []const u8, diags: *diag.List)
     return runner.run(gpa, program);
 }
 
+pub const Main = struct { program: *const bytecode.Program, main: u32 };
+
+/// Checks (tier 1) and lowers `source` for `mo run`, and finds `main`; no test runs. A
+/// module without `fn main(platform: Platform)` is MO0408.
+pub fn mainProgram(gpa: std.mem.Allocator, source: []const u8, diags: *diag.List) Error!Main {
+    const checked = (try front(gpa, source, .run, diags)).?;
+    const sig = checked.mainSig() orelse {
+        const e = caps.catalog.get(.no_main);
+        const module_decl = checked.tree.nodes[checked.tree.span(checked.tree.nodes[0].lhs, checked.tree.nodes[0].rhs)[0]];
+        try diags.append(gpa, .{ .code = e.code, .category = e.category, .at = checked.tree.tokens[module_decl.main_token].start, .what = "this module has no fn main(platform: Platform), so mo run has nothing to run; mo test runs its tests", .why = e.why });
+        return error.Rejected;
+    };
+    const program = try gpa.create(bytecode.Program);
+    program.* = try bytecode.lower(gpa, checked);
+    return .{ .program = program, .main = program.fn_of_sig[sig] };
+}
+
+test "mo run needs fn main: a module without one is MO0408" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    try std.testing.expectError(error.Rejected, mainProgram(arena, "# no main here\nmodule M\nfn one() : UInt8\n  1\nend\n", &diags));
+    try std.testing.expectEqualStrings("MO0408", diags.items[0].code);
+    try std.testing.expectEqual(@as(u32, 15), diags.items[0].at);
+    diags.clearRetainingCapacity();
+    const m = try mainProgram(arena, "module M\nfn main(platform: Platform)\n  platform.exit(2)\nend\n", &diags);
+    try std.testing.expectEqualStrings("main", m.program.functions[m.main].name);
+}
+
 /// MO0501 alone, for `mo fmt --check`: the loop rule over a file that parses, whatever
 /// else the checker finds in it.
 pub fn loopFindings(gpa: std.mem.Allocator, source: []const u8, out: *diag.List) Error!void {
