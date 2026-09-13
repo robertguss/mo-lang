@@ -58,6 +58,7 @@
 - [[q15-the-name|Q15: The name]] — ✅ in — Question: is "Mo" it, and what's the story?
 - [[q16-escape-hatch|Q16: Escape hatch, revisited]] — ✅ in — Question: parked in session 1: laws with no override, ever?
 - [[q17-package-management-and-supply-chain|Q17: Package management and supply-chain security]] — ✅ in (session 3: six-layer design, plus aube additions) — Raised by Robert (session 2), flagged as very important
+- [[q18-main-and-the-platform|Q18: The shape of main and the first real platform]] — main as a known shape like update; minimal Platform; CLI log analyzer before the job queue
 
 ## Decisions
 - [[decision-log|Decision log]] — every choice in order, who made it, status, what first tests it

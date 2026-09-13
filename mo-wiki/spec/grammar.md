@@ -78,7 +78,7 @@ binding     = "var"? ident "=" expr NL
 assign      = place ("=" | "+=" | "-=") expr NL              # place must root at a var, inout, or state
 place       = ident ("." ident)*
 return      = "return" expr ("if" expr)? NL                   # trailing if only here
-for         = "for" ident "in" expr NL block "end" NL
+for         = "for" (ident | "_") "in" expr NL block "end" NL   # _ when the index is unused
 if_stmt     = "if" expr NL block ("else" NL block)? "end" NL
 case        = "case" expr NL arm+ "end" NL
 arm         = pattern ("if" expr)? ":" (expr NL | NL block)   # runs until the next arm or end
@@ -202,3 +202,4 @@ Grammar bugs found by the corpus, fixed above: `cmp` demanded an operand after `
 - **`invariant` reads like `never`.** The block is true when the invariant is broken (`state.done < old(state.done)` under "done never goes backwards"), so the sentence and the block say the same thing. Decided after step 1; first tested by tier 2.
 - **Sibling handles.** A supervisor that must give one child another's handle takes it as a parameter (`supervisor Line(sink: Handle(Sink))`, `child Source(sink)`); who starts `Sink` first is `main`'s job. First tested by program 1.
 - **Line budget.** A corpus file with two processes may exceed 40 lines; the 70-line function law is the real bound.
+- **`for _ in 0..n`.** `_` as the loop binder says the index is unused; the unused-binding law does not fire. Found by Fable testing mailbox bounds in step 4.
