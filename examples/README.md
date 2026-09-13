@@ -11,6 +11,8 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 
 `mo test <file>` runs a file's tests on the interpreter today, with processes on the deterministic `Mo.Sim` scheduler. Every `test` must pass with no crash in any process it starts, every `test rejects` must trip a `requires`, a refinement, or an `invariant`, and every `property` must hold under 200 seeds. It then prints the `verified:` line. A recipe test that calls a signature no agent has implemented yet is skipped.
 
+`mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
+
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
 2. `basics/numbers.mo`: sized integers, `10_000`, `checked_add`, `saturating_sub`, `wrapping_mul`, a float
@@ -80,3 +82,8 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records
+
+## programs (`main` on Mo.Server)
+53. `programs/hello.mo`: `fn main(platform: Platform)`, an argument, and `stdout`
+54. `programs/count-lines.mo`: `platform.fs.scoped("data").read_only` and a real read with `within:`
+55. `programs/exit-code.mo`: a line on `stderr` and `platform.exit(3)`
