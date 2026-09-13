@@ -1,0 +1,7 @@
+client 0 sent ping
+client 0 heard ping
+client 1 sent ping
+client 1 heard ping
+client 2 sent ping
+client 2 heard ping
+3 round trips over 127.0.0.1

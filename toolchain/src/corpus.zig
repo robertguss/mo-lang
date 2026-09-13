@@ -374,12 +374,13 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
-    // The eight processes/ files and the refund queue start processes and run their tests.
+    // The eight processes/ files, the refund queue, and effects/net.mo's echo server start
+    // processes and run their tests.
     if (pipeline.implemented == .run) {
-        try std.testing.expectEqual(@as(u32, 9), tally.process_files);
-        // Each of the ten process tests outside racy.mo held under 100 seeds with faults,
+        try std.testing.expectEqual(@as(u32, 10), tally.process_files);
+        // Each of the eleven process tests outside racy.mo held under 100 seeds with faults,
         // and none needs a world where nothing fails.
-        try std.testing.expectEqual(@as(u32, 10), tally.held_under_faults);
+        try std.testing.expectEqual(@as(u32, 11), tally.held_under_faults);
         try std.testing.expectEqual(@as(u32, 0), tally.fault_free_only);
         // No test is skipped for a process reason: the four recipe tests are the only skips.
         try std.testing.expectEqual(@as(u32, 4), tally.skipped_tests);
@@ -408,7 +409,7 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         try programs.append(gpa, programName(rel));
         if (!try checkProgram(gpa, io, mo_exe, root, rel)) wrong += 1;
     }
-    const want = [_][]const u8{ "count-lines", "exit-code", "hello", "lines-per-file", "logstat" };
+    const want = [_][]const u8{ "count-lines", "echo", "exit-code", "hello", "lines-per-file", "logstat" };
     try std.testing.expectEqual(want.len, programs.items.len);
     for (want, programs.items) |w, found| try std.testing.expectEqualStrings(w, found);
     try std.testing.expectEqual(@as(u32, 0), wrong);

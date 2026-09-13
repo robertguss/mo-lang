@@ -9,7 +9,10 @@
 //! this process: its four modules loaded and checked, then main on Mo.Server with its
 //! output discarded, so the runtime has a permanent number. A `sim-100` row times
 //! payments/refund.mo's tests as `mo test --sim 100` runs them, in this process, with the
-//! same file without --sim beside it, so a seeded run's cost reads off the difference.
+//! same file without --sim beside it, so a seeded run's cost reads off the difference. An
+//! `echo-1k` row times programs/echo given 1_000 lines in this process: 1_000 round trips
+//! over a real socket on 127.0.0.1, a client process to a worker process, main on
+//! Mo.Server with its output discarded.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -165,6 +168,14 @@ pub fn main(init: std.process.Init) !void {
         try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "sim-100", "n/a", "n/a" });
     }
 
+    const echo_ns = try echo1k(arena, io, init.environ_map, root, iters, &scratch);
+    if (echo_ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a round trip  ({d} round trips over 127.0.0.1)\n", .{ "echo-1k", us, us / echo_trips, echo_trips });
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "echo-1k", "n/a", "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -173,7 +184,7 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns);
 }
 
 const sim_seeds = 100;
@@ -257,6 +268,52 @@ fn logstat4k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
     return best;
 }
 
+const echo_trips = 1_000;
+
+/// The best of `iters` runs of programs/echo/main.mo given 1_000 lines: its one client
+/// process sends each line and reads it back from its worker over a real socket on
+/// 127.0.0.1, so a run is 1_000 round trips, from loading the program to main's end, with
+/// the output discarded. Null when the corpus has no echo or a run does not exit 0 (echo
+/// exits 1 when a round trip is lost).
+fn echo1k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, iters: u32, scratch: *std.heap.ArenaAllocator) !?i96 {
+    const main_path = try std.fs.path.join(arena, &.{ root, "programs/echo/main.mo" });
+    Io.Dir.cwd().access(io, main_path, .{}) catch return null;
+    const lines = try arena.alloc([]const u8, echo_trips);
+    @memset(lines, "x");
+    const cwd = try std.process.currentPathAlloc(io, arena);
+    var best: i96 = std.math.maxInt(i96);
+    var it: u32 = 0;
+    while (it < iters) : (it += 1) {
+        _ = scratch.reset(.retain_capacity);
+        const a = scratch.allocator();
+        var out_buffer: [4096]u8 = undefined;
+        var discard_out: Io.Writer.Discarding = .init(&out_buffer);
+        var err_buffer: [1024]u8 = undefined;
+        var discard_err: Io.Writer.Discarding = .init(&err_buffer);
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        var diags: mo.diag.List = .empty;
+        const program = try mo.program.load(a, io, main_path, &diags);
+        const m = mo.pipeline.mainProgram(a, program, &diags) catch |e| {
+            std.debug.print("echo-1k: {t}: {s}\n", .{ e, if (diags.items.len > 0) diags.items[0].what else "" });
+            return null;
+        };
+        var server: mo.server.Server = try .init(a, io, cwd, lines, environ, &discard_out.writer, &discard_err.writer);
+        switch (try server.run(m.program, m.main)) {
+            .exited => |code| if (code != 0) {
+                std.debug.print("echo-1k: main exited {d}\n", .{code});
+                return null;
+            },
+            .crashed => |report| {
+                std.debug.print("echo-1k: main crashed: {s}\n", .{report.clause});
+                return null;
+            },
+        }
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ns < best) best = ns;
+    }
+    return best;
+}
+
 /// 4_000 lines in logstat's format, the same every run: a malformed line every 97th,
 /// the others one second apart with methods, paths, statuses, and durations drawn from a
 /// fixed seed.
@@ -289,9 +346,10 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 }
 
 /// One row per stage, then the fmt row, the run-programs row (its count is the programs),
-/// the logstat-4k row (its count is the lines), and the sim-100 row (its count is the
-/// seeds): date, stage, count, best total µs ("n/a" when unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96) !void {
+/// the logstat-4k row (its count is the lines), the sim-100 row (its count is the seeds),
+/// and the echo-1k row (its count is the round trips): date, stage, count, best total µs
+/// ("n/a" when unimplemented).
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -322,5 +380,10 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         try w.interface.print("{d}\tsim-100\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), sim_seeds, @as(u64, @intCast(@divTrunc(ns, 1000))) });
     } else {
         try w.interface.print("{d}\tsim-100\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), sim_seeds });
+    }
+    if (echo_ns) |ns| {
+        try w.interface.print("{d}\techo-1k\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), echo_trips, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+    } else {
+        try w.interface.print("{d}\techo-1k\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), echo_trips });
     }
 }

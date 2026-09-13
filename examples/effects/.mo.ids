@@ -30,6 +30,25 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "362434342ba32f26" }
     },
     {
+      "path": "net.mo",
+      "module": "Effects.Net",
+      "declarations": [
+        { "id": "5f9b975b5981", "name": "module Effects.Net", "hash": "99400d54c40ee591" },
+        { "id": "180fce533d28", "name": "expose", "hash": "75a5d6aeb19da9d3" },
+        { "id": "6cc4f113f93b", "name": "intent", "hash": "7741f462f6781046" },
+        { "id": "c1a6affa2865", "name": "process Echo", "hash": "1078a1d2bbd341ac" },
+        { "id": "77608b20991c", "name": "process EchoServer", "hash": "092a8cfef099add4" },
+        { "id": "c7bb83576f0e", "name": "supervisor Echoes", "hash": "41db32dd5a098ac1" },
+        { "id": "19afba9033d1", "name": "fn serve", "hash": "5da95d9d155d0624" },
+        { "id": "ee49a6ea5d8a", "name": "fn echo_once", "hash": "2e32ad6622d7121d" },
+        { "id": "285b9ef42a73", "name": "fn talk", "hash": "f65f7bf37abf987e" },
+        { "id": "3a4708cc62d0", "name": "fn echoed?", "hash": "b2ac919cbf6e5379" },
+        { "id": "422bad882a8b", "name": "test \"every line a client sends comes back the same, unless the connection fails and says so\"", "hash": "c6cc692af34df98e" },
+        { "id": "a8ead79f6ad7", "name": "test \"a port a listener holds is Busy for the next one\"", "hash": "23407116973127b0" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "c07b902b97332150" }
+    },
+    {
       "path": "pure-vs-effectful.mo",
       "module": "Effects.PureVsEffectful",
       "declarations": [
