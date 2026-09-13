@@ -181,6 +181,7 @@ class ParseTimestamp(unittest.TestCase):
     def test_accepts_z_offsets_and_fractions(self) -> None:
         self.assertEqual(ts("2026-09-12T10:00:00Z").micros, ts("2026-09-12T12:00:00+02:00").micros)
         self.assertEqual(ts("2026-09-12T10:00:00.5Z").micros - ts("2026-09-12T10:00:00Z").micros, 500_000)
+        self.assertLess(ts("0001-01-01T00:00:00+01:00").micros, ts("9999-12-31T23:59:59-23:59").micros)
 
     def test_rejects_other_shapes(self) -> None:
         for text in [
@@ -194,7 +195,6 @@ class ParseTimestamp(unittest.TestCase):
             "2026-09-12T10:00:00+24:00",
             "2026-09-12T10:00:00+05:60",
             "2026-09-12T10:00:00.1234567Z",
-            "0001-01-01T00:00:00+01:00",  # before datetime.min in UTC
             "２０２６-09-12T10:00:00Z",  # fullwidth digits
         ]:
             with self.subTest(text=text):
@@ -278,7 +278,7 @@ class Sections(unittest.TestCase):
             self.lines[5:10],
             [
                 "slowest",
-                "  1_500 ms  GET /health       2026-09-12T10:00:31Z",
+                "  1_500 ms  GET /health        2026-09-12T10:00:31Z",
                 "    340 ms  POST /api/orders   2026-09-12T10:00:02Z",
                 "    340 ms  GET /api/users     2026-09-12T10:00:31Z",
                 "",
