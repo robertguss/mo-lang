@@ -321,6 +321,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Fs", .name = "read_lines", .params = &.{"String"}, .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "read_bytes", .params = &.{"String"}, .ret = "Result(List(UInt8), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "each_line", .params = &.{ "String", "fn(String) none" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "fold_lines", .params = &.{ "String", "A", "fn(A, String) A" }, .ret = "Result(A, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "size", .params = &.{"String"}, .ret = "Result(UInt64, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "list", .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "scoped", .params = &.{"String"}, .ret = "Fs" },

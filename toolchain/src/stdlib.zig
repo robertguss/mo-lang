@@ -96,6 +96,7 @@ pub const Row = enum {
     fs_read_lines,
     fs_read_bytes,
     fs_each_line,
+    fs_fold_lines,
     fs_size,
     fs_list,
     fs_write,
@@ -142,7 +143,7 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
     .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
     .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.read_bytes", .fs_read_bytes },
-    .{ "Fs.each_line", .fs_each_line },
+    .{ "Fs.each_line", .fs_each_line },           .{ "Fs.fold_lines", .fs_fold_lines },
             .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
     .{ "Fs.rename", .fs_rename },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
@@ -184,7 +185,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .duration_ms => .{ .int = a[0].duration },
         .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
         .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
-        .fs_read_lines, .fs_read_bytes, .fs_each_line, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
+        .fs_read_lines, .fs_read_bytes, .fs_each_line, .fs_fold_lines, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
             try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
@@ -469,7 +470,9 @@ fn lines(vm: *Vm, s: []const u8) Error!Value {
 /// `Fs.each_line`: bytes as they are read, split as `lines` splits a whole text (at each
 /// "\n", without it and one "\r" before it, then what follows the last "\n" when it is not
 /// empty), each line handed to the function in turn, with a safe point after each that keeps
-/// nothing, so a file of any size is read in the memory of its longest line.
+/// nothing, so a file of any size is read in the memory of its longest line. `Fs.fold_lines`
+/// is the same feed with a value: each call is handed it with the line, and what the call
+/// gives is the safe point's one root and the value handed with the next line.
 pub const LineFeed = struct {
     vm: *Vm,
     f: Value.Func,
@@ -479,9 +482,11 @@ pub const LineFeed = struct {
     partial: std.ArrayList(u8) = .empty,
     /// A line was not UTF-8: no line after it is handed, and the call is `NotText`.
     not_text: bool = false,
+    /// `fold_lines`: the value so far, from its `init`; null for `each_line`.
+    acc: ?Value = null,
 
-    pub fn init(vm: *Vm, f: Value.Func) LineFeed {
-        return .{ .vm = vm, .f = f, .from = vm.mark() };
+    pub fn init(vm: *Vm, f: Value.Func, acc: ?Value) LineFeed {
+        return .{ .vm = vm, .f = f, .from = vm.mark(), .acc = acc };
     }
 
     pub fn bytes(l: *LineFeed, chunk: []const u8) Error!void {
@@ -509,9 +514,16 @@ pub const LineFeed = struct {
             l.not_text = true;
             return;
         }
-        _ = try l.vm.invoke(l.f, &.{.{ .string = try vm_mod.rawDupe(l.vm.heap, u8, text) }});
-        var roots: [0]Value = .{};
-        l.kept = try l.vm.iterate(l.from, &roots, l.kept);
+        const handed: Value = .{ .string = try vm_mod.rawDupe(l.vm.heap, u8, text) };
+        if (l.acc) |acc| {
+            var roots = [1]Value{try l.vm.invoke(l.f, &.{ acc, handed })};
+            l.kept = try l.vm.iterate(l.from, &roots, l.kept);
+            l.acc = roots[0];
+        } else {
+            _ = try l.vm.invoke(l.f, &.{handed});
+            var roots: [0]Value = .{};
+            l.kept = try l.vm.iterate(l.from, &roots, l.kept);
+        }
     }
 };
 
@@ -861,7 +873,8 @@ fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
     return switch (which) {
         .fs_read_lines => s.readAs(vm, fs, path, within, .lines),
         .fs_read_bytes => s.readAs(vm, fs, path, within, .bytes),
-        .fs_each_line => s.eachLine(vm, fs, path, a[2].func, within),
+        .fs_each_line => s.eachLine(vm, fs, path, a[2].func, null, within),
+        .fs_fold_lines => s.eachLine(vm, fs, path, a[3].func, a[2], within),
         .fs_size => s.size(vm, fs, path, within),
         .fs_list => s.list(vm, fs, within),
         .fs_write, .fs_append => s.writeFile(vm, row, fs, path, a[2].string, within, which == .fs_append),
@@ -970,12 +983,12 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
     const all = system orelse return missed(vm, path);
     const full = try FixtureFs.pathIn(gpa, scope, path) orelse return missed(vm, path);
     switch (which) {
-        .fs_each_line => {
+        .fs_each_line, .fs_fold_lines => {
             const text = all.get(full) orelse return missed(vm, path);
-            var feed: LineFeed = .init(vm, a[2].func);
+            var feed: LineFeed = if (which == .fs_fold_lines) .init(vm, a[3].func, a[2]) else .init(vm, a[2].func, null);
             try feed.bytes(text);
             try feed.end();
-            return if (feed.not_text) notText(vm) else vm.variant("Ok", &.{.none});
+            return if (feed.not_text) notText(vm) else vm.variant("Ok", &.{feed.acc orelse .none});
         },
         .fs_read, .fs_read_lines, .fs_read_bytes, .fs_size => {
             const text = all.get(full) orelse return missed(vm, path);

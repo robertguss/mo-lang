@@ -482,12 +482,12 @@
       "declarations": [
         { "id": "9887fe5aa1dc", "name": "module Programs.NotText", "hash": "fbad095edd195e69" },
         { "id": "70f8024b5f6b", "name": "expose", "hash": "b5a721f19c08d482" },
-        { "id": "086942e61c29", "name": "intent", "hash": "cf09f9cf07aa17dd" },
+        { "id": "086942e61c29", "name": "intent", "hash": "d941892c2c73318a" },
         { "id": "90e6ec478fb7", "name": "fn said", "hash": "9f2bd164d3fa15d0" },
-        { "id": "139ff541261a", "name": "fn main", "hash": "b63dcf061fc1702e" },
+        { "id": "139ff541261a", "name": "fn main", "hash": "550f8cc5be709210" },
         { "id": "08fdc935b574", "name": "test \"a file the fixture does not hold is missing\"", "hash": "4601e1008b4474c7" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "9f106c9160a2deb0" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "3f4308314c342095" }
     }
   ]
 }

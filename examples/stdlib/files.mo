@@ -1,7 +1,7 @@
 module Stdlib.Files
-expose Problem, log_names, line_count, bytes_of, bytes_read, echo_lines
+expose Problem, log_names, line_count, bytes_of, bytes_read, echo_lines, text_bytes
 
-intent "List a folder, read a file as lines, one line at a time, or as bytes, and size it, through an Fs whose every call can wait and says how long."
+intent "List a folder, read a file as lines, one line at a time, folded, or as bytes, and size it, through an Fs whose every call can wait and says how long."
 
 enum Problem
   Unread(path: String)
@@ -56,12 +56,32 @@ fn echo_lines(logs: Fs, name: String, out: Out) : Option(Problem)
   end
 end
 
+# The bytes of a file's lines without their line ends, kept as the lines are read.
+fn text_bytes(logs: Fs, name: String) : Result(UInt64, Problem)
+  case logs.fold_lines(name, 0, within: 1.minute, fn(total, line) total + line.byte_size end)
+    Ok(total): Ok(total)
+    Error(Missing(path)): Error(Unread(path: path))
+    Error(Timeout): Error(Slow)
+    Error(NotText): Error(Binary(path: name))
+  end
+end
+
 test "an empty file system lists nothing and reads nothing"
   assert log_names(Fs.fixture()) is Ok(names)
   assert names.size == 0
   assert line_count(Fs.fixture(), "a.log") is Error(Unread("a.log"))
   assert bytes_of(Fs.fixture(), "a.log") is Error(Unread("a.log"))
   assert bytes_read(Fs.fixture(), "a.log") is Error(Unread("a.log"))
+end
+
+test "fold_lines keeps a value across the lines, split as lines splits them"
+  fs = Fs.fixture()
+  assert fs.write("a.log", "one\r\ntwo\n\nlast", within: 1.minute) is Ok(_)
+  assert text_bytes(fs, "a.log") is Ok(10)
+  assert fs.write("empty.log", "", within: 1.minute) is Ok(_)
+  assert text_bytes(fs, "empty.log") is Ok(0)
+  assert text_bytes(fs, "b.log") is Error(Unread("b.log"))
+  assert text_bytes(Fs.fixture(delay: 2.minute), "a.log") is Error(Slow)
 end
 
 test "read_bytes gives a file's bytes, as many as its size"
@@ -89,5 +109,5 @@ test "a slow file system times out every call that waits less than its delay"
   assert bytes_read(slow, "a.log") is Error(Slow)
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
           proven: not run

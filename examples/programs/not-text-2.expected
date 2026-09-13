@@ -1,0 +1,7 @@
+read: ok
+read_lines: ok
+| one
+| two é
+each_line: ok
+fold_lines: 9 bytes of text
+read_bytes: 11 bytes, 2 past ASCII
