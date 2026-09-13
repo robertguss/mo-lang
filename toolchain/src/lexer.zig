@@ -20,9 +20,11 @@ pub const why_unexpected = "Mo source outside strings and comments is names, num
 /// The lexer's rows of the error catalog.
 pub const catalog = [_]diag.Entry{
     .{ .code = "MO0001", .category = .syntax, .what = "unexpected character", .why = why_unexpected, .fixes = &.{} },
-    .{ .code = "MO0002", .category = .syntax, .what = "unterminated string", .why = why_unterminated, .fixes = &.{} },
+    .{ .code = "MO0002", .category = .syntax, .what = unterminated, .why = why_unterminated, .fixes = &.{} },
 };
 pub const why_unterminated = "A string opened with \" closes on the same line; text that spans lines goes in a \"\"\" block.";
+/// MO0002 for a one-line string: most often a long line wrapped inside the string.
+const unterminated = "this string does not close on the line it opens on; close it before the line ends, since mo fmt leaves a long line long, or write text that spans lines in a \"\"\" block";
 
 /// Tokens end with `.eof`. The first lexical error stops the file with one record.
 pub fn lex(gpa: std.mem.Allocator, source: []const u8, diags: *diag.List) Error![]Token {
@@ -194,7 +196,7 @@ const Lexer = struct {
                 else => i += 1,
             }
         }
-        return l.fail("MO0002", start, "unterminated string", why_unterminated);
+        return l.fail("MO0002", start, unterminated, why_unterminated);
     }
 
     fn scanHole(l: *Lexer, string_start: u32, from: u32) Error!u32 {
@@ -216,7 +218,7 @@ const Lexer = struct {
                 else => i += 1,
             }
         }
-        return l.fail("MO0002", string_start, "unterminated string", why_unterminated);
+        return l.fail("MO0002", string_start, unterminated, why_unterminated);
     }
 
     fn punct(l: *Lexer) Error!void {

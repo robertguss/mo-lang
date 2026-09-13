@@ -3,7 +3,7 @@ expose split
 
 intent "The verified: line belongs to the toolchain; a line written by hand does not compile."
 
-# expect MO0317: the verified: line was written by hand; delete it and let the toolchain compute it.
+# expect MO0317: no mo test --write recorded this verified: line; delete it and run mo test --write on this file, which writes the line.
 fn split(total: UInt32, people: UInt32) : UInt32
   requires people > 0
 

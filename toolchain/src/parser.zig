@@ -30,6 +30,23 @@ pub const catalog = [_]diag.Entry{
     .{ .code = "MO0105", .category = .syntax, .what = "expected a declaration, a test, or the end of the file", .why = why_order, .fixes = &.{} },
     .{ .code = "MO0106", .category = .syntax, .what = "this cannot be assigned", .why = why_place, .fixes = &.{} },
 };
+/// A case arm on one line holds one expression: a statement there is MO0102 at its keyword, or
+/// MO0101 at an assignment's `=`.
+const arm_assignment = "a case arm holds one expression after its `:`; an assignment is a statement, and a statement goes on its own lines below the arm";
+
+fn armStatement(kind: Kind) ?[]const u8 {
+    const rest = "` is a statement, and a statement goes on its own lines below the arm";
+    const head = "a case arm holds one expression after its `:`; `";
+    return switch (kind) {
+        .kw_assert => head ++ "assert" ++ rest,
+        .kw_var => head ++ "var" ++ rest,
+        .kw_return => head ++ "return" ++ rest,
+        .kw_for => head ++ "for" ++ rest,
+        .kw_break => head ++ "break" ++ rest,
+        else => null,
+    };
+}
+
 const why_main = "fn main is the program's root (grammar §2, Q18): it takes one parameter, platform: Platform, and has no return type, like update.";
 const main_param = "fn main takes one parameter, platform: Platform";
 
@@ -759,7 +776,12 @@ const Parser = struct {
             body = try p.parseBlock(true);
         } else {
             const at = p.tok;
+            if (armStatement(p.peek())) |what| return p.fail("MO0102", what, why_expr);
             const e = try p.parseExpr();
+            switch (p.peek()) {
+                .eq, .plus_eq, .minus_eq => return p.fail("MO0101", arm_assignment, why_token),
+                else => {},
+            }
             try p.endLine();
             const top = p.scratch.items.len;
             try p.push(try p.addNode(.{ .kind = .expr_stmt, .main_token = at, .lhs = e }));
@@ -1473,6 +1495,8 @@ test "a function that returns nothing leaves its return type off; a type without
         .{ "module M\nfn f(n: UInt8) UInt8\n  n\nend\n", "MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off" },
         .{ "module M\nfn f(n: UInt8)\n  return\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
         .{ "module M\nfn f(n: UInt8) : UInt8\n  return if n > 1\n  n\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
+        .{ "module M\ntest \"t\"\n  case 1\n    1: assert true\n    _: assert false\n  end\nend\n", "MO0102", "a case arm holds one expression after its `:`; `assert` is a statement, and a statement goes on its own lines below the arm" },
+        .{ "module M\nfn f(o: Bool) : UInt8\n  var n = 0\n  case o\n    true: n = 1\n    false: n += 2\n  end\n  n\nend\n", "MO0101", "a case arm holds one expression after its `:`; an assignment is a statement, and a statement goes on its own lines below the arm" },
     };
     for (wrong) |w| {
         diags.clearRetainingCapacity();
