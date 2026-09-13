@@ -130,6 +130,10 @@ pub const Sim = struct {
     fault_percent: u32 = 0,
     /// Faults drawn so far: failures and slow calls.
     injected: u32 = 0,
+    /// Every fixture call that could fail, counted whether or not faults are on, and the
+    /// count from which none fails (`--until`, runner.zig); null when faults never stop.
+    draws: u64 = 0,
+    fault_stop: ?u64 = null,
     /// Milliseconds fixture calls have waited in all, and the part the clock has not
     /// moved by yet (it moves before the next update).
     waited: i64 = 0,
@@ -251,6 +255,9 @@ pub const Sim = struct {
     /// to its deadline. What calls wait moves the clock before the next update and counts
     /// against an ask in flight. Null: the call answers as the fixture does.
     pub fn fault(sim: *Sim, other: ?Fault, within: i64) ?Fault {
+        const draw = sim.draws;
+        sim.draws += 1;
+        if (sim.fault_stop) |stop| if (draw >= stop) return null;
         const rng = if (sim.faults) |*r| r.random() else return null;
         if (rng.uintLessThan(u32, 100) < sim.fault_percent) {
             sim.injected += 1;

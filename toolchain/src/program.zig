@@ -30,6 +30,9 @@ pub const Program = struct {
     /// Per file: what the sidecar says of its `verified:` line. Empty for a program
     /// that was not loaded from disk, so every line in it is hand-written.
     verified_lines: []check.VerifiedLine = &.{},
+    /// Per file that loaded: the modules it uses, directly or through another, with the hash
+    /// of each one's declarations but its tests, for the sidecar (ids.zig).
+    uses: []const []const ids.Use = &.{},
 
     /// The file the program was loaded from.
     pub fn main(p: Program) diag.File {
@@ -52,6 +55,7 @@ pub fn withMain(gpa: std.mem.Allocator, p: Program, source: []const u8) error{Ou
     q.root = p.root;
     q.keys = p.keys;
     q.verified_lines = p.verified_lines;
+    q.uses = p.uses;
     return q;
 }
 
@@ -73,6 +77,9 @@ pub fn load(gpa: std.mem.Allocator, io: Io, path: []const u8, diags: *diag.List)
     }
     program.root = root.rel;
     program.keys = l.keys.items;
+    const uses = try gpa.alloc([]const ids.Use, l.stamps.items.len);
+    for (l.stamps.items, uses) |s, *u| u.* = s.uses;
+    program.uses = uses;
     // A file that stopped the loading has no stamp, and nothing past it is checked.
     const sidecar = try ids.read(gpa, io, root.rel);
     program.verified_lines = try gpa.alloc(check.VerifiedLine, program.files.len);
@@ -127,6 +134,8 @@ const Loader = struct {
     /// Per file, the sidecar's key; per file that parsed, its stamp.
     keys: std.ArrayList([]const u8) = .empty,
     stamps: std.ArrayList(ids.Stamp) = .empty,
+    /// Per file that loaded, the module it declares.
+    modules: std.ArrayList([]const u8) = .empty,
     /// Module path → loaded (true), or still loading the modules it uses (false).
     state: std.StringHashMapUnmanaged(bool) = .empty,
     /// The modules still loading, outermost first, to name a cycle.
@@ -146,6 +155,8 @@ const Loader = struct {
         try l.state.put(l.gpa, module_path, false);
         try l.stack.append(l.gpa, module_path);
         var here: std.ArrayList(diag.Record) = .empty;
+        // The modules this file's tests can reach: those it uses, and theirs.
+        var reach: std.ArrayList([]const u8) = .empty;
         for (items) |it| {
             const n = tree.nodes[it];
             if (n.kind != .use) continue;
@@ -155,6 +166,7 @@ const Loader = struct {
             if (std.mem.eql(u8, used, module_path)) continue;
             if (l.state.get(used)) |loaded| {
                 if (!loaded) try here.append(l.gpa, try l.cycle(used, at));
+                if (loaded) try l.reaches(&reach, used);
                 continue;
             }
             const file = try l.fileOf(used);
@@ -169,13 +181,42 @@ const Loader = struct {
                 const e = check.catalog.get(.no_module);
                 const what = try std.fmt.allocPrint(l.gpa, "{s} holds module {s}, not {s}; a module's file is its path under the program root.", .{ file, declared, used });
                 try here.append(l.gpa, .{ .code = e.code, .category = e.category, .at = at, .what = what, .why = e.why });
-            }
+            } else try l.reaches(&reach, used);
         }
         _ = l.stack.pop();
-        try l.stamps.append(l.gpa, try ids.stamp(l.gpa, tree));
+        var s = try ids.stamp(l.gpa, tree);
+        std.mem.sort([]const u8, reach.items, {}, struct {
+            fn lt(_: void, a: []const u8, b: []const u8) bool {
+                return std.mem.lessThan(u8, a, b);
+            }
+        }.lt);
+        const uses = try l.gpa.alloc(ids.Use, reach.items.len);
+        for (reach.items, uses) |m, *u| {
+            const k = for (l.modules.items, 0..) |loaded, i| {
+                if (std.mem.eql(u8, loaded, m)) break i;
+            } else unreachable;
+            u.* = .{ .module = m, .hash = try ids.bodiesHash(l.gpa, l.stamps.items[k].declarations) };
+        }
+        s.uses = uses;
+        try l.stamps.append(l.gpa, s);
+        try l.modules.append(l.gpa, module_path);
         try l.add(path, source, here.items);
         try l.state.put(l.gpa, module_path, true);
         return module_path;
+    }
+
+    /// Adds `used` and every module it reaches to `reach`, once each.
+    fn reaches(l: *Loader, reach: *std.ArrayList([]const u8), used: []const u8) !void {
+        const k = for (l.modules.items, 0..) |m, i| {
+            if (std.mem.eql(u8, m, used)) break i;
+        } else return;
+        try addOnce(l.gpa, reach, used);
+        for (l.stamps.items[k].uses) |u| try addOnce(l.gpa, reach, u.module);
+    }
+
+    fn addOnce(gpa: std.mem.Allocator, list: *std.ArrayList([]const u8), name: []const u8) !void {
+        for (list.items) |n| if (std.mem.eql(u8, n, name)) return;
+        try list.append(gpa, name);
     }
 
     /// A file that does not lex or parse ends the loading with its records.

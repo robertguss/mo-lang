@@ -55,7 +55,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 24. `effects/pure-vs-effectful.mo`: the same computation with and without a capability
 25. `effects/timeout.mo`: `Timeout` as an ordinary error the caller handles
 26. `effects/narrowing.mo`: `fs.scoped(...).read_only` passed down
-27. `effects/sim.mo`: `mo test` always runs on the simulator, so an effectful test is deterministic
+27. `effects/sim.mo`: `mo test` always runs on the simulator, so an effectful test is deterministic; its `# sim: --faults 20 --until 0.5` line runs its process test's seeds with faults that stop halfway, and the test asserts that a failed save is never counted and that every save lands once faults stop (step 18)
 58. `effects/net.mo`: an echo server whose listener process hands each connection to a worker process, driven by a test through `Net.fixture()` with no real socket, and holding under faults
 63. `effects/http.mo`: a server process that accepts one exchange per message and answers `GET /hello?name=x` and `POST /echo`, driven by a test through `Http.fixture()` with no real socket, and holding under faults, with a raw `Net` server whose response has no `content-length`; `stdlib/http.mo` beside it writes requests by hand at an `HttpListener` to show what the reader makes of a body, a query, headers, and requests that are not HTTP, and reads what `reply` and `send` put on the wire
 

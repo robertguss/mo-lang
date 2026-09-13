@@ -10,6 +10,9 @@
 //!     --seed S           the first of those seeds; by default the file's hash
 //!     --faults P         the percent chance a fixture call fails in a seeded run
 //!                        (default 5; 0 for none)
+//!     --until F          faults stop after fraction F (0 to 1) of each seeded run's
+//!                        fixture calls, counted on the same seed without faults, so a
+//!                        test asserts safety while calls fail and progress once they stop
 //!   mo run   <file.mo> [-- args...]
 //!                        tier 1, then `main` on Mo.Server with the args after `--`;
 //!                        no test runs. Exit 0, or the last platform.exit(code), or 70
@@ -41,7 +44,7 @@ const mo = @import("mo");
 
 const usage =
     \\usage: mo check <file.mo> [--json]
-    \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
+    \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
@@ -92,6 +95,7 @@ fn run(init: std.process.Init) !void {
     var sim_runs: ?u32 = null;
     var seed: ?u64 = null;
     var faults: ?u32 = null;
+    var until: ?f64 = null;
     var build_name: ?[]const u8 = null;
     var target: ?[]const u8 = null;
     var no_contracts = false;
@@ -122,6 +126,12 @@ fn run(init: std.process.Init) !void {
             const percent = std.fmt.parseInt(u32, args[i], 10) catch return usageExit(err);
             if (percent > 100) return usageExit(err);
             faults = percent;
+        } else if (std.mem.eql(u8, a, "--until")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            const fraction = std.fmt.parseFloat(f64, args[i]) catch return usageExit(err);
+            if (!(fraction >= 0 and fraction <= 1)) return usageExit(err);
+            until = fraction;
         } else if (std.mem.eql(u8, a, "-o")) {
             i += 1;
             if (i == args.len) return usageExit(err);
@@ -164,7 +174,7 @@ fn run(init: std.process.Init) !void {
     if (write and (all or !std.mem.eql(u8, command, "test"))) return usageExit(err);
     // A seed and faults shape a simulated run, so they mean nothing without --sim.
     if (sim_runs != null and !std.mem.eql(u8, command, "test")) return usageExit(err);
-    if ((seed != null or faults != null) and sim_runs == null) return usageExit(err);
+    if ((seed != null or faults != null or until != null) and sim_runs == null) return usageExit(err);
 
     var diags: mo.diag.List = .empty;
 
@@ -269,6 +279,7 @@ fn run(init: std.process.Init) !void {
             .sim_runs = sim_runs orelse 0,
             .sim_seed = seed orelse mo.runner.seedOf(program.main().source),
             .fault_percent = faults orelse mo.runner.default_fault_percent,
+            .fault_until = until orelse 1,
         };
         // --write replaces the file's line, so the line it has now is no finding.
         const last = program.files.len - 1;
@@ -284,7 +295,8 @@ fn run(init: std.process.Init) !void {
         try out.writeAll(line.written());
         if (write) {
             const main_file = program.main();
-            try mo.ids.write(arena, io, program.root, main_file.path, program.keys[last], main_file.source, line.written());
+            const uses = if (last < program.uses.len) program.uses[last] else &.{};
+            try mo.ids.write(arena, io, program.root, main_file.path, program.keys[last], main_file.source, line.written(), uses);
         }
         try out.flush();
         if (r.summary.failures > 0) std.process.exit(1);
