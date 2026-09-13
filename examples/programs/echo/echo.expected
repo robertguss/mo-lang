@@ -1,0 +1,7 @@
+client 0 sent hello
+client 0 heard hello
+client 0 sent wide
+client 0 heard wide
+client 0 sent world
+client 0 heard world
+3 round trips over 127.0.0.1

@@ -15,6 +15,27 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "f59883370ef7ecf6" }
     },
     {
+      "path": "echo/main.mo",
+      "module": "Echo.Main",
+      "declarations": [
+        { "id": "307cbde97926", "name": "module Echo.Main", "hash": "8dd1b13d6184d47a" },
+        { "id": "80d8b3901585", "name": "expose", "hash": "3f8d04a024b857c0" },
+        { "id": "5d3504e04948", "name": "intent", "hash": "3b7583512ad19b85" },
+        { "id": "675a7ec0f27d", "name": "struct Options", "hash": "1fac6d9471205e04" },
+        { "id": "cd98ceb0b23b", "name": "process Worker", "hash": "fb72faec1b663808" },
+        { "id": "b5a89d3ca112", "name": "process Acceptor", "hash": "2c118aa1e8989119" },
+        { "id": "b92fceaef8d3", "name": "process Client", "hash": "1570d246edc76ebf" },
+        { "id": "4d5b7a15f191", "name": "supervisor Echoes", "hash": "08c3ec0ba380c44f" },
+        { "id": "3a46a6986853", "name": "fn options", "hash": "1b35207b4025c2f5" },
+        { "id": "004857e53e8f", "name": "fn serve", "hash": "80c9429bd7e8fdd9" },
+        { "id": "1ff35364a0ce", "name": "fn talk", "hash": "3e542cdc7923b222" },
+        { "id": "4dd4392b2d7e", "name": "fn run", "hash": "ad64488c58c362ed" },
+        { "id": "5cf44db29d33", "name": "fn main", "hash": "cae5f45c5625265e" },
+        { "id": "31c3d3520193", "name": "test \"--clients takes a count, and the rest are the lines\"", "hash": "1a0c102d6ff1050a" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "a62a8aed6deca161" }
+    },
+    {
       "path": "exit-code.mo",
       "module": "Programs.ExitCode",
       "declarations": [

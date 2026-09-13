@@ -21,6 +21,7 @@ const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const Memo = @import("memo.zig").Memo;
+const net_mod = @import("net.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
@@ -371,6 +372,20 @@ pub const Vm = struct {
                 .spawn => {
                     const args_now = try vm.take(inst.b);
                     try vm.push(.{ .handle = try (try vm.simulator()).start(inst.a, args_now) });
+                },
+                .start_supervisor => {
+                    const args_now = try vm.take(inst.b);
+                    const children = try (try vm.simulator()).startSupervisor(inst.a, args_now);
+                    const handles: Value = switch (children.len) {
+                        0 => .none,
+                        1 => .{ .handle = children[0] },
+                        else => blk: {
+                            const out = try vm.allocValues(children.len);
+                            for (children, out) |id, *o| o.* = .{ .handle = id };
+                            break :blk .{ .tuple = out };
+                        },
+                    };
+                    try vm.push(handles);
                 },
                 .send => {
                     const message = vm.pop();
@@ -743,6 +758,9 @@ pub const Vm = struct {
         platform_exit,
         env_get,
         out_write,
+        /// A Net, Listener, or Conn row (net.zig).
+        net_row,
+        net_fixture,
         process,
         never_only,
         /// A design-v0/09 row stdlib.zig runs.
@@ -764,6 +782,10 @@ pub const Vm = struct {
         .{ "Ledger.find_charge", .ledger_call },    .{ "Ledger.save_charge", .ledger_call },      .{ "Charge.fixture", .charge_fixture },
         .{ "Charge.refunded?", .charge_refunded },  .{ "Money.cents", .money_cents },             .{ "Money.zero", .money_zero },
         .{ "Process.start", .process },             .{ "Handle.send", .process },                 .{ "Handle.ask", .process },
+        .{ "Supervisor.start", .process },          .{ "Platform.net", .platform_part },          .{ "Net.listen", .net_row },
+        .{ "Net.connect", .net_row },               .{ "Listener.accept", .net_row },             .{ "Listener.port", .net_row },
+        .{ "Conn.read_line", .net_row },            .{ "Conn.write", .net_row },                  .{ "Conn.close", .net_row },
+        .{ "Net.fixture", .net_fixture },
         .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
@@ -850,7 +872,7 @@ pub const Vm = struct {
                 break :blk .{ .duration = @intCast(ms) };
             },
             .time_fixture => .{ .time = fixture_time },
-            .clock_now => .{ .time = if (vm.server) |s| s.now() else if (vm.sim) |s| s.now else fixture_time },
+            .clock_now => .{ .time = if (vm.sim) |s| s.clockNow() else if (vm.server) |s| s.now() else fixture_time },
             .clock_fixture => .{ .cap = .{ .kind = .clock } },
             // Under mo run the file system is real (server.zig). A fixture Fs is empty; one
             // built with delay: answers after the delay.
@@ -918,6 +940,8 @@ pub const Vm = struct {
                     },
                 };
             },
+            .net_row => try vm.netRow(std.meta.stringToEnum(net_mod.Row, row.name).?, a),
+            .net_fixture => .{ .cap = .{ .kind = .net } },
             .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
@@ -929,13 +953,23 @@ pub const Vm = struct {
         try vm.push(result);
     }
 
+    /// A Net, Listener, or Conn row: real sockets under mo run, or in a test a
+    /// Net.fixture()'s, in memory (net.zig).
+    fn netRow(vm: *Vm, which: net_mod.Row, a: []const Value) Error!Value {
+        if (vm.server) |s| return s.sockets.call(vm, which, a);
+        if (vm.sim) |s| return s.fixture.call(vm, s, which, a);
+        vm.report = .{ .kind = .other, .clause = "Net runs only under mo run", .within = @tagName(which), .at = 0 };
+        return error.Crash;
+    }
+
     /// A fixture call in a seeded run with faults (sim.zig): the error it fails with, or
     /// null when it answers as the fixture does. `can_miss`: the call names a path.
     pub fn fixtureFault(vm: *Vm, can_miss: bool, path: []const u8, within: i64) Error!?Value {
         const s = vm.sim orelse return null;
-        return switch (s.fault(can_miss, within) orelse return null) {
+        return switch (s.fault(if (can_miss) .missing else null, within) orelse return null) {
             .timeout => try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}),
             .missing => try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})}),
+            .closed => unreachable,
         };
     }
 
@@ -1140,6 +1174,9 @@ pub const Vm = struct {
                 .platform => "the Platform",
                 .env => "an Env",
                 .out => if (c.handle == server_mod.stderr_handle) "an Out (stderr)" else "an Out (stdout)",
+                .net => if (vm.server != null) "a Net" else "Net.fixture()",
+                .listener => "a Listener",
+                .conn => "a Conn",
             }),
             .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
         }

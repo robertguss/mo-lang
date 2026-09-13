@@ -199,3 +199,6 @@
 
 ## [2026-09-13] session | Overnight: step 10 accepted, merged; step 11 started
 - Fable verified: tests green, hand-edited verified line caught by MO0317 against the sidecar, mo fix rewrites a push loop to concat(map), errors.md has 59 rows, README tour reads well. Five decision rows. Merged to main. Step 11 (Net, processes under mo run) to a fresh session.
+
+## [2026-09-13] session | Overnight: step 11 accepted, merged; program 3 started
+- Fable verified: tests green, echo over a real socket with three clients, echo-1k 56 ms, Net rows in 09-stdlib.md and PRELUDE.md, usage text lists fmt and fix. Seven decision rows. Merged to main. Program 3 (kv over TCP) to a fresh session from its spec.

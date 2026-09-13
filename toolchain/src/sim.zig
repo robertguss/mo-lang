@@ -17,6 +17,9 @@
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
+const net_mod = @import("net.zig");
+const server_mod = @import("server.zig");
+const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
@@ -36,7 +39,7 @@ pub const max_tick_ms: i64 = 10;
 /// Mixed into the seed for the fault draws, so they are a stream apart from the schedule.
 const fault_stream: u64 = 0x6661_756c_7473;
 
-pub const Fault = enum { timeout, missing };
+pub const Fault = enum { timeout, missing, closed };
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
@@ -66,6 +69,9 @@ pub const Proc = struct {
     /// Sends and emits of the running update, delivered only when it commits.
     outbox: std.ArrayList(Outgoing) = .empty,
     emits: std.ArrayList(Value) = .empty,
+    /// Under Mo.Server, the wall clock when its running update began: `clock.now` is
+    /// frozen per update.
+    now: i64 = 0,
 
     pub fn queued(p: *const Proc) usize {
         return p.mailbox.items.len - p.head;
@@ -116,6 +122,15 @@ pub const Sim = struct {
     /// never reads with `T.all`, in the order they were first made.
     records: bool = false,
     produced: std.AutoHashMapUnmanaged(u32, std.ArrayList(Value)) = .empty,
+    /// Under `mo run`, the real platform: main is the root supervisor, `clock.now` is the
+    /// wall clock frozen per update, a process crash is reported on stderr as it happens,
+    /// and a run that goes on delivering is a server, not a livelock.
+    server: ?*server_mod.Server = null,
+    /// Under `mo run` with processes: each process's updates run on its own thread, and
+    /// the threads take turns (turns.zig). Asks, settles, and the end of main go through it.
+    turns: ?*turns_mod.Turns = null,
+    /// The in-memory network every `Net.fixture()` of the run shares (net.zig).
+    fixture: net_mod.Fixture = .{},
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -154,15 +169,16 @@ pub const Sim = struct {
     }
 
     /// A fixture call's fate in a seeded run with faults. With the run's chance it fails:
-    /// Missing at once when it names a path (`can_miss`), else Timeout after waiting its
-    /// whole deadline. With the same chance a call that answers is slow, and waits up to
-    /// its deadline. What calls wait moves the clock before the next update and counts
+    /// half the time with `other` at once when the call has another way to fail (Missing
+    /// for a call that names a path, Closed for a connection's), else Timeout after waiting
+    /// its whole deadline. With the same chance a call that answers is slow, and waits up
+    /// to its deadline. What calls wait moves the clock before the next update and counts
     /// against an ask in flight. Null: the call answers as the fixture does.
-    pub fn fault(sim: *Sim, can_miss: bool, within: i64) ?Fault {
+    pub fn fault(sim: *Sim, other: ?Fault, within: i64) ?Fault {
         const rng = if (sim.faults) |*r| r.random() else return null;
         if (rng.uintLessThan(u32, 100) < sim.fault_percent) {
             sim.injected += 1;
-            if (can_miss and rng.boolean()) return .missing;
+            if (other) |o| if (rng.boolean()) return o;
             sim.wait(within);
             return .timeout;
         }
@@ -173,9 +189,18 @@ pub const Sim = struct {
         return null;
     }
 
-    fn wait(sim: *Sim, ms: i64) void {
+    /// A fixture call waited `ms`: the clock moves before the next update, and an ask in
+    /// flight counts it.
+    pub fn wait(sim: *Sim, ms: i64) void {
         sim.waited += ms;
         sim.lag += ms;
+    }
+
+    /// `clock.now`: the simulated clock, or under Mo.Server the wall clock, frozen when the
+    /// running update began.
+    pub fn clockNow(sim: *const Sim) i64 {
+        const s = sim.server orelse return sim.now;
+        return if (sim.running) |id| sim.procs.items[id].now else s.now();
     }
 
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
@@ -202,16 +227,18 @@ pub const Sim = struct {
     }
 
     /// Starts supervisors[index]: each child in order, with the arguments its line passes.
-    pub fn startSupervisor(sim: *Sim, index: u32, args: []const Value) Error!u32 {
+    /// Gives the children, in child order.
+    pub fn startSupervisor(sim: *Sim, index: u32, args: []const Value) Error![]const u32 {
         const s = sim.vm.program.supervisors[index];
         const sid: u32 = @intCast(sim.supervisors.items.len);
         try sim.supervisors.append(sim.gpa, .{ .index = index });
-        for (s.children) |c| {
+        const ids = try sim.gpa.alloc(u32, s.children.len);
+        for (s.children, ids) |c, *id| {
             const child_args = (try sim.vm.call(c.args, args)).tuple;
             const max = if (c.max_restarts == none) default_max_restarts else c.max_restarts;
-            _ = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c) });
+            id.* = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c) });
         }
-        return sid;
+        return ids;
     }
 
     fn window(sim: *Sim, c: bytecode.Child) Error!i64 {
@@ -244,6 +271,7 @@ pub const Sim = struct {
     /// than `d`, or its fixture calls waited longer than `d` while it answered; `Down` when
     /// the target is down or crashed before replying. A Timeout's message still arrives.
     pub fn ask(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
+        if (sim.turns) |t| return t.ask(sim, to, message, within);
         if (!sim.procs.items[to].up) return sim.askError("Down");
         // A target whose update is on the stack is waiting on this very call.
         if (sim.procs.items[to].busy) return sim.askError("Timeout");
@@ -264,6 +292,7 @@ pub const Sim = struct {
     /// Between two statements of a test: delivers every waiting message. A seeded run
     /// may leave them waiting until a later statement, an `ask`, or the test's end.
     pub fn settle(sim: *Sim) Error!void {
+        if (sim.turns) |t| return t.settle(sim);
         if (sim.schedule) |*rng| if (rng.random().boolean()) return;
         return sim.drain();
     }
@@ -271,6 +300,7 @@ pub const Sim = struct {
     /// The test's body is done: every waiting message is delivered, whatever the seed;
     /// then, in a seeded run, every never is checked against what the run produced.
     pub fn finish(sim: *Sim) Error!void {
+        if (sim.turns) |t| return t.finish(sim);
         try sim.drain();
         if (!sim.records) return;
         for (sim.vm.program.nevers) |n| _ = try sim.vm.call(n.function, &.{});
@@ -294,7 +324,7 @@ pub const Sim = struct {
                 _ = try sim.deliver(id);
                 progressed = true;
                 delivered += 1;
-                if (delivered == settle_limit) {
+                if (delivered == settle_limit and sim.server == null) {
                     sim.vm.report = .{ .kind = .other, .clause = "the processes did not settle: a million messages delivered and mailboxes still waiting", .within = sim.test_name, .at = 0 };
                     return error.Crash;
                 }
@@ -309,7 +339,7 @@ pub const Sim = struct {
         } else try sim.events.append(sim.gpa, event);
     }
 
-    fn enqueue(sim: *Sim, from: u32, to: u32, message: Value) Error!u64 {
+    pub fn enqueue(sim: *Sim, from: u32, to: u32, message: Value) Error!u64 {
         const seq = sim.next_seq;
         sim.next_seq += 1;
         try sim.procs.items[to].mailbox.append(sim.gpa, .{ .message = message, .seq = seq });
@@ -318,7 +348,7 @@ pub const Sim = struct {
     }
 
     /// A mailbox at its bound crashes the sender, and the report names both (d33).
-    fn roomFor(sim: *Sim, to: u32, message: Value) Error!void {
+    pub fn roomFor(sim: *Sim, to: u32, message: Value) Error!void {
         const target = sim.procs.items[to];
         var waiting = target.queued();
         if (sim.running) |from| {
@@ -326,7 +356,7 @@ pub const Sim = struct {
         }
         const bound = sim.vm.program.processes[target.process].mailbox;
         if (waiting < bound) return;
-        const from_name = if (sim.running) |from| sim.nameOf(from) else try std.fmt.allocPrint(sim.gpa, "the test \"{s}\"", .{sim.test_name});
+        const from_name = if (sim.running) |from| sim.nameOf(from) else if (sim.server != null) "main" else try std.fmt.allocPrint(sim.gpa, "the test \"{s}\"", .{sim.test_name});
         const values = try sim.gpa.alloc(contracts.Involved, 1);
         values[0] = .{ .name = "message", .value = try sim.vm.render(message) };
         sim.vm.report = .{
@@ -339,7 +369,7 @@ pub const Sim = struct {
         return error.Crash;
     }
 
-    fn askError(sim: *Sim, name: []const u8) Error!Value {
+    pub fn askError(sim: *Sim, name: []const u8) Error!Value {
         return sim.vm.variant("Error", &.{try sim.vm.variant(name, &.{})});
     }
 
@@ -354,11 +384,11 @@ pub const Sim = struct {
 
     // ---- one message
 
-    const Delivered = struct { seq: u64, reply: ?Value };
+    pub const Delivered = struct { seq: u64, reply: ?Value };
 
     /// Runs the next message in the mailbox of `id` as one transaction. A null reply
     /// means the process crashed on it.
-    fn deliver(sim: *Sim, id: u32) Error!Delivered {
+    pub fn deliver(sim: *Sim, id: u32) Error!Delivered {
         const vm = sim.vm;
         var p = &sim.procs.items[id];
         const entry = p.mailbox.items[p.head];
@@ -368,6 +398,7 @@ pub const Sim = struct {
             p.head = 0;
         }
         try p.log.append(sim.gpa, entry.message);
+        if (sim.server) |s| p.now = s.now();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
@@ -390,6 +421,7 @@ pub const Sim = struct {
                 p.emits.clearRetainingCapacity();
                 if (sim.gave_up) return error.Crash;
                 try sim.crashed(id, before);
+                if (sim.turns) |t| try t.answer(entry.seq, null);
                 return .{ .seq = entry.seq, .reply = null };
             },
             else => return err,
@@ -401,6 +433,7 @@ pub const Sim = struct {
         p.outbox.clearRetainingCapacity();
         try sim.events.appendSlice(sim.gpa, p.emits.items);
         p.emits.clearRetainingCapacity();
+        if (sim.turns) |t| try t.answer(entry.seq, after.tuple[0]);
         return .{ .seq = entry.seq, .reply = after.tuple[0] };
     }
 
@@ -440,18 +473,28 @@ pub const Sim = struct {
         for (p.log.items, log) |m, *o| o.* = try vm.render(m);
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
         try sim.crashes.append(sim.gpa, report);
+        if (sim.server) |s| {
+            s.processCrashed(report);
+            // A connection closes when the process holding it stops, restarted or not.
+            s.sockets.closeHeld(p.args);
+        } else sim.fixture.closeHeld(p.args);
+        if (sim.turns) |t| t.wakeAll();
         if (p.policy.restart == .never) {
             p.up = false;
             return;
         }
+        // Restarts are counted in simulated time under mo test, and wall-clock time under mo run.
+        const at = if (sim.server) |s| s.now() else sim.now;
         var kept: usize = 0;
-        for (p.restarts.items) |t| if (t > sim.now - p.policy.window_ms) {
+        for (p.restarts.items) |t| if (t > at - p.policy.window_ms) {
             p.restarts.items[kept] = t;
             kept += 1;
         };
         p.restarts.shrinkRetainingCapacity(kept);
         if (kept >= p.policy.max_restarts) return sim.giveUp(id, report);
-        try p.restarts.append(sim.gpa, sim.now);
+        try p.restarts.append(sim.gpa, at);
+        // An ask whose message the restart drops is Down.
+        if (sim.turns) |t| for (p.mailbox.items[p.head..]) |e| try t.answer(e.seq, null);
         p.mailbox.clearRetainingCapacity();
         p.head = 0;
         p.log.clearRetainingCapacity();
@@ -468,9 +511,11 @@ pub const Sim = struct {
     fn giveUp(sim: *Sim, id: u32, last: contracts.Report) Error {
         const vm = sim.vm;
         const p = sim.procs.items[id];
-        const sup_name = if (p.supervisor == test_runner) "the test runner" else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
+        const sup_name = if (p.supervisor == test_runner) (if (sim.server != null) "main" else "the test runner") else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
         for (sim.procs.items) |*q| {
-            if (q.supervisor == p.supervisor) q.up = false;
+            if (q.supervisor != p.supervisor) continue;
+            q.up = false;
+            if (sim.server) |s| s.sockets.closeHeld(q.args) else sim.fixture.closeHeld(q.args);
         }
         sim.gave_up = true;
         const values = try sim.gpa.alloc(contracts.Involved, 1);
@@ -818,6 +863,105 @@ test "a mailbox at its bound crashes the sender, a test or a process, and names 
     // The receiver did not crash, and the two sends that fit went with the sender's update.
     try std.testing.expectEqual(@as(usize, 1), h.sim.crashes.items.len);
     try std.testing.expectEqual(@as(usize, 0), h.sim.procs.items[0].log.items.len);
+}
+
+const echo_src =
+    \\module T.Echo
+    \\process Echo(conn: Conn)
+    \\  state
+    \\    lines: UInt32
+    \\  end
+    \\  message Serve : UInt32
+    \\  fn update(state, message)
+    \\    case message
+    \\      Serve:
+    \\        state.lines += serve(conn)
+    \\        state.lines
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Echoes(conn: Conn)
+    \\  child Echo(conn), restart: :always
+    \\end
+    \\fn serve(conn: Conn) : UInt32
+    \\  var lines = 0
+    \\  for _ in 0..100
+    \\    case echo_once(conn)
+    \\      Ok(true):
+    \\        lines += 1
+    \\      Ok(false):
+    \\        break
+    \\      Error(_):
+    \\        break
+    \\    end
+    \\  end
+    \\  lines
+    \\end
+    \\fn echo_once(conn: Conn) : Result(Bool, NetError)
+    \\  line = try conn.read_line(within: 1.minute)
+    \\  case line
+    \\    Some(text):
+    \\      try conn.write("#{text}\n", within: 1.minute)
+    \\      Ok(true)
+    \\    None: Ok(false)
+    \\  end
+    \\end
+    \\fn round_trip(net: Net, sent: List(String)) : Result(List(String), NetError)
+    \\  listener = try net.listen(0, within: 1.minute)
+    \\  client = try net.connect("localhost", listener.port, within: 1.minute)
+    \\  conn = try listener.accept(within: 1.minute)
+    \\  worker = Echo.start(conn)
+    \\  for line in sent
+    \\    try client.write("#{line}\n", within: 1.minute)
+    \\  end
+    \\  if worker.ask(Serve, within: 10.minute) is Error(_)
+    \\    return Error(Timeout)
+    \\  end
+    \\  var heard = sent.take(0)
+    \\  for _ in sent
+    \\    case try client.read_line(within: 1.minute)
+    \\      Some(text):
+    \\        heard = heard.push(text)
+    \\      None:
+    \\        return Error(Closed)
+    \\    end
+    \\  end
+    \\  Ok(heard)
+    \\end
+    \\fn echoed?(heard: Result(List(String), NetError), sent: List(String)) : Bool
+    \\  case heard
+    \\    Ok(lines): lines == sent
+    \\    Error(_): true
+    \\  end
+    \\end
+    \\
+;
+
+test "a server process echoes a fixture client's lines, and under faults each round trip is whole or fails and says so" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const exact = try compile(arena, echo_src ++
+        \\test "every line comes back"
+        \\  sent = ["hello", "wide world", ""]
+        \\  assert round_trip(Net.fixture(), sent) == Ok(sent)
+        \\end
+    );
+    const fixed = try runner.run(arena, exact, .{});
+    try std.testing.expectEqual(runner.Outcome.passed, fixed.results[0].outcome);
+
+    const tolerant = try compile(arena, echo_src ++
+        \\test "every line comes back, unless the connection fails and says so"
+        \\  sent = ["hello", "wide world", ""]
+        \\  assert echoed?(round_trip(Net.fixture(), sent), sent)
+        \\end
+    );
+    const r = try runner.run(arena, tolerant, .{ .sim_runs = 100, .sim_seed = 11, .fault_percent = 20 });
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[0].outcome);
+    try std.testing.expectEqual(@as(u32, 1), r.summary.held_under_faults);
+    // The exact test is a design smell under faults: it holds only where nothing fails.
+    const smell = try runner.run(arena, exact, .{ .sim_runs = 100, .sim_seed = 11, .fault_percent = 20 });
+    try std.testing.expectEqual(@as(u32, 1), smell.summary.fault_free_only);
 }
 
 const sup_src =

@@ -191,3 +191,30 @@ A function, a capability, or a handle has no JSON; encoding one is a crash. `dec
 ## Not in this step
 
 Map and set literals; Unicode case mapping (`to_upper` is ASCII); full grapheme segmentation (a grapheme is a code point with the combining marks after it, as `size` counts); a float-to-integer conversion; streaming reads; writing files. Each waits for a program that needs it.
+
+## Net
+
+`Net` is TCP, `platform.net` in `main` (step 11). A `Listener` and a `Conn` are capabilities too: a `Net` call gives them, they travel only as parameters (a listening process hands each connection to a worker with `Worker.start(conn)`), and a `Conn` closes when the process holding it stops, restarted or not. Every row that can wait takes `within: Duration`; a call past its deadline is `Timeout`, and leaves the listener or the connection as its row says. A process waiting in a call does not hold up the others: they keep taking messages.
+
+```ruby
+enum NetError
+  Timeout
+  Refused
+  Closed
+  LineTooLong
+  Busy
+end
+```
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Net` | `listen` | `port: UInt16` | `Result(Listener, NetError)` | a TCP listener on 127.0.0.1 at `port`, or at a free port the system picks when `port` is 0; `Busy` when another listener holds the port, `Refused` when the system will not bind it; binding does not wait |
+| `Net` | `connect` | `host: String`, `port: UInt16` | `Result(Conn, NetError)` | a connection to an IP address or a host name; `Refused` when nothing listens there or the host is not found; `Timeout` leaves no connection |
+| `Listener` | `accept` | | `Result(Conn, NetError)` | the next client; `Timeout` leaves the listener listening; `Busy` when another `accept` is already waiting on it |
+| `Listener` | `port` | | `UInt16` | the port it listens on |
+| `Conn` | `read_line` | | `Result(Option(String), NetError)` | the next line without its `"\n"` and one `"\r"` before it, or `None` at the end of the stream (a last line with no newline comes first); a line of more than 64 KiB (65,536 bytes before its newline) is `LineTooLong`, and the next read starts after that line; `Timeout` keeps what arrived of an unfinished line for the next read; `Busy` when another `read_line` is waiting on it |
+| `Conn` | `write` | `String` | `Result(none, NetError)` | the text, as it is, all of it; `Closed` when the other side is gone; `Timeout` closes the connection, since part of the text may have gone; `Busy` when another `write` is waiting on it |
+| `Conn` | `close` | | none | closes the connection: a call waiting on it ends with `Closed`, and so does every later call |
+| `Net` (on type) | `fixture` | | `Net` | a network in memory, shared by every fixture in the test; tests only |
+
+A `Net.fixture()` lets a test start a server process, connect a client, and drive the protocol with no real socket. What one end writes waits for the other end to read it, and a closed end is the end of the stream for the other. `listen(0)` picks a port from 49152 up; `connect` to a port nothing listens on is `Refused`; the host is not looked at. A simulated call cannot wait for something to happen, so a call with nothing to take (an `accept` with no client, a `read_line` with no whole line) waits its whole deadline and is `Timeout`. Under `mo test --sim`, a fixture call that can wait times out by the seed, and a `read_line` or `write` finds its connection `Closed` by the seed; each leaves the connection as the real call would.

@@ -15,7 +15,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 
 `mo test --sim N <file>` is tier 3: every test that starts a process runs N more times (default 100), each under a seed that chooses the delivery order, whether a statement's sends are delivered before the next statement, the clock's advance, and which fixture calls fail or are slow. A failure prints its seed and the interleaving; a test that holds only when no fixture fails is reported as passing only without faults. The corpus test runs every file with `--sim 100`: every process test holds under faults, except `processes/racy.mo`, whose test must fail under `--sim` and pass without it.
 
-`mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
+`mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A program's processes run there too, each on a thread of its own, taking turns, so one waiting on a socket does not hold up the others (`toolchain/src/turns.zig`). A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
 
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
@@ -51,6 +51,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 25. `effects/timeout.mo`: `Timeout` as an ordinary error the caller handles
 26. `effects/narrowing.mo`: `fs.scoped(...).read_only` passed down
 27. `effects/sim.mo`: `mo test` always runs on the simulator, so an effectful test is deterministic
+58. `effects/net.mo`: an echo server whose listener process hands each connection to a worker process, driven by a test through `Net.fixture()` with no real socket, and holding under faults
 
 ## processes
 28. `processes/counter.mo`: `state`, two `message` lines, `update`
@@ -93,3 +94,4 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 54. `programs/count-lines.mo`: `platform.fs.scoped("data").read_only` and a real read with `within:`
 55. `programs/exit-code.mo`: a line on `stderr` and `platform.exit(3)`
 56. `programs/logstat/`: program 2 (`mo-wiki/spec/programs/02-log-analyzer.md`) in four modules, `parse.mo`, `stats.mo`, `report.mo`, and `main.mo`, over the three logs in `fixture/`. `examples/programs/mo.root` makes `programs/` the root its `use` lines load from; `main.mo`'s four `# run:` lines are the text report, the JSON report (`logstat-2.expected`), `--top 0` exiting 2, and no `.log` file exiting 1. `programs/logstat/TOOLCHAIN-BUGS.md` records what the program found and the commits that fixed it.
+59. `programs/echo/`: a real TCP echo on 127.0.0.1 through `mo run`. The corpus test cannot start a server in the background, so `main` starts it all itself: an acceptor process, a worker process per connection, and client processes it asks in turn, and it prints every round trip. Its two `# run:` lines are three lines from one client and one line from each of three clients.
