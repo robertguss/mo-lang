@@ -505,6 +505,40 @@ const Checker = struct {
     }
 
     fn registerPrelude(c: *Checker) Error!void {
+        // A module's own declaration of a stand-in's name is the one it means.
+        var declared: std.StringHashMapUnmanaged(void) = .empty;
+        for (c.items()) |it| {
+            const n = c.node(it);
+            switch (n.kind) {
+                .struct_decl, .enum_decl, .type_decl, .trait_decl, .process_decl, .supervisor_decl, .recipe_decl => try declared.put(c.gpa, c.text(n.main_token), {}),
+                else => {},
+            }
+        }
+        for (prelude.aliases) |pa| {
+            if (declared.contains(pa.name)) continue;
+            const d = try c.addDecl(.{ .kind = .alias, .name = pa.name });
+            c.decls.items[d].type = try c.pool.add(.{ .tag = .alias, .a = d, .b = primitive(pa.base).? });
+            try c.type_names.put(c.gpa, pa.name, d);
+        }
+        const struct_start: u32 = @intCast(c.decls.items.len);
+        for (prelude.structs) |ps| {
+            if (declared.contains(ps.name)) continue;
+            const d = try c.addDecl(.{ .kind = .struct_, .name = ps.name });
+            c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
+            try c.type_names.put(c.gpa, ps.name, d);
+        }
+        // Fields once every stand-in has a name, so a field may name another.
+        for (c.decls.items[struct_start..]) |*d| {
+            const ps = for (prelude.structs) |ps| {
+                if (std.mem.eql(u8, ps.name, d.name)) break ps;
+            } else unreachable;
+            const fstart: u32 = @intCast(c.fields.items.len);
+            for (ps.fields) |f| {
+                var env: Env = .{};
+                try c.fields.append(c.gpa, .{ .name = f.name, .type = try c.parseTs(f.type, &env) });
+            }
+            d.fields = .{ .start = fstart, .end = @intCast(c.fields.items.len) };
+        }
         for (prelude.types) |pt| {
             if (pt.kind != .error_enum) continue;
             const d = try c.addDecl(.{ .kind = .prelude_enum, .name = pt.name });
@@ -604,7 +638,7 @@ const Checker = struct {
                     break;
                 };
                 const declared = if (c.tree.tokens[tok].kind == .type_name)
-                    if (c.type_names.get(name)) |d| c.decls.items[d].kind != .opaque_ else false
+                    if (c.type_names.get(name)) |d| c.decls.items[d].kind != .opaque_ and c.decls.items[d].node != 0 else false
                 else if (c.fn_names.get(name)) |s| c.sigs.items[s].kind == .module else false;
                 if (!declared) try c.reportTok(.expose_undeclared, tok, try c.print("{s} is exposed but not declared in this module", .{name}));
             }
@@ -980,7 +1014,8 @@ const Checker = struct {
         if (std.mem.eql(u8, word, "List")) return c.pool.list1(.list, args.items[0]);
         if (std.mem.eql(u8, word, "Option")) return c.pool.list1(.option, args.items[0]);
         if (std.mem.eql(u8, word, "Result")) return c.pool.result(args.items[0], args.items[1]);
-        if (std.mem.eql(u8, word, "FsError") or std.mem.eql(u8, word, "AskError")) return c.preludeEnum(word);
+        if (prelude.findType(word)) |pt| if (pt.kind == .error_enum) return c.preludeEnum(word);
+        if (c.type_names.get(word)) |d| return c.decls.items[d].type;
         return primitive(word) orelse types.unknown;
     }
 
@@ -990,6 +1025,7 @@ const Checker = struct {
         if (std.mem.eql(u8, head, "Int")) return b.tag == .int or c.pool.isIntLiteralVar(t);
         if (std.mem.eql(u8, head, "List")) return b.tag == .list;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
+        if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
         const p = primitive(head) orelse return false;
         return c.pool.base(t) == p;
     }
@@ -2143,6 +2179,11 @@ const Checker = struct {
             return c.bindings.items[b].type;
         }
         if (c.fn_names.get(name)) |s| return c.instantiateFn(i, s);
+        if (prelude.findValue(name)) |pv| {
+            if (pv.only == .tests and !c.frame.in_test) try c.reportTok(.misplaced, n.main_token, try c.print("{s} is a fixture value, so it appears only in a test", .{name}));
+            var env: Env = .{};
+            return c.parseTs(pv.type, &env);
+        }
         if (c.frame.refine_value) |v| {
             // Inside `where`, a bare name such as `size` is called on the value.
             if (try c.preludeMethod(i, null, v, name, &.{})) |t| return t;

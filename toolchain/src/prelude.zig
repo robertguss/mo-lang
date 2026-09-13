@@ -53,7 +53,47 @@ pub const types = [_]Type{
     .{ .name = "Ledger", .kind = .capability },
     .{ .name = "FsError", .kind = .error_enum },
     .{ .name = "AskError", .kind = .error_enum },
+    .{ .name = "LedgerError", .kind = .error_enum, .origin = .corpus_only },
 };
+
+/// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
+/// event log, which are not written yet. Each is corpus-only. A module that declares a
+/// name itself (contracts/flows.mo's `CardNumber`) uses its own declaration.
+pub const Alias = struct { name: []const u8, base: []const u8, origin: Origin = .corpus_only };
+
+pub const aliases = [_]Alias{
+    .{ .name = "ChargeId", .base = "String" },
+    .{ .name = "Money", .base = "UInt64" },
+    .{ .name = "CardNumber", .base = "String" },
+};
+
+pub const Struct = struct { name: []const u8, fields: []const Field, origin: Origin = .corpus_only };
+
+pub const structs = [_]Struct{
+    .{ .name = "Charge", .fields = &.{
+        .{ .name = "id", .type = "ChargeId" },
+        .{ .name = "captured_at", .type = "Time" },
+        .{ .name = "captured_amount", .type = "Money" },
+        .{ .name = "refunded", .type = "Bool" },
+    } },
+    .{ .name = "RefundRequest", .fields = &.{ .{ .name = "id", .type = "ChargeId" }, .{ .name = "amount", .type = "Money" } } },
+    // The event payloads carry the refund module's own types, so their fields are type
+    // variables, bound by the one module that builds them.
+    .{ .name = "RefundCompleted", .fields = &.{.{ .name = "refund", .type = "T" }} },
+    .{ .name = "RefundFailed", .fields = &.{ .{ .name = "request", .type = "RefundRequest" }, .{ .name = "reason", .type = "E" } } },
+};
+
+/// Named values: a name that is neither a binding nor a function.
+pub const Value = struct { name: []const u8, type: []const u8, only: Only = .anywhere, origin: Origin = .grammar };
+
+pub const values = [_]Value{
+    .{ .name = "t0", .type = "Time", .only = .tests, .origin = .corpus_only },
+};
+
+pub fn findValue(name: []const u8) ?Value {
+    for (values) |v| if (std.mem.eql(u8, v.name, name)) return v;
+    return null;
+}
 
 pub const Field = struct { name: []const u8, type: []const u8 };
 
@@ -74,6 +114,7 @@ pub const variants = [_]Variant{
     .{ .owner = "FsError", .name = "Timeout", .origin = .corpus_only },
     .{ .owner = "AskError", .name = "Timeout" },
     .{ .owner = "AskError", .name = "Down" },
+    .{ .owner = "LedgerError", .name = "Timeout", .origin = .corpus_only },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -139,6 +180,14 @@ pub const fns = [_]Fn{
     .{ .recv = "Events", .name = "emit", .params = &.{"T"}, .ret = "none" },
     .{ .recv = "Events", .on_type = true, .name = "fixture", .ret = "Events", .only = .tests },
     .{ .recv = "Ledger", .on_type = true, .name = "fixture", .ret = "Ledger", .only = .tests },
+    .{ .recv = "Ledger", .name = "find_charge", .params = &.{"ChargeId"}, .ret = "Result(Charge, LedgerError)", .can_wait = true, .origin = .corpus_only },
+    .{ .recv = "Ledger", .name = "save_charge", .params = &.{"Charge"}, .ret = "Result(none, LedgerError)", .can_wait = true, .origin = .corpus_only },
+    // The refund module's stand-ins (corpus-only)
+    .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
+    .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },
+    .{ .recv = "Charge", .name = "refunded?", .ret = "Bool", .origin = .corpus_only },
+    .{ .recv = "Money", .on_type = true, .name = "cents", .params = &.{"UInt64"}, .ret = "Money", .origin = .corpus_only },
+    .{ .recv = "Money", .on_type = true, .name = "zero", .ret = "Money", .origin = .corpus_only },
     // Processes (grammar: Processes)
     .{ .recv = "Process", .on_type = true, .name = "start", .ret = "Handle(P)" },
     .{ .recv = "Handle(P)", .name = "send", .params = &.{"Message(P)"}, .ret = "none" },
@@ -164,6 +213,13 @@ pub fn findType(name: []const u8) ?Type {
     return null;
 }
 
+/// Whether `name` is an alias or struct stand-in.
+pub fn findStandIn(name: []const u8) bool {
+    for (aliases) |a| if (std.mem.eql(u8, a.name, name)) return true;
+    for (structs) |s| if (std.mem.eql(u8, s.name, name)) return true;
+    return false;
+}
+
 /// Words a type string may use that are not type names.
 const type_string_words = [_][]const u8{ "T", "U", "A", "E", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
 
@@ -178,6 +234,9 @@ test "every name in a prelude type string is a prelude type or a type-string wor
         try strings.append(gpa, f.ret);
     }
     for (variants) |v| for (v.fields) |fld| try strings.append(gpa, fld.type);
+    for (structs) |s| for (s.fields) |fld| try strings.append(gpa, fld.type);
+    for (aliases) |a| try strings.append(gpa, a.base);
+    for (values) |v| try strings.append(gpa, v.type);
     for (operators) |o| {
         try strings.append(gpa, o.lhs);
         try strings.append(gpa, o.rhs);
@@ -193,7 +252,7 @@ test "every name in a prelude type string is a prelude type or a type-string wor
             const start = i;
             while (i < s.len and (std.ascii.isAlphanumeric(s[i]) or s[i] == '?' or s[i] == '_')) i += 1;
             const word = s[start..i];
-            const known = findType(word) != null or for (type_string_words) |w| {
+            const known = findType(word) != null or findStandIn(word) or for (type_string_words) |w| {
                 if (std.mem.eql(u8, w, word)) break true;
             } else false;
             if (!known) std.debug.print("prelude: unknown name {s} in \"{s}\"\n", .{ word, s });

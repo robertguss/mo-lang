@@ -26,6 +26,29 @@ Type strings: `T`, `U`, `A`, `E` are type variables fresh at each call; `N` is t
 | `Ledger` | | capability | grammar |
 | `FsError` | | error enum | grammar (name); variants corpus-only |
 | `AskError` | | error enum | grammar |
+| `LedgerError` | | error enum | corpus-only |
+
+## Stand-ins
+
+Types chapter 4's refund module takes from `Payments.Ledger` and the event log, which are not written yet. A module that declares one of these names itself uses its own declaration (`contracts/flows.mo` declares `CardNumber`).
+
+| name | is | fields | origin |
+|---|---|---|---|
+| `ChargeId` | `String` | | corpus-only |
+| `Money` | `UInt64` | | corpus-only |
+| `CardNumber` | `String` | | corpus-only |
+| `Charge` | struct | `id: ChargeId`, `captured_at: Time`, `captured_amount: Money`, `refunded: Bool` | corpus-only |
+| `RefundRequest` | struct | `id: ChargeId`, `amount: Money` | corpus-only |
+| `RefundCompleted` | struct | `refund: T` | corpus-only |
+| `RefundFailed` | struct | `request: RefundRequest`, `reason: E` | corpus-only |
+
+`T` and `E` in a stand-in's fields are bound by the one module that builds it.
+
+## Values
+
+| name | type | where | origin |
+|---|---|---|---|
+| `t0` | `Time` (the instant `Time.fixture()` gives) | tests | corpus-only |
 
 ## Variants
 
@@ -39,6 +62,7 @@ Type strings: `T`, `U`, `A`, `E` are type variables fresh at each call; `N` is t
 | `FsError` | `Timeout` | | corpus-only |
 | `AskError` | `Timeout` | | grammar |
 | `AskError` | `Down` | | grammar |
+| `LedgerError` | `Timeout` | | corpus-only |
 
 ## Functions
 
@@ -72,6 +96,13 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Events` | `emit` | `T` | none | | | grammar |
 | `Events` (on type) | `fixture` | | `Events` | | tests | grammar |
 | `Ledger` (on type) | `fixture` | | `Ledger` | | tests | grammar |
+| `Ledger` | `find_charge` | `ChargeId` | `Result(Charge, LedgerError)` | yes | | corpus-only |
+| `Ledger` | `save_charge` | `Charge` | `Result(none, LedgerError)` | yes | | corpus-only |
+| `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |
+| `Charge` (on type) | `fixture` | `captured_at: Time`, `captured_amount: Money` | `Charge` | | tests | corpus-only |
+| `Charge` | `refunded?` | | `Bool` | | | corpus-only |
+| `Money` (on type) | `cents` | `UInt64` | `Money` | | | corpus-only |
+| `Money` (on type) | `zero` | | `Money` | | | corpus-only |
 | a process `P` (on type) | `start` | the process's parameters | `Handle(P)` | | | grammar |
 | `Handle(P)` | `send` | `Message(P)` | none | | | grammar |
 | `Handle(P)` | `ask` | `Message(P)` | `Result(Reply, AskError)` | yes | | grammar |
