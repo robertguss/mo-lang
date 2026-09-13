@@ -5,6 +5,11 @@
 //! then its own. `update` is a transaction: a crash discards that message's state
 //! writes and its buffered sends and emits, the supervisor restarts the process from
 //! its initial state, and the crash is kept with its complete report.
+//! A seeded run (`mo test --sim N`, design-v0/05 tier 3) keeps every rule above and lets
+//! the seed choose what the fixed order fixes: which waiting process takes its next
+//! message, whether a statement's sends are delivered before the next statement or after
+//! it, and how far the clock moves before each update (0 to 10 ms). Its deliveries are
+//! kept in order, so a failure prints the interleaving that found it.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
@@ -22,11 +27,16 @@ pub const default_window_ms: i64 = 5_000;
 pub const settle_limit: u32 = 1_000_000;
 /// `Proc.supervisor` of a process a test started directly: the test runner.
 pub const test_runner: u32 = none;
+/// The most a seeded run's clock moves before one update.
+pub const max_tick_ms: i64 = 10;
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
 const Entry = struct { message: Value, seq: u64 };
 const Outgoing = struct { to: u32, message: Value };
+/// One step of a seeded run's trace: a message put in a mailbox, by the test
+/// (`from` is `test_runner`) or by a process whose update committed, or taken out of it.
+pub const Step = struct { from: u32, to: u32, message: Value, took: bool };
 
 pub const Proc = struct {
     /// Index in `Program.processes`.
@@ -63,7 +73,7 @@ pub const Sim = struct {
     seed: u64,
     /// The test the run belongs to: the sender of every message sent from outside a process.
     test_name: []const u8,
-    /// `clock.now`: frozen for a whole update, and in this step for the whole run.
+    /// `clock.now`: frozen for a whole update; in the fixed order, for the whole run.
     now: i64 = vm_mod.fixture_time,
     procs: std.ArrayList(Proc) = .empty,
     supervisors: std.ArrayList(Supervisor) = .empty,
@@ -76,9 +86,22 @@ pub const Sim = struct {
     gave_up: bool = false,
     /// Events emitted by committed updates and by the test, in order.
     events: std.ArrayList(Value) = .empty,
+    /// The scheduler's choices in a seeded run; null in the fixed order.
+    schedule: ?std.Random.DefaultPrng = null,
+    /// Every message of a seeded run as it was sent and as it was taken, in order.
+    trace: std.ArrayList(Step) = .empty,
+    /// The visiting order of one settle round, kept between settles.
+    order: std.ArrayList(u32) = .empty,
 
+    /// The fixed order: start order, every send delivered before the next statement, and
+    /// a clock that does not move.
     pub fn init(vm: *Vm, seed: u64, test_name: []const u8) Sim {
         return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name };
+    }
+
+    /// A seeded run: the same rules, with the scheduler's choices drawn from `seed`.
+    pub fn seeded(vm: *Vm, seed: u64, test_name: []const u8) Sim {
+        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .schedule = .init(seed) };
     }
 
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
@@ -139,7 +162,7 @@ pub const Sim = struct {
         try sim.roomFor(to, message);
         if (sim.running) |from| {
             try sim.procs.items[from].outbox.append(sim.gpa, .{ .to = to, .message = message });
-        } else _ = try sim.enqueue(to, message);
+        } else _ = try sim.enqueue(test_runner, to, message);
     }
 
     /// `h.ask(message, within: d)`: the target's waiting messages run, then this one, and
@@ -150,7 +173,7 @@ pub const Sim = struct {
         // A target whose update is on the stack is waiting on this very call.
         if (sim.procs.items[to].busy) return sim.askError("Timeout");
         try sim.roomFor(to, message);
-        const seq = try sim.enqueue(to, message);
+        const seq = try sim.enqueue(sim.running orelse test_runner, to, message);
         const reply = while (true) {
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
@@ -162,15 +185,31 @@ pub const Sim = struct {
         return sim.vm.variant("Ok", &.{reply});
     }
 
-    /// Delivers waiting messages, one per process per round in start order, until every
-    /// mailbox is empty.
+    /// Between two statements of a test: delivers every waiting message. A seeded run
+    /// may leave them waiting until a later statement, an `ask`, or the test's end.
     pub fn settle(sim: *Sim) Error!void {
+        if (sim.schedule) |*rng| if (rng.random().boolean()) return;
+        return sim.drain();
+    }
+
+    /// The test's body is done: every waiting message is delivered, whatever the seed.
+    pub fn finish(sim: *Sim) Error!void {
+        return sim.drain();
+    }
+
+    /// Delivers waiting messages, one per process per round, until every mailbox is
+    /// empty. A round visits processes in start order, or in an order the seed shuffles,
+    /// so no waiting process is passed over for more than one round.
+    fn drain(sim: *Sim) Error!void {
         var delivered: u32 = 0;
         var progressed = true;
         while (progressed) {
             progressed = false;
-            var id: u32 = 0;
-            while (id < sim.procs.items.len) : (id += 1) {
+            sim.order.clearRetainingCapacity();
+            for (0..sim.procs.items.len) |id| try sim.order.append(sim.gpa, @intCast(id));
+            if (sim.schedule) |*rng| rng.random().shuffle(u32, sim.order.items);
+            // A process an update starts waits for the next round.
+            for (sim.order.items) |id| {
                 const p = &sim.procs.items[id];
                 if (!p.up or p.busy or p.queued() == 0) continue;
                 _ = try sim.deliver(id);
@@ -191,10 +230,11 @@ pub const Sim = struct {
         } else try sim.events.append(sim.gpa, event);
     }
 
-    fn enqueue(sim: *Sim, to: u32, message: Value) Error!u64 {
+    fn enqueue(sim: *Sim, from: u32, to: u32, message: Value) Error!u64 {
         const seq = sim.next_seq;
         sim.next_seq += 1;
         try sim.procs.items[to].mailbox.append(sim.gpa, .{ .message = message, .seq = seq });
+        if (sim.schedule != null) try sim.trace.append(sim.gpa, .{ .from = from, .to = to, .message = message, .took = false });
         return seq;
     }
 
@@ -249,6 +289,10 @@ pub const Sim = struct {
             p.head = 0;
         }
         try p.log.append(sim.gpa, entry.message);
+        if (sim.schedule) |*rng| {
+            sim.now += rng.random().intRangeAtMost(i64, 0, max_tick_ms);
+            try sim.trace.append(sim.gpa, .{ .from = id, .to = id, .message = entry.message, .took = true });
+        }
         const before = p.state;
         const base = vm.stack.items.len;
         const outer = sim.running;
@@ -272,7 +316,7 @@ pub const Sim = struct {
         };
         p.state = after.tuple[1];
         for (p.outbox.items) |o| {
-            if (sim.procs.items[o.to].up) _ = try sim.enqueue(o.to, o.message);
+            if (sim.procs.items[o.to].up) _ = try sim.enqueue(id, o.to, o.message);
         }
         p.outbox.clearRetainingCapacity();
         try sim.events.appendSlice(sim.gpa, p.emits.items);
@@ -459,6 +503,29 @@ test "messages arrive in order, one update each; ask replies after the waiting o
     try std.testing.expectEqual(@as(usize, 0), h.sim.crashes.items.len);
 }
 
+test "a seeded run makes the same choices for the same seed, and its clock moves at most 10 ms an update" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, tally_src);
+    var nows: [2]i64 = undefined;
+    for (&nows) |*now| {
+        var machine: Vm = .init(arena, program, 7);
+        var s: Sim = .seeded(&machine, 99, "in order");
+        machine.sim = &s;
+        _ = try machine.call(program.tests[0].function, &.{});
+        try s.finish();
+        // Three votes and the ask, each sent then taken, in the order sent: one mailbox is FIFO.
+        try std.testing.expectEqual(@as(usize, 8), s.trace.items.len);
+        const last = s.trace.items[7];
+        try std.testing.expect(last.took);
+        try std.testing.expectEqualStrings("Total", last.message.variant.name);
+        try std.testing.expect(s.now >= vm_mod.fixture_time and s.now <= vm_mod.fixture_time + 4 * max_tick_ms);
+        now.* = s.now;
+    }
+    try std.testing.expectEqual(nows[0], nows[1]);
+}
+
 test "an ask past the target's fixture delay is a Timeout, and the message still arrives" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
@@ -586,7 +653,7 @@ test "an invariant is true when broken, reads old(state), and trips a test rejec
     // Restarted from its initial state, not from the state that broke the invariant.
     try std.testing.expectEqual(@as(i128, 0), h.sim.procs.items[0].state.record.fields[0].int);
 
-    const r = try runner.run(arena, program);
+    const r = try runner.run(arena, program, .{});
     try std.testing.expectEqual(runner.Outcome.failed, r.results[1].outcome);
     try std.testing.expectEqual(runner.Outcome.tripped_as_expected, r.results[4].outcome);
     try std.testing.expectEqual(contracts.Kind.invariant, r.results[4].report.?.kind);
@@ -689,7 +756,7 @@ test "the test runner supervises a process it starts with :always and the child 
     try std.testing.expect(!h.sim.procs.items[0].up);
 
     // Through the runner: a crash fails a test, and a supervisor that gave up reports itself.
-    const r = try runner.run(arena, program);
+    const r = try runner.run(arena, program, .{});
     try std.testing.expectEqual(contracts.Kind.overflow, r.results[0].report.?.kind);
     try std.testing.expectEqual(contracts.Kind.supervisor, r.results[1].report.?.kind);
     try std.testing.expectEqual(@as(u32, 2), r.summary.failures);

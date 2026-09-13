@@ -3,6 +3,9 @@
 //!   mo test  <file.mo>   tier 2 (run the file's tests)  → one line per test, the
 //!                        summary, and the verified: line; exit 1 when a test fails
 //!     --all              runs the tests of every module the file loads
+//!     --sim [N]          tier 3: each test that starts a process runs N more times
+//!                        (default 100), each on a seeded Mo.Sim
+//!     --seed S           the first of those seeds; by default the file's hash
 //!   mo run   <file.mo> [-- args...]
 //!                        tier 1, then `main` on Mo.Server with the args after `--`;
 //!                        no test runs. Exit 0, or the last platform.exit(code), or 70
@@ -21,7 +24,7 @@ const mo = @import("mo");
 
 const usage =
     \\usage: mo check <file.mo> [--json]
-    \\       mo test [--all] <file.mo> [--json]
+    \\       mo test [--all] [--sim [N]] [--seed S] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\
@@ -52,12 +55,28 @@ pub fn main(init: std.process.Init) !void {
     var positional: std.ArrayList([]const u8) = .empty;
     // Everything after `--` belongs to the program `mo run` runs.
     var program_args: ?[]const []const u8 = null;
-    for (args[1..], 1..) |a, i| {
+    var sim_runs: ?u32 = null;
+    var seed: ?u64 = null;
+    var i: usize = 1;
+    while (i < args.len) : (i += 1) {
+        const a = args[i];
         if (std.mem.eql(u8, a, "--")) {
             const rest = try arena.alloc([]const u8, args.len - i - 1);
             for (args[i + 1 ..], rest) |r, *o| o.* = r;
             program_args = rest;
             break;
+        } else if (std.mem.eql(u8, a, "--sim")) {
+            sim_runs = mo.runner.default_sim_runs;
+            if (i + 1 < args.len) {
+                if (std.fmt.parseInt(u32, args[i + 1], 10)) |n| {
+                    sim_runs = n;
+                    i += 1;
+                } else |_| {}
+            }
+        } else if (std.mem.eql(u8, a, "--seed")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            seed = std.fmt.parseInt(u64, args[i], 10) catch return usageExit(err);
         } else if (std.mem.eql(u8, a, "--json")) {
             json = true;
         } else if (std.mem.eql(u8, a, "--all")) {
@@ -76,6 +95,9 @@ pub fn main(init: std.process.Init) !void {
     const is_run = std.mem.eql(u8, command, "run");
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
+    // A seed chooses a simulated run's order, so it means nothing without --sim.
+    if (sim_runs != null and !std.mem.eql(u8, command, "test")) return usageExit(err);
+    if (seed != null and sim_runs == null) return usageExit(err);
 
     var diags: mo.diag.List = .empty;
 
@@ -136,7 +158,8 @@ pub fn main(init: std.process.Init) !void {
         return usageExit(err);
 
     if (stage == .run) {
-        const r = mo.pipeline.testProgram(arena, program, all, &diags) catch |e| switch (e) {
+        const options: mo.runner.Options = .{ .sim_runs = sim_runs orelse 0, .sim_seed = seed orelse mo.runner.seedOf(program.main().source) };
+        const r = mo.pipeline.testProgram(arena, program, all, options, &diags) catch |e| switch (e) {
             error.Rejected => return reject(out, err, program.files, diags.items, json),
             else => return e,
         };

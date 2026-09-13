@@ -3,6 +3,8 @@
 //! Property tests run under N seeds; results feed verified.zig. Every test runs on its
 //! own Mo.Sim (sim.zig): a process it starts has the runner as its supervisor, and the
 //! first crash, in a process or in the body, is the verdict.
+//! With `--sim N` (tier 3), a test that starts a process and holds in the fixed order
+//! runs N more times, each on a seeded Mo.Sim, and must hold under every seed.
 //! Each test runs in its own arena, freed whole; a result keeps copies of what it shows.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
@@ -16,6 +18,21 @@ pub const seeds_per_property: u32 = 200;
 pub const base_seed: u64 = 0x4d6f_0003;
 /// Generated inputs tried under one seed before the guard counts it as discarded.
 pub const attempts_per_seed: u32 = 100;
+/// `--sim` without a count.
+pub const default_sim_runs: u32 = 100;
+
+pub const Options = struct {
+    /// Seeded runs of each test that starts a process; 0 runs the fixed order alone.
+    sim_runs: u32 = 0,
+    /// Seeded run i runs under sim_seed + i, so `--sim 1 --seed S` repeats the run of seed S.
+    sim_seed: u64 = 0,
+};
+
+/// The base seed when none is given: the file's hash, so a file runs under the same
+/// seeds until it changes.
+pub fn seedOf(source: []const u8) u64 {
+    return std.hash.Wyhash.hash(0, source);
+}
 
 pub const Outcome = enum { passed, failed, tripped_as_expected, did_not_trip, skipped };
 
@@ -34,6 +51,11 @@ pub const Result = struct {
     note: []const u8 = "",
     /// Processes the test started.
     processes: u32 = 0,
+    /// Seeded runs made: every one it held under, or up to the one it failed.
+    sim_runs: u32 = 0,
+    /// The seed of the seeded run that failed, and that run's deliveries in order.
+    sim_seed: ?u64 = null,
+    interleaving: []const []const u8 = &.{},
 };
 
 pub const Summary = struct {
@@ -49,6 +71,9 @@ pub const Summary = struct {
     skipped: u32 = 0,
     /// Processes started across every test.
     processes: u32 = 0,
+    /// The N of `--sim N`, once a test has run under it, and the tests that did.
+    sim_runs: u32 = 0,
+    simulated: u32 = 0,
 };
 
 pub const Run = struct { results: []const Result, summary: Summary };
@@ -57,14 +82,20 @@ pub const Error = error{OutOfMemory};
 
 /// Runs every test of `program` in source order. What the results keep is allocated
 /// with `gpa`.
-pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program) Error!Run {
+pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program, options: Options) Error!Run {
     var results: std.ArrayList(Result) = .empty;
     var summary: Summary = .{};
     for (program.tests) |t| {
         var arena_state = std.heap.ArenaAllocator.init(gpa);
         defer arena_state.deinit();
         const arena = arena_state.allocator();
-        const r = if (t.kind == .property) try runProperty(gpa, arena, program, t) else try runTest(gpa, arena, program, t);
+        var r = if (t.kind == .property) try runProperty(gpa, arena, program, t) else try runTest(gpa, arena, program, t, null);
+        // A property already runs under its own seeds.
+        if (options.sim_runs > 0 and t.kind != .property and r.processes > 0 and holds(r)) try simulate(gpa, &arena_state, program, t, options, &r);
+        if (r.sim_runs > 0) {
+            summary.simulated += 1;
+            summary.sim_runs = options.sim_runs;
+        }
         switch (r.outcome) {
             .passed, .tripped_as_expected => {
                 summary.tests += 1;
@@ -83,12 +114,34 @@ pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program) Error!Run {
     return .{ .results = results.items, .summary = summary };
 }
 
-fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const bytecode.Program, t: bytecode.Test) Error!Result {
-    var machine: vm.Vm = .init(arena, program, base_seed);
-    var simulator: sim.Sim = .init(&machine, base_seed, t.name);
+fn holds(r: Result) bool {
+    return r.outcome == .passed or r.outcome == .tripped_as_expected;
+}
+
+/// `--sim N`: the test runs under seeds sim_seed to sim_seed + N - 1, and the first it
+/// fails under is its verdict.
+fn simulate(gpa: std.mem.Allocator, arena_state: *std.heap.ArenaAllocator, program: *const bytecode.Program, t: bytecode.Test, options: Options, r: *Result) Error!void {
+    for (0..options.sim_runs) |i| {
+        _ = arena_state.reset(.retain_capacity);
+        const seed = options.sim_seed +% i;
+        var s = try runTest(gpa, arena_state.allocator(), program, t, seed);
+        s.sim_runs = @intCast(i + 1);
+        if (!holds(s)) {
+            s.sim_seed = seed;
+            r.* = s;
+            return;
+        }
+    }
+    r.sim_runs = options.sim_runs;
+}
+
+/// One run of a test: in the fixed order, or on a Mo.Sim seeded with `seed`.
+fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const bytecode.Program, t: bytecode.Test, seed: ?u64) Error!Result {
+    var machine: vm.Vm = .init(arena, program, seed orelse base_seed);
+    var simulator: sim.Sim = if (seed) |s| .seeded(&machine, s, t.name) else .init(&machine, base_seed, t.name);
     machine.sim = &simulator;
     var r: Result = .{ .kind = t.kind, .name = t.name, .at = t.at, .outcome = .passed };
-    const ran = machine.call(t.function, &.{});
+    const ran = body(&machine, &simulator, t.function);
     r.processes = @intCast(simulator.procs.items.len);
     if (ran) |_| {
         if (simulator.firstCrash()) |report| {
@@ -106,7 +159,30 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
         error.Crash => try verdict(gpa, &r, crashOf(&machine, &simulator)),
         error.Discard => unreachable,
     }
+    if (seed != null and !holds(r)) r.interleaving = try interleaving(gpa, &machine, &simulator);
     return r;
+}
+
+/// The body, then every message still waiting.
+fn body(machine: *vm.Vm, simulator: *sim.Sim, function: u32) vm.Error!void {
+    _ = try machine.call(function, &.{});
+    try simulator.finish();
+}
+
+/// A seeded run's messages, oldest first: `the test sent Go to Writer #1`, `Writer #1 took Go`.
+fn interleaving(gpa: std.mem.Allocator, machine: *vm.Vm, simulator: *const sim.Sim) Error![]const []const u8 {
+    const out = try gpa.alloc([]const u8, simulator.trace.items.len);
+    for (simulator.trace.items, out) |step, *o| {
+        const message = machine.render(step.message) catch return error.OutOfMemory;
+        const to = simulator.nameOf(step.to);
+        o.* = if (step.took)
+            try std.fmt.allocPrint(gpa, "{s} #{d} took {s}", .{ to, step.to, message })
+        else if (step.from == sim.test_runner)
+            try std.fmt.allocPrint(gpa, "the test sent {s} to {s} #{d}", .{ message, to, step.to })
+        else
+            try std.fmt.allocPrint(gpa, "{s} #{d} sent {s} to {s} #{d}", .{ simulator.nameOf(step.from), step.from, message, to, step.to });
+    }
+    return out;
 }
 
 /// What stopped a run: a supervisor that gave up, else the first crash in a process,
@@ -199,17 +275,29 @@ pub fn writeResult(w: *std.Io.Writer, files: []const diag.File, r: Result) std.I
     };
     try w.print("{s}  {s} \"{s}\"", .{ tag, kind, r.name });
     switch (r.outcome) {
-        .passed => if (r.kind == .property) try w.print(": {d} seeds", .{r.seeds}),
-        .tripped_as_expected => try w.print(": tripped {s}", .{r.report.?.clause}),
+        .passed => if (r.kind == .property) {
+            try w.print(": {d} seeds", .{r.seeds});
+        } else if (r.sim_runs > 0) try w.print(": {d} simulated runs", .{r.sim_runs}),
+        .tripped_as_expected => {
+            try w.print(": tripped {s}", .{r.report.?.clause});
+            if (r.sim_runs > 0) try w.print(" ({d} simulated runs)", .{r.sim_runs});
+        },
         .skipped => try w.print(": {s}", .{r.report.?.clause}),
         .failed, .did_not_trip => {
             try w.writeAll(": ");
+            if (r.sim_seed) |seed| try w.print("simulated run {d}, seed {d}: ", .{ r.sim_runs, seed });
             if (r.kind == .property and r.report != null) {
                 try w.print("seed {d}", .{r.seed});
                 for (r.generated, 0..) |g, i| try w.print("{s}{s} = {s}", .{ if (i == 0) " with " else ", ", g.name, g.value });
                 try w.writeAll(": ");
             }
             if (r.report) |report| try writeReport(w, files, report) else try w.writeAll(r.note);
+            if (r.sim_seed) |seed| {
+                try w.writeAll("\n      interleaving: ");
+                if (r.interleaving.len == 0) try w.writeAll("no message delivered");
+                for (r.interleaving, 0..) |m, i| try w.print("{s}{s}", .{ if (i == 0) "" else ", ", m });
+                try w.print("\n      mo test --sim 1 --seed {d} runs it again", .{seed});
+            }
         },
     }
     try w.writeAll("\n");
@@ -240,7 +328,9 @@ pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Rep
 }
 
 pub fn writeSummary(w: *std.Io.Writer, s: Summary) std.Io.Writer.Error!void {
-    try w.print("{d} passed, {d} failed, {d} skipped\n", .{ s.tests, s.failures, s.skipped });
+    try w.print("{d} passed, {d} failed, {d} skipped", .{ s.tests, s.failures, s.skipped });
+    if (s.sim_runs > 0) try w.print("; {d} {s} under {d} {s}", .{ s.simulated, if (s.simulated == 1) "test" else "tests", s.sim_runs, if (s.sim_runs == 1) "seed" else "seeds" });
+    try w.writeAll("\n");
 }
 
 // ---- tests
@@ -251,6 +341,10 @@ const check = @import("check.zig");
 const caps = @import("caps.zig");
 
 fn runSource(arena: std.mem.Allocator, src: []const u8) !Run {
+    return run(arena, try compileSource(arena, src), .{});
+}
+
+fn compileSource(arena: std.mem.Allocator, src: []const u8) !*bytecode.Program {
     var diags: diag.List = .empty;
     const tokens = try lexer.lex(arena, src, &diags);
     const tree = try parser.parse(arena, src, tokens, &diags);
@@ -260,7 +354,84 @@ fn runSource(arena: std.mem.Allocator, src: []const u8) !Run {
     try std.testing.expectEqual(@as(usize, 0), diags.items.len);
     const program = try arena.create(bytecode.Program);
     program.* = try bytecode.lower(arena, checked);
-    return run(arena, program);
+    return program;
+}
+
+const race_src =
+    \\module T.Race
+    \\process Log()
+    \\  state
+    \\    first: String
+    \\  end
+    \\  message Add(name: String)
+    \\  message First : String
+    \\  fn update(state, message)
+    \\    case message
+    \\      Add(name):
+    \\        if state.first == ""
+    \\          state.first = name
+    \\        end
+    \\      First: state.first
+    \\    end
+    \\  end
+    \\end
+    \\process Writer(log: Handle(Log))
+    \\  state
+    \\    sent: UInt32
+    \\  end
+    \\  message Go(name: String)
+    \\  fn update(state, message)
+    \\    case message
+    \\      Go(name):
+    \\        log.send(Add(name: name))
+    \\        state.sent += 1
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Logs(log: Handle(Log))
+    \\  child Log, restart: :always
+    \\  child Writer(log), restart: :always
+    \\end
+    \\test "the writer told first is logged first"
+    \\  log = Log.start()
+    \\  a = Writer.start(log)
+    \\  b = Writer.start(log)
+    \\  a.send(Go(name: "a"))
+    \\  b.send(Go(name: "b"))
+    \\  assert log.ask(First, within: 100.ms) is Ok("a")
+    \\end
+;
+
+test "a race holds in the fixed order and fails under --sim, with a seed that runs it again" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compileSource(arena, race_src);
+    const fixed = try run(arena, program, .{});
+    try std.testing.expectEqual(Outcome.passed, fixed.results[0].outcome);
+    try std.testing.expectEqual(@as(u32, 0), fixed.summary.sim_runs);
+
+    const simulated = try run(arena, program, .{ .sim_runs = 100, .sim_seed = seedOf(race_src) });
+    const r = simulated.results[0];
+    try std.testing.expectEqual(Outcome.failed, r.outcome);
+    try std.testing.expectEqual(contracts.Kind.assert, r.report.?.kind);
+    try std.testing.expectEqual(@as(u32, 1), simulated.summary.failures);
+    try std.testing.expectEqual(Summary{ .failures = 1, .processes = 3, .sim_runs = 100, .simulated = 1 }, simulated.summary);
+    const seed = r.sim_seed.?;
+
+    // The failing seed, run alone, fails the same way with the same interleaving.
+    const again = (try run(arena, program, .{ .sim_runs = 1, .sim_seed = seed })).results[0];
+    try std.testing.expectEqual(seed, again.sim_seed.?);
+    try std.testing.expectEqual(r.interleaving.len, again.interleaving.len);
+    for (r.interleaving, again.interleaving) |x, y| try std.testing.expectEqualStrings(x, y);
+
+    var buf: [2048]u8 = undefined;
+    var w: std.Io.Writer = .fixed(&buf);
+    try writeResult(&w, &.{.{ .path = "race.mo", .source = race_src }}, again);
+    const text = w.buffered();
+    try std.testing.expect(std.mem.startsWith(u8, text, "FAIL  test \"the writer told first is logged first\": simulated run 1, seed "));
+    try std.testing.expect(std.mem.indexOf(u8, text, "\n      interleaving: ") != null);
+    try std.testing.expect(std.mem.indexOf(u8, text, "\n      mo test --sim 1 --seed ") != null);
 }
 
 test "a test passes, a rejects test trips, a property holds, and each failure is reported" {

@@ -242,7 +242,7 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
     // A rejects/ file breaks a law, so it must lex and parse; only the checker rejects it.
     const expect_reject = isRejectsPath(rel) and @intFromEnum(stage) >= @intFromEnum(pipeline.Stage.check);
     if (stage == .run and !expect_reject) {
-        if (pipeline.testProgram(arena, prog, false, &diags)) |r| {
+        if (pipeline.testProgram(arena, prog, false, .{}, &diags)) |r| {
             var ok = r.summary.failures == 0;
             for (r.results) |result| {
                 const reason = if (result.report) |report| report.clause else "";
