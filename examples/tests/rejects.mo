@@ -17,3 +17,6 @@ end
 test rejects "taking more than is on the shelf"
   take(5, 6)
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

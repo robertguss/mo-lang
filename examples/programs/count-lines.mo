@@ -26,3 +26,6 @@ test "a line ends at a newline"
   assert count_lines("") == 0
   assert count_lines("one\ntwo\n") == 2
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

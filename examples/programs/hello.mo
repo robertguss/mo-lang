@@ -16,3 +16,6 @@ end
 test "greets the name it is given"
   assert greeting("Ada") == "Hello, Ada!"
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

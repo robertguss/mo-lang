@@ -29,6 +29,11 @@ pub const Error = error{ OutOfMemory, Rejected };
 
 pub const why_comment = "The formatter never moves or drops a comment (toolchain/FORMAT.md, K5), and this one sits inside a line the formatter joins, such as parentheses that span lines. Put it on its own line above the statement.";
 
+/// The formatter's row of the error catalog; the loop rule's is loops.entry.
+pub const catalog = [_]diag.Entry{
+    .{ .code = "MO0502", .category = .format, .what = "this comment sits inside a line the formatter joins; move it above the line", .why = why_comment, .fixes = &.{} },
+};
+
 /// Formats `source`, or rejects it with the lexer's, the parser's, or MO0502's record.
 /// Nothing is freed: pass an arena.
 pub fn format(gpa: std.mem.Allocator, source: []const u8, diags: *diag.List) Error![]u8 {
@@ -709,13 +714,18 @@ const Printer = struct {
         try p.nl();
     }
 
-    /// The `verified:` line's text is the toolchain's, printed as written (N2).
+    /// The `verified:` line's text, and its `proven:` line, are the toolchain's, printed
+    /// as written (N2).
     fn verified(p: *Printer) E!void {
         const kw = try p.tk(.kw_verified);
+        const toks = p.tree.tokens;
         var last = kw;
         var i = kw + 1;
-        while (p.tree.tokens[i].kind != .newline and p.tree.tokens[i].kind != .eof) : (i += 1) last = i;
-        const toks = p.tree.tokens;
+        while (toks[i].kind != .newline and toks[i].kind != .eof) : (i += 1) last = i;
+        if (toks[i].kind == .newline and toks[i + 1].kind == .ident and std.mem.eql(u8, p.tree.tokenText(i + 1), "proven")) {
+            i += 1;
+            while (toks[i].kind != .newline and toks[i].kind != .eof) : (i += 1) last = i;
+        }
         try p.text(p.tree.source[toks[kw].end..toks[last].end]);
         p.cur = last + 1;
         p.pending = p.tv.trail[last];

@@ -20,3 +20,6 @@ test "the effectful version reads the clock"
   clock = Clock.fixture()
   assert age_now(clock, clock.now) == 0.ms
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

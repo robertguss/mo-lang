@@ -30,3 +30,6 @@ recipe RateLimiter
     limiter(0, 1.minute)
   end
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

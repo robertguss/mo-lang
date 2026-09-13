@@ -165,3 +165,6 @@ end
 test rejects "a negative rate has no decimal text"
   one_decimal(0.0 - 1.0)
 end
+
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+          proven: not run

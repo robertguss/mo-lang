@@ -7,9 +7,27 @@ const std = @import("std");
 /// `format`: the formatter's findings (toolchain/FORMAT.md), MO05xx.
 pub const Category = enum { syntax, types, laws, capabilities, contracts, tests, verified, format };
 
+/// One change to the source: `len` bytes at `at` become `text`. `at` is an offset into
+/// the same source as the record's.
+pub const Edit = struct { at: u32, len: u32, text: []const u8 };
+
 pub const Fix = struct {
     description: []const u8,
-    confidence: u8, // 0–100
+    confidence: u8, // 0–100; mo fix applies only 100
+    edits: []const Edit = &.{},
+};
+
+/// A row of an error catalog: the code, its category, its `what`, the `why` written once for it,
+/// and what `mo fix` does for it, one line per fix. `fixes` has no default, so every
+/// row says, even when it is `&.{}`.
+pub const Entry = struct {
+    code: []const u8,
+    category: Category,
+    /// The sentence printed at a finding, each `<placeholder>` filled in there; a code
+    /// whose findings take several shapes gives its most common (errors.zig).
+    what: []const u8,
+    why: []const u8,
+    fixes: []const []const u8,
 };
 
 pub const Record = struct {
@@ -81,7 +99,14 @@ pub fn renderJson(w: *std.Io.Writer, path: []const u8, source: []const u8, d: Re
         if (i > 0) try w.writeAll(",");
         try w.writeAll("{\"description\":");
         try jsonString(w, f.description);
-        try w.print(",\"confidence\":{d}}}", .{f.confidence});
+        try w.print(",\"confidence\":{d},\"edits\":[", .{f.confidence});
+        for (f.edits, 0..) |e, k| {
+            if (k > 0) try w.writeAll(",");
+            try w.print("{{\"at\":{d},\"len\":{d},\"text\":", .{ e.at, e.len });
+            try jsonString(w, e.text);
+            try w.writeAll("}");
+        }
+        try w.writeAll("]}");
     }
     try w.writeAll("]}\n");
 }
@@ -111,5 +136,5 @@ test "json is one line per record, with its text escaped" {
     var buf: [512]u8 = undefined;
     var w: std.Io.Writer = .fixed(&buf);
     try renderJson(&w, "a.mo", "module M\nfn f(\n", .{ .code = "MO0101", .category = .syntax, .at = 14, .what = "expected \"x\"", .why = "a\tb", .fixes = &.{.{ .description = "add x", .confidence = 90 }} });
-    try std.testing.expectEqualStrings("{\"code\":\"MO0101\",\"category\":\"syntax\",\"path\":\"a.mo\",\"line\":2,\"column\":6,\"at\":14,\"what\":\"expected \\\"x\\\"\",\"why\":\"a\\tb\",\"fixes\":[{\"description\":\"add x\",\"confidence\":90}]}\n", w.buffered());
+    try std.testing.expectEqualStrings("{\"code\":\"MO0101\",\"category\":\"syntax\",\"path\":\"a.mo\",\"line\":2,\"column\":6,\"at\":14,\"what\":\"expected \\\"x\\\"\",\"why\":\"a\\tb\",\"fixes\":[{\"description\":\"add x\",\"confidence\":90,\"edits\":[]}]}\n", w.buffered());
 }

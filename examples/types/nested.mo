@@ -32,3 +32,6 @@ end
 test "the nested value matches in one pattern"
   assert lookup(true, "ada") is Ok(Some(36))
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

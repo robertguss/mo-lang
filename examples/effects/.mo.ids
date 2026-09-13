@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "clock.mo",
+      "module": "Effects.Clock",
+      "declarations": [
+        { "id": "825ba73da8fe", "name": "module Effects.Clock", "hash": "4db7169482538384" },
+        { "id": "41802e70e7a4", "name": "expose", "hash": "3f8dbae09a9c1175" },
+        { "id": "ba5c1b01253d", "name": "intent", "hash": "8b099134ac96885e" },
+        { "id": "8d801b5e3861", "name": "struct Session", "hash": "a3d5af377320cff1" },
+        { "id": "9ee90f672a9d", "name": "fn expired?", "hash": "8c74d978d9b65d3c" },
+        { "id": "a965061c8d40", "name": "test \"a session with no length is over at once\"", "hash": "091b3c09098099a7" },
+        { "id": "2be41ba7b4e3", "name": "test \"a long session is not over yet\"", "hash": "35212e8550c2e7a1" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "85f61abb0b9a367c" }
+    },
+    {
+      "path": "narrowing.mo",
+      "module": "Effects.Narrowing",
+      "declarations": [
+        { "id": "0b7238324546", "name": "module Effects.Narrowing", "hash": "d94dad8ef94a0744" },
+        { "id": "01fb381d6a73", "name": "expose", "hash": "2e231b09b05c5c36" },
+        { "id": "ccee27b4daaa", "name": "intent", "hash": "ce7ba618cbb3bd9b" },
+        { "id": "55ac1a00e476", "name": "enum ReportError", "hash": "b5f5a03f3d4e50b7" },
+        { "id": "cf9e7a529dd5", "name": "fn read_report", "hash": "60941c0d11684ca0" },
+        { "id": "c03160e07046", "name": "fn report", "hash": "cad3469bbca9f9e2" },
+        { "id": "3d4d23ab9845", "name": "test \"a report that is not in the folder is Missing\"", "hash": "9df9f6c62c9097a1" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "362434342ba32f26" }
+    },
+    {
+      "path": "pure-vs-effectful.mo",
+      "module": "Effects.PureVsEffectful",
+      "declarations": [
+        { "id": "e0e613b9ea56", "name": "module Effects.PureVsEffectful", "hash": "fe1b7dff912882f8" },
+        { "id": "94f6d28e194c", "name": "expose", "hash": "5b568cbe3f9a9a2d" },
+        { "id": "414b9f091093", "name": "intent", "hash": "f1c4dfc86bdd9545" },
+        { "id": "ece7e536090a", "name": "fn age_at", "hash": "f29304a546acafbd" },
+        { "id": "e53e5ee629c7", "name": "fn age_now", "hash": "f33e849c013a25a8" },
+        { "id": "d8964828dce5", "name": "test \"the pure version needs only values\"", "hash": "39954073504980a3" },
+        { "id": "f2ecaa850332", "name": "test \"the effectful version reads the clock\"", "hash": "850561542ea6dbc5" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "c6070b381a0b033c" }
+    },
+    {
+      "path": "sim.mo",
+      "module": "Effects.Sim",
+      "declarations": [
+        { "id": "037882af9bed", "name": "module Effects.Sim", "hash": "a6ad508404a56202" },
+        { "id": "765cdab98406", "name": "expose", "hash": "ad5c6b8e94a0c373" },
+        { "id": "13f7bc6a40f8", "name": "intent", "hash": "f47af4c9a3f09c8f" },
+        { "id": "31852a2851f7", "name": "struct Stamp", "hash": "877da8f55120ea49" },
+        { "id": "b0b4b9bac76c", "name": "fn stamp", "hash": "2b14971f57458775" },
+        { "id": "cf839030c5b8", "name": "test \"the simulated clock stamps the same note the same way twice\"", "hash": "94407574d5481e98" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "ab26340aaa811486" }
+    },
+    {
+      "path": "timeout.mo",
+      "module": "Effects.Timeout",
+      "declarations": [
+        { "id": "3033c7ba94b6", "name": "module Effects.Timeout", "hash": "5c56cc321620166c" },
+        { "id": "04d50c2347d8", "name": "expose", "hash": "19f432d4294124b5" },
+        { "id": "0635110d288c", "name": "intent", "hash": "56d3280f30972810" },
+        { "id": "c6a899a1a54b", "name": "enum ReadError", "hash": "e58850bbcee94f0f" },
+        { "id": "5957f074b3e0", "name": "fn load", "hash": "9101c46e4ab164a6" },
+        { "id": "94fb0eb9099d", "name": "fn config", "hash": "8c1d42f1ab83fa5b" },
+        { "id": "f3c445427274", "name": "test \"a missing file falls back to the defaults\"", "hash": "6654407b7fdbda51" },
+        { "id": "3ab9144f9253", "name": "test \"a timeout is passed on, not papered over\"", "hash": "c6933d6a23d501b7" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "b907c5515ef81483" }
+    }
+  ]
+}

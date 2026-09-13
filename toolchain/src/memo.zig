@@ -26,7 +26,7 @@ const table_bits = 16;
 pub const Memo = struct {
     gpa: std.mem.Allocator,
     arena: std.heap.ArenaAllocator,
-    /// From the page allocator, so untouched slots are zero pages: `function` 0 is empty.
+    /// Its own anonymous mapping, so untouched slots are zero pages: `function` 0 is empty.
     table: []Entry,
     stats: []Stat,
     /// Value-sized units the arena holds.
@@ -51,16 +51,20 @@ pub const Memo = struct {
 
     /// `function` is the function's index plus one.
     const Entry = struct { key: u64, function: u32, args: []const Value, captures: []const Value, result: Value };
+    const table_len = @sizeOf(Entry) << table_bits;
 
     pub fn init(gpa: std.mem.Allocator, functions: usize) error{OutOfMemory}!Memo {
         const stats = try gpa.alloc(Stat, functions);
         @memset(stats, .{});
-        const table = try std.heap.page_allocator.alloc(Entry, 1 << table_bits);
+        // mmap directly, as region.zig does: after the vm's two 64 GiB reservations,
+        // std.heap.page_allocator took about 3 ms per mo run to place and free this table.
+        const bytes = std.posix.mmap(null, table_len, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true }, -1, 0) catch return error.OutOfMemory;
+        const table = @as([*]Entry, @ptrCast(@alignCast(bytes.ptr)))[0 .. 1 << table_bits];
         return .{ .gpa = gpa, .arena = .init(std.heap.page_allocator), .table = table, .stats = stats };
     }
 
     pub fn deinit(m: *Memo) void {
-        std.heap.page_allocator.free(m.table);
+        std.posix.munmap(@as([*]align(std.heap.page_size_min) u8, @ptrCast(@alignCast(m.table.ptr)))[0..table_len]);
         m.arena.deinit();
     }
 

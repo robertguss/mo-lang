@@ -162,3 +162,6 @@ property "no sixteen-digit run survives a parse"
     assert outcome is Ok(r) and !card?(r.path)
   end
 end
+
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+          proven: not run

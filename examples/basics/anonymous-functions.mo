@@ -21,3 +21,6 @@ end
 test "the block form runs every line for each item"
   assert receipt_lines([100, 250]) == ["100 + 10 tax", "250 + 25 tax"]
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

@@ -17,6 +17,11 @@ const Token = token.Token;
 pub const Error = error{ OutOfMemory, Rejected };
 
 pub const why_unexpected = "Mo source outside strings and comments is names, numbers, and the operators of grammar §1; this character is none of those.";
+/// The lexer's rows of the error catalog.
+pub const catalog = [_]diag.Entry{
+    .{ .code = "MO0001", .category = .syntax, .what = "unexpected character", .why = why_unexpected, .fixes = &.{} },
+    .{ .code = "MO0002", .category = .syntax, .what = "unterminated string", .why = why_unterminated, .fixes = &.{} },
+};
 pub const why_unterminated = "A string opened with \" closes on the same line; text that spans lines goes in a \"\"\" block.";
 
 /// Tokens end with `.eof`. The first lexical error stops the file with one record.

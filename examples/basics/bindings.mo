@@ -21,3 +21,6 @@ test "a var can be assigned and added to"
   count = count * 2
   assert count == 6
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

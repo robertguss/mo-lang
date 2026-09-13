@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [tooling, verification, compiler]
 sources: [spec/design-v0/05-verification.md, spec/design-v0/07-toolchain.md]
-status: in-progress
+status: done
 ---
 
 # Step 10: the `verified:` sidecar, `mo fix`, the error catalog, the README

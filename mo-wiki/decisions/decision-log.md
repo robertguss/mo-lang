@@ -135,6 +135,11 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | An `ask` times out only when its target spent past the deadline on slow or failed capability calls, never by chance | Fable, from Opus's default | provisional | program 3 |
 | "Passes only without faults" counts as a pass, printed with its seed; `never` blocks are checked only at the end of seeded runs | Fable, from Opus's default | provisional, revisit: a never should also run in plain `mo test` when cheap | program 3 |
 | `T.all` records struct constructions, copies, fixtures, and capability results; enums and primitives are not yet recordable | Fable, from Opus's default | provisional | program 3 |
+| Step 10 accepted: `.mo.ids` sidecar and `mo test --write`, `mo fix` (three loop shapes, unused binding, default parameter), `spec/errors.md` generated from the tables (59 codes), README front door; 60 minutes | Fable | — | program 3 |
+| Sidecar: one `.mo.ids` per program root, JSON, declaration ids are 12 hex digits of a hash of module and name, declaration hash is SHA-256/64 over tokens; a `verified:` line is stale only when its own file's declarations change | Fable, from Opus's default | provisional | program 3 |
+| `mo test --write` writes even on failure (`verified: types`, exit 1) and writes the `proven:` line too | Fable, from Opus's default | provisional | tier 3 |
+| `mo fix` rewrites a pure loop only for the map, filter, and reduce shapes over a list with one statement; other pure bodies stay a diagnostic with no fix | Fable, from Opus's default | provisional | program 3 |
+| The usage line in `mo` must list `fmt` and `fix` (they work; the text is stale): a step 11 item | Fable | provisional | step 11 |
 
 ## Related
 - [[session-05]]

@@ -21,3 +21,6 @@ end
 test rejects "a percent above one hundred"
   discount(2_000, 150)
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

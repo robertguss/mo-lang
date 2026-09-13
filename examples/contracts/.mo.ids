@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "ensures.mo",
+      "module": "Contracts.Ensures",
+      "declarations": [
+        { "id": "b9d39e8a148d", "name": "module Contracts.Ensures", "hash": "120ec5222ab88847" },
+        { "id": "e12d2395c50b", "name": "expose", "hash": "eceac391fa7791b4" },
+        { "id": "7a63c763583a", "name": "intent", "hash": "b4d9f593ed30b078" },
+        { "id": "7ccab7cec7c5", "name": "struct Cart", "hash": "f9beb56a49b36890" },
+        { "id": "b99b5ab3e226", "name": "enum CheckoutError", "hash": "109a520ccddd07cf" },
+        { "id": "911e3a378c27", "name": "fn add", "hash": "2b73f9dda1a79b55" },
+        { "id": "dec95bf7fbc3", "name": "fn checkout", "hash": "70828d31bd55a2df" },
+        { "id": "ce4967629e5a", "name": "test \"add changes the cart the caller holds\"", "hash": "4f6c608ff37ebfda" },
+        { "id": "2ae74dd8babf", "name": "test \"checkout pays the total or refuses an empty cart\"", "hash": "aaea62347fb42ef3" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "e1aa40447f062320" }
+    },
+    {
+      "path": "flows.mo",
+      "module": "Contracts.Flows",
+      "declarations": [
+        { "id": "e24dab5b37b1", "name": "module Contracts.Flows", "hash": "95c909897dc8500b" },
+        { "id": "ffa9b4f1acce", "name": "expose", "hash": "715f075e3ac10e72" },
+        { "id": "8b3bd6cbbabd", "name": "intent", "hash": "ae2e64a861e0abf4" },
+        { "id": "b2ca516040ed", "name": "never \"a card number reaches an event\"", "hash": "e42729403d9278e7" },
+        { "id": "4d39165bcd1d", "name": "type CardNumber", "hash": "1afef49806407e62" },
+        { "id": "20bf5d8541e6", "name": "struct Payment", "hash": "d94d947629de1857" },
+        { "id": "fb6dd9946fe4", "name": "struct Receipt", "hash": "cdeabf82c8c838d8" },
+        { "id": "ddbdb3be6fea", "name": "fn receipt", "hash": "ea13db53e46c2cc2" },
+        { "id": "90cc53289467", "name": "test \"a receipt keeps the amount and leaves the card behind\"", "hash": "79cb3d6dba25c8ed" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "8117e22d272d10a0" }
+    },
+    {
+      "path": "never.mo",
+      "module": "Contracts.Never",
+      "declarations": [
+        { "id": "a332a95ab146", "name": "module Contracts.Never", "hash": "681bddf6cbc30b51" },
+        { "id": "a12f25bb23aa", "name": "expose", "hash": "c4095895af760b47" },
+        { "id": "6640a86cc5aa", "name": "intent", "hash": "c504e7adab2c151e" },
+        { "id": "cd23af39ebb5", "name": "never \"a seat holds two bookings\"", "hash": "afad503d68c33db2" },
+        { "id": "6e35e64ea2b0", "name": "struct Booking", "hash": "80cf37849f31452b" },
+        { "id": "ddc6acef38e7", "name": "enum BookError", "hash": "1fa01910c4b020c8" },
+        { "id": "c72848cca30b", "name": "fn book", "hash": "3e8e915051e64e04" },
+        { "id": "249d948430ae", "name": "test \"a free seat can be booked\"", "hash": "2c445d8fdb13c51c" },
+        { "id": "c1e5c41efd83", "name": "test \"a taken seat cannot be booked again\"", "hash": "ed76ebce07f930fc" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "039608dc9c5ab9c4" }
+    },
+    {
+      "path": "requires.mo",
+      "module": "Contracts.Requires",
+      "declarations": [
+        { "id": "4d779549a511", "name": "module Contracts.Requires", "hash": "8e33303083c6501d" },
+        { "id": "b3d36c5bf4eb", "name": "expose", "hash": "aace00a1016bca83" },
+        { "id": "54ada5e8d714", "name": "intent", "hash": "3805e4d6b99aa923" },
+        { "id": "e36bfa7727b4", "name": "fn split", "hash": "0264d80f48ac8c2c" },
+        { "id": "e41586dc27c1", "name": "test \"a bill splits evenly\"", "hash": "9b380f41418c3d7a" },
+        { "id": "c167b16d03ab", "name": "test rejects \"splitting a bill among nobody\"", "hash": "a688c85d26622726" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "c15bf05b77e6d6f4" }
+    }
+  ]
+}

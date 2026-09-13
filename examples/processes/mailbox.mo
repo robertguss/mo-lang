@@ -38,3 +38,6 @@ test "99 writes and the ask fill the mailbox, and every write arrives"
   end
   assert journal.ask(Count, within: 100.ms) is Ok(99)
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+          proven: not run

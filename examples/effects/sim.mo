@@ -16,3 +16,6 @@ test "the simulated clock stamps the same note the same way twice"
   clock = Clock.fixture()
   assert stamp(clock, "hello") == stamp(clock, "hello")
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

@@ -68,11 +68,16 @@ fn script(gpa: std.mem.Allocator, a: []const []const u8, b: []const []const u8) 
 
 /// Writes nothing when `a` and `b` are equal. Nothing is freed: pass an arena.
 pub fn unified(gpa: std.mem.Allocator, w: *std.Io.Writer, path: []const u8, a_text: []const u8, b_text: []const u8) !void {
+    return labeled(gpa, w, path, "formatted", a_text, b_text);
+}
+
+/// The same diff, its new side named `path (label)`: `formatted` for mo fmt, `fixed` for mo fix.
+pub fn labeled(gpa: std.mem.Allocator, w: *std.Io.Writer, path: []const u8, label: []const u8, a_text: []const u8, b_text: []const u8) !void {
     if (std.mem.eql(u8, a_text, b_text)) return;
     const a = try lines(gpa, a_text);
     const b = try lines(gpa, b_text);
     const edits = try script(gpa, a, b);
-    try w.print("--- {s}\n+++ {s} (formatted)\n", .{ path, path });
+    try w.print("--- {s}\n+++ {s} ({s})\n", .{ path, path, label });
     var k: usize = 0;
     while (k < edits.len) {
         while (k < edits.len and edits[k].op == .same) k += 1;

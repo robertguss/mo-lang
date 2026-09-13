@@ -45,3 +45,6 @@ test "a slow file system times out every call that waits less than its delay"
   assert line_count(slow, "a.log") is Error(Slow)
   assert bytes_of(slow, "a.log") is Error(Slow)
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

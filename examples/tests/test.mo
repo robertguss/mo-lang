@@ -26,3 +26,6 @@ end
 test "a child is turned away with the age they gave"
   assert signup("kid@example.com", 9) is Error(TooYoung(9))
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

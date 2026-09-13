@@ -38,3 +38,6 @@ test "checkout pays the total or refuses an empty cart"
   assert checkout(Cart(items: 2, total: 900)) is Ok(900)
   assert checkout(Cart(items: 0, total: 0)) is Error(EmptyCart)
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

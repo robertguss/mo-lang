@@ -16,3 +16,6 @@ property "a discount always lowers a price of ten or more"
     assert discount(price) < price
   end
 end
+
+verified: types, contracts, tests (2), property (200 seeds), sim (not run)
+          proven: not run

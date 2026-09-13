@@ -51,3 +51,6 @@ test "the writer told first is logged first"
   b.send(Go(name: "b"))
   assert log.ask(First, within: 100.ms) is Ok("a")
 end
+
+verified: types
+          proven: not run

@@ -30,3 +30,6 @@ test "a tuple destructured inside a variant"
   assert Rect(size: (4, 0)).describe == "a flat line"
   assert Rect(size: (4, 2)).describe == "a 4 by 2 rectangle"
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

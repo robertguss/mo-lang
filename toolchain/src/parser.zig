@@ -20,6 +20,16 @@ const why_type = "A type is a type name such as UInt32 or List(T), or a tuple of
 const why_pattern = "A pattern is _, a name, a literal, a variant such as Some(x) or Short(by: n), or a tuple of patterns.";
 const why_order = "A module is its header (module, expose, use, intent, never), then declarations, then tests, then the verified: line.";
 const why_place = "Only a name or a field path such as copy.name can be assigned.";
+/// The parser's rows of the error catalog. MO0101 also stands for a malformed
+/// `fn main` line, with why_main as its why.
+pub const catalog = [_]diag.Entry{
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token, .fixes = &.{} },
+    .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
+    .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
+    .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
+    .{ .code = "MO0105", .category = .syntax, .what = "expected a declaration, a test, or the end of the file", .why = why_order, .fixes = &.{} },
+    .{ .code = "MO0106", .category = .syntax, .what = "this cannot be assigned", .why = why_place, .fixes = &.{} },
+};
 const why_main = "fn main is the program's root (grammar §2, Q18): it takes one parameter, platform: Platform, and has no return type, like update.";
 const main_param = "fn main takes one parameter, platform: Platform";
 
@@ -303,6 +313,12 @@ const Parser = struct {
         _ = try p.expect(.colon);
         while (p.peek() != .newline and p.peek() != .eof) _ = p.next();
         try p.endLine();
+        // Chapter 5's second line, `proven: ...`, belongs to the same node.
+        const t = p.toks.items[p.tok];
+        if (t.kind == .ident and std.mem.eql(u8, p.source[t.start..t.end], "proven")) {
+            while (p.peek() != .newline and p.peek() != .eof) _ = p.next();
+            try p.endLine();
+        }
         return p.addNode(.{ .kind = .verified, .main_token = kw });
     }
 

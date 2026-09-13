@@ -36,3 +36,6 @@ end
 test "the bound lets the body call weight"
   assert total_weight([Parcel(grams: 200), Parcel(grams: 50)]) == 250
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

@@ -21,3 +21,6 @@ test "a long session is not over yet"
   clock = Clock.fixture()
   assert !expired?(clock, Session(started: clock.now, length: 1.minute))
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

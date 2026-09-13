@@ -27,11 +27,14 @@ pub const contracts = @import("contracts.zig");
 pub const runner = @import("runner.zig");
 pub const diag = @import("diag.zig");
 pub const verified = @import("verified.zig");
+pub const ids = @import("ids.zig");
 pub const pipeline = @import("pipeline.zig");
 pub const program = @import("program.zig");
 pub const corpus = @import("corpus.zig");
 pub const fmt = @import("fmt.zig");
+pub const fix = @import("fix.zig");
 pub const diff = @import("diff.zig");
+pub const errors = @import("errors.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

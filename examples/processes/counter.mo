@@ -30,3 +30,6 @@ test "a counter takes its messages without blocking the sender"
   counter.send(Increment)
   counter.send(Reset)
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (100 runs)
+          proven: not run

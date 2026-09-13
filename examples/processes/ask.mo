@@ -30,3 +30,6 @@ test "the reply counts every vote sent before the ask"
   tally.send(Vote)
   assert tally.ask(Total, within: 100.ms) is Ok(2)
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (100 runs)
+          proven: not run

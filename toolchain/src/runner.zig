@@ -36,8 +36,14 @@ pub const Options = struct {
 
 /// The base seed when none is given: the file's hash, so a file runs under the same
 /// seeds until it changes.
+/// The file's hash without its `verified:` line and the blank line above it, so writing
+/// the line never changes the seeds the line reports.
 pub fn seedOf(source: []const u8) u64 {
-    return std.hash.Wyhash.hash(0, source);
+    var end = source.len;
+    if (std.mem.startsWith(u8, source, "verified:")) end = 0;
+    if (std.mem.lastIndexOf(u8, source, "\nverified:")) |i| end = i + 1;
+    if (end < source.len and std.mem.endsWith(u8, source[0..end], "\n\n")) end -= 1;
+    return std.hash.Wyhash.hash(0, source[0..end]);
 }
 
 pub const Outcome = enum { passed, failed, tripped_as_expected, did_not_trip, skipped };

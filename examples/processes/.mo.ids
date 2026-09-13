@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "ask.mo",
+      "module": "Processes.Ask",
+      "declarations": [
+        { "id": "077ba8bef849", "name": "module Processes.Ask", "hash": "74d74d8144dc1d38" },
+        { "id": "a93ea78e34b1", "name": "expose", "hash": "4dd48a7eee714ae3" },
+        { "id": "e9c4f362e1c6", "name": "intent", "hash": "b4d93f9c7246d855" },
+        { "id": "08af51726c62", "name": "process Tally", "hash": "53f2bae6b5794ab1" },
+        { "id": "cb66b980b0fb", "name": "supervisor Tallies", "hash": "35bacd8eae29f9b3" },
+        { "id": "af97dc62777e", "name": "test \"the reply counts every vote sent before the ask\"", "hash": "d84ee1e49d7a459b" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "f2c9e5a7c1c6f35b" }
+    },
+    {
+      "path": "counter.mo",
+      "module": "Processes.Counter",
+      "declarations": [
+        { "id": "8b545795a428", "name": "module Processes.Counter", "hash": "42ddff8e4c9fd014" },
+        { "id": "8ad8b433e13a", "name": "expose", "hash": "0a00388255333b94" },
+        { "id": "eb0af0c8f440", "name": "intent", "hash": "8b836f02542d08c5" },
+        { "id": "8fd2aa286e9e", "name": "process Counter", "hash": "948de0eb5c3ff768" },
+        { "id": "8b47a5200876", "name": "supervisor Counters", "hash": "93a65a9e6a3c10b4" },
+        { "id": "738da342282f", "name": "test \"a counter takes its messages without blocking the sender\"", "hash": "6098e9f4fb78a8fb" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "a9253ef10360f749" }
+    },
+    {
+      "path": "invariant-trips.mo",
+      "module": "Processes.InvariantTrips",
+      "declarations": [
+        { "id": "26696d16aa73", "name": "module Processes.InvariantTrips", "hash": "e91e771b580d497b" },
+        { "id": "e487cb362260", "name": "expose", "hash": "ea086a83c5842821" },
+        { "id": "ed37a675b429", "name": "intent", "hash": "a3b5a94ab71d96be" },
+        { "id": "9f6813caac65", "name": "process Batches", "hash": "e2603888c78eb2e8" },
+        { "id": "80106f8919cf", "name": "supervisor Batching", "hash": "b03f6beda1c40797" },
+        { "id": "9f41f05d0b10", "name": "test \"finishing moves done forward\"", "hash": "f674cc441adb69de" },
+        { "id": "58fae4ec25c4", "name": "test rejects \"undoing a finished batch\"", "hash": "65b13b6d9a125599" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "f1abb66d2f3e537e" }
+    },
+    {
+      "path": "invariant.mo",
+      "module": "Processes.Invariant",
+      "declarations": [
+        { "id": "44967711304a", "name": "module Processes.Invariant", "hash": "c7a2c43c6abcb9ed" },
+        { "id": "2eec53e89483", "name": "expose", "hash": "4b3454b07773610b" },
+        { "id": "d4b8d7145098", "name": "intent", "hash": "cae6ed1465352171" },
+        { "id": "0553f5851c7f", "name": "process Odometer", "hash": "256f93b37ee072ef" },
+        { "id": "c7eac171f92d", "name": "supervisor Dashboard", "hash": "7cadf5b5d1dfef71" },
+        { "id": "e947cd4126bb", "name": "test \"driving only ever adds to the reading\"", "hash": "e287f4a386322ff7" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "b56ba3d42420ea61" }
+    },
+    {
+      "path": "mailbox.mo",
+      "module": "Processes.Mailbox",
+      "declarations": [
+        { "id": "c6c96991d3bf", "name": "module Processes.Mailbox", "hash": "0b6e99086a5a65c4" },
+        { "id": "d35898591fca", "name": "expose", "hash": "15f97e74afceca89" },
+        { "id": "eaa64b59f77a", "name": "intent", "hash": "17da2ef93c41f5f3" },
+        { "id": "26c0d38a6acf", "name": "process Journal", "hash": "77266c3fe6220382" },
+        { "id": "4285f95f577f", "name": "supervisor Journals", "hash": "d15bc0d8cc4a6735" },
+        { "id": "0218779a621e", "name": "test \"writes within the bound all arrive\"", "hash": "7681e5679ab6f3d6" },
+        { "id": "cb7d46db0333", "name": "test \"99 writes and the ask fill the mailbox, and every write arrives\"", "hash": "731d41cc14e7ea52" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "b766a2a55eaf2f17" }
+    },
+    {
+      "path": "pipeline.mo",
+      "module": "Processes.Pipeline",
+      "declarations": [
+        { "id": "9c2a5c969b68", "name": "module Processes.Pipeline", "hash": "b0f13f466c869e31" },
+        { "id": "b5f609cba01c", "name": "expose", "hash": "813f92de2475d7c6" },
+        { "id": "b778d5e68fcb", "name": "intent", "hash": "982abdb31907725c" },
+        { "id": "052051fb9d2f", "name": "process Sink", "hash": "c790704032d55859" },
+        { "id": "e02fb4572928", "name": "process Source", "hash": "7c3479b1847da455" },
+        { "id": "ee889b49a742", "name": "supervisor Line", "hash": "9d2da2315b5c068e" },
+        { "id": "5fbee9e99a57", "name": "test \"what the source sends, the sink receives\"", "hash": "bc164295accea5cb" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "ad058033a2f5cffa" }
+    },
+    {
+      "path": "racy.mo",
+      "module": "Processes.Racy",
+      "declarations": [
+        { "id": "0adf6366a1ff", "name": "module Processes.Racy", "hash": "ea30eb2973b395ce" },
+        { "id": "b0a2aac9790f", "name": "expose", "hash": "16870c5d40ad49ca" },
+        { "id": "e9ffad174912", "name": "intent", "hash": "339fed6b5f9188a1" },
+        { "id": "5451aa815aa1", "name": "process Log", "hash": "e246688e5ec58325" },
+        { "id": "c03618fab501", "name": "process Writer", "hash": "48cdfa6ab9b81685" },
+        { "id": "7d1f198cd039", "name": "supervisor Logs", "hash": "11345b8a70161af0" },
+        { "id": "1ebeb5f1e72c", "name": "test \"the writer told first is logged first\"", "hash": "3bc8f60ced1c7514" }
+      ],
+      "verified": { "hash": "c8feb032a154dec7", "declarations": "d428605708d037f5" }
+    },
+    {
+      "path": "supervisor.mo",
+      "module": "Processes.Supervisor",
+      "declarations": [
+        { "id": "fbd6c965b183", "name": "module Processes.Supervisor", "hash": "e0a4791f9c4ebcfa" },
+        { "id": "4b5e4b89eec8", "name": "expose", "hash": "b037929ee292ae25" },
+        { "id": "d8eca7190004", "name": "intent", "hash": "55c871c71a9eb4c3" },
+        { "id": "fe121f88f3ff", "name": "process Heartbeat", "hash": "0e12b6a262eb82b1" },
+        { "id": "838ae78e00fb", "name": "supervisor Health", "hash": "61d27963178b4236" },
+        { "id": "f41313ab9a4c", "name": "test \"a supervised process takes messages and replies\"", "hash": "d120b996be97b62e" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "58716b2669561ad6" }
+    }
+  ]
+}
