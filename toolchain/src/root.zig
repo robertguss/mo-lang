@@ -16,6 +16,7 @@ pub const check = @import("check.zig");
 pub const caps = @import("caps.zig");
 pub const bytecode = @import("bytecode.zig");
 pub const vm = @import("vm.zig");
+pub const sim = @import("sim.zig");
 pub const contracts = @import("contracts.zig");
 pub const runner = @import("runner.zig");
 pub const diag = @import("diag.zig");

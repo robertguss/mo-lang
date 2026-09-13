@@ -1,6 +1,6 @@
 //! The bytecode interpreter: the edit-loop runtime and the executable reference
-//! semantics (design-v0/07). Hosts contracts, the test runner, and later the
-//! simulator, replay, and fault injection. A tripped contract or an overflow is
+//! semantics (design-v0/07). Hosts contracts, the test runner, and Mo.Sim (sim.zig);
+//! later replay and fault injection. A tripped contract or an overflow is
 //! a crash with a complete report, never a value.
 //!
 //! Values are immutable: a list, a tuple, a struct, or a variant is a slice nothing
@@ -12,6 +12,7 @@ const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const prelude = @import("prelude.zig");
+const sim_mod = @import("sim.zig");
 const types = @import("types.zig");
 
 const Op = bytecode.Op;
@@ -40,6 +41,8 @@ pub const Value = union(enum) {
     variant: Variant,
     func: Func,
     cap: Cap,
+    /// A started process: its index in the run's `Sim.procs`.
+    handle: u32,
 
     pub const Record = struct { decl: u32, fields: []const Value };
     /// A variant is known by its name, so `try` re-tags an error without converting it.
@@ -62,9 +65,17 @@ pub const Vm = struct {
     rng: std.Random.DefaultPrng,
     /// The values `any(T)` produced in this run, in order, for a property's report.
     generated: std.ArrayList(Generated) = .empty,
+    /// The scheduler processes run on; the runner sets it for every test.
+    sim: ?*sim_mod.Sim = null,
 
     pub fn init(gpa: std.mem.Allocator, program: *const bytecode.Program, seed: u64) Vm {
         return .{ .gpa = gpa, .program = program, .rng = .init(seed) };
+    }
+
+    fn simulator(vm: *Vm) Error!*sim_mod.Sim {
+        if (vm.sim) |s| return s;
+        vm.report = .{ .kind = .other, .clause = "processes run only under the test runner", .within = "", .at = 0 };
+        return error.Crash;
     }
 
     /// Calls functions[function] with `args` and returns its result.
@@ -240,7 +251,57 @@ pub const Vm = struct {
                     }
                     return vm.crash(inst.a, f, locals, &.{});
                 },
+                .spawn => {
+                    const args_now = try vm.take(inst.b);
+                    try vm.push(.{ .handle = try (try vm.simulator()).start(inst.a, args_now) });
+                },
+                .send => {
+                    const message = vm.pop();
+                    const to = vm.pop().handle;
+                    try (try vm.simulator()).send(to, message);
+                    try vm.push(.none);
+                },
+                .ask => {
+                    const within = vm.pop().duration;
+                    const message = vm.pop();
+                    const to = vm.pop().handle;
+                    try vm.push(try (try vm.simulator()).ask(to, message, within));
+                },
+                .settle => if (vm.sim) |s| try s.settle(),
+                .zero => try vm.push(try vm.zero(inst.a) orelse return vm.crash(inst.b, f, locals, &.{})),
             }
+        }
+    }
+
+    /// The value a state field without `= expr` starts at (grammar, Session 5): 0, "",
+    /// [], None, false, a zero Duration, and tuples and structs of those. Null when the
+    /// type has none: an enum, a Time, a capability, a handle.
+    fn zero(vm: *Vm, t: types.Id) Error!?Value {
+        const k = vm.checked();
+        const ty = k.pool.get(k.pool.base(t));
+        switch (ty.tag) {
+            .int => return .{ .int = 0 },
+            .float => return .{ .float = 0 },
+            .bool => return .{ .bool = false },
+            .string => return .{ .string = "" },
+            .duration => return .{ .duration = 0 },
+            .list => return .{ .list = &.{} },
+            .option => return try vm.variant("None", &.{}),
+            .tuple => {
+                const elems = k.pool.elems(ty);
+                const out = try vm.gpa.alloc(Value, elems.len);
+                for (elems, out) |e, *o| o.* = try vm.zero(e) orelse return null;
+                return .{ .tuple = out };
+            },
+            .decl => {
+                const d = k.decls[ty.a];
+                if (d.kind != .struct_) return null;
+                const defs = k.fields[d.fields.start..d.fields.end];
+                const out = try vm.gpa.alloc(Value, defs.len);
+                for (defs, out) |fd, *o| o.* = try vm.zero(fd.type) orelse return null;
+                return .{ .record = .{ .decl = ty.a, .fields = out } };
+            },
+            else => return null,
         }
     }
 
@@ -475,7 +536,8 @@ pub const Vm = struct {
                 }
                 break :blk .{ .duration = @intCast(ms) };
             },
-            .time_fixture, .clock_now => .{ .time = fixture_time },
+            .time_fixture => .{ .time = fixture_time },
+            .clock_now => .{ .time = if (vm.sim) |s| s.now else fixture_time },
             .clock_fixture => .{ .cap = .{ .kind = .clock } },
             // A fixture Fs is empty; one built with delay: answers after the delay.
             .fs_read => if (a[0].cap.delay > a[2].duration)
@@ -484,13 +546,23 @@ pub const Vm = struct {
                 try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = a[1].string }})}),
             .fs_narrow => a[0],
             .fs_fixture => .{ .cap = .{ .kind = .fs, .delay = if (row.named.len == 1) a[0].duration else 0 } },
-            .events_emit => .none,
+            .events_emit => blk: {
+                if (vm.sim) |s| try s.emit(a[1]);
+                break :blk .none;
+            },
             .events_fixture => .{ .cap = .{ .kind = .events } },
             .ledger_fixture => .{ .cap = .{ .kind = .ledger } },
-            .ledger_call => {
-                vm.report = .{ .kind = .other, .clause = "the Ledger is simulated in step 4", .within = row.name, .at = 0 };
-                return error.Skip;
-            },
+            // A fixture Ledger finds every id as an unrefunded charge of 10_000 captured at
+            // Time.fixture(), and every save succeeds.
+            .ledger_call => if (std.mem.eql(u8, row.name, "find_charge")) blk: {
+                const decl = vm.checked().findDecl("Charge").?;
+                const fields = try vm.gpa.alloc(Value, 4);
+                fields[0] = a[1];
+                fields[1] = .{ .time = fixture_time };
+                fields[2] = .{ .int = 10_000 };
+                fields[3] = .{ .bool = false };
+                break :blk try vm.variant("Ok", &.{.{ .record = .{ .decl = decl, .fields = fields } }});
+            } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
                 const decl = vm.checked().findDecl("Charge").?;
                 const fields = try vm.gpa.alloc(Value, 4);
@@ -503,10 +575,8 @@ pub const Vm = struct {
             .charge_refunded => a[0].record.fields[3],
             .money_cents => a[0],
             .money_zero => .{ .int = 0 },
-            .process => {
-                vm.report = .{ .kind = .other, .clause = "processes run in step 4", .within = row.name, .at = 0 };
-                return error.Skip;
-            },
+            // Lowered to spawn, send, and ask; never reached as a prelude call.
+            .process => unreachable,
             .never_only => {
                 vm.report = .{ .kind = .other, .clause = "this runs only inside a never, which tier 2 does not evaluate", .within = row.name, .at = 0 };
                 return error.Crash;
@@ -515,7 +585,7 @@ pub const Vm = struct {
         try vm.push(result);
     }
 
-    fn variant(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {
+    pub fn variant(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {
         return .{ .variant = .{ .name = name, .fields = try vm.gpa.dupe(Value, fields) } };
     }
 
@@ -681,6 +751,7 @@ pub const Vm = struct {
                 .events => "Events",
                 .ledger => "Ledger",
             }}),
+            .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
         }
     }
 
@@ -722,6 +793,7 @@ pub fn equal(a: Value, b: Value) bool {
         .variant => |x| std.mem.eql(u8, x.name, b.variant.name) and allEqual(x.fields, b.variant.fields),
         .func => |x| x.function == b.func.function and allEqual(x.captures, b.func.captures),
         .cap => |x| x.kind == b.cap.kind and x.delay == b.cap.delay,
+        .handle => |x| x == b.handle,
     };
 }
 

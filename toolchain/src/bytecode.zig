@@ -90,6 +90,16 @@ pub const Op = enum(u8) {
     discard,
     /// stop with clauses[a]: a crash, or a skip when the clause says so
     halt,
+    /// pop b arguments; start processes[a] with the test runner as its supervisor; push its Handle
+    spawn,
+    /// pop a message, then a Handle; append the message to its mailbox; push no value
+    send,
+    /// pop the deadline, a message, then a Handle; push Ok(reply), Error(Timeout), or Error(Down)
+    ask,
+    /// deliver waiting messages, in start order, until every mailbox is empty
+    settle,
+    /// push the zero value of type a; crash with clauses[b] when the type has none
+    zero,
 };
 
 /// The numbers an arithmetic instruction works in: a sized integer kind, a contract's
@@ -129,6 +139,35 @@ pub const Refinement = struct { function: u32, clause: u32 };
 
 pub const TestKind = enum { test_, rejects, property };
 
+pub const Restart = enum { always, on_crash, never };
+
+pub const Invariant = struct { function: u32, clause: u32 };
+
+/// A process: `init` takes its parameters and gives the first state; `update` takes the
+/// parameters, the state, and a message, and gives `(reply, state)`; each invariant takes
+/// the parameters, the state after, and the state before, and is true when broken.
+pub const Process = struct {
+    name: []const u8,
+    decl: u32,
+    mailbox: u32,
+    init: u32,
+    update: u32,
+    invariants: []const Invariant,
+};
+
+/// A `child` line: `args` takes the supervisor's parameters and gives the child's
+/// arguments as a tuple; `per` takes nothing and gives the window, or is `none`.
+pub const Child = struct {
+    process: u32,
+    args: u32,
+    restart: Restart,
+    /// `none` when the line names no max_restarts.
+    max_restarts: u32,
+    per: u32,
+};
+
+pub const Supervisor = struct { name: []const u8, decl: u32, children: []const Child };
+
 pub const Test = struct { kind: TestKind, name: []const u8, function: u32, at: u32 };
 
 pub const Program = struct {
@@ -142,6 +181,8 @@ pub const Program = struct {
     fn_of_sig: []const u32,
     /// Checked decl index → the refinements a value of that alias satisfies.
     alias_refinements: []const []const u32,
+    processes: []const Process = &.{},
+    supervisors: []const Supervisor = &.{},
 
     pub fn findFunction(p: *const Program, name: []const u8) ?u32 {
         for (p.checked.sigs, 0..) |s, si| {
@@ -167,7 +208,21 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     for (checked.decls, alias_refinements) |d, *refs| {
         refs.* = if (d.kind == .alias and d.node != 0) try l.refinementsOf(l.node(d.node).lhs, d.name) else &.{};
     }
+    l.process_of = try gpa.alloc(u32, checked.decls.len);
+    @memset(l.process_of, none);
+    for (checked.decls, 0..) |d, di| if (d.kind == .process) {
+        l.process_of[di] = @intCast(l.processes.items.len);
+        try l.processes.append(gpa, undefined);
+    };
     for (checked.sigs, 0..) |s, si| if (s.kind != .trait) try l.lowerFn(@intCast(si));
+    for (l.items()) |it| {
+        const n = l.node(it);
+        switch (n.kind) {
+            .process_decl => try l.lowerProcess(it),
+            .supervisor_decl => try l.lowerSupervisor(it),
+            else => {},
+        }
+    }
     for (l.items()) |it| {
         const n = l.node(it);
         switch (n.kind) {
@@ -188,6 +243,8 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         .tests = l.tests.items,
         .fn_of_sig = l.fn_of_sig,
         .alias_refinements = alias_refinements,
+        .processes = l.processes.items,
+        .supervisors = l.supervisors.items,
     };
 }
 
@@ -213,6 +270,8 @@ const Builder = struct {
     result: u32 = 0,
     /// Lowering a contract expression: integer arithmetic is unbounded.
     contract: bool = false,
+    /// Inside an invariant: the slot of the state before the message, which `old` reads.
+    old_state: u32 = none,
 };
 
 const Lower = struct {
@@ -224,6 +283,10 @@ const Lower = struct {
     clauses: std.ArrayList(Clause) = .empty,
     refinements: std.ArrayList(Refinement) = .empty,
     tests: std.ArrayList(Test) = .empty,
+    processes: std.ArrayList(Process) = .empty,
+    supervisors: std.ArrayList(Supervisor) = .empty,
+    /// Checked decl index → index in `processes`, or `none`.
+    process_of: []u32 = &.{},
     fn_of_sig: []u32 = &.{},
     fn_names: std.StringHashMapUnmanaged(u32) = .empty,
     /// A `where` node → its index in `refinements`, lowered once.
@@ -548,7 +611,19 @@ const Lower = struct {
         l.b = &b;
         const fi = try l.reserve();
         b.result = l.slot();
-        if (n.kind == .property) try l.property(n.lhs) else try l.blockStmts(l.tree.span(n.lhs, n.rhs));
+        // A test's sends are delivered before its next statement runs (Mo.Sim).
+        const settles = l.processes.items.len > 0;
+        if (n.kind == .property) {
+            try l.property(n.lhs);
+            if (settles) _ = try l.emit(.settle, 0, 0);
+        } else {
+            const mark = b.names.items.len;
+            for (l.tree.span(n.lhs, n.rhs)) |st| {
+                try l.stmt(st);
+                if (settles) _ = try l.emit(.settle, 0, 0);
+            }
+            b.names.shrinkRetainingCapacity(mark);
+        }
         try l.pushConst(.none);
         _ = try l.emit(.ret, 0, 0);
         l.functions.items[fi] = try l.finish(&b);
@@ -598,6 +673,138 @@ const Lower = struct {
         const loop = try l.loopBegin(g.lhs, g.main_token);
         try l.generators(gens[1..], data);
         try l.loopEnd(loop);
+    }
+
+    // ---- processes and supervisors
+
+    fn bindParams(l: *Lower, r: check.Range) Error!void {
+        for (l.k.params[r.start..r.end]) |p| {
+            _ = try l.bindName(p.name, false);
+            try l.b.param_names.append(l.gpa, p.name);
+        }
+    }
+
+    fn lowerProcess(l: *Lower, it: Index) Error!void {
+        const n = l.node(it);
+        const di = l.k.findDecl(l.text(n.main_token)) orelse return;
+        const d = l.k.decls[di];
+        if (d.node != it) return;
+        const data = l.tree.extraData(ast.Process, n.lhs);
+
+        // init: every state field from its `= expr`, or its type's zero value.
+        var b: Builder = .{ .name = d.name };
+        l.b = &b;
+        var fi = try l.reserve();
+        try l.bindParams(d.params);
+        b.result = l.slot();
+        for (l.k.fields[d.fields.start..d.fields.end]) |f| {
+            const init = l.node(f.node).rhs;
+            if (init != 0) {
+                try l.expr(init);
+            } else {
+                const cl: u32 = @intCast(l.clauses.items.len);
+                const tok = l.node(f.node).main_token;
+                try l.clauses.append(l.gpa, .{ .kind = .other, .text = try std.fmt.allocPrint(l.gpa, "the state field {s} has no zero value; give it = expr", .{f.name}), .at = l.tree.tokens[tok].start, .within = d.name });
+                _ = try l.emit(.zero, f.type, cl);
+            }
+            try l.refineField(f, d.name);
+        }
+        _ = try l.emit(.record, di, d.fields.len());
+        _ = try l.emit(.ret, 0, 0);
+        l.functions.items[fi] = try l.finish(&b);
+        const init_fn = fi;
+
+        // update: `state` is a var for the whole call; the arm's value is the reply.
+        const update = l.node(data.update);
+        b = .{ .name = d.name };
+        l.b = &b;
+        fi = try l.reserve();
+        try l.bindParams(d.params);
+        const state_slot = try l.bindName("state", true);
+        _ = try l.bindName("message", false);
+        b.result = l.slot();
+        try l.caseLower(update.lhs, true);
+        _ = try l.emit(.store, b.result, 0);
+        for (b.exits.items) |e| l.patch(e);
+        _ = try l.emit(.load, b.result, 0);
+        _ = try l.emit(.load, state_slot, 0);
+        _ = try l.emit(.tuple, 2, 0);
+        _ = try l.emit(.ret, 0, 0);
+        l.functions.items[fi] = try l.finish(&b);
+        const update_fn = fi;
+
+        var invariants: std.ArrayList(Invariant) = .empty;
+        for (l.tree.span(data.invariants_start, data.invariants_end)) |inv| {
+            b = .{ .name = d.name, .contract = true };
+            l.b = &b;
+            fi = try l.reserve();
+            try l.bindParams(d.params);
+            _ = try l.bindName("state", false);
+            b.old_state = l.slot();
+            b.result = l.slot();
+            try l.expr(l.node(inv).rhs);
+            _ = try l.emit(.ret, 0, 0);
+            const cl = try l.clause(.invariant, l.node(inv).main_token);
+            l.functions.items[fi] = try l.finish(&b);
+            try invariants.append(l.gpa, .{ .function = fi, .clause = cl });
+        }
+
+        l.processes.items[l.process_of[di]] = .{
+            .name = d.name,
+            .decl = di,
+            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(parseInt(l.text(data.mailbox))),
+            .init = init_fn,
+            .update = update_fn,
+            .invariants = invariants.items,
+        };
+    }
+
+    fn lowerSupervisor(l: *Lower, it: Index) Error!void {
+        const n = l.node(it);
+        const di = l.k.findDecl(l.text(n.main_token)) orelse return;
+        const d = l.k.decls[di];
+        if (d.node != it) return;
+        var children: std.ArrayList(Child) = .empty;
+        for (l.spanAt(n.rhs)) |ch| {
+            const cn = l.node(ch);
+            const data = l.tree.extraData(ast.Child, cn.lhs);
+            const pd = l.k.findDecl(l.text(cn.main_token)) orelse continue;
+            if (l.process_of[pd] == none) continue;
+
+            var b: Builder = .{ .name = d.name };
+            l.b = &b;
+            const args_fn = try l.reserve();
+            try l.bindParams(d.params);
+            b.result = l.slot();
+            const args = l.tree.span(data.args_start, data.args_end);
+            for (args) |a| try l.expr(a);
+            _ = try l.emit(.tuple, @intCast(args.len), 0);
+            _ = try l.emit(.ret, 0, 0);
+            l.functions.items[args_fn] = try l.finish(&b);
+
+            // The window is read without the supervisor's parameters, so the test runner
+            // can supervise a child it starts directly under the same numbers.
+            var per_fn: u32 = none;
+            if (data.per != 0) {
+                b = .{ .name = d.name };
+                l.b = &b;
+                per_fn = try l.reserve();
+                b.result = l.slot();
+                try l.expr(data.per);
+                _ = try l.emit(.ret, 0, 0);
+                l.functions.items[per_fn] = try l.finish(&b);
+            }
+
+            const atom = l.text(data.restart);
+            try children.append(l.gpa, .{
+                .process = l.process_of[pd],
+                .args = args_fn,
+                .restart = if (std.mem.eql(u8, atom, ":never")) .never else if (std.mem.eql(u8, atom, ":on_crash")) .on_crash else .always,
+                .max_restarts = if (data.max_restarts == ast.none) none else @intCast(parseInt(l.text(data.max_restarts))),
+                .per = per_fn,
+            });
+        }
+        try l.supervisors.append(l.gpa, .{ .name = d.name, .decl = di, .children = children.items });
     }
 
     // ---- statements
@@ -943,9 +1150,10 @@ const Lower = struct {
 
     // ---- types
 
+    /// The position of field `name` in struct `t`, or in a process's `state`.
     fn fieldIndex(l: *Lower, t: Id, name: []const u8) ?u32 {
         const b = l.baseType(t);
-        if (b.tag != .decl or l.k.decls[b.a].kind != .struct_) return null;
+        if (b.tag != .state and (b.tag != .decl or l.k.decls[b.a].kind != .struct_)) return null;
         const r = l.k.decls[b.a].fields;
         for (l.k.fields[r.start..r.end], 0..) |f, k| if (std.mem.eql(u8, f.name, name)) return @intCast(k);
         return null;
@@ -954,9 +1162,9 @@ const Lower = struct {
     /// The position of `field` in struct `t`, or in variant `variant` of enum `t`.
     fn variantFieldIndex(l: *Lower, t: Id, variant: []const u8, field: []const u8) ?u32 {
         const b = l.baseType(t);
-        if (b.tag != .decl) return null;
+        if (b.tag != .decl and b.tag != .message) return null;
         const d = l.k.decls[b.a];
-        if (d.kind == .struct_) return l.fieldIndex(t, field);
+        if (b.tag == .decl and d.kind == .struct_) return l.fieldIndex(t, field);
         for (l.k.variants[d.variants.start..d.variants.end]) |v| {
             if (!std.mem.eql(u8, v.name, variant)) continue;
             for (l.k.fields[v.fields.start..v.fields.end], 0..) |f, k| if (std.mem.eql(u8, f.name, field)) return @intCast(k);
@@ -1113,6 +1321,11 @@ const Lower = struct {
             .anon_fn => try l.anonFn(i),
             .old_expr => if (l.old_slots.get(i)) |at| {
                 _ = try l.emit(.load, at, 0);
+            } else if (l.b.old_state != none) {
+                // In an invariant, `state` inside old(...) is the state before the message.
+                try l.b.names.append(l.gpa, .{ .name = "state", .slot = l.b.old_state, .mutable = false });
+                try l.expr(n.lhs);
+                _ = l.b.names.pop();
             } else try l.expr(n.lhs),
             .result_ref => _ = try l.emit(.load, l.b.result, 0),
             else => try l.halt(i, "", false),
@@ -1176,8 +1389,28 @@ const Lower = struct {
 
     fn preludeCall(l: *Lower, i: Index, k: u32, recv: ?Index, args: []const u32) Error!void {
         const row = prelude.fns[k];
-        if (std.mem.eql(u8, row.recv, "Process") or std.mem.startsWith(u8, row.recv, "Handle")) {
-            return l.halt(i, "processes run in step 4", true);
+        if (std.mem.eql(u8, row.recv, "Process")) {
+            const positional = for (args) |a| {
+                if (l.node(a).kind == .named_arg) break false;
+            } else true;
+            if (!positional) return l.halt(i, "", false);
+            for (args) |a| try l.expr(a);
+            _ = try l.emit(.spawn, l.process_of[l.baseType(l.typeOf(i)).a], @intCast(args.len));
+            return;
+        }
+        if (std.mem.startsWith(u8, row.recv, "Handle")) {
+            try l.expr(recv.?);
+            for (args) |a| if (l.node(a).kind != .named_arg) try l.expr(a);
+            if (std.mem.eql(u8, row.name, "send")) {
+                _ = try l.emit(.send, 0, 0);
+                return;
+            }
+            for (args) |a| {
+                const an = l.node(a);
+                if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), "within")) try l.expr(an.lhs);
+            }
+            _ = try l.emit(.ask, 0, 0);
+            return;
         }
         if (row.only == .never) return l.halt(i, "", false);
         var kind: u32 = none;
@@ -1217,9 +1450,10 @@ const Lower = struct {
             return;
         };
         const t = l.baseType(l.typeOf(i));
-        if (t.tag != .decl) return l.halt(i, if (t.tag == .message) "processes run in step 4" else "", t.tag == .message);
+        if (t.tag != .decl and t.tag != .message) return l.halt(i, "", false);
         const d = l.k.decls[t.a];
-        const fields: check.Range = if (d.kind == .struct_) d.fields else for (l.k.variants[d.variants.start..d.variants.end]) |v| {
+        const is_struct = t.tag == .decl and d.kind == .struct_;
+        const fields: check.Range = if (is_struct) d.fields else for (l.k.variants[d.variants.start..d.variants.end]) |v| {
             if (std.mem.eql(u8, v.name, name)) break v.fields;
         } else return l.halt(i, "", false);
         for (l.k.fields[fields.start..fields.end]) |f| {
@@ -1232,7 +1466,7 @@ const Lower = struct {
                 try l.refineField(f, d.name);
             }
         }
-        if (d.kind == .struct_) {
+        if (is_struct) {
             _ = try l.emit(.record, t.a, fields.len());
         } else {
             _ = try l.emit(.variant, try l.constant(.{ .string = name }), fields.len());

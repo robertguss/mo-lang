@@ -16,7 +16,7 @@ pub const Tally = struct {
     rejected_as_expected: u32 = 0,
     skipped: u32 = 0,
     failed: u32 = 0,
-    /// Files whose tests start a process, all skipped until step 4.
+    /// Files whose tests start a process.
     process_files: u32 = 0,
     skipped_tests: u32 = 0,
 };
@@ -104,7 +104,7 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
                 runner.writeResult(&w, rel, source, result) catch {};
                 std.debug.print("corpus: {s}", .{w.buffered()});
             }
-            if (process_skips > 0) tally.process_files += 1;
+            if (r.summary.processes > 0) tally.process_files += 1;
             if (ok) tally.passed += 1 else tally.failed += 1;
             return;
         } else |err| switch (err) {
@@ -162,7 +162,7 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
-    // The six processes/ files report skipped until step 4 runs processes.
+    // The six processes/ files start processes and run their tests.
     if (pipeline.implemented == .run) try std.testing.expectEqual(@as(u32, 6), tally.process_files);
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.

@@ -14,15 +14,32 @@ pub const Kind = enum {
     requires,
     ensures,
     refinement,
+    /// A process's `invariant` block was true after an `update`.
+    invariant,
     assert,
     overflow,
     divide_by_zero,
+    /// A send found the target's mailbox at its bound; the sender crashes.
+    mailbox,
+    /// A child crashed more than its `max_restarts` within the window.
+    supervisor,
     /// A value no arm matched, or an operation this step does not run.
     other,
 };
 
 /// One value a report shows, already rendered as Mo source.
 pub const Involved = struct { name: []const u8, value: []const u8 };
+
+/// What a crash inside a process adds to its report (chapter 3, failure).
+pub const ProcessCrash = struct {
+    process: []const u8,
+    seed: u64,
+    /// Every message since the process (re)started, rendered, oldest first; the last
+    /// one is the message it crashed on.
+    log: []const []const u8,
+    /// The state before that message, rendered.
+    state: []const u8,
+};
 
 /// A crash, complete: what tripped, where, and the values involved.
 pub const Report = struct {
@@ -34,9 +51,11 @@ pub const Report = struct {
     /// Byte offset of the clause in the source.
     at: u32,
     values: []const Involved = &.{},
+    /// Set when the crash happened inside a process.
+    process: ?ProcessCrash = null,
 
     /// A `test rejects` passes only on these.
     pub fn tripsRejects(r: Report) bool {
-        return r.kind == .requires or r.kind == .refinement;
+        return r.kind == .requires or r.kind == .refinement or r.kind == .invariant;
     }
 };

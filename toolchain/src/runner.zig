@@ -1,11 +1,14 @@
 //! Runs `test`, `test rejects`, and `property` blocks of a module on the vm.
-//! A `rejects` test passes only when its body trips a `requires` or a refinement.
-//! Property tests run under N seeds; results feed verified.zig.
+//! A `rejects` test passes only when it trips a `requires`, a refinement, or an `invariant`.
+//! Property tests run under N seeds; results feed verified.zig. Every test runs on its
+//! own Mo.Sim (sim.zig): a process it starts has the runner as its supervisor, and the
+//! first crash, in a process or in the body, is the verdict.
 //! Each test runs in its own arena, freed whole; a result keeps copies of what it shows.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
+const sim = @import("sim.zig");
 const vm = @import("vm.zig");
 
 pub const seeds_per_property: u32 = 200;
@@ -29,6 +32,8 @@ pub const Result = struct {
     generated: []const contracts.Involved = &.{},
     /// Why it failed when no report says.
     note: []const u8 = "",
+    /// Processes the test started.
+    processes: u32 = 0,
 };
 
 pub const Summary = struct {
@@ -39,9 +44,11 @@ pub const Summary = struct {
     /// The seeds each property ran under, once one has.
     seeds: u32 = 0,
     failures: u32 = 0,
-    /// Tests that reached something this step does not run (a process, a recipe
-    /// signature with no body).
+    /// Tests that reached something this step does not run (a recipe signature with
+    /// no body).
     skipped: u32 = 0,
+    /// Processes started across every test.
+    processes: u32 = 0,
 };
 
 pub const Run = struct { results: []const Result, summary: Summary };
@@ -70,6 +77,7 @@ pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program) Error!Run {
             .failed, .did_not_trip => summary.failures += 1,
             .skipped => summary.skipped += 1,
         }
+        summary.processes += r.processes;
         try results.append(gpa, r);
     }
     return .{ .results = results.items, .summary = summary };
@@ -77,11 +85,17 @@ pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program) Error!Run {
 
 fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const bytecode.Program, t: bytecode.Test) Error!Result {
     var machine: vm.Vm = .init(arena, program, base_seed);
+    var simulator: sim.Sim = .init(&machine, base_seed, t.name);
+    machine.sim = &simulator;
     var r: Result = .{ .kind = t.kind, .name = t.name, .at = t.at, .outcome = .passed };
-    if (machine.call(t.function, &.{})) |_| {
-        if (t.kind == .rejects) {
+    const ran = machine.call(t.function, &.{});
+    r.processes = @intCast(simulator.procs.items.len);
+    if (ran) |_| {
+        if (simulator.firstCrash()) |report| {
+            try verdict(gpa, &r, report);
+        } else if (t.kind == .rejects) {
             r.outcome = .did_not_trip;
-            r.note = "the body ran to its end without tripping a requires or a refinement";
+            r.note = "the body ran to its end without tripping a requires, a refinement, or an invariant";
         }
     } else |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
@@ -89,14 +103,22 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
             r.outcome = .skipped;
             r.report = try keep(gpa, machine.report.?);
         },
-        error.Crash => {
-            const report = machine.report.?;
-            r.report = try keep(gpa, report);
-            r.outcome = if (t.kind == .rejects and report.tripsRejects()) .tripped_as_expected else .failed;
-        },
+        error.Crash => try verdict(gpa, &r, crashOf(&machine, &simulator)),
         error.Discard => unreachable,
     }
     return r;
+}
+
+/// What stopped a run: a supervisor that gave up, else the first crash in a process,
+/// else the body's own.
+fn crashOf(machine: *const vm.Vm, simulator: *const sim.Sim) contracts.Report {
+    if (simulator.gave_up) return machine.report.?;
+    return simulator.firstCrash() orelse machine.report.?;
+}
+
+fn verdict(gpa: std.mem.Allocator, r: *Result, report: contracts.Report) Error!void {
+    r.report = try keep(gpa, report);
+    r.outcome = if (r.kind == .rejects and report.tripsRejects()) .tripped_as_expected else .failed;
 }
 
 /// One attempt per seed that gets past the guard; the first crash is the verdict.
@@ -110,7 +132,26 @@ fn runProperty(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const
         while (attempt < attempts_per_seed) : (attempt += 1) {
             machine.stack.clearRetainingCapacity();
             machine.generated.clearRetainingCapacity();
-            if (machine.call(t.function, &.{})) |_| {
+            var simulator: sim.Sim = .init(&machine, seed, t.name);
+            machine.sim = &simulator;
+            const ran = machine.call(t.function, &.{});
+            r.processes = @max(r.processes, @as(u32, @intCast(simulator.procs.items.len)));
+            const crash: ?contracts.Report = if (ran) |_| simulator.firstCrash() else |err| switch (err) {
+                error.Crash => crashOf(&machine, &simulator),
+                else => null,
+            };
+            if (crash) |report| {
+                r.outcome = .failed;
+                r.report = try keep(gpa, report);
+                r.seed = seed;
+                const generated = try gpa.alloc(contracts.Involved, machine.generated.items.len);
+                for (machine.generated.items, generated) |g, *o| {
+                    o.* = .{ .name = try gpa.dupe(u8, g.name), .value = try gpa.dupe(u8, machine.render(g.value) catch return error.OutOfMemory) };
+                }
+                r.generated = generated;
+                return r;
+            }
+            if (ran) |_| {
                 held += 1;
                 break;
             } else |err| switch (err) {
@@ -121,17 +162,7 @@ fn runProperty(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const
                     r.report = try keep(gpa, machine.report.?);
                     return r;
                 },
-                error.Crash => {
-                    r.outcome = .failed;
-                    r.report = try keep(gpa, machine.report.?);
-                    r.seed = seed;
-                    const generated = try gpa.alloc(contracts.Involved, machine.generated.items.len);
-                    for (machine.generated.items, generated) |g, *o| {
-                        o.* = .{ .name = try gpa.dupe(u8, g.name), .value = try gpa.dupe(u8, machine.render(g.value) catch return error.OutOfMemory) };
-                    }
-                    r.generated = generated;
-                    return r;
-                },
+                error.Crash => unreachable,
             }
         }
     }
@@ -146,7 +177,12 @@ fn runProperty(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const
 fn keep(gpa: std.mem.Allocator, r: contracts.Report) Error!contracts.Report {
     const values = try gpa.alloc(contracts.Involved, r.values.len);
     for (r.values, values) |v, *o| o.* = .{ .name = try gpa.dupe(u8, v.name), .value = try gpa.dupe(u8, v.value) };
-    return .{ .kind = r.kind, .clause = try gpa.dupe(u8, r.clause), .within = try gpa.dupe(u8, r.within), .at = r.at, .values = values };
+    const process: ?contracts.ProcessCrash = if (r.process) |p| blk: {
+        const log = try gpa.alloc([]const u8, p.log.len);
+        for (p.log, log) |m, *o| o.* = try gpa.dupe(u8, m);
+        break :blk .{ .process = try gpa.dupe(u8, p.process), .seed = p.seed, .log = log, .state = try gpa.dupe(u8, p.state) };
+    } else null;
+    return .{ .kind = r.kind, .clause = try gpa.dupe(u8, r.clause), .within = try gpa.dupe(u8, r.within), .at = r.at, .values = values, .process = process };
 }
 
 /// One line per test: `pass`, `skip`, or `FAIL`, the test, and what happened.
@@ -179,7 +215,9 @@ pub fn writeResult(w: *std.Io.Writer, path: []const u8, source: []const u8, r: R
     try w.writeAll("\n");
 }
 
-/// A crash as prose: where, what tripped, and the values involved.
+/// A crash as prose: where, what tripped, and the values involved. A crash inside a
+/// process goes on with chapter 3's report: the seed, every message since the process
+/// started, and its state before the last one.
 pub fn writeReport(w: *std.Io.Writer, path: []const u8, source: []const u8, r: contracts.Report) std.Io.Writer.Error!void {
     if (r.at != 0) {
         const pos = diag.position(source, r.at);
@@ -187,12 +225,17 @@ pub fn writeReport(w: *std.Io.Writer, path: []const u8, source: []const u8, r: c
     }
     switch (r.kind) {
         .assert => try w.print("{s} failed", .{r.clause}),
-        .requires, .ensures, .refinement => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
+        .requires, .ensures, .refinement, .invariant => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
         .overflow => try w.print("overflow in {s}", .{r.clause}),
         .divide_by_zero => try w.print("division by zero in {s}", .{r.clause}),
-        .other => try w.print("{s}", .{r.clause}),
+        .mailbox, .supervisor, .other => try w.print("{s}", .{r.clause}),
     }
     for (r.values, 0..) |v, i| try w.print("{s}{s} = {s}", .{ if (i == 0) "; " else ", ", v.name, v.value });
+    if (r.process) |p| {
+        try w.print("\n      in process {s}, seed {d}\n      messages since it started: ", .{ p.process, p.seed });
+        for (p.log, 0..) |m, i| try w.print("{s}{s}", .{ if (i == 0) "" else ", ", m });
+        try w.print("\n      state before the last message: {s}", .{p.state});
+    }
 }
 
 pub fn writeSummary(w: *std.Io.Writer, s: Summary) std.Io.Writer.Error!void {
