@@ -464,8 +464,47 @@ MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode);
 MO_ROW(mo_r_Charge_fixture); MO_ROW(mo_r_Charge_fixture_at); MO_ROW(mo_r_Charge_refunded_q);
 MO_ROW(mo_r_Money_cents); MO_ROW(mo_r_Money_zero);
 
-/* A row compiled programs do not run yet (processes, the network): a clear crash. */
+/* A row compiled programs do not run: a clear crash. */
 _Noreturn void mo_not_compiled(const char *what);
+
+/* ---- processes (sim.zig, turns.zig): the program's tables, and the rows start, send, and ask */
+
+/* bytecode.Restart, in its order. */
+enum { MO_RESTART_ALWAYS, MO_RESTART_ON_CRASH, MO_RESTART_NEVER };
+
+/* Each takes its parameters in `args`, then the state after and the state before; true when broken. */
+typedef struct { MoCode fn; uint32_t clause; } MoInvariant;
+typedef struct {
+    const char *name;
+    uint32_t decl;
+    uint32_t mailbox;
+    /* The parameters in `args` give the first state. */
+    MoCode init;
+    /* The parameters, the state, and a message in `args` give (reply, state). */
+    MoCode update;
+    uint32_t ninvariants;
+    const MoInvariant *invariants;
+    /* An invariant reads old(state), so an update never writes the state before it in place. */
+    bool reads_old;
+} MoProcess;
+/* A child line: `args` takes the supervisor's parameters and gives the child's as a tuple; `per`
+ * gives the window, or is NULL; max_restarts is UINT32_MAX when the line names none. */
+typedef struct { uint32_t process; MoCode args; uint8_t restart; uint32_t max_restarts; MoCode per; } MoChild;
+typedef struct { const char *name; uint32_t nchildren; const MoChild *children; } MoSupervisor;
+extern const MoProcess mo_processes[];
+extern const uint32_t mo_nprocesses;
+extern const MoSupervisor mo_supervisors[];
+extern const uint32_t mo_nsupervisors;
+
+/* `Name.start(args)`: its Handle. */
+MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args);
+/* `Sup.start(args)`: its one child's Handle, a tuple of them in child order, or no value. */
+MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args);
+MoValue mo_send(MoValue handle, MoValue message);
+/* Ok(reply), Error(Timeout), or Error(Down). */
+MoValue mo_ask(MoValue handle, MoValue message, MoValue within);
+/* Between two statements of a test, or of main in a program with processes. */
+void mo_settle(void);
 
 /* ---- any(T), a zero value, and the platform */
 

@@ -13,9 +13,11 @@
 //! reach and frees the rest.
 //!
 //! Every Mo local of a C function is declared at its top, so a safe point can pass them all
-//! as roots, as the vm passes a frame's locals. Temporaries are block-scoped. A program that
-//! declares a process or calls a Net row is refused: processes and the network run on the
-//! interpreter only in this step.
+//! as roots, as the vm passes a frame's locals. Temporaries are block-scoped. A process is a C
+//! function each for its first state, its update, and each invariant, and a supervisor's child
+//! line one for its arguments and one for its window, in tables the runtime's scheduler reads
+//! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. A program
+//! that calls a Net row is refused: the network runs on the interpreter only.
 const std = @import("std");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
@@ -55,16 +57,13 @@ pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program
     var e: Emitter = .{ .gpa = gpa, .k = checked, .tree = checked.tree, .prog = prog, .options = options };
     e.recorded = try bytecode.recordedTypes(gpa, checked);
     for (fixed_names) |n| _ = try e.nameId(n);
+    try e.indexProcesses();
     try e.run();
     return .{ .c = try e.assemble() };
 }
 
 /// Why a program does not compile to C yet, or null.
 pub fn refusal(gpa: std.mem.Allocator, k: *const check.Checked) Error!?[]const u8 {
-    for (k.decls) |d| switch (d.kind) {
-        .process, .supervisor => return try std.fmt.allocPrint(gpa, "it declares {s} {s}, and processes do not compile to C yet; run it with mo run", .{ if (d.kind == .process) "process" else "supervisor", d.name }),
-        else => {},
-    };
     for (k.callee) |c| switch (c) {
         .prelude => |r| {
             const row = prelude.fns[r];
@@ -114,6 +113,9 @@ const Builder = struct {
     /// Lowering a contract expression: integer arithmetic is unbounded.
     contract: bool = false,
     indent: u32 = 1,
+    /// In an invariant: the state before the message, which `old` reads, and whether it did.
+    old_state: ?[]const u8 = null,
+    reads_old: bool = false,
 };
 
 const Refinement = struct { cname: []const u8, clause: u32 };
@@ -125,6 +127,26 @@ const Desc = struct { tag: types.Tag, name: []const u8, recorded: u32, may_hold:
 const TestEntry = struct { kind: bytecode.TestKind, name: []const u8, cname: []const u8 };
 
 const NeverEntry = struct { cname: []const u8, clause: u32, names: []const []const u8 };
+
+const InvariantEntry = struct { cname: []const u8, clause: u32 };
+
+/// mo_rt.h MoProcess.
+const ProcessEntry = struct {
+    name: []const u8 = "",
+    decl: u32 = 0,
+    mailbox: u32 = 0,
+    init: []const u8 = "NULL",
+    update: []const u8 = "NULL",
+    invariants: []const InvariantEntry = &.{},
+    reads_old: bool = false,
+};
+
+/// mo_rt.h MoChild and MoSupervisor.
+const ChildEntry = struct { process: u32, args: []const u8, restart: bytecode.Restart, max_restarts: u32, per: ?[]const u8 };
+const SupervisorEntry = struct { name: []const u8 = "", children: []const ChildEntry = &.{} };
+
+/// The signature of a function the scheduler calls with its arguments in `args`.
+const code_head = "const MoValue *cap, const MoValue *args";
 
 const Emitter = struct {
     gpa: std.mem.Allocator,
@@ -152,6 +174,11 @@ const Emitter = struct {
     labels: u32 = 0,
     /// While `m = m.set(k, v)` or `s.f = s.f.set(k, v)` is lowered (bytecode.zig in_place).
     in_place: struct { call: Index = 0, name: []const u8 = "", path: Index = 0 } = .{},
+    /// Checked decl index → index in `processes` or `supervisors`, or `none` (bytecode.zig).
+    process_of: []u32 = &.{},
+    supervisor_of: []u32 = &.{},
+    processes: std.ArrayList(ProcessEntry) = .empty,
+    supervisors: std.ArrayList(SupervisorEntry) = .empty,
 
     // ---- small helpers
 
@@ -352,7 +379,10 @@ const Emitter = struct {
         var i = b.names.items.len;
         while (i > 0) {
             i -= 1;
-            if (std.mem.eql(u8, b.names.items[i].name, name)) return b.names.items[i];
+            if (std.mem.eql(u8, b.names.items[i].name, name)) {
+                if (b.old_state) |before| b.reads_old = b.reads_old or std.mem.eql(u8, b.names.items[i].cvar, before);
+                return b.names.items[i];
+            }
         }
         for (b.captures.items, 0..) |c, k| if (std.mem.eql(u8, c.name, name)) return .{ .name = name, .cvar = try e.print("cap[{d}]", .{k}), .mutable = false };
         const parent = b.parent orelse return null;
@@ -378,8 +408,32 @@ const Emitter = struct {
 
     // ---- functions
 
+    /// Every process and supervisor has its index before anything that starts one is lowered.
+    fn indexProcesses(e: *Emitter) Error!void {
+        e.process_of = try e.gpa.alloc(u32, e.k.decls.len);
+        e.supervisor_of = try e.gpa.alloc(u32, e.k.decls.len);
+        @memset(e.process_of, none);
+        @memset(e.supervisor_of, none);
+        for (e.k.decls, 0..) |d, di| switch (d.kind) {
+            .process => {
+                e.process_of[di] = @intCast(e.processes.items.len);
+                try e.processes.append(e.gpa, .{});
+            },
+            .supervisor => {
+                e.supervisor_of[di] = @intCast(e.supervisors.items.len);
+                try e.supervisors.append(e.gpa, .{});
+            },
+            else => {},
+        };
+    }
+
     fn run(e: *Emitter) Error!void {
         for (e.k.sigs, 0..) |s, si| if (s.kind != .trait) try e.lowerFn(@intCast(si));
+        for (e.items()) |it| switch (e.node(it).kind) {
+            .process_decl => try e.lowerProcess(it),
+            .supervisor_decl => try e.lowerSupervisor(it),
+            else => {},
+        };
         if (e.options.tests) {
             for (e.items()) |it| if (e.node(it).kind == .never) try e.lowerNever(it);
             const base = e.prog.main().base;
@@ -486,7 +540,18 @@ const Emitter = struct {
         b.indent -= 1;
         try e.line("}}", .{});
 
-        if (n.kind == .fn_decl) {
+        if (n.kind == .fn_decl and e.processes.items.len > 0 and e.k.mainSig() == si) {
+            // main is the root supervisor: its sends are delivered before its next statement
+            // runs, as a test's are.
+            const body = e.tree.extraData(ast.FnBody, n.rhs);
+            const mark = b.names.items.len;
+            for (e.tree.span(body.start, body.end)) |st| {
+                try e.stmt(st);
+                try e.line("mo_settle();", .{});
+            }
+            b.names.shrinkRetainingCapacity(mark);
+            try e.line("R = MO_NONE_V;", .{});
+        } else if (n.kind == .fn_decl) {
             const body = e.tree.extraData(ast.FnBody, n.rhs);
             const v = try e.blockValue(e.tree.span(body.start, body.end));
             try e.line("R = {s};", .{v});
@@ -616,12 +681,18 @@ const Emitter = struct {
         const quoted = e.text(n.main_token);
         var b: Builder = .{ .name = quoted[1 .. quoted.len - 1], .cname = try e.print("test{d}", .{e.tests.items.len}), .exit = e.label() };
         e.b = &b;
+        // A test's sends are delivered before its next statement runs (Mo.Sim).
+        const settles = e.processes.items.len > 0;
         if (n.kind == .property) {
             const data = e.tree.extraData(ast.Comprehension, e.node(n.lhs).lhs);
             try e.generators(e.tree.span(data.gens_start, data.gens_end), data);
+            if (settles) try e.line("mo_settle();", .{});
         } else {
             const mark = b.names.items.len;
-            for (e.tree.span(n.lhs, n.rhs)) |st| try e.stmt(st);
+            for (e.tree.span(n.lhs, n.rhs)) |st| {
+                try e.stmt(st);
+                if (settles) try e.line("mo_settle();", .{});
+            }
             b.names.shrinkRetainingCapacity(mark);
         }
         try e.exitLabel();
@@ -722,6 +793,151 @@ const Emitter = struct {
         try e.neverGenerators(gens[1..], data, cl, binders);
         if (named) _ = binders.pop();
         try e.loopEnd(loop);
+    }
+
+    // ---- processes and supervisors (bytecode.zig lowerProcess, lowerSupervisor)
+
+    /// The parameters in `args`, each bound to a local.
+    fn bindArgs(e: *Emitter, r: check.Range) Error![]const []const u8 {
+        try e.b.pre.appendSlice(e.gpa, "    (void)cap;\n    (void)args;\n");
+        const params = e.k.params[r.start..r.end];
+        const cvars = try e.gpa.alloc([]const u8, params.len);
+        for (params, cvars, 0..) |p, *cvar, k| {
+            cvar.* = try e.bindName(p.name, false);
+            try e.b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ cvar.*, k });
+        }
+        return cvars;
+    }
+
+    /// A process: `pi` gives the first state from the parameters; `pu` takes the parameters, the
+    /// state, and a message, and gives (reply, state); each `pv` takes the parameters, the state
+    /// after, and the state before, and is true when broken.
+    fn lowerProcess(e: *Emitter, it: Index) Error!void {
+        const n = e.node(it);
+        const di = e.k.findDeclAt(it, e.text(n.main_token)) orelse return;
+        const d = e.k.decls[di];
+        if (d.node != it) return;
+        const data = e.tree.extraData(ast.Process, n.lhs);
+        const pi = e.process_of[di];
+        const params = e.k.params[d.params.start..d.params.end];
+
+        // init: every state field from its `= expr`, or its type's zero value.
+        var b: Builder = .{ .name = d.name, .cname = try e.print("pi{d}", .{pi}), .exit = e.label() };
+        e.b = &b;
+        const cvars = try e.bindArgs(d.params);
+        for (params, cvars) |p, cvar| try e.observe(cvar, p.type);
+        var fields: std.ArrayList([]const u8) = .empty;
+        for (e.k.fields[d.fields.start..d.fields.end]) |f| {
+            const init = e.node(f.node).rhs;
+            const v = if (init != 0) try e.expr(init) else blk: {
+                const tok = e.node(f.node).main_token;
+                const cl = try e.addClause(.{ .kind = .other, .text = try e.print("the state field {s} has no zero value; give it = expr", .{f.name}), .at = e.tree.tokens[tok].start, .within = d.name });
+                break :blk try e.temp("mo_zero({d}, {d})", .{ try e.desc(f.type), cl });
+            };
+            try e.observe(v, f.type);
+            try e.refineField(f, d.name, v);
+            try fields.append(e.gpa, v);
+        }
+        try e.line("R = mo_record({d}, {d}, {s});", .{ di, fields.items.len, try e.valuesOf(fields.items) });
+        try e.exitLabel();
+        try e.finish(&b, code_head);
+        const init_fn = b.cname;
+
+        // update: `state` is a var for the whole call; the arm's value is the reply.
+        b = .{ .name = d.name, .cname = try e.print("pu{d}", .{pi}), .exit = e.label() };
+        e.b = &b;
+        _ = try e.bindArgs(d.params);
+        const state = try e.bindName("state", true);
+        try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ state, params.len });
+        const message = try e.bindName("message", false);
+        try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ message, params.len + 1 });
+        const reply = try e.caseLower(e.node(data.update).lhs, true);
+        try e.line("R = {s};", .{reply});
+        try e.exitLabel();
+        try e.line("R = mo_tuple(2, (const MoValue[]){{R, {s}}});", .{state});
+        try e.finish(&b, code_head);
+        const update_fn = b.cname;
+
+        var invariants: std.ArrayList(InvariantEntry) = .empty;
+        var reads_old = false;
+        for (e.tree.span(data.invariants_start, data.invariants_end), 0..) |inv, k| {
+            b = .{ .name = d.name, .cname = try e.print("pv{d}_{d}", .{ pi, k }), .contract = true, .exit = e.label() };
+            e.b = &b;
+            _ = try e.bindArgs(d.params);
+            const after = try e.bindName("state", false);
+            try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ after, params.len });
+            const before = try e.local();
+            try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ before, params.len + 1 });
+            b.old_state = before;
+            const v = try e.expr(e.node(inv).rhs);
+            try e.line("R = {s};", .{v});
+            try e.exitLabel();
+            const cl = try e.clause(.invariant, e.node(inv).main_token);
+            try e.finish(&b, code_head);
+            reads_old = reads_old or b.reads_old;
+            try invariants.append(e.gpa, .{ .cname = b.cname, .clause = cl });
+        }
+
+        e.processes.items[pi] = .{
+            .name = d.name,
+            .decl = di,
+            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(parseInt(e.text(data.mailbox))),
+            .init = init_fn,
+            .update = update_fn,
+            .invariants = invariants.items,
+            .reads_old = reads_old,
+        };
+    }
+
+    /// A supervisor: for each child line, `sa` takes the supervisor's parameters and gives the
+    /// child's arguments as a tuple, and `sw` takes nothing and gives the window.
+    fn lowerSupervisor(e: *Emitter, it: Index) Error!void {
+        const n = e.node(it);
+        const di = e.k.findDeclAt(it, e.text(n.main_token)) orelse return;
+        const d = e.k.decls[di];
+        if (d.node != it) return;
+        const si = e.supervisor_of[di];
+        var children: std.ArrayList(ChildEntry) = .empty;
+        for (e.spanAt(n.rhs)) |ch| {
+            const cn = e.node(ch);
+            const data = e.tree.extraData(ast.Child, cn.lhs);
+            const pd = e.k.findDeclAt(ch, e.text(cn.main_token)) orelse continue;
+            if (e.process_of[pd] == none) continue;
+            const k = children.items.len;
+
+            var b: Builder = .{ .name = d.name, .cname = try e.print("sa{d}_{d}", .{ si, k }), .exit = e.label() };
+            e.b = &b;
+            _ = try e.bindArgs(d.params);
+            var args: std.ArrayList([]const u8) = .empty;
+            for (e.tree.span(data.args_start, data.args_end)) |a| try args.append(e.gpa, try e.expr(a));
+            try e.line("R = mo_tuple({d}, {s});", .{ args.items.len, try e.valuesOf(args.items) });
+            try e.exitLabel();
+            try e.finish(&b, code_head);
+
+            // The window is read without the supervisor's parameters, so the test runner can
+            // supervise a child it starts directly under the same numbers.
+            var per: ?[]const u8 = null;
+            if (data.per != 0) {
+                var w: Builder = .{ .name = d.name, .cname = try e.print("sw{d}_{d}", .{ si, k }), .exit = e.label() };
+                e.b = &w;
+                try w.pre.appendSlice(e.gpa, "    (void)cap;\n    (void)args;\n");
+                const v = try e.expr(data.per);
+                try e.line("R = {s};", .{v});
+                try e.exitLabel();
+                try e.finish(&w, code_head);
+                per = w.cname;
+            }
+
+            const atom = e.text(data.restart);
+            try children.append(e.gpa, .{
+                .process = e.process_of[pd],
+                .args = b.cname,
+                .restart = if (std.mem.eql(u8, atom, ":never")) .never else if (std.mem.eql(u8, atom, ":on_crash")) .on_crash else .always,
+                .max_restarts = if (data.max_restarts == ast.none) none else @intCast(parseInt(e.text(data.max_restarts))),
+                .per = per,
+            });
+        }
+        e.supervisors.items[si] = .{ .name = d.name, .children = children.items };
     }
 
     // ---- statements
@@ -1301,6 +1517,12 @@ const Emitter = struct {
             .anon_fn => return e.anonFn(i),
             .old_expr => {
                 if (e.old_slots.get(i)) |slot| return e.temp("{s}", .{slot});
+                // In an invariant, `state` inside old(...) is the state before the message.
+                if (e.b.old_state) |before| {
+                    try e.b.names.append(e.gpa, .{ .name = "state", .cvar = before, .mutable = false });
+                    defer _ = e.b.names.pop();
+                    return e.expr(n.lhs);
+                }
                 return e.expr(n.lhs);
             },
             .result_ref => return e.temp("R", .{}),
@@ -1436,10 +1658,38 @@ const Emitter = struct {
 
     fn preludeCall(e: *Emitter, i: Index, row_index: u32, recv: ?Index, args: []const u32) Error![]const u8 {
         const row = prelude.fns[row_index];
-        const head = recvHead(row.recv);
-        if (std.mem.eql(u8, head, "Process") or std.mem.eql(u8, head, "Supervisor") or std.mem.eql(u8, head, "Handle")) {
-            try e.line("mo_not_compiled(\"a process\");", .{});
-            return "MO_NONE_V";
+        // Processes (bytecode.zig spawn, start_supervisor, send, ask).
+        if (std.mem.eql(u8, row.recv, "Process")) {
+            for (args) |a| if (e.node(a).kind == .named_arg) {
+                try e.halt(i, "", false);
+                return "MO_NONE_V";
+            };
+            var operands: std.ArrayList([]const u8) = .empty;
+            for (args) |a| try operands.append(e.gpa, try e.expr(a));
+            return e.temp("mo_spawn({d}, {d}, {s})", .{ e.process_of[e.baseType(e.typeOf(i)).a], operands.items.len, try e.valuesOf(operands.items) });
+        }
+        if (std.mem.eql(u8, row.recv, "Supervisor")) {
+            const d = e.k.findDeclAt(i, e.text(e.node(recv.?).main_token)) orelse {
+                try e.halt(i, "", false);
+                return "MO_NONE_V";
+            };
+            var operands: std.ArrayList([]const u8) = .empty;
+            for (args) |a| try operands.append(e.gpa, try e.expr(a));
+            return e.temp("mo_start_supervisor({d}, {d}, {s})", .{ e.supervisor_of[d], operands.items.len, try e.valuesOf(operands.items) });
+        }
+        if (std.mem.startsWith(u8, row.recv, "Handle")) {
+            const h = try e.expr(recv.?);
+            var message: []const u8 = "MO_NONE_V";
+            for (args) |a| if (e.node(a).kind != .named_arg) {
+                message = try e.expr(a);
+            };
+            if (std.mem.eql(u8, row.name, "send")) return e.temp("mo_send({s}, {s})", .{ h, message });
+            var within: []const u8 = "MO_NONE_V";
+            for (args) |a| {
+                const an = e.node(a);
+                if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) within = try e.expr(an.lhs);
+            }
+            return e.temp("mo_ask({s}, {s}, {s})", .{ h, message, within });
         }
         if (row.only == .never) {
             // `T.all`: the distinct values of T the run held.
@@ -1780,6 +2030,29 @@ const Emitter = struct {
         try tables.appendSlice(gpa, "const MoNever mo_nevers[] = {\n");
         for (e.nevers.items, 0..) |nv, ni| try tables.print(gpa, "    {{{s}, {d}, {d}, never_names_{d}}},\n", .{ nv.cname, nv.clause, nv.names.len, ni });
         try tables.print(gpa, "    {{NULL, 0, 0, NULL}}\n}};\nconst uint32_t mo_nnevers = {d};\n", .{e.nevers.items.len});
+
+        // Processes and supervisors, in bytecode.zig's order: the scheduler's tables.
+        for (e.processes.items, 0..) |p, pi| {
+            try tables.print(gpa, "static const MoInvariant process_invariants_{d}[] = {{", .{pi});
+            for (p.invariants) |inv| try tables.print(gpa, "{{{s}, {d}}}, ", .{ inv.cname, inv.clause });
+            try tables.appendSlice(gpa, "{NULL, 0}};\n");
+        }
+        try tables.appendSlice(gpa, "const MoProcess mo_processes[] = {\n");
+        for (e.processes.items, 0..) |p, pi| {
+            try tables.print(gpa, "    {{{s}, {d}, {d}, {s}, {s}, {d}, process_invariants_{d}, {s}}},\n", .{ try cString(gpa, p.name), p.decl, p.mailbox, p.init, p.update, p.invariants.len, pi, if (p.reads_old) "true" else "false" });
+        }
+        try tables.print(gpa, "    {{NULL, 0, 0, NULL, NULL, 0, NULL, false}}\n}};\nconst uint32_t mo_nprocesses = {d};\n", .{e.processes.items.len});
+        for (e.supervisors.items, 0..) |sup, si| {
+            try tables.print(gpa, "static const MoChild supervisor_children_{d}[] = {{", .{si});
+            for (sup.children) |c| {
+                const max = if (c.max_restarts == none) "UINT32_MAX" else try e.print("{d}", .{c.max_restarts});
+                try tables.print(gpa, "{{{d}, {s}, {d}, {s}, {s}}}, ", .{ c.process, c.args, @intFromEnum(c.restart), max, c.per orelse "NULL" });
+            }
+            try tables.appendSlice(gpa, "{0, NULL, 0, 0, NULL}};\n");
+        }
+        try tables.appendSlice(gpa, "const MoSupervisor mo_supervisors[] = {\n");
+        for (e.supervisors.items, 0..) |sup, si| try tables.print(gpa, "    {{{s}, {d}, supervisor_children_{d}}},\n", .{ try cString(gpa, sup.name), sup.children.len, si });
+        try tables.print(gpa, "    {{NULL, 0, NULL}}\n}};\nconst uint32_t mo_nsupervisors = {d};\n", .{e.supervisors.items.len});
 
         const charge = k.findDecl("Charge");
         try tables.print(gpa, "const uint32_t mo_charge_decl = {s};\n", .{if (charge) |c| try e.print("{d}", .{c}) else "UINT32_MAX"});

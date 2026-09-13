@@ -12,8 +12,9 @@
 //!
 //! Contracts run in every build (chapter 3): `requires`, `ensures`, and refinements are compiled
 //! in and checked unless the build is `--no-contracts`, a measurement; `MO_CONTRACTS=0` or `1`
-//! overrides the build at run time. A `never` and a process `invariant` are compiled in as the
-//! tests that check them: a test binary runs every `never`, and processes are refused.
+//! overrides the build at run time. A `never` is compiled in as the tests that check it: a test
+//! binary runs every one. A process `invariant` runs after every update, in a test binary and
+//! under main alike.
 //!
 //! `zig` is found next to the running `mo`, else on PATH.
 const std = @import("std");

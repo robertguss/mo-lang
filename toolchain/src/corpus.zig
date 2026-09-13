@@ -22,7 +22,7 @@
 //! contracts on as in every build, and set beside the interpreter, which is the reference: each module's tests built with
 //! `--tests` must print what `mo test` prints and exit as it exits, and each program's binary
 //! must print the same stdout and stderr and exit with the same code as `mo run`, once per
-//! `# run:` line. A program that declares a process or calls a Net row must be refused by
+//! `# run:` line. Processes compile; a program that calls a Net row must be refused by
 //! `mo build`, with the sentence emit_c.refusal gives.
 const std = @import("std");
 const Io = std.Io;
@@ -578,7 +578,7 @@ test "corpus: every module's tests and every program, built by mo build, print w
     try std.testing.expectEqual(@as(u32, 0), modules.wrong);
     try std.testing.expectEqual(@as(u32, 0), programs.wrong);
     try std.testing.expect(modules.same > 0 and programs.same > 0);
-    // Every module was compared or refused as emit_c says, and the corpus's processes are refused.
+    // Every module was compared or refused as emit_c says, and the corpus's network modules are refused.
     try std.testing.expectEqual(outside_rejects, modules.same + modules.refused);
     try std.testing.expect(modules.refused > 0);
 }
