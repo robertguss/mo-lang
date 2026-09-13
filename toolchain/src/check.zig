@@ -1595,7 +1595,12 @@ const Checker = struct {
             try rows.append(c.gpa, try c.gpa.dupe(u32, &.{an.lhs}));
         }
         if (try c.uncovered(rows.items, &.{subject})) |w| {
-            try c.reportTok(.not_exhaustive, n.main_token, try c.print("this case does not cover {s}; add an arm for it.", .{w[0]}));
+            // An integer or a string has too many values to name one; say which type.
+            const what = if (std.mem.eql(u8, w[0], "_") and (b.tag == .int or b.tag == .string))
+                try c.print("this case does not cover every {s}; add a _ arm.", .{try c.tn(subject)})
+            else
+                try c.print("this case does not cover {s}; add an arm for it.", .{w[0]});
+            try c.reportTok(.not_exhaustive, n.main_token, what);
         }
     }
 
@@ -3070,6 +3075,14 @@ test "case: a missing variant is named; a catch-all arm on an enum names what it
         \\  end
         \\end
     , "MO0309", "the _ arm hides B and C; name each variant of L.");
+    try expectWhat(
+        \\module T.Ints
+        \\fn f(n: UInt32) : Bool
+        \\  case n
+        \\    0: true
+        \\  end
+        \\end
+    , "MO0308", "this case does not cover every UInt32; add a _ arm.");
     try expectCodes(
         \\module T.Guards
         \\fn f(n: UInt8, flag: Bool) : UInt8

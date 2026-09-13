@@ -9,6 +9,8 @@ Two rules a reader needs:
 
 Where the grammar and chapter 4 ran out, the corpus used the plainest option and recorded it in `GAPS.md`.
 
+`mo test <file>` runs a file's tests on the interpreter today. Every `test` must pass, every `test rejects` must trip a `requires` or a refinement, and every `property` must hold under 200 seeds. It then prints the `verified:` line. A test that starts a process is skipped until step 4, as is a recipe test that calls a signature no agent has implemented yet.
+
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
 2. `basics/numbers.mo`: sized integers, `10_000`, `checked_add`, `saturating_sub`, `wrapping_mul`, a float
@@ -74,3 +76,6 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 48. `rejects/missing-within.mo`: a capability call with no `within:`
 49. `rejects/hand-edited-verified.mo`: a `verified:` line written by hand
 50. `rejects/unsupervised-process.mo`: a process no supervisor names
+
+## payments (the milestone)
+51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records

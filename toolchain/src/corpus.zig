@@ -1,14 +1,28 @@
 //! The corpus test: every `examples/**/*.mo` must pass every implemented stage,
 //! except `examples/rejects/`, whose first diagnostic must carry the code on the
-//! file's `# expect MO0xxx: sentence` line. Until a
-//! stage exists it returns NotImplemented and the file counts as skipped, so this
-//! test is green on day one and tightens as stages land.
+//! file's `# expect MO0xxx: sentence` line. At the run stage every test of every
+//! other file passes, every `test rejects` trips, and every property holds; the only
+//! skips are tests that start a process and recipe tests that reach a signature no
+//! agent has implemented. Until a stage exists it returns NotImplemented and the file
+//! counts as skipped, so this test is green on day one and tightens as stages land.
 const std = @import("std");
 const Io = std.Io;
 const pipeline = @import("pipeline.zig");
+const runner = @import("runner.zig");
 const diag = @import("diag.zig");
 
-pub const Tally = struct { passed: u32 = 0, rejected_as_expected: u32 = 0, skipped: u32 = 0, failed: u32 = 0 };
+pub const Tally = struct {
+    passed: u32 = 0,
+    rejected_as_expected: u32 = 0,
+    skipped: u32 = 0,
+    failed: u32 = 0,
+    /// Files whose tests start a process, all skipped until step 4.
+    process_files: u32 = 0,
+    skipped_tests: u32 = 0,
+};
+
+pub const process_skip = "processes run in step 4";
+pub const recipe_skip = "until an agent implements the recipe";
 
 pub fn isRejectsPath(path: []const u8) bool {
     return std.mem.startsWith(u8, path, "rejects/") or std.mem.indexOf(u8, path, "/rejects/") != null;
@@ -66,6 +80,43 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
     var diags: diag.List = .empty;
     // A rejects/ file breaks a law, so it must lex and parse; only the checker rejects it.
     const expect_reject = isRejectsPath(rel) and @intFromEnum(stage) >= @intFromEnum(pipeline.Stage.check);
+    if (stage == .run and !expect_reject) {
+        if (pipeline.testSource(arena, source, &diags)) |r| {
+            var ok = r.summary.failures == 0;
+            var process_skips: u32 = 0;
+            for (r.results) |result| {
+                const reason = if (result.report) |report| report.clause else "";
+                switch (result.outcome) {
+                    .passed, .tripped_as_expected => continue,
+                    .skipped => {
+                        tally.skipped_tests += 1;
+                        if (std.mem.eql(u8, reason, process_skip)) {
+                            process_skips += 1;
+                            continue;
+                        }
+                        if (std.mem.startsWith(u8, rel, "recipes/") and std.mem.endsWith(u8, reason, recipe_skip)) continue;
+                        ok = false;
+                    },
+                    .failed, .did_not_trip => {},
+                }
+                var buf: [2048]u8 = undefined;
+                var w: Io.Writer = .fixed(&buf);
+                runner.writeResult(&w, rel, source, result) catch {};
+                std.debug.print("corpus: {s}", .{w.buffered()});
+            }
+            if (process_skips > 0) tally.process_files += 1;
+            if (ok) tally.passed += 1 else tally.failed += 1;
+            return;
+        } else |err| switch (err) {
+            error.Rejected => {
+                tally.failed += 1;
+                const d = diags.items[0];
+                std.debug.print("corpus: {s} at byte {d}: {s} {s}\n", .{ rel, d.at, d.code, d.what });
+                return;
+            },
+            else => return err,
+        }
+    }
     if (pipeline.runTo(arena, source, stage, &diags)) {
         if (expect_reject) {
             tally.failed += 1;
@@ -111,6 +162,8 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
+    // The six processes/ files report skipped until step 4 runs processes.
+    if (pipeline.implemented == .run) try std.testing.expectEqual(@as(u32, 6), tally.process_files);
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.
     var beyond: Tally = .{};
