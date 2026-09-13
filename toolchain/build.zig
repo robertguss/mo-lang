@@ -1,7 +1,8 @@
 const std = @import("std");
 
 // Two executables and two steps.
-//   zig build          → zig-out/bin/mo        the toolchain CLI (check, test, run)
+//   zig build          → zig-out/bin/mo        the toolchain CLI (check, test, run), ReleaseSafe
+//   zig build -Ddebug  → zig-out/bin/mo        the same, Debug
 //   zig build test     → unit tests of every stage, plus the corpus test, which runs
 //                        examples/programs/ through the installed mo (MO_EXE)
 //   zig build bench    → zig-out/bin/mo-bench  the benchmark harness, run against ../examples
@@ -9,7 +10,10 @@ const std = @import("std");
 // before any stage does. bench/rebuild.sh times this build file itself.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    // mo is ReleaseSafe: Mo's overflow checks are the vm's own in every mode, and Zig's
+    // safety checks stay on. -Ddebug builds it in Debug.
+    const debug = b.option(bool, "debug", "Build mo in Debug instead of ReleaseSafe") orelse false;
+    const optimize: std.builtin.OptimizeMode = if (debug) .Debug else .ReleaseSafe;
 
     const mo = b.addModule("mo", .{
         .root_source_file = b.path("src/root.zig"),
