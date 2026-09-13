@@ -1,9 +1,9 @@
 //! The corpus test: every `examples/**/*.mo` must pass every implemented stage,
 //! except `examples/rejects/`, whose first diagnostic must carry the code on the
 //! file's `# expect MO0xxx: sentence` line. At the run stage every test of every
-//! other file passes, every `test rejects` trips, and every property holds; the only
-//! skips are tests that start a process and recipe tests that reach a signature no
-//! agent has implemented. Until a stage exists it returns NotImplemented and the file
+//! other file passes, every `test rejects` trips, every property holds, and no process
+//! crashes; the only skips are recipe tests that reach a signature no agent has
+//! implemented. Until a stage exists it returns NotImplemented and the file
 //! counts as skipped, so this test is green on day one and tightens as stages land.
 const std = @import("std");
 const Io = std.Io;
@@ -21,7 +21,6 @@ pub const Tally = struct {
     skipped_tests: u32 = 0,
 };
 
-pub const process_skip = "processes run in step 4";
 pub const recipe_skip = "until an agent implements the recipe";
 
 pub fn isRejectsPath(path: []const u8) bool {
@@ -83,17 +82,12 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
     if (stage == .run and !expect_reject) {
         if (pipeline.testSource(arena, source, &diags)) |r| {
             var ok = r.summary.failures == 0;
-            var process_skips: u32 = 0;
             for (r.results) |result| {
                 const reason = if (result.report) |report| report.clause else "";
                 switch (result.outcome) {
                     .passed, .tripped_as_expected => continue,
                     .skipped => {
                         tally.skipped_tests += 1;
-                        if (std.mem.eql(u8, reason, process_skip)) {
-                            process_skips += 1;
-                            continue;
-                        }
                         if (std.mem.startsWith(u8, rel, "recipes/") and std.mem.endsWith(u8, reason, recipe_skip)) continue;
                         ok = false;
                     },
@@ -163,7 +157,11 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     try std.testing.expectEqual(@as(u32, 0), tally.skipped);
     try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
     // The seven processes/ files and the refund queue start processes and run their tests.
-    if (pipeline.implemented == .run) try std.testing.expectEqual(@as(u32, 8), tally.process_files);
+    if (pipeline.implemented == .run) {
+        try std.testing.expectEqual(@as(u32, 8), tally.process_files);
+        // No test is skipped for a process reason: the four recipe tests are the only skips.
+        try std.testing.expectEqual(@as(u32, 4), tally.skipped_tests);
+    }
 
     // Stages beyond `implemented` may still be stubs; those files count as skipped.
     var beyond: Tally = .{};

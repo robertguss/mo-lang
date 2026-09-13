@@ -308,3 +308,44 @@ test "a test passes, a rejects test trips, a property holds, and each failure is
     try std.testing.expectEqualStrings("n", r.results[5].generated[0].name);
     try std.testing.expectEqual(Summary{ .tests = 3, .rejects = 1, .properties = 1, .seeds = 200, .failures = 3 }, r.summary);
 }
+
+test "mo test prints a process crash with its seed, message log, and state before the message" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src =
+        \\module T.Report
+        \\process Meter()
+        \\  state
+        \\    n: UInt8
+        \\  end
+        \\  message Add(k: UInt8)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Add(k):
+        \\        state.n += k
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Meters
+        \\  child Meter, restart: :always
+        \\end
+        \\test "too much"
+        \\  meter = Meter.start()
+        \\  meter.send(Add(k: 200))
+        \\  meter.send(Add(k: 100))
+        \\end
+    ;
+    const r = try runSource(arena, src);
+    try std.testing.expectEqual(Outcome.failed, r.results[0].outcome);
+    var buf: [1024]u8 = undefined;
+    var w: std.Io.Writer = .fixed(&buf);
+    try writeResult(&w, "report.mo", src, r.results[0]);
+    try std.testing.expectEqualStrings(
+        \\FAIL  test "too much": report.mo:10:9: overflow in state.n += k; left = 200, right = 100
+        \\      in process Meter, seed 1299120131
+        \\      messages since it started: Add(200), Add(100)
+        \\      state before the last message: Meter(n: 200)
+        \\
+    , w.buffered());
+}

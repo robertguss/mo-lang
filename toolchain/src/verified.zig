@@ -5,7 +5,8 @@ const std = @import("std");
 const runner = @import("runner.zig");
 
 /// The line for a module whose tests ran. A failing test earns nothing past types.
-/// The simulator runs in step 4, so sim is "not run".
+/// Tests run processes on Mo.Sim, but simulation with fault injection and seeds is the
+/// next step, so sim is "not run".
 pub fn render(w: *std.Io.Writer, s: runner.Summary) std.Io.Writer.Error!void {
     if (s.failures > 0) {
         try w.writeAll("verified: types\n");
