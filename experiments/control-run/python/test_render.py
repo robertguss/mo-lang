@@ -37,11 +37,11 @@ class TextTest(unittest.TestCase):
             self.section("slowest"),
             [
                 "slowest",
-                "  1_340 ms  POST /api/orders                        2026-09-12T10:00:30Z",
+                "  1_340 ms  POST /api/orders" + " " * 25 + "2026-09-12T10:00:30Z",
                 "    340 ms  GET /api/cards/****************/charge   2026-09-12T10:01:00Z",
-                "    340 ms  GET /api/users                          2026-09-12T10:01:30Z",
-                "     12 ms  GET /api/users                          2026-09-12T10:00:00Z",
-                "      9 ms  GET /api/users                          2026-09-12T10:02:00Z",
+                "    340 ms  GET /api/users" + " " * 27 + "2026-09-12T10:01:30Z",
+                "     12 ms  GET /api/users" + " " * 27 + "2026-09-12T10:00:00Z",
+                "      9 ms  GET /api/users" + " " * 27 + "2026-09-12T10:02:00Z",
             ],
         )
 
