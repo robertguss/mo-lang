@@ -143,7 +143,19 @@ end
 
 100_000 asks peak at 117 MiB resident (about 1.1 KiB a message). The same loop calling a pure function instead of asking a process peaks at 7 MiB. When the update also builds a 320-byte string, 100_000 asks peak at 239 MiB.
 
-What it costs kv: the store and the journal are processes that take one message per request, so `kv serve` grows by at least a kilobyte a request for as long as it runs, and more for every byte list its contracts build (`value?` counts a value's bytes as a `List(UInt8)`, 32 bytes a byte, three times on each SET: in the parser, in `put`'s `requires`, and in the journal's byte count). The worker processes do not leak: each serves its connection in one long `update` whose `for` iterations free as they go. No workaround in the program; the measurements say how far a run got.
+A process that serves a connection in one long `update` keeps what its `for` iterations allocated as well, so it is not only the messages: kv's worker, whose loop never returns to its mailbox, keeps about 3.8 KiB of every line it answers.
+
+What it costs kv, measured on a running `kv serve` with 20_000 requests of one kind on one connection (resident memory before and after, divided by 20_000):
+
+| request | kept a request | who handles it |
+|---|---|---|
+| `nonsense` | 3.8 KiB | the worker alone (ERR malformed) |
+| `STATS` | 10.9 KiB | the worker and the store |
+| `GET nokey` | 15.7 KiB | the worker and the store |
+| `GET one` | 14.9 KiB | the worker and the store |
+| `SET one 0123456789`, the same key each time | 26.7 KiB | the worker, the store, and the journal |
+
+So `kv serve` grows by 4 to 27 KiB a request for as long as it runs: 10_000 SETs of new keys take it from 7 MiB to 616 MiB, and it passes 4 GiB after about 200_000 requests. Every byte list the contracts build is part of it (`value?` counts a value's bytes as a `List(UInt8)`, 32 bytes a byte, on each SET in the parser, in `put`'s `requires`, and again in the journal's byte count). No workaround in the program: a store that must not leak cannot be written in Mo processes today. The measurements in the final report say how far each run got.
 
 ## 5. `mo fmt` crashes on an anonymous function whose body starts with a parenthesis
 
@@ -167,3 +179,7 @@ toolchain/src/fmt.zig:453:28: in tk (mo)
 With a call inside the parentheses (`fn(hash, b) (hash * 31 + b.to_u64) % 256 end`, kv's first `bucket_of`) the panic is `expected dot at byte 109, found ident`. `fn(acc, x) acc + (x % 7) end` formats. The formatter's one-line attempt (`anonFn`, `flatBody`) reads the group as the start of a call or field chain.
 
 Workaround: `Kv.Log.bucket_of` calls a named function, `mixed`, whose body is the parenthesised expression.
+
+## How kv was verified against bug 1
+
+A scratch copy of `toolchain/` at `12b7a88`, never committed, with `examples/` and `mo-wiki/` linked beside it, and three changes to `src/corpus.zig`: `"kv"` in the program list, `13` process files (the ten before, and `kv/log.mo`, `kv/store.mo`, `kv/server.mo`), and `20` tests held under faults (the eleven before, and kv's one journal test, three store tests, and five server tests). `zig build test` on that copy: 121 of 121 tests passed, the corpus test among them, so every kv file passes every stage, holds under `--sim 100` with faults, is formatted, and every `# run:` line of `kv/main.mo` matches its expected file and exit code through `mo run`. As a control, the same copy with the process-file count put back to `10` fails with `expected 10, found 13`.
