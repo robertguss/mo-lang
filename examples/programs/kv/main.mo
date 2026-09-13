@@ -292,7 +292,12 @@ test "a missing folder, a bad port, or an unknown command is a usage error"
 end
 
 test "client joins the rest of its arguments into one line"
-  assert command(["client", "localhost", "7700", "SET", "a", "two",
+  assert command(["client",
+    "localhost",
+    "7700",
+    "SET",
+    "a",
+    "two",
     "words"]) == Ok(Asking(host: "localhost", port: 7_700, line: "SET a two words"))
   assert command(["compact", "data"]) == Ok(Compacting(dir: "data"))
   assert command(["check", "data", "s.txt"]) == Ok(Checking(dir: "data", script: "s.txt"))

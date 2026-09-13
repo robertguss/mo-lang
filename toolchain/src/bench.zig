@@ -17,10 +17,11 @@
 //! GETs over one real socket to programs/kv, served by `mo run` (MO_EXE) in a process of
 //! its own, each GET waiting for its answer.
 //! A `logstat-4k-c` row times program 2 built by `mo build` (cbuild.zig) over the same 4_000
-//! lines, the binary a process of its own with its output discarded, and names its ratio to
-//! `logstat-4k`; the same build with wrapping arithmetic and no overflow checks (-fwrapv,
-//! for this comparison only, never shipped) runs beside it, so the checks' cost reads off the
-//! difference. A `build-logstat` row times `mo build` of program 2, best of three: loading,
+//! lines, contracts on as in every build, the binary a process of its own with its output
+//! discarded, and names its ratio to `logstat-4k`; the same build with wrapping arithmetic and
+//! no overflow checks (-fwrapv, for this comparison only, never shipped) runs beside it, so the
+//! checks' cost reads off the difference, and so does the same build `--no-contracts`
+//! (`logstat-4k-c-nocontracts`), so the contracts' cost does. A `build-logstat` row times `mo build` of program 2, best of three: loading,
 //! checking, and emitting the C, then `zig cc`, each build a real compile (a define that
 //! changes every time keeps zig cc from answering out of its cache).
 //!
@@ -176,6 +177,7 @@ pub fn main(init: std.process.Init) !void {
         try out.print("{s:<8} {d:>9} µs {d:>9} µs a line  (4000 lines, a process of its own", .{ "logstat-4k-c", us, us / log_lines });
         if (logstat_ns) |ns| try out.print("; the interpreter's logstat-4k takes {d:.1}x as long", .{@as(f64, @floatFromInt(ns)) / @as(f64, @floatFromInt(c.run_ns))});
         try out.print(")\n{s:<8} {d:>9} µs without overflow checks (-fwrapv): the checks cost {d:.1}%\n", .{ "logstat-4k-c-wrap", wrap_us, (@as(f64, @floatFromInt(c.run_ns)) / @as(f64, @floatFromInt(c.wrap_ns)) - 1.0) * 100.0 });
+        try out.print("{s:<8} {d:>9} µs without contracts (--no-contracts): the contracts cost {d:.1}%\n", .{ "logstat-4k-c-nocontracts", @as(u64, @intCast(@divTrunc(c.nocontracts_ns, 1000))), (@as(f64, @floatFromInt(c.run_ns)) / @as(f64, @floatFromInt(c.nocontracts_ns)) - 1.0) * 100.0 });
         try out.print("{s:<8} {d:>9} µs  (load, check, and emit C {d} µs; zig cc {d} µs)\n", .{ "build-logstat", @as(u64, @intCast(@divTrunc(c.emit_ns + c.cc_ns, 1000))), @as(u64, @intCast(@divTrunc(c.emit_ns, 1000))), @as(u64, @intCast(@divTrunc(c.cc_ns, 1000))) });
     } else {
         try out.print("{s:<8} {s:>12} {s:>12}\n{s:<8} {s:>12} {s:>12}\n", .{ "logstat-4k-c", "n/a", "n/a", "build-logstat", "n/a", "n/a" });
@@ -307,21 +309,25 @@ fn logstat4k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
     return best;
 }
 
-const LogstatC = struct { run_ns: i96, wrap_ns: i96, emit_ns: i96, cc_ns: i96 };
+const LogstatC = struct { run_ns: i96, wrap_ns: i96, nocontracts_ns: i96, emit_ns: i96, cc_ns: i96 };
+
+/// The three builds of the compiled logstat: as `mo build` makes it, without overflow checks,
+/// and without contracts.
+const Variant = enum { shipped, wrap, nocontracts };
 
 const build_dir = ".zig-cache/bench/mo-build";
 
 /// Program 2 as `mo build` builds it: the binary's best of `iters` runs over the logstat-4k
 /// log, a process of its own with its output discarded; the same with -fwrapv and no overflow
-/// checks; and the build's best of three, loading, checking, and emitting apart from zig cc.
+/// checks; the same --no-contracts; and the build's best of three, loading, checking, and emitting apart from zig cc.
 /// Null when the corpus has no logstat, a build fails, or a run does not exit 0.
 fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, iters: u32) !?LogstatC {
     const main_path = try std.fs.path.join(arena, &.{ root, "programs/logstat/main.mo" });
     Io.Dir.cwd().access(io, main_path, .{}) catch return null;
     try writeLog(arena, io);
     const most = std.math.maxInt(i96);
-    var result: LogstatC = .{ .run_ns = most, .wrap_ns = most, .emit_ns = most, .cc_ns = most };
-    for ([_]bool{ false, true }) |wrap| {
+    var result: LogstatC = .{ .run_ns = most, .wrap_ns = most, .nocontracts_ns = most, .emit_ns = most, .cc_ns = most };
+    for ([_]Variant{ .shipped, .wrap, .nocontracts }) |variant| {
         var binary: []const u8 = "";
         var b: u32 = 0;
         while (b < @min(iters, 3)) : (b += 1) {
@@ -334,11 +340,21 @@ fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envi
             };
             const front_ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
             const salt: u64 = @intCast(@mod(Io.Clock.Timestamp.now(io, .real).raw.toNanoseconds(), std.math.maxInt(u63)));
-            const options: mo.cbuild.Options = .{ .name = if (wrap) "logstat-wrap" else "logstat", .wrap = wrap, .out_dir = build_dir, .salt = salt };
+            const options: mo.cbuild.Options = .{
+                .name = switch (variant) {
+                    .shipped => "logstat",
+                    .wrap => "logstat-wrap",
+                    .nocontracts => "logstat-nocontracts",
+                },
+                .wrap = variant == .wrap,
+                .contracts = variant != .nocontracts,
+                .out_dir = build_dir,
+                .salt = salt,
+            };
             switch (try mo.cbuild.build(arena, io, environ, program, &checked, options)) {
                 .built => |built| {
                     binary = built.binary;
-                    if (!wrap) {
+                    if (variant == .shipped) {
                         result.emit_ns = @min(result.emit_ns, front_ns + built.emit_ns);
                         result.cc_ns = @min(result.cc_ns, built.cc_ns);
                     }
@@ -358,7 +374,11 @@ fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envi
                 std.debug.print("logstat-4k-c: {s} ended with {any}: {s}\n", .{ binary, ran.term, ran.stderr });
                 return null;
             }
-            const best = if (wrap) &result.wrap_ns else &result.run_ns;
+            const best = switch (variant) {
+                .shipped => &result.run_ns,
+                .wrap => &result.wrap_ns,
+                .nocontracts => &result.nocontracts_ns,
+            };
             if (ns < best.*) best.* = ns;
         }
     }
@@ -668,7 +688,8 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
     } else {
         try w.interface.print("{d}\tkv-10k-get\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), kv_gets });
     }
-    // The compiled logstat: its run, its run without overflow checks, and its build whole,
+    // The compiled logstat: its run, its run without overflow checks, without contracts, and its
+    // build whole,
     // then the build's two parts.
     if (compiled) |c| {
         const us = struct {
@@ -678,11 +699,12 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         }.of;
         try w.interface.print("{d}\tlogstat-4k-c\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), log_lines, us(c.run_ns) });
         try w.interface.print("{d}\tlogstat-4k-c-wrap\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), log_lines, us(c.wrap_ns) });
+        try w.interface.print("{d}\tlogstat-4k-c-nocontracts\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), log_lines, us(c.nocontracts_ns) });
         try w.interface.print("{d}\tbuild-logstat\t1\t{d}\n", .{ @as(u64, @intCast(day)), us(c.emit_ns + c.cc_ns) });
         try w.interface.print("{d}\tbuild-logstat-emit\t1\t{d}\n", .{ @as(u64, @intCast(day)), us(c.emit_ns) });
         try w.interface.print("{d}\tbuild-logstat-cc\t1\t{d}\n", .{ @as(u64, @intCast(day)), us(c.cc_ns) });
     } else {
-        for ([_][]const u8{ "logstat-4k-c", "logstat-4k-c-wrap", "build-logstat", "build-logstat-emit", "build-logstat-cc" }) |row| {
+        for ([_][]const u8{ "logstat-4k-c", "logstat-4k-c-wrap", "logstat-4k-c-nocontracts", "build-logstat", "build-logstat-emit", "build-logstat-cc" }) |row| {
             try w.interface.print("{d}\t{s}\tn/a\tn/a\n", .{ @as(u64, @intCast(day)), row });
         }
     }

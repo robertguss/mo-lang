@@ -44,9 +44,29 @@ test "text becomes a number only when it spells one"
   assert parse_count("5000000000") is None
 end
 
+test "a NaN orders with nothing, and sorts after every number"
+  nan = 0.0 / 0.0
+  assert !(nan < 1.0)
+  assert !(nan >= 1.0)
+  assert nan != nan
+  assert [nan, 1.0].sort.first == Some(1.0)
+end
+
+test "text of 39 or 40 digits is past every width"
+  assert "999999999999999999999999999999999999999".to_u64 is None
+  assert "-9999999999999999999999999999999999999999".to_i64 is None
+end
+
+test "the widest integer squared is past an i128, and each edge row still answers"
+  most = "18446744073709551615".to_u64 or 0
+  assert most.checked_mul(most) is None
+  assert most.saturating_mul(most) == most
+  assert most.wrapping_mul(most) == 1
+end
+
 test rejects "a percent of nothing"
   percent(1, 0)
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
           proven: not run

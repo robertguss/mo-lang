@@ -9,7 +9,7 @@
 //! runtime's 16-byte MoValue (mo_rt.h). The lowering mirrors bytecode.zig construct for
 //! construct, so the binary means what the interpreter means: the same evaluation order, the
 //! same overflow traps, the same contract checks (behind the `mo_contracts` flag, on in every
-//! test binary), and the same safe points, where the region keeps what the frame's locals
+//! binary unless it was built `--no-contracts`), and the same safe points, where the region keeps what the frame's locals
 //! reach and frees the rest.
 //!
 //! Every Mo local of a C function is declared at its top, so a safe point can pass them all
@@ -34,8 +34,8 @@ const none = bytecode.none;
 pub const Options = struct {
     /// A binary that runs the given file's tests and prints what `mo test` prints, not main.
     tests: bool = false,
-    /// Contracts checked by default in the binary (`mo build --contracts`).
-    contracts: bool = false,
+    /// Contracts checked by default in the binary; false only for `mo build --no-contracts`.
+    contracts: bool = true,
 };
 
 pub const Output = union(enum) {
@@ -1430,6 +1430,7 @@ const Emitter = struct {
             "_at"
         else
             "";
+        if (head.len == 0) return e.print("mo_r_{s}", .{name.items});
         return e.print("mo_r_{s}_{s}{s}", .{ head, name.items, suffix });
     }
 
@@ -1455,7 +1456,8 @@ const Emitter = struct {
         }
         var operands: std.ArrayList([]const u8) = .empty;
         var kind: []const u8 = "MO_KIND_NONE";
-        if (!row.on_type) {
+        // A free row (min_of) has no receiver.
+        if (!row.on_type and row.recv.len > 0) {
             if (recv) |r| {
                 if (e.inPlace(i, r, row)) {
                     try operands.append(e.gpa, try e.loadPlace(r));

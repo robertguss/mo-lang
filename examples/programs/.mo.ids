@@ -15,6 +15,19 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "f59883370ef7ecf6" }
     },
     {
+      "path": "each-line.mo",
+      "module": "Programs.EachLine",
+      "declarations": [
+        { "id": "de8f2d0fbe58", "name": "module Programs.EachLine", "hash": "9b99d68f56b2ecc6" },
+        { "id": "587f7729483a", "name": "expose", "hash": "1643fa714ce2d021" },
+        { "id": "159a939fbca6", "name": "intent", "hash": "dbdc7729314aae9e" },
+        { "id": "f72419852b9d", "name": "fn quoted", "hash": "fbbf45d0afbd5e9f" },
+        { "id": "6d57752812b2", "name": "fn main", "hash": "373a180124e15e15" },
+        { "id": "a9128b5019d5", "name": "test \"a line is quoted as it is\"", "hash": "fe915f43ba0df039" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "8406f87e0e49cabb" }
+    },
+    {
       "path": "echo/main.mo",
       "module": "Echo.Main",
       "declarations": [
@@ -47,6 +60,20 @@
         { "id": "fc78e504ebb5", "name": "test \"no problems is success, and any problem is 3\"", "hash": "99c1448ab3ce26d3" }
       ],
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "530d9bffed0a7910" }
+    },
+    {
+      "path": "halves.mo",
+      "module": "Programs.Halves",
+      "declarations": [
+        { "id": "02b12a610074", "name": "module Programs.Halves", "hash": "7b472be1f3e9d07a" },
+        { "id": "52892b57aa75", "name": "expose", "hash": "5262de26d9a0dee3" },
+        { "id": "d9ee8a9b363b", "name": "intent", "hash": "f4d1240dc37a9e9f" },
+        { "id": "95e67e0bb072", "name": "fn halve", "hash": "36b1dc0acaa34fdf" },
+        { "id": "10bf8893c3aa", "name": "fn main", "hash": "3fabf89f43b078e6" },
+        { "id": "af5b8356e82c", "name": "test \"an even number halves\"", "hash": "671221a70a4e4a93" },
+        { "id": "62d5906dd1c1", "name": "test rejects \"halving an odd number\"", "hash": "631f5e6eaf71ccd5" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "efcc6d27de18da3d" }
     },
     {
       "path": "hello.mo",

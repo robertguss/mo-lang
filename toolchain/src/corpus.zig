@@ -18,8 +18,8 @@
 //! run: the first run's stdout must equal `<name>.expected`, the second's
 //! `<name>-2.expected`, and so on, and its exit code the one on the `# exit:` line after
 //! it, or 0.
-//! Every one of those files is also compiled by `mo build` (the C backend, emit_c.zig) and
-//! set beside the interpreter, which is the reference: each module's tests built with
+//! Every one of those files is also compiled by `mo build` (the C backend, emit_c.zig), with
+//! contracts on as in every build, and set beside the interpreter, which is the reference: each module's tests built with
 //! `--tests` must print what `mo test` prints and exit as it exits, and each program's binary
 //! must print the same stdout and stderr and exit with the same code as `mo run`, once per
 //! `# run:` line. A program that declares a process or calls a Net row must be refused by

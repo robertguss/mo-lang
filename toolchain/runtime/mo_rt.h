@@ -163,8 +163,9 @@ extern const uint32_t mo_nrecorded;
 /* The refund module's Charge stand-in (prelude.zig), or UINT32_MAX when no module has one. */
 extern const uint32_t mo_charge_decl;
 
-/* Contracts (requires, ensures, refinements) are checked when this is set: by
- * `mo build --contracts`, in every test binary, or by MO_CONTRACTS=1 at run time. */
+/* Contracts (requires, ensures, refinements) are checked when this is set: in every binary
+ * `mo build` makes unless it was built --no-contracts, and always in a test binary.
+ * MO_CONTRACTS=0 or 1 overrides a program's build at run time. */
 extern bool mo_contracts;
 extern const bool mo_contracts_built;
 
@@ -426,7 +427,8 @@ MO_ROW(mo_r_List_reduce); MO_ROW(mo_r_List_contains_q); MO_ROW(mo_r_List_first);
 MO_ROW(mo_r_List_get); MO_ROW(mo_r_List_slice); MO_ROW(mo_r_List_take); MO_ROW(mo_r_List_drop);
 MO_ROW(mo_r_List_concat); MO_ROW(mo_r_List_reverse); MO_ROW(mo_r_List_flat_map); MO_ROW(mo_r_List_any_q);
 MO_ROW(mo_r_List_all_q); MO_ROW(mo_r_List_find); MO_ROW(mo_r_List_count); MO_ROW(mo_r_List_sort);
-MO_ROW(mo_r_List_sort_by); MO_ROW(mo_r_List_min); MO_ROW(mo_r_List_max); MO_ROW(mo_r_List_sum);
+MO_ROW(mo_r_List_sort_by); MO_ROW(mo_r_List_sort_by_desc); MO_ROW(mo_r_List_min); MO_ROW(mo_r_List_max);
+MO_ROW(mo_r_List_sum); MO_ROW(mo_r_min_of); MO_ROW(mo_r_max_of);
 MO_ROW(mo_r_List_zip); MO_ROW(mo_r_List_enumerate); MO_ROW(mo_r_List_unique); MO_ROW(mo_r_List_group_by);
 MO_ROW(mo_r_Map_new); MO_ROW(mo_r_Map_size); MO_ROW(mo_r_Map_get); MO_ROW(mo_r_Map_has_q);
 MO_ROW(mo_r_Map_set); MO_ROW(mo_r_Map_update); MO_ROW(mo_r_Map_remove); MO_ROW(mo_r_Map_keys);
@@ -449,7 +451,7 @@ MO_ROW(mo_r_Int_ms); MO_ROW(mo_r_Int_minute); MO_ROW(mo_r_Int_days);
 MO_ROW(mo_r_Time_fixture); MO_ROW(mo_r_Time_parse); MO_ROW(mo_r_Time_from_parts); MO_ROW(mo_r_Time_to_iso8601);
 MO_ROW(mo_r_Time_since); MO_ROW(mo_r_Duration_ms); MO_ROW(mo_r_Duration_seconds); MO_ROW(mo_r_Duration_minutes);
 MO_ROW(mo_r_Clock_now); MO_ROW(mo_r_Clock_fixture);
-MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
+MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_each_line); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
 MO_ROW(mo_r_Fs_scoped); MO_ROW(mo_r_Fs_read_only); MO_ROW(mo_r_Fs_write); MO_ROW(mo_r_Fs_append);
 MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
 MO_ROW(mo_r_Events_emit); MO_ROW(mo_r_Events_fixture); MO_ROW(mo_r_Ledger_fixture);

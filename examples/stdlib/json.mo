@@ -54,7 +54,8 @@ test "decoded text is a Json value to take apart, and encodes back as it was"
   assert field_text(json, "ms") is None
   assert Json.encode(json) == text
   assert Json.decode(" [1, 2e2, -0.5] ") == Ok(Array(items: [Number(value: 1.0),
-    Number(value: 200.0), Number(value: 0.0 - 0.5)]))
+    Number(value: 200.0),
+    Number(value: 0.0 - 0.5)]))
   assert Json.decode("\"caf\\u00e9\"") == Ok(String(text: "café"))
 end
 

@@ -217,3 +217,6 @@
 
 ## [2026-09-13] session | Morning: step 13 (C backend) accepted, merged; step 14 started
 - Fable verified: suite green, native logstat matches expected text and JSON, 200k lines 0.14 s / 37 MB, crash parity (same report, exit 70). Contracts-off default overturned on acceptance. Seven decision rows. Merged to main. Step 14 (follow-ups) to a fresh session. Roadmap rows updated.
+
+## [2026-09-13] session | Late morning: step 14 accepted, merged; step 15 started
+- Fable verified: suite green, a failing ensures reported by a native test binary, four stdlib rows present, build in usage. Two decision rows. Merged to main. Step 15 (processes and Net in C) to a fresh session.

@@ -100,10 +100,11 @@ end
 
 fn example_summary() : Summary
   slowest = [Record(at: Time.from_parts(2026, 9, 12, 10, 0, 21), method: "POST",
-    path: "/api/orders", status: 503, ms: 1_204), Record(at: Time.from_parts(2026, 9, 12, 10, 0, 2),
-    method: "GET", path: "/api/users", status: 200, ms: 340)]
-  busiest = [Count(count: 611, method: "GET", path: "/api/users"), Count(count: 2, method: "GET",
-    path: "/api/cards/****************/charge")]
+    path: "/api/orders", status: 503, ms: 1_204),
+    Record(at: Time.from_parts(2026, 9, 12, 10, 0, 2), method: "GET", path: "/api/users",
+    status: 200, ms: 340)]
+  busiest = [Count(count: 611, method: "GET", path: "/api/users"),
+    Count(count: 2, method: "GET", path: "/api/cards/****************/charge")]
   Summary(requests: 1_204, errors: 37, successes: 1_167, malformed: 2, error_rate: 0.031,
     per_minute: 40.1, slowest: slowest, busiest: busiest)
 end

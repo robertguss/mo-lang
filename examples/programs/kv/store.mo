@@ -269,10 +269,13 @@ fn counted_nothing() : Counts
 end
 
 fn script() : List(Request)
-  first = [Set(key: "a", value: "1"), Incr(key: "a", by: 41), Get(key: "a"), Set(key: "w",
-    value: "word")]
-  second = [Incr(key: "w", by: 1), Set(key: "big", value: "9223372036854775807"), Incr(key: "big",
-    by: 1)]
+  first = [Set(key: "a", value: "1"),
+    Incr(key: "a", by: 41),
+    Get(key: "a"),
+    Set(key: "w", value: "word")]
+  second = [Incr(key: "w", by: 1),
+    Set(key: "big", value: "9223372036854775807"),
+    Incr(key: "big", by: 1)]
   third = [Get(key: "big"), Del(key: "a"), Get(key: "a"), Del(key: "a"), Incr(key: "new", by: -3)]
   fourth = [Keys(prefix: ""), Set(key: "b", value: "two words"), Keys(prefix: "b"), Get(key: "w")]
   first.concat(second).concat(third).concat(fourth)
@@ -289,8 +292,8 @@ test "GET, SET, DEL, KEYS, and QUIT come to the answers the protocol names"
   assert decide(table, none, Get(key: "zz")) == Answer(response: Absent)
   set = decide(table, none, Set(key: "c", value: "3"))
   assert set == Write(change: Change(key: "c", value: Some("3"), response: Done))
-  assert decide(table, none, Del(key: "a")) == Write(change: Change(key: "a", value: None,
-    response: Done))
+  assert decide(table, none,
+    Del(key: "a")) == Write(change: Change(key: "a", value: None, response: Done))
   assert decide(table, none, Del(key: "zz")) == Answer(response: Absent)
   assert decide(table, none, Keys(prefix: "")) == Answer(response: Listed(keys: ["a", "b"]))
   assert decide(table, none, Quit) == Answer(response: Bye)
@@ -310,14 +313,14 @@ test "INCR adds to a decimal value, starts a missing key at 0, and refuses a wor
   assert incremented(Some(""), 1) is Error(NotANumber)
   assert incremented(Some("9223372036854775807"), 1) is Error(Overflow)
   table = put(empty(), "n", "9223372036854775807")
-  assert decide(table, counted_nothing(), Incr(key: "n",
-    by: 1)) == Answer(response: Failed(reason: Overflow))
+  assert decide(table, counted_nothing(),
+    Incr(key: "n", by: 1)) == Answer(response: Failed(reason: Overflow))
 end
 
 test "a new key is refused when the table holds a million, and an existing key is not"
   full = Table(buckets: put(empty(), "a", "1").buckets, size: 1_000_000)
-  assert decide(full, counted_nothing(), Set(key: "b",
-    value: "2")) == Answer(response: Failed(reason: Full))
+  assert decide(full, counted_nothing(),
+    Set(key: "b", value: "2")) == Answer(response: Failed(reason: Full))
   assert decide(full, counted_nothing(), Set(key: "a", value: "2")) is Write(_)
 end
 
@@ -329,8 +332,8 @@ end
 
 test "a store whose journal never answers in time answers each change ERR io, and changes nothing"
   never_in_time = 0.ms - 1.ms
-  store = Store.start(Journal.start(Fs.fixture(), "kv.log", 0), Clock.fixture(), opened(empty(),
-    Time.fixture(), never_in_time))
+  store = Store.start(Journal.start(Fs.fixture(), "kv.log", 0), Clock.fixture(),
+    opened(empty(), Time.fixture(), never_in_time))
   assert faithful?(store, script())
   set = store.ask(Serve(request: Set(key: "a", value: "1")), within: 60_000.ms)
   got = store.ask(Serve(request: Get(key: "a")), within: 60_000.ms)
@@ -343,16 +346,16 @@ end
 # the log, so the two stores still agree.
 test "a store started again from its log reads what the first one wrote"
   dir = Fs.fixture()
-  first = Store.start(Journal.start(dir, "kv.log", 0), Clock.fixture(), opened(empty(),
-    Time.fixture(), 60_000.ms))
+  first = Store.start(Journal.start(dir, "kv.log", 0), Clock.fixture(),
+    opened(empty(), Time.fixture(), 60_000.ms))
   assert faithful?(first, script())
   counted = first.ask(Serve(request: Stats), within: 60_000.ms)
   text = dir.read("kv.log", within: 60_000.ms)
   if counted is Ok(Counted(counts))
     if text is Ok(log)
       assert reopen(Logged(text: log, keys: counts.keys)) is Ok(reopened)
-      second = Store.start(Journal.start(dir, "kv.log", 0), Clock.fixture(), opened(reopened.table,
-        Time.fixture(), 60_000.ms))
+      second = Store.start(Journal.start(dir, "kv.log", 0), Clock.fixture(),
+        opened(reopened.table, Time.fixture(), 60_000.ms))
       for request in [Get(key: "a"), Get(key: "big"), Get(key: "new"), Keys(prefix: "")]
         one = first.ask(Serve(request: request), within: 60_000.ms)
         two = second.ask(Serve(request: request), within: 60_000.ms)

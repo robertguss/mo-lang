@@ -223,13 +223,23 @@ const Snap = struct {
     want_blank: bool,
     line_start: usize,
     code_start: usize,
-    line_parens: u32,
+    line_brackets: u32,
     pending: u32,
     breaks: usize,
+    marks: usize,
     flats: usize,
     flat_depth: u32,
     log: usize,
 };
+
+/// A bracket written on the current line, at its offset in the output.
+const Mark = struct { at: usize, open: bool, list: bool };
+
+/// A comma a line may break after (L5): the offset of the space after it in the line's code,
+/// how many brackets are open around it, and the innermost one's offset and kind.
+const Cut = struct { at: usize, depth: u32, group: usize, list: bool };
+
+const Plan = struct { at: []const usize, fits: bool };
 
 const Printer = struct {
     gpa: std.mem.Allocator,
@@ -247,12 +257,14 @@ const Printer = struct {
     want_blank: bool = false,
     line_start: usize = 0,
     code_start: usize = 0,
-    /// `(` opened on this line and not yet closed.
-    line_parens: u32 = 0,
+    /// `(` and `[` opened on this line and not yet closed.
+    line_brackets: u32 = 0,
     /// 1 + a comment to print at the end of this line, or 0.
     pending: u32 = 0,
     /// Offsets of the space after each comma this line may break at (L5).
     breaks: std.ArrayList(usize) = .empty,
+    /// Every bracket written on this line, in order, so a break knows how deep it sits.
+    marks: std.ArrayList(Mark) = .empty,
     /// One-line forms on this line, outermost first.
     flats: std.ArrayList(Index) = .empty,
     flat_depth: u32 = 0,
@@ -290,9 +302,10 @@ const Printer = struct {
             .want_blank = p.want_blank,
             .line_start = p.line_start,
             .code_start = p.code_start,
-            .line_parens = p.line_parens,
+            .line_brackets = p.line_brackets,
             .pending = p.pending,
             .breaks = p.breaks.items.len,
+            .marks = p.marks.items.len,
             .flats = p.flats.items.len,
             .flat_depth = p.flat_depth,
             .log = p.log.items.len,
@@ -307,11 +320,12 @@ const Printer = struct {
         p.want_blank = s.want_blank;
         p.line_start = s.line_start;
         p.code_start = s.code_start;
-        p.line_parens = s.line_parens;
+        p.line_brackets = s.line_brackets;
         p.pending = s.pending;
         // A snapshot taken mid-line saw these lists grow only; one taken at the start
         // of a line sees them cleared before they are read again.
         p.breaks.shrinkRetainingCapacity(@min(s.breaks, p.breaks.items.len));
+        p.marks.shrinkRetainingCapacity(@min(s.marks, p.marks.items.len));
         p.flats.shrinkRetainingCapacity(@min(s.flats, p.flats.items.len));
         p.flat_depth = s.flat_depth;
         for (p.log.items[s.log..]) |k| p.emitted[k] = false;
@@ -341,8 +355,9 @@ const Printer = struct {
         try p.out.appendNTimes(p.gpa, ' ', p.indent * 2);
         p.code_start = p.out.items.len;
         p.bol = false;
-        p.line_parens = 0;
+        p.line_brackets = 0;
         p.breaks.clearRetainingCapacity();
+        p.marks.clearRetainingCapacity();
         p.flats.clearRetainingCapacity();
     }
 
@@ -367,12 +382,20 @@ const Printer = struct {
         try p.startLine();
         const code = p.out.items[p.code_start..];
         if (p.indent * 2 + cols(code) > limit) {
-            if (p.flats.items.len > 0) {
+            const plan = try p.planBreaks();
+            // A one-line arm (C1) moves its body below before its line breaks. A one-line
+            // anonymous function (S8) stays one line when breaking around it makes every
+            // piece fit, and takes its block form when that is not enough.
+            var keep = plan.fits;
+            for (p.flats.items) |f| {
+                if (p.node(f).kind != .anon_fn) keep = false;
+            }
+            if (p.flats.items.len > 0 and !keep) {
                 p.forced[p.flats.items[0]] = true;
                 p.refit_at = p.line_start;
                 return error.Refit;
             }
-            if (p.breaks.items.len > 0) try p.breakLine();
+            if (plan.at.len > 0) try p.applyBreaks(plan.at);
         }
         if (p.pending != 0) {
             try p.out.appendSlice(p.gpa, "  ");
@@ -383,32 +406,98 @@ const Printer = struct {
         p.bol = true;
     }
 
-    /// L5: break after the latest comma that keeps each piece within the limit.
-    fn breakLine(p: *Printer) E!void {
+    /// L5: the commas a line over the limit breaks after, and whether every piece then fits.
+    fn planBreaks(p: *Printer) E!Plan {
+        const base = p.code_start;
+        const code = p.out.items[base..];
+        // Each comma's depth and innermost bracket, from the brackets written before it; a
+        // bracket that closes one opened on a line above closes nothing here.
+        var cuts: std.ArrayList(Cut) = .empty;
+        var open: std.ArrayList(Mark) = .empty;
+        var m: usize = 0;
+        for (p.breaks.items) |abs| {
+            while (m < p.marks.items.len and p.marks.items[m].at < abs) : (m += 1) {
+                const mark = p.marks.items[m];
+                if (mark.open) try open.append(p.gpa, mark) else _ = open.pop();
+            }
+            const inner = open.getLastOrNull() orelse continue;
+            try cuts.append(p.gpa, .{ .at = abs - base, .depth = @intCast(open.items.len), .group = inner.at, .list = inner.list });
+        }
+        var at: std.ArrayList(usize) = .empty;
+        const fits = try p.cutPiece(code, cuts.items, 0, code.len, p.indent * 2, &at);
+        std.mem.sort(usize, at.items, {}, std.sort.asc(usize));
+        return .{ .at = at.items, .fits = fits };
+    }
+
+    /// Breaks `code[from..to]`, which starts `width` columns in, after its outermost commas,
+    /// each piece as late as still fits, so a nested call is split only when breaking outside
+    /// it is not enough. A list broken after any comma is broken after all of them, one
+    /// element per line. A piece that still does not fit breaks one level in. True when every
+    /// piece fits.
+    fn cutPiece(p: *Printer, code: []const u8, cuts: []const Cut, from: usize, to: usize, width: usize, at: *std.ArrayList(usize)) E!bool {
+        if (width + cols(code[from..to]) <= limit) return true;
+        var depth: u32 = std.math.maxInt(u32);
+        for (cuts) |c| {
+            if (c.at > from and c.at < to) depth = @min(depth, c.depth);
+        }
+        if (depth == std.math.maxInt(u32)) return false;
+        const cont = (p.indent + 1) * 2;
+        // The lists broken one element per line, by their `[`.
+        var lists: std.ArrayList(usize) = .empty;
+        var picks: std.ArrayList(usize) = .empty;
+        while (true) {
+            picks.clearRetainingCapacity();
+            var seg = from;
+            var w = width;
+            while (true) {
+                const rest_fits = w + cols(code[seg..to]) <= limit;
+                var pick: ?usize = null;
+                for (cuts, 0..) |c, k| {
+                    if (c.depth != depth or c.at <= seg or c.at >= to) continue;
+                    const every = c.list and std.mem.indexOfScalar(usize, lists.items, c.group) != null;
+                    if (rest_fits and !every) continue;
+                    const fits = w + cols(code[seg..c.at]) <= limit;
+                    if (fits or pick == null) pick = k;
+                    if (!fits or every) break;
+                }
+                const k = pick orelse break;
+                try picks.append(p.gpa, k);
+                seg = cuts[k].at + 1;
+                w = cont;
+            }
+            var grew = false;
+            for (picks.items) |k| {
+                if (cuts[k].list and std.mem.indexOfScalar(usize, lists.items, cuts[k].group) == null) {
+                    try lists.append(p.gpa, cuts[k].group);
+                    grew = true;
+                }
+            }
+            if (!grew) break;
+        }
+        var fits = true;
+        var seg = from;
+        var w = width;
+        for (picks.items) |k| {
+            try at.append(p.gpa, cuts[k].at);
+            if (!try p.cutPiece(code, cuts, seg, cuts[k].at, w, at)) fits = false;
+            seg = cuts[k].at + 1;
+            w = cont;
+        }
+        if (!try p.cutPiece(code, cuts, seg, to, w, at)) fits = false;
+        return fits;
+    }
+
+    /// The line again, broken after each comma in `at`, each continuation one level deeper.
+    fn applyBreaks(p: *Printer, at: []const usize) E!void {
         const base = p.code_start;
         const code = try p.gpa.dupe(u8, p.out.items[base..]);
         p.out.shrinkRetainingCapacity(base);
-        const cont = (p.indent + 1) * 2;
         var seg: usize = 0;
-        var width: usize = p.indent * 2;
-        var next: usize = 0;
-        while (width + cols(code[seg..]) > limit) {
-            var pick: ?usize = null;
-            for (p.breaks.items[next..], next..) |abs, k| {
-                const b = abs - base;
-                if (b <= seg) continue;
-                const fits = width + cols(code[seg..b]) <= limit;
-                if (fits or pick == null) pick = k;
-                if (!fits) break;
-            }
-            const k = pick orelse break;
-            const b = p.breaks.items[k] - base;
+        for (at) |b| {
             try p.out.appendSlice(p.gpa, code[seg..b]);
             try p.out.append(p.gpa, '\n');
-            try p.out.appendNTimes(p.gpa, ' ', cont);
-            width = cont;
+            try p.out.appendNTimes(p.gpa, ' ', (p.indent + 1) * 2);
             seg = b + 1;
-            next = k + 1;
         }
         try p.out.appendSlice(p.gpa, code[seg..]);
     }
@@ -450,8 +539,14 @@ const Printer = struct {
         try p.leading(i);
         try p.text(p.tree.tokenText(i));
         switch (p.tree.tokens[i].kind) {
-            .l_paren => p.line_parens += 1,
-            .r_paren => p.line_parens -|= 1,
+            .l_paren, .l_bracket => |kind| {
+                try p.marks.append(p.gpa, .{ .at = p.out.items.len - 1, .open = true, .list = kind == .l_bracket });
+                p.line_brackets += 1;
+            },
+            .r_paren, .r_bracket => {
+                try p.marks.append(p.gpa, .{ .at = p.out.items.len - 1, .open = false, .list = false });
+                p.line_brackets -|= 1;
+            },
             else => {},
         }
         p.cur = i + 1;
@@ -502,7 +597,8 @@ const Printer = struct {
 
     fn comma(p: *Printer) E!void {
         _ = try p.tk(.comma);
-        if (p.line_parens > 0) try p.breaks.append(p.gpa, p.out.items.len);
+        // A one-line anonymous function is never broken inside (S8).
+        if (p.line_brackets > 0 and p.flat_depth == 0) try p.breaks.append(p.gpa, p.out.items.len);
         try p.sp();
     }
 
@@ -1757,6 +1853,63 @@ test "a long line breaks after the latest comma that fits" {
         \\fn f(aaaaaaaaaaaaaaaaaaaa: UInt32, bbbbbbbbbbbbbbbbbbbbbbbb: UInt32,
         \\  cccccccccccccccccccccccc: UInt32, dddd: UInt32) : UInt32
         \\  aaaaaaaaaaaaaaaaaaaa
+        \\end
+        \\
+    );
+}
+
+test "round 2: a long list breaks after its commas, one element per line when it does not fit" {
+    try expectFormat(
+        \\module M
+        \\fn f(once: Tally, since: Option(Time)) : Tally
+        \\  twice = add_lines(once, ["2026-09-12T10:00:02Z GET /a 200 3", "2026-09-12T10:00:09Z GET /a 503 2"], since)
+        \\  lines = ["2026-09-12T10:00:01Z GET /a 500 1", "2026-09-12T10:00:02Z GET /a 200 3", "2026-09-12T10:00:09Z GET /a 503 2"]
+        \\  add_lines(twice, lines, since)
+        \\end
+    ,
+        \\module M
+        \\
+        \\fn f(once: Tally, since: Option(Time)) : Tally
+        \\  twice = add_lines(once,
+        \\    ["2026-09-12T10:00:02Z GET /a 200 3", "2026-09-12T10:00:09Z GET /a 503 2"], since)
+        \\  lines = ["2026-09-12T10:00:01Z GET /a 500 1",
+        \\    "2026-09-12T10:00:02Z GET /a 200 3",
+        \\    "2026-09-12T10:00:09Z GET /a 503 2"]
+        \\  add_lines(twice, lines, since)
+        \\end
+        \\
+    );
+}
+
+test "round 2: a one-line anonymous function inside a long call stays one line, and the call breaks around it" {
+    try expectFormat(
+        \\module M
+        \\fn f(records: List(Record), since: Option(Time), top_limit_value: UInt64) : Tally
+        \\  records.reduce(empty_tally(), fn(tally, record) add_record(tally, record, since, top_limit_value) end)
+        \\end
+    ,
+        \\module M
+        \\
+        \\fn f(records: List(Record), since: Option(Time), top_limit_value: UInt64) : Tally
+        \\  records.reduce(empty_tally(),
+        \\    fn(tally, record) add_record(tally, record, since, top_limit_value) end)
+        \\end
+        \\
+    );
+}
+
+test "round 2: a nested call is never split across lines by itself" {
+    try expectFormat(
+        \\module M
+        \\fn f(tally: Tally, share: Float64, top: UInt64) : Summary
+        \\  Summary(requests: tally.requests, errors: tally.errors, rate: share, busiest: busiest(tally.hits, top))
+        \\end
+    ,
+        \\module M
+        \\
+        \\fn f(tally: Tally, share: Float64, top: UInt64) : Summary
+        \\  Summary(requests: tally.requests, errors: tally.errors, rate: share,
+        \\    busiest: busiest(tally.hits, top))
         \\end
         \\
     );

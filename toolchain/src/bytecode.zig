@@ -1703,7 +1703,8 @@ const Lower = struct {
             return;
         }
         var kind: u32 = none;
-        if (!row.on_type) {
+        // A free row (min_of) has no receiver.
+        if (!row.on_type and row.recv.len > 0) {
             if (recv) |r| {
                 if (l.inPlace(i, r, row)) {
                     try l.loadPlace(r);

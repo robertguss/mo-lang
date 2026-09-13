@@ -6,7 +6,7 @@ The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolc
 zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
                                                 mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
-                                                mo build <file.mo> [-o name] [--contracts] [--tests] [--target triple]
+                                                mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple]
                                                                                  C via zig cc: zig-out/mo-build/<name>/<name>
                                                 mo fmt [--check | --stdout] <file.mo>
                                                 mo fix [--dry-run] <file.mo>     every fix of confidence 100
@@ -16,6 +16,18 @@ zig build bench        → zig-out/bin/mo-bench   times every stage over ../exam
 zig build errors       → ../mo-wiki/spec/errors.md, the error catalog, rendered from the diagnostic tables
 bench/rebuild.sh       → the toolchain's own incremental build time
 ```
+
+## mo build
+
+`mo build file.mo` checks the program (tier 1; `MO0408` without a `main` unless `--tests`), emits its C (`src/emit_c.zig`), and compiles it with the runtime (`runtime/mo_rt.c`, embedded in `mo`) by `zig cc -std=c11 -Wall -Werror -O2` into one binary that runs `main` on Mo.Server. The C, the runtime, and the binary go to `zig-out/mo-build/<name>/` under the working directory, and the binary's path is printed. The name is the file's, or its folder's for a `main.mo`; `-o` gives another.
+
+- **Contracts run in every build** (chapter 3): `requires`, `ensures`, and refinements are checked in the binary, as `mo run` checks them. `--no-contracts` turns them off for a measurement and says so on stderr; `MO_CONTRACTS=0` or `1` overrides a build at run time. A test binary always checks them.
+- **Overflow traps and asserts** are on in every binary; there is no flag.
+- `--tests` builds a binary that runs the file's tests and prints what `mo test` prints.
+- `--target <zig triple>` cross-compiles. A Linux target links statically against musl; a macOS binary links only libSystem, which Apple ships no static form of.
+- `zig` is found next to the running `mo`, else on PATH; it is the only dependency.
+- A program that declares a process or calls a `Net` row is refused with a sentence and exit 1: processes and the network run on the interpreter only (step 15 brings them).
+- The interpreter is the reference. `zig build test` builds every corpus module with `--tests` and every program, and each must print and exit exactly as `mo test` and `mo run` do. `bench/results.tsv` records the compiled logstat (`logstat-4k-c`) beside the interpreter (`logstat-4k`), without overflow checks (`-wrap`), and without contracts (`-nocontracts`).
 
 ## Layout
 

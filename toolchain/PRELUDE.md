@@ -112,7 +112,9 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `List(T)` | `count` | `fn(T) Bool` | `UInt64` | | | stdlib (09) |
 | `List(T)`, `T` ordered | `sort` | | `List(T)` | | | stdlib (09) |
 | `List(T)` | `sort_by` | `fn(T) K`, `K` ordered | `List(T)` | | | stdlib (09) |
+| `List(T)` | `sort_by_desc` | `fn(T) K`, `K` ordered | `List(T)` | | | stdlib (09) |
 | `List(T)`, `T` ordered | `min`, `max` | | `Option(T)` | | | stdlib (09) |
+| none | `min_of`, `max_of` | `T`, `T`, `T` ordered | `T` | | | stdlib (09) |
 | `List(T)`, `T` an integer | `sum` | | `T` | | | stdlib (09) |
 | `List(T)` | `zip` | `List(U)` | `List((T, U))` | | | stdlib (09) |
 | `List(T)` | `enumerate` | | `List((UInt64, T))` | | | stdlib (09) |
@@ -170,10 +172,11 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Clock` (on type) | `fixture` | | `Clock` | | tests | grammar |
 | `Fs` | `read` | `String` | `Result(String, FsError)` | yes | | grammar |
 | `Fs` | `read_lines` | `String` | `Result(List(String), FsError)` | yes | | stdlib (09) |
+| `Fs` | `each_line` | `String`, `fn(String) none` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
-| `Fs` | `read_only` | | `Fs` | | | grammar |
+| `Fs` | `read_only` | | `Fs`, read-only: its own type, going wherever an `Fs` goes, refused by the checker where a write reaches it (`MO0404`) | | | grammar |
 | `Fs` | `write` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `append` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `remove` | `String` | `Result(none, FsError)` | yes | | stdlib (09) |
