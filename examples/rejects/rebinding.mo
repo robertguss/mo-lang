@@ -2,7 +2,7 @@ module Rejects.Rebinding
 expose total
 
 intent "A name bound with = is bound once; binding it again in the same scope does not compile."
-# expect error: base is bound twice in one scope; make it var base, or pick a new name.
+# expect MO0306: base is bound twice in one scope; make it var base, or pick a new name.
 
 fn total(price: UInt32, tax: UInt32) : UInt32
   base = price

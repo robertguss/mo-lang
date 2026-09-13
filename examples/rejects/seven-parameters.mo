@@ -2,7 +2,7 @@ module Rejects.SevenParameters
 expose label
 
 intent "A function takes at most six parameters; a seventh does not compile, and a struct is the fix."
-# expect error: label takes 7 parameters and the limit is 6; group them in a struct.
+# expect MO0303: label takes 7 parameters and the limit is 6; group them in a struct.
 
 fn label(
   name: String, street: String, city: String, region: String,

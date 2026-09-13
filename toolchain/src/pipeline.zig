@@ -15,7 +15,7 @@ pub const stages = [_]Stage{ .lex, .parse, .check, .lower, .run };
 
 /// The last stage that handles the whole corpus. The corpus test fails if any file
 /// gets `NotImplemented` from a stage up to this one.
-pub const implemented: Stage = .parse;
+pub const implemented: Stage = .check;
 
 pub const Error = error{ NotImplemented, OutOfMemory, Crash, Rejected };
 

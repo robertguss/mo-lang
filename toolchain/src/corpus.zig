@@ -1,5 +1,6 @@
 //! The corpus test: every `examples/**/*.mo` must pass every implemented stage,
-//! except `examples/rejects/`, which must be rejected with a diagnostic. Until a
+//! except `examples/rejects/`, whose first diagnostic must carry the code on the
+//! file's `# expect MO0xxx: sentence` line. Until a
 //! stage exists it returns NotImplemented and the file counts as skipped, so this
 //! test is green on day one and tightens as stages land.
 const std = @import("std");
@@ -33,6 +34,27 @@ pub fn collect(gpa: std.mem.Allocator, io: Io, root: []const u8) ![][]const u8 {
     return paths.toOwnedSlice(gpa);
 }
 
+/// The code on a rejects file's `# expect MO0xxx: sentence` line.
+pub fn expectedCode(source: []const u8) ?[]const u8 {
+    const marker = "# expect ";
+    var from: usize = 0;
+    while (std.mem.indexOfPos(u8, source, from, marker)) |at| {
+        from = at + 1;
+        if (at > 0 and source[at - 1] != '\n') continue;
+        const rest = source[at + marker.len ..];
+        const colon = std.mem.indexOfScalar(u8, rest, ':') orelse return null;
+        const code = rest[0..colon];
+        return if (code.len == 6 and std.mem.startsWith(u8, code, "MO")) code else null;
+    }
+    return null;
+}
+
+test "a rejects file names the code its first diagnostic carries" {
+    try std.testing.expectEqualStrings("MO0306", expectedCode("module A\n# expect MO0306: base is bound twice.\n").?);
+    try std.testing.expect(expectedCode("module A\n# expect error: something\n") == null);
+    try std.testing.expect(expectedCode("x = 1 # expect MO0306: not at a line start\n") == null);
+}
+
 pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8, stage: pipeline.Stage, tally: *Tally) !void {
     var dir = try Io.Dir.cwd().openDir(io, root, .{});
     defer dir.close(io);
@@ -51,12 +73,18 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
         } else tally.passed += 1;
     } else |err| switch (err) {
         error.NotImplemented => tally.skipped += 1,
-        error.Rejected => if (expect_reject and diags.items[0].category != .syntax) {
-            tally.rejected_as_expected += 1;
-        } else {
-            tally.failed += 1;
+        error.Rejected => {
             const d = diags.items[0];
-            std.debug.print("corpus: {s} at byte {d}: {s} {s}\n", .{ rel, d.at, d.code, d.what });
+            const want = expectedCode(source);
+            if (expect_reject and d.category != .syntax and want != null and std.mem.eql(u8, d.code, want.?)) {
+                tally.rejected_as_expected += 1;
+            } else if (expect_reject) {
+                tally.failed += 1;
+                std.debug.print("corpus: {s} expects {s}, but its first diagnostic is {s} {s}\n", .{ rel, want orelse "an `# expect MO0xxx:` line", d.code, d.what });
+            } else {
+                tally.failed += 1;
+                std.debug.print("corpus: {s} at byte {d}: {s} {s}\n", .{ rel, d.at, d.code, d.what });
+            }
         },
         else => {
             tally.failed += 1;

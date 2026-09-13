@@ -5,7 +5,7 @@ The Mo program corpus: 50 tiny modules. Together they cover every construct in `
 Two rules a reader needs:
 
 - **File path equals module path.** `module Basics.Bindings` lives at `basics/bindings.mo`. A multi-word segment is hyphenated: `Basics.AnonymousFunctions` lives at `basics/anonymous-functions.mo`.
-- **Everything in `rejects/` must fail to compile.** Each file there breaks exactly one law, named on its `# expect error:` line.
+- **Everything in `rejects/` must fail to compile.** Each file there breaks exactly one law, named on its `# expect MO0xxx: sentence` line: the code the checker's first diagnostic must carry, and the sentence it prints.
 
 Where the grammar and chapter 4 ran out, the corpus used the plainest option and recorded it in `GAPS.md`.
 
