@@ -220,6 +220,7 @@ pub const fns = [_]Fn{
     // Strings
     .{ .recv = "String", .name = "size", .ret = "UInt64" },
     .{ .recv = "String", .name = "bytes", .ret = "List(UInt8)" },
+    .{ .recv = "String", .name = "byte_size", .ret = "UInt64", .origin = .stdlib },
     .{ .recv = "String", .name = "starts_with?", .params = &.{"String"}, .ret = "Bool" },
     .{ .recv = "String", .on_type = true, .name = "from_bytes", .params = &.{"List(UInt8)"}, .ret = "Option(String)", .origin = .stdlib },
     .{ .recv = "String", .name = "chars", .ret = "List(String)", .origin = .stdlib },
@@ -287,6 +288,10 @@ pub const fns = [_]Fn{
     .{ .recv = "Fs", .name = "list", .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "scoped", .params = &.{"String"}, .ret = "Fs" },
     .{ .recv = "Fs", .name = "read_only", .ret = "Fs" },
+    .{ .recv = "Fs", .name = "write", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "append", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "remove", .params = &.{"String"}, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "rename", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .ret = "Fs", .only = .tests },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .named = &.{.{ .name = "delay", .type = "Duration" }}, .ret = "Fs", .only = .tests },
     .{ .recv = "Events", .name = "emit", .params = &.{"T"}, .ret = "none" },
@@ -307,6 +312,9 @@ pub const fns = [_]Fn{
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
     .{ .recv = "Out", .name = "write_line", .params = &.{"String"}, .ret = "none", .origin = .stdlib },
+    .{ .recv = "Out", .name = "flush", .ret = "none", .origin = .stdlib },
+    .{ .recv = "Out", .on_type = true, .name = "fixture", .ret = "Out", .only = .tests, .origin = .stdlib },
+    .{ .recv = "Out", .name = "written", .ret = "List(String)", .only = .tests, .origin = .stdlib },
     // TCP (step 11): every call that can wait takes within:; a Listener and a Conn are
     // capabilities, passed down like any other.
     .{ .recv = "Net", .name = "listen", .params = &.{"UInt16"}, .ret = "Result(Listener, NetError)", .can_wait = true, .origin = .stdlib },

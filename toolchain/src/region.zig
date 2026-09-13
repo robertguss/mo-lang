@@ -1,6 +1,7 @@
 //! A region: one reservation of address space, allocated by bumping `top`. `mo run` gives
 //! the vm two (vm.zig): values live in one, and a compaction carries what it keeps
-//! through the other. A mark is an address, so "allocated since the mark" is a
+//! through the other. Under processes each process's vm has a values region of its own,
+//! and every vm shares the one scratch region (turns.zig). A mark is an address, so "allocated since the mark" is a
 //! comparison, and setting `top` back to a mark frees everything past it at once. Pages
 //! are committed as they are touched, and nothing is freed one allocation at a time.
 const std = @import("std");
@@ -12,7 +13,12 @@ pub const Region = struct {
 
     /// As much address space as the system gives, from 64 GiB down to 256 MiB.
     pub fn reserve() error{OutOfMemory}!Region {
-        var size: usize = 64 << 30;
+        return reserveUpTo(64 << 30);
+    }
+
+    /// As much address space as the system gives, from `most` down to 256 MiB.
+    pub fn reserveUpTo(most: usize) error{OutOfMemory}!Region {
+        var size: usize = most;
         while (size >= 256 << 20) : (size /= 2) {
             const mem = std.posix.mmap(null, size, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true }, -1, 0) catch continue;
             const base = @intFromPtr(mem.ptr);

@@ -496,8 +496,11 @@ const Parser = struct {
         _ = try p.expect(.kw_fn);
         const name = try p.expect(.ident);
         const params = try p.parseParams();
-        _ = try p.expect(.colon);
-        const ret = try p.parseType();
+        const ret = if (p.eat(.colon)) |_| try p.parseType() else switch (p.peek()) {
+            // A function that returns nothing names no type, as main does (grammar §2).
+            .newline, .eof, .kw_where => ast.none,
+            else => return p.fail("MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off", why_token),
+        };
         const bounds = try p.parseBounds();
         return .{ .name = name, .params = params, .ret = ret, .bounds = bounds };
     }
@@ -677,6 +680,10 @@ const Parser = struct {
 
     fn parseReturn(p: *Parser) Error!Index {
         const kw = try p.expect(.kw_return);
+        switch (p.peek()) {
+            .newline, .eof, .kw_if => return p.fail("MO0102", "`return` takes a value; a function that returns nothing ends its body instead", why_expr),
+            else => {},
+        }
         const e = try p.parseExpr();
         const cond: Index = if (p.eat(.kw_if)) |_| try p.parseExpr() else ast.none;
         try p.endLine();
@@ -1104,6 +1111,12 @@ const Parser = struct {
             .underscore => return p.addNode(.{ .kind = .pat_wildcard, .main_token = p.next() }),
             .ident => return p.addNode(.{ .kind = .pat_bind, .main_token = p.next() }),
             .int, .float, .string, .kw_true, .kw_false => return p.addNode(.{ .kind = .pat_literal, .main_token = p.next() }),
+            // A negative number: the literal's node keeps its `-` token as lhs.
+            .minus => {
+                const minus = p.next();
+                if (p.peek() != .int and p.peek() != .float) return p.fail("MO0104", "expected a number after `-` in a pattern", why_pattern);
+                return p.addNode(.{ .kind = .pat_literal, .main_token = p.next(), .lhs = minus });
+            },
             .type_name => {
                 const name = p.next();
                 if (p.peek() != .l_paren) return p.addNode(.{ .kind = .pat_variant, .main_token = name });
@@ -1445,6 +1458,28 @@ test "a parse error is a record with the offset and what was expected" {
     try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
     try std.testing.expectEqualStrings("expected `end`", diags.items[0].what);
     try std.testing.expectEqual(@as(u32, 29), diags.items[0].at);
+}
+
+test "a function that returns nothing leaves its return type off; a type without `:`, or a bare return, says so" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const tree = try parseSource(arena, "module M\nfn close(conn: Conn)\n  conn.close\nend\n", &diags);
+    const f = tree.nodes[tree.span(tree.nodes[0].lhs, tree.nodes[0].rhs)[1]];
+    try std.testing.expectEqual(ast.none, tree.extraData(ast.Signature, f.lhs).ret);
+
+    const wrong = [_]struct { []const u8, []const u8, []const u8 }{
+        .{ "module M\nfn f(n: UInt8) UInt8\n  n\nend\n", "MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off" },
+        .{ "module M\nfn f(n: UInt8)\n  return\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
+        .{ "module M\nfn f(n: UInt8) : UInt8\n  return if n > 1\n  n\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
+    };
+    for (wrong) |w| {
+        diags.clearRetainingCapacity();
+        try std.testing.expectError(error.Rejected, parseSource(arena, w[0], &diags));
+        try std.testing.expectEqualStrings(w[1], diags.items[0].code);
+        try std.testing.expectEqualStrings(w[2], diags.items[0].what);
+    }
 }
 
 test "fn main takes one Platform and has no return type" {

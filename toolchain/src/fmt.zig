@@ -159,11 +159,28 @@ fn scan(gpa: std.mem.Allocator, tree: ast.Tree) error{OutOfMemory}!Trivia {
         },
         else => {},
     };
+    // `fn(acc, x) (acc + x) % 7 end`: the `(` right after an anonymous function's
+    // parameters opens its body, so it groups though it follows a `)`.
+    const body_open = try gpa.alloc(bool, n);
+    @memset(body_open, false);
+    for (tree.nodes) |node| if (node.kind == .anon_fn and node.main_token + 1 < n) {
+        var depth: u32 = 0;
+        var k = node.main_token + 1;
+        while (k < n) : (k += 1) switch (toks[k].kind) {
+            .l_paren => depth += 1,
+            .r_paren => {
+                depth -= 1;
+                if (depth == 0) break;
+            },
+            else => {},
+        };
+        if (k + 1 < n and toks[k + 1].kind == .l_paren) body_open[k + 1] = true;
+    };
     var stack: std.ArrayList(bool) = .empty;
     ti = 0;
     while (ti < n) : (ti += 1) switch (toks[ti].kind) {
         .l_paren => {
-            const structural = tuple_open[ti] or (ti > 0 and followsOperand(toks[ti - 1].kind));
+            const structural = tuple_open[ti] or (!body_open[ti] and ti > 0 and followsOperand(toks[ti - 1].kind));
             tv.group_open[ti] = !structural;
             try stack.append(gpa, !structural);
         },
@@ -1162,7 +1179,11 @@ const Printer = struct {
     fn pattern(p: *Printer, i: Index) E!void {
         const n = p.node(i);
         switch (n.kind) {
-            .pat_wildcard, .pat_bind, .pat_literal => _ = try p.tk(null),
+            .pat_wildcard, .pat_bind => _ = try p.tk(null),
+            .pat_literal => {
+                if (n.lhs != 0) _ = try p.tk(.minus);
+                _ = try p.tk(null);
+            },
             .pat_variant => {
                 _ = try p.tk(.type_name);
                 if (n.lhs != 0) {
@@ -1845,6 +1866,87 @@ test "a comment the formatter would have to move rejects the file" {
     try std.testing.expectError(error.Rejected, format(arena, src, &diags));
     try std.testing.expectEqualStrings("MO0502", diags.items[0].code);
     try std.testing.expectEqual(@as(u32, 26), diags.items[0].at);
+}
+
+test "an anonymous function whose one-line body starts with a parenthesis formats, and keeps its tree" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const source =
+        \\module P.Fmt
+        \\
+        \\intent "probe"
+        \\
+        \\fn hashed(n: UInt64) : UInt64
+        \\  [n].reduce(0, fn(acc, x) (acc + x) % 7 end)
+        \\end
+        \\
+        \\fn bucket(key: String) : UInt64
+        \\  key.bytes.reduce(0, fn(hash, b)   (hash * 31 + b.to_u64) % 256 end)
+        \\end
+        \\
+    ;
+    var diags: diag.List = .empty;
+    const once = try format(arena, source, &diags);
+    try std.testing.expectEqualStrings(once, try format(arena, once, &diags));
+    try std.testing.expectEqualStrings((try dumpSource(arena, source)).?, (try dumpSource(arena, once)).?);
+    try std.testing.expect(std.mem.indexOf(u8, once, "fn(acc, x) (acc + x) % 7 end") != null);
+}
+
+/// One whitespace change at a random place: a space doubled or dropped, a space put before
+/// a bracket, a comma, a dot, or a colon, or a line end doubled or given a space before it.
+fn mutateWhitespace(gpa: std.mem.Allocator, text: *std.ArrayList(u8), random: std.Random) error{OutOfMemory}!void {
+    if (text.items.len == 0) return;
+    for (0..256) |_| {
+        const at = random.uintLessThan(usize, text.items.len);
+        switch (text.items[at]) {
+            ' ' => if (random.boolean()) {
+                _ = text.orderedRemove(at);
+            } else try text.insert(gpa, at, ' '),
+            '(', ')', '[', ']', ',', '.', ':' => try text.insert(gpa, at, ' '),
+            '\n' => try text.insert(gpa, at, if (random.boolean()) '\n' else ' '),
+            else => continue,
+        }
+        return;
+    }
+}
+
+test "mo fmt never crashes: every corpus file formats after each of ten random whitespace mutations" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    const corpus = @import("corpus.zig");
+    const root = "../examples";
+    const paths = corpus.collect(gpa, io, root) catch |err| switch (err) {
+        error.FileNotFound => return, // no corpus checked out beside the toolchain
+        else => return err,
+    };
+    defer {
+        for (paths) |p| gpa.free(p);
+        gpa.free(paths);
+    }
+    var dir = try std.Io.Dir.cwd().openDir(io, root, .{});
+    defer dir.close(io);
+    var rng: std.Random.DefaultPrng = .init(0x6d6f_2066_6d74);
+    const random = rng.random();
+    var formatted: u32 = 0;
+    for (paths) |rel| {
+        var arena_state = std.heap.ArenaAllocator.init(gpa);
+        defer arena_state.deinit();
+        const arena = arena_state.allocator();
+        var text: std.ArrayList(u8) = .empty;
+        try text.appendSlice(arena, try dir.readFileAlloc(io, rel, arena, .limited(1 << 20)));
+        for (0..10) |_| {
+            try mutateWhitespace(arena, &text, random);
+            // A change that leaves the file unparsable is a diagnostic; a crash ends the run.
+            var diags: diag.List = .empty;
+            _ = format(arena, text.items, &diags) catch |err| switch (err) {
+                error.Rejected => continue,
+                else => return err,
+            };
+            formatted += 1;
+        }
+    }
+    try std.testing.expect(formatted > 0);
 }
 
 test "every corpus file: formatting is idempotent and keeps the tree" {

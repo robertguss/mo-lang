@@ -153,6 +153,21 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "86a769ef462d379a" }
     },
     {
+      "path": "returns-nothing.mo",
+      "module": "Basics.ReturnsNothing",
+      "declarations": [
+        { "id": "874151cadd80", "name": "module Basics.ReturnsNothing", "hash": "8bc4e6c7a3113df5" },
+        { "id": "89a676abf0eb", "name": "expose", "hash": "4a4526a54439a2c9" },
+        { "id": "baa32a9c6481", "name": "intent", "hash": "1af14daa968a7968" },
+        { "id": "9fddb2432b3a", "name": "enum Reading", "hash": "83bd6b58b2c2c94d" },
+        { "id": "324a12b43c76", "name": "fn describe", "hash": "46619220ae819f3f" },
+        { "id": "54fc2b5d3f5e", "name": "fn report", "hash": "f5b8caff2e039cb7" },
+        { "id": "76d0eb28be2c", "name": "test \"a negative number matches in a pattern\"", "hash": "ef4aef8be87e27f2" },
+        { "id": "a52a7bb29465", "name": "test \"a function that returns nothing is called for what it does\"", "hash": "15ca2750d862e9c9" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "dfdc0e2749a378c2" }
+    },
+    {
       "path": "strings.mo",
       "module": "Basics.Strings",
       "declarations": [

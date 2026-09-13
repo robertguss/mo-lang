@@ -12,7 +12,10 @@
 //! same file without --sim beside it, so a seeded run's cost reads off the difference. An
 //! `echo-1k` row times programs/echo given 1_000 lines in this process: 1_000 round trips
 //! over a real socket on 127.0.0.1, a client process to a worker process, main on
-//! Mo.Server with its output discarded.
+//! Mo.Server with its output discarded. A `map-100k` row times a program that sets 100_000
+//! keys in a map and then gets each one, in this process. A `kv-10k-get` row times 10_000
+//! GETs over one real socket to programs/kv, served by `mo run` (MO_EXE) in a process of
+//! its own, each GET waiting for its answer.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -25,6 +28,7 @@ const Io = std.Io;
 const mo = @import("mo");
 
 const Row = struct { stage: mo.pipeline.Stage, files: u32, best_ns: i96, implemented: bool };
+const posix = std.posix;
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -176,6 +180,22 @@ pub fn main(init: std.process.Init) !void {
         try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "echo-1k", "n/a", "n/a" });
     }
 
+    const map_ns = try map100k(arena, io, init.environ_map, iters, &scratch);
+    if (map_ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} ns a set and a get  ({d} keys)\n", .{ "map-100k", us, @as(u64, @intCast(@divTrunc(ns, map_keys))), map_keys });
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "map-100k", "n/a", "n/a" });
+    }
+
+    const kv_ns = try kv10kGet(arena, io, mo_exe, root, iters);
+    if (kv_ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a GET  ({d} GETs over 127.0.0.1 from one client)\n", .{ "kv-10k-get", us, us / kv_gets, kv_gets });
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "kv-10k-get", "n/a", "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -184,7 +204,7 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns);
 }
 
 const sim_seeds = 100;
@@ -314,6 +334,180 @@ fn echo1k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.
     return best;
 }
 
+const map_keys = 100_000;
+const map_dir = ".zig-cache/bench/map";
+
+const map_source =
+    \\module Bench.Map
+    \\
+    \\intent "Set 100,000 keys in a map, then get each of them."
+    \\
+    \\fn filled(n: UInt64) : Map(String, UInt64)
+    \\  var m = Map.new()
+    \\  for i in 0..n
+    \\    m = m.set("key#{i}", i)
+    \\  end
+    \\  m
+    \\end
+    \\
+    \\fn found(m: Map(String, UInt64), n: UInt64) : UInt64
+    \\  var hits = 0
+    \\  for i in 0..n
+    \\    if m.get("key#{i}") == Some(i)
+    \\      hits += 1
+    \\    end
+    \\  end
+    \\  hits
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  m = filled(100_000)
+    \\  if found(m, 100_000) != 100_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+;
+
+/// The best of `iters` runs of a program that sets 100_000 keys in a map and then gets each
+/// one, from loading it to main's end; null when a run does not exit 0.
+fn map100k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, iters: u32, scratch: *std.heap.ArenaAllocator) !?i96 {
+    try Io.Dir.cwd().createDirPath(io, map_dir);
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = map_dir ++ "/mo.root", .data = "" });
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = map_dir ++ "/map.mo", .data = map_source });
+    const cwd = try std.process.currentPathAlloc(io, arena);
+    var best: i96 = std.math.maxInt(i96);
+    var it: u32 = 0;
+    while (it < iters) : (it += 1) {
+        _ = scratch.reset(.retain_capacity);
+        const a = scratch.allocator();
+        var out_buffer: [256]u8 = undefined;
+        var discard: Io.Writer.Discarding = .init(&out_buffer);
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        var diags: mo.diag.List = .empty;
+        const program = try mo.program.load(a, io, map_dir ++ "/map.mo", &diags);
+        const m = mo.pipeline.mainProgram(a, program, &diags) catch |e| {
+            std.debug.print("map-100k: {t}: {s}\n", .{ e, if (diags.items.len > 0) diags.items[0].what else "" });
+            return null;
+        };
+        var server: mo.server.Server = try .init(a, io, cwd, &.{}, environ, &discard.writer, &discard.writer);
+        switch (try server.run(m.program, m.main)) {
+            .exited => |code| if (code != 0) {
+                std.debug.print("map-100k: main exited {d}\n", .{code});
+                return null;
+            },
+            .crashed => |report| {
+                std.debug.print("map-100k: main crashed: {s}\n", .{report.clause});
+                return null;
+            },
+        }
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ns < best) best = ns;
+    }
+    return best;
+}
+
+const kv_gets = 10_000;
+const kv_dir = ".zig-cache/bench/kv";
+
+/// The best of `iters` passes of 10_000 GETs from one client over one socket on 127.0.0.1 to
+/// programs/kv, which `mo run` serves in a process of its own from a log that holds the key:
+/// each GET is written, then its answer read, before the next. Null when the corpus has no
+/// kv or kv does not answer.
+fn kv10kGet(arena: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const u8, iters: u32) !?i96 {
+    const main_path = try std.fs.path.join(arena, &.{ root, "programs/kv/main.mo" });
+    Io.Dir.cwd().access(io, main_path, .{}) catch return null;
+    try Io.Dir.cwd().createDirPath(io, kv_dir);
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = kv_dir ++ "/kv.log", .data = "SET greeting hello wide world\n" });
+    const port = freePort() orelse return null;
+    var port_buf: [8]u8 = undefined;
+    const port_text = try std.fmt.bufPrint(&port_buf, "{d}", .{port});
+    const main_abs = try Io.Dir.cwd().realPathFileAlloc(io, main_path, arena);
+    const data = try Io.Dir.cwd().realPathFileAlloc(io, kv_dir, arena);
+    var child = try std.process.spawn(io, .{
+        .argv = &.{ mo_exe, "run", main_abs, "--", "serve", data, "--port", port_text },
+        .stdin = .ignore,
+        .stdout = .ignore,
+        .stderr = .ignore,
+    });
+    defer child.kill(io);
+    // kv listens once it has replayed its log.
+    const fd = for (0..500) |_| {
+        if (connectLoopback(port)) |fd| break fd;
+        io.sleep(.fromMilliseconds(20), .awake) catch {};
+    } else {
+        std.debug.print("kv-10k-get: kv did not listen on port {d}\n", .{port});
+        return null;
+    };
+    defer _ = posix.system.close(fd);
+    var reply: [256]u8 = undefined;
+    var best: i96 = std.math.maxInt(i96);
+    var it: u32 = 0;
+    while (it < iters) : (it += 1) {
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        for (0..kv_gets) |_| {
+            const line = exchange(fd, "GET greeting\n", &reply) orelse {
+                std.debug.print("kv-10k-get: the connection ended\n", .{});
+                return null;
+            };
+            if (!std.mem.eql(u8, line, "VALUE hello wide world\n")) {
+                std.debug.print("kv-10k-get: kv answered {s}\n", .{line});
+                return null;
+            }
+        }
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ns < best) best = ns;
+    }
+    return best;
+}
+
+/// A port on 127.0.0.1 nothing listens on, as the system picks one.
+fn freePort() ?u16 {
+    const sys = posix.system;
+    const rc = sys.socket(posix.AF.INET, posix.SOCK.STREAM, posix.IPPROTO.TCP);
+    if (posix.errno(rc) != .SUCCESS) return null;
+    const fd: posix.socket_t = @intCast(rc);
+    defer _ = sys.close(fd);
+    var addr: posix.sockaddr.in = .{ .port = 0, .addr = std.mem.nativeToBig(u32, 0x7f00_0001) };
+    if (posix.errno(sys.bind(fd, @ptrCast(&addr), @sizeOf(posix.sockaddr.in))) != .SUCCESS) return null;
+    var len: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+    if (posix.errno(sys.getsockname(fd, @ptrCast(&addr), &len)) != .SUCCESS) return null;
+    return std.mem.bigToNative(u16, addr.port);
+}
+
+fn connectLoopback(port: u16) ?posix.socket_t {
+    const sys = posix.system;
+    const rc = sys.socket(posix.AF.INET, posix.SOCK.STREAM, posix.IPPROTO.TCP);
+    if (posix.errno(rc) != .SUCCESS) return null;
+    const fd: posix.socket_t = @intCast(rc);
+    var addr: posix.sockaddr.in = .{ .port = std.mem.nativeToBig(u16, port), .addr = std.mem.nativeToBig(u32, 0x7f00_0001) };
+    if (posix.errno(sys.connect(fd, @ptrCast(&addr), @sizeOf(posix.sockaddr.in))) != .SUCCESS) {
+        _ = sys.close(fd);
+        return null;
+    }
+    return fd;
+}
+
+/// Writes `request` whole, then reads until a line ends; the line, or null when the stream
+/// ends or breaks first.
+fn exchange(fd: posix.socket_t, request: []const u8, buf: []u8) ?[]const u8 {
+    const sys = posix.system;
+    var sent: usize = 0;
+    while (sent < request.len) {
+        const n = sys.write(fd, request[sent..].ptr, request.len - sent);
+        if (n <= 0) return null;
+        sent += @intCast(n);
+    }
+    var got: usize = 0;
+    while (got < buf.len) {
+        const n = sys.read(fd, buf[got..].ptr, buf.len - got);
+        if (n <= 0) return null;
+        got += @intCast(n);
+        if (std.mem.indexOfScalar(u8, buf[0..got], '\n')) |end| return buf[0 .. end + 1];
+    }
+    return null;
+}
+
 /// 4_000 lines in logstat's format, the same every run: a malformed line every 97th,
 /// the others one second apart with methods, paths, statuses, and durations drawn from a
 /// fixed seed.
@@ -347,9 +541,10 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 
 /// One row per stage, then the fmt row, the run-programs row (its count is the programs),
 /// the logstat-4k row (its count is the lines), the sim-100 row (its count is the seeds),
-/// and the echo-1k row (its count is the round trips): date, stage, count, best total µs
-/// ("n/a" when unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96) !void {
+/// the echo-1k row (its count is the round trips), the map-100k row (its count is the keys),
+/// and the kv-10k-get row (its count is the GETs): date, stage, count, best total µs ("n/a"
+/// when unimplemented).
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -385,5 +580,15 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         try w.interface.print("{d}\techo-1k\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), echo_trips, @as(u64, @intCast(@divTrunc(ns, 1000))) });
     } else {
         try w.interface.print("{d}\techo-1k\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), echo_trips });
+    }
+    if (map_ns) |ns| {
+        try w.interface.print("{d}\tmap-100k\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), map_keys, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+    } else {
+        try w.interface.print("{d}\tmap-100k\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), map_keys });
+    }
+    if (kv_ns) |ns| {
+        try w.interface.print("{d}\tkv-10k-get\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), kv_gets, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+    } else {
+        try w.interface.print("{d}\tkv-10k-get\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), kv_gets });
     }
 }

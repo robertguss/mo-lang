@@ -1,15 +1,18 @@
 //! Mo.Server: the real platform `mo run` gives `main` (design-v0/03, effects; Q18), over
 //! std.Io. `args` and `env` come from the process; `Out.write` goes to the real streams,
-//! buffered, and the caller flushes them at exit; `Fs.read` reads the real file system
-//! under the scope `scoped(...)` gave; `clock.now` is the wall clock; `exit(code)` is
-//! recorded and applied when `main` returns. No database and no writes to the file system.
+//! buffered, and flushed by `Out.flush` and at exit; the `Fs` rows read and write the real
+//! file system under the scope `scoped(...)` gave, each write on disk (fsync) before it
+//! answers; `clock.now` is the wall clock; `exit(code)` is recorded and applied when `main`
+//! returns. No database.
 //!
 //! main is the root supervisor: a process it starts, directly or through a supervisor,
 //! runs on Mo.Sim's scheduler in its fixed order (sim.zig). main's sends are delivered
 //! before its next statement runs, an update may use the capabilities its process was
 //! started with, and when main returns the run goes on until no message is waiting. A
 //! process crash is reported on stderr as it happens and its supervisor restarts it; a
-//! supervisor that gives up crashes main.
+//! supervisor that gives up crashes main. main and every process free what they no longer
+//! reach at safe points (vm.zig), and a process keeps nothing of an update past what its
+//! new state reaches (sim.zig, settleRegion).
 //!
 //! An Fs value is pointer-free: `Value.Cap.handle` is its index in `Server.scopes`.
 const std = @import("std");
@@ -18,6 +21,7 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
 const net = @import("net.zig");
+const prelude = @import("prelude.zig");
 const runner = @import("runner.zig");
 const Sim = @import("sim.zig").Sim;
 const Turns = @import("turns.zig").Turns;
@@ -43,7 +47,7 @@ pub const Scope = struct {
     base: []const u8,
     /// Nothing outside this folder is read. "/" for `platform.fs` itself.
     root: []const u8,
-    /// Nothing writes yet, so this refuses nothing at run time; the checker would.
+    /// A write through it crashes; tier 1 refuses the ones it can see (MO0404).
     read_only: bool = false,
     /// `scoped` was given a path outside the scope it narrowed, so nothing is readable.
     empty: bool = false,
@@ -83,16 +87,18 @@ pub const Server = struct {
         var scheduler: Sim = .init(&machine, 0, "main");
         scheduler.server = s;
         machine.sim = &scheduler;
-        // Values live in a region freed at safe points (vm.zig); without the address space
-        // for one, every value lives until the run ends. A program with processes keeps
-        // every value: a message main sends, or a process's state, is reached from a
-        // mailbox the region's compaction does not see.
+        // Values live in regions freed at safe points (vm.zig): main's here, and each
+        // process's in one of its own (turns.zig), all compacting through one scratch
+        // region. A value that goes from one vm to another goes packed (Sim.packs), so no
+        // compaction needs to see another vm's values. Without the address space for the
+        // regions, every value lives until the run ends.
         const processes = program.processes.len > 0;
-        var values: ?Region = if (processes) null else Region.reserve() catch null;
+        var values: ?Region = Region.reserve() catch null;
         defer if (values) |*r| r.release();
-        var scratch: ?Region = if (processes) null else Region.reserve() catch null;
+        var scratch: ?Region = if (values != null) Region.reserve() catch null else null;
         defer if (scratch) |*r| r.release();
-        if (values != null and scratch != null) machine.useRegions(&values.?, &scratch.?);
+        const regions = values != null and scratch != null;
+        if (regions) machine.useRegions(&values.?, &scratch.?);
         // A call reaches the world only through a capability, so a pure call seen before can
         // be answered from memory (memo.zig). Starting a process or sending to one needs no
         // capability, so a program with processes remembers nothing.
@@ -103,7 +109,13 @@ pub const Server = struct {
         // Each process runs its updates on a thread of its own, and the threads take turns,
         // so one waiting on the network does not hold up the rest (turns.zig).
         var turns: Turns = .{ .io = s.io, .gpa = s.gpa };
-        if (processes) scheduler.turns = &turns;
+        if (processes) {
+            scheduler.turns = &turns;
+            if (regions) {
+                scheduler.packs = true;
+                turns.scratch = &scratch.?;
+            }
+        }
         defer if (processes) turns.stop(&scheduler);
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
@@ -136,7 +148,7 @@ pub const Server = struct {
     /// `platform.args`, `.env`, `.stdout`, `.stderr`, `.fs`, `.clock`.
     pub fn part(s: *Server, vm: *Vm, name: []const u8) Error!Value {
         if (std.mem.eql(u8, name, "args")) {
-            const out = try vm.heap.alloc(Value, s.args.len);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, s.args.len);
             for (s.args, out) |a, *o| o.* = .{ .string = a };
             return .{ .list = out };
         }
@@ -169,6 +181,12 @@ pub const Server = struct {
     pub fn write(s: *Server, out: Value.Cap, text: []const u8) void {
         const w = if (out.handle == stderr_handle) s.stderr else s.stdout;
         w.writeAll(text) catch {};
+    }
+
+    /// `out.flush`: what the stream holds goes out now, not when main returns.
+    pub fn flush(s: *Server, out: Value.Cap) void {
+        const w = if (out.handle == stderr_handle) s.stderr else s.stdout;
+        w.flush() catch {};
     }
 
     /// Milliseconds since the Unix epoch, as `Value.time` counts.
@@ -229,9 +247,100 @@ pub const Server = struct {
         const names = try s.listScoped(s.scopes.items[fs.handle]);
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const got = names orelse return missing(vm, ".");
-        const out = try vm.heap.alloc(Value, got.len);
+        const out = try vm_mod.rawAlloc(vm.heap, Value, got.len);
         for (got, out) |name, *o| o.* = .{ .string = name };
         return vm.variant("Ok", &.{.{ .list = out }});
+    }
+
+    /// `fs.write(path, text)` and `fs.append(path, text)`: the file holds the text, or has it
+    /// added at its end, created when it is not there, and is on disk (fsync) before `Ok`.
+    /// `Missing(path)` for a path that leaves the scope, a folder that is not there, or
+    /// anything that is not a file. The deadline is enforced after the fact, as `read`'s is:
+    /// a write that took longer is `Timeout`, and is on disk all the same.
+    pub fn writeFile(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, text: []const u8, within_ms: i64, append: bool) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, path);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        // Paths are resolved in an arena of the call's own: a server appends on every change.
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const wrote = try s.writeScoped(scratch.allocator(), scope, path, text, append);
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (!wrote) return missing(vm, path);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    fn writeScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8, text: []const u8, append: bool) Error!bool {
+        const target = try s.targetScoped(gpa, scope, path) orelse return false;
+        var file = Io.Dir.cwd().createFile(s.io, target, .{ .truncate = !append }) catch return false;
+        defer file.close(s.io);
+        const at: u64 = if (append) file.length(s.io) catch return false else 0;
+        file.writePositionalAll(s.io, text, at) catch return false;
+        file.sync(s.io) catch return false;
+        return true;
+    }
+
+    /// `fs.remove(path)`: the file is gone; `Missing(path)` when no such file is in the scope.
+    pub fn remove(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, path);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const gone = blk: {
+            const real = try s.fileScoped(scratch.allocator(), scope, path) orelse break :blk false;
+            Io.Dir.cwd().deleteFile(s.io, real) catch break :blk false;
+            break :blk true;
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (!gone) return missing(vm, path);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// `fs.rename(from, to)`: the file at `from` is at `to`, replacing a file there.
+    /// `Missing(from)` when no such file is in the scope, `Missing(to)` when `to` leaves it
+    /// or names a folder that is not there.
+    pub fn rename(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, from: []const u8, to: []const u8, within_ms: i64) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, from);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const gpa = scratch.allocator();
+        const missed: ?[]const u8 = blk: {
+            const real = try s.fileScoped(gpa, scope, from) orelse break :blk from;
+            const target = try s.targetScoped(gpa, scope, to) orelse break :blk to;
+            Io.Dir.rename(Io.Dir.cwd(), real, Io.Dir.cwd(), target, s.io) catch break :blk to;
+            break :blk null;
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (missed) |p| return missing(vm, p);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// The real path of a file (not a folder) inside the scope, or null.
+    fn fileScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
+        const real = try s.realScopedIn(gpa, scope, path) orelse return null;
+        const stat = Io.Dir.cwd().statFile(s.io, real, .{}) catch return null;
+        return if (stat.kind == .file) real else null;
+    }
+
+    /// Where a write to `path` lands: its folder's real path and its name, when that folder is
+    /// inside the scope, and a name already there, which may be a link, leads inside it too.
+    fn targetScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
+        if (scope.empty) return null;
+        const full = try std.fs.path.resolve(gpa, &.{ scope.base, path });
+        if (!within(scope.root, full) or std.mem.eql(u8, full, scope.root)) return null;
+        const cwd = Io.Dir.cwd();
+        const real_root = cwd.realPathFileAlloc(s.io, scope.root, gpa) catch |err| return unreadable(err);
+        const folder = std.fs.path.dirname(full) orelse return null;
+        const real_folder = cwd.realPathFileAlloc(s.io, folder, gpa) catch |err| return unreadable(err);
+        if (!within(real_root, real_folder)) return null;
+        const target = try std.fs.path.join(gpa, &.{ real_folder, std.fs.path.basename(full) });
+        if (cwd.realPathFileAlloc(s.io, target, gpa)) |real| {
+            if (!within(real_root, real)) return null;
+        } else |err| if (err == error.OutOfMemory) return error.OutOfMemory;
+        return target;
     }
 
     /// Whether a call that began at `t0` took longer than its deadline. Enforced after the
@@ -245,12 +354,16 @@ pub const Server = struct {
     /// is not there. Compared again as real paths, so a symbolic link inside the scope
     /// cannot reach out.
     fn realScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
+        return s.realScopedIn(s.gpa, scope, path);
+    }
+
+    fn realScopedIn(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
         if (scope.empty) return null;
-        const full = try std.fs.path.resolve(s.gpa, &.{ scope.base, path });
+        const full = try std.fs.path.resolve(gpa, &.{ scope.base, path });
         if (!within(scope.root, full)) return null;
         const cwd = Io.Dir.cwd();
-        const real_root = cwd.realPathFileAlloc(s.io, scope.root, s.gpa) catch |err| return unreadable(err);
-        const real = cwd.realPathFileAlloc(s.io, full, s.gpa) catch |err| return unreadable(err);
+        const real_root = cwd.realPathFileAlloc(s.io, scope.root, gpa) catch |err| return unreadable(err);
+        const real = cwd.realPathFileAlloc(s.io, full, gpa) catch |err| return unreadable(err);
         if (!within(real_root, real)) return null;
         return real;
     }
@@ -280,12 +393,23 @@ fn missing(vm: *Vm, path: []const u8) Error!Value {
     return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
 }
 
+fn timeout(vm: *Vm) Error!Value {
+    return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+}
+
+/// A write through an Fs narrowed to read_only: the caller broke the scope's rule, which
+/// tier 1 refuses where it can see the narrowing (caps.zig, MO0404).
+fn refuse(vm: *Vm, row: prelude.Fn, path: []const u8) Error!Value {
+    vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path }), .within = row.name, .at = 0 };
+    return error.Crash;
+}
+
 fn unreadable(err: anyerror) Error!?[]const u8 {
     return if (err == error.OutOfMemory) error.OutOfMemory else null;
 }
 
 /// Whether the resolved absolute `path` is `root` or inside it.
-fn within(root: []const u8, path: []const u8) bool {
+pub fn within(root: []const u8, path: []const u8) bool {
     if (std.mem.eql(u8, root, "/")) return true;
     if (!std.mem.startsWith(u8, path, root)) return false;
     return path.len == root.len or path[root.len] == '/';
@@ -438,6 +562,77 @@ test "Fs.list, read_lines, and size stay inside the scope, and write_line ends a
         \\timeout
         \\
     , out.written());
+}
+
+test "Fs writes on Mo.Server: write, append, rename, and remove inside the scope, Missing outside it, flush, and a read_only Fs refuses" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const io = std.testing.io;
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(io, "data");
+    const cwd = try tmp.dir.realPathFileAlloc(io, ".", arena);
+
+    const program = try compile(arena,
+        \\module T.Writes
+        \\fn said(r: Result(T, FsError)) : String
+        \\  case r
+        \\    Ok(_): "ok"
+        \\    Error(Missing(path)): "missing #{path}"
+        \\    Error(Timeout): "timeout"
+        \\  end
+        \\end
+        \\fn text(r: Result(String, FsError)) : String
+        \\  case r
+        \\    Ok(t): t
+        \\    Error(_): "unread\n"
+        \\  end
+        \\end
+        \\fn copy(logs: Fs) : String
+        \\  said(logs.write("x.log", "no", within: 1.minute))
+        \\end
+        \\fn main(platform: Platform)
+        \\  data = platform.fs.scoped("data")
+        \\  out = platform.stdout
+        \\  out.write_line(said(data.write("a.log", "one\n", within: 1.minute)))
+        \\  out.write_line(said(data.append("a.log", "two\n", within: 1.minute)))
+        \\  out.write_line(said(data.append("b.log", "new\n", within: 1.minute)))
+        \\  out.write(text(data.read("a.log", within: 1.minute)))
+        \\  out.write_line(said(data.write("../escape.log", "no", within: 1.minute)))
+        \\  out.write_line(said(data.write("nofolder/c.log", "no", within: 1.minute)))
+        \\  out.write_line(said(data.rename("b.log", "c.log", within: 1.minute)))
+        \\  out.write_line(said(data.remove("b.log", within: 1.minute)))
+        \\  out.write_line(said(data.remove("a.log", within: 1.minute)))
+        \\  out.flush
+        \\  out.write(text(data.read("c.log", within: 1.minute)))
+        \\  out.write_line(copy(data.read_only))
+        \\end
+    );
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, io, cwd, &.{}, &environ, &out.writer, &out.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqualStrings("fs.write(\"x.log\") writes through an Fs narrowed to read_only, which only reads", ran.crashed.clause);
+    try std.testing.expectEqualStrings(
+        \\ok
+        \\ok
+        \\ok
+        \\one
+        \\two
+        \\missing ../escape.log
+        \\missing nofolder/c.log
+        \\ok
+        \\missing b.log
+        \\ok
+        \\new
+        \\
+    , out.written());
+    const kept = try tmp.dir.readFileAlloc(io, "data/c.log", arena, .limited(64));
+    try std.testing.expectEqualStrings("new\n", kept);
+    try std.testing.expectError(error.FileNotFound, tmp.dir.readFileAlloc(io, "escape.log", arena, .limited(64)));
+    try std.testing.expectError(error.FileNotFound, tmp.dir.readFileAlloc(io, "data/x.log", arena, .limited(64)));
 }
 
 test "a crash in main comes back with its report" {
@@ -635,6 +830,104 @@ test "a process waiting on the network gives up its turn: the one that waited fi
         \\
     , out.written());
     try std.testing.expect(ms < 2_000);
+}
+
+const regions_src =
+    \\module T.Regions
+    \\process Store()
+    \\  state
+    \\    data: Map(String, String)
+    \\    n: UInt8
+    \\  end
+    \\  message Put(key: String, value: String) : Bool
+    \\  message Get(key: String) : String
+    \\  message Boom(key: String)
+    \\  fn update(state, message)
+    \\    case message
+    \\      Put(key: key, value: value):
+    \\        state.data = state.data.set(key, value)
+    \\        true
+    \\      Get(key): state.data.get(key) or "none"
+    \\      Boom(key):
+    \\        state.data = state.data.set(key, "boom")
+    \\        state.n -= 1
+    \\    end
+    \\  end
+    \\end
+    \\process Tally()
+    \\  state
+    \\    data: Map(String, String)
+    \\  end
+    \\  invariant "a value never goes back to empty"
+    \\    state.data.get("a") == Some("") and old(state.data.get("a")) == Some("1")
+    \\  end
+    \\  message Note(key: String, value: String)
+    \\  message Read(key: String) : String
+    \\  fn update(state, message)
+    \\    case message
+    \\      Note(key: key, value: value):
+    \\        state.data = state.data.set(key, value)
+    \\      Read(key): state.data.get(key) or "none"
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Stores
+    \\  child Store, restart: :always
+    \\  child Tally, restart: :always
+    \\end
+    \\fn shown(r: Result(String, AskError)) : String
+    \\  case r
+    \\    Ok(text): text.slice(0, 6)
+    \\    Error(_): "error"
+    \\  end
+    \\end
+    \\fn main(platform: Platform)
+    \\  out = platform.stdout
+    \\  store = Store.start()
+    \\  pad = "x".repeat(100)
+    \\  var failed = 0
+    \\  for i in 0..60_000
+    \\    if store.ask(Put(key: "k#{i % 500}", value: "v#{i}#{pad}"), within: 1.minute) is Error(_)
+    \\      failed += 1
+    \\    end
+    \\  end
+    \\  out.write_line("failed #{failed}")
+    \\  out.write_line(shown(store.ask(Get(key: "k7"), within: 1.minute)))
+    \\  store.send(Boom(key: "k7"))
+    \\  out.write_line(shown(store.ask(Get(key: "k7"), within: 1.minute)))
+    \\  tally = Tally.start()
+    \\  tally.send(Note(key: "a", value: "1"))
+    \\  tally.send(Note(key: "a", value: ""))
+    \\  out.write_line("tally #{shown(tally.ask(Read(key: "a"), within: 1.minute))}")
+    \\end
+;
+
+test "processes under mo run free what their state does not reach, write their state in place, and a crash still shows the state before" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, regions_src);
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var err: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, std.testing.io, "/", &.{}, &environ, &out.writer, &err.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    // 60,000 values of 106 bytes went through the store, and the last one per key is what it
+    // holds. Boom set k7 in place and crashed: the store restarted empty, and the report shows
+    // k7 as it was, not "boom". Tally's invariant saw the old "1" and tripped.
+    try std.testing.expectEqualStrings(
+        \\failed 0
+        \\v59507
+        \\none
+        \\tally none
+        \\
+    , out.written());
+    const said = err.written();
+    try std.testing.expect(std.mem.indexOf(u8, said, "state before the last message: Store(data: Map.new().set(\"k0\", \"v59500x") != null);
+    try std.testing.expect(std.mem.indexOf(u8, said, ".set(\"k7\", \"v59507x") != null);
+    try std.testing.expect(std.mem.indexOf(u8, said, "\"boom\"") == null);
+    try std.testing.expect(std.mem.indexOf(u8, said, "invariant \"a value never goes back to empty\"") != null);
 }
 
 const procs_src =

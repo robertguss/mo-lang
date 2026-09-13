@@ -147,6 +147,21 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `listen` binds 127.0.0.1 only; port 0 picks a free port and `listener.port` reports it; `SO_REUSEADDR` only | Fable, from Opus's default | provisional | program 3 |
 | Deadline outcomes: `accept` keeps listening, `connect` leaves nothing, `read_line` keeps the partial line, `write` closes the connection | Fable, from Opus's default | provisional | program 3 |
 | A `Conn` in a process's start arguments closes when that process crashes or its supervisor gives up; listeners stay open | Fable, from Opus's default | provisional | program 3 |
+| Program 3 accepted as an experiment: kv answers 15k GETs/s, holds under sim, but cannot persist (no file write) and leaks per request; six toolchain bugs; corpus test red until fixed | Fable | — | step 12 |
+| `main` stays green: session-05 is not merged while `zig build test` fails | Fable | locked | — |
+| The runtime under real programs (step 12) comes before the C backend (now step 13) | Fable | provisional | step 12's numbers |
+| A function may omit its return type when it returns nothing, like `main` | Fable | provisional | step 12, the corpus |
+| A negative integer literal is a pattern | Fable | provisional | step 12 |
+| `String.byte_size`; `Fs.write`, `append` (fsync), `remove`, `rename`; `Out.flush`; `Out.fixture()` with `out.written` | Fable | provisional | step 12, kv's replay test |
+| Maps and sets gain a hash index; insertion-order semantics unchanged | Fable | provisional | step 12's `map-100k` row |
+| Memoization and never-only-under-sim to be reversed in step 12b: the reference interpreter runs every body and every contract every time; every `never` runs on every test, and one that cannot be checked is `MO0324` | Fable, after unpacking both for Robert | provisional, overturns two earlier rows when 12b lands | step 12b |
+| Robert (session 5, morning): Fable's recommendations are the decisions; do whatever Fable would do, always documented for later review; "we are super early, there are no mistakes, this is uncharted territory and we are learning as we go" | Robert | locked | — |
+| Step 12 accepted: program discovery, hashed maps, in-place state writes, per-request freeing, file writes with fsync, optional return type, negative patterns, `byte_size`, `mo fmt` fuzz-clean, four diagnostics reworded; kv durable across restart; 50k SETs leave the server at 19 MB; 80 minutes | Fable | — | step 13 |
+| Corpus rules replace counts: every simulated process test outside racy.mo must hold under faults; recipe skips are the only allowed skips | Fable, from Opus's default | provisional | — |
+| Map index is open addressing from 8 keys; in-place writes extend to field paths under any `var`; a crashed `update`'s in-place writes are undone; a process whose invariant reads `old(state)` is never written in place | Fable, from Opus's default | provisional | step 13's differential tests |
+| Messages, replies, start arguments, and first state are deep-copied between processes; each process reserves up to 16 GiB of address space; the region compacts when it doubles | Fable, from Opus's default | provisional | a day-long kv run |
+| `Fs.write` and `append` fsync; a write past its deadline stays written; rename replaces; a read-only `Fs` passed as a parameter is enforced at run time, not check time | Fable, from Opus's default | provisional, the check-time gap is a step 13 item | step 13 |
+| `Out.written` is tests-only and `Out.flush` is a no-op in tests | Fable, from Opus's default | provisional | program 4 |
 
 ## Related
 - [[session-05]]

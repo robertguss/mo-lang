@@ -19,11 +19,13 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const net_mod = @import("net.zig");
 const server_mod = @import("server.zig");
+const stdlib = @import("stdlib.zig");
 const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
+const Parcel = vm_mod.Parcel;
 const Error = vm_mod.Error;
 const none = bytecode.none;
 
@@ -38,13 +40,20 @@ pub const test_runner: u32 = none;
 pub const max_tick_ms: i64 = 10;
 /// Mixed into the seed for the fault draws, so they are a stream apart from the schedule.
 const fault_stream: u64 = 0x6661_756c_7473;
+/// Under `mo run`, the messages a process's log keeps for a crash report: the last ones.
+pub const log_kept = 16;
+/// Region bytes a process may leave behind past twice what its last full compaction kept
+/// before its region is compacted whole (settleRegion).
+pub const full_budget: usize = 4 << 20;
 
 pub const Fault = enum { timeout, missing, closed };
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
-const Entry = struct { message: Value, seq: u64 };
-const Outgoing = struct { to: u32, message: Value };
+/// A message in a mailbox or an outbox. Under `mo run` it came in a parcel (Sim.packs),
+/// which the mailbox, and then the process's log, owns.
+const Entry = struct { message: Value, seq: u64, parcel: ?*Parcel = null };
+const Outgoing = struct { to: u32, message: Value, parcel: ?*Parcel = null };
 /// One step of a seeded run's trace: a message put in a mailbox, by the test
 /// (`from` is `test_runner`) or by a process whose update committed, or taken out of it.
 pub const Step = struct { from: u32, to: u32, message: Value, took: bool };
@@ -59,8 +68,13 @@ pub const Proc = struct {
     policy: Policy,
     mailbox: std.ArrayList(Entry) = .empty,
     head: usize = 0,
-    /// Every message since the last (re)start, the running one included.
+    /// Every message since the last (re)start, the running one included; under `mo run`,
+    /// the last `log_kept`, and the parcels they came in.
     log: std.ArrayList(Value) = .empty,
+    log_parcels: std.ArrayList(*Parcel) = .empty,
+    /// Under `mo run`, the parcel holding its start arguments and first state, which they
+    /// and every state after may point into for as long as the run lasts.
+    start: ?*Parcel = null,
     /// When each restart inside the current window happened.
     restarts: std.ArrayList(i64) = .empty,
     up: bool = true,
@@ -131,6 +145,15 @@ pub const Sim = struct {
     turns: ?*turns_mod.Turns = null,
     /// The in-memory network every `Net.fixture()` of the run shares (net.zig).
     fixture: net_mod.Fixture = .{},
+    /// The files of each `Fs.fixture()` in the run, which keep what the test writes.
+    files: stdlib.FixtureFs = .{},
+    /// What each `Out.fixture()` of the run was given, one text per call.
+    outs: std.ArrayList(std.ArrayList([]const u8)) = .empty,
+    /// Under `mo run`, every vm allocates in a region of its own, so a value that goes from
+    /// one vm to another goes packed (Vm.pack): a message, a reply, and a process's start
+    /// arguments and first state. After each update the process's region keeps only what
+    /// its state reaches (settleRegion).
+    packs: bool = false,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -250,8 +273,24 @@ pub const Sim = struct {
     fn startUnder(sim: *Sim, process: u32, args: []const Value, supervisor: u32, policy: Policy) Error!u32 {
         const state = try sim.vm.call(sim.vm.program.processes[process].init, args);
         const id: u32 = @intCast(sim.procs.items.len);
-        try sim.procs.append(sim.gpa, .{ .process = process, .args = args, .state = state, .supervisor = supervisor, .policy = policy });
+        var proc: Proc = .{ .process = process, .args = args, .state = state, .supervisor = supervisor, .policy = policy };
+        if (sim.packs) {
+            // Packed together, what the state shares with the arguments is copied once.
+            const both = try vm_mod.rawAlloc(sim.vm.heap, Value, args.len + 1);
+            @memcpy(both[0..args.len], args);
+            both[args.len] = state;
+            const parcel = try sim.vm.pack(.{ .tuple = both });
+            proc.start = parcel;
+            proc.args = parcel.value.tuple[0..args.len];
+            proc.state = parcel.value.tuple[args.len];
+        }
+        try sim.procs.append(sim.gpa, proc);
         return id;
+    }
+
+    /// A message on its way out of this vm: packed under `mo run`.
+    fn outgoing(sim: *Sim, message: Value) Error!?*Parcel {
+        return if (sim.packs) try sim.vm.pack(message) else null;
     }
 
     // ---- messages
@@ -261,9 +300,11 @@ pub const Sim = struct {
     pub fn send(sim: *Sim, to: u32, message: Value) Error!void {
         if (!sim.procs.items[to].up) return;
         try sim.roomFor(to, message);
+        const parcel = try sim.outgoing(message);
+        const sent = if (parcel) |p| p.value else message;
         if (sim.running) |from| {
-            try sim.procs.items[from].outbox.append(sim.gpa, .{ .to = to, .message = message });
-        } else _ = try sim.enqueue(test_runner, to, message);
+            try sim.procs.items[from].outbox.append(sim.gpa, .{ .to = to, .message = sent, .parcel = parcel });
+        } else _ = try sim.enqueue(test_runner, to, sent, parcel);
     }
 
     /// `h.ask(message, within: d)`: the target's waiting messages run, then this one, and
@@ -277,7 +318,7 @@ pub const Sim = struct {
         if (sim.procs.items[to].busy) return sim.askError("Timeout");
         const waited = sim.waited;
         try sim.roomFor(to, message);
-        const seq = try sim.enqueue(sim.running orelse test_runner, to, message);
+        const seq = try sim.enqueue(sim.running orelse test_runner, to, message, null);
         const reply = while (true) {
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
@@ -339,10 +380,11 @@ pub const Sim = struct {
         } else try sim.events.append(sim.gpa, event);
     }
 
-    pub fn enqueue(sim: *Sim, from: u32, to: u32, message: Value) Error!u64 {
+    /// Puts a message in `to`'s mailbox, which takes its parcel.
+    pub fn enqueue(sim: *Sim, from: u32, to: u32, message: Value, parcel: ?*Parcel) Error!u64 {
         const seq = sim.next_seq;
         sim.next_seq += 1;
-        try sim.procs.items[to].mailbox.append(sim.gpa, .{ .message = message, .seq = seq });
+        try sim.procs.items[to].mailbox.append(sim.gpa, .{ .message = message, .seq = seq, .parcel = parcel });
         if (sim.schedule != null) try sim.trace.append(sim.gpa, .{ .from = from, .to = to, .message = message, .took = false });
         return seq;
     }
@@ -396,8 +438,14 @@ pub const Sim = struct {
         if (p.head == p.mailbox.items.len) {
             p.mailbox.clearRetainingCapacity();
             p.head = 0;
+        } else if (p.head >= 64 and 2 * p.head >= p.mailbox.items.len) {
+            // A mailbox that never empties does not grow: what was taken is dropped.
+            const waiting = p.mailbox.items.len - p.head;
+            std.mem.copyForwards(Entry, p.mailbox.items[0..waiting], p.mailbox.items[p.head..]);
+            p.mailbox.shrinkRetainingCapacity(waiting);
+            p.head = 0;
         }
-        try p.log.append(sim.gpa, entry.message);
+        try sim.logMessage(p, entry);
         if (sim.server) |s| p.now = s.now();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
@@ -406,10 +454,24 @@ pub const Sim = struct {
         }
         const before = p.state;
         const base = vm.stack.items.len;
+        // Under `mo run`, everything the update allocates is past this mark: the message
+        // copied out of its parcel first. What it overwrites below the mark is undone on a
+        // crash, and not overwritten at all when an invariant reads old(state).
+        const mark = vm.mark();
+        const regioned = vm.region != null;
+        const message = if (entry.parcel) |parcel| try vm.unpack(parcel) else entry.message;
+        if (regioned) {
+            vm.undo_mark = mark;
+            vm.frozen_below = if (vm.program.processes[p.process].reads_old) mark else 0;
+        }
+        defer {
+            vm.undo_mark = 0;
+            vm.frozen_below = 0;
+        }
         const outer = sim.running;
         sim.running = id;
         p.busy = true;
-        const result = sim.update(id, entry.message, before);
+        const result = sim.update(id, message, before);
         // An update may start processes, so the pointer is taken again.
         p = &sim.procs.items[id];
         p.busy = false;
@@ -417,24 +479,64 @@ pub const Sim = struct {
         const after = result catch |err| switch (err) {
             error.Crash => {
                 vm.stack.shrinkRetainingCapacity(base);
+                vm.rollBack();
+                for (p.outbox.items) |o| if (o.parcel) |x| x.free();
                 p.outbox.clearRetainingCapacity();
                 p.emits.clearRetainingCapacity();
                 if (sim.gave_up) return error.Crash;
                 try sim.crashed(id, before);
-                if (sim.turns) |t| try t.answer(entry.seq, null);
+                if (sim.turns) |t| try t.answer(entry.seq, null, null);
+                if (regioned) try sim.settleRegion(id, mark);
                 return .{ .seq = entry.seq, .reply = null };
             },
             else => return err,
         };
+        vm.undo.clearRetainingCapacity();
         p.state = after.tuple[1];
         for (p.outbox.items) |o| {
-            if (sim.procs.items[o.to].up) _ = try sim.enqueue(id, o.to, o.message);
+            if (sim.procs.items[o.to].up) {
+                _ = try sim.enqueue(id, o.to, o.message, o.parcel);
+            } else if (o.parcel) |x| x.free();
         }
         p.outbox.clearRetainingCapacity();
         try sim.events.appendSlice(sim.gpa, p.emits.items);
         p.emits.clearRetainingCapacity();
-        if (sim.turns) |t| try t.answer(entry.seq, after.tuple[0]);
-        return .{ .seq = entry.seq, .reply = after.tuple[0] };
+        const reply = after.tuple[0];
+        if (sim.turns) |t| if (t.awaits(entry.seq)) {
+            const parcel = try sim.outgoing(reply);
+            try t.answer(entry.seq, if (parcel) |x| x.value else reply, parcel);
+        };
+        if (regioned) try sim.settleRegion(id, mark);
+        return .{ .seq = entry.seq, .reply = reply };
+    }
+
+    /// After an update under `mo run`: what it allocated that the new state does not reach
+    /// is freed, message, reply, and outgoing messages included, since those left packed.
+    /// Once the region holds more than twice what its last full compaction kept, it is
+    /// compacted whole, which frees what earlier updates overwrote.
+    fn settleRegion(sim: *Sim, id: u32, mark: usize) Error!void {
+        const vm = sim.vm;
+        const r = vm.region.?;
+        var roots = [1]Value{sim.procs.items[id].state};
+        if (r.top > mark) try vm.compact(mark, &roots);
+        if (r.top - r.base > 2 * vm.full_kept + full_budget) {
+            try vm.compact(r.base, &roots);
+            vm.full_kept = r.top - r.base;
+        }
+        sim.procs.items[id].state = roots[0];
+    }
+
+    /// The message a process takes goes in its log; under `mo run` the log keeps the last
+    /// `log_kept`, each in its parcel, and frees the rest.
+    fn logMessage(sim: *Sim, p: *Proc, entry: Entry) Error!void {
+        if (entry.parcel) |parcel| {
+            if (p.log_parcels.items.len == log_kept) {
+                p.log_parcels.orderedRemove(0).free();
+                _ = p.log.orderedRemove(0);
+            }
+            try p.log_parcels.append(sim.gpa, parcel);
+        }
+        try p.log.append(sim.gpa, entry.message);
     }
 
     /// One update, then every invariant against the state before it. Gives (reply, state).
@@ -443,7 +545,7 @@ pub const Sim = struct {
         const proc = sim.procs.items[id];
         const p = vm.program.processes[proc.process];
         const n = proc.args.len;
-        const args = try sim.gpa.alloc(Value, n + 2);
+        const args = try vm_mod.rawAlloc(vm.heap, Value, n + 2);
         @memcpy(args[0..n], proc.args);
         args[n] = before;
         args[n + 1] = message;
@@ -494,10 +596,13 @@ pub const Sim = struct {
         if (kept >= p.policy.max_restarts) return sim.giveUp(id, report);
         try p.restarts.append(sim.gpa, at);
         // An ask whose message the restart drops is Down.
-        if (sim.turns) |t| for (p.mailbox.items[p.head..]) |e| try t.answer(e.seq, null);
+        if (sim.turns) |t| for (p.mailbox.items[p.head..]) |e| try t.answer(e.seq, null, null);
+        for (p.mailbox.items[p.head..]) |e| if (e.parcel) |x| x.free();
         p.mailbox.clearRetainingCapacity();
         p.head = 0;
         p.log.clearRetainingCapacity();
+        for (p.log_parcels.items) |x| x.free();
+        p.log_parcels.clearRetainingCapacity();
         const state = vm.call(vm.program.processes[p.process].init, p.args) catch |err| switch (err) {
             error.Crash => return sim.giveUp(id, vm.report.?),
             else => return err,
@@ -1015,6 +1120,89 @@ const sup_src =
     \\  beat.send(Up)
     \\end
 ;
+
+test "a fixture Fs keeps what a test writes, shared by every Fs narrowed from it; an Out.fixture keeps each write; a faulted write changes nothing" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Fixtures
+        \\process Writer(fs: Fs)
+        \\  state
+        \\    tries: UInt32
+        \\  end
+        \\  message Note : Bool
+        \\  fn update(state, message)
+        \\    case message
+        \\      Note:
+        \\        state.tries += 1
+        \\        ok(fs.append("x.log", "1\n", within: 1.minute))
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Writers(fs: Fs)
+        \\  child Writer(fs), restart: :always
+        \\end
+        \\fn ok(r: Result(T, FsError)) : Bool
+        \\  r is Ok(_)
+        \\end
+        \\fn log(out: Out, fs: Fs) : Bool
+        \\  out.write("a")
+        \\  out.write_line("b")
+        \\  out.flush
+        \\  ok(fs.append("x.log", "1\n", within: 1.minute))
+        \\end
+        \\test "writes read back"
+        \\  fs = Fs.fixture()
+        \\  data = fs.scoped("data")
+        \\  assert ok(data.write("a.log", "one\n", within: 1.minute))
+        \\  assert ok(data.append("a.log", "two\n", within: 1.minute))
+        \\  assert fs.read("data/a.log", within: 1.minute) == Ok("one\ntwo\n")
+        \\  assert data.read_lines("a.log", within: 1.minute) == Ok(["one", "two"])
+        \\  assert fs.list(within: 1.minute) == Ok(["data"])
+        \\  assert ok(data.rename("a.log", "b.log", within: 1.minute))
+        \\  assert data.list(within: 1.minute) == Ok(["b.log"])
+        \\  assert data.size("b.log", within: 1.minute) == Ok(8)
+        \\  assert data.remove("a.log", within: 1.minute) is Error(Missing("a.log"))
+        \\  assert data.write("../x", "no", within: 1.minute) is Error(Missing("../x"))
+        \\  assert Fs.fixture().read("data/b.log", within: 1.minute) is Error(Missing(_))
+        \\  assert Fs.fixture(delay: 2.minute).write("a", "b", within: 1.minute) is Error(Timeout)
+        \\end
+        \\test "an Out fixture keeps each write"
+        \\  out = Out.fixture()
+        \\  fs = Fs.fixture()
+        \\  assert log(out, fs)
+        \\  assert out.written == ["a", "b\n"]
+        \\  assert fs.read("x.log", within: 1.minute) == Ok("1\n")
+        \\end
+        \\test "a write through a read_only Fs crashes"
+        \\  assert log(Out.fixture(), Fs.fixture().read_only)
+        \\end
+        \\test "a writer appends"
+        \\  writer = Writer.start(Fs.fixture())
+        \\  assert writer.ask(Note, within: 1.minute) is Ok(_)
+        \\end
+    );
+    const r = try runner.run(arena, program, .{});
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[0].outcome);
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[1].outcome);
+    try std.testing.expectEqual(runner.Outcome.failed, r.results[2].outcome);
+    try std.testing.expectEqualStrings("fs.append(\"x.log\") writes through an Fs narrowed to read_only, which only reads", r.results[2].report.?.clause);
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[3].outcome);
+
+    // Every fixture call fails in these runs: the append is Missing or Timeout, and the file
+    // system keeps nothing of it.
+    for (0..8) |seed| {
+        var machine: Vm = .init(arena, program, 7);
+        var s: Sim = .seeded(&machine, seed, "a writer appends", 100);
+        machine.sim = &s;
+        const fs = try stdlib.fixtureFs(&machine, 0);
+        const writer = try s.start(0, &.{fs});
+        const reply = try s.ask(writer, try machine.variant("Note", &.{}), 60_000);
+        try std.testing.expect(!reply.variant.fields[0].bool);
+        try std.testing.expectEqual(@as(usize, 0), s.files.systems.items[0].count());
+    }
+}
 
 test "the test runner supervises a process it starts with :always and the child line's max_restarts" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);

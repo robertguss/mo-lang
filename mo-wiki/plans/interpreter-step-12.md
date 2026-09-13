@@ -1,50 +1,59 @@
 ---
-title: "Step 12: the C backend, brief for the worker"
+title: "Step 12: the runtime under real programs, brief for the worker"
 created: 2026-09-13
 updated: 2026-09-13
 type: plan
-tags: [compiler, performance, runtime]
-sources: [spec/design-v0/07-toolchain.md, directions/d24-compile-to-c-via-zig.md]
-status: proposed
+tags: [runtime, performance, stdlib, tooling]
+sources: [examples/programs/kv/TOOLCHAIN-BUGS.md, examples/GAPS.md]
+status: done
 ---
 
-# Step 12: the C backend
+# Step 12: the runtime under real programs
 
-Chapter 7, build order item 2: C via the Zig toolchain for release, differential-tested against the interpreter, one dependency, a single static binary. This step does the smallest honest version: `mo build file.mo` emits C for the program's modules, compiles it with `zig cc`, and produces one binary that runs `main` on `Mo.Server`. Scope for this step is pure code plus the platform parts programs 2 and 3 use; processes under the compiled binary are allowed to fall back to "not yet: run it on the interpreter" with a clear error, recorded.
+Program 3 (`examples/programs/kv/`) runs and answers 15k GETs a second, but it found six toolchain bugs and eight gaps that make a long-running server impossible today: maps search linearly, a map in process state is copied on every write and never freed, a process keeps what every request cost it, and nothing writes a file. This step fixes all of it. The C backend waits until the runtime it would compile is honest.
 
 ## Orientation
 
-`toolchain/src/bytecode.zig` (the lowering the C emitter mirrors), `vm.zig` (the semantics to reproduce exactly: overflow traps, value semantics, contract checks at tier 2 off by default in release, on with `--contracts`), `server.zig`, `spec/design-v0/07-toolchain.md`, `directions/d24-compile-to-c-via-zig.md`, `d25-interpreter-for-the-edit-loop.md`.
+`examples/programs/kv/TOOLCHAIN-BUGS.md` (six bugs with reproductions, read first), the last eight lines of `examples/GAPS.md`, `toolchain/src/corpus.zig`, `stdlib.zig`, `vm.zig` (regions, memoization, process values), `sim.zig`, `server.zig`, `fmt.zig`, `spec/design-v0/09-stdlib.md`.
 
 ## Write scope
 
-`toolchain/` and `examples/`, branch `session-05`, one commit per part, push after every commit.
+`toolchain/`, `examples/`, rows appended to `mo-wiki/spec/design-v0/09-stdlib.md`. Branch `session-05`, one commit per part, push after every commit. `zig build test` must be green at the end of Part A and stay green.
 
-## Part A: the runtime in C
+## Part A: the corpus test discovers programs (bug 1)
 
-`toolchain/runtime/mo_rt.h` and `mo_rt.c`: values (tagged), strings, lists, maps, sets, the stdlib rows of `09-stdlib.md` that the interpreter implements, overflow-trapping arithmetic (`__builtin_*_overflow`), the crash report (same text as the interpreter's), and the `Mo.Server` platform parts (`args`, `env`, `stdout`, `stderr`, `fs` with the same containment rules, `clock`, `exit`). Memory: an arena per call frame with the same safe-point release the interpreter uses; no GC. One file each, C11, no dependencies.
+No hard-coded program list or counts anywhere in `corpus.zig`: every `programs/<name>.mo` and `programs/<name>/main.mo` is a program; every `# run:` line is a run; process-test counts are computed. `kv` passes in the real `zig build test`.
 
-## Part B: the emitter
+## Part B: maps and process state (bugs 2, 3, 6)
 
-`emit_c.zig`: from the checked tree (not the bytecode) to one C translation unit per program. Straightforward code: one C function per Mo function, structs as C structs, enums as tagged unions, `case` as switch, `for` as loops, combinators as loops, anonymous functions as static functions with an explicit environment. Contracts compiled in behind a runtime flag. Every emitted file must compile with `zig cc -std=c11 -Wall -Werror`.
+`Map` and `Set` get a hash index beside the insertion-ordered entries (order semantics unchanged: `09-stdlib.md` rules hold). `Map.set`, `remove`, `Set.add` on a value held in process `state` (or any unique `var`) work in place; the old value is freed. A program that declares a process still frees: the region cleanup runs at safe points in `main` and in every `update`, and mailbox values are roots. Measure: 2,000 overwrites at 20k keys must stay under 50 MB; building 10k keys under 50 ms.
 
-## Part C: `mo build`
+## Part C: a process keeps nothing per request (bug 4)
 
-`mo build file.mo [-o name] [--contracts] [--target <zig triple>]` writes the C to `zig-out/mo-build/<name>/`, runs `zig cc` (found next to the running `mo` or on PATH; record how), and leaves a static binary. Cross-compilation is `--target`, nothing else.
+After each `update`, everything allocated during it that is not reachable from the new state, the outgoing messages, or a reply is freed. Measure with `kv serve`: 200k requests must stay under 100 MB resident. Record bytes per key at 100k keys, and the 1M-line replay time inside `kv serve`.
 
-## Part D: differential testing
+## Part D: files are written (gaps)
 
-`zig build test` gains: for every program in `examples/programs/` (multi-file included), `mo build` it and run the binary with the same `# run:` lines; stdout, stderr text of crash reports, and exit codes must equal the interpreter's. Every corpus module with tests: `mo build --tests` produces a binary that runs the module's tests and prints the same lines as `mo test`; compare. Any difference is a bug in one of the two, and the interpreter is the reference.
+`09-stdlib.md` and the prelude gain `Fs.write(path, text, within:)`, `Fs.append(path, text, within:)` (durable: `fsync` before returning `Ok`), `Fs.remove(path, within:)`, `Fs.rename(from, to, within:)`; all refused at check time on a `read_only` scope (`MO0404`), all under fault injection in `Mo.Sim` with an in-memory file system that keeps what was written. `kv`'s log becomes real: changes survive a restart; the replay test in the spec passes. `Out.flush`, and `Out.fixture()` whose writes a test can read back with `out.fixture_text`? No new API shape: `Out.fixture()` returns an `Out` and a test reads `out.written` (a `List(String)`).
 
-## Part E: numbers
+## Part E: three language decisions, implemented
 
-Bench rows: `logstat-4k-c` (the compiled logstat over the same 4,000-line file), `build-logstat` (wall time of `mo build` for logstat, C emission and `zig cc` separately). Report the interpreter-to-native ratio and the overflow-check cost (build once with `-fwrapv` semantics for the comparison only, never shipped).
+Fable decided (grammar updated by Fable): a function may omit its return type when it returns nothing (`fn turn_away(conn: Conn)`), exactly like `main`; a negative integer literal is a pattern (`Ok(-5)`); `String.byte_size` is a row (`bytes.size` builds the whole list). Implement all three; the corpus gets one file for the first two.
+
+## Part F: `mo fmt` and the diagnostics (bug 5 and the misleading four)
+
+`mo fmt` must never crash: fix the anonymous-function-with-parenthesis case and add a fuzz test that formats every corpus file after each of ten random whitespace mutations. Reword: `MO0101` at a missing return type says "a function that returns a value names its type after `:`; one that returns nothing leaves it off"; `MO0102` for a bare `return` says "`return` takes a value; a function that returns nothing ends its body instead"; `MO0104` accepts negative literals now; `MO0403` for `Time.fixture` outside a test names `Time` not "a capability".
+
+## Part G: numbers
+
+`zig build bench` gains `kv-10k-get` (10k GETs over a real socket from one client) and `map-100k` (100k sets then 100k gets). Record all rows. Update `TOOLCHAIN-BUGS.md` with the fixing commit per bug and delete the settled `GAPS.md` lines.
 
 ## Done when
 
-Every program in the corpus builds and matches the interpreter, the numbers are recorded, pushed, decisions listed. If processes cannot be compiled in this step, the error is clear and the fact is in the final message.
+`zig build test` green with `kv` in the corpus from discovery, the memory numbers met, files written and replayed, the three decisions in, `mo fmt` fuzz-clean, bench rows recorded, pushed, decisions listed.
 
 ## Related
+- [[program-3]]
 - [[interpreter-step-11]]
-- [[d24-compile-to-c-via-zig]]
-- [[d25-interpreter-for-the-edit-loop]]
+- [[interpreter-step-13]]
+- [[decision-log]]

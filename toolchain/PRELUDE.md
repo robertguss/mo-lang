@@ -134,6 +134,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Set(T)` | `to_list` | | `List(T)` | | | stdlib (09) |
 | `String` | `size` | | `UInt64` (graphemes) | | | grammar |
 | `String` | `bytes` | | `List(UInt8)` | | | grammar |
+| `String` | `byte_size` | | `UInt64` | | | stdlib (09) |
 | `String` | `starts_with?` | `String` | `Bool` | | | grammar |
 | `String` (on type) | `from_bytes` | `List(UInt8)` | `Option(String)` | | | stdlib (09) |
 | `String` | `chars`, `lines` | | `List(String)` | | | stdlib (09) |
@@ -173,6 +174,10 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
 | `Fs` | `read_only` | | `Fs` | | | grammar |
+| `Fs` | `write` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
+| `Fs` | `append` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
+| `Fs` | `remove` | `String` | `Result(none, FsError)` | yes | | stdlib (09) |
+| `Fs` | `rename` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` (on type) | `fixture` | | `Fs` | | tests | grammar |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | | tests | grammar |
 | `Events` | `emit` | `T` | none | | | grammar |
@@ -190,6 +195,9 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
 | `Out` | `write_line` | `String` | none | | | stdlib (09) |
+| `Out` | `flush` | | none | | | stdlib (09) |
+| `Out` (on type) | `fixture` | | `Out` | | tests | stdlib (09) |
+| `Out` | `written` | | `List(String)` | | tests | stdlib (09) |
 | `Net` | `listen` | `UInt16` | `Result(Listener, NetError)` | yes | | stdlib (09) |
 | `Net` | `connect` | `String`, `UInt16` | `Result(Conn, NetError)` | yes | | stdlib (09) |
 | `Listener` | `accept` | | `Result(Conn, NetError)` | yes | | stdlib (09) |

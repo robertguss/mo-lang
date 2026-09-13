@@ -33,7 +33,8 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 | 8 | `Mo.Sim` seeds and fault injection; `sim (N runs)` real ([[interpreter-step-9]]) | counterexamples found |
 | 9, 10 | the sidecar, `mo fix`, the error catalog, the README ([[interpreter-step-10]]) | hand-edit detection; a model that has never seen Mo |
 | 11 | `Net` and processes under `mo run` ([[interpreter-step-11]]); then program 3, the KV store ([[program-3]]) | hot loops, overflow-check cost, requests per second |
-| 12 | the C backend via Zig for release, differential-tested | single binary; speed |
+| 12 | the runtime under real programs ([[interpreter-step-12]]): kv's six bugs, file writes | a server that runs for a day |
+| 13 | the C backend via Zig for release, differential-tested ([[interpreter-step-13]]) | single binary; speed |
 | 13 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 14 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 

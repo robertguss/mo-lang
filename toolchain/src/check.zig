@@ -577,7 +577,10 @@ const Checker = struct {
     fn checkLiteral(c: *Checker, d: Deferred) Error!void {
         const t = c.bt(d.type);
         if (t.tag != .int) return;
-        const raw = c.text(c.node(d.node).main_token);
+        const lit = c.node(d.node);
+        const raw = c.text(lit.main_token);
+        // A pattern's number may be negative: its `-` is the node's lhs.
+        const negative = lit.kind == .pat_literal and lit.lhs != 0;
         var digits: [32]u8 = undefined;
         var n: usize = 0;
         for (raw) |ch| if (ch != '_' and n < digits.len) {
@@ -596,7 +599,12 @@ const Checker = struct {
             .u32 => 4_294_967_295,
             .u64 => std.math.maxInt(u64),
         };
-        if (v > max) try c.reportTok(.literal_range, c.node(d.node).main_token, try c.print("{s} does not fit in {s}", .{ raw, try c.tn(d.type) }));
+        const signed = switch (kind) {
+            .i8, .i16, .i32, .i64 => true,
+            else => false,
+        };
+        const fits = if (negative) signed and v <= max + 1 else v <= max;
+        if (!fits) try c.reportTok(.literal_range, lit.main_token, try c.print("{s}{s} does not fit in {s}", .{ if (negative) "-" else "", raw, try c.tn(d.type) }));
     }
 
     fn checkBound(c: *Checker, d: Deferred) Error!void {
@@ -2257,7 +2265,7 @@ const Checker = struct {
                     .string => types.string,
                     else => types.bool_,
                 };
-                if (!c.pool.unify(subject, t)) try c.reportTok(.bad_pattern, n.main_token, try c.print("{s} cannot match {s}", .{ c.text(n.main_token), try c.tn(subject) }));
+                if (!c.pool.unify(subject, t)) try c.reportTok(.bad_pattern, n.main_token, try c.print("{s}{s} cannot match {s}", .{ if (n.lhs != 0) "-" else "", c.text(n.main_token), try c.tn(subject) }));
             },
             .pat_variant => try c.variantPattern(i, subject),
             .pat_record => try c.recordPattern(i, subject),
