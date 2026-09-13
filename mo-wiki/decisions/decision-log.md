@@ -63,6 +63,12 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | An undeclared type in a recipe signature is opaque; field reads on it are unchecked at tier 1 | Fable, from Opus's default | provisional | the three-recipe test in chapter 8 |
 | Contract integers are `i128` in the interpreter, a stand-in for unbounded | Fable | provisional | tier-3 proving |
 | The `verified:` line is printed by `mo test`, not written to the file, until the sidecar exists | Fable | provisional | step 5 |
+| Step 3 runs pure code only; processes, supervisors, `never`, `invariant` are step 4 | Fable | provisional | step 4 |
+| `property` runs 200 seeds from a fixed base seed; a failure reports seed and values | Fable | provisional | tier 3 on the corpus |
+| `verified:` vocabulary gains `sim (not run)` until the simulator exists | Fable | provisional | step 4 |
+| `test rejects` passes only by tripping a `requires` or a refinement; any other crash fails it | Fable | provisional | the corpus tests |
+| `mo run` runs a module's tests until `main` exists | Fable | provisional | program 1 |
+| Grok's and Codex's corpora stay on their branches as evidence, never merged | Fable | locked | — |
 
 ## Related
 - [[session-05]]
