@@ -78,6 +78,16 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `test rejects` also passes on a tripped `invariant` | Fable | provisional | step 4 |
 | Default mailbox bound is 1_000 | Fable | provisional | `Mo.Sim` with a slow consumer |
 | `ask` on a crashed, unrestarted process returns `Error(Down)` | Fable | provisional | step 4 |
+| Step 4 accepted: Mo.Sim scheduler, transactions, invariants, mailbox bounds, supervisors, crash reports by Opus; milestone met; 21 minutes | Fable | — | program 1 |
+| Chapter 4 corrected again by the compiler: `result` is a keyword (test binds `outcome`); the property needed `!charge.refunded?`; `RefundQueue` gains `message Done : UInt32` | Fable, found by the compiler | locked | — |
+| A test's sends are delivered after each top-level statement; a `for` counts as one statement | Fable, from Opus's default | provisional | program 1's tests |
+| Any process crash fails a plain test even if the supervisor restarts it; `rejects` passes on a tripped `requires`, refinement, or `invariant` | Fable, from Opus's default | provisional | program 1 |
+| `ask` returns `Down` when its message was lost to a crash; a re-entrant `ask` is `Timeout` | Fable, from Opus's default | provisional | program 1 |
+| A restart empties the mailbox and re-runs init; `:on_crash` behaves like `:always` for now | Fable, from Opus's default | provisional | supervisor strategies question (chapter 8) |
+| Zero values: `0`, `""`, `[]`, `None`, `false`, zero `Duration`, and structs or tuples of those; `Time`, enums, capabilities, handles have none | Fable, from Opus's default | provisional | the checker should reject a missing initializer (step 5) |
+| The simulated clock does not advance in step 4, so restart windows never slide | Fable, from Opus's default | provisional | the simulator step |
+| `Ledger.fixture()` finds every id as an unrefunded 10_000 charge and every save succeeds | Fable, from Opus's default | provisional | program 1 |
+| Wanted: `for _ in 0..n` for a loop whose index is unused; today the unused-binding law rejects `i` | Fable | provisional | step 5 |
 
 ## Related
 - [[session-05]]

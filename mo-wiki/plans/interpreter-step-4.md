@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [compiler, processes, runtime]
 sources: [spec/design-v0/03-semantics.md, spec/design-v0/08-milestone.md, spec/grammar.md]
-status: in-progress
+status: done
 ---
 
 # Interpreter step 4: processes and supervisors, brief for the worker

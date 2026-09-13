@@ -80,6 +80,7 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
 
   message Enqueue(request: RefundRequest)
   message Drain
+  message Done : UInt32
 
   fn update(state, message)
     case message
@@ -94,6 +95,7 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
         end
         state.pending = []
         state.done += 1
+      Done: state.done
     end
   end
 end
@@ -104,8 +106,8 @@ end
 
 test "refund within window succeeds"
   charge = Charge.fixture(captured_at: t0, captured_amount: Money.cents(500))
-  result = charge.apply_refund(Money.cents(500))
-  assert result is Ok(c)
+  outcome = charge.apply_refund(Money.cents(500))
+  assert outcome is Ok(c)
   assert c.refunded?
 end
 
@@ -124,7 +126,7 @@ test rejects "a window read before the capture"
 end
 
 property "any valid refund leaves the charge refunded"
-  for charge in any(Charge), amount in any(Money) if amount <= charge.captured_amount
+  for charge in any(Charge), amount in any(Money) if !charge.refunded? and amount <= charge.captured_amount
     assert charge.apply_refund(amount) is Ok(c) and c.refunded?
   end
 end
@@ -168,3 +170,5 @@ The example and rules above already reflect these; this section is the changelog
 Claude (session 5, deciding on Robert's instruction to build first): the supervisor takes parameters and passes them on the `child` line, the one addition of syntax; one-field variants match positionally; `a..b` excludes `b`; `state` fields start at zero; literals are typed from use. The three-worker corpus (`examples/`, `plans/model-bakeoff.md`) found every one of these; the full list with what tests each is at the foot of `grammar.md`.
 
 Claude (session 5, from the interpreter): the example broke its own law. `within_window?` and `refund` each have a `requires` with no `test rejects`, and `mo check` refused the file with `MO0311`. Two `rejects` tests added; the `verified:` line counts 5. The compiler reviewing the spec is the point of the milestone.
+
+Claude (session 5, from the interpreter, second pass): three more corrections the toolchain forced on the example. `result` is a keyword, so the first test binds `outcome`. The property was false: `any(Charge)` generates refunded charges, which `apply_refund` rightly refuses, so the guard gains `!charge.refunded?`. `RefundQueue` gains `message Done : UInt32` so a test can `ask` for the count; the corpus copy at `examples/payments/refund.mo` carries that test. Chapter 4 now compiles and runs as written, minus the `verified:` line, which the toolchain prints.
