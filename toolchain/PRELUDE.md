@@ -32,12 +32,17 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `Net` | | capability: TCP, `platform.net` | stdlib (09) |
 | `Listener` | | capability: a listening TCP port | stdlib (09) |
 | `Conn` | | capability: a TCP connection | stdlib (09) |
+| `Http` | | capability: HTTP/1.1, `platform.http` | stdlib (09) |
+| `HttpListener` | | capability: a port that accepts HTTP exchanges | stdlib (09) |
+| `Exchange` | | capability: one HTTP request and its one response | stdlib (09) |
+| `Request`, `Response` | | struct (`## Http`) | stdlib (09) |
 | `FsError` | | error enum | grammar (name); variants corpus-only |
 | `AskError` | | error enum | grammar |
 | `LedgerError` | | error enum | corpus-only |
 | `Json` | | enum: a JSON value | stdlib (09) |
 | `JsonError` | | error enum | stdlib (09) |
 | `NetError` | | error enum | stdlib (09) |
+| `HttpError` | | error enum | stdlib (09) |
 
 ## Stand-ins
 
@@ -86,6 +91,13 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `NetError` | `Closed` | | stdlib (09) |
 | `NetError` | `LineTooLong` | | stdlib (09) |
 | `NetError` | `Busy` | | stdlib (09) |
+| `HttpError` | `Timeout` | | stdlib (09) |
+| `HttpError` | `Refused` | | stdlib (09) |
+| `HttpError` | `Closed` | | stdlib (09) |
+| `HttpError` | `Busy` | | stdlib (09) |
+| `HttpError` | `Malformed` | | stdlib (09) |
+| `HttpError` | `TooLarge` | | stdlib (09) |
+| `HttpError` | `Unsupported` | | stdlib (09) |
 
 ## Functions
 
@@ -194,6 +206,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `fs` | | `Fs` | | `main` | grammar (Q18) |
 | `Platform` | `clock` | | `Clock` | | `main` | grammar (Q18) |
 | `Platform` | `net` | | `Net` | | `main` | stdlib (09) |
+| `Platform` | `http` | | `Http` | | `main` | stdlib (09) |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
@@ -209,6 +222,13 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Conn` | `write` | `String` | `Result(none, NetError)` | yes | | stdlib (09) |
 | `Conn` | `close` | | none | | | stdlib (09) |
 | `Net` (on type) | `fixture` | | `Net` | | tests | stdlib (09) |
+| `Http` | `listen` | `UInt16` | `Result(HttpListener, HttpError)` | yes | | stdlib (09) |
+| `HttpListener` | `accept` | | `Result(Exchange, HttpError)` | yes | | stdlib (09) |
+| `HttpListener` | `port` | | `UInt16` | | | stdlib (09) |
+| `Exchange` | `request` | | `Request` | | | stdlib (09) |
+| `Exchange` | `reply` | `Response` | `Result(none, HttpError)` | yes | | stdlib (09) |
+| `Http` | `send` | `Request`, `host: String`, `port: UInt16` | `Result(Response, HttpError)` | yes | | stdlib (09) |
+| `Http` (on type) | `fixture` | | `Http` | | tests | stdlib (09) |
 | `Json` (on type) | `encode` | `T` | `String` | | | stdlib (09) |
 | `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | | | stdlib (09) |
 | `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |
@@ -226,6 +246,21 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 ### The platform
 
 `fn main(platform: Platform)` is the only place a `Platform` exists (grammar §2, Q18). Its parts read like fields (`platform.fs`, `platform.args`) and are passed down, narrowed (`platform.fs.scoped("data").read_only`); the `Platform` itself is never passed, bound, stored, or returned (MO0407), and no other function, process, or supervisor takes one. `mo test` never holds a Platform, so these rows run only under `mo run`, on Mo.Server.
+
+## Http
+
+The structs the `Http` rows take and give (design-v0/09, Http). A field marked *may be left out* is empty when a construction leaves it out: an empty map, or `""`. Unlike a stand-in, a stdlib struct exists whatever a module declares: a module's own `Request` or `Response` hides the prelude's name from that module only, and the rows still mean the prelude's.
+
+| name | field | type | |
+|---|---|---|---|
+| `Request` | `method` | `String` | |
+| `Request` | `path` | `String` | |
+| `Request` | `query` | `Map(String, String)` | may be left out |
+| `Request` | `headers` | `Map(String, String)` | may be left out |
+| `Request` | `body` | `String` | may be left out |
+| `Response` | `status` | `UInt16` | |
+| `Response` | `headers` | `Map(String, String)` | may be left out |
+| `Response` | `body` | `String` | |
 
 ## Operators
 

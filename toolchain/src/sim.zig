@@ -404,25 +404,39 @@ pub const Sim = struct {
     /// so no waiting process is passed over for more than one round.
     fn drain(sim: *Sim) Error!void {
         var delivered: u32 = 0;
-        var progressed = true;
-        while (progressed) {
-            progressed = false;
-            sim.order.clearRetainingCapacity();
-            for (0..sim.procs.items.len) |id| try sim.order.append(sim.gpa, @intCast(id));
-            if (sim.schedule) |*rng| rng.random().shuffle(u32, sim.order.items);
-            // A process an update starts waits for the next round.
-            for (sim.order.items) |id| {
-                const p = &sim.procs.items[id];
-                if (!p.up or p.busy or p.queued() == 0) continue;
-                _ = try sim.deliver(id);
-                progressed = true;
-                delivered += 1;
-                if (delivered == settle_limit and sim.server == null) {
-                    sim.vm.report = .{ .kind = .other, .clause = "the processes did not settle: a million messages delivered and mailboxes still waiting", .within = sim.test_name, .at = 0 };
-                    return error.Crash;
-                }
+        while (try sim.round(&sim.order, &delivered)) {}
+    }
+
+    /// One round of delivering waiting messages, for a fixture call that waits for a process
+    /// to answer it (http.zig, `send`): true when it delivered one. `delivered` counts the
+    /// messages across the call's rounds, which end at settle_limit as a settle's do.
+    pub fn deliverRound(sim: *Sim, delivered: *u32) Error!bool {
+        // The call may be inside an update a settle delivered: the round keeps its own order.
+        var order: std.ArrayList(u32) = .empty;
+        defer order.deinit(sim.gpa);
+        return sim.round(&order, delivered);
+    }
+
+    /// One message to each waiting process that is up and not on the stack, in start order
+    /// or in an order the seed shuffles; true when one was delivered.
+    fn round(sim: *Sim, order: *std.ArrayList(u32), delivered: *u32) Error!bool {
+        var progressed = false;
+        order.clearRetainingCapacity();
+        for (0..sim.procs.items.len) |id| try order.append(sim.gpa, @intCast(id));
+        if (sim.schedule) |*rng| rng.random().shuffle(u32, order.items);
+        // A process an update starts waits for the next round.
+        for (order.items) |id| {
+            const p = &sim.procs.items[id];
+            if (!p.up or p.busy or p.queued() == 0) continue;
+            _ = try sim.deliver(id);
+            progressed = true;
+            delivered.* += 1;
+            if (delivered.* == settle_limit and sim.server == null) {
+                sim.vm.report = .{ .kind = .other, .clause = "the processes did not settle: a million messages delivered and mailboxes still waiting", .within = sim.test_name, .at = 0 };
+                return error.Crash;
             }
         }
+        return progressed;
     }
 
     /// `events.emit(e)`: inside an update it waits for the commit, like a send.

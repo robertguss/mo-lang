@@ -25,6 +25,7 @@ pub const region = @import("region.zig");
 pub const sim = @import("sim.zig");
 pub const server = @import("server.zig");
 pub const net = @import("net.zig");
+pub const http = @import("http.zig");
 pub const turns = @import("turns.zig");
 pub const contracts = @import("contracts.zig");
 pub const runner = @import("runner.zig");

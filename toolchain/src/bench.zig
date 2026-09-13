@@ -30,6 +30,10 @@
 //! to the interpreter's row. `kv-50k-set-rss-kib` and `kv-50k-set-rss-kib-c` are kv's resident
 //! memory in KiB, `mo run` and the binary, after 50_000 SETs of distinct keys from one client
 //! over one socket, served from an empty log, each SET waiting for its OK.
+//! `http-1k` and `http-1k-c` time 1_000 `GET /hello` round trips from one client to
+//! programs/httpd serving (`httpd serve --port N`) under `mo run` and as its `mo build` binary,
+//! each request a connection of its own read to the end of the stream; `http-1k-rss-kib` and
+//! `http-1k-rss-kib-c` are each server's resident memory in KiB after 1_000 of them.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -253,6 +257,29 @@ pub fn main(init: std.process.Init) !void {
         } else try out.print("{s:<8} {s:>12}\n", .{ row, "n/a" });
     }
 
+    const httpd_main = try programMain(arena, io, root, "httpd");
+    const httpd_binary = try buildNative(arena, io, init.environ_map, root, "httpd");
+    var http: Http = .{};
+    if (httpd_main) |m| http.ns = try httpTrips(arena, io, &.{ mo_exe, "run", m, "--" }, iters);
+    if (httpd_binary) |binary| http.c_ns = try httpTrips(arena, io, &.{binary}, iters);
+    if (http.ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a round trip  ({d} GET /hello over 127.0.0.1 from one client to httpd under mo run, a connection each)\n", .{ "http-1k", us, us / http_trips, http_trips });
+    } else try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "http-1k", "n/a", "n/a" });
+    if (http.c_ns) |ns| {
+        const us: u64 = @intCast(@divTrunc(ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a round trip  ({d} GET /hello to the mo build binary", .{ "http-1k-c", us, us / http_trips, http_trips });
+        if (http.ns) |i| try out.print("; the interpreter's http-1k takes {d:.1}x as long", .{ratio(i, ns)});
+        try out.writeAll(")\n");
+    } else try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "http-1k-c", "n/a", "n/a" });
+    if (httpd_main) |m| http.rss_kib = try httpRss(arena, io, &.{ mo_exe, "run", m, "--" });
+    if (httpd_binary) |binary| http.rss_c_kib = try httpRss(arena, io, &.{binary});
+    for ([_]?u64{ http.rss_kib, http.rss_c_kib }, [_][]const u8{ "http-1k-rss-kib", "http-1k-rss-kib-c" }, [_][]const u8{ "mo run", "the mo build binary" }) |kib, row, who| {
+        if (kib) |k| {
+            try out.print("{s:<8} {d:>9} KiB  (httpd's resident memory under {s} after {d} GET /hello)\n", .{ row, k, who, http_trips });
+        } else try out.print("{s:<8} {s:>12}\n", .{ row, "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -261,7 +288,7 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib });
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib }, http);
 }
 
 fn ratio(slow: i96, fast: i96) f64 {
@@ -603,9 +630,97 @@ fn kv10kGet(arena: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const 
 
 /// programs/kv/main.mo's absolute path, or null when the corpus has no kv.
 fn kvMain(arena: std.mem.Allocator, io: Io, root: []const u8) !?[]const u8 {
-    const main_path = try std.fs.path.join(arena, &.{ root, "programs/kv/main.mo" });
+    return programMain(arena, io, root, "kv");
+}
+
+/// programs/<name>/main.mo's absolute path, or null when the corpus has no such program.
+fn programMain(arena: std.mem.Allocator, io: Io, root: []const u8, name: []const u8) !?[]const u8 {
+    const main_path = try std.fs.path.join(arena, &.{ root, "programs", name, "main.mo" });
     Io.Dir.cwd().access(io, main_path, .{}) catch return null;
     return try Io.Dir.cwd().realPathFileAlloc(io, main_path, arena);
+}
+
+const http_trips = 1_000;
+const http_request = "GET /hello?name=bench HTTP/1.1\r\nhost: 127.0.0.1\r\n\r\n";
+
+/// httpd's rows: 1_000 round trips under mo run and as a binary, and each server's resident memory after them.
+const Http = struct { ns: ?i96 = null, c_ns: ?i96 = null, rss_kib: ?u64 = null, rss_c_kib: ?u64 = null };
+
+/// httpd serving on a free port, started by `prefix` then `serve --port N`; null when it does not listen.
+fn serveHttpd(arena: std.mem.Allocator, io: Io, prefix: []const []const u8) !?struct { child: std.process.Child, port: u16 } {
+    const port = freePort() orelse return null;
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(arena, prefix);
+    try argv.appendSlice(arena, &.{ "serve", "--port", try std.fmt.allocPrint(arena, "{d}", .{port}) });
+    var child = try std.process.spawn(io, .{ .argv = argv.items, .stdin = .ignore, .stdout = .ignore, .stderr = .ignore });
+    // The probe's connection ends with no request, which httpd counts as a client that left.
+    for (0..500) |_| {
+        if (connectLoopback(port)) |fd| {
+            _ = posix.system.close(fd);
+            return .{ .child = child, .port = port };
+        }
+        io.sleep(.fromMilliseconds(20), .awake) catch {};
+    }
+    std.debug.print("httpd: {s} did not listen on port {d}\n", .{ prefix[0], port });
+    child.kill(io);
+    return null;
+}
+
+/// One GET /hello on a connection of its own, read to the end of the stream: true when httpd
+/// answered 200 with the hello.
+fn httpGet(port: u16, buf: []u8) bool {
+    const sys = posix.system;
+    const fd = connectLoopback(port) orelse return false;
+    defer _ = sys.close(fd);
+    var sent: usize = 0;
+    while (sent < http_request.len) {
+        const n = sys.write(fd, http_request[sent..].ptr, http_request.len - sent);
+        if (n <= 0) return false;
+        sent += @intCast(n);
+    }
+    var got: usize = 0;
+    while (got < buf.len) {
+        const n = sys.read(fd, buf[got..].ptr, buf.len - got);
+        if (n < 0) return false;
+        if (n == 0) break;
+        got += @intCast(n);
+    }
+    return std.mem.startsWith(u8, buf[0..got], "HTTP/1.1 200 OK\r\n") and std.mem.endsWith(u8, buf[0..got], "\r\n\r\nhello, bench");
+}
+
+/// `http_trips` GETs to httpd on `port`; false, and why on stderr, when one is not the hello.
+fn httpGets(port: u16) bool {
+    var buf: [512]u8 = undefined;
+    for (0..http_trips) |_| if (!httpGet(port, &buf)) {
+        std.debug.print("http-1k: httpd did not answer GET /hello with the hello\n", .{});
+        return false;
+    };
+    return true;
+}
+
+/// The best of `iters` passes of http-1k's GETs to httpd started by `prefix`.
+fn httpTrips(arena: std.mem.Allocator, io: Io, prefix: []const []const u8, iters: u32) !?i96 {
+    var server = try serveHttpd(arena, io, prefix) orelse return null;
+    defer server.child.kill(io);
+    var best: i96 = std.math.maxInt(i96);
+    var it: u32 = 0;
+    while (it < iters) : (it += 1) {
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        if (!httpGets(server.port)) return null;
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ns < best) best = ns;
+    }
+    return best;
+}
+
+/// The resident memory in KiB of a fresh httpd started by `prefix` after `http_trips` GETs.
+fn httpRss(arena: std.mem.Allocator, io: Io, prefix: []const []const u8) !?u64 {
+    var server = try serveHttpd(arena, io, prefix) orelse return null;
+    defer server.child.kill(io);
+    if (!httpGets(server.port)) return null;
+    const pid = try std.fmt.allocPrint(arena, "{d}", .{server.child.id.?});
+    const ps = try std.process.run(arena, io, .{ .argv = &.{ "ps", "-o", "rss=", "-p", pid } });
+    return std.fmt.parseInt(u64, std.mem.trim(u8, ps.stdout, " \n"), 10) catch null;
 }
 
 const Kv = struct { child: std.process.Child, fd: posix.socket_t };
@@ -775,8 +890,10 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 /// the echo-1k row (its count is the round trips), the map-100k row (its count is the keys),
 /// the kv-10k-get row (its count is the GETs), the compiled logstat's rows, and the compiled
 /// echo and kv: date, stage, count, best total µs ("n/a" when unimplemented), except the two
-/// kv-50k-set-rss-kib rows, whose count is the SETs and whose number is KiB.
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC, native: Native) !void {
+/// kv-50k-set-rss-kib rows, whose count is the SETs and whose number is KiB; then httpd's rows,
+/// http-1k and http-1k-c (µs), and http-1k-rss-kib and http-1k-rss-kib-c (KiB), each counting
+/// the round trips.
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC, native: Native, http: Http) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -856,5 +973,15 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         if (kib) |k| {
             try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), name, kv_sets, k });
         } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), name, kv_sets });
+    }
+    for ([_]?i96{ http.ns, http.c_ns }, [_][]const u8{ "http-1k", "http-1k-c" }) |ns, name| {
+        if (ns) |t| {
+            try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), name, http_trips, @as(u64, @intCast(@divTrunc(t, 1000))) });
+        } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), name, http_trips });
+    }
+    for ([_]?u64{ http.rss_kib, http.rss_c_kib }, [_][]const u8{ "http-1k-rss-kib", "http-1k-rss-kib-c" }) |kib, name| {
+        if (kib) |k| {
+            try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), name, http_trips, k });
+        } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), name, http_trips });
     }
 }

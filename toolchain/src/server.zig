@@ -156,6 +156,8 @@ pub const Server = struct {
             .{ .kind = .fs }
         else if (std.mem.eql(u8, name, "net"))
             .{ .kind = .net }
+        else if (std.mem.eql(u8, name, "http"))
+            .{ .kind = .http }
         else
             .{ .kind = .clock };
         return .{ .cap = cap };

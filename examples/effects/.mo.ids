@@ -16,6 +16,34 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "85f61abb0b9a367c" }
     },
     {
+      "path": "http.mo",
+      "module": "Effects.Http",
+      "declarations": [
+        { "id": "fb00ff70c31c", "name": "module Effects.Http", "hash": "bf1817f0add89714" },
+        { "id": "695c8a2cde6e", "name": "expose", "hash": "c0622c77898c9acd" },
+        { "id": "1e6ccfe973a0", "name": "intent", "hash": "7d758235e0e5c59c" },
+        { "id": "a92f93aed68f", "name": "type Fetched", "hash": "dfcbb177249c85cb" },
+        { "id": "cce4c6c7f285", "name": "process Worker", "hash": "8496ade6e7b194a5" },
+        { "id": "648ee2c835b0", "name": "process Server", "hash": "aebb4b67a9b0c888" },
+        { "id": "5764808205ba", "name": "supervisor Servers", "hash": "537a5282a70619b0" },
+        { "id": "e272c732610e", "name": "process Raw", "hash": "9961d5922f6df6cb" },
+        { "id": "71a1edad666b", "name": "supervisor Raws", "hash": "41d9e709c516c08e" },
+        { "id": "5d1bce399cef", "name": "fn wired", "hash": "2385b5ad9d3afe58" },
+        { "id": "f2ac3f756e97", "name": "fn answer", "hash": "23ebc68f9f3469d2" },
+        { "id": "3c2496cc5afe", "name": "fn fetch", "hash": "510d37716c63092d" },
+        { "id": "d6c6c1d21c13", "name": "fn answered?", "hash": "e0aa846b7afed98f" },
+        { "id": "44966f90fbfb", "name": "fn echoed?", "hash": "803495b78c6993c8" },
+        { "id": "e0ab885d7807", "name": "fn fetch_raw", "hash": "820365493f60f7a3" },
+        { "id": "df5366b24b53", "name": "fn created?", "hash": "6519f0619b633554" },
+        { "id": "1cb537686e52", "name": "test \"a route's answer depends only on the request\"", "hash": "b2dd27472f646d59" },
+        { "id": "4237839b9747", "name": "test \"GET /hello answers with the name its query gives, unless a call fails and says so\"", "hash": "9fa566f35990bb09" },
+        { "id": "72804d4af3ec", "name": "test \"POST /echo answers with the body and its content type, and another route is 404, unless a call fails\"", "hash": "d62ac02b928b1d55" },
+        { "id": "e5ccc023f4e4", "name": "test \"a port nothing listens on is Refused, and a request with no server to answer it times out\"", "hash": "f2bc759b7119bc98" },
+        { "id": "58c5c839d32b", "name": "test \"a response with no content-length runs to the end of the stream, and its headers join as a request's do, unless a call fails\"", "hash": "79657089f4f7cf33" }
+      ],
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "1e3fafe49b37a0fa" }
+    },
+    {
       "path": "narrowing.mo",
       "module": "Effects.Narrowing",
       "declarations": [

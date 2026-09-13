@@ -89,6 +89,31 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "02f616d4cb3dda98" }
     },
     {
+      "path": "httpd/main.mo",
+      "module": "Httpd.Main",
+      "declarations": [
+        { "id": "78af1f790eb9", "name": "module Httpd.Main", "hash": "892f29f90439a047" },
+        { "id": "7c82f8c1d9ad", "name": "expose", "hash": "b30e74a3e3c8dcad" },
+        { "id": "e48c6ea160c3", "name": "intent", "hash": "b18205f455c00ba3" },
+        { "id": "a96676c051cd", "name": "struct Options", "hash": "3dba1959d36bafb2" },
+        { "id": "a30832e5982a", "name": "process Acceptor", "hash": "4357c611f5bbbcbe" },
+        { "id": "0d83f9fc8fac", "name": "process Client", "hash": "8c50e8d1705cb636" },
+        { "id": "bcc1405b4e0c", "name": "supervisor Hellos", "hash": "23235f8f03233fac" },
+        { "id": "e9d083f7b499", "name": "fn options", "hash": "baf93d2fb608671d" },
+        { "id": "3f2ccf6b07a2", "name": "fn answer", "hash": "64fe728e92bd2c01" },
+        { "id": "749a54fbe13b", "name": "fn answer_one", "hash": "88f2dcc624bff9fd" },
+        { "id": "b9fa281802bc", "name": "fn serve", "hash": "1a76f24d299f343e" },
+        { "id": "a954c8c5f789", "name": "fn fetch", "hash": "907d89de61b0cfe4" },
+        { "id": "85caea03d8a1", "name": "fn run", "hash": "9f56f0cd1636bc0a" },
+        { "id": "bde1f140ad04", "name": "fn serve_forever", "hash": "46877e655d42a851" },
+        { "id": "804146dee59e", "name": "fn started", "hash": "c6e6ae23a486e4d8" },
+        { "id": "b74e2dfaa637", "name": "fn main", "hash": "a1f7ab3a96473dba" },
+        { "id": "25fe3329128d", "name": "test \"--clients takes a count, serve takes a port, and the rest are the names\"", "hash": "fe71503636c6382a" },
+        { "id": "ea8ff6416455", "name": "test \"hello answers with the name its query gives, and any other request is 404\"", "hash": "2a9de2f7a475b9d7" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "d8b30fadefe315c9" }
+    },
+    {
       "path": "kv/log.mo",
       "module": "Kv.Log",
       "declarations": [

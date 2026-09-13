@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [stdlib, runtime, processes]
 sources: [plans/interpreter-step-11.md, plans/interpreter-step-15.md, spec/design-v0/09-stdlib.md, plans/program-menu.md]
-status: in-progress
+status: done
 ---
 
 # Step 16: HTTP in the stdlib

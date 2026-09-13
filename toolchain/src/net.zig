@@ -34,6 +34,19 @@ pub const Failure = enum { Timeout, Refused, Closed, LineTooLong, Busy };
 
 const Scan = union(enum) { line: []const u8, too_long, end, more };
 
+/// What a call that gives a connection came to: its handle, or why not.
+pub const Outcome = union(enum) { ok: u32, failed: Failure };
+
+/// What one read into a connection's buffer came to (`Net.fill`).
+pub const Filled = enum { got, eof, timeout, closed, busy, full };
+
+fn connResult(vm: *Vm, o: Outcome) Error!Value {
+    return switch (o) {
+        .ok => |h| vm.variant("Ok", &.{.{ .cap = .{ .kind = .conn, .handle = h } }}),
+        .failed => |f| fail(vm, f),
+    };
+}
+
 /// The next line in `pending`, the bytes of the stream so far not given out: how many
 /// bytes it takes, and the line, what stands in its way, or `more` to read first. `eof`:
 /// nothing follows `pending`. A line of more than 64 KiB is too long, and the bytes up to
@@ -112,6 +125,21 @@ pub const Conn = struct {
     }
 };
 
+/// An Exchange (http.zig): the connection it answers on, and until it is answered the
+/// request's bytes, which `exchange.request` reads.
+pub const Exchange = struct {
+    conn: u32,
+    request: []u8,
+    answered: bool = false,
+
+    /// Answered: the request's bytes are no longer kept.
+    pub fn forget(e: *Exchange, gpa: std.mem.Allocator) void {
+        if (!e.answered) gpa.free(e.request);
+        e.answered = true;
+        e.request = &.{};
+    }
+};
+
 /// Set when a call's task ends; also wakes main's thread when it hands out turns while it
 /// waits (turns.zig).
 pub const Waker = struct {
@@ -135,6 +163,8 @@ pub const Net = struct {
     gpa: std.mem.Allocator,
     listeners: std.ArrayList(*Listener) = .empty,
     conns: std.ArrayList(*Conn) = .empty,
+    /// Each Exchange's connection and request (http.zig); its handle is its index.
+    exchanges: std.ArrayList(Exchange) = .empty,
 
     /// One row; `a` is the receiver, then the parameters, then `within`.
     pub fn call(n: *Net, vm: *Vm, which: Row, a: []const Value) Error!Value {
@@ -166,98 +196,141 @@ pub const Net = struct {
     }
 
     fn connect(n: *Net, vm: *Vm, host: []const u8, port: u16, ms: i64) Error!Value {
+        return connResult(vm, try n.connectConn(vm, host, port, ms));
+    }
+
+    /// A connection to `host` at `port`, as `connect` makes it (http.zig makes its own).
+    pub fn connectConn(n: *Net, vm: *Vm, host: []const u8, port: u16, ms: i64) Error!Outcome {
         var waker = wakerFor(vm);
-        var task = n.io.concurrent(connectTask, .{ n.io, host, port, &waker }) catch return fail(vm, .Busy);
+        var task = n.io.concurrent(connectTask, .{ n.io, host, port, &waker }) catch return .{ .failed = .Busy };
         const in_time = n.wait(vm, &waker, ms) catch |err| {
             if (task.cancel(n.io)) |s| s.close(n.io) else |_| {}
             return err;
         };
         const r = if (in_time) task.await(n.io) else task.cancel(n.io);
-        const stream = r catch |err| return fail(vm, switch (err) {
+        const stream = r catch |err| return .{ .failed = switch (err) {
             error.Canceled, error.Timeout => .Timeout,
             error.ProcessFdQuotaExceeded, error.SystemFdQuotaExceeded, error.SystemResources => .Busy,
             else => .Refused,
-        });
-        return vm.variant("Ok", &.{try n.adopt(stream)});
+        } };
+        return .{ .ok = try n.adopt(stream) };
     }
 
     fn accept(n: *Net, vm: *Vm, l: *Listener, ms: i64) Error!Value {
-        if (l.accepting) return fail(vm, .Busy);
+        return connResult(vm, try n.acceptConn(vm, l, ms));
+    }
+
+    /// The next client of `l`, as `accept` takes it (http.zig takes its own).
+    pub fn acceptConn(n: *Net, vm: *Vm, l: *Listener, ms: i64) Error!Outcome {
+        if (l.accepting) return .{ .failed = .Busy };
         l.accepting = true;
         defer l.accepting = false;
         var waker = wakerFor(vm);
-        var task = n.io.concurrent(acceptTask, .{ n.io, &l.server, &waker }) catch return fail(vm, .Busy);
+        var task = n.io.concurrent(acceptTask, .{ n.io, &l.server, &waker }) catch return .{ .failed = .Busy };
         const in_time = n.wait(vm, &waker, ms) catch |err| {
             if (task.cancel(n.io)) |s| s.close(n.io) else |_| {}
             return err;
         };
         const r = if (in_time) task.await(n.io) else task.cancel(n.io);
-        const stream = r catch |err| return fail(vm, switch (err) {
+        const stream = r catch |err| return .{ .failed = switch (err) {
             error.Canceled => .Timeout,
             error.SocketNotListening => .Closed,
             else => .Busy,
-        });
-        return vm.variant("Ok", &.{try n.adopt(stream)});
+        } };
+        return .{ .ok = try n.adopt(stream) };
     }
 
-    fn adopt(n: *Net, stream: Io.net.Stream) Error!Value {
+    fn adopt(n: *Net, stream: Io.net.Stream) Error!u32 {
         const c = try n.gpa.create(Conn);
         c.* = .{ .stream = stream };
         const handle: u32 = @intCast(n.conns.items.len);
         try n.conns.append(n.gpa, c);
-        return .{ .cap = .{ .kind = .conn, .handle = handle } };
+        return handle;
     }
 
     /// `conn.read_line`: the next line, `None` at the end of the stream, or why not.
     fn readLine(n: *Net, vm: *Vm, c: *Conn, ms: i64) Error!Value {
         if (c.closed) return fail(vm, .Closed);
         if (c.reading) return fail(vm, .Busy);
-        if (c.buf.len == 0) c.buf = std.heap.page_allocator.alloc(u8, 2 * line_limit) catch return error.OutOfMemory;
         const t0 = Io.Clock.Timestamp.now(n.io, .awake);
         while (true) {
             if (try lineResult(vm, c.scan())) |v| return v;
             const left = ms - t0.durationTo(Io.Clock.Timestamp.now(n.io, .awake)).raw.toMilliseconds();
             if (left <= 0) return fail(vm, .Timeout);
-            if (c.start > 0) {
-                std.mem.copyForwards(u8, c.buf, c.buf[c.start..c.end]);
-                c.end -= c.start;
-                c.start = 0;
+            switch (try n.fill(vm, c, left, 2 * line_limit, 2 * line_limit)) {
+                .got, .eof => {},
+                .timeout => return fail(vm, .Timeout),
+                .closed => return fail(vm, .Closed),
+                .busy => return fail(vm, .Busy),
+                // A line too long is taken before the buffer fills.
+                .full => unreachable,
             }
-            c.reading = true;
-            var waker = wakerFor(vm);
-            var task = n.io.concurrent(readTask, .{ n.io, c.stream, c.buf[c.end..], &waker }) catch {
-                c.reading = false;
-                return fail(vm, .Busy);
-            };
-            const in_time = n.wait(vm, &waker, left) catch |err| {
-                _ = task.cancel(n.io) catch 0;
-                c.reading = false;
-                return err;
-            };
-            const r = if (in_time) task.await(n.io) else task.cancel(n.io);
-            c.reading = false;
-            if (c.closed) {
-                n.release(c);
-                return fail(vm, .Closed);
-            }
-            const got = r catch |err| {
-                if (err == error.Canceled) return fail(vm, .Timeout);
-                n.close(c);
-                return fail(vm, .Closed);
-            };
-            if (got == 0) c.eof = true else c.end += got;
         }
+    }
+
+    /// Reads what arrives next on `c` into its buffer, waiting at most `ms`. The buffer is
+    /// `initial` bytes at the first read and grows to at most `cap`; `full` when it holds
+    /// `cap` bytes not given out. A read past its deadline keeps what was buffered; a stream
+    /// that broke closes the connection.
+    pub fn fill(n: *Net, vm: *Vm, c: *Conn, ms: i64, initial: usize, cap: usize) Error!Filled {
+        if (c.start > 0) {
+            std.mem.copyForwards(u8, c.buf, c.buf[c.start..c.end]);
+            c.end -= c.start;
+            c.start = 0;
+        }
+        if (c.end == c.buf.len) {
+            if (c.buf.len >= cap) return .full;
+            const size = if (c.buf.len == 0) initial else @min(cap, 2 * c.buf.len);
+            const grown = std.heap.page_allocator.alloc(u8, size) catch return error.OutOfMemory;
+            @memcpy(grown[0..c.end], c.buf[0..c.end]);
+            if (c.buf.len > 0) std.heap.page_allocator.free(c.buf);
+            c.buf = grown;
+        }
+        c.reading = true;
+        var waker = wakerFor(vm);
+        var task = n.io.concurrent(readTask, .{ n.io, c.stream, c.buf[c.end..], &waker }) catch {
+            c.reading = false;
+            return .busy;
+        };
+        const in_time = n.wait(vm, &waker, ms) catch |err| {
+            _ = task.cancel(n.io) catch 0;
+            c.reading = false;
+            return err;
+        };
+        const r = if (in_time) task.await(n.io) else task.cancel(n.io);
+        c.reading = false;
+        if (c.closed) {
+            n.release(c);
+            return .closed;
+        }
+        const got = r catch |err| {
+            if (err == error.Canceled) return .timeout;
+            n.close(c);
+            return .closed;
+        };
+        if (got == 0) {
+            c.eof = true;
+            return .eof;
+        }
+        c.end += got;
+        return .got;
     }
 
     /// `conn.write(text)`: all of the text, or why not.
     fn write(n: *Net, vm: *Vm, c: *Conn, text: []const u8, ms: i64) Error!Value {
-        if (c.closed) return fail(vm, .Closed);
-        if (c.writing) return fail(vm, .Busy);
+        if (try n.writeAll(vm, c, text, ms)) |f| return fail(vm, f);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// All of `text` on `c`, as `write` writes it: null, or why not.
+    pub fn writeAll(n: *Net, vm: *Vm, c: *Conn, text: []const u8, ms: i64) Error!?Failure {
+        if (c.closed) return .Closed;
+        if (c.writing) return .Busy;
         c.writing = true;
         var waker = wakerFor(vm);
         var task = n.io.concurrent(writeTask, .{ n.io, c.stream, text, &waker }) catch {
             c.writing = false;
-            return fail(vm, .Busy);
+            return .Busy;
         };
         const in_time = n.wait(vm, &waker, ms) catch |err| {
             task.cancel(n.io) catch {};
@@ -268,13 +341,13 @@ pub const Net = struct {
         c.writing = false;
         if (c.closed) {
             n.release(c);
-            return fail(vm, .Closed);
+            return .Closed;
         }
         r catch |err| {
             n.close(c);
-            return fail(vm, if (err == error.Canceled) .Timeout else .Closed);
+            return if (err == error.Canceled) .Timeout else .Closed;
         };
-        return vm.variant("Ok", &.{.none});
+        return null;
     }
 
     /// `conn.close`: a call waiting on the connection ends, and every later call is Closed.
@@ -297,13 +370,18 @@ pub const Net = struct {
         c.end = 0;
     }
 
-    /// A process holding these arguments stopped: every Conn among them closes.
+    /// A process holding these arguments stopped: every Conn and Exchange among them closes.
     pub fn closeHeld(n: *Net, args: []const Value) void {
-        for (args) |a| if (a == .cap and a.cap.kind == .conn) n.close(n.conns.items[a.cap.handle]);
+        for (args) |a| if (a == .cap) switch (a.cap.kind) {
+            .conn => n.close(n.conns.items[a.cap.handle]),
+            .exchange => n.close(n.conns.items[n.exchanges.items[a.cap.handle].conn]),
+            else => {},
+        };
     }
 
     /// The run is over: every connection and listener closes.
     pub fn closeAll(n: *Net) void {
+        for (n.exchanges.items) |*e| e.forget(n.gpa);
         for (n.conns.items) |c| n.close(c);
         for (n.listeners.items) |l| l.server.socket.close(n.io);
         n.listeners.clearRetainingCapacity();
@@ -400,12 +478,13 @@ fn bindLoopback(port: u16) error{ AddressInUse, Refused }!struct { fd: posix.soc
 pub const Fixture = struct {
     listeners: std.ArrayList(FixtureListener) = .empty,
     conns: std.ArrayList(FixtureConn) = .empty,
+    exchanges: std.ArrayList(Exchange) = .empty,
     /// The port `listen(0)` tries next.
     next_port: u16 = 49_152,
 
-    const FixtureListener = struct { port: u16, backlog: std.ArrayList(u32) = .empty, head: usize = 0 };
+    pub const FixtureListener = struct { port: u16, backlog: std.ArrayList(u32) = .empty, head: usize = 0 };
 
-    const FixtureConn = struct {
+    pub const FixtureConn = struct {
         /// The other end of the connection.
         peer: u32,
         /// What the peer wrote that this end has not read: inbound.items[start..].
@@ -497,15 +576,17 @@ pub const Fixture = struct {
         }
     }
 
-    fn portTaken(f: *const Fixture, port: u16) bool {
+    pub fn portTaken(f: *const Fixture, port: u16) bool {
         for (f.listeners.items) |l| if (l.port == port) return true;
         return false;
     }
 
-    /// A process holding these arguments stopped: every Conn among them closes.
+    /// A process holding these arguments stopped: every Conn and Exchange among them closes.
     pub fn closeHeld(f: *Fixture, args: []const Value) void {
-        for (args) |a| if (a == .cap and a.cap.kind == .conn) {
-            f.conns.items[a.cap.handle].closed = true;
+        for (args) |a| if (a == .cap) switch (a.cap.kind) {
+            .conn => f.conns.items[a.cap.handle].closed = true,
+            .exchange => f.conns.items[f.exchanges.items[a.cap.handle].conn].closed = true,
+            else => {},
         };
     }
 };

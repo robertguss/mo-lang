@@ -31,6 +31,7 @@ const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const net_mod = @import("net.zig");
+const http_mod = @import("http.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
@@ -889,6 +890,9 @@ pub const Vm = struct {
         /// A Net, Listener, or Conn row (net.zig).
         net_row,
         net_fixture,
+        /// An Http, HttpListener, or Exchange row (http.zig).
+        http_row,
+        http_fixture,
         process,
         never_only,
         /// A design-v0/09 row stdlib.zig runs.
@@ -914,6 +918,9 @@ pub const Vm = struct {
         .{ "Net.connect", .net_row },               .{ "Listener.accept", .net_row },             .{ "Listener.port", .net_row },
         .{ "Conn.read_line", .net_row },            .{ "Conn.write", .net_row },                  .{ "Conn.close", .net_row },
         .{ "Net.fixture", .net_fixture },
+        .{ "Http.listen", .http_row },              .{ "Http.send", .http_row },                  .{ "HttpListener.accept", .http_row },
+        .{ "HttpListener.port", .http_row },        .{ "Exchange.request", .http_row },           .{ "Exchange.reply", .http_row },
+        .{ "Http.fixture", .http_fixture },         .{ "Platform.http", .platform_part },
         .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
@@ -1064,6 +1071,8 @@ pub const Vm = struct {
             },
             .net_row => try vm.netRow(std.meta.stringToEnum(net_mod.Row, row.name).?, a),
             .net_fixture => .{ .cap = .{ .kind = .net } },
+            .http_row => try vm.httpRow(std.meta.stringToEnum(http_mod.Row, row.name).?, a),
+            .http_fixture => .{ .cap = .{ .kind = .http } },
             .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
@@ -1081,6 +1090,15 @@ pub const Vm = struct {
         if (vm.server) |s| return s.sockets.call(vm, which, a);
         if (vm.sim) |s| return s.fixture.call(vm, s, which, a);
         vm.report = .{ .kind = .other, .clause = "Net runs only under mo run", .within = @tagName(which), .at = 0 };
+        return error.Crash;
+    }
+
+    /// An Http, HttpListener, or Exchange row: real sockets under mo run, or in a test an
+    /// Http.fixture()'s, on Net.fixture()'s network (http.zig).
+    fn httpRow(vm: *Vm, which: http_mod.Row, a: []const Value) Error!Value {
+        if (vm.server) |s| return http_mod.call(&s.sockets, vm, which, a);
+        if (vm.sim) |s| return http_mod.fixtureCall(&s.fixture, vm, s, which, a);
+        vm.report = .{ .kind = .other, .clause = "Http runs only under mo run", .within = @tagName(which), .at = 0 };
         return error.Crash;
     }
 
@@ -1307,6 +1325,9 @@ pub const Vm = struct {
                 .net => if (vm.server != null) "a Net" else "Net.fixture()",
                 .listener => "a Listener",
                 .conn => "a Conn",
+                .http => if (vm.server != null) "an Http" else "Http.fixture()",
+                .http_listener => "an HttpListener",
+                .exchange => "an Exchange",
             }),
             .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
         }

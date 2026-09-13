@@ -111,6 +111,7 @@
 - [[interpreter-step-9|Step 9: Mo.Sim with seeds and fault injection, brief for the worker]] — seeded scheduling, injected failures, never over Type.all, sim (N runs)
 - [[interpreter-step-8|Step 8: the stdlib, brief for the worker]] — strings, lists, maps, sets, time, fs listing, JSON; 09-stdlib.md; logstat rewritten
 - [[interpreter-step-7|Step 7: programs of many modules, brief for the worker]] — use imports functions, program root, multi-file corpus programs, push in place, interpreter speed
+- [[control-run-3|The control run, round 3: logstat after the formatter fixes and HTTP]] — same spec, same model, fresh sessions, after steps 14–16
 - [[control-run-2|The control run, round 2: logstat again on today's toolchain]] — same spec, same model, fresh sessions, after steps 7–12b
 - [[control-run|The control run: logstat in Go and Python, brief for the worker]] — same spec, same model, chapter 8's null hypothesis
 - [[program-2|Program 2: logstat in Mo, brief for the worker]] — the first real program, written from a spec, the founding-premise experiment

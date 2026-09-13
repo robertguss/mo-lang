@@ -37,8 +37,8 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 | 13 | done: the C backend, native logstat 7× the interpreter | [[interpreter-step-13]] |
 | 14 | done: follow-ups, contracts in every build, formatter shapes, stdlib rows ([[interpreter-step-14]]) | round 3 of the control run |
 | 15 | done: processes and `Net` in the C backend; native kv 1.4× the interpreter at half the memory ([[interpreter-step-15]]) | — |
-| 16 | HTTP in the stdlib ([[interpreter-step-16]]) | a native hello server, requests per second |
-| 16b | round 3 of the control run, in worktrees | the formatter's gap from round 2 |
+| 16 | done: HTTP in the stdlib, native httpd 1.7× the interpreter ([[interpreter-step-16]]) | — |
+| 16b | round 3 of the control run, in worktrees, running ([[control-run-3]]) | the formatter's gap from round 2 |
 | 17 | program 4, the web backend, from its spec (`spec/programs/04-*.md`) | the founding premise with HTTP |
 | 18 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
