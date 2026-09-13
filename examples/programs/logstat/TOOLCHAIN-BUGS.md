@@ -45,7 +45,7 @@ Workaround until the fix: `check.sh` joined the four modules into one file (decl
 
 ## 2. The corpus test cannot hold a program made of several files
 
-**Fixed** by step 7 part C: a program is `programs/<name>.mo` or `programs/<name>/main.mo` beside its modules, and every `# run:` line of its main file is one run, matched against `<name>.expected`, `<name>-2.expected`, and so on, with the `# exit:` line after it. logstat's four runs (text, JSON, `--top 0` exits 2, no `.log` file exits 1) are in the corpus test; `check.sh` and `join.awk` are deleted.
+**Fixed** by step 7 part C (`120483d`): a program is `programs/<name>.mo` or `programs/<name>/main.mo` beside its modules, and every `# run:` line of its main file is one run, matched against `<name>.expected`, `<name>-2.expected`, and so on, with the `# exit:` line after it. logstat's four runs (text, JSON, `--top 0` exits 2, no `.log` file exits 1) are in the corpus test; `check.sh` and `join.awk` are deleted.
 
 `corpus.zig` treats every `.mo` under `programs/` as a program: its first line must be `# run:`, its output is `<name>.expected`, and the test expects exactly 3 programs (`expectEqual(@as(u32, 3), programs)`). `parse.mo`, `stats.mo`, and `report.mo` have no `main` and no `# run:` line, and `main.mo` cannot run alone (bug 1), so `zig build test` fails on `examples/programs/logstat/` for four reasons at once.
 
@@ -68,7 +68,7 @@ How logstat was verified before the fix: a scratch copy of the toolchain, never 
 
 ## 4. `push` copies the whole list, so a list built by pushing is quadratic
 
-**Open** until step 7 part D.
+**Fixed** by step 7 part D: `push` appends in place when the list ends where its buffer's last push left it, and `mo run` frees what a frame, a `for` iteration, or a step of `map`, `filter`, or `reduce` allocated and did not keep (`toolchain/src/region.zig`, `vm.zig`). The probe below with 200_000 pushes takes 0.27 s in 51 MB (Debug build); logstat on 4_000 lines peaks at 15 MB, where 500 lines took 571 MB before. The time per line is step 7 part E's.
 
 ```
 module P.Push

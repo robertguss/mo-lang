@@ -27,6 +27,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/loops.zig` | MO0501: a `for` with a pure body | ch. 4 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |
+| `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |

@@ -100,6 +100,11 @@ pub const Op = enum(u8) {
     settle,
     /// push the zero value of type a; crash with clauses[b] when the type has none
     zero,
+    /// a loop begins: store where the vm's region stands in locals[a], and 0 in locals[b]
+    mark,
+    /// a loop's safe point: when it has allocated enough since the mark in locals[a], keep
+    /// what the frame's locals reach and free the rest; locals[b] holds what was kept
+    collect,
 };
 
 /// The numbers an arithmetic instruction works in: a sized integer kind, a contract's
@@ -929,7 +934,7 @@ const Lower = struct {
         }
     }
 
-    const Loop = struct { list: u32, index: u32, top: u32, exit: u32 };
+    const Loop = struct { list: u32, index: u32, top: u32, exit: u32, mark: u32, kept: u32 };
 
     fn loopBegin(l: *Lower, iter: Index, name_tok: u32) Error!Loop {
         try l.expr(iter);
@@ -938,6 +943,10 @@ const Lower = struct {
         try l.pushConst(.{ .int = 0 });
         const index = l.slot();
         _ = try l.emit(.store, index, 0);
+        // Each iteration ends at a safe point (vm.zig, collect).
+        const mark = l.slot();
+        const kept = l.slot();
+        _ = try l.emit(.mark, mark, kept);
         const top = l.here();
         _ = try l.emit(.load, index, 0);
         _ = try l.emit(.load, list, 0);
@@ -950,7 +959,7 @@ const Lower = struct {
         const binder = if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
         _ = try l.emit(.store, binder, 0);
         try l.b.loops.append(l.gpa, @intCast(l.b.breaks.items.len));
-        return .{ .list = list, .index = index, .top = top, .exit = exit };
+        return .{ .list = list, .index = index, .top = top, .exit = exit, .mark = mark, .kept = kept };
     }
 
     fn loopEnd(l: *Lower, loop: Loop) Error!void {
@@ -958,6 +967,7 @@ const Lower = struct {
         try l.pushConst(.{ .int = 1 });
         _ = try l.emit(.add, @intFromEnum(Num.u64), none);
         _ = try l.emit(.store, loop.index, 0);
+        _ = try l.emit(.collect, loop.mark, loop.kept);
         _ = try l.emit(.jump, loop.top, 0);
         l.patch(loop.exit);
         const start = l.b.loops.pop().?;

@@ -5,13 +5,22 @@
 //!
 //! Values are immutable: a list, a tuple, a struct, or a variant is a slice nothing
 //! else writes, and changing a field builds a new one, so a `var` copied from another
-//! name can never alias it. Everything a run allocates comes from the allocator it
-//! is given; the runner gives each test its own arena and frees it whole.
+//! name can never alias it. The one exception keeps that promise: `push` appends in
+//! place when the list ends where its buffer's last push left it, so every earlier value
+//! of the list is a prefix that never sees the new element, and a list built by pushing
+//! is linear.
+//!
+//! Values are allocated from `heap`. The runner gives each test its own arena and frees
+//! it whole. `mo run` gives the vm a region (region.zig, useRegions): each frame, each
+//! `for` iteration, and each step of `map`, `filter`, and `reduce` is a safe point, and
+//! once enough has been allocated since it began, what its result, its locals, or its
+//! accumulator reach is copied down and everything else is freed (compact).
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const prelude = @import("prelude.zig");
+const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
 const sim_mod = @import("sim.zig");
 const types = @import("types.zig");
@@ -59,9 +68,25 @@ pub const fixture_time: i64 = 1_767_225_600_000;
 pub const Generated = struct { name: []const u8, value: Value };
 
 pub const Vm = struct {
+    /// Reports, rendered values, and the vm's own lists: everything that is not a value.
     gpa: std.mem.Allocator,
+    /// Values: `gpa`, or the region useRegions gives.
+    heap: std.mem.Allocator,
     program: *const bytecode.Program,
     stack: std.ArrayList(Value) = .empty,
+    /// Under `mo run`, where values live; null when they live until `gpa` is freed.
+    region: ?*Region = null,
+    /// What a compaction keeps passes through here on its way back into `region`.
+    scratch: ?*Region = null,
+    /// The lists push can grow in place: the eight it grew last.
+    growth: [8]Growth = [_]Growth{.{}} ** 8,
+    growth_next: usize = 0,
+    /// A compaction's copies, so a slice reached twice is copied once.
+    forward: std.AutoHashMapUnmanaged(SliceKey, [*]Value) = .empty,
+    /// Region bytes a returning frame may leave behind before it compacts its result.
+    frame_budget: usize = 1 << 20,
+    /// Region bytes a loop may allocate past twice what it kept at its last compaction.
+    loop_budget: usize = 256 << 10,
     /// Set when a call fails with Crash or Skip.
     report: ?contracts.Report = null,
     rng: std.Random.DefaultPrng,
@@ -73,8 +98,20 @@ pub const Vm = struct {
     server: ?*server_mod.Server = null,
 
     pub fn init(gpa: std.mem.Allocator, program: *const bytecode.Program, seed: u64) Vm {
-        return .{ .gpa = gpa, .program = program, .rng = .init(seed) };
+        return .{ .gpa = gpa, .heap = gpa, .program = program, .rng = .init(seed) };
     }
+
+    /// Values from here on live in `values`, freed at safe points; `scratch` is empty
+    /// between compactions.
+    pub fn useRegions(vm: *Vm, values: *Region, scratch: *Region) void {
+        vm.region = values;
+        vm.scratch = scratch;
+        vm.heap = values.allocator();
+    }
+
+    const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
+
+    const SliceKey = struct { ptr: usize, len: usize };
 
     fn simulator(vm: *Vm) Error!*sim_mod.Sim {
         if (vm.sim) |s| return s;
@@ -84,7 +121,15 @@ pub const Vm = struct {
 
     /// Calls functions[function] with `args` and returns its result.
     pub fn call(vm: *Vm, function: u32, args: []const Value) Error!Value {
-        return (try vm.exec(function, args, &.{})).value;
+        return vm.callWith(function, args, &.{});
+    }
+
+    fn callWith(vm: *Vm, function: u32, args: []const Value, captures: []const Value) Error!Value {
+        const base = vm.stack.items.len;
+        try vm.exec(function, args, captures);
+        const v = vm.stack.items[base];
+        vm.stack.shrinkRetainingCapacity(base);
+        return v;
     }
 
     fn checked(vm: *Vm) *const check.Checked {
@@ -102,7 +147,7 @@ pub const Vm = struct {
     /// The top `n` values, oldest first, removed from the stack.
     fn take(vm: *Vm, n: u32) Error![]Value {
         const len = vm.stack.items.len;
-        const out = try vm.gpa.dupe(Value, vm.stack.items[len - n ..]);
+        const out = try vm.heap.dupe(Value, vm.stack.items[len - n ..]);
         vm.stack.shrinkRetainingCapacity(len - n);
         return out;
     }
@@ -117,11 +162,12 @@ pub const Vm = struct {
         };
     }
 
-    const Return = struct { value: Value, locals: []const Value };
-
-    fn exec(vm: *Vm, fi: u32, args: []const Value, captures: []const Value) Error!Return {
+    /// Runs functions[fi] and leaves its result on the stack, then the final value of each
+    /// inout parameter, in order.
+    fn exec(vm: *Vm, fi: u32, args: []const Value, captures: []const Value) Error!void {
         const f = vm.program.functions[fi];
-        const locals = try vm.gpa.alloc(Value, f.locals);
+        const frame = vm.mark();
+        const locals = try vm.heap.alloc(Value, f.locals);
         @memset(locals, .none);
         @memcpy(locals[0..args.len], args);
         for (f.captures, captures) |slot, v| locals[slot] = v;
@@ -176,7 +222,7 @@ pub const Vm = struct {
                 .set_field => {
                     const v = vm.pop();
                     const obj = vm.pop();
-                    const fields = try vm.gpa.dupe(Value, fieldsOf(obj));
+                    const fields = try vm.heap.dupe(Value, fieldsOf(obj));
                     fields[inst.a] = v;
                     try vm.push(switch (obj) {
                         .record => |r| .{ .record = .{ .decl = r.decl, .fields = fields } },
@@ -198,33 +244,43 @@ pub const Vm = struct {
                     const hi = vm.pop().int;
                     const lo = vm.pop().int;
                     const n: usize = if (hi > lo) @intCast(hi - lo) else 0;
-                    const elems = try vm.gpa.alloc(Value, n);
+                    const elems = try vm.heap.alloc(Value, n);
                     for (elems, 0..) |*e, k| e.* = .{ .int = lo + @as(i128, @intCast(k)) };
                     try vm.push(.{ .list = elems });
                 },
                 .concat => {
                     const parts = try vm.take(inst.a);
-                    var aw: std.Io.Writer.Allocating = .init(vm.gpa);
+                    var aw: std.Io.Writer.Allocating = .init(vm.heap);
                     for (parts) |p| vm.formatText(&aw.writer, p) catch return error.OutOfMemory;
-                    try vm.push(.{ .string = aw.written() });
+                    try vm.push(.{ .string = try aw.toOwnedSlice() });
                 },
                 .call, .call_trait => {
                     const args_now = try vm.take(inst.b);
                     const target = if (inst.op == .call) inst.a else try vm.dispatch(inst.a, args_now[0]);
-                    const r = try vm.exec(target, args_now, &.{});
-                    try vm.push(r.value);
-                    for (vm.program.functions[target].inouts) |slot| try vm.push(r.locals[slot]);
+                    try vm.exec(target, args_now, &.{});
                 },
                 .call_value => {
                     const args_now = try vm.take(inst.a);
-                    try vm.push(try vm.invoke(vm.pop().func, args_now));
+                    const func = vm.pop().func;
+                    try vm.exec(func.function, args_now, func.captures);
                 },
                 .closure => try vm.push(.{ .func = .{ .function = inst.a, .captures = try vm.take(inst.b) } }),
                 .prim => try vm.prim(inst.a, inst.b),
                 .ret => {
                     const v = vm.pop();
                     vm.stack.shrinkRetainingCapacity(base);
-                    return .{ .value = v, .locals = locals };
+                    try vm.push(v);
+                    for (f.inouts) |slot| try vm.push(locals[slot]);
+                    if (vm.region) |r| if (r.top -| frame > vm.frame_budget) try vm.compact(frame, vm.stack.items[base..]);
+                    return;
+                },
+                .mark => {
+                    locals[inst.a] = .{ .int = vm.mark() };
+                    locals[inst.b] = .{ .int = 0 };
+                },
+                .collect => if (vm.region != null) {
+                    const kept = try vm.iterate(@intCast(locals[inst.a].int), locals, @intCast(locals[inst.b].int));
+                    locals[inst.b] = .{ .int = kept };
                 },
                 .check => if (!vm.pop().bool) return vm.crash(inst.a, f, locals, &.{}),
                 .check_compare => {
@@ -293,7 +349,7 @@ pub const Vm = struct {
             .option => return try vm.variant("None", &.{}),
             .tuple => {
                 const elems = k.pool.elems(ty);
-                const out = try vm.gpa.alloc(Value, elems.len);
+                const out = try vm.heap.alloc(Value, elems.len);
                 for (elems, out) |e, *o| o.* = try vm.zero(e) orelse return null;
                 return .{ .tuple = out };
             },
@@ -301,7 +357,7 @@ pub const Vm = struct {
                 const d = k.decls[ty.a];
                 if (d.kind != .struct_) return null;
                 const defs = k.fields[d.fields.start..d.fields.end];
-                const out = try vm.gpa.alloc(Value, defs.len);
+                const out = try vm.heap.alloc(Value, defs.len);
                 for (defs, out) |fd, *o| o.* = try vm.zero(fd.type) orelse return null;
                 return .{ .record = .{ .decl = ty.a, .fields = out } };
             },
@@ -311,7 +367,113 @@ pub const Vm = struct {
 
     /// Calls a function value.
     pub fn invoke(vm: *Vm, func: Value.Func, args: []const Value) Error!Value {
-        return (try vm.exec(func.function, args, func.captures)).value;
+        return vm.callWith(func.function, args, func.captures);
+    }
+
+    // ---- memory
+
+    /// Where the region's allocations stand: the mark a frame or a loop frees back to.
+    fn mark(vm: *const Vm) usize {
+        return if (vm.region) |r| r.top else 0;
+    }
+
+    /// A loop's safe point. Once it has allocated more than twice what it kept at its last
+    /// compaction, plus loop_budget, everything past `from` that `roots` do not reach is
+    /// freed. Gives what is kept.
+    fn iterate(vm: *Vm, from: usize, roots: []Value, kept: usize) Error!usize {
+        const r = vm.region orelse return 0;
+        if (r.top -| from <= 2 * kept + vm.loop_budget) return kept;
+        try vm.compact(from, roots);
+        return r.top - from;
+    }
+
+    /// Copies what `roots` reach past `from` into the scratch region, frees everything past
+    /// `from`, and copies it back; `roots` then hold the copies. Nothing allocated before
+    /// `from` points past it, so what `roots` reach is everything kept: values only point
+    /// at older values, and push writes in place only what is older than its buffer.
+    fn compact(vm: *Vm, from: usize, roots: []Value) Error!void {
+        const r = vm.region.?;
+        const s = vm.scratch.?;
+        const old_top = r.top;
+        s.top = s.base;
+        vm.forward.clearRetainingCapacity();
+        for (roots) |*v| v.* = try vm.copyOut(v.*, from, old_top, s);
+        r.top = from;
+        vm.dropGrowth(from, old_top);
+        vm.forward.clearRetainingCapacity();
+        for (roots) |*v| v.* = try vm.copyOut(v.*, s.base, s.top, r);
+        vm.dropGrowth(s.base, s.end);
+    }
+
+    /// `v` with every part allocated in [lo, hi) copied into `dest`.
+    fn copyOut(vm: *Vm, v: Value, lo: usize, hi: usize, dest: *Region) Error!Value {
+        return switch (v) {
+            .string => |s| if (s.len > 0 and @intFromPtr(s.ptr) >= lo and @intFromPtr(s.ptr) < hi) .{ .string = try dest.allocator().dupe(u8, s) } else v,
+            .list => |xs| .{ .list = try vm.copySlice(xs, lo, hi, dest, true) },
+            .tuple => |xs| .{ .tuple = try vm.copySlice(xs, lo, hi, dest, false) },
+            .record => |x| .{ .record = .{ .decl = x.decl, .fields = try vm.copySlice(x.fields, lo, hi, dest, false) } },
+            .variant => |x| .{ .variant = .{ .name = x.name, .fields = try vm.copySlice(x.fields, lo, hi, dest, false) } },
+            .func => |x| .{ .func = .{ .function = x.function, .captures = try vm.copySlice(x.captures, lo, hi, dest, false) } },
+            else => v,
+        };
+    }
+
+    /// A list push can still grow keeps its spare room, and push keeps growing the copy.
+    fn copySlice(vm: *Vm, xs: []const Value, lo: usize, hi: usize, dest: *Region, list: bool) Error![]const Value {
+        const addr = @intFromPtr(xs.ptr);
+        if (xs.len == 0 or addr < lo or addr >= hi) return xs;
+        const key: SliceKey = .{ .ptr = addr, .len = xs.len };
+        if (vm.forward.get(key)) |copied| return copied[0..xs.len];
+        const growth = if (list) vm.growthOf(addr, xs.len) else null;
+        const out = try dest.allocator().alloc(Value, if (growth) |g| g.cap else xs.len);
+        try vm.forward.put(vm.gpa, key, out.ptr);
+        for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, lo, hi, dest);
+        if (growth) |g| g.ptr = @intFromPtr(out.ptr);
+        return out[0..xs.len];
+    }
+
+    fn growthOf(vm: *Vm, addr: usize, len: usize) ?*Growth {
+        for (&vm.growth) |*g| {
+            if (g.ptr == addr and g.len == len and g.cap != 0) return g;
+        }
+        return null;
+    }
+
+    /// Forgets the buffers in [lo, hi), which a compaction has freed.
+    fn dropGrowth(vm: *Vm, lo: usize, hi: usize) void {
+        for (&vm.growth) |*g| {
+            if (g.ptr >= lo and g.ptr < hi) g.* = .{};
+        }
+    }
+
+    /// `xs.push(x)`: in place when xs ends where its buffer's last push left it and there is
+    /// room, a copy with room to grow otherwise.
+    fn pushList(vm: *Vm, xs: []const Value, x: Value) Error![]const Value {
+        if (xs.len > 0) {
+            if (vm.growthOf(@intFromPtr(xs.ptr), xs.len)) |g| {
+                if (g.len < g.cap and vm.writable(g.ptr, x)) {
+                    const buf: [*]Value = @ptrFromInt(g.ptr);
+                    buf[g.len] = x;
+                    g.len += 1;
+                    return buf[0..g.len];
+                }
+            }
+        }
+        const cap = @max(4, 2 * xs.len);
+        const out = try vm.heap.alloc(Value, cap);
+        @memcpy(out[0..xs.len], xs);
+        out[xs.len] = x;
+        vm.growth[vm.growth_next] = .{ .ptr = @intFromPtr(out.ptr), .len = xs.len + 1, .cap = cap };
+        vm.growth_next = (vm.growth_next + 1) % vm.growth.len;
+        return out[0 .. xs.len + 1];
+    }
+
+    /// Whether `x` may be written into the buffer at `buf`: under a region, only when what
+    /// it points to is older than the buffer, so no compaction past the buffer frees it.
+    fn writable(vm: *const Vm, buf: usize, x: Value) bool {
+        const r = vm.region orelse return true;
+        const p = payloadOf(x) orelse return true;
+        return !r.contains(p) or p < buf;
     }
 
     /// The impl function a trait signature reaches for a value of this type.
@@ -501,26 +663,41 @@ pub const Vm = struct {
         const a = try vm.take(count);
         const result: Value = switch (prim_of[row_index]) {
             .list_size => .{ .int = @intCast(a[0].list.len) },
-            .list_push => blk: {
-                const out = try vm.gpa.alloc(Value, a[0].list.len + 1);
-                @memcpy(out[0..a[0].list.len], a[0].list);
-                out[out.len - 1] = a[1];
-                break :blk .{ .list = out };
-            },
+            .list_push => .{ .list = try vm.pushList(a[0].list, a[1]) },
+            // Each step is a safe point; what the steps so far built is what is kept.
             .list_map => blk: {
-                const out = try vm.gpa.alloc(Value, a[0].list.len);
-                for (a[0].list, out) |x, *o| o.* = try vm.invoke(a[1].func, &.{x});
+                const out = try vm.heap.alloc(Value, a[0].list.len);
+                const from = vm.mark();
+                var kept: usize = 0;
+                for (a[0].list, 0..) |x, i| {
+                    out[i] = try vm.invoke(a[1].func, &.{x});
+                    kept = try vm.iterate(from, out[0 .. i + 1], kept);
+                }
                 break :blk .{ .list = out };
             },
             .list_filter => blk: {
-                var out: std.ArrayList(Value) = .empty;
-                for (a[0].list) |x| if ((try vm.invoke(a[1].func, &.{x})).bool) try out.append(vm.gpa, x);
-                break :blk .{ .list = out.items };
+                const out = try vm.heap.alloc(Value, a[0].list.len);
+                const from = vm.mark();
+                var kept: usize = 0;
+                var n: usize = 0;
+                for (a[0].list) |x| {
+                    if ((try vm.invoke(a[1].func, &.{x})).bool) {
+                        out[n] = x;
+                        n += 1;
+                    }
+                    kept = try vm.iterate(from, out[0..n], kept);
+                }
+                break :blk .{ .list = out[0..n] };
             },
             .list_reduce => blk: {
-                var acc = a[1];
-                for (a[0].list) |x| acc = try vm.invoke(a[2].func, &.{ acc, x });
-                break :blk acc;
+                var acc = [1]Value{a[1]};
+                const from = vm.mark();
+                var kept: usize = 0;
+                for (a[0].list) |x| {
+                    acc[0] = try vm.invoke(a[2].func, &.{ acc[0], x });
+                    kept = try vm.iterate(from, &acc, kept);
+                }
+                break :blk acc[0];
             },
             .list_contains => .{ .bool = for (a[0].list) |x| {
                 if (equal(x, a[1])) break true;
@@ -529,7 +706,7 @@ pub const Vm = struct {
             .list_last => if (a[0].list.len == 0) try vm.variant("None", &.{}) else try vm.variant("Some", &.{a[0].list[a[0].list.len - 1]}),
             .string_size => .{ .int = graphemes(a[0].string) },
             .string_bytes => blk: {
-                const out = try vm.gpa.alloc(Value, a[0].string.len);
+                const out = try vm.heap.alloc(Value, a[0].string.len);
                 for (a[0].string, out) |byte, *o| o.* = .{ .int = byte };
                 break :blk .{ .list = out };
             },
@@ -571,7 +748,7 @@ pub const Vm = struct {
             // Time.fixture(), and every save succeeds.
             .ledger_call => if (std.mem.eql(u8, row.name, "find_charge")) blk: {
                 const decl = vm.checked().findDecl("Charge").?;
-                const fields = try vm.gpa.alloc(Value, 4);
+                const fields = try vm.heap.alloc(Value, 4);
                 fields[0] = a[1];
                 fields[1] = .{ .time = fixture_time };
                 fields[2] = .{ .int = 10_000 };
@@ -580,7 +757,7 @@ pub const Vm = struct {
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
                 const decl = vm.checked().findDecl("Charge").?;
-                const fields = try vm.gpa.alloc(Value, 4);
+                const fields = try vm.heap.alloc(Value, 4);
                 fields[0] = .{ .string = "ch_1" };
                 fields[1] = if (row.named.len == 2) a[0] else .{ .time = fixture_time };
                 fields[2] = a[row.named.len - 1];
@@ -620,7 +797,7 @@ pub const Vm = struct {
     }
 
     pub fn variant(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {
-        return .{ .variant = .{ .name = name, .fields = try vm.gpa.dupe(Value, fields) } };
+        return .{ .variant = .{ .name = name, .fields = try vm.heap.dupe(Value, fields) } };
     }
 
     /// checked_, saturating_, and wrapping_: the only behaviours at an integer's edge
@@ -804,6 +981,19 @@ pub const Vm = struct {
         try w.writeAll(")");
     }
 };
+
+/// The address a value's slice starts at, when it has a non-empty one.
+fn payloadOf(v: Value) ?usize {
+    const addr: usize, const len: usize = switch (v) {
+        .string => |s| .{ @intFromPtr(s.ptr), s.len },
+        .list, .tuple => |xs| .{ @intFromPtr(xs.ptr), xs.len },
+        .record => |x| .{ @intFromPtr(x.fields.ptr), x.fields.len },
+        .variant => |x| .{ @intFromPtr(x.fields.ptr), x.fields.len },
+        .func => |x| .{ @intFromPtr(x.captures.ptr), x.captures.len },
+        else => return null,
+    };
+    return if (len == 0) null else addr;
+}
 
 fn fieldsOf(v: Value) []const Value {
     return switch (v) {
@@ -1041,6 +1231,87 @@ test "contracts: requires on entry, ensures with old and result, refinements at 
 
     const percent = program.checked.decls[program.checked.findDecl("Percent").?].type;
     for (0..50) |_| try std.testing.expect((try vm.generate(percent, 0)).int <= 100);
+}
+
+test "under a region, push is linear, loops free what they do not keep, and compaction keeps values whole" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Region
+        \\struct Pair
+        \\  name: String
+        \\  n: UInt32
+        \\end
+        \\struct Cart
+        \\  items: List(String)
+        \\end
+        \\fn pushes(n: UInt32) : UInt64
+        \\  (0..n).reduce([], fn(acc, i) acc.push(i) end).size
+        \\end
+        \\fn garbage(n: UInt32) : UInt64
+        \\  (0..n).reduce(0, fn(acc, i) acc + "#{i}#{i}#{i}".size end)
+        \\end
+        \\fn pairs(n: UInt32) : List(Pair)
+        \\  (0..n).reduce([], fn(acc, i) acc.push(Pair(name: "n#{i}", n: i)) end)
+        \\end
+        \\fn forked() : (List(UInt32), List(UInt32))
+        \\  xs = [1, 2].push(3)
+        \\  (xs.push(4), xs.push(5))
+        \\end
+        \\fn add(inout cart: Cart, name: String) : UInt64
+        \\  cart.items = cart.items.push("#{name}!")
+        \\  cart.items.size
+        \\end
+        \\fn shop() : (UInt64, List(String))
+        \\  var cart = Cart(items: [])
+        \\  first = add(cart, "a")
+        \\  (first + add(cart, "b"), cart.items)
+        \\end
+        \\fn looped(n: UInt32) : String
+        \\  var last = ""
+        \\  for i in 0..n
+        \\    last = "#{i}#{last.size}"
+        \\  end
+        \\  last
+        \\end
+    );
+    var values = try Region.reserve();
+    defer values.release();
+    var scratch = try Region.reserve();
+    defer scratch.release();
+    // A budget of 0 compacts at every safe point, the hardest case for what is kept.
+    for ([_]usize{ 0, 1 << 20 }) |budget| {
+        values.top = values.base;
+        var vm: Vm = .init(arena, &program, 0);
+        vm.useRegions(&values, &scratch);
+        vm.frame_budget = budget;
+        vm.loop_budget = budget;
+        try std.testing.expectEqual(@as(i128, 20_000), (try callNamed(&vm, "pushes", &.{.{ .int = 20_000 }})).int);
+
+        const before = values.top;
+        try std.testing.expectEqual(@as(i128, 3 * 10 + 3 * 2 * 90 + 3 * 3 * 900 + 3 * 4 * 9_000), (try callNamed(&vm, "garbage", &.{.{ .int = 10_000 }})).int);
+        try std.testing.expect(values.top - before < 4 << 20);
+
+        const ps = try callNamed(&vm, "pairs", &.{.{ .int = 3_000 }});
+        try std.testing.expectEqual(@as(usize, 3_000), ps.list.len);
+        for (ps.list, 0..) |p, i| {
+            var buf: [16]u8 = undefined;
+            try std.testing.expectEqualStrings(try std.fmt.bufPrint(&buf, "n{d}", .{i}), p.record.fields[0].string);
+            try std.testing.expectEqual(@as(i128, @intCast(i)), p.record.fields[1].int);
+        }
+
+        const forks = (try callNamed(&vm, "forked", &.{})).tuple;
+        try std.testing.expectEqual(@as(i128, 4), forks[0].list[3].int);
+        try std.testing.expectEqual(@as(i128, 5), forks[1].list[3].int);
+        try std.testing.expectEqual(@as(usize, 4), forks[1].list.len);
+
+        const shopped = (try callNamed(&vm, "shop", &.{})).tuple;
+        try std.testing.expectEqual(@as(i128, 3), shopped[0].int);
+        try std.testing.expectEqualStrings("b!", shopped[1].list[1].string);
+
+        try std.testing.expectEqualStrings("22", (try callNamed(&vm, "looped", &.{.{ .int = 3 }})).string);
+    }
 }
 
 test "closures, patterns, strings, and try" {
