@@ -3,7 +3,7 @@
 module Echo.Main
 expose Options, options, main
 
-intent "Echo lines over a real TCP socket on 127.0.0.1: an acceptor process hands each connection to a worker of its own, and each client process sends its lines one round trip at a time and prints what came back."
+intent "Echo lines over a real TCP socket on 127.0.0.1: an acceptor process hands each connection to a worker of its own, and each client process sends its lines one round trip at a time and prints what came back; a worker serves at most 10,000 lines on one connection."
 
 struct Options
   clients: UInt64
@@ -85,7 +85,7 @@ end
 
 fn serve(conn: Conn) : UInt64
   var lines = 0
-  for _ in 0..1_000_000
+  for _ in 0..10_000
     line = conn.read_line(within: 5_000.ms)
     if line is Ok(Some(text))
       if conn.write("#{text}\n", within: 5_000.ms) is Error(_)
