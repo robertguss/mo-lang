@@ -87,8 +87,8 @@ func TestSymlinkInsideDirIsRead(t *testing.T) {
 func TestTallyReaderLineEndings(t *testing.T) {
 	long := strings.Repeat("x", maxLine+10)
 	cases := []struct {
-		name               string
-		input              string
+		name                string
+		input               string
 		requests, malformed uint64
 	}{
 		{"long lines are malformed", long + "\n" + validLine + long, 1, 2},
