@@ -57,6 +57,11 @@ pub fn main(init: std.process.Init) !void {
     var scratch = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer scratch.deinit();
 
+    // The run stage also keeps each file's best, to name the slowest file. Only that
+    // stage reads the clock per file, so the other rows time exactly what they did.
+    const run_best = try arena.alloc(i96, paths.len);
+    @memset(run_best, std.math.maxInt(i96));
+
     var rows: [mo.pipeline.stages.len]Row = undefined;
     for (mo.pipeline.stages, 0..) |stage, si| {
         var best: i96 = std.math.maxInt(i96);
@@ -64,9 +69,10 @@ pub fn main(init: std.process.Init) !void {
         var it: u32 = 0;
         while (it < iters and implemented) : (it += 1) {
             const t0 = Io.Clock.Timestamp.now(io, .awake);
-            for (sources) |src| {
+            for (sources, 0..) |src, fi| {
                 _ = scratch.reset(.retain_capacity);
                 var diags: mo.diag.List = .empty;
+                const f0 = if (stage == .run) Io.Clock.Timestamp.now(io, .awake) else t0;
                 mo.pipeline.runTo(scratch.allocator(), src, stage, &diags) catch |e| switch (e) {
                     error.NotImplemented => {
                         implemented = false;
@@ -74,6 +80,10 @@ pub fn main(init: std.process.Init) !void {
                     },
                     else => {},
                 };
+                if (stage == .run) {
+                    const file_ns = f0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+                    if (file_ns < run_best[fi]) run_best[fi] = file_ns;
+                }
             }
             const t1 = Io.Clock.Timestamp.now(io, .awake);
             const ns = t0.durationTo(t1).raw.toNanoseconds();
@@ -86,6 +96,14 @@ pub fn main(init: std.process.Init) !void {
         } else {
             try out.print("{s:<8} {s:>12} {s:>12}\n", .{ @tagName(stage), "n/a", "n/a" });
         }
+    }
+
+    if (rows[rows.len - 1].implemented and paths.len > 0) {
+        var worst: usize = 0;
+        for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
+            worst = i;
+        };
+        try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
     if (record) try appendResults(io, &rows, paths.len);
