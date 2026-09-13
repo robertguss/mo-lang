@@ -53,7 +53,7 @@ func TestParseLineRejects(t *testing.T) {
 			"2026-09-12T25:00:00Z GET /a 200 1", "2026-09-12T10:00:02 GET /a 200 1",
 		},
 		"method":   {ts + " get /a 200 1", ts + " G3T /a 200 1", ts + " GÉT /a 200 1"},
-		"path":     {ts + " GET api/users 200 1", ts + " GET /a\x01b 200 1", ts + " GET /a 200 1"},
+		"path":     {ts + " GET api/users 200 1", ts + " GET /a\x01b 200 1", ts + " GET /a\u0085 200 1"},
 		"status":   {ts + " GET /a abc 1", ts + " GET /a +200 1", ts + " GET /a 99 1", ts + " GET /a 600 1", ts + " GET /a -500 1", ts + " GET /a 99999999999 1"},
 		"duration": {ts + " GET /a 200 abc", ts + " GET /a 200 -1", ts + " GET /a 200 4294967296", ts + " GET /a 200 1.5", ts + " GET /a 200 +1", ts + " GET /a 200 1_000"},
 	}
