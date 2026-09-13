@@ -42,17 +42,26 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
     const arena = arena_state.allocator();
     const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
     var diags: diag.List = .empty;
-    const expect_reject = isRejectsPath(rel);
+    // A rejects/ file breaks a law, so it must lex and parse; only the checker rejects it.
+    const expect_reject = isRejectsPath(rel) and @intFromEnum(stage) >= @intFromEnum(pipeline.Stage.check);
     if (pipeline.runTo(arena, source, stage, &diags)) {
-        if (expect_reject) tally.failed += 1 else tally.passed += 1;
+        if (expect_reject) {
+            tally.failed += 1;
+            std.debug.print("corpus: {s} was not rejected\n", .{rel});
+        } else tally.passed += 1;
     } else |err| switch (err) {
         error.NotImplemented => tally.skipped += 1,
-        error.Rejected => if (expect_reject) {
+        error.Rejected => if (expect_reject and diags.items[0].category != .syntax) {
             tally.rejected_as_expected += 1;
         } else {
             tally.failed += 1;
+            const d = diags.items[0];
+            std.debug.print("corpus: {s} at byte {d}: {s} {s}\n", .{ rel, d.at, d.code, d.what });
         },
-        else => tally.failed += 1,
+        else => {
+            tally.failed += 1;
+            std.debug.print("corpus: {s}: {t}\n", .{ rel, err });
+        },
     }
 }
 
@@ -68,7 +77,17 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         for (paths) |p| gpa.free(p);
         gpa.free(paths);
     }
+    // A claimed stage handles the whole corpus: no failures and no NotImplemented.
     var tally: Tally = .{};
-    for (paths) |rel| try runOne(gpa, io, root, rel, .run, &tally);
+    for (paths) |rel| try runOne(gpa, io, root, rel, pipeline.implemented, &tally);
     try std.testing.expectEqual(@as(u32, 0), tally.failed);
+    try std.testing.expectEqual(@as(u32, 0), tally.skipped);
+    try std.testing.expectEqual(paths.len, tally.passed + tally.rejected_as_expected);
+
+    // Stages beyond `implemented` may still be stubs; those files count as skipped.
+    var beyond: Tally = .{};
+    if (pipeline.implemented != .run) {
+        for (paths) |rel| try runOne(gpa, io, root, rel, .run, &beyond);
+    }
+    try std.testing.expectEqual(@as(u32, 0), beyond.failed);
 }

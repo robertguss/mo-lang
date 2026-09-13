@@ -13,10 +13,15 @@ pub const Stage = enum { lex, parse, check, lower, run };
 
 pub const stages = [_]Stage{ .lex, .parse, .check, .lower, .run };
 
+/// The last stage that handles the whole corpus. The corpus test fails if any file
+/// gets `NotImplemented` from a stage up to this one.
+pub const implemented: Stage = .parse;
+
 pub const Error = error{ NotImplemented, OutOfMemory, Crash, Rejected };
 
 /// Runs the stages up to and including `stage`. `Rejected` means a diagnostic was
-/// produced; the records are in `diags`.
+/// produced; the records are in `diags`. Nothing is freed: pass an arena, and append
+/// to `diags` with the same allocator.
 pub fn runTo(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *diag.List) Error!void {
     const tokens = try lexer.lex(gpa, source, diags);
     if (stage == .lex) return;
