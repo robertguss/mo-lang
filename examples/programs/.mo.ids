@@ -591,6 +591,41 @@
       "verified": { "hash": "bd9f734dadccc02e", "declarations": "0559462eeeea70fa", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }] }
     },
     {
+      "path": "notes/server.mo",
+      "module": "Notes.Server",
+      "declarations": [
+        { "id": "62795d2d559c", "name": "module Notes.Server", "hash": "93a452d26749b7bc" },
+        { "id": "b54424da5408", "name": "expose", "hash": "68fb6eff5598b548" },
+        { "id": "5d777db31ff0", "name": "use Notes.Api", "hash": "e102195edfee34ba" },
+        { "id": "64a537355df5", "name": "use Notes.Note", "hash": "a6a4959a2c242710" },
+        { "id": "1bf0bd00cc04", "name": "use Notes.Service", "hash": "0cfe34db1cc7c3c3" },
+        { "id": "0461ba61e79b", "name": "use Notes.Store", "hash": "a7806fe39a58e98a" },
+        { "id": "36e7626e442c", "name": "intent", "hash": "468ef49d410c0e31" },
+        { "id": "195ff7d7014a", "name": "process Acceptor", "hash": "67242b89185fae68" },
+        { "id": "37754db16c11", "name": "supervisor Acceptors", "hash": "3257ae2e4fb03fac" },
+        { "id": "151f90a70b38", "name": "fn answer", "hash": "23971363aeebf806" },
+        { "id": "5f6de72b9381", "name": "enum Move", "hash": "51af7838969d8a73" },
+        { "id": "3aba3ef4e312", "name": "enum Checked", "hash": "465c3edc3fe33266" },
+        { "id": "ac7e57fd1e61", "name": "fn sent", "hash": "3ed0010ec673818c" },
+        { "id": "0d0524f1b009", "name": "fn by", "hash": "a2a918778f225834" },
+        { "id": "900b46580fe4", "name": "fn draft", "hash": "d18a56a50c079a93" },
+        { "id": "2b05e1beb0da", "name": "fn request_of", "hash": "0419d9e9a4deea44" },
+        { "id": "be41f610a744", "name": "fn after", "hash": "9d65511bd754d5aa" },
+        { "id": "d83d31ea4588", "name": "fn made", "hash": "774f478a0b633b7d" },
+        { "id": "7b6bbab11c28", "name": "fn read_back", "hash": "a75f78a1ec5464be" },
+        { "id": "05bd671157a8", "name": "fn renamed", "hash": "f44d3254d5df3976" },
+        { "id": "a531b85c2839", "name": "fn holding", "hash": "ab7069b09a50bda1" },
+        { "id": "937cb4e5a5b1", "name": "fn moved", "hash": "de8c2e3ad2078e3a" },
+        { "id": "296dc4418a05", "name": "fn script", "hash": "884fc555479519f5" },
+        { "id": "02419d125ab8", "name": "fn unfaithful", "hash": "b3567037653233d3" },
+        { "id": "67a96603d111", "name": "fn fresh", "hash": "04f8ab9cf52e82fa" },
+        { "id": "8616b48afe93", "name": "fn status_in?", "hash": "ec11093bd3d7a6c4" },
+        { "id": "e1d00fc30736", "name": "test \"every response over the wire is right, or a 503 that left the store as it was\"", "hash": "1fafcbffa6e6fd4c" },
+        { "id": "18f447fbac69", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "0a3fe9954f436297" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "1cdd3c1a5c9cb959", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+    },
+    {
       "path": "notes/service.mo",
       "module": "Notes.Service",
       "declarations": [
