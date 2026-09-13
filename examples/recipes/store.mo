@@ -3,18 +3,6 @@ expose StoreError, Read, Reopened, Store
 
 intent "Publish a durable string map over an append-only log as intent, signatures, and tests, for an agent to implement over Fs."
 
-never "a value read is not the last one written"
-  for r in Read.all
-    r.value != r.written
-  end
-end
-
-never "a replay changes the number of live keys"
-  for r in Reopened.all
-    r.after != r.before
-  end
-end
-
 # Every way opening or changing a store fails. Unwritten: the change is not in the log, and the
 # table is as it was. Torn: the log may end in part of the change, so no change is safe until
 # the store is opened again and compacted.
@@ -70,6 +58,16 @@ recipe Store
   end
   fn compact(fs: Fs, table: Table) : Result(Table, StoreError)
     ensures result is Ok(after) implies count(after) == count(table) and !cut_short?(after)
+  end
+  never "a value read is not the last one written"
+    for r in Read.all
+      r.value != r.written
+    end
+  end
+  never "a replay changes the number of live keys"
+    for r in Reopened.all
+      r.after != r.before
+    end
   end
   test "a value put reads back, and reads back again once the store is opened again"
     fs = Fs.fixture()

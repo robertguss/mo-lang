@@ -1,3 +1,4 @@
+# recipe: Recipes.Store.Store
 module Notes.Store
 expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, writing_to, lines
 
@@ -327,65 +328,8 @@ fn size_of(folder: Fs, name: String) : Result(UInt64, StoreError)
   end
 end
 
-# The recipe's tests, copied by hand: nothing runs a recipe's tests against an implementation
-# (GAPS.md).
-test "a value put reads back, and reads back again once the store is opened again"
-  fs = Fs.fixture()
-  assert open(fs, "d") is Ok(empty)
-  assert put(fs, empty, "a", "one") is Ok(one)
-  assert put(fs, one, "a", "two words") is Ok(two)
-  assert get(two, "a") == Some("two words")
-  assert count(two) == 1
-  assert open(fs, "d") is Ok(again)
-  assert get(again, "a") == Some("two words")
-  assert count(again) == count(two)
-end
-
-test "a deleted key is gone, and stays gone once the store is opened again"
-  fs = Fs.fixture()
-  assert open(fs, "d") is Ok(empty)
-  assert put(fs, empty, "a", "1") is Ok(one)
-  assert delete(fs, one, "a") is Ok(none)
-  assert get(none, "a") is None
-  assert open(fs, "d") is Ok(again)
-  assert count(again) == 0
-end
-
-test "keys under a prefix come in byte order"
-  fs = Fs.fixture()
-  assert open(fs, "d") is Ok(empty)
-  assert put(fs, empty, "b/2", "x") is Ok(first)
-  assert put(fs, first, "a/1", "x") is Ok(second)
-  assert put(fs, second, "b/10", "x") is Ok(third)
-  assert keys(third, "b/") == ["b/10", "b/2"]
-  assert keys(third, "") == ["a/1", "b/10", "b/2"]
-end
-
-test "a last line cut short is left out, and a compacted store takes changes again"
-  fs = Fs.fixture()
-  assert open(fs, "d") is Ok(empty)
-  assert put(fs, empty, "a", "1") is Ok(one)
-  assert put(fs, one, "b", "2") is Ok(two)
-  assert fs.read(log(two), within: 1.minute) is Ok(text)
-  assert fs.write(log(two), text.slice(0, text.size - 1), within: 1.minute) is Ok(_)
-  assert open(fs, "d") is Ok(cut)
-  assert cut_short?(cut)
-  assert get(cut, "b") is None
-  assert compact(fs, cut) is Ok(whole)
-  assert fs.read_lines(log(whole), within: 1.minute) is Ok(lines)
-  assert lines.size == count(whole)
-  assert put(fs, whole, "c", "3") is Ok(more)
-  assert open(fs, "d") is Ok(again)
-  assert !cut_short?(again)
-  assert get(again, "a") == Some("1")
-  assert get(again, "c") == Some("3")
-  assert count(again) == count(more)
-end
-
-test "a folder too slow to read is Slow"
-  assert open(Fs.fixture(delay: 1.minute), "d") is Error(Slow)
-end
-
+# The recipe's tests rejects, here as well since every requires has one in its own module;
+# mo check --recipe holds them to the recipe's, line for line.
 test rejects "a key with a space in it"
   fs = Fs.fixture()
   assert open(fs, "d") is Ok(empty)
@@ -398,7 +342,6 @@ test rejects "a value with a newline in it"
   assert put(fs, empty, "a", "one\ntwo") is Error(_)
 end
 
-# The implementation's own tests.
 test "replay applies SET and DEL in order, and stops open at a line that is neither"
   fs = Fs.fixture()
   log_text = "SET a 1\nSET b two words\nDEL a\nSET c \nSET b 3\n"
@@ -462,5 +405,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (12), property (200 seeds), sim (not run)
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
           proven: not run

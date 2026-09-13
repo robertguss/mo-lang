@@ -43,7 +43,7 @@ const Io = std.Io;
 const mo = @import("mo");
 
 const usage =
-    \\usage: mo check <file.mo> [--json]
+    \\usage: mo check [--recipe Module.Recipe] <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
     \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--json]
@@ -100,6 +100,7 @@ fn run(init: std.process.Init) !void {
     var target: ?[]const u8 = null;
     var no_contracts = false;
     var tests = false;
+    var recipe_name: ?[]const u8 = null;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const a = args[i];
@@ -144,6 +145,10 @@ fn run(init: std.process.Init) !void {
             no_contracts = true;
         } else if (std.mem.eql(u8, a, "--tests")) {
             tests = true;
+        } else if (std.mem.eql(u8, a, "--recipe")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            recipe_name = args[i];
         } else if (std.mem.eql(u8, a, "--json")) {
             json = true;
         } else if (std.mem.eql(u8, a, "--all")) {
@@ -170,6 +175,7 @@ fn run(init: std.process.Init) !void {
     if (!is_build and (build_name != null or target != null or no_contracts or tests)) return usageExit(err);
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
+    if (recipe_name != null and !std.mem.eql(u8, command, "check")) return usageExit(err);
     // The line is one file's: --all's summary covers the modules it loads too.
     if (write and (all or !std.mem.eql(u8, command, "test"))) return usageExit(err);
     // A seed and faults shape a simulated run, so they mean nothing without --sim.
@@ -298,6 +304,18 @@ fn run(init: std.process.Init) !void {
             const uses = if (last < program.uses.len) program.uses[last] else &.{};
             try mo.ids.write(arena, io, program.root, main_file.path, program.keys[last], main_file.source, line.written(), uses);
         }
+        try out.flush();
+        if (r.summary.failures > 0) std.process.exit(1);
+        return;
+    }
+    // --recipe: the file against a recipe's signatures, then the recipe's tests run on it.
+    if (recipe_name) |name| {
+        diags.clearRetainingCapacity();
+        const c = try mo.recipe.conform(arena, io, path, name, &diags);
+        const r = c.run orelse return reject(out, err, c.files, diags.items, json);
+        try out.print("recipe {s}: {d} signatures match\n", .{ name, c.signatures });
+        for (r.results) |result| try mo.runner.writeResult(out, c.files, result);
+        try mo.runner.writeSummary(out, r.summary);
         try out.flush();
         if (r.summary.failures > 0) std.process.exit(1);
         return;

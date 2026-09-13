@@ -7,6 +7,9 @@
 //! (`mo test --sim 100`, seeded by the file's hash) and holds under them, except
 //! `processes/racy.mo`, whose tests must fail under --sim and pass without it. A file whose
 //! first lines hold `# sim: --faults P --until F` runs its seeds under those instead.
+//! A file whose first lines hold `# recipe: Module.Recipe` is also held to that recipe, as
+//! `mo check --recipe` holds it (recipe.zig): its signatures match and the recipe's tests pass
+//! against it.
 //! Until a stage exists it returns NotImplemented and the file
 //! counts as skipped, so this test is green on day one and tightens as stages land.
 //! Each file is loaded with every module it uses (program.zig), and its own tests run.
@@ -33,6 +36,7 @@ const runner = @import("runner.zig");
 const diag = @import("diag.zig");
 const fmt = @import("fmt.zig");
 const errors = @import("errors.zig");
+const recipe = @import("recipe.zig");
 
 pub const Tally = struct {
     passed: u32 = 0,
@@ -50,6 +54,8 @@ pub const Tally = struct {
     simulated: u32 = 0,
     /// Recipe tests skipped until an agent implements the recipe: the only skips allowed.
     recipe_skips: u32 = 0,
+    /// Files held to the recipe their `# recipe:` line names.
+    recipe_checks: u32 = 0,
 };
 
 pub const recipe_skip = "until an agent implements the recipe";
@@ -391,6 +397,27 @@ fn checkRacy(arena: std.mem.Allocator, prog: program.Program, simulated: runner.
     }
 }
 
+/// `mo check --recipe` of a file against the recipe its `# recipe:` line names: every signature
+/// matches, and every one of the recipe's tests runs against the file and passes.
+fn checkRecipe(arena: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8, name: []const u8) !bool {
+    var diags: diag.List = .empty;
+    const c = try recipe.conform(arena, io, try std.fs.path.join(arena, &.{ root, rel }), name, &diags);
+    const r = c.run orelse {
+        const d = diags.items[0];
+        const loc = diag.locate(c.files, d.at);
+        std.debug.print("corpus: {s} against recipe {s}: {s} at byte {d}: {s} {s}\n", .{ rel, name, loc.path, loc.at, d.code, d.what });
+        return false;
+    };
+    for (r.results) |result| {
+        if (result.outcome == .passed or result.outcome == .tripped_as_expected) continue;
+        var buf: [2048]u8 = undefined;
+        var w: Io.Writer = .fixed(&buf);
+        runner.writeResult(&w, c.files, result) catch {};
+        std.debug.print("corpus: {s} against recipe {s}: {s}", .{ rel, name, w.buffered() });
+    }
+    return r.summary.failures == 0 and r.results.len > 0;
+}
+
 /// A diagnostic, in the file it points into.
 fn printFinding(prog: program.Program, d: diag.Record) void {
     const loc = diag.locate(prog.files, d.at);
@@ -440,6 +467,11 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
                 var w: Io.Writer = .fixed(&buf);
                 runner.writeResult(&w, prog.files, result) catch {};
                 std.debug.print("corpus: {s}", .{w.buffered()});
+            }
+            if (recipe.named(source)) |name| {
+                if (try checkRecipe(arena, io, root, rel, name)) {
+                    tally.recipe_checks += 1;
+                } else ok = false;
             }
             if (r.summary.processes > 0) tally.process_files += 1;
             if (ok) tally.passed += 1 else tally.failed += 1;
@@ -508,6 +540,8 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         try std.testing.expectEqual(@as(u32, 0), tally.fault_free_only);
         // No test is skipped for a process reason: recipe tests are the only skips.
         try std.testing.expectEqual(tally.recipe_skips, tally.skipped_tests);
+        // Some implementation names the recipe it implements, and was held to it.
+        try std.testing.expect(tally.recipe_checks > 0);
     }
 
     // `mo fmt --check` over every file.

@@ -267,7 +267,7 @@ pub const Child = struct {
     per: Index,
 };
 
-pub const Recipe = struct { intent: Index, needs: Index, sigs_start: u32, sigs_end: u32, tests_start: u32, tests_end: u32 };
+pub const Recipe = struct { intent: Index, needs: Index, sigs_start: u32, sigs_end: u32, nevers_start: u32, nevers_end: u32, tests_start: u32, tests_end: u32 };
 
 pub const Tree = struct {
     source: []const u8,

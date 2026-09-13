@@ -564,15 +564,13 @@
         { "id": "4e1ccef83e63", "name": "fn token_byte?", "hash": "0fe6db9de67b8c60" },
         { "id": "0523c11e9912", "name": "fn refilled", "hash": "2ceddc624f9a0391" },
         { "id": "58d6e214efb4", "name": "fn kept", "hash": "803fd72623346355" },
-        { "id": "5686654902cf", "name": "test \"a burst beyond capacity is refused\"", "hash": "cd343bee9e10fd8c" },
-        { "id": "bde1a3cacbc8", "name": "test \"refills at the declared rate\"", "hash": "429bcb0ac0de3a32" },
         { "id": "4a014e187c84", "name": "test rejects \"a limiter with no capacity\"", "hash": "0f9337d5b1c5fa43" },
         { "id": "f3d43c755bfa", "name": "test \"sixty requests pass in a minute, and the sixty-first is refused without taking a token\"", "hash": "e48376d8a1bfc9c4" },
         { "id": "f8aa5f1f1dc9", "name": "test \"each client has a bucket of its own\"", "hash": "cab2a87c32e6a261" },
         { "id": "e351954817de", "name": "test \"a token is 1 to 64 letters, digits, - and _\"", "hash": "940ede87b93d69a7" },
         { "id": "64b0e0156831", "name": "property \"no run of requests leaves a client more tokens than the capacity\"", "hash": "68e26c7c63445219" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "c275bcbb3349fa96" }
+      "verified": { "hash": "e83258a2991fdaee", "declarations": "62e7f5ba95451a37" }
     },
     {
       "path": "notes/main.mo",
@@ -795,11 +793,6 @@
         { "id": "ddf8ad78b9e6", "name": "fn replayed_from", "hash": "e379484b52f24739" },
         { "id": "05776c16c34e", "name": "fn names_in", "hash": "de99d4d95f44ab11" },
         { "id": "5f2ab0135bb4", "name": "fn size_of", "hash": "3660b751276384e9" },
-        { "id": "8eadd427c013", "name": "test \"a value put reads back, and reads back again once the store is opened again\"", "hash": "df2f70354f61f581" },
-        { "id": "c1a59f5d0fa8", "name": "test \"a deleted key is gone, and stays gone once the store is opened again\"", "hash": "aa7d9d57b447ea77" },
-        { "id": "0adb86a6c46a", "name": "test \"keys under a prefix come in byte order\"", "hash": "67cc71e84a0308c2" },
-        { "id": "d3b7040c67e8", "name": "test \"a last line cut short is left out, and a compacted store takes changes again\"", "hash": "74e40ec6039368ac" },
-        { "id": "723cbfe1593f", "name": "test \"a folder too slow to read is Slow\"", "hash": "c723d38c0ab184bd" },
         { "id": "b5f1dd57380d", "name": "test rejects \"a key with a space in it\"", "hash": "246cd32632e02e93" },
         { "id": "0381cf8ff0eb", "name": "test rejects \"a value with a newline in it\"", "hash": "20af740ebd4c024b" },
         { "id": "5dd027740fb4", "name": "test \"replay applies SET and DEL in order, and stops open at a line that is neither\"", "hash": "3a5883486cca2e17" },
@@ -808,7 +801,7 @@
         { "id": "0fc532547aa1", "name": "test \"a store writing to another log keeps its keys and leaves the first log alone\"", "hash": "2bbd8301ec609365" },
         { "id": "1930a836c89a", "name": "property \"any valid key and value read back as written, and again once the store is opened again\"", "hash": "74fc9e19a1af45c4" }
       ],
-      "verified": { "hash": "22b16a2670e83016", "declarations": "159f0b24724db456" }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "fcff0eec406dbbfc" }
     },
     {
       "path": "runaway.mo",

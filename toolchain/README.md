@@ -3,7 +3,7 @@
 The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolchain.md`: interpreter first, C via Zig for release (step 13, `mo build`), a native backend only if a real program demands it. The milestone is `mo-wiki/spec/design-v0/08-milestone.md`: lex, parse, typecheck, and run `examples/payments/refund.mo` with its tests, contracts at tier 2, `rejects` tests tripping, the `verified:` line computed.
 
 ```
-zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
+zig build              → zig-out/bin/mo         mo check [--recipe Module.Recipe] <file.mo> [--json]
                                                 mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
                                                 mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple]
@@ -49,6 +49,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
+| `src/recipe.zig` | `mo check --recipe`: an implementation against its recipe's signatures (`MO0326`), then the recipe's tests and nevers run against it; the corpus test runs it for each file whose first lines say `# recipe: Module.Recipe` | ch. 6 |
 | `src/net.zig` | `Net`: TCP over std.Io for `mo run`, and `Net.fixture()` for `mo test` | 09 |
 | `src/http.zig` | `Http`: HTTP/1.1 over `Net`, the request and response reader and writer, and `Http.fixture()` | 09 |
 | `src/sim.zig` | Mo.Sim: processes, mailboxes, `update` as a transaction, supervisors | ch. 3, 8 |
