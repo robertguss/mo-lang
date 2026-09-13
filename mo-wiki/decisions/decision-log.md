@@ -221,6 +221,14 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `Fs.each_line`'s callback can reach no capability now that capture is refused, so the row is dead; it is removed, or takes a value, in a housekeeping step; `fold_lines` is the streaming row | Fable | provisional | housekeeping |
 | Program 4 (`notes`) starts on the toolchain after step 18; the failure model (chapter 3) is written and is what its `--sim` claims are read against | Fable | — | program 4 |
 
+| Program 4 accepted: `notes` in 55 minutes, eight modules, `--sim 100` green, identical native; native creates 7,621/s and gets 23,692/s with 32 clients, 103 MiB at 100k notes, a 1M-line replay in 6.3 s; the recipes saved a design and cost a conformance gap; two runtime findings and seven gaps go to step 19 | Fable | — | step 19, program 1 |
+| `semantic`: a started process is never freed today (a thread and about 30 KiB each, for the program's life), so a process per request is not a shape a program can use; step 19 frees a process that no live process or `main` holds a handle to once its mailbox is empty, handles being values the runtime can count across copies; a process a supervisor names by a `child` line is never freed | Fable, after program 4's bug 1 | provisional, the rule to measure | step 19, program 1 |
+| `semantic`: sends from inside `update` are held until the update ends (chapter 3), so an `update` that starts a process and waits for its reply deadlocks; step 19 makes the runtime crash the waiting process with a report naming the held message instead of hanging | Fable, after program 4's bug 2 | provisional | step 19 |
+| A recipe may hold `never` blocks; `mo check --recipe Module.Recipe file.mo` checks an implementation's exposed signatures against the recipe and runs the recipe's tests against it, so recipes stop drifting from implementations | Fable, after program 4's gap | provisional | step 19, program 5 |
+| `Fs.mkdir`, and `mo run --clock <ISO-8601>` giving `main` a clock that starts there and advances with the wall, so a transcript over real sockets can be replayed | Fable, after program 4's gaps | provisional | step 19 |
+| A capability cannot travel in a message; a process gets one only as a start argument (chapter 3); program 4 wanted to hand an `Exchange` to a live worker, and the answer is freeing finished processes, not capabilities in messages | Fable | provisional, re-read after step 19 | program 1 |
+| Program-level defaults the worker chose (a refill-all-at-once limiter, ids reserved in blocks of 100, `<token>/n_<id>` store keys, 404 across clients, 503 on a torn log, 30 s from acceptor to service) stand as `notes`'s own; none is a language rule | Fable, from Opus's defaults | provisional | program 1's shape |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

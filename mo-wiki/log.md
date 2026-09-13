@@ -237,3 +237,6 @@
 
 ## [2026-09-13] session | Late afternoon: step 18 accepted, merged; the failure model; program 4 started
 - Fable verified: suite green (22 s), eight probes of Fable's own under both runtimes (natural invariant, handle capture refused with MO0409 and MO0310, 50M-deep recursion as a Mo report with exit 70, grouped arm with a binding and a mismatch refused, map and set equality across orders, a body edit tripping MO0317, --until turning sim.mo to held). Ten decision rows, three locked, four tagged `semantic`. The failure model written into chapter 3. Merged to main. Program 4 (`notes`) to a fresh session.
+
+## [2026-09-13] session | Evening: program 4 accepted, merged; step 19 started
+- Fable verified: suite green (26 s), every notes module green under 100 seeds with faults, fmt clean, five run lines identical under both runtimes, a curl session of fourteen cases (401, cross-client 404, bad JSON, 405, 429 after 60, 413 on 2 MiB, 400 on a 62 KB field, title bounds, a control character), replay across restart, 20k notes at 48 MB. Seven decision rows, two tagged `semantic` (freeing finished processes; the held-send deadlock). Merged to main. Step 19 (what program 4 found, the dead each_line row, mutation tests) to a fresh session. Note: Robert's shell aliases `tr` to trash; Fable's probe hit it once, nothing was moved.
