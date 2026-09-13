@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, effects, processes]
 sources: [spec/programs/03-kv-store.md, spec/design-v0/03-semantics.md]
-status: in-progress
+status: done
 ---
 
 # Step 11: `Net`, a TCP capability

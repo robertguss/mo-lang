@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [agents, roadmap, performance]
 sources: [spec/programs/03-kv-store.md]
-status: proposed
+status: in-progress
 ---
 
 # Program 3: `kv` in Mo, brief for the worker

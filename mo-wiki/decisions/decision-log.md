@@ -140,6 +140,13 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `mo test --write` writes even on failure (`verified: types`, exit 1) and writes the `proven:` line too | Fable, from Opus's default | provisional | tier 3 |
 | `mo fix` rewrites a pure loop only for the map, filter, and reduce shapes over a list with one statement; other pure bodies stay a diagnostic with no fix | Fable, from Opus's default | provisional | program 3 |
 | The usage line in `mo` must list `fmt` and `fix` (they work; the text is stale): a step 11 item | Fable | provisional | step 11 |
+| Step 11 accepted: processes under `mo run`, `Net` (listen, accept, connect, read_line, write, close), direct style over blocking calls without stopping the scheduler, `Net.fixture`, echo over a real socket; 1,000 round trips in 56 ms; 62 minutes | Fable | — | program 3 |
+| `Sup.start(args)` returns its one child's handle or a tuple of them in child order; nothing names the supervisor | Fable, from Opus's default | provisional | program 3 |
+| After `main` returns, the run continues until no message waits; the exit code is `main`'s; a supervisor giving up exits 70 | Fable, from Opus's default | provisional | program 3 |
+| A program with processes runs without the value region and without memoization (mailboxes hold values the region cannot see) | Fable, from Opus's default | provisional, a cost to measure | program 3 |
+| `listen` binds 127.0.0.1 only; port 0 picks a free port and `listener.port` reports it; `SO_REUSEADDR` only | Fable, from Opus's default | provisional | program 3 |
+| Deadline outcomes: `accept` keeps listening, `connect` leaves nothing, `read_line` keeps the partial line, `write` closes the connection | Fable, from Opus's default | provisional | program 3 |
+| A `Conn` in a process's start arguments closes when that process crashes or its supervisor gives up; listeners stay open | Fable, from Opus's default | provisional | program 3 |
 
 ## Related
 - [[session-05]]
