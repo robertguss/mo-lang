@@ -2,6 +2,10 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Session 5, morning — 13 Sep 2026
+
+(Entries for program 3, steps 12, 12b, 13, and control run round 2 are listed under the overnight heading below in the order they landed.)
+
 ## Session 5, overnight — 13 Sep 2026
 
 - **Step 13, the C backend** (Opus, 83 min). A C11 runtime with the interpreter's value model and region allocator; an emitter from the checked tree; `mo build file.mo [--target triple]` through `zig cc` to a static binary (musl on Linux); `--tests` binaries; differential tests over every corpus program and module against the interpreter, zero differences. Native logstat: 200k lines in 0.14 s; 4k lines in 6.8 ms against 44.6 ms interpreted; `mo build` of logstat 0.86 s, of which C emission is 1.5 ms. Read-only `Fs` refused at check time.
