@@ -166,3 +166,6 @@
 
 ## [2026-09-12] session | Session 5: step 1 accepted, step 2 briefed
 - Opus: corpus caught up, lexer, parser, corpus test tightened to .parse, bench rows (lex 107 µs, parse 97 µs over 50 files; rebuild 122 ms). Fable verified with bad inputs; accepted. Eight remaining gaps closed in grammar.md; decision-log rows added. plans/interpreter-step-2.md (tier-1 checker) written.
+
+## [2026-09-12] session | Session 5: step 2 accepted, step 3 briefed
+- Opus (fresh session): prelude, types, laws, caps, corpus test at .check, bench (check 251 µs over 50 files, rebuild 121 ms). Fable verified with the 12 rejects plus a type mismatch, a try across mismatched enums, an effect in a pure function, a non-exhaustive case, a clean nested-pattern file. Accepted. Opus's three defaults ruled on in the decision log. plans/interpreter-step-3.md written (VM, tier-2 contracts, test runner, verified line; processes deferred to step 4).

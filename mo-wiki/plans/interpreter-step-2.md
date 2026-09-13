@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [compiler, laws, types]
 sources: [spec/design-v0/02-laws.md, spec/design-v0/05-verification.md, spec/grammar.md]
-status: in-progress
+status: done
 ---
 
 # Interpreter step 2: the tier-1 checker, brief for the worker
