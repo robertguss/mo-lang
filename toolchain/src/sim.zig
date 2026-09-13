@@ -21,7 +21,7 @@ pub const default_window_ms: i64 = 5_000;
 /// Deliveries one settle makes before the processes count as never settling.
 pub const settle_limit: u32 = 1_000_000;
 /// `Proc.supervisor` of a process a test started directly: the test runner.
-pub const runner: u32 = none;
+pub const test_runner: u32 = none;
 
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
 
@@ -33,7 +33,7 @@ pub const Proc = struct {
     process: u32,
     args: []const Value,
     state: Value,
-    /// Index in `Sim.supervisors`, or `runner`.
+    /// Index in `Sim.supervisors`, or `test_runner`.
     supervisor: u32,
     policy: Policy,
     mailbox: std.ArrayList(Entry) = .empty,
@@ -101,7 +101,7 @@ pub const Sim = struct {
                 break;
             }
         };
-        return sim.startUnder(process, args, runner, policy);
+        return sim.startUnder(process, args, test_runner, policy);
     }
 
     /// Starts supervisors[index]: each child in order, with the arguments its line passes.
@@ -344,7 +344,7 @@ pub const Sim = struct {
     fn giveUp(sim: *Sim, id: u32, last: contracts.Report) Error {
         const vm = sim.vm;
         const p = sim.procs.items[id];
-        const sup_name = if (p.supervisor == runner) "the test runner" else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
+        const sup_name = if (p.supervisor == test_runner) "the test runner" else vm.program.supervisors[sim.supervisors.items[p.supervisor].index].name;
         for (sim.procs.items) |*q| {
             if (q.supervisor == p.supervisor) q.up = false;
         }
@@ -370,6 +370,7 @@ const parser = @import("parser.zig");
 const check = @import("check.zig");
 const caps = @import("caps.zig");
 const diag = @import("diag.zig");
+const runner = @import("runner.zig");
 
 fn compile(arena: std.mem.Allocator, src: []const u8) !*bytecode.Program {
     var diags: diag.List = .empty;
@@ -462,4 +463,149 @@ test "an ask past the target's fixture delay is a Timeout, and the message still
     var h: Harness = undefined;
     try h.run(arena, program, "slow");
     try std.testing.expectEqual(@as(i128, 1), h.sim.procs.items[0].state.record.fields[0].int);
+}
+
+const tx_src =
+    \\module T.Tx
+    \\process Meter() mailbox: 2
+    \\  state
+    \\    n: UInt8
+    \\  end
+    \\  invariant "n never goes backwards"
+    \\    state.n < old(state.n)
+    \\  end
+    \\  message Add(k: UInt8)
+    \\  message Back
+    \\  message Read : UInt8
+    \\  fn update(state, message)
+    \\    case message
+    \\      Add(k):
+    \\        state.n += k
+    \\      Back:
+    \\        state.n -= 1
+    \\      Read: state.n
+    \\    end
+    \\  end
+    \\end
+    \\process Relay(meter: Handle(Meter), events: Events)
+    \\  state
+    \\    sent: UInt32
+    \\  end
+    \\  message Poke
+    \\  message Flood
+    \\  fn update(state, message)
+    \\    case message
+    \\      Poke:
+    \\        meter.send(Add(k: 1))
+    \\        events.emit(state.sent)
+    \\        state.sent -= 1
+    \\      Flood:
+    \\        meter.send(Add(k: 1))
+    \\        meter.send(Add(k: 1))
+    \\        meter.send(Add(k: 1))
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Meters(meter: Handle(Meter), events: Events)
+    \\  child Meter, restart: :always
+    \\  child Relay(meter, events), restart: :always
+    \\end
+    \\test "undone"
+    \\  meter = Meter.start()
+    \\  relay = Relay.start(meter, Events.fixture())
+    \\  meter.send(Add(k: 5))
+    \\  relay.send(Poke)
+    \\end
+    \\test "backwards"
+    \\  meter = Meter.start()
+    \\  meter.send(Add(k: 5))
+    \\  meter.send(Back)
+    \\end
+    \\test "flooded by a test"
+    \\  meter = Meter.start()
+    \\  for k in [1, 2, 3]
+    \\    meter.send(Add(k: k))
+    \\  end
+    \\end
+    \\test "flooded by a process"
+    \\  meter = Meter.start()
+    \\  relay = Relay.start(meter, Events.fixture())
+    \\  relay.send(Flood)
+    \\end
+    \\test rejects "going backwards trips the invariant"
+    \\  meter = Meter.start()
+    \\  meter.send(Add(k: 5))
+    \\  meter.send(Back)
+    \\end
+;
+
+test "update is a transaction: a crash drops its state writes, sends, and emits, and the process restarts" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, tx_src);
+    var h: Harness = undefined;
+    try h.run(arena, program, "undone");
+    const meter = h.sim.procs.items[0];
+    const relay = h.sim.procs.items[1];
+    // The meter took the test's Add(5) and never the relay's Add(1).
+    try std.testing.expectEqual(@as(i128, 5), meter.state.record.fields[0].int);
+    try std.testing.expectEqual(@as(usize, 1), meter.log.items.len);
+    try std.testing.expectEqual(@as(usize, 0), h.sim.events.items.len);
+    try std.testing.expect(relay.up);
+    try std.testing.expectEqual(@as(i128, 0), relay.state.record.fields[0].int);
+    try std.testing.expectEqual(@as(usize, 1), relay.restarts.items.len);
+    try std.testing.expectEqual(@as(usize, 0), relay.log.items.len);
+    const crash = h.sim.crashes.items[0];
+    try std.testing.expectEqual(contracts.Kind.overflow, crash.kind);
+    try std.testing.expectEqualStrings("Relay", crash.process.?.process);
+    try std.testing.expectEqualStrings("Poke", crash.process.?.log[0]);
+    try std.testing.expectEqualStrings("Relay(sent: 0)", crash.process.?.state);
+    try std.testing.expectEqual(@as(u64, 7), crash.process.?.seed);
+}
+
+test "an invariant is true when broken, reads old(state), and trips a test rejects" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, tx_src);
+    var h: Harness = undefined;
+    try h.run(arena, program, "backwards");
+    const crash = h.sim.crashes.items[0];
+    try std.testing.expectEqual(contracts.Kind.invariant, crash.kind);
+    try std.testing.expectEqualStrings("invariant \"n never goes backwards\"", crash.clause);
+    try std.testing.expectEqualStrings("Meter", crash.within);
+    try std.testing.expectEqualStrings("Meter(n: 4)", crash.values[0].value);
+    try std.testing.expectEqualStrings("Meter(n: 5)", crash.process.?.state);
+    try std.testing.expectEqual(@as(usize, 2), crash.process.?.log.len);
+    try std.testing.expectEqualStrings("Back", crash.process.?.log[1]);
+    // Restarted from its initial state, not from the state that broke the invariant.
+    try std.testing.expectEqual(@as(i128, 0), h.sim.procs.items[0].state.record.fields[0].int);
+
+    const r = try runner.run(arena, program);
+    try std.testing.expectEqual(runner.Outcome.failed, r.results[1].outcome);
+    try std.testing.expectEqual(runner.Outcome.tripped_as_expected, r.results[4].outcome);
+    try std.testing.expectEqual(contracts.Kind.invariant, r.results[4].report.?.kind);
+}
+
+test "a mailbox at its bound crashes the sender, a test or a process, and names both" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, tx_src);
+    var h: Harness = undefined;
+    // All three sends are one statement, so none is delivered before the third.
+    try std.testing.expectError(error.Crash, h.run(arena, program, "flooded by a test"));
+    try std.testing.expectEqual(contracts.Kind.mailbox, h.machine.report.?.kind);
+    try std.testing.expectEqualStrings("the test \"flooded by a test\" sent to Meter, whose mailbox is full at its bound of 2", h.machine.report.?.clause);
+    try std.testing.expectEqualStrings("Add(3)", h.machine.report.?.values[0].value);
+    try std.testing.expectEqual(@as(usize, 2), h.sim.procs.items[0].queued());
+
+    try h.run(arena, program, "flooded by a process");
+    const crash = h.sim.crashes.items[0];
+    try std.testing.expectEqual(contracts.Kind.mailbox, crash.kind);
+    try std.testing.expectEqualStrings("Relay sent to Meter, whose mailbox is full at its bound of 2", crash.clause);
+    // The receiver did not crash, and the two sends that fit went with the sender's update.
+    try std.testing.expectEqual(@as(usize, 1), h.sim.crashes.items.len);
+    try std.testing.expectEqual(@as(usize, 0), h.sim.procs.items[0].log.items.len);
 }
