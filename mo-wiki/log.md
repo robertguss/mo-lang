@@ -229,3 +229,6 @@
 
 ## [2026-09-13] session | Afternoon: control run round 3 recorded; step 17 started
 - Fable verified all three: Mo's four modules green, five runs against expected files, fmt clean, corpus test green in the worktree; Go check.sh, go test, go vet; Python check.sh and 69 tests. Wall-clock void for Mo and Go (the machine slept). Mo 9 loops (6 diagnostics), a real bug caught by a test and a never. Four decision rows, one locked (any(T) honours refinements). Branches control3-* kept as evidence. Three round-3 sessions closed. Step 17 (round 3 follow-ups) to a fresh session; program 4 spec next.
+
+## [2026-09-13] session | Afternoon: step 17 accepted, merged; the outside review answered; step 18 started
+- Fable verified: suite green (22 s), refined-type properties of Fable's own under both runtimes, MO0325 on an unsatisfiable where, a bad-byte file through read, read_lines, read_bytes under both runtimes, fold_lines, the six sentences tripped by hand. Three step rows. The outside review read and probed (recursion, closure capture, grouped patterns confirmed on today's binary); response page with baselines; Robert: laws and no-while stay, test and re-evaluate, document as baselines. Five review rows, two locked (Robert's call; the `semantic` tag). Merged to main. Step 18 (the review's no-compat fixes) to a fresh session; program 4 after it.

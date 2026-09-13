@@ -99,6 +99,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-18|Step 18: the outside review's no-compat fixes, brief for the worker]] — invariant polarity, handles as authority, capture, recursion, grouped patterns, equality, cache key, faults that stop
 - [[interpreter-step-17|Step 17: the round 3 follow-ups, brief for the worker]] — `any(T)` under refinements, `NotText`, a fold over lines, six diagnostics reworded
 - [[interpreter-step-16|Step 16: HTTP in the stdlib, brief for the worker]] — `Http` over `Net`, server and client, fixture, both runtimes, differential
 - [[interpreter-step-15|Step 15: processes and Net in the C backend, brief for the worker]] — the scheduler and sockets in C, kv and echo native, differential
