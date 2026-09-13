@@ -4,3 +4,8 @@ epoch_seconds	stage	files	best_total_us
 1789260814	check	50	n/a
 1789260814	lower	50	n/a
 1789260814	run	50	n/a
+1789264119	lex	50	75
+1789264119	parse	50	136
+1789264119	check	50	251
+1789264119	lower	50	n/a
+1789264119	run	50	n/a
