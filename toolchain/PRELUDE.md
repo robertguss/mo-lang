@@ -141,9 +141,18 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | any integer `N` | `wrapping_add`, `wrapping_sub`, `wrapping_mul` | `N` | `N` | | | grammar |
 | any integer | `ms`, `minute`, `days` | | `Duration` | | | grammar |
 | `Time` (on type) | `fixture` | | `Time` | | tests | grammar |
+| `Time` (on type) | `parse` | `String` | `Option(Time)` | | | stdlib (09) |
+| `Time` (on type) | `from_parts` | `UInt64` × 6 (year, month, day, hour, minute, second) | `Time` | | | stdlib (09) |
+| `Time` | `to_iso8601` | | `String` | | | stdlib (09) |
+| `Time` | `since` | `Time` | `Duration` | | | stdlib (09) |
+| `Duration` | `ms` | | `Int64` | | | stdlib (09) |
+| `Duration` | `seconds`, `minutes` | | `Float64` | | | stdlib (09) |
 | `Clock` | `now` | | `Time` | | | grammar |
 | `Clock` (on type) | `fixture` | | `Clock` | | tests | grammar |
 | `Fs` | `read` | `String` | `Result(String, FsError)` | yes | | grammar |
+| `Fs` | `read_lines` | `String` | `Result(List(String), FsError)` | yes | | stdlib (09) |
+| `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
+| `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
 | `Fs` | `read_only` | | `Fs` | | | grammar |
 | `Fs` (on type) | `fixture` | | `Fs` | | tests | grammar |
@@ -161,6 +170,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
+| `Out` | `write_line` | `String` | none | | | stdlib (09) |
 | `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |
 | `Charge` (on type) | `fixture` | `captured_at: Time`, `captured_amount: Money` | `Charge` | | tests | corpus-only |
 | `Charge` | `refunded?` | | `Bool` | | | corpus-only |

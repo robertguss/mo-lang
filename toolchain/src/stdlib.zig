@@ -80,6 +80,17 @@ pub const Row = enum {
     set_remove,
     set_has,
     set_to_list,
+    time_parse,
+    time_from_parts,
+    time_to_iso8601,
+    time_since,
+    duration_ms,
+    duration_seconds,
+    duration_minutes,
+    fs_read_lines,
+    fs_size,
+    fs_list,
+    out_write_line,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -105,7 +116,11 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Map.update", .map_update },               .{ "Map.remove", .map_remove },             .{ "Map.keys", .map_keys },
     .{ "Map.values", .map_values },               .{ "Map.entries", .map_entries },           .{ "Set.new", .set_new },
     .{ "Set.size", .set_size },                   .{ "Set.add", .set_add },                   .{ "Set.remove", .set_remove },
-    .{ "Set.has?", .set_has },                    .{ "Set.to_list", .set_to_list },
+    .{ "Set.has?", .set_has },                    .{ "Set.to_list", .set_to_list },           .{ "Time.parse", .time_parse },
+    .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
+    .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
+    .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
+    .{ "Out.write_line", .out_write_line },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -124,6 +139,29 @@ pub const row_of = blk: {
 pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u32) Error!Value {
     return switch (which) {
         .none => unreachable,
+        .time_parse => if (parseTime(a[0].string)) |t| vm.variant("Some", &.{.{ .time = t }}) else vm.variant("None", &.{}),
+        .time_from_parts => blk: {
+            var parts: [6]i64 = undefined;
+            for (&parts, a[0..6]) |*p, v| p.* = std.math.cast(i64, v.int) orelse std.math.maxInt(i64);
+            const t = instant(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]) orelse
+                return fail(vm, .other, row, "{d}-{d}-{d} {d}:{d}:{d} is not a date and time in the years 0 to 9999", .{ a[0].int, a[1].int, a[2].int, a[3].int, a[4].int, a[5].int });
+            break :blk .{ .time = t };
+        },
+        .time_to_iso8601 => blk: {
+            var buf: [40]u8 = undefined;
+            break :blk .{ .string = try vm.heap.dupe(u8, iso8601(&buf, a[0].time)) };
+        },
+        .time_since => .{ .duration = std.math.sub(i64, a[0].time, a[1].time) catch return fail(vm, .overflow, row, "the span does not fit a Duration", .{}) },
+        .duration_ms => .{ .int = a[0].duration },
+        .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
+        .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
+        .fs_read_lines, .fs_size, .fs_list => files(vm, which, a),
+        .out_write_line => blk: {
+            const s = vm.server orelse return fail(vm, .other, row, "Out.write_line runs only under mo run", .{});
+            s.write(a[0].cap, a[1].string);
+            s.write(a[0].cap, "\n");
+            break :blk .none;
+        },
         .list_group_by => groupBy(vm, a[0].list, a[1].func),
         .map_new => .{ .map = &.{} },
         .set_new => .{ .set = &.{} },
@@ -583,6 +621,156 @@ fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
         filled[g] += 1;
     }
     return .{ .map = entries };
+}
+
+// ---- time
+
+const ms_per_day: i64 = 86_400_000;
+
+/// Days from 1970-01-01 to a date of the proleptic Gregorian calendar (Hinnant's
+/// days_from_civil).
+fn daysFromCivil(year: i64, month: i64, day: i64) i64 {
+    const y = if (month <= 2) year - 1 else year;
+    const era = @divFloor(y, 400);
+    const of_era = y - era * 400;
+    const of_year = @divFloor(153 * @mod(month + 9, 12) + 2, 5) + day - 1;
+    const days = of_era * 365 + @divFloor(of_era, 4) - @divFloor(of_era, 100) + of_year;
+    return era * 146_097 + days - 719_468;
+}
+
+const Civil = struct { year: i64, month: i64, day: i64 };
+
+/// The date `days` after 1970-01-01 (Hinnant's civil_from_days).
+fn civilFromDays(days: i64) Civil {
+    const z = days + 719_468;
+    const era = @divFloor(z, 146_097);
+    const of_era = z - era * 146_097;
+    const year_of_era = @divFloor(of_era - @divFloor(of_era, 1460) + @divFloor(of_era, 36_524) - @divFloor(of_era, 146_096), 365);
+    const of_year = of_era - (365 * year_of_era + @divFloor(year_of_era, 4) - @divFloor(year_of_era, 100));
+    const mp = @divFloor(5 * of_year + 2, 153);
+    const month = if (mp < 10) mp + 3 else mp - 9;
+    return .{ .year = year_of_era + era * 400 + @intFromBool(month <= 2), .month = month, .day = of_year - @divFloor(153 * mp + 2, 5) + 1 };
+}
+
+fn daysIn(year: i64, month: i64) i64 {
+    return switch (month) {
+        2 => if (@mod(year, 4) == 0 and (@mod(year, 100) != 0 or @mod(year, 400) == 0)) 29 else 28,
+        4, 6, 9, 11 => 30,
+        else => 31,
+    };
+}
+
+/// Milliseconds since the epoch of a UTC date and time that exist in the years 0 to 9999;
+/// null for any other.
+fn instant(year: i64, month: i64, day: i64, hour: i64, minute: i64, second: i64) ?i64 {
+    if (year < 0 or year > 9999 or month < 1 or month > 12 or day < 1 or day > daysIn(year, month)) return null;
+    if (hour < 0 or hour > 23 or minute < 0 or minute > 59 or second < 0 or second > 59) return null;
+    return ((daysFromCivil(year, month, day) * 24 + hour) * 60 + minute) * 60_000 + second * 1000;
+}
+
+/// Digits only, as a number; null when any byte is not a digit.
+fn fixedDigits(digits: []const u8) ?i64 {
+    var v: i64 = 0;
+    for (digits) |d| {
+        if (!std.ascii.isDigit(d)) return null;
+        v = v * 10 + (d - '0');
+    }
+    return v;
+}
+
+/// RFC 3339: `2026-09-12T10:00:02Z`, optional fractional seconds kept to the millisecond,
+/// and `Z` or an offset `+02:00`.
+fn parseTime(s: []const u8) ?i64 {
+    if (s.len < 20) return null;
+    if (s[4] != '-' or s[7] != '-' or (s[10] != 'T' and s[10] != 't') or s[13] != ':' or s[16] != ':') return null;
+    const year = fixedDigits(s[0..4]) orelse return null;
+    const month = fixedDigits(s[5..7]) orelse return null;
+    const day = fixedDigits(s[8..10]) orelse return null;
+    const hour = fixedDigits(s[11..13]) orelse return null;
+    const minute = fixedDigits(s[14..16]) orelse return null;
+    const second = fixedDigits(s[17..19]) orelse return null;
+    var i: usize = 19;
+    var ms: i64 = 0;
+    if (s[i] == '.') {
+        i += 1;
+        const start = i;
+        while (i < s.len and std.ascii.isDigit(s[i])) i += 1;
+        if (i == start or i - start > 9) return null;
+        for (0..3) |k| ms = ms * 10 + (if (start + k < i) @as(i64, s[start + k] - '0') else 0);
+    }
+    if (i >= s.len) return null;
+    var offset: i64 = 0;
+    if (s[i] == 'Z' or s[i] == 'z') {
+        i += 1;
+    } else if (s[i] == '+' or s[i] == '-') {
+        if (s.len - i != 6 or s[i + 3] != ':') return null;
+        const hours = fixedDigits(s[i + 1 .. i + 3]) orelse return null;
+        const minutes = fixedDigits(s[i + 4 .. i + 6]) orelse return null;
+        if (hours > 23 or minutes > 59) return null;
+        offset = (hours * 60 + minutes) * 60_000;
+        if (s[i] == '-') offset = -offset;
+        i += 6;
+    } else return null;
+    if (i != s.len) return null;
+    return (instant(year, month, day, hour, minute, second) orelse return null) + ms - offset;
+}
+
+/// `2026-09-12T10:00:02Z`, with `.mmm` when the milliseconds are not zero.
+fn iso8601(buf: *[40]u8, t: i64) []const u8 {
+    const c = civilFromDays(@divFloor(t, ms_per_day));
+    const in_day: u64 = @intCast(@mod(t, ms_per_day));
+    var w: std.Io.Writer = .fixed(buf);
+    if (c.year >= 0 and c.year <= 9999) {
+        w.print("{d:0>4}", .{@as(u64, @intCast(c.year))}) catch unreachable;
+    } else {
+        w.print("{d}", .{c.year}) catch unreachable;
+    }
+    w.print("-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}", .{ @as(u64, @intCast(c.month)), @as(u64, @intCast(c.day)), in_day / 3_600_000, in_day / 60_000 % 60, in_day / 1000 % 60 }) catch unreachable;
+    if (in_day % 1000 != 0) w.print(".{d:0>3}", .{in_day % 1000}) catch unreachable;
+    w.writeAll("Z") catch unreachable;
+    return w.buffered();
+}
+
+test "the calendar round-trips, leap days and the years before 1970 included" {
+    var buf: [40]u8 = undefined;
+    try std.testing.expectEqual(@as(?i64, 0), parseTime("1970-01-01T00:00:00Z"));
+    try std.testing.expectEqualStrings("1969-12-31T23:59:59.999Z", iso8601(&buf, -1));
+    try std.testing.expectEqualStrings("2026-01-01T00:00:00Z", iso8601(&buf, vm_mod.fixture_time));
+    try std.testing.expectEqual(parseTime("2026-09-12T10:00:02Z"), parseTime("2026-09-12T12:00:02+02:00"));
+    try std.testing.expectEqual(@as(?i64, null), parseTime("2023-02-29T00:00:00Z"));
+    try std.testing.expectEqual(@as(?i64, null), parseTime("2026-09-12T10:00:60Z"));
+    try std.testing.expectEqual(@as(?i64, null), parseTime("2026-09-12T10:00:02.Z"));
+    var day: i64 = -800_000;
+    while (day < 800_000) : (day += 997) {
+        const c = civilFromDays(day);
+        try std.testing.expectEqual(day, daysFromCivil(c.year, c.month, c.day));
+    }
+    const back = parseTime(iso8601(&buf, 1_789_200_123_456)).?;
+    try std.testing.expectEqual(@as(i64, 1_789_200_123_456), back);
+}
+
+// ---- files
+
+/// `read_lines`, `size`, and `list`. Under mo run the file system is real (server.zig); a
+/// fixture Fs is empty, and one built with delay: answers after the delay.
+fn files(vm: *Vm, which: Row, a: []const Value) Error!Value {
+    const fs = a[0].cap;
+    const within = a[a.len - 1].duration;
+    const path: []const u8 = if (which == .fs_list) "." else a[1].string;
+    const s = vm.server orelse {
+        if (fs.delay > within) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+        if (which == .fs_list) return vm.variant("Ok", &.{.{ .list = &.{} }});
+        return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
+    };
+    return switch (which) {
+        .fs_read_lines => blk: {
+            const got = try s.read(vm, fs, path, within);
+            if (!std.mem.eql(u8, got.variant.name, "Ok")) break :blk got;
+            break :blk vm.variant("Ok", &.{try lines(vm, got.variant.fields[0].string)});
+        },
+        .fs_size => s.size(vm, fs, path, within),
+        else => s.list(vm, fs, within),
+    };
 }
 
 // ---- maps and sets

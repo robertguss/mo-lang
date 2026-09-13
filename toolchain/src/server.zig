@@ -157,24 +157,82 @@ pub const Server = struct {
     pub fn read(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
         const t0 = Io.Clock.Timestamp.now(s.io, .awake);
         const text = try s.readScoped(s.scopes.items[fs.handle], path);
-        const ns = t0.durationTo(Io.Clock.Timestamp.now(s.io, .awake)).raw.toNanoseconds();
-        if (ns > @as(i96, within_ms) * std.time.ns_per_ms) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
-        const got = text orelse return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
+        if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+        const got = text orelse return missing(vm, path);
         return vm.variant("Ok", &.{.{ .string = got }});
     }
 
-    fn readScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
+    /// `fs.size(path, within: d)`: `Ok(bytes)` of a file inside the scope; anything else
+    /// is `Missing(path)`, or `Timeout`, as `read` answers.
+    pub fn size(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        const bytes: ?u64 = blk: {
+            const real = try s.realScoped(s.scopes.items[fs.handle], path) orelse break :blk null;
+            const stat = Io.Dir.cwd().statFile(s.io, real, .{}) catch break :blk null;
+            break :blk if (stat.kind == .file) stat.size else null;
+        };
+        if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+        const n = bytes orelse return missing(vm, path);
+        return vm.variant("Ok", &.{.{ .int = n }});
+    }
+
+    /// `fs.list(within: d)`: the names of the files and folders directly inside the
+    /// scope's folder, sorted byte by byte; `Missing(".")` when it is not a readable folder.
+    pub fn list(s: *Server, vm: *Vm, fs: Value.Cap, within_ms: i64) Error!Value {
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        const names = try s.listScoped(s.scopes.items[fs.handle]);
+        if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
+        const got = names orelse return missing(vm, ".");
+        const out = try vm.heap.alloc(Value, got.len);
+        for (got, out) |name, *o| o.* = .{ .string = name };
+        return vm.variant("Ok", &.{.{ .list = out }});
+    }
+
+    /// Whether a call that began at `t0` took longer than its deadline. Enforced after the
+    /// fact in this step (see `read`).
+    fn late(s: *Server, t0: Io.Clock.Timestamp, within_ms: i64) bool {
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(s.io, .awake)).raw.toNanoseconds();
+        return ns > @as(i96, within_ms) * std.time.ns_per_ms;
+    }
+
+    /// The real path of `path` under the scope, or null when it is outside the scope or
+    /// is not there. Compared again as real paths, so a symbolic link inside the scope
+    /// cannot reach out.
+    fn realScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
         if (scope.empty) return null;
         const full = try std.fs.path.resolve(s.gpa, &.{ scope.base, path });
         if (!within(scope.root, full)) return null;
-        // Compared again as real paths, so a symbolic link inside the scope cannot reach out.
         const cwd = Io.Dir.cwd();
         const real_root = cwd.realPathFileAlloc(s.io, scope.root, s.gpa) catch |err| return unreadable(err);
         const real = cwd.realPathFileAlloc(s.io, full, s.gpa) catch |err| return unreadable(err);
         if (!within(real_root, real)) return null;
-        return cwd.readFileAlloc(s.io, real, s.gpa, .limited(read_limit)) catch |err| unreadable(err);
+        return real;
+    }
+
+    fn readScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
+        const real = try s.realScoped(scope, path) orelse return null;
+        return Io.Dir.cwd().readFileAlloc(s.io, real, s.gpa, .limited(read_limit)) catch |err| unreadable(err);
+    }
+
+    fn listScoped(s: *Server, scope: Scope) Error!?[]const []const u8 {
+        const real = try s.realScoped(scope, ".") orelse return null;
+        var dir = Io.Dir.cwd().openDir(s.io, real, .{ .iterate = true }) catch return null;
+        defer dir.close(s.io);
+        var names: std.ArrayList([]const u8) = .empty;
+        var it = dir.iterate();
+        while (it.next(s.io) catch return null) |entry| try names.append(s.gpa, try s.gpa.dupe(u8, entry.name));
+        std.mem.sort([]const u8, names.items, {}, struct {
+            fn lt(_: void, a: []const u8, b: []const u8) bool {
+                return std.mem.lessThan(u8, a, b);
+            }
+        }.lt);
+        return names.items;
     }
 };
+
+fn missing(vm: *Vm, path: []const u8) Error!Value {
+    return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
+}
 
 fn unreadable(err: anyerror) Error!?[]const u8 {
     return if (err == error.OutOfMemory) error.OutOfMemory else null;
@@ -272,6 +330,69 @@ test "main on Mo.Server: args, env, both streams, a scoped read that cannot esca
     , out.written());
     try std.testing.expectEqualStrings("2 args, yes\n", err.written());
     try std.testing.expect(server.now() > vm_mod.fixture_time);
+}
+
+test "Fs.list, read_lines, and size stay inside the scope, and write_line ends a line" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const io = std.testing.io;
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(io, "data/sub");
+    try tmp.dir.writeFile(io, .{ .sub_path = "secret.txt", .data = "s\n" });
+    try tmp.dir.writeFile(io, .{ .sub_path = "data/b.txt", .data = "x\r\ny\n" });
+    try tmp.dir.writeFile(io, .{ .sub_path = "data/a.txt", .data = "" });
+    const cwd = try tmp.dir.realPathFileAlloc(io, ".", arena);
+
+    const program = try compile(arena,
+        \\module T.Files
+        \\fn names(r: Result(List(String), FsError)) : String
+        \\  case r
+        \\    Ok(xs): String.join(xs, ",")
+        \\    Error(Missing(path)): "missing #{path}"
+        \\    Error(Timeout): "timeout"
+        \\  end
+        \\end
+        \\fn bytes(r: Result(UInt64, FsError)) : String
+        \\  case r
+        \\    Ok(n): "#{n}"
+        \\    Error(Missing(path)): "missing #{path}"
+        \\    Error(Timeout): "timeout"
+        \\  end
+        \\end
+        \\fn main(platform: Platform)
+        \\  data = platform.fs.scoped("data").read_only
+        \\  out = platform.stdout
+        \\  out.write_line(names(data.list(within: 1.minute)))
+        \\  out.write_line(names(data.read_lines("b.txt", within: 1.minute)))
+        \\  out.write_line(names(data.read_lines("../secret.txt", within: 1.minute)))
+        \\  out.write_line(bytes(data.size("b.txt", within: 1.minute)))
+        \\  out.write_line(bytes(data.size("sub", within: 1.minute)))
+        \\  out.write_line(bytes(data.size("../secret.txt", within: 1.minute)))
+        \\  out.write_line(names(data.scoped("nowhere").list(within: 1.minute)))
+        \\  out.write_line(names(data.scoped("..").list(within: 1.minute)))
+        \\  out.write_line(names(data.list(within: 0.ms)))
+        \\end
+    );
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, io, cwd, &.{}, &environ, &out.writer, &out.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    try std.testing.expectEqualStrings(
+        \\a.txt,b.txt,sub
+        \\x,y
+        \\missing ../secret.txt
+        \\5
+        \\missing sub
+        \\missing ../secret.txt
+        \\missing .
+        \\missing .
+        \\timeout
+        \\
+    , out.written());
 }
 
 test "a crash in main comes back with its report" {

@@ -344,7 +344,7 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         try programs.append(gpa, programName(rel));
         if (!try checkProgram(gpa, io, mo_exe, root, rel)) wrong += 1;
     }
-    const want = [_][]const u8{ "count-lines", "exit-code", "hello", "logstat" };
+    const want = [_][]const u8{ "count-lines", "exit-code", "hello", "lines-per-file", "logstat" };
     try std.testing.expectEqual(want.len, programs.items.len);
     for (want, programs.items) |w, found| try std.testing.expectEqualStrings(w, found);
     try std.testing.expectEqual(@as(u32, 0), wrong);

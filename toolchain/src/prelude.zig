@@ -251,10 +251,20 @@ pub const fns = [_]Fn{
     .{ .recv = "Int", .name = "days", .ret = "Duration" },
     // Time
     .{ .recv = "Time", .on_type = true, .name = "fixture", .ret = "Time", .only = .tests },
+    .{ .recv = "Time", .on_type = true, .name = "parse", .params = &.{"String"}, .ret = "Option(Time)", .origin = .stdlib },
+    .{ .recv = "Time", .on_type = true, .name = "from_parts", .params = &.{ "UInt64", "UInt64", "UInt64", "UInt64", "UInt64", "UInt64" }, .ret = "Time", .origin = .stdlib },
+    .{ .recv = "Time", .name = "to_iso8601", .ret = "String", .origin = .stdlib },
+    .{ .recv = "Time", .name = "since", .params = &.{"Time"}, .ret = "Duration", .origin = .stdlib },
+    .{ .recv = "Duration", .name = "ms", .ret = "Int64", .origin = .stdlib },
+    .{ .recv = "Duration", .name = "seconds", .ret = "Float64", .origin = .stdlib },
+    .{ .recv = "Duration", .name = "minutes", .ret = "Float64", .origin = .stdlib },
     // Capabilities
     .{ .recv = "Clock", .name = "now", .ret = "Time" },
     .{ .recv = "Clock", .on_type = true, .name = "fixture", .ret = "Clock", .only = .tests },
     .{ .recv = "Fs", .name = "read", .params = &.{"String"}, .ret = "Result(String, FsError)", .can_wait = true },
+    .{ .recv = "Fs", .name = "read_lines", .params = &.{"String"}, .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "size", .params = &.{"String"}, .ret = "Result(UInt64, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "list", .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "scoped", .params = &.{"String"}, .ret = "Fs" },
     .{ .recv = "Fs", .name = "read_only", .ret = "Fs" },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .ret = "Fs", .only = .tests },
@@ -275,6 +285,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
+    .{ .recv = "Out", .name = "write_line", .params = &.{"String"}, .ret = "none", .origin = .stdlib },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },
