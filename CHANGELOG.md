@@ -4,6 +4,7 @@ What shipped, newest first. One entry per session or per milestone. The reasonin
 
 ## Session 5, overnight — 13 Sep 2026
 
+- **Step 8, the stdlib.** `spec/design-v0/09-stdlib.md` (118 rows: integers and floats, strings, lists, maps and sets, time, files, output, JSON), every row a built-in with a test under `examples/stdlib/`; `zig build` installs a ReleaseSafe `mo`; `logstat` rewritten on the stdlib: 1,174 → 758 lines, 200k lines in 0.95 s and 38 MB (Opus, 60 min).
 - **Step 7, programs of many modules.** `use A.B{X, y}` imports functions; a program is a tree of files under `mo.root`; the corpus test runs multi-file programs; `push` grows in place (200k pushes: 3 min 10 s → 0.15 s); a region allocator freed at safe points; pure-call memoization; logstat at 39 µs per line in ReleaseFast (was 3.7 ms); `logstat` runs from its four files with no join script (Opus, 67 min).
 - **Program 2, `logstat`, in Mo.** Written by Opus from `spec/programs/02-log-analyzer.md` in 25.5 minutes: four modules, 78 functions, median 4.5 lines. Correct end to end once the file law is lifted for the joined file. Three toolchain bugs and nine stdlib gaps recorded.
 - **The control run.** The same spec in Go (12.9 min) and Python (8 min) by the same model; all three verified. Result and reading on `plans/control-run.md`.

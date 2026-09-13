@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, verification, processes]
 sources: [spec/design-v0/05-verification.md, spec/design-v0/03-semantics.md, directions/d33-bounded-mailboxes.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 9: `Mo.Sim` with seeds and fault injection
