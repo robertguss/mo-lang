@@ -2814,8 +2814,8 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
-static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "each_line", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
+enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
+static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
 
 static MoValue not_text(void) { return error_of(mo_variant(MO_N_NOT_TEXT, 0, NULL)); }
 
@@ -2831,18 +2831,17 @@ static MoValue read_result(int which, MoValue s) {
     return ok_of(which == FS_READ ? s : lines_of(s));
 }
 
-/* Fs.each_line: bytes as they are read, split as String.lines splits a whole text, each line
- * handed to the function in turn with a safe point after it that keeps nothing, so a file of
- * any size is read in the memory of its longest line (stdlib.zig, LineFeed). */
+/* Fs.fold_lines: bytes as they are read, split as String.lines splits a whole text, each line
+ * handed to the function in turn with the value so far, so a file of any size is read in the
+ * memory of its longest line and the value (stdlib.zig, LineFeed). */
 typedef struct {
     MoValue f;
     size_t from, kept;
     Buf partial;
     /* A line was not UTF-8: no line after it is handed, and the call is NotText. */
     bool not_text;
-    /* Fs.fold_lines: the value so far, from its init, handed with each line and replaced by what
-     * the call gives, the safe point's one root. */
-    bool folds;
+    /* The value so far, from its init, handed with each line and replaced by what the call gives,
+     * the safe point's one root. */
     MoValue acc[1];
 } LineFeed;
 
@@ -2854,14 +2853,9 @@ static void feed_line(LineFeed *l, const char *s, size_t n) {
         return;
     }
     MoValue line = heap_string(s, n);
-    if (l->folds) {
-        MoValue args[2] = {l->acc[0], line};
-        l->acc[0] = mo_invoke(l->f, args);
-        l->kept = iterate(l->from, l->acc, 1, l->kept);
-    } else {
-        mo_invoke(l->f, &line);
-        l->kept = iterate(l->from, NULL, 0, l->kept);
-    }
+    MoValue args[2] = {l->acc[0], line};
+    l->acc[0] = mo_invoke(l->f, args);
+    l->kept = iterate(l->from, l->acc, 1, l->kept);
 }
 
 static void feed_bytes(LineFeed *l, const char *s, size_t n) {
@@ -2893,7 +2887,7 @@ static MoValue string_list(char **names, size_t n) {
 
 static MoValue fixture_files(int which, const MoValue *a) {
     FixScope scope = fix_scope_of(a[0]);
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
@@ -2932,14 +2926,12 @@ static MoValue fixture_files(int which, const MoValue *a) {
     char *full = fix_path_in(&scope, S(path));
     if (!full) return missing(path);
     switch (which) {
-    case FS_EACH_LINE:
     case FS_FOLD_LINES: {
         FixFile *f = fix_find(sys, full);
         free(full);
         if (!f) return missing(path);
         MoValue text = f->text;
-        bool folds = which == FS_FOLD_LINES;
-        LineFeed l = {.f = folds ? a[3] : a[2], .from = mo_mark(), .folds = folds, .acc = {folds ? a[2] : MO_NONE_V}};
+        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
         feed_bytes(&l, text.as.s, text.aux);
         feed_end(&l);
         return l.not_text ? not_text() : ok_of(l.acc[0]);
@@ -3008,7 +3000,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
 static MoValue server_files(int which, const MoValue *a) {
     const Scope *scope = &scopes[mo_cap_handle(a[0])];
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
     if (which >= FS_WRITE && scope->read_only) {
         mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     }
@@ -3028,7 +3020,6 @@ static MoValue server_files(int which, const MoValue *a) {
         free(text);
         return read_result(which, s);
     }
-    case FS_EACH_LINE:
     case FS_FOLD_LINES: {
         char *real = real_scoped(scope, S(path));
         int fd = real ? open(real, O_RDONLY) : -1;
@@ -3037,8 +3028,7 @@ static MoValue server_files(int which, const MoValue *a) {
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
         enum { READING, DONE, LATE, FAILED, NOT_TEXT } ended = READING;
-        bool folds = which == FS_FOLD_LINES;
-        LineFeed l = {.f = folds ? a[3] : a[2], .from = mo_mark(), .folds = folds, .acc = {folds ? a[2] : MO_NONE_V}};
+        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
         char chunk[1 << 16];
         while (ended == READING) {
             if (late(t0, within)) {
@@ -3154,7 +3144,6 @@ static MoValue files(int which, const MoValue *a) { return server_mode ? server_
 MO_ROW(mo_r_Fs_read) { (void)kind; return files(FS_READ, a); }
 MO_ROW(mo_r_Fs_read_lines) { (void)kind; return files(FS_READ_LINES, a); }
 MO_ROW(mo_r_Fs_read_bytes) { (void)kind; return files(FS_READ_BYTES, a); }
-MO_ROW(mo_r_Fs_each_line) { (void)kind; return files(FS_EACH_LINE, a); }
 MO_ROW(mo_r_Fs_fold_lines) { (void)kind; return files(FS_FOLD_LINES, a); }
 MO_ROW(mo_r_Fs_size) { (void)kind; return files(FS_SIZE, a); }
 MO_ROW(mo_r_Fs_list) { (void)kind; return files(FS_LIST, a); }
