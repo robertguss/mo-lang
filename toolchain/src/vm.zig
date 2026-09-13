@@ -14,11 +14,13 @@
 //! it whole. `mo run` gives the vm a region (region.zig, useRegions): each frame, each
 //! `for` iteration, and each step of `map`, `filter`, and `reduce` is a safe point, and
 //! once enough has been allocated since it began, what its result, its locals, or its
-//! accumulator reach is copied down and everything else is freed (compact).
+//! accumulator reach is copied down and everything else is freed (compact). `mo run` also
+//! gives it a Memo (memo.zig), which answers a pure call it has seen before.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
+const Memo = @import("memo.zig").Memo;
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
@@ -87,6 +89,10 @@ pub const Vm = struct {
     frame_budget: usize = 1 << 20,
     /// Region bytes a loop may allocate past twice what it kept at its last compaction.
     loop_budget: usize = 256 << 10,
+    /// Under `mo run`, the calls to pure functions it remembers.
+    memo: ?*Memo = null,
+    /// Instructions run so far; a Memo reads what a call cost from it.
+    steps: u64 = 0,
     /// Set when a call fails with Crash or Skip.
     report: ?contracts.Report = null,
     rng: std.Random.DefaultPrng,
@@ -137,17 +143,28 @@ pub const Vm = struct {
     }
 
     fn push(vm: *Vm, v: Value) Error!void {
-        try vm.stack.append(vm.gpa, v);
+        if (vm.stack.items.len == vm.stack.capacity) try vm.stack.ensureTotalCapacity(vm.gpa, 2 * vm.stack.capacity + 256);
+        vm.stack.appendAssumeCapacity(v);
     }
 
     fn pop(vm: *Vm) Value {
-        return vm.stack.pop().?;
+        vm.stack.items.len -= 1;
+        return vm.stack.items.ptr[vm.stack.items.len];
+    }
+
+    /// The top `n` values, oldest first, off the stack but still in its memory until the
+    /// next push.
+    fn drop(vm: *Vm, n: u32) []const Value {
+        const len = vm.stack.items.len;
+        vm.stack.items.len = len - n;
+        return vm.stack.items.ptr[len - n .. len];
     }
 
     /// The top `n` values, oldest first, removed from the stack.
     fn take(vm: *Vm, n: u32) Error![]Value {
         const len = vm.stack.items.len;
-        const out = try vm.heap.dupe(Value, vm.stack.items[len - n ..]);
+        const out = try vm.allocValues(n);
+        @memcpy(out, vm.stack.items[len - n ..]);
         vm.stack.shrinkRetainingCapacity(len - n);
         return out;
     }
@@ -166,16 +183,26 @@ pub const Vm = struct {
     /// inout parameter, in order.
     fn exec(vm: *Vm, fi: u32, args: []const Value, captures: []const Value) Error!void {
         const f = vm.program.functions[fi];
+        // A remembered call is answered without running; `remember` is the key a result
+        // this call returns is kept under.
+        var remember: ?u64 = null;
+        if (vm.memo) |m| switch (m.lookup(fi, f, args, captures)) {
+            .hit => |v| return vm.push(v),
+            .miss => |key| remember = key,
+            .skip => {},
+        };
+        const steps = vm.steps;
         const frame = vm.mark();
-        const locals = try vm.heap.alloc(Value, f.locals);
-        @memset(locals, .none);
+        const locals = try vm.allocValues(f.locals);
         @memcpy(locals[0..args.len], args);
+        @memset(locals[args.len..], .none);
         for (f.captures, captures) |slot, v| locals[slot] = v;
         const base = vm.stack.items.len;
         var pc: u32 = 0;
         while (true) {
             const inst = f.code[pc];
             pc += 1;
+            vm.steps += 1;
             switch (inst.op) {
                 .constant => try vm.push(vm.constant(inst.a)),
                 .pop => _ = vm.pop(),
@@ -219,10 +246,12 @@ pub const Vm = struct {
                 .record => try vm.push(.{ .record = .{ .decl = inst.a, .fields = try vm.take(inst.b) } }),
                 .variant => try vm.push(.{ .variant = .{ .name = vm.program.constants[inst.a].string, .fields = try vm.take(inst.b) } }),
                 .field => try vm.push(fieldsOf(vm.pop())[inst.a]),
+                .load_field => try vm.push(fieldsOf(locals[inst.a])[inst.b]),
                 .set_field => {
                     const v = vm.pop();
                     const obj = vm.pop();
-                    const fields = try vm.heap.dupe(Value, fieldsOf(obj));
+                    const fields = try vm.allocValues(fieldsOf(obj).len);
+                    @memcpy(fields, fieldsOf(obj));
                     fields[inst.a] = v;
                     try vm.push(switch (obj) {
                         .record => |r| .{ .record = .{ .decl = r.decl, .fields = fields } },
@@ -254,13 +283,14 @@ pub const Vm = struct {
                     for (parts) |p| vm.formatText(&aw.writer, p) catch return error.OutOfMemory;
                     try vm.push(.{ .string = try aw.toOwnedSlice() });
                 },
+                // The arguments stay in the stack's memory until the callee copies them.
                 .call, .call_trait => {
-                    const args_now = try vm.take(inst.b);
+                    const args_now = vm.drop(inst.b);
                     const target = if (inst.op == .call) inst.a else try vm.dispatch(inst.a, args_now[0]);
                     try vm.exec(target, args_now, &.{});
                 },
                 .call_value => {
-                    const args_now = try vm.take(inst.a);
+                    const args_now = vm.drop(inst.a);
                     const func = vm.pop().func;
                     try vm.exec(func.function, args_now, func.captures);
                 },
@@ -271,6 +301,8 @@ pub const Vm = struct {
                     vm.stack.shrinkRetainingCapacity(base);
                     try vm.push(v);
                     for (f.inouts) |slot| try vm.push(locals[slot]);
+                    // Parameters are bound once, so the first locals are still the arguments.
+                    if (vm.memo) |m| try m.finish(fi, vm.steps - steps, remember, locals[0..args.len], captures, v);
                     if (vm.region) |r| if (r.top -| frame > vm.frame_budget) try vm.compact(frame, vm.stack.items[base..]);
                     return;
                 },
@@ -372,6 +404,19 @@ pub const Vm = struct {
 
     // ---- memory
 
+    /// `n` values from the heap: a region's bump done here, anything else through `heap`.
+    fn allocValues(vm: *Vm, n: usize) Error![]Value {
+        if (vm.region) |r| {
+            const start = std.mem.alignForward(usize, r.top, @alignOf(Value));
+            const end = start + n * @sizeOf(Value);
+            if (end <= r.end) {
+                r.top = end;
+                return @as([*]Value, @ptrFromInt(start))[0..n];
+            }
+        }
+        return vm.heap.alloc(Value, n);
+    }
+
     /// Where the region's allocations stand: the mark a frame or a loop frees back to.
     fn mark(vm: *const Vm) usize {
         return if (vm.region) |r| r.top else 0;
@@ -460,7 +505,7 @@ pub const Vm = struct {
             }
         }
         const cap = @max(4, 2 * xs.len);
-        const out = try vm.heap.alloc(Value, cap);
+        const out = try vm.allocValues(cap);
         @memcpy(out[0..xs.len], xs);
         out[xs.len] = x;
         vm.growth[vm.growth_next] = .{ .ptr = @intFromPtr(out.ptr), .len = xs.len + 1, .cap = cap };
@@ -797,7 +842,9 @@ pub const Vm = struct {
     }
 
     pub fn variant(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {
-        return .{ .variant = .{ .name = name, .fields = try vm.heap.dupe(Value, fields) } };
+        const out = try vm.allocValues(fields.len);
+        @memcpy(out, fields);
+        return .{ .variant = .{ .name = name, .fields = out } };
     }
 
     /// checked_, saturating_, and wrapping_: the only behaviours at an integer's edge
@@ -1024,7 +1071,7 @@ pub fn equal(a: Value, b: Value) bool {
     };
 }
 
-fn allEqual(a: []const Value, b: []const Value) bool {
+pub fn allEqual(a: []const Value, b: []const Value) bool {
     if (a.len != b.len) return false;
     for (a, b) |x, y| if (!equal(x, y)) return false;
     return true;
@@ -1312,6 +1359,41 @@ test "under a region, push is linear, loops free what they do not keep, and comp
 
         try std.testing.expectEqualStrings("22", (try callNamed(&vm, "looped", &.{.{ .int = 3 }})).string);
     }
+}
+
+test "a remembered call gives what running it gives, and a call that trips still trips" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Memo
+        \\fn digits(n: UInt32) : String
+        \\  requires n < 100
+        \\
+        \\  (0..n).reduce("", fn(text, i) "#{text}#{i % 10}" end)
+        \\end
+        \\fn both(n: UInt32) : (String, String)
+        \\  (digits(n % 7), digits(n % 7 + 1))
+        \\end
+        \\test rejects "a hundred digits"
+        \\  digits(100)
+        \\end
+    );
+    var memo: Memo = try .init(arena, program.functions.len);
+    defer memo.deinit();
+    memo.watch_calls = 2;
+    memo.min_steps = 1;
+    var vm: Vm = .init(arena, &program, 0);
+    vm.memo = &memo;
+    const all = "0123456789";
+    for (0..50) |i| {
+        const pair = (try callNamed(&vm, "both", &.{.{ .int = i }})).tuple;
+        try std.testing.expectEqualStrings(all[0 .. i % 7], pair[0].string);
+        try std.testing.expectEqualStrings(all[0 .. i % 7 + 1], pair[1].string);
+    }
+    try std.testing.expect(memo.stats[program.findFunction("digits").?].hits > 40);
+    try std.testing.expectError(error.Crash, callNamed(&vm, "digits", &.{.{ .int = 100 }}));
+    try std.testing.expectEqual(contracts.Kind.requires, vm.report.?.kind);
 }
 
 test "closures, patterns, strings, and try" {

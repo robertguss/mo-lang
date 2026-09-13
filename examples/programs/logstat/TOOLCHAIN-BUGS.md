@@ -68,7 +68,7 @@ How logstat was verified before the fix: a scratch copy of the toolchain, never 
 
 ## 4. `push` copies the whole list, so a list built by pushing is quadratic
 
-**Fixed** by step 7 part D: `push` appends in place when the list ends where its buffer's last push left it, and `mo run` frees what a frame, a `for` iteration, or a step of `map`, `filter`, or `reduce` allocated and did not keep (`toolchain/src/region.zig`, `vm.zig`). The probe below with 200_000 pushes takes 0.27 s in 51 MB (Debug build); logstat on 4_000 lines peaks at 15 MB, where 500 lines took 571 MB before. The time per line is step 7 part E's.
+**Fixed** by step 7 part D: `push` appends in place when the list ends where its buffer's last push left it, and `mo run` frees what a frame, a `for` iteration, or a step of `map`, `filter`, or `reduce` allocated and did not keep (`toolchain/src/region.zig`, `vm.zig`). The probe below with 200_000 pushes takes 0.27 s in 51 MB (Debug build); logstat on 4_000 lines peaks at 15 MB, where 500 lines took 571 MB before. Step 7 part E took the time per line from 3.7 ms to 39 µs (ReleaseFast: 4_000 lines in 156 ms, 200_000 in 8.8 s); the table lookup in `text_of` was 75% of every instruction run, and `mo run` now remembers a pure call it has seen (`toolchain/src/memo.zig`).
 
 ```
 module P.Push

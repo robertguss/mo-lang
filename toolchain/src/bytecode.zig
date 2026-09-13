@@ -53,6 +53,8 @@ pub const Op = enum(u8) {
     variant,
     /// pop a struct, a variant, or a tuple; push its field a
     field,
+    /// push field b of the struct, variant, or tuple in locals[a]
+    load_field,
     /// pop v, then a struct, variant, or tuple; push it with field a set to v
     set_field,
     /// pop a value; push whether it is the variant named constants[a]
@@ -1308,14 +1310,10 @@ const Lower = struct {
             .member => {
                 if (l.k.callee[i] != .none) return l.callNode(i, n.lhs, &.{});
                 const k = l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token)) orelse return l.halt(i, try std.fmt.allocPrint(l.gpa, "{s} is a field of a type tier 2 cannot see", .{l.text(n.main_token)}), false);
-                try l.expr(n.lhs);
-                _ = try l.emit(.field, k, 0);
+                try l.fieldOf(n.lhs, k);
             },
             .member_call => try l.callNode(i, n.lhs, l.spanAt(n.rhs)),
-            .tuple_index => {
-                try l.expr(n.lhs);
-                _ = try l.emit(.field, @intCast(parseInt(l.text(n.main_token))), 0);
-            },
+            .tuple_index => try l.fieldOf(n.lhs, @intCast(parseInt(l.text(n.main_token)))),
             .call => {
                 const callee = l.node(n.lhs);
                 const args = l.spanAt(n.rhs);
@@ -1339,6 +1337,19 @@ const Lower = struct {
             .result_ref => _ = try l.emit(.load, l.b.result, 0),
             else => try l.halt(i, "", false),
         }
+    }
+
+    /// Field k of `obj`: one instruction when obj is a local, as `acc.0` in a fold is.
+    fn fieldOf(l: *Lower, obj: Index, k: u32) Error!void {
+        const on = l.node(obj);
+        if (on.kind == .name_ref) {
+            if (try l.resolve(l.text(on.main_token))) |v| {
+                _ = try l.emit(.load_field, v.slot, k);
+                return;
+            }
+        }
+        try l.expr(obj);
+        _ = try l.emit(.field, k, 0);
     }
 
     fn nameRef(l: *Lower, i: Index) Error!void {
