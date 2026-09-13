@@ -458,6 +458,8 @@ MO_ROW(mo_r_Events_emit); MO_ROW(mo_r_Events_fixture); MO_ROW(mo_r_Ledger_fixtur
 MO_ROW(mo_r_Ledger_find_charge); MO_ROW(mo_r_Ledger_save_charge);
 MO_ROW(mo_r_Platform_args); MO_ROW(mo_r_Platform_env); MO_ROW(mo_r_Platform_stdout); MO_ROW(mo_r_Platform_stderr);
 MO_ROW(mo_r_Platform_fs); MO_ROW(mo_r_Platform_clock); MO_ROW(mo_r_Platform_net); MO_ROW(mo_r_Platform_exit);
+MO_ROW(mo_r_Net_listen); MO_ROW(mo_r_Net_connect); MO_ROW(mo_r_Net_fixture); MO_ROW(mo_r_Listener_accept);
+MO_ROW(mo_r_Listener_port); MO_ROW(mo_r_Conn_read_line); MO_ROW(mo_r_Conn_write); MO_ROW(mo_r_Conn_close);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
 MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode);

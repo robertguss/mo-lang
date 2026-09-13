@@ -9,11 +9,15 @@
 #endif
 #include "mo_rt.h"
 
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <math.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <poll.h>
 #include <pthread.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -22,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -4937,10 +4942,527 @@ static void turns_wake_all(void) {
     event_set(&main_wake);
 }
 
-/* A process holding these arguments stopped: every Conn among them closes (step B). */
+
+/* ==== Net: TCP under a program's main, and Net.fixture() in its tests (net.zig) ============ */
+
+/* The longest line read_line gives: 64 KiB before its newline. */
+#define LINE_LIMIT ((size_t)64 << 10)
+/* Connections the kernel queues for a listener before accept takes them. */
+#define BACKLOG 128
+
+/* NetError's variants. */
+enum { NET_TIMEOUT, NET_REFUSED, NET_CLOSED, NET_LINE_TOO_LONG, NET_BUSY };
+
+static MoValue net_fail(int f) {
+    static const uint32_t names[] = {MO_N_TIMEOUT, MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY};
+    return error_of(mo_variant(names[f], 0, NULL));
+}
+
+enum { SCAN_LINE, SCAN_TOO_LONG, SCAN_END, SCAN_MORE };
+typedef struct { int what; size_t taken; const char *line; size_t len; } Scan;
+
+static size_t without_cr(const char *line, size_t len) { return len > 0 && line[len - 1] == '\r' ? len - 1 : len; }
+
+/* The next line in `pending`, the bytes of the stream so far not given out: how many bytes it
+ * takes, and the line, what stands in its way, or more to read first. `eof`: nothing follows. A
+ * line of more than 64 KiB is too long, and the bytes up to its newline are taken, at once or as
+ * they arrive (`skipping`). */
+static Scan scan_line(const char *pending, size_t n, bool eof, bool *skipping) {
+    size_t off = 0;
+    for (;;) {
+        const char *rest = pending + off;
+        size_t left = n - off;
+        const char *nl = left ? memchr(rest, '\n', left) : NULL;
+        if (nl) {
+            size_t k = (size_t)(nl - rest);
+            off += k + 1;
+            if (*skipping) {
+                *skipping = false;
+                continue;
+            }
+            if (k > LINE_LIMIT) return (Scan){SCAN_TOO_LONG, off, NULL, 0};
+            return (Scan){SCAN_LINE, off, rest, without_cr(rest, k)};
+        }
+        if (*skipping || left > LINE_LIMIT) {
+            bool first = !*skipping;
+            *skipping = !eof;
+            if (first) return (Scan){SCAN_TOO_LONG, n, NULL, 0};
+            return (Scan){eof ? SCAN_END : SCAN_MORE, n, NULL, 0};
+        }
+        if (!eof) return (Scan){SCAN_MORE, off, NULL, 0};
+        if (left == 0) return (Scan){SCAN_END, off, NULL, 0};
+        return (Scan){SCAN_LINE, n, rest, without_cr(rest, left)};
+    }
+}
+
+/* Ok(Some(line)), LineTooLong, or Ok(None); false for more. The line is copied out first. */
+static bool line_result(Scan s, MoValue *out) {
+    switch (s.what) {
+    case SCAN_LINE: *out = ok_of(mo_some(heap_string(s.line, s.len))); return true;
+    case SCAN_TOO_LONG: *out = net_fail(NET_LINE_TOO_LONG); return true;
+    case SCAN_END: *out = ok_of(mo_nothing()); return true;
+    default: return false;
+    }
+}
+
+/* ---- real sockets: a Listener's or a Conn's handle is its index here */
+
+typedef struct { int fd; uint16_t port; bool accepting; } Listener;
+typedef struct {
+    int fd;
+    /* Bytes read and not yet given out are buf[start..end]; allocated at the first read. */
+    char *buf;
+    size_t start, end;
+    /* The other side closed its end: what is buffered is the rest of the stream. */
+    bool eof;
+    /* close ran, a write timed out, the stream broke, or the process holding it stopped. */
+    bool closed;
+    /* The descriptor is closed: at once, or when the call waiting on it returns. */
+    bool released;
+    /* After LineTooLong, the rest of that line is dropped. */
+    bool skipping;
+    bool reading, writing;
+} Conn;
+
+static Listener **listeners;
+static size_t nlisteners, caplisteners;
+static Conn **conns;
+static size_t nconns, capconns;
+
+static int64_t max0(int64_t ms) { return ms > 0 ? ms : 0; }
+
+/* Waits for `fd` until `deadline` (awake ms); true when it is ready, or broke. */
+static bool poll_until(int fd, short events, int64_t deadline) {
+    for (;;) {
+        int64_t left = max0(deadline - now_ms());
+        struct pollfd p = {fd, events, 0};
+        int r = poll(&p, 1, left > INT_MAX ? INT_MAX : (int)left);
+        if (r > 0) return true;
+        if (r < 0 && errno != EINTR) return true;
+        if (r == 0 && now_ms() >= deadline) return false;
+    }
+}
+
+/* What waits on the network for main while it hands out turns: one thread per blocked call. */
+typedef struct { int fd; short events; int64_t deadline; Event done; } FdWait;
+
+static void *fd_wait(void *arg) {
+    FdWait *w = arg;
+    if (poll_until(w->fd, w->events, w->deadline)) event_set(&w->done);
+    event_set(&main_wake);
+    return NULL;
+}
+
+/* A Net call's wait, at most `ms` (net.zig, wait; turns.zig, block). Under main with processes
+ * the waiter gives up nothing it holds: main's thread hands out turns until the call's thread
+ * says the socket is ready, and a process hands its turn back, waits off it, and asks for a turn
+ * again when the wait ends. True when the socket was ready in time. */
+static bool net_wait(int fd, short events, int64_t ms) {
+    int64_t deadline = now_ms() + max0(ms);
+    if (!turns_on) return poll_until(fd, events, deadline);
+    if (holder == MAIN_TURN) {
+        FdWait w = {.fd = fd, .events = events, .deadline = deadline};
+        event_init(&w.done);
+        pthread_t t;
+        if (pthread_create(&t, NULL, fd_wait, &w) != 0) return poll_until(fd, events, deadline);
+        for (;;) {
+            if (event_is_set(&w.done) || now_ms() >= deadline) break;
+            if (step()) continue;
+            idle(&w.done, true, deadline);
+        }
+        pthread_join(t, NULL);
+        return event_is_set(&w.done);
+    }
+    uint32_t id = holder;
+    Worker *wk = workers[id];
+    uint32_t was_running = running;
+    wk->phase = PHASE_WAITING;
+    save_vm(my_vm);
+    pass(wk->caller, event_of(wk->caller));
+    bool in_time = poll_until(fd, events, deadline);
+    make_ready(id);
+    await_turn(id, &wk->wake);
+    load_vm(my_vm);
+    running = was_running;
+    return in_time;
+}
+
+static void nonblocking(int fd) {
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+}
+
+static MoValue adopt(int fd) {
+    nonblocking(fd);
+    Conn *c = calloc(1, sizeof(Conn));
+    if (!c) out_of_memory();
+    c->fd = fd;
+    GROW_ARRAY(conns, nconns, capconns);
+    conns[nconns] = c;
+    return mo_cap(MO_CAP_CONN, (uint32_t)nconns++, 0);
+}
+
+/* Closes the descriptor once no call is waiting on it. */
+static void net_release(Conn *c) {
+    if (c->released || c->reading || c->writing) return;
+    c->released = true;
+    close(c->fd);
+    free(c->buf);
+    c->buf = NULL;
+    c->start = c->end = 0;
+}
+
+/* `conn.close`: a call waiting on the connection ends, and every later call is Closed. */
+static void net_close(Conn *c) {
+    if (!c->closed) {
+        c->closed = true;
+        shutdown(c->fd, SHUT_RDWR);
+    }
+    net_release(c);
+}
+
+/* `net.listen(port)`: TCP on 127.0.0.1, at `port` or, given 0, at a free port. Binding does not
+ * wait. SO_REUSEADDR alone: a port another listener holds is Busy, and a server that restarts at
+ * once binds again. */
+static MoValue net_listen(uint16_t port) {
+    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd < 0) return net_fail(NET_REFUSED);
+    int one = 1;
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof addr);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(0x7f000001);
+    socklen_t len = sizeof addr;
+    int failed = -1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one) != 0) failed = NET_REFUSED;
+    else if (bind(fd, (struct sockaddr *)&addr, sizeof addr) != 0) failed = errno == EADDRINUSE ? NET_BUSY : NET_REFUSED;
+    else if (listen(fd, BACKLOG) != 0 || getsockname(fd, (struct sockaddr *)&addr, &len) != 0) failed = NET_REFUSED;
+    if (failed >= 0) {
+        close(fd);
+        return net_fail(failed);
+    }
+    nonblocking(fd);
+    Listener *l = calloc(1, sizeof(Listener));
+    if (!l) out_of_memory();
+    l->fd = fd;
+    l->port = ntohs(addr.sin_port);
+    GROW_ARRAY(listeners, nlisteners, caplisteners);
+    listeners[nlisteners] = l;
+    return ok_of(mo_cap(MO_CAP_LISTENER, (uint32_t)nlisteners++, 0));
+}
+
+static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) {
+    int64_t deadline = now_ms() + max0(ms);
+    char *name = xmalloc(host.aux + 1);
+    memcpy(name, host.as.s, host.aux);
+    name[host.aux] = 0;
+    char service[8];
+    snprintf(service, sizeof service, "%u", (unsigned)port);
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo *found = NULL;
+    int gai = strlen(name) == host.aux ? getaddrinfo(name, service, &hints, &found) : EAI_NONAME;
+    free(name);
+    if (gai != 0) return net_fail(gai == EAI_MEMORY ? NET_BUSY : NET_REFUSED);
+    int why = NET_REFUSED;
+    for (struct addrinfo *ai = found; ai; ai = ai->ai_next) {
+        int fd = socket(ai->ai_family, SOCK_STREAM, 0);
+        if (fd < 0) {
+            why = errno == EMFILE || errno == ENFILE || errno == ENOBUFS || errno == ENOMEM ? NET_BUSY : NET_REFUSED;
+            continue;
+        }
+        nonblocking(fd);
+        int r = connect(fd, ai->ai_addr, ai->ai_addrlen);
+        if (r != 0 && errno == EINPROGRESS) {
+            if (!net_wait(fd, POLLOUT, deadline - now_ms())) {
+                close(fd);
+                why = NET_TIMEOUT;
+                break;
+            }
+            int err = 0;
+            socklen_t len = sizeof err;
+            getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
+            r = err == 0 ? 0 : -1;
+        }
+        if (r == 0) {
+            freeaddrinfo(found);
+            return ok_of(adopt(fd));
+        }
+        close(fd);
+    }
+    freeaddrinfo(found);
+    return net_fail(why);
+}
+
+/* A call past its deadline leaves the listener listening. */
+static MoValue net_accept(Listener *l, int64_t ms) {
+    if (l->accepting) return net_fail(NET_BUSY);
+    l->accepting = true;
+    int64_t deadline = now_ms() + max0(ms);
+    MoValue out;
+    for (;;) {
+        int fd = accept(l->fd, NULL, NULL);
+        if (fd >= 0) {
+            out = ok_of(adopt(fd));
+            break;
+        }
+        if (errno == EINTR || errno == ECONNABORTED) continue;
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            out = net_fail(errno == EINVAL ? NET_CLOSED : NET_BUSY);
+            break;
+        }
+        int64_t left = deadline - now_ms();
+        if (left <= 0 || !net_wait(l->fd, POLLIN, left)) {
+            out = net_fail(NET_TIMEOUT);
+            break;
+        }
+    }
+    l->accepting = false;
+    return out;
+}
+
+/* `conn.read_line`: the next line, None at the end of the stream, or why not. A call past its
+ * deadline keeps the bytes of an unfinished line for the next call. */
+static MoValue net_read_line(Conn *c, int64_t ms) {
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (c->reading) return net_fail(NET_BUSY);
+    if (!c->buf) c->buf = xmalloc(2 * LINE_LIMIT);
+    int64_t t0 = now_ms();
+    for (;;) {
+        Scan s = scan_line(c->buf + c->start, c->end - c->start, c->eof, &c->skipping);
+        c->start += s.taken;
+        MoValue out;
+        bool given = line_result(s, &out);
+        if (c->start == c->end) c->start = c->end = 0;
+        if (given) return out;
+        int64_t left = ms - (now_ms() - t0);
+        if (left <= 0) return net_fail(NET_TIMEOUT);
+        if (c->start > 0) {
+            memmove(c->buf, c->buf + c->start, c->end - c->start);
+            c->end -= c->start;
+            c->start = 0;
+        }
+        c->reading = true;
+        ssize_t got;
+        bool in_time = true;
+        for (;;) {
+            got = read(c->fd, c->buf + c->end, 2 * LINE_LIMIT - c->end);
+            if (got >= 0) break;
+            if (errno == EINTR) continue;
+            if (errno != EAGAIN && errno != EWOULDBLOCK) break;
+            in_time = net_wait(c->fd, POLLIN, ms - (now_ms() - t0));
+            if (!in_time || c->closed) break;
+        }
+        c->reading = false;
+        if (c->closed) {
+            net_release(c);
+            return net_fail(NET_CLOSED);
+        }
+        if (!in_time) return net_fail(NET_TIMEOUT);
+        if (got < 0) {
+            net_close(c);
+            return net_fail(NET_CLOSED);
+        }
+        if (got == 0) c->eof = true;
+        else c->end += (size_t)got;
+    }
+}
+
+/* `conn.write(text)`: all of the text, or why not. A call past its deadline closes the
+ * connection, since part of the text may have gone. */
+static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (c->writing) return net_fail(NET_BUSY);
+    c->writing = true;
+    int64_t deadline = now_ms() + max0(ms);
+    size_t done = 0;
+    int failed = -1;
+    while (done < text.aux) {
+        ssize_t w = write(c->fd, text.as.s + done, text.aux - done);
+        if (w > 0) {
+            done += (size_t)w;
+            continue;
+        }
+        if (w < 0 && errno == EINTR) continue;
+        if (w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            int64_t left = deadline - now_ms();
+            if (left <= 0 || !net_wait(c->fd, POLLOUT, left)) {
+                failed = NET_TIMEOUT;
+                break;
+            }
+            if (c->closed) break;
+            continue;
+        }
+        failed = NET_CLOSED;
+        break;
+    }
+    c->writing = false;
+    if (c->closed) {
+        net_release(c);
+        return net_fail(NET_CLOSED);
+    }
+    if (failed >= 0) {
+        net_close(c);
+        return net_fail(failed);
+    }
+    return ok_none();
+}
+
+/* ---- Net.fixture(): one network in memory per test (net.zig, Fixture). What one end writes
+ * waits for the other end to read it, and a closed end is the end of the stream for the other.
+ * Nothing happens while a simulated call waits, so a call with nothing to take waits its whole
+ * deadline and is Timeout, as a real one would be. */
+
+typedef struct { uint16_t port; uint32_t *backlog; size_t nbacklog, capbacklog, head; } FixListener;
+typedef struct {
+    /* The other end of the connection. */
+    uint32_t peer;
+    /* What the peer wrote that this end has not read: inbound[start..len]. */
+    char *inbound;
+    size_t len, cap, start;
+    bool closed, skipping;
+} FixConn;
+
+static FixListener *fix_listeners;
+static size_t nfix_listeners, capfix_listeners;
+static FixConn *fix_conns;
+static size_t nfix_conns, capfix_conns;
+/* The port listen(0) tries next. */
+static uint16_t fix_next_port = 49152;
+
+static void reset_net_fixture(void) {
+    for (size_t i = 0; i < nfix_listeners; i++) free(fix_listeners[i].backlog);
+    for (size_t i = 0; i < nfix_conns; i++) free(fix_conns[i].inbound);
+    nfix_listeners = nfix_conns = 0;
+    fix_next_port = 49152;
+}
+
+static bool fix_port_taken(uint16_t port) {
+    for (size_t i = 0; i < nfix_listeners; i++) {
+        if (fix_listeners[i].port == port) return true;
+    }
+    return false;
+}
+
+static MoValue fix_listen(uint16_t port) {
+    if (port == 0) {
+        while (fix_port_taken(fix_next_port)) fix_next_port++;
+        port = fix_next_port;
+    }
+    if (fix_port_taken(port)) return net_fail(NET_BUSY);
+    GROW_ARRAY(fix_listeners, nfix_listeners, capfix_listeners);
+    fix_listeners[nfix_listeners] = (FixListener){port, NULL, 0, 0, 0};
+    return ok_of(mo_cap(MO_CAP_LISTENER, (uint32_t)nfix_listeners++, 0));
+}
+
+static MoValue fix_connect(uint16_t port) {
+    FixListener *l = NULL;
+    for (size_t i = 0; i < nfix_listeners && !l; i++) {
+        if (fix_listeners[i].port == port) l = &fix_listeners[i];
+    }
+    if (!l) return net_fail(NET_REFUSED);
+    uint32_t client = (uint32_t)nfix_conns;
+    GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
+    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false};
+    GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
+    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false};
+    GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
+    l->backlog[l->nbacklog++] = client + 1;
+    return ok_of(mo_cap(MO_CAP_CONN, client, 0));
+}
+
+static MoValue fix_accept(uint32_t h, int64_t within) {
+    FixListener *l = &fix_listeners[h];
+    if (l->head == l->nbacklog) {
+        sim_waited += within;
+        return net_fail(NET_TIMEOUT);
+    }
+    l->head++;
+    return ok_of(mo_cap(MO_CAP_CONN, l->backlog[l->head - 1], 0));
+}
+
+static MoValue fix_read_line(uint32_t h, int64_t within) {
+    FixConn *c = &fix_conns[h];
+    if (c->closed) return net_fail(NET_CLOSED);
+    Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_conns[c->peer].closed, &c->skipping);
+    c->start += s.taken;
+    MoValue out;
+    if (!line_result(s, &out)) {
+        sim_waited += within;
+        return net_fail(NET_TIMEOUT);
+    }
+    if (c->start == c->len) c->start = c->len = 0;
+    return out;
+}
+
+static MoValue fix_write(uint32_t h, MoValue text) {
+    FixConn *c = &fix_conns[h];
+    FixConn *peer = &fix_conns[c->peer];
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (peer->closed) {
+        c->closed = true;
+        return net_fail(NET_CLOSED);
+    }
+    while (peer->len + text.aux > peer->cap) {
+        peer->cap = peer->cap ? 2 * peer->cap : 256;
+        peer->inbound = xrealloc(peer->inbound, peer->cap);
+    }
+    if (text.aux) memcpy(peer->inbound + peer->len, text.as.s, text.aux);
+    peer->len += text.aux;
+    return ok_none();
+}
+
+/* ---- the rows: real sockets under main, the fixture's in a test */
+
+MO_ROW(mo_r_Net_listen) {
+    (void)kind;
+    return server_mode ? net_listen((uint16_t)a[1].as.u) : fix_listen((uint16_t)a[1].as.u);
+}
+
+MO_ROW(mo_r_Net_connect) {
+    (void)kind;
+    return server_mode ? net_connect(a[1], (uint16_t)a[2].as.u, a[3].as.i) : fix_connect((uint16_t)a[2].as.u);
+}
+
+MO_ROW(mo_r_Listener_accept) {
+    (void)kind;
+    return server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
+}
+
+MO_ROW(mo_r_Listener_port) {
+    (void)kind;
+    return mo_u64(server_mode ? listeners[mo_cap_handle(a[0])]->port : fix_listeners[mo_cap_handle(a[0])].port);
+}
+
+MO_ROW(mo_r_Conn_read_line) {
+    (void)kind;
+    return server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
+}
+
+MO_ROW(mo_r_Conn_write) {
+    (void)kind;
+    return server_mode ? net_write(conns[mo_cap_handle(a[0])], a[1], a[2].as.i) : fix_write(mo_cap_handle(a[0]), a[1]);
+}
+
+MO_ROW(mo_r_Conn_close) {
+    (void)kind;
+    if (server_mode) net_close(conns[mo_cap_handle(a[0])]);
+    else fix_conns[mo_cap_handle(a[0])].closed = true;
+    return MO_NONE_V;
+}
+
+MO_ROW(mo_r_Net_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_NET, 0, 0); }
+
+/* A process holding these arguments stopped: every Conn among them closes. */
 static void close_held(const MoValue *args, uint32_t n) {
-    (void)args;
-    (void)n;
+    for (uint32_t i = 0; i < n; i++) {
+        if (args[i].tag != MO_CAP || mo_cap_kind(args[i]) != MO_CAP_CONN) continue;
+        if (server_mode) net_close(conns[mo_cap_handle(args[i])]);
+        else fix_conns[mo_cap_handle(args[i])].closed = true;
+    }
 }
 
 /* ==== the test runner (runner.zig) ======================================================= */
@@ -4964,6 +5486,7 @@ typedef struct {
 static void fresh_run(void) {
     reset_fixtures();
     reset_processes();
+    reset_net_fixture();
     mo_records = mo_nnevers > 0;
     if (mo_nrecorded > 0) {
         if (!produced) produced = calloc(mo_nrecorded, sizeof(Values));
