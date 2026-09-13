@@ -96,6 +96,11 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | The CLI log analyzer (menu program 2) is built before the job queue (amends Q14) | Robert | provisional | program 2 |
 | Overnight run: Fable directs, Opus builds, Fable decides alone and records every decision; merge to `main` after each accepted step; whatever it takes on the worker side; Fable stays on briefs, verification, decisions, logs | Robert | locked for this run | the morning review |
 | Roadmap rewritten to the 14-step list on [[roadmap]] | Fable | provisional | each step |
+| Step 5 accepted: `mo fmt` with idempotence and round-trip tests, `FORMAT.md`, `MO0501` loop rule, `MO0319`, corpus formatted; 35 minutes | Fable | — | program 2 |
+| Top-level blank lines are the formatter's; inside blocks the author's blank lines survive as one | Fable, from Opus's default | provisional | program 2 |
+| A comment inside a multi-line paren refuses the file (`MO0502`) rather than being moved | Fable, from Opus's default | provisional | program 2 |
+| Long lines break only at commas inside parens opened on that line; other long lines stay long | Fable, from Opus's default | provisional | program 2 |
+| `MO0501` counts `send`, `ask`, `start`, and any call passing a capability or handle as effectful; a `break`, `return`, or `try` anywhere in the body makes it effectful | Fable, from Opus's default | provisional | program 2 |
 
 ## Related
 - [[session-05]]

@@ -175,3 +175,6 @@
 
 ## [2026-09-12] session | Session 5: step 4 accepted, milestone met
 - Opus (fresh session): sim.zig, transactions, invariants, mailbox bounds, supervisors, crash reports, refund queue test, invariant-trips.mo (52 files), bench (run 579 µs). Fable verified: refund queue, pipeline, invariant trip, plus transaction rollback, supervisor give-up, mailbox overflow via a loop; all correct with full crash reports. Accepted. Chapter 4 fixed again (result keyword, false property, Done message); 08-milestone.md marks the milestone met; ten decision-log rows.
+
+## [2026-09-12] session | Overnight: step 5 accepted, merged to main, step 6 started
+- Opus (fresh session): FORMAT.md, fmt.zig, MO0501/MO0502, MO0319, corpus formatted. Fable verified: all 52 files pass --check, a messy file formats to the rules, MO0501 fires on a pure body and not on an accumulating one, tests green. Accepted; five decision rows. session-05 merged to main. Step 6 (main, Mo.Server) handed to a fresh session.

@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [tooling, syntax, compiler]
 sources: [spec/design-v0/02-laws.md, spec/design-v0/04-syntax.md, spec/grammar.md]
-status: in-progress
+status: done
 ---
 
 # Step 5: the formatter, brief for the worker

@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [runtime, effects, tooling]
 sources: [questions/q18-main-and-the-platform.md, spec/grammar.md, spec/design-v0/03-semantics.md]
-status: proposed
+status: in-progress
 ---
 
 # Step 6: `main` and `Mo.Server`, brief for the worker
