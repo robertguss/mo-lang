@@ -1,8 +1,10 @@
 # Toolchain bugs found while writing kv
 
-Recorded while writing program 3 (`mo-wiki/spec/programs/03-kv-store.md`, brief `mo-wiki/plans/program-3.md`), whose write scope was `examples/`. None is fixed here. Each has a minimal reproduction, what it cost kv, and the workaround kv uses. Timings are `toolchain/zig-out/bin/mo` (ReleaseSafe, built from `12b7a88`) on an Apple M-series machine with 14 cores and 96 GiB, every probe under a 4 GiB resident-memory cap.
+Recorded while writing program 3 (`mo-wiki/spec/programs/03-kv-store.md`, brief `mo-wiki/plans/program-3.md`), whose write scope was `examples/`. Step 12 (`mo-wiki/plans/interpreter-step-12.md`) fixed all six; each section names the commit that did, and the foot of the file has the numbers after. Each has a minimal reproduction, what it cost kv, and the workaround kv uses. Timings are `toolchain/zig-out/bin/mo` (ReleaseSafe, built from `12b7a88`) on an Apple M-series machine with 14 cores and 96 GiB, every probe under a 4 GiB resident-memory cap.
 
 ## 1. The corpus test names every program and counts every process test, so a new program fails it
+
+**Fixed in `d2dcc04`** (step 12, part A). `corpus.zig` names no program and counts nothing: every `programs/<name>.mo` and `programs/<name>/main.mo` is a program, and the corpus test asserts that every simulated process test held under faults and that recipe tests are the only skips. kv passes in the real `zig build test`.
 
 `toolchain/src/corpus.zig`, the corpus test, holds the list of programs and the tallies of the corpus as it was at step 11:
 
@@ -19,6 +21,8 @@ Any program added to `examples/programs/`, and any file whose tests start a proc
 Workaround: kv is in `examples/programs/kv/` as the brief asks. It was verified by a scratch copy of the toolchain, never committed, whose only change is these numbers and the name `kv` in the list (see the foot of this file for the run).
 
 ## 2. `Map` is a list searched from the front: `get`, `has?`, `set`, and `remove` take time in the number of keys
+
+**Fixed in `4d54425`** (step 12, part B), with the index copied rather than built again in `3504e2c` (part C). A map or set carries an open-addressing index beside its entries, in the same order. Building 10,000 keys takes 4 ms and 100,000 take 39 ms; 100,000 `has?` calls at 100,000 keys take 22 ms.
 
 `toolchain/src/stdlib.zig`: `Map.get` is `indexOf(a[0].map, 2, a[1])`, a scan comparing every key in order, and `set` scans before it appends. A map of n keys costs O(n) a lookup, and building one costs O(n²).
 
@@ -45,6 +49,8 @@ end
 Building 1_000 keys takes 18 ms, 10_000 take 3.1 s, and 100_000 did not finish in 200 s. With the map built, 10_000 `has?` calls take 19 ms at 1_000 keys and 168 ms at 10_000 (1.9 µs and 16.8 µs each).
 
 ## 3. `set` on an existing key of a map held in process state copies the whole map, and the copy is never freed
+
+**Fixed in `4d54425`** (step 12, part B). `state.data = state.data.set(k, v)`, and the same on a field path under any var, writes in place, and the region keeps only what the state reaches. The probe's 20,000 keys then 2,000 overwrites peak at 12 MiB in 0.18 s; at 100,000 keys, 35 MiB in 0.57 s. kv's table is still spread over 256 buckets: its `put` is a pure function over a `Table` value, so an overwrite copies one bucket, which is now freed.
 
 A `set` writes in place only on a `var` that owns its buffer (`stdlib.zig`, `put`; `vm.zig`, `owned`), and ownership is lost the moment anything reads the var. A state field is not a var, and `var m = state.m` reads it, so every `set` of a key the map already holds duplicates the whole map in the process's region. A process's region is not compacted between messages (bug 4), so each copy stays.
 
@@ -97,6 +103,8 @@ Filling 20_000 new keys takes 800 ms; setting 2_000 of them again takes 1_208 ms
 Workaround: kv's table (`Kv.Log.Table`) is a map of 256 small maps, so an overwrite copies the outer map of 256 entries and one inner map of about n / 256 keys, about 41 KiB at 100_000 keys instead of 6.4 MiB. The table is still leaked on every change, only in smaller pieces.
 
 ## 4. A process under `mo run` keeps what every message cost it
+
+**Fixed in `4d54425` and `3504e2c`** (step 12, parts B and C). After each update a process's region keeps only what its new state reaches; a message, a reply, and a process's start arguments cross between processes packed; an ask's reply tables no longer live in the run's arena. 100,000 asks peak at 12 MiB. `kv serve` stays flat under GETs and malformed lines; its journal appends to `kv.log` since `7d81229` (part D) and keeps nothing in memory.
 
 A frame, a `for` iteration, and a step of `map`, `filter`, or `reduce` free what they allocated and did not keep (step 7). An `update` that returns does not: its region grows with every message a process takes, even one whose update allocates nothing it keeps.
 
@@ -159,6 +167,8 @@ So `kv serve` grows by 4 to 27 KiB a request for as long as it runs: 10_000 SETs
 
 ## 5. `mo fmt` crashes on an anonymous function whose body starts with a parenthesis
 
+**Fixed in `6e28563`** (step 12, part F). The `(` right after an anonymous function's parameters groups. A fuzz test formats every corpus file after each of ten random whitespace mutations. kv keeps `mixed` as a named function: it reads well either way.
+
 ```
 module P.Fmt
 
@@ -181,6 +191,8 @@ With a call inside the parentheses (`fn(hash, b) (hash * 31 + b.to_u64) % 256 en
 Workaround: `Kv.Log.bucket_of` calls a named function, `mixed`, whose body is the parenthesised expression.
 
 ## 6. A program that declares a process frees nothing, not even in `main`'s loops
+
+**Fixed in `4d54425`** (step 12, part B). A program with processes keeps its regions: main's and each process's own, compacting through one scratch region. The probe peaks at 10 MiB in 0.17 s with its process declared and 10 MiB in 0.18 s without. A 1,000,000-line log replays inside `kv serve` in 21.0 s.
 
 Probably the cause of bug 4. The same pure loop, in a file with a process declared and never started, keeps everything it allocates:
 
@@ -247,15 +259,18 @@ A scratch copy of `toolchain/` at `12b7a88`, never committed, with `examples/` a
 
 ## Step 12 measurements
 
-Taken on the same machine as above, every probe under a 4 GiB resident-memory cap, `mo` ReleaseSafe.
+Taken at the end of step 12 (`zig build bench` rows in `toolchain/bench/results.tsv`, epoch 1789302917), on the same machine as above, every probe under a 4 GiB resident-memory cap, `mo` ReleaseSafe, with nothing else running.
 
-After part C (the runtime frees under processes, and a process keeps nothing of an update past what its new state reaches), with kv as it was, whose journal still keeps every line appended in memory:
+| run | result | brief |
+|---|---|---|
+| building a map of 10,000 keys in `main` (bug 2's probe, timed inside the program) | 4 ms | under 50 ms |
+| 20,000 keys set in process state, then 2,000 of them set again (bug 3's probe) | 12 MiB peak | under 50 MB |
+| `kv serve`, 200,000 requests over 8 connections, half SET and half GET over 1,000 keys | 29.6 MiB resident at the end (17.0 MiB before, 28.5 MiB after 100,000), 14,146 requests a second, each SET on disk before its answer | under 100 MB |
+| `kv serve`, 200,000 GETs of one key on one connection | 14.2 MiB, flat from 100,000 on; 31,091 a second | |
+| `kv serve`, 200,000 malformed lines on one connection | 9.2 MiB, flat; 47,775 a second | |
+| `kv serve`, 100,000 SETs of distinct keys | 58.0 MiB from 8.9 MiB: 515 bytes a key; 7,932 SETs a second | recorded |
+| `kv serve` replaying a log of 1,000,000 SET lines over 100,000 keys (27 MiB) | listening after 21.0 s, 127 MiB resident | recorded |
+| bench `map-100k`: 100,000 sets then 100,000 gets, program loaded and checked | 46.5 ms, 465 ns a set and a get | |
+| bench `kv-10k-get`: 10,000 GETs from one client over one socket, each waiting for its answer | 512 ms, 51 µs a GET | |
 
-| run | result |
-|---|---|
-| `kv serve`, 200,000 requests over 8 connections, half SET and half GET over 1,000 keys | 86.9 MiB resident at the end (16.9 MiB before), 22,515 requests a second |
-| `kv serve`, 200,000 GETs of one key on one connection, then 200,000 malformed lines | 14.0 MiB, then 15.3 MiB: flat |
-| `kv serve`, 100,000 SETs of distinct keys | 129.5 MiB from 8.8 MiB: 1.24 KiB a key, the journal's copy of every line included |
-| `kv serve` replaying a log of 1,000,000 SET lines over 100,000 keys (27 MiB) | listening after 22.3 s, 127 MiB resident |
-
-What the replay first cost, and what took it down: 104 s with the index built again on every copy of a bucket; the same after the index copied a table that held exactly its keys; 39 s once a copy stopped filling each buffer with 0xAA before writing it (a safe build's `Allocator.alloc` does); 22.3 s once a compaction copied a clean index instead of hashing every key again.
+What the replay first cost after the runtime freed under processes, and what took it down: 104 s with every copy of a bucket building its index again; 39 s once a copy stopped filling each buffer with 0xAA before writing it (a safe build's `Allocator.alloc` does); 22 s once a compaction copied a clean index instead of hashing every key again.
