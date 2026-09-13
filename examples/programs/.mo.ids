@@ -78,6 +78,19 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "530d9bffed0a7910" }
     },
     {
+      "path": "folders/main.mo",
+      "module": "Folders",
+      "declarations": [
+        { "id": "d7d41ecd6812", "name": "module Folders", "hash": "5974354171042e94" },
+        { "id": "3c754767379d", "name": "expose", "hash": "95bf671b762ab9cb" },
+        { "id": "61e24e7a0090", "name": "intent", "hash": "e25031c777236672" },
+        { "id": "3f73285c604f", "name": "fn said", "hash": "9f2bd164d3fa15d0" },
+        { "id": "1495fcf2a79e", "name": "fn main", "hash": "f650cb74e4c9de3c" },
+        { "id": "79d654a43f06", "name": "test \"a folder made is listed before a file is in it, again is Ok, and a file in the way is Missing\"", "hash": "73c932965f2988f4" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "dd726178366c19e3" }
+    },
+    {
       "path": "halves.mo",
       "module": "Programs.Halves",
       "declarations": [

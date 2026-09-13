@@ -330,6 +330,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Fs", .name = "append", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "remove", .params = &.{"String"}, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "rename", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "mkdir", .params = &.{"String"}, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .ret = "Fs", .only = .tests },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .named = &.{.{ .name = "delay", .type = "Duration" }}, .ret = "Fs", .only = .tests },
     .{ .recv = "Events", .name = "emit", .params = &.{"T"}, .ret = "none" },

@@ -70,6 +70,11 @@ pub const Server = struct {
     files: []const diag.File = &.{},
     /// `platform.net`'s listeners and connections (net.zig).
     sockets: net.Net,
+    /// `mo run --clock` (or MO_CLOCK): the time main's clock starts at, in milliseconds since
+    /// the epoch, and the wall clock when it was set; the clock then advances with the wall.
+    /// Null: the clock is the wall's.
+    clock_start: ?i64 = null,
+    wall_start: i64 = 0,
     /// After a run, how many process ids it used: a process that finished gives its id to
     /// the next one started (turns.zig, sweep).
     ids_used: usize = 0,
@@ -189,9 +194,18 @@ pub const Server = struct {
         w.flush() catch {};
     }
 
-    /// Milliseconds since the Unix epoch, as `Value.time` counts.
+    /// Milliseconds since the Unix epoch, as `Value.time` counts: the wall clock, or from
+    /// `--clock`'s start as far as the wall clock has moved since.
     pub fn now(s: *Server) i64 {
-        return Io.Clock.real.now(s.io).toMilliseconds();
+        const wall = Io.Clock.real.now(s.io).toMilliseconds();
+        const start = s.clock_start orelse return wall;
+        return start + (wall - s.wall_start);
+    }
+
+    /// The clock starts at `start` now (`mo run --clock`).
+    pub fn startClock(s: *Server, start: i64) void {
+        s.wall_start = Io.Clock.real.now(s.io).toMilliseconds();
+        s.clock_start = start;
     }
 
     /// `fs.scoped(path)` and `fs.read_only`: a new scope, never a wider one. A path is
@@ -329,6 +343,31 @@ pub const Server = struct {
         };
         if (s.late(t0, within_ms)) return timeout(vm);
         if (!gone) return missing(vm, path);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// `fs.mkdir(path)`: a folder at `path`, made when it is not there, in a folder that is.
+    /// `Missing(path)` when the path leaves the scope, its folder is not there, or a file is
+    /// at it. The folder is not synced: a write into it syncs the file, not the folder.
+    pub fn mkdir(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, path);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const made = blk: {
+            const target = try s.targetScoped(scratch.allocator(), scope, path) orelse break :blk false;
+            Io.Dir.cwd().createDir(s.io, target, .default_dir) catch |err| switch (err) {
+                error.PathAlreadyExists => {
+                    const stat = Io.Dir.cwd().statFile(s.io, target, .{}) catch break :blk false;
+                    break :blk stat.kind == .directory;
+                },
+                else => break :blk false,
+            };
+            break :blk true;
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (!made) return missing(vm, path);
         return vm.variant("Ok", &.{.none});
     }
 
@@ -1136,4 +1175,58 @@ test "under mo run a process that finished and that nothing holds a handle to en
     try std.testing.expectEqualStrings("started 5000\nkept 5000\n", out.written());
     // 5,002 processes started; each idle one ended within a sweep or two of its Poke.
     try std.testing.expect(server.ids_used < 300);
+}
+
+test "mkdir on Mo.Server makes a folder in a folder that is there, and --clock starts main's clock where it says" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const io = std.testing.io;
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(io, "data");
+    const cwd = try tmp.dir.realPathFileAlloc(io, ".", arena);
+
+    const program = try compile(arena,
+        \\module T.Folders
+        \\fn said(r: Result(T, FsError)) : String
+        \\  case r
+        \\    Ok(_): "ok"
+        \\    Error(Missing(path)): "missing #{path}"
+        \\    Error(Timeout): "timeout"
+        \\    Error(NotText): "not text"
+        \\  end
+        \\end
+        \\fn main(platform: Platform)
+        \\  data = platform.fs.scoped("data")
+        \\  out = platform.stdout
+        \\  out.write_line(said(data.mkdir("made", within: 1.minute)))
+        \\  out.write_line(said(data.mkdir("made", within: 1.minute)))
+        \\  out.write_line(said(data.mkdir("nowhere/made", within: 1.minute)))
+        \\  out.write_line(said(data.write("made/a.txt", "a", within: 1.minute)))
+        \\  out.write_line(said(data.mkdir("made/a.txt", within: 1.minute)))
+        \\  out.write_line(said(data.mkdir("../out", within: 1.minute)))
+        \\  out.write_line(platform.clock.now.to_iso8601.slice(0, 16))
+        \\end
+    );
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, io, cwd, &.{}, &environ, &out.writer, &out.writer);
+    server.startClock(stdlib.parseTime("2030-01-01T00:00:00Z").?);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    try std.testing.expectEqualStrings(
+        \\ok
+        \\ok
+        \\missing nowhere/made
+        \\ok
+        \\missing made/a.txt
+        \\missing ../out
+        \\2030-01-01T00:00
+        \\
+    , out.written());
+    const kept = try tmp.dir.readFileAlloc(io, "data/made/a.txt", arena, .limited(64));
+    try std.testing.expectEqualStrings("a", kept);
+    try std.testing.expectError(error.FileNotFound, tmp.dir.readFileAlloc(io, "out", arena, .limited(64)));
 }

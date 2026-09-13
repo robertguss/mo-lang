@@ -475,7 +475,7 @@ MO_ROW(mo_r_Time_since); MO_ROW(mo_r_Duration_ms); MO_ROW(mo_r_Duration_seconds)
 MO_ROW(mo_r_Clock_now); MO_ROW(mo_r_Clock_fixture);
 MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_read_bytes); MO_ROW(mo_r_Fs_each_line); MO_ROW(mo_r_Fs_fold_lines); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
 MO_ROW(mo_r_Fs_scoped); MO_ROW(mo_r_Fs_read_only); MO_ROW(mo_r_Fs_write); MO_ROW(mo_r_Fs_append);
-MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
+MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_mkdir); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
 MO_ROW(mo_r_Events_emit); MO_ROW(mo_r_Events_fixture); MO_ROW(mo_r_Ledger_fixture);
 MO_ROW(mo_r_Ledger_find_charge); MO_ROW(mo_r_Ledger_save_charge);
 MO_ROW(mo_r_Platform_args); MO_ROW(mo_r_Platform_env); MO_ROW(mo_r_Platform_stdout); MO_ROW(mo_r_Platform_stderr);

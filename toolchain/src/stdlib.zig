@@ -103,6 +103,7 @@ pub const Row = enum {
     fs_append,
     fs_remove,
     fs_rename,
+    fs_mkdir,
     /// `Fs.read`, which vm.zig runs; here only for a fixture's files.
     fs_read,
     out_write_line,
@@ -146,7 +147,7 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Fs.each_line", .fs_each_line },           .{ "Fs.fold_lines", .fs_fold_lines },
             .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
-    .{ "Fs.rename", .fs_rename },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
+    .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
     .{ "Json.decode", .json_decode },
 });
@@ -185,7 +186,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .duration_ms => .{ .int = a[0].duration },
         .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
         .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
-        .fs_read_lines, .fs_read_bytes, .fs_each_line, .fs_fold_lines, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
+        .fs_read_lines, .fs_read_bytes, .fs_each_line, .fs_fold_lines, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
             try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
@@ -792,7 +793,7 @@ fn fixedDigits(digits: []const u8) ?i64 {
 
 /// RFC 3339: `2026-09-12T10:00:02Z`, optional fractional seconds kept to the millisecond,
 /// and `Z` or an offset `+02:00`.
-fn parseTime(s: []const u8) ?i64 {
+pub fn parseTime(s: []const u8) ?i64 {
     if (s.len < 20) return null;
     if (s[4] != '-' or s[7] != '-' or (s[10] != 'T' and s[10] != 't') or s[13] != ':' or s[16] != ':') return null;
     const year = fixedDigits(s[0..4]) orelse return null;
@@ -880,6 +881,7 @@ fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
         .fs_write, .fs_append => s.writeFile(vm, row, fs, path, a[2].string, within, which == .fs_append),
         .fs_remove => s.remove(vm, row, fs, path, within),
         .fs_rename => s.rename(vm, row, fs, path, a[2].string, within),
+        .fs_mkdir => s.mkdir(vm, row, fs, path, within),
         else => unreachable,
     };
 }
@@ -887,7 +889,7 @@ fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
 /// The file system every `Fs.fixture()` of a test gives (design-v0/09, Files): files in
 /// memory, by their path from the fixture's root, which keep what the test writes and which
 /// every Fs narrowed from the fixture shares. A folder is any path a file is under, so it is
-/// there once a file is. A call that a seeded run's fault fails changes nothing.
+/// there once a file is, or one `mkdir` made, kept as a mark: its path and a slash. A call that a seeded run's fault fails changes nothing.
 pub const FixtureFs = struct {
     /// Each fixture's files: one set per `Fs.fixture()` call.
     systems: std.ArrayList(std.StringArrayHashMapUnmanaged([]const u8)) = .empty,
@@ -950,7 +952,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
     const within = a[a.len - 1].duration;
     const path: []const u8 = if (which == .fs_list) "." else a[1].string;
     const writes = switch (which) {
-        .fs_write, .fs_append, .fs_remove, .fs_rename => true,
+        .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir => true,
         else => false,
     };
     if (writes and scope.read_only) return fail(vm, .other, row, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path });
@@ -966,6 +968,8 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             if (!std.mem.startsWith(u8, key, prefix)) continue;
             const rest = key[prefix.len..];
             const name = rest[0 .. std.mem.indexOfScalar(u8, rest, '/') orelse rest.len];
+            // A folder's own mark (mkdir) under the listed folder names nothing.
+            if (name.len == 0) continue;
             const seen = for (listed.items) |n| {
                 if (std.mem.eql(u8, n, name)) break true;
             } else false;
@@ -1005,6 +1009,12 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             try all.put(gpa, full, try std.mem.concat(gpa, u8, &.{ held, a[2].string }));
         },
         .fs_remove => if (!all.orderedRemove(full)) return missed(vm, path),
+        .fs_mkdir => {
+            // A folder is a mark, its path and a slash, so list shows it before a file is in it.
+            if (all.contains(full)) return missed(vm, path);
+            const mark = try std.fmt.allocPrint(gpa, "{s}/", .{full});
+            if (!all.contains(mark)) try all.put(gpa, mark, "");
+        },
         .fs_rename => {
             const text = all.get(full) orelse return missed(vm, path);
             const to = try FixtureFs.pathIn(gpa, scope, a[2].string) orelse return missed(vm, a[2].string);

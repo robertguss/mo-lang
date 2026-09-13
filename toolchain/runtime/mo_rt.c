@@ -2447,10 +2447,13 @@ MO_ROW(mo_r_Duration_ms) { (void)kind; return mo_i64(a[0].as.i); }
 MO_ROW(mo_r_Duration_seconds) { (void)kind; return mo_f64((double)a[0].as.i / 1000.0); }
 MO_ROW(mo_r_Duration_minutes) { (void)kind; return mo_f64((double)a[0].as.i / 60000.0); }
 
+/* MO_CLOCK: how far main's clock is from the wall's (server.zig, startClock). */
+static int64_t clock_offset;
+
 static int64_t wall_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + clock_offset;
 }
 
 static int64_t awake_ns(void) {
@@ -2811,8 +2814,8 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME };
-static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "each_line", "fold_lines", "write", "append", "remove", "rename"};
+enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
+static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "each_line", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
 
 static MoValue not_text(void) { return error_of(mo_variant(MO_N_NOT_TEXT, 0, NULL)); }
 
@@ -2908,6 +2911,8 @@ static MoValue fixture_files(int which, const MoValue *a) {
             const char *rest = key + plen;
             const char *slash = strchr(rest, '/');
             size_t len = slash ? (size_t)(slash - rest) : strlen(rest);
+            /* A folder's own mark (mkdir) under the listed folder names nothing. */
+            if (len == 0) continue;
             bool seen = false;
             for (size_t k = 0; k < count; k++) seen = seen || (strlen(names[k]) == len && strncmp(names[k], rest, len) == 0);
             if (seen) continue;
@@ -2963,6 +2968,18 @@ static MoValue fixture_files(int which, const MoValue *a) {
         bool gone = fix_remove(sys, full);
         free(full);
         if (!gone) return missing(path);
+        break;
+    }
+    case FS_MKDIR: {
+        /* A folder is a mark, its path and a slash, so list shows it before a file is in it. */
+        if (fix_find(sys, full)) {
+            free(full);
+            return missing(path);
+        }
+        char *mark = path_join(full, "");
+        free(full);
+        if (fix_find(sys, mark)) free(mark);
+        else fix_put(sys, mark, mo_str("", 0));
         break;
     }
     default: {
@@ -3101,6 +3118,15 @@ static MoValue server_files(int which, const MoValue *a) {
         if (!wrote) return missing(path);
         return ok_none();
     }
+    case FS_MKDIR: {
+        char *target = target_scoped(scope, S(path));
+        struct stat st;
+        bool made = target && (mkdir(target, 0777) == 0 || (errno == EEXIST && stat(target, &st) == 0 && S_ISDIR(st.st_mode)));
+        free(target);
+        if (late(t0, within)) return timed_out();
+        if (!made) return missing(path);
+        return ok_none();
+    }
     case FS_REMOVE: {
         char *real = file_scoped(scope, S(path));
         bool gone = real && unlink(real) == 0;
@@ -3136,6 +3162,7 @@ MO_ROW(mo_r_Fs_write) { (void)kind; return files(FS_WRITE, a); }
 MO_ROW(mo_r_Fs_append) { (void)kind; return files(FS_APPEND, a); }
 MO_ROW(mo_r_Fs_remove) { (void)kind; return files(FS_REMOVE, a); }
 MO_ROW(mo_r_Fs_rename) { (void)kind; return files(FS_RENAME, a); }
+MO_ROW(mo_r_Fs_mkdir) { (void)kind; return files(FS_MKDIR, a); }
 
 /* `fs.scoped(path)` and `fs.read_only`: a new scope, never a wider one. */
 static MoValue narrow(MoValue fs, bool read_only, MoValue path) {
@@ -7001,6 +7028,16 @@ void mo_program_start(int argc, char **argv) {
     sim_seed = 0;
     turns_on = mo_nprocesses > 0;
     packs = turns_on && mo_compacts;
+    /* MO_CLOCK fixes where main's clock starts, as mo run --clock does. */
+    const char *clock = getenv("MO_CLOCK");
+    if (clock) {
+        int64_t start;
+        if (!parse_time(clock, strlen(clock), &start)) {
+            fprintf(stderr, "%s: %s is not an ISO-8601 time such as 2026-01-01T00:00:00Z\n", argc > 0 ? argv[0] : "mo", clock);
+            exit(2);
+        }
+        clock_offset = start - wall_ms();
+    }
     program_argc = argc > 0 ? argc - 1 : 0;
     program_argv = argv + 1;
     char *cwd = getcwd(NULL, 0);

@@ -1,0 +1,6 @@
+mkdir made: ok
+again: ok
+under a folder not there: missing nowhere/made
+a file into it: ok
+over the file: missing made/note.txt
+in it: ["note.txt"]

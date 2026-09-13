@@ -45,7 +45,7 @@ const mo = @import("mo");
 const usage =
     \\usage: mo check [--recipe Module.Recipe] <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
-    \\       mo run <file.mo> [--json] [-- args...]
+    \\       mo run [--clock ISO-8601] <file.mo> [--json] [-- args...]
     \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\       mo fix [--dry-run] <file.mo> [--json]
@@ -101,6 +101,7 @@ fn run(init: std.process.Init) !void {
     var no_contracts = false;
     var tests = false;
     var recipe_name: ?[]const u8 = null;
+    var clock: ?[]const u8 = null;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const a = args[i];
@@ -145,6 +146,10 @@ fn run(init: std.process.Init) !void {
             no_contracts = true;
         } else if (std.mem.eql(u8, a, "--tests")) {
             tests = true;
+        } else if (std.mem.eql(u8, a, "--clock")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            clock = args[i];
         } else if (std.mem.eql(u8, a, "--recipe")) {
             i += 1;
             if (i == args.len) return usageExit(err);
@@ -173,7 +178,7 @@ fn run(init: std.process.Init) !void {
     if (dry_run and !is_fix) return usageExit(err);
     const is_build = std.mem.eql(u8, command, "build");
     if (!is_build and (build_name != null or target != null or no_contracts or tests)) return usageExit(err);
-    if (!is_run and program_args != null) return usageExit(err);
+    if (!is_run and (program_args != null or clock != null)) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
     if (recipe_name != null and !std.mem.eql(u8, command, "check")) return usageExit(err);
     // The line is one file's: --all's summary covers the modules it loads too.
@@ -258,6 +263,14 @@ fn run(init: std.process.Init) !void {
         const cwd = try std.process.currentPathAlloc(io, arena);
         var server: mo.server.Server = try .init(arena, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
         server.files = program.files;
+        // --clock, else MO_CLOCK, fixes where main's clock starts; a built binary reads MO_CLOCK.
+        if (clock orelse init.environ_map.get("MO_CLOCK")) |text| {
+            server.startClock(mo.stdlib.parseTime(text) orelse {
+                try err.print("mo run: {s} is not an ISO-8601 time such as 2026-01-01T00:00:00Z\n", .{text});
+                try err.flush();
+                std.process.exit(2);
+            });
+        }
         const code: u8 = switch (try server.run(m.program, m.main)) {
             .exited => |c| c,
             .crashed => |report| blk: {

@@ -520,7 +520,7 @@ const Caps = struct {
     /// The Fs rows that change the file system.
     fn writesFiles(row: prelude.Fn) bool {
         if (!std.mem.eql(u8, row.recv, "Fs")) return false;
-        for ([_][]const u8{ "write", "append", "remove", "rename" }) |name| {
+        for ([_][]const u8{ "write", "append", "remove", "rename", "mkdir" }) |name| {
             if (std.mem.eql(u8, row.name, name)) return true;
         }
         return false;
