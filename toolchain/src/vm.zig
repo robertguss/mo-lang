@@ -156,6 +156,9 @@ pub const Vm = struct {
     sim: ?*sim_mod.Sim = null,
     /// The real platform `mo run` gives main; null under `mo test`.
     server: ?*server_mod.Server = null,
+    /// The locals of every frame on this vm's stack whose function can hold a handle
+    /// (Function.scans_handles), innermost last: what a sweep reads (sim.zig).
+    handle_frames: std.ArrayList([]Value) = .empty,
 
     pub fn init(gpa: std.mem.Allocator, program: *const bytecode.Program, seed: u64) Vm {
         return .{ .gpa = gpa, .heap = gpa, .program = program, .rng = .init(seed) };
@@ -167,6 +170,28 @@ pub const Vm = struct {
         vm.region = values;
         vm.scratch = scratch;
         vm.heap = values.allocator();
+    }
+
+    /// A vm handed to a process on a thread whose last process ended (turns.zig): what it kept
+    /// is cleared, and its lists keep their room. Its regions come from useRegions again.
+    pub fn reuse(vm: *Vm) void {
+        vm.stack.clearRetainingCapacity();
+        vm.growth = [_]Growth{.{}} ** 16;
+        vm.growth_next = 0;
+        vm.owned = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 16;
+        vm.owned_next = 0;
+        vm.forward.clearRetainingCapacity();
+        vm.remembered.clearRetainingCapacity();
+        vm.undo.clearRetainingCapacity();
+        vm.undo_mark = 0;
+        vm.frozen_below = 0;
+        vm.full_kept = 0;
+        vm.report = null;
+        vm.generated.clearRetainingCapacity();
+        vm.handle_frames.clearRetainingCapacity();
+        vm.region = null;
+        vm.scratch = null;
+        vm.heap = vm.gpa;
     }
 
     const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
@@ -253,6 +278,10 @@ pub const Vm = struct {
         @memcpy(locals[0..args.len], args);
         @memset(locals[args.len..], .none);
         for (f.captures, captures) |slot, v| locals[slot] = v;
+        if (f.scans_handles) try vm.handle_frames.append(vm.gpa, locals);
+        defer if (f.scans_handles) {
+            vm.handle_frames.items.len -= 1;
+        };
         const base = vm.stack.items.len;
         var pc: u32 = 0;
         while (true) {

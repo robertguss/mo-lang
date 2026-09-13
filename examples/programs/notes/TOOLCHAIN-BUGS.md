@@ -59,6 +59,16 @@ end
 
 The same shape over HTTP, an acceptor that starts `Worker.start(exchange)` for each exchange and sends it `Answer` (the shape of `examples/effects/http.mo`), served 5,000 requests from one client at 6,069 a second and then held 5,006 threads (`ps -M`) and 437 MiB resident. During a second run of 15,000 requests it stopped after about 3,000 more: every later connection was refused, the process had exited, and its `served` line was never printed.
 
+Fixed in step 19: a process a start call began ends once its mailbox is empty, no update of it runs, and nothing can reach its handle, and its id, thread, and emptied region go to the next process started. The reproduction above is `programs/ends` (with a keeper reachable only through a relay's start arguments, which never ends), and the shape over HTTP is `programs/workers`:
+
+| run | `mo run` | `mo build` binary |
+|---|---|---|
+| this reproduction, 200,000 | exit 0, 20 MiB peak (the interpreter's `0..n` list is most of it), 2.2 s | exit 0, 8 MiB, 2.5 s |
+| `programs/workers`, 20,000 requests, a worker each | 16 MiB, 2.9 s | 6 MiB, 2.7 s |
+| the same 20,000 before step 19 | `error: OutOfMemory` at 654 MiB | |
+
+The corpus runs `programs/workers` with 2,000 requests, not 20,000: a request is a connection, and one run of 20,000 leaves about 16,000 sockets in TIME_WAIT for 30 seconds, nearly all of macOS's 16,384 ephemeral ports, so the interpreter's run and the binary's back to back, or the benchmark's echo after them, find no port to connect from.
+
 What it costs notes: the brief's shape, a worker process per exchange, cannot serve more than a few thousand requests. Workaround: `Notes.Server.Acceptor` answers each exchange itself, in the update that accepted it, as `programs/httpd` does, so notes starts two processes in its life. Its exchanges are answered one at a time; the measurements in the final report are of that shape.
 
 ## 2. A process that starts a worker and sends it a message inside a long update deadlocks

@@ -88,6 +88,8 @@ pub const Proc = struct {
     /// Under Mo.Server, the wall clock when its running update began: `clock.now` is
     /// frozen per update.
     now: i64 = 0,
+    /// Under `mo run`, a sweep ended it (turns.zig): its id waits in `Sim.free_ids`.
+    ended: bool = false,
 
     pub fn queued(p: *const Proc) usize {
         return p.mailbox.items.len - p.head;
@@ -161,6 +163,9 @@ pub const Sim = struct {
     /// arguments and first state. After each update the process's region keeps only what
     /// its state reaches (settleRegion).
     packs: bool = false,
+    /// Under `mo run`, the ids of processes a sweep ended, the last ended last: the next
+    /// start takes the last one (turns.zig, sweep).
+    free_ids: std.ArrayList(u32) = .empty,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -299,6 +304,9 @@ pub const Sim = struct {
     /// `Name.start(args)` in a test: the test runner supervises it with :always, and with
     /// the max_restarts of the first child line in the module that names the process.
     pub fn start(sim: *Sim, process: u32, args: []const Value) Error!u32 {
+        // Under `mo run`, main starting processes faster than a statement settles them hands
+        // out their turns first, so the ones that finished end (turns.zig, sweep).
+        if (sim.turns) |t| if (t.holder == turns_mod.main_turn and t.quiet >= t.sweep_at) try t.settle(sim);
         var policy: Policy = .{ .restart = .always, .max_restarts = default_max_restarts, .window_ms = default_window_ms };
         for (sim.vm.program.supervisors) |s| for (s.children) |c| {
             if (c.process == process and c.max_restarts != none) {
@@ -332,8 +340,16 @@ pub const Sim = struct {
     /// A state that cannot be built crashes whoever called start: the process never began.
     fn startUnder(sim: *Sim, process: u32, args: []const Value, supervisor: u32, policy: Policy) Error!u32 {
         const state = try sim.vm.call(sim.vm.program.processes[process].init, args);
-        const id: u32 = @intCast(sim.procs.items.len);
+        const id: u32 = sim.free_ids.pop() orelse @intCast(sim.procs.items.len);
         var proc: Proc = .{ .process = process, .args = args, .state = state, .supervisor = supervisor, .policy = policy };
+        if (id < sim.procs.items.len) {
+            // An ended process's lists keep their room for the one that takes its id.
+            const old = &sim.procs.items[id];
+            inline for (.{ "mailbox", "log", "log_parcels", "restarts", "outbox", "emits" }) |list| {
+                @field(proc, list) = @field(old, list);
+                @field(proc, list).clearRetainingCapacity();
+            }
+        }
         if (sim.packs) {
             // Packed together, what the state shares with the arguments is copied once.
             const both = try vm_mod.rawAlloc(sim.vm.heap, Value, args.len + 1);
@@ -344,7 +360,10 @@ pub const Sim = struct {
             proc.args = parcel.value.tuple[0..args.len];
             proc.state = parcel.value.tuple[args.len];
         }
-        try sim.procs.append(sim.gpa, proc);
+        if (id < sim.procs.items.len) sim.procs.items[id] = proc else try sim.procs.append(sim.gpa, proc);
+        if (sim.turns) |t| if (supervisor == test_runner) {
+            t.quiet += 1;
+        };
         return id;
     }
 

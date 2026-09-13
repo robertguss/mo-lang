@@ -49,6 +49,22 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "a62a8aed6deca161" }
     },
     {
+      "path": "ends/main.mo",
+      "module": "Ends.Main",
+      "declarations": [
+        { "id": "b7b2a065ccd7", "name": "module Ends.Main", "hash": "385aea7f74058816" },
+        { "id": "11149ee9df56", "name": "expose", "hash": "120978c84d294cd7" },
+        { "id": "5ed04cb925d7", "name": "intent", "hash": "387a0420c72255fb" },
+        { "id": "695ea440808b", "name": "process Idle", "hash": "72c461233d3540a6" },
+        { "id": "922166d413c9", "name": "process Keeper", "hash": "00cdeba554eb32fc" },
+        { "id": "79d9d6a91466", "name": "process Relay", "hash": "2f801a0807898ff8" },
+        { "id": "9a1296a0debf", "name": "supervisor Ends", "hash": "7f19dfa107343acc" },
+        { "id": "67bd8fed0578", "name": "fn started", "hash": "8375693ac208c7f7" },
+        { "id": "f44054833cdf", "name": "fn main", "hash": "35b4be39ed8e7384" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "22042a3a2af93f7e" }
+    },
+    {
       "path": "exit-code.mo",
       "module": "Programs.ExitCode",
       "declarations": [
@@ -806,6 +822,24 @@
         { "id": "ea9cd009920e", "name": "test \"a count goes as many calls down as it counts\"", "hash": "33d51e7d49b5ffe3" }
       ],
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "6266134e768db2e2" }
+    },
+    {
+      "path": "workers/main.mo",
+      "module": "Workers.Main",
+      "declarations": [
+        { "id": "d1a641e321e5", "name": "module Workers.Main", "hash": "711598277b358f20" },
+        { "id": "6c402da6dfe6", "name": "expose", "hash": "3cd1e6e17ac88094" },
+        { "id": "343262ff155b", "name": "intent", "hash": "2300766de995d02e" },
+        { "id": "4549032087db", "name": "process Worker", "hash": "7098033e2d78ec73" },
+        { "id": "79a2f57d7aad", "name": "process Acceptor", "hash": "ccd2591cd76b0334" },
+        { "id": "1e4779b47120", "name": "supervisor Exchanges", "hash": "538d7276e4fc1b71" },
+        { "id": "e8149539bf40", "name": "fn answer", "hash": "50af093d30a60071" },
+        { "id": "aab278d383a2", "name": "fn answered?", "hash": "f4ac2ddb743b2db1" },
+        { "id": "7cea591137f0", "name": "fn served", "hash": "9e835c5a01d2c05a" },
+        { "id": "08b655803481", "name": "fn main", "hash": "6dcc5e29f2ae09eb" },
+        { "id": "252cb198cf08", "name": "test \"a worker answers with the n its request's query gives\"", "hash": "f53928e914abc654" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "aec422ff594b9b33" }
     }
   ]
 }

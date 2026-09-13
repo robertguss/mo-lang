@@ -36,6 +36,7 @@ extern char **environ;
 /* ==== memory (vm.zig: regions, push in place, owned buffers, compaction) ============== */
 
 MoRegion mo_heap;
+MoHandleFrame *mo_handle_frames;
 bool mo_compacts;
 bool mo_records;
 bool mo_contracts;
@@ -4104,6 +4105,8 @@ typedef struct {
     size_t noutbox, capoutbox;
     /* Under main, the wall clock when its running update began: clock.now is frozen per update. */
     int64_t now;
+    /* Under main, a sweep ended it: its id waits in free_ids. */
+    bool ended;
 } Proc;
 
 static Proc **procs;
@@ -4127,12 +4130,25 @@ static const char *test_name = "";
 static bool packs;
 /* Under main with processes: each process's updates run on a thread of its own, taking turns. */
 static bool turns_on;
+/* Under main, the ids of processes a sweep ended, the last ended last: the next start takes the
+ * last one (turns.zig, sweep). */
+static uint32_t *free_ids;
+static size_t nfree_ids, capfree_ids;
+/* The fewest quiet events between two sweeps, and the ended processes whose threads and regions
+ * wait for the next processes given their ids, at most. */
+#define SWEEP_MIN 64
+#define KEPT_THREADS 64
+/* Under main, events after which a process a start call began may have finished: its start, and
+ * each update of it that left its mailbox empty. A sweep runs at sweep_at. */
+static uint32_t quiet;
+static uint32_t sweep_at = SWEEP_MIN;
 
 static MoValue turns_ask(uint32_t to, MoValue message, int64_t within);
 static void turns_settle(void);
 static bool turns_awaits(uint64_t seq);
 static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel);
 static void turns_wake_all(void);
+static void turns_spawning(void);
 static void close_held(const MoValue *args, uint32_t n);
 
 static const char *handle_name(int64_t id) {
@@ -4166,6 +4182,7 @@ static void reset_processes(void) {
         free(p);
     }
     nprocs = nsups = 0;
+    nfree_ids = 0;
     running = NOBODY;
     next_seq = 0;
     gave_up = crashed_once = false;
@@ -4193,8 +4210,11 @@ static int64_t window_of(const MoChild *c) { return c->per ? c->per(NULL, NULL).
 static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, uint32_t supervisor, Policy policy) {
     MoValue *kept = dupe_values(args, n);
     MoValue state = mo_processes[process].init(NULL, kept);
-    Proc *p = calloc(1, sizeof(Proc));
+    bool reused = nfree_ids > 0;
+    uint32_t id = reused ? free_ids[--nfree_ids] : nprocs;
+    Proc *p = reused ? procs[id] : calloc(1, sizeof(Proc));
     if (!p) out_of_memory();
+    p->ended = false;
     p->process = process;
     p->args = kept;
     p->nargs = n;
@@ -4211,14 +4231,20 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
         p->args = p->start->value.as.xs;
         p->state = p->start->value.as.xs[n];
     }
-    GROW_ARRAY(procs, nprocs, capprocs);
-    procs[nprocs] = p;
-    return nprocs++;
+    if (!reused) {
+        GROW_ARRAY(procs, nprocs, capprocs);
+        procs[nprocs++] = p;
+    }
+    if (turns_on && supervisor == NOBODY) quiet++;
+    return id;
 }
 
 /* `Name.start(args)`: the test runner, or main, supervises it with :always, and with the
  * max_restarts of a child line that names the process. */
 MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
+    /* Under main, main starting processes faster than a statement settles them hands out their
+     * turns first, so the ones that finished end. */
+    if (turns_on) turns_spawning();
     Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS};
     for (uint32_t s = 0; s < mo_nsupervisors; s++) {
         const MoSupervisor *sup = &mo_supervisors[s];
@@ -4412,10 +4438,15 @@ static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out
     jmp_buf here;
     jmp_buf *saved = crash_jump;
     uint32_t depth = mo_depth;
+    MoHandleFrame *frames = mo_handle_frames;
     crash_jump = &here;
     int jumped = setjmp(here);
-    if (jumped == 0) *out = update(id, message, before);
-    else mo_depth = depth;
+    if (jumped == 0) {
+        *out = update(id, message, before);
+    } else {
+        mo_depth = depth;
+        mo_handle_frames = frames;
+    }
     crash_jump = saved;
     return jumped;
 }
@@ -4471,10 +4502,15 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     jmp_buf here;
     jmp_buf *saved = crash_jump;
     uint32_t depth = mo_depth;
+    MoHandleFrame *frames = mo_handle_frames;
     crash_jump = &here;
     int jumped = setjmp(here);
-    if (jumped == 0) *out = mo_processes[process].init(NULL, args);
-    else mo_depth = depth;
+    if (jumped == 0) {
+        *out = mo_processes[process].init(NULL, args);
+    } else {
+        mo_depth = depth;
+        mo_handle_frames = frames;
+    }
     crash_jump = saved;
     if (jumped != 0 && jumped != JUMP_CRASH) raise_report(last_report, jumped);
     return jumped == 0;
@@ -4666,6 +4702,7 @@ typedef struct {
     uintptr_t undo_mark, frozen_below;
     size_t full_kept;
     jmp_buf *crash_jump;
+    MoHandleFrame *handle_frames;
 } VmState;
 
 static void save_vm(VmState *s) {
@@ -4684,6 +4721,7 @@ static void save_vm(VmState *s) {
     s->frozen_below = frozen_below;
     s->full_kept = full_kept;
     s->crash_jump = crash_jump;
+    s->handle_frames = mo_handle_frames;
 }
 
 static void load_vm(const VmState *s) {
@@ -4702,6 +4740,21 @@ static void load_vm(const VmState *s) {
     frozen_below = s->frozen_below;
     full_kept = s->full_kept;
     crash_jump = s->crash_jump;
+    mo_handle_frames = s->handle_frames;
+}
+
+/* A vm handed to a process on a thread whose last process ended: what it kept is cleared, its
+ * lists keep their room, and its region is the caller's to set. */
+static void reuse_vm(VmState *s) {
+    Remembered *rem = s->remembered;
+    size_t caprem = s->capremembered;
+    Undo *u = s->undos;
+    size_t capu = s->capundos;
+    memset(s, 0, sizeof *s);
+    s->remembered = rem;
+    s->capremembered = caprem;
+    s->undos = u;
+    s->capundos = capu;
 }
 
 enum { JOB_DELIVER, JOB_GO_ON, JOB_EXIT };
@@ -4721,6 +4774,9 @@ typedef struct {
     /* How its turn ended when a crash left it, for whoever gets the turn back. */
     int failed;
     Report report;
+    /* Its thread has returned and its region is released, after a sweep ended its process and
+     * more than KEPT_THREADS had ended since; the next process given its id starts a thread. */
+    bool ended;
 } Worker;
 
 typedef struct { uint32_t id; int64_t deadline; } Parked;
@@ -4781,12 +4837,21 @@ static Worker *worker_of(uint32_t id) {
         GROW_ARRAY(workers, nworkers, capworkers);
         workers[nworkers++] = NULL;
     }
-    if (workers[id]) return workers[id];
-    Worker *w = calloc(1, sizeof(Worker));
-    if (!w) out_of_memory();
+    if (workers[id] && !workers[id]->ended) return workers[id];
+    Worker *w = workers[id];
+    if (w) {
+        /* The worker of an ended process: its lists keep their room. */
+        reuse_vm(&w->vm);
+        w->failed = 0;
+        w->phase = PHASE_IDLE;
+        w->ended = false;
+    } else {
+        w = calloc(1, sizeof(Worker));
+        if (!w) out_of_memory();
+        event_init(&w->wake);
+    }
     w->id = id;
     w->caller = MAIN_TURN;
-    event_init(&w->wake);
     if (packs && !reserve_up_to(&w->vm.heap, PROCESS_REGION)) w->vm.heap = (MoRegion){0, 0, 0};
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -4834,10 +4899,13 @@ static void *work(void *arg) {
                 deliver(w->id);
             } else {
                 mo_depth = 0;
+                mo_handle_frames = NULL;
                 w->failed = jumped;
                 w->report = last_report;
             }
             crash_jump = NULL;
+            const Proc *p = procs[w->id];
+            if (p->supervisor == NOBODY && queued(p) == 0) quiet++;
         }
         w->phase = PHASE_IDLE;
         save_vm(&w->vm);
@@ -4891,9 +4959,158 @@ static void idle(Event *also, bool bounded, int64_t deadline) {
     if (left > 0) event_wait_ms(&main_wake, left);
 }
 
+/* ---- ending finished processes (turns.zig, sweep) */
+
+static bool *marks;
+static size_t capmarks;
+static uint32_t *worklist;
+static size_t nworklist, capworklist;
+
+static void mark_id(uint32_t id) {
+    if (id >= nprocs || marks[id]) return;
+    marks[id] = true;
+    GROW_ARRAY(worklist, nworklist, capworklist);
+    worklist[nworklist++] = id;
+}
+
+static bool may_hold_handle(MoValue v) {
+    switch (v.tag) {
+    case MO_HANDLE: case MO_TUPLE: case MO_VARIANT: case MO_LIST: case MO_SET: case MO_MAP: return true;
+    default: return false;
+    }
+}
+
+static void mark_value(MoValue v);
+
+static void mark_values(const MoValue *xs, size_t n) {
+    for (size_t i = 0; i < n; i++) mark_value(xs[i]);
+}
+
+/* Every handle inside `v`. A list, a set, or a map's keys or values whose first element cannot
+ * hold a handle hold none, since their elements share a type. */
+static void mark_value(MoValue v) {
+    switch (v.tag) {
+    case MO_HANDLE: mark_id((uint32_t)v.as.i); return;
+    case MO_TUPLE: mark_values(v.as.xs, v.aux); return;
+    case MO_VARIANT: mark_values(v.as.xs, mo_vcount(v)); return;
+    case MO_LIST:
+        if (v.aux > 0 && may_hold_handle(v.as.xs[0])) mark_values(v.as.xs, v.aux);
+        return;
+    case MO_SET:
+        if (v.as.m && v.as.m->len > 0 && may_hold_handle(v.as.m->entries[0])) mark_values(v.as.m->entries, v.as.m->len);
+        return;
+    case MO_MAP:
+        if (v.as.m && v.as.m->len > 1) {
+            bool keys = may_hold_handle(v.as.m->entries[0]), values = may_hold_handle(v.as.m->entries[1]);
+            for (size_t k = 0; k + 1 < v.as.m->len; k += 2) {
+                if (keys) mark_value(v.as.m->entries[k]);
+                if (values) mark_value(v.as.m->entries[k + 1]);
+            }
+        }
+        return;
+    default: return;
+    }
+}
+
+static void mark_frames(const MoHandleFrame *f) {
+    for (; f; f = f->next) {
+        for (uint32_t i = 0; i < f->n; i++) mark_value(*f->slots[i]);
+    }
+}
+
+/* Began by a start call, nothing waiting for it, and no update of it on a stack. */
+static bool finished(const Proc *p) { return p->supervisor == NOBODY && !p->busy && queued(p) == 0; }
+
+/* Everything allocated goes back to the system, the reservation kept (region.zig, decommit). */
+static void decommit(MoRegion *r) {
+    size_t page = (size_t)sysconf(_SC_PAGESIZE);
+    size_t used = ((r->top - r->base) + page - 1) & ~(page - 1);
+    if (used > 0) mmap((void *)r->base, used, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+    r->top = r->base;
+}
+
+/* Process `id` has finished: what it held is freed, and its thread and emptied region wait for the
+ * next process given its id. */
+static void end_process(uint32_t id) {
+    Proc *p = procs[id];
+    if (id < nworkers && workers[id] && !workers[id]->ended) {
+        Worker *w = workers[id];
+        MoRegion heap = w->vm.heap;
+        if (heap.end != 0) decommit(&heap);
+        reuse_vm(&w->vm);
+        w->vm.heap = heap;
+    }
+    parcel_free(p->start);
+    for (size_t i = 0; i < p->nlog_parcels; i++) parcel_free(p->log_parcels[i]);
+    free(p->mailbox);
+    free(p->log);
+    free(p->restarts);
+    free(p->outbox);
+    memset(p, 0, sizeof *p);
+    p->supervisor = NOBODY;
+    p->ended = true;
+    GROW_ARRAY(free_ids, nfree_ids, capfree_ids);
+    free_ids[nfree_ids++] = id;
+}
+
+/* The thread kept for ended process `id` returns, and its region is released. */
+static void release_worker(uint32_t id) {
+    if (id >= nworkers || !workers[id] || workers[id]->ended) return;
+    Worker *w = workers[id];
+    hand_to(id, JOB_EXIT);
+    pthread_join(w->thread, NULL);
+    if (w->vm.heap.end != 0) munmap((void *)w->vm.heap.base, w->vm.heap.end - w->vm.heap.base);
+    w->vm.heap = (MoRegion){0, 0, 0};
+    w->ended = true;
+}
+
+/* From main's thread, holding the turn: ends every process that has finished. One has when a start
+ * call began it (a child line's never ends), its mailbox is empty, no update of it is on a stack,
+ * and no handle to it is where anything could use it: in a frame of main or of an update on a
+ * stack, in the start arguments of a process that has not finished, in a send an update holds, or
+ * in a reply not yet taken. */
+static void sweep(void) {
+    if (capmarks < nprocs) {
+        marks = xrealloc(marks, nprocs * sizeof(bool));
+        capmarks = nprocs;
+    }
+    memset(marks, 0, nprocs * sizeof(bool));
+    nworklist = 0;
+    /* main's frames: only main's thread sweeps. */
+    mark_frames(mo_handle_frames);
+    for (uint32_t id = 0; id < nprocs; id++) {
+        const Proc *p = procs[id];
+        if (p->ended || finished(p)) continue;
+        mark_values(p->args, p->nargs);
+        if (!p->busy) continue;
+        mark_frames(workers[id]->vm.handle_frames);
+        for (size_t i = 0; i < p->noutbox; i++) mark_id(p->outbox[i].to);
+    }
+    for (size_t i = 0; i < nanswers; i++) {
+        if (answers[i].has) mark_value(answers[i].value);
+    }
+    while (nworklist > 0) {
+        const Proc *p = procs[worklist[--nworklist]];
+        mark_values(p->args, p->nargs);
+    }
+    uint32_t still = 0;
+    for (uint32_t id = 0; id < nprocs; id++) {
+        const Proc *p = procs[id];
+        if (p->ended || p->supervisor != NOBODY) continue;
+        if (finished(p) && !marks[id]) end_process(id);
+        else still++;
+    }
+    if (nfree_ids > KEPT_THREADS) {
+        for (size_t i = 0; i < nfree_ids - KEPT_THREADS; i++) release_worker(free_ids[i]);
+    }
+    quiet = 0;
+    sweep_at = 2 * still > SWEEP_MIN ? 2 * still : SWEEP_MIN;
+}
+
 /* One turn handed out, from main's thread: to a process whose wait ended, else to the next
  * process with a message waiting. False when there is none. */
 static bool step(void) {
+    if (quiet >= sweep_at) sweep();
     int64_t now = now_ms();
     size_t k = 0;
     while (k < nparked) {
@@ -4981,6 +5198,11 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
 /* Between two of main's statements: every turn there is to hand out, without waiting. */
 static void turns_settle(void) {
     while (step()) {}
+}
+
+/* main is about to start a process: past sweep_at quiet events, it settles first. */
+static void turns_spawning(void) {
+    if (holder == MAIN_TURN && quiet >= sweep_at) turns_settle();
 }
 
 /* main returned: turns go on being handed out until no message waits and no update is in
@@ -6396,7 +6618,10 @@ static Result run_test(const MoTest *t) {
     crash_jump = &here;
     mo_depth = 0;
     int jumped = setjmp(here);
-    if (jumped != 0) mo_depth = 0;
+    if (jumped != 0) {
+        mo_depth = 0;
+        mo_handle_frames = NULL;
+    }
     if (jumped == 0) {
         t->fn();
         drain();
@@ -6434,7 +6659,10 @@ static Result run_property(const MoTest *t) {
             crash_jump = &here;
             mo_depth = 0;
             int jumped = setjmp(here);
-            if (jumped != 0) mo_depth = 0;
+            if (jumped != 0) {
+                mo_depth = 0;
+                mo_handle_frames = NULL;
+            }
             if (jumped == 0) {
                 t->fn();
                 check_nevers();

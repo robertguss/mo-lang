@@ -218,6 +218,23 @@ pub fn authorityIn(pool: *const types.Pool, t: Id, depth: u8) ?Id {
     };
 }
 
+/// Whether a value of type `t` can hold a process's handle, looking through what authorityIn
+/// looks through: a function whose frame holds one is scanned when finished processes are
+/// freed (sim.zig, sweep).
+pub fn handleIn(pool: *const types.Pool, t: Id, depth: u8) bool {
+    if (depth > 8) return false;
+    const b = pool.get(pool.base(t));
+    return switch (b.tag) {
+        .handle => true,
+        .list, .option, .set => handleIn(pool, b.a, depth + 1),
+        .result, .map => handleIn(pool, b.a, depth + 1) or handleIn(pool, b.b, depth + 1),
+        .tuple => for (pool.elems(b)) |e| {
+            if (handleIn(pool, e, depth + 1)) break true;
+        } else false,
+        else => false,
+    };
+}
+
 pub const Checked = struct {
     tree: ast.Tree,
     pool: types.Pool,

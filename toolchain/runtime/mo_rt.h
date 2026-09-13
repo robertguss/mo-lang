@@ -234,6 +234,10 @@ static inline bool mo_frame_due(size_t frame) {
 }
 /* Keeps what `roots` reach past `from`, frees the rest; roots then hold the copies. */
 void mo_compact(size_t from, MoValue *roots, size_t n);
+/* The locals of a frame whose function can hold a process's handle, innermost first: what a
+ * sweep reads under main to end the processes nothing can reach (mo_rt.c, processes). */
+typedef struct MoHandleFrame { struct MoHandleFrame *next; MoValue *const *slots; uint32_t n; } MoHandleFrame;
+extern MoHandleFrame *mo_handle_frames;
 /* A read of a var other than by an update of it: a map or set it holds may be held twice. */
 void mo_disown_in(MoValue v);
 

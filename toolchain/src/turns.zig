@@ -16,6 +16,11 @@
 //! round by round in start order. A process that computes without waiting holds the turn
 //! until its update ends; nothing preempts it.
 //!
+//! A process a start call began ends once it has finished and nothing can reach its handle
+//! (sweep, step 19): its parcels and region are freed and its id goes to the next process
+//! started, which takes over its thread; the threads of more than kept_threads ended ids
+//! return.
+//!
 //! This is a thread per process, and under std.Io.Threaded a thread per blocked call too;
 //! green threads would replace both.
 const std = @import("std");
@@ -39,6 +44,12 @@ pub const process_region: usize = 16 << 30;
 /// `Turns.holder` when main's thread holds the turn.
 pub const main_turn: u32 = std.math.maxInt(u32);
 
+/// The fewest quiet events (Turns.quiet) between two sweeps.
+pub const sweep_min: u32 = 64;
+/// Ended processes whose threads and regions wait for the next processes given their ids,
+/// at most: the last ids ended, which the next starts take.
+pub const kept_threads: usize = 64;
+
 const Job = enum { deliver, go_on, exit };
 
 pub const Worker = struct {
@@ -55,6 +66,10 @@ pub const Worker = struct {
     phase: enum { idle, running, waiting } = .idle,
     /// What its turn ended with, for whoever gets the turn back.
     failed: ?Error = null,
+    /// Its thread has returned and its region is released, after a sweep ended its process
+    /// and more than kept_threads had ended since. The next process given its id starts a
+    /// thread again.
+    ended: bool = false,
 };
 
 const Parked = struct { id: u32, deadline: i64 };
@@ -89,6 +104,15 @@ pub const Turns = struct {
     parked: std.ArrayList(Parked) = .empty,
     /// Where the next round of deliveries starts.
     cursor: u32 = 0,
+    /// Events after which a process a start call began may have finished: its start, and
+    /// each update of it that left its mailbox empty. A sweep runs when they reach
+    /// `sweep_at`, twice the processes the last one left running, and at least sweep_min.
+    quiet: u32 = 0,
+    sweep_at: u32 = sweep_min,
+    /// A sweep's marks, one per process id, and the marked ids whose start arguments it has
+    /// yet to read.
+    marks: std.ArrayList(bool) = .empty,
+    worklist: std.ArrayList(u32) = .empty,
 
     fn now(t: *const Turns) i64 {
         return Io.Clock.Timestamp.now(t.io, .awake).raw.toMilliseconds();
@@ -146,9 +170,16 @@ pub const Turns = struct {
 
     fn worker(t: *Turns, sim: *Sim, id: u32) Error!*Worker {
         while (t.workers.items.len <= id) try t.workers.append(t.gpa, null);
-        if (t.workers.items[id]) |w| return w;
-        const w = try t.gpa.create(Worker);
-        w.* = .{ .vm = .init(sim.gpa, sim.vm.program, 0) };
+        if (t.workers.items[id]) |w| if (!w.ended) return w;
+        const w = t.workers.items[id] orelse try t.gpa.create(Worker);
+        if (t.workers.items[id] == null) {
+            w.* = .{ .vm = .init(sim.gpa, sim.vm.program, 0) };
+        } else {
+            // The worker of an ended process: its lists keep their room.
+            w.vm.reuse();
+            const vm = w.vm;
+            w.* = .{ .vm = vm };
+        }
         if (t.scratch) |s| {
             w.values = Region.reserveUpTo(process_region) catch null;
             if (w.values) |*r| w.vm.useRegions(r, s);
@@ -174,6 +205,8 @@ pub const Turns = struct {
                 _ = sim.deliver(id) catch |err| {
                     w.failed = err;
                 };
+                const p = sim.procs.items[id];
+                if (p.supervisor == sim_mod.test_runner and p.queued() == 0) t.quiet += 1;
             }
             w.phase = .idle;
             t.pass(w.caller, t.eventOf(w.caller));
@@ -254,6 +287,7 @@ pub const Turns = struct {
     /// One turn handed out, from main's thread: to a process whose wait ended, else to the
     /// next process with a message waiting. False when there is none.
     fn step(t: *Turns, sim: *Sim) Error!bool {
+        if (t.quiet >= t.sweep_at) try t.sweep(sim);
         const now_ms = t.now();
         var k: usize = 0;
         while (k < t.parked.items.len) {
@@ -276,6 +310,127 @@ pub const Turns = struct {
             return true;
         }
         return false;
+    }
+
+    // ---- ending finished processes
+
+    /// From main's thread, holding the turn: ends every process that has finished. One has
+    /// when a start call began it (a child line's never ends), its mailbox is empty, no update
+    /// of it is on a stack, and no handle to it is where anything could use it: in a frame of
+    /// main or of an update on a stack, in the start arguments of a process that has not
+    /// finished, in a send an update holds, or in a reply not yet taken. Its thread returns,
+    /// its region and parcels are freed, and its id goes to the next process started.
+    fn sweep(t: *Turns, sim: *Sim) Error!void {
+        const gpa = std.heap.smp_allocator;
+        const procs = sim.procs.items;
+        try t.marks.resize(gpa, procs.len);
+        @memset(t.marks.items, false);
+        t.worklist.clearRetainingCapacity();
+        // main's vm: only main's thread sweeps.
+        for (sim.vm.handle_frames.items) |locals| try t.markValues(locals);
+        for (procs, 0..) |p, id| {
+            if (p.ended or finished(p)) continue;
+            try t.markValues(p.args);
+            if (!p.busy) continue;
+            for (t.workers.items[id].?.vm.handle_frames.items) |locals| try t.markValues(locals);
+            for (p.outbox.items) |o| try t.markId(o.to);
+        }
+        var answers = t.answers.valueIterator();
+        while (answers.next()) |reply| if (reply.*) |r| try t.markValue(r.value);
+        while (t.worklist.pop()) |id| try t.markValues(procs[id].args);
+        var running: u32 = 0;
+        for (procs, 0..) |p, id| {
+            if (p.ended or p.supervisor != sim_mod.test_runner) continue;
+            if (finished(p) and !t.marks.items[id]) {
+                try t.end(sim, @intCast(id));
+            } else running += 1;
+        }
+        const ids = sim.free_ids.items;
+        if (ids.len > kept_threads) for (ids[0 .. ids.len - kept_threads]) |id| try t.release(sim, id);
+        t.quiet = 0;
+        t.sweep_at = @max(sweep_min, 2 * running);
+    }
+
+    /// Began by a start call, nothing waiting for it, and no update of it on a stack.
+    fn finished(p: sim_mod.Proc) bool {
+        return p.supervisor == sim_mod.test_runner and !p.busy and p.queued() == 0;
+    }
+
+    fn markId(t: *Turns, id: u32) Error!void {
+        if (id >= t.marks.items.len or t.marks.items[id]) return;
+        t.marks.items[id] = true;
+        try t.worklist.append(std.heap.smp_allocator, id);
+    }
+
+    fn markValues(t: *Turns, values: []const Value) Error!void {
+        for (values) |v| try t.markValue(v);
+    }
+
+    /// Every handle inside `v`. A list, a set, or a map's keys or values whose first element
+    /// cannot hold a handle hold none, since their elements share a type.
+    fn markValue(t: *Turns, v: Value) Error!void {
+        switch (v) {
+            .handle => |id| try t.markId(id),
+            .tuple => |xs| try t.markValues(xs),
+            .variant => |x| try t.markValues(x.fields),
+            .list => |xs| if (xs.len > 0 and mayHoldHandle(xs[0])) try t.markValues(xs),
+            .set => |m| if (m.entries.len > 0 and mayHoldHandle(m.entries[0])) try t.markValues(m.entries),
+            .map => |m| if (m.entries.len > 1) {
+                const keys = mayHoldHandle(m.entries[0]);
+                const values = mayHoldHandle(m.entries[1]);
+                var i: usize = 0;
+                while (i + 1 < m.entries.len) : (i += 2) {
+                    if (keys) try t.markValue(m.entries[i]);
+                    if (values) try t.markValue(m.entries[i + 1]);
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn mayHoldHandle(v: Value) bool {
+        return switch (v) {
+            .handle, .tuple, .variant, .list, .set, .map => true,
+            else => false,
+        };
+    }
+
+    /// Process `id` has finished: what it held is freed, and its thread and emptied region
+    /// wait for the next process given its id.
+    fn end(t: *Turns, sim: *Sim, id: u32) Error!void {
+        if (id < t.workers.items.len) if (t.workers.items[id]) |w| if (!w.ended) {
+            w.vm.reuse();
+            if (w.values) |*r| {
+                r.decommit();
+                w.vm.useRegions(r, t.scratch.?);
+            }
+        };
+        const p = &sim.procs.items[id];
+        if (p.start) |parcel| parcel.free();
+        for (p.log_parcels.items) |parcel| parcel.free();
+        p.log_parcels.clearRetainingCapacity();
+        p.log.clearRetainingCapacity();
+        p.mailbox.clearRetainingCapacity();
+        p.restarts.clearRetainingCapacity();
+        p.head = 0;
+        p.start = null;
+        p.args = &.{};
+        p.state = .none;
+        p.up = false;
+        p.ended = true;
+        try sim.free_ids.append(sim.gpa, id);
+    }
+
+    /// The thread kept for ended process `id` returns, and its region is released.
+    fn release(t: *Turns, sim: *Sim, id: u32) Error!void {
+        if (id >= t.workers.items.len) return;
+        const w = t.workers.items[id] orelse return;
+        if (w.ended) return;
+        try t.handTo(sim, id, .exit);
+        w.thread.join();
+        if (w.values) |*r| r.release();
+        w.values = null;
+        w.ended = true;
     }
 
     // ---- what Mo.Sim asks of the scheduler under Mo.Server
@@ -366,6 +521,7 @@ pub const Turns = struct {
     pub fn stop(t: *Turns, sim: *Sim) void {
         for (t.workers.items, 0..) |slot, id| {
             const w = slot orelse continue;
+            if (w.ended) continue;
             if (w.phase != .idle) {
                 w.thread.detach();
                 continue;

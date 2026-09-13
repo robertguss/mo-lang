@@ -32,6 +32,17 @@ pub const Region = struct {
         std.posix.munmap(mem[0 .. r.end - r.base]);
     }
 
+    /// Everything allocated goes back to the system, and the region is empty again: its
+    /// touched pages are mapped over with fresh ones, the reservation kept.
+    pub fn decommit(r: *Region) void {
+        const used = std.mem.alignForward(usize, r.top - r.base, std.heap.pageSize());
+        if (used > 0) {
+            const at: [*]align(std.heap.page_size_min) u8 = @ptrFromInt(r.base);
+            _ = std.posix.mmap(at, used, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true, .FIXED = true }, -1, 0) catch {};
+        }
+        r.top = r.base;
+    }
+
     pub fn contains(r: *const Region, addr: usize) bool {
         return addr >= r.base and addr < r.end;
     }

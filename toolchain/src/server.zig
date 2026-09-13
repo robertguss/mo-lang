@@ -70,6 +70,9 @@ pub const Server = struct {
     files: []const diag.File = &.{},
     /// `platform.net`'s listeners and connections (net.zig).
     sockets: net.Net,
+    /// After a run, how many process ids it used: a process that finished gives its id to
+    /// the next one started (turns.zig, sweep).
+    ids_used: usize = 0,
 
     /// `cwd` is the absolute working directory a relative path starts from. Nothing is
     /// freed: pass an arena.
@@ -86,6 +89,7 @@ pub const Server = struct {
         machine.server = s;
         var scheduler: Sim = .init(&machine, 0, "main");
         scheduler.server = s;
+        defer s.ids_used = scheduler.procs.items.len;
         machine.sim = &scheduler;
         // Values live in regions freed at safe points (vm.zig): main's here, and each
         // process's in one of its own (turns.zig), all compacting through one scratch
@@ -1044,4 +1048,92 @@ test "processes under mo run: main starts a supervisor and a process, sends and 
     const gave_up = try again.run(program, program.findFunction("main").?);
     try std.testing.expectEqual(contracts.Kind.supervisor, gave_up.crashed.kind);
     try std.testing.expectEqualStrings("Pair gave up: Counter crashed more than 1 times within 60000.ms", gave_up.crashed.clause);
+}
+
+const ends_src =
+    \\module T.Ends
+    \\process Idle()
+    \\  state
+    \\    pokes: UInt64
+    \\  end
+    \\  message Poke
+    \\  fn update(state, message)
+    \\    case message
+    \\      Poke:
+    \\        state.pokes += 1
+    \\    end
+    \\  end
+    \\end
+    \\process Keeper()
+    \\  state
+    \\    pokes: UInt64
+    \\  end
+    \\  message Poke
+    \\  message Pokes : UInt64
+    \\  fn update(state, message)
+    \\    case message
+    \\      Poke:
+    \\        state.pokes += 1
+    \\      Pokes: state.pokes
+    \\    end
+    \\  end
+    \\end
+    \\process Relay(keeper: Handle(Keeper))
+    \\  state
+    \\    passed: UInt64
+    \\  end
+    \\  message Pass
+    \\  message Count : UInt64
+    \\  fn update(state, message)
+    \\    case message
+    \\      Pass:
+    \\        keeper.send(Poke)
+    \\        state.passed += 1
+    \\      Count:
+    \\        case keeper.ask(Pokes, within: 1.minute)
+    \\          Ok(n): n
+    \\          Error(_): 0
+    \\        end
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Ends(keeper: Handle(Keeper))
+    \\  child Idle, restart: :always
+    \\  child Keeper, restart: :always
+    \\  child Relay(keeper), restart: :always
+    \\end
+    \\fn started(iterations: UInt64, relay: Handle(Relay)) : UInt64
+    \\  var count = 0
+    \\  for _ in 0..iterations
+    \\    idle = Idle.start()
+    \\    idle.send(Poke)
+    \\    relay.send(Pass)
+    \\    count += 1
+    \\  end
+    \\  count
+    \\end
+    \\fn main(platform: Platform)
+    \\  relay = Relay.start(Keeper.start())
+    \\  platform.stdout.write_line("started #{started(5_000, relay)}")
+    \\  case relay.ask(Count, within: 1.minute)
+    \\    Ok(n): platform.stdout.write_line("kept #{n}")
+    \\    Error(_): platform.stdout.write_line("lost")
+    \\  end
+    \\end
+;
+
+test "under mo run a process that finished and that nothing holds a handle to ends and gives its id to the next; one held through a start argument does not" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, ends_src);
+    var environ: std.process.Environ.Map = .init(arena);
+    var out: Io.Writer.Allocating = .init(arena);
+    var server: Server = try .init(arena, std.testing.io, "/", &.{}, &environ, &out.writer, &out.writer);
+    const ran = try server.run(program, program.findFunction("main").?);
+    try std.testing.expectEqual(@as(u8, 0), ran.exited);
+    // The keeper is reachable only through the relay's start arguments, and counted every Pass.
+    try std.testing.expectEqualStrings("started 5000\nkept 5000\n", out.written());
+    // 5,002 processes started; each idle one ended within a sweep or two of its Poke.
+    try std.testing.expect(server.ids_used < 300);
 }
