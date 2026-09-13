@@ -563,6 +563,8 @@ static bool all_equal(const MoValue *a, const MoValue *b, size_t n) {
     return true;
 }
 
+static size_t map_find(const MoMap *m, size_t stride, MoValue key);
+
 bool mo_equal(MoValue a, MoValue b) {
     if (a.tag != b.tag) return false;
     switch (a.tag) {
@@ -579,8 +581,16 @@ bool mo_equal(MoValue a, MoValue b) {
     case MO_TUPLE: return a.aux == b.aux && all_equal(a.as.xs, b.as.xs, a.aux);
     case MO_MAP:
     case MO_SET: {
+        /* Equal keys with equal values, or equal elements, in any order (design-v0/09, step 18). */
         uint32_t la = a.as.m ? a.as.m->len : 0, lb = b.as.m ? b.as.m->len : 0;
-        return la == lb && (la == 0 || all_equal(a.as.m->entries, b.as.m->entries, la));
+        if (la != lb) return false;
+        size_t stride = a.tag == MO_MAP ? 2 : 1;
+        for (size_t k = 0; k < la; k += stride) {
+            size_t at = map_find(b.as.m, stride, a.as.m->entries[k]);
+            if (at == SIZE_MAX) return false;
+            if (stride == 2 && !mo_equal(a.as.m->entries[k + 1], b.as.m->entries[at + 1])) return false;
+        }
+        return true;
     }
     case MO_RECORD: return a.aux == b.aux && all_equal(a.as.xs, b.as.xs, mo_decls[a.aux].nfields);
     case MO_VARIANT: return a.aux == b.aux && all_equal(a.as.xs, b.as.xs, mo_vcount(a));
@@ -670,10 +680,17 @@ static uint64_t hash_value(MoValue v) {
         return h;
     case MO_MAP:
     case MO_SET: {
+        /* Equal maps and sets can hold their entries in different orders (mo_equal), so each
+         * entry hashes on its own and the hashes add up. */
         uint32_t n = v.as.m ? v.as.m->len : 0;
-        h = mix(h, n);
-        for (uint32_t i = 0; i < n; i++) h = mix(h, hash_value(v.as.m->entries[i]));
-        return h;
+        size_t stride = v.tag == MO_MAP ? 2 : 1;
+        uint64_t sum = 0;
+        for (size_t i = 0; i < n; i += stride) {
+            uint64_t one = hash_value(v.as.m->entries[i]);
+            if (stride == 2) one = mix(one, hash_value(v.as.m->entries[i + 1]));
+            sum += one;
+        }
+        return mix(mix(h, n), sum);
     }
     case MO_RECORD:
     case MO_VARIANT: {
@@ -1186,8 +1203,8 @@ static void report_text(Buf *b, const Report *r) {
     case MO_R_ASSERT: buf_printf(b, "%s failed", r->clause); break;
     case MO_R_REQUIRES:
     case MO_R_ENSURES:
-    case MO_R_REFINEMENT:
-    case MO_R_INVARIANT: buf_printf(b, "%s tripped in %s", r->clause, r->within); break;
+    case MO_R_REFINEMENT: buf_printf(b, "%s tripped in %s", r->clause, r->within); break;
+    case MO_R_INVARIANT: buf_printf(b, "%s no longer holds in %s", r->clause, r->within); break;
     case MO_R_NEVER: buf_printf(b, "%s tripped", r->clause); break;
     case MO_R_OVERFLOW: buf_printf(b, "overflow in %s", r->clause); break;
     case MO_R_DIVIDE_BY_ZERO: buf_printf(b, "division by zero in %s", r->clause); break;
@@ -1275,6 +1292,12 @@ _Noreturn void mo_fail(uint8_t kind, const char *within, const char *format, ...
     vsnprintf(text, (size_t)(n > 0 ? n : 0) + 1, format, ap);
     va_end(ap);
     raise_report((Report){kind, text, within, NULL, NULL, 0}, JUMP_CRASH);
+}
+
+_Thread_local uint32_t mo_depth;
+
+_Noreturn void mo_too_deep(const char *name) {
+    mo_fail(MO_R_OTHER, name, "%s is called %u calls deep, and calls nest at most %u deep", name, (unsigned)MO_DEPTH_LIMIT + 1, (unsigned)MO_DEPTH_LIMIT);
 }
 
 _Noreturn void mo_discard(void) {
@@ -4377,7 +4400,7 @@ static MoValue update(uint32_t id, MoValue message, MoValue before) {
     args[n] = out.as.xs[1];
     args[n + 1] = before;
     for (uint32_t k = 0; k < def->ninvariants; k++) {
-        if (!def->invariants[k].fn(NULL, args).as.b) continue;
+        if (def->invariants[k].fn(NULL, args).as.b) continue;
         static const char *const state_name[] = {"state"};
         mo_crash_values(def->invariants[k].clause, 1, state_name, &out.as.xs[1]);
     }
@@ -4388,9 +4411,11 @@ static MoValue update(uint32_t id, MoValue message, MoValue before) {
 static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out) {
     jmp_buf here;
     jmp_buf *saved = crash_jump;
+    uint32_t depth = mo_depth;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) *out = update(id, message, before);
+    else mo_depth = depth;
     crash_jump = saved;
     return jumped;
 }
@@ -4445,9 +4470,11 @@ _Noreturn static void give_up(uint32_t id, Report last) {
 static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     jmp_buf here;
     jmp_buf *saved = crash_jump;
+    uint32_t depth = mo_depth;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) *out = mo_processes[process].init(NULL, args);
+    else mo_depth = depth;
     crash_jump = saved;
     if (jumped != 0 && jumped != JUMP_CRASH) raise_report(last_report, jumped);
     return jumped == 0;
@@ -4806,6 +4833,7 @@ static void *work(void *arg) {
             if (jumped == 0) {
                 deliver(w->id);
             } else {
+                mo_depth = 0;
                 w->failed = jumped;
                 w->report = last_report;
             }
@@ -6366,7 +6394,9 @@ static Result run_test(const MoTest *t) {
     test_name = t->name;
     jmp_buf here;
     crash_jump = &here;
+    mo_depth = 0;
     int jumped = setjmp(here);
+    if (jumped != 0) mo_depth = 0;
     if (jumped == 0) {
         t->fn();
         drain();
@@ -6402,7 +6432,9 @@ static Result run_property(const MoTest *t) {
             test_name = t->name;
             jmp_buf here;
             crash_jump = &here;
+            mo_depth = 0;
             int jumped = setjmp(here);
+            if (jumped != 0) mo_depth = 0;
             if (jumped == 0) {
                 t->fn();
                 check_nevers();

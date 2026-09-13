@@ -9,7 +9,7 @@ process Odometer()
   end
 
   invariant "the odometer never goes backwards"
-    state.km < old(state.km)
+    state.km >= old(state.km)
   end
 
   message Drive(km: UInt64)

@@ -34,6 +34,10 @@ pub const Options = struct {
     /// Seeded run i runs under sim_seed + i, so `--sim 1 --seed S` repeats the run of seed S.
     sim_seed: u64 = 0,
     fault_percent: u32 = default_fault_percent,
+    /// `--until F`: in each seeded run, faults stop after fraction F of the fixture calls that
+    /// could fail, counted on the same seed without faults, so a test asserts what holds while
+    /// calls fail and what holds once they stop. 1 injects them throughout.
+    fault_until: f64 = 1,
 };
 
 /// The base seed when none is given: the file's hash, so a file runs under the same
@@ -70,8 +74,11 @@ pub const Result = struct {
     /// The seed of the seeded run that failed, and that run's messages in order.
     sim_seed: ?u64 = null,
     interleaving: []const []const u8 = &.{},
-    /// The fault percent the seed named in the result ran with.
+    /// The fault percent the seed named in the result ran with, and its `--until`.
     sim_faults: u32 = 0,
+    sim_until: f64 = 1,
+    /// Fixture calls that could fail in this run.
+    draws: u64 = 0,
     /// Faults the run injected.
     faults: u32 = 0,
     /// A test that held under every seed once faults were taken away: the first seed it
@@ -98,6 +105,7 @@ pub const Summary = struct {
     /// tests that did.
     sim_runs: u32 = 0,
     sim_faults: u32 = 0,
+    sim_until: f64 = 1,
     simulated: u32 = 0,
     /// Simulated tests that held under faults, and those that passed only without them.
     held_under_faults: u32 = 0,
@@ -117,13 +125,14 @@ pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program, options: Op
         var arena_state = std.heap.ArenaAllocator.init(gpa);
         defer arena_state.deinit();
         const arena = arena_state.allocator();
-        var r = if (t.kind == .property) try runProperty(gpa, arena, program, t) else try runTest(gpa, arena, program, t, null, 0);
+        var r = if (t.kind == .property) try runProperty(gpa, arena, program, t) else try runTest(gpa, arena, program, t, null, 0, null);
         // A property already runs under its own seeds.
         if (options.sim_runs > 0 and t.kind != .property and r.processes > 0 and holds(r)) try simulate(gpa, &arena_state, program, t, options, &r);
         if (r.sim_runs > 0) {
             summary.simulated += 1;
             summary.sim_runs = options.sim_runs;
             summary.sim_faults = options.fault_percent;
+            summary.sim_until = options.fault_until;
             if (holds(r) and r.fault_seed != null) {
                 summary.fault_free_only += 1;
             } else if (holds(r) and options.fault_percent > 0) summary.held_under_faults += 1;
@@ -158,16 +167,25 @@ fn simulate(gpa: std.mem.Allocator, arena_state: *std.heap.ArenaAllocator, progr
     for (0..options.sim_runs) |i| {
         _ = arena_state.reset(.retain_capacity);
         const seed = options.sim_seed +% i;
-        var s = try runTest(gpa, arena_state.allocator(), program, t, seed, options.fault_percent);
+        // --until: the seed's fixture calls that could fail, counted without faults, say when
+        // faults stop.
+        const stop: ?u64 = if (options.fault_until < 1 and options.fault_percent > 0) blk: {
+            const calls = (try runTest(gpa, arena_state.allocator(), program, t, seed, 0, null)).draws;
+            _ = arena_state.reset(.retain_capacity);
+            break :blk @intFromFloat(@floor(options.fault_until * @as(f64, @floatFromInt(calls))));
+        } else null;
+        var s = try runTest(gpa, arena_state.allocator(), program, t, seed, options.fault_percent, stop);
         s.sim_faults = options.fault_percent;
+        s.sim_until = options.fault_until;
         if (holds(s)) continue;
         if (s.faults > 0) {
             _ = arena_state.reset(.retain_capacity);
-            const quiet = try runTest(gpa, arena_state.allocator(), program, t, seed, 0);
+            const quiet = try runTest(gpa, arena_state.allocator(), program, t, seed, 0, null);
             if (holds(quiet)) {
                 if (r.fault_seed == null) {
                     r.fault_seed = seed;
                     r.sim_faults = options.fault_percent;
+                    r.sim_until = options.fault_until;
                     r.fault_report = s.report;
                     r.fault_note = s.note;
                 }
@@ -184,16 +202,18 @@ fn simulate(gpa: std.mem.Allocator, arena_state: *std.heap.ArenaAllocator, progr
 }
 
 /// One run of a test: in the fixed order, or on a Mo.Sim seeded with `seed` whose
-/// fixtures fail at `fault_percent`.
-fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const bytecode.Program, t: bytecode.Test, seed: ?u64, fault_percent: u32) Error!Result {
+/// fixtures fail at `fault_percent`, until the `fault_stop`th call that could fail.
+fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const bytecode.Program, t: bytecode.Test, seed: ?u64, fault_percent: u32, fault_stop: ?u64) Error!Result {
     var machine: vm.Vm = .init(arena, program, seed orelse base_seed);
     var simulator: sim.Sim = if (seed) |s| .seeded(&machine, s, t.name, fault_percent) else .init(&machine, base_seed, t.name);
+    simulator.fault_stop = fault_stop;
     machine.sim = &simulator;
     simulator.records = program.nevers.len > 0;
     var r: Result = .{ .kind = t.kind, .name = t.name, .at = t.at, .outcome = .passed };
     const ran = body(&machine, &simulator, t.function);
     r.processes = @intCast(simulator.procs.items.len);
     r.faults = simulator.injected;
+    r.draws = simulator.draws;
     if (ran) |_| {
         if (simulator.firstCrash()) |report| {
             try verdict(gpa, &r, report);
@@ -375,7 +395,7 @@ pub fn writeResult(w: *std.Io.Writer, files: []const diag.File, r: Result) std.I
                 try w.writeAll("\n      interleaving: ");
                 if (r.interleaving.len == 0) try w.writeAll("no message delivered");
                 for (r.interleaving, 0..) |m, i| try w.print("{s}{s}", .{ if (i == 0) "" else ", ", m });
-                try writeReplay(w, seed, r.sim_faults);
+                try writeReplay(w, seed, r.sim_faults, r.sim_until);
             }
         },
     }
@@ -388,12 +408,13 @@ fn writeFaultFreeOnly(w: *std.Io.Writer, files: []const diag.File, r: Result) st
     const seed = r.fault_seed orelse return;
     try w.print(", but passes only without faults\n      seed {d}, with faults: ", .{seed});
     if (r.fault_report) |report| try writeReport(w, files, report) else try w.writeAll(r.fault_note);
-    try writeReplay(w, seed, r.sim_faults);
+    try writeReplay(w, seed, r.sim_faults, r.sim_until);
 }
 
-fn writeReplay(w: *std.Io.Writer, seed: u64, fault_percent: u32) std.Io.Writer.Error!void {
+fn writeReplay(w: *std.Io.Writer, seed: u64, fault_percent: u32, until: f64) std.Io.Writer.Error!void {
     try w.print("\n      mo test --sim 1 --seed {d}", .{seed});
     if (fault_percent != default_fault_percent) try w.print(" --faults {d}", .{fault_percent});
+    if (until < 1) try w.print(" --until {d}", .{until});
     try w.writeAll(" runs it again");
 }
 
@@ -408,7 +429,8 @@ pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Rep
     }
     switch (r.kind) {
         .assert => try w.print("{s} failed", .{r.clause}),
-        .requires, .ensures, .refinement, .invariant => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
+        .requires, .ensures, .refinement => try w.print("{s} tripped in {s}", .{ r.clause, r.within }),
+        .invariant => try w.print("{s} no longer holds in {s}", .{ r.clause, r.within }),
         .never => try w.print("{s} tripped", .{r.clause}),
         .overflow => try w.print("overflow in {s}", .{r.clause}),
         .divide_by_zero => try w.print("division by zero in {s}", .{r.clause}),
@@ -429,7 +451,9 @@ pub fn writeSummary(w: *std.Io.Writer, s: Summary) std.Io.Writer.Error!void {
         if (s.sim_faults == 0) {
             try w.writeAll(" without faults");
         } else {
-            try w.print(" with {d}% faults: {d} held under faults, {d} passed only without faults", .{ s.sim_faults, s.held_under_faults, s.fault_free_only });
+            try w.print(" with {d}% faults", .{s.sim_faults});
+            if (s.sim_until < 1) try w.print(" until {d} of each run", .{s.sim_until});
+            try w.print(": {d} held under faults, {d} passed only without faults", .{ s.held_under_faults, s.fault_free_only });
         }
     }
     try w.writeAll("\n");

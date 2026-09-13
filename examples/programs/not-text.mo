@@ -20,8 +20,11 @@ fn main(platform: Platform)
   out = platform.stdout
   out.write_line("read: #{said(data.read(name, within: 1.minute))}")
   out.write_line("read_lines: #{said(data.read_lines(name, within: 1.minute))}")
-  handed = data.each_line(name, within: 1.minute, fn(line) out.write_line("| #{line}") end)
-  out.write_line("each_line: #{said(handed)}")
+  handed = data.fold_lines(name, out, within: 1.minute, fn(to, line)
+    to.write_line("| #{line}")
+    to
+  end)
+  out.write_line("fold_lines to out: #{said(handed)}")
   folded = data.fold_lines(name, 0, within: 1.minute, fn(total, line) total + line.byte_size end)
   case folded
     Ok(total): out.write_line("fold_lines: #{total} bytes of text")

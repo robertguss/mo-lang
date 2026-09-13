@@ -95,13 +95,18 @@
       "module": "Effects.Sim",
       "declarations": [
         { "id": "037882af9bed", "name": "module Effects.Sim", "hash": "a6ad508404a56202" },
-        { "id": "765cdab98406", "name": "expose", "hash": "ad5c6b8e94a0c373" },
-        { "id": "13f7bc6a40f8", "name": "intent", "hash": "f47af4c9a3f09c8f" },
+        { "id": "765cdab98406", "name": "expose", "hash": "82b9062d7fe44755" },
+        { "id": "13f7bc6a40f8", "name": "intent", "hash": "252fcf2e11373ee5" },
         { "id": "31852a2851f7", "name": "struct Stamp", "hash": "877da8f55120ea49" },
         { "id": "b0b4b9bac76c", "name": "fn stamp", "hash": "2b14971f57458775" },
-        { "id": "cf839030c5b8", "name": "test \"the simulated clock stamps the same note the same way twice\"", "hash": "94407574d5481e98" }
+        { "id": "4358c0b66915", "name": "process Keeper", "hash": "930f11cd7ebef59a" },
+        { "id": "eb05fcb11f78", "name": "supervisor Keeping", "hash": "fa8405d25f62bb06" },
+        { "id": "095fe8a49195", "name": "fn saved", "hash": "df1dad7f6cde78a0" },
+        { "id": "6332f6cbf56d", "name": "fn on_disk", "hash": "dec29644a924a109" },
+        { "id": "cf839030c5b8", "name": "test \"the simulated clock stamps the same note the same way twice\"", "hash": "94407574d5481e98" },
+        { "id": "1ab44b1c79c4", "name": "test \"a note that fails to save is never counted, and every note saves once faults stop\"", "hash": "a90b972d6535a4df" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "ab26340aaa811486" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "06cac8843cc0c94d" }
     },
     {
       "path": "timeout.mo",

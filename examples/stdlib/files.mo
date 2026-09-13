@@ -46,9 +46,14 @@ fn bytes_read(logs: Fs, name: String) : Result(List(UInt8), Problem)
   end
 end
 
-# Each line goes to out as it is read; the file is never held whole.
+# Each line goes to out as it is read; the file is never held whole. The anonymous function
+# captures no capability, so out is handed on as fold_lines' value.
 fn echo_lines(logs: Fs, name: String, out: Out) : Option(Problem)
-  case logs.each_line(name, within: 1.minute, fn(line) out.write_line("> #{line}") end)
+  echoed = logs.fold_lines(name, out, within: 1.minute, fn(to, line)
+    to.write_line("> #{line}")
+    to
+  end)
+  case echoed
     Ok(_): None
     Error(Missing(path)): Some(Unread(path: path))
     Error(Timeout): Some(Slow)
@@ -91,7 +96,7 @@ test "read_bytes gives a file's bytes, as many as its size"
   assert bytes_of(fs, "a.log") == Ok(3)
 end
 
-test "each_line hands the function one line at a time, split as lines splits them"
+test "fold_lines hands out on from line to line, split as lines splits them"
   fs = Fs.fixture()
   assert fs.write("a.log", "one\r\ntwo\n\nlast", within: 1.minute) is Ok(_)
   out = Out.fixture()

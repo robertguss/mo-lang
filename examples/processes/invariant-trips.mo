@@ -9,7 +9,7 @@ process Batches()
   end
 
   invariant "done never goes backwards"
-    state.done < old(state.done)
+    state.done >= old(state.done)
   end
 
   message Finish

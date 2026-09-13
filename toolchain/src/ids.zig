@@ -11,6 +11,10 @@
 //! `test "a bill splits evenly"`), and its id is kept while its name is: a new name is a
 //! new declaration. `MO0317` fires when the file's `verified:` line has no record, when
 //! it differs from the record, or when the declarations changed since.
+//!
+//! A file's tests also reach the modules it uses, so the record keeps, per module it uses
+//! directly or through another, the hash of that module's declarations but its tests
+//! (step 18). A callee's body changed in another module makes the line stale too.
 const std = @import("std");
 const Io = std.Io;
 const token = @import("token.zig");
@@ -28,6 +32,10 @@ pub const Hash = [16]u8;
 
 pub const Declaration = struct { name: []const u8, hash: Hash };
 
+/// A module a file uses, directly or through another, and the hash of its declarations but
+/// its tests (bodiesHash).
+pub const Use = struct { module: []const u8, hash: Hash };
+
 /// What one file holds, as the sidecar sees it.
 pub const Stamp = struct {
     module: []const u8,
@@ -36,10 +44,14 @@ pub const Stamp = struct {
     verified: ?[]const u8 = null,
     /// Where that line starts in the file; the file's length when it has none.
     verified_at: u32,
+    /// Every module the file uses, directly or through another, in name order; the loader
+    /// (program.zig) fills it in.
+    uses: []const Use = &.{},
 };
 
 pub const Record = struct { id: []const u8, name: []const u8, hash: []const u8 };
-pub const VerifiedRecord = struct { hash: []const u8, declarations: []const u8 };
+pub const UseRecord = struct { module: []const u8, hash: []const u8 };
+pub const VerifiedRecord = struct { hash: []const u8, declarations: []const u8, uses: []const UseRecord = &.{} };
 pub const FileRecord = struct {
     path: []const u8,
     module: []const u8,
@@ -138,6 +150,18 @@ pub fn declarationsHash(gpa: std.mem.Allocator, decls: []const Declaration) erro
     return hash(all.items);
 }
 
+/// The hash of a module's declarations but its tests and properties: what the tests of a
+/// file that uses it can reach.
+pub fn bodiesHash(gpa: std.mem.Allocator, decls: []const Declaration) error{OutOfMemory}!Hash {
+    var bodies: std.ArrayList(Declaration) = .empty;
+    defer bodies.deinit(gpa);
+    for (decls) |d| {
+        if (std.mem.startsWith(u8, d.name, "test ") or std.mem.startsWith(u8, d.name, "property ")) continue;
+        try bodies.append(gpa, d);
+    }
+    return declarationsHash(gpa, bodies.items);
+}
+
 pub fn find(sidecar: Sidecar, path: []const u8) ?FileRecord {
     for (sidecar.files) |f| if (std.mem.eql(u8, f.path, path)) return f;
     return null;
@@ -149,8 +173,37 @@ pub fn status(gpa: std.mem.Allocator, sidecar: Sidecar, path: []const u8, s: Sta
     const file = find(sidecar, path) orelse return .hand_written;
     const v = file.verified orelse return .hand_written;
     if (!std.mem.eql(u8, v.hash, &hash(line))) return .line_changed;
-    if (std.mem.eql(u8, v.declarations, &try declarationsHash(gpa, s.declarations))) return .recorded;
-    return .{ .declarations_changed = try changedNames(gpa, file.declarations, s.declarations) };
+    if (!std.mem.eql(u8, v.declarations, &try declarationsHash(gpa, s.declarations))) {
+        return .{ .declarations_changed = try changedNames(gpa, file.declarations, s.declarations) };
+    }
+    const moved = try changedUses(gpa, v.uses, s.uses);
+    return if (moved.len == 0) .recorded else .{ .declarations_changed = moved };
+}
+
+/// `Kv.Store, a module it uses,`: the modules whose declarations changed since the record,
+/// or that it began or stopped using. Empty when none did.
+fn changedUses(gpa: std.mem.Allocator, recorded: []const UseRecord, now: []const Use) error{OutOfMemory}![]const u8 {
+    var names: std.ArrayList([]const u8) = .empty;
+    for (now) |u| {
+        const same = for (recorded) |r| {
+            if (std.mem.eql(u8, r.module, u.module)) break std.mem.eql(u8, r.hash, &u.hash);
+        } else false;
+        if (!same) try names.append(gpa, u.module);
+    }
+    for (recorded) |r| {
+        const kept = for (now) |u| {
+            if (std.mem.eql(u8, r.module, u.module)) break true;
+        } else false;
+        if (!kept) try names.append(gpa, r.module);
+    }
+    if (names.items.len == 0) return "";
+    var out: std.ArrayList(u8) = .empty;
+    for (names.items, 0..) |name, i| {
+        if (i > 0) try out.appendSlice(gpa, if (i + 1 == names.items.len) " and " else ", ");
+        try out.appendSlice(gpa, name);
+    }
+    try out.appendSlice(gpa, if (names.items.len == 1) ", a module it uses," else ", modules it uses,");
+    return out.items;
 }
 
 /// `fn a, fn b, and 3 more`: what was added, removed, or changed since the record.
@@ -202,11 +255,13 @@ pub fn record(gpa: std.mem.Allocator, sidecar: Sidecar, path: []const u8, s: Sta
         } else null else null;
         r.* = .{ .id = kept orelse try newId(gpa, s.module, d.name, records[0..i]), .name = d.name, .hash = try gpa.dupe(u8, &d.hash) };
     }
+    const uses = try gpa.alloc(UseRecord, s.uses.len);
+    for (s.uses, uses) |u, *r| r.* = .{ .module = u.module, .hash = try gpa.dupe(u8, &u.hash) };
     const file: FileRecord = .{
         .path = path,
         .module = s.module,
         .declarations = records,
-        .verified = .{ .hash = try gpa.dupe(u8, &hash(line)), .declarations = try gpa.dupe(u8, &try declarationsHash(gpa, s.declarations)) },
+        .verified = .{ .hash = try gpa.dupe(u8, &hash(line)), .declarations = try gpa.dupe(u8, &try declarationsHash(gpa, s.declarations)), .uses = uses },
     };
     var files: std.ArrayList(FileRecord) = .empty;
     var placed = false;
@@ -261,6 +316,17 @@ pub fn render(w: *Io.Writer, sidecar: Sidecar) Io.Writer.Error!void {
             try string(w, v.hash);
             try w.writeAll(", \"declarations\": ");
             try string(w, v.declarations);
+            if (v.uses.len > 0) {
+                try w.writeAll(", \"uses\": [");
+                for (v.uses, 0..) |u, k| {
+                    try w.writeAll(if (k == 0) "{ \"module\": " else ", { \"module\": ");
+                    try string(w, u.module);
+                    try w.writeAll(", \"hash\": ");
+                    try string(w, u.hash);
+                    try w.writeAll(" }");
+                }
+                try w.writeAll("]");
+            }
             try w.writeAll(" }\n    }");
         } else try w.writeAll("      \"verified\": null\n    }");
     }
@@ -279,12 +345,13 @@ pub fn withLine(gpa: std.mem.Allocator, source: []const u8, s: Stamp, line: []co
 }
 
 /// `mo test --write`: writes `line` into the program's main file and records it in the
-/// sidecar at the program root.
-pub fn write(gpa: std.mem.Allocator, io: Io, root: []const u8, path: []const u8, key: []const u8, source: []const u8, line: []const u8) !void {
+/// sidecar at the program root, with the modules the file uses.
+pub fn write(gpa: std.mem.Allocator, io: Io, root: []const u8, path: []const u8, key: []const u8, source: []const u8, line: []const u8, uses: []const Use) !void {
     var scratch: diag.List = .empty;
     const tokens = try lexer.lex(gpa, source, &scratch);
     const tree = try parser.parse(gpa, source, tokens, &scratch);
-    const s = try stamp(gpa, tree);
+    var s = try stamp(gpa, tree);
+    s.uses = uses;
     const updated = try record(gpa, try read(gpa, io, root), key, s, line);
     var json: Io.Writer.Allocating = .init(gpa);
     try render(&json.writer, updated);
@@ -352,4 +419,29 @@ test "a recorded line holds until the line or a declaration changes" {
     try std.testing.expectEqualStrings(parsed.files[0].declarations[1].id, again.files[0].declarations[1].id);
     try std.testing.expect(!std.mem.eql(u8, parsed.files[0].declarations[1].hash, again.files[0].declarations[1].hash));
     try std.testing.expect(try status(arena, again, "a.mo", edited_body) == .recorded);
+}
+
+test "a line is stale when a module the file uses changed, and names it" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src = "module T.A\n\nfn f(n: UInt8) : UInt8\n  n\nend\n\n" ++ line_a;
+    var s = try stampOf(arena, src);
+    s.uses = &.{ .{ .module = "T.B", .hash = hash("b") }, .{ .module = "T.C", .hash = hash("c") } };
+    const sidecar = try record(arena, .{}, "a.mo", s, line_a);
+    try std.testing.expect(try status(arena, sidecar, "a.mo", s) == .recorded);
+    var json: Io.Writer.Allocating = .init(arena);
+    try render(&json.writer, sidecar);
+    const parsed = try std.json.parseFromSliceLeaky(Sidecar, arena, json.written(), .{});
+    try std.testing.expect(try status(arena, parsed, "a.mo", s) == .recorded);
+
+    s.uses = &.{ .{ .module = "T.B", .hash = hash("b, its body changed") }, .{ .module = "T.C", .hash = hash("c") } };
+    try std.testing.expectEqualStrings("T.B, a module it uses,", (try status(arena, parsed, "a.mo", s)).declarations_changed);
+    s.uses = &.{.{ .module = "T.D", .hash = hash("d") }};
+    try std.testing.expectEqualStrings("T.D, T.B and T.C, modules it uses,", (try status(arena, parsed, "a.mo", s)).declarations_changed);
+
+    // A test of a used module is not what the file's tests reach.
+    const body = [_]Declaration{.{ .name = "fn g", .hash = hash("g") }};
+    const with_test = [_]Declaration{ .{ .name = "fn g", .hash = hash("g") }, .{ .name = "test \"g\"", .hash = hash("t") } };
+    try std.testing.expectEqualStrings(&try bodiesHash(arena, &body), &try bodiesHash(arena, &with_test));
 }

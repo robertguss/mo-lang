@@ -768,7 +768,14 @@ const Parser = struct {
 
     fn parseArm(p: *Parser) Error!Index {
         const first = p.tok;
-        const pattern = try p.parsePattern();
+        var pattern = try p.parsePattern();
+        if (p.peek() == .pipe) {
+            // `A | B | C: body`: each alternative a whole pattern.
+            const top = p.scratch.items.len;
+            try p.push(pattern);
+            while (p.eat(.pipe)) |_| try p.push(try p.parsePattern());
+            pattern = try p.spanNode(.pat_or, first, top);
+        }
         const guard: Index = if (p.eat(.kw_if)) |_| try p.parseExpr() else ast.none;
         _ = try p.expect(.colon);
         var body: Span = undefined;

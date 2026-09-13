@@ -68,7 +68,7 @@ process RefundQueue(db: Ledger, clock: Clock, events: Events) mailbox: 10_000
   end
 
   invariant "done never goes backwards"
-    state.done < old(state.done)
+    state.done >= old(state.done)
   end
 
   message Enqueue(request: RefundRequest)

@@ -25,7 +25,7 @@ const Id = types.Id;
 
 pub const Error = error{OutOfMemory};
 
-pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main };
+pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main, authority_captured };
 
 pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .missing_within = .{ .code = "MO0401", .category = .capabilities, .what = "<call> has no within: deadline; add one, such as within: 100.ms.", .why = "Every call that can wait carries a deadline (chapter 2, bounding laws), so nothing blocks forever; a timeout comes back as an ordinary error the caller handles.", .fixes = &.{} },
@@ -35,6 +35,7 @@ pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .bad_flows = .{ .code = "MO0405", .category = .capabilities, .what = "flows names a declared or prelude type first, such as flows(CardNumber, into: Events).", .why = "flows(T, into: Cap) names a type first and a capability after into:, so the rule can be checked; a never that cannot be checked does not compile.", .fixes = &.{} },
     .recipe_needs = .{ .code = "MO0406", .category = .capabilities, .what = "<function> takes a <Capability>, but recipe <Recipe> needs <capabilities>; add <Capability> to its needs line.", .why = "A recipe's needs line is the list of capabilities its implementation may take (chapter 6), so every capability in its signatures is named there, and only capabilities are.", .fixes = &.{} },
     .platform_escapes = .{ .code = "MO0407", .category = .capabilities, .what = "<function> takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .why = "A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds.", .fixes = &.{} },
+    .authority_captured = .{ .code = "MO0409", .category = .capabilities, .what = "the anonymous function captures <name>, a <Capability or Handle>; pass <name> as a parameter to a named function instead.", .why = "An anonymous function captures read-only, but a capability or a handle is authority: captured, it lets a call that takes only data, such as map, perform an effect no signature shows (chapter 3, effects). Authority travels only as a parameter, so a named function that takes it says what it touches.", .fixes = &.{} },
     .no_main = .{ .code = "MO0408", .category = .capabilities, .what = "this module has no fn main(platform: Platform), so mo run has nothing to run; mo test runs its tests", .why = "mo run starts a program at fn main(platform: Platform), the one place it receives its capabilities (Q18). A module without main has nothing to run; mo test runs its tests.", .fixes = &.{} },
 });
 
@@ -45,6 +46,7 @@ pub fn check(gpa: std.mem.Allocator, checked: checker.Checked, out: *diag.List) 
     try c.bodies();
     try c.platformUses();
     try c.flowRules();
+    try c.captures();
 }
 
 /// A run of nodes that belong to one declaration, one test, or one never.
@@ -137,20 +139,18 @@ const Caps = struct {
         return c.k.pool.get(c.k.pool.base(t));
     }
 
-    /// The first capability type inside `t`, looking through lists, options, results, and tuples.
+    /// The first capability or handle inside `t`, looking through lists, options, results, and
+    /// tuples. A handle is authority like a capability (step 18): a function that holds one is
+    /// effectful, and a value or an anonymous function cannot hold one.
     fn capIn(c: *Caps, t: Id, depth: u8) ?Id {
-        if (depth > 8) return null;
-        const r = c.k.pool.base(t);
-        const b = c.k.pool.get(r);
-        return switch (b.tag) {
-            .cap => r,
-            .list, .option, .set => c.capIn(b.a, depth + 1),
-            .result, .map => c.capIn(b.a, depth + 1) orelse c.capIn(b.b, depth + 1),
-            .tuple => for (c.k.pool.elems(b)) |e| {
-                if (c.capIn(e, depth + 1)) |x| break x;
-            } else null,
-            else => null,
-        };
+        return checker.authorityIn(&c.k.pool, t, depth);
+    }
+
+    /// capIn, without handles: a function may return the handle it started or was given, and a
+    /// recipe's needs line names only capabilities.
+    fn capOnlyIn(c: *Caps, t: Id) ?Id {
+        const found = c.capIn(t, 0) orelse return null;
+        return if (c.k.pool.get(found).tag == .cap) found else null;
     }
 
     fn paramsHaveCaps(c: *Caps, r: checker.Range) bool {
@@ -231,7 +231,7 @@ const Caps = struct {
             }
         }
         for (c.k.sigs) |s| {
-            if (c.capIn(s.ret, 0)) |cap| try c.report(.outside_params, c.node(s.node).main_token, try c.print("{s} returns a {s}; a capability is passed down as a parameter, never returned.", .{ s.name, try c.tn(cap) }));
+            if (c.capOnlyIn(s.ret)) |cap| try c.report(.outside_params, c.node(s.node).main_token, try c.print("{s} returns a {s}; a capability is passed down as a parameter, never returned.", .{ s.name, try c.tn(cap) }));
         }
         // Only main takes a Platform; everything below it takes the parts it needs.
         for (c.k.sigs) |s| {
@@ -305,7 +305,7 @@ const Caps = struct {
         for (c.k.tree.span(r.sigs_start, r.sigs_end)) |sn| {
             const s = c.sigOf(sn) orelse continue;
             for (c.k.params[s.params.start..s.params.end]) |p| {
-                const cap = c.capIn(p.type, 0) orelse continue;
+                const cap = c.capOnlyIn(p.type) orelse continue;
                 const cap_name = try c.tn(cap);
                 const listed = for (names) |tok| {
                     if (std.mem.eql(u8, c.text(tok), cap_name)) break true;
@@ -386,7 +386,7 @@ const Caps = struct {
                 }
                 if ((u.kind == .function or u.kind == .process) and !u.has_caps and !pure_reported and isValue(n.kind)) {
                     const t = c.k.typeOf(i);
-                    if (c.baseTag(t).tag == .cap) {
+                    if (c.baseTag(t).tag == .cap or c.baseTag(t).tag == .handle) {
                         try c.report(.outside_params, c.firstToken(i), try c.print("{s} has no capability parameter, so it is pure and cannot use a {s}; take a {s} parameter.", .{ u.name, try c.tn(t), try c.tn(t) }));
                         pure_reported = true;
                     }
@@ -568,6 +568,14 @@ const Caps = struct {
                 if (an.kind == .named_arg) {
                     if (!std.mem.eql(u8, c.text(an.main_token), "into")) continue;
                     const v = c.node(an.lhs);
+                    if (v.kind == .call and c.node(v.lhs).kind == .type_name_ref and std.mem.eql(u8, c.text(c.node(v.lhs).main_token), "Handle")) {
+                        // into: Handle(P), every send and ask to a P.
+                        const args_p = c.spanAt(v.rhs);
+                        if (args_p.len != 1 or c.node(args_p[0]).kind != .type_name_ref) continue;
+                        const d = c.k.findDeclAt(a, c.text(c.node(args_p[0]).main_token)) orelse continue;
+                        if (c.k.decls[d].kind == .process) into = c.k.decls[d].type;
+                        continue;
+                    }
                     if (v.kind != .type_name_ref) continue;
                     const t = checker.primitive(c.text(v.main_token)) orelse continue;
                     if (c.k.pool.get(t).tag == .cap) into = t;
@@ -580,7 +588,7 @@ const Caps = struct {
                 continue;
             }
             const cap = into orelse {
-                try c.report(.bad_flows, call.main_token, "flows names a capability after into:, such as into: Events.");
+                try c.report(.bad_flows, call.main_token, "flows names a capability or a process's handle after into:, such as into: Events or into: Handle(Store).");
                 continue;
             };
             try c.checkFlow(subject.?, cap, sentence);
@@ -611,7 +619,7 @@ const Caps = struct {
                     },
                     .member_call => {
                         if (c.k.callee[i] != .prelude) continue;
-                        if (c.k.pool.base(c.k.typeOf(n.lhs)) != cap) continue;
+                        if (!c.sameAuthority(c.k.typeOf(n.lhs), cap)) continue;
                         for (c.spanAt(n.rhs)) |a| {
                             const an = c.node(a);
                             if (an.kind == .named_arg and std.mem.eql(u8, c.text(an.main_token), "within")) continue;
@@ -624,6 +632,24 @@ const Caps = struct {
                     else => {},
                 }
             }
+        }
+    }
+
+    /// Whether a receiver of type `t` is the capability or the process handle a flows rule names.
+    fn sameAuthority(c: *Caps, t: Id, cap: Id) bool {
+        const r = c.k.pool.base(t);
+        if (r == cap) return true;
+        const a = c.k.pool.get(r);
+        const b = c.k.pool.get(cap);
+        return a.tag == .handle and b.tag == .handle and a.a == b.a;
+    }
+
+    // ---- captures: an anonymous function holds no authority
+
+    fn captures(c: *Caps) Error!void {
+        for (c.k.captures) |cap| {
+            const held = c.capIn(cap.type, 0) orelse continue;
+            try c.report(.authority_captured, cap.token, try c.print("the anonymous function captures {s}, a {s}; pass {s} as a parameter to a named function instead.", .{ cap.name, try c.tn(held), cap.name }));
         }
     }
 
@@ -881,6 +907,72 @@ test "a recipe's signatures take only the capabilities its needs line names" {
         \\  end
         \\end
     , &.{"MO0406"});
+}
+
+test "a handle is authority: a pure function cannot start one, no value holds one, no anonymous function captures one" {
+    try expectCodes(
+        \\module T.Handles
+        \\process Tally()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Read : UInt64
+        \\  fn update(state, message)
+        \\    case message
+        \\      Read: state.n
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Tallies
+        \\  child Tally, restart: :always
+        \\end
+        \\struct Held
+        \\  tally: Handle(Tally)
+        \\end
+        \\fn started() : Handle(Tally)
+        \\  Tally.start()
+        \\end
+        \\fn read(tally: Handle(Tally)) : Result(UInt64, AskError)
+        \\  tally.ask(Read, within: 1.ms)
+        \\end
+        \\fn counted(tally: Handle(Tally), ks: List(UInt64)) : List(UInt64)
+        \\  ks.filter(fn(k) k > 0 and tally.ask(Read, within: 1.ms) is Ok(_) end)
+        \\end
+        \\fn stamped(clock: Clock, names: List(String)) : List(String)
+        \\  names.map(fn(name) "#{name} at #{clock.now}" end)
+        \\end
+    , &.{ "MO0403", "MO0403", "MO0409", "MO0409" });
+}
+
+test "flows sees a handle: into: Handle(P) is every send and ask to a P" {
+    try expectCodes(
+        \\module T.FlowHandle
+        \\never "a card number reaches the vault"
+        \\  flows(Card, into: Handle(Vault))
+        \\end
+        \\struct Card
+        \\  number: String
+        \\end
+        \\process Vault()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Keep(note: String)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Keep(note):
+        \\        state.n += note.size
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Vaults
+        \\  child Vault, restart: :always
+        \\end
+        \\fn kept(vault: Handle(Vault), card: Card, note: String)
+        \\  vault.send(Keep(note: note))
+        \\  vault.send(Keep(note: "#{card}"))
+        \\end
+    , &.{"MO0404"});
 }
 
 test "main reads its Platform's parts and passes them down; the Platform itself stays" {

@@ -52,6 +52,7 @@
 | C2 | Otherwise the arm is `Pattern:` alone, and the body is the block below it, one level deeper. |
 | C3 | An arm written `Pattern: case ...` or `Pattern: if ...` that does not fit on one line keeps its value on the arm line and continues below it; moving it down would turn the expression into a statement. |
 | C4 | Arms are never separated by blank lines (B9). |
+| C5 | A grouped arm keeps its alternatives on the arm line, one space either side of each `\|`: `Get(_) \| Stats \| Quit: ...`. |
 
 ## Ordering
 

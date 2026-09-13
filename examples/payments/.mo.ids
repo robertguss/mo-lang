@@ -16,7 +16,7 @@
         { "id": "0e4d1ec4c72d", "name": "fn within_window?", "hash": "a42a19bf66c229a0" },
         { "id": "a2711cfe3874", "name": "fn apply_refund", "hash": "802c5c760b746987" },
         { "id": "5058fc224e37", "name": "fn refund", "hash": "cdfb816565b438c7" },
-        { "id": "cd081176c6d7", "name": "process RefundQueue", "hash": "694a79c5a14beee6" },
+        { "id": "cd081176c6d7", "name": "process RefundQueue", "hash": "619f756f19960d37" },
         { "id": "e01204e81a07", "name": "supervisor Payments", "hash": "6440532eb1e2ee7c" },
         { "id": "448e67535c16", "name": "test \"refund within window succeeds\"", "hash": "8503eda3782f08ec" },
         { "id": "f44192199407", "name": "test rejects \"amount above captured\"", "hash": "031ca5d0c05f15e5" },
@@ -25,7 +25,7 @@
         { "id": "4c2c83d5e516", "name": "test \"a drained queue counts the drain\"", "hash": "ec137e0fdfea3d49" },
         { "id": "25fbbf64d208", "name": "property \"any valid refund leaves the charge refunded\"", "hash": "fcee84b98391df55" }
       ],
-      "verified": { "hash": "a307cd32ac26b215", "declarations": "bd91f31404ed4956" }
+      "verified": { "hash": "a307cd32ac26b215", "declarations": "da60d965164b3817" }
     }
   ]
 }

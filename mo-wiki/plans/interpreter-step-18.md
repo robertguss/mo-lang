@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [compiler, contracts, processes, laws, tooling]
 sources: [deep-dives/outside-review-2026-09-13.md, deep-dives/outside-review-2026-09-13-evidence.md, deep-dives/outside-review-2026-09-13-response.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Step 18: the outside review's no-compat fixes

@@ -176,6 +176,8 @@ pub const Node = struct {
         pat_field,
         /// span of patterns.
         pat_tuple,
+        /// `A | B | C`, a whole arm's pattern: span of the alternatives (step 18).
+        pat_or,
 
         // §8 comprehensions
         /// `for`: lhs extra Comprehension.

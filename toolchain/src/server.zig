@@ -890,7 +890,7 @@ const regions_src =
     \\    data: Map(String, String)
     \\  end
     \\  invariant "a value never goes back to empty"
-    \\    state.data.get("a") == Some("") and old(state.data.get("a")) == Some("1")
+    \\    state.data.get("a") != Some("") or old(state.data.get("a")) != Some("1")
     \\  end
     \\  message Note(key: String, value: String)
     \\  message Read(key: String) : String

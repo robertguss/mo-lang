@@ -34,12 +34,12 @@
         { "id": "26696d16aa73", "name": "module Processes.InvariantTrips", "hash": "e91e771b580d497b" },
         { "id": "e487cb362260", "name": "expose", "hash": "ea086a83c5842821" },
         { "id": "ed37a675b429", "name": "intent", "hash": "a3b5a94ab71d96be" },
-        { "id": "9f6813caac65", "name": "process Batches", "hash": "e2603888c78eb2e8" },
+        { "id": "9f6813caac65", "name": "process Batches", "hash": "ded772be50cb5647" },
         { "id": "80106f8919cf", "name": "supervisor Batching", "hash": "b03f6beda1c40797" },
         { "id": "9f41f05d0b10", "name": "test \"finishing moves done forward\"", "hash": "f674cc441adb69de" },
         { "id": "58fae4ec25c4", "name": "test rejects \"undoing a finished batch\"", "hash": "65b13b6d9a125599" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "f1abb66d2f3e537e" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "699796f9f0d2ac17" }
     },
     {
       "path": "invariant.mo",
@@ -48,11 +48,11 @@
         { "id": "44967711304a", "name": "module Processes.Invariant", "hash": "c7a2c43c6abcb9ed" },
         { "id": "2eec53e89483", "name": "expose", "hash": "4b3454b07773610b" },
         { "id": "d4b8d7145098", "name": "intent", "hash": "cae6ed1465352171" },
-        { "id": "0553f5851c7f", "name": "process Odometer", "hash": "256f93b37ee072ef" },
+        { "id": "0553f5851c7f", "name": "process Odometer", "hash": "4270ee7377e12a51" },
         { "id": "c7eac171f92d", "name": "supervisor Dashboard", "hash": "7cadf5b5d1dfef71" },
         { "id": "e947cd4126bb", "name": "test \"driving only ever adds to the reading\"", "hash": "e287f4a386322ff7" }
       ],
-      "verified": { "hash": "7c2dd49fc03316de", "declarations": "b56ba3d42420ea61" }
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "0f8a86ed8581fd36" }
     },
     {
       "path": "mailbox.mo",

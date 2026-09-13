@@ -130,6 +130,10 @@ pub const Sim = struct {
     fault_percent: u32 = 0,
     /// Faults drawn so far: failures and slow calls.
     injected: u32 = 0,
+    /// Every fixture call that could fail, counted whether or not faults are on, and the
+    /// count from which none fails (`--until`, runner.zig); null when faults never stop.
+    draws: u64 = 0,
+    fault_stop: ?u64 = null,
     /// Milliseconds fixture calls have waited in all, and the part the clock has not
     /// moved by yet (it moves before the next update).
     waited: i64 = 0,
@@ -251,6 +255,9 @@ pub const Sim = struct {
     /// to its deadline. What calls wait moves the clock before the next update and counts
     /// against an ask in flight. Null: the call answers as the fixture does.
     pub fn fault(sim: *Sim, other: ?Fault, within: i64) ?Fault {
+        const draw = sim.draws;
+        sim.draws += 1;
+        if (sim.fault_stop) |stop| if (draw >= stop) return null;
         const rng = if (sim.faults) |*r| r.random() else return null;
         if (rng.uintLessThan(u32, 100) < sim.fault_percent) {
             sim.injected += 1;
@@ -619,7 +626,7 @@ pub const Sim = struct {
         args[n] = out.tuple[1];
         args[n + 1] = before;
         for (p.invariants) |inv| {
-            if (!(try vm.call(inv.function, args)).bool) continue;
+            if ((try vm.call(inv.function, args)).bool) continue;
             const c = vm.program.clauses[inv.clause];
             const values = try sim.gpa.alloc(contracts.Involved, 1);
             values[0] = .{ .name = "state", .value = try vm.render(out.tuple[1]) };
@@ -898,7 +905,7 @@ const tx_src =
     \\    n: UInt8
     \\  end
     \\  invariant "n never goes backwards"
-    \\    state.n < old(state.n)
+    \\    state.n >= old(state.n)
     \\  end
     \\  message Add(k: UInt8)
     \\  message Back
@@ -990,7 +997,7 @@ test "update is a transaction: a crash drops its state writes, sends, and emits,
     try std.testing.expectEqual(@as(u64, 7), crash.process.?.seed);
 }
 
-test "an invariant is true when broken, reads old(state), and trips a test rejects" {
+test "an invariant is false when broken, reads old(state), and trips a test rejects" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();

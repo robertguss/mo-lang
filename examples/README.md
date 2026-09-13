@@ -55,7 +55,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 24. `effects/pure-vs-effectful.mo`: the same computation with and without a capability
 25. `effects/timeout.mo`: `Timeout` as an ordinary error the caller handles
 26. `effects/narrowing.mo`: `fs.scoped(...).read_only` passed down
-27. `effects/sim.mo`: `mo test` always runs on the simulator, so an effectful test is deterministic
+27. `effects/sim.mo`: `mo test` always runs on the simulator, so an effectful test is deterministic; its `# sim: --faults 20 --until 0.5` line runs its process test's seeds with faults that stop halfway, and the test asserts that a failed save is never counted and that every save lands once faults stop (step 18)
 58. `effects/net.mo`: an echo server whose listener process hands each connection to a worker process, driven by a test through `Net.fixture()` with no real socket, and holding under faults
 63. `effects/http.mo`: a server process that accepts one exchange per message and answers `GET /hello?name=x` and `POST /echo`, driven by a test through `Http.fixture()` with no real socket, and holding under faults, with a raw `Net` server whose response has no `content-length`; `stdlib/http.mo` beside it writes requests by hand at an `HttpListener` to show what the reader makes of a body, a query, headers, and requests that are not HTTP, and reads what `reply` and `send` put on the wire
 
@@ -91,6 +91,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 48. `rejects/missing-within.mo`: a capability call with no `within:`
 49. `rejects/hand-edited-verified.mo`: a `verified:` line written by hand
 50. `rejects/unsupervised-process.mo`: a process no supervisor names
+67. `rejects/captured-capability.mo`: a capability captured by an anonymous function (step 18)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records
@@ -99,7 +100,8 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 53. `programs/hello.mo`: `fn main(platform: Platform)`, an argument, and `stdout`
 54. `programs/count-lines.mo`: `platform.fs.scoped("data").read_only` and a real read with `within:`
 55. `programs/exit-code.mo`: a line on `stderr` and `platform.exit(3)`
-66. `programs/not-text.mo`: `bytes/not-text.txt` holds a byte that is not UTF-8, so `read`, `read_lines`, and `each_line` (after the line before it) and `fold_lines` are `NotText`, and `read_bytes` gives its 36 bytes; its second run reads `bytes/text.txt`, which every row reads
+66. `programs/not-text.mo`: `bytes/not-text.txt` holds a byte that is not UTF-8, so `read`, `read_lines`, `fold_lines` handing `out` on (after printing the line before it), and `fold_lines` counting bytes are `NotText`, and `read_bytes` gives its 36 bytes; its second run reads `bytes/text.txt`, which every row reads
+68. `programs/runaway.mo`: recursion past the depth limit of 10,000 nested calls crashes `main` with a report naming the function, and exits 70, under `mo run` and as a binary (step 18)
 56. `programs/logstat/`: program 2 (`mo-wiki/spec/programs/02-log-analyzer.md`) in four modules, `parse.mo`, `stats.mo`, `report.mo`, and `main.mo`, over the three logs in `fixture/`. `examples/programs/mo.root` makes `programs/` the root its `use` lines load from; `main.mo`'s four `# run:` lines are the text report, the JSON report (`logstat-2.expected`), `--top 0` exiting 2, and no `.log` file exiting 1. `programs/logstat/TOOLCHAIN-BUGS.md` records what the program found and the commits that fixed it.
 59. `programs/echo/`: a real TCP echo on 127.0.0.1 through `mo run`. The corpus test cannot start a server in the background, so `main` starts it all itself: an acceptor process, a worker process per connection, and client processes it asks in turn, and it prints every round trip. Its two `# run:` lines are three lines from one client and one line from each of three clients.
 60. `programs/kv/`: program 3 (`mo-wiki/spec/programs/03-kv-store.md`), a key-value server over TCP in five modules, `protocol.mo`, `log.mo`, `store.mo`, `server.mo`, and `main.mo`. The corpus test cannot start a server in the background, so its first `# run:` line is `kv check`: it serves `data/demo`, whose log ends in a line cut short, on a free port, and plays `data/session.txt` through kv's own client, one real connection per line. The other four are `kv compact` on the same folder, a usage error exiting 2, a missing folder exiting 1, and a client with no server exiting 1. `programs/kv/TOOLCHAIN-BUGS.md` records what the program found.

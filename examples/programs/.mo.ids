@@ -22,10 +22,10 @@
         { "id": "587f7729483a", "name": "expose", "hash": "1643fa714ce2d021" },
         { "id": "159a939fbca6", "name": "intent", "hash": "dbdc7729314aae9e" },
         { "id": "f72419852b9d", "name": "fn quoted", "hash": "fbbf45d0afbd5e9f" },
-        { "id": "6d57752812b2", "name": "fn main", "hash": "cc07223090689dc2" },
+        { "id": "6d57752812b2", "name": "fn main", "hash": "6221e26f76b54fcb" },
         { "id": "a9128b5019d5", "name": "test \"a line is quoted as it is\"", "hash": "fe915f43ba0df039" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "488b6abdd4a94a48" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "d5fc51b5b4ee518c" }
     },
     {
       "path": "echo/main.mo",
@@ -128,7 +128,7 @@
         { "id": "5b371981d0ad", "name": "struct Reopened", "hash": "1211e4b464578b57" },
         { "id": "7f01fc828c57", "name": "struct Opened", "hash": "dcdfb3f2ff0ea4d1" },
         { "id": "5d6b2c5bbf88", "name": "enum LogError", "hash": "4b443dba21db2838" },
-        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "4d332e4a20b9981e" },
+        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "ee78b869f9c49c99" },
         { "id": "6a649c511348", "name": "supervisor Journals", "hash": "dc3751228e7316a0" },
         { "id": "59bbc9e5e657", "name": "fn empty", "hash": "2c73eee8dd09832d" },
         { "id": "9667256f3198", "name": "fn bucket_of", "hash": "acdb5dbcf3ebc12c" },
@@ -139,7 +139,7 @@
         { "id": "2abcbe4d987e", "name": "fn keys_with", "hash": "f07c69661e2d165c" },
         { "id": "389f6ce35158", "name": "fn entry", "hash": "7d7b70f3e6b6e5ac" },
         { "id": "8ed3a98fe6ed", "name": "fn replay", "hash": "d0c6da2c235fe885" },
-        { "id": "5726666c0cf4", "name": "fn applied", "hash": "7fdcbca545a9c055" },
+        { "id": "5726666c0cf4", "name": "fn applied", "hash": "ca50b612a8a100b5" },
         { "id": "04d410fe3c32", "name": "fn reopen", "hash": "c6a96dfad8875ec7" },
         { "id": "d64718512ee1", "name": "fn compacted", "hash": "d4e5a44aff0e0550" },
         { "id": "c62dd19e55d8", "name": "fn open", "hash": "6f9f2143965f1ba0" },
@@ -160,7 +160,7 @@
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
       ],
-      "verified": { "hash": "9f42df5ce2b765e5", "declarations": "75101848ea745932" }
+      "verified": { "hash": "087094673077814e", "declarations": "ef8f4203e90d69b6", "uses": [{ "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
       "path": "kv/main.mo",
@@ -205,7 +205,7 @@
         { "id": "ea0c28fa451d", "name": "test \"a log whose last line was cut short opens without it, and says so on the error stream\"", "hash": "ffff617e572ae283" },
         { "id": "ef06a248ca70", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "6bb9c596f9e1c213" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "eff457c5895600fb" }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "eff457c5895600fb", "uses": [{ "module": "Kv.Log", "hash": "adef617ad660cc50" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Server", "hash": "1433e96485687b7b" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
     },
     {
       "path": "kv/protocol.mo",
@@ -256,7 +256,7 @@
         { "id": "0e4c6939f2eb", "name": "use Kv.Protocol", "hash": "6206fdf2a4a96cfd" },
         { "id": "3d6fa7af6cda", "name": "use Kv.Store", "hash": "2a62bbbdfc9a3e8c" },
         { "id": "c03fbcebfbb5", "name": "intent", "hash": "a8cec2cf51036383" },
-        { "id": "317cfe98409a", "name": "process Gate", "hash": "6437fb91b11fa434" },
+        { "id": "317cfe98409a", "name": "process Gate", "hash": "1386f8e742f4b63b" },
         { "id": "58a7e8abcc15", "name": "process Worker", "hash": "f0cb8b5073eabba2" },
         { "id": "5b5e8a68af97", "name": "process Listening", "hash": "9cce2e42d141322b" },
         { "id": "d829147acdfc", "name": "supervisor Servers", "hash": "60673a61c790d6ff" },
@@ -279,7 +279,7 @@
         { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "0c4514424619787b" },
         { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "cf20b633982a5576" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "05adf4cc2bbf04b4" }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "266816db52e79399", "uses": [{ "module": "Kv.Log", "hash": "adef617ad660cc50" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
     },
     {
       "path": "kv/store.mo",
@@ -298,7 +298,7 @@
         { "id": "8be60f90b192", "name": "enum Plan", "hash": "952da8cca27f33db" },
         { "id": "a1d8c746ee88", "name": "struct Served", "hash": "08281234a9b959bd" },
         { "id": "69c5af355746", "name": "struct Opening", "hash": "1e2eea8853ecbeec" },
-        { "id": "3a8915512708", "name": "process Store", "hash": "1d59c5cac06bddec" },
+        { "id": "3a8915512708", "name": "process Store", "hash": "3e5958dea63bc9fd" },
         { "id": "cb6b6c9f5169", "name": "supervisor Stores", "hash": "88c469d3793f54ab" },
         { "id": "d6e359320806", "name": "fn served", "hash": "f4df93c9da62ed37" },
         { "id": "e53299825bb1", "name": "fn decide", "hash": "54b5f514ebc1777e" },
@@ -330,7 +330,7 @@
         { "id": "188c9b4c6dff", "name": "test \"a store started again from its log reads what the first one wrote\"", "hash": "59ab036010260f7a" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "b8b4aa7893c80fed" }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "432b5dfa5b9aaf27", "uses": [{ "module": "Kv.Log", "hash": "adef617ad660cc50" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
       "path": "lines-per-file.mo",
@@ -379,7 +379,7 @@
         { "id": "b406873d4f88", "name": "test \"no log file, a slow directory, and a usage error each end the run with their problem\"", "hash": "33c57b1bd64753f7" },
         { "id": "9aced823e5c3", "name": "test rejects \"a line handed to the tally with its newline\"", "hash": "15e3df11eaa336a2" }
       ],
-      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "4a2d019ded722869" }
+      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "4a2d019ded722869", "uses": [{ "module": "Logstat.Parse", "hash": "b9df82b545a8ef8c" }, { "module": "Logstat.Report", "hash": "8a61e15042bc6e13" }, { "module": "Logstat.Stats", "hash": "41b2abf01be01f64" }] }
     },
     {
       "path": "logstat/parse.mo",
@@ -439,7 +439,7 @@
         { "id": "0500d0165429", "name": "test \"numbers group by thousands and rates keep one decimal\"", "hash": "a2ece8b338c115c7" },
         { "id": "faab49be1fcc", "name": "test rejects \"a negative rate has no decimal text\"", "hash": "568cde69044c927b" }
       ],
-      "verified": { "hash": "12e60bd49f90b827", "declarations": "9b392dfe47882973" }
+      "verified": { "hash": "12e60bd49f90b827", "declarations": "9b392dfe47882973", "uses": [{ "module": "Logstat.Parse", "hash": "b9df82b545a8ef8c" }, { "module": "Logstat.Stats", "hash": "41b2abf01be01f64" }] }
     },
     {
       "path": "logstat/stats.mo",
@@ -474,7 +474,7 @@
         { "id": "3ac4c5c95790", "name": "test rejects \"a top above one hundred\"", "hash": "c03f90d3892b2476" },
         { "id": "a84d0e466567", "name": "property \"errors never exceed requests, for any list of records\"", "hash": "9e9d18c492d327bc" }
       ],
-      "verified": { "hash": "cfa8e82649159ef9", "declarations": "f95b3f11149f2c14" }
+      "verified": { "hash": "cfa8e82649159ef9", "declarations": "f95b3f11149f2c14", "uses": [{ "module": "Logstat.Parse", "hash": "b9df82b545a8ef8c" }] }
     },
     {
       "path": "not-text.mo",
@@ -484,10 +484,23 @@
         { "id": "70f8024b5f6b", "name": "expose", "hash": "b5a721f19c08d482" },
         { "id": "086942e61c29", "name": "intent", "hash": "d941892c2c73318a" },
         { "id": "90e6ec478fb7", "name": "fn said", "hash": "9f2bd164d3fa15d0" },
-        { "id": "139ff541261a", "name": "fn main", "hash": "550f8cc5be709210" },
+        { "id": "139ff541261a", "name": "fn main", "hash": "e12b696a98d2e825" },
         { "id": "08fdc935b574", "name": "test \"a file the fixture does not hold is missing\"", "hash": "4601e1008b4474c7" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "3f4308314c342095" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "5be52a11425351a1" }
+    },
+    {
+      "path": "runaway.mo",
+      "module": "Programs.Runaway",
+      "declarations": [
+        { "id": "5d4924e79133", "name": "module Programs.Runaway", "hash": "0c63b2ff643863c4" },
+        { "id": "1d321bb4b620", "name": "expose", "hash": "ba436f65732d8a42" },
+        { "id": "e6ffe328003c", "name": "intent", "hash": "13583b42d3fc3b4b" },
+        { "id": "6e3dcc36118c", "name": "fn depth", "hash": "244abbb2a2240a1e" },
+        { "id": "667558166af3", "name": "fn main", "hash": "f99b93e949eb4c64" },
+        { "id": "ea9cd009920e", "name": "test \"a count goes as many calls down as it counts\"", "hash": "33d51e7d49b5ffe3" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "6266134e768db2e2" }
     }
   ]
 }

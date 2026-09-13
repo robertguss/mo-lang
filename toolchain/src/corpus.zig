@@ -5,7 +5,8 @@
 //! crashes; the only skips are recipe tests that reach a signature no agent has
 //! implemented. Every test that starts a process also runs under 100 seeds with faults
 //! (`mo test --sim 100`, seeded by the file's hash) and holds under them, except
-//! `processes/racy.mo`, whose tests must fail under --sim and pass without it.
+//! `processes/racy.mo`, whose tests must fail under --sim and pass without it. A file whose
+//! first lines hold `# sim: --faults P --until F` runs its seeds under those instead.
 //! Until a stage exists it returns NotImplemented and the file
 //! counts as skipped, so this test is green on day one and tightens as stages land.
 //! Each file is loaded with every module it uses (program.zig), and its own tests run.
@@ -101,6 +102,34 @@ test "a rejects file names the code its first diagnostic carries" {
     try std.testing.expectEqualStrings("MO0306", expectedCode("module A\n# expect MO0306: base is bound twice.\n").?);
     try std.testing.expect(expectedCode("module A\n# expect error: something\n") == null);
     try std.testing.expect(expectedCode("x = 1 # expect MO0306: not at a line start\n") == null);
+}
+
+/// The corpus's `--sim` options for a file: `defaults`, with the `--faults P` and `--until F`
+/// its `# sim:` line names among its first comment lines.
+pub fn simOptions(source: []const u8, defaults: runner.Options) runner.Options {
+    var options = defaults;
+    var lines = std.mem.splitScalar(u8, source, '\n');
+    while (lines.next()) |line| {
+        if (!std.mem.startsWith(u8, line, "#")) break;
+        if (!std.mem.startsWith(u8, line, "# sim:")) continue;
+        var it = std.mem.tokenizeScalar(u8, line["# sim:".len..], ' ');
+        while (it.next()) |flag| {
+            const value = it.next() orelse break;
+            if (std.mem.eql(u8, flag, "--faults")) options.fault_percent = std.fmt.parseInt(u32, value, 10) catch options.fault_percent;
+            if (std.mem.eql(u8, flag, "--until")) options.fault_until = std.fmt.parseFloat(f64, value) catch options.fault_until;
+        }
+    }
+    return options;
+}
+
+test "a file's # sim: line names the faults its seeds run under" {
+    const plain = simOptions("module A\n", .{ .sim_runs = 100 });
+    try std.testing.expectEqual(runner.default_fault_percent, plain.fault_percent);
+    try std.testing.expectEqual(@as(f64, 1), plain.fault_until);
+    const named = simOptions("# sim: --faults 20 --until 0.5\nmodule A\n", .{ .sim_runs = 100 });
+    try std.testing.expectEqual(@as(u32, 20), named.fault_percent);
+    try std.testing.expectEqual(@as(f64, 0.5), named.fault_until);
+    try std.testing.expectEqual(@as(u32, 100), named.sim_runs);
 }
 
 /// A program's main file: `programs/<name>.mo`, or `programs/<name>/main.mo`. The other
@@ -385,7 +414,7 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
             std.debug.print("corpus: {s} has no verified: line; run mo test --write --sim 100 on it\n", .{rel});
             return;
         }
-        const options: runner.Options = .{ .sim_runs = sim_runs, .sim_seed = runner.seedOf(source) };
+        const options = simOptions(source, .{ .sim_runs = sim_runs, .sim_seed = runner.seedOf(source) });
         if (pipeline.testProgram(arena, prog, false, options, &diags)) |r| {
             if (std.mem.eql(u8, rel, racy)) return checkRacy(arena, prog, r, tally);
             tally.held_under_faults += r.summary.held_under_faults;
@@ -552,6 +581,52 @@ test "corpus: every module's tests and every program, built by mo build, print w
     try std.testing.expect(modules.same > 0 and programs.same > 0);
     // Every module was built and compared, the process and network modules among them.
     try std.testing.expectEqual(outside_rejects, modules.same);
+}
+
+test "corpus: a callee's body changed in another module makes its caller's verified: line stale" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(io, "app/lib");
+    try tmp.dir.writeFile(io, .{ .sub_path = "app/mo.root", .data = "" });
+    const callee = "module Lib.Double\nexpose double\n\nintent \"Double a number.\"\n\nfn double(n: UInt32) : UInt32\n  n * 2\nend\n\ntest \"two doubles to four\"\n  assert double(2) == 4\nend\n";
+    try tmp.dir.writeFile(io, .{ .sub_path = "app/lib/double.mo", .data = callee });
+    try tmp.dir.writeFile(io, .{ .sub_path = "app/caller.mo", .data = "module Caller\nexpose quadruple\n\nuse Lib.Double{double}\n\nintent \"Quadruple a number by doubling it twice.\"\n\nfn quadruple(n: UInt32) : UInt32\n  double(double(n))\nend\n\ntest \"one quadruples to four\"\n  assert quadruple(1) == 4\nend\n" });
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}/app", .{tmp.sub_path});
+    const Mo = struct {
+        fn run(a: std.mem.Allocator, i: Io, exe: []const u8, dir: []const u8, args: []const []const u8) !std.process.RunResult {
+            var argv: std.ArrayList([]const u8) = .empty;
+            try argv.append(a, exe);
+            try argv.appendSlice(a, args);
+            return std.process.run(a, i, .{ .argv = argv.items, .cwd = .{ .path = dir } });
+        }
+        fn exited(r: std.process.RunResult) ?u8 {
+            return if (r.term == .exited) r.term.exited else null;
+        }
+    };
+    try std.testing.expectEqual(@as(?u8, 0), Mo.exited(try Mo.run(arena, io, mo_exe, cwd, &.{ "test", "--write", "lib/double.mo" })));
+    try std.testing.expectEqual(@as(?u8, 0), Mo.exited(try Mo.run(arena, io, mo_exe, cwd, &.{ "test", "--write", "caller.mo" })));
+    try std.testing.expectEqual(@as(?u8, 0), Mo.exited(try Mo.run(arena, io, mo_exe, cwd, &.{ "check", "caller.mo" })));
+
+    // The callee's body changes and its own line is written again; the caller's tests ran
+    // against the old body, so its line is stale.
+    const edited = try std.mem.replaceOwned(u8, arena, try tmp.dir.readFileAlloc(io, "app/lib/double.mo", arena, .limited(1 << 16)), "  n * 2\n", "  n + n\n");
+    try tmp.dir.writeFile(io, .{ .sub_path = "app/lib/double.mo", .data = edited });
+    try std.testing.expectEqual(@as(?u8, 0), Mo.exited(try Mo.run(arena, io, mo_exe, cwd, &.{ "test", "--write", "lib/double.mo" })));
+    const stale = try Mo.run(arena, io, mo_exe, cwd, &.{ "check", "caller.mo" });
+    try std.testing.expectEqual(@as(?u8, 1), Mo.exited(stale));
+    try std.testing.expect(std.mem.indexOf(u8, stale.stderr, "MO0317 Lib.Double, a module it uses, changed since mo test --write recorded the verified: line") != null);
+
+    try std.testing.expectEqual(@as(?u8, 0), Mo.exited(try Mo.run(arena, io, mo_exe, cwd, &.{ "test", "--write", "caller.mo" })));
+    try std.testing.expectEqual(@as(?u8, 0), Mo.exited(try Mo.run(arena, io, mo_exe, cwd, &.{ "check", "caller.mo" })));
 }
 
 test "a build is named so that it is never itself a .mo file" {

@@ -105,6 +105,10 @@ pub const Parcel = struct {
     }
 };
 
+/// How many calls this thread is inside (contracts.depth_limit). Per thread, since each process
+/// under `mo run` runs on a thread of its own and gives up its turn in the middle of a call.
+threadlocal var call_depth: u32 = 0;
+
 pub const Vm = struct {
     /// Reports, rendered values, and the vm's own lists: everything that is not a value.
     gpa: std.mem.Allocator,
@@ -238,6 +242,12 @@ pub const Vm = struct {
     /// inout parameter, in order.
     fn exec(vm: *Vm, fi: u32, args: []const Value, captures: []const Value) Error!void {
         const f = vm.program.functions[fi];
+        if (call_depth >= contracts.depth_limit) {
+            vm.report = .{ .kind = .other, .clause = try contracts.tooDeep(vm.gpa, f.name), .within = f.name, .at = 0 };
+            return error.Crash;
+        }
+        call_depth += 1;
+        defer call_depth -= 1;
         const frame = vm.mark();
         const locals = try vm.allocValues(f.locals);
         @memcpy(locals[0..args.len], args);
@@ -1417,15 +1427,27 @@ pub fn equal(a: Value, b: Value) bool {
         .string => |x| std.mem.eql(u8, x, b.string),
         .time => |x| x == b.time,
         .duration => |x| x == b.duration,
-        // Two maps or sets are equal when they hold equal entries in the same order.
         .list, .tuple => |x| allEqual(x, fieldsOf(b)),
-        .map, .set => |x| allEqual(x.entries, fieldsOf(b)),
+        // Two maps are equal when they hold equal keys with equal values, and two sets when they
+        // hold equal elements, in any order (design-v0/09, step 18).
+        .map => |x| sameContent(x, b.map, 2),
+        .set => |x| sameContent(x, b.set, 1),
         .record => |x| x.decl == b.record.decl and allEqual(x.fields, b.record.fields),
         .variant => |x| std.mem.eql(u8, x.name, b.variant.name) and allEqual(x.fields, b.variant.fields),
         .func => |x| x.function == b.func.function and allEqual(x.captures, b.func.captures),
         .cap => |x| x.kind == b.cap.kind and x.delay == b.cap.delay and x.handle == b.cap.handle,
         .handle => |x| x == b.handle,
     };
+}
+
+fn sameContent(a: Value.Map, b: Value.Map, stride: usize) bool {
+    if (a.entries.len != b.entries.len) return false;
+    var k: usize = 0;
+    while (k < a.entries.len) : (k += stride) {
+        const at = stdlib.find(b, stride, a.entries[k]) orelse return false;
+        if (stride == 2 and !equal(a.entries[k + 1], b.entries[at + 1])) return false;
+    }
+    return true;
 }
 
 pub fn allEqual(a: []const Value, b: []const Value) bool {

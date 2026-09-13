@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [agents, roadmap, stdlib, security]
 sources: [spec/programs/04-web-backend.md, plans/program-menu.md, directions/d34-packages-are-recipes.md]
-status: proposed
+status: in-progress
 ---
 
 # Program 4: `notes` in Mo, brief for the worker

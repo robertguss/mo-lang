@@ -97,7 +97,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .unused_binding = .{ .code = "MO0307", .category = .laws, .what = "<name> is bound but never used.", .why = "Every binding is read (chapter 2, honesty laws): an unused one is dead code, or a bug where another name was used instead.", .fixes = &.{"delete the line that binds the name, when its value holds no capability call, try, or process start, and no comment sits on the line"} },
     .not_exhaustive = .{ .code = "MO0308", .category = .laws, .what = "this case does not cover <pattern>; add an arm for it.", .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash.", .fixes = &.{} },
     .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <patterns> of <Type>; write an arm for each of them in its place.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
-    .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles.", .fixes = &.{} },
+    .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake.", .fixes = &.{} },
     .requires_untested = .{ .code = "MO0311", .category = .laws, .what = "<function> has requires <condition>, but no test rejects trips it.", .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips.", .fixes = &.{} },
     .default_param = .{ .code = "MO0312", .category = .laws, .what = "<name> has a default value; parameters have no defaults, so pass <value> at the call.", .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives.", .fixes = &.{"drop the default, and pass it at every call in the file that leaves the parameter out"} },
     .anon_stored = .{ .code = "MO0313", .category = .laws, .what = "an anonymous function is bound to <name>; pass it straight into <call> instead.", .why = "An anonymous function is a call argument only, never stored or returned (chapter 2), so effects never hide in a value.", .fixes = &.{} },
@@ -198,6 +198,26 @@ pub const Impl = struct { trait: u32, for_type: Id, sigs: Range, node: Index };
 
 pub const Callee = union(enum) { none, prelude: u32, user: u32 };
 
+/// A name an anonymous function reads from outside itself, for caps.zig.
+pub const Capture = struct { token: u32, name: []const u8, type: Id };
+
+/// The first capability or handle inside `t`, looking through lists, options, sets, results,
+/// maps, and tuples: the authority a value of type `t` carries (chapter 3, effects).
+pub fn authorityIn(pool: *const types.Pool, t: Id, depth: u8) ?Id {
+    if (depth > 8) return null;
+    const r = pool.base(t);
+    const b = pool.get(r);
+    return switch (b.tag) {
+        .cap, .handle => r,
+        .list, .option, .set => authorityIn(pool, b.a, depth + 1),
+        .result, .map => authorityIn(pool, b.a, depth + 1) orelse authorityIn(pool, b.b, depth + 1),
+        .tuple => for (pool.elems(b)) |e| {
+            if (authorityIn(pool, e, depth + 1)) |x| break x;
+        } else null,
+        else => null,
+    };
+}
+
 pub const Checked = struct {
     tree: ast.Tree,
     pool: types.Pool,
@@ -212,6 +232,8 @@ pub const Checked = struct {
     impls: []const Impl,
     /// `never` bodies that are a flows(...) rule, for caps.zig.
     flows: []const Index,
+    /// Every read of an outside name inside an anonymous function, for caps.zig.
+    captures: []const Capture = &.{},
     /// Every module, in dependency order; one for a single file.
     modules: []const Module = &.{},
 
@@ -322,6 +344,7 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
         .sigs = c.sigs.items,
         .impls = c.impls.items,
         .flows = c.flows.items,
+        .captures = c.captures.items,
         .modules = c.modules.items,
     };
 }
@@ -418,6 +441,7 @@ const Checker = struct {
     impls: std.ArrayList(Impl) = .empty,
     refinements: std.ArrayList(Refinement) = .empty,
     flows: std.ArrayList(Index) = .empty,
+    captures: std.ArrayList(Capture) = .empty,
 
     /// The current module's names (Module.type_names and fn_names), swapped by `enter`.
     type_names: std.StringHashMapUnmanaged(u32) = .empty,
@@ -1701,9 +1725,33 @@ const Checker = struct {
         }
     }
 
+    /// Whether call `i` reaches a pure function: one that takes no capability or handle, so the
+    /// value it gives is all it does.
+    fn pureCall(c: *Checker, i: Index) bool {
+        const n = c.node(i);
+        // `xs.size` is `size(xs)`: a dot call without parentheses is a call too.
+        if (n.kind != .call and n.kind != .member_call and n.kind != .member) return false;
+        switch (c.callee[i]) {
+            .none => return false,
+            .user => |s| {
+                const r = c.sigs.items[s].params;
+                for (c.params.items[r.start..r.end]) |p| if (authorityIn(&c.pool, p.type, 0) != null) return false;
+                return true;
+            },
+            .prelude => |k| {
+                const row = prelude.fns[k];
+                if (row.on_type and (std.mem.eql(u8, row.recv, "Process") or std.mem.eql(u8, row.recv, "Supervisor"))) return false;
+                if (prelude.findType(row.recv)) |t| if (t.kind == .capability) return false;
+                if (n.kind != .call and authorityIn(&c.pool, c.node_types[n.lhs], 0) != null) return false;
+                return true;
+            },
+        }
+    }
+
     fn useBinding(c: *Checker, b: u32, tok: u32) Error!void {
         c.bindings.items[b].used = true;
         const binding = c.bindings.items[b];
+        if (binding.anon_depth < c.frame.anon_depth) try c.captures.append(c.gpa, .{ .token = tok, .name = binding.name, .type = binding.type });
         if (binding.kind != .var_) return;
         if (binding.anon_depth < c.frame.anon_depth) {
             try c.reportTok(.var_captured, tok, try c.print("{s} is a var and cannot be captured by the anonymous function; bind a plain name first.", .{binding.name}));
@@ -1999,14 +2047,14 @@ const Checker = struct {
         };
         if (closed) {
             const ctors = (try c.constructors(subject)).?;
-            for (arms) |a| {
-                const pat = c.node(a).lhs;
+            for (arms) |a| for (try c.alternatives(c.node(a).lhs)) |pat| {
                 if (!c.isWild(pat)) continue;
                 var hidden: std.ArrayList([]const u8) = .empty;
                 for (ctors) |k| {
-                    const named = for (arms) |other| {
-                        if (other != a and c.headMatches(c.node(other).lhs, k)) break true;
-                    } else false;
+                    var named = false;
+                    for (arms) |other| for (try c.alternatives(c.node(other).lhs)) |op| {
+                        if (op != pat and c.headMatches(op, k)) named = true;
+                    };
                     if (!named) try hidden.append(c.gpa, try c.armPattern(k));
                 }
                 const arm = c.text(c.node(pat).main_token);
@@ -2016,13 +2064,14 @@ const Checker = struct {
                     try c.print("the {s} arm hides {s} of {s}; write an arm for each of them in its place.", .{ arm, try c.joinAnd(hidden.items), try c.tn(subject) });
                 try c.reportTok(.catch_all, c.node(pat).main_token, what);
                 return;
-            }
+            };
         }
         var rows: std.ArrayList([]const u32) = .empty;
         for (arms) |a| {
             const an = c.node(a);
             if (c.tree.extraData(ast.Arm, an.rhs).guard != 0) continue;
-            try rows.append(c.gpa, try c.gpa.dupe(u32, &.{an.lhs}));
+            // Each alternative of `A | B` is a row of its own.
+            for (try c.alternatives(an.lhs)) |pat| try rows.append(c.gpa, try c.gpa.dupe(u32, &.{pat}));
         }
         if (try c.uncovered(rows.items, &.{subject})) |w| {
             // An integer or a string has too many values to name one; say which type.
@@ -2084,6 +2133,8 @@ const Checker = struct {
                 // A test rejects drops its call's value on purpose: the call is meant to trip.
                 if ((b.tag == .result or b.tag == .option) and !c.frame.in_rejects) {
                     try c.reportNode(.unconsumed, n.lhs, try c.print("the {s} from {s} is dropped; match it with case or pass it up with try.", .{ if (b.tag == .result) "Result" else "Option", c.exprText(n.lhs) }));
+                } else if (b.tag != .none and b.tag != .never and b.tag != .unknown and b.tag != .variable and !c.frame.in_rejects and c.pureCall(n.lhs)) {
+                    try c.reportNode(.unconsumed, n.lhs, try c.print("the {s} from {s} is dropped, and a pure call does nothing else; bind it and use it, or remove the call.", .{ try c.tn(t), c.exprText(n.lhs) }));
                 }
             },
             .binding => try c.bindingStmt(s),
@@ -2281,7 +2332,12 @@ const Checker = struct {
                     if (result == types.unknown or c.pool.resolve(result) == types.never) result = t;
                 },
                 .update => if (is_update) {
-                    _ = try c.blockValue(body, c.replyOfPattern(an.lhs, subject) orelse types.none);
+                    const reply = c.replyOfPattern(an.lhs, subject) orelse types.none;
+                    if (c.node(an.lhs).kind == .pat_or) for (c.spanOf(c.node(an.lhs))[1..]) |alt| {
+                        const other = c.replyOfPattern(alt, subject) orelse types.none;
+                        if (!c.pool.unify(reply, other)) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("{s} replies with {s} and the first alternative with {s}, so it takes an arm of its own", .{ c.text(c.node(alt).main_token), try c.tn(other), try c.tn(reply) }));
+                    };
+                    _ = try c.blockValue(body, reply);
                 } else try c.blockStmts(body),
             }
             try c.popScope(mark);
@@ -2293,6 +2349,7 @@ const Checker = struct {
 
     fn replyOfPattern(c: *Checker, pat: Index, subject: Id) ?Id {
         const pn = c.node(pat);
+        if (pn.kind == .pat_or) return c.replyOfPattern(c.spanOf(pn)[0], subject);
         if (pn.kind != .pat_variant and pn.kind != .pat_record) return null;
         const v = c.findVariant(c.text(pn.main_token), subject) orelse return null;
         return c.variants.items[v].reply;
@@ -2321,6 +2378,7 @@ const Checker = struct {
             },
             .pat_variant => try c.variantPattern(i, subject),
             .pat_record => try c.recordPattern(i, subject),
+            .pat_or => try c.orPattern(i, subject),
             .pat_tuple => {
                 const elems = c.spanOf(n);
                 var b = c.bt(subject);
@@ -2341,6 +2399,44 @@ const Checker = struct {
             },
             else => unreachable,
         }
+    }
+
+    /// `A | B | C`: every alternative matches the subject and binds the same names, of the same
+    /// types, or none; the body sees the first alternative's.
+    fn orPattern(c: *Checker, i: Index, subject: Id) Error!void {
+        const alts = c.spanOf(c.node(i));
+        const mark = c.pushScope();
+        try c.pattern(alts[0], subject);
+        const first = try c.gpa.dupe(Binding, c.bindings.items[mark..]);
+        for (alts[1..]) |alt| {
+            c.bindings.shrinkRetainingCapacity(mark);
+            try c.pattern(alt, subject);
+            const these = c.bindings.items[mark..];
+            var same = these.len == first.len;
+            for (these) |b| {
+                const twin = for (first) |f| {
+                    if (std.mem.eql(u8, f.name, b.name)) break f;
+                } else null;
+                if (twin == null or !c.pool.unify(twin.?.type, b.type)) same = false;
+            }
+            if (!same) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("this alternative binds {s} and the first binds {s}; every alternative of an arm binds the same names, of the same types, or none", .{ try c.boundNames(these), try c.boundNames(first) }));
+        }
+        c.bindings.shrinkRetainingCapacity(mark);
+        try c.bindings.appendSlice(c.gpa, first);
+    }
+
+    fn boundNames(c: *Checker, bound: []const Binding) Error![]const u8 {
+        if (bound.len == 0) return "no names";
+        var names: std.ArrayList([]const u8) = .empty;
+        for (bound) |b| try names.append(c.gpa, b.name);
+        return c.joinAnd(names.items);
+    }
+
+    /// An arm's alternatives: those of `A | B`, or its one pattern.
+    fn alternatives(c: *Checker, p: Index) Error![]const u32 {
+        const n = c.node(p);
+        if (n.kind == .pat_or) return c.spanOf(n);
+        return c.gpa.dupe(u32, &.{p});
     }
 
     fn builtinVariant(name: []const u8) ?enum { some, none, ok, err } {
@@ -3665,6 +3761,95 @@ test "case: a missing variant is named; a catch-all arm on an enum names what it
         \\  end
         \\end
     , &.{"MO0308"});
+}
+
+test "grouped patterns: each alternative is an arm for exhaustiveness, and all bind the same names" {
+    try expectCodes(
+        \\module T.Grouped
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\  Dot
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n) | Square(n): n
+        \\    Dot: 0
+        \\  end
+        \\end
+        \\fn round?(s: Shape) : Bool
+        \\  case s
+        \\    Circle(_): true
+        \\    Square(_) | Dot: false
+        \\  end
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.GroupedMissing
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\  Dot
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n) | Square(n): n
+        \\  end
+        \\end
+    , &.{"MO0308"});
+    try expectWhat(
+        \\module T.GroupedNames
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n) | Square(_): n
+        \\  end
+        \\end
+    , "MO0212", "this alternative binds no names and the first binds n; every alternative of an arm binds the same names, of the same types, or none");
+    try expectCodes(
+        \\module T.GroupedCatchAll
+        \\enum Shape
+        \\  Circle(r: UInt32)
+        \\  Square(side: UInt32)
+        \\  Dot
+        \\end
+        \\fn size(s: Shape) : UInt32
+        \\  case s
+        \\    Circle(n): n
+        \\    Dot | _: 0
+        \\  end
+        \\end
+    , &.{"MO0309"});
+}
+
+test "values: the value of a pure call is dropped; an effectful call's is not" {
+    try expectWhat(
+        \\module T.DroppedValue
+        \\fn shout(out: Out, xs: List(String)) : UInt64
+        \\  xs.map(fn(x) x.size end)
+        \\  xs.size
+        \\end
+    , "MO0310", "the List(UInt64) from xs.map(fn(x) x.size end) is dropped, and a pure call does nothing else; bind it and use it, or remove the call.");
+    try expectCodes(
+        \\module T.DroppedValues
+        \\fn double(n: UInt8) : UInt8
+        \\  n * 2
+        \\end
+        \\fn told(out: Out) : UInt8
+        \\  out.write_line("told")
+        \\  1
+        \\end
+        \\fn shout(out: Out) : UInt8
+        \\  double(1)
+        \\  told(out)
+        \\  "x".size
+        \\  out.write_line("done")
+        \\  2
+        \\end
+    , &.{ "MO0310", "MO0310" });
 }
 
 test "values: a dropped Result, a stored or returned anonymous function, a default parameter" {

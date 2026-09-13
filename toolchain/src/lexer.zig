@@ -262,6 +262,7 @@ const Lexer = struct {
             '*' => try l.add(.star, start),
             '/' => try l.add(.slash, start),
             '%' => try l.add(.percent, start),
+            '|' => try l.add(.pipe, start),
             '_' => if (isAlnum(next) or next == '_') {
                 return l.fail("MO0001", start, "unexpected character: a name starts with a lowercase letter", why_unexpected);
             } else try l.add(.underscore, start),
