@@ -37,3 +37,32 @@ FAIL  property "a generated code is in its refinement": seed 1299120134 with cod
 ```
 
 What it cost logstat: the `Logstat.Stats` property over `any(List(Record))` was handed records with `status: 65535` and `status: 0`, which `Logstat.Parse` can never produce. A guard (`if records.all?(...)`) would throw away almost every seed, so the property instead generates plain numbers (`any(UInt16)`, `any(UInt8)`) and builds each record and the top through the refined types itself, so every value it passes is one the program can hold.
+
+## 2. `Fs.read_lines` hands back a `String` that is not UTF-8
+
+`String` is UTF-8 text (`toolchain/PRELUDE.md`), and `String.from_bytes` refuses bytes that are not (`examples/stdlib/strings.mo`: `String.from_bytes([99, 255]) is None`). A line read from a file holding those bytes is a `String` all the same, and it goes to stdout byte for byte.
+
+```
+module Probe.Utf
+
+intent "probe: a line read from a file that is not UTF-8"
+
+fn main(platform: Platform)
+  case platform.fs.scoped("data").read_only.read_lines("x.log", within: 1.minute)
+    Ok(lines):
+      for line in lines
+        platform.stdout.write_line("#{line.byte_size} bytes, from_bytes gives back text: #{String.from_bytes(line.bytes) is Some(_)}")
+      end
+    Error(_): platform.stderr.write_line("unread")
+  end
+end
+```
+
+With `printf 'ok\n/\xff\xfe\n' > data/x.log`, `mo run utf.mo` prints:
+
+```
+2 bytes, from_bytes gives back text: true
+3 bytes, from_bytes gives back text: false
+```
+
+What it cost logstat: nothing it has to act on. The spec says the files are UTF-8, so logstat relies on the type and adds no check of its own. A log line whose path is not UTF-8 is counted as a request and its path is printed as the bytes it holds; nothing crashes. Either `read_lines` should refuse the file (an `FsError`) or the line should not be a `String`.
