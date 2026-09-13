@@ -1,5 +1,5 @@
 module Effects.Http
-expose Fetched, Worker, Server, Servers, answer, fetch, answered?, echoed?
+expose Fetched, Worker, Server, Servers, Raw, Raws, answer, fetch, fetch_raw, answered?, echoed?, wired, created?
 
 intent "Serve HTTP from processes: the server accepts one exchange per message and hands it to a worker of its own, which answers GET /hello and POST /echo, and a test drives both through Http.fixture() with no real socket."
 
@@ -47,6 +47,38 @@ supervisor Servers(listener: HttpListener, exchange: Exchange)
   child Worker(exchange), restart: :always
 end
 
+process Raw(listener: Listener, wire: String)
+  state
+    served: UInt32
+  end
+
+  message Serve : Bool
+
+  fn update(state, message)
+    case message
+      Serve:
+        state.served += 1
+        wired(listener, wire) is Ok(_)
+    end
+  end
+end
+
+supervisor Raws(listener: Listener)
+  child Raw(listener, ""), restart: :always
+end
+
+fn wired(listener: Listener, wire: String) : Result(Bool, NetError)
+  conn = try listener.accept(within: 1.minute)
+  for _ in 0..100
+    if try conn.read_line(within: 1.minute) == Some("")
+      break
+    end
+  end
+  try conn.write(wire, within: 1.minute)
+  conn.close
+  Ok(true)
+end
+
 fn answer(request: Request) : Response
   if request.method == "GET" and request.path == "/hello"
     name = request.query.get("name") or "world"
@@ -74,6 +106,20 @@ end
 fn echoed?(got: Fetched, body: String, kind: String) : Bool
   case got
     Ok(response): response.body == body and response.headers.get("content-type") == Some(kind)
+    Error(_): true
+  end
+end
+
+fn fetch_raw(http: Http, raw: Handle(Raw), port: UInt16) : Fetched
+  raw.send(Serve)
+  http.send(Request(method: "GET", path: "/"), host: "localhost", port: port, within: 1.minute)
+end
+
+fn created?(got: Fetched) : Bool
+  case got
+    Ok(response):
+      joined = response.headers.get("x-a") == Some("1, 2")
+      response.status == 201 and response.body == "to the end" and joined
     Error(_): true
   end
 end
@@ -113,5 +159,12 @@ test "a port nothing listens on is Refused, and a request with no server to answ
   assert http.send(root, host: "localhost", port: listener.port, within: 1.ms) is Error(Timeout)
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
+test "a response with no content-length runs to the end of the stream, and its headers join as a request's do, unless a call fails"
+  http = Http.fixture()
+  assert Net.fixture().listen(0, within: 1.ms) is Ok(listener)
+  raw = Raw.start(listener, "HTTP/1.1 201 Created\r\nX-A: 1\r\nx-a: 2\r\n\r\nto the end")
+  assert created?(fetch_raw(http, raw, listener.port))
+end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
           proven: not run

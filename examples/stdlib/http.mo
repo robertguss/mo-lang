@@ -78,5 +78,49 @@ test "a body or a request line over 1 MiB is TooLarge, and a request cut short t
   assert exchanged(net, http, cut).got == Error(Timeout)
 end
 
-verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+test "a reply is written once: a bad status or header writes nothing, and a second reply is Closed"
+  net = Net.fixture()
+  http = Http.fixture()
+  assert http.listen(0, within: 1.ms) is Ok(listener)
+  assert net.connect("localhost", listener.port, within: 1.ms) is Ok(conn)
+  assert conn.write("GET / HTTP/1.1\r\n\r\n", within: 1.ms) is Ok(_)
+  assert listener.accept(within: 1.ms) is Ok(exchange)
+  assert exchange.reply(Response(status: 99, body: ""), within: 1.ms) is Error(Malformed)
+  split = Response(status: 200, headers: Map.new().set("x-bad", "a\nb"), body: "")
+  assert exchange.reply(split, within: 1.ms) is Error(Malformed)
+  headers = Map.new().set("Content-Length", "99").set("x-mo", "yes")
+  teapot = Response(status: 418, headers: headers, body: "short")
+  assert exchange.reply(teapot, within: 1.ms) is Ok(_)
+  assert exchange.reply(teapot, within: 1.ms) is Error(Closed)
+  wire = ["HTTP/1.1 418 ", "x-mo: yes", "content-length: 5", "connection: close", "", "short"]
+  for line in wire
+    assert conn.read_line(within: 1.ms) == Ok(Some(line))
+  end
+  assert conn.read_line(within: 1.ms) == Ok(None)
+end
+
+test "a request goes on the wire with its query encoded, a host header, and the runtime's content-length and connection"
+  net = Net.fixture()
+  http = Http.fixture()
+  assert net.listen(0, within: 1.ms) is Ok(listener)
+  port = listener.port
+  query = Map.new().set("q", "mo lang").set("a/b", "é")
+  headers = Map.new().set("Connection", "keep-alive").set("X-Mo", "1")
+  request = Request(method: "POST", path: "/find?x=1", query: query, headers: headers, body: "hi")
+  assert http.send(request, host: "localhost", port: port, within: 1.ms) is Error(Timeout)
+  assert listener.accept(within: 1.ms) is Ok(conn)
+  first = "POST /find?x=1&q=mo%20lang&a%2Fb=%C3%A9 HTTP/1.1"
+  host = "host: localhost:#{port}"
+  wire = [first, host, "X-Mo: 1", "content-length: 2", "connection: close", "", "hi"]
+  for line in wire
+    assert conn.read_line(within: 1.ms) == Ok(Some(line))
+  end
+  assert conn.read_line(within: 1.ms) == Ok(None)
+  bad = Request(method: "GE T", path: "/")
+  assert http.send(bad, host: "localhost", port: port, within: 1.ms) is Error(Malformed)
+  relative = Request(method: "GET", path: "nope")
+  assert http.send(relative, host: "localhost", port: port, within: 1.ms) is Error(Malformed)
+end
+
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
           proven: not run
