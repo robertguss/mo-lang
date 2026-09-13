@@ -16,6 +16,13 @@
 //! keys in a map and then gets each one, in this process. A `kv-10k-get` row times 10_000
 //! GETs over one real socket to programs/kv, served by `mo run` (MO_EXE) in a process of
 //! its own, each GET waiting for its answer.
+//! A `logstat-4k-c` row times program 2 built by `mo build` (cbuild.zig) over the same 4_000
+//! lines, the binary a process of its own with its output discarded, and names its ratio to
+//! `logstat-4k`; the same build with wrapping arithmetic and no overflow checks (-fwrapv,
+//! for this comparison only, never shipped) runs beside it, so the checks' cost reads off the
+//! difference. A `build-logstat` row times `mo build` of program 2, best of three: loading,
+//! checking, and emitting the C, then `zig cc`, each build a real compile (a define that
+//! changes every time keeps zig cc from answering out of its cache).
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -162,6 +169,18 @@ pub fn main(init: std.process.Init) !void {
         try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "logstat-4k", "n/a", "n/a" });
     }
 
+    const compiled = try logstat4kC(arena, io, init.environ_map, root, iters);
+    if (compiled) |c| {
+        const us: u64 = @intCast(@divTrunc(c.run_ns, 1000));
+        const wrap_us: u64 = @intCast(@divTrunc(c.wrap_ns, 1000));
+        try out.print("{s:<8} {d:>9} µs {d:>9} µs a line  (4000 lines, a process of its own", .{ "logstat-4k-c", us, us / log_lines });
+        if (logstat_ns) |ns| try out.print("; the interpreter's logstat-4k takes {d:.1}x as long", .{@as(f64, @floatFromInt(ns)) / @as(f64, @floatFromInt(c.run_ns))});
+        try out.print(")\n{s:<8} {d:>9} µs without overflow checks (-fwrapv): the checks cost {d:.1}%\n", .{ "logstat-4k-c-wrap", wrap_us, (@as(f64, @floatFromInt(c.run_ns)) / @as(f64, @floatFromInt(c.wrap_ns)) - 1.0) * 100.0 });
+        try out.print("{s:<8} {d:>9} µs  (load, check, and emit C {d} µs; zig cc {d} µs)\n", .{ "build-logstat", @as(u64, @intCast(@divTrunc(c.emit_ns + c.cc_ns, 1000))), @as(u64, @intCast(@divTrunc(c.emit_ns, 1000))), @as(u64, @intCast(@divTrunc(c.cc_ns, 1000))) });
+    } else {
+        try out.print("{s:<8} {s:>12} {s:>12}\n{s:<8} {s:>12} {s:>12}\n", .{ "logstat-4k-c", "n/a", "n/a", "build-logstat", "n/a", "n/a" });
+    }
+
     const sim = try sim100(io, paths, programs, iters, &scratch);
     if (sim) |t| {
         const us: u64 = @intCast(@divTrunc(t.sim_ns, 1000));
@@ -204,7 +223,7 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled);
 }
 
 const sim_seeds = 100;
@@ -286,6 +305,64 @@ fn logstat4k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
         if (ns < best) best = ns;
     }
     return best;
+}
+
+const LogstatC = struct { run_ns: i96, wrap_ns: i96, emit_ns: i96, cc_ns: i96 };
+
+const build_dir = ".zig-cache/bench/mo-build";
+
+/// Program 2 as `mo build` builds it: the binary's best of `iters` runs over the logstat-4k
+/// log, a process of its own with its output discarded; the same with -fwrapv and no overflow
+/// checks; and the build's best of three, loading, checking, and emitting apart from zig cc.
+/// Null when the corpus has no logstat, a build fails, or a run does not exit 0.
+fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, iters: u32) !?LogstatC {
+    const main_path = try std.fs.path.join(arena, &.{ root, "programs/logstat/main.mo" });
+    Io.Dir.cwd().access(io, main_path, .{}) catch return null;
+    try writeLog(arena, io);
+    const most = std.math.maxInt(i96);
+    var result: LogstatC = .{ .run_ns = most, .wrap_ns = most, .emit_ns = most, .cc_ns = most };
+    for ([_]bool{ false, true }) |wrap| {
+        var binary: []const u8 = "";
+        var b: u32 = 0;
+        while (b < @min(iters, 3)) : (b += 1) {
+            const t0 = Io.Clock.Timestamp.now(io, .awake);
+            var diags: mo.diag.List = .empty;
+            const program = try mo.program.load(arena, io, main_path, &diags);
+            const checked = mo.pipeline.buildable(arena, program, false, &diags) catch |e| {
+                std.debug.print("logstat-4k-c: {t}: {s}\n", .{ e, if (diags.items.len > 0) diags.items[0].what else "" });
+                return null;
+            };
+            const front_ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+            const salt: u64 = @intCast(@mod(Io.Clock.Timestamp.now(io, .real).raw.toNanoseconds(), std.math.maxInt(u63)));
+            const options: mo.cbuild.Options = .{ .name = if (wrap) "logstat-wrap" else "logstat", .wrap = wrap, .out_dir = build_dir, .salt = salt };
+            switch (try mo.cbuild.build(arena, io, environ, program, &checked, options)) {
+                .built => |built| {
+                    binary = built.binary;
+                    if (!wrap) {
+                        result.emit_ns = @min(result.emit_ns, front_ns + built.emit_ns);
+                        result.cc_ns = @min(result.cc_ns, built.cc_ns);
+                    }
+                },
+                .refused, .failed => |why| {
+                    std.debug.print("logstat-4k-c: {s}\n", .{why});
+                    return null;
+                },
+            }
+        }
+        var it: u32 = 0;
+        while (it < iters) : (it += 1) {
+            const t0 = Io.Clock.Timestamp.now(io, .awake);
+            const ran = try std.process.run(arena, io, .{ .argv = &.{ binary, log_dir } });
+            const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+            if (ran.term != .exited or ran.term.exited != 0) {
+                std.debug.print("logstat-4k-c: {s} ended with {any}: {s}\n", .{ binary, ran.term, ran.stderr });
+                return null;
+            }
+            const best = if (wrap) &result.wrap_ns else &result.run_ns;
+            if (ns < best.*) best.* = ns;
+        }
+    }
+    return result;
 }
 
 const echo_trips = 1_000;
@@ -544,7 +621,7 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 /// the echo-1k row (its count is the round trips), the map-100k row (its count is the keys),
 /// and the kv-10k-get row (its count is the GETs): date, stage, count, best total µs ("n/a"
 /// when unimplemented).
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96) !void {
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -590,5 +667,23 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         try w.interface.print("{d}\tkv-10k-get\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), kv_gets, @as(u64, @intCast(@divTrunc(ns, 1000))) });
     } else {
         try w.interface.print("{d}\tkv-10k-get\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), kv_gets });
+    }
+    // The compiled logstat: its run, its run without overflow checks, and its build whole,
+    // then the build's two parts.
+    if (compiled) |c| {
+        const us = struct {
+            fn of(ns: i96) u64 {
+                return @intCast(@divTrunc(ns, 1000));
+            }
+        }.of;
+        try w.interface.print("{d}\tlogstat-4k-c\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), log_lines, us(c.run_ns) });
+        try w.interface.print("{d}\tlogstat-4k-c-wrap\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), log_lines, us(c.wrap_ns) });
+        try w.interface.print("{d}\tbuild-logstat\t1\t{d}\n", .{ @as(u64, @intCast(day)), us(c.emit_ns + c.cc_ns) });
+        try w.interface.print("{d}\tbuild-logstat-emit\t1\t{d}\n", .{ @as(u64, @intCast(day)), us(c.emit_ns) });
+        try w.interface.print("{d}\tbuild-logstat-cc\t1\t{d}\n", .{ @as(u64, @intCast(day)), us(c.cc_ns) });
+    } else {
+        for ([_][]const u8{ "logstat-4k-c", "logstat-4k-c-wrap", "build-logstat", "build-logstat-emit", "build-logstat-cc" }) |row| {
+            try w.interface.print("{d}\t{s}\tn/a\tn/a\n", .{ @as(u64, @intCast(day)), row });
+        }
     }
 }

@@ -29,6 +29,9 @@ pub const Options = struct {
     /// Wrapping arithmetic with no overflow checks, compiled with -fwrapv: the bench's
     /// comparison build, which measures what the checks cost. Never a flag of `mo build`.
     wrap: bool = false,
+    /// A define that makes zig cc miss its cache, so a build is timed as a compile and not as
+    /// a cache hit: the bench's, never a flag of `mo build`.
+    salt: ?u64 = null,
     /// Where builds go, under the working directory.
     out_dir: []const u8 = "zig-out/mo-build",
 };
@@ -81,6 +84,7 @@ pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ
     var argv: std.ArrayList([]const u8) = .empty;
     try argv.appendSlice(gpa, &.{ zig, "cc", "-std=c11", "-Wall", "-Werror", "-O2" });
     if (options.wrap) try argv.appendSlice(gpa, &.{ "-fwrapv", "-DMO_WRAP" });
+    if (options.salt) |salt| try argv.append(gpa, try std.fmt.allocPrint(gpa, "-DMO_BUILD_SALT={d}", .{salt}));
     if (options.target) |t| {
         try argv.appendSlice(gpa, &.{ "-target", t });
         if (std.mem.indexOf(u8, t, "linux") != null) try argv.append(gpa, "-static");
