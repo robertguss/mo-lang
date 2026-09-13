@@ -17,6 +17,8 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 
 `mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A program's processes run there too, each on a thread of its own, taking turns, so one waiting on a socket does not hold up the others (`toolchain/src/turns.zig`). A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
 
+`mo build <file>` compiles a program to C and links it with `zig cc` into one binary (`toolchain/src/emit_c.zig`, `toolchain/runtime/mo_rt.c`); `mo build --tests <file>` makes a binary that runs the file's tests. The interpreter is the reference, so the corpus test sets the two side by side: every file outside `rejects/` is built with `--tests` and must print exactly what `mo test` prints and exit as it exits, and every program is built from its own folder and, once per `# run:` line, must print the same stdout and stderr and exit with the same code as `mo run`. A program that declares a process or calls a `Net` row does not compile to C yet, and `mo build` must refuse it with a sentence saying so; the corpus's process files and `programs/echo` and `programs/kv` are those.
+
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
 2. `basics/numbers.mo`: sized integers, `10_000`, `checked_add`, `saturating_sub`, `wrapping_mul`, a float
