@@ -5,7 +5,7 @@ updated: 2026-09-12
 type: plan
 tags: [compiler, roadmap]
 sources: [spec/grammar.md, spec/design-v0/07-toolchain.md]
-status: in-progress
+status: done
 ---
 
 # Interpreter step 1: lexer and parser, brief for the worker

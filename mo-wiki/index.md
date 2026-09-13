@@ -98,6 +98,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-2|Interpreter step 2: the tier-1 checker, brief for the worker]] — prelude, names and types, the laws, capabilities, rejects/ fails by code
 - [[interpreter-step-1|Interpreter step 1: lexer and parser, brief for the worker]] — corpus catches up with the Session 5 decisions, then lexer, parser, corpus test, bench rows
 - [[model-bakeoff|Model bake-off: Opus vs Grok vs Codex as workers]] — same corpus brief to three models, one rubric, Robert picks
 - [[corpus|Corpus: brief for the worker session]] — 50 tiny programs in examples/, one construct each, plus rejects/ that must not compile

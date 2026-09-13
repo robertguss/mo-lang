@@ -53,6 +53,10 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `main` is out of the milestone | Fable | provisional | program 1 |
 | Grammar fixes: `cmp` with `is`, `assert` in `stmt`, `old` in `invariant`, `never` takes a bare call, `add` left-assoc, `params_untyped`, comprehension body is a block | Fable | provisional | the parser |
 
+| `invariant` block is true when broken, same reading as `never` | Fable | provisional | tier 2 |
+| A supervisor passes a sibling's handle as its own parameter; `main` orders the starts | Fable | provisional | program 1 |
+| Step 1 accepted: lexer and parser by Opus, all 50 files parse, 23 minutes of worker time | Fable | — | the checker |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
