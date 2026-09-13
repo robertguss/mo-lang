@@ -30,5 +30,6 @@ Recorded in `HANDOFF.md` at session end.
 - [[session-04]]
 - [[decision-log]]
 - [[interpreter-step-1]]
+- [[interpreter-step-2]]
 - [[model-bakeoff]]
 - [[corpus]]
