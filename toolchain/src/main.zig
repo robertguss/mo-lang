@@ -25,7 +25,8 @@
 //!     --no-contracts     the binary does not check requires, ensures, or refinements, which
 //!                        every build checks by default (chapter 3); for a measurement only,
 //!                        and it says so on stderr
-//!     --tests            the binary runs the file's tests and prints what mo test prints
+//!     --tests            the binary runs the file's tests and prints what mo test prints,
+//!                        process tests in the fixed order (--sim has no compiled form)
 //!     --target <triple>  cross-compiles for a zig target, such as x86_64-linux-musl
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
 //!                        MO0312), formats, and rewrites the file; one line per fix
@@ -211,11 +212,6 @@ pub fn main(init: std.process.Init) !void {
         }
         switch (try mo.cbuild.build(arena, io, init.environ_map, program, &checked, options)) {
             .built => |b| try out.print("{s}\n", .{b.binary}),
-            .refused => |why| {
-                try err.print("mo build: {s}: {s}\n", .{ path, why });
-                err.flush() catch {};
-                std.process.exit(1);
-            },
             .failed => |why| {
                 try err.print("mo build: {s}: {s}\n", .{ path, why });
                 err.flush() catch {};

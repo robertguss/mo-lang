@@ -16,8 +16,8 @@
 //! as roots, as the vm passes a frame's locals. Temporaries are block-scoped. A process is a C
 //! function each for its first state, its update, and each invariant, and a supervisor's child
 //! line one for its arguments and one for its window, in tables the runtime's scheduler reads
-//! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. A program
-//! that calls a Net row is refused: the network runs on the interpreter only.
+//! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. The Net
+//! rows are the runtime's: real sockets under main, Net.fixture() in a test binary.
 const std = @import("std");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
@@ -40,40 +40,19 @@ pub const Options = struct {
     contracts: bool = true,
 };
 
-pub const Output = union(enum) {
-    c: []const u8,
-    /// What the program uses that does not compile to C yet, as a sentence.
-    refused: []const u8,
-};
-
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
 const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
-pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error!Output {
-    if (try refusal(gpa, checked)) |why| return .{ .refused = why };
+pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
     var e: Emitter = .{ .gpa = gpa, .k = checked, .tree = checked.tree, .prog = prog, .options = options };
     e.recorded = try bytecode.recordedTypes(gpa, checked);
     for (fixed_names) |n| _ = try e.nameId(n);
     try e.indexProcesses();
     try e.run();
-    return .{ .c = try e.assemble() };
-}
-
-/// Why a program does not compile to C yet, or null.
-pub fn refusal(gpa: std.mem.Allocator, k: *const check.Checked) Error!?[]const u8 {
-    for (k.callee) |c| switch (c) {
-        .prelude => |r| {
-            const row = prelude.fns[r];
-            const head = recvHead(row.recv);
-            const net = std.mem.eql(u8, head, "Net") or std.mem.eql(u8, head, "Listener") or std.mem.eql(u8, head, "Conn") or (std.mem.eql(u8, head, "Platform") and std.mem.eql(u8, row.name, "net"));
-            if (net) return try std.fmt.allocPrint(gpa, "it calls {s}.{s}, and the network does not compile to C yet; run it with mo run", .{ head, row.name });
-        },
-        else => {},
-    };
-    return null;
+    return e.assemble();
 }
 
 fn recvHead(recv: []const u8) []const u8 {

@@ -22,8 +22,8 @@
 //! contracts on as in every build, and set beside the interpreter, which is the reference: each module's tests built with
 //! `--tests` must print what `mo test` prints and exit as it exits, and each program's binary
 //! must print the same stdout and stderr and exit with the same code as `mo run`, once per
-//! `# run:` line. Processes compile; a program that calls a Net row must be refused by
-//! `mo build`, with the sentence emit_c.refusal gives.
+//! `# run:` line. No file is refused: a module's process tests run in the fixed order in its test
+//! binary, and echo and kv serve over real sockets from their binaries as under `mo run`.
 const std = @import("std");
 const Io = std.Io;
 const pipeline = @import("pipeline.zig");
@@ -32,7 +32,6 @@ const runner = @import("runner.zig");
 const diag = @import("diag.zig");
 const fmt = @import("fmt.zig");
 const errors = @import("errors.zig");
-const emit_c = @import("emit_c.zig");
 
 pub const Tally = struct {
     passed: u32 = 0,
@@ -217,17 +216,9 @@ pub fn checkProgram(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []
     return ok;
 }
 
-/// What the differential test found: files whose build matched the interpreter, files mo
-/// build refused as emit_c says it must, and files that differ.
-pub const Built = struct { same: u32 = 0, refused: u32 = 0, wrong: u32 = 0 };
-
-/// Why emit_c refuses the program `rel` loads, or null when it compiles.
-fn expectedRefusal(arena: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8) !?[]const u8 {
-    var diags: diag.List = .empty;
-    const prog = try program.load(arena, io, try std.fs.path.join(arena, &.{ root, rel }), &diags);
-    const checked = pipeline.buildable(arena, prog, true, &diags) catch return null;
-    return emit_c.refusal(arena, &checked);
-}
+/// What the differential test found: files whose build matched the interpreter, and files that
+/// differ.
+pub const Built = struct { same: u32 = 0, wrong: u32 = 0 };
 
 /// A build's name: the path with its `/` and `.` as `_`, so no build is itself a .mo file.
 fn buildKey(arena: std.mem.Allocator, rel: []const u8) ![]const u8 {
@@ -243,11 +234,6 @@ fn sameRun(a: std.process.RunResult, b: std.process.RunResult) bool {
     return exits and std.mem.eql(u8, a.stdout, b.stdout) and std.mem.eql(u8, a.stderr, b.stderr);
 }
 
-/// A refused build must say what emit_c says, and exit 1.
-fn refusedAsExpected(built: std.process.RunResult, why: []const u8) bool {
-    return built.term == .exited and built.term.exited == 1 and std.mem.indexOf(u8, built.stderr, why) != null;
-}
-
 fn printDifference(what: []const u8, interp: std.process.RunResult, compiled: std.process.RunResult) void {
     std.debug.print("corpus: {s} differs from the interpreter\n  mo:  {any}\n{s}{s}\n  C:   {any}\n{s}{s}\n", .{ what, interp.term, interp.stdout, interp.stderr, compiled.term, compiled.stdout, compiled.stderr });
 }
@@ -259,13 +245,6 @@ pub fn checkBuiltTests(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, root:
     const arena = arena_state.allocator();
     const key = try buildKey(arena, rel);
     const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--tests", "-o", key, rel }, .cwd = .{ .path = root } });
-    if (try expectedRefusal(arena, io, root, rel)) |why| {
-        if (refusedAsExpected(built, why)) tally.refused += 1 else {
-            std.debug.print("corpus: mo build --tests {s} should refuse ({s}), but ended with {any}: {s}\n", .{ rel, why, built.term, built.stderr });
-            tally.wrong += 1;
-        }
-        return;
-    }
     if (built.term != .exited or built.term.exited != 0) {
         std.debug.print("corpus: mo build --tests {s} failed: {s}\n", .{ rel, built.stderr });
         tally.wrong += 1;
@@ -296,13 +275,6 @@ pub fn checkBuiltProgram(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, roo
     const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", file, "-o", name }, .cwd = .{ .path = folder } });
     const builds = try std.fs.path.join(arena, &.{ folder, "zig-out" });
     defer Io.Dir.cwd().deleteTree(io, builds) catch {};
-    if (try expectedRefusal(arena, io, root, rel)) |why| {
-        if (refusedAsExpected(built, why)) tally.refused += 1 else {
-            std.debug.print("corpus: mo build {s} should refuse ({s}), but ended with {any}: {s}\n", .{ rel, why, built.term, built.stderr });
-            tally.wrong += 1;
-        }
-        return;
-    }
     if (built.term != .exited or built.term.exited != 0) {
         std.debug.print("corpus: mo build {s} failed: {s}\n", .{ rel, built.stderr });
         tally.wrong += 1;
@@ -578,9 +550,8 @@ test "corpus: every module's tests and every program, built by mo build, print w
     try std.testing.expectEqual(@as(u32, 0), modules.wrong);
     try std.testing.expectEqual(@as(u32, 0), programs.wrong);
     try std.testing.expect(modules.same > 0 and programs.same > 0);
-    // Every module was compared or refused as emit_c says, and the corpus's network modules are refused.
-    try std.testing.expectEqual(outside_rejects, modules.same + modules.refused);
-    try std.testing.expect(modules.refused > 0);
+    // Every module was built and compared, the process and network modules among them.
+    try std.testing.expectEqual(outside_rejects, modules.same);
 }
 
 test "a build is named so that it is never itself a .mo file" {

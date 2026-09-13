@@ -359,7 +359,7 @@ fn logstat4kC(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envi
                         result.cc_ns = @min(result.cc_ns, built.cc_ns);
                     }
                 },
-                .refused, .failed => |why| {
+                .failed => |why| {
                     std.debug.print("logstat-4k-c: {s}\n", .{why});
                     return null;
                 },
