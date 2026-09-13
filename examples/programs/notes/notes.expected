@@ -1,0 +1,170 @@
+> - GET /health
+200 {"notes": 3, "clients": 2, "uptime_ms": <uptime_ms>}
+> - GET /notes
+401 {"error": "a request needs authorization: Bearer <token>"}
+> ada GET /notes
+200 {"notes": [{"id": "n_1", "title": "groceries", "body": "eggs\nmilk", "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "n_4", "title": "to do: taxes", "body": "before april", "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> ada GET /notes?prefix=to
+200 {"notes": [{"id": "n_4", "title": "to do: taxes", "body": "before april", "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> ada GET /notes/n_1
+200 {"id": "n_1", "title": "groceries", "body": "eggs\nmilk", "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> grace GET /notes/n_1
+404 {"error": "no such note"}
+> ada GET /notes/n_2
+404 {"error": "no such note"}
+> grace GET /notes/n_5
+404 {"error": "no such note"}
+> ada POST /notes {"title": "call home", "body": "sunday\nafter lunch"}
+201 {"id": "n_101", "title": "call home", "body": "sunday\nafter lunch", "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada PUT /notes/n_101 {"title": "call home again", "body": "next sunday"}
+200 {"id": "n_101", "title": "call home again", "body": "next sunday", "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> grace PUT /notes/n_101 {"title": "not yours", "body": ""}
+404 {"error": "no such note"}
+> grace DELETE /notes/n_101
+404 {"error": "no such note"}
+> ada GET /notes/n_101
+200 {"id": "n_101", "title": "call home again", "body": "next sunday", "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada DELETE /notes/n_4
+204
+> ada DELETE /notes/n_4
+404 {"error": "no such note"}
+> ada POST /notes this is not json
+400 {"error": "the body is not JSON"}
+> ada POST /notes {"title": "", "body": "an empty title"}
+400 {"error": "title must be 1 to 200 bytes with no control characters"}
+> ada POST /notes {"body": "no title at all"}
+400 {"error": "title is missing"}
+> ada POST /notes {"title": 7, "body": ""}
+400 {"error": "title must be a string"}
+> ada PATCH /notes/n_1
+405 {"error": "this route takes GET, PUT, DELETE"}
+> ada GET /nowhere
+404 {"error": "no route /nowhere"}
+> bad.token GET /notes
+401 {"error": "a request needs authorization: Bearer <token>"}
+> - GET /health
+200 {"notes": 3, "clients": 2, "uptime_ms": <uptime_ms>}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+200 {"notes": []}
+> busy GET /notes
+429 {"error": "rate limited", "retry_after_ms": <retry_after_ms>}
+> ada GET /notes
+200 {"notes": [{"id": "n_1", "title": "groceries", "body": "eggs\nmilk", "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "n_101", "title": "call home again", "body": "next sunday", "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
