@@ -2,7 +2,7 @@
 
 The first shelf of chapter 6: first-party, audited once, the only code in a Mo program that is not yours. This chapter is the table a reader checks a call against. Every row is a built-in of the interpreter (`toolchain/src/vm.zig`), listed again as data in `toolchain/src/prelude.zig` and `toolchain/PRELUDE.md`, and exercised by one corpus file per group under `examples/stdlib/`. **A call that is not a row here or in `PRELUDE.md` does not exist.**
 
-This is the part of the box the first three programs need (`examples/GAPS.md`), not the whole box. Regex, HTTP, crypto, compression, and database drivers come when a program demands them.
+This is the part of the box the first three programs need (`examples/GAPS.md`), and HTTP for the fourth (`## Http`), not the whole box. Regex, TLS, crypto, compression, and database drivers come when a program demands them.
 
 ## Rules for every row
 
