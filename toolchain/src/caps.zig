@@ -25,7 +25,7 @@ const Id = types.Id;
 
 pub const Error = error{OutOfMemory};
 
-pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main, authority_captured };
+pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main, authority_captured, moved };
 
 pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .missing_within = .{ .code = "MO0401", .category = .capabilities, .what = "<call> has no within: deadline; add one, such as within: 100.ms.", .why = "Every call that can wait carries a deadline (chapter 2, bounding laws), so nothing blocks forever; a timeout comes back as an ordinary error the caller handles.", .fixes = &.{} },
@@ -36,6 +36,7 @@ pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .recipe_needs = .{ .code = "MO0406", .category = .capabilities, .what = "<function> takes a <Capability>, but recipe <Recipe> needs <capabilities>; add <Capability> to its needs line.", .why = "A recipe's needs line is the list of capabilities its implementation may take (chapter 6), so every capability in its signatures is named there, and only capabilities are.", .fixes = &.{} },
     .platform_escapes = .{ .code = "MO0407", .category = .capabilities, .what = "<function> takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .why = "A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds.", .fixes = &.{} },
     .authority_captured = .{ .code = "MO0409", .category = .capabilities, .what = "the anonymous function captures <name>, a <Capability or Handle>; pass <name> as a parameter to a named function instead.", .why = "An anonymous function captures read-only, but a capability or a handle is authority: captured, it lets a call that takes only data, such as map, perform an effect no signature shows (chapter 3, effects). Authority travels only as a parameter, so a named function that takes it says what it touches.", .fixes = &.{} },
+    .moved = .{ .code = "MO0410", .category = .capabilities, .what = "<name> went to another process in <Message>, so it is no longer this function's; use it before the send, or not at all.", .why = "A message may carry a capability its message line declares (chapter 3, processes; step 20), and a capability in a message moves rather than being copied: once sent it is the receiving process's, so two processes never act through one connection at once. The checker refuses every use of the name after the send in the function that sent it, and on the next pass of a for; a copy it cannot see, such as a start argument sent in one update and used in the next, still reaches the same connection.", .fixes = &.{} },
     .no_main = .{ .code = "MO0408", .category = .capabilities, .what = "this module has no fn main(platform: Platform), so mo run has nothing to run; mo test runs its tests", .why = "mo run starts a program at fn main(platform: Platform), the one place it receives its capabilities (Q18). A module without main has nothing to run; mo test runs its tests.", .fixes = &.{} },
 });
 
@@ -47,6 +48,7 @@ pub fn check(gpa: std.mem.Allocator, checked: checker.Checked, out: *diag.List) 
     try c.platformUses();
     try c.flowRules();
     try c.captures();
+    try c.moves();
 }
 
 /// A run of nodes that belong to one declaration, one test, or one never.
@@ -158,6 +160,16 @@ const Caps = struct {
         return false;
     }
 
+    /// A process whose message lines declare a capability or a handle receives authority
+    /// through its protocol (step 20), so its update is not pure.
+    fn messagesHaveCaps(c: *Caps, d: checker.Decl) bool {
+        if (d.kind != .process) return false;
+        for (c.k.variants[d.variants.start..d.variants.end]) |v| {
+            for (c.k.fields[v.fields.start..v.fields.end]) |f| if (c.capIn(f.type, 0) != null) return true;
+        }
+        return false;
+    }
+
     fn sigOf(c: *Caps, n: Index) ?checker.FnSig {
         for (c.k.sigs) |s| if (s.node == n) return s;
         return null;
@@ -206,7 +218,7 @@ const Caps = struct {
                 .never => try c.addUnit(.{ .kind = .never, .first = prev + 1, .last = it }),
                 .process_decl, .supervisor_decl => {
                     const d = c.k.findDeclAt(it, c.text(n.main_token));
-                    const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) else false;
+                    const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) or c.messagesHaveCaps(c.k.decls[x]) else false;
                     try c.addUnit(.{ .kind = if (n.kind == .process_decl) .process else .supervisor, .name = c.text(n.main_token), .first = prev + 1, .last = it, .has_caps = has });
                 },
                 else => try c.addUnit(.{ .kind = .other, .first = prev + 1, .last = it }),
@@ -230,7 +242,9 @@ const Caps = struct {
                 .struct_, .process => for (ranges) |r| try c.fieldCaps(r),
                 else => {},
             }
-            if (d.kind == .enum_ or d.kind == .process) {
+            // A message line may declare a capability or a handle (step 20): the protocol
+            // shows the authority the process receives. A struct, a state, or an enum may not.
+            if (d.kind == .enum_) {
                 for (c.k.variants[d.variants.start..d.variants.end]) |v| try c.fieldCaps(v.fields);
             }
         }
@@ -648,6 +662,133 @@ const Caps = struct {
         return a.tag == .handle and b.tag == .handle and a.a == b.a;
     }
 
+    // ---- a capability in a message moves (step 20)
+
+    /// Every capability a send or an ask puts in a message by its name: each later use of
+    /// that name in the unit is refused (MO0410). "Later" follows the blocks: the statements
+    /// after the send, the rest of the statement it is in, and in a for body the whole body,
+    /// which runs again; not another arm of an if or a case the send is in. A statement's
+    /// nodes are the run of indices that ends at it, as an item's are.
+    fn moves(c: *Caps) Error!void {
+        var after: std.ArrayList(NodeRun) = .empty;
+        var reported: std.ArrayList(Index) = .empty;
+        for (c.units.items) |u| {
+            const top = c.unitStatements(u) orelse continue;
+            var i = u.first;
+            while (i <= u.last) : (i += 1) {
+                const n = c.node(i);
+                if (n.kind != .member_call) continue;
+                const row = switch (c.k.callee[i]) {
+                    .prelude => |p| prelude.fns[p],
+                    else => continue,
+                };
+                if (!std.mem.startsWith(u8, row.recv, "Handle")) continue;
+                if (!std.mem.eql(u8, row.name, "send") and !std.mem.eql(u8, row.name, "ask")) continue;
+                const message = for (c.spanAt(n.rhs)) |a| {
+                    if (c.node(a).kind != .named_arg) break a;
+                } else continue;
+                const m = c.node(message);
+                if (m.kind != .call or c.node(m.lhs).kind != .type_name_ref) continue;
+                for (c.spanAt(m.rhs)) |fa| {
+                    const v = if (c.node(fa).kind == .named_arg) c.node(fa).lhs else fa;
+                    if (c.node(v).kind != .name_ref or c.k.binding_of.len == 0 or c.k.binding_of[v] == 0) continue;
+                    if (c.baseTag(c.k.typeOf(v)).tag != .cap) continue;
+                    after.clearRetainingCapacity();
+                    reported.clearRetainingCapacity();
+                    switch (top) {
+                        .block => |stmts| try c.runsAfter(stmts, u.first, i, &after),
+                        .one => |s| if (i <= s) try c.runsWithin(s, u.first, i, &after),
+                    }
+                    for (after.items) |r| {
+                        var j = r.lo;
+                        while (j <= r.hi) : (j += 1) {
+                            if (c.node(j).kind != .name_ref or c.k.binding_of[j] != c.k.binding_of[v]) continue;
+                            if (std.mem.indexOfScalar(Index, reported.items, j) != null) continue;
+                            try reported.append(c.gpa, j);
+                            const name = c.text(c.node(j).main_token);
+                            try c.report(.moved, c.node(j).main_token, try c.print("{s} went to another process in {s}, so it is no longer this function's; use it before the send, or not at all.", .{ name, c.text(c.node(m.lhs).main_token) }));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Inclusive node indices.
+    const NodeRun = struct { lo: Index, hi: Index };
+
+    /// The statements a unit runs: a function's body or a test's, or a process's update,
+    /// whose case is its one statement.
+    const Top = union(enum) { block: []const u32, one: Index };
+
+    fn unitStatements(c: *Caps, u: Unit) ?Top {
+        const n = c.node(u.last);
+        switch (u.kind) {
+            .function => {
+                if (n.kind != .fn_decl or n.rhs == 0) return null;
+                const body = c.k.tree.extraData(ast.FnBody, n.rhs);
+                return .{ .block = c.k.tree.span(body.start, body.end) };
+            },
+            .test_block => return if (n.kind == .test_decl or n.kind == .test_rejects) .{ .block = c.k.tree.span(n.lhs, n.rhs) } else null,
+            .process => {
+                if (n.kind != .process_decl) return null;
+                const d = c.k.tree.extraData(ast.Process, n.lhs);
+                if (d.update == 0 or c.node(d.update).lhs == 0) return null;
+                return .{ .one = c.node(d.update).lhs };
+            },
+            else => return null,
+        }
+    }
+
+    /// The runs of nodes that execute after node `at` inside the block `stmts`, whose first
+    /// statement's nodes start at `lo`.
+    fn runsAfter(c: *Caps, stmts: []const u32, lo: Index, at: Index, out: *std.ArrayList(NodeRun)) Error!void {
+        const k = for (stmts, 0..) |s, k| {
+            if (at <= s) break k;
+        } else return;
+        if (k + 1 < stmts.len) try out.append(c.gpa, .{ .lo = stmts[k] + 1, .hi = stmts[stmts.len - 1] });
+        try c.runsWithin(stmts[k], if (k == 0) lo else stmts[k - 1] + 1, at, out);
+    }
+
+    /// The nodes of statement `s` (from `lo`) that execute after node `at` inside it.
+    fn runsWithin(c: *Caps, s: Index, lo: Index, at: Index, out: *std.ArrayList(NodeRun)) Error!void {
+        const n = c.node(s);
+        switch (n.kind) {
+            .if_stmt, .if_expr => if (at > n.lhs) {
+                const d = c.k.tree.extraData(ast.If, n.rhs);
+                const then = c.k.tree.span(d.then_start, d.then_end);
+                const other = c.k.tree.span(d.else_start, d.else_end);
+                if (then.len > 0 and at <= then[then.len - 1]) return c.runsAfter(then, n.lhs + 1, at, out);
+                if (other.len > 0 and at <= other[other.len - 1]) return c.runsAfter(other, if (then.len > 0) then[then.len - 1] + 1 else n.lhs + 1, at, out);
+            },
+            .case_stmt, .case_expr => if (at > n.lhs) {
+                for (c.spanAt(n.rhs)) |a| {
+                    if (at > a) continue;
+                    const d = c.k.tree.extraData(ast.Arm, c.node(a).rhs);
+                    const body = c.k.tree.span(d.body_start, d.body_end);
+                    const head = if (d.guard != 0) d.guard else c.node(a).lhs;
+                    if (body.len > 0 and at > head and at <= body[body.len - 1]) return c.runsAfter(body, head + 1, at, out);
+                    break;
+                }
+            },
+            .for_stmt => {
+                const body = c.spanAt(n.rhs);
+                if (body.len > 0 and at > n.lhs and at <= body[body.len - 1]) {
+                    // The body runs again, so all of it comes after.
+                    try out.append(c.gpa, .{ .lo = n.lhs + 1, .hi = body[body.len - 1] });
+                    return c.runsAfter(body, n.lhs + 1, at, out);
+                }
+            },
+            .binding, .var_binding, .expr_stmt, .return_stmt => if (n.lhs != 0 and at <= n.lhs) switch (c.node(n.lhs).kind) {
+                .if_expr, .case_expr => return c.runsWithin(n.lhs, lo, at, out),
+                else => {},
+            },
+            else => {},
+        }
+        // Outside any block of the statement: the rest of it.
+        if (at < s) try out.append(c.gpa, .{ .lo = at + 1, .hi = s });
+    }
+
     // ---- captures: an anonymous function holds no authority
 
     fn captures(c: *Caps) Error!void {
@@ -1015,4 +1156,92 @@ test "main reads its Platform's parts and passes them down; the Platform itself 
         \\  platform.exit(1)
         \\end
     , &.{"MO0205"});
+}
+
+test "a message line may declare a capability or a handle, and a capability sent in one moves" {
+    try expectCodes(
+        \\module T.Moves
+        \\process Back()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Greet(conn: Conn, front: Handle(Front))
+        \\  fn update(state, message)
+        \\    case message
+        \\      Greet(conn: conn, front: front):
+        \\        if conn.write("hi", within: 1.ms) is Ok(_)
+        \\          front.send(Thanks)
+        \\          state.n += 1
+        \\        end
+        \\    end
+        \\  end
+        \\end
+        \\process Front(back: Handle(Back), me: Handle(Front))
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Take(conn: Conn)
+        \\  message Thanks
+        \\  fn update(state, message)
+        \\    case message
+        \\      Take(conn):
+        \\        if state.n > 0
+        \\          back.send(Greet(conn: conn, front: me))
+        \\          me.send(Thanks)
+        \\        else
+        \\          conn.close
+        \\        end
+        \\        state.n += 1
+        \\      Thanks:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Pair(back: Handle(Back), me: Handle(Front))
+        \\  child Back, restart: :always
+        \\  child Front(back, me), restart: :always
+        \\end
+        \\fn handed(back: Handle(Back), front: Handle(Front), conn: Conn)
+        \\  back.send(Greet(conn: conn, front: front))
+        \\  front.send(Thanks)
+        \\  conn.close
+        \\end
+        \\fn spread(backs: List(Handle(Back)), front: Handle(Front), conn: Conn)
+        \\  for back in backs
+        \\    back.send(Greet(conn: conn, front: front))
+        \\  end
+        \\end
+        \\struct Held
+        \\  conn: Conn
+        \\end
+    , &.{ "MO0403", "MO0410", "MO0410" });
+}
+
+test "flows follows a capability a message carries into the process that takes it" {
+    try expectCodes(
+        \\module T.FlowField
+        \\never "a card number is written to a connection"
+        \\  flows(Card, into: Conn)
+        \\end
+        \\struct Card
+        \\  number: String
+        \\end
+        \\process Writer()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Write(conn: Conn, card: Card)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Write(conn: conn, card: card):
+        \\        if conn.write("#{card}", within: 1.ms) is Ok(_)
+        \\          state.n += 1
+        \\        end
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Writers
+        \\  child Writer, restart: :always
+        \\end
+    , &.{"MO0404"});
 }

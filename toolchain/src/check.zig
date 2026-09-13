@@ -243,6 +243,9 @@ pub const Checked = struct {
     pool: types.Pool,
     node_types: []const Id,
     callee: []const Callee,
+    /// Per node: for a name_ref that reads a local, the token that bound it, plus 1; 0 for
+    /// anything else. caps.zig follows a capability sent in a message by it (step 20).
+    binding_of: []const u32 = &.{},
     decls: []const Decl,
     fields: []const Field,
     variants: []const Variant,
@@ -328,6 +331,8 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
     @memset(c.callee, .none);
+    c.binding_of = try gpa.alloc(u32, tree.nodes.len);
+    @memset(c.binding_of, 0);
     try c.line_starts.append(gpa, 0);
     for (tree.source, 0..) |ch, k| if (ch == '\n') try c.line_starts.append(gpa, @intCast(k + 1));
     try c.registerPrelude();
@@ -357,6 +362,7 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
         .pool = c.pool,
         .node_types = c.node_types,
         .callee = c.callee,
+        .binding_of = c.binding_of,
         .decls = c.decls.items,
         .fields = c.fields.items,
         .variants = c.variants.items,
@@ -449,6 +455,7 @@ const Checker = struct {
     pool: types.Pool,
     node_types: []Id = &.{},
     callee: []Callee = &.{},
+    binding_of: []u32 = &.{},
 
     decls: std.ArrayList(Decl) = .empty,
     fields: std.ArrayList(Field) = .empty,
@@ -2782,6 +2789,7 @@ const Checker = struct {
         const name = c.text(n.main_token);
         if (c.lookup(name)) |b| {
             try c.useBinding(b, n.main_token);
+            c.binding_of[i] = c.bindings.items[b].token + 1;
             return c.bindings.items[b].type;
         }
         if (c.fn_names.get(name)) |s| return c.instantiateFn(i, s);

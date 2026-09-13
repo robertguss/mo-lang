@@ -5269,9 +5269,15 @@ static void sweep(void) {
         const Proc *p = procs[id];
         if (p->ended || finished(p)) continue;
         mark_values(p->args, p->nargs);
+        /* A message may carry a handle (step 20): one waiting in a mailbox or held in an outbox
+         * reaches its process. */
+        for (size_t i = p->head; i < p->mailbox_len; i++) mark_value(p->mailbox[i].message);
         if (!p->busy) continue;
         mark_frames(workers[id]->vm.handle_frames);
-        for (size_t i = 0; i < p->noutbox; i++) mark_id(p->outbox[i].to);
+        for (size_t i = 0; i < p->noutbox; i++) {
+            mark_id(p->outbox[i].to);
+            mark_value(p->outbox[i].message);
+        }
     }
     for (size_t i = 0; i < nanswers; i++) {
         if (answers[i].has) mark_value(answers[i].value);

@@ -28,6 +28,22 @@
       "verified": { "hash": "7c2dd49fc03316de", "declarations": "a9253ef10360f749" }
     },
     {
+      "path": "handoff.mo",
+      "module": "Processes.Handoff",
+      "declarations": [
+        { "id": "8fe1a5281477", "name": "module Processes.Handoff", "hash": "f9593ae9affedc73" },
+        { "id": "9ec859ec4fc3", "name": "expose", "hash": "ce5a041011fdc307" },
+        { "id": "06d7bde3b6f1", "name": "intent", "hash": "333abc86bd3e1e0e" },
+        { "id": "104934d9f28c", "name": "process Back", "hash": "de86c78cfcd1be90" },
+        { "id": "196e3de0fd5d", "name": "process Front", "hash": "62061f0ba1253276" },
+        { "id": "7a53af7108eb", "name": "supervisor Handoffs", "hash": "73437b9ed265bfd8" },
+        { "id": "aee92ff6d240", "name": "fn handed", "hash": "fd96e38facc49726" },
+        { "id": "43283b2f9e67", "name": "fn greeted?", "hash": "8a17e4f02df611b8" },
+        { "id": "0f39baa869e0", "name": "test \"a connection handed to a process in a message, and on to another, is the one the last writes to\"", "hash": "04772fb316fb9a6a" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "3005d726be5f05d8" }
+    },
+    {
       "path": "held-send.mo",
       "module": "Processes.HeldSend",
       "declarations": [

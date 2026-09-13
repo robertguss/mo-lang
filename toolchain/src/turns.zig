@@ -331,9 +331,15 @@ pub const Turns = struct {
         for (procs, 0..) |p, id| {
             if (p.ended or finished(p)) continue;
             try t.markValues(p.args);
+            // A message may carry a handle (step 20): one waiting in a mailbox or held in an
+            // outbox reaches its process.
+            for (p.mailbox.items[p.head..]) |e| try t.markValue(e.message);
             if (!p.busy) continue;
             for (t.workers.items[id].?.vm.handle_frames.items) |locals| try t.markValues(locals);
-            for (p.outbox.items) |o| try t.markId(o.to);
+            for (p.outbox.items) |o| {
+                try t.markId(o.to);
+                try t.markValue(o.message);
+            }
         }
         var answers = t.answers.valueIterator();
         while (answers.next()) |reply| if (reply.*) |r| try t.markValue(r.value);
