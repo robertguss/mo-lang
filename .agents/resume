@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Zig, Mo, and their caches survive pause/resume. There are no credentials to
+# refresh or backing services to reconnect; keep wake-up free of installations.
