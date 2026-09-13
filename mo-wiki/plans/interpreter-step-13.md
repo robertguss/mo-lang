@@ -40,6 +40,10 @@ Chapter 7, build order item 2: C via the Zig toolchain for release, differential
 
 Bench rows: `logstat-4k-c` (the compiled logstat over the same 4,000-line file), `build-logstat` (wall time of `mo build` for logstat, C emission and `zig cc` separately). Report the interpreter-to-native ratio and the overflow-check cost (build once with `-fwrapv` semantics for the comparison only, never shipped).
 
+## Also
+
+A read-only `Fs` passed as a parameter must be refused at check time (`MO0404`), not at run time: track `read_only` in the capability's type.
+
 ## Done when
 
 Every program in the corpus builds and matches the interpreter, the numbers are recorded, pushed, decisions listed. If processes cannot be compiled in this step, the error is clear and the fact is in the final message.

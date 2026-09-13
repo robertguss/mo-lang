@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, performance, stdlib, tooling]
 sources: [examples/programs/kv/TOOLCHAIN-BUGS.md, examples/GAPS.md]
-status: in-progress
+status: done
 ---
 
 # Step 12: the runtime under real programs
