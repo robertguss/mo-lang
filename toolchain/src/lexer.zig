@@ -283,6 +283,40 @@ const Lexer = struct {
     }
 };
 
+/// For the parser, which splits strings: `text[from]` is just after a `#{` in a
+/// string the lexer accepted; returns the index of the `}` that closes the hole.
+pub fn holeClose(text: []const u8, from: usize) usize {
+    var depth: usize = 1;
+    var i = from;
+    while (i < text.len) : (i += 1) {
+        switch (text[i]) {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if (depth == 0) return i;
+            },
+            '"' => i = stringClose(text, i),
+            else => {},
+        }
+    }
+    return text.len;
+}
+
+fn stringClose(text: []const u8, open: usize) usize {
+    var i = open + 1;
+    while (i < text.len) : (i += 1) {
+        switch (text[i]) {
+            '"' => return i,
+            '\\' => i += 1,
+            '#' => if (i + 1 < text.len and text[i + 1] == '{') {
+                i = holeClose(text, i + 2);
+            },
+            else => {},
+        }
+    }
+    return text.len;
+}
+
 fn kindsOf(source: []const u8) ![]Kind {
     const gpa = std.testing.allocator;
     var diags: diag.List = .empty;

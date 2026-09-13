@@ -20,7 +20,7 @@ pub const Error = error{ NotImplemented, OutOfMemory, Crash, Rejected };
 pub fn runTo(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *diag.List) Error!void {
     const tokens = try lexer.lex(gpa, source, diags);
     if (stage == .lex) return;
-    const tree = try parser.parse(gpa, source, tokens);
+    const tree = try parser.parse(gpa, source, tokens, diags);
     if (stage == .parse) return;
     try check.check(gpa, tree, diags);
     try caps.check(gpa, tree, diags);
