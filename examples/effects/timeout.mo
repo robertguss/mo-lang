@@ -16,7 +16,7 @@ end
 fn config(fs: Fs) : Result(String, ReadError)
   case load(fs, "/etc/app.conf")
     Ok(text): Ok(text)
-    Error(Missing(path: _)): Ok("defaults")
+    Error(Missing(_)): Ok("defaults")
     Error(Timeout): Error(Timeout)
   end
 end

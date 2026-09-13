@@ -30,5 +30,5 @@ end
 
 test "a taken seat cannot be booked again"
   held = [Booking(seat: "12A", guest: "Ada")]
-  assert book(held, "12A", "Bob") is Error(SeatTaken(seat: "12A"))
+  assert book(held, "12A", "Bob") is Error(SeatTaken("12A"))
 end

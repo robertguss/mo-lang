@@ -15,5 +15,5 @@ fn load(fs: Fs, path: String) : Result(String, ReadError)
 end
 
 test "a file that is not there is Missing"
-  assert load(Fs.fixture(), "/etc/app.conf") is Error(Missing(path: "/etc/app.conf"))
+  assert load(Fs.fixture(), "/etc/app.conf") is Error(Missing("/etc/app.conf"))
 end

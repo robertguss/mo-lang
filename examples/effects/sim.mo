@@ -1,22 +1,15 @@
 module Effects.Sim
-expose StampError, Stamp, stamp
+expose Stamp, stamp
 
-use Mo.Sim
-
-intent "Run effectful code in a test against the deterministic simulator, swapped in with one use line."
-
-enum StampError
-  Timeout
-end
+intent "mo test always runs on the deterministic simulator, so effectful code gives the same answer every time."
 
 struct Stamp
   note: String
   at: Time
 end
 
-fn stamp(clock: Clock, note: String) : Result(Stamp, StampError)
-  now = try clock.now(within: 10.ms)
-  Ok(Stamp(note: note, at: now))
+fn stamp(clock: Clock, note: String) : Stamp
+  Stamp(note: note, at: clock.now)
 end
 
 test "the simulated clock stamps the same note the same way twice"

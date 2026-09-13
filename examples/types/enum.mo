@@ -12,7 +12,7 @@ end
 fn fee(payment: Payment, amount: UInt32) : UInt32
   case payment
     Cash: 0
-    Card(last4: _): amount / 50
+    Card(_): amount / 50
     Transfer(bank: _, days: n): n * 25
   end
 end
@@ -20,7 +20,7 @@ end
 fn label(payment: Payment) : String
   case payment
     Cash: "cash"
-    Card(last4: digits): "card ending #{digits}"
+    Card(digits): "card ending #{digits}"
     Transfer(bank: name, days: _): "transfer from #{name}"
   end
 end

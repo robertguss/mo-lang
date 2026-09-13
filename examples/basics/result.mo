@@ -35,5 +35,5 @@ end
 
 test "an error passes up through both calls"
   assert remaining(Account(balance: 100, frozen: true), 30) is Error(Frozen)
-  assert remaining(Account(balance: 10, frozen: false), 30) is Error(Short(by: 20))
+  assert remaining(Account(balance: 10, frozen: false), 30) is Error(Short(20))
 end

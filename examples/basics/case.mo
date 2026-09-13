@@ -10,12 +10,12 @@ end
 
 fn describe(shape: Shape) : String
   case shape
-    Circle(radius: 0): "a dot"
-    Circle(radius: r) if r > 100: "a big circle"
-    Circle(radius: _): "a circle"
-    Rect(size: (w, h)) if w == h: "a square of side #{w}"
-    Rect(size: (_, 0)): "a flat line"
-    Rect(size: (w, h)): "a #{w} by #{h} rectangle"
+    Circle(0): "a dot"
+    Circle(r) if r > 100: "a big circle"
+    Circle(_): "a circle"
+    Rect((w, h)) if w == h: "a square of side #{w}"
+    Rect((_, 0)): "a flat line"
+    Rect((w, h)): "a #{w} by #{h} rectangle"
   end
 end
 

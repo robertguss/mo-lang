@@ -33,9 +33,9 @@ process Source(sink: Handle(Sink))
   end
 end
 
-supervisor Line
+supervisor Line(sink: Handle(Sink))
   child Sink, restart: :always
-  child Source, restart: :always
+  child Source(sink), restart: :always
 end
 
 test "what the source sends, the sink receives"

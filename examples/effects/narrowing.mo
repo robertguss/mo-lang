@@ -19,5 +19,5 @@ fn report(fs: Fs, name: String) : Result(String, ReportError)
 end
 
 test "a report that is not in the folder is Missing"
-  assert report(Fs.fixture(), "q3.txt") is Error(Missing(path: _))
+  assert report(Fs.fixture(), "q3.txt") is Error(Missing(_))
 end

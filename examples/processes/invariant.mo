@@ -17,7 +17,7 @@ process Odometer()
 
   fn update(state, message)
     case message
-      Drive(km: distance):
+      Drive(distance):
         state.km += distance
       Reading: state.km
     end

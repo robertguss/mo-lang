@@ -38,11 +38,11 @@ Where the grammar and chapter 4 ran out, the corpus used the plainest option and
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
 
 ## effects
-23. `effects/clock.mo`: a function that takes a `Clock`, with `within:` on the call
+23. `effects/clock.mo`: a function that takes a `Clock`; `clock.now` cannot wait, so it takes no `within:`
 24. `effects/pure-vs-effectful.mo`: the same computation with and without a capability
 25. `effects/timeout.mo`: `Timeout` as an ordinary error the caller handles
 26. `effects/narrowing.mo`: `fs.scoped(...).read_only` passed down
-27. `effects/sim.mo`: `use Mo.Sim` and a test that runs against it
+27. `effects/sim.mo`: `mo test` always runs on the simulator, so an effectful test is deterministic
 
 ## processes
 28. `processes/counter.mo`: `state`, two `message` lines, `update`

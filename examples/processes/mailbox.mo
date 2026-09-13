@@ -9,11 +9,11 @@ process Journal() mailbox: 100
   end
 
   message Write(text: String)
-  message Count : UInt32
+  message Count : UInt64
 
   fn update(state, message)
     case message
-      Write(text: text):
+      Write(text):
         state.lines = state.lines.push(text)
       Count: state.lines.size
     end
