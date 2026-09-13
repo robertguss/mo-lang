@@ -10,7 +10,8 @@ pub const Id = u32;
 
 pub const IntKind = enum(u8) { i8, i16, i32, i64, u8, u16, u32, u64 };
 
-pub const CapKind = enum(u8) { clock, fs, events, ledger };
+/// `platform`, `env`, and `out` are Mo.Server's (Q18): `main`'s parameter and its parts.
+pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out };
 
 pub const Tag = enum(u8) {
     /// Error recovery and "no expectation": unifies with everything.
@@ -102,8 +103,9 @@ pub const Pool = struct {
         for (0..8) |k| try p.list.append(gpa, .{ .tag = .int, .a = @intCast(k) });
         try p.list.append(gpa, .{ .tag = .float, .a = 32 });
         try p.list.append(gpa, .{ .tag = .float, .a = 64 });
-        for (0..4) |k| try p.list.append(gpa, .{ .tag = .cap, .a = @intCast(k) });
-        std.debug.assert(p.list.items.len == cap_base + 4);
+        const caps = @typeInfo(CapKind).@"enum".fields.len;
+        for (0..caps) |k| try p.list.append(gpa, .{ .tag = .cap, .a = @intCast(k) });
+        std.debug.assert(p.list.items.len == cap_base + caps);
         return p;
     }
 
@@ -313,6 +315,9 @@ pub const Pool = struct {
                 .fs => "Fs",
                 .events => "Events",
                 .ledger => "Ledger",
+                .platform => "Platform",
+                .env => "Env",
+                .out => "Out",
             }),
             .list, .option => {
                 try w.writeAll(if (t.tag == .list) "List(" else "Option(");

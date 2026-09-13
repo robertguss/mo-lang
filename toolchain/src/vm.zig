@@ -451,6 +451,10 @@ pub const Vm = struct {
         charge_refunded,
         money_cents,
         money_zero,
+        platform_part,
+        platform_exit,
+        env_get,
+        out_write,
         process,
         never_only,
     };
@@ -470,11 +474,15 @@ pub const Vm = struct {
         .{ "Ledger.find_charge", .ledger_call },    .{ "Ledger.save_charge", .ledger_call },      .{ "Charge.fixture", .charge_fixture },
         .{ "Charge.refunded?", .charge_refunded },  .{ "Money.cents", .money_cents },             .{ "Money.zero", .money_zero },
         .{ "Process.start", .process },             .{ "Handle.send", .process },                 .{ "Handle.ask", .process },
-        .{ "Type.all", .never_only },               .{ ".flows", .never_only },
+        .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
+        .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
+        .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
+        .{ "Env.get", .env_get },                   .{ "Out.write", .out_write },
     });
 
     /// Every prelude row has an implementation, or the toolchain does not build.
     const prim_of = blk: {
+        @setEvalBranchQuota(4000);
         var table: [prelude.fns.len]Prim = undefined;
         for (prelude.fns, 0..) |f, i| {
             const head = f.recv[0 .. std.mem.indexOfScalar(u8, f.recv, '(') orelse f.recv.len];
@@ -575,6 +583,11 @@ pub const Vm = struct {
             .charge_refunded => a[0].record.fields[3],
             .money_cents => a[0],
             .money_zero => .{ .int = 0 },
+            // A Platform exists only in main, and only `mo run` calls main (Q18).
+            .platform_part, .platform_exit, .env_get, .out_write => {
+                vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "{s}.{s} runs only under mo run", .{ row.recv, row.name }), .within = row.name, .at = 0 };
+                return error.Crash;
+            },
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
             .never_only => {
@@ -745,12 +758,15 @@ pub const Vm = struct {
                 } else try vm.formatFields(w, r.name, r.fields, defs);
             },
             .func => try w.writeAll("a function"),
-            .cap => |c| try w.print("{s}.fixture()", .{switch (c.kind) {
-                .clock => "Clock",
-                .fs => "Fs",
-                .events => "Events",
-                .ledger => "Ledger",
-            }}),
+            .cap => |c| try w.writeAll(switch (c.kind) {
+                .clock => "Clock.fixture()",
+                .fs => "Fs.fixture()",
+                .events => "Events.fixture()",
+                .ledger => "Ledger.fixture()",
+                .platform => "the Platform",
+                .env => "an Env",
+                .out => "an Out",
+            }),
             .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
         }
     }

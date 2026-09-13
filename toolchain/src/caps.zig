@@ -25,7 +25,7 @@ const Id = types.Id;
 
 pub const Error = error{OutOfMemory};
 
-pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs };
+pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main };
 
 pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .missing_within = .{ .code = "MO0401", .category = .capabilities, .why = "Every call that can wait carries a deadline (chapter 2, bounding laws), so nothing blocks forever; a timeout comes back as an ordinary error the caller handles." },
@@ -34,6 +34,8 @@ pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .flows_violated = .{ .code = "MO0404", .category = .capabilities, .why = "A never with flows(T, into: Cap) promises that no value of type T reaches a call on Cap; tier 1 follows direct data flow to keep that promise." },
     .bad_flows = .{ .code = "MO0405", .category = .capabilities, .why = "flows(T, into: Cap) names a type first and a capability after into:, so the rule can be checked; a never that cannot be checked does not compile." },
     .recipe_needs = .{ .code = "MO0406", .category = .capabilities, .why = "A recipe's needs line is the list of capabilities its implementation may take (chapter 6), so every capability in its signatures is named there, and only capabilities are." },
+    .platform_escapes = .{ .code = "MO0407", .category = .capabilities, .why = "A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds." },
+    .no_main = .{ .code = "MO0408", .category = .capabilities, .why = "mo run starts a program at fn main(platform: Platform), the one place it receives its capabilities (Q18). A module without main has nothing to run; mo test runs its tests." },
 });
 
 pub fn check(gpa: std.mem.Allocator, checked: checker.Checked, out: *diag.List) Error!void {
@@ -41,6 +43,7 @@ pub fn check(gpa: std.mem.Allocator, checked: checker.Checked, out: *diag.List) 
     try c.buildUnits();
     try c.declarations();
     try c.bodies();
+    try c.platformUses();
     try c.flowRules();
 }
 
@@ -230,9 +233,57 @@ const Caps = struct {
         for (c.k.sigs) |s| {
             if (c.capIn(s.ret, 0)) |cap| try c.report(.outside_params, c.node(s.node).main_token, try c.print("{s} returns a {s}; a capability is passed down as a parameter, never returned.", .{ s.name, try c.tn(cap) }));
         }
+        // Only main takes a Platform; everything below it takes the parts it needs.
+        for (c.k.sigs) |s| {
+            if (s.kind == .module and std.mem.eql(u8, s.name, "main")) continue;
+            try c.platformParams(s.name, s.params);
+        }
+        for (c.k.decls) |d| {
+            if (d.node != 0 and (d.kind == .process or d.kind == .supervisor)) try c.platformParams(d.name, d.params);
+        }
         for (c.items()) |it| {
             const n = c.node(it);
             if (n.kind == .recipe_decl) try c.recipeNeeds(n);
+        }
+    }
+
+    fn platformParams(c: *Caps, owner: []const u8, r: checker.Range) Error!void {
+        for (c.k.params[r.start..r.end]) |p| {
+            if (!c.platformIn(p.type, 0)) continue;
+            try c.report(.platform_escapes, c.node(p.node).main_token, try c.print("{s} takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .{owner}));
+        }
+    }
+
+    /// Whether a Platform is inside `t`, looking through lists, options, results, and tuples.
+    fn platformIn(c: *Caps, t: Id, depth: u8) bool {
+        if (depth > 8) return false;
+        const r = c.k.pool.base(t);
+        const b = c.k.pool.get(r);
+        return switch (b.tag) {
+            .cap => r == types.cap(.platform),
+            .list, .option => c.platformIn(b.a, depth + 1),
+            .result => c.platformIn(b.a, depth + 1) or c.platformIn(b.b, depth + 1),
+            .tuple => for (c.k.pool.elems(b)) |e| {
+                if (c.platformIn(e, depth + 1)) break true;
+            } else false,
+            else => false,
+        };
+    }
+
+    /// A Platform is only ever read through a dot: `platform.fs`, `platform.exit(3)`.
+    /// Passed, bound, put in a list, or interpolated, it would leave main.
+    fn platformUses(c: *Caps) Error!void {
+        const nodes = c.k.tree.nodes;
+        const receiver = try c.gpa.alloc(bool, nodes.len);
+        @memset(receiver, false);
+        for (nodes) |n| if (n.kind == .member or n.kind == .member_call) {
+            receiver[n.lhs] = true;
+        };
+        for (nodes, 0..) |n, i| {
+            if (n.kind != .name_ref or receiver[i]) continue;
+            if (c.k.pool.base(c.k.typeOf(@intCast(i))) != types.cap(.platform)) continue;
+            const name = c.text(n.main_token);
+            try c.report(.platform_escapes, n.main_token, try c.print("{s} is a Platform, which stays in main; pass on a part of it, such as {s}.fs or {s}.stdout.", .{ name, name, name }));
         }
     }
 
@@ -584,4 +635,42 @@ test "a recipe's signatures take only the capabilities its needs line names" {
         \\  end
         \\end
     , &.{"MO0406"});
+}
+
+test "main reads its Platform's parts and passes them down; the Platform itself stays" {
+    try expectCodes(
+        \\module T.Main
+        \\fn greet(out: Out, name: String) : String
+        \\  out.write("hello, #{name}")
+        \\  name
+        \\end
+        \\fn main(platform: Platform)
+        \\  name = platform.env.get("USER") or "you"
+        \\  said = greet(platform.stdout, name)
+        \\  platform.stderr.write(said)
+        \\  platform.exit(3)
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.Leak
+        \\struct Held
+        \\  platform: Platform
+        \\end
+        \\fn leak(platform: Platform) : UInt8
+        \\  0
+        \\end
+        \\fn main(platform: Platform)
+        \\  p = platform
+        \\  platform.stdout.write("#{p}", within: 1.ms)
+        \\end
+    , &.{ "MO0403", "MO0407", "MO0402", "MO0407", "MO0407" });
+    try expectCodes(
+        \\module T.Twice
+        \\fn main(platform: Platform)
+        \\  platform.exit(0)
+        \\end
+        \\fn main(platform: Platform)
+        \\  platform.exit(1)
+        \\end
+    , &.{"MO0205"});
 }

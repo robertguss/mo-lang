@@ -51,6 +51,9 @@ pub const types = [_]Type{
     .{ .name = "Fs", .kind = .capability },
     .{ .name = "Events", .kind = .capability },
     .{ .name = "Ledger", .kind = .capability },
+    .{ .name = "Platform", .kind = .capability },
+    .{ .name = "Env", .kind = .capability },
+    .{ .name = "Out", .kind = .capability },
     .{ .name = "FsError", .kind = .error_enum },
     .{ .name = "AskError", .kind = .error_enum },
     .{ .name = "LedgerError", .kind = .error_enum, .origin = .corpus_only },
@@ -182,6 +185,17 @@ pub const fns = [_]Fn{
     .{ .recv = "Ledger", .on_type = true, .name = "fixture", .ret = "Ledger", .only = .tests },
     .{ .recv = "Ledger", .name = "find_charge", .params = &.{"ChargeId"}, .ret = "Result(Charge, LedgerError)", .can_wait = true, .origin = .corpus_only },
     .{ .recv = "Ledger", .name = "save_charge", .params = &.{"Charge"}, .ret = "Result(none, LedgerError)", .can_wait = true, .origin = .corpus_only },
+    // The platform (Q18): `main`'s one parameter and the capabilities it holds. A part
+    // without parentheses reads like a field, as `clock.now` does.
+    .{ .recv = "Platform", .name = "args", .ret = "List(String)" },
+    .{ .recv = "Platform", .name = "env", .ret = "Env" },
+    .{ .recv = "Platform", .name = "stdout", .ret = "Out" },
+    .{ .recv = "Platform", .name = "stderr", .ret = "Out" },
+    .{ .recv = "Platform", .name = "fs", .ret = "Fs" },
+    .{ .recv = "Platform", .name = "clock", .ret = "Clock" },
+    .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
+    .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
+    .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },

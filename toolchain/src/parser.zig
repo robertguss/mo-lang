@@ -20,6 +20,8 @@ const why_type = "A type is a type name such as UInt32 or List(T), or a tuple of
 const why_pattern = "A pattern is _, a name, a literal, a variant such as Some(x) or Short(by: n), or a tuple of patterns.";
 const why_order = "A module is its header (module, expose, use, intent, never), then declarations, then tests, then the verified: line.";
 const why_place = "Only a name or a field path such as copy.name can be assigned.";
+const why_main = "fn main is the program's root (grammar §2, Q18): it takes one parameter, platform: Platform, and has no return type, like update.";
+const main_param = "fn main takes one parameter, platform: Platform";
 
 fn describe(comptime kind: Kind) []const u8 {
     return switch (kind) {
@@ -294,7 +296,8 @@ const Parser = struct {
 
     fn parseDecl(p: *Parser) Error!Index {
         return switch (p.peek()) {
-            .kw_fn => p.parseFn(),
+            // In a module, the name `main` is the main production, never an ordinary fn.
+            .kw_fn => if (p.peekAt(1) == .ident and std.mem.eql(u8, p.text(p.tok + 1), "main")) p.parseMain() else p.parseFn(),
             .kw_struct => p.parseStruct(),
             .kw_enum => p.parseEnum(),
             .kw_type => p.parseTypedef(),
@@ -492,6 +495,41 @@ const Parser = struct {
         const sig = try p.addSignature(head, contracts);
         const body_span = try p.addExtra(ast.FnBody{ .start = body.start, .end = body.end, .open_token = open, .end_token = end });
         return p.addNode(.{ .kind = .fn_decl, .main_token = head.name, .lhs = sig, .rhs = body_span });
+    }
+
+    /// `fn main(platform: Platform)`: a fn_decl with no return type (ret is none) and no
+    /// contracts.
+    fn parseMain(p: *Parser) Error!Index {
+        _ = try p.expect(.kw_fn);
+        const name = p.next();
+        _ = try p.expect(.l_paren);
+        const at = p.tok;
+        if (p.peek() != .ident) return p.failAt(at, "MO0101", main_param, why_main);
+        const param = try p.parseParam();
+        if (p.peek() != .r_paren or !p.isPlatformParam(param)) return p.failAt(at, "MO0101", main_param, why_main);
+        _ = p.next();
+        if (p.peek() == .colon) return p.fail("MO0101", "fn main has no return type; end the line after (platform: Platform)", why_main);
+        const open = p.tok;
+        try p.endLine();
+        const top = p.scratch.items.len;
+        try p.push(param);
+        const params = try p.spanFrom(top);
+        const body = try p.parseBlock(false);
+        const end = try p.expect(.kw_end);
+        try p.endLine();
+        const empty: Span = .{ .start = 0, .end = 0 };
+        const sig = try p.addSignature(.{ .name = name, .params = params, .ret = ast.none, .bounds = empty }, empty);
+        const body_span = try p.addExtra(ast.FnBody{ .start = body.start, .end = body.end, .open_token = open, .end_token = end });
+        return p.addNode(.{ .kind = .fn_decl, .main_token = name, .lhs = sig, .rhs = body_span });
+    }
+
+    fn isPlatformParam(p: *Parser, param: Index) bool {
+        const pn = p.nodes.items[param];
+        if (pn.kind != .param or pn.rhs != 0) return false;
+        const t = p.nodes.items[pn.lhs];
+        if (t.kind != .type_ref or t.rhs != 0) return false;
+        const path = p.nodes.items[t.lhs];
+        return path.lhs == path.main_token and std.mem.eql(u8, p.text(path.main_token), "Platform");
     }
 
     fn parseParams(p: *Parser) Error!Span {
@@ -1372,4 +1410,28 @@ test "a parse error is a record with the offset and what was expected" {
     try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
     try std.testing.expectEqualStrings("expected `end`", diags.items[0].what);
     try std.testing.expectEqual(@as(u32, 29), diags.items[0].at);
+}
+
+test "fn main takes one Platform and has no return type" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const tree = try parseSource(arena, "module M\nfn main(platform: Platform)\n  platform.exit(0)\nend\n", &diags);
+    const main = tree.nodes[tree.span(tree.nodes[0].lhs, tree.nodes[0].rhs)[1]];
+    try std.testing.expectEqual(Node.Kind.fn_decl, main.kind);
+    try std.testing.expectEqual(ast.none, tree.extraData(ast.Signature, main.lhs).ret);
+
+    const wrong = [_]struct { []const u8, []const u8 }{
+        .{ "module M\nfn main(platform: Platform) : UInt8\n  0\nend\n", "fn main has no return type; end the line after (platform: Platform)" },
+        .{ "module M\nfn main(args: List(String))\nend\n", main_param },
+        .{ "module M\nfn main()\nend\n", main_param },
+        .{ "module M\nfn main(platform: Platform, n: UInt8)\nend\n", main_param },
+    };
+    for (wrong) |w| {
+        diags.clearRetainingCapacity();
+        try std.testing.expectError(error.Rejected, parseSource(arena, w[0], &diags));
+        try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
+        try std.testing.expectEqualStrings(w[1], diags.items[0].what);
+    }
 }
