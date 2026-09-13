@@ -56,6 +56,7 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `invariant` block is true when broken, same reading as `never` | Fable | provisional | tier 2 |
 | A supervisor passes a sibling's handle as its own parameter; `main` orders the starts | Fable | provisional | program 1 |
 | Step 1 accepted: lexer and parser by Opus, all 50 files parse, 23 minutes of worker time | Fable | — | the checker |
+| Every phase runs in a fresh worker session and context window | Robert | locked | — |
 
 ## Related
 - [[session-05]]
