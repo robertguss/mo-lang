@@ -91,7 +91,7 @@ def parse_timestamp(text: str) -> Timestamp | None:
     try:
         moment = datetime(year, month, day, hour, minute, second, micro, tzinfo=zone)
         return Timestamp(text, (moment - EPOCH) // ONE_MICROSECOND)
-    except (ValueError, OverflowError):
+    except ValueError:
         return None
 
 
