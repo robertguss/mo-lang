@@ -27,8 +27,8 @@ pub fn runTo(gpa: std.mem.Allocator, source: []const u8, stage: Stage, diags: *d
     if (stage == .lex) return;
     const tree = try parser.parse(gpa, source, tokens, diags);
     if (stage == .parse) return;
-    try check.check(gpa, tree, diags);
-    try caps.check(gpa, tree, diags);
+    const checked = try check.check(gpa, tree, diags);
+    try caps.check(gpa, checked, diags);
     if (diags.items.len > 0) return error.Rejected;
     if (stage == .check) return;
     const chunk = try bytecode.lower(gpa, tree);

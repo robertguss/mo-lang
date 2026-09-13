@@ -18,6 +18,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/ast.zig` | flat, index-based tree (memcpy to the disk cache) | ch. 7 |
 | `src/parser.zig` | tokens → tree, one function per production | grammar §2–11 |
 | `src/prelude.zig` | stdlib types, variants, functions as data (`PRELUDE.md` is the table) | grammar, Session 5 |
+| `src/types.zig` | the checker's type pool, unification, inference variables | ch. 5 |
 | `src/check.zig` | tier 1: types, exhaustiveness, the laws | ch. 2, 5 |
 | `src/caps.zig` | capabilities and `flows` | ch. 3 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
