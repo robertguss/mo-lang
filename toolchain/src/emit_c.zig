@@ -9,7 +9,7 @@
 //! runtime's 16-byte MoValue (mo_rt.h). The lowering mirrors bytecode.zig construct for
 //! construct, so the binary means what the interpreter means: the same evaluation order, the
 //! same overflow traps, the same contract checks (behind the `mo_contracts` flag, on in every
-//! test binary), and the same safe points, where the region keeps what the frame's locals
+//! binary unless it was built `--no-contracts`), and the same safe points, where the region keeps what the frame's locals
 //! reach and frees the rest.
 //!
 //! Every Mo local of a C function is declared at its top, so a safe point can pass them all
@@ -34,8 +34,8 @@ const none = bytecode.none;
 pub const Options = struct {
     /// A binary that runs the given file's tests and prints what `mo test` prints, not main.
     tests: bool = false,
-    /// Contracts checked by default in the binary (`mo build --contracts`).
-    contracts: bool = false,
+    /// Contracts checked by default in the binary; false only for `mo build --no-contracts`.
+    contracts: bool = true,
 };
 
 pub const Output = union(enum) {

@@ -10,6 +10,11 @@
 //! libSystem, which Apple does not ship as a static library. `--target` is a zig target triple
 //! and nothing else.
 //!
+//! Contracts run in every build (chapter 3): `requires`, `ensures`, and refinements are compiled
+//! in and checked unless the build is `--no-contracts`, a measurement; `MO_CONTRACTS=0` or `1`
+//! overrides the build at run time. A `never` and a process `invariant` are compiled in as the
+//! tests that check them: a test binary runs every `never`, and processes are refused.
+//!
 //! `zig` is found next to the running `mo`, else on PATH.
 const std = @import("std");
 const builtin = @import("builtin");
@@ -23,7 +28,8 @@ pub const runtime_h = @embedFile("mo_rt.h");
 
 pub const Options = struct {
     name: []const u8,
-    contracts: bool = false,
+    /// False only for `mo build --no-contracts`.
+    contracts: bool = true,
     tests: bool = false,
     target: ?[]const u8 = null,
     /// Wrapping arithmetic with no overflow checks, compiled with -fwrapv: the bench's

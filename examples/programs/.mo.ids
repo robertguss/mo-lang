@@ -49,6 +49,20 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "530d9bffed0a7910" }
     },
     {
+      "path": "halves.mo",
+      "module": "Programs.Halves",
+      "declarations": [
+        { "id": "02b12a610074", "name": "module Programs.Halves", "hash": "7b472be1f3e9d07a" },
+        { "id": "52892b57aa75", "name": "expose", "hash": "5262de26d9a0dee3" },
+        { "id": "d9ee8a9b363b", "name": "intent", "hash": "f4d1240dc37a9e9f" },
+        { "id": "95e67e0bb072", "name": "fn halve", "hash": "36b1dc0acaa34fdf" },
+        { "id": "10bf8893c3aa", "name": "fn main", "hash": "3fabf89f43b078e6" },
+        { "id": "af5b8356e82c", "name": "test \"an even number halves\"", "hash": "671221a70a4e4a93" },
+        { "id": "62d5906dd1c1", "name": "test rejects \"halving an odd number\"", "hash": "631f5e6eaf71ccd5" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "efcc6d27de18da3d" }
+    },
+    {
       "path": "hello.mo",
       "module": "Programs.Hello",
       "declarations": [

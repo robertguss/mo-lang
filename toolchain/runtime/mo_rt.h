@@ -163,8 +163,9 @@ extern const uint32_t mo_nrecorded;
 /* The refund module's Charge stand-in (prelude.zig), or UINT32_MAX when no module has one. */
 extern const uint32_t mo_charge_decl;
 
-/* Contracts (requires, ensures, refinements) are checked when this is set: by
- * `mo build --contracts`, in every test binary, or by MO_CONTRACTS=1 at run time. */
+/* Contracts (requires, ensures, refinements) are checked when this is set: in every binary
+ * `mo build` makes unless it was built --no-contracts, and always in a test binary.
+ * MO_CONTRACTS=0 or 1 overrides a program's build at run time. */
 extern bool mo_contracts;
 extern const bool mo_contracts_built;
 

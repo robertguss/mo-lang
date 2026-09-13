@@ -22,7 +22,9 @@
 //!                        binary that runs main on Mo.Server (cbuild.zig): the C in
 //!                        zig-out/mo-build/<name>/, the binary beside it, its path on stdout
 //!     -o <name>          the build's name; by default the file's, or its folder's for main.mo
-//!     --contracts        the binary checks requires, ensures, and refinements
+//!     --no-contracts     the binary does not check requires, ensures, or refinements, which
+//!                        every build checks by default (chapter 3); for a measurement only,
+//!                        and it says so on stderr
 //!     --tests            the binary runs the file's tests and prints what mo test prints
 //!     --target <triple>  cross-compiles for a zig target, such as x86_64-linux-musl
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
@@ -40,7 +42,7 @@ const usage =
     \\usage: mo check <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
     \\       mo run <file.mo> [--json] [-- args...]
-    \\       mo build <file.mo> [-o name] [--contracts] [--tests] [--target triple] [--json]
+    \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\       mo fix [--dry-run] <file.mo> [--json]
     \\
@@ -78,7 +80,7 @@ pub fn main(init: std.process.Init) !void {
     var faults: ?u32 = null;
     var build_name: ?[]const u8 = null;
     var target: ?[]const u8 = null;
-    var contracts = false;
+    var no_contracts = false;
     var tests = false;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
@@ -114,8 +116,8 @@ pub fn main(init: std.process.Init) !void {
             i += 1;
             if (i == args.len) return usageExit(err);
             target = args[i];
-        } else if (std.mem.eql(u8, a, "--contracts")) {
-            contracts = true;
+        } else if (std.mem.eql(u8, a, "--no-contracts")) {
+            no_contracts = true;
         } else if (std.mem.eql(u8, a, "--tests")) {
             tests = true;
         } else if (std.mem.eql(u8, a, "--json")) {
@@ -141,7 +143,7 @@ pub fn main(init: std.process.Init) !void {
     const is_fix = std.mem.eql(u8, command, "fix");
     if (dry_run and !is_fix) return usageExit(err);
     const is_build = std.mem.eql(u8, command, "build");
-    if (!is_build and (build_name != null or target != null or contracts or tests)) return usageExit(err);
+    if (!is_build and (build_name != null or target != null or no_contracts or tests)) return usageExit(err);
     if (!is_run and program_args != null) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
     // The line is one file's: --all's summary covers the modules it loads too.
@@ -198,10 +200,15 @@ pub fn main(init: std.process.Init) !void {
         };
         const options: mo.cbuild.Options = .{
             .name = build_name orelse mo.cbuild.defaultName(path),
-            .contracts = contracts,
+            .contracts = !no_contracts,
             .tests = tests,
             .target = target,
         };
+        // Chapter 3: contracts run in every build. Turning them off is for a measurement.
+        if (no_contracts) {
+            try err.print("mo build: warning: {s}: built with --no-contracts, so requires, ensures, and refinements are not checked; use it to measure, not to ship\n", .{path});
+            err.flush() catch {};
+        }
         switch (try mo.cbuild.build(arena, io, init.environ_map, program, &checked, options)) {
             .built => |b| try out.print("{s}\n", .{b.binary}),
             .refused => |why| {

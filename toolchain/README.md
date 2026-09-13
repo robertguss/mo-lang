@@ -6,7 +6,7 @@ The Mo toolchain in Zig (0.16). Build order per `mo-wiki/spec/design-v0/07-toolc
 zig build              → zig-out/bin/mo         mo check <file.mo> [--json]
                                                 mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] <file.mo> [--json]
                                                 mo run <file.mo> [-- args...]   main on Mo.Server
-                                                mo build <file.mo> [-o name] [--contracts] [--tests] [--target triple]
+                                                mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple]
                                                                                  C via zig cc: zig-out/mo-build/<name>/<name>
                                                 mo fmt [--check | --stdout] <file.mo>
                                                 mo fix [--dry-run] <file.mo>     every fix of confidence 100
