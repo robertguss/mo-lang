@@ -244,3 +244,18 @@ What it costs kv: every module of kv is loaded with `Kv.Log`, which declares the
 ## How kv was verified against bug 1
 
 A scratch copy of `toolchain/` at `12b7a88`, never committed, with `examples/` and `mo-wiki/` linked beside it, and three changes to `src/corpus.zig`: `"kv"` in the program list, `13` process files (the ten before, and `kv/log.mo`, `kv/store.mo`, `kv/server.mo`), and `20` tests held under faults (the eleven before, and kv's one journal test, three store tests, and five server tests). `zig build test` on that copy: 121 of 121 tests passed, the corpus test among them, so every kv file passes every stage, holds under `--sim 100` with faults, is formatted, and every `# run:` line of `kv/main.mo` matches its expected file and exit code through `mo run`. As a control, the same copy with the process-file count put back to `10` fails with `expected 10, found 13`.
+
+## Step 12 measurements
+
+Taken on the same machine as above, every probe under a 4 GiB resident-memory cap, `mo` ReleaseSafe.
+
+After part C (the runtime frees under processes, and a process keeps nothing of an update past what its new state reaches), with kv as it was, whose journal still keeps every line appended in memory:
+
+| run | result |
+|---|---|
+| `kv serve`, 200,000 requests over 8 connections, half SET and half GET over 1,000 keys | 86.9 MiB resident at the end (16.9 MiB before), 22,515 requests a second |
+| `kv serve`, 200,000 GETs of one key on one connection, then 200,000 malformed lines | 14.0 MiB, then 15.3 MiB: flat |
+| `kv serve`, 100,000 SETs of distinct keys | 129.5 MiB from 8.8 MiB: 1.24 KiB a key, the journal's copy of every line included |
+| `kv serve` replaying a log of 1,000,000 SET lines over 100,000 keys (27 MiB) | listening after 22.3 s, 127 MiB resident |
+
+What the replay first cost, and what took it down: 104 s with the index built again on every copy of a bucket; the same after the index copied a table that held exactly its keys; 39 s once a copy stopped filling each buffer with 0xAA before writing it (a safe build's `Allocator.alloc` does); 22.3 s once a compaction copied a clean index instead of hashing every key again.

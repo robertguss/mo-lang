@@ -146,7 +146,7 @@ pub const Server = struct {
     /// `platform.args`, `.env`, `.stdout`, `.stderr`, `.fs`, `.clock`.
     pub fn part(s: *Server, vm: *Vm, name: []const u8) Error!Value {
         if (std.mem.eql(u8, name, "args")) {
-            const out = try vm.heap.alloc(Value, s.args.len);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, s.args.len);
             for (s.args, out) |a, *o| o.* = .{ .string = a };
             return .{ .list = out };
         }
@@ -239,7 +239,7 @@ pub const Server = struct {
         const names = try s.listScoped(s.scopes.items[fs.handle]);
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const got = names orelse return missing(vm, ".");
-        const out = try vm.heap.alloc(Value, got.len);
+        const out = try vm_mod.rawAlloc(vm.heap, Value, got.len);
         for (got, out) |name, *o| o.* = .{ .string = name };
         return vm.variant("Ok", &.{.{ .list = out }});
     }

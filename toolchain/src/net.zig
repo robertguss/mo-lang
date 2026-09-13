@@ -70,7 +70,7 @@ fn withoutCr(line: []const u8) []const u8 {
 /// `Ok(Some(line))`, `LineTooLong`, `Ok(None)`, or null for `more`.
 fn lineResult(vm: *Vm, what: Scan) Error!?Value {
     return switch (what) {
-        .line => |line| try vm.variant("Ok", &.{try vm.variant("Some", &.{.{ .string = try vm.heap.dupe(u8, line) }})}),
+        .line => |line| try vm.variant("Ok", &.{try vm.variant("Some", &.{.{ .string = try vm_mod.rawDupe(vm.heap, u8, line) }})}),
         .too_long => try fail(vm, .LineTooLong),
         .end => try vm.variant("Ok", &.{try vm.variant("None", &.{})}),
         .more => null,

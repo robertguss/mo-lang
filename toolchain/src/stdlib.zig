@@ -154,7 +154,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         },
         .time_to_iso8601 => blk: {
             var buf: [40]u8 = undefined;
-            break :blk .{ .string = try vm.heap.dupe(u8, iso8601(&buf, a[0].time)) };
+            break :blk .{ .string = try vm_mod.rawDupe(vm.heap, u8, iso8601(&buf, a[0].time)) };
         },
         .time_since => .{ .duration = std.math.sub(i64, a[0].time, a[1].time) catch return fail(vm, .overflow, row, "the span does not fit a Duration", .{}) },
         .duration_ms => .{ .int = a[0].duration },
@@ -186,19 +186,19 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .set_remove => .{ .set = try without(vm, a[0].set, 1, a[1], int_kind) },
         .map_keys, .map_values => blk: {
             const xs = a[0].map.entries;
-            const out = try vm.heap.alloc(Value, xs.len / 2);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, xs.len / 2);
             const offset: usize = if (which == .map_keys) 0 else 1;
             for (out, 0..) |*o, k| o.* = xs[2 * k + offset];
             break :blk .{ .list = out };
         },
         .map_entries => blk: {
             const xs = a[0].map.entries;
-            const pairs = try vm.heap.dupe(Value, xs);
-            const out = try vm.heap.alloc(Value, xs.len / 2);
+            const pairs = try vm_mod.rawDupe(vm.heap, Value, xs);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, xs.len / 2);
             for (out, 0..) |*o, k| o.* = .{ .tuple = pairs[2 * k .. 2 * k + 2] };
             break :blk .{ .list = out };
         },
-        .set_to_list => .{ .list = try vm.heap.dupe(Value, a[0].set.entries) },
+        .set_to_list => .{ .list = try vm_mod.rawDupe(vm.heap, Value, a[0].set.entries) },
         .list_get => if (a[1].int < a[0].list.len) vm.variant("Some", &.{a[0].list[@intCast(a[1].int)]}) else vm.variant("None", &.{}),
         .list_slice => .{ .list = cut(a[0].list, a[1].int, a[2].int) },
         .list_take => .{ .list = cut(a[0].list, 0, a[1].int) },
@@ -206,14 +206,14 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .list_concat => .{ .list = try concat(vm, a[0].list, a[1].list) },
         .list_reverse => blk: {
             const xs = a[0].list;
-            const out = try vm.heap.alloc(Value, xs.len);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
             for (xs, 0..) |x, k| out[xs.len - 1 - k] = x;
             break :blk .{ .list = out };
         },
         .list_flat_map => flatMap(vm, a[0].list, a[1].func),
         .list_any, .list_all, .list_find, .list_count => scan(vm, which, a[0].list, a[1].func),
         .list_sort => blk: {
-            const out = try vm.heap.alloc(Value, a[0].list.len);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, a[0].list.len);
             @memcpy(out, a[0].list);
             std.sort.block(Value, out, {}, before);
             break :blk .{ .list = out };
@@ -242,8 +242,8 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .list_zip, .list_enumerate => blk: {
             const xs = a[0].list;
             const n = if (which == .list_zip) @min(xs.len, a[1].list.len) else xs.len;
-            const pairs = try vm.heap.alloc(Value, 2 * n);
-            const out = try vm.heap.alloc(Value, n);
+            const pairs = try vm_mod.rawAlloc(vm.heap, Value, 2 * n);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, n);
             for (out, 0..) |*o, k| {
                 pairs[2 * k] = if (which == .list_zip) xs[k] else .{ .int = @intCast(k) };
                 pairs[2 * k + 1] = if (which == .list_zip) a[1].list[k] else xs[k];
@@ -254,7 +254,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .list_unique => blk: {
             var seen: std.HashMapUnmanaged(Value, void, ValueContext, 80) = .empty;
             defer seen.deinit(vm.gpa);
-            const out = try vm.heap.alloc(Value, a[0].list.len);
+            const out = try vm_mod.rawAlloc(vm.heap, Value, a[0].list.len);
             var n: usize = 0;
             for (a[0].list) |x| {
                 if ((try seen.getOrPut(vm.gpa, x)).found_existing) continue;
@@ -277,7 +277,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .string_slice => .{ .string = slice(a[0].string, a[1].int, a[2].int) },
         .string_replace => replace(vm, a[0].string, a[1].string, a[2].string),
         .string_to_upper, .string_to_lower => blk: {
-            const out = try vm.heap.alloc(u8, a[0].string.len);
+            const out = try vm_mod.rawAlloc(vm.heap, u8, a[0].string.len);
             if (which == .string_to_upper) _ = std.ascii.upperString(out, a[0].string) else _ = std.ascii.lowerString(out, a[0].string);
             break :blk .{ .string = out };
         },
@@ -311,7 +311,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
             var buf: [decimal_buffer]u8 = undefined;
             const text = rounded(&buf, x, @intCast(places));
             if (which == .float_round) break :blk .{ .float = std.fmt.parseFloat(f64, text) catch unreachable };
-            break :blk .{ .string = try vm.heap.dupe(u8, text) };
+            break :blk .{ .string = try vm_mod.rawDupe(vm.heap, u8, text) };
         },
     };
 }
@@ -389,14 +389,14 @@ fn whitespace(cp: u21) bool {
 // ---- strings
 
 fn fromBytes(vm: *Vm, bytes: []const Value) Error!Value {
-    const out = try vm.heap.alloc(u8, bytes.len);
+    const out = try vm_mod.rawAlloc(vm.heap, u8, bytes.len);
     for (bytes, out) |b, *o| o.* = @intCast(b.int);
     if (!std.unicode.utf8ValidateSlice(out)) return vm.variant("None", &.{});
     return vm.variant("Some", &.{.{ .string = out }});
 }
 
 fn chars(vm: *Vm, s: []const u8) Error![]const Value {
-    const out = try vm.heap.alloc(Value, @intCast(count(s)));
+    const out = try vm_mod.rawAlloc(vm.heap, Value, @intCast(count(s)));
     var g: Graphemes = .{ .s = s };
     for (out) |*o| o.* = .{ .string = g.next().? };
     return out;
@@ -404,7 +404,7 @@ fn chars(vm: *Vm, s: []const u8) Error![]const Value {
 
 fn split(vm: *Vm, s: []const u8, sep: []const u8) Error!Value {
     if (sep.len == 0) return .{ .list = try chars(vm, s) };
-    const out = try vm.heap.alloc(Value, std.mem.count(u8, s, sep) + 1);
+    const out = try vm_mod.rawAlloc(vm.heap, Value, std.mem.count(u8, s, sep) + 1);
     var it = std.mem.splitSequence(u8, s, sep);
     for (out) |*o| o.* = .{ .string = it.next().? };
     return .{ .list = out };
@@ -413,7 +413,7 @@ fn split(vm: *Vm, s: []const u8, sep: []const u8) Error!Value {
 fn lines(vm: *Vm, s: []const u8) Error!Value {
     if (s.len == 0) return .{ .list = &.{} };
     const body = if (s[s.len - 1] == '\n') s[0 .. s.len - 1] else s;
-    const out = try vm.heap.alloc(Value, std.mem.count(u8, body, "\n") + 1);
+    const out = try vm_mod.rawAlloc(vm.heap, Value, std.mem.count(u8, body, "\n") + 1);
     var it = std.mem.splitScalar(u8, body, '\n');
     for (out) |*o| {
         const line = it.next().?;
@@ -447,7 +447,7 @@ fn replace(vm: *Vm, s: []const u8, a: []const u8, b: []const u8) Error!Value {
     if (a.len == 0) return .{ .string = s };
     const n = std.mem.count(u8, s, a);
     if (n == 0) return .{ .string = s };
-    const out = try vm.heap.alloc(u8, s.len - n * a.len + n * b.len);
+    const out = try vm_mod.rawAlloc(vm.heap, u8, s.len - n * a.len + n * b.len);
     _ = std.mem.replace(u8, s, a, b, out);
     return .{ .string = out };
 }
@@ -458,7 +458,7 @@ fn pad(vm: *Vm, row: prelude.Fn, s: []const u8, n: i128, ch: []const u8, left: b
     if (size >= n) return .{ .string = s };
     const missing: usize = @intCast(n - size);
     const extra = std.math.mul(usize, missing, ch.len) catch return fail(vm, .overflow, row, "{s}({d}) is too long a string", .{ row.name, n });
-    const out = try vm.heap.alloc(u8, s.len + extra);
+    const out = try vm_mod.rawAlloc(vm.heap, u8, s.len + extra);
     const fill = if (left) out[0..extra] else out[s.len..];
     for (0..missing) |k| @memcpy(fill[k * ch.len ..][0..ch.len], ch);
     @memcpy(if (left) out[extra..] else out[0..s.len], s);
@@ -468,7 +468,7 @@ fn pad(vm: *Vm, row: prelude.Fn, s: []const u8, n: i128, ch: []const u8, left: b
 fn repeat(vm: *Vm, row: prelude.Fn, s: []const u8, n: i128) Error!Value {
     const times = std.math.cast(usize, n) orelse return fail(vm, .overflow, row, "repeat({d}) is too long a string", .{n});
     const len = std.math.mul(usize, s.len, times) catch return fail(vm, .overflow, row, "repeat({d}) is too long a string", .{n});
-    const out = try vm.heap.alloc(u8, len);
+    const out = try vm_mod.rawAlloc(vm.heap, u8, len);
     for (0..times) |k| @memcpy(out[k * s.len ..][0..s.len], s);
     return .{ .string = out };
 }
@@ -478,7 +478,7 @@ fn join(vm: *Vm, row: prelude.Fn, xs: []const Value, sep: []const u8) Error!Valu
     if (xs.len == 0) return .{ .string = "" };
     var len: usize = sep.len * (xs.len - 1);
     for (xs) |x| len += x.string.len;
-    const out = try vm.heap.alloc(u8, len);
+    const out = try vm_mod.rawAlloc(vm.heap, u8, len);
     var at: usize = 0;
     for (xs, 0..) |x, k| {
         if (k > 0) {
@@ -503,7 +503,7 @@ fn cut(xs: []const Value, from: i128, to: i128) []const Value {
 fn concat(vm: *Vm, xs: []const Value, ys: []const Value) Error![]const Value {
     if (ys.len == 0) return xs;
     if (xs.len == 0) return ys;
-    const out = try vm.heap.alloc(Value, xs.len + ys.len);
+    const out = try vm_mod.rawAlloc(vm.heap, Value, xs.len + ys.len);
     @memcpy(out[0..xs.len], xs);
     @memcpy(out[xs.len..], ys);
     return out;
@@ -541,7 +541,7 @@ fn scan(vm: *Vm, which: Row, xs: []const Value, f: Value.Func) Error!Value {
 }
 
 fn flatMap(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
-    const parts = try vm.heap.alloc(Value, xs.len);
+    const parts = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
     const from = vm.mark();
     var kept: usize = 0;
     var len: usize = 0;
@@ -550,7 +550,7 @@ fn flatMap(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
         len += parts[i].list.len;
         kept = try vm.iterate(from, parts[0 .. i + 1], kept);
     }
-    const out = try vm.heap.alloc(Value, len);
+    const out = try vm_mod.rawAlloc(vm.heap, Value, len);
     var at: usize = 0;
     for (parts) |p| {
         @memcpy(out[at..][0..p.list.len], p.list);
@@ -561,7 +561,7 @@ fn flatMap(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
 
 /// Each key is computed once; the positions are sorted by key, stably.
 fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
-    const keys = try vm.heap.alloc(Value, xs.len);
+    const keys = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
     const from = vm.mark();
     var kept: usize = 0;
     for (xs, 0..) |x, i| {
@@ -576,13 +576,13 @@ fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
             return vm_mod.order(k[a], k[b]) == .lt;
         }
     }.lt);
-    const out = try vm.heap.alloc(Value, xs.len);
+    const out = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
     for (positions, out) |p, *o| o.* = xs[p];
     return .{ .list = out };
 }
 
 fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
-    const keys = try vm.heap.alloc(Value, xs.len);
+    const keys = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
     const from = vm.mark();
     var kept: usize = 0;
     for (xs, 0..) |x, i| {
@@ -610,8 +610,8 @@ fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
         sizes.items[found.value_ptr.*] += 1;
     }
     // Every group's list is a run of one block, in element order.
-    const block = try vm.heap.alloc(Value, xs.len);
-    const entries = try vm.heap.alloc(Value, 2 * firsts.items.len);
+    const block = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
+    const entries = try vm_mod.rawAlloc(vm.heap, Value, 2 * firsts.items.len);
     const filled = try gpa.alloc(u32, firsts.items.len);
     defer gpa.free(filled);
     var start: usize = 0;
@@ -792,28 +792,42 @@ pub fn indexOf(xs: []const Value, stride: usize, key: Value) ?usize {
 }
 
 /// A map or set of fewer keys than this is searched from the front; one this big has an
-/// index.
+/// index: `index[0]` counts the slots in use, and `index[1..]` is the table, a power of two
+/// long.
 pub const index_from = 8;
 
 /// Where `key` is in a map or set: through its index, or from the front when it has none.
-/// A table holds at most half its slots, so a probe always reaches an empty one.
+/// A table has at most half its slots in use, so a probe always reaches an empty one.
 pub fn find(m: Value.Map, stride: usize, key: Value) ?usize {
     if (m.index.len == 0) return indexOf(m.entries, stride, key);
-    const mask = m.index.len - 1;
+    const table = m.index[1..];
+    const mask = table.len - 1;
     var i: usize = @intCast(ValueContext.hash(.{}, key) & mask);
     while (true) : (i = (i + 1) & mask) {
-        const slot = m.index[i];
+        const slot = table[i];
         if (slot == 0) return null;
         const at = (slot - 1) * stride;
         if (at < m.entries.len and vm_mod.equal(m.entries[at], key)) return at;
     }
 }
 
+/// Whether a table has room for one more slot in use.
+fn roomForOne(index: []const u32) bool {
+    return index.len > 0 and index.len - 1 >= 2 * (index[0] + 1);
+}
+
 fn insertOrdinal(index: []u32, entries: []const Value, stride: usize, ordinal: usize) void {
-    const mask = index.len - 1;
+    const table = index[1..];
+    const mask = table.len - 1;
     var i: usize = @intCast(ValueContext.hash(.{}, entries[ordinal * stride]) & mask);
-    while (index[i] != 0) i = (i + 1) & mask;
-    index[i] = @intCast(ordinal + 1);
+    while (table[i] != 0) i = (i + 1) & mask;
+    table[i] = @intCast(ordinal + 1);
+    index[0] += 1;
+}
+
+/// The slots in a map's table, for an index built again at least as large.
+pub fn tableSlots(index: []const u32) usize {
+    return if (index.len == 0) 0 else index.len - 1;
 }
 
 /// An index over `entries` of at least `min_slots` slots and twice the keys, or none for a
@@ -823,7 +837,7 @@ pub fn buildIndex(a: std.mem.Allocator, entries: []const Value, stride: usize, m
     if (keys < index_from) return &.{};
     var slots: usize = @max(16, min_slots);
     while (slots < 2 * keys) slots *= 2;
-    const index = try a.alloc(u32, slots);
+    const index = try a.alloc(u32, slots + 1);
     @memset(index, 0);
     for (0..keys) |ordinal| insertOrdinal(index, entries, stride, ordinal);
     return index;
@@ -850,7 +864,7 @@ fn put(vm: *Vm, m: Value.Map, stride: usize, key: Value, value: Value, int_kind:
         }
         // The keys and their places are the same, so the copy shares the index: its
         // entries never grow in place, so nothing inserts into the table for them.
-        const out = try vm.heap.dupe(Value, xs);
+        const out = try vm_mod.rawDupe(vm.heap, Value, xs);
         out[k + 1] = value;
         if (on_var) vm.own(out);
         return .{ .entries = out, .index = m.index };
@@ -858,12 +872,24 @@ fn put(vm: *Vm, m: Value.Map, stride: usize, key: Value, value: Value, int_kind:
     var out = try vm.pushList(xs, key);
     if (stride == 2) out = try vm.pushList(out, value);
     const keys = out.len / stride;
-    // Grown in place, the entries keep their table while it has room: every value that
-    // shares the buffer is a prefix of it, and skips the ordinals past its own.
-    const index: []const u32 = if (out.ptr == xs.ptr and m.index.len >= 2 * keys) blk: {
-        insertOrdinal(@constCast(m.index), out, stride, keys - 1);
-        break :blk m.index;
-    } else try buildIndex(vm.heap, out, stride, 0);
+    const index: []const u32 = blk: {
+        if (roomForOne(m.index)) {
+            // Grown in place, the entries keep their table: every value that shares the
+            // buffer is a prefix of it, and skips the ordinals past its own.
+            if (out.ptr == xs.ptr) {
+                insertOrdinal(@constCast(m.index), out, stride, keys - 1);
+                break :blk m.index;
+            }
+            // A copy keeps every ordinal, so a table holding exactly the old keys is
+            // copied rather than built again.
+            if (m.index[0] == keys - 1) {
+                const copy = try vm_mod.rawDupe(vm.heap, u32, m.index);
+                insertOrdinal(copy, out, stride, keys - 1);
+                break :blk copy;
+            }
+        }
+        break :blk try buildIndex(vm.heap, out, stride, 0);
+    };
     // Grown in place from a buffer others may share a prefix of, a result is not owned.
     if (on_var and (mine or out.ptr != xs.ptr)) {
         vm.disown(xs);
@@ -893,13 +919,13 @@ fn without(vm: *Vm, m: Value.Map, stride: usize, key: Value, int_kind: u32) Erro
         vm.disown(xs);
         vm.own(xs[0..rest]);
         // The ordinals moved, and the table may be shared with a copy, so it is built anew.
-        return .{ .entries = xs[0..rest], .index = try buildIndex(vm.heap, xs[0..rest], stride, m.index.len) };
+        return .{ .entries = xs[0..rest], .index = try buildIndex(vm.heap, xs[0..rest], stride, tableSlots(m.index)) };
     }
-    const out = try vm.heap.alloc(Value, rest);
+    const out = try vm_mod.rawAlloc(vm.heap, Value, rest);
     @memcpy(out[0..k], xs[0..k]);
     @memcpy(out[k..], xs[k + stride ..]);
     if (on_var) vm.own(out);
-    return .{ .entries = out, .index = try buildIndex(vm.heap, out, stride, m.index.len) };
+    return .{ .entries = out, .index = try buildIndex(vm.heap, out, stride, tableSlots(m.index)) };
 }
 
 /// Hashes a value so that equal values (vm.equal) hash alike.

@@ -69,9 +69,10 @@ pub const Value = union(enum) {
     handle: u32,
 
     /// Entries in the order they were added, `stride` values each (a map's are 2), and once
-    /// there are enough of them an open-addressing table over them: each slot holds an
-    /// entry's ordinal plus one, 0 when empty (stdlib.zig, find). A table may hold
-    /// ordinals past the entries a value sees, so a lookup always compares the key.
+    /// there are enough of them an open-addressing table over them, after a count of the
+    /// slots in use: each slot holds an entry's ordinal plus one, 0 when empty (stdlib.zig,
+    /// find). A table may hold ordinals past the entries a value sees, so a lookup always
+    /// compares the key.
     pub const Map = struct { entries: []const Value, index: []const u32 = &.{} };
     pub const Record = struct { decl: u32, fields: []const Value };
     /// A variant is known by its name, so `try` re-tags an error without converting it.
@@ -337,7 +338,7 @@ pub const Vm = struct {
                     const hi = vm.pop().int;
                     const lo = vm.pop().int;
                     const n: usize = if (hi > lo) @intCast(hi - lo) else 0;
-                    const elems = try vm.heap.alloc(Value, n);
+                    const elems = try rawAlloc(vm.heap, Value, n);
                     for (elems, 0..) |*e, k| e.* = .{ .int = lo + @as(i128, @intCast(k)) };
                     try vm.push(.{ .list = elems });
                 },
@@ -467,7 +468,7 @@ pub const Vm = struct {
             .set => return .{ .set = .{ .entries = &.{} } },
             .tuple => {
                 const elems = k.pool.elems(ty);
-                const out = try vm.heap.alloc(Value, elems.len);
+                const out = try rawAlloc(vm.heap, Value, elems.len);
                 for (elems, out) |e, *o| o.* = try vm.zero(e) orelse return null;
                 return .{ .tuple = out };
             },
@@ -475,7 +476,7 @@ pub const Vm = struct {
                 const d = k.decls[ty.a];
                 if (d.kind != .struct_) return null;
                 const defs = k.fields[d.fields.start..d.fields.end];
-                const out = try vm.heap.alloc(Value, defs.len);
+                const out = try rawAlloc(vm.heap, Value, defs.len);
                 for (defs, out) |fd, *o| o.* = try vm.zero(fd.type) orelse return null;
                 return .{ .record = .{ .decl = ty.a, .fields = out } };
             },
@@ -500,7 +501,7 @@ pub const Vm = struct {
                 return @as([*]Value, @ptrFromInt(start))[0..n];
             }
         }
-        return vm.heap.alloc(Value, n);
+        return rawAlloc(vm.heap, Value, n);
     }
 
     /// Where the region's allocations stand: the mark a frame or a loop frees back to.
@@ -570,7 +571,7 @@ pub const Vm = struct {
     /// `v` with every part allocated in the copy's range copied.
     fn copyOut(vm: *Vm, v: Value, c: Copy) Error!Value {
         return switch (v) {
-            .string => |s| if (s.len > 0 and inside(@intFromPtr(s.ptr), c)) .{ .string = try c.dest.dupe(u8, s) } else v,
+            .string => |s| if (s.len > 0 and inside(@intFromPtr(s.ptr), c)) .{ .string = try rawDupe(c.dest, u8, s) } else v,
             .list => |xs| .{ .list = try vm.copySlice(xs, c, true) },
             .tuple => |xs| .{ .tuple = try vm.copySlice(xs, c, false) },
             .map => |m| .{ .map = try vm.copyMap(m, 2, c) },
@@ -590,7 +591,7 @@ pub const Vm = struct {
         const key: SliceKey = .{ .ptr = addr, .len = xs.len };
         if (vm.forward.get(key)) |copied| return copied[0..xs.len];
         const growth = if (grows and c.moves) vm.growthOf(addr, xs.len) else null;
-        const out = try c.dest.alloc(Value, if (growth) |g| g.cap else xs.len);
+        const out = try rawAlloc(c.dest, Value, if (growth) |g| g.cap else xs.len);
         try vm.forward.put(vm.gpa, key, out.ptr);
         for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, c);
         if (growth) |g| g.ptr = @intFromPtr(out.ptr);
@@ -600,16 +601,17 @@ pub const Vm = struct {
         return out[0..xs.len];
     }
 
-    /// A map's entries and its index. A compaction's first copy builds each index again, so
-    /// no table it keeps holds an ordinal past its entries; any other copy takes the table
-    /// as it is, and a lookup skips such an ordinal.
+    /// A map's entries and its index. A compaction's first copy builds again a table holding
+    /// ordinals past its entries, so a table push grows in place never fills; any other copy
+    /// takes the table as it is, and a lookup skips such an ordinal.
     fn copyMap(vm: *Vm, m: Value.Map, stride: usize, c: Copy) Error!Value.Map {
         const entries = try vm.copySlice(m.entries, c, true);
         if (m.index.len == 0) return .{ .entries = entries };
         const index_inside = inside(@intFromPtr(m.index.ptr), c);
         if (entries.ptr == m.entries.ptr and !index_inside) return .{ .entries = entries, .index = m.index };
-        if (!c.moves or c.fresh) return .{ .entries = entries, .index = try c.dest.dupe(u32, m.index) };
-        return .{ .entries = entries, .index = try stdlib.buildIndex(c.dest, entries, stride, m.index.len) };
+        // A table whose slots in use are exactly the entries' keys has no ordinal past them.
+        if (!c.moves or c.fresh or m.index[0] == entries.len / stride) return .{ .entries = entries, .index = try rawDupe(c.dest, u32, m.index) };
+        return .{ .entries = entries, .index = try stdlib.buildIndex(c.dest, entries, stride, stdlib.tableSlots(m.index)) };
     }
 
     fn growthOf(vm: *Vm, addr: usize, len: usize) ?*Growth {
@@ -959,7 +961,7 @@ pub const Vm = struct {
             .list_push => .{ .list = try vm.pushList(a[0].list, a[1]) },
             // Each step is a safe point; what the steps so far built is what is kept.
             .list_map => blk: {
-                const out = try vm.heap.alloc(Value, a[0].list.len);
+                const out = try rawAlloc(vm.heap, Value, a[0].list.len);
                 const from = vm.mark();
                 var kept: usize = 0;
                 for (a[0].list, 0..) |x, i| {
@@ -969,7 +971,7 @@ pub const Vm = struct {
                 break :blk .{ .list = out };
             },
             .list_filter => blk: {
-                const out = try vm.heap.alloc(Value, a[0].list.len);
+                const out = try rawAlloc(vm.heap, Value, a[0].list.len);
                 const from = vm.mark();
                 var kept: usize = 0;
                 var n: usize = 0;
@@ -999,7 +1001,7 @@ pub const Vm = struct {
             .list_last => if (a[0].list.len == 0) try vm.variant("None", &.{}) else try vm.variant("Some", &.{a[0].list[a[0].list.len - 1]}),
             .string_size => .{ .int = graphemes(a[0].string) },
             .string_bytes => blk: {
-                const out = try vm.heap.alloc(Value, a[0].string.len);
+                const out = try rawAlloc(vm.heap, Value, a[0].string.len);
                 for (a[0].string, out) |byte, *o| o.* = .{ .int = byte };
                 break :blk .{ .list = out };
             },
@@ -1045,7 +1047,7 @@ pub const Vm = struct {
                 failed
             else if (std.mem.eql(u8, row.name, "find_charge")) blk: {
                 const decl = vm.checked().findDecl("Charge").?;
-                const fields = try vm.heap.alloc(Value, 4);
+                const fields = try rawAlloc(vm.heap, Value, 4);
                 fields[0] = a[1];
                 fields[1] = .{ .time = fixture_time };
                 fields[2] = .{ .int = 10_000 };
@@ -1056,7 +1058,7 @@ pub const Vm = struct {
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
                 const decl = vm.checked().findDecl("Charge").?;
-                const fields = try vm.heap.alloc(Value, 4);
+                const fields = try rawAlloc(vm.heap, Value, 4);
                 fields[0] = .{ .string = "ch_1" };
                 fields[1] = if (row.named.len == 2) a[0] else .{ .time = fixture_time };
                 fields[2] = a[row.named.len - 1];
@@ -1343,6 +1345,23 @@ pub const Vm = struct {
         try w.writeAll(")");
     }
 };
+
+/// `n` items of `T` from `a`, not yet written. Allocator.alloc in a safe build first fills
+/// what it gives with 0xAA; every caller of this writes each item at once, so it skips that,
+/// which a compaction's copies otherwise pay for on every buffer.
+pub fn rawAlloc(a: std.mem.Allocator, comptime T: type, n: usize) error{OutOfMemory}![]T {
+    if (n == 0) return @as([*]T, @ptrFromInt(@alignOf(T)))[0..0];
+    const len = std.math.mul(usize, n, @sizeOf(T)) catch return error.OutOfMemory;
+    const bytes = a.rawAlloc(len, .of(T), @returnAddress()) orelse return error.OutOfMemory;
+    return @as([*]T, @ptrCast(@alignCast(bytes)))[0..n];
+}
+
+/// A copy of `xs` from `a`, as rawAlloc gives it.
+pub fn rawDupe(a: std.mem.Allocator, comptime T: type, xs: []const T) error{OutOfMemory}![]T {
+    const out = try rawAlloc(a, T, xs.len);
+    @memcpy(out, xs);
+    return out;
+}
 
 /// The newest address a value's own parts start at, when it has a non-empty one: a map's
 /// index can be newer than its entries.

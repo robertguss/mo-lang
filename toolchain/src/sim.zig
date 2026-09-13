@@ -271,7 +271,7 @@ pub const Sim = struct {
         var proc: Proc = .{ .process = process, .args = args, .state = state, .supervisor = supervisor, .policy = policy };
         if (sim.packs) {
             // Packed together, what the state shares with the arguments is copied once.
-            const both = try sim.vm.heap.alloc(Value, args.len + 1);
+            const both = try vm_mod.rawAlloc(sim.vm.heap, Value, args.len + 1);
             @memcpy(both[0..args.len], args);
             both[args.len] = state;
             const parcel = try sim.vm.pack(.{ .tuple = both });
@@ -540,7 +540,7 @@ pub const Sim = struct {
         const proc = sim.procs.items[id];
         const p = vm.program.processes[proc.process];
         const n = proc.args.len;
-        const args = try vm.heap.alloc(Value, n + 2);
+        const args = try vm_mod.rawAlloc(vm.heap, Value, n + 2);
         @memcpy(args[0..n], proc.args);
         args[n] = before;
         args[n + 1] = message;

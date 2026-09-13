@@ -329,7 +329,7 @@ const Decoder = struct {
             if (try d.more('}')) continue;
             break;
         }
-        return d.vm.variant("Object", &.{.{ .map = try stdlib.mapOf(d.vm.heap, try d.vm.heap.dupe(Value, entries.items), 2) }});
+        return d.vm.variant("Object", &.{.{ .map = try stdlib.mapOf(d.vm.heap, try vm_mod.rawDupe(d.vm.heap, Value, entries.items), 2) }});
     }
 
     fn array(d: *Decoder, depth: u32) Fail!Value {
@@ -345,7 +345,7 @@ const Decoder = struct {
             if (try d.more(']')) continue;
             break;
         }
-        return d.vm.variant("Array", &.{.{ .list = try d.vm.heap.dupe(Value, items.items) }});
+        return d.vm.variant("Array", &.{.{ .list = try vm_mod.rawDupe(d.vm.heap, Value, items.items) }});
     }
 
     /// After an item: true past a `,`, false past `close`.
@@ -402,7 +402,7 @@ const Decoder = struct {
             switch (c) {
                 '"' => {
                     d.i += 1;
-                    return d.vm.heap.dupe(u8, out.items);
+                    return vm_mod.rawDupe(d.vm.heap, u8, out.items);
                 },
                 '\\' => try d.escape(&out),
                 0...0x1F => return d.bad(d.i),
