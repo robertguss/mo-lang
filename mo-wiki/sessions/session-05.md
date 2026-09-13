@@ -40,5 +40,7 @@ Recorded in `HANDOFF.md` at session end.
 - [[control-run]]
 - [[interpreter-step-7]]
 - [[interpreter-step-8]]
+- [[interpreter-step-9]]
+- [[interpreter-step-10]]
 - [[model-bakeoff]]
 - [[corpus]]
