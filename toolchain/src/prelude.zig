@@ -19,7 +19,7 @@ const std = @import("std");
 /// are listed in examples/GAPS.md.
 pub const Origin = enum { grammar, stdlib, corpus_only };
 
-pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, handle, capability, error_enum };
+pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, map, set, handle, capability, error_enum };
 
 pub const Type = struct {
     name: []const u8,
@@ -47,6 +47,8 @@ pub const types = [_]Type{
     .{ .name = "List", .arity = 1, .kind = .list },
     .{ .name = "Option", .arity = 1, .kind = .option },
     .{ .name = "Result", .arity = 2, .kind = .result },
+    .{ .name = "Map", .arity = 2, .kind = .map, .origin = .stdlib },
+    .{ .name = "Set", .arity = 1, .kind = .set, .origin = .stdlib },
     .{ .name = "Handle", .arity = 1, .kind = .handle },
     .{ .name = "Clock", .kind = .capability },
     .{ .name = "Fs", .kind = .capability },
@@ -177,6 +179,24 @@ pub const fns = [_]Fn{
     .{ .recv = "List(T)", .name = "zip", .params = &.{"List(U)"}, .ret = "List((T, U))", .origin = .stdlib },
     .{ .recv = "List(T)", .name = "enumerate", .ret = "List((UInt64, T))", .origin = .stdlib },
     .{ .recv = "List(T)", .name = "unique", .ret = "List(T)", .origin = .stdlib },
+    .{ .recv = "List(T)", .name = "group_by", .params = &.{"fn(T) K"}, .ret = "Map(K, List(T))", .origin = .stdlib },
+    // Maps and sets: values whose keys keep the order they were first added
+    .{ .recv = "Map", .on_type = true, .name = "new", .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "size", .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "get", .params = &.{"K"}, .ret = "Option(V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "has?", .params = &.{"K"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "set", .params = &.{ "K", "V" }, .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "update", .params = &.{ "K", "V", "fn(V) V" }, .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "remove", .params = &.{"K"}, .ret = "Map(K, V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "keys", .ret = "List(K)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "values", .ret = "List(V)", .origin = .stdlib },
+    .{ .recv = "Map(K, V)", .name = "entries", .ret = "List((K, V))", .origin = .stdlib },
+    .{ .recv = "Set", .on_type = true, .name = "new", .ret = "Set(T)", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "size", .ret = "UInt64", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "add", .params = &.{"T"}, .ret = "Set(T)", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "remove", .params = &.{"T"}, .ret = "Set(T)", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "has?", .params = &.{"T"}, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "Set(T)", .name = "to_list", .ret = "List(T)", .origin = .stdlib },
     // Strings
     .{ .recv = "String", .name = "size", .ret = "UInt64" },
     .{ .recv = "String", .name = "bytes", .ret = "List(UInt8)" },

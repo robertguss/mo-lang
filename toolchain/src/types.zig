@@ -34,6 +34,10 @@ pub const Tag = enum(u8) {
     option,
     /// a: value, b: error
     result,
+    /// Map(K, V) (design-v0/09): a: key, b: value
+    map,
+    /// Set(T): a: element
+    set,
     /// a: start in items, b: length
     tuple,
     /// a: start in items (parameters, then the return type), b: parameter count
@@ -196,8 +200,8 @@ pub const Pool = struct {
         const t = p.get(r);
         return switch (t.tag) {
             .variable => t.a == v,
-            .list, .option => p.occurs(v, t.a),
-            .result => p.occurs(v, t.a) or p.occurs(v, t.b),
+            .list, .option, .set => p.occurs(v, t.a),
+            .result, .map => p.occurs(v, t.a) or p.occurs(v, t.b),
             .tuple => for (p.elems(t)) |e| {
                 if (p.occurs(v, e)) break true;
             } else false,
@@ -244,8 +248,8 @@ pub const Pool = struct {
         return switch (ta.tag) {
             .none, .bool, .string, .time, .duration, .self_ => true,
             .int, .float, .cap, .decl, .handle, .message, .state, .param => ta.a == tb.a,
-            .list, .option => p.unify(ta.a, tb.a),
-            .result => p.unify(ta.a, tb.a) and p.unify(ta.b, tb.b),
+            .list, .option, .set => p.unify(ta.a, tb.a),
+            .result, .map => p.unify(ta.a, tb.a) and p.unify(ta.b, tb.b),
             .tuple => ta.b == tb.b and for (0..ta.b) |i| {
                 if (!p.unify(p.items.items[ta.a + i], p.items.items[tb.a + i])) break false;
             } else true,
@@ -262,14 +266,14 @@ pub const Pool = struct {
         for (from, to) |f, t| if (r == f) return t;
         const t = p.get(r);
         switch (t.tag) {
-            .list, .option => {
+            .list, .option, .set => {
                 const inner = try p.subst(t.a, from, to);
                 return if (inner == t.a) r else p.add(.{ .tag = t.tag, .a = inner });
             },
-            .result => {
+            .result, .map => {
                 const ok = try p.subst(t.a, from, to);
                 const err = try p.subst(t.b, from, to);
-                return if (ok == t.a and err == t.b) r else p.result(ok, err);
+                return if (ok == t.a and err == t.b) r else p.add(.{ .tag = t.tag, .a = ok, .b = err });
             },
             .tuple, .func => {
                 var changed = false;
@@ -319,9 +323,20 @@ pub const Pool = struct {
                 .env => "Env",
                 .out => "Out",
             }),
-            .list, .option => {
-                try w.writeAll(if (t.tag == .list) "List(" else "Option(");
+            .list, .option, .set => {
+                try w.writeAll(switch (t.tag) {
+                    .list => "List(",
+                    .option => "Option(",
+                    else => "Set(",
+                });
                 try p.format(w, t.a);
+                try w.writeAll(")");
+            },
+            .map => {
+                try w.writeAll("Map(");
+                try p.format(w, t.a);
+                try w.writeAll(", ");
+                try p.format(w, t.b);
                 try w.writeAll(")");
             },
             .result => {

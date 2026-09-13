@@ -18,6 +18,8 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `List` | `T` | list | grammar |
 | `Option` | `T` | `Some(T)` or `None` | grammar |
 | `Result` | `T`, `E` | `Ok(T)` or `Error(E)` | grammar |
+| `Map` | `K`, `V` | map, keys in the order first added | stdlib (09) |
+| `Set` | `T` | set, elements in the order first added | stdlib (09) |
 | `(A, B, ...)` | two or more | tuple | grammar |
 | `Handle` | a process name | a started process | grammar |
 | `Clock` | | capability | grammar |
@@ -96,6 +98,22 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `List(T)`, `T` an integer | `sum` | | `T` | | | stdlib (09) |
 | `List(T)` | `zip` | `List(U)` | `List((T, U))` | | | stdlib (09) |
 | `List(T)` | `enumerate` | | `List((UInt64, T))` | | | stdlib (09) |
+| `List(T)` | `group_by` | `fn(T) K` | `Map(K, List(T))` | | | stdlib (09) |
+| `Map` (on type) | `new` | | `Map(K, V)` | | | stdlib (09) |
+| `Map(K, V)` | `size` | | `UInt64` | | | stdlib (09) |
+| `Map(K, V)` | `get` | `K` | `Option(V)` | | | stdlib (09) |
+| `Map(K, V)` | `has?` | `K` | `Bool` | | | stdlib (09) |
+| `Map(K, V)` | `set` | `K`, `V` | `Map(K, V)` | | | stdlib (09) |
+| `Map(K, V)` | `update` | `K`, `V`, `fn(V) V` | `Map(K, V)` | | | stdlib (09) |
+| `Map(K, V)` | `remove` | `K` | `Map(K, V)` | | | stdlib (09) |
+| `Map(K, V)` | `keys` | | `List(K)` | | | stdlib (09) |
+| `Map(K, V)` | `values` | | `List(V)` | | | stdlib (09) |
+| `Map(K, V)` | `entries` | | `List((K, V))` | | | stdlib (09) |
+| `Set` (on type) | `new` | | `Set(T)` | | | stdlib (09) |
+| `Set(T)` | `size` | | `UInt64` | | | stdlib (09) |
+| `Set(T)` | `add`, `remove` | `T` | `Set(T)` | | | stdlib (09) |
+| `Set(T)` | `has?` | `T` | `Bool` | | | stdlib (09) |
+| `Set(T)` | `to_list` | | `List(T)` | | | stdlib (09) |
 | `String` | `size` | | `UInt64` (graphemes) | | | grammar |
 | `String` | `bytes` | | `List(UInt8)` | | | grammar |
 | `String` | `starts_with?` | `String` | `Bool` | | | grammar |

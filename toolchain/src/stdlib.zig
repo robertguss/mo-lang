@@ -63,6 +63,23 @@ pub const Row = enum {
     list_zip,
     list_enumerate,
     list_unique,
+    list_group_by,
+    map_new,
+    map_size,
+    map_get,
+    map_has,
+    map_set,
+    map_update,
+    map_remove,
+    map_keys,
+    map_values,
+    map_entries,
+    set_new,
+    set_size,
+    set_add,
+    set_remove,
+    set_has,
+    set_to_list,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -83,6 +100,12 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "List.count", .list_count },               .{ "List.sort", .list_sort },               .{ "List.sort_by", .list_sort_by },
     .{ "List.min", .list_min },                   .{ "List.max", .list_max },                 .{ "List.sum", .list_sum },
     .{ "List.zip", .list_zip },                   .{ "List.enumerate", .list_enumerate },     .{ "List.unique", .list_unique },
+    .{ "List.group_by", .list_group_by },         .{ "Map.new", .map_new },                   .{ "Map.size", .map_size },
+    .{ "Map.get", .map_get },                     .{ "Map.has?", .map_has },                  .{ "Map.set", .map_set },
+    .{ "Map.update", .map_update },               .{ "Map.remove", .map_remove },             .{ "Map.keys", .map_keys },
+    .{ "Map.values", .map_values },               .{ "Map.entries", .map_entries },           .{ "Set.new", .set_new },
+    .{ "Set.size", .set_size },                   .{ "Set.add", .set_add },                   .{ "Set.remove", .set_remove },
+    .{ "Set.has?", .set_has },                    .{ "Set.to_list", .set_to_list },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -101,6 +124,38 @@ pub const row_of = blk: {
 pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u32) Error!Value {
     return switch (which) {
         .none => unreachable,
+        .list_group_by => groupBy(vm, a[0].list, a[1].func),
+        .map_new => .{ .map = &.{} },
+        .set_new => .{ .set = &.{} },
+        .map_size => .{ .int = @intCast(a[0].map.len / 2) },
+        .set_size => .{ .int = @intCast(a[0].set.len) },
+        .map_get => if (indexOf(a[0].map, 2, a[1])) |k| vm.variant("Some", &.{a[0].map[k + 1]}) else vm.variant("None", &.{}),
+        .map_has => .{ .bool = indexOf(a[0].map, 2, a[1]) != null },
+        .set_has => .{ .bool = indexOf(a[0].set, 1, a[1]) != null },
+        .map_set => .{ .map = try put(vm, a[0].map, 2, a[1], a[2], int_kind) },
+        .map_update => blk: {
+            const current = if (indexOf(a[0].map, 2, a[1])) |k| a[0].map[k + 1] else a[2];
+            const next = try vm.invoke(a[3].func, &.{current});
+            break :blk .{ .map = try put(vm, a[0].map, 2, a[1], next, int_kind) };
+        },
+        .set_add => .{ .set = try put(vm, a[0].set, 1, a[1], .none, int_kind) },
+        .map_remove => .{ .map = try without(vm, a[0].map, 2, a[1], int_kind) },
+        .set_remove => .{ .set = try without(vm, a[0].set, 1, a[1], int_kind) },
+        .map_keys, .map_values => blk: {
+            const xs = a[0].map;
+            const out = try vm.heap.alloc(Value, xs.len / 2);
+            const offset: usize = if (which == .map_keys) 0 else 1;
+            for (out, 0..) |*o, k| o.* = xs[2 * k + offset];
+            break :blk .{ .list = out };
+        },
+        .map_entries => blk: {
+            const xs = a[0].map;
+            const pairs = try vm.heap.dupe(Value, xs);
+            const out = try vm.heap.alloc(Value, xs.len / 2);
+            for (out, 0..) |*o, k| o.* = .{ .tuple = pairs[2 * k .. 2 * k + 2] };
+            break :blk .{ .list = out };
+        },
+        .set_to_list => .{ .list = try vm.heap.dupe(Value, a[0].set) },
         .list_get => if (a[1].int < a[0].list.len) vm.variant("Some", &.{a[0].list[@intCast(a[1].int)]}) else vm.variant("None", &.{}),
         .list_slice => .{ .list = cut(a[0].list, a[1].int, a[2].int) },
         .list_take => .{ .list = cut(a[0].list, 0, a[1].int) },
@@ -483,6 +538,109 @@ fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
     return .{ .list = out };
 }
 
+fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+    const keys = try vm.heap.alloc(Value, xs.len);
+    const from = vm.mark();
+    var kept: usize = 0;
+    for (xs, 0..) |x, i| {
+        keys[i] = try vm.invoke(f, &.{x});
+        kept = try vm.iterate(from, keys[0 .. i + 1], kept);
+    }
+    const gpa = vm.gpa;
+    var index: std.HashMapUnmanaged(Value, u32, ValueContext, 80) = .empty;
+    defer index.deinit(gpa);
+    // Per group: its first element's position and its size; per element: its group.
+    var firsts: std.ArrayList(u32) = .empty;
+    defer firsts.deinit(gpa);
+    var sizes: std.ArrayList(u32) = .empty;
+    defer sizes.deinit(gpa);
+    const group_of = try gpa.alloc(u32, xs.len);
+    defer gpa.free(group_of);
+    for (keys, 0..) |key, i| {
+        const found = try index.getOrPut(gpa, key);
+        if (!found.found_existing) {
+            found.value_ptr.* = @intCast(firsts.items.len);
+            try firsts.append(gpa, @intCast(i));
+            try sizes.append(gpa, 0);
+        }
+        group_of[i] = found.value_ptr.*;
+        sizes.items[found.value_ptr.*] += 1;
+    }
+    // Every group's list is a run of one block, in element order.
+    const block = try vm.heap.alloc(Value, xs.len);
+    const entries = try vm.heap.alloc(Value, 2 * firsts.items.len);
+    const filled = try gpa.alloc(u32, firsts.items.len);
+    defer gpa.free(filled);
+    var start: usize = 0;
+    for (firsts.items, sizes.items, filled, 0..) |first, size, *fill, g| {
+        fill.* = @intCast(start);
+        entries[2 * g] = keys[first];
+        entries[2 * g + 1] = .{ .list = block[start .. start + size] };
+        start += size;
+    }
+    for (xs, group_of) |x, g| {
+        block[filled[g]] = x;
+        filled[g] += 1;
+    }
+    return .{ .map = entries };
+}
+
+// ---- maps and sets
+
+/// Where `key` is in `xs`, whose entries are `stride` values wide (a map's are 2).
+pub fn indexOf(xs: []const Value, stride: usize, key: Value) ?usize {
+    var k: usize = 0;
+    while (k < xs.len) : (k += stride) {
+        if (vm_mod.equal(xs[k], key)) return k;
+    }
+    return null;
+}
+
+/// `xs` with `key` set to `value` (a set passes stride 1, and no value): an existing key
+/// keeps its place, a new one goes last. When the lowering marked the call `unique`
+/// (`m = m.set(k, v)` on a var) and the var owns the buffer, the row writes in place.
+fn put(vm: *Vm, xs: []const Value, stride: usize, key: Value, value: Value, int_kind: u32) Error![]const Value {
+    const on_var = int_kind == bytecode.unique;
+    const mine = on_var and vm.isOwned(xs);
+    if (indexOf(xs, stride, key)) |k| {
+        if (stride == 1) return xs;
+        if (mine and vm.writable(@intFromPtr(xs.ptr), value)) {
+            @constCast(xs)[k + 1] = value;
+            return xs;
+        }
+        const out = try vm.heap.dupe(Value, xs);
+        out[k + 1] = value;
+        if (on_var) vm.own(out);
+        return out;
+    }
+    var out = try vm.pushList(xs, key);
+    if (stride == 2) out = try vm.pushList(out, value);
+    // Grown in place from a buffer others may share a prefix of, a result is not owned.
+    if (on_var and (mine or out.ptr != xs.ptr)) {
+        vm.disown(xs);
+        vm.own(out);
+    }
+    return out;
+}
+
+/// `xs` without `key`; unchanged when it is absent.
+fn without(vm: *Vm, xs: []const Value, stride: usize, key: Value, int_kind: u32) Error![]const Value {
+    const k = indexOf(xs, stride, key) orelse return xs;
+    const on_var = int_kind == bytecode.unique;
+    if (on_var and vm.isOwned(xs)) {
+        const buf = @constCast(xs);
+        std.mem.copyForwards(Value, buf[k .. xs.len - stride], buf[k + stride ..]);
+        vm.disown(xs);
+        vm.own(xs[0 .. xs.len - stride]);
+        return xs[0 .. xs.len - stride];
+    }
+    const out = try vm.heap.alloc(Value, xs.len - stride);
+    @memcpy(out[0..k], xs[0..k]);
+    @memcpy(out[k..], xs[k + stride ..]);
+    if (on_var) vm.own(out);
+    return out;
+}
+
 /// Hashes a value so that equal values (vm.equal) hash alike.
 pub const ValueContext = struct {
     pub fn hash(_: ValueContext, v: Value) u64 {
@@ -509,7 +667,7 @@ fn hashInto(h: *std.hash.Wyhash, v: Value) void {
             h.update(s);
         },
         .time, .duration => |t| h.update(std.mem.asBytes(&t)),
-        .list, .tuple => |xs| hashAll(h, xs),
+        .list, .tuple, .map, .set => |xs| hashAll(h, xs),
         .record => |r| {
             h.update(std.mem.asBytes(&r.decl));
             hashAll(h, r.fields);

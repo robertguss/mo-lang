@@ -1088,6 +1088,8 @@ const Checker = struct {
                 .list => c.pool.list1(.list, try c.resolveType(args[0], ctx)),
                 .option => c.pool.list1(.option, try c.resolveType(args[0], ctx)),
                 .result => c.pool.result(try c.resolveType(args[0], ctx), try c.resolveType(args[1], ctx)),
+                .map => c.pool.add(.{ .tag = .map, .a = try c.resolveType(args[0], ctx), .b = try c.resolveType(args[1], ctx) }),
+                .set => c.pool.list1(.set, try c.resolveType(args[0], ctx)),
                 .error_enum => c.preludeEnum(name),
                 .handle => {
                     const an = c.node(args[0]);
@@ -1211,6 +1213,8 @@ const Checker = struct {
         if (std.mem.eql(u8, word, "List")) return c.pool.list1(.list, args.items[0]);
         if (std.mem.eql(u8, word, "Option")) return c.pool.list1(.option, args.items[0]);
         if (std.mem.eql(u8, word, "Result")) return c.pool.result(args.items[0], args.items[1]);
+        if (std.mem.eql(u8, word, "Map")) return c.pool.add(.{ .tag = .map, .a = args.items[0], .b = args.items[1] });
+        if (std.mem.eql(u8, word, "Set")) return c.pool.list1(.set, args.items[0]);
         if (prelude.findType(word)) |pt| if (pt.kind == .error_enum) return c.preludeEnum(word);
         if (c.type_names.get(word)) |d| return c.decls.items[d].type;
         return primitive(word) orelse types.unknown;
@@ -1221,6 +1225,8 @@ const Checker = struct {
         const b = c.bt(t);
         if (std.mem.eql(u8, head, "Int")) return b.tag == .int or c.pool.isIntLiteralVar(t);
         if (std.mem.eql(u8, head, "List")) return b.tag == .list;
+        if (std.mem.eql(u8, head, "Map")) return b.tag == .map;
+        if (std.mem.eql(u8, head, "Set")) return b.tag == .set;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
         const p = primitive(head) orelse return false;
@@ -1373,7 +1379,7 @@ const Checker = struct {
         switch (ty.tag) {
             // Already reported, or not known yet: nothing more to say.
             .unknown, .variable, .never => return true,
-            .int, .float, .bool, .string, .duration, .list, .option => return true,
+            .int, .float, .bool, .string, .duration, .list, .option, .map, .set => return true,
             .tuple => {
                 for (c.pool.elems(ty)) |e| if (!c.hasZero(e, depth + 1)) return false;
                 return true;
