@@ -51,6 +51,7 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `String` | `pad_left`, `pad_right` | `n: UInt64`, `ch: String` | `String` | `ch` added before or after until the text is `n` graphemes; a longer text is unchanged; `ch` that is not one grapheme is a crash |
 | `String` | `repeat` | `n: UInt64` | `String` | the text `n` times |
 | `String` (on type) | `join` | `List(String)`, `sep: String` | `String` | the strings with `sep` between each two |
+| `String` | `byte_size` | | `UInt64` | the UTF-8 bytes, counted without building `bytes` |
 
 ## Lists
 

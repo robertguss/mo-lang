@@ -496,8 +496,8 @@ const Parser = struct {
         _ = try p.expect(.kw_fn);
         const name = try p.expect(.ident);
         const params = try p.parseParams();
-        _ = try p.expect(.colon);
-        const ret = try p.parseType();
+        // A function that returns nothing names no type, as main does (grammar §2).
+        const ret = if (p.eat(.colon)) |_| try p.parseType() else ast.none;
         const bounds = try p.parseBounds();
         return .{ .name = name, .params = params, .ret = ret, .bounds = bounds };
     }
@@ -1104,6 +1104,12 @@ const Parser = struct {
             .underscore => return p.addNode(.{ .kind = .pat_wildcard, .main_token = p.next() }),
             .ident => return p.addNode(.{ .kind = .pat_bind, .main_token = p.next() }),
             .int, .float, .string, .kw_true, .kw_false => return p.addNode(.{ .kind = .pat_literal, .main_token = p.next() }),
+            // A negative number: the literal's node keeps its `-` token as lhs.
+            .minus => {
+                const minus = p.next();
+                if (p.peek() != .int and p.peek() != .float) return p.fail("MO0104", "expected a number after `-` in a pattern", why_pattern);
+                return p.addNode(.{ .kind = .pat_literal, .main_token = p.next(), .lhs = minus });
+            },
             .type_name => {
                 const name = p.next();
                 if (p.peek() != .l_paren) return p.addNode(.{ .kind = .pat_variant, .main_token = name });

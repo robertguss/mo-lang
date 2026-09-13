@@ -23,6 +23,7 @@ const Error = vm_mod.Error;
 pub const Row = enum {
     none,
     string_from_bytes,
+    string_byte_size,
     string_chars,
     string_split,
     string_lines,
@@ -108,6 +109,7 @@ pub const Row = enum {
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "String.from_bytes", .string_from_bytes }, .{ "String.chars", .string_chars },         .{ "String.split", .string_split },
+    .{ "String.byte_size", .string_byte_size },
     .{ "String.lines", .string_lines },           .{ "String.trim", .string_trim },           .{ "String.ends_with?", .string_ends_with },
     .{ "String.contains?", .string_contains },    .{ "String.index_of", .string_index_of },   .{ "String.slice", .string_slice },
     .{ "String.replace", .string_replace },       .{ "String.to_upper", .string_to_upper },   .{ "String.to_lower", .string_to_lower },
@@ -293,6 +295,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
             break :blk .{ .list = out[0..n] };
         },
         .string_from_bytes => fromBytes(vm, a[0].list),
+        .string_byte_size => .{ .int = @intCast(a[0].string.len) },
         .string_chars => .{ .list = try chars(vm, a[0].string) },
         .string_split => split(vm, a[0].string, a[1].string),
         .string_lines => lines(vm, a[0].string),

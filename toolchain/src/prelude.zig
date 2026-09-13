@@ -220,6 +220,7 @@ pub const fns = [_]Fn{
     // Strings
     .{ .recv = "String", .name = "size", .ret = "UInt64" },
     .{ .recv = "String", .name = "bytes", .ret = "List(UInt8)" },
+    .{ .recv = "String", .name = "byte_size", .ret = "UInt64", .origin = .stdlib },
     .{ .recv = "String", .name = "starts_with?", .params = &.{"String"}, .ret = "Bool" },
     .{ .recv = "String", .on_type = true, .name = "from_bytes", .params = &.{"List(UInt8)"}, .ret = "Option(String)", .origin = .stdlib },
     .{ .recv = "String", .name = "chars", .ret = "List(String)", .origin = .stdlib },

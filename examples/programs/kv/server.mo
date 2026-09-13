@@ -92,9 +92,14 @@ fn admitted(conn: Conn, store: Handle(Store), gate: Handle(Gate)) : Bool
     worker.send(Talk)
     return true
   end
+  turn_away(conn)
+  false
+end
+
+# Tells a client there is no room, ERR busy, and closes its connection.
+fn turn_away(conn: Conn)
   sent(conn, Failed(reason: Busy))
   conn.close
-  false
 end
 
 # Serves a connection until the client quits, leaves, or is silent for 30 seconds. A for

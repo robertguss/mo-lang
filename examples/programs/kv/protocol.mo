@@ -109,15 +109,13 @@ end
 
 # A key is 1 to 256 bytes, with no space and no control character.
 fn key?(text: String) : Bool
-  return false if text == "" or text.size > 256
-  bytes = text.bytes
-  bytes.size <= 256 and bytes.all?(fn(b) b > 32 and b != 127 end)
+  return false if text == "" or text.byte_size > 256
+  text.bytes.all?(fn(b) b > 32 and b != 127 end)
 end
 
 # A value is at most 60 KiB and holds no newline.
 fn value?(text: String) : Bool
-  return false if text.size > 61_440 or text.contains?("\n")
-  text.bytes.size <= 61_440
+  text.byte_size <= 61_440 and !text.contains?("\n")
 end
 
 # Whether the key a request names, if it names one, keeps the key rules.
@@ -193,8 +191,7 @@ test "each command parses into its request"
   assert parse("GET greeting") == Ok(Get(key: "greeting"))
   assert parse("DEL greeting") == Ok(Del(key: "greeting"))
   assert parse("INCR hits 5") == Ok(Incr(key: "hits", by: 5))
-  assert parse("INCR hits -9223372036854775808") is Ok(Incr(key: "hits", by: low))
-  assert low < 0
+  assert parse("INCR hits -9223372036854775808") is Ok(Incr(key: "hits", by: -9223372036854775808))
   assert parse("KEYS user:") == Ok(Keys(prefix: "user:"))
   assert parse("KEYS") == Ok(Keys(prefix: ""))
   assert parse("KEYS ") == Ok(Keys(prefix: ""))

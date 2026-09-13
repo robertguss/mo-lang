@@ -134,6 +134,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Set(T)` | `to_list` | | `List(T)` | | | stdlib (09) |
 | `String` | `size` | | `UInt64` (graphemes) | | | grammar |
 | `String` | `bytes` | | `List(UInt8)` | | | grammar |
+| `String` | `byte_size` | | `UInt64` | | | stdlib (09) |
 | `String` | `starts_with?` | `String` | `Bool` | | | grammar |
 | `String` (on type) | `from_bytes` | `List(UInt8)` | `Option(String)` | | | stdlib (09) |
 | `String` | `chars`, `lines` | | `List(String)` | | | stdlib (09) |

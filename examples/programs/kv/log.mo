@@ -73,7 +73,7 @@ process Journal(dir: Fs, name: String, opened_bytes: UInt64)
       Append(line: line, keys: keys):
         case dir.append(name, line, within: 10_000.ms)
           Ok(_):
-            state.bytes += line.bytes.size
+            state.bytes += line.byte_size
             state.keys = keys
             Ok(state.bytes)
           Error(problem): Error(problem)

@@ -304,6 +304,7 @@ end
 test "INCR adds to a decimal value, starts a missing key at 0, and refuses a word or an overflow"
   assert incremented(Some("41"), 1) is Ok(42)
   assert incremented(Some("-7"), 7) is Ok(0)
+  assert incremented(Some("-7"), 2) is Ok(-5)
   assert incremented(None, 5) is Ok(5)
   assert incremented(Some("forty"), 1) is Error(NotANumber)
   assert incremented(Some(""), 1) is Error(NotANumber)

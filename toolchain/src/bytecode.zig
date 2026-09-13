@@ -1153,7 +1153,13 @@ const Lower = struct {
             },
             .pat_literal => {
                 _ = try l.emit(.load, subject, 0);
-                try l.pushConst(try l.literal(n.main_token));
+                var value = try l.literal(n.main_token);
+                if (n.lhs != 0) switch (value) {
+                    .int => |v| value = .{ .int = -v },
+                    .float => |v| value = .{ .float = -v },
+                    else => {},
+                };
+                try l.pushConst(value);
                 _ = try l.emit(.eq, 0, 0);
                 try fails.append(l.gpa, try l.emit(.jump_if_false, 0, 0));
             },

@@ -76,7 +76,7 @@
         { "id": "5b371981d0ad", "name": "struct Reopened", "hash": "1211e4b464578b57" },
         { "id": "7f01fc828c57", "name": "struct Opened", "hash": "dcdfb3f2ff0ea4d1" },
         { "id": "5d6b2c5bbf88", "name": "enum LogError", "hash": "4b443dba21db2838" },
-        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "551d1383caa2cdcd" },
+        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "4d332e4a20b9981e" },
         { "id": "6a649c511348", "name": "supervisor Journals", "hash": "dc3751228e7316a0" },
         { "id": "59bbc9e5e657", "name": "fn empty", "hash": "2c73eee8dd09832d" },
         { "id": "9667256f3198", "name": "fn bucket_of", "hash": "acdb5dbcf3ebc12c" },
@@ -108,7 +108,7 @@
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
       ],
-      "verified": { "hash": "087094673077814e", "declarations": "8946f89bf622fa4c" }
+      "verified": { "hash": "087094673077814e", "declarations": "dc8ab7b37c432c92" }
     },
     {
       "path": "kv/main.mo",
@@ -174,8 +174,8 @@
         { "id": "c531093e8b0b", "name": "fn keys_of", "hash": "a33013195584554c" },
         { "id": "31402e7ce26a", "name": "fn only_key", "hash": "1ae2ef9b442d2b1e" },
         { "id": "9d156da194be", "name": "fn bare", "hash": "d221db692db07011" },
-        { "id": "871badd6d13f", "name": "fn key?", "hash": "4b977e2c9559bc96" },
-        { "id": "22813ff5f2db", "name": "fn value?", "hash": "34f448692c61a7da" },
+        { "id": "871badd6d13f", "name": "fn key?", "hash": "add0c3be74290f3f" },
+        { "id": "22813ff5f2db", "name": "fn value?", "hash": "5dc06a3a4bf6ed32" },
         { "id": "9828b90e1acf", "name": "fn keyed?", "hash": "d7cb6479b17642fa" },
         { "id": "01c5f19524a1", "name": "fn line_of", "hash": "57a129e6508a9f2d" },
         { "id": "c3d151492fdb", "name": "fn render", "hash": "3e483f7f5d220464" },
@@ -183,7 +183,7 @@
         { "id": "37e281619e61", "name": "fn counted", "hash": "4740c9b67ca9bec2" },
         { "id": "3acb0ca6ce51", "name": "fn word_of", "hash": "1c03e9af80e82076" },
         { "id": "673376acef8e", "name": "fn follows", "hash": "030130e0b0a1f8ca" },
-        { "id": "f8d74cdc528f", "name": "test \"each command parses into its request\"", "hash": "94aaeee600436ca4" },
+        { "id": "f8d74cdc528f", "name": "test \"each command parses into its request\"", "hash": "1dc51ce39af4a40a" },
         { "id": "cfa3b0de63f8", "name": "test \"a line that is not a request is malformed\"", "hash": "5bcf3cd7864891b4" },
         { "id": "3bbca333b06f", "name": "test \"a key is 1 to 256 bytes, counted in bytes, with no space or control character\"", "hash": "cef177c33f3f0fc9" },
         { "id": "01b327d530e9", "name": "test \"a value is up to 60 KiB, counted in bytes, and may hold spaces\"", "hash": "c4eae00c45130369" },
@@ -192,7 +192,7 @@
         { "id": "27e2a785bbd0", "name": "test rejects \"a line handed over with its newline\"", "hash": "f22ef6e6c325839f" },
         { "id": "186267547242", "name": "property \"every request's line parses back to the request\"", "hash": "19e824d5ce61d075" }
       ],
-      "verified": { "hash": "c905d6dcb9f94cdc", "declarations": "43523d0ddc3e30c6" }
+      "verified": { "hash": "c905d6dcb9f94cdc", "declarations": "d6d3d019533d50c7" }
     },
     {
       "path": "kv/server.mo",
@@ -208,7 +208,8 @@
         { "id": "58a7e8abcc15", "name": "process Worker", "hash": "f0cb8b5073eabba2" },
         { "id": "5b5e8a68af97", "name": "process Listening", "hash": "9cce2e42d141322b" },
         { "id": "d829147acdfc", "name": "supervisor Servers", "hash": "60673a61c790d6ff" },
-        { "id": "4ad1bf3c1950", "name": "fn admitted", "hash": "d7e5899a2a3262af" },
+        { "id": "4ad1bf3c1950", "name": "fn admitted", "hash": "fb066cc826cccd9f" },
+        { "id": "9674a8a0cbde", "name": "fn turn_away", "hash": "4813e0e1944beac0" },
         { "id": "2bed6753d188", "name": "fn talk", "hash": "598819df31a4612f" },
         { "id": "51535593e8de", "name": "fn talk_awhile", "hash": "9c9bc016266df11f" },
         { "id": "b23d7c917dea", "name": "fn exchange", "hash": "5002862a26d38ec9" },
@@ -226,7 +227,7 @@
         { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "0c4514424619787b" },
         { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "cf20b633982a5576" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "8bf94f5d79796a73" }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "05adf4cc2bbf04b4" }
     },
     {
       "path": "kv/store.mo",
@@ -270,14 +271,14 @@
         { "id": "d659ee091a15", "name": "fn opened", "hash": "a98f18d3b32c5f02" },
         { "id": "9e12bfee52e6", "name": "test \"GET, SET, DEL, KEYS, and QUIT come to the answers the protocol names\"", "hash": "444f7455780ed15d" },
         { "id": "3ba2af1ca23f", "name": "test \"STATS answers the counts the store passes in\"", "hash": "6a67c738c53f4b7f" },
-        { "id": "ffd8c27bef32", "name": "test \"INCR adds to a decimal value, starts a missing key at 0, and refuses a word or an overflow\"", "hash": "6be30c557a40b576" },
+        { "id": "ffd8c27bef32", "name": "test \"INCR adds to a decimal value, starts a missing key at 0, and refuses a word or an overflow\"", "hash": "81b56bf7f98b69be" },
         { "id": "54d72de46ccb", "name": "test \"a new key is refused when the table holds a million, and an existing key is not\"", "hash": "ebbb7634c7155e7a" },
         { "id": "76a4e5052ff2", "name": "test \"every answer is the one the table gives, through the journal\"", "hash": "04e048b6df46ab6a" },
         { "id": "4ab1f488bd3c", "name": "test \"a store whose journal never answers in time answers each change ERR io, and changes nothing\"", "hash": "d43e623e91027ab5" },
         { "id": "188c9b4c6dff", "name": "test \"a store started again from its log reads what the first one wrote\"", "hash": "59ab036010260f7a" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "7a533a4a2b2da912" }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "b8b4aa7893c80fed" }
     },
     {
       "path": "lines-per-file.mo",

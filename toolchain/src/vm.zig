@@ -1819,6 +1819,34 @@ test "a remembered call gives what running it gives, and a call that trips still
     try std.testing.expectEqual(contracts.Kind.requires, vm.report.?.kind);
 }
 
+test "a negative number is a pattern, and byte_size counts bytes" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Negative
+        \\fn sign(r: Result(Int64, String)) : String
+        \\  case r
+        \\    Ok(-5): "minus five"
+        \\    Ok(-9223372036854775808): "lowest"
+        \\    Ok(5): "five"
+        \\    Ok(_): "other"
+        \\    Error(_): "error"
+        \\  end
+        \\end
+        \\fn size_in_bytes(s: String) : UInt64
+        \\  s.byte_size
+        \\end
+    );
+    var vm: Vm = .init(arena, &program, 0);
+    const cases = [_]struct { i128, []const u8 }{ .{ -5, "minus five" }, .{ 5, "five" }, .{ std.math.minInt(i64), "lowest" }, .{ -6, "other" } };
+    for (cases) |c| {
+        const r = try vm.variant("Ok", &.{.{ .int = c[0] }});
+        try std.testing.expectEqualStrings(c[1], (try callNamed(&vm, "sign", &.{r})).string);
+    }
+    try std.testing.expectEqual(@as(i128, 6), (try callNamed(&vm, "size_in_bytes", &.{.{ .string = "café!" }})).int);
+}
+
 test "closures, patterns, strings, and try" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();

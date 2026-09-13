@@ -1162,7 +1162,11 @@ const Printer = struct {
     fn pattern(p: *Printer, i: Index) E!void {
         const n = p.node(i);
         switch (n.kind) {
-            .pat_wildcard, .pat_bind, .pat_literal => _ = try p.tk(null),
+            .pat_wildcard, .pat_bind => _ = try p.tk(null),
+            .pat_literal => {
+                if (n.lhs != 0) _ = try p.tk(.minus);
+                _ = try p.tk(null);
+            },
             .pat_variant => {
                 _ = try p.tk(.type_name);
                 if (n.lhs != 0) {
