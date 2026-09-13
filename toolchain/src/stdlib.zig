@@ -60,8 +60,11 @@ pub const Row = enum {
     list_count,
     list_sort,
     list_sort_by,
+    list_sort_by_desc,
     list_min,
     list_max,
+    min_of,
+    max_of,
     list_sum,
     list_zip,
     list_enumerate,
@@ -91,6 +94,7 @@ pub const Row = enum {
     duration_seconds,
     duration_minutes,
     fs_read_lines,
+    fs_each_line,
     fs_size,
     fs_list,
     fs_write,
@@ -124,6 +128,8 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "List.concat", .list_concat },             .{ "List.reverse", .list_reverse },         .{ "List.flat_map", .list_flat_map },
     .{ "List.any?", .list_any },                  .{ "List.all?", .list_all },                .{ "List.find", .list_find },
     .{ "List.count", .list_count },               .{ "List.sort", .list_sort },               .{ "List.sort_by", .list_sort_by },
+    .{ "List.sort_by_desc", .list_sort_by_desc }, .{ ".min_of", .min_of },                 .{ ".max_of", .max_of },
+   
     .{ "List.min", .list_min },                   .{ "List.max", .list_max },                 .{ "List.sum", .list_sum },
     .{ "List.zip", .list_zip },                   .{ "List.enumerate", .list_enumerate },     .{ "List.unique", .list_unique },
     .{ "List.group_by", .list_group_by },         .{ "Map.new", .map_new },                   .{ "Map.size", .map_size },
@@ -134,7 +140,9 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Set.has?", .set_has },                    .{ "Set.to_list", .set_to_list },           .{ "Time.parse", .time_parse },
     .{ "Time.from_parts", .time_from_parts },     .{ "Time.to_iso8601", .time_to_iso8601 },   .{ "Time.since", .time_since },
     .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
-    .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
+    .{ "Fs.read_lines", .fs_read_lines },
+    .{ "Fs.each_line", .fs_each_line },
+            .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
     .{ "Fs.rename", .fs_rename },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
@@ -175,7 +183,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .duration_ms => .{ .int = a[0].duration },
         .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
         .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
-        .fs_read_lines, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
+        .fs_read_lines, .fs_each_line, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
             try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
@@ -249,7 +257,10 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
             std.sort.block(Value, out, {}, before);
             break :blk .{ .list = out };
         },
-        .list_sort_by => sortBy(vm, a[0].list, a[1].func),
+        .list_sort_by, .list_sort_by_desc => sortBy(vm, a[0].list, a[1].func, which == .list_sort_by_desc),
+        // The first of two that order level, as min and max give the first of a list's.
+        .min_of => if (vm_mod.order(a[1], a[0]) == .lt) a[1] else a[0],
+        .max_of => if (vm_mod.order(a[1], a[0]) == .gt) a[1] else a[0],
         .list_min, .list_max => blk: {
             const xs = a[0].list;
             if (xs.len == 0) break :blk vm.variant("None", &.{});
@@ -454,6 +465,48 @@ fn lines(vm: *Vm, s: []const u8) Error!Value {
     return .{ .list = out };
 }
 
+/// `Fs.each_line`: bytes as they are read, split as `lines` splits a whole text (at each
+/// "\n", without it and one "\r" before it, then what follows the last "\n" when it is not
+/// empty), each line handed to the function in turn, with a safe point after each that keeps
+/// nothing, so a file of any size is read in the memory of its longest line.
+pub const LineFeed = struct {
+    vm: *Vm,
+    f: Value.Func,
+    from: usize,
+    kept: usize = 0,
+    /// A line begun in bytes read so far, waiting for its "\n".
+    partial: std.ArrayList(u8) = .empty,
+
+    pub fn init(vm: *Vm, f: Value.Func) LineFeed {
+        return .{ .vm = vm, .f = f, .from = vm.mark() };
+    }
+
+    pub fn bytes(l: *LineFeed, chunk: []const u8) Error!void {
+        var rest = chunk;
+        while (std.mem.indexOfScalar(u8, rest, '\n')) |at| {
+            if (l.partial.items.len > 0) {
+                try l.partial.appendSlice(l.vm.gpa, rest[0..at]);
+                try l.line(l.partial.items);
+                l.partial.clearRetainingCapacity();
+            } else try l.line(rest[0..at]);
+            rest = rest[at + 1 ..];
+        }
+        try l.partial.appendSlice(l.vm.gpa, rest);
+    }
+
+    pub fn end(l: *LineFeed) Error!void {
+        if (l.partial.items.len > 0) try l.line(l.partial.items);
+        l.partial.deinit(l.vm.gpa);
+    }
+
+    fn line(l: *LineFeed, raw: []const u8) Error!void {
+        const text = if (raw.len > 0 and raw[raw.len - 1] == '\r') raw[0 .. raw.len - 1] else raw;
+        _ = try l.vm.invoke(l.f, &.{.{ .string = try vm_mod.rawDupe(l.vm.heap, u8, text) }});
+        var roots: [0]Value = .{};
+        l.kept = try l.vm.iterate(l.from, &roots, l.kept);
+    }
+};
+
 fn trim(s: []const u8) []const u8 {
     var start: ?usize = null;
     var end: usize = 0;
@@ -592,7 +645,7 @@ fn flatMap(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
 }
 
 /// Each key is computed once; the positions are sorted by key, stably.
-fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
+fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func, descending: bool) Error!Value {
     const keys = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
     const from = vm.mark();
     var kept: usize = 0;
@@ -603,9 +656,11 @@ fn sortBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
     const positions = try vm.gpa.alloc(u32, xs.len);
     defer vm.gpa.free(positions);
     for (positions, 0..) |*p, i| p.* = @intCast(i);
-    std.sort.block(u32, positions, keys, struct {
-        fn lt(k: []const Value, a: u32, b: u32) bool {
-            return vm_mod.order(k[a], k[b]) == .lt;
+    // Stable either way: keys that order level keep the list's order.
+    const By = struct { keys: []const Value, descending: bool };
+    std.sort.block(u32, positions, By{ .keys = keys, .descending = descending }, struct {
+        fn lt(by: By, a: u32, b: u32) bool {
+            return vm_mod.order(by.keys[a], by.keys[b]) == @as(std.math.Order, if (by.descending) .gt else .lt);
         }
     }.lt);
     const out = try vm_mod.rawAlloc(vm.heap, Value, xs.len);
@@ -801,6 +856,7 @@ fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
             if (!std.mem.eql(u8, got.variant.name, "Ok")) break :blk got;
             break :blk vm.variant("Ok", &.{try lines(vm, got.variant.fields[0].string)});
         },
+        .fs_each_line => s.eachLine(vm, fs, path, a[2].func, within),
         .fs_size => s.size(vm, fs, path, within),
         .fs_list => s.list(vm, fs, within),
         .fs_write, .fs_append => s.writeFile(vm, row, fs, path, a[2].string, within, which == .fs_append),
@@ -909,6 +965,13 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
     const all = system orelse return missed(vm, path);
     const full = try FixtureFs.pathIn(gpa, scope, path) orelse return missed(vm, path);
     switch (which) {
+        .fs_each_line => {
+            const text = all.get(full) orelse return missed(vm, path);
+            var feed: LineFeed = .init(vm, a[2].func);
+            try feed.bytes(text);
+            try feed.end();
+            return vm.variant("Ok", &.{.none});
+        },
         .fs_read, .fs_read_lines, .fs_size => {
             const text = all.get(full) orelse return missed(vm, path);
             return vm.variant("Ok", &.{switch (which) {

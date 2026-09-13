@@ -15,6 +15,19 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "f59883370ef7ecf6" }
     },
     {
+      "path": "each-line.mo",
+      "module": "Programs.EachLine",
+      "declarations": [
+        { "id": "de8f2d0fbe58", "name": "module Programs.EachLine", "hash": "9b99d68f56b2ecc6" },
+        { "id": "587f7729483a", "name": "expose", "hash": "1643fa714ce2d021" },
+        { "id": "159a939fbca6", "name": "intent", "hash": "dbdc7729314aae9e" },
+        { "id": "f72419852b9d", "name": "fn quoted", "hash": "fbbf45d0afbd5e9f" },
+        { "id": "6d57752812b2", "name": "fn main", "hash": "373a180124e15e15" },
+        { "id": "a9128b5019d5", "name": "test \"a line is quoted as it is\"", "hash": "fe915f43ba0df039" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "8406f87e0e49cabb" }
+    },
+    {
       "path": "echo/main.mo",
       "module": "Echo.Main",
       "declarations": [

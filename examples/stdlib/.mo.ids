@@ -6,16 +6,18 @@
       "module": "Stdlib.Files",
       "declarations": [
         { "id": "fac1cdb58afa", "name": "module Stdlib.Files", "hash": "091d93cbd02e65db" },
-        { "id": "b482b2dec537", "name": "expose", "hash": "e1abadc8347dc944" },
-        { "id": "251406ab9853", "name": "intent", "hash": "3fc8831935223ffd" },
+        { "id": "b482b2dec537", "name": "expose", "hash": "39670dbcc5622811" },
+        { "id": "251406ab9853", "name": "intent", "hash": "193df6339d7086b0" },
         { "id": "503135c4e865", "name": "enum Problem", "hash": "14ef6cb362cdbdd3" },
         { "id": "1629743143dc", "name": "fn log_names", "hash": "98125ceb3822f324" },
         { "id": "110af80fb212", "name": "fn line_count", "hash": "f95d3bdc96fbcb94" },
         { "id": "b524e5b8095d", "name": "fn bytes_of", "hash": "660b68f3778aefea" },
+        { "id": "16d223008a32", "name": "fn echo_lines", "hash": "484d723f8a908b29" },
         { "id": "fcf47d8762a6", "name": "test \"an empty file system lists nothing and reads nothing\"", "hash": "e1850ef19f8b60fd" },
+        { "id": "5e8de58a459a", "name": "test \"each_line hands the function one line at a time, split as lines splits them\"", "hash": "67b99a6daff3cede" },
         { "id": "2e7e0ce15e8d", "name": "test \"a slow file system times out every call that waits less than its delay\"", "hash": "94a658a073e01483" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "6dee08cddc6f1e1f" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "fedff205aef3e0e3" }
     },
     {
       "path": "json.mo",
@@ -44,13 +46,14 @@
         { "id": "a70949bd9e06", "name": "expose", "hash": "0bd963e02eae4024" },
         { "id": "629ba458e0cc", "name": "intent", "hash": "9e2260f03ff5c5a9" },
         { "id": "777a39f15f10", "name": "struct Request", "hash": "baaa759aee75c46f" },
-        { "id": "ebbe72afac25", "name": "fn slowest", "hash": "96968068bd8ea411" },
+        { "id": "ebbe72afac25", "name": "fn slowest", "hash": "95379b9084611132" },
         { "id": "3fdcf354040f", "name": "test \"get, slice, take, and drop clamp instead of crashing\"", "hash": "318e0ab39c4a946d" },
         { "id": "cba2fc03f179", "name": "test \"sort is stable, and orders strings by byte and tuples left to right\"", "hash": "eb95e6dbadba9b5d" },
         { "id": "bf63b5be4ef5", "name": "test \"folds that stop early, and folds that count\"", "hash": "1e2fc5c7f13cfe74" },
+        { "id": "063270d69239", "name": "test \"sort_by_desc keeps ties in order, and min_of and max_of pick one of two\"", "hash": "d0df0c092b84f9a9" },
         { "id": "34d10e83ec69", "name": "test \"zip, enumerate, flat_map, and unique keep order\"", "hash": "6ff7b5fdc189daa6" }
       ],
-      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "6cc00000c6bd640e" }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "12865ab4f876dfbc" }
     },
     {
       "path": "maps.mo",

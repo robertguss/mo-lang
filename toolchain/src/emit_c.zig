@@ -1430,6 +1430,7 @@ const Emitter = struct {
             "_at"
         else
             "";
+        if (head.len == 0) return e.print("mo_r_{s}", .{name.items});
         return e.print("mo_r_{s}_{s}{s}", .{ head, name.items, suffix });
     }
 
@@ -1455,7 +1456,8 @@ const Emitter = struct {
         }
         var operands: std.ArrayList([]const u8) = .empty;
         var kind: []const u8 = "MO_KIND_NONE";
-        if (!row.on_type) {
+        // A free row (min_of) has no receiver.
+        if (!row.on_type and row.recv.len > 0) {
             if (recv) |r| {
                 if (e.inPlace(i, r, row)) {
                     try operands.append(e.gpa, try e.loadPlace(r));

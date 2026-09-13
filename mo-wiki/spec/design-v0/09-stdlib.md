@@ -75,7 +75,9 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `List(T)` | `count` | `fn(T) Bool` | `UInt64` | how many it keeps |
 | `List(T)`, `T` ordered | `sort` | | `List(T)` | in natural order, stable |
 | `List(T)` | `sort_by` | `fn(T) K`, `K` ordered | `List(T)` | by the key's natural order, stable; the key is computed once per element |
+| `List(T)` | `sort_by_desc` | `fn(T) K`, `K` ordered | `List(T)` | by the key's natural order reversed, so a NaN key comes first; stable, so elements whose keys order level keep their order; the key is computed once per element |
 | `List(T)`, `T` ordered | `min`, `max` | | `Option(T)` | the first least or greatest element |
+| none: called by bare name, `min_of(a, b)` | `min_of`, `max_of` | `a: T`, `b: T`, `T` ordered | `T` | the lesser or the greater of the two in natural order; `a` when they order level |
 | `List(T)`, `T` an integer | `sum` | | `T` | the total; one that does not fit `T` is a crash, like `+` |
 | `List(T)` | `zip` | `List(U)` | `List((T, U))` | pairs by position, as long as the shorter list |
 | `List(T)` | `enumerate` | | `List((UInt64, T))` | each element with its position |
@@ -130,6 +132,7 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 |---|---|---|---|---|
 | `Fs` | `read` | `path: String` | `Result(String, FsError)` | the whole file |
 | `Fs` | `read_lines` | `path: String` | `Result(List(String), FsError)` | the file split as `String.lines` splits it |
+| `Fs` | `each_line` | `path: String`, `fn(String) none` | `Result(none, FsError)` | the file's lines, split as `String.lines` splits it, each handed to the function in turn as the file is read, so no more of the file than its longest line is held; `Ok` once the last line's call returns, `Missing(path)` before any line when the file cannot be read or has a line of more than 64 MiB. The deadline is checked before each read of the file: past it the call is `Timeout`, and the lines already handed stay handed. Written `logs.each_line(name, within: 1.minute, fn(line) out.write_line(line) end)` |
 | `Fs` | `size` | `path: String` | `Result(UInt64, FsError)` | the file's length in bytes |
 | `Fs` | `list` | | `Result(List(String), FsError)` | the names of the files and folders directly inside the scope, sorted byte by byte; `Missing(".")` when the scope is not a readable folder |
 | `Fs` | `scoped` | `String` | `Fs` | narrowed to a folder inside this scope |

@@ -1447,14 +1447,17 @@ MO_ROW(mo_r_List_find) { (void)kind; return scan(SCAN_FIND, a[0], a[1]); }
 MO_ROW(mo_r_List_count) { (void)kind; return scan(SCAN_COUNT, a[0], a[1]); }
 
 /* A stable merge sort of positions by `keys` in the natural order. */
-static void sort_positions(uint32_t *pos, uint32_t *tmp, size_t n, const MoValue *keys) {
+/* A merge sort, so stable: keys that order level keep their positions' order, ascending or
+ * descending. */
+static void sort_positions(uint32_t *pos, uint32_t *tmp, size_t n, const MoValue *keys, bool descending) {
     if (n < 2) return;
     size_t mid = n / 2;
-    sort_positions(pos, tmp, mid, keys);
-    sort_positions(pos + mid, tmp, n - mid, keys);
+    sort_positions(pos, tmp, mid, keys, descending);
+    sort_positions(pos + mid, tmp, n - mid, keys, descending);
     size_t i = 0, j = mid, k = 0;
     while (i < mid && j < n) {
-        if (mo_order(keys[pos[j]], keys[pos[i]]) < 0) tmp[k++] = pos[j++];
+        int o = mo_order(keys[pos[j]], keys[pos[i]]);
+        if (descending ? o > 0 : o < 0) tmp[k++] = pos[j++];
         else tmp[k++] = pos[i++];
     }
     while (i < mid) tmp[k++] = pos[i++];
@@ -1462,12 +1465,12 @@ static void sort_positions(uint32_t *pos, uint32_t *tmp, size_t n, const MoValue
     memcpy(pos, tmp, n * sizeof(uint32_t));
 }
 
-static MoValue sorted_by(MoValue xs, const MoValue *keys) {
+static MoValue sorted_by(MoValue xs, const MoValue *keys, bool descending) {
     uint32_t n = xs.aux;
     uint32_t *pos = xmalloc(n * sizeof(uint32_t));
     uint32_t *tmp = xmalloc(n * sizeof(uint32_t));
     for (uint32_t i = 0; i < n; i++) pos[i] = i;
-    sort_positions(pos, tmp, n, keys);
+    sort_positions(pos, tmp, n, keys, descending);
     MoValue *out = mo_alloc_values(n);
     for (uint32_t i = 0; i < n; i++) out[i] = xs.as.xs[pos[i]];
     free(pos);
@@ -1475,10 +1478,9 @@ static MoValue sorted_by(MoValue xs, const MoValue *keys) {
     return mo_list(out, n);
 }
 
-MO_ROW(mo_r_List_sort) { (void)kind; return sorted_by(a[0], a[0].as.xs); }
+MO_ROW(mo_r_List_sort) { (void)kind; return sorted_by(a[0], a[0].as.xs, false); }
 
-MO_ROW(mo_r_List_sort_by) {
-    (void)kind;
+static MoValue sorted_by_key(const MoValue *a, bool descending) {
     MoValue xs = a[0], f = a[1];
     MoValue *keys = mo_alloc_values(xs.aux);
     size_t from = mo_mark(), kept = 0;
@@ -1487,8 +1489,15 @@ MO_ROW(mo_r_List_sort_by) {
         keys[i] = mo_invoke(f, &x);
         kept = iterate(from, keys, i + 1, kept);
     }
-    return sorted_by(xs, keys);
+    return sorted_by(xs, keys, descending);
 }
+
+MO_ROW(mo_r_List_sort_by) { (void)kind; return sorted_by_key(a, false); }
+MO_ROW(mo_r_List_sort_by_desc) { (void)kind; return sorted_by_key(a, true); }
+
+/* The first of two that order level, as min and max give the first of a list's. */
+MO_ROW(mo_r_min_of) { (void)kind; return mo_order(a[1], a[0]) < 0 ? a[1] : a[0]; }
+MO_ROW(mo_r_max_of) { (void)kind; return mo_order(a[1], a[0]) > 0 ? a[1] : a[0]; }
 
 static MoValue extreme(MoValue xs, int want) {
     if (xs.aux == 0) return mo_nothing();
@@ -2659,8 +2668,45 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_SIZE, FS_LIST, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME };
-static const char *const fs_row_names[] = {"read", "read_lines", "size", "list", "write", "append", "remove", "rename"};
+enum { FS_READ, FS_READ_LINES, FS_SIZE, FS_LIST, FS_EACH_LINE, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME };
+static const char *const fs_row_names[] = {"read", "read_lines", "size", "list", "each_line", "write", "append", "remove", "rename"};
+
+/* Fs.each_line: bytes as they are read, split as String.lines splits a whole text, each line
+ * handed to the function in turn with a safe point after it that keeps nothing, so a file of
+ * any size is read in the memory of its longest line (stdlib.zig, LineFeed). */
+typedef struct {
+    MoValue f;
+    size_t from, kept;
+    Buf partial;
+} LineFeed;
+
+static void feed_line(LineFeed *l, const char *s, size_t n) {
+    if (n > 0 && s[n - 1] == '\r') n--;
+    MoValue line = heap_string(s, n);
+    mo_invoke(l->f, &line);
+    l->kept = iterate(l->from, NULL, 0, l->kept);
+}
+
+static void feed_bytes(LineFeed *l, const char *s, size_t n) {
+    size_t start = 0;
+    for (size_t i = 0; i < n; i++) {
+        if (s[i] != '\n') continue;
+        if (l->partial.len > 0) {
+            buf_put(&l->partial, s + start, i - start);
+            feed_line(l, l->partial.p, l->partial.len);
+            l->partial.len = 0;
+        } else {
+            feed_line(l, s + start, i - start);
+        }
+        start = i + 1;
+    }
+    if (start < n) buf_put(&l->partial, s + start, n - start);
+}
+
+static void feed_end(LineFeed *l) {
+    if (l->partial.len > 0) feed_line(l, l->partial.p, l->partial.len);
+    free(l->partial.p);
+}
 
 static MoValue string_list(char **names, size_t n) {
     MoValue *out = mo_alloc_values(n);
@@ -2670,7 +2716,7 @@ static MoValue string_list(char **names, size_t n) {
 
 static MoValue fixture_files(int which, const MoValue *a) {
     FixScope scope = fix_scope_of(a[0]);
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
@@ -2707,6 +2753,16 @@ static MoValue fixture_files(int which, const MoValue *a) {
     char *full = fix_path_in(&scope, S(path));
     if (!full) return missing(path);
     switch (which) {
+    case FS_EACH_LINE: {
+        FixFile *f = fix_find(sys, full);
+        free(full);
+        if (!f) return missing(path);
+        MoValue text = f->text;
+        LineFeed l = {.f = a[2], .from = mo_mark()};
+        feed_bytes(&l, text.as.s, text.aux);
+        feed_end(&l);
+        return ok_none();
+    }
     case FS_READ:
     case FS_READ_LINES:
     case FS_SIZE: {
@@ -2759,7 +2815,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
 static MoValue server_files(int which, const MoValue *a) {
     const Scope *scope = &scopes[mo_cap_handle(a[0])];
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
+    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_EACH_LINE ? a[3].as.i : a[2].as.i;
     if (which >= FS_WRITE && scope->read_only) {
         mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     }
@@ -2777,6 +2833,33 @@ static MoValue server_files(int which, const MoValue *a) {
         MoValue s = heap_string(text, len);
         free(text);
         return ok_of(which == FS_READ ? s : lines_of(s));
+    }
+    case FS_EACH_LINE: {
+        char *real = real_scoped(scope, S(path));
+        int fd = real ? open(real, O_RDONLY) : -1;
+        free(real);
+        if (fd < 0) return late(t0, within) ? timed_out() : missing(path);
+        /* The deadline is checked before each read; lines already handed stay handed. A line
+         * longer than a whole read may be is Missing, as that file is to read. */
+        enum { READING, DONE, LATE, FAILED } ended = READING;
+        LineFeed l = {.f = a[2], .from = mo_mark()};
+        char chunk[1 << 16];
+        while (ended == READING) {
+            if (late(t0, within)) {
+                ended = LATE;
+                break;
+            }
+            ssize_t r = read(fd, chunk, sizeof chunk);
+            if (r < 0 && errno == EINTR) continue;
+            if (r < 0) ended = FAILED;
+            else if (r == 0) ended = DONE;
+            else feed_bytes(&l, chunk, (size_t)r);
+            if (l.partial.len > READ_LIMIT) ended = FAILED;
+        }
+        close(fd);
+        if (ended == DONE) feed_end(&l);
+        else free(l.partial.p);
+        return ended == DONE ? ok_none() : ended == LATE ? timed_out() : missing(path);
     }
     case FS_SIZE: {
         char *real = real_scoped(scope, S(path));
@@ -2863,6 +2946,7 @@ static MoValue files(int which, const MoValue *a) { return server_mode ? server_
 
 MO_ROW(mo_r_Fs_read) { (void)kind; return files(FS_READ, a); }
 MO_ROW(mo_r_Fs_read_lines) { (void)kind; return files(FS_READ_LINES, a); }
+MO_ROW(mo_r_Fs_each_line) { (void)kind; return files(FS_EACH_LINE, a); }
 MO_ROW(mo_r_Fs_size) { (void)kind; return files(FS_SIZE, a); }
 MO_ROW(mo_r_Fs_list) { (void)kind; return files(FS_LIST, a); }
 MO_ROW(mo_r_Fs_write) { (void)kind; return files(FS_WRITE, a); }

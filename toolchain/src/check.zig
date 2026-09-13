@@ -3049,6 +3049,10 @@ const Checker = struct {
                         try c.reportTok(.misplaced, callee.main_token, "flows(...) is a rule, so it appears only as the body of a never");
                         return types.bool_;
                     }
+                    // A free stdlib row, such as min_of(a, b).
+                    for (prelude.fns, 0..) |row, k| {
+                        if (row.recv.len == 0 and row.only != .never and std.mem.eql(u8, row.name, name)) return c.preludeCall(i, null, types.unknown, k, args);
+                    }
                 }
             },
             else => {},

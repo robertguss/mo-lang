@@ -933,7 +933,7 @@ pub const Vm = struct {
 
     fn prim(vm: *Vm, row_index: u32, kind_raw: u32) Error!void {
         const row = prelude.fns[row_index];
-        const count: u32 = @intCast(@as(usize, if (row.on_type) 0 else 1) + row.params.len + row.named.len + @as(usize, if (row.can_wait) 1 else 0));
+        const count: u32 = @intCast(@as(usize, if (row.on_type or row.recv.len == 0) 0 else 1) + row.params.len + row.named.len + @as(usize, if (row.can_wait) 1 else 0));
         const a = try vm.take(count);
         const result: Value = switch (prim_of[row_index]) {
             .list_size => .{ .int = @intCast(a[0].list.len) },

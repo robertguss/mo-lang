@@ -10,7 +10,7 @@ end
 
 # Slowest first; requests that took as long keep the order they came in.
 fn slowest(requests: List(Request), n: UInt64) : List(Request)
-  requests.sort_by(fn(r) 18_446_744_073_709_551_615 - r.ms end).take(n)
+  requests.sort_by_desc(fn(r) r.ms end).take(n)
 end
 
 test "get, slice, take, and drop clamp instead of crashing"
@@ -46,6 +46,15 @@ test "folds that stop early, and folds that count"
   assert xs.drop(6).max is None
 end
 
+test "sort_by_desc keeps ties in order, and min_of and max_of pick one of two"
+  requests = [Request(path: "/a", ms: 5), Request(path: "/b", ms: 9), Request(path: "/c", ms: 5)]
+  assert requests.sort_by_desc(fn(r) r.ms end).map(fn(r) r.path end) == ["/b", "/a", "/c"]
+  assert min_of(7, 3) == 3
+  assert max_of("b", "a") == "b"
+  assert min_of((1, "z"), (1, "y")) == (1, "y")
+  assert max_of(0.0 / 0.0, 1.0) != 1.0
+end
+
 test "zip, enumerate, flat_map, and unique keep order"
   assert [1, 2, 3].zip(["a", "b"]) == [(1, "a"), (2, "b")]
   assert ["x", "y"].enumerate == [(0, "x"), (1, "y")]
@@ -53,5 +62,5 @@ test "zip, enumerate, flat_map, and unique keep order"
   assert [3, 1, 3, 2, 1].unique == [3, 1, 2]
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
           proven: not run

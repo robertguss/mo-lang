@@ -23,6 +23,7 @@ const diag = @import("diag.zig");
 const net = @import("net.zig");
 const prelude = @import("prelude.zig");
 const runner = @import("runner.zig");
+const stdlib = @import("stdlib.zig");
 const Sim = @import("sim.zig").Sim;
 const Turns = @import("turns.zig").Turns;
 const vm_mod = @import("vm.zig");
@@ -217,6 +218,33 @@ pub const Server = struct {
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const got = text orelse return missing(vm, path);
         return vm.variant("Ok", &.{.{ .string = got }});
+    }
+
+    /// `fs.each_line(path, within: d, f)`: each line of a file inside the scope handed to `f` as
+    /// the file is read (stdlib.LineFeed), so no more of it than its longest line is held; `read`'s
+    /// answers for a file it cannot read, and for a line past `read_limit`. The deadline is
+    /// checked before each read, and the lines already handed stay handed.
+    pub fn eachLine(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, f: Value.Func, within_ms: i64) Error!Value {
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        const real = try s.realScoped(s.scopes.items[fs.handle], path) orelse
+            return if (s.late(t0, within_ms)) timeout(vm) else missing(vm, path);
+        const file = Io.Dir.cwd().openFile(s.io, real, .{}) catch
+            return if (s.late(t0, within_ms)) timeout(vm) else missing(vm, path);
+        defer file.close(s.io);
+        var feed: stdlib.LineFeed = .init(vm, f);
+        var chunk: [1 << 16]u8 = undefined;
+        var buffers = [_][]u8{&chunk};
+        while (true) {
+            if (s.late(t0, within_ms)) return timeout(vm);
+            const n = file.readStreaming(s.io, &buffers) catch |err| switch (err) {
+                error.EndOfStream => break,
+                else => return missing(vm, path),
+            };
+            try feed.bytes(chunk[0..n]);
+            if (feed.partial.items.len > read_limit) return missing(vm, path);
+        }
+        try feed.end();
+        return vm.variant("Ok", &.{.none});
     }
 
     /// `fs.size(path, within: d)`: `Ok(bytes)` of a file inside the scope; anything else
