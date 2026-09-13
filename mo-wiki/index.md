@@ -1,7 +1,7 @@
 # Mo Lang — Index
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-13 | Total pages: 135
+> Last updated: 2026-09-13 | Total pages: 137
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -143,6 +143,7 @@
 - [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
 
 ## Sessions
+- [[session-06|Session 6 — 13 Sep 2026 (evening, ingestion)]] — six deep-research runs and three adjacent runs ingested into raw/; new prompts-mo-parallel-tracks page; no decisions changed
 - [[session-05|Session 5 — 12 Sep 2026]] — review closed, corpus and toolchain begun, bake-off, build-first process, gap decisions
 - [[session-01|Session 1 — 12 Sep 2026 (night)]] — - 12 Sep 2026, session 1 (cont)
 - [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
@@ -173,6 +174,7 @@
 - [[language-landscape|Language landscape: which languages deserve a deep comparison]] — 40+ languages in seven groups with the idea to steal from each, plus a 13-entry shortlist for the comparison pass
 - [[prompts-language-landscape|Research prompts: the language landscape]] — three prompts for Robert's deep-research tools
 - [[prompts-q17-supply-chain|Research prompts: Q17 supply-chain security and package management]] — three prompts for Robert's deep-research tools
+- [[prompts-mo-parallel-tracks|Research prompts: Mo's three parallel research tracks]] — empirical validation, ecosystem depth, agent-authoring frontier; each brief paired with its Perplexity deep run
 - [[plang-landscape-2026|The PL landscape circa 2026]] — what's alive, growing, fading, and where the interesting design work is happening; extends [[language-landscape]]
 
 ### Language surveys (history + design + Mo lesson)

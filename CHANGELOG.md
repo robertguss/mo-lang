@@ -2,6 +2,10 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Session 6, evening — 13 Sep 2026
+
+- **Ingestion pass** (Perplexity Computer, no design changes). Robert had Perplexity Computer sweep his Perplexity session library for Mo-related research not yet in the vault. Six new files in `mo-wiki/raw/research-runs/`: three deep runs answering the Mo parallel-tracks prompts (`empirical-validation-agent-language.pplx.md` from session `4a4e7abb`, `ecosystem-stdlib-platform-depth.pplx.md` from `45e714aa`, `agent-authoring-research-frontier.pplx.md` from `256a997f`) and the three short briefs from session `2c696217` that framed them. Three adjacent Perplexity runs into `mo-wiki/raw/articles/` as `pplx-*` (search toolbox, sandbox providers, Rust for ETL). One new page in `mo-wiki/research/prompts/`: `prompts-mo-parallel-tracks.md`, pairing each brief with its deep run. Session page `mo-wiki/sessions/session-06.md`. Index and log updated. The three deep runs are inputs for Fable's next research pass — provisional outputs: an `empirical-validation-plan` concept page (revising [[d28]]), an `ecosystem-strategy` concept page (answering [[q11]]), and additions to `research-summary-2026-09` and `case-against-new-languages` from the agent-authoring frontier report. No decision-log rows.
+
 ## Session 5, morning — 13 Sep 2026
 
 (Entries for program 3, steps 12, 12b, 13, and control run round 2 are listed under the overnight heading below in the order they landed.)
