@@ -28,7 +28,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Memory and green threads (chapter 7), [[interpreter-step-21]] | done: a process is a fiber, 65,530 connections, the bets measured | — |
 | Program 1, the job queue ([[program-1]]): done, 40 min, the premise held; its follow-ups (step 22: the `--recipe` line count, the fixture's missing folder, JSON integers, a derived deadline, the recipe's rewrite rule) | done: [[interpreter-step-22]], the derived deadline | — |
 | Round 5 of the control run, pre-registered ([[control-run-5]]) | done: mixed, Mo 1.28 times Go, P2 missed by one loop | — |
-| The runtime surface (directions 37–40), designed against program 1's nine questions | next | 1–2 |
+| The runtime surface (directions 37 and 40), [[interpreter-step-23]] | running | 1 |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
 | Programs 5 and 6, the agent harness and the ledger | queued | 3–4 |
 | The package registry | deferred until an outsider runs a real service | — |

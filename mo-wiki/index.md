@@ -119,6 +119,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-23|Step 23: the runtime surface]] — `platform.runtime`, the event ring, `mo run --surface PORT`; directions 37 and 40 against program 1's nine questions
 - [[interpreter-step-22|Step 22: what program 1 and round 5 found]] — the `--recipe` line count, the fixture's missing folder, a JSON integer, the derived deadline (`reply_by`), the recipe's rewrite rule, two diagnostics
 - [[interpreter-step-21|Step 21: memory and green threads]] — a process is not an OS thread; chapter 7's bets measured; `Fs.fixture()` refuses `..`; three diagnostics, no syntax
 - [[interpreter-step-20|Step 20: the runtime owns the loop, brief for the worker]] — serve and lines rows, capabilities in declared message fields, the four servers rewritten
