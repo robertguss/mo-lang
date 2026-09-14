@@ -302,3 +302,84 @@ The wire, read and written the same way by both runtimes:
 `accept` reads the whole request before it gives the exchange, so a listener waits on one slow client at a time: a server that must not keep the others waiting passes each client a short deadline, or serves the listener, which reads each request apart. The body is read by its count from the connection's buffer, so `Conn` gains no row.
 
 An `Http.fixture()` runs on the network `Net.fixture()` does, so a test can connect with a `Net` fixture to an `HttpListener` and write a request by hand. As on `Net`, a call with nothing to take (an `accept` with no client, or with a request cut short) waits its whole deadline and is `Timeout`. `send` alone does not wait for nothing: while its response is not whole it delivers the processes' waiting messages a round at a time, as a settle does, and it is `Timeout` when no message is waiting. So a test that sends a server process a message to accept, or serves a listener into it, then sends a request in the same statement, gets the server's response. Under `mo test --sim`, `accept` and `send` time out by the seed, and `reply` and `send` find their connection `Closed` by the seed.
+
+## Runtime
+
+`Runtime` is the runtime surface (design-v0/03, the runtime surface; directions 37 and 40): what a running program's processes are doing, as rows a program, an agent, or an operator calls. It is a capability like `Fs`: `platform.runtime` is `Some` under `mo run`, `None` in a binary unless it was built with `mo build --surface`, and a test holds its own run's through `Runtime.fixture()`. `main` passes it down as it passes an `Fs`, narrowed by `read_only` for a process that may look but not act. A read is a snapshot taken between two updates, never inside one: every update runs on one thread, so a row sees no transaction half done, and a process whose update waits in a call is read once that update ends, within the row's deadline. Every row but `read_only` takes `within:`. `send`, `pause`, and `resume` act, each act is an event, and a read-only `Runtime` refuses them with `ReadOnly`. `Json.encode` of each struct and event is the surface's wire form.
+
+The runtime keeps a bounded ring of events, 4,096 by default (`mo run --events N`, `MO_EVENTS=N` for a binary): each update with its duration, its time in calls that wait, and the call it waited longest in; each start, end, restart, and crash with its report's seed, clause, message, and state; a sender that found a mailbox full; a call past its deadline; a loop the runtime owns pausing or resuming at its target's bound; and each act of the surface. An event's `at` is the runtime's monotonic clock as a `Time`: under `mo run` pinned to the wall clock when the run began, and in a test the run's own clock, so a seed's events are the same every run. `took_us` and `waited_us` are microseconds. A seeded test that fails prints its last ten events after the interleaving.
+
+```ruby
+struct ProcessInfo
+  id: UInt64
+  name: String
+  alive: Bool
+  mailbox: UInt64
+  bound: UInt64
+  waiting_in: Option(String)
+  restarts: UInt64
+  region_bytes: UInt64
+  paused: Bool
+end
+
+struct SourceInfo
+  kind: String
+  target: UInt64
+  name: String
+  in_flight: UInt64
+  paused: Bool
+end
+
+struct MemoryInfo
+  resident_bytes: UInt64
+  region_bytes: UInt64
+  packed_bytes: UInt64
+  event_bytes: UInt64
+  largest: List(ProcessInfo)
+end
+
+enum RuntimeError
+  NoProcess
+  Unparsed(why: String)
+  ReadOnly
+  MailboxFull
+  Timeout
+end
+
+enum Event
+  Updated(at: Time, process: UInt64, name: String, message: String, took_us: UInt64, waited_us: UInt64, longest: String)
+  Started(at: Time, process: UInt64, name: String)
+  Ended(at: Time, process: UInt64, name: String)
+  Restarted(at: Time, process: UInt64, name: String, restarts: UInt64)
+  Crashed(at: Time, process: UInt64, name: String, seed: UInt64, clause: String, message: String, state: String)
+  Overflowed(at: Time, sender: Option(UInt64), sender_name: String, target: UInt64, name: String)
+  TimedOut(at: Time, process: Option(UInt64), name: String, call: String)
+  SourcePaused(at: Time, source: String, target: UInt64, name: String, in_flight: UInt64)
+  SourceResumed(at: Time, source: String, target: UInt64, name: String, in_flight: UInt64)
+  Sent(at: Time, process: UInt64, name: String, message: String)
+  Paused(at: Time, process: UInt64, name: String)
+  Resumed(at: Time, process: UInt64, name: String)
+end
+```
+
+`name` is the process's name when the event happened, since a process that ended gives its id to one started later; `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Platform` | `runtime` | | `Option(Runtime)` | `Some` under `mo run` and in a binary built with `mo build --surface`; `None` in any other binary |
+| `Runtime` | `processes` | | `List(ProcessInfo)` | every process that has not ended, by id: its name, whether it is up, its mailbox's depth and bound, the call its update waits in (`ask`, `Fs.append`, `Conn.read_line`) or `None`, its restarts since it started, the bytes its region holds, and whether the surface holds its deliveries |
+| `Runtime` | `state` | `id: UInt64` | `Result(String, RuntimeError)` | the process's state as a crash report prints it, as its last update left it; `NoProcess` for an id no process that has not ended has; `Timeout` when its update in progress does not end within the deadline, or when the caller is that update |
+| `Runtime` | `recent` | `id: UInt64`, `n: UInt64` | `List(Event)` | the last `n` events the ring holds about that id, oldest first |
+| `Runtime` | `events` | `since: Time`, `n: UInt64` | `List(Event)` | the first `n` events the ring holds at or after `since`, oldest first, so the last one's `at` pages on |
+| `Runtime` | `crashes` | `n: UInt64` | `List(Event)` | the last `n` `Crashed` events, oldest first |
+| `Runtime` | `sources` | | `List(SourceInfo)` | each loop the runtime owns (`Listener.serve`, `Conn.lines`, `HttpListener.serve`) that has not ended: its row, its target, the requests it is reading, and whether it is paused at the target's bound |
+| `Runtime` | `memory` | | `MemoryInfo` | the program's resident bytes now, the bytes main's and every process's regions hold, the bytes packed into messages since the run began, the bytes the ring holds, and the five processes whose regions hold the most |
+| `Runtime` | `slowest` | `n: UInt64` | `List(Event)` | the `n` longest `Updated` events the ring holds, longest first |
+| `Runtime` | `send` | `id: UInt64`, `text: String` | `Result(none, RuntimeError)` | the message the text spells as a report prints it (`Vote(n: 3)`, `Total`; a message of one field may leave its name out), put in the process's mailbox now, not when the calling update commits, and recorded as `Sent`; a reply it carries is dropped; `Unparsed(why)` for text that is not a message the process declares, or that holds a map, a set, a capability, or a handle; `MailboxFull` at its bound, which crashes no one; `NoProcess`; `ReadOnly` |
+| `Runtime` | `pause`, `resume` | `id: UInt64` | `Result(none, RuntimeError)` | holds the process's deliveries, or lets them go: its messages wait, an `ask` to it is `Timeout` at its deadline (at once in a test, and the message still arrives), and a loop the runtime owns into it pauses at its bound; each is an event; `NoProcess`; `ReadOnly` |
+| `Runtime` | `read_only` | | `Runtime` | narrowed to reading: `send`, `pause`, and `resume` are `ReadOnly`, at run time |
+| `Runtime` (on type) | `fixture` | | `Runtime` | the surface of the test's own run: the processes it started and the events they made; tests only |
+
+Over HTTP the same rows are the development on-ramp: `mo run --surface PORT`, and `MO_SURFACE=PORT` for a binary built with `--surface`, serve them as JSON on 127.0.0.1 from a process of the toolchain's own the surface does not list, `GET /processes`, `/state/<id>`, `/recent/<id>?n=`, `/events?since=<ISO-8601>&n=`, `/crashes?n=`, `/sources`, `/memory`, `/slowest?n=`, and `POST /send/<id>` with the message's text as the body, `/pause/<id>`, `/resume/<id>`; a refusal is 404 for no process, 403 for read only, and 409 otherwise, with the `RuntimeError` as the body. An MCP wrapper is a later step.
+
+Session 5, step 23: the runtime surface and the events, from Robert's call of 13 Sep night (the surface is a capability, on in development, off in a binary unless held) and the nine questions program 1's worker wanted to ask its service.

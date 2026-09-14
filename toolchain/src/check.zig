@@ -746,7 +746,9 @@ const Checker = struct {
             if (declared.contains(ps.name) and ps.origin != .stdlib) continue;
             const d = try c.addDecl(.{ .kind = .struct_, .name = ps.name });
             c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
-            if (!declared.contains(ps.name)) try c.type_names.put(c.gpa, ps.name, d);
+            // A stdlib struct is in every module's names; a module's own declaration of the name,
+            // or a use line that brings one in, takes its place in that module only (step 23).
+            if (!declared.contains(ps.name) or ps.origin == .stdlib) try c.type_names.put(c.gpa, ps.name, d);
         }
         // Fields once every stand-in has a name, so a field may name another.
         for (c.decls.items[struct_start..]) |*d| {
@@ -780,15 +782,15 @@ const Checker = struct {
 
     fn registerType(c: *Checker, kind: DeclKind, name_tok: u32, n: Index) Error!?u32 {
         const name = c.text(name_tok);
-        if (prelude.findType(name) != null) {
+        if (prelude.findType(name)) |pt| if (!pt.hideable) {
             try c.reportTok(.declared_twice, name_tok, try c.print("{s} is already a prelude type", .{name}));
             return null;
-        }
-        if (c.type_names.get(name)) |prev| {
+        };
+        if (c.type_names.get(name)) |prev| if (!c.stdStructDecl(prev)) {
             const how = if (c.decls.items[prev].module != c.module) "declared here and brought in by a use line" else "declared twice in this module";
             try c.reportTok(.declared_twice, name_tok, try c.print("{s} is {s}", .{ name, how }));
             return null;
-        }
+        };
         const d = try c.addDecl(.{ .kind = kind, .name = name, .node = n });
         try c.type_names.put(c.gpa, name, d);
         switch (kind) {
@@ -823,6 +825,13 @@ const Checker = struct {
     fn items(c: *Checker) []const u32 {
         const r = c.modules.items[c.module].items;
         return c.allItems()[r.start..r.end];
+    }
+
+    /// Whether declaration `d` is a struct the stdlib declares (`Request`, `Response`), which a
+    /// module's own type of its name hides.
+    fn stdStructDecl(c: *const Checker, d: u32) bool {
+        const decl = c.decls.items[d];
+        return decl.node == 0 and decl.kind == .struct_ and prelude.findStdStruct(decl.name);
     }
 
     /// One Module per module_decl. Each starts with the prelude's type names, which
@@ -903,7 +912,7 @@ const Checker = struct {
                 continue;
             }
             const gop = try (if (is_type) &c.type_names else &c.fn_names).getOrPut(c.gpa, name);
-            if (gop.found_existing and gop.value_ptr.* != found.?) {
+            if (gop.found_existing and gop.value_ptr.* != found.? and !c.stdStructDecl(gop.value_ptr.*)) {
                 try c.reportTok(.declared_twice, tok, try c.print("{s} is already in scope, so it cannot also come from {s}", .{ name, path }));
             } else gop.value_ptr.* = found.?;
         }
@@ -1224,7 +1233,8 @@ const Checker = struct {
             try c.reportTok(.unknown_type, path.main_token, try c.print("there is no type named {s}; a use line brings a type in by its own name", .{full}));
             return types.unknown;
         }
-        if (prelude.findType(name)) |pt| {
+        // A module's own Event hides the prelude's from its code (prelude.Type.hideable).
+        if (prelude.findType(name)) |pt| if (!pt.hideable or c.type_names.get(name) == null) {
             if (args.len != pt.arity) {
                 try c.reportTok(.unknown_type, path.main_token, try c.print("{s} takes {d} type argument{s}, found {d}", .{ name, pt.arity, if (pt.arity == 1) "" else "s", args.len }));
                 return types.unknown;
@@ -1247,7 +1257,7 @@ const Checker = struct {
                     return types.unknown;
                 },
             };
-        }
+        };
         if (std.mem.eql(u8, name, "Self")) {
             if (ctx.self_ok) return types.self_;
             try c.reportTok(.unknown_type, path.main_token, "Self names the implementing type, so it appears only in a trait");
@@ -3536,6 +3546,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
         .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
+        .{ "Runtime", types.cap(.runtime) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

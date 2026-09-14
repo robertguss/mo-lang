@@ -1,0 +1,8 @@
+the surface at 127.0.0.1:1 did not answer GET /processes
+the surface at 127.0.0.1:1 did not answer GET /processes
+the surface at 127.0.0.1:1 did not answer GET /state/1
+the surface at 127.0.0.1:1 did not answer GET /recent/1?n=2
+the surface at 127.0.0.1:1 did not answer POST /send/1
+the surface at 127.0.0.1:1 did not answer POST /send/1
+the surface at 127.0.0.1:1 did not answer GET /nothing
+the tally holds 2

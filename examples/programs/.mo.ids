@@ -1268,6 +1268,34 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "6266134e768db2e2" }
     },
     {
+      "path": "surface/main.mo",
+      "module": "Surface.Main",
+      "declarations": [
+        { "id": "77bbf80fef7a", "name": "module Surface.Main", "hash": "8e7db79171271f32" },
+        { "id": "f8e984d37040", "name": "expose", "hash": "579e1850d45fdd36" },
+        { "id": "fcde4e80ae6d", "name": "use Surface.Wire", "hash": "c555180d6835eb79" },
+        { "id": "8bac37692f55", "name": "intent", "hash": "559506bf2bdb3878" },
+        { "id": "534a4bc826a3", "name": "process Tally", "hash": "57f59680e5d78496" },
+        { "id": "af4ea00eaae3", "name": "supervisor Tallies", "hash": "35bacd8eae29f9b3" },
+        { "id": "60c3b345c9a8", "name": "fn asked", "hash": "2ce24c20e367daa5" },
+        { "id": "140a5ab8adc0", "name": "fn said", "hash": "2ccfedc88170aa36" },
+        { "id": "43846540fa7a", "name": "fn main", "hash": "95093425e24184ab" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "fe0d40f6a38b679c", "uses": [{ "module": "Surface.Wire", "hash": "dfdf8199f94534d6" }] }
+    },
+    {
+      "path": "surface/wire.mo",
+      "module": "Surface.Wire",
+      "declarations": [
+        { "id": "c86a99740442", "name": "module Surface.Wire", "hash": "b7e6a77e4c6ae66a" },
+        { "id": "c4d4525513df", "name": "expose", "hash": "cc2977af239f1f8e" },
+        { "id": "1ebada1842cd", "name": "intent", "hash": "c64d86bff68ef92b" },
+        { "id": "846d0a78b77a", "name": "struct Request", "hash": "1dd31b7b085dbdfb" },
+        { "id": "0039d98fa216", "name": "fn spelled", "hash": "da82eb1ee89845b1" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "dfdf8199f94534d6" }
+    },
+    {
       "path": "workers/main.mo",
       "module": "Workers.Main",
       "declarations": [

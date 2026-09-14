@@ -19,6 +19,7 @@
 //! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. The Net
 //! and Http rows are the runtime's: real sockets under main, their fixtures in a test binary.
 const std = @import("std");
+const surface_mod = @import("surface.zig");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
@@ -38,12 +39,14 @@ pub const Options = struct {
     tests: bool = false,
     /// Contracts checked by default in the binary; false only for `mo build --no-contracts`.
     contracts: bool = true,
+    /// `mo build --surface`: `platform.runtime` is `Some` in the binary (step 23).
+    surface: bool = false,
 };
 
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
@@ -1773,6 +1776,9 @@ const Emitter = struct {
             }
         }
         if (row.can_wait) {
+            // Timed for the events (events.zig, step 23), a Timeout at once included.
+            const call_label = try e.print("\"{s}.{s}\"", .{ recvHead(row.recv), row.name });
+            const since = try e.temp("mo_wait_begin({s})", .{call_label});
             const within = for (args) |a| {
                 const an = e.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) break an.lhs;
@@ -1781,9 +1787,10 @@ const Emitter = struct {
                 // A deadline with nothing left: Timeout at once, and the call is not made (step 22).
                 const w = try e.withinArg(within);
                 try operands.append(e.gpa, w);
-                return e.temp("({s}.as.i < 0 ? mo_timed_out_now() : {s}({s}, {s}))", .{ w, try e.rowName(row), try e.valuesOf(operands.items), kind });
+                return e.temp("mo_waited({s}, {s}, {s}.as.i < 0 ? mo_timed_out_now() : {s}({s}, {s}))", .{ call_label, since, w, try e.rowName(row), try e.valuesOf(operands.items), kind });
             }
             try operands.append(e.gpa, "MO_NONE_V");
+            return e.temp("mo_waited({s}, {s}, {s}({s}, {s}))", .{ call_label, since, try e.rowName(row), try e.valuesOf(operands.items), kind });
         }
         return e.temp("{s}({s}, {s})", .{ try e.rowName(row), try e.valuesOf(operands.items), kind });
     }
@@ -2112,6 +2119,13 @@ const Emitter = struct {
         const charge = k.findDecl("Charge");
         try tables.print(gpa, "const uint32_t mo_charge_decl = {s};\n", .{if (charge) |c| try e.print("{d}", .{c}) else "UINT32_MAX"});
         try tables.print(gpa, "const uint32_t mo_request_decl = {d};\nconst uint32_t mo_response_decl = {d};\n", .{ k.preludeStruct("Request").?, k.preludeStruct("Response").? });
+        try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").? });
+        try tables.print(gpa, "const bool mo_surface_built = {s};\n", .{if (e.options.surface) "true" else "false"});
+        // The runtime surface's own process, which the surface does not show (step 23).
+        const surface_process: ?usize = if (!e.options.surface) null else if (surface_mod.declOf(k)) |d| for (e.processes.items, 0..) |p, pi| {
+            if (p.decl == d) break pi;
+        } else null else null;
+        try tables.print(gpa, "const uint32_t mo_surface_process = {s};\n", .{if (surface_process) |pi| try e.print("{d}", .{pi}) else "UINT32_MAX"});
         try tables.print(gpa, "const bool mo_contracts_built = {s};\n\n", .{if (e.options.contracts or e.options.tests) "true" else "false"});
 
         try out.appendSlice(gpa, e.protos.items);
@@ -2123,7 +2137,9 @@ const Emitter = struct {
             try out.appendSlice(gpa, "\nint main(void) {\n    return mo_run_tests();\n}\n");
         } else {
             const main_sig = k.mainSig().?;
-            try out.print(gpa, "\nint main(int argc, char **argv) {{\n    mo_program_start(argc, argv);\n    f{d}(mo_platform());\n    return mo_program_end();\n}}\n", .{main_sig});
+            // MO_SURFACE=PORT serves the runtime surface before main in a binary built with --surface.
+            const surface_start = if (!e.options.surface) "" else if (surface_mod.sigOf(k)) |si| try e.print("    if (mo_surface_port() >= 0) mo_surface_listening(f{d}(mo_cap(MO_CAP_RUNTIME, 0, 0), mo_cap(MO_CAP_HTTP, 0, 0), mo_i128(mo_surface_port())));\n", .{si}) else "";
+            try out.print(gpa, "\nint main(int argc, char **argv) {{\n    mo_program_start(argc, argv);\n{s}    f{d}(mo_platform());\n    return mo_program_end();\n}}\n", .{ surface_start, main_sig });
         }
         return out.items;
     }

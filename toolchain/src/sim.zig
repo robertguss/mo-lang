@@ -25,6 +25,7 @@ const sources_mod = @import("sources.zig");
 const stdlib = @import("stdlib.zig");
 const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
+const events_mod = @import("events.zig");
 
 const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
@@ -111,6 +112,17 @@ pub const Proc = struct {
     /// A wait elsewhere found that this update's ask can end only after a send it holds: the
     /// ask crashes the update with this report when it returns.
     doomed: ?contracts.Report = null,
+    /// Restarts since it started, never trimmed to the window: the surface's count (step 23).
+    restarted: u64 = 0,
+    /// The surface holds its deliveries (step 23): no round takes its next message.
+    paused: bool = false,
+    /// The running update's time in calls that wait, and the call it waited longest in, for its
+    /// `updated` event (events.zig).
+    waited_us: u64 = 0,
+    longest_us: u64 = 0,
+    longest: []const u8 = "",
+    /// The call its update waits in now, for the surface (surface.zig); "" when none.
+    waiting: []const u8 = "",
 
     pub fn queued(p: *const Proc) usize {
         return p.mailbox.items.len - p.head;
@@ -191,11 +203,18 @@ pub const Sim = struct {
     held: usize = 0,
     /// The loops the runtime owns: listeners served and connections read into processes.
     sources: sources_mod.Sources = .{},
+    /// What the processes did, most recent last (events.zig, step 23).
+    ring: events_mod.Ring = .{},
+    /// The process `mo run --surface` starts to serve the surface, which the surface does not list
+    /// and the ring does not record (step 23): its index in `Program.processes`, or none.
+    hidden_process: u32 = none,
+    /// Under `mo run`, main's region, which the surface counts.
+    main_region: ?*const @import("region.zig").Region = null,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
     pub fn init(vm: *Vm, seed: u64, test_name: []const u8) Sim {
-        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name };
+        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .ring = .{ .gpa = vm.gpa } };
     }
 
     /// A seeded run: the same rules, with the scheduler's choices drawn from `seed`, and
@@ -209,6 +228,7 @@ pub const Sim = struct {
             .schedule = .init(seed),
             .faults = if (fault_percent > 0) .init(seed ^ fault_stream) else null,
             .fault_percent = fault_percent,
+            .ring = .{ .gpa = vm.gpa },
         };
     }
 
@@ -316,6 +336,57 @@ pub const Sim = struct {
         return sim.waited;
     }
 
+    /// The events' clock, in microseconds (events.zig): under Mo.Server the awake clock, and in a
+    /// test the run's own, `clock.now` and what fixture calls waited that it has not moved by yet.
+    pub fn eventNow(sim: *const Sim) i64 {
+        if (sim.server) |s| return s.monoUs();
+        return (sim.now + sim.lag) * 1000;
+    }
+
+    /// An event, at the events' clock, naming the processes it is about as they are now.
+    pub fn record(sim: *Sim, e: events_mod.Event) void {
+        if (sim.ring.cap == 0) return;
+        if (e.process != events_mod.nobody and e.process < sim.procs.items.len and sim.hidden(e.process)) return;
+        var x = e;
+        x.at = sim.eventNow();
+        if (x.process != events_mod.nobody and x.process_name.len == 0) x.process_name = sim.nameOf(x.process);
+        if (x.other != events_mod.nobody and x.other_name.len == 0) x.other_name = sim.nameOf(x.other);
+        sim.ring.record(x);
+    }
+
+    /// A call that waits begins: the events' clock now, and the call the running update waits in.
+    pub fn beginWait(sim: *Sim, call: []const u8) i64 {
+        if (sim.running) |id| sim.procs.items[id].waiting = call;
+        return sim.eventNow();
+    }
+
+    /// Process `id` serves the surface, which does not show it (step 23).
+    pub fn hidden(sim: *const Sim, id: u32) bool {
+        return sim.hidden_process != none and sim.procs.items[id].process == sim.hidden_process;
+    }
+
+    /// A call that waits, begun at `since` on the events' clock, gave `result`: its time counts
+    /// toward the running update's waits, and a `Timeout` is an event. `target`: an ask's.
+    pub fn waitedIn(sim: *Sim, call: []const u8, since: i64, result: Value, target: u32) void {
+        const took: u64 = @intCast(@max(sim.eventNow() - since, 0));
+        if (sim.running) |id| {
+            const p = &sim.procs.items[id];
+            p.waiting = "";
+            p.waited_us += took;
+            if (took >= p.longest_us) {
+                p.longest_us = took;
+                p.longest = call;
+            }
+        }
+        if (isTimeout(result)) sim.record(.{ .kind = .timed_out, .process = sim.running orelse events_mod.nobody, .call = call, .other = target });
+    }
+
+    fn isTimeout(v: Value) bool {
+        if (v != .variant or !std.mem.eql(u8, v.variant.name, "Error") or v.variant.fields.len != 1) return false;
+        const e = v.variant.fields[0];
+        return e == .variant and std.mem.eql(u8, e.variant.name, "Timeout");
+    }
+
     /// `reply_by` in the running update.
     pub fn replyBy(sim: *const Sim) i64 {
         const id = sim.running orelse return sim.deadlineNow();
@@ -399,6 +470,7 @@ pub const Sim = struct {
             proc.state = parcel.value.tuple[args.len];
         }
         if (id < sim.procs.items.len) sim.procs.items[id] = proc else try sim.procs.append(sim.gpa, proc);
+        sim.record(.{ .kind = .started, .process = id });
         if (sim.turns) |t| if (supervisor == test_runner) {
             t.quiet += 1;
         };
@@ -432,7 +504,9 @@ pub const Sim = struct {
     pub fn ask(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         defer sim.endAsk();
         try sim.askOn(to);
+        const since = sim.beginWait("ask");
         const reply = if (sim.turns) |t| try t.ask(sim, to, message, within) else try sim.askInline(to, message, within);
+        sim.waitedIn("ask", since, reply, to);
         try sim.checkDoomed();
         return reply;
     }
@@ -446,6 +520,8 @@ pub const Sim = struct {
         const seq = try sim.enqueue(sim.running orelse test_runner, to, message, null);
         const target = &sim.procs.items[to];
         target.mailbox.items[target.mailbox.items.len - 1].deadline = waited + within;
+        // The surface holds its deliveries (step 23): the message waits, and the ask is Timeout.
+        if (target.paused) return sim.askError("Timeout");
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
         if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
@@ -508,7 +584,7 @@ pub const Sim = struct {
         // A process an update starts waits for the next round.
         for (order.items) |id| {
             const p = &sim.procs.items[id];
-            if (!p.up or p.busy or p.queued() == 0) continue;
+            if (!p.up or p.busy or p.paused or p.queued() == 0) continue;
             _ = try sim.deliver(id);
             progressed = true;
             delivered.* += 1;
@@ -547,6 +623,7 @@ pub const Sim = struct {
         const bound = sim.vm.program.processes[target.process].mailbox;
         if (waiting < bound) return;
         const from_name = if (sim.running) |from| sim.nameOf(from) else if (sim.server != null) "main" else try std.fmt.allocPrint(sim.gpa, "the test \"{s}\"", .{sim.test_name});
+        sim.record(.{ .kind = .overflowed, .process = to, .other = sim.running orelse events_mod.nobody });
         const values = try sim.gpa.alloc(contracts.Involved, 1);
         values[0] = .{ .name = "message", .value = try sim.vm.render(message) };
         sim.vm.report = .{
@@ -601,6 +678,11 @@ pub const Sim = struct {
             sim.lag = 0;
             try sim.trace.append(sim.gpa, .{ .from = id, .to = id, .message = entry.message, .took = true });
         }
+        // The clock's move before the update is not the update's time.
+        const since = sim.eventNow();
+        p.waited_us = 0;
+        p.longest_us = 0;
+        p.longest = "";
         const before = p.state;
         const base = vm.stack.items.len;
         // Under `mo run`, everything the update allocates is past this mark: the message
@@ -646,6 +728,14 @@ pub const Sim = struct {
         };
         vm.undo.clearRetainingCapacity();
         p.state = after.tuple[1];
+        sim.record(.{
+            .kind = .updated,
+            .process = id,
+            .name = if (entry.message == .variant) entry.message.variant.name else "",
+            .took_us = @intCast(@max(sim.eventNow() - since, 0)),
+            .waited_us = p.waited_us,
+            .call = p.longest,
+        });
         sim.held -= p.outbox.items.len;
         for (p.outbox.items) |o| {
             if (sim.procs.items[o.to].up) {
@@ -870,6 +960,14 @@ pub const Sim = struct {
         for (p.log.items, log) |m, *o| o.* = try vm.render(m);
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
         try sim.crashes.append(sim.gpa, report);
+        sim.record(.{
+            .kind = .crashed,
+            .process = id,
+            .seed = sim.seed,
+            .clause = report.clause,
+            .message = if (log.len > 0) log[log.len - 1] else "",
+            .state = report.process.?.state,
+        });
         if (sim.server) |s| {
             s.processCrashed(report);
             // A connection closes when the process holding it stops, restarted or not.
@@ -890,6 +988,7 @@ pub const Sim = struct {
         p.restarts.shrinkRetainingCapacity(kept);
         if (kept >= p.policy.max_restarts) return sim.giveUp(id, report);
         try p.restarts.append(sim.gpa, at);
+        p.restarted += 1;
         // An ask whose message the restart drops is Down.
         if (sim.turns) |t| for (p.mailbox.items[p.head..]) |e| try t.answer(e.seq, null, null);
         for (p.mailbox.items[p.head..]) |e| if (e.parcel) |x| x.free();
@@ -904,6 +1003,7 @@ pub const Sim = struct {
         };
         p = &sim.procs.items[id];
         p.state = state;
+        sim.record(.{ .kind = .restarted, .process = id, .count = p.restarted });
     }
 
     /// The child crashed more than max_restarts times within the window: its supervisor

@@ -1,7 +1,7 @@
 ---
 title: "Direction 40: Structured runtime events, not log lines"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-14
 type: direction
 tags: [runtime, agents, tooling, errors]
 sources: [deep-dives/agent-native-runtime-features.md, spec/design-v0/05-verification.md]
@@ -35,6 +35,10 @@ process 42 preempted after 4096 reductions
 The event stream feeds the [[d37-runtime-mcp-surface|MCP surface]], feeds the [[d38-time-travel-debugging|time-travel debugger]], and feeds crash reports. Design-heavy (defining the taxonomy of events), code-light (emission is 15-ish sites in the runtime).
 
 Open question: what the events go over (a ring buffer queryable via MCP, a stream to stdout in structured form, both). Worth answering as part of the MCP surface work.
+
+## Built, step 23 (14 Sep)
+
+The ring of structured events in both runtimes (`Updated` with its duration and wait, `Started`, `Ended`, `Restarted`, `Crashed` with the report's fields, `Overflowed`, `TimedOut`, `SourcePaused`, `SourceResumed`, `Sent`, `Paused`, `Resumed`), 4,096 by default, read by the surface and printed after a failed seed's interleaving; 112 bytes an event native, 1.4 percent on a hot native path ([[interpreter-step-23]]).
 
 ## Related
 

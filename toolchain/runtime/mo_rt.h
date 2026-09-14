@@ -83,7 +83,10 @@ enum {
     MO_N_SOME, MO_N_NONE, MO_N_OK, MO_N_ERROR, MO_N_MISSING, MO_N_TIMEOUT, MO_N_SYNTAX,
     MO_N_OBJECT, MO_N_ARRAY, MO_N_STRING, MO_N_NUMBER, MO_N_BOOL, MO_N_NULL, MO_N_DOWN,
     MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY, MO_N_MALFORMED, MO_N_TOO_LARGE,
-    MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_ACCEPTED, MO_N_LINE, MO_N_IDLE, MO_N_FIXED
+    MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_ACCEPTED, MO_N_LINE, MO_N_IDLE, MO_N_NO_PROCESS, MO_N_UNPARSED,
+    MO_N_READ_ONLY, MO_N_MAILBOX_FULL, MO_N_UPDATED, MO_N_STARTED, MO_N_ENDED, MO_N_RESTARTED, MO_N_CRASHED,
+    MO_N_OVERFLOWED, MO_N_TIMED_OUT, MO_N_SOURCE_PAUSED, MO_N_SOURCE_RESUMED, MO_N_SENT, MO_N_PAUSED,
+    MO_N_RESUMED, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -103,7 +106,7 @@ enum { MO_I8, MO_I16, MO_I32, MO_I64, MO_U8, MO_U16, MO_U32, MO_U64 };
 /* types.CapKind, in its order. */
 enum {
     MO_CAP_CLOCK, MO_CAP_FS, MO_CAP_EVENTS, MO_CAP_LEDGER, MO_CAP_PLATFORM, MO_CAP_ENV, MO_CAP_OUT, MO_CAP_NET,
-    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE
+    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE, MO_CAP_RUNTIME
 };
 
 /* check.DeclKind, in its order. */
@@ -175,6 +178,16 @@ extern const uint32_t mo_charge_decl;
 /* The prelude's Request and Response structs (Http). */
 extern const uint32_t mo_request_decl;
 extern const uint32_t mo_response_decl;
+/* The runtime surface's structs (step 23), and whether the binary was built with --surface. */
+extern const uint32_t mo_process_info_decl;
+extern const uint32_t mo_source_info_decl;
+extern const uint32_t mo_memory_info_decl;
+extern const bool mo_surface_built;
+/* The runtime surface's own process, in mo_processes, or UINT32_MAX; MO_SURFACE's port, or -1; and
+ * the line that says where it listens. */
+extern const uint32_t mo_surface_process;
+int mo_surface_port(void);
+void mo_surface_listening(MoValue got);
 
 /* Contracts (requires, ensures, refinements) are checked when this is set: in every binary
  * `mo build` makes unless it was built --no-contracts, and always in a test binary.
@@ -485,6 +498,10 @@ MO_ROW(mo_r_Listener_port); MO_ROW(mo_r_Conn_read_line); MO_ROW(mo_r_Conn_write)
 MO_ROW(mo_r_Listener_serve); MO_ROW(mo_r_Conn_lines); MO_ROW(mo_r_HttpListener_serve);
 MO_ROW(mo_r_Platform_http); MO_ROW(mo_r_Http_listen); MO_ROW(mo_r_Http_send); MO_ROW(mo_r_Http_fixture);
 MO_ROW(mo_r_HttpListener_accept); MO_ROW(mo_r_HttpListener_port); MO_ROW(mo_r_Exchange_request); MO_ROW(mo_r_Exchange_reply);
+MO_ROW(mo_r_Platform_runtime); MO_ROW(mo_r_Runtime_processes); MO_ROW(mo_r_Runtime_state); MO_ROW(mo_r_Runtime_recent);
+MO_ROW(mo_r_Runtime_events); MO_ROW(mo_r_Runtime_crashes); MO_ROW(mo_r_Runtime_sources); MO_ROW(mo_r_Runtime_memory);
+MO_ROW(mo_r_Runtime_slowest); MO_ROW(mo_r_Runtime_send); MO_ROW(mo_r_Runtime_pause); MO_ROW(mo_r_Runtime_resume);
+MO_ROW(mo_r_Runtime_read_only); MO_ROW(mo_r_Runtime_fixture);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
 MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64); MO_ROW(mo_r_Deadline_at_most); MO_ROW(mo_r_Deadline_fixture);
@@ -535,6 +552,10 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within);
 MoValue mo_reply_by(void);
 MoValue mo_deadline_left(MoValue deadline);
 MoValue mo_timed_out_now(void);
+/* A row that waits, timed for the events (step 23): the events' clock before it, and its result,
+ * given back, after it. */
+MoValue mo_wait_begin(const char *call);
+MoValue mo_waited(const char *call, MoValue since, MoValue result);
 /* Between two statements of a test, or of main in a program with processes. */
 void mo_settle(void);
 

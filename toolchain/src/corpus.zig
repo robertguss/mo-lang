@@ -770,6 +770,50 @@ test "corpus: every module's tests and every program, built by mo build, print w
     try std.testing.expectEqual(outside_rejects, modules.same);
 }
 
+test "corpus: mo run --surface and a binary built with --surface serve the runtime's rows over HTTP" {
+    // programs/surface asks its own surface at the port it is given (step 23): its # run: line
+    // finds nothing listening, and here the surface listens there, under mo run and as a binary.
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const folder = "../examples/programs/surface";
+    Io.Dir.cwd().access(io, folder ++ "/main.mo", .{}) catch return;
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    const want =
+        \\200, holds "name": "Tally"
+        \\200, does not hold Surface
+        \\200, holds Tally(votes: 2)
+        \\200, holds "message": "Vote"
+        \\200, holds done
+        \\409, holds Unparsed
+        \\404, holds no row
+        \\the tally holds 5
+        \\
+    ;
+    // Two ports of their own, picked by the clock so a run does not meet the last one's.
+    const base: i64 = 47_000 + @mod(Io.Clock.real.now(io).toMilliseconds(), 2_000) * 2;
+    const port = try std.fmt.allocPrint(arena, "{d}", .{base});
+    const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "--surface", port, "main.mo", "--", port }, .cwd = .{ .path = folder } });
+    try std.testing.expectEqualStrings(want, interp.stdout);
+    try std.testing.expect(std.mem.indexOf(u8, interp.stderr, "runtime surface: http://127.0.0.1:") != null);
+
+    defer Io.Dir.cwd().deleteTree(io, folder ++ "/zig-out") catch {};
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "main.mo", "-o", "surface-served" }, .cwd = .{ .path = folder } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    const binary = try std.fs.path.join(arena, &.{ try Io.Dir.cwd().realPathFileAlloc(io, folder, arena), "zig-out/mo-build/surface-served/surface-served" });
+    const port2 = try std.fmt.allocPrint(arena, "{d}", .{base + 1});
+    var environ: std.process.Environ.Map = .init(arena);
+    try environ.put("MO_SURFACE", port2);
+    const compiled = try std.process.run(arena, io, .{ .argv = &.{ binary, port2 }, .cwd = .{ .path = folder }, .environ_map = &environ });
+    try std.testing.expectEqualStrings(want, compiled.stdout);
+    try std.testing.expect(std.mem.indexOf(u8, compiled.stderr, "runtime surface: http://127.0.0.1:") != null);
+}
+
 test "corpus: a callee's body changed in another module makes its caller's verified: line stale" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;

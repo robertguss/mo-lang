@@ -83,6 +83,8 @@ pub const Source = struct {
     /// A serve source's last Idle, so simulated time must pass again before the next.
     idled_at: i64 = std.math.minInt(i64),
     done: bool = false,
+    /// It serves the runtime surface (step 23), so it does not keep a program running.
+    background: bool = false,
     /// Stopped at its target's bound, until the mailbox drains to half of it.
     paused: bool = false,
     /// A request source's http_serve source, whose requests in flight it counts.
@@ -116,7 +118,7 @@ pub const Sources = struct {
     /// Whether any source can still deliver: under Mo.Server the run goes on while one can. A
     /// source that is done leaves the list under Mo.Server; under Mo.Sim it stays, marked.
     pub fn active(s: *const Sources) bool {
-        for (s.list.items) |x| if (!x.done) return true;
+        for (s.list.items) |x| if (!x.done and !x.background) return true;
         return false;
     }
 };
@@ -179,6 +181,7 @@ pub fn row(vm: *Vm, kind: Kind, a: []const Value) Error!Value {
 fn add(sim: *Sim, source: Source) Error!*Source {
     const s = try std.heap.smp_allocator.create(Source);
     s.* = source;
+    s.background = sim.hidden(source.to);
     s.index = sim.sources.list.items.len;
     try sim.sources.list.append(sim.gpa, s);
     if (sim.server != null) try markDirty(&sim.sources, s);
@@ -198,12 +201,29 @@ fn room(sim: *Sim, s: *Source, extra: u32) bool {
     if (s.paused) {
         if (waiting > bound / 2) return false;
         s.paused = false;
+        recordPause(sim, s, .source_resumed);
     }
     if (waiting + headroom(bound) >= bound) {
         s.paused = true;
+        recordPause(sim, s, .source_paused);
         return false;
     }
     return true;
+}
+
+/// The row a source serves, as the events and the surface name it.
+pub fn rowLabel(kind: Kind) []const u8 {
+    return switch (kind) {
+        .serve => "Listener.serve",
+        .lines => "Conn.lines",
+        .http_serve, .request => "HttpListener.serve",
+    };
+}
+
+/// A source stopped or started again at its target's bound (events.zig, step 23).
+fn recordPause(sim: *Sim, s: *Source, kind: @import("events.zig").Kind) void {
+    const inflight = if (s.parent) |p| p.inflight else s.inflight;
+    sim.record(.{ .kind = kind, .process = s.to, .name = rowLabel(s.kind), .count = inflight });
 }
 
 /// A message from the runtime to process `to`, packed under `mo run`.

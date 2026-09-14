@@ -37,6 +37,8 @@ pub const Options = struct {
     /// False only for `mo build --no-contracts`.
     contracts: bool = true,
     tests: bool = false,
+    /// `mo build --surface`: `platform.runtime` is `Some` in the binary, and `MO_SURFACE=PORT` serves it (step 23).
+    surface: bool = false,
     target: ?[]const u8 = null,
     /// Wrapping arithmetic with no overflow checks, compiled with -fwrapv: the bench's
     /// comparison build, which measures what the checks cost. Never a flag of `mo build`.
@@ -75,7 +77,7 @@ pub fn defaultName(path: []const u8) []const u8 {
 /// Emits, writes, and compiles. Nothing is freed: pass an arena.
 pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, prog: program.Program, checked: *const check.Checked, options: Options) !Outcome {
     const t0 = Io.Clock.Timestamp.now(io, .awake);
-    const c = try emit_c.emit(gpa, checked, prog, .{ .tests = options.tests, .contracts = options.contracts });
+    const c = try emit_c.emit(gpa, checked, prog, .{ .tests = options.tests, .contracts = options.contracts, .surface = options.surface });
     const dir = try std.fs.path.join(gpa, &.{ options.out_dir, options.name });
     const cwd = Io.Dir.cwd();
     try cwd.createDirPath(io, dir);

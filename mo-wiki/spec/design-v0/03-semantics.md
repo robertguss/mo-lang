@@ -73,6 +73,10 @@ A `Timeout` on `ask` is therefore not a licence to send again: the first message
 
 **Overload.** A full mailbox crashes the sender, as the laws say, because it means the design has no flow control. The review argues a shared queue wants a result or backpressure instead; Robert's call (13 Sep) is to keep the law and measure it. Program 4 is the measurement.
 
+## The runtime surface
+
+Every running program can be asked what its processes are doing, by an agent debugging it or an operator running it (direction 37). The surface is a capability, `Runtime`, and nothing else: `platform.runtime` is `Some` under `mo run` and `mo test`, so it is on in development, and `None` in a built binary unless the binary was built with the surface in, so a deployed program exposes nothing it did not choose to. `main` passes it down as it passes `Fs`, narrowed by `read_only` for a process that may look but not act. Reading a process's state is the largest authority in the system: a `Runtime` read is a snapshot taken between two updates, never inside one, and it can neither change state nor deliver a message; a `Runtime` that may act can send a process a message it declares and pause or resume it, and every such act is an event. The runtime keeps a bounded ring of structured events (direction 40: an update taken with its duration and the time it waited, a start, an end, a restart, a crash with its report, an overflow, a timeout, a source paused or resumed) that the surface reads, and that the crash report is drawn from; under `Mo.Sim` the ring is what a seed's replay shows. Direction 38's replay from a snapshot is the same ring read backwards and is not in this step.
+
 ## Session 5 changes
 
 The rules above already reflect these; this section is the changelog.
@@ -88,3 +92,5 @@ Session 5, step 19: a process that has finished ends (the Processes list), after
 Session 5, step 18: an `invariant` block holds after every `update` and trips when false, where it was true when broken; `never` keeps the negative form. Fable (step 18, after the outside review): the failure model section, stating what a crash discards, what timeout leaves, what restart loses, when a reply is durable, poison and escalation, cleanup, and overload, all from decisions taken in steps 4, 11, 12, and 15.
 
 Fable (session 5, night, after the research agenda's Armstrong page): "What restart means" now names R6, stable storage, as what it answers; the store recipe is the pattern and program 1 is the test.
+
+Fable (session 5, night, 14 Sep, step 23): the runtime surface section, from Robert's call of 13 Sep night (the surface is a capability, on in development, off in a binary unless held) and the nine questions program 1's worker wanted to ask its service.

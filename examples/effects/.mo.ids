@@ -90,6 +90,20 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "c6070b381a0b033c" }
     },
     {
+      "path": "runtime.mo",
+      "module": "Effects.Runtime",
+      "declarations": [
+        { "id": "106c5caa241f", "name": "module Effects.Runtime", "hash": "06c526f9d5052826" },
+        { "id": "086287072494", "name": "expose", "hash": "4dd48a7eee714ae3" },
+        { "id": "11fbfd9a2bf8", "name": "intent", "hash": "3b441b7e073a3444" },
+        { "id": "2db9605ac569", "name": "process Tally", "hash": "57f59680e5d78496" },
+        { "id": "e4ce710a231d", "name": "supervisor Tallies", "hash": "35bacd8eae29f9b3" },
+        { "id": "bb55671fa8ec", "name": "test \"the surface lists a started process and reads its state and its updates\"", "hash": "f7424bbf961735f3" },
+        { "id": "c4794fc02f63", "name": "test \"a surface that may act pauses, sends, and resumes, and a read-only one refuses\"", "hash": "7651d4c395d003ef" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "4cf71f1397c483cc" }
+    },
+    {
       "path": "served.mo",
       "module": "Effects.Served",
       "declarations": [

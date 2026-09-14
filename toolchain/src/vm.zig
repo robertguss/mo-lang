@@ -33,6 +33,7 @@ const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const net_mod = @import("net.zig");
 const http_mod = @import("http.zig");
+const surface_mod = @import("surface.zig");
 const sources = @import("sources.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
@@ -416,7 +417,7 @@ pub const Vm = struct {
                     try vm.exec(func.function, args_now, func.captures);
                 },
                 .closure => try vm.push(.{ .func = .{ .function = inst.a, .captures = try vm.take(inst.b) } }),
-                .prim => try vm.prim(inst.a, inst.b),
+                .prim => try vm.primTimed(inst.a, inst.b),
                 .ret => {
                     const v = vm.pop();
                     vm.stack.shrinkRetainingCapacity(base);
@@ -1049,6 +1050,9 @@ pub const Vm = struct {
         /// An Http, HttpListener, or Exchange row (http.zig).
         http_row,
         http_fixture,
+        /// A Runtime row (surface.zig, step 23).
+        runtime_row,
+        runtime_fixture,
         process,
         never_only,
         /// A design-v0/09 row stdlib.zig runs.
@@ -1082,6 +1086,11 @@ pub const Vm = struct {
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
         .{ "Env.get", .env_get },                   .{ "Out.write", .out_write },
+        .{ "Platform.runtime", .platform_part },    .{ "Runtime.processes", .runtime_row },       .{ "Runtime.state", .runtime_row },
+        .{ "Runtime.recent", .runtime_row },        .{ "Runtime.events", .runtime_row },          .{ "Runtime.crashes", .runtime_row },
+        .{ "Runtime.sources", .runtime_row },       .{ "Runtime.memory", .runtime_row },          .{ "Runtime.slowest", .runtime_row },
+        .{ "Runtime.send", .runtime_row },          .{ "Runtime.pause", .runtime_row },           .{ "Runtime.resume", .runtime_row },
+        .{ "Runtime.read_only", .runtime_row },     .{ "Runtime.fixture", .runtime_fixture },
     });
 
     /// Every prelude row has an implementation, or the toolchain does not build.
@@ -1094,6 +1103,27 @@ pub const Vm = struct {
         }
         break :blk table;
     };
+
+    /// Each prelude row as the events name a call: `Fs.append`.
+    const row_labels = blk: {
+        @setEvalBranchQuota(20_000);
+        var table: [prelude.fns.len][]const u8 = undefined;
+        for (prelude.fns, 0..) |f, i| {
+            const head = f.recv[0 .. std.mem.indexOfScalar(u8, f.recv, '(') orelse f.recv.len];
+            table[i] = head ++ "." ++ f.name;
+        }
+        break :blk table;
+    };
+
+    /// A row that waits, timed for the events (events.zig, step 23): what it took counts toward the
+    /// running update's waits, and a Timeout is an event.
+    fn primTimed(vm: *Vm, row_index: u32, kind_raw: u32) Error!void {
+        const sim = vm.sim orelse return vm.prim(row_index, kind_raw);
+        if (!prelude.fns[row_index].can_wait) return vm.prim(row_index, kind_raw);
+        const since = sim.beginWait(row_labels[row_index]);
+        try vm.prim(row_index, kind_raw);
+        sim.waitedIn(row_labels[row_index], since, vm.stack.items[vm.stack.items.len - 1], std.math.maxInt(u32));
+    }
 
     fn prim(vm: *Vm, row_index: u32, kind_raw: u32) Error!void {
         const row = prelude.fns[row_index];
@@ -1234,6 +1264,8 @@ pub const Vm = struct {
             .net_fixture => .{ .cap = .{ .kind = .net } },
             .http_row => try vm.httpRow(std.meta.stringToEnum(http_mod.Row, row.name).?, a),
             .http_fixture => .{ .cap = .{ .kind = .http } },
+            .runtime_row => try surface_mod.call(vm, std.meta.stringToEnum(surface_mod.Row, row.name).?, a),
+            .runtime_fixture => .{ .cap = .{ .kind = .runtime } },
             .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
@@ -1522,6 +1554,7 @@ pub const Vm = struct {
                 .http => if (vm.server != null) "an Http" else "Http.fixture()",
                 .http_listener => "an HttpListener",
                 .exchange => "an Exchange",
+                .runtime => if (vm.server == null) "Runtime.fixture()" else if (c.handle == surface_mod.read_only_handle) "a read-only Runtime" else "a Runtime",
             }),
             .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
         }
