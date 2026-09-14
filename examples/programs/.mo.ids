@@ -874,7 +874,7 @@
         { "id": "d504d130fae5", "name": "test \"each outcome is its status and its JSON\"", "hash": "3e56b92bd007b9f0" },
         { "id": "45f4efc56278", "name": "property \"any valid payload sent as JSON becomes a create of that payload\"", "hash": "99291ed2580bda89" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "de8aacad70dc94dc", "uses": [{ "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }] }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "de8aacad70dc94dc", "uses": [{ "module": "Jobq.Board", "hash": "1891655d4244c3e2" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }] }
     },
     {
       "path": "jobq/board.mo",
@@ -889,11 +889,11 @@
         { "id": "dcd0fdb49e6d", "name": "struct Call", "hash": "2a9f1e2706b075e3" },
         { "id": "eb8cb64c57eb", "name": "struct Counts", "hash": "ea0594240cc0602a" },
         { "id": "8602f5af1a92", "name": "enum Outcome", "hash": "3693cfa52dcde9e4" },
-        { "id": "d407d9f54a9c", "name": "struct Order", "hash": "b273b43f9159c62d" },
-        { "id": "7a62b29212ea", "name": "struct Board", "hash": "095d2e9902f7a563" },
+        { "id": "d407d9f54a9c", "name": "struct Order", "hash": "1b081aa543b72fe5" },
+        { "id": "7a62b29212ea", "name": "struct Board", "hash": "fc6f178ef3b0548c" },
         { "id": "a1cab09c4baf", "name": "struct Decision", "hash": "4d0dea47ab89267c" },
         { "id": "f5924b676465", "name": "struct Kept", "hash": "b2512c2a4e4c244b" },
-        { "id": "0f4b7351d026", "name": "fn board", "hash": "f045893af30962c1" },
+        { "id": "0f4b7351d026", "name": "fn board", "hash": "a60ba73bf6d10d6a" },
         { "id": "b9068037f1c2", "name": "fn decide", "hash": "07b8a3557757ec20" },
         { "id": "473527a156a1", "name": "fn answered", "hash": "c27dbf2d4adc7603" },
         { "id": "c4a4aebfe66c", "name": "fn health_of", "hash": "3ad30cd0d634dc54" },
@@ -903,27 +903,30 @@
         { "id": "84a62dfad3cc", "name": "fn requeued", "hash": "829c3a6a37283801" },
         { "id": "a54376989e5e", "name": "fn queue_of", "hash": "c0b9c24f2afa32e8" },
         { "id": "830e937bc76d", "name": "fn queued_job?", "hash": "0108ba2fbd3bf01a" },
-        { "id": "702021f78032", "name": "fn no_order", "hash": "7bbe0252835adaf2" },
+        { "id": "702021f78032", "name": "fn no_order", "hash": "6bd47a9dec3856a5" },
         { "id": "8d5e26d7df65", "name": "fn with_back", "hash": "1ae256effbd43bc0" },
-        { "id": "d88ba6b98a15", "name": "fn with_fresh", "hash": "526aef43c08cc234" },
+        { "id": "d88ba6b98a15", "name": "fn with_fresh", "hash": "1f8077b7bcd309f8" },
         { "id": "6c445b82f915", "name": "fn record_of", "hash": "a152d32077b966c9" },
         { "id": "c93d3c775029", "name": "fn recounted", "hash": "96c177842c5b66bd" },
         { "id": "ae94247160c0", "name": "fn counted", "hash": "b02e151febbbd8f6" },
         { "id": "b304353f003f", "name": "fn moved", "hash": "42bf9b550f3f972d" },
-        { "id": "14f44a60ca57", "name": "fn created", "hash": "409b4f2300f153ff" },
+        { "id": "14f44a60ca57", "name": "fn created", "hash": "d2e74e2b43122096" },
         { "id": "b8563438a2d5", "name": "fn fetched", "hash": "db4fe52ae1312d8a" },
         { "id": "cdb7f7ecc1ea", "name": "fn job_at", "hash": "584b58c8c6753968" },
         { "id": "89eb46e96457", "name": "fn listed", "hash": "82ae21d27203b6ae" },
         { "id": "2013bdcadff9", "name": "fn wanted?", "hash": "797350bf5bea3dc3" },
         { "id": "5f6d1cf2bb99", "name": "fn removed", "hash": "5254aef71faa526f" },
-        { "id": "1699afa4404e", "name": "fn lent", "hash": "626c559444f9322b" },
-        { "id": "724c0c23f8aa", "name": "fn handed", "hash": "0223cfb1f7030c2d" },
+        { "id": "1699afa4404e", "name": "fn lent", "hash": "248d173a5c34842c" },
+        { "id": "2d6fa9f7d2aa", "name": "fn passed_over", "hash": "fad446528b89997a" },
+        { "id": "724c0c23f8aa", "name": "fn handed", "hash": "916334b57a4bb2f1" },
+        { "id": "efac108ef452", "name": "fn first_fresh", "hash": "4727832c18ca24fa" },
+        { "id": "a658f67d2d2a", "name": "fn fresh_queued?", "hash": "fededf6a86dbc78f" },
         { "id": "65772d3c8da1", "name": "fn first_queued", "hash": "5a95c5575da0b900" },
-        { "id": "471aa62c08cf", "name": "fn trimmed", "hash": "6f2eac02960bc733" },
-        { "id": "3778025bda0e", "name": "fn settled", "hash": "792637dda40fa3af" },
+        { "id": "471aa62c08cf", "name": "fn trimmed", "hash": "95b1ba6b53a6ae2f" },
+        { "id": "3778025bda0e", "name": "fn settled", "hash": "994f615d760dbfc3" },
         { "id": "8e692a0272ff", "name": "fn rebuilt", "hash": "8a8820ed4d82f5b0" },
         { "id": "79027d60be2d", "name": "fn job_under", "hash": "a3a0b5a36d22e9a0" },
-        { "id": "ead9384eec1a", "name": "fn placed", "hash": "72df4809b860849b" },
+        { "id": "ead9384eec1a", "name": "fn placed", "hash": "d1d6f42965fdf562" },
         { "id": "7526085fd898", "name": "fn records", "hash": "d3b81641fbd7ff97" },
         { "id": "773a27228da5", "name": "fn at", "hash": "84536cdb9086b3de" },
         { "id": "d5e8f4d04917", "name": "fn start", "hash": "de245dd15d2c18f8" },
@@ -943,7 +946,7 @@
         { "id": "0db5bcf444a0", "name": "test rejects \"an empty board whose first number is 0\"", "hash": "d8744411d78e336b" },
         { "id": "7e707ef34361", "name": "property \"a job made then fetched gives back any valid payload\"", "hash": "1baa176cfecd8022" }
       ],
-      "verified": { "hash": "3f8bccf1b5003a95", "declarations": "a37162cd61ba7c01", "uses": [{ "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }] }
+      "verified": { "hash": "3f8bccf1b5003a95", "declarations": "787048a2a2a3e799", "uses": [{ "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }] }
     },
     {
       "path": "jobq/job.mo",
@@ -1063,7 +1066,7 @@
         { "id": "1b6472fe2e5b", "name": "test \"a store whose last line was cut short opens without it, and says so on the error stream\"", "hash": "67a79f347202c303" },
         { "id": "48b970f36a7a", "name": "test \"a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1\"", "hash": "3e953113347988b5" }
       ],
-      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "a39529249b01c84e", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Server", "hash": "dfc434637eb11b87" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "a39529249b01c84e", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "1891655d4244c3e2" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Server", "hash": "dfc434637eb11b87" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
     },
     {
       "path": "jobq/queue.mo",
@@ -1109,7 +1112,7 @@
         { "id": "2754ae6c0662", "name": "test \"a queue started again from its log finds a lease that ran out and hands the job out again\"", "hash": "86e0bf58b49a95ae" },
         { "id": "6b9b982e995f", "name": "test \"every answer is right or 503 with the store unchanged, and every job ends done or dead once faults stop\"", "hash": "d4cc48a44063535a" }
       ],
-      "verified": { "hash": "d5eca57fd58baa94", "declarations": "d7a8334976244d95", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "d7a8334976244d95", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "1891655d4244c3e2" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
     },
     {
       "path": "jobq/server.mo",
@@ -1145,7 +1148,7 @@
         { "id": "c62549d8ebb6", "name": "test \"1,200 connections that send nothing do not stop a producer's request from being answered\"", "hash": "87bf6d856ca6cc5a" },
         { "id": "11a374721c13", "name": "test \"over the wire, every answer is right or 503, and every job ends done or dead once faults stop\"", "hash": "32d1b2b55e00b309" }
       ],
-      "verified": { "hash": "d5eca57fd58baa94", "declarations": "aa9aa362b3b07386", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "aa9aa362b3b07386", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "1891655d4244c3e2" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
     },
     {
       "path": "jobq/store.mo",

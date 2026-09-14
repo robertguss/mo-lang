@@ -48,22 +48,25 @@ enum Outcome
   Unavailable(reason: String)
 end
 
-# One queue's queued jobs, oldest first: the jobs queued when they were made, in the order they
-# were made, from `head` on, and the jobs queued again after a lease, by number, from
-# `back_head` on. An entry whose job is no longer queued is passed over when it is reached.
+# One queue's queued jobs, oldest first: the jobs queued when they were made hold positions
+# `head` up to `tail` in the board's `fresh`, in the order they were made, and the jobs queued
+# again after a lease are in `back`, by number, from `back_head` on. An entry whose job is no
+# longer queued is passed over when it is reached.
 struct Order
-  fresh: List(UInt64)
   head: UInt64
+  tail: UInt64
   back: List(UInt64)
   back_head: UInt64
 end
 
-# The jobs by number, in number order; each queue's order; each leased job's lease end and the
-# earliest of them, or earlier; the next number and the numbers below `reserved` the log has
-# reserved; the counts; and when the queue started.
+# The jobs by number, in number order; each queue's order, and the job at each of its fresh
+# positions, kept in one map of its own so that making a job changes one entry and copies no
+# queue's list; each leased job's lease end and the earliest of them, or earlier; the next number
+# and the numbers below `reserved` the log has reserved; the counts; and when the queue started.
 struct Board
   jobs: Map(UInt64, Job)
   orders: Map(String, Order)
+  fresh: Map((String, UInt64), UInt64)
   leases: Map(UInt64, Time)
   due: Option(Time)
   next: UInt64
@@ -90,9 +93,9 @@ end
 fn board(started: Time, next: UInt64) : Board
   requires next >= 1
 
-  Board(jobs: Map.new(), orders: Map.new(), leases: Map.new(), due: None, next: next,
-    reserved: next, counts: Counts(queued: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0),
-    started: started)
+  Board(jobs: Map.new(), orders: Map.new(), fresh: Map.new(), leases: Map.new(), due: None,
+    next: next, reserved: next,
+    counts: Counts(queued: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0), started: started)
 end
 
 fn decide(board: Board, call: Call, now: Time) : Decision
@@ -182,7 +185,7 @@ fn queued_job?(board: Board, number: UInt64) : Bool
 end
 
 fn no_order() : Order
-  Order(fresh: [], head: 0, back: [], back_head: 0)
+  Order(head: 0, tail: 0, back: [], back_head: 0)
 end
 
 fn with_back(order: Order, numbers: List(UInt64)) : Order
@@ -192,9 +195,13 @@ fn with_back(order: Order, numbers: List(UInt64)) : Order
   after
 end
 
-fn with_fresh(order: Order, number: UInt64) : Order
-  var after = order
-  after.fresh = after.fresh.push(number)
+# The board with a queued job taking its queue's next fresh position.
+fn with_fresh(board: Board, queue: String, number: UInt64) : Board
+  order = board.orders.get(queue) or no_order()
+  var after = board
+  after.fresh = after.fresh.set((queue, order.tail), number)
+  after.orders = after.orders.set(queue,
+    Order(head: order.head, tail: order.tail + 1, back: order.back, back_head: order.back_head))
   after
 end
 
@@ -233,10 +240,8 @@ end
 fn created(board: Board, queue: String, payload: String, max_attempts: UInt64, now: Time) : Decision
   made = job(board.next, queue, payload, max_attempts, now)
   reserving = board.next >= board.reserved
-  var after = board
+  var after = with_fresh(board, queue, made.number)
   after.jobs = after.jobs.set(made.number, made)
-  after.orders = after.orders.set(queue,
-    with_fresh(board.orders.get(queue) or no_order(), made.number))
   after.next = board.next + 1
   after.reserved = if reserving: board.next + 1_000 else: board.reserved
   after.counts = counted(board.counts, Queued, true)
@@ -285,47 +290,67 @@ end
 # The oldest queued job of the queue, leased to the worker; Empty when none is queued.
 fn lent(board: Board, worker: String, queue: String, lease_ms: UInt64, now: Time) : Decision
   order = board.orders.get(queue) or no_order()
-  fresh_at = first_queued(board, order.fresh, order.head)
+  fresh_at = first_fresh(board, queue, order.head, order.tail)
   back_at = first_queued(board, order.back, order.back_head)
-  var passed = order
-  passed.head = fresh_at
-  passed.back_head = back_at
-  case (order.fresh.get(fresh_at), order.back.get(back_at))
-    (Some(f), Some(b)):
-      if b < f
-        passed.back_head = back_at + 1
-        return handed(board, trimmed(passed), b, worker, lease_ms, now)
-      end
-      passed.head = fresh_at + 1
-      handed(board, trimmed(passed), f, worker, lease_ms, now)
-    (Some(f), None):
-      passed.head = fresh_at + 1
-      handed(board, trimmed(passed), f, worker, lease_ms, now)
-    (None, Some(b)):
-      passed.back_head = back_at + 1
-      handed(board, trimmed(passed), b, worker, lease_ms, now)
-    (None, None):
-      var after = board
-      after.orders = after.orders.set(queue, trimmed(passed))
-      answered(after, Empty)
+  fresh = board.fresh.get((queue, fresh_at))
+  back = order.back.get(back_at)
+  take_back = case (fresh, back)
+    (Some(f), Some(b)): b < f
+    (None, Some(_)): true
+    (Some(_), None) | (None, None): false
+  end
+  head = if fresh is Some(_) and !take_back: fresh_at + 1 else: fresh_at
+  back_head = if take_back: back_at + 1 else: back_at
+  var passed = passed_over(board, queue, order, head)
+  passed.orders = passed.orders.set(queue,
+    trimmed(Order(head: head, tail: order.tail, back: order.back, back_head: back_head)))
+  chosen = if take_back: back else: fresh
+  case chosen
+    Some(number): handed(passed, number, worker, lease_ms, now)
+    None: answered(passed, Empty)
   end
 end
 
-fn handed(board: Board, order: Order, number: UInt64, worker: String, lease_ms: UInt64,
-  now: Time) : Decision
+# The board without the fresh entries its queue's head has passed.
+fn passed_over(board: Board, queue: String, order: Order, head: UInt64) : Board
+  var after = board
+  after.fresh = (order.head..head).reduce(after.fresh, fn(fresh, p) fresh.remove((queue, p)) end)
+  after
+end
+
+fn handed(board: Board, number: UInt64, worker: String, lease_ms: UInt64, now: Time) : Decision
   case board.jobs.get(number)
     Some(held):
       lease = leased(held, worker, lease_ms, now)
       until = lease.lease_until or now
       var after = board
       after.jobs = after.jobs.set(number, lease)
-      after.orders = after.orders.set(lease.queue, order)
       after.leases = after.leases.set(number, until)
       after.due = Some(min_of(board.due or until, until))
       after.counts = recounted(board.counts, Queued, Leased)
       Decision(board: after, outcome: Found(job: lease),
         writes: [(id_of(number), Some(shown(lease)))])
     None: answered(board, Empty)
+  end
+end
+
+# The first fresh position of the queue from `from` on whose job is still queued, or `tail`;
+# looked for 256 positions at a time.
+fn first_fresh(board: Board, queue: String, from: UInt64, tail: UInt64) : UInt64
+  ensures result >= from or result == tail
+
+  return tail if from >= tail
+  upto = min_of(from + 256, tail)
+  case (from..upto).find(fn(p) fresh_queued?(board, queue, p) end)
+    Some(p): p
+    None: first_fresh(board, queue, upto, tail)
+  end
+end
+
+fn fresh_queued?(board: Board, queue: String, position: UInt64) : Bool
+  case board.fresh.get((queue, position))
+    Some(number): queued_job?(board, number)
+    None: false
   end
 end
 
@@ -342,13 +367,9 @@ fn first_queued(board: Board, numbers: List(UInt64), from: UInt64) : UInt64
   end
 end
 
-# An order whose passed-over entries are dropped once they are most of it.
+# An order whose passed-over back entries are dropped once they are most of it.
 fn trimmed(order: Order) : Order
   var after = order
-  if order.head >= 1_024 and order.head * 2 >= order.fresh.size
-    after.fresh = order.fresh.drop(order.head)
-    after.head = 0
-  end
   if order.back_head >= 1_024 and order.back_head * 2 >= order.back.size
     after.back = order.back.drop(order.back_head)
     after.back_head = 0
@@ -370,10 +391,10 @@ fn settled(board: Board, worker: String, id: String, reason: String, failing: Bo
       after.leases = after.leases.remove(held.number)
       after.counts = recounted(board.counts, Leased, after_job.state)
       after.orders = if after_job.state == Queued
-        board.orders.set(held.queue,
-          with_back(board.orders.get(held.queue) or no_order(), [held.number]))
+        after.orders.set(held.queue,
+          with_back(after.orders.get(held.queue) or no_order(), [held.number]))
       else
-        board.orders
+        after.orders
       end
       Decision(board: after, outcome: Found(job: after_job), writes: [(id, Some(shown(after_job)))])
     None: answered(board, Missing)
@@ -410,17 +431,11 @@ fn job_under(entry: (String, String)) : List(Job)
 end
 
 fn placed(board: Board, held: Job) : Board
-  var after = board
+  var after = if held.state == Queued: with_fresh(board, held.queue, held.number) else: board
   after.jobs = after.jobs.set(held.number, held)
   after.counts = counted(board.counts, held.state, true)
-  after.orders = if held.state == Queued
-    board.orders.set(held.queue,
-      with_fresh(board.orders.get(held.queue) or no_order(), held.number))
-  else
-    board.orders
-  end
   until = held.lease_until or board.started
-  after.leases = if held.state == Leased: board.leases.set(held.number, until) else: board.leases
+  after.leases = if held.state == Leased: after.leases.set(held.number, until) else: after.leases
   after.due = if held.state == Leased: Some(min_of(board.due or until, until)) else: board.due
   after
 end
