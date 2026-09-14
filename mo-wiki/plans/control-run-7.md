@@ -41,7 +41,9 @@ All four must hold for "held"; any one failing makes it "mixed". Recorded, not p
 
 ## Result
 
-(Written after the run.)
+The sessions started 14 Sep 2026, 16:40 UTC, from worktrees branched at `ba87a5b` (step 27 merged), the suite committed to `control-run-7-suite/defects.py` after the branching. Panes `w7:p7`, `w7:pA`, `w7:pB` (round 6's `p8` and `p9` closed with their agents).
+
+(The rest is written after the run.)
 
 ## Reading, against the predictions
 
