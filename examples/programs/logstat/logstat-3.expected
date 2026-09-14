@@ -1,0 +1,12 @@
+requests     8
+errors       1  (12.5%)
+malformed    4
+per minute 4.1
+
+slowest
+  2_750 ms  POST   /api/orders    2026-09-12T10:02:30Z
+    340 ms  DELETE /api/orders/7  2026-09-12T10:01:04Z
+
+busiest
+  4  GET /api/users
+  1  GET /api/orders
