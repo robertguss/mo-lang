@@ -388,7 +388,7 @@ const Printer = struct {
             // it makes every piece fit, and takes its block form when that is not enough.
             var keep = plan.fits;
             for (p.flats.items) |f| switch (p.node(f).kind) {
-                .anon_fn, .if_expr => {},
+                .anon_fn, .if_expr, .if_stmt => {},
                 else => keep = false,
             };
             if (p.flats.items.len > 0 and !keep) {
@@ -1075,7 +1075,10 @@ const Printer = struct {
     /// form printed from a one-line source steps over its colons and writes its `end`.
     fn ifNode(p: *Printer, i: Index) E!void {
         const n = p.node(i);
-        if (n.kind == .if_expr and !p.forced[i] and p.lineShaped(i)) {
+        // A one-line `if` that starts a line is a value there too (step 26) and keeps its line as
+        // any `if` value does (I1–I3); a block `if` there stays a block (I4).
+        const line_start = n.kind == .if_stmt and p.tree.tokens[n.main_token - 1].kind == .newline and p.tree.lineIfColon(n.main_token) != null;
+        if ((n.kind == .if_expr or line_start) and !p.forced[i] and p.lineShaped(i)) {
             if (try p.attemptIf(i)) return;
         }
         const data = p.tree.extraData(ast.If, n.rhs);

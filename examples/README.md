@@ -28,7 +28,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 6. `basics/lists.mo`: a list literal, `push`, `map`, `filter`, `reduce`
 7. `basics/option.mo`: `Some`, `None`, `or`, `case`
 8. `basics/result.mo`: `Ok`, `Error`, `try` through two calls
-9. `basics/if.mo`: `if` as a statement, as a value in block form and on one line (`if c: a else: b`, step 25), the one-line form also as a call's argument, an arm's value, an anonymous function's body, and inside an interpolation, and trailing on `return`
+9. `basics/if.mo`: `if` as a statement, as a value in block form and on one line (`if c: a else: b`, step 25), the one-line form also as a call's argument, an arm's value, an anonymous function's body, and inside an interpolation, and as a function's whole body on its last line (step 26), and trailing on `return`
 10. `basics/case.mo`: guards, nested destructuring, literal arms, `_` inside a pattern
 11. `basics/for.mo`: `for` over a range and a list, `break`, and why these are loops
 12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments
@@ -100,7 +100,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 49. `rejects/hand-edited-verified.mo`: a `verified:` line written by hand
 50. `rejects/unsupervised-process.mo`: a process no supervisor names
 67. `rejects/captured-capability.mo`: a capability captured by an anonymous function (step 18)
-74. `rejects/one-line-if-statement.mo`: a one-line `if` where a statement goes; `MO0101` says the form is a value only and shows the block form (step 21; step 25)
+74. `rejects/one-line-if-statement.mo`: a one-line `if` on a line of its own that is not a body's last; `MO0310` says its value is dropped, the form a value only, and shows the block form (step 21; steps 25, 26)
 85. `rejects/one-line-if-without-else.mo`: a one-line `if` value with no `else:`; `MO0101` says both branches are required (step 25)
 75. `rejects/positional-variant.mo`: a variant matched by position; `MO0101` names its fields (step 21)
 76. `rejects/method-on-range-end.mo`: `0..60.map(...)`, whose `map` binds to 60; `MO0206` says so (step 21)

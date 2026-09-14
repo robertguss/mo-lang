@@ -20,8 +20,8 @@ const why_type = "A type is a type name such as UInt32 or List(T), or a tuple of
 const why_pattern = "A pattern is _, a name, a literal, a variant such as Some(x) or Short(by: n), or a tuple of patterns.";
 const why_order = "A module is its header (module, expose, use, intent, never), then declarations, then tests, then the verified: line.";
 const why_place = "Only a name or a field path such as copy.name can be assigned.";
-/// An `if` on one line where a statement goes (step 21, round 4's MO0101; step 25).
-const why_if = "An if that starts a line is a statement, and a statement takes its body on the lines below its condition and ends with end, as every block does. The one-line form, if cond: a else: b, is a value only: it sits where a value goes, after = or as an argument.";
+/// A one-line `if` that starts a line and holds a statement (step 21, round 4's MO0101; steps 25, 26).
+const why_if = "A one-line if, if cond: a else: b, is a value only: it sits where a value goes, after =, as an argument, or as the last line of a body that gives a value. A statement takes the block form, its body on the lines below its condition, ending with end, as every block does.";
 /// The one-line `if` value malformed (step 25).
 const why_if_value = "A one-line if is a value (grammar §6): if cond: a else: b, with both branches, each one expression. Anything more takes the block form, one part a line.";
 /// A variant matched by position (step 21, round 4's MO0101).
@@ -30,7 +30,7 @@ const why_by_name = "A variant's fields are matched by name, as they are built b
 /// `fn main` line, with why_main as its why, an `if` on one line, with why_if, and a variant
 /// matched by position, with why_by_name.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if that starts a line takes its body on the lines below it; the one-line if is a value only, if cond: a else: b, with both branches, each one expression; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{} },
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " The one-line if is a value only, if cond: a else: b, with both branches, each one expression, and a statement takes the block form; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{} },
     .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
     .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
     .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
@@ -222,37 +222,14 @@ const Parser = struct {
         return error.Rejected;
     }
 
-    /// MO0101 at `if cond: a else: b` where a statement goes, at its `:`. The one-line form is a
-    /// value only (step 25), so the message shows the block form. It carries no fix: the form is
-    /// a value, and `mo fix` does not rewrite it (step 25).
-    fn oneLineIf(p: *Parser, kw: u32) Error {
-        const gpa = p.gpa;
-        const toks = p.toks.items;
-        const src = p.source;
-        const colon = p.tok;
-        var depth: i32 = 0;
-        var else_tok: ?u32 = null;
-        var t = colon + 1;
-        while (toks[t].kind != .newline and toks[t].kind != .eof) : (t += 1) {
-            switch (toks[t].kind) {
-                .l_paren, .l_bracket, .l_brace => depth += 1,
-                .r_paren, .r_bracket, .r_brace => depth -= 1,
-                .kw_else => if (depth == 0 and else_tok == null) {
-                    else_tok = t;
-                },
-                else => {},
-            }
-        }
-        const line_end = t;
-        const cond_text = std.mem.trim(u8, src[toks[kw].end..toks[colon].start], " ");
-        const then_text = std.mem.trim(u8, src[toks[colon].end..if (else_tok) |e| toks[e].start else toks[line_end].start], " ");
-        const else_text: ?[]const u8 = if (else_tok) |e| std.mem.trim(u8, src[@min(toks[e + 1].end, toks[line_end].start)..toks[line_end].start], " ") else null;
-        const shown = if (else_text) |e|
-            try std.fmt.allocPrint(gpa, "if {s} / {s} / else / {s} / end", .{ cond_text, then_text, e })
-        else
-            try std.fmt.allocPrint(gpa, "if {s} / {s} / end", .{ cond_text, then_text });
-        const what = try std.fmt.allocPrint(gpa, "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: {s}", .{shown});
-        try p.diags.append(gpa, .{ .code = "MO0101", .category = .syntax, .at = toks[colon].start, .what = what, .why = why_if });
+    /// MO0101 at the `:` of a one-line `if` that starts a line and holds a statement, or has no
+    /// `else:`: the form is a value only (steps 25, 26), so the message shows the block form. It
+    /// carries no fix, and `mo fix` does not rewrite the form (step 25).
+    fn oneLineIf(p: *Parser, kw: u32, colon: u32) Error {
+        const tree: ast.Tree = .{ .source = p.source, .tokens = p.toks.items, .nodes = &.{}, .extra = &.{} };
+        const shown = try tree.lineIfShown(p.gpa, kw, colon);
+        const what = try std.fmt.allocPrint(p.gpa, "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: {s}", .{shown.block});
+        try p.diags.append(p.gpa, .{ .code = "MO0101", .category = .syntax, .at = p.toks.items[colon].start, .what = what, .why = why_if });
         return error.Rejected;
     }
 
@@ -889,14 +866,18 @@ const Parser = struct {
         return node;
     }
 
-    /// `if cond NL block (else NL block)? end`, or where a value goes `if cond: a else: b`
-    /// (step 25), without the line end.
+    /// `if cond NL block (else NL block)? end`, or `if cond: a else: b` (step 25), without the
+    /// line end.
     fn parseIf(p: *Parser, kind: Node.Kind, require_else: bool) Error!Index {
         const kw = try p.expect(.kw_if);
         const cond = try p.parseExpr();
         if (p.peek() == .colon) {
-            if (kind == .if_stmt) return p.oneLineIf(kw);
-            return p.parseLineIf(kw, cond);
+            // A one-line `if` that starts a line is a value too (step 26), with the block `if`'s
+            // tree there: a body's last line gives it as the body's value, and the checker
+            // refuses it on any other line as a dropped value (MO0310).
+            const node = try p.parseLineIf(kw, cond, kind == .if_stmt);
+            p.nodes.items[node].kind = kind;
+            return node;
         }
         _ = try p.expect(.newline);
         const then = try p.parseBlock(false);
@@ -914,10 +895,13 @@ const Parser = struct {
     /// `if cond: a else: b` from its `:`. The tree is the block form's: each branch a block of
     /// one statement, an expression, or an `if` or `case` kept as the statement it is in the
     /// block form, so the two forms are one tree and mo fmt may write either.
-    fn parseLineIf(p: *Parser, kw: u32, cond: Index) Error!Index {
+    /// At a line's start, a branch holding a statement, or a missing `else:`, is the statement
+    /// the author meant, and MO0101 shows its block form (`oneLineIf`).
+    fn parseLineIf(p: *Parser, kw: u32, cond: Index, line_start: bool) Error!Index {
         const colon = p.next();
-        const then = try p.lineIfBranch();
+        const then = try p.lineIfBranch(kw, colon, line_start);
         if (p.peek() != .kw_else) {
+            if (line_start) return p.oneLineIf(kw, colon);
             const cond_text = std.mem.trim(u8, p.source[p.toks.items[kw].end..p.toks.items[colon].start], " ");
             const then_text = std.mem.trim(u8, p.source[p.toks.items[colon].end..p.toks.items[p.tok].start], " ");
             const what = try std.fmt.allocPrint(p.gpa, "expected `else:` after the value: a one-line if is a value, so it takes both branches: if {s}: {s} else: <the value otherwise>", .{ cond_text, then_text });
@@ -926,21 +910,27 @@ const Parser = struct {
         _ = p.next();
         if (p.peek() != .colon) return p.fail("MO0101", "expected `:` after `else`: a one-line if writes each branch after a colon, as in if n > 1: \"lines\" else: \"line\"", why_if_value);
         _ = p.next();
-        const otherwise = try p.lineIfBranch();
+        const otherwise = try p.lineIfBranch(kw, colon, line_start);
         const data = try p.addExtra(ast.If{ .then_start = then.start, .then_end = then.end, .else_start = otherwise.start, .else_end = otherwise.end });
         return p.addNode(.{ .kind = .if_expr, .main_token = kw, .lhs = cond, .rhs = data });
     }
 
-    fn lineIfBranch(p: *Parser) Error!Span {
+    fn lineIfBranch(p: *Parser, kw: u32, colon: u32, line_start: bool) Error!Span {
         const at = p.tok;
         switch (p.peek()) {
             .newline, .eof => return p.fail("MO0102", "expected the branch's value after `:`, on the same line: a one-line if holds one expression in each branch; a body on the lines below takes the block form, with no `:`", why_if_value),
             else => {},
         }
-        if (branchStatement(p.peek())) |what| return p.fail("MO0101", what, why_if_value);
+        if (branchStatement(p.peek())) |what| {
+            if (line_start) return p.oneLineIf(kw, colon);
+            return p.fail("MO0101", what, why_if_value);
+        }
         const e = try p.parseExpr();
         switch (p.peek()) {
-            .eq, .plus_eq, .minus_eq => return p.fail("MO0101", branch_assignment, why_if_value),
+            .eq, .plus_eq, .minus_eq => {
+                if (line_start) return p.oneLineIf(kw, colon);
+                return p.fail("MO0101", branch_assignment, why_if_value);
+            },
             else => {},
         }
         const top = p.scratch.items.len;
@@ -1741,7 +1731,9 @@ test "a function that returns nothing leaves its return type off; a type without
 
     const wrong = [_]struct { []const u8, []const u8, []const u8 }{
         .{ "module M\nfn f(n: UInt8) UInt8\n  n\nend\n", "MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off" },
-        .{ "module M\nfn f(ok: Bool) : UInt8\n  if ok: 1 else: 2\nend\n", "MO0101", "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: if ok / 1 / else / 2 / end" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  var n = 0\n  if ok: n = 1 else: n = 2\n  n\nend\n", "MO0101", "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: if ok / n = 1 / else / n = 2 / end" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  if ok: return 1 else: 2\nend\n", "MO0101", "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: if ok / return 1 / else / 2 / end" },
+        .{ "module M\ntest \"t\"\n  if true: assert true\nend\n", "MO0101", "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: if true / assert true / end" },
         .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok: 1\n  n\nend\n", "MO0101", "expected `else:` after the value: a one-line if is a value, so it takes both branches: if ok: 1 else: <the value otherwise>" },
         .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok: 1 else 2\n  n\nend\n", "MO0101", "expected `:` after `else`: a one-line if writes each branch after a colon, as in if n > 1: \"lines\" else: \"line\"" },
         .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok: return 1 else: 2\n  n\nend\n", "MO0101", "expected an expression after `:`: a branch of a one-line if holds one expression, and `return` is a statement; a statement takes the block form, one part a line" },
@@ -1772,6 +1764,8 @@ test "a one-line if is a value, with the block form's tree" {
         .{ "module M\nfn f(n: UInt8) : String\n  s = if n > 1: \"lines\" else: \"line\"\n  s\nend\n", "module M\nfn f(n: UInt8) : String\n  s = if n > 1\n    \"lines\"\n  else\n    \"line\"\n  end\n  s\nend\n" },
         .{ "module M\nfn f(n: UInt8) : UInt8\n  g(if n > 1: 2 else: if n > 0: 1 else: 0, n)\nend\n", "module M\nfn f(n: UInt8) : UInt8\n  g(if n > 1\n    2\n  else\n    if n > 0\n      1\n    else\n      0\n    end\n  end, n)\nend\n" },
         .{ "module M\nfn f(o: Option(UInt8)) : UInt8\n  case o\n    Some(x): if x > 1: x else: 1\n    None:\n      y = if true: 2 else: 3\n      y\n  end\nend\n", "module M\nfn f(o: Option(UInt8)) : UInt8\n  case o\n    Some(x): if x > 1\n      x\n    else\n      1\n    end\n    None:\n      y = if true\n        2\n      else\n        3\n      end\n      y\n  end\nend\n" },
+        // A one-line if that starts a line (step 26).
+        .{ "module M\nfn f(n: UInt8) : UInt8\n  if n > 1: 2 else: if n > 0: 1 else: 0\nend\n", "module M\nfn f(n: UInt8) : UInt8\n  if n > 1\n    2\n  else\n    if n > 0\n      1\n    else\n      0\n    end\n  end\nend\n" },
     };
     for (pairs) |pair| {
         const line = (try fmt.dumpSource(arena, pair[0])) orelse return error.TestUnexpectedResult;

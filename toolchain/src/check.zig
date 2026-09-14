@@ -103,7 +103,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .unused_binding = .{ .code = "MO0307", .category = .laws, .what = "<name> is bound but never used.", .why = "Every binding is read (chapter 2, honesty laws): an unused one is dead code, or a bug where another name was used instead.", .fixes = &.{"delete the line that binds the name, when its value holds no capability call, try, or process start, and no comment sits on the line"} },
     .not_exhaustive = .{ .code = "MO0308", .category = .laws, .what = "this case does not cover <pattern>; add an arm for it.", .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash.", .fixes = &.{} },
     .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <patterns> of <Type>; write an arm for each of them in its place.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
-    .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake.", .fixes = &.{} },
+    .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option, or a pure value> from <call or one-line if> is dropped; <match it with case or pass it up with try>", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake. So is a one-line if's: the form is a value, never a statement, and only the last line of a body that gives a value may be one.", .fixes = &.{} },
     .invariant_untested = .{ .code = "MO0327", .category = .laws, .what = "<Process> has invariant <sentence>, which reads old(state), but no test rejects starts or messages it.", .why = "An invariant that reads old(state) is a claim about how an update may move the state, and like a requires it needs a test rejects (chapter 2, contract laws; step 20). Tier 1 checks, as it does for a requires, that a test rejects in the process's module starts the process or sends it a message; the run checks that the test trips. Step 19's mutation tests showed that a contract no test drives can be inverted and nothing notices.", .fixes = &.{} },
     .requires_untested = .{ .code = "MO0311", .category = .laws, .what = "<function> has requires <condition>, but no test rejects trips it.", .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips.", .fixes = &.{} },
     .default_param = .{ .code = "MO0312", .category = .laws, .what = "<name> has a default value; parameters have no defaults, so pass <value> at the call.", .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives.", .fixes = &.{"drop the default, and pass it at every call in the file that leaves the parameter out"} },
@@ -2275,7 +2275,19 @@ const Checker = struct {
                 if (n.rhs != 0) _ = try c.expr(n.rhs, types.bool_);
             },
             .for_stmt => try c.forStmt(s),
-            .if_stmt => _ = try c.ifCheck(s, types.unknown, false),
+            .if_stmt => if (c.tree.lineIfColon(n.main_token)) |colon| {
+                // A one-line `if` is a value, never a statement (step 26): the last line of a body
+                // that gives a value gives it (stmtValue), and on any other line it is dropped.
+                const t = try c.ifCheck(s, types.unknown, true);
+                const shown = try c.tree.lineIfShown(c.gpa, n.main_token, colon);
+                const named = switch (c.bt(t).tag) {
+                    .none, .never, .unknown, .variable => "value",
+                    else => try c.tn(t),
+                };
+                try c.reportTok(.unconsumed, n.main_token, try c.print("the {s} from {s} is dropped; a one-line if is a value, never a statement: bind it and use it, or, where a statement goes, write the block form, one part a line: {s}", .{ named, shown.line, shown.block }));
+            } else {
+                _ = try c.ifCheck(s, types.unknown, false);
+            },
             .case_stmt => _ = try c.caseCheck(s, types.unknown, .stmt),
             .assert_stmt => {
                 if (!c.frame.in_test) try c.reportTok(.misplaced, n.main_token, "assert belongs in a test, a test rejects, or a property");
@@ -4138,6 +4150,59 @@ test "values: the value of a pure call is dropped; an effectful call's is not" {
         \\  "x".size
         \\  out.write_line("done")
         \\  2
+        \\end
+    , &.{ "MO0310", "MO0310" });
+}
+
+test "values: a one-line if on a body's last line is the body's value, and on any other line it is dropped" {
+    try expectCodes(
+        \\module T.LineIfLast
+        \\process Tally()
+        \\  state
+        \\    votes: UInt32
+        \\  end
+        \\  message Total : UInt32
+        \\  fn update(state, message)
+        \\    case message
+        \\      Total:
+        \\        if state.votes > 9: 9 else: state.votes
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Tallies
+        \\  child Tally, restart: :always
+        \\end
+        \\fn sign(n: Int32) : String
+        \\  if n < 0: "negative" else: "not negative"
+        \\end
+        \\fn signs(ns: List(Int32), o: Option(Int32)) : List(String)
+        \\  case o
+        \\    Some(k):
+        \\      m = k + 1
+        \\      if m < 0: [] else: ns.map(fn(n) if n < 0: "-" else: "+" end)
+        \\    None:
+        \\      ns.map(fn(n)
+        \\        doubled = n * 2
+        \\        if doubled < 0: "negative" else: "not negative"
+        \\      end)
+        \\  end
+        \\end
+    , &.{});
+    try expectWhat(
+        \\module T.LineIfDropped
+        \\fn sign(n: Int32) : String
+        \\  if n < 0: "negative" else: "not negative"
+        \\  "#{n}"
+        \\end
+    , "MO0310", "the String from if n < 0: \"negative\" else: \"not negative\" is dropped; a one-line if is a value, never a statement: bind it and use it, or, where a statement goes, write the block form, one part a line: if n < 0 / \"negative\" / else / \"not negative\" / end");
+    // A body that gives no value, and a test's, have no last line to give it to.
+    try expectCodes(
+        \\module T.LineIfNoValue
+        \\fn tell(out: Out, ok: Bool)
+        \\  if ok: out.write_line("yes") else: out.write_line("no")
+        \\end
+        \\test "t"
+        \\  if true: 1 else: 2
         \\end
     , &.{ "MO0310", "MO0310" });
 }
