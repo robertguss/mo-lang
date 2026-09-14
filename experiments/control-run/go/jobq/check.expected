@@ -1,0 +1,87 @@
+> - GET /health
+200
+{"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>}
+> - GET /jobs
+401
+{"error":"missing bearer token"}
+> producer GET /nowhere
+404
+{"error":"no such route"}
+> producer PUT /jobs
+405
+{"error":"method not allowed"}
+> producer POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_attempts": 2}
+201
+{"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","attempts":0,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"}
+> producer POST /jobs {"queue": "emails", "payload": "second", "max_attempts": 1}
+201
+{"id":"j_2","queue":"emails","state":"queued","payload":"second","attempts":0,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"}
+> producer POST /jobs {"queue": "bad name", "payload": "x", "max_attempts": 1}
+400
+{"error":"requires failed: queue is 1 to 64 bytes of [A-Za-z0-9_-]"}
+> producer POST /jobs {"queue": "emails", "payload": "x"}
+400
+{"error":"\"queue\", \"payload\", and \"max_attempts\" are required"}
+> producer POST /jobs not json
+400
+{"error":"the body must be a JSON object"}
+> producer GET /jobs/j_1
+200
+{"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","attempts":0,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"}
+> producer GET /jobs/j_99
+404
+{"error":"not found: j_99"}
+> w1 POST /queues/emails/lease {"lease_ms": 100}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"hello\nworld","attempts":1,"max_attempts":2,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>"}
+> w2 POST /jobs/j_1/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_1"}
+> w1 DELETE /jobs/j_1
+409
+{"error":"conflict: j_1 is leased"}
+> sleep 300
+> w1 POST /jobs/j_1/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_1"}
+> w2 POST /queues/emails/lease {"lease_ms": 60000}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"hello\nworld","attempts":2,"max_attempts":2,"created_at":"<time>","updated_at":"<time>","worker":"w2","lease_until":"<time>"}
+> w2 POST /jobs/j_1/fail {"reason": "smtp down"}
+200
+{"id":"j_1","queue":"emails","state":"dead","payload":"hello\nworld","attempts":2,"max_attempts":2,"created_at":"<time>","updated_at":"<time>","reason":"smtp down"}
+> w1 POST /queues/emails/lease
+200
+{"id":"j_2","queue":"emails","state":"leased","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>"}
+> restart
+> w1 GET /jobs?state=leased
+200
+{"jobs":[{"id":"j_2","queue":"emails","state":"leased","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>"}]}
+> w1 POST /jobs/j_2/ack
+200
+{"id":"j_2","queue":"emails","state":"done","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /queues/emails/lease
+204
+> producer GET /jobs?queue=emails&state=dead
+200
+{"jobs":[{"id":"j_1","queue":"emails","state":"dead","payload":"hello\nworld","attempts":2,"max_attempts":2,"created_at":"<time>","updated_at":"<time>","reason":"smtp down"}]}
+> producer DELETE /jobs/j_1
+204
+> producer DELETE /jobs/j_1
+404
+{"error":"not found: j_1"}
+> - GET /health
+200
+{"queued":0,"leased":0,"done":1,"dead":0,"uptime_ms":<n>}
+# jobq serve, jobq client
+201
+{"id":"j_3","queue":"thumbs","state":"queued","payload":"cat.png","attempts":0,"max_attempts":3,"created_at":"<time>","updated_at":"<time>"}
+200
+{"jobs":[{"id":"j_2","queue":"emails","state":"done","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"},{"id":"j_3","queue":"thumbs","state":"queued","payload":"cat.png","attempts":0,"max_attempts":3,"created_at":"<time>","updated_at":"<time>"}]}
+# jobq compact
+jobq: compacted <dir> to 2 jobs
+3
+200
+{"id":"j_3","queue":"thumbs","state":"leased","payload":"cat.png","attempts":1,"max_attempts":3,"created_at":"<time>","updated_at":"<time>","worker":"worker","lease_until":"<time>"}
+201
+{"id":"j_4","queue":"thumbs","state":"queued","payload":"dog.png","attempts":0,"max_attempts":3,"created_at":"<time>","updated_at":"<time>"}
