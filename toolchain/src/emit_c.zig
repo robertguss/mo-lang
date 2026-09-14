@@ -849,6 +849,10 @@ const Emitter = struct {
         try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ state, params.len });
         const message = try e.bindName("message", false);
         try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ message, params.len + 1 });
+        if (d.reads_reply_by) {
+            const reply_by = try e.bindName("reply_by", false);
+            try b.pre.print(e.gpa, "    {s} = mo_reply_by();\n", .{reply_by});
+        }
         const reply = try e.caseLower(e.node(data.update).lhs, true);
         try e.line("R = {s};", .{reply});
         try e.exitLabel();
@@ -1716,7 +1720,7 @@ const Emitter = struct {
             var within: []const u8 = "MO_NONE_V";
             for (args) |a| {
                 const an = e.node(a);
-                if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) within = try e.expr(an.lhs);
+                if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) within = try e.withinArg(an.lhs);
             }
             return e.temp("mo_ask({s}, {s}, {s})", .{ h, message, within });
         }
@@ -1773,9 +1777,23 @@ const Emitter = struct {
                 const an = e.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) break an.lhs;
             } else 0;
-            try operands.append(e.gpa, if (within != 0) try e.expr(within) else "MO_NONE_V");
+            if (within != 0) {
+                // A deadline with nothing left: Timeout at once, and the call is not made (step 22).
+                const w = try e.withinArg(within);
+                try operands.append(e.gpa, w);
+                return e.temp("({s}.as.i < 0 ? mo_timed_out_now() : {s}({s}, {s}))", .{ w, try e.rowName(row), try e.valuesOf(operands.items), kind });
+            }
+            try operands.append(e.gpa, "MO_NONE_V");
         }
         return e.temp("{s}({s}, {s})", .{ try e.rowName(row), try e.valuesOf(operands.items), kind });
+    }
+
+    /// A `within:` argument in a temporary: a Duration as it is, and a Deadline as the Duration
+    /// that remains of it (step 22).
+    fn withinArg(e: *Emitter, arg: Index) Error![]const u8 {
+        const v = try e.expr(arg);
+        if (e.k.pool.get(e.k.pool.base(e.typeOf(arg))).tag == .deadline) return e.temp("mo_deadline_left({s})", .{v});
+        return e.temp("{s}", .{v});
     }
 
     /// Whether call `i` is the right side of `m = m.set(k, v)` (or update, remove, add) on

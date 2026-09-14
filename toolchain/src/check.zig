@@ -75,12 +75,12 @@ pub const Code = enum {
 pub const Entry = diag.Entry;
 
 pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
-    .unknown_name = .{ .code = "MO0201", .category = .types, .what = "there is no <name> in scope", .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists.", .fixes = &.{} },
+    .unknown_name = .{ .code = "MO0201", .category = .types, .what = "there is no <name> in scope", .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline, bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration.", .fixes = &.{} },
     .unknown_type = .{ .code = "MO0202", .category = .types, .what = "there is no type named <Type>", .why = "A type is a prelude type, a type declared in this module, a name brought in by use, or a one-letter type parameter in a function signature.", .fixes = &.{} },
     .expose_undeclared = .{ .code = "MO0203", .category = .types, .what = "<name> is exposed but not declared in this module", .why = "The expose line is the module's table of contents; every name on it must be declared in the module (grammar, semantic rules).", .fixes = &.{} },
     .expose_twice = .{ .code = "MO0204", .category = .types, .what = "<name> is on the expose line twice", .why = "The expose line names each public declaration exactly once.", .fixes = &.{} },
     .declared_twice = .{ .code = "MO0205", .category = .types, .what = "<name> is declared twice in this module", .why = "One name means one declaration in a module, so a reader never has to ask which one a call reaches.", .fixes = &.{} },
-    .mismatch = .{ .code = "MO0206", .category = .types, .what = "expected <Type>, found <Type>", .why = "Mo has no implicit conversion: a value is used only where its type is expected. Named conversions cross types. A call binds tighter than an operator, so 0..60.map(f) calls map on 60, not on the range: write (0..60).map(f).", .fixes = &.{} },
+    .mismatch = .{ .code = "MO0206", .category = .types, .what = "expected <Type>, found <Type>", .why = "Mo has no implicit conversion: a value is used only where its type is expected. Named conversions cross types.", .fixes = &.{} },
     .arity = .{ .code = "MO0207", .category = .types, .what = "<function> takes <n> arguments, found <m>", .why = "Every parameter is passed at every call, and nothing else is: there are no defaults and no optional arguments.", .fixes = &.{} },
     .no_member = .{ .code = "MO0208", .category = .types, .what = "<Type> has no field or function named <name>", .why = "x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.", .fixes = &.{} },
     .bad_named_arg = .{ .code = "MO0209", .category = .types, .what = "<function> takes its arguments by position; <label>: is not one of them", .why = "Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.", .fixes = &.{} },
@@ -151,6 +151,8 @@ pub const Decl = struct {
     resolving: bool = false,
     /// The module that declares it.
     module: u32 = 0,
+    /// A process whose update reads `reply_by` (step 22), which the runtimes bind only then.
+    reads_reply_by: bool = false,
 };
 
 /// `optional`: a stdlib struct's field that may be left out when it is built (prelude.zig).
@@ -321,8 +323,15 @@ pub const VerifiedLine = union(enum) {
     declarations_changed: []const u8,
 };
 
+/// A file's lines, the last counted when it has no newline: what MO0302 holds to 500.
+pub fn lineCount(file: []const u8) u32 {
+    var lines: u32 = @intCast(std.mem.count(u8, file, "\n"));
+    if (file.len > 0 and file[file.len - 1] != '\n') lines += 1;
+    return lines;
+}
+
 pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Checked {
-    return checkProgram(gpa, tree, &.{0}, &.{}, out);
+    return checkProgram(gpa, tree, &.{0}, &.{}, null, out);
 }
 
 /// A program's modules in one tree (parser.parseProgram), in dependency order; `bases`
@@ -330,8 +339,10 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
 /// module, and each module sees the prelude, its own declarations, and what its use
 /// lines name.
 /// `verified_lines` holds what the sidecar says of each module's `verified:` line.
-pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, out: *diag.List) Error!Checked {
-    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines };
+/// `own_lines`, when set, is the last module's line count as its file is on disk, for a source
+/// that holds more than the file (Program.own_lines).
+pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, own_lines: ?u32, out: *diag.List) Error!Checked {
+    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines, .own_lines = own_lines };
     c.node_types = try gpa.alloc(Id, tree.nodes.len);
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
@@ -501,6 +512,10 @@ const Checker = struct {
     process_args: u32 = 0,
     /// What the sidecar says of each module's `verified:` line.
     verified_lines: []const VerifiedLine = &.{},
+    /// The last module's lines as its file is on disk (checkProgram).
+    own_lines: ?u32 = null,
+    /// An arm of the update being checked read its reply_by.
+    update_reads_reply_by: bool = false,
 
     // ---- small helpers
 
@@ -1215,7 +1230,7 @@ const Checker = struct {
                 return types.unknown;
             }
             return switch (pt.kind) {
-                .int, .float, .bool, .string, .time, .duration, .capability => primitive(name).?,
+                .int, .float, .bool, .string, .time, .duration, .deadline, .capability => primitive(name).?,
                 .list => c.pool.list1(.list, try c.resolveType(args[0], ctx)),
                 .option => c.pool.list1(.option, try c.resolveType(args[0], ctx)),
                 .result => c.pool.result(try c.resolveType(args[0], ctx), try c.resolveType(args[1], ctx)),
@@ -1363,6 +1378,8 @@ const Checker = struct {
         if (std.mem.eql(u8, head, "Set")) return b.tag == .set;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
+        // A prelude enum (Json) is a decl of its own, not in type_names (registerPrelude).
+        if (prelude.findType(head)) |pt| if (pt.kind == .enum_ or pt.kind == .error_enum) return c.pool.resolve(t) == c.preludeEnum(head);
         const p = primitive(head) orelse return false;
         // A capability is its kind: a read-only Fs is an Fs.
         const pt = c.pool.get(p);
@@ -1491,7 +1508,9 @@ const Checker = struct {
         try c.bindParams(decl.params);
         try c.bind("state", state_t, .state, update.main_token);
         try c.bind("message", message_t, .state, update.main_token);
+        c.update_reads_reply_by = false;
         _ = try c.caseCheck(update.lhs, types.unknown, .update);
+        c.decls.items[d].reads_reply_by = c.update_reads_reply_by;
         try c.popScope(mark);
         try c.endFrame(saved);
     }
@@ -1837,8 +1856,11 @@ const Checker = struct {
         const m = c.modules.items[c.module];
         const file_end = if (c.module + 1 < c.modules.items.len) c.modules.items[c.module + 1].base else c.tree.source.len;
         const file = c.tree.source[m.base..file_end];
-        var lines: u32 = @intCast(std.mem.count(u8, file, "\n"));
-        if (file.len > 0 and file[file.len - 1] != '\n') lines += 1;
+        var lines = lineCount(file);
+        // Under mo check --recipe the last file holds the recipe's blocks too; they are not the file.
+        if (c.own_lines) |own| if (c.module + 1 == c.modules.items.len) {
+            lines = own;
+        };
         if (lines > 500) try c.report(.file_lines, c.line_starts.items[c.lineOf(m.base) + 500], try c.print("this file is {d} lines long and the limit is 500; split it into modules.", .{lines}));
 
         var module_path: []const u8 = "";
@@ -2425,7 +2447,11 @@ const Checker = struct {
                         const other = c.replyOfPattern(alt, subject) orelse types.none;
                         if (!c.pool.unify(reply, other)) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("{s} replies with {s} and the first alternative with {s}, so it takes an arm of its own", .{ c.text(c.node(alt).main_token), try c.tn(other), try c.tn(reply) }));
                     };
+                    // The asker's deadline, in an arm that answers one (step 22).
+                    const reply_by: ?usize = if (c.pool.resolve(reply) != types.none) c.bindings.items.len else null;
+                    if (reply_by != null) try c.bind("reply_by", types.deadline, .param, an.main_token);
                     _ = try c.blockValue(body, reply);
+                    if (reply_by) |k| c.update_reads_reply_by = c.update_reads_reply_by or c.bindings.items[k].used;
                 } else try c.blockStmts(body),
             }
             try c.popScope(mark);
@@ -3027,6 +3053,14 @@ const Checker = struct {
     }
 
     /// A prelude function called on a value. Null when no row fits the receiver.
+    /// `within:` takes a Duration, or a Deadline such as `reply_by`, which the call waits until
+    /// (step 22).
+    fn deadlineArg(c: *Checker, arg: Index) Error!void {
+        const t = try c.expr(arg, types.unknown);
+        if (c.bt(t).tag == .deadline) return;
+        if (!c.pool.unify(types.duration, t)) try c.reportNode(.mismatch, arg, try c.print("within: takes a Duration or a Deadline, found {s}", .{try c.tn(t)}));
+    }
+
     fn preludeMethod(c: *Checker, i: Index, recv: ?Index, t: Id, name: []const u8, args: []const u32) Error!?Id {
         var fallback: ?usize = null;
         for (prelude.fns, 0..) |row, k| {
@@ -3059,7 +3093,7 @@ const Checker = struct {
             const nm = c.text(an.main_token);
             c.node_types[a] = types.none;
             if (std.mem.eql(u8, nm, "within")) {
-                _ = try c.expr(an.lhs, types.duration);
+                try c.deadlineArg(an.lhs);
                 continue;
             }
             const f = for (row.named) |f| {
@@ -3272,7 +3306,7 @@ const Checker = struct {
             }
             c.node_types[a] = types.none;
             if (std.mem.eql(u8, c.text(an.main_token), "within")) {
-                _ = try c.expr(an.lhs, types.duration);
+                try c.deadlineArg(an.lhs);
                 continue;
             }
             try c.reportTok(.bad_named_arg, an.main_token, try c.print("{s} takes its arguments by position; {s}: is not one of them", .{ label, c.text(an.main_token) }));
@@ -3497,7 +3531,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Int64", types.int(.i64) },       .{ "UInt8", types.int(.u8) },    .{ "UInt16", types.int(.u16) },
         .{ "UInt32", types.int(.u32) },      .{ "UInt64", types.int(.u64) },  .{ "Float32", types.float32 },
         .{ "Float64", types.float64 },       .{ "Bool", types.bool_ },        .{ "String", types.string },
-        .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Clock", types.cap(.clock) },
+        .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Deadline", types.deadline }, .{ "Clock", types.cap(.clock) },
         .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
@@ -3838,6 +3872,60 @@ test "bindings: rebinding, unused, a captured var, a var sent to a process" {
     , &.{"MO0315"});
 }
 
+test "reply_by is the asker's deadline in an arm that answers, within: takes it, and nowhere else has one" {
+    try expectCodes(
+        \\module T.Deadlines
+        \\process P(fs: Fs)
+        \\  state
+        \\    n: UInt32
+        \\  end
+        \\  message Read : Bool
+        \\  message Poke
+        \\  fn update(state, message)
+        \\    case message
+        \\      Read: read?(fs, reply_by.at_most(1.minute))
+        \\      Poke:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor S(fs: Fs)
+        \\  child P(fs), restart: :always
+        \\end
+        \\fn read?(fs: Fs, by: Deadline) : Bool
+        \\  fs.read("a", within: by) is Ok(_)
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.NoAsker
+        \\process P(fs: Fs)
+        \\  state
+        \\    n: UInt32
+        \\  end
+        \\  message Poke
+        \\  fn update(state, message)
+        \\    case message
+        \\      Poke:
+        \\        state.n += if fs.read("a", within: reply_by) is Ok(_)
+        \\          1
+        \\        else
+        \\          0
+        \\        end
+        \\    end
+        \\  end
+        \\end
+        \\supervisor S(fs: Fs)
+        \\  child P(fs), restart: :always
+        \\end
+    , &.{"MO0201"});
+    try expectWhat(
+        \\module T.NotADeadline
+        \\fn read?(fs: Fs) : Bool
+        \\  fs.read("a", within: "soon") is Ok(_)
+        \\end
+    , "MO0206", "within: takes a Duration or a Deadline, found String");
+}
+
 test "case: a missing variant is named; a catch-all arm on an enum names what it hides" {
     try expectWhat(
         \\module T.Missing
@@ -4107,7 +4195,7 @@ fn expectProgramCodes(files: []const []const u8, codes: []const []const u8) !voi
     var diags: diag.List = .empty;
     const tokens = try lexer.lex(arena, source.items, &diags);
     const tree = try parser.parseProgram(arena, source.items, tokens, &diags);
-    _ = try checkProgram(arena, tree, bases.items, &.{}, &diags);
+    _ = try checkProgram(arena, tree, bases.items, &.{}, null, &diags);
     var ok = diags.items.len == codes.len;
     if (ok) for (diags.items, codes) |d, code| {
         if (!std.mem.eql(u8, d.code, code)) ok = false;

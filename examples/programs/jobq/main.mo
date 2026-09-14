@@ -142,8 +142,8 @@ end
 
 # The service over the folder, opened before the listener is served, so a folder that cannot
 # be read exits 1 and a log of any size is replayed before the first request. The ask waits 21
-# minutes, the store's deadlines for two logs added up (check replays its own after the
-# folder's): 10 minutes for each log's lines and 20 seconds for its folder and size.
+# minutes, and the replay of both logs (check replays its own after the folder's) runs on what
+# remains of them.
 fn opened_service(fs: Fs, clock: Clock, err: Out, place: Place) : Result(Handle(Service), Problem)
   service = Service.start(fs, clock, place, clock.now)
   case service.ask(Open, within: 1_260_000.ms)

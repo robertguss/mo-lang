@@ -248,6 +248,34 @@ fn writeString(w: *Writer, s: []const u8) Writer.Error!void {
 
 /// `Json.decode(text)`: `Ok(json)` for text that is exactly one JSON value with optional
 /// whitespace around it, or `Error(Syntax(at))`.
+/// `json.to_i64`: the whole number a `Number` holds, when it is below 2^53 either side of 0, where
+/// every whole number is a float of its own and so reads back as the text spelled it (`decode`
+/// reads every number as a float); null for anything else, a fraction, or a number from 2^53 out
+/// (Session 5, step 22).
+pub fn whole(v: Value) ?i128 {
+    if (!std.mem.eql(u8, v.variant.name, "Number")) return null;
+    const x = v.variant.fields[0].float;
+    const limit: f64 = 9007199254740992.0;
+    if (!(x > -limit and x < limit) or @trunc(x) != x) return null;
+    return @as(i128, @intFromFloat(x));
+}
+
+test "a Json number is a whole Int64 only when a float holds it exactly" {
+    const n = struct {
+        fn of(x: f64) Value {
+            const fields = [_]Value{.{ .float = x }};
+            return .{ .variant = .{ .name = "Number", .fields = &fields } };
+        }
+    };
+    try std.testing.expectEqual(@as(?i128, 3), whole(n.of(3.0)));
+    try std.testing.expectEqual(@as(?i128, -9007199254740991), whole(n.of(-9007199254740991.0)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(9007199254740992.0)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(2.5)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(18014398509481984.0)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(std.math.nan(f64))));
+    try std.testing.expectEqual(@as(?i128, null), whole(.{ .variant = .{ .name = "Null", .fields = &.{} } }));
+}
+
 pub fn decode(vm: *Vm, text: []const u8) Error!Value {
     var d: Decoder = .{ .vm = vm, .s = text };
     const v = d.value(0) catch |err| switch (err) {

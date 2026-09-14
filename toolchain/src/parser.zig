@@ -28,7 +28,7 @@ const why_by_name = "A variant's fields are matched by name, as they are built b
 /// `fn main` line, with why_main as its why, an `if` on one line, with why_if, and a variant
 /// matched by position, with why_by_name.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if takes its body on the lines below it, even as a value, and mo fix writes a one-line if as that block; a variant's fields are matched by name, as Short(by: n).", .fixes = &.{"an if on one line becomes the block form"} },
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if takes its body on the lines below it, even as a value, and mo fix writes a one-line if as that block; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{"an if on one line becomes the block form"} },
     .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
     .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
     .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
@@ -1015,6 +1015,7 @@ const Parser = struct {
     }
 
     fn parseCmp(p: *Parser) Error!Index {
+        const first = p.tok;
         const lhs = try p.parseRange();
         switch (p.peek()) {
             .eq_eq, .bang_eq, .lt, .lt_eq, .gt, .gt_eq => {
@@ -1025,10 +1026,28 @@ const Parser = struct {
             .kw_is => {
                 const op = p.next();
                 const pattern = try p.parsePattern();
+                switch (p.peek()) {
+                    .eq_eq, .bang_eq, .lt, .lt_eq, .gt, .gt_eq => return p.isInComparison(first),
+                    else => {},
+                }
                 return p.addNode(.{ .kind = .is_expr, .main_token = op, .lhs = lhs, .rhs = pattern });
             },
             else => return lhs,
         }
+    }
+
+    /// MO0101 at `x is Ok(_) == y`, at the comparison: `is` and a comparison share one level, so
+    /// neither takes the other as its operand. The message shows the `is` in parentheses, the
+    /// rest of the line after it as written (round 5; step 22).
+    fn isInComparison(p: *Parser, first: u32) Error {
+        const toks = p.toks.items;
+        const src = p.source;
+        const op = p.tok;
+        const line_end = std.mem.indexOfScalarPos(u8, src, toks[op].start, '\n') orelse src.len;
+        const tested = src[toks[first].start..toks[op - 1].end];
+        const rest = std.mem.trimEnd(u8, src[toks[op].start..line_end], " \t\r");
+        const what = try std.fmt.allocPrint(p.gpa, "expected the end of the `is`: `is` binds loosely inside a comparison, so {s} {s} compares nothing; put the `is` in parentheses: ({s}) {s}", .{ tested, rest, tested, rest });
+        return p.failAt(op, "MO0101", what, why_token);
     }
 
     fn parseRange(p: *Parser) Error!Index {
@@ -1641,6 +1660,7 @@ test "a function that returns nothing leaves its return type off; a type without
     const wrong = [_]struct { []const u8, []const u8, []const u8 }{
         .{ "module M\nfn f(n: UInt8) UInt8\n  n\nend\n", "MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off" },
         .{ "module M\nfn f(ok: Bool) : UInt8\n  if ok: 1 else: 2\nend\n", "MO0101", "expected the if's body on the lines below it: an if has no one-line form, as a statement or as a value; write the block form, one part a line: if ok / 1 / else / 2 / end" },
+        .{ "module M\nfn f(x: Result(UInt8, String), y: Bool) : Bool\n  x is Ok(_) == y\nend\n", "MO0101", "expected the end of the `is`: `is` binds loosely inside a comparison, so x is Ok(_) == y compares nothing; put the `is` in parentheses: (x is Ok(_)) == y" },
         .{ "module M\nenum Size\n  Short(by: UInt8, of: UInt8)\n  Long\nend\nfn f(s: Size) : UInt8\n  case s\n    Short(a, b): a\n    Long: 0\n  end\nend\n", "MO0101", "expected field names: a variant's fields are matched by name, not by position; write Short(by: a, of: b)" },
         .{ "module M\nfn f(n: UInt8)\n  return\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
         .{ "module M\nfn f(n: UInt8) : UInt8\n  return if n > 1\n  n\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },

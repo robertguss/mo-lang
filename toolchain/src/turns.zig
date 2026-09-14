@@ -547,6 +547,8 @@ pub const Turns = struct {
         const seq = try sim.enqueue(sim.running orelse sim_mod.test_runner, to, if (parcel) |p| p.value else message, parcel);
         try t.awaiting.put(std.heap.smp_allocator, seq, t.holder);
         const deadline = t.now() + @max(within, 0);
+        const target = &sim.procs.items[to];
+        target.mailbox.items[target.mailbox.items.len - 1].deadline = deadline;
         while (true) {
             // A wait elsewhere doomed this ask (sim.zig, held sends): Sim.ask crashes the update.
             if (sim.running) |me| if (sim.procs.items[me].doomed != null) {

@@ -124,6 +124,15 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 
 `Time - Time` is a `Duration`, `Time ± Duration` a `Time`, and both compare with `<`.
 
+`Deadline` is a point on the runtime's clock that a call may wait until: under `mo run` the process clock, and under `Mo.Sim` the run's own, which fixture waits move. Every `within:` takes a `Duration` or a `Deadline`; a `Deadline` gives the call what remains of it, and a call with nothing left is `Timeout` at once and is not made. Inside the `update` arm for a message that carries a reply, `reply_by` is the asker's `Deadline` (chapter 3); nothing else makes one outside a test, and nothing makes one later than the one it came from.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Deadline` | `at_most` | `Duration` | `Deadline` | the earlier of the deadline and now plus the duration: a nested call may tighten its asker's deadline and never extend it |
+| `Deadline` (on type) | `fixture` | `Duration` | `Deadline` | now plus the duration on the test's clock, for a function that takes a deadline; tests only, since a test has no asker |
+
+Session 5, step 22: `Deadline`, `reply_by`, `at_most`, and `fixture`, after program 1 derived three deadlines by hand as sums of literals and two of the sums were wrong.
+
 ## Files
 
 Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to the scope the `Fs` was narrowed to (`fs.scoped("logs").read_only`), and nothing outside the scope is reachable; a path that leaves it, or anything that is not a readable file, is `Missing(path)` with the path as the program wrote it. A `String` is UTF-8, so a row that gives one gives only text: a file whose bytes are not UTF-8 is `NotText`, and `read_bytes` gives any file's bytes.
@@ -138,7 +147,7 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 | `Fs` | `list` | | `Result(List(String), FsError)` | the names of the files and folders directly inside the scope, sorted byte by byte; `Missing(".")` when the scope is not a readable folder |
 | `Fs` | `scoped` | `String` | `Fs` | narrowed to a folder inside this scope |
 | `Fs` | `read_only` | | `Fs` | narrowed to reading: a read-only `Fs`, its own type, which goes wherever an `Fs` goes (a `scoped` of it is read-only too) and is refused by the checker (`MO0404`) where a write reaches it, directly or through a function it is handed to |
-| `Fs` (on type) | `fixture` | | `Fs` | an empty file system: every read is `Missing`, `list` is `Ok([])`; a path whose `..` climbs above a scope's folder, the fixture's root included, is refused as the real `Fs` refuses it, `Missing(path)`, and `list` on a scope that climbed out is `Missing(".")`; tests only. Session 5, step 21: the refusal, after round 4's logstat found the fixture climbing out of a scope where the real `Fs` does not |
+| `Fs` (on type) | `fixture` | | `Fs` | an empty file system: every read is `Missing`; `list` on the fixture's root is `Ok([])`, and on a folder that is not there (no `mkdir` made it and no file is under it) `Missing(".")`, as the real `Fs` answers; a path whose `..` climbs above a scope's folder, the fixture's root included, is refused as the real `Fs` refuses it, `Missing(path)`, and `list` on a scope that climbed out is `Missing(".")`; tests only. Session 5, step 21: the refusal, after round 4's logstat found the fixture climbing out of a scope where the real `Fs` does not. Session 5, step 22: `Missing(".")` for a folder that is not there, after program 1 found no test could show `jobq serve` refusing one |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | every call that waits less than `delay` is `Timeout`; tests only |
 | `Fs` | `write` | `path: String`, `text: String` | `Result(none, FsError)` | the file holds exactly the text, created when it is not there, and is on disk (`fsync`) before `Ok`; `Missing(path)` for a path outside the scope, a folder that is not there, or anything that is not a file. On an `Fs.fixture()` the files are in memory and every read sees what was written; a call that fails changes nothing. On an `Fs` narrowed to `read_only`, this row and the four below are refused by the checker (`MO0404`), in the function that writes or at the call that hands it the read-only `Fs`; a narrowing handed to a process (`Process.start`) is not followed, and a write through it there crashes |
 | `Fs` | `append` | `path: String`, `text: String` | `Result(none, FsError)` | the text added at the end of the file, created when it is not there; durable (`fsync`) before it returns `Ok`; a call past its deadline is `Timeout`, and what it wrote stays |
@@ -183,6 +192,7 @@ end
 |---|---|---|---|---|
 | `Json` (on type) | `encode` | `T` | `String` | the value as JSON text on one line, `", "` between items and `": "` after a key |
 | `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | the RFC 8259 value the whole text spells; `Syntax(at)` is the byte offset of the first thing that is not JSON |
+| `Json` | `to_i64` | | `Option(Int64)` | `Some(n)` when the value is a `Number` holding a whole number below 2^53 either side of 0, where every whole number is a float of its own and reads back as its text spelled it; `None` for a fraction, a number from 2^53 out, or anything that is not a `Number`. Session 5, step 22: after program 1 read every count through `to_string(0).to_u64` |
 
 `encode` spells each value this way:
 
@@ -203,11 +213,11 @@ end
 | a `Time`, a `Duration` | `to_iso8601`'s string, whole milliseconds |
 | a `Json` | the JSON it holds, so `Json.encode` of a decoded value round-trips |
 
-A function, a capability, or a handle has no JSON; encoding one is a crash. `decode` reads every number as a `Float64`; an object with a repeated key keeps the last value in the first key's place; nesting deeper than 512 is `Syntax`.
+A function, a capability, or a handle has no JSON; encoding one is a crash. `decode` reads every number as a `Float64`, and `to_i64` gives the whole ones back; an object with a repeated key keeps the last value in the first key's place; nesting deeper than 512 is `Syntax`.
 
 ## Not in this step
 
-Map and set literals; Unicode case mapping (`to_upper` is ASCII); full grapheme segmentation (a grapheme is a code point with the combining marks after it, as `size` counts); a float-to-integer conversion; streaming reads; writing files. Each waits for a program that needs it.
+Map and set literals; Unicode case mapping (`to_upper` is ASCII); full grapheme segmentation (a grapheme is a code point with the combining marks after it, as `size` counts); a float-to-integer conversion beyond `Json`'s `to_i64`; streaming reads; writing files. Each waits for a program that needs it.
 
 ## Net
 

@@ -487,7 +487,7 @@ MO_ROW(mo_r_Platform_http); MO_ROW(mo_r_Http_listen); MO_ROW(mo_r_Http_send); MO
 MO_ROW(mo_r_HttpListener_accept); MO_ROW(mo_r_HttpListener_port); MO_ROW(mo_r_Exchange_request); MO_ROW(mo_r_Exchange_reply);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
-MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode);
+MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64); MO_ROW(mo_r_Deadline_at_most); MO_ROW(mo_r_Deadline_fixture);
 MO_ROW(mo_r_Charge_fixture); MO_ROW(mo_r_Charge_fixture_at); MO_ROW(mo_r_Charge_refunded_q);
 MO_ROW(mo_r_Money_cents); MO_ROW(mo_r_Money_zero);
 
@@ -530,6 +530,11 @@ MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args
 MoValue mo_send(MoValue handle, MoValue message);
 /* Ok(reply), Error(Timeout), or Error(Down). */
 MoValue mo_ask(MoValue handle, MoValue message, MoValue within);
+/* Deadlines (step 22): reply_by in the running update, what remains of a Deadline as a Duration
+ * (-1 ms when nothing does), and the Timeout a call with nothing left gives at once. */
+MoValue mo_reply_by(void);
+MoValue mo_deadline_left(MoValue deadline);
+MoValue mo_timed_out_now(void);
 /* Between two statements of a test, or of main in a program with processes. */
 void mo_settle(void);
 

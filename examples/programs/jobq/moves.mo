@@ -1,10 +1,11 @@
 module Jobq.Moves
-expose Command, Call, Outcome, Served, serve, swept, unwritten
+expose Command, Call, Outcome, Served, serve, swept, unwritten, shifted
 
 use Jobq.Board{find, placed, removed, oldest_queued, due_in, due_anywhere, listed}
-use Jobq.Books{Step, Books, Place, Committed, committed, opened, unopened}
+use Jobq.Books{Step, Books, Place, Moment, Committed, committed, opened, unopened}
 use Jobq.Job{Job, State, job, leased, acked, failed, ran_out, run_out?, holds?, payload?, id_of, number_of}
-use Jobq.Store{StoreError, delete}
+use Jobq.Journal{deleted_from}
+use Jobq.Store{StoreError}
 
 intent "What each call does to the jobs, given the time: every change a call makes, and every lease run out that its look finds, goes to the log in one write before the books change or the call is answered; a change the log did not take is 503 with the books as they were, and one that may have left part of a line makes the next change rewrite the log whole first."
 
@@ -43,22 +44,22 @@ struct Served
   steps: List(Step)
 end
 
-fn serve(fs: Fs, books: Books, call: Call, now: Time) : Served
+fn serve(fs: Fs, books: Books, call: Call, at: Moment) : Served
   case call.command
     Create(queue: queue, payload: payload, max_attempts: max):
-      creating(fs, books, job(books.next_id, queue, payload, max, now), now)
-    Fetch(id): fetching(fs, books, id, now)
-    Listing(queue: queue, status: status): listing(fs, books, queue, status, now)
-    Remove(id): removing(fs, books, id, now)
-    Lease(queue: queue, lease_ms: ms): leasing(fs, books, call.worker, queue, ms, now)
-    Ack(id): acking(fs, books, call.worker, id, now)
-    Fail(id: id, reason: reason): failing(fs, books, call.worker, id, reason, now)
+      creating(fs, books, job(books.next_id, queue, payload, max, at.now), at)
+    Fetch(id): fetching(fs, books, id, at)
+    Listing(queue: queue, status: status): listing(fs, books, queue, status, at)
+    Remove(id): removing(fs, books, id, at)
+    Lease(queue: queue, lease_ms: ms): leasing(fs, books, call.worker, queue, ms, at)
+    Ack(id): acking(fs, books, call.worker, id, at)
+    Fail(id: id, reason: reason): failing(fs, books, call.worker, id, reason, at)
   end
 end
 
 # An id is spent whether or not its job reaches the log, so no id is handed out twice; the log
 # reserves ids a thousand at a time, so a replay never hands out one it handed out before.
-fn creating(fs: Fs, books: Books, made: Job, now: Time) : Served
+fn creating(fs: Fs, books: Books, made: Job, at: Moment) : Served
   ceiling = if books.next_id >= books.reserved
     books.next_id + 1_000
   else
@@ -66,53 +67,53 @@ fn creating(fs: Fs, books: Books, made: Job, now: Time) : Served
   end
   var spent = books
   spent.next_id = books.next_id + 1
-  done = committed(fs, spent, [(None, made)], ceiling, now)
+  done = committed(fs, spent, [(None, made)], ceiling, at)
   answered(done, Made(job: made))
 end
 
-fn fetching(fs: Fs, books: Books, id: String, now: Time) : Served
+fn fetching(fs: Fs, books: Books, id: String, at: Moment) : Served
   case held(books, id)
     Some(kept):
-      done = committed(fs, books, expired_of([kept], now), 0, now)
+      done = committed(fs, books, expired_of([kept], at.now), 0, at)
       answered(done, Found(job: find(done.books.board, kept.number) or kept))
     None: Served(books: books, outcome: Missing, steps: [])
   end
 end
 
 # A listing looks at the leases run out in its queue, or in every queue, before it lists.
-fn listing(fs: Fs, books: Books, queue: Option(String), status: Option(State), now: Time) : Served
+fn listing(fs: Fs, books: Books, queue: Option(String), status: Option(State), at: Moment) : Served
   due = case queue
-    Some(name): due_in(books.board, name, now)
-    None: due_anywhere(books.board, now)
+    Some(name): due_in(books.board, name, at.now)
+    None: due_anywhere(books.board, at.now)
   end
-  done = committed(fs, books, expired_of(due, now), 0, now)
+  done = committed(fs, books, expired_of(due, at.now), 0, at)
   answered(done, Listed(jobs: listed(done.books.board, queue, status, 100)))
 end
 
-fn removing(fs: Fs, books: Books, id: String, now: Time) : Served
+fn removing(fs: Fs, books: Books, id: String, at: Moment) : Served
   case held(books, id)
     Some(kept):
-      looked = committed(fs, books, expired_of([kept], now), 0, now)
+      looked = committed(fs, books, expired_of([kept], at.now), 0, at)
       current = find(looked.books.board, kept.number) or kept
       if !looked.ok or current.status == Leased
         return answered(looked, Conflict(reason: "the job is leased"))
       end
-      deleted(fs, looked, current, now)
+      deleted(fs, looked, current, at)
     None: Served(books: books, outcome: Missing, steps: [])
   end
 end
 
-fn deleted(fs: Fs, looked: Committed, job: Job, now: Time) : Served
+fn deleted(fs: Fs, looked: Committed, job: Job, at: Moment) : Served
   books = looked.books
-  case delete(fs, books.table, id_of(job.number))
+  case deleted_from(fs, books.table, id_of(job.number), at.by)
     Ok(table):
       var after = books
       after.table = table
       after.board = removed(books.board, job.number)
-      step = Step(before: Some(job), after: None, now: now, logged: true, kept: true)
+      step = Step(before: Some(job), after: None, now: at.now, logged: true, kept: true)
       Served(books: after, outcome: Removed, steps: looked.steps.push(step))
     Error(problem):
-      step = Step(before: Some(job), after: None, now: now, logged: false, kept: false)
+      step = Step(before: Some(job), after: None, now: at.now, logged: false, kept: false)
       var torn = books
       torn.torn = books.torn or problem == Torn
       Served(books: torn, outcome: unwritten(torn), steps: looked.steps.push(step))
@@ -122,17 +123,17 @@ end
 # A lease looks at the queue's leases run out, then hands out its oldest queued job, both in
 # one write.
 fn leasing(fs: Fs, books: Books, worker: String, queue: String, lease_ms: UInt64,
-  now: Time) : Served
+  at: Moment) : Served
   ensures result.outcome is Handed(job) implies handed_to?(books, job, worker)
 
-  expired = expired_of(due_in(books.board, queue, now), now)
+  expired = expired_of(due_in(books.board, queue, at.now), at.now)
   looked = expired.reduce(books.board, fn(b, change) placed(b, change.1) end)
   case oldest_queued(looked, queue)
     Some(next):
-      handed = leased(next, worker, lease_ms, now)
+      handed = leased(next, worker, lease_ms, at.now)
       changes = expired.push((find(books.board, next.number), handed))
-      answered(committed(fs, books, changes, 0, now), Handed(job: handed))
-    None: answered(committed(fs, books, expired, 0, now), Empty)
+      answered(committed(fs, books, changes, 0, at), Handed(job: handed))
+    None: answered(committed(fs, books, expired, 0, at), Empty)
   end
 end
 
@@ -144,41 +145,42 @@ fn handed_to?(books: Books, job: Job, worker: String) : Bool
   end
 end
 
-fn acking(fs: Fs, books: Books, worker: String, id: String, now: Time) : Served
+fn acking(fs: Fs, books: Books, worker: String, id: String, at: Moment) : Served
   ensures result.outcome is Found(job) implies job.status == Done
 
   case held(books, id)
     Some(kept):
-      if holds?(kept, worker, now)
-        return answered(committed(fs, books, [(Some(kept), acked(kept, now))], 0, now),
-          Found(job: acked(kept, now)))
+      if holds?(kept, worker, at.now)
+        return answered(committed(fs, books, [(Some(kept), acked(kept, at.now))], 0, at),
+          Found(job: acked(kept, at.now)))
       end
-      refused(fs, books, kept, now)
+      refused(fs, books, kept, at)
     None: Served(books: books, outcome: Missing, steps: [])
   end
 end
 
-fn failing(fs: Fs, books: Books, worker: String, id: String, reason: String, now: Time) : Served
+fn failing(fs: Fs, books: Books, worker: String, id: String, reason: String, at: Moment) : Served
   case held(books, id)
     Some(kept):
-      if holds?(kept, worker, now)
-        after = failed(kept, reason, now)
-        return answered(committed(fs, books, [(Some(kept), after)], 0, now), Found(job: after))
+      if holds?(kept, worker, at.now)
+        after = failed(kept, reason, at.now)
+        return answered(committed(fs, books, [(Some(kept), after)], 0, at), Found(job: after))
       end
-      refused(fs, books, kept, now)
+      refused(fs, books, kept, at)
     None: Served(books: books, outcome: Missing, steps: [])
   end
 end
 
 # An ack or a fail from a worker without a live lease: 409, once a lease run out is looked at.
-fn refused(fs: Fs, books: Books, job: Job, now: Time) : Served
-  done = committed(fs, books, expired_of([job], now), 0, now)
+fn refused(fs: Fs, books: Books, job: Job, at: Moment) : Served
+  done = committed(fs, books, expired_of([job], at.now), 0, at)
   answered(done, Conflict(reason: "the caller does not hold a live lease on the job"))
 end
 
 # The listener's Idle: every lease run out, in every queue, is looked at.
-fn swept(fs: Fs, books: Books, now: Time) : Served
-  answered(committed(fs, books, expired_of(due_anywhere(books.board, now), now), 0, now), Empty)
+fn swept(fs: Fs, books: Books, at: Moment) : Served
+  answered(committed(fs, books, expired_of(due_anywhere(books.board, at.now), at.now), 0, at),
+    Empty)
 end
 
 fn held(books: Books, id: String) : Option(Job)
@@ -215,8 +217,8 @@ fn call(worker: String, command: Command) : Call
 end
 
 # The books of an empty folder with n jobs created in q, each allowed max attempts.
-fn with_jobs(fs: Fs, n: UInt64, max: UInt64, at: Time) : Books
-  var books = case opened(fs, place())
+fn with_jobs(fs: Fs, n: UInt64, max: UInt64, at: Moment) : Books
+  var books = case opened(fs, place(), at.by)
     Ok(fresh): fresh
     Error(_): unopened(place())
   end
@@ -227,13 +229,18 @@ fn with_jobs(fs: Fs, n: UInt64, max: UInt64, at: Time) : Books
   books
 end
 
+# The same moment, d later, on the same deadline.
+fn shifted(at: Moment, d: Duration) : Moment
+  Moment(now: at.now + d, by: at.by)
+end
+
 fn lease_of(worker: String, ms: UInt64) : Call
   call(worker, Lease(queue: "q", lease_ms: ms))
 end
 
 test "a create reads back and lists; a leased job is 409 to delete; an unknown id is 404"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   made = serve(fs, with_jobs(fs, 0, 1, at),
     call("p", Create(queue: "q", payload: "hi", max_attempts: 2)), at)
   assert made.outcome is Made(job)
@@ -244,7 +251,7 @@ test "a create reads back and lists; a leased job is 409 to delete; an unknown i
   assert serve(fs, made.books, listing, at).outcome == Listed(jobs: [job])
   held = serve(fs, made.books, lease_of("w", 1_000), at)
   assert serve(fs, held.books, call("p", Remove(id: "j_1")), at).outcome is Conflict(_)
-  gone = serve(fs, held.books, call("p", Remove(id: "j_1")), at + 1.minute)
+  gone = serve(fs, held.books, call("p", Remove(id: "j_1")), shifted(at, 1.minute))
   assert gone.outcome == Removed
   assert serve(fs, gone.books, call("p", Fetch(id: "j_1")), at).outcome == Missing
   assert serve(fs, gone.books, call("p", Remove(id: "j_1")), at).outcome == Missing
@@ -252,7 +259,7 @@ end
 
 test "a lease hands out the oldest queued job first, and nothing queued is 204"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   first = serve(fs, with_jobs(fs, 2, 3, at), lease_of("a", 1_000), at)
   assert first.outcome is Handed(one)
   assert one.number == 1 and one.attempts == 1 and one.worker == Some("a")
@@ -266,10 +273,11 @@ end
 
 test "the holder acks or fails its job; anyone else, or the holder once the lease ran out, is 409"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   held = serve(fs, with_jobs(fs, 1, 3, at), lease_of("a", 1_000), at)
   assert serve(fs, held.books, call("b", Ack(id: "j_1")), at).outcome is Conflict(_)
-  assert serve(fs, held.books, call("a", Ack(id: "j_1")), at + 1_000.ms).outcome is Conflict(_)
+  assert serve(fs, held.books, call("a", Ack(id: "j_1")),
+    shifted(at, 1_000.ms)).outcome is Conflict(_)
   assert serve(fs, held.books, call("a", Ack(id: "j_1")), at).outcome is Found(done)
   assert done.status == Done
   failing = serve(fs, held.books, call("a", Fail(id: "j_1", reason: "no")), at)
@@ -280,13 +288,13 @@ end
 
 test "a lease that runs out is leased again with attempts at 2, and one on its last attempt is dead"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   first = serve(fs, with_jobs(fs, 1, 2, at), lease_of("a", 1_000), at)
-  later = at + 1_000.ms
+  later = shifted(at, 1_000.ms)
   again = serve(fs, first.books, lease_of("b", 1_000), later)
   assert again.outcome is Handed(job)
   assert job.attempts == 2 and job.worker == Some("b")
-  last = serve(fs, again.books, lease_of("c", 1_000), later + 1.minute)
+  last = serve(fs, again.books, lease_of("c", 1_000), shifted(later, 1.minute))
   assert last.outcome == Empty
   assert serve(fs, last.books, call("c", Fetch(id: "j_1")), later).outcome is Found(dead)
   assert dead.status == Dead and dead.attempts == 2
@@ -294,36 +302,38 @@ end
 
 test "a replay finds a lease that ran out while the service was stopped, at its next look"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   leased_books = serve(fs, with_jobs(fs, 1, 3, at), lease_of("a", 30_000), at).books
-  assert opened(fs, place()) is Ok(replayed)
+  assert opened(fs, place(), Deadline.fixture(1.minute)) is Ok(replayed)
   assert find(replayed.board, 1) == find(leased_books.board, 1)
-  looked = serve(fs, replayed, call("p", Fetch(id: "j_1")), at + 1.minute)
+  looked = serve(fs, replayed, call("p", Fetch(id: "j_1")), shifted(at, 1.minute))
   assert looked.outcome is Found(job)
   assert job.status == Queued and job.attempts == 1
-  assert opened(fs, place()) is Ok(again)
+  assert opened(fs, place(), Deadline.fixture(1.minute)) is Ok(again)
   assert find(again.board, 1) == Some(job)
 end
 
 test "a change the log does not take is 503 with the jobs as they were, and the next rewrites it"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   books = with_jobs(fs, 1, 3, at)
-  refused = serve(Fs.fixture(delay: 1.minute), books, lease_of("a", 1_000), at)
+  slow = Moment(now: at.now, by: Deadline.fixture(10_000.ms))
+  refused = serve(Fs.fixture(delay: 1.minute), books, lease_of("a", 1_000), slow)
   assert refused.outcome is Unavailable(_)
   assert refused.books.board == books.board and refused.books.torn
-  mended = serve(fs, refused.books, lease_of("a", 1_000), at)
+  mended = serve(fs, refused.books, lease_of("a", 1_000),
+    Moment(now: at.now, by: Deadline.fixture(1.minute)))
   assert mended.outcome is Handed(_) and !mended.books.torn
-  assert opened(fs, place()) is Ok(replayed)
+  assert opened(fs, place(), Deadline.fixture(1.minute)) is Ok(replayed)
   assert find(replayed.board, 1) == find(mended.books.board, 1)
 end
 
 test "an id is never handed out twice, across a delete and a replay"
   fs = Fs.fixture()
-  at = Time.fixture()
+  at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
   books = with_jobs(fs, 2, 1, at)
   assert serve(fs, books, call("p", Remove(id: "j_2")), at).outcome == Removed
-  assert opened(fs, place()) is Ok(replayed)
+  assert opened(fs, place(), Deadline.fixture(1.minute)) is Ok(replayed)
   made = serve(fs, replayed, call("p", Create(queue: "q", payload: "", max_attempts: 1)), at)
   assert made.outcome is Made(job)
   assert job.number > 2
@@ -332,7 +342,7 @@ end
 property "a create then a read gives back any valid payload"
   for payload in any(String) if payload?(payload)
     fs = Fs.fixture()
-    at = Time.fixture()
+    at = Moment(now: Time.fixture(), by: Deadline.fixture(1.minute))
     create = call("p", Create(queue: "q", payload: payload, max_attempts: 1))
     made = serve(fs, with_jobs(fs, 0, 1, at), create, at)
     assert made.outcome is Made(job)

@@ -17,8 +17,8 @@ never "a replay changes the number of live keys"
 end
 
 # Every way opening or changing a store fails. Unwritten: the change is not in the log, and the
-# table is as it was. Torn: the log may end in part of the change, so no change is safe until
-# the store is opened again and compacted.
+# table is as it was. Torn: the log may end in part of the change, so it is rewritten whole
+# (compact) at the next change, and changes are taken from then on.
 enum StoreError
   NoFolder
   Unreadable
@@ -332,12 +332,14 @@ end
 # mo check --recipe holds them to the recipe's, line for line.
 test rejects "a key with a space in it"
   fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   assert put(fs, empty, "a b", "1") is Error(_)
 end
 
 test rejects "a value with a newline in it"
   fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   assert put(fs, empty, "a", "one\ntwo") is Error(_)
 end
@@ -361,6 +363,7 @@ end
 
 test "a store opened again from its log holds as many keys as before it stopped"
   fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   assert put(fs, empty, "a", "1") is Ok(one)
   assert put(fs, one, "b", "2") is Ok(two)
@@ -374,6 +377,7 @@ end
 
 test "a change the log cannot take leaves the table as it was"
   fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   assert put(fs, empty, "a", "1") is Ok(one)
   assert put(Fs.fixture(delay: 1.minute), one, "b", "2") is Error(Torn)
@@ -384,6 +388,7 @@ end
 
 test "a store writing to another log keeps its keys and leaves the first log alone"
   fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   assert put(fs, empty, "a", "1") is Ok(one)
   moved = writing_to(one, "notes.check.log")
@@ -396,6 +401,7 @@ end
 property "any valid key and value read back as written, and again once the store is opened again"
   for key in any(String), value in any(String) if key?(key) and value?(value)
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, key, value) is Ok(one)
     read = Read(key: key, value: get(one, key), written: Some(value))

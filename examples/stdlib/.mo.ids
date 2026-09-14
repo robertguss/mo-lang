@@ -63,7 +63,7 @@
       "declarations": [
         { "id": "0e3c7fa0d3fe", "name": "module Stdlib.Json", "hash": "e201843177d9dab9" },
         { "id": "6c8f11ee4571", "name": "expose", "hash": "053ef8ba635ada0f" },
-        { "id": "6b4249a828a6", "name": "intent", "hash": "8f594a21f06413f9" },
+        { "id": "6b4249a828a6", "name": "intent", "hash": "738fa97e740b623c" },
         { "id": "61c629f258b7", "name": "enum Level", "hash": "37aaa3f03a29d25f" },
         { "id": "663e4976fb5a", "name": "struct Hit", "hash": "a9d658ca4f65f64b" },
         { "id": "fc7d9b1d59aa", "name": "struct Report", "hash": "be5d9e552867ec37" },
@@ -71,10 +71,11 @@
         { "id": "a8d6d4dd9854", "name": "test \"a struct is an object in field order, and an enum value names its variant\"", "hash": "04959f07c79f0e7f" },
         { "id": "10b622e6d2cf", "name": "test \"lists, maps, options, floats, and times each have one spelling\"", "hash": "19d1d614fda2cfcf" },
         { "id": "23e76177cfd9", "name": "test \"decoded text is a Json value to take apart, and encodes back as it was\"", "hash": "c2f55cfee31f292d" },
+        { "id": "e81ca810138f", "name": "test \"a decoded number is a whole Int64 below 2^53 either side of 0, and nothing else is\"", "hash": "2ef93e3cf2748c65" },
         { "id": "6dcc07fca89d", "name": "test \"text that is not JSON names the byte where it stops being JSON\"", "hash": "5f5018f31cde0a05" },
         { "id": "1ebf14e79431", "name": "property \"any Json value survives encode then decode\"", "hash": "a8683a8fa2c9632e" }
       ],
-      "verified": { "hash": "e83258a2991fdaee", "declarations": "420fa4cd39d78e39" }
+      "verified": { "hash": "18fceb276ed6537c", "declarations": "f9f03021d906dac7" }
     },
     {
       "path": "lists.mo",

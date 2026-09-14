@@ -1,11 +1,11 @@
 module Jobq.Queue
 expose Opened, Readied, Survived, Service, Services, Racer, Racers, readied
 
-use Jobq.Books{Books, Place, Health, opened, unopened, health_of}
+use Jobq.Books{Books, Place, Moment, Health, opened, unopened, health_of}
 use Jobq.Job{Job, id_of, shown}
 use Jobq.Moves{Call, Command, Outcome, Served, serve, swept}
 
-intent "The queue service process: it opens its store at its first message, after a start or a restart, and from then on serves each call against the jobs with main's clock, so a restart recovers every job the log holds; the listener's Idle becomes a sweep of the leases run out."
+intent "The queue service process: it opens its store at its first message, after a start or a restart, and from then on serves each call against the jobs with main's clock, so a restart recovers every job the log holds; the listener's Idle becomes a sweep of the leases run out; every message is an ask, and every file call it makes waits on what remains of its asker's deadline."
 
 never "a job is lost across a replay"
   for r in Survived.all
@@ -34,7 +34,9 @@ struct Survived
 end
 
 # A crash discards the update and its books, and the restart opens the store again at its next
-# message, so no change the log took is lost; a change it did not take was answered 503.
+# message, so no change the log took is lost; a change it did not take was answered 503. Each
+# arm's file calls run on reply_by: the store opened, replayed, appended to, and rewritten on
+# what remains of the ask, so none of them waits past its asker.
 process Service(fs: Fs, clock: Clock, place: Place, started: Time) mailbox: 4_096
   state
     books: Books = unopened(place)
@@ -43,28 +45,30 @@ process Service(fs: Fs, clock: Clock, place: Place, started: Time) mailbox: 4_09
 
   message Open : Opened
   message Serve(call: Call) : Outcome
-  message Sweep
+  message Sweep : UInt64
   message Tally : Health
 
   fn update(state, message)
     case message
       Open:
-        ready = readied(fs, place, state.books, state.opened)
+        ready = readied(fs, place, state.books, state.opened, reply_by)
         state.books = ready.books
         state.opened = ready.opened
         opened_answer(ready)
       Serve(call):
-        ready = readied(fs, place, state.books, state.opened)
-        served = served_by(fs, place, ready, call, clock.now)
+        ready = readied(fs, place, state.books, state.opened, reply_by)
+        served = served_by(fs, place, ready, call, Moment(now: clock.now, by: reply_by))
         state.books = served.books
         state.opened = ready.opened
         served.outcome
       Sweep:
-        ready = readied(fs, place, state.books, state.opened)
-        state.books = swept_by(fs, ready, clock.now)
+        ready = readied(fs, place, state.books, state.opened, reply_by)
+        swept_books = swept_by(fs, ready, Moment(now: clock.now, by: reply_by))
+        state.books = swept_books.books
         state.opened = ready.opened
+        swept_books.steps.size
       Tally:
-        ready = readied(fs, place, state.books, state.opened)
+        ready = readied(fs, place, state.books, state.opened, reply_by)
         state.books = ready.books
         state.opened = ready.opened
         health_of(ready.books, (clock.now - started).ms)
@@ -76,9 +80,9 @@ supervisor Services(fs: Fs, clock: Clock, place: Place, started: Time)
   child Service(fs, clock, place, started), restart: :always, max_restarts: 5 per 1.minute
 end
 
-fn readied(fs: Fs, place: Place, books: Books, already: Bool) : Readied
+fn readied(fs: Fs, place: Place, books: Books, already: Bool, by: Deadline) : Readied
   return Readied(books: books, opened: true, why: "") if already
-  case opened(fs, place)
+  case opened(fs, place, by)
     Ok(fresh): Readied(books: fresh, opened: true, why: "")
     Error(why): Readied(books: books, opened: false, why: why)
   end
@@ -89,17 +93,20 @@ fn opened_answer(ready: Readied) : Opened
   Ready(jobs: ready.books.board.size, cut: ready.books.torn)
 end
 
-fn served_by(fs: Fs, place: Place, ready: Readied, call: Call, now: Time) : Served
-  return serve(fs, ready.books, call, now) if ready.opened
+fn served_by(fs: Fs, place: Place, ready: Readied, call: Call, at: Moment) : Served
+  return serve(fs, ready.books, call, at) if ready.opened
   Served(books: ready.books, outcome: Unavailable(reason: "#{place.dir} #{ready.why}"), steps: [])
 end
 
-fn swept_by(fs: Fs, ready: Readied, now: Time) : Books
-  return ready.books if !ready.opened
-  swept(fs, ready.books, now).books
+# The books after a sweep, and the jobs whose leases it ended; none when the store is not open.
+fn swept_by(fs: Fs, ready: Readied, at: Moment) : Served
+  return Served(books: ready.books, outcome: Empty, steps: []) if !ready.opened
+  swept(fs, ready.books, at)
 end
 
-# A worker for the race test: it asks for a lease on q when told to, and keeps what it got.
+# A worker for the race test: it asks for a lease on q when told to, and keeps what it got. The
+# lease is an hour, longer than any ask in the test can wait under faults, so a second holder
+# would be one at the same time.
 process Racer(service: Handle(Service), token: String)
   state
     got: String
@@ -111,7 +118,7 @@ process Racer(service: Handle(Service), token: String)
   fn update(state, message)
     case message
       Go:
-        lease = Call(worker: token, command: Lease(queue: "q", lease_ms: 30_000))
+        lease = Call(worker: token, command: Lease(queue: "q", lease_ms: 3_600_000))
         state.got = case service.ask(Serve(call: lease), within: 1.minute)
           Ok(outcome): named(outcome)
           Error(_): "no answer"
@@ -167,8 +174,11 @@ fn got(racer: Handle(Racer)) : String
 end
 
 test "two workers race for one job, and exactly one holds it"
-  service = Service.start(Fs.fixture(), Clock.fixture(), place(), Time.fixture())
+  fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
+  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
   id = made_id(ask(service, "p", Create(queue: "q", payload: "x", max_attempts: 3)))
+  assert made or id == ""
   if id != ""
     ada = Racer.start(service, "ada")
     grace = Racer.start(service, "grace")
@@ -184,11 +194,13 @@ end
 
 test "a service started again over its log holds every job it answered for, and reuses no id"
   fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
   first = Service.start(fs, Clock.fixture(), place(), Time.fixture())
   var ids = [""].take(0)
   for i in 0..3
     ids = ids.push(made_id(ask(first, "p", Create(queue: "q", payload: "#{i}", max_attempts: 2))))
   end
+  assert made or ids.all?(fn(i) i == "" end)
   leased = ask(first, "ada", Lease(queue: "q", lease_ms: 3_600_000))
   var answered = [""].take(0)
   for id in ids.filter(fn(i) i != "" end)

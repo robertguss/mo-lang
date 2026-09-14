@@ -62,6 +62,8 @@ pub const Tag = enum(u8) {
     self_,
     /// an inference variable: a is the var index
     variable,
+    /// A point on the runtime's clock that a call may wait until: an ask's `reply_by` (step 22).
+    deadline,
 };
 
 pub const Type = struct { tag: Tag, a: u32 = 0, b: u32 = 0 };
@@ -90,6 +92,8 @@ const cap_base: Id = 18;
 /// with `b` 1. It unifies with Fs, so it goes wherever an Fs goes, and caps.zig refuses it
 /// where a write reaches it, directly or through a parameter a function writes through (MO0404).
 pub const fs_read_only: Id = cap_base + @typeInfo(CapKind).@"enum".fields.len;
+/// `Deadline` (design-v0/09, step 22): `reply_by`, and what `at_most` gives.
+pub const deadline: Id = fs_read_only + 1;
 
 pub fn int(kind: IntKind) Id {
     return int_base + @intFromEnum(kind);
@@ -116,7 +120,8 @@ pub const Pool = struct {
         const caps = @typeInfo(CapKind).@"enum".fields.len;
         for (0..caps) |k| try p.list.append(gpa, .{ .tag = .cap, .a = @intCast(k) });
         try p.list.append(gpa, .{ .tag = .cap, .a = @intFromEnum(CapKind.fs), .b = 1 });
-        std.debug.assert(p.list.items.len == fs_read_only + 1);
+        try p.list.append(gpa, .{ .tag = .deadline });
+        std.debug.assert(p.list.items.len == deadline + 1);
         return p;
     }
 
@@ -253,7 +258,7 @@ pub const Pool = struct {
         if (tb.tag == .alias) return p.unify(ra, tb.b);
         if (ta.tag != tb.tag) return false;
         return switch (ta.tag) {
-            .none, .bool, .string, .time, .duration, .self_ => true,
+            .none, .bool, .string, .time, .duration, .self_, .deadline => true,
             .int, .float, .cap, .decl, .handle, .message, .state, .param => ta.a == tb.a,
             .list, .option, .set => p.unify(ta.a, tb.a),
             .result, .map => p.unify(ta.a, tb.a) and p.unify(ta.b, tb.b),
@@ -309,6 +314,7 @@ pub const Pool = struct {
             .string => try w.writeAll("String"),
             .time => try w.writeAll("Time"),
             .duration => try w.writeAll("Duration"),
+            .deadline => try w.writeAll("Deadline"),
             .self_ => try w.writeAll("Self"),
             .int => try w.writeAll(switch (@as(IntKind, @enumFromInt(t.a))) {
                 .i8 => "Int8",

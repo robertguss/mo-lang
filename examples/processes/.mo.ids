@@ -28,6 +28,23 @@
       "verified": { "hash": "7c2dd49fc03316de", "declarations": "a9253ef10360f749" }
     },
     {
+      "path": "deadline.mo",
+      "module": "Processes.Deadline",
+      "declarations": [
+        { "id": "f694d14db1d2", "name": "module Processes.Deadline", "hash": "a8e186811e2548c1" },
+        { "id": "5180f4f3a013", "name": "expose", "hash": "86bcefd5f4e76644" },
+        { "id": "bf7b2009e437", "name": "intent", "hash": "c43285d24e53ad6c" },
+        { "id": "4a97c4544e89", "name": "process Keeper", "hash": "a1cf11189e78e094" },
+        { "id": "bcb756bfc766", "name": "supervisor Keepers", "hash": "c9b6bc7d69bcaf38" },
+        { "id": "06f099ae1f1e", "name": "process Literal", "hash": "cb79864d959a8a86" },
+        { "id": "7260738831d3", "name": "supervisor Literals", "hash": "bfee4288c5d06b99" },
+        { "id": "0438e7913a06", "name": "fn outcome", "hash": "f901cc7ec5570c7a" },
+        { "id": "424e07c56c2b", "name": "test \"two reads on reply_by share the ask's 50 ms: the keeper always answers in time, never with both\"", "hash": "f7454441b6eca365" },
+        { "id": "0fe742c4092b", "name": "test \"the same reads on literals each fit, and when both finish the ask has run out\"", "hash": "4362cf8ebb851d30" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "2106d9f820b0adb9" }
+    },
+    {
       "path": "handoff.mo",
       "module": "Processes.Handoff",
       "declarations": [

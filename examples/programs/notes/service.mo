@@ -2,10 +2,10 @@ module Notes.Service
 expose Step, Issued, Edit, Plan, Books, Served, Opening, Service, Services, opening, decide
 
 use Notes.Limits{ClientId, Limiter, limiter, allow?, retry_after}
-use Notes.Note{Note, Command, Call, Outcome, Counts, note, note_of, key_of, id_number, title?, body?}
-use Notes.Store{Table, StoreError, Reopened, get, count, put, delete, keys, open}
+use Notes.Note{Note, Command, Call, Outcome, Counts, note, note_of, key_of, owner_of, id_of, counted, id_number, title?, body?}
+use Notes.Store{Table, StoreError, Reopened, get, count, put, delete, keys, open, compact}
 
-intent "The notes service process: every call is let through or refused by its client's bucket, decided against the store, and a create, update, or delete is appended to the log before it is applied or answered; a change the log did not take is 503 with the store unchanged, and one that may have left part of a line refuses every change after it until notes starts again."
+intent "The notes service process: every call is let through or refused by its client's bucket, decided against the store, and a create, update, or delete is appended to the log before it is applied or answered; a change the log did not take is 503 with the store unchanged, and one that may have left part of a line has the log rewritten whole before the next change, so changes are taken again once faults stop."
 
 never "a response is sent before its log line is durable"
   for s in Step.all
@@ -151,18 +151,6 @@ fn opening(notes: Table, at: Time) : Opening
   Opening(notes: notes, next_id: max_of(max_of(highest + 1, reserved), 1), owners: owners, at: at)
 end
 
-fn counted(counts: Map(String, UInt64), owner: String) : Map(String, UInt64)
-  counts.update(owner, 0, fn(n) n + 1 end)
-end
-
-fn owner_of(key: String) : String
-  key.slice(0, key.index_of("/") or 0)
-end
-
-fn id_of(key: String) : String
-  key.slice((key.index_of("/") or 0) + 1, key.size)
-end
-
 # What a call comes to against the store: an answer now, or a change to log first.
 fn decide(notes: Table, call: Call, next_id: UInt64, now: Time) : Plan
   case call.command
@@ -249,12 +237,10 @@ fn looked(call: Call) : Step
 end
 
 # The log takes the change first, and an id reservation before it when the change hands out an
-# id past the reserved ones; only then is the change applied and answered.
+# id past the reserved ones; only then is the change applied and answered. A log that may end in
+# part of a change is rewritten whole first, as the store recipe says.
 fn written(fs: Fs, books: Books, call: Call, edit: Edit) : Served
   before = get(books.notes, edit.key)
-  if books.torn
-    return unwritten(issued(books, edit), call, edit, before)
-  end
   case reserved(fs, books, edit)
     Ok(ready):
       case stored(fs, ready.notes, edit)
@@ -271,10 +257,15 @@ fn written(fs: Fs, books: Books, call: Call, edit: Edit) : Served
 end
 
 fn reserved(fs: Fs, books: Books, edit: Edit) : Result(Books, StoreError)
-  return Ok(books) if !edit.issues or books.next_id < books.reserved
-  ceiling = books.next_id + 100
-  notes = try put(fs, books.notes, "ids", "#{ceiling}")
-  var after = books
+  var whole = books
+  if books.torn
+    whole.notes = try compact(fs, books.notes)
+    whole.torn = false
+  end
+  return Ok(whole) if !edit.issues or whole.next_id < whole.reserved
+  ceiling = whole.next_id + 100
+  notes = try put(fs, whole.notes, "ids", "#{ceiling}")
+  var after = whole
   after.notes = notes
   after.reserved = ceiling
   Ok(after)
@@ -306,7 +297,7 @@ fn unwritten(books: Books, call: Call, edit: Edit, before: Option(String)) : Ser
   step = Step(owner: call.owner, key: edit.key, before: before, after: before, logged: false,
     limited: false)
   reason = if books.torn
-    "the log may end in part of a change, so notes takes no change until it starts again"
+    "the log may end in part of a change; it is rewritten whole at the next change"
   else
     "the log did not take the change"
   end
@@ -459,9 +450,25 @@ test "a service started again from its log lists what the first one wrote, and r
   end
 end
 
+test "a log a failed change may have torn is rewritten whole at the next change, which is taken"
+  fs = Fs.fixture()
+  at = Time.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(notes)
+  books = Books(notes: notes, next_id: 1, reserved: 1, torn: false)
+  create = Call(owner: "ada", command: Create(title: "one", body: ""))
+  torn = served(Fs.fixture(delay: 1.minute), books, create, at)
+  assert torn.outcome is Unavailable(_) and torn.books.torn
+  again = served(fs, torn.books, create, at)
+  assert again.outcome is Made(_) and !again.books.torn
+  assert open(fs, "d") is Ok(replayed)
+  assert count(replayed) == count(again.books.notes)
+end
+
 property "a create then a read gives back any valid title and body"
   for title in any(String), body in any(String) if title?(title) and body?(body)
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     call = Call(owner: "ada", command: Create(title: title, body: body))
     case decide(empty, call, 1, Time.fixture())
@@ -482,5 +489,5 @@ test rejects "a call from a client whose token holds a slash"
   service.send(Serve(call: call))
 end
 
-verified: types, contracts, tests (7), property (200 seeds), sim (100 runs)
+verified: types, contracts, tests (8), property (200 seeds), sim (100 runs)
           proven: not run

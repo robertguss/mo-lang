@@ -1,7 +1,7 @@
 module Stdlib.Json
 expose Level, Hit, Report, field_text
 
-intent "Write any value as JSON text, and read JSON text back as a Json value to take apart with case."
+intent "Write any value as JSON text, and read JSON text back as a Json value to take apart with case, its whole numbers as Int64."
 
 enum Level
   Quiet
@@ -59,6 +59,12 @@ test "decoded text is a Json value to take apart, and encodes back as it was"
   assert Json.decode("\"caf\\u00e9\"") == Ok(String(text: "café"))
 end
 
+test "a decoded number is a whole Int64 below 2^53 either side of 0, and nothing else is"
+  assert Json.decode("[3, -42, 1e3, 2.5, 9007199254740991, 9007199254740992, \"7\", null]") is Ok(Array(items))
+  wanted = [Some(3), Some(-42), Some(1_000), None, Some(9_007_199_254_740_991), None, None, None]
+  assert items.map(fn(item) item.to_i64 end) == wanted
+end
+
 test "text that is not JSON names the byte where it stops being JSON"
   assert Json.decode("[1, 2") is Error(Syntax(5))
   assert Json.decode("{\"a\" 1}") is Error(Syntax(5))
@@ -73,5 +79,5 @@ property "any Json value survives encode then decode"
   end
 end
 
-verified: types, contracts, tests (5), property (200 seeds), sim (not run)
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
           proven: not run

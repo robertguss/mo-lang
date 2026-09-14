@@ -8,15 +8,18 @@ use Jobq.Job{Job, State, id_of, shown}
 use Jobq.Moves{Call, Command, Outcome}
 use Jobq.Queue{Service}
 
-intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and turns the listener's Idle into a sweep of the leases run out; a worker reads its request into a route, asks the queue service, and replies, so a change's reply goes out only once the service has answered, which it does only once the change is in the log."
+intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and turns the listener's Idle into an ask for a sweep of the leases run out; a worker reads its request into a route, asks the queue service, and replies, so a change's reply goes out only once the service has answered, which it does only once the change is in the log."
 
 # The mailbox is 4,096, not the default 1,000: the runtime counts connections that have sent no
 # whole request against it, so 1,200 silent clients would otherwise stop the accepting until
 # idle closes them.
+# Idle comes only when no client came for a while, so the acceptor can wait for the sweep: 10
+# seconds, which bounds every file call the sweep makes.
 process Acceptor(service: Handle(Service)) mailbox: 4_096
   state
     accepted: UInt64
     quiet: UInt64
+    ended: UInt64
   end
 
   message Accepted(exchange: Exchange)
@@ -28,7 +31,9 @@ process Acceptor(service: Handle(Service)) mailbox: 4_096
         Worker.start(exchange, service).send(Answer)
         state.accepted += 1
       Idle:
-        service.send(Sweep)
+        if service.ask(Sweep, within: 10_000.ms) is Ok(ended)
+          state.ended += ended
+        end
         state.quiet += 1
     end
   end
@@ -56,10 +61,10 @@ supervisor Exchanges(exchange: Exchange, service: Handle(Service))
   child Worker(exchange, service), restart: :never
 end
 
-# The response to one request. The ask waits 60 seconds, longer than the Fs deadlines of the
-# service's slowest message added up (a log rewritten whole, 20 and 5 seconds; a look's append
-# and its size, 5 and 5; a delete's, 5 and 5), so a service that could not write answers 503
-# itself; a timed-out ask is 503 too, and the change may still land, as the failure model says.
+# The response to one request. The ask waits 60 seconds, and every file call the service makes
+# for it waits only on what remains of them, so a service that could not write in time answers
+# 503 itself; a timed-out ask is 503 too, and the change may still land, as the failure model
+# says.
 fn answer(service: Handle(Service), request: Request) : Response
   case route(request)
     Answered(response): response
@@ -171,7 +176,10 @@ end
 test "each status comes back over the wire, unless a call fails"
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
-  service = Service.start(Fs.fixture(), Clock.fixture(), place(), Time.fixture())
+  fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
+  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
+  assert made or snapshot(service) is None
   listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
   port = listener.port
   job = "{\"queue\": \"q\", \"payload\": \"p\", \"max_attempts\": 1}"
@@ -192,7 +200,10 @@ end
 test "under faults every answer is right or a 503 that changed nothing, and after them every job ends"
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
-  service = Service.start(Fs.fixture(), Clock.fixture(), place(), Time.fixture())
+  fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
+  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
+  assert made or snapshot(service) is None
   listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
   port = listener.port
   for i in 0..4

@@ -282,3 +282,6 @@
 
 ## [2026-09-14] session | Night: round 5, pre-registered, mixed
 - Three fresh sessions in `../mo-lang-control5-*` from 01:14; Fable verified each in its worktree. P1 and P3 held, P2 missed by one loop. The laws stay; the `is` form's diagnostic to step 22; tokens to be read before the report next time. Four decision rows. Merged to `main`.
+
+## [2026-09-14] session | Night: step 22 accepted
+- The derived deadline (`Deadline`, `reply_by`, `at_most`) in both runtimes, verified by Fable's probes in all three modes; jobq's sums gone; the `--recipe` line count, the fixture's missing folder, `json.to_i64`, the recipe's rewrite rule with notes following it, two diagnostics. Five decision rows, two `semantic`. Merged to `main`. Next: the runtime surface step for d37–40.

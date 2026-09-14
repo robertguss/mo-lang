@@ -64,7 +64,9 @@ const Held = struct { holder: u32, to: u32, message: Value };
 
 /// A message in a mailbox or an outbox. Under `mo run` it came in a parcel (Sim.packs),
 /// which the mailbox, and then the process's log, owns.
-const Entry = struct { message: Value, seq: u64, parcel: ?*Parcel = null };
+/// `deadline`: an ask's, on the runtime's clock (Sim.deadlineNow), which the update that takes
+/// it sees as `reply_by`; null for a send.
+const Entry = struct { message: Value, seq: u64, parcel: ?*Parcel = null, deadline: ?i64 = null };
 const Outgoing = struct { to: u32, message: Value, parcel: ?*Parcel = null };
 /// One step of a seeded run's trace: a message put in a mailbox, by the test
 /// (`from` is `test_runner`) or by a process whose update committed, or taken out of it.
@@ -100,6 +102,9 @@ pub const Proc = struct {
     now: i64 = 0,
     /// Under `mo run`, a sweep ended it (turns.zig): its id waits in `Sim.free_ids`.
     ended: bool = false,
+    /// The running update's `reply_by`: its message's ask deadline, or when it was taken for a
+    /// message that came with none (step 22).
+    reply_by: i64 = 0,
     /// Its update waits in an ask to this process, or none; or in a call on a peer.
     asking: u32 = none,
     wait: ?Wait = null,
@@ -304,6 +309,19 @@ pub const Sim = struct {
         sim.lag += ms;
     }
 
+    /// The clock deadlines are points on (step 22): under `mo run` the runtime's monotonic clock,
+    /// and in a test the run's, which only fixture waits move.
+    pub fn deadlineNow(sim: *const Sim) i64 {
+        if (sim.turns) |t| return t.now();
+        return sim.waited;
+    }
+
+    /// `reply_by` in the running update.
+    pub fn replyBy(sim: *const Sim) i64 {
+        const id = sim.running orelse return sim.deadlineNow();
+        return sim.procs.items[id].reply_by;
+    }
+
     /// `clock.now`: the simulated clock, or under Mo.Server the wall clock, frozen when the
     /// running update began.
     pub fn clockNow(sim: *const Sim) i64 {
@@ -426,6 +444,11 @@ pub const Sim = struct {
         const waited = sim.waited;
         try sim.roomFor(to, message);
         const seq = try sim.enqueue(sim.running orelse test_runner, to, message, null);
+        const target = &sim.procs.items[to];
+        target.mailbox.items[target.mailbox.items.len - 1].deadline = waited + within;
+        // Under faults the seed decides how long the message waits to be taken, so a target that
+        // reads reply_by may find nothing left of it (step 22).
+        if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
         const reply = while (true) {
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
@@ -433,7 +456,10 @@ pub const Sim = struct {
             const d = try sim.deliver(to);
             if (d.seq == seq) break d.reply orelse return sim.askError("Down");
         };
-        if (sim.delayOf(to) + (sim.waited - waited) > within) return sim.askError("Timeout");
+        // A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
+        // pass its deadline, or when its slowest fixture is slower than it. A target whose calls
+        // wait on reply_by never passes it, since none of them waits longer than what remains.
+        if (sim.delayOf(to) > within or sim.waited - waited > within) return sim.askError("Timeout");
         return sim.vm.variant("Ok", &.{reply});
     }
 
@@ -569,6 +595,7 @@ pub const Sim = struct {
         }
         try sim.logMessage(p, entry);
         if (sim.server) |s| p.now = s.now();
+        p.reply_by = entry.deadline orelse sim.deadlineNow();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
