@@ -333,6 +333,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Program-level defaults ratified as `agent`'s own: one JSON log per run instead of the store recipe (a poor fit for an append-only transcript); a step is a model call and the tool it names; the step whose tokens pass the budget is written, then the run ends `over_budget`; a run past its wall budget plus 120 s is failed as lost by a sweep; a restart's end line begins with a newline so it cannot join a torn line; ids continue after the highest log on disk; `https` refused; mailboxes 8,192 for the book, 4,096 elsewhere | Fable, from Opus's defaults | provisional | — |
 | Program 5's follow-ups, step 24: the `MO0404` hole; a `Handle(T)` in a `state` field; `delay:` on `send`; `Deadline.remaining`; `Result(none, E)` writable in a signature; the prelude `Event`'s fields renamed off the keywords (`process`, `message`, `state`) so a pattern can take them; a recipe module's own `Request` hidden from its implementation as step 23 hides a module's; the simulator's `ask` delivering every process's rounds | Fable | — | step 24 |
 
+| Step 24 starts: the `MO0404` hole, a handle in a `state` field, `delay:` on `send`, `Deadline.remaining`, `Result(none, E)`, the `Event` field names, the recipe's `Request` hiding, the simulator's `ask`; brief on [[interpreter-step-24]] | Fable | — | step 24's numbers |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
