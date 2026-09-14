@@ -91,7 +91,11 @@ class SocketTest(unittest.TestCase):
             barrier = threading.Barrier(2)
             statuses: dict[str, int] = {}
 
-            def race(worker: str, barrier: threading.Barrier = barrier) -> None:
+            def race(
+                worker: str,
+                barrier: threading.Barrier = barrier,
+                statuses: dict[str, int] = statuses,
+            ) -> None:
                 barrier.wait(timeout=5)
                 statuses[worker] = self.call(worker, "POST", "/queues/race/lease")
 
