@@ -1,0 +1,30 @@
+[project]
+name = "jobq"
+version = "0.1.0"
+description = "A durable job queue with an HTTP API"
+readme = "README.md"
+authors = [
+    { name = "Robert Guss", email = "robertguss@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic>=2.13.5",
+]
+
+[project.scripts]
+jobq = "jobq.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.mypy]
+strict = true
+python_executable = ".venv/bin/python"
+mypy_path = "src"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "BLE", "ASYNC"]
