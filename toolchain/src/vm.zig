@@ -490,7 +490,15 @@ pub const Vm = struct {
                     const within = vm.pop().duration;
                     const message = vm.pop();
                     const to = vm.pop().handle;
-                    try vm.push(try (try vm.simulator()).ask(to, message, within));
+                    // Nothing remains of the deadline: Timeout at once, and nothing is sent (step 22).
+                    if (within < 0) {
+                        try vm.push(try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}));
+                    } else try vm.push(try (try vm.simulator()).ask(to, message, within));
+                },
+                .reply_by => try vm.push(.{ .time = (try vm.simulator()).replyBy() }),
+                .deadline_left => {
+                    const left = vm.pop().time - (try vm.simulator()).deadlineNow();
+                    try vm.push(.{ .duration = if (left > 0) left else -1 });
                 },
                 .settle => if (vm.sim) |s| try s.settle(),
                 .observe => if (vm.sim) |s| if (s.records) try s.observe(vm.stack.items[vm.stack.items.len - 1], inst.a),
@@ -1091,6 +1099,10 @@ pub const Vm = struct {
         const row = prelude.fns[row_index];
         const count: u32 = @intCast(@as(usize, if (row.on_type or row.recv.len == 0) 0 else 1) + row.params.len + row.named.len + @as(usize, if (row.can_wait) 1 else 0));
         const a = try vm.take(count);
+        // A deadline with nothing left: the call is Timeout at once and is not made (step 22).
+        if (row.can_wait and a[a.len - 1] == .duration and a[a.len - 1].duration < 0) {
+            return vm.push(try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}));
+        }
         const result: Value = switch (prim_of[row_index]) {
             .list_size => .{ .int = @intCast(a[0].list.len) },
             .list_push => .{ .list = try vm.pushList(a[0].list, a[1]) },

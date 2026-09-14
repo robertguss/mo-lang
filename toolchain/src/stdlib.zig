@@ -112,6 +112,8 @@ pub const Row = enum {
     json_encode,
     json_decode,
     json_to_i64,
+    deadline_at_most,
+    deadline_fixture,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -149,7 +151,8 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
     .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
-    .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },
+    .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },         .{ "Deadline.at_most", .deadline_at_most },
+    .{ "Deadline.fixture", .deadline_fixture },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -171,6 +174,10 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .json_encode => json.encode(vm, a[0], int_kind),
         .json_decode => json.decode(vm, a[0].string),
         .json_to_i64 => option(vm, json.whole(a[0])),
+        // The earlier of the deadline and now plus d: a nested deadline tightens, never extends.
+        .deadline_at_most => .{ .time = if (vm.sim) |s| @min(a[0].time, s.deadlineNow() +| a[1].duration) else a[0].time },
+        // A test has no asker: a deadline d from now on the run's clock, for a function that takes one.
+        .deadline_fixture => .{ .time = (if (vm.sim) |s| s.deadlineNow() else 0) +| a[0].duration },
         .time_parse => if (parseTime(a[0].string)) |t| vm.variant("Some", &.{.{ .time = t }}) else vm.variant("None", &.{}),
         .time_from_parts => blk: {
             var parts: [6]i64 = undefined;
@@ -976,8 +983,23 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
         else => false,
     };
     if (writes and scope.read_only) return fail(vm, .other, row, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path });
-    if (scope.delay > within) return timedOut(vm);
+    if (scope.delay > within) {
+        // Past its deadline the call waited the whole of it, as a fault's timeout does (step 22).
+        sim.wait(@max(within, 0));
+        return timedOut(vm);
+    }
+    const waited_before = sim.waited;
     if (try vm.fixtureFault(which != .fs_list, path, within)) |failed| return failed;
+    // A call that answers after the fixture's delay waited it, on top of any slowness a fault
+    // gave it: the clock moves, and past the deadline the call is Timeout there (step 22).
+    if (scope.delay > 0) {
+        const slow = sim.waited - waited_before;
+        if (slow + scope.delay > within) {
+            sim.wait(within - slow);
+            return timedOut(vm);
+        }
+        sim.wait(scope.delay);
+    }
     const system: ?*std.StringArrayHashMapUnmanaged([]const u8) = if (scope.system) |i| &sim.files.systems.items[i] else null;
     if (which == .fs_list) {
         const all = system orelse return vm.variant("Ok", &.{.{ .list = &.{} }});

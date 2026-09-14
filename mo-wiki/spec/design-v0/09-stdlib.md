@@ -124,6 +124,15 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 
 `Time - Time` is a `Duration`, `Time ± Duration` a `Time`, and both compare with `<`.
 
+`Deadline` is a point on the runtime's clock that a call may wait until: under `mo run` the process clock, and under `Mo.Sim` the run's own, which fixture waits move. Every `within:` takes a `Duration` or a `Deadline`; a `Deadline` gives the call what remains of it, and a call with nothing left is `Timeout` at once and is not made. Inside the `update` arm for a message that carries a reply, `reply_by` is the asker's `Deadline` (chapter 3); nothing else makes one outside a test, and nothing makes one later than the one it came from.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Deadline` | `at_most` | `Duration` | `Deadline` | the earlier of the deadline and now plus the duration: a nested call may tighten its asker's deadline and never extend it |
+| `Deadline` (on type) | `fixture` | `Duration` | `Deadline` | now plus the duration on the test's clock, for a function that takes a deadline; tests only, since a test has no asker |
+
+Session 5, step 22: `Deadline`, `reply_by`, `at_most`, and `fixture`, after program 1 derived three deadlines by hand as sums of literals and two of the sums were wrong.
+
 ## Files
 
 Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to the scope the `Fs` was narrowed to (`fs.scoped("logs").read_only`), and nothing outside the scope is reachable; a path that leaves it, or anything that is not a readable file, is `Missing(path)` with the path as the program wrote it. A `String` is UTF-8, so a row that gives one gives only text: a file whose bytes are not UTF-8 is `NotText`, and `read_bytes` gives any file's bytes.

@@ -1,8 +1,8 @@
 # recipe: Recipes.Store.Store
 module Jobq.Store
-expose StoreError, Read, Reopened, Table, key?, value?, open, continued, get, count, log, cut_short?, put, put_all, delete, keys, compact, writing_to, lines
+expose StoreError, Read, Reopened, Table, Replay, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, writing_to, lines, whole_text, rewritten, placed, dropped, resized, stepped, finished
 
-intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store, which took it from kv's Kv.Log: String keys to String values spread over 256 small maps, a log named jobq.log in a folder with a SET or DEL line per change, each appended and on disk before put or delete returns, replay that leaves out a last line cut short, and compaction to one line per live key written beside the log and renamed over it."
+intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, its own deadlines on each call (Jobq.Journal makes the same calls on a caller's), copied by hand from notes's Notes.Store, which took it from kv's Kv.Log: String keys to String values spread over 256 small maps, a log named jobq.log in a folder with a SET or DEL line per change, each appended and on disk before put or delete returns, replay that leaves out a last line cut short, and compaction to one line per live key written beside the log and renamed over it."
 
 never "a value read is not the last one written"
   for r in Read.all
@@ -90,20 +90,6 @@ fn open(fs: Fs, dir: String) : Result(Table, StoreError)
   finished(replayed, bytes)
 end
 
-# The store with another log in its folder replayed over it, its changes appended to that log
-# from now on: jobq check replays a folder's log, then the changes it made since it started.
-fn continued(fs: Fs, table: Table, name: String) : Result(Table, StoreError)
-  folder = fs.scoped(table.dir)
-  names = try names_in(folder)
-  moved = writing_to(table, name)
-  return Ok(moved) if !names.contains?(name)
-  bytes = try size_of(folder, name)
-  start = Replay(table: moved, pending: None, lines: 0, bytes: 0, bad: 0)
-  replayed = try replayed_from(folder, start, name)
-  return Error(BadLine(number: replayed.bad)) if replayed.bad > 0
-  finished(replayed, bytes)
-end
-
 fn get(table: Table, key: String) : Option(String)
   case table.buckets.get(bucket_of(key))
     Some(bucket): bucket.get(key)
@@ -139,18 +125,6 @@ fn put(fs: Fs, table: Table, key: String, value: String) : Result(Table, StoreEr
   Ok(resized(placed(table, key, value), bytes))
 end
 
-# The store with every pair set, in order, once all their SET lines are on disk in one append:
-# one wait for the disk however many changes a look makes.
-fn put_all(fs: Fs, table: Table, pairs: List((String, String))) : Result(Table, StoreError)
-  requires pairs.all?(fn(pair) key?(pair.0) and value?(pair.1) end)
-  ensures result is Ok(after) implies count(after) >= count(table)
-
-  return Ok(table) if pairs.size == 0
-  text = String.join(pairs.map(fn(pair) "SET #{pair.0} #{pair.1}\n" end), "")
-  bytes = try appended(fs, table, text)
-  Ok(resized(pairs.reduce(table, fn(t, pair) placed(t, pair.0, pair.1) end), bytes))
-end
-
 # The store without the key, once its DEL line is on disk; a key it does not hold writes
 # nothing.
 fn delete(fs: Fs, table: Table, key: String) : Result(Table, StoreError)
@@ -175,7 +149,7 @@ fn compact(fs: Fs, table: Table) : Result(Table, StoreError)
   ensures result is Ok(after) implies count(after) == count(table) and !cut_short?(after)
 
   folder = fs.scoped(table.dir)
-  text = String.join(keys(table, "").map(fn(key) set_line(table, key) end), "")
+  text = whole_text(table)
   fresh = "#{table.name}.new"
   if folder.write(fresh, text, within: 20_000.ms) is Error(_)
     return Error(Unwritten)
@@ -183,11 +157,21 @@ fn compact(fs: Fs, table: Table) : Result(Table, StoreError)
   if folder.rename(fresh, table.name, within: 5_000.ms) is Error(_)
     return Error(Unwritten)
   end
+  Ok(rewritten(table, text))
+end
+
+# Every live key as its SET line, keys in byte order: what a compaction writes.
+fn whole_text(table: Table) : String
+  String.join(keys(table, "").map(fn(key) set_line(table, key) end), "")
+end
+
+# The table once its log holds exactly the text a compaction wrote.
+fn rewritten(table: Table, text: String) : Table
   var after = table
   after.bytes = text.byte_size
   after.lines = table.size
   after.cut = false
-  Ok(after)
+  after
 end
 
 # The same keys and values, their changes appended from now on to the empty log `name` in the
@@ -411,31 +395,6 @@ test "a change the log cannot take leaves the table as it was"
   assert put(Fs.fixture(delay: 1.minute), moved, "b", "2") is Error(Torn)
 end
 
-test rejects "a put of many with a key holding a space"
-  fs = Fs.fixture()
-  assert fs.mkdir("d", within: 1.minute) is Ok(_)
-  assert open(fs, "d") is Ok(empty)
-  assert put_all(fs, empty, [("a", "1"), ("b c", "2")]) is Error(_)
-end
-
-test "many pairs go to the log in one append, and another log replays over the first"
-  fs = Fs.fixture()
-  assert fs.mkdir("d", within: 1.minute) is Ok(_)
-  assert open(fs, "d") is Ok(empty)
-  assert put(fs, empty, "a", "1") is Ok(one)
-  assert put_all(fs, one, [("b", "2"), ("a", "3"), ("c", "4")]) is Ok(many)
-  assert get(many, "a") == Some("3") and count(many) == 3
-  assert put_all(fs, many, []) == Ok(many)
-  assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET a 1\nSET b 2\nSET a 3\nSET c 4\n")
-  assert continued(fs, many, "jobq.check.log") is Ok(moved)
-  assert delete(fs, moved, "b") is Ok(dropped)
-  assert put(fs, dropped, "d", "5") is Ok(later)
-  assert open(fs, "d") is Ok(first)
-  assert continued(fs, first, "jobq.check.log") is Ok(again)
-  assert keys(again, "") == keys(later, "")
-  assert get(again, "a") == Some("3") and lines(again) == 2
-end
-
 property "any valid key and value read back as written, and again once the store is opened again"
   for key in any(String), value in any(String) if key?(key) and value?(value)
     fs = Fs.fixture()
@@ -449,5 +408,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
           proven: not run

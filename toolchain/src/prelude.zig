@@ -21,7 +21,7 @@ pub const Origin = enum { grammar, stdlib, corpus_only };
 
 /// `error_enum` and `enum_` are both enums whose variants are rows below; an error enum
 /// is what a capability call fails with.
-pub const TypeKind = enum { int, float, bool, string, time, duration, list, option, result, map, set, handle, capability, error_enum, enum_ };
+pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, capability, error_enum, enum_ };
 
 pub const Type = struct {
     name: []const u8,
@@ -46,6 +46,7 @@ pub const types = [_]Type{
     .{ .name = "String", .kind = .string },
     .{ .name = "Time", .kind = .time },
     .{ .name = "Duration", .kind = .duration },
+    .{ .name = "Deadline", .kind = .deadline, .origin = .stdlib },
     .{ .name = "List", .arity = 1, .kind = .list },
     .{ .name = "Option", .arity = 1, .kind = .option },
     .{ .name = "Result", .arity = 2, .kind = .result },
@@ -383,6 +384,8 @@ pub const fns = [_]Fn{
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
     .{ .recv = "Json", .name = "to_i64", .ret = "Option(Int64)", .origin = .stdlib },
+    .{ .recv = "Deadline", .name = "at_most", .params = &.{"Duration"}, .ret = "Deadline", .origin = .stdlib },
+    .{ .recv = "Deadline", .on_type = true, .name = "fixture", .params = &.{"Duration"}, .ret = "Deadline", .only = .tests, .origin = .stdlib },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },

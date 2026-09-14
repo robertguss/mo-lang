@@ -75,7 +75,7 @@ pub const Code = enum {
 pub const Entry = diag.Entry;
 
 pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
-    .unknown_name = .{ .code = "MO0201", .category = .types, .what = "there is no <name> in scope", .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists.", .fixes = &.{} },
+    .unknown_name = .{ .code = "MO0201", .category = .types, .what = "there is no <name> in scope", .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline, bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration.", .fixes = &.{} },
     .unknown_type = .{ .code = "MO0202", .category = .types, .what = "there is no type named <Type>", .why = "A type is a prelude type, a type declared in this module, a name brought in by use, or a one-letter type parameter in a function signature.", .fixes = &.{} },
     .expose_undeclared = .{ .code = "MO0203", .category = .types, .what = "<name> is exposed but not declared in this module", .why = "The expose line is the module's table of contents; every name on it must be declared in the module (grammar, semantic rules).", .fixes = &.{} },
     .expose_twice = .{ .code = "MO0204", .category = .types, .what = "<name> is on the expose line twice", .why = "The expose line names each public declaration exactly once.", .fixes = &.{} },
@@ -151,6 +151,8 @@ pub const Decl = struct {
     resolving: bool = false,
     /// The module that declares it.
     module: u32 = 0,
+    /// A process whose update reads `reply_by` (step 22), which the runtimes bind only then.
+    reads_reply_by: bool = false,
 };
 
 /// `optional`: a stdlib struct's field that may be left out when it is built (prelude.zig).
@@ -512,6 +514,8 @@ const Checker = struct {
     verified_lines: []const VerifiedLine = &.{},
     /// The last module's lines as its file is on disk (checkProgram).
     own_lines: ?u32 = null,
+    /// An arm of the update being checked read its reply_by.
+    update_reads_reply_by: bool = false,
 
     // ---- small helpers
 
@@ -1226,7 +1230,7 @@ const Checker = struct {
                 return types.unknown;
             }
             return switch (pt.kind) {
-                .int, .float, .bool, .string, .time, .duration, .capability => primitive(name).?,
+                .int, .float, .bool, .string, .time, .duration, .deadline, .capability => primitive(name).?,
                 .list => c.pool.list1(.list, try c.resolveType(args[0], ctx)),
                 .option => c.pool.list1(.option, try c.resolveType(args[0], ctx)),
                 .result => c.pool.result(try c.resolveType(args[0], ctx), try c.resolveType(args[1], ctx)),
@@ -1504,7 +1508,9 @@ const Checker = struct {
         try c.bindParams(decl.params);
         try c.bind("state", state_t, .state, update.main_token);
         try c.bind("message", message_t, .state, update.main_token);
+        c.update_reads_reply_by = false;
         _ = try c.caseCheck(update.lhs, types.unknown, .update);
+        c.decls.items[d].reads_reply_by = c.update_reads_reply_by;
         try c.popScope(mark);
         try c.endFrame(saved);
     }
@@ -2441,7 +2447,11 @@ const Checker = struct {
                         const other = c.replyOfPattern(alt, subject) orelse types.none;
                         if (!c.pool.unify(reply, other)) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("{s} replies with {s} and the first alternative with {s}, so it takes an arm of its own", .{ c.text(c.node(alt).main_token), try c.tn(other), try c.tn(reply) }));
                     };
+                    // The asker's deadline, in an arm that answers one (step 22).
+                    const reply_by: ?usize = if (c.pool.resolve(reply) != types.none) c.bindings.items.len else null;
+                    if (reply_by != null) try c.bind("reply_by", types.deadline, .param, an.main_token);
                     _ = try c.blockValue(body, reply);
+                    if (reply_by) |k| c.update_reads_reply_by = c.update_reads_reply_by or c.bindings.items[k].used;
                 } else try c.blockStmts(body),
             }
             try c.popScope(mark);
@@ -3043,6 +3053,14 @@ const Checker = struct {
     }
 
     /// A prelude function called on a value. Null when no row fits the receiver.
+    /// `within:` takes a Duration, or a Deadline such as `reply_by`, which the call waits until
+    /// (step 22).
+    fn deadlineArg(c: *Checker, arg: Index) Error!void {
+        const t = try c.expr(arg, types.unknown);
+        if (c.bt(t).tag == .deadline) return;
+        if (!c.pool.unify(types.duration, t)) try c.reportNode(.mismatch, arg, try c.print("within: takes a Duration or a Deadline, found {s}", .{try c.tn(t)}));
+    }
+
     fn preludeMethod(c: *Checker, i: Index, recv: ?Index, t: Id, name: []const u8, args: []const u32) Error!?Id {
         var fallback: ?usize = null;
         for (prelude.fns, 0..) |row, k| {
@@ -3075,7 +3093,7 @@ const Checker = struct {
             const nm = c.text(an.main_token);
             c.node_types[a] = types.none;
             if (std.mem.eql(u8, nm, "within")) {
-                _ = try c.expr(an.lhs, types.duration);
+                try c.deadlineArg(an.lhs);
                 continue;
             }
             const f = for (row.named) |f| {
@@ -3288,7 +3306,7 @@ const Checker = struct {
             }
             c.node_types[a] = types.none;
             if (std.mem.eql(u8, c.text(an.main_token), "within")) {
-                _ = try c.expr(an.lhs, types.duration);
+                try c.deadlineArg(an.lhs);
                 continue;
             }
             try c.reportTok(.bad_named_arg, an.main_token, try c.print("{s} takes its arguments by position; {s}: is not one of them", .{ label, c.text(an.main_token) }));
@@ -3513,7 +3531,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Int64", types.int(.i64) },       .{ "UInt8", types.int(.u8) },    .{ "UInt16", types.int(.u16) },
         .{ "UInt32", types.int(.u32) },      .{ "UInt64", types.int(.u64) },  .{ "Float32", types.float32 },
         .{ "Float64", types.float64 },       .{ "Bool", types.bool_ },        .{ "String", types.string },
-        .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Clock", types.cap(.clock) },
+        .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Deadline", types.deadline }, .{ "Clock", types.cap(.clock) },
         .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
@@ -3852,6 +3870,60 @@ test "bindings: rebinding, unused, a captured var, a var sent to a process" {
         \\  p.send(Add(n: k))
         \\end
     , &.{"MO0315"});
+}
+
+test "reply_by is the asker's deadline in an arm that answers, within: takes it, and nowhere else has one" {
+    try expectCodes(
+        \\module T.Deadlines
+        \\process P(fs: Fs)
+        \\  state
+        \\    n: UInt32
+        \\  end
+        \\  message Read : Bool
+        \\  message Poke
+        \\  fn update(state, message)
+        \\    case message
+        \\      Read: read?(fs, reply_by.at_most(1.minute))
+        \\      Poke:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor S(fs: Fs)
+        \\  child P(fs), restart: :always
+        \\end
+        \\fn read?(fs: Fs, by: Deadline) : Bool
+        \\  fs.read("a", within: by) is Ok(_)
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.NoAsker
+        \\process P(fs: Fs)
+        \\  state
+        \\    n: UInt32
+        \\  end
+        \\  message Poke
+        \\  fn update(state, message)
+        \\    case message
+        \\      Poke:
+        \\        state.n += if fs.read("a", within: reply_by) is Ok(_)
+        \\          1
+        \\        else
+        \\          0
+        \\        end
+        \\    end
+        \\  end
+        \\end
+        \\supervisor S(fs: Fs)
+        \\  child P(fs), restart: :always
+        \\end
+    , &.{"MO0201"});
+    try expectWhat(
+        \\module T.NotADeadline
+        \\fn read?(fs: Fs) : Bool
+        \\  fs.read("a", within: "soon") is Ok(_)
+        \\end
+    , "MO0206", "within: takes a Duration or a Deadline, found String");
 }
 
 test "case: a missing variant is named; a catch-all arm on an enum names what it hides" {

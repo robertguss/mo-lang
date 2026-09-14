@@ -104,6 +104,10 @@ pub const Op = enum(u8) {
     send,
     /// pop the deadline, a message, then a Handle; push Ok(reply), Error(Timeout), or Error(Down)
     ask,
+    /// push the running update's reply_by, the asker's deadline on the runtime's clock (step 22)
+    reply_by,
+    /// pop a Deadline; push the Duration that remains of it, or -1 ms when nothing remains
+    deadline_left,
     /// deliver waiting messages, in start order, until every mailbox is empty
     settle,
     /// push the distinct values of recorded type a (Program.recorded_as) the run held, as
@@ -307,6 +311,8 @@ pub const Process = struct {
     /// An invariant reads old(state), so an update never overwrites the state before it in
     /// place (sim.zig).
     reads_old: bool = false,
+    /// Its update reads reply_by, so under faults an ask to it may arrive with nothing left.
+    reads_reply_by: bool = false,
 };
 
 /// A `child` line: `args` takes the supervisor's parameters and gives the child's
@@ -1090,6 +1096,11 @@ const Lower = struct {
         try l.bindParams(d.params);
         const state_slot = try l.bindName("state", true);
         _ = try l.bindName("message", false);
+        if (d.reads_reply_by) {
+            const reply_by = try l.bindName("reply_by", false);
+            _ = try l.emit(.reply_by, 0, 0);
+            _ = try l.emit(.store, reply_by, 0);
+        }
         b.result = l.slot();
         try l.caseLower(update.lhs, true);
         _ = try l.emit(.store, b.result, 0);
@@ -1130,6 +1141,7 @@ const Lower = struct {
             .update = update_fn,
             .invariants = invariants.items,
             .reads_old = reads_old,
+            .reads_reply_by = d.reads_reply_by,
         };
     }
 
@@ -1860,7 +1872,7 @@ const Lower = struct {
             }
             for (args) |a| {
                 const an = l.node(a);
-                if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), "within")) try l.expr(an.lhs);
+                if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), "within")) try l.withinArg(an.lhs);
             }
             _ = try l.emit(.ask, 0, 0);
             return;
@@ -1911,9 +1923,16 @@ const Lower = struct {
                 const an = l.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), "within")) break an.lhs;
             } else 0;
-            if (within != 0) try l.expr(within) else try l.pushConst(.none);
+            if (within != 0) try l.withinArg(within) else try l.pushConst(.none);
         }
         _ = try l.emit(.prim, k, kind);
+    }
+
+    /// A `within:` argument: a Duration as it is, and a Deadline as the Duration that remains of
+    /// it (step 22).
+    fn withinArg(l: *Lower, arg: Index) Error!void {
+        try l.expr(arg);
+        if (l.k.pool.get(l.k.pool.base(l.typeOf(arg))).tag == .deadline) _ = try l.emit(.deadline_left, 0, 0);
     }
 
     /// Whether call `i` is the right side of `m = m.set(k, v)`, `update`, or `remove` on a

@@ -15,6 +15,7 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `String` | | UTF-8 text | grammar |
 | `Time` | | an instant | grammar |
 | `Duration` | | a length of time | grammar |
+| `Deadline` | | a point on the runtime's clock a call may wait until: `reply_by`, and what `at_most` gives; `within:` takes one as it takes a `Duration` | stdlib (09), Session 5, step 22 |
 | `List` | `T` | list | grammar |
 | `Option` | `T` | `Some(T)` or `None` | grammar |
 | `Result` | `T`, `E` | `Ok(T)` or `Error(E)` | grammar |
@@ -102,7 +103,7 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 
 ## Functions
 
-Every function is called with a dot on its receiver (`xs.push(x)`), or on the type for rows marked *on type* (`Clock.fixture()`). *Waits* means the call can wait, so it takes `within: Duration` and the checker rejects it without one (MO0401); a call that cannot wait rejects `within:` (MO0402).
+Every function is called with a dot on its receiver (`xs.push(x)`), or on the type for rows marked *on type* (`Clock.fixture()`). *Waits* means the call can wait, so it takes `within: Duration` or `within: Deadline` and the checker rejects it without one (MO0401); a call that cannot wait rejects `within:` (MO0402). Inside the `update` arm for a message that carries a reply, `reply_by` is the asker's `Deadline` (Session 5, step 22).
 
 | receiver | name | parameters | returns | waits | where | origin |
 |---|---|---|---|---|---|---|
@@ -181,6 +182,8 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Time` | `since` | `Time` | `Duration` | | | stdlib (09) |
 | `Duration` | `ms` | | `Int64` | | | stdlib (09) |
 | `Duration` | `seconds`, `minutes` | | `Float64` | | | stdlib (09) |
+| `Deadline` | `at_most` | `Duration` | `Deadline`: the earlier of the deadline and now plus the duration | | | stdlib (09), Session 5, step 22 |
+| `Deadline` (on type) | `fixture` | `Duration` | `Deadline`: now plus the duration on the test's clock | | tests | stdlib (09), Session 5, step 22 |
 | `Clock` | `now` | | `Time` | | | grammar |
 | `Clock` (on type) | `fixture` | | `Clock` | | tests | grammar |
 | `Fs` | `read` | `String` | `Result(String, FsError)`, `NotText` for a file that is not UTF-8 | yes | | grammar |

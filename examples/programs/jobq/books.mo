@@ -1,9 +1,10 @@
 module Jobq.Books
-expose Step, Books, Place, Committed, Health, committed, opened, unopened, health_of
+expose Step, Books, Place, Moment, Committed, Health, committed, opened, unopened, health_of
 
 use Jobq.Board{Board, board, placed, highest}
 use Jobq.Job{Job, State, job, run_out?, holds?, id_of, shown, job_of}
-use Jobq.Store{Table, StoreError, open, continued, get, keys, put_all, compact, cut_short?}
+use Jobq.Journal{opened_by, continued, put_all, compacted}
+use Jobq.Store{Table, StoreError, get, keys, cut_short?}
 
 intent "The books a queue service keeps: the store and the jobs on the board, opened from the log and changed only by a write the log took first, one append for every change a call makes; and the nevers every such write is held to."
 
@@ -59,6 +60,13 @@ struct Place
   log: String
 end
 
+# When a call is served: the service's clock, and the deadline of the ask it answers, which
+# every file call the call makes waits on.
+struct Moment
+  now: Time
+  by: Deadline
+end
+
 # The books after a write, whether the log took it, and the steps it made.
 struct Committed
   books: Books
@@ -79,26 +87,26 @@ end
 # from the store first. A log that did not take them leaves the books as they were, torn when
 # it may end in part of them.
 fn committed(fs: Fs, books: Books, changes: List((Option(Job), Job)), ceiling: UInt64,
-  now: Time) : Committed
+  at: Moment) : Committed
   if changes.size == 0 and ceiling == 0
     return Committed(books: books, ok: true, steps: [])
   end
-  case mended(fs, books)
+  case mended(fs, books, at.by)
     Ok(whole):
       pairs = reserved(ceiling).concat(changes.map(fn(c) (id_of(c.1.number), shown(c.1)) end))
-      case put_all(fs, whole.table, pairs)
+      case put_all(fs, whole.table, pairs, at.by)
         Ok(table):
           var after = whole
           after.table = table
           after.board = changes.reduce(whole.board, fn(b, change) placed(b, change.1) end)
           after.reserved = max_of(whole.reserved, ceiling)
-          Committed(books: after, ok: true, steps: stepped(changes, now, true))
+          Committed(books: after, ok: true, steps: stepped(changes, at.now, true))
         Error(problem):
           var torn = whole
           torn.torn = problem == Torn
-          Committed(books: torn, ok: false, steps: stepped(changes, now, false))
+          Committed(books: torn, ok: false, steps: stepped(changes, at.now, false))
       end
-    Error(_): Committed(books: books, ok: false, steps: stepped(changes, now, false))
+    Error(_): Committed(books: books, ok: false, steps: stepped(changes, at.now, false))
   end
 end
 
@@ -111,9 +119,9 @@ fn stepped(changes: List((Option(Job), Job)), now: Time, logged: Bool) : List(St
   changes.map(fn(c) Step(before: c.0, after: Some(c.1), now: now, logged: logged, kept: logged) end)
 end
 
-fn mended(fs: Fs, books: Books) : Result(Books, StoreError)
+fn mended(fs: Fs, books: Books, by: Deadline) : Result(Books, StoreError)
   return Ok(books) if !books.torn
-  table = try compact(fs, books.table)
+  table = try compacted(fs, books.table, by)
   var after = books
   after.table = table
   after.torn = false
@@ -156,15 +164,15 @@ fn unopened(place: Place) : Books
   Books(table: table, board: board(), next_id: 1, reserved: 1, torn: false)
 end
 
-# The books the place's logs replay to: every record a job, the next id above every id the log
-# holds and every id it reserved, and a log whose last line was cut short rewritten at the first
-# change.
-fn opened(fs: Fs, place: Place) : Result(Books, String)
-  first = try table_of(open(fs, place.dir))
+# The books the place's logs replay to on the deadline: every record a job, the next id above
+# every id the log holds and every id it reserved, and a log whose last line was cut short
+# rewritten at the first change.
+fn opened(fs: Fs, place: Place, by: Deadline) : Result(Books, String)
+  first = try table_of(opened_by(fs, place.dir, by))
   table = if place.log == "jobq.log"
     first
   else
-    try table_of(continued(fs, first, place.log))
+    try table_of(continued(fs, first, place.log, by))
   end
   names = keys(table, "j_")
   jobs = names.flat_map(fn(key) record_at(table, key) end)
@@ -189,7 +197,7 @@ fn table_of(opened_table: Result(Table, StoreError)) : Result(Table, String)
     Ok(table): Ok(table)
     Error(NoFolder): Error("is not a folder jobq can read")
     Error(Unreadable): Error("holds a jobq log jobq cannot read")
-    Error(Slow): Error("took longer than ten minutes to read")
+    Error(Slow): Error("took longer to read than its opening was given")
     Error(BadLine(number)): Error("holds a jobq log whose line #{number} is not a SET or a DEL")
     Error(Unwritten) | Error(Torn): Error("holds a jobq log jobq could not write")
   end
@@ -206,23 +214,24 @@ test "a log with a record that is not a job does not open, and one cut short ope
   at = Time.fixture()
   place = Place(dir: "d", log: "jobq.log")
   assert fs.write("d/jobq.log", "SET j_1 not json\n", within: 1.minute) is Ok(_)
-  assert opened(fs, place) == Error("holds a jobq.log with a record that is not a job")
+  assert opened(fs, place,
+    Deadline.fixture(1.minute)) == Error("holds a jobq.log with a record that is not a job")
   assert fs.write("d/jobq.log", "SET j_1 #{shown(job(2, "q", "p", 1, at))}\n",
     within: 1.minute) is Ok(_)
-  assert opened(fs, place) is Error(_)
+  assert opened(fs, place, Deadline.fixture(1.minute)) is Error(_)
   text = "SET ids 50\nSET j_2 #{shown(job(2, "q", "p", 1, at))}\nSET j_3 {"
   assert fs.write("d/jobq.log", text, within: 1.minute) is Ok(_)
-  assert opened(fs, place) is Ok(books)
+  assert opened(fs, place, Deadline.fixture(1.minute)) is Ok(books)
   assert books.torn and books.next_id == 50 and books.board.size == 1
   assert health_of(books, 7) == Health(queued: 1, leased: 0, done: 0, dead: 0, uptime_ms: 7)
 end
 
 test "a folder that is not there does not open, as jobq serve refuses it"
   fs = Fs.fixture()
-  assert opened(fs,
-    Place(dir: "nowhere", log: "jobq.log")) == Error("is not a folder jobq can read")
+  assert opened(fs, Place(dir: "nowhere", log: "jobq.log"),
+    Deadline.fixture(1.minute)) == Error("is not a folder jobq can read")
   assert fs.mkdir("empty", within: 1.minute) is Ok(_)
-  assert opened(fs, Place(dir: "empty", log: "jobq.log")) is Ok(books)
+  assert opened(fs, Place(dir: "empty", log: "jobq.log"), Deadline.fixture(1.minute)) is Ok(books)
   assert books.board.size == 0 and !books.torn
 end
 
@@ -232,12 +241,13 @@ test "a check's own log replays over the folder's, and its changes go only to it
   made = job(1, "q", "p", 1, at)
   assert fs.write("d/jobq.log", "SET j_1 #{shown(made)}\n", within: 1.minute) is Ok(_)
   place = Place(dir: "d", log: "jobq.check.log")
-  assert opened(fs, place) is Ok(books)
+  assert opened(fs, place, Deadline.fixture(1.minute)) is Ok(books)
   gone = Job(number: 1, queue: "q", status: Dead, payload: "p", attempts: 1, max_attempts: 1,
     created_at: at, updated_at: at, worker: None, lease_until: None, reason: Some("x"))
-  done = committed(fs, books, [(Some(made), gone)], 0, at)
+  done = committed(fs, books, [(Some(made), gone)], 0,
+    Moment(now: at, by: Deadline.fixture(1.minute)))
   assert done.ok and done.steps.size == 1
-  assert opened(fs, place) is Ok(again)
+  assert opened(fs, place, Deadline.fixture(1.minute)) is Ok(again)
   assert again.board.counts.dead == 1
   assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET j_1 #{shown(made)}\n")
 end

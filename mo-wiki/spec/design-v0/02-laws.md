@@ -11,7 +11,7 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 ## Bounding laws
 
 - Loops iterate a finite collection or a range. No `while`, no `loop`; a wait that would need one is a message the runtime delivers (chapter 3, step 20). Recursion is bounded by depth: calls nest at most 10,000 deep, past which the process crashes with a report, in every build. Termination is a proof obligation for `mo prove`, never a syntax rule.
-- Every effectful call that can wait carries a deadline (`within:`) and returns a `Result`; the platform marks which calls can wait (`clock.now` and `events.emit` cannot). Timeout is an ordinary error variant the caller must handle.
+- Every effectful call that can wait carries a deadline (`within:`) and returns a `Result`; the platform marks which calls can wait (`clock.now` and `events.emit` cannot). Timeout is an ordinary error variant the caller must handle. A deadline is a `Duration` or a `Deadline`: inside the `update` arm that answers an `ask`, `reply_by` is the asker's deadline, so a call on it waits only what remains of the ask, and `reply_by.at_most(d)` may tighten it but nothing extends it. Session 5, step 22: after program 1 derived three deadlines by hand as sums of literals and two of the sums were wrong.
 - Every mailbox has a declared bound. Overflow is a bug (see chapter 3).
 - Integers are explicitly sized. Overflow is a bug and crashes, in every build. Named `checked_`, `saturating_`, `wrapping_` variants state any other intent.
 

@@ -2855,6 +2855,9 @@ static char *file_scoped(const Scope *scope, const char *path, size_t n) {
 
 /* ---- files: an Fs.fixture()'s, in memory (stdlib.zig FixtureFs) */
 
+/* The run's clock in a test (defined with the processes below); fixture waits move it. */
+static int64_t sim_waited;
+
 typedef struct { char *path; MoValue text; } FixFile;
 typedef struct { FixFile *files; size_t n, cap; } FixSystem;
 typedef struct { int32_t system; char *folder; bool read_only, empty; int64_t delay; } FixScope;
@@ -3030,7 +3033,13 @@ static MoValue fixture_files(int which, const MoValue *a) {
     MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
-    if (scope.delay > within) return timed_out();
+    if (scope.delay > within) {
+        /* Past its deadline the call waited the whole of it (step 22). */
+        sim_waited += within > 0 ? within : 0;
+        return timed_out();
+    }
+    /* A call that answers after the fixture's delay waited it: the clock moves (step 22). */
+    if (scope.delay > 0) sim_waited += scope.delay;
     FixSystem *sys = scope.system >= 0 ? &fix_systems[scope.system] : NULL;
     if (which == FS_LIST) {
         if (!sys) return ok_of(mo_list(NULL, 0));
@@ -4257,7 +4266,9 @@ typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
 
 /* A message in a mailbox or an outbox; under main it came in a parcel the mailbox, then the
  * log, owns. */
-typedef struct { MoValue message; uint64_t seq; Parcel *parcel; } Entry;
+/* `deadline`, when `has_deadline`: an ask's, on the runtime's clock (deadline_now), which the update
+ * that takes it sees as reply_by (sim.zig, Entry). */
+typedef struct { MoValue message; uint64_t seq; Parcel *parcel; bool has_deadline; int64_t deadline; } Entry;
 typedef struct { uint32_t to; MoValue message; Parcel *parcel; } Outgoing;
 typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; } Policy;
 
@@ -4290,6 +4301,9 @@ typedef struct {
     int64_t now;
     /* Under main, a sweep ended it: its id waits in free_ids. */
     bool ended;
+    /* The running update's reply_by: its message's ask deadline, or when it was taken for a message
+     * that came with none (step 22). */
+    int64_t reply_by;
     /* Its update waits in an ask to this process, or NOBODY; or in a call on a peer. */
     uint32_t asking;
     bool has_wait;
@@ -4496,7 +4510,7 @@ static uint64_t enqueue(uint32_t to, MoValue message, Parcel *parcel) {
     uint64_t seq = next_seq++;
     Proc *p = procs[to];
     GROW_ARRAY(p->mailbox, p->mailbox_len, p->mailbox_cap);
-    p->mailbox[p->mailbox_len++] = (Entry){message, seq, parcel};
+    p->mailbox[p->mailbox_len++] = (Entry){message, seq, parcel, false, 0};
     if (turns_on) mark_runnable(to);
     return seq;
 }
@@ -4690,12 +4704,41 @@ static void check_doomed(void) {
 }
 
 static MoValue ask_inline(uint32_t to, MoValue message, MoValue within);
+static int64_t now_ms(void);
+
+/* The clock deadlines are points on (step 22): under main the runtime's monotonic clock, and in a
+ * test the run's, which only fixture waits move (sim.zig, deadlineNow). */
+static int64_t deadline_now(void) { return turns_on ? now_ms() : sim_waited; }
+
+/* reply_by in the running update. */
+MoValue mo_reply_by(void) { return mo_time(running != NOBODY ? procs[running]->reply_by : deadline_now()); }
+
+/* A Deadline given to within:: the Duration that remains of it, or -1 ms when nothing does. */
+MoValue mo_deadline_left(MoValue deadline) {
+    int64_t left = deadline.as.i - deadline_now();
+    return mo_duration(left > 0 ? left : -1);
+}
+
+/* A call whose deadline has nothing left: Timeout at once, and the call is not made (step 22). */
+MoValue mo_timed_out_now(void) { return error_of(mo_variant(MO_N_TIMEOUT, 0, NULL)); }
+
+/* Deadline.fixture(d): a test has no asker, so a deadline d from now on the run's clock. */
+MO_ROW(mo_r_Deadline_fixture) { (void)kind; return mo_time(deadline_now() + a[0].as.i); }
+
+/* deadline.at_most(d): the earlier of the deadline and now plus d. */
+MO_ROW(mo_r_Deadline_at_most) {
+    (void)kind;
+    int64_t later = deadline_now() + a[1].as.i;
+    return mo_time(a[0].as.i < later ? a[0].as.i : later);
+}
 
 /* `h.ask(message, within: d)`: the target's waiting messages run, then this one, and the
  * reply is the value of its arm. Timeout when the target's fixtures are slower than d, or its
  * fixture calls waited longer than d while it answered; Down when the target is down or
  * crashed before replying. A Timeout's message still arrives. */
 MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
+    /* Nothing remains of the deadline: Timeout at once, and nothing is sent (step 22). */
+    if (within.as.i < 0) return ask_error(MO_N_TIMEOUT);
     uint32_t to = (uint32_t)handle.as.i;
     ask_on(to);
     MoValue reply = turns_on ? turns_ask(to, message, within.as.i) : ask_inline(to, message, within);
@@ -4711,6 +4754,9 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     int64_t waited = sim_waited;
     room_for(to, message);
     uint64_t seq = enqueue(to, message, NULL);
+    Proc *target = procs[to];
+    target->mailbox[target->mailbox_len - 1].has_deadline = true;
+    target->mailbox[target->mailbox_len - 1].deadline = waited + within.as.i;
     MoValue reply;
     for (;;) {
         Proc *p = procs[to];
@@ -4723,7 +4769,10 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
             break;
         }
     }
-    if (delay_of(to) + (sim_waited - waited) > within.as.i) return ask_error(MO_N_TIMEOUT);
+    /* A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
+     * pass its deadline, or when its slowest fixture is slower than it. A target whose calls wait on
+     * reply_by never passes it, since none of them waits longer than what remains. */
+    if (delay_of(to) > within.as.i || sim_waited - waited > within.as.i) return ask_error(MO_N_TIMEOUT);
     return ok_of(reply);
 }
 
@@ -4948,6 +4997,7 @@ static Delivered deliver(uint32_t id) {
     }
     log_message(p, entry);
     if (server_mode) p->now = wall_ms();
+    p->reply_by = entry.has_deadline ? entry.deadline : deadline_now();
     MoValue before = p->state;
     /* Under main, everything the update allocates is past this mark, the message copied out of
      * its parcel first. What it overwrites older than the mark is undone on a crash, and not
@@ -5794,6 +5844,8 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     GROW_ARRAY(awaiting, nawaiting, capawaiting);
     awaiting[nawaiting++] = (Awaiting){seq, holder};
     int64_t deadline = now_ms() + (within > 0 ? within : 0);
+    procs[to]->mailbox[procs[to]->mailbox_len - 1].has_deadline = true;
+    procs[to]->mailbox[procs[to]->mailbox_len - 1].deadline = deadline;
     for (;;) {
         /* A wait elsewhere doomed this ask (held sends): mo_ask crashes the update. */
         if (running != NOBODY && procs[running]->doomed) {
