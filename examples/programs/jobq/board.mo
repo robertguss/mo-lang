@@ -1,5 +1,5 @@
 module Jobq.Board
-expose Command, Call, Outcome, Counts, Order, Board, Decision, Kept, board, decide, rebuilt, records, health_of
+expose Command, Call, Outcome, Counts, Order, Board, Decision, Kept, board, decide, rebuilt, records, health_of, snapshot
 
 use Jobq.Job{Phase, Job, job, leased, acked, failed, looked, holds?, payload?, id_of, number_of, shown, decoded}
 
@@ -492,6 +492,16 @@ fn placed(board: Board, held: Job) : Board
   after
 end
 
+# The board as the changes that write it whole: the reserved numbers, then every job's record by
+# number.
+fn snapshot(board: Board) : List((String, Option(String)))
+  ensures result.size == all_jobs(board).size + 1
+
+  [("ids", Some("#{board.reserved}"))].concat(all_jobs(board).map(fn(j)
+    (id_of(j.number), Some(shown(j)))
+  end))
+end
+
 # Every job's record, by number, as the store holds them.
 fn records(board: Board) : List(String)
   all_jobs(board).map(fn(j) shown(j) end)
@@ -661,6 +671,15 @@ test "a board rebuilt from its records holds the same jobs, leases, counts, and 
   assert empty.next == 1
 end
 
+test "a board's snapshot rebuilds the same board"
+  b = with_jobs(["a", "b", "a"])
+  lent_one = lease_by(b, "w1", "a", 1_000, start()).board
+  lines = snapshot(lent_one)
+  assert lines.first == Some(("ids", Some("1001")))
+  assert rebuilt(lines.map(fn(l) (l.0, l.1 or "") end), start()) is Some(again)
+  assert records(again) == records(lent_one) and again.reserved == lent_one.reserved
+end
+
 test rejects "an empty board whose first number is 0"
   board(start(), 0)
 end
@@ -675,5 +694,5 @@ property "a job made then fetched gives back any valid payload"
   end
 end
 
-verified: types, contracts, tests (9), property (200 seeds), sim (not run)
+verified: types, contracts, tests (10), property (200 seeds), sim (not run)
           proven: not run
