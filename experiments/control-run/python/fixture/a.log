@@ -1,5 +1,0 @@
-2026-09-12T10:00:01Z GET /api/users 200 12
-2026-09-12T10:00:02Z POST /api/orders 500 340
-2026-09-12T10:00:05Z GET /api/users 200 8
-this line is not a log line
-2026-09-12T10:00:07Z GET /api/users/42 404 15
