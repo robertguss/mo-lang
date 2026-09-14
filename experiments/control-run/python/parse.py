@@ -8,9 +8,12 @@ from datetime import UTC, datetime, timedelta
 
 from contracts import require
 
+FIELD_COUNT = 5
+STATUS_DIGITS = 3
 STATUS_MIN = 100
 STATUS_MAX = 599
 UINT32_MAX = 4_294_967_295
+UINT32_DIGITS = len(str(UINT32_MAX))
 
 _TIMESTAMP = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})"
@@ -64,8 +67,8 @@ def decode_line(raw: bytes) -> str:
 def parse_line(line: str) -> Record:
     """Parse one line, already stripped of its line ending."""
     fields = line.split(" ")
-    if len(fields) != 5:
-        raise Malformed(f"expected 5 space-separated fields, found {len(fields)}")
+    if len(fields) != FIELD_COUNT:
+        raise Malformed(f"expected {FIELD_COUNT} space-separated fields, found {len(fields)}")
     at, method, path, status, duration = fields
     return Record(
         at=at,
@@ -88,9 +91,9 @@ def parse_timestamp(text: str) -> int:
         raise Malformed("timestamp is not YYYY-MM-DDTHH:MM:SS with a zone")
     try:
         moment = datetime.fromisoformat(text)
-        return (moment - _EPOCH) // _MICROSECOND
-    except (ValueError, OverflowError) as exc:
+    except ValueError as exc:
         raise Malformed("timestamp is not a real instant") from exc
+    return (moment - _EPOCH) // _MICROSECOND
 
 
 def parse_method(text: str) -> str:
@@ -106,7 +109,7 @@ def parse_path(text: str) -> str:
 
 
 def parse_status(text: str) -> int:
-    if len(text) != 3 or not _is_ascii_digits(text):
+    if len(text) != STATUS_DIGITS or not is_ascii_digits(text):
         raise Malformed("status is not three digits")
     status = int(text)
     if not STATUS_MIN <= status <= STATUS_MAX:
@@ -115,7 +118,7 @@ def parse_status(text: str) -> int:
 
 
 def parse_duration(text: str) -> int:
-    if not _is_ascii_digits(text) or len(text.lstrip("0")) > 10:
+    if not is_ascii_digits(text) or len(text.lstrip("0")) > UINT32_DIGITS:
         raise Malformed("duration_ms is not a decimal of at most 10 digits")
     duration = int(text)
     if duration > UINT32_MAX:
@@ -123,6 +126,6 @@ def parse_duration(text: str) -> int:
     return duration
 
 
-def _is_ascii_digits(text: str) -> bool:
+def is_ascii_digits(text: str) -> bool:
     """`str.isdigit` alone accepts other scripts' digits, and `int` accepts `_` and spaces."""
     return text.isascii() and text.isdigit()
