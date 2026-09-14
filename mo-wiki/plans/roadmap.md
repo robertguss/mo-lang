@@ -34,8 +34,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | done: the value form in both runtimes, 25 on one line in the corpus, the first Linux run green | — |
 | Step 26, the tail-position one-line `if` and two keyword diagnostics ([[interpreter-step-26]]) | done | — |
 | Round 6 of the control run, pre-registered ([[control-run-6]]), the baselines with their checks | done: **failed on all four predictions**; the null hypothesis stands; three rows for Robert | — |
-| Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | in progress | 1 |
-| Round 7, after step 27, on Robert's new measure: native speed and memory, the feedback loop, the dependency count; the Mo programs removed from every worktree | queued | — |
+| Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | done | — |
+| Round 7 ([[control-run-7]]), on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, the dependency count | running | — |
 | Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, a real open-source tool or library reimplemented in Mo against its own test suite (Robert, 14 Sep; CommonMark or Raft, chosen when a program finishes with no new gap or bug note) | after program 6 passes the readiness rule | 2 |
@@ -77,6 +77,7 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 20b | done: round 4, timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept ([[control-run-4]]) | round 5 after program 1 |
 | 21 | done: green threads in both runtimes, 65,530 idle connections from 8,000, a process at rest half its size, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics ([[interpreter-step-21]]) | program 1 |
 | 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
+| 29 | done: step 27: the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, `\u{X}`, `fold_lines` past a bad line ([[interpreter-step-27]]) | round 7 |
 | 28b | done: round 6, pre-registered, failed on all four predictions: 1.58 times Go, a shape-law loop, no check caught a bug in any language, 0.74 of Go's lines ([[control-run-6]]) | Robert's reading of the laws |
 | 28 | done: step 26: the one-line `if` in tail position is the value, the keyword sentence for `state` and `old` as names ([[interpreter-step-26]]) | round 6 |
 | 27 | done: step 25: the one-line `if` as a value in both runtimes, `state` and `old` as field names, the `if` hole closed, `agent` narrowed to its spec, the suite's first Linux run green ([[interpreter-step-25]]) | step 26, round 6 |

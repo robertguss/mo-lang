@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [laws, syntax, contracts, compiler]
 sources: [plans/control-run-6.md, spec/design-v0/02-laws.md, decisions/decision-log.md]
-status: queued
+status: done
 ---
 
 # Step 27: what round 6 found
@@ -49,6 +49,12 @@ Every changed corpus file under `mo test`, `--sim 100`, and as a `--tests` binar
 ## Done when
 
 Green at every commit; `MO0302` gone; the three words as names with their corpus files; the `never` rule with its file and both runtimes; the escape, the diagnostic, and `fold_lines`; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Accepted 14 Sep 2026, 16:50 UTC. Five commits in 48 minutes, green at each, 185 of 185. Part A: `MO0302` and its plumbing gone, the other shape laws untouched. Part B: the lexer keeps the three tokens and the parser retags them as names outside the reserved positions; the keyword sentence stays for those positions and `result` gets its own; `keyword-fields.mo` extended, three rejects files moved to the reserved cases, `rejects/unbound-result.mo` new. Part C: a field write skips the `T.all` record when the next statement of the body assigns the same root name; both backends; `contracts/never-var-copy.mo` holds round 6's `Pair` reproduction passing beside a half-moved copy that still trips. Part D: `\u{X}` in both backends, `MO0101` at an unknown escape naming the escapes, `fold_lines` past a non-UTF-8 line with U+FFFD; `basics/strings.mo`, `rejects/unknown-escape.mo`, `programs/not-text.mo` updated. Part E: bench rows. Numbers (best of 20): lex 7,091 → 6,816 µs, parse 17,524 → 17,038, check 61,367 → 59,202 over 151 → 154 files; logstat-4k 103.9 → 105.5 ms interpreted, 13.7 → 13.9 native; kv-10k-get within noise; no function over 70 lines (longest 48).
+
+Fable's probes: a 606-line file accepted; `state` and `result` as parameters and bindings and `old` as an anonymous function's parameter in a plain function, under `mo test` and as a test binary; `state` as a process parameter refused with the sentence; the `Pair` reproduction passing and the half-moved copy tripping in both runtimes; `"\u{85}"` two bytes, `"\u{1F600}"` four, `"\q"` refused; `fold_lines` counting one non-UTF-8 line of three from `mo run` and the binary. Found on the side: a wrong duration unit (`1.second`) crashes at run time with "second is a field of a type tier 2 cannot see" instead of a check-time diagnostic naming the units; to housekeeping.
 
 ## Related
 - [[control-run-6]]
