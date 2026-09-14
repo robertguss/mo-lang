@@ -1,4 +1,4 @@
-"""The HTTP API as a function from a request to a response. The server and the simulation call it."""
+"""The HTTP API as a function from request to response; the server and the simulation call it."""
 
 import json
 from collections.abc import Callable
@@ -255,7 +255,9 @@ def _refused(refusal: Refusal, conflict: str) -> Response:
     return error(HTTPStatus.CONFLICT, conflict)
 
 
-def _parse[M: BaseModel](model: type[M], body: bytes, empty_is_object: bool = False) -> M | Response:
+def _parse[M: BaseModel](
+    model: type[M], body: bytes, empty_is_object: bool = False
+) -> M | Response:
     if empty_is_object and not body.strip():
         body = b"{}"
     try:
