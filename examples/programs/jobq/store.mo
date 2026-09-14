@@ -144,21 +144,28 @@ fn put_all(fs: Fs, table: Table, changes: List((String, Option(String)))) : Resu
     get(after, c.0) == last_of(changes, c.0)
   end)
 
-  planned = changes.reduce((table, [""].take(0)), fn(acc, c) planned_with(acc, c) end)
-  return Ok(table) if planned.1.size == 0
-  size = try appended(fs, table, String.join(planned.1, ""))
-  var after = planned.0
+  kept = kept_lines(table, changes)
+  return Ok(table) if kept.size == 0
+  size = try appended(fs, table, String.join(kept, ""))
+  lines_before = table.lines
+  var after = changes.reduce(table, fn(so_far, c) changed(so_far, c) end)
   after.bytes = size
-  after.lines = table.lines + planned.1.size
+  after.lines = lines_before + kept.size
   Ok(after)
 end
 
-# The table with one more change applied, beside the lines to append so far: a delete of a key
-# the table does not hold at that point writes nothing.
-fn planned_with(acc: (Table, List(String)), change: (String, Option(String))) : (Table,
-  List(String))
-  return acc if change.1 is None and get(acc.0, change.0) is None
-  (changed(acc.0, change), acc.1.push(line_of(change)))
+# The lines a batch appends: a delete of a key not held at that point of the batch, in the table
+# or set earlier in the batch, writes nothing. The table is only read here, and the batch's own
+# keys are kept apart from it, so no step copies the table.
+fn kept_lines(table: Table, changes: List((String, Option(String)))) : List(String)
+  changes.reduce((Map.new(), [""].take(0)), fn(acc, c) kept_with(table, acc, c) end).1
+end
+
+fn kept_with(table: Table, acc: (Map(String, Bool), List(String)),
+  change: (String, Option(String))) : (Map(String, Bool), List(String))
+  held = acc.0.get(change.0) or get(table, change.0) is Some(_)
+  return acc if change.1 is None and !held
+  (acc.0.set(change.0, change.1 is Some(_)), acc.1.push(line_of(change)))
 end
 
 fn last_of(changes: List((String, Option(String))), key: String) : Option(String)

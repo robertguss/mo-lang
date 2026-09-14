@@ -1063,7 +1063,7 @@
         { "id": "1b6472fe2e5b", "name": "test \"a store whose last line was cut short opens without it, and says so on the error stream\"", "hash": "67a79f347202c303" },
         { "id": "48b970f36a7a", "name": "test \"a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1\"", "hash": "3e953113347988b5" }
       ],
-      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "a39529249b01c84e", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Server", "hash": "dfc434637eb11b87" }, { "module": "Jobq.Store", "hash": "0d007476ab7d0093" }] }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "a39529249b01c84e", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Server", "hash": "dfc434637eb11b87" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
     },
     {
       "path": "jobq/queue.mo",
@@ -1109,7 +1109,7 @@
         { "id": "2754ae6c0662", "name": "test \"a queue started again from its log finds a lease that ran out and hands the job out again\"", "hash": "86e0bf58b49a95ae" },
         { "id": "6b9b982e995f", "name": "test \"every answer is right or 503 with the store unchanged, and every job ends done or dead once faults stop\"", "hash": "d4cc48a44063535a" }
       ],
-      "verified": { "hash": "d5eca57fd58baa94", "declarations": "d7a8334976244d95", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Store", "hash": "0d007476ab7d0093" }] }
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "d7a8334976244d95", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
     },
     {
       "path": "jobq/server.mo",
@@ -1145,7 +1145,7 @@
         { "id": "c62549d8ebb6", "name": "test \"1,200 connections that send nothing do not stop a producer's request from being answered\"", "hash": "87bf6d856ca6cc5a" },
         { "id": "11a374721c13", "name": "test \"over the wire, every answer is right or 503, and every job ends done or dead once faults stop\"", "hash": "32d1b2b55e00b309" }
       ],
-      "verified": { "hash": "d5eca57fd58baa94", "declarations": "aa9aa362b3b07386", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Store", "hash": "0d007476ab7d0093" }] }
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "aa9aa362b3b07386", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b1309abaef697cb9" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Queue", "hash": "09931c7b4c4fbce7" }, { "module": "Jobq.Store", "hash": "880385300e3b1594" }] }
     },
     {
       "path": "jobq/store.mo",
@@ -1172,8 +1172,9 @@
         { "id": "c3702d22221a", "name": "fn bytes", "hash": "3cfdd4813a873dd1" },
         { "id": "506805308b3a", "name": "fn put", "hash": "10d5eb599da55a8a" },
         { "id": "0f70dabac186", "name": "fn delete", "hash": "4c4054d5498d2084" },
-        { "id": "647240cfefbd", "name": "fn put_all", "hash": "290c304f35b6f38e" },
-        { "id": "d25dc4beac89", "name": "fn planned_with", "hash": "537ea20c4f8d7f2a" },
+        { "id": "647240cfefbd", "name": "fn put_all", "hash": "c8e2cca4b5e01909" },
+        { "id": "7349cd27e33d", "name": "fn kept_lines", "hash": "4864764075325624" },
+        { "id": "27b3134ad6d1", "name": "fn kept_with", "hash": "dcda7913e75fd51a" },
         { "id": "9ade54ba7545", "name": "fn last_of", "hash": "1d07c89354a78d7c" },
         { "id": "b5bfdb6e9181", "name": "fn line_of", "hash": "55ce918ed9b64c6c" },
         { "id": "93ac0a5e3ce8", "name": "fn changed", "hash": "d6ed14e1d82ed793" },
@@ -1200,7 +1201,7 @@
         { "id": "e49cbf82cc53", "name": "test \"a store writing to another log keeps its keys and leaves the first log alone\"", "hash": "5ce61d8aa3c15c8f" },
         { "id": "e100950aab32", "name": "property \"any valid key and value read back as written, and again once the store is opened again\"", "hash": "a61c77eca87f7516" }
       ],
-      "verified": { "hash": "3f8bccf1b5003a95", "declarations": "adc2a5508fa9b35b" }
+      "verified": { "hash": "3f8bccf1b5003a95", "declarations": "d8803847f3f0c092" }
     },
     {
       "path": "kv/log.mo",
