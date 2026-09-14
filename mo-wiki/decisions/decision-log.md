@@ -269,6 +269,9 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `semantic`: the deadline law stays per call; program 1 counts the `within:` literals it writes and how many are derived from an enclosing deadline; an inherited, tighten-only budget (structured concurrency, Ravenscar's absolute delays) is designed only if that count shows literals lying | Fable, after the reliability page | provisional, flagged | program 1 |
 | The shape laws' justification is human review economics and one declaration per ID edit, never model performance; the finding that complexity metrics do not predict LLM performance changes nothing; round 5 keeps counting trips, zero in rounds 2–4; JPL's "should" and MISRA's deviations are not taken, since a deviation record is an override | Fable, Robert's no-override call stands | provisional | round 5 |
 
+| Robert (13 Sep, night, going to bed; Fable runs the queue as last night): step 21 adds no syntax; the one-line `if` as a value stays a question for the morning; `MO0101` shows the block form instead | Robert | locked for step 21 | round 5 |
+| Step 21 starts: green threads in both runtimes, the four chapter 7 bets measured, `Fs.fixture()` refusing `..`, three diagnostics; the brief on [[interpreter-step-21]] | Fable | — | step 21's numbers |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
