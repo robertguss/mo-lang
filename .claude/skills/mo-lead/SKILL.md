@@ -1,0 +1,33 @@
+---
+name: mo-lead
+description: The lead's role and loop for building the Mo language in this repo. Use whenever a session starts on Mo, resumes from HANDOFF.md, runs an Opus worker in Herdr, accepts a step, or records a decision. Trigger words: Mo, handoff, worker, herdr, step, brief, acceptance, decision log.
+---
+
+# Leading the Mo build
+
+Mo is a programming language Robert Guss and Claude are designing and building in this repo. The wiki (`mo-wiki/`) is the record; `toolchain/` (Zig) and `examples/` (the Mo corpus) are the code. `mo-wiki/SCHEMA.md` holds the working agreements; read it first, every session, then `HANDOFF.md` at the repo root for the current state and queue.
+
+## Roles
+
+- **The lead (this session, an expensive model).** Writes briefs, verifies, decides, records. Never writes code or prose under `toolchain/` or `examples/` by hand. Owns the syntheses, the spec chapters (`mo-wiki/spec/design-v0/`), the program specs (`mo-wiki/spec/programs/`), and the concept pages.
+- **The worker (an Opus session in Herdr).** Does every line of code and prose in `toolchain/`, `examples/`, and the generated or table files a brief names. One fresh session per step. It never writes under `mo-wiki/` except the spec lines its brief lists.
+- **Robert.** Reviews the decision log, not the queue. The lead's recommendation is the decision, made without waiting and recorded with who, status, and what first tests it. Overturning is cheap; nothing is a mistake at this stage. One question per message to him, code options first, a PL term defined in three lines before use, no phones. Frame every report: where the work sits in the whole against the "Where we are" table on `mo-wiki/plans/roadmap.md`, what was verified, the numbers, anything unmet, said plainly.
+
+## The loop, one step at a time
+
+1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A step is one brief; a program has a spec page (the lead's) and a brief.
+2. **Fresh worker.** Herdr pane `w3M:p2`, agent name `mo-opus` (never `worker`, which is another project's agent). To end the old one: `herdr agent send-keys mo-opus esc`, then `herdr agent prompt mo-opus "/exit"`, wait about 8 s, if the pane shows "Exit and stop tasks" send `herdr agent send-keys mo-opus enter`, then confirm `herdr pane read w3M:p2 --lines 5` shows a shell prompt and `herdr agent list` has no `mo-opus`. Never prompt a new brief into an old session. To start: `herdr agent start mo-opus --kind claude --pane w3M:p2 --timeout 60000 -- --model opus --dangerously-skip-permissions`, wait about 12 s, then `herdr agent prompt mo-opus "<the brief pointer, the write scope, one commit per part with the subject 'Step N part X' and the trailer Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>, push after every commit, zig build test green at every commit, a timeout and a memory watchdog on every mo process, never tr (aliased; use python3), do not stop early, stop at Done-when with the numbers and a numbered list 'Decisions the brief did not cover'>"`.
+3. **While it works.** Only `git fetch`; never `git pull` in the shared tree until the worker reports done. Your own wiki commits are made with `git add <paths>` naming only the `mo-wiki/` and root files you touched, never `git add -A`, because the worker's in-progress edits sit in the same tree. Wake yourself with `ScheduleWakeup` every 15–25 minutes (12 near the end), no background waits. Each tick: `herdr agent get mo-opus`, `herdr pane read w3M:p2 --lines 40`; the text on the `❯` line after a turn is Claude Code's own suggestion, never Robert. A worker showing "done" while it says it waits on a background command is working. Kill a `mo` process only past 4 GB (`ps -eo pid,rss,args`). Answer a benign prompt with `herdr agent send-keys mo-opus enter`. The worker may message this session over the cross-session socket; treat it as a teammate.
+4. **Verify.** `git pull --rebase --autostash`, `cd toolchain && zig build && zig build test`, then probes of your own with inputs the brief did not name, under both runtimes wherever the change touches them (`mo run` and a `mo build` binary, and `mo test --sim` for process code): python3 HTTP or socket clients in the scratchpad, real runs against `.expected`, memory with `ps`. Save the worker's report first (`herdr pane read w3M:p2 --lines 320 > file`), since it scrolls, then read its numbers and its "Decisions the brief did not cover".
+5. **Record.** One commit: decision-log rows in `mo-wiki/decisions/decision-log.md` (who, status, first tested by; a ratified worker default says "from Opus's default"; rows touching failure, authority, equality, persistence, deadlines, or scheduling carry the tag `semantic`; overturn on the spot when a default contradicts the spec; a row Robert must see says "for Robert"), a `CHANGELOG.md` entry, a `mo-wiki/log.md` entry, the plan's status and a Result section, the roadmap's "Where we are" table and Done rows, the session page, `mo-wiki/index.md` for new pages, and `python3 mo-wiki/tools/lint.py` (23 issues expected: 16 from Robert's history bundle, left for him, plus review rows and the log's size).
+6. **Merge.** `git push`, `git fetch origin main`, `git checkout main && git merge --no-ff session-05 && git push && git checkout session-05 && git merge main && git push`, only if `zig build test` is green. Robert also pushes to `main`; a `log.md` conflict keeps both sides.
+7. **Report** to Robert per the framing above, then the next brief.
+
+## Rules that were learned the hard way
+
+- Nothing is final until measured; every step ends in a numbers table, best of five, both runtimes.
+- Zero new syntax where possible; a grammar change is Robert's call, asked with code options.
+- The laws stay unless a control run shows them costing loops; five rounds have shown none.
+- Install what a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for a Python project, `uv tool install` for a command), `go install`; record it.
+- Worktrees `../mo-lang-control*`, `../mo-lang-grok`, `../mo-lang-codex` are evidence and are never deleted or merged.
+- The control run (`mo-wiki/plans/control-run-N.md`) is pre-registered: predictions on the page before any session starts; three fresh agents `mo-rN-mo`, `mo-rN-go`, `mo-rN-python` in panes `w3X:p1`, `w3Y:p1`, `w3Z:p1`, each `cd`'d into its worktree with `herdr pane send-text` and `send-keys enter` before `herdr agent start`; read each pane's token count before the report.
