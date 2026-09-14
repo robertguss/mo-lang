@@ -3,9 +3,10 @@ expose Odometer, Dashboard
 
 intent "State what must hold after every message, so the process crashes the moment it does not."
 
+# A six-digit odometer: it shows at most 999,999 km.
 process Odometer()
   state
-    km: UInt64
+    km: UInt64 where value <= 999_999
   end
 
   invariant "the odometer never goes backwards"
@@ -35,5 +36,11 @@ test "driving only ever adds to the reading"
   assert odometer.ask(Reading, within: 100.ms) is Ok(42)
 end
 
-verified: types, contracts, tests (1), property (0 seeds), sim (100 runs)
+test rejects "driving past the largest reading the odometer can show"
+  odometer = Odometer.start()
+  odometer.send(Drive(km: 999_999))
+  odometer.send(Drive(km: 1))
+end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
           proven: not run

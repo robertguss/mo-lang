@@ -66,7 +66,8 @@ process Journal(dir: Fs, name: String, opened_bytes: UInt64)
     state.bytes >= old(state.bytes)
   end
 
-  message Append(line: String, keys: UInt64) : Result(UInt64, FsError)
+  # A line the log takes ends in its newline, so it never runs into the next.
+  message Append(line: String where value.ends_with?("\n"), keys: UInt64) : Result(UInt64, FsError)
 
   fn update(state, message)
     case message
@@ -334,5 +335,10 @@ test rejects "a value over 60 KiB"
   put(empty(), "big", "x".repeat(61_441))
 end
 
-verified: types, contracts, tests (13), property (0 seeds), sim (100 runs)
+test rejects "a line with no newline, which would run into the next"
+  journal = Journal.start(Fs.fixture(), "kv.log", 0)
+  journal.send(Append(line: "SET a 1", keys: 1))
+end
+
+verified: types, contracts, tests (14), property (0 seeds), sim (100 runs)
           proven: not run

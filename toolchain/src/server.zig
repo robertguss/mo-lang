@@ -981,6 +981,11 @@ const regions_src =
     \\  tally.send(Note(key: "a", value: ""))
     \\  out.write_line("tally #{shown(tally.ask(Read(key: "a"), within: 1.minute))}")
     \\end
+    \\test rejects "a value set back to empty"
+    \\  tally = Tally.start()
+    \\  tally.send(Note(key: "a", value: "1"))
+    \\  tally.send(Note(key: "a", value: ""))
+    \\end
 ;
 
 test "processes under mo run free what their state does not reach, write their state in place, and a crash still shows the state before" {

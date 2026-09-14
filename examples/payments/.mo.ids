@@ -23,9 +23,10 @@
         { "id": "4cfd96e63685", "name": "test rejects \"a refund of nothing\"", "hash": "b051789660c7b019" },
         { "id": "a61061ef8060", "name": "test rejects \"a window read before the capture\"", "hash": "b306be19169e6261" },
         { "id": "4c2c83d5e516", "name": "test \"a drained queue counts the drain\"", "hash": "ec137e0fdfea3d49" },
-        { "id": "25fbbf64d208", "name": "property \"any valid refund leaves the charge refunded\"", "hash": "fcee84b98391df55" }
+        { "id": "25fbbf64d208", "name": "property \"any valid refund leaves the charge refunded\"", "hash": "fcee84b98391df55" },
+        { "id": "6ef51b1787af", "name": "test rejects \"a queue of more than 1,000 waiting refunds\"", "hash": "0f27ca9bf4bea58a" }
       ],
-      "verified": { "hash": "a307cd32ac26b215", "declarations": "da60d965164b3817" }
+      "verified": { "hash": "91f66b3b860beb16", "declarations": "47292d0daf37e6e6" }
     }
   ]
 }

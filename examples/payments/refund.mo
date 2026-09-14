@@ -132,5 +132,12 @@ property "any valid refund leaves the charge refunded"
   end
 end
 
-verified: types, contracts, tests (6), property (200 seeds), sim (100 runs)
+test rejects "a queue of more than 1,000 waiting refunds"
+  queue = RefundQueue.start(Ledger.fixture(), Clock.fixture(), Events.fixture())
+  for i in 0..1_001
+    queue.send(Enqueue(request: RefundRequest(id: "ch_#{i}", amount: Money.cents(1))))
+  end
+end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (100 runs)
           proven: not run

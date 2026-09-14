@@ -49,7 +49,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/region.zig` | the bump region `mo run` allocates values in, freed at the vm's safe points | ch. 7 |
 | `src/contracts.zig` | tier 2: `requires`, `ensures`, `invariant`, `never` at runtime | ch. 5 |
 | `src/runner.zig` | `test`, `test rejects`, `property` | ch. 4 |
-| `src/recipe.zig` | `mo check --recipe`: an implementation against its recipe's signatures (`MO0326`), then the recipe's tests and nevers run against it; the corpus test runs it for each file whose first lines say `# recipe: Module.Recipe` | ch. 6 |
+| `src/recipe.zig` | `mo check --recipe`: an implementation against its recipe's signatures (`MO0326`), then the recipe's tests and nevers run against it; the corpus test runs it for each file whose first lines say `# recipe: Module.Recipe`, and so does a plain `mo check` of such a file (step 20) | ch. 6 |
 | `src/mutation.zig` | mutation tests of the contract machinery: mutants of a `never`, an `ensures`, and an `invariant` in three corpus files, each caught by `mo test` but the survivors it lists | ch. 5 |
 | `src/net.zig` | `Net`: TCP over std.Io for `mo run`, and `Net.fixture()` for `mo test` | 09 |
 | `src/http.zig` | `Http`: HTTP/1.1 over `Net`, the request and response reader and writer, and `Http.fixture()` | 09 |

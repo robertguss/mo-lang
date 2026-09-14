@@ -170,6 +170,23 @@ const Caps = struct {
         return false;
     }
 
+    /// Whether one supervisor names both `a` and `b` as children.
+    fn siblings(c: *Caps, a: []const u8, b: []const u8) bool {
+        for (c.items()) |it| {
+            const n = c.node(it);
+            if (n.kind != .supervisor_decl) continue;
+            var has_a = false;
+            var has_b = false;
+            for (c.spanAt(n.rhs)) |ch| {
+                const name = c.text(c.node(ch).main_token);
+                if (std.mem.eql(u8, name, a)) has_a = true;
+                if (std.mem.eql(u8, name, b)) has_b = true;
+            }
+            if (has_a and has_b) return true;
+        }
+        return false;
+    }
+
     fn sigOf(c: *Caps, n: Index) ?checker.FnSig {
         for (c.k.sigs) |s| if (s.node == n) return s;
         return null;
@@ -404,7 +421,11 @@ const Caps = struct {
                 }
                 if ((u.kind == .function or u.kind == .process) and !u.has_caps and !pure_reported and isValue(n.kind)) {
                     const t = c.k.typeOf(i);
-                    if (c.baseTag(t).tag == .cap or c.baseTag(t).tag == .handle) {
+                    const b = c.baseTag(t);
+                    // A process may start, and send to, the processes its own supervisor names as
+                    // children, with no capability (step 20); a function needs one.
+                    const sibling = u.kind == .process and b.tag == .handle and c.siblings(u.name, c.k.decls[b.a].name);
+                    if ((b.tag == .cap or b.tag == .handle) and !sibling) {
                         try c.report(.outside_params, c.firstToken(i), try c.print("{s} has no capability parameter, so it is pure and cannot use a {s}; take a {s} parameter.", .{ u.name, try c.tn(t), try c.tn(t) }));
                         pure_reported = true;
                     }
@@ -1244,4 +1265,59 @@ test "flows follows a capability a message carries into the process that takes i
         \\  child Writer, restart: :always
         \\end
     , &.{"MO0404"});
+}
+
+test "a process starts what its own supervisor names as a child with no capability, and a function needs one" {
+    try expectCodes(
+        \\module T.Siblings
+        \\process Job()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Run
+        \\  fn update(state, message)
+        \\    case message
+        \\      Run:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\process Pool()
+        \\  state
+        \\    started: UInt64
+        \\  end
+        \\  message Spawn
+        \\  fn update(state, message)
+        \\    case message
+        \\      Spawn:
+        \\        job = Job.start()
+        \\        job.send(Run)
+        \\        state.started += 1
+        \\    end
+        \\  end
+        \\end
+        \\process Stray()
+        \\  state
+        \\    started: UInt64
+        \\  end
+        \\  message Spawn
+        \\  fn update(state, message)
+        \\    case message
+        \\      Spawn:
+        \\        Job.start().send(Run)
+        \\        state.started += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Pools
+        \\  child Pool, restart: :always
+        \\  child Job, restart: :always
+        \\end
+        \\supervisor Strays
+        \\  child Stray, restart: :always
+        \\end
+        \\fn spawned() : Handle(Job)
+        \\  Job.start()
+        \\end
+    , &.{ "MO0403", "MO0403" });
 }

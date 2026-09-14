@@ -52,6 +52,7 @@ pub const Code = enum {
     catch_all,
     unconsumed,
     requires_untested,
+    invariant_untested,
     default_param,
     anon_stored,
     var_captured,
@@ -103,6 +104,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .not_exhaustive = .{ .code = "MO0308", .category = .laws, .what = "this case does not cover <pattern>; add an arm for it.", .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash.", .fixes = &.{} },
     .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <patterns> of <Type>; write an arm for each of them in its place.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
     .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake.", .fixes = &.{} },
+    .invariant_untested = .{ .code = "MO0327", .category = .laws, .what = "<Process> has invariant <sentence>, which reads old(state), but no test rejects starts or messages it.", .why = "An invariant that reads old(state) is a claim about how an update may move the state, and like a requires it needs a test rejects (chapter 2, contract laws; step 20). Tier 1 checks, as it does for a requires, that a test rejects in the process's module starts the process or sends it a message; the run checks that the test trips. Step 19's mutation tests showed that a contract no test drives can be inverted and nothing notices.", .fixes = &.{} },
     .requires_untested = .{ .code = "MO0311", .category = .laws, .what = "<function> has requires <condition>, but no test rejects trips it.", .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips.", .fixes = &.{} },
     .default_param = .{ .code = "MO0312", .category = .laws, .what = "<name> has a default value; parameters have no defaults, so pass <value> at the call.", .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives.", .fixes = &.{"drop the default, and pass it at every call in the file that leaves the parameter out"} },
     .anon_stored = .{ .code = "MO0313", .category = .laws, .what = "an anonymous function is bound to <name>; pass it straight into <call> instead.", .why = "An anonymous function is a call argument only, never stored or returned (chapter 2), so effects never hide in a value.", .fixes = &.{} },
@@ -351,6 +353,8 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
     }
     c.tripped = try gpa.alloc(bool, c.sigs.items.len);
     @memset(c.tripped, false);
+    c.tried = try gpa.alloc(bool, c.decls.items.len);
+    @memset(c.tried, false);
     for (0..n) |k| {
         c.enter(k);
         try c.checkModule();
@@ -489,6 +493,8 @@ const Checker = struct {
     anon_ok: Index = 0,
     /// Signatures a test rejects calls directly.
     tripped: []bool = &.{},
+    /// Per declaration: a process a test rejects in its module starts or messages (MO0327).
+    tried: []bool = &.{},
     /// Byte offset where each line starts.
     line_starts: std.ArrayList(u32) = .empty,
     /// Above zero while checking what is sent to a process.
@@ -1866,6 +1872,22 @@ const Checker = struct {
             }
         }
 
+        for (c.decls.items, 0..) |d, di| {
+            if (d.kind != .process or d.module != c.module or d.node == 0 or c.tried[di]) continue;
+            const pd = c.tree.extraData(ast.Process, c.node(d.node).lhs);
+            const invariants = c.tree.span(pd.invariants_start, pd.invariants_end);
+            for (invariants, 0..) |inv, k| {
+                // An invariant's nodes run from the one after the node before it to its own.
+                const lo = if (k == 0) pd.state else invariants[k - 1];
+                const reads_old = for (lo + 1..inv) |j| {
+                    if (c.node(@intCast(j)).kind == .old_expr) break true;
+                } else false;
+                if (!reads_old) continue;
+                try c.reportTok(.invariant_untested, c.node(inv).main_token, try c.print("{s} has invariant {s}, which reads old(state), but no test rejects starts or messages it.", .{ d.name, c.text(c.node(inv).lhs) }));
+                break;
+            }
+        }
+
         for (c.decls.items) |d| {
             if (d.kind != .process or d.module != c.module) continue;
             var supervised = false;
@@ -3008,6 +3030,8 @@ const Checker = struct {
         var env: Env = .{ .n = t };
         const b = c.bt(t);
         if (b.tag == .handle) env.process = b.a;
+        // A test rejects that messages a process tries its invariants (MO0327).
+        if (b.tag == .handle and c.frame.in_rejects and b.a < c.tried.len) c.tried[b.a] = true;
         if (row.recv.len > 0 and std.mem.indexOfScalar(u8, row.recv, '(') != null and b.tag != .handle) {
             _ = c.pool.unify(try c.parseTs(row.recv, &env), t);
         }
@@ -3163,6 +3187,7 @@ const Checker = struct {
                     try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no function {s}; a process is started with {s}.start(...)", .{ tname, name, tname }));
                     return types.unknown;
                 }
+                if (c.frame.in_rejects and d < c.tried.len) c.tried[d] = true;
                 c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
                 c.process_args -= 1;
@@ -4355,4 +4380,41 @@ test "a source row's into: names a process that declares every message the row s
     // The worker lacks LineTooLong and gives Idle a reply; the second serve's worker lacks
     // Accepted, and its Idle has a reply.
     try std.testing.expectEqualStrings("MO0223 MO0223 MO0223 MO0223 ", codes.items);
+}
+
+test "an invariant that reads old(state) needs a test rejects that starts or messages its process" {
+    const src =
+        \\module T.Old
+        \\process Meter()
+        \\  state
+        \\    n: UInt8
+        \\  end
+        \\  invariant "never goes backwards"
+        \\    state.n >= old(state.n)
+        \\  end
+        \\  message Add(k: UInt8)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Add(k):
+        \\        state.n += k
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Meters
+        \\  child Meter, restart: :always
+        \\end
+        \\test "adds"
+        \\  meter = Meter.start()
+        \\  meter.send(Add(k: 1))
+        \\end
+    ;
+    try expectWhat(src, "MO0327", "Meter has invariant \"never goes backwards\", which reads old(state), but no test rejects starts or messages it.");
+    try expectCodes(src ++
+        \\
+        \\test rejects "past the largest reading"
+        \\  meter = Meter.start()
+        \\  meter.send(Add(k: 200))
+        \\  meter.send(Add(k: 200))
+        \\
+    ++ "end\n", &.{});
 }

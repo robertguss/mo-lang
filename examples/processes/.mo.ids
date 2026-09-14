@@ -83,11 +83,12 @@
         { "id": "44967711304a", "name": "module Processes.Invariant", "hash": "c7a2c43c6abcb9ed" },
         { "id": "2eec53e89483", "name": "expose", "hash": "4b3454b07773610b" },
         { "id": "d4b8d7145098", "name": "intent", "hash": "cae6ed1465352171" },
-        { "id": "0553f5851c7f", "name": "process Odometer", "hash": "4270ee7377e12a51" },
+        { "id": "0553f5851c7f", "name": "process Odometer", "hash": "628af754f2ebec29" },
         { "id": "c7eac171f92d", "name": "supervisor Dashboard", "hash": "7cadf5b5d1dfef71" },
-        { "id": "e947cd4126bb", "name": "test \"driving only ever adds to the reading\"", "hash": "e287f4a386322ff7" }
+        { "id": "e947cd4126bb", "name": "test \"driving only ever adds to the reading\"", "hash": "e287f4a386322ff7" },
+        { "id": "c165d15304d1", "name": "test rejects \"driving past the largest reading the odometer can show\"", "hash": "abef553a2bc6a633" }
       ],
-      "verified": { "hash": "7c2dd49fc03316de", "declarations": "0f8a86ed8581fd36" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "42c7e8705db7f3d0" }
     },
     {
       "path": "mailbox.mo",

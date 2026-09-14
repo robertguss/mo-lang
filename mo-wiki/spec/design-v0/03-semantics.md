@@ -27,7 +27,7 @@ Five ideas, one per layer. Each is chosen so that a function can be understood f
 ## Processes
 
 - A process is the only thing with identity and the only thing that changes over time. Its capabilities are its parameters, its `state` block is the box, its `message` lines are its protocol, and `update(state, message)` is the one function that changes the box. `state` is implicitly mutable inside `update`.
-- `Name.start(caps...)` returns a typed `Handle(Name)`. `send` never blocks and has no `try`. `ask` blocks with a mandatory deadline and returns a `Result`.
+- `Name.start(caps...)` returns a typed `Handle(Name)`. `send` never blocks and has no `try`. `ask` blocks with a mandatory deadline and returns a `Result`. Starting a process is an effect: a function needs a capability parameter to start one (MO0403), and a process may start, and send to, any process its own supervisor names as a `child` without holding a capability, since the supervisor's lines already say the two belong together (Session 5, step 20).
 - A message may carry a capability or a handle when its `message` line declares the field, as in `message Accepted(conn: Conn)`: the protocol shows the authority the process receives, and a sender can put in it only what it holds. A handle in a message is copied. A capability in a message moves: once sent it is the receiving process's, and the checker refuses any later use of it in the function that sent it (MO0410); a copy the checker cannot see, such as a start argument sent in one update and used in the next, still reaches the same connection. A struct, a state, or an enum field still cannot hold either.
 - A process a start call began ends once it has finished: its mailbox is empty, no update of it is running, and no handle to it is held by `main`, by an update in progress, by the start arguments of a process that has not ended, by a send an update holds, or by a reply not yet taken. Its thread and memory are freed, and its id may go to a process started later. A process a supervisor's `child` line starts never ends; it restarts.
 - Every mailbox is bounded (`mailbox: N` in the header, default from the laws). A full mailbox crashes the **sender**: overflow means the design lacks flow control, and the fix is `ask` or a larger bound.
@@ -78,6 +78,8 @@ A `Timeout` on `ask` is therefore not a licence to send again: the first message
 The rules above already reflect these; this section is the changelog.
 
 Claude (session 5): platform selection moved from a `use Mo.Sim` line to the toolchain (`mo test` is always simulated), because a module that names its platform is a module that can be run against the wrong one. Supervisors take parameters and pass them on `child` lines, because nothing else said where a child's capabilities come from. Both first tested by the interpreter milestone and program 1. The full list of session 5 decisions is at the foot of `grammar.md`.
+
+Session 5, step 20: a process starts what its own supervisor names as a `child` with no capability, after a probe in step 19 found that since step 18 a process with none could start nothing, so starting a process was an effect no line named; a function still needs a capability to start one.
 
 Session 5, step 20: a message may carry a capability or a handle its `message` line declares, and a capability in a message moves (the Processes list), reversing step 18's refusal for message fields only, so a process can be handed a connection by the runtime or by another process; struct, state, and enum fields stay refused.
 
