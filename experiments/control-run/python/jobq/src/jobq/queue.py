@@ -28,7 +28,7 @@ from jobq.jobs import (
     text_problem,
     token_problem,
 )
-from jobq.store import DeleteRecord, PutRecord, Replayed, Store
+from jobq.store import DeleteRecord, PutRecord, Replayed, Store, StoreError
 
 _LEGAL: frozenset[tuple[JobState | None, JobState | None]] = frozenset(
     {
@@ -211,27 +211,45 @@ class Queue:
         return now
 
     def _expire(self, now: int) -> int:
-        expired = 0
+        """Return every run-out lease in one durable write, so a look after a long stop is
+        one fsync rather than one per lease."""
+        due: list[tuple[Job | None, Job | None]] = []
+        popped: list[tuple[int, int]] = []
         while self._leases and self._leases[0][0] <= now:
-            until, number = self._leases[0]
+            until, number = heapq.heappop(self._leases)
+            popped.append((until, number))
             job = self._jobs.get(number)
             if job is not None and job.state == "leased" and job.lease_until_ms == until:
-                self._commit(job, _returned(job, now))
-                expired += 1
-            heapq.heappop(self._leases)
-        return expired
+                due.append((job, _returned(job, now)))
+        try:
+            self._commit_all(due)
+        except StoreError:
+            for entry in popped:
+                heapq.heappush(self._leases, entry)
+            raise
+        return len(due)
 
     def _find(self, job_id: str) -> Job | None:
         number = parse_job_id(job_id)
         return None if number is None else self._jobs.get(number)
 
     def _commit(self, before: Job | None, after: Job | None) -> None:
-        check_transition(before, after)
-        if after is not None:
-            self._store.append(PutRecord(job=after))
-        elif before is not None:
-            self._store.append(DeleteRecord(number=before.number))
-        self._apply(before, after)
+        self._commit_all([(before, after)])
+
+    def _commit_all(self, changes: list[tuple[Job | None, Job | None]]) -> None:
+        """Check every change's nevers, make all of them durable, and only then apply them."""
+        if not changes:
+            return
+        records: list[PutRecord | DeleteRecord] = []
+        for before, after in changes:
+            check_transition(before, after)
+            if after is not None:
+                records.append(PutRecord(job=after))
+            elif before is not None:
+                records.append(DeleteRecord(number=before.number))
+        self._store.append_all(records)
+        for before, after in changes:
+            self._apply(before, after)
 
     def _apply(self, before: Job | None, after: Job | None) -> None:
         if before is not None:
