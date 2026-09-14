@@ -1850,16 +1850,6 @@ test "a fixture Fs keeps what a test writes, shared by every Fs narrowed from it
         \\  assert out.written == ["a", "b\n"]
         \\  assert fs.read("x.log", within: 1.minute) == Ok("1\n")
         \\end
-        \\test "a write through a read_only Fs crashes where the checker cannot see it"
-        \\  fs = Fs.fixture()
-        \\  chosen = if fs.list(within: 1.minute) is Ok(_)
-        \\    fs.read_only
-        \\  else
-        \\    fs
-        \\  end
-        \\  writer = Writer.start(chosen)
-        \\  assert writer.ask(Note, within: 1.minute) is Ok(_)
-        \\end
         \\test "a writer appends"
         \\  writer = Writer.start(Fs.fixture())
         \\  assert writer.ask(Note, within: 1.minute) is Ok(_)
@@ -1868,9 +1858,23 @@ test "a fixture Fs keeps what a test writes, shared by every Fs narrowed from it
     const r = try runner.run(arena, program, .{});
     try std.testing.expectEqual(runner.Outcome.passed, r.results[0].outcome);
     try std.testing.expectEqual(runner.Outcome.passed, r.results[1].outcome);
-    try std.testing.expectEqual(runner.Outcome.failed, r.results[2].outcome);
-    try std.testing.expectEqualStrings("fs.append(\"x.log\") writes through an Fs narrowed to read_only, which only reads", r.results[2].report.?.clause);
-    try std.testing.expectEqual(runner.Outcome.passed, r.results[3].outcome);
+    try std.testing.expectEqual(runner.Outcome.passed, r.results[2].outcome);
+
+    // A write through a read-only Fs is refused at run time too. The checker follows the narrowing
+    // through an if since step 25, so no program here hides one from it: the Fs is narrowed here
+    // and handed in as the start argument.
+    {
+        var machine: Vm = .init(arena, program, 7);
+        var s: Sim = .init(&machine, 1, "a writer appends");
+        machine.sim = &s;
+        const fs = try stdlib.fixtureFs(&machine, 0);
+        const read_only = try stdlib.fixtureNarrow(&machine, fs.cap, "read_only", "");
+        const writer = try s.start(0, &.{read_only});
+        _ = s.ask(writer, try machine.variant("Note", &.{}), 60_000) catch {};
+        try std.testing.expectEqual(@as(usize, 1), s.crashes.items.len);
+        try std.testing.expectEqualStrings("fs.append(\"x.log\") writes through an Fs narrowed to read_only, which only reads", s.crashes.items[0].clause);
+        try std.testing.expectEqual(@as(usize, 0), s.files.systems.items[0].count());
+    }
 
     // Every fixture call fails in these runs: the append is Missing or Timeout, and the file
     // system keeps nothing of it.

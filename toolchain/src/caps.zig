@@ -31,7 +31,7 @@ pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .missing_within = .{ .code = "MO0401", .category = .capabilities, .what = "<call> has no within: deadline; add one, such as within: 100.ms.", .why = "Every call that can wait carries a deadline (chapter 2, bounding laws), so nothing blocks forever; a timeout comes back as an ordinary error the caller handles.", .fixes = &.{} },
     .needless_within = .{ .code = "MO0402", .category = .capabilities, .what = "<call> cannot wait, so it takes no within:; remove the deadline.", .why = "Only a call that can wait takes within: (the platform marks which ones, toolchain/PRELUDE.md); a deadline on a call that cannot wait says something false.", .fixes = &.{} },
     .outside_params = .{ .code = "MO0403", .category = .capabilities, .what = "<function> has no capability parameter, so it is pure and cannot use a <Capability>; take a <Capability> parameter.", .why = "A capability is held only as a parameter and narrowed on the way down (chapter 3, effects), so a function's signature is the complete list of what it can touch.", .fixes = &.{} },
-    .flows_violated = .{ .code = "MO0404", .category = .capabilities, .what = "a <Type> reaches <call> through <value>; the never <rule> forbids it.", .why = "A never with flows(T, into: Cap) promises that no value of type T reaches a call on Cap, and an Fs narrowed to read_only promises that nothing is written through it; tier 1 follows direct data flow, and each Fs into the functions it is handed to, to keep both promises.", .fixes = &.{} },
+    .flows_violated = .{ .code = "MO0404", .category = .capabilities, .what = "<owner> writes through <its parameter, or a message's field>, and <value> was narrowed to read_only and only reads; hand it the Fs <value> was narrowed from.", .why = "An Fs narrowed to read_only promises that nothing is written through it, so tier 1 follows it wherever this unit hands it on: into a function's parameter, a process's start argument, a supervisor's child line, or a message's field, through a name bound to it and through each branch of an if or a case, and refuses it where the call on the other side writes through what it is given; a write through it in the same unit is refused too (fs.write writes through logs, which was narrowed to read_only). The same code stands for a never with flows(T, into: Cap), which promises that no value of type T reaches a call on Cap: a <Type> reaches <call> through <value>; the never <rule> forbids it.", .fixes = &.{} },
     .bad_flows = .{ .code = "MO0405", .category = .capabilities, .what = "flows names a declared or prelude type first, such as flows(CardNumber, into: Events).", .why = "flows(T, into: Cap) names a type first and a capability after into:, so the rule can be checked; a never that cannot be checked does not compile.", .fixes = &.{} },
     .recipe_needs = .{ .code = "MO0406", .category = .capabilities, .what = "<function> takes a <Capability>, but recipe <Recipe> needs <capabilities>; add <Capability> to its needs line.", .why = "A recipe's needs line is the list of capabilities its implementation may take (chapter 6), so every capability in its signatures is named there, and only capabilities are.", .fixes = &.{} },
     .platform_escapes = .{ .code = "MO0407", .category = .capabilities, .what = "<function> takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .why = "A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds.", .fixes = &.{} },
@@ -112,31 +112,31 @@ const Caps = struct {
         }
     }
 
-    /// The source of an argument, up to the `,` or `)` that ends it.
+    /// The source of an argument, up to the `,` or `)` that ends it, or the `else` or `end` that
+    /// ends a branch of an `if` it sits in (step 25).
     fn argText(c: *Caps, i: Index) []const u8 {
-        const src = c.k.tree.source;
-        const start = c.k.tree.tokens[c.firstToken(i)].start;
+        const toks = c.k.tree.tokens;
+        const first = c.firstToken(i);
         var depth: u32 = 0;
-        var in_string = false;
-        var k: usize = start;
-        while (k < src.len) : (k += 1) {
-            const ch = src[k];
-            if (in_string) {
-                if (ch == '\\') k += 1 else if (ch == '"') in_string = false;
-                continue;
-            }
-            switch (ch) {
-                '"' => in_string = true,
-                '(', '[' => depth += 1,
-                ')', ']' => {
-                    if (depth == 0) break;
-                    depth -= 1;
-                },
-                ',', '\n' => if (depth == 0) break,
-                else => {},
-            }
-        }
-        return std.mem.trimEnd(u8, src[start..k], " \t\r");
+        var t = first;
+        var last = first;
+        while (true) : (t += 1) switch (toks[t].kind) {
+            .l_paren, .l_bracket, .l_brace => {
+                depth += 1;
+                last = t;
+            },
+            .r_paren, .r_bracket, .r_brace => {
+                if (depth == 0) break;
+                depth -= 1;
+                last = t;
+            },
+            .comma, .newline, .kw_else, .kw_end => if (depth == 0) break else {
+                last = t;
+            },
+            .eof => break,
+            else => last = t,
+        };
+        return c.k.tree.source[toks[first].start..toks[last].end];
     }
 
     fn baseTag(c: *Caps, t: Id) types.Type {
@@ -717,12 +717,12 @@ const Caps = struct {
     /// Node `i` hands an Fs narrowed to read_only to a function's parameter, a process's start
     /// argument, or a message's field that is written through: refused here, at the argument, not
     /// when the write runs. The argument is read-only by what this unit saw bound (a name), or by
-    /// its type.
+    /// its type. An `if` or a `case` handed on is read-only when a branch ends in one, and the
+    /// diagnostic names that branch (step 25).
     fn handedReadOnly(c: *Caps, i: Index, writes: Writes, names: []const []const u8) Error!void {
         for (try c.handed(i, writes)) |s| {
-            const a = s.arg;
-            const by_type = c.node(a).kind != .name_ref and c.k.pool.resolve(c.k.typeOf(a)) == types.fs_read_only;
-            if (!by_type and !c.readOnly(a, names)) continue;
+            const by_type = c.node(s.arg).kind != .name_ref and c.k.pool.resolve(c.k.typeOf(s.arg)) == types.fs_read_only;
+            const a = c.readOnlyBranch(s.arg, names) orelse if (by_type) s.arg else continue;
             const arg = c.argText(a);
             try c.report(.flows_violated, c.firstToken(a), try c.print("{s} writes through {s}, and {s} was narrowed to read_only and only reads; hand it the Fs {s} was narrowed from.", .{ s.owner, s.label, arg, arg }));
         }
@@ -738,9 +738,47 @@ const Caps = struct {
     }
 
     /// Whether an Fs expression is narrowed to read_only where this unit can see it:
-    /// `x.read_only`, `scoped` on one, or a name bound to one. An Fs parameter may be
-    /// either, so it is not; the run refuses a write through one (stdlib.zig, server.zig).
+    /// `x.read_only`, `scoped` on one, a name bound to one, or an `if` or `case` any of whose
+    /// branches ends in one (step 25). An Fs parameter may be either, so it is not; the run
+    /// refuses a write through one (stdlib.zig, server.zig).
     fn readOnly(c: *Caps, i: Index, names: []const []const u8) bool {
+        return c.readOnlyBranch(i, names) != null;
+    }
+
+    /// The expression that makes `i` read-only: `i` itself, or the value a branch of an `if` or a
+    /// `case` ends in, or null.
+    fn readOnlyBranch(c: *Caps, i: Index, names: []const []const u8) ?Index {
+        const n = c.node(i);
+        switch (n.kind) {
+            .if_expr => {
+                const d = c.k.tree.extraData(ast.If, n.rhs);
+                return c.blockValueReadOnly(c.k.tree.span(d.then_start, d.then_end), names) orelse
+                    c.blockValueReadOnly(c.k.tree.span(d.else_start, d.else_end), names);
+            },
+            .case_expr => {
+                for (c.spanAt(n.rhs)) |a| {
+                    const d = c.k.tree.extraData(ast.Arm, c.node(a).rhs);
+                    if (c.blockValueReadOnly(c.k.tree.span(d.body_start, d.body_end), names)) |at| return at;
+                }
+                return null;
+            },
+            else => return if (c.readOnlyLeaf(i, names)) i else null,
+        }
+    }
+
+    /// The value a branch's block ends in, when that value is read-only.
+    fn blockValueReadOnly(c: *Caps, stmts: []const u32, names: []const []const u8) ?Index {
+        if (stmts.len == 0) return null;
+        const last = c.node(stmts[stmts.len - 1]);
+        return switch (last.kind) {
+            .expr_stmt => c.readOnlyBranch(last.lhs, names),
+            // A branch that is itself an if or a case, as a one-line if's else: if ...: ... keeps it.
+            .if_stmt, .case_stmt => c.readOnlyBranch(stmts[stmts.len - 1], names),
+            else => null,
+        };
+    }
+
+    fn readOnlyLeaf(c: *Caps, i: Index, names: []const []const u8) bool {
         const n = c.node(i);
         switch (n.kind) {
             .member, .member_call => switch (c.k.callee[i]) {
@@ -1531,6 +1569,50 @@ test "a message line may declare a capability or a handle, and a capability sent
         \\  conn: Conn
         \\end
     , &.{ "MO0403", "MO0410", "MO0410" });
+}
+
+test "a read-only Fs hidden in a branch of an if or a case handed to a process that writes through it is refused" {
+    try expectCodes(
+        \\module T.Hidden
+        \\process Saver(files: Fs)
+        \\  state
+        \\    saved: Bool
+        \\  end
+        \\
+        \\  message Save : Bool
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Save:
+        \\        state.saved = files.write("a.txt", "b", within: reply_by) is Ok(_)
+        \\        state.saved
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Savers(files: Fs)
+        \\  child Saver(files), restart: :always
+        \\end
+        \\fn lined(fs: Fs, careful: Bool) : Handle(Saver)
+        \\  Saver.start(if careful: fs.read_only else: fs)
+        \\end
+        \\fn blocked(fs: Fs, careful: Bool) : Handle(Saver)
+        \\  chosen = if careful
+        \\    fs
+        \\  else
+        \\    fs.scoped("x").read_only
+        \\  end
+        \\  Saver.start(chosen)
+        \\end
+        \\fn cased(fs: Fs, how: UInt8) : Handle(Saver)
+        \\  Saver.start(case how
+        \\    0: fs
+        \\    _: if how > 1: fs else: fs.read_only
+        \\  end)
+        \\end
+        \\fn writable(fs: Fs, careful: Bool) : Handle(Saver)
+        \\  Saver.start(if careful: fs.scoped("x") else: fs)
+        \\end
+    , &.{ "MO0404", "MO0404", "MO0404" });
 }
 
 test "flows follows a capability a message carries into the process that takes it" {

@@ -26,7 +26,7 @@ supervisor Savers
   child Saver, restart: :always
 end
 
-# expect MO0404: a read-only Fs reaches Save through fs.read_only; the never that read_only promises forbids it.
+# expect MO0404: Saver writes through Save's field files, and fs.read_only was narrowed to read_only and only reads; hand it the Fs fs.read_only was narrowed from.
 fn handed(fs: Fs, saver: Handle(Saver)) : Bool
   saver.ask(Save(files: fs.read_only), within: 1.minute) is Ok(_)
 end

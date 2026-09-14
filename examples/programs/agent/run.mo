@@ -6,15 +6,16 @@ use Agent.Model{Model, complete}
 use Agent.Record{Order, Status, default_budget}
 use Agent.Shelf{Verdict, Ending}
 use Agent.Steps{Setup, Phase, Progress, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome}
-use Agent.Tools{used}
+use Agent.Tools{Writer, used}
 use Agent.Transcript{Step}
 
 intent "A run as a process: its budget's deadline taken from the ask that begins it, then a loop of messages it sends itself (a model call, its step written, the tool the model named, that step written), every call on what remains of the deadline tightened by tool_ms; each step is in the book before the next call, the book's answer says whether the run goes on, and the run ends by asking the book to write its end."
 
-# A run's reads go through its folder read-only, and its writes through the same folder, which the
-# run's tools use only when the run was granted write_file. A crash ends the run where it is; the
+# A run's reads go through its folder read-only; a run granted write_file also holds a writer, the
+# process that holds the folder writable, and a run not granted it holds none (step 25). A crash ends the run where it is; the
 # book fails it as lost once its wall budget and grace have passed.
-process Run(book: Handle(Book), reads: Fs, writes: Fs, http: Http, clock: Clock, setup: Setup)
+process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http: Http, clock: Clock,
+  setup: Setup)
   state
     run: Progress = fresh(setup.id)
   end
@@ -62,7 +63,7 @@ process Run(book: Handle(Book), reads: Fs, writes: Fs, http: Http, clock: Clock,
           Some(by):
             if uses?(state.run, setup, by)
               call = call_for(setup, state.run, ran_of(state.run, setup, by))
-              tool = used(reads, writes, http, clock, call, by.at_most(call_ms(setup)))
+              tool = used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
               state.run = using(state.run, tool, clock.now)
               me.send(Acted(me: me))
             else
@@ -80,8 +81,9 @@ process Run(book: Handle(Book), reads: Fs, writes: Fs, http: Http, clock: Clock,
   end
 end
 
-supervisor Runs(book: Handle(Book), reads: Fs, writes: Fs, http: Http, clock: Clock, setup: Setup)
-  child Run(book, reads, writes, http, clock, setup), restart: :never
+supervisor Runs(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http: Http,
+  clock: Clock, setup: Setup)
+  child Run(book, reads, writer, http, clock, setup), restart: :never
 end
 
 # A run in its turn that may not go on ends over the budget it spent; a message out of turn
@@ -173,14 +175,14 @@ end
 test rejects "a run begun twice"
   fs = Fs.fixture()
   book = Book.start(fs, Clock.fixture(), "runs", Time.fixture())
-  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(), setup_nowhere())
+  run = Run.start(book, fs.read_only, None, Http.fixture(), Clock.fixture(), setup_nowhere())
   assert [began?(run, 1.minute), began?(run, 2.minute)].size == 2
 end
 
 test rejects "a run begun again once it has stopped"
   fs = Fs.fixture()
   book = Book.start(fs, Clock.fixture(), "runs", Time.fixture())
-  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(), setup_nowhere())
+  run = Run.start(book, fs.read_only, None, Http.fixture(), Clock.fixture(), setup_nowhere())
   run.send(Think(me: run))
   for _ in 0..200
     if run.ask(Look, within: 1.minute) == Ok(Stopped)

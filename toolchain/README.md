@@ -41,7 +41,7 @@ bench/rebuild.sh       → the toolchain's own incremental build time
 | `src/prelude.zig` | stdlib types, variants, functions as data (`PRELUDE.md` is the table) | grammar, Session 5 |
 | `src/types.zig` | the checker's type pool, unification, inference variables | ch. 5 |
 | `src/check.zig` | tier 1: types, exhaustiveness, the laws | ch. 2, 5 |
-| `src/caps.zig` | capabilities and `flows`; a message line may declare a capability or a handle, and a capability sent in a message moves, so the sender's later use of it is MO0410 (step 20); an Fs narrowed to read_only is followed into a process's start arguments, a supervisor's child lines, and a message's fields, as into a function's parameters (MO0404, step 24) | ch. 3 |
+| `src/caps.zig` | capabilities and `flows`; a message line may declare a capability or a handle, and a capability sent in a message moves, so the sender's later use of it is MO0410 (step 20); an Fs narrowed to read_only is followed into a process's start arguments, a supervisor's child lines, and a message's fields, as into a function's parameters (MO0404, step 24), and through each branch of an `if` or a `case` handed on (step 25) | ch. 3 |
 | `src/loops.zig` | MO0501: a `for` with a pure body, and the three accumulator loops `mo fix` rewrites | ch. 4 |
 | `src/bytecode.zig` | instruction set and lowering | ch. 7 |
 | `src/vm.zig` | the interpreter, the reference semantics | ch. 7 |

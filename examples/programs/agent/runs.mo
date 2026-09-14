@@ -8,6 +8,7 @@ use Agent.Record{Budget, Order, Record, Status, tool_names, budget, default_budg
 use Agent.Run{Run}
 use Agent.Shelf{Outcome}
 use Agent.Steps{Phase, Setup}
+use Agent.Tools{Writer}
 
 intent "Runs against the scripted model over Http.fixture(), end to end through the book: three steps to an answer, each budget spent to over_budget with its transcript whole, refused tools shown to the model, a model garbage and then right or garbage to the end, and a cancel in the middle of a run."
 
@@ -42,7 +43,8 @@ end
 # A run's process over its folder, begun on its wall budget; a begin whose answer did not come
 # still began it, since the message arrives.
 fn launched(book: Handle(Book), folder: Fs, http: Http, clock: Clock, setup: Setup) : Handle(Run)
-  run = Run.start(book, folder.read_only, folder, http, clock, setup)
+  writer = if setup.order.tools.contains?("write_file"): Some(Writer.start(folder)) else: None
+  run = Run.start(book, folder.read_only, writer, http, clock, setup)
   case run.ask(Begin(me: run), within: setup.order.budget.wall_ms.to_i64.ms)
     Ok(_) | Error(_): run
   end
