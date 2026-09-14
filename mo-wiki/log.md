@@ -312,3 +312,6 @@
 
 ## [2026-09-14] session | Day: round 6, failed on all four predictions
 - Three fresh sessions from 14:30 UTC in `../mo-lang-control6-*`, the baselines with their checks bolted on; Fable verified each worktree (Mo 185 of 185, Go and Python every check clean). P1 1.58, P2 one shape-law loop and five keyword or grammar loops, P3 no check caught a real bug anywhere so the null hypothesis stands, P4 0.74. Five decision rows, three for Robert (the laws, the `never` over a `var` copy, the keywords as names). No seventh round until one lands. Merged to `main`.
+
+## [2026-09-14] session | Afternoon: Robert agrees, step 27 starts
+- Robert agreed to all three round 6 recommendations. Chapter 2 gains "Session 6 changes": the file law dropped (not demoted, since the honesty laws forbid warnings), a `never` reads values at rest, `state`/`result`/`old` as names outside the reserved positions. Five locked rows. Step 27 written and started on a fresh worker.

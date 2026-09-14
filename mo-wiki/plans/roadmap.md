@@ -34,7 +34,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | done: the value form in both runtimes, 25 on one line in the corpus, the first Linux run green | — |
 | Step 26, the tail-position one-line `if` and two keyword diagnostics ([[interpreter-step-26]]) | done | — |
 | Round 6 of the control run, pre-registered ([[control-run-6]]), the baselines with their checks | done: **failed on all four predictions**; the null hypothesis stands; three rows for Robert | — |
-| The laws re-evaluated after round 6 (Robert reads the three rows); the `never` over a `var` copy; the escape and `result` step | next, waits for Robert | 1–2 |
+| Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | in progress | 1 |
+| Round 7, after step 27, the Mo programs removed from every worktree | queued | — |
 | Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, the toolchain in Mo | late | — |
