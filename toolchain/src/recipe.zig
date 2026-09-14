@@ -96,8 +96,6 @@ pub fn conform(gpa: std.mem.Allocator, io: Io, path: []const u8, name: []const u
     if (appended.items.len > 0) try source.append(gpa, '\n');
     try source.appendSlice(gpa, appended.items);
     var synth = try program.withMain(gpa, impl, source.items);
-    // The file keeps its own 500 lines; the recipe's blocks are not in it (step 22).
-    synth.own_lines = check.lineCount(main.source);
     const files = try gpa.dupe(diag.File, synth.files);
     files[files.len - 1].path = try std.fmt.allocPrint(gpa, "{s} with recipe {s}", .{ main.path, name });
     synth.files = files;

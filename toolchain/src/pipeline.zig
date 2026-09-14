@@ -125,7 +125,7 @@ fn front(gpa: std.mem.Allocator, prog: program.Program, stage: Stage, diags: *di
     else
         try parser.parseProgram(gpa, prog.source, tokens, diags);
     if (stage == .parse) return null;
-    const checked = try check.checkProgram(gpa, tree, prog.bases, prog.verified_lines, prog.own_lines, diags);
+    const checked = try check.checkProgram(gpa, tree, prog.bases, prog.verified_lines, diags);
     try oneMain(gpa, checked, diags);
     try caps.check(gpa, checked, diags);
     try loops.check(gpa, checked, diags);
