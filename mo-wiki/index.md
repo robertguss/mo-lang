@@ -120,6 +120,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[control-run-6|The control run, round 6]] — pre-registered: logstat and jobq, the baselines with their checks bolted on, the null hypothesis stated as P3
 - [[interpreter-step-26|Step 26: the one-line if in tail position]] — what step 25's acceptance found: tail position is a value, two keyword diagnostics; before round 6
 - [[interpreter-step-25|Step 25: the one-line if and keyword field names]] — Robert's two calls of 14 Sep morning; the production, the formatter rule, the fix reversed, `state` after a dot
 - [[interpreter-step-24|Step 24: what program 5 found]] — the authority hole, a handle in a state field, a delayed send, `Deadline.remaining`, four gaps, the simulator's ask

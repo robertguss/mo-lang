@@ -58,6 +58,7 @@ Numbers (Linux VM, best of 20, `bench/results.tsv`): lex 7,258 → 6,808 µs, pa
 Fable's probes: a nested one-line `if`, one in a list literal, an argument, parentheses before `*`, and assigned to a `state` field, the same output from `mo run` and the built binary; the statement form, a missing `else:`, and a `return` in a branch refused with sentences that say what to write; `mo fmt` folding a block that fits and unfolding one too long, idempotent; `mo fix` leaving both alone; `Json.encode` of `state` and `old` fields; a read-only `Fs` hidden in a bound block `if` and in a `case` arm refused; agent's check line under `mo run`. One finding: a one-line `if` as a body's last expression is refused as a statement while the block `if` there is the value; Fable's call (tail position is a value) goes to step 26 before round 6. The `var state = n` and `old` parameter refusals carry the parser's bare "expected a name".
 
 ## Related
+- [[interpreter-step-26]]
 - [[p16-one-line-if-value]]
 - [[control-run-4]]
 - [[interpreter-step-21]]
