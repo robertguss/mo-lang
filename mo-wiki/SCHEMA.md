@@ -22,7 +22,7 @@ mo-wiki/                the Obsidian vault root; everything below is relative to
   SCHEMA.md          this file
   index.md           every wiki page, one line each, by section
   log.md             append-only action log
-  directions/        one page per "direction we like" (d01–d35, numbered, never renumbered)
+  directions/        one page per "direction we like" (d01–d40, numbered, never renumbered)
   questions/         one page per open question (q01–q17), answer in frontmatter
   decisions/         decision-log.md (every choice, in order, with status) + one page per locked decision at the v0 lock
   syntax/            the 15 syntax picks (p01–p15) + the example programs
@@ -85,7 +85,7 @@ Add a tag here before using it. Keep it under 25.
 - **Language:** `syntax`, `types`, `state`, `effects`, `processes`, `errors`, `contracts`, `negative-space`
 - **Verification & tooling:** `verification`, `compiler`, `tooling`, `runtime`, `performance`
 - **Ecosystem:** `stdlib`, `security`, `agents`
-- **Research:** `research`, `history`
+- **Research:** `research`, `history`, `languages`
 
 ## Conventions
 

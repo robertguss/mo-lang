@@ -39,6 +39,11 @@
 - [[d32-proving-is-a-separate-tool|Direction 32: Proving is a separate tool; tier 3 v0 is testing in the interpreter]] — (session 3, tension 4) property tests + simulation in the interpreter; `mo prove` vendors a solver outside the zero-dep law
 - [[d33-bounded-mailboxes|Direction 33: Bounded mailboxes; `send` never blocks; overflow is a roof]] — (session 3, tension 5) `mailbox: N` per process, sender crashes on overflow, backpressure via `ask`
 - [[d34-packages-are-recipes|Direction 34: Packages are recipes; the spec is shared, the bodies are yours]] — (Robert, session 3, to be proven) stdlib is the bricks, a package is the booklet, the agent builds it in your repo; zero dependencies by construction
+- [[d40-structured-runtime-events|Direction 40: Structured runtime events, not log lines]] — (outside session, 13 Sep) every scheduler, supervisor, capability, and mailbox event with a schema; feeds the MCP surface and the crash report
+- [[d39-hot-code-reload|Direction 39: Hot code reload]] — (Robert, 13 Sep) swap a module's code under running processes; state migration is the design work
+- [[d38-time-travel-debugging|Direction 38: Time-travel debugging for Mo processes]] — (outside session, 13 Sep) snapshots plus the message log as a stepwise query interface; mostly built under mo test
+- [[d37-runtime-mcp-surface|Direction 37: Runtime MCP surface — every Mo program is queryable]] — (Robert, 13 Sep, "the ability to debug a process") list, inspect, query, pause a running process; must be a capability
+- [[d36-vm-first-runtime|Direction 36: VM-first runtime, C backend as an optimization]] — (Robert, 13 Sep, "you are beginning to persuade me") the VM as the reference, native as ahead-of-time compilation of it; the frame for d37–d40
 - [[d35-mo-is-an-ecosystem|Direction 35: Mo is an ecosystem; first-party batteries you own]] — (Robert, session 3) Laravel model for first-party tooling, Phoenix-auth/shadcn model for kits you own; three shelves: bricks, kits, recipes
 
 ## Open questions
@@ -92,6 +97,8 @@
 - [[fork-in-the-road|The fork in the road: three products called 'a language for AI']] — "A language for AI" means three different products:
 - [[id-addressed-editing|ID-addressed editing]] — The problem: agent editing tools today use `str_replace` (fails on non-unique or already-changed text), line ranges (wrong the moment any…
 - [[idea-backlog|Idea backlog (Claude's early proposals)]] — - Stable semantic IDs on every declaration so agents edit by ID instead of fragile text diffs
+- [[agent-native-runtime-features|Agent-native runtime features to test]] — a menu in three tiers: MCP surface, time travel, structured events, counterexamples as tests; the build order
+- [[vm-first-vs-c-first|VM-first vs C-first for the Mo runtime]] — what a VM owns that C cannot, where Mo sits, stay on C-first and design the VM as the eventual primary
 - [[outside-review-2026-09-13-response|Outside review, 13 Sep 2026: Fable's response and the baselines]] — the calls per item, Robert's decision, the numbers to compare against
 - [[outside-review-2026-09-13|Outside review, 13 Sep 2026: what to keep, revise, drop]] — Amp + oracle + librarian; verdict, ranked disagreements, keep/revise/drop table, next five moves
 - [[outside-review-2026-09-13-evidence|Outside review, 13 Sep 2026: evidence]] — thirteen probes against the day-two toolchain and kv corpus, with file and line references
