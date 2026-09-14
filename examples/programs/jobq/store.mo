@@ -1,6 +1,6 @@
 # recipe: Recipes.Store.Store
 module Jobq.Store
-expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs
+expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled, rewritten, emptied, line_of
 
 intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store, its keys spread over 256 small maps so a change copies one small map: String keys to String values, a log named jobq.log in a folder with a SET or DEL line per change, each change appended and on disk before it returns, and put_all appending many changes in one write, so one fsync covers them; replay leaves out a last line cut short, and compaction writes one line per live key beside the log and renames it over the log."
 
@@ -207,6 +207,48 @@ fn changed(table: Table, change: (String, Option(String))) : Table
     Some(value): placed(table, change.0, value)
     None: dropped(table, change.0)
   end
+end
+
+# Changes appended as lines in one write, the table keeping no values: for a caller that holds
+# the values itself and needs only the log's name and size.
+fn journaled(fs: Fs, table: Table, lines: List(String)) : Result(Table, StoreError)
+  requires lines.all?(fn(line) line.ends_with?("\n") end)
+
+  return Ok(table) if lines.size == 0
+  size = try appended(fs, table, String.join(lines, ""))
+  var after = table
+  after.bytes = size
+  after.lines = table.lines + lines.size
+  Ok(after)
+end
+
+# The log written whole from the lines given, beside the log and renamed over it, so a rewrite
+# cut short leaves the old log as it was.
+fn rewritten(fs: Fs, table: Table, lines: List(String)) : Result(Table, StoreError)
+  requires lines.all?(fn(line) line.ends_with?("\n") end)
+
+  folder = fs.scoped(table.dir)
+  text = String.join(lines, "")
+  fresh = "#{table.name}.new"
+  if folder.write(fresh, text, within: 60_000.ms) is Error(_)
+    return Error(Unwritten)
+  end
+  if folder.rename(fresh, table.name, within: 10_000.ms) is Error(_)
+    return Error(Unwritten)
+  end
+  var after = table
+  after.bytes = text.byte_size
+  after.lines = lines.size
+  after.cut = false
+  Ok(after)
+end
+
+# The table without its values, still naming its log and its size.
+fn emptied(table: Table) : Table
+  var after = table
+  after.buckets = Map.new()
+  after.size = 0
+  after
 end
 
 # Every key that starts with the prefix, in byte order.
@@ -416,6 +458,28 @@ test "many changes are one append, applied in order, and read back once the stor
   assert pairs(again) == pairs(after) and lines(again) == 3
 end
 
+test "lines journaled are one append, and a log rewritten whole replaces what it held"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  assert journaled(fs, emptied(empty), ["SET a 1\n", "SET b 2\n", "DEL a\n"]) is Ok(noted)
+  assert count(noted) == 0 and lines(noted) == 3 and bytes(noted) == 22
+  assert open(fs, "d") is Ok(replayed)
+  assert get(replayed, "b") == Some("2") and count(replayed) == 1
+  assert rewritten(fs, noted, ["SET c 3\n"]) is Ok(whole)
+  assert bytes(whole) == 8 and lines(whole) == 1
+  assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET c 3\n")
+  assert journaled(fs, whole, []) == Ok(whole)
+end
+
+test rejects "a journaled line with no newline"
+  journaled(Fs.fixture(), blank("d"), ["SET a 1"])
+end
+
+test rejects "a rewrite with a line with no newline"
+  rewritten(Fs.fixture(), blank("d"), ["SET a 1"])
+end
+
 test "replay applies SET and DEL in order, and stops open at a line that is neither"
   fs = Fs.fixture()
   log_text = "SET a 1\nSET b two words\nDEL a\nSET c \nSET b 3\n"
@@ -484,5 +548,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (9), property (200 seeds), sim (not run)
+verified: types, contracts, tests (12), property (200 seeds), sim (not run)
           proven: not run
