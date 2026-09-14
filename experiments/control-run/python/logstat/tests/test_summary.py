@@ -48,7 +48,9 @@ class TotalsTest(unittest.TestCase):
         self.assertEqual(summarize(records).error_rate, 0.031)
 
     def test_since_ignores_earlier_lines(self) -> None:
-        summary = summarize([record(0), record(10, status=500), record(20)], since=T0 + timedelta(seconds=10))
+        summary = summarize(
+            [record(0), record(10, status=500), record(20)], since=T0 + timedelta(seconds=10)
+        )
         self.assertEqual((summary.requests, summary.errors), (2, 1))
 
 
@@ -70,10 +72,16 @@ class PerMinuteTest(unittest.TestCase):
 class SlowestTest(unittest.TestCase):
     def test_duration_descending_then_timestamp_ascending(self) -> None:
         summary = summarize(
-            [record(3, path="/c", ms=340), record(1, path="/a", ms=12), record(2, path="/b", ms=340)],
+            [
+                record(3, path="/c", ms=340),
+                record(1, path="/a", ms=12),
+                record(2, path="/b", ms=340),
+            ],
             top=3,
         )
-        self.assertEqual([(e.ms, e.path) for e in summary.slowest], [(340, "/b"), (340, "/c"), (12, "/a")])
+        self.assertEqual(
+            [(e.ms, e.path) for e in summary.slowest], [(340, "/b"), (340, "/c"), (12, "/a")]
+        )
 
     def test_keeps_only_the_top_n(self) -> None:
         summary = summarize([record(i, ms=i) for i in range(50)], top=3)
@@ -89,14 +97,21 @@ class SlowestTest(unittest.TestCase):
 
 class BusiestTest(unittest.TestCase):
     def test_count_descending_then_path_ascending(self) -> None:
-        records = [record(0, path="/z")] * 2 + [record(0, path="/b"), record(0, path="/a")] + [record(0, path="/m")] * 3
+        records = (
+            [record(0, path="/z")] * 2
+            + [record(0, path="/b"), record(0, path="/a")]
+            + [record(0, path="/m")] * 3
+        )
         summary = summarize(records)
         self.assertEqual(
-            [(e.count, e.path) for e in summary.busiest], [(3, "/m"), (2, "/z"), (1, "/a"), (1, "/b")]
+            [(e.count, e.path) for e in summary.busiest],
+            [(3, "/m"), (2, "/z"), (1, "/a"), (1, "/b")],
         )
 
     def test_method_and_path_are_counted_apart(self) -> None:
-        summary = summarize([record(0, method="POST"), record(0, method="GET"), record(0, method="GET")])
+        summary = summarize(
+            [record(0, method="POST"), record(0, method="GET"), record(0, method="GET")]
+        )
         self.assertEqual([(e.count, e.method) for e in summary.busiest], [(2, "GET"), (1, "POST")])
 
     def test_same_count_and_path_orders_by_method(self) -> None:
@@ -162,7 +177,9 @@ class PropertyTest(unittest.TestCase):
                 self.assertEqual(sum(e.count for e in summary.busiest) <= summary.requests, True)
                 durations = [e.ms for e in summary.slowest]
                 self.assertEqual(durations, sorted(durations, reverse=True))
-                self.assertEqual(durations, sorted((r.duration_ms for r in records), reverse=True)[:top])
+                self.assertEqual(
+                    durations, sorted((r.duration_ms for r in records), reverse=True)[:top]
+                )
 
 
 if __name__ == "__main__":
