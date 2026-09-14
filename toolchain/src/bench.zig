@@ -46,6 +46,10 @@
 //! then 2_000 updates that each add eight keys through `reduce` with a tuple accumulator. Each row
 //! is the best of three runs of the 2_000 updates less the best of three runs that only fill.
 //! `--updates` runs only these rows, and with `--record` appends only them.
+//! `replay-1m` and `replay-1m-c` (step 28) time programs/jobq opening a log of 1_000_000 records under
+//! `mo run` and as its `mo build` binary: from the process's start to its first answer to `GET /health`,
+//! the log's replay whole. The log is 500_000 jobs each set twice, queued then leased, written once to
+//! .zig-cache/bench/replay. `--replay` runs only these two, and with `--record` appends only them.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -69,12 +73,15 @@ pub fn main(init: std.process.Init) !void {
     var iters: u32 = 20;
     var record = false;
     var updates_only = false;
+    var replay_only = false;
     var positional: u32 = 0;
     for (args[1..]) |a| {
         if (std.mem.eql(u8, a, "--record")) {
             record = true;
         } else if (std.mem.eql(u8, a, "--updates")) {
             updates_only = true;
+        } else if (std.mem.eql(u8, a, "--replay")) {
+            replay_only = true;
         } else if (positional == 0) {
             root = a;
             positional += 1;
@@ -91,6 +98,13 @@ pub fn main(init: std.process.Init) !void {
     // One arena, reset per run and kept warm, so a row times the run and not the page faults.
     var scratch = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer scratch.deinit();
+
+    if (replay_only) {
+        const replay = try replay1m(arena, io, init.environ_map, root, try mo.corpus.moExe(arena, io, init.environ_map.get("MO_EXE")));
+        try printReplay(out, replay);
+        if (record) try appendReplay(io, replay);
+        return;
+    }
 
     const updates = try updates2k(arena, io, init.environ_map, &scratch);
     for (update_shapes, updates) |shape, u| {
@@ -328,7 +342,11 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
+    const replay = try replay1m(arena, io, init.environ_map, root, mo_exe);
+    try printReplay(out, replay);
+
     if (record) {
+        try appendReplay(io, replay);
         try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib }, http, reuse);
         try appendUpdates(io, updates);
     }
@@ -1137,6 +1155,106 @@ fn appendUpdates(io: Io, updates: [update_shapes.len]Updates) !void {
                 try w.interface.print("{d}\t{s}{s}\t{d}\t{d}\n", .{ day, shape.name, suffix, update_steps, @as(u64, @intCast(@divTrunc(t, 1000))) });
             } else try w.interface.print("{d}\t{s}{s}\t{d}\tn/a\n", .{ day, shape.name, suffix, update_steps });
         }
+    }
+}
+
+const replay_records: u64 = 1_000_000;
+const replay_dir = ".zig-cache/bench/replay";
+
+/// The replay rows: programs/jobq's time to its first /health on the log, under mo run and as a binary.
+const Replay = struct { ns: ?i96 = null, c_ns: ?i96 = null };
+
+fn replay1m(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, mo_exe: []const u8) !Replay {
+    const main_abs = try programMain(arena, io, root, "jobq") orelse return .{};
+    const log = try replayLog(arena, io);
+    var r: Replay = .{};
+    r.ns = try replayTime(arena, io, &.{ mo_exe, "run", main_abs, "--" }, log);
+    if (try buildNative(arena, io, environ, root, "jobq")) |binary| r.c_ns = try replayTime(arena, io, &.{binary}, log);
+    return r;
+}
+
+/// The folder of the replay's log, written when it is not there yet.
+fn replayLog(arena: std.mem.Allocator, io: Io) ![]const u8 {
+    const path = replay_dir ++ "/log/jobq.log";
+    Io.Dir.cwd().access(io, path, .{}) catch {
+        try Io.Dir.cwd().createDirPath(io, replay_dir ++ "/log");
+        var text: std.ArrayList(u8) = .empty;
+        const jobs = replay_records / 2;
+        try text.print(arena, "SET ids {d}\n", .{jobs});
+        const payload = "x" ** 100;
+        for ([_][]const u8{ "queued", "leased" }, 0..) |state, pass| {
+            for (1..jobs + 1) |i| {
+                const lease = if (pass == 0) "" else ", \"worker\": \"w1\", \"lease_until\": \"2099-01-01T00:00:00Z\"";
+                try text.print(arena, "SET j_{d} {{\"id\": \"j_{d}\", \"queue\": \"q{d}\", \"state\": \"{s}\", \"payload\": \"{s}\", \"attempts\": {d}, \"max_attempts\": 3, \"created_at\": \"2026-09-13T10:00:00Z\", \"updated_at\": \"2026-09-13T10:00:00Z\"{s}}}\n", .{ i, i, i % 4, state, payload, pass, lease });
+            }
+        }
+        try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = text.items });
+    };
+    const file = try Io.Dir.cwd().realPathFileAlloc(io, path, arena);
+    return std.fs.path.dirname(file).?;
+}
+
+/// From starting `prefix serve DIR --port N` to its first 200 for GET /health; null when none comes
+/// within twenty minutes.
+fn replayTime(arena: std.mem.Allocator, io: Io, prefix: []const []const u8, dir: []const u8) !?i96 {
+    const port = freePort() orelse return null;
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(arena, prefix);
+    try argv.appendSlice(arena, &.{ "serve", dir, "--port", try std.fmt.allocPrint(arena, "{d}", .{port}) });
+    const t0 = Io.Clock.Timestamp.now(io, .awake);
+    var child = try std.process.spawn(io, .{ .argv = argv.items, .stdin = .ignore, .stdout = .ignore, .stderr = .ignore });
+    defer child.kill(io);
+    var buf: [256]u8 = undefined;
+    for (0..60_000) |_| {
+        if (healthy(port, &buf)) return t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        io.sleep(.fromMilliseconds(20), .awake) catch {};
+    }
+    std.debug.print("replay-1m: {s} did not answer /health\n", .{prefix[0]});
+    return null;
+}
+
+/// Whether jobq on `port` answers GET /health with a 200.
+fn healthy(port: u16, buf: []u8) bool {
+    const sys = posix.system;
+    const fd = connectLoopback(port) orelse return false;
+    defer _ = sys.close(fd);
+    const request = "GET /health HTTP/1.1\r\nhost: 127.0.0.1\r\nauthorization: Bearer bench\r\n\r\n";
+    var sent: usize = 0;
+    while (sent < request.len) {
+        const n = sys.write(fd, request[sent..].ptr, request.len - sent);
+        if (n <= 0) return false;
+        sent += @intCast(n);
+    }
+    var got: usize = 0;
+    while (got < 12) {
+        const n = sys.read(fd, buf[got..].ptr, buf.len - got);
+        if (n <= 0) return false;
+        got += @intCast(n);
+    }
+    return std.mem.startsWith(u8, buf[0..got], "HTTP/1.1 200");
+}
+
+fn printReplay(out: *Io.Writer, r: Replay) !void {
+    for ([_]?i96{ r.ns, r.c_ns }, [_][]const u8{ "replay-1m", "replay-1m-c" }, [_][]const u8{ "mo run", "the mo build binary" }) |ns, row, who| {
+        if (ns) |t| {
+            try out.print("{s:<8} {d:>9} µs  (programs/jobq opening a log of {d} records under {s}, to its first /health)\n", .{ row, @as(u64, @intCast(@divTrunc(t, 1000))), replay_records, who });
+        } else try out.print("{s:<8} {s:>12}\n", .{ row, "n/a" });
+    }
+}
+
+/// The replay rows: date, row, the records, µs.
+fn appendReplay(io: Io, r: Replay) !void {
+    var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
+    defer file.close(io);
+    var buf: [256]u8 = undefined;
+    var w: Io.File.Writer = .init(file, io, &buf);
+    try w.seekTo(try file.length(io));
+    defer w.interface.flush() catch {};
+    const day: u64 = @intCast(@divTrunc(Io.Clock.Timestamp.now(io, .real).raw.toNanoseconds(), std.time.ns_per_s));
+    for ([_]?i96{ r.ns, r.c_ns }, [_][]const u8{ "replay-1m", "replay-1m-c" }) |ns, row| {
+        if (ns) |t| {
+            try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ day, row, replay_records, @as(u64, @intCast(@divTrunc(t, 1000))) });
+        } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ day, row, replay_records });
     }
 }
 

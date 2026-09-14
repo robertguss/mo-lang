@@ -323,7 +323,7 @@ The structs the `Runtime` rows give (design-v0/09, Runtime; Session 5, step 23).
 | `SourceInfo` | `kind`, `name` | `String` | |
 | `SourceInfo` | `target`, `in_flight` | `UInt64` | |
 | `SourceInfo` | `paused` | `Bool` | |
-| `MemoryInfo` | `resident_bytes`, `region_bytes`, `packed_bytes`, `event_bytes` | `UInt64` | |
+| `MemoryInfo` | `resident_bytes`, `region_bytes`, `region_resident_bytes`, `packed_bytes`, `event_bytes` | `UInt64` | `region_resident_bytes`: the pages the regions keep resident, the scratch region's included, so resident memory less it is what the runtime holds outside the regions (step 28) |
 | `MemoryInfo` | `largest` | `List(ProcessInfo)` | |
 
 ## Operators

@@ -83,7 +83,7 @@ static bool reserve_up_to(MoRegion *r, size_t most) {
     for (size_t size = most; size >= (size_t)256 << 20; size /= 2) {
         void *mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         if (mem == MAP_FAILED) continue;
-        r->base = r->top = (uintptr_t)mem;
+        r->base = r->top = r->high = (uintptr_t)mem;
         r->end = r->base + size;
         return true;
     }
@@ -123,6 +123,38 @@ static void *region_alloc(MoRegion *r, size_t n) {
     return xmalloc(n);
 }
 
+#define RELEASE_KEEP ((uintptr_t)1 << 20)
+
+/* The pages of `r` touched past `keep` go back to the system and the reservation stays (step 28): a
+ * region's top falls at a compaction, and the pages past it stayed resident, so a server's resident
+ * memory was the most its regions ever held. */
+static void release_past(MoRegion *r, uintptr_t keep) {
+    if (r->end == 0) return;
+    if (r->top > r->high) r->high = r->top;
+    uintptr_t page = (uintptr_t)sysconf(_SC_PAGESIZE);
+    uintptr_t from = (keep + page - 1) & ~(page - 1);
+    uintptr_t to = (r->high + page - 1) & ~(page - 1);
+    if (to > r->end) to = r->end;
+    if (to > from) mmap((void *)from, to - from, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+    r->high = from > r->top ? from : r->top;
+}
+
+/* The pages of a region that are resident: `mincore` over what it may have touched. */
+static uint64_t resident_in(const MoRegion *r) {
+    if (r->end == 0) return 0;
+    uintptr_t page = (uintptr_t)sysconf(_SC_PAGESIZE);
+    uintptr_t high = r->high > r->top ? r->high : r->top;
+    size_t pages = (size_t)((high - r->base + page - 1) / page);
+    if (pages == 0) return 0;
+    unsigned char *vec = xmalloc(pages);
+    uint64_t n = 0;
+    if (mincore((void *)r->base, pages * page, (void *)vec) == 0) {
+        for (size_t i = 0; i < pages; i++) n += vec[i] & 1;
+    }
+    free(vec);
+    return n * page;
+}
+
 void *mo_alloc_bytes(size_t n) {
     if (n == 0) return empty_bytes;
     return region_alloc(&mo_heap, n);
@@ -138,7 +170,9 @@ static bool in_heap(uintptr_t addr) { return addr >= mo_heap.base && addr < mo_h
 typedef struct { uintptr_t ptr; size_t len, cap; } Growth;
 /* A table from where a buffer starts to what the runtime keeps of it (step 28): open addressing on
  * the address, holding every buffer rather than the sixteen used last. */
-typedef struct { Growth *slots; size_t cap, used; } PtrTable;
+/* `lo` and `hi` bound the addresses held since the table last emptied, so a compaction whose range
+ * misses them drops nothing without looking. */
+typedef struct { Growth *slots, *spare; size_t cap, used; uintptr_t lo, hi; } PtrTable;
 /* The lists push can grow in place: their length and room. */
 static PtrTable growth;
 /* The strings an interpolation can grow in place, as push grows a list (mo_concat). */
@@ -189,6 +223,9 @@ static Growth *ptab_get(const PtrTable *t, uintptr_t ptr) {
 }
 
 static void ptab_insert(PtrTable *t, Growth g) {
+    if (t->used == 0) t->lo = t->hi = g.ptr;
+    if (g.ptr < t->lo) t->lo = g.ptr;
+    if (g.ptr >= t->hi) t->hi = g.ptr + 1;
     for (size_t i = ptab_home(t, g.ptr);; i = (i + 1) & (t->cap - 1)) {
         if (t->slots[i].ptr != 0 && t->slots[i].ptr != g.ptr) continue;
         if (t->slots[i].ptr == 0) t->used++;
@@ -197,17 +234,28 @@ static void ptab_insert(PtrTable *t, Growth g) {
     }
 }
 
+/* The entries outside [lo, hi) put again into slots of `cap`. A rebuild of the same size goes into the
+ * table's spare slots and keeps the old ones as the next spare, so a compaction that forgets buffers
+ * allocates nothing: a malloc and free of the whole table at every compaction left the allocator's
+ * mappings resident (step 28). */
 static void ptab_rebuild(PtrTable *t, size_t cap, uintptr_t lo, uintptr_t hi) {
     PtrTable old = *t;
     t->cap = cap;
-    t->slots = xmalloc(cap * sizeof(Growth));
+    if (cap == old.cap && old.spare) {
+        t->slots = old.spare;
+    } else {
+        free(old.spare);
+        t->slots = xmalloc(cap * sizeof(Growth));
+    }
+    t->spare = NULL;
     memset(t->slots, 0, cap * sizeof(Growth));
     t->used = 0;
     for (size_t i = 0; i < old.cap; i++) {
         uintptr_t p = old.slots[i].ptr;
         if (p != 0 && (p < lo || p >= hi)) ptab_insert(t, old.slots[i]);
     }
-    free(old.slots);
+    if (cap == old.cap) t->spare = old.slots;
+    else free(old.slots);
 }
 
 static void ptab_put(PtrTable *t, uintptr_t ptr, size_t len, size_t cap) {
@@ -215,11 +263,9 @@ static void ptab_put(PtrTable *t, uintptr_t ptr, size_t len, size_t cap) {
     ptab_insert(t, (Growth){ptr, len, cap});
 }
 
-/* Backward-shift deletion: every probe run stays whole. */
-static void ptab_remove(PtrTable *t, uintptr_t ptr) {
-    Growth *g = ptab_get(t, ptr);
-    if (!g) return;
-    size_t mask = t->cap - 1, i = (size_t)(g - t->slots), j = i;
+/* Backward-shift deletion of slot `i`: every probe run stays whole. */
+static void ptab_remove_at(PtrTable *t, size_t i) {
+    size_t mask = t->cap - 1, j = i;
     for (;;) {
         j = (j + 1) & mask;
         if (t->slots[j].ptr == 0) break;
@@ -233,16 +279,29 @@ static void ptab_remove(PtrTable *t, uintptr_t ptr) {
     t->used--;
 }
 
-/* Forgets the buffers in [lo, hi). */
+static void ptab_remove(PtrTable *t, uintptr_t ptr) {
+    Growth *g = ptab_get(t, ptr);
+    if (g) ptab_remove_at(t, (size_t)(g - t->slots));
+}
+
+/* Forgets the buffers in [lo, hi), in place: a slot a removal shifted an entry into is looked at again. */
 static void ptab_drop(PtrTable *t, uintptr_t lo, uintptr_t hi) {
-    if (t->used == 0) return;
-    for (size_t i = 0; i < t->cap; i++) {
+    if (t->used == 0 || t->hi <= lo || t->lo >= hi) return;
+    uintptr_t held_lo = UINTPTR_MAX, held_hi = 0;
+    for (size_t i = 0; i < t->cap && t->used > 0;) {
         uintptr_t p = t->slots[i].ptr;
         if (p != 0 && p >= lo && p < hi) {
-            ptab_rebuild(t, t->cap, lo, hi);
-            return;
+            ptab_remove_at(t, i);
+            continue;
         }
+        if (p != 0) {
+            if (p < held_lo) held_lo = p;
+            if (p >= held_hi) held_hi = p + 1;
+        }
+        i++;
     }
+    t->lo = held_lo;
+    t->hi = held_hi;
 }
 
 static void ptab_clear(PtrTable *t) {
@@ -631,6 +690,8 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     forward_clear();
     Copy out = {from, old_top, &scratch, true, false};
     copy_roots(roots, n, below, nbelow, &out);
+    if (old_top > mo_heap.high) mo_heap.high = old_top;
+    if (scratch.top > scratch.high) scratch.high = scratch.top;
     mo_heap.top = from;
     drop_growth(from, old_top);
     forward_clear();
@@ -638,6 +699,10 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     copy_roots(roots, n, below, nbelow, &back);
     drop_growth(scratch.base, scratch.end);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
+    /* A compaction that freed far more than it kept gives the pages back at once, as a loop that
+     * built and dropped a large value does; smaller ones wait for the update's end (settle_region). */
+    uintptr_t kept = mo_heap.top - mo_heap.base;
+    if (mo_heap.high - mo_heap.top > 16 * RELEASE_KEEP && mo_heap.high - mo_heap.top > 2 * kept) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
 }
 
 /* Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the heap's
@@ -662,6 +727,7 @@ static void relocate_heap(size_t size, MoValue *roots, size_t n) {
     copy_roots(roots, n, NULL, 0, &back);
     drop_growth(scratch.base, scratch.end);
     munmap((void *)mo_heap.base, mo_heap.end - mo_heap.base);
+    if (scratch.top > scratch.high) scratch.high = scratch.top;
     mo_heap = fresh;
 }
 
@@ -5380,6 +5446,10 @@ static void settle_region(uint32_t id, size_t mark) {
         }
     }
     procs[id]->state = roots[0];
+    /* What the update freed, in its process's region and in the scratch region a compaction copied
+     * through, goes back to the system beyond a MiB of each (step 28). */
+    if (mo_heap.high > mo_heap.top + 4 * RELEASE_KEEP) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
+    if (scratch.high > scratch.base + 4 * RELEASE_KEEP) release_past(&scratch, scratch.base + RELEASE_KEEP);
 }
 
 static void process_crashed(const Report *r) {
@@ -6220,10 +6290,11 @@ static bool finished(const Proc *p) { return p->supervisor == NOBODY && !p->busy
 
 /* Everything allocated goes back to the system, the reservation kept (region.zig, decommit). */
 static void decommit(MoRegion *r) {
+    if (r->top > r->high) r->high = r->top;
     size_t page = (size_t)sysconf(_SC_PAGESIZE);
-    size_t used = ((r->top - r->base) + page - 1) & ~(page - 1);
+    size_t used = ((r->high - r->base) + page - 1) & ~(page - 1);
     if (used > 0) mmap((void *)r->base, used, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-    r->top = r->base;
+    r->top = r->high = r->base;
 }
 
 /* Process `id` has finished: what it held is freed, and its emptied region waits for the next
@@ -8923,10 +8994,17 @@ MO_ROW(mo_r_Runtime_memory) {
     sweep_test();
     (void)a;
     (void)kind;
-    uint64_t regions = 0;
+    uint64_t regions = 0, resident_regions = resident_in(&scratch);
     if (server_mode && mo_compacts) {
         const MoRegion *m = my_vm == &main_vm ? &mo_heap : &main_vm.heap;
         if (m->end) regions += m->top - m->base;
+        resident_regions += resident_in(m);
+    }
+    if (turns_on) {
+        for (uint32_t id = 0; id < nworkers; id++) {
+            if (!workers[id] || workers[id]->ended) continue;
+            resident_regions += resident_in(my_vm == &workers[id]->vm ? &mo_heap : &workers[id]->vm.heap);
+        }
     }
     uint32_t top[LARGEST_LISTED];
     uint64_t top_bytes[LARGEST_LISTED];
@@ -8952,8 +9030,8 @@ MO_ROW(mo_r_Runtime_memory) {
     }
     MoValue *largest = mo_alloc_values(ntop);
     for (uint32_t i = 0; i < ntop; i++) largest[i] = process_info(top[i]);
-    MoValue f[5] = {mo_u64(resident_bytes()), mo_u64(regions), mo_u64(stat_packed_bytes), mo_u64(ring ? ring_cap * sizeof(Event) : 0), mo_list(largest, ntop)};
-    return mo_record(mo_memory_info_decl, 5, f);
+    MoValue f[6] = {mo_u64(resident_bytes()), mo_u64(regions), mo_u64(resident_regions), mo_u64(stat_packed_bytes), mo_u64(ring ? ring_cap * sizeof(Event) : 0), mo_list(largest, ntop)};
+    return mo_record(mo_memory_info_decl, 6, f);
 }
 
 /* ---- a message from the text a report prints it as (surface.zig, Parser) */

@@ -229,7 +229,8 @@ static inline MoValue mo_field(MoValue v, uint32_t k) { return v.as.xs[k]; }
 
 /* ---- memory: regions freed at safe points (vm.zig) */
 
-typedef struct { uintptr_t base, end, top; } MoRegion;
+/* `high`: past `top`, how far the region's pages may still be resident (step 28). */
+typedef struct { uintptr_t base, end, top, high; } MoRegion;
 extern MoRegion mo_heap;
 /* Compaction runs: under a program's main, not in a test, whose memory goes whole. */
 extern bool mo_compacts;

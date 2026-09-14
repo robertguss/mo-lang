@@ -135,6 +135,7 @@ pub const Vm = struct {
     /// The lists push can grow in place, by where their buffer starts (step 28: every one,
     /// not the sixteen grown last, so a map's entries keep their room beside a few new lists).
     growth: std.AutoHashMapUnmanaged(usize, Growth) = .empty,
+    growth_held: Held = .{},
     /// The strings an interpolation can grow in place, as push grows a list (concatText): the
     /// sixteen it made last; and the bytes of an interpolation's tail, formatted before they go
     /// into their buffer.
@@ -146,6 +147,7 @@ pub const Vm = struct {
     /// read since handed the value on (moves.zig) rather than sharing it (`load_shared`,
     /// `disown`). stdlib.zig writes into these in place, so an update is not a copy.
     owned: std.AutoHashMapUnmanaged(usize, usize) = .empty,
+    owned_held: Held = .{},
     /// A compaction's copies, so a slice reached twice is copied once.
     forward: std.AutoHashMapUnmanaged(SliceKey, [*]Value) = .empty,
     /// Slots a row wrote in place with a value that may be newer than the slot (rememberWrite):
@@ -195,9 +197,11 @@ pub const Vm = struct {
     pub fn reuse(vm: *Vm) void {
         vm.stack.clearRetainingCapacity();
         vm.growth.clearRetainingCapacity();
+        vm.growth_held = .{};
         vm.text_growth = [_]Growth{.{}} ** 16;
         vm.text_growth_next = 0;
         vm.owned.clearRetainingCapacity();
+        vm.owned_held = .{};
         vm.forward.clearRetainingCapacity();
         vm.remembered.clearRetainingCapacity();
         vm.undo.clearRetainingCapacity();
@@ -213,6 +217,18 @@ pub const Vm = struct {
     }
 
     const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
+
+    /// The addresses a table has held since it last emptied, so a compaction whose range misses them
+    /// drops nothing without looking (runtime/mo_rt.c, PtrTable).
+    const Held = struct {
+        lo: usize = std.math.maxInt(usize),
+        hi: usize = 0,
+
+        fn note(h: *Held, addr: usize) void {
+            h.lo = @min(h.lo, addr);
+            h.hi = @max(h.hi, addr + 1);
+        }
+    };
 
     const SliceKey = struct { ptr: usize, len: usize };
 
@@ -625,12 +641,18 @@ pub const Vm = struct {
         s.top = s.base;
         vm.forward.clearRetainingCapacity();
         try vm.copyRoots(roots, below, .{ .lo = from, .hi = old_top, .dest = s.allocator(), .moves = true });
+        r.high = @max(r.high, old_top);
+        s.high = @max(s.high, s.top);
         r.top = from;
         vm.dropGrowth(from, old_top);
         vm.forward.clearRetainingCapacity();
         try vm.copyRoots(roots, below, .{ .lo = s.base, .hi = s.top, .dest = r.allocator(), .moves = true, .fresh = true });
         vm.dropGrowth(s.base, s.end);
         for (below) |*e| e.at = r.top;
+        // A compaction that freed far more than it kept gives the pages back at once; smaller ones wait
+        // for the update's end (sim.zig, settleRegion; step 28).
+        const kept = r.top - r.base;
+        if (r.high - r.top > 16 * Region.release_keep and r.high - r.top > 2 * kept) r.releasePast(r.top + Region.release_keep);
     }
 
     /// Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the
@@ -700,8 +722,14 @@ pub const Vm = struct {
         const out = try rawAlloc(c.dest, Value, if (growth) |g| g.cap else xs.len);
         try vm.forward.put(vm.gpa, key, out.ptr);
         for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, c);
-        if (growth) |g| try vm.growth.put(vm.gpa, @intFromPtr(out.ptr), .{ .ptr = @intFromPtr(out.ptr), .len = g.len, .cap = g.cap });
-        if (c.moves and vm.isOwned(xs)) try vm.owned.put(vm.gpa, @intFromPtr(out.ptr), xs.len);
+        if (growth) |g| {
+            try vm.growth.put(vm.gpa, @intFromPtr(out.ptr), .{ .ptr = @intFromPtr(out.ptr), .len = g.len, .cap = g.cap });
+            vm.growth_held.note(@intFromPtr(out.ptr));
+        }
+        if (c.moves and vm.isOwned(xs)) {
+            try vm.owned.put(vm.gpa, @intFromPtr(out.ptr), xs.len);
+            vm.owned_held.note(@intFromPtr(out.ptr));
+        }
         return out[0..xs.len];
     }
 
@@ -725,18 +753,23 @@ pub const Vm = struct {
 
     /// Forgets the buffers in [lo, hi), which a compaction has freed.
     fn dropGrowth(vm: *Vm, lo: usize, hi: usize) void {
-        dropRange(Growth, &vm.growth, lo, hi);
+        dropRange(Growth, &vm.growth, &vm.growth_held, lo, hi);
         for (&vm.text_growth) |*g| {
             if (g.ptr >= lo and g.ptr < hi) g.* = .{};
         }
-        dropRange(usize, &vm.owned, lo, hi);
+        dropRange(usize, &vm.owned, &vm.owned_held, lo, hi);
     }
 
-    fn dropRange(comptime V: type, map: *std.AutoHashMapUnmanaged(usize, V), lo: usize, hi: usize) void {
+    fn dropRange(comptime V: type, map: *std.AutoHashMapUnmanaged(usize, V), held: *Held, lo: usize, hi: usize) void {
+        if (map.count() == 0 or held.hi <= lo or held.lo >= hi) return;
+        var left: Held = .{};
         var it = map.iterator();
         while (it.next()) |e| {
-            if (e.key_ptr.* >= lo and e.key_ptr.* < hi) map.removeByPtr(e.key_ptr);
+            if (e.key_ptr.* >= lo and e.key_ptr.* < hi) {
+                map.removeByPtr(e.key_ptr);
+            } else left.note(e.key_ptr.*);
         }
+        held.* = left;
     }
 
     /// Whether one holder holds `xs` alone (vm.owned).
@@ -750,6 +783,7 @@ pub const Vm = struct {
     pub fn own(vm: *Vm, xs: []const Value) Error!void {
         if (xs.len == 0) return;
         try vm.owned.put(vm.gpa, @intFromPtr(xs.ptr), xs.len);
+        vm.owned_held.note(@intFromPtr(xs.ptr));
     }
 
     /// `xs` may now be held twice.
@@ -938,6 +972,7 @@ pub const Vm = struct {
         @memcpy(out[0..xs.len], xs);
         out[xs.len] = x;
         try vm.growth.put(vm.gpa, @intFromPtr(out.ptr), .{ .ptr = @intFromPtr(out.ptr), .len = xs.len + 1, .cap = cap });
+        vm.growth_held.note(@intFromPtr(out.ptr));
         return out[0 .. xs.len + 1];
     }
 

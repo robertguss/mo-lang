@@ -997,6 +997,12 @@ pub const Sim = struct {
             }
         }
         sim.procs.items[id].state = roots[0];
+        // What the update freed, in its process's region and in the scratch region a compaction copied
+        // through, goes back to the system beyond a MiB of each (step 28).
+        const slack = @import("region.zig").Region.release_keep;
+        const reg = vm.region.?;
+        if (reg.high > reg.top + 4 * slack) reg.releasePast(reg.top + slack);
+        if (vm.scratch) |s| if (@max(s.high, s.top) > s.base + 4 * slack) s.releasePast(s.base + slack);
     }
 
     /// The message a process takes goes in its log; under `mo run` the log keeps the last

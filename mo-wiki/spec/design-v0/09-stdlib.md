@@ -339,6 +339,7 @@ end
 struct MemoryInfo
   resident_bytes: UInt64
   region_bytes: UInt64
+  region_resident_bytes: UInt64
   packed_bytes: UInt64
   event_bytes: UInt64
   largest: List(ProcessInfo)
@@ -379,7 +380,7 @@ end
 | `Runtime` | `events` | `since: Time`, `n: UInt64` | `List(Event)` | the first `n` events the ring holds at or after `since`, oldest first, so the last one's `at` pages on |
 | `Runtime` | `crashes` | `n: UInt64` | `List(Event)` | the last `n` `Crashed` events, oldest first |
 | `Runtime` | `sources` | | `List(SourceInfo)` | each loop the runtime owns (`Listener.serve`, `Conn.lines`, `HttpListener.serve`) that has not ended: its row, its target, the requests it is reading, and whether it is paused at the target's bound |
-| `Runtime` | `memory` | | `MemoryInfo` | the program's resident bytes now, the bytes main's and every process's regions hold, the bytes packed into messages since the run began, the bytes the ring holds, and the five processes whose regions hold the most |
+| `Runtime` | `memory` | | `MemoryInfo` | the program's resident bytes now, the bytes main's and every process's regions hold, the bytes of pages those regions and the scratch region keep resident (step 28: resident less these is what the runtime holds outside the regions, its parcels, buffers, stacks, and tables), the bytes packed into messages since the run began, the bytes the ring holds, and the five processes whose regions hold the most |
 | `Runtime` | `slowest` | `n: UInt64` | `List(Event)` | the `n` longest `Updated` events the ring holds, longest first |
 | `Runtime` | `send` | `id: UInt64`, `text: String` | `Result(none, RuntimeError)` | the message the text spells as a report prints it (`Vote(n: 3)`, `Total`; a message of one field may leave its name out), put in the process's mailbox now, not when the calling update commits, and recorded as `Sent`; a reply it carries is dropped; `Unparsed(why)` for text that is not a message the process declares, or that holds a map, a set, a capability, or a handle; `MailboxFull` at its bound, which crashes no one; `NoProcess`; `ReadOnly` |
 | `Runtime` | `pause`, `resume` | `id: UInt64` | `Result(none, RuntimeError)` | holds the process's deliveries, or lets them go: its messages wait, an `ask` to it is `Timeout` at its deadline (at once in a test, and the message still arrives), and a loop the runtime owns into it pauses at its bound; each is an event; `NoProcess`; `ReadOnly` |

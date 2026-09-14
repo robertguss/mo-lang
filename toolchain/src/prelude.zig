@@ -155,6 +155,7 @@ pub const structs = [_]Struct{
     .{ .name = "MemoryInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "resident_bytes", .type = "UInt64" },
         .{ .name = "region_bytes", .type = "UInt64" },
+        .{ .name = "region_resident_bytes", .type = "UInt64" },
         .{ .name = "packed_bytes", .type = "UInt64" },
         .{ .name = "event_bytes", .type = "UInt64" },
         .{ .name = "largest", .type = "List(ProcessInfo)" },
