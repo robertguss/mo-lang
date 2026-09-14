@@ -35,7 +35,7 @@ func TestRunTopAndSince(t *testing.T) {
 	if code != exitOK {
 		t.Fatalf("exit %d", code)
 	}
-	want := "requests   5\n"
+	want := "requests    5\n"
 	if !strings.HasPrefix(out, want) || strings.Count(out, " ms ") != 1 {
 		t.Errorf("output:\n%s", out)
 	}
