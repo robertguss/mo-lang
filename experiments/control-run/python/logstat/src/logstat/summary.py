@@ -1,10 +1,10 @@
 """The summary: counts, error rate, per minute, slowest requests, busiest paths."""
 
 import heapq
-from itertools import pairwise
 from collections import Counter
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 
 from pydantic import BaseModel, ConfigDict, Field
 
