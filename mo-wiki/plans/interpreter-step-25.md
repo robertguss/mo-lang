@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [syntax, tooling, compiler]
 sources: [syntax/p16-one-line-if-value.md, spec/grammar.md, plans/control-run-4.md, plans/interpreter-step-21.md]
-status: queued
+status: done
 ---
 
 # Step 25: the one-line `if` as a value
@@ -48,6 +48,14 @@ The lowering is the block form's; the C backend the same; a corpus test under `m
 ## Done when
 
 Green at every commit; the production, the formatter rule, the fix reversed, the three corpus files, the keyword field names with their corpus file and `jobq` on them, `MO0404`'s wording and the `if` hole with its file, `agent` narrowed again, both runtimes, the numbers, pushed, a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Accepted 14 Sep 2026, 13:55 UTC. Written in 95 minutes over two workers: part A on the Mac (08:04 EDT, pushed after the handoff said the worker had exited with nothing), parts F, B, C, D, E on the exe.dev VM by a fresh worker, green at each commit, 184 of 184 at the end. Part F was the lead's addition: the suite's first run on Linux failed three tests (part A's hand-written `verified:` line; a Json unit test reading a slice of its helper's dead stack frame, hidden on the Mac by its stack layout; the `--surface` corpus test picking ports inside Linux's ephemeral range and binding over a `TIME_WAIT` socket), none the poller's. Part A: the production, the tree the block form's, `MO0101` for the statement form, a missing `else:`, and a statement in a branch. Part B: `FORMAT.md` I1–I4, the formatter choosing the shape by width and comments, `mo fix` no longer rewriting it, the corpus reformatted (25 one-line values, from 2). Part C: `state` and `old` as a struct's field in three positions (declared, built, after a dot), `types/keyword-fields.mo`, `rejects/state-binding.mo`, jobq's `status` back to `state` with its hand-built JSON kept for stated reasons and no `.expected` change. Part D: `MO0404`'s catalog wording, the `if` and `case` hole closed with `rejects/read-only-if-argument.mo`, `agent` narrowed to spec 05 again with a `Writer` process only for a run granted `write_file`. Part E: a test that both forms emit the same C and bytecode; `basics/if.mo` with the form as an anonymous function's body, an argument, an arm's value, and inside an interpolation.
+
+Numbers (Linux VM, best of 20, `bench/results.tsv`): lex 7,258 → 6,808 µs, parse 17,140 → 17,201, check 59,800 → 61,180, fmt 9,592 → 9,902 over 145 → 149 files, the new binary on the old corpus matching or beating every row; logstat-4k 105.6 → 104.0 ms interpreted, 12.0 → 13.3 native; kv-10k-get 299 → 292 / 140 → 141; http-1k 35.4 → 37.9 / 31.5 → 34.5.
+
+Fable's probes: a nested one-line `if`, one in a list literal, an argument, parentheses before `*`, and assigned to a `state` field, the same output from `mo run` and the built binary; the statement form, a missing `else:`, and a `return` in a branch refused with sentences that say what to write; `mo fmt` folding a block that fits and unfolding one too long, idempotent; `mo fix` leaving both alone; `Json.encode` of `state` and `old` fields; a read-only `Fs` hidden in a bound block `if` and in a `case` arm refused; agent's check line under `mo run`. One finding: a one-line `if` as a body's last expression is refused as a statement while the block `if` there is the value; Fable's call (tail position is a value) goes to step 26 before round 6. The `var state = n` and `old` parameter refusals carry the parser's bare "expected a name".
 
 ## Related
 - [[p16-one-line-if-value]]

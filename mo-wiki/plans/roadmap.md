@@ -1,7 +1,7 @@
 ---
 title: "Roadmap"
 created: 2026-09-12
-updated: 2026-09-13
+updated: 2026-09-14
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -31,7 +31,9 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | The runtime surface (directions 37 and 40), [[interpreter-step-23]] | done: `platform.runtime`, the event ring, `--surface` | — |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
 | Program 5, the agent harness ([[program-5]]): done, 77 min; its follow-ups, [[interpreter-step-24]] | done: the authority hole, a handle in state, the delayed send | — |
-| Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | next, not started | 1 |
+| Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | done: the value form in both runtimes, 25 on one line in the corpus, the first Linux run green | — |
+| Step 26, the tail-position one-line `if` and two keyword diagnostics | next | 1 |
+| Round 6 of the control run, pre-registered, the baselines with their checks | queued, after step 26 | — |
 | Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, the toolchain in Mo | late | — |
@@ -72,6 +74,7 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 20b | done: round 4, timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept ([[control-run-4]]) | round 5 after program 1 |
 | 21 | done: green threads in both runtimes, 65,530 idle connections from 8,000, a process at rest half its size, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics ([[interpreter-step-21]]) | program 1 |
 | 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
+| 27 | done: step 25: the one-line `if` as a value in both runtimes, `state` and `old` as field names, the `if` hole closed, `agent` narrowed to its spec, the suite's first Linux run green ([[interpreter-step-25]]) | step 26, round 6 |
 | 26 | done: step 24: the read-only `Fs` hole closed, a handle in a `state` field, `delay:` on `send`, `Deadline.remaining` ([[interpreter-step-24]]) | program 6 |
 | 25 | done: program 5, `agent`, 77 min, 19 modules, 448.7 five-step runs a second native, verified by a 22-check session ([[program-5]]); the budget model works where an asker exists; an authority hole and the handle law's cost found | step 24, round 6 |
 | 24 | done: step 23, the runtime surface: `platform.runtime`, the event ring, `mo run --surface`; six of jobq's nine questions answered in full ([[interpreter-step-23]]) | program 5 |

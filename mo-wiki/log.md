@@ -303,3 +303,6 @@
 
 ## [2026-09-14] session | Morning: stopped
 - Robert: no more steps, leaving for work. Step 25's worker, started seconds earlier, exited with no commits; the handoff, roadmap, and log say step 25 is next and not started. The loop ends here; the next session resumes from `HANDOFF.md` through the `mo-lead` skill.
+
+## [2026-09-14] session | Day: the VM, and step 25 accepted
+- The lead resumed on the exe.dev VM at 12:30 UTC: no Zig, no `mo`, no Mac pane; Zig 0.16 installed with `mise`, the worker in `w7:p7`. Part A had reached `origin/session-05` from the Mac at 08:04 EDT after the handoff said no commits; a fresh worker took parts B–E from it. The suite's first Linux run was 175 pass, 3 fail, 1 crash: part A's hand-written `verified:` line, a Json test reading a dead stack frame, and the `--surface` test's ports inside Linux's ephemeral range; the worker fixed them as part F, none the poller's. Step 25 accepted after 184 of 184 and Fable's probes under both runtimes; eight decision rows, two `semantic`, one for Robert (a one-line `if` in tail position, to step 26). Merged to `main`.

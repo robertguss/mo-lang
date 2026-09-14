@@ -1,7 +1,7 @@
 ---
 title: "Session 5 — 12–13 Sep 2026"
 created: 2026-09-12
-updated: 2026-09-13
+updated: 2026-09-14
 type: session
 tags: [meta, compiler, syntax, agents, runtime]
 sources: [spec/grammar.md, plans/corpus.md, plans/model-bakeoff.md, plans/control-run-2.md, decisions/decision-log.md]
@@ -48,6 +48,12 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-23]]: the runtime surface, directions 37 and 40 built: the event ring, `platform.runtime` as a capability with `read_only`, `mo run --surface PORT`; six of jobq's nine questions answered in full; Fable's probes green under both runtimes.
 - [[program-5]]: `agent`, the harness under permissions, budgets, and retries, in 77 minutes; native 448.7 five-step runs a second; Fable's 22-check session green under both runtimes. Found: an authority hole in `MO0404`, the handle law forcing one routing process for the third program running (Fable's call: a `state` field may hold a handle, for Robert's eye), a third ask for a timer (Fable's call: `delay:` on `send`), two invariants kept.
 - [[interpreter-step-24]]: the authority hole closed, a handle in a `state` field (a registry routes to a process per key), the delayed send three programs asked for, `Deadline.remaining`, four gaps; Fable's probes green under both runtimes.
+
+## Day (14 Sep, from 12:30 UTC, the exe.dev VM)
+
+- The lead resumed on the exe.dev Linux VM, not the Mac: Zig 0.16 installed with `mise`, the worker in Herdr pane `w7:p7`. Part A of step 25 had reached the remote from the Mac at 08:04 EDT; a fresh worker took it from there.
+- The toolchain's first run on Linux: three suite failures, fixed as part F, none the epoll poller's; the carried "Linux poller never ran" item is cleared.
+- [[interpreter-step-25]]: the one-line `if` as a value (pick 16) in both runtimes, the formatter choosing the shape, `mo fix` reversed, 25 one-line values in the corpus; `state` and `old` as a struct's field; the `if` and `case` authority hole closed; `agent` narrowed to spec 05 again. Fable's probes green under both runtimes. One finding for step 26: the form in tail position of a body is refused while the block form there is the value.
 
 ## Numbers at the end of the session
 
