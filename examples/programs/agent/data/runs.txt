@@ -1,0 +1,40 @@
+- GET /health
+- GET /runs
+ada GET /runs
+ada GET /runs/r_2/transcript
+grace GET /runs/r_1
+ada POST /runs {"goal": "count the notes", "folder": "work", "tools": ["list_files", "read_file"]}
+ada POST /runs {"goal": "count the notes without listing", "folder": "work", "tools": ["read_file"]}
+ada POST /runs {"goal": "two steps at most", "folder": "work", "tools": ["list_files", "read_file"], "budget": {"steps": 2}}
+ada POST /runs {"goal": "fifteen tokens at most", "folder": "work", "tools": ["list_files", "read_file"], "budget": {"tokens": 15}}
+ada POST /runs {"goal": "no retries", "folder": "work", "tools": ["list_files", "read_file"], "budget": {"retries": 0}}
+ada POST /runs {"goal": "half a second", "folder": "work", "tools": ["list_files", "read_file"], "budget": {"wall_ms": 500}}
+ada POST /runs {"goal": "stopped early", "folder": "work", "tools": ["list_files"]}
+brief ada POST /runs/r_9/cancel
+wait ada r_3
+wait ada r_4
+wait ada r_5
+wait ada r_6
+wait ada r_7
+wait ada r_8
+wait ada r_9
+ada GET /runs/r_3
+ada GET /runs/r_3/transcript
+ada GET /runs/r_4/transcript
+ada GET /runs/r_5
+ada GET /runs/r_6
+ada GET /runs/r_7
+ada GET /runs/r_8
+brief ada GET /runs/r_9
+ada POST /runs/r_3/cancel
+grace POST /runs/r_3/cancel
+ada GET /runs?state=over_budget
+ada GET /runs?state=lost
+ada POST /runs {"goal": "outside", "folder": "../etc"}
+ada POST /runs {"goal": "nowhere", "folder": "nowhere"}
+ada POST /runs {"goal": "remove", "folder": "work", "tools": ["rm"]}
+ada POST /runs {"goal": "no steps", "folder": "work", "budget": {"steps": 0}}
+ada POST /runs this is not json
+ada PATCH /runs
+ada GET /nowhere
+- GET /health

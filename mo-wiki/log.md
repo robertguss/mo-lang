@@ -288,3 +288,6 @@
 
 ## [2026-09-14] session | Night: step 23 accepted
 - The runtime surface (directions 37 and 40) in both runtimes, verified by Fable's probes: every route under `mo run --surface` and as a `--surface` binary, pause and resume, `read_only`, a binary without the surface, a failed seed's events, jobq's sources and slowest updates. Five decision rows, two `semantic`. d37 and d40 carry a "Built" note. Merged to `main`. Next: program 5's spec.
+
+## [2026-09-14] session | Night: program 5 accepted
+- `agent` accepted after the suite went green and Fable's 22-check session passed under both runtimes. Nine decision rows, four `semantic`, one for Robert (the handle-in-state call, overturning part of step 18), the invariant row updated with program 5's two kept invariants. Step 24 listed. Merged to `main`.

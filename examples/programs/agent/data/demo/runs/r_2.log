@@ -1,0 +1,4 @@
+{"at": "2026-09-14T09:05:00Z", "run": {"id": "r_2", "owner": "ada", "goal": "count the notes", "folder": "work", "tools": ["list_files"], "hosts": [], "budget": {"steps": 20, "tokens": 100000, "wall_ms": 60000, "retries": 2, "tool_ms": 5000}}}
+{"at": "2026-09-14T09:05:01Z", "step": {"n": 1, "kind": "model", "name": "model", "args": {}, "result": "{\"tool\": \"list_files\", \"args\": {\"path\": \".\"}}", "tokens": 12, "took_ms": 38, "refused": false}}
+{"at": "2026-09-14T09:05:01Z", "step": {"n": 2, "kind": "tool", "name": "list_files", "args": {"path": "."}, "result": "notes.txt\ntodo", "tokens": 0, "took_ms": 1, "refused": false}}
+{"at": "2026-09-14T09:05:02Z", "st

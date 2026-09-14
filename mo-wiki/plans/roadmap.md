@@ -30,7 +30,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Round 5 of the control run, pre-registered ([[control-run-5]]) | done: mixed, Mo 1.28 times Go, P2 missed by one loop | — |
 | The runtime surface (directions 37 and 40), [[interpreter-step-23]] | done: `platform.runtime`, the event ring, `--surface` | — |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
-| Programs 5 and 6, the agent harness and the ledger | queued | 3–4 |
+| Program 5, the agent harness ([[program-5]]): done, 77 min; its follow-ups, step 24 | follow-ups queued | 1 |
+| Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, the toolchain in Mo | late | — |
 
@@ -70,6 +71,7 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 20b | done: round 4, timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept ([[control-run-4]]) | round 5 after program 1 |
 | 21 | done: green threads in both runtimes, 65,530 idle connections from 8,000, a process at rest half its size, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics ([[interpreter-step-21]]) | program 1 |
 | 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
+| 25 | done: program 5, `agent`, 77 min, 19 modules, 448.7 five-step runs a second native, verified by a 22-check session ([[program-5]]); the budget model works where an asker exists; an authority hole and the handle law's cost found | step 24, round 6 |
 | 24 | done: step 23, the runtime surface: `platform.runtime`, the event ring, `mo run --surface`; six of jobq's nine questions answered in full ([[interpreter-step-23]]) | program 5 |
 | 23 | done: step 22, the derived deadline `reply_by` in both runtimes, jobq's hand-written sums gone, the `--recipe` line count, the recipe's rewrite rule ([[interpreter-step-22]]) | program 5 |
 | 22b | done: round 5, pre-registered, mixed: Mo 14.8 min to Go's 11.6 (1.28, from 1.73), loops 5/2/3, no shape-law loop ([[control-run-5]]) | round 6 after program 5 |

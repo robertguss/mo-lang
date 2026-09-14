@@ -1,3 +1,6 @@
 zig-out/
 # The folder programs/folders makes beside its main.mo each time the corpus runs it.
 programs/folders/made/
+# The run logs agent check copies into runs.check and removes, and the logs agent run writes.
+programs/agent/data/demo/runs.check/
+programs/agent/data/solo/runs/
