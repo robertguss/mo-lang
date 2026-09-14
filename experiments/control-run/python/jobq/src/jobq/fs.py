@@ -1,4 +1,4 @@
-"""The filesystem the store writes through: the real one, and a simulated one that fails on purpose."""
+"""The filesystem the store writes through: the real one, and a simulated one that fails."""
 
 import errno
 import os
