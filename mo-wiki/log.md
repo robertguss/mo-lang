@@ -291,3 +291,6 @@
 
 ## [2026-09-14] session | Night: program 5 accepted
 - `agent` accepted after the suite went green and Fable's 22-check session passed under both runtimes. Nine decision rows, four `semantic`, one for Robert (the handle-in-state call, overturning part of step 18), the invariant row updated with program 5's two kept invariants. Step 24 listed. Merged to `main`.
+
+## [2026-09-14] session | Morning: Robert's calls, and a rule from the worker
+- Robert, awake: the one-line `if` as a value is in (pick 16), a keyword may name a field after a dot, the `invariant` construct waits for program 6, tools are installed without asking (agreement 10, `uv` for Python); mypy, ruff, and a staticcheck for Go 1.27 installed; the round 5 Python passes `mypy --strict`. The step 24 worker caught Fable's `git add -A` sweeping its in-progress edits into wiki commits; the handoff now says `git add <paths>` only.
