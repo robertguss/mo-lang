@@ -173,16 +173,14 @@ end
 test rejects "a run begun twice"
   fs = Fs.fixture()
   book = Book.start(fs, Clock.fixture(), "runs", Time.fixture())
-  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(),
-    setup_nowhere())
+  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(), setup_nowhere())
   assert [began?(run, 1.minute), began?(run, 2.minute)].size == 2
 end
 
 test rejects "a run begun again once it has stopped"
   fs = Fs.fixture()
   book = Book.start(fs, Clock.fixture(), "runs", Time.fixture())
-  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(),
-    setup_nowhere())
+  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(), setup_nowhere())
   run.send(Think(me: run))
   for _ in 0..200
     if run.ask(Look, within: 1.minute) == Ok(Stopped)

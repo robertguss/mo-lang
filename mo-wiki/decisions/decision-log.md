@@ -339,6 +339,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Robert (14 Sep, morning): a keyword (`state`, `old`) may name a field after a dot and in a struct's field declaration, where it cannot start a `state` block or an `old(...)` call, and stays refused as a bare name; step 25 | Robert, on Fable's recommendation | locked | round 6 |
 
+| Robert (14 Sep, morning): the `invariant` construct stays as it is until program 6, the ledger, whose invariants are the point; the two "for Robert" rows on it are answered | Robert, on Fable's recommendation | locked until program 6 | program 6 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
