@@ -1233,6 +1233,8 @@ const Checker = struct {
             try c.reportTok(.unknown_type, path.main_token, try c.print("there is no type named {s}; a use line brings a type in by its own name", .{full}));
             return types.unknown;
         }
+        // `none` in a signature, as the prelude's rows write `Result(none, FsError)` (step 24).
+        if (std.mem.eql(u8, name, "none") and args.len == 0) return types.none;
         // A module's own Event hides the prelude's from its code (prelude.Type.hideable).
         if (prelude.findType(name)) |pt| if (!pt.hideable or c.type_names.get(name) == null) {
             if (args.len != pt.arity) {
@@ -3444,6 +3446,17 @@ const Checker = struct {
             const decl = c.decls.items[d];
             switch (decl.kind) {
                 .struct_ => {
+                    // A module's own Request or Response hides the stdlib's by name (step 23), but a
+                    // construction the stdlib's fits builds the stdlib's (step 24): one a row expects,
+                    // or one whose fields are the stdlib's and not the module's own. A recipe's
+                    // implementation declares the recipe's Request and still builds an HTTP one.
+                    if (decl.node != 0) if (c.hiddenStdStruct(name)) |std_d| {
+                        const std_decl = c.decls.items[std_d];
+                        if (exp.tag == .decl and exp.a == std_d or c.fieldsFit(std_decl.fields, args) and !c.fieldsFit(decl.fields, args)) {
+                            try c.namedFields(tok, name, std_decl.fields, args);
+                            return std_decl.type;
+                        }
+                    };
                     try c.namedFields(tok, name, decl.fields, args);
                     return decl.type;
                 },
@@ -3465,6 +3478,30 @@ const Checker = struct {
         try c.reportTok(.unknown_name, tok, try c.print("there is no struct or variant named {s}", .{name}));
         for (args) |a| _ = try c.argExpr(a, types.unknown);
         return types.unknown;
+    }
+
+    /// The stdlib struct of this name, when there is one the module's own type hides.
+    fn hiddenStdStruct(c: *Checker, name: []const u8) ?u32 {
+        if (!prelude.findStdStruct(name)) return null;
+        for (c.decls.items, 0..) |d, i| {
+            if (d.node == 0 and d.kind == .struct_ and std.mem.eql(u8, d.name, name)) return @intCast(i);
+        }
+        return null;
+    }
+
+    /// Whether every argument of a construction names a field of `fields`, and at least one does.
+    fn fieldsFit(c: *Checker, fields: Range, args: []const u32) bool {
+        if (args.len == 0) return false;
+        const defs = c.fields.items[fields.start..fields.end];
+        for (args) |a| {
+            const an = c.node(a);
+            if (an.kind != .named_arg) return false;
+            const known = for (defs) |f| {
+                if (std.mem.eql(u8, f.name, c.text(an.main_token))) break true;
+            } else false;
+            if (!known) return false;
+        }
+        return true;
     }
 
     fn namedFields(c: *Checker, tok: u32, label: []const u8, fields: Range, args: []const u32) Error!void {

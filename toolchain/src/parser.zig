@@ -526,7 +526,13 @@ const Parser = struct {
                 _ = try p.expect(.r_paren);
                 break :blk try p.spanNode(.type_tuple, open, top);
             },
-            else => return p.fail("MO0103", "expected a type", why_type),
+            // `none`, the type of what a statement-only call gives, as the prelude writes
+            // `Result(none, FsError)` (step 24).
+            else => if (std.mem.eql(u8, p.text(p.tok), "none")) blk: {
+                const tok = p.next();
+                const path = try p.addNode(.{ .kind = .path, .main_token = tok, .lhs = tok });
+                break :blk try p.addNode(.{ .kind = .type_ref, .main_token = tok, .lhs = path });
+            } else return p.fail("MO0103", "expected a type", why_type),
         };
         // `where T: Trait` after a return type is a bound, not a refinement.
         while (p.peek() == .kw_where and !(p.peekAt(1) == .type_name and p.peekAt(2) == .colon)) {

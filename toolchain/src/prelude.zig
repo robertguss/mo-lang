@@ -212,18 +212,18 @@ pub const variants = [_]Variant{
     .{ .owner = "RuntimeError", .name = "ReadOnly", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "MailboxFull", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "Timeout", .origin = .stdlib },
-    .{ .owner = "Event", .name = "Updated", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "message", .type = "String" }, .{ .name = "took_us", .type = "UInt64" }, .{ .name = "waited_us", .type = "UInt64" }, .{ .name = "longest", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Ended", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Restarted", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "restarts", .type = "UInt64" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Crashed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "seed", .type = "UInt64" }, .{ .name = "clause", .type = "String" }, .{ .name = "message", .type = "String" }, .{ .name = "state", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Updated", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "took_us", .type = "UInt64" }, .{ .name = "waited_us", .type = "UInt64" }, .{ .name = "longest", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Ended", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Restarted", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "restarts", .type = "UInt64" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Crashed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "seed", .type = "UInt64" }, .{ .name = "clause", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "snapshot", .type = "String" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Overflowed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "sender", .type = "Option(UInt64)" }, .{ .name = "sender_name", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "TimedOut", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "Option(UInt64)" }, .{ .name = "name", .type = "String" }, .{ .name = "call", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "TimedOut", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "Option(UInt64)" }, .{ .name = "name", .type = "String" }, .{ .name = "call", .type = "String" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "SourcePaused", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "source", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "in_flight", .type = "UInt64" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "SourceResumed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "source", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "in_flight", .type = "UInt64" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Sent", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "message", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Paused", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Resumed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Sent", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "taking", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Paused", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Resumed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -453,6 +453,8 @@ pub const fns = [_]Fn{
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
     .{ .recv = "Json", .name = "to_i64", .ret = "Option(Int64)", .origin = .stdlib },
     .{ .recv = "Deadline", .name = "at_most", .params = &.{"Duration"}, .ret = "Deadline", .origin = .stdlib },
+    // What remains of the deadline, zero once it has passed (step 24).
+    .{ .recv = "Deadline", .name = "remaining", .ret = "Duration", .origin = .stdlib },
     .{ .recv = "Deadline", .on_type = true, .name = "fixture", .params = &.{"Duration"}, .ret = "Deadline", .only = .tests, .origin = .stdlib },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },

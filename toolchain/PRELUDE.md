@@ -109,14 +109,14 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `RuntimeError` | `ReadOnly` | | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `MailboxFull` | | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `Timeout` | | stdlib (09), Session 5, step 23 |
-| `Event` | `Updated` | `at: Time`, `process: UInt64`, `name: String`, `message: String`, `took_us: UInt64`, `waited_us: UInt64`, `longest: String` | stdlib (09), Session 5, step 23 |
-| `Event` | `Started`, `Ended`, `Paused`, `Resumed` | `at: Time`, `process: UInt64`, `name: String` | stdlib (09), Session 5, step 23 |
-| `Event` | `Restarted` | `at: Time`, `process: UInt64`, `name: String`, `restarts: UInt64` | stdlib (09), Session 5, step 23 |
-| `Event` | `Crashed` | `at: Time`, `process: UInt64`, `name: String`, `seed: UInt64`, `clause: String`, `message: String`, `state: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `Updated` | `at: Time`, `pid: UInt64`, `name: String`, `taking: String`, `took_us: UInt64`, `waited_us: UInt64`, `longest: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
+| `Event` | `Started`, `Ended`, `Paused`, `Resumed` | `at: Time`, `pid: UInt64`, `name: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
+| `Event` | `Restarted` | `at: Time`, `pid: UInt64`, `name: String`, `restarts: UInt64` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
+| `Event` | `Crashed` | `at: Time`, `pid: UInt64`, `name: String`, `seed: UInt64`, `clause: String`, `taking: String`, `snapshot: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `Overflowed` | `at: Time`, `sender: Option(UInt64)`, `sender_name: String`, `target: UInt64`, `name: String` | stdlib (09), Session 5, step 23 |
-| `Event` | `TimedOut` | `at: Time`, `process: Option(UInt64)`, `name: String`, `call: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `TimedOut` | `at: Time`, `pid: Option(UInt64)`, `name: String`, `call: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `SourcePaused`, `SourceResumed` | `at: Time`, `source: String`, `target: UInt64`, `name: String`, `in_flight: UInt64` | stdlib (09), Session 5, step 23 |
-| `Event` | `Sent` | `at: Time`, `process: UInt64`, `name: String`, `message: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `Sent` | `at: Time`, `pid: UInt64`, `name: String`, `taking: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 
 ## Functions
 
@@ -200,6 +200,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Duration` | `ms` | | `Int64` | | | stdlib (09) |
 | `Duration` | `seconds`, `minutes` | | `Float64` | | | stdlib (09) |
 | `Deadline` | `at_most` | `Duration` | `Deadline`: the earlier of the deadline and now plus the duration | | | stdlib (09), Session 5, step 22 |
+| `Deadline` | `remaining` | | `Duration`: what remains of the deadline, zero once it has passed | | | stdlib (09), Session 5, step 24 |
 | `Deadline` (on type) | `fixture` | `Duration` | `Deadline`: now plus the duration on the test's clock | | tests | stdlib (09), Session 5, step 22 |
 | `Clock` | `now` | | `Time` | | | grammar |
 | `Clock` (on type) | `fixture` | | `Clock` | | tests | grammar |

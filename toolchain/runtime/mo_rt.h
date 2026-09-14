@@ -504,7 +504,7 @@ MO_ROW(mo_r_Runtime_slowest); MO_ROW(mo_r_Runtime_send); MO_ROW(mo_r_Runtime_pau
 MO_ROW(mo_r_Runtime_read_only); MO_ROW(mo_r_Runtime_fixture);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
-MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64); MO_ROW(mo_r_Deadline_at_most); MO_ROW(mo_r_Deadline_fixture);
+MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64); MO_ROW(mo_r_Deadline_at_most); MO_ROW(mo_r_Deadline_remaining); MO_ROW(mo_r_Deadline_fixture);
 MO_ROW(mo_r_Charge_fixture); MO_ROW(mo_r_Charge_fixture_at); MO_ROW(mo_r_Charge_refunded_q);
 MO_ROW(mo_r_Money_cents); MO_ROW(mo_r_Money_zero);
 

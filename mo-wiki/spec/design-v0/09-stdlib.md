@@ -129,6 +129,7 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | receiver | name | parameters | returns | |
 |---|---|---|---|---|
 | `Deadline` | `at_most` | `Duration` | `Deadline` | the earlier of the deadline and now plus the duration: a nested call may tighten its asker's deadline and never extend it |
+| `Deadline` | `remaining` | | `Duration` | what remains of the deadline on the runtime's clock, zero once it has passed, so a reply that came after its call's deadline can be told from one in time. Session 5, step 24, after program 5 wrote `by.at_most(0.ms) == by` to ask it |
 | `Deadline` (on type) | `fixture` | `Duration` | `Deadline` | now plus the duration on the test's clock, for a function that takes a deadline; tests only, since a test has no asker |
 
 Session 5, step 22: `Deadline`, `reply_by`, `at_most`, and `fixture`, after program 1 derived three deadlines by hand as sums of literals and two of the sums were wrong.
@@ -347,22 +348,22 @@ enum RuntimeError
 end
 
 enum Event
-  Updated(at: Time, process: UInt64, name: String, message: String, took_us: UInt64, waited_us: UInt64, longest: String)
-  Started(at: Time, process: UInt64, name: String)
-  Ended(at: Time, process: UInt64, name: String)
-  Restarted(at: Time, process: UInt64, name: String, restarts: UInt64)
-  Crashed(at: Time, process: UInt64, name: String, seed: UInt64, clause: String, message: String, state: String)
+  Updated(at: Time, pid: UInt64, name: String, taking: String, took_us: UInt64, waited_us: UInt64, longest: String)
+  Started(at: Time, pid: UInt64, name: String)
+  Ended(at: Time, pid: UInt64, name: String)
+  Restarted(at: Time, pid: UInt64, name: String, restarts: UInt64)
+  Crashed(at: Time, pid: UInt64, name: String, seed: UInt64, clause: String, taking: String, snapshot: String)
   Overflowed(at: Time, sender: Option(UInt64), sender_name: String, target: UInt64, name: String)
-  TimedOut(at: Time, process: Option(UInt64), name: String, call: String)
+  TimedOut(at: Time, pid: Option(UInt64), name: String, call: String)
   SourcePaused(at: Time, source: String, target: UInt64, name: String, in_flight: UInt64)
   SourceResumed(at: Time, source: String, target: UInt64, name: String, in_flight: UInt64)
-  Sent(at: Time, process: UInt64, name: String, message: String)
-  Paused(at: Time, process: UInt64, name: String)
-  Resumed(at: Time, process: UInt64, name: String)
+  Sent(at: Time, pid: UInt64, name: String, taking: String)
+  Paused(at: Time, pid: UInt64, name: String)
+  Resumed(at: Time, pid: UInt64, name: String)
 end
 ```
 
-`name` is the process's name when the event happened, since a process that ended gives its id to one started later; `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
+`pid` is the process's id and `name` its name when the event happened, since a process that ended gives its id to one started later; `taking` is the message an update took, a crash's last message, or the message the surface sent, and `snapshot` a crashed process's state (Session 5, step 24: the fields were `process`, `message`, and `state`, which are keywords, so no pattern could name them); `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
 
 | receiver | name | parameters | returns | |
 |---|---|---|---|---|

@@ -113,6 +113,7 @@ pub const Row = enum {
     json_decode,
     json_to_i64,
     deadline_at_most,
+    deadline_remaining,
     deadline_fixture,
 };
 
@@ -151,7 +152,7 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
     .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
-    .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },         .{ "Deadline.at_most", .deadline_at_most },
+    .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },         .{ "Deadline.at_most", .deadline_at_most }, .{ "Deadline.remaining", .deadline_remaining },
     .{ "Deadline.fixture", .deadline_fixture },
 });
 
@@ -176,6 +177,8 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .json_to_i64 => option(vm, json.whole(a[0])),
         // The earlier of the deadline and now plus d: a nested deadline tightens, never extends.
         .deadline_at_most => .{ .time = if (vm.sim) |s| @min(a[0].time, s.deadlineNow() +| a[1].duration) else a[0].time },
+        // What remains of the deadline on the runtime's clock, zero once it has passed (step 24).
+        .deadline_remaining => .{ .duration = @max(a[0].time - (if (vm.sim) |s| s.deadlineNow() else 0), 0) },
         // A test has no asker: a deadline d from now on the run's clock, for a function that takes one.
         .deadline_fixture => .{ .time = (if (vm.sim) |s| s.deadlineNow() else 0) +| a[0].duration },
         .time_parse => if (parseTime(a[0].string)) |t| vm.variant("Some", &.{.{ .time = t }}) else vm.variant("None", &.{}),

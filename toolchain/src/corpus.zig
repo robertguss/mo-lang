@@ -788,7 +788,7 @@ test "corpus: mo run --surface and a binary built with --surface serve the runti
         \\200, holds "name": "Tally"
         \\200, does not hold Surface
         \\200, holds Tally(votes: 2)
-        \\200, holds "message": "Vote"
+        \\200, holds "taking": "Vote"
         \\200, holds done
         \\409, holds Unparsed
         \\404, holds no row

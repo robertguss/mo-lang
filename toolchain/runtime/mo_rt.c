@@ -4851,6 +4851,13 @@ MoValue mo_timed_out_now(void) { return error_of(mo_variant(MO_N_TIMEOUT, 0, NUL
 /* Deadline.fixture(d): a test has no asker, so a deadline d from now on the run's clock. */
 MO_ROW(mo_r_Deadline_fixture) { (void)kind; return mo_time(deadline_now() + a[0].as.i); }
 
+/* deadline.remaining: what remains of it on the runtime's clock, zero once it has passed (step 24). */
+MO_ROW(mo_r_Deadline_remaining) {
+    (void)kind;
+    int64_t left = a[0].as.i - deadline_now();
+    return mo_duration(left > 0 ? left : 0);
+}
+
 /* deadline.at_most(d): the earlier of the deadline and now plus d. */
 MO_ROW(mo_r_Deadline_at_most) {
     (void)kind;
