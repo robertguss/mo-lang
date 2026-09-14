@@ -150,6 +150,21 @@
       "verified": { "hash": "c8feb032a154dec7", "declarations": "d428605708d037f5" }
     },
     {
+      "path": "registry.mo",
+      "module": "Processes.Registry",
+      "declarations": [
+        { "id": "824239505355", "name": "module Processes.Registry", "hash": "84ef56eccfe7994c" },
+        { "id": "468583b3295e", "name": "expose", "hash": "c7581936b832b22d" },
+        { "id": "7484ae33a8a4", "name": "intent", "hash": "f8d9b84f4c135e88" },
+        { "id": "d7916073b3e8", "name": "process Worker", "hash": "398fd9a2bb707d21" },
+        { "id": "731cdaf67ea0", "name": "process Registry", "hash": "cf6f6498ae97eebc" },
+        { "id": "163abb7fe6df", "name": "supervisor Registries", "hash": "413d9a855b9a5beb" },
+        { "id": "5a1eef392442", "name": "test \"a registry routes each key to its own worker\"", "hash": "117cdca2eab8f26f" },
+        { "id": "34f94aeb3fda", "name": "test \"a worker whose key the registry forgets ends, and the one it keeps lives\"", "hash": "71aa720efbef0910" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "15e5b89260b28bd5" }
+    },
+    {
       "path": "supervisor.mo",
       "module": "Processes.Supervisor",
       "declarations": [

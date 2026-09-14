@@ -14,4 +14,6 @@ Paste the block below into a fresh Claude Code session in this directory. This h
 >
 > **Queue, in order, after the runtime surface step is accepted.** (a) Done: the runtime surface step. (b) Done: program 5. Then step 24 (done or running). Next after it: Program 5, the agent harness, from `plans/program-menu.md`: Fable writes `spec/programs/05-*.md` first (capabilities as permissions, deadlines and budgets on `reply_by`, retries), then the brief. (c) Round 6 of the control run after program 5, pre-registering loops by cause, reading token counts before the report, and adding the baselines' bolted-on arm only with a second task. (d) Tier 3 proving, `mo prove`, when the roadmap reaches it. Keep the roadmap's table current at every acceptance.
 >
+> **Tools.** Robert (14 Sep, morning): install whatever a step needs without asking, with Homebrew, `mise`, `uv` (`uv init` for a Python project, `uv tool install` for a command), or `go install`; record it in the decision log. mypy, ruff, and a staticcheck for Go 1.27 are installed.
+>
 > **Style.** Ruby-nice syntax, zero new syntax where possible, one question per message to Robert, concise, define a PL term in three lines before using it, no phones. Say plainly when something is unmet.

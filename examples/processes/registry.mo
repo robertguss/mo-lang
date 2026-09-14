@@ -73,3 +73,6 @@ test "a worker whose key the registry forgets ends, and the one it keeps lives"
   assert names == ["Registry", "Worker"]
   assert registry.ask(Bump(key: "b"), within: 1.minute) is Ok(2)
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+          proven: not run

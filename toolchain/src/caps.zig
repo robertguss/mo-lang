@@ -1236,6 +1236,57 @@ test "a read-only Fs handed to a function that writes through it, or through a s
     try std.testing.expectEqualStrings("copy writes through its parameter logs, and platform.fs.scoped(\"data\").read_only was narrowed to read_only and only reads; hand it the Fs platform.fs.scoped(\"data\").read_only was narrowed from.", found[0].what);
 }
 
+test "a state keeps a handle alone, in an Option, a List, or a Map's values; a capability, or a handle in anything else, is refused" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try capsOf(arena_state.allocator(),
+        \\module T.Kept
+        \\process Worker()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\
+        \\  message Tick
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Tick:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\process Holder(first: Handle(Worker))
+        \\  state
+        \\    one: Handle(Worker) = first
+        \\    maybe: Option(Handle(Worker))
+        \\    many: List(Handle(Worker))
+        \\    named: Map(String, Handle(Worker))
+        \\    pairs: List((String, Handle(Worker)))
+        \\    keyed: Map(Handle(Worker), String)
+        \\    clock: Option(Clock)
+        \\  end
+        \\
+        \\  message Tick
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Tick:
+        \\        state.one.send(Tick)
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Holders(first: Handle(Worker))
+        \\  child Worker, restart: :always
+        \\  child Holder(first), restart: :always
+        \\end
+    );
+    for (found) |d| std.debug.print("{s}: {s}\n", .{ d.code, d.what });
+    try std.testing.expectEqual(@as(usize, 3), found.len);
+    try std.testing.expectEqualStrings("pairs holds a Handle(Worker) inside a List((String, Handle(Worker))); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[0].what);
+    try std.testing.expectEqualStrings("keyed holds a Handle(Worker) inside a Map(String, Handle(Worker)); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[1].what);
+    try std.testing.expectEqualStrings("clock holds a Clock; a capability travels only as a parameter, never inside a value.", found[2].what);
+}
+
 test "a read-only Fs handed to a process that writes through its start argument, by a start or a child line, or in a message whose arm writes through it, is refused" {
     const header =
         \\module T.Started

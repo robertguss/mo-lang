@@ -343,6 +343,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Robert (14 Sep, morning): `uv` is the tool for anything Python in this project; Fable installed `mypy` (2.3.1) and `ruff` as `uv` tools and rebuilt staticcheck (2026.2.1) for Go 1.27, so round 6's baselines are type-checked and vetted; the round 5 Python was checked with `mypy --strict` after the fact and the result is on [[control-run-5]] | Robert; Fable installed | locked | round 6 |
 
+| Robert (14 Sep, morning): Fable and the workers install what a step needs without asking, with Homebrew, `mise`, `uv`, or `go install`; a Python project starts with `uv init` and lives in its virtual environment; agreement 10 in `SCHEMA.md` | Robert | locked | — |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
