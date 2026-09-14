@@ -273,3 +273,6 @@
 
 ## [2026-09-13] session | Night: the research agenda answered
 - Fable read the twelve concept pages of the research agenda merge and called each "contradicts Mo" item on `deep-dives/research-agenda-2026-09-response.md` (agree 8, disagree 6, test 3). Chapter 2's recursion line rewritten to the depth bound the toolchain enforces; chapter 3 names R6; `empirical-validation-plan` gains round 5's two columns; nine decision-log rows, two `semantic`. Measured: `mo build` reproducible (kv's C and binary identical across two independently built `mo`s); `mo` differs only in `LC_UUID` and its ad-hoc signature. Lint run at the commit.
+
+## [2026-09-14] session | Night: step 21 accepted
+- Step 21 (memory and green threads) accepted after `zig build test` green and Fable's probes under both runtimes: a process is a fiber, 65,530 idle connections held, a process at rest 38.8 / 22.7 KiB, socket rows faster, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics with a `mo fix`. One finding by probe (HTTP backpressure counts request-less connections, about 1,000) flagged for program 1; the Linux poller never ran. Eleven decision-log rows, five `semantic`. Merged to `main`. Lint: the same pre-existing 16 issues from Robert's history bundle (13 pages typed `research`, 3 broken links) plus six review rows.

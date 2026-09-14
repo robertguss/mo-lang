@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, performance, processes, tooling]
 sources: [spec/design-v0/07-toolchain.md, plans/interpreter-step-20.md, plans/control-run-4.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Step 21: memory and green threads
@@ -52,6 +52,10 @@ One table in the report: idle connections held (both runtimes, both limits) with
 ## Done when
 
 Green at every commit; a process per connection bounded by descriptors, not threads, in both runtimes; the four bets each with a number in chapter 7's list; `Fs.fixture()` refusing `..`; the three diagnostics with their corpus files; the numbers table; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written in about two hours, four commits, green at each. A process is a stackful fiber on main's thread with a kqueue poller, in both runtimes. Idle connections, one echo process each, at `ulimit -n 65536`: 8,026 then out of memory at 1.89 GiB → 65,530 at 2.41 GiB under `mo run`; 8,185 then out of memory at 486 MiB → 65,530 at 1.64 GiB as a binary; 65,530 is the descriptor limit less the standard streams, two listeners, and the poller. A process at rest: 73.2 → 38.8 KiB interpreted, 39.9 → 22.7 KiB native; the 200,000-process reproduction flat at 23 and 12.5 MiB; freeing one 2.0 µs. Bench, best of five: no row over 10 percent slower; echo-1k 57.1 → 18.3 ms, echo-1k-c 59.0 → 25.0, kv-10k-get 458 → 409, kv-10k-get-c 386 → 210, http-1k 90.0 → 57.9, http-1k-c 62.6 → 55.9. The bets: a field set and a string append now write in place (200,224 → 7 allocations; 16.8 GB copied → 24 MB); a message deep-copies 228 bytes on a kv GET and 641 on a notes POST interpreted, 104 and 288 native; contracts cost 41.5 percent on logstat native by the worker's harness and 22.4 by the bench, 3.9 on kv, 7.1 on notes; overflow checks within noise. `Fs.fixture()` refuses `..`; the three diagnostics with corpus files, and `mo fix` rewrites a one-line `if`. Fable's probes: the three diagnostics on files the brief did not name, 20,000-deep recursion a Mo report in both runtimes, 200 idle connections never delaying a live request, and one finding: an HTTP acceptor stops accepting at about 1,000 request-less connections, its mailbox bound, where kv over raw `Net` holds 3,000 (a decision-log row, flagged for program 1). Unmet: the Linux epoll path compiles and was never run.
 
 ## Related
 - [[interpreter-step-20]]
