@@ -1,11 +1,10 @@
 import unittest
 
-from support import QueueCase
-
 from jobq.contract import ContractError
 from jobq.jobs import Job
 from jobq.queue import Conflict, NotFound, check_transition
 from jobq.store import StoreError, replay
+from support import QueueCase
 
 
 def leased(queue_case: QueueCase, job_id: str) -> Job:
@@ -305,11 +304,6 @@ class InvariantsTest(QueueCase):
     def test_no_count_is_negative(self) -> None:
         self.queue.create("emails", "a", 3)
         self.queue._counts["done"] -= 1
-        self.queue._counts["queued"] += 1
-        self.queue._counts["dead"] -= 1
-        self.queue._counts["queued"] += 1
-        self.queue._counts["queued"] -= 2
-        self.queue._counts["leased"] -= 1
         self.queue._counts["queued"] += 1
         with self.assertRaisesRegex(ContractError, "invariant no count is negative"):
             self.queue.counts()
