@@ -177,11 +177,12 @@ class ExitCodes(WithTempDir):
 
 class DirectoryRules(WithTempDir):
     def test_lists_regular_log_files_in_code_point_order(self) -> None:
-        for name in ("b.log", "a.log", "A.log", "c.txt", ".h.log", "b.log.bak"):
+        # distinct letters: the macOS file system does not tell A.log from a.log
+        for name in ("b.log", "a.log", "Z.log", "c.txt", ".h.log", "b.log.bak"):
             (self.logs / name).write_bytes(b"")
         (self.logs / "d.log").mkdir()
         (self.logs / "link.log").symlink_to(self.outside)
-        self.assertEqual(list_logs(str(self.logs)), ["A.log", "a.log", "b.log"])
+        self.assertEqual(list_logs(str(self.logs)), ["Z.log", "a.log", "b.log"])
 
     def test_open_rejects_a_name_that_is_not_a_direct_child(self) -> None:
         for name in ("../outside.log", "sub/x.log", "", ".", ".."):
