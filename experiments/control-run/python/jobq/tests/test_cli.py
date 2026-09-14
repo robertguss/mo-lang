@@ -130,8 +130,12 @@ class ClientAndCheckTest(CliCase):
             self.assertEqual(code, EXIT_OK)
             status, text = out.splitlines()
             self.assertEqual((status, json.loads(text)["id"]), ("201", "j_1"))
-            self.assertEqual(invoke("client", HOST, port, "w1", "POST", "/queues/z/lease")[1], "204\n")
-            self.assertTrue(invoke("client", HOST, port, "-", "GET", "/jobs")[1].startswith("401\n"))
+            self.assertEqual(
+                invoke("client", HOST, port, "w1", "POST", "/queues/z/lease")[1], "204\n"
+            )
+            self.assertTrue(
+                invoke("client", HOST, port, "-", "GET", "/jobs")[1].startswith("401\n")
+            )
 
     def test_client_that_cannot_connect_exits_1(self) -> None:
         code, _, err = invoke("client", HOST, str(free_port()), "w1", "GET", "/health")
@@ -141,7 +145,7 @@ class ClientAndCheckTest(CliCase):
     def test_check_plays_a_script(self) -> None:
         script = self.dir / "script.txt"
         script.write_text(
-            "# a comment\n\nw1 POST /jobs {\"queue\": \"q\", \"payload\": \"a b\", \"max_attempts\": 1}\n"
+            '# a comment\n\nw1 POST /jobs {"queue": "q", "payload": "a b", "max_attempts": 1}\n'
             "- GET /health\n"
         )
         store_dir = self.dir / "store"
@@ -149,7 +153,9 @@ class ClientAndCheckTest(CliCase):
         code, out, _ = invoke("check", str(store_dir), str(script))
         self.assertEqual(code, EXIT_OK)
         lines = out.splitlines()
-        self.assertEqual(lines[0], '> w1 POST /jobs {"queue": "q", "payload": "a b", "max_attempts": 1}')
+        self.assertEqual(
+            lines[0], '> w1 POST /jobs {"queue": "q", "payload": "a b", "max_attempts": 1}'
+        )
         self.assertEqual((lines[1], lines[3], lines[4]), ("201", "> - GET /health", "200"))
 
     def test_check_with_a_bad_script_line_exits_2_and_a_missing_script_1(self) -> None:
