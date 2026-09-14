@@ -1,0 +1,86 @@
+> - GET /jobs/j_1
+401
+{"error":"missing bearer token"}
+> - GET /health
+200
+{"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>}
+> w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_attempts": 2}
+201
+{"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","attempts":0,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /jobs {"queue": "emails", "payload": "second", "max_attempts": 1}
+201
+{"id":"j_2","queue":"emails","state":"queued","payload":"second","attempts":0,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /jobs {"queue": "emails", "payload": "x", "max_attempts": 0}
+400
+{"error":"max_attempts: Input should be greater than or equal to 1"}
+> w1 POST /jobs {"queue": "emails"}
+400
+{"error":"payload: Field required"}
+> w1 GET /jobs/j_1
+200
+{"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","attempts":0,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"}
+> w1 PUT /jobs/j_1
+405
+{"error":"method not allowed"}
+> w1 GET /nope
+404
+{"error":"no such route"}
+> w1 GET /jobs/j_99
+404
+{"error":"no such job"}
+> w2 POST /queues/emails/lease {"lease_ms": 60000}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"hello\nworld","attempts":1,"max_attempts":2,"created_at":"<time>","updated_at":"<time>","worker":"w2","lease_until":"<time>"}
+> w3 POST /queues/emails/lease {"lease_ms": 100}
+200
+{"id":"j_2","queue":"emails","state":"leased","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>","worker":"w3","lease_until":"<time>"}
+> w3 POST /queues/emails/lease
+204
+> w1 POST /jobs/j_1/ack
+409
+{"error":"the caller does not hold a live lease on this job"}
+> w2 POST /jobs/j_1/ack
+200
+{"id":"j_1","queue":"emails","state":"done","payload":"hello\nworld","attempts":1,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"}
+> w2 POST /jobs/j_1/ack
+409
+{"error":"the caller does not hold a live lease on this job"}
+> w1 POST /jobs {"queue": "reports", "payload": "q3", "max_attempts": 3}
+201
+{"id":"j_3","queue":"reports","state":"queued","payload":"q3","attempts":0,"max_attempts":3,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /queues/reports/lease {"lease_ms": 5000}
+200
+{"id":"j_3","queue":"reports","state":"leased","payload":"q3","attempts":1,"max_attempts":3,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>"}
+> w1 POST /jobs/j_3/fail {"reason": "smtp down"}
+200
+{"id":"j_3","queue":"reports","state":"queued","payload":"q3","attempts":1,"max_attempts":3,"created_at":"<time>","updated_at":"<time>","reason":"smtp down"}
+> w1 DELETE /jobs/j_3
+204
+> w1 GET /jobs/j_3
+404
+{"error":"no such job"}
+> w1 GET /jobs?queue=emails&state=done
+200
+{"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"hello\nworld","attempts":1,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"}]}
+> w1 GET /jobs?state=bogus
+400
+{"error":"state: Input should be 'queued', 'leased', 'done' or 'dead'"}
+> w1 POST /queues/bad!/lease
+400
+{"error":"queue must be 1 to 64 bytes of letters, digits, - and _"}
+> w1 POST /queues/emails/lease {"lease_ms": 50}
+400
+{"error":"lease_ms: Input should be greater than or equal to 100"}
+jobq: compacted <dir>: <n> records to 3
+> w1 GET /jobs/j_2
+200
+{"id":"j_2","queue":"emails","state":"dead","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"}
+> w1 GET /jobs
+200
+{"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"hello\nworld","attempts":1,"max_attempts":2,"created_at":"<time>","updated_at":"<time>"},{"id":"j_2","queue":"emails","state":"dead","payload":"second","attempts":1,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"}]}
+> w1 POST /jobs {"queue": "emails", "payload": "after restart", "max_attempts": 1}
+201
+{"id":"j_4","queue":"emails","state":"queued","payload":"after restart","attempts":0,"max_attempts":1,"created_at":"<time>","updated_at":"<time>"}
+> - GET /health
+200
+{"queued":1,"leased":0,"done":1,"dead":1,"uptime_ms":<n>}
