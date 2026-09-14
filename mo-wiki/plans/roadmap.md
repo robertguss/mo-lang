@@ -23,7 +23,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Programs 2, 3, 4: logstat, kv, notes | done | — |
 | Step 19, what program 4 found | done | — |
 | Step 20, the runtime owns the loop | done | — |
-| Round 4 of the control run | running | 1 (three sessions) |
+| Round 4 of the control run | done: Mo 16.1 min to Go's 9.3; laws kept, an ergonomics step recommended | — |
 | Fable's reading: the three session 6 deep runs into two concept pages; the research agenda branch (three runs, twelve concept pages, the elders and the safety manifestos) reviewed for contradictions with Mo; the Perplexity VM-first drafts filed | queued | Fable's own |
 | Memory and green threads (chapter 7) | queued | 1–2 |
 | Program 1, the job queue, and its follow-ups | queued | 2–3 |
@@ -65,7 +65,7 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 18 | done: the outside review's no-compat fixes ([[interpreter-step-18]], [[outside-review-2026-09-13-response]]); the failure model in chapter 3 | — |
 | 18b | done: program 4, `notes`; native 23,692 gets/s with 32 clients; the recipes saved a design and exposed the conformance gap ([[program-4]]) | — |
 | 20 | done: the runtime owns the loop, 11 fictional bounds → 0, every expected file unchanged ([[interpreter-step-20]]) | — |
-| 20b | running: round 4 of the control run, the timing round ([[control-run-4]]) | the laws against the baselines |
+| 20b | done: round 4, timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept ([[control-run-4]]) | round 5 after program 1 |
 | 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
 | 18 | program 1, the job queue, once the platform has HTTP and a store | the founding premise at scale |
 | 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |

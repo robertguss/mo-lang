@@ -253,6 +253,10 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | "Its own supervisor" means one supervisor naming both the starting and the started process; a plain `mo check` honours a file's `# recipe:` line; `zig build -Dtest-filter` runs a subset | Fable, from Opus's default | provisional | — |
 | Round 4 of the control run starts now in worktrees `control4-*` from `session-05` after step 20, the round 1 and 2 implementations removed, the same briefs; it is the timing round round 3 lost to the machine sleeping, and the laws are re-evaluated against its loops and the baselines page | Fable | — | round 4's table |
 
+| Control run round 4 recorded (timing valid): Mo 16.1 min, Go 9.3, Python 9.0; loops Mo 5 (4 tooling: `MO0206`, `MO0101` twice, `MO0309`; 1 test mistake), Go 1 (tooling), Python 0; no check caught a bug in any language; Mo 849 lines to Go's 1,648, median 3 lines per function to Go's 9; one toolchain bug (`Fs.fixture()` accepts `..`) | Fable | — | round 5 after program 1 |
+| `semantic`: the laws re-evaluated after rounds 2–4: no loop in any round came from a shape law or from `test rejects`; the no-`while` law's cost was the fictional bounds, gone since step 20; Mo's loops are the grammar's one-line forms (`MO0101`) and one misleading type error; Fable recommends keeping every law unchanged and spending an ergonomics step on the one-line `if` and arm forms and `MO0206`'s wording | Fable | for Robert | round 5 |
+| `Fs.fixture()` refuses `..` as the real `Fs` does, so a test can show a program staying inside its folder | Fable, from round 4's bug | provisional | the next toolchain step |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
