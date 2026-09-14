@@ -91,7 +91,7 @@ fn removing(fs: Fs, books: Books, id: String, at: Moment) : Served
     Some(kept):
       looked = committed(fs, books, expired_of([kept], at.now), 0, at)
       current = find(looked.books.board, kept.number) or kept
-      if !looked.ok or current.status == Leased
+      if !looked.ok or current.state == Leased
         return answered(looked, Conflict(reason: "the job is leased"))
       end
       deleted(fs, looked, current, at)
@@ -136,13 +136,13 @@ end
 fn handed_to?(books: Books, job: Job, worker: String) : Bool
   case find(books.board, job.number)
     Some(before):
-      job.status == Leased and job.worker == Some(worker) and job.attempts == before.attempts + 1
+      job.state == Leased and job.worker == Some(worker) and job.attempts == before.attempts + 1
     None: false
   end
 end
 
 fn acking(fs: Fs, books: Books, worker: String, id: String, at: Moment) : Served
-  ensures result.outcome is Found(job) implies job.status == Done
+  ensures result.outcome is Found(job) implies job.state == Done
 
   case held(books, id)
     Some(kept):
@@ -240,7 +240,7 @@ test "a create reads back and lists; a leased job is 409 to delete; an unknown i
   made = serve(fs, with_jobs(fs, 0, 1, at),
     call("p", Create(queue: "q", payload: "hi", max_attempts: 2)), at)
   assert made.outcome is Made(job)
-  assert id_of(job.number) == "j_1" and job.status == Queued
+  assert id_of(job.number) == "j_1" and job.state == Queued
   assert serve(fs, made.books, call("p", Fetch(id: "j_1")), at).outcome == Found(job: job)
   assert serve(fs, made.books, call("p", Fetch(id: "j_2")), at).outcome == Missing
   listing = call("p", Listing(queue: Some("q"), status: Some(Queued)))
@@ -275,10 +275,10 @@ test "the holder acks or fails its job; anyone else, or the holder once the leas
   assert serve(fs, held.books, call("a", Ack(id: "j_1")),
     shifted(at, 1_000.ms)).outcome is Conflict(_)
   assert serve(fs, held.books, call("a", Ack(id: "j_1")), at).outcome is Found(done)
-  assert done.status == Done
+  assert done.state == Done
   failing = serve(fs, held.books, call("a", Fail(id: "j_1", reason: "no")), at)
   assert failing.outcome is Found(again)
-  assert again.status == Queued and again.reason == Some("no")
+  assert again.state == Queued and again.reason == Some("no")
   assert serve(fs, failing.books, call("a", Fail(id: "j_9", reason: "no")), at).outcome == Missing
 end
 
@@ -293,7 +293,7 @@ test "a lease that runs out is leased again with attempts at 2, and one on its l
   last = serve(fs, again.books, lease_of("c", 1_000), shifted(later, 1.minute))
   assert last.outcome == Empty
   assert serve(fs, last.books, call("c", Fetch(id: "j_1")), later).outcome is Found(dead)
-  assert dead.status == Dead and dead.attempts == 2
+  assert dead.state == Dead and dead.attempts == 2
 end
 
 test "a replay finds a lease that ran out while the service was stopped, at its next look"
@@ -304,7 +304,7 @@ test "a replay finds a lease that ran out while the service was stopped, at its 
   assert find(replayed.board, 1) == find(leased_books.board, 1)
   looked = serve(fs, replayed, call("p", Fetch(id: "j_1")), shifted(at, 1.minute))
   assert looked.outcome is Found(job)
-  assert job.status == Queued and job.attempts == 1
+  assert job.state == Queued and job.attempts == 1
   assert opened(fs, place(), Deadline.fixture(1.minute)) is Ok(again)
   assert find(again.board, 1) == Some(job)
 end

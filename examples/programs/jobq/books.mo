@@ -133,7 +133,7 @@ fn held_twice?(s: Step) : Bool
     Some(after):
       before = s.before or after
       live = holds?(before, before.worker or "", s.now)
-      live and after.status == Leased and after.worker != before.worker
+      live and after.state == Leased and after.worker != before.worker
     None: false
   end
 end
@@ -141,8 +141,8 @@ end
 fn revived?(s: Step) : Bool
   case s.before
     Some(before):
-      finished = before.status == Done or before.status == Dead
-      finished and (s.after or before).status == Leased
+      finished = before.state == Done or before.state == Dead
+      finished and (s.after or before).state == Leased
     None: false
   end
 end
@@ -151,7 +151,7 @@ fn blocked?(s: Step) : Bool
   case s.before
     Some(before):
       after = s.after or before
-      same = after.status == Leased and after.lease_until == before.lease_until
+      same = after.state == Leased and after.lease_until == before.lease_until
       run_out?(before, s.now) and same
     None: false
   end
@@ -238,7 +238,7 @@ test "a check's own log replays over the folder's, and its changes go only to it
   assert fs.write("d/jobq.log", "SET j_1 #{shown(made)}\n", within: 1.minute) is Ok(_)
   place = Place(dir: "d", log: "jobq.check.log")
   assert opened(fs, place, Deadline.fixture(1.minute)) is Ok(books)
-  gone = Job(number: 1, queue: "q", status: Dead, payload: "p", attempts: 1, max_attempts: 1,
+  gone = Job(number: 1, queue: "q", state: Dead, payload: "p", attempts: 1, max_attempts: 1,
     created_at: at, updated_at: at, worker: None, lease_until: None, reason: Some("x"))
   done = committed(fs, books, [(Some(made), gone)], 0,
     Moment(now: at, by: Deadline.fixture(1.minute)))

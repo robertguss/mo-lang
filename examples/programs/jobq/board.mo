@@ -47,9 +47,9 @@ fn placed(board: Board, job: Job) : Board
   bucket = after.jobs.get(at) or Map.new()
   after.jobs = after.jobs.set(at, bucket.set(job.number, job))
   after.size = after.size + 1
-  after.counts = counted(after.counts, job.status, true)
-  after.waiting = with_number(after.waiting, job, job.status == Queued, at)
-  after.due = with_number(after.due, job, job.status == Leased, due_key(job))
+  after.counts = counted(after.counts, job.state, true)
+  after.waiting = with_number(after.waiting, job, job.state == Queued, at)
+  after.due = with_number(after.due, job, job.state == Leased, due_key(job))
   after
 end
 
@@ -72,9 +72,9 @@ fn unindexed(board: Board, number: UInt64) : Board
     Some(prior):
       var after = board
       after.size = board.size - 1
-      after.counts = counted(board.counts, prior.status, false)
-      after.waiting = without_number(board.waiting, prior, prior.status == Queued, number / 256)
-      after.due = without_number(board.due, prior, prior.status == Leased, due_key(prior))
+      after.counts = counted(board.counts, prior.state, false)
+      after.waiting = without_number(board.waiting, prior, prior.state == Queued, number / 256)
+      after.due = without_number(board.due, prior, prior.state == Leased, due_key(prior))
       after
     None: board
   end
@@ -181,7 +181,7 @@ end
 
 fn wanted?(job: Job, queue: Option(String), status: Option(State)) : Bool
   in_queue = (queue or job.queue) == job.queue
-  in_state = (status or job.status) == job.status
+  in_state = (status or job.state) == job.state
   in_queue and in_state
 end
 
@@ -192,13 +192,13 @@ fn highest(board: Board) : UInt64
 end
 
 fn fresh(number: UInt64, queue: String, at: Time) : Job
-  Job(number: number, queue: queue, status: Queued, payload: "p", attempts: 0, max_attempts: 2,
+  Job(number: number, queue: queue, state: Queued, payload: "p", attempts: 0, max_attempts: 2,
     created_at: at, updated_at: at, worker: None, lease_until: None, reason: None)
 end
 
 fn leased_until(job: Job, worker: String, until: Time) : Job
   var after = job
-  after.status = Leased
+  after.state = Leased
   after.attempts = job.attempts + 1
   after.worker = Some(worker)
   after.lease_until = Some(until)
@@ -207,7 +207,7 @@ end
 
 fn with_status(job: Job, status: State) : Job
   var after = job
-  after.status = status
+  after.state = status
   after.worker = None
   after.lease_until = None
   after

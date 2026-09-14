@@ -305,7 +305,7 @@ end
 
 test "each outcome is its status and its JSON"
   at = Time.fixture()
-  kept = Job(number: 1, queue: "q", status: Queued, payload: "p", attempts: 0, max_attempts: 1,
+  kept = Job(number: 1, queue: "q", state: Queued, payload: "p", attempts: 0, max_attempts: 1,
     created_at: at, updated_at: at, worker: None, lease_until: None, reason: None)
   assert respond(Made(job: kept)) == json(201, shown(kept))
   assert respond(Found(job: kept)).status == 200 and respond(Handed(job: kept)).status == 200

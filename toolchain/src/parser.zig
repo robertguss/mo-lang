@@ -546,7 +546,7 @@ const Parser = struct {
         try p.endLine();
         const top = p.scratch.items.len;
         while (true) {
-            try p.push(try p.parseField());
+            try p.push(try p.parseStructField());
             try p.endLine();
             if (p.peek() == .kw_end) break;
         }
@@ -554,6 +554,21 @@ const Parser = struct {
         _ = try p.expect(.kw_end);
         try p.endLine();
         return p.addNode(.{ .kind = .struct_decl, .main_token = name, .lhs = s.start, .rhs = s.end });
+    }
+
+    /// A struct's field, whose name may be `state` or `old` (step 25): the field is read after a
+    /// dot and given by name when the struct is built, where neither keyword means anything else.
+    fn parseStructField(p: *Parser) Error!Index {
+        switch (p.peek()) {
+            .kw_state, .kw_old => if (p.peekAt(1) == .colon) {
+                const name = p.next();
+                _ = p.next();
+                const t = try p.parseType();
+                return p.addNode(.{ .kind = .field, .main_token = name, .lhs = t });
+            },
+            else => {},
+        }
+        return p.parseField();
     }
 
     fn parseField(p: *Parser) Error!Index {
@@ -1194,8 +1209,14 @@ const Parser = struct {
         return p.spanFrom(top);
     }
 
+    /// An argument, or `name: value`; a struct's field named `state` or `old` is given by that
+    /// name when it is built (step 25).
     fn parseArg(p: *Parser) Error!Index {
-        if (p.peek() == .ident and p.peekAt(1) == .colon) {
+        const label = switch (p.peek()) {
+            .ident, .kw_state, .kw_old => true,
+            else => false,
+        };
+        if (label and p.peekAt(1) == .colon) {
             const name = p.next();
             _ = p.next();
             const e = try p.parseExpr();
@@ -1758,6 +1779,28 @@ test "a one-line if is a value, with the block form's tree" {
         try std.testing.expectEqualStrings(block, line);
     }
     _ = try parseSource(arena, "module M\nfn f(xs: List(UInt8)) : List(UInt8)\n  xs.map(fn(x) if x > 1: x else: 0 end)\nend\n", &diags);
+}
+
+test "state and old name a struct's field and are given by that name when it is built, and nowhere else" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const tree = try parseSource(arena, "module M\nstruct Job\n  state: UInt8\n  old: UInt8\nend\nfn f(j: Job) : Job\n  var k = Job(state: j.state, old: j.old)\n  k.state = 1\n  k\nend\n", &diags);
+    const job = tree.nodes[tree.span(tree.nodes[0].lhs, tree.nodes[0].rhs)[1]];
+    const fields = tree.span(job.lhs, job.rhs);
+    try std.testing.expectEqualStrings("state", tree.tokenText(tree.nodes[fields[0]].main_token));
+    try std.testing.expectEqualStrings("old", tree.tokenText(tree.nodes[fields[1]].main_token));
+
+    const wrong = [_][]const u8{
+        "module M\nenum E\n  A(state: UInt8)\nend\n",
+        "module M\nfn f(state: UInt8) : UInt8\n  1\nend\n",
+    };
+    for (wrong) |w| {
+        diags.clearRetainingCapacity();
+        try std.testing.expectError(error.Rejected, parseSource(arena, w, &diags));
+        try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
+    }
 }
 
 test "fn main takes one Platform and has no return type" {

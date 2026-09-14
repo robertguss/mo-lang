@@ -16,12 +16,12 @@ enum State
   Dead
 end
 
-# A job; its state is `status`, since `state` is a keyword. `worker` and `lease_until` are Some
+# A job; its `state` is a field of its own (step 25). `worker` and `lease_until` are Some
 # only while it is leased; `reason` is the last fail's, kept from the first fail on.
 struct Job
   number: UInt64
   queue: String
-  status: State
+  state: State
   payload: String
   attempts: UInt64
   max_attempts: UInt64
@@ -37,9 +37,9 @@ fn job(number: UInt64, queue: String, payload: String, max_attempts: UInt64, now
   requires queue?(queue)
   requires payload?(payload)
   requires max_attempts?(max_attempts)
-  ensures result.status == Queued and result.attempts == 0
+  ensures result.state == Queued and result.attempts == 0
 
-  Job(number: number, queue: queue, status: Queued, payload: payload, attempts: 0,
+  Job(number: number, queue: queue, state: Queued, payload: payload, attempts: 0,
     max_attempts: max_attempts, created_at: now, updated_at: now, worker: None, lease_until: None,
     reason: None)
 end
@@ -47,12 +47,12 @@ end
 # The job leased to the worker for lease_ms from now: one attempt more.
 fn leased(job: Job, worker: String, lease_ms: UInt64, now: Time) : Job
   requires lease_ms?(lease_ms)
-  requires job.status == Queued and job.attempts < job.max_attempts
-  ensures result.status == Leased and result.worker == Some(worker)
+  requires job.state == Queued and job.attempts < job.max_attempts
+  ensures result.state == Leased and result.worker == Some(worker)
   ensures result.attempts == job.attempts + 1
 
   var after = job
-  after.status = Leased
+  after.state = Leased
   after.attempts = job.attempts + 1
   after.worker = Some(worker)
   after.lease_until = Some(now + lease_ms.to_i64.ms)
@@ -61,18 +61,18 @@ fn leased(job: Job, worker: String, lease_ms: UInt64, now: Time) : Job
 end
 
 fn acked(job: Job, now: Time) : Job
-  requires job.status == Leased
-  ensures result.status == Done
+  requires job.state == Leased
+  ensures result.state == Done
 
   var after = released(job, now)
-  after.status = Done
+  after.state = Done
   after
 end
 
 # A fail: queued again while attempts are left, dead on the last one.
 fn failed(job: Job, reason: String, now: Time) : Job
-  requires job.status == Leased
-  ensures result.status == Queued or result.status == Dead
+  requires job.state == Leased
+  ensures result.state == Queued or result.state == Dead
 
   var after = ran_out(job, now)
   after.reason = Some(reason)
@@ -81,11 +81,11 @@ end
 
 # A lease that ran out: queued or dead by the same rule as a fail, the reason kept.
 fn ran_out(job: Job, now: Time) : Job
-  requires job.status == Leased
-  ensures result.status == Queued or result.status == Dead
+  requires job.state == Leased
+  ensures result.state == Queued or result.state == Dead
 
   var after = released(job, now)
-  after.status = if job.attempts < job.max_attempts: Queued else: Dead
+  after.state = if job.attempts < job.max_attempts: Queued else: Dead
   after
 end
 
@@ -99,12 +99,12 @@ end
 
 # A lease is a deadline: it has run out once the clock reaches lease_until.
 fn run_out?(job: Job, now: Time) : Bool
-  job.status == Leased and now >= (job.lease_until or now)
+  job.state == Leased and now >= (job.lease_until or now)
 end
 
 # Whether the worker holds a live lease on the job.
 fn holds?(job: Job, worker: String, now: Time) : Bool
-  job.status == Leased and job.worker == Some(worker) and !run_out?(job, now)
+  job.state == Leased and job.worker == Some(worker) and !run_out?(job, now)
 end
 
 # A queue name is 1 to 64 bytes of letters, digits, - and _.
@@ -187,9 +187,11 @@ end
 
 # A job as JSON: what the API shows and the record the store keeps under its id, the spec's
 # fields in its order, with worker and lease_until while leased and reason after a fail. Written
-# by hand, since a struct cannot have a field named state.
+# by hand, since Json.encode of a Job would write its number where the API names an id, a state by
+# its variant's name where the API writes it in lowercase, and worker, lease_until, and reason as
+# null where the API leaves them out.
 fn shown(job: Job) : String
-  head = "{\"id\": #{quoted(id_of(job.number))}, \"queue\": #{quoted(job.queue)}, \"state\": \"#{state_name(job.status)}\", \"payload\": #{quoted(job.payload)}"
+  head = "{\"id\": #{quoted(id_of(job.number))}, \"queue\": #{quoted(job.queue)}, \"state\": \"#{state_name(job.state)}\", \"payload\": #{quoted(job.payload)}"
   counts = "\"attempts\": #{job.attempts}, \"max_attempts\": #{job.max_attempts}"
   times = "\"created_at\": #{Json.encode(job.created_at)}, \"updated_at\": #{Json.encode(job.updated_at)}"
   "#{head}, #{counts}, #{times}#{held_part(job)}#{reason_part(job)}}"
@@ -220,11 +222,11 @@ fn job_of(text: String) : Option(Job)
   attempts = try count_in(fields, "attempts")
   return None if !queue?(queue) or !payload?(payload) or !max_attempts?(max) or attempts > max
   base = Job(number: try number_of(try text_in(fields, "id")), queue: queue,
-    status: try state_named(try text_in(fields, "state")), payload: payload, attempts: attempts,
+    state: try state_named(try text_in(fields, "state")), payload: payload, attempts: attempts,
     max_attempts: max, created_at: try time_in(fields, "created_at"),
     updated_at: try time_in(fields, "updated_at"), worker: None, lease_until: None,
     reason: text_in(fields, "reason"))
-  return Some(base) if base.status != Leased
+  return Some(base) if base.state != Leased
   var read = base
   read.worker = Some(try text_in(fields, "worker"))
   read.lease_until = Some(try time_in(fields, "lease_until"))
@@ -287,14 +289,14 @@ test "a job leases, acks, fails, and runs out as the state diagram says"
   assert holds?(first, "ada", at) and !holds?(first, "grace", at)
   assert !run_out?(first, at + 29_999.ms) and run_out?(first, at + 30_000.ms)
   assert !holds?(first, "ada", at + 30_000.ms)
-  assert acked(first, at).status == Done and acked(first, at).worker is None
+  assert acked(first, at).state == Done and acked(first, at).worker is None
   again = failed(first, "smtp down", at + 1.minute)
-  assert again.status == Queued and again.reason == Some("smtp down") and again.worker is None
+  assert again.state == Queued and again.reason == Some("smtp down") and again.worker is None
   second = leased(again, "grace", 100, at + 1.minute)
   assert second.attempts == 2
-  assert ran_out(second, at + 2.minute).status == Dead
-  assert failed(second, "still down", at).status == Dead
-  assert ran_out(first, at).status == Queued
+  assert ran_out(second, at + 2.minute).state == Dead
+  assert failed(second, "still down", at).state == Dead
+  assert ran_out(first, at).state == Queued
 end
 
 test "a job is shown with worker and lease_until only while leased, and reason after a fail"

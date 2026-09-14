@@ -857,7 +857,7 @@ const Printer = struct {
     }
 
     fn field(p: *Printer, i: Index) E!void {
-        _ = try p.tk(.ident);
+        _ = try p.tk(null); // a name, or `state` or `old` in a struct (step 25)
         _ = try p.tk(.colon);
         try p.sp();
         try p.typ(p.node(i).lhs);
@@ -1303,7 +1303,7 @@ const Printer = struct {
                 try p.args(n.rhs);
             },
             .named_arg => {
-                _ = try p.tk(.ident);
+                _ = try p.tk(null); // a name, or `state` or `old` for a struct's field (step 25)
                 _ = try p.tk(.colon);
                 try p.sp();
                 try p.expr(n.lhs);
