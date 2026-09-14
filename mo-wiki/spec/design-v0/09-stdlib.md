@@ -31,6 +31,7 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `String` | `to_u64` | | `Option(UInt64)` | ASCII digits only, at least one, no sign, no spaces, no `_`; `None` otherwise or when it does not fit |
 | `String` | `to_i64` | | `Option(Int64)` | as `to_u64`, with one optional leading `-` |
 | `String` | `to_f64` | | `Option(Float64)` | an optional `-`, digits, optionally `.` and digits, optionally `e` or `E`, a sign, and digits; no `NaN`, no `Infinity` |
+| `String` (on type) | `grouped` | any integer | `String` | the integer in Mo's own spelling, `_` between each three digits from the right: `String.grouped(1204)` is `"1_204"`, and a negative one keeps its `-`. Step 28, after program 2 built `1_204` from the digits |
 
 ## Strings
 
@@ -60,6 +61,7 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `List(T)` | `size` | | `UInt64` | elements |
 | `List(T)` | `push` | `T` | `List(T)` | the element added at the end |
 | `List(T)` | `get` | `i: UInt64` | `Option(T)` | element `i`, from 0 |
+| `Option(T)` | `map` | `fn(T) U` | `Option(U)` | `Some` of the function's value for a `Some`, and `None` for a `None`. Step 28, after program 1 wrote a `case` to turn a found change into its value |
 | `List(T)` | `first`, `last` | | `Option(T)` | |
 | `List(T)` | `contains?` | `T` | `Bool` | whether an element equals it |
 | `List(T)` | `slice` | `from: UInt64`, `to: UInt64` | `List(T)` | elements `from` up to, not including, `to`, both clamped |
@@ -119,10 +121,12 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `Time` | `since` | `Time` | `Duration` | this instant minus the other, `a - b` |
 | `Duration` | `ms` | | `Int64` | whole milliseconds |
 | `Duration` | `seconds`, `minutes` | | `Float64` | |
-| any integer | `ms`, `minute`, `days` | | `Duration` | a duration of that many |
+| any integer | `ms`, `seconds`, `minute`, `days` | | `Duration` | a duration of that many; any other name after an integer (`1.second`) is `MO0208` when the program is checked, naming these. Step 28: `seconds`, after program 2 wrote `10_000.ms` |
 | `Time` (on type) | `fixture` | | `Time` | 2026-01-01T00:00:00Z; tests only |
 
 `Time - Time` is a `Duration`, `Time ± Duration` a `Time`, and both compare with `<`.
+
+In a test, `Clock.fixture()`'s `now` is `Time.fixture()` moved by the simulator's time, which a fixture call that waits and a delayed send the simulator reaches both move, and inside an `update` it stays where it was when the update began (step 28, after program 1 could not watch a lease run out in a test).
 
 `Deadline` is a point on the runtime's clock that a call may wait until: under `mo run` the process clock, and under `Mo.Sim` the run's own, which fixture waits move. Every `within:` takes a `Duration` or a `Deadline`; a `Deadline` gives the call what remains of it, and a call with nothing left is `Timeout` at once and is not made. Inside the `update` arm for a message that carries a reply, `reply_by` is the asker's `Deadline` (chapter 3); nothing else makes one outside a test, and nothing makes one later than the one it came from.
 
@@ -146,6 +150,7 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 | `Fs` | `fold_lines` | `path: String`, `init: A`, `fn(A, String) A` | `Result(A, FsError)` | the file's lines, split as `String.lines` splits it, each handed to the function in turn with the value so far, `init` with the first, as the file is read, so no more of the file than its longest line and the value is held; the function gives the value handed with the next line, and `Ok` holds what the last line's call gave, or `init` for a file with no lines. `Missing(path)` before any line when the file cannot be read or has a line of more than 64 MiB. A line that is not UTF-8 is handed on with each byte that begins no UTF-8 character replaced by U+FFFD, so a caller counts it, as `line.contains?("\u{FFFD}")`, and folds on; the call is never `NotText` (session 6, step 27). The deadline is checked before each read of the file: past it the call is `Timeout`, and the calls already made stay made. Written `logs.fold_lines(name, 0, within: 1.minute, fn(count, line) count + 1 end)` |
 | `Fs` | `size` | `path: String` | `Result(UInt64, FsError)` | the file's length in bytes |
 | `Fs` | `list` | | `Result(List(String), FsError)` | the names of the files and folders directly inside the scope, sorted byte by byte; `Missing(".")` when the scope is not a readable folder |
+| `Fs` | `list_kinds` | | `Result(List(Entry), FsError)` | what `list` gives, each name an `Entry(name: String, kind: EntryKind)` whose kind is `File` or `Folder`, a link counting as what it points at. Step 28, after program 2 could not tell a folder named `old.log` from a log |
 | `Fs` | `scoped` | `String` | `Fs` | narrowed to a folder inside this scope |
 | `Fs` | `read_only` | | `Fs` | narrowed to reading: a read-only `Fs`, its own type, which goes wherever an `Fs` goes (a `scoped` of it is read-only too) and is refused by the checker (`MO0404`) where a write reaches it, directly or through a function it is handed to |
 | `Fs` (on type) | `fixture` | | `Fs` | an empty file system: every read is `Missing`; `list` on the fixture's root is `Ok([])`, and on a folder that is not there (no `mkdir` made it and no file is under it) `Missing(".")`, as the real `Fs` answers; a path whose `..` climbs above a scope's folder, the fixture's root included, is refused as the real `Fs` refuses it, `Missing(path)`, and `list` on a scope that climbed out is `Missing(".")`; tests only. Session 5, step 21: the refusal, after round 4's logstat found the fixture climbing out of a scope where the real `Fs` does not. Session 5, step 22: `Missing(".")` for a folder that is not there, after program 1 found no test could show `jobq serve` refusing one |
@@ -334,6 +339,7 @@ end
 struct MemoryInfo
   resident_bytes: UInt64
   region_bytes: UInt64
+  region_resident_bytes: UInt64
   packed_bytes: UInt64
   event_bytes: UInt64
   largest: List(ProcessInfo)
@@ -374,7 +380,7 @@ end
 | `Runtime` | `events` | `since: Time`, `n: UInt64` | `List(Event)` | the first `n` events the ring holds at or after `since`, oldest first, so the last one's `at` pages on |
 | `Runtime` | `crashes` | `n: UInt64` | `List(Event)` | the last `n` `Crashed` events, oldest first |
 | `Runtime` | `sources` | | `List(SourceInfo)` | each loop the runtime owns (`Listener.serve`, `Conn.lines`, `HttpListener.serve`) that has not ended: its row, its target, the requests it is reading, and whether it is paused at the target's bound |
-| `Runtime` | `memory` | | `MemoryInfo` | the program's resident bytes now, the bytes main's and every process's regions hold, the bytes packed into messages since the run began, the bytes the ring holds, and the five processes whose regions hold the most |
+| `Runtime` | `memory` | | `MemoryInfo` | the program's resident bytes now, the bytes main's and every process's regions hold, the bytes of pages those regions and the scratch region keep resident (step 28: resident less these is what the runtime holds outside the regions, its parcels, buffers, stacks, and tables), the bytes packed into messages since the run began, the bytes the ring holds, and the five processes whose regions hold the most |
 | `Runtime` | `slowest` | `n: UInt64` | `List(Event)` | the `n` longest `Updated` events the ring holds, longest first |
 | `Runtime` | `send` | `id: UInt64`, `text: String` | `Result(none, RuntimeError)` | the message the text spells as a report prints it (`Vote(n: 3)`, `Total`; a message of one field may leave its name out), put in the process's mailbox now, not when the calling update commits, and recorded as `Sent`; a reply it carries is dropped; `Unparsed(why)` for text that is not a message the process declares, or that holds a map, a set, a capability, or a handle; `MailboxFull` at its bound, which crashes no one; `NoProcess`; `ReadOnly` |
 | `Runtime` | `pause`, `resume` | `id: UInt64` | `Result(none, RuntimeError)` | holds the process's deliveries, or lets them go: its messages wait, an `ask` to it is `Timeout` at its deadline (at once in a test, and the message still arrives), and a loop the runtime owns into it pauses at its bound; each is an event; `NoProcess`; `ReadOnly` |

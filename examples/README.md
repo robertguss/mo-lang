@@ -26,14 +26,15 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 4. `basics/predicates.mo`: `?` functions and dot-call sugar
 5. `basics/tuples.mo`: build a tuple, read `.0`, destructure in `case`
 6. `basics/lists.mo`: a list literal, `push`, `map`, `filter`, `reduce`
-7. `basics/option.mo`: `Some`, `None`, `or`, `case`
+7. `basics/option.mo`: `Some`, `None`, `or`, `case`, and `map` (step 28)
 8. `basics/result.mo`: `Ok`, `Error`, `try` through two calls
 9. `basics/if.mo`: `if` as a statement, as a value in block form and on one line (`if c: a else: b`, step 25), the one-line form also as a call's argument, an arm's value, an anonymous function's body, and inside an interpolation, and as a function's whole body on its last line (step 26), and trailing on `return`
 10. `basics/case.mo`: guards, nested destructuring, literal arms, `_` inside a pattern
 11. `basics/for.mo`: `for` over a range and a list, `break`, and why these are loops
-12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments
+12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments, and a parameter named `_` left unread (step 28)
 61. `basics/returns-nothing.mo`: a function with no return type, called for what it writes, and a negative number as a pattern
 73. `basics/in-place.mo`: a field set on a var and a string grown by interpolation write in place (step 21), and a copy taken before either never sees it, as with `push`
+94. `basics/moves.mo`: a value handed on by its last read, or by the one read of a place on the right of an assignment to it, is written in place by whatever takes it (step 28): a map inside a struct set and removed from through functions and through `reduce`, a tuple accumulator, and a message; a copy read before, a list's element, a capture, and the next arm of a case never see the write
 
 ## types
 13. `types/struct.mo`: named construction and the `var` copy update
@@ -50,11 +51,11 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 21. `contracts/never.mo`: a two-generator `never` with a guard
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
 62. `contracts/never-trips.mo`: a `never` that plain test data breaks, tripping a `test rejects` under `mo test` without `--sim`
-92. `contracts/never-var-copy.mo`: a `never` reads values at rest (step 27): round 6's `Pair`, changed one field at a time on a `var` copy, passes, since a field write followed by another write of the same `var` records nothing, and a copy returned with one half moved still trips a `test rejects`
+92. `contracts/never-var-copy.mo`: a `never` reads values at rest (step 27): round 6's `Pair`, changed one field at a time on a `var` copy, passes, since a field write whose next write reached assigns the same `var` records nothing, and a copy returned with one half moved still trips a `test rejects`; round 7's logstat `Tally`, a write then one in each arm of an `if`, and a write in the only arm of an `if` with writes after it, pass too (step 28)
 65. `contracts/property-refined.mo`: properties over refined types; `any(Percent)` never gives 65,535, and `any(Status)`, whose `where` few `UInt16` values pass, generates between its bounds
 
 ## effects
-23. `effects/clock.mo`: a function that takes a `Clock`; `clock.now` cannot wait, so it takes no `within:`
+23. `effects/clock.mo`: a function that takes a `Clock`; `clock.now` cannot wait, so it takes no `within:`; the fixture clock moves by a fixture call's wait, so a process test watches a lease run out (step 28)
 24. `effects/pure-vs-effectful.mo`: the same computation with and without a capability
 25. `effects/timeout.mo`: `Timeout` as an ordinary error the caller handles
 26. `effects/narrowing.mo`: `fs.scoped(...).read_only` passed down
@@ -113,6 +114,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 93. `rejects/unknown-escape.mo`: `"\q"`; a string knows `\n`, `\t`, `\r`, `\\`, `\"`, `\#`, and `\u{X}`, so `MO0101` names them at any other backslash (step 27)
 90. `rejects/old-parameter.mo`: `fn(old)` inside an `ensures`, where `old` is a keyword, so `MO0101` says what it names there and that elsewhere it is a name (steps 26, 27)
 91. `rejects/unbound-result.mo`: a body that reads `result` as its return value; outside an `ensures` `result` is a name, so `MO0201` says nothing binds it and where it is the keyword (step 27)
+95. `rejects/wrong-unit.mo`: `1.second`; a Duration is written with `ms`, `seconds`, `minute`, or `days`, so `MO0208` names them when the program is checked, where it crashed at run time before (step 28)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records

@@ -6,14 +6,18 @@
       "module": "Effects.Clock",
       "declarations": [
         { "id": "825ba73da8fe", "name": "module Effects.Clock", "hash": "4db7169482538384" },
-        { "id": "41802e70e7a4", "name": "expose", "hash": "3f8dbae09a9c1175" },
-        { "id": "ba5c1b01253d", "name": "intent", "hash": "8b099134ac96885e" },
+        { "id": "41802e70e7a4", "name": "expose", "hash": "ef7beedd9000c576" },
+        { "id": "ba5c1b01253d", "name": "intent", "hash": "da3a604aa07b5328" },
         { "id": "8d801b5e3861", "name": "struct Session", "hash": "a3d5af377320cff1" },
         { "id": "9ee90f672a9d", "name": "fn expired?", "hash": "8c74d978d9b65d3c" },
+        { "id": "7ce64d9e872a", "name": "process Holder", "hash": "6da34016ed7dc64f" },
+        { "id": "16ff14db32aa", "name": "supervisor Holders", "hash": "a2ce32f6df448b7b" },
+        { "id": "ad135d3f524d", "name": "test \"a fixture call that waits moves the fixture clock by its wait (step 28)\"", "hash": "05007d0d1e138325" },
+        { "id": "dd970314c649", "name": "test \"a lease runs out in a process once a fixture call has waited past it\"", "hash": "5ca41365b32c6e7b" },
         { "id": "a965061c8d40", "name": "test \"a session with no length is over at once\"", "hash": "091b3c09098099a7" },
         { "id": "2be41ba7b4e3", "name": "test \"a long session is not over yet\"", "hash": "35212e8550c2e7a1" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "85f61abb0b9a367c" }
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "55754b0c64e9648f" }
     },
     {
       "path": "http.mo",

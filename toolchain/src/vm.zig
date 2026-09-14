@@ -132,20 +132,22 @@ pub const Vm = struct {
     region: ?*Region = null,
     /// What a compaction keeps passes through here on its way back into `region`.
     scratch: ?*Region = null,
-    /// The lists push can grow in place: the sixteen it grew last.
-    growth: [16]Growth = [_]Growth{.{}} ** 16,
-    growth_next: usize = 0,
+    /// The lists push can grow in place, by where their buffer starts (step 28: every one,
+    /// not the sixteen grown last, so a map's entries keep their room beside a few new lists).
+    growth: std.AutoHashMapUnmanaged(usize, Growth) = .empty,
+    growth_held: Held = .{},
     /// The strings an interpolation can grow in place, as push grows a list (concatText): the
     /// sixteen it made last; and the bytes of an interpolation's tail, formatted before they go
     /// into their buffer.
     text_growth: [16]Growth = [_]Growth{.{}} ** 16,
     text_growth_next: usize = 0,
     text: std.ArrayList(u8) = .empty,
-    /// Map and set buffers a `var` holds alone: an update (`m = m.set(k, v)`) made them
-    /// and nothing has read the var since (a read is `load_shared`). stdlib.zig writes
-    /// into these in place, so an update on a var is not a copy (design-v0/09).
-    owned: [16]SliceKey = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 16,
-    owned_next: usize = 0,
+    /// Map and set entries, and struct fields, one holder holds alone, by where the buffer
+    /// starts, with the length that holder sees: a row or a field set made them, and every
+    /// read since handed the value on (moves.zig) rather than sharing it (`load_shared`,
+    /// `disown`). stdlib.zig writes into these in place, so an update is not a copy.
+    owned: std.AutoHashMapUnmanaged(usize, usize) = .empty,
+    owned_held: Held = .{},
     /// A compaction's copies, so a slice reached twice is copied once.
     forward: std.AutoHashMapUnmanaged(SliceKey, [*]Value) = .empty,
     /// Slots a row wrote in place with a value that may be newer than the slot (rememberWrite):
@@ -194,12 +196,12 @@ pub const Vm = struct {
     /// is cleared, and its lists keep their room. Its regions come from useRegions again.
     pub fn reuse(vm: *Vm) void {
         vm.stack.clearRetainingCapacity();
-        vm.growth = [_]Growth{.{}} ** 16;
-        vm.growth_next = 0;
+        vm.growth.clearRetainingCapacity();
+        vm.growth_held = .{};
         vm.text_growth = [_]Growth{.{}} ** 16;
         vm.text_growth_next = 0;
-        vm.owned = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 16;
-        vm.owned_next = 0;
+        vm.owned.clearRetainingCapacity();
+        vm.owned_held = .{};
         vm.forward.clearRetainingCapacity();
         vm.remembered.clearRetainingCapacity();
         vm.undo.clearRetainingCapacity();
@@ -216,12 +218,34 @@ pub const Vm = struct {
 
     const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
 
+    /// The addresses a table has held since it last emptied, so a compaction whose range misses them
+    /// drops nothing without looking (runtime/mo_rt.c, PtrTable).
+    const Held = struct {
+        lo: usize = std.math.maxInt(usize),
+        hi: usize = 0,
+
+        fn note(h: *Held, addr: usize) void {
+            h.lo = @min(h.lo, addr);
+            h.hi = @max(h.hi, addr + 1);
+        }
+    };
+
     const SliceKey = struct { ptr: usize, len: usize };
 
     /// `len` slots from `slot` were written in place; `at` is where the region's top stood
     /// then, or where a compaction that moved their values left it.
     const Remembered = struct { slot: usize, len: usize, at: usize };
-    const Undo = struct { slot: usize, old: Value };
+    /// What an update's write took back on a crash: `slot` held `old`. A remove (`stride` 1 or 2)
+    /// took the entry `old` and `second` out at `slot` of `entries`, moving the slots after it
+    /// down; undone, they move back and `index`, the map's table, is built again over them.
+    const Undo = struct {
+        slot: usize,
+        old: Value,
+        stride: u8 = 0,
+        second: Value = .none,
+        entries: []const Value = &.{},
+        index: []const u32 = &.{},
+    };
 
     fn simulator(vm: *Vm) Error!*sim_mod.Sim {
         if (vm.sim) |s| return s;
@@ -321,6 +345,7 @@ pub const Vm = struct {
                     vm.disownIn(v);
                     try vm.push(v);
                 },
+                .disown => vm.disownIn(vm.stack.items[vm.stack.items.len - 1]),
                 .store => locals[inst.a] = vm.pop(),
                 .jump => pc = inst.a,
                 .jump_if_false => if (!vm.pop().bool) {
@@ -375,7 +400,7 @@ pub const Vm = struct {
                     const fields = try vm.allocValues(old.len);
                     @memcpy(fields, old);
                     fields[inst.a] = v;
-                    vm.own(fields);
+                    try vm.own(fields);
                     const changed: Value = switch (obj) {
                         .record => |r| .{ .record = .{ .decl = r.decl, .fields = fields } },
                         .variant => |r| .{ .variant = .{ .name = r.name, .fields = fields } },
@@ -616,12 +641,18 @@ pub const Vm = struct {
         s.top = s.base;
         vm.forward.clearRetainingCapacity();
         try vm.copyRoots(roots, below, .{ .lo = from, .hi = old_top, .dest = s.allocator(), .moves = true });
+        r.high = @max(r.high, old_top);
+        s.high = @max(s.high, s.top);
         r.top = from;
         vm.dropGrowth(from, old_top);
         vm.forward.clearRetainingCapacity();
         try vm.copyRoots(roots, below, .{ .lo = s.base, .hi = s.top, .dest = r.allocator(), .moves = true, .fresh = true });
         vm.dropGrowth(s.base, s.end);
         for (below) |*e| e.at = r.top;
+        // A compaction that freed far more than it kept gives the pages back at once; smaller ones wait
+        // for the update's end (sim.zig, settleRegion; step 28).
+        const kept = r.top - r.base;
+        if (r.high - r.top > 16 * Region.release_keep and r.high - r.top > 2 * kept) r.releasePast(r.top + Region.release_keep);
     }
 
     /// Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the
@@ -686,14 +717,19 @@ pub const Vm = struct {
         if (xs.len == 0 or !inside(addr, c)) return xs;
         const key: SliceKey = .{ .ptr = addr, .len = xs.len };
         if (vm.forward.get(key)) |copied| return copied[0..xs.len];
-        const growth = if (grows and c.moves) vm.growthOf(addr, xs.len) else null;
+        // By value: copying what the slice holds may grow the table the pointer is into.
+        const growth: ?Growth = if (grows and c.moves) (if (vm.growthOf(addr, xs.len)) |g| g.* else null) else null;
         const out = try rawAlloc(c.dest, Value, if (growth) |g| g.cap else xs.len);
         try vm.forward.put(vm.gpa, key, out.ptr);
         for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, c);
-        if (growth) |g| g.ptr = @intFromPtr(out.ptr);
-        if (c.moves) for (&vm.owned) |*o| {
-            if (o.ptr == addr and o.len == xs.len) o.ptr = @intFromPtr(out.ptr);
-        };
+        if (growth) |g| {
+            try vm.growth.put(vm.gpa, @intFromPtr(out.ptr), .{ .ptr = @intFromPtr(out.ptr), .len = g.len, .cap = g.cap });
+            vm.growth_held.note(@intFromPtr(out.ptr));
+        }
+        if (c.moves and vm.isOwned(xs)) {
+            try vm.owned.put(vm.gpa, @intFromPtr(out.ptr), xs.len);
+            vm.owned_held.note(@intFromPtr(out.ptr));
+        }
         return out[0..xs.len];
     }
 
@@ -711,57 +747,65 @@ pub const Vm = struct {
     }
 
     fn growthOf(vm: *Vm, addr: usize, len: usize) ?*Growth {
-        for (&vm.growth) |*g| {
-            if (g.ptr == addr and g.len == len and g.cap != 0) return g;
-        }
-        return null;
+        const g = vm.growth.getPtr(addr) orelse return null;
+        return if (g.len == len and g.cap != 0) g else null;
     }
 
     /// Forgets the buffers in [lo, hi), which a compaction has freed.
     fn dropGrowth(vm: *Vm, lo: usize, hi: usize) void {
-        for (&vm.growth) |*g| {
-            if (g.ptr >= lo and g.ptr < hi) g.* = .{};
-        }
+        dropRange(Growth, &vm.growth, &vm.growth_held, lo, hi);
         for (&vm.text_growth) |*g| {
             if (g.ptr >= lo and g.ptr < hi) g.* = .{};
         }
-        for (&vm.owned) |*o| {
-            if (o.ptr >= lo and o.ptr < hi) o.* = .{ .ptr = 0, .len = 0 };
-        }
+        dropRange(usize, &vm.owned, &vm.owned_held, lo, hi);
     }
 
-    /// Whether `xs` is a map or set buffer only one `var` holds (vm.owned).
+    fn dropRange(comptime V: type, map: *std.AutoHashMapUnmanaged(usize, V), held: *Held, lo: usize, hi: usize) void {
+        if (map.count() == 0 or held.hi <= lo or held.lo >= hi) return;
+        var left: Held = .{};
+        var it = map.iterator();
+        while (it.next()) |e| {
+            if (e.key_ptr.* >= lo and e.key_ptr.* < hi) {
+                map.removeByPtr(e.key_ptr);
+            } else left.note(e.key_ptr.*);
+        }
+        held.* = left;
+    }
+
+    /// Whether one holder holds `xs` alone (vm.owned).
     pub fn isOwned(vm: *const Vm, xs: []const Value) bool {
         if (xs.len == 0) return false;
-        for (vm.owned) |o| if (o.ptr == @intFromPtr(xs.ptr) and o.len == xs.len) return true;
-        return false;
+        return if (vm.owned.get(@intFromPtr(xs.ptr))) |len| len == xs.len else false;
     }
 
-    /// `xs` was just built by an update on a `var`, from a fresh buffer or one the var
-    /// already owned, so nothing else holds it.
-    pub fn own(vm: *Vm, xs: []const Value) void {
-        if (xs.len == 0 or vm.isOwned(xs)) return;
-        vm.owned[vm.owned_next] = .{ .ptr = @intFromPtr(xs.ptr), .len = xs.len };
-        vm.owned_next = (vm.owned_next + 1) % vm.owned.len;
+    /// `xs` was just built by a row or a field set, from a fresh buffer or one its holder
+    /// already held alone, so nothing else holds it.
+    pub fn own(vm: *Vm, xs: []const Value) Error!void {
+        if (xs.len == 0) return;
+        try vm.owned.put(vm.gpa, @intFromPtr(xs.ptr), xs.len);
+        vm.owned_held.note(@intFromPtr(xs.ptr));
     }
 
-    /// Something other than an update read `xs`, so it may now be held twice.
+    /// `xs` may now be held twice.
     pub fn disown(vm: *Vm, xs: []const Value) void {
-        for (&vm.owned) |*o| {
-            if (o.ptr == @intFromPtr(xs.ptr) and o.len == xs.len) o.* = .{ .ptr = 0, .len = 0 };
+        if (vm.owned.get(@intFromPtr(xs.ptr))) |len| {
+            if (len == xs.len) _ = vm.owned.remove(@intFromPtr(xs.ptr));
         }
     }
 
-    /// `v` was read other than by an update of the var or field holding it: every map or
-    /// set it holds, itself or in a struct's fields, may now be held twice. An owned buffer
-    /// is only ever at a var or a field path under one (bytecode.zig, inPlaceSlot).
+    /// `v` was read other than by a move (moves.zig): every map, set, or struct it holds,
+    /// itself or inside a struct, tuple, or variant, may now be held twice. A list's elements
+    /// never hold one alone, since a row that puts a value in a list gives its claim up.
     pub fn disownIn(vm: *Vm, v: Value) void {
+        if (vm.owned.count() == 0) return;
         switch (v) {
             .map, .set => |m| vm.disown(m.entries),
             .record => |r| {
                 vm.disown(r.fields);
                 for (r.fields) |f| vm.disownIn(f);
             },
+            .tuple => |xs| for (xs) |x| vm.disownIn(x),
+            .variant => |x| for (x.fields) |f| vm.disownIn(f),
             else => {},
         }
     }
@@ -789,33 +833,71 @@ pub const Vm = struct {
         try vm.remembered.append(vm.gpa, .{ .slot = slot, .len = n, .at = r.top });
     }
 
+    /// A remove moved the slots of `xs` from `k + stride` on down by `stride` in place. Their
+    /// values were in the buffer already, so only one a slot was remembered for may now sit where
+    /// no remembered slot reaches it: then the moved slots are remembered.
+    pub fn rememberShift(vm: *Vm, xs: []const Value, k: usize, stride: usize) Error!void {
+        const r = vm.region orelse return;
+        const base = @intFromPtr(xs.ptr);
+        if (!r.contains(base)) return;
+        const lo = base + (k + stride) * @sizeOf(Value);
+        const hi = base + xs.len * @sizeOf(Value);
+        for (vm.remembered.items) |e| {
+            if (e.slot < hi and e.slot + e.len * @sizeOf(Value) > lo) return vm.rememberWrite(base + k * @sizeOf(Value), xs.len - stride - k, null);
+        }
+    }
+
     /// Whether a row may overwrite a buffer at `buf` in place.
     pub fn overwritable(vm: *const Vm, buf: usize) bool {
         return buf >= vm.frozen_below;
     }
 
-    /// Whether a row may move a buffer's slots in place (`remove`): an update's undo keeps
-    /// single overwrites only, so a buffer from before the update is copied instead.
-    pub fn movable(vm: *const Vm, buf: usize) bool {
-        return buf >= vm.frozen_below and buf >= vm.undo_mark;
-    }
-
     /// Writes `x` into a slot in place: remembered for compaction, and under an update what
     /// the slot held before, when that is older than the update and so still there on a crash.
+    /// Without a region an update's undo_mark is past every address, so every write is kept.
     pub fn overwrite(vm: *Vm, slot: *Value, x: Value) Error!void {
         const addr = @intFromPtr(slot);
         if (addr < vm.undo_mark) {
             const old = slot.*;
-            const p = newestOf(old);
-            if (p == null or !vm.region.?.contains(p.?) or p.? < vm.undo_mark) try vm.undo.append(vm.gpa, .{ .slot = addr, .old = old });
+            const keep = if (vm.region) |r| blk: {
+                const p = newestOf(old);
+                break :blk p == null or !r.contains(p.?) or p.? < vm.undo_mark;
+            } else true;
+            if (keep) try vm.undo.append(vm.gpa, .{ .slot = addr, .old = old });
         }
         try vm.rememberWrite(addr, 1, x);
         slot.* = x;
     }
 
-    /// A crashed update's overwrites taken back, the last first.
+    /// A remove is about to take the entry at `k` out of `entries` in place, moving the slots
+    /// after it down (step 28): under an update, from a buffer older than it, what a crash
+    /// needs to put them back.
+    pub fn keepRemove(vm: *Vm, entries: []const Value, k: usize, stride: usize, index: []const u32) Error!void {
+        if (@intFromPtr(entries.ptr) >= vm.undo_mark) return;
+        try vm.undo.append(vm.gpa, .{
+            .slot = @intFromPtr(entries.ptr) + k * @sizeOf(Value),
+            .old = entries[k],
+            .stride = @intCast(stride),
+            .second = if (stride == 2) entries[k + 1] else .none,
+            .entries = entries,
+            .index = index,
+        });
+    }
+
+    /// A crashed update's writes taken back, the last first.
     pub fn rollBack(vm: *Vm) void {
-        while (vm.undo.pop()) |u| @as(*Value, @ptrFromInt(u.slot)).* = u.old;
+        while (vm.undo.pop()) |u| {
+            if (u.stride == 0) {
+                @as(*Value, @ptrFromInt(u.slot)).* = u.old;
+                continue;
+            }
+            const xs: []Value = @constCast(u.entries);
+            const k = (u.slot - @intFromPtr(xs.ptr)) / @sizeOf(Value);
+            std.mem.copyBackwards(Value, xs[k + u.stride ..], xs[k .. xs.len - u.stride]);
+            xs[k] = u.old;
+            if (u.stride == 2) xs[k + 1] = u.second;
+            if (u.index.len > 0) stdlib.rebuildIndex(@constCast(u.index), xs, u.stride);
+        }
     }
 
     /// `v` copied whole into a parcel of its own, which outlives every region.
@@ -889,8 +971,8 @@ pub const Vm = struct {
         const out = try vm.allocValues(cap);
         @memcpy(out[0..xs.len], xs);
         out[xs.len] = x;
-        vm.growth[vm.growth_next] = .{ .ptr = @intFromPtr(out.ptr), .len = xs.len + 1, .cap = cap };
-        vm.growth_next = (vm.growth_next + 1) % vm.growth.len;
+        try vm.growth.put(vm.gpa, @intFromPtr(out.ptr), .{ .ptr = @intFromPtr(out.ptr), .len = xs.len + 1, .cap = cap });
+        vm.growth_held.note(@intFromPtr(out.ptr));
         return out[0 .. xs.len + 1];
     }
 
@@ -1031,6 +1113,7 @@ pub const Vm = struct {
         wrapping_sub,
         wrapping_mul,
         ms,
+        seconds,
         minute,
         days,
         time_fixture,
@@ -1073,7 +1156,7 @@ pub const Vm = struct {
         .{ "String.bytes", .string_bytes },         .{ "String.starts_with?", .string_starts_with }, .{ "Int.checked_add", .checked_add },
         .{ "Int.checked_sub", .checked_sub },       .{ "Int.checked_mul", .checked_mul },         .{ "Int.saturating_add", .saturating_add },
         .{ "Int.saturating_sub", .saturating_sub }, .{ "Int.saturating_mul", .saturating_mul },   .{ "Int.wrapping_add", .wrapping_add },
-        .{ "Int.wrapping_sub", .wrapping_sub },     .{ "Int.wrapping_mul", .wrapping_mul },       .{ "Int.ms", .ms },
+        .{ "Int.wrapping_sub", .wrapping_sub },     .{ "Int.wrapping_mul", .wrapping_mul },       .{ "Int.ms", .ms }, .{ "Int.seconds", .seconds },
         .{ "Int.minute", .minute },                 .{ "Int.days", .days },                       .{ "Time.fixture", .time_fixture },
         .{ "Clock.now", .clock_now },               .{ "Clock.fixture", .clock_fixture },         .{ "Fs.read", .fs_read },
         .{ "Fs.scoped", .fs_narrow },               .{ "Fs.read_only", .fs_narrow },              .{ "Fs.fixture", .fs_fixture },
@@ -1150,6 +1233,8 @@ pub const Vm = struct {
                 var kept: usize = 0;
                 for (a[0].list, 0..) |x, i| {
                     out[i] = try vm.invoke(a[1].func, &.{x});
+                    // In a list, an element never holds a buffer alone (disownIn).
+                    vm.disownIn(out[i]);
                     kept = try vm.iterate(from, out[0 .. i + 1], kept);
                 }
                 break :blk .{ .list = out };
@@ -1191,9 +1276,10 @@ pub const Vm = struct {
             },
             .string_starts_with => .{ .bool = std.mem.startsWith(u8, a[0].string, a[1].string) },
             .checked_add, .checked_sub, .checked_mul, .saturating_add, .saturating_sub, .saturating_mul, .wrapping_add, .wrapping_sub, .wrapping_mul => try vm.edge(prim_of[row_index], @enumFromInt(kind_raw), a[0].int, a[1].int),
-            .ms, .minute, .days => blk: {
+            .ms, .seconds, .minute, .days => blk: {
                 const unit: i128 = switch (prim_of[row_index]) {
                     .ms => 1,
+                    .seconds => 1_000,
                     .minute => 60_000,
                     else => 86_400_000,
                 };

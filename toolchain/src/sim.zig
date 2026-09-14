@@ -247,6 +247,8 @@ pub const Sim = struct {
         const k = &p.checked;
         const r = k.pool.resolve(t);
         if (!p.may_hold[r]) return;
+        // What the run keeps is a second holder: a later write in place must not reach it.
+        sim.vm.disownIn(v);
         if (p.recorded_as[r] != none) try sim.keep(p.recorded_as[r], v);
         const ty = k.pool.get(r);
         switch (ty.tag) {
@@ -401,11 +403,12 @@ pub const Sim = struct {
         return sim.procs.items[id].reply_by;
     }
 
-    /// `clock.now`: the simulated clock, or under Mo.Server the wall clock, frozen when the
-    /// running update began.
+    /// `clock.now`, frozen when the running update began: under Mo.Server the wall clock, and in a
+    /// test the simulator's, `Time.fixture()` moved by every fixture wait and delayed send the run
+    /// has made and, under --sim, by the seed's ticks (step 28).
     pub fn clockNow(sim: *const Sim) i64 {
-        const s = sim.server orelse return sim.now;
-        return if (sim.running) |id| sim.procs.items[id].now else s.now();
+        if (sim.running) |id| return sim.procs.items[id].now;
+        return if (sim.server) |s| s.now() else sim.now + sim.lag;
     }
 
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
@@ -882,13 +885,13 @@ pub const Sim = struct {
             p.head = 0;
         }
         try sim.logMessage(p, entry);
-        if (sim.server) |s| p.now = s.now();
         p.reply_by = entry.deadline orelse sim.deadlineNow();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
             try sim.trace.append(sim.gpa, .{ .from = id, .to = id, .message = entry.message, .took = true });
         }
+        p.now = if (sim.server) |s| s.now() else sim.now + sim.lag;
         // The clock's move before the update is not the update's time.
         const since = sim.eventNow();
         p.waited_us = 0;
@@ -902,9 +905,15 @@ pub const Sim = struct {
         const mark = vm.mark();
         const regioned = vm.region != null;
         const message = if (entry.parcel) |parcel| try vm.unpack(parcel) else entry.message;
+        // Without a region nothing tells an older buffer from a newer one: every write is kept
+        // for a crash, and an invariant that reads old(state) sees nothing written in place.
+        const reads_old = vm.program.processes[p.process].reads_old;
         if (regioned) {
             vm.undo_mark = mark;
-            vm.frozen_below = if (vm.program.processes[p.process].reads_old) mark else 0;
+            vm.frozen_below = if (reads_old) mark else 0;
+        } else {
+            vm.undo_mark = std.math.maxInt(usize);
+            vm.frozen_below = if (reads_old) std.math.maxInt(usize) else 0;
         }
         defer {
             vm.undo_mark = 0;
@@ -988,6 +997,12 @@ pub const Sim = struct {
             }
         }
         sim.procs.items[id].state = roots[0];
+        // What the update freed, in its process's region and in the scratch region a compaction copied
+        // through, goes back to the system beyond a MiB of each (step 28).
+        const slack = @import("region.zig").Region.release_keep;
+        const reg = vm.region.?;
+        if (reg.high > reg.top + 4 * slack) reg.releasePast(reg.top + slack);
+        if (vm.scratch) |s| if (@max(s.high, s.top) > s.base + 4 * slack) s.releasePast(s.base + slack);
     }
 
     /// The message a process takes goes in its log; under `mo run` the log keeps the last

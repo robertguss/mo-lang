@@ -1354,9 +1354,10 @@ const Printer = struct {
         const data = p.tree.extraData(ast.AnonFn, p.node(i).lhs);
         _ = try p.tk(.kw_fn);
         _ = try p.tk(.l_paren);
-        for (p.tree.span(data.params_start, data.params_end), 0..) |_, k| {
+        for (p.tree.span(data.params_start, data.params_end), 0..) |tok, k| {
             if (k > 0) try p.comma();
-            _ = try p.tk(.ident);
+            // `_` leaves a parameter unread (step 28).
+            _ = try p.tk(if (p.tree.tokens[tok].kind == .underscore) .underscore else .ident);
         }
         _ = try p.tk(.r_paren);
         const body = p.tree.span(data.body_start, data.body_end);

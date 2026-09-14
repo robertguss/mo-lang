@@ -14,6 +14,8 @@ pub const Region = struct {
     base: usize,
     end: usize,
     top: usize,
+    /// Past `top`, how far the region's pages may still be resident (step 28).
+    high: usize = 0,
 
     /// As much address space as the system gives, from 64 GiB down to 256 MiB.
     pub fn reserve() error{OutOfMemory}!Region {
@@ -26,7 +28,7 @@ pub const Region = struct {
         while (size >= 256 << 20) : (size /= 2) {
             const mem = std.posix.mmap(null, size, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true }, -1, 0) catch continue;
             const base = @intFromPtr(mem.ptr);
-            return .{ .base = base, .end = base + mem.len, .top = base };
+            return .{ .base = base, .end = base + mem.len, .top = base, .high = base };
         }
         return error.OutOfMemory;
     }
@@ -39,12 +41,41 @@ pub const Region = struct {
     /// Everything allocated goes back to the system, and the region is empty again: its
     /// touched pages are mapped over with fresh ones, the reservation kept.
     pub fn decommit(r: *Region) void {
-        const used = std.mem.alignForward(usize, r.top - r.base, std.heap.pageSize());
-        if (used > 0) {
-            const at: [*]align(std.heap.page_size_min) u8 = @ptrFromInt(r.base);
-            _ = std.posix.mmap(at, used, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true, .FIXED = true }, -1, 0) catch {};
-        }
+        r.releasePast(r.base);
         r.top = r.base;
+        r.high = r.base;
+    }
+
+    /// The bytes a release keeps resident past the top.
+    pub const release_keep: usize = 1 << 20;
+
+    /// The pages touched past `keep` go back to the system and the reservation stays (step 28): a
+    /// compaction lowers `top`, and the pages past it stayed resident, so a server's resident memory
+    /// was the most its regions ever held. runtime/mo_rt.c's release_past is the same.
+    pub fn releasePast(r: *Region, keep: usize) void {
+        if (r.top > r.high) r.high = r.top;
+        const page = std.heap.pageSize();
+        const from = std.mem.alignForward(usize, keep, page);
+        const to = @min(std.mem.alignForward(usize, r.high, page), r.end);
+        if (to > from) {
+            const at: [*]align(std.heap.page_size_min) u8 = @ptrFromInt(from);
+            _ = std.posix.mmap(at, to - from, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true, .FIXED = true }, -1, 0) catch {};
+        }
+        r.high = @max(from, r.top);
+    }
+
+    /// The region's resident bytes: `mincore` over the pages it may have touched.
+    pub fn resident(r: *const Region, gpa: std.mem.Allocator) u64 {
+        const page = std.heap.pageSize();
+        const pages = (@max(r.high, r.top) - r.base + page - 1) / page;
+        if (pages == 0) return 0;
+        const vec = gpa.alloc(u8, pages) catch return 0;
+        defer gpa.free(vec);
+        const at: [*]align(std.heap.page_size_min) u8 = @ptrFromInt(r.base);
+        std.posix.mincore(at, pages * page, vec.ptr) catch return 0;
+        var n: u64 = 0;
+        for (vec) |b| n += b & 1;
+        return n * page;
     }
 
     pub fn contains(r: *const Region, addr: usize) bool {

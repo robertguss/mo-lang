@@ -81,6 +81,8 @@ pub const types = [_]Type{
     .{ .name = "Runtime", .kind = .capability, .origin = .stdlib },
     .{ .name = "RuntimeError", .kind = .error_enum, .origin = .stdlib, .hideable = true },
     .{ .name = "Event", .kind = .enum_, .origin = .stdlib, .hideable = true },
+    // What `Fs.list_kinds` tells apart (step 28).
+    .{ .name = "EntryKind", .kind = .enum_, .origin = .stdlib, .hideable = true },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -145,9 +147,15 @@ pub const structs = [_]Struct{
         .{ .name = "in_flight", .type = "UInt64" },
         .{ .name = "paused", .type = "Bool" },
     } },
+    // A name `Fs.list_kinds` gives, with whether it is a file or a folder (step 28).
+    .{ .name = "Entry", .origin = .stdlib, .fields = &.{
+        .{ .name = "name", .type = "String" },
+        .{ .name = "kind", .type = "EntryKind" },
+    } },
     .{ .name = "MemoryInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "resident_bytes", .type = "UInt64" },
         .{ .name = "region_bytes", .type = "UInt64" },
+        .{ .name = "region_resident_bytes", .type = "UInt64" },
         .{ .name = "packed_bytes", .type = "UInt64" },
         .{ .name = "event_bytes", .type = "UInt64" },
         .{ .name = "largest", .type = "List(ProcessInfo)" },
@@ -185,6 +193,8 @@ pub const variants = [_]Variant{
     .{ .owner = "FsError", .name = "Missing", .fields = &.{.{ .name = "path", .type = "String" }}, .origin = .corpus_only },
     .{ .owner = "FsError", .name = "Timeout", .origin = .corpus_only },
     .{ .owner = "FsError", .name = "NotText", .origin = .stdlib },
+    .{ .owner = "EntryKind", .name = "File", .origin = .stdlib },
+    .{ .owner = "EntryKind", .name = "Folder", .origin = .stdlib },
     .{ .owner = "AskError", .name = "Timeout" },
     .{ .owner = "AskError", .name = "Down" },
     .{ .owner = "LedgerError", .name = "Timeout", .origin = .corpus_only },
@@ -258,6 +268,8 @@ pub const fns = [_]Fn{
     .{ .recv = "List(T)", .name = "size", .ret = "UInt64" },
     .{ .recv = "List(T)", .name = "push", .params = &.{"T"}, .ret = "List(T)" },
     .{ .recv = "List(T)", .name = "map", .params = &.{"fn(T) U"}, .ret = "List(U)" },
+    .{ .recv = "Option(T)", .name = "map", .params = &.{"fn(T) U"}, .ret = "Option(U)", .origin = .stdlib },
+    .{ .recv = "String", .on_type = true, .name = "grouped", .params = &.{"T"}, .ret = "String", .integer = "T", .origin = .stdlib },
     .{ .recv = "List(T)", .name = "filter", .params = &.{"fn(T) Bool"}, .ret = "List(T)" },
     .{ .recv = "List(T)", .name = "reduce", .params = &.{ "A", "fn(A, T) A" }, .ret = "A" },
     .{ .recv = "List(T)", .name = "contains?", .params = &.{"T"}, .ret = "Bool" },
@@ -355,6 +367,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Int", .name = "wrapping_mul", .params = &.{"N"}, .ret = "N" },
     // Durations from integers (grammar: Time)
     .{ .recv = "Int", .name = "ms", .ret = "Duration" },
+    .{ .recv = "Int", .name = "seconds", .ret = "Duration", .origin = .stdlib },
     .{ .recv = "Int", .name = "minute", .ret = "Duration" },
     .{ .recv = "Int", .name = "days", .ret = "Duration" },
     // Time
@@ -375,6 +388,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Fs", .name = "fold_lines", .params = &.{ "String", "A", "fn(A, String) A" }, .ret = "Result(A, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "size", .params = &.{"String"}, .ret = "Result(UInt64, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "list", .ret = "Result(List(String), FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "list_kinds", .ret = "Result(List(Entry), FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "scoped", .params = &.{"String"}, .ret = "Fs" },
     .{ .recv = "Fs", .name = "read_only", .ret = "Fs" },
     .{ .recv = "Fs", .name = "write", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },

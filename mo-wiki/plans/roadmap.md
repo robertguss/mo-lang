@@ -36,8 +36,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Round 6 of the control run, pre-registered ([[control-run-6]]), the baselines with their checks | done: **failed on all four predictions**; the null hypothesis stands; three rows for Robert | — |
 | Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | done | — |
 | Round 7 ([[control-run-7]]), on Robert's measure | done: **held on all four**; reliability level at 0 defects each; Mo fastest at 32 workers, slowest to restart; the loop 0.38 s; 0 dependencies | — |
-| Step 28, round 7's toolchain notes ([[interpreter-step-28]]): the map write that copies the whole map, the tuple `reduce`, resident memory, the `never` rule's `if` gap, replay speed, six gaps | in progress | 1 |
-| Program 6, the ledger ([[program-6]], spec written 14 Sep) | queued, after step 28 | 2 |
+| Step 28, round 7's toolchain notes ([[interpreter-step-28]]) | done: a map written in place (47 s → 0.13 s), memory after replay 183 → 57 MiB, six gaps | — |
+| Program 6, the ledger ([[program-6]], spec written 14 Sep) | running since 23:52 UTC | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, a real open-source service reimplemented in Mo against its own test suite, chosen so the original carries third-party dependencies and the Mo version exercises capabilities, recipes, and the runtime surface (Robert, 14 Sep; the thesis restated) | after program 6 passes the readiness rule (no new gap or bug note) | 2 |
 | Program 8, the toolchain in Mo | late | — |
@@ -78,6 +78,7 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 20b | done: round 4, timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept ([[control-run-4]]) | round 5 after program 1 |
 | 21 | done: green threads in both runtimes, 65,530 idle connections from 8,000, a process at rest half its size, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics ([[interpreter-step-21]]) | program 1 |
 | 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
+| 30 | done: step 28: a map written in place by a move analysis in both backends, the tuple accumulator moved, the `never` rule through branches, regions giving pages back, six gaps ([[interpreter-step-28]]) | program 6 |
 | 29b | done: round 7, pre-registered on Robert's measure, held on all four ([[control-run-7]]) | step 28, program 6 |
 | 29 | done: step 27: the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, `\u{X}`, `fold_lines` past a bad line ([[interpreter-step-27]]) | round 7 |
 | 28b | done: round 6, pre-registered, failed on all four predictions: 1.58 times Go, a shape-law loop, no check caught a bug in any language, 0.74 of Go's lines ([[control-run-6]]) | Robert's reading of the laws |
