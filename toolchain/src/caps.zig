@@ -1280,10 +1280,9 @@ test "a state keeps a handle alone, in an Option, a List, or a Map's values; a c
         \\  child Holder(first), restart: :always
         \\end
     );
-    for (found) |d| std.debug.print("{s}: {s}\n", .{ d.code, d.what });
     try std.testing.expectEqual(@as(usize, 3), found.len);
     try std.testing.expectEqualStrings("pairs holds a Handle(Worker) inside a List((String, Handle(Worker))); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[0].what);
-    try std.testing.expectEqualStrings("keyed holds a Handle(Worker) inside a Map(String, Handle(Worker)); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[1].what);
+    try std.testing.expectEqualStrings("keyed holds a Handle(Worker) inside a Map(Handle(Worker), String); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[1].what);
     try std.testing.expectEqualStrings("clock holds a Clock; a capability travels only as a parameter, never inside a value.", found[2].what);
 }
 

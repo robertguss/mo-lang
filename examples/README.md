@@ -72,6 +72,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 52. `processes/invariant-trips.mo`: chapter 4's `invariant "done never goes backwards"` tripping a `test rejects`
 57. `processes/racy.mo`: a race the fixed order hides; its test passes under `mo test` and fails under `mo test --sim`
 71. `processes/handoff.mo`: a `Conn` handed to a process in a message and on to another in a second message, which writes to it; once the front has sent the connection it is no longer the front's to use (MO0410, step 20)
+81. `processes/registry.mo`: a registry whose `state` keeps a worker's handle per key in a `Map(String, Handle(Worker))`, starts a worker the first time a key is bumped, and routes each bump through the map; a worker whose key it forgets ends, which `Runtime.fixture().processes` shows in a test (step 24)
 
 ## tests
 34. `tests/test.mo`: `assert`, and `assert x is Ok(user)`
@@ -100,6 +101,8 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 74. `rejects/one-line-if.mo`: an `if` on one line, as a value; `MO0101` shows the block form and `mo fix` writes it (step 21)
 75. `rejects/positional-variant.mo`: a variant matched by position; `MO0101` names its fields (step 21)
 76. `rejects/method-on-range-end.mo`: `0..60.map(...)`, whose `map` binds to 60; `MO0206` says so (step 21)
+82. `rejects/read-only-start-argument.mo`: an `Fs` narrowed to `read_only` handed as the start argument of a process that writes through it; `MO0404` refuses the start (step 24)
+83. `rejects/read-only-message-field.mo`: an `Fs` narrowed to `read_only` sent in a message whose arm writes through it; `MO0404` refuses the message (step 24)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records
