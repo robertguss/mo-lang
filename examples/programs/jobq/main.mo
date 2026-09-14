@@ -301,11 +301,7 @@ end
 fn masked(text: String, key: String, quoted: Bool) : String
   label = "\"#{key}\": "
   pieces = text.split(label)
-  mark = if quoted
-    "\"<#{key}>\""
-  else
-    "<#{key}>"
-  end
+  mark = if quoted: "\"<#{key}>\"" else: "<#{key}>"
   rest = pieces.drop(1).map(fn(piece) "#{label}#{mark}#{after_value(piece, quoted)}" end)
   String.join([pieces.first or ""].concat(rest), "")
 end

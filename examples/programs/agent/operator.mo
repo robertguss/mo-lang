@@ -89,11 +89,7 @@ end
 
 fn run_row(info: ProcessInfo, run: String, step: String, doing: String) : String
   waiting = Json.encode(info.waiting_in)
-  shown_step = if step == ""
-    "null"
-  else
-    step
-  end
+  shown_step = if step == "": "null" else: step
   "{\"process\": #{info.id}, \"run\": #{Json.encode(run)}, \"step\": #{shown_step}, \"doing\": #{Json.encode(doing)}, \"waiting_in\": #{waiting}}"
 end
 

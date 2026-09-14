@@ -169,11 +169,7 @@ end
 # rewritten at the first change.
 fn opened(fs: Fs, place: Place, by: Deadline) : Result(Books, String)
   first = try table_of(opened_by(fs, place.dir, by))
-  table = if place.log == "jobq.log"
-    first
-  else
-    try table_of(continued(fs, first, place.log, by))
-  end
+  table = if place.log == "jobq.log": first else: try table_of(continued(fs, first, place.log, by))
   names = keys(table, "j_")
   jobs = names.flat_map(fn(key) record_at(table, key) end)
   if jobs.size != names.size

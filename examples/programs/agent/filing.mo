@@ -265,11 +265,7 @@ fn swept(fs: Fs, runs: String, ready: Readied, at: Moment) : Swept
       gone = Ended(id: entry.run.id, ending: ending(Failed, None, Some("lost")))
       settle = settled(fs, runs, shelf, gone, at)
       shelf = settle.shelf
-      lost += if settle.status == Failed
-        1
-      else
-        0
-      end
+      lost += if settle.status == Failed: 1 else: 0
     end
   end
   Swept(shelf: shelf, lost: lost)

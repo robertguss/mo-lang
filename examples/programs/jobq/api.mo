@@ -109,11 +109,7 @@ fn leasing(queue: String, body: String) : Result(Command, String)
   return Error("a queue name is 1 to 64 letters, digits, - and _") if !queue?(queue)
   return Ok(Lease(queue: queue, lease_ms: 30_000)) if body.trim == ""
   fields = try object_of(body)
-  lease_ms = if fields.has?("lease_ms")
-    try whole_field(fields, "lease_ms")
-  else
-    30_000
-  end
+  lease_ms = if fields.has?("lease_ms"): try whole_field(fields, "lease_ms") else: 30_000
   return Error("lease_ms must be a whole number from 100 to 3600000") if !lease_ms?(lease_ms)
   Ok(Lease(queue: queue, lease_ms: lease_ms))
 end

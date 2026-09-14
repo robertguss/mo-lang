@@ -1101,14 +1101,14 @@ const Printer = struct {
     }
 
     /// I1: an `if` value whose branches are one expression each, the else branch possibly an
-    /// `if` of the same shape (an else-if chain), written on one line in the source.
+    /// `if` of the same shape (an else-if chain), in either form in the source: the two forms
+    /// are one tree, so the formatter picks the shape.
     fn lineShaped(p: *Printer, i: Index) bool {
         const data = p.tree.extraData(ast.If, p.node(i).rhs);
         const then = p.tree.span(data.then_start, data.then_end);
         const otherwise = p.tree.span(data.else_start, data.else_end);
         if (then.len != 1 or otherwise.len != 1) return false;
-        const first = p.node(then[0]);
-        if (first.kind != .expr_stmt or p.tree.tokens[first.main_token - 1].kind != .colon) return false;
+        if (p.node(then[0]).kind != .expr_stmt) return false;
         return switch (p.node(otherwise[0]).kind) {
             .expr_stmt => true,
             .if_stmt => p.lineShaped(otherwise[0]),
@@ -1132,7 +1132,11 @@ const Printer = struct {
         return true;
     }
 
-    /// `if cond: a else: b`, from either form of the source.
+    /// `if cond: a else: b`, from either form of the source. From the block form, the `end`
+    /// must close the expression: a one-line `if` takes everything after `else:` into its else
+    /// branch, so `end.size` or `end + 1` would read differently on one line (I4). One comment
+    /// after the else branch or after `end` ends the one line, as it ends a one-line source; any
+    /// other comment inside keeps the block (I2).
     fn flatIf(p: *Printer, i: Index) E!void {
         const n = p.node(i);
         const data = p.tree.extraData(ast.If, n.rhs);
@@ -1149,7 +1153,30 @@ const Printer = struct {
         try p.sp();
         const otherwise = p.tree.span(data.else_start, data.else_end)[0];
         if (p.node(otherwise).kind == .if_stmt) try p.flatIf(otherwise) else try p.expr(p.node(otherwise).lhs);
-        if (!one_line) try p.skip(.kw_end);
+        if (!one_line) try p.skipEnd();
+    }
+
+    /// Steps over a block `if`'s `end` that the one-line form leaves out.
+    fn skipEnd(p: *Printer) E!void {
+        const i = p.peek();
+        std.debug.assert(p.tree.tokens[i].kind == .kw_end);
+        switch (p.tree.tokens[i + 1].kind) {
+            .newline, .eof, .comma, .r_paren, .r_bracket, .r_brace, .kw_end => {},
+            else => return error.NotFlat,
+        }
+        const lead = p.tv.lead[i];
+        if (lead.end > lead.start) {
+            p.bad_comment = lead.start;
+            return error.CommentInside;
+        }
+        if (p.tv.trail[i] != 0) {
+            if (p.pending != 0) {
+                p.bad_comment = p.pending - 1;
+                return error.CommentInside;
+            }
+            p.pending = p.tv.trail[i];
+        }
+        p.cur = i + 1;
     }
 
     /// A one-line `if`'s `:`, the source's own when it has one.
@@ -2088,6 +2115,101 @@ test "a process, a supervisor, and a recipe" {
         \\  fn r(n: UInt32) : UInt32
         \\    requires n > 0
         \\  end
+        \\end
+        \\
+    );
+}
+
+test "if values: one line when they fit and no comment sits inside, the block form otherwise" {
+    try expectFormat(
+        \\module M
+        \\fn f(n: UInt32, o: Option(UInt32)) : String
+        \\  word = if n == 1
+        \\    "line"
+        \\  else
+        \\    "lines"
+        \\  end
+        \\  long = if n > 1: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" else: "the other branch, which does not fit on the line"
+        \\  kept = if n > 1
+        \\    # many
+        \\    "lines"
+        \\  else
+        \\    "line"
+        \\  end
+        \\  after = if n > 1
+        \\    "lines"  # many
+        \\  else
+        \\    "line"
+        \\  end
+        \\  last = if n > 1
+        \\    "lines"
+        \\  else
+        \\    "line"  # one
+        \\  end
+        \\  sized = if n > 1
+        \\    "lines"
+        \\  else
+        \\    "line"
+        \\  end.size
+        \\  noted = if n > 1
+        \\    "lines"
+        \\  else
+        \\    "line"
+        \\  end  # why
+        \\  chain = if n > 99
+        \\    "long"
+        \\  else
+        \\    if n > 9
+        \\      "medium"
+        \\    else
+        \\      "short"
+        \\    end
+        \\  end
+        \\  arm = case o
+        \\    Some(x): if x > 1
+        \\      "big"
+        \\    else
+        \\      "small"
+        \\    end
+        \\    None: "none"
+        \\  end
+        \\  g(word, long, kept, after, last, sized, noted, chain, arm, bbbbbbbbbbbb, if n > 0: "positive" else: "zero")
+        \\end
+    ,
+        \\module M
+        \\
+        \\fn f(n: UInt32, o: Option(UInt32)) : String
+        \\  word = if n == 1: "line" else: "lines"
+        \\  long = if n > 1
+        \\    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        \\  else
+        \\    "the other branch, which does not fit on the line"
+        \\  end
+        \\  kept = if n > 1
+        \\    # many
+        \\    "lines"
+        \\  else
+        \\    "line"
+        \\  end
+        \\  after = if n > 1
+        \\    "lines"  # many
+        \\  else
+        \\    "line"
+        \\  end
+        \\  last = if n > 1: "lines" else: "line"  # one
+        \\  sized = if n > 1
+        \\    "lines"
+        \\  else
+        \\    "line"
+        \\  end.size
+        \\  noted = if n > 1: "lines" else: "line"  # why
+        \\  chain = if n > 99: "long" else: if n > 9: "medium" else: "short"
+        \\  arm = case o
+        \\    Some(x): if x > 1: "big" else: "small"
+        \\    None: "none"
+        \\  end
+        \\  g(word, long, kept, after, last, sized, noted, chain, arm, bbbbbbbbbbbb,
+        \\    if n > 0: "positive" else: "zero")
         \\end
         \\
     );

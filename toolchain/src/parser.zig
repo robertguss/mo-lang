@@ -30,7 +30,7 @@ const why_by_name = "A variant's fields are matched by name, as they are built b
 /// `fn main` line, with why_main as its why, an `if` on one line, with why_if, and a variant
 /// matched by position, with why_by_name.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if that starts a line takes its body on the lines below it, and mo fix writes a one-line if there as that block; the one-line if is a value only, if cond: a else: b, with both branches, each one expression; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{"an if on one line becomes the block form"} },
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if that starts a line takes its body on the lines below it; the one-line if is a value only, if cond: a else: b, with both branches, each one expression; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{} },
     .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
     .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
     .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
@@ -223,28 +223,22 @@ const Parser = struct {
     }
 
     /// MO0101 at `if cond: a else: b` where a statement goes, at its `:`. The one-line form is a
-    /// value only (step 25), so the message shows the block form. When the line is exactly that shape, one
-    /// expression on each side of an `else:` or none, the rewrite is a fix of confidence 100.
+    /// value only (step 25), so the message shows the block form. It carries no fix: the form is
+    /// a value, and `mo fix` does not rewrite it (step 25).
     fn oneLineIf(p: *Parser, kw: u32) Error {
         const gpa = p.gpa;
         const toks = p.toks.items;
         const src = p.source;
         const colon = p.tok;
         var depth: i32 = 0;
-        var clean = true;
         var else_tok: ?u32 = null;
         var t = colon + 1;
         while (toks[t].kind != .newline and toks[t].kind != .eof) : (t += 1) {
             switch (toks[t].kind) {
                 .l_paren, .l_bracket, .l_brace => depth += 1,
                 .r_paren, .r_bracket, .r_brace => depth -= 1,
-                .kw_else => if (depth == 0) {
-                    if (else_tok != null or toks[t + 1].kind != .colon) clean = false;
+                .kw_else => if (depth == 0 and else_tok == null) {
                     else_tok = t;
-                },
-                .kw_if, .kw_case, .kw_for, .kw_fn => clean = false,
-                .colon => if (depth == 0 and (else_tok == null or t != else_tok.? + 1)) {
-                    clean = false;
                 },
                 else => {},
             }
@@ -253,27 +247,12 @@ const Parser = struct {
         const cond_text = std.mem.trim(u8, src[toks[kw].end..toks[colon].start], " ");
         const then_text = std.mem.trim(u8, src[toks[colon].end..if (else_tok) |e| toks[e].start else toks[line_end].start], " ");
         const else_text: ?[]const u8 = if (else_tok) |e| std.mem.trim(u8, src[@min(toks[e + 1].end, toks[line_end].start)..toks[line_end].start], " ") else null;
-        if (then_text.len == 0 or (else_text != null and else_text.?.len == 0)) clean = false;
-        var line_start = toks[kw].start;
-        while (line_start > 0 and src[line_start - 1] != '\n') line_start -= 1;
-        var indent_end = line_start;
-        while (indent_end < src.len and src[indent_end] == ' ') indent_end += 1;
-        const indent = src[line_start..indent_end];
         const shown = if (else_text) |e|
             try std.fmt.allocPrint(gpa, "if {s} / {s} / else / {s} / end", .{ cond_text, then_text, e })
         else
             try std.fmt.allocPrint(gpa, "if {s} / {s} / end", .{ cond_text, then_text });
         const what = try std.fmt.allocPrint(gpa, "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: {s}", .{shown});
-        var fixes: []const diag.Fix = &.{};
-        if (clean) {
-            const block = if (else_text) |e|
-                try std.fmt.allocPrint(gpa, "\n{s}  {s}\n{s}else\n{s}  {s}\n{s}end", .{ indent, then_text, indent, indent, e, indent })
-            else
-                try std.fmt.allocPrint(gpa, "\n{s}  {s}\n{s}end", .{ indent, then_text, indent });
-            const edits = try gpa.dupe(diag.Edit, &.{.{ .at = toks[colon].start, .len = toks[line_end].start - toks[colon].start, .text = block }});
-            fixes = try gpa.dupe(diag.Fix, &.{.{ .description = "write the if as a block, one part a line", .confidence = 100, .edits = edits }});
-        }
-        try p.diags.append(gpa, .{ .code = "MO0101", .category = .syntax, .at = toks[colon].start, .what = what, .why = why_if, .fixes = fixes });
+        try p.diags.append(gpa, .{ .code = "MO0101", .category = .syntax, .at = toks[colon].start, .what = what, .why = why_if });
         return error.Rejected;
     }
 

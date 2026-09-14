@@ -41,11 +41,7 @@ end
 fn said(got: Result(Response, String), expect: String) : String
   case got
     Ok(response):
-      found = if response.body.contains?(expect)
-        "holds #{expect}"
-      else
-        "does not hold #{expect}"
-      end
+      found = if response.body.contains?(expect): "holds #{expect}" else: "does not hold #{expect}"
       "#{response.status}, #{found}"
     Error(why): why
   end

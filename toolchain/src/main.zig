@@ -37,7 +37,7 @@
 //!     --surface          platform.runtime is Some in the binary, as under mo run, and MO_SURFACE=PORT
 //!                        serves the surface over HTTP as mo run --surface PORT does (step 23)
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
-//!                        MO0312, and MO0101 at a one-line if), formats, and rewrites the file;
+//!                        and MO0312), formats, and rewrites the file;
 //!                        one line per fix
 //!     --dry-run          changes nothing; prints the unified diff it would apply
 //! check, test, and run load the file and every module it uses (program.zig); fmt
@@ -243,15 +243,8 @@ fn run(init: std.process.Init) !void {
     if (surface and !tests) program = try mo.program.withSurface(arena, program);
 
     if (is_fix) {
-        // A file that does not parse has nothing to fix, unless every error that stopped it carries
-        // a fix of confidence 100 (MO0101 at a one-line if, step 21).
-        const fixable = for (diags.items) |d| {
-            const has = for (d.fixes) |f| {
-                if (f.confidence == 100 and f.edits.len > 0) break true;
-            } else false;
-            if (!has) break false;
-        } else true;
-        if (diags.items.len > 0 and !fixable) return reject(out, err, program.files, diags.items, json);
+        // A file that does not load or parse has nothing to fix (step 25).
+        if (diags.items.len > 0) return reject(out, err, program.files, diags.items, json);
         const outcome = try mo.fix.run(arena, program);
         const before = program.main().source;
         if (std.mem.eql(u8, before, outcome.source)) return;

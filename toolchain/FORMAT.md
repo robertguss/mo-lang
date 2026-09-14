@@ -54,6 +54,17 @@
 | C4 | Arms are never separated by blank lines (B9). |
 | C5 | A grouped arm keeps its alternatives on the arm line, one space either side of each `\|`: `Get(_) \| Stats \| Quit: ...`. |
 
+## One-line if values
+
+An `if` where a value goes is written on one line, `if cond: a else: b` (grammar §6, step 25), or as the block. The two forms are one tree, so the formatter picks the shape, whichever form the author wrote.
+
+| # | rule | right | wrong |
+|---|---|---|---|
+| I1 | An `if` value whose branches are one expression each, the else branch possibly an `if` value of the same shape (`else: if ...`), is one line when that line fits the limit and no comment sits inside it. A block-form `if` value of that shape is written on one line too. | `··word = if n == 1: "line" else: "lines"` | `··word = if n == 1`⏎`····"line"`⏎`··else`⏎`····"lines"`⏎`··end` |
+| I2 | A comment on the condition's line, after the first branch, or on a line of its own anywhere inside keeps the block form. One comment after the else branch or after `end` ends the one line (K3), as it does when the author wrote the one line; two keep the block. | `··x = if a: 1 else: 2··# why` | |
+| I3 | When its line is over the limit, the line breaks around it (L5) if every piece then fits, as S8 does for an anonymous function; otherwise it is the block form. A branch holding a statement, or more than one line, is always the block form. | `··f(aaa, bbb,`⏎`····if ok: 1 else: 2)` | `··f(aaa, bbb, if ok`⏎`····1` ... for a call that fits once broken |
+| I4 | A block `if` value followed on its `end` line by more of an expression (`end.size`, `end + 1`) keeps the block form: on one line, the else branch would take what follows. An `if` that starts a line is a statement and always the block form; the one-line form there is `MO0101`. | | |
+
 ## Ordering
 
 | # | rule |
@@ -71,7 +82,7 @@
 | K2 | A comment above an `end` or `else` is printed at the indent of the block it closes. A comment at the end of the file stays at the end. |
 | K3 | A comment after code stays on its line, after the code and two spaces. |
 | K4 | Comment text is never changed, apart from trailing whitespace (L2). |
-| K5 | The formatter never moves or drops a comment. A comment inside what would be a one-line anonymous function or arm keeps that construct in block form. A comment inside parentheses that span lines, which the formatter joins, refuses the file with `MO0502` and leaves it unchanged. |
+| K5 | The formatter never moves or drops a comment. A comment inside what would be a one-line anonymous function, arm, or `if` value keeps that construct in block form. A comment inside parentheses that span lines, which the formatter joins, refuses the file with `MO0502` and leaves it unchanged. |
 | K6 | A `use` line moves with its comments when O2 sorts it. |
 
 ## Never changed

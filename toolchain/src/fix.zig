@@ -1,10 +1,11 @@
 //! `mo fix` (design-v0/07): applies every diagnostic fix that carries confidence 100 and
-//! rewrites the file. Four codes carry such fixes. MO0501's is built by the loop rule
+//! rewrites the file. Three codes carry such fixes. MO0501's is built by the loop rule
 //! (loops.zig): the three accumulator loops become map, filter, or reduce. MO0307 deletes
 //! an unused binding's line when its value is pure. MO0312 drops a default and passes it
-//! at every call in the file that leaves the parameter out. MO0101's, at an `if` on one line
-//! (parser.zig, step 21), writes the if as its block; it is the one fix a file that does not
-//! parse can take. Every other code's catalog row says `fixes: []`.
+//! at every call in the file that leaves the parameter out. Every other code's catalog row
+//! says `fixes: []`; MO0101's fix, which wrote a one-line `if` as its block (step 21), went
+//! when the one-line `if` became a value (step 25), so a file that does not parse has
+//! nothing to fix.
 //!
 //! A fix is a list of edits into the program's source. One pass checks the program,
 //! takes each fix whose edits lie in the file and overlap no fix taken before it, and
@@ -649,4 +650,31 @@ test "edits that overlap are taken one per pass, in record order" {
     const applied = try apply(arena, file, &records);
     try std.testing.expectEqualStrings("aBcd", applied.source);
     try std.testing.expectEqual(@as(usize, 2), applied.fixed.len);
+}
+
+test "mo fix leaves a one-line if value alone, and a one-line if where a statement goes carries no fix" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const value =
+        \\module T.Label
+        \\expose label
+        \\
+        \\fn label(n: UInt32) : String
+        \\  word = if n == 1: "line" else: "lines"
+        \\  "#{n} #{word}"
+        \\end
+        \\
+        \\test "one line"
+        \\  assert label(1) == "1 line"
+        \\end
+        \\
+    ;
+    try std.testing.expectEqualStrings(value, try expectFixed(arena, value));
+    const statement = "module T.Sign\nexpose sign\n\nfn sign(n: Int32) : String\n  if n < 0: \"negative\" else: \"not negative\"\nend\n";
+    var diags: diag.List = .empty;
+    try std.testing.expectError(error.Rejected, pipeline.runTo(arena, try program.single(arena, "t.mo", statement), .check, &diags));
+    try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
+    try std.testing.expectEqual(@as(usize, 0), diags.items[0].fixes.len);
+    try std.testing.expectEqualStrings(statement, (try run(arena, try program.single(arena, "t.mo", statement))).source);
 }

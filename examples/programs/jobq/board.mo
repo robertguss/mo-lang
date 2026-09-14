@@ -61,11 +61,7 @@ fn removed(board: Board, number: UInt64) : Board
   at = number / 256
   if after.jobs.get(at) is Some(bucket)
     rest = bucket.remove(number)
-    after.jobs = if rest.size == 0
-      after.jobs.remove(at)
-    else
-      after.jobs.set(at, rest)
-    end
+    after.jobs = if rest.size == 0: after.jobs.remove(at) else: after.jobs.set(at, rest)
   end
   after
 end
@@ -107,11 +103,7 @@ fn without_number(index: Map(String, Map(K, Set(UInt64))), job: Job, when: Bool,
   return index if !when
   sets = index.get(job.queue) or Map.new()
   numbers = (sets.get(key) or Set.new()).remove(job.number)
-  rest = if numbers.size == 0
-    sets.remove(key)
-  else
-    sets.set(key, numbers)
-  end
+  rest = if numbers.size == 0: sets.remove(key) else: sets.set(key, numbers)
   return index.remove(job.queue) if rest.size == 0
   index.set(job.queue, rest)
 end

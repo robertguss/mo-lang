@@ -60,11 +60,7 @@ end
 # An id is spent whether or not its job reaches the log, so no id is handed out twice; the log
 # reserves ids a thousand at a time, so a replay never hands out one it handed out before.
 fn creating(fs: Fs, books: Books, made: Job, at: Moment) : Served
-  ceiling = if books.next_id >= books.reserved
-    books.next_id + 1_000
-  else
-    0
-  end
+  ceiling = if books.next_id >= books.reserved: books.next_id + 1_000 else: 0
   var spent = books
   spent.next_id = books.next_id + 1
   done = committed(fs, spent, [(None, made)], ceiling, at)

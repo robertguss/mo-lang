@@ -17,7 +17,8 @@ fn note(total: UInt32) : String
   missing = if total >= 5_000
     0
   else
-    5_000 - total
+    short = 5_000 - total
+    short
   end
   "#{missing} cents to free shipping"
 end

@@ -85,11 +85,7 @@ fn ran_out(job: Job, now: Time) : Job
   ensures result.status == Queued or result.status == Dead
 
   var after = released(job, now)
-  after.status = if job.attempts < job.max_attempts
-    Queued
-  else
-    Dead
-  end
+  after.status = if job.attempts < job.max_attempts: Queued else: Dead
   after
 end
 

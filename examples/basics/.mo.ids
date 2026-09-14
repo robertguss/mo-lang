@@ -64,14 +64,14 @@
         { "id": "4d1457199219", "name": "expose", "hash": "cbf803a4b6fe9053" },
         { "id": "e33fd538610b", "name": "intent", "hash": "32fe62db5272c87d" },
         { "id": "9a9ed4b52785", "name": "fn shipping", "hash": "9d85bbc466f32082" },
-        { "id": "26a09a0a1bc4", "name": "fn note", "hash": "df528313737c44d6" },
+        { "id": "26a09a0a1bc4", "name": "fn note", "hash": "d0f4e2356096585b" },
         { "id": "26d7b01031be", "name": "fn label", "hash": "41f87892f613861b" },
         { "id": "d9d8c123a4ce", "name": "test \"large orders ship free\"", "hash": "8d403028e94a832f" },
         { "id": "053b4d1ab73e", "name": "test \"express costs more\"", "hash": "6f4a3ded0912b887" },
         { "id": "656edc826ac9", "name": "test \"if gives a value\"", "hash": "7956caf37f1f4920" },
         { "id": "79aa8b48cc01", "name": "test \"a one-line if gives a value\"", "hash": "8e893ea8eaf8cd2a" }
       ],
-      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "2138529571eb6d4e" }
+      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "17fad258ca65f21d" }
     },
     {
       "path": "in-place.mo",

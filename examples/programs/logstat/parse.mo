@@ -94,11 +94,7 @@ end
 # Sixteen digits in a row anywhere in the text.
 fn card?(text: String) : Bool
   longest = text.chars.reduce((0, 0), fn(acc, c)
-    run = if digit?(c)
-      acc.0 + 1
-    else
-      0
-    end
+    run = if digit?(c): acc.0 + 1 else: 0
     if run > acc.1
       (run, run)
     else
