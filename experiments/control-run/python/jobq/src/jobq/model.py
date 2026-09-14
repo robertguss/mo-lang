@@ -18,7 +18,7 @@ MAX_WORKER_CHARS = 256
 
 _QUEUE_NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _JOB_ID = re.compile(r"j_[1-9][0-9]{0,17}")
-_WORKER = re.compile(r"[\x21-\x7e]{1,%d}" % MAX_WORKER_CHARS)
+_WORKER = re.compile(rf"[\x21-\x7e]{{1,{MAX_WORKER_CHARS}}}")
 _CONTROL_BUT_NEWLINE = re.compile(r"[\x00-\x09\x0b-\x1f\x7f-\x9f]")
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
