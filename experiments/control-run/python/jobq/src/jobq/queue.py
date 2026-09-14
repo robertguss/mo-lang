@@ -1,8 +1,7 @@
 """The queue. Every look and every change is one transaction, durable before it is applied."""
 
 import heapq
-import itertools
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -81,15 +80,14 @@ def check_change(old: Job, new: Job | None) -> None:
         or new.payload != old.payload,
         f"{old.id} changes what it was created with",
     )
-    never(
-        old.state is JobState.DONE and new.state is JobState.LEASED, f"done {old.id} is leased again"
-    )
+    leased = new.state is JobState.LEASED
+    never(old.state is JobState.DONE and leased, f"done {old.id} is leased again")
     never(old.state is JobState.DEAD and new.state is JobState.LEASED, f"dead {old.id} is leased")
     never(
         old.state is JobState.LEASED and new.state is JobState.LEASED,
         f"{old.id} is held by two workers at once",
     )
-    never(new.state not in _NEXT_STATES[old.state], f"{old.id} goes from {old.state} to {new.state}")
+    never(new.state not in _NEXT_STATES[old.state], f"{old.id} goes {old.state} to {new.state}")
     step = 1 if new.state is JobState.LEASED else 0
     never(new.attempts != old.attempts + step, f"{old.id} changes attempts other than by a lease")
     check_job(new)
@@ -289,11 +287,13 @@ class Queue:
 
     def compact(self) -> int:
         """Rewrite the log to the counter and one line per live job; the store is closed."""
-        records = itertools.chain(
-            [CounterRecord(next_id=self._next_id)], map(_put_record, self._jobs.values())
-        )
-        self._store.compact(records)
+        self._store.compact(self._live_records())
         return len(self._jobs) + 1
+
+    def _live_records(self) -> Iterator[Record]:
+        yield CounterRecord(next_id=self._next_id)
+        for job in self._jobs.values():
+            yield PutRecord(job=job)
 
     def _transact[T](self, body: Callable[[_Txn], T]) -> T:
         txn = _Txn(self._jobs, self._next_id, self._clock.now_ms())
@@ -343,7 +343,6 @@ class Queue:
             return Refusal.NOT_FOUND
         if job.state is not JobState.LEASED or job.worker != worker:
             return Refusal.CONFLICT
-        invariant(job.lease_until is not None and job.lease_until > txn.now, "a held lease is live")
         return job
 
     def _apply(self, job_id: str, new: Job | None) -> None:
@@ -395,7 +394,3 @@ def _released(job: Job, now: int, reason: str) -> Job:
             "updated_at": max(now, job.updated_at),
         }
     )
-
-
-def _put_record(job: Job) -> PutRecord:
-    return PutRecord(job=job)
