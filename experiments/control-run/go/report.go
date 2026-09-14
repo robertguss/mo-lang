@@ -23,8 +23,9 @@ func RenderText(s Summary) string {
 
 type totalRow struct{ label, whole, rest string }
 
-// writeTotals right-aligns the whole-number parts, so a fraction like the
-// ".1" of "40.1" hangs past the column, as in the spec's example.
+// writeTotals right-aligns each value up to and including its decimal point,
+// so the "1" of "40.1" hangs one column past the integers, exactly as in the
+// spec's example ("requests   1_204" over "per minute   40.1").
 func writeTotals(b *strings.Builder, s Summary) {
 	percent := strconv.FormatFloat(100*ratio(s.Errors, s.Requests), 'f', 1, 64)
 	perWhole, perFrac := splitDecimal(strconv.FormatFloat(s.PerMinute, 'f', 1, 64))
@@ -80,13 +81,13 @@ func groupDigits(digits string) string {
 	return b.String()
 }
 
-// splitDecimal splits "1204.5" into "1_204" and ".5".
+// splitDecimal splits "1204.5" into "1_204." and "5".
 func splitDecimal(s string) (whole, frac string) {
 	i := strings.IndexByte(s, '.')
 	if i < 0 {
 		return groupDigits(s), ""
 	}
-	return groupDigits(s[:i]), s[i:]
+	return groupDigits(s[:i]) + ".", s[i+1:]
 }
 
 // RenderJSON formats the summary as one JSON object on one line, keys in the
