@@ -324,3 +324,6 @@
 
 ## [2026-09-14] session | Afternoon: step 27 accepted, round 7 starts
 - The file law gone, the three words as names, the `never` at-rest rule, the escape, `fold_lines`, verified by Fable's probes under both runtimes, 185 of 185. Four decision rows, one `semantic`. Merged to `main`. Round 7 starts on the pre-registered page with the hidden defect suite.
+
+## [2026-09-14] session | Afternoon: the outside review
+- Robert's outside review of the vault after round 6, filed verbatim with Fable's response: already done (the file law, the keywords, the `never` rule, the reframed measure), wrong on facts (the C backend exists), agreed and queued (the counted laws as settings, the `try` wording, the zero-dependency cost, program 7's pick, a closure column, a scale benchmark), disagreed (a JSON `verified:` line, the Ruby framing). The fork, the runtime as the thesis, is Robert's question. Two decision rows, one for Robert.

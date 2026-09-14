@@ -100,6 +100,8 @@
 - [[idea-backlog|Idea backlog (Claude's early proposals)]] — - Stable semantic IDs on every declaration so agents edit by ID instead of fragile text diffs
 - [[agent-native-runtime-features|Agent-native runtime features to test]] — a menu in three tiers: MCP surface, time travel, structured events, counterexamples as tests; the build order
 - [[vm-first-vs-c-first|VM-first vs C-first for the Mo runtime]] — what a VM owns that C cannot, where Mo sits, stay on C-first and design the VM as the eventual primary
+- [[outside-review-2026-09-14|Outside review, 14 Sep 2026]] — a deep review after round 6: protect capabilities, the failure model, the runtime surface; the shape laws and keywords are the weakest part; test Mo on the programs that exercise it
+- [[outside-review-2026-09-14-response|Outside review, 14 Sep 2026: Fable's response]] — what was already done, what is wrong on facts, seven things to act on, the fork put to Robert
 - [[outside-review-2026-09-13-response|Outside review, 13 Sep 2026: Fable's response and the baselines]] — the calls per item, Robert's decision, the numbers to compare against
 - [[research-agenda-2026-09-response|Research agenda, Sep 2026: Fable's response to the contradictions]] — seventeen "contradicts Mo" items called (agree, disagree, test); chapter 2's recursion law corrected; reproducible builds measured
 - [[outside-review-2026-09-13|Outside review, 13 Sep 2026: what to keep, revise, drop]] — Amp + oracle + librarian; verdict, ranked disagreements, keep/revise/drop table, next five moves
