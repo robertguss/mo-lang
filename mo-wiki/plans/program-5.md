@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [agents, processes, runtime, effects]
 sources: [spec/programs/05-agent-harness.md, plans/program-1.md, plans/interpreter-step-22.md, plans/interpreter-step-23.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Program 5: `agent` in Mo, brief for the worker
@@ -35,6 +35,18 @@ The spec's "Measured" list, both runtimes; the `within:` count with its two colu
 ## Done when
 
 Corpus test green with `agent` in `examples/programs/`, identical under `mo run` and as a binary, the real-socket check passes, `mo check --recipe` green on the model client, the numbers, pushed, a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written in 77 minutes: 19 modules, 4,539 lines, 284 functions, 72 tests, `--sim 100` under faults, `mo check --recipe` green on the model client, the six run lines identical under both runtimes. Verified by Fable with a 22-check HTTP session against a mock script of its own under both runtimes, all green: every status, a `..` path and an off-list host refused and recorded in the transcript, garbage twice then right under two retries, garbage failing under one, the four budgets each ending `over_budget`, a cancel mid-run, the operator's `/runs` naming a run waiting in `Http.send`, a restart marking a running run failed with its transcript readable, 200 concurrent runs held at 44 MiB interpreted and 19 native.
+
+| measure | `mo run` | binary |
+|---|---|---|
+| five-step runs completed a second, 32 concurrent | 344.7 | 448.7 |
+| harness time a step, two synced appends included | 7.86 ms | 5.38 ms |
+| resident holding 1,000 concurrent runs | 170 MiB | 89 MiB |
+
+**What it found.** The `within:` count: 76 outside tests, 48 chosen, 28 derived; inside the run and its book 27 derived to 2 chosen, so the budget model works wherever an asker exists, and every chosen literal sits where there is none (`main`, `check`, the HTTP front, the mock, the operator). Two invariants kept of eight, each tripped by a second `Begin`; six left out. The Q16 ledger stays empty, but the handle law shaped the design: no process can hold a routing table, so every request goes through one process, the third program in a row. One toolchain bug: `MO0404` does not follow a read-only `Fs` into a start argument, an authority hole. Seven gaps, three of them the third program's ask for a timer, a way to read a deadline, and keyword-named fields. Loops 28: laws 7, grammar 8, test mistakes 9, real bugs 3 (one caught by the recipe's `never`), misleading diagnostics 0. All of it goes to step 24 and round 6.
 
 ## Related
 - [[program-1]]
