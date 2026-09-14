@@ -1,0 +1,89 @@
+> - GET /health
+200
+{"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":0}
+> - POST /jobs {"queue":"emails","payload":"hi","max_attempts":2}
+401
+{"error":"missing or empty bearer token"}
+> prod POST /jobs {"queue":"emails","payload":"hello","max_attempts":2}
+201
+{"id":"j_1","queue":"emails","state":"queued","payload":"hello","attempts":0,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z"}
+> prod POST /jobs {"queue":"emails","payload":"second","max_attempts":1}
+201
+{"id":"j_2","queue":"emails","state":"queued","payload":"second","attempts":0,"max_attempts":1,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z"}
+> prod POST /jobs {"queue":"bad queue","payload":"x","max_attempts":1}
+400
+{"error":"requires failed: queue is 1 to 64 bytes of letters, digits, '-' and '_'"}
+> prod POST /jobs {"queue":"emails","payload":"x"}
+400
+{"error":"queue, payload, and max_attempts are required"}
+> prod GET /jobs/j_1
+200
+{"id":"j_1","queue":"emails","state":"queued","payload":"hello","attempts":0,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z"}
+> prod GET /jobs/j_9
+404
+{"error":"no such job"}
+> clock +1000
+> w1 POST /queues/emails/lease {"lease_ms":500}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"hello","attempts":1,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.000Z","worker":"w1","lease_until":"2026-09-14T00:00:01.500Z"}
+> w2 POST /queues/emails/lease {"lease_ms":500}
+200
+{"id":"j_2","queue":"emails","state":"leased","payload":"second","attempts":1,"max_attempts":1,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.000Z","worker":"w2","lease_until":"2026-09-14T00:00:01.500Z"}
+> w2 POST /queues/emails/lease
+204
+> w2 POST /jobs/j_1/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_1"}
+> clock +500
+> w2 POST /queues/emails/lease {"lease_ms":1000}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"hello","attempts":2,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.500Z","worker":"w2","lease_until":"2026-09-14T00:00:02.500Z","reason":"lease ran out"}
+> w1 POST /jobs/j_1/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_1"}
+> w2 POST /jobs/j_1/ack
+200
+{"id":"j_1","queue":"emails","state":"done","payload":"hello","attempts":2,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.500Z","reason":"lease ran out"}
+> w2 POST /jobs/j_1/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_1"}
+> prod DELETE /jobs/j_2
+204
+> prod POST /jobs {"queue":"sms","payload":"text me","max_attempts":3}
+201
+{"id":"j_3","queue":"sms","state":"queued","payload":"text me","attempts":0,"max_attempts":3,"created_at":"2026-09-14T00:00:01.500Z","updated_at":"2026-09-14T00:00:01.500Z"}
+> w3 POST /queues/sms/lease {"lease_ms":1000}
+200
+{"id":"j_3","queue":"sms","state":"leased","payload":"text me","attempts":1,"max_attempts":3,"created_at":"2026-09-14T00:00:01.500Z","updated_at":"2026-09-14T00:00:01.500Z","worker":"w3","lease_until":"2026-09-14T00:00:02.500Z"}
+> prod DELETE /jobs/j_3
+409
+{"error":"conflict: job is leased"}
+> restart
+> clock +2000
+> w3 POST /jobs/j_3/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_3"}
+> w4 POST /queues/sms/lease
+200
+{"id":"j_3","queue":"sms","state":"leased","payload":"text me","attempts":2,"max_attempts":3,"created_at":"2026-09-14T00:00:01.500Z","updated_at":"2026-09-14T00:00:03.500Z","worker":"w4","lease_until":"2026-09-14T00:00:33.500Z","reason":"lease ran out"}
+> w4 POST /jobs/j_3/fail {"reason":"smtp down"}
+200
+{"id":"j_3","queue":"sms","state":"queued","payload":"text me","attempts":2,"max_attempts":3,"created_at":"2026-09-14T00:00:01.500Z","updated_at":"2026-09-14T00:00:03.500Z","reason":"smtp down"}
+> prod POST /jobs {"queue":"emails","payload":"after restart","max_attempts":3}
+201
+{"id":"j_4","queue":"emails","state":"queued","payload":"after restart","attempts":0,"max_attempts":3,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:03.500Z"}
+> prod GET /jobs
+200
+{"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"hello","attempts":2,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.500Z","reason":"lease ran out"},{"id":"j_3","queue":"sms","state":"queued","payload":"text me","attempts":2,"max_attempts":3,"created_at":"2026-09-14T00:00:01.500Z","updated_at":"2026-09-14T00:00:03.500Z","reason":"smtp down"},{"id":"j_4","queue":"emails","state":"queued","payload":"after restart","attempts":0,"max_attempts":3,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:03.500Z"}]}
+> - GET /health
+200
+{"queued":2,"leased":0,"done":1,"dead":0,"uptime_ms":2000}
+> prod GET /jobs/j_2
+404
+{"error":"no such job"}
+> prod PUT /jobs
+405
+{"error":"method not allowed"}
+> prod GET /nope
+404
+{"error":"no such route"}
