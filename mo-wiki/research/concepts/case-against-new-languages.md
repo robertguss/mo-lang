@@ -1,7 +1,7 @@
 ---
 title: "The case against new languages"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 type: concept
 tags: [research, agents, philosophy]
 sources: [raw/research-runs/llm-authored-programming-languages.pplx.md, raw/articles/ronacher-a-language-for-agents-2026.md, raw/articles/anup-markov-cold-start.md, raw/papers/codeact-executable-code-actions.md, raw/papers/syncode-grammar-augmentation.md]
@@ -48,6 +48,17 @@ These are the arguments Mo would lean on, not a rebuttal.
 - **Honest failure data.** Publish ilo-style persona runs,[137] including the bad ones, and have at least one benchmark graded by someone other than the Mo authors.
 - **Token and context cost, counted in total.** Spec, skills and diagnostics count against Mo, the way ilo's context overhead ate its savings.[137]
 - **A subset-of-an-existing-language control.** Test whether a Quasar-style route (Mo's checks over a Python or Go subset) gets most of the benefit.[137] If it does, that result changes the project.
+
+## Session 6 addendum: the four things a new language must show (Fable, 13 Sep)
+
+The agent-authoring deep run states the counter-position at its strongest, Python plus a Quasar-style subset plus constrained decoding plus a deterministic hypervisor, and names four results that would overturn it.^[raw/research-runs/agent-authoring-research-frontier.pplx.md] Against Mo's programme:
+
+1. A design feature that changes the intervention ceiling on a matched-corpus head-to-head. This is [[empirical-validation-plan]]'s Experiment 7, the feature ablation, and it is the cheapest one Mo can run.
+2. A verifier that beats Dafny's 82 percent off-the-shelf on a matched benchmark. That is tier 3, `mo prove`, and program 6 is where it gets measured.
+3. A capability discipline that closes the lingering-authority gap with no runtime harness. Mo's capabilities are exactly this claim, and no experiment has tested it; program 5, the agent harness, is the test.
+4. A determinism model that cuts bug-reproduction cost by an order of magnitude without structuring the whole application around a simulator. Mo does structure the application around processes, so it meets this half: the seed, message log, and state snapshot exist, but only for code written as processes.
+
+Absent one of the four, the run says, the counter-position stands. Mo's next four programs are one attempt at each.
 
 ## Related
 - [[landscape-second-lane]]
