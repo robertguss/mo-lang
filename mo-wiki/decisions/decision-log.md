@@ -335,6 +335,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Step 24 starts: the `MO0404` hole, a handle in a `state` field, `delay:` on `send`, `Deadline.remaining`, `Result(none, E)`, the `Event` field names, the recipe's `Request` hiding, the simulator's `ask`; brief on [[interpreter-step-24]] | Fable | — | step 24's numbers |
 
+| Robert (14 Sep, morning): the one-line `if` as a value is added, `x = if c: a else: b`, a value only, `else:` required, one expression a branch; [[p16-one-line-if-value|pick 16]]; step 25 after step 24; `mo fix` stops rewriting it | Robert | locked | round 6 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

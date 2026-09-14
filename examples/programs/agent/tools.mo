@@ -38,9 +38,8 @@ struct Found
   files: UInt64
 end
 
-# Runs a call. `reads` is the run's folder read-only; `writes` is the same folder, writable only
-# when the run was granted write_file and read-only otherwise, so a write it was not granted could
-# not happen even without the check here.
+# Runs a call. `reads` is the run's folder read-only; `writes` is the same folder, which only a
+# granted write_file reaches.
 fn used(reads: Fs, writes: Fs, http: Http, clock: Clock, call: Call, by: Deadline) : Used
   ensures !call.granted.contains?(call.tool) implies result.refused
 
