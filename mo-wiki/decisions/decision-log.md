@@ -303,6 +303,9 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Round 6 pre-registers loops by cause, not a total; reads each pane's token count before the report; the baselines' bolted-on arm (Go contracts library, Python `pydantic`) waits for a second task | Fable | — | round 6 |
 | Tooling around the baselines: the installed staticcheck cannot read Go 1.27 (the Go worker rebuilt it in its scratchpad) and mypy is not installed, so no round has type-checked the Python; recorded, not fixed by Fable | Fable | unmet, recorded | Robert's machine |
 
+| `semantic`: the derived deadline, designed for step 22: a prelude `Deadline`; inside an `update` arm for a message that carries a reply, `reply_by` is bound to the asker's deadline; `within:` accepts a `Deadline` and gets what remains, `Timeout` at once when nothing does; `deadline.at_most(d)` tightens and nothing extends; `main`'s calls stay literal; the law is unchanged, every waiting call still carries `within:`; `jobq` rewritten on it and its count re-taken | Fable, from program 1's evidence | provisional | step 22, program 5 |
+| Step 22 starts: the `--recipe` line count, the fixture's missing folder, a `Json` integer row, the derived deadline, the store recipe's rewrite rule with `notes` following it, two diagnostics; no syntax; brief on [[interpreter-step-22]] | Fable | — | step 22's numbers |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

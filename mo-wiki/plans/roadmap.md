@@ -26,7 +26,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Round 4 of the control run | done: Mo 16.1 min to Go's 9.3; laws kept, an ergonomics step recommended | — |
 | Fable's reading: the session 6 runs read ([[empirical-validation-plan]], [[ecosystem-strategy]]); the research agenda's twelve pages answered ([[research-agenda-2026-09-response]]); the VM-first drafts filed (d36–d40) | done | — |
 | Memory and green threads (chapter 7), [[interpreter-step-21]] | done: a process is a fiber, 65,530 connections, the bets measured | — |
-| Program 1, the job queue ([[program-1]]): done, 40 min, the premise held; its follow-ups (step 22: the `--recipe` line count, the fixture's missing folder, JSON integers, a derived deadline, the recipe's rewrite rule) | follow-ups queued | 1 |
+| Program 1, the job queue ([[program-1]]): done, 40 min, the premise held; its follow-ups (step 22: the `--recipe` line count, the fixture's missing folder, JSON integers, a derived deadline, the recipe's rewrite rule) | running: [[interpreter-step-22]] | 1 |
 | Round 5 of the control run, pre-registered ([[control-run-5]]) | done: mixed, Mo 1.28 times Go, P2 missed by one loop | — |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
 | Programs 5 and 6, the agent harness and the ledger | queued | 3–4 |
