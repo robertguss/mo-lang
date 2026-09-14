@@ -2,6 +2,25 @@
   "version": 1,
   "files": [
     {
+      "path": "model-client.mo",
+      "module": "Recipes.ModelClient",
+      "declarations": [
+        { "id": "33ba893f1284", "name": "module Recipes.ModelClient", "hash": "89641e0700729af4" },
+        { "id": "4fb2bf76c456", "name": "expose", "hash": "05b0643c1137a283" },
+        { "id": "e89588a7ea85", "name": "intent", "hash": "a6432b7403597a95" },
+        { "id": "672e8d4a44cf", "name": "struct Model", "hash": "0af0f222320d5e93" },
+        { "id": "b01b58c54b3b", "name": "struct Request", "hash": "447b66dd18d72769" },
+        { "id": "ada2b91f5d93", "name": "enum Reply", "hash": "7b766d7041fdfd0b" },
+        { "id": "9acf7eb51d59", "name": "enum ModelError", "hash": "19df574d27bfaf7d" },
+        { "id": "417a1de571b8", "name": "struct Attempts", "hash": "205f115abc4f3482" },
+        { "id": "ead985a7b8cb", "name": "struct Taken", "hash": "85523b884aab867c" },
+        { "id": "8b94032ea357", "name": "process Fake", "hash": "73ad65dd25d633d0" },
+        { "id": "e987ec640545", "name": "supervisor Fakes", "hash": "695c5e45ab7ee9fc" },
+        { "id": "ac94c690e915", "name": "recipe ModelClient", "hash": "a7832c081bbd740e" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "7beeff707171d7d7" }
+    },
+    {
       "path": "pure-recipe.mo",
       "module": "Recipes.PureRecipe",
       "declarations": [
