@@ -4,8 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from support import FailingOps
-
 from jobq.jobs import Job
 from jobq.store import (
     LOG_NAME,
@@ -17,6 +15,7 @@ from jobq.store import (
     compact,
     replay,
 )
+from support import FailingOps
 
 
 def job(number: int, state: str = "queued") -> Job:
