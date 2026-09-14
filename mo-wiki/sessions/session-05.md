@@ -42,6 +42,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 
 - [[research-agenda-2026-09-response]]: the research agenda's twelve concept pages read; seventeen contradictions called (agree 8, disagree 6, test 3). Chapter 2's recursion law now matches the toolchain (a depth bound, termination for `mo prove`); chapter 3 names Armstrong's R6; the Q16 ledger, the nine-nines rule, reproducible builds as a release gate; round 5 counts loops by cause and whether the worker wrote Mo; program 1 counts its deadlines. Measured: `mo build` byte-identical across two `mo` binaries; `mo` differs only in the Mach-O UUID and its signature.
 - Robert, going to bed: run the queue as last night, every decision Fable's; no syntax tonight (the one-line `if` waits for the morning). [[interpreter-step-21]]: a process is a fiber, not an OS thread, in both runtimes; 65,530 idle connections from about 8,000; a process at rest half its size; the socket rows faster; chapter 7's bets measured; `Fs.fixture()` refuses `..`; three diagnostics with a `mo fix`. Fable's probe found HTTP backpressure counting request-less connections at about 1,000, flagged for program 1.
+- [[program-1]]: `jobq`, the founding premise's first real test, in 40 minutes; nine modules; native 4,051 lease-and-ack pairs a second with 32 workers; Fable's 29-check session green under both runtimes. Found: literal deadlines lie where they nest (two of three derived sums were once wrong), `invariant` kept none of eight candidates (for Robert), the Q16 ledger empty, one `--recipe` bug, five gaps, nine runtime-surface questions on d37.
 
 ## Numbers at the end of the session
 
@@ -99,6 +100,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[outside-review-2026-09-13-response]]
 - [[research-agenda-2026-09-response]]
 - [[interpreter-step-21]]
+- [[program-1]]
 - [[program-2]]
 - [[program-3]]
 - [[control-run]]
