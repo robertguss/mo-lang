@@ -48,18 +48,19 @@
       "module": "Processes.HeldSend",
       "declarations": [
         { "id": "e6e0435ac0e7", "name": "module Processes.HeldSend", "hash": "b44ea0978109d203" },
-        { "id": "00eeffc3f4a8", "name": "expose", "hash": "dbc7c492f7e87543" },
-        { "id": "1add79f80d26", "name": "intent", "hash": "0b372a0eb3ce011d" },
+        { "id": "00eeffc3f4a8", "name": "expose", "hash": "2ad2ee4ea7c45cf7" },
+        { "id": "1add79f80d26", "name": "intent", "hash": "ca6e96df547f90df" },
         { "id": "de8d92d1bbe5", "name": "process Worker", "hash": "210316367cb89f65" },
-        { "id": "8529ec22181c", "name": "process Acceptor", "hash": "e37d8f797be5aea9" },
+        { "id": "8529ec22181c", "name": "process Acceptor", "hash": "c5b18587d8f0f254" },
         { "id": "7f08ebfffc2d", "name": "supervisor Acceptors", "hash": "028fa41570887184" },
-        { "id": "e97c24829188", "name": "fn fetched", "hash": "60dfd98e912bb42b" },
+        { "id": "c69f36b41846", "name": "fn handed", "hash": "982d2e98f475d9a1" },
+        { "id": "e97c24829188", "name": "fn fetched", "hash": "84d3f96052d77adb" },
         { "id": "856ac66ab2af", "name": "fn hello?", "hash": "121dc3fa99a2597f" },
         { "id": "2300facf6423", "name": "fn requested", "hash": "b7e33e77535af892" },
-        { "id": "f9aeb1ef8a0e", "name": "test \"one accept in an update: the worker answers once the update ends, unless a call fails and says so\"", "hash": "12554aeba2606c70" },
-        { "id": "c8d2e7a3019d", "name": "test rejects \"a second accept in the same update waits on a client its held send to the worker keeps waiting\"", "hash": "41811396f316cb43" }
+        { "id": "f9aeb1ef8a0e", "name": "test \"one accept in an update: the worker answers once the update ends, unless a call fails and says so\"", "hash": "b1e9f214c5b7714c" },
+        { "id": "c8d2e7a3019d", "name": "test rejects \"a second accept in the same update waits on a client its held send to the worker keeps waiting\"", "hash": "6678b1a77627e690" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "cffd3fd881dd06b9" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "541f221b143038dd" }
     },
     {
       "path": "invariant-trips.mo",

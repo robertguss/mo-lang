@@ -37,6 +37,9 @@ const diag = @import("diag.zig");
 const fmt = @import("fmt.zig");
 const errors = @import("errors.zig");
 const recipe = @import("recipe.zig");
+const ast = @import("ast.zig");
+const check = @import("check.zig");
+const prelude = @import("prelude.zig");
 
 pub const Tally = struct {
     passed: u32 = 0,
@@ -64,6 +67,143 @@ pub const recipe_skip = "until an agent implements the recipe";
 pub const sim_runs: u32 = 100;
 /// The corpus's race: its tests hold in the fixed order and fail under --sim.
 pub const racy = "processes/racy.mo";
+
+/// The rows that wait on the outside for something with no bound the program knows: a
+/// listener's next client, and a connection's next line.
+fn waitsOnOutside(row: prelude.Fn) bool {
+    if (std.mem.eql(u8, row.name, "accept")) return std.mem.eql(u8, row.recv, "Listener") or std.mem.eql(u8, row.recv, "HttpListener");
+    return std.mem.eql(u8, row.recv, "Conn") and std.mem.eql(u8, row.name, "read_line");
+}
+
+/// The source offsets of every `for` in `checked` at or past `from` whose body waits on the
+/// outside: calls `accept` or `read_line`, or a function that does, however deep (step 20:
+/// the runtime owns that loop, through `serve` and `lines`). An `ask` is not followed: what a
+/// process does with a message is its own update's.
+pub fn loopsAroundWaits(gpa: std.mem.Allocator, checked: check.Checked, from: u32) ![]const u32 {
+    const tree = checked.tree;
+    const Unit = struct { first: ast.Index, last: ast.Index, waits: bool = false };
+    var units: std.ArrayList(Unit) = .empty;
+    // Each item's nodes run from the one after the previous item's to its own (caps.zig).
+    const root = tree.nodes[0];
+    var prev: ast.Index = 0;
+    for (tree.span(root.lhs, root.rhs)) |it| {
+        try units.append(gpa, .{ .first = prev + 1, .last = it });
+        prev = it;
+    }
+    const sig_unit = try gpa.alloc(?u32, checked.sigs.len);
+    for (checked.sigs, sig_unit) |sig, *u| {
+        u.* = for (units.items, 0..) |unit, k| {
+            if (sig.node >= unit.first and sig.node <= unit.last) break @intCast(k);
+        } else null;
+    }
+    for (units.items) |*unit| {
+        var j = unit.first;
+        while (j <= unit.last) : (j += 1) switch (checked.callee[j]) {
+            .prelude => |r| if (waitsOnOutside(prelude.fns[r])) {
+                unit.waits = true;
+            },
+            else => {},
+        };
+    }
+    var changed = true;
+    while (changed) {
+        changed = false;
+        for (units.items) |*unit| {
+            if (unit.waits) continue;
+            var j = unit.first;
+            while (j <= unit.last) : (j += 1) switch (checked.callee[j]) {
+                .user => |si| if (sig_unit[si]) |k| if (units.items[k].waits) {
+                    unit.waits = true;
+                    changed = true;
+                    break;
+                },
+                else => {},
+            };
+        }
+    }
+    var found: std.ArrayList(u32) = .empty;
+    for (tree.nodes, 0..) |n, i| {
+        if (n.kind != .for_stmt) continue;
+        const at = tree.tokens[n.main_token].start;
+        if (at < from) continue;
+        // The body's nodes come after the iterable's and before the for's own.
+        var j: ast.Index = n.lhs + 1;
+        const waits = while (j < i) : (j += 1) switch (checked.callee[j]) {
+            .prelude => |r| if (waitsOnOutside(prelude.fns[r])) break true,
+            .user => |si| if (sig_unit[si]) |k| if (units.items[k].waits) break true,
+            .none => {},
+        } else false;
+        if (waits) try found.append(gpa, at);
+    }
+    return found.items;
+}
+
+/// How many `for` loops of the file at `rel`, a program with the modules it uses, wait on the
+/// outside; each is printed.
+pub fn waitingLoops(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8) !u32 {
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const prog = try program.load(arena, io, try std.fs.path.join(arena, &.{ root, rel }), &diags);
+    const checked = pipeline.buildable(arena, prog, true, &diags) catch return 0;
+    const found = try loopsAroundWaits(arena, checked, prog.main().base);
+    for (found) |at| {
+        const d: diag.Record = .{ .code = "", .category = .laws, .at = at, .what = "a for around accept or read_line; the runtime owns this loop: serve the listener or read the connection into a process", .why = "" };
+        printFinding(prog, d);
+    }
+    return @intCast(found.len);
+}
+
+test "a for whose body waits on a listener or a connection, itself or through a call, is found" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const src =
+        \\module T.Loops
+        \\fn read(conn: Conn) : Bool
+        \\  conn.read_line(within: 1.ms) is Ok(_)
+        \\end
+        \\fn deeper(conn: Conn) : Bool
+        \\  read(conn)
+        \\end
+        \\fn direct(conn: Conn) : UInt64
+        \\  var n = 0
+        \\  for _ in 0..3
+        \\    if conn.read_line(within: 1.ms) is Ok(_)
+        \\      n += 1
+        \\    end
+        \\  end
+        \\  n
+        \\end
+        \\fn through(conn: Conn, lines: List(String)) : UInt64
+        \\  var n = 0
+        \\  for line in lines
+        \\    if deeper(conn) and line.size > 0
+        \\      n += 1
+        \\    end
+        \\  end
+        \\  n
+        \\end
+        \\fn writes(conn: Conn, lines: List(String)) : UInt64
+        \\  var n = 0
+        \\  for line in lines
+        \\    if conn.write(line, within: 1.ms) is Ok(_)
+        \\      n += 1
+        \\    end
+        \\  end
+        \\  n
+        \\end
+    ;
+    const tokens = try @import("lexer.zig").lex(arena, src, &diags);
+    const tree = try @import("parser.zig").parse(arena, src, tokens, &diags);
+    const checked = try check.check(arena, tree, &diags);
+    const found = try loopsAroundWaits(arena, checked, 0);
+    try std.testing.expectEqual(@as(usize, 2), found.len);
+    try std.testing.expect(std.mem.startsWith(u8, src[found[0] - 4 ..], "for _ in 0..3"));
+    try std.testing.expect(std.mem.startsWith(u8, src[found[1] - 4 ..], "for line in lines\n    if deeper"));
+}
 
 pub fn isRejectsPath(path: []const u8) bool {
     return std.mem.startsWith(u8, path, "rejects/") or std.mem.indexOf(u8, path, "/rejects/") != null;
@@ -550,6 +690,14 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
         if (!try fmtCheck(gpa, io, root, rel)) unformatted += 1;
     }
     try std.testing.expectEqual(@as(u32, 0), unformatted);
+
+    // No for waits on the outside (step 20): the runtime owns the loop around accept and
+    // read_line, through serve and lines.
+    var waiting: u32 = 0;
+    for (paths) |rel| {
+        if (!isRejectsPath(rel)) waiting += try waitingLoops(gpa, io, root, rel);
+    }
+    try std.testing.expectEqual(@as(u32, 0), waiting);
 
     // The error catalog page is what the diagnostic tables render (zig build errors).
     try std.testing.expect(try catalogCurrent(gpa, io));

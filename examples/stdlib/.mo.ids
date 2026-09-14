@@ -39,10 +39,10 @@
         { "id": "d56e506d7c01", "name": "test \"a query is split into its keys and values, each decoded\"", "hash": "7390a6b9d0a7b10d" },
         { "id": "b41c86e3ef3d", "name": "test \"a request that is not HTTP is Malformed or Unsupported, and the client hears why\"", "hash": "8d5d231181cfba52" },
         { "id": "512ee37679c2", "name": "test \"a body or a request line over 1 MiB is TooLarge, and a request cut short times out\"", "hash": "f93df1317c9e44a5" },
-        { "id": "6cf3f576b8a4", "name": "test \"a reply is written once: a bad status or header writes nothing, and a second reply is Closed\"", "hash": "538e38706527f1a1" },
-        { "id": "ea8ab1a9c780", "name": "test \"a request goes on the wire with its query encoded, a host header, and the runtime's content-length and connection\"", "hash": "835aeae3672e056f" }
+        { "id": "6cf3f576b8a4", "name": "test \"a reply is written once: a bad status or header writes nothing, and a second reply is Closed\"", "hash": "a0adb304d5caf706" },
+        { "id": "ea8ab1a9c780", "name": "test \"a request goes on the wire with its query encoded, a host header, and the runtime's content-length and connection\"", "hash": "182483dcde7124c7" }
       ],
-      "verified": { "hash": "12e60bd49f90b827", "declarations": "6133d1b911335842" }
+      "verified": { "hash": "12e60bd49f90b827", "declarations": "2ebcd20e76af6b3d" }
     },
     {
       "path": "json.mo",

@@ -1,9 +1,9 @@
 # run: world
 # run: --clients 3 mo lang
 module Httpd.Main
-expose Options, options, answer, main
+expose Options, options, answer, code_of, main
 
-intent "Serve hello over HTTP on a real socket on 127.0.0.1: an acceptor process answers each exchange, one request per connection, and client processes send their requests one at a time and print the status and body that came back; httpd serve --port N serves until it is stopped."
+intent "Serve hello over HTTP on a real socket on 127.0.0.1: the runtime serves the listener into an acceptor process, which answers each exchange as it arrives, one request per connection, and client processes send their requests one at a time and print the status and body that came back; httpd serve --port N serves until it is stopped."
 
 struct Options
   serve: Bool
@@ -12,17 +12,26 @@ struct Options
   names: List(String)
 end
 
-process Acceptor(listener: HttpListener)
+process Acceptor()
   state
     answered: UInt64
+    unsent: UInt64
+    quiet: UInt64
   end
 
-  message Serve(requests: UInt64)
+  message Accepted(exchange: Exchange)
+  message Idle
 
   fn update(state, message)
     case message
-      Serve(requests):
-        state.answered += serve(listener, requests)
+      Accepted(exchange):
+        if exchange.reply(answer(exchange.request), within: 5_000.ms) is Ok(_)
+          state.answered += 1
+        else
+          state.unsent += 1
+        end
+      Idle:
+        state.quiet += 1
     end
   end
 end
@@ -50,8 +59,8 @@ process Client(http: Http, port: UInt16, out: Out, name: String)
   end
 end
 
-supervisor Hellos(listener: HttpListener, http: Http, out: Out)
-  child Acceptor(listener), restart: :always
+supervisor Hellos(http: Http, out: Out)
+  child Acceptor, restart: :always
   child Client(http, 0, out, "client"), restart: :always
 end
 
@@ -75,32 +84,6 @@ fn answer(request: Request) : Response
   Response(status: 404, body: "no #{request.method} #{request.path} here")
 end
 
-fn answer_one(listener: HttpListener) : UInt64
-  case listener.accept(within: 5_000.ms)
-    Ok(exchange):
-      if exchange.reply(answer(exchange.request), within: 5_000.ms) is Ok(_)
-        return 1
-      end
-      0
-    Error(_): 0
-  end
-end
-
-fn serve(listener: HttpListener, requests: UInt64) : UInt64
-  var tried = 0
-  var answered = 0
-  for _ in 0..10_000
-    for _ in 0..10_000
-      if tried == requests
-        return answered
-      end
-      tried += 1
-      answered += answer_one(listener)
-    end
-  end
-  answered
-end
-
 fn fetch(http: Http, port: UInt16, who: String) : Result(Response, HttpError)
   request = Request(method: "GET", path: "/hello", query: Map.new().set("name", who))
   http.send(request, host: "127.0.0.1", port: port, within: 5_000.ms)
@@ -108,8 +91,7 @@ end
 
 fn run(http: Http, out: Out, given: Options) : Result(UInt64, HttpError)
   listener = try http.listen(0, within: 5_000.ms)
-  acceptor = Acceptor.start(listener)
-  acceptor.send(Serve(requests: given.clients * given.names.size))
+  listener.serve(into: Acceptor.start(), idle: 5_000.ms)
   var trips = 0
   for i in 0..given.clients
     client = Client.start(http, listener.port, out, "client #{i}")
@@ -122,8 +104,7 @@ end
 
 fn serve_forever(http: Http, out: Out, port: UInt16) : Result(Bool, HttpError)
   listener = try http.listen(port, within: 5_000.ms)
-  acceptor = Acceptor.start(listener)
-  acceptor.send(Serve(requests: 100_000_000))
+  listener.serve(into: Acceptor.start(), idle: 60_000.ms)
   out.write_line("serving on 127.0.0.1:#{listener.port}")
   out.flush
   Ok(true)
@@ -138,11 +119,22 @@ fn started(http: Http, out: Out, given: Options) : Result(Bool, HttpError)
   Ok(trips == given.clients * given.names.size)
 end
 
+# 0 when every request came back, else 1.
+fn code_of(whole: Bool) : UInt8
+  if whole
+    return 0
+  end
+  1
+end
+
+# Serving goes on until httpd is stopped; a run of clients ends the program with exit once they
+# are done, since the listener would be served on.
 fn main(platform: Platform)
-  case started(platform.http, platform.stdout, options(platform.args))
+  given = options(platform.args)
+  case started(platform.http, platform.stdout, given)
     Ok(whole):
-      if !whole
-        platform.exit(1)
+      if !given.serve
+        platform.exit(code_of(whole))
       end
     Error(e):
       platform.stderr.write_line("httpd failed: #{e}")
@@ -157,11 +149,16 @@ test "--clients takes a count, serve takes a port, and the rest are the names"
   assert options(["a", "b"]).names == ["a", "b"]
 end
 
+test "every request back is exit 0, and one lost is exit 1"
+  assert code_of(true) == 0
+  assert code_of(false) == 1
+end
+
 test "hello answers with the name its query gives, and any other request is 404"
   named = Request(method: "GET", path: "/hello", query: Map.new().set("name", "mo"))
   assert answer(named) == Response(status: 200, body: "hello, mo")
   assert answer(Request(method: "POST", path: "/hello")).status == 404
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
           proven: not run

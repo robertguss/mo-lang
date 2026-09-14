@@ -1,9 +1,9 @@
 # run: hello wide world
 # run: --clients 3 ping
 module Echo.Main
-expose Options, options, main
+expose Options, options, code_of, main
 
-intent "Echo lines over a real TCP socket on 127.0.0.1: an acceptor process hands each connection to a worker of its own, and each client process sends its lines one round trip at a time and prints what came back; a worker serves at most 10,000 lines on one connection."
+intent "Echo lines over a real TCP socket on 127.0.0.1: the runtime serves the listener into an acceptor process, which reads each connection into a worker of its own, and each client process sends its lines one round trip at a time and prints what came back."
 
 struct Options
   clients: UInt64
@@ -15,53 +15,60 @@ process Worker(conn: Conn)
     lines: UInt64
   end
 
-  message Serve
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
 
   fn update(state, message)
     case message
-      Serve:
-        state.lines += serve(conn)
-        conn.close
+      Line(text):
+        if conn.write("#{text}\n", within: 5_000.ms) is Ok(_)
+          state.lines += 1
+        else
+          conn.close
+        end
+      LineTooLong | Closed | Idle: conn.close
     end
   end
 end
 
-process Acceptor(listener: Listener)
+process Acceptor()
   state
     accepted: UInt64
+    quiet: UInt64
   end
 
-  message Accept
+  message Accepted(conn: Conn)
+  message Idle
 
   fn update(state, message)
     case message
-      Accept:
-        if listener.accept(within: 5_000.ms) is Ok(conn)
-          worker = Worker.start(conn)
-          worker.send(Serve)
-          state.accepted += 1
-        end
+      Accepted(conn):
+        conn.lines(into: Worker.start(conn), idle: 5_000.ms)
+        state.accepted += 1
+      Idle:
+        state.quiet += 1
     end
   end
 end
 
-process Client(net: Net, port: UInt16, out: Out, name: String)
+# One round trip per message: the line out, and the line that came back.
+process Client(conn: Conn, out: Out, name: String)
   state
     trips: UInt64
   end
 
-  message Talk(lines: List(String)) : UInt64
+  message Say(line: String) : UInt64
 
   fn update(state, message)
     case message
-      Talk(lines):
-        case talk(net, port, lines)
+      Say(line):
+        case said(conn, line)
           Ok(heard):
-            for pair in lines.zip(heard)
-              out.write_line("#{name} sent #{pair.0}")
-              out.write_line("#{name} heard #{pair.1}")
-            end
-            state.trips += heard.size
+            out.write_line("#{name} sent #{line}")
+            out.write_line("#{name} heard #{heard}")
+            state.trips += 1
           Error(e): out.write_line("#{name} failed: #{e}")
         end
         state.trips
@@ -69,10 +76,10 @@ process Client(net: Net, port: UInt16, out: Out, name: String)
   end
 end
 
-supervisor Echoes(listener: Listener, conn: Conn, net: Net, port: UInt16, out: Out)
-  child Acceptor(listener), restart: :always
+supervisor Echoes(conn: Conn, out: Out)
+  child Acceptor, restart: :always
   child Worker(conn), restart: :always
-  child Client(net, port, out, "client"), restart: :always
+  child Client(conn, out, "client"), restart: :always
 end
 
 fn options(args: List(String)) : Options
@@ -83,56 +90,56 @@ fn options(args: List(String)) : Options
   Options(clients: 1, lines: args)
 end
 
-fn serve(conn: Conn) : UInt64
-  var lines = 0
-  for _ in 0..10_000
-    line = conn.read_line(within: 5_000.ms)
-    if line is Ok(Some(text))
-      if conn.write("#{text}\n", within: 5_000.ms) is Error(_)
-        break
-      end
-      lines += 1
-    else
-      break
-    end
-  end
-  lines
+fn said(conn: Conn, line: String) : Result(String, NetError)
+  try conn.write("#{line}\n", within: 5_000.ms)
+  echoed = try conn.read_line(within: 5_000.ms)
+  Ok(echoed or "nothing")
 end
 
-fn talk(net: Net, port: UInt16, sent: List(String)) : Result(List(String), NetError)
+# A client of its own on a connection of its own, one ask per line; the trips it made.
+fn talked(net: Net, port: UInt16, out: Out, name: String, lines: List(String)) : Result(UInt64,
+  NetError)
   conn = try net.connect("127.0.0.1", port, within: 5_000.ms)
-  var heard = sent.take(0)
-  for line in sent
-    try conn.write("#{line}\n", within: 5_000.ms)
-    echoed = try conn.read_line(within: 5_000.ms)
-    heard = heard.push(echoed or "nothing")
+  client = Client.start(conn, out, name)
+  var trips = 0
+  for line in lines
+    if client.ask(Say(line: line), within: 5_000.ms) is Ok(n)
+      trips = n
+    end
   end
   conn.close
-  Ok(heard)
+  Ok(trips)
 end
 
 fn run(net: Net, out: Out, given: Options) : Result(UInt64, NetError)
   listener = try net.listen(0, within: 5_000.ms)
-  acceptor = Acceptor.start(listener)
+  listener.serve(into: Acceptor.start(), idle: 5_000.ms)
   var trips = 0
   for i in 0..given.clients
-    acceptor.send(Accept)
-    client = Client.start(net, listener.port, out, "client #{i}")
-    if client.ask(Talk(lines: given.lines), within: 5_000.ms) is Ok(n)
-      trips += n
+    case talked(net, listener.port, out, "client #{i}", given.lines)
+      Ok(n):
+        trips += n
+      Error(e): out.write_line("client #{i} failed: #{e}")
     end
   end
   Ok(trips)
 end
 
+# 0 when every line came back, else 1.
+fn code_of(trips: UInt64, given: Options) : UInt8
+  if trips == given.clients * given.lines.size
+    return 0
+  end
+  1
+end
+
+# The listener is served until the program ends, so main ends it with exit.
 fn main(platform: Platform)
   given = options(platform.args)
   case run(platform.net, platform.stdout, given)
     Ok(trips):
       platform.stdout.write_line("#{trips} round trips over 127.0.0.1")
-      if trips != given.clients * given.lines.size
-        platform.exit(1)
-      end
+      platform.exit(code_of(trips, given))
     Error(e):
       platform.stderr.write_line("echo failed: #{e}")
       platform.exit(1)
@@ -144,5 +151,11 @@ test "--clients takes a count, and the rest are the lines"
   assert options(["hello", "world"]) == Options(clients: 1, lines: ["hello", "world"])
 end
 
-verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+test "every line back is exit 0, and a line lost is exit 1"
+  given = Options(clients: 2, lines: ["a", "b"])
+  assert code_of(4, given) == 0
+  assert code_of(3, given) == 1
+end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
           proven: not run

@@ -7,7 +7,7 @@
 # run: client 127.0.0.1 1 GET greeting
 # exit: 1
 module Kv.Main
-expose Command, Problem, command, main
+expose Command, Problem, Reply, Replies, command, serving?, main
 
 use Kv.Log{Journal, Opened, compacted, open}
 use Kv.Protocol{follows}
@@ -129,36 +129,43 @@ fn compact(folder: Fs, dir: String, opened: Opened) : Result(String, Problem)
   Ok("kv: compacted #{dir}/kv.log from #{opened.replayed.lines} lines to #{table.size}\n")
 end
 
-# Hands every client to the listening process until kv is stopped; a for needs a range to
-# repeat, so after 100 million accepts it returns (GAPS.md).
+# Serves every client of the listener from here on; the runtime owns the loop, so kv serves
+# until it is stopped.
 fn served_on(listener: Listener, folder: Fs, clock: Clock, opened: Opened) : String
-  listening = started(listener, folder, "kv.log", opened, clock)
-  var taken = 0
-  for _ in 0..10_000
-    taken += accepted_awhile(listening)
-  end
-  "kv: took #{taken} clients\n"
-end
-
-fn accepted_awhile(listening: Handle(Listening)) : UInt64
-  var taken = 0
-  for _ in 0..10_000
-    if listening.ask(Accept, within: 61_000.ms) is Ok(true)
-      taken += 1
-    end
-  end
-  taken
+  listener.serve(into: started(folder, "kv.log", opened, clock), idle: 60_000.ms)
+  ""
 end
 
 # The store, its journal appending to the file `log` in the folder, the gate, and the
 # listening process, over a log just opened.
-fn started(listener: Listener, folder: Fs, log: String, opened: Opened,
-  clock: Clock) : Handle(Listening)
+fn started(folder: Fs, log: String, opened: Opened, clock: Clock) : Handle(Listening)
   journal = Journal.start(folder, log, opened.bytes)
   table = opened.replayed.table
   opening = Opening(table: table, log_bytes: opened.bytes, at: clock.now, log_within: 1_000.ms)
   store = Store.start(journal, clock, opening)
-  Listening.start(listener, store, Gate.start())
+  Listening.start(store, Gate.start())
+end
+
+# Reads one line of its connection per message, so a client takes an answer of several lines
+# one round trip at a time.
+process Reply(conn: Conn)
+  state
+    read: UInt64
+  end
+
+  message Next : Result(Option(String), NetError)
+
+  fn update(state, message)
+    case message
+      Next:
+        state.read += 1
+        conn.read_line(within: 5_000.ms)
+    end
+  end
+end
+
+supervisor Replies(conn: Conn)
+  child Reply(conn), restart: :never
 end
 
 # One request over a connection of its own, and the lines of its answer.
@@ -172,16 +179,24 @@ end
 fn exchanged(net: Net, host: String, port: UInt16, line: String) : Result(String, NetError)
   conn = try net.connect(host, port, within: 5_000.ms)
   try conn.write("#{line}\n", within: 5_000.ms)
-  first = try conn.read_line(within: 5_000.ms)
+  reply = Reply.start(conn)
+  first = try next_line(reply)
   head = first or ""
   var text = "#{head}\n"
   for _ in 0..follows(head)
-    more = try conn.read_line(within: 5_000.ms)
+    more = try next_line(reply)
     text = "#{text}#{more or ""}\n"
   end
   conn.close
   return Error(Closed) if first is None
   Ok(text)
+end
+
+fn next_line(reply: Handle(Reply)) : Result(Option(String), NetError)
+  case reply.ask(Next, within: 6_000.ms)
+    Ok(got): got
+    Error(_): Error(Timeout)
+  end
 end
 
 # Serves a folder's log on a free port and plays a script through kv's own client, each line
@@ -202,10 +217,9 @@ end
 
 fn checked_on(net: Net, listener: Listener, folder: Fs, clock: Clock, opened: Opened,
   lines: List(String)) : String
-  listening = started(listener, folder, "kv.check.log", opened, clock)
+  listener.serve(into: started(folder, "kv.check.log", opened, clock), idle: 60_000.ms)
   var transcript = ""
   for line in lines
-    listening.send(Accept)
     heard = client(net, "127.0.0.1", listener.port, line)
     transcript = "#{transcript}> #{line}\n#{shown(heard)}"
   end
@@ -264,9 +278,20 @@ fn code_of(problem: Problem) : UInt8
   end
 end
 
+# Whether the arguments say to serve, which goes on until kv is stopped.
+fn serving?(args: List(String)) : Bool
+  command(args) is Ok(Serving(dir: _, port: _))
+end
+
+# Serving goes on until kv is stopped; every other command ends kv with exit once it is done,
+# since check serves a listener of its own.
 fn main(platform: Platform)
   case ran(platform.net, platform.fs, platform.clock, platform.stderr, platform.args)
-    Ok(text): platform.stdout.write(text)
+    Ok(text):
+      platform.stdout.write(text)
+      if !serving?(platform.args)
+        platform.exit(0)
+      end
     Error(problem):
       platform.stderr.write_line("kv: #{said(problem)}")
       platform.exit(code_of(problem))
@@ -275,6 +300,8 @@ end
 
 test "serve takes a folder and an optional port, 7700 by default"
   assert command(["serve", "data"]) == Ok(Serving(dir: "data", port: 7_700))
+  assert serving?(["serve", "data"])
+  assert !serving?(["check", "data", "s.txt"])
   assert command(["serve", "data", "--port", "8000"]) == Ok(Serving(dir: "data", port: 8_000))
 end
 
