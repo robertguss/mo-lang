@@ -3,11 +3,11 @@ module Jobq.Queue
 expose Opening, Batch, Answer, Flushed, Queue, Queues, Worker, Workers, opening, flushed, stamp
 
 use Jobq.Api{Routed, respond, route}
-use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, rebuilt, records}
+use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, rebuilt, records, snapshot}
 use Jobq.Job{Phase, shown, to_ms}
-use Jobq.Store{Table, StoreError, blank, compact, open, pairs, put_all}
+use Jobq.Store{Table, StoreError, blank, emptied, journaled, line_of, open, pairs, rewritten}
 
-intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the store in one write, so one fsync covers every call taken since the last, and only then is each caller answered; a batch the log did not take is answered 503 and the board goes back to what the store holds, and a log that may end in part of a batch is rewritten whole before the next."
+intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the log in one write, so one fsync covers every call taken since the last, and only then is each caller answered; the queue keeps the board as the log last held it beside the board it answers from, both sharing every page a batch did not change, so a batch the log did not take is answered 503 and the board goes back, a log that may end in part of a write is written whole with the next batch, and the store keeps no second copy of any job."
 
 never "a response is sent before its record is durable"
   for a in Answer.all
@@ -15,16 +15,18 @@ never "a response is sent before its record is durable"
   end
 end
 
-# How a queue starts: the board its store's records hold, and the store.
+# How a queue starts: the board its store's records hold, and the store, which keeps no values
+# once the board holds them.
 struct Opening
   board: Board
   table: Table
 end
 
-# The calls taken since the last flush: the board after them, the store as it was before them,
-# whether its log may end in part of a write, their records, and their outcomes, in order.
+# The calls taken since the last flush: the board after them, the board as the log holds it,
+# the log, whether it may end in part of a write, their records, and their outcomes, in order.
 struct Batch
   board: Board
+  durable: Board
   table: Table
   torn: Bool
   writes: List((String, Option(String)))
@@ -39,6 +41,8 @@ struct Answer
   durable: Bool
 end
 
+# After a flush: the board to answer from, which the log now holds, the log, whether it may end
+# in part of a write, and the answers.
 struct Flushed
   board: Board
   table: Table
@@ -49,7 +53,7 @@ end
 # A queue over a store just opened; None when a record is not the job its key names.
 fn opening(table: Table, now: Time) : Option(Opening)
   held = try rebuilt(pairs(table), to_ms(now))
-  Some(Opening(board: held, table: table))
+  Some(Opening(board: held, table: emptied(table)))
 end
 
 # The clock's now cut to whole milliseconds, as a job's times are kept.
@@ -57,9 +61,10 @@ fn stamp(clock: Clock) : Time
   to_ms(clock.now)
 end
 
-# The batch written: rewritten whole first when the log may be torn, then every record in one
-# append. On success each outcome is answered as decided; otherwise every one is 503 and the
-# board is rebuilt from the store as it is, keeping the numbers already handed out.
+# The batch written: appended in one write, or, when the log may be torn, the log written whole
+# from the board after the batch, which holds the batch too. On success each outcome is answered
+# as decided; otherwise every one is 503 and the board goes back to the one the log holds, keeping
+# the numbers already handed out.
 fn flushed(fs: Fs, batch: Batch) : Flushed
   ensures result.answers.size == batch.outcomes.size
 
@@ -67,34 +72,32 @@ fn flushed(fs: Fs, batch: Batch) : Flushed
     return Flushed(board: batch.board, table: batch.table, torn: batch.torn,
       answers: batch.outcomes.map(fn(o) Answer(outcome: o, changed: false, durable: false) end))
   end
-  whole = if batch.torn: compact(fs, batch.table) else: Ok(batch.table)
-  written = case whole
-    Ok(ready): put_all(fs, ready, batch.writes)
-    Error(problem): Error(problem)
+  written = if batch.torn
+    rewritten(fs, batch.table, snapshot(batch.board).map(fn(w)
+      line_of(w)
+    end))
+  else
+    journaled(fs, batch.table, batch.writes.map(fn(w) line_of(w) end))
   end
   case written
     Ok(table):
       Flushed(board: batch.board, table: table, torn: false, answers: batch.outcomes.map(fn(o)
         Answer(outcome: o, changed: true, durable: true)
       end))
-    Error(problem): refused(batch, whole, problem)
+    Error(problem): refused(batch, problem)
   end
 end
 
-fn refused(batch: Batch, whole: Result(Table, StoreError), problem: StoreError) : Flushed
-  table = case whole
-    Ok(ready): ready
-    Error(_): batch.table
-  end
-  var held = rebuilt(pairs(table), batch.board.started) or batch.board
+fn refused(batch: Batch, problem: StoreError) : Flushed
+  var held = batch.durable
   held.next = batch.board.next
-  torn = problem == Torn or (batch.torn and whole is Error(_))
+  torn = problem == Torn or batch.torn
   reason = if torn
-    "the log may end in part of a write; it is rewritten whole before the next"
+    "the log may end in part of a write; it is written whole with the next batch"
   else
     "the log did not take the change"
   end
-  Flushed(board: held, table: table, torn: torn,
+  Flushed(board: held, table: batch.table, torn: torn,
     answers: batch.outcomes.map(fn(o) unanswered(o, reason) end))
 end
 
@@ -126,6 +129,7 @@ end
 process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
   state
     board: Board = opening.board
+    durable: Board = opening.board
     table: Table = opening.table
     torn: Bool
     writes: List((String, Option(String)))
@@ -157,10 +161,11 @@ process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
         end
         if state.me is None
           done = flushed(fs,
-            Batch(board: state.board, table: state.table, torn: state.torn, writes: state.writes,
-            outcomes: state.outcomes))
+            Batch(board: state.board, durable: state.durable, table: state.table, torn: state.torn,
+            writes: state.writes, outcomes: state.outcomes))
           delivered(state.waiting, done.answers)
           state.board = done.board
+          state.durable = done.board
           state.table = done.table
           state.torn = done.torn
           state.writes = []
@@ -177,10 +182,11 @@ process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
         end
       Flush:
         done = flushed(fs,
-          Batch(board: state.board, table: state.table, torn: state.torn, writes: state.writes,
-          outcomes: state.outcomes))
+          Batch(board: state.board, durable: state.durable, table: state.table, torn: state.torn,
+          writes: state.writes, outcomes: state.outcomes))
         delivered(state.waiting, done.answers)
         state.board = done.board
+        state.durable = done.board
         state.table = done.table
         state.torn = done.torn
         state.writes = []
@@ -190,11 +196,12 @@ process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
       Serve(call):
         decision = decide(state.board, call, stamp(clock))
         done = flushed(fs,
-          Batch(board: decision.board, table: state.table, torn: state.torn,
+          Batch(board: decision.board, durable: state.durable, table: state.table, torn: state.torn,
           writes: state.writes.concat(decision.writes),
           outcomes: state.outcomes.push(decision.outcome)))
         delivered(state.waiting, done.answers)
         state.board = done.board
+        state.durable = done.board
         state.table = done.table
         state.torn = done.torn
         state.writes = []
@@ -381,24 +388,26 @@ test "a batch the log did not take is 503, and the board goes back to what the s
   at = Time.fixture()
   assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
-  one = decide(board(at, 1),
-    Call(worker: "p", command: Create(queue: "q", payload: "1", max_attempts: 1)), at)
+  start = board(at, 1)
+  one = decide(start, Call(worker: "p", command: Create(queue: "q", payload: "1", max_attempts: 1)),
+    at)
   first = flushed(fs,
-    Batch(board: one.board, table: empty, torn: false, writes: one.writes, outcomes: [one.outcome]))
+    Batch(board: one.board, durable: start, table: emptied(empty), torn: false, writes: one.writes,
+    outcomes: [one.outcome]))
   assert first.answers.map(fn(a) a.outcome end) == [one.outcome] and !first.torn
   two = decide(first.board,
     Call(worker: "p", command: Create(queue: "q", payload: "2", max_attempts: 1)), at)
   slow = Fs.fixture(delay: 1.minute)
   torn = flushed(slow,
-    Batch(board: two.board, table: first.table, torn: false, writes: two.writes,
-    outcomes: [two.outcome, one.outcome]))
+    Batch(board: two.board, durable: first.board, table: first.table, torn: false,
+    writes: two.writes, outcomes: [two.outcome, one.outcome]))
   assert torn.torn and torn.answers.all?(fn(a) unavailable?(a.outcome) end)
   assert records(torn.board) == records(first.board) and torn.board.next == 3
   three = decide(torn.board,
     Call(worker: "p", command: Create(queue: "q", payload: "3", max_attempts: 1)), at)
   again = flushed(fs,
-    Batch(board: three.board, table: torn.table, torn: true, writes: three.writes,
-    outcomes: [three.outcome]))
+    Batch(board: three.board, durable: torn.board, table: torn.table, torn: true,
+    writes: three.writes, outcomes: [three.outcome]))
   assert !again.torn and again.answers.map(fn(a) a.outcome end) == [three.outcome]
   kept = Kept(before: records(again.board), after: stored(fs, at) or [])
   assert kept.after == kept.before
