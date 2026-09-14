@@ -1,5 +1,5 @@
 module Basics.If
-expose shipping, note, label
+expose shipping, note, label, plural, sizes
 
 intent "Branch with if as a statement, as a value in block form and on one line, and as a one-line guard on return."
 
@@ -28,6 +28,18 @@ fn label(count: UInt32) : String
   "#{count} #{word}, #{if count > 99: "long" else: if count > 9: "medium" else: "short"}"
 end
 
+# A one-line if as an anonymous function's body, as a call's argument, and as an arm's value.
+fn plural(counts: List(UInt32)) : List(String)
+  counts.map(fn(n) if n == 1: "one" else: "many" end)
+end
+
+fn sizes(total: Option(UInt32), express: Bool) : String
+  case total
+    Some(n): "#{label(if n == 0: 1 else: n)}, #{if n >= 5_000: "large" else: "small"}"
+    None: if express: "none yet" else: "none"
+  end
+end
+
 test "large orders ship free"
   assert shipping(6_000, true) == 0
 end
@@ -48,5 +60,12 @@ test "a one-line if gives a value"
   assert label(100) == "100 lines, long"
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+test "a one-line if is a value wherever a value goes"
+  assert plural([1, 2]) == ["one", "many"]
+  assert sizes(Some(6_000), false) == "6000 lines, long, large"
+  assert sizes(Some(0), false) == "1 line, short, small"
+  assert sizes(None, true) == "none yet" and sizes(None, false) == "none"
+end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
           proven: not run

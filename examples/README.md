@@ -28,7 +28,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 6. `basics/lists.mo`: a list literal, `push`, `map`, `filter`, `reduce`
 7. `basics/option.mo`: `Some`, `None`, `or`, `case`
 8. `basics/result.mo`: `Ok`, `Error`, `try` through two calls
-9. `basics/if.mo`: `if` as a statement, as a value in block form and on one line (`if c: a else: b`, step 25), and trailing on `return`
+9. `basics/if.mo`: `if` as a statement, as a value in block form and on one line (`if c: a else: b`, step 25), the one-line form also as a call's argument, an arm's value, an anonymous function's body, and inside an interpolation, and trailing on `return`
 10. `basics/case.mo`: guards, nested destructuring, literal arms, `_` inside a pattern
 11. `basics/for.mo`: `for` over a range and a list, `break`, and why these are loops
 12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments
