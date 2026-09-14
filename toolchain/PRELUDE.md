@@ -196,7 +196,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `remove` | `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `rename` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `mkdir` | `String` | `Result(none, FsError)`: a folder made in a folder that is there; `Ok` when a folder is there already | yes | | stdlib (09), Session 5, step 19 |
-| `Fs` (on type) | `fixture` | | `Fs` | | tests | grammar |
+| `Fs` (on type) | `fixture` | | `Fs`: a `..` that climbs above a scope's folder, the fixture's root included, is `Missing` as on the real `Fs` | | tests | grammar, Session 5, step 21 |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | | tests | grammar |
 | `Events` | `emit` | `T` | none | | | grammar |
 | `Events` (on type) | `fixture` | | `Events` | | tests | grammar |

@@ -1,20 +1,21 @@
-//! Net: TCP for `mo run` (design-v0/09, Net), over std.Io, and `Net.fixture()` for
-//! `mo test`. A Listener or a Conn is a capability; its `Value.Cap.handle` is its index in
-//! `Net.listeners` or `Net.conns`, or under the simulator in `Fixture`'s.
+//! Net: TCP for `mo run` (design-v0/09, Net), and `Net.fixture()` for `mo test`. A Listener
+//! or a Conn is a capability; its `Value.Cap.handle` is its index in `Net.listeners` or
+//! `Net.conns`, or under the simulator in `Fixture`'s.
 //!
-//! Every real call that can wait runs its blocking part as a concurrent task
-//! (`io.concurrent`: a thread under std.Io.Threaded) and waits for it at most its deadline.
-//! Past the deadline the task is canceled, which interrupts its system call, and the call
-//! is `Timeout`. A task that finished as it was canceled keeps its result, so a connection
-//! already accepted, or bytes already read, are never dropped. While a process waits it
-//! gives up its turn, so the other processes go on (turns.zig).
+//! Every socket is nonblocking (step 21). A call that can wait tries its system call, and when
+//! the socket is not ready waits for it at most its deadline: under Mo.Server with processes in
+//! the poller, giving up the thread (turns.zig, block), so the other processes go on; with no
+//! processes in poll(2) on this thread. Past the deadline the call is `Timeout`, and bytes
+//! already read or a connection already accepted are never dropped.
 //!
 //! What a call past its deadline leaves: `accept` leaves the listener listening; `connect`
 //! leaves no connection; `read_line` keeps the bytes of an unfinished line for the next
 //! call; `write` closes the connection, since part of the text may have gone.
 const std = @import("std");
+const builtin = @import("builtin");
 const Io = std.Io;
 const posix = std.posix;
+const poller = @import("poller.zig");
 const sim_mod = @import("sim.zig");
 const vm_mod = @import("vm.zig");
 
@@ -24,6 +25,8 @@ const Error = vm_mod.Error;
 
 /// The longest line `read_line` gives: 64 KiB before its newline.
 pub const line_limit = 64 << 10;
+/// A connection's read buffer at its first read; it grows to what the reader allows.
+pub const buffer_initial = 16 << 10;
 /// Connections the kernel queues for a listener before `accept` takes them.
 const backlog = 128;
 
@@ -104,7 +107,8 @@ pub const Listener = struct {
 
 pub const Conn = struct {
     stream: Io.net.Stream,
-    /// Bytes read and not yet given out are buf[start..end]; allocated at the first read.
+    /// Bytes read and not yet given out are buf[start..end]; allocated at the first read, and
+    /// given back while the runtime waits on a connection with nothing buffered.
     buf: []u8 = &.{},
     start: usize = 0,
     end: usize = 0,
@@ -133,6 +137,38 @@ pub const Conn = struct {
         }
         return what;
     }
+
+    pub fn fd(c: *const Conn) posix.fd_t {
+        return c.stream.socket.handle;
+    }
+
+    /// Makes room in the buffer for the next read: moves what is buffered to the front, and
+    /// grows the buffer from `initial` bytes up to `cap`. False when it holds `cap` bytes.
+    pub fn roomToRead(c: *Conn, initial: usize, cap: usize) Error!bool {
+        if (c.start > 0) {
+            std.mem.copyForwards(u8, c.buf, c.buf[c.start..c.end]);
+            c.end -= c.start;
+            c.start = 0;
+        }
+        if (c.end < c.buf.len) return true;
+        if (c.buf.len >= cap) return false;
+        const size = if (c.buf.len == 0) @min(initial, cap) else @min(cap, 2 * c.buf.len);
+        const gpa = std.heap.smp_allocator;
+        const grown = gpa.alloc(u8, size) catch return error.OutOfMemory;
+        @memcpy(grown[0..c.end], c.buf[0..c.end]);
+        if (c.buf.len > 0) gpa.free(c.buf);
+        c.buf = grown;
+        return true;
+    }
+
+    /// With nothing buffered, the buffer goes back: a connection at rest holds none.
+    pub fn giveBack(c: *Conn) void {
+        if (c.start != c.end or c.buf.len == 0) return;
+        std.heap.smp_allocator.free(c.buf);
+        c.buf = &.{};
+        c.start = 0;
+        c.end = 0;
+    }
 };
 
 /// An Exchange (http.zig): the connection it answers on, and until it is answered the
@@ -150,22 +186,68 @@ pub const Exchange = struct {
     }
 };
 
-/// Set when a call's task ends; also wakes main's thread when it hands out turns while it
-/// waits (turns.zig).
-pub const Waker = struct {
-    done: Io.Event = .unset,
-    main: ?*Io.Event = null,
+// ---- nonblocking system calls
 
-    fn set(w: *Waker, io: Io) void {
-        w.done.set(io);
-        if (w.main) |m| m.set(io);
+pub fn nonblocking(fd: posix.fd_t) void {
+    const nb: u32 = @bitCast(posix.O{ .NONBLOCK = true });
+    if (builtin.os.tag == .linux) {
+        const linux = std.os.linux;
+        const flags = linux.fcntl(fd, linux.F.GETFL, 0);
+        if (posix.errno(flags) != .SUCCESS) return;
+        _ = linux.fcntl(fd, linux.F.SETFL, flags | nb);
+    } else {
+        const flags = std.c.fcntl(fd, std.c.F.GETFL);
+        if (flags < 0) return;
+        _ = std.c.fcntl(fd, std.c.F.SETFL, flags | @as(c_int, @bitCast(nb)));
     }
-};
+}
 
-fn wakerFor(vm: *Vm) Waker {
-    const s = vm.sim orelse return .{};
-    const t = s.turns orelse return .{};
-    return .{ .main = &t.main_wake };
+/// What one nonblocking read or write came to: bytes, not ready, or a broken stream.
+pub const Io1 = union(enum) { done: usize, again, broke };
+
+pub fn readOne(fd: posix.fd_t, dest: []u8) Io1 {
+    while (true) {
+        const rc = posix.system.read(fd, dest.ptr, dest.len);
+        switch (posix.errno(rc)) {
+            .SUCCESS => return .{ .done = @intCast(rc) },
+            .INTR => continue,
+            .AGAIN => return .again,
+            else => return .broke,
+        }
+    }
+}
+
+/// A write that never raises SIGPIPE: a peer that is gone is a broken stream.
+pub fn writeOne(fd: posix.fd_t, bytes: []const u8) Io1 {
+    while (true) {
+        const rc = posix.system.sendto(fd, bytes.ptr, bytes.len, posix.MSG.NOSIGNAL, null, 0);
+        switch (posix.errno(rc)) {
+            .SUCCESS => return .{ .done = @intCast(rc) },
+            .INTR => continue,
+            .AGAIN => return .again,
+            else => return .broke,
+        }
+    }
+}
+
+pub const Accepted = union(enum) { ok: posix.fd_t, again, closed, busy };
+
+/// One connection from the listening socket's queue, nonblocking, or why not.
+pub fn acceptOne(fd: posix.fd_t) Accepted {
+    while (true) {
+        const rc = posix.system.accept(fd, null, null);
+        switch (posix.errno(rc)) {
+            .SUCCESS => {
+                const conn: posix.fd_t = @intCast(rc);
+                nonblocking(conn);
+                return .{ .ok = conn };
+            },
+            .INTR, .CONNABORTED => continue,
+            .AGAIN => return .again,
+            .INVAL, .BADF, .NOTSOCK => return .closed,
+            else => return .busy,
+        }
+    }
 }
 
 pub const Net = struct {
@@ -175,6 +257,10 @@ pub const Net = struct {
     conns: std.ArrayList(*Conn) = .empty,
     /// Each Exchange's connection and request (http.zig); its handle is its index.
     exchanges: std.ArrayList(Exchange) = .empty,
+
+    fn now(n: *const Net) i64 {
+        return Io.Clock.Timestamp.now(n.io, .awake).raw.toMilliseconds();
+    }
 
     /// One row; `a` is the receiver, then the parameters, then `within`.
     pub fn call(n: *Net, vm: *Vm, which: Row, a: []const Value) Error!Value {
@@ -213,19 +299,58 @@ pub const Net = struct {
 
     /// A connection to `host` at `port`, as `connect` makes it (http.zig makes its own).
     pub fn connectConn(n: *Net, vm: *Vm, host: []const u8, port: u16, ms: i64) Error!Outcome {
-        var waker = wakerFor(vm);
-        var task = n.io.concurrent(connectTask, .{ n.io, host, port, &waker }) catch return .{ .failed = .Busy };
-        const in_time = n.wait(vm, &waker, ms) catch |err| {
-            if (task.cancel(n.io)) |s| s.close(n.io) else |_| {}
-            return err;
+        const deadline = n.now() + @max(ms, 0);
+        const address = Io.net.IpAddress.parse(host, port) catch {
+            // A name, not an address: looked up and connected on this thread, which waits.
+            const name = Io.net.HostName.init(host) catch return .{ .failed = .Refused };
+            const stream = name.connect(n.io, port, .{ .mode = .stream }) catch |err| return .{ .failed = switch (err) {
+                error.ProcessFdQuotaExceeded, error.SystemFdQuotaExceeded, error.SystemResources => .Busy,
+                else => .Refused,
+            } };
+            nonblocking(stream.socket.handle);
+            return .{ .ok = try n.adopt(stream.socket.handle) };
         };
-        const r = if (in_time) task.await(n.io) else task.cancel(n.io);
-        const stream = r catch |err| return .{ .failed = switch (err) {
-            error.Canceled, error.Timeout => .Timeout,
-            error.ProcessFdQuotaExceeded, error.SystemFdQuotaExceeded, error.SystemResources => .Busy,
+        const family: u32 = if (address == .ip4) posix.AF.INET else posix.AF.INET6;
+        const rc = posix.system.socket(family, posix.SOCK.STREAM, posix.IPPROTO.TCP);
+        switch (posix.errno(rc)) {
+            .SUCCESS => {},
+            .MFILE, .NFILE, .NOBUFS, .NOMEM => return .{ .failed = .Busy },
+            else => return .{ .failed = .Refused },
+        }
+        const fd: posix.fd_t = @intCast(rc);
+        nonblocking(fd);
+        var in4: posix.sockaddr.in = undefined;
+        var in6: posix.sockaddr.in6 = undefined;
+        const sa: *const posix.sockaddr, const len: posix.socklen_t = switch (address) {
+            .ip4 => |a| blk: {
+                in4 = .{ .port = std.mem.nativeToBig(u16, port), .addr = @bitCast(a.bytes) };
+                break :blk .{ @ptrCast(&in4), @sizeOf(posix.sockaddr.in) };
+            },
+            .ip6 => |a| blk: {
+                in6 = .{ .port = std.mem.nativeToBig(u16, port), .flowinfo = 0, .addr = a.bytes, .scope_id = 0 };
+                break :blk .{ @ptrCast(&in6), @sizeOf(posix.sockaddr.in6) };
+            },
+        };
+        const failed: ?Failure = switch (posix.errno(posix.system.connect(fd, sa, len))) {
+            .SUCCESS => null,
+            .INPROGRESS, .AGAIN => blk: {
+                const in_time = n.wait(vm, fd, .write, deadline - n.now()) catch |err| {
+                    _ = posix.system.close(fd);
+                    return err;
+                };
+                if (!in_time) break :blk .Timeout;
+                var so_error: c_int = 0;
+                var so_len: posix.socklen_t = @sizeOf(c_int);
+                _ = posix.system.getsockopt(fd, posix.SOL.SOCKET, posix.SO.ERROR, @ptrCast(&so_error), &so_len);
+                break :blk if (so_error == 0) null else .Refused;
+            },
             else => .Refused,
-        } };
-        return .{ .ok = try n.adopt(stream) };
+        };
+        if (failed) |f| {
+            _ = posix.system.close(fd);
+            return .{ .failed = f };
+        }
+        return .{ .ok = try n.adopt(fd) };
     }
 
     fn accept(n: *Net, vm: *Vm, l: *Listener, ms: i64) Error!Value {
@@ -237,28 +362,30 @@ pub const Net = struct {
         if (l.accepting or l.served) return .{ .failed = .Busy };
         l.accepting = true;
         defer l.accepting = false;
-        var waker = wakerFor(vm);
-        var task = n.io.concurrent(acceptTask, .{ n.io, &l.server, &waker }) catch return .{ .failed = .Busy };
-        const in_time = n.wait(vm, &waker, ms) catch |err| {
-            if (task.cancel(n.io)) |s| s.close(n.io) else |_| {}
-            return err;
-        };
-        const r = if (in_time) task.await(n.io) else task.cancel(n.io);
-        const stream = r catch |err| return .{ .failed = switch (err) {
-            error.Canceled => .Timeout,
-            error.SocketNotListening => .Closed,
-            else => .Busy,
-        } };
-        const h = try n.adopt(stream);
-        for (n.listeners.items, 0..) |x, i| if (x == l) {
-            n.conns.items[h].listener = @intCast(i);
-        };
-        return .{ .ok = h };
+        const deadline = n.now() + @max(ms, 0);
+        const fd = l.server.socket.handle;
+        while (true) {
+            switch (acceptOne(fd)) {
+                .ok => |conn| {
+                    const h = try n.adopt(conn);
+                    for (n.listeners.items, 0..) |x, i| if (x == l) {
+                        n.conns.items[h].listener = @intCast(i);
+                    };
+                    return .{ .ok = h };
+                },
+                .again => {
+                    const left = deadline - n.now();
+                    if (left <= 0 or !try n.wait(vm, fd, .read, left)) return .{ .failed = .Timeout };
+                },
+                .closed => return .{ .failed = .Closed },
+                .busy => return .{ .failed = .Busy },
+            }
+        }
     }
 
-    pub fn adopt(n: *Net, stream: Io.net.Stream) Error!u32 {
+    pub fn adopt(n: *Net, fd: posix.fd_t) Error!u32 {
         const c = try n.gpa.create(Conn);
-        c.* = .{ .stream = stream };
+        c.* = .{ .stream = .{ .socket = .{ .handle = fd, .address = .{ .ip4 = .loopback(0) } } } };
         const handle: u32 = @intCast(n.conns.items.len);
         try n.conns.append(n.gpa, c);
         return handle;
@@ -268,12 +395,12 @@ pub const Net = struct {
     fn readLine(n: *Net, vm: *Vm, c: *Conn, ms: i64) Error!Value {
         if (c.closed) return fail(vm, .Closed);
         if (c.reading or c.lining) return fail(vm, .Busy);
-        const t0 = Io.Clock.Timestamp.now(n.io, .awake);
+        const t0 = n.now();
         while (true) {
             if (try lineResult(vm, c.scan())) |v| return v;
-            const left = ms - t0.durationTo(Io.Clock.Timestamp.now(n.io, .awake)).raw.toMilliseconds();
+            const left = ms - (n.now() - t0);
             if (left <= 0) return fail(vm, .Timeout);
-            switch (try n.fill(vm, c, left, 2 * line_limit, 2 * line_limit)) {
+            switch (try n.fill(vm, c, left, buffer_initial, 2 * line_limit)) {
                 .got, .eof => {},
                 .timeout => return fail(vm, .Timeout),
                 .closed => return fail(vm, .Closed),
@@ -289,47 +416,40 @@ pub const Net = struct {
     /// `cap` bytes not given out. A read past its deadline keeps what was buffered; a stream
     /// that broke closes the connection.
     pub fn fill(n: *Net, vm: *Vm, c: *Conn, ms: i64, initial: usize, cap: usize) Error!Filled {
-        if (c.start > 0) {
-            std.mem.copyForwards(u8, c.buf, c.buf[c.start..c.end]);
-            c.end -= c.start;
-            c.start = 0;
-        }
-        if (c.end == c.buf.len) {
-            if (c.buf.len >= cap) return .full;
-            const size = if (c.buf.len == 0) initial else @min(cap, 2 * c.buf.len);
-            const grown = std.heap.page_allocator.alloc(u8, size) catch return error.OutOfMemory;
-            @memcpy(grown[0..c.end], c.buf[0..c.end]);
-            if (c.buf.len > 0) std.heap.page_allocator.free(c.buf);
-            c.buf = grown;
-        }
+        if (!try c.roomToRead(initial, cap)) return .full;
+        const deadline = n.now() + @max(ms, 0);
         c.reading = true;
-        var waker = wakerFor(vm);
-        var task = n.io.concurrent(readTask, .{ n.io, c.stream, c.buf[c.end..], &waker }) catch {
-            c.reading = false;
-            return .busy;
+        const got: Io1 = while (true) {
+            const r = readOne(c.fd(), c.buf[c.end..]);
+            if (r != .again) break r;
+            const left = deadline - n.now();
+            if (left <= 0) break .again;
+            const in_time = n.wait(vm, c.fd(), .read, left) catch |err| {
+                c.reading = false;
+                return err;
+            };
+            if (c.closed or !in_time) break .again;
         };
-        const in_time = n.wait(vm, &waker, ms) catch |err| {
-            _ = task.cancel(n.io) catch 0;
-            c.reading = false;
-            return err;
-        };
-        const r = if (in_time) task.await(n.io) else task.cancel(n.io);
         c.reading = false;
         if (c.closed) {
             n.release(c);
             return .closed;
         }
-        const got = r catch |err| {
-            if (err == error.Canceled) return .timeout;
-            n.close(c);
-            return .closed;
-        };
-        if (got == 0) {
-            c.eof = true;
-            return .eof;
+        switch (got) {
+            .again => return .timeout,
+            .broke => {
+                n.close(c);
+                return .closed;
+            },
+            .done => |k| {
+                if (k == 0) {
+                    c.eof = true;
+                    return .eof;
+                }
+                c.end += k;
+                return .got;
+            },
         }
-        c.end += got;
-        return .got;
     }
 
     /// `conn.write(text)`: all of the text, or why not.
@@ -343,26 +463,39 @@ pub const Net = struct {
         if (c.closed) return .Closed;
         if (c.writing) return .Busy;
         c.writing = true;
-        var waker = wakerFor(vm);
-        var task = n.io.concurrent(writeTask, .{ n.io, c.stream, text, &waker }) catch {
-            c.writing = false;
-            return .Busy;
-        };
-        const in_time = n.wait(vm, &waker, ms) catch |err| {
-            task.cancel(n.io) catch {};
-            c.writing = false;
-            return err;
-        };
-        const r = if (in_time) task.await(n.io) else task.cancel(n.io);
+        const deadline = n.now() + @max(ms, 0);
+        var done: usize = 0;
+        var failed: ?Failure = null;
+        while (done < text.len) {
+            switch (writeOne(c.fd(), text[done..])) {
+                .done => |k| done += k,
+                .broke => {
+                    failed = .Closed;
+                    break;
+                },
+                .again => {
+                    const left = deadline - n.now();
+                    const in_time = left > 0 and (n.wait(vm, c.fd(), .write, left) catch |err| {
+                        c.writing = false;
+                        return err;
+                    });
+                    if (c.closed) break;
+                    if (!in_time) {
+                        failed = .Timeout;
+                        break;
+                    }
+                },
+            }
+        }
         c.writing = false;
         if (c.closed) {
             n.release(c);
             return .Closed;
         }
-        r catch |err| {
+        if (failed) |f| {
             n.close(c);
-            return if (err == error.Canceled) .Timeout else .Closed;
-        };
+            return f;
+        }
         return null;
     }
 
@@ -380,7 +513,7 @@ pub const Net = struct {
         if (c.released or c.reading or c.writing) return;
         c.released = true;
         c.stream.close(n.io);
-        if (c.buf.len > 0) std.heap.page_allocator.free(c.buf);
+        if (c.buf.len > 0) std.heap.smp_allocator.free(c.buf);
         c.buf = &.{};
         c.start = 0;
         c.end = 0;
@@ -403,64 +536,20 @@ pub const Net = struct {
         n.listeners.clearRetainingCapacity();
     }
 
-    /// Waits for a task; under Mo.Server with processes the wait gives up the turn.
-    fn wait(n: *Net, vm: *Vm, waker: *Waker, ms: i64) Error!bool {
-        if (vm.sim) |s| if (s.turns) |t| return t.block(s, waker, ms);
-        return waitFor(n.io, &waker.done, ms);
+    /// Waits for `fd` to be ready: under Mo.Server with processes the wait gives up the thread.
+    fn wait(n: *Net, vm: *Vm, fd: posix.fd_t, filter: poller.Filter, ms: i64) Error!bool {
+        _ = n;
+        if (vm.sim) |s| if (s.turns) |t| return t.block(s, fd, filter, ms);
+        return poller.pollOne(fd, filter, ms);
     }
 };
-
-/// Waits for `event` at most `ms` milliseconds; false when the deadline came first.
-pub fn waitFor(io: Io, event: *Io.Event, ms: i64) bool {
-    const deadline = (Io.Timeout{ .duration = .{ .raw = .fromMilliseconds(@max(ms, 0)), .clock = .awake } }).toDeadline(io);
-    while (!event.isSet()) {
-        event.waitTimeout(io, deadline) catch |err| switch (err) {
-            error.Timeout => if (deadline.deadline.durationFromNow(io).raw.toNanoseconds() <= 0) return event.isSet(),
-            error.Canceled => return event.isSet(),
-        };
-    }
-    return true;
-}
 
 fn fail(vm: *Vm, f: Failure) Error!Value {
     return vm.variant("Error", &.{try vm.variant(@tagName(f), &.{})});
 }
 
-// ---- the blocking parts, each on a thread of its own
-
-fn connectTask(io: Io, host: []const u8, port: u16, waker: *Waker) anyerror!Io.net.Stream {
-    defer waker.set(io);
-    if (Io.net.IpAddress.parse(host, port)) |addr| {
-        return addr.connect(io, .{ .mode = .stream });
-    } else |_| {}
-    const name = try Io.net.HostName.init(host);
-    return name.connect(io, port, .{ .mode = .stream });
-}
-
-pub fn acceptTask(io: Io, server: *Io.net.Server, waker: *Waker) Io.net.Server.AcceptError!Io.net.Stream {
-    defer waker.set(io);
-    while (true) {
-        return server.accept(io) catch |err| {
-            if (err == error.ConnectionAborted) continue;
-            return err;
-        };
-    }
-}
-
-pub fn readTask(io: Io, stream: Io.net.Stream, dest: []u8, waker: *Waker) Io.net.Stream.Reader.Error!usize {
-    defer waker.set(io);
-    var data = [_][]u8{dest};
-    return io.vtable.netRead(io.userdata, stream.socket.handle, &data);
-}
-
-fn writeTask(io: Io, stream: Io.net.Stream, text: []const u8, waker: *Waker) anyerror!void {
-    defer waker.set(io);
-    var w = stream.writer(io, &.{});
-    w.interface.writeAll(text) catch return w.err orelse error.WriteFailed;
-}
-
-/// A listening TCP socket on 127.0.0.1 with SO_REUSEADDR alone. std.Io's listen sets
-/// SO_REUSEPORT with it, which lets a second listener take a port the first still holds.
+/// A listening TCP socket on 127.0.0.1 with SO_REUSEADDR alone, nonblocking. std.Io's listen
+/// sets SO_REUSEPORT with it, which lets a second listener take a port the first still holds.
 fn bindLoopback(port: u16) error{ AddressInUse, Refused }!struct { fd: posix.socket_t, port: u16 } {
     const sys = posix.system;
     const rc = sys.socket(posix.AF.INET, posix.SOCK.STREAM, posix.IPPROTO.TCP);
@@ -477,6 +566,7 @@ fn bindLoopback(port: u16) error{ AddressInUse, Refused }!struct { fd: posix.soc
     if (posix.errno(sys.listen(fd, backlog)) != .SUCCESS) return error.Refused;
     var len: posix.socklen_t = @sizeOf(posix.sockaddr.in);
     if (posix.errno(sys.getsockname(fd, @ptrCast(&addr), &len)) != .SUCCESS) return error.Refused;
+    nonblocking(fd);
     return .{ .fd = fd, .port = std.mem.bigToNative(u16, addr.port) };
 }
 

@@ -909,11 +909,38 @@ pub const FixtureFs = struct {
         return .{ .cap = .{ .kind = .fs, .delay = scope.delay, .handle = @intCast(f.scopes.items.len) } };
     }
 
-    /// The path a name in the scope is at, or null when it leaves the scope.
+    /// The path a name in the scope is at, or null when it leaves the scope. A name whose `..`
+    /// climbs above the scope's folder leaves it, even above the fixture's root, which is its
+    /// whole world: the real Fs refuses such a name, and so does the fixture (step 21; before,
+    /// a climb above the root stopped there and was taken).
     fn pathIn(gpa: std.mem.Allocator, scope: Scope, name: []const u8) Error!?[]const u8 {
         if (scope.system == null or scope.empty) return null;
+        if (climbsOut(scope.folder, name)) return null;
         const full = try std.fs.path.resolvePosix(gpa, &.{ scope.folder, name });
         return if (server_mod.within(scope.folder, full)) full else null;
+    }
+
+    /// Whether `name`, taken from `folder` (or from the root when it is absolute), climbs above
+    /// `folder` at any `..`.
+    fn climbsOut(folder: []const u8, name: []const u8) bool {
+        const base = depthOf(folder);
+        var depth: usize = if (std.mem.startsWith(u8, name, "/")) 0 else base;
+        var parts = std.mem.tokenizeScalar(u8, name, '/');
+        while (parts.next()) |part| {
+            if (std.mem.eql(u8, part, ".")) continue;
+            if (std.mem.eql(u8, part, "..")) {
+                if (depth <= base) return true;
+                depth -= 1;
+            } else depth += 1;
+        }
+        return false;
+    }
+
+    fn depthOf(folder: []const u8) usize {
+        var n: usize = 0;
+        var parts = std.mem.tokenizeScalar(u8, folder, '/');
+        while (parts.next()) |_| n += 1;
+        return n;
     }
 };
 
@@ -952,7 +979,8 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
     const system: ?*std.StringArrayHashMapUnmanaged([]const u8) = if (scope.system) |i| &sim.files.systems.items[i] else null;
     if (which == .fs_list) {
         const all = system orelse return vm.variant("Ok", &.{.{ .list = &.{} }});
-        if (scope.empty) return vm.variant("Ok", &.{.{ .list = &.{} }});
+        // A scope that climbed out of the one it narrowed holds nothing, as the real Fs's.
+        if (scope.empty) return missed(vm, ".");
         const prefix = if (std.mem.eql(u8, scope.folder, "/")) "/" else try std.fmt.allocPrint(gpa, "{s}/", .{scope.folder});
         var listed: std.ArrayList([]const u8) = .empty;
         for (all.keys()) |key| {

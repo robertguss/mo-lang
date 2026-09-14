@@ -481,6 +481,8 @@ pub fn fmtCheck(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u
     defer arena_state.deinit();
     const arena = arena_state.allocator();
     const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
+    // A rejects file that expects a syntax code does not parse, so it has no one shape.
+    if (isRejectsPath(rel)) if (expectedCode(source)) |code| if (std.mem.startsWith(u8, code, "MO01")) return true;
     var diags: diag.List = .empty;
     const formatted = fmt.format(arena, source, &diags) catch |err| switch (err) {
         error.Rejected => {
@@ -635,7 +637,10 @@ pub fn runOne(gpa: std.mem.Allocator, io: Io, root: []const u8, rel: []const u8,
         error.Rejected => {
             const d = diags.items[0];
             const want = expectedCode(source);
-            if (expect_reject and d.category != .syntax and want != null and std.mem.eql(u8, d.code, want.?)) {
+            // A rejects file breaks a law the checker enforces, or, when it expects an MO01xx, is
+            // a shape the grammar does not have, whose first diagnostic is the parser's (step 21).
+            const syntax_ok = d.category != .syntax or (want != null and std.mem.startsWith(u8, want.?, "MO01"));
+            if (expect_reject and syntax_ok and want != null and std.mem.eql(u8, d.code, want.?)) {
                 tally.rejected_as_expected += 1;
             } else if (expect_reject) {
                 tally.failed += 1;

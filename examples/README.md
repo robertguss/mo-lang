@@ -15,7 +15,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 
 `mo test --sim N <file>` is tier 3: every test that starts a process runs N more times (default 100), each under a seed that chooses the delivery order, whether a statement's sends are delivered before the next statement, the clock's advance, and which fixture calls fail or are slow. A failure prints its seed and the interleaving; a test that holds only when no fixture fails is reported as passing only without faults. The corpus test runs every file with `--sim 100`: every process test holds under faults, except `processes/racy.mo`, whose test must fail under `--sim` and pass without it.
 
-`mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A program's processes run there too, each on a thread of its own, taking turns, so one waiting on a socket does not hold up the others (`toolchain/src/turns.zig`). A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
+`mo run <file> -- args` runs a program's `main` on the real platform, `Mo.Server`. A program's processes run there too, each update on a fiber of its own on main's thread, so one waiting on a socket does not hold up the others and a process at rest costs no thread (`toolchain/src/turns.zig`, step 21). A file in `programs/` names its arguments on its first line (`# run: Ada`) and, when it ends with a code other than 0, that code on an `# exit: 3` line; `<name>.expected` beside it holds its exact stdout. The corpus test runs each program through `mo run`, as a subprocess, from inside `programs/`, so a program reads `data/` by that relative path. Its `test` blocks run like any other file's.
 
 `mo build <file>` compiles a program to C and links it with `zig cc` into one binary (`toolchain/src/emit_c.zig`, `toolchain/runtime/mo_rt.c`); `mo build --tests <file>` makes a binary that runs the file's tests. The interpreter is the reference, so the corpus test sets the two side by side: every file outside `rejects/` is built with `--tests` and must print exactly what `mo test` prints and exit as it exits, and every program is built from its own folder and, once per `# run:` line, must print the same stdout and stderr and exit with the same code as `mo run`. Processes and `Net` compile to C (step 15), and so does `Http` (step 16): the corpus's process files, `effects/net.mo`, `effects/http.mo`, `stdlib/http.mo`, `programs/echo`, `programs/kv`, and `programs/httpd` are built and compared like every other file, their tests in the fixed order and their programs over real sockets on 127.0.0.1.
 
@@ -33,6 +33,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 11. `basics/for.mo`: `for` over a range and a list, `break`, and why these are loops
 12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments
 61. `basics/returns-nothing.mo`: a function with no return type, called for what it writes, and a negative number as a pattern
+73. `basics/in-place.mo`: a field set on a var and a string grown by interpolation write in place (step 21), and a copy taken before either never sees it, as with `push`
 
 ## types
 13. `types/struct.mo`: named construction and the `var` copy update
@@ -95,6 +96,9 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 49. `rejects/hand-edited-verified.mo`: a `verified:` line written by hand
 50. `rejects/unsupervised-process.mo`: a process no supervisor names
 67. `rejects/captured-capability.mo`: a capability captured by an anonymous function (step 18)
+74. `rejects/one-line-if.mo`: an `if` on one line, as a value; `MO0101` shows the block form and `mo fix` writes it (step 21)
+75. `rejects/positional-variant.mo`: a variant matched by position; `MO0101` names its fields (step 21)
+76. `rejects/method-on-range-end.mo`: `0..60.map(...)`, whose `map` binds to 60; `MO0206` says so (step 21)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records

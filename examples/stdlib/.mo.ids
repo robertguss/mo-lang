@@ -24,6 +24,19 @@
       "verified": { "hash": "de657c2be21ef419", "declarations": "489b4c7b80ff49d0" }
     },
     {
+      "path": "fs-fixture-scope.mo",
+      "module": "Stdlib.FsFixtureScope",
+      "declarations": [
+        { "id": "9520ca71e346", "name": "module Stdlib.FsFixtureScope", "hash": "7610f3b2e7e296de" },
+        { "id": "6130e141797a", "name": "expose", "hash": "2a038a559649dcfa" },
+        { "id": "761e865d1046", "name": "intent", "hash": "6c179d7d5ff59bf8" },
+        { "id": "6d83390baa07", "name": "fn logs_in", "hash": "88367c532824c9fc" },
+        { "id": "e4f04ea6b9d5", "name": "test \"a scope that climbs out of its folder holds nothing, as on the real Fs\"", "hash": "672f18ce5805dda5" },
+        { "id": "7a8d40a8c8a7", "name": "test \"a program given a folder reads only what is inside it\"", "hash": "ceccc549e36b5517" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "2898da962026b54d" }
+    },
+    {
       "path": "http.mo",
       "module": "Stdlib.Http",
       "declarations": [

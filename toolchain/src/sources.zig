@@ -26,13 +26,15 @@
 //! while a simulated call waits, so a source with nothing to take waits, and `Idle` comes only
 //! when fixture calls have waited past its deadline. With faults, a source about to deliver
 //! can instead find its connection `Closed` or wait out its deadline (`Idle`), by the seed.
-//! Under `mo run` (Mo.Server), each source waits on one task at a time (an accept or a read),
-//! whose end wakes main's thread, and main's thread turns what came into messages each time it
-//! hands out turns (turns.zig, step).
+//! Under `mo run` (Mo.Server) sockets are nonblocking, and main's thread pumps only the sources
+//! that can do something (step 21): one just added, one whose socket the poller reported
+//! ready, one paused at its target's bound, and one whose idle time has run out, which a heap
+//! of deadlines finds. A source that has taken all there is arms the poller and waits.
 const std = @import("std");
 const Io = std.Io;
 const http = @import("http.zig");
 const net = @import("net.zig");
+const poller = @import("poller.zig");
 const sim_mod = @import("sim.zig");
 const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
@@ -65,6 +67,10 @@ pub fn headroom(bound: u32) u32 {
     return @min(4, bound / 2);
 }
 
+/// Under Mo.Server, how long a listener waits before accepting again after the system refused
+/// a connection for want of descriptors or memory.
+const refused_retry_ms: i64 = 100;
+
 pub const Source = struct {
     kind: Kind,
     /// The listener's handle (serve, http_serve) or the connection's (lines, request).
@@ -83,22 +89,32 @@ pub const Source = struct {
     parent: ?*Source = null,
     /// An http_serve source's requests still being read.
     inflight: u32 = 0,
-    /// Under Mo.Server: a connection accepted and not yet given, the task it waits on, and
-    /// what that task's end sets.
-    held: ?u32 = null,
-    waker: net.Waker = .{},
-    accepting: ?Io.Future(Io.net.Server.AcceptError!Io.net.Stream) = null,
-    reading: ?Io.Future(Io.net.Stream.Reader.Error!usize) = null,
+    /// Under Mo.Server: what the poller reports when its socket is ready.
+    waiter: poller.Waiter = .{ .fd = -1, .filter = .read },
+    /// Under Mo.Server: its place in Sources.list; in Sources.dirty, in Sources.paused; its
+    /// place in Sources.timers, when it has one.
+    index: usize = 0,
+    dirty: bool = false,
+    in_paused: bool = false,
+    timer: ?usize = null,
+    /// Under Mo.Server: a listener the system refused a connection waits until then.
+    retry_at: i64 = 0,
 };
+
+const Timer = struct { at: i64, source: *Source };
 
 pub const Sources = struct {
     list: std.ArrayList(*Source) = .empty,
     order: std.ArrayList(u32) = .empty,
-    /// Under Mo.Server: the earliest time a waiting source's idle time runs out, for main's
-    /// thread to wake at (turns.zig, idle).
-    deadline: ?i64 = null,
+    /// Under Mo.Server: the sources to pump next, the ones paused at their target's bound, and
+    /// a heap of idle deadlines, earliest first, one entry per source at most. An entry may be
+    /// earlier than its source's deadline, since `since` moves on; it is put back when it comes.
+    dirty: std.ArrayList(*Source) = .empty,
+    paused: std.ArrayList(*Source) = .empty,
+    timers: std.ArrayList(Timer) = .empty,
 
-    /// Whether any source can still deliver: under Mo.Server the run goes on while one can.
+    /// Whether any source can still deliver: under Mo.Server the run goes on while one can. A
+    /// source that is done leaves the list under Mo.Server; under Mo.Sim it stays, marked.
     pub fn active(s: *const Sources) bool {
         for (s.list.items) |x| if (!x.done) return true;
         return false;
@@ -163,7 +179,9 @@ pub fn row(vm: *Vm, kind: Kind, a: []const Value) Error!Value {
 fn add(sim: *Sim, source: Source) Error!*Source {
     const s = try std.heap.smp_allocator.create(Source);
     s.* = source;
+    s.index = sim.sources.list.items.len;
     try sim.sources.list.append(sim.gpa, s);
+    if (sim.server != null) try markDirty(&sim.sources, s);
     return s;
 }
 
@@ -340,246 +358,346 @@ fn compactInbound(c: *net.Fixture.FixtureConn) void {
 
 // ---- Mo.Server
 
-/// From main's thread, holding the turn: every task that ended becomes messages, idle times
-/// that ran out end their waits, and each source with room waits on its next task.
+fn markDirty(ss: *Sources, s: *Source) Error!void {
+    if (s.dirty or s.done) return;
+    s.dirty = true;
+    try ss.dirty.append(std.heap.smp_allocator, s);
+}
+
+/// The poller reported the socket `s` waits on (turns.zig, idle).
+pub fn fired(sim: *Sim, s: *Source) void {
+    markDirty(&sim.sources, s) catch {};
+}
+
+/// Whether a source can do something now, without waiting.
+pub fn hasWork(sim: *const Sim) bool {
+    return sim.sources.dirty.items.len > 0;
+}
+
+/// The earliest time a source's idle time, or a listener's retry, may run out.
+pub fn nextDeadline(sim: *const Sim) ?i64 {
+    const timers = sim.sources.timers.items;
+    return if (timers.len > 0) timers[0].at else null;
+}
+
+/// From main's thread, holding the turn: every source that can do something turns what it
+/// took into messages, and arms the poller when it has taken all there is.
 pub fn pumpServer(sim: *Sim, t: *Turns) Error!void {
-    if (sim.sources.list.items.len == 0) return;
-    var deadline: ?i64 = null;
-    // A request source an http_serve source adds is pumped in this same pass, since nothing
-    // else would wake main's thread for it; adding one may move the list, so each source is
-    // read from it again.
+    const ss = &sim.sources;
+    if (ss.list.items.len == 0) return;
+    const now = t.now();
+    while (ss.timers.items.len > 0 and ss.timers.items[0].at <= now) {
+        const s = ss.timers.items[0].source;
+        timerRemove(ss, s);
+        if (dueAt(s) <= now) try markDirty(ss, s) else try timerPush(ss, s, dueAt(s));
+    }
+    // A paused source looks at its target's mailbox again.
+    for (ss.paused.items) |s| try markDirty(ss, s);
+    // A request source an http_serve source adds is pumped in this same pass; the list may
+    // grow as it is read.
     var k: usize = 0;
-    while (k < sim.sources.list.items.len) : (k += 1) {
-        const s = sim.sources.list.items[k];
+    while (k < ss.dirty.items.len) : (k += 1) {
+        const s = ss.dirty.items[k];
+        s.dirty = false;
         if (s.done) continue;
         switch (s.kind) {
-            .serve, .http_serve => try serveServer(sim, t, s),
-            .lines => try linesServer(sim, t, s),
-            .request => try requestServer(sim, t, s),
+            .serve, .http_serve => try serveServer(sim, t, s, now),
+            .lines => try linesServer(sim, t, s, now),
+            .request => try requestServer(sim, t, s, now),
         }
-        if (s.done or s.paused) continue;
-        const at = s.since + s.idle_ms;
-        deadline = if (deadline) |d| @min(d, at) else at;
+        if (s.done) continue;
+        try settleSource(ss, s);
     }
-    sim.sources.deadline = deadline;
-    // Sources that ended give their slots back.
-    var kept: usize = 0;
-    for (sim.sources.list.items) |s| {
-        if (s.done and s.accepting == null and s.reading == null) {
-            std.heap.smp_allocator.destroy(s);
-            continue;
-        }
-        sim.sources.list.items[kept] = s;
-        kept += 1;
-    }
-    sim.sources.list.shrinkRetainingCapacity(kept);
+    // Sources that ended give their memory back once nothing holds them.
+    for (ss.dirty.items) |s| if (s.done) std.heap.smp_allocator.destroy(s);
+    ss.dirty.clearRetainingCapacity();
 }
 
-fn serveServer(sim: *Sim, t: *Turns, s: *Source) Error!void {
-    const n = &sim.server.?.sockets;
-    if (s.accepting) |*task| if (s.waker.done.isSet()) {
-        const got = task.await(n.io);
-        s.accepting = null;
-        if (got) |stream| {
-            const h = try n.adopt(stream);
-            n.conns.items[h].listener = s.handle;
-            s.held = h;
-        } else |_| {}
-    };
-    if (s.held) |h| {
-        if (s.kind == .http_serve) {
-            s.held = null;
-            s.inflight += 1;
-            s.since = t.now();
-            const r = try add(sim, .{ .kind = .request, .handle = h, .to = s.to, .idle_ms = s.idle_ms, .since = t.now(), .parent = s });
-            n.conns.items[h].lining = true;
-            _ = r;
-        } else if (sim.procs.items[s.to].up and room(sim, s, 0)) {
-            s.held = null;
-            s.since = t.now();
-            try send(sim, s.to, "Accepted", &.{.{ .cap = .{ .kind = .conn, .handle = h } }});
+/// When `s` must be looked at again with nothing reported: its idle time, or a retry.
+fn dueAt(s: *const Source) i64 {
+    return if (s.retry_at > s.since + s.idle_ms or s.paused) s.retry_at else s.since + s.idle_ms;
+}
+
+/// After a pump: a paused source is in the paused list and has no deadline; any other has one.
+fn settleSource(ss: *Sources, s: *Source) Error!void {
+    const gpa = std.heap.smp_allocator;
+    if (s.paused) {
+        if (!s.in_paused) {
+            s.in_paused = true;
+            try ss.paused.append(gpa, s);
         }
+        if (s.timer != null and s.retry_at == 0) timerRemove(ss, s);
+        return;
     }
-    const extra = s.inflight;
-    if (s.held == null and s.accepting == null and room(sim, s, extra)) {
-        const l = n.listeners.items[s.handle];
-        s.waker = .{ .main = &t.main_wake };
-        s.accepting = n.io.concurrent(net.acceptTask, .{ n.io, &l.server, &s.waker }) catch null;
+    if (s.in_paused) leavePaused(ss, s);
+    if (s.timer == null) try timerPush(ss, s, dueAt(s));
+}
+
+fn leavePaused(ss: *Sources, s: *Source) void {
+    s.in_paused = false;
+    for (ss.paused.items, 0..) |x, i| if (x == s) {
+        _ = ss.paused.swapRemove(i);
+        return;
+    };
+}
+
+/// `s` is done: it stops being watched, leaves every list, and is destroyed at the end of the
+/// pump (it is in the dirty list then).
+fn retire(sim: *Sim, t: *Turns, s: *Source) void {
+    const ss = &sim.sources;
+    s.done = true;
+    if (t.poller) |*p| p.disarm(&s.waiter);
+    if (s.in_paused) leavePaused(ss, s);
+    if (s.timer != null) timerRemove(ss, s);
+    const last = ss.list.pop().?;
+    if (last != s) {
+        ss.list.items[s.index] = last;
+        last.index = s.index;
+    }
+}
+
+fn watch(t: *Turns, s: *Source, fd: std.posix.fd_t) void {
+    const p = t.pollerOf() catch return;
+    if (s.waiter.armed and s.waiter.fd == fd) return;
+    p.disarm(&s.waiter);
+    s.waiter = .{ .fd = fd, .filter = .read, .source = s };
+    _ = p.arm(&s.waiter);
+}
+
+fn serveServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
+    const n = &sim.server.?.sockets;
+    const fd = n.listeners.items[s.handle].server.socket.handle;
+    while (now >= s.retry_at and sim.procs.items[s.to].up and room(sim, s, s.inflight)) {
+        switch (net.acceptOne(fd)) {
+            .ok => |conn| {
+                const h = try n.adopt(conn);
+                n.conns.items[h].listener = s.handle;
+                s.since = now;
+                if (s.kind == .http_serve) {
+                    s.inflight += 1;
+                    n.conns.items[h].lining = true;
+                    _ = try add(sim, .{ .kind = .request, .handle = h, .to = s.to, .idle_ms = s.idle_ms, .since = now, .parent = s });
+                } else {
+                    try send(sim, s.to, "Accepted", &.{.{ .cap = .{ .kind = .conn, .handle = h } }});
+                }
+            },
+            .again => {
+                watch(t, s, fd);
+                break;
+            },
+            // Out of descriptors or memory: the connection waits in the kernel's queue.
+            .busy => {
+                s.retry_at = now + refused_retry_ms;
+                if (s.timer != null) timerRemove(&sim.sources, s);
+                break;
+            },
+            .closed => break,
+        }
     }
     if (s.paused) {
-        s.since = t.now();
-    } else if (t.now() - s.since >= s.idle_ms and room(sim, s, extra)) {
+        s.since = now;
+    } else if (now - s.since >= s.idle_ms and room(sim, s, s.inflight)) {
         try send(sim, s.to, "Idle", &.{});
-        s.since = t.now();
+        s.since = now;
     }
 }
 
-/// Makes room in `c`'s buffer for the next read, as Net.fill does: false when it is full.
-fn roomToRead(c: *net.Conn, initial: usize, cap: usize) Error!bool {
-    if (c.start > 0) {
-        std.mem.copyForwards(u8, c.buf, c.buf[c.start..c.end]);
-        c.end -= c.start;
-        c.start = 0;
-    }
-    if (c.end < c.buf.len) return true;
-    if (c.buf.len >= cap) return false;
-    const size = if (c.buf.len == 0) initial else @min(cap, 2 * c.buf.len);
-    const grown = std.heap.page_allocator.alloc(u8, size) catch return error.OutOfMemory;
-    @memcpy(grown[0..c.end], c.buf[0..c.end]);
-    if (c.buf.len > 0) std.heap.page_allocator.free(c.buf);
-    c.buf = grown;
-    return true;
-}
-
-/// A read task that ended: what it read is in the buffer. Null while it has not ended;
-/// false when the stream broke or this side closed the connection.
-fn readEnded(n: *net.Net, s: *Source, c: *net.Conn) ?bool {
-    const task = &(s.reading orelse return true);
-    if (!s.waker.done.isSet()) return null;
-    const got = task.await(n.io);
-    s.reading = null;
-    c.reading = false;
-    if (c.closed) {
-        n.release(c);
-        return false;
-    }
-    const k = got catch {
-        n.close(c);
-        return false;
-    };
-    if (k == 0) c.eof = true else c.end += k;
-    return true;
-}
-
-/// Ends the read `s` waits on, when its idle time ran out: true when it did.
-fn idleOut(n: *net.Net, t: *Turns, s: *Source, c: *net.Conn) bool {
-    if (s.reading == null or t.now() - s.since < s.idle_ms) return false;
-    _ = s.reading.?.cancel(n.io) catch 0;
-    s.reading = null;
-    c.reading = false;
-    return true;
-}
-
-fn startRead(n: *net.Net, t: *Turns, s: *Source, c: *net.Conn) void {
-    s.waker = .{ .main = &t.main_wake };
-    c.reading = true;
-    s.reading = n.io.concurrent(net.readTask, .{ n.io, c.stream, c.buf[c.end..], &s.waker }) catch blk: {
-        c.reading = false;
-        break :blk null;
-    };
-}
-
-fn linesServer(sim: *Sim, t: *Turns, s: *Source) Error!void {
+fn linesServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
     const n = &sim.server.?.sockets;
     const c = n.conns.items[s.handle];
-    const ended = readEnded(n, s, c) orelse {
-        if (!s.paused and idleOut(n, t, s, c)) {
-            try send(sim, s.to, "Idle", &.{});
-            n.close(c);
-            s.done = true;
-        }
-        return;
-    };
-    if (!ended) {
-        if (!c.closed or c.released) {
-            // The stream broke: the other side's end, as far as the process can tell.
-            if (sim.procs.items[s.to].up) try send(sim, s.to, "Closed", &.{});
-        }
-        s.done = true;
-        return;
-    }
     if (c.closed) {
         n.release(c);
-        s.done = true;
-        return;
+        return retire(sim, t, s);
     }
     if (!sim.procs.items[s.to].up) {
         n.close(c);
-        s.done = true;
-        return;
+        return retire(sim, t, s);
     }
-    while (room(sim, s, 0)) {
-        switch (c.scan()) {
-            .line => |line| try send(sim, s.to, "Line", &.{try text(sim, line)}),
-            .too_long => try send(sim, s.to, "LineTooLong", &.{}),
-            .end => {
-                try send(sim, s.to, "Closed", &.{});
-                s.done = true;
-                return;
-            },
-            .more => break,
+    while (true) {
+        while (room(sim, s, 0)) {
+            switch (c.scan()) {
+                .line => |line| try send(sim, s.to, "Line", &.{try text(sim, line)}),
+                .too_long => try send(sim, s.to, "LineTooLong", &.{}),
+                .end => {
+                    try send(sim, s.to, "Closed", &.{});
+                    return retire(sim, t, s);
+                },
+                .more => break,
+            }
+            s.since = now;
         }
-        s.since = t.now();
+        if (s.paused) {
+            s.since = now;
+            return;
+        }
+        // A line too long is taken before the buffer fills, so there is always room to read.
+        _ = try c.roomToRead(net.buffer_initial, 2 * net.line_limit);
+        switch (net.readOne(c.fd(), c.buf[c.end..])) {
+            .done => |k| if (k == 0) {
+                c.eof = true;
+            } else {
+                c.end += k;
+            },
+            .again => break,
+            .broke => {
+                // The stream broke: the other side's end, as far as the process can tell.
+                n.close(c);
+                try send(sim, s.to, "Closed", &.{});
+                return retire(sim, t, s);
+            },
+        }
     }
-    if (s.paused) {
-        s.since = t.now();
-        return;
+    if (now - s.since >= s.idle_ms) {
+        try send(sim, s.to, "Idle", &.{});
+        n.close(c);
+        return retire(sim, t, s);
     }
-    // A line too long is taken before the buffer fills, so there is always room to read.
-    if (try roomToRead(c, 2 * net.line_limit, 2 * net.line_limit)) startRead(n, t, s, c);
+    c.giveBack();
+    watch(t, s, c.fd());
 }
 
-fn requestServer(sim: *Sim, t: *Turns, s: *Source) Error!void {
+fn requestServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
     const n = &sim.server.?.sockets;
     const c = n.conns.items[s.handle];
-    const parent = s.parent.?;
-    const ended = readEnded(n, s, c) orelse {
-        if (idleOut(n, t, s, c)) {
-            n.close(c);
-            finishRequest(s, parent);
-        }
-        return;
-    };
-    if (!ended) return finishRequest(s, parent);
-    switch (http.parse(c.buf[c.start..c.end], c.eof, .request)) {
-        .whole => |m| {
-            const bytes = try n.gpa.dupe(u8, c.buf[c.start .. c.start + m.len]);
-            c.start += m.len;
-            c.lining = false;
-            try n.exchanges.append(n.gpa, .{ .conn = s.handle, .request = bytes });
-            const handle: u32 = @intCast(n.exchanges.items.len - 1);
-            finishRequest(s, parent);
-            if (!sim.procs.items[s.to].up) {
-                n.exchanges.items[handle].forget(n.gpa);
+    while (true) {
+        switch (http.parse(c.buf[c.start..c.end], c.eof, .request)) {
+            .whole => |m| {
+                const bytes = try n.gpa.dupe(u8, c.buf[c.start .. c.start + m.len]);
+                c.start += m.len;
+                c.lining = false;
+                try n.exchanges.append(n.gpa, .{ .conn = s.handle, .request = bytes });
+                const handle: u32 = @intCast(n.exchanges.items.len - 1);
+                finishRequest(sim, t, s);
+                if (!sim.procs.items[s.to].up) {
+                    n.exchanges.items[handle].forget(n.gpa);
+                    n.close(c);
+                    return;
+                }
+                return send(sim, s.to, "Accepted", &.{.{ .cap = .{ .kind = .exchange, .handle = handle } }});
+            },
+            .failed => |why| {
+                if (http.refusal(why)) |refused| _ = net.writeOne(c.fd(), refused);
                 n.close(c);
-                return;
-            }
-            try send(sim, s.to, "Accepted", &.{.{ .cap = .{ .kind = .exchange, .handle = handle } }});
-        },
-        .failed => |why| {
-            if (http.refusal(why)) |refused| _ = std.posix.system.write(c.stream.socket.handle, refused.ptr, refused.len);
+                return finishRequest(sim, t, s);
+            },
+            .more => {},
+        }
+        if (c.closed or c.eof) {
+            if (c.closed) n.release(c) else n.close(c);
+            return finishRequest(sim, t, s);
+        }
+        if (!try c.roomToRead(http.buffer_initial, http.buffer_cap)) {
+            if (http.refusal(.TooLarge)) |refused| _ = net.writeOne(c.fd(), refused);
             n.close(c);
-            finishRequest(s, parent);
-        },
-        .more => {
-            if (try roomToRead(c, http.buffer_initial, http.buffer_cap)) return startRead(n, t, s, c);
-            if (http.refusal(.TooLarge)) |refused| _ = std.posix.system.write(c.stream.socket.handle, refused.ptr, refused.len);
-            n.close(c);
-            finishRequest(s, parent);
-        },
+            return finishRequest(sim, t, s);
+        }
+        switch (net.readOne(c.fd(), c.buf[c.end..])) {
+            .done => |k| if (k == 0) {
+                c.eof = true;
+            } else {
+                c.end += k;
+            },
+            .again => break,
+            .broke => {
+                n.close(c);
+                return finishRequest(sim, t, s);
+            },
+        }
     }
+    if (now - s.since >= s.idle_ms) {
+        n.close(c);
+        return finishRequest(sim, t, s);
+    }
+    watch(t, s, c.fd());
 }
 
-fn finishRequest(s: *Source, parent: *Source) void {
-    s.done = true;
-    parent.inflight -= 1;
+fn finishRequest(sim: *Sim, t: *Turns, s: *Source) void {
+    s.parent.?.inflight -= 1;
+    retire(sim, t, s);
 }
 
-/// The run is over, or main called exit and returned: every source stops, its task ended.
+/// The run is over, or main called exit and returned: every source stops.
 pub fn stopServer(sim: *Sim, t: *Turns) void {
-    const server = sim.server orelse return;
-    const n = &server.sockets;
-    for (sim.sources.list.items) |s| {
-        if (s.accepting) |*task| {
-            if (task.cancel(t.io)) |stream| stream.close(t.io) else |_| {}
-            s.accepting = null;
-        }
-        if (s.reading) |*task| {
-            _ = task.cancel(t.io) catch 0;
-            s.reading = null;
-            n.conns.items[s.handle].reading = false;
-        }
+    if (sim.server == null) return;
+    const s_ = &sim.sources;
+    for (s_.list.items) |s| {
+        if (t.poller) |*p| p.disarm(&s.waiter);
         s.done = true;
+        if (!s.dirty) std.heap.smp_allocator.destroy(s);
     }
-    sim.sources.deadline = null;
+    s_.list.clearRetainingCapacity();
+    s_.paused.clearRetainingCapacity();
+    s_.timers.clearRetainingCapacity();
+}
+
+// ---- the deadline heap
+
+fn timerPush(sources: *Sources, s: *Source, at: i64) Error!void {
+    const i = sources.timers.items.len;
+    try sources.timers.append(std.heap.smp_allocator, .{ .at = at, .source = s });
+    s.timer = i;
+    siftUp(sources, i);
+}
+
+fn timerRemove(sources: *Sources, s: *Source) void {
+    const i = s.timer orelse return;
+    s.timer = null;
+    const last = sources.timers.pop().?;
+    if (i == sources.timers.items.len) return;
+    sources.timers.items[i] = last;
+    last.source.timer = i;
+    siftDown(sources, i);
+    siftUp(sources, i);
+}
+
+fn swapTimers(sources: *Sources, a: usize, b: usize) void {
+    const items = sources.timers.items;
+    std.mem.swap(Timer, &items[a], &items[b]);
+    items[a].source.timer = a;
+    items[b].source.timer = b;
+}
+
+fn siftUp(sources: *Sources, start: usize) void {
+    var i = start;
+    while (i > 0) {
+        const parent = (i - 1) / 2;
+        if (sources.timers.items[parent].at <= sources.timers.items[i].at) return;
+        swapTimers(sources, i, parent);
+        i = parent;
+    }
+}
+
+fn siftDown(sources: *Sources, start: usize) void {
+    var i = start;
+    const items = sources.timers.items;
+    while (true) {
+        var least = i;
+        const l = 2 * i + 1;
+        const r = l + 1;
+        if (l < items.len and items[l].at < items[least].at) least = l;
+        if (r < items.len and items[r].at < items[least].at) least = r;
+        if (least == i) return;
+        swapTimers(sources, i, least);
+        i = least;
+    }
+}
+
+test "the deadline heap gives the earliest first and removes from the middle" {
+    var sources: Sources = .{};
+    defer sources.timers.deinit(std.heap.smp_allocator);
+    var xs: [8]Source = undefined;
+    const ats = [_]i64{ 50, 10, 70, 30, 20, 80, 60, 40 };
+    for (&xs, ats) |*x, at| {
+        x.* = .{ .kind = .lines, .handle = 0, .to = 0, .idle_ms = 0, .since = 0 };
+        try timerPush(&sources, x, at);
+    }
+    timerRemove(&sources, &xs[3]); // 30
+    var got: std.ArrayList(i64) = .empty;
+    defer got.deinit(std.testing.allocator);
+    while (sources.timers.items.len > 0) {
+        const top = sources.timers.items[0];
+        try got.append(std.testing.allocator, top.at);
+        timerRemove(&sources, top.source);
+    }
+    try std.testing.expectEqualSlices(i64, &.{ 10, 20, 40, 50, 60, 70, 80 }, got.items);
 }

@@ -80,7 +80,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .expose_undeclared = .{ .code = "MO0203", .category = .types, .what = "<name> is exposed but not declared in this module", .why = "The expose line is the module's table of contents; every name on it must be declared in the module (grammar, semantic rules).", .fixes = &.{} },
     .expose_twice = .{ .code = "MO0204", .category = .types, .what = "<name> is on the expose line twice", .why = "The expose line names each public declaration exactly once.", .fixes = &.{} },
     .declared_twice = .{ .code = "MO0205", .category = .types, .what = "<name> is declared twice in this module", .why = "One name means one declaration in a module, so a reader never has to ask which one a call reaches.", .fixes = &.{} },
-    .mismatch = .{ .code = "MO0206", .category = .types, .what = "expected <Type>, found <Type>", .why = "Mo has no implicit conversion: a value is used only where its type is expected. Named conversions cross types.", .fixes = &.{} },
+    .mismatch = .{ .code = "MO0206", .category = .types, .what = "expected <Type>, found <Type>", .why = "Mo has no implicit conversion: a value is used only where its type is expected. Named conversions cross types. A call binds tighter than an operator, so 0..60.map(f) calls map on 60, not on the range: write (0..60).map(f).", .fixes = &.{} },
     .arity = .{ .code = "MO0207", .category = .types, .what = "<function> takes <n> arguments, found <m>", .why = "Every parameter is passed at every call, and nothing else is: there are no defaults and no optional arguments.", .fixes = &.{} },
     .no_member = .{ .code = "MO0208", .category = .types, .what = "<Type> has no field or function named <name>", .why = "x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.", .fixes = &.{} },
     .bad_named_arg = .{ .code = "MO0209", .category = .types, .what = "<function> takes its arguments by position; <label>: is not one of them", .why = "Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.", .fixes = &.{} },
@@ -2754,6 +2754,20 @@ const Checker = struct {
                 return types.bool_;
             },
             .range => {
+                // A method called on a literal at either end binds to the literal, not to the
+                // range (step 21, round 4's MO0206): said at once, before its types mislead.
+                for ([_]Index{ n.lhs, n.rhs }) |side| {
+                    const sn = c.node(side);
+                    if (sn.kind != .member_call) continue;
+                    const recv = c.node(sn.lhs);
+                    if (recv.kind != .int_lit and recv.kind != .float_lit) continue;
+                    const lit = c.text(recv.main_token);
+                    const range_text = if (side == n.rhs) try c.print("{s}..{s}", .{ c.text(c.node(n.lhs).main_token), lit }) else try c.print("{s}..", .{lit});
+                    try c.reportTok(.mismatch, sn.main_token, try c.print("expected the range, found `.{s}` called on {s}: a call binds tighter than `..`; write ({s}).{s}(...)", .{ c.text(sn.main_token), lit, range_text, c.text(sn.main_token) }));
+                    _ = try c.expr(n.lhs, types.unknown);
+                    _ = try c.expr(n.rhs, types.unknown);
+                    return c.pool.list1(.list, try c.pool.fresh(true));
+                }
                 const v = try c.pool.fresh(true);
                 _ = try c.expr(n.lhs, v);
                 _ = try c.expr(n.rhs, v);

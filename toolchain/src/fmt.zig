@@ -2129,6 +2129,8 @@ test "every corpus file: formatting is idempotent and keeps the tree" {
         defer arena_state.deinit();
         const arena = arena_state.allocator();
         const source = try dir.readFileAlloc(io, rel, arena, .limited(1 << 20));
+        // A rejects file that expects a syntax code does not parse, by design (step 21).
+        if (corpus.isRejectsPath(rel)) if (corpus.expectedCode(source)) |code| if (std.mem.startsWith(u8, code, "MO01")) continue;
         var diags: diag.List = .empty;
         const once = format(arena, source, &diags) catch |err| {
             for (diags.items) |d| std.debug.print("fmt: {s} at byte {d}: {s} {s}\n", .{ rel, d.at, d.code, d.what });

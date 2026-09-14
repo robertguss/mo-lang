@@ -104,14 +104,14 @@ test "a template matches the sentence it describes, and only that" {
     try std.testing.expect(!matches("<name> is bound but never used.", "discount is bound twice."));
 }
 
-test "one row per code, each with a what and a why; mo fix handles MO0307, MO0312, and MO0501" {
+test "one row per code, each with a what and a why; mo fix handles MO0101, MO0307, MO0312, and MO0501" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const all = try rows(arena_state.allocator());
     for (all, 0..) |e, i| {
         if (i > 0) try std.testing.expect(std.mem.lessThan(u8, all[i - 1].code, e.code));
         try std.testing.expect(e.what.len > 0 and e.why.len > 0);
-        const fixed = std.mem.eql(u8, e.code, "MO0307") or std.mem.eql(u8, e.code, "MO0312") or std.mem.eql(u8, e.code, "MO0501");
+        const fixed = std.mem.eql(u8, e.code, "MO0101") or std.mem.eql(u8, e.code, "MO0307") or std.mem.eql(u8, e.code, "MO0312") or std.mem.eql(u8, e.code, "MO0501");
         try std.testing.expectEqual(fixed, e.fixes.len > 0);
     }
 }
