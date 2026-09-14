@@ -36,8 +36,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Round 6 of the control run, pre-registered ([[control-run-6]]), the baselines with their checks | done: **failed on all four predictions**; the null hypothesis stands; three rows for Robert | — |
 | Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | done | — |
 | Round 7 ([[control-run-7]]), on Robert's measure | done: **held on all four**; reliability level at 0 defects each; Mo fastest at 32 workers, slowest to restart; the loop 0.38 s; 0 dependencies | — |
-| Step 28, round 7's toolchain notes: the map write that copies the whole map, the tuple `reduce`, resident memory, the `never` rule's `if` gap, replay speed, six gaps | next | 1 |
-| Program 6, the ledger | queued | 2 |
+| Step 28, round 7's toolchain notes ([[interpreter-step-28]]): the map write that copies the whole map, the tuple `reduce`, resident memory, the `never` rule's `if` gap, replay speed, six gaps | in progress | 1 |
+| Program 6, the ledger ([[program-6]], spec written 14 Sep) | queued, after step 28 | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, a real open-source service reimplemented in Mo against its own test suite, chosen so the original carries third-party dependencies and the Mo version exercises capabilities, recipes, and the runtime surface (Robert, 14 Sep; the thesis restated) | after program 6 passes the readiness rule (no new gap or bug note) | 2 |
 | Program 8, the toolchain in Mo | late | — |
