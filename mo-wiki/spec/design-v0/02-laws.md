@@ -10,7 +10,7 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 
 ## Bounding laws
 
-- Loops iterate a finite collection or a range. No `while`, no `loop`. Recursion: structural only, proved terminating; to be confirmed in the interpreter.
+- Loops iterate a finite collection or a range. No `while`, no `loop`; a wait that would need one is a message the runtime delivers (chapter 3, step 20). Recursion is bounded by depth: calls nest at most 10,000 deep, past which the process crashes with a report, in every build. Termination is a proof obligation for `mo prove`, never a syntax rule.
 - Every effectful call that can wait carries a deadline (`within:`) and returns a `Result`; the platform marks which calls can wait (`clock.now` and `events.emit` cannot). Timeout is an ordinary error variant the caller must handle.
 - Every mailbox has a declared bound. Overflow is a bug (see chapter 3).
 - Integers are explicitly sized. Overflow is a bug and crashes, in every build. Named `checked_`, `saturating_`, `wrapping_` variants state any other intent.
@@ -40,3 +40,5 @@ Ruby offers five ways to write everything. Mo offers one. Column limits, indent 
 The rules above already reflect this; this section is the changelog.
 
 Claude (session 5, deciding on Robert's instruction): the deadline law now reads "every effectful call that can wait". The corpus showed that `clock.now(within: 10.ms)` returning a `Result` made every clock read a `try`, and chapter 4 had never written it that way. First tested by `Mo.Sim`, which marks which operations wait.
+
+Fable (session 5, night, after the research agenda's Dijkstra and SPARK pages): the recursion line said "structural only, proved terminating", which no stage ever checked; since step 18 the toolchain bounds depth at 10,000 and crashes. The law now says that, and names termination as `mo prove`'s obligation. First tested by program 1.

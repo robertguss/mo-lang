@@ -36,6 +36,7 @@ The control run is the run's Experiment 1, the null hypothesis, at the smallest 
 
 - Round 5 is pre-registered: thresholds written on its plan page before it runs, following the run's committed shape (success at least 5 points higher, defects at least 15 percent lower, iterations no more than 15 percent higher, all three or it is "mixed").
 - Every round records tokens per attempt and separates the amortized preamble from the marginal task cost, as the run's Experiment 6 does.
+- Every round records loops to green by cause (a law, a grammar form, a diagnostic, a test mistake, a real bug) and whether the worker wrote Mo directly or wrote a generator for it, since the LLM-facing literature found strong models routing around low-resource languages ([[language-design-for-llms-evidence]]); rounds 2 to 4 wrote Mo directly (Fable, 13 Sep night, [[research-agenda-2026-09-response]]).
 - The baselines get their bolted-on checks: Go with `staticcheck` and a contracts library, Python with `pydantic` and `returns`; otherwise the comparison is Mo against nothing.
 - The feature ablation is the first experiment worth a worker: six flags, the corpus's programs, three models, one week.
 - Spec-altitude review, the premise itself, is the experiment that needs people, and it waits for a public Mo.
