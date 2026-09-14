@@ -61,23 +61,28 @@ end
 
 # Each live run process: its id, the run and step its state showed when last read (a run waiting in
 # a call is read only once the call ends, so the run is the one learned before), what its last update
-# says it is doing now, and the call it waits in.
+# says it is doing now, and the call it waits in. Every run's last update is read first, right after
+# the list, so what a run is doing agrees with the call the list shows it waiting in; the states,
+# which may each wait 20 ms, are read after.
 fn runs_view(runtime: Runtime, known: Map(UInt64, String)) : View
+  runs = runtime.processes(within: 5_000.ms).filter(fn(info) info.name == "Run" and info.alive end)
+  var doings = [""].take(0)
+  for info in runs
+    doings = doings.push(doing_after(last_message(runtime.recent(info.id, 16, within: 1_000.ms))))
+  end
   var learned = known
   var rows = [""].take(0)
-  for info in runtime.processes(within: 5_000.ms)
-    if info.name == "Run" and info.alive
-      read = case runtime.state(info.id, within: 20.ms)
-        Ok(text): text
-        Error(_): ""
-      end
-      run = quoted_after(read, "id: \"")
-      if run != ""
-        learned = learned.set(info.id, run)
-      end
-      doing = doing_after(last_message(runtime.recent(info.id, 16, within: 1_000.ms)))
-      rows = rows.push(run_row(info, learned.get(info.id) or "", word_after(read, ", n: "), doing))
+  for pair in runs.zip(doings)
+    read = case runtime.state(pair.0.id, within: 20.ms)
+      Ok(text): text
+      Error(_): ""
     end
+    run = quoted_after(read, "id: \"")
+    if run != ""
+      learned = learned.set(pair.0.id, run)
+    end
+    rows = rows.push(run_row(pair.0, learned.get(pair.0.id) or "", word_after(read, ", n: "),
+      pair.1))
   end
   View(response: json(200, "{\"runs\": [#{String.join(rows, ", ")}]}"), known: learned)
 end
