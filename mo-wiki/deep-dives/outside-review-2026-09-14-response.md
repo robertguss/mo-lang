@@ -46,6 +46,7 @@ The review ([[outside-review-2026-09-14]]) read the vault as it stood before ste
 The review says the vault frames "agents write better code with the compiler as teacher" while building "an agent-native runtime with capabilities, supervision, events, and a language shaped to expose it". Accurate. Robert's reframing of 14 Sep already moved toward the second. If the second is the thesis, chapter 1 says so, program 7 is chosen for it, and the control run's competitor becomes the BEAM rather than Go with contracts bolted on. Put to Robert as one question the same afternoon.
 
 ## Related
+- [[reading-pack-2026-09]]
 - [[outside-review-2026-09-14]]
 - [[outside-review-2026-09-13-response]]
 - [[control-run-6]]
