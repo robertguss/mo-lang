@@ -26,8 +26,9 @@ pub fn noneAdmitted(gpa: std.mem.Allocator, type_name: []const u8) error{OutOfMe
 /// MO_DEPTH_LIMIT, the same number), so recursion that does not end is a Mo crash and never
 /// a stack overflow.
 pub const depth_limit: u32 = 10_000;
-/// The stack of every thread `mo` runs Mo code on (main.zig, turns.zig): room for
-/// `depth_limit` nested calls of the vm, whose frames are larger than a built binary's.
+/// The stack `mo` runs Mo code on, main's thread's and each fiber's (main.zig, turns.zig): room
+/// for `depth_limit` nested calls of the vm, whose frames are larger than a built binary's. A
+/// fiber reserves it and commits only the pages its update touches.
 pub const vm_stack_bytes: usize = 256 << 20;
 
 /// The report's sentence for the call past `depth_limit`, into `name`.

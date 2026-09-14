@@ -48,6 +48,8 @@ pub const log_kept = 16;
 /// Region bytes a process may leave behind past twice what its last full compaction kept
 /// before its region is compacted whole (settleRegion).
 pub const full_budget: usize = 4 << 20;
+/// The most address space a process's region grows to (settleRegion).
+pub const max_region: usize = 16 << 30;
 
 pub const Fault = enum { timeout, missing, closed };
 
@@ -504,6 +506,7 @@ pub const Sim = struct {
         const seq = sim.next_seq;
         sim.next_seq += 1;
         try sim.procs.items[to].mailbox.append(sim.gpa, .{ .message = message, .seq = seq, .parcel = parcel });
+        if (sim.turns) |t| try t.markRunnable(to);
         if (sim.schedule != null) try sim.trace.append(sim.gpa, .{ .from = from, .to = to, .message = message, .took = false });
         return seq;
     }
@@ -646,6 +649,12 @@ pub const Sim = struct {
         if (r.top - r.base > 2 * vm.full_kept + full_budget) {
             try vm.compact(r.base, &roots);
             vm.full_kept = r.top - r.base;
+            // A process region keeps what its state reaches in a quarter of its reservation at
+            // most; past that it moves into one four times as large (step 21). main's never moves.
+            if (sim.turns != null and 4 * vm.full_kept > r.end - r.base) {
+                try vm.relocate(@min(4 * (r.end - r.base), max_region), &roots);
+                vm.full_kept = r.top - r.base;
+            }
         }
         sim.procs.items[id].state = roots[0];
     }

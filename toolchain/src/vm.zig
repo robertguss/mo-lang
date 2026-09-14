@@ -106,9 +106,12 @@ pub const Parcel = struct {
     }
 };
 
-/// How many calls this thread is inside (contracts.depth_limit). Per thread, since each process
-/// under `mo run` runs on a thread of its own and gives up its turn in the middle of a call.
-threadlocal var call_depth: u32 = 0;
+/// How many calls this thread is inside (contracts.depth_limit). Per thread, since the runner
+/// runs tests on threads; under `mo run` each process's update runs on a fiber, which saves and
+/// restores it when it gives up the thread in the middle of a call (turns.zig).
+pub threadlocal var call_depth: u32 = 0;
+/// The deepest call_depth reached since a fiber's job began (turns.zig, deliverOn).
+pub threadlocal var call_high: u32 = 0;
 
 pub const Vm = struct {
     /// Reports, rendered values, and the vm's own lists: everything that is not a value.
@@ -274,6 +277,7 @@ pub const Vm = struct {
         }
         call_depth += 1;
         defer call_depth -= 1;
+        if (call_depth > call_high) call_high = call_depth;
         const frame = vm.mark();
         const locals = try vm.allocValues(f.locals);
         @memcpy(locals[0..args.len], args);
@@ -574,6 +578,29 @@ pub const Vm = struct {
         try vm.copyRoots(roots, below, .{ .lo = s.base, .hi = s.top, .dest = r.allocator(), .moves = true, .fresh = true });
         vm.dropGrowth(s.base, s.end);
         for (below) |*e| e.at = r.top;
+    }
+
+    /// Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the
+    /// old one's place, and releases the old. Only where nothing but `roots` reaches into the
+    /// region: after a process's update, whose new state is the one root (sim.zig, settleRegion).
+    /// A reservation the system will not give leaves the region where it is.
+    pub fn relocate(vm: *Vm, size: usize, roots: []Value) Error!void {
+        const r = vm.region.?;
+        const s = vm.scratch.?;
+        var fresh = Region.reserveUpTo(size) catch return;
+        if (fresh.end - fresh.base <= r.end - r.base) return fresh.release();
+        s.top = s.base;
+        vm.forward.clearRetainingCapacity();
+        try vm.copyRoots(roots, &.{}, .{ .lo = r.base, .hi = r.top, .dest = s.allocator(), .moves = true });
+        vm.dropGrowth(r.base, r.end);
+        // Every remembered slot was in the old region.
+        vm.remembered.clearRetainingCapacity();
+        vm.forward.clearRetainingCapacity();
+        try vm.copyRoots(roots, &.{}, .{ .lo = s.base, .hi = s.top, .dest = fresh.allocator(), .moves = true, .fresh = true });
+        vm.dropGrowth(s.base, s.end);
+        var old = r.*;
+        r.* = fresh;
+        old.release();
     }
 
     fn copyRoots(vm: *Vm, roots: []Value, slots: []const Remembered, c: Copy) Error!void {
@@ -1953,4 +1980,36 @@ test "closures, patterns, strings, and try" {
     try std.testing.expect(equal(gone, try callNamed(&vm, "up", &.{gone})));
     const doubled = try callNamed(&vm, "up", &.{try vm.variant("Ok", &.{.{ .int = 4 }})});
     try std.testing.expectEqual(@as(i128, 8), doubled.variant.fields[0].int);
+}
+
+test "a region moves whole into a larger reservation, and every value it held reads the same there" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var values = try Region.reserveUpTo(256 << 20);
+    defer values.release();
+    var scratch = try Region.reserveUpTo(256 << 20);
+    defer scratch.release();
+    var vm: Vm = .init(arena, undefined, 0);
+    vm.useRegions(&values, &scratch);
+    const old_base = values.base;
+    const items = try rawAlloc(vm.heap, Value, 1000);
+    for (items, 0..) |*item, i| {
+        const text = try std.fmt.allocPrint(vm.heap, "item {d}", .{i});
+        item.* = .{ .tuple = try rawDupe(vm.heap, Value, &.{ .{ .string = text }, .{ .int = @intCast(i) } }) };
+    }
+    var roots = [_]Value{.{ .list = items }};
+    try vm.relocate(1 << 30, &roots);
+    try std.testing.expect(values.base != old_base);
+    try std.testing.expect(values.end - values.base > 256 << 20);
+    try std.testing.expect(values.contains(@intFromPtr(roots[0].list.ptr)));
+    for (roots[0].list, 0..) |item, i| {
+        var buf: [16]u8 = undefined;
+        try std.testing.expectEqualStrings(try std.fmt.bufPrint(&buf, "item {d}", .{i}), item.tuple[0].string);
+        try std.testing.expect(values.contains(@intFromPtr(item.tuple[0].string.ptr)));
+        try std.testing.expectEqual(@as(i128, @intCast(i)), item.tuple[1].int);
+    }
+    // The region goes on allocating after what it kept.
+    const more = try rawAlloc(vm.heap, Value, 4);
+    try std.testing.expect(values.contains(@intFromPtr(more.ptr)));
 }

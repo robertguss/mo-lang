@@ -27,6 +27,12 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#define MO_KQUEUE 1
+#include <sys/event.h>
+#elif defined(__linux__)
+#include <sys/epoll.h>
+#endif
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -486,6 +492,31 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     copy_roots(roots, n, below, nbelow, &back);
     drop_growth(scratch.base, scratch.end);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
+}
+
+/* Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the heap's
+ * place, and releases the old one. Only where nothing but `roots` reaches into the heap: after a
+ * process's update, whose new state is the one root (settle_region; vm.zig, relocate). */
+static void relocate_heap(size_t size, MoValue *roots, size_t n) {
+    MoRegion fresh;
+    if (!reserve_up_to(&fresh, size)) return;
+    if (fresh.end - fresh.base <= mo_heap.end - mo_heap.base) {
+        munmap((void *)fresh.base, fresh.end - fresh.base);
+        return;
+    }
+    scratch.top = scratch.base;
+    forward_clear();
+    Copy out = {mo_heap.base, mo_heap.top, &scratch, true, false};
+    copy_roots(roots, n, NULL, 0, &out);
+    drop_growth(mo_heap.base, mo_heap.end);
+    /* Every remembered slot was in the old heap. */
+    nremembered = 0;
+    forward_clear();
+    Copy back = {scratch.base, scratch.top, &fresh, true, true};
+    copy_roots(roots, n, NULL, 0, &back);
+    drop_growth(scratch.base, scratch.end);
+    munmap((void *)mo_heap.base, mo_heap.end - mo_heap.base);
+    mo_heap = fresh;
 }
 
 /* `v` copied whole into a parcel of its own. */
@@ -4086,10 +4117,14 @@ MoValue mo_all(uint32_t index) {
 #define LOG_KEPT 16
 /* Region bytes a process may leave past twice what its last full compaction kept. */
 #define FULL_BUDGET ((size_t)4 << 20)
-/* The address space a process's region reserves, at most: many processes each reserve one. */
-#define PROCESS_REGION ((size_t)16 << 30)
-/* A process's thread's stack, as a Zig thread's. */
-#define WORKER_STACK ((size_t)16 << 20)
+/* The address space a process's region reserves, at most: many processes each reserve one, and a
+ * region that fills allocates past itself (region_alloc). */
+#define PROCESS_REGION ((size_t)1 << 30)
+/* The most address space a process's heap grows to (settle_region). */
+#define MAX_REGION ((size_t)16 << 30)
+/* A fiber's stack: address space reserved whole, committed as it is touched. */
+#define FIBER_STACK ((size_t)16 << 20)
+#define FIBER_GUARD ((size_t)1 << 20)
 
 /* A call a process's update waits in on a peer: a listener's next client or a connection's next
  * line, by handle, and the call as a report names it (sim.zig, Wait). */
@@ -4159,16 +4194,17 @@ static uint64_t sim_seed;
 static const char *test_name = "";
 /* Under main with regions: a value that goes from one process to another goes packed. */
 static bool packs;
-/* Under main with processes: each process's updates run on a thread of its own, taking turns. */
+/* Under main with processes: each process's updates run on a fiber of its own on main's thread. */
 static bool turns_on;
 /* Under main, the ids of processes a sweep ended, the last ended last: the next start takes the
  * last one (turns.zig, sweep). */
 static uint32_t *free_ids;
 static size_t nfree_ids, capfree_ids;
-/* The fewest quiet events between two sweeps, and the ended processes whose threads and regions
- * wait for the next processes given their ids, at most. */
+/* The fewest quiet events between two sweeps, the ended processes whose regions wait for the next
+ * processes given their ids, and the idle fibers the pool keeps, at most. */
 #define SWEEP_MIN 64
-#define KEPT_THREADS 64
+#define KEPT_WORKERS 64
+#define KEPT_FIBERS 64
 /* Under main, events after which a process a start call began may have finished: its start, and
  * each update of it that left its mailbox empty. A sweep runs at sweep_at. */
 static uint32_t quiet;
@@ -4189,11 +4225,15 @@ static size_t held;
 static bool sources_pump_fixture(void);
 static void sources_pump_server(void);
 static bool sources_active(void);
-static bool sources_ready(void);
 static void sources_mark(void);
-/* Under main: the earliest time a waiting source's idle time runs out. */
-static bool sources_deadline_set;
-static int64_t sources_deadline;
+/* Under main (turns): whether a source can do something now, the earliest time one must be looked
+ * at again, and the poller reporting one's socket ready. */
+struct Source;
+static bool sources_has_work(void);
+static bool sources_next_deadline(int64_t *at);
+static void sources_fired(struct Source *s);
+/* Under main, a message went into process `id`'s mailbox (turns). */
+static void mark_runnable(uint32_t id);
 
 static const char *handle_name(int64_t id) {
     return id >= 0 && id < (int64_t)nprocs ? mo_processes[procs[id]->process].name : NULL;
@@ -4332,6 +4372,7 @@ static uint64_t enqueue(uint32_t to, MoValue message, Parcel *parcel) {
     Proc *p = procs[to];
     GROW_ARRAY(p->mailbox, p->mailbox_len, p->mailbox_cap);
     p->mailbox[p->mailbox_len++] = (Entry){message, seq, parcel};
+    if (turns_on) mark_runnable(to);
     return seq;
 }
 
@@ -4663,6 +4704,13 @@ static void settle_region(uint32_t id, size_t mark) {
     if (mo_heap.top - mo_heap.base > 2 * full_kept + FULL_BUDGET) {
         mo_compact(mo_heap.base, roots, 1);
         full_kept = mo_heap.top - mo_heap.base;
+        /* A process's heap keeps what its state reaches in a quarter of its reservation at most;
+         * past that it moves into one four times as large. main's never moves. */
+        size_t reserved = mo_heap.end - mo_heap.base;
+        if (turns_on && 4 * full_kept > reserved) {
+            relocate_heap(4 * reserved < MAX_REGION ? 4 * reserved : MAX_REGION, roots, 1);
+            full_kept = mo_heap.top - mo_heap.base;
+        }
     }
     procs[id]->state = roots[0];
 }
@@ -4828,67 +4876,250 @@ static Delivered deliver(uint32_t id) {
     return (Delivered){entry.seq, true, reply};
 }
 
-/* ---- turns: under main, each process runs its updates on a thread of its own, with a vm of its
- * own, and the threads take turns: the one holding the turn runs Mo code, the others wait for it
- * (turns.zig). A process gives up its turn when it waits, in a Net call or in an ask its target
- * cannot answer yet, and asks for one again when its wait ends. main's thread holds the turn
- * whenever no process does, and hands turns out: first to a process whose wait ended, then to the
- * next process with a message waiting, round by round in start order. */
+/* ---- turns: under main, every update runs on main's thread, one at a time, each on a fiber of
+ * its own with a vm of its own (turns.zig, fiber.zig). A process gives up the thread when it waits,
+ * in a Net call or in an ask its target cannot answer yet: its fiber switches back to whoever
+ * handed it the thread, keeping its stack, and is switched to again when its wait ends. main's
+ * thread runs main's code whenever no update does, and hands the thread out: first to a process
+ * whose wait ended, then to the next process with a message waiting, round by round in start
+ * order; with none, it waits in the poller for a socket something waits on, or for the earliest
+ * deadline. A delivery borrows a fiber from a pool and gives it back when the update ends, so a
+ * process at rest holds no stack. */
 
 #define MAIN_TURN UINT32_MAX
 
 static int64_t now_ms(void) { return awake_ns() / 1000000; }
 
-/* Set wakes a thread waiting on it; it stays set until reset. */
-typedef struct { pthread_mutex_t mu; pthread_cond_t cv; bool set; } Event;
+/* ---- fibers: the switch pushes the registers a call must preserve onto the stack it leaves, saves
+ * that stack pointer, loads the other, and pops them back (fiber.zig: the same assembly). */
 
-static void event_init(Event *e) {
-    pthread_mutex_init(&e->mu, NULL);
-    pthread_cond_init(&e->cv, NULL);
-    e->set = false;
+typedef struct { void *sp; } FiberContext;
+
+typedef struct Fiber {
+    FiberContext context;
+    void *memory;
+    size_t size;
+    /* The process whose delivery it runs next. */
+    uint32_t id;
+} Fiber;
+
+void mo_fiber_swap(FiberContext *from, FiberContext *to);
+void mo_fiber_entry(void);
+void mo_fiber_start(Fiber *f);
+
+#ifdef __APPLE__
+#define MO_SYM(name) "_" #name
+#else
+#define MO_SYM(name) #name
+#endif
+
+#if defined(__aarch64__)
+__asm__(".text\n.p2align 2\n"
+        ".globl " MO_SYM(mo_fiber_swap) "\n"
+        MO_SYM(mo_fiber_swap) ":\n"
+        "  sub sp, sp, #160\n"
+        "  stp x19, x20, [sp, #0]\n"
+        "  stp x21, x22, [sp, #16]\n"
+        "  stp x23, x24, [sp, #32]\n"
+        "  stp x25, x26, [sp, #48]\n"
+        "  stp x27, x28, [sp, #64]\n"
+        "  stp x29, x30, [sp, #80]\n"
+        "  stp d8, d9, [sp, #96]\n"
+        "  stp d10, d11, [sp, #112]\n"
+        "  stp d12, d13, [sp, #128]\n"
+        "  stp d14, d15, [sp, #144]\n"
+        "  mov x2, sp\n"
+        "  str x2, [x0]\n"
+        "  ldr x2, [x1]\n"
+        "  mov sp, x2\n"
+        "  ldp x19, x20, [sp, #0]\n"
+        "  ldp x21, x22, [sp, #16]\n"
+        "  ldp x23, x24, [sp, #32]\n"
+        "  ldp x25, x26, [sp, #48]\n"
+        "  ldp x27, x28, [sp, #64]\n"
+        "  ldp x29, x30, [sp, #80]\n"
+        "  ldp d8, d9, [sp, #96]\n"
+        "  ldp d10, d11, [sp, #112]\n"
+        "  ldp d12, d13, [sp, #128]\n"
+        "  ldp d14, d15, [sp, #144]\n"
+        "  add sp, sp, #160\n"
+        "  ret\n"
+        ".globl " MO_SYM(mo_fiber_entry) "\n"
+        MO_SYM(mo_fiber_entry) ":\n"
+        "  mov x0, x19\n"
+        "  mov x29, #0\n"
+        "  b " MO_SYM(mo_fiber_start) "\n");
+#elif defined(__x86_64__)
+__asm__(".text\n.p2align 4\n"
+        ".globl " MO_SYM(mo_fiber_swap) "\n"
+        MO_SYM(mo_fiber_swap) ":\n"
+        "  pushq %rbp\n"
+        "  pushq %rbx\n"
+        "  pushq %r12\n"
+        "  pushq %r13\n"
+        "  pushq %r14\n"
+        "  pushq %r15\n"
+        "  movq %rsp, (%rdi)\n"
+        "  movq (%rsi), %rsp\n"
+        "  popq %r15\n"
+        "  popq %r14\n"
+        "  popq %r13\n"
+        "  popq %r12\n"
+        "  popq %rbx\n"
+        "  popq %rbp\n"
+        "  retq\n"
+        ".globl " MO_SYM(mo_fiber_entry) "\n"
+        MO_SYM(mo_fiber_entry) ":\n"
+        "  movq %rbx, %rdi\n"
+        "  xorl %ebp, %ebp\n"
+        "  jmp " MO_SYM(mo_fiber_start) "\n");
+#else
+#error "mo: fibers are implemented for aarch64 and x86_64"
+#endif
+
+/* A fiber whose first switch runs mo_fiber_start. The frame the switch pops holds zeroed
+ * registers, the fiber where mo_fiber_entry looks for it, and mo_fiber_entry as the return. */
+static Fiber *fiber_create(void) {
+    size_t size = FIBER_STACK + FIBER_GUARD;
+    void *memory = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    if (memory == MAP_FAILED) out_of_memory();
+    mprotect(memory, FIBER_GUARD, PROT_NONE);
+    Fiber *f = calloc(1, sizeof(Fiber));
+    if (!f) out_of_memory();
+    f->memory = memory;
+    f->size = size;
+    uintptr_t top = ((uintptr_t)memory + size) & ~(uintptr_t)15;
+#if defined(__aarch64__)
+    uintptr_t *frame = (uintptr_t *)(top - 160);
+    memset(frame, 0, 160);
+    frame[0] = (uintptr_t)f;
+    frame[11] = (uintptr_t)&mo_fiber_entry;
+#else
+    uintptr_t *frame = (uintptr_t *)(top - 64);
+    memset(frame, 0, 64);
+    frame[4] = (uintptr_t)f;
+    frame[6] = (uintptr_t)&mo_fiber_entry;
+#endif
+    f->context.sp = frame;
+    return f;
 }
 
-static void event_set(Event *e) {
-    pthread_mutex_lock(&e->mu);
-    e->set = true;
-    pthread_cond_broadcast(&e->cv);
-    pthread_mutex_unlock(&e->mu);
+static void fiber_destroy(Fiber *f) {
+    munmap(f->memory, f->size);
+    free(f);
 }
 
-static void event_reset(Event *e) {
-    pthread_mutex_lock(&e->mu);
-    e->set = false;
-    pthread_mutex_unlock(&e->mu);
+/* ---- the poller: kqueue or epoll on main's thread (poller.zig). A waiter is armed once and
+ * reported once. */
+
+#define NO_PROCESS UINT32_MAX
+#define POLL_BATCH 256
+
+typedef struct {
+    int fd;
+    bool write;
+    /* Reported ready (or broken) since it was last armed. */
+    bool fired, armed;
+    /* The process whose update waits on it, or NO_PROCESS; or the source that waits on it. */
+    uint32_t process;
+    struct Source *source;
+    /* Linux: a write waiter watches a duplicate of the descriptor, since epoll keys a registration
+     * by descriptor and a read waiter may be watching the original. */
+    int dup;
+} Waiter;
+
+static int poller_fd = -1;
+
+static bool poller_open(void) {
+    if (poller_fd >= 0) return true;
+#ifdef MO_KQUEUE
+    poller_fd = kqueue();
+#else
+    poller_fd = epoll_create1(EPOLL_CLOEXEC);
+#endif
+    return poller_fd >= 0;
 }
 
-static bool event_is_set(Event *e) {
-    pthread_mutex_lock(&e->mu);
-    bool set = e->set;
-    pthread_mutex_unlock(&e->mu);
-    return set;
-}
-
-static void event_wait(Event *e) {
-    pthread_mutex_lock(&e->mu);
-    while (!e->set) pthread_cond_wait(&e->cv, &e->mu);
-    pthread_mutex_unlock(&e->mu);
-}
-
-/* Waits at most `ms`. */
-static void event_wait_ms(Event *e, int64_t ms) {
-    struct timespec until;
-    clock_gettime(CLOCK_REALTIME, &until);
-    int64_t ns = until.tv_nsec + (ms % 1000) * 1000000;
-    until.tv_sec += (time_t)(ms / 1000 + ns / 1000000000);
-    until.tv_nsec = (long)(ns % 1000000000);
-    pthread_mutex_lock(&e->mu);
-    while (!e->set) {
-        if (pthread_cond_timedwait(&e->cv, &e->mu, &until) == ETIMEDOUT) break;
+/* False when the system will not watch it: the waiter tries its call again at once. */
+static bool poller_arm(Waiter *w) {
+    w->fired = false;
+    if (w->armed) return true;
+#ifdef MO_KQUEUE
+    struct kevent change;
+    EV_SET(&change, (uintptr_t)w->fd, w->write ? EVFILT_WRITE : EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, w);
+    if (kevent(poller_fd, &change, 1, NULL, 0, NULL) < 0) return false;
+#else
+    int fd = w->fd;
+    if (w->write) {
+        w->dup = dup(w->fd);
+        if (w->dup < 0) return false;
+        fd = w->dup;
     }
-    pthread_mutex_unlock(&e->mu);
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof ev);
+    ev.events = (w->write ? EPOLLOUT : EPOLLIN | EPOLLRDHUP) | EPOLLONESHOT;
+    ev.data.ptr = w;
+    if (epoll_ctl(poller_fd, EPOLL_CTL_ADD, fd, &ev) != 0) {
+        if (w->dup >= 0) close(w->dup);
+        w->dup = -1;
+        return false;
+    }
+#endif
+    w->armed = true;
+    return true;
 }
 
-/* What a vm keeps that is not a value: swapped in by the thread that takes the turn. */
+#ifndef MO_KQUEUE
+static void epoll_forget(Waiter *w) {
+    epoll_ctl(poller_fd, EPOLL_CTL_DEL, w->dup >= 0 ? w->dup : w->fd, NULL);
+    if (w->dup >= 0) close(w->dup);
+    w->dup = -1;
+}
+#endif
+
+static void poller_disarm(Waiter *w) {
+    if (!w->armed) return;
+    w->armed = false;
+#ifdef MO_KQUEUE
+    struct kevent change;
+    EV_SET(&change, (uintptr_t)w->fd, w->write ? EVFILT_WRITE : EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    kevent(poller_fd, &change, 1, NULL, 0, NULL);
+#else
+    epoll_forget(w);
+#endif
+}
+
+/* Waits at most `ms` and gives every waiter reported, each now fired and no longer armed. */
+static size_t poller_wait(int64_t ms, Waiter **out) {
+    size_t k = 0;
+#ifdef MO_KQUEUE
+    struct kevent events[POLL_BATCH];
+    struct timespec ts = {(time_t)(ms / 1000), (long)(ms % 1000) * 1000000};
+    int n = kevent(poller_fd, NULL, 0, events, POLL_BATCH, &ts);
+    for (int i = 0; i < n; i++) {
+        Waiter *w = events[i].udata;
+        if (!w) continue;
+        w->armed = false;
+        w->fired = true;
+        out[k++] = w;
+    }
+#else
+    struct epoll_event events[POLL_BATCH];
+    int n = epoll_wait(poller_fd, events, POLL_BATCH, (int)ms);
+    for (int i = 0; i < n; i++) {
+        Waiter *w = events[i].data.ptr;
+        /* A one-shot registration stays behind, disabled, until it is deleted. */
+        epoll_forget(w);
+        w->armed = false;
+        w->fired = true;
+        out[k++] = w;
+    }
+#endif
+    return k;
+}
+
+/* What a vm keeps that is not a value: saved by whoever gives up the thread and loaded by whoever
+ * takes it. */
 typedef struct {
     MoRegion heap;
     Growth growth[16];
@@ -4943,8 +5174,8 @@ static void load_vm(const VmState *s) {
     mo_handle_frames = s->handle_frames;
 }
 
-/* A vm handed to a process on a thread whose last process ended: what it kept is cleared, its
- * lists keep their room, and its region is the caller's to set. */
+/* A vm handed to a process whose id an ended process had: what it kept is cleared, its lists keep
+ * their room, and its region is the caller's to set. */
 static void reuse_vm(VmState *s) {
     Remembered *rem = s->remembered;
     size_t caprem = s->capremembered;
@@ -4957,25 +5188,25 @@ static void reuse_vm(VmState *s) {
     s->capundos = capu;
 }
 
-enum { JOB_DELIVER, JOB_GO_ON, JOB_EXIT };
+enum { JOB_DELIVER, JOB_GO_ON };
 enum { PHASE_IDLE, PHASE_RUNNING, PHASE_WAITING };
 
 typedef struct {
-    pthread_t thread;
     uint32_t id;
     VmState vm;
-    /* Set when the turn is handed to it. */
-    Event wake;
-    /* Who handed it the turn, and gets it back. */
+    /* The fiber its update runs on, from the delivery to the update's end; NULL at rest. */
+    Fiber *fiber;
+    /* Who handed it the thread, and gets it back. */
     uint32_t caller;
-    int job;
-    /* PHASE_RUNNING: it holds the turn, or waits for one it handed on to come back. */
+    /* PHASE_RUNNING: its update holds the thread, or waits for a process it handed it to. */
     int phase;
-    /* How its turn ended when a crash left it, for whoever gets the turn back. */
+    /* In `ready`. */
+    bool queued;
+    /* How its update ended when a crash left it, for whoever gets the thread back. */
     int failed;
     Report report;
-    /* Its thread has returned and its region is released, after a sweep ended its process and
-     * more than KEPT_THREADS had ended since; the next process given its id starts a thread. */
+    /* Its region is released, after a sweep ended its process and more than KEPT_WORKERS had
+     * ended since; the next process given its id reserves one again. */
     bool ended;
 } Worker;
 
@@ -4983,54 +5214,82 @@ typedef struct { uint32_t id; int64_t deadline; } Parked;
 typedef struct { uint64_t seq; uint32_t who; } Awaiting;
 typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer;
 
-static pthread_mutex_t turns_mu = PTHREAD_MUTEX_INITIALIZER;
 static uint32_t holder = MAIN_TURN;
-/* main's thread: set when the turn comes back to it, or when a process's wait ends. */
-static Event main_wake;
-/* Processes whose wait ended, oldest first; a process adds itself off the turn, so every use
- * holds turns_mu. */
+/* main's thread's own context, while a fiber runs. */
+static FiberContext main_context;
+/* Processes whose wait ended, oldest first from ready_head; each at most once. */
 static uint32_t *ready;
-static size_t nready, capready;
+static size_t ready_head, nready, capready;
 /* One per process, made at its first delivery; indexed by process id. */
 static Worker **workers;
 static size_t nworkers, capworkers;
-/* Asks waiting for their reply, the replies that came, and processes parked in an ask. */
+/* Fibers no update is on, and the updates on a fiber, running or waiting. */
+static Fiber **fibers;
+static size_t nfibers, capfibers;
+static uint32_t in_flight;
+/* Asks waiting for their reply, the replies that came, and processes parked in an ask or a Net
+ * call. */
 static Awaiting *awaiting;
 static size_t nawaiting, capawaiting;
 static Answer *answers;
 static size_t nanswers, capanswers;
 static Parked *parked;
 static size_t nparked, capparked;
-/* Where the next round of deliveries starts. */
+/* Where the next round of deliveries starts, and the ids that may have a message waiting: set
+ * when one goes into a mailbox, cleared when a round finds the mailbox empty. */
 static uint32_t cursor;
+static uint64_t *runnable;
+static size_t runnable_words;
 static VmState main_vm;
-static _Thread_local VmState *my_vm;
+/* The vm state of whoever holds the thread. */
+static VmState *my_vm;
 
-static Event *event_of(uint32_t id) { return id == MAIN_TURN ? &main_wake : &workers[id]->wake; }
+static FiberContext *context_of(uint32_t id) { return id == MAIN_TURN ? &main_context : &workers[id]->fiber->context; }
 
-/* Gives the turn to `to` and wakes it. Only the holder calls this. */
-static void pass(uint32_t to, Event *e) {
-    pthread_mutex_lock(&turns_mu);
+/* Switches to `to`, main or a process with a fiber; returns when something switches back. */
+static void switch_to(uint32_t to) {
+    uint32_t from = holder;
+    uint32_t depth = mo_depth;
     holder = to;
-    pthread_mutex_unlock(&turns_mu);
-    event_set(e);
+    mo_fiber_swap(context_of(from), context_of(to));
+    mo_depth = depth;
 }
 
-/* Waits until the turn is `me`'s. */
-static void await_turn(uint32_t me, Event *e) {
-    for (;;) {
-        pthread_mutex_lock(&turns_mu);
-        if (holder == me) {
-            pthread_mutex_unlock(&turns_mu);
-            return;
-        }
-        event_reset(e);
-        pthread_mutex_unlock(&turns_mu);
-        event_wait(e);
+static void mark_runnable(uint32_t id) {
+    size_t word = id / 64;
+    if (word >= runnable_words) {
+        size_t words = 2 * runnable_words > word + 1 ? 2 * runnable_words : word + 1;
+        runnable = xrealloc(runnable, words * sizeof(uint64_t));
+        memset(runnable + runnable_words, 0, (words - runnable_words) * sizeof(uint64_t));
+        runnable_words = words;
     }
+    runnable[word] |= (uint64_t)1 << (id % 64);
 }
 
-static void *work(void *arg);
+/* The first process in [from, to) that is up, not on a stack, and has a message waiting. A marked
+ * process whose mailbox is empty, or that is down, is unmarked on the way. */
+static bool next_runnable(uint32_t from, uint32_t to, uint32_t *out) {
+    size_t end = to < runnable_words * 64 ? to : runnable_words * 64;
+    size_t i = from;
+    while (i < end) {
+        uint64_t word = runnable[i / 64] >> (i % 64);
+        if (word == 0) {
+            i = (i / 64 + 1) * 64;
+            continue;
+        }
+        i += (size_t)__builtin_ctzll(word);
+        if (i >= end) break;
+        const Proc *p = procs[i];
+        if (!p->up || queued(p) == 0) {
+            runnable[i / 64] &= ~((uint64_t)1 << (i % 64));
+        } else if (!p->busy) {
+            *out = (uint32_t)i;
+            return true;
+        }
+        i++;
+    }
+    return false;
+}
 
 static Worker *worker_of(uint32_t id) {
     while (nworkers <= id) {
@@ -5044,37 +5303,38 @@ static Worker *worker_of(uint32_t id) {
         reuse_vm(&w->vm);
         w->failed = 0;
         w->phase = PHASE_IDLE;
+        w->queued = false;
+        w->fiber = NULL;
         w->ended = false;
     } else {
         w = calloc(1, sizeof(Worker));
         if (!w) out_of_memory();
-        event_init(&w->wake);
     }
     w->id = id;
     w->caller = MAIN_TURN;
     if (packs && !reserve_up_to(&w->vm.heap, PROCESS_REGION)) w->vm.heap = (MoRegion){0, 0, 0};
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, WORKER_STACK);
-    if (pthread_create(&w->thread, &attr, work, w) != 0) out_of_memory();
-    pthread_attr_destroy(&attr);
     workers[id] = w;
     return w;
 }
 
-/* The holder hands the turn to process `id`, to deliver its next message or to go on after a
+/* The holder hands the thread to process `id`, to deliver its next message or to go on after a
  * wait, and has it back when the update ends or waits again. */
 static void hand_to(uint32_t id, int job) {
     Worker *w = worker_of(id);
-    uint32_t me = holder;
     uint32_t was_running = running;
-    w->caller = me;
-    w->job = job;
+    VmState *mine = my_vm;
+    w->caller = holder;
     w->phase = PHASE_RUNNING;
-    save_vm(my_vm);
-    pass(id, &w->wake);
-    await_turn(me, event_of(me));
-    load_vm(my_vm);
+    if (job == JOB_DELIVER) {
+        Fiber *f = nfibers > 0 ? fibers[--nfibers] : fiber_create();
+        f->id = id;
+        w->fiber = f;
+        in_flight++;
+    }
+    save_vm(mine);
+    switch_to(id);
+    my_vm = mine;
+    load_vm(mine);
     running = was_running;
     if (w->failed) {
         int jumped = w->failed;
@@ -5083,43 +5343,68 @@ static void hand_to(uint32_t id, int job) {
     }
 }
 
-/* A process's thread: each turn it is handed delivers one message. */
-static void *work(void *arg) {
-    Worker *w = arg;
-    my_vm = &w->vm;
+/* A fiber's life: each time it is switched to after a job ended, it delivers one message to the
+ * process it was given, then gives the thread back and goes back to the pool. */
+void mo_fiber_start(Fiber *f) {
     for (;;) {
-        await_turn(w->id, &w->wake);
+        Worker *w = workers[f->id];
+        my_vm = &w->vm;
         load_vm(&w->vm);
-        int job = w->job;
-        if (job == JOB_DELIVER) {
-            jmp_buf here;
-            crash_jump = &here;
-            int jumped = setjmp(here);
-            if (jumped == 0) {
-                deliver(w->id);
-            } else {
-                mo_depth = 0;
-                mo_handle_frames = NULL;
-                w->failed = jumped;
-                w->report = last_report;
-            }
-            crash_jump = NULL;
-            const Proc *p = procs[w->id];
-            if (p->supervisor == NOBODY && queued(p) == 0) quiet++;
+        mo_depth = 0;
+        jmp_buf here;
+        crash_jump = &here;
+        int jumped = setjmp(here);
+        if (jumped == 0) {
+            deliver(w->id);
+        } else {
+            mo_depth = 0;
+            mo_handle_frames = NULL;
+            w->failed = jumped;
+            w->report = last_report;
         }
+        crash_jump = NULL;
+        const Proc *p = procs[w->id];
+        if (p->supervisor == NOBODY && queued(p) == 0) quiet++;
         w->phase = PHASE_IDLE;
         save_vm(&w->vm);
-        pass(w->caller, event_of(w->caller));
-        if (job == JOB_EXIT) return NULL;
+        w->fiber = NULL;
+        in_flight--;
+        GROW_ARRAY(fibers, nfibers, capfibers);
+        fibers[nfibers++] = f;
+        holder = w->caller;
+        mo_fiber_swap(&f->context, context_of(w->caller));
     }
 }
 
-static void make_ready(uint32_t id) {
-    pthread_mutex_lock(&turns_mu);
+static void push_ready(uint32_t id) {
+    Worker *w = workers[id];
+    if (w->queued) return;
+    w->queued = true;
+    if (ready_head > 0 && nready == capready) {
+        memmove(ready, ready + ready_head, (nready - ready_head) * sizeof(uint32_t));
+        nready -= ready_head;
+        ready_head = 0;
+    }
     GROW_ARRAY(ready, nready, capready);
     ready[nready++] = id;
-    pthread_mutex_unlock(&turns_mu);
-    event_set(&main_wake);
+}
+
+static bool pop_ready(uint32_t *id) {
+    if (ready_head == nready) return false;
+    *id = ready[ready_head++];
+    if (ready_head == nready) ready_head = nready = 0;
+    workers[*id]->queued = false;
+    return true;
+}
+
+/* Process `id`'s wait ended: it leaves the parked list and is switched to next. */
+static void wake(uint32_t id) {
+    for (size_t k = 0; k < nparked; k++) {
+        if (parked[k].id != id) continue;
+        parked[k] = parked[--nparked];
+        break;
+    }
+    push_ready(id);
 }
 
 /* A process parks in an ask until the reply comes, the target goes down, or `deadline`. */
@@ -5127,43 +5412,43 @@ static void park(int64_t deadline) {
     uint32_t id = holder;
     Worker *w = workers[id];
     uint32_t was_running = running;
+    VmState *mine = my_vm;
     GROW_ARRAY(parked, nparked, capparked);
     parked[nparked++] = (Parked){id, deadline};
     w->phase = PHASE_WAITING;
-    save_vm(my_vm);
-    pass(w->caller, event_of(w->caller));
-    await_turn(id, &w->wake);
-    load_vm(my_vm);
+    save_vm(mine);
+    switch_to(w->caller);
+    my_vm = mine;
+    load_vm(mine);
     running = was_running;
 }
 
-/* main's thread, with no turn to hand out: waits until a process's wait ends, `also` is set,
- * or the earliest deadline passes. */
-static void idle(Event *also, bool bounded, int64_t deadline) {
+/* main's thread, with no turn to hand out: waits in the poller until a socket something waits on
+ * is ready, `also` is reported, or the earliest deadline passes, and at least once a second. */
+static void idle(Waiter *also, bool bounded, int64_t deadline) {
+    if (ready_head < nready) return;
+    if (also && also->fired) return;
+    if (sources_has_work()) return;
     int64_t until = deadline;
     for (size_t i = 0; i < nparked; i++) {
         if (!bounded || parked[i].deadline < until) until = parked[i].deadline;
         bounded = true;
     }
-    /* A source waiting on its idle time wakes main's thread when it runs out. */
-    if (sources_deadline_set && (!bounded || sources_deadline < until)) {
-        until = sources_deadline;
+    int64_t due;
+    if (sources_next_deadline(&due) && (!bounded || due < until)) {
+        until = due;
         bounded = true;
     }
-    pthread_mutex_lock(&turns_mu);
-    bool any_ready = nready > 0;
-    if (!any_ready) event_reset(&main_wake);
-    pthread_mutex_unlock(&turns_mu);
-    if (any_ready) return;
-    /* A source whose descriptor became ready before the reset. */
-    if (sources_ready()) return;
-    if (also && event_is_set(also)) return;
-    if (!bounded) {
-        event_wait(&main_wake);
-        return;
+    int64_t left = bounded ? until - now_ms() : 1000;
+    if (left < 0) left = 0;
+    if (left > 1000) left = 1000;
+    if (!poller_open()) return;
+    Waiter *out[POLL_BATCH];
+    size_t n = poller_wait(left, out);
+    for (size_t i = 0; i < n; i++) {
+        if (out[i]->process != NO_PROCESS) wake(out[i]->process);
+        else if (out[i]->source) sources_fired(out[i]->source);
     }
-    int64_t left = until - now_ms();
-    if (left > 0) event_wait_ms(&main_wake, left);
 }
 
 /* ---- ending finished processes (turns.zig, sweep) */
@@ -5236,8 +5521,8 @@ static void decommit(MoRegion *r) {
     r->top = r->base;
 }
 
-/* Process `id` has finished: what it held is freed, and its thread and emptied region wait for the
- * next process given its id. */
+/* Process `id` has finished: what it held is freed, and its emptied region waits for the next
+ * process given its id. */
 static void end_process(uint32_t id) {
     Proc *p = procs[id];
     if (id < nworkers && workers[id] && !workers[id]->ended) {
@@ -5260,12 +5545,10 @@ static void end_process(uint32_t id) {
     free_ids[nfree_ids++] = id;
 }
 
-/* The thread kept for ended process `id` returns, and its region is released. */
+/* The region kept for ended process `id` is released. */
 static void release_worker(uint32_t id) {
     if (id >= nworkers || !workers[id] || workers[id]->ended) return;
     Worker *w = workers[id];
-    hand_to(id, JOB_EXIT);
-    pthread_join(w->thread, NULL);
     if (w->vm.heap.end != 0) munmap((void *)w->vm.heap.base, w->vm.heap.end - w->vm.heap.base);
     w->vm.heap = (MoRegion){0, 0, 0};
     w->ended = true;
@@ -5315,8 +5598,8 @@ static void sweep(void) {
         if (finished(p) && !marks[id]) end_process(id);
         else still++;
     }
-    if (nfree_ids > KEPT_THREADS) {
-        for (size_t i = 0; i < nfree_ids - KEPT_THREADS; i++) release_worker(free_ids[i]);
+    if (nfree_ids > KEPT_WORKERS) {
+        for (size_t i = 0; i < nfree_ids - KEPT_WORKERS; i++) release_worker(free_ids[i]);
     }
     quiet = 0;
     sweep_at = 2 * still > SWEEP_MIN ? 2 * still : SWEEP_MIN;
@@ -5326,6 +5609,7 @@ static void sweep(void) {
  * process with a message waiting. False when there is none. */
 static bool step(void) {
     if (quiet >= sweep_at) sweep();
+    while (nfibers > KEPT_FIBERS) fiber_destroy(fibers[--nfibers]);
     /* What the runtime's loops took becomes messages first (sources.zig). */
     sources_pump_server();
     int64_t now = now_ms();
@@ -5334,28 +5618,21 @@ static bool step(void) {
         if (parked[k].deadline <= now) {
             uint32_t id = parked[k].id;
             parked[k] = parked[--nparked];
-            make_ready(id);
+            push_ready(id);
         } else {
             k++;
         }
     }
-    pthread_mutex_lock(&turns_mu);
-    bool has = nready > 0;
-    uint32_t next = has ? ready[0] : 0;
-    if (has) {
-        memmove(ready, ready + 1, (nready - 1) * sizeof(uint32_t));
-        nready--;
-    }
-    pthread_mutex_unlock(&turns_mu);
-    if (has) {
-        hand_to(next, JOB_GO_ON);
+    uint32_t id;
+    while (pop_ready(&id)) {
+        const Worker *w = workers[id];
+        if (w->phase != PHASE_WAITING || !w->fiber) continue;
+        hand_to(id, JOB_GO_ON);
         return true;
     }
-    uint32_t n = nprocs;
-    for (uint32_t j = 0; j < n; j++) {
-        uint32_t id = (cursor + j) % n;
-        const Proc *p = procs[id];
-        if (!p->up || p->busy || queued(p) == 0) continue;
+    if (nprocs == 0) return false;
+    uint32_t from = cursor % nprocs;
+    if (next_runnable(from, nprocs, &id) || next_runnable(0, from, &id)) {
         cursor = id + 1;
         hand_to(id, JOB_DELIVER);
         return true;
@@ -5427,17 +5704,12 @@ static void turns_spawning(void) {
     if (holder == MAIN_TURN && quiet >= sweep_at) turns_settle();
 }
 
-/* main returned: turns go on being handed out until no message waits and no update is in
- * progress. */
+/* main returned: turns go on being handed out until no message waits, no update is in progress,
+ * and no runtime loop can deliver. */
 static void turns_finish(void) {
     for (;;) {
         if (step()) continue;
-        bool pending = false;
-        for (uint32_t i = 0; i < nprocs && !pending; i++) {
-            const Proc *p = procs[i];
-            pending = p->busy || (p->up && queued(p) > 0);
-        }
-        if (!pending && !sources_active()) return;
+        if (in_flight == 0 && !sources_active()) return;
         idle(NULL, false, 0);
     }
 }
@@ -5450,7 +5722,7 @@ static bool turns_awaits(uint64_t seq) {
 }
 
 /* An update that took message `seq` ended: with its reply, packed under main, or none when it
- * crashed. The asker takes the parcel. */
+ * crashed. The asker takes the parcel; a parked asker is woken, and main looks each time round. */
 static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel) {
     size_t i = 0;
     while (i < nawaiting && awaiting[i].seq != seq) i++;
@@ -5462,22 +5734,15 @@ static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel) 
     awaiting[i] = awaiting[--nawaiting];
     GROW_ARRAY(answers, nanswers, capanswers);
     answers[nanswers++] = (Answer){seq, has, reply, parcel};
-    if (who == MAIN_TURN) {
-        event_set(&main_wake);
-        return;
-    }
+    if (who == MAIN_TURN) return;
     for (size_t k = 0; k < nparked; k++) {
-        if (parked[k].id != who) continue;
-        parked[k] = parked[--nparked];
-        make_ready(who);
-        return;
+        if (parked[k].id == who) return wake(who);
     }
 }
 
-/* A process crashed: every parked ask looks at its target again. */
+/* A process crashed: every parked process looks at what it waits for again. */
 static void turns_wake_all(void) {
-    while (nparked > 0) make_ready(parked[--nparked].id);
-    event_set(&main_wake);
+    while (nparked > 0) push_ready(parked[--nparked].id);
 }
 
 
@@ -5485,6 +5750,8 @@ static void turns_wake_all(void) {
 
 /* The longest line read_line gives: 64 KiB before its newline. */
 #define LINE_LIMIT ((size_t)64 << 10)
+/* A connection's read buffer at its first read; it grows to what the reader allows. */
+#define BUFFER_INITIAL ((size_t)16 << 10)
 /* Connections the kernel queues for a listener before accept takes them. */
 #define BACKLOG 128
 
@@ -5601,48 +5868,42 @@ static bool poll_until(int fd, short events, int64_t deadline) {
     }
 }
 
-/* What waits on the network for main while it hands out turns: one thread per blocked call. */
-typedef struct { int fd; short events; int64_t deadline; Event done; } FdWait;
-
-static void *fd_wait(void *arg) {
-    FdWait *w = arg;
-    if (poll_until(w->fd, w->events, w->deadline)) event_set(&w->done);
-    event_set(&main_wake);
-    return NULL;
-}
-
 /* A Net call's wait, at most `ms` (net.zig, wait; turns.zig, block). Under main with processes
- * the waiter gives up nothing it holds: main's thread hands out turns until the call's thread
- * says the socket is ready, and a process hands its turn back, waits off it, and asks for a turn
- * again when the wait ends. True when the socket was ready in time. */
+ * the poller watches the socket: main's thread hands out turns until it is ready, and a process's
+ * update switches back to whoever handed it the thread and is switched to again when the socket is
+ * ready or the deadline passes. True when the socket was ready in time. */
 static bool net_wait(int fd, short events, int64_t ms) {
     int64_t deadline = now_ms() + max0(ms);
-    if (!turns_on) return poll_until(fd, events, deadline);
+    if (!turns_on || !poller_open()) return poll_until(fd, events, deadline);
+    Waiter w = {fd, events == POLLOUT, false, false, NO_PROCESS, NULL, -1};
+    if (!poller_arm(&w)) return true;
     if (holder == MAIN_TURN) {
-        FdWait w = {.fd = fd, .events = events, .deadline = deadline};
-        event_init(&w.done);
-        pthread_t t;
-        if (pthread_create(&t, NULL, fd_wait, &w) != 0) return poll_until(fd, events, deadline);
         for (;;) {
-            if (event_is_set(&w.done) || now_ms() >= deadline) break;
+            if (w.fired || now_ms() >= deadline) break;
             if (step()) continue;
-            idle(&w.done, true, deadline);
+            idle(&w, true, deadline);
         }
-        pthread_join(t, NULL);
-        return event_is_set(&w.done);
+        poller_disarm(&w);
+        return w.fired;
     }
     uint32_t id = holder;
     Worker *wk = workers[id];
     uint32_t was_running = running;
-    wk->phase = PHASE_WAITING;
-    save_vm(my_vm);
-    pass(wk->caller, event_of(wk->caller));
-    bool in_time = poll_until(fd, events, deadline);
-    make_ready(id);
-    await_turn(id, &wk->wake);
-    load_vm(my_vm);
+    VmState *mine = my_vm;
+    w.process = id;
+    /* Woken early (a crash elsewhere wakes every parked process), it parks again. */
+    while (!w.fired && now_ms() < deadline) {
+        GROW_ARRAY(parked, nparked, capparked);
+        parked[nparked++] = (Parked){id, deadline};
+        wk->phase = PHASE_WAITING;
+        save_vm(mine);
+        switch_to(wk->caller);
+        my_vm = mine;
+        load_vm(mine);
+    }
     running = was_running;
-    return in_time;
+    poller_disarm(&w);
+    return w.fired;
 }
 
 static void nonblocking(int fd) {
@@ -5850,13 +6111,9 @@ static int net_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
 static MoValue net_read_line(Conn *c, int64_t ms) {
     if (c->closed) return net_fail(NET_CLOSED);
     if (c->reading || c->lining) return net_fail(NET_BUSY);
-    if (!c->buf) {
-        c->buf = xmalloc(2 * LINE_LIMIT);
-        c->cap = 2 * LINE_LIMIT;
-    }
     int64_t t0 = now_ms();
     for (;;) {
-        Scan s = scan_line(c->buf + c->start, c->end - c->start, c->eof, &c->skipping);
+        Scan s = scan_line(c->buf ? c->buf + c->start : "", c->end - c->start, c->eof, &c->skipping);
         c->start += s.taken;
         MoValue out;
         bool given = line_result(s, &out);
@@ -5865,7 +6122,7 @@ static MoValue net_read_line(Conn *c, int64_t ms) {
         int64_t left = ms - (now_ms() - t0);
         if (left <= 0) return net_fail(NET_TIMEOUT);
         /* A line too long is taken before the buffer fills. */
-        switch (net_fill(c, left, 2 * LINE_LIMIT, 2 * LINE_LIMIT)) {
+        switch (net_fill(c, left, BUFFER_INITIAL, 2 * LINE_LIMIT)) {
         case FILL_TIMEOUT: return net_fail(NET_TIMEOUT);
         case FILL_CLOSED: return net_fail(NET_CLOSED);
         default: break;
@@ -6824,8 +7081,9 @@ static void close_held(const MoValue *args, uint32_t n) {
  * message it declares. A source delivers while its target's mailbox holds fewer than its bound
  * less its headroom, and after stopping there starts again once the mailbox has drained to half
  * its bound. In a test every source is pumped at the start of each delivery round, in start
- * order; under main a poller thread watches the descriptors of sources that wait, and main's
- * thread turns what arrived into messages each time it hands out turns. */
+ * order; under main main's thread pumps only the sources that can do something (step 21): one just
+ * added, one whose socket the poller reported ready, one paused at its target's bound, and one
+ * whose idle time ran out, which a heap of deadlines finds. */
 
 enum { SRC_SERVE, SRC_LINES, SRC_HTTP_SERVE, SRC_REQUEST };
 
@@ -6843,94 +7101,63 @@ typedef struct Source {
     /* A request source's http serve source, whose requests in flight it counts. */
     struct Source *parent;
     uint32_t inflight;
-    /* Under main: the poller watches its descriptor, and saw it ready. */
-    bool watched, ready;
+    /* Under main: what the poller reports when its socket is ready; its place in `sources`; in the
+     * dirty list, in the paused list; its place in the deadline heap, or -1; a listener the system
+     * refused a connection waits until retry_at. */
+    Waiter waiter;
+    size_t index;
+    bool dirty, in_paused;
+    ptrdiff_t timer;
+    int64_t retry_at;
 } Source;
 
 static Source **sources;
 static size_t nsources, capsources;
-/* Under main, the poller's lock over `sources`, and the pipe that wakes it to look again. */
-static pthread_mutex_t sources_mu = PTHREAD_MUTEX_INITIALIZER;
-static int poll_wake[2] = {-1, -1};
-static bool poller_started;
+/* Under main: the sources to pump next, the ones paused at their target's bound, and a heap of
+ * deadlines, earliest first, one entry per source at most. An entry may come before its source's
+ * deadline, since `since` moves on; it is put back when it comes. */
+typedef struct { int64_t at; Source *source; } Timer;
+static Source **dirty;
+static size_t ndirty, capdirty;
+static Source **paused_sources;
+static size_t npaused, cappaused;
+static Timer *timers;
+static size_t ntimers, captimers;
+/* Under main, how long a listener waits before accepting again after the system refused a
+ * connection for want of descriptors or memory. */
+#define REFUSED_RETRY_MS 100
 
 static uint32_t source_headroom(uint32_t bound) { return bound / 2 < 4 ? bound / 2 : 4; }
 
 static void reset_sources(void) {
     for (size_t i = 0; i < nsources; i++) free(sources[i]);
-    nsources = 0;
+    nsources = ndirty = npaused = ntimers = 0;
 }
 
-static void poke_poller(void) {
-    if (poll_wake[1] >= 0) {
-        char b = 1;
-        ssize_t r = write(poll_wake[1], &b, 1);
-        (void)r;
-    }
+static void mark_dirty(Source *s) {
+    if (s->dirty || s->done) return;
+    s->dirty = true;
+    GROW_ARRAY(dirty, ndirty, capdirty);
+    dirty[ndirty++] = s;
 }
 
-static int source_fd(const Source *s) {
-    return s->kind == SRC_SERVE || s->kind == SRC_HTTP_SERVE ? listeners[s->handle]->fd : conns[s->handle]->fd;
-}
-
-static void *poll_sources(void *arg) {
-    (void)arg;
-    struct pollfd *fds = NULL;
-    Source **who = NULL;
-    size_t cap = 0;
-    for (;;) {
-        pthread_mutex_lock(&sources_mu);
-        if (cap < nsources + 1) {
-            cap = 2 * (nsources + 1);
-            fds = xrealloc(fds, cap * sizeof *fds);
-            who = xrealloc(who, cap * sizeof *who);
-        }
-        size_t n = 0;
-        fds[n] = (struct pollfd){poll_wake[0], POLLIN, 0};
-        who[n++] = NULL;
-        for (size_t i = 0; i < nsources; i++) {
-            Source *s = sources[i];
-            if (s->done || !s->watched || s->ready) continue;
-            fds[n] = (struct pollfd){source_fd(s), POLLIN, 0};
-            who[n++] = s;
-        }
-        pthread_mutex_unlock(&sources_mu);
-        if (poll(fds, (nfds_t)n, -1) < 0) continue;
-        bool any = false;
-        pthread_mutex_lock(&sources_mu);
-        for (size_t i = 1; i < n; i++) {
-            if (fds[i].revents) {
-                who[i]->ready = true;
-                any = true;
-            }
-        }
-        pthread_mutex_unlock(&sources_mu);
-        if (fds[0].revents) {
-            char buf[64];
-            while (read(poll_wake[0], buf, sizeof buf) > 0) {}
-        }
-        if (any) event_set(&main_wake);
-    }
-    return NULL;
-}
-
-static void source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_ms, int64_t since, Source *parent) {
+static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_ms, int64_t since, Source *parent) {
     Source *s = calloc(1, sizeof(Source));
     if (!s) out_of_memory();
-    *s = (Source){kind, handle, to, idle_ms, since, INT64_MIN, false, false, parent, 0, false, false};
-    if (server_mode && !poller_started) {
-        if (pipe(poll_wake) == 0) {
-            nonblocking(poll_wake[0]);
-            nonblocking(poll_wake[1]);
-            pthread_t t;
-            if (pthread_create(&t, NULL, poll_sources, NULL) == 0) pthread_detach(t);
-        }
-        poller_started = true;
-    }
-    pthread_mutex_lock(&sources_mu);
+    s->kind = kind;
+    s->handle = handle;
+    s->to = to;
+    s->idle_ms = idle_ms;
+    s->since = since;
+    s->idled_at = INT64_MIN;
+    s->parent = parent;
+    s->waiter = (Waiter){-1, false, false, false, NO_PROCESS, NULL, -1};
+    s->timer = -1;
+    s->index = nsources;
     GROW_ARRAY(sources, nsources, capsources);
     sources[nsources++] = s;
-    pthread_mutex_unlock(&sources_mu);
+    if (server_mode) mark_dirty(s);
+    return s;
 }
 
 /* Whether `s` may deliver one more message to its target, counting `extra` more waiting. */
@@ -7086,36 +7313,118 @@ static bool sources_pump_fixture(void) {
 
 /* ---- under main */
 
-/* Watches the descriptor until it is ready, or stops watching it. */
-static void source_watch(Source *s, bool on) {
-    pthread_mutex_lock(&sources_mu);
-    s->watched = on;
-    s->ready = false;
-    pthread_mutex_unlock(&sources_mu);
-    poke_poller();
+/* ---- the deadline heap */
+
+static void timer_swap(size_t a, size_t b) {
+    Timer t = timers[a];
+    timers[a] = timers[b];
+    timers[b] = t;
+    timers[a].source->timer = (ptrdiff_t)a;
+    timers[b].source->timer = (ptrdiff_t)b;
 }
 
-/* Whether `s` may read now: its descriptor was seen ready, or nobody watches it yet. */
-static bool source_may_read(Source *s) {
-    pthread_mutex_lock(&sources_mu);
-    bool may = s->ready || !s->watched;
-    pthread_mutex_unlock(&sources_mu);
-    return may;
+static void timer_up(size_t i) {
+    while (i > 0) {
+        size_t parent = (i - 1) / 2;
+        if (timers[parent].at <= timers[i].at) return;
+        timer_swap(i, parent);
+        i = parent;
+    }
 }
 
-static void source_end(Source *s) {
-    if (s->parent) s->parent->inflight--;
+static void timer_down(size_t i) {
+    for (;;) {
+        size_t least = i, l = 2 * i + 1, r = l + 1;
+        if (l < ntimers && timers[l].at < timers[least].at) least = l;
+        if (r < ntimers && timers[r].at < timers[least].at) least = r;
+        if (least == i) return;
+        timer_swap(i, least);
+        i = least;
+    }
+}
+
+static void timer_push(Source *s, int64_t at) {
+    GROW_ARRAY(timers, ntimers, captimers);
+    timers[ntimers] = (Timer){at, s};
+    s->timer = (ptrdiff_t)ntimers++;
+    timer_up((size_t)s->timer);
+}
+
+static void timer_remove(Source *s) {
+    if (s->timer < 0) return;
+    size_t i = (size_t)s->timer;
+    s->timer = -1;
+    ntimers--;
+    if (i == ntimers) return;
+    timers[i] = timers[ntimers];
+    timers[i].source->timer = (ptrdiff_t)i;
+    timer_down(i);
+    timer_up(i);
+}
+
+/* When `s` must be looked at again with nothing reported: its idle time, or a retry. */
+static int64_t due_at(const Source *s) {
+    return s->retry_at > s->since + s->idle_ms || s->paused ? s->retry_at : s->since + s->idle_ms;
+}
+
+static void leave_paused(Source *s) {
+    s->in_paused = false;
+    for (size_t i = 0; i < npaused; i++) {
+        if (paused_sources[i] != s) continue;
+        paused_sources[i] = paused_sources[--npaused];
+        return;
+    }
+}
+
+/* After a pump: a paused source is in the paused list; any other has a deadline. */
+static void settle_source(Source *s) {
+    if (s->paused) {
+        if (!s->in_paused) {
+            s->in_paused = true;
+            GROW_ARRAY(paused_sources, npaused, cappaused);
+            paused_sources[npaused++] = s;
+        }
+        if (s->timer >= 0 && s->retry_at == 0) timer_remove(s);
+        return;
+    }
+    if (s->in_paused) leave_paused(s);
+    if (s->timer < 0) timer_push(s, due_at(s));
+}
+
+/* `s` is done: it stops being watched, leaves every list, and is freed at the end of the pump (it
+ * is in the dirty list then). */
+static void source_retire(Source *s) {
     s->done = true;
-    source_watch(s, false);
+    poller_disarm(&s->waiter);
+    if (s->in_paused) leave_paused(s);
+    if (s->timer >= 0) timer_remove(s);
+    Source *last = sources[--nsources];
+    if (last != s) {
+        sources[s->index] = last;
+        last->index = s->index;
+    }
+}
+
+static void source_watch(Source *s, int fd) {
+    if (s->waiter.armed && s->waiter.fd == fd) return;
+    poller_disarm(&s->waiter);
+    s->waiter = (Waiter){fd, false, false, false, NO_PROCESS, s, -1};
+    if (poller_open()) poller_arm(&s->waiter);
 }
 
 static void serve_server(Source *s, int64_t now) {
     Listener *l = listeners[s->handle];
-    while (source_may_read(s) && source_room(s, s->inflight)) {
+    while (now >= s->retry_at && procs[s->to]->up && source_room(s, s->inflight)) {
         int fd = accept(l->fd, NULL, NULL);
         if (fd < 0) {
             if (errno == EINTR || errno == ECONNABORTED) continue;
-            source_watch(s, true);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                source_watch(s, l->fd);
+            } else if (errno == EMFILE || errno == ENFILE || errno == ENOBUFS || errno == ENOMEM) {
+                /* Out of descriptors or memory: the connection waits in the kernel's queue. */
+                s->retry_at = now + REFUSED_RETRY_MS;
+                timer_remove(s);
+            }
             break;
         }
         uint32_t h = adopt(fd);
@@ -7132,7 +7441,6 @@ static void serve_server(Source *s, int64_t now) {
     }
     if (s->paused) {
         s->since = now;
-        source_watch(s, false);
     } else if (now - s->since >= s->idle_ms && source_room(s, s->inflight)) {
         source_send(s->to, MO_N_IDLE, 0, NULL);
         s->since = now;
@@ -7168,15 +7476,23 @@ static int source_read(Conn *c, size_t initial, size_t cap) {
     }
 }
 
+/* With nothing buffered, the buffer goes back: a connection at rest holds none. */
+static void conn_give_back(Conn *c) {
+    if (c->start != c->end || !c->buf) return;
+    free(c->buf);
+    c->buf = NULL;
+    c->start = c->end = c->cap = 0;
+}
+
 static void lines_server(Source *s, int64_t now) {
     Conn *c = conns[s->handle];
     if (c->closed) {
         net_release(c);
-        return source_end(s);
+        return source_retire(s);
     }
     if (!procs[s->to]->up) {
         net_close(c);
-        return source_end(s);
+        return source_retire(s);
     }
     for (;;) {
         while (source_room(s, 0)) {
@@ -7194,33 +7510,31 @@ static void lines_server(Source *s, int64_t now) {
                 source_send(s->to, MO_N_LINE_TOO_LONG, 0, NULL);
             } else {
                 source_send(s->to, MO_N_CLOSED, 0, NULL);
-                return source_end(s);
+                return source_retire(s);
             }
             if (c->start == c->end) c->start = c->end = 0;
             s->since = now;
         }
         if (s->paused) {
             s->since = now;
-            return source_watch(s, false);
+            return;
         }
-        if (!source_may_read(s)) break;
         /* A line too long is taken before the buffer fills, so there is always room to read. */
-        int r = source_read(c, 2 * LINE_LIMIT, 2 * LINE_LIMIT);
-        if (r == FILL_TIMEOUT) {
-            source_watch(s, true);
-            break;
-        }
+        int r = source_read(c, BUFFER_INITIAL, 2 * LINE_LIMIT);
+        if (r == FILL_TIMEOUT) break;
         if (r == FILL_CLOSED) {
             net_close(c);
             source_send(s->to, MO_N_CLOSED, 0, NULL);
-            return source_end(s);
+            return source_retire(s);
         }
     }
     if (now - s->since >= s->idle_ms) {
         source_send(s->to, MO_N_IDLE, 0, NULL);
         net_close(c);
-        source_end(s);
+        return source_retire(s);
     }
+    conn_give_back(c);
+    source_watch(s, c->fd);
 }
 
 static void request_refused(Conn *c, int failed) {
@@ -7232,6 +7546,11 @@ static void request_refused(Conn *c, int failed) {
     net_close(c);
 }
 
+static void request_finish(Source *s) {
+    s->parent->inflight--;
+    source_retire(s);
+}
+
 static void request_server(Source *s, int64_t now) {
     Conn *c = conns[s->handle];
     for (;;) {
@@ -7240,7 +7559,7 @@ static void request_server(Source *s, int64_t now) {
             MoValue ok = exchange_cap(&exchanges, &nexchanges, &capexchanges, s->handle, c->buf + c->start, p.len);
             c->start += p.len;
             c->lining = false;
-            source_end(s);
+            request_finish(s);
             if (!procs[s->to]->up) {
                 exchange_forget(&exchanges[nexchanges - 1]);
                 net_close(c);
@@ -7250,87 +7569,78 @@ static void request_server(Source *s, int64_t now) {
         }
         if (p.what == PARSE_FAILED) {
             request_refused(c, p.failed);
-            return source_end(s);
+            return request_finish(s);
         }
-        if (c->closed) {
-            net_release(c);
-            return source_end(s);
+        if (c->closed || c->eof) {
+            if (c->closed) net_release(c);
+            else net_close(c);
+            return request_finish(s);
         }
-        if (!source_may_read(s)) break;
         int r = source_read(c, HTTP_BUFFER_INITIAL, HTTP_BUFFER_CAP);
-        if (r == FILL_TIMEOUT) {
-            source_watch(s, true);
-            break;
-        }
+        if (r == FILL_TIMEOUT) break;
         if (r == FILL_FULL) {
             request_refused(c, HTTP_TOO_LARGE);
-            return source_end(s);
+            return request_finish(s);
         }
         if (r == FILL_CLOSED) {
             net_close(c);
-            return source_end(s);
+            return request_finish(s);
         }
     }
     if (now - s->since >= s->idle_ms) {
         net_close(c);
-        source_end(s);
+        return request_finish(s);
     }
+    source_watch(s, c->fd);
 }
 
+/* From main's thread, holding the turn: every source that can do something turns what it took into
+ * messages, and arms the poller when it has taken all there is. */
 static void sources_pump_server(void) {
     if (!server_mode || nsources == 0) return;
     int64_t now = now_ms();
-    bool has = false;
-    int64_t deadline = 0;
-    /* A request source an http serve source adds is pumped in this same pass, since nothing else
-     * would wake main's thread for it. */
-    for (size_t k = 0; k < nsources; k++) {
-        Source *s = sources[k];
+    while (ntimers > 0 && timers[0].at <= now) {
+        Source *s = timers[0].source;
+        timer_remove(s);
+        if (due_at(s) <= now) mark_dirty(s);
+        else timer_push(s, due_at(s));
+    }
+    /* A paused source looks at its target's mailbox again. */
+    for (size_t i = 0; i < npaused; i++) mark_dirty(paused_sources[i]);
+    /* A request source an http serve source adds is pumped in this same pass. */
+    for (size_t k = 0; k < ndirty; k++) {
+        Source *s = dirty[k];
+        s->dirty = false;
         if (s->done) continue;
         if (s->kind == SRC_LINES) lines_server(s, now);
         else if (s->kind == SRC_REQUEST) request_server(s, now);
         else serve_server(s, now);
-        if (s->done || s->paused) continue;
-        int64_t at = s->since + s->idle_ms;
-        if (!has || at < deadline) deadline = at;
-        has = true;
+        if (!s->done) settle_source(s);
     }
-    sources_deadline_set = has;
-    sources_deadline = deadline;
     /* Sources that ended give back their memory. */
-    pthread_mutex_lock(&sources_mu);
-    size_t kept = 0;
-    for (size_t k = 0; k < nsources; k++) {
-        Source *s = sources[k];
-        bool parent = false;
-        for (size_t j = 0; j < nsources && !parent; j++) parent = sources[j]->parent == s && !sources[j]->done;
-        if (s->done && !parent) {
-            for (size_t j = 0; j < nsources; j++) if (sources[j]->parent == s) sources[j]->parent = NULL;
-            free(s);
-        } else {
-            sources[kept++] = s;
-        }
+    for (size_t k = 0; k < ndirty; k++) {
+        if (dirty[k]->done) free(dirty[k]);
     }
-    nsources = kept;
-    pthread_mutex_unlock(&sources_mu);
-    poke_poller();
+    ndirty = 0;
 }
 
 static bool sources_active(void) {
+    if (server_mode) return nsources > 0;
     for (size_t i = 0; i < nsources; i++) {
         if (!sources[i]->done) return true;
     }
     return false;
 }
 
-static bool sources_ready(void) {
-    if (!server_mode) return false;
-    pthread_mutex_lock(&sources_mu);
-    bool any = false;
-    for (size_t i = 0; i < nsources && !any; i++) any = !sources[i]->done && sources[i]->ready;
-    pthread_mutex_unlock(&sources_mu);
-    return any;
+static bool sources_has_work(void) { return ndirty > 0; }
+
+static bool sources_next_deadline(int64_t *at) {
+    if (ntimers == 0) return false;
+    *at = timers[0].at;
+    return true;
 }
+
+static void sources_fired(struct Source *s) { mark_dirty(s); }
 
 static void sources_mark(void) {
     for (size_t i = 0; i < nsources; i++) {
@@ -7340,11 +7650,13 @@ static void sources_mark(void) {
 
 /* main called exit and returned: every source stops. */
 static void sources_stop(void) {
-    pthread_mutex_lock(&sources_mu);
-    for (size_t i = 0; i < nsources; i++) sources[i]->done = true;
-    pthread_mutex_unlock(&sources_mu);
-    sources_deadline_set = false;
-    poke_poller();
+    for (size_t i = 0; i < nsources; i++) {
+        Source *s = sources[i];
+        poller_disarm(&s->waiter);
+        s->done = true;
+        if (!s->dirty) free(s);
+    }
+    nsources = npaused = ntimers = 0;
 }
 
 /* ==== the test runner (runner.zig) ======================================================= */
@@ -7579,9 +7891,8 @@ void mo_program_start(int argc, char **argv) {
         mo_heap = scratch = (MoRegion){0, 0, 0};
         mo_compacts = false;
     }
-    /* Each process runs its updates on a thread of its own, and the threads take turns; a value
-     * that goes from one to another goes packed when values live in regions. */
-    event_init(&main_wake);
+    /* Each process runs its updates on a fiber of its own on main's thread; a value that goes from
+     * one to another goes packed when values live in regions. */
     my_vm = &main_vm;
     sim_seed = 0;
     turns_on = mo_nprocesses > 0;
