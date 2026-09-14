@@ -284,6 +284,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | The Linux epoll path compiles for x86_64 and aarch64 in both runtimes and was never run; the first Linux run is the registry step's, or earlier if a Linux machine appears | Fable | unmet, recorded | a Linux run |
 | Housekeeping: `MO0206`'s catalog `why` now ends with the range sentence for every `MO0206`, not only a method bound to a literal (Fable's probe printed it under a plain type mismatch); the per-code `why` cannot carry a per-site sentence, so the next housekeeping step moves it into the message | Fable | provisional | the next housekeeping step |
 
+| Program 1 (`jobq`) specified and started: a lease-based job queue over HTTP on the store recipe; a lease is a deadline the queue checks at its next look, never a timer (Mo has no delayed send; a gap if it bites); every transition durable before its response; the spec asks for trippable invariants only, the `within:` count, an `idle:` chosen against the 1,000-connection backpressure finding, the Q16 ledger, and the runtime-surface questions for directions 37–40 | Fable | — | program 1's report, round 5 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
