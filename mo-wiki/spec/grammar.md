@@ -182,7 +182,7 @@ Session 5, step 19: a recipe may hold `never` blocks, after its signatures and b
 
 - A name binds once per scope; rebinding and unused bindings are errors. Only `var`, `inout`, and `state` places may be assigned.
 - `case` is exhaustive. `try` applies only to `Result` and `Option`. `or` on an `Option(T)` yields `T`.
-- Function bodies are at most 70 lines, nesting at most 3, parameters at most 6, files at most 500 lines, process state at most 12 fields.
+- Function bodies are at most 70 lines, nesting at most 3, parameters at most 6, a function body at most 70 lines (the file law was dropped in session 6, step 27), process state at most 12 fields.
 - Every `requires` has a `test rejects` that trips it. Every capability call that can wait passes `within:` and returns a `Result`; `clock.now` and `events.emit` cannot wait and return plain values.
 - The `expose` line, the exposed signatures, contracts, `never`, and `verified:` form the spec altitude; changing them is a breaking change. Every name on `expose` must be declared in the module; an undeclared or duplicated name is an error.
 - Session 4: `pub` replaced by the `expose` line (Robert: `pub` has OOP vibes). `use A.B{X, Y}` lost the dot before the braces (Robert). Comprehensions close with `end` (Robert: no implicit block ends). Formatter rule: a `for` whose body is a pure expression is rewritten to `map`/`filter`/`reduce`; `for` stays for effects, `try`, `break`, `return`.

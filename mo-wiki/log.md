@@ -348,3 +348,6 @@
 
 ## [2026-09-14] session | Evening: paused
 - Robert paused, out of his weekly tokens, at 19:17 UTC. Step 28's worker had part A written with its suite running and nothing committed; the edits are preserved on the pushed branch `step-28-part-a-wip` and left in the tree. The handoff says how to resume. The loop is stopped.
+
+## [2026-09-14] session | Night: step 28 accepted, program 6 started
+- Resumed after Robert's pause; the worker's part A had hung the suite on a jobq test binary, was fixed, and landed with a move analysis shared by both backends. All five parts verified by Fable's probes under both runtimes (the 80k map in 0.09 s interpreted, the six gaps from `mo run` and binaries), 186 of 186; the round 7 Mo jobq rebuilt and measured with the round's client (throughput within noise, memory after restart 181 → 57 MiB). Five decision rows, three `semantic`. Merged to `main`. Program 6, the ledger, started on a fresh worker at 23:52 UTC.
