@@ -165,3 +165,6 @@ property "a card number in a path reaches neither the text nor the JSON"
     assert !card_number?(text_of(s)) and !card_number?(json_of(s))
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

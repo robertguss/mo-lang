@@ -261,3 +261,6 @@ property "the slowest kept one record at a time are the slowest of them all"
     assert summarized(records, top).slowest == ranked(records).take(top)
   end
 end
+
+verified: types, contracts, tests (10), property (200 seeds), sim (not run)
+          proven: not run

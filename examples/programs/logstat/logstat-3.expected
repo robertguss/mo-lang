@@ -1,0 +1,12 @@
+requests       9
+errors         2  (22.2%)
+malformed      4
+per minute    3.0
+
+slowest
+  2_100 ms  POST /api/orders                    2026-09-12T10:03:00Z
+  1_250 ms  POST /pay/****************/charge   2026-09-12T10:01:15Z
+
+busiest
+  2  POST /api/orders
+  2  GET /api/users

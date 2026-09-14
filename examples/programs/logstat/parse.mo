@@ -161,3 +161,6 @@ property "a status and a duration parse exactly when the status is 100 to 599 an
     assert (parse_line("2026-09-12T10:00:01Z GET /a #{status} #{ms}") is Ok(_)) == fits
   end
 end
+
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+          proven: not run
