@@ -62,6 +62,7 @@ After the fact (14 Sep, morning, once mypy was installed as a `uv` tool): the ro
 **What changes.** The laws stay; four rounds without a shape-law loop is the evidence Robert asked for on 13 Sep. The next ergonomics item is the `is` form inside a comparison, one diagnostic, to step 22. P2 was set on round 4's ratio and missed by one loop on a count of five; the next round pre-registers loops by cause rather than a total, since test mistakes are the worker's, not the language's. Tokens are read before the report. The baselines' bolted-on arm still waits for a second task.
 
 ## Related
+- [[control-run-6]]
 - [[control-run-4]]
 - [[empirical-validation-plan]]
 - [[program-2]]

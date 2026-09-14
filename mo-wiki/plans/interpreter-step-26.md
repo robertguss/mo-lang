@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [syntax, compiler, tooling]
 sources: [plans/interpreter-step-25.md, syntax/p16-one-line-if-value.md, decisions/decision-log.md]
-status: queued
+status: done
 ---
 
 # Step 26: the one-line `if` in tail position
@@ -39,6 +39,10 @@ The corpus test over the changed files under `mo test`, `--sim 100`, and as `--t
 ## Done when
 
 Green at every commit; the tail-position value in both runtimes with its corpus line, the reject file moved, the two diagnostics with their files, the numbers, pushed, a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Accepted 14 Sep 2026, 14:30 UTC. Three commits in 25 minutes, green at each, 185 of 185. Part A: the line-start one-line `if` stored as the block form's tree, told apart by the `:` after its condition through a helper in `ast.zig`; on a body's last line it is the value, elsewhere `MO0310` with the block form shown; `basics/if.mo` gains `sign`, the reject file moved mid-body, the emitter's test covers the tail form. Part B: the keyword sentence for `var`, a parameter, `inout`, `for` and comprehension names, anonymous-function parameters, and a pattern binding; `rejects/var-state.mo` and `rejects/old-parameter.mo`. Part C: the changed files under `mo test`, `--sim 100`, and as test binaries; `mo fmt --check` clean. Numbers (best of 20, 149 → 151 files): lex 7,226 → 7,260 µs, parse 17,275 → 17,467, check 61,519 → 60,902, fmt 9,716 → 9,688; 29 one-line `if` values in the corpus outside `rejects/`, one starting a line. Fable's probes: the form as the last line of a function, a `case` arm, and an anonymous function under `mo run` and as a binary, the same output; mid-body refused as dropped; `var state`, an `old` parameter, and `for old` refused naming the keyword.
 
 ## Related
 - [[interpreter-step-25]]

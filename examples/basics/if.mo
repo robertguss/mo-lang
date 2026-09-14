@@ -1,5 +1,5 @@
 module Basics.If
-expose shipping, note, label, plural, sizes
+expose shipping, note, label, plural, sizes, sign
 
 intent "Branch with if as a statement, as a value in block form and on one line, and as a one-line guard on return."
 
@@ -40,6 +40,11 @@ fn sizes(total: Option(UInt32), express: Bool) : String
   end
 end
 
+# A one-line if as a function's whole body: a body's last line is its value, as a block if's is.
+fn sign(n: Int32) : String
+  if n < 0: "negative" else: "not negative"
+end
+
 test "large orders ship free"
   assert shipping(6_000, true) == 0
 end
@@ -67,5 +72,10 @@ test "a one-line if is a value wherever a value goes"
   assert sizes(None, true) == "none yet" and sizes(None, false) == "none"
 end
 
-verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+test "a one-line if on a body's last line is the body's value"
+  assert sign(-1) == "negative"
+  assert sign(0) == "not negative"
+end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
           proven: not run

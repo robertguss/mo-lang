@@ -652,7 +652,7 @@ test "edits that overlap are taken one per pass, in record order" {
     try std.testing.expectEqual(@as(usize, 2), applied.fixed.len);
 }
 
-test "mo fix leaves a one-line if value alone, and a one-line if where a statement goes carries no fix" {
+test "mo fix leaves a one-line if value alone, and a dropped one-line if carries no fix" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -671,10 +671,13 @@ test "mo fix leaves a one-line if value alone, and a one-line if where a stateme
         \\
     ;
     try std.testing.expectEqualStrings(value, try expectFixed(arena, value));
-    const statement = "module T.Sign\nexpose sign\n\nfn sign(n: Int32) : String\n  if n < 0: \"negative\" else: \"not negative\"\nend\n";
+    // A body's last line (step 26).
+    const tail = "module T.Sign\nexpose sign\n\nfn sign(n: Int32) : String\n  if n < 0: \"negative\" else: \"not negative\"\nend\n\ntest \"negative\"\n  assert sign(-1) == \"negative\"\nend\n";
+    try std.testing.expectEqualStrings(tail, try expectFixed(arena, tail));
+    const statement = "module T.Sign\nexpose sign\n\nfn sign(n: Int32) : String\n  if n < 0: \"negative\" else: \"not negative\"\n  \"#{n}\"\nend\n";
     var diags: diag.List = .empty;
     try std.testing.expectError(error.Rejected, pipeline.runTo(arena, try program.single(arena, "t.mo", statement), .check, &diags));
-    try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
+    try std.testing.expectEqualStrings("MO0310", diags.items[0].code);
     try std.testing.expectEqual(@as(usize, 0), diags.items[0].fixes.len);
     try std.testing.expectEqualStrings(statement, (try run(arena, try program.single(arena, "t.mo", statement))).source);
 }

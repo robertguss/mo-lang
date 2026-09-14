@@ -306,3 +306,6 @@
 
 ## [2026-09-14] session | Day: the VM, and step 25 accepted
 - The lead resumed on the exe.dev VM at 12:30 UTC: no Zig, no `mo`, no Mac pane; Zig 0.16 installed with `mise`, the worker in `w7:p7`. Part A had reached `origin/session-05` from the Mac at 08:04 EDT after the handoff said no commits; a fresh worker took parts B–E from it. The suite's first Linux run was 175 pass, 3 fail, 1 crash: part A's hand-written `verified:` line, a Json test reading a dead stack frame, and the `--surface` test's ports inside Linux's ephemeral range; the worker fixed them as part F, none the poller's. Step 25 accepted after 184 of 184 and Fable's probes under both runtimes; eight decision rows, two `semantic`, one for Robert (a one-line `if` in tail position, to step 26). Merged to `main`.
+
+## [2026-09-14] session | Day: step 26 accepted, round 6 pre-registered
+- The tail-position one-line `if` and the two keyword diagnostics, verified by Fable's probes under both runtimes, 185 of 185. Three decision rows. Round 6 written on `control-run-6.md` before any session: logstat and jobq, the baselines with their checks bolted on, four predictions, the null hypothesis as P3; mypy and staticcheck installed on the VM. Merged to `main`. Round 6 starts.

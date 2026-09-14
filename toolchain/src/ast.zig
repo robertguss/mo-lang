@@ -289,4 +289,52 @@ pub const Tree = struct {
     pub fn tokenText(t: Tree, i: u32) []const u8 {
         return t.source[t.tokens[i].start..t.tokens[i].end];
     }
+
+    /// The first `:` of the `if` at token `kw` when it is written on one line (step 25), or null
+    /// for the block form: the condition runs to a `:` or to its line's end, outside every
+    /// delimiter.
+    pub fn lineIfColon(t: Tree, kw: u32) ?u32 {
+        var depth: u32 = 0;
+        var k = kw + 1;
+        while (true) : (k += 1) switch (t.tokens[k].kind) {
+            .l_paren, .l_bracket, .l_brace => depth += 1,
+            .r_paren, .r_bracket, .r_brace => depth -|= 1,
+            .colon => if (depth == 0) return k,
+            .newline => if (depth == 0) return null,
+            .eof => return null,
+            else => {},
+        };
+    }
+
+    pub const LineIfShown = struct { line: []const u8, block: []const u8 };
+
+    /// The one-line `if` at token `kw`, whose first `:` is `colon`, as written and in the block
+    /// form, one part a line, `if c / a / else / b / end`: MO0101 and MO0310 show both.
+    pub fn lineIfShown(t: Tree, gpa: std.mem.Allocator, kw: u32, colon: u32) error{OutOfMemory}!LineIfShown {
+        const toks = t.tokens;
+        const src = t.source;
+        var depth: i32 = 0;
+        var else_tok: ?u32 = null;
+        var k = colon + 1;
+        while (toks[k].kind != .newline and toks[k].kind != .eof) : (k += 1) {
+            switch (toks[k].kind) {
+                .l_paren, .l_bracket, .l_brace => depth += 1,
+                .r_paren, .r_bracket, .r_brace => depth -= 1,
+                .kw_else => if (depth == 0 and else_tok == null) {
+                    else_tok = k;
+                },
+                else => {},
+            }
+        }
+        // The last token's end, so a comment after the `if` is not shown.
+        const end = toks[k - 1].end;
+        const cond = std.mem.trim(u8, src[toks[kw].end..toks[colon].start], " ");
+        const then = std.mem.trim(u8, src[toks[colon].end..if (else_tok) |e| toks[e].start else end], " ");
+        const block = if (else_tok) |e| blk: {
+            const after = if (toks[e + 1].kind == .colon) toks[e + 1].end else toks[e].end;
+            const otherwise = std.mem.trim(u8, src[@min(after, end)..end], " ");
+            break :blk try std.fmt.allocPrint(gpa, "if {s} / {s} / else / {s} / end", .{ cond, then, otherwise });
+        } else try std.fmt.allocPrint(gpa, "if {s} / {s} / end", .{ cond, then });
+        return .{ .line = src[toks[kw].start..end], .block = block };
+    }
 };
