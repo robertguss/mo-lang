@@ -108,13 +108,19 @@ class ClientTest(unittest.TestCase):
             store = Store(OsFs(), Path(tmp))
             with ServerThread(Queue.open(store, ManualClock(START_MS))) as server:
                 body = '{"queue": "q", "payload": "x", "max_attempts": 1}'
-                code, out, _ = invoke("client", "127.0.0.1", str(server.port), "w1", "POST", "/jobs", body)
+                code, out, _ = invoke(
+                    "client", "127.0.0.1", str(server.port), "w1", "POST", "/jobs", body
+                )
                 self.assertEqual(code, 0)
                 status, _, reply = out.partition(" ")
                 self.assertEqual((status, json.loads(reply)["id"]), ("201", "j_1"))
-                code, out, _ = invoke("client", "127.0.0.1", str(server.port), "w1", "POST", "/queues/q/lease")
+                code, out, _ = invoke(
+                    "client", "127.0.0.1", str(server.port), "w1", "POST", "/queues/q/lease"
+                )
                 self.assertEqual((code, out.split(" ")[0]), (0, "200"))
-                code, out, _ = invoke("client", "127.0.0.1", str(server.port), "w1", "POST", "/queues/q/lease")
+                code, out, _ = invoke(
+                    "client", "127.0.0.1", str(server.port), "w1", "POST", "/queues/q/lease"
+                )
                 self.assertEqual((code, out), (0, "204\n"))
             store.close()
 
@@ -148,9 +154,7 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(code, 0)
         lines = out.splitlines()
         self.assertEqual(lines[0], "> - GET /health")
-        self.assertEqual(
-            lines[1], '< 200 {"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":0}'
-        )
+        self.assertEqual(lines[1], '< 200 {"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":0}')
         self.assertTrue(lines[3].startswith('< 201 {"id":"j_1"'))
         self.assertEqual(lines[6], "> advance 30000")
         self.assertEqual(
@@ -172,7 +176,15 @@ class ServeProcessTest(unittest.TestCase):
             port = probe.getsockname()[1]
             probe.close()
             process = subprocess.Popen(
-                [sys.executable, "-c", "from jobq.cli import main; main()", "serve", tmp, "--port", str(port)],
+                [
+                    sys.executable,
+                    "-c",
+                    "from jobq.cli import main; main()",
+                    "serve",
+                    tmp,
+                    "--port",
+                    str(port),
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
