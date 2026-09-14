@@ -2878,8 +2878,36 @@ static FixScope fix_scope_of(MoValue cap) {
     return fix_scopes[h - 1];
 }
 
+/* Whether `name`, taken from `folder` (or the root when it is absolute), climbs above `folder` at any
+ * `..` (stdlib.zig, climbsOut). */
+static bool climbs_out(const char *folder, const char *name, size_t n) {
+    size_t base = 0;
+    for (const char *p = folder; *p; p++) {
+        if (*p != '/' && (p == folder || p[-1] == '/')) base++;
+    }
+    size_t depth = n > 0 && name[0] == '/' ? 0 : base;
+    size_t i = 0;
+    while (i < n) {
+        while (i < n && name[i] == '/') i++;
+        size_t start = i;
+        while (i < n && name[i] != '/') i++;
+        size_t seg = i - start;
+        if (seg == 0 || (seg == 1 && name[start] == '.')) continue;
+        if (seg == 2 && name[start] == '.' && name[start + 1] == '.') {
+            if (depth <= base) return true;
+            depth--;
+        } else {
+            depth++;
+        }
+    }
+    return false;
+}
+
+/* The path a name in the scope is at, or NULL when it leaves the scope: a name that climbs above the
+ * scope's folder leaves it, even above the fixture's root, as the real Fs refuses it (step 21). */
 static char *fix_path_in(const FixScope *scope, const char *name, size_t n) {
     if (scope->system < 0 || scope->empty) return NULL;
+    if (climbs_out(scope->folder, name, n)) return NULL;
     char *full = path_resolve(scope->folder, name, n);
     if (within_root(scope->folder, full)) return full;
     free(full);
@@ -3005,7 +3033,9 @@ static MoValue fixture_files(int which, const MoValue *a) {
     if (scope.delay > within) return timed_out();
     FixSystem *sys = scope.system >= 0 ? &fix_systems[scope.system] : NULL;
     if (which == FS_LIST) {
-        if (!sys || scope.empty) return ok_of(mo_list(NULL, 0));
+        if (!sys) return ok_of(mo_list(NULL, 0));
+        /* A scope that climbed out of the one it narrowed holds nothing, as the real Fs's. */
+        if (scope.empty) return missing(path);
         char *prefix = strcmp(scope.folder, "/") == 0 ? strdup("/") : path_join(scope.folder, "");
         size_t plen = strlen(prefix);
         char **names = xmalloc((sys->n ? sys->n : 1) * sizeof(char *));
