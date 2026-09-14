@@ -5,7 +5,7 @@ expose Opening, Batch, Answer, Flushed, Queue, Queues, Worker, Workers, opening,
 use Jobq.Api{Routed, respond, route}
 use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, rebuilt, records}
 use Jobq.Job{Phase, shown, to_ms}
-use Jobq.Store{Table, StoreError, compact, open, put_all}
+use Jobq.Store{Table, StoreError, blank, compact, open, pairs, put_all}
 
 intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the store in one write, so one fsync covers every call taken since the last, and only then is each caller answered; a batch the log did not take is answered 503 and the board goes back to what the store holds, and a log that may end in part of a batch is rewritten whole before the next."
 
@@ -48,7 +48,7 @@ end
 
 # A queue over a store just opened; None when a record is not the job its key names.
 fn opening(table: Table, now: Time) : Option(Opening)
-  held = try rebuilt(table.entries.entries, to_ms(now))
+  held = try rebuilt(pairs(table), to_ms(now))
   Some(Opening(board: held, table: table))
 end
 
@@ -86,7 +86,7 @@ fn refused(batch: Batch, whole: Result(Table, StoreError), problem: StoreError) 
     Ok(ready): ready
     Error(_): batch.table
   end
-  var held = rebuilt(table.entries.entries, batch.board.started) or batch.board
+  var held = rebuilt(pairs(table), batch.board.started) or batch.board
   held.next = batch.board.next
   torn = problem == Torn or (batch.torn and whole is Error(_))
   reason = if torn
@@ -242,7 +242,7 @@ end
 
 # An empty store over the log d/jobq.log, for a test that must not fail before it starts.
 fn fresh() : Table
-  Table(entries: Map.new(), dir: "d", name: "jobq.log", bytes: 0, lines: 0, cut: false)
+  blank("d")
 end
 
 fn begun(fs: Fs, clock: Clock) : Handle(Queue)
@@ -276,7 +276,7 @@ end
 fn stored(fs: Fs, now: Time) : Option(List(String))
   case open(fs, "d")
     Ok(table):
-      held = try rebuilt(table.entries.entries, now)
+      held = try rebuilt(pairs(table), now)
       Some(records(held))
     Error(_): None
   end
