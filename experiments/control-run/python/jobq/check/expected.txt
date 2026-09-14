@@ -1,0 +1,55 @@
+> - GET /health
+< 200 {"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":0}
+> - GET /jobs
+< 401 {"error":"authorization: Bearer <token> is required"}
+> w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_attempts": 2}
+< 201 {"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","attempts":0,"max_attempts":2,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:00.000Z"}
+> w1 POST /jobs {"queue": "emails", "payload": "second", "max_attempts": 1}
+< 201 {"id":"j_2","queue":"emails","state":"queued","payload":"second","attempts":0,"max_attempts":1,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:00.000Z"}
+> w1 POST /jobs {"queue": "emails", "payload": "bad", "max_attempts": 0}
+< 400 {"error":"max_attempts: Input should be greater than or equal to 1"}
+> w1 POST /jobs not json
+< 400 {"error":"Invalid JSON: expected ident at line 1 column 2"}
+> w1 GET /jobs/j_1
+< 200 {"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","attempts":0,"max_attempts":2,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:00.000Z"}
+> w1 GET /jobs/j_9
+< 404 {"error":"no such job"}
+> w1 PUT /jobs/j_1
+< 405 {"error":"method not allowed"}
+> w1 GET /nowhere
+< 404 {"error":"no such route"}
+> w1 POST /queues/emails/lease {"lease_ms": 1000}
+< 200 {"id":"j_1","queue":"emails","state":"leased","payload":"hello\nworld","attempts":1,"max_attempts":2,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:00.000Z","worker":"w1","lease_until":"2026-01-01T00:00:01.000Z"}
+> w2 POST /queues/emails/lease {"lease_ms": 1000}
+< 200 {"id":"j_2","queue":"emails","state":"leased","payload":"second","attempts":1,"max_attempts":1,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:00.000Z","worker":"w2","lease_until":"2026-01-01T00:00:01.000Z"}
+> w3 POST /queues/emails/lease
+< 204
+> w2 POST /jobs/j_1/ack
+< 409 {"error":"the caller does not hold a live lease on the job"}
+> w1 DELETE /jobs/j_1
+< 409 {"error":"the job is leased"}
+> advance 1000
+> w1 POST /jobs/j_1/ack
+< 409 {"error":"the caller does not hold a live lease on the job"}
+> w3 POST /queues/emails/lease {"lease_ms": 500}
+< 200 {"id":"j_1","queue":"emails","state":"leased","payload":"hello\nworld","attempts":2,"max_attempts":2,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:01.000Z","worker":"w3","lease_until":"2026-01-01T00:00:01.500Z","reason":"lease ran out"}
+> w3 POST /jobs/j_1/ack
+< 200 {"id":"j_1","queue":"emails","state":"done","payload":"hello\nworld","attempts":2,"max_attempts":2,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:01.000Z","reason":"lease ran out"}
+> w2 POST /jobs/j_2/fail {"reason": "smtp down"}
+< 409 {"error":"the caller does not hold a live lease on the job"}
+> w1 POST /jobs {"queue": "sms", "payload": "third", "max_attempts": 2}
+< 201 {"id":"j_3","queue":"sms","state":"queued","payload":"third","attempts":0,"max_attempts":2,"created_at":"2026-01-01T00:00:01.000Z","updated_at":"2026-01-01T00:00:01.000Z"}
+> w4 POST /queues/sms/lease {"lease_ms": 100}
+< 200 {"id":"j_3","queue":"sms","state":"leased","payload":"third","attempts":1,"max_attempts":2,"created_at":"2026-01-01T00:00:01.000Z","updated_at":"2026-01-01T00:00:01.000Z","worker":"w4","lease_until":"2026-01-01T00:00:01.100Z"}
+> w4 POST /jobs/j_3/fail {"reason": "carrier timeout"}
+< 200 {"id":"j_3","queue":"sms","state":"queued","payload":"third","attempts":1,"max_attempts":2,"created_at":"2026-01-01T00:00:01.000Z","updated_at":"2026-01-01T00:00:01.000Z","reason":"carrier timeout"}
+> w1 GET /jobs?queue=emails&state=done
+< 200 {"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"hello\nworld","attempts":2,"max_attempts":2,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:01.000Z","reason":"lease ran out"}]}
+> w1 DELETE /jobs/j_1
+< 204
+> w1 GET /jobs?state=gone
+< 400 {"error":"state: Input should be 'queued', 'leased', 'done' or 'dead'"}
+> w1 GET /jobs
+< 200 {"jobs":[{"id":"j_2","queue":"emails","state":"dead","payload":"second","attempts":1,"max_attempts":1,"created_at":"2026-01-01T00:00:00.000Z","updated_at":"2026-01-01T00:00:01.000Z","reason":"lease ran out"},{"id":"j_3","queue":"sms","state":"queued","payload":"third","attempts":1,"max_attempts":2,"created_at":"2026-01-01T00:00:01.000Z","updated_at":"2026-01-01T00:00:01.000Z","reason":"carrier timeout"}]}
+> - GET /health
+< 200 {"queued":1,"leased":0,"done":0,"dead":1,"uptime_ms":1000}
