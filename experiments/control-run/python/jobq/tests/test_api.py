@@ -1,18 +1,28 @@
 import unittest
 
-from support import QueueCase, body_of
-
 from jobq.store import replay
+from support import QueueCase, body_of
 
 
 class CreateAndGetTest(QueueCase):
     def test_create_is_201_with_the_job(self) -> None:
-        response = self.call("POST", "/jobs", {"queue": "emails", "payload": "hi", "max_attempts": 3})
+        response = self.call(
+            "POST", "/jobs", {"queue": "emails", "payload": "hi", "max_attempts": 3}
+        )
         self.assertEqual(response.status, 201)
         job = body_of(response)
         self.assertEqual(
             list(job),
-            ["id", "queue", "state", "payload", "attempts", "max_attempts", "created_at", "updated_at"],
+            [
+                "id",
+                "queue",
+                "state",
+                "payload",
+                "attempts",
+                "max_attempts",
+                "created_at",
+                "updated_at",
+            ],
         )
         self.assertEqual((job["id"], job["state"], job["attempts"]), ("j_1", "queued", 0))
 
@@ -139,9 +149,7 @@ class HealthAndStoreTest(QueueCase):
         self.clock.advance(250)
         self.call("POST", "/queues/emails/lease")
         health = body_of(self.call("GET", "/health", token=None))
-        self.assertEqual(
-            health, {"queued": 0, "leased": 1, "done": 1, "dead": 1, "uptime_ms": 250}
-        )
+        self.assertEqual(health, {"queued": 0, "leased": 1, "done": 1, "dead": 1, "uptime_ms": 250})
 
     def test_a_store_failure_is_503_with_the_store_unchanged(self) -> None:
         self.create()
