@@ -20,7 +20,7 @@ build-backend = "uv_build"
 
 [tool.mypy]
 strict = true
-plugins = ["pydantic.mypy"]
+python_executable = ".venv/bin/python"
 mypy_path = "src"
 
 [tool.ruff]
