@@ -27,7 +27,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Fable's reading: the session 6 runs read ([[empirical-validation-plan]], [[ecosystem-strategy]]); the research agenda's twelve pages answered ([[research-agenda-2026-09-response]]); the VM-first drafts filed (d36–d40) | done | — |
 | Memory and green threads (chapter 7), [[interpreter-step-21]] | done: a process is a fiber, 65,530 connections, the bets measured | — |
 | Program 1, the job queue ([[program-1]]): done, 40 min, the premise held; its follow-ups (step 22: the `--recipe` line count, the fixture's missing folder, JSON integers, a derived deadline, the recipe's rewrite rule) | follow-ups queued | 1 |
-| Round 5 of the control run, pre-registered | next | — |
+| Round 5 of the control run, pre-registered ([[control-run-5]]) | done: mixed, Mo 1.28 times Go, P2 missed by one loop | — |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
 | Programs 5 and 6, the agent harness and the ledger | queued | 3–4 |
 | The package registry | deferred until an outsider runs a real service | — |
@@ -69,6 +69,7 @@ About ten to fifteen briefs to the end of the roadmap as written, at roughly one
 | 20b | done: round 4, timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept ([[control-run-4]]) | round 5 after program 1 |
 | 21 | done: green threads in both runtimes, 65,530 idle connections from 8,000, a process at rest half its size, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics ([[interpreter-step-21]]) | program 1 |
 | 19 | done: what program 4 found; 200,000 processes at 9 MB native, the deadlock a report, `--recipe`, mutation tests 9 of 10 ([[interpreter-step-19]]) | — |
+| 22b | done: round 5, pre-registered, mixed: Mo 14.8 min to Go's 11.6 (1.28, from 1.73), loops 5/2/3, no shape-law loop ([[control-run-5]]) | round 6 after program 5 |
 | 22 | done: program 1, `jobq`, 40 min, nine modules, 4,051 lease-and-ack pairs a second native, verified by a 29-check session ([[program-1]]); literal deadlines lie where they nest; `invariant` kept none of eight candidates | round 5, step 22 |
 | 19 | the package registry ([[d34-packages-are-recipes]]); `mo prove` | later |
 
