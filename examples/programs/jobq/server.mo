@@ -4,7 +4,7 @@ expose Acceptor, Acceptors, Client, Clients, serving
 
 use Jobq.Board{Call, board}
 use Jobq.Queue{Opening, Queue, Worker, stamp}
-use Jobq.Store{Table}
+use Jobq.Store{Table, blank}
 
 intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the leases that ran out; the listener's idle time is 10 seconds, so a connection that sends no whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room for 1,200 of them at once."
 
@@ -75,7 +75,7 @@ supervisor Clients(http: Http, port: UInt16, request: Request)
 end
 
 fn fresh() : Table
-  Table(entries: Map.new(), dir: "d", name: "jobq.log", bytes: 0, lines: 0, cut: false)
+  blank("d")
 end
 
 fn by(method: String, path: String, token: String, body: String) : Request
