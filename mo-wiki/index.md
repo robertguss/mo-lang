@@ -132,6 +132,7 @@
 - [[interpreter-step-13|Step 13: the C backend, brief for the worker]] — C runtime, emitter, mo build, differential tests against the interpreter
 - [[interpreter-step-12b|Step 12b: two ratified defaults, undone, brief for the worker]] — memoization out of the reference interpreter; every never runs on every test
 - [[interpreter-step-12|Step 12: the runtime under real programs, brief for the worker]] — program discovery, hashed maps, in-place state, per-request freeing, file writes, three language decisions, fmt fuzz
+- [[program-5|Program 5: agent in Mo, brief for the worker]] — the agent harness: permissions as narrowed capabilities, a run's budget as one `Deadline`, retries, a scripted mock model, the surface as the operator's view
 - [[program-1|Program 1: jobq in Mo, brief for the worker]] — the founding premise's first real test: a durable lease-based job queue over HTTP on the store recipe
 - [[program-4|Program 4: notes in Mo, brief for the worker]] — the first program over HTTP, built from two recipes
 - [[program-3|Program 3: kv in Mo, brief for the worker]] — the second real program, a TCP key-value store

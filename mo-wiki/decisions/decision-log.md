@@ -321,6 +321,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | A module's own `Event`, `RuntimeError`, `Request`, or `Response` hides the prelude's in the declaring module only (the bug fixed in step 23); `RuntimeError` is `NoProcess`, `Unparsed`, `ReadOnly`, `MailboxFull`, `Timeout` | Fable, from Opus's default | provisional | — |
 | Directions 37 and 40 are built as step 23 (the surface as a capability, the ring as the events); direction 38 (replay from a snapshot) and the MCP wrapper wait for a program that asks for them; direction 39 (hot reload) stays unearned | Fable | provisional | program 5 |
 
+| Program 5 (`agent`) specified and started: an agent harness that runs a model's loop under permissions (each tool holds only its narrowed capability), budgets (one `Deadline` per run, every call on what remains of it), and immediate retries; the model is any plain-HTTP server and the program ships a scripted mock so a check needs no network and no TLS; a new recipe, `Recipes.ModelClient`, whose waiting signature takes a `Deadline`, the first recipe under that rule; the transcript is durable before the next step; the runtime surface is the operator's view | Fable | — | program 5's report, round 6 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

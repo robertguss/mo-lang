@@ -30,7 +30,8 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Round 5 of the control run, pre-registered ([[control-run-5]]) | done: mixed, Mo 1.28 times Go, P2 missed by one loop | — |
 | The runtime surface (directions 37 and 40), [[interpreter-step-23]] | done: `platform.runtime`, the event ring, `--surface` | — |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
-| Programs 5 and 6, the agent harness and the ledger | queued | 3–4 |
+| Program 5, the agent harness ([[program-5]]) | running | 1–2 |
+| Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, the toolchain in Mo | late | — |
 
