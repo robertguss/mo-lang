@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import BinaryIO
 
 from contracts import require
-from parse import Malformed, mask_cards, parse_raw, parse_timestamp
+from parse import Malformed, is_ascii_digits, mask_cards, parse_raw, parse_timestamp
 from report import render_json, render_text
 from stats import TOP_MAX, TOP_MIN, Tally
 
@@ -82,7 +82,7 @@ def option_value(option: str, value: str | None) -> str:
 
 def parse_top(text: str) -> int:
     """`--top N` outside 1 to 100 is a usage error, not a clamp."""
-    if not (text.isascii() and text.isdigit()) or len(text.lstrip("0")) > 3:
+    if not is_ascii_digits(text) or len(text.lstrip("0")) > len(str(TOP_MAX)):
         raise UsageError(f"--top needs a whole number 1 to 100, got {shown(text)}")
     top = int(text)
     if not TOP_MIN <= top <= TOP_MAX:
@@ -118,13 +118,13 @@ def open_log(directory: str, name: str) -> BinaryIO:
     if os.path.dirname(os.path.realpath(path)) != os.path.realpath(directory):
         raise ReadFailure(f"{shown(name)} resolves outside {shown(directory)}")
     try:
-        stream = os.fdopen(os.open(path, _OPEN_FLAGS), "rb")
+        descriptor = os.open(path, _OPEN_FLAGS)
     except OSError as exc:
         raise ReadFailure(f"cannot open {shown(name)}: {exc.strerror}") from exc
-    if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-        stream.close()
+    if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+        os.close(descriptor)
         raise ReadFailure(f"{shown(name)} is not a regular file")
-    return stream
+    return os.fdopen(descriptor, "rb")
 
 
 def tally_log(tally: Tally, directory: str, name: str, since: int | None) -> None:
