@@ -3,7 +3,7 @@ title: "Programming language landscape as of 2026"
 created: 2026-09-13
 updated: 2026-09-13
 type: concept
-tags: [research, history, landscape]
+tags: [research, history]
 sources:
   - "../../raw/plang-history-2026-09/history/03_2010_to_2026.md"
   - "../../raw/plang-history-2026-09/synthesis/executive_summary.md"

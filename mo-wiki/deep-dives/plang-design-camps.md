@@ -3,7 +3,7 @@ title: "The eight camps of language design"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [design, camps, tradeoffs, history, research]
+tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/camps/design_camps_and_tradeoffs.md"
 ---
