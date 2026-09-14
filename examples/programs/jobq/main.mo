@@ -1,0 +1,427 @@
+# run: check data/demo data/session.txt
+# run: compact data/compact
+# run: serve
+# exit: 2
+# run: serve data/nowhere
+# exit: 1
+# run: client 127.0.0.1 1 p GET /jobs
+# exit: 1
+module Jobq.Main
+expose Place, Trip, Task, Problem, task, steady, serving?, main
+
+use Jobq.Queue{Opening, opening}
+use Jobq.Server{serving}
+use Jobq.Store{Table, StoreError, compact, count, cut_short?, lines, open, writing_to}
+
+intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
+
+struct Place
+  dir: String
+  port: UInt16
+end
+
+# One request from the client: where to, the token (- for none), and the request.
+struct Trip
+  host: String
+  port: UInt16
+  token: String
+  method: String
+  path: String
+  json: String
+end
+
+enum Task
+  Serving(place: Place)
+  Compacting(dir: String)
+  Asking(trip: Trip)
+  Checking(dir: String, script: String)
+end
+
+enum Problem
+  Usage(detail: String)
+  Unopened(dir: String, why: String)
+  Unbound(port: UInt16)
+  Unreached(host: String, port: UInt16)
+end
+
+fn usage() : String
+  "usage: jobq serve <dir> [--port N] | jobq compact <dir> | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
+end
+
+fn task(args: List(String)) : Result(Task, Problem)
+  rest = args.drop(1)
+  case args.first or ""
+    "serve": to_serve(rest)
+    "compact": compacting(rest)
+    "client": asking(rest)
+    "check": checking(rest)
+    "": Error(Usage(detail: "no command given"))
+    _: Error(Usage(detail: "unknown command #{args.first or ""}"))
+  end
+end
+
+fn to_serve(args: List(String)) : Result(Task, Problem)
+  dir = try dir_of(args)
+  flags = args.drop(1)
+  return Ok(Serving(place: Place(dir: dir, port: 7_900))) if flags.size == 0
+  if flags.size != 2 or flags.first != Some("--port")
+    return Error(Usage(detail: "serve takes a folder and then --port N"))
+  end
+  port = try port_of(flags.get(1) or "")
+  Ok(Serving(place: Place(dir: dir, port: port)))
+end
+
+fn compacting(args: List(String)) : Result(Task, Problem)
+  dir = try dir_of(args)
+  return Error(Usage(detail: "compact takes one folder")) if args.size != 1
+  Ok(Compacting(dir: dir))
+end
+
+fn asking(args: List(String)) : Result(Task, Problem)
+  if args.size < 5
+    return Error(Usage(detail: "client takes a host, a port, a token, a method, and a path"))
+  end
+  port = try port_of(args.get(1) or "")
+  trip = try trip_of(args.drop(2), args.first or "", port)
+  Ok(Asking(trip: trip))
+end
+
+# A token, a method, a path, and any JSON after them, joined by spaces as they were split.
+fn trip_of(words: List(String), host: String, port: UInt16) : Result(Trip, Problem)
+  if words.size < 3
+    return Error(Usage(detail: "a request is a token, a method, a path, and any JSON"))
+  end
+  Ok(Trip(host: host, port: port, token: words.first or "", method: words.get(1) or "",
+    path: words.get(2) or "", json: String.join(words.drop(3), " ")))
+end
+
+fn checking(args: List(String)) : Result(Task, Problem)
+  dir = try dir_of(args)
+  return Error(Usage(detail: "check takes a folder and a script")) if args.size != 2
+  Ok(Checking(dir: dir, script: args.get(1) or ""))
+end
+
+fn dir_of(args: List(String)) : Result(String, Problem)
+  dir = args.first or ""
+  return Error(Usage(detail: "no folder given")) if dir == "" or dir.starts_with?("-")
+  Ok(dir)
+end
+
+fn port_of(text: String) : Result(UInt16, Problem)
+  ensures result is Ok(port) implies port >= 1
+
+  n = text.to_u64 or 0
+  return Error(Usage(detail: "a port is a number from 1 to 65535, not #{text}")) if n < 1 or n > 65_535
+  Ok(n.to_u16)
+end
+
+fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String)) : Result(String,
+  Problem)
+  given = try task(args)
+  case given
+    Serving(place): serve(http, fs, clock, out, err, place)
+    Compacting(dir):
+      opened = try opened_store(fs, err, dir)
+      compacted(fs, dir, opened)
+    Asking(trip): client(http, trip)
+    Checking(dir: dir, script: script):
+      lines = try script_of(fs, script)
+      opened = try opened_store(fs.read_only, err, dir)
+      check(http, fs, clock, opened, lines)
+  end
+end
+
+# Serves a folder until jobq is stopped. A log whose last line was cut short is compacted
+# first, so the next change starts on a line of its own.
+fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : Result(String,
+  Problem)
+  opened = try opened_store(fs, err, place.dir)
+  whole = if cut_short?(opened): try compacted_store(fs, place.dir, opened) else: opened
+  start = try opening_of(whole, clock.now)
+  case http.listen(place.port, within: 5_000.ms)
+    Ok(listener):
+      queue = serving(listener, fs, clock, start)
+      queue.send(Sweep)
+      out.write_line("jobq: serving #{place.dir} on 127.0.0.1:#{listener.port}")
+      out.flush
+      Ok("")
+    Error(_): Error(Unbound(port: place.port))
+  end
+end
+
+fn opening_of(table: Table, now: Time) : Result(Opening, Problem)
+  case opening(table, now)
+    Some(start): Ok(start)
+    None: Error(Unopened(dir: table.dir, why: "holds a jobq.log with a record that is not a job"))
+  end
+end
+
+fn compacted_store(fs: Fs, dir: String, opened: Table) : Result(Table, Problem)
+  case compact(fs, opened)
+    Ok(table): Ok(table)
+    Error(_): Error(Unopened(dir: dir, why: "holds a jobq.log jobq could not rewrite"))
+  end
+end
+
+fn compacted(fs: Fs, dir: String, opened: Table) : Result(String, Problem)
+  table = try compacted_store(fs, dir, opened)
+  Ok("jobq: compacted #{dir}/jobq.log from #{lines(opened)} lines to #{count(table)}\n")
+end
+
+fn client(http: Http, trip: Trip) : Result(String, Problem)
+  case http.send(request_of(trip), host: trip.host, port: trip.port, within: 10_000.ms)
+    Ok(response): Ok(shown(response))
+    Error(_): Error(Unreached(host: trip.host, port: trip.port))
+  end
+end
+
+fn request_of(trip: Trip) : Request
+  headers = if trip.token == "-"
+    Map.new()
+  else
+    Map.new().set("authorization", "Bearer #{trip.token}")
+  end
+  Request(method: trip.method, path: path_of(trip.path), query: query_of(trip.path),
+    headers: headers, body: trip.json)
+end
+
+# The path before a ?, and the query after it split into its pairs, as the client writes them.
+fn path_of(target: String) : String
+  target.slice(0, target.index_of("?") or target.size)
+end
+
+fn query_of(target: String) : Map(String, String)
+  at = target.index_of("?") or target.size
+  pairs = target.slice(at + 1, target.size).split("&").filter(fn(pair) pair != "" end)
+  pairs.reduce(Map.new(), fn(query, pair)
+    query.set(pair.slice(0, pair.index_of("=") or pair.size),
+      pair.slice((pair.index_of("=") or pair.size) + 1, pair.size))
+  end)
+end
+
+# A response as the client prints it: the status, then the body when there is one.
+fn shown(response: Response) : String
+  return "#{response.status}\n" if response.body == ""
+  "#{response.status} #{response.body}\n"
+end
+
+# Serves a folder's jobs on a free port and plays a script through the client, each line a
+# request of its own; the transcript is every line sent and what came back, with the times the
+# clock gives steadied. The folder's log is only read: the changes go to jobq.check.log beside
+# it, removed before and after.
+fn check(http: Http, fs: Fs, clock: Clock, opened: Table, lines: List(String)) : Result(String,
+  Problem)
+  folder = fs.scoped(opened.dir)
+  if !cleared(folder)
+    return Error(Unopened(dir: opened.dir, why: "holds a jobq.check.log jobq cannot remove"))
+  end
+  start = try opening_of(writing_to(opened, "jobq.check.log"), clock.now)
+  case http.listen(0, within: 5_000.ms)
+    Ok(listener):
+      transcript = checked_on(http, listener, fs, clock, start, lines)
+      return Ok(transcript) if cleared(folder)
+      Error(Unopened(dir: opened.dir, why: "holds a jobq.check.log jobq cannot remove"))
+    Error(_): Error(Unbound(port: 0))
+  end
+end
+
+fn cleared(folder: Fs) : Bool
+  removed = folder.remove("jobq.check.log", within: 10_000.ms) is Ok(_)
+  removed or folder.size("jobq.check.log", within: 10_000.ms) is Error(Missing(_))
+end
+
+fn checked_on(http: Http, listener: HttpListener, fs: Fs, clock: Clock, start: Opening,
+  lines: List(String)) : String
+  queue = serving(listener, fs, clock, start)
+  queue.send(Sweep)
+  var transcript = ""
+  for line in lines
+    heard = played(http, line, listener.port)
+    transcript = "#{transcript}> #{line}\n#{steady(heard)}"
+  end
+  transcript
+end
+
+fn played(http: Http, line: String, port: UInt16) : String
+  case trip_of(line.split(" "), "127.0.0.1", port)
+    Ok(trip):
+      case client(http, trip)
+        Ok(text): text
+        Error(problem): "#{said(problem)}\n"
+      end
+    Error(problem): "#{said(problem)}\n"
+  end
+end
+
+# A transcript with what depends on the clock replaced: each job's times and the uptime.
+fn steady(text: String) : String
+  times = masked(masked(text, "created_at", true), "updated_at", true)
+  masked(masked(times, "lease_until", true), "uptime_ms", false)
+end
+
+fn masked(text: String, key: String, quoted: Bool) : String
+  label = "\"#{key}\": "
+  pieces = text.split(label)
+  mark = if quoted: "\"<#{key}>\"" else: "<#{key}>"
+  rest = pieces.drop(1).map(fn(piece) "#{label}#{mark}#{after_value(piece, quoted)}" end)
+  String.join([pieces.first or ""].concat(rest), "")
+end
+
+# What follows a JSON value at the start of a piece: past the closing quote of a string, or
+# from the first , or } after a number.
+fn after_value(piece: String, quoted: Bool) : String
+  if quoted
+    inside = piece.slice(1, piece.size)
+    return inside.slice((inside.index_of("\"") or 0) + 1, inside.size)
+  end
+  ends = [piece.index_of(","), piece.index_of("}")].flat_map(fn(at) found(at) end)
+  piece.slice(ends.min or piece.size, piece.size)
+end
+
+fn found(at: Option(UInt64)) : List(UInt64)
+  case at
+    Some(i): [i]
+    None: []
+  end
+end
+
+fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
+  case fs.read_only.read_lines(script, within: 10_000.ms)
+    Ok(lines): Ok(lines)
+    Error(Missing(_)): Error(Unopened(dir: script, why: "is not a script jobq can read"))
+    Error(Timeout): Error(Unopened(dir: script, why: "took longer than 10 seconds to read"))
+    Error(NotText): Error(Unopened(dir: script, why: "is not UTF-8 text"))
+  end
+end
+
+# The folder's store, replayed. A last line cut short is left out and said on stderr, once, at
+# once.
+fn opened_store(fs: Fs, err: Out, dir: String) : Result(Table, Problem)
+  case open(fs, dir)
+    Ok(table):
+      if cut_short?(table)
+        err.write_line("jobq: the last line of #{dir}/jobq.log was cut short, so it is left out")
+        err.flush
+      end
+      Ok(table)
+    Error(problem): Error(Unopened(dir: dir, why: why_unopened(problem)))
+  end
+end
+
+fn why_unopened(problem: StoreError) : String
+  case problem
+    NoFolder: "is not a folder jobq can read"
+    Unreadable: "holds a jobq.log jobq cannot read"
+    Slow: "took longer than ten minutes to read"
+    BadLine(number): "holds a jobq.log whose line #{number} is not a SET or a DEL"
+    Unwritten | Torn: "holds a jobq.log jobq could not write"
+  end
+end
+
+fn said(problem: Problem) : String
+  case problem
+    Usage(detail): "#{detail}; #{usage()}"
+    Unopened(dir: dir, why: why): "#{dir} #{why}"
+    Unbound(port): "cannot listen on 127.0.0.1:#{port}"
+    Unreached(host: host, port: port): "no jobq answered at #{host}:#{port}"
+  end
+end
+
+fn code_of(problem: Problem) : UInt8
+  case problem
+    Usage(_): 2
+    Unopened(dir: _, why: _): 1
+    Unbound(_): 1
+    Unreached(host: _, port: _): 1
+  end
+end
+
+# Whether the arguments say to serve, which goes on until jobq is stopped.
+fn serving?(args: List(String)) : Bool
+  task(args) is Ok(Serving(_))
+end
+
+# Serving goes on until jobq is stopped; every other command ends jobq with exit once it is done,
+# since check serves a listener of its own.
+fn main(platform: Platform)
+  args = platform.args
+  case ran(platform.http, platform.fs, platform.clock, platform.stdout, platform.stderr, args)
+    Ok(text):
+      platform.stdout.write(text)
+      if !serving?(args)
+        platform.exit(0)
+      end
+    Error(problem):
+      platform.stderr.write_line("jobq: #{said(problem)}")
+      platform.exit(code_of(problem))
+  end
+end
+
+test "serve takes a folder and an optional port, 7900 by default"
+  assert task(["serve", "data"]) == Ok(Serving(place: Place(dir: "data", port: 7_900)))
+  assert serving?(["serve", "data"])
+  assert !serving?(["compact", "data"])
+  assert task(["serve",
+    "data",
+    "--port",
+    "8000"]) == Ok(Serving(place: Place(dir: "data", port: 8_000)))
+end
+
+test "a missing folder, a bad port, a short request, or an unknown command is a usage error"
+  assert task([]) is Error(Usage(_))
+  assert task(["serve"]) is Error(Usage(_))
+  assert task(["serve", "--port", "8000"]) is Error(Usage(_))
+  assert task(["serve", "data", "--port"]) is Error(Usage(_))
+  assert task(["serve", "data", "--port", "0"]) is Error(Usage(_))
+  assert task(["serve", "data", "--port", "65536"]) is Error(Usage(_))
+  assert task(["compact"]) is Error(Usage(_))
+  assert task(["compact", "a", "b"]) is Error(Usage(_))
+  assert task(["client", "localhost", "7900", "p", "GET"]) is Error(Usage(_))
+  assert task(["client", "localhost", "port", "p", "GET", "/jobs"]) is Error(Usage(_))
+  assert task(["check", "data"]) is Error(Usage(_))
+  assert task(["stop"]) is Error(Usage(_))
+end
+
+test "client joins the JSON after the path back into one body, and splits a query from the path"
+  words = ["client", "localhost", "7900", "p", "POST", "/jobs", "{\"queue\":", "\"a\"}"]
+  trip = Trip(host: "localhost", port: 7_900, token: "p", method: "POST", path: "/jobs",
+    json: "{\"queue\": \"a\"}")
+  assert task(words) == Ok(Asking(trip: trip))
+  assert request_of(trip).headers.get("authorization") == Some("Bearer p")
+  var anonymous = trip
+  anonymous.token = "-"
+  anonymous.path = "/jobs?queue=emails&state=queued"
+  listing = request_of(anonymous)
+  assert listing.headers.size == 0 and listing.path == "/jobs"
+  assert listing.query == Map.new().set("queue", "emails").set("state", "queued")
+  assert task(["check", "data", "s.txt"]) == Ok(Checking(dir: "data", script: "s.txt"))
+end
+
+test "a response prints as its status and body, and the clock's numbers are steadied"
+  assert shown(Response(status: 204, body: "")) == "204\n"
+  assert shown(Response(status: 404, body: "{}")) == "404 {}\n"
+  job = "{\"id\": \"j_1\", \"created_at\": \"2026-09-14T10:00:00.123Z\", \"updated_at\": \"2026-09-14T10:00:01Z\", \"worker\": \"w\", \"lease_until\": \"2026-09-14T10:00:31Z\"}"
+  assert steady(job) == "{\"id\": \"j_1\", \"created_at\": \"<created_at>\", \"updated_at\": \"<updated_at>\", \"worker\": \"w\", \"lease_until\": \"<lease_until>\"}"
+  assert steady("{\"queued\": 1, \"dead\": 0, \"uptime_ms\": 1234}") == "{\"queued\": 1, \"dead\": 0, \"uptime_ms\": <uptime_ms>}"
+  assert steady("no numbers here") == "no numbers here"
+end
+
+test "a store whose last line was cut short opens without it, and says so on the error stream"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  assert fs.write("d/jobq.log", "SET a 1\nSET b 2", within: 1_000.ms) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(table)
+  assert count(table) == 1
+  assert err.written == ["jobq: the last line of d/jobq.log was cut short, so it is left out\n"]
+  assert opening_of(table, Time.fixture()) is Error(Unopened(dir: "d", why: _))
+end
+
+test "a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1"
+  assert code_of(Usage(detail: "x")) == 2
+  assert code_of(Unopened(dir: "d", why: "w")) == 1
+  assert code_of(Unbound(port: 7_900)) == 1
+  assert code_of(Unreached(host: "h", port: 1)) == 1
+end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
