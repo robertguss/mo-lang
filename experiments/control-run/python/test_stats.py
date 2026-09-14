@@ -82,7 +82,13 @@ class Busiest(unittest.TestCase):
     )
 
     def test_count_descending_then_path_then_method(self) -> None:
-        expected = (Busy(3, "GET", "/c"), Busy(2, "GET", "/a"), Busy(2, "POST", "/a"), Busy(2, "GET", "/b"), Busy(1, "GET", "/d"))
+        expected = (
+            Busy(3, "GET", "/c"),
+            Busy(2, "GET", "/a"),
+            Busy(2, "POST", "/a"),
+            Busy(2, "GET", "/b"),
+            Busy(1, "GET", "/d"),
+        )
         self.assertEqual(summarise(self.RECORDS, top=5).busiest, expected)
 
     def test_top_truncates(self) -> None:
