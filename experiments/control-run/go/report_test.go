@@ -27,9 +27,9 @@ func section(t *testing.T, text, name string) string {
 }
 
 func TestTextTotals(t *testing.T) {
-	want := "requests   4\n" +
-		"errors     1  (25.0%)\n" +
-		"malformed  1\n" +
+	want := "requests    4\n" +
+		"errors      1  (25.0%)\n" +
+		"malformed   1\n" +
 		"per minute 2.0"
 	if got := section(t, RenderText(small(t)), "totals"); got != want {
 		t.Errorf("totals:\n%s\nwant:\n%s", got, want)
@@ -69,7 +69,7 @@ func TestTextBusiest(t *testing.T) {
 }
 
 func TestTextEmptySummary(t *testing.T) {
-	want := "requests   0\nerrors     0  (0.0%)\nmalformed  0\nper minute 0.0\n\nslowest\n\nbusiest\n"
+	want := "requests    0\nerrors      0  (0.0%)\nmalformed   0\nper minute 0.0\n\nslowest\n\nbusiest\n"
 	if got := RenderText(Summary{}); got != want {
 		t.Errorf("empty:\n%q\nwant:\n%q", got, want)
 	}
@@ -123,7 +123,7 @@ func TestGroup(t *testing.T) {
 			t.Errorf("group(%d) = %s, want %s", n, got, want)
 		}
 	}
-	if whole, frac := splitDecimal("12045.5"); whole != "12_045" || frac != ".5" {
+	if whole, frac := splitDecimal("12045.5"); whole != "12_045." || frac != "5" {
 		t.Errorf("splitDecimal = %s %s", whole, frac)
 	}
 }
