@@ -140,6 +140,9 @@ const Emitter = struct {
     prog: program.Program,
     options: Options,
     recorded: bytecode.Recorded = undefined,
+    /// The statement whose field write records nothing, since the next one writes the same place
+    /// (bytecode.fieldWriteMovesOn, step 27).
+    unrested: Index = 0,
     b: *Builder = undefined,
     protos: std.ArrayList(u8) = .empty,
     bodies: std.ArrayList(u8) = .empty,
@@ -949,7 +952,10 @@ const Emitter = struct {
 
     fn blockStmts(e: *Emitter, stmts: []const u32) Error!void {
         const mark = e.b.names.items.len;
-        for (stmts) |s| try e.stmt(s);
+        for (stmts, 0..) |s, k| {
+            e.noteUnrested(stmts, k);
+            try e.stmt(s);
+        }
         e.b.names.shrinkRetainingCapacity(mark);
     }
 
@@ -958,7 +964,10 @@ const Emitter = struct {
         const mark = e.b.names.items.len;
         defer e.b.names.shrinkRetainingCapacity(mark);
         if (stmts.len == 0) return "MO_NONE_V";
-        for (stmts[0 .. stmts.len - 1]) |s| try e.stmt(s);
+        for (stmts[0 .. stmts.len - 1], 0..) |s, k| {
+            e.noteUnrested(stmts, k);
+            try e.stmt(s);
+        }
         const last = stmts[stmts.len - 1];
         const n = e.node(last);
         return switch (n.kind) {
@@ -970,6 +979,10 @@ const Emitter = struct {
                 break :blk "MO_NONE_V";
             },
         };
+    }
+
+    fn noteUnrested(e: *Emitter, stmts: []const u32, k: usize) void {
+        if (k + 1 < stmts.len and bytecode.fieldWriteMovesOn(e.tree, stmts[k], stmts[k + 1])) e.unrested = stmts[k];
     }
 
     fn stmt(e: *Emitter, s: Index) Error!void {
@@ -992,6 +1005,8 @@ const Emitter = struct {
                 try e.line("{s} = {s};", .{ try e.bindName(e.text(n.main_token), true), v });
             },
             .assign => {
+                // Read before the value, whose own blocks note theirs.
+                const rests = e.unrested != s;
                 const op = e.text(n.main_token);
                 var v: []const u8 = undefined;
                 if (op.len == 1) {
@@ -1004,7 +1019,7 @@ const Emitter = struct {
                     const r = try e.expr(n.rhs);
                     v = try e.arith(if (op[0] == '+') "add" else "sub", e.typeOf(n.lhs), l, r, try e.clause(.overflow, e.firstToken(s)));
                 }
-                try e.assignPlace(n.lhs, v);
+                try e.assignPlace(n.lhs, v, rests);
             },
             .return_stmt => {
                 if (n.rhs != 0) {
@@ -1058,13 +1073,14 @@ const Emitter = struct {
         return "MO_GE";
     }
 
-    /// Stores `v` into a place: a name, or a field path under one.
-    fn assignPlace(e: *Emitter, i: Index, v: []const u8) Error!void {
+    /// Stores `v` into a place: a name, or a field path under one. The whole value the name then
+    /// holds is recorded for a never when it `rests` (bytecode.fieldWriteMovesOn).
+    fn assignPlace(e: *Emitter, i: Index, v: []const u8, rests: bool) Error!void {
         const n = e.node(i);
         switch (n.kind) {
             .name_ref => {
                 const target = (try e.resolve(e.text(n.main_token))).?;
-                try e.observe(v, e.typeOf(i));
+                if (rests) try e.observe(v, e.typeOf(i));
                 try e.line("{s} = {s};", .{ target.cvar, v });
             },
             .member => {
@@ -1074,7 +1090,7 @@ const Emitter = struct {
                 // The old struct is only rebuilt with the field set: not a read that shares it.
                 const old = try e.loadPlace(n.lhs);
                 const changed = try e.temp("mo_set_field({s}, {d}, {s})", .{ old, k, v });
-                try e.assignPlace(n.lhs, changed);
+                try e.assignPlace(n.lhs, changed, rests);
             },
             else => try e.halt(i, "", false),
         }
@@ -1670,7 +1686,7 @@ const Emitter = struct {
         var j = @min(ps.len, arg_nodes.items.len);
         while (j > 0) {
             j -= 1;
-            if (ps[j].inout) try e.assignPlace(arg_nodes.items[j], operands.items[j]);
+            if (ps[j].inout) try e.assignPlace(arg_nodes.items[j], operands.items[j], true);
         }
         return result;
     }

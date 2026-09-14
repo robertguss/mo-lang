@@ -15,7 +15,8 @@
 //! Every test and property run of a program with a `never`, seeded or not, keeps each
 //! distinct value of a type a never reads with `T.all` that the run held in a binding, a
 //! field, a message, or state (`observe`), and checks every never over them when the run
-//! ends (`checkNevers`).
+//! ends (`checkNevers`). A never reads values at rest (step 27): a field write records the
+//! struct only when the next statement does not write the same place again.
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");

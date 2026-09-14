@@ -50,6 +50,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 21. `contracts/never.mo`: a two-generator `never` with a guard
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
 62. `contracts/never-trips.mo`: a `never` that plain test data breaks, tripping a `test rejects` under `mo test` without `--sim`
+92. `contracts/never-var-copy.mo`: a `never` reads values at rest (step 27): round 6's `Pair`, changed one field at a time on a `var` copy, passes, since a field write followed by another write of the same `var` records nothing, and a copy returned with one half moved still trips a `test rejects`
 65. `contracts/property-refined.mo`: properties over refined types; `any(Percent)` never gives 65,535, and `any(Status)`, whose `where` few `UInt16` values pass, generates between its bounds
 
 ## effects
