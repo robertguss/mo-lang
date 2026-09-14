@@ -85,6 +85,22 @@ Every job lives in the Queue's region (its board: the jobs, each queue's order, 
 
 Not worked around: nothing in the program can reach memory outside its regions. jobq's own part was cut as far as it goes (bug 1's pages, and the store keeping no second copy of a job, 391 MiB to 299 MiB at 100,000 jobs), and the rest is reported as found.
 
+## 3. A `reduce` whose accumulator is a tuple copies what the tuple holds on every step
+
+`xs.reduce((value, list), fn(acc, x) (changed(acc.0, x), acc.1.push(x)) end)` copies `value` whole at every step, so a reduce over a batch of changes to a large table is quadratic, where the same reduce with `value` alone as its accumulator runs in place.
+
+Reproduction: a process whose state holds a struct with a `Map(UInt64, UInt64)` of 50,000 entries, updated 2,000 times, eight new keys an update, as a binary:
+
+| the update | 2,000 updates |
+|---|---|
+| `state.board = put(state.board, i)`, eight times through a function | 2 ms |
+| `[0, 1, 2, 3, 4, 5, 6, 7].reduce(board, fn(b, k) put(b, i * 8 + k) end)` | 19 ms |
+| `[0, 1, 2, 3, 4, 5, 6, 7].reduce((board, [0].take(0)), fn(acc, k) (put(acc.0, i * 8 + k), acc.1.push(k)) end).0` | 1,214 ms |
+
+(`put` is `var next = board; next.jobs = next.jobs.set(i, i); next`.) Handing the board through a struct field (`Holder(board: state.board)`, `Dec(board: put(board, i), n: i)`) stays at 2 ms.
+
+Found by the load run: `Jobq.Store.put_all` applied a batch of records with a `(Table, List(String))` accumulator, and jobq made about 690 jobs a second with every flush copying the table. Workaround: the lines to write are gathered by a reduce over small values only, and the table is changed by a second reduce whose accumulator is the table alone.
+
 ## Not a bug: the fixture clock is frozen
 
 A test's `Clock.fixture()` does not move while a fixture call waits, so a lease never runs out on a running queue in a test. Grammar §8 says the fixture clock is frozen, so it is recorded in `GAPS.md` as a gap. The reproduction: `clock = Clock.fixture()`, `before = clock.now`, `Fs.fixture(delay: 200.ms).list(within: 1.minute)`, an `ask` of a process, then `clock.now - before` is `0.ms`, under `mo test` and `mo test --sim 5`.
