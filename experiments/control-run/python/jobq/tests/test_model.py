@@ -76,7 +76,9 @@ class CreateJobShapeTest(unittest.TestCase):
 
     def test_accepts_the_spec_example(self) -> None:
         created = self.parse('{"queue": "emails", "payload": "...", "max_attempts": 3}')
-        self.assertEqual((created.queue, created.payload, created.max_attempts), ("emails", "...", 3))
+        self.assertEqual(
+            (created.queue, created.payload, created.max_attempts), ("emails", "...", 3)
+        )
 
     def test_rejects(self) -> None:
         cases = [
