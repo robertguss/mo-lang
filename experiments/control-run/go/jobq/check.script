@@ -1,0 +1,33 @@
+# jobq's program-level check, played by `jobq check` through a real socket.
+# The health and auth routes.
+- GET /health
+- GET /jobs
+producer GET /nowhere
+producer PUT /jobs
+# Create, and the 400s.
+producer POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_attempts": 2}
+producer POST /jobs {"queue": "emails", "payload": "second", "max_attempts": 1}
+producer POST /jobs {"queue": "bad name", "payload": "x", "max_attempts": 1}
+producer POST /jobs {"queue": "emails", "payload": "x"}
+producer POST /jobs not json
+producer GET /jobs/j_1
+producer GET /jobs/j_99
+# A lease that runs out, and a late ack.
+w1 POST /queues/emails/lease {"lease_ms": 100}
+w2 POST /jobs/j_1/ack
+w1 DELETE /jobs/j_1
+sleep 300
+w1 POST /jobs/j_1/ack
+# Leased again at attempt 2, failed on its last attempt: dead.
+w2 POST /queues/emails/lease {"lease_ms": 60000}
+w2 POST /jobs/j_1/fail {"reason": "smtp down"}
+w1 POST /queues/emails/lease
+# A restart replays the log; the lease on j_2 is still live.
+restart
+w1 GET /jobs?state=leased
+w1 POST /jobs/j_2/ack
+w1 POST /queues/emails/lease
+producer GET /jobs?queue=emails&state=dead
+producer DELETE /jobs/j_1
+producer DELETE /jobs/j_1
+- GET /health
