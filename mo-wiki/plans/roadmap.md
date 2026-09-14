@@ -31,7 +31,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | The runtime surface (directions 37 and 40), [[interpreter-step-23]] | done: `platform.runtime`, the event ring, `--surface` | — |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
 | Program 5, the agent harness ([[program-5]]): done, 77 min; its follow-ups, [[interpreter-step-24]] | done: the authority hole, a handle in state, the delayed send | — |
-| Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | running | 1 |
+| Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | next, not started | 1 |
 | Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, the toolchain in Mo | late | — |
