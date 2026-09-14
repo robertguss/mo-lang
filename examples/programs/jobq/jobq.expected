@@ -1,0 +1,64 @@
+> - GET /health
+200 {"queued": 1, "leased": 1, "done": 1, "dead": 1, "uptime_ms": <uptime_ms>}
+> - GET /jobs
+401 {"error": "a request needs authorization: Bearer <token>"}
+> ada GET /jobs
+200 {"jobs": [{"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome grace", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome ada", "attempts": 0, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_3", "queue": "emails", "state": "dead", "payload": "reset password for carl", "attempts": 2, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_4", "queue": "reports", "state": "dead", "payload": "monthly report", "attempts": 1, "max_attempts": 1, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "no data for august"}]}
+> ada GET /jobs?queue=emails&state=queued
+200 {"jobs": [{"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome ada", "attempts": 0, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> ada GET /jobs/j_1
+200 {"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome grace", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada GET /jobs/j_3
+200 {"id": "j_3", "queue": "emails", "state": "dead", "payload": "reset password for carl", "attempts": 2, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada GET /jobs/j_5
+404 {"error": "no such job"}
+> ada POST /jobs {"queue": "emails", "payload": "welcome bob", "max_attempts": 2}
+201 {"id": "j_101", "queue": "emails", "state": "queued", "payload": "welcome bob", "attempts": 0, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada POST /queues/emails/lease {"lease_ms": 60000}
+200 {"id": "j_2", "queue": "emails", "state": "leased", "payload": "welcome ada", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "ada", "lease_until": "<lease_until>"}
+> bob POST /queues/emails/lease {"lease_ms": 60000}
+200 {"id": "j_101", "queue": "emails", "state": "leased", "payload": "welcome bob", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "bob", "lease_until": "<lease_until>"}
+> carl POST /queues/emails/lease
+204
+> carl POST /queues/reports/lease
+204
+> bob POST /jobs/j_2/ack
+409 {"error": "bob holds no live lease on j_2"}
+> ada POST /jobs/j_2/ack
+200 {"id": "j_2", "queue": "emails", "state": "done", "payload": "welcome ada", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada POST /jobs/j_2/ack
+409 {"error": "ada holds no live lease on j_2"}
+> bob POST /jobs/j_101/fail {"reason": "smtp down"}
+200 {"id": "j_101", "queue": "emails", "state": "queued", "payload": "welcome bob", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "smtp down"}
+> ada GET /jobs/j_101
+200 {"id": "j_101", "queue": "emails", "state": "queued", "payload": "welcome bob", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "smtp down"}
+> ada DELETE /jobs/j_1
+204
+> ada GET /jobs/j_1
+404 {"error": "no such job"}
+> ada DELETE /jobs/j_101
+204
+> ada DELETE /jobs/j_77
+404 {"error": "no such job"}
+> ada POST /jobs this is not json
+400 {"error": "the body is not JSON"}
+> ada POST /jobs {"queue": "two words", "payload": "", "max_attempts": 1}
+400 {"error": "a queue name is 1 to 64 letters, digits, - and _"}
+> ada POST /jobs {"queue": "emails", "payload": "", "max_attempts": 0}
+400 {"error": "max_attempts must be a whole number from 1 to 100"}
+> ada POST /queues/emails/lease {"lease_ms": 5}
+400 {"error": "lease_ms must be a whole number from 100 to 3600000"}
+> bob POST /jobs/j_4/fail {}
+400 {"error": "reason is missing"}
+> ada PATCH /jobs
+405 {"error": "this route takes GET, POST"}
+> ada GET /nowhere
+404 {"error": "no route /nowhere"}
+> crowd 1200
+1200 connections open, none sending
+> ada POST /jobs {"queue": "after-crowd", "payload": "still answered", "max_attempts": 1}
+201 {"id": "j_102", "queue": "after-crowd", "state": "queued", "payload": "still answered", "attempts": 0, "max_attempts": 1, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> ada GET /jobs?state=done
+200 {"jobs": [{"id": "j_2", "queue": "emails", "state": "done", "payload": "welcome ada", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> - GET /health
+200 {"queued": 1, "leased": 0, "done": 1, "dead": 2, "uptime_ms": <uptime_ms>}
