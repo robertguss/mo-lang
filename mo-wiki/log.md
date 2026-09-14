@@ -324,3 +324,15 @@
 
 ## [2026-09-14] session | Afternoon: step 27 accepted, round 7 starts
 - The file law gone, the three words as names, the `never` at-rest rule, the escape, `fold_lines`, verified by Fable's probes under both runtimes, 185 of 185. Four decision rows, one `semantic`. Merged to `main`. Round 7 starts on the pre-registered page with the hidden defect suite.
+
+## [2026-09-14] session | Afternoon: the outside review
+- Robert's outside review of the vault after round 6, filed verbatim with Fable's response: already done (the file law, the keywords, the `never` rule, the reframed measure), wrong on facts (the C backend exists), agreed and queued (the counted laws as settings, the `try` wording, the zero-dependency cost, program 7's pick, a closure column, a scale benchmark), disagreed (a JSON `verified:` line, the Ruby framing). The fork, the runtime as the thesis, is Robert's question. Two decision rows, one for Robert.
+
+## [2026-09-14] session | Afternoon: the thesis restated
+- Robert said yes to the fork the outside review named: chapter 1 rewritten by Fable as three layers (the runtime, capabilities and recipes, the language as their surface), the counted laws as settings, the measure as reliability, speed, the loop, and dependencies, the null hypothesis section rewritten with rounds 1 to 6 as evidence. One locked row.
+
+## [2026-09-14] session | Afternoon: the reviewer's reply
+- The reviewer conceded the C backend and the corpus size, withdrew sigils and the JSON `verified:` line, and pushed on three things Fable took: the BEAM as chapter 1's null hypothesis, the one-sentence thesis, the closure counterfactual (an audit, not a second worker), the zero-dependency fallback (a brick wrapping a C library under audit), and a Redis-subset shortlist for program 7. One provisional row.
+
+## [2026-09-14] session | Evening: round 7, held on all four
+- Three fresh sessions from 16:40 UTC in `../mo-lang-control7-*`, the Mo programs removed from every worktree, the Python checkers as dev dependencies; Fable verified each worktree, ran the hidden suite against each jobq (0, 0, 0), and measured all three with one client (Mo 981 pairs a second at 32 workers to 478 and 467; 150 MiB to 76 and 189; restart 3.7 s to 0.7 and 1.0); the loop 0.38 s to 18.7 and 8.7; dependencies 0, 1, 3. Mo's worker disclosed reading the suite's description. Four decision rows, one `semantic`. Step 28 written from the Mo notes. Merged to `main`.
