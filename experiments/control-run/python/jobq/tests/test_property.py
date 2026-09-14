@@ -3,12 +3,11 @@
 import random
 import unittest
 
+from jobq.jobs import MAX_PAYLOAD_BYTES, payload_problem
 from support import QueueCase, body_of
 
-from jobq.jobs import MAX_PAYLOAD_BYTES, payload_problem
-
 # Printable ASCII, the one allowed control character, and 2-, 3-, and 4-byte UTF-8.
-ALPHABET = [chr(c) for c in range(0x20, 0x7F)] + ["\n", "é", " ", "中", "\U0001f600"]
+ALPHABET = [chr(c) for c in range(0x20, 0x7F)] + ["\n", "é", "\u00a0", "中", "\U0001f600"]
 
 
 def payload(rng: random.Random) -> str:
