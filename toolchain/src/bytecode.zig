@@ -379,6 +379,7 @@ pub const Error = error{OutOfMemory};
 pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     var l: Lower = .{ .gpa = gpa, .k = &checked, .tree = checked.tree };
     l.moves = try moves_mod.analyze(gpa, &checked);
+    l.unrested = try unrestedWrites(gpa, checked.tree);
     l.fn_of_sig = try gpa.alloc(u32, checked.sigs.len);
     @memset(l.fn_of_sig, none);
     for (checked.sigs, 0..) |s, si| {
@@ -456,16 +457,117 @@ fn recordKey(k: *const check.Checked, id: Id) ?u64 {
     };
 }
 
-/// Whether statement `s` sets a field under a place that statement `next`, the one after it in
-/// the same body, assigns again, as `copy.a += 1` then `copy.b += 1`. A never reads values at
-/// rest (step 27): the struct is not at rest between the two, so `s` records nothing for a never's
-/// `T.all`, and the last write of the run records the whole struct. The C backend (emit_c.zig)
-/// asks the same.
-pub fn fieldWriteMovesOn(tree: ast.Tree, s: Index, next: Index) bool {
-    const a = tree.nodes[s];
-    const b = tree.nodes[next];
-    if (a.kind != .assign or b.kind != .assign or tree.nodes[a.lhs].kind != .member) return false;
-    return std.mem.eql(u8, placeRoot(tree, a.lhs), placeRoot(tree, b.lhs));
+/// The field writes that record nothing for a never's `T.all`, since the struct is not at rest after
+/// them (step 27; step 28 looks through branches): a write of a field under a place whose next
+/// write, the first statement control reaches after it, assigns the same root name again. That is
+/// the next statement of its body; past the end of a branch, the statement after its `if` or
+/// `case`; and when the next statement is an `if` or a `case`, the first write of every branch,
+/// an `if` without `else` going on to the statement after it. A condition, subject, or guard on
+/// the line that names the root keeps the write at rest, since a call there could hold the struct.
+/// The last write of the run records the whole struct. The C backend (emit_c.zig) reads the same set.
+pub fn unrestedWrites(gpa: std.mem.Allocator, tree: ast.Tree) Error!std.AutoHashMapUnmanaged(Index, void) {
+    var out: std.AutoHashMapUnmanaged(Index, void) = .empty;
+    for (tree.nodes) |n| {
+        switch (n.kind) {
+            .fn_decl => {
+                const body = tree.extraData(ast.FnBody, n.rhs);
+                try unrestIn(gpa, tree, tree.span(body.start, body.end), null, &out);
+            },
+            .test_decl, .test_rejects => try unrestIn(gpa, tree, tree.span(n.lhs, n.rhs), null, &out),
+            .for_stmt => try unrestIn(gpa, tree, spanOf(tree, n.rhs), null, &out),
+            .anon_fn => {
+                const data = tree.extraData(ast.AnonFn, n.lhs);
+                try unrestIn(gpa, tree, tree.span(data.body_start, data.body_end), null, &out);
+            },
+            .comprehension => {
+                const data = tree.extraData(ast.Comprehension, n.lhs);
+                try unrestIn(gpa, tree, tree.span(data.body_start, data.body_end), null, &out);
+            },
+            .if_expr => {
+                const data = tree.extraData(ast.If, n.rhs);
+                try unrestIn(gpa, tree, tree.span(data.then_start, data.then_end), null, &out);
+                try unrestIn(gpa, tree, tree.span(data.else_start, data.else_end), null, &out);
+            },
+            .case_expr => for (spanOf(tree, n.rhs)) |a| {
+                const data = tree.extraData(ast.Arm, tree.nodes[a].rhs);
+                try unrestIn(gpa, tree, tree.span(data.body_start, data.body_end), null, &out);
+            },
+            .process_decl => {
+                const data = tree.extraData(ast.Process, n.lhs);
+                if (data.update != 0) try unrestIn(gpa, tree, &.{tree.nodes[data.update].lhs}, null, &out);
+            },
+            else => {},
+        }
+    }
+    return out;
+}
+
+/// Where control goes once a branch's statements are done: statement `at` of `stmts`, then on up.
+const After = struct { stmts: []const u32, at: usize, up: ?*const After };
+
+fn spanOf(tree: ast.Tree, extra_index: u32) []const u32 {
+    if (extra_index == 0) return &.{};
+    const s = tree.extraData(ast.Span, extra_index);
+    return tree.span(s.start, s.end);
+}
+
+fn unrestIn(gpa: std.mem.Allocator, tree: ast.Tree, stmts: []const u32, after: ?*const After, out: *std.AutoHashMapUnmanaged(Index, void)) Error!void {
+    for (stmts, 0..) |s, k| {
+        const n = tree.nodes[s];
+        const next: After = .{ .stmts = stmts, .at = k + 1, .up = after };
+        switch (n.kind) {
+            .assign => if (tree.nodes[n.lhs].kind == .member and writesNext(tree, &next, placeRoot(tree, n.lhs))) try out.put(gpa, s, {}),
+            .if_stmt => {
+                const data = tree.extraData(ast.If, n.rhs);
+                try unrestIn(gpa, tree, tree.span(data.then_start, data.then_end), &next, out);
+                try unrestIn(gpa, tree, tree.span(data.else_start, data.else_end), &next, out);
+            },
+            .case_stmt => for (spanOf(tree, n.rhs)) |a| {
+                const data = tree.extraData(ast.Arm, tree.nodes[a].rhs);
+                try unrestIn(gpa, tree, tree.span(data.body_start, data.body_end), &next, out);
+            },
+            else => {},
+        }
+    }
+}
+
+/// Whether the first statement control reaches from `from` assigns `root` again.
+fn writesNext(tree: ast.Tree, from: *const After, root: []const u8) bool {
+    if (from.at == from.stmts.len) return if (from.up) |up| writesNext(tree, up, root) else false;
+    const s = from.stmts[from.at];
+    const n = tree.nodes[s];
+    const past: After = .{ .stmts = from.stmts, .at = from.at + 1, .up = from.up };
+    switch (n.kind) {
+        .assign => return std.mem.eql(u8, placeRoot(tree, n.lhs), root),
+        .if_stmt => {
+            if (lineNames(tree, n.main_token, root)) return false;
+            const data = tree.extraData(ast.If, n.rhs);
+            const then: After = .{ .stmts = tree.span(data.then_start, data.then_end), .at = 0, .up = &past };
+            const otherwise: After = .{ .stmts = tree.span(data.else_start, data.else_end), .at = 0, .up = &past };
+            return writesNext(tree, &then, root) and writesNext(tree, &otherwise, root);
+        },
+        .case_stmt => {
+            if (lineNames(tree, n.main_token, root)) return false;
+            const arms = spanOf(tree, n.rhs);
+            for (arms) |a| {
+                const data = tree.extraData(ast.Arm, tree.nodes[a].rhs);
+                if (data.guard != 0 and lineNames(tree, tree.nodes[tree.nodes[a].lhs].main_token, root)) return false;
+                const body: After = .{ .stmts = tree.span(data.body_start, data.body_end), .at = 0, .up = &past };
+                if (!writesNext(tree, &body, root)) return false;
+            }
+            return arms.len > 0;
+        },
+        else => return false,
+    }
+}
+
+/// Whether `root` is a name on the rest of the line from token `from`.
+fn lineNames(tree: ast.Tree, from: u32, root: []const u8) bool {
+    var k = from;
+    while (k < tree.tokens.len and tree.tokens[k].kind != .newline and tree.tokens[k].kind != .eof) : (k += 1) {
+        if (tree.tokens[k].kind == .ident and std.mem.eql(u8, tree.tokenText(k), root)) return true;
+    }
+    return false;
 }
 
 /// The name a place such as `copy.item.count` roots at.
@@ -588,9 +690,9 @@ const Lower = struct {
     gpa: std.mem.Allocator,
     k: *const check.Checked,
     tree: ast.Tree,
-    /// The statement whose field write records nothing, since the next one writes the same place
-    /// (fieldWriteMovesOn, step 27).
-    unrested: Index = 0,
+    /// The field writes that record nothing, since the next write reached assigns the same place
+    /// (unrestedWrites; steps 27, 28).
+    unrested: std.AutoHashMapUnmanaged(Index, void) = .empty,
     functions: std.ArrayList(Function) = .empty,
     constants: std.ArrayList(Const) = .empty,
     clauses: std.ArrayList(Clause) = .empty,
@@ -1259,10 +1361,7 @@ const Lower = struct {
 
     fn blockStmts(l: *Lower, stmts: []const u32) Error!void {
         const mark = l.b.names.items.len;
-        for (stmts, 0..) |s, k| {
-            l.noteUnrested(stmts, k);
-            try l.stmt(s);
-        }
+        for (stmts) |s| try l.stmt(s);
         l.b.names.shrinkRetainingCapacity(mark);
     }
 
@@ -1271,10 +1370,7 @@ const Lower = struct {
         const mark = l.b.names.items.len;
         defer l.b.names.shrinkRetainingCapacity(mark);
         if (stmts.len == 0) return l.pushConst(.none);
-        for (stmts[0 .. stmts.len - 1], 0..) |s, k| {
-            l.noteUnrested(stmts, k);
-            try l.stmt(s);
-        }
+        for (stmts[0 .. stmts.len - 1]) |s| try l.stmt(s);
         const last = stmts[stmts.len - 1];
         const n = l.node(last);
         switch (n.kind) {
@@ -1286,10 +1382,6 @@ const Lower = struct {
                 try l.pushConst(.none);
             },
         }
-    }
-
-    fn noteUnrested(l: *Lower, stmts: []const u32, k: usize) void {
-        if (k + 1 < stmts.len and fieldWriteMovesOn(l.tree, stmts[k], stmts[k + 1])) l.unrested = stmts[k];
     }
 
     fn stmt(l: *Lower, s: Index) Error!void {
@@ -1316,7 +1408,7 @@ const Lower = struct {
             },
             .assign => {
                 // Read before the value, whose own blocks note theirs.
-                const rests = l.unrested != s;
+                const rests = !l.unrested.contains(s);
                 const op = l.text(n.main_token);
                 if (op.len == 1) {
                     const lhs = l.node(n.lhs);
@@ -1378,7 +1470,7 @@ const Lower = struct {
     }
 
     /// Stores the value on top into a place: a name, or a field path under one. The whole value
-    /// the name then holds is recorded for a never when it `rests` (fieldWriteMovesOn).
+    /// the name then holds is recorded for a never when it `rests` (unrestedWrites).
     fn assignPlace(l: *Lower, i: Index, rests: bool) Error!void {
         const n = l.node(i);
         switch (n.kind) {

@@ -34,6 +34,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments
 61. `basics/returns-nothing.mo`: a function with no return type, called for what it writes, and a negative number as a pattern
 73. `basics/in-place.mo`: a field set on a var and a string grown by interpolation write in place (step 21), and a copy taken before either never sees it, as with `push`
+94. `basics/moves.mo`: a value handed on by its last read, or by the one read of a place on the right of an assignment to it, is written in place by whatever takes it (step 28): a map inside a struct set and removed from through functions and through `reduce`, a tuple accumulator, and a message; a copy read before, a list's element, a capture, and the next arm of a case never see the write
 
 ## types
 13. `types/struct.mo`: named construction and the `var` copy update
@@ -50,7 +51,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 21. `contracts/never.mo`: a two-generator `never` with a guard
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
 62. `contracts/never-trips.mo`: a `never` that plain test data breaks, tripping a `test rejects` under `mo test` without `--sim`
-92. `contracts/never-var-copy.mo`: a `never` reads values at rest (step 27): round 6's `Pair`, changed one field at a time on a `var` copy, passes, since a field write followed by another write of the same `var` records nothing, and a copy returned with one half moved still trips a `test rejects`
+92. `contracts/never-var-copy.mo`: a `never` reads values at rest (step 27): round 6's `Pair`, changed one field at a time on a `var` copy, passes, since a field write whose next write reached assigns the same `var` records nothing, and a copy returned with one half moved still trips a `test rejects`; round 7's logstat `Tally`, a write then one in each arm of an `if`, and a write in the only arm of an `if` with writes after it, pass too (step 28)
 65. `contracts/property-refined.mo`: properties over refined types; `any(Percent)` never gives 65,535, and `any(Status)`, whose `where` few `UInt16` values pass, generates between its bounds
 
 ## effects

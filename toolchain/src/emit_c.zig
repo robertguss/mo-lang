@@ -55,6 +55,7 @@ pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program
     var e: Emitter = .{ .gpa = gpa, .k = checked, .tree = checked.tree, .prog = prog, .options = options };
     e.recorded = try bytecode.recordedTypes(gpa, checked);
     e.moves = try moves_mod.analyze(gpa, checked);
+    e.unrested = try bytecode.unrestedWrites(gpa, checked.tree);
     for (fixed_names) |n| _ = try e.nameId(n);
     try e.indexProcesses();
     try e.run();
@@ -145,9 +146,9 @@ const Emitter = struct {
     recorded: bytecode.Recorded = undefined,
     /// Which reads hand their value on (moves.zig, step 28).
     moves: moves_mod.Moves = .{},
-    /// The statement whose field write records nothing, since the next one writes the same place
-    /// (bytecode.fieldWriteMovesOn, step 27).
-    unrested: Index = 0,
+    /// The field writes that record nothing, since the next write reached assigns the same place
+    /// (bytecode.unrestedWrites; steps 27, 28).
+    unrested: std.AutoHashMapUnmanaged(Index, void) = .empty,
     b: *Builder = undefined,
     protos: std.ArrayList(u8) = .empty,
     bodies: std.ArrayList(u8) = .empty,
@@ -972,10 +973,7 @@ const Emitter = struct {
 
     fn blockStmts(e: *Emitter, stmts: []const u32) Error!void {
         const mark = e.b.names.items.len;
-        for (stmts, 0..) |s, k| {
-            e.noteUnrested(stmts, k);
-            try e.stmt(s);
-        }
+        for (stmts) |s| try e.stmt(s);
         e.b.names.shrinkRetainingCapacity(mark);
     }
 
@@ -984,10 +982,7 @@ const Emitter = struct {
         const mark = e.b.names.items.len;
         defer e.b.names.shrinkRetainingCapacity(mark);
         if (stmts.len == 0) return "MO_NONE_V";
-        for (stmts[0 .. stmts.len - 1], 0..) |s, k| {
-            e.noteUnrested(stmts, k);
-            try e.stmt(s);
-        }
+        for (stmts[0 .. stmts.len - 1]) |s| try e.stmt(s);
         const last = stmts[stmts.len - 1];
         const n = e.node(last);
         return switch (n.kind) {
@@ -999,10 +994,6 @@ const Emitter = struct {
                 break :blk "MO_NONE_V";
             },
         };
-    }
-
-    fn noteUnrested(e: *Emitter, stmts: []const u32, k: usize) void {
-        if (k + 1 < stmts.len and bytecode.fieldWriteMovesOn(e.tree, stmts[k], stmts[k + 1])) e.unrested = stmts[k];
     }
 
     fn stmt(e: *Emitter, s: Index) Error!void {
@@ -1026,7 +1017,7 @@ const Emitter = struct {
             },
             .assign => {
                 // Read before the value, whose own blocks note theirs.
-                const rests = e.unrested != s;
+                const rests = !e.unrested.contains(s);
                 const op = e.text(n.main_token);
                 var v: []const u8 = undefined;
                 if (op.len == 1) {
@@ -1094,7 +1085,7 @@ const Emitter = struct {
     }
 
     /// Stores `v` into a place: a name, or a field path under one. The whole value the name then
-    /// holds is recorded for a never when it `rests` (bytecode.fieldWriteMovesOn).
+    /// holds is recorded for a never when it `rests` (bytecode.unrestedWrites).
     fn assignPlace(e: *Emitter, i: Index, v: []const u8, rests: bool) Error!void {
         const n = e.node(i);
         switch (n.kind) {

@@ -112,6 +112,32 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "5bd5592c6f0ce066" }
     },
     {
+      "path": "moves.mo",
+      "module": "Basics.Moves",
+      "declarations": [
+        { "id": "843aa8130c97", "name": "module Basics.Moves", "hash": "9e8a1bded4fb2204" },
+        { "id": "ba2097221e1e", "name": "expose", "hash": "8963774c0a8a24d4" },
+        { "id": "9aa8e27b9208", "name": "intent", "hash": "b521f09e58001d07" },
+        { "id": "47e5ed0c662b", "name": "struct Book", "hash": "9145f088aa8c36b8" },
+        { "id": "2a7a923aa9c4", "name": "fn empty", "hash": "2d4f17c9ca8ae807" },
+        { "id": "42774a7b10e6", "name": "fn with", "hash": "d4bc368a7c6182d9" },
+        { "id": "05245c6b9d3c", "name": "fn without", "hash": "84127bd5fc62d49e" },
+        { "id": "78931deba76d", "name": "fn written", "hash": "6cba7d6550d1dce4" },
+        { "id": "e3460307c794", "name": "fn listed", "hash": "59a6026773c2ed36" },
+        { "id": "504b6c8edbe8", "name": "fn captured", "hash": "d89446d9c44fc5ee" },
+        { "id": "866e2737c556", "name": "fn guarded", "hash": "d3fb90ee171abf52" },
+        { "id": "53e698a48bce", "name": "fn removed", "hash": "b552e423e67b2550" },
+        { "id": "7e16512a6f64", "name": "fn tallied", "hash": "bd133042d3bd94f1" },
+        { "id": "4d0fb2625866", "name": "process Shelf", "hash": "6484572f38547769" },
+        { "id": "b739919bd994", "name": "supervisor Shelves", "hash": "d63a294a5dc51210" },
+        { "id": "39977e541229", "name": "test \"a copy read before a write in place, and a list's element, keep their own values\"", "hash": "ae51a27c00af8335" },
+        { "id": "5c01b000da7d", "name": "test \"a capture, and the next arm of a case, see the value whole\"", "hash": "52888a6101eb1955" },
+        { "id": "c0b258dd8bcb", "name": "test \"a remove in place keeps the order and every lookup, and never reaches a copy\"", "hash": "4623005c33bbcd1f" },
+        { "id": "f6050f2d1c9e", "name": "test \"a message is the process's own\"", "hash": "683bd7a650a74e1f" }
+      ],
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "415451fa3fb0be86" }
+    },
+    {
       "path": "numbers.mo",
       "module": "Basics.Numbers",
       "declarations": [

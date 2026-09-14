@@ -53,16 +53,21 @@
       "module": "Contracts.NeverVarCopy",
       "declarations": [
         { "id": "a1122d5ccbc5", "name": "module Contracts.NeverVarCopy", "hash": "be3fadabef23ab60" },
-        { "id": "c9b08ccf2161", "name": "expose", "hash": "e68951ad29a79715" },
-        { "id": "5a7f9321bdb4", "name": "intent", "hash": "ca8cf753c21c4611" },
+        { "id": "c9b08ccf2161", "name": "expose", "hash": "57fb6bba510f965f" },
+        { "id": "5a7f9321bdb4", "name": "intent", "hash": "815371343a160f20" },
         { "id": "5ec83a0fffa8", "name": "never \"a pair's halves differ\"", "hash": "5dd5a09c05f61920" },
+        { "id": "0cec95d60e59", "name": "never \"a tally's requests are not its errors plus its successes\"", "hash": "17aa066e9985491f" },
         { "id": "2e7fbd196def", "name": "struct Pair", "hash": "b5359084c6ba1b99" },
+        { "id": "c3d2acdc2783", "name": "struct Tally", "hash": "ba594b1c1f1d4f10" },
         { "id": "b4f2aa975187", "name": "fn both", "hash": "b51b2d260ff6b1db" },
         { "id": "81899df31758", "name": "fn first_only", "hash": "6d8f4504509a6439" },
+        { "id": "9557035c14c8", "name": "fn added", "hash": "3de583b1fffe31b7" },
+        { "id": "01e4bb32e253", "name": "fn counted", "hash": "4287b97180848c91" },
         { "id": "c4f2c9f6cf7f", "name": "test \"both halves move together\"", "hash": "a3eac9f7d64115b5" },
+        { "id": "a870f0cc05f8", "name": "test \"a write, then a write in each arm of an if, is read once at its last write\"", "hash": "f3ffd3a52770882e" },
         { "id": "13b4086aaaad", "name": "test rejects \"a pair returned with one half moved trips the never\"", "hash": "9e569ccdf4e2da33" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "2262a6a51a110bff" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "fbb58f38b39f4355" }
     },
     {
       "path": "never.mo",
