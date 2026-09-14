@@ -81,7 +81,8 @@ class SlowestTest(unittest.TestCase):
             line(5, "GET", "/d", 200, 90),
         ]
         summary = analyze(lines, 3, None)
-        self.assertEqual([(s.ms, s.path) for s in summary.slowest], [(90, "/d"), (50, "/b"), (50, "/c")])
+        slowest = [(s.ms, s.path) for s in summary.slowest]
+        self.assertEqual(slowest, [(90, "/d"), (50, "/b"), (50, "/c")])
 
     def test_ties_on_both_keep_input_order(self) -> None:
         lines = [line(0, "GET", "/first", 200, 5), line(0, "GET", "/second", 200, 5)]
@@ -113,7 +114,7 @@ class ContractsTest(unittest.TestCase):
 
     def test_rejects_since_without_offset(self) -> None:
         with self.assertRaisesRegex(ContractError, "requires since carries a UTC offset"):
-            analyze([], 5, datetime(2026, 9, 12))  # noqa: DTZ001
+            analyze([], 5, datetime(2026, 9, 12))
 
     def test_the_invariant_catches_a_broken_count(self) -> None:
         accumulator = Accumulator(5)
@@ -132,7 +133,7 @@ class ContractsTest(unittest.TestCase):
         self.assertFalse(is_slowest_order([(1, 0, -1), (2, 0, -2)]))
         self.assertFalse(is_slowest_order([(1, -5, -1), (1, -1, -2)]))
         self.assertTrue(is_slowest_order([(2, -1, -1), (1, -5, -2)]))
-        wrong = [BusyPath(count=1, method="GET", path="/b"), BusyPath(count=1, method="GET", path="/a")]
+        wrong = [BusyPath(count=1, method="GET", path=p) for p in ("/b", "/a")]
         self.assertFalse(is_busiest_order(wrong))
         self.assertTrue(is_busiest_order(wrong[::-1]))
 
