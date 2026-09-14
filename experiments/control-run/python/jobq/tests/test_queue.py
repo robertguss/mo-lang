@@ -2,6 +2,7 @@ import random
 import tempfile
 import unittest
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -231,7 +232,7 @@ class RequiresTest(unittest.TestCase):
 
     def test_create_rejects_a_bad_queue_name(self) -> None:
         for name in ("", "q" * 65, "a b", "é"):
-            self.assert_rejects(lambda name=name: self.queue.create(name, "x", 3))
+            self.assert_rejects(partial(self.queue.create, name, "x", 3))
 
     def test_create_rejects_a_bad_payload(self) -> None:
         self.assert_rejects(lambda: self.queue.create("q", "x" * (MAX_PAYLOAD_BYTES + 1), 3))
@@ -268,7 +269,7 @@ class TamperedQueue(Queue):
             before, after = result
             return (before, after.model_copy(update=self.lease_tamper))  # type: ignore[return-value]
         if isinstance(result, Job) and result.state is JobState.DONE:
-            return result.model_copy(update=self.ack_tamper)  # type: ignore[return-value]
+            return result.model_copy(update=self.ack_tamper)
         return result
 
 
@@ -354,7 +355,9 @@ class NeverTest(unittest.TestCase):
             self.assertLessEqual(rig.queue.snapshot()[job.id].attempts, 3)
         self.assertEqual(leased(rig.queue.get(job.id)).state, "dead")
         with self.assertRaisesRegex(ContractError, "more attempts"):
-            check_change(base_job(**{**LEASED, "attempts": 3}), base_job(state="queued", attempts=4))
+            check_change(
+                base_job(**{**LEASED, "attempts": 3}), base_job(state="queued", attempts=4)
+            )
 
     def test_other_forbidden_changes(self) -> None:
         cases = [
