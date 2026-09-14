@@ -48,11 +48,19 @@ class TextTest(unittest.TestCase):
 
     def test_busiest_section(self) -> None:
         text = render_text(small_summary())
-        self.assertTrue(text.endswith("\nbusiest\n  611  GET /api/users\n    9  POST /api/orders\n"))
+        self.assertTrue(
+            text.endswith("\nbusiest\n  611  GET /api/users\n    9  POST /api/orders\n")
+        )
 
     def test_empty_summary_keeps_the_headers(self) -> None:
         empty = Summary(
-            requests=0, errors=0, error_rate=0.0, malformed=3, per_minute=0.0, slowest=[], busiest=[]
+            requests=0,
+            errors=0,
+            error_rate=0.0,
+            malformed=3,
+            per_minute=0.0,
+            slowest=[],
+            busiest=[],
         )
         self.assertEqual(
             render_text(empty),
