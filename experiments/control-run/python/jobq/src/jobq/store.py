@@ -1,6 +1,5 @@
 """The append-only log: one line per change, `<crc32 hex> <json>\\n`, replayed in order on start."""
 
-import itertools
 import zlib
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import suppress
@@ -136,7 +135,7 @@ class Store:
     def compact(self, records: Iterable[Record]) -> None:
         """Replace the log with `records`, atomically. The store is closed afterwards."""
         self.close()
-        self._fs.replace(self.path, map(encode, itertools.chain(records)))
+        self._fs.replace(self.path, map(encode, records))
 
     def close(self) -> None:
         if self._file is not None:
