@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from logstat!")
+"""logstat: a CLI log analyzer (spec: mo-wiki/spec/programs/02-log-analyzer.md)."""
