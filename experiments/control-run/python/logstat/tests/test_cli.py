@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import random
 import tempfile
 import unittest
 from pathlib import Path
@@ -124,6 +125,24 @@ class BadInputTest(unittest.TestCase):
             code, out, _ = invoke(tmp, "--json")
         data = json.loads(out)
         self.assertEqual((code, data["requests"], data["malformed"]), (0, 2, 3))
+
+    def test_random_bytes_never_crash_and_every_line_is_counted(self) -> None:
+        pieces = [b" ", b"\n", b"\r", b"\xff", b"GET", b"/a", b"200", b"12", b"x"]
+        pieces += [b"2026-09-12T10:00:01Z", b"4111111111111111", b"\x00", b"\xc3"]
+        for seed in range(200):
+            rng = random.Random(seed)
+            lines = [
+                b"".join(rng.choice(pieces) for _ in range(rng.randint(0, 12))).replace(b"\n", b"")
+                for _ in range(rng.randint(1, 30))
+            ]
+            with tempfile.TemporaryDirectory() as tmp:
+                Path(tmp, "fuzz.log").write_bytes(b"\n".join(lines) + b"\n")
+                code, out, _ = invoke(tmp, "--json", "--top", "100")
+            data = json.loads(out)
+            with self.subTest(seed=seed):
+                self.assertEqual(code, 0)
+                self.assertEqual(data["requests"] + data["malformed"], len(lines))
+                self.assertNotIn("4111111111111111", out)
 
     @unittest.skipIf(os.geteuid() == 0, "root reads any file")
     def test_an_unreadable_file_is_reported_and_skipped(self) -> None:
