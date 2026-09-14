@@ -100,6 +100,7 @@
 - [[idea-backlog|Idea backlog (Claude's early proposals)]] — - Stable semantic IDs on every declaration so agents edit by ID instead of fragile text diffs
 - [[agent-native-runtime-features|Agent-native runtime features to test]] — a menu in three tiers: MCP surface, time travel, structured events, counterexamples as tests; the build order
 - [[vm-first-vs-c-first|VM-first vs C-first for the Mo runtime]] — what a VM owns that C cannot, where Mo sits, stay on C-first and design the VM as the eventual primary
+- [[reading-pack-2026-09|Reading pack for an outside reviewer]] — seven things to read in order, what we want from an OTP and a capability-systems reader, and the tried-and-rejected appendix
 - [[closure-audit-2026-09-14|The closure audit]] — direction 31 cost round 7's jobq 12 lines of 2,843; the finding is a spec contradiction: chapter 3 says named functions are values, the stdlib chapter says no signature can name one
 - [[outside-review-2026-09-14|Outside review, 14 Sep 2026]] — a deep review after round 6: protect capabilities, the failure model, the runtime surface; the shape laws and keywords are the weakest part; test Mo on the programs that exercise it
 - [[outside-review-2026-09-14-response|Outside review, 14 Sep 2026: Fable's response]] — what was already done, what is wrong on facts, seven things to act on, the fork put to Robert

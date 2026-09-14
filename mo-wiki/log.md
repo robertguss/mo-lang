@@ -342,3 +342,6 @@
 
 ## [2026-09-14] session | Evening: program 6 specified
 - `spec/programs/06-ledger.md` and `plans/program-6.md`: the payments ledger whose invariants are the point, with a planted-bug test so the report can say whether the checks earn their keep; runs after step 28. One row.
+
+## [2026-09-14] session | Evening: the reading pack
+- `deep-dives/reading-pack-2026-09.md` for the OTP and capability-systems reviewers Robert will arrange: seven pages in order, the questions for each reader, and a tried-and-rejected appendix of fifteen rows from the decision log.
