@@ -23,12 +23,17 @@ from jobq.server import (
 )
 from jobq.store import StoreOpenError, replay
 
+KEEP_ALIVE_TAIL = (
+    b"content-length: 2\r\ncontent-type: application/json\r\nconnection: keep-alive\r\n\r\n{}"
+)
 SOCKET_TIMEOUT_S = 10.0  # within: chosen, for every test socket
 
 
 class HeadTest(unittest.TestCase):
     def test_parses_request_line_query_and_headers(self) -> None:
-        head = parse_head(b"GET /jobs?state=done HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer w1\r\n\r\n")
+        head = parse_head(
+            b"GET /jobs?state=done HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer w1\r\n\r\n"
+        )
         self.assertEqual((head.method, head.path, head.query), ("GET", "/jobs", "state=done"))
         self.assertEqual(head.headers["authorization"], "Bearer w1")
         self.assertTrue(head.keep_alive)
@@ -50,7 +55,9 @@ class HeadTest(unittest.TestCase):
 
     def test_body_length(self) -> None:
         self.assertEqual(body_length(parse_head(b"POST / HTTP/1.1\r\n\r\n")), 0)
-        self.assertEqual(body_length(parse_head(b"POST / HTTP/1.1\r\nContent-Length: 12\r\n\r\n")), 12)
+        self.assertEqual(
+            body_length(parse_head(b"POST / HTTP/1.1\r\nContent-Length: 12\r\n\r\n")), 12
+        )
         for header, status in (
             (b"Content-Length: -1", 400),
             (b"Content-Length: 2000000", 413),
@@ -72,7 +79,7 @@ class HeadTest(unittest.TestCase):
             b"HTTP/1.1 204 No Content\r\nconnection: close\r\n\r\n",
         )
         encoded = encode_response(Response(200, b"{}"), keep_alive=True)
-        self.assertTrue(encoded.endswith(b"content-length: 2\r\ncontent-type: application/json\r\nconnection: keep-alive\r\n\r\n{}"))
+        self.assertTrue(encoded.endswith(KEEP_ALIVE_TAIL))
 
 
 class ServerCase(unittest.TestCase):
@@ -86,7 +93,9 @@ class ServerCase(unittest.TestCase):
         self.thread.__exit__(None, None, None)
         self._tmp.cleanup()
 
-    def call(self, token: str | None, method: str, path: str, body: object = None) -> ClientResponse:
+    def call(
+        self, token: str | None, method: str, path: str, body: object = None
+    ) -> ClientResponse:
         text = None if body is None else json.dumps(body)
         return request(HOST, self.thread.port, Call(token, method, path, text), SOCKET_TIMEOUT_S)
 
@@ -101,7 +110,9 @@ class ServerCase(unittest.TestCase):
 
 class SocketTest(ServerCase):
     def test_create_then_get_over_a_socket(self) -> None:
-        created = self.call("w1", "POST", "/jobs", {"queue": "q", "payload": "hi\n", "max_attempts": 2})
+        created = self.call(
+            "w1", "POST", "/jobs", {"queue": "q", "payload": "hi\n", "max_attempts": 2}
+        )
         self.assertEqual(created.status, 201)
         got = self.call("w1", "GET", "/jobs/j_1")
         self.assertEqual((got.status, json.loads(got.body)), (200, json.loads(created.body)))
@@ -147,16 +158,21 @@ class SocketTest(ServerCase):
 
     def test_two_workers_race_for_one_job_and_exactly_one_holds_it(self) -> None:
         for round_number in range(5):
-            self.call("p", "POST", "/jobs", {"queue": "race", "payload": str(round_number), "max_attempts": 1})
+            self.call(
+                "p",
+                "POST",
+                "/jobs",
+                {"queue": "race", "payload": str(round_number), "max_attempts": 1},
+            )
             workers = [f"w{n}" for n in range(8)]
             gate = threading.Barrier(len(workers))
             results: dict[str, int] = {}
 
-            def lease(worker: str) -> None:
+            def lease(worker: str, gate: threading.Barrier, results: dict[str, int]) -> None:
                 gate.wait(SOCKET_TIMEOUT_S)
                 results[worker] = self.call(worker, "POST", "/queues/race/lease").status
 
-            threads = [threading.Thread(target=lease, args=(w,)) for w in workers]
+            threads = [threading.Thread(target=lease, args=(w, gate, results)) for w in workers]
             for thread in threads:
                 thread.start()
             for thread in threads:
@@ -179,7 +195,9 @@ class SocketTest(ServerCase):
             for _ in range(1200):
                 idle.append(socket.create_connection((HOST, self.thread.port), SOCKET_TIMEOUT_S))
             started = time.monotonic()
-            created = self.call("producer", "POST", "/jobs", {"queue": "q", "payload": "x", "max_attempts": 1})
+            created = self.call(
+                "producer", "POST", "/jobs", {"queue": "q", "payload": "x", "max_attempts": 1}
+            )
             elapsed = time.monotonic() - started
             self.assertEqual(created.status, 201)
             self.assertLess(elapsed, 2.0)
@@ -190,11 +208,13 @@ class SocketTest(ServerCase):
                 sock.close()
 
     def test_a_connection_that_sends_nothing_is_closed_after_the_idle_timeout(self) -> None:
-        with mock.patch.object(server, "IDLE_TIMEOUT_S", 0.3):
-            with socket.create_connection((HOST, self.thread.port), SOCKET_TIMEOUT_S) as sock:
-                started = time.monotonic()
-                self.assertEqual(sock.recv(1), b"")
-                self.assertLess(time.monotonic() - started, 3.0)
+        with (
+            mock.patch.object(server, "IDLE_TIMEOUT_S", 0.3),
+            socket.create_connection((HOST, self.thread.port), SOCKET_TIMEOUT_S) as sock,
+        ):
+            started = time.monotonic()
+            self.assertEqual(sock.recv(1), b"")
+            self.assertLess(time.monotonic() - started, 3.0)
 
     def test_run_out_leases_are_recorded_while_the_listener_is_idle(self) -> None:
         self.call("p", "POST", "/jobs", {"queue": "q", "payload": "x", "max_attempts": 2})
