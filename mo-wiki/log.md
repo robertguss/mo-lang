@@ -279,3 +279,6 @@
 
 ## [2026-09-14] session | Night: program 1 accepted
 - `jobq` accepted after the suite went green with it in the corpus and Fable's 29-check HTTP session passed under both runtimes (statuses, a lease running out, dead on the last attempt, a restart, a 40-worker race, a 1,200-connection crowd). Nine decision-log rows, four `semantic`, one for Robert (the `invariant` construct found no use). d37 gains the nine runtime-surface questions. Follow-up step 22 listed. Merged to `main`. Lint unchanged (the history bundle's 16, six review rows).
+
+## [2026-09-14] session | Night: round 5, pre-registered, mixed
+- Three fresh sessions in `../mo-lang-control5-*` from 01:14; Fable verified each in its worktree. P1 and P3 held, P2 missed by one loop. The laws stay; the `is` form's diagnostic to step 22; tokens to be read before the report next time. Four decision rows. Merged to `main`.

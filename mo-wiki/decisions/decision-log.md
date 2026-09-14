@@ -298,6 +298,11 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Round 5 of the control run is pre-registered on [[control-run-5]] before any session starts: P1 Mo wall-clock at most 1.5 times Go, P2 Mo loops at most Go's plus 2, P3 no loop from a shape law or from the three forms step 21 gave diagnostics for; all three or "mixed"; briefs word for word as rounds 2–4; loops by cause and "wrote the language directly" recorded; the bolted-on-checks arm for the baselines waits for a round with a second task | Fable | — | round 5's result |
 
+| Control run round 5 recorded, pre-registered, mixed: P1 held (Mo 14.8 min to Go's 11.6 and Python's 14.9, 1.28 times Go, from 1.73), P2 missed by one (loops Mo 5, Go 2, Python 3), P3 held (no shape-law loop, none of the three step 21 forms); no check caught a bug in Mo, one test each did in Go and Python; every worker wrote its language directly; tokens not captured | Fable | — | round 6 |
+| `semantic`: the laws after five rounds: no shape law tripped in rounds 2–5; Mo's loops are the worker's own test mistakes (3 of 5) and one grammar form a diagnostic can cover (`is` inside a comparison); the one law loop was the honesty laws working (`MO0214`, `MO0403`); every law stays; the `is` form's diagnostic goes to step 22 | Fable | provisional, Robert's standing call | round 6 |
+| Round 6 pre-registers loops by cause, not a total; reads each pane's token count before the report; the baselines' bolted-on arm (Go contracts library, Python `pydantic`) waits for a second task | Fable | — | round 6 |
+| Tooling around the baselines: the installed staticcheck cannot read Go 1.27 (the Go worker rebuilt it in its scratchpad) and mypy is not installed, so no round has type-checked the Python; recorded, not fixed by Fable | Fable | unmet, recorded | Robert's machine |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
