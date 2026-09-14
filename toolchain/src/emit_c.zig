@@ -1773,6 +1773,9 @@ const Emitter = struct {
             }
         }
         if (row.can_wait) {
+            // Timed for the events (events.zig, step 23), a Timeout at once included.
+            const since = try e.temp("mo_wait_begin()", .{});
+            const call_label = try e.print("\"{s}.{s}\"", .{ recvHead(row.recv), row.name });
             const within = for (args) |a| {
                 const an = e.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) break an.lhs;
@@ -1781,9 +1784,10 @@ const Emitter = struct {
                 // A deadline with nothing left: Timeout at once, and the call is not made (step 22).
                 const w = try e.withinArg(within);
                 try operands.append(e.gpa, w);
-                return e.temp("({s}.as.i < 0 ? mo_timed_out_now() : {s}({s}, {s}))", .{ w, try e.rowName(row), try e.valuesOf(operands.items), kind });
+                return e.temp("mo_waited({s}, {s}, {s}.as.i < 0 ? mo_timed_out_now() : {s}({s}, {s}))", .{ call_label, since, w, try e.rowName(row), try e.valuesOf(operands.items), kind });
             }
             try operands.append(e.gpa, "MO_NONE_V");
+            return e.temp("mo_waited({s}, {s}, {s}({s}, {s}))", .{ call_label, since, try e.rowName(row), try e.valuesOf(operands.items), kind });
         }
         return e.temp("{s}({s}, {s})", .{ try e.rowName(row), try e.valuesOf(operands.items), kind });
     }

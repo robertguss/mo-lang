@@ -500,6 +500,7 @@ pub const Turns = struct {
             freed += 1;
             freed_ns += @intCast(t0.durationTo(Io.Clock.Timestamp.now(t.io, .awake)).raw.toNanoseconds());
         }
+        sim.record(.{ .kind = .ended, .process = id });
         if (id < t.workers.items.len) if (t.workers.items[id]) |w| if (!w.ended) {
             w.vm.reuse();
             if (w.values) |*r| {

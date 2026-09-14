@@ -14,6 +14,7 @@
 //!                        fixture calls, counted on the same seed without faults, so a
 //!                        test asserts safety while calls fail and progress once they stop
 //!   mo run   <file.mo> [-- args...]
+//!     --events N         the runtime keeps the last N events (events.zig; default 4,096)
 //!                        tier 1, then `main` on Mo.Server with the args after `--`;
 //!                        no test runs. Exit 0, or the last platform.exit(code), or 70
 //!                        with the crash report on stderr; MO0408 when there is no main
@@ -46,7 +47,7 @@ const mo = @import("mo");
 const usage =
     \\usage: mo check [--recipe Module.Recipe] <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
-    \\       mo run [--clock ISO-8601] <file.mo> [--json] [-- args...]
+    \\       mo run [--clock ISO-8601] [--events N] <file.mo> [--json] [-- args...]
     \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\       mo fix [--dry-run] <file.mo> [--json]
@@ -103,6 +104,7 @@ fn run(init: std.process.Init) !void {
     var tests = false;
     var recipe_name: ?[]const u8 = null;
     var clock: ?[]const u8 = null;
+    var events_cap: ?u32 = null;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const a = args[i];
@@ -151,6 +153,10 @@ fn run(init: std.process.Init) !void {
             i += 1;
             if (i == args.len) return usageExit(err);
             clock = args[i];
+        } else if (std.mem.eql(u8, a, "--events")) {
+            i += 1;
+            if (i == args.len) return usageExit(err);
+            events_cap = std.fmt.parseInt(u32, args[i], 10) catch return usageExit(err);
         } else if (std.mem.eql(u8, a, "--recipe")) {
             i += 1;
             if (i == args.len) return usageExit(err);
@@ -179,7 +185,7 @@ fn run(init: std.process.Init) !void {
     if (dry_run and !is_fix) return usageExit(err);
     const is_build = std.mem.eql(u8, command, "build");
     if (!is_build and (build_name != null or target != null or no_contracts or tests)) return usageExit(err);
-    if (!is_run and (program_args != null or clock != null)) return usageExit(err);
+    if (!is_run and (program_args != null or clock != null or events_cap != null)) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
     if (recipe_name != null and !std.mem.eql(u8, command, "check")) return usageExit(err);
     // The line is one file's: --all's summary covers the modules it loads too.
@@ -271,6 +277,7 @@ fn run(init: std.process.Init) !void {
         const cwd = try std.process.currentPathAlloc(io, arena);
         var server: mo.server.Server = try .init(arena, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
         server.files = program.files;
+        if (events_cap) |n| server.events_cap = n;
         // --clock, else MO_CLOCK, fixes where main's clock starts; a built binary reads MO_CLOCK.
         if (clock orelse init.environ_map.get("MO_CLOCK")) |text| {
             server.startClock(mo.stdlib.parseTime(text) orelse {

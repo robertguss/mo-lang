@@ -535,6 +535,10 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within);
 MoValue mo_reply_by(void);
 MoValue mo_deadline_left(MoValue deadline);
 MoValue mo_timed_out_now(void);
+/* A row that waits, timed for the events (step 23): the events' clock before it, and its result,
+ * given back, after it. */
+MoValue mo_wait_begin(void);
+MoValue mo_waited(const char *call, MoValue since, MoValue result);
 /* Between two statements of a test, or of main in a program with processes. */
 void mo_settle(void);
 

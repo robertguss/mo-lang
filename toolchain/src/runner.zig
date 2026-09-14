@@ -17,6 +17,7 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
 const sim = @import("sim.zig");
+const events_mod = @import("events.zig");
 const vm = @import("vm.zig");
 
 pub const seeds_per_property: u32 = 200;
@@ -75,6 +76,8 @@ pub const Result = struct {
     /// The seed of the seeded run that failed, and that run's messages in order.
     sim_seed: ?u64 = null,
     interleaving: []const []const u8 = &.{},
+    /// That run's last events (events.zig), oldest first.
+    events: []const []const u8 = &.{},
     /// The fault percent the seed named in the result ran with, and its `--until`.
     sim_faults: u32 = 0,
     sim_until: f64 = 1,
@@ -231,7 +234,10 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
         error.Crash => try verdict(gpa, &r, crashOf(&machine, &simulator)),
         error.Discard => unreachable,
     }
-    if (seed != null and !holds(r)) r.interleaving = try interleaving(gpa, &machine, &simulator);
+    if (seed != null and !holds(r)) {
+        r.interleaving = try interleaving(gpa, &machine, &simulator);
+        r.events = try lastEvents(gpa, &simulator);
+    }
     return r;
 }
 
@@ -274,6 +280,19 @@ fn interleaving(gpa: std.mem.Allocator, machine: *vm.Vm, simulator: *const sim.S
     }
     try endRepeats(gpa, &out, repeats);
     return out.items;
+}
+
+/// A seeded run's last events (events.zig), oldest first, as one line each.
+fn lastEvents(gpa: std.mem.Allocator, simulator: *const sim.Sim) Error![]const []const u8 {
+    const ring = &simulator.ring;
+    const n = @min(ring.len, events_mod.printed);
+    const out = try gpa.alloc([]const u8, n);
+    for (out, ring.len - n..) |*line, i| {
+        var aw: std.Io.Writer.Allocating = .init(gpa);
+        events_mod.describe(&aw.writer, ring.get(i), "the test") catch return error.OutOfMemory;
+        line.* = aw.written();
+    }
+    return out;
 }
 
 fn endRepeats(gpa: std.mem.Allocator, out: *std.ArrayList([]const u8), repeats: u32) Error!void {
@@ -398,6 +417,8 @@ pub fn writeResult(w: *std.Io.Writer, files: []const diag.File, r: Result) std.I
                 try w.writeAll("\n      interleaving: ");
                 if (r.interleaving.len == 0) try w.writeAll("no message delivered");
                 for (r.interleaving, 0..) |m, i| try w.print("{s}{s}", .{ if (i == 0) "" else ", ", m });
+                if (r.events.len > 0) try w.writeAll("\n      last events: ");
+                for (r.events, 0..) |m, i| try w.print("{s}{s}", .{ if (i == 0) "" else "; ", m });
                 try writeReplay(w, seed, r.sim_faults, r.sim_until);
             }
         },

@@ -4312,6 +4312,12 @@ typedef struct {
      * crashes the update with `doom` when it returns. */
     bool doomed;
     Report doom;
+    /* Restarts since it started, never trimmed to the window; the surface holds its deliveries;
+     * the running update's time in calls that wait and the call it waited longest in (step 23). */
+    uint64_t restarted;
+    bool paused;
+    uint64_t waited_us, longest_us;
+    const char *longest;
 } Proc;
 
 static Proc **procs;
@@ -4386,6 +4392,89 @@ static int64_t clock_now_ms(void) {
 static const char *name_of(uint32_t id) { return mo_processes[procs[id]->process].name; }
 static size_t queued(const Proc *p) { return p->mailbox_len - p->head; }
 
+/* ---- the events (events.zig, step 23): a bounded ring of what the processes did, read by the
+ * runtime surface. MO_EVENTS=N keeps the last N, 4,096 by default, and 0 none. Each event's `at` is
+ * the awake clock in microseconds under main, pinned to the wall clock when the run began, and in a
+ * test the run's clock, which only fixture waits move. */
+
+enum { EV_UPDATED, EV_STARTED, EV_ENDED, EV_RESTARTED, EV_CRASHED, EV_OVERFLOWED, EV_TIMED_OUT, EV_SOURCE_PAUSED, EV_SOURCE_RESUMED, EV_SENT, EV_PAUSED, EV_RESUMED };
+
+typedef struct {
+    uint8_t kind;
+    int64_t at;
+    uint32_t process, other;
+    const char *process_name, *other_name, *name, *call;
+    uint64_t took_us, waited_us, count, seed;
+    const char *clause, *message, *state;
+} Event;
+
+static Event *ring;
+static size_t ring_cap = 4096, ring_len, ring_head;
+static uint64_t ring_total;
+static int64_t ring_wall_ms, ring_mono_us;
+
+static int64_t event_now(void) { return server_mode ? awake_ns() / 1000 : (FIXTURE_TIME + sim_waited) * 1000; }
+
+static Event event_of(uint8_t kind, uint32_t process) {
+    Event e;
+    memset(&e, 0, sizeof e);
+    e.kind = kind;
+    e.process = process;
+    e.other = NOBODY;
+    e.process_name = e.other_name = e.name = e.call = e.clause = e.message = e.state = "";
+    return e;
+}
+
+/* The whole ring is reserved at the first event, in pages the system gives as they are touched. */
+static void record_event(Event e) {
+    if (ring_cap == 0) return;
+    if (!ring) {
+        void *at = mmap(NULL, ring_cap * sizeof(Event), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (at == MAP_FAILED) return;
+        ring = at;
+    }
+    e.at = event_now();
+    if (e.process != NOBODY && !e.process_name[0]) e.process_name = name_of(e.process);
+    if (e.other != NOBODY && !e.other_name[0]) e.other_name = name_of(e.other);
+    if (ring_len < ring_cap) {
+        ring[ring_len++] = e;
+    } else {
+        ring[ring_head] = e;
+        ring_head = (ring_head + 1) % ring_cap;
+    }
+    ring_total++;
+}
+
+static bool is_timeout(MoValue v) { return mo_is(v, MO_N_ERROR) && mo_vcount(v) == 1 && mo_is(v.as.xs[0], MO_N_TIMEOUT); }
+
+/* A call that waits, begun at `since` on the events' clock, gave `result`: its time counts toward the
+ * running update's waits, and a Timeout is an event; `target` is an ask's (sim.zig, waitedIn). */
+static void waited_in(const char *call, int64_t since, MoValue result, uint32_t target) {
+    int64_t took = event_now() - since;
+    if (took < 0) took = 0;
+    if (running != NOBODY) {
+        Proc *p = procs[running];
+        p->waited_us += (uint64_t)took;
+        if ((uint64_t)took >= p->longest_us) {
+            p->longest_us = (uint64_t)took;
+            p->longest = call;
+        }
+    }
+    if (is_timeout(result)) {
+        Event e = event_of(EV_TIMED_OUT, running);
+        e.call = call;
+        e.other = target;
+        record_event(e);
+    }
+}
+
+MoValue mo_wait_begin(void) { return mo_time(event_now()); }
+
+MoValue mo_waited(const char *call, MoValue since, MoValue result) {
+    waited_in(call, since.as.i, result, NOBODY);
+    return result;
+}
+
 static MoValue handle_value(uint32_t id) {
     MoValue v = {MO_HANDLE, 0, {0}};
     v.as.i = id;
@@ -4411,6 +4500,8 @@ static void reset_processes(void) {
     next_seq = 0;
     gave_up = crashed_once = false;
     sim_waited = 0;
+    ring_len = ring_head = 0;
+    ring_total = 0;
 }
 
 static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));
@@ -4461,6 +4552,7 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
         procs[nprocs++] = p;
     }
     if (turns_on && supervisor == NOBODY) quiet++;
+    record_event(event_of(EV_STARTED, id));
     return id;
 }
 
@@ -4526,6 +4618,9 @@ static void room_for(uint32_t to, MoValue message) {
     uint32_t bound = mo_processes[target->process].mailbox;
     if (waiting < bound) return;
     const char *from = running != NOBODY ? name_of(running) : server_mode ? "main" : text_of("the test \"%s\"", test_name);
+    Event overflow = event_of(EV_OVERFLOWED, to);
+    overflow.other = running;
+    record_event(overflow);
     Involved *values = xmalloc(sizeof(Involved));
     values[0] = (Involved){"message", render(message)};
     Report r = {MO_R_MAILBOX, text_of("%s sent to %s, whose mailbox is full at its bound of %u", from, name_of(to), bound), from, NULL, values, 1, NULL, 0, NULL, 0, NULL};
@@ -4741,7 +4836,9 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
     if (within.as.i < 0) return ask_error(MO_N_TIMEOUT);
     uint32_t to = (uint32_t)handle.as.i;
     ask_on(to);
+    int64_t since = event_now();
     MoValue reply = turns_on ? turns_ask(to, message, within.as.i) : ask_inline(to, message, within);
+    waited_in("ask", since, reply, to);
     end_ask();
     check_doomed();
     return reply;
@@ -4949,6 +5046,12 @@ static void crashed(uint32_t id, MoValue before) {
         first_crash = report;
         crashed_once = true;
     }
+    Event crash = event_of(EV_CRASHED, id);
+    crash.seed = report.seed;
+    crash.clause = report.clause;
+    crash.message = report.nlog > 0 ? report.log[report.nlog - 1] : "";
+    crash.state = report.state;
+    record_event(crash);
     if (server_mode) process_crashed(&report);
     /* A connection closes when the process holding it stops, restarted or not. */
     close_held(p->args, p->nargs);
@@ -4967,6 +5070,7 @@ static void crashed(uint32_t id, MoValue before) {
     if (kept >= p->policy.max_restarts) give_up(id, report);
     GROW_ARRAY(p->restarts, p->nrestarts, p->caprestarts);
     p->restarts[p->nrestarts++] = at;
+    p->restarted++;
     /* An ask whose message the restart drops is Down. */
     if (turns_on) {
         for (size_t i = p->head; i < p->mailbox_len; i++) turns_answer(p->mailbox[i].seq, false, MO_NONE_V, NULL);
@@ -4979,6 +5083,9 @@ static void crashed(uint32_t id, MoValue before) {
     MoValue state;
     if (!run_init(p->process, p->args, &state)) give_up(id, last_report);
     procs[id]->state = state;
+    Event restart = event_of(EV_RESTARTED, id);
+    restart.count = procs[id]->restarted;
+    record_event(restart);
 }
 
 /* Runs the next message in the mailbox of `id` as one transaction. No reply: it crashed. */
@@ -4998,6 +5105,9 @@ static Delivered deliver(uint32_t id) {
     log_message(p, entry);
     if (server_mode) p->now = wall_ms();
     p->reply_by = entry.has_deadline ? entry.deadline : deadline_now();
+    int64_t since = event_now();
+    p->waited_us = p->longest_us = 0;
+    p->longest = "";
     MoValue before = p->state;
     /* Under main, everything the update allocates is past this mark, the message copied out of
      * its parcel first. What it overwrites older than the mark is undone on a crash, and not
@@ -5035,6 +5145,12 @@ static Delivered deliver(uint32_t id) {
     undo_mark = frozen_below = 0;
     nundos = 0;
     p->state = after.as.xs[1];
+    Event update = event_of(EV_UPDATED, id);
+    update.name = entry.message.tag == MO_VARIANT ? mo_names[mo_vname(entry.message)] : "";
+    update.took_us = (uint64_t)(event_now() - since > 0 ? event_now() - since : 0);
+    update.waited_us = p->waited_us;
+    update.call = p->longest ? p->longest : "";
+    record_event(update);
     held -= p->noutbox;
     for (size_t i = 0; i < p->noutbox; i++) {
         Outgoing o = p->outbox[i];
@@ -5706,6 +5822,7 @@ static void decommit(MoRegion *r) {
  * process given its id. */
 static void end_process(uint32_t id) {
     int64_t t0 = awake_ns();
+    record_event(event_of(EV_ENDED, id));
     Proc *p = procs[id];
     if (id < nworkers && workers[id] && !workers[id]->ended) {
         Worker *w = workers[id];
@@ -7346,6 +7463,19 @@ static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_m
     return s;
 }
 
+/* The row a source serves, as the events and the surface name it (sources.zig, rowLabel). */
+static const char *source_label(int kind) {
+    return kind == SRC_SERVE ? "Listener.serve" : kind == SRC_LINES ? "Conn.lines" : "HttpListener.serve";
+}
+
+/* A source stopped or started again at its target's bound (step 23). */
+static void record_pause(const Source *s, uint8_t kind) {
+    Event e = event_of(kind, s->to);
+    e.name = source_label(s->kind);
+    e.count = s->parent ? s->parent->inflight : s->inflight;
+    record_event(e);
+}
+
 /* Whether `s` may deliver one more message to its target, counting `extra` more waiting. */
 static bool source_room(Source *s, uint32_t extra) {
     const Proc *p = procs[s->to];
@@ -7354,9 +7484,11 @@ static bool source_room(Source *s, uint32_t extra) {
     if (s->paused) {
         if (waiting > bound / 2) return false;
         s->paused = false;
+        record_pause(s, EV_SOURCE_RESUMED);
     }
     if (waiting + source_headroom(bound) >= bound) {
         s->paused = true;
+        record_pause(s, EV_SOURCE_PAUSED);
         return false;
     }
     return true;
@@ -8082,6 +8214,11 @@ void mo_program_start(int argc, char **argv) {
      * one to another goes packed when values live in regions. */
     my_vm = &main_vm;
     sim_seed = 0;
+    /* MO_EVENTS=N: the events the run keeps, as mo run --events N (step 23). */
+    const char *events = getenv("MO_EVENTS");
+    if (events) ring_cap = (size_t)strtoull(events, NULL, 10);
+    ring_wall_ms = wall_ms();
+    ring_mono_us = awake_ns() / 1000;
     turns_on = mo_nprocesses > 0;
     packs = turns_on && mo_compacts;
     /* MO_CLOCK fixes where main's clock starts, as mo run --clock does. */

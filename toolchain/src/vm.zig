@@ -416,7 +416,7 @@ pub const Vm = struct {
                     try vm.exec(func.function, args_now, func.captures);
                 },
                 .closure => try vm.push(.{ .func = .{ .function = inst.a, .captures = try vm.take(inst.b) } }),
-                .prim => try vm.prim(inst.a, inst.b),
+                .prim => try vm.primTimed(inst.a, inst.b),
                 .ret => {
                     const v = vm.pop();
                     vm.stack.shrinkRetainingCapacity(base);
@@ -1094,6 +1094,27 @@ pub const Vm = struct {
         }
         break :blk table;
     };
+
+    /// Each prelude row as the events name a call: `Fs.append`.
+    const row_labels = blk: {
+        @setEvalBranchQuota(20_000);
+        var table: [prelude.fns.len][]const u8 = undefined;
+        for (prelude.fns, 0..) |f, i| {
+            const head = f.recv[0 .. std.mem.indexOfScalar(u8, f.recv, '(') orelse f.recv.len];
+            table[i] = head ++ "." ++ f.name;
+        }
+        break :blk table;
+    };
+
+    /// A row that waits, timed for the events (events.zig, step 23): what it took counts toward the
+    /// running update's waits, and a Timeout is an event.
+    fn primTimed(vm: *Vm, row_index: u32, kind_raw: u32) Error!void {
+        const sim = vm.sim orelse return vm.prim(row_index, kind_raw);
+        if (!prelude.fns[row_index].can_wait) return vm.prim(row_index, kind_raw);
+        const since = sim.eventNow();
+        try vm.prim(row_index, kind_raw);
+        sim.waitedIn(row_labels[row_index], since, vm.stack.items[vm.stack.items.len - 1], std.math.maxInt(u32));
+    }
 
     fn prim(vm: *Vm, row_index: u32, kind_raw: u32) Error!void {
         const row = prelude.fns[row_index];

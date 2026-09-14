@@ -198,12 +198,29 @@ fn room(sim: *Sim, s: *Source, extra: u32) bool {
     if (s.paused) {
         if (waiting > bound / 2) return false;
         s.paused = false;
+        recordPause(sim, s, .source_resumed);
     }
     if (waiting + headroom(bound) >= bound) {
         s.paused = true;
+        recordPause(sim, s, .source_paused);
         return false;
     }
     return true;
+}
+
+/// The row a source serves, as the events and the surface name it.
+pub fn rowLabel(kind: Kind) []const u8 {
+    return switch (kind) {
+        .serve => "Listener.serve",
+        .lines => "Conn.lines",
+        .http_serve, .request => "HttpListener.serve",
+    };
+}
+
+/// A source stopped or started again at its target's bound (events.zig, step 23).
+fn recordPause(sim: *Sim, s: *Source, kind: @import("events.zig").Kind) void {
+    const inflight = if (s.parent) |p| p.inflight else s.inflight;
+    sim.record(.{ .kind = kind, .process = s.to, .name = rowLabel(s.kind), .count = inflight });
 }
 
 /// A message from the runtime to process `to`, packed under `mo run`.

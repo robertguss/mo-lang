@@ -81,6 +81,8 @@ pub const Server = struct {
     /// After a run, how many process ids it used: a process that finished gives its id to
     /// the next one started (turns.zig, sweep).
     ids_used: usize = 0,
+    /// The events the run keeps (events.zig): `mo run --events N`, 4,096 by default (step 23).
+    events_cap: u32 = @import("events.zig").default_cap,
 
     /// `cwd` is the absolute working directory a relative path starts from. Nothing is
     /// freed: pass an arena.
@@ -97,6 +99,7 @@ pub const Server = struct {
         machine.server = s;
         var scheduler: Sim = .init(&machine, 0, "main");
         scheduler.server = s;
+        scheduler.ring = .{ .cap = s.events_cap, .wall_ms = s.now(), .mono_us = s.monoUs() };
         defer s.ids_used = scheduler.procs.items.len;
         machine.sim = &scheduler;
         // Values live in regions freed at safe points (vm.zig): main's here, and each
@@ -207,6 +210,11 @@ pub const Server = struct {
         const wall = Io.Clock.real.now(s.io).toMilliseconds();
         const start = s.clock_start orelse return wall;
         return start + (wall - s.wall_start);
+    }
+
+    /// The events' clock (events.zig): the awake clock, in microseconds.
+    pub fn monoUs(s: *const Server) i64 {
+        return @intCast(@divFloor(Io.Clock.Timestamp.now(s.io, .awake).raw.toNanoseconds(), 1000));
     }
 
     /// The clock starts at `start` now (`mo run --clock`).
