@@ -50,6 +50,10 @@ pub const process_region: usize = 1 << 30;
 /// `Turns.holder` when main's thread runs main's code.
 pub const main_turn: u32 = std.math.maxInt(u32);
 
+/// Counts `MO_STATS=1` prints (main.zig, step 21): processes a sweep ended, and the time it took.
+pub var freed: u64 = 0;
+pub var freed_ns: u64 = 0;
+
 /// The fewest quiet events (Turns.quiet) between two sweeps.
 pub const sweep_min: u32 = 64;
 /// Ended processes whose regions wait for the next processes given their ids, at most: the last
@@ -491,6 +495,11 @@ pub const Turns = struct {
     /// Process `id` has finished: what it held is freed, and its emptied region waits for the
     /// next process given its id.
     fn end(t: *Turns, sim: *Sim, id: u32) Error!void {
+        const t0 = Io.Clock.Timestamp.now(t.io, .awake);
+        defer {
+            freed += 1;
+            freed_ns += @intCast(t0.durationTo(Io.Clock.Timestamp.now(t.io, .awake)).raw.toNanoseconds());
+        }
         if (id < t.workers.items.len) if (t.workers.items[id]) |w| if (!w.ended) {
             w.vm.reuse();
             if (w.values) |*r| {

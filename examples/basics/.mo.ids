@@ -72,6 +72,23 @@
       "verified": { "hash": "d077f8946b30c29c", "declarations": "465daa0f0e35d796" }
     },
     {
+      "path": "in-place.mo",
+      "module": "Basics.InPlace",
+      "declarations": [
+        { "id": "b86567f0f6b7", "name": "module Basics.InPlace", "hash": "ef144be27e02744b" },
+        { "id": "957fa91d48a4", "name": "expose", "hash": "50bff7ec57f08d2a" },
+        { "id": "c1a8bfac793b", "name": "intent", "hash": "bea4e655182ccb71" },
+        { "id": "ae9658a5773c", "name": "struct Tally", "hash": "a1c134b69d62f681" },
+        { "id": "874cf61d6c78", "name": "struct Outer", "hash": "1a1b45d3ef1648b2" },
+        { "id": "e930c4c12d3f", "name": "fn bumped", "hash": "5694ac91c4605954" },
+        { "id": "94928c7e2acd", "name": "fn fields", "hash": "566df5e21b2b0cbb" },
+        { "id": "ea593f9572f1", "name": "fn texts", "hash": "5696a5bb3ae44a73" },
+        { "id": "6a074357ac47", "name": "test \"a field set never reaches a copy taken before it\"", "hash": "8d146edb036efd37" },
+        { "id": "de719e9b9bcc", "name": "test \"a string grown in place never changes a copy taken before it\"", "hash": "09dcf358a28ffccb" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "e6cff1fe3e8c7050" }
+    },
+    {
       "path": "lists.mo",
       "module": "Basics.Lists",
       "declarations": [

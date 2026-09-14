@@ -30,6 +30,11 @@
 //! to the interpreter's row. `kv-50k-set-rss-kib` and `kv-50k-set-rss-kib-c` are kv's resident
 //! memory in KiB, `mo run` and the binary, after 50_000 SETs of distinct keys from one client
 //! over one socket, served from an empty log, each SET waiting for its OK.
+//! `reuse-<shape>-100k` and `reuse-<shape>-100k-c` time 100_000 updates of one var (design-v0/07,
+//! the reuse bet; step 21), under Mo.Server in this process and as the `mo build` binary, for six
+//! shapes: `push` on a list, `set` and `remove` (newest key first) on a map, a field set on a struct, a string grown
+//! by interpolation, and `add` on a set; `reuse-<shape>-100k-allocs` and `-allocs-c` count the
+//! allocations each run made (Region.alloc in the interpreter, `MO_STATS=1` in the binary).
 //! `http-1k` and `http-1k-c` time 1_000 `GET /hello` round trips from one client to
 //! programs/httpd serving (`httpd serve --port N`) under `mo run` and as its `mo build` binary,
 //! each request a connection of its own read to the end of the stream; `http-1k-rss-kib` and
@@ -280,6 +285,17 @@ pub fn main(init: std.process.Init) !void {
         } else try out.print("{s:<8} {s:>12}\n", .{ row, "n/a" });
     }
 
+    const reuse = try reuse100k(arena, io, init.environ_map, iters, &scratch);
+    for (reuse_shapes, reuse) |shape, r| {
+        const label = try std.fmt.allocPrint(arena, "reuse-{s}-100k", .{shape.name});
+        if (r.ns) |ns| {
+            try out.print("{s:<8} {d:>9} µs {d:>9} allocations  (100000 updates of one var under mo run)\n", .{ label, @as(u64, @intCast(@divTrunc(ns, 1000))), r.allocs });
+        } else try out.print("{s:<8} {s:>12}\n", .{ label, "n/a" });
+        if (r.c_ns) |ns| {
+            try out.print("{s}-c {d:>9} µs {d:>9} allocations  (the mo build binary)\n", .{ label, @as(u64, @intCast(@divTrunc(ns, 1000))), r.c_allocs });
+        } else try out.print("{s}-c {s:>12}\n", .{ label, "n/a" });
+    }
+
     if (rows[rows.len - 1].implemented and paths.len > 0) {
         var worst: usize = 0;
         for (run_best, 0..) |ns, i| if (ns > run_best[worst]) {
@@ -288,7 +304,7 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib }, http);
+    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib }, http, reuse);
 }
 
 fn ratio(slow: i96, fast: i96) f64 {
@@ -616,6 +632,210 @@ fn map100k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ
     return best;
 }
 
+const reuse_dir = ".zig-cache/bench/reuse";
+
+/// The six shapes of the reuse rows: each updates one var 100_000 times and exits 1 when the
+/// result is wrong.
+const reuse_shapes = [_]struct { name: []const u8, source: []const u8 }{
+    .{ .name = "push", .source =
+    \\module Reuse.Push
+    \\
+    \\intent "Push 100,000 integers onto a list a var holds."
+    \\
+    \\fn pushed(n: UInt64) : List(UInt64)
+    \\  var xs = []
+    \\  for i in 0..n
+    \\    xs = xs.push(i)
+    \\  end
+    \\  xs
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  if pushed(100_000).size != 100_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "map-set", .source =
+    \\module Reuse.MapSet
+    \\
+    \\intent "Set 100,000 integer keys in a map a var holds."
+    \\
+    \\fn filled(n: UInt64) : Map(UInt64, UInt64)
+    \\  var m = Map.new()
+    \\  for i in 0..n
+    \\    m = m.set(i, i)
+    \\  end
+    \\  m
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  if filled(100_000).size != 100_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "map-remove", .source =
+    \\module Reuse.MapRemove
+    \\
+    \\intent "Fill a map a var holds with 100,000 integer keys, then remove every one, newest first."
+    \\
+    \\fn emptied(n: UInt64) : Map(UInt64, UInt64)
+    \\  var m = Map.new()
+    \\  for i in 0..n
+    \\    m = m.set(i, i)
+    \\  end
+    \\  for i in 0..n
+    \\    m = m.remove(n - 1 - i)
+    \\  end
+    \\  m
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  if emptied(100_000).size != 0
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "field", .source =
+    \\module Reuse.Field
+    \\
+    \\intent "Update a field of a struct a var holds 100,000 times."
+    \\
+    \\struct Tally
+    \\  count: UInt64
+    \\  total: UInt64
+    \\  name: String
+    \\end
+    \\
+    \\fn tallied(n: UInt64) : Tally
+    \\  var t = Tally(count: 0, total: 0, name: "tally")
+    \\  for i in 0..n
+    \\    t.count += 1
+    \\    t.total += i
+    \\  end
+    \\  t
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  if tallied(100_000).count != 100_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "append", .source =
+    \\module Reuse.Append
+    \\
+    \\intent "Append one character to a string a var holds 100,000 times."
+    \\
+    \\fn appended(n: UInt64) : String
+    \\  var s = ""
+    \\  for _ in 0..n
+    \\    s = "#{s}x"
+    \\  end
+    \\  s
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  if appended(100_000).size != 100_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "set-add", .source =
+    \\module Reuse.SetAdd
+    \\
+    \\intent "Add 100,000 integers to a set a var holds."
+    \\
+    \\fn added(n: UInt64) : Set(UInt64)
+    \\  var s = Set.new()
+    \\  for i in 0..n
+    \\    s = s.add(i)
+    \\  end
+    \\  s
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  if added(100_000).size != 100_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+};
+
+/// One reuse shape's best times and the allocations a run made, under Mo.Server and as a binary.
+const Reuse = struct { ns: ?i96 = null, allocs: u64 = 0, c_ns: ?i96 = null, c_allocs: u64 = 0 };
+
+/// Each reuse shape: the best of `iters` runs in this process under Mo.Server, from loading it to
+/// main's end, and the best of `iters` runs of its `mo build` binary, each with the allocations it
+/// made. A shape whose run does not exit 0 keeps null times.
+fn reuse100k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, iters: u32, scratch: *std.heap.ArenaAllocator) ![reuse_shapes.len]Reuse {
+    var out: [reuse_shapes.len]Reuse = @splat(.{});
+    try Io.Dir.cwd().createDirPath(io, reuse_dir);
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = reuse_dir ++ "/mo.root", .data = "" });
+    const cwd = try std.process.currentPathAlloc(io, arena);
+    var stats_env: std.process.Environ.Map = .init(arena);
+    try stats_env.put("MO_STATS", "1");
+    for (reuse_shapes, &out) |shape, *r| {
+        const path = try std.fmt.allocPrint(arena, "{s}/{s}.mo", .{ reuse_dir, shape.name });
+        try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = shape.source });
+        var it: u32 = 0;
+        while (it < iters) : (it += 1) {
+            _ = scratch.reset(.retain_capacity);
+            const a = scratch.allocator();
+            var out_buffer: [256]u8 = undefined;
+            var discard: Io.Writer.Discarding = .init(&out_buffer);
+            const before = mo.region.allocations;
+            const t0 = Io.Clock.Timestamp.now(io, .awake);
+            var diags: mo.diag.List = .empty;
+            const program = try mo.program.load(a, io, path, &diags);
+            const m = mo.pipeline.mainProgram(a, program, &diags) catch break;
+            var server: mo.server.Server = try .init(a, io, cwd, &.{}, environ, &discard.writer, &discard.writer);
+            switch (try server.run(m.program, m.main)) {
+                .exited => |code| if (code != 0) break,
+                .crashed => break,
+            }
+            const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+            r.allocs = mo.region.allocations - before;
+            r.ns = if (r.ns) |b| @min(b, ns) else ns;
+        }
+        var diags: mo.diag.List = .empty;
+        const program = try mo.program.load(arena, io, path, &diags);
+        const checked = mo.pipeline.buildable(arena, program, false, &diags) catch continue;
+        const name = try std.fmt.allocPrint(arena, "reuse-{s}", .{shape.name});
+        const binary = switch (try mo.cbuild.build(arena, io, environ, program, &checked, .{ .name = name, .out_dir = build_dir })) {
+            .built => |built| built.binary,
+            .failed => continue,
+        };
+        it = 0;
+        while (it < iters) : (it += 1) {
+            const t0 = Io.Clock.Timestamp.now(io, .awake);
+            const ran = try std.process.run(arena, io, .{ .argv = &.{binary}, .environ_map = &stats_env });
+            const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+            if (ran.term != .exited or ran.term.exited != 0) break;
+            r.c_allocs = statsCount(ran.stderr, "allocations") orelse 0;
+            r.c_ns = if (r.c_ns) |b| @min(b, ns) else ns;
+        }
+    }
+    return out;
+}
+
+/// The number after `word` on a `mo stats:` line.
+fn statsCount(text: []const u8, word: []const u8) ?u64 {
+    const at = std.mem.indexOf(u8, text, "mo stats:") orelse return null;
+    var words = std.mem.tokenizeScalar(u8, text[at..], ' ');
+    while (words.next()) |w| {
+        if (std.mem.eql(u8, w, word)) return std.fmt.parseInt(u64, std.mem.trim(u8, words.next() orelse return null, "\n"), 10) catch null;
+    }
+    return null;
+}
+
 const kv_gets = 10_000;
 const kv_dir = ".zig-cache/bench/kv";
 
@@ -892,8 +1112,9 @@ fn writeLog(arena: std.mem.Allocator, io: Io) !void {
 /// echo and kv: date, stage, count, best total µs ("n/a" when unimplemented), except the two
 /// kv-50k-set-rss-kib rows, whose count is the SETs and whose number is KiB; then httpd's rows,
 /// http-1k and http-1k-c (µs), and http-1k-rss-kib and http-1k-rss-kib-c (KiB), each counting
-/// the round trips.
-fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC, native: Native, http: Http) !void {
+/// the round trips; then the reuse rows, µs and allocations under mo run and as a binary, each
+/// counting the updates.
+fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs: usize, programs_ns: i96, logstat_ns: ?i96, sim_ns: ?i96, echo_ns: ?i96, map_ns: ?i96, kv_ns: ?i96, compiled: ?LogstatC, native: Native, http: Http, reuse: [reuse_shapes.len]Reuse) !void {
     var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
     defer file.close(io);
     var buf: [1024]u8 = undefined;
@@ -983,5 +1204,13 @@ fn appendResults(io: Io, rows: []const Row, files: usize, fmt_ns: i96, programs:
         if (kib) |k| {
             try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ @as(u64, @intCast(day)), name, http_trips, k });
         } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ @as(u64, @intCast(day)), name, http_trips });
+    }
+    for (reuse_shapes, reuse) |shape, r| {
+        for ([_]?i96{ r.ns, r.c_ns }, [_]u64{ r.allocs, r.c_allocs }, [_][]const u8{ "", "-c" }) |ns, allocs, suffix| {
+            if (ns) |t| {
+                try w.interface.print("{d}\treuse-{s}-100k{s}\t100000\t{d}\n", .{ @as(u64, @intCast(day)), shape.name, suffix, @as(u64, @intCast(@divTrunc(t, 1000))) });
+                try w.interface.print("{d}\treuse-{s}-100k-allocs{s}\t100000\t{d}\n", .{ @as(u64, @intCast(day)), shape.name, suffix, allocs });
+            } else try w.interface.print("{d}\treuse-{s}-100k{s}\t100000\tn/a\n", .{ @as(u64, @intCast(day)), shape.name, suffix });
+        }
     }
 }

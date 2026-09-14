@@ -6,6 +6,10 @@
 //! are committed as they are touched, and nothing is freed one allocation at a time.
 const std = @import("std");
 
+/// Counts `MO_STATS=1` prints (main.zig, step 21): every allocation a region gave, and its bytes.
+pub var allocations: u64 = 0;
+pub var allocated_bytes: u64 = 0;
+
 pub const Region = struct {
     base: usize,
     end: usize,
@@ -59,6 +63,8 @@ pub const Region = struct {
         const start = alignment.forward(r.top);
         if (start + len > r.end) return null;
         r.top = start + len;
+        allocations += 1;
+        allocated_bytes += len;
         return @ptrFromInt(start);
     }
 

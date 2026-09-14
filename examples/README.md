@@ -33,6 +33,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 11. `basics/for.mo`: `for` over a range and a list, `break`, and why these are loops
 12. `basics/anonymous-functions.mo`: one-line and block form, as call arguments
 61. `basics/returns-nothing.mo`: a function with no return type, called for what it writes, and a negative number as a pattern
+73. `basics/in-place.mo`: a field set on a var and a string grown by interpolation write in place (step 21), and a copy taken before either never sees it, as with `push`
 
 ## types
 13. `types/struct.mo`: named construction and the `var` copy update

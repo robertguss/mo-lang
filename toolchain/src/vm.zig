@@ -7,9 +7,10 @@
 //! else writes, and changing a field builds a new one, so a `var` copied from another
 //! name can never alias it. Two exceptions keep that promise. `push` appends in place when
 //! the list ends where its buffer's last push left it, so every earlier value of the list
-//! is a prefix that never sees the new element, and a list built by pushing is linear. And
-//! `set`, `update`, `remove`, and `add` on a map or set that one var, or one field path
-//! under a var, holds alone (`owned`) write into its buffer: nothing else can see it.
+//! is a prefix that never sees the new element, and a list built by pushing is linear; an
+//! interpolation grows a string it made the same way (concatText, step 21). And `set`, `update`,
+//! `remove`, and `add` on a map or set, and a field set on a struct (step 21), that one var, or one
+//! field path under a var, holds alone (`owned`) write into its buffer: nothing else can see it.
 //! A map or set carries a hash index beside its entries (stdlib.zig, find).
 //!
 //! Values are allocated from `heap`. The runner gives each test its own arena and frees
@@ -35,6 +36,12 @@ const http_mod = @import("http.zig");
 const sources = @import("sources.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
+const region_stats = @import("region.zig");
+/// Counts `MO_STATS=1` prints (main.zig, step 21): messages, replies, and start arguments packed,
+/// the bytes each copy took, and the bytes their parcels reserved.
+pub var packed_values: u64 = 0;
+pub var packed_bytes: u64 = 0;
+pub var packed_capacity: u64 = 0;
 const server_mod = @import("server.zig");
 const sim_mod = @import("sim.zig");
 const stdlib = @import("stdlib.zig");
@@ -127,6 +134,12 @@ pub const Vm = struct {
     /// The lists push can grow in place: the sixteen it grew last.
     growth: [16]Growth = [_]Growth{.{}} ** 16,
     growth_next: usize = 0,
+    /// The strings an interpolation can grow in place, as push grows a list (concatText): the
+    /// sixteen it made last; and the bytes of an interpolation's tail, formatted before they go
+    /// into their buffer.
+    text_growth: [16]Growth = [_]Growth{.{}} ** 16,
+    text_growth_next: usize = 0,
+    text: std.ArrayList(u8) = .empty,
     /// Map and set buffers a `var` holds alone: an update (`m = m.set(k, v)`) made them
     /// and nothing has read the var since (a read is `load_shared`). stdlib.zig writes
     /// into these in place, so an update on a var is not a copy (design-v0/09).
@@ -182,6 +195,8 @@ pub const Vm = struct {
         vm.stack.clearRetainingCapacity();
         vm.growth = [_]Growth{.{}} ** 16;
         vm.growth_next = 0;
+        vm.text_growth = [_]Growth{.{}} ** 16;
+        vm.text_growth_next = 0;
         vm.owned = [_]SliceKey{.{ .ptr = 0, .len = 0 }} ** 16;
         vm.owned_next = 0;
         vm.forward.clearRetainingCapacity();
@@ -341,12 +356,25 @@ pub const Vm = struct {
                 .variant => try vm.push(.{ .variant = .{ .name = vm.program.constants[inst.a].string, .fields = try vm.take(inst.b) } }),
                 .field => try vm.push(fieldsOf(vm.pop())[inst.a]),
                 .load_field => try vm.push(fieldsOf(locals[inst.a])[inst.b]),
+                // `x.field = v` on a var or a field path under one: in place when the var holds
+                // the fields alone and they may be written (step 21), else a copy it then holds.
+                // Only in a region: there an update's undo and an invariant's old(state) keep
+                // what it overwrites (sim.zig, deliver); without one a set copies.
                 .set_field => {
                     const v = vm.pop();
                     const obj = vm.pop();
-                    const fields = try vm.allocValues(fieldsOf(obj).len);
-                    @memcpy(fields, fieldsOf(obj));
+                    const old = fieldsOf(obj);
+                    const regioned = if (vm.region) |r| r.contains(@intFromPtr(old.ptr)) else false;
+                    if (regioned and vm.isOwned(old) and vm.overwritable(@intFromPtr(old.ptr))) {
+                        const slots: [*]Value = @ptrCast(@constCast(old.ptr));
+                        try vm.overwrite(&slots[inst.a], v);
+                        try vm.push(obj);
+                        continue;
+                    }
+                    const fields = try vm.allocValues(old.len);
+                    @memcpy(fields, old);
                     fields[inst.a] = v;
+                    vm.own(fields);
                     const changed: Value = switch (obj) {
                         .record => |r| .{ .record = .{ .decl = r.decl, .fields = fields } },
                         .variant => |r| .{ .variant = .{ .name = r.name, .fields = fields } },
@@ -374,9 +402,7 @@ pub const Vm = struct {
                 },
                 .concat => {
                     const parts = try vm.take(inst.a);
-                    var aw: std.Io.Writer.Allocating = .init(vm.heap);
-                    for (parts) |p| vm.formatText(&aw.writer, p) catch return error.OutOfMemory;
-                    try vm.push(.{ .string = try aw.toOwnedSlice() });
+                    try vm.push(.{ .string = try vm.concatText(parts) });
                 },
                 // The arguments stay in the stack's memory until the callee copies them.
                 .call, .call_trait => {
@@ -527,6 +553,8 @@ pub const Vm = struct {
             const end = start + n * @sizeOf(Value);
             if (end <= r.end) {
                 r.top = end;
+                region_stats.allocations += 1;
+                region_stats.allocated_bytes += end - start;
                 return @as([*]Value, @ptrFromInt(start))[0..n];
             }
         }
@@ -678,6 +706,9 @@ pub const Vm = struct {
         for (&vm.growth) |*g| {
             if (g.ptr >= lo and g.ptr < hi) g.* = .{};
         }
+        for (&vm.text_growth) |*g| {
+            if (g.ptr >= lo and g.ptr < hi) g.* = .{};
+        }
         for (&vm.owned) |*o| {
             if (o.ptr >= lo and o.ptr < hi) o.* = .{ .ptr = 0, .len = 0 };
         }
@@ -711,7 +742,10 @@ pub const Vm = struct {
     pub fn disownIn(vm: *Vm, v: Value) void {
         switch (v) {
             .map, .set => |m| vm.disown(m.entries),
-            .record => |r| for (r.fields) |f| vm.disownIn(f),
+            .record => |r| {
+                vm.disown(r.fields);
+                for (r.fields) |f| vm.disownIn(f);
+            },
             else => {},
         }
     }
@@ -725,6 +759,16 @@ pub const Vm = struct {
         if (x) |v| {
             const p = newestOf(v) orelse return;
             if (!r.contains(p) or p < slot) return;
+        }
+        // A write inside the slots the last one remembered moves that one's mark forward instead
+        // of adding another (step 21): a map that loses its first key again and again would
+        // otherwise remember its whole tail once per remove, and every compaction would walk them all.
+        if (vm.remembered.items.len > 0) {
+            const last = &vm.remembered.items[vm.remembered.items.len - 1];
+            if (slot >= last.slot and slot + n * @sizeOf(Value) <= last.slot + last.len * @sizeOf(Value)) {
+                last.at = r.top;
+                return;
+            }
         }
         try vm.remembered.append(vm.gpa, .{ .slot = slot, .len = n, .at = r.top });
     }
@@ -765,6 +809,9 @@ pub const Vm = struct {
         errdefer p.free();
         vm.forward.clearRetainingCapacity();
         p.value = try vm.copyOut(v, .{ .lo = 0, .hi = std.math.maxInt(usize), .dest = p.arena.allocator() });
+        packed_values += 1;
+        packed_bytes += copiedBytes(p.value);
+        packed_capacity += p.arena.queryCapacity();
         return p;
     }
 
@@ -772,6 +819,40 @@ pub const Vm = struct {
     pub fn unpack(vm: *Vm, p: *const Parcel) Error!Value {
         vm.forward.clearRetainingCapacity();
         return vm.copyOut(p.value, .{ .lo = 0, .hi = std.math.maxInt(usize), .dest = vm.heap });
+    }
+
+    /// `"#{a}#{b}..."`. When the first part is a string this vm made that ends where its buffer's
+    /// last interpolation left it, and the rest fits in the room past it, the rest is written there
+    /// in place (step 21): every earlier value of that string is a prefix that never sees the new
+    /// bytes, as push writes a list. Otherwise a new string, with room to grow when its first part
+    /// was made at run time, so `s = "#{s}..."` repeated copies each string once.
+    pub fn concatText(vm: *Vm, parts: []const Value) Error![]const u8 {
+        vm.text.clearRetainingCapacity();
+        var aw: std.Io.Writer.Allocating = .fromArrayList(vm.gpa, &vm.text);
+        const head: []const u8 = if (parts.len > 0 and parts[0] == .string) parts[0].string else "";
+        for (if (head.len > 0) parts[1..] else parts) |p| vm.formatText(&aw.writer, p) catch return error.OutOfMemory;
+        vm.text = aw.toArrayList();
+        const tail = vm.text.items;
+        const grows = head.len > 0 and if (vm.region) |r| r.contains(@intFromPtr(head.ptr)) else false;
+        if (grows) {
+            for (&vm.text_growth) |*g| {
+                if (g.ptr != @intFromPtr(head.ptr) or g.len != head.len or g.cap - g.len < tail.len) continue;
+                const buf: [*]u8 = @ptrFromInt(g.ptr);
+                @memcpy(buf[g.len..][0..tail.len], tail);
+                g.len += tail.len;
+                return buf[0..g.len];
+            }
+        }
+        const len = head.len + tail.len;
+        const cap = if (grows) @max(16, 2 * len) else len;
+        const out = try rawAlloc(vm.heap, u8, cap);
+        @memcpy(out[0..head.len], head);
+        @memcpy(out[head.len..len], tail);
+        if (grows) {
+            vm.text_growth[vm.text_growth_next] = .{ .ptr = @intFromPtr(out.ptr), .len = len, .cap = cap };
+            vm.text_growth_next = (vm.text_growth_next + 1) % vm.text_growth.len;
+        }
+        return out[0..len];
     }
 
     /// `xs.push(x)`: in place when xs ends where its buffer's last push left it and there is
@@ -1455,6 +1536,24 @@ pub fn rawAlloc(a: std.mem.Allocator, comptime T: type, n: usize) error{OutOfMem
     const len = std.math.mul(usize, n, @sizeOf(T)) catch return error.OutOfMemory;
     const bytes = a.rawAlloc(len, .of(T), @returnAddress()) orelse return error.OutOfMemory;
     return @as([*]T, @ptrCast(@alignCast(bytes)))[0..n];
+}
+
+/// The bytes a whole copy of `v` takes (Vm.pack): its own buffers and every part's, as copyOut
+/// allocates them.
+fn copiedBytes(v: Value) u64 {
+    return switch (v) {
+        .string => |s| s.len,
+        .list, .tuple => |xs| slice: {
+            var n: u64 = xs.len * @sizeOf(Value);
+            for (xs) |x| n += copiedBytes(x);
+            break :slice n;
+        },
+        .record => |r| copiedBytes(.{ .tuple = r.fields }),
+        .variant => |x| copiedBytes(.{ .tuple = x.fields }),
+        .func => |f| copiedBytes(.{ .tuple = f.captures }),
+        .map, .set => |m| m.index.len * @sizeOf(u32) + copiedBytes(.{ .tuple = m.entries }),
+        else => 0,
+    };
 }
 
 /// A copy of `xs` from `a`, as rawAlloc gives it.

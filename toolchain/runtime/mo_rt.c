@@ -88,7 +88,28 @@ static bool reserve_up_to(MoRegion *r, size_t most) {
 
 static bool reserve(MoRegion *r) { return reserve_up_to(r, (size_t)64 << 30); }
 
+/* Counts MO_STATS=1 prints (step 21): allocations and their bytes, values packed and their bytes,
+ * processes a sweep ended and the time it took. */
+static uint64_t stat_allocations, stat_bytes, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns;
+
+static void print_stats(void) {
+    char line[256];
+    int n = snprintf(line, sizeof line, "mo stats: allocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu\n", (unsigned long long)stat_allocations, (unsigned long long)stat_bytes, (unsigned long long)stat_packed, (unsigned long long)stat_packed_bytes, (unsigned long long)stat_packed_capacity, (unsigned long long)stat_freed, (unsigned long long)stat_freed_ns);
+    if (n > 0) {
+        ssize_t w = write(2, line, (size_t)n);
+        (void)w;
+    }
+}
+
+static void stats_on_term(int sig) {
+    (void)sig;
+    print_stats();
+    _exit(0);
+}
+
 static void *region_alloc(MoRegion *r, size_t n) {
+    stat_allocations++;
+    stat_bytes += n;
     uintptr_t start = (r->top + 7) & ~(uintptr_t)7;
     if (r->end != 0 && start + n <= r->end) {
         r->top = start + n;
@@ -114,6 +135,9 @@ static bool in_heap(uintptr_t addr) { return addr >= mo_heap.base && addr < mo_h
 typedef struct { uintptr_t ptr; size_t len, cap; } Growth;
 static Growth growth[16];
 static unsigned growth_next;
+/* The strings an interpolation can grow in place, as push grows a list (mo_concat). */
+static Growth text_growth[16];
+static unsigned text_growth_next;
 
 typedef struct { uintptr_t ptr; size_t len; } SliceKey;
 /* Map and set buffers one var holds alone. */
@@ -138,6 +162,7 @@ static size_t full_kept;
 /* Forgets every buffer a test's memory held: the next test starts a fresh vm. */
 static void reset_memory(void) {
     mo_heap.top = mo_heap.base;
+    memset(text_growth, 0, sizeof text_growth);
     memset(growth, 0, sizeof growth);
     memset(owned, 0, sizeof owned);
     growth_next = owned_next = 0;
@@ -154,6 +179,7 @@ static Growth *growth_of(uintptr_t addr, size_t len) {
 static void drop_growth(uintptr_t lo, uintptr_t hi) {
     for (unsigned i = 0; i < 16; i++) {
         if (growth[i].ptr >= lo && growth[i].ptr < hi) growth[i] = (Growth){0, 0, 0};
+        if (text_growth[i].ptr >= lo && text_growth[i].ptr < hi) text_growth[i] = (Growth){0, 0, 0};
         if (owned[i].ptr >= lo && owned[i].ptr < hi) owned[i] = (SliceKey){0, 0};
     }
 }
@@ -185,6 +211,7 @@ void mo_disown_in(MoValue v) {
         if (v.as.m) disown(v.as.m->entries, v.as.m->len);
         break;
     case MO_RECORD:
+        disown(v.as.xs, mo_decls[v.aux].nfields);
         for (uint32_t k = 0; k < mo_decls[v.aux].nfields; k++) mo_disown_in(v.as.xs[k]);
         break;
     default:
@@ -224,6 +251,15 @@ static void remember_write(uintptr_t slot, size_t n, const MoValue *x) {
     if (x) {
         uintptr_t p = newest_of(*x);
         if (p == 0 || !in_heap(p) || p < slot) return;
+    }
+    /* A write inside the slots the last one remembered moves that one's mark forward instead of
+     * adding another (vm.zig, rememberWrite; step 21). */
+    if (nremembered > 0) {
+        Remembered *last = &remembered[nremembered - 1];
+        if (slot >= last->slot && slot + n * sizeof(MoValue) <= last->slot + last->len * sizeof(MoValue)) {
+            last->at = mo_heap.top;
+            return;
+        }
     }
     if (nremembered == capremembered) {
         capremembered = capremembered ? 2 * capremembered : 256;
@@ -526,6 +562,11 @@ static Parcel *pack(MoValue v) {
     forward_clear();
     Copy c = {0, UINTPTR_MAX, NULL, false, false, p};
     p->value = copy_out(v, &c);
+    stat_packed++;
+    for (const Chunk *k = p->chunks; k; k = k->next) {
+        stat_packed_bytes += k->used;
+        stat_packed_capacity += sizeof(Chunk) + k->cap;
+    }
     return p;
 }
 
@@ -569,10 +610,20 @@ MoValue mo_tuple(uint32_t n, const MoValue *elems) { return mo_tuple_of(dupe_val
 
 MoValue mo_list_of(uint32_t n, const MoValue *elems) { return mo_list(dupe_values(elems, n), n); }
 
+/* `x.field = v` on a var or a field path under one: in place when the var holds the fields alone
+ * (an earlier set made them, and nothing has read the var since) and they may be written (step 21);
+ * otherwise a copy, which the var then holds alone (vm.zig, set_field). */
 MoValue mo_set_field(MoValue obj, uint32_t k, MoValue v) {
     uint32_t n = mo_nfields(obj);
+    /* Only on the heap: there an update's undo and an invariant's old(state) keep what it overwrites
+     * (deliver); without one a set copies. */
+    if (n > 0 && mo_compacts && in_heap((uintptr_t)obj.as.xs) && is_owned(obj.as.xs, n) && overwritable((uintptr_t)obj.as.xs)) {
+        overwrite(&obj.as.xs[k], v);
+        return obj;
+    }
     MoValue *fields = dupe_values(obj.as.xs, n);
     fields[k] = v;
+    own(fields, n);
     obj.as.xs = fields;
     return obj;
 }
@@ -1150,12 +1201,38 @@ static MoValue heap_string(const char *s, size_t n) {
     return mo_str(p, (uint32_t)n);
 }
 
+/* `"#{a}#{b}..."`: when the first part is a string on the heap that ends where its buffer's last
+ * interpolation left it and the rest fits past it, the rest is written there in place (vm.zig,
+ * concatText; step 21); otherwise a new string, with room to grow when its first part was made at
+ * run time. */
 MoValue mo_concat(uint32_t n, const MoValue *parts) {
     /* Formatting runs no Mo code, so one buffer serves every interpolation. */
     static Buf b;
     b.len = 0;
-    for (uint32_t i = 0; i < n; i++) format_text(&b, parts[i]);
-    return heap_string(b.p ? b.p : "", b.len);
+    bool headed = n > 0 && parts[0].tag == MO_STRING && parts[0].aux > 0;
+    for (uint32_t i = headed ? 1 : 0; i < n; i++) format_text(&b, parts[i]);
+    const char *tail = b.p ? b.p : "";
+    size_t head_len = headed ? parts[0].aux : 0;
+    bool grows = headed && mo_compacts && in_heap((uintptr_t)parts[0].as.s);
+    if (grows) {
+        for (unsigned i = 0; i < 16; i++) {
+            Growth *g = &text_growth[i];
+            if (g->ptr != (uintptr_t)parts[0].as.s || g->len != head_len || g->cap - g->len < b.len) continue;
+            if (b.len) memcpy((char *)g->ptr + g->len, tail, b.len);
+            g->len += b.len;
+            return mo_str((char *)g->ptr, (uint32_t)g->len);
+        }
+    }
+    size_t len = head_len + b.len;
+    size_t cap = grows ? (2 * len > 16 ? 2 * len : 16) : len;
+    char *out = mo_alloc_bytes(cap);
+    if (head_len) memcpy(out, parts[0].as.s, head_len);
+    if (b.len) memcpy(out + head_len, tail, b.len);
+    if (grows) {
+        text_growth[text_growth_next] = (Growth){(uintptr_t)out, len, cap};
+        text_growth_next = (text_growth_next + 1) % 16;
+    }
+    return mo_str(out, (uint32_t)len);
 }
 
 MoValue mo_range(MoValue lo, MoValue hi) {
@@ -5124,6 +5201,8 @@ typedef struct {
     MoRegion heap;
     Growth growth[16];
     unsigned growth_next;
+    Growth text_growth[16];
+    unsigned text_growth_next;
     SliceKey owned[16];
     unsigned owned_next;
     Remembered *remembered;
@@ -5140,6 +5219,8 @@ static void save_vm(VmState *s) {
     s->heap = mo_heap;
     memcpy(s->growth, growth, sizeof growth);
     s->growth_next = growth_next;
+    memcpy(s->text_growth, text_growth, sizeof text_growth);
+    s->text_growth_next = text_growth_next;
     memcpy(s->owned, owned, sizeof owned);
     s->owned_next = owned_next;
     s->remembered = remembered;
@@ -5159,6 +5240,8 @@ static void load_vm(const VmState *s) {
     mo_heap = s->heap;
     memcpy(growth, s->growth, sizeof growth);
     growth_next = s->growth_next;
+    memcpy(text_growth, s->text_growth, sizeof text_growth);
+    text_growth_next = s->text_growth_next;
     memcpy(owned, s->owned, sizeof owned);
     owned_next = s->owned_next;
     remembered = s->remembered;
@@ -5524,6 +5607,7 @@ static void decommit(MoRegion *r) {
 /* Process `id` has finished: what it held is freed, and its emptied region waits for the next
  * process given its id. */
 static void end_process(uint32_t id) {
+    int64_t t0 = awake_ns();
     Proc *p = procs[id];
     if (id < nworkers && workers[id] && !workers[id]->ended) {
         Worker *w = workers[id];
@@ -5543,6 +5627,8 @@ static void end_process(uint32_t id) {
     p->ended = true;
     GROW_ARRAY(free_ids, nfree_ids, capfree_ids);
     free_ids[nfree_ids++] = id;
+    stat_freed++;
+    stat_freed_ns += (uint64_t)(awake_ns() - t0);
 }
 
 /* The region kept for ended process `id` is released. */
@@ -7881,6 +7967,7 @@ int mo_run_tests(void) {
 void mo_program_start(int argc, char **argv) {
     server_mode = true;
     signal(SIGPIPE, SIG_IGN);
+    if (getenv("MO_STATS")) signal(SIGTERM, stats_on_term);
     const char *said = getenv("MO_CONTRACTS");
     mo_contracts = said ? strcmp(said, "0") != 0 : mo_contracts_built;
     /* Values live in a region freed at safe points; without the address space, every value
@@ -7922,5 +8009,6 @@ int mo_program_end(void) {
     }
     stream_flush(&out_stream);
     stream_flush(&err_stream);
+    if (getenv("MO_STATS")) print_stats();
     return exit_code;
 }

@@ -271,6 +271,11 @@ fn run(init: std.process.Init) !void {
                 std.process.exit(2);
             });
         }
+        const stats = init.environ_map.get("MO_STATS") != null;
+        if (stats) {
+            const act: std.posix.Sigaction = .{ .handler = .{ .handler = statsOnTerm }, .mask = std.posix.sigemptyset(), .flags = 0 };
+            std.posix.sigaction(.TERM, &act, null);
+        }
         const code: u8 = switch (try server.run(m.program, m.main)) {
             .exited => |c| c,
             .crashed => |report| blk: {
@@ -283,6 +288,7 @@ fn run(init: std.process.Init) !void {
         };
         out.flush() catch {};
         err.flush() catch {};
+        if (stats) printStats();
         std.process.exit(code);
     }
 
@@ -339,6 +345,18 @@ fn run(init: std.process.Init) !void {
         error.Rejected => return reject(out, err, program.files, diags.items, json),
         else => return e,
     };
+}
+
+/// `MO_STATS=1`: what the run allocated and copied, on stderr when it ends or is terminated.
+fn printStats() void {
+    var buf: [256]u8 = undefined;
+    const line = std.fmt.bufPrint(&buf, "mo stats: allocations {d} bytes {d} packed {d} packed_bytes {d} packed_capacity {d} freed {d} freed_ns {d}\n", .{ mo.region.allocations, mo.region.allocated_bytes, mo.vm.packed_values, mo.vm.packed_bytes, mo.vm.packed_capacity, mo.turns.freed, mo.turns.freed_ns }) catch return;
+    _ = std.posix.system.write(2, line.ptr, line.len);
+}
+
+fn statsOnTerm(_: std.posix.SIG) callconv(.c) void {
+    printStats();
+    std.process.exit(0);
 }
 
 fn usageExit(err: *Io.Writer) !void {

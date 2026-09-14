@@ -1973,27 +1973,16 @@ const Lower = struct {
         return false;
     }
 
-    /// Whether a value of this type can hold a map or set a var owns: it is one, or a
-    /// struct with a field that can.
+    /// Whether a value of this type is a buffer a var may hold alone: a map or a set, whose
+    /// entries a row writes in place, or a struct, whose fields a field set writes in place (step
+    /// 21). A var read other than by such a write gives up its claim (load_shared).
     fn holdsMap(l: *Lower, t: Id) bool {
-        return l.holdsMapWithin(t, 0);
-    }
-
-    fn holdsMapWithin(l: *Lower, t: Id, depth: u32) bool {
-        if (depth > 8) return false;
         const ty = l.baseType(t);
-        switch (ty.tag) {
-            .map, .set => return true,
-            .decl => {
-                const d = l.k.decls[ty.a];
-                if (d.kind != .struct_) return false;
-                for (l.k.fields[d.fields.start..d.fields.end]) |f| {
-                    if (l.holdsMapWithin(f.type, depth + 1)) return true;
-                }
-                return false;
-            },
-            else => return false,
-        }
+        return switch (ty.tag) {
+            .map, .set => true,
+            .decl => l.k.decls[ty.a].kind == .struct_,
+            else => false,
+        };
     }
 
     fn construct(l: *Lower, i: Index) Error!void {

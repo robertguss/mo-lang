@@ -1827,25 +1827,16 @@ const Emitter = struct {
         return false;
     }
 
+    /// Whether a value of this type is a buffer a var may hold alone: a map or a set, whose
+    /// entries a row writes in place, or a struct, whose fields a field set writes in place (step
+    /// 21). A var read other than by such a write gives up its claim (load_shared).
     fn holdsMap(e: *Emitter, t: Id) bool {
-        return e.holdsMapWithin(t, 0);
-    }
-
-    fn holdsMapWithin(e: *Emitter, t: Id, depth: u32) bool {
-        if (depth > 8) return false;
         const ty = e.baseType(t);
-        switch (ty.tag) {
-            .map, .set => return true,
-            .decl => {
-                const d = e.k.decls[ty.a];
-                if (d.kind != .struct_) return false;
-                for (e.k.fields[d.fields.start..d.fields.end]) |f| {
-                    if (e.holdsMapWithin(f.type, depth + 1)) return true;
-                }
-                return false;
-            },
-            else => return false,
-        }
+        return switch (ty.tag) {
+            .map, .set => true,
+            .decl => e.k.decls[ty.a].kind == .struct_,
+            else => false,
+        };
     }
 
     fn construct(e: *Emitter, i: Index) Error![]const u8 {
