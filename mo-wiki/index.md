@@ -140,6 +140,7 @@
 - [[interpreter-step-7|Step 7: programs of many modules, brief for the worker]] — use imports functions, program root, multi-file corpus programs, push in place, interpreter speed
 - [[control-run-4|The control run, round 4: logstat after steps 17–20, the timing round]] — same spec, same model, fresh sessions; the laws re-evaluated against it
 - [[control-run-3|The control run, round 3: logstat after the formatter fixes and HTTP]] — same spec, same model, fresh sessions, after steps 14–16
+- [[control-run-5|The control run, round 5: pre-registered]] — three predictions written before the run; loops by cause; wrote-the-language-directly
 - [[control-run-2|The control run, round 2: logstat again on today's toolchain]] — same spec, same model, fresh sessions, after steps 7–12b
 - [[control-run|The control run: logstat in Go and Python, brief for the worker]] — same spec, same model, chapter 8's null hypothesis
 - [[program-2|Program 2: logstat in Mo, brief for the worker]] — the first real program, written from a spec, the founding-premise experiment

@@ -296,6 +296,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Program 1's follow-ups, one toolchain step: `mo check --recipe` must not count the recipe's tests against the file's 500-line law (the bug); `Fs.fixture().list` on a missing folder is `Missing` as the real `Fs` says; a `Json` row that decodes an integer; the derived deadline; the store recipe's rewrite rule; `MO0206`'s per-site sentence; the `state` and `old` keywords as struct field names go to Robert with the one-line `if` | Fable | — | step 22 |
 | Directions 37–40: the nine questions the worker wanted to ask the running service are filed on d37 as the surface's first requirements | Fable | — | the runtime surface step |
 
+| Round 5 of the control run is pre-registered on [[control-run-5]] before any session starts: P1 Mo wall-clock at most 1.5 times Go, P2 Mo loops at most Go's plus 2, P3 no loop from a shape law or from the three forms step 21 gave diagnostics for; all three or "mixed"; briefs word for word as rounds 2–4; loops by cause and "wrote the language directly" recorded; the bolted-on-checks arm for the baselines waits for a round with a second task | Fable | — | round 5's result |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]
