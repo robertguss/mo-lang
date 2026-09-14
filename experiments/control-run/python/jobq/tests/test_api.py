@@ -88,8 +88,12 @@ class RouteTest(unittest.TestCase):
         self.assertEqual(self.rig.call("POST", f"/jobs/{job_id}/fail").status, 400)
         response = self.rig.call("POST", f"/jobs/{job_id}/fail", body={"reason": "smtp down"})
         job = body_of(response)
-        self.assertEqual((response.status, job["state"], job["reason"]), (200, "queued", "smtp down"))
-        self.assertEqual(self.rig.call("POST", f"/jobs/{job_id}/fail", body={"reason": "x"}).status, 409)
+        self.assertEqual(
+            (response.status, job["state"], job["reason"]), (200, "queued", "smtp down")
+        )
+        self.assertEqual(
+            self.rig.call("POST", f"/jobs/{job_id}/fail", body={"reason": "x"}).status, 409
+        )
         self.assertEqual(self.rig.call("POST", "/jobs/j_9/fail", body={"reason": "x"}).status, 404)
 
     def test_health_needs_no_token(self) -> None:
@@ -172,7 +176,8 @@ class RoundTripPropertyTest(unittest.TestCase):
         payloads += ["x" * MAX_PAYLOAD_BYTES, "é" * (MAX_PAYLOAD_BYTES // 2), "🚀" * 15_360]
         for payload in payloads:
             body = json.dumps(
-                {"queue": "q", "payload": payload, "max_attempts": 1}, ensure_ascii=rng.random() < 0.5
+                {"queue": "q", "payload": payload, "max_attempts": 1},
+                ensure_ascii=rng.random() < 0.5,
             )
             created = rig.call("POST", "/jobs", raw=body.encode())
             with self.subTest(size=len(payload)):
