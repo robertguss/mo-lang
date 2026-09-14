@@ -1,7 +1,7 @@
 requests   16
 errors      3  (18.8%)
 malformed   5
-per minute  4.6
+per minute 4.6
 
 slowest
   1_204 ms  POST /api/orders                         2026-09-12T10:00:21Z
