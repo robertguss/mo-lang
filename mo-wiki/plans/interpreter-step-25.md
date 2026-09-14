@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [syntax, tooling, compiler]
 sources: [syntax/p16-one-line-if-value.md, spec/grammar.md, plans/control-run-4.md, plans/interpreter-step-21.md]
-status: queued
+status: in-progress
 ---
 
 # Step 25: the one-line `if` as a value
@@ -32,7 +32,12 @@ Robert's call (14 Sep, morning): add the form round 4 lost two loops to. [[p16-o
 
 Robert's second call (14 Sep, morning): `state` and `old` may name a field after a dot (`job.state`) and in a struct's field declaration (`state: String`), and nowhere else; a bare `state` is still the process's state and a bare `old` still the contract's. The lexer keeps them keywords; the parser accepts them in those two positions only. `Json.encode` of a struct with such a field writes the key as named. A corpus file under `examples/types/` with a struct holding `state` and `old` fields, read after a dot and encoded; `jobq/job.mo` renames `status` back to `state` and drops its hand-built JSON where that was the only reason for it, `.expected` files updated with a sentence in the commit; a `rejects/` file for a bare `state = 1` binding.
 
-## Part D: both runtimes and the corpus
+## Part D: step 24's leftovers
+
+1. `MO0404`'s catalog `what` and `why` say what the diagnostic now says: a narrowed `Fs` (or any narrowed capability) reaching a call that needs the wider one, through a parameter, a start argument, a message field, or a `child` line; the two `rejects/` files from step 24 quote the diagnostic again; and a read-only `Fs` hidden by an `if` expression (`Writer.start(if a fs.read_only else fs end)`) is followed too, with a `rejects/` file.
+2. `agent`: a run that does not grant `write` holds a read-only `Fs` again, as the spec says; the writing tool lives in a process started only when the run grants `write`, or the worker finds a shape the checker accepts with the same authority, said in the report.
+
+## Part E: both runtimes and the corpus
 
 The lowering is the block form's; the C backend the same; a corpus test under `mo test` and as a test binary; `mo fmt --check` clean over the corpus after the reformat, in one commit that says what changed.
 
@@ -42,7 +47,7 @@ The lowering is the block form's; the C backend the same; a corpus test under `m
 
 ## Done when
 
-Green at every commit; the production, the formatter rule, the fix reversed, the three corpus files, the keyword field names with their corpus file and `jobq` on them, both runtimes, the numbers, pushed, a numbered list "Decisions the brief did not cover".
+Green at every commit; the production, the formatter rule, the fix reversed, the three corpus files, the keyword field names with their corpus file and `jobq` on them, `MO0404`'s wording and the `if` hole with its file, `agent` narrowed again, both runtimes, the numbers, pushed, a numbered list "Decisions the brief did not cover".
 
 ## Related
 - [[p16-one-line-if-value]]

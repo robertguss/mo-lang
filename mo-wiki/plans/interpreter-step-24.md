@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [runtime, processes, effects, stdlib]
 sources: [plans/program-5.md, decisions/decision-log.md, spec/design-v0/03-semantics.md, spec/design-v0/09-stdlib.md]
-status: in-progress
+status: done
 ---
 
 # Step 24: what program 5 found
@@ -50,6 +50,10 @@ Under `--sim`, an `ask` that waits delivers a round for every process, not only 
 ## Done when
 
 Green at every commit; the two `rejects/` files for part A; the registry corpus file and the handle-counting rule in both runtimes; the delayed send in both runtimes and the simulator with its corpus file; the four gaps with corpus evidence; the simulator's ask; the spec lines; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written in 84 minutes, five commits, green at each. Part A: a write through a read-only `Fs` handed as a start argument, in a message field, or on a `child` line is `MO0404` at check time (an `if` expression still hides one; to step 25). Part B: a `state` field may hold a `Handle(T)` and the runtime counts it; `processes/registry.mo`; 10,001 workers' handles held in 26.5 MiB interpreted and 53.0 native, two processes left once the map is dropped. Part C: `delay:` on `send`, `processes/timer.mo`, a 100 ms delayed send arrives 1 ms late on average and 3 ms at worst in both runtimes. Part D: `Deadline.remaining`; `none` as a type in signatures; the `Event` fields `pid`, `taking`, `snapshot`; a recipe's own `Request` resolved by fit. Part E: a test's waiting `ask` gives every process rounds. Bench, best of five, interleaved: kv-10k-get 425.6 → 429.1 ms, kv-10k-get-c 214.8 → 217.2, http-1k 68.3 → 67.7, http-1k-c 66.1 → 59.8, jobq 4,450 → 4,299 pairs a second (3.4 percent, the scan for due delayed sends on every turn), agent 443.9 → 443.5 runs a second. Verified by Fable under both runtimes: a read-only start argument refused; a registry of its own routing three keys and a dropped key's worker ending, under `mo test`, `--sim 50`, and as a binary; a delayed send never early, at 102 and 302 ms, and one from a crashing update dropped; `remaining` zero once passed; a `Result(none, E)` signature; a pattern on the renamed fields; the jobq 29-check and agent 22-check sessions green. Skipped by the worker's judgment: the agent registry's per-run routing, jobq's sweep on `delay:`, agent's naps. One default overturned in shape: agent hands every run a writable folder now, to be narrowed again in step 25.
 
 ## Related
 - [[program-5]]

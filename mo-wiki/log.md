@@ -297,3 +297,6 @@
 
 ## [2026-09-14] session | Morning: the loop becomes a skill
 - Robert, leaving for work: the roles and the Herdr loop moved out of the handoff into a project skill, `.claude/skills/mo-lead/SKILL.md`, loaded by a new root `CLAUDE.md`; `HANDOFF.md` rewritten to hold only the state and the queue (accept step 24, step 25, round 6 with the baselines' checks bolted on, program 6). Step 24's worker was mid-part D when he left and commits its own parts.
+
+## [2026-09-14] session | Morning: step 24 accepted
+- The authority hole, a handle in a state field, the delayed send, `Deadline.remaining`, four gaps, and the simulator's ask, verified by Fable's probes under both runtimes (a registry of its own, a delayed send timed and dropped on a crash, the jobq and agent sessions again). Seven decision rows, five `semantic`; one default overturned in shape (agent's writable folder, to step 25). Merged to `main`. Step 25 starts.
