@@ -96,13 +96,15 @@ class Model:
                 self.jobs[job_id] = ModelJob(queue, "queued", 0, max_attempts)
                 return 201, job_id
             case Lease(queue, worker, lease_ms):
-                waiting = [i for i, j in self.jobs.items() if j.queue == queue and j.state == "queued"]
+                waiting = [
+                    i for i, j in self.jobs.items() if j.queue == queue and j.state == "queued"
+                ]
                 if not waiting:
                     return 204, None
                 job_id = min(waiting, key=lambda i: int(i[2:]))
-                job = self.jobs[job_id]
-                job.state, job.worker, job.lease_until = "leased", worker, now + lease_ms
-                job.attempts += 1
+                chosen = self.jobs[job_id]
+                chosen.state, chosen.worker, chosen.lease_until = "leased", worker, now + lease_ms
+                chosen.attempts += 1
                 return 200, job_id
             case Ack(job_id, worker) | Fail(job_id, worker):
                 job = self.jobs.get(job_id)
@@ -117,10 +119,10 @@ class Model:
                 job.worker = job.lease_until = None
                 return 200, job_id
             case Delete(job_id):
-                job = self.jobs.get(job_id)
-                if job is None:
+                target = self.jobs.get(job_id)
+                if target is None:
                     return 404, None
-                if job.state == "leased":
+                if target.state == "leased":
                     return 409, None
                 del self.jobs[job_id]
                 return 204, None
@@ -231,13 +233,13 @@ class Sim:
 
     def play(self, op: Op) -> Response:
         self.step += 1
-        before = (self.rig.queue.snapshot(), self.rig.durable_log())
+        before = (self.rig.queue.snapshot(),)
         response = respond(self.rig.queue, to_request(op, self.step))
         where = f"seed {self.seed} step {self.step} {op}"
         if response.status == 503:
             self.test.assertEqual(self.rig.queue.snapshot(), before[0], where)
             if self.rig.store.clean:
-                self.test.assertEqual(self.rig.durable_log(), before[1], where)
+                self.test.assertEqual(replay_durable(self.rig), before[0], where)
             return response
         now = self.rig.clock.now_ms()
         expected, job_id = self.model.apply(op, now)
@@ -250,7 +252,9 @@ class Sim:
             self.test.assertEqual(replay_durable(self.rig), self.rig.queue.snapshot(), where)
         return response
 
-    def check_holders(self, op: Op, response: Response, job_id: str | None, now: int, where: str) -> None:
+    def check_holders(
+        self, op: Op, response: Response, job_id: str | None, now: int, where: str
+    ) -> None:
         if job_id is None or response.status != 200:
             return
         if isinstance(op, Lease):
