@@ -59,15 +59,17 @@ struct Order
   back_head: UInt64
 end
 
-# The jobs by number, in number order; each queue's order, and the job at each of its fresh
-# positions, kept in one map of its own so that making a job changes one entry and copies no
-# queue's list; each leased job's lease end and the earliest of them, or earlier; the next number
-# and the numbers below `reserved` the log has reserved; the counts; and when the queue started.
+# The jobs by number, in number order, in pages of 256; each queue's order, and the jobs at its
+# fresh positions, in pages of 256 positions; each leased job's lease end, in pages of 256, and
+# the earliest of them, or earlier; the next number and the numbers below `reserved` the log has
+# reserved; the counts; and when the queue started. Changing a map's existing entry copies the
+# whole map (TOOLCHAIN-BUGS.md, bug 1), so every change copies one page and sets one entry in a
+# map of pages, never a map of every job.
 struct Board
-  jobs: Map(UInt64, Job)
+  jobs: Map(UInt64, Map(UInt64, Job))
   orders: Map(String, Order)
-  fresh: Map((String, UInt64), UInt64)
-  leases: Map(UInt64, Time)
+  fresh: Map((String, UInt64), List(UInt64))
+  leases: Map(UInt64, Map(UInt64, Time))
   due: Option(Time)
   next: UInt64
   reserved: UInt64
@@ -120,6 +122,61 @@ fn answered(board: Board, outcome: Outcome) : Decision
   Decision(board: board, outcome: outcome, writes: [])
 end
 
+# The page of 256 a job number, or a fresh position, is kept in.
+fn page_of(n: UInt64) : UInt64
+  n / 256
+end
+
+fn job_of(board: Board, number: UInt64) : Option(Job)
+  page = try board.jobs.get(page_of(number))
+  page.get(number)
+end
+
+fn with_job(board: Board, held: Job) : Board
+  at = page_of(held.number)
+  var after = board
+  after.jobs = after.jobs.set(at, (after.jobs.get(at) or Map.new()).set(held.number, held))
+  after
+end
+
+fn without_job(board: Board, number: UInt64) : Board
+  at = page_of(number)
+  var after = board
+  after.jobs = after.jobs.set(at, (after.jobs.get(at) or Map.new()).remove(number))
+  after
+end
+
+# Every job, by number.
+fn all_jobs(board: Board) : List(Job)
+  board.jobs.values.flat_map(fn(page) page.values end)
+end
+
+fn with_lease(board: Board, number: UInt64, until: Time) : Board
+  at = page_of(number)
+  var after = board
+  after.leases = after.leases.set(at, (after.leases.get(at) or Map.new()).set(number, until))
+  after.due = Some(min_of(board.due or until, until))
+  after
+end
+
+fn without_lease(board: Board, number: UInt64) : Board
+  at = page_of(number)
+  var after = board
+  after.leases = after.leases.set(at, (after.leases.get(at) or Map.new()).remove(number))
+  after
+end
+
+# Every leased job's number and lease end.
+fn all_leases(board: Board) : List((UInt64, Time))
+  board.leases.values.flat_map(fn(page) page.entries end)
+end
+
+# The job at a queue's fresh position, when the position's page is still kept.
+fn fresh_number(board: Board, queue: String, position: UInt64) : Option(UInt64)
+  page = try board.fresh.get((queue, page_of(position)))
+  page.get(position % 256)
+end
+
 fn health_of(board: Board, now: Time) : Counts
   var counts = board.counts
   counts.uptime_ms = (now - board.started).ms
@@ -129,13 +186,13 @@ end
 # Every lease that has run out put back, queued or dead, with its record to write; nothing is
 # looked at until the earliest lease end has come.
 fn sweep(board: Board, now: Time) : Decision
-  ensures result.board.leases.values.all?(fn(until) until > now end)
+  ensures all_leases(result.board).all?(fn(e) e.1 > now end)
 
   return answered(board, Empty) if !due?(board, now)
-  ran_out = board.leases.entries.filter(fn(e) e.1 <= now end).map(fn(e) e.0 end)
+  ran_out = all_leases(board).filter(fn(e) e.1 <= now end).map(fn(e) e.0 end)
   after = ran_out.reduce(board, fn(so_far, n) put_back(so_far, n, now) end)
   var cleared = after
-  cleared.due = after.leases.values.min
+  cleared.due = all_leases(after).map(fn(e) e.1 end).min
   cleared.orders = requeued(after, ran_out)
   writes = ran_out.flat_map(fn(n) record_of(after, n) end)
   Decision(board: cleared, outcome: Empty, writes: writes)
@@ -149,12 +206,11 @@ fn due?(board: Board, now: Time) : Bool
 end
 
 fn put_back(board: Board, number: UInt64, now: Time) : Board
-  var after = board
-  after.leases = after.leases.remove(number)
-  case board.jobs.get(number)
+  var after = without_lease(board, number)
+  case job_of(board, number)
     Some(held):
       back = looked(held, now)
-      after.jobs = after.jobs.set(number, back)
+      after = with_job(after, back)
       after.counts = recounted(board.counts, held.state, back.state)
     None:
       after.counts = board.counts
@@ -171,14 +227,14 @@ fn requeued(board: Board, numbers: List(UInt64)) : Map(String, Order)
 end
 
 fn queue_of(board: Board, number: UInt64) : String
-  case board.jobs.get(number)
+  case job_of(board, number)
     Some(held): held.queue
     None: ""
   end
 end
 
 fn queued_job?(board: Board, number: UInt64) : Bool
-  case board.jobs.get(number)
+  case job_of(board, number)
     Some(held): held.state == Queued
     None: false
   end
@@ -198,15 +254,16 @@ end
 # The board with a queued job taking its queue's next fresh position.
 fn with_fresh(board: Board, queue: String, number: UInt64) : Board
   order = board.orders.get(queue) or no_order()
+  at = (queue, page_of(order.tail))
   var after = board
-  after.fresh = after.fresh.set((queue, order.tail), number)
+  after.fresh = after.fresh.set(at, (after.fresh.get(at) or []).push(number))
   after.orders = after.orders.set(queue,
     Order(head: order.head, tail: order.tail + 1, back: order.back, back_head: order.back_head))
   after
 end
 
 fn record_of(board: Board, number: UInt64) : List((String, Option(String)))
-  case board.jobs.get(number)
+  case job_of(board, number)
     Some(held): [(id_of(number), Some(shown(held)))]
     None: []
   end
@@ -240,8 +297,7 @@ end
 fn created(board: Board, queue: String, payload: String, max_attempts: UInt64, now: Time) : Decision
   made = job(board.next, queue, payload, max_attempts, now)
   reserving = board.next >= board.reserved
-  var after = with_fresh(board, queue, made.number)
-  after.jobs = after.jobs.set(made.number, made)
+  var after = with_job(with_fresh(board, queue, made.number), made)
   after.next = board.next + 1
   after.reserved = if reserving: board.next + 1_000 else: board.reserved
   after.counts = counted(board.counts, Queued, true)
@@ -259,14 +315,14 @@ end
 
 fn job_at(board: Board, id: String) : Option(Job)
   number = try number_of(id)
-  board.jobs.get(number)
+  job_of(board, number)
 end
 
 # The jobs in a queue, in a state, or both, by id, the first 100.
 fn listed(board: Board, queue: Option(String), state: Option(Phase)) : List(Job)
   ensures result.size <= 100
 
-  board.jobs.values.filter(fn(j) wanted?(j, queue, state) end).take(100)
+  all_jobs(board).filter(fn(j) wanted?(j, queue, state) end).take(100)
 end
 
 fn wanted?(held: Job, queue: Option(String), state: Option(Phase)) : Bool
@@ -279,8 +335,7 @@ fn removed(board: Board, id: String) : Decision
       if held.state == Leased
         return answered(board, Conflict(reason: "#{id} is leased"))
       end
-      var after = board
-      after.jobs = after.jobs.remove(held.number)
+      var after = without_job(board, held.number)
       after.counts = counted(board.counts, held.state, false)
       Decision(board: after, outcome: Removed, writes: [(id, None)])
     None: answered(board, Missing)
@@ -292,7 +347,7 @@ fn lent(board: Board, worker: String, queue: String, lease_ms: UInt64, now: Time
   order = board.orders.get(queue) or no_order()
   fresh_at = first_fresh(board, queue, order.head, order.tail)
   back_at = first_queued(board, order.back, order.back_head)
-  fresh = board.fresh.get((queue, fresh_at))
+  fresh = fresh_number(board, queue, fresh_at)
   back = order.back.get(back_at)
   take_back = case (fresh, back)
     (Some(f), Some(b)): b < f
@@ -311,22 +366,19 @@ fn lent(board: Board, worker: String, queue: String, lease_ms: UInt64, now: Time
   end
 end
 
-# The board without the fresh entries its queue's head has passed.
+# The board without the pages of fresh positions its queue's head has passed.
 fn passed_over(board: Board, queue: String, order: Order, head: UInt64) : Board
   var after = board
-  after.fresh = (order.head..head).reduce(after.fresh, fn(fresh, p) fresh.remove((queue, p)) end)
+  after.fresh = (page_of(order.head)..page_of(head)).reduce(after.fresh,
+    fn(fresh, p) fresh.remove((queue, p)) end)
   after
 end
 
 fn handed(board: Board, number: UInt64, worker: String, lease_ms: UInt64, now: Time) : Decision
-  case board.jobs.get(number)
+  case job_of(board, number)
     Some(held):
       lease = leased(held, worker, lease_ms, now)
-      until = lease.lease_until or now
-      var after = board
-      after.jobs = after.jobs.set(number, lease)
-      after.leases = after.leases.set(number, until)
-      after.due = Some(min_of(board.due or until, until))
+      var after = with_lease(with_job(board, lease), number, lease.lease_until or now)
       after.counts = recounted(board.counts, Queued, Leased)
       Decision(board: after, outcome: Found(job: lease),
         writes: [(id_of(number), Some(shown(lease)))])
@@ -348,7 +400,7 @@ fn first_fresh(board: Board, queue: String, from: UInt64, tail: UInt64) : UInt64
 end
 
 fn fresh_queued?(board: Board, queue: String, position: UInt64) : Bool
-  case board.fresh.get((queue, position))
+  case fresh_number(board, queue, position)
     Some(number): queued_job?(board, number)
     None: false
   end
@@ -386,9 +438,7 @@ fn settled(board: Board, worker: String, id: String, reason: String, failing: Bo
         return answered(board, Conflict(reason: "#{id} is not leased to this worker"))
       end
       after_job = if failing: failed(held, worker, reason, now) else: acked(held, worker, now)
-      var after = board
-      after.jobs = after.jobs.set(held.number, after_job)
-      after.leases = after.leases.remove(held.number)
+      var after = without_lease(with_job(board, after_job), held.number)
       after.counts = recounted(board.counts, Leased, after_job.state)
       after.orders = if after_job.state == Queued
         after.orders.set(held.queue,
@@ -431,18 +481,20 @@ fn job_under(entry: (String, String)) : List(Job)
 end
 
 fn placed(board: Board, held: Job) : Board
-  var after = if held.state == Queued: with_fresh(board, held.queue, held.number) else: board
-  after.jobs = after.jobs.set(held.number, held)
+  queued = if held.state == Queued: with_fresh(board, held.queue, held.number) else: board
+  leased_too = if held.state == Leased
+    with_lease(queued, held.number, held.lease_until or board.started)
+  else
+    queued
+  end
+  var after = with_job(leased_too, held)
   after.counts = counted(board.counts, held.state, true)
-  until = held.lease_until or board.started
-  after.leases = if held.state == Leased: after.leases.set(held.number, until) else: after.leases
-  after.due = if held.state == Leased: Some(min_of(board.due or until, until)) else: board.due
   after
 end
 
 # Every job's record, by number, as the store holds them.
 fn records(board: Board) : List(String)
-  board.jobs.values.map(fn(j) shown(j) end)
+  all_jobs(board).map(fn(j) shown(j) end)
 end
 
 fn at(text: String) : Time
@@ -484,7 +536,7 @@ fn lease_by(b: Board, worker: String, queue: String, ms: UInt64, now: Time) : De
 end
 
 fn store_of(b: Board) : List((String, String))
-  b.jobs.values.map(fn(j) (id_of(j.number), shown(j)) end).push(("ids", "#{b.reserved}"))
+  all_jobs(b).map(fn(j) (id_of(j.number), shown(j)) end).push(("ids", "#{b.reserved}"))
 end
 
 test "a job made is found by its id, and its record is written under that id"
