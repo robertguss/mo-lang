@@ -35,7 +35,8 @@ class FixtureTest(unittest.TestCase):
             self.assertNotIn("4111111111111111", out)
 
     def test_top_and_since(self) -> None:
-        code, out, _ = invoke(str(FIXTURE), "--json", "--top", "1", "--since", "2026-09-12T10:04:00Z")
+        since = "2026-09-12T10:04:00Z"
+        code, out, _ = invoke(str(FIXTURE), "--json", "--top", "1", "--since", since)
         self.assertEqual(code, EXIT_OK)
         doc = json.loads(out)
         self.assertEqual((doc["requests"], doc["malformed"]), (3, 3))
