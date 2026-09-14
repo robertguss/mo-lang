@@ -3,7 +3,7 @@ title: "Implementation menu: what a language builder chooses"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [implementation, engineering, tooling, history, research]
+tags: [tooling, history, research]
 sources:
   - "../raw/plang-history-2026-09/camps/implementation_engineering.md"
 ---

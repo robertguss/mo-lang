@@ -3,7 +3,7 @@ title: "PL history: lambda calculus through the 1970s"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [history, foundations, research]
+tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/history/01_foundations_to_1970s.md"
 ---
