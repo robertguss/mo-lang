@@ -318,3 +318,6 @@
 
 ## [2026-09-14] session | Afternoon: the control run's measure changes
 - Robert: agent time to green was never the point and no model has seen Mo, so from round 7 the predictions are native speed and memory against Go and Python, the feedback loop's time, and the dependency count (a column round 6 lacked: Mo 0, Go 1, Python 3); agent time and loops recorded only. Chapter 8 gains a Session 6 paragraph; one locked row; the handoff's round 7 entry rewritten.
+
+## [2026-09-14] session | Afternoon: reliability is the target
+- Robert: reliability of agent-written Mo is what he optimizes for, agent time is not. Round 7's first prediction becomes a hidden adversarial defect suite for jobq, written by Fable before the round and run against all three programs. Later, when a program finishes with no new gap or bug note, Mo reimplements a real open-source tool against its own test suite (CommonMark or Raft). Two locked rows; the roadmap's program 7.
