@@ -1,0 +1,30 @@
+# jobq program-level check: every route and status, through a real socket from the client.
+# The check's clock starts at 2026-01-01T00:00:00.000Z and moves only on `advance`.
+- GET /health
+- GET /jobs
+w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_attempts": 2}
+w1 POST /jobs {"queue": "emails", "payload": "second", "max_attempts": 1}
+w1 POST /jobs {"queue": "emails", "payload": "bad", "max_attempts": 0}
+w1 POST /jobs not json
+w1 GET /jobs/j_1
+w1 GET /jobs/j_9
+w1 PUT /jobs/j_1
+w1 GET /nowhere
+w1 POST /queues/emails/lease {"lease_ms": 1000}
+w2 POST /queues/emails/lease {"lease_ms": 1000}
+w3 POST /queues/emails/lease
+w2 POST /jobs/j_1/ack
+w1 DELETE /jobs/j_1
+advance 1000
+w1 POST /jobs/j_1/ack
+w3 POST /queues/emails/lease {"lease_ms": 500}
+w3 POST /jobs/j_1/ack
+w2 POST /jobs/j_2/fail {"reason": "smtp down"}
+w1 POST /jobs {"queue": "sms", "payload": "third", "max_attempts": 2}
+w4 POST /queues/sms/lease {"lease_ms": 100}
+w4 POST /jobs/j_3/fail {"reason": "carrier timeout"}
+w1 GET /jobs?queue=emails&state=done
+w1 DELETE /jobs/j_1
+w1 GET /jobs?state=gone
+w1 GET /jobs
+- GET /health
