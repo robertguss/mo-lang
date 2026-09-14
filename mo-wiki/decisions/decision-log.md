@@ -341,6 +341,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Robert (14 Sep, morning): the `invariant` construct stays as it is until program 6, the ledger, whose invariants are the point; the two "for Robert" rows on it are answered | Robert, on Fable's recommendation | locked until program 6 | program 6 |
 
+| Robert (14 Sep, morning): `uv` is the tool for anything Python in this project; Fable installed `mypy` (2.3.1) and `ruff` as `uv` tools and rebuilt staticcheck (2026.2.1) for Go 1.27, so round 6's baselines are type-checked and vetted; the round 5 Python was checked with `mypy --strict` after the fact and the result is on [[control-run-5]] | Robert; Fable installed | locked | round 6 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

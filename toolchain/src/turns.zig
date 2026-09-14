@@ -407,7 +407,8 @@ pub const Turns = struct {
     /// when a start call began it (a child line's never ends), its mailbox is empty, no update
     /// of it is on a stack, and no handle to it is where anything could use it: in a frame of
     /// main or of an update on a stack, in the start arguments of a process that has not
-    /// finished, in a send an update holds, or in a reply not yet taken. Its region and parcels
+    /// finished, in the state of a process that is up (step 24), in a send an update holds, or in
+    /// a reply not yet taken. Its region and parcels
     /// are freed, and its id goes to the next process started.
     fn sweep(t: *Turns, sim: *Sim) Error!void {
         const gpa = std.heap.smp_allocator;
@@ -420,6 +421,8 @@ pub const Turns = struct {
         for (procs, 0..) |p, id| {
             if (p.ended or finished(p)) continue;
             try t.markValues(p.args);
+            // A state may keep handles (step 24); a process that is down keeps none.
+            if (p.up) try t.markValue(p.state);
             // A message may carry a handle (step 20): one waiting in a mailbox or held in an
             // outbox reaches its process.
             for (p.mailbox.items[p.head..]) |e| try t.markValue(e.message);
@@ -434,7 +437,10 @@ pub const Turns = struct {
         while (answers.next()) |reply| if (reply.*) |r| try t.markValue(r.value);
         // A source's target is where the runtime keeps sending.
         for (sim.sources.list.items) |s| if (!s.done) try t.markId(s.to);
-        while (t.worklist.pop()) |id| try t.markValues(procs[id].args);
+        while (t.worklist.pop()) |id| {
+            try t.markValues(procs[id].args);
+            if (procs[id].up) try t.markValue(procs[id].state);
+        }
         var running: u32 = 0;
         for (procs, 0..) |p, id| {
             if (p.ended or p.supervisor != sim_mod.test_runner) continue;
@@ -470,6 +476,8 @@ pub const Turns = struct {
             .handle => |id| try t.markId(id),
             .tuple => |xs| try t.markValues(xs),
             .variant => |x| try t.markValues(x.fields),
+            // A state (step 24): no struct holds a handle, so only a state's fields are read.
+            .record => |r| try t.markValues(r.fields),
             .list => |xs| if (xs.len > 0 and mayHoldHandle(xs[0])) try t.markValues(xs),
             .set => |m| if (m.entries.len > 0 and mayHoldHandle(m.entries[0])) try t.markValues(m.entries),
             .map => |m| if (m.entries.len > 1) {

@@ -47,7 +47,7 @@ Two new columns, recorded for every worker: loops by cause (a law, a grammar for
 | wrote the language directly | — | **yes** | yes | yes |
 | verified by Fable | yes | **yes**: `zig build test` green in the worktree, `mo fmt --check` clean, five run lines | yes: `check.sh`, `go test`, `go vet` | yes: `check.sh`, `unittest` |
 
-Tokens: not captured; the panes' status lines had scrolled off by the end (Mo showed 54k output tokens at 13 minutes, Python 72k). The next round reads them before the report.
+After the fact (14 Sep, morning, once mypy was installed as a `uv` tool): the round 5 Python passes `mypy --strict` with no issues in its 9 files, so its unchecked type hints were sound; the row above stands as the round ran. Tokens: not captured; the panes' status lines had scrolled off by the end (Mo showed 54k output tokens at 13 minutes, Python 72k). The next round reads them before the report.
 
 ## Reading, against the predictions
 

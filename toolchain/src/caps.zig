@@ -237,7 +237,7 @@ const Caps = struct {
                 .never => try c.addUnit(.{ .kind = .never, .first = prev + 1, .last = it }),
                 .process_decl, .supervisor_decl => {
                     const d = c.k.findDeclAt(it, c.text(n.main_token));
-                    const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) or c.messagesHaveCaps(c.k.decls[x]) else false;
+                    const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) or c.messagesHaveCaps(c.k.decls[x]) or c.stateHasHandles(c.k.decls[x]) else false;
                     try c.addUnit(.{ .kind = if (n.kind == .process_decl) .process else .supervisor, .name = c.text(n.main_token), .first = prev + 1, .last = it, .has_caps = has });
                 },
                 else => try c.addUnit(.{ .kind = .other, .first = prev + 1, .last = it }),
@@ -256,13 +256,14 @@ const Caps = struct {
     fn declarations(c: *Caps) Error!void {
         for (c.k.decls) |d| {
             if (d.node == 0) continue;
-            const ranges = [_]checker.Range{d.fields};
             switch (d.kind) {
-                .struct_, .process => for (ranges) |r| try c.fieldCaps(r),
+                .struct_ => try c.fieldCaps(d.fields),
+                .process => try c.stateCaps(d.fields),
                 else => {},
             }
             // A message line may declare a capability or a handle (step 20): the protocol
-            // shows the authority the process receives. A struct, a state, or an enum may not.
+            // shows the authority the process receives. A struct or an enum may not, and a state
+            // only a handle (step 24).
             if (d.kind == .enum_) {
                 for (c.k.variants[d.variants.start..d.variants.end]) |v| try c.fieldCaps(v.fields);
             }
@@ -329,6 +330,42 @@ const Caps = struct {
             if (f.node == 0) continue;
             if (c.capIn(f.type, 0)) |cap| try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s}; a capability travels only as a parameter, never inside a value.", .{ f.name, try c.tn(cap) }));
         }
+    }
+
+    /// A process's state field may keep the handles of processes (step 24): a state is owned by
+    /// exactly one process, and the runtime counts the handles it holds as it counts those in start
+    /// arguments. It keeps one as `Handle(P)`, `Option(Handle(P))`, `List(Handle(P))`, or
+    /// `Map(K, Handle(P))`; a capability, or a handle inside anything else, stays refused.
+    fn stateCaps(c: *Caps, r: checker.Range) Error!void {
+        for (c.k.fields[r.start..r.end]) |f| {
+            if (f.node == 0) continue;
+            const found = c.capIn(f.type, 0) orelse continue;
+            if (c.k.pool.get(found).tag == .handle and c.keptHandle(f.type)) continue;
+            if (c.k.pool.get(found).tag == .cap) {
+                try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s}; a capability travels only as a parameter, never inside a value.", .{ f.name, try c.tn(found) }));
+                continue;
+            }
+            try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s} inside a {s}; a state field keeps a handle only as {s}, Option({s}), List({s}), or Map(K, {s}).", .{ f.name, try c.tn(found), try c.tn(f.type), try c.tn(found), try c.tn(found), try c.tn(found), try c.tn(found) }));
+        }
+    }
+
+    /// `Handle(P)`, or an Option or a List of one, or a Map whose values are one and whose keys hold
+    /// no authority.
+    fn keptHandle(c: *Caps, t: Id) bool {
+        const b = c.baseTag(t);
+        return switch (b.tag) {
+            .handle => true,
+            .option, .list => c.baseTag(b.a).tag == .handle,
+            .map => c.capIn(b.a, 0) == null and c.baseTag(b.b).tag == .handle,
+            else => false,
+        };
+    }
+
+    /// A process whose state keeps a handle holds authority in its box (step 24).
+    fn stateHasHandles(c: *Caps, d: checker.Decl) bool {
+        if (d.kind != .process) return false;
+        for (c.k.fields[d.fields.start..d.fields.end]) |f| if (checker.handleIn(&c.k.pool, f.type, 0)) return true;
+        return false;
     }
 
     fn recipeNeeds(c: *Caps, n: ast.Node) Error!void {

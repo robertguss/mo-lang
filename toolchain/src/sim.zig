@@ -408,6 +408,86 @@ pub const Sim = struct {
         return sim.vm.program.processes[sim.procs.items[id].process].name;
     }
 
+    // ---- ending finished processes in a test (step 24)
+
+    /// Under Mo.Sim, a test's processes that have finished and that nothing can reach end when the
+    /// surface reads the processes (surface.zig), by the rule a sweep keeps under `mo run`
+    /// (turns.zig, sweep): so a test sees a worker a registry forgot end. An ended id is not given
+    /// to a later process, so a seed's ids stay the same every run.
+    pub fn sweepEnded(sim: *Sim) Error!void {
+        if (sim.turns != null) return;
+        const gpa = std.heap.smp_allocator;
+        const procs = sim.procs.items;
+        var m: Marker = .{ .marks = try gpa.alloc(bool, procs.len) };
+        defer gpa.free(m.marks);
+        defer m.work.deinit(gpa);
+        @memset(m.marks, false);
+        // One vm runs the test and every update on its stack.
+        for (sim.vm.handle_frames.items) |locals| try m.values(locals);
+        for (procs) |p| {
+            if (p.ended or finishedInTest(p)) continue;
+            try m.values(p.args);
+            if (p.up) try m.value(p.state);
+            for (p.mailbox.items[p.head..]) |e| try m.value(e.message);
+            for (p.outbox.items) |o| {
+                try m.id(o.to);
+                try m.value(o.message);
+            }
+        }
+        for (sim.sources.list.items) |s| if (!s.done) try m.id(s.to);
+        while (m.work.pop()) |id| {
+            try m.values(procs[id].args);
+            if (procs[id].up) try m.value(procs[id].state);
+        }
+        for (procs, 0..) |*p, id| {
+            if (p.ended or !finishedInTest(p.*) or m.marks[id]) continue;
+            sim.record(.{ .kind = .ended, .process = @intCast(id) });
+            p.log.clearRetainingCapacity();
+            p.mailbox.clearRetainingCapacity();
+            p.head = 0;
+            p.args = &.{};
+            p.state = .none;
+            p.up = false;
+            p.ended = true;
+        }
+    }
+
+    /// Began by a start call, nothing waiting for it, and no update of it on a stack.
+    fn finishedInTest(p: Proc) bool {
+        return p.supervisor == test_runner and !p.busy and p.queued() == 0;
+    }
+
+    /// The processes whose handles a sweep has found, and the found ones whose start arguments and
+    /// state it has yet to read.
+    const Marker = struct {
+        marks: []bool,
+        work: std.ArrayList(u32) = .empty,
+
+        fn id(m: *Marker, to: u32) Error!void {
+            if (to >= m.marks.len or m.marks[to]) return;
+            m.marks[to] = true;
+            try m.work.append(std.heap.smp_allocator, to);
+        }
+
+        fn values(m: *Marker, vs: []const Value) Error!void {
+            for (vs) |v| try m.value(v);
+        }
+
+        /// Every handle inside `v`, as turns.zig's markValue finds them.
+        fn value(m: *Marker, v: Value) Error!void {
+            switch (v) {
+                .handle => |to| try m.id(to),
+                .tuple => |xs| try m.values(xs),
+                .variant => |x| try m.values(x.fields),
+                .record => |r| try m.values(r.fields),
+                .list => |xs| try m.values(xs),
+                .set => |s| try m.values(s.entries),
+                .map => |s| try m.values(s.entries),
+                else => {},
+            }
+        }
+    };
+
     // ---- starting
 
     /// `Name.start(args)` in a test: the test runner supervises it with :always, and with

@@ -5803,6 +5803,8 @@ static void mark_value(MoValue v) {
     case MO_HANDLE: mark_id((uint32_t)v.as.i); return;
     case MO_TUPLE: mark_values(v.as.xs, v.aux); return;
     case MO_VARIANT: mark_values(v.as.xs, mo_vcount(v)); return;
+    /* A state (step 24): no struct holds a handle, so only a state's fields are read. */
+    case MO_RECORD: mark_values(v.as.xs, mo_decls[v.aux].nfields); return;
     case MO_LIST:
         if (v.aux > 0 && may_hold_handle(v.as.xs[0])) mark_values(v.as.xs, v.aux);
         return;
@@ -5879,8 +5881,8 @@ static void release_worker(uint32_t id) {
 /* From main's thread, holding the turn: ends every process that has finished. One has when a start
  * call began it (a child line's never ends), its mailbox is empty, no update of it is on a stack,
  * and no handle to it is where anything could use it: in a frame of main or of an update on a
- * stack, in the start arguments of a process that has not finished, in a send an update holds, or
- * in a reply not yet taken. */
+ * stack, in the start arguments of a process that has not finished, in the state of a process that
+ * is up (step 24), in a send an update holds, or in a reply not yet taken. */
 static void sweep(void) {
     if (capmarks < nprocs) {
         marks = xrealloc(marks, nprocs * sizeof(bool));
@@ -5894,6 +5896,8 @@ static void sweep(void) {
         const Proc *p = procs[id];
         if (p->ended || finished(p)) continue;
         mark_values(p->args, p->nargs);
+        /* A state may keep handles (step 24); a process that is down keeps none. */
+        if (p->up) mark_value(p->state);
         /* A message may carry a handle (step 20): one waiting in a mailbox or held in an outbox
          * reaches its process. */
         for (size_t i = p->head; i < p->mailbox_len; i++) mark_value(p->mailbox[i].message);
@@ -5912,6 +5916,7 @@ static void sweep(void) {
     while (nworklist > 0) {
         const Proc *p = procs[worklist[--nworklist]];
         mark_values(p->args, p->nargs);
+        if (p->up) mark_value(p->state);
     }
     uint32_t still = 0;
     for (uint32_t id = 0; id < nprocs; id++) {
@@ -5925,6 +5930,49 @@ static void sweep(void) {
     }
     quiet = 0;
     sweep_at = 2 * still > SWEEP_MIN ? 2 * still : SWEEP_MIN;
+}
+
+/* In a test binary, a test's processes that have finished and that nothing can reach end when the
+ * surface reads the processes, by sweep's rule (sim.zig, sweepEnded; step 24); an ended id is not
+ * given to a later process. */
+static void sweep_test(void) {
+    if (turns_on) return;
+    if (capmarks < nprocs) {
+        marks = xrealloc(marks, nprocs * sizeof(bool));
+        capmarks = nprocs;
+    }
+    memset(marks, 0, nprocs * sizeof(bool));
+    nworklist = 0;
+    /* One stack runs the test and every update on it. */
+    mark_frames(mo_handle_frames);
+    for (uint32_t id = 0; id < nprocs; id++) {
+        const Proc *p = procs[id];
+        if (p->ended || finished(p)) continue;
+        mark_values(p->args, p->nargs);
+        if (p->up) mark_value(p->state);
+        for (size_t i = p->head; i < p->mailbox_len; i++) mark_value(p->mailbox[i].message);
+        for (size_t i = 0; i < p->noutbox; i++) {
+            mark_id(p->outbox[i].to);
+            mark_value(p->outbox[i].message);
+        }
+    }
+    sources_mark();
+    while (nworklist > 0) {
+        const Proc *p = procs[worklist[--nworklist]];
+        mark_values(p->args, p->nargs);
+        if (p->up) mark_value(p->state);
+    }
+    for (uint32_t id = 0; id < nprocs; id++) {
+        Proc *p = procs[id];
+        if (p->ended || !finished(p) || marks[id]) continue;
+        record_event(event_of(EV_ENDED, id));
+        p->nlog = 0;
+        p->mailbox_len = p->head = 0;
+        p->nargs = 0;
+        p->state = MO_NONE_V;
+        p->up = false;
+        p->ended = true;
+    }
 }
 
 /* One turn handed out, from main's thread: to a process whose wait ended, else to the next
@@ -8343,6 +8391,7 @@ MO_ROW(mo_r_Runtime_read_only) { (void)a; (void)kind; return mo_cap(MO_CAP_RUNTI
 MO_ROW(mo_r_Runtime_processes) {
     (void)a;
     (void)kind;
+    sweep_test();
     MoValue *out = mo_alloc_values(nprocs);
     uint32_t n = 0;
     for (uint32_t id = 0; id < nprocs; id++) {
@@ -8353,6 +8402,7 @@ MO_ROW(mo_r_Runtime_processes) {
 
 MO_ROW(mo_r_Runtime_state) {
     (void)kind;
+    sweep_test();
     uint32_t id;
     if (!live_id(a[1], &id)) return runtime_failure(MO_N_NO_PROCESS);
     if (procs[id]->busy && (!turns_on || running == id || !turns_wait_idle(id, a[2].as.i))) return runtime_failure(MO_N_TIMEOUT);
@@ -8466,6 +8516,7 @@ static uint64_t resident_bytes(void) {
 }
 
 MO_ROW(mo_r_Runtime_memory) {
+    sweep_test();
     (void)a;
     (void)kind;
     uint64_t regions = 0;
