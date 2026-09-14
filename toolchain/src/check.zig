@@ -42,7 +42,6 @@ pub const Code = enum {
     literal_range,
     // the laws, chapter 2
     body_lines,
-    file_lines,
     too_many_params,
     nesting,
     state_fields,
@@ -95,7 +94,6 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .unnamed_fields = .{ .code = "MO0222", .category = .types, .what = "<Type> is built by naming its fields: <Type>(<field>: ...)", .why = "Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values.", .fixes = &.{} },
     .literal_range = .{ .code = "MO0217", .category = .types, .what = "<literal> does not fit in <Type>", .why = "Integers are sized; a literal must fit the type it is given, and overflow is never implicit.", .fixes = &.{} },
     .body_lines = .{ .code = "MO0301", .category = .laws, .what = "<function> has a body of <n> lines and the limit is 70; split it into named functions.", .why = "A function body is at most 70 lines (chapter 2, shape laws), so a whole function is read at once. The fix is named helper functions.", .fixes = &.{} },
-    .file_lines = .{ .code = "MO0302", .category = .laws, .what = "this file is <n> lines long and the limit is 500; split it into modules.", .why = "A file is at most 500 lines (chapter 2, shape laws), so a module is read in one sitting. The fix is a second module.", .fixes = &.{} },
     .too_many_params = .{ .code = "MO0303", .category = .laws, .what = "<function> takes <n> parameters and the limit is 6; group them in a struct.", .why = "A function takes at most 6 parameters (chapter 2, shape laws); past that, the values belong together in a struct.", .fixes = &.{} },
     .nesting = .{ .code = "MO0304", .category = .laws, .what = "this <if, case, for, or fn> is nested <n> deep in <function>; the limit is 3, so move the inner block into its own function.", .why = "Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.", .fixes = &.{} },
     .state_fields = .{ .code = "MO0305", .category = .laws, .what = "<Process> keeps <n> state fields and the limit is 12; move related fields into a struct or a second process.", .why = "A process state has at most 12 fields (chapter 2, shape laws); a bigger box is a struct field or a second process.", .fixes = &.{} },
@@ -323,15 +321,8 @@ pub const VerifiedLine = union(enum) {
     declarations_changed: []const u8,
 };
 
-/// A file's lines, the last counted when it has no newline: what MO0302 holds to 500.
-pub fn lineCount(file: []const u8) u32 {
-    var lines: u32 = @intCast(std.mem.count(u8, file, "\n"));
-    if (file.len > 0 and file[file.len - 1] != '\n') lines += 1;
-    return lines;
-}
-
 pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Checked {
-    return checkProgram(gpa, tree, &.{0}, &.{}, null, out);
+    return checkProgram(gpa, tree, &.{0}, &.{}, out);
 }
 
 /// A program's modules in one tree (parser.parseProgram), in dependency order; `bases`
@@ -339,10 +330,8 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
 /// module, and each module sees the prelude, its own declarations, and what its use
 /// lines name.
 /// `verified_lines` holds what the sidecar says of each module's `verified:` line.
-/// `own_lines`, when set, is the last module's line count as its file is on disk, for a source
-/// that holds more than the file (Program.own_lines).
-pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, own_lines: ?u32, out: *diag.List) Error!Checked {
-    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines, .own_lines = own_lines };
+pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, out: *diag.List) Error!Checked {
+    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines };
     c.node_types = try gpa.alloc(Id, tree.nodes.len);
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
@@ -512,8 +501,6 @@ const Checker = struct {
     process_args: u32 = 0,
     /// What the sidecar says of each module's `verified:` line.
     verified_lines: []const VerifiedLine = &.{},
-    /// The last module's lines as its file is on disk (checkProgram).
-    own_lines: ?u32 = null,
     /// An arm of the update being checked read its reply_by.
     update_reads_reply_by: bool = false,
 
@@ -1864,17 +1851,6 @@ const Checker = struct {
     }
 
     fn checkModuleLaws(c: *Checker) Error!void {
-        // Each file keeps its own 500 lines.
-        const m = c.modules.items[c.module];
-        const file_end = if (c.module + 1 < c.modules.items.len) c.modules.items[c.module + 1].base else c.tree.source.len;
-        const file = c.tree.source[m.base..file_end];
-        var lines = lineCount(file);
-        // Under mo check --recipe the last file holds the recipe's blocks too; they are not the file.
-        if (c.own_lines) |own| if (c.module + 1 == c.modules.items.len) {
-            lines = own;
-        };
-        if (lines > 500) try c.report(.file_lines, c.line_starts.items[c.lineOf(m.base) + 500], try c.print("this file is {d} lines long and the limit is 500; split it into modules.", .{lines}));
-
         var module_path: []const u8 = "";
         for (c.items()) |it| {
             const n = c.node(it);
@@ -2355,12 +2331,7 @@ const Checker = struct {
             .name_ref => {
                 const name = c.text(n.main_token);
                 const b = c.lookup(name) orelse {
-                    // `state = 1` outside a process: the keyword names only the process's state (step 25).
-                    const what = if (c.tree.tokens[n.main_token].kind == .kw_state)
-                        "there is no state outside a process: state is a keyword, the process's state in its update and invariants, so a binding takes another name, such as status, and a struct's field named state is read after a dot; no state is in scope"
-                    else
-                        try c.print("there is no {s} in scope", .{name});
-                    try c.reportTok(.unknown_name, n.main_token, what);
+                    try c.reportTok(.unknown_name, n.main_token, try c.noSuchName(name));
                     return types.unknown;
                 };
                 if (reads) {
@@ -2896,8 +2867,18 @@ const Checker = struct {
             // Inside `where`, a bare name such as `size` is called on the value.
             if (try c.preludeMethod(i, null, v, name, &.{})) |t| return t;
         }
-        try c.reportTok(.unknown_name, n.main_token, try c.print("there is no {s} in scope", .{name}));
+        try c.reportTok(.unknown_name, n.main_token, try c.noSuchName(name));
         return types.unknown;
+    }
+
+    /// MO0201 for a name nothing binds. `state`, `old`, and `result` are names outside the
+    /// positions the grammar reserves them for (step 27), so the message says where each is the
+    /// keyword a program may have meant.
+    fn noSuchName(c: *Checker, name: []const u8) Error![]const u8 {
+        if (std.mem.eql(u8, name, "result")) return "there is no result in scope: result is a keyword only inside an ensures, where it is the value the function returns; elsewhere it is a name like any other, and no result is in scope";
+        if (std.mem.eql(u8, name, "state")) return "there is no state in scope: state is a keyword only inside a process, where it is the process's state in its update and invariants; elsewhere it is a name like any other, and no state is in scope";
+        if (std.mem.eql(u8, name, "old")) return "there is no old in scope: old is a keyword only inside an ensures or an invariant, as old(x), x's value before the call or the update; elsewhere it is a name like any other, and no old is in scope";
+        return c.print("there is no {s} in scope", .{name});
     }
 
     fn instantiateFn(c: *Checker, at: Index, si: u32) Error!Id {
@@ -3809,14 +3790,14 @@ test "a bound needs an impl, and an impl must match its trait" {
     , &.{ "MO0216", "MO0213" });
 }
 
-test "assert outside a test and result outside ensures are misplaced" {
+test "assert outside a test is misplaced, and result outside ensures is a name nothing binds" {
     try expectCodes(
         \\module T.Place
         \\fn f(n: UInt32) : Bool
         \\  assert n > 0
         \\  result
         \\end
-    , &.{ "MO0214", "MO0214" });
+    , &.{ "MO0214", "MO0201" });
 }
 
 fn expectWhat(src: []const u8, code: []const u8, what: []const u8) !void {
@@ -3829,7 +3810,7 @@ fn expectWhat(src: []const u8, code: []const u8, what: []const u8) !void {
     return error.TestExpectedEqual;
 }
 
-test "the shape laws: parameters, body lines, nesting, state fields, file lines" {
+test "the shape laws: parameters, body lines, nesting, state fields" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -3861,7 +3842,6 @@ test "the shape laws: parameters, body lines, nesting, state fields, file lines"
     for (0..13) |k| try state.print(arena, "    f{d}: UInt8\n", .{k});
     try state.appendSlice(arena, "  end\n  message Go\n  fn update(state, message)\n    case message\n      Go:\n        state.f0 += 1\n    end\n  end\nend\nsupervisor Top\n  child Big, restart: :always\nend\n");
     try expectCodes(state.items, &.{"MO0305"});
-    try expectCodes("module T.File\n" ++ "\n" ** 500, &.{"MO0302"});
 }
 
 test "a never over a type a run cannot record does not compile" {
@@ -4313,7 +4293,7 @@ fn expectProgramCodes(files: []const []const u8, codes: []const []const u8) !voi
     var diags: diag.List = .empty;
     const tokens = try lexer.lex(arena, source.items, &diags);
     const tree = try parser.parseProgram(arena, source.items, tokens, &diags);
-    _ = try checkProgram(arena, tree, bases.items, &.{}, null, &diags);
+    _ = try checkProgram(arena, tree, bases.items, &.{}, &diags);
     var ok = diags.items.len == codes.len;
     if (ok) for (diags.items, codes) |d, code| {
         if (!std.mem.eql(u8, d.code, code)) ok = false;
@@ -4391,12 +4371,6 @@ test "a private name, a bare use, and a module the program does not hold" {
         \\  2
         \\end
     }, &.{"MO0323"});
-}
-
-test "each file of a program keeps its own 500 lines" {
-    const long = "module A.Long\n" ++ "\n" ** 400;
-    try expectProgramCodes(&.{ long, long }, &.{});
-    try expectProgramCodes(&.{ long, "module A.Longer\n" ++ "\n" ** 500 }, &.{"MO0302"});
 }
 
 test "a module path names its file under the program root" {

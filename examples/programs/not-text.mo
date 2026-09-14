@@ -3,7 +3,7 @@
 module Programs.NotText
 expose said
 
-intent "A file that is not UTF-8 is NotText to every Fs row that gives a String or hands one on, and read_bytes still gives its bytes."
+intent "A file that is not UTF-8 is NotText to every Fs row that gives a String, fold_lines hands its lines on with U+FFFD for each byte that begins no character, so a caller counts them, and read_bytes still gives its bytes."
 
 fn said(r: Result(T, FsError)) : String
   case r
@@ -29,6 +29,12 @@ fn main(platform: Platform)
   case folded
     Ok(total): out.write_line("fold_lines: #{total} bytes of text")
     Error(_): out.write_line("fold_lines: #{said(folded)}")
+  end
+  marked = data.fold_lines(name, 0, within: 1.minute,
+    fn(seen, line) if line.contains?("\u{FFFD}"): seen + 1 else: seen end)
+  case marked
+    Ok(seen): out.write_line("fold_lines: #{seen} lines not UTF-8")
+    Error(_): out.write_line("fold_lines: #{said(marked)}")
   end
   read = data.read_bytes(name, within: 1.minute)
   case read

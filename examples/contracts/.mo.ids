@@ -49,6 +49,22 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "df95981ccdb3b2c3" }
     },
     {
+      "path": "never-var-copy.mo",
+      "module": "Contracts.NeverVarCopy",
+      "declarations": [
+        { "id": "a1122d5ccbc5", "name": "module Contracts.NeverVarCopy", "hash": "be3fadabef23ab60" },
+        { "id": "c9b08ccf2161", "name": "expose", "hash": "e68951ad29a79715" },
+        { "id": "5a7f9321bdb4", "name": "intent", "hash": "ca8cf753c21c4611" },
+        { "id": "5ec83a0fffa8", "name": "never \"a pair's halves differ\"", "hash": "5dd5a09c05f61920" },
+        { "id": "2e7fbd196def", "name": "struct Pair", "hash": "b5359084c6ba1b99" },
+        { "id": "b4f2aa975187", "name": "fn both", "hash": "b51b2d260ff6b1db" },
+        { "id": "81899df31758", "name": "fn first_only", "hash": "6d8f4504509a6439" },
+        { "id": "c4f2c9f6cf7f", "name": "test \"both halves move together\"", "hash": "a3eac9f7d64115b5" },
+        { "id": "13b4086aaaad", "name": "test rejects \"a pair returned with one half moved trips the never\"", "hash": "9e569ccdf4e2da33" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "2262a6a51a110bff" }
+    },
+    {
       "path": "never.mo",
       "module": "Contracts.Never",
       "declarations": [

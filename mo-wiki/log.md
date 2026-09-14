@@ -312,3 +312,15 @@
 
 ## [2026-09-14] session | Day: round 6, failed on all four predictions
 - Three fresh sessions from 14:30 UTC in `../mo-lang-control6-*`, the baselines with their checks bolted on; Fable verified each worktree (Mo 185 of 185, Go and Python every check clean). P1 1.58, P2 one shape-law loop and five keyword or grammar loops, P3 no check caught a real bug anywhere so the null hypothesis stands, P4 0.74. Five decision rows, three for Robert (the laws, the `never` over a `var` copy, the keywords as names). No seventh round until one lands. Merged to `main`.
+
+## [2026-09-14] session | Afternoon: Robert agrees, step 27 starts
+- Robert agreed to all three round 6 recommendations. Chapter 2 gains "Session 6 changes": the file law dropped (not demoted, since the honesty laws forbid warnings), a `never` reads values at rest, `state`/`result`/`old` as names outside the reserved positions. Five locked rows. Step 27 written and started on a fresh worker.
+
+## [2026-09-14] session | Afternoon: the control run's measure changes
+- Robert: agent time to green was never the point and no model has seen Mo, so from round 7 the predictions are native speed and memory against Go and Python, the feedback loop's time, and the dependency count (a column round 6 lacked: Mo 0, Go 1, Python 3); agent time and loops recorded only. Chapter 8 gains a Session 6 paragraph; one locked row; the handoff's round 7 entry rewritten.
+
+## [2026-09-14] session | Afternoon: reliability is the target
+- Robert: reliability of agent-written Mo is what he optimizes for, agent time is not. Round 7's first prediction becomes a hidden adversarial defect suite for jobq, written by Fable before the round and run against all three programs. Later, when a program finishes with no new gap or bug note, Mo reimplements a real open-source tool against its own test suite (CommonMark or Raft). Two locked rows; the roadmap's program 7.
+
+## [2026-09-14] session | Afternoon: step 27 accepted, round 7 starts
+- The file law gone, the three words as names, the `never` at-rest rule, the escape, `fold_lines`, verified by Fable's probes under both runtimes, 185 of 185. Four decision rows, one `semantic`. Merged to `main`. Round 7 starts on the pre-registered page with the hidden defect suite.

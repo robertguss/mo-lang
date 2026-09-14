@@ -1,15 +1,25 @@
 module Rejects.VarState
-expose counted
+expose Counter, Counters
 
-intent "state is a keyword: alone it names a process's state, so a var cannot take it, even where a struct's field may."
+intent "state is a keyword inside a process: there it names the process's state, so a var in its update cannot take it, though a plain function's may."
 
-# expect MO0101: expected a name: state is a keyword, the process's state in its update and invariants, so a binding or a parameter takes another name, such as status; a struct's field may be named state, and is read after a dot
-fn counted(n: UInt32) : UInt32
-  var state = n
-  state += 1
+# expect MO0101: expected a name: state is a keyword inside a process, the process's state in its update and invariants, so a binding or a parameter there takes another name, such as status; outside a process state is a name like any other
+process Counter()
   state
+    count: UInt32
+  end
+
+  message Bump(by: UInt32)
+
+  fn update(state, message)
+    case message
+      Bump(by):
+        var state = by
+        state += 1
+    end
+  end
 end
 
-test "one more"
-  assert counted(1) == 2
+supervisor Counters
+  child Counter, restart: :always
 end

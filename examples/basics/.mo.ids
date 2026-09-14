@@ -199,14 +199,15 @@
       "declarations": [
         { "id": "e2b8deed16ea", "name": "module Basics.Strings", "hash": "95ae77f8a864cb25" },
         { "id": "29fa57f30ae6", "name": "expose", "hash": "ef953e3f3d0cde43" },
-        { "id": "5b8e8eabe6f7", "name": "intent", "hash": "70e1a0d9b1c459bd" },
+        { "id": "5b8e8eabe6f7", "name": "intent", "hash": "9a775271423e754e" },
         { "id": "35ebeaf2eb43", "name": "fn greeting", "hash": "ac7f50b3fe2ee549" },
         { "id": "99efbb973099", "name": "fn letter", "hash": "cb399a12807c99a8" },
         { "id": "2e9687144f3c", "name": "test \"interpolation fills in the name\"", "hash": "3d39d6e876f18e47" },
         { "id": "4380cba085a0", "name": "test \"a multi-line string starts at its first line\"", "hash": "718baa1e3f9454fe" },
-        { "id": "fb70685141c5", "name": "test \"size counts graphemes and bytes counts bytes\"", "hash": "eef7ff4b94fa7198" }
+        { "id": "fb70685141c5", "name": "test \"size counts graphemes and bytes counts bytes\"", "hash": "eef7ff4b94fa7198" },
+        { "id": "e1d63fc32b95", "name": "test \"each escape is one character, and \\\\u{X} names any character by its code point\"", "hash": "ed8124c8905dedc7" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "63e8eb9f018216e7" }
+      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "01c31304e50ddebf" }
     },
     {
       "path": "tuples.mo",

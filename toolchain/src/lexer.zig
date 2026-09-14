@@ -24,6 +24,11 @@ pub const catalog = [_]diag.Entry{
     .{ .code = "MO0002", .category = .syntax, .what = unterminated, .why = why_unterminated, .fixes = &.{} },
 };
 pub const why_unterminated = "A string opened with \" closes on the same line; text that spans lines goes in a \"\"\" block.";
+/// MO0101 at a backslash a string does not know (step 27, round 6's jobq): before, the letter
+/// after it was read as itself, so "\u0085" was five bytes and no diagnostic said so.
+pub const why_escape = "A string knows these escapes (grammar §1; session 6, step 27): \\n, \\t, \\r, \\\\, \\\", \\#, and \\u{XXXX}, 1 to 6 hex digits naming a Unicode character. A backslash before anything else is refused, since reading it as the letter after it would hand on text the program did not mean.";
+const unknown_escape = "expected an escape a string knows after this backslash: \\n, \\t, \\r, \\\\, \\\", \\#, or \\u{XXXX}, 1 to 6 hex digits naming a Unicode character; a backslash itself is written \\\\";
+const bad_unicode = "expected \\u{ then 1 to 6 hex digits and }, naming a Unicode character, U+0000 to U+10FFFF but not a surrogate, D800 to DFFF: a string's escapes are \\n, \\t, \\r, \\\\, \\\", \\#, and \\u{XXXX}";
 /// MO0002 for a one-line string: most often a long line wrapped inside the string.
 const unterminated = "this string does not close on the line it opens on; close it before the line ends, since mo fmt leaves a long line long, or write text that spans lines in a \"\"\" block";
 
@@ -147,7 +152,7 @@ const Lexer = struct {
     fn endsOperand(kind: Kind) bool {
         return switch (kind) {
             .ident, .type_name, .int, .float, .string, .atom, .underscore => true,
-            .r_paren, .r_bracket, .r_brace, .kw_true, .kw_false, .kw_result => true,
+            .r_paren, .r_bracket, .r_brace, .kw_true, .kw_false, .kw_result, .kw_state, .kw_old => true,
             else => false,
         };
     }
@@ -177,6 +182,7 @@ const Lexer = struct {
             const rest = l.src[l.i + 3 ..];
             const close = std.mem.indexOf(u8, rest, "\"\"\"") orelse
                 return l.fail("MO0002", start, "unterminated \"\"\" string", why_unterminated);
+            try l.escapesIn(start + 3, start + 3 + @as(u32, @intCast(close)));
             l.i += @intCast(3 + close + 3);
             return l.add(.string, start);
         }
@@ -192,7 +198,7 @@ const Lexer = struct {
             switch (l.src[i]) {
                 '"' => return i + 1,
                 '\n' => break,
-                '\\' => i += 2,
+                '\\' => i = try l.escape(i),
                 '#' => if (i + 1 < l.src.len and l.src[i + 1] == '{') {
                     i = try l.scanHole(start, i + 2);
                 } else {
@@ -202,6 +208,30 @@ const Lexer = struct {
             }
         }
         return l.fail("MO0002", start, unterminated, why_unterminated);
+    }
+
+    /// The escape at the backslash at `at`; returns the index past it. MO0101 at one a string
+    /// does not know (step 27).
+    fn escape(l: *Lexer, at: u32) Error!u32 {
+        const next = if (at + 1 < l.src.len) l.src[at + 1] else 0;
+        return switch (next) {
+            'n', 't', 'r', '\\', '"', '#' => at + 2,
+            'u' => if (unicodeEscape(l.src, at)) |u| @as(u32, @intCast(u.end)) else l.fail("MO0101", at, bad_unicode, why_escape),
+            else => l.fail("MO0101", at, unknown_escape, why_escape),
+        };
+    }
+
+    /// Every escape in a """ string's body, from `from` up to `to`. A hole's code is lexed when
+    /// the parser splits the string, strings inside it with it.
+    fn escapesIn(l: *Lexer, from: u32, to: u32) Error!void {
+        var i = from;
+        while (i < to) {
+            if (l.src[i] == '\\') {
+                i = try l.escape(i);
+            } else if (l.src[i] == '#' and i + 1 < to and l.src[i + 1] == '{') {
+                i = @intCast(holeClose(l.src[0..to], i + 2) + 1);
+            } else i += 1;
+        }
     }
 
     fn scanHole(l: *Lexer, string_start: u32, from: u32) Error!u32 {
@@ -298,6 +328,26 @@ const Lexer = struct {
         l.nest.items[l.nest.items.len - 1] = if (block) .block else .line_block;
     }
 };
+
+/// `\u{X}` at the backslash at `at`: the index past its `}` and the character it names, when it
+/// holds 1 to 6 hex digits naming a Unicode scalar value (step 27). The lexer refuses any other;
+/// bytecode.zig and emit_c.zig decode it.
+pub const Unicode = struct { end: usize, value: u21 };
+
+pub fn unicodeEscape(src: []const u8, at: usize) ?Unicode {
+    if (at + 2 >= src.len or src[at + 1] != 'u' or src[at + 2] != '{') return null;
+    var i = at + 3;
+    var value: u32 = 0;
+    var digits: u32 = 0;
+    while (i < src.len and digits < 7) : (i += 1) {
+        const d = std.fmt.charToDigit(src[i], 16) catch break;
+        value = value * 16 + d;
+        digits += 1;
+    }
+    if (digits == 0 or digits > 6 or i >= src.len or src[i] != '}') return null;
+    if (value > 0x10FFFF or (value >= 0xD800 and value <= 0xDFFF)) return null;
+    return .{ .end = i + 1, .value = @intCast(value) };
+}
 
 /// For the parser, which splits strings: `text[from]` is just after a `#{` in a
 /// string the lexer accepted; returns the index of the `}` that closes the hole.
@@ -411,6 +461,32 @@ test "a one-line if inside parens opens nothing, so the lines after it still joi
     try expectKinds("f(if a\n  b\nelse\n  c\nend,\n  d)\n", &.{
         .ident, .l_paren, .kw_if, .ident, .newline, .ident, .newline, .kw_else, .newline, .ident, .newline, .kw_end, .comma, .ident, .r_paren, .newline, .eof,
     });
+}
+
+test "a string knows its escapes, a code point among them, and refuses any other" {
+    try expectKinds("\"\\n\\t\\r\\\\\\\"\\#{ \\u{0} \\u{85} \\u{10FFFF}\"", &.{ .string, .newline, .eof });
+    try expectKinds("\"\"\"\n  a\\u{1F600} #{f(\"\\t\")}\n  \"\"\"", &.{ .string, .newline, .eof });
+    const gpa = std.testing.allocator;
+    var diags: diag.List = .empty;
+    defer diags.deinit(gpa);
+    const wrong = [_]struct { []const u8, u32, []const u8 }{
+        .{ "x = \"a\\qb\"", 6, unknown_escape },
+        .{ "x = \"\\u0085\"", 5, bad_unicode },
+        .{ "x = \"\\u{}\"", 5, bad_unicode },
+        .{ "x = \"\\u{1234567}\"", 5, bad_unicode },
+        .{ "x = \"\\u{D800}\"", 5, bad_unicode },
+        .{ "x = \"\\u{110000}\"", 5, bad_unicode },
+        .{ "x = \"#{f(\"\\z\")}\"", 10, unknown_escape },
+        .{ "x = \"\"\"\n  \\x\n  \"\"\"", 10, unknown_escape },
+    };
+    for (wrong) |w| {
+        diags.clearRetainingCapacity();
+        try std.testing.expectError(error.Rejected, lex(gpa, w[0], &diags));
+        try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
+        try std.testing.expectEqual(w[1], diags.items[0].at);
+        try std.testing.expectEqualStrings(w[2], diags.items[0].what);
+    }
+    try std.testing.expectEqual(@as(u21, 0x1F600), unicodeEscape("\\u{1F600}", 0).?.value);
 }
 
 test "errors are records with stable codes" {

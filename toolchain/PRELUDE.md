@@ -207,7 +207,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `read` | `String` | `Result(String, FsError)`, `NotText` for a file that is not UTF-8 | yes | | grammar |
 | `Fs` | `read_lines` | `String` | `Result(List(String), FsError)`, `NotText` for a file that is not UTF-8 | yes | | stdlib (09) |
 | `Fs` | `read_bytes` | `String` | `Result(List(UInt8), FsError)`: the file's bytes, UTF-8 or not | yes | | stdlib (09) |
-| `Fs` | `fold_lines` | `String`, `A`, `fn(A, String) A` | `Result(A, FsError)`: each line handed to the function with the value so far as the file is read, `Ok` with the last call's; `NotText` at the first line that is not UTF-8. Session 5, step 19: the streaming row, `each_line` gone | yes | | stdlib (09) |
+| `Fs` | `fold_lines` | `String`, `A`, `fn(A, String) A` | `Result(A, FsError)`: each line handed to the function with the value so far as the file is read, `Ok` with the last call's; a line that is not UTF-8 handed on with U+FFFD for each byte that begins no UTF-8 character, so never `NotText` (session 6, step 27). Session 5, step 19: the streaming row, `each_line` gone | yes | | stdlib (09) |
 | `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |

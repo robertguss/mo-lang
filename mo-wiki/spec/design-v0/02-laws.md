@@ -4,7 +4,7 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 
 ## Shape laws (numbers are hypotheses until the corpus measures them)
 
-- A function body is at most **70 lines**. A file is at most **500**. At most **6 parameters** (beyond that, a struct). Nesting depth at most **3**. A process state has at most **12 fields**.
+- A function body is at most **70 lines**. At most **6 parameters** (beyond that, a struct). Nesting depth at most **3**. A process state has at most **12 fields**.
 - Projects may tighten these numbers, never loosen them.
 - One module per file, file path equals module path, no import cycles.
 
@@ -27,7 +27,7 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 
 ## Contract laws
 
-- A `never` is a quoted sentence plus a block that evaluates true when the bad thing has happened. Both are mandatory. A `never` that cannot be checked does not compile.
+- A `never` is a quoted sentence plus a block that evaluates true when the bad thing has happened. Both are mandatory. A `never` that cannot be checked does not compile. A `never` reads a value where it rests: a binding, a field, a return, a message, an assertion; a `var` between two statements of one body is not a value the run held, so chapter 4's `var copy = x` then `copy.field = v` cannot trip it (session 6, round 6).
 - Every `requires` has a `rejects` test that trips it. The compiler checks the pair exists.
 - Any change to an exposed signature or the `expose` line, a contract, or a `never` is a breaking change, and the toolchain pulls a human in. Agents may change bodies freely.
 
@@ -42,3 +42,9 @@ The rules above already reflect this; this section is the changelog.
 Claude (session 5, deciding on Robert's instruction): the deadline law now reads "every effectful call that can wait". The corpus showed that `clock.now(within: 10.ms)` returning a `Result` made every clock read a `try`, and chapter 4 had never written it that way. First tested by `Mo.Sim`, which marks which operations wait.
 
 Fable (session 5, night, after the research agenda's Dijkstra and SPARK pages): the recursion line said "structural only, proved terminating", which no stage ever checked; since step 18 the toolchain bounds depth at 10,000 and crashes. The law now says that, and names termination as `mo prove`'s obligation. First tested by program 1.
+
+## Session 6 changes
+
+- **The file-length law is gone** (Robert, 14 Sep 2026, on round 6). Round 6 was the first round where a shape law cost a loop (`MO0302` split a 500-line `board.mo`), and no check in any language earned one; Fable recommended a warning, but the honesty laws forbid warnings, so the law is dropped and `MO0302` retired. The function law stays: jobq's longest function was 20 lines. First tested by round 7. Built by step 27.
+- **A `never` reads values at rest** (Robert, 14 Sep 2026). Round 6's logstat tripped a `never` over `Summary.all` on the `var` copy between two field assignments, the idiom chapter 4 prescribes. Built by step 27, first tested by its corpus file and round 7.
+- **`state`, `result`, and `old` are ordinary names** everywhere but the positions the grammar reserves (Robert, 14 Sep 2026; step 25 began this for fields). Three of round 6's ten loops were these words refused as parameters and bindings. Chapter 4 and the grammar say which positions stay reserved. Built by step 27.

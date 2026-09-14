@@ -1,14 +1,15 @@
 module Rejects.OldParameter
-expose grown
+expose doubled
 
-intent "old is a keyword: in a contract it names a value before the call, so a parameter cannot take it, even where a struct's field may."
+intent "old is a keyword inside an ensures: there old(x) is x's value before the call, so an anonymous function's parameter in it cannot take the name, though one in a body may."
 
-# expect MO0101: expected a name: old is a keyword, the contract's old value, as old(x) in an ensures or an invariant, so a binding or a parameter takes another name, such as before; a struct's field may be named old, and is read after a dot
-fn grown(old: UInt32, by: UInt32) : UInt32
-  ensures result >= old
-  old + by
+# expect MO0101: expected a name: old is a keyword inside an ensures or an invariant, where old(x) is x's value before the call or the update, so a binding there takes another name, such as before; elsewhere old is a name like any other
+fn doubled(xs: List(UInt32)) : List(UInt32)
+  ensures result.map(fn(old) old / 2 end) == xs
+
+  xs.map(fn(x) x * 2 end)
 end
 
-test "grows by what it is given"
-  assert grown(1, 2) == 3
+test "each number doubles"
+  assert doubled([1, 2]) == [2, 4]
 end

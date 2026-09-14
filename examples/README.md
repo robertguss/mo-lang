@@ -22,7 +22,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
 2. `basics/numbers.mo`: sized integers, `10_000`, `checked_add`, `saturating_sub`, `wrapping_mul`, a float
-3. `basics/strings.mo`: interpolation, `"""`, `size` in graphemes and `bytes`
+3. `basics/strings.mo`: interpolation, `"""`, `size` in graphemes and `bytes`, and one of each escape, `\n`, `\t`, `\r`, `\\`, `\"`, `\#`, and `\u{X}` (step 27)
 4. `basics/predicates.mo`: `?` functions and dot-call sugar
 5. `basics/tuples.mo`: build a tuple, read `.0`, destructure in `case`
 6. `basics/lists.mo`: a list literal, `push`, `map`, `filter`, `reduce`
@@ -42,7 +42,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 16. `types/generics.mo`: `fn first(xs: List(T)) : Option(T)` and a `where T: Trait` bound
 17. `types/trait.mo`: a `trait` and its `impl`
 18. `types/nested.mo`: `Result(Option(T), E)` handled in full
-86. `types/keyword-fields.mo`: `state` and `old` as a struct's fields, declared, given by name when it is built, read and set after a dot, encoded as the keys they are named, beside a process whose `state` holds one (step 25)
+86. `types/keyword-fields.mo`: `state` and `old` as a struct's fields, declared, given by name when it is built, read and set after a dot, encoded as the keys they are named, beside a process whose `state` holds one (step 25); `state` and `result` as parameters and bindings of plain functions and in a test, `result` as a `var` beside an `ensures` that reads the keyword, and `old` as a `for`'s name (step 27)
 
 ## contracts
 19. `contracts/requires.mo`: `requires` with its `test rejects`
@@ -50,6 +50,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 21. `contracts/never.mo`: a two-generator `never` with a guard
 22. `contracts/flows.mo`: `flows(CardNumber, into: Events)` beside a struct that carries one
 62. `contracts/never-trips.mo`: a `never` that plain test data breaks, tripping a `test rejects` under `mo test` without `--sim`
+92. `contracts/never-var-copy.mo`: a `never` reads values at rest (step 27): round 6's `Pair`, changed one field at a time on a `var` copy, passes, since a field write followed by another write of the same `var` records nothing, and a copy returned with one half moved still trips a `test rejects`
 65. `contracts/property-refined.mo`: properties over refined types; `any(Percent)` never gives 65,535, and `any(Status)`, whose `where` few `UInt16` values pass, generates between its bounds
 
 ## effects
@@ -106,10 +107,12 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 76. `rejects/method-on-range-end.mo`: `0..60.map(...)`, whose `map` binds to 60; `MO0206` says so (step 21)
 82. `rejects/read-only-start-argument.mo`: an `Fs` narrowed to `read_only` handed as the start argument of a process that writes through it; `MO0404` refuses the start (step 24)
 83. `rejects/read-only-message-field.mo`: an `Fs` narrowed to `read_only` sent in a message whose arm writes through it; `MO0404` refuses the message (step 24)
-87. `rejects/state-binding.mo`: `state = 1` outside a process; `state` alone is the process's state, so `MO0201` says a binding takes another name (step 25)
+87. `rejects/state-binding.mo`: `state = 1` inside an update, where `state` is the process's state, so `MO0206` says a number is not it (steps 25, 27)
 88. `rejects/read-only-if-argument.mo`: an `Fs` narrowed to `read_only` in a branch of a one-line `if` handed as a process's start argument; `MO0404` names the branch (step 25)
-89. `rejects/var-state.mo`: `var state = n`; `state` is a keyword, so `MO0101` says what it names, that a binding or a parameter takes another name, and that a struct's field may take it (step 26)
-90. `rejects/old-parameter.mo`: a parameter named `old`; `old` is a keyword, so `MO0101` says what it names, that a binding or a parameter takes another name, and that a struct's field may take it (step 26)
+89. `rejects/var-state.mo`: `var state = by` inside an update; `state` is a keyword inside a process, so `MO0101` says what it names there and that outside a process it is a name (steps 26, 27)
+93. `rejects/unknown-escape.mo`: `"\q"`; a string knows `\n`, `\t`, `\r`, `\\`, `\"`, `\#`, and `\u{X}`, so `MO0101` names them at any other backslash (step 27)
+90. `rejects/old-parameter.mo`: `fn(old)` inside an `ensures`, where `old` is a keyword, so `MO0101` says what it names there and that elsewhere it is a name (steps 26, 27)
+91. `rejects/unbound-result.mo`: a body that reads `result` as its return value; outside an `ensures` `result` is a name, so `MO0201` says nothing binds it and where it is the keyword (step 27)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records
@@ -118,7 +121,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 53. `programs/hello.mo`: `fn main(platform: Platform)`, an argument, and `stdout`
 54. `programs/count-lines.mo`: `platform.fs.scoped("data").read_only` and a real read with `within:`
 55. `programs/exit-code.mo`: a line on `stderr` and `platform.exit(3)`
-66. `programs/not-text.mo`: `bytes/not-text.txt` holds a byte that is not UTF-8, so `read`, `read_lines`, `fold_lines` handing `out` on (after printing the line before it), and `fold_lines` counting bytes are `NotText`, and `read_bytes` gives its 36 bytes; its second run reads `bytes/text.txt`, which every row reads
+66. `programs/not-text.mo`: `bytes/not-text.txt` holds a byte that is not UTF-8, so `read` and `read_lines` are `NotText`, `fold_lines` hands that line on with U+FFFD for each byte that begins no character (step 27), to `out`, to a count of bytes, and to a count of the lines holding U+FFFD, and `read_bytes` gives its 36 bytes; its second run reads `bytes/text.txt`, which every row reads
 68. `programs/runaway.mo`: recursion past the depth limit of 10,000 nested calls crashes `main` with a report naming the function, and exits 70, under `mo run` and as a binary (step 18)
 56. `programs/logstat/`: program 2 (`mo-wiki/spec/programs/02-log-analyzer.md`) in four modules, `parse.mo`, `stats.mo`, `report.mo`, and `main.mo`, over the three logs in `fixture/`. `examples/programs/mo.root` makes `programs/` the root its `use` lines load from; `main.mo`'s four `# run:` lines are the text report, the JSON report (`logstat-2.expected`), `--top 0` exiting 2, and no `.log` file exiting 1. `programs/logstat/TOOLCHAIN-BUGS.md` records what the program found and the commits that fixed it.
 59. `programs/echo/`: a real TCP echo on 127.0.0.1 through `mo run`. The corpus test cannot start a server in the background, so `main` starts it all itself: a listener the runtime serves into an acceptor process, a worker process per connection that takes each line as a message, and a client process per client that `main` asks once per line, and it prints every round trip; `main` ends with `exit`, since the listener would be served on (step 20). Its two `# run:` lines are three lines from one client and one line from each of three clients.

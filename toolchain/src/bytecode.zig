@@ -5,6 +5,7 @@
 //! overflow in every build (design-v0/02).
 const std = @import("std");
 const ast = @import("ast.zig");
+const lexer = @import("lexer.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const prelude = @import("prelude.zig");
@@ -268,7 +269,6 @@ pub const Bounds = struct {
 };
 
 test "a where's bounds are its comparisons of value with a literal" {
-    const lexer = @import("lexer.zig");
     const parser = @import("parser.zig");
     const diag = @import("diag.zig");
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -452,6 +452,25 @@ fn recordKey(k: *const check.Checked, id: Id) ?u64 {
     };
 }
 
+/// Whether statement `s` sets a field under a place that statement `next`, the one after it in
+/// the same body, assigns again, as `copy.a += 1` then `copy.b += 1`. A never reads values at
+/// rest (step 27): the struct is not at rest between the two, so `s` records nothing for a never's
+/// `T.all`, and the last write of the run records the whole struct. The C backend (emit_c.zig)
+/// asks the same.
+pub fn fieldWriteMovesOn(tree: ast.Tree, s: Index, next: Index) bool {
+    const a = tree.nodes[s];
+    const b = tree.nodes[next];
+    if (a.kind != .assign or b.kind != .assign or tree.nodes[a.lhs].kind != .member) return false;
+    return std.mem.eql(u8, placeRoot(tree, a.lhs), placeRoot(tree, b.lhs));
+}
+
+/// The name a place such as `copy.item.count` roots at.
+fn placeRoot(tree: ast.Tree, place: Index) []const u8 {
+    var at = place;
+    while (tree.nodes[at].kind == .member) at = tree.nodes[at].lhs;
+    return tree.tokenText(tree.nodes[at].main_token);
+}
+
 /// What each test and property run keeps for a never's `T.all` (sim.zig, observe), by checker
 /// type id: its index among the types some never reads with `T.all`, or `none`, and whether a
 /// value of it can hold a value of one. The interpreter's lowering and the C backend
@@ -550,6 +569,9 @@ const Lower = struct {
     gpa: std.mem.Allocator,
     k: *const check.Checked,
     tree: ast.Tree,
+    /// The statement whose field write records nothing, since the next one writes the same place
+    /// (fieldWriteMovesOn, step 27).
+    unrested: Index = 0,
     functions: std.ArrayList(Function) = .empty,
     constants: std.ArrayList(Const) = .empty,
     clauses: std.ArrayList(Clause) = .empty,
@@ -1200,7 +1222,10 @@ const Lower = struct {
 
     fn blockStmts(l: *Lower, stmts: []const u32) Error!void {
         const mark = l.b.names.items.len;
-        for (stmts) |s| try l.stmt(s);
+        for (stmts, 0..) |s, k| {
+            l.noteUnrested(stmts, k);
+            try l.stmt(s);
+        }
         l.b.names.shrinkRetainingCapacity(mark);
     }
 
@@ -1209,7 +1234,10 @@ const Lower = struct {
         const mark = l.b.names.items.len;
         defer l.b.names.shrinkRetainingCapacity(mark);
         if (stmts.len == 0) return l.pushConst(.none);
-        for (stmts[0 .. stmts.len - 1]) |s| try l.stmt(s);
+        for (stmts[0 .. stmts.len - 1], 0..) |s, k| {
+            l.noteUnrested(stmts, k);
+            try l.stmt(s);
+        }
         const last = stmts[stmts.len - 1];
         const n = l.node(last);
         switch (n.kind) {
@@ -1221,6 +1249,10 @@ const Lower = struct {
                 try l.pushConst(.none);
             },
         }
+    }
+
+    fn noteUnrested(l: *Lower, stmts: []const u32, k: usize) void {
+        if (k + 1 < stmts.len and fieldWriteMovesOn(l.tree, stmts[k], stmts[k + 1])) l.unrested = stmts[k];
     }
 
     fn stmt(l: *Lower, s: Index) Error!void {
@@ -1246,6 +1278,8 @@ const Lower = struct {
                 _ = try l.emit(.store, try l.bindName(l.text(n.main_token), true), 0);
             },
             .assign => {
+                // Read before the value, whose own blocks note theirs.
+                const rests = l.unrested != s;
                 const op = l.text(n.main_token);
                 if (op.len == 1) {
                     const lhs = l.node(n.lhs);
@@ -1257,7 +1291,7 @@ const Lower = struct {
                     try l.expr(n.rhs);
                     _ = try l.emit(if (op[0] == '+') .add else .sub, @intFromEnum(l.numOf(l.typeOf(n.lhs))), try l.clause(.overflow, l.firstToken(s)));
                 }
-                try l.assignPlace(n.lhs);
+                try l.assignPlace(n.lhs, rests);
             },
             .return_stmt => {
                 var skip: ?u32 = null;
@@ -1306,13 +1340,14 @@ const Lower = struct {
         return .ge;
     }
 
-    /// Stores the value on top into a place: a name, or a field path under one.
-    fn assignPlace(l: *Lower, i: Index) Error!void {
+    /// Stores the value on top into a place: a name, or a field path under one. The whole value
+    /// the name then holds is recorded for a never when it `rests` (fieldWriteMovesOn).
+    fn assignPlace(l: *Lower, i: Index, rests: bool) Error!void {
         const n = l.node(i);
         switch (n.kind) {
             .name_ref => {
                 const target = (try l.resolve(l.text(n.main_token))).?;
-                try l.observe(l.typeOf(i));
+                if (rests) try l.observe(l.typeOf(i));
                 _ = try l.emit(.store, target.slot, 0);
             },
             .member => {
@@ -1323,7 +1358,7 @@ const Lower = struct {
                 try l.loadPlace(n.lhs);
                 _ = try l.emit(.swap, 0, 0);
                 _ = try l.emit(.set_field, k, 0);
-                try l.assignPlace(n.lhs);
+                try l.assignPlace(n.lhs, rests);
             },
             else => try l.halt(i, "", false),
         }
@@ -1568,6 +1603,13 @@ const Lower = struct {
                 continue;
             }
             if (ch == '\\' and i + 1 < to) {
+                if (lexer.unicodeEscape(src[0..to], i)) |u| {
+                    var utf8: [4]u8 = undefined;
+                    const len = std.unicode.utf8Encode(u.value, &utf8) catch unreachable;
+                    try out.appendSlice(l.gpa, utf8[0..len]);
+                    i = @intCast(u.end);
+                    continue;
+                }
                 try out.append(l.gpa, switch (src[i + 1]) {
                     'n' => '\n',
                     't' => '\t',
@@ -1845,7 +1887,7 @@ const Lower = struct {
         var j = @min(ps.len, arg_nodes.items.len);
         while (j > 0) {
             j -= 1;
-            if (ps[j].inout) try l.assignPlace(arg_nodes.items[j]);
+            if (ps[j].inout) try l.assignPlace(arg_nodes.items[j], true);
         }
     }
 

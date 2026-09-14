@@ -38,20 +38,23 @@
       "module": "Types.KeywordFields",
       "declarations": [
         { "id": "06936b6c34ed", "name": "module Types.KeywordFields", "hash": "fb14719bc6a539d5" },
-        { "id": "8feb99eb6d8b", "name": "expose", "hash": "af87454c976ead3c" },
-        { "id": "c142456b6b41", "name": "intent", "hash": "64b86300e7ebd14c" },
+        { "id": "8feb99eb6d8b", "name": "expose", "hash": "cccf265bc7bb46f5" },
+        { "id": "c142456b6b41", "name": "intent", "hash": "ee35da2fabec3bba" },
         { "id": "9265900bb6ef", "name": "struct Task", "hash": "cde9e031ff904678" },
         { "id": "745411ccbbee", "name": "struct Revision", "hash": "d1587f31bd47126a" },
         { "id": "e8c277650e7c", "name": "process Tracker", "hash": "e36beba84aa3c9ca" },
         { "id": "91956b730809", "name": "supervisor Trackers", "hash": "d2cd69b64effefdc" },
         { "id": "8fd64d628db8", "name": "fn shown", "hash": "4e6927819ad8ef88" },
         { "id": "88ccb4ec90f4", "name": "fn revised", "hash": "5dd98c793daf5227" },
+        { "id": "bac15d42974e", "name": "fn settled", "hash": "9576e1be41b203ff" },
+        { "id": "0e3c894ef603", "name": "fn first_over", "hash": "1d9cae73f823cddd" },
         { "id": "b9a7a6d08df8", "name": "test \"a field named state is given by name and read after a dot\"", "hash": "22e408da90952e7c" },
         { "id": "f54d3dead745", "name": "test \"a field named old is set on a var copy and read after a dot\"", "hash": "07b1a1f39acef141" },
         { "id": "a6b6ca74d67c", "name": "test \"Json.encode writes each field's key as it is named\"", "hash": "92ca137da57f2060" },
+        { "id": "5452bd745f52", "name": "test \"state and result name a parameter and a binding, and old a for's name\"", "hash": "678e35a70a8b17e5" },
         { "id": "fee0b20dea93", "name": "test \"a process's state holds a task whose state moves\"", "hash": "b845bc5ba124dc67" }
       ],
-      "verified": { "hash": "d5eca57fd58baa94", "declarations": "2f9a55b04dde067c" }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "c999c4d7712859e5" }
     },
     {
       "path": "nested.mo",
