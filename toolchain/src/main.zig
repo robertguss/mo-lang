@@ -32,7 +32,8 @@
 //!                        process tests in the fixed order (--sim has no compiled form)
 //!     --target <triple>  cross-compiles for a zig target, such as x86_64-linux-musl
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
-//!                        MO0312), formats, and rewrites the file; one line per fix
+//!                        MO0312, and MO0101 at a one-line if), formats, and rewrites the file;
+//!                        one line per fix
 //!     --dry-run          changes nothing; prints the unified diff it would apply
 //! check, test, and run load the file and every module it uses (program.zig); fmt
 //! reads the one file. Diagnostics render as prose on stderr, or with --json as one
@@ -217,8 +218,15 @@ fn run(init: std.process.Init) !void {
     const program = try mo.program.load(arena, io, path, &diags);
 
     if (is_fix) {
-        // A file that does not parse has nothing to fix.
-        if (diags.items.len > 0) return reject(out, err, program.files, diags.items, json);
+        // A file that does not parse has nothing to fix, unless every error that stopped it carries
+        // a fix of confidence 100 (MO0101 at a one-line if, step 21).
+        const fixable = for (diags.items) |d| {
+            const has = for (d.fixes) |f| {
+                if (f.confidence == 100 and f.edits.len > 0) break true;
+            } else false;
+            if (!has) break false;
+        } else true;
+        if (diags.items.len > 0 and !fixable) return reject(out, err, program.files, diags.items, json);
         const outcome = try mo.fix.run(arena, program);
         const before = program.main().source;
         if (std.mem.eql(u8, before, outcome.source)) return;

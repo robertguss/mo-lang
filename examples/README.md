@@ -96,6 +96,9 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 49. `rejects/hand-edited-verified.mo`: a `verified:` line written by hand
 50. `rejects/unsupervised-process.mo`: a process no supervisor names
 67. `rejects/captured-capability.mo`: a capability captured by an anonymous function (step 18)
+74. `rejects/one-line-if.mo`: an `if` on one line, as a value; `MO0101` shows the block form and `mo fix` writes it (step 21)
+75. `rejects/positional-variant.mo`: a variant matched by position; `MO0101` names its fields (step 21)
+76. `rejects/method-on-range-end.mo`: `0..60.map(...)`, whose `map` binds to 60; `MO0206` says so (step 21)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records

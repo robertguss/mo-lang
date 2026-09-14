@@ -20,10 +20,15 @@ const why_type = "A type is a type name such as UInt32 or List(T), or a tuple of
 const why_pattern = "A pattern is _, a name, a literal, a variant such as Some(x) or Short(by: n), or a tuple of patterns.";
 const why_order = "A module is its header (module, expose, use, intent, never), then declarations, then tests, then the verified: line.";
 const why_place = "Only a name or a field path such as copy.name can be assigned.";
+/// An `if` on one line (step 21, round 4's MO0101).
+const why_if = "An if takes its body on the lines below its condition and ends with end, as every block does, and that holds when the if is a value too: one form to read and to write.";
+/// A variant matched by position (step 21, round 4's MO0101).
+const why_by_name = "A variant's fields are matched by name, as they are built by name: Short(by: n) binds n to by. A position would change meaning when a field is added.";
 /// The parser's rows of the error catalog. MO0101 also stands for a malformed
-/// `fn main` line, with why_main as its why.
+/// `fn main` line, with why_main as its why, an `if` on one line, with why_if, and a variant
+/// matched by position, with why_by_name.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token, .fixes = &.{} },
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if takes its body on the lines below it, even as a value, and mo fix writes a one-line if as that block; a variant's fields are matched by name, as Short(by: n).", .fixes = &.{"an if on one line becomes the block form"} },
     .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
     .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
     .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
@@ -197,6 +202,134 @@ const Parser = struct {
     fn failAt(p: *Parser, tok: u32, code: []const u8, what: []const u8, why: []const u8) Error {
         try p.diags.append(p.gpa, .{ .code = code, .category = .syntax, .at = p.toks.items[tok].start, .what = what, .why = why });
         return error.Rejected;
+    }
+
+    /// MO0101 at `if cond: a else: b`, at its `:`. Mo has no one-line if, as a statement or as a
+    /// value, so the message shows the block form. When the line is exactly that shape, one
+    /// expression on each side of an `else:` or none, the rewrite is a fix of confidence 100.
+    fn oneLineIf(p: *Parser, kw: u32) Error {
+        const gpa = p.gpa;
+        const toks = p.toks.items;
+        const src = p.source;
+        const colon = p.tok;
+        var depth: i32 = 0;
+        var clean = true;
+        var else_tok: ?u32 = null;
+        var t = colon + 1;
+        while (toks[t].kind != .newline and toks[t].kind != .eof) : (t += 1) {
+            switch (toks[t].kind) {
+                .l_paren, .l_bracket, .l_brace => depth += 1,
+                .r_paren, .r_bracket, .r_brace => depth -= 1,
+                .kw_else => if (depth == 0) {
+                    if (else_tok != null or toks[t + 1].kind != .colon) clean = false;
+                    else_tok = t;
+                },
+                .kw_if, .kw_case, .kw_for, .kw_fn => clean = false,
+                .colon => if (depth == 0 and (else_tok == null or t != else_tok.? + 1)) {
+                    clean = false;
+                },
+                else => {},
+            }
+        }
+        const line_end = t;
+        const cond_text = std.mem.trim(u8, src[toks[kw].end..toks[colon].start], " ");
+        const then_text = std.mem.trim(u8, src[toks[colon].end..if (else_tok) |e| toks[e].start else toks[line_end].start], " ");
+        const else_text: ?[]const u8 = if (else_tok) |e| std.mem.trim(u8, src[@min(toks[e + 1].end, toks[line_end].start)..toks[line_end].start], " ") else null;
+        if (then_text.len == 0 or (else_text != null and else_text.?.len == 0)) clean = false;
+        var line_start = toks[kw].start;
+        while (line_start > 0 and src[line_start - 1] != '\n') line_start -= 1;
+        var indent_end = line_start;
+        while (indent_end < src.len and src[indent_end] == ' ') indent_end += 1;
+        const indent = src[line_start..indent_end];
+        const shown = if (else_text) |e|
+            try std.fmt.allocPrint(gpa, "if {s} / {s} / else / {s} / end", .{ cond_text, then_text, e })
+        else
+            try std.fmt.allocPrint(gpa, "if {s} / {s} / end", .{ cond_text, then_text });
+        const what = try std.fmt.allocPrint(gpa, "expected the if's body on the lines below it: an if has no one-line form, as a statement or as a value; write the block form, one part a line: {s}", .{shown});
+        var fixes: []const diag.Fix = &.{};
+        if (clean) {
+            const block = if (else_text) |e|
+                try std.fmt.allocPrint(gpa, "\n{s}  {s}\n{s}else\n{s}  {s}\n{s}end", .{ indent, then_text, indent, indent, e, indent })
+            else
+                try std.fmt.allocPrint(gpa, "\n{s}  {s}\n{s}end", .{ indent, then_text, indent });
+            const edits = try gpa.dupe(diag.Edit, &.{.{ .at = toks[colon].start, .len = toks[line_end].start - toks[colon].start, .text = block }});
+            fixes = try gpa.dupe(diag.Fix, &.{.{ .description = "write the if as a block, one part a line", .confidence = 100, .edits = edits }});
+        }
+        try p.diags.append(gpa, .{ .code = "MO0101", .category = .syntax, .at = toks[colon].start, .what = what, .why = why_if, .fixes = fixes });
+        return error.Rejected;
+    }
+
+    /// MO0101 at `Short(a, b)`, at its first `,`: a variant's fields are matched by name. The
+    /// message names the fields the variant declares in this file, when it does, and shows the
+    /// form to write.
+    fn positionalVariant(p: *Parser, name: u32) Error {
+        const gpa = p.gpa;
+        const toks = p.toks.items;
+        const src = p.source;
+        const comma = p.tok;
+        var parts: std.ArrayList([]const u8) = .empty;
+        var depth: i32 = 0;
+        var t = name + 2;
+        var part_start = toks[t].start;
+        while (toks[t].kind != .eof and toks[t].kind != .newline) : (t += 1) {
+            switch (toks[t].kind) {
+                .l_paren, .l_bracket => depth += 1,
+                .r_paren, .r_bracket => {
+                    if (depth == 0) break;
+                    depth -= 1;
+                },
+                .comma => if (depth == 0) {
+                    try parts.append(gpa, std.mem.trim(u8, src[part_start..toks[t].start], " "));
+                    part_start = toks[t].end;
+                },
+                else => {},
+            }
+        }
+        try parts.append(gpa, std.mem.trim(u8, src[part_start..toks[t].start], " "));
+        const vname = p.text(name);
+        const fields = try p.variantFields(vname);
+        const what = if (fields.len == parts.items.len) blk: {
+            var form: std.ArrayList(u8) = .empty;
+            for (fields, parts.items, 0..) |f, part, i| try form.print(gpa, "{s}{s}: {s}", .{ if (i == 0) "" else ", ", f, part });
+            break :blk try std.fmt.allocPrint(gpa, "expected field names: a variant's fields are matched by name, not by position; write {s}({s})", .{ vname, form.items });
+        } else if (fields.len > 0) blk: {
+            var names: std.ArrayList(u8) = .empty;
+            for (fields, 0..) |f, i| try names.print(gpa, "{s}{s}", .{ if (i == 0) "" else if (i + 1 == fields.len) " and " else ", ", f });
+            break :blk try std.fmt.allocPrint(gpa, "expected field names: a variant's fields are matched by name, not by position; {s} has {s}; write each you match as {s}({s}: n)", .{ vname, names.items, vname, fields[0] });
+        } else try std.fmt.allocPrint(gpa, "expected field names: a variant's fields are matched by name, not by position; write each as field: pattern, as in {s}(by: n)", .{vname});
+        return p.failAt(comma, "MO0101", what, why_by_name);
+    }
+
+    /// The field names an `enum` in this file declares for variant `name`, in order; none when no
+    /// enum here declares it.
+    fn variantFields(p: *Parser, name: []const u8) Error![]const []const u8 {
+        const toks = p.toks.items;
+        var out: std.ArrayList([]const u8) = .empty;
+        var i: usize = 0;
+        while (i < toks.len) : (i += 1) {
+            if (toks[i].kind != .kw_enum) continue;
+            var j = i + 1;
+            while (j + 1 < toks.len and toks[j].kind != .kw_end and toks[j].kind != .eof) : (j += 1) {
+                const line_first = toks[j - 1].kind == .newline;
+                if (!line_first or toks[j].kind != .type_name or toks[j + 1].kind != .l_paren) continue;
+                if (!std.mem.eql(u8, p.text(@intCast(j)), name)) continue;
+                var depth: i32 = 0;
+                var k = j + 1;
+                while (k + 1 < toks.len and toks[k].kind != .newline and toks[k].kind != .eof) : (k += 1) {
+                    switch (toks[k].kind) {
+                        .l_paren => depth += 1,
+                        .r_paren => {
+                            depth -= 1;
+                            if (depth == 0) break;
+                        },
+                        .ident => if (depth == 1 and toks[k + 1].kind == .colon) try out.append(p.gpa, p.text(@intCast(k))),
+                        else => {},
+                    }
+                }
+                return out.items;
+            }
+        }
+        return out.items;
     }
 
     // ---- building
@@ -731,6 +864,7 @@ const Parser = struct {
     fn parseIf(p: *Parser, kind: Node.Kind, require_else: bool) Error!Index {
         const kw = try p.expect(.kw_if);
         const cond = try p.parseExpr();
+        if (p.peek() == .colon) return p.oneLineIf(kw);
         _ = try p.expect(.newline);
         const then = try p.parseBlock(false);
         var otherwise: Span = .{ .start = 0, .end = 0 };
@@ -1152,6 +1286,7 @@ const Parser = struct {
                 if (p.peekAt(1) == .ident and p.peekAt(2) == .colon) return p.parseRecordPattern(name);
                 _ = p.next();
                 const inner = try p.parsePattern();
+                if (p.peek() == .comma) return p.positionalVariant(name);
                 _ = try p.expect(.r_paren);
                 return p.addNode(.{ .kind = .pat_variant, .main_token = name, .lhs = inner });
             },
@@ -1505,6 +1640,8 @@ test "a function that returns nothing leaves its return type off; a type without
 
     const wrong = [_]struct { []const u8, []const u8, []const u8 }{
         .{ "module M\nfn f(n: UInt8) UInt8\n  n\nend\n", "MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  if ok: 1 else: 2\nend\n", "MO0101", "expected the if's body on the lines below it: an if has no one-line form, as a statement or as a value; write the block form, one part a line: if ok / 1 / else / 2 / end" },
+        .{ "module M\nenum Size\n  Short(by: UInt8, of: UInt8)\n  Long\nend\nfn f(s: Size) : UInt8\n  case s\n    Short(a, b): a\n    Long: 0\n  end\nend\n", "MO0101", "expected field names: a variant's fields are matched by name, not by position; write Short(by: a, of: b)" },
         .{ "module M\nfn f(n: UInt8)\n  return\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
         .{ "module M\nfn f(n: UInt8) : UInt8\n  return if n > 1\n  n\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
         .{ "module M\ntest \"t\"\n  case 1\n    1: assert true\n    _: assert false\n  end\nend\n", "MO0102", "a case arm holds one expression after its `:`; `assert` is a statement, and a statement goes on its own lines below the arm" },
