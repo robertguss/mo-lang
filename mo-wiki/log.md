@@ -345,3 +345,6 @@
 
 ## [2026-09-14] session | Evening: the reading pack
 - `deep-dives/reading-pack-2026-09.md` for the OTP and capability-systems reviewers Robert will arrange: seven pages in order, the questions for each reader, and a tried-and-rejected appendix of fifteen rows from the decision log.
+
+## [2026-09-14] session | Evening: paused
+- Robert paused, out of his weekly tokens, at 19:17 UTC. Step 28's worker had part A written with its suite running and nothing committed; the edits are preserved on the pushed branch `step-28-part-a-wip` and left in the tree. The handoff says how to resume. The loop is stopped.
