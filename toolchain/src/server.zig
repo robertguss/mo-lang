@@ -305,11 +305,10 @@ pub const Server = struct {
                 else => return missing(vm, path),
             };
             try feed.bytes(chunk[0..n]);
-            if (feed.not_text) return stdlib.notText(vm);
             if (feed.partial.items.len > read_limit) return missing(vm, path);
         }
         try feed.end();
-        return if (feed.not_text) stdlib.notText(vm) else vm.variant("Ok", &.{feed.acc});
+        return vm.variant("Ok", &.{feed.acc});
     }
 
     /// `fs.size(path, within: d)`: `Ok(bytes)` of a file inside the scope; anything else

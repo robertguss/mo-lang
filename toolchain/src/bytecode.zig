@@ -5,6 +5,7 @@
 //! overflow in every build (design-v0/02).
 const std = @import("std");
 const ast = @import("ast.zig");
+const lexer = @import("lexer.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const prelude = @import("prelude.zig");
@@ -268,7 +269,6 @@ pub const Bounds = struct {
 };
 
 test "a where's bounds are its comparisons of value with a literal" {
-    const lexer = @import("lexer.zig");
     const parser = @import("parser.zig");
     const diag = @import("diag.zig");
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -1603,6 +1603,13 @@ const Lower = struct {
                 continue;
             }
             if (ch == '\\' and i + 1 < to) {
+                if (lexer.unicodeEscape(src[0..to], i)) |u| {
+                    var utf8: [4]u8 = undefined;
+                    const len = std.unicode.utf8Encode(u.value, &utf8) catch unreachable;
+                    try out.appendSlice(l.gpa, utf8[0..len]);
+                    i = @intCast(u.end);
+                    continue;
+                }
                 try out.append(l.gpa, switch (src[i + 1]) {
                     'n' => '\n',
                     't' => '\t',

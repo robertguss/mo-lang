@@ -22,7 +22,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 ## basics
 1. `basics/bindings.mo`: `x =` binds once, `var` changes, `+=`
 2. `basics/numbers.mo`: sized integers, `10_000`, `checked_add`, `saturating_sub`, `wrapping_mul`, a float
-3. `basics/strings.mo`: interpolation, `"""`, `size` in graphemes and `bytes`
+3. `basics/strings.mo`: interpolation, `"""`, `size` in graphemes and `bytes`, and one of each escape, `\n`, `\t`, `\r`, `\\`, `\"`, `\#`, and `\u{X}` (step 27)
 4. `basics/predicates.mo`: `?` functions and dot-call sugar
 5. `basics/tuples.mo`: build a tuple, read `.0`, destructure in `case`
 6. `basics/lists.mo`: a list literal, `push`, `map`, `filter`, `reduce`
@@ -110,6 +110,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 87. `rejects/state-binding.mo`: `state = 1` inside an update, where `state` is the process's state, so `MO0206` says a number is not it (steps 25, 27)
 88. `rejects/read-only-if-argument.mo`: an `Fs` narrowed to `read_only` in a branch of a one-line `if` handed as a process's start argument; `MO0404` names the branch (step 25)
 89. `rejects/var-state.mo`: `var state = by` inside an update; `state` is a keyword inside a process, so `MO0101` says what it names there and that outside a process it is a name (steps 26, 27)
+93. `rejects/unknown-escape.mo`: `"\q"`; a string knows `\n`, `\t`, `\r`, `\\`, `\"`, `\#`, and `\u{X}`, so `MO0101` names them at any other backslash (step 27)
 90. `rejects/old-parameter.mo`: `fn(old)` inside an `ensures`, where `old` is a keyword, so `MO0101` says what it names there and that elsewhere it is a name (steps 26, 27)
 91. `rejects/unbound-result.mo`: a body that reads `result` as its return value; outside an `ensures` `result` is a name, so `MO0201` says nothing binds it and where it is the keyword (step 27)
 
@@ -120,7 +121,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 53. `programs/hello.mo`: `fn main(platform: Platform)`, an argument, and `stdout`
 54. `programs/count-lines.mo`: `platform.fs.scoped("data").read_only` and a real read with `within:`
 55. `programs/exit-code.mo`: a line on `stderr` and `platform.exit(3)`
-66. `programs/not-text.mo`: `bytes/not-text.txt` holds a byte that is not UTF-8, so `read`, `read_lines`, `fold_lines` handing `out` on (after printing the line before it), and `fold_lines` counting bytes are `NotText`, and `read_bytes` gives its 36 bytes; its second run reads `bytes/text.txt`, which every row reads
+66. `programs/not-text.mo`: `bytes/not-text.txt` holds a byte that is not UTF-8, so `read` and `read_lines` are `NotText`, `fold_lines` hands that line on with U+FFFD for each byte that begins no character (step 27), to `out`, to a count of bytes, and to a count of the lines holding U+FFFD, and `read_bytes` gives its 36 bytes; its second run reads `bytes/text.txt`, which every row reads
 68. `programs/runaway.mo`: recursion past the depth limit of 10,000 nested calls crashes `main` with a report naming the function, and exits 70, under `mo run` and as a binary (step 18)
 56. `programs/logstat/`: program 2 (`mo-wiki/spec/programs/02-log-analyzer.md`) in four modules, `parse.mo`, `stats.mo`, `report.mo`, and `main.mo`, over the three logs in `fixture/`. `examples/programs/mo.root` makes `programs/` the root its `use` lines load from; `main.mo`'s four `# run:` lines are the text report, the JSON report (`logstat-2.expected`), `--top 0` exiting 2, and no `.log` file exiting 1. `programs/logstat/TOOLCHAIN-BUGS.md` records what the program found and the commits that fixed it.
 59. `programs/echo/`: a real TCP echo on 127.0.0.1 through `mo run`. The corpus test cannot start a server in the background, so `main` starts it all itself: a listener the runtime serves into an acceptor process, a worker process per connection that takes each line as a message, and a client process per client that `main` asks once per line, and it prints every round trip; `main` ends with `exit`, since the listener would be served on (step 20). Its two `# run:` lines are three lines from one client and one line from each of three clients.

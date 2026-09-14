@@ -11,8 +11,9 @@ TypeName    = Upper (alnum)*                   # CapCase; also enum variants, mo
 path        = TypeName ("." TypeName)*         # Payments.Refund, Money
 int         = digit (digit | "_")*             # 10_000
 float       = int "." digit+
-string      = '"' (char | "#{" expr "}")* '"'
-            | '"""' NL (line NL)* '"""'        # common indentation stripped
+string      = '"' (char | escape | "#{" expr "}")* '"'
+            | '"""' NL (line NL)* '"""'        # common indentation stripped; escapes and holes as in '"'
+escape      = "\n" | "\t" | "\r" | "\\" | '\"' | "\#" | "\u{" hex hex? hex? hex? hex? hex? "}"   # Session 6, step 27: a Unicode scalar value; any other backslash is MO0101
 atom        = ":" ident                        # only where the grammar names it
 keyword     = module use intent never expose fn requires ensures var inout if else end
               case for in break return try and or implies is old result assert

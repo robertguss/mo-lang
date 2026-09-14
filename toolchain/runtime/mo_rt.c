@@ -2985,21 +2985,31 @@ typedef struct {
     MoValue f;
     size_t from, kept;
     Buf partial;
-    /* A line was not UTF-8: no line after it is handed, and the call is NotText. */
-    bool not_text;
     /* The value so far, from its init, handed with each line and replaced by what the call gives,
      * the safe point's one root. */
     MoValue acc[1];
 } LineFeed;
 
+/* A line as fold_lines hands it on (step 27): its bytes when they are UTF-8, and otherwise each byte
+ * that begins no UTF-8 character replaced by U+FFFD, so the caller counts the line and folds on
+ * (stdlib.zig, replaced). */
+static MoValue replaced_line(const char *s, size_t n) {
+    if (utf8_valid(s, n)) return heap_string(s, n);
+    Buf out = {0};
+    for (size_t i = 0; i < n;) {
+        CodePoint cp = code_point(s, n, i);
+        if (cp.value == 0xFFFD && cp.len == 1) buf_put(&out, "\xEF\xBF\xBD", 3);
+        else buf_put(&out, s + i, cp.len);
+        i += cp.len;
+    }
+    MoValue line = heap_string(out.p, out.len);
+    free(out.p);
+    return line;
+}
+
 static void feed_line(LineFeed *l, const char *s, size_t n) {
     if (n > 0 && s[n - 1] == '\r') n--;
-    if (l->not_text) return;
-    if (!utf8_valid(s, n)) {
-        l->not_text = true;
-        return;
-    }
-    MoValue line = heap_string(s, n);
+    MoValue line = replaced_line(s, n);
     MoValue args[2] = {l->acc[0], line};
     l->acc[0] = mo_invoke(l->f, args);
     l->kept = iterate(l->from, l->acc, 1, l->kept);
@@ -3097,7 +3107,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
         LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
         feed_bytes(&l, text.as.s, text.aux);
         feed_end(&l);
-        return l.not_text ? not_text() : ok_of(l.acc[0]);
+        return ok_of(l.acc[0]);
     }
     case FS_READ:
     case FS_READ_LINES:
@@ -3190,7 +3200,7 @@ static MoValue server_files(int which, const MoValue *a) {
         if (fd < 0) return late(t0, within) ? timed_out() : missing(path);
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
-        enum { READING, DONE, LATE, FAILED, NOT_TEXT } ended = READING;
+        enum { READING, DONE, LATE, FAILED } ended = READING;
         LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
         char chunk[1 << 16];
         while (ended == READING) {
@@ -3203,13 +3213,11 @@ static MoValue server_files(int which, const MoValue *a) {
             if (r < 0) ended = FAILED;
             else if (r == 0) ended = DONE;
             else feed_bytes(&l, chunk, (size_t)r);
-            if (l.not_text) ended = NOT_TEXT;
-            else if (l.partial.len > READ_LIMIT) ended = FAILED;
+            if (l.partial.len > READ_LIMIT) ended = FAILED;
         }
         close(fd);
         if (ended == DONE) feed_end(&l);
         else free(l.partial.p);
-        if (l.not_text) return not_text();
         return ended == DONE ? ok_of(l.acc[0]) : ended == LATE ? timed_out() : missing(path);
     }
     case FS_SIZE: {

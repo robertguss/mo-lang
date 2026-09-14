@@ -4,4 +4,5 @@ read_lines: ok
 | two é
 fold_lines to out: ok
 fold_lines: 9 bytes of text
+fold_lines: 0 lines not UTF-8
 read_bytes: 11 bytes, 2 past ASCII

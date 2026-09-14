@@ -491,8 +491,6 @@ pub const LineFeed = struct {
     kept: usize = 0,
     /// A line begun in bytes read so far, waiting for its "\n".
     partial: std.ArrayList(u8) = .empty,
-    /// A line was not UTF-8: no line after it is handed, and the call is `NotText`.
-    not_text: bool = false,
     /// The value so far, from `init`.
     acc: Value,
 
@@ -520,17 +518,38 @@ pub const LineFeed = struct {
 
     fn line(l: *LineFeed, raw: []const u8) Error!void {
         const text = if (raw.len > 0 and raw[raw.len - 1] == '\r') raw[0 .. raw.len - 1] else raw;
-        if (l.not_text) return;
-        if (!std.unicode.utf8ValidateSlice(text)) {
-            l.not_text = true;
-            return;
-        }
-        const handed: Value = .{ .string = try vm_mod.rawDupe(l.vm.heap, u8, text) };
+        const handed: Value = .{ .string = try replaced(l.vm, text) };
         var roots = [1]Value{try l.vm.invoke(l.f, &.{ l.acc, handed })};
         l.kept = try l.vm.iterate(l.from, &roots, l.kept);
         l.acc = roots[0];
     }
 };
+
+/// A line as `fold_lines` hands it on (step 27): its bytes when they are UTF-8, and otherwise each
+/// byte that begins no UTF-8 character replaced by U+FFFD, so the caller counts the line and
+/// folds on. runtime/mo_rt.c's replaced_line is the same.
+fn replaced(vm: *Vm, text: []const u8) Error![]const u8 {
+    if (std.unicode.utf8ValidateSlice(text)) return vm_mod.rawDupe(vm.heap, u8, text);
+    const mark = "\u{FFFD}";
+    var size: usize = 0;
+    var i: usize = 0;
+    while (i < text.len) {
+        const cp = codePoint(text, i);
+        size += if (cp.len == 1 and cp.value == 0xFFFD) mark.len else cp.len;
+        i += cp.len;
+    }
+    const out = try vm_mod.rawAlloc(vm.heap, u8, size);
+    var o: usize = 0;
+    i = 0;
+    while (i < text.len) {
+        const cp = codePoint(text, i);
+        const piece: []const u8 = if (cp.len == 1 and cp.value == 0xFFFD) mark else text[i .. i + cp.len];
+        @memcpy(out[o .. o + piece.len], piece);
+        o += piece.len;
+        i += cp.len;
+    }
+    return out;
+}
 
 fn trim(s: []const u8) []const u8 {
     var start: ?usize = null;
@@ -1043,7 +1062,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             var feed: LineFeed = .init(vm, a[3].func, a[2]);
             try feed.bytes(text);
             try feed.end();
-            return if (feed.not_text) notText(vm) else vm.variant("Ok", &.{feed.acc});
+            return vm.variant("Ok", &.{feed.acc});
         },
         .fs_read, .fs_read_lines, .fs_read_bytes, .fs_size => {
             const text = all.get(full) orelse return missed(vm, path);

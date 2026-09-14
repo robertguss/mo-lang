@@ -19,6 +19,7 @@
 //! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. The Net
 //! and Http rows are the runtime's: real sockets under main, their fixtures in a test binary.
 const std = @import("std");
+const lexer = @import("lexer.zig");
 const surface_mod = @import("surface.zig");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
@@ -1345,6 +1346,13 @@ const Emitter = struct {
                 continue;
             }
             if (ch == '\\' and i + 1 < to) {
+                if (lexer.unicodeEscape(src[0..to], i)) |u| {
+                    var utf8: [4]u8 = undefined;
+                    const len = std.unicode.utf8Encode(u.value, &utf8) catch unreachable;
+                    try out.appendSlice(e.gpa, utf8[0..len]);
+                    i = @intCast(u.end);
+                    continue;
+                }
                 try out.append(e.gpa, switch (src[i + 1]) {
                     'n' => '\n',
                     't' => '\t',
