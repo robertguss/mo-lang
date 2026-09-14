@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [runtime, agents, tooling, processes]
 sources: [directions/d37-runtime-mcp-surface.md, directions/d40-structured-runtime-events.md, spec/design-v0/03-semantics.md, plans/program-1.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Step 23: the runtime surface
@@ -51,6 +51,10 @@ Structs `ProcessInfo`, `SourceInfo`, `MemoryInfo`, `Event` (an enum of the kinds
 ## Done when
 
 Green at every commit; the ring in both runtimes and printed on a failed seeded test; `platform.runtime` with the rows in both runtimes and the spec tables; `read_only` refusing the three acts; `--surface` under `mo run` and in a built binary; the corpus file; jobq's nine questions answered or explained; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written in 68 minutes, four commits, green at each. The ring: 168 bytes an event interpreted, 112 native; 4,096 events cost 912 KiB and 416 KiB resident; at 65,536 events, 10.5 and 7.0 MiB and 6.5 percent on 100,000 native GETs (1.4 at 4,096). Bench, best of five: kv-10k-get 406 → 379 ms, kv-10k-get-c 207.6 → 207.8 interleaved (a first reading of 15 percent was noise), http-1k 55.8 → 56.1, http-1k-c 52.4 → 45.2, jobq 4,408 → 4,453 pairs a second native. `GET /processes` with 10,001 live processes: 5.5 ms interpreted, 3.3 native, 1.47 MB. The nine questions: six answered in full, three in part (an event does not copy a reply; memory is not broken down inside a state; a run-out lease is the program's notion, read from the state text). A checker bug found and fixed: a module's own `Request` or `Response` hid the prelude's from every module. Verified by Fable under both runtimes: httpd under `mo run --surface` and as a binary built with `--surface`, every route as JSON, a paused acceptor making a request wait and a resume releasing it, an unparsed message refused, a binary without `--surface` listening on nothing, `read_only` refusing in a test binary, a failed seeded test printing its last events, and jobq's `/sources` counting 300 silent connections with `/slowest` naming a worker's `Answer` update and the `ask` it waited in.
 
 ## Related
 - [[d37-runtime-mcp-surface]]

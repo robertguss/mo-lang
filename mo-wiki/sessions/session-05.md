@@ -45,6 +45,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[program-1]]: `jobq`, the founding premise's first real test, in 40 minutes; nine modules; native 4,051 lease-and-ack pairs a second with 32 workers; Fable's 29-check session green under both runtimes. Found: literal deadlines lie where they nest (two of three derived sums were once wrong), `invariant` kept none of eight candidates (for Robert), the Q16 ledger empty, one `--recipe` bug, five gaps, nine runtime-surface questions on d37.
 - [[control-run-5]], the first pre-registered round: Mo 14.8 min to Go's 11.6 and Python's 14.9, 1.28 times Go from 1.73; loops 5/2/3; P1 and P3 held, P2 missed by one loop; mixed. The laws stay.
 - [[interpreter-step-22]]: the derived deadline, `reply_by` and `at_most`, in both runtimes and the simulator, jobq's three hand-written sums gone; the `--recipe` line count, the fixture's missing folder, `json.to_i64`, the recipe's rewrite rule with notes following it, two diagnostics; verified by Fable's probes in all three modes.
+- [[interpreter-step-23]]: the runtime surface, directions 37 and 40 built: the event ring, `platform.runtime` as a capability with `read_only`, `mo run --surface PORT`; six of jobq's nine questions answered in full; Fable's probes green under both runtimes.
 
 ## Numbers at the end of the session
 
@@ -105,6 +106,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[program-1]]
 - [[control-run-5]]
 - [[interpreter-step-22]]
+- [[interpreter-step-23]]
 - [[program-2]]
 - [[program-3]]
 - [[control-run]]

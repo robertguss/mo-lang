@@ -40,6 +40,10 @@ Answered (Fable's recommendation, Robert agreed, 13 Sep night): the surface is a
 
 The worker writing `jobq` listed what it wanted to ask the running service during the measurements and could not; these are the surface's first requirements, in its words, shortened: the service's state now (jobs on the board, torn, next id against reserved, opened or not); the mailbox depth under 32 workers, how many worker processes are alive, how many wait in `ask`; per update, time waiting on fsync against building the board; the last ten messages taken and what each came to; how many silent connections the listener counts against the acceptor's bound and whether it is paused; whether the service restarted, how often, with what report; where 392 MiB at 100k jobs go; which leases have run out unlooked-at and where a stuck one stands; why one update took 3 s to requeue 10,000 jobs.
 
+## Built, step 23 (14 Sep)
+
+`platform.runtime` is the surface: `processes`, `state`, `recent`, `events`, `crashes`, `sources`, `memory`, `slowest`, and `send`, `pause`, `resume` behind `read_only`; on under `mo run` and `mo test`, off in a binary unless built with `--surface`; `mo run --surface PORT` serves the rows as JSON over HTTP as the on-ramp, an MCP wrapper later. Of the nine questions above, six are answered in full and three in part ([[interpreter-step-23]]).
+
 ## Related
 
 - [[agent-native-runtime-features]]

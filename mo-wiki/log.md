@@ -285,3 +285,6 @@
 
 ## [2026-09-14] session | Night: step 22 accepted
 - The derived deadline (`Deadline`, `reply_by`, `at_most`) in both runtimes, verified by Fable's probes in all three modes; jobq's sums gone; the `--recipe` line count, the fixture's missing folder, `json.to_i64`, the recipe's rewrite rule with notes following it, two diagnostics. Five decision rows, two `semantic`. Merged to `main`. Next: the runtime surface step for d37–40.
+
+## [2026-09-14] session | Night: step 23 accepted
+- The runtime surface (directions 37 and 40) in both runtimes, verified by Fable's probes: every route under `mo run --surface` and as a `--surface` binary, pause and resume, `read_only`, a binary without the surface, a failed seed's events, jobq's sources and slowest updates. Five decision rows, two `semantic`. d37 and d40 carry a "Built" note. Merged to `main`. Next: program 5's spec.
