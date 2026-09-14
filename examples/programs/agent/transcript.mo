@@ -1,5 +1,5 @@
 module Agent.Transcript
-expose Step, Replayed, step_json, header_line, step_line, end_line, unreplayed, replayed, steps_of, log_of
+expose Step, Replayed, Seen, step_json, header_line, step_line, end_line, unreplayed, replayed, steps_of, log_of
 
 use Agent.Record{Order, Record, Status, default_budget, record, status_name, status_named}
 
@@ -18,8 +18,14 @@ struct Step
   refused: Bool
 end
 
-# A log replayed so far: the run once its first line is read, the steps read, whether a line
-# ended it, and the lines that were not the log's.
+# The steps read back so far: the number of the last, and each as the API shows it.
+struct Seen
+  n: UInt64
+  steps: List(String)
+end
+
+# A log replayed so far: the run once its first line is read, the number of the last step read,
+# whether a line ended it, and the lines that were not the log's.
 struct Replayed
   run: Option(Record)
   steps: UInt64
@@ -59,7 +65,8 @@ end
 # One more line of a log. A step counts toward steps_taken when it is a model call, and its
 # tokens toward tokens_used; the first end line settles the state, and a step after it (the call
 # in flight when a cancel was written) is kept without changing it. A line that is not the log's,
-# such as a last line cut short, is counted and left out.
+# such as a last line cut short, is counted and left out; a step whose number the log held already
+# (written again after an append that timed out) is left out too.
 fn replayed(so_far: Replayed, line: String) : Replayed
   var next = so_far
   fields = case Json.decode(line)
@@ -71,8 +78,10 @@ fn replayed(so_far: Replayed, line: String) : Replayed
     (Some(Object(run)), None, None, Some(time)):
       next.run = header_of(run, time)
     (None, Some(Object(step)), None, Some(time)):
-      next.run = stepped(so_far.run, step, time)
-      next.steps = so_far.steps + 1
+      if count_in(step, "n") > so_far.steps
+        next.run = stepped(so_far.run, step, time)
+        next.steps = count_in(step, "n")
+      end
     (None, None, Some(Object(ending)), Some(time)):
       next.run = ended(so_far, ending, time)
       next.ended = so_far.ended or next.run != so_far.run
@@ -107,12 +116,28 @@ fn ended(so_far: Replayed, ending: Map(String, Json), at: Time) : Option(Record)
 end
 
 # The steps a log holds, each as the API shows it: the object after "step": on each step line,
-# as it was written.
+# as it was written, once for each step number.
 fn steps_of(lines: List(String)) : List(String)
+  lines.reduce(Seen(n: 0, steps: []), fn(seen, line) seen_step(seen, line) end).steps
+end
+
+fn seen_step(seen: Seen, line: String) : Seen
   marker = ", \"step\": "
-  lines.filter(fn(line)
-    line.contains?(marker) and line.ends_with?("}")
-  end).map(fn(line) line.slice((line.index_of(marker) or 0) + marker.size, line.size - 1) end)
+  return seen if !line.contains?(marker) or !line.ends_with?("}")
+  n = case Json.decode(line)
+    Ok(Object(fields)): step_number(fields)
+    Ok(_) | Error(_): 0
+  end
+  return seen if n <= seen.n
+  text = line.slice((line.index_of(marker) or 0) + marker.size, line.size - 1)
+  Seen(n: n, steps: seen.steps.push(text))
+end
+
+fn step_number(fields: Map(String, Json)) : UInt64
+  case fields.get("step")
+    Some(Object(step)): count_in(step, "n")
+    Some(_) | None: 0
+  end
 end
 
 # A run's log, in the runs folder.
@@ -198,9 +223,23 @@ test "the first end settles the state, and a line that is not the log's is left 
   assert log_of("runs", "r_4") == "runs/r_4.log"
 end
 
+test "a step written twice, after an append that timed out, replays and reads back once"
+  at = Time.fixture()
+  run = record("r_5", "ada", "g", at)
+  lines = [header_line(run, order_of()),
+    step_line(at, model_step(1, 10)),
+    step_line(at, model_step(1, 10)),
+    step_line(at, tool_step(2))]
+  back = lines.reduce(unreplayed(), fn(r, line) replayed(r, String.join(line.lines, "")) end)
+  assert back.steps == 2 and back.bad == 0
+  assert back.run is Some(held)
+  assert held.steps_taken == 1 and held.tokens_used == 10
+  assert steps_of(lines.map(fn(line) String.join(line.lines, "") end)).size == 2
+end
+
 test rejects "an end line for a run still running"
   end_line(Time.fixture(), Running, None, None)
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
           proven: not run

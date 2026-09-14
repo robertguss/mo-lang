@@ -1,0 +1,3 @@
+{"at": "2026-09-14T09:00:00Z", "run": {"id": "r_1", "owner": "ada", "goal": "say hello", "folder": "work", "tools": [], "hosts": [], "budget": {"steps": 20, "tokens": 100000, "wall_ms": 60000, "retries": 2, "tool_ms": 5000}}}
+{"at": "2026-09-14T09:00:01Z", "step": {"n": 1, "kind": "model", "name": "model", "args": {}, "result": "{\"done\": \"hello\"}", "tokens": 3, "took_ms": 41, "refused": false}}
+{"at": "2026-09-14T09:00:01Z", "end": {"state": "done", "result": "hello", "error": null}}
