@@ -135,18 +135,18 @@ MoValue *mo_alloc_values(size_t n) {
 
 static bool in_heap(uintptr_t addr) { return addr >= mo_heap.base && addr < mo_heap.end; }
 
-/* The lists push can grow in place: the sixteen it grew last. */
 typedef struct { uintptr_t ptr; size_t len, cap; } Growth;
-static Growth growth[16];
-static unsigned growth_next;
+/* A table from where a buffer starts to what the runtime keeps of it (step 28): open addressing on
+ * the address, holding every buffer rather than the sixteen used last. */
+typedef struct { Growth *slots; size_t cap, used; } PtrTable;
+/* The lists push can grow in place: their length and room. */
+static PtrTable growth;
 /* The strings an interpolation can grow in place, as push grows a list (mo_concat). */
 static Growth text_growth[16];
 static unsigned text_growth_next;
-
-typedef struct { uintptr_t ptr; size_t len; } SliceKey;
-/* Map and set buffers one var holds alone. */
-static SliceKey owned[16];
-static unsigned owned_next;
+/* Map and set entries, and struct fields, one holder holds alone: the length it sees (vm.zig,
+ * owned). */
+static PtrTable owned;
 
 /* Slots a row wrote in place with a value that may be newer than the slot. */
 typedef struct { uintptr_t slot; size_t len; uintptr_t at; } Remembered;
@@ -156,59 +156,142 @@ static size_t nremembered, capremembered;
 /* Under an update (sim.zig): what each slot older than the update held before the update wrote
  * it, so a crash shows the state as it was. undo_mark is 0 when no update keeps one; buffers
  * older than frozen_below are never written in place (an invariant reads old(state)). */
-typedef struct { uintptr_t slot; MoValue old; } Undo;
+/* A remove (stride 1 or 2) took the entry old, second out at slot of the len entries, moving the
+ * slots after it down; undone, they move back and the map's table is built again (vm.zig, Undo). */
+typedef struct {
+    uintptr_t slot;
+    MoValue old;
+    uint32_t stride;
+    MoValue second;
+    MoValue *entries;
+    size_t len;
+    uint32_t *index;
+    uint32_t index_len;
+} Undo;
 static Undo *undos;
 static size_t nundos, capundos;
 static uintptr_t undo_mark, frozen_below;
 /* What the region held after its last full compaction (sim.zig, settleRegion). */
 static size_t full_kept;
 
+static size_t ptab_home(const PtrTable *t, uintptr_t ptr) {
+    uint64_t h = ((uint64_t)ptr >> 3) * 0x9E3779B97F4A7C15ull;
+    return (size_t)(h ^ (h >> 29)) & (t->cap - 1);
+}
+
+/* Address 0 is no buffer: an empty slot holds it. */
+static Growth *ptab_get(const PtrTable *t, uintptr_t ptr) {
+    if (t->used == 0 || ptr == 0) return NULL;
+    for (size_t i = ptab_home(t, ptr);; i = (i + 1) & (t->cap - 1)) {
+        if (t->slots[i].ptr == ptr) return &t->slots[i];
+        if (t->slots[i].ptr == 0) return NULL;
+    }
+}
+
+static void ptab_insert(PtrTable *t, Growth g) {
+    for (size_t i = ptab_home(t, g.ptr);; i = (i + 1) & (t->cap - 1)) {
+        if (t->slots[i].ptr != 0 && t->slots[i].ptr != g.ptr) continue;
+        if (t->slots[i].ptr == 0) t->used++;
+        t->slots[i] = g;
+        return;
+    }
+}
+
+static void ptab_rebuild(PtrTable *t, size_t cap, uintptr_t lo, uintptr_t hi) {
+    PtrTable old = *t;
+    t->cap = cap;
+    t->slots = xmalloc(cap * sizeof(Growth));
+    memset(t->slots, 0, cap * sizeof(Growth));
+    t->used = 0;
+    for (size_t i = 0; i < old.cap; i++) {
+        uintptr_t p = old.slots[i].ptr;
+        if (p != 0 && (p < lo || p >= hi)) ptab_insert(t, old.slots[i]);
+    }
+    free(old.slots);
+}
+
+static void ptab_put(PtrTable *t, uintptr_t ptr, size_t len, size_t cap) {
+    if (2 * (t->used + 1) > t->cap) ptab_rebuild(t, t->cap ? 2 * t->cap : 64, 0, 0);
+    ptab_insert(t, (Growth){ptr, len, cap});
+}
+
+/* Backward-shift deletion: every probe run stays whole. */
+static void ptab_remove(PtrTable *t, uintptr_t ptr) {
+    Growth *g = ptab_get(t, ptr);
+    if (!g) return;
+    size_t mask = t->cap - 1, i = (size_t)(g - t->slots), j = i;
+    for (;;) {
+        j = (j + 1) & mask;
+        if (t->slots[j].ptr == 0) break;
+        size_t home = ptab_home(t, t->slots[j].ptr);
+        bool stays = i <= j ? (home > i && home <= j) : (home > i || home <= j);
+        if (stays) continue;
+        t->slots[i] = t->slots[j];
+        i = j;
+    }
+    t->slots[i] = (Growth){0, 0, 0};
+    t->used--;
+}
+
+/* Forgets the buffers in [lo, hi). */
+static void ptab_drop(PtrTable *t, uintptr_t lo, uintptr_t hi) {
+    if (t->used == 0) return;
+    for (size_t i = 0; i < t->cap; i++) {
+        uintptr_t p = t->slots[i].ptr;
+        if (p != 0 && p >= lo && p < hi) {
+            ptab_rebuild(t, t->cap, lo, hi);
+            return;
+        }
+    }
+}
+
+static void ptab_clear(PtrTable *t) {
+    if (t->slots) memset(t->slots, 0, t->cap * sizeof(Growth));
+    t->used = 0;
+}
+
 /* Forgets every buffer a test's memory held: the next test starts a fresh vm. */
 static void reset_memory(void) {
     mo_heap.top = mo_heap.base;
     memset(text_growth, 0, sizeof text_growth);
-    memset(growth, 0, sizeof growth);
-    memset(owned, 0, sizeof owned);
-    growth_next = owned_next = 0;
+    ptab_clear(&growth);
+    ptab_clear(&owned);
     nremembered = 0;
 }
 
 static Growth *growth_of(uintptr_t addr, size_t len) {
-    for (unsigned i = 0; i < 16; i++) {
-        if (growth[i].ptr == addr && growth[i].len == len && growth[i].cap != 0) return &growth[i];
-    }
-    return NULL;
+    Growth *g = ptab_get(&growth, addr);
+    return g && g->len == len && g->cap != 0 ? g : NULL;
 }
 
 static void drop_growth(uintptr_t lo, uintptr_t hi) {
+    ptab_drop(&growth, lo, hi);
     for (unsigned i = 0; i < 16; i++) {
-        if (growth[i].ptr >= lo && growth[i].ptr < hi) growth[i] = (Growth){0, 0, 0};
         if (text_growth[i].ptr >= lo && text_growth[i].ptr < hi) text_growth[i] = (Growth){0, 0, 0};
-        if (owned[i].ptr >= lo && owned[i].ptr < hi) owned[i] = (SliceKey){0, 0};
     }
+    ptab_drop(&owned, lo, hi);
 }
 
 static bool is_owned(const MoValue *xs, size_t len) {
     if (len == 0) return false;
-    for (unsigned i = 0; i < 16; i++) {
-        if (owned[i].ptr == (uintptr_t)xs && owned[i].len == len) return true;
-    }
-    return false;
+    Growth *o = ptab_get(&owned, (uintptr_t)xs);
+    return o && o->len == len;
 }
 
 static void own(const MoValue *xs, size_t len) {
-    if (len == 0 || is_owned(xs, len)) return;
-    owned[owned_next] = (SliceKey){(uintptr_t)xs, len};
-    owned_next = (owned_next + 1) % 16;
+    if (len > 0) ptab_put(&owned, (uintptr_t)xs, len, 0);
 }
 
 static void disown(const MoValue *xs, size_t len) {
-    for (unsigned i = 0; i < 16; i++) {
-        if (owned[i].ptr == (uintptr_t)xs && owned[i].len == len) owned[i] = (SliceKey){0, 0};
-    }
+    if (len == 0) return;
+    Growth *o = ptab_get(&owned, (uintptr_t)xs);
+    if (o && o->len == len) ptab_remove(&owned, (uintptr_t)xs);
 }
 
+/* A read that shares `v` (moves.zig): every map, set, or struct it holds, itself or inside a
+ * struct, tuple, or variant, may now be held twice (vm.zig, disownIn). */
 void mo_disown_in(MoValue v) {
+    if (owned.used == 0) return;
     switch (v.tag) {
     case MO_MAP:
     case MO_SET:
@@ -217,6 +300,12 @@ void mo_disown_in(MoValue v) {
     case MO_RECORD:
         disown(v.as.xs, mo_decls[v.aux].nfields);
         for (uint32_t k = 0; k < mo_decls[v.aux].nfields; k++) mo_disown_in(v.as.xs[k]);
+        break;
+    case MO_TUPLE:
+        for (uint32_t k = 0; k < v.aux; k++) mo_disown_in(v.as.xs[k]);
+        break;
+    case MO_VARIANT:
+        for (uint32_t k = 0; k < mo_vcount(v); k++) mo_disown_in(v.as.xs[k]);
         break;
     default:
         break;
@@ -272,15 +361,26 @@ static void remember_write(uintptr_t slot, size_t n, const MoValue *x) {
     remembered[nremembered++] = (Remembered){slot, n, mo_heap.top};
 }
 
+/* A remove moved the slots of `xs` from `k + stride` on down by `stride` in place: only when one of
+ * them was remembered may a remembered value now sit where no remembered slot reaches it, and then
+ * the moved slots are remembered (vm.zig, rememberShift). */
+static void remember_shift(MoValue *xs, size_t len, size_t k, size_t stride) {
+    if (!mo_compacts || !in_heap((uintptr_t)xs)) return;
+    uintptr_t lo = (uintptr_t)&xs[k + stride], hi = (uintptr_t)&xs[len];
+    for (size_t i = 0; i < nremembered; i++) {
+        if (remembered[i].slot < hi && remembered[i].slot + remembered[i].len * sizeof(MoValue) > lo) {
+            remember_write((uintptr_t)&xs[k], len - stride - k, NULL);
+            return;
+        }
+    }
+}
+
 /* Whether `addr` was allocated since `mark` in the region. */
 static bool since(uintptr_t mark, uintptr_t addr) { return addr >= mark && addr < mo_heap.end; }
 
 /* Whether a row may overwrite a buffer at `buf` in place. */
 static bool overwritable(uintptr_t buf) { return frozen_below == 0 || since(frozen_below, buf); }
 
-/* Whether a row may move a buffer's slots in place: an update's undo keeps single overwrites
- * only, so a buffer from before the update is copied instead. */
-static bool movable(uintptr_t buf) { return overwritable(buf) && (undo_mark == 0 || since(undo_mark, buf)); }
 
 /* Writes `x` into a slot in place: remembered for compaction, and under an update what the slot
  * held before, when that is older than the update and so still there on a crash. */
@@ -295,6 +395,15 @@ static void overwrite(MoValue *slot, MoValue x) {
     }
     remember_write(addr, 1, &x);
     *slot = x;
+}
+
+/* A remove is about to take the entry at `k` out of `xs` in place (step 28): under an update, from a
+ * buffer older than it, what a crash needs to put the entries back (vm.zig, keepRemove). Without
+ * compaction an update's undo_mark is past every address, so it is always kept. */
+static void keep_remove(MoValue *xs, size_t len, size_t k, size_t stride, uint32_t *index, uint32_t index_len) {
+    if (undo_mark == 0 || since(undo_mark, (uintptr_t)xs)) return;
+    GROW_ARRAY(undos, nundos, capundos);
+    undos[nundos++] = (Undo){(uintptr_t)&xs[k], xs[k], (uint32_t)stride, stride == 2 ? xs[k + 1] : MO_NONE_V, xs, len, index, index_len};
 }
 
 /* `xs.push(x)`: in place when xs ends where its buffer's last push left it and there is room. */
@@ -313,8 +422,7 @@ static MoValue *push_list(MoValue *xs, size_t len, MoValue x) {
     MoValue *out = mo_alloc_values(cap);
     if (len) memcpy(out, xs, len * sizeof(MoValue));
     out[len] = x;
-    growth[growth_next] = (Growth){(uintptr_t)out, len + 1, cap};
-    growth_next = (growth_next + 1) % 16;
+    ptab_put(&growth, (uintptr_t)out, len + 1, cap);
     return out;
 }
 
@@ -419,16 +527,14 @@ static MoValue *copy_slice(MoValue *xs, size_t len, const Copy *c, bool grows) {
     if (len == 0 || !inside(addr, c)) return xs;
     MoValue *copied = forward_get(addr, len);
     if (copied) return copied;
-    Growth *g = grows && c->moves ? growth_of(addr, len) : NULL;
-    MoValue *out = copy_alloc(c, (g ? g->cap : len) * sizeof(MoValue));
+    /* By value: copying what the slice holds may grow the table it is in. */
+    Growth *found = grows && c->moves ? growth_of(addr, len) : NULL;
+    Growth g = found ? *found : (Growth){0, 0, 0};
+    MoValue *out = copy_alloc(c, (found ? g.cap : len) * sizeof(MoValue));
     forward_put(addr, len, out);
     for (size_t i = 0; i < len; i++) out[i] = copy_out(xs[i], c);
-    if (g) g->ptr = (uintptr_t)out;
-    if (c->moves) {
-        for (unsigned i = 0; i < 16; i++) {
-            if (owned[i].ptr == addr && owned[i].len == len) owned[i].ptr = (uintptr_t)out;
-        }
-    }
+    if (found) ptab_put(&growth, (uintptr_t)out, g.len, g.cap);
+    if (c->moves && is_owned(xs, len)) own(out, len);
     return out;
 }
 
@@ -832,6 +938,29 @@ static void insert_ordinal(uint32_t *index, uint32_t index_len, const MoValue *e
     index[0] += 1;
 }
 
+/* A table slot whose entry a remove took out in place (step 28; stdlib.zig, removed_slot): a probe
+ * goes on past it, and it stays counted in use until the table is built again. */
+#define REMOVED_SLOT UINT32_MAX
+
+/* A table built again in place over entries it has room for: a crashed update's remove undone. */
+static void rebuild_index(uint32_t *index, uint32_t index_len, const MoValue *entries, size_t len, size_t stride) {
+    memset(index, 0, index_len * sizeof(uint32_t));
+    for (size_t o = 0; o < len / stride; o++) insert_ordinal(index, index_len, entries, stride, o);
+}
+
+/* The entry `key`, at ordinal `gone`, was taken out and the ones after it moved down one: its slot,
+ * found as a lookup finds it, is marked removed, and every later ordinal counts one less, in one pass
+ * without a branch (stdlib.zig, dropOrdinal). */
+static void drop_ordinal(uint32_t *index, uint32_t index_len, MoValue key, size_t gone) {
+    uint32_t *table = index + 1;
+    size_t mask = index_len - 2;
+    uint32_t past = (uint32_t)(gone + 1);
+    size_t i = (size_t)hash_value(key) & mask;
+    while (table[i] != past) i = (i + 1) & mask;
+    table[i] = REMOVED_SLOT;
+    for (size_t j = 0; j + 1 < index_len; j++) table[j] -= (uint32_t)((table[j] > past) & (table[j] != REMOVED_SLOT));
+}
+
 static uint32_t *build_index(MoRegion *dest, const MoValue *entries, size_t len, size_t stride, size_t min_slots, uint32_t *index_len) {
     size_t keys = len / stride;
     *index_len = 0;
@@ -873,10 +1002,18 @@ static MoMap *map_put(MoMap *m, size_t stride, MoValue key, MoValue value, uint3
             overwrite(&xs[k + 1], value);
             return m;
         }
+        /* A copy nobody owns shares the table; an owned one may be removed from in place, which
+         * changes its table, so it takes a copy (stdlib.zig, put). */
         MoValue *out = dupe_values(xs, len);
         out[k + 1] = value;
-        if (on_var) own(out, len);
-        return map_header(out, len, m->index, m->index_len);
+        if (!on_var) return map_header(out, len, m->index, m->index_len);
+        own(out, len);
+        uint32_t *index = m->index;
+        if (m->index_len > 0) {
+            index = mo_alloc_bytes(m->index_len * sizeof(uint32_t));
+            memcpy(index, m->index, m->index_len * sizeof(uint32_t));
+        }
+        return map_header(out, len, index, m->index_len);
     }
     MoValue *out = push_list(xs, len, key);
     size_t out_len = len + 1;
@@ -922,15 +1059,19 @@ static MoMap *map_without(MoMap *m, size_t stride, MoValue key, uint32_t kind) {
         }
         return map_header(xs, rest, m->index, m->index_len);
     }
-    uint32_t index_len;
-    if (on_var && is_owned(xs, len) && movable((uintptr_t)xs)) {
+    /* Held alone, the entries after the key move down in place and the table, the buffer's own,
+     * drops the key's slot (step 28); under an update a buffer older than it keeps what a crash
+     * puts back. */
+    if (on_var && is_owned(xs, len) && overwritable((uintptr_t)xs)) {
+        keep_remove(xs, len, k, stride, m->index, m->index_len);
+        if (m->index_len > 0) drop_ordinal(m->index, m->index_len, key, k / stride);
         memmove(&xs[k], &xs[k + stride], (rest - k) * sizeof(MoValue));
-        remember_write((uintptr_t)&xs[k], rest - k, NULL);
+        remember_shift(xs, len, k, stride);
         disown(xs, len);
         own(xs, rest);
-        uint32_t *index = build_index(&mo_heap, xs, rest, stride, m->index_len ? m->index_len - 1 : 0, &index_len);
-        return map_header(xs, rest, index, index_len);
+        return map_header(xs, rest, m->index, m->index_len);
     }
+    uint32_t index_len;
     MoValue *out = mo_alloc_values(rest);
     memcpy(out, xs, k * sizeof(MoValue));
     memcpy(out + k, xs + k + stride, (rest - k) * sizeof(MoValue));
@@ -1574,6 +1715,8 @@ MO_ROW(mo_r_List_map) {
     for (uint32_t i = 0; i < xs.aux; i++) {
         MoValue x = xs.as.xs[i];
         out[i] = mo_invoke(f, &x);
+        /* In a list, an element never holds a buffer alone (mo_disown_in). */
+        mo_disown_in(out[i]);
         kept = iterate(from, out, i + 1, kept);
     }
     return mo_list(out, xs.aux);
@@ -1833,6 +1976,7 @@ MO_ROW(mo_r_List_group_by) {
     for (uint32_t i = 0; i < xs.aux; i++) {
         MoValue x = xs.as.xs[i];
         keys[i] = mo_invoke(f, &x);
+        mo_disown_in(keys[i]);
         kept = iterate(from, keys, i + 1, kept);
     }
     size_t n = xs.aux;
@@ -1906,6 +2050,8 @@ MO_ROW(mo_r_Map_update) {
     size_t k = map_find(a[0].as.m, 2, a[1]);
     MoValue current = k != SIZE_MAX ? a[0].as.m->entries[k + 1] : a[2];
     MoValue next = mo_invoke(a[3], &current);
+    /* In a map, a value never holds a buffer alone. */
+    mo_disown_in(next);
     return map_value(MO_MAP, map_put(a[0].as.m, 2, a[1], next, kind));
 }
 
@@ -4193,6 +4339,8 @@ void mo_observe(MoValue v, uint32_t t) {
     if (!mo_records) return;
     const MoType *ty = &mo_types[t];
     if (!ty->may_hold) return;
+    /* What the run keeps is a second holder: a later write in place must not reach it. */
+    mo_disown_in(v);
     if (ty->recorded != UINT32_MAX) keep(ty->recorded, v);
     switch (ty->tag) {
     case MO_T_ALIAS: mo_observe(v, ty->b); return;
@@ -5120,8 +5268,16 @@ static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out
 
 static void rollback(void) {
     while (nundos > 0) {
-        nundos--;
-        *(MoValue *)undos[nundos].slot = undos[nundos].old;
+        Undo u = undos[--nundos];
+        if (u.stride == 0) {
+            *(MoValue *)u.slot = u.old;
+            continue;
+        }
+        size_t k = (u.slot - (uintptr_t)u.entries) / sizeof(MoValue);
+        memmove(&u.entries[k + u.stride], &u.entries[k], (u.len - u.stride - k) * sizeof(MoValue));
+        u.entries[k] = u.old;
+        if (u.stride == 2) u.entries[k + 1] = u.second;
+        if (u.index_len > 0) rebuild_index(u.index, u.index_len, u.entries, u.len, u.stride);
     }
 }
 
@@ -5277,6 +5433,11 @@ static Delivered deliver(uint32_t id) {
     if (regioned) {
         undo_mark = mark;
         frozen_below = mo_processes[p->process].reads_old ? mark : 0;
+    } else {
+        /* Without compaction nothing tells an older buffer from a newer one: every write is kept for
+         * a crash, and an invariant that reads old(state) sees nothing written in place. */
+        undo_mark = UINTPTR_MAX;
+        frozen_below = mo_processes[p->process].reads_old ? UINTPTR_MAX : 0;
     }
     uint32_t outer = running;
     running = id;
@@ -5574,12 +5735,10 @@ static size_t poller_wait(int64_t ms, Waiter **out) {
  * takes it. */
 typedef struct {
     MoRegion heap;
-    Growth growth[16];
-    unsigned growth_next;
+    PtrTable growth;
     Growth text_growth[16];
     unsigned text_growth_next;
-    SliceKey owned[16];
-    unsigned owned_next;
+    PtrTable owned;
     Remembered *remembered;
     size_t nremembered, capremembered;
     Undo *undos;
@@ -5592,12 +5751,10 @@ typedef struct {
 
 static void save_vm(VmState *s) {
     s->heap = mo_heap;
-    memcpy(s->growth, growth, sizeof growth);
-    s->growth_next = growth_next;
+    s->growth = growth;
     memcpy(s->text_growth, text_growth, sizeof text_growth);
     s->text_growth_next = text_growth_next;
-    memcpy(s->owned, owned, sizeof owned);
-    s->owned_next = owned_next;
+    s->owned = owned;
     s->remembered = remembered;
     s->nremembered = nremembered;
     s->capremembered = capremembered;
@@ -5613,12 +5770,10 @@ static void save_vm(VmState *s) {
 
 static void load_vm(const VmState *s) {
     mo_heap = s->heap;
-    memcpy(growth, s->growth, sizeof growth);
-    growth_next = s->growth_next;
+    growth = s->growth;
     memcpy(text_growth, s->text_growth, sizeof text_growth);
     text_growth_next = s->text_growth_next;
-    memcpy(owned, s->owned, sizeof owned);
-    owned_next = s->owned_next;
+    owned = s->owned;
     remembered = s->remembered;
     nremembered = s->nremembered;
     capremembered = s->capremembered;
@@ -5639,11 +5794,16 @@ static void reuse_vm(VmState *s) {
     size_t caprem = s->capremembered;
     Undo *u = s->undos;
     size_t capu = s->capundos;
+    PtrTable g = s->growth, o = s->owned;
     memset(s, 0, sizeof *s);
     s->remembered = rem;
     s->capremembered = caprem;
     s->undos = u;
     s->capundos = capu;
+    ptab_clear(&g);
+    ptab_clear(&o);
+    s->growth = g;
+    s->owned = o;
 }
 
 enum { JOB_DELIVER, JOB_GO_ON };

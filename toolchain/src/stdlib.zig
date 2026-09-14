@@ -232,6 +232,8 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .map_update => blk: {
             const current = if (find(a[0].map, 2, a[1])) |k| a[0].map.entries[k + 1] else a[2];
             const next = try vm.invoke(a[3].func, &.{current});
+            // In a map, a value never holds a buffer alone (vm.disownIn).
+            vm.disownIn(next);
             break :blk .{ .map = try put(vm, a[0].map, 2, a[1], next, int_kind) };
         },
         .set_add => .{ .set = try put(vm, a[0].set, 1, a[1], .none, int_kind) },
@@ -718,6 +720,7 @@ fn groupBy(vm: *Vm, xs: []const Value, f: Value.Func) Error!Value {
     var kept: usize = 0;
     for (xs, 0..) |x, i| {
         keys[i] = try vm.invoke(f, &.{x});
+        vm.disownIn(keys[i]);
         kept = try vm.iterate(from, keys[0 .. i + 1], kept);
     }
     const gpa = vm.gpa;
@@ -1176,6 +1179,31 @@ fn roomForOne(index: []const u32) bool {
     return index.len > 0 and index.len - 1 >= 2 * (index[0] + 1);
 }
 
+/// A table slot whose entry a remove took out in place (step 28): a probe goes on past it, as
+/// past any ordinal beyond the entries, and it stays counted in use until the table is built
+/// again.
+pub const removed_slot: u32 = std.math.maxInt(u32);
+
+/// `index` built again in place over `entries`, which it has room for: a crashed update's
+/// remove taken back (vm.rollBack).
+pub fn rebuildIndex(index: []u32, entries: []const Value, stride: usize) void {
+    @memset(index, 0);
+    for (0..entries.len / stride) |ordinal| insertOrdinal(index, entries, stride, ordinal);
+}
+
+/// The entry `key`, at ordinal `gone`, was taken out and the ones after it moved down one: its
+/// slot, found as a lookup finds it, is marked removed, and every later ordinal counts one less,
+/// in one pass without a branch.
+fn dropOrdinal(index: []u32, key: Value, gone: usize) void {
+    const table = index[1..];
+    const mask = table.len - 1;
+    const past: u32 = @intCast(gone + 1);
+    var i: usize = @intCast(ValueContext.hash(.{}, key) & mask);
+    while (table[i] != past) i = (i + 1) & mask;
+    table[i] = removed_slot;
+    for (table) |*slot| slot.* -= @intFromBool(slot.* > past) & @intFromBool(slot.* != removed_slot);
+}
+
 fn insertOrdinal(index: []u32, entries: []const Value, stride: usize, ordinal: usize) void {
     const table = index[1..];
     const mask = table.len - 1;
@@ -1209,9 +1237,9 @@ pub fn mapOf(a: std.mem.Allocator, entries: []const Value, stride: usize) error{
 }
 
 /// `m` with `key` set to `value` (a set passes stride 1, and no value): an existing key
-/// keeps its place, a new one goes last. When the lowering marked the call `unique`
-/// (`m = m.set(k, v)` on a var, or on a field of one) and the var owns the buffer, the row
-/// writes in place.
+/// keeps its place, a new one goes last. When the lowering marked the call `unique` (its
+/// receiver's read moves it, moves.zig) and one holder holds the buffer alone, the row
+/// writes in place. An owned buffer's table is its own: a remove changes it in place.
 fn put(vm: *Vm, m: Value.Map, stride: usize, key: Value, value: Value, int_kind: u32) Error!Value.Map {
     const xs = m.entries;
     const on_var = int_kind == bytecode.unique;
@@ -1222,12 +1250,14 @@ fn put(vm: *Vm, m: Value.Map, stride: usize, key: Value, value: Value, int_kind:
             try vm.overwrite(@constCast(&xs[k + 1]), value);
             return m;
         }
-        // The keys and their places are the same, so the copy shares the index: its
-        // entries never grow in place, so nothing inserts into the table for them.
+        // The keys and their places are the same, so a copy nobody owns shares the index: its
+        // entries never grow in place, so nothing inserts into the table for them. One that is
+        // owned may be removed from in place, which changes its table, so it takes a copy.
         const out = try vm_mod.rawDupe(vm.heap, Value, xs);
         out[k + 1] = value;
-        if (on_var) vm.own(out);
-        return .{ .entries = out, .index = m.index };
+        if (!on_var) return .{ .entries = out, .index = m.index };
+        try vm.own(out);
+        return .{ .entries = out, .index = if (m.index.len > 0) try vm_mod.rawDupe(vm.heap, u32, m.index) else m.index };
     }
     var out = try vm.pushList(xs, key);
     if (stride == 2) out = try vm.pushList(out, value);
@@ -1253,7 +1283,7 @@ fn put(vm: *Vm, m: Value.Map, stride: usize, key: Value, value: Value, int_kind:
     // Grown in place from a buffer others may share a prefix of, a result is not owned.
     if (on_var and (mine or out.ptr != xs.ptr)) {
         vm.disown(xs);
-        vm.own(out);
+        try vm.own(out);
     }
     return .{ .entries = out, .index = index };
 }
@@ -1268,23 +1298,27 @@ fn without(vm: *Vm, m: Value.Map, stride: usize, key: Value, int_kind: u32) Erro
     if (k == rest) {
         if (on_var and vm.isOwned(xs)) {
             vm.disown(xs);
-            vm.own(xs[0..rest]);
+            try vm.own(xs[0..rest]);
         }
         return .{ .entries = xs[0..rest], .index = m.index };
     }
-    if (on_var and vm.isOwned(xs) and vm.movable(@intFromPtr(xs.ptr))) {
+    // Held alone, the entries after the key move down in place and the table, the buffer's own,
+    // drops the key's slot (step 28); under an update a buffer older than it keeps what a crash
+    // puts back.
+    if (on_var and vm.isOwned(xs) and vm.overwritable(@intFromPtr(xs.ptr))) {
         const buf = @constCast(xs);
+        try vm.keepRemove(xs, k, stride, m.index);
+        if (m.index.len > 0) dropOrdinal(@constCast(m.index), key, k / stride);
         std.mem.copyForwards(Value, buf[k..rest], buf[k + stride ..]);
-        try vm.rememberWrite(@intFromPtr(buf.ptr) + k * @sizeOf(Value), rest - k, null);
+        try vm.rememberShift(xs, k, stride);
         vm.disown(xs);
-        vm.own(xs[0..rest]);
-        // The ordinals moved, and the table may be shared with a copy, so it is built anew.
-        return .{ .entries = xs[0..rest], .index = try buildIndex(vm.heap, xs[0..rest], stride, tableSlots(m.index)) };
+        try vm.own(xs[0..rest]);
+        return .{ .entries = xs[0..rest], .index = m.index };
     }
     const out = try vm_mod.rawAlloc(vm.heap, Value, rest);
     @memcpy(out[0..k], xs[0..k]);
     @memcpy(out[k..], xs[k + stride ..]);
-    if (on_var) vm.own(out);
+    if (on_var) try vm.own(out);
     return .{ .entries = out, .index = try buildIndex(vm.heap, out, stride, tableSlots(m.index)) };
 }
 

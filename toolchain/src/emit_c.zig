@@ -26,6 +26,7 @@ const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
+const moves_mod = @import("moves.zig");
 const prelude = @import("prelude.zig");
 const program = @import("program.zig");
 const types = @import("types.zig");
@@ -53,6 +54,7 @@ const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Ti
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
     var e: Emitter = .{ .gpa = gpa, .k = checked, .tree = checked.tree, .prog = prog, .options = options };
     e.recorded = try bytecode.recordedTypes(gpa, checked);
+    e.moves = try moves_mod.analyze(gpa, checked);
     for (fixed_names) |n| _ = try e.nameId(n);
     try e.indexProcesses();
     try e.run();
@@ -141,6 +143,8 @@ const Emitter = struct {
     prog: program.Program,
     options: Options,
     recorded: bytecode.Recorded = undefined,
+    /// Which reads hand their value on (moves.zig, step 28).
+    moves: moves_mod.Moves = .{},
     /// The statement whose field write records nothing, since the next one writes the same place
     /// (bytecode.fieldWriteMovesOn, step 27).
     unrested: Index = 0,
@@ -363,6 +367,21 @@ const Emitter = struct {
     fn observe(e: *Emitter, v: []const u8, t: Id) Error!void {
         if (!e.mayHold(t)) return;
         try e.line("mo_observe({s}, {d});", .{ v, try e.desc(t) });
+    }
+
+    /// Whether a value of type `t` can hold a buffer one holder holds alone (moves.zig).
+    fn owns(e: *Emitter, t: Id) bool {
+        return e.moves.owns(e.k, t);
+    }
+
+    /// Whether the read at `i` hands its value on (moves.zig); never inside a contract.
+    fn moving(e: *Emitter, i: Index) bool {
+        return !e.b.contract and e.moves.has(i);
+    }
+
+    /// `v`, of type `t`, may now be held twice: a row or a list keeps it (bytecode.zig, share).
+    fn share(e: *Emitter, v: []const u8, t: Id) Error!void {
+        if (e.owns(t)) try e.line("mo_disown_in({s});", .{v});
     }
 
     // ---- names
@@ -1446,7 +1465,12 @@ const Emitter = struct {
             },
             .tuple, .list => {
                 var elems: std.ArrayList([]const u8) = .empty;
-                for (e.tree.span(n.lhs, n.rhs)) |x| try elems.append(e.gpa, try e.expr(x));
+                for (e.tree.span(n.lhs, n.rhs)) |x| {
+                    const v = try e.expr(x);
+                    // In a list, an element never holds a buffer alone (mo_disown_in).
+                    if (n.kind == .list) try e.share(v, e.typeOf(x));
+                    try elems.append(e.gpa, v);
+                }
                 return e.temp("{s}({d}, {s})", .{ if (n.kind == .tuple) "mo_tuple" else "mo_list_of", elems.items.len, try e.valuesOf(elems.items) });
             },
             .not_expr => {
@@ -1554,14 +1578,10 @@ const Emitter = struct {
                     try e.halt(i, try e.print("{s} is a field of a type tier 2 cannot see", .{e.text(n.main_token)}), false);
                     return "MO_NONE_V";
                 };
-                const obj = if (e.holdsMap(e.typeOf(i))) try e.expr(n.lhs) else try e.fieldOwner(n.lhs);
-                return e.temp("{s}.as.xs[{d}]", .{ obj, k });
+                return e.projection(i, k);
             },
             .member_call => return e.callNode(i, n.lhs, e.spanAt(n.rhs)),
-            .tuple_index => {
-                const obj = try e.fieldOwner(n.lhs);
-                return e.temp("{s}.as.xs[{d}]", .{ obj, parseInt(e.text(n.main_token)) });
-            },
+            .tuple_index => return e.projection(i, @intCast(parseInt(e.text(n.main_token)))),
             .call => {
                 const callee = e.node(n.lhs);
                 const args = e.spanAt(n.rhs);
@@ -1576,7 +1596,10 @@ const Emitter = struct {
             .case_expr => return e.caseLower(i, true),
             .anon_fn => return e.anonFn(i),
             .old_expr => {
-                if (e.old_slots.get(i)) |slot| return e.temp("{s}", .{slot});
+                if (e.old_slots.get(i)) |slot| {
+                    try e.share(slot, e.typeOf(i));
+                    return e.temp("{s}", .{slot});
+                }
                 // In an invariant, `state` inside old(...) is the state before the message.
                 if (e.b.old_state) |before| {
                     try e.b.names.append(e.gpa, .{ .name = "state", .cvar = before, .mutable = false });
@@ -1585,7 +1608,10 @@ const Emitter = struct {
                 }
                 return e.expr(n.lhs);
             },
-            .result_ref => return e.temp("R", .{}),
+            .result_ref => {
+                try e.share("R", e.typeOf(i));
+                return e.temp("R", .{});
+            },
             else => {
                 try e.halt(i, "", false);
                 return "MO_NONE_V";
@@ -1593,14 +1619,37 @@ const Emitter = struct {
         }
     }
 
-    /// The value a field is read from: a local as it is, which shares none of a var's
-    /// claim on its buffers (bytecode.zig load_field), or any other expression.
-    fn fieldOwner(e: *Emitter, obj: Index) Error![]const u8 {
-        const on = e.node(obj);
-        if (on.kind == .name_ref) {
-            if (try e.resolve(e.text(on.main_token))) |v| return v.cvar;
+    /// Field k of the value left of `i`: read from a local, or a field path under one, without
+    /// sharing the rest of it, so only the field may now be held twice, unless the read hands
+    /// it on (moves.zig; bytecode.zig, projection).
+    fn projection(e: *Emitter, i: Index, k: u32) Error![]const u8 {
+        const chain = try e.loadChain(e.node(i).lhs);
+        const v = try e.temp("{s}.as.xs[{d}]", .{ chain.value, k });
+        if (chain.rooted and !e.moving(i)) try e.share(v, e.typeOf(i));
+        return v;
+    }
+
+    const Chain = struct { value: []const u8, rooted: bool };
+
+    /// A local, or a field or tuple path under one, read without sharing it (rooted); any other
+    /// expression as it is.
+    fn loadChain(e: *Emitter, i: Index) Error!Chain {
+        const n = e.node(i);
+        switch (n.kind) {
+            .name_ref => if (try e.resolve(e.text(n.main_token))) |v| return .{ .value = v.cvar, .rooted = true },
+            .member => if (e.k.callee[i] == .none) {
+                if (e.fieldIndex(e.typeOf(n.lhs), e.text(n.main_token))) |k| {
+                    const inner = try e.loadChain(n.lhs);
+                    return .{ .value = try e.temp("{s}.as.xs[{d}]", .{ inner.value, k }), .rooted = inner.rooted };
+                }
+            },
+            .tuple_index => {
+                const inner = try e.loadChain(n.lhs);
+                return .{ .value = try e.temp("{s}.as.xs[{d}]", .{ inner.value, parseInt(e.text(n.main_token)) }), .rooted = inner.rooted };
+            },
+            else => {},
         }
-        return e.expr(obj);
+        return .{ .value = try e.expr(i), .rooted = false };
     }
 
     /// A comparison of two values of type `t`: a sized integer or a float compares its
@@ -1634,8 +1683,8 @@ const Emitter = struct {
         const n = e.node(i);
         const name = e.text(n.main_token);
         if (try e.resolve(name)) |v| {
-            // A var holding a map or set gives up its claim on the buffer when read (load_shared).
-            if (v.mutable and e.holdsMap(e.typeOf(i))) try e.line("mo_disown_in({s});", .{v.cvar});
+            // A read that does not hand the value on gives up its claim on its buffers (load_shared).
+            if (e.owns(e.typeOf(i)) and !e.moving(i)) try e.line("mo_disown_in({s});", .{v.cvar});
             return e.temp("{s}", .{v.cvar});
         }
         switch (e.k.callee[i]) {
@@ -1725,7 +1774,11 @@ const Emitter = struct {
                 return "MO_NONE_V";
             };
             var operands: std.ArrayList([]const u8) = .empty;
-            for (args) |a| try operands.append(e.gpa, try e.expr(a));
+            for (args) |a| {
+                const v = try e.expr(a);
+                try e.share(v, e.typeOf(a));
+                try operands.append(e.gpa, v);
+            }
             return e.temp("mo_spawn({d}, {d}, {s})", .{ e.process_of[e.baseType(e.typeOf(i)).a], operands.items.len, try e.valuesOf(operands.items) });
         }
         if (std.mem.eql(u8, row.recv, "Supervisor")) {
@@ -1734,14 +1787,20 @@ const Emitter = struct {
                 return "MO_NONE_V";
             };
             var operands: std.ArrayList([]const u8) = .empty;
-            for (args) |a| try operands.append(e.gpa, try e.expr(a));
+            for (args) |a| {
+                const v = try e.expr(a);
+                try e.share(v, e.typeOf(a));
+                try operands.append(e.gpa, v);
+            }
             return e.temp("mo_start_supervisor({d}, {d}, {s})", .{ e.supervisor_of[d], operands.items.len, try e.valuesOf(operands.items) });
         }
         if (std.mem.startsWith(u8, row.recv, "Handle")) {
             const h = try e.expr(recv.?);
             var message: []const u8 = "MO_NONE_V";
+            // A message outlives the send: the process that takes it is a second holder.
             for (args) |a| if (e.node(a).kind != .named_arg) {
                 message = try e.expr(a);
+                try e.share(message, e.typeOf(a));
             };
             if (std.mem.eql(u8, row.name, "send")) {
                 for (args) |a| {
@@ -1777,7 +1836,7 @@ const Emitter = struct {
         // A free row (min_of) has no receiver.
         if (!row.on_type and row.recv.len > 0) {
             if (recv) |r| {
-                if (e.inPlace(i, r, row)) {
+                if (e.inPlace(i, r, row) or (bytecode.writesInPlace(row) and e.moving(r))) {
                     try operands.append(e.gpa, try e.loadPlace(r));
                     kind = "MO_KIND_UNIQUE";
                 } else {
@@ -1793,7 +1852,14 @@ const Emitter = struct {
                 try operands.append(e.gpa, "L0");
             }
         }
-        for (args) |a| if (e.node(a).kind != .named_arg) try operands.append(e.gpa, try e.expr(a));
+        var position: usize = 0;
+        for (args) |a| if (e.node(a).kind != .named_arg) {
+            const v = try e.expr(a);
+            // A row keeps what it is given, except the accumulator it hands back.
+            if (!bytecode.accumulates(row, position)) try e.share(v, e.typeOf(a));
+            try operands.append(e.gpa, v);
+            position += 1;
+        };
         // Json.encode spells its argument by the argument's checked type.
         if (row.on_type and std.mem.eql(u8, row.recv, "Json") and std.mem.eql(u8, row.name, "encode")) {
             for (args) |a| if (e.node(a).kind != .named_arg) {
@@ -1804,7 +1870,10 @@ const Emitter = struct {
         for (row.named) |f| {
             for (args) |a| {
                 const an = e.node(a);
-                if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), f.name)) try operands.append(e.gpa, try e.expr(an.lhs));
+                if (an.kind != .named_arg or !std.mem.eql(u8, e.text(an.main_token), f.name)) continue;
+                const v = try e.expr(an.lhs);
+                try e.share(v, e.typeOf(an.lhs));
+                try operands.append(e.gpa, v);
             }
         }
         if (row.can_wait) {
@@ -1884,18 +1953,6 @@ const Emitter = struct {
         return false;
     }
 
-    /// Whether a value of this type is a buffer a var may hold alone: a map or a set, whose
-    /// entries a row writes in place, or a struct, whose fields a field set writes in place (step
-    /// 21). A var read other than by such a write gives up its claim (load_shared).
-    fn holdsMap(e: *Emitter, t: Id) bool {
-        const ty = e.baseType(t);
-        return switch (ty.tag) {
-            .map, .set => true,
-            .decl => e.k.decls[ty.a].kind == .struct_,
-            else => false,
-        };
-    }
-
     fn construct(e: *Emitter, i: Index) Error![]const u8 {
         const n = e.node(i);
         const name = e.text(e.node(n.lhs).main_token);
@@ -1968,7 +2025,11 @@ const Emitter = struct {
         try e.finish(&b, "const MoValue *cap, const MoValue *args");
         e.b = parent;
         var outer: std.ArrayList([]const u8) = .empty;
-        for (b.captures.items) |c| try outer.append(e.gpa, c.outer);
+        // A captured value is a second holder while the function runs.
+        for (b.captures.items) |c| {
+            try e.line("mo_disown_in({s});", .{c.outer});
+            try outer.append(e.gpa, c.outer);
+        }
         return e.temp("mo_closure({s}, {d}, {d}, {s})", .{ b.cname, @as(u64, e.k.sigs.len) + id, outer.items.len, try e.valuesOf(outer.items) });
     }
 

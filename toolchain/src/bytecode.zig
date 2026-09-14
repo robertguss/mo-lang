@@ -8,6 +8,7 @@ const ast = @import("ast.zig");
 const lexer = @import("lexer.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
+const moves_mod = @import("moves.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
 
@@ -23,9 +24,11 @@ pub const Op = enum(u8) {
     swap,
     /// push locals[a]
     load,
-    /// push locals[a], a var holding a map or set, which gives up its claim on the buffer
-    /// (vm.owned): the next update on the var copies
+    /// push locals[a], giving up the claim on every buffer it holds alone (vm.owned): a read
+    /// that shares the value rather than moving it (moves.zig), so the next write copies
     load_shared,
+    /// the value on top stays; every buffer it holds alone may now be held twice (vm.disownIn)
+    disown,
     /// pop into locals[a]
     store,
     /// continue at instruction a
@@ -375,6 +378,7 @@ pub const Error = error{OutOfMemory};
 
 pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     var l: Lower = .{ .gpa = gpa, .k = &checked, .tree = checked.tree };
+    l.moves = try moves_mod.analyze(gpa, &checked);
     l.fn_of_sig = try gpa.alloc(u32, checked.sigs.len);
     @memset(l.fn_of_sig, none);
     for (checked.sigs, 0..) |s, si| {
@@ -469,6 +473,21 @@ fn placeRoot(tree: ast.Tree, place: Index) []const u8 {
     var at = place;
     while (tree.nodes[at].kind == .member) at = tree.nodes[at].lhs;
     return tree.tokenText(tree.nodes[at].main_token);
+}
+
+/// The map and set rows that may write into a buffer their receiver holds alone.
+pub fn writesInPlace(row: prelude.Fn) bool {
+    const map_row = std.mem.startsWith(u8, row.recv, "Map(") and (std.mem.eql(u8, row.name, "set") or std.mem.eql(u8, row.name, "update") or std.mem.eql(u8, row.name, "remove"));
+    const set_row = std.mem.startsWith(u8, row.recv, "Set(") and (std.mem.eql(u8, row.name, "add") or std.mem.eql(u8, row.name, "remove"));
+    return map_row or set_row;
+}
+
+/// Whether positional argument `position` of a row is an accumulator the row hands back
+/// to its function and returns (`reduce`'s start, `fold_lines`'s), which keeps its claim.
+pub fn accumulates(row: prelude.Fn, position: usize) bool {
+    if (std.mem.startsWith(u8, row.recv, "List(") and std.mem.eql(u8, row.name, "reduce")) return position == 0;
+    if (std.mem.eql(u8, row.recv, "Fs") and std.mem.eql(u8, row.name, "fold_lines")) return position == 1;
+    return false;
 }
 
 /// What each test and property run keeps for a never's `T.all` (sim.zig, observe), by checker
@@ -595,6 +614,8 @@ const Lower = struct {
     /// While `m = m.set(k, v)` or `s.f = s.f.set(k, v)` is lowered: its call node, the name
     /// it assigns, and for an assignment the place on its left.
     in_place: struct { call: Index = 0, name: []const u8 = "", path: Index = 0 } = .{},
+    /// Which reads hand their value on (moves.zig, step 28).
+    moves: moves_mod.Moves = .{},
 
     // ---- small helpers
 
@@ -646,6 +667,22 @@ const Lower = struct {
     fn observe(l: *Lower, t: Id) Error!void {
         const r = l.k.pool.resolve(t);
         if (l.may_hold[r]) _ = try l.emit(.observe, r, 0);
+    }
+
+    /// Whether a value of type `t` can hold a buffer one holder holds alone (moves.zig).
+    fn owns(l: *Lower, t: Id) bool {
+        return l.moves.owns(l.k, t);
+    }
+
+    /// Whether the read at `i` hands its value on (moves.zig); never inside a contract, which
+    /// reads what the function goes on to use.
+    fn moving(l: *Lower, i: Index) bool {
+        return !l.b.contract and l.moves.has(i);
+    }
+
+    /// The value on top, of type `t`, may now be held twice: a row or a list keeps it.
+    fn share(l: *Lower, t: Id) Error!void {
+        if (l.owns(t)) _ = try l.emit(.disown, 0, 0);
     }
 
     /// A parameter in locals[at], of type `t`, holds its argument.
@@ -1688,7 +1725,11 @@ const Lower = struct {
             },
             .tuple, .list => {
                 const elems = l.tree.span(n.lhs, n.rhs);
-                for (elems) |e| try l.expr(e);
+                for (elems) |e| {
+                    try l.expr(e);
+                    // In a list, an element never holds a buffer alone (vm.disownIn).
+                    if (n.kind == .list) try l.share(l.typeOf(e));
+                }
                 _ = try l.emit(if (n.kind == .tuple) .tuple else .list, @intCast(elems.len), 0);
             },
             .not_expr => {
@@ -1789,15 +1830,10 @@ const Lower = struct {
             .member => {
                 if (l.k.callee[i] != .none) return l.callNode(i, n.lhs, &.{});
                 const k = l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token)) orelse return l.halt(i, try std.fmt.allocPrint(l.gpa, "{s} is a field of a type tier 2 cannot see", .{l.text(n.main_token)}), false);
-                // A field that holds a map or set is read through its var's load_shared: the
-                // buffer may now be held twice.
-                if (l.holdsMap(l.typeOf(i))) {
-                    try l.expr(n.lhs);
-                    _ = try l.emit(.field, k, 0);
-                } else try l.fieldOf(n.lhs, k);
+                try l.projection(i, k);
             },
             .member_call => try l.callNode(i, n.lhs, l.spanAt(n.rhs)),
-            .tuple_index => try l.fieldOf(n.lhs, @intCast(parseInt(l.text(n.main_token)))),
+            .tuple_index => try l.projection(i, @intCast(parseInt(l.text(n.main_token)))),
             .call => {
                 const callee = l.node(n.lhs);
                 const args = l.spanAt(n.rhs);
@@ -1811,36 +1847,69 @@ const Lower = struct {
             .case_expr => try l.caseLower(i, true),
             .anon_fn => try l.anonFn(i),
             .old_expr => if (l.old_slots.get(i)) |at| {
-                _ = try l.emit(.load, at, 0);
+                _ = try l.emit(if (l.owns(l.typeOf(i))) .load_shared else .load, at, 0);
             } else if (l.b.old_state != none) {
                 // In an invariant, `state` inside old(...) is the state before the message.
                 try l.b.names.append(l.gpa, .{ .name = "state", .slot = l.b.old_state, .mutable = false });
                 try l.expr(n.lhs);
                 _ = l.b.names.pop();
             } else try l.expr(n.lhs),
-            .result_ref => _ = try l.emit(.load, l.b.result, 0),
+            .result_ref => _ = try l.emit(if (l.owns(l.typeOf(i))) .load_shared else .load, l.b.result, 0),
             else => try l.halt(i, "", false),
         }
     }
 
-    /// Field k of `obj`: one instruction when obj is a local, as `acc.0` in a fold is.
-    fn fieldOf(l: *Lower, obj: Index, k: u32) Error!void {
+    /// Field k of the value left of `i`, `x.f` or `x.0`: read from a local, or a field path
+    /// under one, without sharing the rest of it, so only the field may now be held twice,
+    /// unless the read hands it on (moves.zig). One instruction when the value is a local, as
+    /// `acc.0` in a fold is.
+    fn projection(l: *Lower, i: Index, k: u32) Error!void {
+        const obj = l.node(i).lhs;
         const on = l.node(obj);
         if (on.kind == .name_ref) {
             if (try l.resolve(l.text(on.main_token))) |v| {
                 _ = try l.emit(.load_field, v.slot, k);
+                if (!l.moving(i)) try l.share(l.typeOf(i));
                 return;
             }
         }
-        try l.expr(obj);
+        const rooted = try l.loadChain(obj);
         _ = try l.emit(.field, k, 0);
+        if (rooted and !l.moving(i)) try l.share(l.typeOf(i));
+    }
+
+    /// A local, or a field or tuple path under one, pushed without sharing it: true. Any other
+    /// expression is lowered as it is: false.
+    fn loadChain(l: *Lower, i: Index) Error!bool {
+        const n = l.node(i);
+        switch (n.kind) {
+            .name_ref => if (try l.resolve(l.text(n.main_token))) |v| {
+                _ = try l.emit(.load, v.slot, 0);
+                return true;
+            },
+            .member => if (l.k.callee[i] == .none) {
+                if (l.fieldIndex(l.typeOf(n.lhs), l.text(n.main_token))) |k| {
+                    const rooted = try l.loadChain(n.lhs);
+                    _ = try l.emit(.field, k, 0);
+                    return rooted;
+                }
+            },
+            .tuple_index => {
+                const rooted = try l.loadChain(n.lhs);
+                _ = try l.emit(.field, @intCast(parseInt(l.text(n.main_token))), 0);
+                return rooted;
+            },
+            else => {},
+        }
+        try l.expr(i);
+        return false;
     }
 
     fn nameRef(l: *Lower, i: Index) Error!void {
         const n = l.node(i);
         const name = l.text(n.main_token);
         if (try l.resolve(name)) |v| {
-            _ = try l.emit(if (v.mutable and l.holdsMap(l.typeOf(i))) .load_shared else .load, v.slot, 0);
+            _ = try l.emit(if (l.owns(l.typeOf(i)) and !l.moving(i)) .load_shared else .load, v.slot, 0);
             return;
         }
         switch (l.k.callee[i]) {
@@ -1898,19 +1967,29 @@ const Lower = struct {
                 if (l.node(a).kind == .named_arg) break false;
             } else true;
             if (!positional) return l.halt(i, "", false);
-            for (args) |a| try l.expr(a);
+            for (args) |a| {
+                try l.expr(a);
+                try l.share(l.typeOf(a));
+            }
             _ = try l.emit(.spawn, l.process_of[l.baseType(l.typeOf(i)).a], @intCast(args.len));
             return;
         }
         if (std.mem.eql(u8, row.recv, "Supervisor")) {
             const d = l.k.findDeclAt(i, l.text(l.node(recv.?).main_token)) orelse return l.halt(i, "", false);
-            for (args) |a| try l.expr(a);
+            for (args) |a| {
+                try l.expr(a);
+                try l.share(l.typeOf(a));
+            }
             _ = try l.emit(.start_supervisor, l.supervisor_of[d], @intCast(args.len));
             return;
         }
         if (std.mem.startsWith(u8, row.recv, "Handle")) {
             try l.expr(recv.?);
-            for (args) |a| if (l.node(a).kind != .named_arg) try l.expr(a);
+            // A message outlives the send: the process that takes it is a second holder.
+            for (args) |a| if (l.node(a).kind != .named_arg) {
+                try l.expr(a);
+                try l.share(l.typeOf(a));
+            };
             if (std.mem.eql(u8, row.name, "send")) {
                 for (args) |a| {
                     const an = l.node(a);
@@ -1941,7 +2020,7 @@ const Lower = struct {
         // A free row (min_of) has no receiver.
         if (!row.on_type and row.recv.len > 0) {
             if (recv) |r| {
-                if (l.inPlace(i, r, row)) {
+                if (l.inPlace(i, r, row) or (writesInPlace(row) and l.moving(r))) {
                     try l.loadPlace(r);
                     kind = unique;
                 } else {
@@ -1956,7 +2035,14 @@ const Lower = struct {
                 _ = try l.emit(.load, 0, 0);
             }
         }
-        for (args) |a| if (l.node(a).kind != .named_arg) try l.expr(a);
+        var position: usize = 0;
+        for (args) |a| if (l.node(a).kind != .named_arg) {
+            try l.expr(a);
+            // A row keeps what it is given (a list's element, a map's value), except the
+            // accumulator it hands back.
+            if (!accumulates(row, position)) try l.share(l.typeOf(a));
+            position += 1;
+        };
         // Json.encode spells its argument by the argument's checked type.
         if (row.on_type and std.mem.eql(u8, row.recv, "Json") and std.mem.eql(u8, row.name, "encode")) {
             for (args) |a| if (l.node(a).kind != .named_arg) {
@@ -1967,7 +2053,9 @@ const Lower = struct {
         for (row.named) |f| {
             for (args) |a| {
                 const an = l.node(a);
-                if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), f.name)) try l.expr(an.lhs);
+                if (an.kind != .named_arg or !std.mem.eql(u8, l.text(an.main_token), f.name)) continue;
+                try l.expr(an.lhs);
+                try l.share(l.typeOf(an.lhs));
             }
         }
         if (row.can_wait) {
@@ -1992,10 +2080,7 @@ const Lower = struct {
     /// a var (`state.data = state.data.set(k, v)`), and `r` reads that place: the old value
     /// is overwritten, so the row may write in place.
     fn inPlace(l: *Lower, i: Index, r: Index, row: prelude.Fn) bool {
-        if (i != l.in_place.call) return false;
-        const map_row = std.mem.startsWith(u8, row.recv, "Map(") and (std.mem.eql(u8, row.name, "set") or std.mem.eql(u8, row.name, "update") or std.mem.eql(u8, row.name, "remove"));
-        const set_row = std.mem.startsWith(u8, row.recv, "Set(") and (std.mem.eql(u8, row.name, "add") or std.mem.eql(u8, row.name, "remove"));
-        if (!map_row and !set_row) return false;
+        if (i != l.in_place.call or !writesInPlace(row)) return false;
         if (l.in_place.path != 0) return l.samePlace(r, l.in_place.path);
         const rn = l.node(r);
         return rn.kind == .name_ref and std.mem.eql(u8, l.text(rn.main_token), l.in_place.name) and l.localVar(l.in_place.name) != null;
@@ -2042,18 +2127,6 @@ const Lower = struct {
             if (std.mem.eql(u8, row.name, name)) return true;
         }
         return false;
-    }
-
-    /// Whether a value of this type is a buffer a var may hold alone: a map or a set, whose
-    /// entries a row writes in place, or a struct, whose fields a field set writes in place (step
-    /// 21). A var read other than by such a write gives up its claim (load_shared).
-    fn holdsMap(l: *Lower, t: Id) bool {
-        const ty = l.baseType(t);
-        return switch (ty.tag) {
-            .map, .set => true,
-            .decl => l.k.decls[ty.a].kind == .struct_,
-            else => false,
-        };
     }
 
     fn construct(l: *Lower, i: Index) Error!void {
@@ -2115,7 +2188,8 @@ const Lower = struct {
         _ = try l.emit(.ret, 0, 0);
         l.b = parent;
         l.functions.items[fi] = try l.finish(&b);
-        for (b.captures.items) |c| _ = try l.emit(.load, c.outer, 0);
+        // A captured value is a second holder while the function runs.
+        for (b.captures.items) |c| _ = try l.emit(.load_shared, c.outer, 0);
         _ = try l.emit(.closure, fi, @intCast(b.captures.items.len));
     }
 };

@@ -247,6 +247,8 @@ pub const Sim = struct {
         const k = &p.checked;
         const r = k.pool.resolve(t);
         if (!p.may_hold[r]) return;
+        // What the run keeps is a second holder: a later write in place must not reach it.
+        sim.vm.disownIn(v);
         if (p.recorded_as[r] != none) try sim.keep(p.recorded_as[r], v);
         const ty = k.pool.get(r);
         switch (ty.tag) {
@@ -902,9 +904,15 @@ pub const Sim = struct {
         const mark = vm.mark();
         const regioned = vm.region != null;
         const message = if (entry.parcel) |parcel| try vm.unpack(parcel) else entry.message;
+        // Without a region nothing tells an older buffer from a newer one: every write is kept
+        // for a crash, and an invariant that reads old(state) sees nothing written in place.
+        const reads_old = vm.program.processes[p.process].reads_old;
         if (regioned) {
             vm.undo_mark = mark;
-            vm.frozen_below = if (vm.program.processes[p.process].reads_old) mark else 0;
+            vm.frozen_below = if (reads_old) mark else 0;
+        } else {
+            vm.undo_mark = std.math.maxInt(usize);
+            vm.frozen_below = if (reads_old) std.math.maxInt(usize) else 0;
         }
         defer {
             vm.undo_mark = 0;
