@@ -368,6 +368,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | Step 26 defaults ratified: a body with no value (a function without a return type, a test) refuses a line-start one-line `if` on its last line too, as a dropped value; a line-start `if` with no `else:` keeps the block-form sentence, since the author meant a statement; `mo fmt` does not fold a block `if` on a body's last line into one line, and keeps a line-start one-line `if` on one line when it fits (rule I4); the keyword sentence also covers `inout`, `for` and comprehension names, anonymous-function parameters, and a pattern binding (`MO0104`); an enum variant's field named `state` still gets the bare "expected a name" | Fable, from Opus's defaults | provisional | round 6 |
 | Round 6 pre-registered on [[control-run-6]] before any session: two tasks (logstat, jobq), three languages, the baselines with their checks bolted on (Go: vet, staticcheck, a contracts library; Python: a `uv` project, `mypy --strict`, ruff, pydantic), four predictions with P3 stating the null hypothesis; `mypy` 2.3.1 and `staticcheck` 2026.2.1 installed on the VM (agreement 10) | Fable | — | round 6 |
 
+| Robert (14 Sep, afternoon): everything Python goes through `uv init` into a project's own virtual environment, checkers included (`uv add --dev mypy ruff`, `uv run mypy --strict`); nothing is installed globally or as a `uv tool`; the `mypy` tool Fable installed on the VM is uninstalled, agreement 10 reworded; round 6's Python worker had run the global mypy against its projects' `.venv` Python, so the next round's brief says the checkers are dev dependencies | Robert | locked | round 7 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

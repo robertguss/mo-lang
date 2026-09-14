@@ -22,7 +22,7 @@ Since round 5: steps 22 to 26 (the derived deadline, the runtime surface, the au
 | Go | `../mo-lang-control6-go` | `control6-go` | `experiments/control-run/go/` |
 | Python | `../mo-lang-control6-python` | `control6-python` | `experiments/control-run/python/` |
 
-Worktrees from `session-05` on the exe.dev VM (Linux x86_64, 4 cores, 15 GB; the earlier rounds ran on Robert's Mac, so wall-clock compares within this round, not to round 5). Agents `mo-r6-mo`, `mo-r6-go`, `mo-r6-python`, each `cd`'d into its worktree before `herdr agent start`. The branches are evidence and are not merged. Tools on the machine before the start: Zig 0.16.0, Go 1.26.5, `staticcheck` 2026.2.1 (`go install`), `uv`, `mypy` 2.3.1 and `ruff` 0.16.1 as `uv` tools; `pydantic` goes into the Python project's own environment. The pane's token count is read before each report.
+Worktrees from `session-05` on the exe.dev VM (Linux x86_64, 4 cores, 15 GB; the earlier rounds ran on Robert's Mac, so wall-clock compares within this round, not to round 5). Agents `mo-r6-mo`, `mo-r6-go`, `mo-r6-python`, each `cd`'d into its worktree before `herdr agent start`. The branches are evidence and are not merged. Tools on the machine before the start: Zig 0.16.0, Go 1.26.5, `staticcheck` 2026.2.1 (`go install`), `uv`, `mypy` 2.3.1 as a `uv` tool at the start (uninstalled during the run on Robert's rule that Python tools live in the project's own environment; the next round adds them with `uv add --dev`) and `ruff` 0.16.1 from Robert's `mise`; `pydantic` in each Python project's own environment. The pane's token count is read before each report.
 
 ## The baselines' amendments to the brief
 
