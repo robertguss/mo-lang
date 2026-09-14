@@ -70,7 +70,9 @@ def parse_call(words: Sequence[str]) -> client.Call:
         raise UsageError(f"method must be upper-case letters, got {method!r}")
     if not path.startswith("/"):
         raise UsageError(f"path must start with /, got {path!r}")
-    return client.Call(None if token == NO_TOKEN else token, method, path, body[0] if body else None)
+    return client.Call(
+        None if token == NO_TOKEN else token, method, path, body[0] if body else None
+    )
 
 
 def _serve(directory: Path, port: int, stderr: TextIO) -> int:
