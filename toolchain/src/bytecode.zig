@@ -102,6 +102,9 @@ pub const Op = enum(u8) {
     start_supervisor,
     /// pop a message, then a Handle; append the message to its mailbox; push no value
     send,
+    /// pop a Duration, a message, then a Handle; the message goes in its mailbox no earlier than
+    /// the Duration after the sending update ends (step 24); push no value
+    send_later,
     /// pop the deadline, a message, then a Handle; push Ok(reply), Error(Timeout), or Error(Down)
     ask,
     /// push the running update's reply_by, the asker's deadline on the runtime's clock (step 22)
@@ -1867,6 +1870,13 @@ const Lower = struct {
             try l.expr(recv.?);
             for (args) |a| if (l.node(a).kind != .named_arg) try l.expr(a);
             if (std.mem.eql(u8, row.name, "send")) {
+                for (args) |a| {
+                    const an = l.node(a);
+                    if (an.kind != .named_arg or !std.mem.eql(u8, l.text(an.main_token), "delay")) continue;
+                    try l.expr(an.lhs);
+                    _ = try l.emit(.send_later, 0, 0);
+                    return;
+                }
                 _ = try l.emit(.send, 0, 0);
                 return;
             }

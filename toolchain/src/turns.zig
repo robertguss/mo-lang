@@ -331,6 +331,7 @@ pub const Turns = struct {
         if (sources.hasWork(sim)) return;
         var until = deadline;
         if (sources.nextDeadline(sim)) |d| until = if (until) |u| @min(u, d) else d;
+        if (sim.nextLater()) |d| until = if (until) |u| @min(u, d) else d;
         for (t.parked.items) |p| until = if (until) |u| @min(u, p.deadline) else p.deadline;
         const p = t.pollerOf() catch return;
         // At least once a second, whatever the deadlines say: nothing waits past a lost report.
@@ -348,8 +349,10 @@ pub const Turns = struct {
     fn step(t: *Turns, sim: *Sim) Error!bool {
         if (t.quiet >= t.sweep_at) try t.sweep(sim);
         while (t.fibers.items.len > kept_fibers) t.fibers.pop().?.destroy();
-        // What the runtime's loops took becomes messages first (sources.zig).
+        // What the runtime's loops took becomes messages first (sources.zig), and delayed sends
+        // whose time has come (step 24).
         try sources.pumpServer(sim, t);
+        _ = try sim.dueLater();
         const now_ms = t.now();
         var k: usize = 0;
         while (k < t.parked.items.len) {
@@ -435,8 +438,13 @@ pub const Turns = struct {
         }
         var answers = t.answers.valueIterator();
         while (answers.next()) |reply| if (reply.*) |r| try t.markValue(r.value);
-        // A source's target is where the runtime keeps sending.
+        // A source's target is where the runtime keeps sending, and a delayed send's is where the
+        // runtime will (step 24).
         for (sim.sources.list.items) |s| if (!s.done) try t.markId(s.to);
+        for (sim.later.items) |l| {
+            try t.markId(l.to);
+            try t.markValue(l.message);
+        }
         while (t.worklist.pop()) |id| {
             try t.markValues(procs[id].args);
             if (procs[id].up) try t.markValue(procs[id].state);
@@ -609,11 +617,11 @@ pub const Turns = struct {
     }
 
     /// main returned: turns go on being handed out until no message waits, no update is in
-    /// progress, and no runtime loop can deliver.
+    /// progress, no runtime loop can deliver, and no delayed send is still to come (step 24).
     pub fn finish(t: *Turns, sim: *Sim) Error!void {
         while (true) {
             if (try t.step(sim)) continue;
-            if (t.in_flight == 0 and !sim.sources.active()) return;
+            if (t.in_flight == 0 and !sim.sources.active() and sim.later.items.len == 0) return;
             t.idle(sim, null, null);
         }
     }

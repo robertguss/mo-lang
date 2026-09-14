@@ -279,6 +279,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | a process `P` (on type) | `start` | the process's parameters | `Handle(P)` | | | grammar |
 | a supervisor `S` (on type) | `start` | the supervisor's parameters | its one child's `Handle`, or a tuple of its children's handles in child-line order; none when it has no child | | | grammar (step 11) |
 | `Handle(P)` | `send` | `Message(P)` | none | | | grammar |
+| `Handle(P)` | `send` | `Message(P)`, `delay: Duration` | none: the message goes in the mailbox no earlier than `delay` after the sending update ends (from a test or `main`, after now); a crash drops it with the update's other sends, and a target that is down when it is due, or whose mailbox is full then, drops it | | | design-v0/03, Session 5, step 24 |
 | `Handle(P)` | `ask` | `Message(P)` | `Result(Reply, AskError)` | yes | | grammar |
 | any declared type `T` (on type) | `all` | | `List(T)` | | `never` | grammar |
 | none | `flows` | a type, `into:` a capability | `Bool` | | `never` | grammar |

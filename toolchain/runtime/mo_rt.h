@@ -545,6 +545,8 @@ MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args);
 /* `Sup.start(args)`: its one child's Handle, a tuple of them in child order, or no value. */
 MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args);
 MoValue mo_send(MoValue handle, MoValue message);
+/* `h.send(message, delay: d)` (step 24). */
+MoValue mo_send_later(MoValue handle, MoValue message, MoValue delay);
 /* Ok(reply), Error(Timeout), or Error(Down). */
 MoValue mo_ask(MoValue handle, MoValue message, MoValue within);
 /* Deadlines (step 22): reply_by in the running update, what remains of a Deadline as a Duration

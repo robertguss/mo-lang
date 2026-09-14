@@ -1719,7 +1719,15 @@ const Emitter = struct {
             for (args) |a| if (e.node(a).kind != .named_arg) {
                 message = try e.expr(a);
             };
-            if (std.mem.eql(u8, row.name, "send")) return e.temp("mo_send({s}, {s})", .{ h, message });
+            if (std.mem.eql(u8, row.name, "send")) {
+                for (args) |a| {
+                    const an = e.node(a);
+                    if (an.kind != .named_arg or !std.mem.eql(u8, e.text(an.main_token), "delay")) continue;
+                    // Delivered no earlier than the delay after the sending update ends (step 24).
+                    return e.temp("mo_send_later({s}, {s}, {s})", .{ h, message, try e.expr(an.lhs) });
+                }
+                return e.temp("mo_send({s}, {s})", .{ h, message });
+            }
             var within: []const u8 = "MO_NONE_V";
             for (args) |a| {
                 const an = e.node(a);

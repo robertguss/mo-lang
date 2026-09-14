@@ -466,6 +466,8 @@ pub const fns = [_]Fn{
     // or a tuple of them in child-line order. Nothing names the supervisor itself.
     .{ .recv = "Supervisor", .on_type = true, .name = "start", .ret = "Handle(P)" },
     .{ .recv = "Handle(P)", .name = "send", .params = &.{"Message(P)"}, .ret = "none" },
+    // Delivered no earlier than `delay` after the sending update ends (step 24).
+    .{ .recv = "Handle(P)", .name = "send", .params = &.{"Message(P)"}, .named = &.{.{ .name = "delay", .type = "Duration" }}, .ret = "none" },
     .{ .recv = "Handle(P)", .name = "ask", .params = &.{"Message(P)"}, .ret = "Result(Reply, AskError)", .can_wait = true },
     // Inside `never` only
     .{ .recv = "Type", .on_type = true, .name = "all", .ret = "List(T)", .only = .never },

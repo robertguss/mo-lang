@@ -1,7 +1,5 @@
 module Agent.Mock
-expose Line, Place, Cursor, MockServer, MockWorker, Mocks, line_of, lines_used, played
-
-use Agent.Client{napped}
+expose Line, Place, Planned, Cursor, MockServer, MockWorker, Mocks, line_of, lines_used, played
 
 intent "The scripted model agent ships: an HTTP server answering POST /complete with the lines of a script, one JSON reply a line, played from the top to every run, which its x-run header names; a {\"slow_ms\": n} line makes the reply after it n ms late, and a {\"garbage\": true} line answers with text that is not JSON."
 
@@ -9,6 +7,12 @@ intent "The scripted model agent ships: an HTTP server answering POST /complete 
 struct Line
   slow_ms: UInt64
   text: String
+end
+
+# A response and how many milliseconds late the script wants it.
+struct Planned
+  slow_ms: UInt64
+  response: Response
 end
 
 # Where a run is in the script: the next line's index, the calls it made, and the body it posted
@@ -56,7 +60,8 @@ process MockServer(cursor: Handle(Cursor), http: Http) mailbox: 4_096
   fn update(state, message)
     case message
       Accepted(exchange):
-        MockWorker.start(exchange, cursor, http).send(Answer)
+        worker = MockWorker.start(exchange, cursor, http)
+        worker.send(Answer(me: worker))
         state.accepted += 1
       Idle:
         state.quiet += 1
@@ -64,18 +69,26 @@ process MockServer(cursor: Handle(Cursor), http: Http) mailbox: 4_096
   end
 end
 
-# Answers one exchange, late when its line says so, and ends.
+# Answers one exchange, and ends: at once, or when its line is slow, by a message it sends itself on
+# the line's delay (step 24), so the runtime does the waiting.
 process MockWorker(exchange: Exchange, cursor: Handle(Cursor), http: Http)
   state
     answered: Bool
   end
 
-  message Answer
+  message Answer(me: Handle(MockWorker))
+  message Late(response: Response)
 
   fn update(state, message)
     case message
-      Answer:
-        response = played(cursor, http, exchange.request)
+      Answer(me):
+        planned = played(cursor, exchange.request)
+        if planned.slow_ms > 0
+          me.send(Late(response: planned.response), delay: planned.slow_ms.to_i64.ms)
+        else
+          state.answered = exchange.reply(planned.response, within: 10_000.ms) is Ok(_)
+        end
+      Late(response):
         state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
     end
   end
@@ -127,18 +140,22 @@ fn plain(text: String) : String
   end
 end
 
-# The response to one request: the run's next reply for POST /complete, after its delay.
-fn played(cursor: Handle(Cursor), http: Http, request: Request) : Response
+# The response to one request, and how late it is due: the run's next reply for POST /complete.
+fn played(cursor: Handle(Cursor), request: Request) : Planned
   if request.path != "/complete" or request.method != "POST"
-    return Response(status: 404, body: "{\"error\": \"the model answers POST /complete\"}")
+    return Planned(slow_ms: 0,
+      response: Response(status: 404, body: "{\"error\": \"the model answers POST /complete\"}"))
   end
   run = request.headers.get("x-run") or "-"
   case cursor.ask(Next(run: run, body: request.body), within: 5_000.ms)
     Ok(line):
-      late = line.slow_ms > 0 and napped(http, line.slow_ms)
+      late = line.slow_ms > 0
       headers = Map.new().set("content-type", "application/json").set("x-late", "#{late}")
-      Response(status: 200, headers: headers, body: line.text)
-    Error(_): Response(status: 503, body: "{\"error\": \"the script did not answer in time\"}")
+      Planned(slow_ms: line.slow_ms,
+        response: Response(status: 200, headers: headers, body: line.text))
+    Error(_):
+      Planned(slow_ms: 0,
+        response: Response(status: 503, body: "{\"error\": \"the script did not answer in time\"}"))
   end
 end
 
