@@ -38,6 +38,10 @@ The longest session so far, about twenty hours across an evening, an overnight r
 
 - [[interpreter-step-15]]: processes and `Net` in the C runtime; `mo build` compiles everything; native kv 1.4× the interpreter at half the memory. [[interpreter-step-16]]: `Http` over `Net` in both runtimes, `httpd`; native 1.7× the interpreter. [[control-run-3]]: Mo 9 loops (6 syntax diagnostics), a real bug caught by a test and a `never`, timing void (the machine slept). [[interpreter-step-17]]: the round 3 follow-ups. The [[outside-review-2026-09-13|outside review]] arrived on `main`; Fable's [[outside-review-2026-09-13-response|response]]; Robert: laws stay, test and re-evaluate. [[interpreter-step-18]]: the review's no-compat fixes, all five, both runtimes; Fable wrote the failure model into chapter 3. [[program-4]]: `notes` in 55 minutes, the first program over HTTP and from two recipes; native 23,692 gets/s; a started process is never freed and a held send can deadlock, both to [[interpreter-step-19]], which fixed them (200,000 processes at 9 MB native) and added recipe conformance, `mkdir`, a fixed clock, and mutation tests. Robert chose the runtime owning the loop over a `loop` keyword after Fable unpacked three answers to the fictional-bound loops; [[interpreter-step-20]]: the runtime owns the loop, 11 fictional bounds to 0, every expected file unchanged. [[control-run-4]]: timing valid, Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, the laws kept with an ergonomics step recommended for Robert. The outside review page's suggested-prompt lines in the worker pane were Claude Code's, not Robert's; the record was corrected.
 
+## Night (13 Sep, from 22:00, a fresh Fable context)
+
+- [[research-agenda-2026-09-response]]: the research agenda's twelve concept pages read; seventeen contradictions called (agree 8, disagree 6, test 3). Chapter 2's recursion law now matches the toolchain (a depth bound, termination for `mo prove`); chapter 3 names Armstrong's R6; the Q16 ledger, the nine-nines rule, reproducible builds as a release gate; round 5 counts loops by cause and whether the worker wrote Mo; program 1 counts its deadlines. Measured: `mo build` byte-identical across two `mo` binaries; `mo` differs only in the Mach-O UUID and its signature.
+
 ## Numbers at the end of the session
 
 | what | number |
@@ -92,6 +96,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-20]]
 - [[control-run-4]]
 - [[outside-review-2026-09-13-response]]
+- [[research-agenda-2026-09-response]]
 - [[program-2]]
 - [[program-3]]
 - [[control-run]]

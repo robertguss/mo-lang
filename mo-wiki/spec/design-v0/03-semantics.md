@@ -61,7 +61,7 @@ What the runtime promises when something breaks, so a program's durability and r
 
 A `Timeout` on `ask` is therefore not a licence to send again: the first message was delivered exactly once and may have changed the state. A message that may be repeated carries an id the process can recognise, which program 4 tests.
 
-**What restart means.** A supervisor restarts a crashed process from its initial state with an empty mailbox. The messages waiting for it are lost and their senders are not told; a client waiting in `ask` sees `Timeout`. Restart recovers the service, never the state. A process whose state must outlive a crash writes it through a capability before it replies and replays it when it starts; kv's store, with its append-only log, is the pattern, and a store that does not do this must say `restart: :never` and mean it.
+**What restart means.** This is Mo's answer to Armstrong's R6, stable storage: it is a capability's contract, never the supervisor's. A supervisor restarts a crashed process from its initial state with an empty mailbox. The messages waiting for it are lost and their senders are not told; a client waiting in `ask` sees `Timeout`. Restart recovers the service, never the state. A process whose state must outlive a crash writes it through a capability before it replies and replays it when it starts; kv's store, with its append-only log, is the pattern, and a store that does not do this must say `restart: :never` and mean it.
 
 **When a reply means durable.** Only when the process wrote and fsynced before it replied, as kv's store does under its `never`. The runtime adds nothing here, and the toolchain cannot yet prove the claim independently: kv's `never` checks records the store builds itself, which the review rightly called instrumentation. Mutation tests of the contract machinery are a queued step.
 
@@ -86,3 +86,5 @@ Session 5, step 20: a message may carry a capability or a handle its `message` l
 Session 5, step 19: a process that has finished ends (the Processes list), after program 4 found that a started process was never freed and a worker per request ran out of memory near 20,000; under `main`, starting processes faster than a statement settles them first hands out the waiting turns, so the finished ones can end.
 
 Session 5, step 18: an `invariant` block holds after every `update` and trips when false, where it was true when broken; `never` keeps the negative form. Fable (step 18, after the outside review): the failure model section, stating what a crash discards, what timeout leaves, what restart loses, when a reply is durable, poison and escalation, cleanup, and overload, all from decisions taken in steps 4, 11, 12, and 15.
+
+Fable (session 5, night, after the research agenda's Armstrong page): "What restart means" now names R6, stable storage, as what it answers; the store recipe is the pattern and program 1 is the test.

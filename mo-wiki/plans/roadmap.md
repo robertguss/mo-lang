@@ -24,7 +24,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Step 19, what program 4 found | done | — |
 | Step 20, the runtime owns the loop | done | — |
 | Round 4 of the control run | done: Mo 16.1 min to Go's 9.3; laws kept, an ergonomics step recommended | — |
-| Fable's reading: the session 6 runs are read ([[empirical-validation-plan]], [[ecosystem-strategy]]); the research agenda branch (twelve concept pages) reviewed for contradictions with Mo; the Perplexity VM-first drafts filed (done: d36–d40) | mostly done | Fable's own |
+| Fable's reading: the session 6 runs read ([[empirical-validation-plan]], [[ecosystem-strategy]]); the research agenda's twelve pages answered ([[research-agenda-2026-09-response]]); the VM-first drafts filed (d36–d40) | done | — |
 | Memory and green threads (chapter 7) | queued | 1–2 |
 | Program 1, the job queue, and its follow-ups | queued | 2–3 |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
