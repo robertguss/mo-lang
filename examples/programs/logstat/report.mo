@@ -158,3 +158,6 @@ test "the JSON form is one object with the spec's keys in order"
   nothing = "{\"requests\": 0, \"errors\": 0, \"error_rate\": 0.0, \"malformed\": 0, \"per_minute\": 0.0, \"slowest\": [], \"busiest\": []}"
   assert json(empty(5, None)) == nothing
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

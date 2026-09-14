@@ -164,3 +164,6 @@ property "a masked path never holds a card number, whatever digits it carries"
     assert !card?(masked("/#{prefix}#{digits}#{digits}"))
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

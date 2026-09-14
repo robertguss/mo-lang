@@ -217,3 +217,6 @@ property "errors never outnumber requests, and requests are errors and successes
     assert summary.requests == records.size
   end
 end
+
+verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+          proven: not run

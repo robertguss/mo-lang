@@ -242,3 +242,6 @@ end
 test rejects "a name that leaves the folder"
   folded(Fs.fixture().read_only, "../secret.log", empty(5, None))
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
