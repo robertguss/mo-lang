@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [agents, processes, runtime, roadmap]
 sources: [spec/programs/01-job-queue.md, plans/program-4.md, plans/interpreter-step-21.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Program 1: `jobq` in Mo, brief for the worker
@@ -31,6 +31,20 @@ The spec's "Measured" table, both runtimes; the `within:` count with its two col
 ## Done when
 
 Corpus test green with `jobq` in `examples/programs/`, identical under `mo run` and as a binary, the real-socket check passes, `mo check --recipe` green on the store, the numbers, pushed, a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written in 40 minutes: nine modules, 195 functions, 2,891 lines with tests, `--sim 100` under faults with `--until`, `mo check --recipe` green on the store, the five run lines identical under both runtimes. Verified by Fable with an HTTP session of 29 checks under both runtimes, all green: every status the spec names, a lease running out and re-leased with `attempts` 2, a fail on the last attempt to `dead`, a restart keeping a dead job and re-leasing a run-out one, a 40-worker race with exactly one holder, 1,200 silent connections with a create answered at once.
+
+| measure | `mo run` | binary |
+|---|---|---|
+| lease and ack pairs per second, 1 / 32 workers | 2,416 / 2,846 | 3,180 / 4,051 |
+| a run-out lease handed out again | 0.25 ms | 0.14 ms |
+| resident at 100k jobs | 392 MiB | 207 MiB |
+| replay of a 1M-record log (209 MiB) | 30.4 s | 8.9 s |
+| restart with 10,000 run-out leases, ready / first lease | 0.39 s / 3.09 s | 0.09 s / 0.83 s |
+
+**What it found.** The `within:` count: 36 literals, 15 chosen, 3 derived by hand, and two of the three wrong before the worker's second pass; literals lie where deadlines nest, so a derived deadline is designed in the follow-up step. Every one of eight candidate `invariant`s was untrippable and left out; the process's contracts are its `requires`, `ensures`, and `never`s, a finding for Robert. The Q16 ledger is empty; the laws cost 8 of 17 loops and shaped `main`. One toolchain bug (`mo check --recipe` counts the recipe's tests against the 500-line law) and five gaps (`state` and `old` cannot name a field, JSON numbers decode only as floats, a capability cannot be returned, the fixture lists a missing folder as empty, no derived deadline, no timer). Nine runtime-surface questions filed on [[d37-runtime-mcp-surface|direction 37]]. All of it goes to the follow-up step and round 5.
 
 ## Related
 - [[program-4]]

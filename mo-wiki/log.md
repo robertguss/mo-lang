@@ -276,3 +276,6 @@
 
 ## [2026-09-14] session | Night: step 21 accepted
 - Step 21 (memory and green threads) accepted after `zig build test` green and Fable's probes under both runtimes: a process is a fiber, 65,530 idle connections held, a process at rest 38.8 / 22.7 KiB, socket rows faster, the four chapter 7 bets measured, `Fs.fixture()` refuses `..`, three diagnostics with a `mo fix`. One finding by probe (HTTP backpressure counts request-less connections, about 1,000) flagged for program 1; the Linux poller never ran. Eleven decision-log rows, five `semantic`. Merged to `main`. Lint: the same pre-existing 16 issues from Robert's history bundle (13 pages typed `research`, 3 broken links) plus six review rows.
+
+## [2026-09-14] session | Night: program 1 accepted
+- `jobq` accepted after the suite went green with it in the corpus and Fable's 29-check HTTP session passed under both runtimes (statuses, a lease running out, dead on the last attempt, a restart, a 40-worker race, a 1,200-connection crowd). Nine decision-log rows, four `semantic`, one for Robert (the `invariant` construct found no use). d37 gains the nine runtime-surface questions. Follow-up step 22 listed. Merged to `main`. Lint unchanged (the history bundle's 16, six review rows).
