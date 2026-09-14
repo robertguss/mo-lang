@@ -327,3 +327,6 @@
 
 ## [2026-09-14] session | Afternoon: the outside review
 - Robert's outside review of the vault after round 6, filed verbatim with Fable's response: already done (the file law, the keywords, the `never` rule, the reframed measure), wrong on facts (the C backend exists), agreed and queued (the counted laws as settings, the `try` wording, the zero-dependency cost, program 7's pick, a closure column, a scale benchmark), disagreed (a JSON `verified:` line, the Ruby framing). The fork, the runtime as the thesis, is Robert's question. Two decision rows, one for Robert.
+
+## [2026-09-14] session | Afternoon: the thesis restated
+- Robert said yes to the fork the outside review named: chapter 1 rewritten by Fable as three layers (the runtime, capabilities and recipes, the language as their surface), the counted laws as settings, the measure as reliability, speed, the loop, and dependencies, the null hypothesis section rewritten with rounds 1 to 6 as evidence. One locked row.

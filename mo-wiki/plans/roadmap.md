@@ -38,7 +38,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Round 7 ([[control-run-7]]), on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, the dependency count | running | — |
 | Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
-| Program 7, a real open-source tool or library reimplemented in Mo against its own test suite (Robert, 14 Sep; CommonMark or Raft, chosen when a program finishes with no new gap or bug note) | after program 6 passes the readiness rule | 2 |
+| Program 7, a real open-source service reimplemented in Mo against its own test suite, chosen so the original carries third-party dependencies and the Mo version exercises capabilities, recipes, and the runtime surface (Robert, 14 Sep; the thesis restated) | after program 6 passes the readiness rule (no new gap or bug note) | 2 |
 | Program 8, the toolchain in Mo | late | — |
 
 About ten to fifteen briefs to the end of the roadmap as written, at roughly one an hour of worker time plus verification. A program that finds a runtime hole adds one; round 4 may send a law back.
