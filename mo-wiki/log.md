@@ -336,3 +336,6 @@
 
 ## [2026-09-14] session | Evening: round 7, held on all four
 - Three fresh sessions from 16:40 UTC in `../mo-lang-control7-*`, the Mo programs removed from every worktree, the Python checkers as dev dependencies; Fable verified each worktree, ran the hidden suite against each jobq (0, 0, 0), and measured all three with one client (Mo 981 pairs a second at 32 workers to 478 and 467; 150 MiB to 76 and 189; restart 3.7 s to 0.7 and 1.0); the loop 0.38 s to 18.7 and 8.7; dependencies 0, 1, 3. Mo's worker disclosed reading the suite's description. Four decision rows, one `semantic`. Step 28 written from the Mo notes. Merged to `main`.
+
+## [2026-09-14] session | Evening: the closure audit
+- A reader went through round 7's Mo jobq for direction 31's cost: 12 lines of 2,843 mechanically, 18 by judgment, all of which the stdlib covers. The finding is a spec contradiction (chapter 3 against the stdlib chapter on named functions as values); a row for Robert recommends the narrow reading. Page `deep-dives/closure-audit-2026-09-14.md`.
