@@ -32,6 +32,7 @@ const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const net_mod = @import("net.zig");
 const http_mod = @import("http.zig");
+const sources = @import("sources.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const server_mod = @import("server.zig");
@@ -956,6 +957,7 @@ pub const Vm = struct {
         .{ "Supervisor.start", .process },          .{ "Platform.net", .platform_part },          .{ "Net.listen", .net_row },
         .{ "Net.connect", .net_row },               .{ "Listener.accept", .net_row },             .{ "Listener.port", .net_row },
         .{ "Conn.read_line", .net_row },            .{ "Conn.write", .net_row },                  .{ "Conn.close", .net_row },
+        .{ "Listener.serve", .net_row },            .{ "Conn.lines", .net_row },                  .{ "HttpListener.serve", .http_row },
         .{ "Net.fixture", .net_fixture },
         .{ "Http.listen", .http_row },              .{ "Http.send", .http_row },                  .{ "HttpListener.accept", .http_row },
         .{ "HttpListener.port", .http_row },        .{ "Exchange.request", .http_row },           .{ "Exchange.reply", .http_row },
@@ -1126,6 +1128,9 @@ pub const Vm = struct {
     /// A Net, Listener, or Conn row: real sockets under mo run, or in a test a
     /// Net.fixture()'s, in memory (net.zig).
     fn netRow(vm: *Vm, which: net_mod.Row, a: []const Value) Error!Value {
+        // The runtime's loops (sources.zig).
+        if (which == .serve) return sources.row(vm, .serve, a);
+        if (which == .lines) return sources.row(vm, .lines, a);
         // A call that waits on a peer: first, whether a send the update holds is what it waits on.
         const wait: ?sim_mod.Wait = switch (which) {
             .accept => .{ .listener = true, .handle = a[0].cap.handle, .call = "Listener.accept" },
@@ -1143,6 +1148,7 @@ pub const Vm = struct {
     /// An Http, HttpListener, or Exchange row: real sockets under mo run, or in a test an
     /// Http.fixture()'s, on Net.fixture()'s network (http.zig).
     fn httpRow(vm: *Vm, which: http_mod.Row, a: []const Value) Error!Value {
+        if (which == .serve) return sources.row(vm, .http_serve, a);
         const accepting = which == .accept;
         defer if (accepting) if (vm.sim) |s| s.endWait();
         if (accepting) if (vm.sim) |s| try s.waitOn(.{ .listener = true, .handle = a[0].cap.handle, .call = "HttpListener.accept" });

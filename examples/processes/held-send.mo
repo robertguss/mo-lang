@@ -1,7 +1,7 @@
 module Processes.HeldSend
-expose Worker, Acceptor, Acceptors, fetched, hello?, requested
+expose Worker, Acceptor, Acceptors, handed, fetched, hello?, requested
 
-intent "An acceptor that hands each exchange to a worker of its own must end its update to let the worker answer, since the sends of an update are held until it ends: one accept per message serves, and a loop of accepts in one update waits for a client the held worker is keeping waiting, which the runtime crashes with a report naming the held send instead of hanging."
+intent "An acceptor that hands each exchange to a worker of its own must end its update to let the worker answer, since the sends of an update are held until it ends: one accept per message serves, and a second accept in the same update waits for a client the held worker is keeping waiting, which the runtime crashes with a report naming the held send instead of hanging."
 
 process Worker(exchange: Exchange)
   state
@@ -24,18 +24,20 @@ process Acceptor(listener: HttpListener)
     accepted: UInt64
   end
 
-  message Serve(exchanges: UInt64)
+  message Serve
+  message ServeFour
 
+  # Four accepts in one update, so a seeded run whose faults time one out still reaches a
+  # second after a first that handed its exchange on.
   fn update(state, message)
     case message
-      Serve(exchanges):
-        for _ in 0..exchanges
-          if listener.accept(within: 1.minute) is Ok(exchange)
-            worker = Worker.start(exchange)
-            worker.send(Answer)
-            state.accepted += 1
-          end
-        end
+      Serve:
+        state.accepted += handed(listener)
+      ServeFour:
+        state.accepted += handed(listener)
+        state.accepted += handed(listener)
+        state.accepted += handed(listener)
+        state.accepted += handed(listener)
     end
   end
 end
@@ -45,9 +47,17 @@ supervisor Acceptors(listener: HttpListener, exchange: Exchange)
   child Worker(exchange), restart: :always
 end
 
-fn fetched(http: Http, acceptor: Handle(Acceptor), port: UInt16,
-  exchanges: UInt64) : Result(Response, HttpError)
-  acceptor.send(Serve(exchanges: exchanges))
+# The next exchange, handed to a worker of its own: 1, or 0 when none came.
+fn handed(listener: HttpListener) : UInt64
+  if listener.accept(within: 1.minute) is Ok(exchange)
+    Worker.start(exchange).send(Answer)
+    return 1
+  end
+  0
+end
+
+fn fetched(http: Http, acceptor: Handle(Acceptor), port: UInt16) : Result(Response, HttpError)
+  acceptor.send(Serve)
   http.send(Request(method: "GET", path: "/"), host: "localhost", port: port, within: 1.minute)
 end
 
@@ -67,7 +77,7 @@ test "one accept in an update: the worker answers once the update ends, unless a
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
   acceptor = Acceptor.start(listener)
-  assert hello?(fetched(http, acceptor, listener.port, 1))
+  assert hello?(fetched(http, acceptor, listener.port))
 end
 
 test rejects "a second accept in the same update waits on a client its held send to the worker keeps waiting"
@@ -81,7 +91,7 @@ test rejects "a second accept in the same update waits on a client its held send
   end
   assert unanswered == 5
   acceptor = Acceptor.start(listener)
-  acceptor.send(Serve(exchanges: 10))
+  acceptor.send(ServeFour)
 end
 
 verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)

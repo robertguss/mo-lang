@@ -43,7 +43,10 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| run_cmd.addArgs(args);
     run_step.dependOn(&run_cmd.step);
 
-    const mod_tests = b.addTest(.{ .root_module = mo });
+    // -Dtest-filter=name runs only the tests whose names hold it (the corpus test among them
+    // only when it matches).
+    const filters = b.option([]const []const u8, "test-filter", "Run only the tests whose names hold this") orelse &.{};
+    const mod_tests = b.addTest(.{ .root_module = mo, .filters = filters });
     const test_step = b.step("test", "Run every stage's tests and the corpus test");
     const run_tests = b.addRunArtifact(mod_tests);
     run_tests.setEnvironmentVariable("MO_EXE", mo_path);

@@ -1,11 +1,11 @@
 module Kv.Server
-expose Gate, Listening, Worker, Servers, admitted, talk, exchange, answer
+expose Gate, Listening, Worker, Heard, Servers, admitted, finished, answer, conversation, heard_so_far?
 
 use Kv.Log{Journal, empty}
 use Kv.Protocol{Request, Response, Refusal, parse, render}
 use Kv.Store{Store, Opening}
 
-intent "Serve the kv protocol over TCP: a listening process takes each client, a gate lets at most 64 in at once and turns the next away with ERR busy, and a worker process per connection reads a line, asks the store, and writes the answer, closing a client silent for 30 seconds."
+intent "Serve the kv protocol over TCP: the runtime serves the listener into a listening process, a gate lets at most 64 clients in at once and turns the next away with ERR busy, and each connection is read into a worker process of its own, which asks the store for each line's answer and writes it, and the runtime closes a client silent for 30 seconds."
 
 process Gate()
   state
@@ -36,60 +36,101 @@ process Gate()
   end
 end
 
+# A connection's worker: each line the runtime reads is answered in turn, until the client quits,
+# goes, is silent for 30 seconds, or a write fails; then the worker closes it and leaves the gate.
 process Worker(conn: Conn, store: Handle(Store), gate: Handle(Gate))
   state
     lines: UInt64
+    done: Bool
   end
 
-  message Talk
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
 
   fn update(state, message)
     case message
-      Talk:
-        state.lines += talk(conn, store)
-        conn.close
-        gate.send(Leave)
-    end
-  end
-end
-
-process Listening(listener: Listener, store: Handle(Store), gate: Handle(Gate))
-  state
-    admitted: UInt64
-    turned_away: UInt64
-  end
-
-  message Accept : Bool
-
-  fn update(state, message)
-    case message
-      Accept:
-        case listener.accept(within: 60_000.ms)
-          Ok(conn):
-            if admitted(conn, store, gate)
-              state.admitted += 1
-            else
-              state.turned_away += 1
-            end
-            true
-          Error(_): false
+      Line(text):
+        if !state.done
+          state.lines += 1
+          state.done = finished(conn, store, gate, text)
+        end
+      LineTooLong:
+        if !state.done
+          state.done = !sent(conn, Failed(reason: Malformed)) and left(conn, gate)
+        end
+      Closed | Idle:
+        if !state.done
+          state.done = left(conn, gate)
         end
     end
   end
 end
 
-# A worker that crashed has lost its connection, so it is not started again on it.
-supervisor Servers(listener: Listener, conn: Conn, store: Handle(Store), gate: Handle(Gate))
-  child Gate, restart: :always
-  child Listening(listener, store, gate), restart: :always
-  child Worker(conn, store, gate), restart: :never
+process Listening(store: Handle(Store), gate: Handle(Gate))
+  state
+    admitted: UInt64
+    turned_away: UInt64
+    quiet: UInt64
+  end
+
+  message Accepted(conn: Conn)
+  message Idle
+
+  fn update(state, message)
+    case message
+      Accepted(conn):
+        if admitted(conn, store, gate)
+          state.admitted += 1
+        else
+          state.turned_away += 1
+        end
+      Idle:
+        state.quiet += 1
+    end
+  end
 end
 
-# A client past the 64th is told ERR busy and closed; any other gets a worker of its own.
+# What a client heard, line by line, until its connection ended: the tests' client.
+process Heard()
+  state
+    lines: List(String)
+    ended: Bool
+  end
+
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
+  message Lines : List(String)
+
+  fn update(state, message)
+    case message
+      Line(text):
+        state.lines = state.lines.push(text)
+      LineTooLong:
+        state.lines = state.lines.push("")
+      Closed | Idle:
+        state.ended = true
+      Lines: state.lines
+    end
+  end
+end
+
+# A worker that crashed has lost its connection, so it is not started again on it.
+supervisor Servers(conn: Conn, store: Handle(Store), gate: Handle(Gate))
+  child Gate, restart: :always
+  child Listening(store, gate), restart: :always
+  child Worker(conn, store, gate), restart: :never
+  child Heard, restart: :always
+end
+
+# A client past the 64th is told ERR busy and closed; any other has its lines read into a
+# worker of its own.
 fn admitted(conn: Conn, store: Handle(Store), gate: Handle(Gate)) : Bool
   if gate.ask(Enter, within: 5_000.ms) is Ok(true)
-    worker = Worker.start(conn, store, gate)
-    worker.send(Talk)
+    conn.lines(into: Worker.start(conn, store, gate), idle: 30_000.ms)
     return true
   end
   turn_away(conn)
@@ -102,44 +143,21 @@ fn turn_away(conn: Conn)
   conn.close
 end
 
-# Serves a connection until the client quits, leaves, or is silent for 30 seconds. A for
-# needs a range to repeat, so a connection gets at most 100 million lines (GAPS.md).
-fn talk(conn: Conn, store: Handle(Store)) : UInt64
-  var lines = 0
-  for _ in 0..10_000
-    stretch = talk_awhile(conn, store)
-    lines += stretch.0
-    if !stretch.1
-      break
-    end
-  end
-  lines
-end
-
-fn talk_awhile(conn: Conn, store: Handle(Store)) : (UInt64, Bool)
-  var lines = 0
-  for _ in 0..10_000
-    if !exchange(conn, store)
-      return (lines, false)
-    end
-    lines += 1
-  end
-  (lines, true)
-end
-
-# One line in and its answer out; false once the connection is done.
-fn exchange(conn: Conn, store: Handle(Store)) : Bool
-  case conn.read_line(within: 30_000.ms)
-    Ok(Some(line)): answered(conn, store, line)
-    Ok(None): false
-    Error(LineTooLong): sent(conn, Failed(reason: Malformed))
-    Error(_): false
-  end
-end
-
-fn answered(conn: Conn, store: Handle(Store), line: String) : Bool
+# One line in and its answer out; true once the connection is done, after the worker has
+# closed it and left the gate.
+fn finished(conn: Conn, store: Handle(Store), gate: Handle(Gate), line: String) : Bool
   response = answer(store, line)
-  sent(conn, response) and response != Bye
+  if sent(conn, response) and response != Bye
+    return false
+  end
+  left(conn, gate)
+end
+
+# The worker is done with its client: the connection closes and the gate has room again.
+fn left(conn: Conn, gate: Handle(Gate)) : Bool
+  conn.close
+  gate.send(Leave)
+  true
 end
 
 # The answer to one line: BYE for QUIT, ERR malformed for a line that is no request, and
@@ -163,42 +181,35 @@ fn sent(conn: Conn, response: Response) : Bool
   conn.write(render(response), within: 30_000.ms) is Ok(_)
 end
 
-# A client that writes its lines, lets the listening process take it, and reads every
-# line the server writes back until it closes.
-fn conversation(net: Net, store: Handle(Store), gate: Handle(Gate),
-  lines: List(String)) : Result(List(String), NetError)
+# A client of a served listener that has what comes back read into `heard` and writes its
+# lines, all in one statement, so the runtime serves it once they are written.
+fn conversation(net: Net, store: Handle(Store), gate: Handle(Gate), heard: Handle(Heard),
+  lines: List(String)) : Result(Bool, NetError)
   listener = try net.listen(7_700, within: 1.minute)
-  listening = Listening.start(listener, store, gate)
+  listener.serve(into: Listening.start(store, gate), idle: 60_000.ms)
   client = try net.connect("localhost", 7_700, within: 1.minute)
-  for line in lines
-    try client.write("#{line}\n", within: 1.minute)
-  end
-  if listening.ask(Accept, within: 10.minute) is Error(_)
-    return Error(Timeout)
-  end
-  heard_all(client)
+  client.lines(into: heard, idle: 60_000.ms)
+  try client.write(String.join(lines.map(fn(line) "#{line}\n" end), ""), within: 1.minute)
+  Ok(true)
 end
 
-fn heard_all(client: Conn) : Result(List(String), NetError)
-  var heard = [""].take(0)
-  for _ in 0..1_000
-    case try client.read_line(within: 1.minute)
-      Some(line):
-        heard = heard.push(line)
-      None:
-        return Ok(heard)
-    end
-  end
-  Ok(heard)
-end
-
-# What a client heard is what it should have heard, in order, up to where a failure cut
-# the conversation short.
-fn heard_so_far?(heard: Result(List(String), NetError), expected: List(String)) : Bool
+# What a client heard is what it should have heard, in order, up to where a failure cut the
+# conversation short or a seeded run left the rest waiting, and up to an ERR io, after which a
+# store that failed may answer otherwise; anything, when it never got to talk.
+fn heard_so_far?(talk: Result(Bool, NetError), heard: Result(List(String), AskError),
+  expected: List(String)) : Bool
   case heard
-    Ok(lines): expected.take(lines.size) == lines
+    Ok(lines): talk is Error(_) or agreed?(lines, expected)
     Error(_): true
   end
+end
+
+fn agreed?(lines: List(String), expected: List(String)) : Bool
+  for pair in lines.zip(expected)
+    return true if pair.0 == "ERR io"
+    return false if pair.0 != pair.1
+  end
+  lines.size <= expected.size
 end
 
 fn store_for_tests(dir: Fs, clock: Clock, opening: Opening) : Handle(Store)
@@ -207,19 +218,22 @@ end
 
 test "a client's requests get the store's answers, and QUIT says BYE and closes"
   opening = Opening(table: empty(), log_bytes: 0, at: Time.fixture(), log_within: 1.minute)
+  store = store_for_tests(Fs.fixture(), Clock.fixture(), opening)
+  heard = Heard.start()
   lines = ["SET a 1", "GET a", "INCR a 2", "nonsense", "KEYS", "DEL b", "QUIT", "GET a"]
-  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening),
-    Gate.start(), lines)
+  talk = conversation(Net.fixture(), store, Gate.start(), heard, lines)
   expected = ["OK", "VALUE 1", "VALUE 3", "ERR malformed", "KEYS 1", "a", "MISSING", "BYE"]
-  assert heard_so_far?(heard, expected)
+  assert heard_so_far?(talk, heard.ask(Lines, within: 1.minute), expected)
 end
 
 test "a line over 64 KiB is malformed, and the connection goes on"
   opening = Opening(table: empty(), log_bytes: 0, at: Time.fixture(), log_within: 1.minute)
-  lines = ["SET a #{"x".repeat(65_536)}", "GET a", "QUIT"]
-  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening),
-    Gate.start(), lines)
-  assert heard_so_far?(heard, ["ERR malformed", "MISSING", "BYE"])
+  store = store_for_tests(Fs.fixture(), Clock.fixture(), opening)
+  heard = Heard.start()
+  talk = conversation(Net.fixture(), store, Gate.start(), heard,
+    ["SET a #{"x".repeat(65_536)}", "GET a", "QUIT"])
+  assert heard_so_far?(talk, heard.ask(Lines, within: 1.minute),
+    ["ERR malformed", "MISSING", "BYE"])
 end
 
 test "the gate lets 64 clients in, turns the next away, and takes one more when one leaves"
@@ -242,16 +256,18 @@ test "a client that finds 64 inside hears ERR busy, and is closed"
   for _ in 0..64
     gate.send(Enter)
   end
-  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening), gate,
-    ["GET a"])
-  assert heard_so_far?(heard, ["ERR busy"])
+  store = store_for_tests(Fs.fixture(), Clock.fixture(), opening)
+  heard = Heard.start()
+  talk = conversation(Net.fixture(), store, gate, heard, ["GET a"])
+  assert heard_so_far?(talk, heard.ask(Lines, within: 1.minute), ["ERR busy"])
 end
 
-test "a silent client is closed, and hears nothing"
+test "a client that says nothing hears nothing"
   opening = Opening(table: empty(), log_bytes: 0, at: Time.fixture(), log_within: 1.minute)
-  heard = conversation(Net.fixture(), store_for_tests(Fs.fixture(), Clock.fixture(), opening),
-    Gate.start(), [])
-  assert heard_so_far?(heard, [])
+  store = store_for_tests(Fs.fixture(), Clock.fixture(), opening)
+  heard = Heard.start()
+  talk = conversation(Net.fixture(), store, Gate.start(), heard, [])
+  assert heard_so_far?(talk, heard.ask(Lines, within: 1.minute), [])
 end
 
 verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)

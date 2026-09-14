@@ -1,7 +1,7 @@
 module Effects.Http
-expose Fetched, Worker, Server, Servers, Raw, Raws, answer, fetch, fetch_raw, answered?, echoed?, wired, created?
+expose Fetched, Worker, Server, Servers, Raw, RawReader, Raws, answer, fetch, fetch_raw, answered?, echoed?, created?
 
-intent "Serve HTTP from processes: the server accepts one exchange per message and hands it to a worker of its own, which answers GET /hello and POST /echo, and a test drives both through Http.fixture() with no real socket."
+intent "Serve HTTP from processes: the runtime serves the listener into a server process, which hands each exchange to a worker of its own, which answers GET /hello and POST /echo, and a test drives both through Http.fixture() with no real socket."
 
 type Fetched = Result(Response, HttpError)
 
@@ -20,63 +20,82 @@ process Worker(exchange: Exchange)
   end
 end
 
-process Server(listener: HttpListener)
+process Server()
   state
     served: UInt32
+    quiet: UInt32
   end
 
-  message Serve : Bool
+  message Accepted(exchange: Exchange)
+  message Idle
 
   fn update(state, message)
     case message
-      Serve:
-        case listener.accept(within: 1.minute)
-          Ok(exchange):
-            worker = Worker.start(exchange)
-            worker.send(Answer)
-            state.served += 1
-            true
-          Error(_): false
-        end
+      Accepted(exchange):
+        Worker.start(exchange).send(Answer)
+        state.served += 1
+      Idle:
+        state.quiet += 1
     end
   end
 end
 
-supervisor Servers(listener: HttpListener, exchange: Exchange)
-  child Server(listener), restart: :always
+supervisor Servers(exchange: Exchange)
+  child Server, restart: :always
   child Worker(exchange), restart: :always
 end
 
-process Raw(listener: Listener, wire: String)
+# A server that writes `wire`, as it is, to each client once its request's headers end.
+process Raw(wire: String)
   state
     served: UInt32
+    quiet: UInt32
   end
 
-  message Serve : Bool
+  message Accepted(conn: Conn)
+  message Idle
 
   fn update(state, message)
     case message
-      Serve:
+      Accepted(conn):
+        conn.lines(into: RawReader.start(conn, wire), idle: 1.minute)
         state.served += 1
-        wired(listener, wire) is Ok(_)
+      Idle:
+        state.quiet += 1
     end
   end
 end
 
-supervisor Raws(listener: Listener)
-  child Raw(listener, ""), restart: :always
-end
+# Reads a client's request line and headers; at the blank line after them it writes the wire and
+# closes the connection.
+process RawReader(conn: Conn, wire: String)
+  state
+    lines: UInt32
+  end
 
-fn wired(listener: Listener, wire: String) : Result(Bool, NetError)
-  conn = try listener.accept(within: 1.minute)
-  for _ in 0..100
-    if try conn.read_line(within: 1.minute) == Some("")
-      break
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
+
+  fn update(state, message)
+    case message
+      Line(text):
+        state.lines += 1
+        if text == ""
+          if conn.write(wire, within: 1.minute) is Ok(_)
+            state.lines += 0
+          end
+          conn.close
+        end
+      LineTooLong | Closed | Idle: conn.close
     end
   end
-  try conn.write(wire, within: 1.minute)
-  conn.close
-  Ok(true)
+end
+
+supervisor Raws(conn: Conn)
+  child Raw(""), restart: :always
+  child RawReader(conn, ""), restart: :always
 end
 
 fn answer(request: Request) : Response
@@ -91,8 +110,7 @@ fn answer(request: Request) : Response
   Response(status: 404, body: "nothing at #{request.method} #{request.path}")
 end
 
-fn fetch(http: Http, server: Handle(Server), port: UInt16, request: Request) : Fetched
-  server.send(Serve)
+fn fetch(http: Http, port: UInt16, request: Request) : Fetched
   http.send(request, host: "localhost", port: port, within: 1.minute)
 end
 
@@ -110,8 +128,7 @@ fn echoed?(got: Fetched, body: String, kind: String) : Bool
   end
 end
 
-fn fetch_raw(http: Http, raw: Handle(Raw), port: UInt16) : Fetched
-  raw.send(Serve)
+fn fetch_raw(http: Http, port: UInt16) : Fetched
   http.send(Request(method: "GET", path: "/"), host: "localhost", port: port, within: 1.minute)
 end
 
@@ -133,22 +150,22 @@ end
 test "GET /hello answers with the name its query gives, unless a call fails and says so"
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
-  server = Server.start(listener)
+  listener.serve(into: Server.start(), idle: 1.minute)
   named = Request(method: "GET", path: "/hello", query: Map.new().set("name", "x"))
-  assert answered?(fetch(http, server, listener.port, named), 200, "hello, x")
+  assert answered?(fetch(http, listener.port, named), 200, "hello, x")
   bare = Request(method: "GET", path: "/hello")
-  assert answered?(fetch(http, server, listener.port, bare), 200, "hello, world")
+  assert answered?(fetch(http, listener.port, bare), 200, "hello, world")
 end
 
 test "POST /echo answers with the body and its content type, and another route is 404, unless a call fails"
   http = Http.fixture()
   assert http.listen(8080, within: 1.ms) is Ok(listener)
-  server = Server.start(listener)
+  listener.serve(into: Server.start(), idle: 1.minute)
   csv = Map.new().set("Content-Type", "text/csv")
   posted = Request(method: "POST", path: "/echo", headers: csv, body: "a,b\n1,2")
-  assert echoed?(fetch(http, server, 8080, posted), "a,b\n1,2", "text/csv")
+  assert echoed?(fetch(http, 8080, posted), "a,b\n1,2", "text/csv")
   put = Request(method: "PUT", path: "/echo")
-  assert answered?(fetch(http, server, 8080, put), 404, "nothing at PUT /echo")
+  assert answered?(fetch(http, 8080, put), 404, "nothing at PUT /echo")
 end
 
 test "a port nothing listens on is Refused, and a request with no server to answer it times out"
@@ -162,8 +179,9 @@ end
 test "a response with no content-length runs to the end of the stream, and its headers join as a request's do, unless a call fails"
   http = Http.fixture()
   assert Net.fixture().listen(0, within: 1.ms) is Ok(listener)
-  raw = Raw.start(listener, "HTTP/1.1 201 Created\r\nX-A: 1\r\nx-a: 2\r\n\r\nto the end")
-  assert created?(fetch_raw(http, raw, listener.port))
+  listener.serve(into: Raw.start("HTTP/1.1 201 Created\r\nX-A: 1\r\nx-a: 2\r\n\r\nto the end"),
+    idle: 1.minute)
+  assert created?(fetch_raw(http, listener.port))
 end
 
 verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)

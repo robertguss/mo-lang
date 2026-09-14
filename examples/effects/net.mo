@@ -1,115 +1,107 @@
 module Effects.Net
-expose Echo, EchoServer, Echoes, echoed?
+expose Echo, EchoServer, Heard, Echoes, talked, echoed?
 
-intent "Serve a line protocol from processes: the listener hands each connection to a worker of its own, and a test drives both through Net.fixture() with no real socket."
+intent "Serve a line protocol from processes: the runtime serves the listener into a server process, which has each connection read into a worker of its own, and a test drives both through Net.fixture() with no real socket."
 
 process Echo(conn: Conn)
   state
     lines: UInt32
   end
 
-  message Serve : UInt32
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
 
   fn update(state, message)
     case message
-      Serve:
-        state.lines += serve(conn)
-        state.lines
+      Line(text):
+        if conn.write("#{text}\n", within: 1.minute) is Ok(_)
+          state.lines += 1
+        end
+      LineTooLong | Closed | Idle: conn.close
     end
   end
 end
 
-process EchoServer(listener: Listener)
+process EchoServer()
   state
     workers: UInt32
+    quiet: UInt32
   end
 
-  message Accept : Option(Handle(Echo))
+  message Accepted(conn: Conn)
+  message Idle
 
   fn update(state, message)
     case message
-      Accept:
-        case listener.accept(within: 1.minute)
-          Ok(conn):
-            worker = Echo.start(conn)
-            worker.send(Serve)
-            state.workers += 1
-            Some(worker)
-          Error(_): None
-        end
+      Accepted(conn):
+        conn.lines(into: Echo.start(conn), idle: 1.minute)
+        state.workers += 1
+      Idle:
+        state.quiet += 1
     end
   end
 end
 
-supervisor Echoes(listener: Listener, conn: Conn)
-  child EchoServer(listener), restart: :always
+# What a client heard, line by line, until its connection ended.
+process Heard()
+  state
+    lines: List(String)
+    ended: Bool
+  end
+
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
+  message Lines : List(String)
+
+  fn update(state, message)
+    case message
+      Line(text):
+        state.lines = state.lines.push(text)
+      LineTooLong:
+        state.lines = state.lines.push("")
+      Closed | Idle:
+        state.ended = true
+      Lines: state.lines
+    end
+  end
+end
+
+supervisor Echoes(conn: Conn)
+  child EchoServer, restart: :always
   child Echo(conn), restart: :always
+  child Heard, restart: :always
 end
 
-fn serve(conn: Conn) : UInt32
-  var lines = 0
-  for _ in 0..1_000
-    case echo_once(conn)
-      Ok(true):
-        lines += 1
-      Ok(false):
-        break
-      Error(_):
-        break
-    end
-  end
-  lines
-end
-
-fn echo_once(conn: Conn) : Result(Bool, NetError)
-  line = try conn.read_line(within: 1.minute)
-  case line
-    Some(text):
-      try conn.write("#{text}\n", within: 1.minute)
-      Ok(true)
-    None: Ok(false)
-  end
-end
-
-fn talk(net: Net, sent: List(String)) : Result(List(String), NetError)
+# A client of a listener served on port 7 that has what comes back read into `heard` and writes
+# its lines, all in one statement, so the runtime serves it once they are written.
+fn talked(net: Net, heard: Handle(Heard), sent: List(String)) : Result(Bool, NetError)
   listener = try net.listen(7, within: 1.minute)
-  server = EchoServer.start(listener)
+  listener.serve(into: EchoServer.start(), idle: 1.minute)
   client = try net.connect("localhost", 7, within: 1.minute)
-  for line in sent
-    try client.write("#{line}\n", within: 1.minute)
-  end
-  case server.ask(Accept, within: 1.minute)
-    Ok(Some(worker)):
-      if worker.ask(Serve, within: 10.minute) is Error(_)
-        return Error(Timeout)
-      end
-    Ok(None):
-      return Error(Timeout)
-    Error(_):
-      return Error(Timeout)
-  end
-  var heard = sent.take(0)
-  for _ in sent
-    case try client.read_line(within: 1.minute)
-      Some(text):
-        heard = heard.push(text)
-      None:
-        return Error(Closed)
-    end
-  end
-  Ok(heard)
+  client.lines(into: heard, idle: 1.minute)
+  try client.write(String.join(sent.map(fn(line) "#{line}\n" end), ""), within: 1.minute)
+  Ok(true)
 end
 
-fn echoed?(heard: Result(List(String), NetError), sent: List(String)) : Bool
+# What came back is what was sent, in order, up to where a failure cut it short or a seeded run
+# left the rest waiting; anything, when the client never got to talk.
+fn echoed?(talk: Result(Bool, NetError), heard: Result(List(String), AskError),
+  sent: List(String)) : Bool
   case heard
-    Ok(lines): lines == sent
+    Ok(lines): talk is Error(_) or sent.take(lines.size) == lines
     Error(_): true
   end
 end
 
 test "every line a client sends comes back the same, unless the connection fails and says so"
   sent = ["hello", "wide world", ""]
-  assert echoed?(talk(Net.fixture(), sent), sent)
+  heard = Heard.start()
+  talk = talked(Net.fixture(), heard, sent)
+  assert echoed?(talk, heard.ask(Lines, within: 1.minute), sent)
 end
 
 test "a port a listener holds is Busy for the next one"

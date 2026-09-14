@@ -21,6 +21,7 @@ const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const net_mod = @import("net.zig");
 const server_mod = @import("server.zig");
+const sources_mod = @import("sources.zig");
 const stdlib = @import("stdlib.zig");
 const turns_mod = @import("turns.zig");
 const vm_mod = @import("vm.zig");
@@ -181,6 +182,8 @@ pub const Sim = struct {
     free_ids: std.ArrayList(u32) = .empty,
     /// Sends held in every outbox: while none is, no wait looks for one.
     held: usize = 0,
+    /// The loops the runtime owns: listeners served and connections read into processes.
+    sources: sources_mod.Sources = .{},
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -469,7 +472,8 @@ pub const Sim = struct {
     /// One message to each waiting process that is up and not on the stack, in start order
     /// or in an order the seed shuffles; true when one was delivered.
     fn round(sim: *Sim, order: *std.ArrayList(u32), delivered: *u32) Error!bool {
-        var progressed = false;
+        // What the runtime's loops took goes in first (sources.zig); under mo run, turns.zig.
+        var progressed = if (sim.server == null) try sources_mod.pumpFixture(sim) else false;
         order.clearRetainingCapacity();
         for (0..sim.procs.items.len) |id| try order.append(sim.gpa, @intCast(id));
         if (sim.schedule) |*rng| rng.random().shuffle(u32, order.items);
@@ -1601,4 +1605,70 @@ test "an update that waits on what only a send it holds could bring crashes, and
     try std.testing.expectEqualStrings("Relay waits in ask, and Acceptor waits in HttpListener.accept, while it holds a send to Worker #2, and sends are held until its update ends: Worker #2 was started with a connection from that listener that it cannot answer until then", report.clause);
     try std.testing.expectEqualStrings("Answer", report.values[0].value);
     try std.testing.expectEqualStrings("Relay", report.process.?.process);
+}
+
+test "under --faults, a connection the runtime reads finds itself Closed or waits out its idle time, by the seed" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Faults
+        \\process Ends()
+        \\  state
+        \\    bytes: UInt64
+        \\    closed: UInt64
+        \\    idled: UInt64
+        \\  end
+        \\  message Line(text: String)
+        \\  message LineTooLong
+        \\  message Closed
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Line(text):
+        \\        state.bytes += text.size
+        \\      LineTooLong:
+        \\        state.bytes += 0
+        \\      Closed:
+        \\        state.closed += 1
+        \\      Idle:
+        \\        state.idled += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Top
+        \\  child Ends, restart: :always
+        \\end
+    );
+    const Run = struct {
+        fn ends(a: std.mem.Allocator, p: *const bytecode.Program, seed: u64, percent: u32) ![3]i128 {
+            var machine: Vm = .init(a, p, seed);
+            var sim: Sim = .seeded(&machine, seed, "faults", percent);
+            machine.sim = &sim;
+            // Two lines wait on connection 0, which connection 1 wrote and left open; no fixture
+            // call draws a fault before the runtime reads them.
+            try sim.fixture.conns.append(a, .{ .peer = 1 });
+            try sim.fixture.conns.append(a, .{ .peer = 0 });
+            try sim.fixture.conns.items[0].inbound.appendSlice(a, "ab\ncd\n");
+            const id = try sim.start(0, &.{});
+            _ = try sources_mod.row(&machine, .lines, &.{ .{ .cap = .{ .kind = .conn, .handle = 0 } }, .{ .handle = id }, .{ .duration = 60_000 } });
+            try sim.finish();
+            const f = sim.procs.items[id].state.record.fields;
+            return .{ f[0].int, f[1].int, f[2].int };
+        }
+    };
+    // Without faults both lines arrive, and nothing ends the connection.
+    const clean = try Run.ends(arena, program, 1, 0);
+    try std.testing.expectEqual([3]i128{ 4, 0, 0 }, clean);
+    // With every draw a fault, the first delivery is an end instead: Closed or Idle, by the seed.
+    var closed: i128 = 0;
+    var idled: i128 = 0;
+    for (1..41) |seed| {
+        const got = try Run.ends(arena, program, seed, 100);
+        try std.testing.expectEqual(@as(i128, 0), got[0]);
+        try std.testing.expectEqual(@as(i128, 1), got[1] + got[2]);
+        closed += got[1];
+        idled += got[2];
+    }
+    try std.testing.expect(closed > 0 and idled > 0);
 }

@@ -25,7 +25,7 @@ const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
 const Error = vm_mod.Error;
 
-pub const Row = enum { listen, accept, port, request, reply, send };
+pub const Row = enum { listen, accept, port, request, reply, send, serve };
 
 /// HttpError's variants, by name.
 pub const Failure = enum { Timeout, Refused, Closed, Busy, Malformed, TooLarge, Unsupported };
@@ -34,8 +34,8 @@ pub const Failure = enum { Timeout, Refused, Closed, Busy, Malformed, TooLarge, 
 pub const limit = 1 << 20;
 /// A connection's buffer at its first read, and at most: a message at every limit, with the
 /// line ends past them.
-const buffer_initial = 16 << 10;
-const buffer_cap = 3 * limit + 8;
+pub const buffer_initial = 16 << 10;
+pub const buffer_cap = 3 * limit + 8;
 
 pub const Kind = enum { request, response };
 
@@ -459,6 +459,8 @@ pub fn call(n: *net.Net, vm: *Vm, which: Row, a: []const Value) Error!Value {
         },
         .reply => reply(n, vm, a[0].cap.handle, a[1], a[2].duration),
         .send => send(n, vm, a[1], a[2].string, a[3].int, a[4].duration),
+        // The runtime's loop (sources.zig); vm.zig sends it there.
+        .serve => unreachable,
     };
 }
 
@@ -567,6 +569,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
             const within = a[1].duration;
             if (sim.fault(null, within) != null) return fail(vm, .Timeout);
             const l = &f.listeners.items[a[0].cap.handle];
+            if (l.served) return fail(vm, .Busy);
             if (l.head == l.backlog.items.len) {
                 sim.wait(within);
                 return fail(vm, .Timeout);
@@ -647,6 +650,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
                 }
             }
         },
+        .serve => unreachable,
     }
 }
 

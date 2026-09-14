@@ -321,8 +321,10 @@ fn run(init: std.process.Init) !void {
         if (r.summary.failures > 0) std.process.exit(1);
         return;
     }
-    // --recipe: the file against a recipe's signatures, then the recipe's tests run on it.
-    if (recipe_name) |name| {
+    // --recipe: the file against a recipe's signatures, then the recipe's tests run on it. A file
+    // whose first lines say `# recipe: Module.Recipe` is held to that recipe by a plain check too,
+    // as the corpus test holds it (step 20).
+    if (recipe_name orelse mo.recipe.named(program.main().source)) |name| {
         diags.clearRetainingCapacity();
         const c = try mo.recipe.conform(arena, io, path, name, &diags);
         const r = c.run orelse return reject(out, err, c.files, diags.items, json);

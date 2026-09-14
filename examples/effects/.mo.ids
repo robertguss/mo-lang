@@ -20,28 +20,28 @@
       "module": "Effects.Http",
       "declarations": [
         { "id": "fb00ff70c31c", "name": "module Effects.Http", "hash": "bf1817f0add89714" },
-        { "id": "695c8a2cde6e", "name": "expose", "hash": "c0622c77898c9acd" },
-        { "id": "1e6ccfe973a0", "name": "intent", "hash": "7d758235e0e5c59c" },
+        { "id": "695c8a2cde6e", "name": "expose", "hash": "5701f36d83953d89" },
+        { "id": "1e6ccfe973a0", "name": "intent", "hash": "f8d99a7e26e7233d" },
         { "id": "a92f93aed68f", "name": "type Fetched", "hash": "dfcbb177249c85cb" },
         { "id": "cce4c6c7f285", "name": "process Worker", "hash": "8496ade6e7b194a5" },
-        { "id": "648ee2c835b0", "name": "process Server", "hash": "aebb4b67a9b0c888" },
-        { "id": "5764808205ba", "name": "supervisor Servers", "hash": "537a5282a70619b0" },
-        { "id": "e272c732610e", "name": "process Raw", "hash": "9961d5922f6df6cb" },
-        { "id": "71a1edad666b", "name": "supervisor Raws", "hash": "41d9e709c516c08e" },
-        { "id": "5d1bce399cef", "name": "fn wired", "hash": "2385b5ad9d3afe58" },
+        { "id": "648ee2c835b0", "name": "process Server", "hash": "c9d3e9ee0fa45543" },
+        { "id": "5764808205ba", "name": "supervisor Servers", "hash": "e0b7985a68a7dcef" },
+        { "id": "e272c732610e", "name": "process Raw", "hash": "8b472df71bcb77e0" },
+        { "id": "b5731196791a", "name": "process RawReader", "hash": "ebe164b34f75a1a7" },
+        { "id": "71a1edad666b", "name": "supervisor Raws", "hash": "f621f440f0c72056" },
         { "id": "f2ac3f756e97", "name": "fn answer", "hash": "23ebc68f9f3469d2" },
-        { "id": "3c2496cc5afe", "name": "fn fetch", "hash": "510d37716c63092d" },
+        { "id": "3c2496cc5afe", "name": "fn fetch", "hash": "6ef8326664048401" },
         { "id": "d6c6c1d21c13", "name": "fn answered?", "hash": "e0aa846b7afed98f" },
         { "id": "44966f90fbfb", "name": "fn echoed?", "hash": "803495b78c6993c8" },
-        { "id": "e0ab885d7807", "name": "fn fetch_raw", "hash": "820365493f60f7a3" },
+        { "id": "e0ab885d7807", "name": "fn fetch_raw", "hash": "37c60cd17ec0e24d" },
         { "id": "df5366b24b53", "name": "fn created?", "hash": "6519f0619b633554" },
         { "id": "1cb537686e52", "name": "test \"a route's answer depends only on the request\"", "hash": "b2dd27472f646d59" },
-        { "id": "4237839b9747", "name": "test \"GET /hello answers with the name its query gives, unless a call fails and says so\"", "hash": "9fa566f35990bb09" },
-        { "id": "72804d4af3ec", "name": "test \"POST /echo answers with the body and its content type, and another route is 404, unless a call fails\"", "hash": "d62ac02b928b1d55" },
+        { "id": "4237839b9747", "name": "test \"GET /hello answers with the name its query gives, unless a call fails and says so\"", "hash": "3d2f991323018d5c" },
+        { "id": "72804d4af3ec", "name": "test \"POST /echo answers with the body and its content type, and another route is 404, unless a call fails\"", "hash": "87b6a912e811afac" },
         { "id": "e5ccc023f4e4", "name": "test \"a port nothing listens on is Refused, and a request with no server to answer it times out\"", "hash": "f2bc759b7119bc98" },
-        { "id": "58c5c839d32b", "name": "test \"a response with no content-length runs to the end of the stream, and its headers join as a request's do, unless a call fails\"", "hash": "79657089f4f7cf33" }
+        { "id": "58c5c839d32b", "name": "test \"a response with no content-length runs to the end of the stream, and its headers join as a request's do, unless a call fails\"", "hash": "fa6b1de5f5067f50" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "1e3fafe49b37a0fa" }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "9e1722178c1ae5d4" }
     },
     {
       "path": "narrowing.mo",
@@ -62,19 +62,18 @@
       "module": "Effects.Net",
       "declarations": [
         { "id": "5f9b975b5981", "name": "module Effects.Net", "hash": "99400d54c40ee591" },
-        { "id": "180fce533d28", "name": "expose", "hash": "75a5d6aeb19da9d3" },
-        { "id": "6cc4f113f93b", "name": "intent", "hash": "7741f462f6781046" },
-        { "id": "c1a6affa2865", "name": "process Echo", "hash": "1078a1d2bbd341ac" },
-        { "id": "77608b20991c", "name": "process EchoServer", "hash": "092a8cfef099add4" },
-        { "id": "c7bb83576f0e", "name": "supervisor Echoes", "hash": "41db32dd5a098ac1" },
-        { "id": "19afba9033d1", "name": "fn serve", "hash": "5da95d9d155d0624" },
-        { "id": "ee49a6ea5d8a", "name": "fn echo_once", "hash": "2e32ad6622d7121d" },
-        { "id": "285b9ef42a73", "name": "fn talk", "hash": "f65f7bf37abf987e" },
-        { "id": "3a4708cc62d0", "name": "fn echoed?", "hash": "b2ac919cbf6e5379" },
-        { "id": "422bad882a8b", "name": "test \"every line a client sends comes back the same, unless the connection fails and says so\"", "hash": "c6cc692af34df98e" },
+        { "id": "180fce533d28", "name": "expose", "hash": "96b7a0210a4b82b7" },
+        { "id": "6cc4f113f93b", "name": "intent", "hash": "933da1af4b12fbc7" },
+        { "id": "c1a6affa2865", "name": "process Echo", "hash": "bc503e7931135d9f" },
+        { "id": "77608b20991c", "name": "process EchoServer", "hash": "7729f324288f5c0d" },
+        { "id": "d29838712b03", "name": "process Heard", "hash": "e69a21b6487f7466" },
+        { "id": "c7bb83576f0e", "name": "supervisor Echoes", "hash": "86de71cdd05fe538" },
+        { "id": "dff08a3ed0a7", "name": "fn talked", "hash": "c4bf7037df9d69f1" },
+        { "id": "3a4708cc62d0", "name": "fn echoed?", "hash": "29f4d128f15835fd" },
+        { "id": "422bad882a8b", "name": "test \"every line a client sends comes back the same, unless the connection fails and says so\"", "hash": "6575e3e7a5cfcd92" },
         { "id": "a8ead79f6ad7", "name": "test \"a port a listener holds is Busy for the next one\"", "hash": "23407116973127b0" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "c07b902b97332150" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "6d3374c71dbaab38" }
     },
     {
       "path": "pure-vs-effectful.mo",
@@ -89,6 +88,34 @@
         { "id": "f2ecaa850332", "name": "test \"the effectful version reads the clock\"", "hash": "850561542ea6dbc5" }
       ],
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "c6070b381a0b033c" }
+    },
+    {
+      "path": "served.mo",
+      "module": "Effects.Served",
+      "declarations": [
+        { "id": "84d747ddb883", "name": "module Effects.Served", "hash": "d8b80dec3e85d87d" },
+        { "id": "504f8a9e1938", "name": "expose", "hash": "ced14fdd70a3c1b5" },
+        { "id": "c79efde68c8b", "name": "intent", "hash": "04c72646f90e6d04" },
+        { "id": "fa30e09a6120", "name": "process Echo", "hash": "1ca1a745ec00e441" },
+        { "id": "9f96daa3b079", "name": "process Acceptor", "hash": "474583d8b2cfcf5a" },
+        { "id": "5e914991e992", "name": "process Heard", "hash": "e69a21b6487f7466" },
+        { "id": "c1b70f8306d2", "name": "process Counter", "hash": "a2075732c21c0192" },
+        { "id": "37b4ec8a9e59", "name": "process Worker", "hash": "6b5fe76cab382a90" },
+        { "id": "f196c9746a03", "name": "process Front", "hash": "6c241f0e98f1a600" },
+        { "id": "28b79ed34ff8", "name": "supervisor Echoes", "hash": "ecd1655386656a0d" },
+        { "id": "864321f8009e", "name": "fn talked", "hash": "cb3f22c8166d1f57" },
+        { "id": "e3889438e02f", "name": "fn heard_so_far?", "hash": "2b0e9d4739817202" },
+        { "id": "2ad51a4fca97", "name": "fn streamed", "hash": "226dd960adda47d9" },
+        { "id": "28f13b37c130", "name": "fn counted?", "hash": "a5bc0663e6a5d107" },
+        { "id": "9e66c9e80d60", "name": "fn fetched", "hash": "985bdbe204009447" },
+        { "id": "90241473f8bd", "name": "fn answered?", "hash": "93bd3ce78bc39338" },
+        { "id": "15c1be04fa67", "name": "fn garbled", "hash": "751a654c4a9154f9" },
+        { "id": "a343d46c9db0", "name": "fn at_most?", "hash": "aa91ba8324b04570" },
+        { "id": "e763759f0b32", "name": "test \"each line a client sends comes back, one too long is said to be, and a served listener is Busy to accept\"", "hash": "1a47215b6d9ba610" },
+        { "id": "d1dea8f8cff3", "name": "test \"a stream of 2,000 lines reaches a process whose mailbox holds 8, and its end after them\"", "hash": "be7327738671f1f8" },
+        { "id": "6261d66ff2f3", "name": "test \"a served HTTP listener hands each whole request to a process, and answers one that is not HTTP itself\"", "hash": "9485122f8889eccc" }
+      ],
+      "verified": { "hash": "73013b24376f37b4", "declarations": "66938a30bfcd15fc" }
     },
     {
       "path": "sim.mo",

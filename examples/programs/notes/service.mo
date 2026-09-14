@@ -476,5 +476,11 @@ property "a create then a read gives back any valid title and body"
   end
 end
 
-verified: types, contracts, tests (6), property (200 seeds), sim (100 runs)
+test rejects "a call from a client whose token holds a slash"
+  service = Service.start(Fs.fixture(), Clock.fixture(), opening(fresh(), Time.fixture()))
+  call = Call(owner: "ada/grace", command: Fetch(id: "n_1"))
+  service.send(Serve(call: call))
+end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (100 runs)
           proven: not run

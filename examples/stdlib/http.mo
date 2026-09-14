@@ -92,10 +92,12 @@ test "a reply is written once: a bad status or header writes nothing, and a seco
   teapot = Response(status: 418, headers: headers, body: "short")
   assert exchange.reply(teapot, within: 1.ms) is Ok(_)
   assert exchange.reply(teapot, within: 1.ms) is Error(Closed)
-  wire = ["HTTP/1.1 418 ", "x-mo: yes", "content-length: 5", "connection: close", "", "short"]
-  for line in wire
-    assert conn.read_line(within: 1.ms) == Ok(Some(line))
-  end
+  assert conn.read_line(within: 1.ms) == Ok(Some("HTTP/1.1 418 "))
+  assert conn.read_line(within: 1.ms) == Ok(Some("x-mo: yes"))
+  assert conn.read_line(within: 1.ms) == Ok(Some("content-length: 5"))
+  assert conn.read_line(within: 1.ms) == Ok(Some("connection: close"))
+  assert conn.read_line(within: 1.ms) == Ok(Some(""))
+  assert conn.read_line(within: 1.ms) == Ok(Some("short"))
   assert conn.read_line(within: 1.ms) == Ok(None)
 end
 
@@ -110,11 +112,13 @@ test "a request goes on the wire with its query encoded, a host header, and the 
   assert http.send(request, host: "localhost", port: port, within: 1.ms) is Error(Timeout)
   assert listener.accept(within: 1.ms) is Ok(conn)
   first = "POST /find?x=1&q=mo%20lang&a%2Fb=%C3%A9 HTTP/1.1"
-  host = "host: localhost:#{port}"
-  wire = [first, host, "X-Mo: 1", "content-length: 2", "connection: close", "", "hi"]
-  for line in wire
-    assert conn.read_line(within: 1.ms) == Ok(Some(line))
-  end
+  assert conn.read_line(within: 1.ms) == Ok(Some(first))
+  assert conn.read_line(within: 1.ms) == Ok(Some("host: localhost:#{port}"))
+  assert conn.read_line(within: 1.ms) == Ok(Some("X-Mo: 1"))
+  assert conn.read_line(within: 1.ms) == Ok(Some("content-length: 2"))
+  assert conn.read_line(within: 1.ms) == Ok(Some("connection: close"))
+  assert conn.read_line(within: 1.ms) == Ok(Some(""))
+  assert conn.read_line(within: 1.ms) == Ok(Some("hi"))
   assert conn.read_line(within: 1.ms) == Ok(None)
   bad = Request(method: "GE T", path: "/")
   assert http.send(bad, host: "localhost", port: port, within: 1.ms) is Error(Malformed)

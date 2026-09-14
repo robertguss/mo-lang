@@ -260,6 +260,8 @@ fn interleaving(gpa: std.mem.Allocator, machine: *vm.Vm, simulator: *const sim.S
             try std.fmt.allocPrint(gpa, "{s} #{d} took {s}", .{ to, step.to, message })
         else if (step.from == sim.test_runner)
             try std.fmt.allocPrint(gpa, "the test sent {s} to {s} #{d}", .{ message, to, step.to })
+        else if (step.from == @import("sources.zig").runtime_sender)
+            try std.fmt.allocPrint(gpa, "the runtime sent {s} to {s} #{d}", .{ message, to, step.to })
         else
             try std.fmt.allocPrint(gpa, "{s} #{d} sent {s} to {s} #{d}", .{ simulator.nameOf(step.from), step.from, message, to, step.to });
         if (out.items.len > 0 and std.mem.eql(u8, out.items[out.items.len - 1], line)) {

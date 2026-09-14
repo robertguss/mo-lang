@@ -224,10 +224,13 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Conn` | `read_line` | | `Result(Option(String), NetError)` | yes | | stdlib (09) |
 | `Conn` | `write` | `String` | `Result(none, NetError)` | yes | | stdlib (09) |
 | `Conn` | `close` | | none | | | stdlib (09) |
+| `Listener` | `serve` | `into: Handle(P)`, `idle: Duration` | none: the runtime accepts from here on and sends `P` `Accepted(conn: Conn)` per connection and `Idle` after `idle` with none, which `P` declares (MO0223) | | | stdlib (09), Session 5, step 20 |
+| `Conn` | `lines` | `into: Handle(P)`, `idle: Duration` | none: the runtime reads from here on and sends `P` `Line(text: String)`, `LineTooLong`, `Closed` at the end, and `Idle` after `idle` with no line, closing the connection; `P` declares all four (MO0223) | | | stdlib (09), Session 5, step 20 |
 | `Net` (on type) | `fixture` | | `Net` | | tests | stdlib (09) |
 | `Http` | `listen` | `UInt16` | `Result(HttpListener, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `accept` | | `Result(Exchange, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `port` | | `UInt16` | | | stdlib (09) |
+| `HttpListener` | `serve` | `into: Handle(P)`, `idle: Duration` | none: the runtime accepts and reads each request from here on and sends `P` `Accepted(exchange: Exchange)` per whole request and `Idle` after `idle` with no client, which `P` declares (MO0223) | | | stdlib (09), Session 5, step 20 |
 | `Exchange` | `request` | | `Request` | | | stdlib (09) |
 | `Exchange` | `reply` | `Response` | `Result(none, HttpError)` | yes | | stdlib (09) |
 | `Http` | `send` | `Request`, `host: String`, `port: UInt16` | `Result(Response, HttpError)` | yes | | stdlib (09) |

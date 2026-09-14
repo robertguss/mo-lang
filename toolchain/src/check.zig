@@ -10,6 +10,7 @@ const ast = @import("ast.zig");
 const diag = @import("diag.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
+const sources = @import("sources.zig");
 
 const Index = ast.Index;
 const Node = ast.Node;
@@ -37,6 +38,7 @@ pub const Code = enum {
     not_assignable,
     impl_mismatch,
     unnamed_fields,
+    source_messages,
     literal_range,
     // the laws, chapter 2
     body_lines,
@@ -50,6 +52,7 @@ pub const Code = enum {
     catch_all,
     unconsumed,
     requires_untested,
+    invariant_untested,
     default_param,
     anon_stored,
     var_captured,
@@ -88,6 +91,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .misplaced = .{ .code = "MO0214", .category = .types, .what = "<form> <does what>, so it appears only in <place>", .why = "Some forms belong to one place: result and old to contracts, assert to tests, any to properties, T.all and flows to never, break to a for, return to a function body.", .fixes = &.{} },
     .not_assignable = .{ .code = "MO0215", .category = .types, .what = "<name> is not a var, so it cannot be assigned; bind a new name or make it var <name>", .why = "Only var, inout, and state places change; a name bound with = is bound once, and an inout argument must be a var the caller holds.", .fixes = &.{} },
     .impl_mismatch = .{ .code = "MO0216", .category = .types, .what = "impl <Trait> for <Type> is missing <function>", .why = "An impl keeps the trait's promise exactly: every function the trait lists, with Self replaced by the implementing type, and nothing else.", .fixes = &.{} },
+    .source_messages = .{ .code = "MO0223", .category = .types, .what = "<Process> is sent the messages of <row> but declares no <Message>; add message <Message> to it, with no reply.", .why = "Listener.serve, Conn.lines, and HttpListener.serve make the runtime accept or read from that call on and send each result to the process into: names (design-v0/09, Net and Http; step 20). A process's message lines are its whole protocol, so the runtime sends only what the process declares it takes: every message the row sends, each with the one field type the row gives it, and no reply, since nobody waits for one.", .fixes = &.{} },
     .unnamed_fields = .{ .code = "MO0222", .category = .types, .what = "<Type> is built by naming its fields: <Type>(<field>: ...)", .why = "Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values.", .fixes = &.{} },
     .literal_range = .{ .code = "MO0217", .category = .types, .what = "<literal> does not fit in <Type>", .why = "Integers are sized; a literal must fit the type it is given, and overflow is never implicit.", .fixes = &.{} },
     .body_lines = .{ .code = "MO0301", .category = .laws, .what = "<function> has a body of <n> lines and the limit is 70; split it into named functions.", .why = "A function body is at most 70 lines (chapter 2, shape laws), so a whole function is read at once. The fix is named helper functions.", .fixes = &.{} },
@@ -100,6 +104,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .not_exhaustive = .{ .code = "MO0308", .category = .laws, .what = "this case does not cover <pattern>; add an arm for it.", .why = "Every case is exhaustive (chapter 2, honesty laws), so a value nobody handles is a compile error, not a crash.", .fixes = &.{} },
     .catch_all = .{ .code = "MO0309", .category = .laws, .what = "the <arm> arm hides <patterns> of <Type>; write an arm for each of them in its place.", .why = "No catch-all arm on a closed enum (chapter 2, honesty laws): a _ arm would silently take every variant added later.", .fixes = &.{} },
     .unconsumed = .{ .code = "MO0310", .category = .laws, .what = "the <Result or Option> from <call> is dropped; match it with case or pass it up with try.", .why = "Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake.", .fixes = &.{} },
+    .invariant_untested = .{ .code = "MO0327", .category = .laws, .what = "<Process> has invariant <sentence>, which reads old(state), but no test rejects starts or messages it.", .why = "An invariant that reads old(state) is a claim about how an update may move the state, and like a requires it needs a test rejects (chapter 2, contract laws; step 20). Tier 1 checks, as it does for a requires, that a test rejects in the process's module starts the process or sends it a message; the run checks that the test trips. Step 19's mutation tests showed that a contract no test drives can be inverted and nothing notices.", .fixes = &.{} },
     .requires_untested = .{ .code = "MO0311", .category = .laws, .what = "<function> has requires <condition>, but no test rejects trips it.", .why = "Every requires has a test rejects that trips it (chapter 2, contract laws). Tier 1 checks that a test rejects calls the function; tier 2 checks that the call trips.", .fixes = &.{} },
     .default_param = .{ .code = "MO0312", .category = .laws, .what = "<name> has a default value; parameters have no defaults, so pass <value> at the call.", .why = "No default parameters (chapter 2, honesty laws): every call shows every value the function receives.", .fixes = &.{"drop the default, and pass it at every call in the file that leaves the parameter out"} },
     .anon_stored = .{ .code = "MO0313", .category = .laws, .what = "an anonymous function is bound to <name>; pass it straight into <call> instead.", .why = "An anonymous function is a call argument only, never stored or returned (chapter 2), so effects never hide in a value.", .fixes = &.{} },
@@ -243,6 +248,9 @@ pub const Checked = struct {
     pool: types.Pool,
     node_types: []const Id,
     callee: []const Callee,
+    /// Per node: for a name_ref that reads a local, the token that bound it, plus 1; 0 for
+    /// anything else. caps.zig follows a capability sent in a message by it (step 20).
+    binding_of: []const u32 = &.{},
     decls: []const Decl,
     fields: []const Field,
     variants: []const Variant,
@@ -328,6 +336,8 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
     @memset(c.callee, .none);
+    c.binding_of = try gpa.alloc(u32, tree.nodes.len);
+    @memset(c.binding_of, 0);
     try c.line_starts.append(gpa, 0);
     for (tree.source, 0..) |ch, k| if (ch == '\n') try c.line_starts.append(gpa, @intCast(k + 1));
     try c.registerPrelude();
@@ -343,6 +353,8 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
     }
     c.tripped = try gpa.alloc(bool, c.sigs.items.len);
     @memset(c.tripped, false);
+    c.tried = try gpa.alloc(bool, c.decls.items.len);
+    @memset(c.tried, false);
     for (0..n) |k| {
         c.enter(k);
         try c.checkModule();
@@ -357,6 +369,7 @@ pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, 
         .pool = c.pool,
         .node_types = c.node_types,
         .callee = c.callee,
+        .binding_of = c.binding_of,
         .decls = c.decls.items,
         .fields = c.fields.items,
         .variants = c.variants.items,
@@ -449,6 +462,7 @@ const Checker = struct {
     pool: types.Pool,
     node_types: []Id = &.{},
     callee: []Callee = &.{},
+    binding_of: []u32 = &.{},
 
     decls: std.ArrayList(Decl) = .empty,
     fields: std.ArrayList(Field) = .empty,
@@ -479,6 +493,8 @@ const Checker = struct {
     anon_ok: Index = 0,
     /// Signatures a test rejects calls directly.
     tripped: []bool = &.{},
+    /// Per declaration: a process a test rejects in its module starts or messages (MO0327).
+    tried: []bool = &.{},
     /// Byte offset where each line starts.
     line_starts: std.ArrayList(u32) = .empty,
     /// Above zero while checking what is sent to a process.
@@ -1856,6 +1872,22 @@ const Checker = struct {
             }
         }
 
+        for (c.decls.items, 0..) |d, di| {
+            if (d.kind != .process or d.module != c.module or d.node == 0 or c.tried[di]) continue;
+            const pd = c.tree.extraData(ast.Process, c.node(d.node).lhs);
+            const invariants = c.tree.span(pd.invariants_start, pd.invariants_end);
+            for (invariants, 0..) |inv, k| {
+                // An invariant's nodes run from the one after the node before it to its own.
+                const lo = if (k == 0) pd.state else invariants[k - 1];
+                const reads_old = for (lo + 1..inv) |j| {
+                    if (c.node(@intCast(j)).kind == .old_expr) break true;
+                } else false;
+                if (!reads_old) continue;
+                try c.reportTok(.invariant_untested, c.node(inv).main_token, try c.print("{s} has invariant {s}, which reads old(state), but no test rejects starts or messages it.", .{ d.name, c.text(c.node(inv).lhs) }));
+                break;
+            }
+        }
+
         for (c.decls.items) |d| {
             if (d.kind != .process or d.module != c.module) continue;
             var supervised = false;
@@ -2782,6 +2814,7 @@ const Checker = struct {
         const name = c.text(n.main_token);
         if (c.lookup(name)) |b| {
             try c.useBinding(b, n.main_token);
+            c.binding_of[i] = c.bindings.items[b].token + 1;
             return c.bindings.items[b].type;
         }
         if (c.fn_names.get(name)) |s| return c.instantiateFn(i, s);
@@ -2997,6 +3030,8 @@ const Checker = struct {
         var env: Env = .{ .n = t };
         const b = c.bt(t);
         if (b.tag == .handle) env.process = b.a;
+        // A test rejects that messages a process tries its invariants (MO0327).
+        if (b.tag == .handle and c.frame.in_rejects and b.a < c.tried.len) c.tried[b.a] = true;
         if (row.recv.len > 0 and std.mem.indexOfScalar(u8, row.recv, '(') != null and b.tag != .handle) {
             _ = c.pool.unify(try c.parseTs(row.recv, &env), t);
         }
@@ -3022,6 +3057,7 @@ const Checker = struct {
             };
             _ = try c.expr(an.lhs, try c.parseTs(f.type, &env));
         }
+        if (sources.messagesOf(row.recv, row.name)) |sent| try c.sourceTarget(args, row, sent);
         const label = try c.callLabel(i, recv, row.name);
         const to_process = std.mem.startsWith(u8, row.recv, "Handle");
         if (to_process) c.process_args += 1;
@@ -3045,6 +3081,43 @@ const Checker = struct {
             return types.fs_read_only;
         }
         return c.parseTs(row.ret, &env);
+    }
+
+    /// A source row's into: is the handle of a process that declares every message the row
+    /// sends, each with the row's field type and no reply (MO0223).
+    fn sourceTarget(c: *Checker, args: []const u32, row: prelude.Fn, sent: []const sources.Sent) Error!void {
+        const into = for (args) |a| {
+            const an = c.node(a);
+            if (an.kind == .named_arg and std.mem.eql(u8, c.text(an.main_token), "into")) break an.lhs;
+        } else return;
+        const t = c.node_types[into];
+        const b = c.bt(t);
+        if (b.tag != .handle) {
+            if (c.pool.resolve(t) == types.unknown) return;
+            return c.reportNode(.source_messages, into, try c.print("{s}.{s} sends its messages into: a process's handle, such as into: worker; found {s}", .{ row.recv, row.name, try c.tn(t) }));
+        }
+        const d = c.decls.items[b.a];
+        for (sent) |m| {
+            const want = if (m.field) |f| try c.print("{s}({s}: {s})", .{ m.name, f, m.type.? }) else m.name;
+            const found = for (c.variants.items[d.variants.start..d.variants.end]) |v| {
+                if (std.mem.eql(u8, v.name, m.name)) break v;
+            } else null;
+            const fits = if (found) |v| blk: {
+                if (v.reply != null) break :blk false;
+                const fields = c.fields.items[v.fields.start..v.fields.end];
+                if (m.type) |ty| {
+                    var env: Env = .{};
+                    break :blk fields.len == 1 and c.pool.resolve(fields[0].type) == c.pool.resolve(try c.parseTs(ty, &env));
+                }
+                break :blk fields.len == 0;
+            } else false;
+            if (fits) continue;
+            const what = if (found != null)
+                try c.print("{s} is sent the messages of {s}.{s}, whose {s} is message {s} with no reply; declare it so.", .{ d.name, row.recv, row.name, m.name, want })
+            else
+                try c.print("{s} is sent the messages of {s}.{s} but declares no {s}; add message {s} to it, with no reply.", .{ d.name, row.recv, row.name, m.name, want });
+            try c.reportNode(.source_messages, into, what);
+        }
     }
 
     fn callLabel(c: *Checker, i: Index, recv: ?Index, name: []const u8) Error![]const u8 {
@@ -3114,6 +3187,7 @@ const Checker = struct {
                     try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no function {s}; a process is started with {s}.start(...)", .{ tname, name, tname }));
                     return types.unknown;
                 }
+                if (c.frame.in_rejects and d < c.tried.len) c.tried[d] = true;
                 c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
                 c.process_args -= 1;
@@ -4244,4 +4318,103 @@ test "or on a Result, a struct and a variant of one name, and a use of a message
         \\module A.App
         \\use A.Idle{Poke}
     }, &.{"MO0322"});
+}
+
+test "a source row's into: names a process that declares every message the row sends" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src =
+        \\module T.Sources
+        \\process Worker(conn: Conn)
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Line(text: String)
+        \\  message Closed
+        \\  message Idle : UInt64
+        \\  fn update(state, message)
+        \\    case message
+        \\      Line(text):
+        \\        state.n += text.size
+        \\      Closed:
+        \\        conn.close
+        \\      Idle: state.n
+        \\    end
+        \\  end
+        \\end
+        \\process Acceptor()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Accepted(conn: Conn)
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Accepted(conn):
+        \\        conn.lines(into: Worker.start(conn), idle: 1.ms)
+        \\        state.n += 1
+        \\      Idle:
+        \\        state.n += 0
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Top(conn: Conn)
+        \\  child Worker(conn), restart: :always
+        \\  child Acceptor, restart: :always
+        \\end
+        \\fn served(listener: Listener, acceptor: Handle(Acceptor), worker: Handle(Worker))
+        \\  listener.serve(into: acceptor, idle: 1.ms)
+        \\  listener.serve(into: worker, idle: 1.ms)
+        \\end
+    ;
+    var diags: diag.List = .empty;
+    const tokens = try @import("lexer.zig").lex(arena, src, &diags);
+    const tree = try @import("parser.zig").parse(arena, src, tokens, &diags);
+    _ = try check(arena, tree, &diags);
+    var codes: std.ArrayList(u8) = .empty;
+    for (diags.items) |d| {
+        try codes.appendSlice(arena, d.code);
+        try codes.append(arena, ' ');
+    }
+    // The worker lacks LineTooLong and gives Idle a reply; the second serve's worker lacks
+    // Accepted, and its Idle has a reply.
+    try std.testing.expectEqualStrings("MO0223 MO0223 MO0223 MO0223 ", codes.items);
+}
+
+test "an invariant that reads old(state) needs a test rejects that starts or messages its process" {
+    const src =
+        \\module T.Old
+        \\process Meter()
+        \\  state
+        \\    n: UInt8
+        \\  end
+        \\  invariant "never goes backwards"
+        \\    state.n >= old(state.n)
+        \\  end
+        \\  message Add(k: UInt8)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Add(k):
+        \\        state.n += k
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Meters
+        \\  child Meter, restart: :always
+        \\end
+        \\test "adds"
+        \\  meter = Meter.start()
+        \\  meter.send(Add(k: 1))
+        \\end
+    ;
+    try expectWhat(src, "MO0327", "Meter has invariant \"never goes backwards\", which reads old(state), but no test rejects starts or messages it.");
+    try expectCodes(src ++
+        \\
+        \\test rejects "past the largest reading"
+        \\  meter = Meter.start()
+        \\  meter.send(Add(k: 200))
+        \\  meter.send(Add(k: 200))
+        \\
+    ++ "end\n", &.{});
 }

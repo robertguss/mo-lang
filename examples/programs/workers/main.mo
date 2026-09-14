@@ -19,27 +19,28 @@ process Worker(exchange: Exchange)
   end
 end
 
-process Acceptor(listener: HttpListener)
+process Acceptor()
   state
     accepted: UInt64
+    quiet: UInt64
   end
 
-  message Serve
+  message Accepted(exchange: Exchange)
+  message Idle
 
   fn update(state, message)
     case message
-      Serve:
-        if listener.accept(within: 5_000.ms) is Ok(exchange)
-          worker = Worker.start(exchange)
-          worker.send(Answer)
-          state.accepted += 1
-        end
+      Accepted(exchange):
+        Worker.start(exchange).send(Answer)
+        state.accepted += 1
+      Idle:
+        state.quiet += 1
     end
   end
 end
 
-supervisor Exchanges(listener: HttpListener, exchange: Exchange)
-  child Acceptor(listener), restart: :always
+supervisor Exchanges(exchange: Exchange)
+  child Acceptor, restart: :always
   child Worker(exchange), restart: :always
 end
 
@@ -54,10 +55,9 @@ fn answered?(got: Result(Response, HttpError), n: UInt64) : Bool
   end
 end
 
-fn served(http: Http, acceptor: Handle(Acceptor), port: UInt16, requests: UInt64) : UInt64
+fn served(http: Http, port: UInt16, requests: UInt64) : UInt64
   var answered = 0
   for n in 0..requests
-    acceptor.send(Serve)
     request = Request(method: "GET", path: "/hello", query: Map.new().set("n", "#{n}"))
     if answered?(http.send(request, host: "127.0.0.1", port: port, within: 5_000.ms), n)
       answered += 1
@@ -70,9 +70,11 @@ fn main(platform: Platform)
   requests = (platform.args.first or "1000").to_u64 or 1000
   case platform.http.listen(0, within: 5_000.ms)
     Ok(listener):
-      acceptor = Acceptor.start(listener)
-      answered = served(platform.http, acceptor, listener.port, requests)
+      listener.serve(into: Acceptor.start(), idle: 5_000.ms)
+      answered = served(platform.http, listener.port, requests)
       platform.stdout.write_line("#{answered} of #{requests} requests answered, each by a worker of its own")
+      # The listener would be served on, so the program ends here.
+      platform.exit(0)
     Error(e):
       platform.stderr.write_line("workers failed: #{e}")
       platform.exit(1)

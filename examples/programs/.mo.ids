@@ -32,21 +32,23 @@
       "module": "Echo.Main",
       "declarations": [
         { "id": "307cbde97926", "name": "module Echo.Main", "hash": "8dd1b13d6184d47a" },
-        { "id": "80d8b3901585", "name": "expose", "hash": "3f8d04a024b857c0" },
-        { "id": "5d3504e04948", "name": "intent", "hash": "3b7583512ad19b85" },
+        { "id": "80d8b3901585", "name": "expose", "hash": "a4f4e61da2820b89" },
+        { "id": "5d3504e04948", "name": "intent", "hash": "d8cfc9809197633c" },
         { "id": "675a7ec0f27d", "name": "struct Options", "hash": "1fac6d9471205e04" },
-        { "id": "cd98ceb0b23b", "name": "process Worker", "hash": "fb72faec1b663808" },
-        { "id": "b5a89d3ca112", "name": "process Acceptor", "hash": "2c118aa1e8989119" },
-        { "id": "b92fceaef8d3", "name": "process Client", "hash": "1570d246edc76ebf" },
-        { "id": "4d5b7a15f191", "name": "supervisor Echoes", "hash": "08c3ec0ba380c44f" },
+        { "id": "cd98ceb0b23b", "name": "process Worker", "hash": "3de26644501e3ef6" },
+        { "id": "b5a89d3ca112", "name": "process Acceptor", "hash": "e9981ae6898f8a70" },
+        { "id": "b92fceaef8d3", "name": "process Client", "hash": "279891c950720f61" },
+        { "id": "4d5b7a15f191", "name": "supervisor Echoes", "hash": "83d7c7485e47ab76" },
         { "id": "3a46a6986853", "name": "fn options", "hash": "1b35207b4025c2f5" },
-        { "id": "004857e53e8f", "name": "fn serve", "hash": "80c9429bd7e8fdd9" },
-        { "id": "1ff35364a0ce", "name": "fn talk", "hash": "3e542cdc7923b222" },
-        { "id": "4dd4392b2d7e", "name": "fn run", "hash": "ad64488c58c362ed" },
-        { "id": "5cf44db29d33", "name": "fn main", "hash": "cae5f45c5625265e" },
-        { "id": "31c3d3520193", "name": "test \"--clients takes a count, and the rest are the lines\"", "hash": "1a0c102d6ff1050a" }
+        { "id": "7975ff23a06c", "name": "fn said", "hash": "66930eb83521fed9" },
+        { "id": "3a1ed49c2573", "name": "fn talked", "hash": "abb8a333284e10e1" },
+        { "id": "4dd4392b2d7e", "name": "fn run", "hash": "4dc66cdda986a2f9" },
+        { "id": "9adb5b261315", "name": "fn code_of", "hash": "435d54baf5f8070c" },
+        { "id": "5cf44db29d33", "name": "fn main", "hash": "39c7d9ce3febbeb0" },
+        { "id": "31c3d3520193", "name": "test \"--clients takes a count, and the rest are the lines\"", "hash": "1a0c102d6ff1050a" },
+        { "id": "54806ad0d9e2", "name": "test \"every line back is exit 0, and a line lost is exit 1\"", "hash": "08199cdc9f66fe74" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "a62a8aed6deca161" }
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "567a0d45cc042aba" }
     },
     {
       "path": "ends/main.mo",
@@ -122,25 +124,25 @@
       "module": "Httpd.Main",
       "declarations": [
         { "id": "78af1f790eb9", "name": "module Httpd.Main", "hash": "892f29f90439a047" },
-        { "id": "7c82f8c1d9ad", "name": "expose", "hash": "b30e74a3e3c8dcad" },
-        { "id": "e48c6ea160c3", "name": "intent", "hash": "b18205f455c00ba3" },
+        { "id": "7c82f8c1d9ad", "name": "expose", "hash": "96e6fd50a3300acd" },
+        { "id": "e48c6ea160c3", "name": "intent", "hash": "1553d4275b412411" },
         { "id": "a96676c051cd", "name": "struct Options", "hash": "3dba1959d36bafb2" },
-        { "id": "a30832e5982a", "name": "process Acceptor", "hash": "4357c611f5bbbcbe" },
+        { "id": "a30832e5982a", "name": "process Acceptor", "hash": "2bd8070b9aa478c0" },
         { "id": "0d83f9fc8fac", "name": "process Client", "hash": "8c50e8d1705cb636" },
-        { "id": "bcc1405b4e0c", "name": "supervisor Hellos", "hash": "23235f8f03233fac" },
+        { "id": "bcc1405b4e0c", "name": "supervisor Hellos", "hash": "c866a45263eff8d7" },
         { "id": "e9d083f7b499", "name": "fn options", "hash": "baf93d2fb608671d" },
         { "id": "3f2ccf6b07a2", "name": "fn answer", "hash": "64fe728e92bd2c01" },
-        { "id": "749a54fbe13b", "name": "fn answer_one", "hash": "88f2dcc624bff9fd" },
-        { "id": "b9fa281802bc", "name": "fn serve", "hash": "1a76f24d299f343e" },
         { "id": "a954c8c5f789", "name": "fn fetch", "hash": "907d89de61b0cfe4" },
-        { "id": "85caea03d8a1", "name": "fn run", "hash": "9f56f0cd1636bc0a" },
-        { "id": "bde1f140ad04", "name": "fn serve_forever", "hash": "46877e655d42a851" },
+        { "id": "85caea03d8a1", "name": "fn run", "hash": "ebf24a8be85f2c42" },
+        { "id": "bde1f140ad04", "name": "fn serve_forever", "hash": "37678c3dab5748aa" },
         { "id": "804146dee59e", "name": "fn started", "hash": "c6e6ae23a486e4d8" },
-        { "id": "b74e2dfaa637", "name": "fn main", "hash": "a1f7ab3a96473dba" },
+        { "id": "db85003c0960", "name": "fn code_of", "hash": "a667838c61783ba5" },
+        { "id": "b74e2dfaa637", "name": "fn main", "hash": "19bdbf2fe8232830" },
         { "id": "25fe3329128d", "name": "test \"--clients takes a count, serve takes a port, and the rest are the names\"", "hash": "fe71503636c6382a" },
+        { "id": "b10e2844d3ac", "name": "test \"every request back is exit 0, and one lost is exit 1\"", "hash": "138edf24136c02d3" },
         { "id": "ea8ff6416455", "name": "test \"hello answers with the name its query gives, and any other request is 404\"", "hash": "2a9de2f7a475b9d7" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "d8b30fadefe315c9" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "dce7be2559028fe7" }
     },
     {
       "path": "kv/log.mo",
@@ -157,7 +159,7 @@
         { "id": "5b371981d0ad", "name": "struct Reopened", "hash": "1211e4b464578b57" },
         { "id": "7f01fc828c57", "name": "struct Opened", "hash": "dcdfb3f2ff0ea4d1" },
         { "id": "5d6b2c5bbf88", "name": "enum LogError", "hash": "4b443dba21db2838" },
-        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "ee78b869f9c49c99" },
+        { "id": "6f8d37b5491b", "name": "process Journal", "hash": "0f08521ebc4d2371" },
         { "id": "6a649c511348", "name": "supervisor Journals", "hash": "dc3751228e7316a0" },
         { "id": "59bbc9e5e657", "name": "fn empty", "hash": "2c73eee8dd09832d" },
         { "id": "9667256f3198", "name": "fn bucket_of", "hash": "acdb5dbcf3ebc12c" },
@@ -187,16 +189,17 @@
         { "id": "048633c10bd0", "name": "test \"the journal appends each line to its file, and counts the bytes it appended\"", "hash": "c66ce8dc23ebcc46" },
         { "id": "f5a69d37d220", "name": "test \"a log read back replays to the keys the store had\"", "hash": "6dd87d66deedbe73" },
         { "id": "45f1f7f1dd4d", "name": "test rejects \"a key with a space in it\"", "hash": "e8d49573ab2ebb12" },
-        { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" }
+        { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" },
+        { "id": "7ce2344cfa8e", "name": "test rejects \"a line with no newline, which would run into the next\"", "hash": "650897797006f821" }
       ],
-      "verified": { "hash": "087094673077814e", "declarations": "ef8f4203e90d69b6", "uses": [{ "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
+      "verified": { "hash": "2ea78809b5baafd5", "declarations": "d78b5309b7db9e63", "uses": [{ "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
       "path": "kv/main.mo",
       "module": "Kv.Main",
       "declarations": [
         { "id": "77c731b6ec3c", "name": "module Kv.Main", "hash": "0e643910a15ffc11" },
-        { "id": "f96b7997c150", "name": "expose", "hash": "6c61c08d1beedb81" },
+        { "id": "f96b7997c150", "name": "expose", "hash": "b14eb0fdb62edef7" },
         { "id": "4243c67a6430", "name": "use Kv.Log", "hash": "16c9c6d3e7449ddd" },
         { "id": "571215ba293c", "name": "use Kv.Protocol", "hash": "f7e4e319cf999f82" },
         { "id": "ca7848448e3a", "name": "use Kv.Server", "hash": "7cd59debef862a10" },
@@ -215,26 +218,29 @@
         { "id": "fe4b30cb9d4a", "name": "fn ran", "hash": "9b7e20da34d5a1fd" },
         { "id": "5f1b65185f11", "name": "fn serve", "hash": "50e7902a974f0724" },
         { "id": "eede83df8171", "name": "fn compact", "hash": "d8376145e3e4af38" },
-        { "id": "76009bd99467", "name": "fn served_on", "hash": "410198a3d9382189" },
-        { "id": "156b5a9a99fb", "name": "fn accepted_awhile", "hash": "6459c81106a40443" },
-        { "id": "f2afe6f981b2", "name": "fn started", "hash": "1d914be343865563" },
+        { "id": "76009bd99467", "name": "fn served_on", "hash": "84c2729824245e30" },
+        { "id": "f2afe6f981b2", "name": "fn started", "hash": "792cbed7f39a4b43" },
+        { "id": "ce88fcf12d3e", "name": "process Reply", "hash": "06c11fe04d5de430" },
+        { "id": "0229bd16dfe7", "name": "supervisor Replies", "hash": "e65fb962ef09764a" },
         { "id": "dde79987fea7", "name": "fn client", "hash": "0a783bbe9a3784d5" },
-        { "id": "48528daad723", "name": "fn exchanged", "hash": "e3329eb6feefe1cb" },
+        { "id": "48528daad723", "name": "fn exchanged", "hash": "d967c421770ca8b7" },
+        { "id": "e0fcf7839719", "name": "fn next_line", "hash": "66a56ed893e7e198" },
         { "id": "f1d2d7b8b91f", "name": "fn check", "hash": "a3634327cafc6f61" },
-        { "id": "4c392bd21d3e", "name": "fn checked_on", "hash": "e624e39fc25ee0a2" },
+        { "id": "4c392bd21d3e", "name": "fn checked_on", "hash": "594dc4d03cfb55f5" },
         { "id": "7b922cba6d2f", "name": "fn shown", "hash": "87186c333ce7ec5f" },
         { "id": "713c955080a0", "name": "fn script_of", "hash": "06814f9702609a27" },
         { "id": "7631472b7b73", "name": "fn opened_log", "hash": "d998082c7158c15d" },
         { "id": "07abd27a1f81", "name": "fn said", "hash": "5e56cdc1b26d3ec0" },
         { "id": "2e659132ece9", "name": "fn code_of", "hash": "a24bda912ebe306c" },
-        { "id": "5f36f754416b", "name": "fn main", "hash": "d88e7e2ba4ef461f" },
-        { "id": "5e55e3c2eeda", "name": "test \"serve takes a folder and an optional port, 7700 by default\"", "hash": "b0229ace7b1ad965" },
+        { "id": "1d0c776d6f8b", "name": "fn serving?", "hash": "3bd125daad659e5a" },
+        { "id": "5f36f754416b", "name": "fn main", "hash": "0a8d7515a429222b" },
+        { "id": "5e55e3c2eeda", "name": "test \"serve takes a folder and an optional port, 7700 by default\"", "hash": "cafdce538fdb3a7b" },
         { "id": "4ff00e5593a4", "name": "test \"a missing folder, a bad port, or an unknown command is a usage error\"", "hash": "9643ef66d1f888e9" },
         { "id": "b8313e542a05", "name": "test \"client joins the rest of its arguments into one line\"", "hash": "94b9d1095604a427" },
         { "id": "ea0c28fa451d", "name": "test \"a log whose last line was cut short opens without it, and says so on the error stream\"", "hash": "ffff617e572ae283" },
         { "id": "ef06a248ca70", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "6bb9c596f9e1c213" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "eff457c5895600fb", "uses": [{ "module": "Kv.Log", "hash": "adef617ad660cc50" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Server", "hash": "1433e96485687b7b" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "6bdd4ebe32253e1a", "uses": [{ "module": "Kv.Log", "hash": "eb77aa9be5fe50f0" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Server", "hash": "ed3172dd8b8de725" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
     },
     {
       "path": "kv/protocol.mo",
@@ -280,35 +286,34 @@
       "module": "Kv.Server",
       "declarations": [
         { "id": "80e008714ba8", "name": "module Kv.Server", "hash": "59077687e8d7b870" },
-        { "id": "d37672a9e3c5", "name": "expose", "hash": "acc46cb9962a2797" },
+        { "id": "d37672a9e3c5", "name": "expose", "hash": "631b49e95fb3dd2c" },
         { "id": "ffcde1bc4f48", "name": "use Kv.Log", "hash": "aa9c0cc861b5719f" },
         { "id": "0e4c6939f2eb", "name": "use Kv.Protocol", "hash": "6206fdf2a4a96cfd" },
         { "id": "3d6fa7af6cda", "name": "use Kv.Store", "hash": "2a62bbbdfc9a3e8c" },
-        { "id": "c03fbcebfbb5", "name": "intent", "hash": "a8cec2cf51036383" },
+        { "id": "c03fbcebfbb5", "name": "intent", "hash": "882324344355226a" },
         { "id": "317cfe98409a", "name": "process Gate", "hash": "1386f8e742f4b63b" },
-        { "id": "58a7e8abcc15", "name": "process Worker", "hash": "f0cb8b5073eabba2" },
-        { "id": "5b5e8a68af97", "name": "process Listening", "hash": "9cce2e42d141322b" },
-        { "id": "d829147acdfc", "name": "supervisor Servers", "hash": "60673a61c790d6ff" },
-        { "id": "4ad1bf3c1950", "name": "fn admitted", "hash": "fb066cc826cccd9f" },
+        { "id": "58a7e8abcc15", "name": "process Worker", "hash": "5e9bb6b4eedd3746" },
+        { "id": "5b5e8a68af97", "name": "process Listening", "hash": "56fcb89ebf99ac7c" },
+        { "id": "33bb32bf6511", "name": "process Heard", "hash": "e69a21b6487f7466" },
+        { "id": "d829147acdfc", "name": "supervisor Servers", "hash": "efc46e66aeff0278" },
+        { "id": "4ad1bf3c1950", "name": "fn admitted", "hash": "eecdb47e0f8df3b2" },
         { "id": "9674a8a0cbde", "name": "fn turn_away", "hash": "4813e0e1944beac0" },
-        { "id": "2bed6753d188", "name": "fn talk", "hash": "598819df31a4612f" },
-        { "id": "51535593e8de", "name": "fn talk_awhile", "hash": "9c9bc016266df11f" },
-        { "id": "b23d7c917dea", "name": "fn exchange", "hash": "5002862a26d38ec9" },
-        { "id": "b511b1faf863", "name": "fn answered", "hash": "782dc88a525c3898" },
+        { "id": "65b6410ecdbf", "name": "fn finished", "hash": "566a9cd75fdf2fb5" },
+        { "id": "6f60015553ae", "name": "fn left", "hash": "a54eb5aa7b5666f7" },
         { "id": "fe1efeff41e6", "name": "fn answer", "hash": "177a5752443e8c89" },
         { "id": "fe3299098b77", "name": "fn asked", "hash": "40f599ecc1c96911" },
         { "id": "8ca5a532de4b", "name": "fn sent", "hash": "d75817de927dff6f" },
-        { "id": "23f69088f18a", "name": "fn conversation", "hash": "233dc042fcdd4ebd" },
-        { "id": "72920c6aaa7a", "name": "fn heard_all", "hash": "c58a1b1b582f132c" },
-        { "id": "0759eeb11e2b", "name": "fn heard_so_far?", "hash": "6b0690b59a540812" },
+        { "id": "23f69088f18a", "name": "fn conversation", "hash": "fa469a750753c1c0" },
+        { "id": "0759eeb11e2b", "name": "fn heard_so_far?", "hash": "318c249fb5b2e5b6" },
+        { "id": "d69be7f94088", "name": "fn agreed?", "hash": "082c737c981a5723" },
         { "id": "9cfe74af6594", "name": "fn store_for_tests", "hash": "24cafbeff06327e3" },
-        { "id": "ecee6f7bfe33", "name": "test \"a client's requests get the store's answers, and QUIT says BYE and closes\"", "hash": "608669e60d10e8cc" },
-        { "id": "1cce7aa18b30", "name": "test \"a line over 64 KiB is malformed, and the connection goes on\"", "hash": "70edd83c993153f1" },
+        { "id": "ecee6f7bfe33", "name": "test \"a client's requests get the store's answers, and QUIT says BYE and closes\"", "hash": "ebefa149317de947" },
+        { "id": "1cce7aa18b30", "name": "test \"a line over 64 KiB is malformed, and the connection goes on\"", "hash": "fd476386cf6699e3" },
         { "id": "b6f989cac5b4", "name": "test \"the gate lets 64 clients in, turns the next away, and takes one more when one leaves\"", "hash": "44d687e3e48f45e0" },
-        { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "0c4514424619787b" },
-        { "id": "0e59ad06dc4e", "name": "test \"a silent client is closed, and hears nothing\"", "hash": "cf20b633982a5576" }
+        { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "ddacaa48a4f144e4" },
+        { "id": "3c1cb40a212b", "name": "test \"a client that says nothing hears nothing\"", "hash": "d48d33a18400b9b0" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "266816db52e79399", "uses": [{ "module": "Kv.Log", "hash": "adef617ad660cc50" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
+      "verified": { "hash": "70a0d639349b1a4c", "declarations": "a4f30f54f3679287", "uses": [{ "module": "Kv.Log", "hash": "eb77aa9be5fe50f0" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
     },
     {
       "path": "kv/store.mo",
@@ -359,7 +364,7 @@
         { "id": "188c9b4c6dff", "name": "test \"a store started again from its log reads what the first one wrote\"", "hash": "59ab036010260f7a" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "432b5dfa5b9aaf27", "uses": [{ "module": "Kv.Log", "hash": "adef617ad660cc50" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "432b5dfa5b9aaf27", "uses": [{ "module": "Kv.Log", "hash": "eb77aa9be5fe50f0" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
       "path": "lines-per-file.mo",
@@ -590,7 +595,7 @@
       "module": "Notes.Main",
       "declarations": [
         { "id": "f681d55f1d74", "name": "module Notes.Main", "hash": "10d5a63dec7fc1c4" },
-        { "id": "e260e7e793e9", "name": "expose", "hash": "8bcc214be190610f" },
+        { "id": "e260e7e793e9", "name": "expose", "hash": "0274d529ab1c033c" },
         { "id": "0197c0a09462", "name": "use Notes.Server", "hash": "5f675cdcd2159163" },
         { "id": "211c3149282c", "name": "use Notes.Service", "hash": "0cfe34db1cc7c3c3" },
         { "id": "78fa7b90311b", "name": "use Notes.Store", "hash": "2a879a1bf21412c0" },
@@ -612,14 +617,13 @@
         { "id": "5cf6f7f2bb0d", "name": "fn serve", "hash": "d967afcba18d1006" },
         { "id": "8cd4a3249455", "name": "fn compacted_store", "hash": "87a00b878c8308c7" },
         { "id": "2609ace02c11", "name": "fn compacted", "hash": "0257e97328e7a5bf" },
-        { "id": "f60ad311f60d", "name": "fn served_on", "hash": "1290c3cfd9f3a4b1" },
-        { "id": "707c47ff0de0", "name": "fn accepted_awhile", "hash": "e016ab8ab995e6d3" },
+        { "id": "f60ad311f60d", "name": "fn served_on", "hash": "5338973d81c7ea2b" },
         { "id": "d68169c1ecd3", "name": "fn client", "hash": "1e6c8a07e3b6f9b0" },
         { "id": "b39a53bf50dd", "name": "fn request_of", "hash": "9070a39e43c7f1fb" },
         { "id": "1f637b01885e", "name": "fn shown", "hash": "5f2a1c1c21c495fb" },
         { "id": "526b21c08eca", "name": "fn check", "hash": "887446f3b2de8a7b" },
         { "id": "9027ce0638c1", "name": "fn cleared", "hash": "8ea73656a6789b54" },
-        { "id": "f492c1e5e3e5", "name": "fn checked_on", "hash": "4124dccbba8daf4f" },
+        { "id": "f492c1e5e3e5", "name": "fn checked_on", "hash": "a43320e2b33a6777" },
         { "id": "b56c4fb16436", "name": "fn played", "hash": "c0b6a4eeda6099d9" },
         { "id": "cfd4241d92c9", "name": "fn steady", "hash": "02b35a4f8d1419ec" },
         { "id": "cbfb55a6142e", "name": "fn masked", "hash": "481d1850e12e3605" },
@@ -630,15 +634,16 @@
         { "id": "d0209759c2f9", "name": "fn why_unopened", "hash": "b60fec1318309b32" },
         { "id": "eca1f80d02a0", "name": "fn said", "hash": "0ff093ca48a7aba2" },
         { "id": "e5f078505160", "name": "fn code_of", "hash": "a24bda912ebe306c" },
-        { "id": "24d577587af2", "name": "fn main", "hash": "97be5a7d998b29f2" },
-        { "id": "02d640cc4d14", "name": "test \"serve takes a folder and an optional port, 7800 by default\"", "hash": "12ca81b99d319dda" },
+        { "id": "7c876d0f7451", "name": "fn serving?", "hash": "c76740c979f7b673" },
+        { "id": "24d577587af2", "name": "fn main", "hash": "4dbb393f496307a1" },
+        { "id": "02d640cc4d14", "name": "test \"serve takes a folder and an optional port, 7800 by default\"", "hash": "576ffc9ece20a216" },
         { "id": "75e181c573f4", "name": "test \"a missing folder, a bad port, a short request, or an unknown command is a usage error\"", "hash": "49a1e0571c780a91" },
         { "id": "e7cf1e1f3600", "name": "test \"client joins the JSON after the path back into one body\"", "hash": "ae307f5dc310e03b" },
         { "id": "315ae84e9978", "name": "test \"a response prints as its status and body, and the clock's numbers are steadied\"", "hash": "abc3502ade04dda4" },
         { "id": "6f4875494ee9", "name": "test \"a store whose last line was cut short opens without it, and says so on the error stream\"", "hash": "267550486684f369" },
         { "id": "8cd594074ed0", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "8c253d1e34d485a1" }
       ],
-      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "35577c1e77cf8c92", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Server", "hash": "e3565e46e2560fb3" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "e39cab5c4d1623d2", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Server", "hash": "2be886bb54d6655a" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
     },
     {
       "path": "notes/note.mo",
@@ -682,13 +687,13 @@
         { "id": "64a537355df5", "name": "use Notes.Note", "hash": "a6a4959a2c242710" },
         { "id": "1bf0bd00cc04", "name": "use Notes.Service", "hash": "0cfe34db1cc7c3c3" },
         { "id": "0461ba61e79b", "name": "use Notes.Store", "hash": "a7806fe39a58e98a" },
-        { "id": "36e7626e442c", "name": "intent", "hash": "468ef49d410c0e31" },
-        { "id": "195ff7d7014a", "name": "process Acceptor", "hash": "67242b89185fae68" },
-        { "id": "37754db16c11", "name": "supervisor Acceptors", "hash": "3257ae2e4fb03fac" },
+        { "id": "36e7626e442c", "name": "intent", "hash": "94493632993cf46f" },
+        { "id": "195ff7d7014a", "name": "process Acceptor", "hash": "282b1d5de8371965" },
+        { "id": "37754db16c11", "name": "supervisor Acceptors", "hash": "4b5fee2fc1e49a34" },
         { "id": "151f90a70b38", "name": "fn answer", "hash": "23971363aeebf806" },
         { "id": "5f6de72b9381", "name": "enum Move", "hash": "51af7838969d8a73" },
         { "id": "3aba3ef4e312", "name": "enum Checked", "hash": "465c3edc3fe33266" },
-        { "id": "ac7e57fd1e61", "name": "fn sent", "hash": "3ed0010ec673818c" },
+        { "id": "ac7e57fd1e61", "name": "fn sent", "hash": "ecb70f36e1cfedfd" },
         { "id": "0d0524f1b009", "name": "fn by", "hash": "a2a918778f225834" },
         { "id": "900b46580fe4", "name": "fn draft", "hash": "d18a56a50c079a93" },
         { "id": "2b05e1beb0da", "name": "fn request_of", "hash": "0419d9e9a4deea44" },
@@ -697,15 +702,15 @@
         { "id": "7b6bbab11c28", "name": "fn read_back", "hash": "a75f78a1ec5464be" },
         { "id": "05bd671157a8", "name": "fn renamed", "hash": "f44d3254d5df3976" },
         { "id": "a531b85c2839", "name": "fn holding", "hash": "ab7069b09a50bda1" },
-        { "id": "937cb4e5a5b1", "name": "fn moved", "hash": "de8c2e3ad2078e3a" },
+        { "id": "937cb4e5a5b1", "name": "fn moved", "hash": "05eac5657319cd95" },
         { "id": "296dc4418a05", "name": "fn script", "hash": "884fc555479519f5" },
-        { "id": "02419d125ab8", "name": "fn unfaithful", "hash": "b3567037653233d3" },
+        { "id": "02419d125ab8", "name": "fn unfaithful", "hash": "34e84e534c504561" },
         { "id": "67a96603d111", "name": "fn fresh", "hash": "04f8ab9cf52e82fa" },
         { "id": "8616b48afe93", "name": "fn status_in?", "hash": "ec11093bd3d7a6c4" },
-        { "id": "e1d00fc30736", "name": "test \"every response over the wire is right, or a 503 that left the store as it was\"", "hash": "1fafcbffa6e6fd4c" },
-        { "id": "18f447fbac69", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "0a3fe9954f436297" }
+        { "id": "e1d00fc30736", "name": "test \"every response over the wire is right, or a 503 that left the store as it was\"", "hash": "aff779273c7b874e" },
+        { "id": "18f447fbac69", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "053da3fbe8e7ea9b" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "1cdd3c1a5c9cb959", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "fe9cecec1375c8db", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
     },
     {
       "path": "notes/service.mo",
@@ -762,9 +767,10 @@
         { "id": "53243ec331e5", "name": "test \"the sixty-first call in a minute is 429 and changes nothing\"", "hash": "dcb7f125155abb2a" },
         { "id": "d92b25c863b1", "name": "test \"a list is the client's notes whose titles start with the prefix, by id, at most 100\"", "hash": "e90ee595bc78e2e2" },
         { "id": "6fdb2806c554", "name": "test \"a service started again from its log lists what the first one wrote, and reuses no id\"", "hash": "8ee1fb5af38d4c27" },
-        { "id": "c1c993955704", "name": "property \"a create then a read gives back any valid title and body\"", "hash": "c2b13e67ae39f564" }
+        { "id": "c1c993955704", "name": "property \"a create then a read gives back any valid title and body\"", "hash": "c2b13e67ae39f564" },
+        { "id": "30b04421f1bc", "name": "test rejects \"a call from a client whose token holds a slash\"", "hash": "7f0b3d267d339cac" }
       ],
-      "verified": { "hash": "a307cd32ac26b215", "declarations": "00eebd66ad518b81", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+      "verified": { "hash": "91f66b3b860beb16", "declarations": "3311e949ad197b57", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
     },
     {
       "path": "notes/store.mo",
@@ -837,15 +843,15 @@
         { "id": "6c402da6dfe6", "name": "expose", "hash": "3cd1e6e17ac88094" },
         { "id": "343262ff155b", "name": "intent", "hash": "2300766de995d02e" },
         { "id": "4549032087db", "name": "process Worker", "hash": "7098033e2d78ec73" },
-        { "id": "79a2f57d7aad", "name": "process Acceptor", "hash": "ccd2591cd76b0334" },
-        { "id": "1e4779b47120", "name": "supervisor Exchanges", "hash": "538d7276e4fc1b71" },
+        { "id": "79a2f57d7aad", "name": "process Acceptor", "hash": "078447895f944187" },
+        { "id": "1e4779b47120", "name": "supervisor Exchanges", "hash": "af6d823b306175e0" },
         { "id": "e8149539bf40", "name": "fn answer", "hash": "50af093d30a60071" },
         { "id": "aab278d383a2", "name": "fn answered?", "hash": "f4ac2ddb743b2db1" },
-        { "id": "7cea591137f0", "name": "fn served", "hash": "9e835c5a01d2c05a" },
-        { "id": "08b655803481", "name": "fn main", "hash": "6dcc5e29f2ae09eb" },
+        { "id": "7cea591137f0", "name": "fn served", "hash": "584d6ea3533bafb9" },
+        { "id": "08b655803481", "name": "fn main", "hash": "121c8e8665e7855a" },
         { "id": "252cb198cf08", "name": "test \"a worker answers with the n its request's query gives\"", "hash": "f53928e914abc654" }
       ],
-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "aec422ff594b9b33" }
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "a51891e024a1376c" }
     }
   ]
 }

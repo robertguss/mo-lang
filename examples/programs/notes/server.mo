@@ -6,38 +6,35 @@ use Notes.Note{Note, Outcome, Call, Command, note_of}
 use Notes.Service{Service, opening}
 use Notes.Store{Table}
 
-intent "Serve notes over HTTP: an acceptor process takes one exchange per message, reads its request into a route, asks the service, and replies; a change's reply goes out only once the service has answered, and the service answers only once the change's log line is on disk."
+intent "Serve notes over HTTP: the runtime serves the listener into an acceptor process, which reads each exchange's request into a route, asks the service, and replies; a change's reply goes out only once the service has answered, and the service answers only once the change's log line is on disk."
 
-# Takes the next exchange and answers it itself. A worker process per exchange is what the
-# brief names, but no process is ever freed (TOOLCHAIN-BUGS.md), so notes answers in the
-# acceptor, one exchange at a time, as httpd does.
-process Acceptor(listener: HttpListener, service: Handle(Service))
+# Answers each exchange the runtime hands it itself, one at a time, as httpd does.
+process Acceptor(service: Handle(Service))
   state
     answered: UInt64
     unsent: UInt64
+    quiet: UInt64
   end
 
-  message Accept : Bool
+  message Accepted(exchange: Exchange)
+  message Idle
 
   fn update(state, message)
     case message
-      Accept:
-        case listener.accept(within: 5_000.ms)
-          Ok(exchange):
-            if exchange.reply(answer(service, exchange.request), within: 10_000.ms) is Ok(_)
-              state.answered += 1
-            else
-              state.unsent += 1
-            end
-            true
-          Error(_): false
+      Accepted(exchange):
+        if exchange.reply(answer(service, exchange.request), within: 10_000.ms) is Ok(_)
+          state.answered += 1
+        else
+          state.unsent += 1
         end
+      Idle:
+        state.quiet += 1
     end
   end
 end
 
-supervisor Acceptors(listener: HttpListener, service: Handle(Service))
-  child Acceptor(listener, service), restart: :always
+supervisor Acceptors(service: Handle(Service))
+  child Acceptor(service), restart: :always
 end
 
 # The response to one request: an answer the route gives at once, the health counts, or the
@@ -77,9 +74,7 @@ enum Checked
   Stopped
 end
 
-fn sent(http: Http, acceptor: Handle(Acceptor), port: UInt16, request: Request) : Result(Response,
-  HttpError)
-  acceptor.send(Accept)
+fn sent(http: Http, port: UInt16, request: Request) : Result(Response, HttpError)
   http.send(request, host: "localhost", port: port, within: 1.minute)
 end
 
@@ -178,9 +173,9 @@ end
 # One move over the wire, checked against what the client held and against what the service
 # holds. A request the wire lost may still reach the server later, as a timed-out call may
 # still land, so nothing after it can be checked and the check stops there.
-fn moved(http: Http, acceptor: Handle(Acceptor), service: Handle(Service), port: UInt16, move: Move,
+fn moved(http: Http, service: Handle(Service), port: UInt16, move: Move,
   held: List((String, String))) : Checked
-  case sent(http, acceptor, port, request_of(move, held))
+  case sent(http, port, request_of(move, held))
     Ok(response):
       checked = after(move, held, response)
       if checked is Next(now)
@@ -210,11 +205,10 @@ end
 
 # Plays the script: nothing when every response was right, or a 503 that left the store as it
 # was, and otherwise what was not.
-fn unfaithful(http: Http, acceptor: Handle(Acceptor), service: Handle(Service),
-  port: UInt16) : String
+fn unfaithful(http: Http, service: Handle(Service), port: UInt16) : String
   var held = [("", "")].take(0)
   for move in script()
-    case moved(http, acceptor, service, port, move, held)
+    case moved(http, service, port, move, held)
       Next(now):
         held = now
       Wrong(why):
@@ -242,24 +236,24 @@ test "every response over the wire is right, or a 503 that left the store as it 
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
   service = Service.start(Fs.fixture(), Clock.fixture(), opening(fresh(), Time.fixture()))
-  acceptor = Acceptor.start(listener, service)
-  assert unfaithful(http, acceptor, service, listener.port) == ""
+  listener.serve(into: Acceptor.start(service), idle: 60_000.ms)
+  assert unfaithful(http, service, listener.port) == ""
 end
 
 test "each status comes back over the wire, unless a call fails"
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
   service = Service.start(Fs.fixture(), Clock.fixture(), opening(fresh(), Time.fixture()))
-  acceptor = Acceptor.start(listener, service)
+  listener.serve(into: Acceptor.start(service), idle: 60_000.ms)
   port = listener.port
-  assert status_in?(sent(http, acceptor, port, Request(method: "GET", path: "/health")), [200])
-  assert status_in?(sent(http, acceptor, port, Request(method: "GET", path: "/notes")), [401])
-  assert status_in?(sent(http, acceptor, port, by("PATCH", "/notes", "")), [405])
-  assert status_in?(sent(http, acceptor, port, by("GET", "/nowhere", "")), [404])
-  assert status_in?(sent(http, acceptor, port, by("POST", "/notes", "{\"title\": 1}")), [400])
-  assert status_in?(sent(http, acceptor, port, by("POST", "/notes", draft("x"))), [201, 503])
-  assert status_in?(sent(http, acceptor, port, by("GET", "/notes/n_77", "")), [404])
-  assert status_in?(sent(http, acceptor, port, by("DELETE", "/notes/n_77", "")), [404])
+  assert status_in?(sent(http, port, Request(method: "GET", path: "/health")), [200])
+  assert status_in?(sent(http, port, Request(method: "GET", path: "/notes")), [401])
+  assert status_in?(sent(http, port, by("PATCH", "/notes", "")), [405])
+  assert status_in?(sent(http, port, by("GET", "/nowhere", "")), [404])
+  assert status_in?(sent(http, port, by("POST", "/notes", "{\"title\": 1}")), [400])
+  assert status_in?(sent(http, port, by("POST", "/notes", draft("x"))), [201, 503])
+  assert status_in?(sent(http, port, by("GET", "/notes/n_77", "")), [404])
+  assert status_in?(sent(http, port, by("DELETE", "/notes/n_77", "")), [404])
 end
 
 verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)

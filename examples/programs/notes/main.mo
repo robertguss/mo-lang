@@ -7,7 +7,7 @@
 # run: client 127.0.0.1 1 ada GET /notes
 # exit: 1
 module Notes.Main
-expose Job, Place, Trip, Problem, job, steady, main
+expose Job, Place, Trip, Problem, job, steady, serving?, main
 
 use Notes.Server{Acceptor}
 use Notes.Service{Service, opening}
@@ -160,29 +160,14 @@ fn compacted(fs: Fs, dir: String, opened: Table) : Result(String, Problem)
   Ok("notes: compacted #{dir}/notes.log from #{lines(opened)} lines to #{count(table)}\n")
 end
 
-# The service and its acceptor over a store just opened, and every exchange handed to the
-# acceptor until notes is stopped; a for needs a range to repeat, so after 100 million
-# accepts it returns (GAPS.md).
+# The service and its acceptor over a store just opened, and the listener served into the
+# acceptor from here on; the runtime owns the loop, so notes serves until it is stopped.
 fn served_on(listener: HttpListener, fs: Fs, clock: Clock, out: Out, table: Table) : String
   service = Service.start(fs, clock, opening(table, clock.now))
-  acceptor = Acceptor.start(listener, service)
+  listener.serve(into: Acceptor.start(service), idle: 60_000.ms)
   out.write_line("notes: serving #{table.dir} on 127.0.0.1:#{listener.port}")
   out.flush
-  var taken = 0
-  for _ in 0..10_000
-    taken += accepted_awhile(acceptor)
-  end
-  "notes: answered #{taken} requests\n"
-end
-
-fn accepted_awhile(acceptor: Handle(Acceptor)) : UInt64
-  var taken = 0
-  for _ in 0..10_000
-    if acceptor.ask(Accept, within: 60_000.ms) is Ok(true)
-      taken += 1
-    end
-  end
-  taken
+  ""
 end
 
 fn client(http: Http, trip: Trip) : Result(String, Problem)
@@ -235,10 +220,9 @@ end
 fn checked_on(http: Http, listener: HttpListener, fs: Fs, clock: Clock, table: Table,
   lines: List(String)) : String
   service = Service.start(fs, clock, opening(table, clock.now))
-  acceptor = Acceptor.start(listener, service)
+  listener.serve(into: Acceptor.start(service), idle: 60_000.ms)
   var transcript = ""
   for line in lines
-    acceptor.send(Accept)
     heard = played(http, line, listener.port)
     transcript = "#{transcript}> #{line}\n#{steady(heard)}"
   end
@@ -344,10 +328,21 @@ fn code_of(problem: Problem) : UInt8
   end
 end
 
+# Whether the arguments say to serve, which goes on until notes is stopped.
+fn serving?(args: List(String)) : Bool
+  job(args) is Ok(Serving(_))
+end
+
+# Serving goes on until notes is stopped; every other command ends notes with exit once it is
+# done, since check serves a listener of its own.
 fn main(platform: Platform)
   args = platform.args
   case ran(platform.http, platform.fs, platform.clock, platform.stdout, platform.stderr, args)
-    Ok(text): platform.stdout.write(text)
+    Ok(text):
+      platform.stdout.write(text)
+      if !serving?(args)
+        platform.exit(0)
+      end
     Error(problem):
       platform.stderr.write_line("notes: #{said(problem)}")
       platform.exit(code_of(problem))
@@ -356,6 +351,8 @@ end
 
 test "serve takes a folder and an optional port, 7800 by default"
   assert job(["serve", "data"]) == Ok(Serving(place: Place(dir: "data", port: 7_800)))
+  assert serving?(["serve", "data"])
+  assert !serving?(["compact", "data"])
   assert job(["serve",
     "data",
     "--port",
