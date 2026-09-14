@@ -24,13 +24,18 @@ const why_place = "Only a name or a field path such as copy.name can be assigned
 const why_if = "A one-line if, if cond: a else: b, is a value only: it sits where a value goes, after =, as an argument, or as the last line of a body that gives a value. A statement takes the block form, its body on the lines below its condition, ending with end, as every block does.";
 /// The one-line `if` value malformed (step 25).
 const why_if_value = "A one-line if is a value (grammar §6): if cond: a else: b, with both branches, each one expression. Anything more takes the block form, one part a line.";
+/// `state` or `old` where a binding's or a parameter's name goes (step 26).
+const why_keyword_name = "state and old are keywords (grammar §1): state is a process's state in its update and invariants, and old(x) is x's value before the call or the update in an ensures or an invariant, so neither names a binding or a parameter. A struct's field may take either name, since a field is only read after a dot or given by name (step 25).";
+const state_name = "expected a name: state is a keyword, the process's state in its update and invariants, so a binding or a parameter takes another name, such as status; a struct's field may be named state, and is read after a dot";
+const old_name = "expected a name: old is a keyword, the contract's old value, as old(x) in an ensures or an invariant, so a binding or a parameter takes another name, such as before; a struct's field may be named old, and is read after a dot";
+const old_call = "expected `(` after old: old is a keyword, the contract's old value, as old(x) in an ensures or an invariant, so a binding or a parameter takes another name, such as before; a struct's field may be named old, and is read after a dot";
 /// A variant matched by position (step 21, round 4's MO0101).
 const why_by_name = "A variant's fields are matched by name, as they are built by name: Short(by: n) binds n to by. A position would change meaning when a field is added.";
 /// The parser's rows of the error catalog. MO0101 also stands for a malformed
 /// `fn main` line, with why_main as its why, an `if` on one line, with why_if, and a variant
 /// matched by position, with why_by_name.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " The one-line if is a value only, if cond: a else: b, with both branches, each one expression, and a statement takes the block form; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{} },
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " The one-line if is a value only, if cond: a else: b, with both branches, each one expression, and a statement takes the block form; a variant's fields are matched by name, as Short(by: n); `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses; and state and old are keywords, so a binding or a parameter takes another name.", .fixes = &.{} },
     .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
     .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
     .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
@@ -191,6 +196,16 @@ const Parser = struct {
 
     fn expect(p: *Parser, kind: Kind) Error!u32 {
         return p.eat(kind) orelse p.fail("MO0101", expected_what[@intFromEnum(kind)], why_token);
+    }
+
+    /// A binding's or a parameter's name. `state` and `old` are keywords there, and the message
+    /// says what each names and where it may be a name (step 26).
+    fn expectName(p: *Parser) Error!u32 {
+        return switch (p.peek()) {
+            .kw_state => p.fail("MO0101", state_name, why_keyword_name),
+            .kw_old => p.fail("MO0101", old_name, why_keyword_name),
+            else => p.expect(.ident),
+        };
     }
 
     fn text(p: *Parser, i: u32) []const u8 {
@@ -730,7 +745,7 @@ const Parser = struct {
 
     fn parseParam(p: *Parser) Error!Index {
         const inout = p.eat(.kw_inout) != null;
-        const name = try p.expect(.ident);
+        const name = try p.expectName();
         _ = try p.expect(.colon);
         const t = try p.parseType();
         const default: Index = if (p.eat(.eq)) |_| try p.parseExpr() else ast.none;
@@ -827,7 +842,7 @@ const Parser = struct {
 
     fn parseVarBinding(p: *Parser) Error!Index {
         _ = try p.expect(.kw_var);
-        const name = try p.expect(.ident);
+        const name = try p.expectName();
         _ = try p.expect(.eq);
         const e = try p.parseExpr();
         try p.endLine();
@@ -850,7 +865,7 @@ const Parser = struct {
         _ = try p.expect(.kw_for);
         // `for _ in 0..n`: `_` says the index is unused (step 5). The grammar's `for`
         // production takes ident | "_"; the unused-binding law has nothing to bind.
-        const name = p.eat(.underscore) orelse try p.expect(.ident);
+        const name = p.eat(.underscore) orelse try p.expectName();
         _ = try p.expect(.kw_in);
         const iter = try p.parseExpr();
         _ = try p.expect(.newline);
@@ -1267,7 +1282,7 @@ const Parser = struct {
         const top = p.scratch.items.len;
         if (p.peek() != .r_paren) {
             while (true) {
-                try p.push(try p.expect(.ident));
+                try p.push(try p.expectName());
                 if (p.eat(.comma) == null) break;
             }
         }
@@ -1290,6 +1305,7 @@ const Parser = struct {
 
     fn parseOld(p: *Parser) Error!Index {
         const kw = try p.expect(.kw_old);
+        if (p.peek() != .l_paren) return p.failAt(kw, "MO0101", old_call, why_keyword_name);
         _ = try p.expect(.l_paren);
         const e = try p.parseExpr();
         _ = try p.expect(.r_paren);
@@ -1364,6 +1380,8 @@ const Parser = struct {
         switch (p.peek()) {
             .underscore => return p.addNode(.{ .kind = .pat_wildcard, .main_token = p.next() }),
             .ident => return p.addNode(.{ .kind = .pat_bind, .main_token = p.next() }),
+            .kw_state => return p.fail("MO0104", "expected a pattern: " ++ state_name["expected a name: ".len..], why_keyword_name),
+            .kw_old => return p.fail("MO0104", "expected a pattern: " ++ old_name["expected a name: ".len..], why_keyword_name),
             .int, .float, .string, .kw_true, .kw_false => return p.addNode(.{ .kind = .pat_literal, .main_token = p.next() }),
             // A negative number: the literal's node keeps its `-` token as lhs.
             .minus => {
@@ -1419,7 +1437,7 @@ const Parser = struct {
         const kw = try p.expect(.kw_for);
         const top = p.scratch.items.len;
         while (true) {
-            const name = try p.expect(.ident);
+            const name = try p.expectName();
             _ = try p.expect(.kw_in);
             const e = try p.parseExpr();
             try p.push(try p.addNode(.{ .kind = .generator, .main_token = name, .lhs = e }));
@@ -1775,7 +1793,7 @@ test "a one-line if is a value, with the block form's tree" {
     _ = try parseSource(arena, "module M\nfn f(xs: List(UInt8)) : List(UInt8)\n  xs.map(fn(x) if x > 1: x else: 0 end)\nend\n", &diags);
 }
 
-test "state and old name a struct's field and are given by that name when it is built, and nowhere else" {
+test "state and old name a struct's field and are given by that name when it is built, and no binding or parameter" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -1786,14 +1804,23 @@ test "state and old name a struct's field and are given by that name when it is 
     try std.testing.expectEqualStrings("state", tree.tokenText(tree.nodes[fields[0]].main_token));
     try std.testing.expectEqualStrings("old", tree.tokenText(tree.nodes[fields[1]].main_token));
 
-    const wrong = [_][]const u8{
-        "module M\nenum E\n  A(state: UInt8)\nend\n",
-        "module M\nfn f(state: UInt8) : UInt8\n  1\nend\n",
+    const wrong = [_]struct { []const u8, []const u8, []const u8 }{
+        .{ "module M\nenum E\n  A(state: UInt8)\nend\n", "MO0101", "expected a name" },
+        // A binding or a parameter (step 26).
+        .{ "module M\nfn f(state: UInt8) : UInt8\n  1\nend\n", "MO0101", state_name },
+        .{ "module M\nfn f(inout old: UInt8)\n  old += 1\nend\n", "MO0101", old_name },
+        .{ "module M\nfn f(n: UInt8) : UInt8\n  var state = n\n  state\nend\n", "MO0101", state_name },
+        .{ "module M\nfn f(n: UInt8) : UInt8\n  old = n\n  old\nend\n", "MO0101", old_call },
+        .{ "module M\nfn f(n: UInt8) : UInt8\n  n + old\nend\n", "MO0101", old_call },
+        .{ "module M\nfn f(xs: List(UInt8)) : List(UInt8)\n  xs.map(fn(old) old end)\nend\n", "MO0101", old_name },
+        .{ "module M\nfn f(xs: List(UInt8))\n  for state in xs\n    state\n  end\nend\n", "MO0101", state_name },
+        .{ "module M\nfn f(o: Option(UInt8)) : UInt8\n  case o\n    Some(state): state\n    None: 0\n  end\nend\n", "MO0104", "expected a pattern: " ++ state_name["expected a name: ".len..] },
     };
     for (wrong) |w| {
         diags.clearRetainingCapacity();
-        try std.testing.expectError(error.Rejected, parseSource(arena, w, &diags));
-        try std.testing.expectEqualStrings("MO0101", diags.items[0].code);
+        try std.testing.expectError(error.Rejected, parseSource(arena, w[0], &diags));
+        try std.testing.expectEqualStrings(w[1], diags.items[0].code);
+        try std.testing.expectEqualStrings(w[2], diags.items[0].what);
     }
 }
 

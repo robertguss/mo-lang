@@ -108,6 +108,8 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 83. `rejects/read-only-message-field.mo`: an `Fs` narrowed to `read_only` sent in a message whose arm writes through it; `MO0404` refuses the message (step 24)
 87. `rejects/state-binding.mo`: `state = 1` outside a process; `state` alone is the process's state, so `MO0201` says a binding takes another name (step 25)
 88. `rejects/read-only-if-argument.mo`: an `Fs` narrowed to `read_only` in a branch of a one-line `if` handed as a process's start argument; `MO0404` names the branch (step 25)
+89. `rejects/var-state.mo`: `var state = n`; `state` is a keyword, so `MO0101` says what it names, that a binding or a parameter takes another name, and that a struct's field may take it (step 26)
+90. `rejects/old-parameter.mo`: a parameter named `old`; `old` is a keyword, so `MO0101` says what it names, that a binding or a parameter takes another name, and that a struct's field may take it (step 26)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records
