@@ -25,3 +25,6 @@ func Ensure(ok bool, cond string) error { return check("ensures", ok, cond) }
 
 // Invariant checks a property that holds after every operation.
 func Invariant(ok bool, cond string) error { return check("invariant", ok, cond) }
+
+// Never fails when the thing that must never happen did.
+func Never(happened bool, cond string) error { return check("never", !happened, cond) }
