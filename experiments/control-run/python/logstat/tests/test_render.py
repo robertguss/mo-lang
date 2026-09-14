@@ -41,7 +41,7 @@ class TextTest(unittest.TestCase):
             lines[start + 1 : start + 3],
             [
                 "  1_340 ms  POST /api/orders   2026-09-12T10:00:02Z",
-                "     12 ms  GET /               2026-09-12T10:00:01Z",
+                "     12 ms  GET /              2026-09-12T10:00:01Z",
             ],
         )
 
@@ -57,7 +57,13 @@ class TextTest(unittest.TestCase):
 
     def test_an_empty_summary_prints_empty_sections(self) -> None:
         empty = Summary(
-            requests=0, errors=0, error_rate=0.0, malformed=0, per_minute=0.0, slowest=[], busiest=[]
+            requests=0,
+            errors=0,
+            error_rate=0.0,
+            malformed=0,
+            per_minute=0.0,
+            slowest=[],
+            busiest=[],
         )
         self.assertEqual(
             render_text(empty),
