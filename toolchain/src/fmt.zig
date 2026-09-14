@@ -664,6 +664,11 @@ const Printer = struct {
 
     fn path(p: *Printer, i: Index) E!void {
         const n = p.node(i);
+        // `none` in a signature is a lowercase name standing alone (step 24).
+        if (p.tree.tokens[n.main_token].kind == .ident) {
+            _ = try p.tk(.ident);
+            return;
+        }
         var last = try p.tk(.type_name);
         while (last != n.lhs) {
             _ = try p.tk(.dot);

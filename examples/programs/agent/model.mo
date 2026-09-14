@@ -2,8 +2,6 @@
 module Agent.Model
 expose Model, Request, Reply, ModelError, Attempts, Taken, Fake, Fakes, body, parsed, complete, spent?, tokens_of
 
-use Agent.Wire{posted}
-
 intent "The model client recipe (examples/recipes/model-client.mo) implemented for agent over Http: the request as JSON posted to /complete, the reply read into a tool to use or an answer, every attempt on the caller's deadline, retried at once on a model error while attempts and the deadline last, and a reply read after the deadline refused as Late."
 
 never "a call is made more than retries + 1 times"
@@ -122,10 +120,9 @@ fn complete(http: Http, model: Model, request: Request, retries: UInt32,
   tried(http, model, request, Attempts(made: 1, allowed: retries.to_u64 + 1), by)
 end
 
-# Whether a deadline has nothing left: tightening it to now gives it back unchanged only once it
-# has passed.
+# Whether a deadline has nothing left (step 24's row).
 fn spent?(by: Deadline) : Bool
-  by.at_most(0.ms) == by
+  by.remaining == 0.ms
 end
 
 fn tokens_of(reply: Reply) : UInt64
@@ -144,7 +141,12 @@ fn tried(http: Http, model: Model, request: Request, attempts: Attempts,
 end
 
 fn once(http: Http, model: Model, request: Request, by: Deadline) : Result(Reply, ModelError)
-  case http.send(posted(request.run, body(request)), host: model.host, port: model.port, within: by)
+  # The HTTP request is the prelude's, which the construction's fields name, though this module
+  # declares the recipe's Request (step 24): the body posted to /complete as JSON, with the run it
+  # is for in x-run, which the scripted model plays its script by.
+  headers = Map.new().set("content-type", "application/json").set("x-run", request.run)
+  sent = Request(method: "POST", path: "/complete", headers: headers, body: body(request))
+  case http.send(sent, host: model.host, port: model.port, within: by)
     Ok(response):
       return Error(Status(code: response.status)) if response.status != 200
       reply = try parsed(model, response.body)

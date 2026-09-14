@@ -1,7 +1,7 @@
 module Basics.ReturnsNothing
-expose Reading, describe, report
+expose Reading, describe, report, saved
 
-intent "A function called only for what it writes leaves its return type off, as main does, and a negative number is a pattern."
+intent "A function called only for what it writes leaves its return type off, as main does; one that only succeeds or fails gives Result(none, E), as the prelude's rows do; and a negative number is a pattern."
 
 enum Reading
   Degrees(value: Int64)
@@ -26,6 +26,13 @@ fn report(out: Out, readings: List(Reading))
   end
 end
 
+# Saves a note in its folder, made first when it is not there: it succeeds or says why not, and
+# gives nothing else back, so its result is Result(none, FsError) as Fs.write's is (step 24).
+fn saved(fs: Fs, note: String) : Result(none, FsError)
+  try fs.mkdir("notes", within: 1.minute)
+  fs.write("notes/last.txt", note, within: 1.minute)
+end
+
 test "a negative number matches in a pattern"
   assert describe(Degrees(value: -40)) == "minus forty, on both scales"
   assert describe(Degrees(value: -3)) == "below freezing"
@@ -40,5 +47,12 @@ test "a function that returns nothing is called for what it does"
   assert out.written == ["minus forty, on both scales\n", "no reading\n"]
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+test "a function that only succeeds or fails gives Result(none, E)"
+  fs = Fs.fixture()
+  assert saved(fs, "hello") is Ok(_)
+  assert fs.read("notes/last.txt", within: 1.minute) == Ok("hello")
+  assert saved(Fs.fixture(delay: 2.minute), "late") is Error(Timeout)
+end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
           proven: not run

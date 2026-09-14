@@ -11,9 +11,9 @@ use Agent.Transcript{Step}
 
 intent "A run as a process: its budget's deadline taken from the ask that begins it, then a loop of messages it sends itself (a model call, its step written, the tool the model named, that step written), every call on what remains of the deadline tightened by tool_ms; each step is in the book before the next call, the book's answer says whether the run goes on, and the run ends by asking the book to write its end."
 
-# A run's reads go through its folder read-only, and its writes through the same folder, writable
-# only when the run was granted write_file. A crash ends the run where it is; the book fails it as
-# lost once its wall budget and grace have passed.
+# A run's reads go through its folder read-only, and its writes through the same folder, which the
+# run's tools use only when the run was granted write_file. A crash ends the run where it is; the
+# book fails it as lost once its wall budget and grace have passed.
 process Run(book: Handle(Book), reads: Fs, writes: Fs, http: Http, clock: Clock, setup: Setup)
   state
     run: Progress = fresh(setup.id)
@@ -173,16 +173,14 @@ end
 test rejects "a run begun twice"
   fs = Fs.fixture()
   book = Book.start(fs, Clock.fixture(), "runs", Time.fixture())
-  run = Run.start(book, fs.read_only, fs.read_only, Http.fixture(), Clock.fixture(),
-    setup_nowhere())
+  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(), setup_nowhere())
   assert [began?(run, 1.minute), began?(run, 2.minute)].size == 2
 end
 
 test rejects "a run begun again once it has stopped"
   fs = Fs.fixture()
   book = Book.start(fs, Clock.fixture(), "runs", Time.fixture())
-  run = Run.start(book, fs.read_only, fs.read_only, Http.fixture(), Clock.fixture(),
-    setup_nowhere())
+  run = Run.start(book, fs.read_only, fs, Http.fixture(), Clock.fixture(), setup_nowhere())
   run.send(Think(me: run))
   for _ in 0..200
     if run.ask(Look, within: 1.minute) == Ok(Stopped)

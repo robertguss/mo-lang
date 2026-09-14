@@ -4,6 +4,8 @@ Recorded while writing program 5 (`mo-wiki/spec/programs/05-agent-harness.md`, b
 
 ## 1. `MO0404` does not follow a read-only `Fs` into a process's start arguments
 
+Fixed in step 24 (`mo-wiki/plans/interpreter-step-24.md`, part A): the checker follows the narrowing into a process's start arguments, a supervisor's child lines, and a message's fields, and `p6.mo` below is refused at `Tool.start(fs.read_only)` with `MO0404 Tool writes through its parameter files`. `examples/rejects/read-only-start-argument.mo` and `read-only-message-field.mo` hold it; `Agent.Registry.started_run` now hands the run its folder writable, and the run's tools refuse an ungranted write before it is made.
+
 `Fs.read_only`'s row promises the checker refuses it "where a write reaches it (`MO0404`)", and it does for a function: handing `folder.read_only` to a function parameter that some branch writes through is refused at the call. Handed to a process's start argument that its update writes through, it is accepted, and the write crashes the process at run time with "writes through an Fs narrowed to read_only, which only reads".
 
 Reproduction (`p6.mo`, in a folder of its own):

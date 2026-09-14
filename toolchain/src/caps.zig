@@ -66,6 +66,8 @@ const Caps = struct {
     k: *const checker.Checked,
     out: *diag.List,
     units: std.ArrayList(Unit) = .empty,
+    /// The token of each name a process's update binds to a field of its message (armFields).
+    arm_fields: std.AutoHashMapUnmanaged(u32, Field) = .empty,
 
     fn node(c: *Caps, i: Index) ast.Node {
         return c.k.tree.nodes[i];
@@ -235,7 +237,7 @@ const Caps = struct {
                 .never => try c.addUnit(.{ .kind = .never, .first = prev + 1, .last = it }),
                 .process_decl, .supervisor_decl => {
                     const d = c.k.findDeclAt(it, c.text(n.main_token));
-                    const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) or c.messagesHaveCaps(c.k.decls[x]) else false;
+                    const has = if (d) |x| c.paramsHaveCaps(c.k.decls[x].params) or c.messagesHaveCaps(c.k.decls[x]) or c.stateHasHandles(c.k.decls[x]) else false;
                     try c.addUnit(.{ .kind = if (n.kind == .process_decl) .process else .supervisor, .name = c.text(n.main_token), .first = prev + 1, .last = it, .has_caps = has });
                 },
                 else => try c.addUnit(.{ .kind = .other, .first = prev + 1, .last = it }),
@@ -254,13 +256,14 @@ const Caps = struct {
     fn declarations(c: *Caps) Error!void {
         for (c.k.decls) |d| {
             if (d.node == 0) continue;
-            const ranges = [_]checker.Range{d.fields};
             switch (d.kind) {
-                .struct_, .process => for (ranges) |r| try c.fieldCaps(r),
+                .struct_ => try c.fieldCaps(d.fields),
+                .process => try c.stateCaps(d.fields),
                 else => {},
             }
             // A message line may declare a capability or a handle (step 20): the protocol
-            // shows the authority the process receives. A struct, a state, or an enum may not.
+            // shows the authority the process receives. A struct or an enum may not, and a state
+            // only a handle (step 24).
             if (d.kind == .enum_) {
                 for (c.k.variants[d.variants.start..d.variants.end]) |v| try c.fieldCaps(v.fields);
             }
@@ -327,6 +330,42 @@ const Caps = struct {
             if (f.node == 0) continue;
             if (c.capIn(f.type, 0)) |cap| try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s}; a capability travels only as a parameter, never inside a value.", .{ f.name, try c.tn(cap) }));
         }
+    }
+
+    /// A process's state field may keep the handles of processes (step 24): a state is owned by
+    /// exactly one process, and the runtime counts the handles it holds as it counts those in start
+    /// arguments. It keeps one as `Handle(P)`, `Option(Handle(P))`, `List(Handle(P))`, or
+    /// `Map(K, Handle(P))`; a capability, or a handle inside anything else, stays refused.
+    fn stateCaps(c: *Caps, r: checker.Range) Error!void {
+        for (c.k.fields[r.start..r.end]) |f| {
+            if (f.node == 0) continue;
+            const found = c.capIn(f.type, 0) orelse continue;
+            if (c.k.pool.get(found).tag == .handle and c.keptHandle(f.type)) continue;
+            if (c.k.pool.get(found).tag == .cap) {
+                try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s}; a capability travels only as a parameter, never inside a value.", .{ f.name, try c.tn(found) }));
+                continue;
+            }
+            try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s} inside a {s}; a state field keeps a handle only as {s}, Option({s}), List({s}), or Map(K, {s}).", .{ f.name, try c.tn(found), try c.tn(f.type), try c.tn(found), try c.tn(found), try c.tn(found), try c.tn(found) }));
+        }
+    }
+
+    /// `Handle(P)`, or an Option or a List of one, or a Map whose values are one and whose keys hold
+    /// no authority.
+    fn keptHandle(c: *Caps, t: Id) bool {
+        const b = c.baseTag(t);
+        return switch (b.tag) {
+            .handle => true,
+            .option, .list => c.baseTag(b.a).tag == .handle,
+            .map => c.capIn(b.a, 0) == null and c.baseTag(b.b).tag == .handle,
+            else => false,
+        };
+    }
+
+    /// A process whose state keeps a handle holds authority in its box (step 24).
+    fn stateHasHandles(c: *Caps, d: checker.Decl) bool {
+        if (d.kind != .process) return false;
+        for (c.k.fields[d.fields.start..d.fields.end]) |f| if (checker.handleIn(&c.k.pool, f.type, 0)) return true;
+        return false;
     }
 
     fn recipeNeeds(c: *Caps, n: ast.Node) Error!void {
@@ -415,10 +454,10 @@ const Caps = struct {
                     },
                     .user => |s| {
                         if (c.hasWithin(n)) try c.report(.needless_within, c.firstToken(i), try c.print("{s} does not wait itself, so it takes no within:; the calls inside it carry their own.", .{c.k.sigs[s].name}));
-                        try c.handedReadOnly(i, s, writes, read_only.items);
                     },
                     .none => {},
                 }
+                try c.handedReadOnly(i, writes, read_only.items);
                 if ((u.kind == .function or u.kind == .process) and !u.has_caps and !pure_reported and isValue(n.kind)) {
                     const t = c.k.typeOf(i);
                     const b = c.baseTag(t);
@@ -434,57 +473,85 @@ const Caps = struct {
         }
     }
 
-    // ---- a read-only Fs handed to a function that writes through it
+    // ---- a read-only Fs handed to a function, a process, or a message that writes through it
 
-    const Bound = struct { name: []const u8, param: u32 };
+    /// What an Fs expression reaches inside the unit it is in: a parameter of the function, the
+    /// process, or the supervisor, or a field of the message the process's update took.
+    const Root = union(enum) { param: u32, field: Field };
+    const Field = struct { variant: u32, field: u32 };
+    const Bound = struct { name: []const u8, root: Root };
 
-    /// Per signature, per parameter: whether the function writes files through the parameter,
-    /// directly, through a scope of it, or by handing either to a function that does. Settles
-    /// over the call graph, so recursion and calls to later functions are followed.
-    fn writesThrough(c: *Caps) Error![]const []bool {
+    /// Where files are written through, settled over the call graph so recursion and calls to
+    /// later functions are followed: per signature, per parameter; per process or supervisor, per
+    /// start parameter; and per message, per field (step 24), each directly, through a scope, or
+    /// by handing either to a function, a start, a child line, or a message that writes.
+    const Writes = struct { sigs: [][]bool, decls: [][]bool, variants: [][]bool };
+
+    /// An expression handed on to something that writes through it, and the words that say where.
+    const Site = struct { arg: Index, owner: []const u8, label: []const u8 };
+
+    fn falses(c: *Caps, n: usize) Error![]bool {
+        const out = try c.gpa.alloc(bool, n);
+        @memset(out, false);
+        return out;
+    }
+
+    fn writesThrough(c: *Caps) Error!Writes {
         const k = c.k;
-        const out = try c.gpa.alloc([]bool, k.sigs.len);
-        for (k.sigs, out) |s, *w| {
-            w.* = try c.gpa.alloc(bool, s.params.len());
-            @memset(w.*, false);
-        }
+        const w: Writes = .{
+            .sigs = try c.gpa.alloc([]bool, k.sigs.len),
+            .decls = try c.gpa.alloc([]bool, k.decls.len),
+            .variants = try c.gpa.alloc([]bool, k.variants.len),
+        };
+        for (k.sigs, w.sigs) |s, *x| x.* = try c.falses(s.params.len());
+        for (k.decls, w.decls) |d, *x| x.* = try c.falses(d.params.len());
+        for (k.variants, w.variants) |v, *x| x.* = try c.falses(v.fields.len());
+        try c.armFields();
         var changed = true;
         while (changed) {
             changed = false;
             for (c.units.items) |u| {
-                if (u.kind != .function) continue;
-                const si = c.sigIndexOf(u.last) orelse continue;
-                const s = k.sigs[si];
-                const params = k.params[s.params.start..s.params.end];
+                const owner: []bool, const r: checker.Range = switch (u.kind) {
+                    .function => blk: {
+                        const si = c.sigIndexOf(u.last) orelse continue;
+                        break :blk .{ w.sigs[si], k.sigs[si].params };
+                    },
+                    .process, .supervisor => blk: {
+                        const d = k.findDeclAt(u.last, u.name) orelse continue;
+                        break :blk .{ w.decls[d], k.decls[d].params };
+                    },
+                    else => continue,
+                };
+                const params = k.params[r.start..r.end];
                 var bound: std.ArrayList(Bound) = .empty;
                 var i = u.first;
                 while (i <= u.last) : (i += 1) {
                     const n = c.node(i);
                     if (n.kind == .binding or n.kind == .var_binding) {
-                        if (c.paramRoot(n.lhs, params, bound.items)) |p| try bound.append(c.gpa, .{ .name = c.text(n.main_token), .param = p });
+                        if (c.rootOf(n.lhs, params, bound.items)) |p| try bound.append(c.gpa, .{ .name = c.text(n.main_token), .root = p });
                     }
-                    switch (k.callee[i]) {
-                        .prelude => |r| if (writesFiles(prelude.fns[r])) {
-                            const p = c.paramRoot(n.lhs, params, bound.items) orelse continue;
-                            if (!out[si][p]) {
-                                out[si][p] = true;
-                                changed = true;
-                            }
-                        },
-                        .user => |callee| for (try c.callArgs(i), 0..) |a, j| {
-                            if (j >= out[callee].len or !out[callee][j]) continue;
-                            const p = c.paramRoot(a, params, bound.items) orelse continue;
-                            if (!out[si][p]) {
-                                out[si][p] = true;
-                                changed = true;
-                            }
-                        },
-                        .none => {},
+                    if (k.callee[i] == .prelude and writesFiles(prelude.fns[k.callee[i].prelude])) {
+                        if (c.rootOf(n.lhs, params, bound.items)) |p| changed = c.mark(w, owner, p) or changed;
+                    }
+                    for (try c.handed(i, w)) |s| {
+                        if (c.rootOf(s.arg, params, bound.items)) |p| changed = c.mark(w, owner, p) or changed;
                     }
                 }
             }
         }
-        return out;
+        return w;
+    }
+
+    /// Marks a root written through; true when it was not yet.
+    fn mark(c: *Caps, w: Writes, owner: []bool, root: Root) bool {
+        _ = c;
+        const slot = switch (root) {
+            .param => |p| &owner[p],
+            .field => |f| &w.variants[f.variant][f.field],
+        };
+        if (slot.*) return false;
+        slot.* = true;
+        return true;
     }
 
     fn sigIndexOf(c: *Caps, n: Index) ?u32 {
@@ -492,9 +559,52 @@ const Caps = struct {
         return null;
     }
 
-    /// The Fs parameter an expression reaches: the parameter by name, a local bound to one,
-    /// or `scoped` on either. Not through `read_only`, whose writes are refused where they are.
-    fn paramRoot(c: *Caps, i: Index, params: []const checker.Param, bound: []const Bound) ?u32 {
+    /// Every name a process's update binds to a field of the message it took, by the name's token:
+    /// `Write(files: f)` binds f to Write's field files, and `Take(conn)` to Take's one field.
+    fn armFields(c: *Caps) Error!void {
+        for (c.units.items) |u| {
+            if (u.kind != .process) continue;
+            const top = c.unitStatements(u) orelse continue;
+            const d = c.k.findDeclAt(u.last, u.name) orelse continue;
+            const case = c.node(top.one);
+            if (case.kind != .case_stmt and case.kind != .case_expr) continue;
+            for (c.spanAt(case.rhs)) |arm| {
+                const one = [1]u32{c.node(arm).lhs};
+                const p = c.node(arm).lhs;
+                const alts: []const u32 = if (c.node(p).kind == .pat_or) c.k.tree.span(c.node(p).lhs, c.node(p).rhs) else &one;
+                for (alts) |alt| {
+                    const an = c.node(alt);
+                    const v = c.variantOf(c.k.decls[d], c.text(an.main_token)) orelse continue;
+                    const fields = c.k.fields[c.k.variants[v].fields.start..c.k.variants[v].fields.end];
+                    switch (an.kind) {
+                        .pat_variant => if (an.lhs != 0 and c.node(an.lhs).kind == .pat_bind and fields.len == 1) {
+                            try c.arm_fields.put(c.gpa, c.node(an.lhs).main_token, .{ .variant = v, .field = 0 });
+                        },
+                        .pat_record => for (c.k.tree.span(an.lhs, an.rhs)) |pf| {
+                            const bind = c.node(pf).lhs;
+                            if (bind == 0 or c.node(bind).kind != .pat_bind) continue;
+                            const name = c.text(c.node(pf).main_token);
+                            for (fields, 0..) |f, fi| if (std.mem.eql(u8, f.name, name)) {
+                                try c.arm_fields.put(c.gpa, c.node(bind).main_token, .{ .variant = v, .field = @intCast(fi) });
+                            };
+                        },
+                        else => {},
+                    }
+                }
+            }
+        }
+    }
+
+    fn variantOf(c: *Caps, d: checker.Decl, name: []const u8) ?u32 {
+        var v = d.variants.start;
+        while (v < d.variants.end) : (v += 1) if (std.mem.eql(u8, c.k.variants[v].name, name)) return v;
+        return null;
+    }
+
+    /// The Fs an expression reaches: a parameter by name, a local bound to one, a message field
+    /// the update's arm bound, or `scoped` on any of those. Not through `read_only`, whose writes
+    /// are refused where they are.
+    fn rootOf(c: *Caps, i: Index, params: []const checker.Param, bound: []const Bound) ?Root {
         const n = c.node(i);
         switch (n.kind) {
             .name_ref => {
@@ -502,10 +612,13 @@ const Caps = struct {
                 var k = bound.len;
                 while (k > 0) {
                     k -= 1;
-                    if (std.mem.eql(u8, bound[k].name, name)) return bound[k].param;
+                    if (std.mem.eql(u8, bound[k].name, name)) return bound[k].root;
+                }
+                if (c.k.binding_of.len > i and c.k.binding_of[i] != 0) {
+                    if (c.arm_fields.get(c.k.binding_of[i] - 1)) |f| return .{ .field = f };
                 }
                 for (params, 0..) |p, pk| {
-                    if (std.mem.eql(u8, p.name, name) and c.baseTag(p.type).tag == .cap and c.baseTag(p.type).a == @intFromEnum(types.CapKind.fs)) return @intCast(pk);
+                    if (std.mem.eql(u8, p.name, name) and c.baseTag(p.type).tag == .cap and c.baseTag(p.type).a == @intFromEnum(types.CapKind.fs)) return .{ .param = @intCast(pk) };
                 }
                 return null;
             },
@@ -513,12 +626,76 @@ const Caps = struct {
                 .prelude => |r| {
                     const row = prelude.fns[r];
                     if (!std.mem.eql(u8, row.recv, "Fs") or !std.mem.eql(u8, row.name, "scoped")) return null;
-                    return c.paramRoot(n.lhs, params, bound);
+                    return c.rootOf(n.lhs, params, bound);
                 },
                 else => return null,
             },
             else => return null,
         }
+    }
+
+    /// The expressions node `i` hands to something `w` says writes through them: an argument to a
+    /// function's parameter, a start argument to a process's or a supervisor's (by a start call or
+    /// a child line), or a field of a message whose arm writes through it.
+    fn handed(c: *Caps, i: Index, w: Writes) Error![]const Site {
+        const k = c.k;
+        const n = c.node(i);
+        var out: std.ArrayList(Site) = .empty;
+        switch (k.callee[i]) {
+            .user => |s| {
+                const params = k.params[k.sigs[s].params.start..k.sigs[s].params.end];
+                for (try c.callArgs(i), 0..) |a, j| {
+                    if (j >= w.sigs[s].len or !w.sigs[s][j]) continue;
+                    try out.append(c.gpa, .{ .arg = a, .owner = k.sigs[s].name, .label = try c.print("its parameter {s}", .{params[j].name}) });
+                }
+            },
+            .prelude => |r| {
+                const row = prelude.fns[r];
+                const starts = std.mem.eql(u8, row.recv, "Process") or std.mem.eql(u8, row.recv, "Supervisor");
+                if (starts and n.kind == .member_call and c.node(n.lhs).kind == .type_name_ref) {
+                    const d = k.findDeclAt(i, c.text(c.node(n.lhs).main_token)) orelse return out.items;
+                    var j: usize = 0;
+                    for (c.spanAt(n.rhs)) |a| {
+                        if (c.node(a).kind == .named_arg) continue;
+                        defer j += 1;
+                        try c.startSite(&out, w, d, j, a);
+                    }
+                }
+            },
+            .none => switch (n.kind) {
+                .child => {
+                    const d = k.findDeclAt(i, c.text(n.main_token)) orelse return out.items;
+                    const ch = k.tree.extraData(ast.Child, n.lhs);
+                    for (k.tree.span(ch.args_start, ch.args_end), 0..) |a, j| try c.startSite(&out, w, d, j, a);
+                },
+                .call => {
+                    const t = c.baseTag(k.typeOf(i));
+                    if (t.tag != .message or c.node(n.lhs).kind != .type_name_ref) return out.items;
+                    const d = k.decls[t.a];
+                    const vname = c.text(c.node(n.lhs).main_token);
+                    const v = c.variantOf(d, vname) orelse return out.items;
+                    const fields = k.fields[k.variants[v].fields.start..k.variants[v].fields.end];
+                    for (c.spanAt(n.rhs), 0..) |a, j| {
+                        const an = c.node(a);
+                        const fi = if (an.kind == .named_arg) for (fields, 0..) |f, fk| {
+                            if (std.mem.eql(u8, f.name, c.text(an.main_token))) break fk;
+                        } else continue else j;
+                        if (fi >= w.variants[v].len or !w.variants[v][fi]) continue;
+                        const value = if (an.kind == .named_arg) an.lhs else a;
+                        try out.append(c.gpa, .{ .arg = value, .owner = d.name, .label = try c.print("{s}'s field {s}", .{ vname, fields[fi].name }) });
+                    }
+                },
+                else => {},
+            },
+        }
+        return out.items;
+    }
+
+    fn startSite(c: *Caps, out: *std.ArrayList(Site), w: Writes, d: u32, j: usize, a: Index) Error!void {
+        if (j >= w.decls[d].len or !w.decls[d][j]) return;
+        const decl = c.k.decls[d];
+        const p = c.k.params[decl.params.start + j];
+        try out.append(c.gpa, .{ .arg = a, .owner = decl.name, .label = try c.print("its parameter {s}", .{p.name}) });
     }
 
     /// A user call's arguments by parameter position: the receiver of a dot call first.
@@ -537,18 +714,17 @@ const Caps = struct {
         return out.items;
     }
 
-    /// Call `i` to signature `si` hands an Fs narrowed to read_only to a parameter the
-    /// function writes through: refused here, at the argument, not when the write runs. The
-    /// argument is read-only by what this unit saw bound (a name), or by its type.
-    fn handedReadOnly(c: *Caps, i: Index, si: u32, writes: []const []const bool, names: []const []const u8) Error!void {
-        const s = c.k.sigs[si];
-        const params = c.k.params[s.params.start..s.params.end];
-        for (try c.callArgs(i), 0..) |a, j| {
-            if (j >= writes[si].len or !writes[si][j]) continue;
+    /// Node `i` hands an Fs narrowed to read_only to a function's parameter, a process's start
+    /// argument, or a message's field that is written through: refused here, at the argument, not
+    /// when the write runs. The argument is read-only by what this unit saw bound (a name), or by
+    /// its type.
+    fn handedReadOnly(c: *Caps, i: Index, writes: Writes, names: []const []const u8) Error!void {
+        for (try c.handed(i, writes)) |s| {
+            const a = s.arg;
             const by_type = c.node(a).kind != .name_ref and c.k.pool.resolve(c.k.typeOf(a)) == types.fs_read_only;
             if (!by_type and !c.readOnly(a, names)) continue;
             const arg = c.argText(a);
-            try c.report(.flows_violated, c.firstToken(a), try c.print("{s} writes through its parameter {s}, and {s} was narrowed to read_only and only reads; hand it the Fs {s} was narrowed from.", .{ s.name, params[j].name, arg, arg }));
+            try c.report(.flows_violated, c.firstToken(a), try c.print("{s} writes through {s}, and {s} was narrowed to read_only and only reads; hand it the Fs {s} was narrowed from.", .{ s.owner, s.label, arg, arg }));
         }
     }
 
@@ -1058,6 +1234,125 @@ test "a read-only Fs handed to a function that writes through it, or through a s
     );
     try std.testing.expectEqual(@as(usize, 1), found.len);
     try std.testing.expectEqualStrings("copy writes through its parameter logs, and platform.fs.scoped(\"data\").read_only was narrowed to read_only and only reads; hand it the Fs platform.fs.scoped(\"data\").read_only was narrowed from.", found[0].what);
+}
+
+test "a state keeps a handle alone, in an Option, a List, or a Map's values; a capability, or a handle in anything else, is refused" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try capsOf(arena_state.allocator(),
+        \\module T.Kept
+        \\process Worker()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\
+        \\  message Tick
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Tick:
+        \\        state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\process Holder(first: Handle(Worker))
+        \\  state
+        \\    one: Handle(Worker) = first
+        \\    maybe: Option(Handle(Worker))
+        \\    many: List(Handle(Worker))
+        \\    named: Map(String, Handle(Worker))
+        \\    pairs: List((String, Handle(Worker)))
+        \\    keyed: Map(Handle(Worker), String)
+        \\    clock: Option(Clock)
+        \\  end
+        \\
+        \\  message Tick
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Tick:
+        \\        state.one.send(Tick)
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Holders(first: Handle(Worker))
+        \\  child Worker, restart: :always
+        \\  child Holder(first), restart: :always
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 3), found.len);
+    try std.testing.expectEqualStrings("pairs holds a Handle(Worker) inside a List((String, Handle(Worker))); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[0].what);
+    try std.testing.expectEqualStrings("keyed holds a Handle(Worker) inside a Map(Handle(Worker), String); a state field keeps a handle only as Handle(Worker), Option(Handle(Worker)), List(Handle(Worker)), or Map(K, Handle(Worker)).", found[1].what);
+    try std.testing.expectEqualStrings("clock holds a Clock; a capability travels only as a parameter, never inside a value.", found[2].what);
+}
+
+test "a read-only Fs handed to a process that writes through its start argument, by a start or a child line, or in a message whose arm writes through it, is refused" {
+    const header =
+        \\module T.Started
+        \\process Saver(files: Fs)
+        \\  state
+        \\    saved: Bool
+        \\  end
+        \\
+        \\  message Save : Bool
+        \\  message Keep(into: Fs) : Bool
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Save: files.write("a", "b", within: reply_by) is Ok(_)
+        \\      Keep(folder): kept(folder.scoped("x"))
+        \\    end
+        \\  end
+        \\end
+        \\process Reader(files: Fs)
+        \\  state
+        \\    read: Bool
+        \\  end
+        \\
+        \\  message Look : Bool
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Look: files.read("a", within: reply_by) is Ok(_)
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Savers(files: Fs)
+        \\  child Saver(files), restart: :always
+        \\end
+        \\supervisor Readers(files: Fs)
+        \\  child Reader(files), restart: :always
+        \\end
+        \\fn kept(folder: Fs) : Bool
+        \\  folder.append("a", "b", within: 1.minute) is Ok(_)
+        \\end
+        \\fn keep(saver: Handle(Saver), into: Fs) : Bool
+        \\  saver.ask(Keep(into: into), within: 1.minute) is Ok(true)
+        \\end
+        \\
+    ;
+    try expectCodes(header ++
+        \\fn main(platform: Platform)
+        \\  saver = Saver.start(platform.fs.read_only)
+        \\  reader = Reader.start(platform.fs.read_only)
+        \\  looked = Readers.start(platform.fs.read_only).ask(Look, within: 1.minute) is Ok(true)
+        \\  saved = Savers.start(platform.fs.scoped("x").read_only).ask(Save, within: 1.minute) is Ok(true)
+        \\  if keep(saver, platform.fs.read_only) and reader.ask(Look, within: 1.minute) is Ok(true) and looked and saved
+        \\    platform.exit(1)
+        \\  end
+        \\end
+    , &.{ "MO0404", "MO0404", "MO0404" });
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try capsOf(arena_state.allocator(), header ++
+        \\fn main(platform: Platform)
+        \\  if Saver.start(platform.fs).ask(Keep(into: platform.fs.read_only), within: 1.minute) is Ok(true)
+        \\    platform.exit(1)
+        \\  end
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 1), found.len);
+    try std.testing.expectEqualStrings("Saver writes through Keep's field into, and platform.fs.read_only was narrowed to read_only and only reads; hand it the Fs platform.fs.read_only was narrowed from.", found[0].what);
 }
 
 test "a recipe's signatures take only the capabilities its needs line names" {

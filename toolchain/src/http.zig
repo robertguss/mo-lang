@@ -630,6 +630,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
             try f.listeners.items[li].backlog.append(gpa, client + 1);
             try f.conns.items[client + 1].inbound.appendSlice(gpa, bytes);
             var delivered: u32 = 0;
+            const since = sim.deadlineNow();
             while (true) {
                 const c = &f.conns.items[client];
                 switch (parse(c.inbound.items[c.start..], f.conns.items[c.peer].closed, .response)) {
@@ -643,7 +644,13 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
                         return fail(vm, why);
                     },
                     .more => if (!try sim.deliverRound(&delivered)) {
-                        sim.wait(within);
+                        // Nothing waits: simulated time passes to a delayed send due within the
+                        // deadline, and the rounds go on (step 24).
+                        if (sim.nextLater()) |at| if (at <= since + within) {
+                            sim.wait(@max(at - sim.deadlineNow(), 0));
+                            continue;
+                        };
+                        sim.wait(@max(since + within - sim.deadlineNow(), 0));
                         f.conns.items[client].closed = true;
                         return fail(vm, .Timeout);
                     },

@@ -291,3 +291,12 @@
 
 ## [2026-09-14] session | Night: program 5 accepted
 - `agent` accepted after the suite went green and Fable's 22-check session passed under both runtimes. Nine decision rows, four `semantic`, one for Robert (the handle-in-state call, overturning part of step 18), the invariant row updated with program 5's two kept invariants. Step 24 listed. Merged to `main`.
+
+## [2026-09-14] session | Morning: Robert's calls, and a rule from the worker
+- Robert, awake: the one-line `if` as a value is in (pick 16), a keyword may name a field after a dot, the `invariant` construct waits for program 6, tools are installed without asking (agreement 10, `uv` for Python); mypy, ruff, and a staticcheck for Go 1.27 installed; the round 5 Python passes `mypy --strict`. The step 24 worker caught Fable's `git add -A` sweeping its in-progress edits into wiki commits; the handoff now says `git add <paths>` only.
+
+## [2026-09-14] session | Morning: the loop becomes a skill
+- Robert, leaving for work: the roles and the Herdr loop moved out of the handoff into a project skill, `.claude/skills/mo-lead/SKILL.md`, loaded by a new root `CLAUDE.md`; `HANDOFF.md` rewritten to hold only the state and the queue (accept step 24, step 25, round 6 with the baselines' checks bolted on, program 6). Step 24's worker was mid-part D when he left and commits its own parts.
+
+## [2026-09-14] session | Morning: step 24 accepted
+- The authority hole, a handle in a state field, the delayed send, `Deadline.remaining`, four gaps, and the simulator's ask, verified by Fable's probes under both runtimes (a registry of its own, a delayed send timed and dropped on a crash, the jobq and agent sessions again). Seven decision rows, five `semantic`; one default overturned in shape (agent's writable folder, to step 25). Merged to `main`. Step 25 starts.

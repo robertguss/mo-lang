@@ -129,6 +129,7 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | receiver | name | parameters | returns | |
 |---|---|---|---|---|
 | `Deadline` | `at_most` | `Duration` | `Deadline` | the earlier of the deadline and now plus the duration: a nested call may tighten its asker's deadline and never extend it |
+| `Deadline` | `remaining` | | `Duration` | what remains of the deadline on the runtime's clock, zero once it has passed, so a reply that came after its call's deadline can be told from one in time. Session 5, step 24, after program 5 wrote `by.at_most(0.ms) == by` to ask it |
 | `Deadline` (on type) | `fixture` | `Duration` | `Deadline` | now plus the duration on the test's clock, for a function that takes a deadline; tests only, since a test has no asker |
 
 Session 5, step 22: `Deadline`, `reply_by`, `at_most`, and `fixture`, after program 1 derived three deadlines by hand as sums of literals and two of the sums were wrong.
@@ -149,7 +150,7 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 | `Fs` | `read_only` | | `Fs` | narrowed to reading: a read-only `Fs`, its own type, which goes wherever an `Fs` goes (a `scoped` of it is read-only too) and is refused by the checker (`MO0404`) where a write reaches it, directly or through a function it is handed to |
 | `Fs` (on type) | `fixture` | | `Fs` | an empty file system: every read is `Missing`; `list` on the fixture's root is `Ok([])`, and on a folder that is not there (no `mkdir` made it and no file is under it) `Missing(".")`, as the real `Fs` answers; a path whose `..` climbs above a scope's folder, the fixture's root included, is refused as the real `Fs` refuses it, `Missing(path)`, and `list` on a scope that climbed out is `Missing(".")`; tests only. Session 5, step 21: the refusal, after round 4's logstat found the fixture climbing out of a scope where the real `Fs` does not. Session 5, step 22: `Missing(".")` for a folder that is not there, after program 1 found no test could show `jobq serve` refusing one |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | every call that waits less than `delay` is `Timeout`; tests only |
-| `Fs` | `write` | `path: String`, `text: String` | `Result(none, FsError)` | the file holds exactly the text, created when it is not there, and is on disk (`fsync`) before `Ok`; `Missing(path)` for a path outside the scope, a folder that is not there, or anything that is not a file. On an `Fs.fixture()` the files are in memory and every read sees what was written; a call that fails changes nothing. On an `Fs` narrowed to `read_only`, this row and the four below are refused by the checker (`MO0404`), in the function that writes or at the call that hands it the read-only `Fs`; a narrowing handed to a process (`Process.start`) is not followed, and a write through it there crashes |
+| `Fs` | `write` | `path: String`, `text: String` | `Result(none, FsError)` | the file holds exactly the text, created when it is not there, and is on disk (`fsync`) before `Ok`; `Missing(path)` for a path outside the scope, a folder that is not there, or anything that is not a file. On an `Fs.fixture()` the files are in memory and every read sees what was written; a call that fails changes nothing. A read-only `Fs` handed to a process as a start argument, in a message field, or on a supervisor's `child` line is followed there too (Session 5, step 24): a write through it is refused by `mo check`.start`) is not followed, and a write through it there crashes |
 | `Fs` | `append` | `path: String`, `text: String` | `Result(none, FsError)` | the text added at the end of the file, created when it is not there; durable (`fsync`) before it returns `Ok`; a call past its deadline is `Timeout`, and what it wrote stays |
 | `Fs` | `remove` | `path: String` | `Result(none, FsError)` | the file is gone; `Missing(path)` when no such file is in the scope |
 | `Fs` | `rename` | `from: String`, `to: String` | `Result(none, FsError)` | the file at `from` is at `to`, replacing a file there; `Missing(from)` when no such file is in the scope, `Missing(to)` when `to` is outside it or in a folder that is not there |
@@ -347,22 +348,22 @@ enum RuntimeError
 end
 
 enum Event
-  Updated(at: Time, process: UInt64, name: String, message: String, took_us: UInt64, waited_us: UInt64, longest: String)
-  Started(at: Time, process: UInt64, name: String)
-  Ended(at: Time, process: UInt64, name: String)
-  Restarted(at: Time, process: UInt64, name: String, restarts: UInt64)
-  Crashed(at: Time, process: UInt64, name: String, seed: UInt64, clause: String, message: String, state: String)
+  Updated(at: Time, pid: UInt64, name: String, taking: String, took_us: UInt64, waited_us: UInt64, longest: String)
+  Started(at: Time, pid: UInt64, name: String)
+  Ended(at: Time, pid: UInt64, name: String)
+  Restarted(at: Time, pid: UInt64, name: String, restarts: UInt64)
+  Crashed(at: Time, pid: UInt64, name: String, seed: UInt64, clause: String, taking: String, snapshot: String)
   Overflowed(at: Time, sender: Option(UInt64), sender_name: String, target: UInt64, name: String)
-  TimedOut(at: Time, process: Option(UInt64), name: String, call: String)
+  TimedOut(at: Time, pid: Option(UInt64), name: String, call: String)
   SourcePaused(at: Time, source: String, target: UInt64, name: String, in_flight: UInt64)
   SourceResumed(at: Time, source: String, target: UInt64, name: String, in_flight: UInt64)
-  Sent(at: Time, process: UInt64, name: String, message: String)
-  Paused(at: Time, process: UInt64, name: String)
-  Resumed(at: Time, process: UInt64, name: String)
+  Sent(at: Time, pid: UInt64, name: String, taking: String)
+  Paused(at: Time, pid: UInt64, name: String)
+  Resumed(at: Time, pid: UInt64, name: String)
 end
 ```
 
-`name` is the process's name when the event happened, since a process that ended gives its id to one started later; `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
+`pid` is the process's id and `name` its name when the event happened, since a process that ended gives its id to one started later; `taking` is the message an update took, a crash's last message, or the message the surface sent, and `snapshot` a crashed process's state (Session 5, step 24: the fields were `process`, `message`, and `state`, which are keywords, so no pattern could name them); `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
 
 | receiver | name | parameters | returns | |
 |---|---|---|---|---|

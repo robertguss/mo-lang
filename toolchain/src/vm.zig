@@ -487,6 +487,13 @@ pub const Vm = struct {
                     try (try vm.simulator()).send(to, message);
                     try vm.push(.none);
                 },
+                .send_later => {
+                    const delay = vm.pop().duration;
+                    const message = vm.pop();
+                    const to = vm.pop().handle;
+                    try (try vm.simulator()).sendLater(to, message, delay);
+                    try vm.push(.none);
+                },
                 .ask => {
                     const within = vm.pop().duration;
                     const message = vm.pop();

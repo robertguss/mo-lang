@@ -4274,7 +4274,8 @@ typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
 /* `deadline`, when `has_deadline`: an ask's, on the runtime's clock (deadline_now), which the update
  * that takes it sees as reply_by (sim.zig, Entry). */
 typedef struct { MoValue message; uint64_t seq; Parcel *parcel; bool has_deadline; int64_t deadline; } Entry;
-typedef struct { uint32_t to; MoValue message; Parcel *parcel; } Outgoing;
+/* `delay`: a send with delay: (step 24), in milliseconds; 0 for a plain send. */
+typedef struct { uint32_t to; MoValue message; Parcel *parcel; int64_t delay; } Outgoing;
 typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; } Policy;
 
 typedef struct {
@@ -4502,6 +4503,13 @@ static MoValue handle_value(uint32_t id) {
 
 static MoValue ask_error(uint32_t name) { return error_of(mo_variant(name, 0, NULL)); }
 
+/* Delayed sends not yet due (sim.zig, Later; step 24): a heap by due time, `order` keeping two due at
+ * once in the order they were sent. */
+typedef struct { int64_t at; uint64_t order; uint32_t from, to; MoValue message; Parcel *parcel; } Later;
+static Later *later;
+static size_t nlater, caplater;
+static uint64_t later_sent;
+
 /* A test starts with no process. */
 static void reset_processes(void) {
     for (uint32_t i = 0; i < nprocs; i++) {
@@ -4518,6 +4526,9 @@ static void reset_processes(void) {
     running = NOBODY;
     next_seq = 0;
     gave_up = crashed_once = false;
+    /* A test packs no parcel, so a delayed send left over holds nothing to free. */
+    nlater = 0;
+    later_sent = 0;
     sim_waited = 0;
     ring_len = ring_head = 0;
     ring_total = 0;
@@ -4632,7 +4643,7 @@ static void room_for(uint32_t to, MoValue message) {
     size_t waiting = queued(target);
     if (running != NOBODY) {
         Proc *from = procs[running];
-        for (size_t i = 0; i < from->noutbox; i++) waiting += from->outbox[i].to == to;
+        for (size_t i = 0; i < from->noutbox; i++) waiting += from->outbox[i].to == to && from->outbox[i].delay == 0;
     }
     uint32_t bound = mo_processes[target->process].mailbox;
     if (waiting < bound) return;
@@ -4819,6 +4830,8 @@ static void check_doomed(void) {
 
 static MoValue ask_inline(uint32_t to, MoValue message, MoValue within);
 static int64_t now_ms(void);
+static bool due_later(void);
+static void others_round(uint32_t skip, uint32_t *delivered);
 
 /* The clock deadlines are points on (step 22): under main the runtime's monotonic clock, and in a
  * test the run's, which only fixture waits move (sim.zig, deadlineNow). */
@@ -4838,6 +4851,13 @@ MoValue mo_timed_out_now(void) { return error_of(mo_variant(MO_N_TIMEOUT, 0, NUL
 
 /* Deadline.fixture(d): a test has no asker, so a deadline d from now on the run's clock. */
 MO_ROW(mo_r_Deadline_fixture) { (void)kind; return mo_time(deadline_now() + a[0].as.i); }
+
+/* deadline.remaining: what remains of it on the runtime's clock, zero once it has passed (step 24). */
+MO_ROW(mo_r_Deadline_remaining) {
+    (void)kind;
+    int64_t left = a[0].as.i - deadline_now();
+    return mo_duration(left > 0 ? left : 0);
+}
 
 /* deadline.at_most(d): the earlier of the deadline and now plus d. */
 MO_ROW(mo_r_Deadline_at_most) {
@@ -4868,6 +4888,8 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     /* A target whose update is on the stack is waiting on this very call. */
     if (procs[to]->busy) return ask_error(MO_N_TIMEOUT);
     int64_t waited = sim_waited;
+    /* Delayed sends whose time has come are in their mailboxes before this message (step 24). */
+    due_later();
     room_for(to, message);
     uint64_t seq = enqueue(to, message, NULL);
     Proc *target = procs[to];
@@ -4876,7 +4898,12 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     /* The surface holds its deliveries (step 23): the message waits, and the ask is Timeout. */
     if (target->paused) return ask_error(MO_N_TIMEOUT);
     MoValue reply;
+    uint32_t delivered = 0;
     for (;;) {
+        /* While a test's ask waits, every other process takes a message too, a round at a time in
+         * start order, so a test polling one process starves none (sim.zig, othersRound; step 24).
+         * An update's ask delivers only its target's. */
+        if (running == NOBODY) others_round(to, &delivered);
         Proc *p = procs[to];
         /* A restart empties the mailbox, this message with it. */
         if (!p->up || queued(p) == 0 || p->mailbox[p->head].seq > seq) return ask_error(MO_N_DOWN);
@@ -4894,6 +4921,86 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     return ok_of(reply);
 }
 
+/* ---- delayed sends (sim.zig, Later; step 24) */
+
+
+static bool later_sooner(const Later *a, const Later *b) { return a->at < b->at || (a->at == b->at && a->order < b->order); }
+
+static void later_swap(size_t a, size_t b) {
+    Later t = later[a];
+    later[a] = later[b];
+    later[b] = t;
+}
+
+static void push_later(uint32_t from, uint32_t to, MoValue message, Parcel *parcel, int64_t at) {
+    GROW_ARRAY(later, nlater, caplater);
+    size_t i = nlater++;
+    later[i] = (Later){at, later_sent++, from, to, message, parcel};
+    while (i > 0 && later_sooner(&later[i], &later[(i - 1) / 2])) {
+        later_swap(i, (i - 1) / 2);
+        i = (i - 1) / 2;
+    }
+}
+
+static Later pop_later(void) {
+    Later first = later[0];
+    later[0] = later[--nlater];
+    size_t i = 0;
+    for (;;) {
+        size_t l = 2 * i + 1, r = l + 1, least = i;
+        if (l < nlater && later_sooner(&later[l], &later[least])) least = l;
+        if (r < nlater && later_sooner(&later[r], &later[least])) least = r;
+        if (least == i) break;
+        later_swap(i, least);
+        i = least;
+    }
+    return first;
+}
+
+/* Every delayed send whose time has come goes in its target's mailbox, in the order they were due;
+ * one to a target that is down, or whose mailbox is full, is dropped, and a full mailbox is an
+ * Overflowed event naming the sender (sim.zig, dueLater). True when one went in. */
+static bool due_later(void) {
+    bool moved = false;
+    while (nlater > 0 && later[0].at <= deadline_now()) {
+        Later l = pop_later();
+        Proc *target = procs[l.to];
+        if (!target->up || target->ended) {
+            parcel_free(l.parcel);
+            continue;
+        }
+        if (queued(target) >= mo_processes[target->process].mailbox) {
+            Event overflow = event_of(EV_OVERFLOWED, l.to);
+            overflow.other = l.from;
+            record_event(overflow);
+            parcel_free(l.parcel);
+            continue;
+        }
+        enqueue(l.to, l.message, l.parcel);
+        moved = true;
+    }
+    return moved;
+}
+
+/* `h.send(message, delay: d)` (step 24): in `to`'s mailbox no earlier than `d` after the sending
+ * update ends; from a test or main, `d` after now. A crash drops it with the update's other sends. */
+MoValue mo_send_later(MoValue handle, MoValue message, MoValue delay) {
+    if (delay.as.i <= 0) return mo_send(handle, message);
+    uint32_t to = (uint32_t)handle.as.i;
+    if (!procs[to]->up) return MO_NONE_V;
+    Parcel *parcel = packs ? pack(message) : NULL;
+    MoValue sent = parcel ? parcel->value : message;
+    if (running != NOBODY) {
+        Proc *from = procs[running];
+        GROW_ARRAY(from->outbox, from->noutbox, from->capoutbox);
+        from->outbox[from->noutbox++] = (Outgoing){to, sent, parcel, delay.as.i};
+        held++;
+    } else {
+        push_later(NOBODY, to, sent, parcel, deadline_now() + delay.as.i);
+    }
+    return MO_NONE_V;
+}
+
 /* One message to each waiting process that is up and not on a stack, in start order; true when
  * one was delivered. A process an update starts waits for the next round. `delivered` counts the
  * messages across a settle's rounds, or a fixture call's (Http.fixture()'s send), up to
@@ -4901,6 +5008,8 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
 static bool deliver_round(uint32_t *delivered) {
     /* What the runtime's loops took goes in first (sources.zig); under main, step does it. */
     bool progressed = !server_mode && sources_pump_fixture();
+    /* Delayed sends whose time has come go in next (step 24). */
+    if (!turns_on && due_later()) progressed = true;
     uint32_t n = nprocs;
     for (uint32_t id = 0; id < n; id++) {
         Proc *p = procs[id];
@@ -4914,10 +5023,31 @@ static bool deliver_round(uint32_t *delivered) {
     return progressed;
 }
 
+/* One message to each waiting process but `skip` that is up and not on a stack, in start order,
+ * after the delayed sends now due: the round a test's ask gives the other processes before its
+ * target's next message (sim.zig, othersRound; step 24). The runtime's loops are not pumped here. */
+static void others_round(uint32_t skip, uint32_t *delivered) {
+    due_later();
+    uint32_t n = nprocs;
+    for (uint32_t id = 0; id < n; id++) {
+        Proc *p = procs[id];
+        if (id == skip || !p->up || p->busy || p->paused || queued(p) == 0) continue;
+        deliver(id);
+        if (++*delivered == SETTLE_LIMIT) {
+            mo_fail(MO_R_OTHER, test_name, "the processes did not settle while an ask waited: a million messages delivered and mailboxes still waiting");
+        }
+    }
+}
+
 /* Delivers waiting messages a round at a time until every mailbox is empty. */
 static void drain(void) {
     uint32_t delivered = 0;
-    while (deliver_round(&delivered)) {}
+    for (;;) {
+        while (deliver_round(&delivered)) {}
+        /* Nothing waits: simulated time passes to the next delayed send (step 24). */
+        if (turns_on || nlater == 0) return;
+        if (later[0].at > sim_waited) sim_waited = later[0].at;
+    }
 }
 
 void mo_settle(void) {
@@ -5175,8 +5305,10 @@ static Delivered deliver(uint32_t id) {
     held -= p->noutbox;
     for (size_t i = 0; i < p->noutbox; i++) {
         Outgoing o = p->outbox[i];
-        if (procs[o.to]->up) enqueue(o.to, o.message, o.parcel);
-        else parcel_free(o.parcel);
+        if (!procs[o.to]->up) parcel_free(o.parcel);
+        /* No earlier than its delay after the update ends (step 24). */
+        else if (o.delay > 0) push_later(id, o.to, o.message, o.parcel, deadline_now() + o.delay);
+        else enqueue(o.to, o.message, o.parcel);
     }
     p->noutbox = 0;
     MoValue reply = after.as.xs[0];
@@ -5757,6 +5889,10 @@ static void idle(Waiter *also, bool bounded, int64_t deadline) {
         until = due;
         bounded = true;
     }
+    if (nlater > 0 && (!bounded || later[0].at < until)) {
+        until = later[0].at;
+        bounded = true;
+    }
     int64_t left = bounded ? until - now_ms() : 1000;
     if (left < 0) left = 0;
     if (left > 1000) left = 1000;
@@ -5803,6 +5939,8 @@ static void mark_value(MoValue v) {
     case MO_HANDLE: mark_id((uint32_t)v.as.i); return;
     case MO_TUPLE: mark_values(v.as.xs, v.aux); return;
     case MO_VARIANT: mark_values(v.as.xs, mo_vcount(v)); return;
+    /* A state (step 24): no struct holds a handle, so only a state's fields are read. */
+    case MO_RECORD: mark_values(v.as.xs, mo_decls[v.aux].nfields); return;
     case MO_LIST:
         if (v.aux > 0 && may_hold_handle(v.as.xs[0])) mark_values(v.as.xs, v.aux);
         return;
@@ -5879,8 +6017,8 @@ static void release_worker(uint32_t id) {
 /* From main's thread, holding the turn: ends every process that has finished. One has when a start
  * call began it (a child line's never ends), its mailbox is empty, no update of it is on a stack,
  * and no handle to it is where anything could use it: in a frame of main or of an update on a
- * stack, in the start arguments of a process that has not finished, in a send an update holds, or
- * in a reply not yet taken. */
+ * stack, in the start arguments of a process that has not finished, in the state of a process that
+ * is up (step 24), in a send an update holds, or in a reply not yet taken. */
 static void sweep(void) {
     if (capmarks < nprocs) {
         marks = xrealloc(marks, nprocs * sizeof(bool));
@@ -5894,6 +6032,8 @@ static void sweep(void) {
         const Proc *p = procs[id];
         if (p->ended || finished(p)) continue;
         mark_values(p->args, p->nargs);
+        /* A state may keep handles (step 24); a process that is down keeps none. */
+        if (p->up) mark_value(p->state);
         /* A message may carry a handle (step 20): one waiting in a mailbox or held in an outbox
          * reaches its process. */
         for (size_t i = p->head; i < p->mailbox_len; i++) mark_value(p->mailbox[i].message);
@@ -5909,9 +6049,15 @@ static void sweep(void) {
     }
     /* A source's target is where the runtime keeps sending. */
     sources_mark();
+    /* A delayed send's target is where the runtime will send (step 24). */
+    for (size_t i = 0; i < nlater; i++) {
+        mark_id(later[i].to);
+        mark_value(later[i].message);
+    }
     while (nworklist > 0) {
         const Proc *p = procs[worklist[--nworklist]];
         mark_values(p->args, p->nargs);
+        if (p->up) mark_value(p->state);
     }
     uint32_t still = 0;
     for (uint32_t id = 0; id < nprocs; id++) {
@@ -5927,13 +6073,63 @@ static void sweep(void) {
     sweep_at = 2 * still > SWEEP_MIN ? 2 * still : SWEEP_MIN;
 }
 
+/* In a test binary, a test's processes that have finished and that nothing can reach end when the
+ * surface reads the processes, by sweep's rule (sim.zig, sweepEnded; step 24); an ended id is not
+ * given to a later process. */
+static void sweep_test(void) {
+    if (turns_on) return;
+    if (capmarks < nprocs) {
+        marks = xrealloc(marks, nprocs * sizeof(bool));
+        capmarks = nprocs;
+    }
+    memset(marks, 0, nprocs * sizeof(bool));
+    nworklist = 0;
+    /* One stack runs the test and every update on it. */
+    mark_frames(mo_handle_frames);
+    for (uint32_t id = 0; id < nprocs; id++) {
+        const Proc *p = procs[id];
+        if (p->ended || finished(p)) continue;
+        mark_values(p->args, p->nargs);
+        if (p->up) mark_value(p->state);
+        for (size_t i = p->head; i < p->mailbox_len; i++) mark_value(p->mailbox[i].message);
+        for (size_t i = 0; i < p->noutbox; i++) {
+            mark_id(p->outbox[i].to);
+            mark_value(p->outbox[i].message);
+        }
+    }
+    sources_mark();
+    /* A delayed send's target is where the runtime will send (step 24). */
+    for (size_t i = 0; i < nlater; i++) {
+        mark_id(later[i].to);
+        mark_value(later[i].message);
+    }
+    while (nworklist > 0) {
+        const Proc *p = procs[worklist[--nworklist]];
+        mark_values(p->args, p->nargs);
+        if (p->up) mark_value(p->state);
+    }
+    for (uint32_t id = 0; id < nprocs; id++) {
+        Proc *p = procs[id];
+        if (p->ended || !finished(p) || marks[id]) continue;
+        record_event(event_of(EV_ENDED, id));
+        p->nlog = 0;
+        p->mailbox_len = p->head = 0;
+        p->nargs = 0;
+        p->state = MO_NONE_V;
+        p->up = false;
+        p->ended = true;
+    }
+}
+
 /* One turn handed out, from main's thread: to a process whose wait ended, else to the next
  * process with a message waiting. False when there is none. */
 static bool step(void) {
     if (quiet >= sweep_at) sweep();
     while (nfibers > KEPT_FIBERS) fiber_destroy(fibers[--nfibers]);
-    /* What the runtime's loops took becomes messages first (sources.zig). */
+    /* What the runtime's loops took becomes messages first (sources.zig), and delayed sends whose
+     * time has come (step 24). */
     sources_pump_server();
+    due_later();
     int64_t now = now_ms();
     size_t k = 0;
     while (k < nparked) {
@@ -6028,12 +6224,12 @@ static void turns_spawning(void) {
     if (holder == MAIN_TURN && quiet >= sweep_at) turns_settle();
 }
 
-/* main returned: turns go on being handed out until no message waits, no update is in progress,
- * and no runtime loop can deliver. */
+/* main returned: turns go on being handed out until no message waits, no update is in progress, no
+ * runtime loop can deliver, and no delayed send is still to come (step 24). */
 static void turns_finish(void) {
     for (;;) {
         if (step()) continue;
-        if (in_flight == 0 && !sources_active()) return;
+        if (in_flight == 0 && !sources_active() && nlater == 0) return;
         idle(NULL, false, 0);
     }
 }
@@ -7310,6 +7506,7 @@ static MoValue fix_http_send(MoValue request, MoValue host, int64_t port, int64_
     fix_append(client + 1, b.p, b.len);
     free(b.p);
     uint32_t delivered = 0;
+    int64_t since = sim_waited;
     for (;;) {
         FixConn *c = &fix_conns[client];
         HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, fix_conns[c->peer].closed, true);
@@ -7322,7 +7519,13 @@ static MoValue fix_http_send(MoValue request, MoValue host, int64_t port, int64_
             return http_fail(p.failed);
         }
         if (!deliver_round(&delivered)) {
-            sim_waited += within;
+            /* Nothing waits: simulated time passes to a delayed send due within the deadline, and the
+             * rounds go on (step 24). */
+            if (nlater > 0 && later[0].at <= since + within) {
+                if (later[0].at > sim_waited) sim_waited = later[0].at;
+                continue;
+            }
+            if (since + within > sim_waited) sim_waited = since + within;
             fix_conns[client].closed = true;
             return http_fail(HTTP_TIMEOUT);
         }
@@ -8343,6 +8546,7 @@ MO_ROW(mo_r_Runtime_read_only) { (void)a; (void)kind; return mo_cap(MO_CAP_RUNTI
 MO_ROW(mo_r_Runtime_processes) {
     (void)a;
     (void)kind;
+    sweep_test();
     MoValue *out = mo_alloc_values(nprocs);
     uint32_t n = 0;
     for (uint32_t id = 0; id < nprocs; id++) {
@@ -8353,6 +8557,7 @@ MO_ROW(mo_r_Runtime_processes) {
 
 MO_ROW(mo_r_Runtime_state) {
     (void)kind;
+    sweep_test();
     uint32_t id;
     if (!live_id(a[1], &id)) return runtime_failure(MO_N_NO_PROCESS);
     if (procs[id]->busy && (!turns_on || running == id || !turns_wait_idle(id, a[2].as.i))) return runtime_failure(MO_N_TIMEOUT);
@@ -8466,6 +8671,7 @@ static uint64_t resident_bytes(void) {
 }
 
 MO_ROW(mo_r_Runtime_memory) {
+    sweep_test();
     (void)a;
     (void)kind;
     uint64_t regions = 0;

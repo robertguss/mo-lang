@@ -137,39 +137,21 @@ fn last_message(events: List(Event)) : String
   updates.last or ""
 end
 
-# An update's fields, read through its JSON: a pattern cannot name Updated's fields process and
-# message, which are keywords.
-fn update_fields(event: Event) : Map(String, Json)
-  case Json.decode(Json.encode(event))
-    Ok(Object(outer)):
-      case outer.get("Updated")
-        Some(Object(fields)): fields
-        Some(_) | None: Map.new()
-      end
-    Ok(_) | Error(_): Map.new()
-  end
-end
-
-fn text_of(fields: Map(String, Json), name: String) : String
-  case fields.get(name)
-    Some(String(text)): text
-    Some(_) | None: ""
-  end
-end
-
+# The message an update took, by pattern (step 24 renamed Updated's fields off the keywords).
 fn update_message(event: Event) : List(String)
-  fields = update_fields(event)
-  return [] if fields.size == 0
-  [text_of(fields, "message")]
+  if event is Updated(at: _, pid: _, name: _, taking: taking, took_us: _, waited_us: _, longest: _)
+    return [taking]
+  end
+  []
 end
 
 # A run's tool update: how long it took, and the call it waited longest in.
 fn tool_update(event: Event) : List((UInt64, String))
-  fields = update_fields(event)
-  return [] if text_of(fields, "name") != "Run" or text_of(fields, "message") != "Act"
-  took = (fields.get("took_us") or Null).to_i64 or 0
-  return [] if took < 0
-  [(took.to_u64, text_of(fields, "longest"))]
+  if event is Updated(at: _, pid: _, name: name, taking: taking, took_us: took, waited_us: _,
+    longest: longest)
+    return [(took, longest)] if name == "Run" and taking == "Act"
+  end
+  []
 end
 
 # The slowest tool update of the last minute in the runtime's ring of events.

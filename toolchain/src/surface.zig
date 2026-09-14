@@ -42,6 +42,8 @@ pub fn call(vm: *Vm, which: Row, a: []const Value) Error!Value {
     const sim = vm.sim orelse return crash(vm, "a Runtime answers only under mo run or mo test");
     const acts = a[0].cap.handle != read_only_handle;
     const within = a[a.len - 1].duration;
+    // In a test, a finished process nothing can reach is found ended here (step 24).
+    if (which == .processes or which == .state or which == .memory) try sim.sweepEnded();
     return switch (which) {
         .processes => processes(vm, sim),
         .state => state(vm, sim, a[1], within),

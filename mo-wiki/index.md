@@ -88,6 +88,7 @@
 - [[p13-capabilities-and-logging|Syntax pick 13: Capabilities and logging]] — capabilities are ordinary types obtained only at the program root (`fn main(platform: Platform)`), passed down explicitly, narrowed on th…
 - [[p14-modules|Syntax pick 14: Modules]] — private by default, `pub` to expose (the `pub` lines are the spec altitude's table of contents)
 - [[p15-methods-traits-generics|Syntax pick 15: Methods without objects, traits, generics]] — dot calls are sugar for first-argument functions (`charge.within_window?(now)` is `within_window?(charge, now)`), uniform function call s…
+- [[p16-one-line-if-value|Pick 16: the one-line if as a value]] — Robert, 14 Sep morning: `x = if c: a else: b`, a value only
 - [[syntax-overview|Syntax: how we got to Ruby's look with Go's discipline]] — AI-first constraint: Mo has zero corpus, so bodies borrow shapes models know cold; novelty is spent only where semantics need it (`intent…
 
 ## Deep dives
@@ -119,6 +120,8 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-25|Step 25: the one-line if and keyword field names]] — Robert's two calls of 14 Sep morning; the production, the formatter rule, the fix reversed, `state` after a dot
+- [[interpreter-step-24|Step 24: what program 5 found]] — the authority hole, a handle in a state field, a delayed send, `Deadline.remaining`, four gaps, the simulator's ask
 - [[interpreter-step-23|Step 23: the runtime surface]] — `platform.runtime`, the event ring, `mo run --surface PORT`; directions 37 and 40 against program 1's nine questions
 - [[interpreter-step-22|Step 22: what program 1 and round 5 found]] — the `--recipe` line count, the fixture's missing folder, a JSON integer, the derived deadline (`reply_by`), the recipe's rewrite rule, two diagnostics
 - [[interpreter-step-21|Step 21: memory and green threads]] — a process is not an OS thread; chapter 7's bets measured; `Fs.fixture()` refuses `..`; three diagnostics, no syntax

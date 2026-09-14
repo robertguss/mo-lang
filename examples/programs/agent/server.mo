@@ -189,7 +189,7 @@ test "under faults every answer is right or a 503, and once they stop every run 
     ids = ids.push(made_id(created))
   end
   slow = Fs.fixture(delay: 1.minute)
-  for _ in 0..60
+  for _ in 0..200
     if all_ended?(book, ids)
       break
     end

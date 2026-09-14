@@ -47,6 +47,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-22]]: the derived deadline, `reply_by` and `at_most`, in both runtimes and the simulator, jobq's three hand-written sums gone; the `--recipe` line count, the fixture's missing folder, `json.to_i64`, the recipe's rewrite rule with notes following it, two diagnostics; verified by Fable's probes in all three modes.
 - [[interpreter-step-23]]: the runtime surface, directions 37 and 40 built: the event ring, `platform.runtime` as a capability with `read_only`, `mo run --surface PORT`; six of jobq's nine questions answered in full; Fable's probes green under both runtimes.
 - [[program-5]]: `agent`, the harness under permissions, budgets, and retries, in 77 minutes; native 448.7 five-step runs a second; Fable's 22-check session green under both runtimes. Found: an authority hole in `MO0404`, the handle law forcing one routing process for the third program running (Fable's call: a `state` field may hold a handle, for Robert's eye), a third ask for a timer (Fable's call: `delay:` on `send`), two invariants kept.
+- [[interpreter-step-24]]: the authority hole closed, a handle in a `state` field (a registry routes to a process per key), the delayed send three programs asked for, `Deadline.remaining`, four gaps; Fable's probes green under both runtimes.
 
 ## Numbers at the end of the session
 
@@ -109,6 +110,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[interpreter-step-22]]
 - [[interpreter-step-23]]
 - [[program-5]]
+- [[interpreter-step-24]]
 - [[program-2]]
 - [[program-3]]
 - [[control-run]]

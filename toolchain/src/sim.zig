@@ -68,7 +68,11 @@ const Held = struct { holder: u32, to: u32, message: Value };
 /// `deadline`: an ask's, on the runtime's clock (Sim.deadlineNow), which the update that takes
 /// it sees as `reply_by`; null for a send.
 const Entry = struct { message: Value, seq: u64, parcel: ?*Parcel = null, deadline: ?i64 = null };
-const Outgoing = struct { to: u32, message: Value, parcel: ?*Parcel = null };
+/// `delay`: a send with `delay:` (step 24), in milliseconds; 0 for a plain send.
+const Outgoing = struct { to: u32, message: Value, parcel: ?*Parcel = null, delay: i64 = 0 };
+/// A delayed send the runtime holds until `at` on the runtime's clock (Sim.deadlineNow): `order`
+/// keeps two due at once in the order they were sent.
+pub const Later = struct { at: i64, order: u64, from: u32, to: u32, message: Value, parcel: ?*Parcel };
 /// One step of a seeded run's trace: a message put in a mailbox, by the test
 /// (`from` is `test_runner`) or by a process whose update committed, or taken out of it.
 pub const Step = struct { from: u32, to: u32, message: Value, took: bool };
@@ -201,6 +205,9 @@ pub const Sim = struct {
     free_ids: std.ArrayList(u32) = .empty,
     /// Sends held in every outbox: while none is, no wait looks for one.
     held: usize = 0,
+    /// Delayed sends not yet due, a heap by due time (step 24), and the count that orders them.
+    later: std.ArrayList(Later) = .empty,
+    later_sent: u64 = 0,
     /// The loops the runtime owns: listeners served and connections read into processes.
     sources: sources_mod.Sources = .{},
     /// What the processes did, most recent last (events.zig, step 23).
@@ -408,6 +415,90 @@ pub const Sim = struct {
         return sim.vm.program.processes[sim.procs.items[id].process].name;
     }
 
+    // ---- ending finished processes in a test (step 24)
+
+    /// Under Mo.Sim, a test's processes that have finished and that nothing can reach end when the
+    /// surface reads the processes (surface.zig), by the rule a sweep keeps under `mo run`
+    /// (turns.zig, sweep): so a test sees a worker a registry forgot end. An ended id is not given
+    /// to a later process, so a seed's ids stay the same every run.
+    pub fn sweepEnded(sim: *Sim) Error!void {
+        if (sim.turns != null) return;
+        const gpa = std.heap.smp_allocator;
+        const procs = sim.procs.items;
+        var m: Marker = .{ .marks = try gpa.alloc(bool, procs.len) };
+        defer gpa.free(m.marks);
+        defer m.work.deinit(gpa);
+        @memset(m.marks, false);
+        // One vm runs the test and every update on its stack.
+        for (sim.vm.handle_frames.items) |locals| try m.values(locals);
+        for (procs) |p| {
+            if (p.ended or finishedInTest(p)) continue;
+            try m.values(p.args);
+            if (p.up) try m.value(p.state);
+            for (p.mailbox.items[p.head..]) |e| try m.value(e.message);
+            for (p.outbox.items) |o| {
+                try m.id(o.to);
+                try m.value(o.message);
+            }
+        }
+        for (sim.sources.list.items) |s| if (!s.done) try m.id(s.to);
+        for (sim.later.items) |l| {
+            try m.id(l.to);
+            try m.value(l.message);
+        }
+        while (m.work.pop()) |id| {
+            try m.values(procs[id].args);
+            if (procs[id].up) try m.value(procs[id].state);
+        }
+        for (procs, 0..) |*p, id| {
+            if (p.ended or !finishedInTest(p.*) or m.marks[id]) continue;
+            sim.record(.{ .kind = .ended, .process = @intCast(id) });
+            p.log.clearRetainingCapacity();
+            p.mailbox.clearRetainingCapacity();
+            p.head = 0;
+            p.args = &.{};
+            p.state = .none;
+            p.up = false;
+            p.ended = true;
+        }
+    }
+
+    /// Began by a start call, nothing waiting for it, and no update of it on a stack.
+    fn finishedInTest(p: Proc) bool {
+        return p.supervisor == test_runner and !p.busy and p.queued() == 0;
+    }
+
+    /// The processes whose handles a sweep has found, and the found ones whose start arguments and
+    /// state it has yet to read.
+    const Marker = struct {
+        marks: []bool,
+        work: std.ArrayList(u32) = .empty,
+
+        fn id(m: *Marker, to: u32) Error!void {
+            if (to >= m.marks.len or m.marks[to]) return;
+            m.marks[to] = true;
+            try m.work.append(std.heap.smp_allocator, to);
+        }
+
+        fn values(m: *Marker, vs: []const Value) Error!void {
+            for (vs) |v| try m.value(v);
+        }
+
+        /// Every handle inside `v`, as turns.zig's markValue finds them.
+        fn value(m: *Marker, v: Value) Error!void {
+            switch (v) {
+                .handle => |to| try m.id(to),
+                .tuple => |xs| try m.values(xs),
+                .variant => |x| try m.values(x.fields),
+                .record => |r| try m.values(r.fields),
+                .list => |xs| try m.values(xs),
+                .set => |s| try m.values(s.entries),
+                .map => |s| try m.values(s.entries),
+                else => {},
+            }
+        }
+    };
+
     // ---- starting
 
     /// `Name.start(args)` in a test: the test runner supervises it with :always, and with
@@ -497,6 +588,89 @@ pub const Sim = struct {
         } else _ = try sim.enqueue(test_runner, to, sent, parcel);
     }
 
+    /// `h.send(message, delay: d)` (step 24): the message goes in `to`'s mailbox no earlier than `d`
+    /// after the sending update ends, on the runtime's clock; from a test or main, `d` after now. It
+    /// waits for its time outside the mailbox, so a later plain send may arrive first. A crash drops
+    /// it with the update's other sends, and a target that is down when it is due drops it.
+    pub fn sendLater(sim: *Sim, to: u32, message: Value, delay: i64) Error!void {
+        if (delay <= 0) return sim.send(to, message);
+        if (!sim.procs.items[to].up) return;
+        const parcel = try sim.outgoing(message);
+        const sent = if (parcel) |p| p.value else message;
+        if (sim.running) |from| {
+            try sim.procs.items[from].outbox.append(sim.gpa, .{ .to = to, .message = sent, .parcel = parcel, .delay = delay });
+            sim.held += 1;
+        } else try sim.pushLater(test_runner, to, sent, parcel, sim.deadlineNow() + delay);
+    }
+
+    fn pushLater(sim: *Sim, from: u32, to: u32, message: Value, parcel: ?*Parcel, at: i64) Error!void {
+        const gpa = std.heap.smp_allocator;
+        try sim.later.append(gpa, .{ .at = at, .order = sim.later_sent, .from = from, .to = to, .message = message, .parcel = parcel });
+        sim.later_sent += 1;
+        const items = sim.later.items;
+        var i = items.len - 1;
+        while (i > 0) {
+            const parent = (i - 1) / 2;
+            if (!sooner(items[i], items[parent])) break;
+            std.mem.swap(Later, &items[i], &items[parent]);
+            i = parent;
+        }
+    }
+
+    fn sooner(a: Later, b: Later) bool {
+        return a.at < b.at or (a.at == b.at and a.order < b.order);
+    }
+
+    fn popLater(sim: *Sim) Later {
+        const items = sim.later.items;
+        const first = items[0];
+        const last = sim.later.pop().?;
+        if (sim.later.items.len == 0) return first;
+        const heap = sim.later.items;
+        heap[0] = last;
+        var i: usize = 0;
+        while (true) {
+            const l = 2 * i + 1;
+            const r = l + 1;
+            var least = i;
+            if (l < heap.len and sooner(heap[l], heap[least])) least = l;
+            if (r < heap.len and sooner(heap[r], heap[least])) least = r;
+            if (least == i) break;
+            std.mem.swap(Later, &heap[i], &heap[least]);
+            i = least;
+        }
+        return first;
+    }
+
+    /// When the earliest delayed send is due, on the runtime's clock.
+    pub fn nextLater(sim: *const Sim) ?i64 {
+        return if (sim.later.items.len > 0) sim.later.items[0].at else null;
+    }
+
+    /// Every delayed send whose time has come goes in its target's mailbox, in the order they were
+    /// due; one to a target that is down, or whose mailbox is full, is dropped, and a full mailbox is
+    /// an `Overflowed` event naming the sender, who is no longer in the update that sent it. True
+    /// when one went in.
+    pub fn dueLater(sim: *Sim) Error!bool {
+        var moved = false;
+        while (sim.later.items.len > 0 and sim.later.items[0].at <= sim.deadlineNow()) {
+            const l = sim.popLater();
+            const target = sim.procs.items[l.to];
+            if (!target.up or target.ended) {
+                if (l.parcel) |x| x.free();
+                continue;
+            }
+            if (target.queued() >= sim.vm.program.processes[target.process].mailbox) {
+                sim.record(.{ .kind = .overflowed, .process = l.to, .other = if (l.from == test_runner) events_mod.nobody else l.from });
+                if (l.parcel) |x| x.free();
+                continue;
+            }
+            _ = try sim.enqueue(l.from, l.to, l.message, l.parcel);
+            moved = true;
+        }
+        return moved;
+    }
+
     /// `h.ask(message, within: d)`: the target's waiting messages run, then this one, and
     /// the reply is the value of its arm. `Timeout` when the target's fixtures are slower
     /// than `d`, or its fixture calls waited longer than `d` while it answered; `Down` when
@@ -516,6 +690,8 @@ pub const Sim = struct {
         // A target whose update is on the stack is waiting on this very call.
         if (sim.procs.items[to].busy) return sim.askError("Timeout");
         const waited = sim.waited;
+        // Delayed sends whose time has come are in their mailboxes before this message (step 24).
+        _ = try sim.dueLater();
         try sim.roomFor(to, message);
         const seq = try sim.enqueue(sim.running orelse test_runner, to, message, null);
         const target = &sim.procs.items[to];
@@ -525,7 +701,12 @@ pub const Sim = struct {
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
         if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
+        var delivered: u32 = 0;
         const reply = while (true) {
+            // While a test's ask waits, every other process takes a message too, a round at a time
+            // in start order or the seed's, so a test polling one process starves none (step 24).
+            // An update's ask delivers only its target's, as before.
+            if (sim.running == null) try sim.othersRound(to, &delivered);
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
             if (!p.up or p.queued() == 0 or p.mailbox.items[p.head].seq > seq) return sim.askError("Down");
@@ -560,7 +741,12 @@ pub const Sim = struct {
     /// so no waiting process is passed over for more than one round.
     fn drain(sim: *Sim) Error!void {
         var delivered: u32 = 0;
-        while (try sim.round(&sim.order, &delivered)) {}
+        while (true) {
+            while (try sim.round(&sim.order, &delivered)) {}
+            // Nothing waits: simulated time passes to the next delayed send (step 24).
+            const at = sim.nextLater() orelse return;
+            sim.wait(@max(at - sim.deadlineNow(), 0));
+        }
     }
 
     /// One round of delivering waiting messages, for a fixture call that waits for a process
@@ -578,6 +764,8 @@ pub const Sim = struct {
     fn round(sim: *Sim, order: *std.ArrayList(u32), delivered: *u32) Error!bool {
         // What the runtime's loops took goes in first (sources.zig); under mo run, turns.zig.
         var progressed = if (sim.server == null) try sources_mod.pumpFixture(sim) else false;
+        // Delayed sends whose time has come go in next (step 24).
+        if (sim.turns == null and try sim.dueLater()) progressed = true;
         order.clearRetainingCapacity();
         for (0..sim.procs.items.len) |id| try order.append(sim.gpa, @intCast(id));
         if (sim.schedule) |*rng| rng.random().shuffle(u32, order.items);
@@ -594,6 +782,28 @@ pub const Sim = struct {
             }
         }
         return progressed;
+    }
+
+    /// One message to each waiting process but `skip` that is up and not on a stack, in start order
+    /// or an order the seed shuffles, after the delayed sends now due: the round a test's ask gives
+    /// the other processes before its target's next message (step 24). The runtime's loops are not
+    /// pumped here: the round delivers what already waits.
+    fn othersRound(sim: *Sim, skip: u32, delivered: *u32) Error!void {
+        _ = try sim.dueLater();
+        var order: std.ArrayList(u32) = .empty;
+        defer order.deinit(sim.gpa);
+        for (0..sim.procs.items.len) |id| if (id != skip) try order.append(sim.gpa, @intCast(id));
+        if (sim.schedule) |*rng| rng.random().shuffle(u32, order.items);
+        for (order.items) |id| {
+            const p = &sim.procs.items[id];
+            if (!p.up or p.busy or p.paused or p.queued() == 0) continue;
+            _ = try sim.deliver(id);
+            delivered.* += 1;
+            if (delivered.* == settle_limit) {
+                sim.vm.report = .{ .kind = .other, .clause = "the processes did not settle while an ask waited: a million messages delivered and mailboxes still waiting", .within = sim.test_name, .at = 0 };
+                return error.Crash;
+            }
+        }
     }
 
     /// `events.emit(e)`: inside an update it waits for the commit, like a send.
@@ -618,7 +828,7 @@ pub const Sim = struct {
         const target = sim.procs.items[to];
         var waiting = target.queued();
         if (sim.running) |from| {
-            for (sim.procs.items[from].outbox.items) |o| waiting += @intFromBool(o.to == to);
+            for (sim.procs.items[from].outbox.items) |o| waiting += @intFromBool(o.to == to and o.delay == 0);
         }
         const bound = sim.vm.program.processes[target.process].mailbox;
         if (waiting < bound) return;
@@ -738,9 +948,12 @@ pub const Sim = struct {
         });
         sim.held -= p.outbox.items.len;
         for (p.outbox.items) |o| {
-            if (sim.procs.items[o.to].up) {
-                _ = try sim.enqueue(id, o.to, o.message, o.parcel);
-            } else if (o.parcel) |x| x.free();
+            if (!sim.procs.items[o.to].up) {
+                if (o.parcel) |x| x.free();
+            } else if (o.delay > 0) {
+                // No earlier than its delay after the update ends (step 24).
+                try sim.pushLater(id, o.to, o.message, o.parcel, sim.deadlineNow() + o.delay);
+            } else _ = try sim.enqueue(id, o.to, o.message, o.parcel);
         }
         p.outbox.clearRetainingCapacity();
         try sim.events.appendSlice(sim.gpa, p.emits.items);
@@ -1055,6 +1268,68 @@ fn compile(arena: std.mem.Allocator, src: []const u8) !*bytecode.Program {
 }
 
 /// Runs one test of a program and keeps its Vm and Sim to look at.
+const later_src =
+    \\module T.Later
+    \\process Ticker()
+    \\  state
+    \\    ticks: UInt32
+    \\    left: UInt32
+    \\  end
+    \\
+    \\  message Boom(me: Handle(Ticker))
+    \\  message Tick
+    \\
+    \\  fn update(state, message)
+    \\    case message
+    \\      Boom(me):
+    \\        me.send(Tick, delay: 10.ms)
+    \\        state.left -= 1
+    \\      Tick:
+    \\        state.ticks += 1
+    \\    end
+    \\  end
+    \\end
+    \\supervisor Tickers
+    \\  child Ticker, restart: :always
+    \\end
+;
+
+test "a delayed send waits outside the mailbox until its time; a crashing update drops the one it held, and a target that is down drops it when it is due" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, later_src);
+    var machine: Vm = .init(arena, program, 7);
+    var s: Sim = .init(&machine, 7, "later");
+    machine.sim = &s;
+    const id = try s.start(0, &.{});
+    const tick = try machine.variant("Tick", &.{});
+
+    try s.sendLater(id, tick, 50);
+    try std.testing.expectEqual(@as(usize, 0), s.procs.items[id].queued());
+    s.wait(49);
+    try std.testing.expect(!try s.dueLater());
+    s.wait(1);
+    try std.testing.expect(try s.dueLater());
+    try std.testing.expectEqual(@as(usize, 1), s.procs.items[id].queued());
+    _ = try s.deliver(id);
+    try std.testing.expectEqual(@as(i128, 1), s.procs.items[id].state.record.fields[0].int);
+
+    // Boom holds a delayed Tick, then underflows: the crash drops the Tick with the update.
+    try s.send(id, try machine.variant("Boom", &.{.{ .handle = id }}));
+    const crashed = try s.deliver(id);
+    try std.testing.expect(crashed.reply == null);
+    try std.testing.expectEqual(@as(usize, 1), s.crashes.items.len);
+    try std.testing.expectEqual(@as(usize, 0), s.later.items.len);
+
+    // Due to a process that is down by then: dropped.
+    try s.sendLater(id, tick, 10);
+    s.procs.items[id].up = false;
+    s.wait(10);
+    try std.testing.expect(!try s.dueLater());
+    try std.testing.expectEqual(@as(usize, 0), s.later.items.len);
+}
+
 const Harness = struct {
     machine: Vm,
     sim: Sim,
@@ -1576,7 +1851,13 @@ test "a fixture Fs keeps what a test writes, shared by every Fs narrowed from it
         \\  assert fs.read("x.log", within: 1.minute) == Ok("1\n")
         \\end
         \\test "a write through a read_only Fs crashes where the checker cannot see it"
-        \\  writer = Writer.start(Fs.fixture().read_only)
+        \\  fs = Fs.fixture()
+        \\  chosen = if fs.list(within: 1.minute) is Ok(_)
+        \\    fs.read_only
+        \\  else
+        \\    fs
+        \\  end
+        \\  writer = Writer.start(chosen)
         \\  assert writer.ask(Note, within: 1.minute) is Ok(_)
         \\end
         \\test "a writer appends"
