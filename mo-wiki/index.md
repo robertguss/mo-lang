@@ -2,6 +2,7 @@
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
 > Last updated: 2026-09-13 | Total pages: 137
+> Last updated: 2026-09-13 | Total pages: 160
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -193,4 +194,17 @@
 - [[go-history|Go (survey)]] — Pike/Thompson/Griesemer, simplicity discipline, gofmt culture, MVS, mandatory checksums (see also [[go|Mo vs Go]])
 - [[zig|Zig]] — Kelley 2016, comptime, no hidden control flow, the raw-C-hazard lesson; toolchain choice for [[d24-compile-to-c-via-zig]]
 - [[dependent-types|Dependent types: Lean 4, Idris 2, Agda]] — the case for and against dependent types in general-purpose languages; where Mo's [[q08-verification-tiers]] fits
+- [[prompts-research-agenda-2026-09|Research agenda 2026-09: papers, authors, manifestos]] — six runs (R1–R6) with prompts; R1, R3, R6 executed 2026-09-13 via Perplexity Computer, R2/R4/R5 ready to run
+- [[agents-and-verification-2026|Agents and verification: the 2025–2026 evidence]] — R1: verifier automation beats model choice (82/44/27%), specs not proofs are the bottleneck, 0% contract satisfaction at 75–82% pass@1, composition frontier, diagnostics exchange rate for agents
+- [[language-design-for-llms-evidence|Language design for LLMs: what the evidence says]] — R1: what measured results say about strictness, shape laws, low-resource syntax, structured edits, and error messages; where Mo's laws have evidence for and against
+- [[author-ken-thompson|Author: Ken Thompson (Unix, C, Go)]] — R3: Trusting Trust vs source-first supply chain; taste, deletion, and what he refused to add
+- [[author-dennis-ritchie|Author: Dennis Ritchie (C)]] — R3: C as a portable assembler by intent; what he called mistakes; the cost of trusting the programmer
+- [[author-brian-kernighan|Author: Brian Kernighan (Unix, AWK, style)]] — R3: Elements of Programming Style and the Practice of Programming as the human ancestor of Mo's laws
+- [[author-rob-pike|Author: Rob Pike (Plan 9, Go)]] — R3: simplicity as a tooling and social property, gofmt, less is exponentially more, Go's error and generics decisions
+- [[author-tony-hoare|Author: Tony Hoare (CSP, axiomatic semantics)]] — R3: axiomatic contracts, null as the billion-dollar mistake, the Turing lecture on simplicity
+- [[author-edsger-dijkstra|Author: Edsger Dijkstra (structured programming)]] — R3: goto, testing shows presence not absence, against mechanical translation of bans, simplicity is not systematic
+- [[author-niklaus-wirth|Author: Niklaus Wirth (Pascal, Modula, Oberon)]] — R3: a feature's cost must be known before release, compiler self-hosting speed rule, design by removal
+- [[author-joe-armstrong|Author: Joe Armstrong (Erlang)]] — R3: the six requirements R1–R6, let it crash, restart is not storage, failed type retrofits, do away with modules
+- [[safety-critical-coding-standards|Safety-critical coding standards]] — R6: Power of 10, JPL C, MISRA, CERT, DO-178C, Ravenscar, SPARK and others compared; three rule categories, deviation records, the loop-annotation convergence
+- [[reliability-and-testing-philosophies|Reliability and testing philosophies]] — R6: FoundationDB, Antithesis sometimes-assertions, Jepsen, SQLite coverage, let-it-crash restart intensity, QuickCheck shrinking, SRE error budgets, mutation testing
 

@@ -85,7 +85,7 @@ Add a tag here before using it. Keep it under 25.
 - **Language:** `syntax`, `types`, `state`, `effects`, `processes`, `errors`, `contracts`, `negative-space`
 - **Verification & tooling:** `verification`, `compiler`, `tooling`, `runtime`, `performance`
 - **Ecosystem:** `stdlib`, `security`, `agents`
-- **Research:** `research`
+- **Research:** `research`, `history`
 
 ## Conventions
 

@@ -3,7 +3,7 @@ title: "PL history: 1980s through 2000s"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [history, 1980s, 1990s, 2000s]
+tags: [history, 1980s, 1990s, 2000s, research]
 sources:
   - "../raw/plang-history-2026-09/history/02_1980s_to_2000s.md"
 ---
