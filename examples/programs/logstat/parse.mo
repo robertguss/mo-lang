@@ -197,3 +197,6 @@ property "no masked text holds a card number"
     assert !card?(masked(text))
   end
 end
+
+verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+          proven: not run

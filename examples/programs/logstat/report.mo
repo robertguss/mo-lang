@@ -173,3 +173,6 @@ end
 test rejects "a percentage of a part larger than its whole"
   percent(2, 1)
 end
+
+verified: types, contracts, tests (8), property (0 seeds), sim (not run)
+          proven: not run

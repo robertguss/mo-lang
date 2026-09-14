@@ -223,3 +223,6 @@ property "a summary never counts more errors than requests, for any list of reco
     assert s.requests == s.errors + s.successes
   end
 end
+
+verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+          proven: not run
