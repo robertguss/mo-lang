@@ -993,7 +993,7 @@
         { "id": "4db1408dd944", "name": "test \"each outcome is its status and its JSON\"", "hash": "a8edd51360587bdd" },
         { "id": "3a60f2fe4359", "name": "property \"any valid title and body sent as JSON become a create of that title and body\"", "hash": "0a283ca9e83c3a31" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "347ec89c9f56b9a9", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }] }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "347ec89c9f56b9a9", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "929d5d2dae52fbcb" }] }
     },
     {
       "path": "notes/limits.mo",
@@ -1074,14 +1074,14 @@
         { "id": "6f4875494ee9", "name": "test \"a store whose last line was cut short opens without it, and says so on the error stream\"", "hash": "267550486684f369" },
         { "id": "8cd594074ed0", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "8c253d1e34d485a1" }
       ],
-      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "e39cab5c4d1623d2", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Server", "hash": "2be886bb54d6655a" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "e39cab5c4d1623d2", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "929d5d2dae52fbcb" }, { "module": "Notes.Server", "hash": "2be886bb54d6655a" }, { "module": "Notes.Service", "hash": "fa137fcb3233d030" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
     },
     {
       "path": "notes/note.mo",
       "module": "Notes.Note",
       "declarations": [
         { "id": "34ff7a9781b0", "name": "module Notes.Note", "hash": "a94bc9034056ad2f" },
-        { "id": "b20d3f95dc25", "name": "expose", "hash": "8356df8b046006f8" },
+        { "id": "b20d3f95dc25", "name": "expose", "hash": "27e74738b102b70a" },
         { "id": "5dd1edff42fa", "name": "use Notes.Limits", "hash": "c16a804da0022dca" },
         { "id": "ad093b55b846", "name": "intent", "hash": "bc8078fdee2fdfc6" },
         { "id": "0053bc13d192", "name": "struct Note", "hash": "63823071217f25c5" },
@@ -1098,6 +1098,9 @@
         { "id": "9c95c6228a14", "name": "fn body?", "hash": "cd45b2ee903c2ffe" },
         { "id": "92b68692699a", "name": "fn plain?", "hash": "55065deb71549563" },
         { "id": "15f57a9dc265", "name": "fn c1?", "hash": "3ef1953999d06cd9" },
+        { "id": "b74a8a32f301", "name": "fn owner_of", "hash": "293c53969e3e7ef6" },
+        { "id": "f6aa2410cba5", "name": "fn id_of", "hash": "f402dc24697634f7" },
+        { "id": "4497d7a7dc2e", "name": "fn counted", "hash": "1a8da265c0da86bf" },
         { "id": "d8ddb088e423", "name": "test \"a title is 1 to 200 bytes and a body up to 60 KiB, with no control character but a newline in the body\"", "hash": "fb7d62257c2f1e73" },
         { "id": "ff4d2fa20189", "name": "test \"a note keeps its shape through the store's JSON\"", "hash": "7f8c5afbc8b96ecb" },
         { "id": "9abecf0b3d07", "name": "test \"an id is n_ and a number, and a key is the token, a slash, and the id\"", "hash": "9b1dcee5ed83f522" },
@@ -1106,7 +1109,7 @@
         { "id": "fc621af844c2", "name": "test rejects \"a note with a body over 60 KiB\"", "hash": "699e502790f0804e" },
         { "id": "f0cf5d7ebb6e", "name": "property \"any valid title and body survive the store's JSON\"", "hash": "2a411f21b6d35699" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "0559462eeeea70fa", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }] }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "d20243d76408bd53", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }] }
     },
     {
       "path": "notes/server.mo",
@@ -1141,7 +1144,7 @@
         { "id": "e1d00fc30736", "name": "test \"every response over the wire is right, or a 503 that left the store as it was\"", "hash": "aff779273c7b874e" },
         { "id": "18f447fbac69", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "053da3fbe8e7ea9b" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "fe9cecec1375c8db", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Service", "hash": "41f7f496b60bbe5c" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "fe9cecec1375c8db", "uses": [{ "module": "Notes.Api", "hash": "44b510c549b91b97" }, { "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "929d5d2dae52fbcb" }, { "module": "Notes.Service", "hash": "fa137fcb3233d030" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
     },
     {
       "path": "notes/service.mo",
@@ -1150,9 +1153,9 @@
         { "id": "243e5aceab43", "name": "module Notes.Service", "hash": "ac4e18702f9ddb32" },
         { "id": "35c457f1fb47", "name": "expose", "hash": "6042940321d343dc" },
         { "id": "8fc58b12e6b4", "name": "use Notes.Limits", "hash": "61103d27dc29caef" },
-        { "id": "47d4d7abcd25", "name": "use Notes.Note", "hash": "207561d79ad4d8df" },
-        { "id": "692a75c5db85", "name": "use Notes.Store", "hash": "a5e3e1feddb521b7" },
-        { "id": "b450614302f2", "name": "intent", "hash": "5c13aa80c61d581c" },
+        { "id": "47d4d7abcd25", "name": "use Notes.Note", "hash": "32ac9eef6f84d2d0" },
+        { "id": "692a75c5db85", "name": "use Notes.Store", "hash": "beda0ea07ca03b5a" },
+        { "id": "b450614302f2", "name": "intent", "hash": "4a5a70b3f718338d" },
         { "id": "7a15247a9c36", "name": "never \"a response is sent before its log line is durable\"", "hash": "6bcb57b55f2ab7bf" },
         { "id": "f99ffd73acdb", "name": "never \"a client reads, changes, or deletes another client's note\"", "hash": "94eba92854d5ee52" },
         { "id": "e57c929bad59", "name": "never \"an id is reused, restart or not\"", "hash": "80d056501b12bef9" },
@@ -1167,9 +1170,6 @@
         { "id": "3a63fdb8b9fb", "name": "process Service", "hash": "ce70f32b71c56464" },
         { "id": "8fe1e628548b", "name": "supervisor Services", "hash": "446f2275b3ca09ef" },
         { "id": "a689314e9b59", "name": "fn opening", "hash": "c41288e05c57cdd2" },
-        { "id": "99faee826c1b", "name": "fn counted", "hash": "1a8da265c0da86bf" },
-        { "id": "c0840bb1b0ff", "name": "fn owner_of", "hash": "293c53969e3e7ef6" },
-        { "id": "45d2f6ac2bce", "name": "fn id_of", "hash": "f402dc24697634f7" },
         { "id": "ff6b3f107f82", "name": "fn decide", "hash": "c634240da3152f19" },
         { "id": "43022bd3748e", "name": "fn created", "hash": "06dc742991fa810e" },
         { "id": "2885c67f7fd4", "name": "fn found", "hash": "479f16a25177260e" },
@@ -1180,12 +1180,12 @@
         { "id": "7c030dc5d171", "name": "fn removed", "hash": "f0ad89e7e0efbd2e" },
         { "id": "776aaa90bcc8", "name": "fn served", "hash": "18c98acc9ad34051" },
         { "id": "2779b6aa8c09", "name": "fn looked", "hash": "ca072f05a8e45b99" },
-        { "id": "1ddd6c4ad777", "name": "fn written", "hash": "1fdec641debde3a6" },
-        { "id": "8a7056621768", "name": "fn reserved", "hash": "83e110211be49aee" },
+        { "id": "1ddd6c4ad777", "name": "fn written", "hash": "29cdc386f3fb305e" },
+        { "id": "8a7056621768", "name": "fn reserved", "hash": "b51bbd1e4072b989" },
         { "id": "8fd2faa3e9f7", "name": "fn stored", "hash": "4a4101369329825b" },
         { "id": "73f0f22d1b86", "name": "fn issued", "hash": "77a9b88f39391df7" },
         { "id": "23cb6eae3cf0", "name": "fn torn_by", "hash": "5940899e1887b52f" },
-        { "id": "ea58af2fdf56", "name": "fn unwritten", "hash": "e7601e79c632f9c6" },
+        { "id": "ea58af2fdf56", "name": "fn unwritten", "hash": "c01e442decb8fe59" },
         { "id": "dddd05fc64ad", "name": "fn limited", "hash": "c3179334d36c5553" },
         { "id": "9f9834e2a80c", "name": "fn owned", "hash": "102cf708519e3164" },
         { "id": "ec8feb043f1c", "name": "fn fresh", "hash": "04f8ab9cf52e82fa" },
@@ -1198,10 +1198,11 @@
         { "id": "53243ec331e5", "name": "test \"the sixty-first call in a minute is 429 and changes nothing\"", "hash": "dcb7f125155abb2a" },
         { "id": "d92b25c863b1", "name": "test \"a list is the client's notes whose titles start with the prefix, by id, at most 100\"", "hash": "e90ee595bc78e2e2" },
         { "id": "6fdb2806c554", "name": "test \"a service started again from its log lists what the first one wrote, and reuses no id\"", "hash": "8ee1fb5af38d4c27" },
+        { "id": "013f62d13cd4", "name": "test \"a log a failed change may have torn is rewritten whole at the next change, which is taken\"", "hash": "be5d324d4263d6b1" },
         { "id": "c1c993955704", "name": "property \"a create then a read gives back any valid title and body\"", "hash": "0711d4e24043aa5f" },
         { "id": "30b04421f1bc", "name": "test rejects \"a call from a client whose token holds a slash\"", "hash": "7f0b3d267d339cac" }
       ],
-      "verified": { "hash": "91f66b3b860beb16", "declarations": "821ab91d391488ef", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "80015b630c9ab916" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
+      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "ffd3df88c571ffac", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "929d5d2dae52fbcb" }, { "module": "Notes.Store", "hash": "32829e91eeb5c264" }] }
     },
     {
       "path": "notes/store.mo",

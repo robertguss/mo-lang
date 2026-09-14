@@ -1,5 +1,5 @@
 module Notes.Note
-expose Note, Command, Call, Outcome, Counts, note, note_of, key_of, id_number, title?, body?
+expose Note, Command, Call, Outcome, Counts, note, note_of, key_of, owner_of, id_of, counted, id_number, title?, body?
 
 use Notes.Limits{ClientId, token?}
 
@@ -114,6 +114,20 @@ end
 fn c1?(c: String) : Bool
   second = c.bytes.get(1) or 0
   c.bytes.first == Some(194) and second >= 128 and second <= 159
+end
+
+# The client a store key belongs to, and the note id in it: a key is the client, a slash, and
+# the id.
+fn owner_of(key: String) : String
+  key.slice(0, key.index_of("/") or 0)
+end
+
+fn id_of(key: String) : String
+  key.slice((key.index_of("/") or 0) + 1, key.size)
+end
+
+fn counted(counts: Map(String, UInt64), owner: String) : Map(String, UInt64)
+  counts.update(owner, 0, fn(n) n + 1 end)
 end
 
 test "a title is 1 to 200 bytes and a body up to 60 KiB, with no control character but a newline in the body"

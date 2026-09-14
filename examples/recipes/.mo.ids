@@ -34,9 +34,9 @@
         { "id": "3e81f30e5ef7", "name": "enum StoreError", "hash": "f8037c1757b727e1" },
         { "id": "bb4fbd74ff53", "name": "struct Read", "hash": "7b2f40069b87dccc" },
         { "id": "dde2fbdb87d4", "name": "struct Reopened", "hash": "3a9dc4a0fb71e5f6" },
-        { "id": "df325b920821", "name": "recipe Store", "hash": "0a7980bbeb386a2c" }
+        { "id": "df325b920821", "name": "recipe Store", "hash": "1760a8b6a0288c57" }
       ],
-      "verified": { "hash": "f8bcd71959e486d5", "declarations": "f7625907fac0cc1c" }
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "a984478985f81dfe" }
     }
   ]
 }

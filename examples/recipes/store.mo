@@ -4,8 +4,8 @@ expose StoreError, Read, Reopened, Store
 intent "Publish a durable string map over an append-only log as intent, signatures, and tests, for an agent to implement over Fs."
 
 # Every way opening or changing a store fails. Unwritten: the change is not in the log, and the
-# table is as it was. Torn: the log may end in part of the change, so no change is safe until
-# the store is opened again and compacted.
+# table is as it was. Torn: the log may end in part of the change, so it is rewritten whole
+# (compact) at the next change, and changes are taken from then on.
 enum StoreError
   NoFolder
   Unreadable
@@ -29,7 +29,9 @@ struct Reopened
 end
 
 recipe Store
-  intent "A durable map from String keys to String values over an append-only log in a folder: each change is on disk before put or delete returns, open replays the log and leaves out a last line cut short, and compact rewrites the log as one line per live key"
+  # Session 5, step 22: the rewrite rule, jobq's, after notes refused every change past a torn
+  # log until it started again, so its work never resumed once faults stopped.
+  intent "A durable map from String keys to String values over an append-only log in a folder: each change is on disk before put or delete returns, open replays the log and leaves out a last line cut short, and compact rewrites the log as one line per live key; a log that may end in part of a change (Torn) is rewritten whole with compact at the next change, and changes are taken from then on, so work resumes once faults stop"
   needs Fs
   fn key?(text: String) : Bool
   end
@@ -121,6 +123,18 @@ recipe Store
     assert get(again, "a") == Some("1")
     assert get(again, "c") == Some("3")
     assert count(again) == count(more)
+  end
+  test "a change the log may have torn is taken once the log is rewritten whole"
+    fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
+    assert open(fs, "d") is Ok(empty)
+    assert put(fs, empty, "a", "1") is Ok(one)
+    assert put(Fs.fixture(delay: 1.minute), one, "b", "2") is Error(Torn)
+    assert compact(fs, one) is Ok(whole)
+    assert put(fs, whole, "b", "2") is Ok(two)
+    assert open(fs, "d") is Ok(again)
+    assert !cut_short?(again) and count(again) == count(two)
+    assert get(again, "a") == Some("1") and get(again, "b") == Some("2")
   end
   test "a folder too slow to read is Slow"
     assert open(Fs.fixture(delay: 1.minute), "d") is Error(Slow)

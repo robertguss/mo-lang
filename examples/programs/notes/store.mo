@@ -17,8 +17,8 @@ never "a replay changes the number of live keys"
 end
 
 # Every way opening or changing a store fails. Unwritten: the change is not in the log, and the
-# table is as it was. Torn: the log may end in part of the change, so no change is safe until
-# the store is opened again and compacted.
+# table is as it was. Torn: the log may end in part of the change, so it is rewritten whole
+# (compact) at the next change, and changes are taken from then on.
 enum StoreError
   NoFolder
   Unreadable
