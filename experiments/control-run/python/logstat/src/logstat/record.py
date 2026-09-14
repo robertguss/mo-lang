@@ -64,7 +64,7 @@ def parse_timestamp(text: str) -> datetime | None:
         if at.utcoffset() is None:
             return None
         return at.astimezone(UTC)
-    except (ValueError, OverflowError):
+    except ValueError, OverflowError:
         return None
 
 
