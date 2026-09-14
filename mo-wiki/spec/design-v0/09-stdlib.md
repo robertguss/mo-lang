@@ -380,4 +380,6 @@ end
 | `Runtime` | `read_only` | | `Runtime` | narrowed to reading: `send`, `pause`, and `resume` are `ReadOnly`, at run time |
 | `Runtime` (on type) | `fixture` | | `Runtime` | the surface of the test's own run: the processes it started and the events they made; tests only |
 
+Over HTTP the same rows are the development on-ramp: `mo run --surface PORT`, and `MO_SURFACE=PORT` for a binary built with `--surface`, serve them as JSON on 127.0.0.1 from a process of the toolchain's own the surface does not list, `GET /processes`, `/state/<id>`, `/recent/<id>?n=`, `/events?since=<ISO-8601>&n=`, `/crashes?n=`, `/sources`, `/memory`, `/slowest?n=`, and `POST /send/<id>` with the message's text as the body, `/pause/<id>`, `/resume/<id>`; a refusal is 404 for no process, 403 for read only, and 409 otherwise, with the `RuntimeError` as the body. An MCP wrapper is a later step.
+
 Session 5, step 23: the runtime surface and the events, from Robert's call of 13 Sep night (the surface is a capability, on in development, off in a binary unless held) and the nine questions program 1's worker wanted to ask its service.

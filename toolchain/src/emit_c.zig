@@ -19,6 +19,7 @@
 //! (mo_rt.c, processes); a test's and main's statements settle as bytecode.zig's do. The Net
 //! and Http rows are the runtime's: real sockets under main, their fixtures in a test binary.
 const std = @import("std");
+const surface_mod = @import("surface.zig");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
 const check = @import("check.zig");
@@ -2120,6 +2121,11 @@ const Emitter = struct {
         try tables.print(gpa, "const uint32_t mo_request_decl = {d};\nconst uint32_t mo_response_decl = {d};\n", .{ k.preludeStruct("Request").?, k.preludeStruct("Response").? });
         try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").? });
         try tables.print(gpa, "const bool mo_surface_built = {s};\n", .{if (e.options.surface) "true" else "false"});
+        // The runtime surface's own process, which the surface does not show (step 23).
+        const surface_process: ?usize = if (!e.options.surface) null else if (surface_mod.declOf(k)) |d| for (e.processes.items, 0..) |p, pi| {
+            if (p.decl == d) break pi;
+        } else null else null;
+        try tables.print(gpa, "const uint32_t mo_surface_process = {s};\n", .{if (surface_process) |pi| try e.print("{d}", .{pi}) else "UINT32_MAX"});
         try tables.print(gpa, "const bool mo_contracts_built = {s};\n\n", .{if (e.options.contracts or e.options.tests) "true" else "false"});
 
         try out.appendSlice(gpa, e.protos.items);
@@ -2131,7 +2137,9 @@ const Emitter = struct {
             try out.appendSlice(gpa, "\nint main(void) {\n    return mo_run_tests();\n}\n");
         } else {
             const main_sig = k.mainSig().?;
-            try out.print(gpa, "\nint main(int argc, char **argv) {{\n    mo_program_start(argc, argv);\n    f{d}(mo_platform());\n    return mo_program_end();\n}}\n", .{main_sig});
+            // MO_SURFACE=PORT serves the runtime surface before main in a binary built with --surface.
+            const surface_start = if (!e.options.surface) "" else if (surface_mod.sigOf(k)) |si| try e.print("    if (mo_surface_port() >= 0) mo_surface_listening(f{d}(mo_cap(MO_CAP_RUNTIME, 0, 0), mo_cap(MO_CAP_HTTP, 0, 0), mo_i128(mo_surface_port())));\n", .{si}) else "";
+            try out.print(gpa, "\nint main(int argc, char **argv) {{\n    mo_program_start(argc, argv);\n{s}    f{d}(mo_platform());\n    return mo_program_end();\n}}\n", .{ surface_start, main_sig });
         }
         return out.items;
     }

@@ -27,6 +27,7 @@ const runner = @import("runner.zig");
 const stdlib = @import("stdlib.zig");
 const Sim = @import("sim.zig").Sim;
 const Turns = @import("turns.zig").Turns;
+const surface_mod = @import("surface.zig");
 const vm_mod = @import("vm.zig");
 
 const Vm = vm_mod.Vm;
@@ -83,6 +84,9 @@ pub const Server = struct {
     ids_used: usize = 0,
     /// The events the run keeps (events.zig): `mo run --events N`, 4,096 by default (step 23).
     events_cap: u32 = @import("events.zig").default_cap,
+    /// `mo run --surface PORT`: the runtime surface is served over HTTP on 127.0.0.1 from before
+    /// main runs (step 23); the program must hold its module (program.withSurface).
+    surface_port: ?u16 = null,
 
     /// `cwd` is the absolute working directory a relative path starts from. Nothing is
     /// freed: pass an arena.
@@ -139,11 +143,26 @@ pub const Server = struct {
 
     /// main, then every message still waiting.
     fn runMain(machine: *Vm, scheduler: *Sim, main_fn: u32) Error!void {
+        if (machine.server.?.surface_port) |port| try startSurface(machine, scheduler, port);
         _ = try machine.call(main_fn, &.{.{ .cap = .{ .kind = .platform } }});
         // A served listener keeps the program running until it is stopped, unless main
         // called exit: then the runtime stops accepting and reading, and the rest settles.
         if (machine.server.?.exited) if (scheduler.turns) |t| sources.stopServer(scheduler, t);
         try scheduler.finish();
+    }
+
+    /// The runtime surface's module serves the rows over HTTP on 127.0.0.1 at `port` (step 23),
+    /// from a process the surface does not show and whose listener does not keep the program
+    /// running; a line on stderr says where, or that the port could not be had.
+    fn startSurface(machine: *Vm, scheduler: *Sim, port: u16) Error!void {
+        const s = machine.server.?;
+        const at = surface_mod.entry(machine.program) orelse return;
+        scheduler.hidden_process = at.process;
+        const got = try machine.call(at.function, &.{ .{ .cap = .{ .kind = .runtime } }, .{ .cap = .{ .kind = .http } }, .{ .int = port } });
+        if (got.int == 0) {
+            s.stderr.print("runtime surface: 127.0.0.1:{d} could not be had\n", .{port}) catch {};
+        } else s.stderr.print("runtime surface: http://127.0.0.1:{d}\n", .{@as(u64, @intCast(got.int))}) catch {};
+        s.stderr.flush() catch {};
     }
 
     /// A process crashed: its complete report goes to stderr as it happens (design-v0/03,

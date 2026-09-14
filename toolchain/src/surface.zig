@@ -15,6 +15,8 @@ const sources = @import("sources.zig");
 const types = @import("types.zig");
 const vm_mod = @import("vm.zig");
 
+const bytecode = @import("bytecode.zig");
+
 const Vm = vm_mod.Vm;
 const Value = vm_mod.Value;
 const Error = vm_mod.Error;
@@ -53,6 +55,42 @@ pub fn call(vm: *Vm, which: Row, a: []const Value) Error!Value {
         .pause, .@"resume" => if (acts) hold(vm, sim, a[1], which == .pause) else failure(vm, "ReadOnly"),
         .read_only => unreachable,
     };
+}
+
+// ---- the HTTP form (surface.mo)
+
+/// The module `program.withSurface` puts first: its path, the function that serves it, and its process.
+pub const module_path = "Mo.Surface";
+
+/// `serve_surface`'s signature in a program whose first module is the surface's.
+pub fn sigOf(k: *const check.Checked) ?u32 {
+    if (k.modules.len == 0 or !std.mem.eql(u8, k.modules[0].path, module_path)) return null;
+    for (k.sigs, 0..) |s, i| {
+        if (s.kind == .module and std.mem.eql(u8, s.name, "serve_surface") and k.moduleOf(s.node) == 0) return @intCast(i);
+    }
+    return null;
+}
+
+/// The `Surface` process's declaration in such a program.
+pub fn declOf(k: *const check.Checked) ?u32 {
+    if (k.modules.len == 0 or !std.mem.eql(u8, k.modules[0].path, module_path)) return null;
+    for (k.decls, 0..) |d, i| {
+        if (d.kind == .process and d.module == 0 and std.mem.eql(u8, d.name, "Surface")) return @intCast(i);
+    }
+    return null;
+}
+
+pub const Entry = struct { function: u32, process: u32 };
+
+/// Where `mo run --surface` starts the surface: `serve_surface`'s function and the index of the
+/// `Surface` process, which the surface does not show.
+pub fn entry(program: *const bytecode.Program) ?Entry {
+    const sig = sigOf(&program.checked) orelse return null;
+    const decl = declOf(&program.checked) orelse return null;
+    for (program.processes, 0..) |p, i| {
+        if (p.decl == decl) return .{ .function = program.fn_of_sig[sig], .process = @intCast(i) };
+    }
+    return null;
 }
 
 // ---- values

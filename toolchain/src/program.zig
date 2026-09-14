@@ -44,6 +44,40 @@ pub const Program = struct {
     }
 };
 
+/// The runtime surface's module (step 23), which `mo run --surface` and `mo build --surface` put
+/// before a program's first module and start before main (surface.zig).
+pub const surface_source = @embedFile("surface.mo");
+pub const surface_path = "(the runtime surface) surface.mo";
+
+/// The program with the runtime surface's module first; the given file stays last.
+pub fn withSurface(gpa: std.mem.Allocator, p: Program) error{OutOfMemory}!Program {
+    const files = try gpa.alloc(diag.File, p.files.len + 1);
+    files[0] = .{ .path = surface_path, .source = surface_source };
+    @memcpy(files[1..], p.files);
+    var q = try join(gpa, files);
+    q.root = p.root;
+    q.own_lines = p.own_lines;
+    if (p.keys.len > 0) {
+        const keys = try gpa.alloc([]const u8, p.keys.len + 1);
+        keys[0] = "";
+        @memcpy(keys[1..], p.keys);
+        q.keys = keys;
+    }
+    if (p.verified_lines.len > 0) {
+        const lines = try gpa.alloc(check.VerifiedLine, p.verified_lines.len + 1);
+        lines[0] = .recorded;
+        @memcpy(lines[1..], p.verified_lines);
+        q.verified_lines = lines;
+    }
+    if (p.uses.len > 0) {
+        const uses = try gpa.alloc([]const ids.Use, p.uses.len + 1);
+        uses[0] = &.{};
+        @memcpy(uses[1..], p.uses);
+        q.uses = uses;
+    }
+    return q;
+}
+
 /// One source on its own, as a program of one module, for a caller with no files.
 pub fn single(gpa: std.mem.Allocator, path: []const u8, source: []const u8) error{OutOfMemory}!Program {
     const files = try gpa.alloc(diag.File, 1);

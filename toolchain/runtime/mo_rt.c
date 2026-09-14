@@ -7422,6 +7422,8 @@ typedef struct Source {
     /* A serve source's last Idle in a test, so simulated time must pass before the next. */
     int64_t idled_at;
     bool done, paused;
+    /* It serves the runtime surface (step 23), so it does not keep a program running. */
+    bool background;
     /* A request source's http serve source, whose requests in flight it counts. */
     struct Source *parent;
     uint32_t inflight;
@@ -7437,6 +7439,8 @@ typedef struct Source {
 
 static Source **sources;
 static size_t nsources, capsources;
+/* The sources in `sources` that serve the runtime surface. */
+static size_t nbackground;
 /* Under main: the sources to pump next, the ones paused at their target's bound, and a heap of
  * deadlines, earliest first, one entry per source at most. An entry may come before its source's
  * deadline, since `since` moves on; it is put back when it comes. */
@@ -7475,11 +7479,13 @@ static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_m
     s->since = since;
     s->idled_at = INT64_MIN;
     s->parent = parent;
+    s->background = is_hidden(to);
     s->waiter = (Waiter){-1, false, false, false, NO_PROCESS, NULL, -1};
     s->timer = -1;
     s->index = nsources;
     GROW_ARRAY(sources, nsources, capsources);
     sources[nsources++] = s;
+    if (s->background) nbackground++;
     if (server_mode) mark_dirty(s);
     return s;
 }
@@ -7734,6 +7740,7 @@ static void settle_source(Source *s) {
  * is in the dirty list then). */
 static void source_retire(Source *s) {
     s->done = true;
+    if (s->background) nbackground--;
     poller_disarm(&s->waiter);
     if (s->in_paused) leave_paused(s);
     if (s->timer >= 0) timer_remove(s);
@@ -7964,9 +7971,9 @@ static void sources_pump_server(void) {
 }
 
 static bool sources_active(void) {
-    if (server_mode) return nsources > 0;
+    if (server_mode) return nsources > nbackground;
     for (size_t i = 0; i < nsources; i++) {
-        if (!sources[i]->done) return true;
+        if (!sources[i]->done && !sources[i]->background) return true;
     }
     return false;
 }
@@ -8787,6 +8794,24 @@ static MoValue runtime_hold(const MoValue *a, bool pause) {
     return ok_none();
 }
 
+/* MO_SURFACE=PORT in a binary built with --surface (step 23): the port main's surface serves on, or
+ * -1 when it is not set or not a port. */
+int mo_surface_port(void) {
+    const char *said = getenv("MO_SURFACE");
+    if (!said || !*said) return -1;
+    char *end;
+    long port = strtol(said, &end, 10);
+    return *end || port < 0 || port > 65535 ? -1 : (int)port;
+}
+
+/* The surface is listening on the port it gives, or could not have the port when it gives 0. */
+void mo_surface_listening(MoValue got) {
+    long long port = (long long)mo_wide(got);
+    if (port == 0) fprintf(stderr, "runtime surface: 127.0.0.1:%d could not be had\n", mo_surface_port());
+    else fprintf(stderr, "runtime surface: http://127.0.0.1:%lld\n", port);
+    fflush(stderr);
+}
+
 MO_ROW(mo_r_Runtime_pause) { (void)kind; return runtime_hold(a, true); }
 MO_ROW(mo_r_Runtime_resume) { (void)kind; return runtime_hold(a, false); }
 
@@ -8813,6 +8838,7 @@ void mo_program_start(int argc, char **argv) {
     if (events) ring_cap = (size_t)strtoull(events, NULL, 10);
     ring_wall_ms = wall_ms();
     ring_mono_us = awake_ns() / 1000;
+    hidden_process = mo_surface_process;
     turns_on = mo_nprocesses > 0;
     packs = turns_on && mo_compacts;
     /* MO_CLOCK fixes where main's clock starts, as mo run --clock does. */

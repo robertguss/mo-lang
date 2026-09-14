@@ -15,6 +15,8 @@
 //!                        test asserts safety while calls fail and progress once they stop
 //!   mo run   <file.mo> [-- args...]
 //!     --events N         the runtime keeps the last N events (events.zig; default 4,096)
+//!     --surface PORT     serves the runtime surface's rows as JSON over HTTP on 127.0.0.1:PORT
+//!                        (0: a free port) from before main runs (surface.mo; step 23)
 //!                        tier 1, then `main` on Mo.Server with the args after `--`;
 //!                        no test runs. Exit 0, or the last platform.exit(code), or 70
 //!                        with the crash report on stderr; MO0408 when there is no main
@@ -32,7 +34,8 @@
 //!     --tests            the binary runs the file's tests and prints what mo test prints,
 //!                        process tests in the fixed order (--sim has no compiled form)
 //!     --target <triple>  cross-compiles for a zig target, such as x86_64-linux-musl
-//!     --surface          platform.runtime is Some in the binary, as under mo run (step 23)
+//!     --surface          platform.runtime is Some in the binary, as under mo run, and MO_SURFACE=PORT
+//!                        serves the surface over HTTP as mo run --surface PORT does (step 23)
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
 //!                        MO0312, and MO0101 at a one-line if), formats, and rewrites the file;
 //!                        one line per fix
@@ -48,7 +51,7 @@ const mo = @import("mo");
 const usage =
     \\usage: mo check [--recipe Module.Recipe] <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
-    \\       mo run [--clock ISO-8601] [--events N] <file.mo> [--json] [-- args...]
+    \\       mo run [--clock ISO-8601] [--events N] [--surface PORT] <file.mo> [--json] [-- args...]
     \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--surface] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\       mo fix [--dry-run] <file.mo> [--json]
@@ -235,7 +238,9 @@ fn run(init: std.process.Init) !void {
     }
 
     // The file and every module it uses, from the program root.
-    const program = try mo.program.load(arena, io, path, &diags);
+    var program = try mo.program.load(arena, io, path, &diags);
+    // The runtime surface's module goes first when mo run or mo build serves it (step 23).
+    if (surface and !tests) program = try mo.program.withSurface(arena, program);
 
     if (is_fix) {
         // A file that does not parse has nothing to fix, unless every error that stopped it carries
@@ -293,6 +298,7 @@ fn run(init: std.process.Init) !void {
         var server: mo.server.Server = try .init(arena, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
         server.files = program.files;
         if (events_cap) |n| server.events_cap = n;
+        server.surface_port = surface_port;
         // --clock, else MO_CLOCK, fixes where main's clock starts; a built binary reads MO_CLOCK.
         if (clock orelse init.environ_map.get("MO_CLOCK")) |text| {
             server.startClock(mo.stdlib.parseTime(text) orelse {

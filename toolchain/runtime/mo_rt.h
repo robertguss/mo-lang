@@ -183,6 +183,11 @@ extern const uint32_t mo_process_info_decl;
 extern const uint32_t mo_source_info_decl;
 extern const uint32_t mo_memory_info_decl;
 extern const bool mo_surface_built;
+/* The runtime surface's own process, in mo_processes, or UINT32_MAX; MO_SURFACE's port, or -1; and
+ * the line that says where it listens. */
+extern const uint32_t mo_surface_process;
+int mo_surface_port(void);
+void mo_surface_listening(MoValue got);
 
 /* Contracts (requires, ensures, refinements) are checked when this is set: in every binary
  * `mo build` makes unless it was built --no-contracts, and always in a test binary.
