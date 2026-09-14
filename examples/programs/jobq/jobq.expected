@@ -1,0 +1,74 @@
+> - GET /health
+200 {"queued": 2, "leased": 1, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>}
+> - GET /jobs
+401 {"error": "a request needs authorization: Bearer <token>"}
+> p GET /jobs
+200 {"jobs": [{"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome ada", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome grace", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_3", "queue": "reports", "state": "leased", "payload": "weekly", "attempts": 1, "max_attempts": 1, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w-slow", "lease_until": "<lease_until>"}, {"id": "j_4", "queue": "emails", "state": "queued", "payload": "line one\nline two \"quoted\" é", "attempts": 0, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> p GET /jobs?queue=emails&state=queued
+200 {"jobs": [{"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome grace", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_4", "queue": "emails", "state": "queued", "payload": "line one\nline two \"quoted\" é", "attempts": 0, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> p GET /jobs?state=gone
+400 {"error": "state must be queued, leased, done, or dead"}
+> p GET /jobs/j_1
+200 {"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome ada", "attempts": 1, "max_attempts": 3, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p GET /jobs/j_5
+404 {"error": "no such job"}
+> p GET /jobs/j_99
+404 {"error": "no such job"}
+> p POST /jobs {"queue": "emails", "payload": "hello \"world\"\nline two é", "max_attempts": 2}
+201 {"id": "j_1000", "queue": "emails", "state": "queued", "payload": "hello \"world\"\nline two é", "attempts": 0, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p POST /jobs {"queue": "emails", "payload": "no attempts"}
+400 {"error": "max_attempts is missing"}
+> p POST /jobs {"queue": "a b", "payload": "", "max_attempts": 1}
+400 {"error": "queue must be 1 to 64 letters, digits, - or _"}
+> p POST /jobs {"queue": "emails", "payload": "", "max_attempts": 101}
+400 {"error": "max_attempts must be a whole number from 1 to 100"}
+> p POST /jobs this is not json
+400 {"error": "the body is not JSON"}
+> w1 POST /queues/emails/lease {"lease_ms": 60000}
+200 {"id": "j_2", "queue": "emails", "state": "leased", "payload": "welcome grace", "attempts": 2, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w1", "lease_until": "<lease_until>"}
+> w2 POST /queues/emails/lease {"lease_ms": 60000}
+200 {"id": "j_4", "queue": "emails", "state": "leased", "payload": "line one\nline two \"quoted\" é", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w2", "lease_until": "<lease_until>"}
+> w2 POST /jobs/j_2/ack
+409 {"error": "j_2 is not leased to this worker"}
+> w1 POST /jobs/j_2/ack
+200 {"id": "j_2", "queue": "emails", "state": "done", "payload": "welcome grace", "attempts": 2, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> w1 POST /jobs/j_2/ack
+409 {"error": "j_2 is not leased to this worker"}
+> p DELETE /jobs/j_3
+409 {"error": "j_3 is leased"}
+> p DELETE /jobs/j_1
+204
+> p DELETE /jobs/j_1
+404 {"error": "no such job"}
+> w3 POST /queues/emails/lease {"lease_ms": 50}
+400 {"error": "lease_ms must be a whole number from 100 to 3600000"}
+> w3 POST /queues/emails/lease
+200 {"id": "j_1000", "queue": "emails", "state": "leased", "payload": "hello \"world\"\nline two é", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w3", "lease_until": "<lease_until>"}
+> w3 POST /jobs/j_1000/fail {"reason": "smtp down"}
+200 {"id": "j_1000", "queue": "emails", "state": "queued", "payload": "hello \"world\"\nline two é", "attempts": 1, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "smtp down"}
+> w3 POST /jobs/j_4/fail {}
+400 {"error": "reason is missing"}
+> w3 POST /jobs/j_4/fail {"reason": "smtp down"}
+409 {"error": "j_4 is not leased to this worker"}
+> w3 POST /queues/emails/lease
+200 {"id": "j_1000", "queue": "emails", "state": "leased", "payload": "hello \"world\"\nline two é", "attempts": 2, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w3", "lease_until": "<lease_until>", "reason": "smtp down"}
+> w3 POST /jobs/j_1000/fail {"reason": "still down"}
+200 {"id": "j_1000", "queue": "emails", "state": "dead", "payload": "hello \"world\"\nline two é", "attempts": 2, "max_attempts": 2, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "still down"}
+> w3 POST /queues/emails/lease
+204
+> w2 POST /jobs/j_1000/ack
+409 {"error": "j_1000 is not leased to this worker"}
+> w3 POST /queues/emails/lease
+204
+> w3 POST /queues/bad!name/lease
+400 {"error": "a queue's name is 1 to 64 letters, digits, - or _"}
+> w3 GET /queues/emails/lease
+405 {"error": "this route takes POST"}
+> p PATCH /jobs/j_1
+405 {"error": "this route takes GET, DELETE"}
+> p GET /nowhere
+404 {"error": "no route /nowhere"}
+> bad"token GET /jobs
+401 {"error": "a request needs authorization: Bearer <token>"}
+> - GET /health
+200 {"queued": 0, "leased": 2, "done": 1, "dead": 1, "uptime_ms": <uptime_ms>}

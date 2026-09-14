@@ -1,0 +1,37 @@
+- GET /health
+- GET /jobs
+p GET /jobs
+p GET /jobs?queue=emails&state=queued
+p GET /jobs?state=gone
+p GET /jobs/j_1
+p GET /jobs/j_5
+p GET /jobs/j_99
+p POST /jobs {"queue": "emails", "payload": "hello \"world\"\nline two é", "max_attempts": 2}
+p POST /jobs {"queue": "emails", "payload": "no attempts"}
+p POST /jobs {"queue": "a b", "payload": "", "max_attempts": 1}
+p POST /jobs {"queue": "emails", "payload": "", "max_attempts": 101}
+p POST /jobs this is not json
+w1 POST /queues/emails/lease {"lease_ms": 60000}
+w2 POST /queues/emails/lease {"lease_ms": 60000}
+w2 POST /jobs/j_2/ack
+w1 POST /jobs/j_2/ack
+w1 POST /jobs/j_2/ack
+p DELETE /jobs/j_3
+p DELETE /jobs/j_1
+p DELETE /jobs/j_1
+w3 POST /queues/emails/lease {"lease_ms": 50}
+w3 POST /queues/emails/lease
+w3 POST /jobs/j_1000/fail {"reason": "smtp down"}
+w3 POST /jobs/j_4/fail {}
+w3 POST /jobs/j_4/fail {"reason": "smtp down"}
+w3 POST /queues/emails/lease
+w3 POST /jobs/j_1000/fail {"reason": "still down"}
+w3 POST /queues/emails/lease
+w2 POST /jobs/j_1000/ack
+w3 POST /queues/emails/lease
+w3 POST /queues/bad!name/lease
+w3 GET /queues/emails/lease
+p PATCH /jobs/j_1
+p GET /nowhere
+bad"token GET /jobs
+- GET /health
