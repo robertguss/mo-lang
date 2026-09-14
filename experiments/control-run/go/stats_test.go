@@ -131,13 +131,13 @@ func TestCheckRejects(t *testing.T) {
 		t.Fatalf("good summary: %v", err)
 	}
 	cases := map[string]func(s *Summary){
-		"errors above requests":            func(s *Summary) { s.Errors = s.Requests + 1 },
-		"requests not errors + successes":  func(s *Summary) { s.Successes++ },
-		"slowest out of order":             func(s *Summary) { s.Slowest[0], s.Slowest[1] = s.Slowest[1], s.Slowest[0] },
-		"busiest out of order":             func(s *Summary) { s.Busiest[0], s.Busiest[1] = s.Busiest[1], s.Busiest[0] },
-		"card in slowest path":             func(s *Summary) { s.Slowest[0].Path = "/4111111111111111" },
-		"card in slowest timestamp":        func(s *Summary) { s.Slowest[0].At = "4111111111111111" },
-		"card in busiest path":             func(s *Summary) { s.Busiest[0].Path = "/4111111111111111" },
+		"errors above requests":           func(s *Summary) { s.Errors = s.Requests + 1 },
+		"requests not errors + successes": func(s *Summary) { s.Successes++ },
+		"slowest out of order":            func(s *Summary) { s.Slowest[0], s.Slowest[1] = s.Slowest[1], s.Slowest[0] },
+		"busiest out of order":            func(s *Summary) { s.Busiest[0], s.Busiest[1] = s.Busiest[1], s.Busiest[0] },
+		"card in slowest path":            func(s *Summary) { s.Slowest[0].Path = "/4111111111111111" },
+		"card in slowest timestamp":       func(s *Summary) { s.Slowest[0].At = "4111111111111111" },
+		"card in busiest path":            func(s *Summary) { s.Busiest[0].Path = "/4111111111111111" },
 	}
 	for name, corrupt := range cases {
 		s := good
