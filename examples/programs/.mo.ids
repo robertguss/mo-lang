@@ -1089,6 +1089,41 @@
       "verified": { "hash": "e83258a2991fdaee", "declarations": "9aaa7189b1cfee61" }
     },
     {
+      "path": "logstat/stats.mo",
+      "module": "Logstat.Stats",
+      "declarations": [
+        { "id": "f82426698c31", "name": "module Logstat.Stats", "hash": "99baf355d163c827" },
+        { "id": "3c35b30989af", "name": "expose", "hash": "cfebf0a96e491e4d" },
+        { "id": "8aa812abfe49", "name": "use Logstat.Parse", "hash": "d17b10dfe7b9c046" },
+        { "id": "07483b8002ce", "name": "intent", "hash": "c625c3c775167512" },
+        { "id": "8ec6650c4977", "name": "never \"a summary's requests are not its errors plus its successes\"", "hash": "389017a78fc950e3" },
+        { "id": "816c2c571ab1", "name": "struct Summary", "hash": "192ae0933cdf51aa" },
+        { "id": "e45437aa2482", "name": "struct Busy", "hash": "7a9298f69daee211" },
+        { "id": "8effb4d9ca62", "name": "fn empty", "hash": "d78f28320b3ae278" },
+        { "id": "c2ac3516fa7b", "name": "fn folded", "hash": "92ea7e0c95b70e2a" },
+        { "id": "461629fb5827", "name": "fn added", "hash": "2ceafc12bc6c1820" },
+        { "id": "76d1230147ec", "name": "fn early?", "hash": "357604e70ee52983" },
+        { "id": "07f8e3b4b620", "name": "fn kept", "hash": "3a08e9f878798136" },
+        { "id": "30a55bb55ee2", "name": "fn slower?", "hash": "d396645213bd1079" },
+        { "id": "8f43dee2563e", "name": "fn tallied", "hash": "a3a6b6583a5e6e41" },
+        { "id": "d39916649cfe", "name": "fn busiest", "hash": "83c4f97ef5e3be48" },
+        { "id": "7489d11af2a8", "name": "fn per_minute", "hash": "035f5ff28553fef0" },
+        { "id": "3cad34802445", "name": "fn error_rate", "hash": "6871d09c66bb2991" },
+        { "id": "23d1eb8b65dc", "name": "fn at", "hash": "253bbb4e66228ed6" },
+        { "id": "6f989f3903f2", "name": "fn record", "hash": "a746e10c1cf50314" },
+        { "id": "d7d531b7728a", "name": "test \"requests, errors, successes, and malformed lines are counted\"", "hash": "93765445f1d75028" },
+        { "id": "a90bd649f5d2", "name": "test \"per minute is requests over the minutes from first to last, and a single request is 0.0\"", "hash": "f60fe0bee8a420ad" },
+        { "id": "8af7e455b5f9", "name": "test \"the slowest are kept to top, by duration descending, then time ascending\"", "hash": "2025f80553f6cc80" },
+        { "id": "8ae49e5dff40", "name": "test \"the busiest are by count descending, then path ascending, and kept to top\"", "hash": "c94b995a96382ce5" },
+        { "id": "a41bd053f4f8", "name": "test \"records before since are ignored, and one at since is counted\"", "hash": "6f6ab5e280b82bcb" },
+        { "id": "a0864a1fe54d", "name": "test rejects \"a summary that keeps the top 0\"", "hash": "d08a088cd5680022" },
+        { "id": "1b784a8e7f85", "name": "test rejects \"a summary that keeps the top 101\"", "hash": "364267df630adde1" },
+        { "id": "e612995a5e49", "name": "test rejects \"a slowest list cut to nothing\"", "hash": "b79b761afae3bc58" },
+        { "id": "969b4ad94722", "name": "property \"errors are never more than requests, for any list of records\"", "hash": "005d2ae44c338a4e" }
+      ],
+      "verified": { "hash": "3f8bccf1b5003a95", "declarations": "6f4cd0b334dc8314", "uses": [{ "module": "Logstat.Parse", "hash": "942920859053c85e" }] }
+    },
+    {
       "path": "not-text.mo",
       "module": "Programs.NotText",
       "declarations": [
