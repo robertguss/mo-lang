@@ -6,22 +6,24 @@
       "module": "Stdlib.Files",
       "declarations": [
         { "id": "fac1cdb58afa", "name": "module Stdlib.Files", "hash": "091d93cbd02e65db" },
-        { "id": "b482b2dec537", "name": "expose", "hash": "5a1379f29e5320a1" },
-        { "id": "251406ab9853", "name": "intent", "hash": "e0214fc00a93b340" },
+        { "id": "b482b2dec537", "name": "expose", "hash": "ea8c33d1f8819fd9" },
+        { "id": "251406ab9853", "name": "intent", "hash": "9d73d4c587a92645" },
         { "id": "503135c4e865", "name": "enum Problem", "hash": "f21d46a21cb835ce" },
         { "id": "1629743143dc", "name": "fn log_names", "hash": "129d240ff8513ae4" },
+        { "id": "4ee9715d2559", "name": "fn log_files", "hash": "59cfb3acf74895cc" },
         { "id": "110af80fb212", "name": "fn line_count", "hash": "a6ea73c200a7b853" },
         { "id": "b524e5b8095d", "name": "fn bytes_of", "hash": "5e2e7bbea21b1808" },
         { "id": "58e52d2925bd", "name": "fn bytes_read", "hash": "669ca81268202b30" },
         { "id": "16d223008a32", "name": "fn echo_lines", "hash": "745e91c460fe9753" },
         { "id": "f9d218f5e4da", "name": "fn text_bytes", "hash": "dee7397809b44e56" },
         { "id": "fcf47d8762a6", "name": "test \"an empty file system lists nothing and reads nothing\"", "hash": "df98f90afa2815b4" },
+        { "id": "7137dd9ac349", "name": "test \"list_kinds tells a file from a folder, sorted by name as list sorts\"", "hash": "d30751c454486a0c" },
         { "id": "a852c9792559", "name": "test \"fold_lines keeps a value across the lines, split as lines splits them\"", "hash": "f0ececad4d7178a9" },
         { "id": "d79af189be35", "name": "test \"read_bytes gives a file's bytes, as many as its size\"", "hash": "498af02d7e103b6b" },
         { "id": "4f0568a9f9b2", "name": "test \"fold_lines hands out on from line to line, split as lines splits them\"", "hash": "5bd8c18203721f5c" },
         { "id": "2e7e0ce15e8d", "name": "test \"a slow file system times out every call that waits less than its delay\"", "hash": "2186e46cbf800884" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "489b4c7b80ff49d0" }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "95bb011143c66119" }
     },
     {
       "path": "fs-fixture-scope.mo",
@@ -143,10 +145,11 @@
         { "id": "5108c31dee55", "name": "test \"split keeps empty pieces, and lines drops a final newline and each CR\"", "hash": "10763478bfd6919b" },
         { "id": "394b2c8fc19b", "name": "test \"search and cut count graphemes, and their bounds clamp\"", "hash": "4af4205ed3080f24" },
         { "id": "a9dc7f82bdc0", "name": "test \"text is built by replace, case, padding, repeat, trim, and join\"", "hash": "667e18fbbac3e5a9" },
+        { "id": "bd8645f8795a", "name": "test \"an integer is grouped by thousands in Mo's own spelling\"", "hash": "07700e2b8d8ad43b" },
         { "id": "66e5f041f3c8", "name": "test \"bytes become text only when they are UTF-8\"", "hash": "f7dc1984c79db995" },
         { "id": "fd96f9d84633", "name": "test rejects \"a card too short to mask\"", "hash": "316cdc1e66113d5f" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "b194dd74f7bf3008" }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "30a7ac2a31f7776d" }
     },
     {
       "path": "time.mo",
@@ -157,10 +160,10 @@
         { "id": "4332047aa1eb", "name": "intent", "hash": "9de429c7526fc433" },
         { "id": "aa7bf22b0ec5", "name": "fn minutes_between", "hash": "afbcdb5876053474" },
         { "id": "eacb5aceb356", "name": "test \"RFC 3339 text is an instant, and a date or time that does not exist is not\"", "hash": "8eeb460634c74ad6" },
-        { "id": "0603bec438dc", "name": "test \"a span is a Duration, read in milliseconds, seconds, or minutes\"", "hash": "94cb71e9bcff9907" },
+        { "id": "0603bec438dc", "name": "test \"a span is a Duration, read in milliseconds, seconds, or minutes\"", "hash": "012b7f96d8662a14" },
         { "id": "c0700b903379", "name": "test \"the calendar counts leap days, and the years before 1970\"", "hash": "bad7eae2dcb4ee6c" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "1284153bd8334467" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "9da00be9979cf6de" }
     }
   ]
 }

@@ -1317,7 +1317,8 @@ const Parser = struct {
         const top = p.scratch.items.len;
         if (p.peek() != .r_paren) {
             while (true) {
-                try p.push(try p.expectName());
+                // `_` leaves a parameter unread (step 28).
+                try p.push(p.eat(.underscore) orelse try p.expectName());
                 if (p.eat(.comma) == null) break;
             }
         }

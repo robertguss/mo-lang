@@ -86,7 +86,7 @@ enum {
     MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_ACCEPTED, MO_N_LINE, MO_N_IDLE, MO_N_NO_PROCESS, MO_N_UNPARSED,
     MO_N_READ_ONLY, MO_N_MAILBOX_FULL, MO_N_UPDATED, MO_N_STARTED, MO_N_ENDED, MO_N_RESTARTED, MO_N_CRASHED,
     MO_N_OVERFLOWED, MO_N_TIMED_OUT, MO_N_SOURCE_PAUSED, MO_N_SOURCE_RESUMED, MO_N_SENT, MO_N_PAUSED,
-    MO_N_RESUMED, MO_N_FIXED
+    MO_N_RESUMED, MO_N_FILE, MO_N_FOLDER, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -182,6 +182,7 @@ extern const uint32_t mo_response_decl;
 extern const uint32_t mo_process_info_decl;
 extern const uint32_t mo_source_info_decl;
 extern const uint32_t mo_memory_info_decl;
+extern const uint32_t mo_entry_decl;
 extern const bool mo_surface_built;
 /* The runtime surface's own process, in mo_processes, or UINT32_MAX; MO_SURFACE's port, or -1; and
  * the line that says where it listens. */
@@ -482,7 +483,8 @@ MO_ROW(mo_r_Float64_round); MO_ROW(mo_r_Float64_to_string);
 MO_ROW(mo_r_Int_checked_add); MO_ROW(mo_r_Int_checked_sub); MO_ROW(mo_r_Int_checked_mul);
 MO_ROW(mo_r_Int_saturating_add); MO_ROW(mo_r_Int_saturating_sub); MO_ROW(mo_r_Int_saturating_mul);
 MO_ROW(mo_r_Int_wrapping_add); MO_ROW(mo_r_Int_wrapping_sub); MO_ROW(mo_r_Int_wrapping_mul);
-MO_ROW(mo_r_Int_ms); MO_ROW(mo_r_Int_minute); MO_ROW(mo_r_Int_days);
+MO_ROW(mo_r_Int_ms); MO_ROW(mo_r_Int_seconds); MO_ROW(mo_r_Int_minute); MO_ROW(mo_r_Int_days);
+MO_ROW(mo_r_Option_map); MO_ROW(mo_r_String_grouped); MO_ROW(mo_r_Fs_list_kinds);
 MO_ROW(mo_r_Time_fixture); MO_ROW(mo_r_Time_parse); MO_ROW(mo_r_Time_from_parts); MO_ROW(mo_r_Time_to_iso8601);
 MO_ROW(mo_r_Time_since); MO_ROW(mo_r_Duration_ms); MO_ROW(mo_r_Duration_seconds); MO_ROW(mo_r_Duration_minutes);
 MO_ROW(mo_r_Clock_now); MO_ROW(mo_r_Clock_fixture);

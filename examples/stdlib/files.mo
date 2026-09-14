@@ -1,7 +1,7 @@
 module Stdlib.Files
-expose Problem, log_names, line_count, bytes_of, bytes_read, echo_lines, text_bytes
+expose Problem, log_names, log_files, line_count, bytes_of, bytes_read, echo_lines, text_bytes
 
-intent "List a folder, read a file as lines, one line at a time, folded, or as bytes, and size it, through an Fs whose every call can wait and says how long."
+intent "List a folder, telling its files from its folders, read a file as lines, one line at a time, folded, or as bytes, and size it, through an Fs whose every call can wait and says how long."
 
 enum Problem
   Unread(path: String)
@@ -12,6 +12,19 @@ end
 fn log_names(logs: Fs) : Result(List(String), Problem)
   case logs.list(within: 1.minute)
     Ok(names): Ok(names.filter(fn(name) name.ends_with?(".log") end))
+    Error(Missing(path)): Error(Unread(path: path))
+    Error(Timeout): Error(Slow)
+    Error(NotText): Error(Binary(path: "."))
+  end
+end
+
+# The names ending in .log that are files: a folder named old.log is not one (step 28).
+fn log_files(logs: Fs) : Result(List(String), Problem)
+  case logs.list_kinds(within: 1.minute)
+    Ok(entries):
+      Ok(entries.filter(fn(e)
+        e.kind == File and e.name.ends_with?(".log")
+      end).map(fn(e) e.name end))
     Error(Missing(path)): Error(Unread(path: path))
     Error(Timeout): Error(Slow)
     Error(NotText): Error(Binary(path: "."))
@@ -79,6 +92,21 @@ test "an empty file system lists nothing and reads nothing"
   assert bytes_read(Fs.fixture(), "a.log") is Error(Unread("a.log"))
 end
 
+test "list_kinds tells a file from a folder, sorted by name as list sorts"
+  fs = Fs.fixture()
+  assert fs.mkdir("old.log", within: 1.minute) is Ok(_)
+  assert fs.mkdir("logs", within: 1.minute) is Ok(_)
+  assert fs.write("logs/b.log", "two", within: 1.minute) is Ok(_)
+  assert fs.write("a.log", "one", within: 1.minute) is Ok(_)
+  assert fs.list(within: 1.minute) == Ok(["a.log", "logs", "old.log"])
+  assert fs.list_kinds(within: 1.minute) == Ok([Entry(name: "a.log", kind: File),
+    Entry(name: "logs", kind: Folder),
+    Entry(name: "old.log", kind: Folder)])
+  assert log_names(fs) == Ok(["a.log", "old.log"])
+  assert log_files(fs) == Ok(["a.log"])
+  assert log_files(Fs.fixture(delay: 2.minute)) is Error(Slow)
+end
+
 test "fold_lines keeps a value across the lines, split as lines splits them"
   fs = Fs.fixture()
   assert fs.write("a.log", "one\r\ntwo\n\nlast", within: 1.minute) is Ok(_)
@@ -114,5 +142,5 @@ test "a slow file system times out every call that waits less than its delay"
   assert bytes_read(slow, "a.log") is Error(Slow)
 end
 
-verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
           proven: not run

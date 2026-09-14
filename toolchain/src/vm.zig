@@ -1078,6 +1078,7 @@ pub const Vm = struct {
         wrapping_sub,
         wrapping_mul,
         ms,
+        seconds,
         minute,
         days,
         time_fixture,
@@ -1120,7 +1121,7 @@ pub const Vm = struct {
         .{ "String.bytes", .string_bytes },         .{ "String.starts_with?", .string_starts_with }, .{ "Int.checked_add", .checked_add },
         .{ "Int.checked_sub", .checked_sub },       .{ "Int.checked_mul", .checked_mul },         .{ "Int.saturating_add", .saturating_add },
         .{ "Int.saturating_sub", .saturating_sub }, .{ "Int.saturating_mul", .saturating_mul },   .{ "Int.wrapping_add", .wrapping_add },
-        .{ "Int.wrapping_sub", .wrapping_sub },     .{ "Int.wrapping_mul", .wrapping_mul },       .{ "Int.ms", .ms },
+        .{ "Int.wrapping_sub", .wrapping_sub },     .{ "Int.wrapping_mul", .wrapping_mul },       .{ "Int.ms", .ms }, .{ "Int.seconds", .seconds },
         .{ "Int.minute", .minute },                 .{ "Int.days", .days },                       .{ "Time.fixture", .time_fixture },
         .{ "Clock.now", .clock_now },               .{ "Clock.fixture", .clock_fixture },         .{ "Fs.read", .fs_read },
         .{ "Fs.scoped", .fs_narrow },               .{ "Fs.read_only", .fs_narrow },              .{ "Fs.fixture", .fs_fixture },
@@ -1240,9 +1241,10 @@ pub const Vm = struct {
             },
             .string_starts_with => .{ .bool = std.mem.startsWith(u8, a[0].string, a[1].string) },
             .checked_add, .checked_sub, .checked_mul, .saturating_add, .saturating_sub, .saturating_mul, .wrapping_add, .wrapping_sub, .wrapping_mul => try vm.edge(prim_of[row_index], @enumFromInt(kind_raw), a[0].int, a[1].int),
-            .ms, .minute, .days => blk: {
+            .ms, .seconds, .minute, .days => blk: {
                 const unit: i128 = switch (prim_of[row_index]) {
                     .ms => 1,
+                    .seconds => 1_000,
                     .minute => 60_000,
                     else => 86_400_000,
                 };

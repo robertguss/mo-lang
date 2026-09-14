@@ -2270,7 +2270,8 @@ const Lower = struct {
         const fi = try l.reserve();
         l.b = &b;
         for (l.tree.span(data.params_start, data.params_end)) |tok| {
-            _ = try l.bindName(l.text(tok), false);
+            // `_` takes its argument's slot and binds nothing (step 28).
+            _ = if (l.tree.tokens[tok].kind == .underscore) l.slot() else try l.bindName(l.text(tok), false);
             try b.param_names.append(l.gpa, l.text(tok));
         }
         b.result = l.slot();

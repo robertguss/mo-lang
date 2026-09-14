@@ -2492,7 +2492,36 @@ static MoValue duration_of(MoValue n, __int128 unit, const char *name) {
 }
 
 MO_ROW(mo_r_Int_ms) { (void)kind; return duration_of(a[0], 1, "ms"); }
+MO_ROW(mo_r_Int_seconds) { (void)kind; return duration_of(a[0], 1000, "seconds"); }
 MO_ROW(mo_r_Int_minute) { (void)kind; return duration_of(a[0], 60000, "minute"); }
+
+/* Some(x) is Some of the function's value, None stays None (step 28; stdlib.zig, option_map). */
+MO_ROW(mo_r_Option_map) {
+    (void)kind;
+    if (!mo_is(a[0], MO_N_SOME)) return a[0];
+    MoValue x = a[0].as.xs[0];
+    return mo_some(mo_invoke(a[1], &x));
+}
+
+/* `String.grouped(n)`: the integer with `_` between each three digits from the right (step 28;
+ * stdlib.zig, groupedText). */
+MO_ROW(mo_r_String_grouped) {
+    (void)kind;
+    __int128 n = mo_wide(a[0]);
+    unsigned __int128 u = n < 0 ? (unsigned __int128)0 - (unsigned __int128)n : (unsigned __int128)n;
+    char digits[48], out[72];
+    size_t nd = 0, len = 0;
+    do {
+        digits[nd++] = (char)('0' + (int)(u % 10));
+        u /= 10;
+    } while (u > 0);
+    if (n < 0) out[len++] = '-';
+    for (size_t k = 0; k < nd; k++) {
+        if (k > 0 && (nd - k) % 3 == 0) out[len++] = '_';
+        out[len++] = digits[nd - 1 - k];
+    }
+    return heap_string(out, len);
+}
 MO_ROW(mo_r_Int_days) { (void)kind; return duration_of(a[0], 86400000, "days"); }
 
 #define MAX_PLACES 15
@@ -2965,7 +2994,6 @@ static char *read_scoped(const Scope *scope, const char *path, size_t n, size_t 
     return text;
 }
 
-static int by_name(const void *x, const void *y) { return strcmp(*(char *const *)x, *(char *const *)y); }
 
 /* Where a write to `path` lands, when its folder is inside the scope and a name already
  * there, which may be a link, leads inside it too. */
@@ -3107,8 +3135,39 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
-static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
+enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_LIST_KINDS, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
+static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "list_kinds", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
+
+/* Names sorted byte by byte, each folder flag moving with its name. */
+static void sort_listing(char **names, bool *folders, size_t n) {
+    for (size_t i = 1; i < n; i++) {
+        char *name = names[i];
+        bool folder = folders[i];
+        size_t j = i;
+        for (; j > 0 && strcmp(names[j - 1], name) > 0; j--) {
+            names[j] = names[j - 1];
+            folders[j] = folders[j - 1];
+        }
+        names[j] = name;
+        folders[j] = folder;
+    }
+}
+
+/* An `Entry` of `Fs.list_kinds` (step 28; stdlib.zig, entryOf). */
+static MoValue entry_of(const char *name, bool folder) {
+    MoValue f[2] = {heap_string(name, strlen(name)), mo_variant(folder ? MO_N_FOLDER : MO_N_FILE, 0, NULL)};
+    return mo_record(mo_entry_decl, 2, f);
+}
+
+static MoValue string_list(char **names, size_t n);
+
+/* The names of a listing, sorted, as strings or, for list_kinds, as entries. */
+static MoValue listed_of(char **names, bool *folders, size_t n, bool kinds) {
+    if (!kinds) return string_list(names, n);
+    MoValue *out = mo_alloc_values(n);
+    for (size_t i = 0; i < n; i++) out[i] = entry_of(names[i], folders[i]);
+    return mo_list(out, (uint32_t)n);
+}
 
 static MoValue not_text(void) { return error_of(mo_variant(MO_N_NOT_TEXT, 0, NULL)); }
 
@@ -3190,8 +3249,9 @@ static MoValue string_list(char **names, size_t n) {
 
 static MoValue fixture_files(int which, const MoValue *a) {
     FixScope scope = fix_scope_of(a[0]);
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
-    MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
+    bool lists = which == FS_LIST || which == FS_LIST_KINDS;
+    int64_t within = lists ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
+    MoValue path = lists ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     if (scope.delay > within) {
@@ -3202,13 +3262,14 @@ static MoValue fixture_files(int which, const MoValue *a) {
     /* A call that answers after the fixture's delay waited it: the clock moves (step 22). */
     if (scope.delay > 0) sim_waited += scope.delay;
     FixSystem *sys = scope.system >= 0 ? &fix_systems[scope.system] : NULL;
-    if (which == FS_LIST) {
+    if (lists) {
         if (!sys) return ok_of(mo_list(NULL, 0));
         /* A scope that climbed out of the one it narrowed holds nothing, as the real Fs's. */
         if (scope.empty) return missing(path);
         char *prefix = strcmp(scope.folder, "/") == 0 ? strdup("/") : path_join(scope.folder, "");
         size_t plen = strlen(prefix);
         char **names = xmalloc((sys->n ? sys->n : 1) * sizeof(char *));
+        bool *folders = xmalloc((sys->n ? sys->n : 1) * sizeof(bool));
         size_t count = 0;
         /* A folder is there when a file is under it or mkdir made it; the root always is. */
         bool there = strcmp(scope.folder, "/") == 0;
@@ -3222,23 +3283,30 @@ static MoValue fixture_files(int which, const MoValue *a) {
             /* A folder's own mark (mkdir) under the listed folder names nothing. */
             if (len == 0) continue;
             bool seen = false;
-            for (size_t k = 0; k < count; k++) seen = seen || (strlen(names[k]) == len && strncmp(names[k], rest, len) == 0);
+            for (size_t k = 0; k < count; k++) {
+                if (strlen(names[k]) != len || strncmp(names[k], rest, len) != 0) continue;
+                seen = true;
+                folders[k] = folders[k] || slash != NULL;
+            }
             if (seen) continue;
             names[count] = xmalloc(len + 1);
             memcpy(names[count], rest, len);
             names[count][len] = 0;
+            folders[count] = slash != NULL;
             count++;
         }
         free(prefix);
         /* As the real Fs answers a scope that is not a readable folder (step 22). */
         if (!there) {
             free(names);
+            free(folders);
             return missing(path);
         }
-        qsort(names, count, sizeof(char *), by_name);
-        MoValue listed = string_list(names, count);
+        sort_listing(names, folders, count);
+        MoValue listed = listed_of(names, folders, count, which == FS_LIST_KINDS);
         for (size_t k = 0; k < count; k++) free(names[k]);
         free(names);
+        free(folders);
         return ok_of(listed);
     }
     if (!sys) return missing(path);
@@ -3318,8 +3386,9 @@ static MoValue fixture_files(int which, const MoValue *a) {
 
 static MoValue server_files(int which, const MoValue *a) {
     const Scope *scope = &scopes[mo_cap_handle(a[0])];
-    MoValue path = which == FS_LIST ? mo_str(".", 1) : a[1];
-    int64_t within = which == FS_LIST ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
+    bool lists = which == FS_LIST || which == FS_LIST_KINDS;
+    MoValue path = lists ? mo_str(".", 1) : a[1];
+    int64_t within = lists ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
     if (which >= FS_WRITE && scope->read_only) {
         mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     }
@@ -3375,11 +3444,12 @@ static MoValue server_files(int which, const MoValue *a) {
         if (!found) return missing(path);
         return ok_of(mo_u64((uint64_t)st.st_size));
     }
-    case FS_LIST: {
+    case FS_LIST:
+    case FS_LIST_KINDS: {
         char *real = real_scoped(scope, ".", 1);
         DIR *dir = real ? opendir(real) : NULL;
-        free(real);
         char **names = NULL;
+        bool *folders = NULL;
         size_t count = 0, cap = 0;
         if (dir) {
             struct dirent *e;
@@ -3388,15 +3458,23 @@ static MoValue server_files(int which, const MoValue *a) {
                 if (count == cap) {
                     cap = cap ? 2 * cap : 16;
                     names = xrealloc(names, cap * sizeof(char *));
+                    folders = xrealloc(folders, cap * sizeof(bool));
                 }
+                /* A link counts as what it points at (server.zig, listScoped). */
+                struct stat st;
+                char *full = path_join(real, e->d_name);
+                folders[count] = stat(full, &st) == 0 && S_ISDIR(st.st_mode);
+                free(full);
                 names[count++] = strdup(e->d_name);
             }
             closedir(dir);
-            qsort(names, count, sizeof(char *), by_name);
+            sort_listing(names, folders, count);
         }
-        MoValue result = late(t0, within) ? timed_out() : !dir ? missing(path) : ok_of(string_list(names, count));
+        free(real);
+        MoValue result = late(t0, within) ? timed_out() : !dir ? missing(path) : ok_of(listed_of(names, folders, count, which == FS_LIST_KINDS));
         for (size_t k = 0; k < count; k++) free(names[k]);
         free(names);
+        free(folders);
         return result;
     }
     case FS_WRITE:
@@ -3464,6 +3542,7 @@ MO_ROW(mo_r_Fs_read_bytes) { (void)kind; return files(FS_READ_BYTES, a); }
 MO_ROW(mo_r_Fs_fold_lines) { (void)kind; return files(FS_FOLD_LINES, a); }
 MO_ROW(mo_r_Fs_size) { (void)kind; return files(FS_SIZE, a); }
 MO_ROW(mo_r_Fs_list) { (void)kind; return files(FS_LIST, a); }
+MO_ROW(mo_r_Fs_list_kinds) { (void)kind; return files(FS_LIST_KINDS, a); }
 MO_ROW(mo_r_Fs_write) { (void)kind; return files(FS_WRITE, a); }
 MO_ROW(mo_r_Fs_append) { (void)kind; return files(FS_APPEND, a); }
 MO_ROW(mo_r_Fs_remove) { (void)kind; return files(FS_REMOVE, a); }
@@ -4548,9 +4627,11 @@ static const char *handle_name(int64_t id) {
     return id >= 0 && id < (int64_t)nprocs ? mo_processes[procs[id]->process].name : NULL;
 }
 
+/* `clock.now`, frozen when the running update began: under main the wall clock, and in a test the
+ * simulator's, Time.fixture() moved by every fixture wait and delayed send (sim.zig, clockNow). */
 static int64_t clock_now_ms(void) {
-    if (!server_mode) return FIXTURE_TIME;
-    return running != NOBODY ? procs[running]->now : wall_ms();
+    if (running != NOBODY) return procs[running]->now;
+    return server_mode ? wall_ms() : FIXTURE_TIME + sim_waited;
 }
 
 static const char *name_of(uint32_t id) { return mo_processes[procs[id]->process].name; }
@@ -5418,7 +5499,7 @@ static Delivered deliver(uint32_t id) {
         p->head = 0;
     }
     log_message(p, entry);
-    if (server_mode) p->now = wall_ms();
+    p->now = server_mode ? wall_ms() : FIXTURE_TIME + sim_waited;
     p->reply_by = entry.has_deadline ? entry.deadline : deadline_now();
     int64_t since = event_now();
     p->waited_us = p->longest_us = 0;

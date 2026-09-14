@@ -48,7 +48,7 @@ pub const Options = struct {
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed", "File", "Folder" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
@@ -2001,7 +2001,8 @@ const Emitter = struct {
         var b: Builder = .{ .parent = parent, .name = parent.name, .cname = try e.print("a{d}", .{id}), .exit = e.label() };
         e.b = &b;
         for (e.tree.span(data.params_start, data.params_end), 0..) |tok, k| {
-            const cvar = try e.bindName(e.text(tok), false);
+            // `_` takes its argument's local and binds nothing (step 28).
+            const cvar = if (e.tree.tokens[tok].kind == .underscore) try e.local() else try e.bindName(e.text(tok), false);
             try b.params.append(e.gpa, .{ .name = e.text(tok), .cvar = cvar, .mutable = false });
             try b.pre.print(e.gpa, "    {s} = args[{d}];\n", .{ cvar, k });
         }
@@ -2203,7 +2204,7 @@ const Emitter = struct {
         const charge = k.findDecl("Charge");
         try tables.print(gpa, "const uint32_t mo_charge_decl = {s};\n", .{if (charge) |c| try e.print("{d}", .{c}) else "UINT32_MAX"});
         try tables.print(gpa, "const uint32_t mo_request_decl = {d};\nconst uint32_t mo_response_decl = {d};\n", .{ k.preludeStruct("Request").?, k.preludeStruct("Response").? });
-        try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").? });
+        try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\nconst uint32_t mo_entry_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").?, k.preludeStruct("Entry").? });
         try tables.print(gpa, "const bool mo_surface_built = {s};\n", .{if (e.options.surface) "true" else "false"});
         // The runtime surface's own process, which the surface does not show (step 23).
         const surface_process: ?usize = if (!e.options.surface) null else if (surface_mod.declOf(k)) |d| for (e.processes.items, 0..) |p, pi| {

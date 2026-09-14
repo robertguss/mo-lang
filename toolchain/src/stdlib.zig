@@ -98,6 +98,7 @@ pub const Row = enum {
     fs_fold_lines,
     fs_size,
     fs_list,
+    fs_list_kinds,
     fs_write,
     fs_append,
     fs_remove,
@@ -115,6 +116,8 @@ pub const Row = enum {
     deadline_at_most,
     deadline_remaining,
     deadline_fixture,
+    option_map,
+    string_grouped,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -148,12 +151,12 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Duration.ms", .duration_ms },             .{ "Duration.seconds", .duration_seconds }, .{ "Duration.minutes", .duration_minutes },
     .{ "Fs.read_lines", .fs_read_lines },         .{ "Fs.read_bytes", .fs_read_bytes },
     .{ "Fs.fold_lines", .fs_fold_lines },
-            .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },
+            .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },                   .{ "Fs.list_kinds", .fs_list_kinds },
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
     .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
     .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },         .{ "Deadline.at_most", .deadline_at_most }, .{ "Deadline.remaining", .deadline_remaining },
-    .{ "Deadline.fixture", .deadline_fixture },
+    .{ "Deadline.fixture", .deadline_fixture },   .{ "Option.map", .option_map },             .{ "String.grouped", .string_grouped },
 });
 
 /// The row each prelude function is, or `none` for the rows vm.zig runs.
@@ -197,7 +200,10 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         .duration_ms => .{ .int = a[0].duration },
         .duration_seconds => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 1000.0 },
         .duration_minutes => .{ .float = @as(f64, @floatFromInt(a[0].duration)) / 60_000.0 },
-        .fs_read_lines, .fs_read_bytes, .fs_fold_lines, .fs_size, .fs_list, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir, .fs_read => files(vm, row, which, a),
+        // Some(x) is Some of the function's value, None stays None (step 28).
+        .option_map => if (a[0].variant.fields.len == 1) vm.variant("Some", &.{try vm.invoke(a[1].func, &.{a[0].variant.fields[0]})}) else a[0],
+        .string_grouped => .{ .string = try groupedText(vm, a[0].int) },
+        .fs_read_lines, .fs_read_bytes, .fs_fold_lines, .fs_size, .fs_list, .fs_list_kinds, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
             try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
@@ -890,19 +896,42 @@ test "the calendar round-trips, leap days and the years before 1970 included" {
 
 // ---- files
 
+/// An `Entry` of `Fs.list_kinds` (step 28): the name, and whether it is a file or a folder.
+pub fn entryOf(vm: *Vm, name: []const u8, folder: bool) Error!Value {
+    const fields = try vm_mod.rawAlloc(vm.heap, Value, 2);
+    fields[0] = .{ .string = name };
+    fields[1] = try vm.variant(if (folder) "Folder" else "File", &.{});
+    return .{ .record = .{ .decl = vm.program.checked.preludeStruct("Entry").?, .fields = fields } };
+}
+
+/// `String.grouped(n)` (step 28): the integer in Mo's own spelling, `_` between each three digits
+/// counted from the right, `-1_204_000`. runtime/mo_rt.c's grouped_text is the same.
+fn groupedText(vm: *Vm, n: i128) Error![]const u8 {
+    var digits: [48]u8 = undefined;
+    const plain = std.fmt.bufPrint(&digits, "{d}", .{if (n < 0) -n else n}) catch unreachable;
+    var out: std.ArrayList(u8) = .empty;
+    if (n < 0) try out.append(vm.gpa, '-');
+    for (plain, 0..) |d, k| {
+        if (k > 0 and (plain.len - k) % 3 == 0) try out.append(vm.gpa, '_');
+        try out.append(vm.gpa, d);
+    }
+    return vm_mod.rawDupe(vm.heap, u8, out.items);
+}
+
 /// The `Fs` rows but `read`, `scoped`, and `read_only`, and `read` too for a fixture. Under
 /// mo run the file system is real (server.zig); in a test it is a fixture's, in memory.
 fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
     const fs = a[0].cap;
     const within = a[a.len - 1].duration;
-    const path: []const u8 = if (which == .fs_list) "." else a[1].string;
+    const path: []const u8 = if (which == .fs_list or which == .fs_list_kinds) "." else a[1].string;
     const s = vm.server orelse return fixtureFiles(vm, row, which, a);
     return switch (which) {
         .fs_read_lines => s.readAs(vm, fs, path, within, .lines),
         .fs_read_bytes => s.readAs(vm, fs, path, within, .bytes),
         .fs_fold_lines => s.foldLines(vm, fs, path, a[3].func, a[2], within),
         .fs_size => s.size(vm, fs, path, within),
-        .fs_list => s.list(vm, fs, within),
+        .fs_list => s.list(vm, fs, within, false),
+        .fs_list_kinds => s.list(vm, fs, within, true),
         .fs_write, .fs_append => s.writeFile(vm, row, fs, path, a[2].string, within, which == .fs_append),
         .fs_remove => s.remove(vm, row, fs, path, within),
         .fs_rename => s.rename(vm, row, fs, path, a[2].string, within),
@@ -1002,7 +1031,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
     const gpa = sim.gpa;
     const scope = sim.files.scopeOf(a[0].cap);
     const within = a[a.len - 1].duration;
-    const path: []const u8 = if (which == .fs_list) "." else a[1].string;
+    const path: []const u8 = if (which == .fs_list or which == .fs_list_kinds) "." else a[1].string;
     const writes = switch (which) {
         .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir => true,
         else => false,
@@ -1014,7 +1043,8 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
         return timedOut(vm);
     }
     const waited_before = sim.waited;
-    if (try vm.fixtureFault(which != .fs_list, path, within)) |failed| return failed;
+    const lists = which == .fs_list or which == .fs_list_kinds;
+    if (try vm.fixtureFault(!lists, path, within)) |failed| return failed;
     // A call that answers after the fixture's delay waited it, on top of any slowness a fault
     // gave it: the clock moves, and past the deadline the call is Timeout there (step 22).
     if (scope.delay > 0) {
@@ -1026,12 +1056,13 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
         sim.wait(scope.delay);
     }
     const system: ?*std.StringArrayHashMapUnmanaged([]const u8) = if (scope.system) |i| &sim.files.systems.items[i] else null;
-    if (which == .fs_list) {
+    if (lists) {
         const all = system orelse return vm.variant("Ok", &.{.{ .list = &.{} }});
         // A scope that climbed out of the one it narrowed holds nothing, as the real Fs's.
         if (scope.empty) return missed(vm, ".");
         const prefix = if (std.mem.eql(u8, scope.folder, "/")) "/" else try std.fmt.allocPrint(gpa, "{s}/", .{scope.folder});
         var listed: std.ArrayList([]const u8) = .empty;
+        var folders: std.StringHashMapUnmanaged(void) = .empty;
         // A folder is there when a file is under it or mkdir made it; the root always is.
         var there = std.mem.eql(u8, scope.folder, "/");
         for (all.keys()) |key| {
@@ -1041,6 +1072,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             const name = rest[0 .. std.mem.indexOfScalar(u8, rest, '/') orelse rest.len];
             // A folder's own mark (mkdir) under the listed folder names nothing.
             if (name.len == 0) continue;
+            if (name.len < rest.len) try folders.put(gpa, name, {});
             const seen = for (listed.items) |n| {
                 if (std.mem.eql(u8, n, name)) break true;
             } else false;
@@ -1054,7 +1086,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             }
         }.lt);
         const out = try vm_mod.rawAlloc(vm.heap, Value, listed.items.len);
-        for (listed.items, out) |n, *o| o.* = .{ .string = n };
+        for (listed.items, out) |n, *o| o.* = if (which == .fs_list_kinds) try entryOf(vm, n, folders.contains(n)) else .{ .string = n };
         return vm.variant("Ok", &.{.{ .list = out }});
     }
     const all = system orelse return missed(vm, path);

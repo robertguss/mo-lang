@@ -403,11 +403,12 @@ pub const Sim = struct {
         return sim.procs.items[id].reply_by;
     }
 
-    /// `clock.now`: the simulated clock, or under Mo.Server the wall clock, frozen when the
-    /// running update began.
+    /// `clock.now`, frozen when the running update began: under Mo.Server the wall clock, and in a
+    /// test the simulator's, `Time.fixture()` moved by every fixture wait and delayed send the run
+    /// has made and, under --sim, by the seed's ticks (step 28).
     pub fn clockNow(sim: *const Sim) i64 {
-        const s = sim.server orelse return sim.now;
-        return if (sim.running) |id| sim.procs.items[id].now else s.now();
+        if (sim.running) |id| return sim.procs.items[id].now;
+        return if (sim.server) |s| s.now() else sim.now + sim.lag;
     }
 
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
@@ -884,13 +885,13 @@ pub const Sim = struct {
             p.head = 0;
         }
         try sim.logMessage(p, entry);
-        if (sim.server) |s| p.now = s.now();
         p.reply_by = entry.deadline orelse sim.deadlineNow();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
             try sim.trace.append(sim.gpa, .{ .from = id, .to = id, .message = entry.message, .took = true });
         }
+        p.now = if (sim.server) |s| s.now() else sim.now + sim.lag;
         // The clock's move before the update is not the update's time.
         const since = sim.eventNow();
         p.waited_us = 0;

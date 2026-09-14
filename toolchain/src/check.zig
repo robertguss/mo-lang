@@ -726,6 +726,14 @@ const Checker = struct {
             c.decls.items[d].type = try c.pool.add(.{ .tag = .alias, .a = d, .b = primitive(pa.base).? });
             try c.type_names.put(c.gpa, pa.name, d);
         }
+        // Prelude enums are named first, so a stdlib struct's field may name one (`Entry`'s
+        // `EntryKind`, step 28); their variants' fields come once the structs have names.
+        const enum_start: u32 = @intCast(c.decls.items.len);
+        for (prelude.types) |pt| {
+            if (pt.kind != .error_enum and pt.kind != .enum_) continue;
+            const d = try c.addDecl(.{ .kind = .prelude_enum, .name = pt.name });
+            c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
+        }
         const struct_start: u32 = @intCast(c.decls.items.len);
         for (prelude.structs) |ps| {
             // A stdlib struct exists whatever a module declares, for the rows that take or
@@ -749,10 +757,10 @@ const Checker = struct {
             }
             d.fields = .{ .start = fstart, .end = @intCast(c.fields.items.len) };
         }
+        var d = enum_start;
         for (prelude.types) |pt| {
             if (pt.kind != .error_enum and pt.kind != .enum_) continue;
-            const d = try c.addDecl(.{ .kind = .prelude_enum, .name = pt.name });
-            c.decls.items[d].type = try c.pool.add(.{ .tag = .decl, .a = d });
+            defer d += 1;
             const vstart: u32 = @intCast(c.variants.items.len);
             for (prelude.variants) |pv| {
                 if (!std.mem.eql(u8, pv.owner, pt.name)) continue;
@@ -1375,6 +1383,7 @@ const Checker = struct {
         if (std.mem.eql(u8, head, "List")) return b.tag == .list;
         if (std.mem.eql(u8, head, "Map")) return b.tag == .map;
         if (std.mem.eql(u8, head, "Set")) return b.tag == .set;
+        if (std.mem.eql(u8, head, "Option")) return b.tag == .option;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
         // A prelude enum (Json) is a decl of its own, not in type_names (registerPrelude).
@@ -3039,7 +3048,10 @@ const Checker = struct {
         if (c.fn_names.get(name)) |s| return c.userCall(i, s, .{ .node = recv, .type = t }, args, null);
         if (try c.traitCall(i, recv, t, name, args)) |r| return r;
         const b = c.bt(t);
-        if (b.tag != .unknown and b.tag != .variable) {
+        if (b.tag == .int or c.pool.isIntLiteralVar(t)) {
+            // A wrong unit (`1.second`) is caught here, not at run time (step 28).
+            try c.reportTok(.no_member, c.node(i).main_token, try c.print("an integer has no field or function named {s}; a Duration is written with ms, seconds, minute, or days, as 10.seconds", .{name}));
+        } else if (b.tag != .unknown and b.tag != .variable) {
             try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no field or function named {s}", .{ try c.tn(t), name }));
         }
         for (args) |a| _ = try c.argExpr(a, types.unknown);
@@ -3558,7 +3570,8 @@ const Checker = struct {
         c.frame.result = null;
         if (block_form) try c.nestEnter(n.main_token);
         const mark = c.pushScope();
-        for (names, ptypes) |tok, p| try c.bind(c.text(tok), p, .let, tok);
+        // `_` binds nothing (step 28).
+        for (names, ptypes) |tok, p| if (c.tree.tokens[tok].kind != .underscore) try c.bind(c.text(tok), p, .let, tok);
         _ = try c.blockValue(c.tree.span(data.body_start, data.body_end), ret);
         try c.popScope(mark);
         const inner_reported = c.frame.nest_reported;
