@@ -36,7 +36,9 @@ func TestLogFilesNameOrderAndFilter(t *testing.T) {
 	writeFile(t, outside, "2026-09-12T10:00:00Z GET /secret 200 1\n")
 	writeFile(t, filepath.Join(dir, "b.log"), "")
 	writeFile(t, filepath.Join(dir, "a.log"), "")
-	writeFile(t, filepath.Join(dir, "B.log"), "")
+	// Z sorts before a in byte order. Not B.log: macOS file systems ignore
+	// case, so B.log would overwrite b.log.
+	writeFile(t, filepath.Join(dir, "Z.log"), "")
 	writeFile(t, filepath.Join(dir, "notes.txt"), "")
 	writeFile(t, filepath.Join(dir, "a.log.bak"), "")
 	if err := os.Mkdir(filepath.Join(dir, "dir.log"), 0o700); err != nil {
@@ -49,7 +51,7 @@ func TestLogFilesNameOrderAndFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LogFiles: %v", err)
 	}
-	if want := []string{"B.log", "a.log", "b.log"}; !slices.Equal(names, want) {
+	if want := []string{"Z.log", "a.log", "b.log"}; !slices.Equal(names, want) {
 		t.Errorf("names = %q, want %q", names, want)
 	}
 }
