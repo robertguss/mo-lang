@@ -701,7 +701,12 @@ pub const Sim = struct {
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
         if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
+        var delivered: u32 = 0;
         const reply = while (true) {
+            // While a test's ask waits, every other process takes a message too, a round at a time
+            // in start order or the seed's, so a test polling one process starves none (step 24).
+            // An update's ask delivers only its target's, as before.
+            if (sim.running == null) try sim.othersRound(to, &delivered);
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
             if (!p.up or p.queued() == 0 or p.mailbox.items[p.head].seq > seq) return sim.askError("Down");
@@ -777,6 +782,28 @@ pub const Sim = struct {
             }
         }
         return progressed;
+    }
+
+    /// One message to each waiting process but `skip` that is up and not on a stack, in start order
+    /// or an order the seed shuffles, after the delayed sends now due: the round a test's ask gives
+    /// the other processes before its target's next message (step 24). The runtime's loops are not
+    /// pumped here: the round delivers what already waits.
+    fn othersRound(sim: *Sim, skip: u32, delivered: *u32) Error!void {
+        _ = try sim.dueLater();
+        var order: std.ArrayList(u32) = .empty;
+        defer order.deinit(sim.gpa);
+        for (0..sim.procs.items.len) |id| if (id != skip) try order.append(sim.gpa, @intCast(id));
+        if (sim.schedule) |*rng| rng.random().shuffle(u32, order.items);
+        for (order.items) |id| {
+            const p = &sim.procs.items[id];
+            if (!p.up or p.busy or p.paused or p.queued() == 0) continue;
+            _ = try sim.deliver(id);
+            delivered.* += 1;
+            if (delivered.* == settle_limit) {
+                sim.vm.report = .{ .kind = .other, .clause = "the processes did not settle while an ask waited: a million messages delivered and mailboxes still waiting", .within = sim.test_name, .at = 0 };
+                return error.Crash;
+            }
+        }
     }
 
     /// `events.emit(e)`: inside an update it waits for the commit, like a send.

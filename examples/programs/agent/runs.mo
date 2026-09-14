@@ -48,13 +48,12 @@ fn launched(book: Handle(Book), folder: Fs, http: Http, clock: Clock, setup: Set
   end
 end
 
-# The run's record once it is no longer running. An ask delivers only its target's messages, so
-# each turn asks the run for its phase, which lets its own loop go on, and then the book.
-fn ended(book: Handle(Book), run: Handle(Run), id: String) : Option(Record)
+# The run's record once it is no longer running. While a test's ask waits, every other process
+# takes a message each round (step 24), so asking the book lets the run's own loop go on.
+fn ended(book: Handle(Book), id: String) : Option(Record)
   for _ in 0..400
-    stopped = run.ask(Look, within: 1.minute) == Ok(Stopped)
     if book.ask(Look(owner: "ada", id: id), within: 1.minute) is Ok(Found(record))
-      return Some(record) if record.status != Running or stopped
+      return Some(record) if record.status != Running
     end
   end
   None
@@ -85,13 +84,14 @@ test "a run of three steps against a scripted model is done, with every call in 
   order = order_with(["list_files", "read_file"], [], default_budget())
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
-    # Under faults a reply lost on the wire still moves the script on, so a run may skip a line;
-    # in the fixed order it takes all three.
+    assert ended(book, id) is Some(record)
+    # Under faults a reply lost on the wire still moves the script on, so a run may skip a line, and
+    # past the done line hear that the script is over; in the fixed order it takes all three.
     if record.status == Done
-      assert record.steps_taken <= 3 and record.tokens_used <= 35 and record.answer == Some("2 lines")
+      assert record.steps_taken <= 3 and record.tokens_used <= 35
+      assert record.answer == Some("2 lines") or record.answer == Some("the script is over")
       steps = transcript_of(book, id)
       assert steps.size == 0 or steps.size == record.steps_taken * 2 - 1
       read = steps.any?(fn(step) step.contains?("one\\ntwo") end)
@@ -112,9 +112,9 @@ test "a run past its steps budget ends over_budget with its transcript whole"
   order = order_with(["list_files"], [], budget(2, 1_000, 60_000, 2, 5_000))
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     # Under faults a begin may arrive with nothing left of its deadline, and the run is over its
     # wall budget instead.
     if record.why == Some("steps")
@@ -136,9 +136,9 @@ test "a run past its tokens budget ends over_budget, the tool its last reply nam
   order = order_with(["list_files"], [], budget(20, 10, 60_000, 2, 5_000))
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     if record.why == Some("tokens")
       assert record.status == OverBudget and record.tokens_used == 12 and record.steps_taken == 2
       steps = transcript_of(book, id)
@@ -159,9 +159,9 @@ test "a run past its wall budget ends over_budget, the late reply not acted on"
   order = order_with(["list_files"], [], budget(20, 1_000, 100, 0, 100))
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     steps = transcript_of(book, id)
     assert tools_in(steps) == 0
     if record.status == OverBudget
@@ -187,9 +187,9 @@ test "refused tools are recorded, count as steps, and are shown to the model"
   order = order_with(["read_file", "http_get"], ["localhost"], default_budget())
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     assert fs.read("work/x.txt", within: 1.minute) is Error(_)
     if record.status == Done
       assert record.steps_taken <= 4
@@ -213,9 +213,9 @@ test "a model garbage twice and then right is answered under two retries"
   order = order_with([], [], default_budget())
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     if record.status == Done
       assert record.answer == Some("right") and record.steps_taken == 1
     end
@@ -234,9 +234,9 @@ test "a model garbage three times fails the run under two retries"
   order = order_with([], [], default_budget())
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     assert record.status != Done
     if record.status == Failed and record.why == Some("the model's reply is not JSON")
       assert cursor.ask(Calls(run: id), within: 1.minute) != Ok(4)
@@ -262,10 +262,10 @@ test "a run cancelled in the middle stops, and no tool runs after the cancel is 
   order = order_with(["list_files"], [], default_budget())
   id = made(book, order)
   if ready and id != ""
-    run = launched(book, fs.scoped("work"), http, Clock.fixture(),
+    launched(book, fs.scoped("work"), http, Clock.fixture(),
       Setup(id: id, order: order, model: model_at(listener.port)))
     stop = book.ask(Cancel(owner: "ada", id: id), within: 1.minute)
-    assert ended(book, run, id) is Some(record)
+    assert ended(book, id) is Some(record)
     if stop is Ok(Stopped(_))
       assert record.status == Cancelled
       assert tools_in(transcript_of(book, id)) <= 1

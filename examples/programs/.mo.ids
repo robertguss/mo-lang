@@ -454,19 +454,19 @@
         { "id": "a93401f2500a", "name": "fn look_line", "hash": "4f98ea7eb332cdf9" },
         { "id": "fcdf474c9338", "name": "fn made", "hash": "3cc0d4939b3f4053" },
         { "id": "9f9f4a72f32b", "name": "fn launched", "hash": "19d62f071cd5886c" },
-        { "id": "958f24c564ac", "name": "fn ended", "hash": "d7d2a417ceb057c5" },
+        { "id": "958f24c564ac", "name": "fn ended", "hash": "78f0a29b4e8e49a9" },
         { "id": "cdd8000721dd", "name": "fn transcript_of", "hash": "955631910670106c" },
         { "id": "f5fcac62416d", "name": "fn tools_in", "hash": "f4757fd40dfa1a71" },
-        { "id": "6183c9b3d8ae", "name": "test \"a run of three steps against a scripted model is done, with every call in its transcript\"", "hash": "dca49ba7ddc4cb0f" },
-        { "id": "8a42f2aedd00", "name": "test \"a run past its steps budget ends over_budget with its transcript whole\"", "hash": "ecb521a764038090" },
-        { "id": "620f40b8c021", "name": "test \"a run past its tokens budget ends over_budget, the tool its last reply named not used\"", "hash": "8d0782bef31a4af4" },
-        { "id": "09a462c2097a", "name": "test \"a run past its wall budget ends over_budget, the late reply not acted on\"", "hash": "b916c78d47388963" },
-        { "id": "f7e6403bcce8", "name": "test \"refused tools are recorded, count as steps, and are shown to the model\"", "hash": "59ea0b7253699ca8" },
-        { "id": "1de6f23dc765", "name": "test \"a model garbage twice and then right is answered under two retries\"", "hash": "cf508f79682ad6f6" },
-        { "id": "fca8cbf69395", "name": "test \"a model garbage three times fails the run under two retries\"", "hash": "087909508cc09f0d" },
-        { "id": "d0936ac89779", "name": "test \"a run cancelled in the middle stops, and no tool runs after the cancel is written\"", "hash": "4cc05039d4373dd1" }
+        { "id": "6183c9b3d8ae", "name": "test \"a run of three steps against a scripted model is done, with every call in its transcript\"", "hash": "4c9ff4d1c379a46c" },
+        { "id": "8a42f2aedd00", "name": "test \"a run past its steps budget ends over_budget with its transcript whole\"", "hash": "df7da9c0408e0031" },
+        { "id": "620f40b8c021", "name": "test \"a run past its tokens budget ends over_budget, the tool its last reply named not used\"", "hash": "73bb3ba689354f16" },
+        { "id": "09a462c2097a", "name": "test \"a run past its wall budget ends over_budget, the late reply not acted on\"", "hash": "5a1b5eb41c7085df" },
+        { "id": "f7e6403bcce8", "name": "test \"refused tools are recorded, count as steps, and are shown to the model\"", "hash": "dae074c729ec004a" },
+        { "id": "1de6f23dc765", "name": "test \"a model garbage twice and then right is answered under two retries\"", "hash": "00e64dac412df980" },
+        { "id": "fca8cbf69395", "name": "test \"a model garbage three times fails the run under two retries\"", "hash": "e485dcd6fec69166" },
+        { "id": "d0936ac89779", "name": "test \"a run cancelled in the middle stops, and no tool runs after the cancel is written\"", "hash": "6f228c20d3e893c5" }
       ],
-      "verified": { "hash": "8976b33b78e50195", "declarations": "5192b07f5347e5a2", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "df10e9cbaca4317a" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Run", "hash": "bbee258e56e41391" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "71fb7018b076e994" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+      "verified": { "hash": "8976b33b78e50195", "declarations": "f50155fc766eaebe", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "df10e9cbaca4317a" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Run", "hash": "bbee258e56e41391" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "71fb7018b076e994" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
     },
     {
       "path": "agent/server.mo",
@@ -493,9 +493,9 @@
         { "id": "22f3497e9296", "name": "fn all_ended?", "hash": "b20e05a55b42cb50" },
         { "id": "4d2481a701ed", "name": "fn ended?", "hash": "e54995b37182ad74" },
         { "id": "2ac68ca6b366", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "24939cbb60fa6653" },
-        { "id": "ad5d9bddb749", "name": "test \"under faults every answer is right or a 503, and once they stop every run ends\"", "hash": "2ad773da737e60e8" }
+        { "id": "ad5d9bddb749", "name": "test \"under faults every answer is right or a 503, and once they stop every run ends\"", "hash": "8ef387ddd46cc2c9" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "10a785e4f8f4870b", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "df10e9cbaca4317a" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "5498b6f18b12b5b2" }, { "module": "Agent.Run", "hash": "bbee258e56e41391" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "71fb7018b076e994" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "7a2d648b061e0ee8", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "df10e9cbaca4317a" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "5498b6f18b12b5b2" }, { "module": "Agent.Run", "hash": "bbee258e56e41391" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "71fb7018b076e994" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
     },
     {
       "path": "agent/shelf.mo",

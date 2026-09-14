@@ -4831,6 +4831,7 @@ static void check_doomed(void) {
 static MoValue ask_inline(uint32_t to, MoValue message, MoValue within);
 static int64_t now_ms(void);
 static bool due_later(void);
+static void others_round(uint32_t skip, uint32_t *delivered);
 
 /* The clock deadlines are points on (step 22): under main the runtime's monotonic clock, and in a
  * test the run's, which only fixture waits move (sim.zig, deadlineNow). */
@@ -4897,7 +4898,12 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     /* The surface holds its deliveries (step 23): the message waits, and the ask is Timeout. */
     if (target->paused) return ask_error(MO_N_TIMEOUT);
     MoValue reply;
+    uint32_t delivered = 0;
     for (;;) {
+        /* While a test's ask waits, every other process takes a message too, a round at a time in
+         * start order, so a test polling one process starves none (sim.zig, othersRound; step 24).
+         * An update's ask delivers only its target's. */
+        if (running == NOBODY) others_round(to, &delivered);
         Proc *p = procs[to];
         /* A restart empties the mailbox, this message with it. */
         if (!p->up || queued(p) == 0 || p->mailbox[p->head].seq > seq) return ask_error(MO_N_DOWN);
@@ -5015,6 +5021,22 @@ static bool deliver_round(uint32_t *delivered) {
         }
     }
     return progressed;
+}
+
+/* One message to each waiting process but `skip` that is up and not on a stack, in start order,
+ * after the delayed sends now due: the round a test's ask gives the other processes before its
+ * target's next message (sim.zig, othersRound; step 24). The runtime's loops are not pumped here. */
+static void others_round(uint32_t skip, uint32_t *delivered) {
+    due_later();
+    uint32_t n = nprocs;
+    for (uint32_t id = 0; id < n; id++) {
+        Proc *p = procs[id];
+        if (id == skip || !p->up || p->busy || p->paused || queued(p) == 0) continue;
+        deliver(id);
+        if (++*delivered == SETTLE_LIMIT) {
+            mo_fail(MO_R_OTHER, test_name, "the processes did not settle while an ask waited: a million messages delivered and mailboxes still waiting");
+        }
+    }
 }
 
 /* Delivers waiting messages a round at a time until every mailbox is empty. */
