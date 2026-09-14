@@ -27,6 +27,7 @@ const std = @import("std");
 const Io = std.Io;
 const contracts = @import("contracts.zig");
 const net = @import("net.zig");
+const sources = @import("sources.zig");
 const sim_mod = @import("sim.zig");
 const vm_mod = @import("vm.zig");
 
@@ -114,7 +115,7 @@ pub const Turns = struct {
     marks: std.ArrayList(bool) = .empty,
     worklist: std.ArrayList(u32) = .empty,
 
-    fn now(t: *const Turns) i64 {
+    pub fn now(t: *const Turns) i64 {
         return Io.Clock.Timestamp.now(t.io, .awake).raw.toMilliseconds();
     }
 
@@ -226,7 +227,7 @@ pub const Turns = struct {
                 if (waker.done.isSet()) return true;
                 if (t.now() >= deadline) return false;
                 if (try t.step(sim)) continue;
-                t.idle(&waker.done, deadline);
+                t.idle(sim, &waker.done, deadline);
             }
         }
         const id = t.holder;
@@ -269,14 +270,20 @@ pub const Turns = struct {
 
     /// main's thread, with no turn to hand out: waits until a process's wait ends, `also`
     /// is set, or the earliest deadline passes.
-    fn idle(t: *Turns, also: ?*Io.Event, deadline: ?i64) void {
+    fn idle(t: *Turns, sim: *Sim, also: ?*Io.Event, deadline: ?i64) void {
         var until = deadline;
+        // A source waiting on its idle time wakes main's thread when it runs out.
+        if (sim.sources.deadline) |d| until = if (until) |u| @min(u, d) else d;
         for (t.parked.items) |p| until = if (until) |u| @min(u, p.deadline) else p.deadline;
         t.mutex.lockUncancelable(t.io);
         const any_ready = t.ready.items.len > 0;
         if (!any_ready) t.main_wake.reset();
         t.mutex.unlock(t.io);
         if (any_ready) return;
+        // A source whose task ended before the reset.
+        for (sim.sources.list.items) |s| {
+            if ((s.accepting != null or s.reading != null) and s.waker.done.isSet()) return;
+        }
         if (also) |e| if (e.isSet()) return;
         const u = until orelse return t.main_wake.waitUncancelable(t.io);
         const left = u - t.now();
@@ -288,6 +295,8 @@ pub const Turns = struct {
     /// next process with a message waiting. False when there is none.
     fn step(t: *Turns, sim: *Sim) Error!bool {
         if (t.quiet >= t.sweep_at) try t.sweep(sim);
+        // What the runtime's loops took becomes messages first (sources.zig).
+        try sources.pumpServer(sim, t);
         const now_ms = t.now();
         var k: usize = 0;
         while (k < t.parked.items.len) {
@@ -343,6 +352,8 @@ pub const Turns = struct {
         }
         var answers = t.answers.valueIterator();
         while (answers.next()) |reply| if (reply.*) |r| try t.markValue(r.value);
+        // A source's target is where the runtime keeps sending.
+        for (sim.sources.list.items) |s| if (!s.done) try t.markId(s.to);
         while (t.worklist.pop()) |id| try t.markValues(procs[id].args);
         var running: u32 = 0;
         for (procs, 0..) |p, id| {
@@ -478,7 +489,7 @@ pub const Turns = struct {
             } else if (t.holder != main_turn) {
                 try t.park(sim, deadline);
             } else if (!try t.step(sim)) {
-                t.idle(null, deadline);
+                t.idle(sim, null, deadline);
             }
         }
     }
@@ -495,9 +506,9 @@ pub const Turns = struct {
             if (try t.step(sim)) continue;
             const pending = for (sim.procs.items) |p| {
                 if (p.busy or (p.up and p.queued() > 0)) break true;
-            } else false;
+            } else sim.sources.active();
             if (!pending) return;
-            t.idle(null, null);
+            t.idle(sim, null, null);
         }
     }
 
@@ -530,6 +541,7 @@ pub const Turns = struct {
     /// The run is over. A process's thread between turns ends; one still waiting off the
     /// turn is left to the end of the program.
     pub fn stop(t: *Turns, sim: *Sim) void {
+        sources.stopServer(sim, t);
         for (t.workers.items, 0..) |slot, id| {
             const w = slot orelse continue;
             if (w.ended) continue;

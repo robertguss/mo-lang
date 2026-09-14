@@ -10,6 +10,7 @@ const ast = @import("ast.zig");
 const diag = @import("diag.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
+const sources = @import("sources.zig");
 
 const Index = ast.Index;
 const Node = ast.Node;
@@ -37,6 +38,7 @@ pub const Code = enum {
     not_assignable,
     impl_mismatch,
     unnamed_fields,
+    source_messages,
     literal_range,
     // the laws, chapter 2
     body_lines,
@@ -88,6 +90,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .misplaced = .{ .code = "MO0214", .category = .types, .what = "<form> <does what>, so it appears only in <place>", .why = "Some forms belong to one place: result and old to contracts, assert to tests, any to properties, T.all and flows to never, break to a for, return to a function body.", .fixes = &.{} },
     .not_assignable = .{ .code = "MO0215", .category = .types, .what = "<name> is not a var, so it cannot be assigned; bind a new name or make it var <name>", .why = "Only var, inout, and state places change; a name bound with = is bound once, and an inout argument must be a var the caller holds.", .fixes = &.{} },
     .impl_mismatch = .{ .code = "MO0216", .category = .types, .what = "impl <Trait> for <Type> is missing <function>", .why = "An impl keeps the trait's promise exactly: every function the trait lists, with Self replaced by the implementing type, and nothing else.", .fixes = &.{} },
+    .source_messages = .{ .code = "MO0223", .category = .types, .what = "<Process> is sent the messages of <row> but declares no <Message>; add message <Message> to it, with no reply.", .why = "Listener.serve, Conn.lines, and HttpListener.serve make the runtime accept or read from that call on and send each result to the process into: names (design-v0/09, Net and Http; step 20). A process's message lines are its whole protocol, so the runtime sends only what the process declares it takes: every message the row sends, each with the one field type the row gives it, and no reply, since nobody waits for one.", .fixes = &.{} },
     .unnamed_fields = .{ .code = "MO0222", .category = .types, .what = "<Type> is built by naming its fields: <Type>(<field>: ...)", .why = "Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values.", .fixes = &.{} },
     .literal_range = .{ .code = "MO0217", .category = .types, .what = "<literal> does not fit in <Type>", .why = "Integers are sized; a literal must fit the type it is given, and overflow is never implicit.", .fixes = &.{} },
     .body_lines = .{ .code = "MO0301", .category = .laws, .what = "<function> has a body of <n> lines and the limit is 70; split it into named functions.", .why = "A function body is at most 70 lines (chapter 2, shape laws), so a whole function is read at once. The fix is named helper functions.", .fixes = &.{} },
@@ -3030,6 +3033,7 @@ const Checker = struct {
             };
             _ = try c.expr(an.lhs, try c.parseTs(f.type, &env));
         }
+        if (sources.messagesOf(row.recv, row.name)) |sent| try c.sourceTarget(args, row, sent);
         const label = try c.callLabel(i, recv, row.name);
         const to_process = std.mem.startsWith(u8, row.recv, "Handle");
         if (to_process) c.process_args += 1;
@@ -3053,6 +3057,43 @@ const Checker = struct {
             return types.fs_read_only;
         }
         return c.parseTs(row.ret, &env);
+    }
+
+    /// A source row's into: is the handle of a process that declares every message the row
+    /// sends, each with the row's field type and no reply (MO0223).
+    fn sourceTarget(c: *Checker, args: []const u32, row: prelude.Fn, sent: []const sources.Sent) Error!void {
+        const into = for (args) |a| {
+            const an = c.node(a);
+            if (an.kind == .named_arg and std.mem.eql(u8, c.text(an.main_token), "into")) break an.lhs;
+        } else return;
+        const t = c.node_types[into];
+        const b = c.bt(t);
+        if (b.tag != .handle) {
+            if (c.pool.resolve(t) == types.unknown) return;
+            return c.reportNode(.source_messages, into, try c.print("{s}.{s} sends its messages into: a process's handle, such as into: worker; found {s}", .{ row.recv, row.name, try c.tn(t) }));
+        }
+        const d = c.decls.items[b.a];
+        for (sent) |m| {
+            const want = if (m.field) |f| try c.print("{s}({s}: {s})", .{ m.name, f, m.type.? }) else m.name;
+            const found = for (c.variants.items[d.variants.start..d.variants.end]) |v| {
+                if (std.mem.eql(u8, v.name, m.name)) break v;
+            } else null;
+            const fits = if (found) |v| blk: {
+                if (v.reply != null) break :blk false;
+                const fields = c.fields.items[v.fields.start..v.fields.end];
+                if (m.type) |ty| {
+                    var env: Env = .{};
+                    break :blk fields.len == 1 and c.pool.resolve(fields[0].type) == c.pool.resolve(try c.parseTs(ty, &env));
+                }
+                break :blk fields.len == 0;
+            } else false;
+            if (fits) continue;
+            const what = if (found != null)
+                try c.print("{s} is sent the messages of {s}.{s}, whose {s} is message {s} with no reply; declare it so.", .{ d.name, row.recv, row.name, m.name, want })
+            else
+                try c.print("{s} is sent the messages of {s}.{s} but declares no {s}; add message {s} to it, with no reply.", .{ d.name, row.recv, row.name, m.name, want });
+            try c.reportNode(.source_messages, into, what);
+        }
     }
 
     fn callLabel(c: *Checker, i: Index, recv: ?Index, name: []const u8) Error![]const u8 {
@@ -4252,4 +4293,66 @@ test "or on a Result, a struct and a variant of one name, and a use of a message
         \\module A.App
         \\use A.Idle{Poke}
     }, &.{"MO0322"});
+}
+
+test "a source row's into: names a process that declares every message the row sends" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src =
+        \\module T.Sources
+        \\process Worker(conn: Conn)
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Line(text: String)
+        \\  message Closed
+        \\  message Idle : UInt64
+        \\  fn update(state, message)
+        \\    case message
+        \\      Line(text):
+        \\        state.n += text.size
+        \\      Closed:
+        \\        conn.close
+        \\      Idle: state.n
+        \\    end
+        \\  end
+        \\end
+        \\process Acceptor()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Accepted(conn: Conn)
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Accepted(conn):
+        \\        conn.lines(into: Worker.start(conn), idle: 1.ms)
+        \\        state.n += 1
+        \\      Idle:
+        \\        state.n += 0
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Top(conn: Conn)
+        \\  child Worker(conn), restart: :always
+        \\  child Acceptor, restart: :always
+        \\end
+        \\fn served(listener: Listener, acceptor: Handle(Acceptor), worker: Handle(Worker))
+        \\  listener.serve(into: acceptor, idle: 1.ms)
+        \\  listener.serve(into: worker, idle: 1.ms)
+        \\end
+    ;
+    var diags: diag.List = .empty;
+    const tokens = try @import("lexer.zig").lex(arena, src, &diags);
+    const tree = try @import("parser.zig").parse(arena, src, tokens, &diags);
+    _ = try check(arena, tree, &diags);
+    var codes: std.ArrayList(u8) = .empty;
+    for (diags.items) |d| {
+        try codes.appendSlice(arena, d.code);
+        try codes.append(arena, ' ');
+    }
+    // The worker lacks LineTooLong and gives Idle a reply; the second serve's worker lacks
+    // Accepted, and its Idle has a reply.
+    try std.testing.expectEqualStrings("MO0223 MO0223 MO0223 MO0223 ", codes.items);
 }

@@ -27,12 +27,12 @@ pub const line_limit = 64 << 10;
 /// Connections the kernel queues for a listener before `accept` takes them.
 const backlog = 128;
 
-pub const Row = enum { listen, connect, accept, port, read_line, write, close };
+pub const Row = enum { listen, connect, accept, port, read_line, write, close, serve, lines };
 
 /// NetError's variants, by name.
 pub const Failure = enum { Timeout, Refused, Closed, LineTooLong, Busy };
 
-const Scan = union(enum) { line: []const u8, too_long, end, more };
+pub const Scan = union(enum) { line: []const u8, too_long, end, more };
 
 /// What a call that gives a connection came to: its handle, or why not.
 pub const Outcome = union(enum) { ok: u32, failed: Failure };
@@ -51,7 +51,7 @@ fn connResult(vm: *Vm, o: Outcome) Error!Value {
 /// bytes it takes, and the line, what stands in its way, or `more` to read first. `eof`:
 /// nothing follows `pending`. A line of more than 64 KiB is too long, and the bytes up to
 /// its newline are taken, at once or as they arrive (`skipping`).
-fn scanLine(pending: []const u8, eof: bool, skipping: *bool) struct { usize, Scan } {
+pub fn scanLine(pending: []const u8, eof: bool, skipping: *bool) struct { usize, Scan } {
     var off: usize = 0;
     while (true) {
         const rest = pending[off..];
@@ -98,6 +98,8 @@ pub const Listener = struct {
     port: u16,
     /// An accept is waiting on it.
     accepting: bool = false,
+    /// `serve` gave it to the runtime (sources.zig): an accept on it is Busy.
+    served: bool = false,
 };
 
 pub const Conn = struct {
@@ -116,11 +118,13 @@ pub const Conn = struct {
     skipping: bool = false,
     reading: bool = false,
     writing: bool = false,
+    /// `lines` gave its reading to the runtime (sources.zig): a read_line on it is Busy.
+    lining: bool = false,
     /// The listener that accepted it, or no_listener: a wait on that listener can hear from
     /// a process holding it only after that process acts (sim.zig, held sends).
     listener: u32 = no_listener,
 
-    fn scan(c: *Conn) Scan {
+    pub fn scan(c: *Conn) Scan {
         const taken, const what = scanLine(c.buf[c.start..c.end], c.eof, &c.skipping);
         c.start += taken;
         if (c.start == c.end) {
@@ -185,6 +189,8 @@ pub const Net = struct {
                 n.close(n.conns.items[a[0].cap.handle]);
                 break :blk .none;
             },
+            // The runtime's loops (sources.zig); vm.zig sends them there.
+            .serve, .lines => unreachable,
         };
     }
 
@@ -228,7 +234,7 @@ pub const Net = struct {
 
     /// The next client of `l`, as `accept` takes it (http.zig takes its own).
     pub fn acceptConn(n: *Net, vm: *Vm, l: *Listener, ms: i64) Error!Outcome {
-        if (l.accepting) return .{ .failed = .Busy };
+        if (l.accepting or l.served) return .{ .failed = .Busy };
         l.accepting = true;
         defer l.accepting = false;
         var waker = wakerFor(vm);
@@ -250,7 +256,7 @@ pub const Net = struct {
         return .{ .ok = h };
     }
 
-    fn adopt(n: *Net, stream: Io.net.Stream) Error!u32 {
+    pub fn adopt(n: *Net, stream: Io.net.Stream) Error!u32 {
         const c = try n.gpa.create(Conn);
         c.* = .{ .stream = stream };
         const handle: u32 = @intCast(n.conns.items.len);
@@ -261,7 +267,7 @@ pub const Net = struct {
     /// `conn.read_line`: the next line, `None` at the end of the stream, or why not.
     fn readLine(n: *Net, vm: *Vm, c: *Conn, ms: i64) Error!Value {
         if (c.closed) return fail(vm, .Closed);
-        if (c.reading) return fail(vm, .Busy);
+        if (c.reading or c.lining) return fail(vm, .Busy);
         const t0 = Io.Clock.Timestamp.now(n.io, .awake);
         while (true) {
             if (try lineResult(vm, c.scan())) |v| return v;
@@ -370,7 +376,7 @@ pub const Net = struct {
     }
 
     /// Closes the descriptor once no call is waiting on it.
-    fn release(n: *Net, c: *Conn) void {
+    pub fn release(n: *Net, c: *Conn) void {
         if (c.released or c.reading or c.writing) return;
         c.released = true;
         c.stream.close(n.io);
@@ -431,7 +437,7 @@ fn connectTask(io: Io, host: []const u8, port: u16, waker: *Waker) anyerror!Io.n
     return name.connect(io, port, .{ .mode = .stream });
 }
 
-fn acceptTask(io: Io, server: *Io.net.Server, waker: *Waker) Io.net.Server.AcceptError!Io.net.Stream {
+pub fn acceptTask(io: Io, server: *Io.net.Server, waker: *Waker) Io.net.Server.AcceptError!Io.net.Stream {
     defer waker.set(io);
     while (true) {
         return server.accept(io) catch |err| {
@@ -441,7 +447,7 @@ fn acceptTask(io: Io, server: *Io.net.Server, waker: *Waker) Io.net.Server.Accep
     }
 }
 
-fn readTask(io: Io, stream: Io.net.Stream, dest: []u8, waker: *Waker) Io.net.Stream.Reader.Error!usize {
+pub fn readTask(io: Io, stream: Io.net.Stream, dest: []u8, waker: *Waker) Io.net.Stream.Reader.Error!usize {
     defer waker.set(io);
     var data = [_][]u8{dest};
     return io.vtable.netRead(io.userdata, stream.socket.handle, &data);
@@ -492,7 +498,8 @@ pub const Fixture = struct {
     /// The port `listen(0)` tries next.
     next_port: u16 = 49_152,
 
-    pub const FixtureListener = struct { port: u16, backlog: std.ArrayList(u32) = .empty, head: usize = 0 };
+    /// `served`: `serve` gave it to the runtime (sources.zig), and an accept on it is Busy.
+    pub const FixtureListener = struct { port: u16, backlog: std.ArrayList(u32) = .empty, head: usize = 0, served: bool = false };
 
     pub const FixtureConn = struct {
         /// The other end of the connection.
@@ -504,6 +511,8 @@ pub const Fixture = struct {
         skipping: bool = false,
         /// The listener whose backlog it went into, or no_listener for a client's end.
         listener: u32 = no_listener,
+        /// `lines` gave its reading to the runtime (sources.zig): a read_line on it is Busy.
+        lining: bool = false,
     };
 
     pub fn call(f: *Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: []const Value) Error!Value {
@@ -537,6 +546,7 @@ pub const Fixture = struct {
                 const within = a[1].duration;
                 if (sim.fault(null, within) != null) return fail(vm, .Timeout);
                 const l = &f.listeners.items[a[0].cap.handle];
+                if (l.served) return fail(vm, .Busy);
                 if (l.head == l.backlog.items.len) {
                     sim.wait(within);
                     return fail(vm, .Timeout);
@@ -548,6 +558,7 @@ pub const Fixture = struct {
                 const h = a[0].cap.handle;
                 const within = a[1].duration;
                 if (f.conns.items[h].closed) return fail(vm, .Closed);
+                if (f.conns.items[h].lining) return fail(vm, .Busy);
                 if (sim.fault(.closed, within)) |fault| {
                     if (fault == .timeout) return fail(vm, .Timeout);
                     f.conns.items[h].closed = true;
@@ -586,6 +597,7 @@ pub const Fixture = struct {
                 f.conns.items[a[0].cap.handle].closed = true;
                 return .none;
             },
+            .serve, .lines => unreachable,
         }
     }
 

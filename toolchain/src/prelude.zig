@@ -363,12 +363,18 @@ pub const fns = [_]Fn{
     .{ .recv = "Conn", .name = "read_line", .ret = "Result(Option(String), NetError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Conn", .name = "write", .params = &.{"String"}, .ret = "Result(none, NetError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Conn", .name = "close", .ret = "none", .origin = .stdlib },
+    // The runtime owns the loop (step 20): from these calls on it accepts on a listener or
+    // reads a connection and sends each result to the process `into:` names, as a message
+    // that process declares; `idle:` is the wait's deadline. None waits itself.
+    .{ .recv = "Listener", .name = "serve", .named = &.{ .{ .name = "into", .type = "Handle(P)" }, .{ .name = "idle", .type = "Duration" } }, .ret = "none", .origin = .stdlib },
+    .{ .recv = "Conn", .name = "lines", .named = &.{ .{ .name = "into", .type = "Handle(P)" }, .{ .name = "idle", .type = "Duration" } }, .ret = "none", .origin = .stdlib },
     .{ .recv = "Net", .on_type = true, .name = "fixture", .ret = "Net", .only = .tests, .origin = .stdlib },
     // HTTP/1.1 over TCP (step 16): one request per connection; an HttpListener and an
     // Exchange are capabilities, and an Exchange closes when the process holding it stops.
     .{ .recv = "Http", .name = "listen", .params = &.{"UInt16"}, .ret = "Result(HttpListener, HttpError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "HttpListener", .name = "accept", .ret = "Result(Exchange, HttpError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "HttpListener", .name = "port", .ret = "UInt16", .origin = .stdlib },
+    .{ .recv = "HttpListener", .name = "serve", .named = &.{ .{ .name = "into", .type = "Handle(P)" }, .{ .name = "idle", .type = "Duration" } }, .ret = "none", .origin = .stdlib },
     .{ .recv = "Exchange", .name = "request", .ret = "Request", .origin = .stdlib },
     .{ .recv = "Exchange", .name = "reply", .params = &.{"Response"}, .ret = "Result(none, HttpError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Http", .name = "send", .params = &.{"Request"}, .named = &.{ .{ .name = "host", .type = "String" }, .{ .name = "port", .type = "UInt16" } }, .ret = "Result(Response, HttpError)", .can_wait = true, .origin = .stdlib },

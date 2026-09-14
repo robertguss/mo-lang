@@ -2472,6 +2472,8 @@ MO_ROW(mo_r_Clock_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_CLOCK, 0,
 static int program_argc;
 static char **program_argv;
 static uint8_t exit_code;
+/* main called exit: once it returns, the runtime's loops stop (sources.zig). */
+static bool exited;
 
 static void platform_only(const char *recv, const char *name) {
     if (!server_mode) mo_fail(MO_R_OTHER, name, "%s.%s runs only under mo run", recv, name);
@@ -2499,6 +2501,7 @@ MO_ROW(mo_r_Platform_exit) {
     (void)kind;
     platform_only("Platform", "exit");
     exit_code = (uint8_t)a[1].as.u;
+    exited = true;
     return MO_NONE_V;
 }
 
@@ -4182,6 +4185,15 @@ static bool connection_of(uint32_t h, uint32_t *listener);
 static bool unanswered_conn(uint32_t exchange, uint32_t *conn);
 /* Sends held in every outbox: while none is, no wait looks for one. */
 static size_t held;
+/* The loops the runtime owns (sources.zig), below the Http rows. */
+static bool sources_pump_fixture(void);
+static void sources_pump_server(void);
+static bool sources_active(void);
+static bool sources_ready(void);
+static void sources_mark(void);
+/* Under main: the earliest time a waiting source's idle time runs out. */
+static bool sources_deadline_set;
+static int64_t sources_deadline;
 
 static const char *handle_name(int64_t id) {
     return id >= 0 && id < (int64_t)nprocs ? mo_processes[procs[id]->process].name : NULL;
@@ -4554,7 +4566,8 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
  * messages across a settle's rounds, or a fixture call's (Http.fixture()'s send), up to
  * SETTLE_LIMIT. */
 static bool deliver_round(uint32_t *delivered) {
-    bool progressed = false;
+    /* What the runtime's loops took goes in first (sources.zig); under main, step does it. */
+    bool progressed = !server_mode && sources_pump_fixture();
     uint32_t n = nprocs;
     for (uint32_t id = 0; id < n; id++) {
         Proc *p = procs[id];
@@ -5132,11 +5145,18 @@ static void idle(Event *also, bool bounded, int64_t deadline) {
         if (!bounded || parked[i].deadline < until) until = parked[i].deadline;
         bounded = true;
     }
+    /* A source waiting on its idle time wakes main's thread when it runs out. */
+    if (sources_deadline_set && (!bounded || sources_deadline < until)) {
+        until = sources_deadline;
+        bounded = true;
+    }
     pthread_mutex_lock(&turns_mu);
     bool any_ready = nready > 0;
     if (!any_ready) event_reset(&main_wake);
     pthread_mutex_unlock(&turns_mu);
     if (any_ready) return;
+    /* A source whose descriptor became ready before the reset. */
+    if (sources_ready()) return;
     if (also && event_is_set(also)) return;
     if (!bounded) {
         event_wait(&main_wake);
@@ -5282,6 +5302,8 @@ static void sweep(void) {
     for (size_t i = 0; i < nanswers; i++) {
         if (answers[i].has) mark_value(answers[i].value);
     }
+    /* A source's target is where the runtime keeps sending. */
+    sources_mark();
     while (nworklist > 0) {
         const Proc *p = procs[worklist[--nworklist]];
         mark_values(p->args, p->nargs);
@@ -5304,6 +5326,8 @@ static void sweep(void) {
  * process with a message waiting. False when there is none. */
 static bool step(void) {
     if (quiet >= sweep_at) sweep();
+    /* What the runtime's loops took becomes messages first (sources.zig). */
+    sources_pump_server();
     int64_t now = now_ms();
     size_t k = 0;
     while (k < nparked) {
@@ -5413,7 +5437,7 @@ static void turns_finish(void) {
             const Proc *p = procs[i];
             pending = p->busy || (p->up && queued(p) > 0);
         }
-        if (!pending) return;
+        if (!pending && !sources_active()) return;
         idle(NULL, false, 0);
     }
 }
@@ -5521,7 +5545,8 @@ static bool line_result(Scan s, MoValue *out) {
 
 /* ---- real sockets: a Listener's or a Conn's handle is its index here */
 
-typedef struct { int fd; uint16_t port; bool accepting; } Listener;
+/* `served`: serve gave it to the runtime (sources), and an accept on it is Busy. */
+typedef struct { int fd; uint16_t port; bool accepting; bool served; } Listener;
 typedef struct {
     int fd;
     /* Bytes read and not yet given out are buf[start..end] of cap; allocated at the first read. */
@@ -5538,6 +5563,8 @@ typedef struct {
     bool reading, writing;
     /* The listener that accepted it, or UINT32_MAX (held sends). */
     uint32_t listener;
+    /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
+    bool lining;
 } Conn;
 
 static Listener **listeners;
@@ -5740,7 +5767,7 @@ static MoValue net_connect(MoValue host, uint16_t port, int64_t ms) { return con
 
 /* A call past its deadline leaves the listener listening. */
 static int64_t net_accept_conn(Listener *l, int64_t ms) {
-    if (l->accepting) return failed_conn(NET_BUSY);
+    if (l->accepting || l->served) return failed_conn(NET_BUSY);
     l->accepting = true;
     int64_t deadline = now_ms() + max0(ms);
     int64_t out;
@@ -5822,7 +5849,7 @@ static int net_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
 
 static MoValue net_read_line(Conn *c, int64_t ms) {
     if (c->closed) return net_fail(NET_CLOSED);
-    if (c->reading) return net_fail(NET_BUSY);
+    if (c->reading || c->lining) return net_fail(NET_BUSY);
     if (!c->buf) {
         c->buf = xmalloc(2 * LINE_LIMIT);
         c->cap = 2 * LINE_LIMIT;
@@ -5897,7 +5924,7 @@ static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
  * Nothing happens while a simulated call waits, so a call with nothing to take waits its whole
  * deadline and is Timeout, as a real one would be. */
 
-typedef struct { uint16_t port; uint32_t *backlog; size_t nbacklog, capbacklog, head; } FixListener;
+typedef struct { uint16_t port; uint32_t *backlog; size_t nbacklog, capbacklog, head; bool served; } FixListener;
 typedef struct {
     /* The other end of the connection. */
     uint32_t peer;
@@ -5907,6 +5934,8 @@ typedef struct {
     bool closed, skipping;
     /* The listener whose backlog it went into, or UINT32_MAX for a client's end. */
     uint32_t listener;
+    /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
+    bool lining;
 } FixConn;
 
 static FixListener *fix_listeners;
@@ -5960,6 +5989,7 @@ static MoValue fix_connect(uint16_t port) {
 
 static MoValue fix_accept(uint32_t h, int64_t within) {
     FixListener *l = &fix_listeners[h];
+    if (l->served) return net_fail(NET_BUSY);
     if (l->head == l->nbacklog) {
         sim_waited += within;
         return net_fail(NET_TIMEOUT);
@@ -5971,6 +6001,7 @@ static MoValue fix_accept(uint32_t h, int64_t within) {
 static MoValue fix_read_line(uint32_t h, int64_t within) {
     FixConn *c = &fix_conns[h];
     if (c->closed) return net_fail(NET_CLOSED);
+    if (c->lining) return net_fail(NET_BUSY);
     Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_conns[c->peer].closed, &c->skipping);
     c->start += s.taken;
     MoValue out;
@@ -6632,6 +6663,7 @@ static MoValue http_send(MoValue request, MoValue host, int64_t port, int64_t ms
 
 static MoValue fix_http_accept(uint32_t lh, int64_t within) {
     FixListener *l = &fix_listeners[lh];
+    if (l->served) return http_fail(HTTP_BUSY);
     if (l->head == l->nbacklog) {
         sim_waited += within;
         return http_fail(HTTP_TIMEOUT);
@@ -6785,6 +6817,536 @@ static void close_held(const MoValue *args, uint32_t n) {
     }
 }
 
+
+/* ==== the loops the runtime owns (sources.zig) ============================================
+ * listener.serve(into:, idle:), conn.lines(into:, idle:), and http_listener.serve(into:, idle:)
+ * make the runtime accept or read from that call on and send each result to a process as a
+ * message it declares. A source delivers while its target's mailbox holds fewer than its bound
+ * less its headroom, and after stopping there starts again once the mailbox has drained to half
+ * its bound. In a test every source is pumped at the start of each delivery round, in start
+ * order; under main a poller thread watches the descriptors of sources that wait, and main's
+ * thread turns what arrived into messages each time it hands out turns. */
+
+enum { SRC_SERVE, SRC_LINES, SRC_HTTP_SERVE, SRC_REQUEST };
+
+typedef struct Source {
+    int kind;
+    /* The listener's handle (serve, http serve) or the connection's (lines, request). */
+    uint32_t handle;
+    uint32_t to;
+    int64_t idle_ms;
+    /* When the idle time last started: simulated in a test, the wall clock under main. */
+    int64_t since;
+    /* A serve source's last Idle in a test, so simulated time must pass before the next. */
+    int64_t idled_at;
+    bool done, paused;
+    /* A request source's http serve source, whose requests in flight it counts. */
+    struct Source *parent;
+    uint32_t inflight;
+    /* Under main: the poller watches its descriptor, and saw it ready. */
+    bool watched, ready;
+} Source;
+
+static Source **sources;
+static size_t nsources, capsources;
+/* Under main, the poller's lock over `sources`, and the pipe that wakes it to look again. */
+static pthread_mutex_t sources_mu = PTHREAD_MUTEX_INITIALIZER;
+static int poll_wake[2] = {-1, -1};
+static bool poller_started;
+
+static uint32_t source_headroom(uint32_t bound) { return bound / 2 < 4 ? bound / 2 : 4; }
+
+static void reset_sources(void) {
+    for (size_t i = 0; i < nsources; i++) free(sources[i]);
+    nsources = 0;
+}
+
+static void poke_poller(void) {
+    if (poll_wake[1] >= 0) {
+        char b = 1;
+        ssize_t r = write(poll_wake[1], &b, 1);
+        (void)r;
+    }
+}
+
+static int source_fd(const Source *s) {
+    return s->kind == SRC_SERVE || s->kind == SRC_HTTP_SERVE ? listeners[s->handle]->fd : conns[s->handle]->fd;
+}
+
+static void *poll_sources(void *arg) {
+    (void)arg;
+    struct pollfd *fds = NULL;
+    Source **who = NULL;
+    size_t cap = 0;
+    for (;;) {
+        pthread_mutex_lock(&sources_mu);
+        if (cap < nsources + 1) {
+            cap = 2 * (nsources + 1);
+            fds = xrealloc(fds, cap * sizeof *fds);
+            who = xrealloc(who, cap * sizeof *who);
+        }
+        size_t n = 0;
+        fds[n] = (struct pollfd){poll_wake[0], POLLIN, 0};
+        who[n++] = NULL;
+        for (size_t i = 0; i < nsources; i++) {
+            Source *s = sources[i];
+            if (s->done || !s->watched || s->ready) continue;
+            fds[n] = (struct pollfd){source_fd(s), POLLIN, 0};
+            who[n++] = s;
+        }
+        pthread_mutex_unlock(&sources_mu);
+        if (poll(fds, (nfds_t)n, -1) < 0) continue;
+        bool any = false;
+        pthread_mutex_lock(&sources_mu);
+        for (size_t i = 1; i < n; i++) {
+            if (fds[i].revents) {
+                who[i]->ready = true;
+                any = true;
+            }
+        }
+        pthread_mutex_unlock(&sources_mu);
+        if (fds[0].revents) {
+            char buf[64];
+            while (read(poll_wake[0], buf, sizeof buf) > 0) {}
+        }
+        if (any) event_set(&main_wake);
+    }
+    return NULL;
+}
+
+static void source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_ms, int64_t since, Source *parent) {
+    Source *s = calloc(1, sizeof(Source));
+    if (!s) out_of_memory();
+    *s = (Source){kind, handle, to, idle_ms, since, INT64_MIN, false, false, parent, 0, false, false};
+    if (server_mode && !poller_started) {
+        if (pipe(poll_wake) == 0) {
+            nonblocking(poll_wake[0]);
+            nonblocking(poll_wake[1]);
+            pthread_t t;
+            if (pthread_create(&t, NULL, poll_sources, NULL) == 0) pthread_detach(t);
+        }
+        poller_started = true;
+    }
+    pthread_mutex_lock(&sources_mu);
+    GROW_ARRAY(sources, nsources, capsources);
+    sources[nsources++] = s;
+    pthread_mutex_unlock(&sources_mu);
+}
+
+/* Whether `s` may deliver one more message to its target, counting `extra` more waiting. */
+static bool source_room(Source *s, uint32_t extra) {
+    const Proc *p = procs[s->to];
+    uint32_t bound = mo_processes[p->process].mailbox;
+    size_t waiting = queued(p) + extra;
+    if (s->paused) {
+        if (waiting > bound / 2) return false;
+        s->paused = false;
+    }
+    if (waiting + source_headroom(bound) >= bound) {
+        s->paused = true;
+        return false;
+    }
+    return true;
+}
+
+/* A message from the runtime, packed under main. */
+static void source_send(uint32_t to, uint32_t name, uint32_t n, const MoValue *fields) {
+    MoValue message = mo_variant(name, n, fields);
+    Parcel *parcel = packs ? pack(message) : NULL;
+    enqueue(to, parcel ? parcel->value : message, parcel);
+}
+
+static uint32_t into_of(MoValue h) { return (uint32_t)h.as.i; }
+
+MO_ROW(mo_r_Listener_serve) {
+    (void)kind;
+    uint32_t h = mo_cap_handle(a[0]);
+    bool *served = server_mode ? &listeners[h]->served : &fix_listeners[h].served;
+    if (*served) mo_fail(MO_R_OTHER, "Listener.serve", "this listener is already served: a listener is served into one process");
+    *served = true;
+    source_add(SRC_SERVE, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, NULL);
+    return MO_NONE_V;
+}
+
+MO_ROW(mo_r_HttpListener_serve) {
+    (void)kind;
+    uint32_t h = mo_cap_handle(a[0]);
+    bool *served = server_mode ? &listeners[h]->served : &fix_listeners[h].served;
+    if (*served) mo_fail(MO_R_OTHER, "HttpListener.serve", "this listener is already served: a listener is served into one process");
+    *served = true;
+    source_add(SRC_HTTP_SERVE, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, NULL);
+    return MO_NONE_V;
+}
+
+MO_ROW(mo_r_Conn_lines) {
+    (void)kind;
+    uint32_t h = mo_cap_handle(a[0]);
+    bool *lining = server_mode ? &conns[h]->lining : &fix_conns[h].lining;
+    if (*lining) mo_fail(MO_R_OTHER, "Conn.lines", "this connection's lines already go to a process: a connection is read into one process");
+    *lining = true;
+    source_add(SRC_LINES, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, NULL);
+    return MO_NONE_V;
+}
+
+/* ---- in a test */
+
+static bool serve_fixture(Source *s) {
+    FixListener *l = &fix_listeners[s->handle];
+    if (l->head == l->nbacklog) {
+        if (sim_waited - s->since < s->idle_ms || sim_waited <= s->idled_at || !source_room(s, 0)) return false;
+        source_send(s->to, MO_N_IDLE, 0, NULL);
+        s->since = s->idled_at = sim_waited;
+        return true;
+    }
+    if (!procs[s->to]->up || !source_room(s, 0)) return false;
+    uint32_t h = l->backlog[l->head];
+    if (s->kind == SRC_SERVE) {
+        l->head++;
+        s->since = sim_waited;
+        MoValue conn = mo_cap(MO_CAP_CONN, h, 0);
+        source_send(s->to, MO_N_ACCEPTED, 1, &conn);
+        return true;
+    }
+    FixConn *c = &fix_conns[h];
+    bool peer_closed = fix_conns[c->peer].closed;
+    HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, peer_closed, false);
+    if (p.what == PARSE_WHOLE) {
+        l->head++;
+        s->since = sim_waited;
+        MoValue ok = exchange_cap(&fix_exchanges, &nfix_exchanges, &capfix_exchanges, h, c->inbound + c->start, p.len);
+        fix_conns[h].start += p.len;
+        source_send(s->to, MO_N_ACCEPTED, 1, &ok.as.xs[0]);
+        return true;
+    }
+    if (p.what == PARSE_MORE) {
+        if (sim_waited - s->since < s->idle_ms) return false;
+        l->head++;
+        c->closed = true;
+        return true;
+    }
+    l->head++;
+    const char *text = http_refusal(p.failed);
+    if (text && !peer_closed) fix_append(c->peer, text, strlen(text));
+    fix_conns[h].closed = true;
+    return true;
+}
+
+static bool lines_fixture(Source *s) {
+    FixConn *c = &fix_conns[s->handle];
+    if (c->closed) {
+        s->done = true;
+        return false;
+    }
+    if (!procs[s->to]->up) {
+        c->closed = true;
+        s->done = true;
+        return false;
+    }
+    bool skipping = c->skipping;
+    Scan sc = scan_line(c->inbound ? c->inbound + c->start : "", c->len - c->start, fix_conns[c->peer].closed, &skipping);
+    if (sc.what == SCAN_MORE) {
+        c->start += sc.taken;
+        c->skipping = skipping;
+        if (c->start == c->len) c->start = c->len = 0;
+        if (sim_waited - s->since < s->idle_ms || !source_room(s, 0)) return false;
+        source_send(s->to, MO_N_IDLE, 0, NULL);
+        c->closed = true;
+        s->done = true;
+        return true;
+    }
+    if (!source_room(s, 0)) return false;
+    if (sc.what == SCAN_LINE) {
+        MoValue text = heap_string(sc.line, sc.len);
+        source_send(s->to, MO_N_LINE, 1, &text);
+    } else if (sc.what == SCAN_TOO_LONG) {
+        source_send(s->to, MO_N_LINE_TOO_LONG, 0, NULL);
+    } else {
+        source_send(s->to, MO_N_CLOSED, 0, NULL);
+        s->done = true;
+    }
+    c = &fix_conns[s->handle];
+    c->start += sc.taken;
+    c->skipping = skipping;
+    if (c->start == c->len) c->start = c->len = 0;
+    s->since = sim_waited;
+    return true;
+}
+
+static bool sources_pump_fixture(void) {
+    bool progressed = false;
+    size_t n = nsources;
+    for (size_t k = 0; k < n; k++) {
+        Source *s = sources[k];
+        if (s->done) continue;
+        bool went = s->kind == SRC_LINES ? lines_fixture(s) : serve_fixture(s);
+        progressed = progressed || went;
+    }
+    return progressed;
+}
+
+/* ---- under main */
+
+/* Watches the descriptor until it is ready, or stops watching it. */
+static void source_watch(Source *s, bool on) {
+    pthread_mutex_lock(&sources_mu);
+    s->watched = on;
+    s->ready = false;
+    pthread_mutex_unlock(&sources_mu);
+    poke_poller();
+}
+
+/* Whether `s` may read now: its descriptor was seen ready, or nobody watches it yet. */
+static bool source_may_read(Source *s) {
+    pthread_mutex_lock(&sources_mu);
+    bool may = s->ready || !s->watched;
+    pthread_mutex_unlock(&sources_mu);
+    return may;
+}
+
+static void source_end(Source *s) {
+    if (s->parent) s->parent->inflight--;
+    s->done = true;
+    source_watch(s, false);
+}
+
+static void serve_server(Source *s, int64_t now) {
+    Listener *l = listeners[s->handle];
+    while (source_may_read(s) && source_room(s, s->inflight)) {
+        int fd = accept(l->fd, NULL, NULL);
+        if (fd < 0) {
+            if (errno == EINTR || errno == ECONNABORTED) continue;
+            source_watch(s, true);
+            break;
+        }
+        uint32_t h = adopt(fd);
+        conns[h]->listener = s->handle;
+        s->since = now;
+        if (s->kind == SRC_SERVE) {
+            MoValue conn = mo_cap(MO_CAP_CONN, h, 0);
+            source_send(s->to, MO_N_ACCEPTED, 1, &conn);
+        } else {
+            conns[h]->lining = true;
+            s->inflight++;
+            source_add(SRC_REQUEST, h, s->to, s->idle_ms, now, s);
+        }
+    }
+    if (s->paused) {
+        s->since = now;
+        source_watch(s, false);
+    } else if (now - s->since >= s->idle_ms && source_room(s, s->inflight)) {
+        source_send(s->to, MO_N_IDLE, 0, NULL);
+        s->since = now;
+    }
+}
+
+/* Reads what has arrived on `c` without waiting: FILL_GOT, FILL_EOF, FILL_TIMEOUT when nothing
+ * has, FILL_CLOSED when the stream broke, FILL_FULL when the buffer holds `cap` bytes. */
+static int source_read(Conn *c, size_t initial, size_t cap) {
+    if (c->start > 0) {
+        memmove(c->buf, c->buf + c->start, c->end - c->start);
+        c->end -= c->start;
+        c->start = 0;
+    }
+    if (c->end == c->cap) {
+        if (c->cap >= cap) return FILL_FULL;
+        size_t size = c->cap == 0 ? initial : 2 * c->cap < cap ? 2 * c->cap : cap;
+        c->buf = xrealloc(c->buf, size);
+        c->cap = size;
+    }
+    for (;;) {
+        ssize_t got = read(c->fd, c->buf + c->end, c->cap - c->end);
+        if (got > 0) {
+            c->end += (size_t)got;
+            return FILL_GOT;
+        }
+        if (got == 0) {
+            c->eof = true;
+            return FILL_EOF;
+        }
+        if (errno == EINTR) continue;
+        return errno == EAGAIN || errno == EWOULDBLOCK ? FILL_TIMEOUT : FILL_CLOSED;
+    }
+}
+
+static void lines_server(Source *s, int64_t now) {
+    Conn *c = conns[s->handle];
+    if (c->closed) {
+        net_release(c);
+        return source_end(s);
+    }
+    if (!procs[s->to]->up) {
+        net_close(c);
+        return source_end(s);
+    }
+    for (;;) {
+        while (source_room(s, 0)) {
+            Scan sc = scan_line(c->buf ? c->buf + c->start : "", c->end - c->start, c->eof, &c->skipping);
+            if (sc.what == SCAN_MORE) {
+                c->start += sc.taken;
+                break;
+            }
+            if (sc.what == SCAN_LINE) {
+                MoValue text = heap_string(sc.line, sc.len);
+                c->start += sc.taken;
+                source_send(s->to, MO_N_LINE, 1, &text);
+            } else if (sc.what == SCAN_TOO_LONG) {
+                c->start += sc.taken;
+                source_send(s->to, MO_N_LINE_TOO_LONG, 0, NULL);
+            } else {
+                source_send(s->to, MO_N_CLOSED, 0, NULL);
+                return source_end(s);
+            }
+            if (c->start == c->end) c->start = c->end = 0;
+            s->since = now;
+        }
+        if (s->paused) {
+            s->since = now;
+            return source_watch(s, false);
+        }
+        if (!source_may_read(s)) break;
+        /* A line too long is taken before the buffer fills, so there is always room to read. */
+        int r = source_read(c, 2 * LINE_LIMIT, 2 * LINE_LIMIT);
+        if (r == FILL_TIMEOUT) {
+            source_watch(s, true);
+            break;
+        }
+        if (r == FILL_CLOSED) {
+            net_close(c);
+            source_send(s->to, MO_N_CLOSED, 0, NULL);
+            return source_end(s);
+        }
+    }
+    if (now - s->since >= s->idle_ms) {
+        source_send(s->to, MO_N_IDLE, 0, NULL);
+        net_close(c);
+        source_end(s);
+    }
+}
+
+static void request_refused(Conn *c, int failed) {
+    const char *text = http_refusal(failed);
+    if (text) {
+        ssize_t r = write(c->fd, text, strlen(text));
+        (void)r;
+    }
+    net_close(c);
+}
+
+static void request_server(Source *s, int64_t now) {
+    Conn *c = conns[s->handle];
+    for (;;) {
+        HttpParsed p = http_parse(c->buf ? c->buf + c->start : "", c->end - c->start, c->eof, false);
+        if (p.what == PARSE_WHOLE) {
+            MoValue ok = exchange_cap(&exchanges, &nexchanges, &capexchanges, s->handle, c->buf + c->start, p.len);
+            c->start += p.len;
+            c->lining = false;
+            source_end(s);
+            if (!procs[s->to]->up) {
+                exchange_forget(&exchanges[nexchanges - 1]);
+                net_close(c);
+                return;
+            }
+            return source_send(s->to, MO_N_ACCEPTED, 1, &ok.as.xs[0]);
+        }
+        if (p.what == PARSE_FAILED) {
+            request_refused(c, p.failed);
+            return source_end(s);
+        }
+        if (c->closed) {
+            net_release(c);
+            return source_end(s);
+        }
+        if (!source_may_read(s)) break;
+        int r = source_read(c, HTTP_BUFFER_INITIAL, HTTP_BUFFER_CAP);
+        if (r == FILL_TIMEOUT) {
+            source_watch(s, true);
+            break;
+        }
+        if (r == FILL_FULL) {
+            request_refused(c, HTTP_TOO_LARGE);
+            return source_end(s);
+        }
+        if (r == FILL_CLOSED) {
+            net_close(c);
+            return source_end(s);
+        }
+    }
+    if (now - s->since >= s->idle_ms) {
+        net_close(c);
+        source_end(s);
+    }
+}
+
+static void sources_pump_server(void) {
+    if (!server_mode || nsources == 0) return;
+    int64_t now = now_ms();
+    bool has = false;
+    int64_t deadline = 0;
+    /* A request source an http serve source adds is pumped in this same pass, since nothing else
+     * would wake main's thread for it. */
+    for (size_t k = 0; k < nsources; k++) {
+        Source *s = sources[k];
+        if (s->done) continue;
+        if (s->kind == SRC_LINES) lines_server(s, now);
+        else if (s->kind == SRC_REQUEST) request_server(s, now);
+        else serve_server(s, now);
+        if (s->done || s->paused) continue;
+        int64_t at = s->since + s->idle_ms;
+        if (!has || at < deadline) deadline = at;
+        has = true;
+    }
+    sources_deadline_set = has;
+    sources_deadline = deadline;
+    /* Sources that ended give back their memory. */
+    pthread_mutex_lock(&sources_mu);
+    size_t kept = 0;
+    for (size_t k = 0; k < nsources; k++) {
+        Source *s = sources[k];
+        bool parent = false;
+        for (size_t j = 0; j < nsources && !parent; j++) parent = sources[j]->parent == s && !sources[j]->done;
+        if (s->done && !parent) {
+            for (size_t j = 0; j < nsources; j++) if (sources[j]->parent == s) sources[j]->parent = NULL;
+            free(s);
+        } else {
+            sources[kept++] = s;
+        }
+    }
+    nsources = kept;
+    pthread_mutex_unlock(&sources_mu);
+    poke_poller();
+}
+
+static bool sources_active(void) {
+    for (size_t i = 0; i < nsources; i++) {
+        if (!sources[i]->done) return true;
+    }
+    return false;
+}
+
+static bool sources_ready(void) {
+    if (!server_mode) return false;
+    pthread_mutex_lock(&sources_mu);
+    bool any = false;
+    for (size_t i = 0; i < nsources && !any; i++) any = !sources[i]->done && sources[i]->ready;
+    pthread_mutex_unlock(&sources_mu);
+    return any;
+}
+
+static void sources_mark(void) {
+    for (size_t i = 0; i < nsources; i++) {
+        if (!sources[i]->done) mark_id(sources[i]->to);
+    }
+}
+
+/* main called exit and returned: every source stops. */
+static void sources_stop(void) {
+    pthread_mutex_lock(&sources_mu);
+    for (size_t i = 0; i < nsources; i++) sources[i]->done = true;
+    pthread_mutex_unlock(&sources_mu);
+    sources_deadline_set = false;
+    poke_poller();
+}
+
 /* ==== the test runner (runner.zig) ======================================================= */
 
 #define SEEDS_PER_PROPERTY 200
@@ -6807,6 +7369,7 @@ static void fresh_run(void) {
     reset_fixtures();
     reset_processes();
     reset_net_fixture();
+    reset_sources();
     mo_records = mo_nnevers > 0;
     if (mo_nrecorded > 0) {
         if (!produced) produced = calloc(mo_nrecorded, sizeof(Values));
@@ -7040,8 +7603,12 @@ void mo_program_start(int argc, char **argv) {
 }
 
 int mo_program_end(void) {
-    /* main returned: the run goes on until no message is waiting. */
-    if (turns_on) turns_finish();
+    /* main returned: the run goes on until no message is waiting and no source can deliver; a
+     * main that called exit stops the sources first. */
+    if (turns_on) {
+        if (exited) sources_stop();
+        turns_finish();
+    }
     stream_flush(&out_stream);
     stream_flush(&err_stream);
     return exit_code;

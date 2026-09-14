@@ -83,7 +83,7 @@ enum {
     MO_N_SOME, MO_N_NONE, MO_N_OK, MO_N_ERROR, MO_N_MISSING, MO_N_TIMEOUT, MO_N_SYNTAX,
     MO_N_OBJECT, MO_N_ARRAY, MO_N_STRING, MO_N_NUMBER, MO_N_BOOL, MO_N_NULL, MO_N_DOWN,
     MO_N_REFUSED, MO_N_CLOSED, MO_N_LINE_TOO_LONG, MO_N_BUSY, MO_N_MALFORMED, MO_N_TOO_LARGE,
-    MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_FIXED
+    MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_ACCEPTED, MO_N_LINE, MO_N_IDLE, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -482,6 +482,7 @@ MO_ROW(mo_r_Platform_args); MO_ROW(mo_r_Platform_env); MO_ROW(mo_r_Platform_stdo
 MO_ROW(mo_r_Platform_fs); MO_ROW(mo_r_Platform_clock); MO_ROW(mo_r_Platform_net); MO_ROW(mo_r_Platform_exit);
 MO_ROW(mo_r_Net_listen); MO_ROW(mo_r_Net_connect); MO_ROW(mo_r_Net_fixture); MO_ROW(mo_r_Listener_accept);
 MO_ROW(mo_r_Listener_port); MO_ROW(mo_r_Conn_read_line); MO_ROW(mo_r_Conn_write); MO_ROW(mo_r_Conn_close);
+MO_ROW(mo_r_Listener_serve); MO_ROW(mo_r_Conn_lines); MO_ROW(mo_r_HttpListener_serve);
 MO_ROW(mo_r_Platform_http); MO_ROW(mo_r_Http_listen); MO_ROW(mo_r_Http_send); MO_ROW(mo_r_Http_fixture);
 MO_ROW(mo_r_HttpListener_accept); MO_ROW(mo_r_HttpListener_port); MO_ROW(mo_r_Exchange_request); MO_ROW(mo_r_Exchange_reply);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);

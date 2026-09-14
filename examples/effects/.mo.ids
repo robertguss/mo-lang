@@ -91,6 +91,34 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "c6070b381a0b033c" }
     },
     {
+      "path": "served.mo",
+      "module": "Effects.Served",
+      "declarations": [
+        { "id": "84d747ddb883", "name": "module Effects.Served", "hash": "d8b80dec3e85d87d" },
+        { "id": "504f8a9e1938", "name": "expose", "hash": "ced14fdd70a3c1b5" },
+        { "id": "c79efde68c8b", "name": "intent", "hash": "04c72646f90e6d04" },
+        { "id": "fa30e09a6120", "name": "process Echo", "hash": "1ca1a745ec00e441" },
+        { "id": "9f96daa3b079", "name": "process Acceptor", "hash": "474583d8b2cfcf5a" },
+        { "id": "5e914991e992", "name": "process Heard", "hash": "e69a21b6487f7466" },
+        { "id": "c1b70f8306d2", "name": "process Counter", "hash": "a2075732c21c0192" },
+        { "id": "37b4ec8a9e59", "name": "process Worker", "hash": "6b5fe76cab382a90" },
+        { "id": "f196c9746a03", "name": "process Front", "hash": "6c241f0e98f1a600" },
+        { "id": "28b79ed34ff8", "name": "supervisor Echoes", "hash": "ecd1655386656a0d" },
+        { "id": "864321f8009e", "name": "fn talked", "hash": "cb3f22c8166d1f57" },
+        { "id": "e3889438e02f", "name": "fn heard_so_far?", "hash": "2b0e9d4739817202" },
+        { "id": "2ad51a4fca97", "name": "fn streamed", "hash": "226dd960adda47d9" },
+        { "id": "28f13b37c130", "name": "fn counted?", "hash": "a5bc0663e6a5d107" },
+        { "id": "9e66c9e80d60", "name": "fn fetched", "hash": "985bdbe204009447" },
+        { "id": "90241473f8bd", "name": "fn answered?", "hash": "93bd3ce78bc39338" },
+        { "id": "15c1be04fa67", "name": "fn garbled", "hash": "751a654c4a9154f9" },
+        { "id": "a343d46c9db0", "name": "fn at_most?", "hash": "aa91ba8324b04570" },
+        { "id": "e763759f0b32", "name": "test \"each line a client sends comes back, one too long is said to be, and a served listener is Busy to accept\"", "hash": "1a47215b6d9ba610" },
+        { "id": "d1dea8f8cff3", "name": "test \"a stream of 2,000 lines reaches a process whose mailbox holds 8, and its end after them\"", "hash": "be7327738671f1f8" },
+        { "id": "6261d66ff2f3", "name": "test \"a served HTTP listener hands each whole request to a process, and answers one that is not HTTP itself\"", "hash": "9485122f8889eccc" }
+      ],
+      "verified": { "hash": "73013b24376f37b4", "declarations": "66938a30bfcd15fc" }
+    },
+    {
       "path": "sim.mo",
       "module": "Effects.Sim",
       "declarations": [

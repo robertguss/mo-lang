@@ -16,6 +16,7 @@
 //!
 //! An Fs value is pointer-free: `Value.Cap.handle` is its index in `Server.scopes`.
 const std = @import("std");
+const sources = @import("sources.zig");
 const Io = std.Io;
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
@@ -66,6 +67,8 @@ pub const Server = struct {
     scopes: std.ArrayList(Scope) = .empty,
     /// The last `platform.exit(code)`, or 0.
     exit_code: u8 = 0,
+    /// main called exit: once it returns, the runtime's loops stop (sources.zig).
+    exited: bool = false,
     /// The program's files, so a process crash reported on stderr names its line.
     files: []const diag.File = &.{},
     /// `platform.net`'s listeners and connections (net.zig).
@@ -133,6 +136,9 @@ pub const Server = struct {
     /// main, then every message still waiting.
     fn runMain(machine: *Vm, scheduler: *Sim, main_fn: u32) Error!void {
         _ = try machine.call(main_fn, &.{.{ .cap = .{ .kind = .platform } }});
+        // A served listener keeps the program running until it is stopped, unless main
+        // called exit: then the runtime stops accepting and reading, and the rest settles.
+        if (machine.server.?.exited) if (scheduler.turns) |t| sources.stopServer(scheduler, t);
         try scheduler.finish();
     }
 
@@ -174,6 +180,7 @@ pub const Server = struct {
 
     pub fn exit(s: *Server, code: i128) void {
         s.exit_code = @intCast(code);
+        s.exited = true;
     }
 
     pub fn envGet(s: *Server, vm: *Vm, name: []const u8) Error!Value {
