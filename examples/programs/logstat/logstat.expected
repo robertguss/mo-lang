@@ -1,0 +1,18 @@
+requests    14
+errors       3  (21.4%)
+malformed    4
+per minute 4.7
+
+slowest
+  2_210 ms  GET /api/users                       2026-09-12T10:01:40Z
+  1_250 ms  POST /api/orders                     2026-09-12T10:01:00Z
+    340 ms  GET /api/orders/17                   2026-09-12T10:00:20Z
+    340 ms  GET /cards/****************/receipt  2026-09-12T10:01:10Z
+    340 ms  POST /api/orders                     2026-09-12T10:02:20Z
+
+busiest
+  6  GET /api/users
+  3  POST /api/orders
+  2  GET /health
+  1  DELETE /api/orders/17
+  1  GET /api/orders/17

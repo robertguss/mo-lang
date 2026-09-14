@@ -1,5 +1,5 @@
 module Logstat.Stats
-expose Summary, Hit, empty, counted, added, busiest, per_minute, error_rate, error?
+expose Summary, Hit, empty, counted, malformed_line, added, busiest, per_minute, error_rate, error?
 
 use Logstat.Parse{Record, Status, parse_line}
 
