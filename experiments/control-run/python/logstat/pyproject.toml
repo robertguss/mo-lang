@@ -1,0 +1,30 @@
+[project]
+name = "logstat"
+version = "0.1.0"
+description = "A CLI log analyzer: requests, errors, slowest requests, busiest paths, requests per minute"
+readme = "README.md"
+authors = [
+    { name = "Robert Guss", email = "robertguss@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic>=2.13.5",
+]
+
+[project.scripts]
+logstat = "logstat.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "BLE", "E722"]
