@@ -309,3 +309,6 @@
 
 ## [2026-09-14] session | Day: step 26 accepted, round 6 pre-registered
 - The tail-position one-line `if` and the two keyword diagnostics, verified by Fable's probes under both runtimes, 185 of 185. Three decision rows. Round 6 written on `control-run-6.md` before any session: logstat and jobq, the baselines with their checks bolted on, four predictions, the null hypothesis as P3; mypy and staticcheck installed on the VM. Merged to `main`. Round 6 starts.
+
+## [2026-09-14] session | Day: round 6, failed on all four predictions
+- Three fresh sessions from 14:30 UTC in `../mo-lang-control6-*`, the baselines with their checks bolted on; Fable verified each worktree (Mo 185 of 185, Go and Python every check clean). P1 1.58, P2 one shape-law loop and five keyword or grammar loops, P3 no check caught a real bug anywhere so the null hypothesis stands, P4 0.74. Five decision rows, three for Robert (the laws, the `never` over a `var` copy, the keywords as names). No seventh round until one lands. Merged to `main`.

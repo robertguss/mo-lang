@@ -55,6 +55,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - The toolchain's first run on Linux: three suite failures, fixed as part F, none the epoll poller's; the carried "Linux poller never ran" item is cleared.
 - [[interpreter-step-25]]: the one-line `if` as a value (pick 16) in both runtimes, the formatter choosing the shape, `mo fix` reversed, 25 one-line values in the corpus; `state` and `old` as a struct's field; the `if` and `case` authority hole closed; `agent` narrowed to spec 05 again. Fable's probes green under both runtimes. One finding for step 26: the form in tail position of a body is refused while the block form there is the value.
 - [[interpreter-step-26]]: tail position is the value, the keyword sentence for `state` and `old` as names; 185 of 185. [[control-run-6]] pre-registered: two tasks, the baselines with their checks bolted on, the null hypothesis as P3.
+- [[control-run-6]] run and read: **failed on all four predictions**. Mo 1.58 times Go over both tasks; Mo's loops the language's (keywords, a `case` arm form, the 500-line law, a false `never` trip), the baselines' the tools'; no check caught a real bug in any language, so the null hypothesis stands; Mo's jobq program longer than Go's. Robert (afternoon): Python tools live in the project's venv through `uv`, never globally. Three rows for Robert; no seventh round until one lands.
 
 ## Numbers at the end of the session
 
