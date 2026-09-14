@@ -261,3 +261,6 @@
 
 ## [2026-09-13] session | Night: control run round 4 recorded; the laws re-evaluated
 - Fable verified all three (Mo: four modules green, five run lines, fmt clean, corpus test green in the worktree; Go: check.sh, go test, go vet; Python: check.sh, unittest). Mo 16.1 min to Go's 9.3 and Python's 9.0, loops 5/1/0, no check caught a bug anywhere. Three decision rows, one semantic "for Robert": keep the laws, spend an ergonomics step on the grammar's one-line forms. Merged to main. Three round-4 sessions closed. Fable's reading of the six deep runs next.
+
+## [2026-09-13] session | Night: the session 6 deep runs read
+- Fable read the three deep runs (empirical validation, ecosystem depth, agent authoring) into `research/concepts/empirical-validation-plan.md` (the seven experiments against the control runs; round 5 pre-registered, tokens counted, baselines with checks; the feature ablation first) and `ecosystem-strategy.md` (Q11 answered against the day-one list; TLS and crypto the gating bricks; recipes as kits with the conformance check as the upgrade story), and dated addenda on the research summary and the case-against page. Remaining of Fable's own: the research agenda's twelve concept pages for contradictions; the VM-first drafts once their pages arrive.

@@ -195,6 +195,8 @@
 - [[zig|Zig]] — Kelley 2016, comptime, no hidden control flow, the raw-C-hazard lesson; toolchain choice for [[d24-compile-to-c-via-zig]]
 - [[dependent-types|Dependent types: Lean 4, Idris 2, Agda]] — the case for and against dependent types in general-purpose languages; where Mo's [[q08-verification-tiers]] fits
 - [[prompts-research-agenda-2026-09|Research agenda 2026-09: papers, authors, manifestos]] — six runs (R1–R6) with prompts; R1, R3, R6 executed 2026-09-13 via Perplexity Computer, R2/R4/R5 ready to run
+- [[empirical-validation-plan|Empirical validation plan: how Mo gets judged]] — the seven experiments against the control runs; round 5 pre-registered, tokens counted, baselines with checks
+- [[ecosystem-strategy|Ecosystem strategy: the stdlib, kits, and the registry]] — Q11 answered against the day-one list; TLS and crypto as the gating bricks; recipes as kits
 - [[agents-and-verification-2026|Agents and verification: the 2025–2026 evidence]] — R1: verifier automation beats model choice (82/44/27%), specs not proofs are the bottleneck, 0% contract satisfaction at 75–82% pass@1, composition frontier, diagnostics exchange rate for agents
 - [[language-design-for-llms-evidence|Language design for LLMs: what the evidence says]] — R1: what measured results say about strictness, shape laws, low-resource syntax, structured edits, and error messages; where Mo's laws have evidence for and against
 - [[author-ken-thompson|Author: Ken Thompson (Unix, C, Go)]] — R3: Trusting Trust vs source-first supply chain; taste, deletion, and what he refused to add

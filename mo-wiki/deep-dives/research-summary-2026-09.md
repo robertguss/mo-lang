@@ -1,7 +1,7 @@
 ---
 title: "Research summary, Sep 2026"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 type: deep-dive
 tags: [research]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -31,6 +31,10 @@ Nobody has built this yet. Mojo hit 1.0 in Aug 2026 but is "for AI" in the sense
 - [Aeneas: Bridging Rust to Lean](https://lean-lang.org/use-cases/aeneas/)
 - [Token Sugar (ASE 2025)](https://dl.acm.org/doi/10.1109/ASE63991.2025.00201)
 - [AI Coders Are Among Us: Rethinking Grammar](https://arxiv.org/pdf/2404.16333)
+
+## Session 6 addendum (Fable, 13 Sep, from the agent-authoring deep run)
+
+The numbers that bound Mo's cold start and its diagnostics bet, from [[prompts-mo-parallel-tracks]]'s third run.^[raw/research-runs/agent-authoring-research-frontier.pplx.md] A no-resource language gets 9 percent pass@1 against Python's 79, and on Gleam nine in ten generations did not compile; documentation in context moves the odds 1.2 to 11 times; further pre-training on 28 million tokens of a new language lifts hard tasks to 25 to 30 percent, still far from parity. On the diagnostics bet: the reference measurement is RustAssistant, 74 percent of real compiler errors fixed by a model given structured errors in a repair loop, and prompt shape alone moved ownership errors from 10 to 74 percent; structured test feedback beats structured compiler feedback beats prose. On the counter-position: a Python subset with a new discipline (Quasar) produced about seven times fewer erroneous programs than free Python without losing fluency, and the run's four tests a new language must pass are on [[case-against-new-languages]]. Nothing in the run measures capabilities or deterministic replay for agents head to head; the theoretical case is made and the experiment does not exist, which makes Mo's programs the first data.
 
 ## Related
 - [[fork-in-the-road]]
