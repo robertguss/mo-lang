@@ -68,6 +68,23 @@ The last case of the update rows suggests a second shape of the same bug: a new-
 
 Found by the load run: with 32 clients, jobq made jobs at 2,400 a second at first and 520 a second by 47,000 jobs, since every create, lease, ack, and fail set an existing entry of the map of every job (and, before that, of the store's map of every record). Workaround: every map that grows with the jobs is kept in pages of 256, a `Map` of small maps (`Jobq.Board`'s jobs, leases, and fresh positions; `Jobq.Store`'s records over 256 buckets, as notes did before step 21), so a change copies one page of at most 256 entries and sets one entry in a map of at most one page per 256 jobs.
 
+## 2. Resident memory grows with the requests served, far past what every process's region holds
+
+A long-running server's resident memory grows with the work it has done, several times faster than the bytes its processes' regions hold, and the runtime surface's `MemoryInfo` accounts for none of the difference. Found while measuring jobq's resident memory at 100,000 jobs, as the spec asks.
+
+Reproduction: `mo build --surface main.mo -o jobq-surface` in `examples/programs/jobq`, `MO_SURFACE=7952 jobq-surface serve <empty folder> --port 7951`, then 32 clients creating jobs over HTTP (a new connection per request; the load generator is Go's `net/http`), and `GET /memory` and `GET /processes` on port 7952 between phases:
+
+| after | resident (`/proc` VmRSS and `/memory` resident_bytes) | `/memory` region_bytes, all processes | the Queue's region | Worker processes alive |
+|---|---|---|---|---|
+| start | under 1 MiB | under 1 MiB | under 1 MiB | 0 |
+| 20,000 jobs | 82 MiB | 12 MiB | 12,479 KiB | 13 |
+| 40,000 jobs | 120 MiB | 12 MiB | 11,653 KiB | 18 |
+| 5 s more of lease-and-ack pairs, no new jobs (6,565 pairs, 13,130 requests) | 131 MiB | 24 MiB | 22,946 KiB | 0 |
+
+Every job lives in the Queue's region (its board: the jobs, each queue's order, the leases), so the program's own data is 12 to 23 MiB at 40,000 jobs, and resident memory is five to ten times that and still climbing: about 1.9 KiB per request made while creating jobs, and about 0.8 KiB per request with no new job at all. A worker process per exchange ends once it has answered (none are left after the pairs), so the growth is not live processes. The same shape without the surface, 100,000 jobs: 299 MiB resident as a binary.
+
+Not worked around: nothing in the program can reach memory outside its regions. jobq's own part was cut as far as it goes (bug 1's pages, and the store keeping no second copy of a job, 391 MiB to 299 MiB at 100,000 jobs), and the rest is reported as found.
+
 ## Not a bug: the fixture clock is frozen
 
 A test's `Clock.fixture()` does not move while a fixture call waits, so a lease never runs out on a running queue in a test. Grammar §8 says the fixture clock is frozen, so it is recorded in `GAPS.md` as a gap. The reproduction: `clock = Clock.fixture()`, `before = clock.now`, `Fs.fixture(delay: 200.ms).list(within: 1.minute)`, an `ask` of a process, then `clock.now - before` is `0.ms`, under `mo test` and `mo test --sim 5`.
