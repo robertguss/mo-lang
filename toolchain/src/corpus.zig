@@ -795,8 +795,11 @@ test "corpus: mo run --surface and a binary built with --surface serve the runti
         \\the tally holds 5
         \\
     ;
-    // Two ports of their own, picked by the clock so a run does not meet the last one's.
-    const base: i64 = 47_000 + @mod(Io.Clock.real.now(io).toMilliseconds(), 2_000) * 2;
+    // Two ports of their own, picked by the clock so a run does not meet the last one's, and
+    // below every system's ephemeral range (Linux 32768-60999, macOS 49152-65535): a port an
+    // earlier test's client connection took there sits in TIME_WAIT, and Linux refuses to bind a
+    // listener over a TIME_WAIT socket that did not set SO_REUSEADDR itself (macOS allows it).
+    const base: i64 = 21_000 + @mod(Io.Clock.real.now(io).toMilliseconds(), 2_000) * 2;
     const port = try std.fmt.allocPrint(arena, "{d}", .{base});
     const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "--surface", port, "main.mo", "--", port }, .cwd = .{ .path = folder } });
     try std.testing.expectEqualStrings(want, interp.stdout);
