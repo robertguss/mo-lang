@@ -257,6 +257,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `semantic`: the laws re-evaluated after rounds 2–4: no loop in any round came from a shape law or from `test rejects`; the no-`while` law's cost was the fictional bounds, gone since step 20; Mo's loops are the grammar's one-line forms (`MO0101`) and one misleading type error; Fable recommends keeping every law unchanged and spending an ergonomics step on the one-line `if` and arm forms and `MO0206`'s wording | Fable | for Robert | round 5 |
 | `Fs.fixture()` refuses `..` as the real `Fs` does, so a test can show a program staying inside its folder | Fable, from round 4's bug | provisional | the next toolchain step |
 
+| `semantic`: the runtime's introspection surface (direction 37) is a capability: `mo run` and `mo test` hold it and expose the surface in development; a built binary has it off unless `main` is handed the capability and passes it on, narrowed like `Fs`; reading a process's state is the largest authority in the system and is never ambient | Fable, Robert agreed (13 Sep, night) | provisional; first design in program 1's runtime surface step | program 1 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

@@ -34,6 +34,8 @@ Mo already has the data. Processes are isolated, capabilities tracked, execution
 
 The one design question worth flagging: is the MCP surface always on (with a capability required to attach), on by default in dev and opt-in in production, or off by default everywhere. Robert's framing — "allowing agents the ability to debug a process" — reads like at least dev-on. Prod is a security conversation.
 
+Answered (Fable's recommendation, Robert agreed, 13 Sep night): the surface is a capability. `mo run` and `mo test` hold it, so it is on in development; a built binary has it off unless `main` is handed the capability and passes it down, narrowed like `Fs`. Recorded in the [[decision-log]].
+
 ## Related
 
 - [[agent-native-runtime-features]]

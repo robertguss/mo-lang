@@ -267,3 +267,6 @@
 
 ## [2026-09-13] session | Night: the VM-first drafts filed
 - Robert's outside Perplexity session drafted two deep dives and five directions (d36–d40) on a VM-first runtime and agent-native runtime features; Fable filed them from the zip Robert sent, fixed two claims against the tree (no `mo mcp` command exists; chapter 8 is the milestone chapter), verified the two open questions on the VM page (cooperative turns, a region per process), added a note to each deep dive with the build order d40, d37, d38, d39 and the rule that the MCP surface is a capability, indexed them, bumped the schema's direction range. Liked, not locked; no decision rows.
+
+## [2026-09-13] session | Night: the runtime surface's on-off rule
+- Robert took Fable's recommendation on direction 37's one design fork: the introspection surface is a capability, on under `mo run` and `mo test`, off in a built binary unless `main` holds it. One semantic row; d37 updated.
