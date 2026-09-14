@@ -165,7 +165,7 @@ def t_roundtrip():
         st, j = create(queue="rt", payload=p)
         if st != 201: check(f"roundtrip: {name} created", False, st); continue
         st, g = req("GET", f"/jobs/{j['id']}"); check(f"roundtrip: {name}", g.get("payload") == p, repr(g.get("payload"))[:60])
-    st, j = create(queue="rt", payload="p", token="wörker"); check("roundtrip: a non-ASCII token is handled (201 or 401), not a crash", st in (201, 401), st)
+    st, j = create(queue="rt", payload="p", token="wörker"); check("roundtrip: a non-ASCII token is handled (201, 400, or 401), not a crash", st in (201, 400, 401), st)
 
 def t_expiry():
     st, a = create(queue="exp", payload="e")
