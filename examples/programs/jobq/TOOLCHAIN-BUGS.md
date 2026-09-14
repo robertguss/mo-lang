@@ -24,3 +24,20 @@ end
 `mo test esc.mo`: `assert sizes() == [1, 1, 2, 1] failed; left = [1, 1, 5, 5]`.
 
 Expected: either a `\u` escape, or `MO0101` at an escape the lexer does not know. Workaround: the tests build such text from bytes, `String.from_bytes([194, 133]) or ""`.
+
+## 2. MO0101 at a parameter named `result` does not say that `result` is a keyword
+
+`state` and `old` get a message that names the keyword and the way out (step 26); `result`, the other keyword a program meets as a name, gets only the grammar's "expected a name", at the parameter's name.
+
+```ruby
+module Took
+expose took
+
+intent "probe: a parameter named result."
+
+fn took(result: Option(UInt64)) : UInt64
+  result or 0
+end
+```
+
+`mo check took.mo`: `MO0101 expected a name`, pointing at `result`. The same program with `state` says: "state is a keyword, the process's state in its update and invariants, so a binding or a parameter takes another name, such as status". Found in `Jobq.Books`, a test helper `took(result: Stored)`; one loop, renamed to `outcome`.
