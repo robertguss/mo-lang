@@ -59,7 +59,7 @@ def operation[**P, R](
 ) -> Callable[Concatenate[Queue, P], R]:
     """Check the queue's invariants after the operation."""
 
-    def checked(queue: Queue, *args: P.args, **kwargs: P.kwargs) -> R:
+    def checked(queue: Queue, /, *args: P.args, **kwargs: P.kwargs) -> R:
         result = method(queue, *args, **kwargs)
         queue.check_invariants()
         return result
@@ -291,6 +291,8 @@ def check_job(number: int, job: Job) -> None:
 def check_transition(before: Job | None, after: Job | None) -> None:
     """The nevers, checked on every state change before it is written."""
     edge = (before.state if before else None, after.state if after else None)
+    if edge == ("leased", "leased"):
+        never(False, "a job is never held by two workers at once")
     never(edge in _LEGAL, f"a job never goes {edge[0]} -> {edge[1]}")
     if before is None or after is None:
         return
