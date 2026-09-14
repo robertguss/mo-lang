@@ -1065,6 +1065,37 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "5a68a9e573419455" }
     },
     {
+      "path": "logstat/main.mo",
+      "module": "Logstat.Main",
+      "declarations": [
+        { "id": "8987005ccc46", "name": "module Logstat.Main", "hash": "f95d967e82f8dc49" },
+        { "id": "d409a86a7aba", "name": "expose", "hash": "33be4b51f4d9cb60" },
+        { "id": "a24397c8c6a0", "name": "use Logstat.Report", "hash": "66fd27fbfc974618" },
+        { "id": "bec9331fc123", "name": "use Logstat.Stats", "hash": "66f2d69ee0a406ff" },
+        { "id": "4988b000d854", "name": "intent", "hash": "a66b9fa6efa31c78" },
+        { "id": "fbe9a859a63e", "name": "struct Options", "hash": "adc578bf37cc4954" },
+        { "id": "384abfe88058", "name": "enum Problem", "hash": "f966389cbfdb7311" },
+        { "id": "6dc6dca0ed77", "name": "fn usage", "hash": "908e7e25ae9d8efe" },
+        { "id": "838e50df2730", "name": "fn options", "hash": "0182b37955aef95b" },
+        { "id": "3f8b2003d827", "name": "fn parsed", "hash": "9d7758d6801ee92b" },
+        { "id": "2b0d7e7f8117", "name": "fn top_of", "hash": "3bd3190a88a0947e" },
+        { "id": "b74f870a3f84", "name": "fn since_of", "hash": "0f0392b4c96214cf" },
+        { "id": "d64c6d1c85cc", "name": "fn ran", "hash": "17bd63abce57f3d5" },
+        { "id": "d73616e13e61", "name": "fn logs_in", "hash": "10ab55c617a41f02" },
+        { "id": "fa652faa3cd6", "name": "fn summarized", "hash": "f80854211e812dea" },
+        { "id": "8f436882acee", "name": "fn said", "hash": "14b3e2ac9418dd85" },
+        { "id": "d4ad0a825339", "name": "fn code_of", "hash": "3ba484e26b5ade1f" },
+        { "id": "7f35cf8e4bb0", "name": "fn main", "hash": "6f3c9ae8ebbbc352" },
+        { "id": "98aab24f4b5e", "name": "test \"a folder and the flags in any order, the top 5 and every line by default\"", "hash": "dc8a1608d377ec27" },
+        { "id": "14b12f55d4b7", "name": "test \"a top outside 1 to 100 is a usage error, not a clamp\"", "hash": "01110b1f425b62b0" },
+        { "id": "c0859601a8a9", "name": "test \"no folder, two folders, an unknown or repeated flag, or a bad time is a usage error\"", "hash": "7e305d3829607877" },
+        { "id": "745488ecaac0", "name": "test \"a usage error exits 2, and a folder with no .log file to read exits 1\"", "hash": "30cff08fee5b6c52" },
+        { "id": "c4656aabc393", "name": "test \"only the .log files directly inside the folder are read, in name order\"", "hash": "878396c882305bcd" },
+        { "id": "8eb21283dcd0", "name": "test \"a folder that is not there, or holds no .log file, is NoLogs\"", "hash": "fce4fc4ef6309d4b" }
+      ],
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "74d7cb84ee78d383", "uses": [{ "module": "Logstat.Parse", "hash": "942920859053c85e" }, { "module": "Logstat.Report", "hash": "705722449c244558" }, { "module": "Logstat.Stats", "hash": "2c33c9397540bf60" }] }
+    },
+    {
       "path": "logstat/parse.mo",
       "module": "Logstat.Parse",
       "declarations": [
