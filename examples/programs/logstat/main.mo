@@ -1,9 +1,9 @@
-# run: logstat/fixture
-# run: logstat/fixture --json
-# run: --top 2 logstat/fixture --since 2026-09-12T10:01:00Z
-# run: logstat/fixture --top 101
+# run: fixture
+# run: fixture --json
+# run: --top 2 fixture --since 2026-09-12T10:01:00Z
+# run: fixture --top 101
 # exit: 2
-# run: logstat/fixture/nowhere
+# run: fixture/nowhere
 # exit: 1
 module Logstat.Main
 expose Options, Problem, options, main
