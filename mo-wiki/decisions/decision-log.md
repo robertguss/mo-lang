@@ -382,6 +382,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `semantic`, Robert: a `never` reads a value where it rests (a binding, a field, a return, a message, an assertion), never a `var` between two statements of one body, so chapter 4's `var copy = x` then `copy.field = v` cannot trip a `never` that relates two fields; the runtime records a `var` when the body's next statement is not an assignment to it, or at the body's end | Robert, on Fable's recommendation | locked | step 27's corpus file, round 7 |
 | Step 27 starts: the three calls above plus the small items (a `\u{...}` escape and `MO0101` at an unknown escape; `result`'s keyword sentence; `Fs.fold_lines` at `NotText`); brief on [[interpreter-step-27]]; round 7 after it, with the Mo programs removed from every worktree | Fable | — | step 27's numbers |
 
+| Robert (14 Sep, afternoon): the control run's measure changes. Agent time to green, loops, and lines are not what Mo is for and are dropped as predictions: a model has never seen Mo, so it will take longer in it than in the languages that fill its training data, and that is expected. From round 7 the predictions are how fast the program runs and how much memory it holds natively against Go and Python, the feedback loop's time (check, test, build), and the dependency count (third-party packages and tools; Mo 0 by construction, round 6's Go 1, Python 3, a column round 6 never had). Agent time and loops stay recorded columns. Chapter 8 says so under "Session 6". Round 6's failed predictions stand as recorded under the old measure | Robert | locked | round 7 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

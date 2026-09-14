@@ -35,7 +35,7 @@ Updated at every acceptance. A step is one brief to one fresh worker session, nu
 | Step 26, the tail-position one-line `if` and two keyword diagnostics ([[interpreter-step-26]]) | done | — |
 | Round 6 of the control run, pre-registered ([[control-run-6]]), the baselines with their checks | done: **failed on all four predictions**; the null hypothesis stands; three rows for Robert | — |
 | Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | in progress | 1 |
-| Round 7, after step 27, the Mo programs removed from every worktree | queued | — |
+| Round 7, after step 27, on Robert's new measure: native speed and memory, the feedback loop, the dependency count; the Mo programs removed from every worktree | queued | — |
 | Program 6, the ledger | queued | 2 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 7, the toolchain in Mo | late | — |

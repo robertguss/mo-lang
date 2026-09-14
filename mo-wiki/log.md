@@ -315,3 +315,6 @@
 
 ## [2026-09-14] session | Afternoon: Robert agrees, step 27 starts
 - Robert agreed to all three round 6 recommendations. Chapter 2 gains "Session 6 changes": the file law dropped (not demoted, since the honesty laws forbid warnings), a `never` reads values at rest, `state`/`result`/`old` as names outside the reserved positions. Five locked rows. Step 27 written and started on a fresh worker.
+
+## [2026-09-14] session | Afternoon: the control run's measure changes
+- Robert: agent time to green was never the point and no model has seen Mo, so from round 7 the predictions are native speed and memory against Go and Python, the feedback loop's time, and the dependency count (a column round 6 lacked: Mo 0, Go 1, Python 3); agent time and loops recorded only. Chapter 8 gains a Session 6 paragraph; one locked row; the handoff's round 7 entry rewritten.
