@@ -333,3 +333,6 @@
 
 ## [2026-09-14] session | Afternoon: the reviewer's reply
 - The reviewer conceded the C backend and the corpus size, withdrew sigils and the JSON `verified:` line, and pushed on three things Fable took: the BEAM as chapter 1's null hypothesis, the one-sentence thesis, the closure counterfactual (an audit, not a second worker), the zero-dependency fallback (a brick wrapping a C library under audit), and a Redis-subset shortlist for program 7. One provisional row.
+
+## [2026-09-14] session | Evening: round 7, held on all four
+- Three fresh sessions from 16:40 UTC in `../mo-lang-control7-*`, the Mo programs removed from every worktree, the Python checkers as dev dependencies; Fable verified each worktree, ran the hidden suite against each jobq (0, 0, 0), and measured all three with one client (Mo 981 pairs a second at 32 workers to 478 and 467; 150 MiB to 76 and 189; restart 3.7 s to 0.7 and 1.0); the loop 0.38 s to 18.7 and 8.7; dependencies 0, 1, 3. Mo's worker disclosed reading the suite's description. Four decision rows, one `semantic`. Step 28 written from the Mo notes. Merged to `main`.
