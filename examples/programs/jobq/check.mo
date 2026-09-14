@@ -121,3 +121,6 @@ test "a check log left behind is removed, and a folder with none is clear"
   assert fs.read("d/jobq.check.log", within: 1.minute) is Error(Missing(_))
   assert cleared(fs.scoped("d"))
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

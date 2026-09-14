@@ -362,3 +362,6 @@ property "any valid payload sent as JSON becomes a create of that payload"
     assert asked(route(by("POST", "/jobs", body))) == Some(command)
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

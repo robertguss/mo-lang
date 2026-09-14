@@ -260,3 +260,6 @@ test "a store whose last line was cut short opens without it and says so on stde
   assert code_of(problem) == 1
   assert said(problem) == "nowhere is not a folder jobq can read"
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

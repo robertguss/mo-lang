@@ -61,3 +61,6 @@ test "a client with no server to answer it says so"
   trip = Trip(host: "localhost", port: 1, token: "ada", method: "GET", path: "/jobs", json: "")
   assert asked(Http.fixture(), trip) == Error("no jobq answered at localhost:1")
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

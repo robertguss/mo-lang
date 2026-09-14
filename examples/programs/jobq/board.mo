@@ -456,3 +456,6 @@ property "a create then a fetch gives back any valid payload"
     assert job.payload == payload
   end
 end
+
+verified: types, contracts, tests (12), property (200 seeds), sim (not run)
+          proven: not run

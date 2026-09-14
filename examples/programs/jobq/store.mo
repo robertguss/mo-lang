@@ -406,3 +406,6 @@ property "any valid key and value read back as written, and again once the store
     assert get(again, key) == Some(value)
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

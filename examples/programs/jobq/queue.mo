@@ -149,3 +149,6 @@ test "a sweep puts back a lease that ran out, and health counts the job queued a
     end
   end
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (100 runs)
+          proven: not run

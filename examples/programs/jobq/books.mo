@@ -208,3 +208,6 @@ test rejects "a replay that loses a job trips the never"
   gone = Survivor(id: "j_1", before: Some(job), after: None)
   assert gone.id == "j_1"
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

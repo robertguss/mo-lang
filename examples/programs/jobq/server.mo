@@ -204,3 +204,6 @@ test "1,200 connections that send nothing do not stop a producer's request from 
   made = sent(http, listener.port, by("ada", "POST", "/jobs", job_body("after-crowd")))
   assert status_in?(made, [201, 503])
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (100 runs)
+          proven: not run

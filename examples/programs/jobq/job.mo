@@ -393,3 +393,6 @@ property "any valid payload reads back from a job's JSON as it was written"
     assert job_of(json_of(job)) == Some(job)
   end
 end
+
+verified: types, contracts, tests (19), property (200 seeds), sim (not run)
+          proven: not run
