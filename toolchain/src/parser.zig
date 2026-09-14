@@ -20,15 +20,17 @@ const why_type = "A type is a type name such as UInt32 or List(T), or a tuple of
 const why_pattern = "A pattern is _, a name, a literal, a variant such as Some(x) or Short(by: n), or a tuple of patterns.";
 const why_order = "A module is its header (module, expose, use, intent, never), then declarations, then tests, then the verified: line.";
 const why_place = "Only a name or a field path such as copy.name can be assigned.";
-/// An `if` on one line (step 21, round 4's MO0101).
-const why_if = "An if takes its body on the lines below its condition and ends with end, as every block does, and that holds when the if is a value too: one form to read and to write.";
+/// An `if` on one line where a statement goes (step 21, round 4's MO0101; step 25).
+const why_if = "An if that starts a line is a statement, and a statement takes its body on the lines below its condition and ends with end, as every block does. The one-line form, if cond: a else: b, is a value only: it sits where a value goes, after = or as an argument.";
+/// The one-line `if` value malformed (step 25).
+const why_if_value = "A one-line if is a value (grammar §6): if cond: a else: b, with both branches, each one expression. Anything more takes the block form, one part a line.";
 /// A variant matched by position (step 21, round 4's MO0101).
 const why_by_name = "A variant's fields are matched by name, as they are built by name: Short(by: n) binds n to by. A position would change meaning when a field is added.";
 /// The parser's rows of the error catalog. MO0101 also stands for a malformed
 /// `fn main` line, with why_main as its why, an `if` on one line, with why_if, and a variant
 /// matched by position, with why_by_name.
 pub const catalog = [_]diag.Entry{
-    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if takes its body on the lines below it, even as a value, and mo fix writes a one-line if as that block; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{"an if on one line becomes the block form"} },
+    .{ .code = "MO0101", .category = .syntax, .what = "expected <token>", .why = why_token ++ " An if that starts a line takes its body on the lines below it, and mo fix writes a one-line if there as that block; the one-line if is a value only, if cond: a else: b, with both branches, each one expression; a variant's fields are matched by name, as Short(by: n); and `is` binds loosely inside a comparison, so (x is Ok(_)) == y takes its parentheses.", .fixes = &.{"an if on one line becomes the block form"} },
     .{ .code = "MO0102", .category = .syntax, .what = "expected an expression", .why = why_expr, .fixes = &.{} },
     .{ .code = "MO0103", .category = .syntax, .what = "expected a type", .why = why_type, .fixes = &.{} },
     .{ .code = "MO0104", .category = .syntax, .what = "expected a pattern", .why = why_pattern, .fixes = &.{} },
@@ -38,6 +40,22 @@ pub const catalog = [_]diag.Entry{
 /// A case arm on one line holds one expression: a statement there is MO0102 at its keyword, or
 /// MO0101 at an assignment's `=`.
 const arm_assignment = "a case arm holds one expression after its `:`; an assignment is a statement, and a statement goes on its own lines below the arm";
+
+/// A branch of a one-line `if` holds one expression (step 25): a statement there is MO0101.
+const branch_assignment = "expected `else:` or the end of the if: a branch of a one-line if holds one expression, and a binding or an assignment is a statement; a statement takes the block form, one part a line";
+
+fn branchStatement(kind: Kind) ?[]const u8 {
+    const head = "expected an expression after `:`: a branch of a one-line if holds one expression, and `";
+    const rest = "` is a statement; a statement takes the block form, one part a line";
+    return switch (kind) {
+        .kw_assert => head ++ "assert" ++ rest,
+        .kw_var => head ++ "var" ++ rest,
+        .kw_return => head ++ "return" ++ rest,
+        .kw_for => head ++ "for" ++ rest,
+        .kw_break => head ++ "break" ++ rest,
+        else => null,
+    };
+}
 
 fn armStatement(kind: Kind) ?[]const u8 {
     const rest = "` is a statement, and a statement goes on its own lines below the arm";
@@ -204,8 +222,8 @@ const Parser = struct {
         return error.Rejected;
     }
 
-    /// MO0101 at `if cond: a else: b`, at its `:`. Mo has no one-line if, as a statement or as a
-    /// value, so the message shows the block form. When the line is exactly that shape, one
+    /// MO0101 at `if cond: a else: b` where a statement goes, at its `:`. The one-line form is a
+    /// value only (step 25), so the message shows the block form. When the line is exactly that shape, one
     /// expression on each side of an `else:` or none, the rewrite is a fix of confidence 100.
     fn oneLineIf(p: *Parser, kw: u32) Error {
         const gpa = p.gpa;
@@ -245,7 +263,7 @@ const Parser = struct {
             try std.fmt.allocPrint(gpa, "if {s} / {s} / else / {s} / end", .{ cond_text, then_text, e })
         else
             try std.fmt.allocPrint(gpa, "if {s} / {s} / end", .{ cond_text, then_text });
-        const what = try std.fmt.allocPrint(gpa, "expected the if's body on the lines below it: an if has no one-line form, as a statement or as a value; write the block form, one part a line: {s}", .{shown});
+        const what = try std.fmt.allocPrint(gpa, "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: {s}", .{shown});
         var fixes: []const diag.Fix = &.{};
         if (clean) {
             const block = if (else_text) |e|
@@ -796,14 +814,25 @@ const Parser = struct {
         return p.spanFrom(top);
     }
 
-    /// An arm is the only line with a `:` outside every delimiter.
+    /// An arm is the only line with a `:` outside every delimiter before any `=` or `if`
+    /// value: the colons of a one-line `if` (step 25) are not an arm's. A statement keyword
+    /// never starts an arm, and an `if` that follows no operand is a value, not a guard.
     fn atArmStart(p: *Parser) bool {
         var depth: u32 = 0;
         var i = p.tok;
+        switch (p.toks.items[i].kind) {
+            .kw_if, .kw_return, .kw_assert, .kw_var, .kw_for, .kw_break => return false,
+            else => {},
+        }
         while (true) : (i += 1) {
             switch (p.toks.items[i].kind) {
                 .l_paren, .l_bracket, .l_brace => depth += 1,
                 .r_paren, .r_bracket, .r_brace => depth -|= 1,
+                .eq, .plus_eq, .minus_eq => if (depth == 0) return false,
+                .kw_if => if (depth == 0) switch (p.toks.items[i - 1].kind) {
+                    .ident, .type_name, .int, .float, .string, .underscore, .r_paren, .kw_true, .kw_false => {},
+                    else => return false,
+                },
                 .colon => if (depth == 0) return true,
                 .newline => if (depth == 0) return false,
                 .eof => return false,
@@ -866,11 +895,15 @@ const Parser = struct {
         return node;
     }
 
-    /// `if cond NL block (else NL block)? end`, without the line end.
+    /// `if cond NL block (else NL block)? end`, or where a value goes `if cond: a else: b`
+    /// (step 25), without the line end.
     fn parseIf(p: *Parser, kind: Node.Kind, require_else: bool) Error!Index {
         const kw = try p.expect(.kw_if);
         const cond = try p.parseExpr();
-        if (p.peek() == .colon) return p.oneLineIf(kw);
+        if (p.peek() == .colon) {
+            if (kind == .if_stmt) return p.oneLineIf(kw);
+            return p.parseLineIf(kw, cond);
+        }
         _ = try p.expect(.newline);
         const then = try p.parseBlock(false);
         var otherwise: Span = .{ .start = 0, .end = 0 };
@@ -882,6 +915,49 @@ const Parser = struct {
         _ = try p.expect(.kw_end);
         const data = try p.addExtra(ast.If{ .then_start = then.start, .then_end = then.end, .else_start = otherwise.start, .else_end = otherwise.end });
         return p.addNode(.{ .kind = kind, .main_token = kw, .lhs = cond, .rhs = data });
+    }
+
+    /// `if cond: a else: b` from its `:`. The tree is the block form's: each branch a block of
+    /// one statement, an expression, or an `if` or `case` kept as the statement it is in the
+    /// block form, so the two forms are one tree and mo fmt may write either.
+    fn parseLineIf(p: *Parser, kw: u32, cond: Index) Error!Index {
+        const colon = p.next();
+        const then = try p.lineIfBranch();
+        if (p.peek() != .kw_else) {
+            const cond_text = std.mem.trim(u8, p.source[p.toks.items[kw].end..p.toks.items[colon].start], " ");
+            const then_text = std.mem.trim(u8, p.source[p.toks.items[colon].end..p.toks.items[p.tok].start], " ");
+            const what = try std.fmt.allocPrint(p.gpa, "expected `else:` after the value: a one-line if is a value, so it takes both branches: if {s}: {s} else: <the value otherwise>", .{ cond_text, then_text });
+            return p.fail("MO0101", what, why_if_value);
+        }
+        _ = p.next();
+        if (p.peek() != .colon) return p.fail("MO0101", "expected `:` after `else`: a one-line if writes each branch after a colon, as in if n > 1: \"lines\" else: \"line\"", why_if_value);
+        _ = p.next();
+        const otherwise = try p.lineIfBranch();
+        const data = try p.addExtra(ast.If{ .then_start = then.start, .then_end = then.end, .else_start = otherwise.start, .else_end = otherwise.end });
+        return p.addNode(.{ .kind = .if_expr, .main_token = kw, .lhs = cond, .rhs = data });
+    }
+
+    fn lineIfBranch(p: *Parser) Error!Span {
+        const at = p.tok;
+        switch (p.peek()) {
+            .newline, .eof => return p.fail("MO0102", "expected the branch's value after `:`, on the same line: a one-line if holds one expression in each branch; a body on the lines below takes the block form, with no `:`", why_if_value),
+            else => {},
+        }
+        if (branchStatement(p.peek())) |what| return p.fail("MO0101", what, why_if_value);
+        const e = try p.parseExpr();
+        switch (p.peek()) {
+            .eq, .plus_eq, .minus_eq => return p.fail("MO0101", branch_assignment, why_if_value),
+            else => {},
+        }
+        const top = p.scratch.items.len;
+        const n = &p.nodes.items[e];
+        if (n.main_token == at and (n.kind == .if_expr or n.kind == .case_expr)) {
+            n.kind = if (n.kind == .if_expr) .if_stmt else .case_stmt;
+            try p.push(e);
+        } else {
+            try p.push(try p.addNode(.{ .kind = .expr_stmt, .main_token = at, .lhs = e }));
+        }
+        return p.spanFrom(top);
     }
 
     fn parseCaseStmt(p: *Parser) Error!Index {
@@ -1665,7 +1741,12 @@ test "a function that returns nothing leaves its return type off; a type without
 
     const wrong = [_]struct { []const u8, []const u8, []const u8 }{
         .{ "module M\nfn f(n: UInt8) UInt8\n  n\nend\n", "MO0101", "a function that returns a value names its type after `:`; one that returns nothing leaves it off" },
-        .{ "module M\nfn f(ok: Bool) : UInt8\n  if ok: 1 else: 2\nend\n", "MO0101", "expected the if's body on the lines below it: an if has no one-line form, as a statement or as a value; write the block form, one part a line: if ok / 1 / else / 2 / end" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  if ok: 1 else: 2\nend\n", "MO0101", "expected the if's body on the lines below it: a one-line if is a value, never a statement; as a statement, write the block form, one part a line: if ok / 1 / else / 2 / end" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok: 1\n  n\nend\n", "MO0101", "expected `else:` after the value: a one-line if is a value, so it takes both branches: if ok: 1 else: <the value otherwise>" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok: 1 else 2\n  n\nend\n", "MO0101", "expected `:` after `else`: a one-line if writes each branch after a colon, as in if n > 1: \"lines\" else: \"line\"" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok: return 1 else: 2\n  n\nend\n", "MO0101", "expected an expression after `:`: a branch of a one-line if holds one expression, and `return` is a statement; a statement takes the block form, one part a line" },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  var n = 0\n  m = if ok: n = 1 else: 2\n  m\nend\n", "MO0101", branch_assignment },
+        .{ "module M\nfn f(ok: Bool) : UInt8\n  n = if ok:\n    1\n  else:\n    2\n  end\n  n\nend\n", "MO0102", "expected the branch's value after `:`, on the same line: a one-line if holds one expression in each branch; a body on the lines below takes the block form, with no `:`" },
         .{ "module M\nfn f(x: Result(UInt8, String), y: Bool) : Bool\n  x is Ok(_) == y\nend\n", "MO0101", "expected the end of the `is`: `is` binds loosely inside a comparison, so x is Ok(_) == y compares nothing; put the `is` in parentheses: (x is Ok(_)) == y" },
         .{ "module M\nenum Size\n  Short(by: UInt8, of: UInt8)\n  Long\nend\nfn f(s: Size) : UInt8\n  case s\n    Short(a, b): a\n    Long: 0\n  end\nend\n", "MO0101", "expected field names: a variant's fields are matched by name, not by position; write Short(by: a, of: b)" },
         .{ "module M\nfn f(n: UInt8)\n  return\nend\n", "MO0102", "`return` takes a value; a function that returns nothing ends its body instead" },
@@ -1679,6 +1760,25 @@ test "a function that returns nothing leaves its return type off; a type without
         try std.testing.expectEqualStrings(w[1], diags.items[0].code);
         try std.testing.expectEqualStrings(w[2], diags.items[0].what);
     }
+}
+
+test "a one-line if is a value, with the block form's tree" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const fmt = @import("fmt.zig");
+    const pairs = [_][2][]const u8{
+        .{ "module M\nfn f(n: UInt8) : String\n  s = if n > 1: \"lines\" else: \"line\"\n  s\nend\n", "module M\nfn f(n: UInt8) : String\n  s = if n > 1\n    \"lines\"\n  else\n    \"line\"\n  end\n  s\nend\n" },
+        .{ "module M\nfn f(n: UInt8) : UInt8\n  g(if n > 1: 2 else: if n > 0: 1 else: 0, n)\nend\n", "module M\nfn f(n: UInt8) : UInt8\n  g(if n > 1\n    2\n  else\n    if n > 0\n      1\n    else\n      0\n    end\n  end, n)\nend\n" },
+        .{ "module M\nfn f(o: Option(UInt8)) : UInt8\n  case o\n    Some(x): if x > 1: x else: 1\n    None:\n      y = if true: 2 else: 3\n      y\n  end\nend\n", "module M\nfn f(o: Option(UInt8)) : UInt8\n  case o\n    Some(x): if x > 1\n      x\n    else\n      1\n    end\n    None:\n      y = if true\n        2\n      else\n        3\n      end\n      y\n  end\nend\n" },
+    };
+    for (pairs) |pair| {
+        const line = (try fmt.dumpSource(arena, pair[0])) orelse return error.TestUnexpectedResult;
+        const block = (try fmt.dumpSource(arena, pair[1])) orelse return error.TestUnexpectedResult;
+        try std.testing.expectEqualStrings(block, line);
+    }
+    _ = try parseSource(arena, "module M\nfn f(xs: List(UInt8)) : List(UInt8)\n  xs.map(fn(x) if x > 1: x else: 0 end)\nend\n", &diags);
 }
 
 test "fn main takes one Platform and has no return type" {

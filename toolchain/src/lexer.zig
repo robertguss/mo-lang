@@ -6,7 +6,8 @@
 //! Inside an open paren, bracket, or brace the lexer joins lines, except inside a
 //! block that sits in one: the block form of an anonymous function (`fn(x)` then a
 //! newline) and an `if`, `case`, or `for` opened there keep their newlines until
-//! their `end`, because the grammar needs them to separate statements.
+//! their `end`, because the grammar needs them to separate statements. An `if` whose
+//! condition ends in `:` is the one-line value form (step 25): it opens nothing.
 const std = @import("std");
 const token = @import("token.zig");
 const diag = @import("diag.zig");
@@ -43,6 +44,9 @@ const Nest = enum {
     fn_head,
     /// A block inside an open delimiter: newlines count until `end`.
     block,
+    /// An `if` inside an open delimiter, before its condition ends: a newline makes it a
+    /// block, a `:` the one-line value form, which opens nothing (step 25).
+    if_head,
     /// The one-line form `fn(x) expr end`: newlines joined, closed by `end`.
     line_block,
 };
@@ -78,7 +82,8 @@ const Lexer = struct {
 
     fn newlineCounts(l: *Lexer) bool {
         const top = l.nest.getLastOrNull() orelse return true;
-        return top == .block;
+        if (top == .if_head) l.nest.items[l.nest.items.len - 1] = .block;
+        return top == .block or top == .if_head;
     }
 
     fn emitNewline(l: *Lexer, at: u32) Error!void {
@@ -130,9 +135,9 @@ const Lexer = struct {
             .kw_case, .kw_for => try l.nest.append(l.gpa, .block),
             // A trailing `if` (on `return`, an arm guard, a comprehension guard) follows
             // an operand and opens nothing; any other `if` opens a block.
-            .kw_if => if (prev == null or !endsOperand(prev.?)) try l.nest.append(l.gpa, .block),
+            .kw_if => if (prev == null or !endsOperand(prev.?)) try l.nest.append(l.gpa, .if_head),
             .kw_end => switch (l.nest.getLast()) {
-                .block, .line_block, .fn_head => _ = l.nest.pop(),
+                .block, .line_block, .fn_head, .if_head => _ = l.nest.pop(),
                 .open => {},
             },
             else => {},
@@ -252,7 +257,10 @@ const Lexer = struct {
                 // `restart: :always`; a colon glued to the name before it is never an atom.
                 while (l.i < l.src.len and (isAlnum(l.src[l.i]) or l.src[l.i] == '_')) l.i += 1;
                 try l.add(.atom, start);
-            } else try l.add(.colon, start),
+            } else {
+                try l.add(.colon, start);
+                if (l.nest.getLastOrNull() == .if_head) _ = l.nest.pop();
+            },
             '!' => try l.pair(next, '=', .bang_eq, .bang, start),
             '=' => try l.pair(next, '=', .eq_eq, .eq, start),
             '<' => try l.pair(next, '=', .lt_eq, .lt, start),
@@ -393,6 +401,15 @@ test "a block inside parens keeps its newlines; a one-line fn does not" {
     });
     try expectKinds("m(fn(x) x if\n y end)", &.{
         .ident, .l_paren, .kw_fn, .l_paren, .ident, .r_paren, .ident, .kw_if, .ident, .kw_end, .r_paren, .newline, .eof,
+    });
+}
+
+test "a one-line if inside parens opens nothing, so the lines after it still join" {
+    try expectKinds("f(if a: b else: c,\n  d)\n", &.{
+        .ident, .l_paren, .kw_if, .ident, .colon, .ident, .kw_else, .colon, .ident, .comma, .ident, .r_paren, .newline, .eof,
+    });
+    try expectKinds("f(if a\n  b\nelse\n  c\nend,\n  d)\n", &.{
+        .ident, .l_paren, .kw_if, .ident, .newline, .ident, .newline, .kw_else, .newline, .ident, .newline, .kw_end, .comma, .ident, .r_paren, .newline, .eof,
     });
 }
 

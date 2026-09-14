@@ -29,7 +29,8 @@ pub const max_passes = 16;
 // ---- reading tokens
 
 /// Whether token `t` opens a block that `end` closes: `for`, `case`, `fn`, and an `if`
-/// that is not trailing a `return` (grammar §5).
+/// that is not trailing a `return` (grammar §5) and is not the one-line value form, or an
+/// arm's guard, whose condition ends in `:` (step 25).
 pub fn opensBlock(tree: ast.Tree, t: u32) bool {
     const toks = tree.tokens;
     switch (toks[t].kind) {
@@ -40,7 +41,21 @@ pub fn opensBlock(tree: ast.Tree, t: u32) bool {
                 k -= 1;
                 if (toks[k].kind == .kw_return) return false;
             }
-            return true;
+            // The condition runs to a `:` or to the line's end, outside every delimiter; an `if`
+            // inside it starts a condition of its own, so this one is a block.
+            var depth: u32 = 0;
+            k = t + 1;
+            while (true) : (k += 1) switch (toks[k].kind) {
+                .l_paren, .l_bracket, .l_brace => depth += 1,
+                .r_paren, .r_bracket, .r_brace => {
+                    if (depth == 0) return true;
+                    depth -= 1;
+                },
+                .colon => if (depth == 0) return false,
+                .kw_if => if (depth == 0) return true,
+                .newline, .eof => return true,
+                else => {},
+            };
         },
         else => return false,
     }

@@ -109,6 +109,7 @@ primary     = literal | ident | path call_args?              # Money.cents(500),
             | "(" expr ("," expr)* ")"                       # group or tuple
             | "[" (expr ("," expr)*)? "]"
             | "if" expr NL block "else" NL block "end"       # if as expression
+            | "if" expr ":" expr "else" ":" expr             # one-line if: a value only, else: required
             | "case" expr NL arm+ "end"
             | "fn" "(" params_untyped? ")" (expr | NL block) "end"   # anonymous, call-argument only
             | "old" "(" expr ")" | "result"
@@ -117,6 +118,8 @@ literal     = int | float | string | "true" | "false"
 ```
 
 Anonymous functions may appear only as an `arg`. Construction is always by named fields; positional construction does not parse.
+
+Session 5, step 25: an `if` may be one line where a value goes, `label = if n > 1: "lines" else: "line"` (pick 16). `else:` is required and each branch is one expression; a statement in a branch (`return`, a binding, an assignment) is `MO0101`, and so is a one-line `if` that starts a line, which is a statement. Its tree is the block form's, and `mo fmt` writes it on one line when it fits and no comment sits inside, and as the block otherwise.
 
 ## 7. Patterns
 

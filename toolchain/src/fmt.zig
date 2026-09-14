@@ -8,9 +8,9 @@
 //! exactly where its token lands. A comment that cannot be placed rejects the file
 //! (MO0502); the formatter never moves or drops one.
 //!
-//! Two forms depend on width: a one-line anonymous function (S8) and a one-line case
-//! arm (C1). Each is tried first; when its line ends past the limit, the line is
-//! printed again from its start with that form in block shape.
+//! Three forms depend on width: a one-line anonymous function (S8), a one-line case
+//! arm (C1), and a one-line `if` value (I1). Each is tried first; when its line ends past
+//! the limit, the line is printed again from its start with that form in block shape.
 const std = @import("std");
 const token = @import("token.zig");
 const lexer = @import("lexer.zig");
@@ -384,12 +384,13 @@ const Printer = struct {
         if (p.indent * 2 + cols(code) > limit) {
             const plan = try p.planBreaks();
             // A one-line arm (C1) moves its body below before its line breaks. A one-line
-            // anonymous function (S8) stays one line when breaking around it makes every
-            // piece fit, and takes its block form when that is not enough.
+            // anonymous function (S8) or `if` value (I2) stays one line when breaking around
+            // it makes every piece fit, and takes its block form when that is not enough.
             var keep = plan.fits;
-            for (p.flats.items) |f| {
-                if (p.node(f).kind != .anon_fn) keep = false;
-            }
+            for (p.flats.items) |f| switch (p.node(f).kind) {
+                .anon_fn, .if_expr => {},
+                else => keep = false,
+            };
             if (p.flats.items.len > 0 and !keep) {
                 p.forced[p.flats.items[0]] = true;
                 p.refit_at = p.line_start;
@@ -1070,22 +1071,92 @@ const Printer = struct {
         }
     }
 
+    /// An `if` as a block, or an `if` value on one line when it may be (I1–I3). The block
+    /// form printed from a one-line source steps over its colons and writes its `end`.
     fn ifNode(p: *Printer, i: Index) E!void {
         const n = p.node(i);
+        if (n.kind == .if_expr and !p.forced[i] and p.lineShaped(i)) {
+            if (try p.attemptIf(i)) return;
+        }
         const data = p.tree.extraData(ast.If, n.rhs);
         _ = try p.tk(.kw_if);
         try p.sp();
         try p.expr(n.lhs);
+        const one_line = p.tree.tokens[p.peek()].kind == .colon;
+        if (one_line) try p.skip(.colon);
         try p.nl();
         p.indent += 1;
         try p.block(p.tree.span(data.then_start, data.then_end));
         if (p.tree.tokens[p.peek()].kind == .kw_else) {
             try p.closeBlock(.kw_else);
+            if (one_line) try p.skip(.colon);
             try p.nl();
             p.indent += 1;
             try p.block(p.tree.span(data.else_start, data.else_end));
         }
-        try p.closeBlock(.kw_end);
+        if (one_line) {
+            p.indent -= 1;
+            try p.text("end");
+        } else try p.closeBlock(.kw_end);
+    }
+
+    /// I1: an `if` value whose branches are one expression each, the else branch possibly an
+    /// `if` of the same shape (an else-if chain), written on one line in the source.
+    fn lineShaped(p: *Printer, i: Index) bool {
+        const data = p.tree.extraData(ast.If, p.node(i).rhs);
+        const then = p.tree.span(data.then_start, data.then_end);
+        const otherwise = p.tree.span(data.else_start, data.else_end);
+        if (then.len != 1 or otherwise.len != 1) return false;
+        const first = p.node(then[0]);
+        if (first.kind != .expr_stmt or p.tree.tokens[first.main_token - 1].kind != .colon) return false;
+        return switch (p.node(otherwise[0]).kind) {
+            .expr_stmt => true,
+            .if_stmt => p.lineShaped(otherwise[0]),
+            else => false,
+        };
+    }
+
+    /// Tries the `if` value at `i` on the current line, as `attempt` does for an arm.
+    fn attemptIf(p: *Printer, i: Index) E!bool {
+        const s = p.snap();
+        p.flat_depth += 1;
+        p.flatIf(i) catch |err| switch (err) {
+            error.NotFlat, error.CommentInside => {
+                p.restore(s);
+                return false;
+            },
+            else => return err,
+        };
+        p.flat_depth -= 1;
+        try p.flats.append(p.gpa, i);
+        return true;
+    }
+
+    /// `if cond: a else: b`, from either form of the source.
+    fn flatIf(p: *Printer, i: Index) E!void {
+        const n = p.node(i);
+        const data = p.tree.extraData(ast.If, n.rhs);
+        _ = try p.tk(.kw_if);
+        try p.sp();
+        try p.expr(n.lhs);
+        const one_line = p.tree.tokens[p.peek()].kind == .colon;
+        try p.lineColon();
+        try p.sp();
+        try p.expr(p.node(p.tree.span(data.then_start, data.then_end)[0]).lhs);
+        try p.sp();
+        _ = try p.tk(.kw_else);
+        try p.lineColon();
+        try p.sp();
+        const otherwise = p.tree.span(data.else_start, data.else_end)[0];
+        if (p.node(otherwise).kind == .if_stmt) try p.flatIf(otherwise) else try p.expr(p.node(otherwise).lhs);
+        if (!one_line) try p.skip(.kw_end);
+    }
+
+    /// A one-line `if`'s `:`, the source's own when it has one.
+    fn lineColon(p: *Printer) E!void {
+        if (p.tree.tokens[p.peek()].kind == .colon) {
+            _ = try p.tk(.colon);
+        } else try p.text(":");
     }
 
     fn caseNode(p: *Printer, i: Index) E!void {
