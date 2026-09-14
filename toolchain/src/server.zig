@@ -114,6 +114,7 @@ pub const Server = struct {
         defer if (scratch) |*r| r.release();
         const regions = values != null and scratch != null;
         if (regions) machine.useRegions(&values.?, &scratch.?);
+        if (regions) scheduler.main_region = &values.?;
         defer s.sockets.closeAll();
         // Each process runs its updates on a thread of its own, and the threads take turns,
         // so one waiting on the network does not hold up the rest (turns.zig).
@@ -164,6 +165,8 @@ pub const Server = struct {
             for (s.args, out) |a, *o| o.* = .{ .string = a };
             return .{ .list = out };
         }
+        // Under mo run the runtime surface is on (step 23).
+        if (std.mem.eql(u8, name, "runtime")) return vm.variant("Some", &.{.{ .cap = .{ .kind = .runtime } }});
         const cap: Value.Cap = if (std.mem.eql(u8, name, "env"))
             .{ .kind = .env }
         else if (std.mem.eql(u8, name, "stdout"))

@@ -38,12 +38,14 @@ pub const Options = struct {
     tests: bool = false,
     /// Contracts checked by default in the binary; false only for `mo build --no-contracts`.
     contracts: bool = true,
+    /// `mo build --surface`: `platform.runtime` is `Some` in the binary (step 23).
+    surface: bool = false,
 };
 
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
@@ -1774,8 +1776,8 @@ const Emitter = struct {
         }
         if (row.can_wait) {
             // Timed for the events (events.zig, step 23), a Timeout at once included.
-            const since = try e.temp("mo_wait_begin()", .{});
             const call_label = try e.print("\"{s}.{s}\"", .{ recvHead(row.recv), row.name });
+            const since = try e.temp("mo_wait_begin({s})", .{call_label});
             const within = for (args) |a| {
                 const an = e.node(a);
                 if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) break an.lhs;
@@ -2116,6 +2118,8 @@ const Emitter = struct {
         const charge = k.findDecl("Charge");
         try tables.print(gpa, "const uint32_t mo_charge_decl = {s};\n", .{if (charge) |c| try e.print("{d}", .{c}) else "UINT32_MAX"});
         try tables.print(gpa, "const uint32_t mo_request_decl = {d};\nconst uint32_t mo_response_decl = {d};\n", .{ k.preludeStruct("Request").?, k.preludeStruct("Response").? });
+        try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").? });
+        try tables.print(gpa, "const bool mo_surface_built = {s};\n", .{if (e.options.surface) "true" else "false"});
         try tables.print(gpa, "const bool mo_contracts_built = {s};\n\n", .{if (e.options.contracts or e.options.tests) "true" else "false"});
 
         try out.appendSlice(gpa, e.protos.items);

@@ -393,7 +393,7 @@ pub const Turns = struct {
             const p = &sim.procs.items[i];
             if (!p.up or p.queued() == 0) {
                 t.runnable.unset(i);
-            } else if (!p.busy) {
+            } else if (!p.busy and !p.paused) {
                 return @intCast(i);
             }
             i += 1;
@@ -570,7 +570,7 @@ pub const Turns = struct {
                 _ = t.awaiting.remove(seq);
                 return sim.askError(if (p.up) "Timeout" else "Down");
             }
-            if (!p.busy and p.queued() > 0) {
+            if (!p.busy and !p.paused and p.queued() > 0) {
                 try t.handTo(sim, to, .deliver);
             } else if (t.holder != main_turn) {
                 try t.park(sim, deadline);
@@ -578,6 +578,21 @@ pub const Turns = struct {
                 t.idle(sim, null, deadline);
             }
         }
+    }
+
+    /// The surface reads process `id` between updates (surface.zig, step 23): while an update of it
+    /// is on a stack, main hands out turns and a process parks, a millisecond at a time, at most
+    /// `within`. True once none is.
+    pub fn waitIdle(t: *Turns, sim: *Sim, id: u32, within: i64) Error!bool {
+        const deadline = t.now() + @max(within, 0);
+        while (sim.procs.items[id].busy) {
+            const now_ms = t.now();
+            if (now_ms >= deadline) return false;
+            if (t.holder != main_turn) {
+                try t.park(sim, @min(deadline, now_ms + 1));
+            } else if (!try t.step(sim)) t.idle(sim, null, @min(deadline, now_ms + 1));
+        }
+        return true;
     }
 
     /// Between two of main's statements: every turn there is to hand out, without waiting.

@@ -10,6 +10,7 @@
 #include "mo_rt.h"
 
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -36,6 +37,9 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#endif
 
 extern char **environ;
 
@@ -1172,7 +1176,8 @@ static void format_value(Buf *b, MoValue v) {
         case MO_CAP_CONN: buf_str(b, "a Conn"); return;
         case MO_CAP_HTTP: buf_str(b, server_mode ? "an Http" : "Http.fixture()"); return;
         case MO_CAP_HTTP_LISTENER: buf_str(b, "an HttpListener"); return;
-        default: buf_str(b, "an Exchange"); return;
+        case MO_CAP_EXCHANGE: buf_str(b, "an Exchange"); return;
+        default: buf_str(b, !server_mode ? "Runtime.fixture()" : mo_cap_handle(v) == 1 ? "a read-only Runtime" : "a Runtime"); return;
         }
     case MO_HANDLE:
         if (handle_name(v.as.i)) buf_printf(b, "%s #%lld", handle_name(v.as.i), (long long)v.as.i);
@@ -4318,6 +4323,8 @@ typedef struct {
     bool paused;
     uint64_t waited_us, longest_us;
     const char *longest;
+    /* The call its update waits in now, for the surface; NULL or "" when none. */
+    const char *waiting;
 } Proc;
 
 static Proc **procs;
@@ -4409,6 +4416,10 @@ typedef struct {
 } Event;
 
 static Event *ring;
+/* The process mo run --surface starts to serve the surface, which the surface does not list and the
+ * ring does not record: its index in mo_processes, or NOBODY (step 23). */
+static uint32_t hidden_process = NOBODY;
+static bool is_hidden(uint32_t id) { return hidden_process != NOBODY && procs[id]->process == hidden_process; }
 static size_t ring_cap = 4096, ring_len, ring_head;
 static uint64_t ring_total;
 static int64_t ring_wall_ms, ring_mono_us;
@@ -4428,6 +4439,7 @@ static Event event_of(uint8_t kind, uint32_t process) {
 /* The whole ring is reserved at the first event, in pages the system gives as they are touched. */
 static void record_event(Event e) {
     if (ring_cap == 0) return;
+    if (e.process != NOBODY && e.process < nprocs && is_hidden(e.process)) return;
     if (!ring) {
         void *at = mmap(NULL, ring_cap * sizeof(Event), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         if (at == MAP_FAILED) return;
@@ -4454,6 +4466,7 @@ static void waited_in(const char *call, int64_t since, MoValue result, uint32_t 
     if (took < 0) took = 0;
     if (running != NOBODY) {
         Proc *p = procs[running];
+        p->waiting = "";
         p->waited_us += (uint64_t)took;
         if ((uint64_t)took >= p->longest_us) {
             p->longest_us = (uint64_t)took;
@@ -4468,7 +4481,13 @@ static void waited_in(const char *call, int64_t since, MoValue result, uint32_t 
     }
 }
 
-MoValue mo_wait_begin(void) { return mo_time(event_now()); }
+/* A call that waits begins: the events' clock now, and the call the running update waits in. */
+static int64_t begin_wait(const char *call) {
+    if (running != NOBODY) procs[running]->waiting = call;
+    return event_now();
+}
+
+MoValue mo_wait_begin(const char *call) { return mo_time(begin_wait(call)); }
 
 MoValue mo_waited(const char *call, MoValue since, MoValue result) {
     waited_in(call, since.as.i, result, NOBODY);
@@ -4836,7 +4855,7 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
     if (within.as.i < 0) return ask_error(MO_N_TIMEOUT);
     uint32_t to = (uint32_t)handle.as.i;
     ask_on(to);
-    int64_t since = event_now();
+    int64_t since = begin_wait("ask");
     MoValue reply = turns_on ? turns_ask(to, message, within.as.i) : ask_inline(to, message, within);
     waited_in("ask", since, reply, to);
     end_ask();
@@ -4854,6 +4873,8 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     Proc *target = procs[to];
     target->mailbox[target->mailbox_len - 1].has_deadline = true;
     target->mailbox[target->mailbox_len - 1].deadline = waited + within.as.i;
+    /* The surface holds its deliveries (step 23): the message waits, and the ask is Timeout. */
+    if (target->paused) return ask_error(MO_N_TIMEOUT);
     MoValue reply;
     for (;;) {
         Proc *p = procs[to];
@@ -4883,7 +4904,7 @@ static bool deliver_round(uint32_t *delivered) {
     uint32_t n = nprocs;
     for (uint32_t id = 0; id < n; id++) {
         Proc *p = procs[id];
-        if (!p->up || p->busy || queued(p) == 0) continue;
+        if (!p->up || p->busy || p->paused || queued(p) == 0) continue;
         deliver(id);
         progressed = true;
         if (++*delivered == SETTLE_LIMIT && !server_mode) {
@@ -5579,7 +5600,7 @@ static bool next_runnable(uint32_t from, uint32_t to, uint32_t *out) {
         const Proc *p = procs[i];
         if (!p->up || queued(p) == 0) {
             runnable[i / 64] &= ~((uint64_t)1 << (i % 64));
-        } else if (!p->busy) {
+        } else if (!p->busy && !p->paused) {
             *out = (uint32_t)i;
             return true;
         }
@@ -5987,7 +6008,7 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
             forget_awaiting(seq);
             return ask_error(p->up ? MO_N_TIMEOUT : MO_N_DOWN);
         }
-        if (!p->busy && queued(p) > 0) {
+        if (!p->busy && !p->paused && queued(p) > 0) {
             hand_to(to, JOB_DELIVER);
         } else if (holder != MAIN_TURN) {
             park(deadline);
@@ -8195,6 +8216,579 @@ int mo_run_tests(void) {
 }
 
 /* ==== main on Mo.Server (server.zig, main.zig) =========================================== */
+
+/* ---- the runtime surface (surface.zig, step 23): the rows of a Runtime. A read is a snapshot taken
+ * between updates, and a process whose update waits on a stack is read once that update ends, within
+ * the row's deadline; send, pause, and resume act, each an event, and a Runtime narrowed by read_only
+ * refuses them. platform.runtime is Some in a binary built with --surface, and None otherwise. */
+
+#define RUNTIME_READ_ONLY 1
+#define LARGEST_LISTED 5
+
+static MoValue runtime_failure(uint32_t name) { return error_of(mo_variant(name, 0, NULL)); }
+static MoValue text_value(const char *s) { return mo_str(s, (uint32_t)strlen(s)); }
+
+static MoValue text_copy(const char *s, size_t len) {
+    char *out = mo_alloc_bytes(len);
+    if (len) memcpy(out, s, len);
+    return mo_str(out, (uint32_t)len);
+}
+
+/* A process id a row was given, when a process that has not ended has it. */
+static bool live_id(MoValue v, uint32_t *out) {
+    __int128 n = mo_wide(v);
+    if (n < 0 || n >= (__int128)nprocs) return false;
+    uint32_t id = (uint32_t)n;
+    if (procs[id]->ended || is_hidden(id)) return false;
+    *out = id;
+    return true;
+}
+
+/* `n` of a row, no more than there are. */
+static size_t row_count(MoValue v, size_t there) {
+    __int128 n = mo_wide(v);
+    return n < 0 ? 0 : n > (__int128)there ? there : (size_t)n;
+}
+
+static uint64_t region_bytes_of(uint32_t id) {
+    if (!turns_on || id >= nworkers || !workers[id] || workers[id]->ended) return 0;
+    const MoRegion *r = my_vm == &workers[id]->vm ? &mo_heap : &workers[id]->vm.heap;
+    return r->end ? r->top - r->base : 0;
+}
+
+static Event ring_get(size_t i) { return ring[(ring_head + i) % ring_len]; }
+
+static MoValue maybe_id(uint32_t id) { return id == NOBODY ? mo_nothing() : mo_some(mo_u64(id)); }
+
+/* A process's name, or who acts from outside one. */
+static const char *who_name(uint32_t id, const char *name) { return id != NOBODY ? name : server_mode ? "main" : "the test"; }
+
+/* One event as the prelude's Event enum spells it. */
+static MoValue event_value(const Event *e) {
+    MoValue f[7];
+    f[0] = mo_time(ring_wall_ms + (e->at - ring_mono_us) / 1000);
+    MoValue id = mo_u64(e->process), name = text_value(e->process_name);
+    switch (e->kind) {
+    case EV_UPDATED:
+        f[1] = id, f[2] = name, f[3] = text_value(e->name), f[4] = mo_u64(e->took_us), f[5] = mo_u64(e->waited_us), f[6] = text_value(e->call);
+        return mo_variant(MO_N_UPDATED, 7, f);
+    case EV_STARTED: f[1] = id, f[2] = name; return mo_variant(MO_N_STARTED, 3, f);
+    case EV_ENDED: f[1] = id, f[2] = name; return mo_variant(MO_N_ENDED, 3, f);
+    case EV_RESTARTED: f[1] = id, f[2] = name, f[3] = mo_u64(e->count); return mo_variant(MO_N_RESTARTED, 4, f);
+    case EV_CRASHED:
+        f[1] = id, f[2] = name, f[3] = mo_u64(e->seed), f[4] = text_value(e->clause), f[5] = text_value(e->message), f[6] = text_value(e->state);
+        return mo_variant(MO_N_CRASHED, 7, f);
+    case EV_OVERFLOWED:
+        f[1] = maybe_id(e->other), f[2] = text_value(who_name(e->other, e->other_name)), f[3] = id, f[4] = name;
+        return mo_variant(MO_N_OVERFLOWED, 5, f);
+    case EV_TIMED_OUT:
+        f[1] = maybe_id(e->process), f[2] = text_value(who_name(e->process, e->process_name)), f[3] = text_value(e->call);
+        return mo_variant(MO_N_TIMED_OUT, 4, f);
+    case EV_SOURCE_PAUSED:
+    case EV_SOURCE_RESUMED:
+        f[1] = text_value(e->name), f[2] = id, f[3] = name, f[4] = mo_u64(e->count);
+        return mo_variant(e->kind == EV_SOURCE_PAUSED ? MO_N_SOURCE_PAUSED : MO_N_SOURCE_RESUMED, 5, f);
+    case EV_SENT: f[1] = id, f[2] = name, f[3] = text_value(e->message); return mo_variant(MO_N_SENT, 4, f);
+    case EV_PAUSED: f[1] = id, f[2] = name; return mo_variant(MO_N_PAUSED, 3, f);
+    default: f[1] = id, f[2] = name; return mo_variant(MO_N_RESUMED, 3, f);
+    }
+}
+
+static MoValue process_info(uint32_t id) {
+    const Proc *p = procs[id];
+    MoValue f[9];
+    f[0] = mo_u64(id);
+    f[1] = text_value(name_of(id));
+    f[2] = mo_bool(p->up);
+    f[3] = mo_u64(queued(p));
+    f[4] = mo_u64(mo_processes[p->process].mailbox);
+    f[5] = p->busy && p->waiting && p->waiting[0] ? mo_some(text_value(p->waiting)) : mo_nothing();
+    f[6] = mo_u64(p->restarted);
+    f[7] = mo_u64(region_bytes_of(id));
+    f[8] = mo_bool(p->paused);
+    return mo_record(mo_process_info_decl, 9, f);
+}
+
+/* Under main, while an update of process `id` is on a stack, main hands out turns and a process parks,
+ * a millisecond at a time, at most `within` (turns.zig, waitIdle). True once none is. */
+static bool turns_wait_idle(uint32_t id, int64_t within) {
+    int64_t deadline = now_ms() + (within > 0 ? within : 0);
+    while (procs[id]->busy) {
+        int64_t now = now_ms();
+        if (now >= deadline) return false;
+        int64_t until = deadline < now + 1 ? deadline : now + 1;
+        if (holder != MAIN_TURN) park(until);
+        else if (!step()) idle(NULL, true, until);
+    }
+    return true;
+}
+
+MO_ROW(mo_r_Platform_runtime) {
+    (void)a;
+    (void)kind;
+    platform_only("Platform", "runtime");
+    return mo_surface_built ? mo_some(mo_cap(MO_CAP_RUNTIME, 0, 0)) : mo_nothing();
+}
+
+MO_ROW(mo_r_Runtime_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_RUNTIME, 0, 0); }
+MO_ROW(mo_r_Runtime_read_only) { (void)a; (void)kind; return mo_cap(MO_CAP_RUNTIME, RUNTIME_READ_ONLY, 0); }
+
+MO_ROW(mo_r_Runtime_processes) {
+    (void)a;
+    (void)kind;
+    MoValue *out = mo_alloc_values(nprocs);
+    uint32_t n = 0;
+    for (uint32_t id = 0; id < nprocs; id++) {
+        if (!procs[id]->ended && !is_hidden(id)) out[n++] = process_info(id);
+    }
+    return mo_list(out, n);
+}
+
+MO_ROW(mo_r_Runtime_state) {
+    (void)kind;
+    uint32_t id;
+    if (!live_id(a[1], &id)) return runtime_failure(MO_N_NO_PROCESS);
+    if (procs[id]->busy && (!turns_on || running == id || !turns_wait_idle(id, a[2].as.i))) return runtime_failure(MO_N_TIMEOUT);
+    char *s = render(procs[id]->state);
+    MoValue text = text_copy(s, strlen(s));
+    free(s);
+    return ok_of(text);
+}
+
+/* The last `n` events that `keep` keeps, oldest first. */
+static MoValue last_events(size_t n, bool (*keep)(const Event *, __int128), __int128 arg) {
+    MoValue *out = mo_alloc_values(n);
+    size_t got = 0;
+    for (size_t i = ring_len; i > 0 && got < n; i--) {
+        Event e = ring_get(i - 1);
+        if (keep(&e, arg)) out[got++] = event_value(&e);
+    }
+    for (size_t i = 0; i < got / 2; i++) {
+        MoValue x = out[i];
+        out[i] = out[got - 1 - i];
+        out[got - 1 - i] = x;
+    }
+    return mo_list(out, (uint32_t)got);
+}
+
+static bool of_process(const Event *e, __int128 id) { return (__int128)e->process == id; }
+static bool is_crash(const Event *e, __int128 unused) { (void)unused; return e->kind == EV_CRASHED; }
+
+MO_ROW(mo_r_Runtime_recent) { (void)kind; return last_events(row_count(a[2], ring_len), of_process, mo_wide(a[1])); }
+MO_ROW(mo_r_Runtime_crashes) { (void)kind; return last_events(row_count(a[1], ring_len), is_crash, 0); }
+
+MO_ROW(mo_r_Runtime_events) {
+    (void)kind;
+    int64_t at = ring_mono_us + (a[1].as.i - ring_wall_ms) * 1000;
+    size_t lo = 0, hi = ring_len;
+    while (lo < hi) {
+        size_t mid = (lo + hi) / 2;
+        if (ring_get(mid).at < at) lo = mid + 1;
+        else hi = mid;
+    }
+    size_t n = row_count(a[2], ring_len - lo);
+    MoValue *out = mo_alloc_values(n);
+    for (size_t i = 0; i < n; i++) {
+        Event e = ring_get(lo + i);
+        out[i] = event_value(&e);
+    }
+    return mo_list(out, (uint32_t)n);
+}
+
+typedef struct { uint64_t took; size_t index; } Timed;
+
+static int longer_first(const void *x, const void *y) {
+    const Timed *a = x, *b = y;
+    if (a->took != b->took) return a->took > b->took ? -1 : 1;
+    return a->index < b->index ? -1 : a->index > b->index;
+}
+
+/* The n longest updates the ring holds, longest first; of two as long, the earlier first. */
+MO_ROW(mo_r_Runtime_slowest) {
+    (void)kind;
+    Timed *updates = xmalloc((ring_len ? ring_len : 1) * sizeof(Timed));
+    size_t m = 0;
+    for (size_t i = 0; i < ring_len; i++) {
+        Event e = ring_get(i);
+        if (e.kind == EV_UPDATED) updates[m++] = (Timed){e.took_us, i};
+    }
+    qsort(updates, m, sizeof(Timed), longer_first);
+    size_t n = row_count(a[1], m);
+    MoValue *out = mo_alloc_values(n);
+    for (size_t i = 0; i < n; i++) {
+        Event e = ring_get(updates[i].index);
+        out[i] = event_value(&e);
+    }
+    free(updates);
+    return mo_list(out, (uint32_t)n);
+}
+
+MO_ROW(mo_r_Runtime_sources) {
+    (void)a;
+    (void)kind;
+    MoValue *out = mo_alloc_values(nsources);
+    uint32_t n = 0;
+    for (size_t i = 0; i < nsources; i++) {
+        const Source *s = sources[i];
+        /* A request being read counts in its listener's in flight. */
+        if (s->done || s->kind == SRC_REQUEST || is_hidden(s->to)) continue;
+        MoValue f[5] = {text_value(source_label(s->kind)), mo_u64(s->to), text_value(name_of(s->to)), mo_u64(s->inflight), mo_bool(s->paused)};
+        out[n++] = mo_record(mo_source_info_decl, 5, f);
+    }
+    return mo_list(out, n);
+}
+
+/* The program's resident memory now, in bytes. */
+static uint64_t resident_bytes(void) {
+#if defined(__APPLE__)
+    struct mach_task_basic_info info;
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &count) != KERN_SUCCESS) return 0;
+    return info.resident_size;
+#elif defined(__linux__)
+    FILE *f = fopen("/proc/self/statm", "r");
+    unsigned long size = 0, pages = 0;
+    if (f) {
+        if (fscanf(f, "%lu %lu", &size, &pages) != 2) pages = 0;
+        fclose(f);
+    }
+    return (uint64_t)pages * (uint64_t)sysconf(_SC_PAGESIZE);
+#else
+    return 0;
+#endif
+}
+
+MO_ROW(mo_r_Runtime_memory) {
+    (void)a;
+    (void)kind;
+    uint64_t regions = 0;
+    if (server_mode && mo_compacts) {
+        const MoRegion *m = my_vm == &main_vm ? &mo_heap : &main_vm.heap;
+        if (m->end) regions += m->top - m->base;
+    }
+    uint32_t top[LARGEST_LISTED];
+    uint64_t top_bytes[LARGEST_LISTED];
+    uint32_t ntop = 0;
+    for (uint32_t id = 0; id < nprocs; id++) {
+        if (procs[id]->ended || is_hidden(id)) continue;
+        uint64_t b = region_bytes_of(id);
+        regions += b;
+        uint32_t k = ntop;
+        if (ntop < LARGEST_LISTED) {
+            ntop++;
+        } else {
+            if (b <= top_bytes[LARGEST_LISTED - 1]) continue;
+            k = LARGEST_LISTED - 1;
+        }
+        while (k > 0 && top_bytes[k - 1] < b) {
+            top[k] = top[k - 1];
+            top_bytes[k] = top_bytes[k - 1];
+            k--;
+        }
+        top[k] = id;
+        top_bytes[k] = b;
+    }
+    MoValue *largest = mo_alloc_values(ntop);
+    for (uint32_t i = 0; i < ntop; i++) largest[i] = process_info(top[i]);
+    MoValue f[5] = {mo_u64(resident_bytes()), mo_u64(regions), mo_u64(stat_packed_bytes), mo_u64(ring ? ring_cap * sizeof(Event) : 0), mo_list(largest, ntop)};
+    return mo_record(mo_memory_info_decl, 5, f);
+}
+
+/* ---- a message from the text a report prints it as (surface.zig, Parser) */
+
+typedef struct { const char *s; size_t n, at; char *why; } TextIn;
+
+static bool in_fail(TextIn *in, const char *format, ...) __attribute__((format(printf, 2, 3)));
+static bool in_fail(TextIn *in, const char *format, ...) {
+    char what[512];
+    va_list ap;
+    va_start(ap, format);
+    vsnprintf(what, sizeof what, format, ap);
+    va_end(ap);
+    if (!in->why) in->why = text_of("%s, at byte %zu", what, in->at);
+    return false;
+}
+
+static void in_space(TextIn *in) {
+    while (in->at < in->n && isspace((unsigned char)in->s[in->at])) in->at++;
+}
+
+static bool in_eat(TextIn *in, const char *lit) {
+    in_space(in);
+    size_t len = strlen(lit);
+    if (in->n - in->at < len || memcmp(in->s + in->at, lit, len) != 0) return false;
+    in->at += len;
+    return true;
+}
+
+static bool in_expect(TextIn *in, const char *lit) { return in_eat(in, lit) || in_fail(in, "expected %s", lit); }
+
+static size_t in_name(TextIn *in, const char **start) {
+    in_space(in);
+    *start = in->s + in->at;
+    size_t from = in->at;
+    while (in->at < in->n && (isalnum((unsigned char)in->s[in->at]) || in->s[in->at] == '_' || in->s[in->at] == '?')) in->at++;
+    return in->at - from;
+}
+
+static bool same_name(const char *name, const char *s, size_t len) { return strlen(name) == len && memcmp(name, s, len) == 0; }
+
+static bool in_integer(TextIn *in, __int128 *out) {
+    in_space(in);
+    size_t start = in->at;
+    bool negative = in->at < in->n && in->s[in->at] == '-';
+    if (negative) in->at++;
+    __int128 n = 0;
+    size_t digits = 0;
+    for (; in->at < in->n && (isdigit((unsigned char)in->s[in->at]) || in->s[in->at] == '_'); in->at++) {
+        if (in->s[in->at] == '_') continue;
+        if (n > ((((__int128)1) << 125) - 1) / 5) return in_fail(in, "that number is too large");
+        n = n * 10 + (in->s[in->at] - '0');
+        digits++;
+    }
+    if (digits == 0) {
+        in->at = start;
+        return in_fail(in, "expected a number");
+    }
+    *out = negative ? -n : n;
+    return true;
+}
+
+static bool parse_value(TextIn *in, uint32_t t, MoValue *out);
+
+static bool parse_fields(TextIn *in, const MoField *fields, uint32_t n, const char *owner, MoValue **out) {
+    MoValue *xs = mo_alloc_values(n);
+    *out = xs;
+    if (n == 0) return true;
+    if (!in_expect(in, "(")) return false;
+    for (uint32_t i = 0; i < n; i++) {
+        if (i > 0 && !in_expect(in, ",")) return false;
+        size_t save = in->at;
+        const char *label;
+        size_t len = in_name(in, &label);
+        if (len > 0 && in_eat(in, ":")) {
+            if (!same_name(fields[i].name, label, len)) return in_fail(in, "%s takes %s here, not %.*s", owner, fields[i].name, (int)len, label);
+        } else {
+            in->at = save;
+        }
+        if (!parse_value(in, fields[i].type, &xs[i])) return false;
+    }
+    return in_expect(in, ")");
+}
+
+static bool parse_variant(TextIn *in, const MoDecl *d, const char *what, MoValue *out) {
+    const char *name;
+    size_t len = in_name(in, &name);
+    for (uint32_t k = 0; k < d->nvariants; k++) {
+        const MoVariantDef *def = &mo_variants[d->variants + k];
+        if (!same_name(mo_names[def->name], name, len)) continue;
+        MoValue *xs;
+        if (!parse_fields(in, def->fields, def->nfields, mo_names[def->name], &xs)) return false;
+        *out = mo_variant(def->name, def->nfields, xs);
+        return true;
+    }
+    if (len == 0) return in_fail(in, "nothing is not %s", what);
+    return in_fail(in, "%.*s is not %s", (int)len, name, what);
+}
+
+static const char *const int_kind_names[] = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64"};
+
+static bool parse_value(TextIn *in, uint32_t t, MoValue *out) {
+    const MoType *ty = &mo_types[t];
+    in_space(in);
+    switch (ty->tag) {
+    case MO_T_ALIAS: return parse_value(in, ty->b, out);
+    case MO_T_BOOL:
+        if (in_eat(in, "true")) return *out = mo_bool(true), true;
+        if (in_eat(in, "false")) return *out = mo_bool(false), true;
+        return in_fail(in, "expected true or false");
+    case MO_T_INT: {
+        __int128 n;
+        if (!in_integer(in, &n)) return false;
+        if (n < kind_min(ty->a) || n > kind_max(ty->a)) {
+            char digits[48];
+            size_t len = 0;
+            unsigned __int128 u = n < 0 ? (unsigned __int128)(-n) : (unsigned __int128)n;
+            do digits[len++] = (char)('0' + (int)(u % 10)); while ((u /= 10) > 0);
+            if (n < 0) digits[len++] = '-';
+            char spelled[48];
+            for (size_t i = 0; i < len; i++) spelled[i] = digits[len - 1 - i];
+            spelled[len] = 0;
+            return in_fail(in, "%s does not fit a %s", spelled, int_kind_names[ty->a]);
+        }
+        *out = mo_i128(n);
+        return true;
+    }
+    case MO_T_FLOAT: {
+        size_t start = in->at;
+        while (in->at < in->n && strchr("+-.0123456789eE", in->s[in->at]) && in->s[in->at]) in->at++;
+        char number[64];
+        size_t len = in->at - start;
+        if (len == 0 || len >= sizeof number) return in_fail(in, "expected a number");
+        memcpy(number, in->s + start, len);
+        number[len] = 0;
+        char *end;
+        double f = strtod(number, &end);
+        if (*end) return in_fail(in, "expected a number");
+        *out = mo_f64(f);
+        return true;
+    }
+    case MO_T_STRING: {
+        if (!in_expect(in, "\"")) return false;
+        Buf b = {0};
+        for (;;) {
+            if (in->at == in->n) {
+                free(b.p);
+                return in_fail(in, "the string does not end");
+            }
+            char ch = in->s[in->at++];
+            if (ch == '"') break;
+            if (ch == '\\' && in->at < in->n && (in->s[in->at] == '"' || in->s[in->at] == '\\')) buf_byte(&b, in->s[in->at++]);
+            else buf_byte(&b, ch);
+        }
+        *out = text_copy(b.p, b.len);
+        free(b.p);
+        return true;
+    }
+    case MO_T_DURATION: {
+        __int128 n;
+        if (!in_integer(in, &n) || !in_expect(in, ".ms")) return false;
+        if (n < INT64_MIN || n > INT64_MAX) return in_fail(in, "that duration is too long");
+        *out = mo_duration((int64_t)n);
+        return true;
+    }
+    case MO_T_TIME: {
+        if (!in_expect(in, "Time.fixture()")) return false;
+        __int128 at = FIXTURE_TIME, n;
+        if (in_eat(in, "+")) {
+            if (!in_integer(in, &n) || !in_expect(in, ".ms")) return false;
+            at += n;
+        } else if (in_eat(in, "-")) {
+            if (!in_integer(in, &n) || !in_expect(in, ".ms")) return false;
+            at -= n;
+        }
+        if (at < INT64_MIN || at > INT64_MAX) return in_fail(in, "that time is out of range");
+        *out = mo_time((int64_t)at);
+        return true;
+    }
+    case MO_T_LIST: {
+        if (!in_expect(in, "[")) return false;
+        Values items = {NULL, 0, 0};
+        if (!in_eat(in, "]")) {
+            for (;;) {
+                MoValue x;
+                if (!parse_value(in, ty->a, &x)) {
+                    free(items.xs);
+                    return false;
+                }
+                values_push(&items, x);
+                if (!in_eat(in, ",")) break;
+            }
+            if (!in_expect(in, "]")) {
+                free(items.xs);
+                return false;
+            }
+        }
+        MoValue *xs = mo_alloc_values(items.n);
+        if (items.n) memcpy(xs, items.xs, items.n * sizeof(MoValue));
+        free(items.xs);
+        *out = mo_list(xs, (uint32_t)items.n);
+        return true;
+    }
+    case MO_T_TUPLE: {
+        if (!in_expect(in, "(")) return false;
+        MoValue *xs = mo_alloc_values(ty->b);
+        for (uint32_t i = 0; i < ty->b; i++) {
+            if (i > 0 && !in_expect(in, ",")) return false;
+            if (!parse_value(in, ty->items[i], &xs[i])) return false;
+        }
+        if (!in_expect(in, ")")) return false;
+        *out = mo_tuple_of(xs, ty->b);
+        return true;
+    }
+    case MO_T_OPTION: {
+        if (in_eat(in, "None")) return *out = mo_nothing(), true;
+        MoValue x;
+        if (!in_expect(in, "Some(") || !parse_value(in, ty->a, &x) || !in_expect(in, ")")) return false;
+        *out = mo_some(x);
+        return true;
+    }
+    case MO_T_RESULT: {
+        MoValue x;
+        if (in_eat(in, "Ok(")) {
+            if (!parse_value(in, ty->a, &x) || !in_expect(in, ")")) return false;
+            *out = ok_of(x);
+            return true;
+        }
+        if (!in_expect(in, "Error(") || !parse_value(in, ty->b, &x) || !in_expect(in, ")")) return false;
+        *out = error_of(x);
+        return true;
+    }
+    case MO_T_DECL: {
+        const MoDecl *d = &mo_decls[ty->a];
+        if (d->kind == MO_D_STRUCT) {
+            const char *name;
+            size_t len = in_name(in, &name);
+            if (!same_name(d->name, name, len)) return in_fail(in, "expected a %s", d->name);
+            MoValue *xs;
+            if (!parse_fields(in, d->fields, d->nfields, d->name, &xs)) return false;
+            MoValue v = {MO_RECORD, ty->a, {0}};
+            v.as.xs = xs;
+            *out = v;
+            return true;
+        }
+        if (d->kind == MO_D_ENUM || d->kind == MO_D_PRELUDE_ENUM) return parse_variant(in, d, "one of its variants", out);
+        break;
+    }
+    default: break;
+    }
+    return in_fail(in, "a %s is not made from text by the surface", ty->name);
+}
+
+MO_ROW(mo_r_Runtime_send) {
+    (void)kind;
+    if (mo_cap_handle(a[0]) == RUNTIME_READ_ONLY) return runtime_failure(MO_N_READ_ONLY);
+    uint32_t id;
+    if (!live_id(a[1], &id) || !procs[id]->up) return runtime_failure(MO_N_NO_PROCESS);
+    const MoProcess *process = &mo_processes[procs[id]->process];
+    TextIn in = {a[2].as.s, a[2].aux, 0, NULL};
+    MoValue message;
+    bool parsed = parse_variant(&in, &mo_decls[process->decl], "a message this process declares", &message);
+    if (parsed) {
+        in_space(&in);
+        if (in.at != in.n) parsed = in_fail(&in, "%s is followed by more text", mo_names[mo_vname(message)]);
+    }
+    if (!parsed) {
+        MoValue why = text_copy(in.why, strlen(in.why));
+        free(in.why);
+        return error_of(mo_variant(MO_N_UNPARSED, 1, &why));
+    }
+    if (queued(procs[id]) >= process->mailbox) return runtime_failure(MO_N_MAILBOX_FULL);
+    Parcel *parcel = packs ? pack(message) : NULL;
+    enqueue(id, parcel ? parcel->value : message, parcel);
+    Event e = event_of(EV_SENT, id);
+    e.name = mo_names[mo_vname(message)];
+    char *copy = xmalloc(a[2].aux + 1);
+    memcpy(copy, a[2].as.s, a[2].aux);
+    copy[a[2].aux] = 0;
+    e.message = copy;
+    record_event(e);
+    return ok_none();
+}
+
+static MoValue runtime_hold(const MoValue *a, bool pause) {
+    if (mo_cap_handle(a[0]) == RUNTIME_READ_ONLY) return runtime_failure(MO_N_READ_ONLY);
+    uint32_t id;
+    if (!live_id(a[1], &id)) return runtime_failure(MO_N_NO_PROCESS);
+    Proc *p = procs[id];
+    p->paused = pause;
+    record_event(event_of(pause ? EV_PAUSED : EV_RESUMED, id));
+    if (!pause && queued(p) > 0 && turns_on) mark_runnable(id);
+    return ok_none();
+}
+
+MO_ROW(mo_r_Runtime_pause) { (void)kind; return runtime_hold(a, true); }
+MO_ROW(mo_r_Runtime_resume) { (void)kind; return runtime_hold(a, false); }
 
 void mo_program_start(int argc, char **argv) {
     server_mode = true;

@@ -780,10 +780,10 @@ const Checker = struct {
 
     fn registerType(c: *Checker, kind: DeclKind, name_tok: u32, n: Index) Error!?u32 {
         const name = c.text(name_tok);
-        if (prelude.findType(name) != null) {
+        if (prelude.findType(name)) |pt| if (!pt.hideable) {
             try c.reportTok(.declared_twice, name_tok, try c.print("{s} is already a prelude type", .{name}));
             return null;
-        }
+        };
         if (c.type_names.get(name)) |prev| {
             const how = if (c.decls.items[prev].module != c.module) "declared here and brought in by a use line" else "declared twice in this module";
             try c.reportTok(.declared_twice, name_tok, try c.print("{s} is {s}", .{ name, how }));
@@ -1224,7 +1224,8 @@ const Checker = struct {
             try c.reportTok(.unknown_type, path.main_token, try c.print("there is no type named {s}; a use line brings a type in by its own name", .{full}));
             return types.unknown;
         }
-        if (prelude.findType(name)) |pt| {
+        // A module's own Event hides the prelude's from its code (prelude.Type.hideable).
+        if (prelude.findType(name)) |pt| if (!pt.hideable or c.type_names.get(name) == null) {
             if (args.len != pt.arity) {
                 try c.reportTok(.unknown_type, path.main_token, try c.print("{s} takes {d} type argument{s}, found {d}", .{ name, pt.arity, if (pt.arity == 1) "" else "s", args.len }));
                 return types.unknown;
@@ -1247,7 +1248,7 @@ const Checker = struct {
                     return types.unknown;
                 },
             };
-        }
+        };
         if (std.mem.eql(u8, name, "Self")) {
             if (ctx.self_ok) return types.self_;
             try c.reportTok(.unknown_type, path.main_token, "Self names the implementing type, so it appears only in a trait");
@@ -3536,6 +3537,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
         .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
+        .{ "Runtime", types.cap(.runtime) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

@@ -29,6 +29,10 @@ pub const Type = struct {
     arity: u8 = 0,
     kind: TypeKind,
     origin: Origin = .grammar,
+    /// A module's own type of this name hides the prelude's from the module's code, as its own
+    /// `Request` does; the prelude's rows still mean the prelude's (step 23: `Event` is a name
+    /// programs already give their own types).
+    hideable: bool = false,
 };
 
 pub const types = [_]Type{
@@ -73,6 +77,10 @@ pub const types = [_]Type{
     .{ .name = "JsonError", .kind = .error_enum, .origin = .stdlib },
     .{ .name = "NetError", .kind = .error_enum, .origin = .stdlib },
     .{ .name = "HttpError", .kind = .error_enum, .origin = .stdlib },
+    // The runtime surface (step 23).
+    .{ .name = "Runtime", .kind = .capability, .origin = .stdlib },
+    .{ .name = "RuntimeError", .kind = .error_enum, .origin = .stdlib, .hideable = true },
+    .{ .name = "Event", .kind = .enum_, .origin = .stdlib, .hideable = true },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -117,6 +125,32 @@ pub const structs = [_]Struct{
         .{ .name = "status", .type = "UInt16" },
         .{ .name = "headers", .type = "Map(String, String)", .optional = true },
         .{ .name = "body", .type = "String" },
+    } },
+    // The runtime surface (step 23): what `Runtime.processes`, `sources`, and `memory` give.
+    .{ .name = "ProcessInfo", .origin = .stdlib, .fields = &.{
+        .{ .name = "id", .type = "UInt64" },
+        .{ .name = "name", .type = "String" },
+        .{ .name = "alive", .type = "Bool" },
+        .{ .name = "mailbox", .type = "UInt64" },
+        .{ .name = "bound", .type = "UInt64" },
+        .{ .name = "waiting_in", .type = "Option(String)" },
+        .{ .name = "restarts", .type = "UInt64" },
+        .{ .name = "region_bytes", .type = "UInt64" },
+        .{ .name = "paused", .type = "Bool" },
+    } },
+    .{ .name = "SourceInfo", .origin = .stdlib, .fields = &.{
+        .{ .name = "kind", .type = "String" },
+        .{ .name = "target", .type = "UInt64" },
+        .{ .name = "name", .type = "String" },
+        .{ .name = "in_flight", .type = "UInt64" },
+        .{ .name = "paused", .type = "Bool" },
+    } },
+    .{ .name = "MemoryInfo", .origin = .stdlib, .fields = &.{
+        .{ .name = "resident_bytes", .type = "UInt64" },
+        .{ .name = "region_bytes", .type = "UInt64" },
+        .{ .name = "packed_bytes", .type = "UInt64" },
+        .{ .name = "event_bytes", .type = "UInt64" },
+        .{ .name = "largest", .type = "List(ProcessInfo)" },
     } },
 };
 
@@ -173,6 +207,23 @@ pub const variants = [_]Variant{
     .{ .owner = "HttpError", .name = "Malformed", .origin = .stdlib },
     .{ .owner = "HttpError", .name = "TooLarge", .origin = .stdlib },
     .{ .owner = "HttpError", .name = "Unsupported", .origin = .stdlib },
+    .{ .owner = "RuntimeError", .name = "NoProcess", .origin = .stdlib },
+    .{ .owner = "RuntimeError", .name = "Unparsed", .fields = &.{.{ .name = "why", .type = "String" }}, .origin = .stdlib },
+    .{ .owner = "RuntimeError", .name = "ReadOnly", .origin = .stdlib },
+    .{ .owner = "RuntimeError", .name = "MailboxFull", .origin = .stdlib },
+    .{ .owner = "RuntimeError", .name = "Timeout", .origin = .stdlib },
+    .{ .owner = "Event", .name = "Updated", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "message", .type = "String" }, .{ .name = "took_us", .type = "UInt64" }, .{ .name = "waited_us", .type = "UInt64" }, .{ .name = "longest", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Ended", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Restarted", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "restarts", .type = "UInt64" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Crashed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "seed", .type = "UInt64" }, .{ .name = "clause", .type = "String" }, .{ .name = "message", .type = "String" }, .{ .name = "state", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Overflowed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "sender", .type = "Option(UInt64)" }, .{ .name = "sender_name", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "TimedOut", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "Option(UInt64)" }, .{ .name = "name", .type = "String" }, .{ .name = "call", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "SourcePaused", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "source", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "in_flight", .type = "UInt64" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "SourceResumed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "source", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "in_flight", .type = "UInt64" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Sent", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "message", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Paused", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Resumed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "process", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`
@@ -348,6 +399,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "clock", .ret = "Clock" },
     .{ .recv = "Platform", .name = "net", .ret = "Net", .origin = .stdlib },
     .{ .recv = "Platform", .name = "http", .ret = "Http", .origin = .stdlib },
+    .{ .recv = "Platform", .name = "runtime", .ret = "Option(Runtime)", .origin = .stdlib },
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
@@ -380,6 +432,22 @@ pub const fns = [_]Fn{
     .{ .recv = "Exchange", .name = "reply", .params = &.{"Response"}, .ret = "Result(none, HttpError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Http", .name = "send", .params = &.{"Request"}, .named = &.{ .{ .name = "host", .type = "String" }, .{ .name = "port", .type = "UInt16" } }, .ret = "Result(Response, HttpError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Http", .on_type = true, .name = "fixture", .ret = "Http", .only = .tests, .origin = .stdlib },
+    // The runtime surface (step 23): what the processes are doing, read between updates; send,
+    // pause, and resume act, and a Runtime narrowed by read_only refuses them. Each read takes
+    // within:, since a process in the middle of an update is read once the update ends.
+    .{ .recv = "Runtime", .name = "processes", .ret = "List(ProcessInfo)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "state", .params = &.{"UInt64"}, .ret = "Result(String, RuntimeError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "recent", .params = &.{ "UInt64", "UInt64" }, .ret = "List(Event)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "events", .named = &.{ .{ .name = "since", .type = "Time" }, .{ .name = "n", .type = "UInt64" } }, .ret = "List(Event)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "crashes", .params = &.{"UInt64"}, .ret = "List(Event)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "sources", .ret = "List(SourceInfo)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "memory", .ret = "MemoryInfo", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "slowest", .params = &.{"UInt64"}, .ret = "List(Event)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "send", .params = &.{ "UInt64", "String" }, .ret = "Result(none, RuntimeError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "pause", .params = &.{"UInt64"}, .ret = "Result(none, RuntimeError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "resume", .params = &.{"UInt64"}, .ret = "Result(none, RuntimeError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Runtime", .name = "read_only", .ret = "Runtime", .origin = .stdlib },
+    .{ .recv = "Runtime", .on_type = true, .name = "fixture", .ret = "Runtime", .only = .tests, .origin = .stdlib },
     // JSON
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },

@@ -121,6 +121,8 @@ pub const Proc = struct {
     waited_us: u64 = 0,
     longest_us: u64 = 0,
     longest: []const u8 = "",
+    /// The call its update waits in now, for the surface (surface.zig); "" when none.
+    waiting: []const u8 = "",
 
     pub fn queued(p: *const Proc) usize {
         return p.mailbox.items.len - p.head;
@@ -203,6 +205,11 @@ pub const Sim = struct {
     sources: sources_mod.Sources = .{},
     /// What the processes did, most recent last (events.zig, step 23).
     ring: events_mod.Ring = .{},
+    /// The process `mo run --surface` starts to serve the surface, which the surface does not list
+    /// and the ring does not record (step 23): its index in `Program.processes`, or none.
+    hidden_process: u32 = none,
+    /// Under `mo run`, main's region, which the surface counts.
+    main_region: ?*const @import("region.zig").Region = null,
 
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
@@ -339,11 +346,23 @@ pub const Sim = struct {
     /// An event, at the events' clock, naming the processes it is about as they are now.
     pub fn record(sim: *Sim, e: events_mod.Event) void {
         if (sim.ring.cap == 0) return;
+        if (e.process != events_mod.nobody and e.process < sim.procs.items.len and sim.hidden(e.process)) return;
         var x = e;
         x.at = sim.eventNow();
         if (x.process != events_mod.nobody and x.process_name.len == 0) x.process_name = sim.nameOf(x.process);
         if (x.other != events_mod.nobody and x.other_name.len == 0) x.other_name = sim.nameOf(x.other);
         sim.ring.record(x);
+    }
+
+    /// A call that waits begins: the events' clock now, and the call the running update waits in.
+    pub fn beginWait(sim: *Sim, call: []const u8) i64 {
+        if (sim.running) |id| sim.procs.items[id].waiting = call;
+        return sim.eventNow();
+    }
+
+    /// Process `id` serves the surface, which does not show it (step 23).
+    pub fn hidden(sim: *const Sim, id: u32) bool {
+        return sim.hidden_process != none and sim.procs.items[id].process == sim.hidden_process;
     }
 
     /// A call that waits, begun at `since` on the events' clock, gave `result`: its time counts
@@ -352,6 +371,7 @@ pub const Sim = struct {
         const took: u64 = @intCast(@max(sim.eventNow() - since, 0));
         if (sim.running) |id| {
             const p = &sim.procs.items[id];
+            p.waiting = "";
             p.waited_us += took;
             if (took >= p.longest_us) {
                 p.longest_us = took;
@@ -484,7 +504,7 @@ pub const Sim = struct {
     pub fn ask(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         defer sim.endAsk();
         try sim.askOn(to);
-        const since = sim.eventNow();
+        const since = sim.beginWait("ask");
         const reply = if (sim.turns) |t| try t.ask(sim, to, message, within) else try sim.askInline(to, message, within);
         sim.waitedIn("ask", since, reply, to);
         try sim.checkDoomed();
@@ -500,6 +520,8 @@ pub const Sim = struct {
         const seq = try sim.enqueue(sim.running orelse test_runner, to, message, null);
         const target = &sim.procs.items[to];
         target.mailbox.items[target.mailbox.items.len - 1].deadline = waited + within;
+        // The surface holds its deliveries (step 23): the message waits, and the ask is Timeout.
+        if (target.paused) return sim.askError("Timeout");
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
         if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
@@ -562,7 +584,7 @@ pub const Sim = struct {
         // A process an update starts waits for the next round.
         for (order.items) |id| {
             const p = &sim.procs.items[id];
-            if (!p.up or p.busy or p.queued() == 0) continue;
+            if (!p.up or p.busy or p.paused or p.queued() == 0) continue;
             _ = try sim.deliver(id);
             progressed = true;
             delivered.* += 1;

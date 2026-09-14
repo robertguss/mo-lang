@@ -32,6 +32,7 @@
 //!     --tests            the binary runs the file's tests and prints what mo test prints,
 //!                        process tests in the fixed order (--sim has no compiled form)
 //!     --target <triple>  cross-compiles for a zig target, such as x86_64-linux-musl
+//!     --surface          platform.runtime is Some in the binary, as under mo run (step 23)
 //!   mo fix   <file.mo>   applies every fix of confidence 100 (fix.zig: MO0501, MO0307,
 //!                        MO0312, and MO0101 at a one-line if), formats, and rewrites the file;
 //!                        one line per fix
@@ -48,7 +49,7 @@ const usage =
     \\usage: mo check [--recipe Module.Recipe] <file.mo> [--json]
     \\       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]
     \\       mo run [--clock ISO-8601] [--events N] <file.mo> [--json] [-- args...]
-    \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--json]
+    \\       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--surface] [--json]
     \\       mo fmt [--check | --stdout] <file.mo> [--json]
     \\       mo fix [--dry-run] <file.mo> [--json]
     \\
@@ -105,6 +106,9 @@ fn run(init: std.process.Init) !void {
     var recipe_name: ?[]const u8 = null;
     var clock: ?[]const u8 = null;
     var events_cap: ?u32 = null;
+    // `mo build --surface`, and `mo run --surface PORT` (step 23).
+    var surface = false;
+    var surface_port: ?u16 = null;
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const a = args[i];
@@ -153,6 +157,14 @@ fn run(init: std.process.Init) !void {
             i += 1;
             if (i == args.len) return usageExit(err);
             clock = args[i];
+        } else if (std.mem.eql(u8, a, "--surface")) {
+            surface = true;
+            if (i + 1 < args.len) {
+                if (std.fmt.parseInt(u16, args[i + 1], 10)) |port| {
+                    surface_port = port;
+                    i += 1;
+                } else |_| {}
+            }
         } else if (std.mem.eql(u8, a, "--events")) {
             i += 1;
             if (i == args.len) return usageExit(err);
@@ -185,6 +197,8 @@ fn run(init: std.process.Init) !void {
     if (dry_run and !is_fix) return usageExit(err);
     const is_build = std.mem.eql(u8, command, "build");
     if (!is_build and (build_name != null or target != null or no_contracts or tests)) return usageExit(err);
+    if (surface and !is_build and !is_run) return usageExit(err);
+    if (surface and (is_build == (surface_port != null))) return usageExit(err);
     if (!is_run and (program_args != null or clock != null or events_cap != null)) return usageExit(err);
     if (all and !std.mem.eql(u8, command, "test")) return usageExit(err);
     if (recipe_name != null and !std.mem.eql(u8, command, "check")) return usageExit(err);
@@ -251,6 +265,7 @@ fn run(init: std.process.Init) !void {
             .name = build_name orelse mo.cbuild.defaultName(path),
             .contracts = !no_contracts,
             .tests = tests,
+            .surface = surface,
             .target = target,
         };
         // Chapter 3: contracts run in every build. Turning them off is for a measurement.

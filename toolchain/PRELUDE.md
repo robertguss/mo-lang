@@ -44,6 +44,10 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `JsonError` | | error enum | stdlib (09) |
 | `NetError` | | error enum | stdlib (09) |
 | `HttpError` | | error enum | stdlib (09) |
+| `Runtime` | | capability: the runtime surface, `platform.runtime` | stdlib (09), Session 5, step 23 |
+| `ProcessInfo`, `SourceInfo`, `MemoryInfo` | | struct (`## Runtime`) | stdlib (09), Session 5, step 23 |
+| `RuntimeError` | | error enum | stdlib (09), Session 5, step 23 |
+| `Event` | | enum: one of the runtime's events | stdlib (09), Session 5, step 23 |
 
 ## Stand-ins
 
@@ -100,6 +104,19 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `HttpError` | `Malformed` | | stdlib (09) |
 | `HttpError` | `TooLarge` | | stdlib (09) |
 | `HttpError` | `Unsupported` | | stdlib (09) |
+| `RuntimeError` | `NoProcess` | | stdlib (09), Session 5, step 23 |
+| `RuntimeError` | `Unparsed` | `why: String` | stdlib (09), Session 5, step 23 |
+| `RuntimeError` | `ReadOnly` | | stdlib (09), Session 5, step 23 |
+| `RuntimeError` | `MailboxFull` | | stdlib (09), Session 5, step 23 |
+| `RuntimeError` | `Timeout` | | stdlib (09), Session 5, step 23 |
+| `Event` | `Updated` | `at: Time`, `process: UInt64`, `name: String`, `message: String`, `took_us: UInt64`, `waited_us: UInt64`, `longest: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `Started`, `Ended`, `Paused`, `Resumed` | `at: Time`, `process: UInt64`, `name: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `Restarted` | `at: Time`, `process: UInt64`, `name: String`, `restarts: UInt64` | stdlib (09), Session 5, step 23 |
+| `Event` | `Crashed` | `at: Time`, `process: UInt64`, `name: String`, `seed: UInt64`, `clause: String`, `message: String`, `state: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `Overflowed` | `at: Time`, `sender: Option(UInt64)`, `sender_name: String`, `target: UInt64`, `name: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `TimedOut` | `at: Time`, `process: Option(UInt64)`, `name: String`, `call: String` | stdlib (09), Session 5, step 23 |
+| `Event` | `SourcePaused`, `SourceResumed` | `at: Time`, `source: String`, `target: UInt64`, `name: String`, `in_flight: UInt64` | stdlib (09), Session 5, step 23 |
+| `Event` | `Sent` | `at: Time`, `process: UInt64`, `name: String`, `message: String` | stdlib (09), Session 5, step 23 |
 
 ## Functions
 
@@ -213,6 +230,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `clock` | | `Clock` | | `main` | grammar (Q18) |
 | `Platform` | `net` | | `Net` | | `main` | stdlib (09) |
 | `Platform` | `http` | | `Http` | | `main` | stdlib (09) |
+| `Platform` | `runtime` | | `Option(Runtime)`: `Some` under `mo run` and in a binary built with `--surface` | | `main` | stdlib (09), Session 5, step 23 |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
@@ -238,6 +256,18 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Exchange` | `reply` | `Response` | `Result(none, HttpError)` | yes | | stdlib (09) |
 | `Http` | `send` | `Request`, `host: String`, `port: UInt16` | `Result(Response, HttpError)` | yes | | stdlib (09) |
 | `Http` (on type) | `fixture` | | `Http` | | tests | stdlib (09) |
+| `Runtime` | `processes` | | `List(ProcessInfo)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `state` | `UInt64` | `Result(String, RuntimeError)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `recent` | `UInt64`, `UInt64` | `List(Event)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `events` | `since: Time`, `n: UInt64` | `List(Event)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `crashes` | `UInt64` | `List(Event)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `sources` | | `List(SourceInfo)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `memory` | | `MemoryInfo` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `slowest` | `UInt64` | `List(Event)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `send` | `UInt64`, `String` | `Result(none, RuntimeError)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `pause`, `resume` | `UInt64` | `Result(none, RuntimeError)` | yes | | stdlib (09), Session 5, step 23 |
+| `Runtime` | `read_only` | | `Runtime` | | | stdlib (09), Session 5, step 23 |
+| `Runtime` (on type) | `fixture` | | `Runtime` | | tests | stdlib (09), Session 5, step 23 |
 | `Json` (on type) | `encode` | `T` | `String` | | | stdlib (09) |
 | `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | | | stdlib (09) |
 | `Json` | `to_i64` | | `Option(Int64)`: the whole number a `Number` holds below 2^53 either side of 0, else `None` | | | stdlib (09), Session 5, step 22 |
@@ -271,6 +301,22 @@ The structs the `Http` rows take and give (design-v0/09, Http). A field marked *
 | `Response` | `status` | `UInt16` | |
 | `Response` | `headers` | `Map(String, String)` | may be left out |
 | `Response` | `body` | `String` | |
+
+## Runtime
+
+The structs the `Runtime` rows give (design-v0/09, Runtime; Session 5, step 23). A test holds a `Runtime` through `Runtime.fixture()`, since `mo test` never holds a Platform.
+
+| name | field | type | |
+|---|---|---|---|
+| `ProcessInfo` | `id`, `mailbox`, `bound`, `restarts`, `region_bytes` | `UInt64` | |
+| `ProcessInfo` | `name` | `String` | |
+| `ProcessInfo` | `alive`, `paused` | `Bool` | |
+| `ProcessInfo` | `waiting_in` | `Option(String)` | |
+| `SourceInfo` | `kind`, `name` | `String` | |
+| `SourceInfo` | `target`, `in_flight` | `UInt64` | |
+| `SourceInfo` | `paused` | `Bool` | |
+| `MemoryInfo` | `resident_bytes`, `region_bytes`, `packed_bytes`, `event_bytes` | `UInt64` | |
+| `MemoryInfo` | `largest` | `List(ProcessInfo)` | |
 
 ## Operators
 
