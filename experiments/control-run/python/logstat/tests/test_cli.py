@@ -74,7 +74,8 @@ class FixtureTest(unittest.TestCase):
         data = json.loads(out)
         self.assertEqual(code, 0)
         self.assertEqual(
-            (data["requests"], data["errors"], data["malformed"], data["per_minute"]), (16, 3, 5, 4.6)
+            (data["requests"], data["errors"], data["malformed"], data["per_minute"]),
+            (16, 3, 5, 4.6),
         )
         self.assertEqual(data["busiest"][0], {"count": 7, "method": "GET", "path": "/api/users"})
 
