@@ -337,6 +337,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Robert (14 Sep, morning): the one-line `if` as a value is added, `x = if c: a else: b`, a value only, `else:` required, one expression a branch; [[p16-one-line-if-value|pick 16]]; step 25 after step 24; `mo fix` stops rewriting it | Robert | locked | round 6 |
 
+| Robert (14 Sep, morning): a keyword (`state`, `old`) may name a field after a dot and in a struct's field declaration, where it cannot start a `state` block or an `old(...)` call, and stays refused as a bare name; step 25 | Robert, on Fable's recommendation | locked | round 6 |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

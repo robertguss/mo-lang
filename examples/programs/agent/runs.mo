@@ -42,7 +42,7 @@ end
 # A run's process over its folder, begun on its wall budget; a begin whose answer did not come
 # still began it, since the message arrives.
 fn launched(book: Handle(Book), folder: Fs, http: Http, clock: Clock, setup: Setup) : Handle(Run)
-  run = Run.start(book, folder.read_only, folder.read_only, http, clock, setup)
+  run = Run.start(book, folder.read_only, folder, http, clock, setup)
   case run.ask(Begin(me: run), within: setup.order.budget.wall_ms.to_i64.ms)
     Ok(_) | Error(_): run
   end
