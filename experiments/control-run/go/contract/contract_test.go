@@ -14,6 +14,7 @@ func TestChecksPassAndFailWithConditionText(t *testing.T) {
 		{"Require", Require, "requires"},
 		{"Ensure", Ensure, "ensures"},
 		{"Invariant", Invariant, "invariant"},
+		{"Never", func(ok bool, c string) error { return Never(!ok, c) }, "never"},
 	}
 	for _, c := range cases {
 		if err := c.check(true, "x > 0"); err != nil {
