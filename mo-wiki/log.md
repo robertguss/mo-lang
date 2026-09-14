@@ -348,3 +348,7 @@
 
 ## [2026-09-14] session | Evening: paused
 - Robert paused, out of his weekly tokens, at 19:17 UTC. Step 28's worker had part A written with its suite running and nothing committed; the edits are preserved on the pushed branch `step-28-part-a-wip` and left in the tree. The handoff says how to resume. The loop is stopped.
+
+## 2026-09-14 — Hermes research monitoring setup
+
+Hermes: added the research monitoring plan on an isolated research branch. No language decisions or implementation changes. Baseline lint: 215 pages / 25 issues before setup; after adding the plan, 216 pages / the same 25 issues. Schedule gates are local operational files, not wiki evidence.
