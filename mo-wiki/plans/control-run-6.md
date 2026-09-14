@@ -48,7 +48,9 @@ Recorded for every worker besides: whether it wrote the language directly, the p
 
 ## Result
 
-(Written after the run.)
+The sessions started 14 Sep 2026, 14:30 UTC (the page and its predictions were committed at 14:27, `16b4b05`). Removed from the Mo worktree besides the folders: the two programs' rows in `examples/README.md` and their entries in `programs/.mo.ids`, so the README does not describe the shapes.
+
+(The rest is written after the run.)
 
 ## Reading, against the predictions
 
