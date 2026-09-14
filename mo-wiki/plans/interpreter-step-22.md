@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [runtime, stdlib, tooling, contracts]
 sources: [plans/program-1.md, plans/control-run-5.md, decisions/decision-log.md, spec/design-v0/02-laws.md, spec/design-v0/03-semantics.md]
-status: in-progress
+status: done
 ---
 
 # Step 22: what program 1 and round 5 found
@@ -49,6 +49,10 @@ Then `jobq`: the worker's asks of the queue keep their literal, the service's fi
 ## Done when
 
 Green at every commit; the bug fixed and the two gaps closed with corpus tests; `Deadline` and `reply_by` in both runtimes and the spec lines, the corpus file, `jobq` rewritten on it with the count; the recipe's rule and both implementations green under `--recipe`; the two diagnostics; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written in about 50 minutes, four commits, green at each. `mo check --recipe` counts only the file's lines (a 496-line implementation passes, Fable's probe). `Fs.fixture()` answers `Missing(".")` for a folder that is not there. `json.to_i64` gives `Some` below 2^53 either side of zero. `Deadline` and `reply_by` in both runtimes and the simulator: `examples/processes/deadline.mo` holds under faults; Fable's own probe (three reads on a delayed fixture, the second under `at_most(1.minute)`, on a 50 ms ask) answered "read timeout timeout" under `mo test`, `--sim 100 --faults 20`, and as a test binary, a 10 ms ask was `Timeout` at once, and `reply_by` in a plain function is `MO0201`. `jobq` rewritten: chosen literals 24, derived 7, sums 0 (from 15, 3, 3); the store's recipe functions keep their literals because the recipe's signatures take no deadline, a finding recorded. The store recipe's intent now states the rewrite rule and `notes` follows it: a create after a torn log answers 201 where it answered 503 (Fable's probe), its `.expected` files unchanged. Two diagnostics with corpus files. Bench, best of five: kv-10k-get 406 → 395 ms, kv-10k-get-c 203 → 209, http-1k 58.7 → 59.0, http-1k-c 55.7 → 54.0; jobq 4,046 → 3,923 lease-and-ack pairs a second native with 32 workers.
 
 ## Related
 - [[program-1]]
