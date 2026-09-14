@@ -3,7 +3,7 @@ title: "Mo design decision matrix"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [mo, decisions, design]
+tags: [mo, decisions, design, history, research]
 sources:
   - "../raw/plang-history-2026-09/synthesis/decision_matrix.md"
 ---

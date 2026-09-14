@@ -3,7 +3,7 @@ title: "PL history research, Sep 2026: bundle index"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [research-bundle, history, index]
+tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/synthesis/00_README.md"
 ---

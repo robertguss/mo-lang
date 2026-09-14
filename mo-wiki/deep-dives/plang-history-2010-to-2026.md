@@ -3,7 +3,7 @@ title: "PL history: 2010 through September 2026"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [history, modern, ai-era]
+tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/history/03_2010_to_2026.md"
 ---

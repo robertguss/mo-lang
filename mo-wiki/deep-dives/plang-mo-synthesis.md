@@ -3,7 +3,7 @@ title: "Mo synthesis: what history says to Mo"
 created: 2026-09-13
 updated: 2026-09-13
 type: deep-dive
-tags: [mo, synthesis, design]
+tags: [mo, synthesis, design, history, research]
 sources:
   - "../raw/plang-history-2026-09/synthesis/mo_synthesis.md"
 ---
