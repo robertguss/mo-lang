@@ -339,3 +339,6 @@
 
 ## [2026-09-14] session | Evening: the closure audit
 - A reader went through round 7's Mo jobq for direction 31's cost: 12 lines of 2,843 mechanically, 18 by judgment, all of which the stdlib covers. The finding is a spec contradiction (chapter 3 against the stdlib chapter on named functions as values); a row for Robert recommends the narrow reading. Page `deep-dives/closure-audit-2026-09-14.md`.
+
+## [2026-09-14] session | Evening: program 6 specified
+- `spec/programs/06-ledger.md` and `plans/program-6.md`: the payments ledger whose invariants are the point, with a planted-bug test so the report can say whether the checks earn their keep; runs after step 28. One row.

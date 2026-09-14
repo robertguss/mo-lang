@@ -123,6 +123,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[program-6|Program 6: ledger in Mo]] — the brief for the payments ledger whose invariants are the point; after step 28
 - [[interpreter-step-28|Step 28: what round 7 found in the runtime]] — a map written in place, the tuple `reduce`, resident memory, replay, the `never` rule's `if` gap, six gaps
 - [[control-run-7|The control run, round 7]] — pre-registered on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, dependencies
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
