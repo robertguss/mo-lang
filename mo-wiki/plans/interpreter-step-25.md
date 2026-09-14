@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [syntax, tooling, compiler]
 sources: [syntax/p16-one-line-if-value.md, spec/grammar.md, plans/control-run-4.md, plans/interpreter-step-21.md]
-status: in-progress
+status: queued
 ---
 
 # Step 25: the one-line `if` as a value

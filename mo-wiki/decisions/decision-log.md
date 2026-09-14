@@ -353,7 +353,7 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 | `semantic`, flagged for step 25: `agent`'s registry now hands every run its folder writable, since the checker refuses the old read-only backstop, and the tools refuse ungranted writes in code; the spec said a run without `write` holds a read-only `Fs`, so the authority is wider than the spec's; step 25 puts the writing tool in a process started only when the run grants `write` | Fable, overturning the default's shape, not its code | provisional | step 25 |
 | Housekeeping to step 25: `MO0404`'s catalog wording does not fit the new diagnostic (the worker's `# expect` lines fill in the catalog's words); `jobq`'s lease sweep stays on `Idle` and `agent`'s naps stay an `accept` on a listener, both judged over the brief's time; the agent registry's per-run routing was skipped (over an hour); the `Fs.write` row's stale sentence fixed by Fable | Fable | — | step 25 |
 
-| Step 25 starts: the one-line `if` as a value, keyword field names, `MO0404`'s wording and the `if` hole, `agent` narrowed again; brief on [[interpreter-step-25]] | Fable | — | step 25's numbers |
+| Step 25 is written, not started: Robert stopped the loop at 07:22 before work; its worker was exited with no commits; the next session starts it | Fable | — | step 25's numbers |
 
 ## Related
 - [[session-05]]

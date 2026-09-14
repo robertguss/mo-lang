@@ -300,3 +300,6 @@
 
 ## [2026-09-14] session | Morning: step 24 accepted
 - The authority hole, a handle in a state field, the delayed send, `Deadline.remaining`, four gaps, and the simulator's ask, verified by Fable's probes under both runtimes (a registry of its own, a delayed send timed and dropped on a crash, the jobq and agent sessions again). Seven decision rows, five `semantic`; one default overturned in shape (agent's writable folder, to step 25). Merged to `main`. Step 25 starts.
+
+## [2026-09-14] session | Morning: stopped
+- Robert: no more steps, leaving for work. Step 25's worker, started seconds earlier, exited with no commits; the handoff, roadmap, and log say step 25 is next and not started. The loop ends here; the next session resumes from `HANDOFF.md` through the `mo-lead` skill.
