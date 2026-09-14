@@ -321,8 +321,15 @@ pub const VerifiedLine = union(enum) {
     declarations_changed: []const u8,
 };
 
+/// A file's lines, the last counted when it has no newline: what MO0302 holds to 500.
+pub fn lineCount(file: []const u8) u32 {
+    var lines: u32 = @intCast(std.mem.count(u8, file, "\n"));
+    if (file.len > 0 and file[file.len - 1] != '\n') lines += 1;
+    return lines;
+}
+
 pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Checked {
-    return checkProgram(gpa, tree, &.{0}, &.{}, out);
+    return checkProgram(gpa, tree, &.{0}, &.{}, null, out);
 }
 
 /// A program's modules in one tree (parser.parseProgram), in dependency order; `bases`
@@ -330,8 +337,10 @@ pub fn check(gpa: std.mem.Allocator, tree: ast.Tree, out: *diag.List) Error!Chec
 /// module, and each module sees the prelude, its own declarations, and what its use
 /// lines name.
 /// `verified_lines` holds what the sidecar says of each module's `verified:` line.
-pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, out: *diag.List) Error!Checked {
-    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines };
+/// `own_lines`, when set, is the last module's line count as its file is on disk, for a source
+/// that holds more than the file (Program.own_lines).
+pub fn checkProgram(gpa: std.mem.Allocator, tree: ast.Tree, bases: []const u32, verified_lines: []const VerifiedLine, own_lines: ?u32, out: *diag.List) Error!Checked {
+    var c: Checker = .{ .gpa = gpa, .tree = tree, .out = out, .pool = try types.Pool.init(gpa), .verified_lines = verified_lines, .own_lines = own_lines };
     c.node_types = try gpa.alloc(Id, tree.nodes.len);
     @memset(c.node_types, types.unknown);
     c.callee = try gpa.alloc(Callee, tree.nodes.len);
@@ -501,6 +510,8 @@ const Checker = struct {
     process_args: u32 = 0,
     /// What the sidecar says of each module's `verified:` line.
     verified_lines: []const VerifiedLine = &.{},
+    /// The last module's lines as its file is on disk (checkProgram).
+    own_lines: ?u32 = null,
 
     // ---- small helpers
 
@@ -1363,6 +1374,8 @@ const Checker = struct {
         if (std.mem.eql(u8, head, "Set")) return b.tag == .set;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
+        // A prelude enum (Json) is a decl of its own, not in type_names (registerPrelude).
+        if (prelude.findType(head)) |pt| if (pt.kind == .enum_ or pt.kind == .error_enum) return c.pool.resolve(t) == c.preludeEnum(head);
         const p = primitive(head) orelse return false;
         // A capability is its kind: a read-only Fs is an Fs.
         const pt = c.pool.get(p);
@@ -1837,8 +1850,11 @@ const Checker = struct {
         const m = c.modules.items[c.module];
         const file_end = if (c.module + 1 < c.modules.items.len) c.modules.items[c.module + 1].base else c.tree.source.len;
         const file = c.tree.source[m.base..file_end];
-        var lines: u32 = @intCast(std.mem.count(u8, file, "\n"));
-        if (file.len > 0 and file[file.len - 1] != '\n') lines += 1;
+        var lines = lineCount(file);
+        // Under mo check --recipe the last file holds the recipe's blocks too; they are not the file.
+        if (c.own_lines) |own| if (c.module + 1 == c.modules.items.len) {
+            lines = own;
+        };
         if (lines > 500) try c.report(.file_lines, c.line_starts.items[c.lineOf(m.base) + 500], try c.print("this file is {d} lines long and the limit is 500; split it into modules.", .{lines}));
 
         var module_path: []const u8 = "";
@@ -4107,7 +4123,7 @@ fn expectProgramCodes(files: []const []const u8, codes: []const []const u8) !voi
     var diags: diag.List = .empty;
     const tokens = try lexer.lex(arena, source.items, &diags);
     const tree = try parser.parseProgram(arena, source.items, tokens, &diags);
-    _ = try checkProgram(arena, tree, bases.items, &.{}, &diags);
+    _ = try checkProgram(arena, tree, bases.items, &.{}, null, &diags);
     var ok = diags.items.len == codes.len;
     if (ok) for (diags.items, codes) |d, code| {
         if (!std.mem.eql(u8, d.code, code)) ok = false;

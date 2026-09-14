@@ -3040,9 +3040,12 @@ static MoValue fixture_files(int which, const MoValue *a) {
         size_t plen = strlen(prefix);
         char **names = xmalloc((sys->n ? sys->n : 1) * sizeof(char *));
         size_t count = 0;
+        /* A folder is there when a file is under it or mkdir made it; the root always is. */
+        bool there = strcmp(scope.folder, "/") == 0;
         for (size_t i = 0; i < sys->n; i++) {
             const char *key = sys->files[i].path;
             if (strncmp(key, prefix, plen) != 0) continue;
+            there = true;
             const char *rest = key + plen;
             const char *slash = strchr(rest, '/');
             size_t len = slash ? (size_t)(slash - rest) : strlen(rest);
@@ -3056,11 +3059,16 @@ static MoValue fixture_files(int which, const MoValue *a) {
             names[count][len] = 0;
             count++;
         }
+        free(prefix);
+        /* As the real Fs answers a scope that is not a readable folder (step 22). */
+        if (!there) {
+            free(names);
+            return missing(path);
+        }
         qsort(names, count, sizeof(char *), by_name);
         MoValue listed = string_list(names, count);
         for (size_t k = 0; k < count; k++) free(names[k]);
         free(names);
-        free(prefix);
         return ok_of(listed);
     }
     if (!sys) return missing(path);
@@ -3848,6 +3856,16 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
 static void json_scratch_free(void) {
     for (size_t k = 0; k < njson_scratch; k++) free(json_scratch[k].xs);
     njson_scratch = 0;
+}
+
+/* json.to_i64: the whole number a Number holds when it is below 2^53 either side of 0, so it reads
+ * back as the text spelled it; None otherwise (json.zig, whole). */
+MO_ROW(mo_r_Json_to_i64) {
+    (void)kind;
+    if (mo_vname(a[0]) != MO_N_NUMBER) return option_of(false, MO_NONE_V);
+    double x = a[0].as.xs[0].as.f;
+    bool some = x > -9007199254740992.0 && x < 9007199254740992.0 && trunc(x) == x;
+    return option_of(some, some ? mo_i64((int64_t)x) : MO_NONE_V);
 }
 
 MO_ROW(mo_r_Json_decode) {

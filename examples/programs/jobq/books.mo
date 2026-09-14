@@ -217,6 +217,15 @@ test "a log with a record that is not a job does not open, and one cut short ope
   assert health_of(books, 7) == Health(queued: 1, leased: 0, done: 0, dead: 0, uptime_ms: 7)
 end
 
+test "a folder that is not there does not open, as jobq serve refuses it"
+  fs = Fs.fixture()
+  assert opened(fs,
+    Place(dir: "nowhere", log: "jobq.log")) == Error("is not a folder jobq can read")
+  assert fs.mkdir("empty", within: 1.minute) is Ok(_)
+  assert opened(fs, Place(dir: "empty", log: "jobq.log")) is Ok(books)
+  assert books.board.size == 0 and !books.torn
+end
+
 test "a check's own log replays over the folder's, and its changes go only to its own"
   fs = Fs.fixture()
   at = Time.fixture()
@@ -233,5 +242,5 @@ test "a check's own log replays over the folder's, and its changes go only to it
   assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET j_1 #{shown(made)}\n")
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
           proven: not run

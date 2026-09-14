@@ -462,6 +462,7 @@ end
 property "a create then a read gives back any valid title and body"
   for title in any(String), body in any(String) if title?(title) and body?(body)
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     call = Call(owner: "ada", command: Create(title: title, body: body))
     case decide(empty, call, 1, Time.fixture())

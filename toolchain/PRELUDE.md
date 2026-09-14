@@ -196,7 +196,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `remove` | `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `rename` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `mkdir` | `String` | `Result(none, FsError)`: a folder made in a folder that is there; `Ok` when a folder is there already | yes | | stdlib (09), Session 5, step 19 |
-| `Fs` (on type) | `fixture` | | `Fs`: a `..` that climbs above a scope's folder, the fixture's root included, is `Missing` as on the real `Fs` | | tests | grammar, Session 5, step 21 |
+| `Fs` (on type) | `fixture` | | `Fs`: a `..` that climbs above a scope's folder, the fixture's root included, is `Missing` as on the real `Fs`; `list` on a folder that is not there is `Missing(".")` as on the real `Fs` | | tests | grammar, Session 5, step 21; Session 5, step 22: `list` |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | | tests | grammar |
 | `Events` | `emit` | `T` | none | | | grammar |
 | `Events` (on type) | `fixture` | | `Events` | | tests | grammar |
@@ -237,6 +237,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Http` (on type) | `fixture` | | `Http` | | tests | stdlib (09) |
 | `Json` (on type) | `encode` | `T` | `String` | | | stdlib (09) |
 | `Json` (on type) | `decode` | `String` | `Result(Json, JsonError)` | | | stdlib (09) |
+| `Json` | `to_i64` | | `Option(Int64)`: the whole number a `Number` holds below 2^53 either side of 0, else `None` | | | stdlib (09), Session 5, step 22 |
 | `Charge` (on type) | `fixture` | `captured_amount: Money` | `Charge` | | tests | corpus-only |
 | `Charge` (on type) | `fixture` | `captured_at: Time`, `captured_amount: Money` | `Charge` | | tests | corpus-only |
 | `Charge` | `refunded?` | | `Bool` | | | corpus-only |

@@ -71,6 +71,7 @@ recipe Store
   end
   test "a value put reads back, and reads back again once the store is opened again"
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, "a", "one") is Ok(one)
     assert put(fs, one, "a", "two words") is Ok(two)
@@ -82,6 +83,7 @@ recipe Store
   end
   test "a deleted key is gone, and stays gone once the store is opened again"
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, "a", "1") is Ok(one)
     assert delete(fs, one, "a") is Ok(none)
@@ -91,6 +93,7 @@ recipe Store
   end
   test "keys under a prefix come in byte order"
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, "b/2", "x") is Ok(first)
     assert put(fs, first, "a/1", "x") is Ok(second)
@@ -100,6 +103,7 @@ recipe Store
   end
   test "a last line cut short is left out, and a compacted store takes changes again"
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, "a", "1") is Ok(one)
     assert put(fs, one, "b", "2") is Ok(two)
@@ -123,11 +127,13 @@ recipe Store
   end
   test rejects "a key with a space in it"
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, "a b", "1") is Error(_)
   end
   test rejects "a value with a newline in it"
     fs = Fs.fixture()
+    assert fs.mkdir("d", within: 1.minute) is Ok(_)
     assert open(fs, "d") is Ok(empty)
     assert put(fs, empty, "a", "one\ntwo") is Error(_)
   end

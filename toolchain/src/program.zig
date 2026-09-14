@@ -33,6 +33,10 @@ pub const Program = struct {
     /// Per file that loaded: the modules it uses, directly or through another, with the hash
     /// of each one's declarations but its tests, for the sidecar (ids.zig).
     uses: []const []const ids.Use = &.{},
+    /// The main file's lines as it is on disk, when its source here holds more than the file:
+    /// `mo check --recipe` appends the recipe's tests and nevers, which are not the file, so
+    /// the 500-line law (MO0302) counts these (step 22).
+    own_lines: ?u32 = null,
 
     /// The file the program was loaded from.
     pub fn main(p: Program) diag.File {
@@ -56,6 +60,7 @@ pub fn withMain(gpa: std.mem.Allocator, p: Program, source: []const u8) error{Ou
     q.keys = p.keys;
     q.verified_lines = p.verified_lines;
     q.uses = p.uses;
+    q.own_lines = p.own_lines;
     return q;
 }
 

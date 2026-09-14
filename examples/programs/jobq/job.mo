@@ -191,7 +191,7 @@ end
 
 # A job as JSON: what the API shows and the record the store keeps under its id, the spec's
 # fields in its order, with worker and lease_until while leased and reason after a fail. Written
-# by hand, since a struct cannot have a field named state and Json numbers are floats.
+# by hand, since a struct cannot have a field named state.
 fn shown(job: Job) : String
   head = "{\"id\": #{quoted(id_of(job.number))}, \"queue\": #{quoted(job.queue)}, \"state\": \"#{state_name(job.status)}\", \"payload\": #{quoted(job.payload)}"
   counts = "\"attempts\": #{job.attempts}, \"max_attempts\": #{job.max_attempts}"
@@ -255,15 +255,12 @@ fn time_in(fields: Map(String, Json), name: String) : Option(Time)
   Time.parse(try text_in(fields, name))
 end
 
-# A whole number from 0 up; JSON numbers read as floats, so one with a fraction is None.
+# A whole number from 0 up; a number with a fraction, or anything but a number, is None.
 fn count_in(fields: Map(String, Json), name: String) : Option(UInt64)
-  case fields.get(name)
-    Some(Number(value)):
-      return None if value.round(0) != value
-      value.to_string(0).to_u64
-    Some(_): None
-    None: None
-  end
+  value = try fields.get(name)
+  whole = try value.to_i64
+  return None if whole < 0
+  Some(whole.to_u64)
 end
 
 test "a queue name, a payload, max_attempts, a lease, and a token each keep their rule"
@@ -328,6 +325,8 @@ test "a job reads back from its JSON, and text that is not a job that keeps the 
   assert job_of("[1]") is None
   assert job_of(shown(made).replace("\"attempts\": 0", "\"attempts\": 6")) is None
   assert job_of(shown(made).replace("\"attempts\": 0", "\"attempts\": 0.5")) is None
+  assert job_of(shown(made).replace("\"attempts\": 0", "\"attempts\": -1")) is None
+  assert job_of(shown(made).replace("\"attempts\": 0", "\"attempts\": \"0\"")) is None
   assert job_of(shown(made).replace("\"queue\": \"q\"", "\"queue\": \"a b\"")) is None
   assert job_of(shown(made).replace("\"state\": \"queued\"", "\"state\": \"lost\"")) is None
   assert job_of(shown(made).replace("\"state\": \"queued\"", "\"state\": \"leased\"")) is None

@@ -167,8 +167,11 @@ fn got(racer: Handle(Racer)) : String
 end
 
 test "two workers race for one job, and exactly one holds it"
-  service = Service.start(Fs.fixture(), Clock.fixture(), place(), Time.fixture())
+  fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
+  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
   id = made_id(ask(service, "p", Create(queue: "q", payload: "x", max_attempts: 3)))
+  assert made or id == ""
   if id != ""
     ada = Racer.start(service, "ada")
     grace = Racer.start(service, "grace")
@@ -184,11 +187,13 @@ end
 
 test "a service started again over its log holds every job it answered for, and reuses no id"
   fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
   first = Service.start(fs, Clock.fixture(), place(), Time.fixture())
   var ids = [""].take(0)
   for i in 0..3
     ids = ids.push(made_id(ask(first, "p", Create(queue: "q", payload: "#{i}", max_attempts: 2))))
   end
+  assert made or ids.all?(fn(i) i == "" end)
   leased = ask(first, "ada", Lease(queue: "q", lease_ms: 3_600_000))
   var answered = [""].take(0)
   for id in ids.filter(fn(i) i != "" end)

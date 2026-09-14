@@ -487,7 +487,7 @@ MO_ROW(mo_r_Platform_http); MO_ROW(mo_r_Http_listen); MO_ROW(mo_r_Http_send); MO
 MO_ROW(mo_r_HttpListener_accept); MO_ROW(mo_r_HttpListener_port); MO_ROW(mo_r_Exchange_request); MO_ROW(mo_r_Exchange_reply);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
-MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode);
+MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64);
 MO_ROW(mo_r_Charge_fixture); MO_ROW(mo_r_Charge_fixture_at); MO_ROW(mo_r_Charge_refunded_q);
 MO_ROW(mo_r_Money_cents); MO_ROW(mo_r_Money_zero);
 

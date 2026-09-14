@@ -171,7 +171,10 @@ end
 test "each status comes back over the wire, unless a call fails"
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
-  service = Service.start(Fs.fixture(), Clock.fixture(), place(), Time.fixture())
+  fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
+  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
+  assert made or snapshot(service) is None
   listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
   port = listener.port
   job = "{\"queue\": \"q\", \"payload\": \"p\", \"max_attempts\": 1}"
@@ -192,7 +195,10 @@ end
 test "under faults every answer is right or a 503 that changed nothing, and after them every job ends"
   http = Http.fixture()
   assert http.listen(0, within: 1.ms) is Ok(listener)
-  service = Service.start(Fs.fixture(), Clock.fixture(), place(), Time.fixture())
+  fs = Fs.fixture()
+  made = fs.mkdir("d", within: 1.minute) is Ok(_)
+  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
+  assert made or snapshot(service) is None
   listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
   port = listener.port
   for i in 0..4

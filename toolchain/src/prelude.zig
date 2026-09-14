@@ -382,6 +382,7 @@ pub const fns = [_]Fn{
     // JSON
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
+    .{ .recv = "Json", .name = "to_i64", .ret = "Option(Int64)", .origin = .stdlib },
     // The refund module's stand-ins (corpus-only)
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{.{ .name = "captured_amount", .type = "Money" }}, .ret = "Charge", .only = .tests, .origin = .corpus_only },
     .{ .recv = "Charge", .on_type = true, .name = "fixture", .named = &.{ .{ .name = "captured_at", .type = "Time" }, .{ .name = "captured_amount", .type = "Money" } }, .ret = "Charge", .only = .tests, .origin = .corpus_only },
