@@ -5,7 +5,7 @@ updated: 2026-09-13
 type: plan
 tags: [runtime, processes, stdlib, laws]
 sources: [decisions/decision-log.md, deep-dives/outside-review-2026-09-13-response.md, plans/program-4.md, spec/design-v0/03-semantics.md]
-status: in-progress
+status: done
 ---
 
 # Step 20: the runtime owns the loop
@@ -43,6 +43,10 @@ A plain `mo check file.mo` honours the file's `# recipe:` line as the corpus tes
 ## Done when
 
 Green, no `for` around a waiting call in `examples/`, the three part E findings, the rows in both runtimes and both spec tables, the fixture and faults, the numbers, pushed, decisions listed.
+
+## Result
+
+Written in 105 minutes. Fictional bounds across the six servers: 11 before, 0 after; lines roughly flat (echo 148 → 161, kv 582 → 625, httpd 167 → 164, notes 685 → 676); every `.expected` file unchanged. Bench, best of 5: kv-10k-get 445 → 460 ms (native 354 → 364), http-1k 100 → 87 ms (native 61 → 62), echo-1k-c 33.7 → 52.3 ms since the client asks once per line. 32 clients, native: kv GET 42,377 → 35,862 per second, notes GET /health 32,415 → 25,757, notes POST 2,617 → 2,637. A process per connection holds 6,400 connections under `mo run` at 1,476 MiB and 5,536 as a binary at 354 MiB before the OS thread limit; both are the memory step's targets. Two runtime bugs found and fixed on the way (a lost wake-up, a request source that waited out its client's deadline).
 
 ## Related
 - [[interpreter-step-19]]
