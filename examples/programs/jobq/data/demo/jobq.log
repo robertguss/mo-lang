@@ -1,0 +1,8 @@
+SET ids 101
+SET j_1 {"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome grace", "attempts": 1, "max_attempts": 3, "created_at": "2026-09-14T08:00:00Z", "updated_at": "2026-09-14T08:00:05Z"}
+SET j_2 {"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome ada", "attempts": 0, "max_attempts": 3, "created_at": "2026-09-14T08:01:00Z", "updated_at": "2026-09-14T08:01:00Z"}
+SET j_3 {"id": "j_3", "queue": "emails", "state": "leased", "payload": "reset password for carl", "attempts": 2, "max_attempts": 2, "created_at": "2026-09-14T08:02:00Z", "updated_at": "2026-09-14T08:02:10Z", "worker": "carl", "lease_until": "2026-09-14T08:02:40Z"}
+SET j_4 {"id": "j_4", "queue": "reports", "state": "dead", "payload": "monthly report", "attempts": 1, "max_attempts": 1, "created_at": "2026-09-14T08:03:00Z", "updated_at": "2026-09-14T08:03:30Z", "reason": "no data for august"}
+SET j_5 {"id": "j_5", "queue": "reports", "state": "queued", "payload": "weekly report", "attempts": 0, "max_attempts": 1, "created_at": "2026-09-14T08:04:00Z", "updated_at": "2026-09-14T08:04:00Z"}
+DEL j_5
+SET j_6 {"id": "j_6", "queue": "emails", "state": "queued", "payload": "cut sh

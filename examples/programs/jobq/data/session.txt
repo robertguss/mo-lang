@@ -1,0 +1,32 @@
+- GET /health
+- GET /jobs
+ada GET /jobs
+ada GET /jobs?queue=emails&state=queued
+ada GET /jobs/j_1
+ada GET /jobs/j_3
+ada GET /jobs/j_5
+ada POST /jobs {"queue": "emails", "payload": "welcome bob", "max_attempts": 2}
+ada POST /queues/emails/lease {"lease_ms": 60000}
+bob POST /queues/emails/lease {"lease_ms": 60000}
+carl POST /queues/emails/lease
+carl POST /queues/reports/lease
+bob POST /jobs/j_2/ack
+ada POST /jobs/j_2/ack
+ada POST /jobs/j_2/ack
+bob POST /jobs/j_101/fail {"reason": "smtp down"}
+ada GET /jobs/j_101
+ada DELETE /jobs/j_1
+ada GET /jobs/j_1
+ada DELETE /jobs/j_101
+ada DELETE /jobs/j_77
+ada POST /jobs this is not json
+ada POST /jobs {"queue": "two words", "payload": "", "max_attempts": 1}
+ada POST /jobs {"queue": "emails", "payload": "", "max_attempts": 0}
+ada POST /queues/emails/lease {"lease_ms": 5}
+bob POST /jobs/j_4/fail {}
+ada PATCH /jobs
+ada GET /nowhere
+crowd 1200
+ada POST /jobs {"queue": "after-crowd", "payload": "still answered", "max_attempts": 1}
+ada GET /jobs?state=done
+- GET /health
