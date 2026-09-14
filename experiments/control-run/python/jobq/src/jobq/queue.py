@@ -74,6 +74,7 @@ def check_change(old: Job, new: Job | None) -> None:
     if new is None:
         never(old.state is JobState.LEASED, f"{old.id} is deleted while leased")
         return
+    never(new.attempts > new.max_attempts, f"{old.id} has more attempts than max_attempts")
     never(
         (new.id, new.queue, new.max_attempts, new.created_at)
         != (old.id, old.queue, old.max_attempts, old.created_at)
