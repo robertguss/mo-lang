@@ -1,8 +1,8 @@
 # recipe: Recipes.Store.Store
 module Jobq.Store
-expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes
+expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs
 
-intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store with one map in place of 256 small ones: String keys to String values, a log named jobq.log in a folder with a SET or DEL line per change, each change appended and on disk before it returns, and put_all appending many changes in one write, so one fsync covers them; replay leaves out a last line cut short, and compaction writes one line per live key beside the log and renames it over the log."
+intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store, its keys spread over 256 small maps so a change copies one small map: String keys to String values, a log named jobq.log in a folder with a SET or DEL line per change, each change appended and on disk before it returns, and put_all appending many changes in one write, so one fsync covers them; replay leaves out a last line cut short, and compaction writes one line per live key beside the log and renames it over the log."
 
 never "a value read is not the last one written"
   for r in Read.all
@@ -41,11 +41,13 @@ struct Reopened
   after: UInt64
 end
 
-# The keys and values; the log they are written to, `name` in the folder `dir`, and its size in
-# bytes; the lines open replayed or compact wrote, and whether open left out a last line cut
-# short.
+# The keys and values, over 256 small maps so a change copies one small map (changing an entry
+# a map already has copies the whole map, TOOLCHAIN-BUGS.md, bug 1), and how many; the log they
+# are written to, `name` in the folder `dir`, and its size in bytes; the lines open replayed or
+# compact wrote, and whether open left out a last line cut short.
 struct Table
-  entries: Map(String, String)
+  buckets: Map(UInt64, Map(String, String))
+  size: UInt64
   dir: String
   name: String
   bytes: UInt64
@@ -80,7 +82,7 @@ end
 fn open(fs: Fs, dir: String) : Result(Table, StoreError)
   folder = fs.scoped(dir)
   names = try names_in(folder)
-  empty = Table(entries: Map.new(), dir: dir, name: "jobq.log", bytes: 0, lines: 0, cut: false)
+  empty = blank(dir)
   return Ok(empty) if !names.contains?("jobq.log")
   size = try size_of(folder, "jobq.log")
   start = Replay(table: empty, pending: None, lines: 0, bytes: 0, bad: 0)
@@ -89,12 +91,30 @@ fn open(fs: Fs, dir: String) : Result(Table, StoreError)
   finished(replayed, size)
 end
 
+# An empty store over the log jobq.log in the folder dir.
+fn blank(dir: String) : Table
+  Table(buckets: Map.new(), size: 0, dir: dir, name: "jobq.log", bytes: 0, lines: 0, cut: false)
+end
+
 fn get(table: Table, key: String) : Option(String)
-  table.entries.get(key)
+  bucket = try table.buckets.get(bucket_of(key))
+  bucket.get(key)
 end
 
 fn count(table: Table) : UInt64
-  table.entries.size
+  table.size
+end
+
+# Every key and its value.
+fn pairs(table: Table) : List((String, String))
+  table.buckets.values.flat_map(fn(bucket) bucket.entries end)
+end
+
+# Which of the 256 maps holds a key.
+fn bucket_of(key: String) : UInt64
+  ensures result < 256
+
+  key.bytes.reduce(0, fn(hash, b) (hash * 31 + b.to_u64) % 256 end)
 end
 
 # The log's path, from the Fs the store was opened on.
@@ -193,7 +213,7 @@ end
 fn keys(table: Table, prefix: String) : List(String)
   ensures result.all?(fn(key) key.starts_with?(prefix) end)
 
-  table.entries.keys.filter(fn(key) key.starts_with?(prefix) end).sort
+  pairs(table).map(fn(p) p.0 end).filter(fn(key) key.starts_with?(prefix) end).sort
 end
 
 # The log rewritten as one SET line per live key, keys in byte order: written whole beside the
@@ -251,14 +271,22 @@ fn appended(fs: Fs, table: Table, text: String) : Result(UInt64, StoreError)
 end
 
 fn placed(table: Table, key: String, value: String) : Table
+  at = bucket_of(key)
+  bucket = table.buckets.get(at) or Map.new()
+  added = if bucket.has?(key): 0 else: 1
   var after = table
-  after.entries = after.entries.set(key, value)
+  after.buckets = after.buckets.set(at, bucket.set(key, value))
+  after.size = table.size + added
   after
 end
 
 fn dropped(table: Table, key: String) : Table
+  at = bucket_of(key)
+  bucket = table.buckets.get(at) or Map.new()
+  return table if !bucket.has?(key)
   var after = table
-  after.entries = after.entries.remove(key)
+  after.buckets = after.buckets.set(at, bucket.remove(key))
+  after.size = table.size - 1
   after
 end
 
@@ -385,7 +413,7 @@ test "many changes are one append, applied in order, and read back once the stor
   assert lines(after) == 3 and bytes(after) == 32
   assert put_all(fs, after, []) == Ok(after)
   assert open(fs, "d") is Ok(again)
-  assert again.entries == after.entries and lines(again) == 3
+  assert pairs(again) == pairs(after) and lines(again) == 3
 end
 
 test "replay applies SET and DEL in order, and stops open at a line that is neither"
