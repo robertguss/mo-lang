@@ -77,6 +77,8 @@ The sessions started 14 Sep 2026, 14:30 UTC (the page and its predictions were c
 
 Three things about the comparison itself. The Go and Python worktrees still held `examples/programs/logstat/` (only the Mo worktree had it removed), and both copied its fixture, as rounds 1 to 5 did; the Mo worker wrote its own fixture. The baselines' contracts libraries were their own, since none fit from `pkg.go.dev` in the agent's judgment. The Python worker ran the machine's `mypy` against its venv's Python; Robert's rule that Python tools live in the project's own environment came during the run and holds from the next round.
 
+After the fact (14 Sep, 16:10 UTC): round 7's hidden defect suite, 121 checks written by Fable, run against these three finished programs: **Mo 0 defects, Python 0, Go 1** (a token with a space is accepted); all three keep every acknowledged write through a SIGKILL under load and start with a torn log. On Robert's measure this is the reliability column round 6 lacked, and the three are level on it. See [[control-run-7]].
+
 ## Reading, against the predictions
 
 | prediction | threshold | round 6 | held |

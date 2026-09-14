@@ -120,6 +120,7 @@
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[control-run-7|The control run, round 7]] — pre-registered on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, dependencies
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
 - [[control-run-6|The control run, round 6]] — pre-registered: logstat and jobq, the baselines with their checks bolted on, the null hypothesis stated as P3
 - [[interpreter-step-26|Step 26: the one-line if in tail position]] — what step 25's acceptance found: tail position is a value, two keyword diagnostics; before round 6
