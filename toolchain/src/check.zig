@@ -2331,12 +2331,7 @@ const Checker = struct {
             .name_ref => {
                 const name = c.text(n.main_token);
                 const b = c.lookup(name) orelse {
-                    // `state = 1` outside a process: the keyword names only the process's state (step 25).
-                    const what = if (c.tree.tokens[n.main_token].kind == .kw_state)
-                        "there is no state outside a process: state is a keyword, the process's state in its update and invariants, so a binding takes another name, such as status, and a struct's field named state is read after a dot; no state is in scope"
-                    else
-                        try c.print("there is no {s} in scope", .{name});
-                    try c.reportTok(.unknown_name, n.main_token, what);
+                    try c.reportTok(.unknown_name, n.main_token, try c.noSuchName(name));
                     return types.unknown;
                 };
                 if (reads) {
@@ -2872,8 +2867,18 @@ const Checker = struct {
             // Inside `where`, a bare name such as `size` is called on the value.
             if (try c.preludeMethod(i, null, v, name, &.{})) |t| return t;
         }
-        try c.reportTok(.unknown_name, n.main_token, try c.print("there is no {s} in scope", .{name}));
+        try c.reportTok(.unknown_name, n.main_token, try c.noSuchName(name));
         return types.unknown;
+    }
+
+    /// MO0201 for a name nothing binds. `state`, `old`, and `result` are names outside the
+    /// positions the grammar reserves them for (step 27), so the message says where each is the
+    /// keyword a program may have meant.
+    fn noSuchName(c: *Checker, name: []const u8) Error![]const u8 {
+        if (std.mem.eql(u8, name, "result")) return "there is no result in scope: result is a keyword only inside an ensures, where it is the value the function returns; elsewhere it is a name like any other, and no result is in scope";
+        if (std.mem.eql(u8, name, "state")) return "there is no state in scope: state is a keyword only inside a process, where it is the process's state in its update and invariants; elsewhere it is a name like any other, and no state is in scope";
+        if (std.mem.eql(u8, name, "old")) return "there is no old in scope: old is a keyword only inside an ensures or an invariant, as old(x), x's value before the call or the update; elsewhere it is a name like any other, and no old is in scope";
+        return c.print("there is no {s} in scope", .{name});
     }
 
     fn instantiateFn(c: *Checker, at: Index, si: u32) Error!Id {
@@ -3785,14 +3790,14 @@ test "a bound needs an impl, and an impl must match its trait" {
     , &.{ "MO0216", "MO0213" });
 }
 
-test "assert outside a test and result outside ensures are misplaced" {
+test "assert outside a test is misplaced, and result outside ensures is a name nothing binds" {
     try expectCodes(
         \\module T.Place
         \\fn f(n: UInt32) : Bool
         \\  assert n > 0
         \\  result
         \\end
-    , &.{ "MO0214", "MO0214" });
+    , &.{ "MO0214", "MO0201" });
 }
 
 fn expectWhat(src: []const u8, code: []const u8, what: []const u8) !void {
@@ -3805,7 +3810,7 @@ fn expectWhat(src: []const u8, code: []const u8, what: []const u8) !void {
     return error.TestExpectedEqual;
 }
 
-test "the shape laws: parameters, body lines, nesting, state fields, file lines" {
+test "the shape laws: parameters, body lines, nesting, state fields" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();

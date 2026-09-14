@@ -147,7 +147,7 @@ const Lexer = struct {
     fn endsOperand(kind: Kind) bool {
         return switch (kind) {
             .ident, .type_name, .int, .float, .string, .atom, .underscore => true,
-            .r_paren, .r_bracket, .r_brace, .kw_true, .kw_false, .kw_result => true,
+            .r_paren, .r_bracket, .r_brace, .kw_true, .kw_false, .kw_result, .kw_state, .kw_old => true,
             else => false,
         };
     }

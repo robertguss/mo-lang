@@ -1,14 +1,24 @@
 module Rejects.StateBinding
-expose counted
+expose Counter, Counters
 
-intent "state is a keyword: alone it names a process's state, so a binding cannot take it, even where a struct's field may."
+intent "state is a keyword inside a process: in an update, state = 1 assigns the process's state, which a number is not, so a binding there takes another name."
 
-# expect MO0201: there is no state outside a process: state is a keyword, the process's state in its update and invariants, so a binding takes another name, such as status, and a struct's field named state is read after a dot; no state is in scope
-fn counted(n: UInt32) : UInt32
-  state = 1
-  n + state
+# expect MO0206: expected the state of Counter, found an integer
+process Counter()
+  state
+    count: UInt32
+  end
+
+  message Bump
+
+  fn update(state, message)
+    case message
+      Bump:
+        state = 1
+    end
+  end
 end
 
-test "one more"
-  assert counted(1) == 2
+supervisor Counters
+  child Counter, restart: :always
 end

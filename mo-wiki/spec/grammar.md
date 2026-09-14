@@ -19,6 +19,8 @@ keyword     = module use intent never expose fn requires ensures var inout if el
               struct enum type where trait impl process state invariant message
               supervisor child per recipe needs test rejects property any
               verified true false
+              # Session 6, step 27: state is a keyword only inside a process, result only inside an
+              # ensures, and old only inside an ensures or an invariant; elsewhere each is a name
 ```
 
 No block comments, no single-quoted strings, no literal type suffixes. Every string interpolates.
@@ -67,7 +69,7 @@ generics    = "where" TypeName ":" path ("," TypeName ":" path)*
 contract    = ("requires" | "ensures") expr NL
 ```
 
-Contracts sit directly under the signature; a blank line separates them from the body. `result` is valid only inside `ensures`; `old(expr)` inside `ensures` and `invariant`.
+Contracts sit directly under the signature; a blank line separates them from the body. `result` is valid only inside `ensures`; `old(expr)` inside `ensures` and `invariant`. Session 6, step 27: only there are they keywords, and elsewhere `result` and `old` are names like any other, a parameter, a binding, a `var`, a `for` name, a pattern's binding, or a field, as `state` is outside a process.
 
 ## 5. Statements
 
@@ -112,7 +114,7 @@ primary     = literal | ident | path call_args?              # Money.cents(500),
             | "if" expr ":" expr "else" ":" expr             # one-line if: a value only, else: required
             | "case" expr NL arm+ "end"
             | "fn" "(" params_untyped? ")" (expr | NL block) "end"   # anonymous, call-argument only
-            | "old" "(" expr ")" | "result"
+            | "old" "(" expr ")" | "result"                 # in ensures (old also in invariant); elsewhere names (Session 6, step 27)
             | "any" "(" typeexpr ")"                         # generators, property only
 literal     = int | float | string | "true" | "false"
 ```

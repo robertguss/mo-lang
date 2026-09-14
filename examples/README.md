@@ -42,7 +42,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 16. `types/generics.mo`: `fn first(xs: List(T)) : Option(T)` and a `where T: Trait` bound
 17. `types/trait.mo`: a `trait` and its `impl`
 18. `types/nested.mo`: `Result(Option(T), E)` handled in full
-86. `types/keyword-fields.mo`: `state` and `old` as a struct's fields, declared, given by name when it is built, read and set after a dot, encoded as the keys they are named, beside a process whose `state` holds one (step 25)
+86. `types/keyword-fields.mo`: `state` and `old` as a struct's fields, declared, given by name when it is built, read and set after a dot, encoded as the keys they are named, beside a process whose `state` holds one (step 25); `state` and `result` as parameters and bindings of plain functions and in a test, `result` as a `var` beside an `ensures` that reads the keyword, and `old` as a `for`'s name (step 27)
 
 ## contracts
 19. `contracts/requires.mo`: `requires` with its `test rejects`
@@ -106,10 +106,11 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 76. `rejects/method-on-range-end.mo`: `0..60.map(...)`, whose `map` binds to 60; `MO0206` says so (step 21)
 82. `rejects/read-only-start-argument.mo`: an `Fs` narrowed to `read_only` handed as the start argument of a process that writes through it; `MO0404` refuses the start (step 24)
 83. `rejects/read-only-message-field.mo`: an `Fs` narrowed to `read_only` sent in a message whose arm writes through it; `MO0404` refuses the message (step 24)
-87. `rejects/state-binding.mo`: `state = 1` outside a process; `state` alone is the process's state, so `MO0201` says a binding takes another name (step 25)
+87. `rejects/state-binding.mo`: `state = 1` inside an update, where `state` is the process's state, so `MO0206` says a number is not it (steps 25, 27)
 88. `rejects/read-only-if-argument.mo`: an `Fs` narrowed to `read_only` in a branch of a one-line `if` handed as a process's start argument; `MO0404` names the branch (step 25)
-89. `rejects/var-state.mo`: `var state = n`; `state` is a keyword, so `MO0101` says what it names, that a binding or a parameter takes another name, and that a struct's field may take it (step 26)
-90. `rejects/old-parameter.mo`: a parameter named `old`; `old` is a keyword, so `MO0101` says what it names, that a binding or a parameter takes another name, and that a struct's field may take it (step 26)
+89. `rejects/var-state.mo`: `var state = by` inside an update; `state` is a keyword inside a process, so `MO0101` says what it names there and that outside a process it is a name (steps 26, 27)
+90. `rejects/old-parameter.mo`: `fn(old)` inside an `ensures`, where `old` is a keyword, so `MO0101` says what it names there and that elsewhere it is a name (steps 26, 27)
+91. `rejects/unbound-result.mo`: a body that reads `result` as its return value; outside an `ensures` `result` is a name, so `MO0201` says nothing binds it and where it is the keyword (step 27)
 
 ## payments (the milestone)
 51. `payments/refund.mo`: chapter 4's refund module, with the differences `GAPS.md` records
