@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import heapq
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 from contracts import require
 from parse import Record, contains_card
@@ -39,11 +40,13 @@ class Summary:
     busiest: tuple[Busy, ...]
 
     def __post_init__(self) -> None:
+        slowest_keys = [slow_key(record) for record in self.slowest]
+        busiest_keys = [busy_key(busy) for busy in self.busiest]
         require(self.requests == self.errors + self.successes, "requests equals errors + successes")
         require(0 <= self.errors <= self.requests, "errors <= requests")
         require(self.malformed >= 0 and self.per_minute >= 0.0, "malformed and per_minute are not negative")
-        require(_ascending([slow_key(r) for r in self.slowest]), "slowest by duration descending, then timestamp ascending")
-        require(_ascending([busy_key(b) for b in self.busiest]), "busiest by count descending, then path ascending")
+        require(_ascending(slowest_keys), "slowest by duration descending, then timestamp ascending")
+        require(_ascending(busiest_keys), "busiest by count descending, then path ascending")
 
     @property
     def error_rate(self) -> float:
@@ -63,8 +66,8 @@ def busy_key(busy: Busy) -> tuple[int, str, str]:
     return (-busy.count, busy.path, busy.method)
 
 
-def _ascending(keys: list[tuple[int, int]] | list[tuple[int, str, str]]) -> bool:
-    return all(earlier <= later for earlier, later in zip(keys, keys[1:], strict=False))
+def _ascending[K: (tuple[int, int], tuple[int, str, str])](keys: list[K]) -> bool:
+    return all(earlier <= later for earlier, later in pairwise(keys))
 
 
 @dataclass(slots=True)
