@@ -330,3 +330,6 @@
 
 ## [2026-09-14] session | Afternoon: the thesis restated
 - Robert said yes to the fork the outside review named: chapter 1 rewritten by Fable as three layers (the runtime, capabilities and recipes, the language as their surface), the counted laws as settings, the measure as reliability, speed, the loop, and dependencies, the null hypothesis section rewritten with rounds 1 to 6 as evidence. One locked row.
+
+## [2026-09-14] session | Afternoon: the reviewer's reply
+- The reviewer conceded the C backend and the corpus size, withdrew sigils and the JSON `verified:` line, and pushed on three things Fable took: the BEAM as chapter 1's null hypothesis, the one-sentence thesis, the closure counterfactual (an audit, not a second worker), the zero-dependency fallback (a brick wrapping a C library under audit), and a Redis-subset shortlist for program 7. One provisional row.
