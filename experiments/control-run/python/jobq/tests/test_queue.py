@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from jobq.contract import ContractError
 from jobq.jobs import Job
@@ -154,6 +155,30 @@ class LeaseRunsOutTest(QueueCase):
         self.assertEqual(self.queue.expire_due(), 3)
         self.assertEqual(self.queue.counts()["queued"], 3)
         self.assertEqual(replay(self.dir).jobs, self.queue.snapshot())
+
+    def test_a_look_whose_expiry_write_fails_changes_nothing_and_retries(self) -> None:
+        for _ in range(3):
+            self.queue.create("emails", "a", 3)
+            self.queue.lease("emails", "w1", 100)
+        self.clock.advance(100)
+        before = self.queue.snapshot()
+        size = self.queue.store.size
+        self.ops.failing = True
+        with self.assertRaises(StoreError):
+            self.queue.counts()
+        self.assertEqual((self.queue.snapshot(), self.queue.store.size), (before, size))
+        self.ops.failing = False
+        self.assertEqual(self.queue.counts()["queued"], 3)
+        self.assertEqual(replay(self.dir).jobs, self.queue.snapshot())
+
+    def test_run_out_leases_are_returned_in_one_write(self) -> None:
+        for _ in range(50):
+            self.queue.create("emails", "a", 3)
+            self.queue.lease("emails", "w1", 100)
+        self.clock.advance(100)
+        with mock.patch.object(self.ops, "fsync", wraps=self.ops.fsync) as fsync:
+            self.assertEqual(self.queue.expire_due(), 50)
+        self.assertEqual(fsync.call_count, 1)
 
 
 class ReplayTest(QueueCase):
