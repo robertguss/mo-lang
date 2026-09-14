@@ -7,7 +7,7 @@ returns; when it raises, the log is truncated back to what it held before.
 import errno
 import fcntl
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal, Protocol
@@ -128,9 +128,13 @@ class Store:
 
     def append(self, record: PutRecord | DeleteRecord) -> None:
         """Write one record and fsync it; on any failure, roll the log back and raise."""
+        self.append_all([record])
+
+    def append_all(self, records: Sequence[PutRecord | DeleteRecord]) -> None:
+        """Write records with one fsync: all of them become durable, or none do."""
         if self._broken:
             raise StoreError("the store failed to roll back a write; restart jobq")
-        data = record.model_dump_json().encode() + b"\n"
+        data = b"".join(record.model_dump_json().encode() + b"\n" for record in records)
         start = self._size
         try:
             self._write_all(data)
