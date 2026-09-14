@@ -177,10 +177,10 @@ fn compact(fs: Fs, table: Table) : Result(Table, StoreError)
   folder = fs.scoped(table.dir)
   text = String.join(keys(table, "").map(fn(key) set_line(table, key) end), "")
   fresh = "#{table.name}.new"
-  if folder.write(fresh, text, within: 60_000.ms) is Error(_)
+  if folder.write(fresh, text, within: 20_000.ms) is Error(_)
     return Error(Unwritten)
   end
-  if folder.rename(fresh, table.name, within: 10_000.ms) is Error(_)
+  if folder.rename(fresh, table.name, within: 5_000.ms) is Error(_)
     return Error(Unwritten)
   end
   var after = table

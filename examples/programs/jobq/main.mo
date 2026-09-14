@@ -141,11 +141,12 @@ fn ran(http: Http, net: Net, fs: Fs, clock: Clock, err: Out, args: List(String))
 end
 
 # The service over the folder, opened before the listener is served, so a folder that cannot
-# be read exits 1 and a log of any size is replayed before the first request. The ask waits 11
-# minutes: the store's replay waits at most 10 for the log and 20 seconds for its folder.
+# be read exits 1 and a log of any size is replayed before the first request. The ask waits 21
+# minutes, the store's deadlines for two logs added up (check replays its own after the
+# folder's): 10 minutes for each log's lines and 20 seconds for its folder and size.
 fn opened_service(fs: Fs, clock: Clock, err: Out, place: Place) : Result(Handle(Service), Problem)
   service = Service.start(fs, clock, place, clock.now)
-  case service.ask(Open, within: 660_000.ms)
+  case service.ask(Open, within: 1_260_000.ms)
     Ok(Ready(jobs: _, cut: cut)):
       if cut
         err.write_line("jobq: the last line of #{place.dir}/jobq.log was cut short, so it is left out")
@@ -153,7 +154,7 @@ fn opened_service(fs: Fs, clock: Clock, err: Out, place: Place) : Result(Handle(
       end
       Ok(service)
     Ok(Unready(why)): Error(Unopened(dir: place.dir, why: why))
-    Error(_): Error(Unopened(dir: place.dir, why: "took longer than eleven minutes to open"))
+    Error(_): Error(Unopened(dir: place.dir, why: "took longer than 21 minutes to open"))
   end
 end
 
@@ -202,11 +203,12 @@ fn request_of(trip: Trip) : Request
   else
     Map.new().set("authorization", "Bearer #{trip.token}")
   end
-  Request(method: trip.method, path: trip.path, query: query_of(trip.path), headers: headers,
+  Request(method: trip.method, path: bare(trip.path), query: query_of(trip.path), headers: headers,
     body: trip.json)
 end
 
-# The query a path's ? starts, as key=value pairs split at &, so the client sends it as written.
+# The query a path's ? starts, as key=value pairs split at &; the client sends the path before
+# the ? and the query as the request's query, so the runtime writes them back as they were.
 fn query_of(path: String) : Map(String, String)
   at = path.index_of("?") or path.size
   pairs = path.slice(at + 1, path.size).split("&").filter(fn(p) p != "" end)
@@ -282,21 +284,12 @@ fn heard(http: Http, line: String, port: UInt16, crowd: UInt64) : String
   return "the connections stay open, sending nothing, until the script ends\n" if crowd > 0
   case trip_of(line.split(" "), "127.0.0.1", port)
     Ok(trip):
-      var bare_trip = trip
-      bare_trip.path = bare(trip.path)
-      case http.send(with_query(bare_trip, trip.path), host: "127.0.0.1", port: port,
-        within: 10_000.ms)
-        Ok(response): steady(shown(response))
-        Error(_): "no answer\n"
+      case client(http, trip)
+        Ok(text): steady(text)
+        Error(problem): "#{said(problem)}\n"
       end
     Error(problem): "#{said(problem)}\n"
   end
-end
-
-fn with_query(trip: Trip, path: String) : Request
-  var request = request_of(trip)
-  request.query = query_of(path)
-  request
 end
 
 # A transcript with what depends on the clock replaced: a job's times and the service's uptime.
@@ -412,6 +405,9 @@ test "client joins the JSON after the path into one body, and sends a path's que
     json: "{\"queue\": \"q\"}")
   assert task(words) == Ok(Asking(trip: trip))
   assert request_of(trip).headers.get("authorization") == Some("Bearer ada")
+  var listing = trip
+  listing.path = "/jobs?state=dead"
+  assert request_of(listing).path == "/jobs" and request_of(listing).query.get("state") == Some("dead")
   var anonymous = trip
   anonymous.token = "-"
   assert request_of(anonymous).headers.size == 0

@@ -189,7 +189,7 @@
         { "id": "d504d130fae5", "name": "test \"each outcome is its status and its JSON\"", "hash": "c498b5ec9cffa9cc" },
         { "id": "45f4efc56278", "name": "property \"any valid payload sent as JSON becomes a create of that payload\"", "hash": "63c33a19cf475e1c" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "a6f121cb467796d4", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Store", "hash": "96f549b806a9cf1f" }] }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "a6f121cb467796d4", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Store", "hash": "80b1c7a319c393f5" }] }
     },
     {
       "path": "jobq/board.mo",
@@ -267,7 +267,7 @@
         { "id": "99f25520d48f", "name": "test \"a log with a record that is not a job does not open, and one cut short opens torn\"", "hash": "be9da610bd590855" },
         { "id": "e600352a53aa", "name": "test \"a check's own log replays over the folder's, and its changes go only to its own\"", "hash": "3d1406528ae00ac9" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "53b2348e820cadf4", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Store", "hash": "96f549b806a9cf1f" }] }
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "53b2348e820cadf4", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Store", "hash": "80b1c7a319c393f5" }] }
     },
     {
       "path": "jobq/job.mo",
@@ -351,12 +351,12 @@
         { "id": "3229f0f654c5", "name": "fn dir_of", "hash": "8f551bd719d35933" },
         { "id": "aa8ce442cc1a", "name": "fn port_of", "hash": "d0a6efda928a988f" },
         { "id": "e8505756e1ce", "name": "fn ran", "hash": "540ee4d70d4cafa4" },
-        { "id": "f0ae6b77da7e", "name": "fn opened_service", "hash": "86d641c43aa6b164" },
+        { "id": "f0ae6b77da7e", "name": "fn opened_service", "hash": "d34f5c383dd132c9" },
         { "id": "a73e709d4714", "name": "fn serve", "hash": "a5a7a16415a5198e" },
         { "id": "45193e6f7476", "name": "fn compacted", "hash": "de95a83c27c8719d" },
         { "id": "2b6f789b3f31", "name": "fn compacted_table", "hash": "4528cb50079c79e1" },
         { "id": "61e492f2648e", "name": "fn client", "hash": "1e6c8a07e3b6f9b0" },
-        { "id": "7767727c5d6f", "name": "fn request_of", "hash": "aee5087a27a01d09" },
+        { "id": "7767727c5d6f", "name": "fn request_of", "hash": "984c674da2ab737b" },
         { "id": "a26d78f39e15", "name": "fn query_of", "hash": "d8e863bad65f3c5a" },
         { "id": "25455b237f2d", "name": "fn with_pair", "hash": "1e335ae3e87edbc0" },
         { "id": "bed88cb1ab10", "name": "fn bare", "hash": "cb604f007e9bf77b" },
@@ -365,8 +365,7 @@
         { "id": "a6d59339bcb7", "name": "fn cleared", "hash": "649b1f032e3a9f72" },
         { "id": "98bd67846291", "name": "fn played", "hash": "d0418b8ad4d68da2" },
         { "id": "79471bbe32c1", "name": "fn crowd_of", "hash": "77ddafe2025a94c0" },
-        { "id": "5110f1e9045e", "name": "fn heard", "hash": "dda862b46d52cc71" },
-        { "id": "cc18c1cecae8", "name": "fn with_query", "hash": "0b5847873fb9ce32" },
+        { "id": "5110f1e9045e", "name": "fn heard", "hash": "dc93958b25978ed6" },
         { "id": "06f6ea49943d", "name": "fn steady", "hash": "d213a0860647ab5b" },
         { "id": "dff84160cf2e", "name": "fn masked", "hash": "481d1850e12e3605" },
         { "id": "b1ea3a9b8c0d", "name": "fn after_value", "hash": "3d4a2bbed5cb857b" },
@@ -378,11 +377,11 @@
         { "id": "e6c57b2043e7", "name": "fn main", "hash": "24be34b500b17b74" },
         { "id": "fa1d7883e408", "name": "test \"serve takes a folder and an optional port, 7900 by default\"", "hash": "c5f32ba332263f60" },
         { "id": "e1fa0d8fee8f", "name": "test \"a missing folder, a bad port, a short request, or an unknown command is a usage error\"", "hash": "8d73a80719da6795" },
-        { "id": "f6509b4137dc", "name": "test \"client joins the JSON after the path into one body, and sends a path's query as a query\"", "hash": "5575a0fde2dbeb55" },
+        { "id": "f6509b4137dc", "name": "test \"client joins the JSON after the path into one body, and sends a path's query as a query\"", "hash": "5f1594dc7b56d9be" },
         { "id": "156ab89f6e64", "name": "test \"a response prints as its status and body, and the clock's numbers are steadied\"", "hash": "742daf8976e35f0b" },
         { "id": "0a433d61c73c", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "46b1c59ffc489bf1" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "f286767ef5e520dc", "uses": [{ "module": "Jobq.Api", "hash": "9a82360b73fa7d5a" }, { "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Queue", "hash": "538976d8f16d993c" }, { "module": "Jobq.Server", "hash": "acf4e2dc0ab96bd2" }, { "module": "Jobq.Store", "hash": "96f549b806a9cf1f" }] }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "e1ce8eaa2882d393", "uses": [{ "module": "Jobq.Api", "hash": "9a82360b73fa7d5a" }, { "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Queue", "hash": "538976d8f16d993c" }, { "module": "Jobq.Server", "hash": "acf4e2dc0ab96bd2" }, { "module": "Jobq.Store", "hash": "80b1c7a319c393f5" }] }
     },
     {
       "path": "jobq/moves.mo",
@@ -428,7 +427,7 @@
         { "id": "70368db61b20", "name": "test \"an id is never handed out twice, across a delete and a replay\"", "hash": "56a3a625c35d6041" },
         { "id": "721ab63a7f8d", "name": "property \"a create then a read gives back any valid payload\"", "hash": "9178b07bcc002ea1" }
       ],
-      "verified": { "hash": "c905d6dcb9f94cdc", "declarations": "530a9911a04afea1", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Store", "hash": "96f549b806a9cf1f" }] }
+      "verified": { "hash": "c905d6dcb9f94cdc", "declarations": "530a9911a04afea1", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Store", "hash": "80b1c7a319c393f5" }] }
     },
     {
       "path": "jobq/queue.mo",
@@ -462,7 +461,7 @@
         { "id": "b8fbb1ddefc0", "name": "test \"a service started again over its log holds every job it answered for, and reuses no id\"", "hash": "b1af1abf4939bef6" },
         { "id": "a17bb80042ec", "name": "test \"a service whose folder cannot be read says why at every call\"", "hash": "90cac3172920fc95" }
       ],
-      "verified": { "hash": "73013b24376f37b4", "declarations": "98c5531d73d30b58", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Store", "hash": "96f549b806a9cf1f" }] }
+      "verified": { "hash": "73013b24376f37b4", "declarations": "98c5531d73d30b58", "uses": [{ "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Store", "hash": "80b1c7a319c393f5" }] }
     },
     {
       "path": "jobq/server.mo",
@@ -494,7 +493,7 @@
         { "id": "715e715baffb", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "f5c5be0a332bdbda" },
         { "id": "337ab5950802", "name": "test \"under faults every answer is right or a 503 that changed nothing, and after them every job ends\"", "hash": "5aff085caae8b257" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "c1a5589be9b53b30", "uses": [{ "module": "Jobq.Api", "hash": "9a82360b73fa7d5a" }, { "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Queue", "hash": "538976d8f16d993c" }, { "module": "Jobq.Store", "hash": "96f549b806a9cf1f" }] }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "c1a5589be9b53b30", "uses": [{ "module": "Jobq.Api", "hash": "9a82360b73fa7d5a" }, { "module": "Jobq.Board", "hash": "871f828d2ce2a961" }, { "module": "Jobq.Books", "hash": "c960c408cef609d8" }, { "module": "Jobq.Job", "hash": "62d6cfae79281502" }, { "module": "Jobq.Moves", "hash": "cf2f145c51c8d853" }, { "module": "Jobq.Queue", "hash": "538976d8f16d993c" }, { "module": "Jobq.Store", "hash": "80b1c7a319c393f5" }] }
     },
     {
       "path": "jobq/store.mo",
@@ -523,7 +522,7 @@
         { "id": "647240cfefbd", "name": "fn put_all", "hash": "002c80ce08ca821d" },
         { "id": "0f70dabac186", "name": "fn delete", "hash": "b4311e84e1123e3e" },
         { "id": "1d6715b445b1", "name": "fn keys", "hash": "bff05eccd6b8de9d" },
-        { "id": "9d6ce3297c90", "name": "fn compact", "hash": "ce0d3fb57198d033" },
+        { "id": "9d6ce3297c90", "name": "fn compact", "hash": "0ca479ffe00ae8f5" },
         { "id": "17c1db338ae1", "name": "fn writing_to", "hash": "1d476c0ca8a7bebb" },
         { "id": "b94997128046", "name": "fn set_line", "hash": "00fb2bb0627b1435" },
         { "id": "723a80aba890", "name": "fn appended", "hash": "25b6a3e081f8ba45" },
@@ -546,7 +545,7 @@
         { "id": "63c8213b751d", "name": "test \"many pairs go to the log in one append, and another log replays over the first\"", "hash": "098434634c84551a" },
         { "id": "e100950aab32", "name": "property \"any valid key and value read back as written, and again once the store is opened again\"", "hash": "74fc9e19a1af45c4" }
       ],
-      "verified": { "hash": "bd9f734dadccc02e", "declarations": "b5e7ae4384ea34e1" }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "eee55a150e737244" }
     },
     {
       "path": "kv/log.mo",

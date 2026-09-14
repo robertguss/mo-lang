@@ -56,10 +56,10 @@ supervisor Exchanges(exchange: Exchange, service: Handle(Service))
   child Worker(exchange, service), restart: :never
 end
 
-# The response to one request. The ask waits 60 seconds, longer than the service's slowest
-# message (a log rewritten whole, 25 seconds, then a change's append and its size, 10), so a
-# service that could not write answers 503 itself; a timed-out ask is 503 too, and the change may
-# still land, as the failure model says.
+# The response to one request. The ask waits 60 seconds, longer than the Fs deadlines of the
+# service's slowest message added up (a log rewritten whole, 20 and 5 seconds; a look's append
+# and its size, 5 and 5; a delete's, 5 and 5), so a service that could not write answers 503
+# itself; a timed-out ask is 503 too, and the change may still land, as the failure model says.
 fn answer(service: Handle(Service), request: Request) : Response
   case route(request)
     Answered(response): response
