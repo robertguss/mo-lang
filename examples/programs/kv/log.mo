@@ -117,11 +117,7 @@ fn put(table: Table, key: String, value: String) : Table
 
   at = bucket_of(key)
   bucket = table.buckets.get(at) or Map.new()
-  added = if bucket.has?(key)
-    0
-  else
-    1
-  end
+  added = if bucket.has?(key): 0 else: 1
   Table(buckets: table.buckets.set(at, bucket.set(key, value)), size: table.size + added)
 end
 
@@ -155,11 +151,7 @@ end
 fn replay(text: String) : Result(Replayed, LogError)
   lines = text.lines
   truncated = text != "" and !text.ends_with?("\n")
-  whole = if truncated
-    lines.take(lines.size - 1)
-  else
-    lines
-  end
+  whole = if truncated: lines.take(lines.size - 1) else: lines
   var table = empty()
   var number = 0
   for line in whole

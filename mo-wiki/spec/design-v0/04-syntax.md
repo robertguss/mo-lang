@@ -141,7 +141,7 @@ verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
 - **Definition line:** `fn name(arg: Type) : Ret`. No space before the colon in `arg: Type`, `:` for the return type, generics in parens: `Result(Charge, RefundError)`, `List(T)`.
 - **Contracts:** `requires` and `ensures` directly after the signature, a blank line, then the body. `result` is the return value, `old(x)` the entry value, `is` an inline pattern test, `implies` the connective.
 - **Bindings:** `x = expr` binds once. `var x = expr` may change. Rebinding or an unused binding is an error.
-- **Conditionals:** `if cond ... end`, an expression, no parens. Trailing `if` only on a one-line `return`.
+- **Conditionals:** `if cond ... end`, an expression, no parens. Trailing `if` only on a one-line `return`. Where a value goes, an `if` may be one line, `if cond: a else: b`, with both branches, each one expression; a statement keeps the block form (session 5, step 25).
 - **Matching:** `case v ... Pattern: expr ... end`. Arms run until the next `Pattern:` or `end`. Exhaustive; guards with `if` on the arm; nested destructuring. A one-field variant matches positionally (`Ok(c)`, `Enqueue(request)`); more fields match by name.
 - **Results:** `Ok(x)`, `Error(e)`, `Some(x)`, `None`. `try expr` propagates. `x or default` for `Option`. Predicates end in `?`.
 - **Types:** `struct`, `enum` with data variants, `type Money = UInt64 where value <= ...`. Construction is call-style with named fields, never positional. Change a struct only via `var copy = x` then `copy.field = v`.

@@ -1,9 +1,9 @@
 module Agent.Tools
-expose Call, Used, Came, Found, used, inside?, allowed?, url_host, url_port, url_path
+expose Call, Used, Came, Found, Writer, Writers, used, inside?, allowed?, url_host, url_port, url_path
 
 use Agent.Model{Fake}
 
-intent "Each tool over only what its row gives it: list_files, read_file, and search take the run's folder read-only, write_file takes the folder writable only when the run was granted it, http_get takes Http and the run's hosts, and now takes the Clock; a call naming a tool the run was not granted, a path outside its folder, or a host off its list is refused before any capability is touched, and the model sees the refusal."
+intent "Each tool over only what its row gives it: list_files, read_file, and search take the run's folder read-only, write_file goes through a writer, a process over the folder writable that is started only for a run granted it, http_get takes Http and the run's hosts, and now takes the Clock; a call naming a tool the run was not granted, a path outside its folder, or a host off its list is refused before any capability is touched, and the model sees the refusal."
 
 never "a tool runs when it was not granted, or reaches outside its run's folder or hosts"
   for u in Used.all
@@ -38,13 +38,37 @@ struct Found
   files: UInt64
 end
 
-# Runs a call. `reads` is the run's folder read-only; `writes` is the same folder, which only a
-# granted write_file reaches.
-fn used(reads: Fs, writes: Fs, http: Http, clock: Clock, call: Call, by: Deadline) : Used
+# The one process that holds a run's folder writable, started only for a run granted write_file
+# (step 25): a run not granted it holds its folder read-only and no writer, so no write can reach
+# the folder from it.
+process Writer(files: Fs)
+  state
+    writes: UInt64
+  end
+
+  message Write(path: String, text: String) : Came
+
+  fn update(state, message)
+    case message
+      Write(path: path, text: text):
+        state.writes += 1
+        written(files, path, text, reply_by)
+    end
+  end
+end
+
+supervisor Writers(files: Fs)
+  child Writer(files), restart: :never
+end
+
+# Runs a call. `reads` is the run's folder read-only; `writer` is Some only for a run granted
+# write_file.
+fn used(reads: Fs, writer: Option(Handle(Writer)), http: Http, clock: Clock, call: Call,
+  by: Deadline) : Used
   ensures !call.granted.contains?(call.tool) implies result.refused
 
   came = if call.granted.contains?(call.tool)
-    ran(reads, writes, http, clock, call, by)
+    ran(reads, writer, http, clock, call, by)
   else
     Denied(why: "#{call.tool} is not granted to this run")
   end
@@ -54,12 +78,13 @@ fn used(reads: Fs, writes: Fs, http: Http, clock: Clock, call: Call, by: Deadlin
   end
 end
 
-fn ran(reads: Fs, writes: Fs, http: Http, clock: Clock, call: Call, by: Deadline) : Came
+fn ran(reads: Fs, writer: Option(Handle(Writer)), http: Http, clock: Clock, call: Call,
+  by: Deadline) : Came
   case call.tool
     "list_files": listed(reads, arg(call, "path", "."), by)
     "read_file": read(reads, arg(call, "path", ""), by)
     "search": searched(reads, arg(call, "path", "."), arg(call, "query", ""), by)
-    "write_file": written(writes, arg(call, "path", ""), arg(call, "text", ""), by)
+    "write_file": handed(writer, arg(call, "path", ""), arg(call, "text", ""), by)
     "http_get": got(http, call, by)
     "now": Said(text: clock.now.to_iso8601)
     _: Denied(why: "there is no tool #{call.tool}")
@@ -172,6 +197,19 @@ fn matched(so_far: Found, path: String, lines: List(String), query: String) : Fo
   Found(lines: so_far.lines.concat(shown), files: so_far.files + 1)
 end
 
+# A write handed to the run's writer, which a run not granted write_file does not have.
+fn handed(writer: Option(Handle(Writer)), path: String, text: String, by: Deadline) : Came
+  return outside(path) if !inside?(path)
+  case writer
+    Some(w):
+      case w.ask(Write(path: path, text: text), within: by)
+        Ok(came): came
+        Error(_): Said(text: "#{path} took longer than the call may")
+      end
+    None: Denied(why: "write_file is not granted to this run")
+  end
+end
+
 fn written(writes: Fs, path: String, text: String, by: Deadline) : Came
   return outside(path) if !inside?(path)
   case writes.write(path, text, within: by)
@@ -242,23 +280,23 @@ test "the reading tools read only inside the run's folder"
   all = ["list_files", "read_file", "search"]
   clock = Clock.fixture()
   http = Http.fixture()
-  assert used(folder.read_only, folder, http, clock, call("read_file", path_arg("a.txt"), all),
+  assert used(folder.read_only, None, http, clock, call("read_file", path_arg("a.txt"), all),
     by) == Used(output: "one\ntwo", refused: false, allowed: true)
-  listing = used(folder.read_only, folder, http, clock, call("list_files", path_arg("."), all), by)
+  listing = used(folder.read_only, None, http, clock, call("list_files", path_arg("."), all), by)
   assert !listing.refused and listing.output.contains?("a.txt") and listing.output.contains?("notes")
-  found = used(folder.read_only, folder, http, clock,
+  found = used(folder.read_only, None, http, clock,
     call("search", Map.new().set("query", "two"), all), by)
   assert found.output.contains?("a.txt:2: two") and found.output.contains?("notes/b.txt:1: two three")
   assert !found.output.contains?("secret")
-  up = used(folder.read_only, folder, http, clock,
-    call("read_file", path_arg("../secret.txt"), all), by)
+  up = used(folder.read_only, None, http, clock, call("read_file", path_arg("../secret.txt"), all),
+    by)
   assert up.refused and !up.allowed
-  assert used(folder.read_only, folder, http, clock,
+  assert used(folder.read_only, None, http, clock,
     call("read_file", path_arg("notes/../../secret.txt"), all), by).refused
-  assert used(folder.read_only, folder, http, clock, call("list_files", path_arg("/"), all),
+  assert used(folder.read_only, None, http, clock, call("list_files", path_arg("/"), all),
     by).refused
-  missing = used(folder.read_only, folder, http, clock,
-    call("read_file", path_arg("nope.txt"), all), by)
+  missing = used(folder.read_only, None, http, clock, call("read_file", path_arg("nope.txt"), all),
+    by)
   assert missing == Used(output: "nope.txt is not there", refused: false, allowed: true)
 end
 
@@ -268,22 +306,37 @@ test "a tool the run was not granted is refused before it runs, write_file among
   assert fs.mkdir("work", within: 1.minute) is Ok(_)
   folder = fs.scoped("work")
   args = path_arg("out.txt").set("text", "hello")
-  refusal = used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
+  refusal = used(folder.read_only, None, Http.fixture(), Clock.fixture(),
     call("write_file", args, ["read_file"]), by)
   assert refusal == Used(output: "write_file is not granted to this run", refused: true,
     allowed: false)
   assert fs.read("work/out.txt", within: 1.minute) is Error(_)
-  wrote = used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
-    call("write_file", args, ["write_file"]), by)
-  assert wrote == Used(output: "wrote 5 bytes to out.txt", refused: false, allowed: true)
-  assert fs.read("work/out.txt", within: 1.minute) == Ok("hello")
-  assert used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
-    call("write_file", path_arg("../x"), ["write_file"]), by).refused
-  assert used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
+  assert used(folder.read_only, None, Http.fixture(), Clock.fixture(),
     call("now", Map.new(), ["now"]), by) == Used(output: "2026-01-01T00:00:00Z", refused: false,
     allowed: true)
-  assert used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
+  assert used(folder.read_only, None, Http.fixture(), Clock.fixture(),
     call("rm", Map.new(), ["rm"]), by).refused
+end
+
+test "a granted write goes through the run's writer, and a run with no writer writes nothing"
+  fs = Fs.fixture()
+  by = Deadline.fixture(1.minute)
+  folder = fs.scoped("work")
+  args = path_arg("out.txt").set("text", "hello")
+  unheld = used(folder.read_only, None, Http.fixture(), Clock.fixture(),
+    call("write_file", args, ["write_file"]), by)
+  assert unheld == Used(output: "write_file is not granted to this run", refused: true,
+    allowed: true)
+  assert fs.read("work/out.txt", within: 1.minute) is Error(_)
+  writer = Some(Writer.start(folder))
+  wrote = used(folder.read_only, writer, Http.fixture(), Clock.fixture(),
+    call("write_file", args, ["write_file"]), by)
+  # Under faults the writer's write may fail, and the model sees why; it is never refused.
+  assert !wrote.refused and wrote.allowed
+  read = fs.read("work/out.txt", within: 1.minute)
+  assert wrote.output != "wrote 5 bytes to out.txt" or read == Ok("hello") or read is Error(_)
+  assert used(folder.read_only, writer, Http.fixture(), Clock.fixture(),
+    call("write_file", path_arg("../x"), ["write_file"]), by).refused
 end
 
 test "a file over 64 KiB is not read, and a search stops at 200 lines"
@@ -292,10 +345,10 @@ test "a file over 64 KiB is not read, and a search stops at 200 lines"
   assert fs.write("work/big.txt", "x".repeat(65_537), within: 1.minute) is Ok(_)
   assert fs.write("work/many.txt", "hit\n".repeat(300), within: 1.minute) is Ok(_)
   folder = fs.scoped("work")
-  big = used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
+  big = used(folder.read_only, None, Http.fixture(), Clock.fixture(),
     call("read_file", path_arg("big.txt"), ["read_file"]), by)
   assert !big.refused and big.output.contains?("more than 64 KiB")
-  hits = used(folder.read_only, folder, Http.fixture(), Clock.fixture(),
+  hits = used(folder.read_only, None, Http.fixture(), Clock.fixture(),
     call("search", Map.new().set("query", "hit"), ["search"]), by)
   assert hits.output.lines.size == 200
 end
@@ -306,20 +359,20 @@ test "http_get reaches only a host on the run's list"
   listener.serve(into: Fake.start(["hello"], Fs.fixture()), idle: 5_000.ms)
   fs = Fs.fixture()
   url = Map.new().set("url", "http://localhost:#{listener.port}/page?x=1")
-  heard = used(fs.read_only, fs, http, Clock.fixture(), call("http_get", url, ["http_get"]),
+  heard = used(fs.read_only, None, http, Clock.fixture(), call("http_get", url, ["http_get"]),
     Deadline.fixture(1.minute))
   assert !heard.refused and heard.allowed
   assert heard.output == "200\nhello" or heard.output.ends_with?("did not answer with HTTP") or heard.output.ends_with?("took longer than the call may")
   away = Map.new().set("url", "http://example.com/")
-  assert used(fs.read_only, fs, http, Clock.fixture(), call("http_get", away, ["http_get"]),
+  assert used(fs.read_only, None, http, Clock.fixture(), call("http_get", away, ["http_get"]),
     Deadline.fixture(1.minute)).refused
   plain = Map.new().set("url", "https://localhost/")
-  assert used(fs.read_only, fs, http, Clock.fixture(), call("http_get", plain, ["http_get"]),
+  assert used(fs.read_only, None, http, Clock.fixture(), call("http_get", plain, ["http_get"]),
     Deadline.fixture(1.minute)).refused
   assert url_host("http://h:81/a") == "h" and url_port("http://h:81/a") == 81
   assert url_port("http://h/a") == 80 and url_path("http://h") == "/"
   assert url_path("http://h:1/a/b?c=d") == "/a/b?c=d"
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
           proven: not run

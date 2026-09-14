@@ -112,7 +112,7 @@ fn snapshot(service: Handle(Service)) : Option(List(Job))
 end
 
 fn open_jobs(jobs: List(Job)) : List(Job)
-  jobs.filter(fn(job) job.status == Queued or job.status == Leased end)
+  jobs.filter(fn(job) job.state == Queued or job.state == Leased end)
 end
 
 # One worker's turn over the wire: when the service shows it holding a job, whether or not its
@@ -137,13 +137,13 @@ fn turn(http: Http, service: Handle(Service), port: UInt16, n: UInt64) : String
 end
 
 fn held_by_w?(job: Job) : Bool
-  job.status == Leased and job.worker == Some("w")
+  job.state == Leased and job.worker == Some("w")
 end
 
 fn unknown() : Job
   at = Time.from_parts(2000, 1, 1, 0, 0, 0)
-  Job(number: 0, queue: "q", status: Dead, payload: "", attempts: 0, max_attempts: 1,
-    created_at: at, updated_at: at, worker: None, lease_until: None, reason: None)
+  Job(number: 0, queue: "q", state: Dead, payload: "", attempts: 0, max_attempts: 1, created_at: at,
+    updated_at: at, worker: None, lease_until: None, reason: None)
 end
 
 fn settled(http: Http, service: Handle(Service), port: UInt16, held: Job, n: UInt64,

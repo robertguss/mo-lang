@@ -227,11 +227,7 @@ end
 fn placed(table: Table, key: String, value: String) : Table
   at = bucket_of(key)
   bucket = table.buckets.get(at) or Map.new()
-  added = if bucket.has?(key)
-    0
-  else
-    1
-  end
+  added = if bucket.has?(key): 0 else: 1
   var after = table
   after.buckets = table.buckets.set(at, bucket.set(key, value))
   after.size = table.size + added

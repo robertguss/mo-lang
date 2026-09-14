@@ -407,11 +407,7 @@ test "a list is the client's notes whose titles start with the prefix, by id, at
   service = Service.start(fs, Clock.fixture(), opening(fresh(), Time.fixture()))
   var made = 0
   for i in 0..12
-    title = if i % 2 == 0
-      "todo #{i}"
-    else
-      "done #{i}"
-    end
+    title = if i % 2 == 0: "todo #{i}" else: "done #{i}"
     if ask(service, "ada", Create(title: title, body: "")) is Made(_)
       made += 1
     end

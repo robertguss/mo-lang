@@ -109,11 +109,7 @@ fn leasing(queue: String, body: String) : Result(Command, String)
   return Error("a queue name is 1 to 64 letters, digits, - and _") if !queue?(queue)
   return Ok(Lease(queue: queue, lease_ms: 30_000)) if body.trim == ""
   fields = try object_of(body)
-  lease_ms = if fields.has?("lease_ms")
-    try whole_field(fields, "lease_ms")
-  else
-    30_000
-  end
+  lease_ms = if fields.has?("lease_ms"): try whole_field(fields, "lease_ms") else: 30_000
   return Error("lease_ms must be a whole number from 100 to 3600000") if !lease_ms?(lease_ms)
   Ok(Lease(queue: queue, lease_ms: lease_ms))
 end
@@ -309,7 +305,7 @@ end
 
 test "each outcome is its status and its JSON"
   at = Time.fixture()
-  kept = Job(number: 1, queue: "q", status: Queued, payload: "p", attempts: 0, max_attempts: 1,
+  kept = Job(number: 1, queue: "q", state: Queued, payload: "p", attempts: 0, max_attempts: 1,
     created_at: at, updated_at: at, worker: None, lease_until: None, reason: None)
   assert respond(Made(job: kept)) == json(201, shown(kept))
   assert respond(Found(job: kept)).status == 200 and respond(Handed(job: kept)).status == 200

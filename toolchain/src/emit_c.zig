@@ -2191,3 +2191,37 @@ test "a C string literal escapes what C reads specially" {
     try std.testing.expectEqualStrings("mo_i64(INT64_MIN)", try intConst(arena, std.math.minInt(i64)));
     try std.testing.expectEqualStrings("mo_u64(UINT64_C(18446744073709551615))", try intConst(arena, std.math.maxInt(u64)));
 }
+
+test "a one-line if value lowers exactly as its block form, in bytecode and in C" {
+    // Both sources hold every token outside the if at the same byte and on the same line: the
+    // one-line form is padded with the block form's newlines and then spaces to its length. The
+    // branches are constants, which record no position, so the two lowerings may differ only if
+    // the forms lower differently (step 25).
+    const pipeline = @import("pipeline.zig");
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const head = "module M\nexpose label\n\nfn label(n: UInt32) : String\n  word = ";
+    const tail = "\n  \"#{n} #{word}\"\nend\n\ntest \"one line\"\n  assert label(1) == \"1 line\"\nend\n";
+    const block = "if n == 1\n    \"line\"\n  else\n    \"lines\"\n  end";
+    const line = "if n == 1: \"line\" else: \"lines\"";
+    const newlines = std.mem.count(u8, block, "\n");
+    const padded = try arena.alloc(u8, block.len);
+    @memset(padded, ' ');
+    @memcpy(padded[0..line.len], line);
+    @memset(padded[block.len - newlines ..], '\n');
+    var outs: [2][]const u8 = undefined;
+    var lowered: [2]bytecode.Program = undefined;
+    for ([_][]const u8{ block, padded }, 0..) |form, k| {
+        const src = try std.mem.concat(arena, u8, &.{ head, form, tail });
+        const prog = try program.single(arena, "t.mo", src);
+        var diags: diag.List = .empty;
+        const checked = try pipeline.buildable(arena, prog, true, &diags);
+        outs[k] = try emit(arena, &checked, prog, .{ .tests = true });
+        lowered[k] = try bytecode.lower(arena, checked);
+    }
+    try std.testing.expectEqualStrings(outs[0], outs[1]);
+    try std.testing.expectEqualDeep(lowered[0].functions, lowered[1].functions);
+    try std.testing.expectEqualDeep(lowered[0].clauses, lowered[1].clauses);
+    try std.testing.expectEqualDeep(lowered[0].constants, lowered[1].constants);
+}

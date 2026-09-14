@@ -2343,7 +2343,12 @@ const Checker = struct {
             .name_ref => {
                 const name = c.text(n.main_token);
                 const b = c.lookup(name) orelse {
-                    try c.reportTok(.unknown_name, n.main_token, try c.print("there is no {s} in scope", .{name}));
+                    // `state = 1` outside a process: the keyword names only the process's state (step 25).
+                    const what = if (c.tree.tokens[n.main_token].kind == .kw_state)
+                        "there is no state outside a process: state is a keyword, the process's state in its update and invariants, so a binding takes another name, such as status, and a struct's field named state is read after a dot; no state is in scope"
+                    else
+                        try c.print("there is no {s} in scope", .{name});
+                    try c.reportTok(.unknown_name, n.main_token, what);
                     return types.unknown;
                 };
                 if (reads) {

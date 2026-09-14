@@ -23,7 +23,7 @@ supervisor Savers(files: Fs)
   child Saver(files), restart: :always
 end
 
-# expect MO0404: a read-only Fs reaches Saver.start through fs.read_only; the never that read_only promises forbids it.
+# expect MO0404: Saver writes through its parameter files, and fs.read_only was narrowed to read_only and only reads; hand it the Fs fs.read_only was narrowed from.
 fn started(fs: Fs) : Handle(Saver)
   Saver.start(fs.read_only)
 end

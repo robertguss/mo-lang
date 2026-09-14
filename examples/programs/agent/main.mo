@@ -318,16 +318,8 @@ fn step_line(step: String) : String
   end
   n = (fields.get("n") or Null).to_i64 or 0
   kind = text_in(fields, "kind")
-  marks = if fields.get("refused") == Some(Bool(value: true))
-    " (refused)"
-  else
-    ""
-  end
-  tokens = if kind == "model"
-    " (#{(fields.get("tokens") or Null).to_i64 or 0} tokens)"
-  else
-    ""
-  end
+  marks = if fields.get("refused") == Some(Bool(value: true)): " (refused)" else: ""
+  tokens = if kind == "model": " (#{(fields.get("tokens") or Null).to_i64 or 0} tokens)" else: ""
   "#{n} #{kind} #{text_in(fields, "name")}#{marks}#{tokens}: #{Json.encode(text_in(fields, "result"))}"
 end
 

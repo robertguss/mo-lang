@@ -110,11 +110,7 @@ fn after(move: Move, held: List((String, String)), response: Response) : Checked
     Read: read_back(held, response)
     Rename(title): renamed(held, response, title)
     Drop:
-      expected = if held.size == 0
-        404
-      else
-        204
-      end
+      expected = if held.size == 0: 404 else: 204
       return Wrong(why: "DELETE gave #{response.status}") if response.status != expected
       Next(held: held.take(held.size.saturating_sub(1)))
     Look:

@@ -119,11 +119,7 @@ fn heard(http: Http, sleeper: Handle(Sleeper), port: UInt16, line: String) : Str
       path: "/runs/#{words.get(2) or ""}", json: ""))
   end
   brief = words.first == Some("brief")
-  asked = if brief
-    words.drop(1)
-  else
-    words
-  end
+  asked = if brief: words.drop(1) else: words
   case trip_of(asked, port)
     Some(trip):
       case http.send(request_of(trip), host: trip.host, port: trip.port, within: 10_000.ms)
@@ -183,11 +179,7 @@ end
 fn masked(text: String, key: String, quoted: Bool) : String
   label = "\"#{key}\": "
   pieces = text.split(label)
-  mark = if quoted
-    "\"<#{key}>\""
-  else
-    "<#{key}>"
-  end
+  mark = if quoted: "\"<#{key}>\"" else: "<#{key}>"
   rest = pieces.drop(1).map(fn(piece) "#{label}#{mark}#{after_value(piece, quoted)}" end)
   String.join([pieces.first or ""].concat(rest), "")
 end

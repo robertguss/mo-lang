@@ -8,6 +8,7 @@ use Agent.Record{Health, Order}
 use Agent.Run{Run}
 use Agent.Shelf{Outcome}
 use Agent.Steps{Setup}
+use Agent.Tools{Writer}
 
 intent "The registry serves every request about runs: it starts a process per new run, once the book has made the run and written its first line, over the run's folder, and asks it to begin on a deadline of the order's wall budget, which the run keeps as its budget; every other request it asks of the book on what remains of its asker's deadline."
 
@@ -56,12 +57,14 @@ supervisor Registries(book: Handle(Book), fs: Fs, http: Http, clock: Clock, mode
   child Registry(book, fs, http, clock, model), restart: :always
 end
 
-# A run's process over its folder: it reads through the folder read-only, and writes through the
-# folder itself, which the checker refuses to be read-only since the run writes through it (step
-# 24); a write the order does not grant is refused by the run's tools before it is made.
+# A run's process over its folder read-only. Only a run whose order grants write_file gets a writer,
+# the process over the folder writable (step 25), so a run not granted it holds no Fs that writes.
 fn started_run(book: Handle(Book), fs: Fs, http: Http, clock: Clock, setup: Setup) : Handle(Run)
   folder = fs.scoped(setup.order.folder)
-  Run.start(book, folder.read_only, folder, http, clock, setup)
+  if setup.order.tools.contains?("write_file")
+    return Run.start(book, folder.read_only, Some(Writer.start(folder)), http, clock, setup)
+  end
+  Run.start(book, folder.read_only, None, http, clock, setup)
 end
 
 # The run asked to begin on its wall budget; a begin whose answer did not come still began it,

@@ -137,11 +137,7 @@ end
 fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : Result(String,
   Problem)
   opened = try opened_store(fs, err, place.dir)
-  whole = if cut_short?(opened)
-    try compacted_store(fs, place.dir, opened)
-  else
-    opened
-  end
+  whole = if cut_short?(opened): try compacted_store(fs, place.dir, opened) else: opened
   case http.listen(place.port, within: 5_000.ms)
     Ok(listener): Ok(served_on(listener, fs, clock, out, whole))
     Error(_): Error(Unbound(port: place.port))
@@ -250,11 +246,7 @@ end
 fn masked(text: String, key: String, quoted: Bool) : String
   label = "\"#{key}\": "
   pieces = text.split(label)
-  mark = if quoted
-    "\"<#{key}>\""
-  else
-    "<#{key}>"
-  end
+  mark = if quoted: "\"<#{key}>\"" else: "<#{key}>"
   rest = pieces.drop(1).map(fn(piece) "#{label}#{mark}#{after_value(piece, quoted)}" end)
   String.join([pieces.first or ""].concat(rest), "")
 end

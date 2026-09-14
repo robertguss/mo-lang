@@ -261,18 +261,21 @@ pub fn whole(v: Value) ?i128 {
 }
 
 test "a Json number is a whole Int64 only when a float holds it exactly" {
+    // Each Number's field lives in the caller's frame: a field array local to a helper would be
+    // gone once the helper returns, and read back as whatever took its place on the stack.
     const n = struct {
-        fn of(x: f64) Value {
-            const fields = [_]Value{.{ .float = x }};
-            return .{ .variant = .{ .name = "Number", .fields = &fields } };
+        fn of(field: *[1]Value, x: f64) Value {
+            field.* = .{.{ .float = x }};
+            return .{ .variant = .{ .name = "Number", .fields = field } };
         }
     };
-    try std.testing.expectEqual(@as(?i128, 3), whole(n.of(3.0)));
-    try std.testing.expectEqual(@as(?i128, -9007199254740991), whole(n.of(-9007199254740991.0)));
-    try std.testing.expectEqual(@as(?i128, null), whole(n.of(9007199254740992.0)));
-    try std.testing.expectEqual(@as(?i128, null), whole(n.of(2.5)));
-    try std.testing.expectEqual(@as(?i128, null), whole(n.of(18014398509481984.0)));
-    try std.testing.expectEqual(@as(?i128, null), whole(n.of(std.math.nan(f64))));
+    var field: [1]Value = undefined;
+    try std.testing.expectEqual(@as(?i128, 3), whole(n.of(&field, 3.0)));
+    try std.testing.expectEqual(@as(?i128, -9007199254740991), whole(n.of(&field, -9007199254740991.0)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(&field, 9007199254740992.0)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(&field, 2.5)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(&field, 18014398509481984.0)));
+    try std.testing.expectEqual(@as(?i128, null), whole(n.of(&field, std.math.nan(f64))));
     try std.testing.expectEqual(@as(?i128, null), whole(.{ .variant = .{ .name = "Null", .fields = &.{} } }));
 }
 

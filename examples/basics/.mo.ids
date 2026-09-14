@@ -61,15 +61,20 @@
       "module": "Basics.If",
       "declarations": [
         { "id": "5221807f7430", "name": "module Basics.If", "hash": "1dcaffac701e4fcb" },
-        { "id": "4d1457199219", "name": "expose", "hash": "4ae03b1f8bdf48d4" },
-        { "id": "e33fd538610b", "name": "intent", "hash": "0eabaf64bb94a1b5" },
+        { "id": "4d1457199219", "name": "expose", "hash": "cd71f60beeacb67b" },
+        { "id": "e33fd538610b", "name": "intent", "hash": "32fe62db5272c87d" },
         { "id": "9a9ed4b52785", "name": "fn shipping", "hash": "9d85bbc466f32082" },
-        { "id": "26a09a0a1bc4", "name": "fn note", "hash": "df528313737c44d6" },
+        { "id": "26a09a0a1bc4", "name": "fn note", "hash": "d0f4e2356096585b" },
+        { "id": "26d7b01031be", "name": "fn label", "hash": "41f87892f613861b" },
+        { "id": "c9b54e17b8bf", "name": "fn plural", "hash": "4e41816c44ad4dc8" },
+        { "id": "7dd9b045319d", "name": "fn sizes", "hash": "b3ed37937ab6249a" },
         { "id": "d9d8c123a4ce", "name": "test \"large orders ship free\"", "hash": "8d403028e94a832f" },
         { "id": "053b4d1ab73e", "name": "test \"express costs more\"", "hash": "6f4a3ded0912b887" },
-        { "id": "656edc826ac9", "name": "test \"if gives a value\"", "hash": "7956caf37f1f4920" }
+        { "id": "656edc826ac9", "name": "test \"if gives a value\"", "hash": "7956caf37f1f4920" },
+        { "id": "79aa8b48cc01", "name": "test \"a one-line if gives a value\"", "hash": "8e893ea8eaf8cd2a" },
+        { "id": "6ed44a2f0697", "name": "test \"a one-line if is a value wherever a value goes\"", "hash": "4d71ffb3c7ed7734" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "465daa0f0e35d796" }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "a452a1977eebf561" }
     },
     {
       "path": "in-place.mo",
