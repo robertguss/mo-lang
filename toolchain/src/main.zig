@@ -379,8 +379,8 @@ fn run(init: std.process.Init) !void {
 
 /// `MO_STATS=1`: what the run allocated and copied, on stderr when it ends or is terminated.
 fn printStats() void {
-    var buf: [256]u8 = undefined;
-    const line = std.fmt.bufPrint(&buf, "mo stats: allocations {d} bytes {d} packed {d} packed_bytes {d} packed_capacity {d} freed {d} freed_ns {d}\n", .{ mo.region.allocations, mo.region.allocated_bytes, mo.vm.packed_values, mo.vm.packed_bytes, mo.vm.packed_capacity, mo.turns.freed, mo.turns.freed_ns }) catch return;
+    var buf: [320]u8 = undefined;
+    const line = std.fmt.bufPrint(&buf, "mo stats: allocations {d} bytes {d} packed {d} packed_bytes {d} packed_capacity {d} freed {d} freed_ns {d} spilled {d}\n", .{ mo.region.allocations, mo.region.allocated_bytes, mo.vm.packed_values, mo.vm.packed_bytes, mo.vm.packed_capacity, mo.turns.freed, mo.turns.freed_ns, mo.region.spilled_bytes }) catch return;
     _ = std.posix.system.write(2, line.ptr, line.len);
 }
 

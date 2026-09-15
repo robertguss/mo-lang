@@ -185,10 +185,13 @@ pub const Vm = struct {
     }
 
     /// Values from here on live in `values`, freed at safe points; `scratch` is empty
-    /// between compactions.
+    /// between compactions. What does not fit in either comes from `gpa` and lives until the run
+    /// ends, counted (Region.fallback), as the binary's region_alloc does (step 29b).
     pub fn useRegions(vm: *Vm, values: *Region, scratch: *Region) void {
         vm.region = values;
         vm.scratch = scratch;
+        values.fallback = vm.gpa;
+        scratch.fallback = vm.gpa;
         vm.heap = values.allocator();
     }
 
@@ -698,6 +701,7 @@ pub const Vm = struct {
         const s = vm.scratch.?;
         var fresh = Region.reserveUpTo(size) catch return;
         if (fresh.end - fresh.base <= r.end - r.base) return fresh.release();
+        fresh.fallback = r.fallback;
         s.top = s.base;
         vm.forward.clearRetainingCapacity();
         try vm.copyRoots(roots, &.{}, .{ .lo = r.base, .hi = r.top, .dest = s.allocator(), .moves = true });

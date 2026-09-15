@@ -93,12 +93,12 @@ static bool reserve_up_to(MoRegion *r, size_t most) {
 static bool reserve(MoRegion *r) { return reserve_up_to(r, (size_t)64 << 30); }
 
 /* Counts MO_STATS=1 prints (step 21): allocations and their bytes, values packed and their bytes,
- * processes a sweep ended and the time it took. */
-static uint64_t stat_allocations, stat_bytes, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns;
+ * processes a sweep ended and the time it took, and the bytes allocated past a full region (step 29b). */
+static uint64_t stat_allocations, stat_bytes, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns, stat_spilled;
 
 static void print_stats(void) {
-    char line[256];
-    int n = snprintf(line, sizeof line, "mo stats: allocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu\n", (unsigned long long)stat_allocations, (unsigned long long)stat_bytes, (unsigned long long)stat_packed, (unsigned long long)stat_packed_bytes, (unsigned long long)stat_packed_capacity, (unsigned long long)stat_freed, (unsigned long long)stat_freed_ns);
+    char line[320];
+    int n = snprintf(line, sizeof line, "mo stats: allocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu spilled %llu\n", (unsigned long long)stat_allocations, (unsigned long long)stat_bytes, (unsigned long long)stat_packed, (unsigned long long)stat_packed_bytes, (unsigned long long)stat_packed_capacity, (unsigned long long)stat_freed, (unsigned long long)stat_freed_ns, (unsigned long long)stat_spilled);
     if (n > 0) {
         ssize_t w = write(2, line, (size_t)n);
         (void)w;
@@ -119,7 +119,9 @@ static void *region_alloc(MoRegion *r, size_t n) {
         r->top = start + n;
         return (void *)start;
     }
-    /* Past the region, or no region at all: memory that lives until the run ends. */
+    /* Past the region, or no region at all: memory that lives until the run ends. Past a full region it
+     * is counted (spilled, MO_STATS=1): no compaction frees it and no safe point sees it (step 29b). */
+    if (r->end != 0) stat_spilled += n;
     return xmalloc(n);
 }
 

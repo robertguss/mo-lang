@@ -44,7 +44,8 @@ const Parcel = vm_mod.Parcel;
 const Error = vm_mod.Error;
 
 /// The address space a process's region reserves at first: many processes each reserve one,
-/// and a region that fills grows (Vm.grow).
+/// and a region that fills allocates past itself from gpa (Region.fallback), memory no compaction
+/// frees and the `spilled` of `MO_STATS=1` counts.
 pub const process_region: usize = 1 << 30;
 
 /// `Turns.holder` when main's thread runs main's code.

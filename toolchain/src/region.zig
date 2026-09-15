@@ -9,6 +9,8 @@ const std = @import("std");
 /// Counts `MO_STATS=1` prints (main.zig, step 21): every allocation a region gave, and its bytes.
 pub var allocations: u64 = 0;
 pub var allocated_bytes: u64 = 0;
+/// The bytes allocated past a full region, from its fallback (step 29b): memory no compaction frees.
+pub var spilled_bytes: u64 = 0;
 
 pub const Region = struct {
     base: usize,
@@ -16,6 +18,9 @@ pub const Region = struct {
     top: usize,
     /// Past `top`, how far the region's pages may still be resident (step 28).
     high: usize = 0,
+    /// Where an allocation that does not fit goes, counted in spilled_bytes, and lives until the run
+    /// ends, as runtime/mo_rt.c's region_alloc does (step 29b); with none it fails.
+    fallback: ?std.mem.Allocator = null,
 
     /// As much address space as the system gives, from 64 GiB down to 256 MiB.
     pub fn reserve() error{OutOfMemory}!Region {
@@ -89,10 +94,13 @@ pub const Region = struct {
     const vtable: std.mem.Allocator.VTable = .{ .alloc = alloc, .resize = resize, .remap = remap, .free = free };
 
     fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
-        _ = ret_addr;
         const r: *Region = @ptrCast(@alignCast(ctx));
         const start = alignment.forward(r.top);
-        if (start + len > r.end) return null;
+        if (start + len > r.end) {
+            const past = r.fallback orelse return null;
+            spilled_bytes += len;
+            return past.rawAlloc(len, alignment, ret_addr);
+        }
         r.top = start + len;
         allocations += 1;
         allocated_bytes += len;
@@ -138,4 +146,20 @@ test "a region bumps, grows its last allocation in place, and frees everything p
     const again = try a.alloc(u8, 1);
     try std.testing.expectEqual(@intFromPtr(grown.ptr), @intFromPtr(again.ptr));
     try std.testing.expect(r.contains(@intFromPtr(first.ptr)));
+}
+
+test "a full region fails, or allocates from its fallback and counts what it spilled" {
+    var r = try Region.reserveUpTo(256 << 20);
+    defer r.release();
+    const a = r.allocator();
+    _ = try a.alloc(u8, (256 << 20) - 16);
+    try std.testing.expectError(error.OutOfMemory, a.alloc(u8, 64));
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    r.fallback = arena.allocator();
+    const before = spilled_bytes;
+    const past = try a.alloc(u8, 64);
+    @memset(past, 7);
+    try std.testing.expect(!r.contains(@intFromPtr(past.ptr)));
+    try std.testing.expectEqual(before + 64, spilled_bytes);
 }
