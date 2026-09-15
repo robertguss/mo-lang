@@ -68,7 +68,7 @@ process Journal(fs: Fs, clock: Clock, place: Place, started: Time) mailbox: 100_
               state.why = why
           end
         end
-        readiness(state.opened, state.desk, "#{place.dir} #{state.why}")
+        readiness(state.opened, state.desk, state.why)
       Stage(call):
         state.now = clock.now
         took = if state.opened

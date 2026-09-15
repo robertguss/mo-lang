@@ -1779,7 +1779,7 @@
         { "id": "4f8df0633394", "name": "use Ledger.Teller", "hash": "b5cd8855b71e0935" },
         { "id": "b7243c8ba2ab", "name": "intent", "hash": "5e18305e97999eab" },
         { "id": "29f5328b4543", "name": "enum Readiness", "hash": "27201271efc26cfc" },
-        { "id": "325ae6a04eca", "name": "process Journal", "hash": "e3624d8388cc3c67" },
+        { "id": "325ae6a04eca", "name": "process Journal", "hash": "e00e1a78314b04e3" },
         { "id": "0fa78fc98d21", "name": "supervisor Journals", "hash": "a7b99cdad53b9fe4" },
         { "id": "192997966e3a", "name": "fn readiness", "hash": "2982a4126b250c6f" },
         { "id": "6c1532d94ded", "name": "struct Written", "hash": "6b7bb80c778b6849" },
@@ -1817,7 +1817,7 @@
         { "id": "b710c6a39da0", "name": "test rejects \"a journal opened over a retry that landed twice\"", "hash": "1a04fef8b98e10be" },
         { "id": "600868e003f2", "name": "test rejects \"a journal opened over a transfer written as two records\"", "hash": "a5c6feb100d24280" }
       ],
-      "verified": { "hash": "d6ad40d59b223c6d", "declarations": "dda0dd36b1dcc7b3", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+      "verified": { "hash": "d6ad40d59b223c6d", "declarations": "9d5b05e8ef819788", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
     },
     {
       "path": "ledger/money.mo",
