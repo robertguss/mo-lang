@@ -47,6 +47,7 @@ extern char **environ;
 
 MoRegion mo_heap;
 MoHandleFrame *mo_handle_frames;
+MoFrame *mo_frames;
 bool mo_compacts;
 bool mo_records;
 bool mo_contracts;
@@ -78,10 +79,15 @@ static void *xrealloc(void *p, size_t n) {
     return q;
 }
 
-/* As much address space as the system gives, from `most` down to 256 MiB (region.zig). */
+#ifndef MAP_NORESERVE
+#define MAP_NORESERVE 0
+#endif
+
+/* As much address space as the system gives, from `most` down to 256 MiB (region.zig). Reserved, not
+ * committed (step 29b): a system that counts what a mapping may commit gave 64 GiB only as 8. */
 static bool reserve_up_to(MoRegion *r, size_t most) {
     for (size_t size = most; size >= (size_t)256 << 20; size /= 2) {
-        void *mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        void *mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
         if (mem == MAP_FAILED) continue;
         r->base = r->top = r->high = (uintptr_t)mem;
         r->end = r->base + size;
@@ -92,13 +98,37 @@ static bool reserve_up_to(MoRegion *r, size_t most) {
 
 static bool reserve(MoRegion *r) { return reserve_up_to(r, (size_t)64 << 30); }
 
+/* The address space a process's region reserves (turns.zig, reserveProcess): BIG_REGION while every
+ * live process's region together holds under REGION_BUDGET, else PROCESS_REGION, so 64,000 regions
+ * still fit (step 21). A region moves into a larger one only between updates, and one update's values,
+ * a replay's whole book among them, need the room while it runs (step 29b). A region that fills
+ * allocates past itself (region_alloc), where nothing is freed. */
+#define PROCESS_REGION ((size_t)1 << 30)
+#define BIG_REGION ((size_t)64 << 30)
+#define REGION_BUDGET ((size_t)16 << 40)
+/* The most address space a process's heap grows to past the budget (settle_region). */
+#define MAX_REGION ((size_t)16 << 30)
+/* The address space the live processes' regions hold. */
+static size_t regions_reserved;
+
+/* A process region's reservation: `want` bytes while the live regions, less `within` bytes about to be
+ * released, stay under the budget, else `past`; counted. */
+static bool reserve_process(MoRegion *r, size_t want, size_t past, size_t within) {
+    if (regions_reserved + want > REGION_BUDGET + within) want = past;
+    if (!reserve_up_to(r, want)) return false;
+    regions_reserved += r->end - r->base;
+    return true;
+}
+
 /* Counts MO_STATS=1 prints (step 21): allocations and their bytes, values packed and their bytes,
  * processes a sweep ended and the time it took, and the bytes allocated past a full region (step 29b). */
-static uint64_t stat_allocations, stat_bytes, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns, stat_spilled;
+static uint64_t stat_allocations, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns, stat_spilled;
+/* Every region allocation's bytes (mo_rt.h): the stats' bytes, and what starts a walk. */
+uint64_t mo_allocated, mo_walk_at, mo_walk_after = MO_WALK_BUDGET;
 
 static void print_stats(void) {
     char line[320];
-    int n = snprintf(line, sizeof line, "mo stats: allocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu spilled %llu\n", (unsigned long long)stat_allocations, (unsigned long long)stat_bytes, (unsigned long long)stat_packed, (unsigned long long)stat_packed_bytes, (unsigned long long)stat_packed_capacity, (unsigned long long)stat_freed, (unsigned long long)stat_freed_ns, (unsigned long long)stat_spilled);
+    int n = snprintf(line, sizeof line, "mo stats: allocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu spilled %llu\n", (unsigned long long)stat_allocations, (unsigned long long)mo_allocated, (unsigned long long)stat_packed, (unsigned long long)stat_packed_bytes, (unsigned long long)stat_packed_capacity, (unsigned long long)stat_freed, (unsigned long long)stat_freed_ns, (unsigned long long)stat_spilled);
     if (n > 0) {
         ssize_t w = write(2, line, (size_t)n);
         (void)w;
@@ -113,7 +143,7 @@ static void stats_on_term(int sig) {
 
 static void *region_alloc(MoRegion *r, size_t n) {
     stat_allocations++;
-    stat_bytes += n;
+    mo_allocated += n;
     uintptr_t start = (r->top + 7) & ~(uintptr_t)7;
     if (r->end != 0 && start + n <= r->end) {
         r->top = start + n;
@@ -586,6 +616,12 @@ static MoValue copy_out(MoValue v, const Copy *c);
 static MoValue *copy_slice(MoValue *xs, size_t len, const Copy *c, bool grows) {
     uintptr_t addr = (uintptr_t)xs;
     if (len == 0 || !inside(addr, c)) return xs;
+    /* A view shorter than the buffer push grew is copied with the whole buffer, once for every view of
+     * it: frames that each hold a longer list pushed from the one before took a copy each (step 29b). */
+    if (grows && c->moves) {
+        Growth *whole = ptab_get(&growth, addr);
+        if (whole && whole->cap != 0 && whole->len > len) return copy_slice(xs, whole->len, c, grows);
+    }
     MoValue *copied = forward_get(addr, len);
     if (copied) return copied;
     /* By value: copying what the slice holds may grow the table it is in. */
@@ -711,16 +747,63 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     if (mo_heap.high - mo_heap.top > 16 * RELEASE_KEEP && mo_heap.high - mo_heap.top > 2 * kept) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
 }
 
+/* The walk (mo_rt.h, vm.zig's walk): out from `frame` while the frame waits in a call it made to the one
+ * inside it, one level deeper, and reads nothing through its closure's pointer. Everything past the
+ * outermost one's mark that their roots do not reach is freed, the roots take the copies, and every mark
+ * inside the outermost one's moves to the new top, so what the walk kept is older than each of them. */
+static MoValue *walk_roots;
+static size_t walk_cap;
+
+void mo_walk(MoFrame *frame) {
+    MoFrame *outer = frame;
+    while (!outer->pinned && outer->next && outer->next->walking && outer->next->depth + 1 == outer->depth) outer = outer->next;
+    size_t n = 0;
+    for (MoFrame *f = frame;; f = f->next) {
+        n += f->nroots;
+        if (f == outer) break;
+    }
+    if (n > walk_cap) {
+        walk_cap = 2 * n;
+        walk_roots = xrealloc(walk_roots, walk_cap * sizeof(MoValue));
+    }
+    size_t k = 0;
+    for (MoFrame *f = frame;; f = f->next) {
+        for (uint32_t i = 0; i < f->nroots; i++) walk_roots[k++] = *f->roots[i];
+        if (f == outer) break;
+    }
+    size_t from = *outer->marks[0];
+    mo_compact(from, walk_roots, n);
+    size_t top = mo_heap.top;
+    k = 0;
+    for (MoFrame *f = frame;; f = f->next) {
+        for (uint32_t i = 0; i < f->nroots; i++) *f->roots[i] = walk_roots[k++];
+        if (f != outer) *f->marks[0] = top;
+        /* Each loop's mark, then what it kept: a loop begun since the outermost mark starts over. */
+        for (uint32_t i = 1; i + 1 < f->nmarks; i += 2) {
+            if (*f->marks[i] > from) {
+                *f->marks[i] = top;
+                *f->marks[i + 1] = 0;
+            }
+        }
+        if (f == outer) break;
+    }
+    mo_walk_at = mo_allocated;
+    mo_walk_after = top - from > MO_WALK_BUDGET ? top - from : MO_WALK_BUDGET;
+}
+
 /* Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the heap's
  * place, and releases the old one. Only where nothing but `roots` reaches into the heap: after a
  * process's update, whose new state is the one root (settle_region; vm.zig, relocate). */
 static void relocate_heap(size_t size, MoValue *roots, size_t n) {
     MoRegion fresh;
-    if (!reserve_up_to(&fresh, size)) return;
-    if (fresh.end - fresh.base <= mo_heap.end - mo_heap.base) {
+    size_t old_size = mo_heap.end - mo_heap.base;
+    if (!reserve_process(&fresh, size, size < MAX_REGION ? size : MAX_REGION, old_size)) return;
+    if (fresh.end - fresh.base <= old_size) {
+        regions_reserved -= fresh.end - fresh.base;
         munmap((void *)fresh.base, fresh.end - fresh.base);
         return;
     }
+    regions_reserved -= old_size;
     scratch.top = scratch.base;
     forward_clear();
     Copy out = {mo_heap.base, mo_heap.top, &scratch, true, false};
@@ -4596,11 +4679,6 @@ MoValue mo_all(uint32_t index) {
 #define LOG_KEPT 16
 /* Region bytes a process may leave past twice what its last full compaction kept. */
 #define FULL_BUDGET ((size_t)4 << 20)
-/* The address space a process's region reserves, at most: many processes each reserve one, and a
- * region that fills allocates past itself (region_alloc). */
-#define PROCESS_REGION ((size_t)1 << 30)
-/* The most address space a process's heap grows to (settle_region). */
-#define MAX_REGION ((size_t)16 << 30)
 /* A fiber's stack: address space reserved whole, committed as it is touched. */
 #define FIBER_STACK ((size_t)16 << 20)
 #define FIBER_GUARD ((size_t)1 << 20)
@@ -5483,6 +5561,7 @@ static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out
     jmp_buf *saved = crash_jump;
     uint32_t depth = mo_depth;
     MoHandleFrame *frames = mo_handle_frames;
+    MoFrame *walks = mo_frames;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) {
@@ -5490,6 +5569,7 @@ static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out
     } else {
         mo_depth = depth;
         mo_handle_frames = frames;
+        mo_frames = walks;
     }
     crash_jump = saved;
     return jumped;
@@ -5523,7 +5603,7 @@ static void settle_region(uint32_t id, size_t mark) {
          * past that it moves into one four times as large. main's never moves. */
         size_t reserved = mo_heap.end - mo_heap.base;
         if (turns_on && 4 * full_kept > reserved) {
-            relocate_heap(4 * reserved < MAX_REGION ? 4 * reserved : MAX_REGION, roots, 1);
+            relocate_heap(4 * reserved < BIG_REGION ? 4 * reserved : BIG_REGION, roots, 1);
             full_kept = mo_heap.top - mo_heap.base;
         }
     }
@@ -5566,6 +5646,7 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     jmp_buf *saved = crash_jump;
     uint32_t depth = mo_depth;
     MoHandleFrame *frames = mo_handle_frames;
+    MoFrame *walks = mo_frames;
     crash_jump = &here;
     int jumped = setjmp(here);
     if (jumped == 0) {
@@ -5573,6 +5654,7 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     } else {
         mo_depth = depth;
         mo_handle_frames = frames;
+        mo_frames = walks;
     }
     crash_jump = saved;
     if (jumped != 0 && jumped != JUMP_CRASH) raise_report(last_report, jumped);
@@ -5992,6 +6074,7 @@ typedef struct {
     size_t full_kept;
     jmp_buf *crash_jump;
     MoHandleFrame *handle_frames;
+    MoFrame *frames;
 } VmState;
 
 static void save_vm(VmState *s) {
@@ -6011,6 +6094,7 @@ static void save_vm(VmState *s) {
     s->full_kept = full_kept;
     s->crash_jump = crash_jump;
     s->handle_frames = mo_handle_frames;
+    s->frames = mo_frames;
 }
 
 static void load_vm(const VmState *s) {
@@ -6030,6 +6114,7 @@ static void load_vm(const VmState *s) {
     full_kept = s->full_kept;
     crash_jump = s->crash_jump;
     mo_handle_frames = s->handle_frames;
+    mo_frames = s->frames;
 }
 
 /* A vm handed to a process whose id an ended process had: what it kept is cleared, its lists keep
@@ -6175,7 +6260,7 @@ static Worker *worker_of(uint32_t id) {
     }
     w->id = id;
     w->caller = MAIN_TURN;
-    if (packs && !reserve_up_to(&w->vm.heap, PROCESS_REGION)) w->vm.heap = (MoRegion){0, 0, 0};
+    if (packs && !reserve_process(&w->vm.heap, BIG_REGION, PROCESS_REGION, 0)) w->vm.heap = (MoRegion){0, 0, 0};
     workers[id] = w;
     return w;
 }
@@ -6222,6 +6307,7 @@ void mo_fiber_start(Fiber *f) {
         } else {
             mo_depth = 0;
             mo_handle_frames = NULL;
+            mo_frames = NULL;
             w->failed = jumped;
             w->report = last_report;
         }
@@ -6423,7 +6509,10 @@ static void end_process(uint32_t id) {
 static void release_worker(uint32_t id) {
     if (id >= nworkers || !workers[id] || workers[id]->ended) return;
     Worker *w = workers[id];
-    if (w->vm.heap.end != 0) munmap((void *)w->vm.heap.base, w->vm.heap.end - w->vm.heap.base);
+    if (w->vm.heap.end != 0) {
+        regions_reserved -= w->vm.heap.end - w->vm.heap.base;
+        munmap((void *)w->vm.heap.base, w->vm.heap.end - w->vm.heap.base);
+    }
     w->vm.heap = (MoRegion){0, 0, 0};
     w->ended = true;
 }
@@ -8693,6 +8782,7 @@ static Result run_test(const MoTest *t) {
     if (jumped != 0) {
         mo_depth = 0;
         mo_handle_frames = NULL;
+        mo_frames = NULL;
     }
     if (jumped == 0) {
         t->fn();
@@ -8734,6 +8824,7 @@ static Result run_property(const MoTest *t) {
             if (jumped != 0) {
                 mo_depth = 0;
                 mo_handle_frames = NULL;
+                mo_frames = NULL;
             }
             if (jumped == 0) {
                 t->fn();

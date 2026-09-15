@@ -1039,7 +1039,11 @@ pub const Sim = struct {
             // A process region keeps what its state reaches in a quarter of its reservation at
             // most; past that it moves into one four times as large (step 21). main's never moves.
             if (sim.turns != null and 4 * vm.full_kept > r.end - r.base) {
-                try vm.relocate(@min(4 * (r.end - r.base), max_region), &roots);
+                const old_size = r.end - r.base;
+                const want = @min(4 * old_size, turns_mod.big_region);
+                const size = if (turns_mod.regions_reserved + want > turns_mod.region_budget + old_size) @min(want, max_region) else want;
+                try vm.relocate(size, &roots);
+                turns_mod.regions_reserved = turns_mod.regions_reserved - old_size + (r.end - r.base);
                 vm.full_kept = r.top - r.base;
             }
         }

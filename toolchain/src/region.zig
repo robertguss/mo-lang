@@ -27,11 +27,15 @@ pub const Region = struct {
         return reserveUpTo(64 << 30);
     }
 
-    /// As much address space as the system gives, from `most` down to 256 MiB.
+    /// As much address space as the system gives, from `most` down to 256 MiB. Reserved, not
+    /// committed where the system has the flag (step 29b): one that counts what a mapping may commit
+    /// gave 64 GiB only as 8.
     pub fn reserveUpTo(most: usize) error{OutOfMemory}!Region {
+        var flags: std.posix.MAP = .{ .TYPE = .PRIVATE, .ANONYMOUS = true };
+        if (@hasField(std.posix.MAP, "NORESERVE")) flags.NORESERVE = true;
         var size: usize = most;
         while (size >= 256 << 20) : (size /= 2) {
-            const mem = std.posix.mmap(null, size, .{ .READ = true, .WRITE = true }, .{ .TYPE = .PRIVATE, .ANONYMOUS = true }, -1, 0) catch continue;
+            const mem = std.posix.mmap(null, size, .{ .READ = true, .WRITE = true }, flags, -1, 0) catch continue;
             const base = @intFromPtr(mem.ptr);
             return .{ .base = base, .end = base + mem.len, .top = base, .high = base };
         }

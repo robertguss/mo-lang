@@ -105,6 +105,18 @@ const Builder = struct {
     /// A parameter or an expression can hold a process's handle, so the function registers its
     /// locals for a sweep (bytecode.zig, Function.scans_handles).
     handles: bool = false,
+    /// Some call in the body is a whole statement's, where a walk may reach through the frame (step
+    /// 29b, mo_walk): the function lists its roots and its marks in a MoFrame.
+    walks: bool = false,
+    /// Every loop's label id: its mark and what it kept are declared at the top, where a walk moves them.
+    loop_ids: std.ArrayList(u32) = .empty,
+    /// The expression the statement being lowered is, while the frame holds nothing live but its roots.
+    root: Index = 0,
+    /// Lowering where the frame holds nothing live but its roots: a statement of the body, of a loop, or
+    /// of a branch of an if or a case that is itself a whole statement's.
+    clean: bool = true,
+    /// The call lowered next is a whole statement's.
+    walk_here: bool = false,
 };
 
 const Refinement = struct { cname: []const u8, clause: u32, bounds: bytecode.Bounds = .{} };
@@ -487,6 +499,16 @@ const Emitter = struct {
         // Every call counts its depth (contracts.depth_limit), as the vm's exec does.
         try out.print(gpa, "    if (++mo_depth > MO_DEPTH_LIMIT) mo_too_deep({s});\n", .{try cString(gpa, b.name)});
         for (b.locals.items) |l| try out.print(gpa, "    MoValue {s} MO_U = MO_NONE_V;\n", .{l});
+        for (b.loop_ids.items) |id| try out.print(gpa, "    size_t m{d} MO_U = 0, k{d} MO_U = 0;\n", .{ id, id });
+        // A frame a walk may reach through lists its roots and its marks (mo_rt.h, MoFrame); one whose
+        // closure's captures it reads through `cap` is as far out as a walk goes.
+        if (b.walks) {
+            try out.appendSlice(gpa, "    MoValue *const P_[] = {");
+            for (roots.items, 0..) |r, i| try out.print(gpa, "{s}&{s}", .{ if (i > 0) ", " else "", r });
+            try out.appendSlice(gpa, "};\n    size_t *const M_[] = {&F_");
+            for (b.loop_ids.items) |id| try out.print(gpa, ", &m{d}, &k{d}", .{ id, id });
+            try out.print(gpa, "}};\n    MoFrame FR_ = {{mo_frames, mo_depth, false, {s}, P_, {d}, M_, {d}}};\n    mo_frames = &FR_;\n", .{ if (b.captures.items.len > 0) "true" else "false", roots.items.len, 1 + 2 * b.loop_ids.items.len });
+        }
         // A function that can hold a handle lists its locals where a sweep reads them (mo_rt.c).
         if (b.handles) {
             try out.appendSlice(gpa, "    MoValue *const H_[] = {");
@@ -503,6 +525,7 @@ const Emitter = struct {
         try out.appendSlice(gpa, "    }\n");
         for (b.inouts.items) |k| try out.print(gpa, "    *io{d} = L{d};\n", .{ k, k });
         if (b.handles) try out.appendSlice(gpa, "    mo_handle_frames = HF_.next;\n");
+        if (b.walks) try out.appendSlice(gpa, "    mo_frames = FR_.next;\n");
         try out.appendSlice(gpa, "    mo_depth--;\n    return R;\n}\n");
         if (b.has_loops) try out.print(gpa, "#undef ROOTS_{s}\n", .{b.cname});
     }
@@ -986,7 +1009,10 @@ const Emitter = struct {
         const last = stmts[stmts.len - 1];
         const n = e.node(last);
         return switch (n.kind) {
-            .expr_stmt => try e.expr(n.lhs),
+            .expr_stmt => blk: {
+                e.b.root = if (e.b.clean) n.lhs else 0;
+                break :blk try e.expr(n.lhs);
+            },
             .if_stmt => try e.ifLower(last, true),
             .case_stmt => try e.caseLower(last, true),
             else => blk: {
@@ -999,10 +1025,14 @@ const Emitter = struct {
     fn stmt(e: *Emitter, s: Index) Error!void {
         const n = e.node(s);
         switch (n.kind) {
-            .expr_stmt => _ = try e.expr(n.lhs),
+            .expr_stmt => {
+                e.b.root = if (e.b.clean) n.lhs else 0;
+                _ = try e.expr(n.lhs);
+            },
             .binding => {
                 const name = e.text(n.main_token);
                 e.in_place = .{ .call = n.lhs, .name = name };
+                e.b.root = if (e.b.clean) n.lhs else 0;
                 const v = try e.expr(n.lhs);
                 e.in_place = .{};
                 try e.observe(v, e.typeOf(n.lhs));
@@ -1011,6 +1041,7 @@ const Emitter = struct {
                 try e.line("{s} = {s};", .{ target, v });
             },
             .var_binding => {
+                e.b.root = if (e.b.clean) n.lhs else 0;
                 const v = try e.expr(n.lhs);
                 try e.observe(v, e.typeOf(n.lhs));
                 try e.line("{s} = {s};", .{ try e.bindName(e.text(n.main_token), true), v });
@@ -1023,6 +1054,7 @@ const Emitter = struct {
                 if (op.len == 1) {
                     const lhs = e.node(n.lhs);
                     if (lhs.kind == .name_ref or lhs.kind == .member) e.in_place = .{ .call = n.rhs, .path = n.lhs };
+                    e.b.root = if (e.b.clean) n.rhs else 0;
                     v = try e.expr(n.rhs);
                     e.in_place = .{};
                 } else {
@@ -1038,6 +1070,7 @@ const Emitter = struct {
                     try e.line("if ({s}.as.b) {{", .{c});
                     e.b.indent += 1;
                 }
+                e.b.root = if (e.b.clean) n.lhs else 0;
                 const v = try e.expr(n.lhs);
                 try e.line("R = {s};", .{v});
                 e.b.exit.used = true;
@@ -1118,7 +1151,8 @@ const Emitter = struct {
         try e.line("{{", .{});
         e.b.indent += 1;
         // Each iteration ends at a safe point (vm.zig, collect).
-        try e.line("size_t m{d} = mo_mark(), k{d} = 0;", .{ l.id, l.id });
+        try e.b.loop_ids.append(e.gpa, l.id);
+        try e.line("m{d} = mo_mark(); k{d} = 0;", .{ l.id, l.id });
         try e.line("for (uint32_t i{d} = 0; i{d} < {s}.aux; i{d}++) {{", .{ l.id, l.id, list, l.id });
         e.b.indent += 1;
         const elem = try e.temp("{s}.as.xs[i{d}]", .{ list, l.id });
@@ -1432,6 +1466,28 @@ const Emitter = struct {
     fn expr(e: *Emitter, i: Index) Error![]const u8 {
         const n = e.node(i);
         e.holds(e.typeOf(i));
+        // A whole statement's expression (step 29b): a call it is may be walked through, and an if or a
+        // case it is keeps its branches so, as a try keeps its operand; anything else lowers its parts
+        // while a value of its own may be live.
+        const at_root = i != 0 and e.b.root == i and e.b.clean;
+        e.b.root = 0;
+        const was_clean = e.b.clean;
+        defer e.b.clean = was_clean;
+        switch (n.kind) {
+            .if_expr, .case_expr => if (!at_root) {
+                e.b.clean = false;
+            },
+            .try_expr => if (at_root) {
+                e.b.root = n.lhs;
+            } else {
+                e.b.clean = false;
+            },
+            .call, .member_call, .member => {
+                e.b.walk_here = at_root;
+                e.b.clean = false;
+            },
+            else => e.b.clean = false,
+        }
         switch (n.kind) {
             .int_lit => return e.constant(.{ .int = parseInt(e.text(n.main_token)) }),
             .float_lit => return e.constant(.{ .float = std.fmt.parseFloat(f64, e.text(n.main_token)) catch 0 }),
@@ -1708,6 +1764,14 @@ const Emitter = struct {
 
     fn userCall(e: *Emitter, si: u32, recv: ?Index, args: []const u32) Error![]const u8 {
         const s = e.k.sigs[si];
+        // A whole statement's call: a walk may start before any of it is lowered, and one from further in
+        // reaches through this frame while it waits in the call (step 29b).
+        const walk = e.b.walk_here;
+        e.b.walk_here = false;
+        if (walk) {
+            e.b.walks = true;
+            try e.line("if (mo_walk_due()) mo_walk(&FR_);", .{});
+        }
         var arg_nodes: std.ArrayList(Index) = .empty;
         if (recv) |r| try arg_nodes.append(e.gpa, r);
         for (args) |a| if (e.node(a).kind != .named_arg) try arg_nodes.append(e.gpa, a);
@@ -1729,7 +1793,9 @@ const Emitter = struct {
             try call.appendSlice(e.gpa, o);
         }
         try call.append(e.gpa, ')');
+        if (walk) try e.line("FR_.walking = true;", .{});
         const result = try e.temp("{s}", .{call.items});
+        if (walk) try e.line("FR_.walking = false;", .{});
         // Each inout argument takes the parameter's final value, last one first.
         var j = @min(ps.len, arg_nodes.items.len);
         while (j > 0) {

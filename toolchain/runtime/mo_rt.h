@@ -234,8 +234,17 @@ typedef struct { uintptr_t base, end, top, high; } MoRegion;
 extern MoRegion mo_heap;
 /* Compaction runs: under a program's main, not in a test, whose memory goes whole. */
 extern bool mo_compacts;
+#ifdef MO_STRESS
+/* Every budget 0: each safe point compacts whenever it can, the hardest case for what is kept, as
+ * vm.zig's tests run the interpreter (step 29b). */
+#define MO_FRAME_BUDGET ((size_t)0)
+#define MO_LOOP_BUDGET ((size_t)0)
+#define MO_WALK_BUDGET ((size_t)0)
+#else
 #define MO_FRAME_BUDGET ((size_t)1 << 20)
 #define MO_LOOP_BUDGET ((size_t)256 << 10)
+#define MO_WALK_BUDGET ((size_t)1 << 20)
+#endif
 
 void *mo_alloc_bytes(size_t n);
 MoValue *mo_alloc_values(size_t n);
@@ -253,6 +262,32 @@ void mo_compact(size_t from, MoValue *roots, size_t n);
  * sweep reads under main to end the processes nothing can reach (mo_rt.c, processes). */
 typedef struct MoHandleFrame { struct MoHandleFrame *next; MoValue *const *slots; uint32_t n; } MoHandleFrame;
 extern MoHandleFrame *mo_handle_frames;
+/* A frame a compaction may reach through while it waits in a call (step 29b): the depth it runs at,
+ * whether it waits in a call made as a whole statement now, when nothing but its roots is live, whether
+ * it reads what its closure captured (through a pointer a walk from further out would leave behind, so
+ * a walk goes no further out than it), its roots, and its marks: its own first, then each loop's mark
+ * and what that loop kept. Innermost first. */
+typedef struct MoFrame {
+    struct MoFrame *next;
+    uint32_t depth;
+    bool walking;
+    bool pinned;
+    MoValue *const *roots;
+    uint32_t nroots;
+    size_t *const *marks;
+    uint32_t nmarks;
+} MoFrame;
+extern MoFrame *mo_frames;
+/* Region bytes allocated so far, where the count stood at the last walk, and how many more start the
+ * next: the budget, or what the last walk kept if that is more. */
+extern uint64_t mo_allocated, mo_walk_at, mo_walk_after;
+static inline bool mo_walk_due(void) {
+    return MO_UNLIKELY(mo_compacts && mo_allocated - mo_walk_at > mo_walk_after);
+}
+/* The walk: from `frame` out through each frame that waits in a call it made to the one inside it,
+ * everything past the outermost one's mark that their roots do not reach is freed, and every mark
+ * inside moves to the new top. */
+void mo_walk(MoFrame *frame);
 /* A read of a var other than by an update of it: a map or set it holds may be held twice. */
 void mo_disown_in(MoValue v);
 
