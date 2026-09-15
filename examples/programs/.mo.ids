@@ -1482,6 +1482,35 @@
       "verified": { "hash": "fde8c751e6a5c18a", "declarations": "432b5dfa5b9aaf27", "uses": [{ "module": "Kv.Log", "hash": "2b0c71f4fb7bf460" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
+      "path": "ledger/money.mo",
+      "module": "Ledger.Money",
+      "declarations": [
+        { "id": "71264b981f0f", "name": "module Ledger.Money", "hash": "d1f3ff457c6a2f6a" },
+        { "id": "d34152566a41", "name": "expose", "hash": "52c5846107bf3c74" },
+        { "id": "12a8bc56cc05", "name": "intent", "hash": "93061c10f506b490" },
+        { "id": "1202eaf9839e", "name": "type Money", "hash": "4bd37d041cf412d9" },
+        { "id": "60a47f408bda", "name": "fn amount?", "hash": "e42c6c6186841eb9" },
+        { "id": "ab8caaa2cce4", "name": "fn overdraft?", "hash": "1e7cb349bad26a8d" },
+        { "id": "80f041c4b0bc", "name": "fn currency?", "hash": "144b1488c45c567b" },
+        { "id": "68ae657b728a", "name": "fn name?", "hash": "140dc392f2449590" },
+        { "id": "2d19bf51bc76", "name": "fn named?", "hash": "1a39ed6fc3e28c62" },
+        { "id": "2bd9a4c434a3", "name": "fn digit?", "hash": "07c3232f16804ab9" },
+        { "id": "db0ab7e4533d", "name": "fn reason?", "hash": "7b1f35a7a22f2a24" },
+        { "id": "cbff4717a28c", "name": "fn key?", "hash": "91ffce1932a4155a" },
+        { "id": "317ab688b70e", "name": "fn plain?", "hash": "0ead62b09dbdf26a" },
+        { "id": "bf1e7d1dc2b1", "name": "fn ttl_ms?", "hash": "c70b3007a257c108" },
+        { "id": "6b9aeee7b358", "name": "fn card_run?", "hash": "907136976df43ed4" },
+        { "id": "054a7d8a5b22", "name": "fn next_run", "hash": "dd377a9c6585615d" },
+        { "id": "fe1b8e76ee99", "name": "fn day?", "hash": "7494083f00b1e051" },
+        { "id": "f68ad1412857", "name": "test \"an amount is 1 to 10^12, and an overdraft 0 to 10^12\"", "hash": "755e577e6488c59e" },
+        { "id": "813522d6e43a", "name": "test \"a currency is three uppercase letters, and a name keeps its bytes\"", "hash": "0386e4cbe64403a7" },
+        { "id": "eaa5546da249", "name": "test \"a run of 16 digits is refused in a name, a reason, and a key, and 15 are not\"", "hash": "66a22c25725015f8" },
+        { "id": "fae9e6e8e37a", "name": "test \"a reason and a key are plain text of bounded size, a hold's ttl 100 ms to a day\"", "hash": "8b3b3566dc535007" },
+        { "id": "e6903eda50a7", "name": "test \"a day is a date that exists\"", "hash": "aa479b26adee1e2e" }
+      ],
+      "verified": { "hash": "de657c2be21ef419", "declarations": "7ff21b2586de666d" }
+    },
+    {
       "path": "lines-per-file.mo",
       "module": "Programs.LinesPerFile",
       "declarations": [
