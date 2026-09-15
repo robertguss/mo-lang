@@ -83,7 +83,7 @@ The rules above already reflect these; this section is the changelog.
 
 Claude (session 5): platform selection moved from a `use Mo.Sim` line to the toolchain (`mo test` is always simulated), because a module that names its platform is a module that can be run against the wrong one. Supervisors take parameters and pass them on `child` lines, because nothing else said where a child's capabilities come from. Both first tested by the interpreter milestone and program 1. The full list of session 5 decisions is at the foot of `grammar.md`.
 
-Session 5, step 24: `send` takes `delay:` (the Processes list), after three programs wanted a timer and program 5's mock slept in an `accept` on a listener nothing connected to; a pending delayed send keeps its target from ending and keeps `main` from finishing, as a message waiting would.
+Session 5, step 24: `send` takes `delay:` (the Processes list), after three programs wanted a timer and program 5's mock slept in an `accept` on a listener nothing connected to; a pending delayed send keeps its target from ending and keeps `main` from finishing, as a message waiting would. Session 5, step 29: unless `main` called `platform.exit`, which ends the program at once and drops every pending delayed send with an event (09, the runtime owns the loop).
 
 Session 5, step 24: a `state` field may hold a handle (the Processes list), after program 5 found that no process could hold a routing table and every request went through one process for the third program running; the runtime counts the handles a state holds as it counts those in start arguments, in both runtimes and under `Mo.Sim`. Structs, enums, and returned values stay as step 18 left them.
 

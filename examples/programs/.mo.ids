@@ -764,6 +764,19 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "530d9bffed0a7910" }
     },
     {
+      "path": "exit-pending.mo",
+      "module": "Programs.ExitPending",
+      "declarations": [
+        { "id": "aad532850205", "name": "module Programs.ExitPending", "hash": "3b42cbbd9aa02936" },
+        { "id": "704853de7adb", "name": "expose", "hash": "9f3ae5f50cd954df" },
+        { "id": "337630abfc9f", "name": "intent", "hash": "33c45bcfff125638" },
+        { "id": "22e292b9c5ce", "name": "process Alarm", "hash": "1b6cd4cc97e9fe5d" },
+        { "id": "827aeb6d1480", "name": "supervisor Alarms", "hash": "48661122f39db083" },
+        { "id": "0b6ab7f1d3ea", "name": "fn main", "hash": "b815d4532d4504f6" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "52f5a8ba90fe7566" }
+    },
+    {
       "path": "folders/main.mo",
       "module": "Folders",
       "declarations": [

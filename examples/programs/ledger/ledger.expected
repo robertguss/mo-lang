@@ -36,7 +36,7 @@
 400 {"error": "amount must be a whole number"}
 > ada POST /transfers this is not json --key t7
 400 {"error": "the body is not JSON"}
-> ada POST /holds {"account": "a_4", "amount": 1000, "ttl_ms": 1000} --key h1
+> ada POST /holds {"account": "a_4", "amount": 1000, "ttl_ms": 3600000} --key h1
 201 {"id": "e_10", "kind": "hold", "account": "a_4", "amount": 1000, "postings": [], "key": "h1", "at": "<at>", "expires_at": "<expires_at>"}
 > ada POST /holds {"account": "a_4", "amount": 1000, "ttl_ms": 99} --key h2
 400 {"error": "ttl_ms must be a whole number from 100 to 86400000"}
@@ -66,7 +66,7 @@
 waited 400 ms
 > ada POST /holds/e_15/capture {"amount": 50} --key c5
 409 {"error": "e_15 was expired", "rule": "closed", "by": 0}
-> ada POST /holds {"account": "a_2", "amount": 500, "ttl_ms": 1000} --key h5
+> ada POST /holds {"account": "a_2", "amount": 500, "ttl_ms": 3600000} --key h5
 201 {"id": "e_17", "kind": "hold", "account": "a_2", "amount": 500, "postings": [], "key": "h5", "at": "<at>", "expires_at": "<expires_at>"}
 > ada POST /holds/e_17/release {"reason": "customer asked"} --key r2
 201 {"id": "e_18", "kind": "release", "account": "a_2", "amount": 500, "postings": [], "key": "r2", "at": "<at>", "hold": "e_17", "reason": "customer asked"}

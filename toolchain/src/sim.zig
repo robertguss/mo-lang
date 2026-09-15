@@ -210,6 +210,8 @@ pub const Sim = struct {
     /// Delayed sends not yet due, a heap by due time (step 24), and the count that orders them.
     later: std.ArrayList(Later) = .empty,
     later_sent: u64 = 0,
+    /// main called exit and returned (step 29): no delayed send is kept, and nothing is waited for.
+    exiting: bool = false,
     /// The loops the runtime owns: listeners served and connections read into processes.
     sources: sources_mod.Sources = .{},
     /// What the processes did, most recent last (events.zig, step 23).
@@ -624,7 +626,23 @@ pub const Sim = struct {
         } else try sim.pushLater(test_runner, to, sent, parcel, sim.deadlineNow() + delay);
     }
 
+    /// main called exit and returned (step 29): every delayed send still pending is dropped with an
+    /// event, and one sent from here on is dropped as it is sent, so the program ends at once.
+    pub fn exitNow(sim: *Sim) void {
+        sim.exiting = true;
+        for (sim.later.items) |l| {
+            sim.dropped(l.from, l.to, l.message, "exited");
+            if (l.parcel) |x| x.free();
+        }
+        sim.later.clearRetainingCapacity();
+    }
+
     fn pushLater(sim: *Sim, from: u32, to: u32, message: Value, parcel: ?*Parcel, at: i64) Error!void {
+        if (sim.exiting) {
+            sim.dropped(from, to, message, "exited");
+            if (parcel) |x| x.free();
+            return;
+        }
         const gpa = std.heap.smp_allocator;
         try sim.later.append(gpa, .{ .at = at, .order = sim.later_sent, .from = from, .to = to, .message = message, .parcel = parcel });
         sim.later_sent += 1;

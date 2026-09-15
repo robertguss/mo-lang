@@ -5255,6 +5255,11 @@ static void later_swap(size_t a, size_t b) {
 }
 
 static void push_later(uint32_t from, uint32_t to, MoValue message, Parcel *parcel, int64_t at) {
+    if (exited) {
+        dropped(from, to, message, "exited");
+        parcel_free(parcel);
+        return;
+    }
     GROW_ARRAY(later, nlater, caplater);
     size_t i = nlater++;
     later[i] = (Later){at, later_sent++, from, to, message, parcel};
@@ -5303,6 +5308,16 @@ static bool due_later(void) {
         moved = true;
     }
     return moved;
+}
+
+/* main called exit and returned (step 29): every delayed send still pending is dropped with an event,
+ * and push_later drops one sent from here on, so the program ends at once (sim.zig, exitNow). */
+static void drop_later_on_exit(void) {
+    for (size_t i = 0; i < nlater; i++) {
+        dropped(later[i].from, later[i].to, later[i].message, "exited");
+        parcel_free(later[i].parcel);
+    }
+    nlater = 0;
 }
 
 /* `h.send(message, delay: d)` (step 24): in `to`'s mailbox no earlier than `d` after the sending
@@ -6584,6 +6599,8 @@ static void turns_spawning(void) {
 static void turns_finish(void) {
     for (;;) {
         if (step()) continue;
+        /* After exit, only until nothing can run without waiting (step 29). */
+        if (exited) return;
         if (in_flight == 0 && !sources_active() && nlater == 0) return;
         idle(NULL, false, 0);
     }
@@ -9430,9 +9447,13 @@ void mo_program_start(int argc, char **argv) {
 
 int mo_program_end(void) {
     /* main returned: the run goes on until no message is waiting and no source can deliver; a
-     * main that called exit stops the sources first. */
+     * main that called exit ends at once (step 29): the sources stop, every delayed send is dropped
+     * with an event, what already waits is delivered, and nothing is waited for. */
     if (turns_on) {
-        if (exited) sources_stop();
+        if (exited) {
+            sources_stop();
+            drop_later_on_exit();
+        }
         turns_finish();
     }
     stream_flush(&out_stream);

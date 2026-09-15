@@ -62,6 +62,8 @@ What it cost the ledger: one loop. `Ledger.Journal`'s `test rejects` over a plan
 
 ## 2. `platform.exit` does not end a program while a delayed send is pending
 
+Fixed by step 29, part B: once a `main` that called `exit` returns, both runtimes stop the sources, drop every pending delayed send (and any sent after) with a `Dropped` event, deliver what already waits, and end without waiting, with the exit code kept. The reproduction is `examples/programs/exit-pending.mo`. The check's holds `h1` and `h5` in `data/session.txt` live an hour again, and `ledger check` still ends within half a second of its last line under both runtimes.
+
 `platform.exit(code)` is how a command that is done ends a program that served a listener (`jobq check`, `notes check`, `ledger check`). When any process has a `send(..., delay:)` still pending, the program prints what `main` wrote and then does not end: it waits for the delayed send, however far away, where the exit asked for the program to end now. The runtime's row says a pending delayed send "keeps `main` from finishing", which is right for a `main` that returns; an explicit exit is not a `main` that returns.
 
 Reproduction (`exit-timer.mo`, in a folder of its own):
