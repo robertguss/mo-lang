@@ -15,7 +15,7 @@ QUEUES = ["a", "b"]
 WORKERS = ["w1", "w2", "w3"]
 STATES = ["queued", "leased", "done", "dead"]
 
-def gen(seed, ops):
+def gen(seed, ops, ids=8, create_weight=14):
     r = random.Random(seed)
     now = 0
     lines = []
@@ -24,8 +24,8 @@ def gen(seed, ops):
         now += r.choice([0, 0, 50, 100, 250, 600])
         w = r.choice(WORKERS)
         kind = r.choices(["create", "fetch", "list", "remove", "lease", "ack", "fail", "health"],
-                         weights=[14, 8, 6, 6, 24, 16, 14, 4])[0]
-        jid = f"j_{r.randint(1, max(1, min(made + 1, 8)))}"
+                         weights=[create_weight, 8, 6, 6, 24, 16, 14, 4])[0]
+        jid = f"j_{r.randint(1, max(1, min(made + 1, ids)))}"
         if kind == "create":
             made += 1
             payload = r.choice(["x", "hello world", "", "é ü", "a\\nb", "quote \" here"])
@@ -42,7 +42,7 @@ def gen(seed, ops):
 def cmd_gen(a):
     os.makedirs(a.out, exist_ok=True)
     for s in range(a.seeds):
-        open(os.path.join(a.out, f"{s}.txt"), "w").write(gen(s, a.ops))
+        open(os.path.join(a.out, f"{s}.txt"), "w").write(gen(s, a.ops, a.ids, a.create_weight))
     print(f"{a.seeds} scripts in {a.out}")
 
 def cmd_run(a):
@@ -118,7 +118,7 @@ def cmd_compare(a):
 
 def main():
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest="cmd", required=True)
-    g = sub.add_parser("gen"); g.add_argument("--out", required=True); g.add_argument("--seeds", type=int, default=1000); g.add_argument("--ops", type=int, default=40)
+    g = sub.add_parser("gen"); g.add_argument("--out", required=True); g.add_argument("--seeds", type=int, default=1000); g.add_argument("--ops", type=int, default=40); g.add_argument("--ids", type=int, default=8); g.add_argument("--create-weight", type=int, default=14)
     r = sub.add_parser("run"); r.add_argument("--name", required=True); r.add_argument("--scripts", required=True); r.add_argument("--jobq", required=True); r.add_argument("--mo", required=True); r.add_argument("--out", required=True)
     c = sub.add_parser("compare"); c.add_argument("--out", required=True); c.add_argument("--scripts", required=True); c.add_argument("--variants", required=True); c.add_argument("--original")
     a = ap.parse_args()
