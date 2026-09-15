@@ -340,10 +340,23 @@ pub fn moExe(gpa: std.mem.Allocator, io: Io, from_environ: ?[]const u8) ![:0]u8 
     return Io.Dir.cwd().realPathFileAlloc(io, from_environ orelse "zig-out/bin/mo", gpa);
 }
 
+/// The programs whose output depends on the order in which two of their processes act, which the
+/// spec never promised (design-v0/03, processes; step 30): each runs on one scheduler here, under
+/// `mo run` and as a binary, so its expected file holds. programs/agent's check starts several runs at
+/// once against one mock model that hands out its script's replies in the order requests reach it, so
+/// on more cores than one two runs can take each other's replies. Its source is left as it is.
+pub const one_core_programs = [_][]const u8{"programs/agent/main.mo"};
+
+/// Before a program's command: `env MO_CORES=1` when it is one of one_core_programs.
+fn coresPrefix(arena: std.mem.Allocator, rel: []const u8, argv: *std.ArrayList([]const u8)) !void {
+    for (one_core_programs) |p| if (std.mem.eql(u8, p, rel)) return argv.appendSlice(arena, &.{ "/usr/bin/env", "MO_CORES=1" });
+}
+
 /// `mo run <main file> -- <args>`, with the main file's own folder as the working
 /// directory, so it names its data by a path relative to that folder.
 pub fn runProgram(arena: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []const u8, rel: []const u8, args: []const []const u8) !std.process.RunResult {
     var argv: std.ArrayList([]const u8) = .empty;
+    try coresPrefix(arena, rel, &argv);
     try argv.appendSlice(arena, &.{ mo_exe, "run", std.fs.path.basename(rel), "--" });
     try argv.appendSlice(arena, args);
     const cwd = try std.fs.path.join(arena, &.{ root, std.fs.path.dirname(rel) orelse "." });
@@ -458,9 +471,11 @@ pub fn checkBuiltProgram(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, roo
     const binary = try std.fs.path.join(arena, &.{ try Io.Dir.cwd().realPathFileAlloc(io, folder, arena), "zig-out/mo-build", name, name });
     for (try runs(arena, source), 1..) |run, n| {
         var interp_argv: std.ArrayList([]const u8) = .empty;
+        try coresPrefix(arena, rel, &interp_argv);
         try interp_argv.appendSlice(arena, &.{ mo_exe, "run", file, "--" });
         try interp_argv.appendSlice(arena, run.args);
         var compiled_argv: std.ArrayList([]const u8) = .empty;
+        try coresPrefix(arena, rel, &compiled_argv);
         try compiled_argv.append(arena, binary);
         try compiled_argv.appendSlice(arena, run.args);
         const interp = try std.process.run(arena, io, .{ .argv = interp_argv.items, .cwd = .{ .path = folder } });

@@ -26,7 +26,8 @@ const prelude = @import("prelude.zig");
 const runner = @import("runner.zig");
 const stdlib = @import("stdlib.zig");
 const Sim = @import("sim.zig").Sim;
-const Turns = @import("turns.zig").Turns;
+const turns_mod = @import("turns.zig");
+const Turns = turns_mod.Turns;
 const surface_mod = @import("surface.zig");
 const vm_mod = @import("vm.zig");
 
@@ -99,6 +100,8 @@ pub const Server = struct {
     /// Calls `main` (functions[main_fn]) with the Platform. The exit code is the last
     /// `platform.exit(code)`, or 0; a crash comes back with its complete report.
     pub fn run(s: *Server, program: *const bytecode.Program, main_fn: u32) Error!Ran {
+        // `MO_STATS=1` reads this thread's counts, and each scheduler's (main.zig).
+        @import("region.zig").main_stats = &@import("region.zig").stats;
         var machine: Vm = .init(s.gpa, program, 0);
         machine.server = s;
         var scheduler: Sim = .init(&machine, 0, "main");
@@ -107,10 +110,10 @@ pub const Server = struct {
         defer s.ids_used = scheduler.procs.items.len;
         machine.sim = &scheduler;
         // Values live in regions freed at safe points (vm.zig): main's here, and each
-        // process's in one of its own (turns.zig), all compacting through one scratch
-        // region. A value that goes from one vm to another goes packed (Sim.packs), so no
-        // compaction needs to see another vm's values. Without the address space for the
-        // regions, every value lives until the run ends.
+        // process's in one of its own (turns.zig), each compacting through its scheduler's
+        // scratch region, main's and scheduler 0's this one. A value that goes from one vm to
+        // another goes packed (Sim.packs), so no compaction needs to see another vm's values.
+        // Without the address space for the regions, every value lives until the run ends.
         const processes = program.processes.len > 0;
         var values: ?Region = Region.reserve() catch null;
         defer if (values) |*r| r.release();
@@ -120,17 +123,16 @@ pub const Server = struct {
         if (regions) machine.useRegions(&values.?, &scratch.?);
         if (regions) scheduler.main_region = &values.?;
         defer s.sockets.closeAll();
-        // Each process runs its updates on a thread of its own, and the threads take turns,
-        // so one waiting on the network does not hold up the rest (turns.zig).
+        // Each process runs its updates on a fiber of its own on its scheduler's thread, a
+        // scheduler per core, so one waiting on the network does not hold up the rest (turns.zig).
         var turns: Turns = .{ .io = s.io, .gpa = s.gpa };
+        defer if (processes) turns.stop(&scheduler);
         if (processes) {
             scheduler.turns = &turns;
-            if (regions) {
-                scheduler.packs = true;
-                turns.scratch = &scratch.?;
-            }
+            if (regions) scheduler.packs = true;
+            // A scheduler per core (step 30): MO_CORES, else the machine's cores.
+            try turns.begin(&scheduler, &machine, turns_mod.coresFrom(s.environ.get("MO_CORES")), if (regions) &scratch.? else null);
         }
-        defer if (processes) turns.stop(&scheduler);
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
             // A recipe signature with no body stops main as surely as a crash does.

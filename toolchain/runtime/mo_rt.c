@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,6 +34,7 @@
 #include <sys/event.h>
 #elif defined(__linux__)
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #endif
 #include <sys/stat.h>
 #include <time.h>
@@ -45,14 +47,36 @@ extern char **environ;
 
 /* ==== memory (vm.zig: regions, push in place, owned buffers, compaction) ============== */
 
-MoRegion mo_heap;
-MoHandleFrame *mo_handle_frames;
-MoFrame *mo_frames;
+/* What a thread runs Mo code with is the thread's own (step 30): its region, its frames, its
+ * compaction's tables, its crash landing, and the process it runs. */
+_Thread_local MoRegion mo_heap;
+_Thread_local MoHandleFrame *mo_handle_frames;
+_Thread_local MoFrame *mo_frames;
 bool mo_compacts;
 bool mo_records;
 bool mo_contracts;
-static MoRegion scratch;
+static _Thread_local MoRegion scratch;
 static char empty_bytes[1];
+
+/* Processes on every core (step 30; turns.zig): one scheduler per core under a program's main, and
+ * the runtime's tables behind one lock. A row or an entry point that reads or changes them holds it
+ * (HOLD_RUNTIME), released when it returns; a crash that jumps out of one lands where the hold is
+ * restored (lock_restore). Nothing is taken under one scheduler. */
+static bool multi;
+static uint32_t lock_take(void);
+static void lock_give(uint32_t *held);
+#define HOLD_RUNTIME() uint32_t mo_held __attribute__((cleanup(lock_give), unused)) = lock_take()
+static void stir_main(void);
+static bool sources_paused(void);
+static uint32_t begin_mo(void);
+static void end_mo(uint32_t depth);
+static uint32_t lock_depth(void);
+static void lock_restore(uint32_t depth);
+static uint32_t place(void);
+static void placed(uint32_t id, uint32_t k, bool quiet_event);
+static bool take_free_id(uint32_t k, uint32_t *id);
+static void reset_free_ids(void);
+static void nonblocking(int fd);
 
 _Noreturn static void out_of_memory(void) {
     fputs("mo: out of memory\n", stderr);
@@ -109,7 +133,7 @@ static bool reserve(MoRegion *r) { return reserve_up_to(r, (size_t)64 << 30); }
 /* The most address space a process's heap grows to past the budget (settle_region). */
 #define MAX_REGION ((size_t)16 << 30)
 /* The address space the live processes' regions hold. */
-static size_t regions_reserved;
+static _Atomic size_t regions_reserved;
 
 /* A process region's reservation: `want` bytes while the live regions, less `within` bytes about to be
  * released, stay under the budget, else `past`; counted. */
@@ -122,18 +146,69 @@ static bool reserve_process(MoRegion *r, size_t want, size_t past, size_t within
 
 /* Counts MO_STATS=1 prints (step 21): allocations and their bytes, values packed and their bytes,
  * processes a sweep ended and the time it took, and the bytes allocated past a full region (step 29b). */
-static uint64_t stat_allocations, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns, stat_spilled;
+typedef struct { uint64_t allocations, allocated, packed, packed_bytes, packed_capacity, freed, freed_ns, spilled; } Stats;
+/* Each thread counts its own (step 30), so a scheduler's counts are its thread's. */
+static _Thread_local Stats stats;
+#define stat_allocations stats.allocations
+#define stat_packed stats.packed
+#define stat_packed_bytes stats.packed_bytes
+#define stat_packed_capacity stats.packed_capacity
+#define stat_freed stats.freed
+#define stat_freed_ns stats.freed_ns
+#define stat_spilled stats.spilled
 /* Every region allocation's bytes: the stats' bytes. */
-static uint64_t mo_allocated;
-uint64_t mo_walks;
-uintptr_t mo_clean_from, mo_clean_to;
+#define mo_allocated stats.allocated
+_Thread_local uint64_t mo_walks;
+_Thread_local uintptr_t mo_clean_from, mo_clean_to;
+#define MOST_CORES 64
+/* Where each scheduler's thread counts, and a stopped one's counts; main's thread's. */
+static const Stats *sched_stats[MOST_CORES];
+static Stats stopped_stats[MOST_CORES];
+static const Stats *main_stats_at;
+static uint32_t ncores = 1;
+static uint64_t sweeps_run, sweeps_missed;
+static uint32_t nprocs;
 
-static void print_stats(void) {
-    char line[320];
-    int n = snprintf(line, sizeof line, "mo stats: allocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu spilled %llu\n", (unsigned long long)stat_allocations, (unsigned long long)mo_allocated, (unsigned long long)stat_packed, (unsigned long long)stat_packed_bytes, (unsigned long long)stat_packed_capacity, (unsigned long long)stat_freed, (unsigned long long)stat_freed_ns, (unsigned long long)stat_spilled);
+static void stats_line(const char *label, const Stats *c) {
+    char line[360];
+    int n = snprintf(line, sizeof line, "mo stats: %sallocations %llu bytes %llu packed %llu packed_bytes %llu packed_capacity %llu freed %llu freed_ns %llu spilled %llu\n", label, (unsigned long long)c->allocations, (unsigned long long)c->allocated, (unsigned long long)c->packed, (unsigned long long)c->packed_bytes, (unsigned long long)c->packed_capacity, (unsigned long long)c->freed, (unsigned long long)c->freed_ns, (unsigned long long)c->spilled);
     if (n > 0) {
         ssize_t w = write(2, line, (size_t)n);
         (void)w;
+    }
+}
+
+static void stats_add(Stats *to, const Stats *c) {
+    to->allocations += c->allocations;
+    to->allocated += c->allocated;
+    to->packed += c->packed;
+    to->packed_bytes += c->packed_bytes;
+    to->packed_capacity += c->packed_capacity;
+    to->freed += c->freed;
+    to->freed_ns += c->freed_ns;
+    to->spilled += c->spilled;
+}
+
+/* With more than one scheduler (step 30), a line for the run, one for the schedulers, and one for each
+ * scheduler, whose counts are its thread's (main.zig, printStats). */
+static void print_stats(void) {
+    const Stats *own = main_stats_at ? main_stats_at : &stats;
+    Stats total = *own;
+    for (uint32_t k = 1; k < ncores; k++) {
+        if (sched_stats[k]) stats_add(&total, sched_stats[k]);
+    }
+    stats_line("", &total);
+    if (ncores < 2) return;
+    char line[120];
+    int n = snprintf(line, sizeof line, "mo stats: schedulers %u sweeps %llu missed %llu ids %u\n", ncores, (unsigned long long)sweeps_run, (unsigned long long)sweeps_missed, nprocs);
+    if (n > 0) {
+        ssize_t w = write(2, line, (size_t)n);
+        (void)w;
+    }
+    for (uint32_t k = 0; k < ncores; k++) {
+        char label[32];
+        snprintf(label, sizeof label, "scheduler %u ", k);
+        stats_line(label, k == 0 ? own : sched_stats[k] ? sched_stats[k] : &stopped_stats[k]);
     }
 }
 
@@ -208,18 +283,18 @@ typedef struct { uintptr_t ptr; size_t len, cap; } Growth;
  * misses them drops nothing without looking. */
 typedef struct { Growth *slots, *spare; size_t cap, used; uintptr_t lo, hi; } PtrTable;
 /* The lists push can grow in place: their length and room. */
-static PtrTable growth;
+static _Thread_local PtrTable growth;
 /* The strings an interpolation can grow in place, as push grows a list (mo_concat). */
-static Growth text_growth[16];
-static unsigned text_growth_next;
+static _Thread_local Growth text_growth[16];
+static _Thread_local unsigned text_growth_next;
 /* Map and set entries, and struct fields, one holder holds alone: the length it sees (vm.zig,
  * owned). */
-static PtrTable owned;
+static _Thread_local PtrTable owned;
 
 /* Slots a row wrote in place with a value that may be newer than the slot. */
 typedef struct { uintptr_t slot; size_t len; uintptr_t at; } Remembered;
-static Remembered *remembered;
-static size_t nremembered, capremembered;
+static _Thread_local Remembered *remembered;
+static _Thread_local size_t nremembered, capremembered;
 
 /* Under an update (sim.zig): what each slot older than the update held before the update wrote
  * it, so a crash shows the state as it was. undo_mark is 0 when no update keeps one; buffers
@@ -236,11 +311,11 @@ typedef struct {
     uint32_t *index;
     uint32_t index_len;
 } Undo;
-static Undo *undos;
-static size_t nundos, capundos;
-static uintptr_t undo_mark, frozen_below;
+static _Thread_local Undo *undos;
+static _Thread_local size_t nundos, capundos;
+static _Thread_local uintptr_t undo_mark, frozen_below;
 /* What the region held after its last full compaction (sim.zig, settleRegion). */
-static size_t full_kept;
+static _Thread_local size_t full_kept;
 
 static size_t ptab_home(const PtrTable *t, uintptr_t ptr) {
     uint64_t h = ((uint64_t)ptr >> 3) * 0x9E3779B97F4A7C15ull;
@@ -522,9 +597,9 @@ static MoValue *push_list(MoValue *xs, size_t len, MoValue x) {
 /* ---- the forward table: a compaction copies a slice reached twice once */
 
 typedef struct { uintptr_t ptr; size_t len; MoValue *to; uint32_t gen; } Forward;
-static Forward *forwards;
-static size_t forward_cap, forward_used;
-static uint32_t forward_gen = 1;
+static _Thread_local Forward *forwards;
+static _Thread_local size_t forward_cap, forward_used;
+static _Thread_local uint32_t forward_gen = 1;
 
 static void forward_clear(void) {
     forward_gen++;
@@ -757,8 +832,8 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
  * inside it, one level deeper, and reads nothing through its closure's pointer. Everything past the
  * outermost one's mark that their roots do not reach is freed, the roots take the copies, and every mark
  * inside the outermost one's moves to the new top, so what the walk kept is older than each of them. */
-static MoValue *walk_roots;
-static size_t walk_cap;
+static _Thread_local MoValue *walk_roots;
+static _Thread_local size_t walk_cap;
 
 void mo_walk(MoFrame *frame) {
     MoFrame *outer = frame;
@@ -1482,8 +1557,13 @@ static void format_value(Buf *b, MoValue v) {
         default: buf_str(b, !server_mode ? "Runtime.fixture()" : mo_cap_handle(v) == 1 ? "a read-only Runtime" : "a Runtime"); return;
         }
     case MO_HANDLE:
-        if (handle_name(v.as.i)) buf_printf(b, "%s #%lld", handle_name(v.as.i), (long long)v.as.i);
-        else buf_printf(b, "a handle #%lld", (long long)v.as.i);
+        {
+            uint32_t held_names = lock_take();
+            const char *named = handle_name(v.as.i);
+            if (named) buf_printf(b, "%s #%lld", named, (long long)v.as.i);
+            else buf_printf(b, "a handle #%lld", (long long)v.as.i);
+            lock_give(&held_names);
+        }
         return;
     default: return;
     }
@@ -1612,8 +1692,8 @@ typedef struct {
 
 /* Where a crash, a skip, or a discarded attempt goes in a test; NULL under main. */
 enum { JUMP_CRASH = 1, JUMP_SKIP = 2, JUMP_DISCARD = 3 };
-static jmp_buf *crash_jump;
-static Report last_report;
+static _Thread_local jmp_buf *crash_jump;
+static _Thread_local Report last_report;
 
 /* writeReport: where, what tripped, and the values involved. */
 static void report_text(Buf *b, const Report *r) {
@@ -2945,7 +3025,7 @@ static int64_t awake_ns(void) {
 
 /* Under main, the wall clock, frozen for the running update; in a test, the fixture's. */
 static int64_t clock_now_ms(void);
-MO_ROW(mo_r_Clock_now) { (void)a; (void)kind; return mo_time(clock_now_ms()); }
+MO_ROW(mo_r_Clock_now) { HOLD_RUNTIME(); (void)a; (void)kind; return mo_time(clock_now_ms()); }
 MO_ROW(mo_r_Clock_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_CLOCK, 0, 0); }
 
 /* ---- the platform (server.zig) */
@@ -2961,6 +3041,7 @@ static void platform_only(const char *recv, const char *name) {
 }
 
 MO_ROW(mo_r_Platform_args) {
+    HOLD_RUNTIME();
     (void)a;
     (void)kind;
     platform_only("Platform", "args");
@@ -2969,16 +3050,17 @@ MO_ROW(mo_r_Platform_args) {
     return mo_list(out, (uint32_t)program_argc);
 }
 
-MO_ROW(mo_r_Platform_env) { (void)a; (void)kind; platform_only("Platform", "env"); return mo_cap(MO_CAP_ENV, 0, 0); }
-MO_ROW(mo_r_Platform_stdout) { (void)a; (void)kind; platform_only("Platform", "stdout"); return mo_cap(MO_CAP_OUT, 1, 0); }
-MO_ROW(mo_r_Platform_stderr) { (void)a; (void)kind; platform_only("Platform", "stderr"); return mo_cap(MO_CAP_OUT, 2, 0); }
-MO_ROW(mo_r_Platform_fs) { (void)a; (void)kind; platform_only("Platform", "fs"); return mo_cap(MO_CAP_FS, 0, 0); }
-MO_ROW(mo_r_Platform_clock) { (void)a; (void)kind; platform_only("Platform", "clock"); return mo_cap(MO_CAP_CLOCK, 0, 0); }
-MO_ROW(mo_r_Platform_net) { (void)a; (void)kind; platform_only("Platform", "net"); return mo_cap(MO_CAP_NET, 0, 0); }
-MO_ROW(mo_r_Platform_http) { (void)a; (void)kind; platform_only("Platform", "http"); return mo_cap(MO_CAP_HTTP, 0, 0); }
+MO_ROW(mo_r_Platform_env) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "env"); return mo_cap(MO_CAP_ENV, 0, 0); }
+MO_ROW(mo_r_Platform_stdout) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "stdout"); return mo_cap(MO_CAP_OUT, 1, 0); }
+MO_ROW(mo_r_Platform_stderr) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "stderr"); return mo_cap(MO_CAP_OUT, 2, 0); }
+MO_ROW(mo_r_Platform_fs) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "fs"); return mo_cap(MO_CAP_FS, 0, 0); }
+MO_ROW(mo_r_Platform_clock) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "clock"); return mo_cap(MO_CAP_CLOCK, 0, 0); }
+MO_ROW(mo_r_Platform_net) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "net"); return mo_cap(MO_CAP_NET, 0, 0); }
+MO_ROW(mo_r_Platform_http) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "http"); return mo_cap(MO_CAP_HTTP, 0, 0); }
 
 /* The last platform.exit(code) is the exit code when main returns. */
 MO_ROW(mo_r_Platform_exit) {
+    HOLD_RUNTIME();
     (void)kind;
     platform_only("Platform", "exit");
     exit_code = (uint8_t)a[1].as.u;
@@ -2987,6 +3069,7 @@ MO_ROW(mo_r_Platform_exit) {
 }
 
 MO_ROW(mo_r_Env_get) {
+    HOLD_RUNTIME();
     (void)kind;
     platform_only("Env", "get");
     char *name = xmalloc(a[1].aux + 1);
@@ -3024,16 +3107,18 @@ static void write_out(MoValue out, MoValue text, bool line) {
     f->texts[f->n++] = mo_str(kept, text.aux + (line ? 1 : 0));
 }
 
-MO_ROW(mo_r_Out_write) { (void)kind; write_out(a[0], a[1], false); return MO_NONE_V; }
-MO_ROW(mo_r_Out_write_line) { (void)kind; write_out(a[0], a[1], true); return MO_NONE_V; }
+MO_ROW(mo_r_Out_write) { HOLD_RUNTIME(); (void)kind; write_out(a[0], a[1], false); return MO_NONE_V; }
+MO_ROW(mo_r_Out_write_line) { HOLD_RUNTIME(); (void)kind; write_out(a[0], a[1], true); return MO_NONE_V; }
 
 MO_ROW(mo_r_Out_flush) {
+    HOLD_RUNTIME();
     (void)kind;
     if (server_mode) stream_flush(mo_cap_handle(a[0]) == 2 ? &err_stream : &out_stream);
     return MO_NONE_V;
 }
 
 MO_ROW(mo_r_Out_fixture) {
+    HOLD_RUNTIME();
     (void)a;
     (void)kind;
     if (nout_fixtures == capout_fixtures) {
@@ -3045,6 +3130,7 @@ MO_ROW(mo_r_Out_fixture) {
 }
 
 MO_ROW(mo_r_Out_written) {
+    HOLD_RUNTIME();
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     if (server_mode || h == 0 || h > nout_fixtures) return mo_list(NULL, 0);
@@ -3730,18 +3816,18 @@ static MoValue server_files(int which, const MoValue *a) {
 
 static MoValue files(int which, const MoValue *a) { return server_mode ? server_files(which, a) : fixture_files(which, a); }
 
-MO_ROW(mo_r_Fs_read) { (void)kind; return files(FS_READ, a); }
-MO_ROW(mo_r_Fs_read_lines) { (void)kind; return files(FS_READ_LINES, a); }
-MO_ROW(mo_r_Fs_read_bytes) { (void)kind; return files(FS_READ_BYTES, a); }
-MO_ROW(mo_r_Fs_fold_lines) { (void)kind; return files(FS_FOLD_LINES, a); }
-MO_ROW(mo_r_Fs_size) { (void)kind; return files(FS_SIZE, a); }
-MO_ROW(mo_r_Fs_list) { (void)kind; return files(FS_LIST, a); }
-MO_ROW(mo_r_Fs_list_kinds) { (void)kind; return files(FS_LIST_KINDS, a); }
-MO_ROW(mo_r_Fs_write) { (void)kind; return files(FS_WRITE, a); }
-MO_ROW(mo_r_Fs_append) { (void)kind; return files(FS_APPEND, a); }
-MO_ROW(mo_r_Fs_remove) { (void)kind; return files(FS_REMOVE, a); }
-MO_ROW(mo_r_Fs_rename) { (void)kind; return files(FS_RENAME, a); }
-MO_ROW(mo_r_Fs_mkdir) { (void)kind; return files(FS_MKDIR, a); }
+MO_ROW(mo_r_Fs_read) { HOLD_RUNTIME(); (void)kind; return files(FS_READ, a); }
+MO_ROW(mo_r_Fs_read_lines) { HOLD_RUNTIME(); (void)kind; return files(FS_READ_LINES, a); }
+MO_ROW(mo_r_Fs_read_bytes) { HOLD_RUNTIME(); (void)kind; return files(FS_READ_BYTES, a); }
+MO_ROW(mo_r_Fs_fold_lines) { HOLD_RUNTIME(); (void)kind; return files(FS_FOLD_LINES, a); }
+MO_ROW(mo_r_Fs_size) { HOLD_RUNTIME(); (void)kind; return files(FS_SIZE, a); }
+MO_ROW(mo_r_Fs_list) { HOLD_RUNTIME(); (void)kind; return files(FS_LIST, a); }
+MO_ROW(mo_r_Fs_list_kinds) { HOLD_RUNTIME(); (void)kind; return files(FS_LIST_KINDS, a); }
+MO_ROW(mo_r_Fs_write) { HOLD_RUNTIME(); (void)kind; return files(FS_WRITE, a); }
+MO_ROW(mo_r_Fs_append) { HOLD_RUNTIME(); (void)kind; return files(FS_APPEND, a); }
+MO_ROW(mo_r_Fs_remove) { HOLD_RUNTIME(); (void)kind; return files(FS_REMOVE, a); }
+MO_ROW(mo_r_Fs_rename) { HOLD_RUNTIME(); (void)kind; return files(FS_RENAME, a); }
+MO_ROW(mo_r_Fs_mkdir) { HOLD_RUNTIME(); (void)kind; return files(FS_MKDIR, a); }
 
 /* `fs.scoped(path)` and `fs.read_only`: a new scope, never a wider one. */
 static MoValue narrow(MoValue fs, bool read_only, MoValue path) {
@@ -3768,8 +3854,8 @@ static MoValue narrow(MoValue fs, bool read_only, MoValue path) {
     return add_fix_scope(scope);
 }
 
-MO_ROW(mo_r_Fs_scoped) { (void)kind; return narrow(a[0], false, a[1]); }
-MO_ROW(mo_r_Fs_read_only) { (void)kind; return narrow(a[0], true, MO_NONE_V); }
+MO_ROW(mo_r_Fs_scoped) { HOLD_RUNTIME(); (void)kind; return narrow(a[0], false, a[1]); }
+MO_ROW(mo_r_Fs_read_only) { HOLD_RUNTIME(); (void)kind; return narrow(a[0], true, MO_NONE_V); }
 
 static MoValue fixture_fs(int64_t delay) {
     if (nfix_systems == capfix_systems) {
@@ -3780,12 +3866,12 @@ static MoValue fixture_fs(int64_t delay) {
     return add_fix_scope((FixScope){(int32_t)(nfix_systems - 1), "/", false, false, delay});
 }
 
-MO_ROW(mo_r_Fs_fixture) { (void)a; (void)kind; return fixture_fs(0); }
-MO_ROW(mo_r_Fs_fixture_delay) { (void)kind; return fixture_fs(a[0].as.i); }
+MO_ROW(mo_r_Fs_fixture) { HOLD_RUNTIME(); (void)a; (void)kind; return fixture_fs(0); }
+MO_ROW(mo_r_Fs_fixture_delay) { HOLD_RUNTIME(); (void)kind; return fixture_fs(a[0].as.i); }
 
 /* ---- the refund module's stand-ins and the event log (vm.zig) */
 
-MO_ROW(mo_r_Events_emit) { (void)a; (void)kind; return MO_NONE_V; }
+MO_ROW(mo_r_Events_emit) { HOLD_RUNTIME(); (void)a; (void)kind; return MO_NONE_V; }
 MO_ROW(mo_r_Events_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_EVENTS, 0, 0); }
 MO_ROW(mo_r_Ledger_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_LEDGER, 0, 0); }
 
@@ -3795,8 +3881,8 @@ static MoValue charge(MoValue id, MoValue at, MoValue amount) {
     return mo_record(mo_charge_decl, 4, fields);
 }
 
-MO_ROW(mo_r_Ledger_find_charge) { (void)kind; return ok_of(charge(a[1], mo_time(FIXTURE_TIME), mo_i64(10000))); }
-MO_ROW(mo_r_Ledger_save_charge) { (void)a; (void)kind; return ok_none(); }
+MO_ROW(mo_r_Ledger_find_charge) { HOLD_RUNTIME(); (void)kind; return ok_of(charge(a[1], mo_time(FIXTURE_TIME), mo_i64(10000))); }
+MO_ROW(mo_r_Ledger_save_charge) { HOLD_RUNTIME(); (void)a; (void)kind; return ok_none(); }
 MO_ROW(mo_r_Charge_fixture) { (void)kind; return charge(mo_str("ch_1", 4), mo_time(FIXTURE_TIME), a[0]); }
 MO_ROW(mo_r_Charge_fixture_at) { (void)kind; return charge(mo_str("ch_1", 4), a[0], a[1]); }
 MO_ROW(mo_r_Charge_refunded_q) { (void)kind; return a[0].as.xs[3]; }
@@ -4196,9 +4282,9 @@ static void values_push(Values *v, MoValue x) {
 }
 
 /* Scratch that a failed decode leaves behind, freed when the decode ends. */
-static Values *json_scratch;
-static size_t njson_scratch, capjson_scratch;
-static Buf json_texts;
+static _Thread_local Values *json_scratch;
+static _Thread_local size_t njson_scratch, capjson_scratch;
+static _Thread_local Buf json_texts;
 
 static Values *json_values(void) {
     if (njson_scratch == capjson_scratch) {
@@ -4754,11 +4840,11 @@ typedef struct {
 } Proc;
 
 static Proc **procs;
-static uint32_t nprocs, capprocs;
+static uint32_t capprocs;
 /* Each started supervisor's index in mo_supervisors. */
 static uint32_t *sups;
 static uint32_t nsups, capsups;
-static uint32_t running = NOBODY;
+static _Thread_local uint32_t running = NOBODY;
 static uint64_t next_seq;
 /* A supervisor gave up: last_report says which, and the run stops. */
 static bool gave_up;
@@ -4774,10 +4860,6 @@ static const char *test_name = "";
 static bool packs;
 /* Under main with processes: each process's updates run on a fiber of its own on main's thread. */
 static bool turns_on;
-/* Under main, the ids of processes a sweep ended, the last ended last: the next start takes the
- * last one (turns.zig, sweep). */
-static uint32_t *free_ids;
-static size_t nfree_ids, capfree_ids;
 /* The fewest quiet events between two sweeps, the ended processes whose regions wait for the next
  * processes given their ids, and the idle fibers the pool keeps, at most. */
 #define SWEEP_MIN 64
@@ -4915,9 +4997,13 @@ static int64_t begin_wait(const char *call) {
     return event_now();
 }
 
-MoValue mo_wait_begin(const char *call) { return mo_time(begin_wait(call)); }
+MoValue mo_wait_begin(const char *call) {
+    HOLD_RUNTIME();
+    return mo_time(begin_wait(call));
+}
 
 MoValue mo_waited(const char *call, MoValue since, MoValue result) {
+    HOLD_RUNTIME();
     waited_in(call, since.as.i, result, NOBODY);
     return result;
 }
@@ -4948,7 +5034,7 @@ static void reset_processes(void) {
         free(p);
     }
     nprocs = nsups = 0;
-    nfree_ids = 0;
+    reset_free_ids();
     held = 0;
     running = NOBODY;
     next_seq = 0;
@@ -4982,8 +5068,11 @@ static int64_t window_of(const MoChild *c) { return c->per ? c->per(NULL, NULL).
 static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, uint32_t supervisor, Policy policy) {
     MoValue *kept = dupe_values(args, n);
     MoValue state = mo_processes[process].init(NULL, kept);
-    bool reused = nfree_ids > 0;
-    uint32_t id = reused ? free_ids[--nfree_ids] : nprocs;
+    /* Under main the process is placed on a scheduler, and takes the id of the last process that ended
+     * there, if one waits (step 30). */
+    uint32_t home = turns_on ? place() : 0;
+    uint32_t id = nprocs;
+    bool reused = turns_on && take_free_id(home, &id);
     Proc *p = reused ? procs[id] : calloc(1, sizeof(Proc));
     if (!p) out_of_memory();
     p->ended = false;
@@ -5008,7 +5097,7 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
         GROW_ARRAY(procs, nprocs, capprocs);
         procs[nprocs++] = p;
     }
-    if (turns_on && supervisor == NOBODY) quiet++;
+    if (turns_on) placed(id, home, supervisor == NOBODY);
     record_event(event_of(EV_STARTED, id));
     return id;
 }
@@ -5016,6 +5105,7 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
 /* `Name.start(args)`: the test runner, or main, supervises it as the first child line that names
  * the process says, its restart: included (step 29), and with :always when no line names it. */
 MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
+    HOLD_RUNTIME();
     /* Under main, main starting processes faster than a statement settles them hands out their
      * turns first, so the ones that finished end. */
     if (turns_on) turns_spawning();
@@ -5035,6 +5125,7 @@ MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
 
 /* Each child in order, with the arguments its line passes. */
 MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args) {
+    HOLD_RUNTIME();
     (void)n;
     const MoSupervisor *s = &mo_supervisors[supervisor];
     uint32_t sid = nsups;
@@ -5098,6 +5189,7 @@ static void dropped(uint32_t from, uint32_t to, MoValue message, const char *why
 /* `h.send(message)`: never blocks. From inside an update the message waits in the sender's
  * outbox until the update commits. A target that is down drops it, with an event. */
 MoValue mo_send(MoValue handle, MoValue message) {
+    HOLD_RUNTIME();
     uint32_t to = (uint32_t)handle.as.i;
     if (!procs[to]->up) {
         dropped(running, to, message, "down");
@@ -5279,7 +5371,10 @@ static void others_round(uint32_t skip, uint32_t *delivered);
 static int64_t deadline_now(void) { return turns_on ? now_ms() : sim_waited; }
 
 /* reply_by in the running update. */
-MoValue mo_reply_by(void) { return mo_time(running != NOBODY ? procs[running]->reply_by : deadline_now()); }
+MoValue mo_reply_by(void) {
+    HOLD_RUNTIME();
+    return mo_time(running != NOBODY ? procs[running]->reply_by : deadline_now());
+}
 
 /* A Deadline given to within:: the Duration that remains of it, or -1 ms when nothing does. */
 MoValue mo_deadline_left(MoValue deadline) {
@@ -5312,6 +5407,7 @@ MO_ROW(mo_r_Deadline_at_most) {
  * fixture calls waited longer than d while it answered; Down when the target is down or
  * crashed before replying. A Timeout's message still arrives. */
 MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
+    HOLD_RUNTIME();
     /* Nothing remains of the deadline: Timeout at once, and nothing is sent (step 22). */
     if (within.as.i < 0) return ask_error(MO_N_TIMEOUT);
     uint32_t to = (uint32_t)handle.as.i;
@@ -5393,6 +5489,8 @@ static void push_later(uint32_t from, uint32_t to, MoValue message, Parcel *parc
         later_swap(i, (i - 1) / 2);
         i = (i - 1) / 2;
     }
+    /* A new earliest: scheduler 0, which moves them, looks again (step 30). */
+    if (i == 0 && turns_on) stir_main();
 }
 
 static Later pop_later(void) {
@@ -5449,6 +5547,7 @@ static void drop_later_on_exit(void) {
 /* `h.send(message, delay: d)` (step 24): in `to`'s mailbox no earlier than `d` after the sending
  * update ends; from a test or main, `d` after now. A crash drops it with the update's other sends. */
 MoValue mo_send_later(MoValue handle, MoValue message, MoValue delay) {
+    HOLD_RUNTIME();
     if (delay.as.i <= 0) return mo_send(handle, message);
     uint32_t to = (uint32_t)handle.as.i;
     if (!procs[to]->up) {
@@ -5520,6 +5619,7 @@ static void drain(bool to_later) {
 }
 
 void mo_settle(void) {
+    HOLD_RUNTIME();
     if (turns_on) turns_settle();
     else drain(false);
 }
@@ -5550,6 +5650,9 @@ static MoValue update(uint32_t id, MoValue message, MoValue before) {
     if (n) memcpy(args, p->args, n * sizeof(MoValue));
     args[n] = before;
     args[n + 1] = message;
+    /* The update's own code runs without the runtime's lock, which every row and entry point that
+     * reaches the runtime takes again (step 30); a crash out of it lands in run_update. */
+    uint32_t held = begin_mo();
     MoValue out = def->update(NULL, args);
     args[n] = out.as.xs[1];
     args[n + 1] = before;
@@ -5558,6 +5661,7 @@ static MoValue update(uint32_t id, MoValue message, MoValue before) {
         static const char *const state_name[] = {"state"};
         mo_crash_values(def->invariants[k].clause, 1, state_name, &out.as.xs[1]);
     }
+    end_mo(held);
     return out;
 }
 
@@ -5569,10 +5673,12 @@ static int run_update(uint32_t id, MoValue message, MoValue before, MoValue *out
     MoHandleFrame *frames = mo_handle_frames;
     MoFrame *walks = mo_frames;
     crash_jump = &here;
+    uint32_t held = lock_depth();
     int jumped = setjmp(here);
     if (jumped == 0) {
         *out = update(id, message, before);
     } else {
+        lock_restore(held);
         mo_depth = depth;
         mo_handle_frames = frames;
         mo_frames = walks;
@@ -5601,6 +5707,9 @@ static void rollback(void) {
  * holds more than twice what its last full compaction kept, it is compacted whole. */
 static void settle_region(uint32_t id, size_t mark) {
     MoValue roots[1] = {procs[id]->state};
+    /* Only this process's region and this thread's scratch region are touched, so with more than one
+     * scheduler the compaction runs without the runtime's lock (step 30). */
+    uint32_t held = begin_mo();
     if (mo_heap.top > mark) mo_compact(mark, roots, 1);
     if (mo_heap.top - mo_heap.base > 2 * full_kept + FULL_BUDGET) {
         mo_compact(mo_heap.base, roots, 1);
@@ -5613,11 +5722,12 @@ static void settle_region(uint32_t id, size_t mark) {
             full_kept = mo_heap.top - mo_heap.base;
         }
     }
-    procs[id]->state = roots[0];
     /* What the update freed, in its process's region and in the scratch region a compaction copied
      * through, goes back to the system beyond a MiB of each (step 28). */
     if (mo_heap.high > mo_heap.top + 4 * RELEASE_KEEP) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
     if (scratch.high > scratch.base + 4 * RELEASE_KEEP) release_past(&scratch, scratch.base + RELEASE_KEEP);
+    end_mo(held);
+    procs[id]->state = roots[0];
 }
 
 static void process_crashed(const Report *r) {
@@ -5654,10 +5764,12 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     MoHandleFrame *frames = mo_handle_frames;
     MoFrame *walks = mo_frames;
     crash_jump = &here;
+    uint32_t held = lock_depth();
     int jumped = setjmp(here);
     if (jumped == 0) {
         *out = mo_processes[process].init(NULL, args);
     } else {
+        lock_restore(held);
         mo_depth = depth;
         mo_handle_frames = frames;
         mo_frames = walks;
@@ -5775,7 +5887,9 @@ static Delivered deliver(uint32_t id) {
     MoValue after = MO_NONE_V;
     int jumped = run_update(id, message, before, &after);
     p = procs[id];
-    p->busy = false;
+    /* Under main the process stays busy until its region has settled, which another scheduler must not
+     * read in the middle of (step 30). */
+    if (!turns_on) p->busy = false;
     running = outer;
     if (jumped != 0) {
         undo_mark = frozen_below = 0;
@@ -5790,6 +5904,7 @@ static Delivered deliver(uint32_t id) {
         crashed(id, before);
         if (turns_on) turns_answer(entry.seq, false, MO_NONE_V, NULL);
         if (regioned) settle_region(id, mark);
+        procs[id]->busy = false;
         return (Delivered){entry.seq, false, MO_NONE_V};
     }
     undo_mark = frozen_below = 0;
@@ -5819,11 +5934,12 @@ static Delivered deliver(uint32_t id) {
         turns_answer(entry.seq, true, parcel ? parcel->value : reply, parcel);
     }
     if (regioned) settle_region(id, mark);
+    procs[id]->busy = false;
     return (Delivered){entry.seq, true, reply};
 }
 
-/* ---- turns: under main, every update runs on main's thread, one at a time, each on a fiber of
- * its own with a vm of its own (turns.zig, fiber.zig). A process gives up the thread when it waits,
+/* ---- turns: under main, every update runs on its scheduler's thread, one at a time per scheduler,
+ * each on a fiber of its own with a vm of its own (turns.zig, fiber.zig; schedulers, step 30). A process gives up the thread when it waits,
  * in a Net call or in an ask its target cannot answer yet: its fiber switches back to whoever
  * handed it the thread, keeping its stack, and is switched to again when its wait ends. main's
  * thread runs main's code whenever no update does, and hands the thread out: first to a process
@@ -5955,7 +6071,7 @@ static void fiber_destroy(Fiber *f) {
     free(f);
 }
 
-/* ---- the poller: kqueue or epoll on main's thread (poller.zig). A waiter is armed once and
+/* ---- the poller: kqueue or epoll, one per scheduler's thread (poller.zig). A waiter is armed once and
  * reported once. */
 
 #define NO_PROCESS UINT32_MAX
@@ -5974,7 +6090,7 @@ typedef struct {
     int dup;
 } Waiter;
 
-static int poller_fd = -1;
+static _Thread_local int poller_fd = -1;
 
 static bool poller_open(void) {
     if (poller_fd >= 0) return true;
@@ -6168,35 +6284,254 @@ typedef struct { uint32_t id; int64_t deadline; } Parked;
 typedef struct { uint64_t seq; uint32_t who; } Awaiting;
 typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer;
 
-static uint32_t holder = MAIN_TURN;
-/* main's thread's own context, while a fiber runs. */
-static FiberContext main_context;
-/* Processes whose wait ended, oldest first from ready_head; each at most once. */
-static uint32_t *ready;
-static size_t ready_head, nready, capready;
+/* ---- schedulers (turns.zig, step 30): one per core, MO_CORES of them when it is set and the
+ * machine's cores otherwise, scheduler 0 on main's thread and each other on a thread of its own. A
+ * process is placed at its start on the scheduler with the fewest live processes and stays there. A
+ * thread holds the runtime's lock while it runs the runtime, and lets it go while a process's Mo code
+ * runs, while its region compacts, and while its scheduler waits in its poller. */
+
+#define SPINS 2000
+#define LOCK_SPINS 200
+#define STOP_WAIT_MS 20
+#define SWEEP_RETRY_MS 100
+enum { THREAD_RUNNING, THREAD_SPINNING, THREAD_SLEEPING };
+
+typedef struct {
+    uint32_t index;
+    /* Who holds its thread: MAIN_TURN, or a process with a fiber. */
+    uint32_t holder;
+    /* A descriptor another scheduler writes when it gives this one something while it sleeps in its
+     * poller; its thread's state; whether it was given something since it began to wait. */
+    int wake_read, wake_write;
+    Waiter wake_waiter;
+    _Atomic unsigned char state;
+    _Atomic bool poked;
+    /* Its last look found nothing to hand out, and nothing has been given it since. */
+    bool resting;
+    /* Its processes whose wait ended, oldest first from ready_head and each at most once; its processes
+     * parked in an ask or a Net call; where its next round starts; its ids that may have a message. */
+    uint32_t *ready;
+    size_t ready_head, nready, capready;
+    Parked *parked;
+    size_t nparked, capparked;
+    uint32_t cursor;
+    uint64_t *runnable;
+    size_t runnable_words;
+    /* Its live processes; those a sweep ended whose regions it has yet to free; its ended ids, the
+     * last ended last. */
+    uint32_t live;
+    uint32_t *to_end;
+    size_t nto_end, capto_end;
+    uint32_t *free_ids;
+    size_t nfree_ids, capfree_ids;
+    /* This thread's hold on the lock, its thread, and its scratch region. */
+    uint32_t depth;
+    pthread_t thread;
+    MoRegion *scratch_at;
+} Sched;
+
+static Sched scheds[MOST_CORES];
+static _Thread_local Sched *this_sched;
+/* Each process's scheduler, by id. */
+static uint16_t *homes;
+static size_t nhomes, caphomes;
+static pthread_mutex_t runtime_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* A sweep waits for every update in progress to park or end; the run is over; main waits for the
+ * other schedulers to rest; schedulers whose thread runs an update now. */
+static bool sweeping, stopping_run, main_waits;
+static Sched *sweeper;
+static uint32_t updating_scheds;
+static int64_t sweep_retry_at;
+/* A scheduler's delivery failed past a crash (a supervisor gave up): main ends the run with it. */
+static bool run_failed;
+static Report failure_report;
+static int failure_jump;
+/* main's thread's frames and region, which a sweep or the surface reads from another thread. */
+static MoHandleFrame **main_frames_at;
+static MoRegion *main_heap_at;
+
+static uint32_t home_of(uint32_t id) { return id < nhomes ? homes[id] : 0; }
+static Sched *cur_sched(void) { return multi ? this_sched : &scheds[0]; }
+
+#if defined(__x86_64__)
+static void spin_hint(void) { __builtin_ia32_pause(); }
+#else
+static void spin_hint(void) {}
+#endif
+
+static void acquire_runtime(void) {
+    for (int k = 0; pthread_mutex_trylock(&runtime_mutex) != 0; k++) {
+        if (k == LOCK_SPINS) {
+            pthread_mutex_lock(&runtime_mutex);
+            break;
+        }
+        spin_hint();
+    }
+}
+
+static void runtime_lock(void) {
+    if (!multi) return;
+    if (this_sched->depth++ == 0) acquire_runtime();
+}
+
+static void runtime_unlock(void) {
+    if (!multi) return;
+    if (--this_sched->depth == 0) pthread_mutex_unlock(&runtime_mutex);
+}
+
+static uint32_t lock_take(void) {
+    if (!multi) return 0;
+    runtime_lock();
+    return 1;
+}
+
+static void lock_give(uint32_t *held) {
+    if (*held) runtime_unlock();
+}
+
+/* A process's Mo code is about to run on this thread, or its region to compact: the lock goes, whatever
+ * its depth. */
+static uint32_t begin_mo(void) {
+    if (!multi) return 0;
+    uint32_t depth = this_sched->depth;
+    if (depth > 0) {
+        this_sched->depth = 0;
+        pthread_mutex_unlock(&runtime_mutex);
+    }
+    return depth;
+}
+
+static void end_mo(uint32_t depth) {
+    if (!multi) return;
+    if (depth > 0 && this_sched->depth == 0) acquire_runtime();
+    this_sched->depth = depth;
+}
+
+/* How deep this thread holds the lock, for a crash's landing to restore. */
+static uint32_t lock_depth(void) { return multi ? this_sched->depth : 0; }
+
+static void lock_restore(uint32_t depth) {
+    if (!multi) return;
+    if (this_sched->depth == 0 && depth > 0) acquire_runtime();
+    else if (this_sched->depth > 0 && depth == 0) pthread_mutex_unlock(&runtime_mutex);
+    this_sched->depth = depth;
+}
+
+static void wake_signal(Sched *s) {
+    if (s->wake_write < 0) return;
+    uint64_t one = 1;
+#ifdef __linux__
+    ssize_t w = write(s->wake_write, &one, 8);
+#else
+    ssize_t w = write(s->wake_write, &one, 1);
+#endif
+    (void)w;
+}
+
+static void wake_drain(Sched *s) {
+    char buf[64];
+    while (read(s->wake_read, buf, sizeof buf) > 0) {}
+}
+
+/* Something was given to scheduler `s`: it looks again, woken when it sleeps in its poller. */
+static void stir(Sched *s) {
+    s->resting = false;
+    if (!multi || this_sched == s) return;
+    atomic_store(&s->poked, true);
+    if (atomic_load(&s->state) == THREAD_SLEEPING) wake_signal(s);
+}
+
+static void stir_main(void) { stir(&scheds[0]); }
+
+/* Scheduler `s` found nothing to hand out. */
+static void rest(Sched *s) {
+    s->resting = true;
+    if (main_waits) stir(&scheds[0]);
+}
+
+/* Every scheduler but main's has nothing to hand out. */
+static bool others_rest(void) {
+    if (sweeping) return false;
+    for (uint32_t k = 1; k < ncores; k++) {
+        const Sched *s = &scheds[k];
+        if (!s->resting || s->ready_head < s->nready || s->nto_end > 0) return false;
+    }
+    return true;
+}
+
+/* Scheduler `s`'s thread goes from `from` to `to`: updating_scheds counts the schedulers whose thread
+ * runs an update now. */
+static void counted(Sched *s, uint32_t from, uint32_t to) {
+    s->holder = to;
+    if ((from == MAIN_TURN) == (to == MAIN_TURN)) return;
+    if (to == MAIN_TURN) updating_scheds--;
+    else updating_scheds++;
+}
+
+/* The schedulers a run has: MO_CORES when it is a whole number from 1, at most MOST_CORES, else the
+ * machine's cores. */
+static uint32_t cores_from(const char *text) {
+    if (text && *text) {
+        char *end;
+        long n = strtol(text, &end, 10);
+        if (*end == 0 && n >= 1) return n > MOST_CORES ? MOST_CORES : (uint32_t)n;
+    }
+    long n = sysconf(_SC_NPROCESSORS_ONLN);
+    return n < 1 ? 1 : n > MOST_CORES ? MOST_CORES : (uint32_t)n;
+}
+
+/* Where a process about to start goes: the scheduler with the fewest live processes, the first of
+ * those tied. */
+static uint32_t place(void) {
+    uint32_t best = 0;
+    for (uint32_t k = 1; k < ncores; k++) {
+        if (scheds[k].live < scheds[best].live) best = k;
+    }
+    return best;
+}
+
+/* The id of the last process that ended on scheduler `k`, if one waits. */
+static bool take_free_id(uint32_t k, uint32_t *id) {
+    Sched *s = &scheds[k];
+    if (s->nfree_ids == 0) return false;
+    *id = s->free_ids[--s->nfree_ids];
+    return true;
+}
+
+static void reset_free_ids(void) {
+    for (uint32_t k = 0; k < MOST_CORES; k++) scheds[k].nfree_ids = scheds[k].nto_end = scheds[k].live = 0;
+}
+
+/* Process `id` started on scheduler `k`; a start call began it when `quiet_event`, so it may finish. */
+static void placed(uint32_t id, uint32_t k, bool quiet_event) {
+    while (nhomes <= id) {
+        GROW_ARRAY(homes, nhomes, caphomes);
+        homes[nhomes++] = 0;
+    }
+    homes[id] = (uint16_t)k;
+    scheds[k].live++;
+    if (quiet_event) quiet++;
+}
+
+static _Thread_local uint32_t holder = MAIN_TURN;
+/* This thread's own context while a fiber runs: main's thread's, or a scheduler loop's. */
+static _Thread_local FiberContext main_context;
 /* One per process, made at its first delivery; indexed by process id. */
 static Worker **workers;
 static size_t nworkers, capworkers;
-/* Fibers no update is on, and the updates on a fiber, running or waiting. */
-static Fiber **fibers;
-static size_t nfibers, capfibers;
+/* This thread's fibers no update is on; the updates on a fiber, running or waiting, on every scheduler. */
+static _Thread_local Fiber **fibers;
+static _Thread_local size_t nfibers, capfibers;
 static uint32_t in_flight;
-/* Asks waiting for their reply, the replies that came, and processes parked in an ask or a Net
- * call. */
+/* Asks waiting for their reply, and the replies that came. */
 static Awaiting *awaiting;
 static size_t nawaiting, capawaiting;
 static Answer *answers;
 static size_t nanswers, capanswers;
-static Parked *parked;
-static size_t nparked, capparked;
-/* Where the next round of deliveries starts, and the ids that may have a message waiting: set
- * when one goes into a mailbox, cleared when a round finds the mailbox empty. */
-static uint32_t cursor;
-static uint64_t *runnable;
-static size_t runnable_words;
 static VmState main_vm;
-/* The vm state of whoever holds the thread. */
-static VmState *my_vm;
+/* The vm state of whoever holds this thread, and a scheduler loop's own. */
+static _Thread_local VmState *my_vm;
+static _Thread_local VmState loop_vm;
 
 static FiberContext *context_of(uint32_t id) { return id == MAIN_TURN ? &main_context : &workers[id]->fiber->context; }
 
@@ -6204,29 +6539,35 @@ static FiberContext *context_of(uint32_t id) { return id == MAIN_TURN ? &main_co
 static void switch_to(uint32_t to) {
     uint32_t from = holder;
     uint32_t depth = mo_depth;
+    Sched *s = cur_sched();
+    uint32_t held = s->depth;
     holder = to;
+    counted(s, from, to);
     mo_fiber_swap(context_of(from), context_of(to));
     mo_depth = depth;
+    s->depth = held;
 }
 
 static void mark_runnable(uint32_t id) {
+    Sched *s = &scheds[home_of(id)];
     size_t word = id / 64;
-    if (word >= runnable_words) {
-        size_t words = 2 * runnable_words > word + 1 ? 2 * runnable_words : word + 1;
-        runnable = xrealloc(runnable, words * sizeof(uint64_t));
-        memset(runnable + runnable_words, 0, (words - runnable_words) * sizeof(uint64_t));
-        runnable_words = words;
+    if (word >= s->runnable_words) {
+        size_t words = 2 * s->runnable_words > word + 1 ? 2 * s->runnable_words : word + 1;
+        s->runnable = xrealloc(s->runnable, words * sizeof(uint64_t));
+        memset(s->runnable + s->runnable_words, 0, (words - s->runnable_words) * sizeof(uint64_t));
+        s->runnable_words = words;
     }
-    runnable[word] |= (uint64_t)1 << (id % 64);
+    s->runnable[word] |= (uint64_t)1 << (id % 64);
+    stir(s);
 }
 
-/* The first process in [from, to) that is up, not on a stack, and has a message waiting. A marked
- * process whose mailbox is empty, or that is down, is unmarked on the way. */
-static bool next_runnable(uint32_t from, uint32_t to, uint32_t *out) {
-    size_t end = to < runnable_words * 64 ? to : runnable_words * 64;
+/* The first of `s`'s processes in [from, to) that is up, not on a stack, and has a message waiting. A
+ * marked process whose mailbox is empty, or that is down, is unmarked on the way. */
+static bool next_runnable(Sched *s, uint32_t from, uint32_t to, uint32_t *out) {
+    size_t end = to < s->runnable_words * 64 ? to : s->runnable_words * 64;
     size_t i = from;
     while (i < end) {
-        uint64_t word = runnable[i / 64] >> (i % 64);
+        uint64_t word = s->runnable[i / 64] >> (i % 64);
         if (word == 0) {
             i = (i / 64 + 1) * 64;
             continue;
@@ -6235,7 +6576,7 @@ static bool next_runnable(uint32_t from, uint32_t to, uint32_t *out) {
         if (i >= end) break;
         const Proc *p = procs[i];
         if (!p->up || queued(p) == 0) {
-            runnable[i / 64] &= ~((uint64_t)1 << (i % 64));
+            s->runnable[i / 64] &= ~((uint64_t)1 << (i % 64));
         } else if (!p->busy && !p->paused) {
             *out = (uint32_t)i;
             return true;
@@ -6307,10 +6648,12 @@ void mo_fiber_start(Fiber *f) {
         mo_depth = 0;
         jmp_buf here;
         crash_jump = &here;
+        uint32_t held = lock_depth();
         int jumped = setjmp(here);
         if (jumped == 0) {
             deliver(w->id);
         } else {
+            lock_restore(held);
             mo_depth = 0;
             mo_handle_frames = NULL;
             mo_frames = NULL;
@@ -6326,37 +6669,43 @@ void mo_fiber_start(Fiber *f) {
         in_flight--;
         GROW_ARRAY(fibers, nfibers, capfibers);
         fibers[nfibers++] = f;
+        /* A loop paused at this process's bound may go on now that its mailbox drained. */
+        if (multi && this_sched->index != 0 && sources_paused()) stir(&scheds[0]);
+        counted(cur_sched(), w->id, w->caller);
         holder = w->caller;
         mo_fiber_swap(&f->context, context_of(w->caller));
     }
 }
 
 static void push_ready(uint32_t id) {
+    Sched *s = &scheds[home_of(id)];
     Worker *w = workers[id];
     if (w->queued) return;
     w->queued = true;
-    if (ready_head > 0 && nready == capready) {
-        memmove(ready, ready + ready_head, (nready - ready_head) * sizeof(uint32_t));
-        nready -= ready_head;
-        ready_head = 0;
+    if (s->ready_head > 0 && s->nready == s->capready) {
+        memmove(s->ready, s->ready + s->ready_head, (s->nready - s->ready_head) * sizeof(uint32_t));
+        s->nready -= s->ready_head;
+        s->ready_head = 0;
     }
-    GROW_ARRAY(ready, nready, capready);
-    ready[nready++] = id;
+    GROW_ARRAY(s->ready, s->nready, s->capready);
+    s->ready[s->nready++] = id;
+    stir(s);
 }
 
-static bool pop_ready(uint32_t *id) {
-    if (ready_head == nready) return false;
-    *id = ready[ready_head++];
-    if (ready_head == nready) ready_head = nready = 0;
+static bool pop_ready(Sched *s, uint32_t *id) {
+    if (s->ready_head == s->nready) return false;
+    *id = s->ready[s->ready_head++];
+    if (s->ready_head == s->nready) s->ready_head = s->nready = 0;
     workers[*id]->queued = false;
     return true;
 }
 
-/* Process `id`'s wait ended: it leaves the parked list and is switched to next. */
+/* Process `id`'s wait ended: it leaves its scheduler's parked list and is switched to next. */
 static void wake(uint32_t id) {
-    for (size_t k = 0; k < nparked; k++) {
-        if (parked[k].id != id) continue;
-        parked[k] = parked[--nparked];
+    Sched *s = &scheds[home_of(id)];
+    for (size_t k = 0; k < s->nparked; k++) {
+        if (s->parked[k].id != id) continue;
+        s->parked[k] = s->parked[--s->nparked];
         break;
     }
     push_ready(id);
@@ -6365,11 +6714,12 @@ static void wake(uint32_t id) {
 /* A process parks in an ask until the reply comes, the target goes down, or `deadline`. */
 static void park(int64_t deadline) {
     uint32_t id = holder;
+    Sched *s = cur_sched();
     Worker *w = workers[id];
     uint32_t was_running = running;
     VmState *mine = my_vm;
-    GROW_ARRAY(parked, nparked, capparked);
-    parked[nparked++] = (Parked){id, deadline};
+    GROW_ARRAY(s->parked, s->nparked, s->capparked);
+    s->parked[s->nparked++] = (Parked){id, deadline};
     w->phase = PHASE_WAITING;
     save_vm(mine);
     switch_to(w->caller);
@@ -6378,34 +6728,62 @@ static void park(int64_t deadline) {
     running = was_running;
 }
 
-/* main's thread, with no turn to hand out: waits in the poller until a socket something waits on
- * is ready, `also` is reported, or the earliest deadline passes, and at least once a second. */
+/* A scheduler with no turn to hand out: waits in its poller until a socket something on it waits on is
+ * ready, `also` is reported, another scheduler wakes it, or the earliest deadline passes, and at least
+ * once a second. With more than one scheduler it looks for a poke a moment before it sleeps, so a
+ * handoff between two busy schedulers costs no system call (turns.zig, idle). */
 static void idle(Waiter *also, bool bounded, int64_t deadline) {
-    if (ready_head < nready) return;
+    Sched *s = cur_sched();
+    /* While a sweep waits for its turn this scheduler hands nothing out (step), so it waits here without
+     * the lock whatever it has ready, until the sweep's end pokes it. */
+    bool held_back = sweeping && sweeper != s;
+    if (!held_back && (s->ready_head < s->nready || s->nto_end > 0)) return;
     if (also && also->fired) return;
-    if (sources_has_work()) return;
+    if (run_failed || stopping_run) return;
     int64_t until = deadline;
-    for (size_t i = 0; i < nparked; i++) {
-        if (!bounded || parked[i].deadline < until) until = parked[i].deadline;
+    for (size_t i = 0; i < s->nparked; i++) {
+        if (!bounded || s->parked[i].deadline < until) until = s->parked[i].deadline;
         bounded = true;
     }
-    int64_t due;
-    if (sources_next_deadline(&due) && (!bounded || due < until)) {
-        until = due;
-        bounded = true;
-    }
-    if (nlater > 0 && (!bounded || later[0].at < until)) {
-        until = later[0].at;
-        bounded = true;
+    if (s->index == 0) {
+        if (!held_back && sources_has_work()) return;
+        int64_t due;
+        if (sources_next_deadline(&due) && (!bounded || due < until)) {
+            until = due;
+            bounded = true;
+        }
+        if (nlater > 0 && (!bounded || later[0].at < until)) {
+            until = later[0].at;
+            bounded = true;
+        }
     }
     int64_t left = bounded ? until - now_ms() : 1000;
     if (left < 0) left = 0;
     if (left > 1000) left = 1000;
     if (!poller_open()) return;
     Waiter *out[POLL_BATCH];
-    size_t n = poller_wait(left, out);
+    size_t n;
+    if (multi) {
+        poller_arm(&s->wake_waiter);
+        /* Nothing can be given it while it holds the lock, so a poke from here on is news. */
+        atomic_store(&s->poked, false);
+        atomic_store(&s->state, THREAD_SPINNING);
+        uint32_t held = s->depth;
+        s->depth = 0;
+        pthread_mutex_unlock(&runtime_mutex);
+        for (int k = 0; k < SPINS && !atomic_load(&s->poked); k++) spin_hint();
+        /* Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake. */
+        if (!atomic_load(&s->poked)) atomic_store(&s->state, THREAD_SLEEPING);
+        n = poller_wait(atomic_load(&s->poked) ? 0 : left, out);
+        atomic_store(&s->state, THREAD_RUNNING);
+        acquire_runtime();
+        s->depth = held;
+    } else {
+        n = poller_wait(left, out);
+    }
     for (size_t i = 0; i < n; i++) {
-        if (out[i]->process != NO_PROCESS) wake(out[i]->process);
+        if (out[i] == &s->wake_waiter) wake_drain(s);
+        else if (out[i]->process != NO_PROCESS) wake(out[i]->process);
         else if (out[i]->source) sources_fired(out[i]->source);
     }
 }
@@ -6483,19 +6861,12 @@ static void decommit(MoRegion *r) {
     r->top = r->high = r->base;
 }
 
-/* Process `id` has finished: what it held is freed, and its emptied region waits for the next
- * process given its id. */
+/* Process `id` has finished: what it held is freed, and its scheduler is given its region and its id
+ * (end_own). */
 static void end_process(uint32_t id) {
     int64_t t0 = awake_ns();
     record_event(event_of(EV_ENDED, id));
     Proc *p = procs[id];
-    if (id < nworkers && workers[id] && !workers[id]->ended) {
-        Worker *w = workers[id];
-        MoRegion heap = w->vm.heap;
-        if (heap.end != 0) decommit(&heap);
-        reuse_vm(&w->vm);
-        w->vm.heap = heap;
-    }
     parcel_free(p->start);
     for (size_t i = 0; i < p->nlog_parcels; i++) parcel_free(p->log_parcels[i]);
     free(p->mailbox);
@@ -6505,8 +6876,11 @@ static void end_process(uint32_t id) {
     memset(p, 0, sizeof *p);
     p->supervisor = NOBODY;
     p->ended = true;
-    GROW_ARRAY(free_ids, nfree_ids, capfree_ids);
-    free_ids[nfree_ids++] = id;
+    Sched *s = &scheds[home_of(id)];
+    s->live--;
+    GROW_ARRAY(s->to_end, s->nto_end, s->capto_end);
+    s->to_end[s->nto_end++] = id;
+    stir(s);
     stat_freed++;
     stat_freed_ns += (uint64_t)(awake_ns() - t0);
 }
@@ -6523,20 +6897,80 @@ static void release_worker(uint32_t id) {
     w->ended = true;
 }
 
-/* From main's thread, holding the turn: ends every process that has finished. One has when a start
- * call began it (a child line's never ends), its mailbox is empty, no update of it is on a stack,
- * and no handle to it is where anything could use it: in a frame of main or of an update on a
- * stack, in the start arguments of a process that has not finished, in the state of a process that
- * is up (step 24), in a send an update holds, or in a reply not yet taken. */
+/* On `s`'s own thread, or under one scheduler: the processes a sweep ended there give back what their
+ * vms kept, their emptied regions wait for the next processes given their ids, and the regions of more
+ * than KEPT_WORKERS ended ids are released. */
+static void end_own(Sched *s) {
+    for (size_t i = 0; i < s->nto_end; i++) {
+        uint32_t id = s->to_end[i];
+        if (id < nworkers && workers[id] && !workers[id]->ended) {
+            Worker *w = workers[id];
+            MoRegion heap = w->vm.heap;
+            if (heap.end != 0) decommit(&heap);
+            reuse_vm(&w->vm);
+            w->vm.heap = heap;
+        }
+        GROW_ARRAY(s->free_ids, s->nfree_ids, s->capfree_ids);
+        s->free_ids[s->nfree_ids++] = id;
+    }
+    s->nto_end = 0;
+    if (s->nfree_ids > KEPT_WORKERS) {
+        for (size_t i = 0; i < s->nfree_ids - KEPT_WORKERS; i++) release_worker(s->free_ids[i]);
+    }
+}
+
+/* A sweep waits for its turn (turns.zig, stopTurns): from now on no scheduler starts or resumes an
+ * update, and the sweep lets the lock go a moment at a time until every update in progress has parked
+ * or ended, as every update but the sweeper's had when one thread swept, so no handle an update holds
+ * only in a C local is missed. False, and the schedulers go on, when an update still ran after
+ * STOP_WAIT_MS. */
+static bool stop_turns(Sched *s) {
+    sweeping = true;
+    sweeper = s;
+    int64_t limit = now_ms() + STOP_WAIT_MS;
+    while (updating_scheds > 0) {
+        if (now_ms() >= limit) {
+            sweeping = false;
+            sweeper = NULL;
+            for (uint32_t k = 0; k < ncores; k++) stir(&scheds[k]);
+            return false;
+        }
+        uint32_t held = s->depth;
+        s->depth = 0;
+        pthread_mutex_unlock(&runtime_mutex);
+        struct timespec pause = {0, 50000};
+        nanosleep(&pause, NULL);
+        acquire_runtime();
+        s->depth = held;
+    }
+    return true;
+}
+
+/* Holding the lock: ends every process that has finished. One has when a start call began it (a child
+ * line's never ends), its mailbox is empty, no update of it is on a stack, and no handle to it is where
+ * anything could use it: in a frame of main or of an update on a stack, in the start arguments of a
+ * process that has not finished, in the state of a process that is up (step 24), in a send an update
+ * holds, or in a reply not yet taken. With more than one scheduler it first waits for every update in
+ * progress to park or end. */
 static void sweep(void) {
+    Sched *s = cur_sched();
+    if (multi) {
+        if (sweeping || now_ms() < sweep_retry_at) return;
+        if (!stop_turns(s)) {
+            sweep_retry_at = now_ms() + SWEEP_RETRY_MS;
+            sweeps_missed++;
+            return;
+        }
+    }
+    sweeps_run++;
     if (capmarks < nprocs) {
         marks = xrealloc(marks, nprocs * sizeof(bool));
         capmarks = nprocs;
     }
     memset(marks, 0, nprocs * sizeof(bool));
     nworklist = 0;
-    /* main's frames: only main's thread sweeps. */
-    mark_frames(mo_handle_frames);
+    /* main's frames: they stand still while anything else holds the lock. */
+    mark_frames(multi ? *main_frames_at : mo_handle_frames);
     for (uint32_t id = 0; id < nprocs; id++) {
         const Proc *p = procs[id];
         if (p->ended || finished(p)) continue;
@@ -6575,11 +7009,15 @@ static void sweep(void) {
         if (finished(p) && !marks[id]) end_process(id);
         else still++;
     }
-    if (nfree_ids > KEPT_WORKERS) {
-        for (size_t i = 0; i < nfree_ids - KEPT_WORKERS; i++) release_worker(free_ids[i]);
-    }
+    /* Under one scheduler its vms and regions are freed now, as before step 30. */
+    if (!multi) end_own(&scheds[0]);
     quiet = 0;
     sweep_at = 2 * still > SWEEP_MIN ? 2 * still : SWEEP_MIN;
+    if (multi) {
+        sweeping = false;
+        sweeper = NULL;
+        for (uint32_t k = 0; k < ncores; k++) stir(&scheds[k]);
+    }
 }
 
 /* In a test binary, a test's processes that have finished and that nothing can reach end when the
@@ -6630,37 +7068,45 @@ static void sweep_test(void) {
     }
 }
 
-/* One turn handed out, from main's thread: to a process whose wait ended, else to the next
- * process with a message waiting. False when there is none. */
+/* One turn handed out on this thread's scheduler: to a process whose wait ended, else to the next process
+ * with a message waiting. False when there is none. */
 static bool step(void) {
+    Sched *s = cur_sched();
+    if (run_failed) {
+        if (s->index == 0) raise_report(failure_report, failure_jump);
+        return false;
+    }
+    /* A sweep waits for the updates in progress to park or end: none starts or resumes meanwhile. */
+    if (sweeping && sweeper != s) return false;
+    if (s->nto_end > 0) end_own(s);
     if (quiet >= sweep_at) sweep();
     while (nfibers > KEPT_FIBERS) fiber_destroy(fibers[--nfibers]);
     /* What the runtime's loops took becomes messages first (sources.zig), and delayed sends whose
      * time has come (step 24). */
-    sources_pump_server();
+    if (s->index == 0) sources_pump_server();
     due_later();
     int64_t now = now_ms();
     size_t k = 0;
-    while (k < nparked) {
-        if (parked[k].deadline <= now) {
-            uint32_t id = parked[k].id;
-            parked[k] = parked[--nparked];
+    while (k < s->nparked) {
+        if (s->parked[k].deadline <= now) {
+            uint32_t id = s->parked[k].id;
+            s->parked[k] = s->parked[--s->nparked];
             push_ready(id);
         } else {
             k++;
         }
     }
     uint32_t id;
-    while (pop_ready(&id)) {
+    while (pop_ready(s, &id)) {
         const Worker *w = workers[id];
         if (w->phase != PHASE_WAITING || !w->fiber) continue;
         hand_to(id, JOB_GO_ON);
         return true;
     }
     if (nprocs == 0) return false;
-    uint32_t from = cursor % nprocs;
-    if (next_runnable(from, nprocs, &id) || next_runnable(0, from, &id)) {
-        cursor = id + 1;
+    uint32_t from = s->cursor % nprocs;
+    if (next_runnable(s, from, nprocs, &id) || next_runnable(s, 0, from, &id)) {
+        s->cursor = id + 1;
         hand_to(id, JOB_DELIVER);
         return true;
     }
@@ -6675,10 +7121,23 @@ static void forget_awaiting(uint64_t seq) {
     }
 }
 
-/* `h.ask(message, within: d)` under main, with d in wall-clock time. The target's waiting
- * messages are delivered first; while it cannot answer, main hands out turns and a process
- * parks. Timeout at the deadline, or at once when the target's update is itself waiting on
- * this call; Down when the target is down, crashed on the message, or dropped it restarting. */
+/* Whether process `to`'s update waits, through the asks it and its targets wait in, on process `me`'s. */
+static bool waits_on(uint32_t to, uint32_t me) {
+    if (me == MAIN_TURN) return false;
+    uint32_t x = to;
+    for (uint32_t n = 0; n < nprocs; n++) {
+        const Proc *q = procs[x];
+        if (!q->busy || q->asking == NOBODY) return false;
+        if (q->asking == me) return true;
+        x = q->asking;
+    }
+    return false;
+}
+
+/* `h.ask(message, within: d)` under main, with d in wall-clock time. On the target's own scheduler its
+ * waiting messages are delivered first; while it cannot answer, main hands out turns and a process
+ * parks. Timeout at the deadline, or at once when the target's update is itself waiting on this call;
+ * Down when the target is down, crashed on the message, or dropped it restarting. */
 static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     if (!procs[to]->up) return ask_error(MO_N_DOWN);
     room_for(to, message);
@@ -6689,6 +7148,7 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     int64_t deadline = now_ms() + (within > 0 ? within : 0);
     procs[to]->mailbox[procs[to]->mailbox_len - 1].has_deadline = true;
     procs[to]->mailbox[procs[to]->mailbox_len - 1].deadline = deadline;
+    bool same = home_of(to) == cur_sched()->index;
     for (;;) {
         /* A wait elsewhere doomed this ask (held sends): mo_ask crashes the update. */
         if (running != NOBODY && procs[running]->doomed) {
@@ -6708,12 +7168,14 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
             return ok_of(reply);
         }
         const Proc *p = procs[to];
-        bool updating = p->busy && to < nworkers && workers[to] && workers[to]->phase == PHASE_RUNNING;
+        /* On one scheduler the target's update holds the thread only when it handed it here; on another,
+         * it waits on this call when the asks its update waits in lead back here. */
+        bool updating = p->busy && (same ? to < nworkers && workers[to] && workers[to]->phase == PHASE_RUNNING : waits_on(to, holder));
         if (!p->up || updating || now_ms() >= deadline) {
             forget_awaiting(seq);
             return ask_error(p->up ? MO_N_TIMEOUT : MO_N_DOWN);
         }
-        if (!p->busy && !p->paused && queued(p) > 0) {
+        if (same && !p->busy && !p->paused && queued(p) > 0) {
             hand_to(to, JOB_DELIVER);
         } else if (holder != MAIN_TURN) {
             park(deadline);
@@ -6723,9 +7185,16 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     }
 }
 
-/* Between two of main's statements: every turn there is to hand out, without waiting. */
+/* Between two of main's statements: every turn there is to hand out, without waiting for a socket or a
+ * deadline, on every scheduler. */
 static void turns_settle(void) {
-    while (step()) {}
+    for (;;) {
+        while (step()) {}
+        if (!multi || others_rest()) return;
+        main_waits = true;
+        idle(NULL, false, 0);
+        main_waits = false;
+    }
 }
 
 /* main is about to start a process: past sweep_at quiet events, it settles first. */
@@ -6738,10 +7207,13 @@ static void turns_spawning(void) {
 static void turns_finish(void) {
     for (;;) {
         if (step()) continue;
+        bool others = !multi || others_rest();
         /* After exit, only until nothing can run without waiting (step 29). */
-        if (exited) return;
-        if (in_flight == 0 && !sources_active() && nlater == 0) return;
+        if (exited && others) return;
+        if (others && in_flight == 0 && !sources_active() && nlater == 0) return;
+        main_waits = true;
         idle(NULL, false, 0);
+        main_waits = false;
     }
 }
 
@@ -6765,15 +7237,115 @@ static void turns_answer(uint64_t seq, bool has, MoValue reply, Parcel *parcel) 
     awaiting[i] = awaiting[--nawaiting];
     GROW_ARRAY(answers, nanswers, capanswers);
     answers[nanswers++] = (Answer){seq, has, reply, parcel};
-    if (who == MAIN_TURN) return;
-    for (size_t k = 0; k < nparked; k++) {
-        if (parked[k].id == who) return wake(who);
+    if (who == MAIN_TURN) {
+        stir(&scheds[0]);
+        return;
+    }
+    Sched *s = &scheds[home_of(who)];
+    for (size_t k = 0; k < s->nparked; k++) {
+        if (s->parked[k].id == who) return wake(who);
     }
 }
 
 /* A process crashed: every parked process looks at what it waits for again. */
 static void turns_wake_all(void) {
-    while (nparked > 0) push_ready(parked[--nparked].id);
+    for (uint32_t k = 0; k < ncores; k++) {
+        Sched *s = &scheds[k];
+        while (s->nparked > 0) push_ready(s->parked[--s->nparked].id);
+    }
+    if (multi) stir(&scheds[0]);
+}
+
+/* A scheduler's thread: hands out its turns until the run is over. A delivery that fails past a crash
+ * (a supervisor gave up) ends it, and main ends the run with the report. */
+static void *sched_loop(void *arg) {
+    Sched *s = arg;
+    this_sched = s;
+    sched_stats[s->index] = &stats;
+    my_vm = &loop_vm;
+    if (mo_compacts && !reserve(&scratch)) scratch = (MoRegion){0, 0, 0, 0};
+    s->scratch_at = &scratch;
+    runtime_lock();
+    jmp_buf landing;
+    crash_jump = &landing;
+    uint32_t held = lock_depth();
+    int jumped = setjmp(landing);
+    if (jumped != 0) {
+        lock_restore(held);
+        if (!run_failed) {
+            run_failed = true;
+            failure_report = last_report;
+            failure_jump = jumped;
+        }
+        stir(&scheds[0]);
+    } else {
+        while (!stopping_run && !run_failed) {
+            if (step()) continue;
+            rest(s);
+            idle(NULL, false, 0);
+        }
+    }
+    stopped_stats[s->index] = stats;
+    sched_stats[s->index] = &stopped_stats[s->index];
+    s->scratch_at = NULL;
+    runtime_unlock();
+    return NULL;
+}
+
+/* The run's schedulers (MO_CORES, else the machine's cores): with more than one, their threads start,
+ * and main's thread holds the lock while main's code runs. */
+static void turns_begin(void) {
+    ncores = cores_from(getenv("MO_CORES"));
+    multi = ncores > 1;
+    for (uint32_t k = 0; k < ncores; k++) {
+        scheds[k].index = k;
+        scheds[k].holder = MAIN_TURN;
+        scheds[k].resting = true;
+        scheds[k].wake_read = scheds[k].wake_write = -1;
+    }
+    this_sched = &scheds[0];
+    main_frames_at = &mo_handle_frames;
+    main_heap_at = &mo_heap;
+    main_stats_at = &stats;
+    sched_stats[0] = &stats;
+    scheds[0].scratch_at = &scratch;
+    if (!multi) return;
+    for (uint32_t k = 0; k < ncores; k++) {
+        Sched *s = &scheds[k];
+#ifdef __linux__
+        s->wake_read = s->wake_write = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+#else
+        int fds[2];
+        if (pipe(fds) == 0) {
+            nonblocking(fds[0]);
+            nonblocking(fds[1]);
+            s->wake_read = fds[0];
+            s->wake_write = fds[1];
+        }
+#endif
+        s->wake_waiter = (Waiter){s->wake_read, false, false, false, NO_PROCESS, NULL, -1};
+    }
+    runtime_lock();
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, (size_t)16 << 20);
+    for (uint32_t k = 1; k < ncores; k++) {
+        if (pthread_create(&scheds[k].thread, &attr, sched_loop, &scheds[k]) != 0) out_of_memory();
+    }
+    pthread_attr_destroy(&attr);
+}
+
+/* The run is over: every scheduler's thread ends. */
+static void turns_stop(void) {
+    if (!multi) return;
+    stopping_run = true;
+    for (uint32_t k = 1; k < ncores; k++) wake_signal(&scheds[k]);
+    uint32_t held = this_sched->depth;
+    this_sched->depth = 0;
+    pthread_mutex_unlock(&runtime_mutex);
+    for (uint32_t k = 1; k < ncores; k++) pthread_join(scheds[k].thread, NULL);
+    acquire_runtime();
+    this_sched->depth = held;
 }
 
 
@@ -6924,8 +7496,9 @@ static bool net_wait(int fd, short events, int64_t ms) {
     w.process = id;
     /* Woken early (a crash elsewhere wakes every parked process), it parks again. */
     while (!w.fired && now_ms() < deadline) {
-        GROW_ARRAY(parked, nparked, capparked);
-        parked[nparked++] = (Parked){id, deadline};
+        Sched *s = cur_sched();
+        GROW_ARRAY(s->parked, s->nparked, s->capparked);
+        s->parked[s->nparked++] = (Parked){id, deadline};
         wk->phase = PHASE_WAITING;
         save_vm(mine);
         switch_to(wk->caller);
@@ -7327,16 +7900,19 @@ static MoValue fix_write(uint32_t h, MoValue text) {
 /* ---- the rows: real sockets under main, the fixture's in a test */
 
 MO_ROW(mo_r_Net_listen) {
+    HOLD_RUNTIME();
     (void)kind;
     return server_mode ? net_listen((uint16_t)a[1].as.u) : fix_listen((uint16_t)a[1].as.u);
 }
 
 MO_ROW(mo_r_Net_connect) {
+    HOLD_RUNTIME();
     (void)kind;
     return server_mode ? net_connect(a[1], (uint16_t)a[2].as.u, a[3].as.i) : fix_connect((uint16_t)a[2].as.u);
 }
 
 MO_ROW(mo_r_Listener_accept) {
+    HOLD_RUNTIME();
     (void)kind;
     wait_on((Wait){true, mo_cap_handle(a[0]), "Listener.accept"});
     MoValue out = server_mode ? net_accept(listeners[mo_cap_handle(a[0])], a[1].as.i) : fix_accept(mo_cap_handle(a[0]), a[1].as.i);
@@ -7345,11 +7921,13 @@ MO_ROW(mo_r_Listener_accept) {
 }
 
 MO_ROW(mo_r_Listener_port) {
+    HOLD_RUNTIME();
     (void)kind;
     return mo_u64(server_mode ? listeners[mo_cap_handle(a[0])]->port : fix_listeners[mo_cap_handle(a[0])].port);
 }
 
 MO_ROW(mo_r_Conn_read_line) {
+    HOLD_RUNTIME();
     (void)kind;
     wait_on((Wait){false, mo_cap_handle(a[0]), "Conn.read_line"});
     MoValue out = server_mode ? net_read_line(conns[mo_cap_handle(a[0])], a[1].as.i) : fix_read_line(mo_cap_handle(a[0]), a[1].as.i);
@@ -7358,11 +7936,13 @@ MO_ROW(mo_r_Conn_read_line) {
 }
 
 MO_ROW(mo_r_Conn_write) {
+    HOLD_RUNTIME();
     (void)kind;
     return server_mode ? net_write(conns[mo_cap_handle(a[0])], a[1], a[2].as.i) : fix_write(mo_cap_handle(a[0]), a[1]);
 }
 
 MO_ROW(mo_r_Conn_close) {
+    HOLD_RUNTIME();
     (void)kind;
     if (server_mode) net_close(conns[mo_cap_handle(a[0])]);
     else fix_conns[mo_cap_handle(a[0])].closed = true;
@@ -8050,11 +8630,12 @@ static MoValue as_http_listener(MoValue listened) {
     return ok_of(mo_cap(MO_CAP_HTTP_LISTENER, mo_cap_handle(listened.as.xs[0]), 0));
 }
 
-MO_ROW(mo_r_Http_listen) { return as_http_listener(mo_r_Net_listen(a, kind)); }
+MO_ROW(mo_r_Http_listen) { HOLD_RUNTIME(); return as_http_listener(mo_r_Net_listen(a, kind)); }
 
-MO_ROW(mo_r_HttpListener_port) { return mo_r_Listener_port(a, kind); }
+MO_ROW(mo_r_HttpListener_port) { HOLD_RUNTIME(); return mo_r_Listener_port(a, kind); }
 
 MO_ROW(mo_r_HttpListener_accept) {
+    HOLD_RUNTIME();
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     wait_on((Wait){true, h, "HttpListener.accept"});
@@ -8064,6 +8645,7 @@ MO_ROW(mo_r_HttpListener_accept) {
 }
 
 MO_ROW(mo_r_Exchange_request) {
+    HOLD_RUNTIME();
     (void)kind;
     const HttpExchange *e = server_mode ? &exchanges[mo_cap_handle(a[0])] : &fix_exchanges[mo_cap_handle(a[0])];
     if (e->answered) mo_fail(MO_R_OTHER, "request", "exchange.request after the exchange was answered: read the request before replying");
@@ -8071,12 +8653,14 @@ MO_ROW(mo_r_Exchange_request) {
 }
 
 MO_ROW(mo_r_Exchange_reply) {
+    HOLD_RUNTIME();
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     return server_mode ? http_reply(h, a[1], a[2].as.i) : fix_http_reply(h, a[1]);
 }
 
 MO_ROW(mo_r_Http_send) {
+    HOLD_RUNTIME();
     (void)kind;
     return server_mode ? http_send(a[1], a[2], a[3].as.i, a[4].as.i) : fix_http_send(a[1], a[2], a[3].as.i, a[4].as.i);
 }
@@ -8201,6 +8785,8 @@ static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_m
     sources[nsources++] = s;
     if (s->background) nbackground++;
     if (server_mode) mark_dirty(s);
+    /* Scheduler 0 pumps the loops: one added on another wakes it (step 30). */
+    if (turns_on) stir_main();
     return s;
 }
 
@@ -8245,6 +8831,7 @@ static void source_send(uint32_t to, uint32_t name, uint32_t n, const MoValue *f
 static uint32_t into_of(MoValue h) { return (uint32_t)h.as.i; }
 
 MO_ROW(mo_r_Listener_serve) {
+    HOLD_RUNTIME();
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     bool *served = server_mode ? &listeners[h]->served : &fix_listeners[h].served;
@@ -8255,6 +8842,7 @@ MO_ROW(mo_r_Listener_serve) {
 }
 
 MO_ROW(mo_r_HttpListener_serve) {
+    HOLD_RUNTIME();
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     bool *served = server_mode ? &listeners[h]->served : &fix_listeners[h].served;
@@ -8265,6 +8853,7 @@ MO_ROW(mo_r_HttpListener_serve) {
 }
 
 MO_ROW(mo_r_Conn_lines) {
+    HOLD_RUNTIME();
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     bool *lining = server_mode ? &conns[h]->lining : &fix_conns[h].lining;
@@ -8694,6 +9283,8 @@ static bool sources_active(void) {
 
 static bool sources_has_work(void) { return ndirty > 0; }
 
+static bool sources_paused(void) { return npaused > 0; }
+
 static bool sources_next_deadline(int64_t *at) {
     if (ntimers == 0) return false;
     *at = timers[0].at;
@@ -9050,6 +9641,7 @@ static bool turns_wait_idle(uint32_t id, int64_t within) {
 }
 
 MO_ROW(mo_r_Platform_runtime) {
+    HOLD_RUNTIME();
     (void)a;
     (void)kind;
     platform_only("Platform", "runtime");
@@ -9060,6 +9652,7 @@ MO_ROW(mo_r_Runtime_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_RUNTIME
 MO_ROW(mo_r_Runtime_read_only) { (void)a; (void)kind; return mo_cap(MO_CAP_RUNTIME, RUNTIME_READ_ONLY, 0); }
 
 MO_ROW(mo_r_Runtime_processes) {
+    HOLD_RUNTIME();
     (void)a;
     (void)kind;
     sweep_test();
@@ -9072,6 +9665,7 @@ MO_ROW(mo_r_Runtime_processes) {
 }
 
 MO_ROW(mo_r_Runtime_state) {
+    HOLD_RUNTIME();
     (void)kind;
     sweep_test();
     uint32_t id;
@@ -9102,10 +9696,11 @@ static MoValue last_events(size_t n, bool (*keep)(const Event *, __int128), __in
 static bool of_process(const Event *e, __int128 id) { return (__int128)e->process == id; }
 static bool is_crash(const Event *e, __int128 unused) { (void)unused; return e->kind == EV_CRASHED; }
 
-MO_ROW(mo_r_Runtime_recent) { (void)kind; return last_events(row_count(a[2], ring_len), of_process, mo_wide(a[1])); }
-MO_ROW(mo_r_Runtime_crashes) { (void)kind; return last_events(row_count(a[1], ring_len), is_crash, 0); }
+MO_ROW(mo_r_Runtime_recent) { HOLD_RUNTIME(); (void)kind; return last_events(row_count(a[2], ring_len), of_process, mo_wide(a[1])); }
+MO_ROW(mo_r_Runtime_crashes) { HOLD_RUNTIME(); (void)kind; return last_events(row_count(a[1], ring_len), is_crash, 0); }
 
 MO_ROW(mo_r_Runtime_events) {
+    HOLD_RUNTIME();
     (void)kind;
     int64_t at = ring_mono_us + (a[1].as.i - ring_wall_ms) * 1000;
     size_t lo = 0, hi = ring_len;
@@ -9133,6 +9728,7 @@ static int longer_first(const void *x, const void *y) {
 
 /* The n longest updates the ring holds, longest first; of two as long, the earlier first. */
 MO_ROW(mo_r_Runtime_slowest) {
+    HOLD_RUNTIME();
     (void)kind;
     Timed *updates = xmalloc((ring_len ? ring_len : 1) * sizeof(Timed));
     size_t m = 0;
@@ -9152,6 +9748,7 @@ MO_ROW(mo_r_Runtime_slowest) {
 }
 
 MO_ROW(mo_r_Runtime_sources) {
+    HOLD_RUNTIME();
     (void)a;
     (void)kind;
     MoValue *out = mo_alloc_values(nsources);
@@ -9187,12 +9784,23 @@ static uint64_t resident_bytes(void) {
 }
 
 MO_ROW(mo_r_Runtime_memory) {
+    HOLD_RUNTIME();
     sweep_test();
     (void)a;
     (void)kind;
-    uint64_t regions = 0, resident_regions = resident_in(&scratch);
+    uint64_t regions = 0, resident_regions = 0;
+    /* The scheduler threads' scratch regions (step 30), or this one's. */
+    if (turns_on) {
+        for (uint32_t k = 0; k < ncores; k++) {
+            if (scheds[k].scratch_at) resident_regions += resident_in(scheds[k].scratch_at);
+        }
+    } else {
+        resident_regions += resident_in(&scratch);
+    }
     if (server_mode && mo_compacts) {
-        const MoRegion *m = my_vm == &main_vm ? &mo_heap : &main_vm.heap;
+        /* main's region: this thread's while main holds it, main's thread's while its loop holds that, else
+         * where main's last switch kept it. */
+        const MoRegion *m = my_vm == &main_vm ? &mo_heap : this_sched && this_sched->index != 0 && scheds[0].holder == MAIN_TURN ? main_heap_at : &main_vm.heap;
         if (m->end) regions += m->top - m->base;
         resident_regions += resident_in(m);
     }
@@ -9482,6 +10090,7 @@ static bool parse_value(TextIn *in, uint32_t t, MoValue *out) {
 }
 
 MO_ROW(mo_r_Runtime_send) {
+    HOLD_RUNTIME();
     (void)kind;
     if (mo_cap_handle(a[0]) == RUNTIME_READ_ONLY) return runtime_failure(MO_N_READ_ONLY);
     uint32_t id;
@@ -9541,8 +10150,8 @@ void mo_surface_listening(MoValue got) {
     fflush(stderr);
 }
 
-MO_ROW(mo_r_Runtime_pause) { (void)kind; return runtime_hold(a, true); }
-MO_ROW(mo_r_Runtime_resume) { (void)kind; return runtime_hold(a, false); }
+MO_ROW(mo_r_Runtime_pause) { HOLD_RUNTIME(); (void)kind; return runtime_hold(a, true); }
+MO_ROW(mo_r_Runtime_resume) { HOLD_RUNTIME(); (void)kind; return runtime_hold(a, false); }
 
 void mo_program_start(int argc, char **argv) {
     server_mode = true;
@@ -9570,6 +10179,8 @@ void mo_program_start(int argc, char **argv) {
     hidden_process = mo_surface_process;
     turns_on = mo_nprocesses > 0;
     packs = turns_on && mo_compacts;
+    /* A scheduler per core (step 30). */
+    if (turns_on) turns_begin();
     /* MO_CLOCK fixes where main's clock starts, as mo run --clock does. */
     const char *clock = getenv("MO_CLOCK");
     if (clock) {
@@ -9596,6 +10207,7 @@ int mo_program_end(void) {
             drop_later_on_exit();
         }
         turns_finish();
+        turns_stop();
     }
     stream_flush(&out_stream);
     stream_flush(&err_stream);
