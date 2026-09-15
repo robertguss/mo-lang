@@ -1,61 +1,108 @@
 module Jobq.Job
-expose Phase, Job, Settled, Look, job, leased, acked, failed, looked, holds?, run_out?, queue?, payload?, reason?, token?, attempts?, lease_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, to_ms
+expose Phase, Job, Making, Settled, Look, Woken, Retried, job, leased, acked, failed, retried, looked, holds?, run_out?, due?, queue?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, to_ms
 
-intent "A job and its rules: a queue's name, a payload, attempts, and a lease; each move between the four states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows."
+intent "A job and its rules: a queue's name, a payload, tries, a backoff, a lease, and a time to run at; each move between the five states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows, read back from the names the previous version wrote as well."
 
-never "a job's attempts exceed its max_attempts"
+never "a job's tries exceed its max_tries"
   for j in Job.all
-    j.attempts > j.max_attempts
+    j.tries > j.max_tries
   end
 end
 
 never "a job is held by two workers at once"
-  for a in Settled.all, b in Settled.all if a.number == b.number and a.attempt == b.attempt
+  for a in Settled.all, b in Settled.all if a.number == b.number and a.tries == b.tries and a.at == b.at
     a.worker != b.worker
   end
 end
 
-never "a lease that ran out still holds its job after a look"
+never "a lease that ran out, or a run_at that passed, still holds its job after a look"
   for l in Look.all
-    l.leased and l.until <= l.at
+    (l.leased and l.until <= l.at) or (l.scheduled and l.run_at <= l.at)
+  end
+end
+
+# Only a queued job is leased, so a scheduled job is leased before its run_at only if it is queued
+# before it.
+never "a scheduled job is leased before its run_at"
+  for w in Woken.all
+    w.run_at > w.at
+  end
+end
+
+never "a retry touches a job that is not dead"
+  for r in Retried.all
+    r.state != Dead
   end
 end
 
 enum Phase
   Queued
+  Scheduled
   Leased
   Done
   Dead
 end
 
-# `worker` and `lease_until` are Some only while the job is leased; `reason` is the last fail's.
+# `worker` and `lease_until` are Some only while the job is leased, `run_at` only while it is
+# scheduled; `reason` is the last fail's.
 struct Job
   number: UInt64
   queue: String
   state: Phase
   payload: String
-  attempts: UInt64
-  max_attempts: UInt64
+  tries: UInt64
+  max_tries: UInt64
+  backoff_ms: UInt64
   created_at: Time
   updated_at: Time
+  run_at: Option(Time)
   worker: Option(String)
   lease_until: Option(Time)
   reason: Option(String)
 end
 
-# A worker's ack or fail of one lease, the attempt it ended.
-struct Settled
-  number: UInt64
-  attempt: UInt64
-  worker: String
+# What a producer asks for when it makes a job: its queue, its payload, how many tries it gets,
+# how long it waits after a fail, and how long before it is queued at all.
+struct Making
+  queue: String
+  payload: String
+  max_tries: UInt64
+  backoff_ms: UInt64
+  delay_ms: UInt64
 end
 
-# A look at a job: when, whether it is still leased after the look, and until when.
+# A worker's ack or fail of one lease: the try it ended, and when. A retry starts a job's tries
+# over, so a job and a try no longer name one lease on their own, and two tries of one job can be
+# settled at one instant, so the instant does not either; one lease is the three together.
+struct Settled
+  number: UInt64
+  tries: UInt64
+  worker: String
+  at: Time
+end
+
+# A look at a job: when, whether it is still leased after the look and until when, and whether
+# it is still scheduled and until when.
 struct Look
   number: UInt64
   at: Time
   leased: Bool
   until: Time
+  scheduled: Bool
+  run_at: Time
+end
+
+# A scheduled job queued at a look: when, and the run_at it had.
+struct Woken
+  number: UInt64
+  at: Time
+  run_at: Time
+end
+
+# A retry of a job, and the state the job was in.
+struct Retried
+  number: UInt64
+  state: Phase
 end
 
 # A queue's name is 1 to 64 bytes of ASCII letters, digits, - and _.
@@ -105,7 +152,7 @@ fn token_byte?(b: UInt8) : Bool
   word_byte?(b) or b == 46 or b == 126 or b == 43 or b == 47
 end
 
-fn attempts?(n: UInt64) : Bool
+fn tries?(n: UInt64) : Bool
   n >= 1 and n <= 100
 end
 
@@ -113,34 +160,50 @@ fn lease_ms?(n: UInt64) : Bool
   n >= 100 and n <= 3_600_000
 end
 
+# A create's delay is up to a day.
+fn delay_ms?(n: UInt64) : Bool
+  n <= 86_400_000
+end
+
+# A job's backoff after a fail is up to an hour.
+fn backoff_ms?(n: UInt64) : Bool
+  n <= 3_600_000
+end
+
 # A time cut to whole milliseconds, as the store writes it, so a job reads back equal.
 fn to_ms(at: Time) : Time
   Time.parse(at.to_iso8601) or at
 end
 
-# A new job, queued, with no attempts yet.
-fn job(number: UInt64, queue: String, payload: String, max_attempts: UInt64, now: Time) : Job
-  requires queue?(queue)
-  requires payload?(payload)
-  requires attempts?(max_attempts)
-  ensures result.state == Queued and result.attempts == 0
+# A new job with no tries yet: queued, or scheduled `delay_ms` from now when there is a delay.
+fn job(number: UInt64, making: Making, now: Time) : Job
+  requires queue?(making.queue)
+  requires payload?(making.payload)
+  requires tries?(making.max_tries)
+  requires backoff_ms?(making.backoff_ms)
+  requires delay_ms?(making.delay_ms)
+  ensures result.tries == 0 and result.backoff_ms == making.backoff_ms
+  ensures result.state == (if making.delay_ms == 0: Queued else: Scheduled)
+  ensures (making.delay_ms > 0) implies (result.run_at == Some(now + making.delay_ms.to_i64.ms))
 
-  Job(number: number, queue: queue, state: Queued, payload: payload, attempts: 0,
-    max_attempts: max_attempts, created_at: now, updated_at: now, worker: None, lease_until: None,
-    reason: None)
+  run_at = if making.delay_ms == 0: None else: Some(now + making.delay_ms.to_i64.ms)
+  Job(number: number, queue: making.queue, state: if making.delay_ms == 0: Queued else: Scheduled,
+    payload: making.payload, tries: 0, max_tries: making.max_tries,
+    backoff_ms: making.backoff_ms, created_at: now, updated_at: now, run_at: run_at, worker: None,
+    lease_until: None, reason: None)
 end
 
-# The job leased to the worker for `lease_ms` from now, one attempt more.
+# The job leased to the worker for `lease_ms` from now, one try more.
 fn leased(job: Job, worker: String, lease_ms: UInt64, now: Time) : Job
-  requires job.state == Queued and job.attempts < job.max_attempts
+  requires job.state == Queued and job.tries < job.max_tries
   requires token?(worker)
   requires lease_ms?(lease_ms)
   ensures result.state == Leased and result.worker == Some(worker)
-  ensures result.attempts == job.attempts + 1
+  ensures result.tries == job.tries + 1
 
   var next = job
   next.state = Leased
-  next.attempts = job.attempts + 1
+  next.tries = job.tries + 1
   next.updated_at = now
   next.worker = Some(worker)
   next.lease_until = Some(now + lease_ms.to_i64.ms)
@@ -160,58 +223,106 @@ fn run_out?(job: Job, now: Time) : Bool
   end
 end
 
+# A scheduled job is due at its `run_at`.
+fn due?(job: Job, now: Time) : Bool
+  case job.run_at
+    Some(at): job.state == Scheduled and at <= now
+    None: false
+  end
+end
+
 # The job done by the worker that holds it.
 fn acked(job: Job, worker: String, now: Time) : Job
   requires holds?(job, worker, now)
   ensures result.state == Done and result.worker is None
 
-  settled = Settled(number: job.number, attempt: job.attempts, worker: worker)
+  settled = Settled(number: job.number, tries: job.tries, worker: worker, at: now)
   var next = job
   next.state = Done
-  next.attempts = settled.attempt
+  next.tries = settled.tries
   next.updated_at = now
   next.worker = None
   next.lease_until = None
   next
 end
 
-# The job failed by the worker that holds it: queued again while it has attempts left, dead on
-# its last.
+# The job failed by the worker that holds it: dead on its last try, and otherwise queued again,
+# or scheduled `backoff_ms` from now when it has a backoff.
 fn failed(job: Job, worker: String, reason: String, now: Time) : Job
   requires holds?(job, worker, now)
   requires reason?(reason)
-  ensures result.state == (if job.attempts < job.max_attempts: Queued else: Dead)
+  ensures (job.tries == job.max_tries) implies (result.state == Dead)
+  ensures (job.tries < job.max_tries and job.backoff_ms == 0) implies (result.state == Queued)
+  ensures (job.tries < job.max_tries and job.backoff_ms > 0) implies (result.state == Scheduled and result.run_at == Some(now + job.backoff_ms.to_i64.ms))
   ensures result.reason == Some(reason)
 
-  settled = Settled(number: job.number, attempt: job.attempts, worker: worker)
-  released(job, now, Some(reason), settled.attempt)
+  settled = Settled(number: job.number, tries: job.tries, worker: worker, at: now)
+  released(job, now, Some(reason), settled.tries)
 end
 
-fn released(job: Job, now: Time, reason: Option(String), attempt: UInt64) : Job
+fn released(job: Job, now: Time, reason: Option(String), tries: UInt64) : Job
   var next = job
-  next.state = if attempt < job.max_attempts: Queued else: Dead
-  next.attempts = attempt
+  next.state = released_to(job, tries)
+  next.tries = tries
   next.updated_at = now
+  next.run_at = if next.state == Scheduled: Some(now + job.backoff_ms.to_i64.ms) else: None
   next.worker = None
   next.lease_until = None
   next.reason = if reason is Some(_): reason else: job.reason
   next
 end
 
-# A look at the job: a lease that has run out puts it back, queued or dead by the fail rule, and
-# anything else is left as it is.
+# Where a lease ends that did not end in an ack: dead on the last try, queued with no backoff,
+# scheduled with one.
+fn released_to(job: Job, tries: UInt64) : Phase
+  return Dead if tries >= job.max_tries
+  return Queued if job.backoff_ms == 0
+  Scheduled
+end
+
+# A dead job put back in its queue: no tries, no reason, no worker; its queue, payload, max_tries,
+# and backoff kept.
+fn retried(job: Job, now: Time) : Job
+  requires job.state == Dead
+  ensures result.state == Queued and result.tries == 0
+  ensures result.reason is None and result.worker is None and result.run_at is None
+  ensures result.max_tries == job.max_tries and result.backoff_ms == job.backoff_ms
+
+  kept = Retried(number: job.number, state: job.state)
+  var next = job
+  next.state = if kept.state == Dead: Queued else: job.state
+  next.tries = 0
+  next.updated_at = now
+  next.run_at = None
+  next.worker = None
+  next.lease_until = None
+  next.reason = None
+  next
+end
+
+# A look at the job: a lease that has run out ends by the fail rule, a scheduled job whose run_at
+# has passed is queued, and anything else is left as it is.
 fn looked(job: Job, now: Time) : Job
   ensures !(result.state == Leased and run_out?(result, now))
-  ensures result.attempts == job.attempts
+  ensures !(result.state == Scheduled and due?(result, now))
+  ensures result.tries == job.tries
 
-  after = if job.state == Leased and run_out?(job, now)
-    released(job, now, None, job.attempts)
-  else
-    job
-  end
+  after = looked_at(job, now)
   look = Look(number: job.number, at: now, leased: after.state == Leased,
-    until: after.lease_until or now + 1.ms)
+    until: after.lease_until or now + 1.ms, scheduled: after.state == Scheduled,
+    run_at: after.run_at or now + 1.ms)
   if look.leased: after else: after
+end
+
+fn looked_at(job: Job, now: Time) : Job
+  return released(job, now, None, job.tries) if job.state == Leased and run_out?(job, now)
+  return job if !due?(job, now)
+  woken = Woken(number: job.number, at: now, run_at: job.run_at or now)
+  var next = job
+  next.state = if woken.run_at <= woken.at: Queued else: Scheduled
+  next.updated_at = now
+  next.run_at = None
+  next
 end
 
 fn id_of(number: UInt64) : String
@@ -229,6 +340,7 @@ end
 fn phase_name(phase: Phase) : String
   case phase
     Queued: "queued"
+    Scheduled: "scheduled"
     Leased: "leased"
     Done: "done"
     Dead: "dead"
@@ -238,6 +350,7 @@ end
 fn phase_named(name: String) : Option(Phase)
   case name
     "queued": Some(Queued)
+    "scheduled": Some(Scheduled)
     "leased": Some(Leased)
     "done": Some(Done)
     "dead": Some(Dead)
@@ -248,8 +361,12 @@ end
 # The job as JSON: the API's shape, and the line the store keeps.
 fn shown(job: Job) : String
   head = "{\"id\": \"#{id_of(job.number)}\", \"queue\": #{Json.encode(job.queue)}, \"state\": \"#{phase_name(job.state)}\""
-  counts = "\"payload\": #{Json.encode(job.payload)}, \"attempts\": #{job.attempts}, \"max_attempts\": #{job.max_attempts}"
+  counts = "\"payload\": #{Json.encode(job.payload)}, \"tries\": #{job.tries}, \"max_tries\": #{job.max_tries}, \"backoff_ms\": #{job.backoff_ms}"
   times = "\"created_at\": #{Json.encode(job.created_at)}, \"updated_at\": #{Json.encode(job.updated_at)}"
+  wait = case job.run_at
+    Some(at): ", \"run_at\": #{Json.encode(at)}"
+    None: ""
+  end
   lease = case (job.worker, job.lease_until)
     (Some(worker), Some(until)):
       ", \"worker\": #{Json.encode(worker)}, \"lease_until\": #{Json.encode(until)}"
@@ -259,10 +376,12 @@ fn shown(job: Job) : String
     Some(reason): ", \"reason\": #{Json.encode(reason)}"
     None: ""
   end
-  "#{head}, #{counts}, #{times}#{lease}#{why}}"
+  "#{head}, #{counts}, #{times}#{wait}#{lease}#{why}}"
 end
 
-# A job read back from its JSON, or None for anything that is not one.
+# A job read back from its JSON, or None for anything that is not one. A record the previous
+# version wrote reads too: `attempts` and `max_attempts` as `tries` and `max_tries`, and no
+# `backoff_ms` as 0.
 fn decoded(text: String) : Option(Job)
   case Json.decode(text)
     Ok(Object(fields)): from_fields(fields)
@@ -276,20 +395,32 @@ fn from_fields(fields: Map(String, Json)) : Option(Job)
   queue = try text_in(fields, "queue")
   state = try phase_named(try text_in(fields, "state"))
   payload = try text_in(fields, "payload")
-  attempts = try count_in(fields, "attempts")
-  max_attempts = try count_in(fields, "max_attempts")
+  tries = try count_named(fields, "tries", "attempts")
+  max_tries = try count_named(fields, "max_tries", "max_attempts")
+  backoff = if fields.has?("backoff_ms"): try count_in(fields, "backoff_ms") else: 0
   created = try Time.parse(try text_in(fields, "created_at"))
   updated = try Time.parse(try text_in(fields, "updated_at"))
+  run_at = case text_in(fields, "run_at")
+    Some(text): Some(try Time.parse(text))
+    None: None
+  end
   worker = text_in(fields, "worker")
   until = case text_in(fields, "lease_until")
     Some(text): Some(try Time.parse(text))
     None: None
   end
-  return None if !queue?(queue) or !payload?(payload) or !attempts?(max_attempts)
-  return None if attempts > max_attempts or (state == Leased) != (worker is Some(_) and until is Some(_))
-  Some(Job(number: number, queue: queue, state: state, payload: payload, attempts: attempts,
-    max_attempts: max_attempts, created_at: created, updated_at: updated, worker: worker,
-    lease_until: until, reason: text_in(fields, "reason")))
+  return None if !queue?(queue) or !payload?(payload) or !tries?(max_tries) or !backoff_ms?(backoff)
+  return None if tries > max_tries or (state == Leased) != (worker is Some(_) and until is Some(_))
+  return None if (state == Scheduled) != (run_at is Some(_))
+  Some(Job(number: number, queue: queue, state: state, payload: payload, tries: tries,
+    max_tries: max_tries, backoff_ms: backoff, created_at: created, updated_at: updated,
+    run_at: run_at, worker: worker, lease_until: until, reason: text_in(fields, "reason")))
+end
+
+# A count under its name, or under the name the previous version wrote when the record has not
+# the new one.
+fn count_named(fields: Map(String, Json), name: String, old: String) : Option(UInt64)
+  if fields.has?(name): count_in(fields, name) else: count_in(fields, old)
 end
 
 fn text_in(fields: Map(String, Json), name: String) : Option(String)
@@ -310,21 +441,32 @@ fn at(text: String) : Time
   Time.parse(text) or Time.from_parts(2026, 1, 1, 0, 0, 0)
 end
 
-fn sample() : Job
-  job(7, "emails", "hello \"there\"\nsecond line é", 3, at("2026-09-14T10:00:00Z"))
+fn making(queue: String, payload: String, max_tries: UInt64, backoff_ms: UInt64,
+  delay_ms: UInt64) : Making
+  Making(queue: queue, payload: payload, max_tries: max_tries, backoff_ms: backoff_ms,
+    delay_ms: delay_ms)
 end
 
-test "a new job is queued with no attempts, and its JSON is the API's shape"
+fn sample() : Job
+  job(7, making("emails", "hello \"there\"\nsecond line é", 3, 0, 0), at("2026-09-14T10:00:00Z"))
+end
+
+# The sample with a backoff of a second.
+fn backing() : Job
+  job(8, making("emails", "retry me", 2, 1_000, 0), at("2026-09-14T10:00:00Z"))
+end
+
+test "a new job is queued with no tries, and its JSON is the API's shape"
   made = sample()
-  assert made.state == Queued and made.attempts == 0
-  assert shown(made) == "{\"id\": \"j_7\", \"queue\": \"emails\", \"state\": \"queued\", \"payload\": \"hello \\\"there\\\"\\nsecond line é\", \"attempts\": 0, \"max_attempts\": 3, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\"}"
+  assert made.state == Queued and made.tries == 0 and made.run_at is None
+  assert shown(made) == "{\"id\": \"j_7\", \"queue\": \"emails\", \"state\": \"queued\", \"payload\": \"hello \\\"there\\\"\\nsecond line é\", \"tries\": 0, \"max_tries\": 3, \"backoff_ms\": 0, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\"}"
   assert decoded(shown(made)) == Some(made)
 end
 
 test "a lease names its worker and its end, and a fail keeps its reason"
   now = at("2026-09-14T10:00:00Z")
   held = leased(sample(), "w-1", 30_000, now)
-  assert held.state == Leased and held.attempts == 1
+  assert held.state == Leased and held.tries == 1
   assert held.lease_until == Some(at("2026-09-14T10:00:30Z"))
   assert shown(held).ends_with?(", \"worker\": \"w-1\", \"lease_until\": \"2026-09-14T10:00:30Z\"}")
   assert decoded(shown(held)) == Some(held)
@@ -343,22 +485,82 @@ test "only the worker whose lease has not run out holds the job"
   assert acked(held, "w-1", now).state == Done
 end
 
-test "a lease that runs out is queued again at the next look, and dead on its last attempt"
+test "a lease that runs out is queued again at the next look, and dead on its last try"
   now = at("2026-09-14T10:00:00Z")
   first = leased(sample(), "w-1", 100, now)
   assert looked(first, now + 99.ms) == first
   again = looked(first, now + 100.ms)
-  assert again.state == Queued and again.attempts == 1 and again.worker is None
+  assert again.state == Queued and again.tries == 1 and again.worker is None
   second = leased(again, "w-2", 100, now + 200.ms)
-  assert second.attempts == 2
+  assert second.tries == 2
   last = leased(looked(second, now + 300.ms), "w-3", 100, now + 400.ms)
-  assert last.attempts == 3
+  assert last.tries == 3
   assert looked(last, now + 500.ms).state == Dead
   assert failed(leased(looked(second, now + 300.ms), "w-3", 100, now + 400.ms), "w-3", "",
     now + 450.ms).state == Dead
 end
 
-test "a queue name, a payload, a token, attempts, and a lease keep their rules"
+test "a job made with a delay is scheduled until its run_at, and queued at the first look after it"
+  now = at("2026-09-14T10:00:00Z")
+  later = job(9, making("emails", "later", 2, 0, 60_000), now)
+  assert later.state == Scheduled and later.run_at == Some(at("2026-09-14T10:01:00Z"))
+  assert shown(later).ends_with?("\"updated_at\": \"2026-09-14T10:00:00Z\", \"run_at\": \"2026-09-14T10:01:00Z\"}")
+  assert decoded(shown(later)) == Some(later)
+  assert looked(later, now + 59_999.ms) == later
+  assert !due?(later, now + 59_999.ms) and due?(later, now + 60_000.ms)
+  woke = looked(later, now + 60_000.ms)
+  assert woke.state == Queued and woke.run_at is None and woke.tries == 0
+  assert woke.updated_at == now + 60_000.ms
+  assert leased(woke, "w-1", 100, now + 60_000.ms).tries == 1
+end
+
+test "a fail with backoff schedules the job at now plus the backoff, and a fail on the last try is dead"
+  now = at("2026-09-14T10:00:00Z")
+  first = failed(leased(backing(), "w-1", 1_000, now), "w-1", "flaky", now + 10.ms)
+  assert first.state == Scheduled and first.run_at == Some(now + 1_010.ms)
+  assert first.worker is None and first.lease_until is None and first.tries == 1
+  assert decoded(shown(first)) == Some(first)
+  assert looked(first, now + 1_009.ms).state == Scheduled
+  second = leased(looked(first, now + 1_010.ms), "w-2", 1_000, now + 1_010.ms)
+  assert second.tries == 2
+  last = failed(second, "w-2", "flaky again", now + 1_020.ms)
+  assert last.state == Dead and last.run_at is None and last.reason == Some("flaky again")
+end
+
+test "a lease that runs out with a backoff is scheduled, and without one queued"
+  now = at("2026-09-14T10:00:00Z")
+  with_backoff = looked(leased(backing(), "w-1", 100, now), now + 150.ms)
+  assert with_backoff.state == Scheduled and with_backoff.run_at == Some(now + 1_150.ms)
+  without = looked(leased(sample(), "w-1", 100, now), now + 150.ms)
+  assert without.state == Queued and without.run_at is None
+end
+
+test "a retry puts a dead job back queued with no tries, no reason, and its backoff kept"
+  now = at("2026-09-14T10:00:00Z")
+  one_try = job(3, making("q", "p", 1, 500, 0), now)
+  dead = failed(leased(one_try, "w-1", 1_000, now), "w-1", "broken", now + 1.ms)
+  assert dead.state == Dead
+  back = retried(dead, now + 2.ms)
+  assert back.state == Queued and back.tries == 0 and back.reason is None
+  assert back.backoff_ms == 500 and back.max_tries == 1 and back.updated_at == now + 2.ms
+  assert shown(back) == "{\"id\": \"j_3\", \"queue\": \"q\", \"state\": \"queued\", \"payload\": \"p\", \"tries\": 0, \"max_tries\": 1, \"backoff_ms\": 500, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00.002Z\"}"
+  assert leased(back, "w-2", 1_000, now + 3.ms).tries == 1
+end
+
+test "a record the previous version wrote reads its old names as tries and max_tries, and shows only the new"
+  old = "{\"id\": \"j_7\", \"queue\": \"reports\", \"state\": \"dead\", \"payload\": \"failed twice\", \"attempts\": 2, \"max_attempts\": 2, \"created_at\": \"2026-09-14T09:02:00Z\", \"updated_at\": \"2026-09-14T09:08:00Z\", \"reason\": \"disk full\"}"
+  assert decoded(old) is Some(read)
+  assert read.tries == 2 and read.max_tries == 2 and read.backoff_ms == 0 and read.state == Dead
+  assert read.reason == Some("disk full") and read.run_at is None
+  assert !shown(read).contains?("attempts") and shown(read).contains?("\"tries\": 2, \"max_tries\": 2, \"backoff_ms\": 0")
+  held = "{\"id\": \"j_2\", \"queue\": \"emails\", \"state\": \"leased\", \"payload\": \"x\", \"attempts\": 1, \"max_attempts\": 2, \"created_at\": \"2026-09-14T09:01:00Z\", \"updated_at\": \"2026-09-14T09:07:00Z\", \"worker\": \"w-old\", \"lease_until\": \"2026-09-14T09:08:00Z\"}"
+  assert decoded(held) is Some(lent)
+  assert lent.state == Leased and lent.tries == 1 and lent.worker == Some("w-old")
+  assert looked(lent, at("2026-09-15T00:00:00Z")).state == Queued
+  assert decoded(old.replace("\"attempts\": 2", "\"attempts\": 3")) is None
+end
+
+test "a queue name, a payload, a token, tries, a lease, a delay, and a backoff keep their rules"
   assert queue?("emails_2-a") and queue?("q".repeat(64))
   assert !queue?("") and !queue?("q".repeat(65)) and !queue?("a b") and !queue?("é")
   assert payload?("") and payload?("x".repeat(61_440)) and payload?("line\nline")
@@ -367,8 +569,10 @@ test "a queue name, a payload, a token, attempts, and a lease keep their rules"
   assert payload?("é and \u{1F600}")
   assert token?("worker-1") and token?("abc.DEF_~+/==") and !token?("") and !token?("a b")
   assert !token?("=abc") and !token?("ab=c") and !token?("k".repeat(257))
-  assert attempts?(1) and attempts?(100) and !attempts?(0) and !attempts?(101)
+  assert tries?(1) and tries?(100) and !tries?(0) and !tries?(101)
   assert lease_ms?(100) and lease_ms?(3_600_000) and !lease_ms?(99) and !lease_ms?(3_600_001)
+  assert delay_ms?(0) and delay_ms?(86_400_000) and !delay_ms?(86_400_001)
+  assert backoff_ms?(0) and backoff_ms?(3_600_000) and !backoff_ms?(3_600_001)
   assert number_of("j_12") == Some(12)
   assert number_of("j_") is None and number_of("j_012") is None and number_of("12") is None
 end
@@ -379,23 +583,40 @@ test "a record that is not a job reads as none"
   assert decoded("{\"id\": \"j_1\"}") is None
   held = leased(sample(), "w-1", 30_000, at("2026-09-14T10:00:00Z"))
   assert decoded(shown(held).replace(", \"worker\": \"w-1\"", "")) is None
+  later = job(9, making("q", "", 1, 0, 1_000), at("2026-09-14T10:00:00Z"))
+  assert decoded(shown(later).replace("\"state\": \"scheduled\"", "\"state\": \"queued\"")) is None
+  assert decoded(shown(sample()).replace("\"state\": \"queued\"", "\"state\": \"scheduled\"")) is None
+  assert decoded(shown(sample()).replace("\"backoff_ms\": 0", "\"backoff_ms\": 3600001")) is None
 end
 
 test rejects "a job in a queue whose name has a space"
-  job(1, "two words", "", 1, at("2026-09-14T10:00:00Z"))
+  job(1, making("two words", "", 1, 0, 0), at("2026-09-14T10:00:00Z"))
 end
 
 test rejects "a job whose payload holds a tab"
-  job(1, "q", "a\tb", 1, at("2026-09-14T10:00:00Z"))
+  job(1, making("q", "a\tb", 1, 0, 0), at("2026-09-14T10:00:00Z"))
 end
 
-test rejects "a job with no attempts allowed"
-  job(1, "q", "", 0, at("2026-09-14T10:00:00Z"))
+test rejects "a job with no tries allowed"
+  job(1, making("q", "", 0, 0, 0), at("2026-09-14T10:00:00Z"))
+end
+
+test rejects "a job whose backoff is over an hour"
+  job(1, making("q", "", 1, 3_600_001, 0), at("2026-09-14T10:00:00Z"))
+end
+
+test rejects "a job whose delay is over a day"
+  job(1, making("q", "", 1, 0, 86_400_001), at("2026-09-14T10:00:00Z"))
 end
 
 test rejects "a lease of a job that is not queued"
   now = at("2026-09-14T10:00:00Z")
   leased(leased(sample(), "w-1", 1_000, now), "w-2", 1_000, now)
+end
+
+test rejects "a lease of a scheduled job before its run_at"
+  now = at("2026-09-14T10:00:00Z")
+  leased(job(1, making("q", "", 1, 0, 1_000), now), "w-1", 1_000, now)
 end
 
 test rejects "a lease with a token that has a space"
@@ -421,15 +642,23 @@ test rejects "a fail whose reason is over 4 KiB"
   failed(leased(sample(), "w-1", 1_000, now), "w-1", "x".repeat(4_097), now)
 end
 
-property "any valid job reads back from its JSON as it was, leased or not"
+test rejects "a retry of a job that is not dead"
+  retried(sample(), at("2026-09-14T10:00:00Z"))
+end
+
+property "any valid job reads back from its JSON as it was, scheduled, leased, or not"
   for payload in any(String), queue in any(String), n in any(UInt8), ms in any(UInt32) if payload?(payload) and queue?(queue) and lease_ms?(ms.to_u64)
     tries = n.to_u64 % 100 + 1
-    made = job(n.to_u64 + 1, queue, payload, tries, at("2026-09-14T10:00:00.123Z"))
+    backoff = ms.to_u64 % 3_600_001
+    made = job(n.to_u64 + 1, making(queue, payload, tries, backoff, 0),
+      at("2026-09-14T10:00:00.123Z"))
     assert decoded(shown(made)) == Some(made)
     held = leased(made, "w", ms.to_u64, made.created_at)
     assert decoded(shown(held)) == Some(held)
+    later = job(n.to_u64 + 1, making(queue, payload, tries, backoff, ms.to_u64), made.created_at)
+    assert decoded(shown(later)) == Some(later)
   end
 end
 
-verified: types, contracts, tests (16), property (200 seeds), sim (not run)
+verified: types, contracts, tests (25), property (200 seeds), sim (not run)
           proven: not run

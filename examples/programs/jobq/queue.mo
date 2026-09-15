@@ -4,7 +4,7 @@ expose Opening, Batch, Answer, Flushed, Queue, Queues, Worker, Workers, opening,
 
 use Jobq.Api{Routed, respond, route}
 use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, rebuilt, records, snapshot}
-use Jobq.Job{Phase, shown, to_ms}
+use Jobq.Job{Phase, Making, shown, to_ms}
 use Jobq.Store{Table, StoreError, blank, emptied, journaled, line_of, open, pairs, rewritten}
 
 intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the log in one write, so one fsync covers every call taken since the last, and only then is each caller answered; the queue keeps the board as the log last held it beside the board it answers from, both sharing every page a batch did not change, so a batch the log did not take is answered 503 and the board goes back, a log that may end in part of a write is written whole with the next batch, and the store keeps no second copy of any job."
@@ -256,6 +256,23 @@ fn begun(fs: Fs, clock: Clock) : Handle(Queue)
   Queue.start(fs, clock, Opening(board: board(stamp(clock), 1), table: fresh()))
 end
 
+# A job to make with no backoff and no delay.
+fn plain(queue: String, payload: String, max_tries: UInt64) : Making
+  Making(queue: queue, payload: payload, max_tries: max_tries, backoff_ms: 0, delay_ms: 0)
+end
+
+# A job made to wait: a delay before it is queued at all, and a backoff after each fail.
+fn waits(queue: String, payload: String, max_tries: UInt64, delay_ms: UInt64,
+  backoff_ms: UInt64) : Making
+  Making(queue: queue, payload: payload, max_tries: max_tries, backoff_ms: backoff_ms,
+    delay_ms: delay_ms)
+end
+
+# A record as the previous version wrote it, with attempts and max_attempts and no backoff.
+fn old_record(id: String, state: String, attempts: UInt64, tail: String) : String
+  "{\"id\": \"#{id}\", \"queue\": \"q\", \"state\": \"#{state}\", \"payload\": \"old\", \"attempts\": #{attempts}, \"max_attempts\": 3, \"created_at\": \"2026-09-14T09:00:00Z\", \"updated_at\": \"2026-09-14T09:05:00Z\"#{tail}}"
+end
+
 fn served(queue: Handle(Queue), worker: String, command: Command) : Outcome
   case queue.ask(Serve(call: Call(worker: worker, command: command)), within: 1.minute)
     Ok(outcome): outcome
@@ -277,6 +294,24 @@ end
 
 fn unavailable?(outcome: Outcome) : Bool
   outcome is Unavailable(_)
+end
+
+# Whether the job is no longer there to lease: a batch the log refused takes the board back to
+# what the store holds, so under faults a job that was answered Made may be gone again. With no
+# fault it is always there, and a lease that came back Empty is a fault of the queue's own.
+fn gone?(queue: Handle(Queue), id: String) : Bool
+  case served(queue, "p", Fetch(id: id))
+    Found(_): false
+    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Unavailable(_):
+      true
+  end
+end
+
+# Simulated time passes only while a test waits, so a wait on a fixture call is how a test lets a
+# scheduled job come due (step 29; TOOLCHAIN-BUGS.md's frozen-clock note is older than that). The
+# delay rides on the fixture the test builds, since a capability is held only as a parameter.
+fn waited(slow: Fs) : Bool
+  slow.write("wait", "x", within: 1.minute) is Ok(_)
 end
 
 # The records a queue opened on the store now would hold, or None when it cannot be read.
@@ -322,8 +357,8 @@ enum Played
 end
 
 # One round of a worker's loop: lease, then ack, or fail every fourth; after a 503 the store must
-# hold what the queue lists; Ended once nothing is queued or leased.
-fn played(queue: Handle(Queue), fs: Fs, clock: Clock, round: UInt64) : Played
+# hold what the queue lists; Ended once nothing is queued, scheduled, or leased.
+fn played(queue: Handle(Queue), fs: Fs, slow: Fs, clock: Clock, round: UInt64) : Played
   worker = "w#{round % 3}"
   lent = served(queue, worker, Lease(queue: "q", lease_ms: 3_600_000))
   case lent
@@ -342,7 +377,10 @@ fn played(queue: Handle(Queue), fs: Fs, clock: Clock, round: UInt64) : Played
         stamp(clock))
     Empty:
       recovered(queue)
-      return ended(queue)
+      if round < 150
+        revived(queue)
+      end
+      return ended(queue, slow)
     Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Healthy(_):
       return Wrong(why: "a lease gave #{lent}")
   end
@@ -363,9 +401,24 @@ fn recovered(queue: Handle(Queue))
   end
 end
 
-fn ended(queue: Handle(Queue)) : Played
+# Every dead job put back in its queue, so a run ends with every job done.
+fn revived(queue: Handle(Queue))
+  held = served(queue, "p", Listing(queue: None, state: Some(Dead)))
+  if held is Listed(jobs)
+    for j in jobs
+      back = served(queue, "p", Retry(id: "j_#{j.number}"))
+      if unavailable?(back)
+        break
+      end
+    end
+  end
+end
+
+fn ended(queue: Handle(Queue), slow: Fs) : Played
+  return Going if !waited(slow)
   case served(queue, "", Health)
-    Healthy(counts): if counts.queued == 0 and counts.leased == 0: Ended else: Going
+    Healthy(counts):
+      if counts.queued == 0 and counts.scheduled == 0 and counts.leased == 0: Ended else: Going
     Made(_) | Found(_) | Listed(_) | Removed | Missing | Conflict(_) | Empty | Unavailable(_): Going
   end
 end
@@ -374,11 +427,50 @@ test "a call through the queue is answered once its record is in the log"
   fs = Fs.fixture()
   clock = Clock.fixture()
   queue = begun(fs, clock)
-  made = served(queue, "p", Create(queue: "emails", payload: "hi", max_attempts: 2))
+  made = served(queue, "p", Create(making: plain("emails", "hi", 2)))
   assert made is Made(_) or unavailable?(made)
   logged = fs.read("d/jobq.log", within: 1.minute)
   if made is Made(one) and logged is Ok(text)
     assert text.contains?("SET j_#{one.number} #{shown(one)}\n")
+  end
+  assert matches_store?(served(queue, "p", Listing(queue: None, state: None)), fs, stamp(clock))
+end
+
+test "a job made with a delay is in the log as scheduled, and is not leased before its run_at"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = begun(fs, clock)
+  made = served(queue, "p", Create(making: waits("q", "later", 2, 86_400_000, 0)))
+  assert made is Made(_) or unavailable?(made)
+  if made is Made(one) and fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+    assert one.state == Scheduled and one.run_at is Some(_) and one.tries == 0
+    assert text.contains?("SET j_#{one.number} #{shown(one)}\n")
+    assert text.contains?("\"state\": \"scheduled\"") and text.contains?("\"run_at\"")
+  end
+  lent = served(queue, "w1", Lease(queue: "q", lease_ms: 1_000))
+  assert lent == Empty or unavailable?(lent)
+  assert matches_store?(served(queue, "p", Listing(queue: None, state: None)), fs, stamp(clock))
+end
+
+test "a scheduled job is queued once the clock passes its run_at, and is leased with tries at 1"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = begun(fs, clock)
+  made = served(queue, "p", Create(making: waits("q", "soon", 2, 200, 0)))
+  assert made is Made(_) or unavailable?(made)
+  early = served(queue, "w1", Lease(queue: "q", lease_ms: 1_000))
+  if made is Made(soon) and soon.run_at is Some(due) and stamp(clock) < due
+    assert early == Empty or unavailable?(early)
+  end
+  moved = waited(Fs.fixture(delay: 400.ms))
+  clean = made is Made(_) and !unavailable?(early) and moved
+  lent = served(queue, "w1", Lease(queue: "q", lease_ms: 60_000))
+  if made is Made(waiting) and clean
+    assert lent is Found(_) or unavailable?(lent) or gone?(queue, "j_#{waiting.number}")
+  end
+  if clean and lent is Found(one)
+    assert one.tries == 1 and one.state == Leased and one.run_at is None
+    assert one.worker == Some("w1")
   end
   assert matches_store?(served(queue, "p", Listing(queue: None, state: None)), fs, stamp(clock))
 end
@@ -389,22 +481,19 @@ test "a batch the log did not take is 503, and the board goes back to what the s
   assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   start = board(at, 1)
-  one = decide(start, Call(worker: "p", command: Create(queue: "q", payload: "1", max_attempts: 1)),
-    at)
+  one = decide(start, Call(worker: "p", command: Create(making: plain("q", "1", 1))), at)
   first = flushed(fs,
     Batch(board: one.board, durable: start, table: emptied(empty), torn: false, writes: one.writes,
     outcomes: [one.outcome]))
   assert first.answers.map(fn(a) a.outcome end) == [one.outcome] and !first.torn
-  two = decide(first.board,
-    Call(worker: "p", command: Create(queue: "q", payload: "2", max_attempts: 1)), at)
+  two = decide(first.board, Call(worker: "p", command: Create(making: plain("q", "2", 1))), at)
   slow = Fs.fixture(delay: 1.minute)
   torn = flushed(slow,
     Batch(board: two.board, durable: first.board, table: first.table, torn: false,
     writes: two.writes, outcomes: [two.outcome, one.outcome]))
   assert torn.torn and torn.answers.all?(fn(a) unavailable?(a.outcome) end)
   assert records(torn.board) == records(first.board) and torn.board.next == 3
-  three = decide(torn.board,
-    Call(worker: "p", command: Create(queue: "q", payload: "3", max_attempts: 1)), at)
+  three = decide(torn.board, Call(worker: "p", command: Create(making: plain("q", "3", 1))), at)
   again = flushed(fs,
     Batch(board: three.board, durable: torn.board, table: torn.table, torn: true,
     writes: three.writes, outcomes: [three.outcome]))
@@ -417,14 +506,40 @@ test "a queue started again from its log finds a lease that ran out and hands th
   fs = Fs.fixture()
   clock = Clock.fixture()
   first = begun(fs, clock)
-  made = served(first, "p", Create(queue: "q", payload: "x", max_attempts: 3))
+  made = served(first, "p", Create(making: plain("q", "x", 3)))
   lent = served(first, "w1", Lease(queue: "q", lease_ms: 100))
   aged = aged_log(fs, lent)
   again = reopened(fs, clock, "w2", Lease(queue: "q", lease_ms: 100))
-  if made is Made(_) and aged and again is Found(retried)
-    assert retried.attempts == 2 and retried.worker == Some("w2")
+  if made is Made(_) and aged and again is Found(back)
+    assert back.tries == 2 and back.worker == Some("w2")
   end
   assert again is Found(_) or unavailable?(again) or !aged
+end
+
+test "a queue started on a log the previous version wrote replays every job and writes the new names"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  held = ", \"worker\": \"w-old\", \"lease_until\": \"2000-01-01T00:00:00Z\""
+  queued_line = old_record("j_1", "queued", 0, "")
+  leased_line = old_record("j_2", "leased", 1, held)
+  old = "SET ids 1000\nSET j_1 #{queued_line}\nSET j_2 #{leased_line}\n"
+  wrote = fs.write("d/jobq.log", old, within: 1.minute) is Ok(_)
+  listing = reopened(fs, clock, "p", Listing(queue: None, state: None))
+  assert listing is Listed(_) or unavailable?(listing)
+  if wrote and listing is Listed(jobs)
+    assert jobs.size == 2
+    assert jobs.map(fn(j) j.tries end) == [0, 1]
+    assert jobs.all?(fn(j) j.max_tries == 3 and j.backoff_ms == 0 end)
+    assert jobs.all?(fn(j) j.state == Queued end)
+  end
+  lent = reopened(fs, clock, "w1", Lease(queue: "q", lease_ms: 60_000))
+  assert lent is Found(_) or unavailable?(lent) or !wrote
+  if wrote and lent is Found(_) and fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+    written = text.split("\n").filter(fn(line) line != "" end)
+    last_line = written.last or ""
+    assert last_line.contains?("\"tries\": 1, \"max_tries\": 3, \"backoff_ms\": 0")
+    assert !last_line.contains?("attempts")
+  end
 end
 
 test "every answer is right or 503 with the store unchanged, and every job ends done or dead once faults stop"
@@ -432,12 +547,14 @@ test "every answer is right or 503 with the store unchanged, and every job ends 
   clock = Clock.fixture()
   queue = begun(fs, clock)
   for i in 0..6
-    made = served(queue, "p", Create(queue: "q", payload: "job #{i}", max_attempts: 2))
+    backoff = if i % 2 == 0: 100 else: 0
+    made = served(queue, "p", Create(making: waits("q", "job #{i}", 2, 0, backoff)))
     assert made is Made(_) or unavailable?(made)
   end
+  slow = Fs.fixture(delay: 150.ms)
   var last = Going
   for round in 0..300
-    last = played(queue, fs, clock, round)
+    last = played(queue, fs, slow, clock, round)
     if last != Going
       break
     end
@@ -445,5 +562,5 @@ test "every answer is right or 503 with the store unchanged, and every job ends 
   assert last == Ended
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (7), property (0 seeds), sim (100 runs)
           proven: not run

@@ -9,11 +9,12 @@
 module Jobq.Main
 expose Place, Trip, Task, Problem, task, steady, serving?, main
 
+use Jobq.Board{snapshot}
 use Jobq.Queue{Opening, opening}
 use Jobq.Server{serving}
-use Jobq.Store{Table, StoreError, compact, count, cut_short?, lines, open, writing_to}
+use Jobq.Store{Table, StoreError, count, cut_short?, line_of, lines, open, rewritten, writing_to}
 
-intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
+intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job in the names this version writes, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
 
 struct Place
   dir: String
@@ -122,7 +123,7 @@ fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String))
     Serving(place): serve(http, fs, clock, out, err, place)
     Compacting(dir):
       opened = try opened_store(fs, err, dir)
-      compacted(fs, dir, opened)
+      compacted(fs, dir, opened, clock.now)
     Asking(trip): client(http, trip)
     Checking(dir: dir, script: script):
       lines = try script_of(fs, script)
@@ -131,16 +132,16 @@ fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String))
   end
 end
 
-# Serves a folder until jobq is stopped. A log whose last line was cut short is compacted
+# Serves a folder until jobq is stopped. A log whose last line was cut short is written whole
 # first, so the next change starts on a line of its own.
 fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : Result(String,
   Problem)
   opened = try opened_store(fs, err, place.dir)
-  whole = if cut_short?(opened): try compacted_store(fs, place.dir, opened) else: opened
-  start = try opening_of(whole, clock.now)
+  start = try opening_of(opened, clock.now)
+  whole = if cut_short?(opened): try compacted_from(fs, place.dir, start) else: start
   case http.listen(place.port, within: 5_000.ms)
     Ok(listener):
-      queue = serving(listener, fs, clock, start)
+      queue = serving(listener, fs, clock, whole)
       queue.send(Sweep)
       out.write_line("jobq: serving #{place.dir} on 127.0.0.1:#{listener.port}")
       out.flush
@@ -156,16 +157,19 @@ fn opening_of(table: Table, now: Time) : Result(Opening, Problem)
   end
 end
 
-fn compacted_store(fs: Fs, dir: String, opened: Table) : Result(Table, Problem)
-  case compact(fs, opened)
-    Ok(table): Ok(table)
+# The log written whole from the board the store replayed: one line per live job, in the names
+# this version writes, so a log the previous version wrote leaves no old name behind.
+fn compacted_from(fs: Fs, dir: String, start: Opening) : Result(Opening, Problem)
+  case rewritten(fs, start.table, snapshot(start.board).map(fn(w) line_of(w) end))
+    Ok(table): Ok(Opening(board: start.board, table: table))
     Error(_): Error(Unopened(dir: dir, why: "holds a jobq.log jobq could not rewrite"))
   end
 end
 
-fn compacted(fs: Fs, dir: String, opened: Table) : Result(String, Problem)
-  table = try compacted_store(fs, dir, opened)
-  Ok("jobq: compacted #{dir}/jobq.log from #{lines(opened)} lines to #{count(table)}\n")
+fn compacted(fs: Fs, dir: String, opened: Table, now: Time) : Result(String, Problem)
+  start = try opening_of(opened, now)
+  whole = try compacted_from(fs, dir, start)
+  Ok("jobq: compacted #{dir}/jobq.log from #{lines(opened)} lines to #{lines(whole.table)}\n")
 end
 
 fn client(http: Http, trip: Trip) : Result(String, Problem)
@@ -253,10 +257,12 @@ fn played(http: Http, line: String, port: UInt16) : String
   end
 end
 
-# A transcript with what depends on the clock replaced: each job's times and the uptime.
+# A transcript with what depends on the clock replaced: each job's times, the time it runs at,
+# and the uptime.
 fn steady(text: String) : String
   times = masked(masked(text, "created_at", true), "updated_at", true)
-  masked(masked(times, "lease_until", true), "uptime_ms", false)
+  waits = masked(times, "run_at", true)
+  masked(masked(waits, "lease_until", true), "uptime_ms", false)
 end
 
 fn masked(text: String, key: String, quoted: Bool) : String
@@ -357,6 +363,11 @@ fn main(platform: Platform)
   end
 end
 
+# A record as the previous version wrote it, with attempts and max_attempts and no backoff.
+fn old_record(id: String, state: String, attempts: UInt64) : String
+  "{\"id\": \"#{id}\", \"queue\": \"emails\", \"state\": \"#{state}\", \"payload\": \"p\", \"attempts\": #{attempts}, \"max_attempts\": 3, \"created_at\": \"2026-09-14T09:00:00Z\", \"updated_at\": \"2026-09-14T09:05:00Z\"}"
+end
+
 test "serve takes a folder and an optional port, 7900 by default"
   assert task(["serve", "data"]) == Ok(Serving(place: Place(dir: "data", port: 7_900)))
   assert serving?(["serve", "data"])
@@ -390,10 +401,10 @@ test "client joins the JSON after the path back into one body, and splits a quer
   assert request_of(trip).headers.get("authorization") == Some("Bearer p")
   var anonymous = trip
   anonymous.token = "-"
-  anonymous.path = "/jobs?queue=emails&state=queued"
+  anonymous.path = "/jobs?queue=emails&state=scheduled"
   listing = request_of(anonymous)
   assert listing.headers.size == 0 and listing.path == "/jobs"
-  assert listing.query == Map.new().set("queue", "emails").set("state", "queued")
+  assert listing.query == Map.new().set("queue", "emails").set("state", "scheduled")
   assert task(["check", "data", "s.txt"]) == Ok(Checking(dir: "data", script: "s.txt"))
 end
 
@@ -402,6 +413,8 @@ test "a response prints as its status and body, and the clock's numbers are stea
   assert shown(Response(status: 404, body: "{}")) == "404 {}\n"
   job = "{\"id\": \"j_1\", \"created_at\": \"2026-09-14T10:00:00.123Z\", \"updated_at\": \"2026-09-14T10:00:01Z\", \"worker\": \"w\", \"lease_until\": \"2026-09-14T10:00:31Z\"}"
   assert steady(job) == "{\"id\": \"j_1\", \"created_at\": \"<created_at>\", \"updated_at\": \"<updated_at>\", \"worker\": \"w\", \"lease_until\": \"<lease_until>\"}"
+  later = "{\"id\": \"j_2\", \"state\": \"scheduled\", \"updated_at\": \"2026-09-14T10:00:01Z\", \"run_at\": \"2026-09-14T11:00:01Z\"}"
+  assert steady(later) == "{\"id\": \"j_2\", \"state\": \"scheduled\", \"updated_at\": \"<updated_at>\", \"run_at\": \"<run_at>\"}"
   assert steady("{\"queued\": 1, \"dead\": 0, \"uptime_ms\": 1234}") == "{\"queued\": 1, \"dead\": 0, \"uptime_ms\": <uptime_ms>}"
   assert steady("no numbers here") == "no numbers here"
 end
@@ -416,6 +429,23 @@ test "a store whose last line was cut short opens without it, and says so on the
   assert opening_of(table, Time.fixture()) is Error(Unopened(dir: "d", why: _))
 end
 
+test "a log the previous version wrote compacts to one line per job, and no old name is left"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  old = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 #{old_record("j_2", "done", 1)}\n"
+  assert fs.write("d/jobq.log", old, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(table)
+  assert lines(table) == 3 and count(table) == 3
+  assert compacted(fs, "d", table, Time.fixture()) == Ok("jobq: compacted d/jobq.log from 3 lines to 3\n")
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+  assert !text.contains?("attempts")
+  assert text.contains?("\"tries\": 0, \"max_tries\": 3, \"backoff_ms\": 0")
+  assert text.contains?("\"tries\": 1, \"max_tries\": 3, \"backoff_ms\": 0")
+  assert opened_store(fs, err, "d") is Ok(again)
+  assert count(again) == 3 and lines(again) == 3
+  assert opening_of(again, Time.fixture()) is Ok(_)
+end
+
 test "a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1"
   assert code_of(Usage(detail: "x")) == 2
   assert code_of(Unopened(dir: "d", why: "w")) == 1
@@ -423,5 +453,5 @@ test "a usage error exits 2, and a folder, a port, or a server that cannot be ha
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
           proven: not run

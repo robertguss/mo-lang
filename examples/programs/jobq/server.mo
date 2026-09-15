@@ -6,7 +6,7 @@ use Jobq.Board{Call, board}
 use Jobq.Queue{Opening, Queue, Worker, stamp}
 use Jobq.Store{Table, blank}
 
-intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the leases that ran out; the listener's idle time is 10 seconds, so a connection that sends no whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room for 1,200 of them at once."
+intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the leases that ran out and the scheduled jobs that have come due; the listener's idle time is 10 seconds, so a connection that sends no whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room for 1,200 of them at once."
 
 process Acceptor(queue: Handle(Queue)) mailbox: 4_096
   state
@@ -113,7 +113,12 @@ fn started(http: Http, fs: Fs, clock: Clock) : UInt16
 end
 
 fn create(payload: String) : String
-  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_attempts\": 2}"
+  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 2}"
+end
+
+# A job made to wait: a delay before it is queued at all, and a backoff after each fail.
+fn waiting(payload: String, delay_ms: UInt64, backoff_ms: UInt64) : String
+  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 2, \"delay_ms\": #{delay_ms}, \"backoff_ms\": #{backoff_ms}}"
 end
 
 # The status of a client once it has one, asking up to 200 times.
@@ -158,6 +163,17 @@ fn recovered(http: Http, port: UInt16)
   end
 end
 
+# Every dead job put back in its queue, so the run ends with every job done.
+fn revived(http: Http, port: UInt16)
+  listing = Request(method: "GET", path: "/jobs", query: Map.new().set("state", "dead"),
+    headers: Map.new().set("authorization", "Bearer p"))
+  for pair in leased_pairs(sent(http, port, listing))
+    if status(sent(http, port, by("POST", "/jobs/#{pair.0}/retry", "p", ""))) == 503
+      break
+    end
+  end
+end
+
 fn leased_pairs(got: Result(Response, HttpError)) : List((String, String))
   body = case got
     Ok(response): response.body
@@ -193,14 +209,28 @@ test "each status comes back over the wire, unless a call fails or the log did n
   assert in?(sent(http, port, by("PATCH", "/jobs", "p", "")), [405])
   assert in?(sent(http, port, by("GET", "/nowhere", "p", "")), [404])
   assert in?(sent(http, port, by("POST", "/jobs", "p", "{\"queue\": 1}")), [400])
+  assert in?(sent(http, port, by("POST", "/jobs", "p",
+    "{\"queue\": \"q\", \"payload\": \"\", \"max_attempts\": 2}")), [400])
   made = sent(http, port, by("POST", "/jobs", "p", create("hello")))
   assert in?(made, [201, 503])
   assert in?(sent(http, port, by("GET", "/jobs/j_77", "p", "")), [404, 503])
+  assert in?(sent(http, port, by("POST", "/jobs/j_77/retry", "p", "")), [404, 503])
+  assert in?(sent(http, port, by("GET", "/jobs/j_1/retry", "p", "")), [405])
   if status(made) == 201
+    assert in?(sent(http, port, by("POST", "/jobs/j_1/retry", "p", "")), [409, 503])
     assert in?(sent(http, port, by("POST", "/queues/q/lease", "w1", "{\"lease_ms\": 60000}")),
       [200, 503])
     assert in?(sent(http, port, by("DELETE", "/jobs/j_1", "p", "")), [409, 204, 503])
     assert in?(sent(http, port, by("POST", "/jobs/j_1/ack", "w2", "")), [409, 404, 503])
+  end
+  later = sent(http, port, by("POST", "/jobs", "p", waiting("later", 3_600_000, 1_000)))
+  assert in?(later, [201, 503])
+  if status(later) == 201
+    assert in?(sent(http, port, by("GET", "/jobs?state=scheduled", "p", "")), [200, 503])
+  end
+  health = sent(http, port, Request(method: "GET", path: "/health"))
+  if health is Ok(answer) and answer.status == 200
+    assert answer.body.contains?("\"scheduled\":")
   end
   assert in?(sent(http, port, by("POST", "/queues/q/lease", "w3", "")), [200, 204, 503])
 end
@@ -238,7 +268,7 @@ test "1,200 connections that send nothing do not stop a producer's request from 
   assert in?(made, [201, 503])
 end
 
-test "over the wire, every answer is right or 503, and every job ends done or dead once faults stop"
+test "over the wire, every answer is right or 503, and every job ends done once faults stop"
   http = Http.fixture()
   fs = Fs.fixture()
   port = started(http, fs, Clock.fixture())
@@ -256,9 +286,12 @@ test "over the wire, every answer is right or 503, and every job ends done or de
     end
     if status(lent) == 204
       recovered(http, port)
+      if round < 150
+        revived(http, port)
+      end
     end
     health = sent(http, port, Request(method: "GET", path: "/health"))
-    if health is Ok(answer) and answer.body.contains?("\"queued\": 0, \"leased\": 0,")
+    if health is Ok(answer) and answer.body.contains?("\"queued\": 0, \"scheduled\": 0, \"leased\": 0,")
       ended = status(lent) == 204
     end
     if ended

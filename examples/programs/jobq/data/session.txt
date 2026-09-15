@@ -6,10 +6,10 @@ p GET /jobs?state=gone
 p GET /jobs/j_1
 p GET /jobs/j_5
 p GET /jobs/j_99
-p POST /jobs {"queue": "emails", "payload": "hello \"world\"\nline two é", "max_attempts": 2}
-p POST /jobs {"queue": "emails", "payload": "no attempts"}
-p POST /jobs {"queue": "a b", "payload": "", "max_attempts": 1}
-p POST /jobs {"queue": "emails", "payload": "", "max_attempts": 101}
+p POST /jobs {"queue": "emails", "payload": "hello \"world\"\nline two é", "max_tries": 2}
+p POST /jobs {"queue": "emails", "payload": "no tries"}
+p POST /jobs {"queue": "a b", "payload": "", "max_tries": 1}
+p POST /jobs {"queue": "emails", "payload": "", "max_tries": 101}
 p POST /jobs this is not json
 w1 POST /queues/emails/lease {"lease_ms": 60000}
 w2 POST /queues/emails/lease {"lease_ms": 60000}
@@ -34,4 +34,21 @@ w3 GET /queues/emails/lease
 p PATCH /jobs/j_1
 p GET /nowhere
 bad"token GET /jobs
+p POST /jobs {"queue": "emails", "payload": "old names", "max_attempts": 2}
+p POST /jobs {"queue": "later", "payload": "tomorrow", "max_tries": 1, "delay_ms": 86400000}
+p POST /jobs {"queue": "later", "payload": "", "max_tries": 1, "delay_ms": 86400001}
+p POST /jobs {"queue": "later", "payload": "", "max_tries": 1, "backoff_ms": 3600001}
+w4 POST /queues/later/lease
+p GET /jobs?state=scheduled
+p POST /jobs {"queue": "flaky", "payload": "retry me", "max_tries": 2, "backoff_ms": 3600000}
+w4 POST /queues/flaky/lease
+w4 POST /jobs/j_1002/fail {"reason": "smtp down"}
+w4 POST /queues/flaky/lease
+p POST /jobs/j_1000/retry
+p POST /jobs/j_1000/retry
+p POST /jobs/j_4/retry
+p POST /jobs/j_99/retry
+p GET /jobs/j_1000/retry
+w3 POST /queues/emails/lease
+p DELETE /jobs/j_1001
 - GET /health
