@@ -1871,6 +1871,33 @@
       "verified": { "hash": "de657c2be21ef419", "declarations": "107df39ac8ea7291", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
     },
     {
+      "path": "ledger/server.mo",
+      "module": "Ledger.Server",
+      "declarations": [
+        { "id": "b365ca269525", "name": "module Ledger.Server", "hash": "317eb744af0a62ea" },
+        { "id": "76d22b0ed0c5", "name": "expose", "hash": "c69552ea62389296" },
+        { "id": "548d9c177ab9", "name": "use Ledger.Api", "hash": "6d0fcd701a34c89c" },
+        { "id": "a160d2335338", "name": "use Ledger.Journal", "hash": "4ce8eb531a9c43dd" },
+        { "id": "b14602170d48", "name": "use Ledger.Records", "hash": "d40bafa47faa4ba1" },
+        { "id": "b6af964587c6", "name": "use Ledger.Teller", "hash": "bc04ceee041e2f22" },
+        { "id": "4462d28ca18c", "name": "intent", "hash": "aa15cc4b092dabaf" },
+        { "id": "b55d5907b54d", "name": "process Acceptor", "hash": "5104e31f0abe53be" },
+        { "id": "4bcab0d3a8af", "name": "process Worker", "hash": "7f1aeb6177da1d32" },
+        { "id": "5279da37fc4a", "name": "supervisor Exchanges", "hash": "0a2d52c1662e3a89" },
+        { "id": "020fbb8b943b", "name": "fn answer", "hash": "ebbd3cb3bf6da8db" },
+        { "id": "677ae9cd14c7", "name": "fn unavailable", "hash": "66376207f85e2792" },
+        { "id": "2a55beae1827", "name": "fn started", "hash": "fb96f442f2b11ed9" },
+        { "id": "d9b096d759e1", "name": "fn by", "hash": "e08a6e7fab9756ca" },
+        { "id": "1f9a56f77206", "name": "fn status", "hash": "668e4700803fcb74" },
+        { "id": "2a34427d4404", "name": "fn in?", "hash": "999508584a495cb0" },
+        { "id": "458e41a16d1e", "name": "fn balance_of", "hash": "4465024fbf3cb225" },
+        { "id": "bc7c3a2a88d8", "name": "fn transfer_body", "hash": "2810f12f2a948e39" },
+        { "id": "51a2a79b8f20", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "6303b84ed52c0afd" },
+        { "id": "bd155042f9df", "name": "test \"under faults every transfer is right or a 503 that moved nothing, and each key lands once\"", "hash": "8cf87b33374b4e6f" }
+      ],
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "1d0c29efd96876be", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "9cd0553467ec88be" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+    },
+    {
       "path": "ledger/settle.mo",
       "module": "Ledger.Settle",
       "declarations": [
