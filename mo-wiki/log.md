@@ -354,3 +354,6 @@
 
 ## [2026-09-15] session | Night: program 6 accepted, the loop stopped for Robert
 - `ledger` accepted after the suite went green with it (186 of 186), `mo check --recipe` on the store, and Fable's 35-check HTTP session under both runtimes. Five decision rows, three `semantic`, one for Robert (no check earned its keep for the third program running), one flagged runtime bug (`restart: :never` not honoured). Merged to `main`. Robert asked for a stop and a catch-up before round 8; the loop is stopped.
+
+## [2026-09-15] session | Night: the forest, and the roadmap reset
+- Robert asked for the big picture after three days; Fable's reading: the design is sound, the reliability claim is not yet earned (no check has caught a bug tests would not have, in six programs), the runtime is the bottleneck, the loop and zero dependencies are the wins, first writing is the only thing ever measured. Robert went with Fable's order. The roadmap's "Where we are" rewritten: step 29 the runtime honest, step 30 every core, round 8 a maintenance round, the bricks page, the language items, a scale benchmark, program 7. Four locked rows, one `semantic`.

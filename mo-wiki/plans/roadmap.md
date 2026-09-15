@@ -1,7 +1,7 @@
 ---
 title: "Roadmap"
 created: 2026-09-12
-updated: 2026-09-14
+updated: 2026-09-15
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -14,37 +14,27 @@ Rewritten in session 5 after the interpreter milestone was met. Each step is one
 
 ## Where we are
 
-Updated at every acceptance. A step is one brief to one fresh worker session, numbered in the order it ran, not a count toward an end; this table is the count.
+Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agreed to Fable's order. The rows above the line are what the first three days built; the rows below are the roadmap from here. A step is one brief to one fresh worker session; this table is the count.
 
 | phase | status | briefs left, roughly |
 |---|---|---|
 | The design, the corpus, the interpreter milestone (sessions 1–5) | done | — |
-| The toolchain under real programs: formatter, stdlib, `Net`, `Http`, the C backend, three review rounds (steps 5–18) | done | — |
-| Programs 2, 3, 4: logstat, kv, notes | done | — |
-| Step 19, what program 4 found | done | — |
-| Step 20, the runtime owns the loop | done | — |
-| Round 4 of the control run | done: Mo 16.1 min to Go's 9.3; laws kept, an ergonomics step recommended | — |
-| Fable's reading: the session 6 runs read ([[empirical-validation-plan]], [[ecosystem-strategy]]); the research agenda's twelve pages answered ([[research-agenda-2026-09-response]]); the VM-first drafts filed (d36–d40) | done | — |
-| Memory and green threads (chapter 7), [[interpreter-step-21]] | done: a process is a fiber, 65,530 connections, the bets measured | — |
-| Program 1, the job queue ([[program-1]]): done, 40 min, the premise held; its follow-ups (step 22: the `--recipe` line count, the fixture's missing folder, JSON integers, a derived deadline, the recipe's rewrite rule) | done: [[interpreter-step-22]], the derived deadline | — |
-| Round 5 of the control run, pre-registered ([[control-run-5]]) | done: mixed, Mo 1.28 times Go, P2 missed by one loop | — |
-| The runtime surface (directions 37 and 40), [[interpreter-step-23]] | done: `platform.runtime`, the event ring, `--surface` | — |
+| The toolchain under real programs (steps 5–28): formatter, stdlib, `Net`, `Http`, the C backend, fibers, the runtime surface, the derived deadline, the delayed send, the one-line `if`, the keywords as names, a `never` at rest, a map written in place | done | — |
+| Programs 1–6: jobq, logstat, kv, notes, agent, ledger | done; each found two to four toolchain bugs and several gaps | — |
+| Control rounds 1–7: rounds 1–6 on agent time (Mo slower, round 6 failed on all four), round 7 on Robert's measure (held on all four; reliability level at 0 defects each) | done | — |
+| Outside reviews of 13 and 14 Sep, the thesis restated (chapter 1), the measure restated (chapter 8), the closure audit, the reading pack | done | — |
+| **Step 29, the runtime honest** ([[interpreter-step-29]]): `restart: :never` honoured, `platform.exit` with a pending delayed send, replay streamed instead of held in one `Open` update, the simulated-time jump gap, the `invariant`-untrippable rule as a diagnostic | **next** | 1 |
+| **Step 30, processes on every core** ([[interpreter-step-30]]): a scheduler per core, messages across threads, the store's fsync off the scheduler, measured against Go on the queue and the ledger | queued | 1–2 |
+| **Round 8, the maintenance round** ([[control-run-8]], pre-registered): round 7's three finished job queues handed to fresh agents with a changed spec; a second hidden suite for the change; defects and regressions counted; this is the experiment the laws were written for and the one that decides the reliability claim | queued, after step 29 | — |
+| **The bricks page** ([[bricks-and-the-cost-of-zero-dependencies]]): the shelf (TLS, crypto, compression, a database driver, HTTP/2), an audit budget per brick, the ordering rule, the fallback (a brick wrapping a C library in the platform under audit, never application FFI), a decision row | queued, Fable writes it | — |
+| The language items Robert agreed to: the counted shape laws as project settings; a named function passed by name where an anonymous function goes; the grammar forms that cost loops in every program (`return` in a `case` arm, a qualified call, a split lambda body) as diagnostics that say what to write; the `invariant` construct reconsidered after round 8 | queued, one step after round 8 | 1 |
+| A compile benchmark at 5,000 generated modules (the agent-loop claim at scale) | queued, small | 1 |
+| Program 7, a real open-source service reimplemented against its own test suite (a Redis subset with streams, persistence, auth, pub/sub, its operation set pre-registered from Redis's own tests), once a program finishes with no new gap or bug note | after round 8 | 2 |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
-| Program 5, the agent harness ([[program-5]]): done, 77 min; its follow-ups, [[interpreter-step-24]] | done: the authority hole, a handle in state, the delayed send | — |
-| Step 25, the one-line `if` and keyword field names (Robert's calls, [[interpreter-step-25]]) | done: the value form in both runtimes, 25 on one line in the corpus, the first Linux run green | — |
-| Step 26, the tail-position one-line `if` and two keyword diagnostics ([[interpreter-step-26]]) | done | — |
-| Round 6 of the control run, pre-registered ([[control-run-6]]), the baselines with their checks | done: **failed on all four predictions**; the null hypothesis stands; three rows for Robert | — |
-| Step 27, what round 6 found (Robert agreed to all three: the file law gone, the keywords as names, a `never` reads values at rest; [[interpreter-step-27]]) | done | — |
-| Round 7 ([[control-run-7]]), on Robert's measure | done: **held on all four**; reliability level at 0 defects each; Mo fastest at 32 workers, slowest to restart; the loop 0.38 s; 0 dependencies | — |
-| Step 28, round 7's toolchain notes ([[interpreter-step-28]]) | done: a map written in place (47 s → 0.13 s), memory after replay 183 → 57 MiB, six gaps | — |
-| Program 6, the ledger ([[program-6]]) | done: 92 min, four invariants kept, the planted bug caught twice, no check earned its keep strictly, a `restart: :never` bug found | — |
-| Round 8, the ledger against Go and Python on Robert's measure with a hidden suite | next, not started (Robert's discussion first) | — |
-| The next runtime step: `restart: :never` honoured, `platform.exit` with a pending delayed send, replay memory, processes on more than one core | queued | 1–2 |
 | The package registry | deferred until an outsider runs a real service | — |
-| Program 7, a real open-source service reimplemented in Mo against its own test suite, chosen so the original carries third-party dependencies and the Mo version exercises capabilities, recipes, and the runtime surface (Robert, 14 Sep; the thesis restated) | after program 6 passes the readiness rule (no new gap or bug note) | 2 |
 | Program 8, the toolchain in Mo | late | — |
 
-About ten to fifteen briefs to the end of the roadmap as written, at roughly one an hour of worker time plus verification. A program that finds a runtime hole adds one; round 4 may send a law back.
+Six to eight briefs to round 8's reading, at about an hour of worker time each plus verification; program 7 and `mo prove` after it.
 
 ## Done
 
