@@ -123,8 +123,10 @@ static bool reserve_process(MoRegion *r, size_t want, size_t past, size_t within
 /* Counts MO_STATS=1 prints (step 21): allocations and their bytes, values packed and their bytes,
  * processes a sweep ended and the time it took, and the bytes allocated past a full region (step 29b). */
 static uint64_t stat_allocations, stat_packed, stat_packed_bytes, stat_packed_capacity, stat_freed, stat_freed_ns, stat_spilled;
-/* Every region allocation's bytes (mo_rt.h): the stats' bytes, and what starts a walk. */
-uint64_t mo_allocated, mo_walk_at, mo_walk_after = MO_WALK_BUDGET;
+/* Every region allocation's bytes: the stats' bytes. */
+static uint64_t mo_allocated;
+uint64_t mo_walks;
+uintptr_t mo_clean_from, mo_clean_to;
 
 static void print_stats(void) {
     char line[320];
@@ -617,7 +619,9 @@ static MoValue *copy_slice(MoValue *xs, size_t len, const Copy *c, bool grows) {
     uintptr_t addr = (uintptr_t)xs;
     if (len == 0 || !inside(addr, c)) return xs;
     /* A view shorter than the buffer push grew is copied with the whole buffer, once for every view of
-     * it: frames that each hold a longer list pushed from the one before took a copy each (step 29b). */
+     * it: frames that each hold a longer list pushed from the one before took a copy each (step 29b). The
+     * growth table is asked before the forward table here, where its lookup is an open-addressed probe:
+     * asked after it, as vm.zig's copySlice asks its hash map, the 1M replay measured 4% slower. */
     if (grows && c->moves) {
         Growth *whole = ptab_get(&growth, addr);
         if (whole && whole->cap != 0 && whole->len > len) return copy_slice(xs, whole->len, c, grows);
@@ -745,6 +749,8 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
      * built and dropped a large value does; smaller ones wait for the update's end (settle_region). */
     uintptr_t kept = mo_heap.top - mo_heap.base;
     if (mo_heap.high - mo_heap.top > 16 * RELEASE_KEEP && mo_heap.high - mo_heap.top > 2 * kept) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
+    mo_clean_from = from;
+    mo_clean_to = mo_heap.top;
 }
 
 /* The walk (mo_rt.h, vm.zig's walk): out from `frame` while the frame waits in a call it made to the one
@@ -768,7 +774,7 @@ void mo_walk(MoFrame *frame) {
     }
     size_t k = 0;
     for (MoFrame *f = frame;; f = f->next) {
-        for (uint32_t i = 0; i < f->nroots; i++) walk_roots[k++] = *f->roots[i];
+        for (uint32_t i = 0; i < f->nroots; i++) walk_roots[k++] = f->roots[i];
         if (f == outer) break;
     }
     size_t from = *outer->marks[0];
@@ -776,7 +782,8 @@ void mo_walk(MoFrame *frame) {
     size_t top = mo_heap.top;
     k = 0;
     for (MoFrame *f = frame;; f = f->next) {
-        for (uint32_t i = 0; i < f->nroots; i++) *f->roots[i] = walk_roots[k++];
+        for (uint32_t i = 0; i < f->nroots; i++) f->roots[i] = walk_roots[k++];
+        f->kept = top - from;
         if (f != outer) *f->marks[0] = top;
         /* Each loop's mark, then what it kept: a loop begun since the outermost mark starts over. */
         for (uint32_t i = 1; i + 1 < f->nmarks; i += 2) {
@@ -787,8 +794,7 @@ void mo_walk(MoFrame *frame) {
         }
         if (f == outer) break;
     }
-    mo_walk_at = mo_allocated;
-    mo_walk_after = top - from > MO_WALK_BUDGET ? top - from : MO_WALK_BUDGET;
+    mo_walks++;
 }
 
 /* Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the heap's

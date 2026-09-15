@@ -488,6 +488,13 @@ const Emitter = struct {
         try roots.append(gpa, "R");
         const out = &e.bodies;
         try e.protos.print(gpa, "MO_U static MoValue {s}({s});\n", .{ b.cname, head });
+        if (b.walks) {
+            try out.print(gpa, "#define SAVE_{s}() do {{", .{b.cname});
+            for (roots.items, 0..) |r, i| try out.print(gpa, " V_[{d}] = {s};", .{ i, r });
+            try out.print(gpa, " }} while (0)\n#define LOAD_{s}() do {{", .{b.cname});
+            for (roots.items, 0..) |r, i| try out.print(gpa, " {s} = V_[{d}];", .{ r, i });
+            try out.appendSlice(gpa, " } while (0)\n");
+        }
         if (b.has_loops) {
             try out.print(gpa, "#define ROOTS_{s}(m, k) do {{ if (mo_loop_due(m, k)) {{ MoValue r_[] = {{", .{b.cname});
             for (roots.items, 0..) |r, i| try out.print(gpa, "{s}{s}", .{ if (i > 0) ", " else "", r });
@@ -502,12 +509,14 @@ const Emitter = struct {
         for (b.loop_ids.items) |id| try out.print(gpa, "    size_t m{d} MO_U = 0, k{d} MO_U = 0;\n", .{ id, id });
         // A frame a walk may reach through lists its roots and its marks (mo_rt.h, MoFrame); one whose
         // closure's captures it reads through `cap` is as far out as a walk goes.
+        // Its roots are copied into V_ at a walkable call and read back when a walk ran meanwhile, so no
+        // local's address is taken; a walk from here reaches out as far as its caller's does when the
+        // caller waits in a walkable call to it.
         if (b.walks) {
-            try out.appendSlice(gpa, "    MoValue *const P_[] = {");
-            for (roots.items, 0..) |r, i| try out.print(gpa, "{s}&{s}", .{ if (i > 0) ", " else "", r });
-            try out.appendSlice(gpa, "};\n    size_t *const M_[] = {&F_");
+            try out.print(gpa, "    MoValue V_[{d}];\n    size_t *const M_[] = {{&F_", .{roots.items.len});
             for (b.loop_ids.items) |id| try out.print(gpa, ", &m{d}, &k{d}", .{ id, id });
-            try out.print(gpa, "}};\n    MoFrame FR_ = {{mo_frames, mo_depth, false, {s}, P_, {d}, M_, {d}}};\n    mo_frames = &FR_;\n", .{ if (b.captures.items.len > 0) "true" else "false", roots.items.len, 1 + 2 * b.loop_ids.items.len });
+            try out.print(gpa, "}};\n    MoFrame FR_ = {{mo_frames, mo_depth, false, {s}, F_, 0, V_, {d}, M_, {d}}};\n", .{ if (b.captures.items.len > 0) "true" else "false", roots.items.len, 1 + 2 * b.loop_ids.items.len });
+            try out.appendSlice(gpa, "    if (!FR_.pinned && FR_.next && FR_.next->walking && FR_.next->depth + 1 == mo_depth) {\n        FR_.base = FR_.next->base;\n        FR_.kept = FR_.next->kept;\n    }\n    mo_frames = &FR_;\n");
         }
         // A function that can hold a handle lists its locals where a sweep reads them (mo_rt.c).
         if (b.handles) {
@@ -528,6 +537,7 @@ const Emitter = struct {
         if (b.walks) try out.appendSlice(gpa, "    mo_frames = FR_.next;\n");
         try out.appendSlice(gpa, "    mo_depth--;\n    return R;\n}\n");
         if (b.has_loops) try out.print(gpa, "#undef ROOTS_{s}\n", .{b.cname});
+        if (b.walks) try out.print(gpa, "#undef SAVE_{s}\n#undef LOAD_{s}\n", .{ b.cname, b.cname });
     }
 
     fn exitLabel(e: *Emitter) Error!void {
@@ -1770,7 +1780,7 @@ const Emitter = struct {
         e.b.walk_here = false;
         if (walk) {
             e.b.walks = true;
-            try e.line("if (mo_walk_due()) mo_walk(&FR_);", .{});
+            try e.line("if (mo_walk_due(&FR_)) {{ SAVE_{s}(); mo_walk(&FR_); LOAD_{s}(); }}", .{ e.b.cname, e.b.cname });
         }
         var arg_nodes: std.ArrayList(Index) = .empty;
         if (recv) |r| try arg_nodes.append(e.gpa, r);
@@ -1793,9 +1803,15 @@ const Emitter = struct {
             try call.appendSlice(e.gpa, o);
         }
         try call.append(e.gpa, ')');
-        if (walk) try e.line("FR_.walking = true;", .{});
+        const walks_before = if (walk) try e.print("w{d}", .{e.b.temps}) else "";
+        if (walk) {
+            e.b.temps += 1;
+            try e.line("SAVE_{s}();", .{e.b.cname});
+            try e.line("uint64_t {s} MO_U = mo_walks;", .{walks_before});
+            try e.line("FR_.walking = true;", .{});
+        }
         const result = try e.temp("{s}", .{call.items});
-        if (walk) try e.line("FR_.walking = false;", .{});
+        if (walk) try e.line("FR_.walking = false; if (mo_walks != {s}) LOAD_{s}();", .{ walks_before, e.b.cname });
         // Each inout argument takes the parameter's final value, last one first.
         var j = @min(ps.len, arg_nodes.items.len);
         while (j > 0) {

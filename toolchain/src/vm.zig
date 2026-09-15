@@ -172,12 +172,11 @@ pub const Vm = struct {
     /// The frames' locals, in chunks that never move, so a walk frees what a frame's callers made
     /// without taking any frame's locals with it.
     slots: Slots = .{},
-    /// Region bytes allocated (region.zig's count) when the last walk ran, and how many more start
-    /// the next: walk_budget, or what the last walk kept if that is more.
-    walk_at: u64 = 0,
-    walk_after: u64 = 1 << 20,
-    /// Region bytes a walk waits for; 0 walks at every call.
+    /// Region bytes past twice what the last walk kept a walk waits for; 0 walks at every call.
     walk_budget: usize = 1 << 20,
+    /// The range the last compaction left, all of it reached when it ran: live, for a walk's due.
+    clean_from: usize = 0,
+    clean_to: usize = 0,
     /// Set by a `call` for the frame it enters, and taken by that frame.
     entering_direct: bool = false,
     /// Set when a call fails with Crash or Skip.
@@ -229,9 +228,9 @@ pub const Vm = struct {
         vm.handle_frames.clearRetainingCapacity();
         vm.frames.clearRetainingCapacity();
         vm.slots.reset(.{ .chunk = 0, .used = 0 });
-        vm.walk_at = 0;
-        vm.walk_after = vm.walk_budget;
         vm.entering_direct = false;
+        vm.clean_from = 0;
+        vm.clean_to = 0;
         vm.region = null;
         vm.scratch = null;
         vm.heap = vm.gpa;
@@ -240,9 +239,10 @@ pub const Vm = struct {
     const Growth = struct { ptr: usize = 0, len: usize = 0, cap: usize = 0 };
 
     /// A frame (step 29b): where the region stood when it began, its locals, where its operand stack
-    /// begins, its function, whether a `call` of the frame outside it entered it, and whether it waits in
-    /// such a call now.
-    const Frame = struct { mark: usize, locals: []Value, base: usize, function: u32, direct: bool, walking: bool = false };
+    /// begins, its function, whether a `call` of the frame outside it entered it, whether it waits in
+    /// such a call now, the mark of the outermost frame a walk from it reaches, and what the last walk
+    /// through it kept.
+    const Frame = struct { mark: usize, locals: []Value, base: usize, function: u32, direct: bool, walking: bool = false, reach: usize = 0, kept: usize = 0 };
 
     /// A stack of value slots in chunks that never move: each frame takes its locals and gives them back
     /// when it returns.
@@ -383,7 +383,14 @@ pub const Vm = struct {
         defer vm.slots.reset(slots_mark);
         const locals = try vm.slots.take(vm.gpa, f.locals);
         const index = vm.frames.items.len;
-        try vm.frames.append(vm.gpa, .{ .mark = vm.mark(), .locals = locals, .base = 0, .function = fi, .direct = direct });
+        // A walk from a frame a waiting `call` entered reaches as far out as one from that call's frame.
+        var frame_entry: Frame = .{ .mark = vm.mark(), .locals = locals, .base = 0, .function = fi, .direct = direct };
+        frame_entry.reach = frame_entry.mark;
+        if (direct and index > 0 and vm.frames.items[index - 1].walking) {
+            frame_entry.reach = vm.frames.items[index - 1].reach;
+            frame_entry.kept = vm.frames.items[index - 1].kept;
+        }
+        try vm.frames.append(vm.gpa, frame_entry);
         defer vm.frames.items.len = index;
         @memcpy(locals[0..args.len], args);
         @memset(locals[args.len..], .none);
@@ -500,7 +507,13 @@ pub const Vm = struct {
                 .call, .call_trait => {
                     // A walk may start here, while the arguments are on the stack, and one from further in
                     // reaches through this frame while it waits in the call (step 29b).
-                    if (vm.region != null and region_stats.allocated_bytes - vm.walk_at > vm.walk_after) try vm.walk(index);
+                    // Due as runtime/mo_rt.h's mo_walk_due: past twice what is known to be live since the reach.
+                    if (vm.region) |r| {
+                        const fr = vm.frames.items[index];
+                        var live = fr.kept;
+                        if (vm.clean_from >= fr.reach and vm.clean_to <= r.top) live = @max(live, vm.clean_to - vm.clean_from);
+                        if (r.top -| fr.reach > 2 * live + vm.walk_budget) try vm.walk(index);
+                    }
                     const args_now = vm.drop(inst.b);
                     const target = if (inst.op == .call) inst.a else try vm.dispatch(inst.a, args_now[0]);
                     vm.frames.items[index].walking = true;
@@ -745,6 +758,7 @@ pub const Vm = struct {
         @memcpy(stack, roots.items[k..]);
         const top = r.top;
         for (frames[outer .. inner + 1], outer..) |*fr, j| {
+            fr.kept = top - from;
             if (j != outer) fr.mark = top;
             // Each loop's mark, then what it kept: a loop begun since the outermost mark starts over.
             for (vm.program.functions[fr.function].code) |inst| if (inst.op == .mark) {
@@ -755,8 +769,6 @@ pub const Vm = struct {
                 }
             };
         }
-        vm.walk_at = region_stats.allocated_bytes;
-        vm.walk_after = @max(vm.walk_budget, top - from);
     }
 
     /// Copies what `roots` reach past `from` into the scratch region, frees everything past
@@ -799,6 +811,8 @@ pub const Vm = struct {
         // for the update's end (sim.zig, settleRegion; step 28).
         const kept = r.top - r.base;
         if (r.high - r.top > 16 * Region.release_keep and r.high - r.top > 2 * kept) r.releasePast(r.top + Region.release_keep);
+        vm.clean_from = from;
+        vm.clean_to = r.top;
     }
 
     /// Moves everything `roots` reach into a fresh reservation of `size` bytes, which takes the
@@ -862,16 +876,18 @@ pub const Vm = struct {
     fn copySlice(vm: *Vm, xs: []const Value, c: Copy, grows: bool) Error![]const Value {
         const addr = @intFromPtr(xs.ptr);
         if (xs.len == 0 or !inside(addr, c)) return xs;
-        // A view shorter than the buffer push grew is copied with the whole buffer, once for every view
-        // of it: frames that each hold a longer list pushed from the one before took a copy each (step 29b).
-        if (grows and c.moves) if (vm.growth.get(addr)) |g| if (g.cap != 0 and g.len > xs.len) {
+        const key: SliceKey = .{ .ptr = addr, .len = xs.len };
+        if (vm.forward.get(key)) |copied| return copied[0..xs.len];
+        // By value: copying what the slice holds may grow the table the pointer is into. One lookup: a view
+        // shorter than the buffer push grew is copied with the whole buffer, once for every view of it (so
+        // frames that each hold a longer list pushed from the one before share one copy; step 29b), and a
+        // view as long as the buffer takes its room.
+        const held: ?Growth = if (grows and c.moves) vm.growth.get(addr) else null;
+        if (held) |g| if (g.cap != 0 and g.len > xs.len) {
             const whole = try vm.copySlice(@as([*]const Value, @ptrFromInt(addr))[0..g.len], c, grows);
             return whole.ptr[0..xs.len];
         };
-        const key: SliceKey = .{ .ptr = addr, .len = xs.len };
-        if (vm.forward.get(key)) |copied| return copied[0..xs.len];
-        // By value: copying what the slice holds may grow the table the pointer is into.
-        const growth: ?Growth = if (grows and c.moves) (if (vm.growthOf(addr, xs.len)) |g| g.* else null) else null;
+        const growth: ?Growth = if (held) |g| (if (g.len == xs.len and g.cap != 0) g else null) else null;
         const out = try rawAlloc(c.dest, Value, if (growth) |g| g.cap else xs.len);
         try vm.forward.put(vm.gpa, key, out.ptr);
         for (xs, out[0..xs.len]) |x, *o| o.* = try vm.copyOut(x, c);
@@ -2201,7 +2217,6 @@ test "under a region, push is linear, loops free what they do not keep, and comp
         vm.frame_budget = budget;
         vm.loop_budget = budget;
         vm.walk_budget = budget;
-        vm.walk_after = budget;
         try std.testing.expectEqual(@as(i128, 20_000), (try callNamed(&vm, "pushes", &.{.{ .int = 20_000 }})).int);
 
         const before = values.top;
@@ -2384,11 +2399,12 @@ test "a recursion frees what each level made while the levels inside it run, and
         \\end
         \\fn down(i: UInt64, kept: List(String), total: UInt64) : (UInt64, UInt64, String)
         \\  return (total, kept.size, kept.get(1_000) or "") if i == 0
-        \\  made = junk(i) + junk(i + 1)
+        \\  made = junk(i) + junk(i + 1) + junk(i + 2)
         \\  down(i - 1, kept.push("k#{i}"), total + made)
         \\end
     );
-    // Without the walk the levels' garbage, over 300 MiB, does not fit in a region of 256 MiB.
+    // Without the walk the levels' garbage, over 300 MiB, does not fit in a region of 256 MiB; 1,500 levels
+    // stay inside the test thread's native stack.
     var values = try Region.reserveUpTo(256 << 20);
     defer values.release();
     var scratch = try Region.reserveUpTo(256 << 20);
@@ -2397,10 +2413,10 @@ test "a recursion frees what each level made while the levels inside it run, and
     vm.useRegions(&values, &scratch);
     values.fallback = null;
     scratch.fallback = null;
-    const done = (try callNamed(&vm, "down", &.{ .{ .int = 2_500 }, .{ .list = &.{} }, .{ .int = 0 } })).tuple;
-    try std.testing.expectEqual(@as(i128, 2_500 * 2_048), done[0].int);
-    try std.testing.expectEqual(@as(i128, 2_500), done[1].int);
-    try std.testing.expectEqualStrings("k1500", done[2].string);
+    const done = (try callNamed(&vm, "down", &.{ .{ .int = 1_500 }, .{ .list = &.{} }, .{ .int = 0 } })).tuple;
+    try std.testing.expectEqual(@as(i128, 1_500 * 3_072), done[0].int);
+    try std.testing.expectEqual(@as(i128, 1_500), done[1].int);
+    try std.testing.expectEqualStrings("k500", done[2].string);
 }
 
 test "a region moves whole into a larger reservation, and every value it held reads the same there" {
