@@ -8,13 +8,15 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from jobq.clock import iso_utc
 
-type JobState = Literal["queued", "leased", "done", "dead"]
-STATES: tuple[JobState, ...] = ("queued", "leased", "done", "dead")
+type JobState = Literal["queued", "scheduled", "leased", "done", "dead"]
+STATES: tuple[JobState, ...] = ("queued", "scheduled", "leased", "done", "dead")
 
 MAX_PAYLOAD_BYTES = 60 * 1024
 MAX_REASON_BYTES = 4 * 1024
-MIN_ATTEMPTS, MAX_ATTEMPTS = 1, 100
+MIN_TRIES, MAX_TRIES = 1, 100
 MIN_LEASE_MS, MAX_LEASE_MS, DEFAULT_LEASE_MS = 100, 3_600_000, 30_000
+MAX_DELAY_MS = 86_400_000
+MAX_BACKOFF_MS = 3_600_000
 LIST_LIMIT = 100
 
 _QUEUE_NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -81,13 +83,15 @@ Token = Annotated[str, _validated_by(token_problem)]
 
 
 class CreateJob(BaseModel):
-    """The body of `POST /jobs`."""
+    """The body of `POST /jobs`; `delay_ms` and `backoff_ms` default to 0."""
 
     model_config = _STRICT
 
     queue: QueueName
     payload: Payload
-    max_attempts: int = Field(ge=MIN_ATTEMPTS, le=MAX_ATTEMPTS)
+    max_tries: int = Field(ge=MIN_TRIES, le=MAX_TRIES)
+    delay_ms: int = Field(default=0, ge=0, le=MAX_DELAY_MS)
+    backoff_ms: int = Field(default=0, ge=0, le=MAX_BACKOFF_MS)
 
 
 class LeaseRequest(BaseModel):
@@ -124,10 +128,12 @@ class Job(BaseModel):
     queue: QueueName
     state: JobState
     payload: Payload
-    attempts: int = Field(ge=0, le=MAX_ATTEMPTS)
-    max_attempts: int = Field(ge=MIN_ATTEMPTS, le=MAX_ATTEMPTS)
+    tries: int = Field(ge=0, le=MAX_TRIES)
+    max_tries: int = Field(ge=MIN_TRIES, le=MAX_TRIES)
+    backoff_ms: int = Field(ge=0, le=MAX_BACKOFF_MS)
     created_ms: int = Field(ge=0)
     updated_ms: int = Field(ge=0)
+    run_at_ms: int | None = None
     worker: Token | None = None
     lease_until_ms: int | None = None
     reason: Reason | None = None
@@ -138,7 +144,8 @@ class Job(BaseModel):
 
 
 class JobOut(BaseModel):
-    """The `{job}` JSON shape: `worker` and `lease_until` while leased, `reason` after a fail."""
+    """The `{job}` JSON shape: `run_at` while scheduled, `worker` and `lease_until` while
+    leased, `reason` after a fail."""
 
     model_config = _STRICT
 
@@ -146,10 +153,12 @@ class JobOut(BaseModel):
     queue: str
     state: JobState
     payload: str
-    attempts: int
-    max_attempts: int
+    tries: int
+    max_tries: int
+    backoff_ms: int
     created_at: str
     updated_at: str
+    run_at: str | None = None
     worker: str | None = None
     lease_until: str | None = None
     reason: str | None = None
@@ -161,10 +170,12 @@ class JobOut(BaseModel):
             queue=job.queue,
             state=job.state,
             payload=job.payload,
-            attempts=job.attempts,
-            max_attempts=job.max_attempts,
+            tries=job.tries,
+            max_tries=job.max_tries,
+            backoff_ms=job.backoff_ms,
             created_at=iso_utc(job.created_ms),
             updated_at=iso_utc(job.updated_ms),
+            run_at=None if job.run_at_ms is None else iso_utc(job.run_at_ms),
             worker=job.worker,
             lease_until=None if job.lease_until_ms is None else iso_utc(job.lease_until_ms),
             reason=job.reason,
@@ -184,6 +195,7 @@ class Health(BaseModel):
     model_config = _STRICT
 
     queued: int = Field(ge=0)
+    scheduled: int = Field(ge=0)
     leased: int = Field(ge=0)
     done: int = Field(ge=0)
     dead: int = Field(ge=0)
