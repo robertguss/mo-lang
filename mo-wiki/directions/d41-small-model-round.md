@@ -21,7 +21,7 @@ The measure (chapter 8) has five columns. Three do not move with the model: nati
 
 ## Robert's call (15 Sep, midday)
 
-After round 8, as round 9. Several models of different sizes, open-weights models among them, not one small Claude: the spread is the insight. Recorded in the decision log as locked.
+After round 8, as round 9. Several models of different sizes, open-weights models among them, not one small Claude: the spread is the insight. Recorded in the decision log as locked. Later the same day: every model runs in the Pi harness (small system prompt, close to the raw model); the models come from his Grok, Codex, and Ollama cloud subscriptions; nothing runs on this VM; smaller open-weights models may run on his MacBook Pro (96 GB). The Opus baseline is rerun in Pi too, so the harness is the same in every row.
 
 ## Shape
 

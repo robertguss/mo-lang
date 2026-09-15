@@ -17,7 +17,7 @@ Paste the block below into a fresh Claude Code session in this directory. The ro
 > 6. **A compile benchmark** at 5,000 generated modules with cross-module `use` lines, once, before the agent-loop claim is made at scale.
 > 7. **Program 7**, a real open-source service reimplemented in Mo against its own test suite: a Redis subset (streams, persistence, auth, pub/sub) with its operation set pre-registered from Redis's own socket-level tests, the comparison an Erlang or Elixir implementation if one exists and otherwise Go; only once a program finishes with no new line in `examples/GAPS.md` and no `TOOLCHAIN-BUGS.md` entry (the ledger added two and one). Then tier 3 proving (`mo prove`), the registry (deferred until an outsider runs a real service), the toolchain in Mo (late).
 >
-> **Rows for Robert.** Direction 41, his small-model round, locked as round 9 after round 8 with several models of different sizes, open-weights ones included: how the open-weights models are served (hosted API or local) is the open question to him. Whether the ledger keeps every entry in memory (program shape).
+> **Rows for Robert.** Direction 41, his small-model round, locked as round 9 after round 8 with several models of different sizes, open-weights ones included: every model in the Pi harness, from his Grok, Codex, and Ollama cloud subscriptions, small ones on his Mac; Fable proposes the model list on `plans/control-run-9.md` when round 8 is done. Whether the ledger keeps every entry in memory (program shape).
 >
 > **Rows waiting on nobody.** Robert answered every "for Robert" row on 15 Sep; the reading pack for an OTP reviewer and a capability-systems reviewer is written (`deep-dives/reading-pack-2026-09.md`) and Robert arranges the readers.
 >
