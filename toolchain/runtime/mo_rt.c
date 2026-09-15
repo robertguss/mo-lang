@@ -77,6 +77,7 @@ static void placed(uint32_t id, uint32_t k, bool quiet_event);
 static bool take_free_id(uint32_t k, uint32_t *id);
 static void reset_free_ids(void);
 static void nonblocking(int fd);
+static bool blocking_write(const char *path, const char *bytes, size_t len, bool append);
 
 _Noreturn static void out_of_memory(void) {
     fputs("mo: out of memory\n", stderr);
@@ -3762,21 +3763,9 @@ static MoValue server_files(int which, const MoValue *a) {
         char *target = target_scoped(scope, S(path));
         bool wrote = false;
         if (target) {
-            int fd = open(target, O_WRONLY | O_CREAT | (which == FS_WRITE ? O_TRUNC : 0), 0666);
-            if (fd >= 0) {
-                struct stat st;
-                off_t at = which == FS_APPEND && fstat(fd, &st) == 0 ? st.st_size : 0;
-                wrote = which == FS_WRITE || fstat(fd, &st) == 0;
-                size_t done = 0;
-                while (wrote && done < a[2].aux) {
-                    ssize_t w = pwrite(fd, a[2].as.s + done, a[2].aux - done, at + (off_t)done);
-                    if (w < 0 && errno == EINTR) continue;
-                    if (w <= 0) wrote = false;
-                    else done += (size_t)w;
-                }
-                if (wrote && fsync(fd) != 0) wrote = false;
-                close(fd);
-            }
+            /* The write and its sync run on the blocking pool (step 30): under processes the caller waits
+             * holding no scheduler, and the answer comes once the text is on disk. */
+            wrote = blocking_write(target, a[2].as.s, a[2].aux, which == FS_APPEND);
             free(target);
         }
         if (late(t0, within)) return timed_out();
@@ -7513,6 +7502,128 @@ static bool net_wait(int fd, short events, int64_t ms) {
 static void nonblocking(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
     fcntl(fd, F_SETFD, FD_CLOEXEC);
+}
+
+/* ---- blocking calls off the scheduler (blocking.zig, step 30 part B): a file write and its fsync run
+ * on a small pool of threads, and the caller waits on an eventfd its scheduler's poller watches, as a
+ * Net call waits on a socket (net_wait). The call answers only once the pool has synced. */
+
+#define BLOCKING_THREADS 4
+
+typedef struct BlockingJob {
+    const char *path;
+    const char *bytes;
+    size_t len;
+    bool append, ok;
+    _Atomic bool done;
+    int read_fd, write_fd;
+    struct BlockingJob *next;
+} BlockingJob;
+
+static pthread_mutex_t blocking_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t blocking_cond = PTHREAD_COND_INITIALIZER;
+static BlockingJob *blocking_head, *blocking_tail;
+static bool blocking_started;
+
+/* The write and its sync, on this thread. */
+static bool write_now(const char *path, const char *bytes, size_t len, bool append) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC | (append ? O_APPEND : O_TRUNC), 0666);
+    if (fd < 0) return false;
+    bool wrote = true;
+    size_t done = 0;
+    while (done < len) {
+        ssize_t w = write(fd, bytes + done, len - done);
+        if (w < 0 && errno == EINTR) continue;
+        if (w <= 0) {
+            wrote = false;
+            break;
+        }
+        done += (size_t)w;
+    }
+    if (wrote) {
+        int rc;
+        do rc = fsync(fd);
+        while (rc != 0 && errno == EINTR);
+        wrote = rc == 0;
+    }
+    close(fd);
+    return wrote;
+}
+
+static void *blocking_worker(void *arg) {
+    (void)arg;
+    for (;;) {
+        pthread_mutex_lock(&blocking_mutex);
+        while (!blocking_head) pthread_cond_wait(&blocking_cond, &blocking_mutex);
+        BlockingJob *job = blocking_head;
+        blocking_head = job->next;
+        if (!blocking_head) blocking_tail = NULL;
+        pthread_mutex_unlock(&blocking_mutex);
+        job->ok = write_now(job->path, job->bytes, job->len, job->append);
+        atomic_store(&job->done, true);
+        uint64_t one = 1;
+#ifdef __linux__
+        ssize_t w = write(job->write_fd, &one, 8);
+#else
+        ssize_t w = write(job->write_fd, &one, 1);
+#endif
+        (void)w;
+    }
+    return NULL;
+}
+
+static bool blocking_start(void) {
+    pthread_mutex_lock(&blocking_mutex);
+    bool ok = blocking_started;
+    if (!ok) {
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, (size_t)256 << 10);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        ok = true;
+        for (int k = 0; k < BLOCKING_THREADS; k++) {
+            pthread_t th;
+            if (pthread_create(&th, &attr, blocking_worker, NULL) != 0) ok = false;
+        }
+        pthread_attr_destroy(&attr);
+        blocking_started = ok;
+    }
+    pthread_mutex_unlock(&blocking_mutex);
+    return ok;
+}
+
+/* Writes and syncs `path`: under a program's processes on the pool while the caller waits holding no
+ * scheduler, else on this thread. True once it is on disk. */
+static bool blocking_write(const char *path, const char *bytes, size_t len, bool append) {
+    if (!turns_on) return write_now(path, bytes, len, append);
+    BlockingJob job = {path, bytes, len, append, false, false, -1, -1, NULL};
+#ifdef __linux__
+    job.read_fd = job.write_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (job.read_fd < 0) return write_now(path, bytes, len, append);
+#else
+    int fds[2];
+    if (pipe(fds) != 0) return write_now(path, bytes, len, append);
+    nonblocking(fds[0]);
+    nonblocking(fds[1]);
+    job.read_fd = fds[0];
+    job.write_fd = fds[1];
+#endif
+    if (!blocking_start()) {
+        close(job.read_fd);
+        if (job.write_fd != job.read_fd) close(job.write_fd);
+        return write_now(path, bytes, len, append);
+    }
+    pthread_mutex_lock(&blocking_mutex);
+    if (blocking_tail) blocking_tail->next = &job;
+    else blocking_head = &job;
+    blocking_tail = &job;
+    pthread_cond_signal(&blocking_cond);
+    pthread_mutex_unlock(&blocking_mutex);
+    /* An hour at a time: the write answers when it is done, and its deadline is checked after it. */
+    while (!atomic_load(&job.done)) net_wait(job.read_fd, POLLIN, 3600000);
+    close(job.read_fd);
+    if (job.write_fd != job.read_fd) close(job.write_fd);
+    return job.ok;
 }
 
 static uint32_t adopt(int fd) {

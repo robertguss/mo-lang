@@ -2,7 +2,8 @@
 //! std.Io. `args` and `env` come from the process; `Out.write` goes to the real streams,
 //! buffered, and flushed by `Out.flush` and at exit; the `Fs` rows read and write the real
 //! file system under the scope `scoped(...)` gave, each write on disk (fsync) before it
-//! answers; `clock.now` is the wall clock; `exit(code)` is recorded and applied when `main`
+//! answers, the write and its sync on a pool of threads while the caller waits holding no
+//! scheduler (blocking.zig, step 30); `clock.now` is the wall clock; `exit(code)` is recorded and applied when `main`
 //! returns. No database.
 //!
 //! main is the root supervisor: a process it starts, directly or through a supervisor,
@@ -17,6 +18,7 @@
 //! An Fs value is pointer-free: `Value.Cap.handle` is its index in `Server.scopes`.
 const std = @import("std");
 const sources = @import("sources.zig");
+const blocking = @import("blocking.zig");
 const Io = std.Io;
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
@@ -350,6 +352,8 @@ pub const Server = struct {
     /// `Missing(path)` for a path that leaves the scope, a folder that is not there, or
     /// anything that is not a file. The deadline is enforced after the fact, as `read`'s is:
     /// a write that took longer is `Timeout`, and is on disk all the same.
+    /// The write and its sync run on the blocking pool (blocking.zig, step 30): under processes the caller
+    /// waits holding no scheduler, and the answer comes once the text is on disk.
     pub fn writeFile(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, text: []const u8, within_ms: i64, append: bool) Error!Value {
         const scope = s.scopes.items[fs.handle];
         if (scope.read_only) return refuse(vm, row, path);
@@ -357,20 +361,13 @@ pub const Server = struct {
         // Paths are resolved in an arena of the call's own: a server appends on every change.
         var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
         defer scratch.deinit();
-        const wrote = try s.writeScoped(scratch.allocator(), scope, path, text, append);
+        const wrote = if (try s.targetScoped(scratch.allocator(), scope, path)) |target|
+            try blocking.write(vm, try scratch.allocator().dupeZ(u8, target), text, append)
+        else
+            false;
         if (s.late(t0, within_ms)) return timeout(vm);
         if (!wrote) return missing(vm, path);
         return vm.variant("Ok", &.{.none});
-    }
-
-    fn writeScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8, text: []const u8, append: bool) Error!bool {
-        const target = try s.targetScoped(gpa, scope, path) orelse return false;
-        var file = Io.Dir.cwd().createFile(s.io, target, .{ .truncate = !append }) catch return false;
-        defer file.close(s.io);
-        const at: u64 = if (append) file.length(s.io) catch return false else 0;
-        file.writePositionalAll(s.io, text, at) catch return false;
-        file.sync(s.io) catch return false;
-        return true;
     }
 
     /// `fs.remove(path)`: the file is gone; `Missing(path)` when no such file is in the scope.

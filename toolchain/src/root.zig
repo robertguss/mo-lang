@@ -28,6 +28,7 @@ pub const server = @import("server.zig");
 pub const net = @import("net.zig");
 pub const http = @import("http.zig");
 pub const turns = @import("turns.zig");
+pub const blocking = @import("blocking.zig");
 pub const events = @import("events.zig");
 pub const surface = @import("surface.zig");
 pub const fiber = @import("fiber.zig");
