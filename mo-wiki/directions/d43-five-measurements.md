@@ -17,7 +17,7 @@ Robert, 15 Sep 2026, evening: the project is for AI, not humans; Fable should pr
 
 ## 1. Bodies are cache (spec completeness)
 
-**Hypothesis.** If the spec altitude is real, bodies are regenerable. **Measure.** Take a finished program, delete every function body, keep signatures, contracts, `never` clauses, intents, and tests; fresh agents regenerate the bodies; run the hidden suite. The fraction of the program that comes back correct is the spec's completeness. **Prediction.** Above 0.8 for the ledger, lower for the agent program. **What it decides.** High: recipes and bricks work by construction and the supply chain is solved by regeneration. Low: the spec altitude is a slogan. **Cost.** One session per program; reuses round 7's programs.
+**Hypothesis.** If the spec altitude is real, bodies are regenerable. **Measure.** Take a finished program, delete every function body, keep signatures, contracts, `never` clauses, intents, and tests; fresh agents regenerate the bodies; run the hidden suite. The fraction of the program that comes back correct is the spec's completeness. **Prediction.** Above 0.8 for the ledger, lower for the agent program. **What it decides.** High: recipes and bricks work by construction and the supply chain is solved by regeneration. Low: the spec altitude is a slogan. **Cost.** Two sessions per program. Robert, 15 Sep 20:40: all six programs, both runs (decision log).
 
 ## 2. Sampling as verification
 
