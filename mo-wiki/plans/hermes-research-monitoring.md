@@ -29,7 +29,7 @@ For each material finding record the source and version, what was actually read,
 
 ## Persistence and review
 
-Use this wiki, not a competing knowledge base. Preserve raw evidence with the schema's URL, ingestion date and body hash; synthesize into existing research concept/comparison pages where appropriate. Add dated daily and weekly research notes under research/concepts with required frontmatter and related links. Maintain index and append-only log. Preserve contested evidence and existing history.
+Use this wiki, not a competing knowledge base. Preserve raw evidence with the schema's URL, ingestion date and body hash; synthesize into existing research concept/comparison pages where appropriate. Add dated daily and weekly research notes under research/concepts with required frontmatter and related links. Maintain the index. The shared `mo-wiki/log.md` is read-only for Hermes; record research activity and validation in the dated research notes instead. Preserve contested evidence and existing history.
 
 Work in an isolated research checkout on a dedicated research branch. Commit explicit research/wiki paths and publish a reviewable PR against main; never auto-merge. No implementation, language decisions, experiments, build-worker control, or changes to the implementation lead's handoff/roadmap are part of this lane.
 
