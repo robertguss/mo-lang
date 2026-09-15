@@ -1,4 +1,0 @@
-SET ada/n_1 {"id": "n_1", "title": "groceries", "body": "eggs\nmilk", "created_at": "2026-09-13T10:00:00Z", "updated_at": "2026-09-13T10:00:00Z"}
-SET ada/n_4 {"id": "n_4", "title": "to do: taxes", "body": "before april", "created_at": "2026-09-13T10:03:00Z", "updated_at": "2026-09-13T10:03:00Z"}
-SET grace/n_3 {"id": "n_3", "title": "compiler notes", "body": "ship the checker first", "created_at": "2026-09-13T10:02:00Z", "updated_at": "2026-09-13T10:02:00Z"}
-SET ids 101
