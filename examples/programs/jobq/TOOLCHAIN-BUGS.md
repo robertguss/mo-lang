@@ -1,23 +1,106 @@
-# Toolchain bugs found while writing jobq
+# jobq: toolchain bugs
 
-Recorded while writing program 1 (`mo-wiki/spec/programs/01-job-queue.md`, brief `mo-wiki/plans/program-1.md`), whose write scope was `examples/`. None is fixed here; each has a reproduction, what it cost jobq, and the workaround jobq uses. The `mo` is `toolchain/zig-out/bin/mo` (ReleaseSafe) built from `881c870`, on an Apple M-series machine.
+What writing `jobq` (program 1, round 7 of the control run) found in the toolchain. Nothing in `toolchain/` was changed; each bug has a reproduction and the workaround the program uses.
 
-## 1. `mo check --recipe` counts the recipe's tests against the implementation's 500-line law
+## 1. Changing a map's existing entry, or removing one, copies the whole map
 
-A module that `mo check` and `mo test` accept is refused by `mo check --recipe` with `MO0302` when the file and the recipe's tests together pass 500 lines, and the line the diagnostic points at is a line of the recipe, not of the file. The file law is about a file a reader reads in one sitting; the recipe's tests are not in it.
+`Map.set` on a key the map already holds, and `Map.remove`, take time in proportion to the map's size, even on a `var` nothing else holds, so a loop of them over a large map is quadratic. Inside a process's `update` they cost ten to twenty times more again. `Map.set` of a new key stays constant. Step 21 set out to make map `put` and `delete` run in place where the value is uniquely held; the new-key case does, the others do not.
 
-Reproduction: `examples/programs/jobq/store.mo` at 457 lines (the store recipe implemented, with two functions and two tests beyond `notes`'s copy), then:
+The reproduction, built with `mo build` and run on the exe.dev VM (4 cores), times 2,000 calls after the map was filled with `n` entries in an earlier update:
 
 ```
-$ mo check jobq/store.mo                                  # exit 0
-$ mo check --recipe Recipes.Store.Store jobq/store.mo
-jobq/store.mo with recipe Recipes.Store.Store:502:1: MO0302 this file is 515 lines long and the limit is 500; split it into modules.
-    assert fs.read_lines(log(whole), within: 1.minute) is Ok(lines)
-  ^
+struct Rec
+  name: String
+  payload: String
+  at: UInt64
+end
+
+struct Maps
+  a: Map(UInt64, Rec)
+  b: Map(UInt64, UInt64)
+end
+
+fn stepped(maps: Maps, kind: String, i: UInt64, n: UInt64) : Maps
+  var m = maps
+  case kind
+    "set_new": m.b = m.b.set(n + i, i)
+    "overwrite": m.a = m.a.set(i, Rec(name: "q", payload: "again", at: i))
+    "remove": m.b = m.b.remove(i)
+    _: m.b = m.b.set(n + i, i)
+  end
+  m
+end
+
+process Keeper(n: UInt64)
+  state
+    maps: Maps = Maps(a: Map.new(), b: Map.new())
+  end
+
+  message Grow : UInt64
+  message Step(kind: String, i: UInt64) : UInt64
+
+  fn update(state, message)
+    case message
+      Grow:
+        state.maps = grown(state.maps, n)
+        state.maps.a.size
+      Step(kind: kind, i: i):
+        state.maps = stepped(state.maps, kind, i, n)
+        state.maps.b.size
+    end
+  end
+end
 ```
 
-The line quoted is the recipe's test "a last line cut short is left out, and a compacted store takes changes again" (`examples/recipes/store.mo`), and the corpus test runs the same check for every file whose first line says `# recipe:`, so the whole suite goes red.
+(`grown` fills both maps with `n` entries in a `for`; `main` asks `Grow` once, then `Step` 2,000 times and prints the milliseconds.)
 
-What it cost jobq: one loop, and two of `notes`'s copied tests ("a store opened again from its log holds as many keys as before it stopped", "a store writing to another log keeps its keys and leaves the first log alone"), removed so the file is 431 lines and the file plus the recipe's tests fit; what they covered is covered by the recipe's own tests and by jobq's "many pairs go to the log in one append, and another log replays over the first". Workaround: keep a recipe implementation under 500 less the recipe's test lines (about 430 for `Recipes.Store`).
+| 2,000 calls | n = 10,000 | n = 80,000 |
+|---|---|---|
+| `set` of a new key, in an update | 2 ms | 3 ms |
+| `set` of an existing key, in an update | 682 ms | 22,715 ms |
+| `remove`, in an update | 703 ms | 21,739 ms |
+| `remove` of a tuple key, in an update | 951 ms | 25,111 ms |
+| `set` of a new key in an update that also builds a few lists (`[1, 2, 3].concat([4]).push(5)...`) | 106 ms | 3,889 ms |
+| `set` of an existing key, a `var` in `main` | 127 ms | 1,176 ms |
+| `remove`, a `var` in `main` | 257 ms | 2,674 ms |
 
-Fixed in step 22 (`mo-wiki/plans/interpreter-step-22.md`, part A): under `--recipe` the law counts the file's own lines as it is on disk, not the recipe's blocks appended to it. `jobq/store.mo` takes back "a store opened again from its log holds as many keys as before it stopped", the one test that records a `Reopened` for the recipe's never; the other stays out, since "many pairs go to the log in one append, and another log replays over the first" covers a store writing to another log.
+The last case of the update rows suggests a second shape of the same bug: a new-key `set` copies too once the update has grown enough other buffers in between (the runtime's `push_list` keeps growth records for the last 16 buffers only, `runtime/mo_rt.c`).
+
+Found by the load run: with 32 clients, jobq made jobs at 2,400 a second at first and 520 a second by 47,000 jobs, since every create, lease, ack, and fail set an existing entry of the map of every job (and, before that, of the store's map of every record). Workaround: every map that grows with the jobs is kept in pages of 256, a `Map` of small maps (`Jobq.Board`'s jobs, leases, and fresh positions; `Jobq.Store`'s records over 256 buckets, as notes did before step 21), so a change copies one page of at most 256 entries and sets one entry in a map of at most one page per 256 jobs.
+
+## 2. Resident memory grows with the requests served, far past what every process's region holds
+
+A long-running server's resident memory grows with the work it has done, several times faster than the bytes its processes' regions hold, and the runtime surface's `MemoryInfo` accounts for none of the difference. Found while measuring jobq's resident memory at 100,000 jobs, as the spec asks.
+
+Reproduction: `mo build --surface main.mo -o jobq-surface` in `examples/programs/jobq`, `MO_SURFACE=7952 jobq-surface serve <empty folder> --port 7951`, then 32 clients creating jobs over HTTP (a new connection per request; the load generator is Go's `net/http`), and `GET /memory` and `GET /processes` on port 7952 between phases:
+
+| after | resident (`/proc` VmRSS and `/memory` resident_bytes) | `/memory` region_bytes, all processes | the Queue's region | Worker processes alive |
+|---|---|---|---|---|
+| start | under 1 MiB | under 1 MiB | under 1 MiB | 0 |
+| 20,000 jobs | 82 MiB | 12 MiB | 12,479 KiB | 13 |
+| 40,000 jobs | 120 MiB | 12 MiB | 11,653 KiB | 18 |
+| 5 s more of lease-and-ack pairs, no new jobs (6,565 pairs, 13,130 requests) | 131 MiB | 24 MiB | 22,946 KiB | 0 |
+
+Every job lives in the Queue's region (its board: the jobs, each queue's order, the leases), so the program's own data is 12 to 23 MiB at 40,000 jobs, and resident memory is five to ten times that and still climbing: about 1.9 KiB per request made while creating jobs, and about 0.8 KiB per request with no new job at all. A worker process per exchange ends once it has answered (none are left after the pairs), so the growth is not live processes. The same shape without the surface, 100,000 jobs: 299 MiB resident as a binary.
+
+Not worked around: nothing in the program can reach memory outside its regions. jobq's own part was cut as far as it goes (bug 1's pages, and the store keeping no second copy of a job, 391 MiB to 299 MiB at 100,000 jobs), and the rest is reported as found.
+
+## 3. A `reduce` whose accumulator is a tuple copies what the tuple holds on every step
+
+`xs.reduce((value, list), fn(acc, x) (changed(acc.0, x), acc.1.push(x)) end)` copies `value` whole at every step, so a reduce over a batch of changes to a large table is quadratic, where the same reduce with `value` alone as its accumulator runs in place.
+
+Reproduction: a process whose state holds a struct with a `Map(UInt64, UInt64)` of 50,000 entries, updated 2,000 times, eight new keys an update, as a binary:
+
+| the update | 2,000 updates |
+|---|---|
+| `state.board = put(state.board, i)`, eight times through a function | 2 ms |
+| `[0, 1, 2, 3, 4, 5, 6, 7].reduce(board, fn(b, k) put(b, i * 8 + k) end)` | 19 ms |
+| `[0, 1, 2, 3, 4, 5, 6, 7].reduce((board, [0].take(0)), fn(acc, k) (put(acc.0, i * 8 + k), acc.1.push(k)) end).0` | 1,214 ms |
+
+(`put` is `var next = board; next.jobs = next.jobs.set(i, i); next`.) Handing the board through a struct field (`Holder(board: state.board)`, `Dec(board: put(board, i), n: i)`) stays at 2 ms.
+
+Found by the load run: `Jobq.Store.put_all` applied a batch of records with a `(Table, List(String))` accumulator, and jobq made about 690 jobs a second with every flush copying the table. Workaround: the lines to write are gathered by a reduce over small values only, and the table is changed by a second reduce whose accumulator is the table alone.
+
+## Not a bug: the fixture clock is frozen
+
+A test's `Clock.fixture()` does not move while a fixture call waits, so a lease never runs out on a running queue in a test. Grammar §8 says the fixture clock is frozen, so it is recorded in `GAPS.md` as a gap. The reproduction: `clock = Clock.fixture()`, `before = clock.now`, `Fs.fixture(delay: 200.ms).list(within: 1.minute)`, an `ask` of a process, then `clock.now - before` is `0.ms`, under `mo test` and `mo test --sim 5`.

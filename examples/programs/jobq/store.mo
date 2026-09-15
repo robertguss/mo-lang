@@ -1,8 +1,8 @@
 # recipe: Recipes.Store.Store
 module Jobq.Store
-expose StoreError, Read, Reopened, Table, Replay, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, writing_to, lines, whole_text, rewritten, placed, dropped, resized, stepped, finished
+expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled, rewritten, emptied, line_of
 
-intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, its own deadlines on each call (Jobq.Journal makes the same calls on a caller's), copied by hand from notes's Notes.Store, which took it from kv's Kv.Log: String keys to String values spread over 256 small maps, a log named jobq.log in a folder with a SET or DEL line per change, each appended and on disk before put or delete returns, replay that leaves out a last line cut short, and compaction to one line per live key written beside the log and renamed over it."
+intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store, its keys spread over 256 small maps so a change copies one small map: String keys to String values, a log named jobq.log in a folder with a SET or DEL line per change, each change appended and on disk before it returns, and put_all appending many changes in one write, so one fsync covers them; replay leaves out a last line cut short, and compaction writes one line per live key beside the log and renames it over the log."
 
 never "a value read is not the last one written"
   for r in Read.all
@@ -41,9 +41,10 @@ struct Reopened
   after: UInt64
 end
 
-# The keys and values, over 256 small maps so a change copies one small map; the log they are
-# written to, `name` in the folder `dir`, and its size in bytes; the lines open replayed, and
-# whether it left out a last line cut short.
+# The keys and values, over 256 small maps so a change copies one small map (changing an entry
+# a map already has copies the whole map, TOOLCHAIN-BUGS.md, bug 1), and how many; the log they
+# are written to, `name` in the folder `dir`, and its size in bytes; the lines open replayed or
+# compact wrote, and whether open left out a last line cut short.
 struct Table
   buckets: Map(UInt64, Map(String, String))
   size: UInt64
@@ -54,8 +55,9 @@ struct Table
   cut: Bool
 end
 
-# A log being replayed: the table so far, the line read but not applied until the next (a last
-# line only when the file ends with its newline), lines applied, bytes read, and the first bad line.
+# A log being replayed: the table so far, the line read but not yet applied (the last line is
+# applied only when the file ends with its newline), the lines applied, the bytes read, and the
+# number of the first line that is not a SET or a DEL, or 0.
 struct Replay
   table: Table
   pending: Option(String)
@@ -75,30 +77,44 @@ fn value?(text: String) : Bool
   text.byte_size <= 1_048_576 and !text.contains?("\n") and !text.contains?("\r")
 end
 
-# The store whose log is jobq.log in the folder dir, replayed; a folder with no log yet
-# holds an empty store.
+# The store whose log is jobq.log in the folder dir, replayed; a folder with no log yet holds an
+# empty store.
 fn open(fs: Fs, dir: String) : Result(Table, StoreError)
   folder = fs.scoped(dir)
   names = try names_in(folder)
-  empty = Table(buckets: Map.new(), size: 0, dir: dir, name: "jobq.log", bytes: 0, lines: 0,
-    cut: false)
+  empty = blank(dir)
   return Ok(empty) if !names.contains?("jobq.log")
-  bytes = try size_of(folder, "jobq.log")
+  size = try size_of(folder, "jobq.log")
   start = Replay(table: empty, pending: None, lines: 0, bytes: 0, bad: 0)
-  replayed = try replayed_from(folder, start, "jobq.log")
+  replayed = try replayed_from(folder, start)
   return Error(BadLine(number: replayed.bad)) if replayed.bad > 0
-  finished(replayed, bytes)
+  finished(replayed, size)
+end
+
+# An empty store over the log jobq.log in the folder dir.
+fn blank(dir: String) : Table
+  Table(buckets: Map.new(), size: 0, dir: dir, name: "jobq.log", bytes: 0, lines: 0, cut: false)
 end
 
 fn get(table: Table, key: String) : Option(String)
-  case table.buckets.get(bucket_of(key))
-    Some(bucket): bucket.get(key)
-    None: None
-  end
+  bucket = try table.buckets.get(bucket_of(key))
+  bucket.get(key)
 end
 
 fn count(table: Table) : UInt64
   table.size
+end
+
+# Every key and its value.
+fn pairs(table: Table) : List((String, String))
+  table.buckets.values.flat_map(fn(bucket) bucket.entries end)
+end
+
+# Which of the 256 maps holds a key.
+fn bucket_of(key: String) : UInt64
+  ensures result < 256
+
+  key.bytes.reduce(0, fn(hash, b) (hash * 31 + b.to_u64) % 256 end)
 end
 
 # The log's path, from the Fs the store was opened on.
@@ -115,14 +131,18 @@ fn lines(table: Table) : UInt64
   table.lines
 end
 
+# The log's size in bytes, as the store last knew it.
+fn bytes(table: Table) : UInt64
+  table.bytes
+end
+
 # The store with the key set to the value, once its SET line is on disk.
 fn put(fs: Fs, table: Table, key: String, value: String) : Result(Table, StoreError)
   requires key?(key)
   requires value?(value)
   ensures result is Ok(after) implies get(after, key) == Some(value)
 
-  bytes = try appended(fs, table, "SET #{key} #{value}\n")
-  Ok(resized(placed(table, key, value), bytes))
+  put_all(fs, table, [(key, Some(value))])
 end
 
 # The store without the key, once its DEL line is on disk; a key it does not hold writes
@@ -131,16 +151,111 @@ fn delete(fs: Fs, table: Table, key: String) : Result(Table, StoreError)
   ensures result is Ok(after) implies get(after, key) is None
 
   return Ok(table) if get(table, key) is None
-  bytes = try appended(fs, table, "DEL #{key}\n")
-  Ok(resized(dropped(table, key), bytes))
+  put_all(fs, table, [(key, None)])
+end
+
+# Many changes, a value to set or None to delete, appended in order in one write and applied
+# once that write is on disk; a change to a key the table does not hold that deletes it writes
+# nothing.
+fn put_all(fs: Fs, table: Table, changes: List((String, Option(String)))) : Result(Table,
+  StoreError)
+  requires changes.all?(fn(c) key?(c.0) and value?(c.1 or "") end)
+  ensures result is Ok(after) implies changes.all?(fn(c)
+    get(after, c.0) == last_of(changes, c.0)
+  end)
+
+  kept = kept_lines(table, changes)
+  return Ok(table) if kept.size == 0
+  size = try appended(fs, table, String.join(kept, ""))
+  lines_before = table.lines
+  var after = changes.reduce(table, fn(so_far, c) changed(so_far, c) end)
+  after.bytes = size
+  after.lines = lines_before + kept.size
+  Ok(after)
+end
+
+# The lines a batch appends: a delete of a key not held at that point of the batch, in the table
+# or set earlier in the batch, writes nothing. The table is only read here, and the batch's own
+# keys are kept apart from it, so no step copies the table.
+fn kept_lines(table: Table, changes: List((String, Option(String)))) : List(String)
+  changes.reduce((Map.new(), [""].take(0)), fn(acc, c) kept_with(table, acc, c) end).1
+end
+
+fn kept_with(table: Table, acc: (Map(String, Bool), List(String)),
+  change: (String, Option(String))) : (Map(String, Bool), List(String))
+  held = acc.0.get(change.0) or get(table, change.0) is Some(_)
+  return acc if change.1 is None and !held
+  (acc.0.set(change.0, change.1 is Some(_)), acc.1.push(line_of(change)))
+end
+
+fn last_of(changes: List((String, Option(String))), key: String) : Option(String)
+  case changes.filter(fn(c) c.0 == key end).last
+    Some(change): change.1
+    None: None
+  end
+end
+
+fn line_of(change: (String, Option(String))) : String
+  case change.1
+    Some(value): "SET #{change.0} #{value}\n"
+    None: "DEL #{change.0}\n"
+  end
+end
+
+fn changed(table: Table, change: (String, Option(String))) : Table
+  case change.1
+    Some(value): placed(table, change.0, value)
+    None: dropped(table, change.0)
+  end
+end
+
+# Changes appended as lines in one write, the table keeping no values: for a caller that holds
+# the values itself and needs only the log's name and size.
+fn journaled(fs: Fs, table: Table, lines: List(String)) : Result(Table, StoreError)
+  requires lines.all?(fn(line) line.ends_with?("\n") end)
+
+  return Ok(table) if lines.size == 0
+  size = try appended(fs, table, String.join(lines, ""))
+  var after = table
+  after.bytes = size
+  after.lines = table.lines + lines.size
+  Ok(after)
+end
+
+# The log written whole from the lines given, beside the log and renamed over it, so a rewrite
+# cut short leaves the old log as it was.
+fn rewritten(fs: Fs, table: Table, lines: List(String)) : Result(Table, StoreError)
+  requires lines.all?(fn(line) line.ends_with?("\n") end)
+
+  folder = fs.scoped(table.dir)
+  text = String.join(lines, "")
+  fresh = "#{table.name}.new"
+  if folder.write(fresh, text, within: 60_000.ms) is Error(_)
+    return Error(Unwritten)
+  end
+  if folder.rename(fresh, table.name, within: 10_000.ms) is Error(_)
+    return Error(Unwritten)
+  end
+  var after = table
+  after.bytes = text.byte_size
+  after.lines = lines.size
+  after.cut = false
+  Ok(after)
+end
+
+# The table without its values, still naming its log and its size.
+fn emptied(table: Table) : Table
+  var after = table
+  after.buckets = Map.new()
+  after.size = 0
+  after
 end
 
 # Every key that starts with the prefix, in byte order.
 fn keys(table: Table, prefix: String) : List(String)
   ensures result.all?(fn(key) key.starts_with?(prefix) end)
 
-  all = table.buckets.values.flat_map(fn(bucket) bucket.keys end)
-  all.filter(fn(key) key.starts_with?(prefix) end).sort
+  pairs(table).map(fn(p) p.0 end).filter(fn(key) key.starts_with?(prefix) end).sort
 end
 
 # The log rewritten as one SET line per live key, keys in byte order: written whole beside the
@@ -149,29 +264,19 @@ fn compact(fs: Fs, table: Table) : Result(Table, StoreError)
   ensures result is Ok(after) implies count(after) == count(table) and !cut_short?(after)
 
   folder = fs.scoped(table.dir)
-  text = whole_text(table)
+  text = String.join(keys(table, "").map(fn(key) set_line(table, key) end), "")
   fresh = "#{table.name}.new"
-  if folder.write(fresh, text, within: 20_000.ms) is Error(_)
+  if folder.write(fresh, text, within: 60_000.ms) is Error(_)
     return Error(Unwritten)
   end
-  if folder.rename(fresh, table.name, within: 5_000.ms) is Error(_)
+  if folder.rename(fresh, table.name, within: 10_000.ms) is Error(_)
     return Error(Unwritten)
   end
-  Ok(rewritten(table, text))
-end
-
-# Every live key as its SET line, keys in byte order: what a compaction writes.
-fn whole_text(table: Table) : String
-  String.join(keys(table, "").map(fn(key) set_line(table, key) end), "")
-end
-
-# The table once its log holds exactly the text a compaction wrote.
-fn rewritten(table: Table, text: String) : Table
   var after = table
   after.bytes = text.byte_size
-  after.lines = table.size
+  after.lines = count(table)
   after.cut = false
-  after
+  Ok(after)
 end
 
 # The same keys and values, their changes appended from now on to the empty log `name` in the
@@ -187,13 +292,13 @@ fn set_line(table: Table, key: String) : String
   "SET #{key} #{get(table, key) or ""}\n"
 end
 
-# Appends a line and gives the log's size after it. An append that fails is looked at again:
-# a log that holds the whole line took it, one as long as before did not, and anything else,
-# or a size that cannot be read, may end in part of the line.
-fn appended(fs: Fs, table: Table, line: String) : Result(UInt64, StoreError)
+# Appends the text and gives the log's size after it. An append that fails is looked at again:
+# a log that holds the whole text took it, one as long as before did not, and anything else,
+# or a size that cannot be read, may end in part of it.
+fn appended(fs: Fs, table: Table, text: String) : Result(UInt64, StoreError)
   folder = fs.scoped(table.dir)
-  after = table.bytes + line.byte_size
-  return Ok(after) if folder.append(table.name, line, within: 5_000.ms) is Ok(_)
+  after = table.bytes + text.byte_size
+  return Ok(after) if folder.append(table.name, text, within: 5_000.ms) is Ok(_)
   case folder.size(table.name, within: 5_000.ms)
     Ok(size):
       return Ok(after) if size == after
@@ -207,29 +312,12 @@ fn appended(fs: Fs, table: Table, line: String) : Result(UInt64, StoreError)
   end
 end
 
-fn resized(table: Table, bytes: UInt64) : Table
-  var after = table
-  after.bytes = bytes
-  after
-end
-
-# Which of the 256 maps holds a key.
-fn bucket_of(key: String) : UInt64
-  ensures result < 256
-
-  key.bytes.reduce(0, fn(hash, b) mixed(hash, b) end)
-end
-
-fn mixed(hash: UInt64, b: UInt8) : UInt64
-  (hash * 31 + b.to_u64) % 256
-end
-
 fn placed(table: Table, key: String, value: String) : Table
   at = bucket_of(key)
   bucket = table.buckets.get(at) or Map.new()
   added = if bucket.has?(key): 0 else: 1
   var after = table
-  after.buckets = table.buckets.set(at, bucket.set(key, value))
+  after.buckets = after.buckets.set(at, bucket.set(key, value))
   after.size = table.size + added
   after
 end
@@ -239,7 +327,7 @@ fn dropped(table: Table, key: String) : Table
   bucket = table.buckets.get(at) or Map.new()
   return table if !bucket.has?(key)
   var after = table
-  after.buckets = table.buckets.set(at, bucket.remove(key))
+  after.buckets = after.buckets.set(at, bucket.remove(key))
   after.size = table.size - 1
   after
 end
@@ -254,9 +342,9 @@ fn applied(table: Table, line: String) : Option(Table)
   end
   return None if !line.starts_with?("SET ")
   rest = line.slice(4, line.size)
-  at = rest.index_of(" ") or 0
+  at = rest.index_of(" ") or rest.size
   key = rest.slice(0, at)
-  return None if !key?(key)
+  return None if !key?(key) or at == rest.size
   Some(placed(table, key, rest.slice(at + 1, rest.size)))
 end
 
@@ -284,11 +372,11 @@ end
 
 # The replay once the file is read: its last line applied when the file ends with its newline,
 # and left out, cut short, when it does not.
-fn finished(replay: Replay, bytes: UInt64) : Result(Table, StoreError)
+fn finished(replay: Replay, size: UInt64) : Result(Table, StoreError)
   var table = replay.table
-  table.bytes = bytes
+  table.bytes = size
   table.lines = replay.lines
-  whole = replay.bytes <= bytes
+  whole = replay.bytes <= size
   if replay.pending is Some(last)
     if !whole
       table.cut = true
@@ -305,8 +393,8 @@ fn finished(replay: Replay, bytes: UInt64) : Result(Table, StoreError)
   Ok(table)
 end
 
-fn replayed_from(folder: Fs, start: Replay, name: String) : Result(Replay, StoreError)
-  case folder.fold_lines(name, start, within: 600_000.ms,
+fn replayed_from(folder: Fs, start: Replay) : Result(Replay, StoreError)
+  case folder.fold_lines("jobq.log", start, within: 600_000.ms,
     fn(replay, line) stepped(replay, line) end)
     Ok(replay): Ok(replay)
     Error(Missing(_)): Error(Unreadable)
@@ -326,7 +414,7 @@ end
 
 fn size_of(folder: Fs, name: String) : Result(UInt64, StoreError)
   case folder.size(name, within: 10_000.ms)
-    Ok(bytes): Ok(bytes)
+    Ok(size): Ok(size)
     Error(Missing(_)): Error(Unreadable)
     Error(Timeout): Error(Slow)
     Error(NotText): Error(Unreadable)
@@ -349,6 +437,49 @@ test rejects "a value with a newline in it"
   assert put(fs, empty, "a", "one\ntwo") is Error(_)
 end
 
+test rejects "many changes, one of them to a key with a space in it"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  assert put_all(fs, empty, [("a", Some("1")), ("b c", Some("2"))]) is Error(_)
+end
+
+test "many changes are one append, applied in order, and read back once the store opens again"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  changes = [("j_1", Some("one")), ("j_2", Some("two")), ("j_1", None), ("j_3", None)]
+  assert put_all(fs, empty, changes) is Ok(after)
+  assert get(after, "j_1") is None and get(after, "j_2") == Some("two") and count(after) == 1
+  assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET j_1 one\nSET j_2 two\nDEL j_1\n")
+  assert lines(after) == 3 and bytes(after) == 32
+  assert put_all(fs, after, []) == Ok(after)
+  assert open(fs, "d") is Ok(again)
+  assert pairs(again) == pairs(after) and lines(again) == 3
+end
+
+test "lines journaled are one append, and a log rewritten whole replaces what it held"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  assert journaled(fs, emptied(empty), ["SET a 1\n", "SET b 2\n", "DEL a\n"]) is Ok(noted)
+  assert count(noted) == 0 and lines(noted) == 3 and bytes(noted) == 22
+  assert open(fs, "d") is Ok(replayed)
+  assert get(replayed, "b") == Some("2") and count(replayed) == 1
+  assert rewritten(fs, noted, ["SET c 3\n"]) is Ok(whole)
+  assert bytes(whole) == 8 and lines(whole) == 1
+  assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET c 3\n")
+  assert journaled(fs, whole, []) == Ok(whole)
+end
+
+test rejects "a journaled line with no newline"
+  journaled(Fs.fixture(), blank("d"), ["SET a 1"])
+end
+
+test rejects "a rewrite with a line with no newline"
+  rewritten(Fs.fixture(), blank("d"), ["SET a 1"])
+end
+
 test "replay applies SET and DEL in order, and stops open at a line that is neither"
   fs = Fs.fixture()
   log_text = "SET a 1\nSET b two words\nDEL a\nSET c \nSET b 3\n"
@@ -364,6 +495,8 @@ test "replay applies SET and DEL in order, and stops open at a line that is neit
   assert fs.write("d/jobq.log", "SET a 1\nSET b", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(cut)
   assert cut_short?(cut) and count(cut) == 1
+  assert fs.write("d/jobq.log", "SET a 1\nSET nospace\n", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Error(BadLine(2))
 end
 
 test "a store opened again from its log holds as many keys as before it stopped"
@@ -387,8 +520,19 @@ test "a change the log cannot take leaves the table as it was"
   assert put(fs, empty, "a", "1") is Ok(one)
   assert put(Fs.fixture(delay: 1.minute), one, "b", "2") is Error(Torn)
   assert get(one, "b") is None
+  assert put_all(Fs.fixture(delay: 1.minute), one, [("b", Some("2"))]) is Error(Torn)
+end
+
+test "a store writing to another log keeps its keys and leaves the first log alone"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  assert put(fs, empty, "a", "1") is Ok(one)
   moved = writing_to(one, "jobq.check.log")
-  assert put(Fs.fixture(delay: 1.minute), moved, "b", "2") is Error(Torn)
+  assert put(fs, moved, "b", "2") is Ok(two)
+  assert get(two, "a") == Some("1")
+  assert fs.read("d/jobq.check.log", within: 1.minute) == Ok("SET b 2\n")
+  assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET a 1\n")
 end
 
 property "any valid key and value read back as written, and again once the store is opened again"
@@ -404,5 +548,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+verified: types, contracts, tests (12), property (200 seeds), sim (not run)
           proven: not run

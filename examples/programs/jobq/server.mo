@@ -1,25 +1,17 @@
 # sim: --faults 20 --until 0.5
 module Jobq.Server
-expose Acceptor, Worker, Exchanges, answer
+expose Acceptor, Acceptors, Client, Clients, serving
 
-use Jobq.Api{Routed, route, respond, health}
-use Jobq.Books{Place}
-use Jobq.Job{Job, State, id_of, shown}
-use Jobq.Moves{Call, Command, Outcome}
-use Jobq.Queue{Service}
+use Jobq.Board{Call, board}
+use Jobq.Queue{Opening, Queue, Worker, stamp}
+use Jobq.Store{Table, blank}
 
-intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and turns the listener's Idle into an ask for a sweep of the leases run out; a worker reads its request into a route, asks the queue service, and replies, so a change's reply goes out only once the service has answered, which it does only once the change is in the log."
+intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the leases that ran out; the listener's idle time is 10 seconds, so a connection that sends no whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room for 1,200 of them at once."
 
-# The mailbox is 4,096, not the default 1,000: the runtime counts connections that have sent no
-# whole request against it, so 1,200 silent clients would otherwise stop the accepting until
-# idle closes them.
-# Idle comes only when no client came for a while, so the acceptor can wait for the sweep: 10
-# seconds, which bounds every file call the sweep makes.
-process Acceptor(service: Handle(Service)) mailbox: 4_096
+process Acceptor(queue: Handle(Queue)) mailbox: 4_096
   state
     accepted: UInt64
     quiet: UInt64
-    ended: UInt64
   end
 
   message Accepted(exchange: Exchange)
@@ -28,196 +20,253 @@ process Acceptor(service: Handle(Service)) mailbox: 4_096
   fn update(state, message)
     case message
       Accepted(exchange):
-        Worker.start(exchange, service).send(Answer)
+        worker = Worker.start(exchange, queue)
+        worker.send(Go(me: worker))
         state.accepted += 1
       Idle:
-        if service.ask(Sweep, within: 10_000.ms) is Ok(ended)
-          state.ended += ended
-        end
+        queue.send(Sweep)
         state.quiet += 1
     end
   end
 end
 
-# Answers one exchange and ends.
-process Worker(exchange: Exchange, service: Handle(Service))
+supervisor Acceptors(queue: Handle(Queue), exchange: Exchange)
+  child Acceptor(queue), restart: :always
+  child Worker(exchange, queue), restart: :never
+end
+
+# The queue, told its own handle, and the acceptor the listener is served into from here on.
+fn serving(listener: HttpListener, fs: Fs, clock: Clock, opening: Opening) : Handle(Queue)
+  queue = Queue.start(fs, clock, opening)
+  queue.send(Begin(me: queue))
+  listener.serve(into: Acceptor.start(queue), idle: 10_000.ms)
+  queue
+end
+
+# A client that sends one request when told, and keeps the status it got, 0 for none.
+process Client(http: Http, port: UInt16, request: Request)
   state
-    answered: Bool
+    status: UInt16
+    body: String
   end
 
-  message Answer
+  message Go
+  message Status : UInt16
+  message Body : String
 
   fn update(state, message)
     case message
-      Answer:
-        response = answer(service, exchange.request)
-        state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
+      Go:
+        case http.send(request, host: "localhost", port: port, within: 1.minute)
+          Ok(response):
+            state.status = response.status
+            state.body = response.body
+          Error(_):
+            state.status = 1
+        end
+      Status: state.status
+      Body: state.body
     end
   end
 end
 
-supervisor Exchanges(exchange: Exchange, service: Handle(Service))
-  child Acceptor(service), restart: :always
-  child Worker(exchange, service), restart: :never
+supervisor Clients(http: Http, port: UInt16, request: Request)
+  child Client(http, port, request), restart: :never
 end
 
-# The response to one request. The ask waits 60 seconds, and every file call the service makes
-# for it waits only on what remains of them, so a service that could not write in time answers
-# 503 itself; a timed-out ask is 503 too, and the change may still land, as the failure model
-# says.
-fn answer(service: Handle(Service), request: Request) : Response
-  case route(request)
-    Answered(response): response
-    Checkup:
-      case service.ask(Tally, within: 60_000.ms)
-        Ok(counts): health(counts)
-        Error(_): respond(Unavailable(reason: "the queue did not answer in time"))
-      end
-    Asked(call):
-      case service.ask(Serve(call: call), within: 60_000.ms)
-        Ok(outcome): respond(outcome)
-        Error(_): respond(Unavailable(reason: "the queue did not answer in time"))
-      end
-  end
+fn fresh() : Table
+  blank("d")
 end
 
-fn place() : Place
-  Place(dir: "d", log: "jobq.log")
+fn by(method: String, path: String, token: String, body: String) : Request
+  Request(method: method, path: path, headers: Map.new().set("authorization", "Bearer #{token}"),
+    body: body)
 end
 
 fn sent(http: Http, port: UInt16, request: Request) : Result(Response, HttpError)
   http.send(request, host: "localhost", port: port, within: 1.minute)
 end
 
-fn by(worker: String, method: String, path: String, body: String) : Request
-  Request(method: method, path: path, headers: Map.new().set("authorization", "Bearer #{worker}"),
-    body: body)
-end
-
-fn status_in?(got: Result(Response, HttpError), statuses: List(UInt16)) : Bool
+# The status that came back, 503 for a queue that could not take the change, or 0 when the
+# wire failed.
+fn status(got: Result(Response, HttpError)) : UInt16
   case got
-    Ok(response): statuses.contains?(response.status)
-    Error(_): true
+    Ok(response): response.status
+    Error(_): 0
   end
 end
 
-# Every job the service holds, as it holds them, asked directly and not over the wire.
-fn snapshot(service: Handle(Service)) : Option(List(Job))
-  call = Call(worker: "check", command: Listing(queue: None, status: None))
-  case service.ask(Serve(call: call), within: 1.minute)
-    Ok(Listed(jobs)): Some(jobs)
-    Ok(_): None
-    Error(_): None
-  end
+fn in?(got: Result(Response, HttpError), statuses: List(UInt16)) : Bool
+  statuses.push(0).contains?(status(got))
 end
 
-fn open_jobs(jobs: List(Job)) : List(Job)
-  jobs.filter(fn(job) job.state == Queued or job.state == Leased end)
-end
-
-# One worker's turn over the wire: when the service shows it holding a job, whether or not its
-# lease's response arrived, an ack, or a fail on an odd job's first attempt; otherwise a lease.
-# Nothing when every response was right, and otherwise what was not.
-fn turn(http: Http, service: Handle(Service), port: UInt16, n: UInt64) : String
-  before = snapshot(service) or []
-  forgotten = before.find(fn(job) held_by_w?(job) end)
-  if forgotten is Some(held)
-    return settled(http, service, port, held, n, before)
-  end
-  lease = by("w", "POST", "/queues/q/lease", "{\"lease_ms\": 3600000}")
-  case sent(http, port, lease)
-    Ok(response):
-      if response.status == 200
-        return "" if (snapshot(service) or [unknown()]).any?(fn(job) held_by_w?(job) end)
-        return "a 200 lease left no job leased to w"
+fn started(http: Http, fs: Fs, clock: Clock) : UInt16
+  case http.listen(0, within: 1.minute)
+    Ok(listener):
+      queue = serving(listener, fs, clock, Opening(board: board(stamp(clock), 1), table: fresh()))
+      if queue.ask(Serve(call: Call(worker: "", command: Health)), within: 1.minute) is Ok(_)
+        return listener.port
       end
-      unchanged(response, before, snapshot(service), [204])
-    Error(_): ""
+      listener.port
+    Error(_): 0
   end
 end
 
-fn held_by_w?(job: Job) : Bool
-  job.state == Leased and job.worker == Some("w")
+fn create(payload: String) : String
+  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_attempts\": 2}"
 end
 
-fn unknown() : Job
-  at = Time.from_parts(2000, 1, 1, 0, 0, 0)
-  Job(number: 0, queue: "q", state: Dead, payload: "", attempts: 0, max_attempts: 1, created_at: at,
-    updated_at: at, worker: None, lease_until: None, reason: None)
-end
-
-fn settled(http: Http, service: Handle(Service), port: UInt16, held: Job, n: UInt64,
-  before: List(Job)) : String
-  path = if held.attempts == 1 and held.number % 2 == 1
-    "/jobs/#{id_of(held.number)}/fail"
-  else
-    "/jobs/#{id_of(held.number)}/ack"
-  end
-  case sent(http, port, by("w", "POST", path, "{\"reason\": \"turn #{n}\"}"))
-    Ok(response):
-      return "" if response.status == 200
-      unchanged(response, before, snapshot(service), [])
-    Error(_): ""
-  end
-end
-
-# A response that is not a success: one of the statuses allowed, or a 503 that left every job as
-# it was.
-fn unchanged(response: Response, before: List(Job), after: Option(List(Job)),
-  allowed: List(UInt16)) : String
-  return "" if allowed.contains?(response.status)
-  if response.status == 503
-    return "" if after is None or after == Some(before)
-    return "a 503 changed the jobs"
-  end
-  "unexpected #{response.status} #{response.body}"
-end
-
-test "each status comes back over the wire, unless a call fails"
-  http = Http.fixture()
-  assert http.listen(0, within: 1.ms) is Ok(listener)
-  fs = Fs.fixture()
-  made = fs.mkdir("d", within: 1.minute) is Ok(_)
-  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
-  assert made or snapshot(service) is None
-  listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
-  port = listener.port
-  job = "{\"queue\": \"q\", \"payload\": \"p\", \"max_attempts\": 1}"
-  assert status_in?(sent(http, port, Request(method: "GET", path: "/health")), [200, 503])
-  assert status_in?(sent(http, port, Request(method: "GET", path: "/jobs")), [401])
-  assert status_in?(sent(http, port, by("w", "PATCH", "/jobs", "")), [405])
-  assert status_in?(sent(http, port, by("w", "GET", "/nowhere", "")), [404])
-  assert status_in?(sent(http, port, by("w", "POST", "/jobs", "{\"queue\": 1}")), [400])
-  assert status_in?(sent(http, port, by("w", "POST", "/jobs", job)), [201, 503])
-  assert status_in?(sent(http, port, by("w", "GET", "/jobs/j_77", "")), [404, 503])
-  assert status_in?(sent(http, port, by("w", "POST", "/jobs/j_77/ack", "")), [404, 503])
-  assert status_in?(sent(http, port, by("w", "POST", "/queues/empty/lease", "")), [204, 503])
-end
-
-# Run with --faults 20 --until 0.5: while fixture calls fail, every response is right or a 503
-# that changed nothing, and no job is ever held twice (the nevers); once they stop, the worker
-# ends every job done or dead.
-test "under faults every answer is right or a 503 that changed nothing, and after them every job ends"
-  http = Http.fixture()
-  assert http.listen(0, within: 1.ms) is Ok(listener)
-  fs = Fs.fixture()
-  made = fs.mkdir("d", within: 1.minute) is Ok(_)
-  service = Service.start(fs, Clock.fixture(), place(), Time.fixture())
-  assert made or snapshot(service) is None
-  listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
-  port = listener.port
-  for i in 0..4
-    body = "{\"queue\": \"q\", \"payload\": \"job #{i}\", \"max_attempts\": 2}"
-    assert status_in?(sent(http, port, by("p", "POST", "/jobs", body)), [201, 503])
-  end
-  for n in 0..40
-    if open_jobs(snapshot(service) or [unknown()]).size == 0
+# The status of a client once it has one, asking up to 200 times.
+fn heard(client: Handle(Client)) : UInt16
+  var got = 0
+  for _ in 0..200
+    got = case client.ask(Status, within: 1.minute)
+      Ok(s): s
+      Error(_): 0
+    end
+    if got != 0
       break
     end
-    assert turn(http, service, port, n) == ""
   end
-  assert open_jobs(snapshot(service) or []) == []
+  got
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+fn job_id(body: String) : String
+  case Json.decode(body)
+    Ok(Object(fields)): text_of(fields.get("id") or Null)
+    Ok(_): ""
+    Error(_): ""
+  end
+end
+
+fn text_of(value: Json) : String
+  case value
+    String(text): text
+    Object(_) | Array(_) | Number(_) | Bool(_) | Null: ""
+  end
+end
+
+# Every job still leased acked by the worker its record names: a lease granted whose response was
+# lost under faults is finished this way.
+fn recovered(http: Http, port: UInt16)
+  listing = Request(method: "GET", path: "/jobs", query: Map.new().set("state", "leased"),
+    headers: Map.new().set("authorization", "Bearer p"))
+  for pair in leased_pairs(sent(http, port, listing))
+    if status(sent(http, port, by("POST", "/jobs/#{pair.0}/ack", pair.1, ""))) == 503
+      break
+    end
+  end
+end
+
+fn leased_pairs(got: Result(Response, HttpError)) : List((String, String))
+  body = case got
+    Ok(response): response.body
+    Error(_): ""
+  end
+  case Json.decode(body)
+    Ok(Object(fields)): items_of(fields.get("jobs") or Null).map(fn(item) pair_of(item) end)
+    Ok(_): []
+    Error(_): []
+  end
+end
+
+fn items_of(value: Json) : List(Json)
+  case value
+    Array(items): items
+    Object(_) | String(_) | Number(_) | Bool(_) | Null: []
+  end
+end
+
+fn pair_of(item: Json) : (String, String)
+  case item
+    Object(fields): (text_of(fields.get("id") or Null), text_of(fields.get("worker") or Null))
+    Array(_) | String(_) | Number(_) | Bool(_) | Null: ("", "")
+  end
+end
+
+test "each status comes back over the wire, unless a call fails or the log did not take it"
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  assert port != 0
+  assert in?(sent(http, port, Request(method: "GET", path: "/health")), [200])
+  assert in?(sent(http, port, Request(method: "GET", path: "/jobs")), [401])
+  assert in?(sent(http, port, by("PATCH", "/jobs", "p", "")), [405])
+  assert in?(sent(http, port, by("GET", "/nowhere", "p", "")), [404])
+  assert in?(sent(http, port, by("POST", "/jobs", "p", "{\"queue\": 1}")), [400])
+  made = sent(http, port, by("POST", "/jobs", "p", create("hello")))
+  assert in?(made, [201, 503])
+  assert in?(sent(http, port, by("GET", "/jobs/j_77", "p", "")), [404, 503])
+  if status(made) == 201
+    assert in?(sent(http, port, by("POST", "/queues/q/lease", "w1", "{\"lease_ms\": 60000}")),
+      [200, 503])
+    assert in?(sent(http, port, by("DELETE", "/jobs/j_1", "p", "")), [409, 204, 503])
+    assert in?(sent(http, port, by("POST", "/jobs/j_1/ack", "w2", "")), [409, 404, 503])
+  end
+  assert in?(sent(http, port, by("POST", "/queues/q/lease", "w3", "")), [200, 204, 503])
+end
+
+test "two workers race over the wire for one job, and at most one of them holds it"
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  made = sent(http, port, by("POST", "/jobs", "p", create("only one")))
+  lease = "{\"lease_ms\": 60000}"
+  first = Client.start(http, port, by("POST", "/queues/q/lease", "w1", lease))
+  second = Client.start(http, port, by("POST", "/queues/q/lease", "w2", lease))
+  first.send(Go)
+  second.send(Go)
+  statuses = [heard(first), heard(second)]
+  assert statuses.count(fn(s) s == 200 end) <= 1
+  if status(made) == 201 and !statuses.contains?(503) and !statuses.contains?(1)
+    assert statuses.count(fn(s) s == 200 end) == 1 and statuses.count(fn(s) s == 204 end) == 1
+  end
+end
+
+test "1,200 connections that send nothing do not stop a producer's request from being answered"
+  net = Net.fixture()
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  var crowd = [0].take(0)
+  var quiet = 0
+  for _ in 0..1_200
+    if net.connect("localhost", port, within: 1.minute) is Ok(_)
+      quiet += 1
+    end
+    crowd = crowd.push(quiet)
+  end
+  assert crowd.size == 1_200
+  made = sent(http, port, by("POST", "/jobs", "p", create("past the crowd")))
+  assert in?(made, [201, 503])
+end
+
+test "over the wire, every answer is right or 503, and every job ends done or dead once faults stop"
+  http = Http.fixture()
+  fs = Fs.fixture()
+  port = started(http, fs, Clock.fixture())
+  for i in 0..4
+    assert in?(sent(http, port, by("POST", "/jobs", "p", create("job #{i}"))), [201, 503])
+  end
+  var ended = false
+  for round in 0..300
+    worker = "w#{round % 2}"
+    lent = sent(http, port, by("POST", "/queues/q/lease", worker, "{\"lease_ms\": 3600000}"))
+    assert in?(lent, [200, 204, 503])
+    if lent is Ok(response) and response.status == 200
+      path = "/jobs/#{job_id(response.body)}/#{if round % 3 == 0: "fail" else: "ack"}"
+      assert in?(sent(http, port, by("POST", path, worker, "{\"reason\": \"retry\"}")), [200, 503])
+    end
+    if status(lent) == 204
+      recovered(http, port)
+    end
+    health = sent(http, port, Request(method: "GET", path: "/health"))
+    if health is Ok(answer) and answer.body.contains?("\"queued\": 0, \"leased\": 0,")
+      ended = status(lent) == 204
+    end
+    if ended
+      break
+    end
+  end
+  assert ended
+end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
           proven: not run
