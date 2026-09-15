@@ -1504,7 +1504,7 @@
         { "id": "42a4d1ccd542", "name": "fn kind_named", "hash": "f0b1604fe9232a8c" },
         { "id": "985b99a5a248", "name": "fn shown_account", "hash": "ec6281d9f43bd80e" },
         { "id": "127424fca5c5", "name": "fn shown_entry", "hash": "5d5b1947378e0bff" },
-        { "id": "77e1aeddbff6", "name": "fn concern", "hash": "1d5be85d26049268" },
+        { "id": "77e1aeddbff6", "name": "fn concern", "hash": "85bea6fb988cbcd1" },
         { "id": "2beb71bba449", "name": "fn tail", "hash": "d15992e3120a2ad3" },
         { "id": "28c0240735c6", "name": "fn optional", "hash": "1d115e7212dc2d52" },
         { "id": "4fafca236823", "name": "fn account_of", "hash": "00b61d1273999bcf" },
@@ -1523,7 +1523,7 @@
         { "id": "2834055c4551", "name": "test \"an account and every kind of entry read back from their JSON\"", "hash": "c424d09e3ff7cff9" },
         { "id": "1e19f8279832", "name": "test \"text that is not an account or an entry does not read back as one\"", "hash": "b7dfc7fb9b5f2011" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "f95a748ad545792f", "uses": [{ "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }] }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "fc14fff01df831b8", "uses": [{ "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }] }
     },
     {
       "path": "ledger/money.mo",

@@ -126,7 +126,8 @@ fn concern(entry: Entry) : String
   case entry.kind
     Transfer: ", \"amount\": #{entry.amount}"
     Settlement: ""
-    Hold | Capture | Release | Refund: ", \"account\": #{Json.encode(entry.account)}, \"amount\": #{entry.amount}"
+    Hold | Capture | Release | Refund:
+      ", \"account\": #{Json.encode(entry.account)}, \"amount\": #{entry.amount}"
   end
 end
 
@@ -271,7 +272,8 @@ test "an account and every kind of entry read back from their JSON"
   at = Time.fixture()
   ada = Account(number: 1, name: "ada", currency: "USD", overdraft: 500, created_at: at)
   assert account_of(shown_account(ada, -20, -70)) == Some(ada)
-  assert shown_account(ada, -20, -70) == "{\"id\": \"a_1\", \"name\": \"ada\", \"currency\": \"USD\", \"overdraft\": 500, \"balance\": -20, \"available\": -70, \"created_at\": \"2026-01-01T00:00:00Z\"}"
+  assert shown_account(ada, -20,
+    -70) == "{\"id\": \"a_1\", \"name\": \"ada\", \"currency\": \"USD\", \"overdraft\": 500, \"balance\": -20, \"available\": -70, \"created_at\": \"2026-01-01T00:00:00Z\"}"
   made = transfer_of(at)
   assert entry_of(shown_entry(made)) == Some(made)
   var capture = blank(8, Capture, "c", at + 1.minute)
@@ -298,7 +300,8 @@ test "text that is not an account or an entry does not read back as one"
   assert entry_of(made.replace("\"amount\": 1500,", "\"amount\": -1,")) is None
   ada = Account(number: 1, name: "ada", currency: "USD", overdraft: 0, created_at: at)
   assert account_of(shown_account(ada, 0, 0).replace("USD", "usd")) is None
-  assert account_of(shown_account(ada, 0, 0).replace("\"overdraft\": 0", "\"overdraft\": -1")) is None
+  assert account_of(shown_account(ada, 0, 0).replace("\"overdraft\": 0",
+    "\"overdraft\": -1")) is None
 end
 
 verified: types, contracts, tests (5), property (0 seeds), sim (not run)
