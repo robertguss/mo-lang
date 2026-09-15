@@ -63,6 +63,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - The forest: Fable's reading of the three days for Robert (the claim not yet earned, the runtime the bottleneck, first writing the only thing measured) and Robert's go-ahead on Fable's order; the roadmap rewritten from here: step 29, step 30, round 8 as a maintenance round, the bricks page, the language items, program 7.
 - [[interpreter-step-29]] (15 Sep, morning): the runtime honest: `restart: :never` kept in both runtimes with its report, `exit` past a pending delayed send, replay compacting in generations (1M native 716 → 81 s, the peak now the book's own 2.5 GB), simulated time only when a test waits, `invariants (kept n, tripped m)` on the `verified:` line; Fable's probes green under both runtimes; ten rows, one open (an overflow in a `test rejects` fails rather than rejects). Fable's 1M probe on a real HTTP-written log passed 8 GB after the fold: [[interpreter-step-29b]] briefed and started.
 - [[interpreter-step-29b]] (15 Sep, midday): where the replay's memory went (a 1 GiB region filled in one update, then malloc forever), address space reserved, the walk through waiting frames; the real 1M log 2.3 GB where it was killed past 9; five rows. Robert's small-model round as [[d41-small-model-round|direction 41]].
+- Robert, midday: direction 41 locked (round 9 after round 8, several models, the Pi harness, his subscriptions); pause after round 8 to plan round 9 together; this session closed with the handoff rewritten whole.
 
 ## Numbers at the end of the session
 
