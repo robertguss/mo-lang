@@ -1126,6 +1126,38 @@
       "verified": { "hash": "d5eca57fd58baa94", "declarations": "f8aa6f59255e353d", "uses": [{ "module": "Jobq.Api", "hash": "05795cecf3bd8bd1" }, { "module": "Jobq.Board", "hash": "b267741d154cd2e8" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }, { "module": "Jobq.Store", "hash": "1eea1cdba171c855" }] }
     },
     {
+      "path": "jobq/sampler.mo",
+      "module": "Jobq.Sampler",
+      "declarations": [
+        { "id": "daadccfa45d5", "name": "module Jobq.Sampler", "hash": "54395dfa8175c10f" },
+        { "id": "c82307f41b96", "name": "expose", "hash": "4e64c0efdfe3f830" },
+        { "id": "fd532e79cda2", "name": "use Jobq.Board", "hash": "a5bcebfeb2b2eaf0" },
+        { "id": "87c21e40ff57", "name": "use Jobq.Job", "hash": "62782ae3f81f8965" },
+        { "id": "727d442e7f90", "name": "intent", "hash": "af8437e27b90525b" },
+        { "id": "9fd125c30182", "name": "struct Step", "hash": "cc7d231c2ded8d36" },
+        { "id": "041bad98b9d4", "name": "enum Problem", "hash": "5ea80c1349689e95" },
+        { "id": "6012f13f3625", "name": "fn start", "hash": "71609a7074dc01ed" },
+        { "id": "f9b67f27b848", "name": "fn step_of", "hash": "2b73dcecbebedd3d" },
+        { "id": "c387c5612415", "name": "fn command_of", "hash": "857e3bce551d7d38" },
+        { "id": "f3494bdcf753", "name": "fn creating", "hash": "95db7e82e09c71bb" },
+        { "id": "2454a4a0712c", "name": "fn listing", "hash": "b500a9311d3d9643" },
+        { "id": "2f3de774228c", "name": "fn leasing", "hash": "2dc2c69f5d10c481" },
+        { "id": "997362791c38", "name": "fn failing", "hash": "27b9872964a2494e" },
+        { "id": "c27ea3660bc1", "name": "fn skipped?", "hash": "2659c9d70e93abf7" },
+        { "id": "c4030bae5350", "name": "fn printed", "hash": "1fccfebf52d29e65" },
+        { "id": "757a230303b0", "name": "fn said", "hash": "648e530cbd436317" },
+        { "id": "ac89dc74d4d1", "name": "fn written", "hash": "6159cd713053f179" },
+        { "id": "df0a713aff19", "name": "fn played", "hash": "be4b193ceac34ba3" },
+        { "id": "f9aaf4190335", "name": "fn stepped", "hash": "a01ebef11dd741f4" },
+        { "id": "e1a955cb89b2", "name": "fn script_of", "hash": "3a3e3e89c300d720" },
+        { "id": "8d7f816373b7", "name": "fn main", "hash": "0aaed6283985d58a" },
+        { "id": "c43c648d8b22", "name": "test \"a line parses into its call, and a line that does not, or breaks a job's rules, is none\"", "hash": "048a100b746c5c83" },
+        { "id": "e67431511a4d", "name": "test \"a decision prints its outcome, then each write, in order\"", "hash": "202d77fa3f1d088f" },
+        { "id": "f0ac6789965e", "name": "test \"a script plays through one board, counting the lines it skips\"", "hash": "4f52c8a2e61739a4" }
+      ],
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "005f00b2bc13659b", "uses": [{ "module": "Jobq.Board", "hash": "b267741d154cd2e8" }, { "module": "Jobq.Job", "hash": "2e150e7eb4d2f102" }] }
+    },
+    {
       "path": "jobq/server.mo",
       "module": "Jobq.Server",
       "declarations": [
