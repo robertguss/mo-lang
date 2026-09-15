@@ -1680,6 +1680,43 @@
       "verified": { "hash": "de657c2be21ef419", "declarations": "7ff21b2586de666d" }
     },
     {
+      "path": "ledger/settle.mo",
+      "module": "Ledger.Settle",
+      "declarations": [
+        { "id": "2b1ec01abe38", "name": "module Ledger.Settle", "hash": "72d16853fe481772" },
+        { "id": "f369ea92a9f9", "name": "expose", "hash": "84afa130bd60015d" },
+        { "id": "c177491a0ec5", "name": "use Ledger.Book", "hash": "cfbd773c076c6888" },
+        { "id": "1e0b81646cd9", "name": "use Ledger.Entry", "hash": "3ca9043f77e540bd" },
+        { "id": "f9dd01987eca", "name": "use Ledger.Index", "hash": "e01fd3587cfc1189" },
+        { "id": "848f0564b676", "name": "use Ledger.Money", "hash": "46a5188bc57b9220" },
+        { "id": "b9a38c369f4d", "name": "intent", "hash": "89ab3865f4e84329" },
+        { "id": "c43c93f473f5", "name": "never \"a card number reaches a statement\"", "hash": "821362cb357a88d0" },
+        { "id": "daebfffcf912", "name": "struct Item", "hash": "90da9cf414904e51" },
+        { "id": "31c83fba49fc", "name": "struct Line", "hash": "38dc11621bde0698" },
+        { "id": "3ad6f401e668", "name": "struct Statement", "hash": "351fae40f384776b" },
+        { "id": "bd12dcc7b3df", "name": "struct Settled", "hash": "9d4b13d17f9c1f54" },
+        { "id": "7c7cfb6c0734", "name": "fn day_of", "hash": "9a8672147d3640a8" },
+        { "id": "b92933fc04c7", "name": "fn settled", "hash": "35da4fc600b15cfe" },
+        { "id": "32cd9b4e41c5", "name": "fn added_up?", "hash": "994bd61be20c1718" },
+        { "id": "ed742fc31d09", "name": "fn statement", "hash": "1e76b0c1b6dbad12" },
+        { "id": "533ded902bf9", "name": "fn account_key", "hash": "3bf6e2966f32f90d" },
+        { "id": "2057a11480a6", "name": "fn sums", "hash": "7c945ee258427eaf" },
+        { "id": "bd77e5cf6661", "name": "fn line_of", "hash": "dc57e105302ca045" },
+        { "id": "b24b0023f96a", "name": "fn concerns?", "hash": "e3c79b740a1f9b50" },
+        { "id": "674dbd3b3500", "name": "fn shown_statement", "hash": "d468404ebc8a0156" },
+        { "id": "7840b0d20d2e", "name": "fn shown_line", "hash": "123e3fe11aa9d0e1" },
+        { "id": "34af7b80b902", "name": "fn at", "hash": "c94c8f7074ef3f80" },
+        { "id": "42039407ee5d", "name": "fn after", "hash": "cf900a6a23ef45d9" },
+        { "id": "10e18090c4e8", "name": "fn busy", "hash": "d746368ab9f0fdcf" },
+        { "id": "4883580d4f00", "name": "fn line_for", "hash": "791ab819c15f85c8" },
+        { "id": "e353a99db5b9", "name": "test \"a day's statement opens with the balances before it, lists its entries per account, and closes with their sum\"", "hash": "de6078d3a145f634" },
+        { "id": "5e84b328a2ad", "name": "test \"a day is settled once, never before it has begun, and its statement is the same when asked again\"", "hash": "dfb02b640f576b2a" },
+        { "id": "35deff39d764", "name": "test \"a statement is shown as JSON, per account, entries in order\"", "hash": "4f825fbb673c2969" },
+        { "id": "643be55b88d7", "name": "test rejects \"a settlement of a day that does not exist\"", "hash": "56ad06a2c88d894a" }
+      ],
+      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "653ef1821f7ca6c7", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }] }
+    },
+    {
       "path": "lines-per-file.mo",
       "module": "Programs.LinesPerFile",
       "declarations": [
