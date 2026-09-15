@@ -1,6 +1,6 @@
-//! The poller (step 21): under `mo run` with processes, main's thread waits here for every
-//! socket a Net call or a runtime loop waits on, with a timeout at the earliest deadline
-//! (turns.zig, idle). kqueue on macOS and the BSDs, epoll on Linux. A waiter is armed once and
+//! The poller (step 21): under `mo run` with processes, each scheduler's thread waits in one of
+//! its own for every socket a Net call of its processes waits on, scheduler 0's for the runtime
+//! loops' too, with a timeout at the earliest deadline (turns.zig, idle; step 30). kqueue on macOS and the BSDs, epoll on Linux. A waiter is armed once and
 //! reported once; whoever still waits arms it again.
 const std = @import("std");
 const builtin = @import("builtin");

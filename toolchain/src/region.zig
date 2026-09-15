@@ -1,16 +1,44 @@
 //! A region: one reservation of address space, allocated by bumping `top`. `mo run` gives
 //! the vm two (vm.zig): values live in one, and a compaction carries what it keeps
 //! through the other. Under processes each process's vm has a values region of its own,
-//! and every vm shares the one scratch region (turns.zig). A mark is an address, so "allocated since the mark" is a
+//! and the vms of one scheduler share its scratch region (turns.zig). A mark is an address, so "allocated since the mark" is a
 //! comparison, and setting `top` back to a mark frees everything past it at once. Pages
 //! are committed as they are touched, and nothing is freed one allocation at a time.
 const std = @import("std");
 
-/// Counts `MO_STATS=1` prints (main.zig, step 21): every allocation a region gave, and its bytes.
-pub var allocations: u64 = 0;
-pub var allocated_bytes: u64 = 0;
-/// The bytes allocated past a full region, from its fallback (step 29b): memory no compaction frees.
-pub var spilled_bytes: u64 = 0;
+/// Counts `MO_STATS=1` prints (main.zig, step 21): every allocation a region gave and its bytes; the
+/// bytes allocated past a full region, from its fallback (step 29b), memory no compaction frees; the
+/// messages, replies, and start arguments packed to cross between vms, the bytes each copy took, and
+/// the bytes their parcels reserved (vm.zig); and the processes a sweep ended and the time it took
+/// (turns.zig). Each thread counts its own (step 30), so a scheduler's counts are its thread's.
+pub const Stats = struct {
+    allocations: u64 = 0,
+    allocated_bytes: u64 = 0,
+    spilled_bytes: u64 = 0,
+    packed_values: u64 = 0,
+    packed_bytes: u64 = 0,
+    packed_capacity: u64 = 0,
+    freed: u64 = 0,
+    freed_ns: u64 = 0,
+
+    pub fn add(a: *Stats, b: Stats) void {
+        inline for (std.meta.fields(Stats)) |f| @field(a, f.name) += @field(b, f.name);
+    }
+};
+
+/// This thread's counts.
+pub threadlocal var stats: Stats = .{};
+/// The counts of the scheduler threads that have stopped (turns.zig).
+pub var joined: Stats = .{};
+/// The counts of the thread `mo run` runs main on, which a signal reads from another (main.zig).
+pub var main_stats: ?*const Stats = null;
+
+/// Every thread's counts: the stopped schedulers' and this thread's.
+pub fn total() Stats {
+    var t = joined;
+    t.add(stats);
+    return t;
+}
 
 pub const Region = struct {
     base: usize,
@@ -102,12 +130,12 @@ pub const Region = struct {
         const start = alignment.forward(r.top);
         if (start + len > r.end) {
             const past = r.fallback orelse return null;
-            spilled_bytes += len;
+            stats.spilled_bytes += len;
             return past.rawAlloc(len, alignment, ret_addr);
         }
         r.top = start + len;
-        allocations += 1;
-        allocated_bytes += len;
+        stats.allocations += 1;
+        stats.allocated_bytes += len;
         return @ptrFromInt(start);
     }
 
@@ -161,9 +189,9 @@ test "a full region fails, or allocates from its fallback and counts what it spi
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     r.fallback = arena.allocator();
-    const before = spilled_bytes;
+    const before = stats.spilled_bytes;
     const past = try a.alloc(u8, 64);
     @memset(past, 7);
     try std.testing.expect(!r.contains(@intFromPtr(past.ptr)));
-    try std.testing.expectEqual(before + 64, spilled_bytes);
+    try std.testing.expectEqual(before + 64, stats.spilled_bytes);
 }

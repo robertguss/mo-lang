@@ -185,6 +185,8 @@ fn add(sim: *Sim, source: Source) Error!*Source {
     s.index = sim.sources.list.items.len;
     try sim.sources.list.append(sim.gpa, s);
     if (sim.server != null) try markDirty(&sim.sources, s);
+    // Scheduler 0 pumps the loops: one added on another wakes it (turns.zig, step 30).
+    if (sim.turns) |t| t.stir(t.scheds[0]);
     return s;
 }
 
@@ -466,7 +468,7 @@ fn leavePaused(ss: *Sources, s: *Source) void {
 fn retire(sim: *Sim, t: *Turns, s: *Source) void {
     const ss = &sim.sources;
     s.done = true;
-    if (t.poller) |*p| p.disarm(&s.waiter);
+    if (t.madeSourcePoller()) |p| p.disarm(&s.waiter);
     if (s.in_paused) leavePaused(ss, s);
     if (s.timer != null) timerRemove(ss, s);
     const last = ss.list.pop().?;
@@ -477,7 +479,7 @@ fn retire(sim: *Sim, t: *Turns, s: *Source) void {
 }
 
 fn watch(t: *Turns, s: *Source, fd: std.posix.fd_t) void {
-    const p = t.pollerOf() catch return;
+    const p = t.sourcePoller() catch return;
     if (s.waiter.armed and s.waiter.fd == fd) return;
     p.disarm(&s.waiter);
     s.waiter = .{ .fd = fd, .filter = .read, .source = s };
@@ -641,7 +643,7 @@ pub fn stopServer(sim: *Sim, t: *Turns) void {
     if (sim.server == null) return;
     const s_ = &sim.sources;
     for (s_.list.items) |s| {
-        if (t.poller) |*p| p.disarm(&s.waiter);
+        if (t.madeSourcePoller()) |p| p.disarm(&s.waiter);
         s.done = true;
         if (!s.dirty) std.heap.smp_allocator.destroy(s);
     }

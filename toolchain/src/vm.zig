@@ -38,13 +38,9 @@ const sources = @import("sources.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const region_stats = @import("region.zig");
-/// Counts `MO_STATS=1` prints (main.zig, step 21): messages, replies, and start arguments packed,
-/// the bytes each copy took, and the bytes their parcels reserved.
-pub var packed_values: u64 = 0;
-pub var packed_bytes: u64 = 0;
-pub var packed_capacity: u64 = 0;
 const server_mod = @import("server.zig");
 const sim_mod = @import("sim.zig");
+const turns_mod = @import("turns.zig");
 const stdlib = @import("stdlib.zig");
 const types = @import("types.zig");
 
@@ -305,6 +301,17 @@ pub const Vm = struct {
         entries: []const Value = &.{},
         index: []const u32 = &.{},
     };
+
+    /// With more than one scheduler (turns.zig, step 30) the runtime's tables are behind one lock: an
+    /// instruction or a row that reads or changes them holds it while it does, and gives it back with
+    /// `unlock`. Null when there is none to take.
+    pub fn lockRuntime(vm: *Vm) ?*turns_mod.Turns {
+        const s = vm.sim orelse return null;
+        const t = s.turns orelse return null;
+        if (!t.multi) return null;
+        t.lock();
+        return t;
+    }
 
     fn simulator(vm: *Vm) Error!*sim_mod.Sim {
         if (vm.sim) |s| return s;
@@ -575,10 +582,14 @@ pub const Vm = struct {
                     return vm.crash(inst.a, f, locals, &.{});
                 },
                 .spawn => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
                     const args_now = try vm.take(inst.b);
                     try vm.push(.{ .handle = try (try vm.simulator()).start(inst.a, args_now) });
                 },
                 .start_supervisor => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
                     const args_now = try vm.take(inst.b);
                     const children = try (try vm.simulator()).startSupervisor(inst.a, args_now);
                     const handles: Value = switch (children.len) {
@@ -593,12 +604,16 @@ pub const Vm = struct {
                     try vm.push(handles);
                 },
                 .send => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
                     const message = vm.pop();
                     const to = vm.pop().handle;
                     try (try vm.simulator()).send(to, message);
                     try vm.push(.none);
                 },
                 .send_later => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
                     const delay = vm.pop().duration;
                     const message = vm.pop();
                     const to = vm.pop().handle;
@@ -606,6 +621,8 @@ pub const Vm = struct {
                     try vm.push(.none);
                 },
                 .ask => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
                     const within = vm.pop().duration;
                     const message = vm.pop();
                     const to = vm.pop().handle;
@@ -614,12 +631,20 @@ pub const Vm = struct {
                         try vm.push(try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}));
                     } else try vm.push(try (try vm.simulator()).ask(to, message, within));
                 },
-                .reply_by => try vm.push(.{ .time = (try vm.simulator()).replyBy() }),
+                .reply_by => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
+                    try vm.push(.{ .time = (try vm.simulator()).replyBy() });
+                },
                 .deadline_left => {
                     const left = vm.pop().time - (try vm.simulator()).deadlineNow();
                     try vm.push(.{ .duration = if (left > 0) left else -1 });
                 },
-                .settle => if (vm.sim) |s| try s.settle(),
+                .settle => if (vm.sim) |s| {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
+                    try s.settle();
+                },
                 .observe => if (vm.sim) |s| if (s.records) try s.observe(vm.stack.items[vm.stack.items.len - 1], inst.a),
                 .all => try vm.push(.{ .list = if (vm.sim) |s| s.all(inst.a) else &.{} }),
                 .trip => {
@@ -680,8 +705,8 @@ pub const Vm = struct {
             const end = start + n * @sizeOf(Value);
             if (end <= r.end) {
                 r.top = end;
-                region_stats.allocations += 1;
-                region_stats.allocated_bytes += end - start;
+                region_stats.stats.allocations += 1;
+                region_stats.stats.allocated_bytes += end - start;
                 return @as([*]Value, @ptrFromInt(start))[0..n];
             }
         }
@@ -1076,9 +1101,9 @@ pub const Vm = struct {
         errdefer p.free();
         vm.forward.clearRetainingCapacity();
         p.value = try vm.copyOut(v, .{ .lo = 0, .hi = std.math.maxInt(usize), .dest = p.arena.allocator() });
-        packed_values += 1;
-        packed_bytes += copiedBytes(p.value);
-        packed_capacity += p.arena.queryCapacity();
+        region_stats.stats.packed_values += 1;
+        region_stats.stats.packed_bytes += copiedBytes(p.value);
+        region_stats.stats.packed_capacity += p.arena.queryCapacity();
         return p;
     }
 
@@ -1374,13 +1399,34 @@ pub const Vm = struct {
         break :blk table;
     };
 
+    /// The rows that reach the runtime's tables and hold its lock (turns.zig, step 30): the clock frozen
+    /// per update, files, events, the platform, output, sockets, and the surface. Every other row reads
+    /// only its arguments and its own vm.
+    const runtime_rows = blk: {
+        var table: [prelude.fns.len]bool = undefined;
+        for (0..prelude.fns.len) |i| {
+            table[i] = switch (prim_of[i]) {
+                .clock_now, .fs_read, .fs_narrow, .events_emit, .platform_part, .platform_exit, .env_get, .out_write, .net_row, .http_row, .runtime_row => true,
+                .stdlib => std.mem.startsWith(u8, @tagName(stdlib.row_of[i]), "fs_") or std.mem.startsWith(u8, @tagName(stdlib.row_of[i]), "out_"),
+                else => false,
+            };
+        }
+        break :blk table;
+    };
+
     /// A row that waits, timed for the events (events.zig, step 23): what it took counts toward the
     /// running update's waits, and a Timeout is an event.
     fn primTimed(vm: *Vm, row_index: u32, kind_raw: u32) Error!void {
         const sim = vm.sim orelse return vm.prim(row_index, kind_raw);
         if (!prelude.fns[row_index].can_wait) return vm.prim(row_index, kind_raw);
-        const since = sim.beginWait(row_labels[row_index]);
+        const since = blk: {
+            const g = vm.lockRuntime();
+            defer if (g) |t| t.unlock();
+            break :blk sim.beginWait(row_labels[row_index]);
+        };
         try vm.prim(row_index, kind_raw);
+        const g = vm.lockRuntime();
+        defer if (g) |t| t.unlock();
         sim.waitedIn(row_labels[row_index], since, vm.stack.items[vm.stack.items.len - 1], std.math.maxInt(u32));
     }
 
@@ -1392,6 +1438,8 @@ pub const Vm = struct {
         if (row.can_wait and a[a.len - 1] == .duration and a[a.len - 1].duration < 0) {
             return vm.push(try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}));
         }
+        const g = if (runtime_rows[row_index]) vm.lockRuntime() else null;
+        defer if (g) |t| t.unlock();
         const result: Value = switch (prim_of[row_index]) {
             .list_size => .{ .int = @intCast(a[0].list.len) },
             .list_push => .{ .list = try vm.pushList(a[0].list, a[1]) },
@@ -1817,7 +1865,11 @@ pub const Vm = struct {
                 .exchange => "an Exchange",
                 .runtime => if (vm.server == null) "Runtime.fixture()" else if (c.handle == surface_mod.read_only_handle) "a read-only Runtime" else "a Runtime",
             }),
-            .handle => |h| if (vm.sim) |s| try w.print("{s} #{d}", .{ s.nameOf(h), h }) else try w.print("a handle #{d}", .{h}),
+            .handle => |h| if (vm.sim) |s| {
+                const g = vm.lockRuntime();
+                defer if (g) |t| t.unlock();
+                try w.print("{s} #{d}", .{ s.nameOf(h), h });
+            } else try w.print("a handle #{d}", .{h}),
         }
     }
 

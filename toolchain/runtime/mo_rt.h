@@ -231,7 +231,7 @@ static inline MoValue mo_field(MoValue v, uint32_t k) { return v.as.xs[k]; }
 
 /* `high`: past `top`, how far the region's pages may still be resident (step 28). */
 typedef struct { uintptr_t base, end, top, high; } MoRegion;
-extern MoRegion mo_heap;
+extern _Thread_local MoRegion mo_heap;
 /* Compaction runs: under a program's main, not in a test, whose memory goes whole. */
 extern bool mo_compacts;
 #ifdef MO_STRESS
@@ -261,7 +261,7 @@ void mo_compact(size_t from, MoValue *roots, size_t n);
 /* The locals of a frame whose function can hold a process's handle, innermost first: what a
  * sweep reads under main to end the processes nothing can reach (mo_rt.c, processes). */
 typedef struct MoHandleFrame { struct MoHandleFrame *next; MoValue *const *slots; uint32_t n; } MoHandleFrame;
-extern MoHandleFrame *mo_handle_frames;
+extern _Thread_local MoHandleFrame *mo_handle_frames;
 /* A frame a compaction may reach through while it waits in a call (step 29b): the depth it runs at,
  * whether it waits in a call made as a whole statement now, when nothing but its roots is live, whether
  * it reads what its closure captured (through a pointer a walk from further out would leave behind, so
@@ -279,11 +279,11 @@ typedef struct MoFrame {
     size_t *const *marks;
     uint32_t nmarks;
 } MoFrame;
-extern MoFrame *mo_frames;
+extern _Thread_local MoFrame *mo_frames;
 /* How many walks have run: a frame reads its roots back only when a walk ran while it waited. */
-extern uint64_t mo_walks;
+extern _Thread_local uint64_t mo_walks;
 /* The range the last compaction left, all of it reached when it ran. */
-extern uintptr_t mo_clean_from, mo_clean_to;
+extern _Thread_local uintptr_t mo_clean_from, mo_clean_to;
 /* A walk is due once what the frames it reaches made has grown past twice what is known to be live there,
  * and the budget: a loop's rule. Known to be live is what the last walk through them kept, or the range the
  * last compaction left when it lies inside, as a callee's return leaves its result: so a frame a row calls

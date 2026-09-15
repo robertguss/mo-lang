@@ -52,6 +52,16 @@ pub fn testProgram(gpa: std.mem.Allocator, prog: program.Program, all: bool, opt
     return runner.run(gpa, lowered, own);
 }
 
+/// Checks and lowers a program as `mo test` does, keeping only the tests of the file it was loaded
+/// from (step 30: the seeded traces runner.zig's test compares).
+pub fn loweredOwn(gpa: std.mem.Allocator, prog: program.Program, diags: *diag.List) Error!*bytecode.Program {
+    const checked = (try front(gpa, prog, .run, diags)).?;
+    const lowered = try gpa.create(bytecode.Program);
+    lowered.* = try bytecode.lower(gpa, checked);
+    try ownTests(gpa, lowered, prog);
+    return lowered;
+}
+
 /// Keeps the tests of the file the program was loaded from: it comes last, so its tests
 /// are the ones past its base.
 fn ownTests(gpa: std.mem.Allocator, lowered: *bytecode.Program, prog: program.Program) Error!void {

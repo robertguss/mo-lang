@@ -19,7 +19,7 @@ The language is not the thesis; it is the surface of the thesis. The language ma
 
 ## What is measured
 
-Nothing here is final until measured (direction 28). The control run (chapter 8) predicts, in this order: how many defects a hidden adversarial suite finds in the finished program; how fast the program runs and how much memory it holds, native, against Go and Python; how fast the loop is from an edit to a verdict; and how many third-party packages and tools the program needs. How long an agent takes to write Mo is recorded, not predicted: no model has seen Mo in training, and that cost is expected and not the point (Robert, 14 Sep 2026).
+Nothing here is final until measured (direction 28). The claim under test is a conjunction: reliability at zero dependencies. The baselines run with the strongest checks their ecosystems offer, bought with packages and tools; Mo must match them on defects while needing none of it, and a baseline that is as reliable at zero run-time dependencies refutes the reliability claim, not the dependency one (Robert, 15 Sep 2026; decision log). The control run (chapter 8) predicts, in this order: how many defects a hidden adversarial suite finds in the finished program; how fast the program runs and how much memory it holds, native, against Go and Python; how fast the loop is from an edit to a verdict; and how many third-party packages and tools the program needs. How long an agent takes to write Mo is recorded, not predicted: no model has seen Mo in training, and that cost is expected and not the point (Robert, 14 Sep 2026).
 
 ## The null hypothesis
 

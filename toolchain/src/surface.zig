@@ -3,7 +3,9 @@
 //! `Runtime.fixture()` holds under `mo test`. A read is a snapshot taken between updates: every
 //! update runs on one thread (turns.zig), so no other update is inside its transaction while a row
 //! runs, and a process whose update is waiting on a stack is read once that update ends, within the
-//! row's deadline. `send`, `pause`, and `resume` act, each an event (events.zig), and a Runtime
+//! row's deadline. With more than one scheduler (step 30) a row holds the runtime's lock, which an
+//! update takes to begin and to commit, so the snapshot is still between two updates of each
+//! process. `send`, `pause`, and `resume` act, each an event (events.zig), and a Runtime
 //! narrowed by `read_only` refuses them with `ReadOnly`. runtime/mo_rt.c runs the same rows for a
 //! built program.
 const std = @import("std");
@@ -170,6 +172,7 @@ fn info(vm: *Vm, sim: *Sim, id: u32) Error!Value {
         uint(p.restarted),
         uint(regionBytes(sim, id)),
         .{ .bool = p.paused },
+        uint(if (sim.turns) |t| t.homeOf(id) else 0),
     });
 }
 
@@ -277,7 +280,9 @@ fn memory(vm: *Vm, sim: *Sim) Error!Value {
     // The pages the regions keep resident, the scratch region's included (step 28).
     var resident_regions: u64 = if (sim.main_region) |r| r.resident(scratch) else 0;
     if (sim.turns) |t| {
-        if (t.scratch) |sc| resident_regions += sc.resident(scratch);
+        for (t.scheds) |sd| if (sd.scratch) |sc| {
+            resident_regions += sc.resident(scratch);
+        };
         for (t.workers.items) |maybe| {
             const w = maybe orelse continue;
             if (w.ended) continue;
@@ -301,7 +306,7 @@ fn memory(vm: *Vm, sim: *Sim) Error!Value {
         uint(resident()),
         uint(regions),
         uint(resident_regions),
-        uint(vm_mod.packed_bytes),
+        uint(@import("region.zig").total().packed_bytes),
         uint(sim.ring.bytes()),
         .{ .list = largest },
     });
@@ -343,7 +348,7 @@ fn eventValue(vm: *Vm, sim: *const Sim, e: events.Event) Error!Value {
     const name = str(e.process_name);
     return switch (e.kind) {
         .updated => vm.variant("Updated", &.{ at, id, name, str(e.name), uint(e.took_us), uint(e.waited_us), str(e.call) }),
-        .started => vm.variant("Started", &.{ at, id, name }),
+        .started => vm.variant("Started", &.{ at, id, name, uint(e.scheduler) }),
         .ended => vm.variant("Ended", &.{ at, id, name }),
         .restarted => vm.variant("Restarted", &.{ at, id, name, uint(e.count) }),
         .crashed => vm.variant("Crashed", &.{ at, id, name, uint(e.seed), str(e.clause), str(e.message), str(e.state) }),

@@ -139,6 +139,8 @@ pub const structs = [_]Struct{
         .{ .name = "restarts", .type = "UInt64" },
         .{ .name = "region_bytes", .type = "UInt64" },
         .{ .name = "paused", .type = "Bool" },
+        // The scheduler it runs on for its life (step 30).
+        .{ .name = "scheduler", .type = "UInt64" },
     } },
     .{ .name = "SourceInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "kind", .type = "String" },
@@ -223,7 +225,7 @@ pub const variants = [_]Variant{
     .{ .owner = "RuntimeError", .name = "MailboxFull", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "Timeout", .origin = .stdlib },
     .{ .owner = "Event", .name = "Updated", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "took_us", .type = "UInt64" }, .{ .name = "waited_us", .type = "UInt64" }, .{ .name = "longest", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "scheduler", .type = "UInt64" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Ended", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Restarted", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "restarts", .type = "UInt64" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Crashed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "seed", .type = "UInt64" }, .{ .name = "clause", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "snapshot", .type = "String" } }, .origin = .stdlib },
