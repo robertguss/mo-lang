@@ -22,7 +22,7 @@ The round is round 7's shape with a fourth language: the same pre-registered job
 What a result means. If Elixir matches Mo on reliability and the runtime rows, Mo's delta over the BEAM is what it claims in the premise and nothing more: static types at every boundary, capabilities that cannot be forged, a deadline on every wait, one static binary, no package ecosystem to trust; and each of those has to be measured on its own or dropped. If Elixir falls behind on the suite or the runtime rows, the process model is not enough and the language layer earns its place. Either way the pause after round 8 reads against this round, so its plan is written at that pause.
 
 ## Related
-- [[01-premise]] (the null hypothesis)
+- chapter 1 (`spec/design-v0/01-premise.md`) (the null hypothesis)
 - [[d41-small-model-round]] (round 9, before this)
 - [[control-run-7]] (the shape it copies)
 - [[roadmap]]

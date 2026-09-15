@@ -85,6 +85,10 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - The interpreter's memory model, not the language, was the whole cost of the first real programs.
 - Two defaults a worker chooses per hour need ratifying; about one in twenty deserves overturning, and the log makes that cheap.
 
+## Session 7, night of 15 Sep (the same page, the same branch)
+
+Round 8's change spec, pre-registration, worktrees, and suites; measurement 2 run first in one pane: five regenerations of the board identical over 132k operations, one crash-versus-skip disagreement on a hand-made log ([[sampling-as-verification]], [[control-run-8]]). Five decision rows.
+
 ## Next
 
 `HANDOFF.md`.

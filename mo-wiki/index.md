@@ -133,6 +133,8 @@
 - [[program-6|Program 6: ledger in Mo]] — the brief for the payments ledger whose invariants are the point; after step 28
 - [[interpreter-step-28|Step 28: what round 7 found in the runtime]] — a map written in place, the tuple `reduce`, resident memory, replay, the `never` rule's `if` gap, six gaps
 - [[control-run-7|The control run, round 7]] — pre-registered on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, dependencies
+- [[sampling-as-verification|Sampling as verification]] — measurement 2 of direction 43: five regenerations of the queue's board, a random driver, disagreements against the hidden suite
+- [[control-run-8|The control run, round 8, the maintenance round]] — pre-registered: the finished queues handed to fresh agents with a changed spec, regressions and defects, read on reliability and dependencies together
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
 - [[control-run-6|The control run, round 6]] — pre-registered: logstat and jobq, the baselines with their checks bolted on, the null hypothesis stated as P3
 - [[interpreter-step-26|Step 26: the one-line if in tail position]] — what step 25's acceptance found: tail position is a value, two keyword diagnostics; before round 6

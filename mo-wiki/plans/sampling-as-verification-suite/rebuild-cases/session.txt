@@ -1,0 +1,8 @@
+- GET /health
+p GET /jobs
+w1 POST /queues/q/lease {"lease_ms": 1000}
+w2 POST /queues/q/lease {"lease_ms": 1000}
+w3 POST /queues/q/lease {"lease_ms": 1000}
+p POST /jobs {"queue": "q", "payload": "new", "max_attempts": 1}
+p GET /jobs
+- GET /health
