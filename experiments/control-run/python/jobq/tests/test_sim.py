@@ -1,9 +1,10 @@
 """`--sim 100 --faults`: the queue under 100 seeds of injected file and socket failures.
 
 After every request: the store holds exactly what the queue holds, a 503 changed nothing
-but run-out leases, no job was held by two workers, attempts stayed within bounds, and a
-done or dead job never changed. Once the faults stop and the workers keep working, every
-job ends done or dead.
+but what a look moves (run-out leases and due scheduled jobs), no job was held by two
+workers, tries stayed within bounds, no scheduled job moved before its run_at, a done job
+never changed, and a dead job changed only by its retry. Once the faults stop and the
+workers keep working, every job ends done or dead.
 """
 
 import errno
@@ -58,13 +59,15 @@ class Violation(AssertionError):
     pass
 
 
-def _expired(before: Job, after: Job) -> bool:
-    return (
+def _moved_at_a_look(before: Job, after: Job) -> bool:
+    """A run-out lease returned or a due scheduled job queued: the changes a look makes."""
+    returned = (
         before.state == "leased"
-        and after.state in {"queued", "dead"}
-        and after.attempts == before.attempts
+        and after.state in {"queued", "scheduled", "dead"}
         and after.worker is None
     )
+    due = before.state == "scheduled" and after.state == "queued"
+    return after.tries == before.tries and (returned or due)
 
 
 class Sim:
@@ -80,6 +83,8 @@ class Sim:
         self.finished: dict[int, Job] = {}
         self.dropped = 0
         self.unavailable = 0
+        self.scheduled = 0
+        self.retried = 0
 
     def check(self, condition: bool, text: str) -> None:
         if not condition:
@@ -101,6 +106,7 @@ class Sim:
 
     def verify(self, request: Request, response: Response, before: dict[int, Job]) -> None:
         after = self.queue.snapshot()
+        now = self.clock.now_ms()
         self.check(response.status != 500, "no request is an internal error")
         self.check(replay(self.dir).jobs == after, "the store holds exactly what the queue holds")
         if response.status == 503:
@@ -108,15 +114,27 @@ class Sim:
             self.check(after.keys() == before.keys(), "a 503 adds or removes no job")
             for number, job in after.items():
                 old = before[number]
-                self.check(job == old or _expired(old, job), "a 503 changes only run-out leases")
+                self.check(job == old or _moved_at_a_look(old, job), "a 503 changes only a look's")
         removed = before.keys() - after.keys()
         if removed:
             deleted = request.method == "DELETE" and response.status == 204
             self.check(deleted and len(removed) == 1, "a job is only ever lost to its delete")
         for number, job in after.items():
-            self.check(job.attempts <= job.max_attempts, "attempts never exceed max_attempts")
+            self.check(job.tries <= job.max_tries, "tries never exceed max_tries")
+            was = before.get(number)
+            if was is not None and was.state == "scheduled" and job.state != "scheduled":
+                due = was.run_at_ms is not None and was.run_at_ms <= now
+                self.check(due, "a scheduled job never moves before its run_at")
+            if job.state == "scheduled" and (was is None or was.state != "scheduled"):
+                self.scheduled += 1
             if number in self.finished:
-                self.check(job == self.finished[number], "a done or dead job never changes")
+                if job != self.finished[number]:
+                    self.check(
+                        self._retried(request, response, self.finished[number], job),
+                        "a done job never changes, and a dead one only by its retry",
+                    )
+                    self.retried += 1
+                    del self.finished[number]
             elif job.state in {"done", "dead"}:
                 self.finished[number] = job
         if response.status in {200, 201} and response.body.startswith(b'{"id"'):
@@ -124,13 +142,21 @@ class Sim:
             shown = JobOut.of(after[number]).to_json() if number in after else b""
             self.check(shown == response.body, "a job response shows the durable job")
 
+    @staticmethod
+    def _retried(request: Request, response: Response, finished: Job, job: Job) -> bool:
+        route = request.method == "POST" and request.path == f"/jobs/{job.id}/retry"
+        reset = job.state == "queued" and job.tries == 0 and job.reason is None
+        return route and response.status == 200 and finished.state == "dead" and reset
+
     # The clients.
 
     def create(self) -> None:
         body = {
             "queue": self.rng.choice(QUEUES),
             "payload": f"job {self.rng.randrange(10**6)}",
-            "max_attempts": self.rng.randrange(1, 4),
+            "max_tries": self.rng.randrange(1, 4),
+            "delay_ms": self.rng.choice([0, 0, 0, self.rng.randrange(1, 1000)]),
+            "backoff_ms": self.rng.choice([0, 0, self.rng.randrange(1, 500)]),
         }
         self.send(Request("POST", "/jobs", "", "producer", json.dumps(body).encode()))
 
@@ -157,6 +183,12 @@ class Sim:
             else:
                 self.send(Request("POST", f"/jobs/{job_id}/fail", "", worker, b'{"reason": "sim"}'))
 
+    def retry(self, worker: str) -> None:
+        """Retry a dead job most of the time, and any id otherwise."""
+        dead = [job.id for job in self.queue.snapshot().values() if job.state == "dead"]
+        job_id = self.rng.choice(dead) if dead and self.rng.random() < 0.8 else self.some_id()
+        self.send(Request("POST", f"/jobs/{job_id}/retry", "", worker))
+
     def some_id(self) -> str:
         numbers = list(self.queue.snapshot()) or [1]
         return f"j_{self.rng.choice(numbers) + self.rng.choice([0, 0, 0, 1])}"
@@ -176,13 +208,15 @@ class Sim:
             self.lease(worker, self.rng.choice(QUEUES))
         elif roll < 0.7:
             self.finish(worker, ack_rate=0.7, walk_away_rate=0.2)
-        elif roll < 0.78:
+        elif roll < 0.75:
             self.send(Request("GET", f"/jobs/{self.some_id()}", "", worker))
-        elif roll < 0.84:
+        elif roll < 0.8:
+            self.retry(worker)
+        elif roll < 0.85:
             self.send(Request("DELETE", f"/jobs/{self.some_id()}", "", worker))
         elif roll < 0.9:
-            query = self.rng.choice(["", "state=leased", "queue=mail&state=queued"])
-            self.send(Request("GET", "/jobs", query, worker))
+            queries = ["", "state=leased", "queue=mail&state=queued", "state=scheduled"]
+            self.send(Request("GET", "/jobs", self.rng.choice(queries), worker))
         elif roll < 0.95:
             self.send(Request("GET", "/health"))
         elif roll < 0.98:
@@ -230,6 +264,8 @@ class SimulationTest(unittest.TestCase):
         self.assertGreater(sum(sim.unavailable for sim in sims), SEEDS)
         self.assertGreater(sum(sim.dropped for sim in sims), SEEDS)
         self.assertGreater(sum(len(sim.finished) for sim in sims), SEEDS)
+        self.assertGreater(sum(sim.scheduled for sim in sims), SEEDS)
+        self.assertGreater(sum(sim.retried for sim in sims), SEEDS // 10)
 
     def test_the_simulation_catches_a_change_applied_before_it_is_durable(self) -> None:
         def applied_first(queue: Queue, before: Job | None, after: Job | None) -> None:
