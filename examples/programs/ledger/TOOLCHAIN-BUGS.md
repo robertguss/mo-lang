@@ -4,6 +4,8 @@ Recorded while writing program 6 (`mo-wiki/spec/programs/06-ledger.md`, brief `m
 
 ## 1. A process whose supervisor line says `restart: :never` is restarted after a crash
 
+Fixed by step 29, part A: a process `Name.start` begins takes its whole policy from the first child line naming it, `restart:` included, so it stays down in `mo run`, `mo test`, and a binary; its report ends "not restarted", an ask to it is `Down`, and a send to it is dropped with a `Dropped` event. The reproduction is `examples/processes/never-restart.mo` and `examples/programs/never-restart.mo`.
+
 Chapter 3 says a store that does not replay its state "must say `restart: :never` and mean it", and `Ledger.Journals` says it: a journal that crashed would come back with an empty book and forget the batch it held. Under `mo run` the crashed process answers the next message from a fresh state all the same, and under `mo test` the runner restarts it until it has crashed more than three times.
 
 Reproduction (`never-run.mo`, in a folder of its own):

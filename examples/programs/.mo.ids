@@ -2258,6 +2258,19 @@
       "verified": { "hash": "cfa8e82649159ef9", "declarations": "f95b3f11149f2c14", "uses": [{ "module": "Logstat.Parse", "hash": "90a471f3feb2d6b0" }] }
     },
     {
+      "path": "never-restart.mo",
+      "module": "Programs.NeverRestart",
+      "declarations": [
+        { "id": "697ceb4568bb", "name": "module Programs.NeverRestart", "hash": "9c3063d0df392907" },
+        { "id": "167d2bcd9c38", "name": "expose", "hash": "1c7f996dfe9092b4" },
+        { "id": "e789416d1537", "name": "intent", "hash": "862a37546c52dcb2" },
+        { "id": "e2e6155d01ff", "name": "process Crasher", "hash": "d4fb2942236167eb" },
+        { "id": "df21d9ed3046", "name": "supervisor Crashers", "hash": "e75eda8ce4c9efdc" },
+        { "id": "9a4c760b9358", "name": "fn main", "hash": "d2b8df5f5827bd06" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "2ce06a9e4ee682ee" }
+    },
+    {
       "path": "not-text.mo",
       "module": "Programs.NotText",
       "declarations": [

@@ -234,6 +234,7 @@ pub const variants = [_]Variant{
     .{ .owner = "Event", .name = "Sent", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "taking", .type = "String" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Paused", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Resumed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Dropped", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "sender", .type = "Option(UInt64)" }, .{ .name = "sender_name", .type = "String" }, .{ .name = "target", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "why", .type = "String" } }, .origin = .stdlib },
 };
 
 /// Where a call is allowed. A capability's `fixture` exists only in tests; `Type.all`

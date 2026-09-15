@@ -366,6 +366,7 @@ enum Event
   Sent(at: Time, pid: UInt64, name: String, taking: String)
   Paused(at: Time, pid: UInt64, name: String)
   Resumed(at: Time, pid: UInt64, name: String)
+  Dropped(at: Time, sender: Option(UInt64), sender_name: String, target: UInt64, name: String, taking: String, why: String)
 end
 ```
 

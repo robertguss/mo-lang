@@ -354,6 +354,7 @@ fn eventValue(vm: *Vm, sim: *const Sim, e: events.Event) Error!Value {
         .sent => vm.variant("Sent", &.{ at, id, name, str(e.message) }),
         .paused => vm.variant("Paused", &.{ at, id, name }),
         .resumed => vm.variant("Resumed", &.{ at, id, name }),
+        .dropped => vm.variant("Dropped", &.{ at, try maybeId(vm, e.other), str(who(sim, e.other, e.other_name)), id, name, str(e.message), str(e.name) }),
     };
 }
 

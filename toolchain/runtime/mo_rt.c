@@ -1510,6 +1510,9 @@ typedef struct {
     char **log;
     uint32_t nlog;
     char *state;
+    /* The supervisor whose child line says restart: :never, when that line kept the process down
+     * (step 29); NULL when it restarts. */
+    const char *not_restarted;
 } Report;
 
 /* Where a crash, a skip, or a discarded attempt goes in a test; NULL under main. */
@@ -1536,6 +1539,7 @@ static void report_text(Buf *b, const Report *r) {
         buf_printf(b, "\n      in process %s, seed %llu\n      messages since it started: ", r->process, (unsigned long long)r->seed);
         for (uint32_t i = 0; i < r->nlog; i++) buf_printf(b, "%s%s", i == 0 ? "" : ", ", r->log[i]);
         buf_printf(b, "\n      state before the last message: %s", r->state);
+        if (r->not_restarted) buf_printf(b, "\n      not restarted: %s says restart: :never, so %s stays down", r->not_restarted, r->process);
     }
 }
 
@@ -4577,7 +4581,8 @@ typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
 typedef struct { MoValue message; uint64_t seq; Parcel *parcel; bool has_deadline; int64_t deadline; } Entry;
 /* `delay`: a send with delay: (step 24), in milliseconds; 0 for a plain send. */
 typedef struct { uint32_t to; MoValue message; Parcel *parcel; int64_t delay; } Outgoing;
-typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; } Policy;
+/* `line`: the supervisor whose child line gave the policy, or NOBODY (a crash report names it). */
+typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; uint32_t line; } Policy;
 
 typedef struct {
     uint32_t process;
@@ -4708,7 +4713,7 @@ static size_t queued(const Proc *p) { return p->mailbox_len - p->head; }
  * the awake clock in microseconds under main, pinned to the wall clock when the run began, and in a
  * test the run's clock, which only fixture waits move. */
 
-enum { EV_UPDATED, EV_STARTED, EV_ENDED, EV_RESTARTED, EV_CRASHED, EV_OVERFLOWED, EV_TIMED_OUT, EV_SOURCE_PAUSED, EV_SOURCE_RESUMED, EV_SENT, EV_PAUSED, EV_RESUMED };
+enum { EV_UPDATED, EV_STARTED, EV_ENDED, EV_RESTARTED, EV_CRASHED, EV_OVERFLOWED, EV_TIMED_OUT, EV_SOURCE_PAUSED, EV_SOURCE_RESUMED, EV_SENT, EV_PAUSED, EV_RESUMED, EV_DROPPED };
 
 typedef struct {
     uint8_t kind;
@@ -4889,21 +4894,21 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
     return id;
 }
 
-/* `Name.start(args)`: the test runner, or main, supervises it with :always, and with the
- * max_restarts of a child line that names the process. */
+/* `Name.start(args)`: the test runner, or main, supervises it as the first child line that names
+ * the process says, its restart: included (step 29), and with :always when no line names it. */
 MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
     /* Under main, main starting processes faster than a statement settles them hands out their
      * turns first, so the ones that finished end. */
     if (turns_on) turns_spawning();
-    Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS};
-    for (uint32_t s = 0; s < mo_nsupervisors; s++) {
+    Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS, NOBODY};
+    for (uint32_t s = 0; s < mo_nsupervisors && policy.line == NOBODY; s++) {
         const MoSupervisor *sup = &mo_supervisors[s];
         for (uint32_t k = 0; k < sup->nchildren; k++) {
             const MoChild *c = &sup->children[k];
-            if (c->process == process && c->max_restarts != UINT32_MAX) {
-                policy = (Policy){MO_RESTART_ALWAYS, c->max_restarts, window_of(c)};
-                break;
-            }
+            if (c->process != process) continue;
+            uint32_t max = c->max_restarts == UINT32_MAX ? DEFAULT_MAX_RESTARTS : c->max_restarts;
+            policy = (Policy){c->restart, max, window_of(c), s};
+            break;
         }
     }
     return handle_value(start_under(process, n, args, NOBODY, policy));
@@ -4921,7 +4926,7 @@ MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args
         const MoChild *c = &s->children[k];
         MoValue child = c->args(NULL, args);
         uint32_t max = c->max_restarts == UINT32_MAX ? DEFAULT_MAX_RESTARTS : c->max_restarts;
-        Policy policy = {c->restart, max, window_of(c)};
+        Policy policy = {c->restart, max, window_of(c), supervisor};
         ids[k] = handle_value(start_under(c->process, child.aux, child.as.xs, sid, policy));
     }
     if (s->nchildren == 0) return MO_NONE_V;
@@ -4960,11 +4965,25 @@ static void room_for(uint32_t to, MoValue message) {
     raise_report(r, JUMP_CRASH);
 }
 
+/* A message that will not arrive (step 29): its target is down, or the program exited while it was
+ * delayed. A Dropped event names the sender (NOBODY for main or a test), the target, the message,
+ * and why (sim.zig, dropped). */
+static void dropped(uint32_t from, uint32_t to, MoValue message, const char *why) {
+    Event e = event_of(EV_DROPPED, to);
+    e.other = from;
+    e.message = message.tag == MO_VARIANT ? mo_names[mo_vname(message)] : "";
+    e.name = why;
+    record_event(e);
+}
+
 /* `h.send(message)`: never blocks. From inside an update the message waits in the sender's
- * outbox until the update commits. A target that is down drops it. */
+ * outbox until the update commits. A target that is down drops it, with an event. */
 MoValue mo_send(MoValue handle, MoValue message) {
     uint32_t to = (uint32_t)handle.as.i;
-    if (!procs[to]->up) return MO_NONE_V;
+    if (!procs[to]->up) {
+        dropped(running, to, message, "down");
+        return MO_NONE_V;
+    }
     room_for(to, message);
     Parcel *parcel = packs ? pack(message) : NULL;
     MoValue sent = parcel ? parcel->value : message;
@@ -5269,6 +5288,7 @@ static bool due_later(void) {
         Later l = pop_later();
         Proc *target = procs[l.to];
         if (!target->up || target->ended) {
+            dropped(l.from, l.to, l.message, "down");
             parcel_free(l.parcel);
             continue;
         }
@@ -5290,7 +5310,10 @@ static bool due_later(void) {
 MoValue mo_send_later(MoValue handle, MoValue message, MoValue delay) {
     if (delay.as.i <= 0) return mo_send(handle, message);
     uint32_t to = (uint32_t)handle.as.i;
-    if (!procs[to]->up) return MO_NONE_V;
+    if (!procs[to]->up) {
+        dropped(running, to, message, "down");
+        return MO_NONE_V;
+    }
     Parcel *parcel = packs ? pack(message) : NULL;
     MoValue sent = parcel ? parcel->value : message;
     if (running != NOBODY) {
@@ -5508,6 +5531,7 @@ static void crashed(uint32_t id, MoValue before) {
     report.nlog = (uint32_t)p->nlog;
     for (size_t i = 0; i < p->nlog; i++) report.log[i] = render(p->log[i]);
     report.state = render(before);
+    if (p->policy.restart == MO_RESTART_NEVER && p->policy.line != NOBODY) report.not_restarted = mo_supervisors[p->policy.line].name;
     if (!crashed_once) {
         first_crash = report;
         crashed_once = true;
@@ -5523,7 +5547,15 @@ static void crashed(uint32_t id, MoValue before) {
     close_held(p->args, p->nargs);
     if (turns_on) turns_wake_all();
     if (p->policy.restart == MO_RESTART_NEVER) {
+        /* It stays down (step 29): what waits for it is dropped, each with an event, and an ask
+         * among it is Down. */
         p->up = false;
+        for (size_t i = p->head; i < p->mailbox_len; i++) {
+            if (turns_on) turns_answer(p->mailbox[i].seq, false, MO_NONE_V, NULL);
+            dropped(NOBODY, id, p->mailbox[i].message, "down");
+            parcel_free(p->mailbox[i].parcel);
+        }
+        p->mailbox_len = p->head = 0;
         return;
     }
     /* Restarts are counted in simulated time under a test, and wall-clock time under main. */
@@ -5625,7 +5657,10 @@ static Delivered deliver(uint32_t id) {
     held -= p->noutbox;
     for (size_t i = 0; i < p->noutbox; i++) {
         Outgoing o = p->outbox[i];
-        if (!procs[o.to]->up) parcel_free(o.parcel);
+        if (!procs[o.to]->up) {
+            dropped(id, o.to, o.message, "down");
+            parcel_free(o.parcel);
+        }
         /* No earlier than its delay after the update ends (step 24). */
         else if (o.delay > 0) push_later(id, o.to, o.message, o.parcel, deadline_now() + o.delay);
         else enqueue(o.to, o.message, o.parcel);
@@ -8820,6 +8855,9 @@ static MoValue event_value(const Event *e) {
         return mo_variant(e->kind == EV_SOURCE_PAUSED ? MO_N_SOURCE_PAUSED : MO_N_SOURCE_RESUMED, 5, f);
     case EV_SENT: f[1] = id, f[2] = name, f[3] = text_value(e->message); return mo_variant(MO_N_SENT, 4, f);
     case EV_PAUSED: f[1] = id, f[2] = name; return mo_variant(MO_N_PAUSED, 3, f);
+    case EV_DROPPED:
+        f[1] = maybe_id(e->other), f[2] = text_value(who_name(e->other, e->other_name)), f[3] = id, f[4] = name, f[5] = text_value(e->message), f[6] = text_value(e->name);
+        return mo_variant(MO_N_DROPPED, 7, f);
     default: f[1] = id, f[2] = name; return mo_variant(MO_N_RESUMED, 3, f);
     }
 }

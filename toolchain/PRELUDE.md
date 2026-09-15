@@ -119,6 +119,7 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `Event` | `TimedOut` | `at: Time`, `pid: Option(UInt64)`, `name: String`, `call: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `SourcePaused`, `SourceResumed` | `at: Time`, `source: String`, `target: UInt64`, `name: String`, `in_flight: UInt64` | stdlib (09), Session 5, step 23 |
 | `Event` | `Sent` | `at: Time`, `pid: UInt64`, `name: String`, `taking: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
+| `Event` | `Dropped` | `at: Time`, `sender: Option(UInt64)`, `sender_name: String`, `target: UInt64`, `name: String`, `taking: String`, `why: String` | stdlib (09), Session 5, step 29 |
 
 ## Functions
 

@@ -122,6 +122,19 @@
       "verified": { "hash": "77f75ec5e0ab036b", "declarations": "b766a2a55eaf2f17" }
     },
     {
+      "path": "never-restart.mo",
+      "module": "Processes.NeverRestart",
+      "declarations": [
+        { "id": "7526d03d499e", "name": "module Processes.NeverRestart", "hash": "fb1b3fc2de62e450" },
+        { "id": "381090e64455", "name": "expose", "hash": "51569ff20d928b9e" },
+        { "id": "9e041cec3aa6", "name": "intent", "hash": "deb086a07ff95265" },
+        { "id": "206e964476df", "name": "process Crasher", "hash": "d4fb2942236167eb" },
+        { "id": "0c435c9425f1", "name": "supervisor Crashers", "hash": "e75eda8ce4c9efdc" },
+        { "id": "9fcc5ec1c719", "name": "test rejects \"a bump trips the invariant, and every bump after it finds the crasher down\"", "hash": "aa107bd8340fbe21" }
+      ],
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "5e4e8443db68c6aa" }
+    },
+    {
       "path": "pipeline.mo",
       "module": "Processes.Pipeline",
       "declarations": [

@@ -55,7 +55,8 @@ pub const max_region: usize = 16 << 30;
 
 pub const Fault = enum { timeout, missing, closed };
 
-pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
+/// `line`: the supervisor whose child line gave the policy, or none (a crash report names it).
+pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64, line: u32 = none };
 
 /// A call a process's update waits in on a peer: a listener's next client (`accept`) or a
 /// connection's next line (`read_line`), by handle, and the call as a report names it.
@@ -505,20 +506,23 @@ pub const Sim = struct {
 
     // ---- starting
 
-    /// `Name.start(args)` in a test: the test runner supervises it with :always, and with
-    /// the max_restarts of the first child line in the module that names the process.
+    /// `Name.start(args)` in a test or main: the test runner or main supervises it as the first
+    /// child line that names the process says, its `restart:` included (step 29: a `:never` child
+    /// started this way was restarted), and with :always when no line names it.
     pub fn start(sim: *Sim, process: u32, args: []const Value) Error!u32 {
         // Under `mo run`, main starting processes faster than a statement settles them hands
         // out their turns first, so the ones that finished end (turns.zig, sweep).
         if (sim.turns) |t| if (t.holder == turns_mod.main_turn and t.quiet >= t.sweep_at) try t.settle(sim);
-        var policy: Policy = .{ .restart = .always, .max_restarts = default_max_restarts, .window_ms = default_window_ms };
-        for (sim.vm.program.supervisors) |s| for (s.children) |c| {
-            if (c.process == process and c.max_restarts != none) {
-                policy = .{ .restart = .always, .max_restarts = c.max_restarts, .window_ms = try sim.window(c) };
-                break;
-            }
+        return sim.startUnder(process, args, test_runner, try sim.lineFor(process));
+    }
+
+    fn lineFor(sim: *Sim, process: u32) Error!Policy {
+        for (sim.vm.program.supervisors, 0..) |s, line| for (s.children) |c| {
+            if (c.process != process) continue;
+            const max = if (c.max_restarts == none) default_max_restarts else c.max_restarts;
+            return .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c), .line = @intCast(line) };
         };
-        return sim.startUnder(process, args, test_runner, policy);
+        return .{ .restart = .always, .max_restarts = default_max_restarts, .window_ms = default_window_ms };
     }
 
     /// Starts supervisors[index]: each child in order, with the arguments its line passes.
@@ -531,7 +535,7 @@ pub const Sim = struct {
         for (s.children, ids) |c, *id| {
             const child_args = (try sim.vm.call(c.args, args)).tuple;
             const max = if (c.max_restarts == none) default_max_restarts else c.max_restarts;
-            id.* = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c) });
+            id.* = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c), .line = index });
         }
         return ids;
     }
@@ -579,10 +583,23 @@ pub const Sim = struct {
 
     // ---- messages
 
+    /// A message that will not arrive (step 29): its target is down, or the program exited while it
+    /// was delayed. A `Dropped` event names the sender (`test_runner` for main or a test), the
+    /// target, the message, and why.
+    fn dropped(sim: *Sim, from: u32, to: u32, message: Value, why: []const u8) void {
+        sim.record(.{
+            .kind = .dropped,
+            .process = to,
+            .other = if (from == test_runner) events_mod.nobody else from,
+            .message = if (message == .variant) message.variant.name else "",
+            .name = why,
+        });
+    }
+
     /// `h.send(message)`: never blocks. From inside an update the message waits in the
-    /// sender's outbox until the update commits. A target that is down drops it.
+    /// sender's outbox until the update commits. A target that is down drops it, with an event.
     pub fn send(sim: *Sim, to: u32, message: Value) Error!void {
-        if (!sim.procs.items[to].up) return;
+        if (!sim.procs.items[to].up) return sim.dropped(sim.running orelse test_runner, to, message, "down");
         try sim.roomFor(to, message);
         const parcel = try sim.outgoing(message);
         const sent = if (parcel) |p| p.value else message;
@@ -598,7 +615,7 @@ pub const Sim = struct {
     /// it with the update's other sends, and a target that is down when it is due drops it.
     pub fn sendLater(sim: *Sim, to: u32, message: Value, delay: i64) Error!void {
         if (delay <= 0) return sim.send(to, message);
-        if (!sim.procs.items[to].up) return;
+        if (!sim.procs.items[to].up) return sim.dropped(sim.running orelse test_runner, to, message, "down");
         const parcel = try sim.outgoing(message);
         const sent = if (parcel) |p| p.value else message;
         if (sim.running) |from| {
@@ -661,6 +678,7 @@ pub const Sim = struct {
             const l = sim.popLater();
             const target = sim.procs.items[l.to];
             if (!target.up or target.ended) {
+                sim.dropped(l.from, l.to, l.message, "down");
                 if (l.parcel) |x| x.free();
                 continue;
             }
@@ -959,6 +977,7 @@ pub const Sim = struct {
         sim.held -= p.outbox.items.len;
         for (p.outbox.items) |o| {
             if (!sim.procs.items[o.to].up) {
+                sim.dropped(id, o.to, o.message, "down");
                 if (o.parcel) |x| x.free();
             } else if (o.delay > 0) {
                 // No earlier than its delay after the update ends (step 24).
@@ -1188,6 +1207,7 @@ pub const Sim = struct {
         const log = try sim.gpa.alloc([]const u8, p.log.items.len);
         for (p.log.items, log) |m, *o| o.* = try vm.render(m);
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
+        if (p.policy.restart == .never and p.policy.line != none) report.process.?.not_restarted = vm.program.supervisors[p.policy.line].name;
         try sim.crashes.append(sim.gpa, report);
         sim.record(.{
             .kind = .crashed,
@@ -1204,7 +1224,16 @@ pub const Sim = struct {
         } else sim.fixture.closeHeld(p.args);
         if (sim.turns) |t| t.wakeAll();
         if (p.policy.restart == .never) {
+            // It stays down (step 29): what waits for it is dropped, each with an event, and an ask
+            // among it is Down.
             p.up = false;
+            if (sim.turns) |t| for (p.mailbox.items[p.head..]) |e| try t.answer(e.seq, null, null);
+            for (p.mailbox.items[p.head..]) |e| {
+                sim.dropped(test_runner, id, e.message, "down");
+                if (e.parcel) |x| x.free();
+            }
+            p.mailbox.clearRetainingCapacity();
+            p.head = 0;
             return;
         }
         // Restarts are counted in simulated time under mo test, and wall-clock time under mo run.
@@ -1948,12 +1977,20 @@ test "a supervisor starts its children with the arguments its lines pass, and fo
     try std.testing.expectEqualStrings("Reader", h.sim.nameOf(1));
     try std.testing.expect(vm_mod.equal(fs, h.sim.procs.items[1].args[0]));
 
-    // restart: :never leaves the child down, and an ask to it is Down.
+    // restart: :never leaves the child down, its report says so, an ask to it is Down, and a send
+    // to it is dropped with an event (step 29).
     try h.sim.send(1, try h.machine.variant("Slip", &.{}));
     try h.sim.settle();
     try std.testing.expect(!h.sim.procs.items[1].up);
+    try std.testing.expectEqualStrings("Pulse", h.sim.crashes.items[h.sim.crashes.items.len - 1].process.?.not_restarted);
     const down = try h.sim.ask(1, try h.machine.variant("Reads", &.{}), 100);
     try std.testing.expectEqualStrings("Down", down.variant.fields[0].variant.name);
+    try h.sim.send(1, try h.machine.variant("Slip", &.{}));
+    const last = h.sim.ring.get(h.sim.ring.len - 1);
+    try std.testing.expectEqual(events_mod.Kind.dropped, last.kind);
+    try std.testing.expectEqual(@as(u32, 1), last.process);
+    try std.testing.expectEqualStrings("Slip", last.message);
+    try std.testing.expectEqualStrings("down", last.name);
 
     // Beat's line allows two restarts in a minute; the third crash takes Pulse down.
     for (0..2) |_| {

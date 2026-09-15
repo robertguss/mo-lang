@@ -465,6 +465,7 @@ pub fn writeReport(w: *std.Io.Writer, files: []const diag.File, r: contracts.Rep
         try w.print("\n      in process {s}, seed {d}\n      messages since it started: ", .{ p.process, p.seed });
         for (p.log, 0..) |m, i| try w.print("{s}{s}", .{ if (i == 0) "" else ", ", m });
         try w.print("\n      state before the last message: {s}", .{p.state});
+        if (p.not_restarted.len > 0) try w.print("\n      not restarted: {s} says restart: :never, so {s} stays down", .{ p.not_restarted, p.process });
     }
 }
 
