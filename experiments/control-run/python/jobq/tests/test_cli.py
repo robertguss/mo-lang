@@ -90,7 +90,7 @@ class ServeTest(CliCase):
             assert process.stderr is not None
             line = process.stderr.readline()
             port = int(line.rsplit(":", 1)[1])
-            body = json.dumps({"queue": "q", "payload": "x", "max_attempts": 1})
+            body = json.dumps({"queue": "q", "payload": "x", "max_tries": 1})
             created = request(HOST, port, Call("w1", "POST", "/jobs", body))
             self.assertEqual(created.status, 201)
             process.send_signal(signal.SIGTERM)
@@ -125,7 +125,7 @@ class ClientAndCheckTest(CliCase):
     def test_client_prints_status_and_body(self) -> None:
         with ServerThread(self.dir) as server:
             port = str(server.port)
-            body = '{"queue": "q", "payload": "x", "max_attempts": 1}'
+            body = '{"queue": "q", "payload": "x", "max_tries": 1}'
             code, out, _ = invoke("client", HOST, port, "w1", "POST", "/jobs", body)
             self.assertEqual(code, EXIT_OK)
             status, text = out.splitlines()
@@ -145,7 +145,7 @@ class ClientAndCheckTest(CliCase):
     def test_check_plays_a_script(self) -> None:
         script = self.dir / "script.txt"
         script.write_text(
-            '# a comment\n\nw1 POST /jobs {"queue": "q", "payload": "a b", "max_attempts": 1}\n'
+            '# a comment\n\nw1 POST /jobs {"queue": "q", "payload": "a b", "max_tries": 1}\n'
             "- GET /health\n"
         )
         store_dir = self.dir / "store"
@@ -154,7 +154,7 @@ class ClientAndCheckTest(CliCase):
         self.assertEqual(code, EXIT_OK)
         lines = out.splitlines()
         self.assertEqual(
-            lines[0], '> w1 POST /jobs {"queue": "q", "payload": "a b", "max_attempts": 1}'
+            lines[0], '> w1 POST /jobs {"queue": "q", "payload": "a b", "max_tries": 1}'
         )
         self.assertEqual((lines[1], lines[3], lines[4]), ("201", "> - GET /health", "200"))
 

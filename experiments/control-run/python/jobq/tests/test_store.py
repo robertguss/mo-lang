@@ -1,4 +1,5 @@
 import errno
+import json
 import os
 import tempfile
 import unittest
@@ -25,12 +26,28 @@ def job(number: int, state: str = "queued") -> Job:
             "queue": "q",
             "state": state,
             "payload": f"payload {number}",
-            "attempts": 0,
-            "max_attempts": 2,
+            "tries": 0,
+            "max_tries": 2,
+            "backoff_ms": 0,
             "created_ms": 1,
             "updated_ms": 1,
         }
     )
+
+
+def old_record(number: int, state: str = "queued", **fields: object) -> str:
+    """A put record in the shape the round 7 program wrote, spaced as a hand writes it."""
+    job_fields = {
+        "number": number,
+        "queue": "q",
+        "state": state,
+        "payload": f"payload {number}",
+        "attempts": 0,
+        "max_attempts": 2,
+        "created_ms": 1,
+        "updated_ms": 1,
+    } | fields
+    return json.dumps({"kind": "put", "job": job_fields}) + "\n"
 
 
 class StoreTest(unittest.TestCase):
@@ -142,6 +159,45 @@ class StoreTest(unittest.TestCase):
                 compact(self.dir)
         finally:
             store.close()
+
+
+class OldLogTest(StoreTest):
+    """Logs written before the tries rename, by hand in the old shape."""
+
+    def test_a_log_in_the_old_shape_replays_in_the_new_one(self) -> None:
+        lease = {"attempts": 1, "worker": "w1", "lease_until_ms": 9}
+        (self.dir / LOG_NAME).write_text(
+            old_record(1) + old_record(2, "leased", **lease) + '{"kind": "delete", "number": 3}\n'
+        )
+        store, state = Store.open(self.dir)
+        store.close()
+        held = {"tries": 1, "worker": "w1", "lease_until_ms": 9}
+        leased = job(2, "leased").model_copy(update=held)
+        self.assertEqual(state.jobs, {1: job(1), 2: leased})
+        self.assertEqual((state.next_number, state.records), (4, 3))
+
+    def test_old_and_new_records_of_one_job_replay_to_the_last(self) -> None:
+        (self.dir / LOG_NAME).write_text(old_record(1))
+        store, _ = Store.open(self.dir)
+        store.append(PutRecord(job=job(1, "done")))
+        store.close()
+        self.assertEqual(replay(self.dir).jobs, {1: job(1, "done")})
+
+    def test_compacting_an_old_log_leaves_no_old_name(self) -> None:
+        (self.dir / LOG_NAME).write_text(
+            old_record(1) + old_record(1, "dead", attempts=2, reason="r") + old_record(2)
+        )
+        before = replay(self.dir)
+        self.assertEqual(compact(self.dir), (3, 3))
+        log = (self.dir / LOG_NAME).read_bytes()
+        self.assertNotIn(b"attempts", log)
+        self.assertEqual((log.count(b'"tries":'), log.count(b'"backoff_ms":0')), (2, 2))
+        self.assertEqual(replay(self.dir).jobs, before.jobs)
+
+    def test_a_record_with_an_old_name_beside_its_new_one_refuses_to_open(self) -> None:
+        (self.dir / LOG_NAME).write_text(old_record(1, tries=0))
+        with self.assertRaisesRegex(StoreOpenError, "line 1 is not a record"):
+            Store.open(self.dir)
 
 
 if __name__ == "__main__":

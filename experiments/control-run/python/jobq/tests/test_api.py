@@ -1,5 +1,6 @@
 import unittest
 
+from jobq.clock import iso_utc
 from jobq.store import replay
 from support import QueueCase, body_of
 
@@ -7,7 +8,7 @@ from support import QueueCase, body_of
 class CreateAndGetTest(QueueCase):
     def test_create_is_201_with_the_job(self) -> None:
         response = self.call(
-            "POST", "/jobs", {"queue": "emails", "payload": "hi", "max_attempts": 3}
+            "POST", "/jobs", {"queue": "emails", "payload": "hi", "max_tries": 3}
         )
         self.assertEqual(response.status, 201)
         job = body_of(response)
@@ -18,13 +19,14 @@ class CreateAndGetTest(QueueCase):
                 "queue",
                 "state",
                 "payload",
-                "attempts",
-                "max_attempts",
+                "tries",
+                "max_tries",
+                "backoff_ms",
                 "created_at",
                 "updated_at",
             ],
         )
-        self.assertEqual((job["id"], job["state"], job["attempts"]), ("j_1", "queued", 0))
+        self.assertEqual((job["id"], job["state"], job["tries"]), ("j_1", "queued", 0))
 
     def test_create_rejects_bad_bodies_with_400(self) -> None:
         for raw in (
@@ -32,9 +34,9 @@ class CreateAndGetTest(QueueCase):
             b"[]",
             b"",
             b'{"queue": "emails", "payload": "hi"}',
-            b'{"queue": "emails", "payload": 5, "max_attempts": 3}',
-            b'{"queue": "no way", "payload": "hi", "max_attempts": 3}',
-            b'{"queue": "emails", "payload": "hi", "max_attempts": 0}',
+            b'{"queue": "emails", "payload": 5, "max_tries": 3}',
+            b'{"queue": "no way", "payload": "hi", "max_tries": 3}',
+            b'{"queue": "emails", "payload": "hi", "max_tries": 0}',
         ):
             response = self.call("POST", "/jobs", raw=raw)
             self.assertEqual(response.status, 400, raw)
@@ -99,7 +101,7 @@ class LeaseAckFailTest(QueueCase):
         response = self.call("POST", "/queues/emails/lease", {"lease_ms": 1000}, token="w7")
         self.assertEqual(response.status, 200)
         job = body_of(response)
-        self.assertEqual((job["state"], job["worker"], job["attempts"]), ("leased", "w7", 1))
+        self.assertEqual((job["state"], job["worker"], job["tries"]), ("leased", "w7", 1))
         self.assertIn("lease_until", job)
         self.assertEqual(self.call("POST", "/queues/emails/lease").status, 204)
 
@@ -126,7 +128,7 @@ class LeaseAckFailTest(QueueCase):
         self.assertEqual(self.call("POST", "/jobs/j_5/ack").status, 404)
 
     def test_fail_statuses(self) -> None:
-        self.create(max_attempts=1)
+        self.create(max_tries=1)
         self.assertEqual(self.call("POST", "/jobs/j_1/fail", {"reason": "x"}).status, 409)
         self.call("POST", "/queues/emails/lease")
         self.assertEqual(self.call("POST", "/jobs/j_1/fail", {}).status, 400)
@@ -141,7 +143,8 @@ class LeaseAckFailTest(QueueCase):
 class HealthAndStoreTest(QueueCase):
     def test_health_counts_each_state(self) -> None:
         for _ in range(3):
-            self.create(max_attempts=1)
+            self.create(max_tries=1)
+        self.create(delay_ms=60_000)
         self.call("POST", "/queues/emails/lease")
         self.call("POST", "/jobs/j_1/ack")
         self.call("POST", "/queues/emails/lease")
@@ -149,14 +152,15 @@ class HealthAndStoreTest(QueueCase):
         self.clock.advance(250)
         self.call("POST", "/queues/emails/lease")
         health = body_of(self.call("GET", "/health", token=None))
-        self.assertEqual(health, {"queued": 0, "leased": 1, "done": 1, "dead": 1, "uptime_ms": 250})
+        counts = {"queued": 0, "scheduled": 1, "leased": 1, "done": 1, "dead": 1}
+        self.assertEqual(health, counts | {"uptime_ms": 250})
 
     def test_a_store_failure_is_503_with_the_store_unchanged(self) -> None:
         self.create()
         before = replay(self.dir)
         self.ops.failing = True
         for method, path, body in (
-            ("POST", "/jobs", {"queue": "emails", "payload": "b", "max_attempts": 1}),
+            ("POST", "/jobs", {"queue": "emails", "payload": "b", "max_tries": 1}),
             ("POST", "/queues/emails/lease", None),
             ("DELETE", "/jobs/j_1", None),
         ):
@@ -166,6 +170,117 @@ class HealthAndStoreTest(QueueCase):
         self.assertEqual(replay(self.dir), before)
         self.ops.failing = False
         self.assertEqual(self.call("GET", "/jobs/j_1").status, 200)
+
+
+class ScheduleTest(QueueCase):
+    def test_create_with_a_delay_is_scheduled_with_run_at(self) -> None:
+        body = {"queue": "emails", "payload": "hi", "max_tries": 3}
+        response = self.call("POST", "/jobs", body | {"delay_ms": 1500, "backoff_ms": 200})
+        self.assertEqual(response.status, 201)
+        job = body_of(response)
+        self.assertEqual(list(job)[-1], "run_at")
+        shown = (job["state"], job["tries"], job["backoff_ms"], job["run_at"])
+        self.assertEqual(shown, ("scheduled", 0, 200, iso_utc(self.clock.ms + 1500)))
+
+    def test_create_rejects_the_old_names_and_bad_delays_with_400(self) -> None:
+        base: dict[str, object] = {"queue": "emails", "payload": "hi", "max_tries": 3}
+        for body in (
+            {"queue": "emails", "payload": "hi", "max_attempts": 3},
+            base | {"attempts": 0},
+            base | {"delay_ms": -1},
+            base | {"delay_ms": 86_400_001},
+            base | {"delay_ms": "5"},
+            base | {"delay_ms": 1.5},
+            base | {"backoff_ms": -1},
+            base | {"backoff_ms": 3_600_001},
+            base | {"backoff_ms": None},
+        ):
+            response = self.call("POST", "/jobs", body)
+            self.assertEqual(response.status, 400, body)
+            self.assertIsInstance(body_of(response)["error"], str)
+        self.assertEqual(self.call("GET", "/jobs").json(), {"jobs": []})
+
+    def test_fail_with_backoff_is_scheduled_and_a_lease_before_run_at_is_204(self) -> None:
+        self.create(backoff_ms=5000)
+        self.call("POST", "/queues/emails/lease", {"lease_ms": 1000})
+        job = body_of(self.call("POST", "/jobs/j_1/fail", {"reason": "later"}))
+        shown = (job["state"], job["tries"], job["run_at"], job["reason"])
+        self.assertEqual(shown, ("scheduled", 1, iso_utc(self.clock.ms + 5000), "later"))
+        self.assertNotIn("worker", job)
+        self.clock.advance(4999)
+        self.assertEqual(self.call("POST", "/queues/emails/lease").status, 204)
+        self.clock.advance(1)
+        again = body_of(self.call("POST", "/queues/emails/lease"))
+        self.assertEqual((again["id"], again["tries"]), ("j_1", 2))
+        self.assertNotIn("run_at", again)
+
+    def test_lists_scheduled_jobs(self) -> None:
+        self.create("a", delay_ms=100)
+        self.create("a")
+        self.create("b", delay_ms=100)
+        scheduled = body_of(self.call("GET", "/jobs?state=scheduled"))["jobs"]
+        assert isinstance(scheduled, list)
+        self.assertEqual([job["id"] for job in scheduled], ["j_1", "j_3"])
+        self.clock.advance(100)
+        self.assertEqual(body_of(self.call("GET", "/jobs?state=scheduled"))["jobs"], [])
+        queued = body_of(self.call("GET", "/jobs?queue=a&state=queued"))["jobs"]
+        assert isinstance(queued, list)
+        self.assertEqual([job["id"] for job in queued], ["j_1", "j_2"])
+
+    def test_delete_a_scheduled_job_is_204(self) -> None:
+        self.create(delay_ms=100)
+        self.assertEqual(self.call("DELETE", "/jobs/j_1").status, 204)
+
+    def test_a_due_move_the_store_refuses_is_503_with_the_store_unchanged(self) -> None:
+        self.create(delay_ms=100)
+        self.clock.advance(100)
+        before = replay(self.dir)
+        self.ops.failing = True
+        for method, path in (
+            ("GET", "/health"),
+            ("GET", "/jobs/j_1"),
+            ("GET", "/jobs"),
+            ("POST", "/queues/emails/lease"),
+        ):
+            self.assertEqual(self.call(method, path).status, 503, path)
+        self.assertEqual(replay(self.dir), before)
+        self.ops.failing = False
+        self.assertEqual(body_of(self.call("GET", "/jobs/j_1"))["state"], "queued")
+
+
+class RetryTest(QueueCase):
+    def test_retry_statuses(self) -> None:
+        self.create(max_tries=1)
+        self.create("other", delay_ms=1000)
+        self.assertEqual(self.call("POST", "/jobs/j_1/retry").status, 409)
+        self.assertEqual(self.call("POST", "/jobs/j_2/retry").status, 409)
+        self.call("POST", "/queues/emails/lease", token="w1")
+        self.assertEqual(self.call("POST", "/jobs/j_1/retry").status, 409)
+        self.call("POST", "/jobs/j_1/fail", {"reason": "boom"}, token="w1")
+        response = self.call("POST", "/jobs/j_1/retry", token="w2")
+        self.assertEqual(response.status, 200)
+        job = body_of(response)
+        self.assertEqual((job["state"], job["tries"], job["max_tries"]), ("queued", 0, 1))
+        self.assertNotIn("reason", job)
+        conflict = self.call("POST", "/jobs/j_1/retry")
+        self.assertEqual(conflict.status, 409)
+        self.assertEqual(conflict.json(), {"error": "the job is not dead"})
+        again = body_of(self.call("POST", "/queues/emails/lease", token="w3"))
+        self.assertEqual((again["id"], again["tries"]), ("j_1", 1))
+        self.call("POST", "/jobs/j_1/ack", token="w3")
+        self.assertEqual(self.call("POST", "/jobs/j_1/retry").status, 409)
+        self.assertEqual(self.call("POST", "/jobs/j_9/retry").status, 404)
+        self.assertEqual(self.call("POST", "/jobs/j_1/retry", token=None).status, 401)
+        self.assertEqual(self.call("GET", "/jobs/j_1/retry").status, 405)
+
+    def test_a_retry_the_store_refuses_is_503_and_the_job_stays_dead(self) -> None:
+        self.create(max_tries=1)
+        self.call("POST", "/queues/emails/lease")
+        self.call("POST", "/jobs/j_1/fail", {"reason": "boom"})
+        self.ops.failing = True
+        self.assertEqual(self.call("POST", "/jobs/j_1/retry").status, 503)
+        self.ops.failing = False
+        self.assertEqual(body_of(self.call("GET", "/jobs/j_1"))["state"], "dead")
 
 
 if __name__ == "__main__":

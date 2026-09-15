@@ -13,6 +13,8 @@ from jobq.queue import Queue
 from jobq.server import open_queue
 from jobq.store import FileOps
 
+FIXTURES = Path(__file__).parent / "fixtures"
+
 
 class FailingOps:
     """File calls that fail while `failing` is set; a failing write first writes half."""
@@ -65,10 +67,11 @@ class QueueCase(unittest.TestCase):
         data = raw if raw is not None else b"" if body is None else json.dumps(body).encode()
         return self.api.handle(Request(method, path, query, token, data))
 
-    def create(self, queue: str = "emails", payload: str = "p", max_attempts: int = 3) -> str:
-        response = self.call(
-            "POST", "/jobs", {"queue": queue, "payload": payload, "max_attempts": max_attempts}
-        )
+    def create(
+        self, queue: str = "emails", payload: str = "p", max_tries: int = 3, **fields: int
+    ) -> str:
+        body = {"queue": queue, "payload": payload, "max_tries": max_tries} | fields
+        response = self.call("POST", "/jobs", body)
         self.assertEqual(response.status, 201, response.body)
         return str(body_of(response)["id"])
 
