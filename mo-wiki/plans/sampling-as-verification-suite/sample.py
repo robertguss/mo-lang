@@ -60,7 +60,10 @@ def cmd_run(a):
     print(f"{a.name}: {len(scripts)} scripts played, {failed} timed out")
 
 def outcomes(text):
-    """The transcript as a list of (lineno, outcome head, full block) per script line."""
+    """The transcript as a list of (lineno, outcome head, canonical block) per script line. The block is
+    the outcome line, the listed jobs in order, then the writes as the store would end up: one line per
+    key, the last write to that key, keys sorted. The order of writes to different keys is not observable
+    once the batch is on disk, so it does not count; two writes to one key in a different order do."""
     blocks = []
     for ln in text.split("\n"):
         if not ln: continue
@@ -69,7 +72,16 @@ def outcomes(text):
             continue
         parts = ln.split(" ", 2)
         blocks.append((parts[0], parts[1] if len(parts) > 1 else "", [ln]))
-    return blocks
+    out = []
+    for no, head, lines in blocks:
+        jobs = [l for l in lines[1:] if l.startswith("  J ")]
+        writes = {}
+        for l in lines[1:]:
+            if l.startswith("  W "):
+                key = l[4:].split(" ", 1)[0]; writes[key] = l
+        canon = [lines[0]] + jobs + [writes[k] for k in sorted(writes)]
+        out.append((no, head, canon))
+    return out
 
 def cmd_compare(a):
     variants = a.variants.split(",")
