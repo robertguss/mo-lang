@@ -1,0 +1,15 @@
+w1 POST /jobs {"queue": "emails", "payload": "done job", "max_attempts": 2}
+w1 POST /jobs {"queue": "emails", "payload": "dead job", "max_attempts": 1}
+w1 POST /jobs {"queue": "emails", "payload": "failed once", "max_attempts": 3}
+w1 POST /jobs {"queue": "emails", "payload": "deleted", "max_attempts": 1}
+w1 POST /jobs {"queue": "reports", "payload": "leased when stopped\nsecond line", "max_attempts": 3}
+w1 POST /jobs {"queue": "reports", "payload": "still queued", "max_attempts": 5}
+w1 POST /queues/emails/lease {"lease_ms": 60000}
+w1 POST /jobs/j_1/ack
+w2 POST /queues/emails/lease {"lease_ms": 60000}
+w2 POST /jobs/j_2/fail {"reason": "bad address"}
+w3 POST /queues/emails/lease {"lease_ms": 60000}
+w3 POST /jobs/j_3/fail {"reason": "smtp down"}
+w1 DELETE /jobs/j_4
+w4 POST /queues/reports/lease {"lease_ms": 3600000}
+- GET /health
