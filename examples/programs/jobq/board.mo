@@ -95,62 +95,432 @@ end
 # An empty board whose first job is numbered `next`.
 fn board(started: Time, next: UInt64) : Board
   requires next >= 1
-  # body gone; regenerate
+
+  Board(jobs: Map.new(), orders: Map.new(), fresh: Map.new(), leases: Map.new(), due: None,
+    next: next, reserved: next, counts: Counts(queued: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0),
+    started: started)
 end
 
 fn decide(board: Board, call: Call, now: Time) : Decision
-  # body gone; regenerate
+  swept = expired(board, now)
+  b = swept.board
+  decided = case call.command
+    Create(queue: queue, payload: payload, max_attempts: max_attempts):
+      created(b, queue, payload, max_attempts, now)
+    Fetch(id): fetched(b, id)
+    Listing(queue: queue, state: state): nothing(b, Listed(jobs: listed(b, queue, state)))
+    Remove(id): removed(b, id)
+    Lease(queue: queue, lease_ms: lease_ms): lent(b, call.worker, queue, lease_ms, now)
+    Ack(id): settled(b, call.worker, id, None, now)
+    Fail(id: id, reason: reason): settled(b, call.worker, id, Some(reason), now)
+    Health: nothing(b, Healthy(counts: health_of(b, now)))
+  end
+  Decision(board: decided.board, outcome: decided.outcome,
+    writes: swept.writes.concat(decided.writes))
 end
 
 fn health_of(board: Board, now: Time) : Counts
-  # body gone; regenerate
+  var counts = board.counts
+  counts.uptime_ms = now.since(board.started).ms
+  counts
 end
 
 # The board a store's records hold: every job, the reserved numbers, and the next number above
 # every job and every reservation; None when a record is not the job its key names.
 fn rebuilt(entries: List((String, String)), started: Time) : Option(Board)
-  # body gone; regenerate
+  var reserved = 0
+  var held = no_jobs()
+  for e in entries
+    if e.0 == "ids"
+      reserved = try e.1.to_u64
+    else
+      one = try decoded(e.1)
+      return None if number_of(e.0) != Some(one.number)
+      held = held.push(one)
+    end
+  end
+  sorted = held.sort_by(fn(j) j.number end)
+  highest = case sorted.last
+    Some(last): last.number
+    None: 0
+  end
+  var empty = board(started, max_of(max_of(highest + 1, reserved), 1))
+  empty.reserved = reserved
+  Some(sorted.reduce(empty, fn(b, j) placed(b, j) end))
 end
 
 # The board as the changes that write it whole: the reserved numbers, then every job's record by
 # number.
 fn snapshot(board: Board) : List((String, Option(String)))
   ensures result.size == all_jobs(board).size + 1
-  # body gone; regenerate
+
+  [("ids", Some("#{board.reserved}"))].concat(all_jobs(board).map(fn(j)
+    (id_of(j.number), Some(shown(j)))
+  end))
 end
 
 # Every job's record, by number, as the store holds them.
 fn records(board: Board) : List(String)
-  # body gone; regenerate
+  all_jobs(board).map(fn(j) shown(j) end)
+end
+
+# Every job, by number.
+fn all_jobs(b: Board) : List(Job)
+  b.jobs.keys.sort.flat_map(fn(at) page_jobs(b, at) end)
+end
+
+# The jobs in one page of 256, by number.
+fn page_jobs(b: Board, at: UInt64) : List(Job)
+  (b.jobs.get(at) or Map.new()).values.sort_by(fn(j) j.number end)
+end
+
+fn no_jobs() : List(Job)
+  []
+end
+
+fn no_writes() : List((String, Option(String)))
+  []
+end
+
+fn no_numbers() : List(UInt64)
+  []
+end
+
+fn empty_order() : Order
+  Order(head: 0, tail: 0, back: [], back_head: 0)
+end
+
+fn nothing(b: Board, outcome: Outcome) : Decision
+  Decision(board: b, outcome: outcome, writes: [])
+end
+
+fn job_at(b: Board, number: UInt64) : Option(Job)
+  page = try b.jobs.get(number / 256)
+  page.get(number)
+end
+
+# The board with the job set in its page.
+fn with_job(b: Board, j: Job) : Board
+  at = j.number / 256
+  var after = b
+  after.jobs = b.jobs.set(at, (b.jobs.get(at) or Map.new()).set(j.number, j))
+  after
+end
+
+fn plus(counts: Counts, phase: Phase) : Counts
+  var after = counts
+  case phase
+    Queued:
+      after.queued = counts.queued + 1
+    Leased:
+      after.leased = counts.leased + 1
+    Done:
+      after.done = counts.done + 1
+    Dead:
+      after.dead = counts.dead + 1
+  end
+  after
+end
+
+fn minus(counts: Counts, phase: Phase) : Counts
+  var after = counts
+  case phase
+    Queued:
+      after.queued = counts.queued - 1
+    Leased:
+      after.leased = counts.leased - 1
+    Done:
+      after.done = counts.done - 1
+    Dead:
+      after.dead = counts.dead - 1
+  end
+  after
+end
+
+fn lease_set(leases: Map(UInt64, Map(UInt64, Time)), number: UInt64,
+  until: Time) : Map(UInt64, Map(UInt64, Time))
+  at = number / 256
+  leases.set(at, (leases.get(at) or Map.new()).set(number, until))
+end
+
+fn lease_dropped(leases: Map(UInt64, Map(UInt64, Time)),
+  number: UInt64) : Map(UInt64, Map(UInt64, Time))
+  at = number / 256
+  case leases.get(at)
+    Some(page): if page.size <= 1: leases.remove(at) else: leases.set(at, page.remove(number))
+    None: leases
+  end
+end
+
+# A job the store held, placed on the board as it was: a queued job at the end of its queue's
+# fresh positions, a leased one with its lease.
+fn placed(b: Board, j: Job) : Board
+  return queued_fresh(b, j) if j.state == Queued
+  var after = with_job(b, j)
+  after.counts = plus(b.counts, j.state)
+  if j.state == Leased
+    if j.lease_until is Some(until)
+      after.leases = lease_set(b.leases, j.number, until)
+      after.due = Some(min_of(b.due or until, until))
+    end
+  end
+  after
+end
+
+# A queued job at its queue's next fresh position.
+fn queued_fresh(b: Board, j: Job) : Board
+  order = b.orders.get(j.queue) or empty_order()
+  key = (j.queue, order.tail / 256)
+  var grown = order
+  grown.tail = order.tail + 1
+  var after = with_job(b, j)
+  after.fresh = b.fresh.set(key, (b.fresh.get(key) or no_numbers()).push(j.number))
+  after.orders = b.orders.set(j.queue, grown)
+  after.counts = plus(b.counts, Queued)
+  after
+end
+
+# A job moved from one state to another: its page, the counts, its lease, and, queued again,
+# its place among its queue's jobs queued again.
+fn moved(b: Board, before: Job, after: Job) : Board
+  var changed = with_job(b, after)
+  changed.counts = plus(minus(b.counts, before.state), after.state)
+  if before.state == Leased
+    changed.leases = lease_dropped(b.leases, before.number)
+  end
+  if after.state == Leased
+    if after.lease_until is Some(until)
+      changed.leases = lease_set(changed.leases, after.number, until)
+      changed.due = Some(min_of(b.due or until, until))
+    end
+  end
+  if after.state == Queued and before.state != Queued
+    order = b.orders.get(after.queue) or empty_order()
+    changed.orders = b.orders.set(after.queue, back_with(order, after.number))
+  end
+  changed
+end
+
+# A number joins the jobs queued again, kept by number.
+fn back_with(order: Order, number: UInt64) : Order
+  var after = order
+  if order.back.size > order.back_head and number < (order.back.last or 0)
+    after.back = order.back.drop(order.back_head).push(number).sort
+    after.back_head = 0
+    return after
+  end
+  after.back = order.back.push(number)
+  after
+end
+
+# Every decision's first step: when a lease may have run out, each lease that has is put back,
+# queued or dead, by number, with its record.
+fn expired(b: Board, now: Time) : Decision
+  case b.due
+    Some(at): if at <= now: released(b, now) else: nothing(b, Empty)
+    None: nothing(b, Empty)
+  end
+end
+
+fn released(b: Board, now: Time) : Decision
+  ends = b.leases.values.flat_map(fn(page) page.entries end).sort_by(fn(e) e.0 end)
+  start_of = Decision(board: b, outcome: Empty, writes: no_writes())
+  var swept = ends.filter(fn(e) e.1 <= now end).reduce(start_of, fn(d, e) put_back(d, e.0, now) end)
+  swept.board.due = ends.filter(fn(e) e.1 > now end).map(fn(e) e.1 end).min
+  swept
+end
+
+# A lease that ran out put back by a look, with the job's record.
+fn put_back(d: Decision, number: UInt64, now: Time) : Decision
+  case job_at(d.board, number)
+    Some(held):
+      returned = looked(held, now)
+      Decision(board: moved(d.board, held, returned), outcome: d.outcome,
+        writes: d.writes.push((id_of(number), Some(shown(returned)))))
+    None: d
+  end
+end
+
+fn created(b: Board, queue: String, payload: String, max_attempts: UInt64, now: Time) : Decision
+  made = job(b.next, queue, payload, max_attempts, now)
+  record = (id_of(made.number), Some(shown(made)))
+  var after = queued_fresh(b, made)
+  after.next = b.next + 1
+  if b.next < b.reserved
+    return Decision(board: after, outcome: Made(job: made), writes: [record])
+  end
+  after.reserved = b.next + 1_000
+  Decision(board: after, outcome: Made(job: made),
+    writes: [("ids", Some("#{after.reserved}")), record])
+end
+
+fn fetched(b: Board, id: String) : Decision
+  case job_at(b, number_of(id) or 0)
+    Some(one): nothing(b, Found(job: one))
+    None: nothing(b, Missing)
+  end
+end
+
+# A listing by number, of at most 100 jobs.
+fn listed(b: Board, queue: Option(String), state: Option(Phase)) : List(Job)
+  var found = no_jobs()
+  for at in b.jobs.keys.sort
+    found = found.concat(page_jobs(b, at).filter(fn(j)
+      (queue is None or queue == Some(j.queue)) and (state is None or state == Some(j.state))
+    end))
+    if found.size >= 100
+      break
+    end
+  end
+  found.take(100)
+end
+
+fn removed(b: Board, id: String) : Decision
+  number = number_of(id) or 0
+  case job_at(b, number)
+    Some(one):
+      return nothing(b, Conflict(reason: "#{id_of(number)} is leased")) if one.state == Leased
+      at = number / 256
+      page = b.jobs.get(at) or Map.new()
+      var after = b
+      after.jobs = if page.size <= 1: b.jobs.remove(at) else: b.jobs.set(at, page.remove(number))
+      after.counts = minus(b.counts, one.state)
+      Decision(board: after, outcome: Removed, writes: [(id_of(number), None)])
+    None: nothing(b, Missing)
+  end
+end
+
+# An ack, or a fail with its reason, by the worker that holds a live lease on the job.
+fn settled(b: Board, worker: String, id: String, reason: Option(String), now: Time) : Decision
+  number = number_of(id) or 0
+  case job_at(b, number)
+    Some(one):
+      if !holds?(one, worker, now)
+        return nothing(b, Conflict(reason: "#{id_of(number)} is not leased to this worker"))
+      end
+      after = case reason
+        Some(why): failed(one, worker, why, now)
+        None: acked(one, worker, now)
+      end
+      Decision(board: moved(b, one, after), outcome: Found(job: after),
+        writes: [(id_of(number), Some(shown(after)))])
+    None: nothing(b, Missing)
+  end
+end
+
+# The first entry from `back_head` on whose job is still queued, or the end.
+fn back_next(b: Board, order: Order) : UInt64
+  var at = order.back.size
+  for i in order.back_head..order.back.size
+    if leasable?(job_at(b, order.back.get(i) or 0))
+      at = i
+      break
+    end
+  end
+  at
+end
+
+# The first fresh position from `head` on whose job is still queued, or `tail`.
+fn fresh_next(b: Board, queue: String, order: Order) : UInt64
+  var at = order.tail
+  for p in order.head..order.tail
+    if leasable?(job_at(b, fresh_number(b, queue, p)))
+      at = p
+      break
+    end
+  end
+  at
+end
+
+fn fresh_number(b: Board, queue: String, position: UInt64) : UInt64
+  page = b.fresh.get((queue, position / 256)) or no_numbers()
+  page.get(position % 256) or 0
+end
+
+fn leasable?(held: Option(Job)) : Bool
+  case held
+    Some(one): one.state == Queued and one.attempts < one.max_attempts
+    None: false
+  end
+end
+
+# The oldest queued job of the queue, by number, from its fresh positions or the jobs queued
+# again, leased to the worker; the entries passed over are dropped from the queue's order.
+fn lent(b: Board, worker: String, queue: String, lease_ms: UInt64, now: Time) : Decision
+  return nothing(b, Empty) if !b.orders.has?(queue)
+  order = b.orders.get(queue) or empty_order()
+  back_at = back_next(b, order)
+  fresh_at = fresh_next(b, queue, order)
+  from_back = order.back.get(back_at) or 0
+  from_fresh = if fresh_at < order.tail: fresh_number(b, queue, fresh_at) else: 0
+  take_back = from_back > 0 and (from_fresh == 0 or from_back < from_fresh)
+  var passed = order
+  passed.back_head = if take_back: back_at + 1 else: back_at
+  passed.head = if !take_back and from_fresh > 0: fresh_at + 1 else: fresh_at
+  kept = ordered(b, queue, order, passed)
+  number = if take_back: from_back else: from_fresh
+  case job_at(kept, number)
+    Some(one):
+      after = leased(one, worker, lease_ms, now)
+      Decision(board: moved(kept, one, after), outcome: Found(job: after),
+        writes: [(id_of(number), Some(shown(after)))])
+    None: nothing(kept, Empty)
+  end
+end
+
+# The board with the queue's order moved on: fresh pages passed are dropped, and the jobs queued
+# again are cut to the ones from `back_head` on once most are behind it.
+fn ordered(b: Board, queue: String, before: Order, after: Order) : Board
+  return b if after == before
+  var order = after
+  if after.back_head >= 256 and after.back_head * 2 >= after.back.size
+    order.back = after.back.drop(after.back_head)
+    order.back_head = 0
+  end
+  first_page = before.head / 256
+  last_page = after.head / 256
+  var kept = b
+  kept.fresh = (first_page..last_page).reduce(b.fresh, fn(fresh, p) fresh.remove((queue, p)) end)
+  kept.orders = b.orders.set(queue, order)
+  kept
 end
 
 fn start() : Time
-  # body gone; regenerate
+  Time.parse("2026-09-14T10:00:00Z") or Time.from_parts(2026, 9, 14, 10, 0, 0)
 end
 
 fn call(worker: String, command: Command) : Call
-  # body gone; regenerate
+  Call(worker: worker, command: command)
 end
 
 # A board with one job made in each queue named, in order, each with two attempts.
 fn with_jobs(queues: List(String)) : Board
-  # body gone; regenerate
+  queues.reduce(board(start(), 1), fn(b, queue)
+    decide(b, call("p", Create(queue: queue, payload: "", max_attempts: 2)), start()).board
+  end)
 end
 
 fn number_in(decision: Decision) : UInt64
-  # body gone; regenerate
+  case job_in(decision)
+    Some(one): one.number
+    None: 0
+  end
 end
 
 fn job_in(decision: Decision) : Option(Job)
-  # body gone; regenerate
+  case decision.outcome
+    Made(one): Some(one)
+    Found(one): Some(one)
+    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Unavailable(_): None
+  end
 end
 
 fn lease_by(b: Board, worker: String, queue: String, ms: UInt64, now: Time) : Decision
-  # body gone; regenerate
+  decide(b, call(worker, Lease(queue: queue, lease_ms: ms)), now)
 end
 
 fn store_of(b: Board) : List((String, String))
-  # body gone; regenerate
+  snapshot(b).map(fn(w) (w.0, w.1 or "") end)
 end
 
 test "a job made is found by its id, and its record is written under that id"
@@ -297,3 +667,6 @@ property "a job made then fetched gives back any valid payload"
     assert back.payload == payload and job_in(made) == Some(back)
   end
 end
+
+verified: types, contracts, tests (10), property (200 seeds), sim (not run)
+          proven: not run
