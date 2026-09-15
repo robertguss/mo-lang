@@ -85,13 +85,16 @@ fn checked(http: Http, clock: Clock, port: UInt16, script: List(String)) : Strin
   transcript
 end
 
-# A wait: the check listens on a port nothing connects to for N milliseconds.
+# A wait: the check sends a request to a listener of its own that nothing ever accepts, which
+# times out after N milliseconds.
 fn napped(http: Http, line: String) : String
   ms = line.slice(5, line.size).to_u64 or 0
   case http.listen(0, within: 1_000.ms)
     Ok(listener):
-      quiet = listener.accept(within: ms.to_i64.ms) is Error(_)
-      if quiet: "waited #{ms} ms\n" else: "a client came while waiting\n"
+      asked = Request(method: "GET", path: "/")
+      quiet = http.send(asked, host: "127.0.0.1", port: listener.port,
+        within: ms.to_i64.ms) is Error(_)
+      if quiet: "waited #{ms} ms\n" else: "an answer came while waiting\n"
     Error(_): "could not wait\n"
   end
 end

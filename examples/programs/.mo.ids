@@ -1616,7 +1616,7 @@
         { "id": "8adc77cb0f38", "name": "fn bare", "hash": "cb604f007e9bf77b" },
         { "id": "16a38cd3ecb8", "name": "fn shown", "hash": "5f2a1c1c21c495fb" },
         { "id": "d32d8c6e0adc", "name": "fn checked", "hash": "3305eb81ecc83276" },
-        { "id": "19b057019fe6", "name": "fn napped", "hash": "3fa4b9938b3a7daf" },
+        { "id": "19b057019fe6", "name": "fn napped", "hash": "7a3dbcca0fbc5310" },
         { "id": "38ac69c0a743", "name": "fn sent_line", "hash": "56a86201e265c5ec" },
         { "id": "8e4fd9b53d57", "name": "fn steady", "hash": "806fd7b929c16ed4" },
         { "id": "0c49fcd82725", "name": "fn masked", "hash": "34bf661183907e0b" },
@@ -1626,7 +1626,7 @@
         { "id": "6a54f84c5ced", "name": "test \"a script line takes a key after --key, and its JSON joins back as it was split\"", "hash": "9d6e1887694a8a9e" },
         { "id": "ec18172494e9", "name": "test \"the clock's numbers and the day are steadied, and nothing else\"", "hash": "c45e0acc4502805d" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "ff6955e58e6d943e" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "3db93054f6d61ba6" }
     },
     {
       "path": "ledger/desk.mo",
@@ -1857,7 +1857,7 @@
         { "id": "3fbade8a93d8", "name": "test \"a missing folder, a bad port, a short request, or an unknown command is a usage error\"", "hash": "8597463eadc2044b" },
         { "id": "b6afbb51d060", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "b9c5b97442b771e5" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "85dc4022f5afa296", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Check", "hash": "b094dc60e7605f68" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "b35c1fcbd39ba196" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Server", "hash": "4cf87b1ebcc145fe" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "85dc4022f5afa296", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Check", "hash": "9cf3ac770ae395fd" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "b35c1fcbd39ba196" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Server", "hash": "4cf87b1ebcc145fe" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
     },
     {
       "path": "ledger/money.mo",
