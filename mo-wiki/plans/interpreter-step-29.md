@@ -5,7 +5,7 @@ updated: 2026-09-15
 type: plan
 tags: [runtime, processes, errors, compiler]
 sources: [plans/program-6.md, spec/design-v0/03-semantics.md, decisions/decision-log.md, plans/interpreter-step-28.md]
-status: queued
+status: in-progress
 ---
 
 # Step 29: the runtime honest
