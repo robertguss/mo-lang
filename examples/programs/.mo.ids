@@ -1857,7 +1857,7 @@
         { "id": "3fbade8a93d8", "name": "test \"a missing folder, a bad port, a short request, or an unknown command is a usage error\"", "hash": "8597463eadc2044b" },
         { "id": "b6afbb51d060", "name": "test \"a usage error exits 2, and a folder or port that cannot be had exits 1\"", "hash": "b9c5b97442b771e5" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "85dc4022f5afa296", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Check", "hash": "b094dc60e7605f68" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "b35c1fcbd39ba196" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Server", "hash": "e468688ffc4553bc" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "85dc4022f5afa296", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Check", "hash": "b094dc60e7605f68" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "b35c1fcbd39ba196" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Server", "hash": "4cf87b1ebcc145fe" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
     },
     {
       "path": "ledger/money.mo",
@@ -1944,16 +1944,17 @@
       "module": "Ledger.Server",
       "declarations": [
         { "id": "b365ca269525", "name": "module Ledger.Server", "hash": "317eb744af0a62ea" },
-        { "id": "76d22b0ed0c5", "name": "expose", "hash": "c69552ea62389296" },
+        { "id": "76d22b0ed0c5", "name": "expose", "hash": "0656854033c5af66" },
         { "id": "548d9c177ab9", "name": "use Ledger.Api", "hash": "6d0fcd701a34c89c" },
         { "id": "a160d2335338", "name": "use Ledger.Journal", "hash": "4ce8eb531a9c43dd" },
         { "id": "b14602170d48", "name": "use Ledger.Records", "hash": "d40bafa47faa4ba1" },
         { "id": "b6af964587c6", "name": "use Ledger.Teller", "hash": "bc04ceee041e2f22" },
         { "id": "4462d28ca18c", "name": "intent", "hash": "aa15cc4b092dabaf" },
-        { "id": "b55d5907b54d", "name": "process Acceptor", "hash": "5104e31f0abe53be" },
-        { "id": "4bcab0d3a8af", "name": "process Worker", "hash": "7f1aeb6177da1d32" },
+        { "id": "b55d5907b54d", "name": "process Acceptor", "hash": "5fc3529008a1a5dd" },
+        { "id": "4bcab0d3a8af", "name": "process Worker", "hash": "67ad3b064079bb22" },
         { "id": "5279da37fc4a", "name": "supervisor Exchanges", "hash": "0a2d52c1662e3a89" },
-        { "id": "020fbb8b943b", "name": "fn answer", "hash": "ebbd3cb3bf6da8db" },
+        { "id": "5b19d56ed14d", "name": "fn staged", "hash": "d19bc380495d3e99" },
+        { "id": "f4bcf9ba3ea8", "name": "fn collected", "hash": "24bfbda3e2e13088" },
         { "id": "677ae9cd14c7", "name": "fn unavailable", "hash": "66376207f85e2792" },
         { "id": "2a55beae1827", "name": "fn started", "hash": "fb96f442f2b11ed9" },
         { "id": "d9b096d759e1", "name": "fn by", "hash": "e08a6e7fab9756ca" },
@@ -1964,7 +1965,7 @@
         { "id": "51a2a79b8f20", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "6303b84ed52c0afd" },
         { "id": "bd155042f9df", "name": "test \"under faults every transfer is right or a 503 that moved nothing, and each key lands once\"", "hash": "8cf87b33374b4e6f" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "1d0c29efd96876be", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "b35c1fcbd39ba196" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "571ac2bc0dc83ae2", "uses": [{ "module": "Ledger.Api", "hash": "d038baee61164d92" }, { "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Journal", "hash": "b35c1fcbd39ba196" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
     },
     {
       "path": "ledger/settle.mo",

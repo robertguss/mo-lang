@@ -1,6 +1,6 @@
 # sim: --faults 20 --until 0.5
 module Ledger.Server
-expose Acceptor, Worker, Exchanges, answer
+expose Acceptor, Worker, Exchanges
 
 use Ledger.Api{Routed, route, respond}
 use Ledger.Journal{Journal, Readiness}
@@ -24,7 +24,8 @@ process Acceptor(journal: Handle(Journal)) mailbox: 4_096
   fn update(state, message)
     case message
       Accepted(exchange):
-        Worker.start(exchange, journal).send(Go)
+        worker = Worker.start(exchange, journal)
+        worker.send(Go(me: worker))
         state.accepted += 1
       Idle:
         if journal.ask(Flush, within: 10_000.ms) == Ok(true)
@@ -34,18 +35,30 @@ process Acceptor(journal: Handle(Journal)) mailbox: 4_096
   end
 end
 
-# Answers one exchange and ends.
+# Answers one exchange and ends. It stages its call in one update and collects the answer in the
+# next, which it sends itself, so the calls other workers stage in between join the same batch: a
+# worker that collected in the update that staged would flush a batch of its own call alone.
 process Worker(exchange: Exchange, journal: Handle(Journal))
   state
+    ticket: UInt64
     answered: Bool
   end
 
-  message Go
+  message Go(me: Handle(Worker))
+  message Reply
 
   fn update(state, message)
     case message
-      Go:
-        response = answer(journal, exchange.request)
+      Go(me):
+        case staged(journal, exchange.request)
+          Ok(ticket):
+            state.ticket = ticket
+            me.send(Reply)
+          Error(response):
+            state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
+        end
+      Reply:
+        response = collected(journal, state.ticket)
         state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
     end
   end
@@ -56,22 +69,26 @@ supervisor Exchanges(journal: Handle(Journal), exchange: Exchange)
   child Worker(exchange, journal), restart: :never
 end
 
-# The response to one request. An exchange carries no deadline of the client's, so the worker
-# chooses: 10 seconds to stage, which never waits on a file, and 30 to collect, which waits for the
-# batch's append; every file call the journal makes for the collect runs on what remains of those
-# 30. A timed-out collect is 503, and the change may still land, as the failure model says.
-fn answer(journal: Handle(Journal), request: Request) : Response
+# A request's ticket once its call is staged, or the response it gets at once. An exchange carries
+# no deadline of the client's, so the worker chooses: 10 seconds to stage, which never waits on a
+# file, and 30 to collect, which waits for the batch's append; every file call the journal makes
+# for the collect runs on what remains of those 30. A timed-out collect is 503, and the change may
+# still land, as the failure model says.
+fn staged(journal: Handle(Journal), request: Request) : Result(UInt64, Response)
   case route(request)
-    Answered(response): response
+    Answered(response): Error(response)
     Asked(call):
       case journal.ask(Stage(call: call), within: 10_000.ms)
-        Ok(ticket):
-          case journal.ask(Collect(ticket: ticket), within: 30_000.ms)
-            Ok(answered): respond(answered)
-            Error(_): unavailable()
-          end
-        Error(_): unavailable()
+        Ok(ticket): Ok(ticket)
+        Error(_): Error(unavailable())
       end
+  end
+end
+
+fn collected(journal: Handle(Journal), ticket: UInt64) : Response
+  case journal.ask(Collect(ticket: ticket), within: 30_000.ms)
+    Ok(answered): respond(answered)
+    Error(_): unavailable()
   end
 end
 
