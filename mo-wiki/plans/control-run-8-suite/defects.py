@@ -213,7 +213,13 @@ def t_runout():
     # the run-out is noticed by the sweep (idle), not only by a request on that job
     st, c = create(queue="ro3", payload="p", max_tries=2, backoff_ms=100)
     st, l = lease("ro3", ms=100, token="w1"); time.sleep(0.35)
-    st, l = lease("ro3", token="w2"); check("runout: a run-out lease whose backoff also passed is handed out by a lease request", st == 200 and l.get("id") == c["id"] and l.get("tries") == 2, (st, l))
+    st, l = lease("ro3", token="w2")
+    # Amended 15 Sep 22:45 after Go's run: the spec dates run_at from the look that notices the run-out, so a
+    # service whose first look is this lease request answers 204 and hands the job out a backoff later; one that
+    # swept on idle may answer 200 here. Both are the spec; the original check took only the second.
+    if st == 204:
+        time.sleep(0.2); st, l = lease("ro3", token="w2")
+    check("runout: a run-out lease with backoff is handed out by a lease request once the backoff from its look has passed", st == 200 and l.get("id") == c["id"] and l.get("tries") == 2, (st, l))
 
 def t_retry():
     st, a = create(queue="rt", payload="p", max_tries=1, backoff_ms=300)

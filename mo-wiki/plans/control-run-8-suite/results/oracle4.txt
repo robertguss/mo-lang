@@ -1,0 +1,40 @@
+go      create with an unknown field `extra`         -> 400 {'error': 'body is not the expected JSON object: json: unknown field "
+go      create with delay_ms 0.0 (a float that is whole) -> 400 {'error': 'body is not the expected JSON object: json: cannot unmarsha
+go      create with backoff_ms null                  -> 201 {'id': 'j_1', 'queue': 'q', 'state': 'queued', 'payload': 'p', 'tries'
+go      lease at about run_at (100 ms delay, 100 ms later) -> 200
+go      a due job in `other` after a lease on `q` only: /health -> scheduled=0
+go      retry with a JSON body                       -> 200 queued
+go      retry of a queued job: the 409 body          -> 409 {'error': 'conflict: j_4 is queued, not dead'}
+go      a job created with delay 5 ms, read at once  -> queued run_at=False
+go      record with both attempts and tries          -> refused: exited 1: jobq: /tmp/oracle4-objqz0jg/dir/jobq.log: record 1: job j_1 has both tries and a
+go      record with neither count                    -> refused: exited 1: jobq: /tmp/oracle4-ex55pcpk/dir/jobq.log: record 1: job j_1 has no tries job j_1
+go      old record whose attempts equal max_attempts while queued -> refused: exited 1: jobq: /tmp/oracle4-prk37u0f/dir/jobq.log: record 1: invariant failed: a queued o
+go      new record scheduled with run_at in the past -> 200 state=queued tries=0 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+go      new record scheduled without run_at          -> refused: exited 1: jobq: /tmp/oracle4-ouik33mx/dir/jobq.log: record 1: invariant failed: a job has 
+go      old record with backoff_ms present           -> 200 state=queued tries=0 max_tries=2 backoff_ms=250 run_at=False; lease -> 200
+python  create with an unknown field `extra`         -> 400 {'error': 'extra: Extra inputs are not permitted'}
+python  create with delay_ms 0.0 (a float that is whole) -> 400 {'error': 'delay_ms: Input should be a valid integer'}
+python  create with backoff_ms null                  -> 400 {'error': 'backoff_ms: Input should be a valid integer'}
+python  lease at about run_at (100 ms delay, 100 ms later) -> 200
+python  a due job in `other` after a lease on `q` only: /health -> scheduled=0
+python  retry with a JSON body                       -> 200 queued
+python  retry of a queued job: the 409 body          -> 409 {'error': 'the job is not dead'}
+python  a job created with delay 5 ms, read at once  -> scheduled run_at=True
+python  record with both attempts and tries          -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  record with neither count                    -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  old record whose attempts equal max_attempts while queued -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  new record scheduled with run_at in the past -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  new record scheduled without run_at          -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  old record with backoff_ms present           -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  record with both attempts and tries          -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  record with neither count                    -> refused: exited 1: jobq: jobs.log line 1 is not a record
+python  old record whose attempts equal max_attempts while queued -> refused: exited 1: ments/control-run/python/jobq/src/jobq/contract.py", line 26, in invariant     r
+python  new record scheduled with run_at in the past -> 200 state=queued tries=0 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+python  new record scheduled without run_at          -> refused: exited 1: hon/experiments/control-run/python/jobq/src/jobq/contract.py", line 26, in invar
+python  old record with backoff_ms present           -> 200 state=queued tries=0 max_tries=2 backoff_ms=250 run_at=False; lease -> 200
+mo      record with both attempts and tries          -> 200 state=queued tries=0 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+mo      record with neither count                    -> refused: exited 1: jobq: /tmp/oracle4-23lymgoa/dir holds a jobq.log with a record that is not a job
+mo      old record whose attempts equal max_attempts while queued -> 200 state=queued tries=2 max_tries=2 backoff_ms=0 run_at=False; lease -> TimeoutError (the service stopped answering)
+mo      new record scheduled with run_at in the past -> 200 state=queued tries=0 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+mo      new record scheduled without run_at          -> refused: exited 1: jobq: /tmp/oracle4-glt58il_/dir holds a jobq.log with a record that is not a job
+mo      old record with backoff_ms present           -> 200 state=queued tries=0 max_tries=2 backoff_ms=250 run_at=False; lease -> 200
