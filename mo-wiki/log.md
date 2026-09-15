@@ -351,3 +351,6 @@
 
 ## [2026-09-14] session | Night: step 28 accepted, program 6 started
 - Resumed after Robert's pause; the worker's part A had hung the suite on a jobq test binary, was fixed, and landed with a move analysis shared by both backends. All five parts verified by Fable's probes under both runtimes (the 80k map in 0.09 s interpreted, the six gaps from `mo run` and binaries), 186 of 186; the round 7 Mo jobq rebuilt and measured with the round's client (throughput within noise, memory after restart 181 → 57 MiB). Five decision rows, three `semantic`. Merged to `main`. Program 6, the ledger, started on a fresh worker at 23:52 UTC.
+
+## [2026-09-15] session | Night: program 6 accepted, the loop stopped for Robert
+- `ledger` accepted after the suite went green with it (186 of 186), `mo check --recipe` on the store, and Fable's 35-check HTTP session under both runtimes. Five decision rows, three `semantic`, one for Robert (no check earned its keep for the third program running), one flagged runtime bug (`restart: :never` not honoured). Merged to `main`. Robert asked for a stop and a catch-up before round 8; the loop is stopped.
