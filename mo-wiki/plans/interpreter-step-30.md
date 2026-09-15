@@ -5,7 +5,7 @@ updated: 2026-09-15
 type: plan
 tags: [runtime, processes, performance]
 sources: [plans/interpreter-step-21.md, plans/interpreter-step-29.md, plans/interpreter-step-29b.md, spec/design-v0/03-semantics.md, spec/design-v0/07-toolchain.md, plans/control-run-7.md]
-status: in-progress
+status: done
 ---
 
 # Step 30: processes on every core
@@ -58,6 +58,37 @@ The tables above, before and after, and a sentence on each row that moved more t
 ## Done when
 
 The rule stated and in `03-semantics.md`; `MO_CORES=1` gives today's runtime and `MO_CORES=4` runs processes on four threads in both runtimes; a seeded test's trace unchanged; the store's `Ok` still means on disk and the kill under load loses nothing, five times; the corpus green and no `.expected` changed; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result (15 Sep 2026, accepted 20:05 UTC)
+
+Done by Opus in one session (brief at 12:35, report at 19:36, about seven hours, four of them measurement), five commits on `session-05`: A `b415471`, B `9bc4d08`, C `51f395c`, D `f0939dd` and `c4fc206`, the suite green at each (191 to 193 tests). The rule is in `03-semantics.md` (Processes) and `07-toolchain.md` (bets): a Mo program runs its processes on every core; a process runs on one scheduler for its life; an update is still one transaction on one thread; what a process sees is unchanged, since nothing is shared and a message is a copy. `MO_CORES=1` is step 29b's runtime.
+
+**What was built.** A: a scheduler per core in both runtimes, scheduler 0 on main's thread, placement at start on the scheduler with the fewest live processes, one lock over the runtime's tables that a process's Mo code and its region's compaction run without, a poller per scheduler woken by an eventfd, `MO_STATS=1` a line per scheduler, the corpus program `programs/spread`. B: `Fs.write` and `Fs.append` run their write and fsync on a pool of four threads while the caller waits holding no scheduler; `Ok` still means on disk. C: the same seed gives step 29b's trace, checked by a new test against traces the step 29b toolchain recorded; `ProcessInfo` and `Started` gain `scheduler`; the corpus green under `mo test`, `mo run`, and as binaries, no `.expected` changed. D: measuring found two bugs, both fixed: the binary's string interpolation shared one buffer across threads (one ledger reply in 2,400 garbled at 4 cores), and an idle scheduler spun without looking at its own sockets (echo at 4 cores 1.11 s, 0.05 s after).
+
+**Numbers, best of five on the VM (4 cores, 16 GB, one disk at about 990 fsyncs a second).**
+
+| row | step 29b | step 30, 1 core | step 30, 4 cores |
+|---|---|---|---|
+| queue, creates a second (native, 100k) | 786 | 827 | 785 |
+| queue, pairs a second at 32 workers | 353 | 342 | 423 (runs 286 to 423) |
+| queue, memory at 100k jobs | 160 MiB | 162 MiB | 166 MiB |
+| ledger, transfers a second (native, 32 clients) | 902 | 1,990 | 1,897 |
+| ledger with the fsync on the scheduler (part A only) | | 879 | 1,672 |
+| 1M replay of the evidence log | 82.4 s, peak 2,323 MiB | 84.8 s, same peak | 94.8 s, same peak |
+| kill under load, 4 cores | | | 5 of 5 lost nothing |
+| 8 crunchers (interpreter / native) | | 4.33 s / 2.06 s | 1.18 s / 0.75 s |
+| 100k asks, one scheduler / two (native) | 0.04 s | 0.05 s | 0.05 s / 0.17 s |
+| 200,000 short-lived processes (native) | 1.58 s | 1.40 s | 3.03 s |
+| 65,530 idle connections held | | yes, both runtimes | yes, both runtimes |
+| 10,000 processes at rest, native / interpreter | 130 MiB / 7.78 GB | same | same |
+
+Rows that moved more than 10 percent, in the worker's words: the ledger at 1 core doubled because the journal groups appends while the fsync runs off the scheduler; the queue's 4-core row sits inside the disk's fsync bound and its runs are noisy; a single client doing one request after another pays a cross-scheduler hop per round trip (echo 2.3 times slower at 4 cores, kv 1.2 to 1.35); the 1M replay is one process and pays the idle schedulers' spinning and sweeps, 15 percent; short-lived processes from four spawners are twice as slow at 4 cores because every ask crosses schedulers, at 3.4 times the cost of an ask on one.
+
+**The row round 8 reads.** The queue's 423 pairs a second at 4 cores is not comparable with Go's 478 from round 7: step 29b's own binary makes 353 on this disk today, not round 7's 981, so round 7's speed rows were not measured under today's disk conditions. The queue is one service process syncing every change, and this disk does about 990 syncs a second (1.01 ms mean); cores cannot lift that. Round 8 reruns Go and Python on the same disk, the same day, before Mo's row is read against them.
+
+**Fable's acceptance probes (19:53 to 20:05).** The suite on the pulled tree: 193 of 193. The corpus's ten single-run programs under step 29b's binary and the new one at `MO_CORES=1` and `4`: every output equal. A kill under load at 4 cores with the lead's own client (32 clients, fresh idempotency keys, SIGKILL after three seconds, restart, every acknowledged transfer re-posted with its key and its answer compared, balances summed): five rounds, 2,969 to 8,871 acknowledged each, nothing lost, nothing changed, balances zero, restart 0.13 to 1.06 s. The 10,000-processes-at-rest probe under `ps`: 7,778 MiB resident and anonymous in the interpreter at 1 and 4 cores, so the number is real memory, not the reservation; native holds 130 MiB. The 1M replay with the lead's own build on a copy of the evidence log: 4 cores 96.0 s, peak 2,323 MiB, settled 1,058 MiB; 1 core 96.8 s, the same peak and book. The lead's two runs sit together and 12 s above the worker's 1-core run; the difference is the disk on the evening, not the cores.
+
+**Unmet.** The interpreted ledger rows and the interpreted queue at 4 cores after the spin fix are not measured. The Mac run is Robert's, in parallel with round 8 (decision log, 15 Sep 19:30). The interpreter's 780 KB per process at rest, a crash report's 1 MB, and one update that starts thousands of processes holding them all on one core are older than this step and carried. `09-stdlib.md`'s `ProcessInfo` and `Started` lines were stale after C2 and Fable fixed them at acceptance.
 
 ## Related
 - [[interpreter-step-29b]]

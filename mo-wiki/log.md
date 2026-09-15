@@ -366,3 +366,8 @@
 
 ## [2026-09-15] session | Midday: direction 41 locked, the session closed
 - Robert: round 9 (the small-model round) after round 8, several models of different sizes in the Pi harness from his Grok, Codex, and Ollama cloud subscriptions, small ones on his Mac; pause after round 8 to plan it together in a fresh session. Two locked rows. `HANDOFF.md` rewritten whole: step 30, round 8, then stop. Lint 25 issues (16 Robert's). The loop is stopped.
+
+## [2026-09-15] session | Evening: step 30 accepted, Robert's five decisions, direction 43
+- Step 30 (processes on every core) accepted at 20:05: five commits, 193 tests, the lead's probes (corpus under the 29b binary and the new one at 1 and 4 cores; a kill under load at 4 cores with the lead's own client, five of five; the 1M replay on a copy of the evidence log, 4 cores 96.0 s at the same 2,323 MiB peak, 1 core 96.8 s, same peak and book). Eight decision rows: the rule, four ratified defaults, `programs/agent` at one core in the corpus (for Robert), the same-disk rule for round 8 (round 7's 981 was not measured under today's disk; 29b's binary makes 353 today), the interpreter's 780 KB per process carried.
+- Robert, evening: the Mac scaling run (M3 Max, 14 cores) in parallel with round 8; Mo's claim is reliability at zero dependencies, read on both columns together, baselines keep their checkers; round 10 is the Elixir round (direction 42); runtime first, the language revised to its evidence in "The language after the rounds" at the pause; Fable to drive with proposals. Direction 43 written: five measurements and the unfamiliarity tax.
+- `09-stdlib.md`'s `ProcessInfo` and `Started` lines fixed at acceptance. Merged to `main`. Next: round 8's change spec, then its plan page.

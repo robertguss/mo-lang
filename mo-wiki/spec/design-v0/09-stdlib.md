@@ -326,6 +326,7 @@ struct ProcessInfo
   restarts: UInt64
   region_bytes: UInt64
   paused: Bool
+  scheduler: UInt64
 end
 
 struct SourceInfo
@@ -355,7 +356,7 @@ end
 
 enum Event
   Updated(at: Time, pid: UInt64, name: String, taking: String, took_us: UInt64, waited_us: UInt64, longest: String)
-  Started(at: Time, pid: UInt64, name: String)
+  Started(at: Time, pid: UInt64, name: String, scheduler: UInt64)
   Ended(at: Time, pid: UInt64, name: String)
   Restarted(at: Time, pid: UInt64, name: String, restarts: UInt64)
   Crashed(at: Time, pid: UInt64, name: String, seed: UInt64, clause: String, taking: String, snapshot: String)
