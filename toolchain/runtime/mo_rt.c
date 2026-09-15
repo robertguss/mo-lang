@@ -4912,6 +4912,8 @@ typedef struct {
     const char *process_name, *other_name, *name, *call;
     uint64_t took_us, waited_us, count, seed;
     const char *clause, *message, *state;
+    /* A Started event's scheduler (step 30). */
+    uint32_t scheduler;
 } Event;
 
 static Event *ring;
@@ -5087,7 +5089,10 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
         procs[nprocs++] = p;
     }
     if (turns_on) placed(id, home, supervisor == NOBODY);
-    record_event(event_of(EV_STARTED, id));
+    /* Its placement, in its start (step 30). */
+    Event started = event_of(EV_STARTED, id);
+    started.scheduler = home;
+    record_event(started);
     return id;
 }
 
@@ -9697,7 +9702,7 @@ static MoValue event_value(const Event *e) {
     case EV_UPDATED:
         f[1] = id, f[2] = name, f[3] = text_value(e->name), f[4] = mo_u64(e->took_us), f[5] = mo_u64(e->waited_us), f[6] = text_value(e->call);
         return mo_variant(MO_N_UPDATED, 7, f);
-    case EV_STARTED: f[1] = id, f[2] = name; return mo_variant(MO_N_STARTED, 3, f);
+    case EV_STARTED: f[1] = id, f[2] = name, f[3] = mo_u64(e->scheduler); return mo_variant(MO_N_STARTED, 4, f);
     case EV_ENDED: f[1] = id, f[2] = name; return mo_variant(MO_N_ENDED, 3, f);
     case EV_RESTARTED: f[1] = id, f[2] = name, f[3] = mo_u64(e->count); return mo_variant(MO_N_RESTARTED, 4, f);
     case EV_CRASHED:
@@ -9724,7 +9729,7 @@ static MoValue event_value(const Event *e) {
 
 static MoValue process_info(uint32_t id) {
     const Proc *p = procs[id];
-    MoValue f[9];
+    MoValue f[10];
     f[0] = mo_u64(id);
     f[1] = text_value(name_of(id));
     f[2] = mo_bool(p->up);
@@ -9734,7 +9739,8 @@ static MoValue process_info(uint32_t id) {
     f[6] = mo_u64(p->restarted);
     f[7] = mo_u64(region_bytes_of(id));
     f[8] = mo_bool(p->paused);
-    return mo_record(mo_process_info_decl, 9, f);
+    f[9] = mo_u64(turns_on ? home_of(id) : 0);
+    return mo_record(mo_process_info_decl, 10, f);
 }
 
 /* Under main, while an update of process `id` is on a stack, main hands out turns and a process parks,

@@ -25,6 +25,7 @@ pub const Kind = enum(u8) {
     /// An update committed: `name` the message, `took_us` its whole time, `waited_us` the time it
     /// spent in calls that wait, `call` the one call it waited longest in.
     updated,
+    /// `scheduler`: the scheduler it was placed on (step 30), 0 under Mo.Sim and on one core.
     started,
     /// Under Mo.Server, a sweep ended a finished process.
     ended,
@@ -66,6 +67,7 @@ pub const Event = struct {
     clause: []const u8 = "",
     message: []const u8 = "",
     state: []const u8 = "",
+    scheduler: u32 = 0,
 };
 
 pub const Ring = struct {

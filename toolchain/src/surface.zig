@@ -172,6 +172,7 @@ fn info(vm: *Vm, sim: *Sim, id: u32) Error!Value {
         uint(p.restarted),
         uint(regionBytes(sim, id)),
         .{ .bool = p.paused },
+        uint(if (sim.turns) |t| t.homeOf(id) else 0),
     });
 }
 
@@ -347,7 +348,7 @@ fn eventValue(vm: *Vm, sim: *const Sim, e: events.Event) Error!Value {
     const name = str(e.process_name);
     return switch (e.kind) {
         .updated => vm.variant("Updated", &.{ at, id, name, str(e.name), uint(e.took_us), uint(e.waited_us), str(e.call) }),
-        .started => vm.variant("Started", &.{ at, id, name }),
+        .started => vm.variant("Started", &.{ at, id, name, uint(e.scheduler) }),
         .ended => vm.variant("Ended", &.{ at, id, name }),
         .restarted => vm.variant("Restarted", &.{ at, id, name, uint(e.count) }),
         .crashed => vm.variant("Crashed", &.{ at, id, name, uint(e.seed), str(e.clause), str(e.message), str(e.state) }),

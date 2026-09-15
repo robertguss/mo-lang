@@ -572,8 +572,9 @@ pub const Sim = struct {
             proc.state = parcel.value.tuple[args.len];
         }
         if (id < sim.procs.items.len) sim.procs.items[id] = proc else try sim.procs.append(sim.gpa, proc);
-        sim.record(.{ .kind = .started, .process = id });
         if (sim.turns) |t| try t.placed(id, placing.?.sched, supervisor == test_runner);
+        // Its placement, in its start (step 30).
+        sim.record(.{ .kind = .started, .process = id, .scheduler = if (placing) |pl| pl.sched else 0 });
         return id;
     }
 

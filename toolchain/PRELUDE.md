@@ -112,7 +112,8 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `RuntimeError` | `MailboxFull` | | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `Timeout` | | stdlib (09), Session 5, step 23 |
 | `Event` | `Updated` | `at: Time`, `pid: UInt64`, `name: String`, `taking: String`, `took_us: UInt64`, `waited_us: UInt64`, `longest: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
-| `Event` | `Started`, `Ended`, `Paused`, `Resumed` | `at: Time`, `pid: UInt64`, `name: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
+| `Event` | `Started` | `at: Time`, `pid: UInt64`, `name: String`, `scheduler: UInt64` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot`; Session 5, step 30: `scheduler` |
+| `Event` | `Ended`, `Paused`, `Resumed` | `at: Time`, `pid: UInt64`, `name: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `Restarted` | `at: Time`, `pid: UInt64`, `name: String`, `restarts: UInt64` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `Crashed` | `at: Time`, `pid: UInt64`, `name: String`, `seed: UInt64`, `clause: String`, `taking: String`, `snapshot: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `Overflowed` | `at: Time`, `sender: Option(UInt64)`, `sender_name: String`, `target: UInt64`, `name: String` | stdlib (09), Session 5, step 23 |
@@ -317,7 +318,7 @@ The structs the `Runtime` rows give (design-v0/09, Runtime; Session 5, step 23).
 
 | name | field | type | |
 |---|---|---|---|
-| `ProcessInfo` | `id`, `mailbox`, `bound`, `restarts`, `region_bytes` | `UInt64` | |
+| `ProcessInfo` | `id`, `mailbox`, `bound`, `restarts`, `region_bytes`, `scheduler` | `UInt64` | Session 5, step 30: `scheduler` |
 | `ProcessInfo` | `name` | `String` | |
 | `ProcessInfo` | `alive`, `paused` | `Bool` | |
 | `ProcessInfo` | `waiting_in` | `Option(String)` | |
