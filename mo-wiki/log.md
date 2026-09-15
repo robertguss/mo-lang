@@ -363,3 +363,6 @@
 
 ## [2026-09-15] session | Midday: step 29b accepted, direction 41
 - Replay memory on a real log: a process region reserved 1 GiB and an update that filled it allocated past it forever; now address space is reserved and a walk compacts the frames waiting in whole-statement calls. Fable's evidence log replays at 2.3 GB where it was killed past 9 GB, twice. Five rows, three `semantic`. Robert's small-model round filed as direction 41 and a round-9 row, its order for Robert. Merged to `main`.
+
+## [2026-09-15] session | Midday: direction 41 locked, the session closed
+- Robert: round 9 (the small-model round) after round 8, several models of different sizes in the Pi harness from his Grok, Codex, and Ollama cloud subscriptions, small ones on his Mac; pause after round 8 to plan it together in a fresh session. Two locked rows. `HANDOFF.md` rewritten whole: step 30, round 8, then stop. Lint 25 issues (16 Robert's). The loop is stopped.
