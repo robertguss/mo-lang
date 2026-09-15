@@ -50,6 +50,6 @@ A compiler pass that is a model: each function carries an intent line, and a sec
 ## Related
 - [[d42-elixir-round]]
 - [[d41-small-model-round]]
-- [[01-premise]]
-- [[08-milestone]]
+- `spec/design-v0/01-premise.md`, the thesis
+- `spec/design-v0/08-milestone.md`, the measure
 - [[roadmap]]

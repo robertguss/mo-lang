@@ -53,6 +53,6 @@ Recorded, not predicted: wall-clock and loops by cause; lines and files changed;
 - [[sampling-as-verification]]
 - [[d43-five-measurements]]
 - [[d42-elixir-round]]
-- [[01-premise]]
-- [[08-milestone]]
+- `spec/design-v0/01-premise.md`, the thesis
+- `spec/design-v0/08-milestone.md`, the measure
 - [[roadmap]]

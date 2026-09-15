@@ -61,4 +61,4 @@ Recorded, not predicted: loops to green by cause per variant, wall-clock, output
 - [[d43-five-measurements]]
 - [[control-run-7]]
 - [[control-run-8]]
-- [[08-milestone]]
+- `spec/design-v0/08-milestone.md`, the measure

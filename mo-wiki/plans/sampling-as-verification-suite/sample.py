@@ -2,7 +2,7 @@
 """The driver for sampling as verification (mo-wiki/plans/sampling-as-verification.md).
 
   sample.py gen --out DIR [--seeds 1000] [--ops 40]
-      write one script per seed, DIR/<seed>.txt, in the harness's format (harness.md)
+      write one script per seed, DIR/<seed>.txt, in the harness's format (_harness.md)
   sample.py run --name NAME --scripts DIR --jobq DIR --mo PATH --out DIR
       play every script through `mo run sampler.mo -- <script>` in the jobq folder, save DIR/NAME/<seed>.out
   sample.py compare --out DIR --variants a,b,c,d,e [--original orig]
