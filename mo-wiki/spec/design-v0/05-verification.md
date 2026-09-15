@@ -24,6 +24,8 @@ verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
 
 The headline is the weakest obligation, so a human can watch it climb. Editing it by hand is a compile error.
 
+The sim clause counts the file's invariants once it has run under `--sim` (Session 5, step 29): `sim (100 runs, invariants (kept 4, tripped 3))`. An invariant is tripped when a seed's message stopped a `test rejects` on it, and kept otherwise; the runner names each one either way. An invariant no message can trip is documentation with a keyword, and the count is where that shows; `mo check` says nothing about it. A file with no invariant has no clause.
+
 ## Failure is a work queue
 
 A tier-3 failure on merged code is a bug, not a flag. A failed property is a found counterexample with seed and log; the agent takes it as a fix task. A crash in production is the same object. Nothing is filed for a human unless the fix changes an exposed signature, a contract, or a `never`.

@@ -698,6 +698,10 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     Copy back = {scratch.base, scratch.top, &mo_heap, true, true};
     copy_roots(roots, n, below, nbelow, &back);
     drop_growth(scratch.base, scratch.end);
+    /* What the scratch region held is copied back: a large copy's pages go back to the system at once,
+     * or they stay resident beside the heap until the update ends (step 29). */
+    scratch.top = scratch.base;
+    if (scratch.high - scratch.base > 16 * RELEASE_KEEP) release_past(&scratch, scratch.base + RELEASE_KEEP);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
     /* A compaction that freed far more than it kept gives the pages back at once, as a loop that
      * built and dropped a large value does; smaller ones wait for the update's end (settle_region). */
@@ -1510,6 +1514,9 @@ typedef struct {
     char **log;
     uint32_t nlog;
     char *state;
+    /* The supervisor whose child line says restart: :never, when that line kept the process down
+     * (step 29); NULL when it restarts. */
+    const char *not_restarted;
 } Report;
 
 /* Where a crash, a skip, or a discarded attempt goes in a test; NULL under main. */
@@ -1536,6 +1543,7 @@ static void report_text(Buf *b, const Report *r) {
         buf_printf(b, "\n      in process %s, seed %llu\n      messages since it started: ", r->process, (unsigned long long)r->seed);
         for (uint32_t i = 0; i < r->nlog; i++) buf_printf(b, "%s%s", i == 0 ? "" : ", ", r->log[i]);
         buf_printf(b, "\n      state before the last message: %s", r->state);
+        if (r->not_restarted) buf_printf(b, "\n      not restarted: %s says restart: :never, so %s stays down", r->not_restarted, r->process);
     }
 }
 
@@ -1725,6 +1733,34 @@ static size_t iterate(size_t from, MoValue *roots, size_t n, size_t kept) {
     return mo_heap.top - from;
 }
 
+/* A loop that folds into one accumulator, reduce and fold_lines (step 29): where it began, where its
+ * last compaction left the top, and what its last compaction from where it began kept. */
+typedef struct { size_t from, young, major; } Fold;
+
+static Fold fold_mark(void) {
+    size_t m = mo_mark();
+    return (Fold){m, m, 0};
+}
+
+/* A folding loop's safe point, in generations (vm.zig, foldStep): once the steps since the last
+ * compaction allocated more than a quarter of what is older, only what the accumulator reaches past
+ * that is copied down; everything from the loop's start is compacted again once the older part has
+ * grown past twice what the last such compaction kept. */
+static void fold_step(Fold *f, MoValue *roots, size_t n) {
+    if (!mo_compacts) return;
+    size_t old = f->young - f->from;
+    size_t young = mo_heap.top > f->young ? mo_heap.top - f->young : 0;
+    size_t budget = old / 4 > MO_LOOP_BUDGET ? old / 4 : MO_LOOP_BUDGET;
+    if (young <= budget) return;
+    if (old > 2 * f->major + MO_LOOP_BUDGET) {
+        mo_compact(f->from, roots, n);
+        f->major = mo_heap.top - f->from;
+    } else {
+        mo_compact(f->young, roots, n);
+    }
+    f->young = mo_heap.top;
+}
+
 static const char *const kind_names[] = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64"};
 
 static __int128 kind_min(uint32_t k) {
@@ -1806,11 +1842,11 @@ MO_ROW(mo_r_List_reduce) {
     (void)kind;
     MoValue xs = a[0], f = a[2];
     MoValue acc[1] = {a[1]};
-    size_t from = mo_mark(), kept = 0;
+    Fold fold = fold_mark();
     for (uint32_t i = 0; i < xs.aux; i++) {
         MoValue args[2] = {acc[0], xs.as.xs[i]};
         acc[0] = mo_invoke(f, args);
-        kept = iterate(from, acc, 1, kept);
+        fold_step(&fold, acc, 1);
     }
     return acc[0];
 }
@@ -3254,7 +3290,8 @@ static MoValue read_result(int which, MoValue s) {
  * memory of its longest line and the value (stdlib.zig, LineFeed). */
 typedef struct {
     MoValue f;
-    size_t from, kept;
+    /* Its safe points compact in generations (fold_step, step 29). */
+    Fold fold;
     Buf partial;
     /* The value so far, from its init, handed with each line and replaced by what the call gives,
      * the safe point's one root. */
@@ -3283,7 +3320,7 @@ static void feed_line(LineFeed *l, const char *s, size_t n) {
     MoValue line = replaced_line(s, n);
     MoValue args[2] = {l->acc[0], line};
     l->acc[0] = mo_invoke(l->f, args);
-    l->kept = iterate(l->from, l->acc, 1, l->kept);
+    fold_step(&l->fold, l->acc, 1);
 }
 
 static void feed_bytes(LineFeed *l, const char *s, size_t n) {
@@ -3384,7 +3421,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
         free(full);
         if (!f) return missing(path);
         MoValue text = f->text;
-        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
+        LineFeed l = {.f = a[3], .fold = fold_mark(), .acc = {a[2]}};
         feed_bytes(&l, text.as.s, text.aux);
         feed_end(&l);
         return ok_of(l.acc[0]);
@@ -3482,7 +3519,7 @@ static MoValue server_files(int which, const MoValue *a) {
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
         enum { READING, DONE, LATE, FAILED } ended = READING;
-        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
+        LineFeed l = {.f = a[3], .fold = fold_mark(), .acc = {a[2]}};
         char chunk[1 << 16];
         while (ended == READING) {
             if (late(t0, within)) {
@@ -4577,7 +4614,8 @@ typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
 typedef struct { MoValue message; uint64_t seq; Parcel *parcel; bool has_deadline; int64_t deadline; } Entry;
 /* `delay`: a send with delay: (step 24), in milliseconds; 0 for a plain send. */
 typedef struct { uint32_t to; MoValue message; Parcel *parcel; int64_t delay; } Outgoing;
-typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; } Policy;
+/* `line`: the supervisor whose child line gave the policy, or NOBODY (a crash report names it). */
+typedef struct { uint8_t restart; uint32_t max_restarts; int64_t window_ms; uint32_t line; } Policy;
 
 typedef struct {
     uint32_t process;
@@ -4708,7 +4746,7 @@ static size_t queued(const Proc *p) { return p->mailbox_len - p->head; }
  * the awake clock in microseconds under main, pinned to the wall clock when the run began, and in a
  * test the run's clock, which only fixture waits move. */
 
-enum { EV_UPDATED, EV_STARTED, EV_ENDED, EV_RESTARTED, EV_CRASHED, EV_OVERFLOWED, EV_TIMED_OUT, EV_SOURCE_PAUSED, EV_SOURCE_RESUMED, EV_SENT, EV_PAUSED, EV_RESUMED };
+enum { EV_UPDATED, EV_STARTED, EV_ENDED, EV_RESTARTED, EV_CRASHED, EV_OVERFLOWED, EV_TIMED_OUT, EV_SOURCE_PAUSED, EV_SOURCE_RESUMED, EV_SENT, EV_PAUSED, EV_RESUMED, EV_DROPPED };
 
 typedef struct {
     uint8_t kind;
@@ -4889,21 +4927,21 @@ static uint32_t start_under(uint32_t process, uint32_t n, const MoValue *args, u
     return id;
 }
 
-/* `Name.start(args)`: the test runner, or main, supervises it with :always, and with the
- * max_restarts of a child line that names the process. */
+/* `Name.start(args)`: the test runner, or main, supervises it as the first child line that names
+ * the process says, its restart: included (step 29), and with :always when no line names it. */
 MoValue mo_spawn(uint32_t process, uint32_t n, const MoValue *args) {
     /* Under main, main starting processes faster than a statement settles them hands out their
      * turns first, so the ones that finished end. */
     if (turns_on) turns_spawning();
-    Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS};
-    for (uint32_t s = 0; s < mo_nsupervisors; s++) {
+    Policy policy = {MO_RESTART_ALWAYS, DEFAULT_MAX_RESTARTS, DEFAULT_WINDOW_MS, NOBODY};
+    for (uint32_t s = 0; s < mo_nsupervisors && policy.line == NOBODY; s++) {
         const MoSupervisor *sup = &mo_supervisors[s];
         for (uint32_t k = 0; k < sup->nchildren; k++) {
             const MoChild *c = &sup->children[k];
-            if (c->process == process && c->max_restarts != UINT32_MAX) {
-                policy = (Policy){MO_RESTART_ALWAYS, c->max_restarts, window_of(c)};
-                break;
-            }
+            if (c->process != process) continue;
+            uint32_t max = c->max_restarts == UINT32_MAX ? DEFAULT_MAX_RESTARTS : c->max_restarts;
+            policy = (Policy){c->restart, max, window_of(c), s};
+            break;
         }
     }
     return handle_value(start_under(process, n, args, NOBODY, policy));
@@ -4921,7 +4959,7 @@ MoValue mo_start_supervisor(uint32_t supervisor, uint32_t n, const MoValue *args
         const MoChild *c = &s->children[k];
         MoValue child = c->args(NULL, args);
         uint32_t max = c->max_restarts == UINT32_MAX ? DEFAULT_MAX_RESTARTS : c->max_restarts;
-        Policy policy = {c->restart, max, window_of(c)};
+        Policy policy = {c->restart, max, window_of(c), supervisor};
         ids[k] = handle_value(start_under(c->process, child.aux, child.as.xs, sid, policy));
     }
     if (s->nchildren == 0) return MO_NONE_V;
@@ -4960,11 +4998,25 @@ static void room_for(uint32_t to, MoValue message) {
     raise_report(r, JUMP_CRASH);
 }
 
+/* A message that will not arrive (step 29): its target is down, or the program exited while it was
+ * delayed. A Dropped event names the sender (NOBODY for main or a test), the target, the message,
+ * and why (sim.zig, dropped). */
+static void dropped(uint32_t from, uint32_t to, MoValue message, const char *why) {
+    Event e = event_of(EV_DROPPED, to);
+    e.other = from;
+    e.message = message.tag == MO_VARIANT ? mo_names[mo_vname(message)] : "";
+    e.name = why;
+    record_event(e);
+}
+
 /* `h.send(message)`: never blocks. From inside an update the message waits in the sender's
- * outbox until the update commits. A target that is down drops it. */
+ * outbox until the update commits. A target that is down drops it, with an event. */
 MoValue mo_send(MoValue handle, MoValue message) {
     uint32_t to = (uint32_t)handle.as.i;
-    if (!procs[to]->up) return MO_NONE_V;
+    if (!procs[to]->up) {
+        dropped(running, to, message, "down");
+        return MO_NONE_V;
+    }
     room_for(to, message);
     Parcel *parcel = packs ? pack(message) : NULL;
     MoValue sent = parcel ? parcel->value : message;
@@ -5188,8 +5240,12 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
 
 static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     if (!procs[to]->up) return ask_error(MO_N_DOWN);
-    /* A target whose update is on the stack is waiting on this very call. */
-    if (procs[to]->busy) return ask_error(MO_N_TIMEOUT);
+    /* A target whose update is on the stack is waiting on this very call: the ask waited its whole
+     * deadline, and simulated time passed with it (step 29). */
+    if (procs[to]->busy) {
+        sim_waited += within.as.i > 0 ? within.as.i : 0;
+        return ask_error(MO_N_TIMEOUT);
+    }
     int64_t waited = sim_waited;
     /* Delayed sends whose time has come are in their mailboxes before this message (step 24). */
     due_later();
@@ -5199,7 +5255,10 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     target->mailbox[target->mailbox_len - 1].has_deadline = true;
     target->mailbox[target->mailbox_len - 1].deadline = waited + within.as.i;
     /* The surface holds its deliveries (step 23): the message waits, and the ask is Timeout. */
-    if (target->paused) return ask_error(MO_N_TIMEOUT);
+    if (target->paused) {
+        sim_waited += within.as.i > 0 ? within.as.i : 0;
+        return ask_error(MO_N_TIMEOUT);
+    }
     MoValue reply;
     uint32_t delivered = 0;
     for (;;) {
@@ -5236,6 +5295,11 @@ static void later_swap(size_t a, size_t b) {
 }
 
 static void push_later(uint32_t from, uint32_t to, MoValue message, Parcel *parcel, int64_t at) {
+    if (exited) {
+        dropped(from, to, message, "exited");
+        parcel_free(parcel);
+        return;
+    }
     GROW_ARRAY(later, nlater, caplater);
     size_t i = nlater++;
     later[i] = (Later){at, later_sent++, from, to, message, parcel};
@@ -5269,6 +5333,7 @@ static bool due_later(void) {
         Later l = pop_later();
         Proc *target = procs[l.to];
         if (!target->up || target->ended) {
+            dropped(l.from, l.to, l.message, "down");
             parcel_free(l.parcel);
             continue;
         }
@@ -5285,12 +5350,25 @@ static bool due_later(void) {
     return moved;
 }
 
+/* main called exit and returned (step 29): every delayed send still pending is dropped with an event,
+ * and push_later drops one sent from here on, so the program ends at once (sim.zig, exitNow). */
+static void drop_later_on_exit(void) {
+    for (size_t i = 0; i < nlater; i++) {
+        dropped(later[i].from, later[i].to, later[i].message, "exited");
+        parcel_free(later[i].parcel);
+    }
+    nlater = 0;
+}
+
 /* `h.send(message, delay: d)` (step 24): in `to`'s mailbox no earlier than `d` after the sending
  * update ends; from a test or main, `d` after now. A crash drops it with the update's other sends. */
 MoValue mo_send_later(MoValue handle, MoValue message, MoValue delay) {
     if (delay.as.i <= 0) return mo_send(handle, message);
     uint32_t to = (uint32_t)handle.as.i;
-    if (!procs[to]->up) return MO_NONE_V;
+    if (!procs[to]->up) {
+        dropped(running, to, message, "down");
+        return MO_NONE_V;
+    }
     Parcel *parcel = packs ? pack(message) : NULL;
     MoValue sent = parcel ? parcel->value : message;
     if (running != NOBODY) {
@@ -5343,19 +5421,21 @@ static void others_round(uint32_t skip, uint32_t *delivered) {
 }
 
 /* Delivers waiting messages a round at a time until every mailbox is empty. */
-static void drain(void) {
+/* `to_later`: at a test's end, simulated time passes to each delayed send in turn once nothing else
+ * waits (step 24); between two statements it does not, so time moves to a delayed send only while a
+ * test waits in a fixture call or an ask (step 29; sim.zig, drain). */
+static void drain(bool to_later) {
     uint32_t delivered = 0;
     for (;;) {
         while (deliver_round(&delivered)) {}
-        /* Nothing waits: simulated time passes to the next delayed send (step 24). */
-        if (turns_on || nlater == 0) return;
+        if (!to_later || turns_on || nlater == 0) return;
         if (later[0].at > sim_waited) sim_waited = later[0].at;
     }
 }
 
 void mo_settle(void) {
     if (turns_on) turns_settle();
-    else drain();
+    else drain(false);
 }
 
 /* ---- one message */
@@ -5508,6 +5588,7 @@ static void crashed(uint32_t id, MoValue before) {
     report.nlog = (uint32_t)p->nlog;
     for (size_t i = 0; i < p->nlog; i++) report.log[i] = render(p->log[i]);
     report.state = render(before);
+    if (p->policy.restart == MO_RESTART_NEVER && p->policy.line != NOBODY) report.not_restarted = mo_supervisors[p->policy.line].name;
     if (!crashed_once) {
         first_crash = report;
         crashed_once = true;
@@ -5523,7 +5604,15 @@ static void crashed(uint32_t id, MoValue before) {
     close_held(p->args, p->nargs);
     if (turns_on) turns_wake_all();
     if (p->policy.restart == MO_RESTART_NEVER) {
+        /* It stays down (step 29): what waits for it is dropped, each with an event, and an ask
+         * among it is Down. */
         p->up = false;
+        for (size_t i = p->head; i < p->mailbox_len; i++) {
+            if (turns_on) turns_answer(p->mailbox[i].seq, false, MO_NONE_V, NULL);
+            dropped(NOBODY, id, p->mailbox[i].message, "down");
+            parcel_free(p->mailbox[i].parcel);
+        }
+        p->mailbox_len = p->head = 0;
         return;
     }
     /* Restarts are counted in simulated time under a test, and wall-clock time under main. */
@@ -5625,7 +5714,10 @@ static Delivered deliver(uint32_t id) {
     held -= p->noutbox;
     for (size_t i = 0; i < p->noutbox; i++) {
         Outgoing o = p->outbox[i];
-        if (!procs[o.to]->up) parcel_free(o.parcel);
+        if (!procs[o.to]->up) {
+            dropped(id, o.to, o.message, "down");
+            parcel_free(o.parcel);
+        }
         /* No earlier than its delay after the update ends (step 24). */
         else if (o.delay > 0) push_later(id, o.to, o.message, o.parcel, deadline_now() + o.delay);
         else enqueue(o.to, o.message, o.parcel);
@@ -6549,6 +6641,8 @@ static void turns_spawning(void) {
 static void turns_finish(void) {
     for (;;) {
         if (step()) continue;
+        /* After exit, only until nothing can run without waiting (step 29). */
+        if (exited) return;
         if (in_flight == 0 && !sources_active() && nlater == 0) return;
         idle(NULL, false, 0);
     }
@@ -8600,7 +8694,7 @@ static Result run_test(const MoTest *t) {
     }
     if (jumped == 0) {
         t->fn();
-        drain();
+        drain(true);
         check_nevers();
         if (crashed_once) {
             verdict(&r, t, first_crash);
@@ -8820,6 +8914,9 @@ static MoValue event_value(const Event *e) {
         return mo_variant(e->kind == EV_SOURCE_PAUSED ? MO_N_SOURCE_PAUSED : MO_N_SOURCE_RESUMED, 5, f);
     case EV_SENT: f[1] = id, f[2] = name, f[3] = text_value(e->message); return mo_variant(MO_N_SENT, 4, f);
     case EV_PAUSED: f[1] = id, f[2] = name; return mo_variant(MO_N_PAUSED, 3, f);
+    case EV_DROPPED:
+        f[1] = maybe_id(e->other), f[2] = text_value(who_name(e->other, e->other_name)), f[3] = id, f[4] = name, f[5] = text_value(e->message), f[6] = text_value(e->name);
+        return mo_variant(MO_N_DROPPED, 7, f);
     default: f[1] = id, f[2] = name; return mo_variant(MO_N_RESUMED, 3, f);
     }
 }
@@ -9392,9 +9489,13 @@ void mo_program_start(int argc, char **argv) {
 
 int mo_program_end(void) {
     /* main returned: the run goes on until no message is waiting and no source can deliver; a
-     * main that called exit stops the sources first. */
+     * main that called exit ends at once (step 29): the sources stop, every delayed send is dropped
+     * with an event, what already waits is delivered, and nothing is waited for. */
     if (turns_on) {
-        if (exited) sources_stop();
+        if (exited) {
+            sources_stop();
+            drop_later_on_exit();
+        }
         turns_finish();
     }
     stream_flush(&out_stream);

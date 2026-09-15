@@ -139,5 +139,5 @@ test rejects "a queue of more than 1,000 waiting refunds"
   end
 end
 
-verified: types, contracts, tests (7), property (200 seeds), sim (100 runs)
+verified: types, contracts, tests (7), property (200 seeds), sim (100 runs, invariants (kept 1, tripped 0))
           proven: not run

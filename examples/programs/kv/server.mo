@@ -270,5 +270,5 @@ test "a client that says nothing hears nothing"
   assert heard_so_far?(talk, heard.ask(Lines, within: 1.minute), [])
 end
 
-verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (5), property (0 seeds), sim (100 runs, invariants (kept 1, tripped 0))
           proven: not run

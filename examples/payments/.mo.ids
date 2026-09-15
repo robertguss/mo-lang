@@ -26,7 +26,7 @@
         { "id": "25fbbf64d208", "name": "property \"any valid refund leaves the charge refunded\"", "hash": "fcee84b98391df55" },
         { "id": "6ef51b1787af", "name": "test rejects \"a queue of more than 1,000 waiting refunds\"", "hash": "0f27ca9bf4bea58a" }
       ],
-      "verified": { "hash": "91f66b3b860beb16", "declarations": "47292d0daf37e6e6" }
+      "verified": { "hash": "4110f04ca1ea8b26", "declarations": "47292d0daf37e6e6" }
     }
   ]
 }

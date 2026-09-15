@@ -146,8 +146,13 @@ pub const Server = struct {
         if (machine.server.?.surface_port) |port| try startSurface(machine, scheduler, port);
         _ = try machine.call(main_fn, &.{.{ .cap = .{ .kind = .platform } }});
         // A served listener keeps the program running until it is stopped, unless main
-        // called exit: then the runtime stops accepting and reading, and the rest settles.
-        if (machine.server.?.exited) if (scheduler.turns) |t| sources.stopServer(scheduler, t);
+        // called exit: then the program ends at once (step 29): the runtime stops accepting and
+        // reading, drops every delayed send with an event, delivers what already waits, and
+        // waits for nothing.
+        if (machine.server.?.exited) {
+            if (scheduler.turns) |t| sources.stopServer(scheduler, t);
+            scheduler.exitNow();
+        }
         try scheduler.finish();
     }
 

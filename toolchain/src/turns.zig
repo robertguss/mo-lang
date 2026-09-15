@@ -617,10 +617,12 @@ pub const Turns = struct {
     }
 
     /// main returned: turns go on being handed out until no message waits, no update is in
-    /// progress, no runtime loop can deliver, and no delayed send is still to come (step 24).
+    /// progress, no runtime loop can deliver, and no delayed send is still to come (step 24). After
+    /// exit, only until nothing can run without waiting (step 29).
     pub fn finish(t: *Turns, sim: *Sim) Error!void {
         while (true) {
             if (try t.step(sim)) continue;
+            if (sim.exiting) return;
             if (t.in_flight == 0 and !sim.sources.active() and sim.later.items.len == 0) return;
             t.idle(sim, null, null);
         }

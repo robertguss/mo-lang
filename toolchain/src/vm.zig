@@ -617,6 +617,36 @@ pub const Vm = struct {
         return r.top - from;
     }
 
+    /// A loop that folds into one accumulator, `reduce` and `fold_lines` (step 29): `from` is where
+    /// it began, `young` where its last compaction left the top, and `major` what its last
+    /// compaction from `from` kept.
+    pub const Fold = struct { from: usize, young: usize, major: usize = 0 };
+
+    pub fn foldMark(vm: *const Vm) Fold {
+        const m = vm.mark();
+        return .{ .from = m, .young = m };
+    }
+
+    /// A folding loop's safe point, in generations (step 29). A value points only at older values
+    /// but through remembered slots, so what the accumulator reaches past `young` is all that the
+    /// steps since the last compaction left alive: once they allocated more than a quarter of what
+    /// is older (and loop_budget), only that is copied down (a minor compaction). Everything from
+    /// `from` is compacted again (a major one) once the older part has grown past twice what the
+    /// last major kept, which frees what a later step replaced. A replay whose accumulator holds a
+    /// million records copied all of them at every compaction, 91% of its time (step 29, part C).
+    pub fn foldStep(vm: *Vm, f: *Fold, roots: []Value) Error!void {
+        const r = vm.region orelse return;
+        const old = f.young - f.from;
+        // A budget of 0 compacts at every safe point, the hardest case for what is kept.
+        const budget = if (vm.loop_budget == 0) 0 else @max(vm.loop_budget, old / 4);
+        if (r.top -| f.young <= budget) return;
+        if (old > 2 * f.major + vm.loop_budget) {
+            try vm.compact(f.from, roots);
+            f.major = r.top - f.from;
+        } else try vm.compact(f.young, roots);
+        f.young = r.top;
+    }
+
     /// Copies what `roots` reach past `from` into the scratch region, frees everything past
     /// `from`, and copies it back; `roots` then hold the copies. A value points only at
     /// older values, except where a row wrote into an older buffer in place, and those slots
@@ -648,6 +678,10 @@ pub const Vm = struct {
         vm.forward.clearRetainingCapacity();
         try vm.copyRoots(roots, below, .{ .lo = s.base, .hi = s.top, .dest = r.allocator(), .moves = true, .fresh = true });
         vm.dropGrowth(s.base, s.end);
+        // What the scratch region held is copied back: a large copy's pages go back to the system at
+        // once, or they stay resident beside the region until the update ends (step 29).
+        s.top = s.base;
+        if (s.high - s.base > 16 * Region.release_keep) s.releasePast(s.base + Region.release_keep);
         for (below) |*e| e.at = r.top;
         // A compaction that freed far more than it kept gives the pages back at once; smaller ones wait
         // for the update's end (sim.zig, settleRegion; step 28).
@@ -1255,11 +1289,10 @@ pub const Vm = struct {
             },
             .list_reduce => blk: {
                 var acc = [1]Value{a[1]};
-                const from = vm.mark();
-                var kept: usize = 0;
+                var fold = vm.foldMark();
                 for (a[0].list) |x| {
                     acc[0] = try vm.invoke(a[2].func, &.{ acc[0], x });
-                    kept = try vm.iterate(from, &acc, kept);
+                    try vm.foldStep(&fold, &acc);
                 }
                 break :blk acc[0];
             },

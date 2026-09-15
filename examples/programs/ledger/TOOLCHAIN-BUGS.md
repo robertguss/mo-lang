@@ -4,6 +4,8 @@ Recorded while writing program 6 (`mo-wiki/spec/programs/06-ledger.md`, brief `m
 
 ## 1. A process whose supervisor line says `restart: :never` is restarted after a crash
 
+Fixed by step 29, part A: a process `Name.start` begins takes its whole policy from the first child line naming it, `restart:` included, so it stays down in `mo run`, `mo test`, and a binary; its report ends "not restarted", an ask to it is `Down`, and a send to it is dropped with a `Dropped` event. The reproduction is `examples/processes/never-restart.mo` and `examples/programs/never-restart.mo`.
+
 Chapter 3 says a store that does not replay its state "must say `restart: :never` and mean it", and `Ledger.Journals` says it: a journal that crashed would come back with an empty book and forget the batch it held. Under `mo run` the crashed process answers the next message from a fresh state all the same, and under `mo test` the runner restarts it until it has crashed more than three times.
 
 Reproduction (`never-run.mo`, in a folder of its own):
@@ -59,6 +61,8 @@ process crashed: never-run.mo:11:3: invariant "count stays below two" no longer 
 What it cost the ledger: one loop. `Ledger.Journal`'s `test rejects` over a planted log tried `Open` again when the first ask came back without an answer, the restarted journal replayed the same log and tripped again, and the runner gave up. Workaround: those tests send `Open` again only when the journal answered `Unready` (a fault refused a read), never after an ask that got no answer. Under `mo run` nothing more is needed: a restarted journal holds `opened: false`, and every call it takes is answered 503 ("the ledger has not been opened") until `Open`, which only `main` sends, once; so a tripped invariant stops the ledger as `:never` intends, by another road.
 
 ## 2. `platform.exit` does not end a program while a delayed send is pending
+
+Fixed by step 29, part B: once a `main` that called `exit` returns, both runtimes stop the sources, drop every pending delayed send (and any sent after) with a `Dropped` event, deliver what already waits, and end without waiting, with the exit code kept. The reproduction is `examples/programs/exit-pending.mo`. The check's holds `h1` and `h5` in `data/session.txt` live an hour again, and `ledger check` still ends within half a second of its last line under both runtimes.
 
 `platform.exit(code)` is how a command that is done ends a program that served a listener (`jobq check`, `notes check`, `ledger check`). When any process has a `send(..., delay:)` still pending, the program prints what `main` wrote and then does not end: it waits for the delayed send, however far away, where the exit asked for the program to end now. The runtime's row says a pending delayed send "keeps `main` from finishing", which is right for a `main` that returns; an explicit exit is not a `main` that returns.
 
