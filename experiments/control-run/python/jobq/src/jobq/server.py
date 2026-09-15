@@ -27,7 +27,8 @@ IDLE_TIMEOUT_S = 5.0
 REQUEST_TIMEOUT_S = 10.0
 # within: closing a connection waits at most this long for the peer (chosen: 1 s).
 CLOSE_TIMEOUT_S = 1.0
-# The listener's Idle: how often run-out leases are returned without a request.
+# The listener's Idle: how often run-out leases are returned and due scheduled jobs are
+# queued without a request.
 SWEEP_INTERVAL_S = 1.0
 BACKLOG = 4096
 MAX_HEAD_BYTES = 16 * 1024
@@ -160,7 +161,7 @@ class HttpServer:
             try:
                 self._queue.expire_due()
             except StoreError as failure:
-                print(f"jobq: returning run-out leases failed: {failure}", file=sys.stderr)
+                print(f"jobq: the idle look failed: {failure}", file=sys.stderr)
 
     async def _connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         self.connections += 1
