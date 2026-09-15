@@ -6286,6 +6286,8 @@ typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer
  * runs, while its region compacts, and while its scheduler waits in its poller. */
 
 #define SPINS 2000
+/* Every POLL_EVERY spins the scheduler looks at its own poller without waiting (turns.zig, idle). */
+#define POLL_EVERY 64
 #define LOCK_SPINS 200
 #define STOP_WAIT_MS 20
 #define SWEEP_RETRY_MS 100
@@ -6766,10 +6768,18 @@ static void idle(Waiter *also, bool bounded, int64_t deadline) {
         uint32_t held = s->depth;
         s->depth = 0;
         pthread_mutex_unlock(&runtime_mutex);
-        for (int k = 0; k < SPINS && !atomic_load(&s->poked); k++) spin_hint();
-        /* Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake. */
-        if (!atomic_load(&s->poked)) atomic_store(&s->state, THREAD_SLEEPING);
-        n = poller_wait(atomic_load(&s->poked) ? 0 : left, out);
+        /* While it spins it also looks at its own sockets now and then, without waiting: a reply that comes
+         * on a socket is as much news as a poke. */
+        n = 0;
+        for (int k = 0; k < SPINS && !atomic_load(&s->poked); k++) {
+            if (k % POLL_EVERY == POLL_EVERY - 1 && (n = poller_wait(0, out)) > 0) break;
+            spin_hint();
+        }
+        if (n == 0) {
+            /* Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake. */
+            if (!atomic_load(&s->poked)) atomic_store(&s->state, THREAD_SLEEPING);
+            n = poller_wait(atomic_load(&s->poked) ? 0 : left, out);
+        }
         atomic_store(&s->state, THREAD_RUNNING);
         acquire_runtime();
         s->depth = held;

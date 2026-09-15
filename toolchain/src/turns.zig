@@ -264,8 +264,11 @@ const thread_running: u8 = 0;
 const thread_spinning: u8 = 1;
 const thread_sleeping: u8 = 2;
 /// How many times a scheduler with nothing to do looks for a poke before it sleeps in its poller:
-/// about 50 µs, longer than an update another scheduler hands it usually takes.
+/// about 50 µs, longer than an update another scheduler hands it usually takes. Every poll_every
+/// of them it looks at its own poller without waiting, so a socket's reply is not kept waiting.
 const spins: u32 = 2_000;
+/// How many spins go by between two looks at the scheduler's own poller while it spins.
+const poll_every: u32 = 64;
 /// How many times a thread tries for the runtime's lock before it waits for it in the system.
 const lock_spins: u32 = 200;
 
@@ -794,12 +797,22 @@ pub const Turns = struct {
             s.poked.store(false, .release);
             s.state.store(thread_spinning, .release);
             const h = t.letGo(s);
+            // While it spins it also looks at its own sockets now and then, without waiting: a reply that
+            // comes on a socket is as much news as a poke.
             var k: u32 = 0;
-            while (k < spins and !s.poked.load(.acquire)) : (k += 1) std.atomic.spinLoopHint();
-            // Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake.
-            if (!s.poked.load(.acquire)) s.state.store(thread_sleeping, .release);
-            // Poked: its sockets are still looked at, without waiting.
-            n = p.wait(if (s.poked.load(.acquire)) 0 else left, &s.fired);
+            while (k < spins and !s.poked.load(.acquire)) : (k += 1) {
+                if (k % poll_every == poll_every - 1) {
+                    n = p.wait(0, &s.fired);
+                    if (n > 0) break;
+                }
+                std.atomic.spinLoopHint();
+            }
+            if (n == 0) {
+                // Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake.
+                if (!s.poked.load(.acquire)) s.state.store(thread_sleeping, .release);
+                // Poked: its sockets are still looked at, without waiting.
+                n = p.wait(if (s.poked.load(.acquire)) 0 else left, &s.fired);
+            }
             s.state.store(thread_running, .release);
             t.takeBack(s, h);
         } else n = p.wait(left, &s.fired);
