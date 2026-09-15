@@ -2,6 +2,10 @@
 
 One record per job change, under the job's number. A write is durable when `append`
 returns; when it raises, the log is truncated back to what it held before.
+
+A log the previous version wrote replays too: its job records say `attempts` and
+`max_attempts` and have no `backoff_ms`, and they are read in the current shape
+(`upgrade_job_fields`). Every write, compaction included, uses only the current names.
 """
 
 import errno
@@ -12,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
 from jobq.contract import ensure
 from jobq.jobs import Job
@@ -21,12 +25,34 @@ LOG_NAME = "jobs.log"
 LOCK_NAME = "jobq.lock"
 COMPACT_NAME = "jobs.log.compact"
 
+# A job record's field names before the tries rename, and the names they have now.
+LEGACY_NAMES = {"attempts": "tries", "max_attempts": "max_tries"}
+
+
+def upgrade_job_fields(value: object) -> object:
+    """A job record as any version wrote it, in the current shape: `attempts` and
+    `max_attempts` read as `tries` and `max_tries`, and a missing `backoff_ms` as 0. A record
+    holding an old name beside its new one keeps both, so validation refuses it."""
+    if not isinstance(value, dict):
+        return value
+    fields = dict(value)
+    for old, new in LEGACY_NAMES.items():
+        if old in fields and new not in fields:
+            fields[new] = fields.pop(old)
+    fields.setdefault("backoff_ms", 0)
+    return fields
+
 
 class PutRecord(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
     kind: Literal["put"] = "put"
     job: Job
+
+    @field_validator("job", mode="before")
+    @classmethod
+    def _upgrade(cls, value: object) -> object:
+        return upgrade_job_fields(value)
 
 
 class DeleteRecord(BaseModel):
