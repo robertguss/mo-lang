@@ -495,15 +495,15 @@ fn lines(vm: *Vm, s: []const u8) Error!Value {
 pub const LineFeed = struct {
     vm: *Vm,
     f: Value.Func,
-    from: usize,
-    kept: usize = 0,
+    /// Its safe points compact in generations (Vm.foldStep, step 29).
+    fold: Vm.Fold,
     /// A line begun in bytes read so far, waiting for its "\n".
     partial: std.ArrayList(u8) = .empty,
     /// The value so far, from `init`.
     acc: Value,
 
     pub fn init(vm: *Vm, f: Value.Func, acc: Value) LineFeed {
-        return .{ .vm = vm, .f = f, .from = vm.mark(), .acc = acc };
+        return .{ .vm = vm, .f = f, .fold = vm.foldMark(), .acc = acc };
     }
 
     pub fn bytes(l: *LineFeed, chunk: []const u8) Error!void {
@@ -528,7 +528,7 @@ pub const LineFeed = struct {
         const text = if (raw.len > 0 and raw[raw.len - 1] == '\r') raw[0 .. raw.len - 1] else raw;
         const handed: Value = .{ .string = try replaced(l.vm, text) };
         var roots = [1]Value{try l.vm.invoke(l.f, &.{ l.acc, handed })};
-        l.kept = try l.vm.iterate(l.from, &roots, l.kept);
+        try l.vm.foldStep(&l.fold, &roots);
         l.acc = roots[0];
     }
 };

@@ -698,6 +698,10 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     Copy back = {scratch.base, scratch.top, &mo_heap, true, true};
     copy_roots(roots, n, below, nbelow, &back);
     drop_growth(scratch.base, scratch.end);
+    /* What the scratch region held is copied back: a large copy's pages go back to the system at once,
+     * or they stay resident beside the heap until the update ends (step 29). */
+    scratch.top = scratch.base;
+    if (scratch.high - scratch.base > 16 * RELEASE_KEEP) release_past(&scratch, scratch.base + RELEASE_KEEP);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
     /* A compaction that freed far more than it kept gives the pages back at once, as a loop that
      * built and dropped a large value does; smaller ones wait for the update's end (settle_region). */
@@ -1729,6 +1733,34 @@ static size_t iterate(size_t from, MoValue *roots, size_t n, size_t kept) {
     return mo_heap.top - from;
 }
 
+/* A loop that folds into one accumulator, reduce and fold_lines (step 29): where it began, where its
+ * last compaction left the top, and what its last compaction from where it began kept. */
+typedef struct { size_t from, young, major; } Fold;
+
+static Fold fold_mark(void) {
+    size_t m = mo_mark();
+    return (Fold){m, m, 0};
+}
+
+/* A folding loop's safe point, in generations (vm.zig, foldStep): once the steps since the last
+ * compaction allocated more than a quarter of what is older, only what the accumulator reaches past
+ * that is copied down; everything from the loop's start is compacted again once the older part has
+ * grown past twice what the last such compaction kept. */
+static void fold_step(Fold *f, MoValue *roots, size_t n) {
+    if (!mo_compacts) return;
+    size_t old = f->young - f->from;
+    size_t young = mo_heap.top > f->young ? mo_heap.top - f->young : 0;
+    size_t budget = old / 4 > MO_LOOP_BUDGET ? old / 4 : MO_LOOP_BUDGET;
+    if (young <= budget) return;
+    if (old > 2 * f->major + MO_LOOP_BUDGET) {
+        mo_compact(f->from, roots, n);
+        f->major = mo_heap.top - f->from;
+    } else {
+        mo_compact(f->young, roots, n);
+    }
+    f->young = mo_heap.top;
+}
+
 static const char *const kind_names[] = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64"};
 
 static __int128 kind_min(uint32_t k) {
@@ -1810,11 +1842,11 @@ MO_ROW(mo_r_List_reduce) {
     (void)kind;
     MoValue xs = a[0], f = a[2];
     MoValue acc[1] = {a[1]};
-    size_t from = mo_mark(), kept = 0;
+    Fold fold = fold_mark();
     for (uint32_t i = 0; i < xs.aux; i++) {
         MoValue args[2] = {acc[0], xs.as.xs[i]};
         acc[0] = mo_invoke(f, args);
-        kept = iterate(from, acc, 1, kept);
+        fold_step(&fold, acc, 1);
     }
     return acc[0];
 }
@@ -3258,7 +3290,8 @@ static MoValue read_result(int which, MoValue s) {
  * memory of its longest line and the value (stdlib.zig, LineFeed). */
 typedef struct {
     MoValue f;
-    size_t from, kept;
+    /* Its safe points compact in generations (fold_step, step 29). */
+    Fold fold;
     Buf partial;
     /* The value so far, from its init, handed with each line and replaced by what the call gives,
      * the safe point's one root. */
@@ -3287,7 +3320,7 @@ static void feed_line(LineFeed *l, const char *s, size_t n) {
     MoValue line = replaced_line(s, n);
     MoValue args[2] = {l->acc[0], line};
     l->acc[0] = mo_invoke(l->f, args);
-    l->kept = iterate(l->from, l->acc, 1, l->kept);
+    fold_step(&l->fold, l->acc, 1);
 }
 
 static void feed_bytes(LineFeed *l, const char *s, size_t n) {
@@ -3388,7 +3421,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
         free(full);
         if (!f) return missing(path);
         MoValue text = f->text;
-        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
+        LineFeed l = {.f = a[3], .fold = fold_mark(), .acc = {a[2]}};
         feed_bytes(&l, text.as.s, text.aux);
         feed_end(&l);
         return ok_of(l.acc[0]);
@@ -3486,7 +3519,7 @@ static MoValue server_files(int which, const MoValue *a) {
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
         enum { READING, DONE, LATE, FAILED } ended = READING;
-        LineFeed l = {.f = a[3], .from = mo_mark(), .acc = {a[2]}};
+        LineFeed l = {.f = a[3], .fold = fold_mark(), .acc = {a[2]}};
         char chunk[1 << 16];
         while (ended == READING) {
             if (late(t0, within)) {
