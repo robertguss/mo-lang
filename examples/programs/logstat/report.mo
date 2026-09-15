@@ -26,87 +26,47 @@ end
 
 fn text(summary: Summary) : String
   ensures !card?(result)
-
-  head = lines_text(head_lines(summary))
-  slowest = lines_text(slowest_lines(summary.slowest))
-  busiest = lines_text(busiest_lines(summary.busiest))
-  "#{head}\nslowest\n#{slowest}\nbusiest\n#{busiest}"
+  # body gone; regenerate
 end
 
 fn head_lines(summary: Summary) : List(String)
-  requests = grouped(summary.requests)
-  errors = grouped(summary.errors)
-  malformed = grouped(summary.malformed)
-  per_minute = one_decimal(summary.per_minute)
-  width = widest([requests, errors, malformed, per_minute])
-  error_percent = (summary.error_rate * 100.0).to_string(1)
-  requests_line = "requests   #{requests.pad_left(width, " ")}"
-  errors_line = "errors     #{errors.pad_left(width, " ")}  (#{error_percent}%)"
-  malformed_line = "malformed  #{malformed.pad_left(width, " ")}"
-  per_minute_line = "per minute #{per_minute.pad_left(width, " ")}"
-  [requests_line, errors_line, malformed_line, per_minute_line]
+  # body gone; regenerate
 end
 
 fn slowest_lines(slowest: List(Record)) : List(String)
-  ms_width = widest(slowest.map(fn(r) grouped(r.ms.to_u64) end))
-  request_width = widest(slowest.map(fn(r) "#{r.method} #{r.path}" end))
-  slowest.map(fn(r)
-    ms = grouped(r.ms.to_u64).pad_left(ms_width, " ")
-    request = "#{r.method} #{r.path}".pad_right(request_width, " ")
-    "  #{ms} ms  #{request}   #{r.at.to_iso8601}"
-  end)
+  # body gone; regenerate
 end
 
 fn busiest_lines(busiest: List(Count)) : List(String)
-  count_width = widest(busiest.map(fn(c) grouped(c.count) end))
-  busiest.map(fn(c) "  #{grouped(c.count).pad_left(count_width, " ")}  #{c.method} #{c.path}" end)
+  # body gone; regenerate
 end
 
 fn json(summary: Summary) : String
   ensures !card?(result)
-
-  slowest = summary.slowest.map(fn(r)
-    JsonSlow(ms: r.ms, method: r.method, path: r.path, at: r.at)
-  end)
-  shaped = JsonSummary(requests: summary.requests, errors: summary.errors,
-    error_rate: summary.error_rate.round(3), malformed: summary.malformed,
-    per_minute: summary.per_minute.round(1), slowest: slowest, busiest: summary.busiest)
-  "#{Json.encode(shaped)}\n"
+  # body gone; regenerate
 end
 
 # 1204 is "1_204": Mo's own thousands separator.
 fn grouped(n: UInt64) : String
-  return "#{n}" if n < 1_000
-  low = "#{n % 1_000}".pad_left(3, "0")
-  "#{grouped(n / 1_000)}_#{low}"
+  # body gone; regenerate
 end
 
 # 1234.56 is "1_234.6": one decimal, the whole part grouped.
 fn one_decimal(x: Float64) : String
   requires x >= 0.0
-
-  parts = x.to_string(1).split(".")
-  whole = (parts.first or "0").to_u64 or 0
-  "#{grouped(whole)}.#{parts.last or "0"}"
+  # body gone; regenerate
 end
 
 fn widest(texts: List(String)) : UInt64
-  texts.map(fn(t) t.size end).max or 0
+  # body gone; regenerate
 end
 
 fn lines_text(lines: List(String)) : String
-  String.join(lines.map(fn(line) "#{line}\n" end), "")
+  # body gone; regenerate
 end
 
 fn example_summary() : Summary
-  slowest = [Record(at: Time.from_parts(2026, 9, 12, 10, 0, 21), method: "POST",
-    path: "/api/orders", status: 503, ms: 1_204),
-    Record(at: Time.from_parts(2026, 9, 12, 10, 0, 2), method: "GET", path: "/api/users",
-    status: 200, ms: 340)]
-  busiest = [Count(count: 611, method: "GET", path: "/api/users"),
-    Count(count: 2, method: "GET", path: "/api/cards/****************/charge")]
-  Summary(requests: 1_204, errors: 37, successes: 1_167, malformed: 2, error_rate: 0.031,
-    per_minute: 40.1, slowest: slowest, busiest: busiest)
+  # body gone; regenerate
 end
 
 test "the counts line up on their right edge"
@@ -166,6 +126,3 @@ end
 test rejects "a negative rate has no decimal text"
   one_decimal(0.0 - 1.0)
 end
-
-verified: types, contracts, tests (7), property (0 seeds), sim (not run)
-          proven: not run

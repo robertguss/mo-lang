@@ -28,136 +28,59 @@ enum Problem
 end
 
 fn usage() : String
-  "usage: logstat <dir> [--top N] [--since <ISO-8601>] [--json]"
+  # body gone; regenerate
 end
 
 fn analyze(fs: Fs, args: List(String)) : Result(String, Problem)
-  parsed = try options(args)
-  logs = fs.scoped(parsed.dir).read_only
-  names = try log_names(logs, parsed.dir)
-  var tally = start(parsed.top, parsed.since)
-  for name in names
-    lines = try read_log(logs, name)
-    tally = tally_lines(tally, lines)
-  end
-  summary = summarize(tally)
-  return Ok(json(summary)) if parsed.json
-  Ok(text(summary))
+  # body gone; regenerate
 end
 
 # The .log files directly inside the directory, in name order; a directory with none, or
 # none to list, is NoLogs.
 fn log_names(logs: Fs, dir: String) : Result(List(String), Problem)
-  case logs.list(within: 10_000.ms)
-    Ok(names):
-      found = logged(names)
-      return Error(NoLogs(dir: dir)) if found.size == 0
-      Ok(found)
-    Error(Missing(_)): Error(NoLogs(dir: dir))
-    Error(Timeout): Error(Slow(name: dir))
-    Error(NotText): Error(NoLogs(dir: dir))
-  end
+  # body gone; regenerate
 end
 
 fn logged(names: List(String)) : List(String)
   ensures result.size <= names.size
-
-  names.filter(fn(name) name.size > 4 and name.ends_with?(".log") end).sort
+  # body gone; regenerate
 end
 
 fn read_log(logs: Fs, name: String) : Result(List(String), Problem)
-  case logs.read_lines(name, within: 10_000.ms)
-    Ok(lines): Ok(lines)
-    Error(Missing(path)): Error(Unread(name: path))
-    Error(Timeout): Error(Slow(name: name))
-    Error(NotText): Error(Unread(name: name))
-  end
+  # body gone; regenerate
 end
 
 fn options(args: List(String)) : Result(Options, Problem)
   ensures result is Ok(o) implies o.dir != ""
-
-  var parsed = Options(dir: "", top: 5, since: None, json: false)
-  var pending = ""
-  for arg in args
-    next = try step(parsed, pending, arg)
-    parsed = next.0
-    pending = next.1
-  end
-  return Error(Usage(detail: "#{pending} needs a value")) if pending != ""
-  return Error(Usage(detail: "no directory given")) if parsed.dir == ""
-  Ok(parsed)
+  # body gone; regenerate
 end
 
 # One argument read: the options so far, and the flag still waiting for its value, or "".
 fn step(parsed: Options, pending: String, arg: String) : Result((Options, String), Problem)
-  var next = parsed
-  if pending == "--top"
-    next.top = try top_of(arg)
-    return Ok((next, ""))
-  end
-  if pending == "--since"
-    at = try since_of(arg)
-    next.since = Some(at)
-    return Ok((next, ""))
-  end
-  return Ok((next, arg)) if arg == "--top" or arg == "--since"
-  if arg == "--json"
-    next.json = true
-    return Ok((next, ""))
-  end
-  return Error(Usage(detail: "unknown option #{arg}")) if arg.starts_with?("-")
-  return Error(Usage(detail: "one directory only, not also #{arg}")) if parsed.dir != ""
-  next.dir = arg
-  Ok((next, ""))
+  # body gone; regenerate
 end
 
 fn top_of(arg: String) : Result(UInt64, Problem)
   ensures result is Ok(n) implies n >= 1 and n <= 100
-
-  n = arg.to_u64 or 0
-  return Error(Usage(detail: "--top takes a whole number from 1 to 100, not #{arg}")) if n < 1 or n > 100
-  Ok(n)
+  # body gone; regenerate
 end
 
 fn since_of(arg: String) : Result(Time, Problem)
-  case Time.parse(arg)
-    Some(at): Ok(at)
-    None: Error(Usage(detail: "--since takes a time like 2026-09-12T10:00:00Z, not #{arg}"))
-  end
+  # body gone; regenerate
 end
 
 fn tally_lines(tally: Tally, lines: List(String)) : Tally
-  lines.reduce(tally, fn(acc, line) tally_line(acc, line) end)
+  # body gone; regenerate
 end
 
 # A blank line is skipped; a line that does not parse is counted as malformed.
 fn tally_line(tally: Tally, line: String) : Tally
   requires !line.contains?("\n")
-
-  return tally if line == ""
-  case parse_line(line)
-    Ok(record): add(tally, record)
-    Error(_): add_malformed(tally)
-  end
+  # body gone; regenerate
 end
 
 fn main(platform: Platform)
-  case analyze(platform.fs.read_only, platform.args)
-    Ok(report): platform.stdout.write(report)
-    Error(Usage(detail)):
-      platform.stderr.write_line("logstat: #{detail}; #{usage()}")
-      platform.exit(2)
-    Error(NoLogs(dir)):
-      platform.stderr.write_line("logstat: no .log file in #{dir}")
-      platform.exit(1)
-    Error(Unread(name)):
-      platform.stderr.write_line("logstat: cannot read #{name}")
-      platform.exit(1)
-    Error(Slow(name)):
-      platform.stderr.write_line("logstat: reading #{name} took longer than 10 seconds")
-      platform.exit(1)
-  end
+  # body gone; regenerate
 end
 
 test "the defaults are the top five, no since, and text"
@@ -215,6 +138,3 @@ end
 test rejects "a line handed to the tally with its newline"
   tally_line(start(5, None), "a\nb")
 end
-
-verified: types, contracts, tests (8), property (0 seeds), sim (not run)
-          proven: not run
