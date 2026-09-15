@@ -43,9 +43,32 @@ const Value = vm_mod.Value;
 const Parcel = vm_mod.Parcel;
 const Error = vm_mod.Error;
 
-/// The address space a process's region reserves at first: many processes each reserve one,
-/// and a region that fills grows (Vm.grow).
+/// The address space a process's region reserves (reserveProcess): big_region while every live
+/// process's region together holds under region_budget, else process_region, so 64,000 regions still
+/// fit (step 21). A region moves into a larger one only between updates (Sim.settleRegion), and one
+/// update's values, a replay's whole book among them, need the room while it runs (step 29b). A
+/// region that fills allocates past itself from gpa (Region.fallback), memory no compaction frees and
+/// the `spilled` of `MO_STATS=1` counts. runtime/mo_rt.c's reserve_process is the same.
 pub const process_region: usize = 1 << 30;
+pub const big_region: usize = 64 << 30;
+pub const region_budget: usize = 16 << 40;
+/// The address space the live processes' regions hold.
+pub var regions_reserved: usize = 0;
+
+/// A process region's reservation: `want` bytes while the live regions, less `within` bytes about to
+/// be released, stay under region_budget, else `past`; counted.
+pub fn reserveProcess(want: usize, past: usize, within: usize) ?Region {
+    const size = if (regions_reserved + want > region_budget + within) past else want;
+    const r = Region.reserveUpTo(size) catch return null;
+    regions_reserved += r.end - r.base;
+    return r;
+}
+
+/// A process region given back.
+pub fn releaseProcess(r: *Region) void {
+    regions_reserved -= r.end - r.base;
+    r.release();
+}
 
 /// `Turns.holder` when main's thread runs main's code.
 pub const main_turn: u32 = std.math.maxInt(u32);
@@ -203,7 +226,7 @@ pub const Turns = struct {
             w.* = .{ .vm = vm };
         }
         if (t.scratch) |s| {
-            w.values = Region.reserveUpTo(process_region) catch null;
+            w.values = reserveProcess(big_region, process_region, 0);
             if (w.values) |*r| w.vm.useRegions(r, s);
         }
         w.vm.sim = sim;
@@ -545,7 +568,7 @@ pub const Turns = struct {
         if (id >= t.workers.items.len) return;
         const w = t.workers.items[id] orelse return;
         if (w.ended) return;
-        if (w.values) |*r| r.release();
+        if (w.values) |*r| releaseProcess(r);
         w.values = null;
         w.ended = true;
     }
@@ -657,7 +680,7 @@ pub const Turns = struct {
         for (t.workers.items) |slot| {
             const w = slot orelse continue;
             if (w.ended or w.fiber != null) continue;
-            if (w.values) |*r| r.release();
+            if (w.values) |*r| releaseProcess(r);
             w.values = null;
             w.ended = true;
         }

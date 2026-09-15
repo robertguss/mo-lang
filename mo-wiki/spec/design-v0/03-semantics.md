@@ -33,6 +33,7 @@ Five ideas, one per layer. Each is chosen so that a function can be understood f
 - Every mailbox is bounded (`mailbox: N` in the header, default from the laws). A full mailbox crashes the **sender**: overflow means the design lacks flow control, and the fix is `ask` or a larger bound.
 - An `invariant "sentence" ... end` block is the condition that holds after every `update`: the process crashes on the message after which it is false. `never` is the negative form.
 - `update` is a transaction. On a crash, that message's state writes and buffered outgoing effects are discarded. `clock.now` is frozen per `update`.
+- Memory is bounded by what the program still reaches, inside one `update` as between two: at every loop step, every step of a row that folds or maps, every call made as a whole statement, and every return, what no frame on the stack still reaches is freed, so a replay that folds a million records into a book in one update holds about the book. A process's values have 64 GiB of address space while every live process's together stays under 16 TiB, and 1 GiB past that, moved into a larger reservation between updates; what an update allocates past its reservation is never freed, and `MO_STATS=1` counts it as `spilled`.
 - Supervisors are declared, not coded. A supervisor takes the capabilities its children need and hands them down: `child RefundQueue(db, clock, events), restart: :always, max_restarts: 5 per 1.minute`. A process not under a supervisor does not compile. `main` is the root supervisor. No links, monitors, or `receive` in user code.
 - Every process is replayable from a snapshot plus its message log. The stdlib is deterministic by law (stable sort, defined map order) so replay is exact.
 
@@ -80,6 +81,8 @@ Every running program can be asked what its processes are doing, by an agent deb
 ## Session 5 changes
 
 The rules above already reflect these; this section is the changelog.
+
+Session 5, step 29b: memory is bounded by what the program reaches inside one `update` too (the Processes list), after a ledger replay of a real 1M-entry log filled its process's 1 GiB region in one update and every allocation past it was never freed (killed past 9 GB, where its book is 1.6 GB); a call made as a whole statement is now a point where the frames waiting in such calls give back what they no longer reach, which a recursion needed.
 
 Claude (session 5): platform selection moved from a `use Mo.Sim` line to the toolchain (`mo test` is always simulated), because a module that names its platform is a module that can be run against the wrong one. Supervisors take parameters and pass them on `child` lines, because nothing else said where a child's capabilities come from. Both first tested by the interpreter milestone and program 1. The full list of session 5 decisions is at the foot of `grammar.md`.
 
