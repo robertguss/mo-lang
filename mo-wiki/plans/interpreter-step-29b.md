@@ -5,7 +5,7 @@ updated: 2026-09-15
 type: plan
 tags: [runtime, performance, processes]
 sources: [plans/interpreter-step-29.md, plans/program-6.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Step 29b: replay memory on a real log
@@ -35,6 +35,14 @@ The evidence log at 1M native, time and peak, before and after, best of three; t
 ## Done when
 
 The evidence log's 1M replay finishes native with a peak under twice its live book (under 3,200 MiB), the phase table says where the memory went, the rule is stated in the report in one sentence and, if it changed, in `03-semantics.md`; green at every commit; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Accepted 15 Sep 2026, 12:20 UTC. Three commits (A, B, C), green at each, the suite green at the end, `mo fmt --check` clean; about 4 h 40 min of worker time, most of it three measurement rounds as fixes landed. Part A found the cause: a process region reserved 1 GiB of address space and moved into a larger one only between updates; the journal's `Open` is one update, and `rebuilt`'s last `reduce` filled the region at 77 s, after which every allocation came from malloc, which no compaction frees and which left the region's top where it was, so no safe point compacted again: about 650 MiB a second. The step-29 worker's generated log peaked 55 MiB short of the reservation. `MO_STATS=1` now ends with `spilled`. Part B: a process region reserves 64 GiB of address space (`MAP_NORESERVE`) while live regions total under 16 TiB, and 1 GiB after; and the walk: a call made as a whole statement is a safe point where the frames waiting in such calls are compacted together, so a recursion frees each level's garbage. Part C: measuring found the walk 13% slower and fixed it (a trigger on growth past twice the known live, roots copied at the call, one lookup instead of two, view copies no longer per view); the numbers. The ledger's program is unchanged: the growth was the runtime's.
+
+Numbers (the worker's, native unless marked, best of three, bench best of five): the evidence log's 1M replay killed past 9,000 MiB at 88 / 85 / 85 s → 94.8 s at 2,323 MiB; generated 100k 7.76 → 7.98 s at 203 MiB; generated 500k 35.6 → 35.8 s at 1,087 MiB; generated 1M 81.2 → 80.3 s, 2,490 → 2,153 MiB; the 100k replay under `mo run` 168.1 → 144.8 s, 482 → 510 MiB; kv-10k-get 302.6 → 261.6 ms and 155.6 → 144.0 native; http-1k 37.8 → 36.6 and 33.2 → 34.0; logstat-4k 100.9 → 97.6 and 20.4 → 24.0 (an outlier; reruns 21.2, 21.7, 20.1); transfers a second at 32 clients 1,335 → 1,370; for, reduce, map, a chain of calls, fold_lines 0–9 MiB over 300,000 steps; a recursion 9,000 deep 89 → 4 MiB native, 589 → 47 under `mo run`.
+
+Fable's probes: the evidence log replayed native twice with a fresh binary, 97.2 and 95.1 s at a 2,323 MiB peak settling at 1,057 MiB; Fable's 100k HTTP-written log under `mo run` in 49.0 s at 471 MiB; the suite green. The phase table says the final peak is the book held twice while it is compacted, not a leak. Left: the peak is twice the book at the last compaction; a ledger that pages its history is still a program-shape question, for Robert.
 
 ## Related
 - [[interpreter-step-29]]

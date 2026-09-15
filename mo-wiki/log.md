@@ -360,3 +360,6 @@
 
 ## [2026-09-15] session | Morning: step 29 accepted
 - The runtime honest: `restart: :never` honoured in both runtimes with its report, `platform.exit` past a pending delayed send, replay compacting in generations (1M native 716 → 81 s), simulated time moving only when a test waits, the `verified:` line counting invariants. Fable's probes green under `mo run`, binaries, `mo test`, and `--sim`, except the 1M replay of a real HTTP-written log, which passed 8 GB after the fold: step 29b briefed and started. Ten decision rows, five `semantic`, one open. Chapter 5's vocabulary gains the invariants clause. Merged to `main`.
+
+## [2026-09-15] session | Midday: step 29b accepted, direction 41
+- Replay memory on a real log: a process region reserved 1 GiB and an update that filled it allocated past it forever; now address space is reserved and a walk compacts the frames waiting in whole-statement calls. Fable's evidence log replays at 2.3 GB where it was killed past 9 GB, twice. Five rows, three `semantic`. Robert's small-model round filed as direction 41 and a round-9 row, its order for Robert. Merged to `main`.
