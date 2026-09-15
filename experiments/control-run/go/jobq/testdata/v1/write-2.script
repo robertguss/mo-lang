@@ -1,0 +1,12 @@
+# The second half of the round 7 log; see write-1.script.
+clock +10000
+prod POST /jobs {"queue":"sms","payload":"four","max_attempts":3}
+prod POST /jobs {"queue":"push","payload":"five \"quoted\" é","max_attempts":2}
+prod POST /jobs {"queue":"push","payload":"six","max_attempts":1}
+prod POST /jobs {"queue":"push","payload":"seven","max_attempts":5}
+w1 POST /queues/sms/lease {"lease_ms":60000}
+w1 POST /jobs/j_4/fail {"reason":"smtp down"}
+w2 POST /queues/push/lease {"lease_ms":60000}
+w2 POST /queues/push/lease {"lease_ms":60000}
+prod POST /jobs {"queue":"push","payload":"eight","max_attempts":1}
+prod DELETE /jobs/j_8

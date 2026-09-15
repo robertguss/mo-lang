@@ -1,0 +1,14 @@
+# Played through the round 7 jobq (before the tries rename) by
+# `jobq check testdata/v1 write-1.script`, then `jobq compact testdata/v1`,
+# then write-2.script: jobq.log beside it is the log that service wrote.
+prod POST /jobs {"queue":"emails","payload":"one","max_attempts":2}
+prod POST /jobs {"queue":"emails","payload":"two","max_attempts":1}
+prod POST /jobs {"queue":"emails","payload":"three","max_attempts":1}
+clock +1000
+w1 POST /queues/emails/lease {"lease_ms":500}
+w2 POST /queues/emails/lease {"lease_ms":5000}
+w2 POST /jobs/j_2/fail {"reason":"bad input"}
+prod DELETE /jobs/j_3
+clock +1000
+w3 POST /queues/emails/lease {"lease_ms":1000}
+w3 POST /jobs/j_1/ack

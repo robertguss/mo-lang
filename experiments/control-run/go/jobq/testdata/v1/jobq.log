@@ -1,0 +1,13 @@
+53e4bd6b {"op":"meta","next_id":4}
+2188b44d {"op":"put","job":{"id":"j_1","queue":"emails","state":"done","payload":"one","attempts":2,"max_attempts":2,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:02.000Z","reason":"lease ran out"}}
+4d6f6e67 {"op":"put","job":{"id":"j_2","queue":"emails","state":"dead","payload":"two","attempts":1,"max_attempts":1,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.000Z","reason":"bad input"}}
+9b11a05f {"op":"put","job":{"id":"j_4","queue":"sms","state":"queued","payload":"four","attempts":0,"max_attempts":3,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z"}}
+46bd6a20 {"op":"put","job":{"id":"j_5","queue":"push","state":"queued","payload":"five \"quoted\" é","attempts":0,"max_attempts":2,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z"}}
+b7344c50 {"op":"put","job":{"id":"j_6","queue":"push","state":"queued","payload":"six","attempts":0,"max_attempts":1,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z"}}
+c4cc2fb8 {"op":"put","job":{"id":"j_7","queue":"push","state":"queued","payload":"seven","attempts":0,"max_attempts":5,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z"}}
+ee5b4eac {"op":"put","job":{"id":"j_4","queue":"sms","state":"leased","payload":"four","attempts":1,"max_attempts":3,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z","worker":"w1","lease_until":"2026-09-14T00:01:10.000Z"}}
+459b42f3 {"op":"put","job":{"id":"j_4","queue":"sms","state":"queued","payload":"four","attempts":1,"max_attempts":3,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z","reason":"smtp down"}}
+e658f32e {"op":"put","job":{"id":"j_5","queue":"push","state":"leased","payload":"five \"quoted\" é","attempts":1,"max_attempts":2,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z","worker":"w2","lease_until":"2026-09-14T00:01:10.000Z"}}
+f29e6ed0 {"op":"put","job":{"id":"j_6","queue":"push","state":"leased","payload":"six","attempts":1,"max_attempts":1,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z","worker":"w2","lease_until":"2026-09-14T00:01:10.000Z"}}
+560ddb4f {"op":"put","job":{"id":"j_8","queue":"push","state":"queued","payload":"eight","attempts":0,"max_attempts":1,"created_at":"2026-09-14T00:00:10.000Z","updated_at":"2026-09-14T00:00:10.000Z"}}
+41fd0f72 {"op":"del","id":"j_8"}
