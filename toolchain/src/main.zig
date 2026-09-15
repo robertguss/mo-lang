@@ -343,6 +343,7 @@ fn run(init: std.process.Init) !void {
             else => return e,
         };
         for (r.results) |result| try mo.runner.writeResult(out, program.files, result);
+        try mo.runner.writeInvariants(out, r.invariants);
         try mo.runner.writeSummary(out, r.summary);
         var line: Io.Writer.Allocating = .init(arena);
         try mo.verified.render(&line.writer, r.summary);

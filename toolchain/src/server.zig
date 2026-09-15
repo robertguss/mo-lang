@@ -146,8 +146,13 @@ pub const Server = struct {
         if (machine.server.?.surface_port) |port| try startSurface(machine, scheduler, port);
         _ = try machine.call(main_fn, &.{.{ .cap = .{ .kind = .platform } }});
         // A served listener keeps the program running until it is stopped, unless main
-        // called exit: then the runtime stops accepting and reading, and the rest settles.
-        if (machine.server.?.exited) if (scheduler.turns) |t| sources.stopServer(scheduler, t);
+        // called exit: then the program ends at once (step 29): the runtime stops accepting and
+        // reading, drops every delayed send with an event, delivers what already waits, and
+        // waits for nothing.
+        if (machine.server.?.exited) {
+            if (scheduler.turns) |t| sources.stopServer(scheduler, t);
+            scheduler.exitNow();
+        }
         try scheduler.finish();
     }
 
@@ -327,13 +332,14 @@ pub const Server = struct {
 
     /// `fs.list(within: d)`: the names of the files and folders directly inside the
     /// scope's folder, sorted byte by byte; `Missing(".")` when it is not a readable folder.
-    pub fn list(s: *Server, vm: *Vm, fs: Value.Cap, within_ms: i64) Error!Value {
+    /// With `kinds`, `fs.list_kinds`: each name as an `Entry` that says whether it is a folder (step 28).
+    pub fn list(s: *Server, vm: *Vm, fs: Value.Cap, within_ms: i64, kinds: bool) Error!Value {
         const t0 = Io.Clock.Timestamp.now(s.io, .awake);
         const names = try s.listScoped(s.scopes.items[fs.handle]);
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const got = names orelse return missing(vm, ".");
         const out = try vm_mod.rawAlloc(vm.heap, Value, got.len);
-        for (got, out) |name, *o| o.* = .{ .string = name };
+        for (got, out) |entry, *o| o.* = if (kinds) try stdlib.entryOf(vm, entry.name, entry.folder) else .{ .string = entry.name };
         return vm.variant("Ok", &.{.{ .list = out }});
     }
 
@@ -483,16 +489,22 @@ pub const Server = struct {
         return Io.Dir.cwd().readFileAlloc(s.io, real, s.gpa, .limited(read_limit)) catch |err| unreadable(err);
     }
 
-    fn listScoped(s: *Server, scope: Scope) Error!?[]const []const u8 {
+    const Listed = struct { name: []const u8, folder: bool };
+
+    fn listScoped(s: *Server, scope: Scope) Error!?[]const Listed {
         const real = try s.realScoped(scope, ".") orelse return null;
         var dir = Io.Dir.cwd().openDir(s.io, real, .{ .iterate = true }) catch return null;
         defer dir.close(s.io);
-        var names: std.ArrayList([]const u8) = .empty;
+        var names: std.ArrayList(Listed) = .empty;
         var it = dir.iterate();
-        while (it.next(s.io) catch return null) |entry| try names.append(s.gpa, try s.gpa.dupe(u8, entry.name));
-        std.mem.sort([]const u8, names.items, {}, struct {
-            fn lt(_: void, a: []const u8, b: []const u8) bool {
-                return std.mem.lessThan(u8, a, b);
+        while (it.next(s.io) catch return null) |entry| {
+            // A link counts as what it points at.
+            const folder = entry.kind == .directory or (entry.kind == .sym_link and if (dir.statFile(s.io, entry.name, .{})) |st| st.kind == .directory else |_| false);
+            try names.append(s.gpa, .{ .name = try s.gpa.dupe(u8, entry.name), .folder = folder });
+        }
+        std.mem.sort(Listed, names.items, {}, struct {
+            fn lt(_: void, a: Listed, b: Listed) bool {
+                return std.mem.lessThan(u8, a.name, b.name);
             }
         }.lt);
         return names.items;

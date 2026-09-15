@@ -274,6 +274,16 @@ fn memory(vm: *Vm, sim: *Sim) Error!Value {
     var sized: std.ArrayList(Sized) = .empty;
     defer sized.deinit(scratch);
     var regions: u64 = if (sim.main_region) |r| r.top - r.base else 0;
+    // The pages the regions keep resident, the scratch region's included (step 28).
+    var resident_regions: u64 = if (sim.main_region) |r| r.resident(scratch) else 0;
+    if (sim.turns) |t| {
+        if (t.scratch) |sc| resident_regions += sc.resident(scratch);
+        for (t.workers.items) |maybe| {
+            const w = maybe orelse continue;
+            if (w.ended) continue;
+            if (w.values) |*r| resident_regions += r.resident(scratch);
+        }
+    }
     for (sim.procs.items, 0..) |p, id| {
         if (p.ended or sim.hidden(@intCast(id))) continue;
         const bytes = regionBytes(sim, @intCast(id));
@@ -290,6 +300,7 @@ fn memory(vm: *Vm, sim: *Sim) Error!Value {
     return record(vm, "MemoryInfo", &.{
         uint(resident()),
         uint(regions),
+        uint(resident_regions),
         uint(vm_mod.packed_bytes),
         uint(sim.ring.bytes()),
         .{ .list = largest },
@@ -303,6 +314,23 @@ pub fn resident() u64 {
         var n: std.c.mach_msg_type_number_t = std.c.MACH.TASK.BASIC.INFO_COUNT;
         if (std.c.task_info(std.c.mach_task_self(), std.c.MACH.TASK.BASIC.INFO, @ptrCast(&got), &n) != 0) return 0;
         return got.resident_size;
+    }
+    // Linux says what is resident now, as runtime/mo_rt.c reads it (step 28: the most it had been
+    // hid what a replay gave back).
+    if (comptime builtin.os.tag == .linux) {
+        const linux = std.os.linux;
+        var buf: [128]u8 = undefined;
+        const opened = linux.open("/proc/self/statm", .{ .ACCMODE = .RDONLY }, 0);
+        if (std.posix.errno(opened) != .SUCCESS) return 0;
+        const fd: i32 = @intCast(opened);
+        defer _ = linux.close(fd);
+        const got = linux.read(fd, &buf, buf.len);
+        if (std.posix.errno(got) != .SUCCESS) return 0;
+        const n: usize = got;
+        var fields = std.mem.tokenizeScalar(u8, buf[0..n], ' ');
+        _ = fields.next();
+        const pages = std.fmt.parseInt(u64, fields.next() orelse return 0, 10) catch return 0;
+        return pages * std.heap.pageSize();
     }
     const usage = std.posix.getrusage(0);
     return @as(u64, @intCast(usage.maxrss)) * 1024;
@@ -326,6 +354,7 @@ fn eventValue(vm: *Vm, sim: *const Sim, e: events.Event) Error!Value {
         .sent => vm.variant("Sent", &.{ at, id, name, str(e.message) }),
         .paused => vm.variant("Paused", &.{ at, id, name }),
         .resumed => vm.variant("Resumed", &.{ at, id, name }),
+        .dropped => vm.variant("Dropped", &.{ at, try maybeId(vm, e.other), str(who(sim, e.other, e.other_name)), id, name, str(e.message), str(e.name) }),
     };
 }
 

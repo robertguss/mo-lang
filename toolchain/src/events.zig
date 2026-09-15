@@ -44,6 +44,9 @@ pub const Kind = enum(u8) {
     sent,
     paused,
     resumed,
+    /// `other` sent `message` to `process`, and it will not arrive: `name` says why, "down" (the
+    /// target is down) or "exited" (the program exited while it was delayed). Step 29.
+    dropped,
 };
 
 pub const Event = struct {
@@ -186,6 +189,12 @@ pub fn describe(w: *std.Io.Writer, e: Event, outside: []const u8) std.Io.Writer.
         .paused, .resumed => {
             try w.print("the surface {s} ", .{if (e.kind == .paused) "paused" else "resumed"});
             try who(w, e.process, e.process_name, outside);
+        },
+        .dropped => {
+            try who(w, e.other, e.other_name, outside);
+            try w.print(" sent {s} to ", .{e.message});
+            try who(w, e.process, e.process_name, outside);
+            try w.print(", dropped: {s}", .{e.name});
         },
     }
 }

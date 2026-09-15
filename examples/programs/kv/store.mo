@@ -378,5 +378,5 @@ property "a SET then a GET gives back any valid key's value"
   end
 end
 
-verified: types, contracts, tests (8), property (200 seeds), sim (100 runs)
+verified: types, contracts, tests (8), property (200 seeds), sim (100 runs, invariants (kept 1, tripped 0))
           proven: not run

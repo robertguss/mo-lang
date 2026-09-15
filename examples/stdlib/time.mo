@@ -27,6 +27,7 @@ test "a span is a Duration, read in milliseconds, seconds, or minutes"
   assert finish.since(start).seconds == 90.0
   assert minutes_between(start, finish) == 1.5
   assert finish - start == 90_000.ms
+  assert finish - start == 90.seconds
   assert (start + 30_000.ms).to_iso8601 == "2025-01-01T00:00:00Z"
   assert Time.fixture().to_iso8601 == "2026-01-01T00:00:00Z"
 end

@@ -46,6 +46,8 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `HttpError` | | error enum | stdlib (09) |
 | `Runtime` | | capability: the runtime surface, `platform.runtime` | stdlib (09), Session 5, step 23 |
 | `ProcessInfo`, `SourceInfo`, `MemoryInfo` | | struct (`## Runtime`) | stdlib (09), Session 5, step 23 |
+| `Entry` | `name: String`, `kind: EntryKind` | struct: what `Fs.list_kinds` gives | stdlib (09), step 28 |
+| `EntryKind` | `File`, `Folder` | enum | stdlib (09), step 28 |
 | `RuntimeError` | | error enum | stdlib (09), Session 5, step 23 |
 | `Event` | | enum: one of the runtime's events | stdlib (09), Session 5, step 23 |
 
@@ -117,6 +119,7 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `Event` | `TimedOut` | `at: Time`, `pid: Option(UInt64)`, `name: String`, `call: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
 | `Event` | `SourcePaused`, `SourceResumed` | `at: Time`, `source: String`, `target: UInt64`, `name: String`, `in_flight: UInt64` | stdlib (09), Session 5, step 23 |
 | `Event` | `Sent` | `at: Time`, `pid: UInt64`, `name: String`, `taking: String` | stdlib (09), Session 5, step 23; Session 5, step 24: `pid`, `taking`, `snapshot` |
+| `Event` | `Dropped` | `at: Time`, `sender: Option(UInt64)`, `sender_name: String`, `target: UInt64`, `name: String`, `taking: String`, `why: String` | stdlib (09), Session 5, step 29 |
 
 ## Functions
 
@@ -130,6 +133,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `List(T)` | `filter` | `fn(T) Bool` | `List(T)` | | | grammar |
 | `List(T)` | `reduce` | `A`, `fn(A, T) A` | `A` | | | grammar |
 | `List(T)` | `contains?` | `T` | `Bool` | | | grammar |
+| `Option(T)` | `map` | `fn(T) U` | `Option(U)`: `Some` of the function's value for a `Some`, `None` for a `None` | | | stdlib (09), step 28 |
 | `List(T)` | `first` | | `Option(T)` | | | grammar |
 | `List(T)` | `last` | | `Option(T)` | | | grammar |
 | `List(T)` | `get` | `UInt64` | `Option(T)` | | | stdlib (09) |
@@ -183,6 +187,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `String` | `to_u64` | | `Option(UInt64)` | | | stdlib (09) |
 | `String` | `to_i64` | | `Option(Int64)` | | | stdlib (09) |
 | `String` | `to_f64` | | `Option(Float64)` | | | stdlib (09) |
+| `String` (on type) | `grouped` | any integer | `String`: the integer with `_` between each three digits from the right, `String.grouped(1204)` is `"1_204"`, `-1_234_567` for a negative one | | | stdlib (09), step 28 |
 | any integer | `to_u8`, `to_u16`, `to_u32`, `to_u64`, `to_i64` | | that type | | | stdlib (09) |
 | any integer | `checked_to_u8`, `checked_to_u16`, `checked_to_u32`, `checked_to_u64`, `checked_to_i64` | | `Option` of that type | | | stdlib (09) |
 | any integer | `to_f64` | | `Float64` | | | stdlib (09) |
@@ -192,6 +197,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | any integer `N` | `saturating_add`, `saturating_sub`, `saturating_mul` | `N` | `N` | | | grammar |
 | any integer `N` | `wrapping_add`, `wrapping_sub`, `wrapping_mul` | `N` | `N` | | | grammar |
 | any integer | `ms`, `minute`, `days` | | `Duration` | | | grammar |
+| any integer | `seconds` | | `Duration`; any other name after an integer is `MO0208` when checked, naming the units (step 28) | | | stdlib (09), step 28 |
 | `Time` (on type) | `fixture` | | `Time` | | tests | grammar |
 | `Time` (on type) | `parse` | `String` | `Option(Time)` | | | stdlib (09) |
 | `Time` (on type) | `from_parts` | `UInt64` × 6 (year, month, day, hour, minute, second) | `Time` | | | stdlib (09) |
@@ -203,13 +209,14 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Deadline` | `remaining` | | `Duration`: what remains of the deadline, zero once it has passed | | | stdlib (09), Session 5, step 24 |
 | `Deadline` (on type) | `fixture` | `Duration` | `Deadline`: now plus the duration on the test's clock | | tests | stdlib (09), Session 5, step 22 |
 | `Clock` | `now` | | `Time` | | | grammar |
-| `Clock` (on type) | `fixture` | | `Clock` | | tests | grammar |
+| `Clock` (on type) | `fixture` | | `Clock`: its `now` is `Time.fixture()` moved by the simulator's time, every wait of a fixture call and every delayed send the simulator moves to (and under `--sim` its ticks), frozen inside an update as a real clock is (step 28) | | tests | grammar, step 28 |
 | `Fs` | `read` | `String` | `Result(String, FsError)`, `NotText` for a file that is not UTF-8 | yes | | grammar |
 | `Fs` | `read_lines` | `String` | `Result(List(String), FsError)`, `NotText` for a file that is not UTF-8 | yes | | stdlib (09) |
 | `Fs` | `read_bytes` | `String` | `Result(List(UInt8), FsError)`: the file's bytes, UTF-8 or not | yes | | stdlib (09) |
 | `Fs` | `fold_lines` | `String`, `A`, `fn(A, String) A` | `Result(A, FsError)`: each line handed to the function with the value so far as the file is read, `Ok` with the last call's; a line that is not UTF-8 handed on with U+FFFD for each byte that begins no UTF-8 character, so never `NotText` (session 6, step 27). Session 5, step 19: the streaming row, `each_line` gone | yes | | stdlib (09) |
 | `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
+| `Fs` | `list_kinds` | | `Result(List(Entry), FsError)`: the names `list` gives, in its order, each an `Entry` whose `kind` is `File` or `Folder`; a link counts as what it points at | yes | | stdlib (09), step 28 |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
 | `Fs` | `read_only` | | `Fs`, read-only: its own type, going wherever an `Fs` goes, refused by the checker where a write reaches it (`MO0404`) | | | grammar |
 | `Fs` | `write` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
@@ -317,7 +324,7 @@ The structs the `Runtime` rows give (design-v0/09, Runtime; Session 5, step 23).
 | `SourceInfo` | `kind`, `name` | `String` | |
 | `SourceInfo` | `target`, `in_flight` | `UInt64` | |
 | `SourceInfo` | `paused` | `Bool` | |
-| `MemoryInfo` | `resident_bytes`, `region_bytes`, `packed_bytes`, `event_bytes` | `UInt64` | |
+| `MemoryInfo` | `resident_bytes`, `region_bytes`, `region_resident_bytes`, `packed_bytes`, `event_bytes` | `UInt64` | `region_resident_bytes`: the pages the regions keep resident, the scratch region's included, so resident memory less it is what the runtime holds outside the regions (step 28) |
 | `MemoryInfo` | `largest` | `List(ProcessInfo)` | |
 
 ## Operators

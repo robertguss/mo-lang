@@ -1,7 +1,7 @@
 ---
 title: "Session 5 — 12–13 Sep 2026"
 created: 2026-09-12
-updated: 2026-09-14
+updated: 2026-09-15
 type: session
 tags: [meta, compiler, syntax, agents, runtime]
 sources: [spec/grammar.md, plans/corpus.md, plans/model-bakeoff.md, plans/control-run-2.md, decisions/decision-log.md]
@@ -58,6 +58,10 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[control-run-6]] run and read: **failed on all four predictions**. Mo 1.58 times Go over both tasks; Mo's loops the language's (keywords, a `case` arm form, the 500-line law, a false `never` trip), the baselines' the tools'; no check caught a real bug in any language, so the null hypothesis stands; Mo's jobq program longer than Go's. Robert (afternoon): Python tools live in the project's venv through `uv`, never globally. Three rows for Robert; no seventh round until one lands.
 - Robert agreed to all three; reframed the control run around reliability, native speed, the feedback loop, and dependencies (chapter 8, Session 6); asked for a hidden defect suite and, later, a real open-source tool reimplemented in Mo against its own tests. [[interpreter-step-27]] built the three calls plus the escape and `fold_lines`, 185 of 185, Fable's probes green. [[control-run-7]] pre-registered on the new measure; its 121-check suite run after the fact on round 6's programs: Mo 0, Python 0, Go 1.
 - Robert's outside review of the vault, filed with Fable's response and two replies; the thesis restated in chapter 1 (the runtime, then capabilities and recipes, then the language as their surface; the BEAM as the null hypothesis). [[control-run-7]] run and read: **held on all four** on Robert's measure; reliability level at 0 defects each; native Mo 981 pairs a second at 32 workers to Go's 478; the loop 0.38 s to 18.7; 0 dependencies to 1 and 3; agent time 74.6 min to 36, recorded only. Four toolchain bug notes and six gaps to step 28.
+- [[interpreter-step-28]]: a map written in place by a move analysis shared by both backends (47 s → 0.13 s on the 80k map), the tuple accumulator moved, the `never` rule through branches, regions giving pages back (memory after a replay 183 → 57 MiB), six gaps; 186 of 186; Fable's probes green. Program 6 started at 23:52 UTC.
+- [[program-6]]: the ledger in 92 minutes, 14 modules; four invariants kept, three tripped by tests over a torn or doubled log, the planted bug caught by a `never` and an invariant; native 1,168 transfers a second at 32 clients; Fable's 35-check session green under both runtimes. Found: `restart: :never` not honoured, `platform.exit` waiting on a delayed send, replay memory superlinear (1M entries killed at 4.2 GB), and no check earning its keep strictly for the third program. Robert asked for a stop and a discussion before round 8.
+- The forest: Fable's reading of the three days for Robert (the claim not yet earned, the runtime the bottleneck, first writing the only thing measured) and Robert's go-ahead on Fable's order; the roadmap rewritten from here: step 29, step 30, round 8 as a maintenance round, the bricks page, the language items, program 7.
+- [[interpreter-step-29]] (15 Sep, morning): the runtime honest: `restart: :never` kept in both runtimes with its report, `exit` past a pending delayed send, replay compacting in generations (1M native 716 → 81 s, the peak now the book's own 2.5 GB), simulated time only when a test waits, `invariants (kept n, tripped m)` on the `verified:` line; Fable's probes green under both runtimes; ten rows, one open (an overflow in a `test rejects` fails rather than rejects). Fable's 1M probe on a real HTTP-written log passed 8 GB after the fold: [[interpreter-step-29b]] briefed and started.
 
 ## Numbers at the end of the session
 

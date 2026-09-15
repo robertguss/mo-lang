@@ -6,14 +6,16 @@
       "module": "Basics.AnonymousFunctions",
       "declarations": [
         { "id": "1c34582cae26", "name": "module Basics.AnonymousFunctions", "hash": "d35d1a442b7bdb6f" },
-        { "id": "5e1b6ae1a3f7", "name": "expose", "hash": "3adaf12e8466ada9" },
+        { "id": "5e1b6ae1a3f7", "name": "expose", "hash": "a3ff1cf590e3d79a" },
         { "id": "82d37757308f", "name": "intent", "hash": "8ab54c2d9efe2cac" },
         { "id": "51acd9d60072", "name": "fn cheap", "hash": "75a34895b389943a" },
         { "id": "d1cae490b0a4", "name": "fn receipt_lines", "hash": "20031abdf05d1f3d" },
+        { "id": "356e2a8c8997", "name": "fn counted", "hash": "af72deefb928360a" },
         { "id": "0c06853d1755", "name": "test \"the one-line form reads the limit it was given\"", "hash": "f5cfcd4c1fb13894" },
+        { "id": "fb495ec2a934", "name": "test \"a parameter named _ is taken and never read\"", "hash": "367177bf53c0d2be" },
         { "id": "c9ebd1657c46", "name": "test \"the block form runs every line for each item\"", "hash": "83f46f0ee607c500" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "6041fe80ce2ef250" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "36fbdb2fdd799aa2" }
     },
     {
       "path": "bindings.mo",
@@ -112,6 +114,32 @@
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "5bd5592c6f0ce066" }
     },
     {
+      "path": "moves.mo",
+      "module": "Basics.Moves",
+      "declarations": [
+        { "id": "843aa8130c97", "name": "module Basics.Moves", "hash": "9e8a1bded4fb2204" },
+        { "id": "ba2097221e1e", "name": "expose", "hash": "8963774c0a8a24d4" },
+        { "id": "9aa8e27b9208", "name": "intent", "hash": "b521f09e58001d07" },
+        { "id": "47e5ed0c662b", "name": "struct Book", "hash": "9145f088aa8c36b8" },
+        { "id": "2a7a923aa9c4", "name": "fn empty", "hash": "2d4f17c9ca8ae807" },
+        { "id": "42774a7b10e6", "name": "fn with", "hash": "d4bc368a7c6182d9" },
+        { "id": "05245c6b9d3c", "name": "fn without", "hash": "84127bd5fc62d49e" },
+        { "id": "78931deba76d", "name": "fn written", "hash": "6cba7d6550d1dce4" },
+        { "id": "e3460307c794", "name": "fn listed", "hash": "59a6026773c2ed36" },
+        { "id": "504b6c8edbe8", "name": "fn captured", "hash": "d89446d9c44fc5ee" },
+        { "id": "866e2737c556", "name": "fn guarded", "hash": "d3fb90ee171abf52" },
+        { "id": "53e698a48bce", "name": "fn removed", "hash": "b552e423e67b2550" },
+        { "id": "7e16512a6f64", "name": "fn tallied", "hash": "bd133042d3bd94f1" },
+        { "id": "4d0fb2625866", "name": "process Shelf", "hash": "6484572f38547769" },
+        { "id": "b739919bd994", "name": "supervisor Shelves", "hash": "d63a294a5dc51210" },
+        { "id": "39977e541229", "name": "test \"a copy read before a write in place, and a list's element, keep their own values\"", "hash": "ae51a27c00af8335" },
+        { "id": "5c01b000da7d", "name": "test \"a capture, and the next arm of a case, see the value whole\"", "hash": "52888a6101eb1955" },
+        { "id": "c0b258dd8bcb", "name": "test \"a remove in place keeps the order and every lookup, and never reaches a copy\"", "hash": "4623005c33bbcd1f" },
+        { "id": "f6050f2d1c9e", "name": "test \"a message is the process's own\"", "hash": "683bd7a650a74e1f" }
+      ],
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "415451fa3fb0be86" }
+    },
+    {
       "path": "numbers.mo",
       "module": "Basics.Numbers",
       "declarations": [
@@ -134,15 +162,17 @@
       "module": "Basics.Option",
       "declarations": [
         { "id": "99a39a06cab4", "name": "module Basics.Option", "hash": "21a12b3a995f40c1" },
-        { "id": "82ca149f5036", "name": "expose", "hash": "6c017828b3088a7e" },
+        { "id": "82ca149f5036", "name": "expose", "hash": "fc49065c243f56b4" },
         { "id": "72b8d2c236a4", "name": "intent", "hash": "780174b7b9829c14" },
         { "id": "c6af8e09f2db", "name": "fn find_price", "hash": "defe19e4c8badc16" },
         { "id": "1cb64161405d", "name": "fn price_or_zero", "hash": "19c7ca29274d2a31" },
+        { "id": "5efefc958d2f", "name": "fn doubled", "hash": "b6effd6d97e0d0f7" },
         { "id": "7fdde175831c", "name": "fn label", "hash": "b36f7c48dc396f9a" },
         { "id": "12e30a2fb51a", "name": "test \"or gives a default for None\"", "hash": "a9afc8eeff211b03" },
+        { "id": "ae65651cf46d", "name": "test \"map changes the value inside a Some and leaves a None as it is\"", "hash": "630fcb00af59edb1" },
         { "id": "b4f8566fa3b1", "name": "test \"case handles both forms\"", "hash": "ddb7aec41f90f5fc" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "fa7ef1437185334f" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "3033d84792426c61" }
     },
     {
       "path": "predicates.mo",

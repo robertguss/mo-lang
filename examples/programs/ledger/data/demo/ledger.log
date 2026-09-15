@@ -1,0 +1,38 @@
+BEGIN 2
+SET a_1 {"id": "a_1", "name": "bank", "currency": "USD", "overdraft": 100000000, "balance": 0, "available": 0, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d6131 {"made": "a_1", "status": 201, "request": "POST /accounts\n{}", "body": ""}
+BEGIN 2
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 0, "available": 0, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d6132 {"made": "a_2", "status": 201, "request": "POST /accounts\n{}", "body": ""}
+BEGIN 2
+SET a_3 {"id": "a_3", "name": "euro", "currency": "EUR", "overdraft": 0, "balance": 0, "available": 0, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d6133 {"made": "a_3", "status": 201, "request": "POST /accounts\n{}", "body": ""}
+BEGIN 4
+SET e_1 {"id": "e_1", "kind": "transfer", "amount": 50000, "postings": [{"account": "a_1", "amount": -50000}, {"account": "a_2", "amount": 50000}], "key": "seed-1", "at": "2026-09-01T10:00:00Z"}
+SET a_1 {"id": "a_1", "name": "bank", "currency": "USD", "overdraft": 100000000, "balance": -50000, "available": -50000, "created_at": "2026-09-01T09:00:00Z"}
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 50000, "available": 50000, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d31 {"made": "e_1", "status": 201, "request": "POST /transfers\n{}", "body": ""}
+BEGIN 3
+SET e_2 {"id": "e_2", "kind": "hold", "account": "a_2", "amount": 2000, "postings": [], "key": "seed-2", "at": "2026-09-01T10:00:00Z", "expires_at": "2026-09-01T10:01:00Z"}
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 50000, "available": 48000, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d32 {"made": "e_2", "status": 201, "request": "POST /holds\n{}", "body": ""}
+BEGIN 3
+SET e_3 {"id": "e_3", "kind": "hold", "account": "a_2", "amount": 3000, "postings": [], "key": "seed-3", "at": "2026-09-01T10:02:00Z", "expires_at": "2026-09-01T11:00:00Z"}
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 50000, "available": 45000, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d33 {"made": "e_3", "status": 201, "request": "POST /holds\n{}", "body": ""}
+BEGIN 3
+SET e_4 {"id": "e_4", "kind": "hold", "account": "a_2", "amount": 1500, "postings": [], "key": "seed-4", "at": "2026-09-01T10:03:00Z", "expires_at": "2099-01-01T00:00:00Z"}
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 50000, "available": 43500, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d34 {"made": "e_4", "status": 201, "request": "POST /holds\n{}", "body": ""}
+BEGIN 3
+SET e_5 {"id": "e_5", "kind": "capture", "account": "a_2", "amount": 1000, "postings": [{"account": "a_2", "amount": -1000}, {"account": "clearing:USD", "amount": 1000}], "key": "seed-5", "at": "2026-09-01T10:04:00Z", "hold": "e_4"}
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 49000, "available": 44000, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d35 {"made": "e_5", "status": 201, "request": "POST /holds/e_4/capture\n{}", "body": ""}
+BEGIN 3
+SET e_6 {"id": "e_6", "kind": "refund", "account": "a_2", "amount": 400, "postings": [{"account": "clearing:USD", "amount": -400}, {"account": "a_2", "amount": 400}], "key": "seed-6", "at": "2026-09-01T10:05:00Z", "capture": "e_5"}
+SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 99, "available": 99, "created_at": "2026-09-01T09:00:00Z"}
+SET i_736565642d36 {"made": "e_6", "status": 201, "request": "POST /captures/e_5/refund\n{}", "body": ""}
+BEGIN 4
+SET e_7 {"id": "e_7", "kind": "transfer", "amount": 5, "postings": [{"account": "a_1", "amount": -5}, {"account": "a_2", "amount": 5}], "key": "seed-7", "at": "2026-09-01T10:06:00Z"}
+SET a_1 {"id": "a_1", "name": "bank", "currency": "USD", "overdraft": 100000000, "balance": -50005, "available": -50005, "created_at": "2026-09-01T09:00:00Z"}
+SET a_2 {"id": "a_2", "name": "ada", "cu

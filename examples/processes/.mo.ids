@@ -91,7 +91,7 @@
         { "id": "9f41f05d0b10", "name": "test \"finishing moves done forward\"", "hash": "f674cc441adb69de" },
         { "id": "58fae4ec25c4", "name": "test rejects \"undoing a finished batch\"", "hash": "65b13b6d9a125599" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "699796f9f0d2ac17" }
+      "verified": { "hash": "8ba7d2cb34a86b05", "declarations": "699796f9f0d2ac17" }
     },
     {
       "path": "invariant.mo",
@@ -105,7 +105,7 @@
         { "id": "e947cd4126bb", "name": "test \"driving only ever adds to the reading\"", "hash": "e287f4a386322ff7" },
         { "id": "c165d15304d1", "name": "test rejects \"driving past the largest reading the odometer can show\"", "hash": "abef553a2bc6a633" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "42c7e8705db7f3d0" }
+      "verified": { "hash": "849b36c96ba01ea6", "declarations": "42c7e8705db7f3d0" }
     },
     {
       "path": "mailbox.mo",
@@ -120,6 +120,19 @@
         { "id": "cb7d46db0333", "name": "test \"99 writes and the ask fill the mailbox, and every write arrives\"", "hash": "731d41cc14e7ea52" }
       ],
       "verified": { "hash": "77f75ec5e0ab036b", "declarations": "b766a2a55eaf2f17" }
+    },
+    {
+      "path": "never-restart.mo",
+      "module": "Processes.NeverRestart",
+      "declarations": [
+        { "id": "7526d03d499e", "name": "module Processes.NeverRestart", "hash": "fb1b3fc2de62e450" },
+        { "id": "381090e64455", "name": "expose", "hash": "51569ff20d928b9e" },
+        { "id": "9e041cec3aa6", "name": "intent", "hash": "deb086a07ff95265" },
+        { "id": "206e964476df", "name": "process Crasher", "hash": "d4fb2942236167eb" },
+        { "id": "0c435c9425f1", "name": "supervisor Crashers", "hash": "e75eda8ce4c9efdc" },
+        { "id": "9fcc5ec1c719", "name": "test rejects \"a bump trips the invariant, and every bump after it finds the crasher down\"", "hash": "aa107bd8340fbe21" }
+      ],
+      "verified": { "hash": "09daa98d4b0a34fe", "declarations": "5e4e8443db68c6aa" }
     },
     {
       "path": "pipeline.mo",
@@ -184,11 +197,12 @@
         { "id": "09cb28049553", "name": "module Processes.Timer", "hash": "d864befb23660da8" },
         { "id": "10b34700514a", "name": "expose", "hash": "3e58b1a34ac96eeb" },
         { "id": "0f0d66c896a2", "name": "intent", "hash": "72d61bd21c50d31c" },
-        { "id": "130a6becc9f0", "name": "process Ticker", "hash": "93d20d19ae53bd69" },
+        { "id": "130a6becc9f0", "name": "process Ticker", "hash": "a9b1f13e853f5a81" },
         { "id": "a2f685062db1", "name": "supervisor Tickers", "hash": "d97e87e63a532a95" },
-        { "id": "eee94ecf4340", "name": "test \"a ticker sends itself three ticks on a delay, and stops\"", "hash": "24f8cc56407594c2" }
+        { "id": "eee94ecf4340", "name": "test \"a ticker sends itself three ticks on a delay, and stops\"", "hash": "24f8cc56407594c2" },
+        { "id": "9de460500677", "name": "test \"a message an hour away stays pending across statements, and arrives once the test waits the hour\"", "hash": "76b003d69009077d" }
       ],
-      "verified": { "hash": "7c2dd49fc03316de", "declarations": "b4547ff7c7cc8293" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "21a2935e26270815" }
     }
   ]
 }

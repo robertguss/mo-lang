@@ -39,6 +39,17 @@
 //! programs/httpd serving (`httpd serve --port N`) under `mo run` and as its `mo build` binary,
 //! each request a connection of its own read to the end of the stream; `http-1k-rss-kib` and
 //! `http-1k-rss-kib-c` are each server's resident memory in KiB after 1_000 of them.
+//! `map-set-80k`, `map-remove-80k`, and `reduce-tuple-50k` (step 28) time round 7's shapes inside a
+//! process's update, under Mo.Server in this process and as the `mo build` binary (`-c`): a map of
+//! 80_000 entries filled in one update, then 2_000 updates that each set an existing key through a
+//! function (`state.book = overwritten(state.book, i)`) or remove one; and a map of 50_000 entries,
+//! then 2_000 updates that each add eight keys through `reduce` with a tuple accumulator. Each row
+//! is the best of three runs of the 2_000 updates less the best of three runs that only fill.
+//! `--updates` runs only these rows, and with `--record` appends only them.
+//! `replay-1m` and `replay-1m-c` (step 28) time programs/jobq opening a log of 1_000_000 records under
+//! `mo run` and as its `mo build` binary: from the process's start to its first answer to `GET /health`,
+//! the log's replay whole. The log is 500_000 jobs each set twice, queued then leased, written once to
+//! .zig-cache/bench/replay. `--replay` runs only these two, and with `--record` appends only them.
 //!
 //!   zig build bench                      corpus at ../examples, 20 iterations
 //!   zig build bench -- <dir> <iters>     override both
@@ -61,10 +72,16 @@ pub fn main(init: std.process.Init) !void {
     var root: []const u8 = "../examples";
     var iters: u32 = 20;
     var record = false;
+    var updates_only = false;
+    var replay_only = false;
     var positional: u32 = 0;
     for (args[1..]) |a| {
         if (std.mem.eql(u8, a, "--record")) {
             record = true;
+        } else if (std.mem.eql(u8, a, "--updates")) {
+            updates_only = true;
+        } else if (std.mem.eql(u8, a, "--replay")) {
+            replay_only = true;
         } else if (positional == 0) {
             root = a;
             positional += 1;
@@ -78,6 +95,31 @@ pub fn main(init: std.process.Init) !void {
     const out = &stdout_writer.interface;
     defer out.flush() catch {};
 
+    // One arena, reset per run and kept warm, so a row times the run and not the page faults.
+    var scratch = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer scratch.deinit();
+
+    if (replay_only) {
+        const replay = try replay1m(arena, io, init.environ_map, root, try mo.corpus.moExe(arena, io, init.environ_map.get("MO_EXE")));
+        try printReplay(out, replay);
+        if (record) try appendReplay(io, replay);
+        return;
+    }
+
+    const updates = try updates2k(arena, io, init.environ_map, &scratch);
+    for (update_shapes, updates) |shape, u| {
+        if (u.ns) |ns| {
+            try out.print("{s:<8} {d:>9} µs  (2000 updates under mo run, less the run that only fills)\n", .{ shape.name, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+        } else try out.print("{s:<8} {s:>12}\n", .{ shape.name, "n/a" });
+        if (u.c_ns) |ns| {
+            try out.print("{s}-c {d:>9} µs  (the mo build binary)\n", .{ shape.name, @as(u64, @intCast(@divTrunc(ns, 1000))) });
+        } else try out.print("{s}-c {s:>12}\n", .{ shape.name, "n/a" });
+    }
+    if (updates_only) {
+        if (record) try appendUpdates(io, updates);
+        return;
+    }
+
     const paths = try mo.corpus.collect(arena, io, root);
     // Each file with the modules it uses, read once, so a row times the stages and not the disk.
     var programs = try arena.alloc(mo.program.Program, paths.len);
@@ -90,10 +132,6 @@ pub fn main(init: std.process.Init) !void {
 
     try out.print("mo-bench: {d} files, {d} bytes, best of {d}\n", .{ paths.len, total_bytes, iters });
     try out.print("{s:<8} {s:>12} {s:>12}\n", .{ "stage", "total", "per file" });
-
-    // One arena, reset per file and kept warm, so a row times the stage and not the page faults.
-    var scratch = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer scratch.deinit();
 
     // The run stage also keeps each file's best, to name the slowest file. Only that
     // stage reads the clock per file, so the other rows time exactly what they did.
@@ -304,7 +342,14 @@ pub fn main(init: std.process.Init) !void {
         try out.print("slowest run: {s}, {d} µs\n", .{ paths[worst], @as(u64, @intCast(@divTrunc(run_best[worst], 1000))) });
     }
 
-    if (record) try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib }, http, reuse);
+    const replay = try replay1m(arena, io, init.environ_map, root, mo_exe);
+    try printReplay(out, replay);
+
+    if (record) {
+        try appendReplay(io, replay);
+        try appendResults(io, &rows, paths.len, fmt_best, program_count, programs_best, logstat_ns, if (sim) |t| t.sim_ns else null, echo_ns, map_ns, kv_ns, compiled, .{ .echo_ns = echo_c_ns, .kv_ns = kv_c_ns, .rss_kib = rss_kib, .rss_c_kib = rss_c_kib }, http, reuse);
+        try appendUpdates(io, updates);
+    }
 }
 
 fn ratio(slow: i96, fast: i96) f64 {
@@ -824,6 +869,393 @@ fn reuse100k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
         }
     }
     return out;
+}
+
+const update_dir = ".zig-cache/bench/updates";
+const update_steps = 2_000;
+
+/// The update rows' shapes (step 28): each takes the number of updates as its first argument, fills
+/// in one update, runs that many, and exits 1 when the map's size is wrong.
+const update_shapes = [_]struct { name: []const u8, source: []const u8 }{
+    .{ .name = "map-set-80k", .source =
+    \\module Rows.MapSet
+    \\
+    \\intent "Fill a map of 80,000 entries in one update, then set an existing key through a function in each update the first argument counts."
+    \\
+    \\struct Entry
+    \\  name: String
+    \\  at: UInt64
+    \\end
+    \\
+    \\struct Book
+    \\  entries: Map(UInt64, Entry)
+    \\end
+    \\
+    \\fn filled(book: Book, n: UInt64) : Book
+    \\  var next = book
+    \\  for i in 0..n
+    \\    next.entries = next.entries.set(i, Entry(name: "first", at: i))
+    \\  end
+    \\  next
+    \\end
+    \\
+    \\fn overwritten(book: Book, i: UInt64) : Book
+    \\  var next = book
+    \\  next.entries = next.entries.set(i, Entry(name: "again", at: i))
+    \\  next
+    \\end
+    \\
+    \\process Keeper()
+    \\  state
+    \\    book: Book = Book(entries: Map.new())
+    \\  end
+    \\
+    \\  message Fill : UInt64
+    \\  message Step(i: UInt64) : UInt64
+    \\
+    \\  fn update(state, message)
+    \\    case message
+    \\      Fill:
+    \\        state.book = filled(state.book, 80_000)
+    \\        state.book.entries.size
+    \\      Step(i):
+    \\        state.book = overwritten(state.book, i)
+    \\        state.book.entries.size
+    \\    end
+    \\  end
+    \\end
+    \\
+    \\supervisor Keepers
+    \\  child Keeper, restart: :always
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  steps = (platform.args.first or "2000").to_u64 or 2000
+    \\  keeper = Keeper.start()
+    \\  var size = 0
+    \\  for i in 0..steps + 1
+    \\    asked = if i == 0: Fill else: Step(i: i - 1)
+    \\    if keeper.ask(asked, within: 600_000.ms) is Ok(now)
+    \\      size = now
+    \\    end
+    \\  end
+    \\  if size != 80_000
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "map-remove-80k", .source =
+    \\module Rows.MapRemove
+    \\
+    \\intent "Fill a map of 80,000 entries in one update, then remove a key, oldest first, in each update the first argument counts."
+    \\
+    \\struct Book
+    \\  entries: Map(UInt64, UInt64)
+    \\end
+    \\
+    \\fn filled(book: Book, n: UInt64) : Book
+    \\  var next = book
+    \\  for i in 0..n
+    \\    next.entries = next.entries.set(i, i)
+    \\  end
+    \\  next
+    \\end
+    \\
+    \\fn without(book: Book, i: UInt64) : Book
+    \\  var next = book
+    \\  next.entries = next.entries.remove(i)
+    \\  next
+    \\end
+    \\
+    \\process Keeper()
+    \\  state
+    \\    book: Book = Book(entries: Map.new())
+    \\  end
+    \\
+    \\  message Fill : UInt64
+    \\  message Step(i: UInt64) : UInt64
+    \\
+    \\  fn update(state, message)
+    \\    case message
+    \\      Fill:
+    \\        state.book = filled(state.book, 80_000)
+    \\        state.book.entries.size
+    \\      Step(i):
+    \\        state.book = without(state.book, i)
+    \\        state.book.entries.size
+    \\    end
+    \\  end
+    \\end
+    \\
+    \\supervisor Keepers
+    \\  child Keeper, restart: :always
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  steps = (platform.args.first or "2000").to_u64 or 2000
+    \\  keeper = Keeper.start()
+    \\  var size = 0
+    \\  for i in 0..steps + 1
+    \\    asked = if i == 0: Fill else: Step(i: i - 1)
+    \\    if keeper.ask(asked, within: 600_000.ms) is Ok(now)
+    \\      size = now
+    \\    end
+    \\  end
+    \\  if size != 80_000 - steps
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+    .{ .name = "reduce-tuple-50k", .source =
+    \\module Rows.ReduceTuple
+    \\
+    \\intent "Fill a map of 50,000 entries in one update, then add eight keys through a reduce whose accumulator is a tuple in each update the first argument counts."
+    \\
+    \\struct Board
+    \\  jobs: Map(UInt64, UInt64)
+    \\end
+    \\
+    \\fn put(board: Board, key: UInt64) : Board
+    \\  var next = board
+    \\  next.jobs = next.jobs.set(key, key)
+    \\  next
+    \\end
+    \\
+    \\fn filled(board: Board, n: UInt64) : Board
+    \\  var next = board
+    \\  for i in 0..n
+    \\    next.jobs = next.jobs.set(1_000_000 + i, i)
+    \\  end
+    \\  next
+    \\end
+    \\
+    \\process Boarder()
+    \\  state
+    \\    board: Board = Board(jobs: Map.new())
+    \\  end
+    \\
+    \\  message Fill : UInt64
+    \\  message Step(i: UInt64) : UInt64
+    \\
+    \\  fn update(state, message)
+    \\    case message
+    \\      Fill:
+    \\        state.board = filled(state.board, 50_000)
+    \\        state.board.jobs.size
+    \\      Step(i):
+    \\        state.board = [0, 1, 2, 3, 4, 5, 6, 7].reduce((state.board, [0].take(0)), fn(acc, k) (put(acc.0, i * 8 + k), acc.1.push(k)) end).0
+    \\        state.board.jobs.size
+    \\    end
+    \\  end
+    \\end
+    \\
+    \\supervisor Boarders
+    \\  child Boarder, restart: :always
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  steps = (platform.args.first or "2000").to_u64 or 2000
+    \\  board = Boarder.start()
+    \\  var size = 0
+    \\  for i in 0..steps + 1
+    \\    asked = if i == 0: Fill else: Step(i: i - 1)
+    \\    if board.ask(asked, within: 600_000.ms) is Ok(now)
+    \\      size = now
+    \\    end
+    \\  end
+    \\  if size != 50_000 + 8 * steps
+    \\    platform.exit(1)
+    \\  end
+    \\end
+    \\
+    },
+};
+
+/// An update row: the updates' best under Mo.Server and as a binary, each less the best that only
+/// fills; null when a run does not exit 0.
+const Updates = struct { ns: ?i96 = null, c_ns: ?i96 = null };
+
+fn updates2k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, scratch: *std.heap.ArenaAllocator) ![update_shapes.len]Updates {
+    var out: [update_shapes.len]Updates = @splat(.{});
+    try Io.Dir.cwd().createDirPath(io, update_dir);
+    try Io.Dir.cwd().writeFile(io, .{ .sub_path = update_dir ++ "/mo.root", .data = "" });
+    const cwd = try std.process.currentPathAlloc(io, arena);
+    const steps = try std.fmt.allocPrint(arena, "{d}", .{update_steps});
+    for (update_shapes, &out) |shape, *r| {
+        const path = try std.fmt.allocPrint(arena, "{s}/{s}.mo", .{ update_dir, shape.name });
+        try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = shape.source });
+        if (try updatesInProcess(io, environ, cwd, path, "0", scratch)) |fill| {
+            if (try updatesInProcess(io, environ, cwd, path, steps, scratch)) |all| r.ns = @max(0, all - fill);
+        }
+        var diags: mo.diag.List = .empty;
+        const program = try mo.program.load(arena, io, path, &diags);
+        const checked = mo.pipeline.buildable(arena, program, false, &diags) catch continue;
+        const binary = switch (try mo.cbuild.build(arena, io, environ, program, &checked, .{ .name = shape.name, .out_dir = build_dir })) {
+            .built => |built| built.binary,
+            .failed => continue,
+        };
+        if (try updatesBinary(arena, io, binary, "0")) |fill| {
+            if (try updatesBinary(arena, io, binary, steps)) |all| r.c_ns = @max(0, all - fill);
+        }
+    }
+    return out;
+}
+
+/// The best of three runs of an update shape's main under Mo.Server in this process, from loading it.
+fn updatesInProcess(io: Io, environ: *const std.process.Environ.Map, cwd: []const u8, path: []const u8, arg: []const u8, scratch: *std.heap.ArenaAllocator) !?i96 {
+    var best: ?i96 = null;
+    for (0..3) |_| {
+        _ = scratch.reset(.retain_capacity);
+        const a = scratch.allocator();
+        var out_buffer: [256]u8 = undefined;
+        var discard: Io.Writer.Discarding = .init(&out_buffer);
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        var diags: mo.diag.List = .empty;
+        const program = try mo.program.load(a, io, path, &diags);
+        const m = mo.pipeline.mainProgram(a, program, &diags) catch return null;
+        const args = try a.dupe([]const u8, &.{arg});
+        var server: mo.server.Server = try .init(a, io, cwd, args, environ, &discard.writer, &discard.writer);
+        switch (try server.run(m.program, m.main)) {
+            .exited => |code| if (code != 0) return null,
+            .crashed => return null,
+        }
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        best = if (best) |b| @min(b, ns) else ns;
+    }
+    return best;
+}
+
+/// The best of three runs of an update shape's binary.
+fn updatesBinary(arena: std.mem.Allocator, io: Io, binary: []const u8, arg: []const u8) !?i96 {
+    var best: ?i96 = null;
+    for (0..3) |_| {
+        const t0 = Io.Clock.Timestamp.now(io, .awake);
+        const ran = try std.process.run(arena, io, .{ .argv = &.{ binary, arg } });
+        const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        if (ran.term != .exited or ran.term.exited != 0) return null;
+        best = if (best) |b| @min(b, ns) else ns;
+    }
+    return best;
+}
+
+/// The update rows: date, row, the updates, µs.
+fn appendUpdates(io: Io, updates: [update_shapes.len]Updates) !void {
+    var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
+    defer file.close(io);
+    var buf: [1024]u8 = undefined;
+    var w: Io.File.Writer = .init(file, io, &buf);
+    try w.seekTo(try file.length(io));
+    defer w.interface.flush() catch {};
+    const day: u64 = @intCast(@divTrunc(Io.Clock.Timestamp.now(io, .real).raw.toNanoseconds(), std.time.ns_per_s));
+    for (update_shapes, updates) |shape, u| {
+        for ([_]?i96{ u.ns, u.c_ns }, [_][]const u8{ "", "-c" }) |ns, suffix| {
+            if (ns) |t| {
+                try w.interface.print("{d}\t{s}{s}\t{d}\t{d}\n", .{ day, shape.name, suffix, update_steps, @as(u64, @intCast(@divTrunc(t, 1000))) });
+            } else try w.interface.print("{d}\t{s}{s}\t{d}\tn/a\n", .{ day, shape.name, suffix, update_steps });
+        }
+    }
+}
+
+const replay_records: u64 = 1_000_000;
+const replay_dir = ".zig-cache/bench/replay";
+
+/// The replay rows: programs/jobq's time to its first /health on the log, under mo run and as a binary.
+const Replay = struct { ns: ?i96 = null, c_ns: ?i96 = null };
+
+fn replay1m(arena: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map, root: []const u8, mo_exe: []const u8) !Replay {
+    const main_abs = try programMain(arena, io, root, "jobq") orelse return .{};
+    const log = try replayLog(arena, io);
+    var r: Replay = .{};
+    r.ns = try replayTime(arena, io, &.{ mo_exe, "run", main_abs, "--" }, log);
+    if (try buildNative(arena, io, environ, root, "jobq")) |binary| r.c_ns = try replayTime(arena, io, &.{binary}, log);
+    return r;
+}
+
+/// The folder of the replay's log, written when it is not there yet.
+fn replayLog(arena: std.mem.Allocator, io: Io) ![]const u8 {
+    const path = replay_dir ++ "/log/jobq.log";
+    Io.Dir.cwd().access(io, path, .{}) catch {
+        try Io.Dir.cwd().createDirPath(io, replay_dir ++ "/log");
+        var text: std.ArrayList(u8) = .empty;
+        const jobs = replay_records / 2;
+        try text.print(arena, "SET ids {d}\n", .{jobs});
+        const payload = "x" ** 100;
+        for ([_][]const u8{ "queued", "leased" }, 0..) |state, pass| {
+            for (1..jobs + 1) |i| {
+                const lease = if (pass == 0) "" else ", \"worker\": \"w1\", \"lease_until\": \"2099-01-01T00:00:00Z\"";
+                try text.print(arena, "SET j_{d} {{\"id\": \"j_{d}\", \"queue\": \"q{d}\", \"state\": \"{s}\", \"payload\": \"{s}\", \"attempts\": {d}, \"max_attempts\": 3, \"created_at\": \"2026-09-13T10:00:00Z\", \"updated_at\": \"2026-09-13T10:00:00Z\"{s}}}\n", .{ i, i, i % 4, state, payload, pass, lease });
+            }
+        }
+        try Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = text.items });
+    };
+    const file = try Io.Dir.cwd().realPathFileAlloc(io, path, arena);
+    return std.fs.path.dirname(file).?;
+}
+
+/// From starting `prefix serve DIR --port N` to its first 200 for GET /health; null when none comes
+/// within twenty minutes.
+fn replayTime(arena: std.mem.Allocator, io: Io, prefix: []const []const u8, dir: []const u8) !?i96 {
+    const port = freePort() orelse return null;
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(arena, prefix);
+    try argv.appendSlice(arena, &.{ "serve", dir, "--port", try std.fmt.allocPrint(arena, "{d}", .{port}) });
+    const t0 = Io.Clock.Timestamp.now(io, .awake);
+    var child = try std.process.spawn(io, .{ .argv = argv.items, .stdin = .ignore, .stdout = .ignore, .stderr = .ignore });
+    defer child.kill(io);
+    var buf: [256]u8 = undefined;
+    for (0..60_000) |_| {
+        if (healthy(port, &buf)) return t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
+        io.sleep(.fromMilliseconds(20), .awake) catch {};
+    }
+    std.debug.print("replay-1m: {s} did not answer /health\n", .{prefix[0]});
+    return null;
+}
+
+/// Whether jobq on `port` answers GET /health with a 200.
+fn healthy(port: u16, buf: []u8) bool {
+    const sys = posix.system;
+    const fd = connectLoopback(port) orelse return false;
+    defer _ = sys.close(fd);
+    const request = "GET /health HTTP/1.1\r\nhost: 127.0.0.1\r\nauthorization: Bearer bench\r\n\r\n";
+    var sent: usize = 0;
+    while (sent < request.len) {
+        const n = sys.write(fd, request[sent..].ptr, request.len - sent);
+        if (n <= 0) return false;
+        sent += @intCast(n);
+    }
+    var got: usize = 0;
+    while (got < 12) {
+        const n = sys.read(fd, buf[got..].ptr, buf.len - got);
+        if (n <= 0) return false;
+        got += @intCast(n);
+    }
+    return std.mem.startsWith(u8, buf[0..got], "HTTP/1.1 200");
+}
+
+fn printReplay(out: *Io.Writer, r: Replay) !void {
+    for ([_]?i96{ r.ns, r.c_ns }, [_][]const u8{ "replay-1m", "replay-1m-c" }, [_][]const u8{ "mo run", "the mo build binary" }) |ns, row, who| {
+        if (ns) |t| {
+            try out.print("{s:<8} {d:>9} µs  (programs/jobq opening a log of {d} records under {s}, to its first /health)\n", .{ row, @as(u64, @intCast(@divTrunc(t, 1000))), replay_records, who });
+        } else try out.print("{s:<8} {s:>12}\n", .{ row, "n/a" });
+    }
+}
+
+/// The replay rows: date, row, the records, µs.
+fn appendReplay(io: Io, r: Replay) !void {
+    var file = try Io.Dir.cwd().openFile(io, "bench/results.tsv", .{ .mode = .write_only });
+    defer file.close(io);
+    var buf: [256]u8 = undefined;
+    var w: Io.File.Writer = .init(file, io, &buf);
+    try w.seekTo(try file.length(io));
+    defer w.interface.flush() catch {};
+    const day: u64 = @intCast(@divTrunc(Io.Clock.Timestamp.now(io, .real).raw.toNanoseconds(), std.time.ns_per_s));
+    for ([_]?i96{ r.ns, r.c_ns }, [_][]const u8{ "replay-1m", "replay-1m-c" }) |ns, row| {
+        if (ns) |t| {
+            try w.interface.print("{d}\t{s}\t{d}\t{d}\n", .{ day, row, replay_records, @as(u64, @intCast(@divTrunc(t, 1000))) });
+        } else try w.interface.print("{d}\t{s}\t{d}\tn/a\n", .{ day, row, replay_records });
+    }
 }
 
 /// The number after `word` on a `mo stats:` line.

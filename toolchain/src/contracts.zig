@@ -75,6 +75,9 @@ pub const ProcessCrash = struct {
     log: []const []const u8,
     /// The state before that message, rendered.
     state: []const u8,
+    /// The supervisor whose child line says `restart: :never`, when that line kept the process
+    /// down (step 29); empty when it restarts.
+    not_restarted: []const u8 = "",
 };
 
 /// A crash, complete: what tripped, where, and the values involved.

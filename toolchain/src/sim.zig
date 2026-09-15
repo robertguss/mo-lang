@@ -55,7 +55,8 @@ pub const max_region: usize = 16 << 30;
 
 pub const Fault = enum { timeout, missing, closed };
 
-pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64 };
+/// `line`: the supervisor whose child line gave the policy, or none (a crash report names it).
+pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64, line: u32 = none };
 
 /// A call a process's update waits in on a peer: a listener's next client (`accept`) or a
 /// connection's next line (`read_line`), by handle, and the call as a report names it.
@@ -209,6 +210,8 @@ pub const Sim = struct {
     /// Delayed sends not yet due, a heap by due time (step 24), and the count that orders them.
     later: std.ArrayList(Later) = .empty,
     later_sent: u64 = 0,
+    /// main called exit and returned (step 29): no delayed send is kept, and nothing is waited for.
+    exiting: bool = false,
     /// The loops the runtime owns: listeners served and connections read into processes.
     sources: sources_mod.Sources = .{},
     /// What the processes did, most recent last (events.zig, step 23).
@@ -247,6 +250,8 @@ pub const Sim = struct {
         const k = &p.checked;
         const r = k.pool.resolve(t);
         if (!p.may_hold[r]) return;
+        // What the run keeps is a second holder: a later write in place must not reach it.
+        sim.vm.disownIn(v);
         if (p.recorded_as[r] != none) try sim.keep(p.recorded_as[r], v);
         const ty = k.pool.get(r);
         switch (ty.tag) {
@@ -401,11 +406,12 @@ pub const Sim = struct {
         return sim.procs.items[id].reply_by;
     }
 
-    /// `clock.now`: the simulated clock, or under Mo.Server the wall clock, frozen when the
-    /// running update began.
+    /// `clock.now`, frozen when the running update began: under Mo.Server the wall clock, and in a
+    /// test the simulator's, `Time.fixture()` moved by every fixture wait and delayed send the run
+    /// has made and, under --sim, by the seed's ticks (step 28).
     pub fn clockNow(sim: *const Sim) i64 {
-        const s = sim.server orelse return sim.now;
-        return if (sim.running) |id| sim.procs.items[id].now else s.now();
+        if (sim.running) |id| return sim.procs.items[id].now;
+        return if (sim.server) |s| s.now() else sim.now + sim.lag;
     }
 
     pub fn firstCrash(sim: *const Sim) ?contracts.Report {
@@ -502,20 +508,23 @@ pub const Sim = struct {
 
     // ---- starting
 
-    /// `Name.start(args)` in a test: the test runner supervises it with :always, and with
-    /// the max_restarts of the first child line in the module that names the process.
+    /// `Name.start(args)` in a test or main: the test runner or main supervises it as the first
+    /// child line that names the process says, its `restart:` included (step 29: a `:never` child
+    /// started this way was restarted), and with :always when no line names it.
     pub fn start(sim: *Sim, process: u32, args: []const Value) Error!u32 {
         // Under `mo run`, main starting processes faster than a statement settles them hands
         // out their turns first, so the ones that finished end (turns.zig, sweep).
         if (sim.turns) |t| if (t.holder == turns_mod.main_turn and t.quiet >= t.sweep_at) try t.settle(sim);
-        var policy: Policy = .{ .restart = .always, .max_restarts = default_max_restarts, .window_ms = default_window_ms };
-        for (sim.vm.program.supervisors) |s| for (s.children) |c| {
-            if (c.process == process and c.max_restarts != none) {
-                policy = .{ .restart = .always, .max_restarts = c.max_restarts, .window_ms = try sim.window(c) };
-                break;
-            }
+        return sim.startUnder(process, args, test_runner, try sim.lineFor(process));
+    }
+
+    fn lineFor(sim: *Sim, process: u32) Error!Policy {
+        for (sim.vm.program.supervisors, 0..) |s, line| for (s.children) |c| {
+            if (c.process != process) continue;
+            const max = if (c.max_restarts == none) default_max_restarts else c.max_restarts;
+            return .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c), .line = @intCast(line) };
         };
-        return sim.startUnder(process, args, test_runner, policy);
+        return .{ .restart = .always, .max_restarts = default_max_restarts, .window_ms = default_window_ms };
     }
 
     /// Starts supervisors[index]: each child in order, with the arguments its line passes.
@@ -528,7 +537,7 @@ pub const Sim = struct {
         for (s.children, ids) |c, *id| {
             const child_args = (try sim.vm.call(c.args, args)).tuple;
             const max = if (c.max_restarts == none) default_max_restarts else c.max_restarts;
-            id.* = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c) });
+            id.* = try sim.startUnder(c.process, child_args, sid, .{ .restart = c.restart, .max_restarts = max, .window_ms = try sim.window(c), .line = index });
         }
         return ids;
     }
@@ -576,10 +585,23 @@ pub const Sim = struct {
 
     // ---- messages
 
+    /// A message that will not arrive (step 29): its target is down, or the program exited while it
+    /// was delayed. A `Dropped` event names the sender (`test_runner` for main or a test), the
+    /// target, the message, and why.
+    fn dropped(sim: *Sim, from: u32, to: u32, message: Value, why: []const u8) void {
+        sim.record(.{
+            .kind = .dropped,
+            .process = to,
+            .other = if (from == test_runner) events_mod.nobody else from,
+            .message = if (message == .variant) message.variant.name else "",
+            .name = why,
+        });
+    }
+
     /// `h.send(message)`: never blocks. From inside an update the message waits in the
-    /// sender's outbox until the update commits. A target that is down drops it.
+    /// sender's outbox until the update commits. A target that is down drops it, with an event.
     pub fn send(sim: *Sim, to: u32, message: Value) Error!void {
-        if (!sim.procs.items[to].up) return;
+        if (!sim.procs.items[to].up) return sim.dropped(sim.running orelse test_runner, to, message, "down");
         try sim.roomFor(to, message);
         const parcel = try sim.outgoing(message);
         const sent = if (parcel) |p| p.value else message;
@@ -595,7 +617,7 @@ pub const Sim = struct {
     /// it with the update's other sends, and a target that is down when it is due drops it.
     pub fn sendLater(sim: *Sim, to: u32, message: Value, delay: i64) Error!void {
         if (delay <= 0) return sim.send(to, message);
-        if (!sim.procs.items[to].up) return;
+        if (!sim.procs.items[to].up) return sim.dropped(sim.running orelse test_runner, to, message, "down");
         const parcel = try sim.outgoing(message);
         const sent = if (parcel) |p| p.value else message;
         if (sim.running) |from| {
@@ -604,7 +626,23 @@ pub const Sim = struct {
         } else try sim.pushLater(test_runner, to, sent, parcel, sim.deadlineNow() + delay);
     }
 
+    /// main called exit and returned (step 29): every delayed send still pending is dropped with an
+    /// event, and one sent from here on is dropped as it is sent, so the program ends at once.
+    pub fn exitNow(sim: *Sim) void {
+        sim.exiting = true;
+        for (sim.later.items) |l| {
+            sim.dropped(l.from, l.to, l.message, "exited");
+            if (l.parcel) |x| x.free();
+        }
+        sim.later.clearRetainingCapacity();
+    }
+
     fn pushLater(sim: *Sim, from: u32, to: u32, message: Value, parcel: ?*Parcel, at: i64) Error!void {
+        if (sim.exiting) {
+            sim.dropped(from, to, message, "exited");
+            if (parcel) |x| x.free();
+            return;
+        }
         const gpa = std.heap.smp_allocator;
         try sim.later.append(gpa, .{ .at = at, .order = sim.later_sent, .from = from, .to = to, .message = message, .parcel = parcel });
         sim.later_sent += 1;
@@ -658,6 +696,7 @@ pub const Sim = struct {
             const l = sim.popLater();
             const target = sim.procs.items[l.to];
             if (!target.up or target.ended) {
+                sim.dropped(l.from, l.to, l.message, "down");
                 if (l.parcel) |x| x.free();
                 continue;
             }
@@ -688,8 +727,12 @@ pub const Sim = struct {
 
     fn askInline(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         if (!sim.procs.items[to].up) return sim.askError("Down");
-        // A target whose update is on the stack is waiting on this very call.
-        if (sim.procs.items[to].busy) return sim.askError("Timeout");
+        // A target whose update is on the stack is waiting on this very call: the ask waited its whole
+        // deadline, and simulated time passed with it (step 29).
+        if (sim.procs.items[to].busy) {
+            sim.wait(@max(within, 0));
+            return sim.askError("Timeout");
+        }
         const waited = sim.waited;
         // Delayed sends whose time has come are in their mailboxes before this message (step 24).
         _ = try sim.dueLater();
@@ -698,7 +741,10 @@ pub const Sim = struct {
         const target = &sim.procs.items[to];
         target.mailbox.items[target.mailbox.items.len - 1].deadline = waited + within;
         // The surface holds its deliveries (step 23): the message waits, and the ask is Timeout.
-        if (target.paused) return sim.askError("Timeout");
+        if (target.paused) {
+            sim.wait(@max(within, 0));
+            return sim.askError("Timeout");
+        }
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
         if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
@@ -726,25 +772,28 @@ pub const Sim = struct {
     pub fn settle(sim: *Sim) Error!void {
         if (sim.turns) |t| return t.settle(sim);
         if (sim.schedule) |*rng| if (rng.random().boolean()) return;
-        return sim.drain();
+        return sim.drain(false);
     }
 
     /// The test's body is done: every waiting message is delivered, whatever the seed;
     /// then every never is checked against what the run held.
     pub fn finish(sim: *Sim) Error!void {
         if (sim.turns) |t| return t.finish(sim);
-        try sim.drain();
+        try sim.drain(true);
         try sim.checkNevers();
     }
 
     /// Delivers waiting messages, one per process per round, until every mailbox is
     /// empty. A round visits processes in start order, or in an order the seed shuffles,
     /// so no waiting process is passed over for more than one round.
-    fn drain(sim: *Sim) Error!void {
+    /// `to_later`: at a test's end, simulated time passes to each delayed send in turn once nothing
+    /// else waits (step 24); between two statements it does not, so time moves to a delayed send only
+    /// while a test waits in a fixture call or an ask (step 29).
+    fn drain(sim: *Sim, to_later: bool) Error!void {
         var delivered: u32 = 0;
         while (true) {
             while (try sim.round(&sim.order, &delivered)) {}
-            // Nothing waits: simulated time passes to the next delayed send (step 24).
+            if (!to_later) return;
             const at = sim.nextLater() orelse return;
             sim.wait(@max(at - sim.deadlineNow(), 0));
         }
@@ -882,13 +931,13 @@ pub const Sim = struct {
             p.head = 0;
         }
         try sim.logMessage(p, entry);
-        if (sim.server) |s| p.now = s.now();
         p.reply_by = entry.deadline orelse sim.deadlineNow();
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
             try sim.trace.append(sim.gpa, .{ .from = id, .to = id, .message = entry.message, .took = true });
         }
+        p.now = if (sim.server) |s| s.now() else sim.now + sim.lag;
         // The clock's move before the update is not the update's time.
         const since = sim.eventNow();
         p.waited_us = 0;
@@ -902,9 +951,15 @@ pub const Sim = struct {
         const mark = vm.mark();
         const regioned = vm.region != null;
         const message = if (entry.parcel) |parcel| try vm.unpack(parcel) else entry.message;
+        // Without a region nothing tells an older buffer from a newer one: every write is kept
+        // for a crash, and an invariant that reads old(state) sees nothing written in place.
+        const reads_old = vm.program.processes[p.process].reads_old;
         if (regioned) {
             vm.undo_mark = mark;
-            vm.frozen_below = if (vm.program.processes[p.process].reads_old) mark else 0;
+            vm.frozen_below = if (reads_old) mark else 0;
+        } else {
+            vm.undo_mark = std.math.maxInt(usize);
+            vm.frozen_below = if (reads_old) std.math.maxInt(usize) else 0;
         }
         defer {
             vm.undo_mark = 0;
@@ -950,6 +1005,7 @@ pub const Sim = struct {
         sim.held -= p.outbox.items.len;
         for (p.outbox.items) |o| {
             if (!sim.procs.items[o.to].up) {
+                sim.dropped(id, o.to, o.message, "down");
                 if (o.parcel) |x| x.free();
             } else if (o.delay > 0) {
                 // No earlier than its delay after the update ends (step 24).
@@ -988,6 +1044,12 @@ pub const Sim = struct {
             }
         }
         sim.procs.items[id].state = roots[0];
+        // What the update freed, in its process's region and in the scratch region a compaction copied
+        // through, goes back to the system beyond a MiB of each (step 28).
+        const slack = @import("region.zig").Region.release_keep;
+        const reg = vm.region.?;
+        if (reg.high > reg.top + 4 * slack) reg.releasePast(reg.top + slack);
+        if (vm.scratch) |s| if (@max(s.high, s.top) > s.base + 4 * slack) s.releasePast(s.base + slack);
     }
 
     /// The message a process takes goes in its log; under `mo run` the log keeps the last
@@ -1173,6 +1235,7 @@ pub const Sim = struct {
         const log = try sim.gpa.alloc([]const u8, p.log.items.len);
         for (p.log.items, log) |m, *o| o.* = try vm.render(m);
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
+        if (p.policy.restart == .never and p.policy.line != none) report.process.?.not_restarted = vm.program.supervisors[p.policy.line].name;
         try sim.crashes.append(sim.gpa, report);
         sim.record(.{
             .kind = .crashed,
@@ -1189,7 +1252,16 @@ pub const Sim = struct {
         } else sim.fixture.closeHeld(p.args);
         if (sim.turns) |t| t.wakeAll();
         if (p.policy.restart == .never) {
+            // It stays down (step 29): what waits for it is dropped, each with an event, and an ask
+            // among it is Down.
             p.up = false;
+            if (sim.turns) |t| for (p.mailbox.items[p.head..]) |e| try t.answer(e.seq, null, null);
+            for (p.mailbox.items[p.head..]) |e| {
+                sim.dropped(test_runner, id, e.message, "down");
+                if (e.parcel) |x| x.free();
+            }
+            p.mailbox.clearRetainingCapacity();
+            p.head = 0;
             return;
         }
         // Restarts are counted in simulated time under mo test, and wall-clock time under mo run.
@@ -1294,6 +1366,29 @@ const later_src =
     \\  child Ticker, restart: :always
     \\end
 ;
+
+test "between two statements simulated time does not pass to a delayed send; at the test's end it does" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, later_src);
+    var machine: Vm = .init(arena, program, 7);
+    var s: Sim = .init(&machine, 7, "later");
+    machine.sim = &s;
+    const id = try s.start(0, &.{});
+
+    // An hour away: a settle between two statements delivers what waits and leaves it pending (step 29).
+    try s.sendLater(id, try machine.variant("Tick", &.{}), 3_600_000);
+    try s.settle();
+    try std.testing.expectEqual(@as(usize, 1), s.later.items.len);
+    try std.testing.expectEqual(@as(i64, 0), s.waited);
+    try std.testing.expectEqual(@as(i128, 0), s.procs.items[id].state.record.fields[0].int);
+
+    // The test's end passes the hour and delivers it.
+    try s.finish();
+    try std.testing.expectEqual(@as(usize, 0), s.later.items.len);
+    try std.testing.expectEqual(@as(i128, 1), s.procs.items[id].state.record.fields[0].int);
+}
 
 test "a delayed send waits outside the mailbox until its time; a crashing update drops the one it held, and a target that is down drops it when it is due" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -1933,12 +2028,20 @@ test "a supervisor starts its children with the arguments its lines pass, and fo
     try std.testing.expectEqualStrings("Reader", h.sim.nameOf(1));
     try std.testing.expect(vm_mod.equal(fs, h.sim.procs.items[1].args[0]));
 
-    // restart: :never leaves the child down, and an ask to it is Down.
+    // restart: :never leaves the child down, its report says so, an ask to it is Down, and a send
+    // to it is dropped with an event (step 29).
     try h.sim.send(1, try h.machine.variant("Slip", &.{}));
     try h.sim.settle();
     try std.testing.expect(!h.sim.procs.items[1].up);
+    try std.testing.expectEqualStrings("Pulse", h.sim.crashes.items[h.sim.crashes.items.len - 1].process.?.not_restarted);
     const down = try h.sim.ask(1, try h.machine.variant("Reads", &.{}), 100);
     try std.testing.expectEqualStrings("Down", down.variant.fields[0].variant.name);
+    try h.sim.send(1, try h.machine.variant("Slip", &.{}));
+    const last = h.sim.ring.get(h.sim.ring.len - 1);
+    try std.testing.expectEqual(events_mod.Kind.dropped, last.kind);
+    try std.testing.expectEqual(@as(u32, 1), last.process);
+    try std.testing.expectEqualStrings("Slip", last.message);
+    try std.testing.expectEqualStrings("down", last.name);
 
     // Beat's line allows two restarts in a minute; the third crash takes Pulse down.
     for (0..2) |_| {

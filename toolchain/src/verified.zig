@@ -21,7 +21,10 @@ pub fn render(w: *std.Io.Writer, s: runner.Summary) std.Io.Writer.Error!void {
         if (s.sim_runs > 0 and s.simulated > 0) {
             try w.writeAll(" seeds), sim (");
             try grouped(w, s.sim_runs);
-            try w.writeAll(" runs)\n");
+            try w.writeAll(" runs");
+            // Step 29: an invariant no seed's message tripped in a test rejects is counted apart.
+            if (s.invariants > 0) try w.print(", invariants (kept {d}, tripped {d})", .{ s.invariants, s.invariants_tripped });
+            try w.writeAll(")\n");
         } else try w.writeAll(" seeds), sim (not run)\n");
     }
     try w.writeAll("          proven: not run\n");
@@ -57,6 +60,16 @@ test "--sim N with no failure earns sim (N runs), spelled as chapter 5 spells it
     try render(&w, .{ .tests = 2, .sim_runs = 100 });
     try std.testing.expectEqualStrings(
         "verified: types, contracts, tests (2), property (0 seeds), sim (not run)\n          proven: not run\n",
+        w.buffered(),
+    );
+}
+
+test "--sim over a file with invariants counts them kept and tripped in the sim clause" {
+    var buf: [200]u8 = undefined;
+    var w: std.Io.Writer = .fixed(&buf);
+    try render(&w, .{ .tests = 11, .sim_runs = 100, .simulated = 9, .invariants = 4, .invariants_tripped = 3 });
+    try std.testing.expectEqualStrings(
+        "verified: types, contracts, tests (11), property (0 seeds), sim (100 runs, invariants (kept 4, tripped 3))\n          proven: not run\n",
         w.buffered(),
     );
 }

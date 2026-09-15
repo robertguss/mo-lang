@@ -332,5 +332,5 @@ test rejects "a line with no newline, which would run into the next"
   journal.send(Append(line: "SET a 1", keys: 1))
 end
 
-verified: types, contracts, tests (14), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (14), property (0 seeds), sim (100 runs, invariants (kept 1, tripped 0))
           proven: not run

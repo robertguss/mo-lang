@@ -5,7 +5,7 @@ updated: 2026-09-14
 type: plan
 tags: [runtime, performance, stdlib, compiler]
 sources: [plans/control-run-7.md, decisions/decision-log.md, plans/interpreter-step-27.md]
-status: queued
+status: done
 ---
 
 # Step 28: what round 7 found in the runtime
@@ -56,6 +56,14 @@ The whole suite green; `mo fmt --check` clean; every new row in both runtimes; t
 ## Done when
 
 Green at every commit; the map in place with its rows; the tuple accumulator moved; the `never` gap closed with its corpus line; memory accounted for and replay's split reported; the six gaps with their files; the numbers; pushed; a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Accepted 14 Sep 2026, 23:55 UTC. Five commits (A, B, D, C, E), green at each, 186 of 186 at the end; about 3 h 45 min of worker time including Robert's pause, during which part A's suite had hung on a jobq test binary and was fixed before A landed. Part A: `src/moves.zig`, a move analysis shared by both backends (a local's last read hands its value on; lists, map keys and values, sets, messages, and captures give the claim up; structs, tuples, variants, and accumulators keep it), `remove` in place with an undo, the owned and growth rings as tables. Part B: the tuple accumulator fixed by A; the `never` rule looks through branches; `basics/moves.mo` and `contracts/never-var-copy.mo` extended. Part D: the six gaps with their corpus files and rows. Part C: regions give pages back past their top; `MemoryInfo.region_resident_bytes`; a leak of part A's own found and fixed; the remainder outside the regions is Zig's allocator retaining packed message buffers, measured and left. Part E: the bench recorded.
+
+Numbers (the worker's, before → after): map-set-80k 47,071 → 128 ms interpreted, 21,323 → 5 ms native; map-remove-80k 37,906 → 760 and 8,232 → 167; reduce-tuple-50k 4,453 → 37 and 999 → 9; replay-1m 281 → 196 s interpreted, 63.9 → 43.1 native (split: compaction 50%, map sets 22%, string slicing 20%); memory after that replay 392 → 102 MiB and 183 → 57; kv-10k-get and logstat-4k within noise; two rows slower (`reuse-map-remove-100k` interpreted 76 → 97 ms, `http-1k` interpreted 37 → 51 ms). Fable's measurement of round 7's Mo jobq rebuilt on this toolchain with the round's one client: creates 1,266 a second (1,320 before), pairs 293 / 944 at 1 / 32 workers (329 / 981), 159 MiB at 100k jobs (150), restart 3.3 s (3.7) and 57 MiB after it (181); the defect suite 121 of 121.
+
+Fable's probes: 80k entries and 2,000 overwrites plus 2,000 removes inside an `update` in 0.09 s interpreted and 0.03 s native, 400k and 20,000 in 0.41 s, the values read back; a tuple accumulator over 100k items in 0.05 s; the logstat `Tally` shape passing under `mo test` and as a binary; `1.second` refused at check time naming the units; `list_kinds`, `grouped`, `_`, `Option.map` from `mo run` and a binary. Left: the ~100 MiB Zig's allocator retains; replay still nine times Go's on the same log.
 
 ## Related
 - [[control-run-7]]

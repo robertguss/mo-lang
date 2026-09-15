@@ -43,5 +43,5 @@ test rejects "undoing a finished batch"
   batches.send(Undo)
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 1, tripped 1))
           proven: not run

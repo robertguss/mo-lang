@@ -485,5 +485,5 @@ test rejects "a call from a client whose token holds a slash"
   service.send(Serve(call: call))
 end
 
-verified: types, contracts, tests (8), property (200 seeds), sim (100 runs)
+verified: types, contracts, tests (8), property (200 seeds), sim (100 runs, invariants (kept 2, tripped 0))
           proven: not run

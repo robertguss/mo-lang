@@ -47,6 +47,15 @@ test "text is built by replace, case, padding, repeat, trim, and join"
   assert masked("4111111111111111") == "************1111"
 end
 
+test "an integer is grouped by thousands in Mo's own spelling"
+  assert String.grouped(1204) == "1_204"
+  assert String.grouped(999) == "999"
+  assert String.grouped(1_000_000) == "1_000_000"
+  assert String.grouped(0) == "0"
+  assert String.grouped(-1234567) == "-1_234_567"
+  assert "#{String.grouped(12345)} requests" == "12_345 requests"
+end
+
 test "bytes become text only when they are UTF-8"
   assert String.from_bytes("café".bytes) is Some("café")
   assert String.from_bytes([99, 255]) is None
@@ -56,5 +65,5 @@ test rejects "a card too short to mask"
   masked("123")
 end
 
-verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
           proven: not run
