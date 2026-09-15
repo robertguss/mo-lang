@@ -134,6 +134,9 @@
 - [[interpreter-step-28|Step 28: what round 7 found in the runtime]] — a map written in place, the tuple `reduce`, resident memory, replay, the `never` rule's `if` gap, six gaps
 - [[control-run-7|The control run, round 7]] — pre-registered on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, dependencies
 - [[sampling-as-verification|Sampling as verification]] — measurement 2 of direction 43: five regenerations of the queue's board, a random driver, disagreements against the hidden suite
+- [[bodies-as-cache|Bodies as cache]] — measurement 1 of direction 43: every program regenerated from its stripped spec, twice; completeness per program
+- [[control-run-10|The control run, round 10, the Elixir round]] — pre-registered: the BEAM null hypothesis in a pane, round 7's queue and round 8's change in Elixir under the same suites
+- [[mac-scaling-run|The Mac scaling run]] — the one script for step 30 at 1, 4, 10, 14 cores on the M3 Max, and what to read from it
 - [[control-run-8|The control run, round 8, the maintenance round]] — pre-registered: the finished queues handed to fresh agents with a changed spec, regressions and defects, read on reliability and dependencies together
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
 - [[control-run-6|The control run, round 6]] — pre-registered: logstat and jobq, the baselines with their checks bolted on, the null hypothesis stated as P3
