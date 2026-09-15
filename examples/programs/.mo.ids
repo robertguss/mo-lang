@@ -1600,6 +1600,35 @@
       "verified": { "hash": "791c6816f80c28f0", "declarations": "725bb5d70743dad3", "uses": [{ "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }] }
     },
     {
+      "path": "ledger/check.mo",
+      "module": "Ledger.Check",
+      "declarations": [
+        { "id": "dd1cf4596d01", "name": "module Ledger.Check", "hash": "10f0eafb9b619032" },
+        { "id": "5d98e799622f", "name": "expose", "hash": "d5d58cb66afd37f9" },
+        { "id": "8fe6ba8b63c3", "name": "intent", "hash": "1d71bd04f8e20471" },
+        { "id": "4f04708a45d8", "name": "struct Trip", "hash": "ef3136a1fee475c1" },
+        { "id": "f227b0b282bd", "name": "fn trip_of", "hash": "3e2d639990677371" },
+        { "id": "28601730dc06", "name": "fn client", "hash": "d16bd548a4c41f40" },
+        { "id": "229a980543e9", "name": "fn said_unreached", "hash": "fb057551e84fd47e" },
+        { "id": "983d7f95ec60", "name": "fn request_of", "hash": "ad0e7d9468d7d57c" },
+        { "id": "e9ed98a7e159", "name": "fn query_of", "hash": "d8e863bad65f3c5a" },
+        { "id": "3fa6ef25a385", "name": "fn with_pair", "hash": "1e335ae3e87edbc0" },
+        { "id": "8adc77cb0f38", "name": "fn bare", "hash": "cb604f007e9bf77b" },
+        { "id": "16a38cd3ecb8", "name": "fn shown", "hash": "5f2a1c1c21c495fb" },
+        { "id": "d32d8c6e0adc", "name": "fn checked", "hash": "3305eb81ecc83276" },
+        { "id": "19b057019fe6", "name": "fn napped", "hash": "3fa4b9938b3a7daf" },
+        { "id": "38ac69c0a743", "name": "fn sent_line", "hash": "56a86201e265c5ec" },
+        { "id": "8e4fd9b53d57", "name": "fn steady", "hash": "806fd7b929c16ed4" },
+        { "id": "0c49fcd82725", "name": "fn masked", "hash": "34bf661183907e0b" },
+        { "id": "3f75503de8d5", "name": "fn after_value", "hash": "3d4a2bbed5cb857b" },
+        { "id": "d334a28c7209", "name": "fn found", "hash": "aff42a2c511c9654" },
+        { "id": "ba5cf32e0c11", "name": "test \"a request carries its token, its key, and its query, and a response prints as its status and body\"", "hash": "feaece1bab9f1501" },
+        { "id": "6a54f84c5ced", "name": "test \"a script line takes a key after --key, and its JSON joins back as it was split\"", "hash": "9d6e1887694a8a9e" },
+        { "id": "ec18172494e9", "name": "test \"the clock's numbers and the day are steadied, and nothing else\"", "hash": "c45e0acc4502805d" }
+      ],
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "ff6955e58e6d943e" }
+    },
+    {
       "path": "ledger/desk.mo",
       "module": "Ledger.Desk",
       "declarations": [
