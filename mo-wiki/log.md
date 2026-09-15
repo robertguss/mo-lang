@@ -380,3 +380,6 @@
 ## [2026-09-15] session | Night: round 8 run and read
 - Three fresh Opus sessions from 22:22 UTC: Go green at 22:37 (8 loops), Python at 22:38 (6), Mo at 22:57 (9). Both hidden suites on all three, Mo under both runtimes: regressions 0/0/0, defects 0/1/0. Speed, memory, the loop, and dependencies measured on this disk the same night, Go and Python rerun alone. Held on all five ([[control-run-8]]).
 - The fourth oracle (`oracle4.py`, fourteen inputs from the three decision lists): three disagreements, one an outage in Mo on a log record in an impossible state where both baselines refuse the folder. Five decision rows, two `semantic`, two for Robert. The round is recorded and the lead pauses, per Robert's 15 Sep decision.
+
+## [2026-09-16] session | Night: the outage probed, Fable decides from here
+- Robert: Fable makes the decisions and keeps moving, never waits on him (locked). The round 8 outage probed under both runtimes: the program's, by chapter 3 (a `:never` queue, a worker waiting on a `Done` message with no deadline); the language row (a wait hidden as a message pattern) goes to the language page, the fix is the erosion round's change 2.
