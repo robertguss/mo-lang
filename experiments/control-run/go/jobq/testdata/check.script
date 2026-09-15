@@ -2,10 +2,10 @@
 # real socket. Lines are <token> <method> <path> [<json>]; a token of - sends
 # no authorization header; `clock +<ms>` moves the service's clock.
 - GET /health
-- POST /jobs {"queue":"emails","payload":"hi","max_attempts":2}
-prod POST /jobs {"queue":"emails","payload":"hello","max_attempts":2}
-prod POST /jobs {"queue":"emails","payload":"second","max_attempts":1}
-prod POST /jobs {"queue":"bad queue","payload":"x","max_attempts":1}
+- POST /jobs {"queue":"emails","payload":"hi","max_tries":2}
+prod POST /jobs {"queue":"emails","payload":"hello","max_tries":2}
+prod POST /jobs {"queue":"emails","payload":"second","max_tries":1}
+prod POST /jobs {"queue":"bad queue","payload":"x","max_tries":1}
 prod POST /jobs {"queue":"emails","payload":"x"}
 prod GET /jobs/j_1
 prod GET /jobs/j_9
@@ -20,7 +20,7 @@ w1 POST /jobs/j_1/ack
 w2 POST /jobs/j_1/ack
 w2 POST /jobs/j_1/ack
 prod DELETE /jobs/j_2
-prod POST /jobs {"queue":"sms","payload":"text me","max_attempts":3}
+prod POST /jobs {"queue":"sms","payload":"text me","max_tries":3}
 w3 POST /queues/sms/lease {"lease_ms":1000}
 prod DELETE /jobs/j_3
 restart
@@ -28,7 +28,31 @@ clock +2000
 w3 POST /jobs/j_3/ack
 w4 POST /queues/sms/lease
 w4 POST /jobs/j_3/fail {"reason":"smtp down"}
-prod POST /jobs {"queue":"emails","payload":"after restart","max_attempts":3}
+prod POST /jobs {"queue":"emails","payload":"after restart","max_tries":3}
+# scheduled jobs, backoff, and retry
+prod POST /jobs {"queue":"later","payload":"delayed","max_tries":2,"delay_ms":5000}
+prod POST /jobs {"queue":"later","payload":"backoff","max_tries":2,"backoff_ms":2000}
+prod POST /jobs {"queue":"later","payload":"old name","max_attempts":2}
+prod POST /jobs {"queue":"later","payload":"x","max_tries":1,"delay_ms":86400001}
+prod POST /jobs {"queue":"later","payload":"x","max_tries":1,"backoff_ms":1.5}
+w5 POST /queues/later/lease {"lease_ms":1000}
+w5 POST /jobs/j_6/fail {"reason":"try later"}
+w5 POST /queues/later/lease
+prod POST /jobs/j_6/retry
+prod GET /jobs?state=scheduled
+- GET /health
+clock +2000
+w5 POST /queues/later/lease {"lease_ms":1000}
+clock +1000
+prod GET /jobs/j_6
+prod POST /jobs/j_6/retry
+prod POST /jobs/j_6/retry
+prod GET /jobs/j_6/retry
+restart
+clock +2000
+w6 POST /queues/later/lease
+w6 POST /queues/later/lease
+prod POST /jobs/j_9/retry
 prod GET /jobs
 - GET /health
 prod GET /jobs/j_2

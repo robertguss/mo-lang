@@ -92,7 +92,7 @@ func lineFor(body string) string {
 }
 
 func sampleRecord(id uint64) record {
-	v := jobView(Job{ID: id, Queue: "a", State: Queued, Payload: "p <&> \"q\"\n", MaxAttempts: 3,
+	v := jobView(Job{ID: id, Queue: "a", State: Queued, Payload: "p <&> \"q\"\n", MaxTries: 3,
 		CreatedAt: time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)})
 	return record{Op: "put", Job: &v}
 }
@@ -247,7 +247,7 @@ func TestCompactKeepsJobsAndTheCounter(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 3 {
-		if _, err := q.Create(ctx(t), "a", "x", 2); err != nil {
+		if _, err := q.Create(ctx(t), "a", "x", 2, 0, 0); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -276,7 +276,7 @@ func TestCompactKeepsJobsAndTheCounter(t *testing.T) {
 	if got := snapshot(q); !reflect.DeepEqual(got, want) {
 		t.Errorf("after compact %v, want %v", got, want)
 	}
-	if j, err := q.Create(ctx(t), "a", "x", 2); err != nil || j.ID != 4 {
+	if j, err := q.Create(ctx(t), "a", "x", 2, 0, 0); err != nil || j.ID != 4 {
 		t.Errorf("next id = %v, %v; want j_4, never j_3 again", j.ID, err)
 	}
 }

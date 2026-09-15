@@ -20,6 +20,9 @@ import (
 // eight hex digits of CRC-32C, a space, the record's JSON, a newline. A put
 // holds a job's whole state, a del removes a job, a meta (written by compact)
 // carries the id counter.
+// A log written before the tries rename still replays: decodeLine reads a
+// job's old names (see storedJob), and every record written since, compact's
+// included, has only the new ones.
 
 const (
 	logName        = "jobq.log"
@@ -81,9 +84,22 @@ func decodeLine(line []byte) (record, error) {
 	}
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
-	var r record
-	if err := dec.Decode(&r); err != nil {
+	var sr struct {
+		Op     string     `json:"op"`
+		Job    *storedJob `json:"job"`
+		ID     string     `json:"id"`
+		NextID uint64     `json:"next_id"`
+	}
+	if err := dec.Decode(&sr); err != nil {
 		return record{}, err
+	}
+	r := record{Op: sr.Op, ID: sr.ID, NextID: sr.NextID}
+	if sr.Job != nil {
+		v, err := sr.Job.view()
+		if err != nil {
+			return record{}, err
+		}
+		r.Job = &v
 	}
 	return r, nil
 }

@@ -53,15 +53,15 @@ func writeLog(t *testing.T, dir string, jobs, updates int, leased bool, payload 
 		n++
 	}
 	for i := 1; i <= jobs; i++ {
-		j := Job{ID: uint64(i), Queue: "bench", State: Queued, Payload: payload, MaxAttempts: 3, CreatedAt: at, UpdatedAt: at}
+		j := Job{ID: uint64(i), Queue: "bench", State: Queued, Payload: payload, MaxTries: 3, CreatedAt: at, UpdatedAt: at}
 		put(j)
 		if leased {
-			j.State, j.Attempts, j.Worker, j.LeaseUntil = Leased, 1, "w", at.Add(time.Second)
+			j.State, j.Tries, j.Worker, j.LeaseUntil = Leased, 1, "w", at.Add(time.Second)
 			put(j)
 		}
 	}
 	for i := range updates {
-		put(Job{ID: uint64(i%jobs) + 1, Queue: "bench", State: Queued, Payload: payload, MaxAttempts: 3,
+		put(Job{ID: uint64(i%jobs) + 1, Queue: "bench", State: Queued, Payload: payload, MaxTries: 3,
 			CreatedAt: at, UpdatedAt: at.Add(time.Duration(i) * time.Millisecond)})
 	}
 	if err := w.Flush(); err != nil {
@@ -135,7 +135,7 @@ func TestBenchLeaseLag(t *testing.T) {
 	}
 	defer svc.stop()
 	client := &http.Client{Timeout: clientTimeout}
-	if status, _, err := doRequest(client, svc.addr, "p", "POST", "/jobs", `{"queue":"lag","payload":"x","max_attempts":100}`); err != nil || status != 201 {
+	if status, _, err := doRequest(client, svc.addr, "p", "POST", "/jobs", `{"queue":"lag","payload":"x","max_tries":100}`); err != nil || status != 201 {
 		t.Fatal(status, err)
 	}
 	var mu sync.Mutex

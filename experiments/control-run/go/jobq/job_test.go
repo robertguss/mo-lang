@@ -27,16 +27,16 @@ func TestJobShapes(t *testing.T) {
 		want string
 	}{
 		{
-			Job{ID: 1, Queue: "emails", State: Queued, Payload: "hi <b>\n", MaxAttempts: 3, CreatedAt: at, UpdatedAt: at},
-			`{"id":"j_1","queue":"emails","state":"queued","payload":"hi <b>\n","attempts":0,"max_attempts":3,"created_at":"2026-09-14T01:02:03.004Z","updated_at":"2026-09-14T01:02:03.004Z"}`,
+			Job{ID: 1, Queue: "emails", State: Queued, Payload: "hi <b>\n", MaxTries: 3, CreatedAt: at, UpdatedAt: at},
+			`{"id":"j_1","queue":"emails","state":"queued","payload":"hi <b>\n","tries":0,"max_tries":3,"created_at":"2026-09-14T01:02:03.004Z","updated_at":"2026-09-14T01:02:03.004Z"}`,
 		},
 		{
-			Job{ID: 2, Queue: "q", State: Leased, Attempts: 1, MaxAttempts: 3, CreatedAt: at, UpdatedAt: at, Worker: "w1", LeaseUntil: at.Add(time.Second)},
-			`{"id":"j_2","queue":"q","state":"leased","payload":"","attempts":1,"max_attempts":3,"created_at":"2026-09-14T01:02:03.004Z","updated_at":"2026-09-14T01:02:03.004Z","worker":"w1","lease_until":"2026-09-14T01:02:04.004Z"}`,
+			Job{ID: 2, Queue: "q", State: Leased, Tries: 1, MaxTries: 3, CreatedAt: at, UpdatedAt: at, Worker: "w1", LeaseUntil: at.Add(time.Second)},
+			`{"id":"j_2","queue":"q","state":"leased","payload":"","tries":1,"max_tries":3,"created_at":"2026-09-14T01:02:03.004Z","updated_at":"2026-09-14T01:02:03.004Z","worker":"w1","lease_until":"2026-09-14T01:02:04.004Z"}`,
 		},
 		{
-			Job{ID: 3, Queue: "q", State: Dead, Attempts: 3, MaxAttempts: 3, CreatedAt: at, UpdatedAt: at, Reason: &reason},
-			`{"id":"j_3","queue":"q","state":"dead","payload":"","attempts":3,"max_attempts":3,"created_at":"2026-09-14T01:02:03.004Z","updated_at":"2026-09-14T01:02:03.004Z","reason":"smtp down"}`,
+			Job{ID: 3, Queue: "q", State: Dead, Tries: 3, MaxTries: 3, CreatedAt: at, UpdatedAt: at, Reason: &reason},
+			`{"id":"j_3","queue":"q","state":"dead","payload":"","tries":3,"max_tries":3,"created_at":"2026-09-14T01:02:03.004Z","updated_at":"2026-09-14T01:02:03.004Z","reason":"smtp down"}`,
 		},
 	} {
 		line, err := encodeRecord(record{Op: "put", Job: ptr(jobView(c.job))})

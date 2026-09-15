@@ -66,7 +66,7 @@ func TestServeExit1(t *testing.T) {
 func TestClientCommand(t *testing.T) {
 	svc := startTestService(t, idleTimeout)
 	host, port, _ := net.SplitHostPort(svc.addr)
-	code, out, errOut := runCmd("client", host, port, "w1", "POST", "/jobs", `{"queue":"a","payload":"p","max_attempts":1}`)
+	code, out, errOut := runCmd("client", host, port, "w1", "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1}`)
 	if code != 0 || !strings.HasPrefix(out, "201\n{\"id\":\"j_1\"") || !strings.HasSuffix(out, "}\n") {
 		t.Errorf("client = %d, %q, %q", code, out, errOut)
 	}
