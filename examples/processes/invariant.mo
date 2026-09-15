@@ -42,5 +42,5 @@ test rejects "driving past the largest reading the odometer can show"
   odometer.send(Drive(km: 1))
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 1, tripped 0))
           proven: not run

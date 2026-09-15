@@ -40,6 +40,9 @@ pub const Options = struct {
     /// could fail, counted on the same seed without faults, so a test asserts what holds while
     /// calls fail and what holds once they stop. 1 injects them throughout.
     fault_until: f64 = 1,
+    /// The offset the tested file's source begins at: the invariants the report counts are those
+    /// declared from here on (step 29). 0 counts every one.
+    own_from: u32 = 0,
 };
 
 /// The base seed when none is given: the file's hash, so a file runs under the same
@@ -114,9 +117,21 @@ pub const Summary = struct {
     /// Simulated tests that held under faults, and those that passed only without them.
     held_under_faults: u32 = 0,
     fault_free_only: u32 = 0,
+    /// Under --sim (step 29): the invariants the tested file declares, and those a seeded run's
+    /// message tripped in a `test rejects`.
+    invariants: u32 = 0,
+    invariants_tripped: u32 = 0,
 };
 
-pub const Run = struct { results: []const Result, summary: Summary };
+/// A seeded run of a `test rejects` whose verdict was an invariant: where the clause is, the seed,
+/// the message it tripped on, and the test.
+pub const Trip = struct { at: u32, seed: u64, message: []const u8, test_name: []const u8 };
+
+/// One invariant the tested file declares, under --sim: its clause, its process, and the first
+/// seeded run that tripped it, or none (step 29).
+pub const InvariantRow = struct { text: []const u8, within: []const u8, trip: ?Trip = null };
+
+pub const Run = struct { results: []const Result, summary: Summary, invariants: []const InvariantRow = &.{} };
 
 pub const Error = error{OutOfMemory};
 
@@ -125,13 +140,14 @@ pub const Error = error{OutOfMemory};
 pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program, options: Options) Error!Run {
     var results: std.ArrayList(Result) = .empty;
     var summary: Summary = .{};
+    var trips: std.ArrayList(Trip) = .empty;
     for (program.tests) |t| {
         var arena_state = std.heap.ArenaAllocator.init(gpa);
         defer arena_state.deinit();
         const arena = arena_state.allocator();
         var r = if (t.kind == .property) try runProperty(gpa, arena, program, t) else try runTest(gpa, arena, program, t, null, 0, null);
         // A property already runs under its own seeds.
-        if (options.sim_runs > 0 and t.kind != .property and r.processes > 0 and holds(r)) try simulate(gpa, &arena_state, program, t, options, &r);
+        if (options.sim_runs > 0 and t.kind != .property and r.processes > 0 and holds(r)) try simulate(gpa, &arena_state, program, t, options, &r, &trips);
         if (r.sim_runs > 0) {
             summary.simulated += 1;
             summary.sim_runs = options.sim_runs;
@@ -156,7 +172,35 @@ pub fn run(gpa: std.mem.Allocator, program: *const bytecode.Program, options: Op
         summary.processes += r.processes;
         try results.append(gpa, r);
     }
-    return .{ .results = results.items, .summary = summary };
+    // Under --sim, each invariant the file declares, kept, and tripped when a seed's message
+    // tripped it in a test rejects (step 29): one no message can trip is documentation.
+    var rows: std.ArrayList(InvariantRow) = .empty;
+    if (summary.simulated > 0) for (program.processes) |p| for (p.invariants) |inv| {
+        const c = program.clauses[inv.clause];
+        if (c.at < options.own_from) continue;
+        var row: InvariantRow = .{ .text = c.text, .within = c.within };
+        for (trips.items) |trip| if (trip.at == c.at) {
+            row.trip = trip;
+            break;
+        };
+        summary.invariants += 1;
+        if (row.trip != null) summary.invariants_tripped += 1;
+        try rows.append(gpa, row);
+    };
+    return .{ .results = results.items, .summary = summary, .invariants = rows.items };
+}
+
+/// A seeded run's verdict: when it is a test rejects that tripped an invariant, the trip, once
+/// per clause.
+fn noteTrip(gpa: std.mem.Allocator, trips: *std.ArrayList(Trip), t: bytecode.Test, s: Result, seed: u64) Error!void {
+    if (t.kind != .rejects or s.outcome != .tripped_as_expected) return;
+    const report = s.report orelse return;
+    if (report.kind != .invariant) return;
+    for (trips.items) |trip| if (trip.at == report.at) return;
+    const log = if (report.process) |p| p.log else &.{};
+    const last = if (log.len > 0) log[log.len - 1] else "";
+    const name = last[0 .. std.mem.indexOfScalar(u8, last, '(') orelse last.len];
+    try trips.append(gpa, .{ .at = report.at, .seed = seed, .message = try gpa.dupe(u8, name), .test_name = t.name });
 }
 
 fn holds(r: Result) bool {
@@ -167,7 +211,7 @@ fn holds(r: Result) bool {
 /// fails under is its verdict. A failure in a run that injected a fault runs the seed again
 /// without faults, on the same schedule: if that fails too it is the verdict; if it holds,
 /// the test passes only without faults, and the seeds go on.
-fn simulate(gpa: std.mem.Allocator, arena_state: *std.heap.ArenaAllocator, program: *const bytecode.Program, t: bytecode.Test, options: Options, r: *Result) Error!void {
+fn simulate(gpa: std.mem.Allocator, arena_state: *std.heap.ArenaAllocator, program: *const bytecode.Program, t: bytecode.Test, options: Options, r: *Result, trips: *std.ArrayList(Trip)) Error!void {
     for (0..options.sim_runs) |i| {
         _ = arena_state.reset(.retain_capacity);
         const seed = options.sim_seed +% i;
@@ -181,6 +225,7 @@ fn simulate(gpa: std.mem.Allocator, arena_state: *std.heap.ArenaAllocator, progr
         var s = try runTest(gpa, arena_state.allocator(), program, t, seed, options.fault_percent, stop);
         s.sim_faults = options.fault_percent;
         s.sim_until = options.fault_until;
+        try noteTrip(gpa, trips, t, s, seed);
         if (holds(s)) continue;
         if (s.faults > 0) {
             _ = arena_state.reset(.retain_capacity);
@@ -373,9 +418,20 @@ fn keep(gpa: std.mem.Allocator, r: contracts.Report) Error!contracts.Report {
     const process: ?contracts.ProcessCrash = if (r.process) |p| blk: {
         const log = try gpa.alloc([]const u8, p.log.len);
         for (p.log, log) |m, *o| o.* = try gpa.dupe(u8, m);
-        break :blk .{ .process = try gpa.dupe(u8, p.process), .seed = p.seed, .log = log, .state = try gpa.dupe(u8, p.state) };
+        break :blk .{ .process = try gpa.dupe(u8, p.process), .seed = p.seed, .log = log, .state = try gpa.dupe(u8, p.state), .not_restarted = try gpa.dupe(u8, p.not_restarted) };
     } else null;
     return .{ .kind = r.kind, .clause = try gpa.dupe(u8, r.clause), .within = try gpa.dupe(u8, r.within), .at = r.at, .values = values, .process = process };
+}
+
+/// Under --sim, one line per invariant the file declares (step 29): `invariant "..." in Journal:
+/// tripped by Open under seed 7 in test rejects "..."`, or kept with no seed's message tripping it.
+pub fn writeInvariants(w: *std.Io.Writer, rows: []const InvariantRow) std.Io.Writer.Error!void {
+    for (rows) |row| {
+        try w.print("{s} in {s}: ", .{ row.text, row.within });
+        if (row.trip) |trip| {
+            try w.print("tripped by {s} under seed {d} in test rejects \"{s}\"\n", .{ trip.message, trip.seed, trip.test_name });
+        } else try w.writeAll("kept, and no seed's message tripped it in a test rejects\n");
+    }
 }
 
 /// One line per test: `pass`, `skip`, or `FAIL`, the test, and what happened.
@@ -847,6 +903,60 @@ test "under faults a test holds, or passes only without faults, and the summary 
     // Without faults both hold, and neither is counted as holding under them.
     const quiet = try run(arena, program, .{ .sim_runs = 20, .sim_seed = 1, .fault_percent = 0 });
     try std.testing.expectEqual(Summary{ .tests = 2, .processes = 2, .sim_runs = 20, .simulated = 2 }, quiet.summary);
+}
+
+test "--sim reports each invariant as tripped by a seed's message in a test rejects, or kept" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const src =
+        \\module T.Invariants
+        \\process Counter()
+        \\  state
+        \\    n: UInt32
+        \\  end
+        \\  invariant "n stays below ten"
+        \\    state.n < 10
+        \\  end
+        \\  invariant "n never goes backwards"
+        \\    state.n >= old(state.n)
+        \\  end
+        \\  message Add(k: UInt32)
+        \\  message Count : UInt32
+        \\  fn update(state, message)
+        \\    case message
+        \\      Add(k):
+        \\        state.n += k
+        \\      Count: state.n
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Counters
+        \\  child Counter, restart: :always
+        \\end
+        \\test "adds"
+        \\  counter = Counter.start()
+        \\  counter.send(Add(k: 2))
+        \\  assert counter.ask(Count, within: 1.minute) is Ok(2)
+        \\end
+        \\test rejects "adding ten"
+        \\  counter = Counter.start()
+        \\  counter.send(Add(k: 10))
+        \\  assert counter.ask(Count, within: 1.minute) is Ok(_) or true
+        \\end
+    ;
+    const program = try compileSource(arena, src);
+    const r = try run(arena, program, .{ .sim_runs = 5, .sim_seed = 1 });
+    try std.testing.expectEqual(@as(u32, 2), r.summary.invariants);
+    try std.testing.expectEqual(@as(u32, 1), r.summary.invariants_tripped);
+    try std.testing.expectEqualStrings("Add", r.invariants[0].trip.?.message);
+    try std.testing.expectEqualStrings("adding ten", r.invariants[0].trip.?.test_name);
+    try std.testing.expect(r.invariants[1].trip == null);
+
+    // Without --sim nothing is counted.
+    const fixed = try run(arena, program, .{});
+    try std.testing.expectEqual(@as(usize, 0), fixed.invariants.len);
+    try std.testing.expectEqual(@as(u32, 0), fixed.summary.invariants);
 }
 
 test "a test passes, a rejects test trips, a property holds, and each failure is reported" {

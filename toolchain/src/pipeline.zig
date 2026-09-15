@@ -47,7 +47,9 @@ pub fn testProgram(gpa: std.mem.Allocator, prog: program.Program, all: bool, opt
     const lowered = try gpa.create(bytecode.Program);
     lowered.* = try bytecode.lower(gpa, checked);
     if (!all) try ownTests(gpa, lowered, prog);
-    return runner.run(gpa, lowered, options);
+    var own = options;
+    if (!all) own.own_from = prog.main().base;
+    return runner.run(gpa, lowered, own);
 }
 
 /// Keeps the tests of the file the program was loaded from: it comes last, so its tests

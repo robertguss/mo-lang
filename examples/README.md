@@ -76,7 +76,7 @@ Every file outside `rejects/` ends with its `verified:` line, written by `mo tes
 57. `processes/racy.mo`: a race the fixed order hides; its test passes under `mo test` and fails under `mo test --sim`
 71. `processes/handoff.mo`: a `Conn` handed to a process in a message and on to another in a second message, which writes to it; once the front has sent the connection it is no longer the front's to use (MO0410, step 20)
 81. `processes/registry.mo`: a registry whose `state` keeps a worker's handle per key in a `Map(String, Handle(Worker))`, starts a worker the first time a key is bumped, and routes each bump through the map; a worker whose key it forgets ends, which `Runtime.fixture().processes` shows in a test (step 24)
-84. `processes/timer.mo`: a process that sends itself a `Tick` with `send(..., delay: 10.ms)` and stops after three; the test waits in a fixture that answers after 10 ms before each look, since simulated time passes only while something waits (step 24)
+84. `processes/timer.mo`: a process that sends itself a `Tick` with `send(..., delay: 10.ms)` and stops after three; the test waits in a fixture that answers after 10 ms before each look, since simulated time passes only while something waits (step 24); its second test holds a message an hour away across two statements and sees it once the test has waited the hour in a fixture, since time no longer passes at a settle between statements (step 29)
 97. `processes/never-restart.mo`: a process whose child line says `restart: :never` trips its invariant and stays down: every ask after the first is `Down`, so the runner never gives up on it, under `mo test`, `--sim 100`, and as a test binary (step 29)
 
 ## tests

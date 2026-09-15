@@ -44,5 +44,5 @@ test rejects "a bump trips the invariant, and every bump after it finds the cras
   assert downs == 5
 end
 
-verified: types, contracts, tests (1), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (1), property (0 seeds), sim (100 runs, invariants (kept 1, tripped 1))
           proven: not run

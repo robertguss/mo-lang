@@ -5240,8 +5240,12 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within) {
 
 static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     if (!procs[to]->up) return ask_error(MO_N_DOWN);
-    /* A target whose update is on the stack is waiting on this very call. */
-    if (procs[to]->busy) return ask_error(MO_N_TIMEOUT);
+    /* A target whose update is on the stack is waiting on this very call: the ask waited its whole
+     * deadline, and simulated time passed with it (step 29). */
+    if (procs[to]->busy) {
+        sim_waited += within.as.i > 0 ? within.as.i : 0;
+        return ask_error(MO_N_TIMEOUT);
+    }
     int64_t waited = sim_waited;
     /* Delayed sends whose time has come are in their mailboxes before this message (step 24). */
     due_later();
@@ -5251,7 +5255,10 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     target->mailbox[target->mailbox_len - 1].has_deadline = true;
     target->mailbox[target->mailbox_len - 1].deadline = waited + within.as.i;
     /* The surface holds its deliveries (step 23): the message waits, and the ask is Timeout. */
-    if (target->paused) return ask_error(MO_N_TIMEOUT);
+    if (target->paused) {
+        sim_waited += within.as.i > 0 ? within.as.i : 0;
+        return ask_error(MO_N_TIMEOUT);
+    }
     MoValue reply;
     uint32_t delivered = 0;
     for (;;) {
@@ -5414,19 +5421,21 @@ static void others_round(uint32_t skip, uint32_t *delivered) {
 }
 
 /* Delivers waiting messages a round at a time until every mailbox is empty. */
-static void drain(void) {
+/* `to_later`: at a test's end, simulated time passes to each delayed send in turn once nothing else
+ * waits (step 24); between two statements it does not, so time moves to a delayed send only while a
+ * test waits in a fixture call or an ask (step 29; sim.zig, drain). */
+static void drain(bool to_later) {
     uint32_t delivered = 0;
     for (;;) {
         while (deliver_round(&delivered)) {}
-        /* Nothing waits: simulated time passes to the next delayed send (step 24). */
-        if (turns_on || nlater == 0) return;
+        if (!to_later || turns_on || nlater == 0) return;
         if (later[0].at > sim_waited) sim_waited = later[0].at;
     }
 }
 
 void mo_settle(void) {
     if (turns_on) turns_settle();
-    else drain();
+    else drain(false);
 }
 
 /* ---- one message */
@@ -8685,7 +8694,7 @@ static Result run_test(const MoTest *t) {
     }
     if (jumped == 0) {
         t->fn();
-        drain();
+        drain(true);
         check_nevers();
         if (crashed_once) {
             verdict(&r, t, first_crash);

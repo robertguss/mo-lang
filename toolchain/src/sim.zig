@@ -727,8 +727,12 @@ pub const Sim = struct {
 
     fn askInline(sim: *Sim, to: u32, message: Value, within: i64) Error!Value {
         if (!sim.procs.items[to].up) return sim.askError("Down");
-        // A target whose update is on the stack is waiting on this very call.
-        if (sim.procs.items[to].busy) return sim.askError("Timeout");
+        // A target whose update is on the stack is waiting on this very call: the ask waited its whole
+        // deadline, and simulated time passed with it (step 29).
+        if (sim.procs.items[to].busy) {
+            sim.wait(@max(within, 0));
+            return sim.askError("Timeout");
+        }
         const waited = sim.waited;
         // Delayed sends whose time has come are in their mailboxes before this message (step 24).
         _ = try sim.dueLater();
@@ -737,7 +741,10 @@ pub const Sim = struct {
         const target = &sim.procs.items[to];
         target.mailbox.items[target.mailbox.items.len - 1].deadline = waited + within;
         // The surface holds its deliveries (step 23): the message waits, and the ask is Timeout.
-        if (target.paused) return sim.askError("Timeout");
+        if (target.paused) {
+            sim.wait(@max(within, 0));
+            return sim.askError("Timeout");
+        }
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
         if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
@@ -765,25 +772,28 @@ pub const Sim = struct {
     pub fn settle(sim: *Sim) Error!void {
         if (sim.turns) |t| return t.settle(sim);
         if (sim.schedule) |*rng| if (rng.random().boolean()) return;
-        return sim.drain();
+        return sim.drain(false);
     }
 
     /// The test's body is done: every waiting message is delivered, whatever the seed;
     /// then every never is checked against what the run held.
     pub fn finish(sim: *Sim) Error!void {
         if (sim.turns) |t| return t.finish(sim);
-        try sim.drain();
+        try sim.drain(true);
         try sim.checkNevers();
     }
 
     /// Delivers waiting messages, one per process per round, until every mailbox is
     /// empty. A round visits processes in start order, or in an order the seed shuffles,
     /// so no waiting process is passed over for more than one round.
-    fn drain(sim: *Sim) Error!void {
+    /// `to_later`: at a test's end, simulated time passes to each delayed send in turn once nothing
+    /// else waits (step 24); between two statements it does not, so time moves to a delayed send only
+    /// while a test waits in a fixture call or an ask (step 29).
+    fn drain(sim: *Sim, to_later: bool) Error!void {
         var delivered: u32 = 0;
         while (true) {
             while (try sim.round(&sim.order, &delivered)) {}
-            // Nothing waits: simulated time passes to the next delayed send (step 24).
+            if (!to_later) return;
             const at = sim.nextLater() orelse return;
             sim.wait(@max(at - sim.deadlineNow(), 0));
         }
@@ -1356,6 +1366,29 @@ const later_src =
     \\  child Ticker, restart: :always
     \\end
 ;
+
+test "between two statements simulated time does not pass to a delayed send; at the test's end it does" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena, later_src);
+    var machine: Vm = .init(arena, program, 7);
+    var s: Sim = .init(&machine, 7, "later");
+    machine.sim = &s;
+    const id = try s.start(0, &.{});
+
+    // An hour away: a settle between two statements delivers what waits and leaves it pending (step 29).
+    try s.sendLater(id, try machine.variant("Tick", &.{}), 3_600_000);
+    try s.settle();
+    try std.testing.expectEqual(@as(usize, 1), s.later.items.len);
+    try std.testing.expectEqual(@as(i64, 0), s.waited);
+    try std.testing.expectEqual(@as(i128, 0), s.procs.items[id].state.record.fields[0].int);
+
+    // The test's end passes the hour and delivers it.
+    try s.finish();
+    try std.testing.expectEqual(@as(usize, 0), s.later.items.len);
+    try std.testing.expectEqual(@as(i128, 1), s.procs.items[id].state.record.fields[0].int);
+}
 
 test "a delayed send waits outside the mailbox until its time; a crashing update drops the one it held, and a target that is down drops it when it is due" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);

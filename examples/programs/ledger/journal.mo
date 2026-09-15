@@ -234,9 +234,9 @@ fn heard(racer: Handle(Racer)) : UInt16
   got
 end
 
-# The race in one statement: simulated time jumps to the next delayed send at every settle
-# between a test's statements, and the hold's Expire is an hour away (examples/GAPS.md). The
-# setup's two statuses, then the two captures'.
+# The race in one statement, as it was written before step 29, when simulated time jumped to the
+# next delayed send at every settle between a test's statements (examples/GAPS.md). The setup's two
+# statuses, then the two captures'.
 fn raced(fs: Fs, clock: Clock) : List(UInt16)
   journal = started(fs, clock)
   setup = [served(journal, ada(), "o").status,
@@ -478,5 +478,5 @@ test rejects "a journal opened over a transfer written as two records"
   assert opened_over(Fs.fixture(), Clock.fixture(), planted([debit, credit], "")) or true
 end
 
-verified: types, contracts, tests (11), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (11), property (0 seeds), sim (100 runs, invariants (kept 4, tripped 3))
           proven: not run

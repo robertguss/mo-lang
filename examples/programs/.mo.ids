@@ -432,7 +432,7 @@
         { "id": "0e9ee508ac92", "name": "test rejects \"a run begun twice\"", "hash": "6bb70bf6dc4b8944" },
         { "id": "b010aa388196", "name": "test rejects \"a run begun again once it has stopped\"", "hash": "50c5966574883abb" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "252f177b7d60a4e9", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+      "verified": { "hash": "265d6b676d818742", "declarations": "252f177b7d60a4e9", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
     },
     {
       "path": "agent/runs.mo",
@@ -1320,7 +1320,7 @@
         { "id": "2e858aa49ba9", "name": "test rejects \"a value over 60 KiB\"", "hash": "e09398f1c2b0cacc" },
         { "id": "7ce2344cfa8e", "name": "test rejects \"a line with no newline, which would run into the next\"", "hash": "650897797006f821" }
       ],
-      "verified": { "hash": "2ea78809b5baafd5", "declarations": "b941aa8338e30da0", "uses": [{ "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
+      "verified": { "hash": "a8f6578b0b4b81b6", "declarations": "b941aa8338e30da0", "uses": [{ "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
       "path": "kv/main.mo",
@@ -1441,7 +1441,7 @@
         { "id": "273edec0d30f", "name": "test \"a client that finds 64 inside hears ERR busy, and is closed\"", "hash": "ddacaa48a4f144e4" },
         { "id": "3c1cb40a212b", "name": "test \"a client that says nothing hears nothing\"", "hash": "d48d33a18400b9b0" }
       ],
-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "a4f30f54f3679287", "uses": [{ "module": "Kv.Log", "hash": "2b0c71f4fb7bf460" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
+      "verified": { "hash": "5dfa12228592c079", "declarations": "a4f30f54f3679287", "uses": [{ "module": "Kv.Log", "hash": "2b0c71f4fb7bf460" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }, { "module": "Kv.Store", "hash": "b0b4a217b7154387" }] }
     },
     {
       "path": "kv/store.mo",
@@ -1492,7 +1492,7 @@
         { "id": "188c9b4c6dff", "name": "test \"a store started again from its log reads what the first one wrote\"", "hash": "59ab036010260f7a" },
         { "id": "514e9aee6109", "name": "property \"a SET then a GET gives back any valid key's value\"", "hash": "dbccdca6cec69d8e" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "432b5dfa5b9aaf27", "uses": [{ "module": "Kv.Log", "hash": "2b0c71f4fb7bf460" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
+      "verified": { "hash": "6a537da33b1df0c5", "declarations": "432b5dfa5b9aaf27", "uses": [{ "module": "Kv.Log", "hash": "2b0c71f4fb7bf460" }, { "module": "Kv.Protocol", "hash": "4a0ec1f8dd38052f" }] }
     },
     {
       "path": "ledger/api.mo",
@@ -1830,7 +1830,7 @@
         { "id": "b710c6a39da0", "name": "test rejects \"a journal opened over a retry that landed twice\"", "hash": "1a04fef8b98e10be" },
         { "id": "600868e003f2", "name": "test rejects \"a journal opened over a transfer written as two records\"", "hash": "a5c6feb100d24280" }
       ],
-      "verified": { "hash": "d6ad40d59b223c6d", "declarations": "9d5b05e8ef819788", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+      "verified": { "hash": "61856a3ffd6560a7", "declarations": "9d5b05e8ef819788", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Desk", "hash": "d277a6c3d4deaada" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
     },
     {
       "path": "ledger/main.mo",
@@ -2544,7 +2544,7 @@
         { "id": "c1c993955704", "name": "property \"a create then a read gives back any valid title and body\"", "hash": "0711d4e24043aa5f" },
         { "id": "30b04421f1bc", "name": "test rejects \"a call from a client whose token holds a slash\"", "hash": "7f0b3d267d339cac" }
       ],
-      "verified": { "hash": "fde8c751e6a5c18a", "declarations": "83a85001023a80ae", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "929d5d2dae52fbcb" }, { "module": "Notes.Store", "hash": "a7929c0b70529eaf" }] }
+      "verified": { "hash": "31fe59e7dfa65c9f", "declarations": "83a85001023a80ae", "uses": [{ "module": "Notes.Limits", "hash": "d3005ab23e884c8e" }, { "module": "Notes.Note", "hash": "929d5d2dae52fbcb" }, { "module": "Notes.Store", "hash": "a7929c0b70529eaf" }] }
     },
     {
       "path": "notes/store.mo",

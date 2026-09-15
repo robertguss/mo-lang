@@ -192,5 +192,5 @@ test rejects "a run begun again once it has stopped"
   assert [began?(run, 1.minute)].size == 1
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
           proven: not run
