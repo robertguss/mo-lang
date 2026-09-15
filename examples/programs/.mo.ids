@@ -1771,7 +1771,7 @@
       "module": "Ledger.Teller",
       "declarations": [
         { "id": "136b20495b80", "name": "module Ledger.Teller", "hash": "4159f788a8f2b94b" },
-        { "id": "81c1caed0eba", "name": "expose", "hash": "0fa627243ca9d268" },
+        { "id": "81c1caed0eba", "name": "expose", "hash": "73029967c2ca1f80" },
         { "id": "7d1168e5f757", "name": "use Ledger.Book", "hash": "5bd52e3a9a7858f9" },
         { "id": "5f6662782535", "name": "use Ledger.Entry", "hash": "7f2a26c3733b32e7" },
         { "id": "68b15908215e", "name": "use Ledger.Index", "hash": "b5ab01083472dfc5" },
@@ -1823,7 +1823,7 @@
         { "id": "d21eb48d1926", "name": "test \"a listing is by id, of an account and a kind, and an account that is not there is 404\"", "hash": "35d0c9e3a89e6295" },
         { "id": "ec1400d2144f", "name": "test \"a key's row reads back from the store, and a key of any bytes names a store record\"", "hash": "5a7cf63747def84d" }
       ],
-      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "c54c351d28569cfc", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }] }
+      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "243c65eececda57d", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }] }
     },
     {
       "path": "lines-per-file.mo",

@@ -1,5 +1,5 @@
 module Ledger.Teller
-expose Command, Call, Answer, Decision, Made, decide, key_record, keyed_of, keyed_json
+expose Command, Call, Answer, Decision, Made, decide, expiries, key_record, keyed_of, keyed_json
 
 use Ledger.Book{Refusal, Moved, opened, transferred, held, captured, released, expired, refunded, refusal_body}
 use Ledger.Entry{Kind, Account, Entry, account_id, entry_id, number_in, shown_account, shown_entry}
