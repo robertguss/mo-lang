@@ -87,7 +87,7 @@ The longest session so far, about twenty hours across an evening, an overnight r
 
 ## Session 7, night of 15 Sep (the same page, the same branch)
 
-Round 8's change spec, pre-registration, worktrees, and suites; measurement 2 run first in one pane: five regenerations of the board identical over 132k operations, one crash-versus-skip disagreement on a hand-made log ([[sampling-as-verification]], [[control-run-8]]). Five decision rows.
+Round 8's change spec, pre-registration, worktrees, and suites; measurement 2 run first in one pane: five regenerations of the board identical over 132k operations, one crash-versus-skip disagreement on a hand-made log ([[sampling-as-verification]], [[control-run-8]]). Five decision rows. Then round 8 itself, 22:22 to 23:35: held on all five, the conjunction survives, the laws' value for the second agent still unshown, an outage found by the fourth oracle ([[control-run-8]]). The pause.
 
 ## Next
 
