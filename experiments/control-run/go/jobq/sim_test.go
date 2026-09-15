@@ -44,21 +44,28 @@ type simulation struct {
 	mirrorSize int64
 	durable    []byte
 
-	created map[string]bool
-	deleted map[string]bool
-	held    map[string][]string // worker -> ids it was told it holds
-	saw503  int
+	created  map[string]bool
+	deleted  map[string]bool
+	held     map[string][]string // worker -> ids it was told it holds
+	saw503   int
+	sawSched int // requests that found a job scheduled
+	sawRetry int // retries that took a dead job back
 }
 
 func TestSimulationWithFaults(t *testing.T) {
-	total503 := 0
+	total503, totalSched, totalRetry := 0, 0, 0
 	for seed := uint64(1); seed <= simSeeds; seed++ {
 		s := newSimulation(t, seed)
 		s.run()
 		total503 += s.saw503
+		totalSched += s.sawSched
+		totalRetry += s.sawRetry
 	}
 	if total503 == 0 {
 		t.Error("no fault ever reached a response; the simulation tests nothing")
+	}
+	if totalSched == 0 || totalRetry == 0 {
+		t.Errorf("the simulation never scheduled a job (%d) or retried a dead one (%d)", totalSched, totalRetry)
 	}
 }
 
@@ -129,7 +136,15 @@ func (s *simulation) randomStep() {
 		if s.rng.IntN(20) == 0 {
 			max = 0
 		}
-		s.send("prod", "POST", "/jobs", fmt.Sprintf(`{"queue":%q,"payload":"p%d","max_tries":%d}`, queue, s.steps, max))
+		delay, backoff := 0, 0
+		if s.rng.IntN(3) == 0 {
+			delay = s.rng.IntN(300)
+		}
+		if s.rng.IntN(3) == 0 {
+			backoff = s.rng.IntN(400)
+		}
+		s.send("prod", "POST", "/jobs", fmt.Sprintf(`{"queue":%q,"payload":"p%d","max_tries":%d,"delay_ms":%d,"backoff_ms":%d}`,
+			queue, s.steps, max, delay, backoff))
 	case r < 55:
 		s.send(worker, "POST", "/queues/"+queue+"/lease", fmt.Sprintf(`{"lease_ms":%d}`, 100+s.rng.IntN(300)))
 	case r < 70:
@@ -140,10 +155,12 @@ func (s *simulation) randomStep() {
 		s.send("prod", "GET", "/jobs/"+s.randomID(), "")
 	case r < 90:
 		s.send("prod", "DELETE", "/jobs/"+s.randomID(), "")
-	case r < 95:
+	case r < 93:
 		s.send("prod", "GET", "/jobs?queue="+queue, "")
-	case r < 98:
+	case r < 96:
 		s.send("", "GET", "/health", "")
+	case r < 99:
+		s.send("prod", "POST", "/jobs/"+s.randomID()+"/retry", "")
 	default:
 		s.send("", "POST", "/jobs", `{"queue":"a","payload":"x","max_tries":1}`)
 	}
@@ -173,6 +190,15 @@ func (s *simulation) send(token, method, path, body string) (int, []byte, bool) 
 	rec := httptest.NewRecorder()
 	s.api.ServeHTTP(rec, req)
 	s.checkDurable()
+	for _, j := range s.q.jobs {
+		if j.State == Scheduled {
+			s.sawSched++
+			break
+		}
+	}
+	if rec.Code == http.StatusOK && strings.HasSuffix(path, "/retry") {
+		s.sawRetry++
+	}
 	if rec.Code == http.StatusCreated {
 		s.created[decodeID(rec.Body.Bytes())] = true
 	}
@@ -218,7 +244,9 @@ func (s *simulation) checkDurable() {
 	}
 }
 
-// model is the spec's state after the look a request makes at now.
+// model is the spec's state after the look a request makes at now: every
+// lease that ran out ends by the try rule, then every run_at that has passed
+// queues its job.
 func model(pre map[string]jobJSON, now time.Time) map[string]jobJSON {
 	m := make(map[string]jobJSON, len(pre))
 	for id, j := range pre {
@@ -226,9 +254,19 @@ func model(pre map[string]jobJSON, now time.Time) map[string]jobJSON {
 			until, _ := time.Parse(timeLayout, *j.LeaseUntil)
 			if !until.After(now) {
 				j.State, j.Worker, j.LeaseUntil = Queued, nil, nil
-				if j.Tries >= j.MaxTries {
+				switch {
+				case j.Tries >= j.MaxTries:
 					j.State = Dead
+				case j.BackoffMS > 0:
+					runAt := formatTime(now.Add(time.Duration(j.BackoffMS) * time.Millisecond))
+					j.State, j.RunAt = Scheduled, &runAt
 				}
+			}
+		}
+		if j.State == Scheduled {
+			runAt, _ := time.Parse(timeLayout, *j.RunAt)
+			if !runAt.After(now) {
+				j.State, j.RunAt = Queued, nil
 			}
 		}
 		m[id] = j
@@ -250,10 +288,22 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 	case token == "" && path != "/health":
 		want = 401
 	case method == "POST" && path == "/jobs":
+		var b struct {
+			MaxTries  int   `json:"max_tries"`
+			DelayMS   int64 `json:"delay_ms"`
+			BackoffMS int64 `json:"backoff_ms"`
+		}
+		_ = json.Unmarshal([]byte(body), &b)
 		want = 201
-		if strings.Contains(body, `"max_tries":0`) {
+		if b.MaxTries == 0 {
 			want = 400
-		} else if status == 201 && (job.State != Queued || job.Tries != 0 || pre[job.ID].ID != "") {
+			break
+		}
+		created := Queued
+		if b.DelayMS > 0 {
+			created = Scheduled
+		}
+		if status == 201 && (job.State != created || job.Tries != 0 || job.BackoffMS != b.BackoffMS || pre[job.ID].ID != "") {
 			s.fatalf("created %+v", job)
 		}
 	case method == "GET" && seg[0] == "health", method == "GET" && strings.HasPrefix(path, "/jobs?"):
@@ -275,6 +325,16 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 		}
 	case seg[0] == "queues":
 		want = s.expectLease(m, seg[1], token, now, body, status, job)
+	case len(seg) == 3 && seg[2] == "retry":
+		want = 409
+		if j, ok := m[seg[1]]; !ok {
+			want = 404
+		} else if j.State == Dead {
+			want = 200
+			if status == 200 && (job.State != Queued || job.Tries != 0 || job.Reason != nil) {
+				s.fatalf("retry gave %+v", job)
+			}
+		}
 	default:
 		j, ok := m[seg[1]]
 		want = 409
@@ -285,8 +345,17 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 			if status == 200 && seg[2] == "ack" && job.State != Done {
 				s.fatalf("ack gave %+v", job)
 			}
-			if status == 200 && seg[2] == "fail" && (job.State == Dead) != (j.Tries >= j.MaxTries) {
-				s.fatalf("fail gave %+v from %+v", job, j)
+			if status == 200 && seg[2] == "fail" {
+				failed := Queued
+				switch {
+				case j.Tries >= j.MaxTries:
+					failed = Dead
+				case j.BackoffMS > 0:
+					failed = Scheduled
+				}
+				if job.State != failed {
+					s.fatalf("fail gave %+v from %+v", job, j)
+				}
 			}
 		}
 	}
@@ -335,7 +404,7 @@ func (s *simulation) drain() {
 		}
 		open := 0
 		for _, j := range s.q.jobs {
-			if j.State == Queued || j.State == Leased {
+			if j.State == Queued || j.State == Leased || j.State == Scheduled {
 				open++
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -26,6 +27,15 @@ func wantKind(t *testing.T, err error, kind string) {
 func mustCreate(t *testing.T, q *Queue, queue string, maxTries int) Job {
 	t.Helper()
 	j, err := q.Create(ctx(t), queue, "payload", maxTries, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return j
+}
+
+func mustCreateWith(t *testing.T, q *Queue, queue string, maxTries int, delayMS, backoffMS int64) Job {
+	t.Helper()
+	j, err := q.Create(ctx(t), queue, "payload", maxTries, delayMS, backoffMS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,6 +156,161 @@ func TestOneLookEndsEveryRunOutLease(t *testing.T) {
 	}
 }
 
+// A job created with delay_ms waits until its run_at.
+func TestCreateWithDelayIsScheduledUntilRunAt(t *testing.T) {
+	q, _, _, clock := newMemQueue()
+	j := mustCreateWith(t, q, "a", 3, 5000, 0)
+	if j.State != Scheduled || !j.RunAt.Equal(clock.Now().Add(5*time.Second)) || j.Tries != 0 {
+		t.Fatalf("created %+v", j)
+	}
+	clock.Advance(4999 * time.Millisecond)
+	if _, ok, err := q.Lease(ctx(t), "a", "w", 1000); ok || err != nil {
+		t.Fatalf("leased before run_at: %v, %v", ok, err)
+	}
+	if got, _ := q.Get(ctx(t), 1); got.State != Scheduled {
+		t.Errorf("before run_at %+v", got)
+	}
+	clock.Advance(time.Millisecond)
+	l := mustLease(t, q, "a", "w", 1000)
+	if l.Tries != 1 || !l.RunAt.IsZero() {
+		t.Fatalf("leased at run_at %+v", l)
+	}
+	if h, _ := q.Health(ctx(t)); h.Scheduled != 0 || h.Leased != 1 {
+		t.Errorf("health %+v", h)
+	}
+}
+
+// A fail with a backoff schedules the job; the last try is dead instead.
+func TestFailWithBackoffSchedulesThenDies(t *testing.T) {
+	q, _, _, clock := newMemQueue()
+	mustCreateWith(t, q, "a", 2, 0, 2000)
+	mustLease(t, q, "a", "w", 1000)
+	j, err := q.Fail(ctx(t), 1, "w", "flaky")
+	if err != nil || j.State != Scheduled || !j.RunAt.Equal(clock.Now().Add(2*time.Second)) || j.Tries != 1 {
+		t.Fatalf("failed with backoff %+v, %v", j, err)
+	}
+	if h, _ := q.Health(ctx(t)); h.Scheduled != 1 || h.Queued != 0 {
+		t.Errorf("health %+v", h)
+	}
+	if _, ok, _ := q.Lease(ctx(t), "a", "w", 1000); ok {
+		t.Error("a scheduled job was leased before its run_at")
+	}
+	clock.Advance(2 * time.Second)
+	if l := mustLease(t, q, "a", "w", 1000); l.Tries != 2 {
+		t.Fatalf("leased after the backoff %+v", l)
+	}
+	if j, err = q.Fail(ctx(t), 1, "w", "again"); err != nil || j.State != Dead || !j.RunAt.IsZero() {
+		t.Fatalf("fail on the last try %+v, %v", j, err)
+	}
+}
+
+// A lease that runs out follows the same rule as a fail.
+func TestRunOutLeaseWithBackoffIsScheduled(t *testing.T) {
+	q, _, _, clock := newMemQueue()
+	mustCreateWith(t, q, "a", 3, 0, 1000) // with a backoff
+	mustCreateWith(t, q, "b", 3, 0, 0)    // without one
+	mustLease(t, q, "a", "w", 100)
+	mustLease(t, q, "b", "w", 100)
+	clock.Advance(150 * time.Millisecond)
+	withBackoff, err := q.Get(ctx(t), 1)
+	if err != nil || withBackoff.State != Scheduled || !withBackoff.RunAt.Equal(clock.Now().Add(time.Second)) {
+		t.Fatalf("with a backoff %+v, %v", withBackoff, err)
+	}
+	if *withBackoff.Reason != "lease ran out" || withBackoff.Tries != 1 {
+		t.Errorf("with a backoff %+v", withBackoff)
+	}
+	if without, _ := q.Get(ctx(t), 2); without.State != Queued || !without.RunAt.IsZero() {
+		t.Errorf("without a backoff %+v", without)
+	}
+}
+
+// A dead job is queued again by a retry, with its tries at 0.
+func TestRetryOfADeadJob(t *testing.T) {
+	q, _, _, _ := newMemQueue()
+	mustCreateWith(t, q, "a", 1, 0, 1000)
+	mustLease(t, q, "a", "w", 1000)
+	if j, err := q.Fail(ctx(t), 1, "w", "boom"); err != nil || j.State != Dead {
+		t.Fatalf("fail %+v, %v", j, err)
+	}
+	j, err := q.Retry(ctx(t), 1)
+	if err != nil || j.State != Queued || j.Tries != 0 || j.Reason != nil || j.Worker != "" || !j.RunAt.IsZero() {
+		t.Fatalf("retried %+v, %v", j, err)
+	}
+	if j.MaxTries != 1 || j.BackoffMS != 1000 || j.Payload != "payload" || j.Queue != "a" {
+		t.Errorf("a retry changed what it must keep: %+v", j)
+	}
+	if l := mustLease(t, q, "a", "w2", 1000); l.Tries != 1 {
+		t.Fatalf("leased after the retry %+v", l)
+	}
+}
+
+// A retry never touches a job that is not dead.
+func TestRetryOfALiveJobIs409(t *testing.T) {
+	q, _, _, clock := newMemQueue()
+	mustCreateWith(t, q, "a", 3, 0, 0)    // queued
+	mustCreateWith(t, q, "a", 3, 5000, 0) // scheduled
+	mustCreateWith(t, q, "b", 3, 0, 0)    // leased, then done
+	mustLease(t, q, "b", "w", 60_000)
+	mustCreateWith(t, q, "c", 3, 0, 0) // leased
+	mustLease(t, q, "c", "w", 60_000)
+	if _, err := q.Ack(ctx(t), 3, "w"); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []uint64{1, 2, 3, 4} {
+		before, _ := q.Get(ctx(t), id)
+		if _, err := q.Retry(ctx(t), id); !errors.Is(err, ErrConflict) {
+			t.Errorf("retry of j_%d (%s) = %v, want 409", id, before.State, err)
+		}
+		if after, _ := q.Get(ctx(t), id); after.State != before.State || after.Tries != before.Tries {
+			t.Errorf("a refused retry changed j_%d: %+v", id, after)
+		}
+	}
+	if _, err := q.Retry(ctx(t), 9); !errors.Is(err, ErrNotFound) {
+		t.Errorf("retry of a missing job = %v", err)
+	}
+	clock.Advance(time.Hour)
+	if _, err := q.Retry(ctx(t), 2); !errors.Is(err, ErrConflict) {
+		t.Errorf("retry of a job that is queued again = %v", err)
+	}
+}
+
+// One look queues every scheduled job whose run_at has passed.
+func TestOneLookQueuesEveryDueJob(t *testing.T) {
+	q, _, _, clock := newMemQueue()
+	for range 5 {
+		mustCreateWith(t, q, "a", 3, 100, 0)
+	}
+	mustCreateWith(t, q, "a", 3, 60_000, 0)
+	clock.Advance(time.Second)
+	h, err := q.Health(ctx(t))
+	if err != nil || h.Queued != 5 || h.Scheduled != 1 {
+		t.Errorf("health %+v, %v", h, err)
+	}
+}
+
+// The scheduled-to-queued move is durable before it is answered: when the
+// store cannot sync, the job is still scheduled.
+func TestScheduledMoveIsUndoneWhenTheStoreFails(t *testing.T) {
+	q, _, f, clock := newMemQueue()
+	mustCreateWith(t, q, "a", 3, 1000, 0)
+	before := snapshot(q)
+	clock.Advance(2 * time.Second)
+	f.fail = func(op string) bool { return op == "sync" }
+	if _, err := q.Get(ctx(t), 1); !errors.Is(err, ErrStore) {
+		t.Errorf("Get, which must write the move = %v", err)
+	}
+	if got := snapshot(q); !reflect.DeepEqual(got, before) {
+		t.Errorf("the queue changed: %v", got)
+	}
+	f.fail = nil
+	if j, err := q.Get(ctx(t), 1); err != nil || j.State != Queued {
+		t.Errorf("after the store recovered %+v, %v", j, err)
+	}
+	if j := mustLease(t, q, "a", "w", 1000); j.Tries != 1 {
+		t.Errorf("leased %+v", j)
+	}
+}
+
 func TestDoneJobNeverLeasedAgain(t *testing.T) {
 	q, _, _, clock := newMemQueue()
 	mustCreate(t, q, "a", 3)
@@ -247,6 +412,17 @@ func TestRequiresReject(t *testing.T) {
 			t.Errorf("Create(%q, %d bytes, %d) = %v", c.queue, len(c.payload), c.max, err)
 		}
 	}
+	for _, c := range []struct{ delay, backoff int64 }{
+		{-1, 0}, {maxDelayMS + 1, 0}, {0, -1}, {0, maxBackoffMS + 1},
+	} {
+		_, err := q.Create(ctx(t), "a", "p", 1, c.delay, c.backoff)
+		wantKind(t, err, "requires")
+	}
+	for _, c := range []struct{ delay, backoff int64 }{{0, 0}, {maxDelayMS, maxBackoffMS}, {1, 1}} {
+		if _, err := q.Create(ctx(t), "a", "p", 1, c.delay, c.backoff); err != nil {
+			t.Errorf("Create(delay %d, backoff %d) = %v", c.delay, c.backoff, err)
+		}
+	}
 	created := len(q.jobs)
 	for _, ms := range []int64{99, 3_600_001, -1} {
 		_, _, err := q.Lease(ctx(t), "a", "w", ms)
@@ -294,6 +470,12 @@ func TestEnsures(t *testing.T) {
 		t.Errorf("ensureDone(done) = %v", err)
 	}
 	wantKind(t, ensureDone(Job{State: Leased}), "ensures")
+	if err := ensureRetried(Job{State: Queued, Tries: 0}); err != nil {
+		t.Errorf("ensureRetried(queued with 0 tries) = %v", err)
+	}
+	for _, after := range []Job{{State: Queued, Tries: 1}, {State: Dead}, {State: Scheduled}} {
+		wantKind(t, ensureRetried(after), "ensures")
+	}
 }
 
 // Tries to break each never directly; the check must refuse every one.
@@ -307,12 +489,19 @@ func TestNeversRefuseBrokenChanges(t *testing.T) {
 		return &Job{State: Leased, Worker: w, Tries: tries, MaxTries: 3, LeaseUntil: now.Add(time.Minute)}
 	}
 	for name, c := range map[string]change{
-		"held by two workers": {old: live, new: leasedBy("w2", 2)},
-		"done leased again":   {old: done, new: leasedBy("w2", 2)},
-		"dead leased":         {old: dead, new: leasedBy("w2", 3)},
-		"dead back to queued": {old: dead, new: &Job{State: Queued, Tries: 2, MaxTries: 3}},
-		"tries over max":   {old: runOut, new: leasedBy("w2", 4)},
-		"created over max":    {new: &Job{State: Queued, Tries: 4, MaxTries: 3}},
+		"held by two workers":                  {old: live, new: leasedBy("w2", 2)},
+		"done leased again":                    {old: done, new: leasedBy("w2", 2)},
+		"dead leased":                          {old: dead, new: leasedBy("w2", 3)},
+		"dead back to queued":                  {old: dead, new: &Job{State: Queued, Tries: 2, MaxTries: 3}},
+		"tries over max":                       {old: runOut, new: leasedBy("w2", 4)},
+		"created over max":                     {new: &Job{State: Queued, Tries: 4, MaxTries: 3}},
+		"dead leased before a retry queues it": {old: dead, new: leasedBy("w2", 1)},
+		"retry of a job that is not dead":      {old: &Job{State: Queued, Tries: 2, MaxTries: 3}, new: &Job{State: Queued, Tries: 0, MaxTries: 3}},
+		"retry of a done job":                  {old: done, new: &Job{State: Queued, Tries: 0, MaxTries: 3}},
+		"scheduled leased before run_at": {
+			old: &Job{State: Scheduled, Tries: 1, MaxTries: 3, RunAt: now.Add(time.Minute)},
+			new: leasedBy("w2", 2),
+		},
 	} {
 		if err := checkNevers(c, now); err == nil {
 			t.Errorf("%s: allowed", name)
@@ -322,6 +511,17 @@ func TestNeversRefuseBrokenChanges(t *testing.T) {
 	}
 	if err := checkNevers(change{old: runOut, new: leasedBy("w2", 2)}, now); err != nil {
 		t.Errorf("leasing a run-out lease: %v", err)
+	}
+	retried := change{old: dead, new: &Job{State: Queued, Tries: 0, MaxTries: 3}}
+	if err := checkNevers(retried, now); err != nil {
+		t.Errorf("retrying a dead job: %v", err)
+	}
+	due := change{
+		old: &Job{State: Scheduled, Tries: 1, MaxTries: 3, RunAt: now},
+		new: leasedBy("w2", 2),
+	}
+	if err := checkNevers(due, now); err != nil {
+		t.Errorf("leasing a job whose run_at has come: %v", err)
 	}
 }
 
@@ -369,10 +569,14 @@ func TestBusyQueueTimesOut(t *testing.T) {
 func TestInvariantsTripThroughStoreRecords(t *testing.T) {
 	const at = "2026-09-14T00:00:00.000Z"
 	for want, job := range map[string]string{
-		"exactly when it is leased": `{"id":"j_1","queue":"a","state":"leased","payload":"","tries":1,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
-		"below max_tries":        `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"are valid":                 `{"id":"j_1","queue":"a b","state":"queued","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"created_at <= updated_at":  `{"id":"j_1","queue":"a","state":"done","payload":"","tries":1,"max_tries":3,"created_at":"2026-09-15T00:00:00.000Z","updated_at":"` + at + `"}`,
+		"exactly when it is leased":           `{"id":"j_1","queue":"a","state":"leased","payload":"","tries":1,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
+		"below max_tries":                     `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"run_at exactly when it is scheduled": `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"run_at is after updated_at":          `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","run_at":"` + at + `"}`,
+		"backoff_ms, and worker are valid":    `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":0,"max_tries":3,"backoff_ms":3600001,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"scheduled job has tries below":       `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","run_at":"2026-09-15T00:00:00.000Z"}`,
+		"are valid":                           `{"id":"j_1","queue":"a b","state":"queued","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"created_at <= updated_at":            `{"id":"j_1","queue":"a","state":"done","payload":"","tries":1,"max_tries":3,"created_at":"2026-09-15T00:00:00.000Z","updated_at":"` + at + `"}`,
 	} {
 		dir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(dir, logName), []byte(lineFor(`{"op":"put","job":`+job+`}`)), 0o644); err != nil {

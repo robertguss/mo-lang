@@ -86,6 +86,7 @@ func TestRoutesAndMethods(t *testing.T) {
 		{"POST", "/jobs/j_1", "DELETE, GET"},
 		{"GET", "/jobs/j_1/ack", "POST"},
 		{"GET", "/jobs/j_1/fail", "POST"},
+		{"GET", "/jobs/j_1/retry", "POST"},
 		{"GET", "/queues/a/lease", "POST"},
 		{"POST", "/health", "GET"},
 	} {
@@ -124,6 +125,13 @@ func TestBadBodiesAre400(t *testing.T) {
 		`{"queue":"a b","payload":"p","max_tries":3}`,
 		"{\"queue\":\"a\",\"payload\":\"\\u0000\",\"max_tries\":3}",
 		`{"queue":"a","payload":"p","max_tries":0}`,
+		`{"queue":"a","payload":"p","attempts":0,"max_attempts":3}`,
+		`{"queue":"a","payload":"p","max_attempts":3}`,
+		`{"queue":"a","payload":"p","max_tries":3,"delay_ms":-1}`,
+		`{"queue":"a","payload":"p","max_tries":3,"delay_ms":86400001}`,
+		`{"queue":"a","payload":"p","max_tries":3,"backoff_ms":3600001}`,
+		`{"queue":"a","payload":"p","max_tries":3,"backoff_ms":1.5}`,
+		`{"queue":"a","payload":"p","max_tries":3,"delay_ms":"1000"}`,
 		"{\"queue\":\"a\",\"payload\":\"\xff\",\"max_tries\":3}",
 		`{"queue":"a","payload":"` + strings.Repeat("x", maxBodyBytes) + `","max_tries":3}`,
 	} {
@@ -181,6 +189,13 @@ func TestDeleteStatuses(t *testing.T) {
 	}
 	h.want(w1, "GET", "/jobs/j_2", "", 404)
 	h.want(w1, "DELETE", "/jobs/j_2", "", 404)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1,"delay_ms":60000}`, 201)
+	h.want(w1, "DELETE", "/jobs/j_3", "", 204) // scheduled
+	h.want(w1, "POST", "/jobs/j_1/ack", "", 200)
+	h.want(w1, "DELETE", "/jobs/j_1", "", 204) // done
+	if got := h.want("-", "GET", "/health", "", 200); !strings.Contains(got, `"scheduled":0`) {
+		t.Errorf("health after deleting the scheduled job: %s", got)
+	}
 }
 
 func TestLeaseAckFailStatuses(t *testing.T) {
@@ -213,6 +228,56 @@ func TestLeaseAckFailStatuses(t *testing.T) {
 	h.want(w1, "POST", "/jobs/j_1/ack", "", 409)
 	h.want(w1, "POST", "/jobs/j_9/ack", "", 404)
 	h.want(w1, "POST", "/jobs/j_9/fail", `{"reason":"x"}`, 404)
+}
+
+// A delayed job is scheduled, listed as scheduled, counted by /health, and
+// leased only once its run_at has come.
+func TestScheduledJobsThroughTheAPI(t *testing.T) {
+	h := newAPIHarness(t)
+	body := h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2,"delay_ms":5000,"backoff_ms":1000}`, 201)
+	want := `{"id":"j_1","queue":"a","state":"scheduled","payload":"p","tries":0,"max_tries":2,"backoff_ms":1000,` +
+		`"created_at":"2026-09-14T12:00:00.000Z","updated_at":"2026-09-14T12:00:00.000Z","run_at":"2026-09-14T12:00:05.000Z"}` + "\n"
+	if body != want {
+		t.Errorf("created\n%s\nwant\n%s", body, want)
+	}
+	h.want(w1, "POST", "/queues/a/lease", "", 204)
+	if got := h.want(w1, "GET", "/jobs?state=scheduled", "", 200); !strings.Contains(got, `"run_at":"2026-09-14T12:00:05.000Z"`) {
+		t.Errorf("state=scheduled gave %s", got)
+	}
+	if got := h.want("-", "GET", "/health", "", 200); got != `{"queued":0,"scheduled":1,"leased":0,"done":0,"dead":0,"uptime_ms":0}`+"\n" {
+		t.Errorf("health %s", got)
+	}
+	h.clock.Advance(5 * time.Second)
+	leased := decodeJob(t, h.want(w1, "POST", "/queues/a/lease", "", 200))
+	if leased.State != Leased || leased.Tries != 1 || leased.RunAt != nil {
+		t.Fatalf("leased at run_at %+v", leased)
+	}
+	failed := decodeJob(t, h.want(w1, "POST", "/jobs/j_1/fail", `{"reason":"flaky"}`, 200))
+	if failed.State != Scheduled || failed.RunAt == nil || *failed.RunAt != "2026-09-14T12:00:06.000Z" {
+		t.Fatalf("failed with a backoff %+v", failed)
+	}
+	if got := h.want("-", "GET", "/health", "", 200); !strings.Contains(got, `"scheduled":1`) {
+		t.Errorf("health %s", got)
+	}
+}
+
+func TestRetryStatuses(t *testing.T) {
+	h := newAPIHarness(t)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1}`, 201)
+	h.want(w1, "POST", "/jobs/j_1/retry", "", 409) // queued
+	h.want(w1, "POST", "/queues/a/lease", "", 200)
+	h.want(w1, "POST", "/jobs/j_1/retry", "", 409) // leased
+	h.want(w1, "POST", "/jobs/j_1/fail", `{"reason":"boom"}`, 200)
+	retried := decodeJob(t, h.want(w1, "POST", "/jobs/j_1/retry", "", 200))
+	if retried.State != Queued || retried.Tries != 0 || retried.Reason != nil {
+		t.Fatalf("retried %+v", retried)
+	}
+	h.want("-", "POST", "/jobs/j_1/retry", "", 401)
+	h.want(w1, "POST", "/jobs/j_9/retry", "", 404)
+	h.want(w1, "POST", "/jobs/x/retry", "", 404)
+	h.want(w1, "POST", "/queues/a/lease", "", 200)
+	h.want(w1, "POST", "/jobs/j_1/ack", "", 200)
+	h.want(w1, "POST", "/jobs/j_1/retry", "", 409) // done
 }
 
 func TestStoreFailureIs503(t *testing.T) {

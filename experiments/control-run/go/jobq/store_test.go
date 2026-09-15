@@ -239,6 +239,116 @@ func TestOpenStoreNeedsADirectory(t *testing.T) {
 	}
 }
 
+// oldJob is a record in the shape the service wrote before the rename.
+func oldJob(id, state, extra string, tries, maxTries int) string {
+	const at = "2026-09-14T00:00:00.000Z"
+	return fmt.Sprintf(`{"op":"put","job":{"id":%q,"queue":"a","state":%q,"payload":"p","attempts":%d,`+
+		`"max_attempts":%d,"created_at":%q,"updated_at":%q%s}}`, id, state, tries, maxTries, at, at, extra)
+}
+
+// A record that says attempts and max_attempts is read as tries and
+// max_tries, and one without backoff_ms has a backoff of 0.
+func TestReplayReadsTheOldNames(t *testing.T) {
+	data := lineFor(oldJob("j_1", "queued", "", 1, 3)) +
+		lineFor(oldJob("j_2", "leased", `,"worker":"w1","lease_until":"2026-09-14T00:01:00.000Z"`, 1, 3)) +
+		lineFor(oldJob("j_3", "done", `,"reason":"ok"`, 2, 3)) +
+		lineFor(oldJob("j_4", "dead", "", 3, 3)) +
+		lineFor(`{"op":"del","id":"j_4"}`)
+	q := replayBytes(t, []byte(data))
+	if len(q.jobs) != 3 || q.nextID != 5 { // j_4 was created, then deleted
+		t.Fatalf("replayed %v, next id %d", snapshot(q), q.nextID)
+	}
+	for id, want := range map[uint64]struct {
+		state State
+		tries int
+	}{1: {Queued, 1}, 2: {Leased, 1}, 3: {Done, 2}} {
+		j := q.jobs[id]
+		if j.State != want.state || j.Tries != want.tries || j.MaxTries != 3 || j.BackoffMS != 0 || !j.RunAt.IsZero() {
+			t.Errorf("j_%d = %+v", id, j)
+		}
+	}
+	for _, body := range []string{
+		`{"op":"put","job":{"id":"j_1","queue":"a","state":"queued","payload":"","attempts":0,"tries":0,"max_tries":1,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z"}}`,
+		`{"op":"put","job":{"id":"j_1","queue":"a","state":"queued","payload":"","max_tries":1,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z"}}`,
+	} {
+		if _, err := decodeLine([]byte(strings.TrimSuffix(lineFor(body), "\n"))); err == nil {
+			t.Errorf("decodeLine(%s) accepted", body)
+		}
+	}
+}
+
+// A folder the previous version served opens, replays, and keeps every job;
+// after compact the log holds no old name.
+func TestServesAFolderTheOldVersionWrote(t *testing.T) {
+	log, err := os.ReadFile(filepath.Join("testdata", "v1", logName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(log, []byte(`"max_attempts"`)) {
+		t.Fatal("testdata/v1 is not a log in the old shape")
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, logName), log, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// After the old service stopped, j_5 and j_6 were leased until 00:01:10.
+	clock := newManualClock(time.Date(2026, 9, 14, 0, 2, 0, 0, time.UTC))
+	q, s, err := openQueue(dir, clock)
+	if err != nil {
+		t.Fatalf("opening a folder the old version wrote: %v", err)
+	}
+	want := map[uint64]struct {
+		state State
+		tries int
+	}{
+		1: {Done, 2},   // acked
+		2: {Dead, 1},   // failed on its last try
+		4: {Queued, 1}, // failed with tries left
+		5: {Queued, 1}, // its lease ran out, no backoff
+		6: {Dead, 1},   // its lease ran out on its last try
+		7: {Queued, 0},
+	}
+	if _, err := q.Health(ctx(t)); err != nil { // one look: the leases ran out
+		t.Fatal(err)
+	}
+	for id, w := range want {
+		j, err := q.Get(ctx(t), id)
+		if err != nil || j.State != w.state || j.Tries != w.tries || j.BackoffMS != 0 {
+			t.Errorf("j_%d = %+v, %v; want %s with %d tries", id, j, err, w.state, w.tries)
+		}
+	}
+	for _, id := range []uint64{3, 8} { // deleted by the old service
+		if _, err := q.Get(ctx(t), id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("j_%d = %v, want gone", id, err)
+		}
+	}
+	if j, err := q.Create(ctx(t), "a", "p", 1, 0, 0); err != nil || j.ID != 9 {
+		t.Errorf("create after replay = %+v, %v; want j_9", j, err)
+	}
+	before := snapshot(q)
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := Compact(dir); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(filepath.Join(dir, logName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(after, []byte("attempts")) {
+		t.Error("compact left an old name in the log")
+	}
+	q, s, err = openQueue(dir, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if got := snapshot(q); !reflect.DeepEqual(got, before) {
+		t.Errorf("after compact %v, want %v", got, before)
+	}
+}
+
 func TestCompactKeepsJobsAndTheCounter(t *testing.T) {
 	dir := t.TempDir()
 	clock := newManualClock(time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC))
