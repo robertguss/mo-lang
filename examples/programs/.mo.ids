@@ -1550,6 +1550,43 @@
       "verified": { "hash": "791c6816f80c28f0", "declarations": "725bb5d70743dad3", "uses": [{ "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }] }
     },
     {
+      "path": "ledger/desk.mo",
+      "module": "Ledger.Desk",
+      "declarations": [
+        { "id": "1f4ef96d4633", "name": "module Ledger.Desk", "hash": "461b51ee111b6e8f" },
+        { "id": "22b940fe3330", "name": "expose", "hash": "05b58e958288fa47" },
+        { "id": "2fce0322e229", "name": "use Ledger.Index", "hash": "17d7a26c738bbd9b" },
+        { "id": "8715572b2375", "name": "use Ledger.Records", "hash": "179bd75c4614f8e5" },
+        { "id": "8b779d27477c", "name": "use Ledger.Store", "hash": "daccfb2be539bbac" },
+        { "id": "9fcfba1ff8f0", "name": "use Ledger.Teller", "hash": "797cbd078222c018" },
+        { "id": "b6d0e1e78004", "name": "intent", "hash": "48c2dd632a2b4653" },
+        { "id": "058b7d9e4234", "name": "never \"a response is sent before its entry is durable\"", "hash": "fc64be73ed201380" },
+        { "id": "8821f13b3cf7", "name": "struct Sent", "hash": "c5d7b0740cf52d85" },
+        { "id": "8f0819b34f57", "name": "struct Staged", "hash": "24153c1fb41b34ba" },
+        { "id": "d1cfaa311d06", "name": "struct Desk", "hash": "184e3a0b373eefa9" },
+        { "id": "58b365ed43d2", "name": "struct Took", "hash": "49304997c8201f1b" },
+        { "id": "1d109c34d9cf", "name": "struct Flushed", "hash": "6c7c859680e7a7cb" },
+        { "id": "bf2eabca79b4", "name": "fn desk", "hash": "8e37db6275d058de" },
+        { "id": "6383c6583895", "name": "fn unopened", "hash": "2922d3f0fa8735fb" },
+        { "id": "81115fbde0a7", "name": "fn staged", "hash": "20a836bf231c18aa" },
+        { "id": "2d1dd6a06524", "name": "fn with_decision", "hash": "8ae5846a572f042e" },
+        { "id": "bc7826e741ff", "name": "fn flushed", "hash": "b46bc4c15a9385c2" },
+        { "id": "a1118c115bae", "name": "fn refused", "hash": "64d3cc80f0ca4a03" },
+        { "id": "e60cfe7aeb28", "name": "fn unavailable", "hash": "2994b88c4bab45f2" },
+        { "id": "b473ef0476c9", "name": "fn answered_all", "hash": "a355ad8fb4fbb888" },
+        { "id": "916fd3ede478", "name": "fn collected", "hash": "4dbdaa0759eee07d" },
+        { "id": "b3d559af3771", "name": "fn closed", "hash": "6156a03c58f4f2dc" },
+        { "id": "03b55b7fdb29", "name": "fn waiting?", "hash": "ae214a0c97e84c74" },
+        { "id": "d2baf4e56c90", "name": "fn delay_to", "hash": "78f3596d0019cd26" },
+        { "id": "3ea794a16167", "name": "fn t0", "hash": "5c93caa87494e2ff" },
+        { "id": "cfada40ba0cf", "name": "fn call", "hash": "6277f29c79eadd47" },
+        { "id": "132153749b80", "name": "fn opening", "hash": "aecd1f2e50c8586c" },
+        { "id": "0d74aa862fb2", "name": "test \"calls staged together are answered from one append, in order, once it is on disk\"", "hash": "38fec78301126c5e" },
+        { "id": "387fe372180e", "name": "test \"a batch the log does not take is answered 503 and the book goes back to what the log holds\"", "hash": "62fc5ca34574329a" }
+      ],
+      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "21b3ea35a4d2e213", "uses": [{ "module": "Ledger.Book", "hash": "21a99e6abf09c473" }, { "module": "Ledger.Entry", "hash": "c9e9c0deb945bde5" }, { "module": "Ledger.Index", "hash": "295ea70da1cd94ea" }, { "module": "Ledger.Money", "hash": "0f2b62047f36ab57" }, { "module": "Ledger.Records", "hash": "9376519ab1ba04c7" }, { "module": "Ledger.Settle", "hash": "a45a2b3003b8167c" }, { "module": "Ledger.Store", "hash": "3462d3d70c6035e1" }, { "module": "Ledger.Teller", "hash": "78a6be07eb3c4882" }] }
+    },
+    {
       "path": "ledger/entry.mo",
       "module": "Ledger.Entry",
       "declarations": [
