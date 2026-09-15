@@ -1,4 +1,0 @@
-SET a_1 {"id": "a_1", "name": "bank", "currency": "USD", "overdraft": 1000, "balance": 0, "available": 0, "created_at": "2026-09-01T09:00:00Z"}
-SET a_2 {"id": "a_2", "name": "ada", "currency": "USD", "overdraft": 0, "balance": 0, "available": 0, "created_at": "2026-09-01T09:00:00Z"}
-SET i_632d6131 {"made": "a_1", "status": 201, "request": "POST /accounts\n{}", "body": ""}
-SET i_632d6132 {"made": "a_2", "status": 201, "request": "POST /accounts\n{}", "body": ""}

@@ -1,7 +1,0 @@
-client 0 got 200 hello, mo
-client 0 got 200 hello, lang
-client 1 got 200 hello, mo
-client 1 got 200 hello, lang
-client 2 got 200 hello, mo
-client 2 got 200 hello, lang
-6 round trips over 127.0.0.1
