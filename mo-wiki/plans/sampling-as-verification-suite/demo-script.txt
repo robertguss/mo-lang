@@ -1,0 +1,23 @@
+# the demo: two jobs, a race, a lease that runs out, a fail on the last attempt
+0 p create emails 2 welcome ada
+0 p create emails 1 welcome grace
+0 p create reports 3 weekly report, quarter "three"
+50 p fetch j_1
+50 p list emails -
+100 w1 lease emails 100
+100 w2 lease emails 100
+100 w2 lease emails 100
+150 w2 ack j_1
+150 w1 ack j_1
+250 w3 lease emails 100
+250 w1 ack j_2
+300 w3 fail j_2 smtp down
+300 p fetch j_2
+300 p list - dead
+300 p remove j_2
+300 p remove j_1
+300 p remove j_9
+400 w1 lease reports 50
+500 p fetch j_3
+500 p health
+this line is not a call
