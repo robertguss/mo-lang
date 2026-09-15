@@ -30,7 +30,7 @@ For every program: the program's own tests as kept (the regenerator may not chan
 |---|---|
 | worktrees | `../mo-lang-cache-A` and `../mo-lang-cache-B`, branches `cache-A` and `cache-B` from `main` at `a2d220a`, the step 30 toolchain's binary copied in |
 | order | logstat, kv, notes, jobq, ledger, agent; run A and run B of one program at the same time in two panes, then the next program |
-| agents | `mo-cache-A-<name>`, `mo-cache-B-<name>`, one fresh session each |
+| agents | `mo-cache-a-<name>`, `mo-cache-b-<name>` (Herdr names are lowercase), one fresh session each |
 | the stripped state | committed on each branch before its session as `<name> stripped to its spec` |
 
 ## Pre-registered
