@@ -1594,8 +1594,9 @@ static MoValue heap_string(const char *s, size_t n) {
  * concatText; step 21); otherwise a new string, with room to grow when its first part was made at
  * run time. */
 MoValue mo_concat(uint32_t n, const MoValue *parts) {
-    /* Formatting runs no Mo code, so one buffer serves every interpolation. */
-    static Buf b;
+    /* Formatting runs no Mo code, so one buffer serves every interpolation on this thread (a scheduler's
+     * own, step 30). */
+    static _Thread_local Buf b;
     b.len = 0;
     bool headed = n > 0 && parts[0].tag == MO_STRING && parts[0].aux > 0;
     for (uint32_t i = headed ? 1 : 0; i < n; i++) format_text(&b, parts[i]);
