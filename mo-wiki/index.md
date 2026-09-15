@@ -240,3 +240,6 @@
 - [[safety-critical-coding-standards|Safety-critical coding standards]] — R6: Power of 10, JPL C, MISRA, CERT, DO-178C, Ravenscar, SPARK and others compared; three rule categories, deviation records, the loop-annotation convergence
 - [[reliability-and-testing-philosophies|Reliability and testing philosophies]] — R6: FoundationDB, Antithesis sometimes-assertions, Jepsen, SQLite coverage, let-it-crash restart intensity, QuickCheck shrinking, SRE error budgets, mutation testing
 
+
+## Research monitoring
+- [[hermes-research-monitoring]] — Independent daily evidence scan and Monday synthesis, reviewed through a research PR.
