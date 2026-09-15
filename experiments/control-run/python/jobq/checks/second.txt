@@ -1,5 +1,8 @@
 # jobq check, second run, after compaction: j_2's 100 ms lease ran out while stopped
 w1 GET /jobs/j_2
 w1 GET /jobs
-w1 POST /jobs {"queue": "emails", "payload": "after restart", "max_attempts": 1}
+w1 POST /jobs/j_2/retry
+w1 DELETE /jobs/j_4
+w1 GET /jobs?state=scheduled
+w1 POST /jobs {"queue": "emails", "payload": "after restart", "max_tries": 1}
 - GET /health

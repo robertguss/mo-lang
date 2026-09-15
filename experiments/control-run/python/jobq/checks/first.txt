@@ -1,9 +1,9 @@
 # jobq check, first run, on a fresh <dir>
 - GET /jobs/j_1
 - GET /health
-w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_attempts": 2}
-w1 POST /jobs {"queue": "emails", "payload": "second", "max_attempts": 1}
-w1 POST /jobs {"queue": "emails", "payload": "x", "max_attempts": 0}
+w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_tries": 2}
+w1 POST /jobs {"queue": "emails", "payload": "second", "max_tries": 1}
+w1 POST /jobs {"queue": "emails", "payload": "x", "max_tries": 0}
 w1 POST /jobs {"queue": "emails"}
 w1 GET /jobs/j_1
 w1 PUT /jobs/j_1
@@ -15,7 +15,7 @@ w3 POST /queues/emails/lease
 w1 POST /jobs/j_1/ack
 w2 POST /jobs/j_1/ack
 w2 POST /jobs/j_1/ack
-w1 POST /jobs {"queue": "reports", "payload": "q3", "max_attempts": 3}
+w1 POST /jobs {"queue": "reports", "payload": "q3", "max_tries": 3}
 w1 POST /queues/reports/lease {"lease_ms": 5000}
 w1 POST /jobs/j_3/fail {"reason": "smtp down"}
 w1 DELETE /jobs/j_3
@@ -24,3 +24,22 @@ w1 GET /jobs?queue=emails&state=done
 w1 GET /jobs?state=bogus
 w1 POST /queues/bad!/lease
 w1 POST /queues/emails/lease {"lease_ms": 50}
+w1 POST /jobs {"queue": "emails", "payload": "x", "max_attempts": 1}
+w1 POST /jobs {"queue": "emails", "payload": "x", "max_tries": 1, "delay_ms": 86400001}
+w1 POST /jobs {"queue": "later", "payload": "delayed", "max_tries": 2, "delay_ms": 86400000}
+w1 POST /queues/later/lease
+w1 POST /jobs {"queue": "flaky", "payload": "backs off", "max_tries": 2, "backoff_ms": 3600000}
+w1 POST /queues/flaky/lease {"lease_ms": 60000}
+w1 POST /jobs/j_5/fail {"reason": "try again later"}
+w1 POST /queues/flaky/lease
+w1 POST /jobs/j_5/retry
+w1 GET /jobs?state=scheduled
+w1 POST /jobs {"queue": "once", "payload": "fragile", "max_tries": 1}
+w1 POST /queues/once/lease {"lease_ms": 60000}
+w1 POST /jobs/j_6/fail {"reason": "broke"}
+w1 POST /jobs/j_6/retry
+w1 POST /jobs/j_6/retry
+w1 POST /queues/once/lease {"lease_ms": 60000}
+w1 POST /jobs/j_6/ack
+w1 POST /jobs/j_1/retry
+w1 GET /jobs/j_6/retry
