@@ -34,15 +34,16 @@ def write_log(directory: Path, jobs: int, history: str = "queued", lease_until_m
                 queue="bench",
                 state="queued",
                 payload="x" * 100,
-                attempts=0,
-                max_attempts=3,
+                tries=0,
+                max_tries=3,
+                backoff_ms=0,
                 created_ms=now,
                 updated_ms=now,
             )
             leased = base.model_copy(
                 update={
                     "state": "leased",
-                    "attempts": 1,
+                    "tries": 1,
                     "worker": "w",
                     "lease_until_ms": lease_until_ms,
                 }
@@ -53,8 +54,8 @@ def write_log(directory: Path, jobs: int, history: str = "queued", lease_until_m
                 "full": [
                     base,
                     leased,
-                    base.model_copy(update={"attempts": 1, "reason": "r"}),
-                    base.model_copy(update={"state": "done", "attempts": 2, "reason": "r"}),
+                    base.model_copy(update={"tries": 1, "reason": "r"}),
+                    base.model_copy(update={"state": "done", "tries": 2, "reason": "r"}),
                 ],
             }[history]
             log.writelines(PutRecord(job=job).model_dump_json() + "\n" for job in records)
@@ -152,7 +153,7 @@ def lag() -> None:
             producer, holder, stream = (Connection(served.port, t) for t in ("p", "a", "b"))
             lags, requests = [], 0
             for _ in range(20):
-                body: dict[str, object] = {"queue": "lag", "payload": "x", "max_attempts": 100}
+                body: dict[str, object] = {"queue": "lag", "payload": "x", "max_tries": 100}
                 producer.send("POST", "/jobs", body)
                 _, leased = holder.send("POST", "/queues/lag/lease", {"lease_ms": lease_ms})
                 until = _ms(leased["lease_until"])
