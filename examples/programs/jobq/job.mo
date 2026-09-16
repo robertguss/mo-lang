@@ -1,5 +1,5 @@
 module Jobq.Job
-expose Phase, Job, Making, Settled, Look, Woken, Retried, job, leased, acked, failed, retried, looked, holds?, run_out?, due?, queue?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, to_ms
+expose Phase, Job, Making, Settled, Look, Woken, Retried, job, leased, acked, failed, retried, looked, holds?, run_out?, due?, queue?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, rule_broken, to_ms
 
 intent "A job and its rules: a queue's name, a payload, tries, a backoff, a lease, and a time to run at; each move between the five states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows, read back from the names the previous version wrote as well."
 
@@ -437,6 +437,36 @@ fn count_in(fields: Map(String, Json), name: String) : Option(UInt64)
   whole.checked_to_u64
 end
 
+# The rule a record breaks, or None when it is a job the API could have produced: it decodes
+# under the names this version writes or the ones the previous one wrote, its key names its id,
+# and its tries fit its state. A folder is checked against this before it is served, so a record
+# in a state no request could have left reaches no board.
+fn rule_broken(key: String, record: String) : Option(String)
+  case decoded(record)
+    Some(held):
+      return Some("its id is #{id_of(held.number)}, not its key") if key != id_of(held.number)
+      tries_broken(held)
+    None: Some("is not a job")
+  end
+end
+
+# What a state says about a job's tries: a job waiting to run has a try left, and a job that has
+# been handed out has taken at least one. The rest of a record's rules are `decoded`'s, which
+# refuses a state without the worker, the lease, or the run_at that state keeps.
+fn tries_broken(held: Job) : Option(String)
+  name = phase_name(held.state)
+  case held.state
+    Queued | Scheduled:
+      if held.tries < held.max_tries
+        None
+      else
+        Some("a #{name} job has tries below its max_tries")
+      end
+    Leased | Done | Dead:
+      if held.tries >= 1: None else: Some("a #{name} job has at least one try")
+  end
+end
+
 fn at(text: String) : Time
   Time.parse(text) or Time.from_parts(2026, 1, 1, 0, 0, 0)
 end
@@ -589,6 +619,39 @@ test "a record that is not a job reads as none"
   assert decoded(shown(sample()).replace("\"backoff_ms\": 0", "\"backoff_ms\": 3600001")) is None
 end
 
+# One record per state, well-formed and then with the tries its state refuses; the states a
+# record's own shape rules out (a leased job with no worker, a scheduled one with no run_at) are
+# the test above's, since `decoded` refuses them.
+test "a record is well-formed in each state only with the tries that state allows"
+  now = at("2026-09-14T10:00:00Z")
+  queued = shown(sample())
+  assert rule_broken("j_7", queued) is None
+  assert rule_broken("j_7", queued.replace("\"tries\": 0", "\"tries\": 3")) == Some("a queued job has tries below its max_tries")
+  later = shown(job(9, making("q", "", 2, 0, 1_000), now))
+  assert rule_broken("j_9", later) is None
+  assert rule_broken("j_9", later.replace("\"tries\": 0", "\"tries\": 2")) == Some("a scheduled job has tries below its max_tries")
+  held = shown(leased(sample(), "w-1", 1_000, now))
+  assert rule_broken("j_7", held) is None
+  assert rule_broken("j_7", held.replace("\"tries\": 1", "\"tries\": 0")) == Some("a leased job has at least one try")
+  done = shown(acked(leased(sample(), "w-1", 1_000, now), "w-1", now))
+  assert rule_broken("j_7", done) is None
+  assert rule_broken("j_7", done.replace("\"tries\": 1", "\"tries\": 0")) == Some("a done job has at least one try")
+  one_try = job(3, making("q", "p", 1, 0, 0), now)
+  dead = shown(failed(leased(one_try, "w-1", 1_000, now), "w-1", "broken", now))
+  assert rule_broken("j_3", dead) is None
+  assert rule_broken("j_3", dead.replace("\"tries\": 1", "\"tries\": 0")) == Some("a dead job has at least one try")
+end
+
+test "a record that is not a job, or whose key is not its id, breaks the rule by name"
+  assert rule_broken("j_7", "not json") == Some("is not a job")
+  assert rule_broken("j_7", "{\"id\": \"j_7\"}") == Some("is not a job")
+  assert rule_broken("ids", "1000") == Some("is not a job")
+  assert rule_broken("j_9", shown(sample())) == Some("its id is j_7, not its key")
+  old = "{\"id\": \"j_7\", \"queue\": \"reports\", \"state\": \"dead\", \"payload\": \"\", \"attempts\": 2, \"max_attempts\": 2, \"created_at\": \"2026-09-14T09:02:00Z\", \"updated_at\": \"2026-09-14T09:08:00Z\"}"
+  assert rule_broken("j_7", old) is None
+  assert rule_broken("j_7", old.replace("\"attempts\": 2", "\"attempts\": 0")) == Some("a dead job has at least one try")
+end
+
 test rejects "a job in a queue whose name has a space"
   job(1, making("two words", "", 1, 0, 0), at("2026-09-14T10:00:00Z"))
 end
@@ -660,5 +723,5 @@ property "any valid job reads back from its JSON as it was, scheduled, leased, o
   end
 end
 
-verified: types, contracts, tests (25), property (200 seeds), sim (not run)
+verified: types, contracts, tests (27), property (200 seeds), sim (not run)
           proven: not run

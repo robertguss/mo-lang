@@ -50,5 +50,8 @@ p POST /jobs/j_4/retry
 p POST /jobs/j_99/retry
 p GET /jobs/j_1000/retry
 w3 POST /queues/emails/lease
+p GET /queues
 p DELETE /jobs/j_1001
+p GET /queues
+- GET /queues
 - GET /health

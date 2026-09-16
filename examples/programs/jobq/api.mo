@@ -1,7 +1,7 @@
 module Jobq.Api
 expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from
 
-use Jobq.Board{Command, Call, Outcome, Counts}
+use Jobq.Board{Command, Call, Outcome, Counts, Tally}
 use Jobq.Job{Job, Making, queue?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, phase_named, id_of, shown}
 
 intent "Read an HTTP request into a call on the queue, or answer it at once: 404 for a route that does not exist, 405 for a method the route does not take, 401 for a missing or malformed token, and 400 for a body or a name of the wrong shape, the names the previous version took among them; and write every outcome as its status and JSON."
@@ -19,6 +19,7 @@ fn route(request: Request) : Routed
       case parts.get(1) or ""
         "health": healthy(request)
         "jobs": collection(request)
+        "queues": every_queue(request)
         _: nowhere(request)
       end
     3: if parts.get(1) == Some("jobs") and parts.get(2) != Some("")
@@ -45,6 +46,15 @@ end
 fn healthy(request: Request) : Routed
   return Answered(response: not_allowed("GET")) if request.method != "GET"
   Asked(call: Call(worker: "", command: Health))
+end
+
+# Every queue and its jobs by state, for whoever runs the service; a token like every route but
+# health.
+fn every_queue(request: Request) : Routed
+  return Answered(response: not_allowed("GET")) if request.method != "GET"
+  worker = try_token(request)
+  return Answered(response: unauthorized()) if worker == ""
+  Asked(call: Call(worker: worker, command: Tallying))
 end
 
 fn collection(request: Request) : Routed
@@ -238,8 +248,15 @@ fn respond(outcome: Outcome) : Response
     Conflict(reason): failed(409, reason)
     Empty: Response(status: 204, body: "")
     Healthy(counts): json(200, health(counts))
+    Tallied(queues):
+      json(200, "{\"queues\": [#{String.join(queues.map(fn(t) tally(t) end), ", ")}]}")
     Unavailable(reason): failed(503, reason)
   end
+end
+
+fn tally(one: Tally) : String
+  counted = "\"queued\": #{one.queued}, \"scheduled\": #{one.scheduled}, \"leased\": #{one.leased}"
+  "{\"name\": #{Json.encode(one.name)}, #{counted}, \"done\": #{one.done}, \"dead\": #{one.dead}}"
 end
 
 fn health(counts: Counts) : String
@@ -409,6 +426,22 @@ test "a delay and a backoff keep their ranges, and the names the previous versio
     "{\"queue\": \"q\", \"payload\": \"\", \"max_attempts\": 2}"))) == 400
 end
 
+test "the queues route takes GET with a token, and lists every queue with its counts"
+  assert route(by("GET", "/queues", "p", "")) == Asked(call: Call(worker: "p",
+    command: Tallying))
+  assert status_of(route(Request(method: "GET", path: "/queues"))) == 401
+  assert status_of(route(by("POST", "/queues", "p", ""))) == 405
+  assert route(by("PUT", "/queues", "p", "")) is Answered(refused)
+  assert refused.headers.get("allow") == Some("GET")
+  assert status_of(route(by("GET", "/queues/emails", "p", ""))) == 404
+  one = Tally(name: "emails", queued: 2, scheduled: 1, leased: 3, done: 4, dead: 5)
+  two = Tally(name: "reports", queued: 0, scheduled: 0, leased: 0, done: 1, dead: 0)
+  shown_one = "{\"name\": \"emails\", \"queued\": 2, \"scheduled\": 1, \"leased\": 3, \"done\": 4, \"dead\": 5}"
+  shown_two = "{\"name\": \"reports\", \"queued\": 0, \"scheduled\": 0, \"leased\": 0, \"done\": 1, \"dead\": 0}"
+  assert respond(Tallied(queues: [one, two])) == json(200, "{\"queues\": [#{shown_one}, #{shown_two}]}")
+  assert respond(Tallied(queues: [])) == json(200, "{\"queues\": []}")
+end
+
 test "each outcome is its status and its JSON"
   at = Time.parse("2026-09-14T10:00:00Z") or Time.from_parts(2026, 1, 1, 0, 0, 0)
   one = Job(number: 1, queue: "q", state: Queued, payload: "p", tries: 0, max_tries: 1,
@@ -443,5 +476,5 @@ property "any valid payload sent as JSON becomes a create of that payload"
   end
 end
 
-verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+verified: types, contracts, tests (9), property (200 seeds), sim (not run)
           proven: not run

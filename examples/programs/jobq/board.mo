@@ -1,7 +1,7 @@
 module Jobq.Board
-expose Command, Call, Outcome, Counts, Order, Board, Decision, Kept, board, decide, rebuilt, records, health_of, snapshot
+expose Command, Call, Outcome, Counts, Tally, Order, Board, Decision, Kept, board, decide, rebuilt, records, health_of, tallies, ill_formed, snapshot
 
-use Jobq.Job{Phase, Job, Making, job, leased, acked, failed, retried, looked, holds?, due?, payload?, id_of, number_of, shown, decoded}
+use Jobq.Job{Phase, Job, Making, job, leased, acked, failed, retried, looked, holds?, due?, payload?, token?, lease_ms?, id_of, number_of, shown, decoded, rule_broken}
 
 intent "The queue as a value: every job by number, each queue's queued jobs oldest first, the leases and when the first runs out, the scheduled jobs and when the first is due, and the counts; a call becomes a decision, the board after it, the answer, and the records the store must hold before the answer is sent; every decision first puts back the leases that have run out and queues the scheduled jobs whose run_at has passed."
 
@@ -22,6 +22,7 @@ enum Command
   Fail(id: String, reason: String)
   Retry(id: String)
   Health
+  Tallying
 end
 
 struct Call
@@ -38,6 +39,16 @@ struct Counts
   uptime_ms: Int64
 end
 
+# One queue's jobs by state, as /queues lists them; a queue with no job in any state has no Tally.
+struct Tally
+  name: String
+  queued: UInt64
+  scheduled: UInt64
+  leased: UInt64
+  done: UInt64
+  dead: UInt64
+end
+
 enum Outcome
   Made(job: Job)
   Found(job: Job)
@@ -47,6 +58,7 @@ enum Outcome
   Conflict(reason: String)
   Empty
   Healthy(counts: Counts)
+  Tallied(queues: List(Tally))
   Unavailable(reason: String)
 end
 
@@ -119,6 +131,7 @@ fn decide(board: Board, call: Call, now: Time) : Decision
     Fail(id: id, reason: reason): settled(swept.board, call.worker, id, reason, true, now)
     Retry(id): revived(swept.board, id, now)
     Health: answered(swept.board, Healthy(counts: health_of(swept.board, now)))
+    Tallying: answered(swept.board, Tallied(queues: tallies(swept.board)))
   end
   Decision(board: decided.board, outcome: decided.outcome,
     writes: swept.writes.concat(decided.writes))
@@ -207,6 +220,24 @@ fn health_of(board: Board, now: Time) : Counts
   var counts = board.counts
   counts.uptime_ms = (now - board.started).ms
   counts
+end
+
+# Every queue that holds a job, by name, with its jobs by state; the counts are summed from the
+# jobs themselves, so health's totals are these sums and a queue whose last job is gone is gone.
+fn tallies(board: Board) : List(Tally)
+  ensures result.all?(fn(t) t.queued + t.scheduled + t.leased + t.done + t.dead >= 1 end)
+
+  groups = all_jobs(board).group_by(fn(j) j.queue end)
+  groups.entries.map(fn(g) tallied(g.0, g.1) end).sort_by(fn(t) t.name end)
+end
+
+fn tallied(name: String, jobs: List(Job)) : Tally
+  Tally(name: name, queued: in_state(jobs, Queued), scheduled: in_state(jobs, Scheduled),
+    leased: in_state(jobs, Leased), done: in_state(jobs, Done), dead: in_state(jobs, Dead))
+end
+
+fn in_state(jobs: List(Job), phase: Phase) : UInt64
+  jobs.count(fn(j) j.state == phase end)
 end
 
 # Every lease that has run out put back, queued, scheduled, or dead, and every scheduled job whose
@@ -423,9 +454,20 @@ fn passed_over(board: Board, queue: String, order: Order, head: UInt64) : Board
   after
 end
 
+# What `leased` asks of the job, the worker, and the lease. A record in a state the API can never
+# produce would break the first, so a call that would trip the contract is answered 503 instead of
+# crashing the queue; the folder check at open is what keeps such a record out in the first place.
+fn leasable?(held: Job, worker: String, lease_ms: UInt64) : Bool
+  held.state == Queued and held.tries < held.max_tries and token?(worker) and lease_ms?(lease_ms)
+end
+
 fn handed(board: Board, number: UInt64, worker: String, lease_ms: UInt64, now: Time) : Decision
   case job_of(board, number)
     Some(held):
+      if !leasable?(held, worker, lease_ms)
+        return answered(board,
+          Unavailable(reason: "#{id_of(number)} is not in a state a lease can take"))
+      end
       lease = leased(held, worker, lease_ms, now)
       var after = with_lease(with_job(board, lease), number, lease.lease_until or now)
       after.counts = recounted(board.counts, Queued, Leased)
@@ -524,6 +566,43 @@ fn revived(board: Board, id: String, now: Time) : Decision
   end
 end
 
+# The first record a folder holds that no request could have left, in key order: its key and the
+# rule it breaks, None when every record is one. Every command that opens a folder checks it
+# against this, so a board is built only from records the API could have written.
+fn ill_formed(entries: List((String, String))) : Option((String, String))
+  sorted = entries.sort_by(fn(e) e.0 end)
+  top = highest(sorted)
+  bad = try sorted.find(fn(e) entry_broken(e, top) is Some(_) end)
+  case entry_broken(bad, top)
+    Some(why): Some((bad.0, why))
+    None: None
+  end
+end
+
+fn entry_broken(entry: (String, String), top: UInt64) : Option(String)
+  if entry.0 == "ids": ids_broken(entry.1, top) else: rule_broken(entry.0, entry.1)
+end
+
+# The ids counter is a number, and no lower than the highest job's, so no number is handed twice.
+fn ids_broken(value: String, top: UInt64) : Option(String)
+  case value.to_u64
+    Some(next):
+      if next >= top: None else: Some("the next id is below j_#{top}")
+    None: Some("is not a number")
+  end
+end
+
+fn highest(entries: List((String, String))) : UInt64
+  entries.flat_map(fn(e) numbered(e.0) end).max or 0
+end
+
+fn numbered(key: String) : List(UInt64)
+  case number_of(key)
+    Some(n): [n]
+    None: []
+  end
+end
+
 # The board a store's records hold: every job, the reserved numbers, and the next number above
 # every job and every reservation; None when a record is not the job its key names.
 fn rebuilt(entries: List((String, String)), started: Time) : Option(Board)
@@ -618,7 +697,8 @@ fn number_in(decision: Decision) : UInt64
   case decision.outcome
     Made(one): one.number
     Found(one): one.number
-    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Unavailable(_): 0
+    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Unavailable(_):
+      0
   end
 end
 
@@ -626,7 +706,8 @@ fn job_in(decision: Decision) : Option(Job)
   case decision.outcome
     Made(one): Some(one)
     Found(one): Some(one)
-    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Unavailable(_): None
+    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Unavailable(_):
+      None
   end
 end
 
@@ -640,6 +721,17 @@ end
 
 fn counts_of(b: Board, now: Time) : Counts
   health_of(b, now)
+end
+
+# The entry with the tries of the record under `key` taken to 0, which no state of that job allows.
+fn broken_tries(entry: (String, String), key: String) : (String, String)
+  return entry if entry.0 != key
+  (entry.0, entry.1.replace("\"tries\": 1", "\"tries\": 0"))
+end
+
+# The entry with the ids counter set to `value`.
+fn counter(entry: (String, String), value: String) : (String, String)
+  if entry.0 == "ids": (entry.0, value) else: entry
 end
 
 test "a job made is found by its id, and its record is written under that id"
@@ -818,6 +910,45 @@ test "a listing filters by queue and by state, by id, and holds at most 100"
   assert none.outcome == Listed(jobs: [])
 end
 
+test "the queues list every queue that holds a job, by name, and health's totals are their sums"
+  b = with_jobs(["b", "a", "a", "c"])
+  lent = lease_by(b, "w1", "a", 1_000, start())
+  listed_queues = decide(lent.board, call("p", Tallying), start())
+  assert listed_queues.outcome is Tallied(queues)
+  assert queues.map(fn(t) t.name end) == ["a", "b", "c"]
+  assert queues.first == Some(Tally(name: "a", queued: 1, scheduled: 0, leased: 1, done: 0,
+    dead: 0))
+  assert queues.get(1) == Some(Tally(name: "b", queued: 1, scheduled: 0, leased: 0, done: 0,
+    dead: 0))
+  counts = health_of(lent.board, start())
+  assert queues.map(fn(t) t.queued end).sum == counts.queued
+  assert queues.map(fn(t) t.leased end).sum == counts.leased
+  assert listed_queues.writes == []
+  gone = decide(lent.board, call("p", Remove(id: "j_1")), start())
+  assert decide(gone.board, call("p", Tallying), start()).outcome is Tallied(fewer)
+  assert fewer.map(fn(t) t.name end) == ["a", "c"]
+  assert decide(board(start(), 1), call("p", Tallying), start()).outcome == Tallied(queues: [])
+end
+
+test "a folder's records are ill-formed at the first key whose record breaks a rule"
+  b = with_jobs(["a", "a", "a"])
+  held = lease_by(b, "w1", "a", 1_000, start()).board
+  entries = store_of(held)
+  assert ill_formed(entries) is None
+  assert ill_formed([]) is None
+  ill = entries.map(fn(e) broken_tries(e, "j_1") end)
+  assert ill_formed(ill) == Some(("j_1", "a leased job has at least one try"))
+  two = ill.push(("j_0", "not a job"))
+  assert ill_formed(two) == Some(("j_0", "is not a job"))
+  assert ill_formed(entries.push(("j_9", "not a job"))) == Some(("j_9", "is not a job"))
+  assert ill_formed(entries.map(fn(e) counter(e, "x") end)) == Some(("ids", "is not a number"))
+  assert ill_formed(entries.map(fn(e) counter(e, "2") end)) == Some(("ids",
+    "the next id is below j_3"))
+  assert ill_formed(entries.map(fn(e) counter(e, "3") end)) is None
+  assert ill_formed(records(held).map(fn(r) ("j_9", r) end)) is Some(named)
+  assert named.0 == "j_9" and named.1.starts_with?("its id is j_")
+end
+
 test "a board rebuilt from its records holds the same jobs, leases, counts, and next number"
   b = with_jobs(["a", "b", "a", "a", "a", "a", "a", "a", "a", "a", "a"])
   lent_one = lease_by(b, "w1", "a", 1_000, start())
@@ -888,5 +1019,5 @@ property "a job made then fetched gives back any valid payload"
   end
 end
 
-verified: types, contracts, tests (15), property (200 seeds), sim (not run)
+verified: types, contracts, tests (17), property (200 seeds), sim (not run)
           proven: not run

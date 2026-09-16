@@ -102,7 +102,13 @@
 405 {"error": "this route takes POST"}
 > w3 POST /queues/emails/lease
 200 {"id": "j_1000", "queue": "emails", "state": "leased", "payload": "hello \"world\"\nline two é", "tries": 1, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w3", "lease_until": "<lease_until>"}
+> p GET /queues
+200 {"queues": [{"name": "emails", "queued": 0, "scheduled": 0, "leased": 2, "done": 1, "dead": 0}, {"name": "flaky", "queued": 0, "scheduled": 1, "leased": 0, "done": 0, "dead": 0}, {"name": "later", "queued": 0, "scheduled": 1, "leased": 0, "done": 0, "dead": 0}, {"name": "reports", "queued": 0, "scheduled": 0, "leased": 1, "done": 0, "dead": 0}]}
 > p DELETE /jobs/j_1001
 204
+> p GET /queues
+200 {"queues": [{"name": "emails", "queued": 0, "scheduled": 0, "leased": 2, "done": 1, "dead": 0}, {"name": "flaky", "queued": 0, "scheduled": 1, "leased": 0, "done": 0, "dead": 0}, {"name": "reports", "queued": 0, "scheduled": 0, "leased": 1, "done": 0, "dead": 0}]}
+> - GET /queues
+401 {"error": "a request needs authorization: Bearer <token>"}
 > - GET /health
 200 {"queued": 0, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>}

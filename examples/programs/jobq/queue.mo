@@ -3,7 +3,7 @@ module Jobq.Queue
 expose Opening, Batch, Answer, Flushed, Queue, Queues, Worker, Workers, opening, flushed, stamp
 
 use Jobq.Api{Routed, respond, route}
-use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, rebuilt, records, snapshot}
+use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, health_of, rebuilt, records, snapshot}
 use Jobq.Job{Phase, Making, shown, to_ms}
 use Jobq.Store{Table, StoreError, blank, emptied, journaled, line_of, open, pairs, rewritten}
 
@@ -107,11 +107,12 @@ fn unanswered(outcome: Outcome, reason: String) : Answer
   Answer(outcome: refused_outcome, changed: false, durable: false)
 end
 
-# Each waiting worker told its answer, in the order they asked.
-fn delivered(waiting: List(Handle(Worker)), answers: List(Answer))
+# Each asker the batch kept answered, in the order they asked; an asker whose deadline has
+# passed is answered all the same, and the runtime drops the answer.
+fn delivered(waiting: List(Reply(Outcome)), answers: List(Answer))
   for i in 0..waiting.size
-    if waiting.get(i) is Some(worker)
-      worker.send(Done(outcome: outcome_at(answers, i)))
+    if waiting.get(i) is Some(held)
+      held.answer(outcome_at(answers, i))
     end
   end
 end
@@ -134,13 +135,13 @@ process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
     torn: Bool
     writes: List((String, Option(String)))
     outcomes: List(Outcome)
-    waiting: List(Handle(Worker))
+    waiting: List(Reply(Outcome))
     flushing: Bool
     me: Option(Handle(Queue))
   end
 
   message Begin(me: Handle(Queue))
-  message Want(call: Call, from: Handle(Worker))
+  message Want(call: Call) : Outcome
   message Sweep
   message Flush
   message Serve(call: Call) : Outcome
@@ -149,12 +150,12 @@ process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
     case message
       Begin(me):
         state.me = Some(me)
-      Want(call: call, from: from):
+      Want(call):
         decision = decide(state.board, call, stamp(clock))
         state.board = decision.board
         state.writes = state.writes.concat(decision.writes)
         state.outcomes = state.outcomes.push(decision.outcome)
-        state.waiting = state.waiting.push(from)
+        state.waiting = state.waiting.push(reply_to)
         if !state.flushing and state.me is Some(me)
           me.send(Flush)
           state.flushing = true
@@ -219,26 +220,34 @@ supervisor Queues(fs: Fs, clock: Clock, opening: Opening, exchange: Exchange, qu
   child Worker(exchange, queue), restart: :never
 end
 
-# One exchange: its request read into a route, answered at once or asked of the queue, and its
-# response written when the queue's answer comes.
+# The queue's answer to one call, or 503: a queue that has not answered in five seconds, or that
+# is down after a crash, costs the request that asked it and no other, and the next request is
+# asked as if it had never come.
+fn answer_of(queue: Handle(Queue), call: Call) : Outcome
+  case queue.ask(Want(call: call), within: 5_000.ms)
+    Ok(outcome): outcome
+    Error(Timeout): Unavailable(reason: "the queue did not answer within 5 seconds")
+    Error(Down): Unavailable(reason: "the queue is down")
+  end
+end
+
+# One exchange: its request read into a route, answered at once or asked of the queue, whose
+# answer comes when the batch the call joined is on disk.
 process Worker(exchange: Exchange, queue: Handle(Queue))
   state
     answered: Bool
   end
 
-  message Go(me: Handle(Worker))
-  message Done(outcome: Outcome)
+  message Go
 
   fn update(state, message)
     case message
-      Go(me):
-        case route(exchange.request)
-          Answered(response):
-            state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
-          Asked(call): queue.send(Want(call: call, from: me))
+      Go:
+        response = case route(exchange.request)
+          Answered(made): made
+          Asked(call): respond(answer_of(queue, call))
         end
-      Done(outcome):
-        state.answered = exchange.reply(respond(outcome), within: 10_000.ms) is Ok(_)
+        state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
     end
   end
 end
@@ -300,11 +309,7 @@ end
 # what the store holds, so under faults a job that was answered Made may be gone again. With no
 # fault it is always there, and a lease that came back Empty is a fault of the queue's own.
 fn gone?(queue: Handle(Queue), id: String) : Bool
-  case served(queue, "p", Fetch(id: id))
-    Found(_): false
-    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Unavailable(_):
-      true
-  end
+  !(served(queue, "p", Fetch(id: id)) is Found(_))
 end
 
 # Simulated time passes only while a test waits, so a wait on a fixture call is how a test lets a
@@ -335,19 +340,21 @@ end
 
 # The log with a lease's end moved an hour before the service started, as if it had stopped and
 # the lease ran out while it was down; true once the log says so.
+# The log's text with the lease's end moved into the past, written back.
+fn aged_text(fs: Fs, text: String, until: String) : Bool
+  past = text.replace(until, "\"2025-12-31T23:00:00Z\"")
+  text.contains?(until) and fs.write("d/jobq.log", past, within: 1.minute) is Ok(_)
+end
+
 fn aged_log(fs: Fs, lent: Outcome) : Bool
-  case lent
-    Found(held):
-      until = Json.encode(held.lease_until or held.created_at)
-      case fs.read("d/jobq.log", within: 1.minute)
-        Ok(text):
-          past = text.replace(until, "\"2025-12-31T23:00:00Z\"")
-          text.contains?(until) and fs.write("d/jobq.log", past, within: 1.minute) is Ok(_)
-        Error(_): false
-      end
-    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Unavailable(_):
-      false
+  if lent is Found(held)
+    until = Json.encode(held.lease_until or held.created_at)
+    return case fs.read("d/jobq.log", within: 1.minute)
+      Ok(text): aged_text(fs, text, until)
+      Error(_): false
+    end
   end
+  false
 end
 
 enum Played
@@ -381,7 +388,7 @@ fn played(queue: Handle(Queue), fs: Fs, slow: Fs, clock: Clock, round: UInt64) :
         revived(queue)
       end
       return ended(queue, slow)
-    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Healthy(_):
+    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Healthy(_) | Tallied(_):
       return Wrong(why: "a lease gave #{lent}")
   end
   Going
@@ -416,11 +423,10 @@ end
 
 fn ended(queue: Handle(Queue), slow: Fs) : Played
   return Going if !waited(slow)
-  case served(queue, "", Health)
-    Healthy(counts):
-      if counts.queued == 0 and counts.scheduled == 0 and counts.leased == 0: Ended else: Going
-    Made(_) | Found(_) | Listed(_) | Removed | Missing | Conflict(_) | Empty | Unavailable(_): Going
+  if served(queue, "", Health) is Healthy(counts)
+    return Ended if counts.queued == 0 and counts.scheduled == 0 and counts.leased == 0
   end
+  Going
 end
 
 test "a call through the queue is answered once its record is in the log"
@@ -502,6 +508,38 @@ test "a batch the log did not take is 503, and the board goes back to what the s
   assert kept.after == kept.before
 end
 
+# The incident's second lesson, at the flush: a store that cannot be written costs the writes in
+# flight and nothing else. The folder is made unwritable by a store whose calls all run out of
+# time, since no fixture turns a folder read-only part way through a run.
+test "a log that cannot be written answers its writes 503, answers reads, and takes the next batch"
+  fs = Fs.fixture()
+  at = Time.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  start = board(at, 1)
+  unwritable = Fs.fixture(delay: 1.minute)
+  one = decide(start, Call(worker: "p", command: Create(making: plain("q", "1", 1))), at)
+  stuck = flushed(unwritable,
+    Batch(board: one.board, durable: start, table: emptied(empty), torn: false, writes: one.writes,
+    outcomes: [one.outcome]))
+  assert stuck.answers.all?(fn(a) unavailable?(a.outcome) end)
+  assert stuck.answers.all?(fn(a) !a.changed and !a.durable end)
+  assert records(stuck.board) == records(start) and records(stuck.board) == []
+  assert health_of(stuck.board, at) == health_of(start, at)
+  reading = decide(stuck.board, Call(worker: "p", command: Listing(queue: None, state: None)), at)
+  read = flushed(unwritable,
+    Batch(board: reading.board, durable: stuck.board, table: stuck.table, torn: stuck.torn,
+    writes: reading.writes, outcomes: [reading.outcome]))
+  assert read.answers.map(fn(a) a.outcome end) == [Listed(jobs: [])]
+  two = decide(stuck.board, Call(worker: "p", command: Create(making: plain("q", "2", 1))), at)
+  again = flushed(fs,
+    Batch(board: two.board, durable: stuck.board, table: stuck.table, torn: stuck.torn,
+    writes: two.writes, outcomes: [two.outcome]))
+  assert again.answers.map(fn(a) a.outcome end) == [two.outcome]
+  assert again.answers.all?(fn(a) a.durable end) and !again.torn
+  assert stored(fs, at) == Some(records(again.board))
+end
+
 test "a queue started again from its log finds a lease that ran out and hands the job out again"
   fs = Fs.fixture()
   clock = Clock.fixture()
@@ -562,5 +600,5 @@ test "every answer is right or 503 with the store unchanged, and every job ends 
   assert last == Ended
 end
 
-verified: types, contracts, tests (7), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (8), property (0 seeds), sim (100 runs)
           proven: not run

@@ -104,3 +104,19 @@ Found by the load run: `Jobq.Store.put_all` applied a batch of records with a `(
 ## Not a bug: the fixture clock is frozen
 
 A test's `Clock.fixture()` does not move while a fixture call waits, so a lease never runs out on a running queue in a test. Grammar §8 says the fixture clock is frozen, so it is recorded in `GAPS.md` as a gap. The reproduction: `clock = Clock.fixture()`, `before = clock.now`, `Fs.fixture(delay: 200.ms).list(within: 1.minute)`, an `ask` of a process, then `clock.now - before` is `0.ms`, under `mo test` and `mo test --sim 5`.
+
+## 4. An or-pattern too long for the column limit has nowhere to go
+
+A `case` arm that names the rest of a wide enum is one or-pattern on one line: `|` at the start of
+a continuation line is `MO0104 expected a pattern`, and a `_` arm in its place is `MO0309`, since no
+catch-all is allowed on a closed enum. So an arm over the other nine variants of `Jobq.Board.Outcome`
+is 101 characters at indent 4 and there is no way to write it that the formatter's 100-column limit
+(FORMAT.md, L4) accepts.
+
+Reproduction: add a tenth variant to `Outcome` and run `mo test` on `queue.mo`. Three of the five
+arms that listed the rest of the enum went over the limit, and each had to be written another way:
+`case x ... Found(_): false | rest: true` became `!(x is Found(_))`, and two others became
+`if x is Found(held) ... end` with the rest of the enum falling through to the value below.
+
+Not worked around in the toolchain: the shapes above are fine to read, and the finding is that a
+wide enum's `case` arms are a cost the language charges again every time a variant is added.

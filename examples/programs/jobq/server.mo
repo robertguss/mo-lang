@@ -21,7 +21,7 @@ process Acceptor(queue: Handle(Queue)) mailbox: 4_096
     case message
       Accepted(exchange):
         worker = Worker.start(exchange, queue)
-        worker.send(Go(me: worker))
+        worker.send(Go)
         state.accepted += 1
       Idle:
         queue.send(Sweep)
@@ -78,6 +78,12 @@ fn fresh() : Table
   blank("d")
 end
 
+# A store over a folder outside the Fs it is given, so every write it makes is refused at once,
+# as a folder an operator has made read-only refuses one: the way a test makes a store unwritable.
+fn unwritable() : Table
+  blank("..")
+end
+
 fn by(method: String, path: String, token: String, body: String) : Request
   Request(method: method, path: path, headers: Map.new().set("authorization", "Bearer #{token}"),
     body: body)
@@ -101,9 +107,13 @@ fn in?(got: Result(Response, HttpError), statuses: List(UInt16)) : Bool
 end
 
 fn started(http: Http, fs: Fs, clock: Clock) : UInt16
+  started_on(http, fs, clock, fresh())
+end
+
+fn started_on(http: Http, fs: Fs, clock: Clock, table: Table) : UInt16
   case http.listen(0, within: 1.minute)
     Ok(listener):
-      queue = serving(listener, fs, clock, Opening(board: board(stamp(clock), 1), table: fresh()))
+      queue = serving(listener, fs, clock, Opening(board: board(stamp(clock), 1), table: table))
       if queue.ask(Serve(call: Call(worker: "", command: Health)), within: 1.minute) is Ok(_)
         return listener.port
       end
@@ -235,6 +245,42 @@ test "each status comes back over the wire, unless a call fails or the log did n
   assert in?(sent(http, port, by("POST", "/queues/q/lease", "w3", "")), [200, 204, 503])
 end
 
+# The incident's ticket over the wire: while the store cannot be written every write is 503 and
+# the reads are answered all the same, and the service answers the next request either way.
+test "a store that cannot be written answers writes 503 over the wire and keeps answering reads"
+  http = Http.fixture()
+  port = started_on(http, Fs.fixture(), Clock.fixture(), unwritable())
+  assert port != 0
+  made = sent(http, port, by("POST", "/jobs", "p", create("nowhere to write")))
+  assert in?(made, [503])
+  assert in?(sent(http, port, Request(method: "GET", path: "/health")), [200])
+  assert in?(sent(http, port, by("GET", "/jobs", "p", "")), [200])
+  assert in?(sent(http, port, by("GET", "/queues", "p", "")), [200])
+  again = sent(http, port, by("POST", "/jobs", "p", create("still nowhere")))
+  assert in?(again, [503])
+  assert in?(sent(http, port, by("GET", "/jobs/j_1", "p", "")), [404])
+  health = sent(http, port, Request(method: "GET", path: "/health"))
+  if health is Ok(answer) and answer.status == 200
+    assert answer.body.contains?("\"queued\": 0, \"scheduled\": 0, \"leased\": 0, \"done\": 0, \"dead\": 0")
+  end
+end
+
+test "the queues route lists each queue's jobs by state over the wire"
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  empty = sent(http, port, by("GET", "/queues", "p", ""))
+  if empty is Ok(none) and none.status == 200
+    assert none.body == "{\"queues\": []}"
+  end
+  assert in?(sent(http, port, by("POST", "/jobs", "p", create("one"))), [201, 503])
+  assert in?(sent(http, port, Request(method: "GET", path: "/queues")), [401])
+  listed = sent(http, port, by("GET", "/queues", "p", ""))
+  assert in?(listed, [200])
+  if listed is Ok(answer) and answer.status == 200 and answer.body != "{\"queues\": []}"
+    assert answer.body.contains?("{\"name\": \"q\", \"queued\": 1,")
+  end
+end
+
 test "two workers race over the wire for one job, and at most one of them holds it"
   http = Http.fixture()
   port = started(http, Fs.fixture(), Clock.fixture())
@@ -301,5 +347,5 @@ test "over the wire, every answer is right or 503, and every job ends done once 
   assert ended
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (6), property (0 seeds), sim (100 runs)
           proven: not run
