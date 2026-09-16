@@ -1,6 +1,6 @@
 """The entry point: `serve`, `compact`, `verify`, `client`, and `check`. Exit 2 on a usage
 error, 1 if `<dir>` cannot be opened, holds an ill-formed record, or the port cannot be
-bound."""
+bound, and 70 when `serve` has spent its restart budget."""
 
 import asyncio
 import re
@@ -11,16 +11,19 @@ from pathlib import Path
 from typing import TextIO
 
 from jobq import client
+from jobq.board import BoardOptions
 from jobq.jobs import STATES
-from jobq.server import HOST, HttpServer, ServerThread, serve
+from jobq.server import EXIT_SPENT, HOST, HttpServer, ServerThread, serve
 from jobq.store import Store, StoreOpenError, compact
 
 USAGE = (
-    "usage: jobq serve <dir> [--port N] | jobq compact <dir> | jobq verify <dir> | "
+    "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] "
+    "[--crash-every N] | jobq compact <dir> | jobq verify <dir> | "
     "jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 )
 DEFAULT_PORT = 7900
 EXIT_OK, EXIT_FAILURE, EXIT_USAGE = 0, 1, 2
+SERVE_FLAGS = ("--port", "--max-restarts", "--restart-window", "--crash-every")
 NO_TOKEN = "-"  # noqa: S105 - the word for "send no authorization header"
 
 _DIGITS = re.compile(r"[0-9]{1,5}")
@@ -42,10 +45,9 @@ def run(argv: Sequence[str], stdout: TextIO, stderr: TextIO) -> int:
 
 def _dispatch(argv: list[str], stdout: TextIO, stderr: TextIO) -> int:
     match argv:
-        case ["serve", directory]:
-            return _serve(Path(directory), DEFAULT_PORT, stderr)
-        case ["serve", directory, "--port", port]:
-            return _serve(Path(directory), parse_port(port, allow_zero=True), stderr)
+        case ["serve", directory, *flags]:
+            port, options = parse_serve_flags(flags)
+            return _serve(Path(directory), port, options, stderr)
         case ["compact", directory]:
             return _compact(Path(directory), stdout, stderr)
         case ["verify", directory]:
@@ -65,6 +67,39 @@ def parse_port(text: str, allow_zero: bool) -> int:
     return port
 
 
+def parse_serve_flags(flags: Sequence[str]) -> tuple[int, BoardOptions]:
+    """`[--port N] [--max-restarts K] [--restart-window S] [--crash-every N]`, in any order,
+    each at most once."""
+    if len(flags) % 2:
+        raise UsageError("every serve option takes a value")
+    given: dict[str, str] = {}
+    for flag, value in zip(flags[::2], flags[1::2], strict=True):
+        if flag not in SERVE_FLAGS:
+            raise UsageError(f"unknown serve option {flag!r}")
+        if flag in given:
+            raise UsageError(f"{flag} is given twice")
+        given[flag] = value
+    port = parse_port(given.get("--port", str(DEFAULT_PORT)), allow_zero=True)
+    options = BoardOptions(
+        max_restarts=parse_count("--max-restarts", given, BoardOptions.max_restarts, 0),
+        restart_window_s=parse_count(
+            "--restart-window", given, int(BoardOptions.restart_window_s), 1
+        ),
+        crash_every=parse_count("--crash-every", given, BoardOptions.crash_every, 0),
+    )
+    return port, options
+
+
+def parse_count(flag: str, given: dict[str, str], default: int, least: int) -> int:
+    """A whole number from `least` to 99,999, or `default` when the flag is not given."""
+    text = given.get(flag)
+    if text is None:
+        return default
+    if _DIGITS.fullmatch(text) is None or int(text) < least:
+        raise UsageError(f"{flag} must be a whole number from {least} to 99999, got {text!r}")
+    return int(text)
+
+
 def parse_call(words: Sequence[str]) -> client.Call:
     """`<token> <method> <path> [<json>]`; the token `-` sends no authorization header."""
     token, method, path, *body = words
@@ -79,8 +114,8 @@ def parse_call(words: Sequence[str]) -> client.Call:
     )
 
 
-def _serve(directory: Path, port: int, stderr: TextIO) -> int:
-    async def main() -> None:
+def _serve(directory: Path, port: int, options: BoardOptions, stderr: TextIO) -> int:
+    async def main() -> int:
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
         for signum in (signal.SIGINT, signal.SIGTERM):
@@ -90,17 +125,19 @@ def _serve(directory: Path, port: int, stderr: TextIO) -> int:
             print(f"jobq: serving {directory} on http://{HOST}:{server.port}", file=stderr)
             stderr.flush()
 
-        await serve(directory, port, ready, stop)
+        return await serve(directory, port, ready, stop, options)
 
     try:
-        asyncio.run(main())
+        code = asyncio.run(main())
     except StoreOpenError as unopened:
         print(f"jobq: {unopened}", file=stderr)
         return EXIT_FAILURE
     except OSError as unbound:
         print(f"jobq: cannot listen on port {port}: {unbound.strerror}", file=stderr)
         return EXIT_FAILURE
-    return EXIT_OK
+    if code == EXIT_SPENT:
+        print(f"jobq: stopped serving {directory}: the restart budget is spent", file=stderr)
+    return code
 
 
 def _compact(directory: Path, stdout: TextIO, stderr: TextIO) -> int:

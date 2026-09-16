@@ -157,7 +157,7 @@ class HealthAndStoreTest(QueueCase):
         self.call("POST", "/queues/emails/lease")
         health = body_of(self.call("GET", "/health", token=None))
         counts = {"queued": 0, "scheduled": 1, "leased": 1, "done": 1, "dead": 1}
-        self.assertEqual(health, counts | {"uptime_ms": 250})
+        self.assertEqual(health, counts | {"uptime_ms": 250, "restarts": 0})
 
     def test_a_store_failure_is_503_with_the_store_unchanged(self) -> None:
         self.create()
@@ -409,14 +409,15 @@ class RequestFailureTest(QueueCase):
         self.assertEqual(self.call("POST", "/jobs", {"queue": "e"}).status, 400)
         self.assertEqual(self.call("GET", "/jobs/j_9").status, 404)
 
-    def test_a_broken_contract_is_a_503_and_the_next_request_is_answered(self) -> None:
+    def test_a_broken_contract_restarts_the_board_and_the_next_request_is_answered(self) -> None:
         job_id = self.create()
         broken = mock.patch.object(Queue, "get", side_effect=ContractError("invariant a bug"))
         with broken:
             response = self.call("GET", f"/jobs/{job_id}")
-        refused = {"error": "the request could not be completed"}
+        refused = {"error": "the service is restarting; read the job to learn what happened"}
         self.assertEqual((response.status, response.json()), (503, refused))
         self.assertEqual(body_of(self.call("GET", f"/jobs/{job_id}"))["state"], "queued")
+        self.assertEqual(body_of(self.call("GET", "/health"))["restarts"], 1)
 
     def test_anything_unexpected_is_a_503_that_leaves_the_job_alone(self) -> None:
         job_id = self.create()

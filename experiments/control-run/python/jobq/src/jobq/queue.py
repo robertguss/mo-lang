@@ -12,7 +12,15 @@ from dataclasses import dataclass
 from typing import Concatenate
 
 from jobq.clock import Clock
-from jobq.contract import ensure, invariant, never, require
+from jobq.contract import (
+    BoardFailure,
+    ChaosFailure,
+    ContractError,
+    ensure,
+    invariant,
+    never,
+    require,
+)
 from jobq.jobs import (
     LIST_LIMIT,
     MAX_BACKOFF_MS,
@@ -72,20 +80,46 @@ class Conflict:
 def operation[**P, R](
     method: Callable[Concatenate[Queue, P], R],
 ) -> Callable[Concatenate[Queue, P], R]:
-    """Check the queue's invariants after the operation."""
+    """Check the queue's invariants after the operation. A store that cannot be written is
+    the request's failure and leaves the board as it was; a broken rule is raised as it is;
+    anything else is a `BoardFailure`, since the board may be half changed."""
 
     def checked(queue: Queue, /, *args: P.args, **kwargs: P.kwargs) -> R:
-        result = method(queue, *args, **kwargs)
-        queue.check_invariants()
+        try:
+            result = method(queue, *args, **kwargs)
+            queue.check_invariants()
+        except (StoreError, ContractError, BoardFailure):
+            raise
+        except Exception as unexpected:
+            raise BoardFailure(f"{method.__name__}: {unexpected!r}") from unexpected
         return result
 
     return checked
 
 
+class Chaos:
+    """`--crash-every N`: the N-th, 2N-th, ... job change the board applies fails after its
+    record is on disk. The count lives as long as the process, across restarts; 0 never fails."""
+
+    def __init__(self, every: int = 0) -> None:
+        require(every >= 0, "crash_every is 0 or more")
+        self.every = every
+        self.applied = 0
+
+    def fails(self, changes: int) -> bool:
+        """Count `changes` more applied changes; whether a multiple of `every` was among them."""
+        before = self.applied
+        self.applied += changes
+        return self.every > 0 and self.applied // self.every > before // self.every
+
+
 class Queue:
-    def __init__(self, store: Store, clock: Clock, replayed: Replayed) -> None:
+    def __init__(
+        self, store: Store, clock: Clock, replayed: Replayed, chaos: Chaos | None = None
+    ) -> None:
         self._store = store
         self._clock = clock
+        self._chaos = chaos or Chaos()
         self._jobs: dict[int, Job] = dict(replayed.jobs)
         self._next_number = replayed.next_number
         self._counts: dict[JobState, int] = dict.fromkeys(STATES, 0)
@@ -320,6 +354,8 @@ class Queue:
             elif before is not None:
                 records.append(DeleteRecord(number=before.number))
         self._store.append_all(records)
+        if self._chaos.fails(len(changes)):
+            raise ChaosFailure(f"--crash-every {self._chaos.every} at change {self._chaos.applied}")
         for before, after in changes:
             self._apply(before, after)
 

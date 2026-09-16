@@ -30,3 +30,13 @@ def never(condition: bool, text: str) -> None:
     """A condition no change of state may ever break, checked on every change."""
     if not condition:
         raise ContractError(f"never broken: {text}")
+
+
+class BoardFailure(Exception):
+    """The board failed in a way that is not one request's: a rule broken inside the queue,
+    or an unexpected error while a change was being applied. The board is rebuilt from the
+    log; the request that met the failure is a 503."""
+
+
+class ChaosFailure(BoardFailure):
+    """The failure `--crash-every` injects: after a write is on disk, before it is applied."""

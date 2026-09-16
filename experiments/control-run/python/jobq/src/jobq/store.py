@@ -142,6 +142,7 @@ class Store:
         self._size = size
         self._ops = ops
         self._dirty = False
+        self._closed = False
 
     @classmethod
     def open(cls, directory: Path, ops: FileOps | None = None) -> tuple[Store, Replayed]:
@@ -214,6 +215,10 @@ class Store:
             self._dirty = True
 
     def close(self) -> None:
+        """Close the log and give up the lock; a second close does nothing."""
+        if self._closed:
+            return
+        self._closed = True
         for fd in (self._fd, self._lock_fd, self._dir_fd):
             os.close(fd)
 

@@ -9,6 +9,7 @@ from urllib.parse import parse_qsl
 from pydantic import BaseModel, ValidationError
 
 from jobq.clock import Clock
+from jobq.contract import BoardFailure, ContractError
 from jobq.jobs import (
     CreateJob,
     ErrorBody,
@@ -64,20 +65,30 @@ def _problem(validation: ValidationError) -> str:
 
 
 class Api:
-    def __init__(self, queue: Queue, clock: Clock) -> None:
+    def __init__(
+        self,
+        queue: Queue,
+        clock: Clock,
+        started_ms: int | None = None,
+        restarts: Callable[[], int] = lambda: 0,
+    ) -> None:
         self._queue = queue
         self._clock = clock
-        self._started_ms = clock.now_ms()
+        self._started_ms = clock.now_ms() if started_ms is None else started_ms
+        self._restarts = restarts
 
     def handle(self, request: Request) -> Response:
         """Route, check the token, and answer.
 
-        Whatever goes wrong in here costs this request and nothing else: a store that cannot
-        be written, a broken contract, or anything unforeseen is a 503 with the job the
-        request named unchanged, and the next request is answered as if it never arrived.
+        A store that cannot be written, or anything unforeseen outside the board, costs this
+        request and nothing else: a 503 with the job the request named unchanged. A failure
+        of the board itself (a broken contract, or a `BoardFailure`) is raised to the `Board`,
+        which rebuilds the queue from the log.
         """
         try:
             return self._answer(request)
+        except (ContractError, BoardFailure):
+            raise
         except StoreError as failure:
             return error(503, f"store unavailable: {failure}")
         except Exception as unexpected:  # noqa: BLE001 - one request never takes the rest down
@@ -126,6 +137,7 @@ class Api:
             done=counts["done"],
             dead=counts["dead"],
             uptime_ms=uptime,
+            restarts=self._restarts(),
         )
         return _json(200, health)
 

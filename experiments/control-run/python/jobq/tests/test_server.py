@@ -1,4 +1,6 @@
+import contextlib
 import http.client
+import io
 import json
 import resource
 import socket
@@ -9,19 +11,24 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from bench.bench import write_log
+
 from jobq import server
 from jobq.api import Api, Request, Response
+from jobq.board import BoardOptions
 from jobq.client import Call, ClientResponse, request
 from jobq.server import (
+    EXIT_SPENT,
     HOST,
     BadRequest,
+    QueueRunner,
     ServerThread,
     bearer_token,
     body_length,
     encode_response,
     parse_head,
 )
-from jobq.store import StoreOpenError, replay
+from jobq.store import Store, StoreOpenError, replay
 
 KEEP_ALIVE_TAIL = (
     b"content-length: 2\r\ncontent-type: application/json\r\nconnection: keep-alive\r\n\r\n{}"
@@ -255,6 +262,136 @@ class QueueTimeoutTest(unittest.TestCase):
             hang.set()
             health = request(HOST, thread.port, Call(None, "GET", "/health"), SOCKET_TIMEOUT_S)
             self.assertEqual(health.status, 200)
+
+
+JOB = {"queue": "q", "payload": "x", "max_tries": 3}
+LOAD_JOBS = 20_000  # the log a load of this size leaves: 80,000 records
+
+
+def send(
+    port: int, token: str | None, method: str, path: str, body: object = None
+) -> ClientResponse:
+    text = None if body is None else json.dumps(body)
+    return request(HOST, port, Call(token, method, path, text), SOCKET_TIMEOUT_S)
+
+
+class RestartOverSocketTest(unittest.TestCase):
+    """The board restarts itself under a listener that stays bound."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self._quiet = contextlib.redirect_stderr(io.StringIO())
+        self._quiet.__enter__()
+
+    def tearDown(self) -> None:
+        self._quiet.__exit__(None, None, None)
+        self._tmp.cleanup()
+
+    def test_health_answers_within_a_second_of_a_failure_on_a_loaded_log(self) -> None:
+        write_log(self.dir, LOAD_JOBS, "full")
+        options = BoardOptions(crash_every=1)
+        with ServerThread(self.dir, options=options) as thread:
+            before = send(thread.port, None, "GET", "/health")
+            self.assertEqual(json.loads(before.body)["restarts"], 0)
+            crashed = send(thread.port, "w1", "POST", "/jobs", JOB)
+            failed_at = time.monotonic()
+            self.assertEqual(crashed.status, 503)
+            health = send(thread.port, None, "GET", "/health")
+            self.assertLess(time.monotonic() - failed_at, 1.0)
+            self.assertEqual(health.status, 200)
+            self.assertEqual(json.loads(health.body)["restarts"], 1)
+            new_id = f"j_{LOAD_JOBS + 1}"
+            self.assertEqual(send(thread.port, "w1", "GET", f"/jobs/{new_id}").status, 200)
+        with ServerThread(self.dir) as thread:
+            self.assertEqual(send(thread.port, "w1", "GET", f"/jobs/{new_id}").status, 200)
+            health = send(thread.port, None, "GET", "/health")
+            self.assertEqual(json.loads(health.body)["restarts"], 0)
+
+    def test_a_spent_budget_stops_serve_with_70_and_the_folder_reopens(self) -> None:
+        options = BoardOptions(crash_every=1, max_restarts=2)
+        with ServerThread(self.dir, options=options) as thread:
+            for _ in range(3):
+                self.assertEqual(send(thread.port, "w1", "POST", "/jobs", JOB).status, 503)
+            thread._thread.join(SOCKET_TIMEOUT_S)
+            self.assertFalse(thread._thread.is_alive())
+            self.assertEqual(thread.exit_code, EXIT_SPENT)
+            with self.assertRaises(OSError):
+                send(thread.port, None, "GET", "/health")
+        store, replayed = Store.open(self.dir)
+        store.close()
+        self.assertEqual(list(replayed.jobs), [1, 2, 3])
+
+    def test_requests_while_the_board_rebuilds_are_503_without_waiting(self) -> None:
+        with ServerThread(self.dir) as thread:
+            assert thread.http is not None
+            thread.http.board.restarting = True
+            refused = send(thread.port, "w1", "POST", "/jobs", JOB)
+            self.assertEqual(refused.status, 503)
+            self.assertIn("restarting", refused.body)
+            thread.http.board.restarting = False
+            self.assertEqual(send(thread.port, "w1", "POST", "/jobs", JOB).status, 201)
+            self.assertEqual(list(replay(self.dir).jobs), [1])
+
+    def test_a_queue_thread_that_dies_is_replaced_and_the_board_rebuilt(self) -> None:
+        settle = QueueRunner._settle
+        broken = [2]
+
+        def dying(runner: QueueRunner, *outcome: object) -> None:
+            if broken[0]:
+                broken[0] -= 1
+                raise RuntimeError("the queue thread breaks")
+            settle(runner, *outcome)  # type: ignore[arg-type]
+
+        with ServerThread(self.dir) as thread:
+            self.assertEqual(send(thread.port, "w1", "POST", "/jobs", JOB).status, 201)
+            with mock.patch.object(QueueRunner, "_settle", dying):
+                lost = send(thread.port, "w1", "POST", "/jobs", JOB)
+                self.assertEqual(lost.status, 503)
+                health = send(thread.port, None, "GET", "/health")
+            self.assertEqual((health.status, json.loads(health.body)["restarts"]), (200, 1))
+            self.assertEqual(send(thread.port, "w1", "GET", "/jobs/j_2").status, 200)
+            self.assertEqual(send(thread.port, "w1", "POST", "/jobs", JOB).status, 201)
+
+    def test_the_chaos_switch_under_load(self) -> None:
+        options = BoardOptions(crash_every=7, max_restarts=100_000)
+        statuses: dict[int, int] = {}
+        created: list[str] = []
+        lock = threading.Lock()
+
+        def client(port: int, worker: str) -> None:
+            for _ in range(40):
+                answers = [send(port, worker, "POST", "/jobs", JOB)]
+                answers.append(send(port, worker, "POST", "/queues/q/lease", {"lease_ms": 500}))
+                if answers[-1].status == 200:
+                    job_id = json.loads(answers[-1].body)["id"]
+                    answers.append(send(port, worker, "POST", f"/jobs/{job_id}/ack"))
+                with lock:
+                    for answer in answers:
+                        statuses[answer.status] = statuses.get(answer.status, 0) + 1
+                    if answers[0].status == 201:
+                        created.append(json.loads(answers[0].body)["id"])
+
+        with ServerThread(self.dir, options=options) as thread:
+            workers = [
+                threading.Thread(target=client, args=(thread.port, f"w{n}")) for n in range(16)
+            ]
+            for worker in workers:
+                worker.start()
+            for worker in workers:
+                worker.join(60)
+            assert thread.http is not None
+            restarts = thread.http.board.restarts
+            health = send(thread.port, None, "GET", "/health")
+            self.assertEqual(json.loads(health.body)["restarts"], restarts)
+        self.assertGreater(restarts, 10)
+        self.assertLessEqual(set(statuses), {200, 201, 204, 409, 503})
+        self.assertGreater(statuses[503], 10)
+        on_disk = replay(self.dir).jobs
+        self.assertTrue(all(int(job_id[2:]) in on_disk for job_id in created))
+        with ServerThread(self.dir) as thread:
+            for job_id in created:
+                self.assertEqual(send(thread.port, "w1", "GET", f"/jobs/{job_id}").status, 200)
 
 
 if __name__ == "__main__":

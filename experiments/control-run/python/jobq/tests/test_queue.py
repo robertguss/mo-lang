@@ -537,7 +537,7 @@ class OldLogTest(QueueCase):
         self.queue.store.close()
         shutil.copyfile(FIXTURES / "round7" / LOG_NAME, self.dir / LOG_NAME)
         self.clock.ms = self.STOPPED_MS
-        self.queue, self.api = self.open()
+        self.api = self.open()
 
     def test_the_fixture_is_in_the_old_shape(self) -> None:
         log = (FIXTURES / "round7" / LOG_NAME).read_bytes()
@@ -593,7 +593,7 @@ class OldLogTest(QueueCase):
         before = self.queue.snapshot()
         self.queue.store.close()
         records = compact(self.dir)
-        self.queue, self.api = self.open()
+        self.api = self.open()
         self.assertEqual(records, (14, 6))
         self.assertNotIn(b"attempts", (self.dir / LOG_NAME).read_bytes())
         self.assertEqual(self.queue.snapshot(), before)

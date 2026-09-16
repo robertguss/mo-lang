@@ -229,6 +229,7 @@ class Health(BaseModel):
     done: int = Field(ge=0)
     dead: int = Field(ge=0)
     uptime_ms: int = Field(ge=0)
+    restarts: int = Field(ge=0)
 
 
 class QueueCounts(BaseModel):

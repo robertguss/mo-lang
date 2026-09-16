@@ -1,8 +1,12 @@
-"""The listener: HTTP/1.1 over asyncio streams, one queue, one worker thread.
+"""The listener: HTTP/1.1 over asyncio streams, one board, one worker thread.
 
-The queue is only touched from one thread (`QueueRunner`), so its operations never
-interleave. Every wait on a socket carries a timeout, and so does every queue touch: one
+The board is only touched from one thread (`QueueRunner`), so its operations never
+interleave. Every wait on a socket carries a timeout, and so does every board touch: one
 that does not answer in five seconds is a 503 and the listener goes on to the next request.
+
+The board restarts itself (`jobq.board`); while it rebuilds, requests are a 503 without
+waiting for it. A worker thread that dies is replaced, and the board rebuilt on the new one.
+When the restart budget is spent, `serve` stops and returns `EXIT_SPENT`.
 """
 
 import asyncio
@@ -16,11 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from jobq.api import Api, Request, Response, error
-from jobq.clock import Clock, SystemClock
+from jobq.api import Request, Response, error
+from jobq.board import Board, BoardOptions
 from jobq.jobs import token_problem
-from jobq.queue import Queue
-from jobq.store import FileOps, Store
 
 HOST = "127.0.0.1"
 # within: an accepted connection must finish sending a request head in this long, or it
@@ -37,6 +39,7 @@ SWEEP_INTERVAL_S = 1.0
 # and the listener is free again (the spec's five seconds).
 QUEUE_TIMEOUT_S = 5.0
 BACKLOG = 4096
+EXIT_SPENT = 70  # the restart budget is spent
 MAX_HEAD_BYTES = 16 * 1024
 MAX_BODY_BYTES = 1024 * 1024
 
@@ -55,6 +58,10 @@ _REASONS = {
     503: "Service Unavailable",
 }
 _CONTENT_LENGTH = re.compile(r"[0-9]{1,10}")
+
+
+class RunnerDied(Exception):
+    """The thread that holds the board stopped before it answered."""
 
 
 class BadRequest(Exception):
@@ -165,6 +172,8 @@ class QueueRunner:
         self._wake = threading.Event()
         self._closed = False
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._current: asyncio.Future[object] | None = None
+        self.died = False
         self._thread = threading.Thread(target=self._work, name="jobq-queue", daemon=True)
 
     async def run[T](self, work: Callable[[], T]) -> T:
@@ -186,18 +195,41 @@ class QueueRunner:
         self._wake.set()
 
     def _work(self) -> None:
-        """Wait, then take everything that is waiting, in the order it was asked for."""
-        while True:
-            self._wake.wait()
-            self._wake.clear()
-            if self._closed:
-                return
-            while self._pending:
-                work, future = self._pending.popleft()
-                try:
-                    self._settle(future, work(), None)
-                except BaseException as failure:  # noqa: BLE001 - handed to the request
-                    self._settle(future, None, failure)
+        """Wait, then take everything that is waiting, in the order it was asked for. If this
+        loop itself ever ends unasked, every touch it holds fails with `RunnerDied`."""
+        try:
+            while True:
+                self._wake.wait()
+                self._wake.clear()
+                if self._closed:
+                    return
+                while self._pending:
+                    work, future = self._pending.popleft()
+                    self._current = future
+                    try:
+                        self._settle(future, work(), None)
+                    except BaseException as failure:  # noqa: BLE001 - handed to the request
+                        self._settle(future, None, failure)
+                    self._current = None
+        finally:
+            if not self._closed:
+                self._die()
+
+    def _die(self) -> None:
+        self.died = True
+        print("jobq: the queue thread died", file=sys.stderr)
+        held = [future for _, future in self._pending]
+        self._pending.clear()
+        if self._current is not None:
+            held.insert(0, self._current)
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            return
+        for future in held:
+            with contextlib.suppress(RuntimeError):
+                loop.call_soon_threadsafe(
+                    _finish, future, None, RunnerDied("the queue thread died")
+                )
 
     def _settle(
         self, future: asyncio.Future[object], value: object, failure: BaseException | None
@@ -210,14 +242,41 @@ class QueueRunner:
 
 
 class HttpServer:
-    def __init__(self, api: Api, queue: Queue) -> None:
-        self._api = api
-        self._queue = queue
+    def __init__(self, board: Board) -> None:
+        self._board = board
         self._server: asyncio.Server | None = None
         self._sweeper: asyncio.Task[None] | None = None
         self._runner = QueueRunner()
+        self._reviving = asyncio.Lock()
+        # Set when the restart budget is spent: `serve` stops and exits 70.
+        self.spent = asyncio.Event()
         self.connections = 0
         self.port = 0
+
+    @property
+    def board(self) -> Board:
+        return self._board
+
+    async def touch[T](self, work: Callable[[], T]) -> T:
+        """`work` on the board's thread. RunnerDied when that thread died on the way; the
+        thread is replaced and the board rebuilt before this returns."""
+        runner = self._runner
+        try:
+            return await runner.run(work)
+        except RunnerDied:
+            await self._revive(runner)
+            raise
+        finally:
+            if self._board.exhausted:
+                self.spent.set()
+
+    async def _revive(self, dead: QueueRunner) -> None:
+        async with self._reviving:
+            if self._runner is not dead:
+                return
+            self._board.restarting = True
+            self._runner = QueueRunner()
+            await self._runner.run(lambda: self._board.fail("the queue thread died"))
 
     async def start(self, host: str, port: int) -> int:
         """Bind and listen; the bound port. OSError when the port cannot be bound."""
@@ -242,7 +301,7 @@ class HttpServer:
         while True:
             await asyncio.sleep(SWEEP_INTERVAL_S)
             try:
-                await self._runner.run(self._queue.expire_due)
+                await self.touch(self._board.expire_due)
             except Exception as failure:  # noqa: BLE001 - the next look is taken all the same
                 print(f"jobq: the idle look failed: {failure}", file=sys.stderr)
 
@@ -290,12 +349,19 @@ class HttpServer:
             token=bearer_token(head.headers.get("authorization")),
             body=body,
         )
-        try:
-            response = await self._runner.run(lambda: self._api.handle(request))
-        except TimeoutError as slow:
-            response = error(503, str(slow))
+        response = await self._answer(request)
         await self._send(writer, response, head.keep_alive, deadline)
         return head.keep_alive
+
+    async def _answer(self, request: Request) -> Response:
+        if self._board.restarting or self._board.exhausted:
+            return error(503, "the service is restarting; try again shortly")
+        try:
+            return await self.touch(lambda: self._board.handle(request))
+        except TimeoutError as slow:
+            return error(503, str(slow))
+        except RunnerDied:
+            return error(503, "the service is restarting; read the job to learn what happened")
 
     @staticmethod
     async def _send(
@@ -306,29 +372,29 @@ class HttpServer:
         await asyncio.wait_for(writer.drain(), remaining)
 
 
-def open_queue(
-    directory: Path, clock: Clock | None = None, ops: FileOps | None = None
-) -> tuple[Queue, Api]:
-    """Open and replay the store under `directory`. StoreOpenError when it cannot."""
-    the_clock = clock or SystemClock()
-    store, replayed = Store.open(directory, ops)
-    queue = Queue(store, the_clock, replayed)
-    return queue, Api(queue, the_clock)
-
-
 async def serve(
-    directory: Path, port: int, ready: Callable[[HttpServer], None], stop: asyncio.Event
-) -> None:
-    """Serve until `stop` is set. StoreOpenError or OSError before `ready` is called."""
-    queue, api = open_queue(directory)
-    server = HttpServer(api, queue)
+    directory: Path,
+    port: int,
+    ready: Callable[[HttpServer], None],
+    stop: asyncio.Event,
+    options: BoardOptions | None = None,
+) -> int:
+    """Serve until `stop` is set (0) or the restart budget is spent (`EXIT_SPENT`).
+    StoreOpenError or OSError before `ready` is called."""
+    board = Board(directory, options=options)
+    server = HttpServer(board)
     try:
         await server.start(HOST, port)
         ready(server)
-        await stop.wait()
+        stopped = asyncio.create_task(stop.wait())
+        spent = asyncio.create_task(server.spent.wait())
+        await asyncio.wait([stopped, spent], return_when=asyncio.FIRST_COMPLETED)
+        stopped.cancel()
+        spent.cancel()
+        return EXIT_SPENT if server.spent.is_set() else 0
     finally:
         await server.stop()
-        queue.store.close()
+        board.close()
 
 
 class ServerThread:
@@ -337,9 +403,11 @@ class ServerThread:
     START_TIMEOUT_S = 10.0  # within: chosen, covers replaying a large log at start
     STOP_TIMEOUT_S = 10.0  # within: chosen
 
-    def __init__(self, directory: Path, port: int = 0) -> None:
+    def __init__(self, directory: Path, port: int = 0, options: BoardOptions | None = None) -> None:
         self._directory = directory
         self._port = port
+        self._options = options
+        self.exit_code: int | None = None
         self._ready = threading.Event()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stop: asyncio.Event | None = None
@@ -358,14 +426,17 @@ class ServerThread:
 
     def __exit__(self, *_exc: object) -> None:
         if self._loop is not None and self._stop is not None:
-            self._loop.call_soon_threadsafe(self._stop.set)
+            with contextlib.suppress(RuntimeError):  # the loop ended on its own: budget spent
+                self._loop.call_soon_threadsafe(self._stop.set)
         self._thread.join(self.STOP_TIMEOUT_S)
 
     def _run(self) -> None:
         async def main() -> None:
             self._loop = asyncio.get_running_loop()
             self._stop = asyncio.Event()
-            await serve(self._directory, self._port, self._started, self._stop)
+            self.exit_code = await serve(
+                self._directory, self._port, self._started, self._stop, self._options
+            )
 
         try:
             asyncio.run(main())

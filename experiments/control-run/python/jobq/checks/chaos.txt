@@ -1,0 +1,11 @@
+# Played against `jobq serve --crash-every 3 --max-restarts 1`: the third write fails after
+# it is on disk and the board restarts; the sixth write finds the budget spent.
+- GET /health
+w1 POST /jobs {"queue": "emails", "payload": "first", "max_tries": 2}
+w1 POST /queues/emails/lease {"lease_ms": 60000}
+w1 POST /jobs/j_1/ack
+w1 GET /jobs/j_1
+- GET /health
+w1 POST /jobs {"queue": "emails", "payload": "second", "max_tries": 2}
+w1 POST /jobs {"queue": "emails", "payload": "third", "max_tries": 2}
+w1 POST /jobs {"queue": "emails", "payload": "fourth", "max_tries": 2}

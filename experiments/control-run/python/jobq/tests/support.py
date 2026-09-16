@@ -1,4 +1,4 @@
-"""Shared helpers: a queue on a temporary directory with a fake clock, and API calls."""
+"""Shared helpers: a board on a temporary directory with a fake clock, and API calls."""
 
 import errno
 import json
@@ -7,10 +7,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jobq.api import Api, Request, Response
+from jobq.api import Request, Response
+from jobq.board import Board, BoardOptions
 from jobq.clock import FakeClock
 from jobq.queue import Queue
-from jobq.server import open_queue
 from jobq.store import FileOps
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -35,25 +35,30 @@ class FailingOps:
 
 
 class QueueCase(unittest.TestCase):
-    """A fresh queue per test under a temporary directory, with a fake clock."""
+    """A fresh board per test under a temporary directory, with a fake clock. `queue` is the
+    board's current queue, so it follows the board across its own restarts."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self._tmp.name)
         self.clock = FakeClock()
         self.ops = FailingOps()
-        self.queue, self.api = self.open()
+        self.api = self.open()
 
     def tearDown(self) -> None:
-        self.queue.store.close()
+        self.api.close()
         self._tmp.cleanup()
 
-    def open(self, ops: FileOps | None = None) -> tuple[Queue, Api]:
-        return open_queue(self.dir, self.clock, ops or self.ops)
+    @property
+    def queue(self) -> Queue:
+        return self.api.queue
+
+    def open(self, ops: FileOps | None = None, options: BoardOptions | None = None) -> Board:
+        return Board(self.dir, self.clock, ops or self.ops, options)
 
     def restart(self) -> None:
-        self.queue.store.close()
-        self.queue, self.api = self.open()
+        self.api.close()
+        self.api = self.open()
 
     def call(
         self,

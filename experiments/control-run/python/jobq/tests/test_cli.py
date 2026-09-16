@@ -9,11 +9,12 @@ import threading
 import unittest
 from pathlib import Path
 
-from jobq.cli import EXIT_FAILURE, EXIT_OK, EXIT_USAGE, run
+from jobq.board import BoardOptions
+from jobq.cli import DEFAULT_PORT, EXIT_FAILURE, EXIT_OK, EXIT_USAGE, parse_serve_flags, run
 from jobq.client import Call, request
 from jobq.clock import SystemClock
 from jobq.queue import Queue
-from jobq.server import HOST, ServerThread
+from jobq.server import EXIT_SPENT, HOST, ServerThread
 from jobq.store import LOG_NAME, Store
 from support import FIXTURES
 
@@ -53,6 +54,16 @@ class UsageTest(CliCase):
             ["serve", d, "--port", "x"],
             ["serve", d, "--port", "65536"],
             ["serve", d, "--verbose", "1"],
+            ["serve", d, "--crash-every"],
+            ["serve", d, "--crash-every", "-1"],
+            ["serve", d, "--crash-every", "x"],
+            ["serve", d, "--max-restarts", "100000"],
+            ["serve", d, "--restart-window", "0"],
+            ["serve", d, "--port", "0", "--port", "1"],
+            ["compact", d, "--crash-every", "1"],
+            ["verify", d, "--crash-every", "1"],
+            ["check", d, "script", "--crash-every", "1"],
+            ["client", HOST, "7900", "w1", "GET", "/health", "{}", "--crash-every"],
             ["compact"],
             ["verify"],
             ["verify", d, "extra"],
@@ -65,6 +76,16 @@ class UsageTest(CliCase):
             code, out, err = invoke(*argv)
             self.assertEqual((code, out), (EXIT_USAGE, ""), argv)
             self.assertEqual(err.count("\n"), 1, argv)
+
+
+class ServeFlagsTest(unittest.TestCase):
+    def test_defaults(self) -> None:
+        self.assertEqual(parse_serve_flags([]), (DEFAULT_PORT, BoardOptions(5, 60, 0)))
+
+    def test_every_flag_in_any_order(self) -> None:
+        flags = ["--crash-every", "3", "--restart-window", "10", "--port", "0"]
+        flags += ["--max-restarts", "0"]
+        self.assertEqual(parse_serve_flags(flags), (0, BoardOptions(0, 10, 3)))
 
 
 class ServeTest(CliCase):
@@ -105,6 +126,34 @@ class ServeTest(CliCase):
             if process.stderr is not None:
                 process.stderr.close()
         self.assertIn(b'"payload":"x"', (self.dir / LOG_NAME).read_bytes())
+
+    def test_serve_with_a_spent_budget_exits_70_and_the_folder_verifies(self) -> None:
+        argv = ["serve", str(self.dir), "--port", "0", "--crash-every", "2"]
+        argv += ["--max-restarts", "1", "--restart-window", "60"]
+        process = subprocess.Popen(
+            [sys.executable, "-m", "jobq", *argv], stderr=subprocess.PIPE, text=True
+        )
+        killer = threading.Timer(PROCESS_TIMEOUT_S, process.kill)
+        killer.start()
+        try:
+            assert process.stderr is not None
+            port = int(process.stderr.readline().rsplit(":", 1)[1])
+            body = json.dumps({"queue": "q", "payload": "x", "max_tries": 1})
+            statuses = []
+            for _ in range(4):
+                statuses.append(request(HOST, port, Call("w1", "POST", "/jobs", body)).status)
+            self.assertEqual(statuses, [201, 503, 201, 503])
+            self.assertEqual(process.wait(PROCESS_TIMEOUT_S), EXIT_SPENT)
+            self.assertIn("the restart budget is spent", process.stderr.read())
+        finally:
+            killer.cancel()
+            process.kill()
+            process.wait(PROCESS_TIMEOUT_S)
+            if process.stderr is not None:
+                process.stderr.close()
+        code, out, _ = invoke("verify", str(self.dir))
+        self.assertEqual(code, EXIT_OK)
+        self.assertTrue(out.startswith("4 jobs: queued 4,"), out)
 
 
 class CompactTest(CliCase):

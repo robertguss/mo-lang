@@ -4,12 +4,16 @@ After every request: the store holds exactly what the queue holds, a 503 changed
 but what a look moves (run-out leases and due scheduled jobs), no job was held by two
 workers, tries stayed within bounds, no scheduled job moved before its run_at, a done job
 never changed, a dead job changed only by its retry, and `/queues` lists exactly the queues
-holding a job. Then the folder refuses every write for a while: each write is a 503, reads
-still answer, nothing changes, and the first write after it goes through with no restart.
+holding a job. The board also fails on purpose at random writes, after the record is on
+disk: the request is a 503, the board restarts, and it holds exactly what the log holds.
+Then the folder refuses every write for a while: each write is a 503, reads still answer,
+nothing changes, and the first write after it goes through with no restart.
 Once the faults stop and the workers keep working, every job ends done or dead.
 """
 
+import contextlib
 import errno
+import io
 import json
 import os
 import random
@@ -19,10 +23,10 @@ from pathlib import Path
 from unittest import mock
 
 from jobq.api import Request, Response
+from jobq.board import Board, BoardOptions
 from jobq.clock import FakeClock
 from jobq.jobs import STATES, Job, JobOut
-from jobq.queue import Queue
-from jobq.server import open_queue
+from jobq.queue import Chaos, Queue
 from jobq.store import DeleteRecord, PutRecord, replay
 
 SEEDS = 100
@@ -31,6 +35,9 @@ UNWRITABLE_STEPS = 5
 DRAIN_ROUNDS = 400
 FILE_FAULT_RATE = 0.15
 SOCKET_DROP_RATE = 0.1
+CRASH_RATE = 0.05
+# The simulation's restarts are never meant to spend the budget.
+UNSPENT = BoardOptions(max_restarts=10**9)
 QUEUES = ("mail", "report")
 WORKERS = ("w1", "w2", "w3")
 
@@ -58,6 +65,17 @@ class FaultyOps:
             raise OSError(errno.EIO, "injected fsync failure")
 
 
+class RandomChaos:
+    """`Chaos.fails` at `rate` per batch of changes the board applies, drawn from `rng`."""
+
+    def __init__(self, rng: random.Random) -> None:
+        self.rng = rng
+        self.rate = 0.0
+
+    def fails(self, _changes: int) -> bool:
+        return self.rng.random() < self.rate
+
+
 class Violation(AssertionError):
     pass
 
@@ -81,7 +99,8 @@ class Sim:
         self.clock = FakeClock()
         self.ops = FaultyOps(random.Random(seed + 1_000_003))
         self.drop_rate = 0.0
-        self.queue, self.api = open_queue(directory, self.clock, self.ops)
+        self.chaos = RandomChaos(random.Random(seed + 2_000_003))
+        self.board = Board(directory, self.clock, self.ops, UNSPENT)
         self.beliefs: dict[str, tuple[str, int]] = {}  # job id -> (worker, lease_until_ms)
         self.finished: dict[int, Job] = {}
         self.dropped = 0
@@ -89,6 +108,11 @@ class Sim:
         self.listed = 0
         self.scheduled = 0
         self.retried = 0
+        self.crashes = 0
+
+    @property
+    def queue(self) -> Queue:
+        return self.board.queue
 
     def check(self, condition: bool, text: str) -> None:
         if not condition:
@@ -101,19 +125,31 @@ class Sim:
             self.dropped += 1
             return None
         before = self.queue.snapshot()
-        response = self.api.handle(request)
-        self.verify(request, response, before)
+        restarts = self.board.restarts
+        quiet = contextlib.redirect_stderr(io.StringIO())
+        with mock.patch.object(Chaos, "fails", self.chaos.fails), quiet:
+            response = self.board.handle(request)
+        crashed = self.board.restarts != restarts
+        self.check(not self.board.exhausted, "the budget is never spent")
+        self.check(not crashed or response.status == 503, "a failed board answers 503")
+        self.verify(request, response, before, crashed)
         if self.rng.random() < self.drop_rate:
             self.dropped += 1
             return None
         return response
 
-    def verify(self, request: Request, response: Response, before: dict[int, Job]) -> None:
+    def verify(
+        self, request: Request, response: Response, before: dict[int, Job], crashed: bool
+    ) -> None:
+        """`crashed`: the board failed in this request, so its 503 may have left the write on
+        disk, and so on the board; every other 503 changed nothing."""
         after = self.queue.snapshot()
         now = self.clock.now_ms()
         self.check(response.status != 500, "no request is an internal error")
         self.check(replay(self.dir).jobs == after, "the store holds exactly what the queue holds")
-        if response.status == 503:
+        if crashed:
+            self.crashes += 1
+        elif response.status == 503:
             self.unavailable += 1
             self.check(after.keys() == before.keys(), "a 503 adds or removes no job")
             for number, job in after.items():
@@ -121,7 +157,7 @@ class Sim:
                 self.check(job == old or _moved_at_a_look(old, job), "a 503 changes only a look's")
         removed = before.keys() - after.keys()
         if removed:
-            deleted = request.method == "DELETE" and response.status == 204
+            deleted = request.method == "DELETE" and (response.status == 204 or crashed)
             self.check(deleted and len(removed) == 1, "a job is only ever lost to its delete")
         for number, job in after.items():
             self.check(job.tries <= job.max_tries, "tries never exceed max_tries")
@@ -134,7 +170,7 @@ class Sim:
             if number in self.finished:
                 if job != self.finished[number]:
                     self.check(
-                        self._retried(request, response, self.finished[number], job),
+                        self._retried(request, response, self.finished[number], job, crashed),
                         "a done job never changes, and a dead one only by its retry",
                     )
                     self.retried += 1
@@ -161,10 +197,13 @@ class Sim:
         self.listed += 1
 
     @staticmethod
-    def _retried(request: Request, response: Response, finished: Job, job: Job) -> bool:
+    def _retried(
+        request: Request, response: Response, finished: Job, job: Job, crashed: bool
+    ) -> bool:
         route = request.method == "POST" and request.path == f"/jobs/{job.id}/retry"
         reset = job.state == "queued" and job.tries == 0 and job.reason is None
-        return route and response.status == 200 and finished.state == "dead" and reset
+        answered = response.status == 200 or crashed
+        return route and answered and finished.state == "dead" and reset
 
     # The clients.
 
@@ -213,8 +252,8 @@ class Sim:
 
     def restart(self) -> None:
         before = self.queue.snapshot()
-        self.queue.store.close()
-        self.queue, self.api = open_queue(self.dir, self.clock, self.ops)
+        self.board.close()
+        self.board = Board(self.dir, self.clock, self.ops, UNSPENT)
         self.check(self.queue.snapshot() == before, "no job is lost across a restart")
 
     def step(self) -> None:
@@ -247,6 +286,7 @@ class Sim:
 
     def drain(self) -> None:
         self.ops.rate = 0.0
+        self.chaos.rate = 0.0
         self.drop_rate = 0.0
         for _ in range(DRAIN_ROUNDS):
             if all(job.state in {"done", "dead"} for job in self.queue.snapshot().values()):
@@ -264,6 +304,7 @@ class Sim:
         folder can be written again goes through with no restart."""
         self.ops.rate = 0.0
         self.drop_rate = 0.0
+        self.chaos.rate = 0.0
         settled = self.send(Request("GET", "/health"))  # nothing is due, so no read writes
         self.check(settled is not None and settled.status == 200, "the look before is taken")
         before = self.queue.snapshot()
@@ -287,6 +328,7 @@ class Sim:
     def run(self) -> None:
         self.ops.rate = FILE_FAULT_RATE
         self.drop_rate = SOCKET_DROP_RATE
+        self.chaos.rate = CRASH_RATE
         for _ in range(FAULT_STEPS):
             self.step()
         self.unwritable()
@@ -300,7 +342,7 @@ def run_seed(seed: int) -> Sim:
         try:
             sim.run()
         finally:
-            sim.queue.store.close()
+            sim.board.close()
     return sim
 
 
@@ -314,6 +356,7 @@ class SimulationTest(unittest.TestCase):
         self.assertGreater(sum(sim.scheduled for sim in sims), SEEDS)
         self.assertGreater(sum(sim.retried for sim in sims), SEEDS // 10)
         self.assertGreater(sum(sim.listed for sim in sims), SEEDS)
+        self.assertGreater(sum(sim.crashes for sim in sims), SEEDS)
 
     def test_the_simulation_catches_a_change_applied_before_it_is_durable(self) -> None:
         def applied_first(queue: Queue, before: Job | None, after: Job | None) -> None:

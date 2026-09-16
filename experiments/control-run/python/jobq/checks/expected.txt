@@ -3,7 +3,7 @@
 {"error":"missing bearer token"}
 > - GET /health
 200
-{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>}
+{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>,"restarts":0}
 > w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_tries": 2}
 201
 {"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -157,7 +157,7 @@ jobq: compacted <dir>: <n> records to 6
 {"id":"j_7","queue":"emails","state":"queued","payload":"after restart","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
 > - GET /health
 200
-{"queued":2,"scheduled":1,"leased":0,"done":2,"dead":0,"uptime_ms":<n>}
+{"queued":2,"scheduled":1,"leased":0,"done":2,"dead":0,"uptime_ms":<n>,"restarts":0}
 > w1 GET /jobs/j_1
 200
 {"id":"j_1","queue":"emails","state":"done","payload":"done job","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -187,3 +187,33 @@ jobq: compacted <old>: <n> records to 7
 > w1 GET /jobs?state=done
 200
 {"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"done job","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}]}
+> - GET /health
+200
+{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>,"restarts":0}
+> w1 POST /jobs {"queue": "emails", "payload": "first", "max_tries": 2}
+201
+{"id":"j_1","queue":"emails","state":"queued","payload":"first","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /queues/emails/lease {"lease_ms": 60000}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"first","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>"}
+> w1 POST /jobs/j_1/ack
+503
+{"error":"the service is restarting; read the job to learn what happened"}
+> w1 GET /jobs/j_1
+200
+{"id":"j_1","queue":"emails","state":"done","payload":"first","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+> - GET /health
+200
+{"queued":0,"scheduled":0,"leased":0,"done":1,"dead":0,"uptime_ms":<n>,"restarts":1}
+> w1 POST /jobs {"queue": "emails", "payload": "second", "max_tries": 2}
+201
+{"id":"j_2","queue":"emails","state":"queued","payload":"second","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /jobs {"queue": "emails", "payload": "third", "max_tries": 2}
+201
+{"id":"j_3","queue":"emails","state":"queued","payload":"third","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /jobs {"queue": "emails", "payload": "fourth", "max_tries": 2}
+503
+{"error":"jobq is stopping: the restart budget is spent; read the job to learn what happened"}
+serve exited 70
+board failures logged: 2
+4 jobs: queued 3, scheduled 0, leased 0, done 1, dead 0; next id j_5
