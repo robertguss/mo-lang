@@ -94,6 +94,7 @@ Started 15 Sep 2026, 23:21 local, on the Mac, Fable alone. A setup slip recorded
 | M3 kimi-k3 | Go | yes, 23:39 | about 15 min | 4 | 0 of 121 | 1 of 189 (`delay_ms` null accepted as absent, 201; Opus's Go had the same one) | 139k / 78k, one compaction |
 | M3 kimi-k3 | Python | yes, 23:57 | about 35 min | 7 failing checks over 6 causes, first fix right in 5 | 0 of 121 | 0 of 189 | 184k / 90k, one compaction |
 | M2 deepseek-v4-flash | Go | yes, 00:34 | about 11 min | 7 (2 build, 2 vet, 2 test, 1 staticcheck), every first fix right | 0 of 121 | 1 of 189 (the same `delay_ms` null as Opus's and kimi's Go) | 177k / 102k |
+| M2 deepseek-v4-flash | Python | yes, 00:37 | about 14 min | 5, every first fix right | 0 of 121 | 0 of 189 | 141k / 83k |
 
 
 ## Related
