@@ -1,0 +1,14 @@
+elixir  create with an unknown field `extra`         -> 400 {'error': "unknown field 'extra'"}
+elixir  create with delay_ms 0.0 (a float that is whole) -> 400 {'error': 'delay_ms must be an integer'}
+elixir  create with backoff_ms null                  -> 400 {'error': 'backoff_ms must be an integer'}
+elixir  lease at about run_at (100 ms delay, 100 ms later) -> 200
+elixir  a due job in `other` after a lease on `q` only: /health -> scheduled=0
+elixir  retry with a JSON body                       -> 400 None
+elixir  retry of a queued job: the 409 body          -> 200 {'id': 'j_3', 'queue': 'rt', 'state': 'queued', 'payload': 'p', 'tries
+elixir  a job created with delay 5 ms, read at once  -> scheduled run_at=True
+elixir  record with both attempts and tries          -> 200 state=queued tries=0 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+elixir  record with neither count                    -> refused: exited 1: jobq: the log is corrupt at line 1
+elixir  old record whose attempts equal max_attempts while queued -> 200 state=queued tries=2 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+elixir  new record scheduled with run_at in the past -> 200 state=queued tries=0 max_tries=2 backoff_ms=0 run_at=False; lease -> 200
+elixir  new record scheduled without run_at          -> refused: exited 1: jobq: the log is corrupt at line 1
+elixir  old record with backoff_ms present           -> 200 state=queued tries=0 max_tries=2 backoff_ms=250 run_at=False; lease -> 200

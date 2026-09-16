@@ -5,7 +5,7 @@ updated: 2026-09-16
 type: plan
 tags: [runtime, verification, agents, roadmap]
 sources: [directions/d42-elixir-round.md, plans/control-run-7.md, plans/control-run-8.md, spec/programs/01-job-queue.md, spec/programs/01b-job-queue-change.md, spec/design-v0/01-premise.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # The control run, round 10
@@ -42,7 +42,41 @@ If Elixir matches Mo on the suites and the runtime rows, Mo's delta over the BEA
 
 ## Result
 
-*(written after the sessions)*
+Run the night of 15–16 Sep 2026 on Fable's decision, while Robert slept. `mo-r10-elixir` started 23:56 UTC in `w7:pH` and was green on all four checks and `check.sh` at 00:27 (31 minutes; 44 with its bench and report), tagged `r10-v1`; `mo-r10-elixir-change` started 00:43 and was green at 01:00 (16 minutes). Both reports are in the worktree (`REPORT.md`, `REPORT-change.md`) and copied to `control-run-10-suite/`. Verified by Fable: `mix compile --warnings-as-errors`, `mix dialyzer` (0 errors), `mix credo --strict`, `mix test` (104 tests, 4 properties), `check.sh`, an escript of each version. The suites were run on the escripts; `measure.py` ran at 01:44 with nothing else on the disk.
+
+### On Robert's measure, beside rounds 7 and 8
+
+| | Elixir | Mo, native (round 8) | Go | Python |
+|---|---|---|---|---|
+| defects, round 7's suite on the first program (121 checks) | 4 checks, 2 causes | 0 | 0 | 0 |
+| regressions after the change | 0 (the same 4 checks) | 0 | 0 | 0 |
+| defects, the change's suite (189 checks) | 3 checks, 1 cause | 0 | 1 | 0 |
+| creates a second, 100k jobs | 2,765 | 2,246 | 929 | 770 |
+| pairs a second, 1 worker / 32 workers | 385 / 2,870 | 266 / 1,420 | 419 / 428 | 317 / 325 |
+| resident memory at 100k jobs | 237 MiB | 113 MiB | 81 MiB | 189 MiB |
+| feedback loop, warm | 6.99 s (dialyzer, credo, the tests) | 0.81 s | 14.4 s | 7.5 s |
+| third-party at run time / tools | 0 / 3 (`credo`, `dialyxir`, `stream_data`, plus 4 transitive) | 0 / 0 | 0 / 1 | 1 / 2 |
+| wall-clock, the program / the change | 31 min / 16 min | 60 min (round 7) / 34 min | 28 / 15 | 27 / 16 |
+| loops, the program / the change | 14 / 7, every first fix right | 21 (round 7, both tasks) / 9 | 4 (both tasks) / 8 | 10 (both tasks) / 6 |
+
+The two causes under round 7's suite: a bearer token with a space is accepted (Go's round 6 defect, again), and a torn last line is dropped when read but not cut from the file, so the next run appends after it and the run after that finds the log corrupt and exits 1; that second cause is the one the change's suite finds again when it tears the old folder, and it is a durability defect by the spec's own words. Every check specific to the change passed (185 of 188). The Elixir program answers `/health` before its replay is done, so the restart row is not comparable and is left out. Elixir's own bench read 4,974 pairs a second at 32 workers against Fable's client's 2,870; the client's number is the row, as for the other three.
+
+**The fourth oracle** (`oracle4.py --log-format elixir`, fourteen inputs): a queued record already at its `max_tries` is leased and its `tries` go past `max_tries` (Go and Python refuse the folder, Mo's service goes down); a retry sent with a JSON body is `400` where the other three ignore the body; the rest agree with the majority. **P6 was not probed** for a crashed queue process: the oracle's impossible record does not crash the Elixir queue, and no cheap way to kill its GenServer from outside was built tonight; the row stays open.
+
+## Reading, against the predictions
+
+| prediction | threshold | round 10 | held |
+|---|---|---|---|
+| P1, reliability, the first program | 0 or 1 defects | 2 causes, 4 checks | no |
+| P2, the changed program | regressions 0, defects at most 1 | 0; 1 cause, 3 checks | yes, on causes |
+| P3, speed and memory | pairs between Python's 325 and Mo's 1,420; memory between 81 and 300 MiB | 2,870, twice Mo; 237 MiB | no on speed, in Elixir's favour; yes on memory |
+| P4, the loop | above 10 s cold, `mix test` under 5 s | 6.99 s warm for all four, `mix test` 2.4 s | yes on the tests; the warm loop beat the guess |
+| P5, dependencies | at least 3 Hex packages with tools, a JSON package at run time | 0 at run time (OTP 27's `:json`), 3 tools + 4 transitive | no: the run-time column ties Mo |
+| P6, the runtime rows | the kill loses nothing; a crashed queue restarts and the service answers | the kill under load lost nothing (both suites); the crash not probed | open |
+
+**What it says.** The BEAM null hypothesis is alive. One fresh Opus session wrote the queue in Elixir in 31 minutes, half the Mo session's 60 in round 7, with no run-time dependency at all, since OTP 27 ships JSON, and the changed program is twice as fast as the Mo binary at 32 workers on the same disk. Where Mo wins is exact: reliability (0 defects against 2 causes, and the torn-line bug is the kind of durability slip Mo's store recipe and its `never` at rest are written for) and the loop (0.81 s against 7 s). Where the thesis is not yet tested is the one row the runtime claims as its own, P6, a crashed process with the service still answering: round 8 showed Mo's program going down, and the Elixir program was not made to crash tonight. That probe is the first thing to run in the morning, then the reading of chapter 1's null hypothesis can be written honestly: with P6 open, the language layer has earned reliability and the loop, and the BEAM has taken speed, time to write, and the dependency tie.
+
+**Rows.** For the language page: a `never` at rest on the log (round 7's `store.mo`) is what would have caught the torn line; Elixir has no place to write it. For the erosion round: the Elixir program joins generation two with change 2. For measurement 5: 21 loops over two sessions, every first fix right, none a language law.
 
 ## Related
 - [[d42-elixir-round]]
