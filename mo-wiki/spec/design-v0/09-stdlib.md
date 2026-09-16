@@ -138,6 +138,14 @@ In a test, `Clock.fixture()`'s `now` is `Time.fixture()` moved by the simulator'
 
 Session 5, step 22: `Deadline`, `reply_by`, `at_most`, and `fixture`, after program 1 derived three deadlines by hand as sums of literals and two of the sums were wrong.
 
+`Reply(T)` is the asker an `update` arm kept instead of answering: `reply_to`, bound in the arm for a message that carries a reply, moved into a `state` field there and answered from a later arm (chapter 3). It is authority, like `Handle(P)`: it lives in a state field as `Reply(T)`, `Option(Reply(T))`, `List(Reply(T))`, or `Map(K, Reply(T))`, and nowhere else.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Reply(T)` | `answer` | `T` | | answers the ask this `Reply` holds, with the update that calls it; the asker's deadline travelled with it, so an answer after the deadline is dropped, and a second answer to the same ask is dropped too |
+
+Session 8, step 31: `Reply(T)` and `answer`, after round 8's queue answered its workers by a `send` and a `Done` message back, to keep one fsync per batch, and that reply was the one wait no deadline bounded.
+
 ## Files
 
 Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to the scope the `Fs` was narrowed to (`fs.scoped("logs").read_only`), and nothing outside the scope is reachable; a path that leaves it, or anything that is not a readable file, is `Missing(path)` with the path as the program wrote it. A `String` is UTF-8, so a row that gives one gives only text: a file whose bytes are not UTF-8 is `NotText`, and `read_bytes` gives any file's bytes.

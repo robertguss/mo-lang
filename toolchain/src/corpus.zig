@@ -288,9 +288,24 @@ pub fn isProgramPath(path: []const u8) bool {
     return std.mem.eql(u8, rest[slash + 1 ..], "main.mo");
 }
 
+/// Whether the corpus test also runs `rel` through `mo run` and as a binary: a program under
+/// `programs/`, or any other corpus file that names its runs on its first line. `processes/`
+/// holds one of the latter (step 31), a module whose main shows the construct running.
+pub fn isRunnable(io: Io, root: []const u8, rel: []const u8) !bool {
+    if (isProgramPath(rel)) return true;
+    var dir = try Io.Dir.cwd().openDir(io, root, .{});
+    defer dir.close(io);
+    var buf: [6]u8 = undefined;
+    var file = dir.openFile(io, rel, .{}) catch return false;
+    defer file.close(io);
+    var reader = file.reader(io, &.{});
+    reader.interface.readSliceAll(&buf) catch return false;
+    return std.mem.eql(u8, &buf, "# run:");
+}
+
 /// A program's name: its file's, or its folder's.
 pub fn programName(path: []const u8) []const u8 {
-    const rest = path["programs/".len..];
+    const rest = if (std.mem.startsWith(u8, path, "programs/")) path["programs/".len..] else std.fs.path.basename(path);
     if (std.mem.indexOfScalar(u8, rest, '/')) |slash| return rest[0..slash];
     return rest[0 .. rest.len - ".mo".len];
 }
@@ -731,7 +746,7 @@ test "corpus: every example passes every implemented stage; rejects/ is rejected
     var programs: u32 = 0;
     var wrong: u32 = 0;
     for (paths) |rel| {
-        if (!isProgramPath(rel)) continue;
+        if (!try isRunnable(io, root, rel)) continue;
         programs += 1;
         if (!try checkProgram(gpa, io, mo_exe, root, rel)) wrong += 1;
     }
@@ -776,7 +791,7 @@ test "corpus: every module's tests and every program, built by mo build, print w
     // Every program, each # run: line beside mo run.
     var programs: Built = .{};
     for (paths) |rel| {
-        if (isProgramPath(rel)) try checkBuiltProgram(gpa, io, mo_exe, root, rel, &programs);
+        if (try isRunnable(io, root, rel)) try checkBuiltProgram(gpa, io, mo_exe, root, rel, &programs);
     }
     try std.testing.expectEqual(@as(u32, 0), modules.wrong);
     try std.testing.expectEqual(@as(u32, 0), programs.wrong);
