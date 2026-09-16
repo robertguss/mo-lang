@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const usage = "usage: jobq serve <dir> [--port N] | jobq compact <dir> | jobq verify <dir> | " +
+const usage = "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] | jobq compact <dir> | jobq verify <dir> | " +
 	"jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 
 func main() {

@@ -146,6 +146,9 @@ func (s *Store) Append(recs ...record) error {
 	if err := s.repair(); err != nil {
 		return err
 	}
+	// Dirty until the sync returns, so a panic inside the write leaves the
+	// tail to be cut as a failed write's would be.
+	s.dirty = true
 	n, err := s.f.WriteAt(buf, s.size)
 	if err == nil && n != len(buf) {
 		err = io.ErrShortWrite
@@ -154,10 +157,10 @@ func (s *Store) Append(recs ...record) error {
 		err = s.f.Sync()
 	}
 	if err != nil {
-		s.dirty = true
 		_ = s.repair()
 		return fmt.Errorf("%w: %v", ErrStore, err)
 	}
+	s.dirty = false
 	s.size += int64(len(buf))
 	return nil
 }

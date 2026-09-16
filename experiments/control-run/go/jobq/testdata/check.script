@@ -65,3 +65,17 @@ prod DELETE /jobs/j_7
 prod GET /queues
 prod PUT /jobs
 prod GET /nope
+# the board fails after a write reaches the disk and restarts itself
+- GET /health
+crash
+prod POST /jobs {"queue":"crash","payload":"on disk","max_tries":1}
+- GET /health
+prod GET /jobs?queue=crash
+crash
+w7 POST /queues/crash/lease {"lease_ms":1000}
+prod GET /jobs?queue=crash
+w7 POST /jobs/j_8/ack
+- GET /health
+restart
+- GET /health
+prod GET /jobs/j_8

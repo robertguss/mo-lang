@@ -7,7 +7,10 @@
 # tries rename) opens, and compact leaves no old name in its log. 4: `jobq
 # verify` on the folders the run leaves behind, and serve, compact, and
 # verify all refusing testdata/ill, whose second record is a leased job with
-# no worker. 5: GET /queues through the served process.
+# no worker. 5: GET /queues through the served process. 6: the chaos switch
+# on the served process: a write fails after reaching the disk, the service
+# restarts itself and counts it in /health; with a budget of 1 the second
+# failure inside the window exits 70 and the folder verifies.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 tmp="$(mktemp -d)"
@@ -23,8 +26,9 @@ diff -u "$here/testdata/check.expected" "$tmp/check.out"
 
 port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
 client() { timeout 10 "$jobq" client 127.0.0.1 "$port" "$@"; }
-serve() { # serve <dir>
-  timeout 60 "$jobq" serve "$1" --port "$port" 2>> "$tmp/serve.err" &
+serve() { # serve <dir> [options]
+  local dir="$1"; shift
+  timeout 60 "$jobq" serve "$dir" --port "$port" "$@" 2>> "$tmp/serve.err" &
   pid=$!
   for _ in $(seq 100); do
     if client - GET /health > /dev/null 2>&1; then return 0; fi
@@ -95,4 +99,26 @@ for cmd in verify serve compact; do
   fi
   [ "$out" = "$want" ] || { echo "check.sh: jobq $cmd said '$out', want '$want'" >&2; exit 1; }
 done
+
+# 6: the chaos switch and the restart budget.
+mkdir "$tmp/chaos"
+serve "$tmp/chaos" --crash-every 2 --max-restarts 1 --restart-window 60
+expect 200 '"restarts":0' - GET /health
+expect 201 '"id":"j_1"' prod POST /jobs '{"queue":"c","payload":"one","max_tries":1}'
+expect 503 'error' prod POST /jobs '{"queue":"c","payload":"two","max_tries":1}'
+for _ in $(seq 100); do
+  if client - GET /health 2>/dev/null | grep -q '"restarts":1'; then break; fi
+  sleep 0.01
+done
+expect 200 '"restarts":1' - GET /health
+expect 200 '"payload":"two"' prod GET /jobs/j_2
+expect 201 '"id":"j_3"' prod POST /jobs '{"queue":"c","payload":"three","max_tries":1}'
+expect 503 'error' prod POST /jobs '{"queue":"c","payload":"four","max_tries":1}'
+code=0; wait "$pid" || code=$?; pid=""
+[ "$code" = 70 ] || { echo "check.sh: serve past its budget exited $code, want 70" >&2; cat "$tmp/serve.err" >&2; exit 1; }
+timeout 30 "$jobq" verify "$tmp/chaos" | grep -q '^4 jobs: queued 4,' || {
+  echo "check.sh: verify after exit 70 printed the wrong line" >&2; exit 1; }
+if timeout 10 "$jobq" compact "$tmp/chaos" --crash-every 1 2> /dev/null; then
+  echo "check.sh: compact took --crash-every" >&2; exit 1
+fi
 echo "check.sh: ok"

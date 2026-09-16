@@ -82,7 +82,7 @@ func newSimulation(t *testing.T, seed uint64) *simulation {
 	s.store = &Store{f: s.file}
 	s.q = newQueue(s.clock)
 	s.q.finishReplay(s.store)
-	s.api = &API{q: s.q}
+	s.api = &API{b: fixedBoard(t, s.q, s.store)}
 	s.mirror = newQueue(s.clock)
 	return s
 }

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -16,14 +15,29 @@ import (
 type apiHarness struct {
 	t     *testing.T
 	api   *API
-	q     *Queue
+	board *Board
 	file  *memFile
 	clock *manualClock
 }
 
 func newAPIHarness(t *testing.T) *apiHarness {
-	q, _, f, clock := newMemQueue()
-	return &apiHarness{t: t, api: &API{q: q}, q: q, file: f, clock: clock}
+	return newAPIHarnessWith(t, defaultBoardConfig())
+}
+
+func newAPIHarnessWith(t *testing.T, cfg BoardConfig) *apiHarness {
+	clock := newManualClock(time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC))
+	f := &memFile{}
+	b := newMemBoard(t, f, clock, cfg)
+	return &apiHarness{t: t, api: &API{b: b}, board: b, file: f, clock: clock}
+}
+
+// q is the queue the board serves now; it waits out a restart.
+func (h *apiHarness) q() *Queue {
+	h.t.Helper()
+	if !h.board.waitReady(ctx(h.t)) {
+		h.t.Fatal("the board gave up")
+	}
+	return h.board.state().q
 }
 
 // do sends one request; a token of "-" sends no authorization header.
@@ -62,7 +76,7 @@ func TestHealthNeedsNoToken(t *testing.T) {
 	h := newAPIHarness(t)
 	h.clock.Advance(1500 * time.Millisecond)
 	body := h.want("-", "GET", "/health", "", 200)
-	if body != `{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":1500}`+"\n" {
+	if body != `{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":1500,"restarts":0}`+"\n" {
 		t.Errorf("health body %q", body)
 	}
 }
@@ -143,8 +157,8 @@ func TestBadBodiesAre400(t *testing.T) {
 			t.Errorf("400 body %q", resp)
 		}
 	}
-	if len(h.q.jobs) != 0 {
-		t.Errorf("a bad body created %d jobs", len(h.q.jobs))
+	if len(h.q().jobs) != 0 {
+		t.Errorf("a bad body created %d jobs", len(h.q().jobs))
 	}
 }
 
@@ -247,7 +261,7 @@ func TestScheduledJobsThroughTheAPI(t *testing.T) {
 	if got := h.want(w1, "GET", "/jobs?state=scheduled", "", 200); !strings.Contains(got, `"run_at":"2026-09-14T12:00:05.000Z"`) {
 		t.Errorf("state=scheduled gave %s", got)
 	}
-	if got := h.want("-", "GET", "/health", "", 200); got != `{"queued":0,"scheduled":1,"leased":0,"done":0,"dead":0,"uptime_ms":0}`+"\n" {
+	if got := h.want("-", "GET", "/health", "", 200); got != `{"queued":0,"scheduled":1,"leased":0,"done":0,"dead":0,"uptime_ms":0,"restarts":0}`+"\n" {
 		t.Errorf("health %s", got)
 	}
 	h.clock.Advance(5 * time.Second)
@@ -413,27 +427,6 @@ func TestUnwritableStoreAnswers503ForWritesAndStillReads(t *testing.T) {
 	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"q","max_tries":1}`, 201)
 }
 
-// A failure inside one request never stops the next: a panic under the
-// queue's lock is one 503, and the request after it is answered normally.
-func TestAPanicCostsOnlyItsOwnRequest(t *testing.T) {
-	h := newAPIHarness(t)
-	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2}`, 201)
-	h.want(w1, "POST", "/queues/a/lease", `{"lease_ms":1000}`, 200)
-	before := snapshot(h.q)
-	h.file.fail = func(string) bool { panic("the store blew up") }
-	if body := h.want(w1, "POST", "/jobs/j_1/ack", "", 503); !strings.Contains(body, `"error"`) {
-		t.Errorf("a panic answered %q", body)
-	}
-	if got := snapshot(h.q); !reflect.DeepEqual(got, before) {
-		t.Errorf("the panic changed a job: %v", got)
-	}
-	h.file.fail = nil
-	if v := decodeJob(t, h.want(w1, "POST", "/jobs/j_1/ack", "", 200)); v.State != Done {
-		t.Errorf("the request after a panic: %+v", v)
-	}
-	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2}`, 201)
-}
-
 // The same on a real folder made read-only. A write to an fd already open
 // still reaches the disk on macOS, so the folder's mode cannot force the
 // 503 here; what is asserted is the spec's list of allowed answers, that a
@@ -441,12 +434,12 @@ func TestAPanicCostsOnlyItsOwnRequest(t *testing.T) {
 func TestReadOnlyFolderNeverTakesTheServiceDown(t *testing.T) {
 	dir := t.TempDir()
 	clock := newManualClock(time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC))
-	q, s, err := openQueue(dir, clock)
+	b, err := openBoard(dir, clock, defaultBoardConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
-	h := &apiHarness{t: t, api: &API{q: q}, q: q, clock: clock}
+	defer b.stop(ctx(t))
+	h := &apiHarness{t: t, api: &API{b: b}, board: b, clock: clock}
 	if err := os.Chmod(dir, 0o500); err != nil {
 		t.Fatal(err)
 	}

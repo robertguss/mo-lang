@@ -16,9 +16,9 @@ import (
 
 const maxBodyBytes = 256 * 1024
 
-// API serves the HTTP routes of the spec over a Queue.
+// API serves the HTTP routes of the spec over the board's queue.
 type API struct {
-	q *Queue
+	b *Board
 }
 
 type badRequest struct{ msg string }
@@ -26,7 +26,7 @@ type badRequest struct{ msg string }
 func (e *badRequest) Error() string { return e.msg }
 
 // handler returns a status and a body to encode, nil for no body.
-type handler func(r *http.Request, arg, token string) (int, any, error)
+type handler func(q *Queue, r *http.Request, arg, token string) (int, any, error)
 
 type route struct {
 	methods map[string]handler
@@ -62,15 +62,21 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, status, body)
 }
 
-// respond handles one request and returns what to write. Whatever goes
-// wrong inside it costs this request and nothing else: a panic is caught
-// here, after the queue's own defers have released the lock and undone the
-// moves, so the next request is answered as if this one had never arrived.
+// respond handles one request and returns what to write. A panic is caught
+// here and answered 503, after the queue's own defers have released the
+// lock. A panic outside the queue costs this request and nothing else; one
+// under the queue's lock, or a rule the queue broke, has marked the queue
+// broken, and the board takes it down and rebuilds it from the log.
 func (a *API) respond(w http.ResponseWriter, r *http.Request) (status int, body any) {
+	st := a.b.state()
+	if st == nil {
+		return http.StatusServiceUnavailable, errorBody(ErrRestarting.Error())
+	}
 	defer func() {
 		if v := recover(); v != nil {
 			status, body = http.StatusServiceUnavailable, errorBody("the request could not be completed")
 		}
+		a.b.failed(st)
 	}()
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	defer cancel()
@@ -97,7 +103,7 @@ func (a *API) respond(w http.ResponseWriter, r *http.Request) (status int, body 
 	}
 	// The handler returns only after the queue's change is durable, so the
 	// response below is never written before its record.
-	status, body, err := h(r, rt.arg, token)
+	status, body, err := h(st.q, r, rt.arg, token)
 	if err != nil {
 		return errorStatus(err), errorBody(err.Error())
 	}
@@ -176,7 +182,7 @@ func decodeBody(r *http.Request, dst any, allowEmpty bool) error {
 	return nil
 }
 
-func (a *API) create(r *http.Request, _, _ string) (int, any, error) {
+func (a *API) create(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 	var b struct {
 		Queue     *string `json:"queue"`
 		Payload   *string `json:"payload"`
@@ -197,33 +203,33 @@ func (a *API) create(r *http.Request, _, _ string) (int, any, error) {
 	if b.BackoffMS != nil {
 		backoffMS = *b.BackoffMS
 	}
-	j, err := a.q.Create(r.Context(), *b.Queue, *b.Payload, *b.MaxTries, delayMS, backoffMS)
+	j, err := q.Create(r.Context(), *b.Queue, *b.Payload, *b.MaxTries, delayMS, backoffMS)
 	if err != nil {
 		return 0, nil, err
 	}
 	return http.StatusCreated, jobView(j), nil
 }
 
-func (a *API) get(r *http.Request, arg, _ string) (int, any, error) {
+func (a *API) get(q *Queue, r *http.Request, arg, _ string) (int, any, error) {
 	id, ok := parseID(arg)
 	if !ok {
 		return 0, nil, ErrNotFound
 	}
-	j, err := a.q.Get(r.Context(), id)
+	j, err := q.Get(r.Context(), id)
 	if err != nil {
 		return 0, nil, err
 	}
 	return http.StatusOK, jobView(j), nil
 }
 
-func (a *API) list(r *http.Request, _, _ string) (int, any, error) {
+func (a *API) list(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 	query := r.URL.Query()
 	for k, vs := range query {
 		if (k != "queue" && k != "state") || len(vs) != 1 {
 			return 0, nil, &badRequest{"the query takes queue and state, each at most once"}
 		}
 	}
-	jobs, err := a.q.List(r.Context(), query.Get("queue"), query.Get("state"))
+	jobs, err := q.List(r.Context(), query.Get("queue"), query.Get("state"))
 	if err != nil {
 		return 0, nil, err
 	}
@@ -234,18 +240,18 @@ func (a *API) list(r *http.Request, _, _ string) (int, any, error) {
 	return http.StatusOK, map[string][]jobJSON{"jobs": views}, nil
 }
 
-func (a *API) remove(r *http.Request, arg, _ string) (int, any, error) {
+func (a *API) remove(q *Queue, r *http.Request, arg, _ string) (int, any, error) {
 	id, ok := parseID(arg)
 	if !ok {
 		return 0, nil, ErrNotFound
 	}
-	if err := a.q.Delete(r.Context(), id); err != nil {
+	if err := q.Delete(r.Context(), id); err != nil {
 		return 0, nil, err
 	}
 	return http.StatusNoContent, nil, nil
 }
 
-func (a *API) lease(r *http.Request, queue, token string) (int, any, error) {
+func (a *API) lease(q *Queue, r *http.Request, queue, token string) (int, any, error) {
 	var b struct {
 		LeaseMS *int64 `json:"lease_ms"`
 	}
@@ -256,7 +262,7 @@ func (a *API) lease(r *http.Request, queue, token string) (int, any, error) {
 	if b.LeaseMS != nil {
 		ms = *b.LeaseMS
 	}
-	j, ok, err := a.q.Lease(r.Context(), queue, token, ms)
+	j, ok, err := q.Lease(r.Context(), queue, token, ms)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -266,19 +272,19 @@ func (a *API) lease(r *http.Request, queue, token string) (int, any, error) {
 	return http.StatusOK, jobView(j), nil
 }
 
-func (a *API) ack(r *http.Request, arg, token string) (int, any, error) {
+func (a *API) ack(q *Queue, r *http.Request, arg, token string) (int, any, error) {
 	id, ok := parseID(arg)
 	if !ok {
 		return 0, nil, ErrNotFound
 	}
-	j, err := a.q.Ack(r.Context(), id, token)
+	j, err := q.Ack(r.Context(), id, token)
 	if err != nil {
 		return 0, nil, err
 	}
 	return http.StatusOK, jobView(j), nil
 }
 
-func (a *API) fail(r *http.Request, arg, token string) (int, any, error) {
+func (a *API) fail(q *Queue, r *http.Request, arg, token string) (int, any, error) {
 	var b struct {
 		Reason *string `json:"reason"`
 	}
@@ -292,7 +298,7 @@ func (a *API) fail(r *http.Request, arg, token string) (int, any, error) {
 	if !ok {
 		return 0, nil, ErrNotFound
 	}
-	j, err := a.q.Fail(r.Context(), id, token, *b.Reason)
+	j, err := q.Fail(r.Context(), id, token, *b.Reason)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -300,30 +306,31 @@ func (a *API) fail(r *http.Request, arg, token string) (int, any, error) {
 }
 
 // retry takes no body; like ack, it does not read one.
-func (a *API) retry(r *http.Request, arg, _ string) (int, any, error) {
+func (a *API) retry(q *Queue, r *http.Request, arg, _ string) (int, any, error) {
 	id, ok := parseID(arg)
 	if !ok {
 		return 0, nil, ErrNotFound
 	}
-	j, err := a.q.Retry(r.Context(), id)
+	j, err := q.Retry(r.Context(), id)
 	if err != nil {
 		return 0, nil, err
 	}
 	return http.StatusOK, jobView(j), nil
 }
 
-func (a *API) queues(r *http.Request, _, _ string) (int, any, error) {
-	qs, err := a.q.Queues(r.Context())
+func (a *API) queues(q *Queue, r *http.Request, _, _ string) (int, any, error) {
+	qs, err := q.Queues(r.Context())
 	if err != nil {
 		return 0, nil, err
 	}
 	return http.StatusOK, map[string][]QueueCounts{"queues": qs}, nil
 }
 
-func (a *API) health(r *http.Request, _, _ string) (int, any, error) {
-	h, err := a.q.Health(r.Context())
+func (a *API) health(q *Queue, r *http.Request, _, _ string) (int, any, error) {
+	h, err := q.Health(r.Context())
 	if err != nil {
 		return 0, nil, err
 	}
+	h.Restarts = a.b.Restarts()
 	return http.StatusOK, h, nil
 }

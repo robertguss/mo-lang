@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -14,7 +15,9 @@ import (
 // on every run.
 var checkEpoch = time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
 
-// step is one script line: a request, `clock +<ms>`, or `restart`.
+// step is one script line: a request, `clock +<ms>`, `restart` (stop and
+// start the service), or `crash` (the next write the board applies fails, and
+// the board restarts itself).
 type step struct {
 	raw                          string
 	kind                         string
@@ -39,8 +42,8 @@ func parseScript(text string) ([]step, error) {
 }
 
 func parseStep(line string) (step, error) {
-	if line == "restart" {
-		return step{raw: line, kind: "restart"}, nil
+	if line == "restart" || line == "crash" {
+		return step{raw: line, kind: line}, nil
 	}
 	if ms, ok := strings.CutPrefix(line, "clock +"); ok {
 		n, err := strconv.ParseInt(ms, 10, 64)
@@ -111,6 +114,8 @@ func runCheck(dir string, steps []step, out io.Writer) error {
 			if svc, err = start(); err != nil {
 				return err
 			}
+		case "crash":
+			svc.board.crashNext()
 		case "request":
 			status, body, err := doRequest(client, svc.addr, s.token, s.method, s.path, s.payload)
 			if err != nil {
@@ -118,6 +123,15 @@ func runCheck(dir string, steps []step, out io.Writer) error {
 				return err
 			}
 			printResponse(out, status, body)
+			// A request the crash failed is followed by the restart; the
+			// next line waits for it, so the output is the same on every run.
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			ready := svc.board.waitReady(ctx)
+			cancel()
+			if !ready {
+				_ = svc.stop()
+				return fmt.Errorf("the service did not come back after a failure")
+			}
 		}
 	}
 	client.CloseIdleConnections()

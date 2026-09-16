@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	"controlrun/contract"
@@ -16,6 +17,9 @@ var (
 	ErrConflict = errors.New("conflict")
 	ErrBusy     = errors.New("the queue did not answer in time")
 )
+
+// errBroken is a request that found the queue broken by an earlier one.
+var errBroken = fmt.Errorf("%w: the board failed", ErrRestarting)
 
 // Appender is the store as the queue sees it.
 type Appender interface {
@@ -36,6 +40,14 @@ type Queue struct {
 	due     deadlineHeap // run_at of scheduled jobs
 	counts  map[State]int
 	nextID  uint64
+
+	// broken is set under lock by a failure that is not one request's: a
+	// broken rule or a panic. Every later holder of lock leaves at once, and
+	// the board rebuilds the queue from the log.
+	broken atomic.Bool
+	// chaos, when set, is told how many writes each commit applied, after
+	// they are on disk, and fails the commit when it says so.
+	chaos func(n int) bool
 }
 
 // Health is the body of GET /health.
@@ -46,6 +58,7 @@ type Health struct {
 	Done      int   `json:"done"`
 	Dead      int   `json:"dead"`
 	UptimeMS  int64 `json:"uptime_ms"`
+	Restarts  int   `json:"restarts"`
 }
 
 // change is one job's step: old is nil on create, new is nil on delete.
@@ -77,6 +90,16 @@ func (q *Queue) acquire(ctx context.Context) error {
 }
 
 func (q *Queue) release() { <-q.lock }
+
+// guard marks the queue broken when err is a rule the queue itself broke; a
+// failed requires is the caller's and leaves it serving.
+func (q *Queue) guard(err error) error {
+	var v *contract.Violation
+	if errors.As(err, &v) && v.Kind != "requires" {
+		q.broken.Store(true)
+	}
+	return err
+}
 
 // applyRecord replays one store record, checking the nevers and invariants
 // as a live change would. A record's updated_at stands in for the clock.
@@ -233,6 +256,10 @@ func (q *Queue) begin(ctx context.Context) (*tx, error) {
 	if err := q.acquire(ctx); err != nil {
 		return nil, err
 	}
+	if q.broken.Load() {
+		q.release()
+		return nil, errBroken
+	}
 	t := &tx{q: q, now: q.clock.Now()}
 	// A run-out lease with backoff is scheduled after now, so it is never
 	// due in the same look; the order of the two loops does not matter.
@@ -260,7 +287,7 @@ func (q *Queue) begin(ctx context.Context) (*tx, error) {
 			n := *j
 			d.move(&n)
 			c := change{old: j, new: &n}
-			if err := checkNevers(c, t.now); err != nil {
+			if err := q.guard(checkNevers(c, t.now)); err != nil {
 				heap.Push(d.h, e)
 				t.undo()
 				q.release()
@@ -301,7 +328,7 @@ func (t *tx) commit(changes ...change) error {
 		return nil
 	}
 	for _, c := range changes {
-		if err := checkNevers(c, t.now); err != nil {
+		if err := t.q.guard(checkNevers(c, t.now)); err != nil {
 			t.undo()
 			return err
 		}
@@ -309,6 +336,9 @@ func (t *tx) commit(changes ...change) error {
 	if err := t.q.store.Append(records(all)...); err != nil {
 		t.undo()
 		return err
+	}
+	if t.q.chaos != nil && t.q.chaos(len(all)) {
+		panic(errChaos)
 	}
 	t.moved = nil
 	var errs []error
@@ -320,7 +350,7 @@ func (t *tx) commit(changes ...change) error {
 			errs = append(errs, checkInvariants(*c.new))
 		}
 	}
-	return errors.Join(errs...)
+	return t.q.guard(errors.Join(errs...))
 }
 
 // commitReads writes the look's moves if it can. A read is answered even
@@ -334,10 +364,18 @@ func (t *tx) commitReads() error {
 	return nil
 }
 
-// end releases the lock; moves never committed are undone first.
+// end releases the lock; moves never committed are undone first. A panic
+// under the lock breaks the queue before the lock is let go, and goes on up.
 func (t *tx) end() {
+	v := recover()
+	if v != nil {
+		t.q.broken.Store(true)
+	}
 	t.undo()
 	t.q.release()
+	if v != nil {
+		panic(v)
+	}
 }
 
 // Create adds a job: queued, or scheduled at created_at + delayMS when
@@ -464,7 +502,7 @@ func (q *Queue) Lease(ctx context.Context, queue, worker string, leaseMS int64) 
 	}
 	heap.Pop(h)
 	got := *q.jobs[n.ID]
-	return got, true, ensureLeased(*old, got, worker)
+	return got, true, q.guard(ensureLeased(*old, got, worker))
 }
 
 func ensureLeased(before, after Job, worker string) error {
@@ -512,7 +550,7 @@ func (q *Queue) Ack(ctx context.Context, id uint64, worker string) (Job, error) 
 		return Job{}, err
 	}
 	got := *q.jobs[id]
-	return got, ensureDone(got)
+	return got, q.guard(ensureDone(got))
 }
 
 // Fail gives a held job back: queued, or scheduled after its backoff, while
@@ -560,7 +598,7 @@ func (q *Queue) Retry(ctx context.Context, id uint64) (Job, error) {
 		return Job{}, err
 	}
 	got := *q.jobs[id]
-	return got, ensureRetried(got)
+	return got, q.guard(ensureRetried(got))
 }
 
 // QueueCounts is one queue's jobs by state in GET /queues.
