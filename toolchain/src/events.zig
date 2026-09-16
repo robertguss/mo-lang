@@ -141,6 +141,83 @@ pub const Ring = struct {
     }
 };
 
+/// The crash reports the surface reads (step 32), kept apart from the ring so that a stream of
+/// updates cannot turn one over before it is read: the last `cap` (16 by default; `mo run
+/// --crashes N`, `MO_CRASHES=N` for a binary), written when the report is, whether or not the ring
+/// keeps events. Each is the `Crashed` event with its own copies of the clause, the message, and
+/// the state snapshot, each cut to `kept_text` bytes, so 16 reports hold at most about 200 KiB
+/// however large a state is; the printed report is whole. runtime/mo_rt.c keeps the same store.
+pub const default_crashes: u32 = 16;
+pub const kept_text: usize = 4096;
+
+pub const Crashes = struct {
+    cap: u32 = default_crashes,
+    gpa: std.mem.Allocator = std.heap.page_allocator,
+    slots: []Event = &.{},
+    len: usize = 0,
+    /// The slot the next report goes in: the oldest once the store is full.
+    head: usize = 0,
+    total: u64 = 0,
+
+    pub fn record(c: *Crashes, e: Event) void {
+        if (c.cap == 0) return;
+        if (c.slots.len == 0) c.slots = c.gpa.alloc(Event, c.cap) catch return;
+        var x = e;
+        x.clause = cut(c.gpa, e.clause) catch return;
+        x.message = cut(c.gpa, e.message) catch {
+            c.gpa.free(x.clause);
+            return;
+        };
+        x.state = cut(c.gpa, e.state) catch {
+            c.gpa.free(x.clause);
+            c.gpa.free(x.message);
+            return;
+        };
+        if (c.len < c.cap) {
+            c.len += 1;
+        } else {
+            const old = c.slots[c.head];
+            c.gpa.free(old.clause);
+            c.gpa.free(old.message);
+            c.gpa.free(old.state);
+        }
+        c.slots[c.head] = x;
+        c.head = (c.head + 1) % c.cap;
+        c.total += 1;
+    }
+
+    /// The `i`th report kept, newest first.
+    pub fn newest(c: *const Crashes, i: usize) Event {
+        return c.slots[(c.head + c.cap - 1 - i) % c.cap];
+    }
+
+    /// The bytes the store holds now: its slots and its texts.
+    pub fn bytes(c: *const Crashes) usize {
+        var n = c.slots.len * @sizeOf(Event);
+        for (c.slots[0..c.len]) |e| n += e.clause.len + e.message.len + e.state.len;
+        return n;
+    }
+
+    pub fn deinit(c: *Crashes) void {
+        for (c.slots[0..c.len]) |e| {
+            c.gpa.free(e.clause);
+            c.gpa.free(e.message);
+            c.gpa.free(e.state);
+        }
+        if (c.slots.len > 0) c.gpa.free(c.slots);
+        c.* = .{ .cap = c.cap, .gpa = c.gpa };
+    }
+};
+
+/// `text`, or its first `kept_text` bytes, cut where a character begins, and how many more it had:
+/// `{items: [1, 2, … 10,240 bytes more`.
+fn cut(gpa: std.mem.Allocator, text: []const u8) ![]u8 {
+    if (text.len <= kept_text) return gpa.dupe(u8, text);
+    var end: usize = kept_text;
+    while (end > 0 and text[end] & 0xC0 == 0x80) end -= 1;
+    return std.fmt.allocPrint(gpa, "{s} … {d} bytes more", .{ text[0..end], text.len - end });
+}
+
 /// `Keeper #0`, or who sent from outside a process.
 fn who(w: *std.Io.Writer, id: u32, name: []const u8, outside: []const u8) std.Io.Writer.Error!void {
     if (id == nobody) return w.writeAll(outside);
@@ -211,4 +288,24 @@ test "the ring keeps the last cap events, oldest first, and finds a time by halv
     try std.testing.expectEqual(@as(usize, 2), r.firstSince(71));
     try std.testing.expectEqual(@as(usize, 0), r.firstSince(0));
     try std.testing.expectEqual(@as(usize, 4), r.firstSince(1000));
+}
+
+test "the crash store keeps the last cap reports, newest first, each text cut to kept_text" {
+    var c: Crashes = .{ .cap = 3, .gpa = std.testing.allocator };
+    defer c.deinit();
+    const big = try std.testing.allocator.alloc(u8, kept_text + 100);
+    defer std.testing.allocator.free(big);
+    @memset(big, 'x');
+    // A two-byte character straddling the cut is left out whole.
+    big[kept_text - 1] = 0xC3;
+    big[kept_text] = 0xA9;
+    for (0..5) |i| c.record(.{ .kind = .crashed, .process = @intCast(i), .clause = "ensures", .message = "Go", .state = if (i == 4) big else "{n: 1}" });
+    try std.testing.expectEqual(@as(usize, 3), c.len);
+    try std.testing.expectEqual(@as(u64, 5), c.total);
+    for (0..3) |i| try std.testing.expectEqual(@as(u32, @intCast(4 - i)), c.newest(i).process);
+    const s = c.newest(0).state;
+    try std.testing.expect(std.mem.endsWith(u8, s, " … 101 bytes more"));
+    try std.testing.expectEqual(kept_text - 1, std.mem.indexOf(u8, s, " …").?);
+    try std.testing.expectEqualStrings("{n: 1}", c.newest(1).state);
+    try std.testing.expect(c.bytes() < 3 * @sizeOf(Event) + kept_text + 64);
 }

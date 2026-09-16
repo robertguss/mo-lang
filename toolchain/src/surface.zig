@@ -221,19 +221,12 @@ fn since(vm: *Vm, sim: *Sim, time: i64, n: Value) Error!Value {
     return .{ .list = out };
 }
 
+/// The last `n` crash reports, newest first, from their own store (step 32).
 fn crashes(vm: *Vm, sim: *Sim, n: Value) Error!Value {
-    const ring = &sim.ring;
-    const want = count(n, ring.len);
-    var picked: std.ArrayList(Value) = .empty;
-    defer picked.deinit(scratch);
-    var i = ring.len;
-    while (i > 0 and picked.items.len < want) {
-        i -= 1;
-        const e = ring.get(i);
-        if (e.kind == .crashed) try picked.append(scratch, try eventValue(vm, sim, e));
-    }
-    std.mem.reverse(Value, picked.items);
-    return list(vm, picked.items);
+    const kept = &sim.kept_crashes;
+    const out = try vm_mod.rawAlloc(vm.heap, Value, count(n, kept.len));
+    for (out, 0..) |*o, i| o.* = try eventValue(vm, sim, kept.newest(i));
+    return .{ .list = out };
 }
 
 /// The `n` longest updates the ring holds, longest first; of two as long, the earlier first.

@@ -4979,6 +4979,51 @@ static void record_event(Event e) {
     ring_total++;
 }
 
+/* The crash reports the surface reads, kept apart from the ring (events.zig, Crashes; step 32): the
+ * last crash_cap, MO_CRASHES=N, 16 by default, each with its own copies of the clause, the message,
+ * and the state snapshot, each cut to KEPT_TEXT bytes where a character begins. */
+#define KEPT_TEXT 4096
+static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));
+static Event *kept_crashes;
+static size_t crash_cap = 16, crash_len, crash_head;
+
+static const char *kept_text(const char *text) {
+    size_t n = strlen(text);
+    if (n <= KEPT_TEXT) return text_of("%s", text);
+    size_t end = KEPT_TEXT;
+    while (end > 0 && ((unsigned char)text[end] & 0xC0) == 0x80) end--;
+    return text_of("%.*s … %zu bytes more", (int)end, text, n - end);
+}
+
+static void keep_crash(Event e) {
+    if (crash_cap == 0 || (e.process < nprocs && is_hidden(e.process))) return;
+    if (!kept_crashes) kept_crashes = xmalloc(crash_cap * sizeof(Event));
+    e.at = event_now();
+    e.process_name = name_of(e.process);
+    e.clause = kept_text(e.clause);
+    e.message = kept_text(e.message);
+    e.state = kept_text(e.state);
+    if (crash_len < crash_cap) {
+        crash_len++;
+    } else {
+        Event *old = &kept_crashes[crash_head];
+        free((char *)old->clause);
+        free((char *)old->message);
+        free((char *)old->state);
+    }
+    kept_crashes[crash_head] = e;
+    crash_head = (crash_head + 1) % crash_cap;
+}
+
+static void forget_crashes(void) {
+    for (size_t i = 0; i < crash_len; i++) {
+        free((char *)kept_crashes[i].clause);
+        free((char *)kept_crashes[i].message);
+        free((char *)kept_crashes[i].state);
+    }
+    crash_len = crash_head = 0;
+}
+
 static bool is_timeout(MoValue v) { return mo_is(v, MO_N_ERROR) && mo_vcount(v) == 1 && mo_is(v.as.xs[0], MO_N_TIMEOUT); }
 
 /* A call that waits, begun at `since` on the events' clock, gave `result`: its time counts toward the
@@ -5057,6 +5102,7 @@ static void reset_processes(void) {
     sim_waited = 0;
     ring_len = ring_head = 0;
     ring_total = 0;
+    forget_crashes();
 }
 
 static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));
@@ -5929,6 +5975,7 @@ static void crashed(uint32_t id, MoValue before) {
     crash.message = report.nlog > 0 ? report.log[report.nlog - 1] : "";
     crash.state = report.state;
     record_event(crash);
+    keep_crash(crash);
     if (server_mode) process_crashed(&report);
     /* A connection closes when the process holding it stops, restarted or not. */
     close_held(p->args, p->nargs);
@@ -9980,10 +10027,17 @@ static MoValue last_events(size_t n, bool (*keep)(const Event *, __int128), __in
 }
 
 static bool of_process(const Event *e, __int128 id) { return (__int128)e->process == id; }
-static bool is_crash(const Event *e, __int128 unused) { (void)unused; return e->kind == EV_CRASHED; }
 
 MO_ROW(mo_r_Runtime_recent) { HOLD_RUNTIME(); (void)kind; return last_events(row_count(a[2], ring_len), of_process, mo_wide(a[1])); }
-MO_ROW(mo_r_Runtime_crashes) { HOLD_RUNTIME(); (void)kind; return last_events(row_count(a[1], ring_len), is_crash, 0); }
+/* The last `n` crash reports, newest first, from their own store (step 32). */
+MO_ROW(mo_r_Runtime_crashes) {
+    HOLD_RUNTIME();
+    (void)kind;
+    size_t n = row_count(a[1], crash_len);
+    MoValue *out = mo_alloc_values(n);
+    for (size_t i = 0; i < n; i++) out[i] = event_value(&kept_crashes[(crash_head + crash_cap - 1 - i) % crash_cap]);
+    return mo_list(out, (uint32_t)n);
+}
 
 MO_ROW(mo_r_Runtime_events) {
     HOLD_RUNTIME();
@@ -10460,6 +10514,9 @@ void mo_program_start(int argc, char **argv) {
     /* MO_EVENTS=N: the events the run keeps, as mo run --events N (step 23). */
     const char *events = getenv("MO_EVENTS");
     if (events) ring_cap = (size_t)strtoull(events, NULL, 10);
+    /* MO_CRASHES=N: the crash reports the surface keeps, as mo run --crashes N (step 32). */
+    const char *kept = getenv("MO_CRASHES");
+    if (kept) crash_cap = (size_t)strtoull(kept, NULL, 10);
     ring_wall_ms = wall_ms();
     ring_mono_us = awake_ns() / 1000;
     hidden_process = mo_surface_process;

@@ -236,6 +236,8 @@ pub const Sim = struct {
     sources: sources_mod.Sources = .{},
     /// What the processes did, most recent last (events.zig, step 23).
     ring: events_mod.Ring = .{},
+    /// The last crash reports, which the surface reads, kept apart from the ring (step 32).
+    kept_crashes: events_mod.Crashes = .{},
     /// The process `mo run --surface` starts to serve the surface, which the surface does not list
     /// and the ring does not record (step 23): its index in `Program.processes`, or none.
     hidden_process: u32 = none,
@@ -245,7 +247,7 @@ pub const Sim = struct {
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
     pub fn init(vm: *Vm, seed: u64, test_name: []const u8) Sim {
-        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .ring = .{ .gpa = vm.gpa } };
+        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .ring = .{ .gpa = vm.gpa }, .kept_crashes = .{ .gpa = vm.gpa } };
     }
 
     /// A seeded run: the same rules, with the scheduler's choices drawn from `seed`, and
@@ -260,6 +262,7 @@ pub const Sim = struct {
             .faults = if (fault_percent > 0) .init(seed ^ fault_stream) else null,
             .fault_percent = fault_percent,
             .ring = .{ .gpa = vm.gpa },
+            .kept_crashes = .{ .gpa = vm.gpa },
         };
     }
 
@@ -1378,13 +1381,24 @@ pub const Sim = struct {
         report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
         if (p.policy.restart == .never and p.policy.line != none) report.process.?.not_restarted = vm.program.supervisors[p.policy.line].name;
         try sim.crashes.append(sim.gpa, report);
-        sim.record(.{
+        const crash: events_mod.Event = .{
             .kind = .crashed,
             .process = id,
             .seed = sim.seed,
             .clause = report.clause,
             .message = if (log.len > 0) log[log.len - 1] else "",
             .state = report.process.?.state,
+        };
+        sim.record(crash);
+        if (!sim.hidden(id)) sim.kept_crashes.record(.{
+            .kind = crash.kind,
+            .at = sim.eventNow(),
+            .process = id,
+            .process_name = sim.nameOf(id),
+            .seed = crash.seed,
+            .clause = crash.clause,
+            .message = crash.message,
+            .state = crash.state,
         });
         if (sim.server) |s| {
             s.processCrashed(report);

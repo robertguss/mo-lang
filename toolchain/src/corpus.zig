@@ -847,6 +847,46 @@ test "corpus: mo run --surface and a binary built with --surface serve the runti
     try std.testing.expect(std.mem.indexOf(u8, compiled.stderr, "runtime surface: http://127.0.0.1:") != null);
 }
 
+test "corpus: a crash 200 updates back, past a ring of 64, is still in crashes under mo run and in a binary" {
+    // processes/crash-kept.mo reads its own runtime (step 32): the crash reports are kept apart
+    // from the ring, which the updates after the crash have turned over.
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const folder = "../examples/processes";
+    Io.Dir.cwd().access(io, folder ++ "/crash-kept.mo", .{}) catch return;
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    const want =
+        \\restarted at 0: true
+        \\1 crash kept
+        \\Counter crashed on Add(1000000): invariant "count stays below a million", state Counter(count: 3)
+        \\0 crashes in the ring's last 64 events
+        \\
+    ;
+    const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "--events", "64", "crash-kept.mo" }, .cwd = .{ .path = folder } });
+    try std.testing.expectEqualStrings(want, interp.stdout);
+    // --crashes 0 keeps none.
+    const none = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "--crashes", "0", "crash-kept.mo" }, .cwd = .{ .path = folder } });
+    try std.testing.expect(std.mem.indexOf(u8, none.stdout, "0 crash kept\n") != null);
+
+    defer Io.Dir.cwd().deleteTree(io, folder ++ "/zig-out") catch {};
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "crash-kept.mo", "-o", "crash-kept-served" }, .cwd = .{ .path = folder } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    const binary = try std.fs.path.join(arena, &.{ try Io.Dir.cwd().realPathFileAlloc(io, folder, arena), "zig-out/mo-build/crash-kept-served/crash-kept-served" });
+    var environ: std.process.Environ.Map = .init(arena);
+    try environ.put("MO_EVENTS", "64");
+    const compiled = try std.process.run(arena, io, .{ .argv = &.{binary}, .cwd = .{ .path = folder }, .environ_map = &environ });
+    try std.testing.expectEqualStrings(want, compiled.stdout);
+    try environ.put("MO_CRASHES", "0");
+    const kept_none = try std.process.run(arena, io, .{ .argv = &.{binary}, .cwd = .{ .path = folder }, .environ_map = &environ });
+    try std.testing.expect(std.mem.indexOf(u8, kept_none.stdout, "0 crash kept\n") != null);
+}
+
 test "corpus: a callee's body changed in another module makes its caller's verified: line stale" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;

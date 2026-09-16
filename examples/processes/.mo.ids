@@ -28,6 +28,21 @@
       "verified": { "hash": "7c2dd49fc03316de", "declarations": "a9253ef10360f749" }
     },
     {
+      "path": "crash-kept.mo",
+      "module": "Processes.CrashKept",
+      "declarations": [
+        { "id": "c0d772df8edc", "name": "module Processes.CrashKept", "hash": "753698a97c3b8557" },
+        { "id": "77b67943bd16", "name": "expose", "hash": "2a34595e86a70c55" },
+        { "id": "4d06f418e672", "name": "intent", "hash": "39d0c5584c38b53d" },
+        { "id": "d90e68b0a8d7", "name": "process Counter", "hash": "6891fabd940a7138" },
+        { "id": "35d564b0d214", "name": "supervisor Counters", "hash": "93a65a9e6a3c10b4" },
+        { "id": "fafce926b8f2", "name": "fn told", "hash": "1bcd828fed95282d" },
+        { "id": "1f4a349b7f71", "name": "fn main", "hash": "a0aa4980708dcd83" },
+        { "id": "3454ed1d0460", "name": "test \"a crash kept is told with its process, message, clause, and state\"", "hash": "a36a1df7658df684" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "20b0bbef177f10f1" }
+    },
+    {
       "path": "deadline.mo",
       "module": "Processes.Deadline",
       "declarations": [
