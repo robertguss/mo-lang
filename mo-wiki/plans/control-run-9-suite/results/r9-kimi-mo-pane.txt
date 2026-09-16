@@ -1,0 +1,400 @@
+
+ Could not find the exact text in /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo/examples/programs/jobq/board.mo. The old text must match exactly including all whitespace and
+ newlines.
+
+ My mistake — that edit had a placeholder by accident. Let me properly insert the new test before the verified line.
+
+
+ edit ~/Projects/startups/mo-lang-r9-kimi-mo/examples/programs/jobq/board.mo
+
+      ...
+  909   assert decide(done.board, call("p", Retry(id: "j_1")), start()).outcome is Conflict(_)
+  910   assert decide(done.board, call("p", Retry(id: "j_9")), start()).outcome == Missing
+  911 end
+  912
+ +913 test "a scheduled job now due counts as queued at that look, in id order"
+ +914   waiting = decide(board(start(), 1),
+ +915     call("p", Create(queue: "a", payload: "first made", max_tries: 2, delay_ms: 1_000,
+ +916       backoff_ms: 0)), start())
+ +917   plain = decide(waiting.board,
+ +918     call("p", Create(queue: "a", payload: "second made", max_tries: 2, delay_ms: 0,
+ +919       backoff_ms: 0)), start())
+ +920   assert lease_by(plain.board, "w", "a", 100, start() + 999.ms).outcome is Found(younger)
+ +921   assert younger.number == 2
+ +922   by_id = decide(board(start(), 1),
+ +923     call("p", Create(queue: "a", payload: "first made", max_tries: 2, delay_ms: 1_000,
+ +924       backoff_ms: 0)), start())
+ +925   fresh = decide(by_id.board,
+ +926     call("p", Create(queue: "a", payload: "second made", max_tries: 2, delay_ms: 0,
+ +927       backoff_ms: 0)), start())
+ +928   first_out = lease_by(fresh.board, "w", "a", 100, start() + 1_000.ms)
+ +929   assert first_out.outcome is Found(older)
+ +930   assert older.number == 1 and older.tries == 1
+ +931   assert lease_by(first_out.board, "w", "a", 100, start() + 1_000.ms).outcome is Found(after)
+ +932   assert after.number == 2
+ +933 end
+ +934
+  913 test "a board rebuilt keeps a scheduled job and its run_at, and promotes it at a look once due"
+  914   made = decide(board(start(), 1),
+  915     call("p", Create(queue: "a", payload: "later", max_tries: 2, delay_ms: 1_000, backoff_ms: 0)),
+  916     start())
+      ...
+
+
+ Wait — check the first part of my test: at start()+999ms (before run_at), lease → should hand the YOUNGER plain job (j_2) since j_1 not due ✓ (that's younger.number == 2). Hmm — but is j_1
+ counted... at 999ms, sweep doesn't promote; lease finds fresh j_2 ✓.
+
+ Hmm, but wait: does the lease SWEEP at 999ms touch anything? due = run_at(1000) > 999 → no sweep, no writes ✓.
+
+ The second scenario at exactly +1000: sweep promotes j_1 → back [1]; fresh has j_2 → min → j_1 first ✓ then j_2 on next lease at same now ✓ (sweep idempotent).
+
+ Run board --write again.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo/examples/programs/jobq && timeout 60 ../../../toolchain/zig-out/bin/mo fmt board.mo >/dev/null 2>&1; /tmp/capped.sh
+ ../../../toolchain/zig-out/bin/mo test --write board.mo > /tmp/f-board2.log 2>&1; echo "exit: $?"; grep -E "passed,|FAIL" /tmp/f-board2.log | tail -2 (timeout 310s)
+
+ exit: 0
+ 18 passed, 0 failed, 0 skipped
+
+
+ board 18 passed ✓. Fmt after edit — check board fmt clean and sidecar fresh (the --write was after fmt ✓; but wait, did fmt change board before the --write? I ran fmt FIRST then --write ✓
+ correct order).
+
+ Hmm — but queue/server/main/api/job depend on board via module graph... a changed decl in board (the new test — tests are decls in .mo.ids?) → dependents' freshness. --write order: board is
+ upstream of api/queue/server/main. My latest board edit changed its declarations → MO0317 for dependents?? The sidecar records hashes of "its declarations" per file AND dependents track the
+ hash of modules they use ("a module it uses, changed since..."). So api/queue/server/main may now be stale!! Ugh — the earlier freshness sweep pattern. Let me redo the check--json sweep on
+ the 4 dependents; if stale, re-run their --write (no code change, just freshness).
+
+ Actually — hmm, does adding a TEST to board change what dependents hash? The hash is over declarations incl. tests probably. The earlier MO0317 for api said "Jobq.Board, a module it uses,
+ changed" — triggered by board's decl changes. A new test is a decl change → api stale → its test count/text unchanged, just refresh. queue/server/main transitively.
+
+ This refresh cascade is mechanical: re-run --write for api, queue, server, main (board already fresh). Run api first, then queue+server, then main. To be safe sequential-parallel as before.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo/examples/programs/jobq && M=../../../toolchain/zig-out/bin/mo
+ for f in api queue server main; do
+   n=$(timeout 90 $M check --json $f.mo 2>/dev/null | grep -c MO0317)
+   echo "$f stale markers: $n"
+ done (timeout 300s)
+
+ api stale markers: 0
+ queue stale markers: 0
+ server stale markers: 0
+ main stale markers: 0
+
+
+ No staleness — the decl hashes dependents track must exclude test decls (or only exposed surface hashes). All clean.
+
+ So current state:
+ - job 26 ✓ board 18 ✓ api 8 ✓ queue 6 (sim100 held) ✓ server 7 (sim100 held) ✓ main 7 ✓ store recipe ✓
+ - program runs ×2 deterministic + binary parity ✓
+ - fmt clean ✓
+
+ Remaining verification gap: binary test outputs were compared BEFORE the new board test was added — board's binary needs a rebuild+compare for full parity. Also queue/server/main/bin
+ comparisons were pre-edit? The only post-binary changes: board.mo (new test) + session/expected/README. So rebuild board binary and re-diff. Also rebuild main binary (unchanged — skip;
+ main.mo untouched since its binary MATCH... wait, main's binary was built BEFORE my edits to... no: build happened after all main.mo edits ✓ and board edit doesn't affect main binary output?
+ The binary embeds its modules — board changed! The main test binary uses board code (decide/snapshot) — but board's added content is a TEST only; main's own tests unchanged. For rigor
+ rebuild board+main binaries and re-diff. Actually the corpus builds each file fresh each run — a board test addition changes board's binary test output (one more pass line) AND nothing in
+ main/api/queue/server binaries' test outputs (their own tests only).
+
+ Rebuild board test binary → diff vs /tmp/f-board2.log. Rebuild jobq program binary? main.mo unchanged; program behavior uses board's non-test decls — unchanged by my last edit (added a test
+ only). Quick verify anyway with one check run.
+
+ No staleness cascades. Rebuilding the board binary (added test) and re-verifying binary parity:
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo/examples/programs/jobq && M=../../../toolchain/zig-out/bin/mo
+ /tmp/capped.sh $M build --tests board.mo >/dev/null 2>&1 && /tmp/capped.sh zig-out/mo-build/board/board > /tmp/bin-board2.out 2>&1; echo "board bin exit: $?"
+ diff /tmp/f-board2.log /tmp/bin-board2.out && echo "board binary MATCH"
+ /tmp/capped.sh $M build main.mo >/dev/null 2>&1 && /tmp/capped.sh zig-out/mo-build/main/main check data/demo data/session.txt > /tmp/bin-run1b.out 2>/dev/null; echo "prog exit: $?"
+ diff /tmp/bin-run1b.out jobq.expected && echo "program binary still == expected"
+ rm -rf zig-out; echo cleaned (timeout 300s)
+
+ board bin exit: 0
+ board binary MATCH
+ prog exit: 0
+ program binary still == expected
+ cleaned
+
+
+ Everything is green:
+ - interpreter: all 7 modules' tests pass, sidecars fresh, fmt clean
+ - sim 100 with faults on queue & server: held under faults, including the new transition tests
+ - recipe: 11 signatures, 8 tests
+ - program: 5 run lines match expected (stdout/stderr/exit), deterministic across runs
+ - C backend: all 7 test binaries match mo test; program binary matches mo run
+ - old-shape fixtures (data/demo, data/compact) preserved; compact migrates them on each run
+
+ Wait — one more corpus-law check: mo test --sim 100 is also run by the corpus on the NON-process files (their lines say sim (not run) because no process tests). job/board/api/store/main:
+ their verified lines say "sim (not run)" — the corpus runs --sim 100 on ALL files and records... For files with no process tests, does mo test --sim 100 print "sim (not run)"? Per
+ verified.zig: sim_runs>0 and simulated>0 → else not run ✓ fine.
+
+ One more check per the task: "kill anything past 4 GB" — nothing came close ✓ (max RSS seen nowhere near; the watcher never fired).
+
+ Wall-clock tracking: I started around... the session began ~ when I logged baseline. I need TOTAL wall-clock. I'll estimate from my activity: this session has run roughly 75-85 minutes of
+ the visible work (many 4-5 min test runs in sequence plus parallel batches). Let me check file mtimes to compute: first baseline logs /tmp/base-*.log vs now. stat those files: base-api.log
+ creation ~T0. Let me compute precisely from /tmp file mtimes.
+
+ Then the REPORT.md content:
+ - What changed (per module).
+ - The within: literals count? That was program-1's report duty; the change spec asks: "nothing is asked beyond the report the previous version's brief asked for: loops to green by cause,
+ wall-clock, and a numbered list of the decisions this page did not cover." PLUS my worker brief: "stop when every check and test is green with the wall-clock, the loop count by cause (and
+ whether the first fix worked), and a numbered list 'Decisions the spec did not cover'". And the change spec ALSO says contracts/nevers accounting ("the report says which contracts and nevers
+ the change forced open and which it left alone"). Include that.
+
+ Loop count by cause (my honest tally):
+ 1. bash harness mistake (mine): cd && (…)& precedence → 3 baseline probes failed (server-sim, recipe, program-runs) with wrong-cwd; fixed by giving each job its own cd; first fix worked. Not
+ a check/build/test failure of the product — count separately as "harness".
+ 2. MO0102 on job.mo: multi-line never guard wrapped at and (Mo doesn't wrap there) — first fix: helper fns + one-line guards; worked.
+ 3. MO0101 at job.mo looked(): else if doesn't exist — first fix: nested block if; worked. (Also learned the plain mo check hang didn't reproduce — load artifact.)
+ 4. MO0104 main.mo: message used as a binding name (reserved word) — first fix: rename to note; worked.
+ 5. MO0105 server.mo: helper fns declared after tests — first fix attempt (move before tests) worked but immediately surfaced:
+ 6. MO0102 server.mo: bare return in a nothing-function — first fix: chain-of-helpers; surfaced:
+ 7. MO0304 server.mo: if nesting 4 deep — first fix chain still had asserts in fns → ...
+ 8. MO0214 server.mo ×23: assert only in tests — first fix (three flat wire tests with boolean-guard asserts) worked for check.
+ 9. queue sim loop failure: "every answer is right or 503 … ends done or dead" Going≠Ended — backoff-1ms jobs can't promote under the fixed-order frozen clock (and sim clock moves too slowly
+ for guarantees) — first fix: revert played() to backoff 0 + dedicated promotion test; worked for fixed order but:
+ 10. queue new promotion test "fault-free only": assert lent not tolerating Empty after a 503'd create — first fix (add Empty) not sufficient → seed 9199324780742795490 still failed: tries==2
+ assert when lease-1 had been faulted — second fix (gate on fail-landed flag) worked, repro seed held, full sim green.
+ 11. server three new wire tests "fault-free only" under seeds 12689371604638534915/…954: health asserted status==200 though the client call itself can fault (status 0); and fail calls hit
+ 409 because fault-slow calls push the sim clock past the 30s default lease — first fix (1h leases + health gating) worked; both seeds then held.
+ 12. My own splice bug: python region-edit silently deleted three original wire tests — caught because pass count stayed 4 (expected 7) — restored from git; first fix worked.
+ 13. MO0317 staleness cascades ×~5 runs after fmt/reorder races — not code failures; fixed by rerunning --write in dependency order.
+
+ Product-code test failures (counting loops where a check/build/test failed): the tally by cause:
+ - syntax/parse: 2 (multi-line guard; else-if) — first fix worked both times
+ - language law violations: 3 (reserved-word binding; declaration-after-tests; bare return) — first fixes worked
+ - assert-placement law (MO0214) + nesting law (MO0304): 1 round — first fix worked
+ - sim/fault test failures: 3 rounds (fixed-order Ended; queue seed tries assert — second fix needed; server fault-coverage — first fix worked after seed repro)
+ - sidecar/staleness cascades: ~4 reruns, mechanical
+ - harness slips: 2 (bash precedence; python splice deleting tests)
+
+ Let me also recount "whether the first fix worked" per item per the brief.
+
+ Wall clock: compute from file mtimes.
+
+ Decisions the spec did not cover (numbered):
+ 1. Spec file was absent from this worktree; read it from the main worktree / commit fcfd941 (identical).
+ 2. job() gained fields beyond the 6-parameter law → introduced Terms struct (max_tries, delay_ms, backoff_ms).
+ 3. Create command carries 5 fields; created() takes the struct (6-param law).
+ 4. Old-name request handling: missing-required checked first, so an old body without max_tries gets "max_tries is missing"; a body with max_tries AND an old name gets "unknown field <name>"
+ (deterministic: first unknown key in byte order). Unknown-field rejection added ONLY to the create body (the body the spec changed; lease/fail bodies keep ignoring extras).
+ 5. Error message texts (unchanged routes kept theirs): "max_tries is missing", "max_tries must be a whole number (from 1 to 100)", "delay_ms must be a whole number from 0 to 86400000",
+ "backoff_ms must be a whole number from 0 to 3600000", "unknown field X", "j_9 is not dead", listing error "state must be queued, scheduled, leased, done, or dead".
+ 6. Field order in {job} JSON: backoff_ms after max_tries; run_at before worker/lease_until, reason last.
+ 7. Retried jobs enter the queue's back list (with re-queued jobs), keeping oldest-by-id via the sorted back list — "takes its place by id like any other queued job". Fresh (never-leased)
+ positions are untouched by retries.
+ 8. due = min over lease ends and run_ats; sweep promotes ALL queues' due jobs at any look (spec's look list is a subset: every command and Idle sweeps globally, as lease expiry already did).
+ 9. Retry of a missing job → the store's Missing → 404 "no such job" (same body as GET/DELETE).
+ 10. compact implementation moved from store.compact (byte-level) to a board-aware rewrite in main (open → rebuild board → snapshot → store.rewritten → reopen), because only the board can
+ translate old field names. Empty-log compact now writes one ids line, so jobq compact of an empty folder reports "from 0 lines to 1" instead of "0 to 0". serve's torn-log pre-compact goes
+ through the same path, so a torn old log is migrated on serve too. A log with a record that is not a job now fails compact with "holds a jobq.log with a record that is not a job" (previously
+ it was copied verbatim).
+ 11. Store recipe/store.mo untouched: recipe check still 11 signatures, 8 tests; the migration lives entirely in job.mo decoded() + main's compact.
+ 12. The never "a job is held by two workers at once" gained since (the lease's grant time) in its Settled identity because retry resets tries; report notes the residual: a false trip would
+ need a fail→retry→lease→settle chain inside one frozen instant, which no test does (sim worker loops never retry).
+ 13. New audit/nevers: Retried (retry-touches-not-dead — belt over retried's requires), Promoted (scheduled-queued-before-run_at), Look redesigned (state+deadline) covering both "one look"
+ rules. The spec line "a scheduled job is never leased before its run_at" is enforced by leased()'s requires (Queued only) plus the Promoted never on the only scheduled→queued path.
+ 14. Invariants: none existed on the queue process or elsewhere in jobq, so none needed updating (named per the change-spec request).
+ 15. Response-before-durable never needed no edit: the promotion writes ride the same batch/flush path (Answer.changed/durable), and the sweep's writes are journaled in the same one append —
+ the new move inherits the guarantee.
+ 16. sim strategy for new transitions: the board tests pin all new transitions with explicit times; the process tests exercise promotion via an aged log (deterministic) and a 1s-backoff loop
+ tolerant of seed-dependent clock movement (assertions gated on which earlier steps landed); the 32-worker...n/a. Played() keeps backoff 0 because fixed-order never moves its clock, so a
+ scheduled-forever job would deadlock the "all done or dead" assertion.
+ 17. data/demo and data/compact stay in the OLD record shape in the repo (the spec counts the program's own pre-change folders as replay fixtures); each check/compact run migrates a copy…
+ check migrates into jobq.check.log (removed after), compact rewrites data/compact/jobq.log in place on each corpus run — output identical either way.
+ 18. Session script: kept old lines' intent with new names; added lines pin old-name 400s, delay/backoff range 400s, delayed job, backoff, retries, listing, and the new /health shape.
+ 19. /health on the wire asserted without a 503 allowance (reads never 503 today) — same as before; content asserted under faults only when 200.
+ 20. attempts? renamed max_tries? (validates the 1–100 bound on max_tries; tries itself needs no bound beyond the never).
+
+ Wall-clock: compute from first baseline timestamp to now: /tmp/base-api.log mtime vs now.
+
+ Also, do I still owe anything? "Do not push" ✓. Commit subject 'jobq: the change'.
+
+ Before committing: final sanity sweep —
+ - rg -n "attempts" examples/programs/jobq/*.mo → only the intended old-name translation/test strings.
+ - run full green sequence once more quickly? The modules are all individually green+fresh; program runs verified. One more program-run pair post-README (README doesn't affect). Skip.
+
+ One more thing: .mo.ids diff sanity (sidecar updated for 6 files; store unchanged? store was untouched → its entry's hash unchanged... but --write runs on others may rewrite file ordering.
+ git diff fine.
+
+ Also verify git status shows only intended files + REPORT.md (new) — and data/compact restored (no diff!). Check data files.
+
+ Everything is green including binary parity. Final pre-commit sweep and wall-clock computation:
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo && rg -n "attempts" examples/programs/jobq/*.mo | rg -v "count_named|old service wrote|old names|attempts\\\"|was attempts|the
+ rename" | head -12; echo ---; git status --short; echo ---; git diff --stat data/ 2>/dev/null | tail -2; echo "(data/ diff above should be only session.txt)"; echo ---; t0=$(stat -f %m
+ /tmp/base-api.log); t1=$(date +%s); echo "wall clock so far: $(( (t1-t0)/60 )) min"
+
+ ... (26 earlier lines, ctrl+o to expand)
+  M examples/programs/jobq/server.mo
+ ---
+ (data/ diff above should be only session.txt)
+ ---
+ wall clock so far: 71 min
+
+
+ All remaining "attempts" mentions are intentional (old-name fixtures/tests/translation comments). Git status shows exactly the intended files (data/demo and data/compact untouched ✓ — only
+ session.txt in data/).
+
+ 71 minutes wall clock so far. Before writing the report and committing, let me do the absolute-final verification pass to be able to say "every check and test is green" in one clean run:
+
+ 1. mo test on all 7 (with --sim 100 for queue/server) — all fresh ✓ done. I'll do one last combined sweep quickly for non-sim + rely on the sim runs already done (queue f-queue3, server
+ f-server4 were post-final-code; board final at f-board2).
+
+ Actually — one more paranoia: the corpus also runs mo test --sim 100 on job/board/api/store/main (files without process tests get "sim (not run)" but still RUN their tests once under --sim).
+ Does --sim change plain tests? They run fixed + no process tests → not simulated. Quick run of one: mo test --sim 2 main.mo sanity that nothing errors? Cheap: main 7 tests fast. And api
+ (property 200 seeds fine). Let me sanity-run --sim 2 on api + main quickly.
+
+ 2. Also verify the final git-tracked expected-file pair state: jobq-3.expected / jobq-4.expected / jobq-5.expected — those are empty outputs (serve has no stdout... they're empty files) ✓
+ unchanged-needed.
+ 3. REPORT.md.
+
+ Let me run the two sanity sims, then write REPORT.md, then commit.
+
+ One last sanity: non-process files under --sim (the corpus runs everything with --sim 100):
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo/examples/programs/jobq && M=../../../toolchain/zig-out/bin/mo
+ timeout 300 $M test --sim 2 main.mo 2>&1 | tail -2
+ timeout 300 $M test --sim 2 api.mo 2>&1 | tail -2 (timeout 310s)
+
+ verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+           proven: not run
+ verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+           proven: not run
+
+
+ All green. Now write REPORT.md at the worktree root, then commit.
+
+ The report needs: the change summary, contracts/nevers accounting (per the change spec's demand), loops by cause with first-fix status, wall-clock, "Decisions the spec did not cover"
+ numbered list. Wall clock: ~71 min at the sweep; by commit it'll be ~75. I'll state the final number measured at report write time (~72-75 min).
+
+ Let me write the report now.
+
+ All checks green. Writing the report:
+
+
+ write ~/Projects/startups/mo-lang-r9-kimi-mo/REPORT.md
+
+ # jobq: scheduled jobs, retry backoff, and the `tries` rename
+
+ The change from `mo-wiki/spec/programs/01b-job-queue-change.md` (not present in this worktree;
+ read from the main worktree, identical to commit `fcfd941`) applied to
+ `examples/programs/jobq/`. Everything in `01-job-queue.md` not touched by the change page
+ still holds.
+
+ ## What changed, by module
+
+ - **job.mo** — `Phase` gains `Scheduled`; `Job` gains `backoff_ms` and `run_at`, and
+ ... (154 more lines, 164 total, ctrl+o to expand)
+
+
+ Now commit. Only the intended paths + REPORT.md. Explicit add (never git add -A per CLAUDE.md):
+
+ - examples/README.md
+ - examples/programs/.mo.ids
+ - examples/programs/jobq/{api,board,job,main,queue,server}.mo
+ - examples/programs/jobq/data/session.txt
+ - examples/programs/jobq/jobq.expected
+ - REPORT.md
+
+ Verify data/demo, data/compact have no diff (git status showed they don't). jobq-2..5.expected untouched ✓ (jobq-2 matched unchanged — no edit needed since output identical).
+
+ Commit subject: 'jobq: the change'. No push.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo && git add REPORT.md examples/README.md examples/programs/.mo.ids examples/programs/jobq/api.mo examples/programs/jobq/board.mo
+ examples/programs/jobq/job.mo examples/programs/jobq/main.mo examples/programs/jobq/queue.mo examples/programs/jobq/server.mo examples/programs/jobq/data/session.txt
+ examples/programs/jobq/jobq.expected && git status --short && git diff --cached --stat | tail -4
+
+ ... (10 earlier lines, ctrl+o to expand)
+ M  examples/programs/jobq/server.mo
+  examples/programs/jobq/main.mo          |  73 ++++--
+  examples/programs/jobq/queue.mo         |  89 ++++++-
+  examples/programs/jobq/server.mo        |  93 ++++++-
+  11 files changed, 1376 insertions(+), 287 deletions(-)
+
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-kimi-mo && git commit -m "jobq: the change" 2>&1 | tail -3 && git log -1 --format="%H %s" && git status --short | head -3; echo "(status
+ empty = clean)"
+
+ [r9-kimi-mo a1dd8c4] jobq: the change
+  11 files changed, 1376 insertions(+), 287 deletions(-)
+  create mode 100644 REPORT.md
+ a1dd8c424bc29a30c86cc5de94023b953dc3d1cf jobq: the change
+ (status empty = clean)
+
+
+ Committed as a1dd8c4 with the required subject, not pushed, tree clean.
+
+ Final verification tally (all green):
+ - job: 26 passed (16 tests+rejects incl. 6 new tests/rejects + property 200 seeds)
+ - board: 18 passed (incl. 8 new tests + property)
+ - api: 8 passed (incl. retry route, old-name 400s, scheduled listing, new health)
+ - store: 12 passed + recipe 11 signatures/8 tests — untouched
+ - queue: 6 passed, 5 tests × 100 sim seeds, all held under faults (incl. new promotion + aged-scheduled tests)
+ - server: 7 passed, 7 × 100 seeds, all held under faults (incl. 3 new wire tests)
+ - main: 7 passed (incl. old-log replay + compact-to-new-names)
+ - program runs: check/compact/serve/nowhere/client all match .expected (stdout, stderr, exit), deterministic ×2, and identical from the compiled binary
+ - C backend test binaries: all 7 match mo test output exactly, exit 0
+ - mo fmt --check clean on all files; verified lines + .mo.ids fresh; tree clean after commit.
+
+ The final answer should summarize with wall-clock, loops by cause with first-fix status, and the decisions list is in REPORT.md (I'll summarize). Wall clock at commit: ~78 min. Done — full
+ stop per instructions.
+
+ Committed a1dd8c4 (jobq: the change), not pushed, tree clean. Done. Final summary:
+
+ Result
+
+ The change from 01b-job-queue-change.md (read from the main worktree — the file is absent from this worktree; verified byte-identical to commit fcfd941) is implemented in
+ examples/programs/jobq/, and every check and test is green:
+
+ - Modules (interpreter): job 26, board 18, api 8, store 12, queue 6, server 7, main 7 tests passed — plus mo test --sim 100 on queue and server with every test held under faults, including
+ the new promotion/retry tests; mo check --recipe: 11 signatures, 8 recipe tests; mo fmt --check clean; verified lines + .mo.ids refreshed by --write.
+ - Program: all 5 # run: lines byte-match their .expected files (stdout, stderr, exit code), twice for determinism, and identically from the compiled binary; all 7 module test binaries print
+ exactly what mo test prints and exit 0.
+ - Durability: store.mo untouched (byte-level recipe); every create/lease/ack/fail/delete/retry/expiry/scheduled→queued move is journaled in the batch's single append before any answer; a 503
+ batch rolls the board back as before. Old-shape logs replay (field-name fallback, backoff_ms→0) and jobq compact rewrites them to only the new names — proven by a by-hand old log in a main
+ test and by the untouched old-shape data/demo and data/compact fixtures end to end.
+
+ Wall clock
+
+ ~78 minutes, first baseline to committed green. Every server/test/build ran under timeout 300 with a 4 GB RSS watcher; nothing approached the cap; nothing leaked (build artifacts removed,
+ fixtures restored, no tr used anywhere).
+
+ Loops to green, by cause (reported fully in REPORT.md)
+
+ 1. Syntax shape (2): never guard wrapped at line end → one-line guards + same_lease? helper; else if (doesn't exist) → nested block if. First fix worked both times.
+ 2. Language laws (3): message as a binding name (keyword), declarations after tests, bare return in a nothing-function — first fix worked each time.
+ 3. Test-shape laws (1 round): 4-deep if nesting + asserts outside tests → three flat wire tests with boolean-guard asserts; first fix worked.
+ 4. Sim/fault behavior (3 rounds): fixed-order frozen clock can't promote backoff jobs (fixed by keeping the fault loop backoff-free + dedicated promotion tests); queue seed …490 needed two
+ fixes (tolerate Empty, then gate the tries assert on the fail having landed); server seeds …915/…954 (fault-slow calls push the clock past 30s leases; faulted client call = status 0) fixed
+ first try with 1-hour leases and gated asserts.
+ 5. Staleness mechanics (~4): MO0317 cascades after mo fmt and parallel --write races — dependency-order reruns.
+ 6. My own tooling slips (2): a bash cd && (…)& precedence slip mislocated three baseline probes; a python splice deleted three wire tests (caught: pass count 4≠7) and they were restored from
+ git.
+
+ Decisions the spec did not cover
+
+ Numbered in full in REPORT.md; the load-bearing ones: (1) the six-parameter law forced a Terms{max_tries, delay_ms, backoff_ms} struct for job(); (2) old-name request bodies get "max_tries
+ is missing" if it's absent, "unknown field ‹name›" (byte-order first) otherwise, and only the create body rejects unknowns; (3) the two-workers never's Settled identity gained the lease's
+ grant time because retry resets tries (fails→retries→leases in one frozen instant could otherwise false-trip — no test does that, recorded honestly); (4) compact became board-aware in main
+ (replay→snapshot→rewrite→reopen) so old names translate — empty-folder compact now writes one ids line, and a non-job record now fails compact instead of copying verbatim; (5) data/demo and
+ data/compact stay old-shaped on purpose as the standing migration fixtures; (6) new sim transitions are pinned deterministically (explicit times, log-aging) with fault-gated asserts under
+ seeds, since a fixed-order clock never moves.
+
+
+ [compaction]
+
+ Compacted from 285,735 tokens (ctrl+o to expand)
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-kimi-mo (r9-kimi-mo)
+↑500k ↓192k R31M ?/128k (auto)                                                                                                                                            (ollama) kimi-k3:cloud

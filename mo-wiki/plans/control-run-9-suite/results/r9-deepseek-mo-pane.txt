@@ -1,0 +1,400 @@
+ Took 0.0s
+
+
+ jobq.expected is 4844 bytes, not empty. So my diff /tmp/f.out jobq.expected produced "0a1,40 >" meaning... wait, that diff output shows adding 40 lines to an empty file. But if jobq.expected
+ has 4844 bytes, why did diff say the check output lines are missing?
+
+ Oh! I see — the diff was diff /tmp/f.out jobq.expected. If /tmp/f.out is empty and jobq.expected has 40 lines, diff would show "1,40d0 < ..." (deletions). But it showed "0a1,40 > ..."
+ meaning f.out (first arg) is empty and jobq.expected (second arg) has the 40 lines. So the CHECK RUN's output /tmp/f.out is EMPTY!
+
+ That means the mo run ... check produced EMPTY stdout this time. Why? Because... the check command may have failed this run! Earlier it worked. What changed?
+
+ The check uses compacted_store? No, check uses writing_to path. But wait — the final gate ran $M run main.mo -- check data/demo data/session.txt and it produced empty stdout. But stderr? I
+ redirected 2>/dev/null, so I didn't see it. The check probably errored (exit non-zero) and wrote to stderr, with empty stdout.
+
+ Why would check fail now? Did formatting break something? No, tests all pass. Or — the data/demo/jobq.log got corrupted by a run? Let me check. Or the check command failed because...
+
+ Actually — maybe the ordering issue: in my final gate, I ran fmt for all (clean), then check. The check redirected stderr to /dev/null. If it failed, stdout empty. Let me re-run the check
+ WITHOUT suppressing stderr to see the error.
+
+ Wait — but also the compact diff showed "0a1 > jobq: compacted..." meaning /tmp/fc.out was EMPTY too and jobq-2.expected has the line. So BOTH check and compact produced empty stdout this
+ run! Both commands failed (non-zero exit, stderr only).
+
+ So something is wrong with mo run now — maybe the demo or compact fixture got corrupted, OR the mo test --write / fmt on main.mo created an issue, OR...
+
+ Actually — most likely: the data/demo/jobq.log or data/compact/jobq.log got corrupted by one of my many runs. Let me check: I ran compact data/compact and restored from /tmp/cb.log. But did
+ the restore work? And the check reads data/demo. Let me verify data/demo/jobq.log integrity and re-run check with stderr visible.
+
+ Actually, wait — a more likely cause: the check command itself. Let me look — did I possibly break main.mo's check path when adding now to compacted_store? The check uses checked_on →
+ serving(listener, fs, clock, start). That doesn't call compacted_store. Hmm.
+
+ But the check failing with empty stdout — let me just re-run and see stderr.
+
+ Let me re-run both with stderr shown.
+
+ The check/compact ran produced empty stdout (commands likely errored to stderr). Let me re-run with stderr visible.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/examples/programs/jobq && M=/Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/toolchain/zig-out/bin/mo; echo "===
+ check ==="; timeout 300 $M run main.mo -- check data/demo data/session.txt; echo "exit=$?"; echo "=== demo log tail ==="; tail -2 data/demo/jobq.log | head -c 200; echo; echo "=== demo line
+ count ==="; wc -l data/demo/jobq.log
+
+ ... (13 earlier lines, ctrl+o to expand)
+ === demo log tail ===
+ DEL j_5
+ SET j_6 {"id": "j_6", "queue": "emails", "sta
+ === demo line count ===
+       11 data/demo/jobq.log
+
+ Took 0.0s
+
+
+ The issue: after I ran mo fmt on job.mo/board.mo/api.mo/queue.mo, the content changed (reformatted), which changed the module hashes. Then I ran mo test --write on those to update .mo.ids.
+ BUT — server.mo and main.mo now reference the NEW hashes of Jobq.Board and Jobq.Job (their uses), and their own .mo.ids verified uses hash lists are now stale (they recorded OLD hashes of
+ Jobq.Board/Jobq.Job before fmt).
+
+ So I need to re-run --write on server.mo and main.mo after the fmt of their dependencies. Because .mo.ids stores, for each module, the hash of each module it uses. When a dependency's
+ content hash changes, the using module's verified uses entries become stale → MO0317.
+
+ Wait — but earlier I DID run mo test --write server.mo and --write main.mo (before fmt). Then fmt changed job/board/api/queue → their hashes changed → server.mo/main.mo/queue.mo's uses of
+ Jobq.Board/Jobq.Job now stale.
+
+ So I need to re-run --write on ALL modules AFTER formatting, in dependency order, so each records the current dependency hashes.
+
+ The .mo.ids is keyed by module; running --write on a module recomputes its owns verified line AND its uses hash list. But it also needs the current hashes of dependencies. The order matters:
+ I should --write leaf modules (job) first, then board (uses job), then api/queue (use job/board), then server/main.
+
+ Actually the .mo.ids uses for a module X lists, for each module Y that X uses, Y's hash. When I run --write X, it computes Y's hash from Y's current .mo.ids entry. So I need to --write
+ modules in dependency order: job → board → (api, queue) → (server, main). And store (already fine).
+
+ Let me reconsider: I ran fmt on job, board, api, queue. Then re-ran --write on job, board, api, queue (in one command order: job board api queue). That recomputed those. But server and main,
+ which use board/job, still have old recorded hashes. And store uses job? store.mo — jobq store doesn't use job.mo. Actually store is independent.
+
+ Also api uses job; api was reformatted and re-written. queue uses job/board/api — queue re-written. server uses board/queue (and transitively). main uses all.
+
+ So the stale ones are: server.mo and main.mo (and possibly store if it uses changed modules — store doesn't).
+
+ Let me just re-run --write on server.mo and main.mo now (after deps are current). That should fix the MO0317. Let me do it and then re-check.
+
+ Also queue.mo: after fmt I re-wrote it with --sim 100. server depends on queue — but server was --written BEFORE queue's fmt? Let me timeline:
+ - Original: all --written.
+ - fmt on job, board, api, queue → changed 4 files.
+ - re --write on job, board, api, queue (in that order).
+ Wait — did I re-write queue AFTER fmt? Yes: "=== queue.mo (sim) ===" re-write --sim 100. And job/board/api re-written. But server and main NOT re-written after fmt.
+
+ So now server.mo and main.mo are stale w.r.t. the re-fmt'd job/board. Let me --write them now. Also need to --write queue? queue was re-written after fmt, good. But queue depends on
+ api/job/board — all re-written before queue. Good.
+
+ Let me --write server and main now (deps current).
+
+ The reformat changed dependency hashes, so server.mo/main.mo need their --write refreshed. Let me re-run on them (deps now current), then re-verify the program runs.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/examples/programs/jobq && M=/Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/toolchain/zig-out/bin/mo; echo "===
+ main --write ==="; $M test --write main.mo 2>&1 | tail -2; echo "=== server --write (sim) ==="; timeout 300 $M test --write --sim 100 server.mo 2>&1 | tail -2
+
+ ... (2 earlier lines, ctrl+o to expand)
+   why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A
+ line with no record, a different line, or declarations changed since was not computed for this code.
+ === server --write (sim) ===
+ verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
+           proven: not run
+
+ Took 0.4s
+
+
+ main.mo --write failed with MO0317 still. Let me see the full error. The main.mo verified line hash mismatch — probably because when --write runs main.mo, it computes the uses hashes.
+ main.mo uses Jobq.Board, Api, Job, Queue, Server, Store. It needs their current hashes from .mo.ids. If any of those is stale... Let me see the full error message.
+
+ Actually — the problem might be that main.mo ALSO uses Jobq.Board now (use Jobq.Board{rebuilt, snapshot} added). When main was first --written (before I added the Board import), its uses
+ didn't include Board. After adding Board import, main's declarations changed → but I ran --write main after adding it (the "compact" test edit), which should have recorded it. But then fmt
+ changed board/job/api/queue → main's uses hashes stale.
+
+ Let me see the actual error — run main --write fully.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/examples/programs/jobq && /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/toolchain/zig-out/bin/mo test --write
+ main.mo 2>&1 | head -15
+
+ ... (5 earlier lines, ctrl+o to expand)
+ pass  test "a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1"
+ pass  test "compact rewrites a log the old service wrote in the new names, with no old name left"
+ 7 passed, 0 failed, 0 skipped
+ verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+           proven: not run
+
+ Took 0.0s
+
+
+ Now main.mo --write passes (7 tests). It must have been a transient ordering issue (I ran main --write while server's --write hadn't updated yet, but main doesn't depend on server's hash...
+ actually main does use Jobq.Server). The previous run failed because... hmm, but now it passed. Maybe because server --write just ran and updated its .mo.ids, and main reads server's hash
+ from .mo.ids. Order: I ran main --write first (before server --write), which read server's stale-... no, server was already written (it's a module server.mo, its hash was updated by its own
+ --write BEFORE main's in this same command? No, main ran first).
+
+ Regardless, now both main and server are re-written and green. Let me re-run the full gate once more: all modules test, fmt, and the program runs. Let me do the final comprehensive gate.
+
+ main.mo and server.mo now refreshed. Let me run the final comprehensive gate: all modules, fmt, and program runs.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/examples/programs/jobq && M=/Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/toolchain/zig-out/bin/mo; echo "==
+ TESTS =="; for f in job board api store queue server main; do timeout 300 $M test $([ "$f" = queue ]||[ "$f" = server ] && echo "--sim 100") $f.mo >/tmp/t.log 2>&1; printf "%-7s: %s\n" "$f"
+ "$(tail -2 /tmp/t.log | head -1)"; done; echo "== FMT =="; for f in job board api store queue server main; do $M fmt --check $f.mo >/dev/null 2>&1 && echo "$f clean" || echo "$f DIRTY"; done
+
+ ... (11 earlier lines, ctrl+o to expand)
+ api clean
+ store clean
+ queue clean
+ server clean
+ main clean
+
+ Took 1.1s
+
+
+ All modules green and fmt clean. Let me confirm the "0 failed" (the verified line alone doesn't show failures). Let me re-run to confirm "0 failed" counts. Actually the tail -2 showed the
+ verified line; let me check "passed, 0 failed" for all. Let me re-run capturingthe summary line.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/examples/programs/jobq && M=/Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/toolchain/zig-out/bin/mo; for f in job
+ board api store main; do timeout 300 $M test $f.mo >/tmp/t.log 2>&1; printf "%s: %s\n" "$f" "$(grep 'passed\|FAIL' /tmp/t.log | tail -1)"; done; for f in queue server; do timeout 300 $M test
+ --sim 100 $f.mo >/tmp/t.log 2>&1; printf "%s: %s\n" "$f" "$(grep 'passed\|FAIL\|held' /tmp/t.log | tail -1)"; done
+
+ ... (2 earlier lines, ctrl+o to expand)
+ api: 7 passed, 0 failed, 0 skipped
+ store: 12 passed, 0 failed, 0 skipped
+ main: 7 passed, 0 failed, 0 skipped
+ queue: 4 passed, 0 failed, 0 skipped; 3 tests under 100 seeds with 5% faults: 3 held under faults, 0 passed only without faults
+ server: 4 passed, 0 failed, 0 skipped; 4 tests under 100 seeds with 5% faults: 4 held under faults, 0 passed only without faults
+
+ Took 1.1s
+
+
+ All green. Now let me do the final program-run verification (check, compact, usage) — but earlier those failed due to stale hashes which I've now fixed. Let me re-run them. The check run
+ should now produce the transcript matching jobq.expected.
+
+ Let me re-run check and compare, and compact (restore fixtureafter).
+
+ All modules green. Now the final program-run verification (after refreshing the stale hashes).
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/examples/programs/jobq && M=/Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo/toolchain/zig-out/bin/mo; cp
+ data/compact/jobq.log /tmp/cbk.log; timeout 300 $M run main.mo -- check data/demo data/session.txt >/tmp/f.out 2>/tmp/f.err; echo "check exit=$? stdout_bytes=$(wc -c </tmp/f.out)"; diff
+ /tmp/f.out jobq.expected && echo "CHECK MATCHES"; timeout 300 $M run main.mo -- compact data/compact >/tmp/fc.out 2>/dev/null; diff /tmp/fc.out jobq-2.expected && echo "COMPACT MATCHES"; cp
+ /tmp/cbk.log data/compact/jobq.log; echo "restored compact fixture"
+
+ check exit=0 stdout_bytes=    4844
+ CHECK MATCHES
+ COMPACT MATCHES
+ restored compact fixture
+
+ Took 0.1s
+
+
+ Check and compact now work and match expected. Let me verify the git status is clean of accidental changes (only my intended files), restore the data fixtures are in old-format, and that
+ build artifacts aren't tracked.
+
+ Let me check git status and the data fixture integrity (should be old format). Also confirm the compact fixture was restored (I restored it).
+
+ Let me review git status and verify data/demo and data/compact are in old format (notmodified).
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo && git status --short; echo "--- data fixtures old-format (should be unchanged)? ---"; git status --short
+ examples/programs/jobq/data/ && echo "(data dir clean = fixtures unchanged)"; echo "--- REPORT.md present ---"; ls -la REPORT.md 2>/dev/null | awk '{print $NF, $5}'
+
+ ... (10 earlier lines, ctrl+o to expand)
+ --- data fixtures old-format (should be unchanged)? ---
+  M examples/programs/jobq/data/session.txt
+ (data dir clean = fixtures unchanged)
+ --- REPORT.md present ---
+ REPORT.md 7014
+
+ Took 0.0s
+
+
+ The data/demo/jobq.log and data/compact/jobq.log are unchanged (old format, not in status). Only session.txt modified. Good — fixtures preserved.
+
+ Now the REPORT.md I wrote earlier is obsolete (it says NOT committed, unverified). I must rewrite REPORT.md to reflect the actual green status and the completed task. Let me rewrite it with:
+ - wall-clock
+ - loop count by cause (and whether first fix worked)
+ - numbered 'Decisions the spec did not cover'
+ - the fact that all green and committed
+
+ Let me reconstruct the loops I actually went through:
+
+ Loops by cause (diagnostic → fixed?):
+ 1. job.mo MO0001 unexpected character at run_at.? — operator .? illegal. Fixed by using run_at directly. First fix worked.
+ 2. job.mo MO0303 job takes 7 params (limit 6) — grouped; also MO0306 double-bound dead, MO0317 stale verified (pending). Fixed by making job 6 params + delayed; renamed dead. First fix
+ worked.
+ 3. job.mo property MO0101 — multi-line for gen; put on one line. First fix worked.
+ 4. job.mo 3 test failures (21/24): (a) backoff test requires holds? — lease too short; fixed lease_ms→100_000. (b) run-out backoff run_at now+5_001 off by look's 1ms → now+5_101. (c) rejects
+ "lease of a job not queued" no longer trips (job() no longer takes delay) → lease a delayed(...) job. All three fixes worked.
+ 5. board.mo MO0104 at is Listed([]) — invalid pattern → == Listed(jobs: []). First fix worked.
+ 6. board.mo MO0306 after/made bound twice — renamed. First fix worked.
+ 7. board.mo MO0303 created and make take 7 params — added Timing struct bundling backoff_ms+delay_ms. First fix worked.
+ 8. board.mo test "run-out lease with backoff... " asserted job_in(expired) is Some(back) but lease-after-run-out returns Empty for scheduled job — rewrote the test. First fix worked.
+ 9. main.mo MO0206 or on Result in a test assert I'd added — dropped the assert. First fix worked.
+ 10. main.mo MO0403 Time.fixture() outside a test — threaded now param into compacted_store/compacted. First fix worked.
+ 11. job.mo/board.mo — the "compact rewrites old log" test failed because my earlier edit to main.mo's compacted_store (rewrite via board) hadn't landed during the tool-output disruption;
+ once re-applied, compact emits new names. First fix worked (re-apply).
+ 12. mo fmt --check flagged job/board/api/queue — ran mo fmt, which changed hashes and required re-running --write on all modules (server/main MO0317 stale uses). Fixed by re---write in
+ dependency order. First fix worked.
+
+ I'll summarize these.
+
+ Now the durability report and the contracts/nevers the change forced open:
+ - The job function previously had ensures result.state == Queued; now splits into job (Queued) + delayed (Scheduled).
+ - lease ensures tries one higher.
+ - failed now routes to scheduled/queued/dead; its ensures re-express state.
+ - looked keeps tries.
+ - Never blocks in job.mo updated to tries/max_tries.
+ - board's sweep ensures all_leases and all_scheduled future.
+ - store never blocks unchanged.
+
+ I'll write a concise report. Also note the decisions the spec didn't cover (I'll expand my earlier list).
+
+ Let me also double-check: is there any issue with git add of .mo.ids and the modules? Let me commit the intended files: .mo.ids, and jobq files (api, board, data/session.txt, job,
+ jobq.expected, main, queue, server). And REPORT.md? The task says write REPORT.md at worktree root. It's not necessarily to be committed, but "write that same report to REPORT.md at the
+ worktree root". Let me commit it too? The task says commit with subject 'jobq: the change' — I'll include REPORT.md? Since it's required output, and it's a new file. But the "worker shares
+ the tree" note in CLAUDE.md says commit wiki work with git add <paths>. My report is a worktree file. Let me include it in the commit for completeness. Actually, the task says commit the
+ change with subject 'jobq: the change'. REPORT.md is required deliverable. I'll add it too.
+
+ Let me not push (task says don't push).
+
+ Before committing, let me do a final review of the key diff to ensure quality. Let me quickly review the board.mo and job.mo diffs for any leftover issues. Actually tests pass, fmt clean,
+ program runs match. Let me also make sure I didn't leave the store.mo recipe check failing — it passed (8 tests).
+
+ One more: the spec's never "A job's tries never exceed its max_tries" — job.mo never uses j.tries > j.max_tries. Good.
+
+ Let me also double check the run_at masking in the steady: the check output shows run_at: "<run_at>" masked. Good.
+
+ Now, one concern about durability spec: "the scheduled-to-queued move is in the store before its response". This is handled because sweep writes go into the same batch flushed before
+ answering. I'm confident.
+
+ Let me also verify there are no leftover zig-out/mo-build that got tracked. git status showed only the intended files, no build dirs. Good (gitignored).
+
+ Let me rewriteREPORT.md now.
+
+ Everything is green. Let me rewrite REPORT.md to reflect the completed, committed state.
+
+
+ write ~/Projects/startups/mo-lang-r9-deepseek-mo/REPORT.md
+
+ # REPORT — jobq, change 1: scheduled jobs, retry backoff, and the `tries` rename
+
+ Worktree: `/Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo`
+ Task: `mo-wiki/spec/programs/01b-job-queue-change.md` (scheduled jobs, retry, `attempts`→`tries`/`max_attempts`→`max_tries`, replay of an old log).
+ Status: **ALL GREEN — COMMITTED** (`jobq: the change`), not pushed.
+
+ ---
+
+ ## What changed (`examples/programs/jobq/`)
+
+ ... (108 more lines, 118 total, ctrl+o to expand)
+
+
+ Now let me stage the intended files and commit. Per CLAUDE.md, commit with git add <paths> (not -A). Files:
+ - examples/programs/.mo.ids
+ - examples/programs/jobq/api.mo
+ - examples/programs/jobq/board.mo
+ - examples/programs/jobq/data/session.txt
+ - examples/programs/jobq/job.mo
+ - examples/programs/jobq/jobq.expected
+ - examples/programs/jobq/main.mo
+ - examples/programs/jobq/queue.mo
+ - examples/programs/jobq/server.mo
+ - REPORT.md
+
+ Let me verify the full diff once more briefly for sanity, then commit. Let me stage and commit.
+
+ Actually, let me double check the job.mo verify count didn't drift after fmt (it said 24 passed, verified tests (24)). Good.
+
+ Let me also make sure I'm not accidentally including the mo-build artifacts (they're untracked/ignored). git status won't include them. Good.
+
+ Let me stage andcommit.
+
+ Now let me commit the intended files (not -A, per the shared-tree convention).
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo && git add examples/programs/.mo.ids examples/programs/jobq/api.mo examples/programs/jobq/board.mo
+ examples/programs/jobq/data/session.txt examples/programs/jobq/job.mo examples/programs/jobq/jobq.expected examples/programs/jobq/main.mo examples/programs/jobq/queue.mo
+ examples/programs/jobq/server.mo REPORT.md && git status --short && echo "--- staged diff stat ---" && git diff --cached --stat
+
+ ... (17 earlier lines, ctrl+o to expand)
+  examples/programs/jobq/jobq.expected    | 110 ++++-----
+  examples/programs/jobq/main.mo          |  45 +++-
+  examples/programs/jobq/queue.mo         |  23 +-
+  examples/programs/jobq/server.mo        |   4 +-
+  10 files changed, 989 insertions(+), 358 deletions(-)
+
+ Took 0.0s
+
+
+ The data/compact and data/demo logs are NOT staged (they're unchanged/old-format, which is what I want). Good. Now commit with the requiredsubject.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo && git commit -m "jobq: the change" 2>&1 | tail -5 && echo "--- verify ---" && git log --oneline -1 && git status --short
+
+ [r9-deepseek-mo c88b803] jobq: the change
+  10 files changed, 989 insertions(+), 358 deletions(-)
+  create mode 100644 REPORT.md
+ --- verify ---
+ c88b803 jobq: the change
+
+ Took 0.1s
+
+
+ Committed. The worktree is now clean (git status --short showed nothing after commit). Not pushed (task says don't push).
+
+ Let me do a final sanity verification that commit didn't leave the working tree dirty and no stray files. git status was clean after commit.
+
+ Let me confirm the mo-build artifacts aren't an issue — they're gitignored, not tracked, working tree clean. Good.
+
+ Everything is done:
+ - All module tests green (incl --sim).
+ - fmt clean.
+ - Program runs match expected.
+ - Compact rewrites old log to new names.
+ - Durability preserved.
+ - .mo.ids/verified lines regenerated.
+ - Commit 'jobq: the change' made, not pushed.
+ - REPORT.md written.
+
+ Let me give a final summary to the user.
+
+ Let me double-check the working tree is truly clean after commit.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo && git status --short && echo "worktree clean above (if empty)" && echo "--- commit ---" && git log --oneline -1
+
+ worktree clean above (if empty)
+ --- commit ---
+ c88b803 jobq: the change
+
+ Took 0.0s
+
+
+ Done. The change is implemented, verified green, and committed (not pushed).
+
+ Summary
+
+ Commit c88b803 jobq: the change in /Users/robertguss/Projects/startups/mo-lang-r9-deepseek-mo — working tree clean, not pushed.
+
+ What I implemented (examples/programs/jobq/), per 01b-job-queue-change.md:
+ - New Scheduled state; run_at deadline; backoff_ms (0–3.6M) and delay_ms (0–86.4M) with range/integer validation and 400s; attempts→tries, max_attempts→max_tries everywhere.
+ - A delayed job starts scheduled and is queued when due; a fail or run-out lease goes to scheduled (backoff>0), queued (backoff=0), or dead (last try); POST /jobs/{id}/retry puts a dead job
+ back queued with tries reset; /health counts scheduled; state=scheduled listing; create bodies carrying attempts/max_attempts are 400.
+ - Replay of an old log: decoded reads attempts/max_attempts as the new names and a missing backoff_ms as 0; jobq compact rewrites an old-format log to only new names (via the board).
+ Durability unchanged: the scheduled→queued move joins the same fsynced batch, so a response is only sent once the record is on disk.
+
+ Verification (all green): each module via mo test (--sim 100 on the process files) — 0 failed; mo fmt --check clean; mo run check/compact match the regenerated expected files; usage runs
+ exit as specified; the built C binary reproduces the transcripts. data/demo and data/compact were kept in the old format as replay fixtures.
+
+ Report: wall-clock, the 12 loops-to-green by cause, and 8 "decisions the spec did not cover" are in REPORT.md at the worktree root. (The mid-task tool-output disruption was transient and did
+ not alter the final verified result.)
+
+ Note: I did not push, per the instruction.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-deepseek-mo (r9-deepseek-mo)
+↑352k ↓137k R18M 23.2%/1.0M (auto)                                                                                                                              (ollama) deepseek-v4-flash:cloud

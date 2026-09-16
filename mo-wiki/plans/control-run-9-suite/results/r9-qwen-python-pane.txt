@@ -1,0 +1,400 @@
+   def _look_move(before, after):
+       if before.state == "leased" and after.state in {"queued","scheduled","dead"}:
+           ... tries unchanged, worker None
+       if before.state == "scheduled" and after.state == "queued":
+           ... tries unchanged, run_at None
+ ```
+
+ I'll write a general predicate.
+
+ Now let me also reconsider the check_transition for the leased->scheduled and the "dead
+ exactly when tries reach max". And the retry reset.
+
+ Also, importantly: never(after.state == "leased" implies before.state=="queued" or
+ "scheduled"...). Actually lease transitions: ("queued","leased") and ("scheduled","leased")?
+ No! A scheduled job is NOT leased; it first becomes queued, then leased. The spec says
+ scheduled→queued→leased. There's no scheduled→leased edge. So lease only comes from
+ "queued". Good. So edge[1]=="leased" requires edge[0]=="queued". Let me make sure that's
+ enforced by LEGAL (("queued","leased") is the only *→leased). Yes.
+
+ But the tries accounting elif edge[1] == "leased" → after.tries == before.tries + 1. Since
+ only from queued, before.tries is the pre-lease tries. Fine.
+
+ Hmm, but there's a subtle issue: when a lease runs out with backoff>0 → scheduled (state
+ scheduled, tries unchanged). Then scheduled → queued (tries unchanged). Then queued → leased
+ (tries+1). So each "attempt" is one lease. Good.
+
+ Now, another concern: the "queued has tries left" invariant — but a scheduled job could have
+ tries == max_tries? No: backoff only applies when tries < max_tries (per the transition).
+ And created jobs start at tries 0. So scheduled always has tries < max_tries. But the
+ invariant "queued has tries left" — should I also assert scheduled has tries left? A
+ scheduled job with backoff>0 has tries < max_tries. But the invariant text is specifically
+ about queued. I'll keep it for queued. And maybe add "a scheduled job has tries left" too,
+ but not required. Let me keep minimal: the existing invariant just renamed. Actually I could
+ add an invariant that scheduled implies tries < max_tries and run_at present. Let me add the
+ run_at invariant at least since the spec emphasizes run_at is "exactly while scheduled".
+ I'll fold it in.
+
+ Now the _LEGAL set and transition check — I realize the "queued has tries left" invariant
+ plus "dead exactly when tries==max" plus the transition checks should be consistent.
+
+ Now, let me also handle the fail path. Currently fail calls _returned(job, now) then adds
+ reason. Now _returned may produce scheduled. So fail with backoff>0 and not last → scheduled
+ with reason. But the job is scheduled AND has a reason? The spec says "plus reason after a
+ fail". And "A fail with backoff_ms puts the job in scheduled with run_at at now +
+ backoff_ms". So a scheduled job can carry a reason. Hmm, but reason in the JobOut is
+ included exclude_none, so it shows when present. In test: "a fail with backoff_ms puts the
+ job in scheduled with run_at at now + backoff_ms, and a lease on that queue before then
+ returns 204". They check state scheduled and run_at. Reason presence is not checked there
+ necessarily. But it's fine for a scheduled job to also carry the last reason.
+
+ Wait, but the transition leased → scheduled: the fixed-fields and the reason. _returned
+ produces a scheduled job with worker=None, lease_until=None, tries unchanged,
+ run_at=now+backoff. Then fail adds reason. Good. But the never(edge in _LEGAL) for
+ ("leased","scheduled") — is it in LEGAL? Yes I'll add it.
+
+ Now, one concern: the original _returned for dead: state="dead" if job.attempts >=
+ job.max_attempts else "queued". Since after a lease, attempts == (pre-lease attempts + 1).
+ On last attempt, attempts == max_attempts, → dead. Good. New version: job.tries >=
+ job.max_tries.
+
+ Now the API health — add scheduled count.
+
+ ```python
+   class Health:
+       queued, scheduled, leased, done, dead, uptime_ms
+ ```
+
+ Order per spec: {"queued", "scheduled", "leased", "done", "dead", "uptime_ms"}. Let me check
+ the existing expected.txt: it shows
+ {"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>}. That will need to be updated to
+ include scheduled. New order: queued, scheduled, leased, done, dead, uptime_ms.
+
+ _health:
+
+ ```python
+   counts = self._queue.counts()
+   health = Health(queued=counts["queued"], scheduled=counts["scheduled"],
+ leased=counts["leased"], done=counts["done"], dead=counts["dead"], uptime_ms=uptime)
+ ```
+
+ Now the counts() returns dict keyed by STATES which now includes scheduled. Good.
+
+ Now the ListQuery.state — JobState now includes "scheduled". So state=scheduled is valid,
+ and state=bogus → 400. The existing expected.txt has GET /jobs?state=bogus → 400 state:
+ Input should be 'queued', 'leased', 'done' or 'dead'. This error message will change to
+ include 'scheduled': 'queued', 'leased', 'done' or "dead"'? Pydantic enumerates from the
+ Literal. Actually pydantic's error for Literal lists all allowed. With 5 values it'll be
+ 'queued', 'leased', 'done', 'dead' or 'scheduled' or similar. I'll need to update
+ expected.txt accordingly. Let me just run and capture.
+
+ Now the DELETE change: 204 when queued, scheduled, done, or dead | 409 when leased.
+ Currently delete only checks if job.state == "leased": conflict. That still works:
+ scheduled/queued/done/dead are not leased → 204; leased → 409. Good, no change needed to
+ delete besides the transition set (need ("scheduled",None) for deleting a scheduled job
+ which isn't in LEGAL currently! The current _LEGAL doesn't have ("scheduled", None). So
+ deleting a scheduled job would fail the transition check → ContractError → 500. So I must
+ add ("scheduled", None) to LEGAL). Good.
+
+ Now API routes: add retry. In _match:
+
+ ```python
+   case ["", "jobs", job_id, "retry"]:
+       return {"POST": self._retry}, job_id
+ ```
+
+ And
+
+ ```python
+   def _retry(self, request, job_id):
+       assert request.token is not None
+       return _outcome(self._queue.retry(job_id))
+ ```
+
+ Outcome: retry returns Job (200), NotFound (404), Conflict (409). _outcome already handles
+ those. Good. /retry takes no body. Good.
+
+ Now the create API: read body.delay_ms and body.backoff_ms and pass to queue.create:
+
+ ```python
+   job = self._queue.create(body.queue, body.payload, body.max_tries, body.delay_ms,
+ body.backoff_ms)
+ ```
+
+ Now the requires on delay_ms and backoff_ms with rejects — that's in the CreateJob pydantic
+ Field bounds (ge/le), so a request out of range → 400. Good. The "rejects" are the 400s,
+ tested.
+
+ Now, the queue.create signature change means callers in tests/bench/sim need updating. Let
+ me search for all usages.
+
+ Let me also handle the create ensures: create ensures job is queued. But now with
+ delay_ms>0, the job is scheduled. The spec says ensures on retry that the job it returns is
+ queued with tries at 0. And existing create ensures "the job is queued" — but that's now
+ wrong if delayed. Let me update create's ensure: "the job is queued, or scheduled with its
+ run_at at now + delay_ms". Hmm. Let me write:
+
+ ```python
+   ensure(self._jobs[job.number] is job, "the job is stored as created")
+ ```
+
+ and maybe check state matches. Actually to keep an ensures meaningful: "a job with no delay
+ is queued; with a delay it is scheduled at its run_at". I'll do:
+
+ ```python
+   if delay_ms == 0:
+       ensure(job.state == "queued", "a job with no delay is queued")
+   else:
+       ensure(job.state == "scheduled" and job.run_at_ms == now + delay_ms, "a delayed job is
+ scheduled at its run_at")
+ ```
+
+ Now lease ensures: "the job it returns is leased to the caller with attempts one higher" →
+ "tries one higher". Update the ensure message and the attempts→tries. The lease picks from
+ queued heap, so a job that was scheduled and is now due counts as queued at that look. Since
+ _look drains scheduled→queued before leasing, the newly queued job is in the heap. Then
+ lease picks it. tries one higher. Good. Its run_at_ms is None now (queued). Good.
+
+ Now, the bench write_log and sim use attempts/max_attempts. Need updating to
+ tries/max_tries. And bench "full" history builds records with attempts. Let me update those.
+
+ Now the contract.py: unchanged (generic helpers). Good.
+
+ Now let me think about the record writing and the "old name" concern more concretely. The
+ store writes PutRecord.job via model_dump_json(). With Job using
+ validation_alias=AliasChoices("tries","attempts"), serialization writes the field name
+ "tries". Let me verify pydantic behavior: model_dump_json() uses by_alias=False by default →
+ uses field name. But does a validation_alias affect serialization at all? No —
+ serialization_alias controls serialization; validation_alias doesn't. So it writes "tries".
+
+ But wait, there's a nuance: When validation_alias is an AliasChoices and there's no
+ serialization_alias, pydantic serializes using the field name. Good.
+
+ But actually, I realize there might be an even simpler and more robust approach that avoids
+ any alias subtlety and any risk of writing old names: handle old-name translation explicitly
+ in replay_fd / record parsing by pre-processing the JSON dict. But the union TypeAdapter
+ validates JSON directly. To translate, I'd parse each line to an object, remap keys, and
+ re-validate. That's doable but messier and the TypeAdapter path is clean. The alias approach
+ is cleaner and idiomatic. I'll go with aliases but TEST that:
+ 1. old log with attempts/max_attempts replays (Job reads it).
+ 2. compact produces log with no attempts/max_attempts.
+ 3. new writes contain tries.
+
+ Let me also verify the pydantic-mypy plugin handles validation_alias=AliasChoices(...) with
+ init_forbid_extra/init_typed. It might generate the init param as the field name. There's a
+ chance it complains. I'll run mypy and fix.
+
+ Actually, let me reconsider whether aliases risk writing old names. I'll add a test that
+ greps the compacted log for "attempts"/"max_attempts" and asserts none. And the check.sh
+ second.txt runs after compact. And I'll grep in the store test.
+
+ Now, a concern: The sim's verify checks shown == response.body for 200/201 responses where
+ shown = JobOut.of(after[number]).to_json(). So as long as JobOut is consistent, fine. The
+ retry returns 200 with a job; shown must equal body. Good.
+
+ Also the sim's create only creates with max_tries. It doesn't use delay/backoff by default.
+ The spec says "the --sim or equivalent fault run still green with the new transitions in
+ it". So I should EXTEND the sim to exercise scheduled/retry transitions so it's "still green
+ with the new transitions in it". Let me add: some creates with delay_ms, some with
+ backoff_ms, and a retry action. And verify the new invariants.
+
+ Let me plan the sim extensions:
+ - create: sometimes pass delay_ms (rng-based) and backoff_ms.
+ - add a retry client action in step: retry a random dead job.
+ - advance the clock more so scheduled jobs become due and retry is meaningful.
+ - drain: workers lease, ack/fail; also retry dead jobs so they don't stay dead? Actually the
+ drain asserts "every job is done or dead once the faults stop and the workers keep working".
+ With backoff, a failed job goes scheduled then comes back queued, gets leased, failed again
+ → eventually dead (tries reach max). So drain still reaches done/dead. Good. But if we retry
+ dead jobs, they become queued again with tries 0, and then workers would fail them again to
+ dead. That's fine, drain keeps going. But retry could cause infinite non-termination if we
+ keep retrying. In drain, don't retry — only lease/ack/fail. So retry is exercised in the
+ step (fault) phase, and drain only finishes jobs. But a job retried in step becomes queued
+ and then in drain gets failed to dead eventually. But drain's termination condition: all
+ jobs done/dead. If a job is scheduled (backoff), it becomes queued after clock advances;
+ drain advances clock. Fine.
+
+ But careful: retrying a dead job sets tries=0 and it's queued; drain will re-process. That's
+ fine and terminates. But the sim's finished dict records "a done or dead job never changes".
+ If a job was dead and then retried (in step, not drain), it's no longer dead and its state
+ changes — but the sim recorded it in finished. Then verify would check job ==
+ self.finished[number] and fail because we changed it!
+
+ Look: after a retry, the job goes dead→queued. verify iterates after items; for number in
+ self.finished, checks job == self.finished[number]. This would fail for the retried job. So
+ I need to handle: a retried job is removed from finished. But the sim's verify doesn't know
+ which request was a retry. Hmm.
+
+ Options: In the retry client action, after sending, remove the job id from finished and
+ beliefs and record it as "retried" (reset finished). Actually simpler: when we perform a
+ retry request, after send, delete self.finished.pop(number, None). And the retry response
+ body shows the job (queued, tries 0). The verify on that response: after = current snapshot
+ where the job is now queued/tries 0; number in self.finished? If we popped it beforehand...
+ but verify runs inside send BEFORE we pop. Order: send → response = api.handle(request)
+ (retry happens, job now queued) → verify(request, response, before). In verify, after
+ snapshot has the job as queued. number in self.finished? The job was dead, so it WAS
+ finished. After retry it's queued. verify checks job == self.finished[number] → the after
+ job (queued,tries0) != finished (dead) → violation.
+
+ So I need, before sending a retry, to pop it from finished/beliefs, OR mark that this
+ request is a retry and skip the finished check for that number. Cleanest: in the retry
+ client, pop from finished & beliefs before send. But finished/beliefs are keyed by id and
+ number respectively. Let me pop by id string from finished (it's keyed by number int). Hmm
+ finished is keyed by number. beliefs by id string.
+
+ Let me reconsider the sim's data structures. beliefs: dict[str, (worker, lease_until)] keyed
+ by job id. finished: dict[int, Job] keyed by number. When retrying job j_N, pop beliefs (by
+ id) and finished (by N). Do that before/after send. Do it after we know the id from some_id,
+ before send. Actually the retry needs a dead job. Let me pick a number that is currently
+ dead from the snapshot. Then pop finished[N] and del beliefs[j_N] (if present), send retry.
+ After, the job is queued.
+
+ But the verify for the retry response: after has the job queued. number in self.finished? We
+ popped it → not in finished. Good. And if job.state in {"done","dead"} — no, it's queued.
+ Good. And the 200/201 body check: shown = JobOut.of(after[number]) == body. Good.
+
+ But there's still a subtle issue: other transitions. Actually, when a job is dead in
+ finished, and later a different look doesn't touch it, verify still checks job ==
+ finished[number] for all finished jobs on every request — that's a global check that
+ finished jobs never change. As long as we only retry via the explicit retry (which pops
+ finished), finished jobs stay stable. But what about lease expiry moving? A dead job isn't
+ leased, so no. A scheduled job that becomes queued isn't finished. Good.
+
+ Hmm, but also: the sim's finished is only checked for number in self.finished. A dead job
+ retried and popped is fine. But what about a dead job that is NOT retried and stays dead —
+ it stays in finished, stays stable. Good.
+
+ Also removed (deleted) — a delete removes a job. deleted = request.method=="DELETE" and
+ status==204. Fine.
+
+ OK let me also handle: the sim's verify currently, for 503, checks job == old or
+ _expired(old, job). I'll generalize _expired to _look_move. And also when NOT 503, after a
+ retry, the finished check — since we pop, fine.
+
+ Alright. Let me also reconsider: In step, I add retry as one of the actions. And sometimes
+ create with delay/backoff. Let me also make sure clock advances enough. Currently step
+ advances 0-1500 then 0-60. With delays up to maybe 5000ms, I might need bigger advances. The
+ backoff is "0 to 3,600,000" but in sim I'll pick small backoffs (e.g.
+ rng.choice([0,0,0,50,100,200])) and small delays. And advance clock more. Let me set backoff
+ to small and advance generously.
+
+ Now — an important subtlety about durability + look + scheduled + the durability test
+ test_the_record_is_in_the_store_when_the_change_returns. I'll add a scheduled variant.
+
+ Let me also reconsider the "scheduled→queued move is in the store before its response". The
+ look is called at the start of get/lease/list/create/health. So if a scheduled job is due
+ and you GET it or lease, the move is written first. Test: create delayed job, advance clock
+ past run_at, then lease → job leased, and the scheduled→queued transition is durable. I'll
+ add a durability test for the scheduled move.
+
+ Now the "check.sh" second.txt mentions "j_2's 100 ms lease ran out while stopped". With the
+ new model, a job with backoff... In first.txt, j_2 is created with max_attempts:1 (now
+ max_tries:1) and leased for 100ms. On fail/run-out, tries==max → dead. So after restart, j_2
+ dead. The second.txt GET /jobs/j_2 expects dead. But now with backoff, since max_tries=1,
+ first lease → tries=1 = max → dead. Same as before. But the first.txt also has j_1
+ (max_tries 2, acked→done), j_3 (retries). Let me update first.txt and second.txt and
+ expected.txt to the new names and add delayed job, backoff, and retry per the spec's "Tests
+ the reader expects to see ... the program-level check script extended with a delayed job, a
+ backoff, and a retry."
+
+ I'll need to carefully rewrite first.txt, second.txt, and expected.txt. This is the
+ trickiest part because expected output must match exactly. Rather than hand-compute, I'll
+ write the scripts, run check.sh to capture actual output, and update expected.txt from
+ actual (but must ensure the actual is correct, not just accept whatever). I'll reason about
+ correctness first, then match.
+
+ Let me now also check: the check.sh regex for times and uptime and "records to". After I add
+ scheduled/retry, the "compacted N records to M" line appears. And the second.txt runs after
+ compact. Since compact writes new records, second.txt's GET /jobs should reflect them.
+
+ Let me plan the new first.txt. I'll build on the existing one, renaming
+ max_attempts→max_tries, attempts→tries in outputs, and add:
+ - a delayed job (delay_ms > 0) → scheduled
+ - a backoff on fail → scheduled
+ - a retry of a dead job
+
+ But the first.txt is the "first run on a fresh dir", then compact, then second.txt. Since I
+ advance no clock in check.sh (there's no clock control in the check script — it's real time
+ via SystemClock), a delayed job with a real delay_ms (e.g. large) would stay scheduled. A
+ backoff would schedule it. And to test "scheduled → queued after run_at" and "retry", I need
+ the job to become due and be retried via explicit POST /retry.
+
+ Hmm, the check.sh uses real time (ServerThread → open_queue → SystemClock since no clock
+ injection in serve path). So delay_ms delays in real ms. To keep check fast & deterministic,
+ I'll use small delays? But real time is nondeterministic in sub-ms. Actually the check
+ script can't advance a fake clock. So I must use real delays. To test scheduled→queued, I'd
+ create with delay_ms=50, then... but I can't wait in the script. However the listener's Idle
+ sweep runs every 1s. And GET/lease/list/health look. So if I create a delayed job with
+ delay_ms=20ms, then make another request to the same queue (which triggers a look), the
+ scheduled job becomes due and is queued. But timing: by the time the next request arrives,
+ >20ms likely passed. But "before its run_at returns 204" — hard to guarantee with real time.
+
+ Given check.sh is a real-time program-level smoke test, I think the cleanest is:
+ - delayed job: create with delay_ms large enough it stays through the whole first.txt (e.g.
+ delay_ms=3600000 = 1hr) → stays scheduled. Then show GET /jobs/{id} → scheduled with run_at.
+ And /health counts scheduled. And a lease on that queue... if the delayed job is the only
+ one, lease returns 204. Good, that demonstrates "not leased before run_at".
+ - backoff: create a job max_tries=2 with backoff_ms, lease+fail → scheduled (with run_at =
+ now+backoff). Keep backoff large (e.g. 3600000) so it stays scheduled. Show it's scheduled.
+ - retry: make a job dead (max_tries=1, lease+fail → dead), then POST /jobs/{id}/retry → 200,
+ queued tries 0, then lease it again.
+ - Also show retry 409 on a non-dead job, and 404.
+
+ But after compact and second.txt, the delayed/scheduled/backoff jobs still are scheduled
+ (1hr delay). That's fine — GET shows scheduled. But the health//jobs listings in second.txt
+ would include them. I need expected.txt to match. This is getting complex. Let me keep it
+ manageable.
+
+ Actually, re-reading the spec for check.sh: "the program-level check in examples/programs/
+ through a real socket from jobq client." and "a script may now say POST /jobs/{id}/retry".
+ So I need retry in a script. And "extended with a delayed job, a backoff, and a retry."
+
+ Let me design first.txt to be self-contained and not require the second.txt to re-list the
+ delayed jobs. Actually second.txt runs on the same dir (persisted). Whatever I create in
+ first.txt persists to second.txt. So I must account for it. Alternatively, I can delete the
+ transient jobs at the end of first.txt so second.txt is clean. Let me do that: at end of
+ first.txt, after demonstrating, delete or the second.txt accounts.
+
+ Hmm, let me think about what second.txt currently demonstrates: "j_2's 100 ms lease ran out
+ while stopped" → after compact+restart, j_2 is dead (since its 100ms lease ran out and it
+ had max_tries 1). Actually wait, the original second.txt comment: "j_2's 100 ms lease ran
+ out while stopped". Between first and second, compact happens (which takes the current
+ durable state) then a NEW server. During the new server start, it looks (expire_due on first
+ look)... Actually restart replays, j_2 was leased with lease_until 100ms in the past (real
+ time ~ instant), so on first look it's queued; but max_tries=1 so... wait. Original: j_2
+ max_attempts=1, leased once (attempts=1). After the lease runs out, it's dead
+ (attempts==max). In original second.txt, GET /jobs/j_2 → dead. Right.
+
+ For my new version, I'll keep that j_2 logic but also add the new demonstrations. Let me
+ restructure to minimize churn while adding coverage. Actually, the cleanest approach:
+ rewrite first.txt, second.txt, expected.txt holistically for the new behavior, then run
+ check.sh to capture and reconcile. Since I control all three, I'll:
+ 1. Write first.txt with a good script including delay/backoff/retry and old-name rejection.
+ 2. Write second.txt.
+ 3. Run check.sh producing actual output.
+ 4. Verify actual output is correct by reasoning, then set expected.txt = actual (sanitized).
+
+ But the spec says expected output should be the correct expected. I'll reason carefully. And
+ I'll add an old-name rejection (POST /jobs with max_attempts → 400) and retry 409/404 in
+ first.txt to demonstrate "old names are gone" and retry. Good.
+
+ Let me now write first.txt (fresh dir). I'll aim for these scenarios, keeping it ordered by
+ j_ ids so I can predict:
+
+ Actually the lease hands out oldest by id. Let me design carefully and predict each line.
+ This is going to be long. Let me instead build iteratively: write a first.txt, run it, read
+ actual, adjust expected to match the actual (after verifying correctness by reading the
+ actual output). That's pragmatic and safe since I reason about each.
+
+ Let me first make all the code changes, get the unit tests green, then handle check scripts.
+
+ Let me also check the .gitignore and whether there are data/ folders (the spec mentions "the
+ program's own data/ folders and fixtures from
+
+ ⠼ Working...
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-qwen-python (r9-qwen-python)
+↑280k ↓2.0k 40.8%/128k (auto)                                (ollama) qwen3.8:27b-mlx • medium

@@ -2,6 +2,11 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Session 9, the Mac, morning — 16 Sep 2026
+
+- **Round 9's last row, Haiku 4.5** (three Claude Code sessions at medium effort, 7 to 9 minutes each; Fable's setup, suites, and reading, `mo-wiki/plans/control-run-9.md`). The first model whose change is defective in every language: 0 regressions everywhere; Mo 28 of 189 checks over 4 causes (the old names and malformed fields accepted at create; a due job never moved from scheduled to queued), Go 22 over 6 (its bolted-on `never`s trip on its own change, answer 500, once exit the server), Python 18 over 2 (the retry route and a scheduled delete answer 500). None was green by every check at its commit, and every report's wall-clock is wrong by a factor. The round is closed: P1 held, P4 for four of five, P2, P3, and P5 failed; the Opus-in-Pi baseline unmet. The suite outputs and panes of every row are under `control-run-9-suite/results/`.
+- **The wiki as a site** (Fable, the morning; `site/`, `.github/workflows/site.yml`). Quartz builds `mo-wiki/` to GitHub Pages on every push to `main`; `mo-wiki/state-of-the-project.md` is the standing account, rewritten at every pause, and seven maps of content sit under `mo-wiki/maps/`.
+
 ## Session 8, the Mac — 15 Sep 2026
 
 - **The Mac set up and every suite green** (Fable, half an hour). Zig 0.16.0, Go 1.27.1 with staticcheck, Elixir 1.18.5 on OTP 27.3 pinned in the Elixir worktree alone, `uv`, Pi 0.73.1; thirteen evidence worktrees recreated beside the repo and the toolchain binary copied in; the Go, Elixir, Python, and Mo queues' own suites green on the Mac. The Herdr worker pane is `w44:p2`. Robert to bed at 22:50: the lead decides, the worker is Opus on medium effort, fresh per piece of work.

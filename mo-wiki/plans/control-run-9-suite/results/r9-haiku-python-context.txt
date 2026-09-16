@@ -1,0 +1,60 @@
+  - All field names consistently updated across 8 test files
+
+  Loop Count by Cause
+
+  0 loops - Implementation was correct on first attempt after systematic field name updates
+  across codebase and tests. No iterative fixing was needed.
+
+  Deliverables
+
+  - ✅ Commit: d4bf338 jobq: the change
+  - ✅ REPORT.md: Created at worktree root with wall-clock time, loop count, and 8
+    specification gaps documented
+  - ✅ No push: As instructed (local commit only)
+
+  All durability requirements met: every state change is written to disk before responding,
+  including scheduled-to-queued transitions.
+
+✻ Cooked for 7m 5s · done 8:29 AM
+
+
+❯ /context
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Haiku 4.5
+     ⛁ ⛀ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-haiku-4-5-20251001
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   131.3k/200k tokens (66%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁
+❯ You are a worker on a software project in the worktree /Users/robertguss/Projects/startups/…
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Estimated usage by category
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ System prompt: 4.4k tokens (2.2%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛀ ⛶ ⛶   ⛁ System tools: 17.4k tokens (8.7%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Custom agents: 295 tokens (0.1%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Memory files: 362 tokens (0.2%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Skills: 2k tokens (1.0%)
+                           ⛁ Messages: 107.1k tokens (53.5%)
+                           ⛶ Free space: 68.4k (34.2%)
+
+     MCP tools · /mcp (loaded on-demand)
+     └ 77 tools · 0 tokens
+
+     Custom agents · .claude/agents/
+     └ 5 agents · 295 tokens
+
+     Memory files · /memory
+     └ 2 files · 362 tokens
+
+     Skills · /skills
+     └ 44 skills · 2k tokens
+
+     /context all to expand
+
+      Suggestions
+      ℹ Read results using 33.8k tokens (17%) → save ~10.1k
+        Use offset and limit parameters to read only the sections you need. Avoid re-reading
+     entire files when you only need a few lines.
+
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Haiku 4.5 ~/P/s/m/e/c/p/jobq (r9-haiku-python*) | Context: 34% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

@@ -1,0 +1,1 @@
+haiku briefed 08:22:42 16 Sep; panes w4B:p1 mo p2 go p3 python; 90-min rule ends 09:52; binary = main's 5ec04ddd (same as deepseek and codex rows; kimi had fda805e5)

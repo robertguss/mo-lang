@@ -416,3 +416,6 @@
 
 ## [2026-09-16] session | Morning: the wiki as a site, the state of the project, the maps
 - Robert's ask on waking: the whole picture, not the trees, and the wiki readable from his phone. Quartz in `site/`, GitHub Pages, every push publishes; [[state-of-the-project]] written from the first commit to this morning; seven maps of content. The lint sees `maps/` and the root pages now (80 issues, most the research pages' type).
+
+## [2026-09-16] session | Morning: round 9's Haiku row, the round closed
+- Haiku 4.5 through Claude Code on round 8's change in three panes (`w4B`), 08:22 to 08:45: 7 to 9 minutes a session, every session stopping at its own tests with the other checks red; 0 regressions everywhere; defects Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2 ([[control-run-9]]). The first model defective in every language; Mo's miss is the due job never queued. One `semantic` row for Robert. The suite outputs and the panes of every round 9 row saved under `control-run-9-suite/results/`.

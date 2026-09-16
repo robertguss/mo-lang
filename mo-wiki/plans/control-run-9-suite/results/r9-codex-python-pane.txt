@@ -1,0 +1,400 @@
+ import time
+ print(f'wall_clock_seconds={time.time() - float("$start"):.1f}')
+ PY (timeout 300s)
+
+ ... (9 earlier lines, ctrl+o to expand)
+ Building source distribution...
+ Building wheel from source distribution...
+ Successfully built dist/jobq-0.1.0.tar.gz
+ Successfully built dist/jobq-0.1.0-py3-none-any.whl
+ wall_clock_seconds=4.4
+
+ Took 4.5s
+
+
+ Deciding to exclude build artifacts from commit
+
+
+ $ git status --short (timeout 300s)
+
+ ... (11 earlier lines, ctrl+o to expand)
+  M experiments/control-run/python/jobq/tests/test_jobs.py
+  M experiments/control-run/python/jobq/tests/test_queue.py
+  M experiments/control-run/python/jobq/tests/test_server.py
+  M experiments/control-run/python/jobq/tests/test_sim.py
+  M experiments/control-run/python/jobq/tests/test_store.py
+
+ Took 0.0s
+
+
+ Assessing unexpected ID change cause
+
+
+ read experiments/control-run/python/jobq/checks/second.txt
+
+ # jobq check, second run, after compaction: j_2's 100 ms lease ran out while stopped
+ w1 GET /jobs/j_2
+ w1 GET /jobs
+ w1 POST /jobs {"queue": "emails", "payload": "after restart", "max_tries": 1}
+ - GET /health
+
+
+ Inspecting test_sim changes
+
+
+ $ git diff -- experiments/control-run/python/jobq/tests/test_sim.py
+ experiments/control-run/python/jobq/tests/test_cli.py
+ experiments/control-run/python/jobq/tests/test_server.py | head -200 (timeout 300s)
+
+ ... (124 earlier lines, ctrl+o to expand)
+              "payload": f"job {self.rng.randrange(10**6)}",
+ -            "max_attempts": self.rng.randrange(1, 4),
+ +            "max_tries": self.rng.randrange(1, 4),
+          }
+          self.send(Request("POST", "/jobs", "", "producer", json.dumps(body).encode()))
+
+ Took 0.0s
+
+
+ Planning simulation backoff implementation
+
+
+ read experiments/control-run/python/jobq/tests/test_sim.py:1-260
+
+ """`--sim 100 --faults`: the queue under 100 seeds of injected file and socket failures.
+
+ After every request: the store holds exactly what the queue holds, a 503 changed nothing
+ but run-out leases, no job was held by two workers, tries stayed within bounds, and a
+ done or dead job never changed. Once the faults stop and the workers keep working, every
+ job ends done or dead.
+ """
+
+ import errno
+ import json
+ ... (238 more lines, ctrl+o to expand)
+
+
+ Updating simulation with retries and delays
+
+ Refining retry logic and job state handling
+
+
+ edit experiments/control-run/python/jobq/tests/test_sim.py
+
+    1 """`--sim 100 --faults`: the queue under 100 seeds of injected file and socket
+ failures.
+    2
+    3 After every request: the store holds exactly what the queue holds, a 503 changed
+ nothing
+    4 but run-out leases, no job was held by two workers, tries stayed within bounds, and a
+ -  5 done or dead job never changed. Once the faults stop and the workers keep working,
+ every
+ -  6 job ends done or dead.
+ +  5 done job never changed, and a dead job only changed through retry. Once the faults stop
+ +  6 and the workers keep working, every job ends done or dead.
+    7 """
+    8
+    9 import errno
+   10 import json
+      ...
+   60
+   61 def _expired(before: Job, after: Job) -> bool:
+   62     return (
+   63         before.state == "leased"
+ - 64         and after.state in {"queued", "dead"}
+ + 64         and after.state in {"queued", "scheduled", "dead"}
+   65         and after.tries == before.tries
+   66         and after.worker is None
+   67     )
+   68
+      ...
+  115             self.check(deleted and len(removed) == 1, "a job is only ever lost to its
+ delete")
+  116         for number, job in after.items():
+  117             self.check(job.tries <= job.max_tries, "tries never exceed max_tries")
+  118             if number in self.finished:
+ -119                 self.check(job == self.finished[number], "a done or dead job never
+ changes")
+ +119                 if job != self.finished[number]:
+ +120                     retried = request.path == f"/jobs/j_{number}/retry" and
+ response.status == 200
+ +121                     self.check(retried, "a done or dead job only changes through
+ retry")
+ +122                     del self.finished[number]
+  120             elif job.state in {"done", "dead"}:
+  121                 self.finished[number] = job
+  122         if response.status in {200, 201} and response.body.startswith(b'{"id"'):
+  123             number = int(json.loads(response.body)["id"][2:])
+      ...
+  130         body = {
+  131             "queue": self.rng.choice(QUEUES),
+  132             "payload": f"job {self.rng.randrange(10**6)}",
+  133             "max_tries": self.rng.randrange(1, 4),
+ +137             "delay_ms": self.rng.choice([0, 0, 200]),
+ +138             "backoff_ms": self.rng.choice([0, 0, 300]),
+  134         }
+  135         self.send(Request("POST", "/jobs", "", "producer", json.dumps(body).encode()))
+  136
+  137     def lease(self, worker: str, queue: str) -> None:
+      ...
+  179         elif roll < 0.78:
+  180             self.send(Request("GET", f"/jobs/{self.some_id()}", "", worker))
+  181         elif roll < 0.84:
+  182             self.send(Request("DELETE", f"/jobs/{self.some_id()}", "", worker))
+ +188         elif roll < 0.88:
+ +189             self.send(Request("POST", f"/jobs/{self.some_id()}/retry", "", worker))
+  183         elif roll < 0.9:
+  184             query = self.rng.choice(["", "state=leased", "queue=mail&state=queued"])
+  185             self.send(Request("GET", "/jobs", query, worker))
+  186         elif roll < 0.95:
+      ...
+
+
+ Assessing done job retry conflicts
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 uv run python -m unittest discover
+ -s tests (timeout 300s)
+
+ ... (45 earlier lines, ctrl+o to expand)
+
+ FAILED (failures=1)
+
+
+ Command exited with code 1
+
+ Took 1.9s
+
+
+ Refining failure handling for scheduled deletions
+
+
+ edit experiments/control-run/python/jobq/tests/test_sim.py
+
+      ...
+   57 class Violation(AssertionError):
+   58     pass
+   59
+   60
+ - 61 def _expired(before: Job, after: Job) -> bool:
+ + 61 def _deadline_move(before: Job, after: Job) -> bool:
+ + 62     lease_expired = before.state == "leased" and after.state in {"queued", "scheduled",
+ "dead"}
+ + 63     schedule_due = before.state == "scheduled" and after.state == "queued"
+   62     return (
+ - 63         before.state == "leased"
+ - 64         and after.state in {"queued", "scheduled", "dead"}
+ + 65         (lease_expired or schedule_due)
+   65         and after.tries == before.tries
+   66         and after.worker is None
+   67     )
+   68
+      ...
+  107             self.unavailable += 1
+  108             self.check(after.keys() == before.keys(), "a 503 adds or removes no job")
+  109             for number, job in after.items():
+  110                 old = before[number]
+ -111                 self.check(job == old or _expired(old, job), "a 503 changes only
+ run-out leases")
+ +112                 self.check(
+ +113                     job == old or _deadline_move(old, job),
+ +114                     "a 503 changes only deadline moves from the look",
+ +115                 )
+  112         removed = before.keys() - after.keys()
+  113         if removed:
+  114             deleted = request.method == "DELETE" and response.status == 204
+  115             self.check(deleted and len(removed) == 1, "a job is only ever lost to its
+ delete")
+      ...
+
+
+ Running tests
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 uv run python -m unittest discover
+ -s tests (timeout 300s)
+
+ ... (1 earlier lines, ctrl+o to expand)
+ ...................................
+ ----------------------------------------------------------------------
+ Ran 127 tests in 3.743s
+
+ OK
+
+ Took 3.9s
+
+
+ Re-running all checks
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 uv run ruff check (timeout 300s)
+
+ All checks passed!
+
+ Took 0.1s
+
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 uv run mypy (timeout 300s)
+
+ Success: no issues found in 22 source files
+
+ Took 0.2s
+
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 bash check.sh (timeout 300s)
+
+ check.sh: ok
+
+ Took 0.7s
+
+
+ Planning final wall clock implementation
+
+
+ $ cd experiments/control-run/python/jobq && start=$(python3 - <<'PY'
+ import time
+ print(time.time())
+ PY
+ ) && timeout 300 uv run ruff check && timeout 300 uv run mypy && timeout 300 uv run python
+ -m unittest discover -s tests && timeout 300 bash check.sh && timeout 300 uv build &&
+ python3 - <<PY
+ import time
+ print(f'wall_clock_seconds={time.time() - float("$start"):.1f}')
+ PY (timeout 300s)
+
+ ... (9 earlier lines, ctrl+o to expand)
+ Building source distribution...
+ Building wheel from source distribution...
+ Successfully built dist/jobq-0.1.0.tar.gz
+ Successfully built dist/jobq-0.1.0-py3-none-any.whl
+ wall_clock_seconds=4.9
+
+ Took 5.0s
+
+
+ Summarizing test failure causes and fixes
+
+ Verifying partial fixes and planning time tracking
+
+
+ $ date -u '+%Y-%m-%d %H:%M:%S UTC' && git diff --name-only (timeout 300s)
+
+ ... (12 earlier lines, ctrl+o to expand)
+ experiments/control-run/python/jobq/tests/test_jobs.py
+ experiments/control-run/python/jobq/tests/test_queue.py
+ experiments/control-run/python/jobq/tests/test_server.py
+ experiments/control-run/python/jobq/tests/test_sim.py
+ experiments/control-run/python/jobq/tests/test_store.py
+
+ Took 0.0s
+
+
+ Defining report content and timing details
+
+
+ write REPORT.md
+
+ # jobq: the change
+
+ Wall-clock: about 55 minutes end to end; final green verification run was 4.9 seconds.
+
+ Green verification:
+ - `timeout 300 uv run ruff check`
+ - `timeout 300 uv run mypy`
+ - `timeout 300 uv run python -m unittest discover -s tests` — 127 tests
+ - `timeout 300 bash check.sh`
+ - `timeout 300 uv build`
+ ... (19 more lines, 29 total, ctrl+o to expand)
+
+
+ Preparing final git commit
+
+
+ $ git status --short (timeout 300s)
+
+ ... (12 earlier lines, ctrl+o to expand)
+  M experiments/control-run/python/jobq/tests/test_queue.py
+  M experiments/control-run/python/jobq/tests/test_server.py
+  M experiments/control-run/python/jobq/tests/test_sim.py
+  M experiments/control-run/python/jobq/tests/test_store.py
+ ?? REPORT.md
+
+ Took 0.0s
+
+
+ Planning selective git add for commit
+
+
+ $ git add REPORT.md experiments/control-run/python/jobq/bench/bench.py
+ experiments/control-run/python/jobq/checks/expected.txt
+ experiments/control-run/python/jobq/checks/first.txt
+ experiments/control-run/python/jobq/checks/second.txt
+ experiments/control-run/python/jobq/src/jobq/api.py
+ experiments/control-run/python/jobq/src/jobq/jobs.py
+ experiments/control-run/python/jobq/src/jobq/queue.py
+ experiments/control-run/python/jobq/src/jobq/store.py
+ experiments/control-run/python/jobq/tests/support.py
+ experiments/control-run/python/jobq/tests/test_api.py
+ experiments/control-run/python/jobq/tests/test_cli.py
+ experiments/control-run/python/jobq/tests/test_jobs.py
+ experiments/control-run/python/jobq/tests/test_queue.py
+ experiments/control-run/python/jobq/tests/test_server.py
+ experiments/control-run/python/jobq/tests/test_sim.py
+ experiments/control-run/python/jobq/tests/test_store.py && git commit -m 'jobq: the change'
+ (timeout 300s)
+
+ [r9-codex-python 8abcc13] jobq: the change
+  17 files changed, 540 insertions(+), 150 deletions(-)
+  create mode 100644 REPORT.md
+
+ Took 0.1s
+
+
+ Verifying build artifact ignoring rules
+
+
+ $ git status --short && git log -1 --oneline (timeout 300s)
+
+ 8abcc13 jobq: the change
+
+ Took 0.0s
+
+
+ Finalizing concise report with summary and commit
+
+ Done and committed.
+
+ Commit: 8abcc13 jobq: the change
+
+ Green verification:
+ - timeout 300 uv run ruff check
+ - timeout 300 uv run mypy
+ - timeout 300 uv run python -m unittest discover -s tests — 127 tests
+ - timeout 300 bash check.sh
+ - timeout 300 uv build
+
+ Report written to REPORT.md.
+
+ Wall-clock: about 55 minutes end to end; final green verification run was 4.9 seconds.
+
+ Loop count by cause:
+ 1. Test invocation/tooling: 2 failures; fixed by using unittest discovery.
+ 2. Old assertions after API/output changes: 1 failure; first test edit fixed it.
+ 3. Checker fallout: ruff/mypy/check failures; mypy first fix worked, ruff needed one
+ formatting pass, check expected needed regeneration.
+ 4. Simulation coverage for new transitions: 1 failure; first oracle fix worked.
+
+ Decisions the spec did not cover:
+ 1. backoff_ms is emitted in every job response, including zero.
+ 2. created_at + delay_ms uses the clock value read inside create.
+ 3. Durable due scheduled moves may be visible even if a later write in the same request
+ returns 503.
+ 4. Program check uses long delays/backoffs instead of sleeps for deterministic coverage.
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-codex-python (r9-codex-python)
+↑122k ↓18k R3.6M $2.953 (sub) 34.0%/272k (auto)                (openai-codex) gpt-5.5 • medium

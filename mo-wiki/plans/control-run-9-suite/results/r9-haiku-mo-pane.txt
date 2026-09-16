@@ -1,0 +1,29 @@
+  5. Backward Compatibility: Old JSON field names (attempts, max_attempts) still readable
+  6. Parameter Refactoring: Created JobCreation struct to respect 6-parameter limit
+
+  Commit
+
+  - Commit hash: 2e1c337
+  - Message: "jobq: the change"
+  - All changes on disk before responses (durability guaranteed)
+
+  Report
+
+  - REPORT.md created at worktree root documenting:
+    - Wall-clock time: ~90 minutes
+    - Loop count: 1 loop with multiple fixes
+    - 6 decisions the spec didn't cover
+
+  The implementation maintains full durability (every job write before API response) and passes
+  all existing tests plus new tests for scheduled jobs, backoff, and retry functionality.
+
+✻ Cogitated for 9m 58s · done 8:32 AM
+
+※ recap: Completed jobq feature change: scheduled jobs, retry backoff, and field renames. All
+  48 tests passing, commit made. Task is done. (disable recaps in /config)
+                                                                             94% context used
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Haiku 4.5 ~/P/s/mo-lang-r9-haiku-mo (r9-haiku-mo*) | Context: 16% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

@@ -1,0 +1,400 @@
+    "time"
+    "unicode"
+    "unicode/utf8"
+ ... (189 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/store.go
+
+ package main
+
+ import (
+    "bufio"
+    "bytes"
+    "encoding/json"
+    "errors"
+    "fmt"
+    "hash/crc32"
+    "io"
+ ... (264 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/queue.go
+
+ package main
+
+ import (
+    "container/heap"
+    "context"
+    "errors"
+    "fmt"
+    "sort"
+    "time"
+
+ ... (519 more lines, ctrl+o to expand)
+
+
+ Now let me read the rest of the source files: api.go, serve.go, client.go, main.go,
+ clock.go, timeouts.go, check.go, and the contract package.
+
+ Now let me read the API, serve, and remaining source files.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/api.go
+
+ package main
+
+ import (
+    "bytes"
+    "context"
+    "encoding/json"
+    "errors"
+    "io"
+    "net/http"
+    "sort"
+ ... (274 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/serve.go
+
+ package main
+
+ import (
+    "context"
+    "errors"
+    "fmt"
+    "io"
+    "net"
+    "net/http"
+    "os"
+ ... (126 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/clock.go
+
+ package main
+
+ import (
+    "sync"
+    "time"
+ )
+
+ // Clock is main's clock. The queue reads no other time, and every reading is
+ // UTC to the millisecond so a job survives the store's JSON unchanged.
+ type Clock interface {
+ ... (28 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/timeouts.go
+
+ package main
+
+ import "time"
+
+ // Every timeout literal in jobq, the Go reading of `within:`. Each says
+ // whether its number was chosen for its call or derived from an enclosing
+ // deadline. Waiting for the queue's lock takes no literal: it is bounded by
+ // the request's context, derived from requestTimeout.
+ const (
+    // idleTimeout is chosen. A connection that has sent no request header
+ ... (25 more lines, ctrl+o to expand)
+
+
+ Now let me read the remaining source files: main.go, client.go, check.go, and the contract
+ package.
+
+ Now the remaining source files and the contract package.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/main.go
+
+ // Command jobq is a durable job queue with an HTTP API.
+ package main
+
+ import (
+    "fmt"
+    "io"
+    "os"
+ )
+
+ const usage = "usage: jobq serve <dir> [--port N] | jobq compact <dir> | " +
+ ... (28 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/client.go
+
+ package main
+
+ import (
+    "fmt"
+    "io"
+    "net"
+    "net/http"
+    "strings"
+ )
+
+ ... (77 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/check.go
+
+ package main
+
+ import (
+    "fmt"
+    "io"
+    "net"
+    "os"
+    "strconv"
+    "strings"
+    "time"
+ ... (115 more lines, ctrl+o to expand)
+
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go &&
+ echo "===contract dir===" && ls -la jobq/contract/ 2>/dev/null && echo "===contract
+ files===" && find jobq/contract -type f 2>/dev/null && echo "===logstat===" && ls -la
+ logstat/ && echo "===go.mod===" && cat jobq/go.mod
+
+ ===contract dir===
+
+
+ Command exited with code 1
+
+ Took 0.0s
+
+
+ The contract directory may be at a different location. Let me check the go.mod and find the
+ contract package.
+
+ The contract package isn't under jobq/contract. Let me find it and read the test files.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go &&
+ echo "===go.mod===" && cat jobq/go.mod && echo "===go env GOFLAGS/GO111MODULE===" && echo
+ "===find contract===" && find . -type d -name contract && echo "===find contract.go===" &&
+ find . -path '*contract*' -name '*.go' && echo "===ls jobq/contract===" && ls -la
+ jobq/contract/ && echo "===go list===" && cd jobq && go list ./... 2>&1 | head
+
+ ===go.mod===
+ cat: jobq/go.mod: No such file or directory
+
+
+ Command exited with code 1
+
+ Took 0.0s
+
+
+ The go.mod is at the parent directory of jobq. Let me check.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go &&
+ find . -name go.mod -o -name go.sum | head && echo "===content===" && cat go.mod
+ 2>/dev/null; echo "===find contract===" && find . -path '*contract*' -name '*.go' && echo
+ "===tree of experiment===" && find . -type f -name '*.go' | head -60
+
+ ... (32 earlier lines, ctrl+o to expand)
+ ./jobq/api.go
+ ./jobq/bench_test.go
+ ./jobq/api_test.go
+ ./jobq/main.go
+ ./jobq/main_test.go
+
+ Took 0.0s
+
+
+ The module is controlrun at the parent directory. Let me read the contract package, and
+ then the test files.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/contract/contract.go
+
+ // Package contract checks requires, ensures, and invariants. A failed
+ // check returns an error that carries the condition's text; it never panics.
+ package contract
+
+ // Violation is a failed contract: which kind, and the condition as written.
+ type Violation struct {
+    Kind string
+    Cond string
+ }
+
+ ... (20 more lines, ctrl+o to expand)
+
+
+
+ read
+ ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/contract/contract.go
+
+ ENOENT: no such file or directory, access
+ '/Users/robertguss/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/con
+ tract/contract.go'
+
+
+ The jobq/contract directory is empty (it's a stale empty dir). The real contract package is
+ at controlrun/contract. Wait, the import is controlrun/contract. Let me verify.
+
+ Yes, import in job.go is "controlrun/contract". The module is controlrun. So
+ contract/contract.go is the one. Good. The jobq/contract dir is an empty leftover.
+
+ Now let me read all the test files to understand what tests exist.
+
+ Now let me read the test files and check.sh + script fixtures.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/queue_test.go
+
+ package main
+
+ import (
+    "context"
+    "errors"
+    "os"
+    "path/filepath"
+    "strings"
+    "sync"
+    "testing"
+ ... (403 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/api_test.go
+
+ package main
+
+ import (
+    "encoding/json"
+    "math/rand/v2"
+    "net/http"
+    "net/http/httptest"
+    "strings"
+    "testing"
+    "time"
+ ... (242 more lines, ctrl+o to expand)
+
+
+ This is a big change. Let me read the rest of the test files, check.sh, check.script,
+ check.expected, main_test.go, store_test.go, job_test.go, listener_test.go, sim_test.go,
+ bench_test.go.
+
+ Let me read the remaining test files and fixtures.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/store_test.go
+
+ package main
+
+ import (
+    "bytes"
+    "errors"
+    "fmt"
+    "hash/crc32"
+    "os"
+    "path/filepath"
+    "reflect"
+ ... (272 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/job_test.go
+
+ package main
+
+ import (
+    "encoding/json"
+    "testing"
+    "time"
+ )
+
+ func TestParseID(t *testing.T) {
+    for s, want := range map[string]uint64{"j_1": 1, "j_42": 42, "j_18446744073709551615":
+ 1<<64 - 1} {
+ ... (73 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/main_test.go
+
+ package main
+
+ import (
+    "net"
+    "os"
+    "path/filepath"
+    "strconv"
+    "strings"
+    "testing"
+ )
+ ... (96 more lines, ctrl+o to expand)
+
+
+ Now let me read the remaining test files (listener_test.go, sim_test.go, bench_test.go) and
+ the check.sh, check.script, check.expected, and the CHANGELOG.md / HANDOFF.md.
+
+ Let me read the remaining test files, check.sh, and the script fixtures.
+
+
+ read
+ ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/listener_test.go
+
+ package main
+
+ import (
+    "errors"
+    "io"
+    "net"
+    "net/http"
+    "os"
+    "testing"
+    "time"
+ ... (65 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq/sim_test.go
+
+ package main
+
+ import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "math/rand/v2"
+    "net/http"
+    "net/http/httptest"
+    "reflect"
+ ... (361 more lines, ctrl+o to expand)
+
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-go/experiments/control-run/go/jobq
+ && echo "===check.sh===" && cat check.sh && echo "===check.script===" && cat
+ testdata/check.script && echo "===check.expected===" && cat testdata/check.expected
+
+ ... (211 earlier lines, ctrl+o to expand)
+ 405
+ {"error":"method not allowed"}
+ > prod GET /nope
+ 404
+ {"error":"no such route"}
+
+ Took 0.0s
+
+
+ Error: Request timed out.
+
+ ⠏ Working...
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-qwen-go (r9-qwen-go)
+↑277k ↓2.4k 38.8%/128k (auto)                               (ollama) qwen3.8:27b-mlx • medium

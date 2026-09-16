@@ -29,7 +29,7 @@ know that the wiki does not say in one place.
 > Ollama; 28 evidence worktrees plus tonight's: `../mo-lang-r9-<model>-<lang>`
 > for kimi, deepseek, codex, qwen, gemini (unused),
 > `../mo-lang-erosion2-<lang>`, `../mo-lang-cache-C`). The Herdr worker pane is
-> `w44:p2`; workspaces `w45` to `w4A` hold tonight's session panes, all finished.
+> `w44:p2`; workspaces `w45` to `w4A` hold tonight's session panes, all finished, and `w4B` the morning's Haiku panes.
 >
 > **What the night found, in the order Robert should read it.**
 >
@@ -61,7 +61,7 @@ know that the wiki does not say in one place.
 >    7, Mo 0/0 in 14: it matched Opus). Every Go change carries the same
 >    `delay_ms` null defect; both open-weights models' Mo changes miss the
 >    run-out lease with backoff; the closed model does not. Gemini's key in Pi
->    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too).
+>    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.**
 > 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
 >    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
 >    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
@@ -80,27 +80,26 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **Round 9's last row.** Haiku 4.5 through Claude Code (`--model haiku`) is M5, unrun: `r9-setup.sh haiku`, three panes in a new workspace, the Claude kind with `/effort medium`, `r9-brief.sh`, the suites per language from `control-run-9-suite/` (the Python one paced: `paced-python.sh`). The round is otherwise read (`control-run-9.md`, status done): qwen made no edit in 92 minutes in any language.
-> 2. **P6 on Mo's change 2 program** (`../mo-lang-erosion2-mo`, the binary at
+> 1. **P6 on Mo's change 2 program** (`../mo-lang-erosion2-mo`, the binary at
 >    `examples/programs/jobq/zig-out/mo-build/jobq-e2/jobq-e2`): the queue
 >    crashed under load with the service still answering. The binary's queue
 >    cannot be killed from outside; find the input that trips a contract inside
 >    the queue under load (a record that passes `verify` but breaks a `never` at
 >    lease, or a fault under `--sim` in `server.mo`'s tests), or add a runtime
 >    hook. This is the row that closes round 8's outage or does not.
-> 3. **Generation three of the erosion round**: change 3 written and sealed by
+> 2. **Generation three of the erosion round**: change 3 written and sealed by
 >    the lead (`spec/programs/01d-...`), branched from `erosion2-*`, a fourth
 >    hidden suite after the branching; the change 2 spec first gains the three
 >    sentences decided at 02:00 (a record with a field its state forbids is
 >    ill-formed; `verify` never writes; `verify` on a missing folder exits 1).
-> 4. **The placement step** (after 31): a process placed with its asker or a
+> 3. **The placement step** (after 31): a process placed with its asker or a
 >    reply answered on the asker's scheduler; measured on `echo-1k` and the
 >    queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128
 >    held asks (step 31's 0.46 row).
-> 5. **Chapter 10's other sections as steps**: §2 the restart budget diagnostic,
+> 4. **Chapter 10's other sections as steps**: §2 the restart budget diagnostic,
 >    §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module and
 >    the `--write` order.
-> 6. Then the roadmap's order: the bricks page; the compile benchmark;
+> 5. Then the roadmap's order: the bricks page; the compile benchmark;
 >    program 7.
 >
 > **The site.** The wiki is published at https://robertguss.github.io/mo-lang/ by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`. `mo-wiki/state-of-the-project.md` is the lead's standing account, rewritten at every pause; the maps under `mo-wiki/maps/` are kept current as pages land. Build locally with `cd site && npx quartz build -d ../mo-wiki -o public`.
@@ -123,8 +122,8 @@ know that the wiki does not say in one place.
 > are created with `herdr workspace create --cwd` and split with
 > `herdr pane split <id> --direction right|down --cwd`.
 >
-> **Unmet, carried.** P6 on Mo's change 2. Round 9's qwen and Haiku rows, and
-> its Opus-in-Pi baseline (no Anthropic key in Pi). Python's first unwritable
+> **Unmet, carried.** P6 on Mo's change 2. Round 9's Opus-in-Pi baseline (no
+> Anthropic key in Pi). Python's first unwritable
 > run on generation one died in the audit and passed on the rerun (a flake until
 > it recurs). Python's change 2 maintainer reported its own bench regression
 > (4,438 to 1,279 pairs a second, partly taken back), unmeasured by the lead.
