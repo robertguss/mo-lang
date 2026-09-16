@@ -139,6 +139,7 @@
 - [[bodies-as-cache|Bodies as cache]] — measurement 1 of direction 43: every program regenerated from its stripped spec, twice; completeness per program
 - [[control-run-10|The control run, round 10, the Elixir round]] — pre-registered: the BEAM null hypothesis in a pane, round 7's queue and round 8's change in Elixir under the same suites
 - [[mac-scaling-run|The Mac scaling run]] — the one script for step 30 at 1, 4, 10, 14 cores on the M3 Max, and what to read from it
+- [[erosion-round|The erosion round, generation two]] — pre-registered: change 2 to the Mo, Go, Python, and Elixir queues by fresh maintainers, the third hidden suite, P6 on the Mo change
 - [[control-run-9|The control run, round 9, the small-model round]] — pre-registered: round 8's change by five smaller models in the Pi harness, reliability and loops as the columns that move
 - [[control-run-8|The control run, round 8, the maintenance round]] — pre-registered: the finished queues handed to fresh agents with a changed spec, regressions and defects, read on reliability and dependencies together
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
