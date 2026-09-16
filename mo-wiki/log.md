@@ -422,3 +422,6 @@
 
 ## [2026-09-16] session | Morning: P6 on Mo's change 2, the outage closed, the restart the program's
 - The change 2 queue crashed through the runtime surface under 10,000 requests a second, under both runtimes: every request `503` within 2 ms from then, nothing acknowledged lost, no restart by the program's `:never` ([[erosion-round]], the P6 section). A ten-line probe shows a restarted process re-runs its state initializers with its capabilities, so the reopening store is writable today and is change 3. `/crashes` was empty under the default ring: step 32 ([[interpreter-step-32]]) briefed to the worker in `w44:p3`. Chapters 3 and 10 amended; three rows, one `semantic` for Robert.
+
+## [2026-09-16] session | Morning: step 32 accepted
+- Crash reports kept apart from the event ring in both runtimes, the last 16; `restart-reopens.mo` in the corpus; the P6 probe with the default ring lists the crash under both runtimes ([[interpreter-step-32]]). One Opus session, 63 minutes, three commits. Verified by Fable's own probes; the bench rows within noise. Four rows: the acceptance, the ratified defaults, the unbounded full-report list as a queued step, a corpus flake under load.

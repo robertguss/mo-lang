@@ -98,7 +98,9 @@ step 31, the sixth program's regeneration, round 9 with four smaller models, and
 generation two of the erosion round. The wiki became a site, and the same
 morning round 9's last row, Haiku 4.5, ran, and P6 was probed on Mo's change 2
 program: the crash under load answers `503` within milliseconds and loses
-nothing, and the restart is the program's to write, not the language's.
+nothing, and the restart is the program's to write, not the language's. Step
+32 followed the same morning: crash reports kept apart from the event ring, so
+the surface's crash row survives load, and the reopening restart in the corpus.
 
 ## What Mo is, today
 

@@ -19,23 +19,22 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Step 32: crash reports kept apart from the event ring, both runtimes; a corpus file for the reopening restart; the P6 probe rerun | Opus worker in `w44:p3`, Fable verifying | 16 Sep, 09:01 | [[interpreter-step-32]] |
+| Change 3 of the erosion round, the reopening store: Fable writing and sealing the spec (`spec/programs/01d-…`), then the fourth hidden suite after the branching | Fable | 16 Sep, 10:25 | [[erosion-round]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | Change 3 of the erosion round, the reopening store: Fable writes and seals the spec; a queue that crashes restarts from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, Elixir | P6 on Mo (16 Sep) showed the restart is the program's to take; this is where the BEAM's P6 row is answered or not | [[erosion-round]] |
-| 2 | Generation three of the erosion round: four fresh maintainers, the fourth hidden suite, the fourth oracle | one generation per change; the erosion hypothesis needs changes 3 to 10 | [[erosion-round]] |
-| 3 | The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; measured at 1 and 14 cores on the Mac | nothing scales on the M3 Max today; the interpreter's parked fiber at 128 held asks | [[interpreter-step-30]], [[mac-scaling-run]] |
-| 4 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
-| 5 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
-| 6 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
-| 7 | Program 7: a Redis subset against Redis's own tests, on capabilities, recipes, and the runtime surface together | the program chapter 1 says answers the BEAM | [[program-menu]] |
+| 1 | Generation three of the erosion round: four fresh maintainers, the fourth hidden suite, the fourth oracle | one generation per change; the erosion hypothesis needs changes 3 to 10 | [[erosion-round]] |
+| 2 | The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; measured at 1 and 14 cores on the Mac | nothing scales on the M3 Max today; the interpreter's parked fiber at 128 held asks | [[interpreter-step-30]], [[mac-scaling-run]] |
+| 3 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
+| 4 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
+| 5 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
+| 6 | Program 7: a Redis subset against Redis's own tests, on capabilities, recipes, and the runtime surface together | the program chapter 1 says answers the BEAM | [[program-menu]] |
 
 ## Later
 
-`mo prove` (tier 3); the runtime surface as MCP tools and measurement 4, the incident round, which tests whether the surface shortens an agent's diagnosis; round 9's Opus-in-Pi baseline when Pi has an Anthropic key; the package registry once an outsider runs a real service; program 8, the toolchain in Mo.
+A bound on the full crash reports both runtimes keep for a whole run (step 32's carried row); `mo prove` (tier 3); the runtime surface as MCP tools and measurement 4, the incident round, which tests whether the surface shortens an agent's diagnosis; round 9's Opus-in-Pi baseline when Pi has an Anthropic key; the package registry once an outsider runs a real service; program 8, the toolchain in Mo.
 
 ## Waiting on Robert
 
@@ -45,6 +44,7 @@ Rows marked "for Robert" in the [[decision-log]], newest first: P6 on Mo's chang
 
 | when | what | page |
 |---|---|---|
+| 16 Sep, 10:20 | Step 32: crash reports kept apart from the ring, both runtimes; the reopening restart in the corpus; the P6 probe lists the crash with the default ring | [[interpreter-step-32]] |
 | 16 Sep, 09:05 | P6 on Mo's change 2: the queue crashed under load through the surface, `503` within 2 ms, nothing lost, no restart; the outage closed, the restart the program's | [[erosion-round]] |
 | 16 Sep, 08:45 | Round 9 closed with Haiku 4.5: wrong in every language in under ten minutes (Mo 28, Go 22, Python 18 of 189) | [[control-run-9]] |
 | 16 Sep, morning | The wiki as a site, the state page, seven maps | [[state-of-the-project]] |
@@ -75,7 +75,7 @@ Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agre
 | **The bricks page** (`deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, to be written): the shelf (TLS, crypto, compression, a database driver, HTTP/2), an audit budget per brick, the ordering rule, the fallback (a brick wrapping a C library in the platform under audit, never application FFI), a decision row | queued, Fable writes it | — |
 | **The language after the rounds** (`spec/design-v0/10-language-after-the-rounds.md`, Fable wrote it 15 Sep on the Mac, after P6): one section per candidate change the runtime's evidence supports, each with the round row that motivates it, its cost, and code options for Robert: deadlines carried by the process or the message type; the failure model stated on the process declaration and checked at the caller; placement left out until a program needs it; the runtime surface as a capability; and the laws that cost loops without catching bugs removed. Zero new syntax stays the default; no change without a control-run row behind it. Robert's locked language items fold into it | the page written 15 Sep: six sections, two with a change (a deferred reply token, §1; the restart budget asked for on every `:always` child, §2), the counted laws as settings (§3), no change to `never` and `invariant` (§4), MO0317's rewrite (§5); §1 is the step that decides P6 for Mo, for Robert | one step per accepted section, §1 first |
 | **Step 31, a deferred reply** ([[interpreter-step-31]]): chapter 10 §1 built: `Reply(T)`, `reply_to`, `answer`, in the checker and all three runtimes, a corpus file, the spec lines | done 16 Sep, 01:15, accepted: `Reply(T)`, `reply_to`, `answer`, MO0411, all three runtimes, the corpus file; the standing rows unchanged, the deferred reply level with send-and-a-message-back at 8 askers and 0.46 at 128 under `mo run` (the parked fiber, for the placement step); Fable's crash probe 8 of 8 `Down` then 8 answered | — |
-| **Step 32, crash reports apart from the ring, and the reopening store** ([[interpreter-step-32]]): `/crashes` kept where load cannot evict it, both runtimes; a corpus file showing a restarted process reopening its store | brief written 16 Sep, morning; the worker on it in `w44:p3` | — |
+| **Step 32, crash reports apart from the ring, and the reopening store** ([[interpreter-step-32]]): `/crashes` kept where load cannot evict it, both runtimes; a corpus file showing a restarted process reopening its store | done 16 Sep, 10:20, accepted: the last 16 reports in their own store, `--crashes N` and `MO_CRASHES=N`, newest first; `crash-kept.mo` and `restart-reopens.mo`; the probe lists the crash with the default ring; rows within noise; carried: the full reports both runtimes keep for a whole run, unbounded | — |
 | The language items Robert agreed to (now sections of the page above): the counted shape laws as project settings; a named function passed by name where an anonymous function goes; the grammar forms that cost loops in every program (`return` in a `case` arm, a qualified call, a split lambda body) as diagnostics that say what to write; the `invariant` construct reconsidered after round 8 | queued, one step after round 8 | 1 |
 | A compile benchmark at 5,000 generated modules (the agent-loop claim at scale) | queued, small | 1 |
 | Program 7, a real open-source service reimplemented against its own test suite (a Redis subset with streams, persistence, auth, pub/sub, its operation set pre-registered from Redis's own tests), once a program finishes with no new gap or bug note | after round 8 | 2 |

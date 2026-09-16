@@ -80,7 +80,7 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **Step 32 in flight** (`interpreter-step-32.md`, the worker `mo-opus` in `w44:p3`, briefed 16 Sep morning): crash reports kept apart from the event ring, both runtimes; `examples/processes/restart-reopens.mo`; the P6 probe rerun. Verify per the skill, record, merge.
+> 1. **Change 3 of the erosion round, the reopening store**: the lead writes and seals `spec/programs/01d-job-queue-change-3.md` (a queue that crashes is restarted from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, and Elixir in their own terms; the three sentences decided at 02:00 folded into change 2's spec first), then generation three below. Step 32 is done (16 Sep, 10:20: crash reports apart from the ring, `restart-reopens.mo`).
 > 2. **Generation three of the erosion round**: change 3 is the reopening store (decided 16 Sep morning from P6 on Mo: a queue that crashes is restarted from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, and Elixir), written and sealed by
 >    the lead (`spec/programs/01d-...`), branched from `erosion2-*`, a fourth
 >    hidden suite after the branching; the change 2 spec first gains the three

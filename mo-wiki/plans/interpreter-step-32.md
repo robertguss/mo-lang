@@ -5,7 +5,7 @@ updated: 2026-09-16
 type: plan
 tags: [runtime, agents, processes, tooling]
 sources: [plans/erosion-round.md, plans/interpreter-step-23.md, spec/design-v0/03-semantics.md, spec/design-v0/10-language-after-the-rounds.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Step 32: crash reports apart from the ring, and the reopening store
@@ -35,6 +35,22 @@ Best of five, both runtimes: the standing bench rows (`kv-10k-get`, `http-1k`, j
 ## Done when
 
 `zig build test` green, the corpus green including the new file, `mo fmt` clean, the three spec lines written, the numbers table, and a numbered list "Decisions the brief did not cover".
+
+## Result
+
+Written by one Opus session at medium effort, 09:01 to 10:04 on 16 Sep, three commits (`feec1f0`, `a3e5c15`, `d237108`), `zig build test` green at each. Accepted 10:20 after Fable's own runs.
+
+**Part A.** Both runtimes keep the last 16 crash reports in a store of their own, apart from the ring: `mo run --crashes N`, `MO_CRASHES=N` for a binary, 0 keeps none; `crashes` reads it newest first (the spec row said oldest first before; changed). Each report's clause, message, and state snapshot is cut to 4,096 bytes at a character boundary with an "… N bytes more" ending; the printed report stays whole (3.4 MB on stderr for the P6 queue). The store is fixed slots, 3 × (4,096 + 40) bytes a report, reserved at the first crash (the first version allocated per text and cost 560 KiB for 16 reports). The `Crashed` event stays in the ring. A new corpus file, `examples/processes/crash-kept.mo`, driven by a new test in `corpus.zig`: under `mo run --events 64` and as a `--surface` binary with `MO_EVENTS=64`, a crash 200 updates back is still listed and none of the ring's last 64 events is a `Crashed`.
+
+**Part B.** `examples/processes/restart-reopens.mo` with its `.expected`: a store whose state reads a file through the `Fs` it was started with, crashed by an invariant, restarted `:always`, prints "before the crash the store read one" and "after the crash and the restart the store read two". A `test` cannot show the re-read, since `test rejects` ends at the trip; the file has a test for the initializer reading through `Fs` and a `rejects` for the trip. An ask sent right behind the crashing message returns `Down` (the restart empties the mailbox), so the helper asks up to three times.
+
+**Part C.** P6 rerun on the change 2 program built with the new toolchain and `--surface`, default ring, three runs a runtime: the crash listed every time with its clause, message, and snapshot; seven seconds after the crash the ring held no `Crashed` event and `/crashes` still listed it; nothing acknowledged lost. The probe's default `lease_ms: 5` message never trips anything (`lent` re-checks); the `Create` with `"bad queue"` is the kill.
+
+**Numbers, best of five, before (`c80cd98`) and after.** `kv-10k-get` 121 → 123 µs under `mo run`, 98 → 99 as a binary; `http-1k` 64 → 69 and 65 → 66 µs (the `mo run` row from one bench run each, unrerun, flagged); `http-1k` resident 7,344 → 7,360 KiB and 2,752 → 2,768; jobq creates a second 4,077 → 4,044 and 5,331 → 5,366; jobq pairs at 32 workers 1,231 → 1,230 and 2,335 → 2,381; at 1 worker 899 → 788 under `mo run`, a row that swings 530 to 899 on either build. Sixteen kept reports with 64 KB states cost 224 KiB resident under `mo run` and 176 as a binary; the worst case at 16 reports is about 196 KiB.
+
+**Verified by Fable.** `zig build test` green alone (196 of 196; one earlier run under the P6 probe's and the worker's bench load failed the `agent` program's corpus transcript, a run on wall-clock budgets, and passed on the rerun alone: a flake until it recurs). `restart-reopens.mo` matches its `.expected` under `mo run` and as a binary; `crash-kept.mo` passes; the P6 probe with the default ring lists the crash under both runtimes, nothing lost; a probe of three crashes of an `:always` child keeps 3 by default, 2 under `--crashes 2` and `MO_CRASHES=2`, 0 under 0, both runtimes.
+
+**Carried, the worker's row 11.** Both runtimes still keep every full crash report for the whole run (the sim's crash list under `mo run`; the rendered strings never freed in a binary): 16 crashes with 64 KB states grew resident memory by about 2.3 MB with the store off. A service that crashes often grows without bound. A step of its own, queued. Also: `mo test` has no flag for the store's size (always 16); the memory row's `event_bytes` counts the ring, not the store.
 
 ## Related
 
