@@ -395,3 +395,6 @@
 
 ## [2026-09-15] session | Mac: P6 on Elixir, the BEAM's row
 - The queue GenServer killed from outside three times under load, the service back in under 600 ms each time, nothing acknowledged lost; four kills in 2 s and the node exits on the default intensity. The null hypothesis reading written into [[control-run-10]]: P6 is the BEAM's. One `semantic` row for Robert. Next: the Mac scaling run alone on the disk, the lead on the language page meanwhile.
+
+## [2026-09-15] session | Mac: chapter 10 written while the scaling run measures
+- [[10-language-after-the-rounds]] (chapter 10; the roadmap's `09-` was taken by the stdlib): the rounds' nine rows in one table, six sections with code options, two recommended changes and zero syntax. Two rows, one `semantic` for Robert. The Mac scaling run started 22:46 local, the suite green in two minutes warm.
