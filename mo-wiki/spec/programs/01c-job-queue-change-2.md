@@ -1,6 +1,6 @@
 # Program 1, change 2: the folder is checked at open, a failing request never takes the service down, and operators get `/queues`
 
-The second change to `jobq`, the erosion round's generation two (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 from the incident round 8's fourth oracle found: a log record in a state the API can never produce was refused at open by two of the three services and took the third one down at its first lease, with every request after it hanging. Everything in `01-job-queue.md` and `01b-job-queue-change.md` still holds unless a line below changes it. The shape is an operations ticket after an outage: bad data must be refused at the door, a failure inside one request must cost that request and nothing else, and the people running the service want to see the queues.
+The second change to `jobq`, the erosion round's generation two (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 (three sentences added the same morning, from generation two's decision lists: a forbidden field is ill-formed, `verify` never writes, a missing folder is exit 1) from the incident round 8's fourth oracle found: a log record in a state the API can never produce was refused at open by two of the three services and took the third one down at its first lease, with every request after it hanging. Everything in `01-job-queue.md` and `01b-job-queue-change.md` still holds unless a line below changes it. The shape is an operations ticket after an outage: bad data must be refused at the door, a failure inside one request must cost that request and nothing else, and the people running the service want to see the queues.
 
 ## What changes, in one screen
 
@@ -20,9 +20,9 @@ done       1 <= tries <= max_tries; no run_at, worker, lease_until
 dead       1 <= tries <= max_tries; no run_at, worker, lease_until
 ```
 
-plus the field rules of `01-job-queue.md` (the queue name, the payload, `max_tries` 1 to 100, `backoff_ms` 0 to 3,600,000) and the record's key naming the job's id. A record that is not well-formed refuses the folder: `jobq serve` exits 1 before binding the port, `jobq verify` exits 1, and both print one line `jobq: <dir>: record <key>: <rule>` for the first such record. A torn last line is still cut off, not refused; an `ids` counter that is not a number, or lower than a job's number, is refused as before.
+plus the field rules of `01-job-queue.md` (the queue name, the payload, `max_tries` 1 to 100, `backoff_ms` 0 to 3,600,000) and the record's key naming the job's id. A record that carries a field its state forbids (a `worker` on a queued job, a `run_at` on a done one) is ill-formed, not a record with an extra field to ignore. A record that is not well-formed refuses the folder: `jobq serve` exits 1 before binding the port, `jobq verify` exits 1, and both print one line `jobq: <dir>: record <key>: <rule>` for the first such record. A torn last line is still cut off, not refused; an `ids` counter that is not a number, or lower than a job's number, is refused as before.
 
-`jobq verify <dir>` exits 0 and prints `<n> jobs: queued <q>, scheduled <s>, leased <l>, done <d>, dead <x>; next id j_<k>` for a folder that opens, and 2 on a usage error, 1 when the folder cannot be opened or a record fails.
+`jobq verify <dir>` exits 0 and prints `<n> jobs: queued <q>, scheduled <s>, leased <l>, done <d>, dead <x>; next id j_<k>` for a folder that opens, and 2 on a usage error, 1 when the folder cannot be opened or a record fails. A folder that does not exist is a folder that cannot be opened: exit 1. `verify` never writes: the folder's bytes are the same after it as before, a torn last line included.
 
 ## Failure inside a request
 
