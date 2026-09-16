@@ -30,6 +30,9 @@ const (
 	minLeaseMS      = 100
 	maxLeaseMS      = 3_600_000
 	defaultLeaseMS  = 30_000
+	defaultRetainMS = 86_400_000
+	minRetainMS     = 1_000
+	maxRetainMS     = 2_678_400_000
 	maxDelayMS      = 86_400_000
 	maxBackoffMS    = 3_600_000
 	timeLayout      = "2006-01-02T15:04:05.000Z"
@@ -37,10 +40,12 @@ const (
 
 // Job is one unit of work. RunAt is set only while scheduled; Worker and
 // LeaseUntil only while leased. Reason is set by a fail or a lease that ran
-// out, kept afterwards, and dropped by a retry.
+// out, kept afterwards, and dropped by a retry. Key is empty for a job
+// created without one. ArchivedAt is set only on a job in the archive.
 type Job struct {
 	ID         uint64
 	Queue      string
+	Key        string
 	State      State
 	Payload    string
 	Tries      int
@@ -52,12 +57,14 @@ type Job struct {
 	Worker     string
 	LeaseUntil time.Time
 	Reason     *string
+	ArchivedAt time.Time
 }
 
 // jobJSON is the {job} shape of the API and of a store record as written.
 type jobJSON struct {
 	ID         string  `json:"id"`
 	Queue      string  `json:"queue"`
+	Key        *string `json:"key,omitempty"`
 	State      State   `json:"state"`
 	Payload    string  `json:"payload"`
 	Tries      int     `json:"tries"`
@@ -69,6 +76,7 @@ type jobJSON struct {
 	Worker     *string `json:"worker,omitempty"`
 	LeaseUntil *string `json:"lease_until,omitempty"`
 	Reason     *string `json:"reason,omitempty"`
+	ArchivedAt *string `json:"archived_at,omitempty"`
 }
 
 // storedJob is a store record's job as read. It also reads the names the
@@ -78,6 +86,7 @@ type jobJSON struct {
 type storedJob struct {
 	ID          string  `json:"id"`
 	Queue       string  `json:"queue"`
+	Key         *string `json:"key"`
 	State       State   `json:"state"`
 	Payload     string  `json:"payload"`
 	Tries       *int    `json:"tries"`
@@ -91,6 +100,7 @@ type storedJob struct {
 	Worker      *string `json:"worker"`
 	LeaseUntil  *string `json:"lease_until"`
 	Reason      *string `json:"reason"`
+	ArchivedAt  *string `json:"archived_at"`
 }
 
 // view reads a stored job, old names or new, as the shape written today.
@@ -112,9 +122,9 @@ func (s storedJob) view() (jobJSON, error) {
 		return jobJSON{}, err
 	}
 	return jobJSON{
-		ID: s.ID, Queue: s.Queue, State: s.State, Payload: s.Payload, Tries: tries, MaxTries: maxTries,
+		ID: s.ID, Queue: s.Queue, Key: s.Key, State: s.State, Payload: s.Payload, Tries: tries, MaxTries: maxTries,
 		BackoffMS: s.BackoffMS, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
-		RunAt: s.RunAt, Worker: s.Worker, LeaseUntil: s.LeaseUntil, Reason: s.Reason,
+		RunAt: s.RunAt, Worker: s.Worker, LeaseUntil: s.LeaseUntil, Reason: s.Reason, ArchivedAt: s.ArchivedAt,
 	}, nil
 }
 
@@ -143,6 +153,14 @@ func jobView(j Job) jobJSON {
 		Tries: j.Tries, MaxTries: j.MaxTries, BackoffMS: j.BackoffMS,
 		CreatedAt: formatTime(j.CreatedAt), UpdatedAt: formatTime(j.UpdatedAt),
 		Reason: j.Reason,
+	}
+	if j.Key != "" {
+		key := j.Key
+		v.Key = &key
+	}
+	if !j.ArchivedAt.IsZero() {
+		at := formatTime(j.ArchivedAt)
+		v.ArchivedAt = &at
 	}
 	if j.State == Scheduled {
 		runAt := formatTime(j.RunAt)
@@ -179,10 +197,13 @@ func jobFromView(v jobJSON) (Job, error) {
 	if v.Worker != nil {
 		j.Worker = *v.Worker
 	}
+	if v.Key != nil {
+		j.Key = *v.Key
+	}
 	for _, at := range []struct {
 		s   *string
 		dst *time.Time
-	}{{v.RunAt, &j.RunAt}, {v.LeaseUntil, &j.LeaseUntil}} {
+	}{{v.RunAt, &j.RunAt}, {v.LeaseUntil, &j.LeaseUntil}, {v.ArchivedAt, &j.ArchivedAt}} {
 		if at.s == nil {
 			continue
 		}
@@ -207,6 +228,11 @@ func validQueueName(q string) bool {
 	}
 	return true
 }
+
+// validKey is the key rule, the queue name's: 1 to 64 bytes of letters,
+// digits, '-', and '_'. A job without a key has none; an empty key is not
+// a key.
+func validKey(k string) bool { return validQueueName(k) }
 
 // validText is UTF-8 of at most maxBytes with no control character but \n.
 func validText(s string, maxBytes int) bool {
@@ -236,6 +262,14 @@ func validToken(t string) bool {
 
 func requireQueue(q string) error {
 	return contract.Require(validQueueName(q), "queue is 1 to 64 bytes of letters, digits, '-' and '_'")
+}
+
+func requireKey(k string) error {
+	return contract.Require(validKey(k), "key is 1 to 64 bytes of letters, digits, '-' and '_'")
+}
+
+func requireRetainMS(ms int64) error {
+	return contract.Require(ms >= minRetainMS && ms <= maxRetainMS, "retain_ms is 1_000 to 2_678_400_000")
 }
 
 func requirePayload(p string) error {

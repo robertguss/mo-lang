@@ -19,13 +19,21 @@ import (
 // The store is an append-only log in <dir>/jobq.log. One line per record:
 // eight hex digits of CRC-32C, a space, the record's JSON, a newline. A put
 // holds a job's whole state, a del removes a job, a meta (written by compact)
-// carries the id counter.
+// carries the id counter, an arch says the job left the board for the archive.
+//
+// The archive is <dir>/jobq.archive, the same line format, append-only
+// between compactions: a put holds an archived job with archived_at, a del
+// is the tombstone of an archived job deleted since. It is read before the
+// log, and its records win: a job the log still holds (a kill fell between
+// the archive's append and the log's arch) is archived. A missing archive is
+// an empty one, and the file is made at its first write.
 // A log written before the tries rename still replays: decodeLine reads a
 // job's old names (see storedJob), and every record written since, compact's
 // included, has only the new ones.
 
 const (
 	logName        = "jobq.log"
+	archiveName    = "jobq.archive"
 	maxRecordBytes = 512 * 1024
 )
 
@@ -187,6 +195,11 @@ func (s *Store) Close() error {
 // OpenStore opens <dir>/jobq.log, creating it if missing, takes an exclusive
 // lock on it, and replays it through apply.
 func OpenStore(dir string, apply func(record) error) (*Store, error) {
+	return openLog(dir, func() error { return nil }, apply)
+}
+
+// openLog is OpenStore with first run under the lock, before the replay.
+func openLog(dir string, first func() error, apply func(record) error) (*Store, error) {
 	info, err := os.Stat(dir)
 	if err != nil {
 		return nil, err
@@ -210,22 +223,99 @@ func OpenStore(dir string, apply func(record) error) (*Store, error) {
 			return nil, err
 		}
 	}
-	size, err := replay(f, apply)
-	if err != nil {
-		f.Close()
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	st, err := f.Stat()
-	if err != nil {
+	if err := first(); err != nil {
 		f.Close()
 		return nil, err
 	}
-	s := &Store{f: f, size: size, dirty: st.Size() != size}
-	if err := s.repair(); err != nil {
+	s, err := loadStore(f, f, path, apply)
+	if err != nil {
 		f.Close()
 		return nil, err
 	}
 	return s, nil
+}
+
+// loadStore replays osf through apply and returns a store over file whose
+// torn tail, if any, is cut.
+func loadStore(osf *os.File, file File, path string, apply func(record) error) (*Store, error) {
+	size, err := replay(osf, apply)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	st, err := osf.Stat()
+	if err != nil {
+		return nil, err
+	}
+	s := &Store{f: file, size: size, dirty: st.Size() != size}
+	if err := s.repair(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// openArchive replays <dir>/jobq.archive through apply, when there is one.
+// The caller holds the log's lock.
+func openArchive(dir string, apply func(record) error) (*Store, error) {
+	path := filepath.Join(dir, archiveName)
+	lf := &lazyFile{path: path, dir: dir}
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if errors.Is(err, fs.ErrNotExist) {
+		return &Store{f: lf}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	lf.f = f
+	s, err := loadStore(f, lf, path, apply)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	return s, nil
+}
+
+// lazyFile is a file made at its first write, so a folder that never
+// archives never gains an archive, and a read-only one still opens.
+type lazyFile struct {
+	path, dir string
+	f         *os.File
+}
+
+func (l *lazyFile) WriteAt(p []byte, off int64) (int, error) {
+	if l.f == nil {
+		f, err := os.OpenFile(l.path, os.O_RDWR|os.O_CREATE, 0o644)
+		if err != nil {
+			return 0, err
+		}
+		if err := syncDir(l.dir); err != nil {
+			f.Close()
+			return 0, err
+		}
+		l.f = f
+	}
+	return l.f.WriteAt(p, off)
+}
+
+func (l *lazyFile) Sync() error {
+	if l.f == nil {
+		return nil
+	}
+	return l.f.Sync()
+}
+
+// Truncate with no file is a cut of a write that never made one.
+func (l *lazyFile) Truncate(size int64) error {
+	if l.f == nil {
+		return nil
+	}
+	return l.f.Truncate(size)
+}
+
+func (l *lazyFile) Close() error {
+	if l.f == nil {
+		return nil
+	}
+	return l.f.Close()
 }
 
 func syncDir(dir string) error {
@@ -236,21 +326,37 @@ func syncDir(dir string) error {
 	return errors.Join(d.Sync(), d.Close())
 }
 
-// Compact rewrites <dir>/jobq.log as a meta record and one put per job, by
-// id, through a temporary file renamed over the log.
+// Compact rewrites <dir>/jobq.log as a meta record and one put per job on
+// the board, by id, then <dir>/jobq.archive as one put per archived job not
+// deleted, each through a temporary file renamed over the old one. The log
+// goes first: a kill between the two leaves an archive that still holds
+// tombstones for jobs the new log no longer names, which opens the same.
 func Compact(dir string) error {
 	q, s, err := openQueue(dir, realClock{})
 	if err != nil {
 		return err
 	}
 	defer s.Close()
-	tmp := filepath.Join(dir, logName+".compact")
+	defer q.closeArchive()
+	if err := rewrite(dir, logName, func(w io.Writer) error { return writeCompacted(w, q) }); err != nil {
+		return err
+	}
+	_, statErr := os.Stat(filepath.Join(dir, archiveName))
+	if errors.Is(statErr, fs.ErrNotExist) && len(q.archived) == 0 {
+		return nil
+	}
+	return rewrite(dir, archiveName, func(w io.Writer) error { return writeArchive(w, q) })
+}
+
+// rewrite replaces <dir>/<name> with what write writes, durably.
+func rewrite(dir, name string, write func(io.Writer) error) error {
+	tmp := filepath.Join(dir, name+".compact")
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
 	w := bufio.NewWriter(f)
-	err = writeCompacted(w, q)
+	err = write(w)
 	if err == nil {
 		err = w.Flush()
 	}
@@ -261,7 +367,7 @@ func Compact(dir string) error {
 		os.Remove(tmp)
 		return err
 	}
-	if err := os.Rename(tmp, filepath.Join(dir, logName)); err != nil {
+	if err := os.Rename(tmp, filepath.Join(dir, name)); err != nil {
 		return err
 	}
 	return syncDir(dir)
@@ -269,15 +375,32 @@ func Compact(dir string) error {
 
 func writeCompacted(w io.Writer, q *Queue) error {
 	recs := []record{{Op: "meta", NextID: q.nextID}}
-	ids := make([]uint64, 0, len(q.jobs))
-	for id := range q.jobs {
-		ids = append(ids, id)
-	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-	for _, id := range ids {
+	for _, id := range sortedIDs(q.jobs) {
 		v := jobView(*q.jobs[id])
 		recs = append(recs, record{Op: "put", Job: &v})
 	}
+	return writeRecords(w, recs)
+}
+
+func writeArchive(w io.Writer, q *Queue) error {
+	recs := make([]record, 0, len(q.archived))
+	for _, id := range sortedIDs(q.archived) {
+		v := jobView(*q.archived[id])
+		recs = append(recs, record{Op: "put", Job: &v})
+	}
+	return writeRecords(w, recs)
+}
+
+func sortedIDs(jobs map[uint64]*Job) []uint64 {
+	ids := make([]uint64, 0, len(jobs))
+	for id := range jobs {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return ids
+}
+
+func writeRecords(w io.Writer, recs []record) error {
 	for _, r := range recs {
 		line, err := encodeRecord(r)
 		if err != nil {

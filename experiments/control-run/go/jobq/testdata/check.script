@@ -79,3 +79,32 @@ w7 POST /jobs/j_8/ack
 restart
 - GET /health
 prod GET /jobs/j_8
+# idempotent creates: a key names one job in its queue
+prod POST /jobs {"queue":"keyed","key":"order-1","payload":"once","max_tries":1}
+prod POST /jobs {"queue":"keyed","key":"order-1","payload":"twice","max_tries":5}
+prod POST /jobs {"queue":"other","key":"order-1","payload":"elsewhere","max_tries":1}
+prod POST /jobs {"queue":"keyed","key":"bad key","payload":"x","max_tries":1}
+prod POST /jobs {"queue":"keyed","key":"","payload":"x","max_tries":1}
+prod GET /jobs?queue=keyed&key=order-1
+prod GET /jobs?queue=keyed&key=order-2
+prod GET /jobs?key=order-1
+w8 POST /queues/keyed/lease
+w8 POST /jobs/j_9/ack
+# a day later the done and dead jobs are archived, and still read by id
+clock +86400000
+- GET /health
+- GET /health
+prod GET /jobs/j_9
+prod GET /jobs?queue=keyed
+prod GET /queues
+prod POST /jobs {"queue":"keyed","key":"order-1","payload":"thrice","max_tries":1}
+prod POST /jobs/j_9/retry
+restart
+prod GET /jobs?queue=keyed&key=order-1
+- GET /health
+prod DELETE /jobs/j_9
+prod GET /jobs/j_9
+prod POST /jobs {"queue":"keyed","key":"order-1","payload":"again","max_tries":1}
+restart
+prod POST /jobs {"queue":"keyed","key":"order-1","payload":"again","max_tries":1}
+- GET /health

@@ -26,7 +26,7 @@ func wantKind(t *testing.T, err error, kind string) {
 
 func mustCreate(t *testing.T, q *Queue, queue string, maxTries int) Job {
 	t.Helper()
-	j, err := q.Create(ctx(t), queue, "payload", maxTries, 0, 0)
+	j, _, err := q.Create(ctx(t), queue, "", "payload", maxTries, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func mustCreate(t *testing.T, q *Queue, queue string, maxTries int) Job {
 
 func mustCreateWith(t *testing.T, q *Queue, queue string, maxTries int, delayMS, backoffMS int64) Job {
 	t.Helper()
-	j, err := q.Create(ctx(t), queue, "payload", maxTries, delayMS, backoffMS)
+	j, _, err := q.Create(ctx(t), queue, "", "payload", maxTries, delayMS, backoffMS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func TestRequiresReject(t *testing.T) {
 		{"a", "\xff", 1}, {"a", "\u0085", 1},
 		{"a", "p", 0}, {"a", "p", 101},
 	} {
-		_, err := q.Create(ctx(t), c.queue, c.payload, c.max, 0, 0)
+		_, _, err := q.Create(ctx(t), c.queue, "", c.payload, c.max, 0, 0)
 		wantKind(t, err, "requires")
 	}
 	for _, c := range []struct {
@@ -408,18 +408,18 @@ func TestRequiresReject(t *testing.T) {
 	}{
 		{strings.Repeat("q", 64), strings.Repeat("x", maxPayloadBytes), 1}, {"a-B_9", "line\nline é 日", 100}, {"a", "", 1},
 	} {
-		if _, err := q.Create(ctx(t), c.queue, c.payload, c.max, 0, 0); err != nil {
+		if _, _, err := q.Create(ctx(t), c.queue, "", c.payload, c.max, 0, 0); err != nil {
 			t.Errorf("Create(%q, %d bytes, %d) = %v", c.queue, len(c.payload), c.max, err)
 		}
 	}
 	for _, c := range []struct{ delay, backoff int64 }{
 		{-1, 0}, {maxDelayMS + 1, 0}, {0, -1}, {0, maxBackoffMS + 1},
 	} {
-		_, err := q.Create(ctx(t), "a", "p", 1, c.delay, c.backoff)
+		_, _, err := q.Create(ctx(t), "a", "", "p", 1, c.delay, c.backoff)
 		wantKind(t, err, "requires")
 	}
 	for _, c := range []struct{ delay, backoff int64 }{{0, 0}, {maxDelayMS, maxBackoffMS}, {1, 1}} {
-		if _, err := q.Create(ctx(t), "a", "p", 1, c.delay, c.backoff); err != nil {
+		if _, _, err := q.Create(ctx(t), "a", "", "p", 1, c.delay, c.backoff); err != nil {
 			t.Errorf("Create(delay %d, backoff %d) = %v", c.delay, c.backoff, err)
 		}
 	}
@@ -447,9 +447,9 @@ func TestRequiresReject(t *testing.T) {
 	held := mustLease(t, q, "a", "w", 1000)
 	_, err = q.Fail(ctx(t), held.ID, "w", strings.Repeat("r", maxReasonBytes+1))
 	wantKind(t, err, "requires")
-	_, err = q.List(ctx(t), "", "bogus")
+	_, err = q.List(ctx(t), "", "bogus", "")
 	wantKind(t, err, "requires")
-	_, err = q.List(ctx(t), "bad!", "")
+	_, err = q.List(ctx(t), "bad!", "", "")
 	wantKind(t, err, "requires")
 }
 
@@ -535,7 +535,7 @@ func TestNothingChangesWhenTheStoreFails(t *testing.T) {
 	before := snapshot(q)
 	clock.Advance(time.Second)
 	f.fail = func(op string) bool { return op == "sync" }
-	if _, err := q.Create(ctx(t), "a", "p", 1, 0, 0); !errors.Is(err, ErrStore) {
+	if _, _, err := q.Create(ctx(t), "a", "", "p", 1, 0, 0); !errors.Is(err, ErrStore) {
 		t.Errorf("Create = %v", err)
 	}
 	if _, _, err := q.Lease(ctx(t), "a", "w2", 100); !errors.Is(err, ErrStore) {

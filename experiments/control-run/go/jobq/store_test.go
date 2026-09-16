@@ -65,17 +65,38 @@ func newMemQueue() (*Queue, *Store, *memFile, *manualClock) {
 	f := &memFile{}
 	s := &Store{f: f}
 	q := newQueue(clock)
+	q.archive = &Store{f: &memFile{}}
 	q.finishReplay(s)
 	return q, s, f, clock
 }
 
-// snapshot is every job in its stored shape, keyed by id.
+// snapshot is every job in its stored shape, keyed by id, on the board or
+// archived; an archived job is marked by its archived_at.
 func snapshot(q *Queue) map[string]jobJSON {
-	out := make(map[string]jobJSON, len(q.jobs))
+	out := make(map[string]jobJSON, len(q.jobs)+len(q.archived))
 	for _, j := range q.jobs {
 		out[formatID(j.ID)] = jobView(*j)
 	}
+	for _, j := range q.archived {
+		out[formatID(j.ID)] = jobView(*j)
+	}
 	return out
+}
+
+// replayBoth replays an archive, then a log, as an open does.
+func replayBoth(t *testing.T, archive, log []byte) *Queue {
+	t.Helper()
+	q := newQueue(realClock{})
+	if _, err := replay(bytes.NewReader(archive), q.applyArchived); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := replay(bytes.NewReader(log), q.applyRecord); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.checkApart(); err != nil {
+		t.Fatal(err)
+	}
+	return q
 }
 
 func replayBytes(t *testing.T, data []byte) *Queue {
@@ -322,7 +343,7 @@ func TestServesAFolderTheOldVersionWrote(t *testing.T) {
 			t.Errorf("j_%d = %v, want gone", id, err)
 		}
 	}
-	if j, err := q.Create(ctx(t), "a", "p", 1, 0, 0); err != nil || j.ID != 9 {
+	if j, _, err := q.Create(ctx(t), "a", "", "p", 1, 0, 0); err != nil || j.ID != 9 {
 		t.Errorf("create after replay = %+v, %v; want j_9", j, err)
 	}
 	before := snapshot(q)
@@ -357,7 +378,7 @@ func TestCompactKeepsJobsAndTheCounter(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 3 {
-		if _, err := q.Create(ctx(t), "a", "x", 2, 0, 0); err != nil {
+		if _, _, err := q.Create(ctx(t), "a", "", "x", 2, 0, 0); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -386,7 +407,7 @@ func TestCompactKeepsJobsAndTheCounter(t *testing.T) {
 	if got := snapshot(q); !reflect.DeepEqual(got, want) {
 		t.Errorf("after compact %v, want %v", got, want)
 	}
-	if j, err := q.Create(ctx(t), "a", "x", 2, 0, 0); err != nil || j.ID != 4 {
+	if j, _, err := q.Create(ctx(t), "a", "", "x", 2, 0, 0); err != nil || j.ID != 4 {
 		t.Errorf("next id = %v, %v; want j_4, never j_3 again", j.ID, err)
 	}
 }

@@ -1,6 +1,6 @@
 > - GET /health
 200
-{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":0,"restarts":0}
+{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":0,"uptime_ms":0,"restarts":0}
 > - POST /jobs {"queue":"emails","payload":"hi","max_tries":2}
 401
 {"error":"missing or empty bearer token"}
@@ -103,7 +103,7 @@
 {"jobs":[{"id":"j_5","queue":"later","state":"scheduled","payload":"delayed","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:03.500Z","run_at":"2026-09-14T00:00:08.500Z"},{"id":"j_6","queue":"later","state":"scheduled","payload":"backoff","tries":1,"max_tries":2,"backoff_ms":2000,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:03.500Z","run_at":"2026-09-14T00:00:05.500Z","reason":"try later"}]}
 > - GET /health
 200
-{"queued":2,"scheduled":2,"leased":0,"done":1,"dead":0,"uptime_ms":2000,"restarts":0}
+{"queued":2,"scheduled":2,"leased":0,"done":1,"dead":0,"archived":0,"uptime_ms":2000,"restarts":0}
 > clock +2000
 > w5 POST /queues/later/lease {"lease_ms":1000}
 200
@@ -137,7 +137,7 @@
 {"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"hello","tries":2,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:01.500Z","reason":"lease ran out"},{"id":"j_3","queue":"sms","state":"queued","payload":"text me","tries":2,"max_tries":3,"backoff_ms":0,"created_at":"2026-09-14T00:00:01.500Z","updated_at":"2026-09-14T00:00:03.500Z","reason":"smtp down"},{"id":"j_4","queue":"emails","state":"queued","payload":"after restart","tries":0,"max_tries":3,"backoff_ms":0,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:03.500Z"},{"id":"j_5","queue":"later","state":"leased","payload":"delayed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:08.500Z","worker":"w6","lease_until":"2026-09-14T00:00:38.500Z"},{"id":"j_6","queue":"later","state":"leased","payload":"backoff","tries":1,"max_tries":2,"backoff_ms":2000,"created_at":"2026-09-14T00:00:03.500Z","updated_at":"2026-09-14T00:00:08.500Z","worker":"w6","lease_until":"2026-09-14T00:00:38.500Z"}]}
 > - GET /health
 200
-{"queued":2,"scheduled":0,"leased":2,"done":1,"dead":0,"uptime_ms":2000,"restarts":0}
+{"queued":2,"scheduled":0,"leased":2,"done":1,"dead":0,"archived":0,"uptime_ms":2000,"restarts":0}
 > prod GET /jobs/j_2
 404
 {"error":"no such job"}
@@ -166,14 +166,14 @@
 {"error":"no such route"}
 > - GET /health
 200
-{"queued":2,"scheduled":0,"leased":2,"done":1,"dead":0,"uptime_ms":2000,"restarts":0}
+{"queued":2,"scheduled":0,"leased":2,"done":1,"dead":0,"archived":0,"uptime_ms":2000,"restarts":0}
 > crash
 > prod POST /jobs {"queue":"crash","payload":"on disk","max_tries":1}
 503
 {"error":"the request could not be completed"}
 > - GET /health
 200
-{"queued":3,"scheduled":0,"leased":2,"done":1,"dead":0,"uptime_ms":2000,"restarts":1}
+{"queued":3,"scheduled":0,"leased":2,"done":1,"dead":0,"archived":0,"uptime_ms":2000,"restarts":1}
 > prod GET /jobs?queue=crash
 200
 {"jobs":[{"id":"j_8","queue":"crash","state":"queued","payload":"on disk","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}]}
@@ -189,11 +189,85 @@
 {"id":"j_8","queue":"crash","state":"done","payload":"on disk","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
 > - GET /health
 200
-{"queued":2,"scheduled":0,"leased":2,"done":2,"dead":0,"uptime_ms":2000,"restarts":2}
+{"queued":2,"scheduled":0,"leased":2,"done":2,"dead":0,"archived":0,"uptime_ms":2000,"restarts":2}
 > restart
 > - GET /health
 200
-{"queued":2,"scheduled":0,"leased":2,"done":2,"dead":0,"uptime_ms":0,"restarts":0}
+{"queued":2,"scheduled":0,"leased":2,"done":2,"dead":0,"archived":0,"uptime_ms":0,"restarts":0}
 > prod GET /jobs/j_8
 200
 {"id":"j_8","queue":"crash","state":"done","payload":"on disk","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
+> prod POST /jobs {"queue":"keyed","key":"order-1","payload":"once","max_tries":1}
+201
+{"id":"j_9","queue":"keyed","key":"order-1","state":"queued","payload":"once","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
+> prod POST /jobs {"queue":"keyed","key":"order-1","payload":"twice","max_tries":5}
+200
+{"id":"j_9","queue":"keyed","key":"order-1","state":"queued","payload":"once","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
+> prod POST /jobs {"queue":"other","key":"order-1","payload":"elsewhere","max_tries":1}
+201
+{"id":"j_10","queue":"other","key":"order-1","state":"queued","payload":"elsewhere","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
+> prod POST /jobs {"queue":"keyed","key":"bad key","payload":"x","max_tries":1}
+400
+{"error":"requires failed: key is 1 to 64 bytes of letters, digits, '-' and '_'"}
+> prod POST /jobs {"queue":"keyed","key":"","payload":"x","max_tries":1}
+400
+{"error":"requires failed: key is 1 to 64 bytes of letters, digits, '-' and '_'"}
+> prod GET /jobs?queue=keyed&key=order-1
+200
+{"jobs":[{"id":"j_9","queue":"keyed","key":"order-1","state":"queued","payload":"once","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}]}
+> prod GET /jobs?queue=keyed&key=order-2
+200
+{"jobs":[]}
+> prod GET /jobs?key=order-1
+400
+{"error":"key is given with queue"}
+> w8 POST /queues/keyed/lease
+200
+{"id":"j_9","queue":"keyed","key":"order-1","state":"leased","payload":"once","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z","worker":"w8","lease_until":"2026-09-14T00:00:38.500Z"}
+> w8 POST /jobs/j_9/ack
+200
+{"id":"j_9","queue":"keyed","key":"order-1","state":"done","payload":"once","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
+> clock +86400000
+> - GET /health
+200
+{"queued":4,"scheduled":1,"leased":0,"done":0,"dead":0,"archived":3,"uptime_ms":86400000,"restarts":0}
+> - GET /health
+200
+{"queued":4,"scheduled":1,"leased":0,"done":0,"dead":0,"archived":3,"uptime_ms":86400000,"restarts":0}
+> prod GET /jobs/j_9
+200
+{"id":"j_9","queue":"keyed","key":"order-1","state":"done","payload":"once","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z","archived_at":"2026-09-15T00:00:08.500Z"}
+> prod GET /jobs?queue=keyed
+200
+{"jobs":[]}
+> prod GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"later","queued":1,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"other","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"sms","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> prod POST /jobs {"queue":"keyed","key":"order-1","payload":"thrice","max_tries":1}
+200
+{"id":"j_9","queue":"keyed","key":"order-1","state":"done","payload":"once","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z","archived_at":"2026-09-15T00:00:08.500Z"}
+> prod POST /jobs/j_9/retry
+409
+{"error":"conflict: j_9 is archived"}
+> restart
+> prod GET /jobs?queue=keyed&key=order-1
+200
+{"jobs":[{"id":"j_9","queue":"keyed","key":"order-1","state":"done","payload":"once","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z","archived_at":"2026-09-15T00:00:08.500Z"}]}
+> - GET /health
+200
+{"queued":4,"scheduled":1,"leased":0,"done":0,"dead":0,"archived":3,"uptime_ms":0,"restarts":0}
+> prod DELETE /jobs/j_9
+204
+> prod GET /jobs/j_9
+404
+{"error":"no such job"}
+> prod POST /jobs {"queue":"keyed","key":"order-1","payload":"again","max_tries":1}
+201
+{"id":"j_11","queue":"keyed","key":"order-1","state":"queued","payload":"again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> restart
+> prod POST /jobs {"queue":"keyed","key":"order-1","payload":"again","max_tries":1}
+200
+{"id":"j_11","queue":"keyed","key":"order-1","state":"queued","payload":"again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> - GET /health
+200
+{"queued":5,"scheduled":1,"leased":0,"done":0,"dead":0,"archived":2,"uptime_ms":0,"restarts":0}

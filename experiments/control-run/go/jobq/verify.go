@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 )
 
 // A record in the store must be well-formed before the folder is served:
@@ -12,15 +13,58 @@ import (
 
 // illFormed is a store record that breaks a rule. The key names the record,
 // the rule is the line an operator reads.
-type illFormed struct{ key, rule string }
+// archived says the record is in the archive, not the live log.
+type illFormed struct {
+	key, rule string
+	archived  bool
+}
 
-func (e *illFormed) Error() string { return fmt.Sprintf("record %s: %s", e.key, e.rule) }
+func (e *illFormed) Error() string {
+	if e.archived {
+		return fmt.Sprintf("archive record %s: %s", e.key, e.rule)
+	}
+	return fmt.Sprintf("record %s: %s", e.key, e.rule)
+}
 
 // wellFormed checks one store record's job against the rules of its state
 // and the field rules of the spec. key is the record's key, which must name
 // the job's id. It takes no precondition: any key and any decoded record
-// may be handed to it, and a broken one comes back as an *illFormed.
+// may be handed to it, and a broken one comes back as an *illFormed. A live
+// record never carries archived_at.
 func wellFormed(key string, v jobJSON) error {
+	if v.ArchivedAt != nil {
+		return &illFormed{key: key, rule: "a live job has no archived_at"}
+	}
+	return wellFormedFields(key, v)
+}
+
+// wellFormedArchived checks one archive record's job: a done or dead job,
+// well-formed as a live one, with archived_at at or after its updated_at.
+func wellFormedArchived(key string, v jobJSON) error {
+	bad := func(rule string) error { return &illFormed{key: key, rule: rule} }
+	if v.State != Done && v.State != Dead {
+		return bad("an archived job is done or dead")
+	}
+	if v.ArchivedAt == nil {
+		return bad("an archived job has archived_at")
+	}
+	live := v
+	live.ArchivedAt = nil
+	if err := wellFormedFields(key, live); err != nil {
+		return err
+	}
+	j, _ := jobFromView(live)
+	at, err := time.Parse(timeLayout, *v.ArchivedAt)
+	if err != nil {
+		return bad(err.Error())
+	}
+	if at.Before(j.UpdatedAt) {
+		return bad("an archived job's archived_at is at or after its updated_at")
+	}
+	return nil
+}
+
+func wellFormedFields(key string, v jobJSON) error {
 	bad := func(rule string) error { return &illFormed{key: key, rule: rule} }
 	if key != v.ID {
 		return bad("the key does not name the job's id " + v.ID)
@@ -32,6 +76,8 @@ func wellFormed(key string, v jobJSON) error {
 	switch {
 	case !validQueueName(j.Queue):
 		return bad("queue is 1 to 64 bytes of letters, digits, '-' and '_'")
+	case v.Key != nil && !validKey(*v.Key):
+		return bad("key is 1 to 64 bytes of letters, digits, '-' and '_'")
 	case !validText(j.Payload, maxPayloadBytes):
 		return bad("payload is 0 to 60 KiB of UTF-8 with no control character but \\n")
 	case j.MaxTries < 1 || j.MaxTries > 100:
@@ -104,10 +150,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "jobq: %v\n", err)
 		return 1
 	}
-	line := fmt.Sprintf("%d jobs: queued %d, scheduled %d, leased %d, done %d, dead %d; next id %s\n",
+	line := fmt.Sprintf("%d jobs: queued %d, scheduled %d, leased %d, done %d, dead %d; next id %s; archived %d\n",
 		len(q.jobs), q.counts[Queued], q.counts[Scheduled], q.counts[Leased], q.counts[Done], q.counts[Dead],
-		formatID(q.nextID))
-	if err := s.Close(); err != nil {
+		formatID(q.nextID), len(q.archived))
+	if err := errors.Join(s.Close(), q.closeArchive()); err != nil {
 		fmt.Fprintf(stderr, "jobq: %v\n", err)
 		return 1
 	}

@@ -126,12 +126,12 @@ func asIllFormedIs(err error, dst **illFormed) bool {
 func TestVerifyCommand(t *testing.T) {
 	empty := t.TempDir()
 	if code, out, errOut := runCmd("verify", empty); code != 0 ||
-		out != "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1\n" {
+		out != "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1; archived 0\n" {
 		t.Errorf("verify of an empty folder = %d, %q, %q", code, out, errOut)
 	}
 	old := copyFixture(t, "testdata/v1/jobq.log")
 	if code, out, errOut := runCmd("verify", old); code != 0 ||
-		out != "6 jobs: queued 2, scheduled 0, leased 2, done 1, dead 1; next id j_9\n" {
+		out != "6 jobs: queued 2, scheduled 0, leased 2, done 1, dead 1; next id j_9; archived 0\n" {
 		t.Errorf("verify of testdata/v1 = %d, %q, %q", code, out, errOut)
 	}
 	ill := copyFixture(t, "testdata/ill/jobq.log")
@@ -166,7 +166,7 @@ func TestVerifyCutsATornLastLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	if code, out, errOut := runCmd("verify", dir); code != 0 ||
-		out != "1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_2\n" {
+		out != "1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_2; archived 0\n" {
 		t.Errorf("verify of a torn log = %d, %q, %q", code, out, errOut)
 	}
 }

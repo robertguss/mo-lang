@@ -185,6 +185,7 @@ func decodeBody(r *http.Request, dst any, allowEmpty bool) error {
 func (a *API) create(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 	var b struct {
 		Queue     *string `json:"queue"`
+		Key       *string `json:"key"`
 		Payload   *string `json:"payload"`
 		MaxTries  *int    `json:"max_tries"`
 		DelayMS   *int64  `json:"delay_ms"`
@@ -196,6 +197,13 @@ func (a *API) create(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 	if b.Queue == nil || b.Payload == nil || b.MaxTries == nil {
 		return 0, nil, &badRequest{"queue, payload, and max_tries are required"}
 	}
+	var key string
+	if b.Key != nil {
+		if err := requireKey(*b.Key); err != nil {
+			return 0, nil, err
+		}
+		key = *b.Key
+	}
 	var delayMS, backoffMS int64
 	if b.DelayMS != nil {
 		delayMS = *b.DelayMS
@@ -203,9 +211,12 @@ func (a *API) create(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 	if b.BackoffMS != nil {
 		backoffMS = *b.BackoffMS
 	}
-	j, err := q.Create(r.Context(), *b.Queue, *b.Payload, *b.MaxTries, delayMS, backoffMS)
+	j, created, err := q.Create(r.Context(), *b.Queue, key, *b.Payload, *b.MaxTries, delayMS, backoffMS)
 	if err != nil {
 		return 0, nil, err
+	}
+	if !created {
+		return http.StatusOK, jobView(j), nil
 	}
 	return http.StatusCreated, jobView(j), nil
 }
@@ -225,11 +236,19 @@ func (a *API) get(q *Queue, r *http.Request, arg, _ string) (int, any, error) {
 func (a *API) list(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 	query := r.URL.Query()
 	for k, vs := range query {
-		if (k != "queue" && k != "state") || len(vs) != 1 {
-			return 0, nil, &badRequest{"the query takes queue and state, each at most once"}
+		if (k != "queue" && k != "state" && k != "key") || len(vs) != 1 {
+			return 0, nil, &badRequest{"the query takes queue, state, and key, each at most once"}
 		}
 	}
-	jobs, err := q.List(r.Context(), query.Get("queue"), query.Get("state"))
+	if query.Has("key") && !query.Has("queue") {
+		return 0, nil, &badRequest{"key is given with queue"}
+	}
+	if query.Has("key") {
+		if err := requireKey(query.Get("key")); err != nil {
+			return 0, nil, err
+		}
+	}
+	jobs, err := q.List(r.Context(), query.Get("queue"), query.Get("state"), query.Get("key"))
 	if err != nil {
 		return 0, nil, err
 	}

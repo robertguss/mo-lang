@@ -13,11 +13,12 @@ import (
 )
 
 type apiHarness struct {
-	t     *testing.T
-	api   *API
-	board *Board
-	file  *memFile
-	clock *manualClock
+	t       *testing.T
+	api     *API
+	board   *Board
+	file    *memFile
+	archive *memFile
+	clock   *manualClock
 }
 
 func newAPIHarness(t *testing.T) *apiHarness {
@@ -26,9 +27,9 @@ func newAPIHarness(t *testing.T) *apiHarness {
 
 func newAPIHarnessWith(t *testing.T, cfg BoardConfig) *apiHarness {
 	clock := newManualClock(time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC))
-	f := &memFile{}
-	b := newMemBoard(t, f, clock, cfg)
-	return &apiHarness{t: t, api: &API{b: b}, board: b, file: f, clock: clock}
+	f, a := &memFile{}, &memFile{}
+	b := newMemBoard(t, f, a, clock, cfg)
+	return &apiHarness{t: t, api: &API{b: b}, board: b, file: f, archive: a, clock: clock}
 }
 
 // q is the queue the board serves now; it waits out a restart.
@@ -76,7 +77,7 @@ func TestHealthNeedsNoToken(t *testing.T) {
 	h := newAPIHarness(t)
 	h.clock.Advance(1500 * time.Millisecond)
 	body := h.want("-", "GET", "/health", "", 200)
-	if body != `{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":1500,"restarts":0}`+"\n" {
+	if body != `{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":0,"uptime_ms":1500,"restarts":0}`+"\n" {
 		t.Errorf("health body %q", body)
 	}
 }
@@ -261,7 +262,7 @@ func TestScheduledJobsThroughTheAPI(t *testing.T) {
 	if got := h.want(w1, "GET", "/jobs?state=scheduled", "", 200); !strings.Contains(got, `"run_at":"2026-09-14T12:00:05.000Z"`) {
 		t.Errorf("state=scheduled gave %s", got)
 	}
-	if got := h.want("-", "GET", "/health", "", 200); got != `{"queued":0,"scheduled":1,"leased":0,"done":0,"dead":0,"uptime_ms":0,"restarts":0}`+"\n" {
+	if got := h.want("-", "GET", "/health", "", 200); got != `{"queued":0,"scheduled":1,"leased":0,"done":0,"dead":0,"archived":0,"uptime_ms":0,"restarts":0}`+"\n" {
 		t.Errorf("health %s", got)
 	}
 	h.clock.Advance(5 * time.Second)

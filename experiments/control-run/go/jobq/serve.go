@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -24,10 +25,24 @@ type service struct {
 	addr  string
 }
 
-// openQueue replays <dir>/jobq.log into a new queue on clock.
+// openQueue replays <dir>/jobq.archive, then <dir>/jobq.log, into a new
+// queue on clock, which archives after the default retain_ms.
 func openQueue(dir string, clock Clock) (*Queue, *Store, error) {
 	q := newQueue(clock)
-	s, err := OpenStore(dir, q.applyRecord)
+	var archive *Store
+	s, err := openLog(dir, func() (err error) {
+		archive, err = openArchive(dir, q.applyArchived)
+		return err
+	}, q.applyRecord)
+	if err == nil {
+		q.archive = archive
+		err = q.checkApart()
+		if err != nil {
+			err = errors.Join(err, s.Close(), q.closeArchive())
+		}
+	} else if archive != nil {
+		_ = archive.Close()
+	}
 	if err != nil {
 		return nil, nil, asIllFormed(dir, err)
 	}
@@ -37,7 +52,13 @@ func openQueue(dir string, clock Clock) (*Queue, *Store, error) {
 
 // openBoard opens the queue in dir under a board that reopens it the same way.
 func openBoard(dir string, clock Clock, cfg BoardConfig) (*Board, error) {
-	return newBoard(func() (*Queue, *Store, error) { return openQueue(dir, clock) }, clock, cfg)
+	return newBoard(func() (*Queue, *Store, error) {
+		q, s, err := openQueue(dir, clock)
+		if err == nil {
+			q.retain = cfg.retain()
+		}
+		return q, s, err
+	}, clock, cfg)
 }
 
 func newHTTPServer(h http.Handler, idle time.Duration) *http.Server {
@@ -86,7 +107,7 @@ func parsePort(s string) (int, bool) {
 func parseServe(args []string) (dir string, port int, cfg BoardConfig, msg string) {
 	port, cfg = defaultPort, defaultBoardConfig()
 	if len(args) == 0 || len(args)%2 != 1 || strings.HasPrefix(args[0], "--") {
-		return "", 0, cfg, "serve takes <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]"
+		return "", 0, cfg, "serve takes <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N]"
 	}
 	dir = args[0]
 	seen := map[string]bool{}
@@ -120,6 +141,11 @@ func parseServe(args []string) (dir string, port int, cfg BoardConfig, msg strin
 				return "", 0, cfg, "--crash-every is a whole number, 0 for never"
 			}
 			cfg.CrashEvery = n
+		case "--retain-ms":
+			if !canonical || requireRetainMS(int64(n)) != nil {
+				return "", 0, cfg, "--retain-ms is 1000 to 2678400000"
+			}
+			cfg.Retain = time.Duration(n) * time.Millisecond
 		default:
 			return "", 0, cfg, "serve has no option " + opt
 		}

@@ -28,17 +28,28 @@ const (
 	exitGaveUp           = 70
 )
 
-// BoardConfig is the restart budget and the chaos switch.
+// BoardConfig is the restart budget, the chaos switch, and how long a done
+// or dead job stays on the board before it is archived.
 type BoardConfig struct {
 	MaxRestarts int
 	Window      time.Duration
-	CrashEvery  uint64 // 0 never fails
+	CrashEvery  uint64        // 0 never fails
+	Retain      time.Duration // 0 is the default, a day
 
 	crash func(n int) bool // the tests' chaos, in place of CrashEvery
 }
 
+// retain is the configured retain, the default when none is.
+func (c BoardConfig) retain() time.Duration {
+	if c.Retain <= 0 {
+		return defaultRetainMS * time.Millisecond
+	}
+	return c.Retain
+}
+
 func defaultBoardConfig() BoardConfig {
-	return BoardConfig{MaxRestarts: defaultMaxRestarts, Window: defaultRestartWindow}
+	return BoardConfig{MaxRestarts: defaultMaxRestarts, Window: defaultRestartWindow,
+		Retain: defaultRetainMS * time.Millisecond}
 }
 
 type boardState struct {
@@ -137,7 +148,7 @@ func (b *Board) restart(st *boardState) {
 	// Every lock holder after the failure sees broken and leaves at once, so
 	// this waits only for the request that was in flight.
 	_ = st.q.acquire(context.Background())
-	closeErr := st.s.Close()
+	closeErr := errors.Join(st.s.Close(), st.q.closeArchive())
 	st.q.release()
 	if b.stopped {
 		return
@@ -203,8 +214,8 @@ func (b *Board) stop(ctx context.Context) error {
 		return nil
 	}
 	if err := st.q.acquire(ctx); err != nil {
-		return errors.Join(err, st.s.Close())
+		return errors.Join(err, st.s.Close(), st.q.closeArchive())
 	}
 	defer st.q.release()
-	return st.s.Close()
+	return errors.Join(st.s.Close(), st.q.closeArchive())
 }

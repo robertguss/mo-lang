@@ -41,6 +41,20 @@ type Queue struct {
 	counts  map[State]int
 	nextID  uint64
 
+	// The archive: jobs moved off the board after retain, their file, and
+	// the tombstoned ids since its last compaction. keys names the job of
+	// every used key, on the board or archived. ends holds the updated_at
+	// of done and dead jobs, for the archive move; unlogged is archived ids
+	// whose arch record the log does not have yet. A queue with no archive
+	// store never archives.
+	archive  *Store
+	retain   time.Duration
+	archived map[uint64]*Job
+	gone     map[uint64]bool
+	keys     map[keyRef]uint64
+	ends     deadlineHeap
+	unlogged []uint64
+
 	// broken is set under lock by a failure that is not one request's: a
 	// broken rule or a panic. Every later holder of lock leaves at once, and
 	// the board rebuilds the queue from the log.
@@ -57,9 +71,15 @@ type Health struct {
 	Leased    int   `json:"leased"`
 	Done      int   `json:"done"`
 	Dead      int   `json:"dead"`
+	Archived  int   `json:"archived"`
 	UptimeMS  int64 `json:"uptime_ms"`
 	Restarts  int   `json:"restarts"`
 }
+
+// keyRef is a key in its queue; the same key in another queue is another.
+type keyRef struct{ queue, key string }
+
+func (j *Job) keyRef() (keyRef, bool) { return keyRef{j.Queue, j.Key}, j.Key != "" }
 
 // change is one job's step: old is nil on create, new is nil on delete.
 type change struct {
@@ -70,7 +90,48 @@ func newQueue(clock Clock) *Queue {
 	return &Queue{
 		lock: make(chan struct{}, 1), clock: clock, jobs: map[uint64]*Job{},
 		queued: map[string]*idHeap{}, counts: map[State]int{}, nextID: 1,
+		retain: defaultRetainMS * time.Millisecond, archived: map[uint64]*Job{}, gone: map[uint64]bool{},
+		keys: map[keyRef]uint64{},
 	}
+}
+
+func (q *Queue) closeArchive() error {
+	if q.archive == nil {
+		return nil
+	}
+	return q.archive.Close()
+}
+
+// checkApart holds after an open: no job is on the board and archived, and
+// no key names two jobs in one queue. An open reads the archive before the
+// log, out of the order the records were written, so the key map is built
+// again here from what the replay left, and checked as it is.
+func (q *Queue) checkApart() error {
+	var errs []error
+	for id := range q.archived {
+		errs = append(errs, contract.Never(q.jobs[id] != nil, "a job is on the live board and in the archive at once"))
+	}
+	q.keys = map[keyRef]uint64{}
+	for _, jobs := range []map[uint64]*Job{q.jobs, q.archived} {
+		for _, j := range jobs {
+			ref, ok := j.keyRef()
+			if !ok {
+				continue
+			}
+			_, used := q.keys[ref]
+			errs = append(errs, contract.Never(used, "a key names two jobs in one queue at once"))
+			q.keys[ref] = j.ID
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// lookup finds a job on the board or in the archive.
+func (q *Queue) lookup(id uint64) *Job {
+	if j := q.jobs[id]; j != nil {
+		return j
+	}
+	return q.archived[id]
 }
 
 // finishReplay attaches the store after replay and starts the uptime clock.
@@ -119,13 +180,25 @@ func (q *Queue) applyRecord(rec record) error {
 		if err != nil {
 			return err
 		}
+		q.nextID = max(q.nextID, j.ID+1)
+		if q.archived[j.ID] != nil || q.gone[j.ID] {
+			return nil // stale: the archive's record wins
+		}
 		c := change{old: q.jobs[j.ID], new: &j}
 		if err := checkNevers(c, j.UpdatedAt); err != nil {
 			return err
 		}
 		q.install(c)
-		q.nextID = max(q.nextID, j.ID+1)
 		return checkInvariants(j)
+	case "arch":
+		id, ok := parseID(rec.ID)
+		if !ok || (q.archived[id] == nil && !q.gone[id]) {
+			return fmt.Errorf("arch of a job not in the archive %q", rec.ID)
+		}
+		if q.jobs[id] != nil {
+			q.leave(id)
+		}
+		return nil
 	case "del":
 		id, ok := parseID(rec.ID)
 		if !ok || q.jobs[id] == nil {
@@ -137,24 +210,101 @@ func (q *Queue) applyRecord(rec record) error {
 	return fmt.Errorf("unknown op %q", rec.Op)
 }
 
+// applyArchived replays one archive record. A put archives the job, taking
+// it off the board if the board still holds it; a del forgets an archived
+// job and frees its key.
+func (q *Queue) applyArchived(rec record) error {
+	err := q.applyArchiveRecord(rec)
+	var ill *illFormed
+	if errors.As(err, &ill) {
+		ill.archived = true
+	}
+	return err
+}
+
+func (q *Queue) applyArchiveRecord(rec record) error {
+	switch rec.Op {
+	case "put":
+		if rec.Job == nil {
+			return errors.New("put without a job")
+		}
+		if err := wellFormedArchived(rec.Job.ID, *rec.Job); err != nil {
+			return err
+		}
+		j, err := jobFromView(*rec.Job)
+		if err != nil {
+			return err
+		}
+		if q.archived[j.ID] != nil || q.gone[j.ID] {
+			return fmt.Errorf("job %s is archived twice", rec.Job.ID)
+		}
+		if live := q.jobs[j.ID]; live != nil {
+			if err := contract.Never(live.Key != j.Key, "a job's key changes"); err != nil {
+				return err
+			}
+			q.leave(j.ID)
+		}
+		q.archived[j.ID] = &j
+		if ref, ok := j.keyRef(); ok {
+			q.keys[ref] = j.ID
+		}
+		q.nextID = max(q.nextID, j.ID+1)
+		return checkInvariants(j)
+	case "del":
+		id, ok := parseID(rec.ID)
+		if !ok || q.archived[id] == nil {
+			return fmt.Errorf("del of unknown archived job %q", rec.ID)
+		}
+		q.forget(id)
+		return nil
+	}
+	return fmt.Errorf("unknown archive op %q", rec.Op)
+}
+
+// forget drops an archived job, whose id stays gone until the archive is
+// compacted, and frees its key.
+func (q *Queue) forget(id uint64) {
+	j := q.archived[id]
+	delete(q.archived, id)
+	q.gone[id] = true
+	if ref, ok := j.keyRef(); ok && q.keys[ref] == id {
+		delete(q.keys, ref)
+	}
+}
+
+// leave takes a job off the board, keeping its key.
+func (q *Queue) leave(id uint64) {
+	q.counts[q.jobs[id].State]--
+	delete(q.jobs, id)
+	if len(q.order) > 2*len(q.jobs)+64 {
+		q.pruneOrder()
+	}
+}
+
 // install puts a change into memory and the indexes.
 func (q *Queue) install(c change) {
-	if c.old != nil {
-		q.counts[c.old.State]--
-	}
 	if c.new == nil {
-		delete(q.jobs, c.old.ID)
-		if len(q.order) > 2*len(q.jobs)+64 {
-			q.pruneOrder()
+		q.leave(c.old.ID)
+		if ref, ok := c.old.keyRef(); ok && q.keys[ref] == c.old.ID {
+			delete(q.keys, ref)
 		}
 		return
+	}
+	if c.old != nil {
+		q.counts[c.old.State]--
 	}
 	j := *c.new
 	q.jobs[j.ID] = &j
 	if c.old == nil {
 		q.order = append(q.order, j.ID)
+		if ref, ok := j.keyRef(); ok {
+			q.keys[ref] = j.ID
+		}
 	}
 	q.counts[j.State]++
+	if j.State == Done || j.State == Dead {
+		heap.Push(&q.ends, deadline{at: j.UpdatedAt, id: j.ID})
+	}
 	if j.State == Queued && (c.old == nil || c.old.State != Queued) {
 		h := q.queued[j.Queue]
 		if h == nil {
@@ -209,6 +359,7 @@ func checkNevers(c change, now time.Time) error {
 	terminal := old.State == Done || old.State == Dead
 	retry := old.State == Dead && n.State == Queued && n.Tries == 0
 	return errors.Join(
+		contract.Never(n.Key != old.Key, "a job's key changes"),
 		contract.Never(n.State == Leased && liveLease, "a job is held by two workers at once"),
 		contract.Never(n.State == Leased && terminal, "a done job is leased again, or a dead job before it is retried"),
 		contract.Never(old.State == Done && n.State != Done, "a done job changes state"),
@@ -297,7 +448,69 @@ func (q *Queue) begin(ctx context.Context) (*tx, error) {
 			t.moved = append(t.moved, c)
 		}
 	}
+	t.archiveOld()
 	return t, nil
+}
+
+// archiveStep is the archive move for one job at now: a done or dead job
+// whose updated_at is at least retain before now comes back with
+// archived_at set, and true; any other job is not due.
+func archiveStep(j Job, now time.Time, retain time.Duration) (Job, bool) {
+	if (j.State != Done && j.State != Dead) || j.UpdatedAt.After(now.Add(-retain)) {
+		return Job{}, false
+	}
+	j.ArchivedAt = now
+	return j, true
+}
+
+// archiveOld is the look's archive move. Every due job is appended to the
+// archive in one write; once that is on disk the jobs are archived in
+// memory, whatever happens to the log's arch records, which go with the
+// next commit (the archive's record wins at open). If the archive write
+// fails nothing moves, and the next look tries again. No job this look
+// moved is due: a move sets updated_at to now.
+func (t *tx) archiveOld() {
+	q := t.q
+	if q.archive == nil {
+		return
+	}
+	var due []Job
+	var popped []deadline
+	seen := map[uint64]bool{}
+	for q.ends.Len() > 0 && !q.ends[0].at.After(t.now.Add(-q.retain)) {
+		e := heap.Pop(&q.ends).(deadline)
+		j := q.jobs[e.id]
+		if j == nil || seen[e.id] || !j.UpdatedAt.Equal(e.at) {
+			continue
+		}
+		a, ok := archiveStep(*j, t.now, q.retain)
+		if !ok {
+			continue
+		}
+		seen[e.id] = true
+		due = append(due, a)
+		popped = append(popped, e)
+	}
+	if len(due) == 0 {
+		return
+	}
+	recs := make([]record, len(due))
+	for i := range due {
+		v := jobView(due[i])
+		recs[i] = record{Op: "put", Job: &v}
+	}
+	if err := q.archive.Append(recs...); err != nil {
+		for _, e := range popped {
+			heap.Push(&q.ends, e)
+		}
+		return
+	}
+	for i := range due {
+		a := due[i]
+		q.leave(a.ID)
+		q.archived[a.ID] = &a
+		q.unlogged = append(q.unlogged, a.ID)
+	}
 }
 
 // afterTry ends a lease by a fail or by running out: dead when no try is
@@ -324,20 +537,28 @@ func (t *tx) undo() {
 // commit makes the moves and changes durable, then applies the changes.
 func (t *tx) commit(changes ...change) error {
 	all := append(t.moved, changes...)
-	if len(all) == 0 {
+	if len(all) == 0 && len(t.q.unlogged) == 0 {
 		return nil
 	}
 	for _, c := range changes {
-		if err := t.q.guard(checkNevers(c, t.now)); err != nil {
+		back := c.new != nil && t.q.archived[c.new.ID] != nil
+		err := errors.Join(checkNevers(c, t.now), contract.Never(back, "an archived job comes back to the board"))
+		if err := t.q.guard(err); err != nil {
 			t.undo()
 			return err
 		}
 	}
-	if err := t.q.store.Append(records(all)...); err != nil {
+	recs := make([]record, 0, len(t.q.unlogged)+len(all))
+	for _, id := range t.q.unlogged {
+		recs = append(recs, record{Op: "arch", ID: formatID(id)})
+	}
+	recs = append(recs, records(all)...)
+	if err := t.q.store.Append(recs...); err != nil {
 		t.undo()
 		return err
 	}
-	if t.q.chaos != nil && t.q.chaos(len(all)) {
+	t.q.unlogged = nil
+	if t.q.chaos != nil && t.q.chaos(len(recs)) {
 		panic(errChaos)
 	}
 	t.moved = nil
@@ -379,31 +600,48 @@ func (t *tx) end() {
 }
 
 // Create adds a job: queued, or scheduled at created_at + delayMS when
-// delayMS is above 0. backoffMS is fixed for the job's life.
-func (q *Queue) Create(ctx context.Context, queue, payload string, maxTries int, delayMS, backoffMS int64) (Job, error) {
-	if err := errors.Join(requireQueue(queue), requirePayload(payload), requireMaxTries(maxTries),
-		requireDelayMS(delayMS), requireBackoffMS(backoffMS)); err != nil {
-		return Job{}, err
+// delayMS is above 0. backoffMS is fixed for the job's life. key is empty
+// for none. A key that already names a job in queue, on the board or
+// archived, makes nothing: that job comes back with created false, and the
+// other arguments are not looked at.
+func (q *Queue) Create(ctx context.Context, queue, key, payload string, maxTries int, delayMS, backoffMS int64) (job Job, created bool, err error) {
+	if err := requireQueue(queue); err != nil {
+		return Job{}, false, err
+	}
+	if key != "" {
+		if err := requireKey(key); err != nil {
+			return Job{}, false, err
+		}
 	}
 	t, err := q.begin(ctx)
 	if err != nil {
-		return Job{}, err
+		return Job{}, false, err
 	}
 	defer t.end()
+	if id, used := q.keys[keyRef{queue, key}]; key != "" && used {
+		if err := t.commitReads(); err != nil {
+			return Job{}, false, err
+		}
+		return *q.lookup(id), false, nil
+	}
+	if err := errors.Join(requirePayload(payload), requireMaxTries(maxTries),
+		requireDelayMS(delayMS), requireBackoffMS(backoffMS)); err != nil {
+		return Job{}, false, err
+	}
 	id := q.nextID
 	q.nextID++ // spent even if the write fails, so an id never repeats
-	j := Job{ID: id, Queue: queue, State: Queued, Payload: payload, MaxTries: maxTries, BackoffMS: backoffMS,
+	j := Job{ID: id, Queue: queue, Key: key, State: Queued, Payload: payload, MaxTries: maxTries, BackoffMS: backoffMS,
 		CreatedAt: t.now, UpdatedAt: t.now}
 	if delayMS > 0 {
 		j.State, j.RunAt = Scheduled, t.now.Add(time.Duration(delayMS)*time.Millisecond)
 	}
 	if err := t.commit(change{new: &j}); err != nil {
-		return Job{}, err
+		return Job{}, false, err
 	}
-	return *q.jobs[id], nil
+	return *q.jobs[id], true, nil
 }
 
-// Get returns one job.
+// Get returns one job, on the board or archived.
 func (q *Queue) Get(ctx context.Context, id uint64) (Job, error) {
 	t, err := q.begin(ctx)
 	if err != nil {
@@ -413,15 +651,22 @@ func (q *Queue) Get(ctx context.Context, id uint64) (Job, error) {
 	if err := t.commitReads(); err != nil {
 		return Job{}, err
 	}
-	j := q.jobs[id]
+	j := q.lookup(id)
 	if j == nil {
 		return Job{}, ErrNotFound
 	}
 	return *j, nil
 }
 
-// List returns up to 100 jobs by id, filtered by queue and state when given.
-func (q *Queue) List(ctx context.Context, queue, state string) ([]Job, error) {
+// List returns up to 100 jobs on the board by id, filtered by queue and
+// state when given. With a key it returns the one job the key names in
+// queue, archived or not, if it passes the state filter.
+func (q *Queue) List(ctx context.Context, queue, state, key string) ([]Job, error) {
+	if key != "" {
+		if err := errors.Join(contract.Require(queue != "", "key is given with queue"), requireKey(key)); err != nil {
+			return nil, err
+		}
+	}
 	if queue != "" {
 		if err := requireQueue(queue); err != nil {
 			return nil, err
@@ -441,6 +686,14 @@ func (q *Queue) List(ctx context.Context, queue, state string) ([]Job, error) {
 		return nil, err
 	}
 	out := []Job{}
+	if key != "" {
+		if id, used := q.keys[keyRef{queue, key}]; used {
+			if j := q.lookup(id); state == "" || string(j.State) == state {
+				out = append(out, *j)
+			}
+		}
+		return out, nil
+	}
 	for _, id := range q.order {
 		j := q.jobs[id]
 		if j == nil || (queue != "" && j.Queue != queue) || (state != "" && string(j.State) != state) {
@@ -454,7 +707,9 @@ func (q *Queue) List(ctx context.Context, queue, state string) ([]Job, error) {
 	return out, nil
 }
 
-// Delete removes a job that is not leased.
+// Delete removes a job that is not leased. An archived job is tombstoned in
+// the archive; the look's own moves are then written as a read's are, so a
+// 503 still means nothing changed.
 func (q *Queue) Delete(ctx context.Context, id uint64) error {
 	t, err := q.begin(ctx)
 	if err != nil {
@@ -463,6 +718,12 @@ func (q *Queue) Delete(ctx context.Context, id uint64) error {
 	defer t.end()
 	j := q.jobs[id]
 	switch {
+	case j == nil && q.archived[id] != nil:
+		if err := q.archive.Append(record{Op: "del", ID: formatID(id)}); err != nil {
+			return err
+		}
+		q.forget(id)
+		return t.commitReads()
 	case j == nil:
 		return errors.Join(t.commitReads(), ErrNotFound)
 	case j.State == Leased:
@@ -521,6 +782,9 @@ func ensureRetried(after Job) error {
 // held returns the job if worker holds a live lease on it.
 func (q *Queue) held(id uint64, worker string, now time.Time) (*Job, error) {
 	j := q.jobs[id]
+	if j == nil && q.archived[id] != nil {
+		return nil, fmt.Errorf("%w: %s is archived", ErrConflict, formatID(id))
+	}
 	if j == nil {
 		return nil, ErrNotFound
 	}
@@ -586,6 +850,8 @@ func (q *Queue) Retry(ctx context.Context, id uint64) (Job, error) {
 	defer t.end()
 	old := q.jobs[id]
 	switch {
+	case old == nil && q.archived[id] != nil:
+		return Job{}, errors.Join(t.commitReads(), fmt.Errorf("%w: %s is archived", ErrConflict, formatID(id)))
 	case old == nil:
 		return Job{}, errors.Join(t.commitReads(), ErrNotFound)
 	case old.State != Dead:
@@ -663,7 +929,7 @@ func (q *Queue) Health(ctx context.Context) (Health, error) {
 	}
 	return Health{
 		Queued: q.counts[Queued], Scheduled: q.counts[Scheduled], Leased: q.counts[Leased],
-		Done: q.counts[Done], Dead: q.counts[Dead],
+		Done: q.counts[Done], Dead: q.counts[Dead], Archived: len(q.archived),
 		UptimeMS: t.now.Sub(q.started).Milliseconds(),
 	}, nil
 }

@@ -10,7 +10,8 @@
 # no worker. 5: GET /queues through the served process. 6: the chaos switch
 # on the served process: a write fails after reaching the disk, the service
 # restarts itself and counts it in /health; with a budget of 1 the second
-# failure inside the window exits 70 and the folder verifies.
+# failure inside the window exits 70 and the folder verifies. 7: keys and
+# the archive on the served process, through a restart and a compaction.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 tmp="$(mktemp -d)"
@@ -87,7 +88,7 @@ expect 401 'error' - GET /queues
 stop
 
 # 4: verify on the folders this run leaves behind, and the ill-formed one.
-timeout 30 "$jobq" verify "$tmp/serve" | grep -q '^1 jobs: queued 0, scheduled 0, leased 0, done 1, dead 0; next id j_2$' || {
+timeout 30 "$jobq" verify "$tmp/serve" | grep -q '^1 jobs: queued 0, scheduled 0, leased 0, done 1, dead 0; next id j_2; archived 0$' || {
   echo "check.sh: verify of the served folder printed the wrong line" >&2; exit 1; }
 timeout 30 "$jobq" verify "$tmp/old" > /dev/null
 mkdir "$tmp/ill"
@@ -120,5 +121,39 @@ timeout 30 "$jobq" verify "$tmp/chaos" | grep -q '^4 jobs: queued 4,' || {
   echo "check.sh: verify after exit 70 printed the wrong line" >&2; exit 1; }
 if timeout 10 "$jobq" compact "$tmp/chaos" --crash-every 1 2> /dev/null; then
   echo "check.sh: compact took --crash-every" >&2; exit 1
+fi
+
+# 7: idempotent creates and the archive on the served process: a keyed
+# create twice, a job archived after --retain-ms and read by id, both
+# surviving a stop and start and a compaction, and verify counting it.
+mkdir "$tmp/arch"
+serve "$tmp/arch" --retain-ms 1000
+expect 201 '"key":"once"' prod POST /jobs '{"queue":"k","key":"once","payload":"p","max_tries":1}'
+expect 200 '"id":"j_1"' prod POST /jobs '{"queue":"k","key":"once","payload":"other","max_tries":1}'
+expect 200 '"worker":"w1"' w1 POST /queues/k/lease
+expect 200 '"state":"done"' w1 POST /jobs/j_1/ack
+sleep 1.2
+expect 200 '"archived":1' - GET /health
+expect 200 '"archived_at"' prod GET /jobs/j_1
+expect 200 '{"jobs":[]}' prod GET /jobs?queue=k
+expect 409 'archived' prod POST /jobs/j_1/retry
+stop
+[ -s "$tmp/arch/jobq.archive" ] || { echo "check.sh: no archive file" >&2; exit 1; }
+timeout 30 "$jobq" verify "$tmp/arch" | grep -q '^0 jobs: .*; next id j_2; archived 1$' || {
+  echo "check.sh: verify of the archived folder printed the wrong line" >&2; exit 1; }
+timeout 30 "$jobq" compact "$tmp/arch"
+if grep -q '"j_1"' "$tmp/arch/jobq.log"; then
+  echo "check.sh: compact left an archived job in the log" >&2; exit 1
+fi
+serve "$tmp/arch"
+expect 200 '"archived_at"' prod GET /jobs/j_1
+expect 200 '"id":"j_1"' prod POST /jobs '{"queue":"k","key":"once","payload":"p","max_tries":1}'
+expect 204 '' prod DELETE /jobs/j_1
+expect 201 '"id":"j_2"' prod POST /jobs '{"queue":"k","key":"once","payload":"p","max_tries":1}'
+stop
+timeout 30 "$jobq" verify "$tmp/arch" | grep -q '^1 jobs: queued 1, .*; archived 0$' || {
+  echo "check.sh: verify after the archived delete printed the wrong line" >&2; exit 1; }
+if timeout 10 "$jobq" serve "$tmp/arch" --retain-ms 999 2> /dev/null; then
+  echo "check.sh: serve took --retain-ms 999" >&2; exit 1
 fi
 echo "check.sh: ok"

@@ -18,17 +18,23 @@ import (
 	"time"
 )
 
-// newMemBoard is a board over an in-memory file: a restart replays the file.
-func newMemBoard(t *testing.T, f *memFile, clock *manualClock, cfg BoardConfig) *Board {
+// newMemBoard is a board over an in-memory log and archive: a restart
+// replays the archive, then the log.
+func newMemBoard(t *testing.T, f, a *memFile, clock *manualClock, cfg BoardConfig) *Board {
 	t.Helper()
 	open := func() (*Queue, *Store, error) {
 		q := newQueue(clock)
-		size, err := replay(bytes.NewReader(f.data), q.applyRecord)
+		q.retain = cfg.retain()
+		as, err := memStore(a, q.applyArchived)
 		if err != nil {
 			return nil, nil, err
 		}
-		s := &Store{f: f, size: size, dirty: int64(len(f.data)) != size}
-		if err := s.repair(); err != nil {
+		q.archive = as
+		s, err := memStore(f, q.applyRecord)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := q.checkApart(); err != nil {
 			return nil, nil, err
 		}
 		q.finishReplay(s)
@@ -39,6 +45,16 @@ func newMemBoard(t *testing.T, f *memFile, clock *manualClock, cfg BoardConfig) 
 		t.Fatal(err)
 	}
 	return b
+}
+
+// memStore replays f through apply and cuts its torn tail.
+func memStore(f *memFile, apply func(record) error) (*Store, error) {
+	size, err := replay(bytes.NewReader(f.data), apply)
+	if err != nil {
+		return nil, err
+	}
+	s := &Store{f: f, size: size, dirty: int64(len(f.data)) != size}
+	return s, s.repair()
 }
 
 // fixedBoard serves q and never restarts it successfully.
@@ -62,7 +78,7 @@ func fixedBoard(t *testing.T, q *Queue, s *Store) *Board {
 func boardMatchesLog(t *testing.T, h *apiHarness) {
 	t.Helper()
 	q := h.q()
-	if got, want := snapshot(q), snapshot(replayBytes(t, h.file.data)); !reflect.DeepEqual(got, want) {
+	if got, want := snapshot(q), snapshot(replayBoth(t, h.archive.data, h.file.data)); !reflect.DeepEqual(got, want) {
 		t.Fatalf("board differs from the log:\n%v\n%v", got, want)
 	}
 }
@@ -245,12 +261,12 @@ func TestZeroRestartsGivesUpAtOnce(t *testing.T) {
 // The Go reading of `--sim --faults` for the board: failures injected at
 // random writes. After every request the board, once back, equals a replay
 // of the log; every created job a 2xx reported is present unless a delete
-// was tried on it; an acked one stays done.
+// was tried on it; an acked one stays done, archived or not.
 func TestSimulationWithRandomBoardFailures(t *testing.T) {
 	totalRestarts := 0
 	for seed := uint64(1); seed <= 40; seed++ {
 		rng := rand.New(rand.NewPCG(seed, 0xc4a05))
-		cfg := BoardConfig{MaxRestarts: 1 << 20, Window: time.Second,
+		cfg := BoardConfig{MaxRestarts: 1 << 20, Window: time.Second, Retain: time.Second,
 			crash: func(int) bool { return rng.IntN(20) == 0 }}
 		h := newAPIHarnessWith(t, cfg)
 		created, deleteTried, acked := map[string]bool{}, map[string]bool{}, map[string]bool{}
@@ -287,7 +303,8 @@ func TestSimulationWithRandomBoardFailures(t *testing.T) {
 			boardMatchesLog(t, h)
 			q := h.q()
 			for j := range created {
-				got, ok := q.jobs[mustID(j)]
+				got := q.lookup(mustID(j))
+				ok := got != nil
 				if !ok && !deleteTried[j] {
 					t.Fatalf("seed %d step %d: %s is missing", seed, step, j)
 				}
