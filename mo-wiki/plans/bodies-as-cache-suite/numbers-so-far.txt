@@ -9,3 +9,5 @@ notes A: 12/12 (42 tests + 5 runs) = 1.0; 15m31s
 notes B: 12/12 = 1.0; 17m; loops 3 (MO0101 x2, MO0102) all first-fix
 jobq B: 15/15 oracles (55 tests + 5 runs) and round 7 suite 121/121 = 1.0; 25 min; loops 4 (MO0101, MO0314 var captured, a sim test assertion, MO0xxx x3 in one check) 
 jobq A: 15/15 oracles and round 7 suite 121/121 = 1.0; 26m19s; loops 5 (MO0102 x2, MO0409 capability captured, MO0403, one sim fault test), all first-fix
+ledger A: 19/19 = 1.0; 41m36s; 9 loops all first-fix
+ledger B: 19/19 = 1.0; 46m32s; loops per its table, all first-fix
