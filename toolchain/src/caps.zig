@@ -25,7 +25,7 @@ const Id = types.Id;
 
 pub const Error = error{OutOfMemory};
 
-pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main, authority_captured, moved };
+pub const Code = enum { missing_within, needless_within, outside_params, flows_violated, bad_flows, recipe_needs, platform_escapes, no_main, authority_captured, moved, reply_kept };
 
 pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .missing_within = .{ .code = "MO0401", .category = .capabilities, .what = "<call> has no within: deadline; add one, such as within: 100.ms.", .why = "Every call that can wait carries a deadline (chapter 2, bounding laws), so nothing blocks forever; a timeout comes back as an ordinary error the caller handles.", .fixes = &.{} },
@@ -37,6 +37,7 @@ pub const catalog = std.enums.EnumArray(Code, checker.Entry).init(.{
     .platform_escapes = .{ .code = "MO0407", .category = .capabilities, .what = "<function> takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .why = "A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds.", .fixes = &.{} },
     .authority_captured = .{ .code = "MO0409", .category = .capabilities, .what = "the anonymous function captures <name>, a <Capability or Handle>; pass <name> as a parameter to a named function instead.", .why = "An anonymous function captures read-only, but a capability or a handle is authority: captured, it lets a call that takes only data, such as map, perform an effect no signature shows (chapter 3, effects). Authority travels only as a parameter, so a named function that takes it says what it touches.", .fixes = &.{} },
     .moved = .{ .code = "MO0410", .category = .capabilities, .what = "<name> went to another process in <Message>, so it is no longer this function's; use it before the send, or not at all.", .why = "A message may carry a capability its message line declares (chapter 3, processes; step 20), and a capability in a message moves rather than being copied: once sent it is the receiving process's, so two processes never act through one connection at once. The checker refuses every use of the name after the send in the function that sent it, and on the next pass of a for; a copy it cannot see, such as a start argument sent in one update and used in the next, still reaches the same connection.", .fixes = &.{} },
+    .reply_kept = .{ .code = "MO0411", .category = .capabilities, .what = "<Message>'s arm mentions reply_to but does not hand it to a state field; write state.<field> = ... reply_to ... once, and answer it later with reply.answer(value).", .why = "An arm for a message that carries a reply answers the ask in one of two ways, never both and never neither (chapter 3, processes; step 31): its value is the reply, as it has always been, or it keeps the asker by moving reply_to into a state field and answers it from a later arm with reply.answer(value). reply_to moves as a capability in a message moves (MO0410): the arm names it exactly once, inside an assignment to a place under state, and every later read of it is refused, since the asker is the state's now. A Reply the state drops without answering is no error: the asker times out at its own deadline, as it would if the process never answered.", .fixes = &.{} },
     .no_main = .{ .code = "MO0408", .category = .capabilities, .what = "this module has no fn main(platform: Platform), so mo run has nothing to run; mo test runs its tests", .why = "mo run starts a program at fn main(platform: Platform), the one place it receives its capabilities (Q18). A module without main has nothing to run; mo test runs its tests.", .fixes = &.{} },
 });
 
@@ -49,6 +50,7 @@ pub fn check(gpa: std.mem.Allocator, checked: checker.Checked, out: *diag.List) 
     try c.flowRules();
     try c.captures();
     try c.moves();
+    try c.keptReplies();
 }
 
 /// A run of nodes that belong to one declaration, one test, or one never.
@@ -340,6 +342,7 @@ const Caps = struct {
         for (c.k.fields[r.start..r.end]) |f| {
             if (f.node == 0) continue;
             const found = c.capIn(f.type, 0) orelse continue;
+            if (c.k.pool.get(found).tag == .reply and c.keptHandle(f.type)) continue;
             if (c.k.pool.get(found).tag == .handle and c.keptHandle(f.type)) continue;
             if (c.k.pool.get(found).tag == .cap) {
                 try c.report(.outside_params, c.node(f.node).main_token, try c.print("{s} holds a {s}; a capability travels only as a parameter, never inside a value.", .{ f.name, try c.tn(found) }));
@@ -349,16 +352,84 @@ const Caps = struct {
         }
     }
 
-    /// `Handle(P)`, or an Option or a List of one, or a Map whose values are one and whose keys hold
-    /// no authority.
+    /// `Handle(P)` or `Reply(T)`, or an Option or a List of one, or a Map whose values are one and
+    /// whose keys hold no authority (step 24; step 31 gives a Reply the same four shapes).
     fn keptHandle(c: *Caps, t: Id) bool {
         const b = c.baseTag(t);
         return switch (b.tag) {
-            .handle => true,
-            .option, .list => c.baseTag(b.a).tag == .handle,
-            .map => c.capIn(b.a, 0) == null and c.baseTag(b.b).tag == .handle,
+            .handle, .reply => true,
+            .option, .list => c.kept1(b.a),
+            .map => c.capIn(b.a, 0) == null and c.kept1(b.b),
             else => false,
         };
+    }
+
+    fn kept1(c: *Caps, t: Id) bool {
+        const tag = c.baseTag(t).tag;
+        return tag == .handle or tag == .reply;
+    }
+
+    // ---- an arm that keeps its asker (step 31)
+
+    /// An arm that mentions `reply_to` keeps the asker instead of answering: it names reply_to
+    /// exactly once, on the right of an assignment to a place under `state`, and never again.
+    fn keptReplies(c: *Caps) Error!void {
+        for (c.k.decls) |d| {
+            if (d.kind != .process or d.node == 0) continue;
+            const data = c.k.tree.extraData(ast.Process, c.node(d.node).lhs);
+            if (data.update == 0 or c.node(data.update).lhs == 0) continue;
+            const cn = c.node(c.node(data.update).lhs);
+            if (cn.kind != .case_stmt and cn.kind != .case_expr) continue;
+            for (c.spanAt(cn.rhs)) |a| try c.keptInArm(a);
+        }
+    }
+
+    fn keptInArm(c: *Caps, arm: Index) Error!void {
+        const an = c.node(arm);
+        const d = c.k.tree.extraData(ast.Arm, an.rhs);
+        const body = c.k.tree.span(d.body_start, d.body_end);
+        if (body.len == 0 or c.k.binding_of.len == 0) return;
+        const lo = (if (d.guard != 0) d.guard else an.lhs) + 1;
+        const hi = body[body.len - 1];
+        var refs: std.ArrayList(Index) = .empty;
+        var j = lo;
+        while (j <= hi) : (j += 1) {
+            const n = c.node(j);
+            if (n.kind != .name_ref or c.k.binding_of[j] == 0) continue;
+            if (std.mem.eql(u8, c.text(n.main_token), "reply_to")) try refs.append(c.gpa, j);
+        }
+        if (refs.items.len == 0) return;
+        const message = c.text(c.node(an.lhs).main_token);
+        if (!c.movedIntoState(lo, hi, refs.items[0])) {
+            try c.report(.reply_kept, c.node(refs.items[0]).main_token, try c.print("{s}'s arm mentions reply_to but does not hand it to a state field; write state.<field> = ... reply_to ... once, and answer it later with reply.answer(value).", .{message}));
+            return;
+        }
+        for (refs.items[1..]) |r| try c.report(.reply_kept, c.node(r).main_token, try c.print("reply_to is the state's once {s}'s arm has kept it; read it back from the state field, or answer it with reply.answer(value).", .{message}));
+    }
+
+    /// Whether node `at` is on the right of an assignment to a place under `state`, among the
+    /// nodes [lo, hi]. A node of the right side lies between the place's root and the value's.
+    fn movedIntoState(c: *Caps, lo: Index, hi: Index, at: Index) bool {
+        var i = lo;
+        while (i <= hi) : (i += 1) {
+            const n = c.node(i);
+            if (n.kind != .assign or at <= n.lhs or at > n.rhs) continue;
+            if (c.placeRootIsState(n.lhs)) return true;
+        }
+        return false;
+    }
+
+    fn placeRootIsState(c: *Caps, place: Index) bool {
+        var i = place;
+        for (0..64) |_| {
+            const n = c.node(i);
+            switch (n.kind) {
+                .name_ref => return std.mem.eql(u8, c.text(n.main_token), "state"),
+                .member, .tuple_index, .member_call => i = n.lhs,
+                else => return false,
+            }
+        }
+        return false;
     }
 
     /// A process whose state keeps a handle holds authority in its box (step 24).
@@ -1697,4 +1768,50 @@ test "a process starts what its own supervisor names as a child with no capabili
         \\  Job.start()
         \\end
     , &.{ "MO0403", "MO0403" });
+}
+
+test "an arm that mentions reply_to hands it to a state field once; a Reply lives in a state field as a handle does" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const found = try capsOf(arena_state.allocator(),
+        \\module T.Kept
+        \\process Keeper()
+        \\  state
+        \\    one: Option(Reply(UInt64))
+        \\    many: List(Reply(UInt64))
+        \\    named: Map(String, Reply(UInt64))
+        \\    pairs: List((String, Reply(UInt64)))
+        \\    n: UInt64
+        \\  end
+        \\
+        \\  message Held : UInt64
+        \\  message Loose : UInt64
+        \\  message Twice : UInt64
+        \\  message Flush
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Held:
+        \\        state.many = state.many.push(reply_to)
+        \\      Loose:
+        \\        state.n = reply_to.as_seen()
+        \\      Twice:
+        \\        state.many = state.many.push(reply_to)
+        \\        state.one = Some(reply_to)
+        \\      Flush:
+        \\        for held in state.many
+        \\          held.answer(state.n)
+        \\        end
+        \\        state.many = []
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Keepers
+        \\  child Keeper, restart: :always
+        \\end
+    );
+    try std.testing.expectEqual(@as(usize, 3), found.len);
+    try std.testing.expectEqualStrings("pairs holds a Reply(UInt64) inside a List((String, Reply(UInt64))); a state field keeps a handle only as Reply(UInt64), Option(Reply(UInt64)), List(Reply(UInt64)), or Map(K, Reply(UInt64)).", found[0].what);
+    try std.testing.expectEqualStrings("Loose's arm mentions reply_to but does not hand it to a state field; write state.<field> = ... reply_to ... once, and answer it later with reply.answer(value).", found[1].what);
+    try std.testing.expectEqualStrings("reply_to is the state's once Twice's arm has kept it; read it back from the state field, or answer it with reply.answer(value).", found[2].what);
 }

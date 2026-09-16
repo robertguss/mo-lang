@@ -11,6 +11,7 @@
 //!   P                                               the process a handle or message belongs to
 //!   Message(P)                                      one of P's `message` lines
 //!   Reply                                           the reply type of the message passed
+//!   Reply(T)                                        the kept asker of a message replying T (step 31)
 //!   none                                            no value (a statement-only call)
 const std = @import("std");
 
@@ -21,7 +22,7 @@ pub const Origin = enum { grammar, stdlib, corpus_only };
 
 /// `error_enum` and `enum_` are both enums whose variants are rows below; an error enum
 /// is what a capability call fails with.
-pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, capability, error_enum, enum_ };
+pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, reply, capability, error_enum, enum_ };
 
 pub const Type = struct {
     name: []const u8,
@@ -57,6 +58,8 @@ pub const types = [_]Type{
     .{ .name = "Map", .arity = 2, .kind = .map, .origin = .stdlib },
     .{ .name = "Set", .arity = 1, .kind = .set, .origin = .stdlib },
     .{ .name = "Handle", .arity = 1, .kind = .handle },
+    // The asker an arm kept instead of answering (step 31): held in a state field, answered later.
+    .{ .name = "Reply", .arity = 1, .kind = .reply, .origin = .stdlib },
     .{ .name = "Clock", .kind = .capability },
     .{ .name = "Fs", .kind = .capability },
     .{ .name = "Events", .kind = .capability },
@@ -488,6 +491,9 @@ pub const fns = [_]Fn{
     // Delivered no earlier than `delay` after the sending update ends (step 24).
     .{ .recv = "Handle(P)", .name = "send", .params = &.{"Message(P)"}, .named = &.{.{ .name = "delay", .type = "Duration" }}, .ret = "none" },
     .{ .recv = "Handle(P)", .name = "ask", .params = &.{"Message(P)"}, .ret = "Result(Reply, AskError)", .can_wait = true },
+    // Answers the ask an arm kept (step 31): the asker's deadline travels with the Reply, and an
+    // answer after it is dropped. An effect on the process that holds it, so no capability.
+    .{ .recv = "Reply(T)", .name = "answer", .params = &.{"T"}, .ret = "none", .origin = .stdlib },
     // Inside `never` only
     .{ .recv = "Type", .on_type = true, .name = "all", .ret = "List(T)", .only = .never },
     .{ .recv = "", .name = "flows", .params = &.{"T"}, .named = &.{.{ .name = "into", .type = "Capability" }}, .ret = "Bool", .only = .never },
@@ -524,7 +530,7 @@ pub fn findStandIn(name: []const u8) bool {
 }
 
 /// Words a type string may use that are not type names.
-const type_string_words = [_][]const u8{ "T", "U", "A", "E", "K", "V", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
+const type_string_words = [_][]const u8{ "T", "U", "A", "E", "K", "V", "N", "P", "Message", "none", "fn", "Capability" };
 
 test "every name in a prelude type string is a prelude type or a type-string word" {
     var strings: std.ArrayList([]const u8) = .empty;

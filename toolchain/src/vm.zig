@@ -77,6 +77,9 @@ pub const Value = union(enum) {
     cap: Cap,
     /// A started process: its index in the run's `Sim.procs`.
     handle: u32,
+    /// A kept asker (step 31): the sequence number of the ask's message in the run, which the
+    /// asker waits on. The deadline stays with the asker, so an answer past it is dropped.
+    reply: u64,
 
     /// Entries in the order they were added, `stride` values each (a map's are 2), and once
     /// there are enough of them an open-addressing table over them, after a count of the
@@ -1358,6 +1361,7 @@ pub const Vm = struct {
         .{ "Ledger.find_charge", .ledger_call },    .{ "Ledger.save_charge", .ledger_call },      .{ "Charge.fixture", .charge_fixture },
         .{ "Charge.refunded?", .charge_refunded },  .{ "Money.cents", .money_cents },             .{ "Money.zero", .money_zero },
         .{ "Process.start", .process },             .{ "Handle.send", .process },                 .{ "Handle.ask", .process },
+        .{ "Reply.answer", .process },
         .{ "Supervisor.start", .process },          .{ "Platform.net", .platform_part },          .{ "Net.listen", .net_row },
         .{ "Net.connect", .net_row },               .{ "Listener.accept", .net_row },             .{ "Listener.port", .net_row },
         .{ "Conn.read_line", .net_row },            .{ "Conn.write", .net_row },                  .{ "Conn.close", .net_row },
@@ -1870,6 +1874,7 @@ pub const Vm = struct {
                 defer if (g) |t| t.unlock();
                 try w.print("{s} #{d}", .{ s.nameOf(h), h });
             } else try w.print("a handle #{d}", .{h}),
+            .reply => |seq| try w.print("an asker kept from message #{d}", .{seq}),
         }
     }
 
@@ -1967,6 +1972,7 @@ pub fn equal(a: Value, b: Value) bool {
         .func => |x| x.function == b.func.function and allEqual(x.captures, b.func.captures),
         .cap => |x| x.kind == b.cap.kind and x.delay == b.cap.delay and x.handle == b.cap.handle,
         .handle => |x| x == b.handle,
+        .reply => |x| x == b.reply,
     };
 }
 

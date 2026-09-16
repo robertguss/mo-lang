@@ -87,7 +87,7 @@ const Encoder = struct {
                 try e.fields(r.fields, e.k.fields[d.fields.start..d.fields.end]);
             },
             .variant => |r| try e.variant(r, ty),
-            .func, .cap, .handle => {
+            .func, .cap, .handle, .reply => {
                 e.vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(e.vm.gpa, "{s} has no JSON", .{try e.vm.render(v)}), .within = "encode", .at = 0 };
                 return error.Crash;
             },
