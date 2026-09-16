@@ -1,7 +1,7 @@
 module Jobq.Board
 expose Command, Call, Outcome, Counts, Order, Board, Decision, Kept, board, decide, rebuilt, records, health_of, snapshot
 
-use Jobq.Job{Phase, Job, job, leased, acked, failed, looked, holds?, payload?, id_of, number_of, shown, decoded}
+use Jobq.Job{Phase, Job, JobCreation, job, leased, acked, failed, retried, looked, holds?, payload?, id_of, number_of, shown, decoded}
 
 intent "The queue as a value: every job by number, each queue's queued jobs oldest first, the leases and when the first runs out, and the counts; a call becomes a decision, the board after it, the answer, and the records the store must hold before the answer is sent; every decision first puts back the leases that have run out."
 
@@ -13,13 +13,14 @@ end
 
 # What a caller asks of the queue once its request is read. `worker` is the caller's token.
 enum Command
-  Create(queue: String, payload: String, max_attempts: UInt64)
+  Create(queue: String, payload: String, max_tries: UInt64, delay_ms: UInt64, backoff_ms: UInt64)
   Fetch(id: String)
   Listing(queue: Option(String), state: Option(Phase))
   Remove(id: String)
   Lease(queue: String, lease_ms: UInt64)
   Ack(id: String)
   Fail(id: String, reason: String)
+  Retry(id: String)
   Health
 end
 
@@ -30,6 +31,7 @@ end
 
 struct Counts
   queued: UInt64
+  scheduled: UInt64
   leased: UInt64
   done: UInt64
   dead: UInt64
@@ -97,14 +99,15 @@ fn board(started: Time, next: UInt64) : Board
 
   Board(jobs: Map.new(), orders: Map.new(), fresh: Map.new(), leases: Map.new(), due: None,
     next: next, reserved: next,
-    counts: Counts(queued: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0), started: started)
+    counts: Counts(queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0), started: started)
 end
 
 fn decide(board: Board, call: Call, now: Time) : Decision
   swept = sweep(board, now)
   decided = case call.command
-    Create(queue: queue, payload: payload, max_attempts: max_attempts):
-      created(swept.board, queue, payload, max_attempts, now)
+    Create(queue: queue, payload: payload, max_tries: max_tries, delay_ms: delay_ms, backoff_ms: backoff_ms):
+      params = JobCreation(queue: queue, payload: payload, max_tries: max_tries, delay_ms: delay_ms, backoff_ms: backoff_ms)
+      created(swept.board, params, now)
     Fetch(id): answered(swept.board, fetched(swept.board, id))
     Listing(queue: queue, state: state):
       answered(swept.board, Listed(jobs: listed(swept.board, queue, state)))
@@ -112,6 +115,7 @@ fn decide(board: Board, call: Call, now: Time) : Decision
     Lease(queue: queue, lease_ms: lease_ms): lent(swept.board, call.worker, queue, lease_ms, now)
     Ack(id): settled(swept.board, call.worker, id, "", false, now)
     Fail(id: id, reason: reason): settled(swept.board, call.worker, id, reason, true, now)
+    Retry(id): retry_job(swept.board, id, now)
     Health: answered(swept.board, Healthy(counts: health_of(swept.board, now)))
   end
   Decision(board: decided.board, outcome: decided.outcome,
@@ -278,6 +282,8 @@ fn counted(counts: Counts, phase: Phase, up: Bool) : Counts
   case phase
     Queued:
       after.queued = moved(counts.queued, up)
+    Scheduled:
+      after.scheduled = moved(counts.scheduled, up)
     Leased:
       after.leased = moved(counts.leased, up)
     Done:
@@ -294,13 +300,14 @@ end
 
 # A new job, numbered next; when that number reaches the reserved ones, another thousand are
 # reserved in the log first, so no number is handed out twice, restart or not.
-fn created(board: Board, queue: String, payload: String, max_attempts: UInt64, now: Time) : Decision
-  made = job(board.next, queue, payload, max_attempts, now)
+fn created(board: Board, params: JobCreation, now: Time) : Decision
+  made = job(board.next, params, now)
   reserving = board.next >= board.reserved
-  var after = with_job(with_fresh(board, queue, made.number), made)
+  position_board = if made.state == Scheduled: board else: with_fresh(board, params.queue, made.number)
+  var after = with_job(position_board, made)
   after.next = board.next + 1
   after.reserved = if reserving: board.next + 1_000 else: board.reserved
-  after.counts = counted(board.counts, Queued, true)
+  after.counts = counted(board.counts, made.state, true)
   reserve = if reserving: [("ids", Some("#{board.next + 1_000}"))] else: []
   Decision(board: after, outcome: Made(job: made),
     writes: reserve.concat([(id_of(made.number), Some(shown(made)))]))
@@ -451,6 +458,23 @@ fn settled(board: Board, worker: String, id: String, reason: String, failing: Bo
   end
 end
 
+# A retry of a dead job, putting it back queued with tries at 0; 409 if it is not dead.
+fn retry_job(board: Board, id: String, now: Time) : Decision
+  case job_at(board, id)
+    Some(held):
+      if held.state != Dead
+        return answered(board, Conflict(reason: "#{id} is not dead"))
+      end
+      after_job = retried(held, now)
+      var after = with_job(with_fresh(board, held.queue, held.number), after_job)
+      after.counts = recounted(board.counts, Dead, Queued)
+      after.orders = after.orders.set(held.queue,
+        with_back(after.orders.get(held.queue) or no_order(), [held.number]))
+      Decision(board: after, outcome: Found(job: after_job), writes: [(id, Some(shown(after_job)))])
+    None: answered(board, Missing)
+  end
+end
+
 # The board a store's records hold: every job, the reserved numbers, and the next number above
 # every job and every reservation; None when a record is not the job its key names.
 fn rebuilt(entries: List((String, String)), started: Time) : Option(Board)
@@ -482,10 +506,21 @@ end
 
 fn placed(board: Board, held: Job) : Board
   queued = if held.state == Queued: with_fresh(board, held.queue, held.number) else: board
-  leased_too = if held.state == Leased
-    with_lease(queued, held.number, held.lease_until or board.started)
+  scheduled_due = if held.state == Scheduled
+    case held.run_at
+      Some(at):
+        var s = queued
+        s.due = Some(min_of(queued.due or at, at))
+        s
+      None: queued
+    end
   else
     queued
+  end
+  leased_too = if held.state == Leased
+    with_lease(scheduled_due, held.number, held.lease_until or board.started)
+  else
+    scheduled_due
   end
   var after = with_job(leased_too, held)
   after.counts = counted(board.counts, held.state, true)
@@ -519,10 +554,10 @@ fn call(worker: String, command: Command) : Call
   Call(worker: worker, command: command)
 end
 
-# A board with one job made in each queue named, in order, each with two attempts.
+# A board with one job made in each queue named, in order, each with two tries.
 fn with_jobs(queues: List(String)) : Board
   queues.reduce(board(start(), 1),
-    fn(b, q) decide(b, call("p", Create(queue: q, payload: q, max_attempts: 2)), start()).board end)
+    fn(b, q) decide(b, call("p", Create(queue: q, payload: q, max_tries: 2, delay_ms: 0, backoff_ms: 0)), start()).board end)
 end
 
 fn number_in(decision: Decision) : UInt64
@@ -551,7 +586,7 @@ end
 
 test "a job made is found by its id, and its record is written under that id"
   first = decide(board(start(), 1),
-    call("p", Create(queue: "emails", payload: "hi", max_attempts: 3)), start())
+    call("p", Create(queue: "emails", payload: "hi", max_tries: 3, delay_ms: 0, backoff_ms: 0)), start())
   assert number_in(first) == 1
   assert first.writes.map(fn(w) w.0 end) == ["ids", "j_1"]
   assert first.writes.get(0) == Some(("ids", Some("1001")))
@@ -559,7 +594,7 @@ test "a job made is found by its id, and its record is written under that id"
   assert job_in(found) == job_in(first) and found.writes == []
   assert decide(first.board, call("p", Fetch(id: "j_2")), start()).outcome == Missing
   assert decide(first.board, call("p", Fetch(id: "nope")), start()).outcome == Missing
-  second = decide(first.board, call("p", Create(queue: "emails", payload: "", max_attempts: 1)),
+  second = decide(first.board, call("p", Create(queue: "emails", payload: "", max_tries: 1, delay_ms: 0, backoff_ms: 0)),
     start())
   assert second.writes.map(fn(w) w.0 end) == ["j_2"]
 end
@@ -569,7 +604,7 @@ test "a lease hands out the oldest queued job of its queue, and Empty when none 
   first = lease_by(b, "w1", "a", 1_000, start())
   assert number_in(first) == 1
   assert job_in(first) is Some(one)
-  assert one.worker == Some("w1") and one.attempts == 1
+  assert one.worker == Some("w1") and one.tries == 1
   second = lease_by(first.board, "w2", "a", 1_000, start())
   assert number_in(second) == 3
   assert lease_by(second.board, "w3", "a", 1_000, start()).outcome == Empty
@@ -577,12 +612,12 @@ test "a lease hands out the oldest queued job of its queue, and Empty when none 
   failed_one = decide(second.board, call("w1", Fail(id: "j_1", reason: "smtp")), start())
   assert job_in(failed_one) is Some(back)
   assert back.state == Queued and back.reason == Some("smtp")
-  newer = decide(failed_one.board, call("p", Create(queue: "a", payload: "4", max_attempts: 2)),
+  newer = decide(failed_one.board, call("p", Create(queue: "a", payload: "4", max_tries: 2, delay_ms: 0, backoff_ms: 0)),
     start())
   again = lease_by(newer.board, "w4", "a", 1_000, start())
   assert number_in(again) == 1
-  assert job_in(again) is Some(retried)
-  assert retried.attempts == 2
+  assert job_in(again) is Some(retried_job)
+  assert retried_job.tries == 2
   assert number_in(lease_by(again.board, "w5", "a", 1_000, start())) == 4
 end
 
@@ -601,21 +636,21 @@ test "two workers race for one job: exactly one holds it, and only the holder ac
   assert lease_by(done.board, "w3", "a", 1_000, start()).outcome == Empty
 end
 
-test "a lease that runs out is leased again with attempts at 2, and one that runs out on its last attempt is dead"
+test "a lease that runs out is leased again with tries at 2, and one that runs out on its last try is dead"
   b = with_jobs(["a"])
   first = lease_by(b, "w1", "a", 100, start())
   assert lease_by(first.board, "w2", "a", 100, start() + 99.ms).outcome == Empty
   second = lease_by(first.board, "w2", "a", 100, start() + 100.ms)
   assert second.writes.map(fn(w) w.0 end) == ["j_1", "j_1"]
-  assert job_in(second) is Some(retried)
-  assert retried.attempts == 2 and retried.worker == Some("w2")
+  assert job_in(second) is Some(retried_job)
+  assert retried_job.tries == 2 and retried_job.worker == Some("w2")
   late = decide(second.board, call("w1", Ack(id: "j_1")), start() + 150.ms)
   assert late.outcome is Conflict(_)
   gone = decide(second.board, call("p", Fetch(id: "j_1")), start() + 200.ms)
   assert job_in(gone) is Some(dead)
-  assert dead.state == Dead and dead.attempts == 2 and gone.writes.size == 1
+  assert dead.state == Dead and dead.tries == 2 and gone.writes.size == 1
   assert decide(gone.board, call("", Health), start() + 200.ms).outcome is Healthy(counts)
-  assert counts.dead == 1 and counts.leased == 0 and counts.queued == 0
+  assert counts.dead == 1 and counts.leased == 0 and counts.queued == 0 and counts.scheduled == 0
   assert lease_by(gone.board, "w3", "a", 100, start() + 300.ms).outcome == Empty
 end
 
@@ -636,7 +671,7 @@ test "a listing filters by queue and by state, by id, and holds at most 100"
   b = with_jobs(["b"].concat("a".repeat(105).chars).push("b"))
   all = decide(b, call("p", Listing(queue: None, state: None)), start())
   assert all.outcome is Listed(jobs)
-  assert jobs.size == 100 and (jobs.first or job(9, "q", "", 1, start())).number == 1
+  assert jobs.size == 100 and (jobs.first or job(9, JobCreation(queue: "q", payload: "", max_tries: 1, delay_ms: 0, backoff_ms: 0), start())).number == 1
   assert jobs.map(fn(j) j.number end) == jobs.map(fn(j) j.number end).sort
   in_b = decide(b, call("p", Listing(queue: Some("b"), state: None)), start())
   assert in_b.outcome is Listed(bs)
@@ -687,7 +722,7 @@ end
 property "a job made then fetched gives back any valid payload"
   for payload in any(String) if payload?(payload)
     made = decide(board(start(), 1),
-      call("p", Create(queue: "q", payload: payload, max_attempts: 1)), start())
+      call("p", Create(queue: "q", payload: payload, max_tries: 1, delay_ms: 0, backoff_ms: 0)), start())
     fetched = decide(made.board, call("p", Fetch(id: "j_1")), start())
     assert job_in(fetched) is Some(back)
     assert back.payload == payload and job_in(made) == Some(back)

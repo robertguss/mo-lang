@@ -374,7 +374,7 @@ test "a call through the queue is answered once its record is in the log"
   fs = Fs.fixture()
   clock = Clock.fixture()
   queue = begun(fs, clock)
-  made = served(queue, "p", Create(queue: "emails", payload: "hi", max_attempts: 2))
+  made = served(queue, "p", Create(queue: "emails", payload: "hi", max_tries: 2, delay_ms: 0, backoff_ms: 0))
   assert made is Made(_) or unavailable?(made)
   logged = fs.read("d/jobq.log", within: 1.minute)
   if made is Made(one) and logged is Ok(text)
@@ -389,14 +389,14 @@ test "a batch the log did not take is 503, and the board goes back to what the s
   assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert open(fs, "d") is Ok(empty)
   start = board(at, 1)
-  one = decide(start, Call(worker: "p", command: Create(queue: "q", payload: "1", max_attempts: 1)),
+  one = decide(start, Call(worker: "p", command: Create(queue: "q", payload: "1", max_tries: 1, delay_ms: 0, backoff_ms: 0)),
     at)
   first = flushed(fs,
     Batch(board: one.board, durable: start, table: emptied(empty), torn: false, writes: one.writes,
     outcomes: [one.outcome]))
   assert first.answers.map(fn(a) a.outcome end) == [one.outcome] and !first.torn
   two = decide(first.board,
-    Call(worker: "p", command: Create(queue: "q", payload: "2", max_attempts: 1)), at)
+    Call(worker: "p", command: Create(queue: "q", payload: "2", max_tries: 1, delay_ms: 0, backoff_ms: 0)), at)
   slow = Fs.fixture(delay: 1.minute)
   torn = flushed(slow,
     Batch(board: two.board, durable: first.board, table: first.table, torn: false,
@@ -404,7 +404,7 @@ test "a batch the log did not take is 503, and the board goes back to what the s
   assert torn.torn and torn.answers.all?(fn(a) unavailable?(a.outcome) end)
   assert records(torn.board) == records(first.board) and torn.board.next == 3
   three = decide(torn.board,
-    Call(worker: "p", command: Create(queue: "q", payload: "3", max_attempts: 1)), at)
+    Call(worker: "p", command: Create(queue: "q", payload: "3", max_tries: 1, delay_ms: 0, backoff_ms: 0)), at)
   again = flushed(fs,
     Batch(board: three.board, durable: torn.board, table: torn.table, torn: true,
     writes: three.writes, outcomes: [three.outcome]))
@@ -417,12 +417,12 @@ test "a queue started again from its log finds a lease that ran out and hands th
   fs = Fs.fixture()
   clock = Clock.fixture()
   first = begun(fs, clock)
-  made = served(first, "p", Create(queue: "q", payload: "x", max_attempts: 3))
+  made = served(first, "p", Create(queue: "q", payload: "x", max_tries: 3, delay_ms: 0, backoff_ms: 0))
   lent = served(first, "w1", Lease(queue: "q", lease_ms: 100))
   aged = aged_log(fs, lent)
   again = reopened(fs, clock, "w2", Lease(queue: "q", lease_ms: 100))
   if made is Made(_) and aged and again is Found(retried)
-    assert retried.attempts == 2 and retried.worker == Some("w2")
+    assert retried.tries == 2 and retried.worker == Some("w2")
   end
   assert again is Found(_) or unavailable?(again) or !aged
 end
@@ -432,7 +432,7 @@ test "every answer is right or 503 with the store unchanged, and every job ends 
   clock = Clock.fixture()
   queue = begun(fs, clock)
   for i in 0..6
-    made = served(queue, "p", Create(queue: "q", payload: "job #{i}", max_attempts: 2))
+    made = served(queue, "p", Create(queue: "q", payload: "job #{i}", max_tries: 2, delay_ms: 0, backoff_ms: 0))
     assert made is Made(_) or unavailable?(made)
   end
   var last = Going

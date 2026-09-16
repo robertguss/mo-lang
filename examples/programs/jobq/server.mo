@@ -113,7 +113,7 @@ fn started(http: Http, fs: Fs, clock: Clock) : UInt16
 end
 
 fn create(payload: String) : String
-  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_attempts\": 2}"
+  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 2}"
 end
 
 # The status of a client once it has one, asking up to 200 times.
@@ -258,7 +258,7 @@ test "over the wire, every answer is right or 503, and every job ends done or de
       recovered(http, port)
     end
     health = sent(http, port, Request(method: "GET", path: "/health"))
-    if health is Ok(answer) and answer.body.contains?("\"queued\": 0, \"leased\": 0,")
+    if health is Ok(answer) and answer.body.contains?("\"queued\": 0, \"scheduled\": 0, \"leased\": 0,")
       ended = status(lent) == 204
     end
     if ended

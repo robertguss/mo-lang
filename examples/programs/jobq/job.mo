@@ -1,11 +1,11 @@
 module Jobq.Job
-expose Phase, Job, Settled, Look, job, leased, acked, failed, looked, holds?, run_out?, queue?, payload?, reason?, token?, attempts?, lease_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, to_ms
+expose Phase, Job, JobCreation, Settled, Look, job, leased, acked, failed, retried, looked, holds?, run_out?, scheduled?, queue?, payload?, reason?, token?, tries?, backoff_ms?, lease_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, to_ms
 
-intent "A job and its rules: a queue's name, a payload, attempts, and a lease; each move between the four states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows."
+intent "A job and its rules: a queue's name, a payload, tries, and a lease; each move between the states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows."
 
-never "a job's attempts exceed its max_attempts"
+never "a job's tries exceed its max_tries"
   for j in Job.all
-    j.attempts > j.max_attempts
+    j.tries > j.max_tries
   end
 end
 
@@ -23,21 +23,34 @@ end
 
 enum Phase
   Queued
+  Scheduled
   Leased
   Done
   Dead
 end
 
+# Parameters for creating a job.
+struct JobCreation
+  queue: String
+  payload: String
+  max_tries: UInt64
+  delay_ms: UInt64
+  backoff_ms: UInt64
+end
+
 # `worker` and `lease_until` are Some only while the job is leased; `reason` is the last fail's.
+# `run_at` is Some only while the job is scheduled.
 struct Job
   number: UInt64
   queue: String
   state: Phase
   payload: String
-  attempts: UInt64
-  max_attempts: UInt64
+  tries: UInt64
+  max_tries: UInt64
+  backoff_ms: UInt64
   created_at: Time
   updated_at: Time
+  run_at: Option(Time)
   worker: Option(String)
   lease_until: Option(Time)
   reason: Option(String)
@@ -105,8 +118,12 @@ fn token_byte?(b: UInt8) : Bool
   word_byte?(b) or b == 46 or b == 126 or b == 43 or b == 47
 end
 
-fn attempts?(n: UInt64) : Bool
+fn tries?(n: UInt64) : Bool
   n >= 1 and n <= 100
+end
+
+fn backoff_ms?(n: UInt64) : Bool
+  n >= 0 and n <= 3_600_000
 end
 
 fn lease_ms?(n: UInt64) : Bool
@@ -118,29 +135,34 @@ fn to_ms(at: Time) : Time
   Time.parse(at.to_iso8601) or at
 end
 
-# A new job, queued, with no attempts yet.
-fn job(number: UInt64, queue: String, payload: String, max_attempts: UInt64, now: Time) : Job
-  requires queue?(queue)
-  requires payload?(payload)
-  requires attempts?(max_attempts)
-  ensures result.state == Queued and result.attempts == 0
+# A new job, queued or scheduled, with no tries yet.
+fn job(number: UInt64, params: JobCreation, now: Time) : Job
+  requires queue?(params.queue)
+  requires payload?(params.payload)
+  requires tries?(params.max_tries)
+  requires params.delay_ms <= 86_400_000
+  requires backoff_ms?(params.backoff_ms)
+  ensures result.tries == 0
+  ensures result.state == (if params.delay_ms > 0: Scheduled else: Queued)
 
-  Job(number: number, queue: queue, state: Queued, payload: payload, attempts: 0,
-    max_attempts: max_attempts, created_at: now, updated_at: now, worker: None, lease_until: None,
-    reason: None)
+  state = if params.delay_ms > 0: Scheduled else: Queued
+  run_at = if params.delay_ms > 0: Some(now + params.delay_ms.to_i64.ms) else: None
+  Job(number: number, queue: params.queue, state: state, payload: params.payload, tries: 0,
+    max_tries: params.max_tries, backoff_ms: params.backoff_ms, created_at: now, updated_at: now, run_at: run_at,
+    worker: None, lease_until: None, reason: None)
 end
 
-# The job leased to the worker for `lease_ms` from now, one attempt more.
+# The job leased to the worker for `lease_ms` from now, one try more.
 fn leased(job: Job, worker: String, lease_ms: UInt64, now: Time) : Job
-  requires job.state == Queued and job.attempts < job.max_attempts
+  requires job.state == Queued and job.tries < job.max_tries
   requires token?(worker)
   requires lease_ms?(lease_ms)
   ensures result.state == Leased and result.worker == Some(worker)
-  ensures result.attempts == job.attempts + 1
+  ensures result.tries == job.tries + 1
 
   var next = job
   next.state = Leased
-  next.attempts = job.attempts + 1
+  next.tries = job.tries + 1
   next.updated_at = now
   next.worker = Some(worker)
   next.lease_until = Some(now + lease_ms.to_i64.ms)
@@ -165,53 +187,93 @@ fn acked(job: Job, worker: String, now: Time) : Job
   requires holds?(job, worker, now)
   ensures result.state == Done and result.worker is None
 
-  settled = Settled(number: job.number, attempt: job.attempts, worker: worker)
+  settled = Settled(number: job.number, attempt: job.tries, worker: worker)
   var next = job
   next.state = Done
-  next.attempts = settled.attempt
+  next.tries = settled.attempt
   next.updated_at = now
   next.worker = None
   next.lease_until = None
   next
 end
 
-# The job failed by the worker that holds it: queued again while it has attempts left, dead on
-# its last.
+# The job failed by the worker that holds it: scheduled with backoff, queued again while it has tries left, dead on its last.
 fn failed(job: Job, worker: String, reason: String, now: Time) : Job
   requires holds?(job, worker, now)
   requires reason?(reason)
-  ensures result.state == (if job.attempts < job.max_attempts: Queued else: Dead)
   ensures result.reason == Some(reason)
+  ensures result.tries == job.tries
+  ensures result.state == (if job.tries < job.max_tries: (if job.backoff_ms > 0: Scheduled else: Queued) else: Dead)
 
-  settled = Settled(number: job.number, attempt: job.attempts, worker: worker)
+  settled = Settled(number: job.number, attempt: job.tries, worker: worker)
   released(job, now, Some(reason), settled.attempt)
 end
 
 fn released(job: Job, now: Time, reason: Option(String), attempt: UInt64) : Job
+  next_state = if attempt < job.max_tries
+    if job.backoff_ms > 0: Scheduled else: Queued
+  else
+    Dead
+  end
   var next = job
-  next.state = if attempt < job.max_attempts: Queued else: Dead
-  next.attempts = attempt
+  next.state = next_state
+  next.tries = attempt
   next.updated_at = now
   next.worker = None
   next.lease_until = None
+  next.run_at = if next_state == Scheduled: Some(now + job.backoff_ms.to_i64.ms) else: None
   next.reason = if reason is Some(_): reason else: job.reason
   next
 end
 
-# A look at the job: a lease that has run out puts it back, queued or dead by the fail rule, and
-# anything else is left as it is.
+# A dead job put back to queued with tries reset to 0.
+fn retried(job: Job, now: Time) : Job
+  requires job.state == Dead
+  ensures result.state == Queued and result.tries == 0
+
+  var next = job
+  next.state = Queued
+  next.tries = 0
+  next.updated_at = now
+  next.reason = None
+  next
+end
+
+# A look at the job: a lease that has run out puts it back, scheduled or queued or dead by the fail rule;
+# a scheduled job whose run_at has passed is queued.
 fn looked(job: Job, now: Time) : Job
   ensures !(result.state == Leased and run_out?(result, now))
-  ensures result.attempts == job.attempts
+  ensures !(result.state == Scheduled and scheduled?(result, now))
+  ensures result.tries == job.tries
 
-  after = if job.state == Leased and run_out?(job, now)
-    released(job, now, None, job.attempts)
-  else
-    job
+  after = case job.state
+    Leased if run_out?(job, now):
+      released(job, now, None, job.tries)
+    Leased:
+      job
+    Scheduled if scheduled?(job, now):
+      var queued = job
+      queued.state = Queued
+      queued.run_at = None
+      queued.updated_at = now
+      queued
+    Scheduled:
+      job
+    Queued: job
+    Done: job
+    Dead: job
   end
   look = Look(number: job.number, at: now, leased: after.state == Leased,
     until: after.lease_until or now + 1.ms)
   if look.leased: after else: after
+end
+
+# A scheduled job whose run_at has passed is due.
+fn scheduled?(job: Job, now: Time) : Bool
+  case job.run_at
+    Some(at): at <= now
+    None: false
+  end
 end
 
 fn id_of(number: UInt64) : String
@@ -229,6 +291,7 @@ end
 fn phase_name(phase: Phase) : String
   case phase
     Queued: "queued"
+    Scheduled: "scheduled"
     Leased: "leased"
     Done: "done"
     Dead: "dead"
@@ -238,6 +301,7 @@ end
 fn phase_named(name: String) : Option(Phase)
   case name
     "queued": Some(Queued)
+    "scheduled": Some(Scheduled)
     "leased": Some(Leased)
     "done": Some(Done)
     "dead": Some(Dead)
@@ -248,8 +312,12 @@ end
 # The job as JSON: the API's shape, and the line the store keeps.
 fn shown(job: Job) : String
   head = "{\"id\": \"#{id_of(job.number)}\", \"queue\": #{Json.encode(job.queue)}, \"state\": \"#{phase_name(job.state)}\""
-  counts = "\"payload\": #{Json.encode(job.payload)}, \"attempts\": #{job.attempts}, \"max_attempts\": #{job.max_attempts}"
+  counts = "\"payload\": #{Json.encode(job.payload)}, \"tries\": #{job.tries}, \"max_tries\": #{job.max_tries}, \"backoff_ms\": #{job.backoff_ms}"
   times = "\"created_at\": #{Json.encode(job.created_at)}, \"updated_at\": #{Json.encode(job.updated_at)}"
+  scheduled = case job.run_at
+    Some(at): ", \"run_at\": #{Json.encode(at)}"
+    None: ""
+  end
   lease = case (job.worker, job.lease_until)
     (Some(worker), Some(until)):
       ", \"worker\": #{Json.encode(worker)}, \"lease_until\": #{Json.encode(until)}"
@@ -259,7 +327,7 @@ fn shown(job: Job) : String
     Some(reason): ", \"reason\": #{Json.encode(reason)}"
     None: ""
   end
-  "#{head}, #{counts}, #{times}#{lease}#{why}}"
+  "#{head}, #{counts}, #{times}#{scheduled}#{lease}#{why}}"
 end
 
 # A job read back from its JSON, or None for anything that is not one.
@@ -276,20 +344,38 @@ fn from_fields(fields: Map(String, Json)) : Option(Job)
   queue = try text_in(fields, "queue")
   state = try phase_named(try text_in(fields, "state"))
   payload = try text_in(fields, "payload")
-  attempts = try count_in(fields, "attempts")
-  max_attempts = try count_in(fields, "max_attempts")
+  tries = case count_in(fields, "tries")
+    Some(v): Some(v)
+    None: count_in(fields, "attempts")
+  end
+  tries_val = try tries
+  max_tries = case count_in(fields, "max_tries")
+    Some(v): Some(v)
+    None: count_in(fields, "max_attempts")
+  end
+  max_tries_val = try max_tries
+  backoff_ms_opt = case count_in(fields, "backoff_ms")
+    Some(v): Some(v)
+    None: Some(0)
+  end
+  backoff_ms = try backoff_ms_opt
   created = try Time.parse(try text_in(fields, "created_at"))
   updated = try Time.parse(try text_in(fields, "updated_at"))
+  run_at = case text_in(fields, "run_at")
+    Some(text): Some(try Time.parse(text))
+    None: None
+  end
   worker = text_in(fields, "worker")
   until = case text_in(fields, "lease_until")
     Some(text): Some(try Time.parse(text))
     None: None
   end
-  return None if !queue?(queue) or !payload?(payload) or !attempts?(max_attempts)
-  return None if attempts > max_attempts or (state == Leased) != (worker is Some(_) and until is Some(_))
-  Some(Job(number: number, queue: queue, state: state, payload: payload, attempts: attempts,
-    max_attempts: max_attempts, created_at: created, updated_at: updated, worker: worker,
-    lease_until: until, reason: text_in(fields, "reason")))
+  return None if !queue?(queue) or !payload?(payload) or !tries?(max_tries_val)
+  return None if tries_val > max_tries_val or (state == Leased) != (worker is Some(_) and until is Some(_))
+  return None if (state == Scheduled) != (run_at is Some(_))
+  Some(Job(number: number, queue: queue, state: state, payload: payload, tries: tries_val,
+    max_tries: max_tries_val, backoff_ms: backoff_ms, created_at: created, updated_at: updated,
+    run_at: run_at, worker: worker, lease_until: until, reason: text_in(fields, "reason")))
 end
 
 fn text_in(fields: Map(String, Json), name: String) : Option(String)
@@ -311,20 +397,21 @@ fn at(text: String) : Time
 end
 
 fn sample() : Job
-  job(7, "emails", "hello \"there\"\nsecond line é", 3, at("2026-09-14T10:00:00Z"))
+  params = JobCreation(queue: "emails", payload: "hello \"there\"\nsecond line é", max_tries: 3, delay_ms: 0, backoff_ms: 0)
+  job(7, params, at("2026-09-14T10:00:00Z"))
 end
 
-test "a new job is queued with no attempts, and its JSON is the API's shape"
+test "a new job is queued with no tries, and its JSON is the API's shape"
   made = sample()
-  assert made.state == Queued and made.attempts == 0
-  assert shown(made) == "{\"id\": \"j_7\", \"queue\": \"emails\", \"state\": \"queued\", \"payload\": \"hello \\\"there\\\"\\nsecond line é\", \"attempts\": 0, \"max_attempts\": 3, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\"}"
+  assert made.state == Queued and made.tries == 0
+  assert shown(made) == "{\"id\": \"j_7\", \"queue\": \"emails\", \"state\": \"queued\", \"payload\": \"hello \\\"there\\\"\\nsecond line é\", \"tries\": 0, \"max_tries\": 3, \"backoff_ms\": 0, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\"}"
   assert decoded(shown(made)) == Some(made)
 end
 
 test "a lease names its worker and its end, and a fail keeps its reason"
   now = at("2026-09-14T10:00:00Z")
   held = leased(sample(), "w-1", 30_000, now)
-  assert held.state == Leased and held.attempts == 1
+  assert held.state == Leased and held.tries == 1
   assert held.lease_until == Some(at("2026-09-14T10:00:30Z"))
   assert shown(held).ends_with?(", \"worker\": \"w-1\", \"lease_until\": \"2026-09-14T10:00:30Z\"}")
   assert decoded(shown(held)) == Some(held)
@@ -343,22 +430,22 @@ test "only the worker whose lease has not run out holds the job"
   assert acked(held, "w-1", now).state == Done
 end
 
-test "a lease that runs out is queued again at the next look, and dead on its last attempt"
+test "a lease that runs out is queued again at the next look, and dead on its last try"
   now = at("2026-09-14T10:00:00Z")
   first = leased(sample(), "w-1", 100, now)
   assert looked(first, now + 99.ms) == first
   again = looked(first, now + 100.ms)
-  assert again.state == Queued and again.attempts == 1 and again.worker is None
+  assert again.state == Queued and again.tries == 1 and again.worker is None
   second = leased(again, "w-2", 100, now + 200.ms)
-  assert second.attempts == 2
+  assert second.tries == 2
   last = leased(looked(second, now + 300.ms), "w-3", 100, now + 400.ms)
-  assert last.attempts == 3
+  assert last.tries == 3
   assert looked(last, now + 500.ms).state == Dead
   assert failed(leased(looked(second, now + 300.ms), "w-3", 100, now + 400.ms), "w-3", "",
     now + 450.ms).state == Dead
 end
 
-test "a queue name, a payload, a token, attempts, and a lease keep their rules"
+test "a queue name, a payload, a token, tries, backoff_ms, and a lease keep their rules"
   assert queue?("emails_2-a") and queue?("q".repeat(64))
   assert !queue?("") and !queue?("q".repeat(65)) and !queue?("a b") and !queue?("é")
   assert payload?("") and payload?("x".repeat(61_440)) and payload?("line\nline")
@@ -367,7 +454,8 @@ test "a queue name, a payload, a token, attempts, and a lease keep their rules"
   assert payload?("é and \u{1F600}")
   assert token?("worker-1") and token?("abc.DEF_~+/==") and !token?("") and !token?("a b")
   assert !token?("=abc") and !token?("ab=c") and !token?("k".repeat(257))
-  assert attempts?(1) and attempts?(100) and !attempts?(0) and !attempts?(101)
+  assert tries?(1) and tries?(100) and !tries?(0) and !tries?(101)
+  assert backoff_ms?(0) and backoff_ms?(3_600_000) and !backoff_ms?(3_600_001)
   assert lease_ms?(100) and lease_ms?(3_600_000) and !lease_ms?(99) and !lease_ms?(3_600_001)
   assert number_of("j_12") == Some(12)
   assert number_of("j_") is None and number_of("j_012") is None and number_of("12") is None
@@ -382,15 +470,23 @@ test "a record that is not a job reads as none"
 end
 
 test rejects "a job in a queue whose name has a space"
-  job(1, "two words", "", 1, at("2026-09-14T10:00:00Z"))
+  params = JobCreation(queue: "two words", payload: "", max_tries: 1, delay_ms: 0, backoff_ms: 0)
+  job(1, params, at("2026-09-14T10:00:00Z"))
 end
 
 test rejects "a job whose payload holds a tab"
-  job(1, "q", "a\tb", 1, at("2026-09-14T10:00:00Z"))
+  params = JobCreation(queue: "q", payload: "a\tb", max_tries: 1, delay_ms: 0, backoff_ms: 0)
+  job(1, params, at("2026-09-14T10:00:00Z"))
 end
 
-test rejects "a job with no attempts allowed"
-  job(1, "q", "", 0, at("2026-09-14T10:00:00Z"))
+test rejects "a job with no tries allowed"
+  params = JobCreation(queue: "q", payload: "", max_tries: 0, delay_ms: 0, backoff_ms: 0)
+  job(1, params, at("2026-09-14T10:00:00Z"))
+end
+
+test rejects "a retry of a job that is not dead"
+  now = at("2026-09-14T10:00:00Z")
+  retried(sample(), now)
 end
 
 test rejects "a lease of a job that is not queued"
@@ -423,13 +519,14 @@ end
 
 property "any valid job reads back from its JSON as it was, leased or not"
   for payload in any(String), queue in any(String), n in any(UInt8), ms in any(UInt32) if payload?(payload) and queue?(queue) and lease_ms?(ms.to_u64)
-    tries = n.to_u64 % 100 + 1
-    made = job(n.to_u64 + 1, queue, payload, tries, at("2026-09-14T10:00:00.123Z"))
+    max_tries = n.to_u64 % 100 + 1
+    params = JobCreation(queue: queue, payload: payload, max_tries: max_tries, delay_ms: 0, backoff_ms: 0)
+    made = job(n.to_u64 + 1, params, at("2026-09-14T10:00:00.123Z"))
     assert decoded(shown(made)) == Some(made)
     held = leased(made, "w", ms.to_u64, made.created_at)
     assert decoded(shown(held)) == Some(held)
   end
 end
 
-verified: types, contracts, tests (16), property (200 seeds), sim (not run)
+verified: types, contracts, tests (17), property (200 seeds), sim (not run)
           proven: not run
