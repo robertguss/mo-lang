@@ -10,15 +10,15 @@
 # run: verify data/ill
 # exit: 1
 module Jobq.Main
-expose Place, Trip, Task, Problem, task, steady, serving?, main
+expose Place, Trip, Task, Problem, Folder, task, steady, serving?, main
 
-use Jobq.Board{health_of, ill_formed, snapshot}
+use Jobq.Board{health_of, ill_formed, shelf_snapshot, snapshot}
 use Jobq.Job{id_of}
-use Jobq.Queue{Opening, Policy, opening, policy}
+use Jobq.Queue{Opening, Policy, opening, policy, retained, shelf_lines}
 use Jobq.Server{serving}
-use Jobq.Store{Table, StoreError, count, cut_short?, line_of, lines, open, pairs, rewritten, writing_to}
+use Jobq.Store{Table, StoreError, bytes, count, cut_short?, line_of, lines, open, open_log, pairs, rewritten, writing_to}
 
-intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job in the names this version writes, verify a folder without serving it, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; every command that opens a folder refuses one that holds a record the API could never have produced, a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
+intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job in the names this version writes and its archive to one line per archived job, verify a folder and its archive without serving it, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; every command that opens a folder refuses one that holds a record the API could never have produced, a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
 
 # Where to serve, and how the service keeps going: its restart budget and its chaos switch.
 struct Place
@@ -45,6 +45,12 @@ enum Task
   Checking(dir: String, script: String)
 end
 
+# A folder's two logs, replayed: the live log and the archive.
+struct Folder
+  live: Table
+  shelf: Table
+end
+
 enum Problem
   Usage(detail: String)
   Unopened(dir: String, why: String)
@@ -54,7 +60,7 @@ enum Problem
 end
 
 fn usage() : String
-  "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] | jobq compact <dir> | jobq verify <dir> | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
+  "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N] | jobq compact <dir> | jobq verify <dir> | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 end
 
 fn task(args: List(String)) : Result(Task, Problem)
@@ -70,7 +76,8 @@ fn task(args: List(String)) : Result(Task, Problem)
   end
 end
 
-# The place a serve starts from: port 7900, five restarts a minute, and no chaos.
+# The place a serve starts from: port 7900, five restarts a minute, no chaos, and done and dead
+# jobs kept a day before they are archived.
 fn place_of(dir: String) : Place
   Place(dir: dir, port: 7_900, rules: policy(5, 60_000, 0))
 end
@@ -104,8 +111,10 @@ fn flagged(place: Place, name: String, value: String) : Result(Place, Problem)
       set.rules.window_ms = (try number_of(name, value, 1, 86_400)) * 1_000
     "--crash-every":
       set.rules.crash_every = try number_of(name, value, 0, 1_000_000_000)
+    "--retain-ms":
+      set.rules = retained(set.rules, try number_of(name, value, 1_000, 2_678_400_000))
     _:
-      return Error(Usage(detail: "serve takes --port, --max-restarts, --restart-window, and --crash-every, not #{name}"))
+      return Error(Usage(detail: "serve takes --port, --max-restarts, --restart-window, --crash-every, and --retain-ms, not #{name}"))
   end
   Ok(set)
 end
@@ -188,13 +197,14 @@ fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String))
   end
 end
 
-# Serves a folder until jobq is stopped. A log whose last line was cut short is written whole
-# first, so the next change starts on a line of its own.
+# Serves a folder until jobq is stopped. A log or an archive whose last line was cut short is
+# written whole first, so the next change starts on a line of its own.
 fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : Result(String,
   Problem)
   opened = try opened_store(fs, err, place.dir)
   start = try opening_of(opened, clock.now)
-  whole = if cut_short?(opened): try compacted_from(fs, place.dir, start) else: start
+  cut = cut_short?(opened.live) or cut_short?(opened.shelf)
+  whole = if cut: try compacted_from(fs, place.dir, start) else: start
   case http.listen(place.port, within: 5_000.ms)
     Ok(listener):
       queue = serving(listener, fs, clock, whole, place.rules)
@@ -206,37 +216,52 @@ fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : R
   end
 end
 
-fn opening_of(table: Table, now: Time) : Result(Opening, Problem)
-  case opening(table, now)
+fn opening_of(opened: Folder, now: Time) : Result(Opening, Problem)
+  case opening(opened.live, opened.shelf, now)
     Some(start): Ok(start)
-    None: Error(Unopened(dir: table.dir, why: "holds a jobq.log with a record that is not a job"))
+    None:
+      Error(Unopened(dir: opened.live.dir, why: "holds a jobq.log with a record that is not a job"))
   end
 end
 
-# The log written whole from the board the store replayed: one line per live job, in the names
-# this version writes, so a log the previous version wrote leaves no old name behind.
+# The log written whole from the board the stores replayed: one line per live job, in the names
+# this version writes, so a log the previous version wrote leaves no old name behind, and no
+# stale record of an archived job; then the archive written whole, one line per archived job and
+# no tombstone; a folder with no archive file gets an empty one. The log goes first: a kill between the two leaves every tombstone standing over
+# the log it guards.
 fn compacted_from(fs: Fs, dir: String, start: Opening) : Result(Opening, Problem)
-  case rewritten(fs, start.table, snapshot(start.board).map(fn(w) line_of(w) end))
-    Ok(table): Ok(Opening(board: start.board, table: table))
-    Error(_): Error(Unopened(dir: dir, why: "holds a jobq.log jobq could not rewrite"))
+  table = try whole_log(fs, dir, start.table, snapshot(start.board).map(fn(w) line_of(w) end))
+  archive = try whole_log(fs, dir, start.archive, shelf_lines(shelf_snapshot(start.board)))
+  Ok(Opening(board: start.board, table: table, archive: archive))
+end
+
+# A log written whole, except an empty one that was empty before, which is left as it is, so
+# a folder that never archived a job gets no archive file.
+fn whole_log(fs: Fs, dir: String, table: Table, lines: List(String)) : Result(Table, Problem)
+  return Ok(table) if lines.size == 0 and bytes(table) == 0
+  case rewritten(fs, table, lines)
+    Ok(written): Ok(written)
+    Error(_): Error(Unopened(dir: dir, why: "holds a #{table.base} jobq could not rewrite"))
   end
 end
 
-fn compacted(fs: Fs, dir: String, opened: Table, now: Time) : Result(String, Problem)
+fn compacted(fs: Fs, dir: String, opened: Folder, now: Time) : Result(String, Problem)
   start = try opening_of(opened, now)
   whole = try compacted_from(fs, dir, start)
-  Ok("jobq: compacted #{dir}/jobq.log from #{lines(opened)} lines to #{lines(whole.table)}\n")
+  live = "jobq: compacted #{dir}/jobq.log from #{lines(opened.live)} lines to #{lines(whole.table)}"
+  return Ok("#{live}\n") if lines(opened.shelf) == 0
+  Ok("#{live}, and #{dir}/jobq.archive from #{lines(opened.shelf)} to #{lines(whole.archive)}\n")
 end
 
 # What a folder holds once it opens, for an operator who wants to know before serving it: its
-# jobs by state and the id the next create would take.
-fn counted(opened: Table, now: Time) : Result(String, Problem)
+# jobs by state, the id the next create would take, and the jobs in the archive.
+fn counted(opened: Folder, now: Time) : Result(String, Problem)
   start = try opening_of(opened, now)
   counts = health_of(start.board, now)
   jobs = counts.queued + counts.scheduled + counts.leased + counts.done + counts.dead
   states = "queued #{counts.queued}, scheduled #{counts.scheduled}, leased #{counts.leased}"
   ended = "done #{counts.done}, dead #{counts.dead}"
-  Ok("#{jobs} jobs: #{states}, #{ended}; next id #{id_of(start.board.next)}\n")
+  Ok("#{jobs} jobs: #{states}, #{ended}; next id #{id_of(start.board.next)}; archived #{counts.archived}\n")
 end
 
 fn client(http: Http, trip: Trip) : Result(String, Problem)
@@ -278,27 +303,34 @@ end
 
 # Serves a folder's jobs on a free port and plays a script through the client, each line a
 # request of its own; the transcript is every line sent and what came back, with the times the
-# clock gives steadied. The folder's log is only read: the changes go to jobq.check.log beside
-# it, removed before and after.
-fn check(http: Http, fs: Fs, clock: Clock, opened: Table, lines: List(String)) : Result(String,
+# clock gives steadied. The folder's log and archive are only read: the changes go to
+# jobq.check.log and jobq.check.archive beside them, removed before and after.
+fn check(http: Http, fs: Fs, clock: Clock, opened: Folder, lines: List(String)) : Result(String,
   Problem)
-  folder = fs.scoped(opened.dir)
+  dir = opened.live.dir
+  folder = fs.scoped(dir)
   if !cleared(folder)
-    return Error(Unopened(dir: opened.dir, why: "holds a jobq.check.log jobq cannot remove"))
+    return Error(Unopened(dir: dir, why: "holds a jobq.check file jobq cannot remove"))
   end
-  start = try opening_of(writing_to(opened, "jobq.check.log"), clock.now)
+  moved = Folder(live: writing_to(opened.live, "jobq.check.log"),
+    shelf: writing_to(opened.shelf, "jobq.check.archive"))
+  start = try opening_of(moved, clock.now)
   case http.listen(0, within: 5_000.ms)
     Ok(listener):
       transcript = checked_on(http, listener, fs, clock, start, lines)
       return Ok(transcript) if cleared(folder)
-      Error(Unopened(dir: opened.dir, why: "holds a jobq.check.log jobq cannot remove"))
+      Error(Unopened(dir: dir, why: "holds a jobq.check file jobq cannot remove"))
     Error(_): Error(Unbound(port: 0))
   end
 end
 
 fn cleared(folder: Fs) : Bool
-  removed = folder.remove("jobq.check.log", within: 10_000.ms) is Ok(_)
-  removed or folder.size("jobq.check.log", within: 10_000.ms) is Error(Missing(_))
+  gone(folder, "jobq.check.log") and gone(folder, "jobq.check.archive")
+end
+
+fn gone(folder: Fs, name: String) : Bool
+  removed = folder.remove(name, within: 10_000.ms) is Ok(_)
+  removed or folder.size(name, within: 10_000.ms) is Error(Missing(_))
 end
 
 fn checked_on(http: Http, listener: HttpListener, fs: Fs, clock: Clock, start: Opening,
@@ -325,10 +357,10 @@ fn played(http: Http, line: String, port: UInt16) : String
 end
 
 # A transcript with what depends on the clock replaced: each job's times, the time it runs at,
-# and the uptime.
+# the time it was archived, and the uptime.
 fn steady(text: String) : String
   times = masked(masked(text, "created_at", true), "updated_at", true)
-  waits = masked(times, "run_at", true)
+  waits = masked(masked(times, "run_at", true), "archived_at", true)
   masked(masked(waits, "lease_until", true), "uptime_ms", false)
 end
 
@@ -367,36 +399,43 @@ fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
   end
 end
 
-# The folder's store, replayed. A last line cut short is left out and said on stderr, once, at
-# once.
-fn opened_store(fs: Fs, err: Out, dir: String) : Result(Table, Problem)
-  case open(fs, dir)
+# The folder's store and archive, replayed; a folder with no archive has an empty one. A last
+# line cut short is left out and said on stderr, once, at once.
+fn opened_store(fs: Fs, err: Out, dir: String) : Result(Folder, Problem)
+  live = try replayed(fs, err, dir, "jobq.log")
+  shelf = try replayed(fs, err, dir, "jobq.archive")
+  whole(Folder(live: live, shelf: shelf))
+end
+
+fn replayed(fs: Fs, err: Out, dir: String, name: String) : Result(Table, Problem)
+  case open_log(fs, dir, name)
     Ok(table):
       if cut_short?(table)
-        err.write_line("jobq: the last line of #{dir}/jobq.log was cut short, so it is left out")
+        err.write_line("jobq: the last line of #{dir}/#{name} was cut short, so it is left out")
         err.flush
       end
-      whole(table)
-    Error(problem): Error(Unopened(dir: dir, why: why_unopened(problem)))
+      Ok(table)
+    Error(problem): Error(Unopened(dir: dir, why: why_unopened(problem, name)))
   end
 end
 
-# Every record checked against the job's rules before anything is served, compacted, or
-# verified: the first that breaks one refuses the folder, naming the record and the rule.
-fn whole(table: Table) : Result(Table, Problem)
-  case ill_formed(pairs(table))
-    Some(bad): Error(Ill(dir: table.dir, key: bad.0, rule: bad.1))
-    None: Ok(table)
+# Every record, live and archived, checked against the job's rules before anything is served,
+# compacted, or verified: the first that breaks one refuses the folder, naming the record and the
+# rule.
+fn whole(opened: Folder) : Result(Folder, Problem)
+  case ill_formed(pairs(opened.live), pairs(opened.shelf))
+    Some(bad): Error(Ill(dir: opened.live.dir, key: bad.0, rule: bad.1))
+    None: Ok(opened)
   end
 end
 
-fn why_unopened(problem: StoreError) : String
+fn why_unopened(problem: StoreError, name: String) : String
   case problem
     NoFolder: "is not a folder jobq can read"
-    Unreadable: "holds a jobq.log jobq cannot read"
+    Unreadable: "holds a #{name} jobq cannot read"
     Slow: "took longer than ten minutes to read"
-    BadLine(number): "holds a jobq.log whose line #{number} is not a SET or a DEL"
-    Unwritten | Torn: "holds a jobq.log jobq could not write"
+    BadLine(number): "holds a #{name} whose line #{number} is not a SET or a DEL"
+    Unwritten | Torn: "holds a #{name} jobq could not write"
   end
 end
 
@@ -444,6 +483,11 @@ end
 # A record as the previous version wrote it, with attempts and max_attempts and no backoff.
 fn old_record(id: String, state: String, attempts: UInt64) : String
   "{\"id\": \"#{id}\", \"queue\": \"emails\", \"state\": \"#{state}\", \"payload\": \"p\", \"attempts\": #{attempts}, \"max_attempts\": 3, \"created_at\": \"2026-09-14T09:00:00Z\", \"updated_at\": \"2026-09-14T09:05:00Z\"}"
+end
+
+# A record as this version writes it, done at 09:05 and archived at 10:00.
+fn archived_record(id: String, key: String) : String
+  "{\"id\": \"#{id}\", \"queue\": \"emails\", \"key\": \"#{key}\", \"state\": \"done\", \"payload\": \"p\", \"tries\": 1, \"max_tries\": 3, \"backoff_ms\": 0, \"created_at\": \"2026-09-14T09:00:00Z\", \"updated_at\": \"2026-09-14T09:05:00Z\", \"archived_at\": \"2026-09-14T10:00:00Z\"}"
 end
 
 test "serve takes a folder and an optional port, 7900 by default"
@@ -526,7 +570,7 @@ test "a store whose last line was cut short opens without it, and says so on the
   cut = "SET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 {\"id\": \"j_2\""
   assert fs.write("d/jobq.log", cut, within: 1_000.ms) is Ok(_)
   assert opened_store(fs, err, "d") is Ok(table)
-  assert count(table) == 1
+  assert count(table.live) == 1
   assert err.written == ["jobq: the last line of d/jobq.log was cut short, so it is left out\n"]
   assert opening_of(table, Time.fixture()) is Ok(_)
 end
@@ -539,17 +583,19 @@ test "a folder with a record no request could have left is refused, and a whole 
   good = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 #{old_record("j_2", "done", 1)}\n"
   assert fs.write("d/jobq.log", good, within: 1.minute) is Ok(_)
   assert opened_store(fs, err, "d") is Ok(table)
-  assert counted(table, Time.fixture()) == Ok("2 jobs: queued 1, scheduled 0, leased 0, done 1, dead 0; next id j_1000\n")
+  assert counted(table,
+    Time.fixture()) == Ok("2 jobs: queued 1, scheduled 0, leased 0, done 1, dead 0; next id j_1000; archived 0\n")
   ill = good.replace("\"state\": \"done\", \"payload\": \"p\", \"attempts\": 1",
     "\"state\": \"done\", \"payload\": \"p\", \"attempts\": 0")
   assert fs.write("d/jobq.log", ill, within: 1.minute) is Ok(_)
-  assert opened_store(fs, err, "d") == Error(Ill(dir: "d", key: "j_2",
-    rule: "a done job has at least one try"))
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "j_2", rule: "a done job has at least one try"))
   named = good.replace("SET j_2 {\"id\": \"j_2\"", "SET j_7 {\"id\": \"j_2\"")
   assert fs.write("d/jobq.log", named, within: 1.minute) is Ok(_)
-  assert opened_store(fs, err, "d") == Error(Ill(dir: "d", key: "j_7",
-    rule: "its id is j_2, not its key"))
-  assert fs.write("d/jobq.log", good.replace("SET ids 1000", "SET ids nine"), within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "j_7", rule: "its id is j_2, not its key"))
+  assert fs.write("d/jobq.log", good.replace("SET ids 1000", "SET ids nine"),
+    within: 1.minute) is Ok(_)
   assert opened_store(fs, err, "d") == Error(Ill(dir: "d", key: "ids", rule: "is not a number"))
   assert said(Ill(dir: "d", key: "j_2", rule: "is not a job")) == "d: record j_2: is not a job"
   assert code_of(Ill(dir: "d", key: "j_2", rule: "is not a job")) == 1
@@ -561,14 +607,16 @@ test "a log the previous version wrote compacts to one line per job, and no old 
   old = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 #{old_record("j_2", "done", 1)}\n"
   assert fs.write("d/jobq.log", old, within: 1.minute) is Ok(_)
   assert opened_store(fs, err, "d") is Ok(table)
-  assert lines(table) == 3 and count(table) == 3
-  assert compacted(fs, "d", table, Time.fixture()) == Ok("jobq: compacted d/jobq.log from 3 lines to 3\n")
+  assert lines(table.live) == 3 and count(table.live) == 3
+  assert compacted(fs, "d", table,
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 3 lines to 3\n")
   assert fs.read("d/jobq.log", within: 1.minute) is Ok(text)
   assert !text.contains?("attempts")
+  assert fs.read("d/jobq.archive", within: 1.minute) is Error(_)
   assert text.contains?("\"tries\": 0, \"max_tries\": 3, \"backoff_ms\": 0")
   assert text.contains?("\"tries\": 1, \"max_tries\": 3, \"backoff_ms\": 0")
   assert opened_store(fs, err, "d") is Ok(again)
-  assert count(again) == 3 and lines(again) == 3
+  assert count(again.live) == 3 and lines(again.live) == 3
   assert opening_of(again, Time.fixture()) is Ok(_)
 end
 
@@ -583,7 +631,92 @@ test "verify takes one folder, and names the folder it cannot open"
   assert opened_store(fs, err, "nowhere") is Error(Unopened(dir: "nowhere", why: _))
   assert fs.mkdir("d", within: 1.minute) is Ok(_)
   assert opened_store(fs, err, "d") is Ok(empty)
-  assert counted(empty, Time.fixture()) == Ok("0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1\n")
+  assert counted(empty,
+    Time.fixture()) == Ok("0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1; archived 0\n")
+end
+
+test "serve takes --retain-ms from a second to 31 days, a day by default"
+  assert place_of("d").rules.retain_ms == 86_400_000
+  assert task(["serve", "d", "--retain-ms", "1000"]) is Ok(Serving(short))
+  assert short.rules.retain_ms == 1_000 and short.rules.max_restarts == 5
+  assert task(["serve", "d", "--retain-ms", "2678400000"]) is Ok(Serving(long))
+  assert long.rules.retain_ms == 2_678_400_000
+  assert task(["serve", "d", "--retain-ms", "999"]) is Error(Usage(_))
+  assert task(["serve", "d", "--retain-ms", "2678400001"]) is Error(Usage(_))
+  assert task(["serve", "d", "--retain-ms", "day"]) is Error(Usage(_))
+  assert task(["serve", "d", "--retain-ms", "1000", "--retain-ms", "2000"]) is Error(Usage(_))
+  assert task(["compact", "d", "--retain-ms", "1000"]) is Error(Usage(_))
+  assert usage().contains?("[--retain-ms N]")
+end
+
+test "verify counts the archive, and a folder without one has an empty archive"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  live = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 #{archived_record("j_2", "k").replace(", \"archived_at\": \"2026-09-14T10:00:00Z\"", "")}\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(bare)
+  assert count(bare.shelf) == 0
+  assert counted(bare,
+    Time.fixture()) == Ok("2 jobs: queued 1, scheduled 0, leased 0, done 1, dead 0; next id j_1000; archived 0\n")
+  shelf = "SET j_2 #{archived_record("j_2", "k")}\nSET j_3 #{archived_record("j_3", "k3")}\nSET j_3 deleted\nSET j_4 #{archived_record("j_4", "k4")}\nSET j_5 {\"id\""
+  assert fs.write("d/jobq.archive", shelf, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(both)
+  assert err.written.contains?("jobq: the last line of d/jobq.archive was cut short, so it is left out\n")
+  assert counted(both,
+    Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 2\n")
+end
+
+test "verify refuses an archive with a bad record, naming it, as it refuses a bad live one"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  assert fs.write("d/jobq.log", "SET ids 1000\n", within: 1.minute) is Ok(_)
+  queued = archived_record("j_2", "k").replace("\"state\": \"done\"",
+    "\"state\": \"queued\"").replace("\"tries\": 1", "\"tries\": 0")
+  assert fs.write("d/jobq.archive", "SET j_2 #{queued}\n", within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "archive j_2", rule: "is not a job"))
+  bare = archived_record("j_2", "k").replace(", \"archived_at\": \"2026-09-14T10:00:00Z\"", "")
+  assert fs.write("d/jobq.archive", "SET j_2 #{bare}\n", within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "archive j_2", rule: "an archived job has an archived_at"))
+  bad_key = archived_record("j_2", "a b")
+  assert fs.write("d/jobq.archive", "SET j_2 #{bad_key}\n", within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "archive j_2",
+    rule: "its key is not 1 to 64 letters, digits, - or _"))
+  assert fs.write("d/jobq.archive", "GET j_2\n", within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Unopened(dir: "d",
+    why: "holds a jobq.archive whose line 1 is not a SET or a DEL"))
+  twice = "SET j_2 #{archived_record("j_2", "k")}\nSET j_3 #{archived_record("j_3", "k")}\n"
+  assert fs.write("d/jobq.archive", twice, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "j_3", rule: "its key k is j_2's too"))
+end
+
+test "compact drops archived jobs from the log and deleted ones from the archive"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  stale = archived_record("j_2", "k").replace(", \"archived_at\": \"2026-09-14T10:00:00Z\"", "")
+  live = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 #{stale}\nSET j_3 #{stale.replace("j_2", "j_3").replace("\"k\"", "\"k3\"")}\n"
+  shelf = "SET j_2 #{archived_record("j_2", "k")}\nSET j_3 #{archived_record("j_3", "k3")}\nSET j_3 deleted\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert fs.write("d/jobq.archive", shelf, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert compacted(fs, "d", folder,
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 4 lines to 2, and d/jobq.archive from 3 to 1\n")
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(log_text)
+  assert !log_text.contains?("j_2") and !log_text.contains?("j_3")
+  assert fs.read("d/jobq.archive",
+    within: 1.minute) == Ok("SET j_2 #{archived_record("j_2", "k")}\n")
+  assert opened_store(fs, err, "d") is Ok(again)
+  assert counted(again,
+    Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
+end
+
+test "the steadied transcript masks archived_at"
+  shown_job = "{\"id\": \"j_1\", \"updated_at\": \"2026-09-14T10:00:01Z\", \"archived_at\": \"2026-09-16T10:00:01.5Z\"}"
+  assert steady(shown_job) == "{\"id\": \"j_1\", \"updated_at\": \"<updated_at>\", \"archived_at\": \"<archived_at>\"}"
 end
 
 test "a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1"
@@ -593,5 +726,5 @@ test "a usage error exits 2, and a folder, a port, or a server that cannot be ha
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (10), property (0 seeds), sim (not run)
+verified: types, contracts, tests (15), property (0 seeds), sim (not run)
           proven: not run

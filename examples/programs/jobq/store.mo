@@ -1,6 +1,6 @@
 # recipe: Recipes.Store.Store
 module Jobq.Store
-expose StoreError, Read, Reopened, Table, key?, value?, open, reopened, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled, rewritten, emptied, line_of
+expose StoreError, Read, Reopened, Table, key?, value?, open, open_log, reopened, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled, rewritten, emptied, line_of, blank_log
 
 intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store, its keys spread over 256 small maps so a change copies one small map: String keys to String values, a log named jobq.log in a folder with a SET or DEL line per change, each change appended and on disk before it returns, and put_all appending many changes in one write, so one fsync covers them; replay leaves out a last line cut short, and compaction writes one line per live key beside the log and renames it over the log."
 
@@ -44,11 +44,13 @@ end
 # The keys and values, over 256 small maps so a change copies one small map (changing an entry
 # a map already has copies the whole map, TOOLCHAIN-BUGS.md, bug 1), and how many; the log they
 # are written to, `name` in the folder `dir`, and its size in bytes; the lines open replayed or
-# compact wrote, and whether open left out a last line cut short.
+# compact wrote, and whether open left out a last line cut short. `base` is the log the folder
+# keeps, jobq.log or jobq.archive; `name` is the one written to, the same but in jobq check.
 struct Table
   buckets: Map(UInt64, Map(String, String))
   size: UInt64
   dir: String
+  base: String
   name: String
   bytes: UInt64
   lines: UInt64
@@ -80,21 +82,27 @@ end
 # The store whose log is jobq.log in the folder dir, replayed; a folder with no log yet holds an
 # empty store.
 fn open(fs: Fs, dir: String) : Result(Table, StoreError)
+  open_log(fs, dir, "jobq.log")
+end
+
+# The store whose log is `name` in the folder dir, replayed; a folder with no such log holds an
+# empty store.
+fn open_log(fs: Fs, dir: String, name: String) : Result(Table, StoreError)
   folder = fs.scoped(dir)
   names = try names_in(folder)
-  empty = blank(dir)
-  return Ok(empty) if !names.contains?("jobq.log")
-  size = try size_of(folder, "jobq.log")
+  empty = blank_log(dir, name)
+  return Ok(empty) if !names.contains?(name)
+  size = try size_of(folder, name)
   start = Replay(table: empty, pending: None, lines: 0, bytes: 0, bad: 0)
-  replayed = try replayed_from(folder, start)
+  replayed = try replayed_log(folder, name, start)
   return Error(BadLine(number: replayed.bad)) if replayed.bad > 0
   finished(replayed, size)
 end
 
-# The store a table names, opened again from its folder after a restart: jobq.log, then, for a
-# table writing to another log as jobq check's does, that log replayed over it.
+# The store a table names, opened again from its folder after a restart: its base log, then, for
+# a table writing to another log as jobq check's does, that log replayed over it.
 fn reopened(fs: Fs, table: Table) : Result(Table, StoreError)
-  base = try open(fs, table.dir)
+  base = try open_log(fs, table.dir, table.base)
   return Ok(base) if table.name == base.name
   folder = fs.scoped(table.dir)
   names = try names_in(folder)
@@ -109,7 +117,13 @@ end
 
 # An empty store over the log jobq.log in the folder dir.
 fn blank(dir: String) : Table
-  Table(buckets: Map.new(), size: 0, dir: dir, name: "jobq.log", bytes: 0, lines: 0, cut: false)
+  blank_log(dir, "jobq.log")
+end
+
+# An empty store over the log `name` in the folder dir.
+fn blank_log(dir: String, name: String) : Table
+  Table(buckets: Map.new(), size: 0, dir: dir, base: name, name: name, bytes: 0, lines: 0,
+    cut: false)
 end
 
 fn get(table: Table, key: String) : Option(String)
@@ -409,10 +423,6 @@ fn finished(replay: Replay, size: UInt64) : Result(Table, StoreError)
   Ok(table)
 end
 
-fn replayed_from(folder: Fs, start: Replay) : Result(Replay, StoreError)
-  replayed_log(folder, "jobq.log", start)
-end
-
 fn replayed_log(folder: Fs, name: String, start: Replay) : Result(Replay, StoreError)
   case folder.fold_lines(name, start, within: 600_000.ms,
     fn(replay, line) stepped(replay, line) end)
@@ -576,6 +586,24 @@ test "a store opened again after a restart holds both logs when it writes to ano
   assert cut_short?(cut) and get(cut, "c") is None and get(cut, "a") == Some("1")
 end
 
+test "a store over another log in the folder opens, writes, and reopens on its own"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open_log(fs, "d", "jobq.archive") is Ok(empty)
+  assert count(empty) == 0 and empty.base == "jobq.archive"
+  assert put(fs, empty, "j_1", "one") is Ok(one)
+  assert fs.read("d/jobq.archive", within: 1.minute) == Ok("SET j_1 one\n")
+  assert open(fs, "d") is Ok(live)
+  assert count(live) == 0
+  moved = writing_to(one, "jobq.check.archive")
+  assert put(fs, moved, "j_2", "two") is Ok(_)
+  assert reopened(fs, emptied(moved)) is Ok(both)
+  assert count(both) == 2 and both.name == "jobq.check.archive" and both.base == "jobq.archive"
+  assert fs.write("d/jobq.archive", "SET j_1 one\nSET j_3 th", within: 1.minute) is Ok(_)
+  assert open_log(fs, "d", "jobq.archive") is Ok(cut)
+  assert cut_short?(cut) and count(cut) == 1
+end
+
 property "any valid key and value read back as written, and again once the store is opened again"
   for key in any(String), value in any(String) if key?(key) and value?(value)
     fs = Fs.fixture()
@@ -589,5 +617,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (13), property (200 seeds), sim (not run)
+verified: types, contracts, tests (14), property (200 seeds), sim (not run)
           proven: not run

@@ -10,12 +10,16 @@ held here: the chaos switch fails the queue under load and every answer is 2xx, 
 answers 200 within a second of each failure, every job a 2xx answer reported is on the board after
 the restarts and again after serve is stopped and started; failures faster than the budget allows
 end the service with exit 70 and a folder verify opens; and failures further apart than the window
-start a fresh count. Every server is killed past 300 seconds or 4 GB.
+start a fresh count. Change 4 adds the archive under kills: with a small --retain-ms, serve is killed
+at random under a load of short-lived keyed jobs, and after each start no acked job is lost, none is
+counted twice, a retried create with a used key is 200 with the first job, and verify opens the
+folder. Every server is killed past 300 seconds or 4 GB.
 """
 
 import http.client
 import json
 import os
+import random
 import shutil
 import signal
 import socket
@@ -217,6 +221,90 @@ def budget_spent(root):
     again.stop()
 
 
+def replayed(path):
+    """The keys a jobq log or archive holds, replayed as the store does, a torn last line left out."""
+    held = {}
+    if not os.path.exists(path):
+        return held
+    text = open(path).read()
+    lines = text.split("\n")
+    for line in lines[:-1]:
+        if line.startswith("SET "):
+            key, _, value = line[4:].partition(" ")
+            held[key] = value
+        elif line.startswith("DEL "):
+            held.pop(line[4:], None)
+    return held
+
+
+def short_lived(port, stop, acked, keys, statuses):
+    i = 0
+    while not stop.is_set():
+        key = f"k{threading.get_ident() % 1000}-{i}"
+        i += 1
+        status, body = request(port, "POST", "/jobs", "p", {"queue": "q", "payload": key, "max_tries": 1, "key": key})
+        statuses.append(status)
+        if status == 201:
+            keys[key] = body["id"]
+        status, body = request(port, "POST", "/queues/q/lease", "w", {"lease_ms": 3600000})
+        statuses.append(status)
+        if status == 200:
+            status, done = request(port, "POST", f"/jobs/{body['id']}/ack", "w")
+            statuses.append(status)
+            if status == 200:
+                acked.add(done["id"])
+
+
+def archive_under_kills(root):
+    folder = os.path.join(root, "archive")
+    os.mkdir(folder)
+    acked, keys, statuses = set(), {}, []
+    rng = random.Random(4)
+    for round_ in range(6):
+        server = Server(folder, "--retain-ms", "1000")
+        stop = threading.Event()
+        workers = [threading.Thread(target=short_lived, args=(server.port, stop, acked, keys, statuses)) for _ in range(3)]
+        for w in workers:
+            w.start()
+        time.sleep(1.2 + rng.random() * 1.5)
+        server.proc.kill()
+        server.proc.wait()
+        stop.set()
+        for w in workers:
+            w.join()
+        result = verify(folder)
+        check(result.returncode == 0, f"kill {round_ + 1}: verify opens the folder: {result.stdout.strip()} {result.stderr.strip()}")
+    live = {k for k, v in replayed(os.path.join(folder, "jobq.log")).items() if k.startswith("j_")}
+    shelf = {k for k, v in replayed(os.path.join(folder, "jobq.archive")).items() if v != "deleted"}
+    check(len(shelf) > 0, f"the kills left {len(shelf)} jobs in the archive and {len(live)} in the log")
+    server = Server(folder, "--retain-ms", "1000")
+    status, health = request(server.port, "GET", "/health")
+    check(status == 200, f"/health answers after the kills: {health}")
+    missing = [j for j in acked if request(server.port, "GET", f"/jobs/{j}", "p")[0] != 200]
+    check(not missing, f"every one of {len(acked)} acked jobs reads by id after the kills: missing {missing[:5]}")
+    listed = request(server.port, "GET", "/jobs?state=done", "p")[1]["jobs"]
+    both = [j["id"] for j in listed if j["id"] in shelf]
+    check(not both, f"no job listed on the board is in the archive after an open: {both[:5]}")
+    ended = health["done"] + health["archived"] + health["queued"] + health["leased"]
+    everything = live | shelf
+    check(ended == len(everything),
+          f"each job is counted once: /health's {ended} against {len(everything)} ids across both files, {len(live & shelf)} in both")
+    check(health["archived"] >= len(shelf),
+          f"/health's archived {health['archived']} holds the archive's {len(shelf)} jobs, and any the first look moved since")
+    retried = []
+    for key, job in list(keys.items())[:50]:
+        status, body = request(server.port, "POST", "/jobs", "p", {"queue": "q", "payload": "again", "max_tries": 1, "key": key})
+        if status != 200 or body["id"] != job:
+            retried.append((key, status))
+    check(not retried, f"a create with a used key answers the first job after the kills: {retried[:5]}")
+    time.sleep(1.2)
+    status, later = request(server.port, "GET", "/health")
+    check(status == 200 and later["done"] == 0 and later["archived"] == len(everything) - later["queued"] - later["leased"],
+          f"a look after the retention archives every done job: {later}")
+    server.stop()
+    check(set(statuses) <= {200, 201, 204, 409, 503, 0}, f"every answer under the kills is expected: {sorted(set(statuses))}")
+
+
 def window_passes(root):
     folder = os.path.join(root, "window")
     os.mkdir(folder)
@@ -251,6 +339,7 @@ def main():
         restart_under_load(root)
         budget_spent(root)
         window_passes(root)
+        archive_under_kills(root)
     finally:
         shutil.rmtree(root, ignore_errors=True)
     print(f"all restarts checks held in {time.monotonic() - started:.1f} s")

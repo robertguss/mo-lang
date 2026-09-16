@@ -1,15 +1,17 @@
 > - GET /health
-200 {"queued": 2, "scheduled": 0, "leased": 1, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>, "restarts": 0}
+200 {"queued": 2, "scheduled": 0, "leased": 1, "done": 0, "dead": 0, "archived": 2, "uptime_ms": <uptime_ms>, "restarts": 0}
 > - GET /jobs
 401 {"error": "a request needs authorization: Bearer <token>"}
 > p GET /jobs
-200 {"jobs": [{"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome ada", "tries": 1, "max_tries": 3, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome grace", "tries": 1, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_3", "queue": "reports", "state": "leased", "payload": "weekly", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w-slow", "lease_until": "<lease_until>"}, {"id": "j_4", "queue": "emails", "state": "queued", "payload": "line one\nline two \"quoted\" é", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+200 {"jobs": [{"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome grace", "tries": 1, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_3", "queue": "reports", "state": "leased", "payload": "weekly", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w-slow", "lease_until": "<lease_until>"}, {"id": "j_4", "queue": "emails", "state": "queued", "payload": "line one\nline two \"quoted\" é", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
 > p GET /jobs?queue=emails&state=queued
 200 {"jobs": [{"id": "j_2", "queue": "emails", "state": "queued", "payload": "welcome grace", "tries": 1, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "j_4", "queue": "emails", "state": "queued", "payload": "line one\nline two \"quoted\" é", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
 > p GET /jobs?state=gone
 400 {"error": "state must be queued, scheduled, leased, done, or dead"}
 > p GET /jobs/j_1
-200 {"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome ada", "tries": 1, "max_tries": 3, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+200 {"id": "j_1", "queue": "emails", "state": "done", "payload": "welcome ada", "tries": 1, "max_tries": 3, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "archived_at": "<archived_at>"}
+> p POST /jobs/j_1/retry
+409 {"error": "j_1 is archived"}
 > p GET /jobs/j_5
 404 {"error": "no such job"}
 > p GET /jobs/j_99
@@ -111,4 +113,32 @@
 > - GET /queues
 401 {"error": "a request needs authorization: Bearer <token>"}
 > - GET /health
-200 {"queued": 0, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>, "restarts": 0}
+200 {"queued": 0, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "archived": 1, "uptime_ms": <uptime_ms>, "restarts": 0}
+> p POST /jobs {"queue": "emails", "payload": "once", "max_tries": 1, "key": "order-17"}
+201 {"id": "j_1003", "queue": "emails", "key": "order-17", "state": "queued", "payload": "once", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p POST /jobs {"queue": "emails", "payload": "twice", "max_tries": 1, "key": "order-17"}
+200 {"id": "j_1003", "queue": "emails", "key": "order-17", "state": "queued", "payload": "once", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p POST /jobs {"queue": "reports", "payload": "elsewhere", "max_tries": 1, "key": "order-17"}
+201 {"id": "j_1004", "queue": "reports", "key": "order-17", "state": "queued", "payload": "elsewhere", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p GET /jobs?queue=emails&key=order-17
+200 {"jobs": [{"id": "j_1003", "queue": "emails", "key": "order-17", "state": "queued", "payload": "once", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+> p GET /jobs?key=order-17
+400 {"error": "a key is looked up in a queue, so key needs queue"}
+> p GET /jobs?queue=emails&key=nobody
+200 {"jobs": []}
+> p POST /jobs {"queue": "emails", "payload": "", "max_tries": 1, "key": "bad key!"}
+400 {"error": "key must be 1 to 64 letters, digits, - or _"}
+> p GET /jobs/j_7
+200 {"id": "j_7", "queue": "reports", "key": "weekly-7", "state": "dead", "payload": "weekly, old", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "disk full", "archived_at": "<archived_at>"}
+> p POST /jobs {"queue": "reports", "payload": "weekly, again", "max_tries": 1, "key": "weekly-7"}
+200 {"id": "j_7", "queue": "reports", "key": "weekly-7", "state": "dead", "payload": "weekly, old", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "disk full", "archived_at": "<archived_at>"}
+> p GET /jobs?queue=reports&key=weekly-7
+200 {"jobs": [{"id": "j_7", "queue": "reports", "key": "weekly-7", "state": "dead", "payload": "weekly, old", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "disk full", "archived_at": "<archived_at>"}]}
+> p POST /jobs/j_7/retry
+409 {"error": "j_7 is archived"}
+> p DELETE /jobs/j_1003
+204
+> p POST /jobs {"queue": "emails", "payload": "again", "max_tries": 1, "key": "order-17"}
+201 {"id": "j_1005", "queue": "emails", "key": "order-17", "state": "queued", "payload": "again", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> - GET /health
+200 {"queued": 2, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "archived": 1, "uptime_ms": <uptime_ms>, "restarts": 0}

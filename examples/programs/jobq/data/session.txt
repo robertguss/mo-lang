@@ -4,6 +4,7 @@ p GET /jobs
 p GET /jobs?queue=emails&state=queued
 p GET /jobs?state=gone
 p GET /jobs/j_1
+p POST /jobs/j_1/retry
 p GET /jobs/j_5
 p GET /jobs/j_99
 p POST /jobs {"queue": "emails", "payload": "hello \"world\"\nline two é", "max_tries": 2}
@@ -54,4 +55,18 @@ p GET /queues
 p DELETE /jobs/j_1001
 p GET /queues
 - GET /queues
+- GET /health
+p POST /jobs {"queue": "emails", "payload": "once", "max_tries": 1, "key": "order-17"}
+p POST /jobs {"queue": "emails", "payload": "twice", "max_tries": 1, "key": "order-17"}
+p POST /jobs {"queue": "reports", "payload": "elsewhere", "max_tries": 1, "key": "order-17"}
+p GET /jobs?queue=emails&key=order-17
+p GET /jobs?key=order-17
+p GET /jobs?queue=emails&key=nobody
+p POST /jobs {"queue": "emails", "payload": "", "max_tries": 1, "key": "bad key!"}
+p GET /jobs/j_7
+p POST /jobs {"queue": "reports", "payload": "weekly, again", "max_tries": 1, "key": "weekly-7"}
+p GET /jobs?queue=reports&key=weekly-7
+p POST /jobs/j_7/retry
+p DELETE /jobs/j_1003
+p POST /jobs {"queue": "emails", "payload": "again", "max_tries": 1, "key": "order-17"}
 - GET /health

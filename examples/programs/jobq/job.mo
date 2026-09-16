@@ -1,5 +1,5 @@
 module Jobq.Job
-expose Phase, Job, Making, Settled, Look, Woken, Retried, job, leased, acked, failed, retried, looked, holds?, run_out?, due?, queue?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, rule_broken, to_ms
+expose Phase, Job, Making, Settled, Look, Woken, Retried, job, archived, leased, acked, failed, retried, looked, holds?, run_out?, due?, queue?, key?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, rule_broken, archive_broken, to_ms
 
 intent "A job and its rules: a queue's name, a payload, tries, a backoff, a lease, and a time to run at; each move between the five states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows, read back from the names the previous version wrote as well."
 
@@ -44,10 +44,12 @@ enum Phase
 end
 
 # `worker` and `lease_until` are Some only while the job is leased, `run_at` only while it is
-# scheduled; `reason` is the last fail's.
+# scheduled; `reason` is the last fail's; `key` is the producer's idempotency key, if it gave one;
+# `archived_at` is Some only for a job moved to the archive.
 struct Job
   number: UInt64
   queue: String
+  key: Option(String)
   state: Phase
   payload: String
   tries: UInt64
@@ -59,12 +61,15 @@ struct Job
   worker: Option(String)
   lease_until: Option(Time)
   reason: Option(String)
+  archived_at: Option(Time)
 end
 
 # What a producer asks for when it makes a job: its queue, its payload, how many tries it gets,
-# how long it waits after a fail, and how long before it is queued at all.
+# how long it waits after a fail, how long before it is queued at all, and the key that makes a
+# second create with it answer the first job.
 struct Making
   queue: String
+  key: Option(String)
   payload: String
   max_tries: UInt64
   backoff_ms: UInt64
@@ -113,6 +118,11 @@ end
 
 fn word_byte?(b: UInt8) : Bool
   (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122) or b == 45 or b == 95
+end
+
+# A key follows a queue name's rule.
+fn key?(text: String) : Bool
+  queue?(text)
 end
 
 # A payload is at most 60 KiB of UTF-8 with no control character but a newline.
@@ -178,19 +188,30 @@ end
 # A new job with no tries yet: queued, or scheduled `delay_ms` from now when there is a delay.
 fn job(number: UInt64, making: Making, now: Time) : Job
   requires queue?(making.queue)
+  requires key?(making.key or "k")
   requires payload?(making.payload)
   requires tries?(making.max_tries)
   requires backoff_ms?(making.backoff_ms)
   requires delay_ms?(making.delay_ms)
-  ensures result.tries == 0 and result.backoff_ms == making.backoff_ms
+  ensures result.tries == 0 and result.backoff_ms == making.backoff_ms and result.key == making.key
   ensures result.state == (if making.delay_ms == 0: Queued else: Scheduled)
   ensures (making.delay_ms > 0) implies (result.run_at == Some(now + making.delay_ms.to_i64.ms))
 
   run_at = if making.delay_ms == 0: None else: Some(now + making.delay_ms.to_i64.ms)
-  Job(number: number, queue: making.queue, state: if making.delay_ms == 0: Queued else: Scheduled,
-    payload: making.payload, tries: 0, max_tries: making.max_tries,
-    backoff_ms: making.backoff_ms, created_at: now, updated_at: now, run_at: run_at, worker: None,
-    lease_until: None, reason: None)
+  Job(number: number, queue: making.queue, key: making.key,
+    state: if making.delay_ms == 0: Queued else: Scheduled, payload: making.payload, tries: 0,
+    max_tries: making.max_tries, backoff_ms: making.backoff_ms, created_at: now, updated_at: now,
+    run_at: run_at, worker: None, lease_until: None, reason: None, archived_at: None)
+end
+
+# A done or dead job as the archive keeps it: the same record, with when it was moved.
+fn archived(job: Job, now: Time) : Job
+  requires job.state == Done or job.state == Dead
+  ensures result.archived_at == Some(now)
+
+  var next = job
+  next.archived_at = Some(now)
+  next
 end
 
 # The job leased to the worker for `lease_ms` from now, one try more.
@@ -360,7 +381,11 @@ end
 
 # The job as JSON: the API's shape, and the line the store keeps.
 fn shown(job: Job) : String
-  head = "{\"id\": \"#{id_of(job.number)}\", \"queue\": #{Json.encode(job.queue)}, \"state\": \"#{phase_name(job.state)}\""
+  keyed = case job.key
+    Some(key): ", \"key\": #{Json.encode(key)}"
+    None: ""
+  end
+  head = "{\"id\": \"#{id_of(job.number)}\", \"queue\": #{Json.encode(job.queue)}#{keyed}, \"state\": \"#{phase_name(job.state)}\""
   counts = "\"payload\": #{Json.encode(job.payload)}, \"tries\": #{job.tries}, \"max_tries\": #{job.max_tries}, \"backoff_ms\": #{job.backoff_ms}"
   times = "\"created_at\": #{Json.encode(job.created_at)}, \"updated_at\": #{Json.encode(job.updated_at)}"
   wait = case job.run_at
@@ -376,7 +401,11 @@ fn shown(job: Job) : String
     Some(reason): ", \"reason\": #{Json.encode(reason)}"
     None: ""
   end
-  "#{head}, #{counts}, #{times}#{wait}#{lease}#{why}}"
+  moved = case job.archived_at
+    Some(at): ", \"archived_at\": #{Json.encode(at)}"
+    None: ""
+  end
+  "#{head}, #{counts}, #{times}#{wait}#{lease}#{why}#{moved}}"
 end
 
 # A job read back from its JSON, or None for anything that is not one. A record the previous
@@ -405,6 +434,11 @@ fn from_fields(fields: Map(String, Json)) : Option(Job)
     None: None
   end
   worker = text_in(fields, "worker")
+  key = text_in(fields, "key")
+  archived_at = case text_in(fields, "archived_at")
+    Some(text): Some(try Time.parse(text))
+    None: None
+  end
   until = case text_in(fields, "lease_until")
     Some(text): Some(try Time.parse(text))
     None: None
@@ -412,9 +446,13 @@ fn from_fields(fields: Map(String, Json)) : Option(Job)
   return None if !queue?(queue) or !payload?(payload) or !tries?(max_tries) or !backoff_ms?(backoff)
   return None if tries > max_tries or (state == Leased) != (worker is Some(_) and until is Some(_))
   return None if (state == Scheduled) != (run_at is Some(_))
-  Some(Job(number: number, queue: queue, state: state, payload: payload, tries: tries,
+  return None if fields.has?("key") and !key?(key or "")
+  return None if fields.has?("archived_at") and archived_at is None
+  return None if archived_at is Some(_) and state != Done and state != Dead
+  Some(Job(number: number, queue: queue, key: key, state: state, payload: payload, tries: tries,
     max_tries: max_tries, backoff_ms: backoff, created_at: created, updated_at: updated,
-    run_at: run_at, worker: worker, lease_until: until, reason: text_in(fields, "reason")))
+    run_at: run_at, worker: worker, lease_until: until, reason: text_in(fields, "reason"),
+    archived_at: archived_at))
 end
 
 # A count under its name, or under the name the previous version wrote when the record has not
@@ -442,11 +480,43 @@ end
 # and its tries fit its state. A folder is checked against this before it is served, so a record
 # in a state no request could have left reaches no board.
 fn rule_broken(key: String, record: String) : Option(String)
+  return Some("its key is not 1 to 64 letters, digits, - or _") if key_broken?(record)
   case decoded(record)
     Some(held):
       return Some("its id is #{id_of(held.number)}, not its key") if key != id_of(held.number)
+      return Some("a live job has no archived_at") if held.archived_at is Some(_)
       tries_broken(held)
     None: Some("is not a job")
+  end
+end
+
+# The rule an archive record breaks: a live record's rules, except that it is done or dead and
+# carries the time it was archived.
+fn archive_broken(key: String, record: String) : Option(String)
+  return Some("its key is not 1 to 64 letters, digits, - or _") if key_broken?(record)
+  case decoded(record)
+    Some(held):
+      return Some("its id is #{id_of(held.number)}, not its key") if key != id_of(held.number)
+      if held.state != Done and held.state != Dead
+        return Some("an archived job is done or dead, not #{phase_name(held.state)}")
+      end
+      return Some("an archived job has an archived_at") if held.archived_at is None
+      tries_broken(held)
+    None: Some("is not a job")
+  end
+end
+
+# Whether the record is a JSON object whose key field is there but not a key.
+fn key_broken?(record: String) : Bool
+  case Json.decode(record)
+    Ok(Object(fields)):
+      case fields.get("key")
+        Some(String(text)): !key?(text)
+        Some(_): true
+        None: false
+      end
+    Ok(_): false
+    Error(_): false
   end
 end
 
@@ -473,7 +543,7 @@ end
 
 fn making(queue: String, payload: String, max_tries: UInt64, backoff_ms: UInt64,
   delay_ms: UInt64) : Making
-  Making(queue: queue, payload: payload, max_tries: max_tries, backoff_ms: backoff_ms,
+  Making(queue: queue, key: None, payload: payload, max_tries: max_tries, backoff_ms: backoff_ms,
     delay_ms: delay_ms)
 end
 
@@ -615,7 +685,8 @@ test "a record that is not a job reads as none"
   assert decoded(shown(held).replace(", \"worker\": \"w-1\"", "")) is None
   later = job(9, making("q", "", 1, 0, 1_000), at("2026-09-14T10:00:00Z"))
   assert decoded(shown(later).replace("\"state\": \"scheduled\"", "\"state\": \"queued\"")) is None
-  assert decoded(shown(sample()).replace("\"state\": \"queued\"", "\"state\": \"scheduled\"")) is None
+  assert decoded(shown(sample()).replace("\"state\": \"queued\"",
+    "\"state\": \"scheduled\"")) is None
   assert decoded(shown(sample()).replace("\"backoff_ms\": 0", "\"backoff_ms\": 3600001")) is None
 end
 
@@ -626,20 +697,27 @@ test "a record is well-formed in each state only with the tries that state allow
   now = at("2026-09-14T10:00:00Z")
   queued = shown(sample())
   assert rule_broken("j_7", queued) is None
-  assert rule_broken("j_7", queued.replace("\"tries\": 0", "\"tries\": 3")) == Some("a queued job has tries below its max_tries")
+  assert rule_broken("j_7",
+    queued.replace("\"tries\": 0",
+    "\"tries\": 3")) == Some("a queued job has tries below its max_tries")
   later = shown(job(9, making("q", "", 2, 0, 1_000), now))
   assert rule_broken("j_9", later) is None
-  assert rule_broken("j_9", later.replace("\"tries\": 0", "\"tries\": 2")) == Some("a scheduled job has tries below its max_tries")
+  assert rule_broken("j_9",
+    later.replace("\"tries\": 0",
+    "\"tries\": 2")) == Some("a scheduled job has tries below its max_tries")
   held = shown(leased(sample(), "w-1", 1_000, now))
   assert rule_broken("j_7", held) is None
-  assert rule_broken("j_7", held.replace("\"tries\": 1", "\"tries\": 0")) == Some("a leased job has at least one try")
+  assert rule_broken("j_7",
+    held.replace("\"tries\": 1", "\"tries\": 0")) == Some("a leased job has at least one try")
   done = shown(acked(leased(sample(), "w-1", 1_000, now), "w-1", now))
   assert rule_broken("j_7", done) is None
-  assert rule_broken("j_7", done.replace("\"tries\": 1", "\"tries\": 0")) == Some("a done job has at least one try")
+  assert rule_broken("j_7",
+    done.replace("\"tries\": 1", "\"tries\": 0")) == Some("a done job has at least one try")
   one_try = job(3, making("q", "p", 1, 0, 0), now)
   dead = shown(failed(leased(one_try, "w-1", 1_000, now), "w-1", "broken", now))
   assert rule_broken("j_3", dead) is None
-  assert rule_broken("j_3", dead.replace("\"tries\": 1", "\"tries\": 0")) == Some("a dead job has at least one try")
+  assert rule_broken("j_3",
+    dead.replace("\"tries\": 1", "\"tries\": 0")) == Some("a dead job has at least one try")
 end
 
 test "a record that is not a job, or whose key is not its id, breaks the rule by name"
@@ -649,7 +727,57 @@ test "a record that is not a job, or whose key is not its id, breaks the rule by
   assert rule_broken("j_9", shown(sample())) == Some("its id is j_7, not its key")
   old = "{\"id\": \"j_7\", \"queue\": \"reports\", \"state\": \"dead\", \"payload\": \"\", \"attempts\": 2, \"max_attempts\": 2, \"created_at\": \"2026-09-14T09:02:00Z\", \"updated_at\": \"2026-09-14T09:08:00Z\"}"
   assert rule_broken("j_7", old) is None
-  assert rule_broken("j_7", old.replace("\"attempts\": 2", "\"attempts\": 0")) == Some("a dead job has at least one try")
+  assert rule_broken("j_7",
+    old.replace("\"attempts\": 2", "\"attempts\": 0")) == Some("a dead job has at least one try")
+end
+
+test "a key follows the queue name's rule, is kept in the record, and reads back"
+  assert key?("order-17_a") and key?("k".repeat(64))
+  assert !key?("") and !key?("k".repeat(65)) and !key?("a b") and !key?("a.b")
+  var keyed = making("emails", "p", 2, 0, 0)
+  keyed.key = Some("order-17")
+  made = job(4, keyed, at("2026-09-14T10:00:00Z"))
+  assert made.key == Some("order-17")
+  assert shown(made).starts_with?("{\"id\": \"j_4\", \"queue\": \"emails\", \"key\": \"order-17\", \"state\": \"queued\"")
+  assert decoded(shown(made)) == Some(made)
+  assert !shown(sample()).contains?("\"key\"")
+  assert decoded(shown(made).replace("\"order-17\"", "\"a b\"")) is None
+  assert rule_broken("j_4", shown(made)) is None
+  assert rule_broken("j_4",
+    shown(made).replace("\"order-17\"",
+    "\"a b\"")) == Some("its key is not 1 to 64 letters, digits, - or _")
+  assert rule_broken("j_4",
+    shown(made).replace("\"order-17\"",
+    "7")) == Some("its key is not 1 to 64 letters, digits, - or _")
+end
+
+test "an archived job carries archived_at, and only a done or dead one is a good archive record"
+  now = at("2026-09-14T10:00:00Z")
+  done = acked(leased(sample(), "w-1", 1_000, now), "w-1", now)
+  moved = archived(done, now + 1.minute)
+  assert moved.archived_at == Some(at("2026-09-14T10:01:00Z"))
+  assert shown(moved).ends_with?(", \"archived_at\": \"2026-09-14T10:01:00Z\"}")
+  assert decoded(shown(moved)) == Some(moved)
+  assert archive_broken("j_7", shown(moved)) is None
+  assert rule_broken("j_7", shown(moved)) == Some("a live job has no archived_at")
+  assert archive_broken("j_7", shown(done)) == Some("an archived job has an archived_at")
+  assert archive_broken("j_8", shown(moved)) == Some("its id is j_7, not its key")
+  assert archive_broken("j_7", "nope") == Some("is not a job")
+  queued = shown(sample()).replace("}", ", \"archived_at\": \"2026-09-14T10:01:00Z\"}")
+  assert decoded(queued) is None
+  assert archive_broken("j_7", queued) == Some("is not a job")
+  bad = shown(moved).replace("\"tries\": 1", "\"tries\": 0")
+  assert archive_broken("j_7", bad) == Some("a done job has at least one try")
+end
+
+test rejects "an archive of a job that is still queued"
+  archived(sample(), at("2026-09-14T10:00:00Z"))
+end
+
+test rejects "a job whose key has a space"
+  var keyed = making("q", "", 1, 0, 0)
+  keyed.key = Some("a b")
+  job(1, keyed, at("2026-09-14T10:00:00Z"))
 end
 
 test rejects "a job in a queue whose name has a space"
@@ -723,5 +851,5 @@ property "any valid job reads back from its JSON as it was, scheduled, leased, o
   end
 end
 
-verified: types, contracts, tests (27), property (200 seeds), sim (not run)
+verified: types, contracts, tests (31), property (200 seeds), sim (not run)
           proven: not run

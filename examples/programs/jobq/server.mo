@@ -3,8 +3,8 @@ module Jobq.Server
 expose Acceptor, Acceptors, Client, Clients, serving
 
 use Jobq.Board{Call, board}
-use Jobq.Queue{Opening, Policy, Queue, Worker, guarded, policy, stamp}
-use Jobq.Store{Table, blank}
+use Jobq.Queue{Opening, Policy, Queue, Worker, guarded, policy, retained, stamp}
+use Jobq.Store{Table, blank, blank_log}
 
 intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the leases that ran out and the scheduled jobs that have come due; the listener's idle time is 10 seconds, so a connection that sends no whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room for 1,200 of them at once."
 
@@ -117,7 +117,8 @@ end
 fn started_by(http: Http, fs: Fs, clock: Clock, table: Table, rules: Policy) : UInt16
   case http.listen(0, within: 1.minute)
     Ok(listener):
-      start = Opening(board: board(stamp(clock), 1), table: table)
+      start = Opening(board: board(stamp(clock), 1), table: table,
+        archive: blank_log(table.dir, "jobq.archive"))
       queue = serving(listener, fs, clock, start, rules)
       if queue.ask(Serve(call: Call(worker: "", command: Health)), within: 1.minute) is Ok(_)
         return listener.port
@@ -134,6 +135,17 @@ end
 # A job made to wait: a delay before it is queued at all, and a backoff after each fail.
 fn waiting(payload: String, delay_ms: UInt64, backoff_ms: UInt64) : String
   "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 2, \"delay_ms\": #{delay_ms}, \"backoff_ms\": #{backoff_ms}}"
+end
+
+fn keyed_create(payload: String, key: String) : String
+  "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 1, \"key\": #{Json.encode(key)}}"
+end
+
+fn body_of(got: Result(Response, HttpError)) : String
+  case got
+    Ok(response): response.body
+    Error(_): ""
+  end
 end
 
 # The status of a client once it has one, asking up to 200 times.
@@ -224,8 +236,9 @@ test "each status comes back over the wire, unless a call fails or the log did n
   assert in?(sent(http, port, by("PATCH", "/jobs", "p", "")), [405])
   assert in?(sent(http, port, by("GET", "/nowhere", "p", "")), [404])
   assert in?(sent(http, port, by("POST", "/jobs", "p", "{\"queue\": 1}")), [400])
-  assert in?(sent(http, port, by("POST", "/jobs", "p",
-    "{\"queue\": \"q\", \"payload\": \"\", \"max_attempts\": 2}")), [400])
+  assert in?(sent(http, port,
+    by("POST", "/jobs", "p", "{\"queue\": \"q\", \"payload\": \"\", \"max_attempts\": 2}")),
+    [400])
   made = sent(http, port, by("POST", "/jobs", "p", create("hello")))
   assert in?(made, [201, 503])
   assert in?(sent(http, port, by("GET", "/jobs/j_77", "p", "")), [404, 503])
@@ -362,6 +375,59 @@ test "health counts the restarts since the service started, none at first"
   end
 end
 
+test "over the wire, a second create with a key is 200 with the first job, and a bad key is 400"
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  first = sent(http, port, by("POST", "/jobs", "p", keyed_create("one", "order-1")))
+  assert in?(first, [201, 503])
+  again = sent(http, port, by("POST", "/jobs", "p", keyed_create("two", "order-1")))
+  assert in?(again, [200, 201, 503])
+  if status(first) == 201 and status(again) != 0 and status(again) != 503
+    assert status(again) == 200 and body_of(again) == body_of(first)
+    assert body_of(first).contains?("\"key\": \"order-1\"")
+    lookup = Request(method: "GET", path: "/jobs",
+      query: Map.new().set("queue", "q").set("key", "order-1"),
+      headers: Map.new().set("authorization", "Bearer p"))
+    found = sent(http, port, lookup)
+    if status(found) == 200
+      assert body_of(found) == "{\"jobs\": [#{body_of(first)}]}"
+    end
+  end
+  assert in?(sent(http, port, by("POST", "/jobs", "p", keyed_create("x", "a b"))), [400])
+  keyless = Request(method: "GET", path: "/jobs", query: Map.new().set("key", "order-1"),
+    headers: Map.new().set("authorization", "Bearer p"))
+  assert in?(sent(http, port, keyless), [400])
+  health = sent(http, port, Request(method: "GET", path: "/health"))
+  if status(health) == 200
+    assert body_of(health).contains?("\"dead\": 0, \"archived\": 0, \"uptime_ms\"")
+  end
+end
+
+test "over the wire, a job done longer ago than the retention is archived, read by id, and 409 to a retry"
+  http = Http.fixture()
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  port = started_by(http, fs, clock, fresh(), retained(policy(5, 60_000, 0), 200))
+  made = sent(http, port, by("POST", "/jobs", "p", keyed_create("brief", "b-1")))
+  lent = sent(http, port, by("POST", "/queues/q/lease", "w", ""))
+  acked = if status(lent) == 200: sent(http, port, by("POST", "/jobs/j_1/ack", "w", "")) else: lent
+  waited = Fs.fixture(delay: 300.ms).write("wait", "x", within: 1.minute) is Ok(_)
+  read = sent(http, port, by("GET", "/jobs/j_1", "p", ""))
+  assert in?(read, [200, 404, 503])
+  if status(made) == 201 and status(acked) == 200 and waited and status(read) == 200
+    assert body_of(read).contains?("\"state\": \"done\"")
+    assert body_of(read).contains?("\"archived_at\": ")
+    assert in?(sent(http, port, by("POST", "/jobs/j_1/retry", "p", "")), [409, 503])
+    listed = sent(http, port, by("GET", "/jobs", "p", ""))
+    if status(listed) == 200
+      assert body_of(listed) == "{\"jobs\": []}"
+    end
+    again = sent(http, port, by("POST", "/jobs", "p", keyed_create("brief", "b-1")))
+    assert in?(again, [200, 503])
+    assert in?(sent(http, port, by("DELETE", "/jobs/j_1", "p", "")), [204, 503])
+  end
+end
+
 # The program's own load test with the chaos switch on: every answer is 2xx, 4xx, or 503 while
 # the queue fails at every fifth write and comes back. A process test cannot hold its asserts past
 # a crash, so this is a test rejects; the end-to-end run in restarts.py holds every 2xx job present
@@ -383,5 +449,5 @@ test rejects "over the wire, with the chaos switch on, every answer is 2xx, 4xx,
   end
 end
 
-verified: types, contracts, tests (8), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (10), property (0 seeds), sim (100 runs)
           proven: not run

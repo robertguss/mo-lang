@@ -2,7 +2,7 @@ module Jobq.Api
 expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from
 
 use Jobq.Board{Command, Call, Outcome, Counts, Tally}
-use Jobq.Job{Job, Making, queue?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, phase_named, id_of, shown}
+use Jobq.Job{Job, Making, queue?, key?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, phase_named, id_of, shown}
 
 intent "Read an HTTP request into a call on the queue, or answer it at once: 404 for a route that does not exist, 405 for a method the route does not take, 401 for a missing or malformed token, and 400 for a body or a name of the wrong shape, the names the previous version took among them; and write every outcome as its status and JSON."
 
@@ -124,8 +124,8 @@ fn bearer(request: Request) : Option(String)
   Some(token)
 end
 
-# A create's body: a queue, a payload, and max_tries, each of its shape, and any delay and
-# backoff; no other field, so a body that still says attempts or max_attempts is 400.
+# A create's body: a queue, a payload, and max_tries, each of its shape, and any delay, backoff,
+# and key; no other field, so a body that still says attempts or max_attempts is 400.
 fn created_from(body: String) : Result(Command, String)
   given = try object_of(body)
   fields = try only_known(given)
@@ -134,6 +134,7 @@ fn created_from(body: String) : Result(Command, String)
   max_tries = try count_field(fields, "max_tries")
   delay_ms = try count_or_none(fields, "delay_ms")
   backoff_ms = try count_or_none(fields, "backoff_ms")
+  key = try key_or_none(fields)
   return Error("queue must be 1 to 64 letters, digits, - or _") if !queue?(queue)
   if !payload?(payload)
     return Error("payload must be at most 60 KiB of text with no control characters but newlines")
@@ -141,14 +142,26 @@ fn created_from(body: String) : Result(Command, String)
   return Error("max_tries must be a whole number from 1 to 100") if !tries?(max_tries)
   return Error("delay_ms must be a whole number from 0 to 86400000") if !delay_ms?(delay_ms)
   return Error("backoff_ms must be a whole number from 0 to 3600000") if !backoff_ms?(backoff_ms)
-  Ok(Create(making: Making(queue: queue, payload: payload, max_tries: max_tries,
+  Ok(Create(making: Making(queue: queue, key: key, payload: payload, max_tries: max_tries,
     backoff_ms: backoff_ms, delay_ms: delay_ms)))
+end
+
+# A create's key: none when the body leaves it out, and otherwise a string of a key's shape.
+fn key_or_none(fields: Map(String, Json)) : Result(Option(String), String)
+  return Ok(None) if !fields.has?("key")
+  key = try text_field(fields, "key")
+  return Error(bad_key()) if !key?(key)
+  Ok(Some(key))
+end
+
+fn bad_key() : String
+  "key must be 1 to 64 letters, digits, - or _"
 end
 
 # The fields a create takes and no others; the old names are gone from the API, so a request
 # that still writes one is told what it is now.
 fn only_known(fields: Map(String, Json)) : Result(Map(String, Json), String)
-  taken = ["queue", "payload", "max_tries", "delay_ms", "backoff_ms"]
+  taken = ["queue", "payload", "max_tries", "delay_ms", "backoff_ms", "key"]
   case fields.keys.find(fn(name) !taken.contains?(name) end)
     Some(name): Error(unknown_field(name))
     None: Ok(fields)
@@ -158,7 +171,7 @@ end
 fn unknown_field(name: String) : String
   return "attempts is now tries, and a job is made with none" if name == "attempts"
   return "max_attempts is now max_tries" if name == "max_attempts"
-  "#{name} is not a field of a job; a job is made with queue, payload, max_tries, delay_ms, and backoff_ms"
+  "#{name} is not a field of a job; a job is made with queue, payload, max_tries, delay_ms, backoff_ms, and key"
 end
 
 # A field that is a whole number, 0 when the body leaves it out.
@@ -189,19 +202,22 @@ fn fail_from(id: String, body: String) : Result(Command, String)
   Ok(Fail(id: id, reason: reason))
 end
 
-# A listing's query: a queue, a state, both, or neither.
+# A listing's query: a queue, a state, both, or neither, and a key only with a queue.
 fn listing_from(query: Map(String, String)) : Result(Command, String)
   queue = query.get("queue")
   if queue is Some(name) and !queue?(name)
     return Error("queue must be 1 to 64 letters, digits, - or _")
   end
+  key = query.get("key")
+  return Error("a key is looked up in a queue, so key needs queue") if key is Some(_) and queue is None
+  return Error(bad_key()) if key is Some(given) and !key?(given)
   case query.get("state")
     Some(name):
       case phase_named(name)
-        Some(state): Ok(Listing(queue: queue, state: Some(state)))
+        Some(state): Ok(Listing(queue: queue, state: Some(state), key: key))
         None: Error("state must be queued, scheduled, leased, done, or dead")
       end
-    None: Ok(Listing(queue: queue, state: None))
+    None: Ok(Listing(queue: queue, state: None, key: key))
   end
 end
 
@@ -260,7 +276,7 @@ fn tally(one: Tally) : String
 end
 
 fn health(counts: Counts) : String
-  "{\"queued\": #{counts.queued}, \"scheduled\": #{counts.scheduled}, \"leased\": #{counts.leased}, \"done\": #{counts.done}, \"dead\": #{counts.dead}, \"uptime_ms\": #{counts.uptime_ms}, \"restarts\": #{counts.restarts}}"
+  "{\"queued\": #{counts.queued}, \"scheduled\": #{counts.scheduled}, \"leased\": #{counts.leased}, \"done\": #{counts.done}, \"dead\": #{counts.dead}, \"archived\": #{counts.archived}, \"uptime_ms\": #{counts.uptime_ms}, \"restarts\": #{counts.restarts}}"
 end
 
 fn json(status: UInt16, body: String) : Response
@@ -308,7 +324,8 @@ fn why(routed: Routed) : String
 end
 
 fn plain(queue: String, payload: String, max_tries: UInt64) : Making
-  Making(queue: queue, payload: payload, max_tries: max_tries, backoff_ms: 0, delay_ms: 0)
+  Making(queue: queue, key: None, payload: payload, max_tries: max_tries, backoff_ms: 0,
+    delay_ms: 0)
 end
 
 test "each route takes its methods, and any other is 405 with the ones it takes"
@@ -348,17 +365,20 @@ test "a missing, empty, or malformed token is 401; health needs none, and the sc
 end
 
 test "each route becomes its call"
-  post = by("POST", "/jobs", "p", "{\"queue\": \"emails\", \"payload\": \"hi\\n\", \"max_tries\": 3}")
+  post = by("POST", "/jobs", "p",
+    "{\"queue\": \"emails\", \"payload\": \"hi\\n\", \"max_tries\": 3}")
   assert command_of(route(post)) == Some(Create(making: plain("emails", "hi\n", 3)))
   waiting = by("POST", "/jobs", "p",
     "{\"queue\": \"emails\", \"payload\": \"\", \"max_tries\": 3, \"delay_ms\": 5000, \"backoff_ms\": 250}")
-  assert command_of(route(waiting)) == Some(Create(making: Making(queue: "emails", payload: "",
-    max_tries: 3, backoff_ms: 250, delay_ms: 5_000)))
+  assert command_of(route(waiting)) == Some(Create(making: Making(queue: "emails", key: None,
+    payload: "", max_tries: 3, backoff_ms: 250, delay_ms: 5_000)))
   listing = Request(method: "GET", path: "/jobs",
     query: Map.new().set("queue", "emails").set("state", "scheduled"),
     headers: Map.new().set("authorization", "Bearer p"))
-  assert command_of(route(listing)) == Some(Listing(queue: Some("emails"), state: Some(Scheduled)))
-  assert command_of(route(by("GET", "/jobs", "p", ""))) == Some(Listing(queue: None, state: None))
+  assert command_of(route(listing)) == Some(Listing(queue: Some("emails"), state: Some(Scheduled),
+    key: None))
+  assert command_of(route(by("GET", "/jobs", "p", ""))) == Some(Listing(queue: None, state: None,
+    key: None))
   assert command_of(route(by("GET", "/jobs/j_4", "p", ""))) == Some(Fetch(id: "j_4"))
   assert command_of(route(by("DELETE", "/jobs/j_4", "p", ""))) == Some(Remove(id: "j_4"))
   assert command_of(route(by("POST", "/jobs/j_4/ack", "w", "anything"))) == Some(Ack(id: "j_4"))
@@ -418,7 +438,8 @@ test "a delay and a backoff keep their ranges, and the names the previous versio
   assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"delay_ms\": 1.5}") == Error("delay_ms must be a whole number")
   assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"backoff_ms\": 3600001}") == Error("backoff_ms must be a whole number from 0 to 3600000")
   assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"backoff_ms\": \"250\"}") == Error("backoff_ms must be a whole number")
-  assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"delay_ms\": 0, \"backoff_ms\": 0}") == Ok(Create(making: plain("q", "", 1)))
+  assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"delay_ms\": 0, \"backoff_ms\": 0}") == Ok(Create(making: plain("q",
+    "", 1)))
   assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_attempts\": 2}") == Error("max_attempts is now max_tries")
   assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 2, \"attempts\": 0}") == Error("attempts is now tries, and a job is made with none")
   assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 2, \"priority\": 1}") is Error(_)
@@ -427,8 +448,7 @@ test "a delay and a backoff keep their ranges, and the names the previous versio
 end
 
 test "the queues route takes GET with a token, and lists every queue with its counts"
-  assert route(by("GET", "/queues", "p", "")) == Asked(call: Call(worker: "p",
-    command: Tallying))
+  assert route(by("GET", "/queues", "p", "")) == Asked(call: Call(worker: "p", command: Tallying))
   assert status_of(route(Request(method: "GET", path: "/queues"))) == 401
   assert status_of(route(by("POST", "/queues", "p", ""))) == 405
   assert route(by("PUT", "/queues", "p", "")) is Answered(refused)
@@ -438,15 +458,16 @@ test "the queues route takes GET with a token, and lists every queue with its co
   two = Tally(name: "reports", queued: 0, scheduled: 0, leased: 0, done: 1, dead: 0)
   shown_one = "{\"name\": \"emails\", \"queued\": 2, \"scheduled\": 1, \"leased\": 3, \"done\": 4, \"dead\": 5}"
   shown_two = "{\"name\": \"reports\", \"queued\": 0, \"scheduled\": 0, \"leased\": 0, \"done\": 1, \"dead\": 0}"
-  assert respond(Tallied(queues: [one, two])) == json(200, "{\"queues\": [#{shown_one}, #{shown_two}]}")
+  assert respond(Tallied(queues: [one, two])) == json(200,
+    "{\"queues\": [#{shown_one}, #{shown_two}]}")
   assert respond(Tallied(queues: [])) == json(200, "{\"queues\": []}")
 end
 
 test "each outcome is its status and its JSON"
   at = Time.parse("2026-09-14T10:00:00Z") or Time.from_parts(2026, 1, 1, 0, 0, 0)
-  one = Job(number: 1, queue: "q", state: Queued, payload: "p", tries: 0, max_tries: 1,
+  one = Job(number: 1, queue: "q", key: None, state: Queued, payload: "p", tries: 0, max_tries: 1,
     backoff_ms: 0, created_at: at, updated_at: at, run_at: None, worker: None, lease_until: None,
-    reason: None)
+    reason: None, archived_at: None)
   text = "{\"id\": \"j_1\", \"queue\": \"q\", \"state\": \"queued\", \"payload\": \"p\", \"tries\": 0, \"max_tries\": 1, \"backoff_ms\": 0, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\"}"
   assert respond(Made(job: one)) == json(201, text)
   assert respond(Found(job: one)) == json(200, text)
@@ -456,7 +477,8 @@ test "each outcome is its status and its JSON"
   assert respond(Empty) == Response(status: 204, body: "")
   assert respond(Missing) == json(404, "{\"error\": \"no such job\"}")
   assert respond(Conflict(reason: "j_1 is leased")) == json(409, "{\"error\": \"j_1 is leased\"}")
-  assert respond(Conflict(reason: "j_1 is not dead")) == json(409, "{\"error\": \"j_1 is not dead\"}")
+  assert respond(Conflict(reason: "j_1 is not dead")) == json(409,
+    "{\"error\": \"j_1 is not dead\"}")
   assert respond(Unavailable(reason: "the log did not take the change")).status == 503
   var later = one
   later.state = Scheduled
@@ -464,9 +486,46 @@ test "each outcome is its status and its JSON"
   later.run_at = Some(at)
   assert respond(Made(job: later)).body.contains?("\"state\": \"scheduled\"")
   assert respond(Made(job: later)).body.contains?("\"backoff_ms\": 250, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\", \"run_at\": \"2026-09-14T10:00:00Z\"")
-  counts = Counts(queued: 1, scheduled: 6, leased: 2, done: 3, dead: 4, uptime_ms: 5, restarts: 7)
-  assert respond(Healthy(counts: counts)).body == "{\"queued\": 1, \"scheduled\": 6, \"leased\": 2, \"done\": 3, \"dead\": 4, \"uptime_ms\": 5, \"restarts\": 7}"
+  counts = Counts(queued: 1, scheduled: 6, leased: 2, done: 3, dead: 4, archived: 8, uptime_ms: 5,
+    restarts: 7)
+  assert respond(Healthy(counts: counts)).body == "{\"queued\": 1, \"scheduled\": 6, \"leased\": 2, \"done\": 3, \"dead\": 4, \"archived\": 8, \"uptime_ms\": 5, \"restarts\": 7}"
   assert id_of(one.number) == "j_1"
+end
+
+test "a create takes a key of a queue name's shape, and a listing takes a key with its queue"
+  body = "{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"key\": \"order-17\"}"
+  assert created_from(body) is Ok(Create(made))
+  assert made.key == Some("order-17")
+  assert created_from("{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1}") is Ok(Create(bare))
+  assert bare.key is None
+  bad = "{\"queue\": \"q\", \"payload\": \"\", \"max_tries\": 1, \"key\": "
+  assert created_from("#{bad}\"a b\"}") == Error("key must be 1 to 64 letters, digits, - or _")
+  assert created_from("#{bad}\"\"}") == Error("key must be 1 to 64 letters, digits, - or _")
+  assert created_from("#{bad}\"#{"k".repeat(65)}\"}") is Error(_)
+  assert created_from("#{bad}17}") == Error("key must be a string")
+  assert created_from("#{bad}null}") == Error("key must be a string")
+  assert status_of(route(by("POST", "/jobs", "p", "#{bad}\"é\"}"))) == 400
+  keyed = Map.new().set("queue", "q").set("key", "order-17")
+  assert listing_from(keyed) == Ok(Listing(queue: Some("q"), state: None, key: Some("order-17")))
+  assert listing_from(Map.new().set("key",
+    "order-17")) == Error("a key is looked up in a queue, so key needs queue")
+  assert listing_from(keyed.set("key",
+    "a.b")) == Error("key must be 1 to 64 letters, digits, - or _")
+  keyless = Request(method: "GET", path: "/jobs", query: Map.new().set("key", "k"),
+    headers: Map.new().set("authorization", "Bearer p"))
+  assert status_of(route(keyless)) == 400
+end
+
+test "an archived job shows its archived_at, and a retry of it is 409"
+  at = Time.parse("2026-09-14T10:00:00Z") or Time.from_parts(2026, 1, 1, 0, 0, 0)
+  moved = Job(number: 2, queue: "q", key: Some("k"), state: Done, payload: "", tries: 1,
+    max_tries: 1, backoff_ms: 0, created_at: at, updated_at: at, run_at: None, worker: None,
+    lease_until: None, reason: None, archived_at: Some(at))
+  assert respond(Found(job: moved)) == json(200, shown(moved))
+  assert respond(Found(job: moved)).body.ends_with?(", \"archived_at\": \"2026-09-14T10:00:00Z\"}")
+  assert respond(Found(job: moved)).body.contains?("\"queue\": \"q\", \"key\": \"k\", \"state\"")
+  assert respond(Conflict(reason: "j_2 is archived")) == json(409,
+    "{\"error\": \"j_2 is archived\"}")
 end
 
 property "any valid payload sent as JSON becomes a create of that payload"
@@ -476,5 +535,5 @@ property "any valid payload sent as JSON becomes a create of that payload"
   end
 end
 
-verified: types, contracts, tests (9), property (200 seeds), sim (not run)
+verified: types, contracts, tests (11), property (200 seeds), sim (not run)
           proven: not run
