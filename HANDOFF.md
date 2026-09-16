@@ -30,8 +30,7 @@ know that the wiki does not say in one place.
 > Ollama; 28 evidence worktrees plus tonight's: `../mo-lang-r9-<model>-<lang>`
 > for kimi, deepseek, codex, qwen, gemini (unused),
 > `../mo-lang-erosion2-<lang>`, `../mo-lang-cache-C`). The Herdr worker pane is
-> `w44:p2`; workspaces `w45` to `w4A` hold tonight's session panes, all finished
-> except the three qwen ones in `w48` (see the queue).
+> `w44:p2`; workspaces `w45` to `w4A` hold tonight's session panes, all finished.
 >
 > **What the night found, in the order Robert should read it.**
 >
@@ -63,8 +62,7 @@ know that the wiki does not say in one place.
 >    7, Mo 0/0 in 14: it matched Opus). Every Go change carries the same
 >    `delay_ms` null defect; both open-weights models' Mo changes miss the
 >    run-out lease with backoff; the closed model does not. Gemini's key in Pi
->    is invalid; xAI has no key; the local qwen 27B is the P5 row and was still
->    running at 02:00.
+>    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too).
 > 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
 >    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
 >    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
