@@ -48,10 +48,12 @@ defmodule Jobq.Test.Service do
   @doc "A fresh temporary directory, removed when the test ends."
   @spec tmp_dir() :: Path.t()
   def tmp_dir do
+    # The OS pid is in the name because a node's unique integers start over in
+    # every VM, and two runs must not land on one directory.
     dir =
       Path.join(
         System.tmp_dir!(),
-        "jobq-test-#{System.unique_integer([:positive])}-#{:erlang.phash2(self())}"
+        "jobq-test-#{System.pid()}-#{System.unique_integer([:positive])}"
       )
 
     File.mkdir_p!(dir)
