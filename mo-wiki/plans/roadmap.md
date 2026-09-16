@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Step 33, the crash report freed: the rendered report a crash keeps for the whole run bounded in both runtimes (44 MB a restart on a 20,000-job queue today), and the interpreter's abort under the full disk probed; Fable writing the brief | Fable, then the Opus worker in `w44:p3` | 16 Sep, 11:25 | [[interpreter-step-32]] (its carried row) |
+| Step 33, the crash report freed: the rendered report a crash keeps for the whole run bounded in both runtimes (44 MB a restart on a 20,000-job queue today), and the interpreter's abort under the full disk probed; Fable writing the brief | Fable, then the Opus worker in `w44:p3` | 16 Sep, 11:25 | [[interpreter-step-33]] |
 
 ## Next, in order
 
