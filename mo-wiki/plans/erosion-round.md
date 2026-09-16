@@ -68,7 +68,17 @@ diagnostic, lines changed, tokens read, the decision lists.
 
 ## Result
 
-(to be written)
+**Generation one under the third suite (16 Sep, 01:25 local, `erosion-round-suite/defects2.py`, before any maintainer finished).** The rows the erosion measure reads from: what the finished generation-one programs do under the change 2 suite's two failure categories, which are the spec's "a failure inside one request never takes the service down" made concrete, and how many of the new checks they pass by accident. The `queues` and `verify` categories fail on every program, as they must (the route and the command do not exist yet; the two or three passes are 404s and the torn-line rule from change 1).
+
+| program | `contained` (a 1 MB body, non-JSON, a NUL, a huge `lease_ms`, 5,000 nested brackets, fifty failing acks) | `unwritable` (a 64 MB RAM disk filled for 1.5 s under 8 keep-alive writers) |
+|---|---|---|
+| Mo (round 8) | 11 of 11 | 8 of 8: 12,872 creates, 12,187 `201` and 685 `503` while full, a read `200`, the service up afterwards with no restart, every `201` on the disk after a restart |
+| Go (round 8) | 11 of 11 | 8 of 8: 37,625 creates, 20,983 `201`, 16,642 `503`; the same shape |
+| Python (round 8) | 11 of 11 | 8 of 8 on the second run (36,027 creates, 18,741 `201`, 17,286 `503`); the first run's restarted service died during the audit of 21,150 reads, unexplained, its log lost with the RAM disk; recorded as a flake until it recurs |
+| Elixir (round 10) | 10 of 11: a 1 MB body resets the connection instead of a `4xx` | **the node exits within a second of the disk filling**: the store `GenServer` stops on `:enospc`, `rest_for_one` restarts it and the queue and the listener, the next write stops it again, and the default intensity (3 in 5 s) is spent; every request after that is refused. The same limit P6 found with kills, reached here by the disk alone |
+
+So generation one already contains the containment the change asks for in Mo, Go, and Python, from round 7's spec ("a store that cannot be written answers `503`"), and Elixir's supervision turns a transient disk failure into a total outage. Change 2's `verify`, `/queues`, and the refusal at open are what the maintainers add; the erosion columns are whether they keep the containment while adding them.
+
 
 ## Related
 
