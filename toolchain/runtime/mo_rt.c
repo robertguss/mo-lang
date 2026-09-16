@@ -192,6 +192,8 @@ static void stats_add(Stats *to, const Stats *c) {
 
 /* With more than one scheduler (step 30), a line for the run, one for the schedulers, and one for each
  * scheduler, whose counts are its thread's (main.zig, printStats). */
+static void print_placement(void);
+
 static void print_stats(void) {
     const Stats *own = main_stats_at ? main_stats_at : &stats;
     Stats total = *own;
@@ -211,6 +213,7 @@ static void print_stats(void) {
         snprintf(label, sizeof label, "scheduler %u ", k);
         stats_line(label, k == 0 ? own : sched_stats[k] ? sched_stats[k] : &stopped_stats[k]);
     }
+    print_placement();
 }
 
 static void stats_on_term(int sig) {
@@ -5597,7 +5600,8 @@ MoValue mo_answer(MoValue reply, MoValue value) {
     if (running == NOBODY) return MO_NONE_V;
     Proc *p = procs[running];
     uint64_t seq = reply.as.u;
-    bool holds = false;
+    /* The ask the running arm keeps is held from the arm on (sim.zig, answerReply; step 34). */
+    bool holds = p->deferring && p->reply_seq == seq;
     for (size_t i = 0; i < p->nkept; i++) {
         if (p->kept[i] == seq) holds = true;
     }
@@ -5717,16 +5721,28 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
         Proc *p = procs[to];
         /* A restart empties the mailbox, this message with it. */
         if (!p->up || queued(p) == 0 || p->mailbox[p->head].seq > seq) return ask_error(MO_N_DOWN);
+        /* The ask waits from its delivery on, so an arm that keeps it may answer it at once (step 34). */
+        bool mine = p->mailbox[p->head].seq == seq;
+        if (mine) {
+            GROW_ARRAY(iwaiting, niwaiting, capiwaiting);
+            iwaiting[niwaiting++] = seq;
+        }
         Delivered d = deliver(to);
         if (d.seq != seq) continue;
+        if (!d.deferred) {
+            forget_iwaiting(seq);
+            for (size_t i = 0; i < nianswers; i++) {
+                if (ianswers[i].seq != seq) continue;
+                ianswers[i] = ianswers[--nianswers];
+                break;
+            }
+        }
         if (!d.has_reply) return ask_error(MO_N_DOWN);
         if (!d.deferred) {
             reply = d.reply;
             break;
         }
         kept_asker = true;
-        GROW_ARRAY(iwaiting, niwaiting, capiwaiting);
-        iwaiting[niwaiting++] = seq;
     }
     /* A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
      * pass its deadline, or when its slowest fixture is slower than it. A target whose calls wait on
@@ -6224,8 +6240,10 @@ static Delivered deliver(uint32_t id) {
     p->noutbox = 0;
     MoValue reply = after.as.xs[0];
     /* An answer the update made commits with it, and is dropped when nothing waits for it. */
+    bool answered_own = false;
     for (size_t i = 0; i < p->npending; i++) {
         PendingAnswer a = p->pending[i];
+        if (a.seq == entry.seq) answered_own = true;
         for (size_t k = 0; k < p->nkept; k++) {
             if (p->kept[k] != a.seq) continue;
             memmove(p->kept + k, p->kept + k + 1, (p->nkept - k - 1) * sizeof(uint64_t));
@@ -6240,8 +6258,10 @@ static Delivered deliver(uint32_t id) {
      * crashes, or restarts (step 31). */
     bool deferring = p->deferring;
     if (deferring) {
-        GROW_ARRAY(p->kept, p->nkept, p->capkept);
-        p->kept[p->nkept++] = entry.seq;
+        if (!answered_own) {
+            GROW_ARRAY(p->kept, p->nkept, p->capkept);
+            p->kept[p->nkept++] = entry.seq;
+        }
     } else {
         route_answer(entry.seq, true, reply);
         p = procs[id];
@@ -6599,7 +6619,9 @@ typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer
 
 /* ---- schedulers (turns.zig, step 30): one per core, MO_CORES of them when it is set and the
  * machine's cores otherwise, scheduler 0 on main's thread and each other on a thread of its own. A
- * process is placed at its start on the scheduler with the fewest live processes and stays there. A
+ * process is placed at its start and stays there: one an update starts on its starter's scheduler while
+ * that one holds at most PLACE_FACTOR times its share of the live processes, else, and for one main
+ * starts, on the scheduler with the fewest live processes (step 34). A
  * thread holds the runtime's lock while it runs the runtime, and lets it go while a process's Mo code
  * runs, while its region compacts, and while its scheduler waits in its poller. */
 
@@ -6609,6 +6631,9 @@ typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer
 #define LOCK_SPINS 200
 #define STOP_WAIT_MS 20
 #define SWEEP_RETRY_MS 100
+/* A starter's scheduler keeps a process it starts while it holds at most this many times its share of the
+ * live processes, the new one among them, rounded up (turns.zig, place_factor). */
+#define PLACE_FACTOR 2
 enum { THREAD_RUNNING, THREAD_SPINNING, THREAD_SLEEPING };
 
 typedef struct {
@@ -6635,6 +6660,10 @@ typedef struct {
     /* Its live processes; those a sweep ended whose regions it has yet to free; its ended ids, the
      * last ended last. */
     uint32_t live;
+    /* Processes placed on it, in all and with their starter, and asks its processes made across
+     * schedulers (step 34), for MO_STATS=1. */
+    uint32_t placed, with_starter;
+    uint64_t asks_across;
     uint32_t *to_end;
     size_t nto_end, capto_end;
     uint32_t *free_ids;
@@ -6654,6 +6683,8 @@ static pthread_mutex_t runtime_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* A sweep waits for every update in progress to park or end; the run is over; main waits for the
  * other schedulers to rest; schedulers whose thread runs an update now. */
 static bool sweeping, stopping_run, main_waits;
+/* MO_PLACE=spread: every process where the fewest live, step 30's rule, for the comparison rows. */
+static bool place_spread;
 static Sched *sweeper;
 static uint32_t updating_scheds;
 static int64_t sweep_retry_at;
@@ -6795,14 +6826,28 @@ static uint32_t cores_from(const char *text) {
     return n < 1 ? 1 : n > MOST_CORES ? MOST_CORES : (uint32_t)n;
 }
 
-/* Where a process about to start goes: the scheduler with the fewest live processes, the first of
- * those tied. */
+static uint32_t place_for(void);
+
+/* Where a process about to start goes: its starter's scheduler when an update starts it and that one
+ * holds at most PLACE_FACTOR times its share of the live processes, else the scheduler with the fewest
+ * live processes, the first of those tied (turns.zig, place). */
 static uint32_t place(void) {
-    uint32_t best = 0;
-    for (uint32_t k = 1; k < ncores; k++) {
-        if (scheds[k].live < scheds[best].live) best = k;
+    uint32_t k = place_for();
+    scheds[k].placed++;
+    return k;
+}
+
+static void print_placement(void) {
+    if (ncores < 2) return;
+    for (uint32_t k = 0; k < ncores; k++) {
+        const Sched *s = &scheds[k];
+        char line[160];
+        int n = snprintf(line, sizeof line, "mo stats: scheduler %u placed %u with_starter %u live %u asks_across %llu\n", k, s->placed, s->with_starter, s->live, (unsigned long long)s->asks_across);
+        if (n > 0) {
+            ssize_t w = write(2, line, (size_t)n);
+            (void)w;
+        }
     }
-    return best;
 }
 
 /* The id of the last process that ended on scheduler `k`, if one waits. */
@@ -6814,7 +6859,11 @@ static bool take_free_id(uint32_t k, uint32_t *id) {
 }
 
 static void reset_free_ids(void) {
-    for (uint32_t k = 0; k < MOST_CORES; k++) scheds[k].nfree_ids = scheds[k].nto_end = scheds[k].live = 0;
+    for (uint32_t k = 0; k < MOST_CORES; k++) {
+        scheds[k].nfree_ids = scheds[k].nto_end = scheds[k].live = 0;
+        scheds[k].placed = scheds[k].with_starter = 0;
+        scheds[k].asks_across = 0;
+    }
 }
 
 /* Process `id` started on scheduler `k`; a start call began it when `quiet_event`, so it may finish. */
@@ -6847,6 +6896,24 @@ static VmState main_vm;
 /* The vm state of whoever holds this thread, and a scheduler loop's own. */
 static _Thread_local VmState *my_vm;
 static _Thread_local VmState loop_vm;
+
+static uint32_t place_for(void) {
+    if (multi && !place_spread && holder != MAIN_TURN) {
+        Sched *s = this_sched;
+        uint32_t total = 1;
+        for (uint32_t k = 0; k < ncores; k++) total += scheds[k].live;
+        uint32_t share = (total + ncores - 1) / ncores;
+        if (s->live + 1 <= PLACE_FACTOR * share) {
+            s->with_starter++;
+            return s->index;
+        }
+    }
+    uint32_t best = 0;
+    for (uint32_t k = 1; k < ncores; k++) {
+        if (scheds[k].live < scheds[best].live) best = k;
+    }
+    return best;
+}
 
 static FiberContext *context_of(uint32_t id) { return id == MAIN_TURN ? &main_context : &workers[id]->fiber->context; }
 
@@ -7472,6 +7539,7 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     procs[to]->mailbox[procs[to]->mailbox_len - 1].has_deadline = true;
     procs[to]->mailbox[procs[to]->mailbox_len - 1].deadline = deadline;
     bool same = home_of(to) == cur_sched()->index;
+    if (!same) cur_sched()->asks_across++;
     for (;;) {
         /* A wait elsewhere doomed this ask (held sends): mo_ask crashes the update. */
         if (running != NOBODY && procs[running]->doomed) {
@@ -7620,6 +7688,8 @@ static void *sched_loop(void *arg) {
 static void turns_begin(void) {
     ncores = cores_from(getenv("MO_CORES"));
     multi = ncores > 1;
+    const char *placing = getenv("MO_PLACE");
+    place_spread = placing && strcmp(placing, "spread") == 0;
     for (uint32_t k = 0; k < ncores; k++) {
         scheds[k].index = k;
         scheds[k].holder = MAIN_TURN;

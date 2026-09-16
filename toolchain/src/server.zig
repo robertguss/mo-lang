@@ -137,8 +137,9 @@ pub const Server = struct {
         if (processes) {
             scheduler.turns = &turns;
             if (regions) scheduler.packs = true;
-            // A scheduler per core (step 30): MO_CORES, else the machine's cores.
-            try turns.begin(&scheduler, &machine, turns_mod.coresFrom(s.environ.get("MO_CORES")), if (regions) &scratch.? else null);
+            // A scheduler per core (step 30): MO_CORES, else the machine's cores; placement with the
+            // starter unless MO_PLACE=spread (step 34).
+            try turns.begin(&scheduler, &machine, turns_mod.coresFrom(s.environ.get("MO_CORES")), turns_mod.placingFrom(s.environ.get("MO_PLACE")), if (regions) &scratch.? else null);
         }
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,

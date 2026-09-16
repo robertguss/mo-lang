@@ -403,6 +403,13 @@ fn printStats() void {
         var label: [32]u8 = undefined;
         statsLine(std.fmt.bufPrint(&label, "scheduler {d} ", .{k}) catch "", counts);
     }
+    // Where the processes went (step 34), a line per scheduler after the counts.
+    for (0..cores) |k| {
+        const pl = mo.turns.placementOf(k);
+        var buf: [160]u8 = undefined;
+        const text = std.fmt.bufPrint(&buf, "mo stats: scheduler {d} placed {d} with_starter {d} live {d} asks_across {d}\n", .{ k, pl.placed, pl.with_starter, pl.live, pl.asks_across }) catch continue;
+        _ = std.posix.system.write(2, text.ptr, text.len);
+    }
 }
 
 fn statsLine(label: []const u8, s: mo.region.Stats) void {

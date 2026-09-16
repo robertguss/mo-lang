@@ -442,11 +442,13 @@ pub const Sim = struct {
 
     /// `reply.answer(v)`: the answer waits for the update's commit, as a send does. An answer
     /// to an ask this process does not hold, one it already answered or one whose asker is
-    /// gone, is dropped.
+    /// gone, is dropped. The ask the running arm keeps is held from the arm on, so the arm may
+    /// answer it itself (step 34: it was held only from the commit, and its answer was dropped).
     pub fn answerReply(sim: *Sim, seq: u64, value: Value) Error!void {
         const me = sim.running orelse return;
         const p = &sim.procs.items[me];
-        if (std.mem.indexOfScalar(u64, p.kept.items, seq) == null) return;
+        const own = p.deferring and p.reply_seq == seq;
+        if (!own and std.mem.indexOfScalar(u64, p.kept.items, seq) == null) return;
         for (p.answers.items) |a| if (a.seq == seq) return;
         try p.answers.append(sim.gpa, .{ .seq = seq, .value = value });
     }
@@ -859,11 +861,16 @@ pub const Sim = struct {
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
             if (!p.up or p.queued() == 0 or p.mailbox.items[p.head].seq > seq) return sim.askError("Down");
+            // The ask waits from its delivery on, so an arm that keeps it may answer it at once (step 34).
+            if (p.mailbox.items[p.head].seq == seq) try sim.waiting.put(sim.gpa, seq, {});
             const d = try sim.deliver(to);
             if (d.seq != seq) continue;
-            if (!d.deferred) break d.reply orelse return sim.askError("Down");
+            if (!d.deferred) {
+                _ = sim.waiting.remove(seq);
+                if (sim.answered.fetchRemove(seq)) |kv| if (kv.value) |got| if (got.parcel) |x| x.free();
+                break d.reply orelse return sim.askError("Down");
+            }
             kept = true;
-            try sim.waiting.put(sim.gpa, seq, {});
         };
         // A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
         // pass its deadline, or when its slowest fixture is slower than it. A target whose calls
@@ -1131,7 +1138,9 @@ pub const Sim = struct {
         p.emits.clearRetainingCapacity();
         const reply = after.tuple[0];
         // An answer the update made commits with it, and is dropped when nothing waits for it.
+        var answered_own = false;
         for (p.answers.items) |a| {
+            if (a.seq == entry.seq) answered_own = true;
             const at = std.mem.indexOfScalar(u64, p.kept.items, a.seq);
             if (at) |k| _ = p.kept.orderedRemove(k);
             try sim.routeAnswer(a.seq, a.value);
@@ -1141,7 +1150,7 @@ pub const Sim = struct {
         // answers it, crashes, or restarts (step 31).
         const deferring = p.deferring;
         if (deferring) {
-            try p.kept.append(sim.gpa, entry.seq);
+            if (!answered_own) try p.kept.append(sim.gpa, entry.seq);
         } else try sim.routeAnswer(entry.seq, reply);
         if (regioned) try sim.settleRegion(id, mark);
         return .{ .seq = entry.seq, .reply = reply, .deferred = deferring };

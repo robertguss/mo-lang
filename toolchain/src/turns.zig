@@ -1,8 +1,11 @@
 //! Turns: how Mo.Server runs processes (design-v0/03, effects and processes; steps 11, 21, 30).
 //! A program runs its processes on every core (step 30): one scheduler per core, `MO_CORES` of them
 //! when it is set and the machine's cores otherwise, scheduler 0 on main's thread and each other on a
-//! thread of its own. A process is placed at its start on the scheduler with the fewest live
-//! processes and stays there for its life. Each scheduler runs its processes' updates one at a time,
+//! thread of its own. A process is placed at its start and stays there for its life (placeFor): one an
+//! update starts goes on its starter's scheduler, unless that one holds more than place_factor times
+//! its share of the live processes, and one main starts, or one past the share, goes on the scheduler
+//! with the fewest live processes (step 34). So a worker runs where the process that started it runs,
+//! and a request path that never crosses costs what one scheduler costs. Each scheduler runs its processes' updates one at a time,
 //! each on a fiber of its own (fiber.zig) with a Vm of its own, and nothing a process sees depends on
 //! where it runs: nothing is shared, and a message is a copy. `MO_CORES=1` is one scheduler, no
 //! thread, and no lock: the runtime of step 29b.
@@ -110,6 +113,21 @@ pub fn coresFrom(text: ?[]const u8) u32 {
     const n = std.Thread.getCpuCount() catch 1;
     return @intCast(@min(@max(n, 1), most_cores));
 }
+
+/// How placement chooses (step 34): `MO_PLACE=spread` places every process on the scheduler with the
+/// fewest live processes, step 30's rule, for the comparison rows; anything else places with the
+/// starter.
+pub const Placing = enum { starter, spread };
+
+pub fn placingFrom(text: ?[]const u8) Placing {
+    if (text) |t| if (std.mem.eql(u8, std.mem.trim(u8, t, " \t"), "spread")) return .spread;
+    return .starter;
+}
+
+/// A starter's scheduler keeps a process it starts while it holds at most this many times its share
+/// of the live processes, the share being the live processes, the new one among them, over the
+/// schedulers, rounded up (step 34). Past it, the new process goes where the fewest live.
+pub const place_factor: u32 = 2;
 
 /// The fewest quiet events (Turns.quiet) between two sweeps.
 pub const sweep_min: u32 = 64;
@@ -239,6 +257,11 @@ pub const Sched = struct {
     arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator),
     /// Processes live on it, which placement counts.
     live: u32 = 0,
+    /// Processes placed on it: in all, and those with their starter (step 34), for `MO_STATS=1`.
+    placed: u32 = 0,
+    with_starter: u32 = 0,
+    /// Asks its processes made of a process on another scheduler, for `MO_STATS=1`.
+    asks_across: u64 = 0,
     /// Its processes a sweep found ended, whose Vms and regions it has yet to free.
     to_end: std.ArrayList(u32) = .empty,
     /// Ids of its ended processes, the last ended last: the next start placed here takes the last.
@@ -285,6 +308,21 @@ pub threadlocal var here: ?*Sched = null;
 /// The last run's schedulers' counts, for `MO_STATS=1` (main.zig): `last_cores` of them.
 pub var last_stats: [most_cores]region_mod.Stats = [_]region_mod.Stats{.{}} ** most_cores;
 pub var last_cores: u32 = 0;
+/// The last run's placement counts per scheduler, for `MO_STATS=1`: placed, with the starter, live
+/// at the end, and asks made across.
+pub const Placement = struct { placed: u32 = 0, with_starter: u32 = 0, live: u32 = 0, asks_across: u64 = 0 };
+pub var last_placement: [most_cores]Placement = [_]Placement{.{}} ** most_cores;
+/// While a run lasts, its schedulers, so a signal can print where the processes went.
+pub var live_turns: ?*Turns = null;
+
+/// Scheduler `k`'s placement counts: the running run's, read without the lock, else the last run's.
+pub fn placementOf(k: usize) Placement {
+    if (live_turns) |t| if (k < t.scheds.len) {
+        const s = t.scheds[k];
+        return .{ .placed = s.placed, .with_starter = s.with_starter, .live = s.live, .asks_across = s.asks_across };
+    };
+    return last_placement[k];
+}
 /// While a run lasts, where each scheduler's thread counts, so a signal can print them.
 pub var live_stats: [most_cores]?*const region_mod.Stats = [_]?*const region_mod.Stats{null} ** most_cores;
 
@@ -299,6 +337,8 @@ pub const Turns = struct {
     scheds: []*Sched = &.{},
     /// More than one scheduler: the lock is taken.
     multi: bool = false,
+    /// How a process about to start is placed (`MO_PLACE`).
+    placing: Placing = .starter,
     mutex: Io.Mutex = .init,
     /// Each process's scheduler, by process id.
     homes: std.ArrayList(u16) = .empty,
@@ -349,8 +389,9 @@ pub const Turns = struct {
     /// The run's schedulers: `cores` of them, scheduler 0 on this thread compacting through
     /// `scratch`, each other through a scratch region of its own. With more than one, their threads
     /// start, and this thread holds the lock while main's code runs.
-    pub fn begin(t: *Turns, sim: *Sim, main_vm: *Vm, cores: u32, scratch: ?*Region) Error!void {
+    pub fn begin(t: *Turns, sim: *Sim, main_vm: *Vm, cores: u32, placing: Placing, scratch: ?*Region) Error!void {
         t.sim = sim;
+        t.placing = placing;
         t.main_vm = main_vm;
         const n = @max(cores, 1);
         t.scheds = std.heap.smp_allocator.alloc(*Sched, n) catch return error.OutOfMemory;
@@ -367,6 +408,7 @@ pub const Turns = struct {
         }
         t.multi = n > 1;
         last_cores = n;
+        live_turns = t;
         sweeps_run = 0;
         sweeps_missed = 0;
         if (!t.multi) return;
@@ -559,14 +601,36 @@ pub const Turns = struct {
 
     // ---- placing
 
-    /// Where a process about to start goes: the scheduler with the fewest live processes, the first
-    /// of those tied, and the id of the last process that ended there, if one waits.
+    /// Where a process about to start goes, and the id of the last process that ended there, if one
+    /// waits: its starter's scheduler when an update starts it and that scheduler holds no more than
+    /// place_factor times its share of the live processes (step 34), else the scheduler with the
+    /// fewest live processes, the first of those tied.
     pub fn place(t: *Turns) struct { sched: u32, id: ?u32 } {
+        const k = t.placeFor();
+        const s = t.scheds[k];
+        s.placed += 1;
+        return .{ .sched = k, .id = s.free_ids.pop() };
+    }
+
+    fn placeFor(t: *Turns) u32 {
+        if (t.multi and t.placing == .starter) {
+            const s = t.cur();
+            if (s.holder != main_turn) {
+                var total: u32 = 1;
+                for (t.scheds) |x| total += x.live;
+                const n: u32 = @intCast(t.scheds.len);
+                const share = (total + n - 1) / n;
+                if (s.live + 1 <= place_factor * share) {
+                    s.with_starter += 1;
+                    return s.index;
+                }
+            }
+        }
         var best: usize = 0;
         for (t.scheds, 0..) |s, k| if (s.live < t.scheds[best].live) {
             best = k;
         };
-        return .{ .sched = @intCast(best), .id = t.scheds[best].free_ids.pop() };
+        return @intCast(best);
     }
 
     /// Process `id` started on scheduler `k`; `quiet` when a start call began it, so it may finish.
@@ -1085,6 +1149,7 @@ pub const Turns = struct {
         const target = &sim.procs.items[to];
         target.mailbox.items[target.mailbox.items.len - 1].deadline = deadline;
         const same = t.homeOf(to) == s.index;
+        if (!same) s.asks_across += 1;
         while (true) {
             // A wait elsewhere doomed this ask (sim.zig, held sends): Sim.ask crashes the update.
             if (sim.running) |me| if (sim.procs.items[me].doomed != null) {
@@ -1228,6 +1293,8 @@ pub const Turns = struct {
             w.values = null;
             w.ended = true;
         }
+        for (0..t.scheds.len) |k| last_placement[k] = placementOf(k);
+        live_turns = null;
         for (t.scheds) |s| {
             for (s.fibers.items) |f| f.destroy();
             s.fibers.clearRetainingCapacity();

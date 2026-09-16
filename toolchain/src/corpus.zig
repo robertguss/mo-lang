@@ -987,6 +987,140 @@ test "corpus: a process whose state is megabytes restarts twenty times and its r
     try std.testing.expect(std.mem.endsWith(u8, compiled.stdout, "kept: 1\n"));
 }
 
+test "corpus: a process an update starts runs on its starter's scheduler up to twice its share, under mo run and in a binary, and an arm answers the ask it keeps" {
+    // Step 34: placement with the starter, and MO_PLACE=spread for step 30's rule. The program reads
+    // where its processes run from the runtime; the last line is step 31's deferred reply answered in
+    // the arm that kept it, which step 34 found dropped (the asker timed out).
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const place =
+        \\module Place
+        \\expose Child, Parent, Family, scheduler_of, main
+        \\
+        \\intent "A process an update starts runs on its starter's scheduler until that scheduler holds more than its share, and an arm that keeps its asker may answer it in the same update."
+        \\
+        \\process Child()
+        \\  state
+        \\    held: List(Reply(UInt64))
+        \\  end
+        \\
+        \\  message Ping : UInt64
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Ping:
+        \\        state.held = state.held.push(reply_to)
+        \\        for held in state.held
+        \\          held.answer(7)
+        \\        end
+        \\        state.held = []
+        \\    end
+        \\  end
+        \\end
+        \\
+        \\process Parent()
+        \\  state
+        \\    children: List(Handle(Child))
+        \\  end
+        \\
+        \\  message Spawn(n: UInt64) : UInt64
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Spawn(n):
+        \\        for _ in 0..n
+        \\          state.children = state.children.push(Child.start())
+        \\        end
+        \\        state.children.size
+        \\    end
+        \\  end
+        \\end
+        \\
+        \\supervisor Family
+        \\  child Parent, restart: :always
+        \\  child Child, restart: :always
+        \\end
+        \\
+        \\fn scheduler_of(infos: List(ProcessInfo), name: String) : UInt64
+        \\  var at = 999
+        \\  for info in infos
+        \\    if info.name == name
+        \\      at = info.scheduler
+        \\    end
+        \\  end
+        \\  at
+        \\end
+        \\
+        \\fn main(platform: Platform)
+        \\  out = platform.stdout
+        \\  parent = Parent.start()
+        \\  started = case parent.ask(Spawn(n: 20), within: 1.minute)
+        \\    Ok(n): n
+        \\    Error(_): 0
+        \\  end
+        \\  case platform.runtime
+        \\    Some(runtime):
+        \\      infos = runtime.processes(within: 1.minute)
+        \\      home = scheduler_of(infos, "Parent")
+        \\      children = infos.filter(fn(info) info.name == "Child" end)
+        \\      with = children.filter(fn(info) info.scheduler == home end).size
+        \\      apart = children.size - with
+        \\      out.write("#{started} started; with the parent: #{with > 7}; past its share: #{apart > 0}\n")
+        \\    None: out.write("no runtime: build with --surface\n")
+        \\  end
+        \\  kid = Child.start()
+        \\  answered = case kid.ask(Ping, within: 1.minute)
+        \\    Ok(n): n
+        \\    Error(_): 0
+        \\  end
+        \\  out.write("answered by the arm that kept it: #{answered}\n")
+        \\end
+        \\
+        \\test "an arm that keeps its asker answers it in the same update"
+        \\  kid = Child.start()
+        \\  assert kid.ask(Ping, within: 1.minute) is Ok(7)
+        \\  assert kid.ask(Ping, within: 1.minute) is Ok(7)
+        \\end
+        \\
+    ;
+    try tmp.dir.writeFile(io, .{ .sub_path = "place.mo", .data = place });
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+    const answered = "answered by the arm that kept it: 7\n";
+    const Case = struct { cores: []const u8, placing: []const u8, want: []const u8 };
+    const cases = [_]Case{
+        .{ .cores = "1", .placing = "starter", .want = "20 started; with the parent: true; past its share: false\n" ++ answered },
+        .{ .cores = "4", .placing = "starter", .want = "20 started; with the parent: true; past its share: true\n" ++ answered },
+        .{ .cores = "4", .placing = "spread", .want = "20 started; with the parent: false; past its share: true\n" ++ answered },
+    };
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "place.mo", "-o", "place-served" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    for (cases) |c| {
+        var environ: std.process.Environ.Map = .init(arena);
+        try environ.put("MO_CORES", c.cores);
+        try environ.put("MO_PLACE", c.placing);
+        const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "place.mo" }, .cwd = .{ .path = cwd }, .environ_map = &environ });
+        try std.testing.expectEqualStrings(c.want, interp.stdout);
+        const compiled = try std.process.run(arena, io, .{ .argv = &.{"./zig-out/mo-build/place-served/place-served"}, .cwd = .{ .path = cwd }, .environ_map = &environ });
+        try std.testing.expectEqualStrings(c.want, compiled.stdout);
+    }
+    // The same answer under Mo.Sim, seeded and not, and in a test binary.
+    const tested = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "test", "--sim", "20", "place.mo" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(std.mem.indexOf(u8, tested.stdout, "1 passed, 0 failed") != null);
+    const tests_built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--tests", "place.mo", "-o", "place-tests" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(tests_built.term == .exited and tests_built.term.exited == 0);
+    const test_binary = try std.process.run(arena, io, .{ .argv = &.{"./zig-out/mo-build/place-tests/place-tests"}, .cwd = .{ .path = cwd } });
+    try std.testing.expect(std.mem.indexOf(u8, test_binary.stdout, "1 passed, 0 failed") != null);
+}
+
 test "corpus: a callee's body changed in another module makes its caller's verified: line stale" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;
