@@ -389,3 +389,9 @@
 
 ## [2026-09-16] session | Night: measurement 1 at 1.0 on five programs, the pause for the Mac
 - Ten regenerations (logstat, kv, notes, jobq, ledger, two runs each), ten at completeness 1.0 with every kept test, every transcript, and jobq's hidden suite ([[bodies-as-cache]]). Robert at 02:20: pause when they finish, continue on the Mac. Every branch pushed, instruments committed, `HANDOFF.md` rewritten for a Mac session. Two rows, one `semantic` for Robert.
+
+## [2026-09-15] session | Mac: set up, every suite green, Robert to bed
+- The Mac set up in half an hour: tools installed or pinned (Elixir 1.18/OTP 27 in the Elixir worktree only, Pi from npm), 13 worktrees recreated, the toolchain built in 34 s, the four queues' suites green. The Herdr worker pane is `w44:p2` now. Robert to bed at 22:50: the lead decides, Opus on medium effort works. Next: the P6 probe on Elixir and Mo.
+
+## [2026-09-15] session | Mac: P6 on Elixir, the BEAM's row
+- The queue GenServer killed from outside three times under load, the service back in under 600 ms each time, nothing acknowledged lost; four kills in 2 s and the node exits on the default intensity. The null hypothesis reading written into [[control-run-10]]: P6 is the BEAM's. One `semantic` row for Robert. Next: the Mac scaling run alone on the disk, the lead on the language page meanwhile.

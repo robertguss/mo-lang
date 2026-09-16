@@ -2,6 +2,11 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Session 8, the Mac — 15 Sep 2026
+
+- **The Mac set up and every suite green** (Fable, half an hour). Zig 0.16.0, Go 1.27.1 with staticcheck, Elixir 1.18.5 on OTP 27.3 pinned in the Elixir worktree alone, `uv`, Pi 0.73.1; thirteen evidence worktrees recreated beside the repo and the toolchain binary copied in; the Go, Elixir, Python, and Mo queues' own suites green on the Mac. The Herdr worker pane is `w44:p2`. Robert to bed at 22:50: the lead decides, the worker is Opus on medium effort, fresh per piece of work.
+- **P6 on Elixir, probed** (Fable, `mo-wiki/plans/control-run-10-suite/p6.py`). The queue GenServer killed from a second node three times while eight clients ran 11,000 requests a second: `/health` back in 261, 393, and 583 ms, 735 of 99,060 requests failed, none of 32,765 acknowledged jobs lost, on the service and on a fresh open. Five kills 400 ms apart cross OTP's default restart intensity and the node exits with the disk whole. The reading in `control-run-10.md`: P6 is the BEAM's row; after round 10 Mo holds reliability and the loop, the BEAM speed, time to write, the dependency tie, and the runtime row itself. Change 2's Mo program is the first answer to it.
+
 ## Session 7, night — 15 Sep 2026
 
 - **Measurement 1, bodies as cache, on five programs** (ten Opus sessions of 11 to 47 minutes; Fable's stripper, verifier, and reading, `mo-wiki/plans/bodies-as-cache.md`). Every function body deleted from logstat, kv, notes, jobq, and the ledger, the intent, types, processes, signatures with contracts, and tests kept; two fresh sessions per program wrote the bodies back. Ten regenerations at completeness 1.0: every kept test, every `.expected` transcript, and jobq's 121 hidden checks, twice. The agent program waits for the Mac session, and the stronger form (tests deleted too) after it.
