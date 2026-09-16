@@ -15,7 +15,7 @@ The working agreements, the roles, the loop, and the instruments, for anyone (or
 - [[SCHEMA]] — the wiki's working agreements: page types, frontmatter, the decision log's columns, what a session records
 - `.claude/skills/mo-lead/SKILL.md` in the repo — the lead's role and loop: brief, fresh worker, verify with probes the brief did not name, record, merge, report
 - `HANDOFF.md` at the repo root — the state and the queue for the next session
-- [[roadmap]] — the "Where we are" table and the done rows
+- [[roadmap]] — the board (now, next, waiting on Robert, recently done), the phase table, and the done rows
 - [[log]] — one entry per session, newest last
 - [[decision-log]] — the decisions
 - The sessions: [[session-01]], [[session-02]], [[session-03]], [[session-04]], [[session-05]], [[session-06]]

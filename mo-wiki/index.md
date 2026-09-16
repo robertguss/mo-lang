@@ -5,7 +5,7 @@ type: index
 
 # Mo Lang — Index
 
-> **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] table is the authority on order; the [[decision-log]] is what Robert reads.
+> **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
@@ -194,7 +194,7 @@ type: index
 - [[corpus|Corpus: brief for the worker session]] — 50 tiny programs in examples/, one construct each, plus rejects/ that must not compile
 - [[comparison-pass|Comparison pass: brief for the worker session]] — template, tools, and the 13 briefs for the Opus worker
 - [[program-menu|Program menu: what we build to put Mo through its paces]] — seven programs of different kinds, and what each measures
-- [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
+- [[roadmap|Roadmap: now, next, later]] — the board: what is in flight, what comes next in order, what waits on Robert, what just landed; then the phases and every step's history
 
 ## Sessions
 - [[session-06|Session 6 — 13 Sep 2026 (evening, ingestion)]] — six deep-research runs and three adjacent runs ingested into raw/; new prompts-mo-parallel-tracks page; no decisions changed

@@ -14,8 +14,8 @@ know that the wiki does not say in one place.
 > never stop to ask him; a question is a decision-log row, not a wait.** The
 > lead commits wiki files with `git commit -m <msg> -- <paths>` only (a bare
 > `git commit` swept a worker's staged files twice this night). Then read, in
-> order: `mo-wiki/state-of-the-project.md` (the whole picture; you rewrite it at every pause); `mo-wiki/SCHEMA.md`; the "Where we are" table at the top of
-> `mo-wiki/plans/roadmap.md`; the last ten entries of `mo-wiki/log.md`; the last
+> order: `mo-wiki/state-of-the-project.md` (the whole picture; you rewrite it at every pause); `mo-wiki/SCHEMA.md`; the board and the phase table at the top of
+> `mo-wiki/plans/roadmap.md` (the board is Robert's status view: rewrite it at every acceptance and pause); the last ten entries of `mo-wiki/log.md`; the last
 > thirty rows of `mo-wiki/decisions/decision-log.md` (rows tagged `semantic` are
 > the ones Robert reads, rows marked "for Robert" wait on him); `CHANGELOG.md`
 > down to "Session 7, night"; `mo-wiki/spec/design-v0/01-premise.md`,

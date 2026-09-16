@@ -1,5 +1,5 @@
 ---
-title: "Roadmap"
+title: "Roadmap: now, next, later"
 created: 2026-09-12
 updated: 2026-09-16
 type: plan
@@ -10,9 +10,50 @@ status: in-progress
 
 # Roadmap
 
-Rewritten in session 5 after the interpreter milestone was met. Each step is one brief on a plan page, one fresh worker session, Fable's verification, one commit that updates [[decision-log]], `CHANGELOG.md`, and `log.md`, then a merge to `main`. Done steps keep their rows.
+The board first: what is in flight, what comes next in order, what waits, what
+just landed. One line each, with the page that holds the detail. Fable rewrites
+it at every acceptance and every pause; the dates say when. Below it, the phases
+in detail and the history of every step.
 
-## Where we are
+## Now, in flight
+
+| what | who | since | page |
+|---|---|---|---|
+| Step 32: crash reports kept apart from the event ring, both runtimes; a corpus file for the reopening restart; the P6 probe rerun | Opus worker in `w44:p3`, Fable verifying | 16 Sep, 09:01 | [[interpreter-step-32]] |
+
+## Next, in order
+
+| # | what | why now | page |
+|---|---|---|---|
+| 1 | Change 3 of the erosion round, the reopening store: Fable writes and seals the spec; a queue that crashes restarts from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, Elixir | P6 on Mo (16 Sep) showed the restart is the program's to take; this is where the BEAM's P6 row is answered or not | [[erosion-round]] |
+| 2 | Generation three of the erosion round: four fresh maintainers, the fourth hidden suite, the fourth oracle | one generation per change; the erosion hypothesis needs changes 3 to 10 | [[erosion-round]] |
+| 3 | The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; measured at 1 and 14 cores on the Mac | nothing scales on the M3 Max today; the interpreter's parked fiber at 128 held asks | [[interpreter-step-30]], [[mac-scaling-run]] |
+| 4 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
+| 5 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
+| 6 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
+| 7 | Program 7: a Redis subset against Redis's own tests, on capabilities, recipes, and the runtime surface together | the program chapter 1 says answers the BEAM | [[program-menu]] |
+
+## Later
+
+`mo prove` (tier 3); the runtime surface as MCP tools and measurement 4, the incident round, which tests whether the surface shortens an agent's diagnosis; round 9's Opus-in-Pi baseline when Pi has an Anthropic key; the package registry once an outsider runs a real service; program 8, the toolchain in Mo.
+
+## Waiting on Robert
+
+Rows marked "for Robert" in the [[decision-log]], newest first: P6 on Mo's change 2 and change 3 as the reopening store (16 Sep); round 9's Haiku row and the round's reading (16 Sep); the erosion round's generation two; measurement 1's completeness; chapter 10 §1 as built (step 31); the BEAM row after round 10 and P6 on Elixir; the outage row from round 8; the 16 lint issues from his history bundle. None blocks the work: Fable decides and records, Robert overturns.
+
+## Recently done
+
+| when | what | page |
+|---|---|---|
+| 16 Sep, 09:05 | P6 on Mo's change 2: the queue crashed under load through the surface, `503` within 2 ms, nothing lost, no restart; the outage closed, the restart the program's | [[erosion-round]] |
+| 16 Sep, 08:45 | Round 9 closed with Haiku 4.5: wrong in every language in under ten minutes (Mo 28, Go 22, Python 18 of 189) | [[control-run-9]] |
+| 16 Sep, morning | The wiki as a site, the state page, seven maps | [[state-of-the-project]] |
+| 16 Sep, 02:00 | Erosion round, generation two: nothing eroded in Mo, Go, Python; Elixir refuses a torn line after a full disk | [[erosion-round]] |
+| 16 Sep, 01:15 | Step 31, the deferred reply, in all three runtimes | [[interpreter-step-31]] |
+| 16 Sep, 01:00 | Measurement 1 complete: twelve of twelve regenerations at 1.0 | [[bodies-as-cache]] |
+| 15 Sep, night | Chapter 10, the language after the rounds; P6 on Elixir; the Mac scaling run; round 10 | [[10-language-after-the-rounds]], [[control-run-10]], [[mac-scaling-run]] |
+
+## The phases in detail
 
 Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agreed to Fable's order. The rows above the line are what the first three days built; the rows below are the roadmap from here. A step is one brief to one fresh worker session; this table is the count.
 
