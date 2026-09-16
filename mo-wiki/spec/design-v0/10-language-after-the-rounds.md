@@ -119,7 +119,15 @@ and kv's store both take an `Opening` that `main` computed and say `:never`. A
 restarted process re-runs its `state` initializers with its capabilities
 (verified 16 Sep, `erosion-round-suite/reopen-run.mo`, both runtimes), so a
 queue whose state opens the folder from `fs` and `dir` at start restarts
-correctly today, and the erosion round's change 3 asks for it. Then
+correctly today, and the erosion round's change 3 asks for it. Change 3's Mo
+maintainer did it (16 Sep, 10:45): `:always`, the board rebuilt inside the
+process, the killed queue back in 106 ms under load. What it could not do is
+put the budget on the line: `max_restarts` takes a literal, and the budget came
+from the command line, so it wrote a `Warden` process whose invariant trips when
+the budget is spent. So §2 asks for one more thing, zero syntax: `max_restarts`
+and its window may be values the supervisor's arguments carry, as `child
+Queue(fs, clock, dir), restart: :always, max_restarts: rules.max_restarts per
+rules.window`. Then
 `:never` is for a process whose state is truly unrecoverable, and the compiler
 asks for a `max_restarts` on every `:always` line (today it defaults). Zero
 syntax; one diagnostic: "an `:always` child without `max_restarts`; the budget
