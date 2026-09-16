@@ -77,7 +77,17 @@ process Store(journal: Handle(Journal), clock: Clock, opening: Opening)
   message Serve(request: Request) : Response
 
   fn update(state, message)
-    # body gone; regenerate
+    case message
+      Serve(request):
+        counts = Counts(keys: state.table.size, sets: state.sets, gets: state.gets,
+          log_bytes: state.log_bytes, uptime_ms: (clock.now - opening.at).ms)
+        outcome = served(journal, opening.log_within, state.table, counts, request)
+        state.table = outcome.table
+        state.log_bytes = outcome.log_bytes
+        state.sets += sets_in(request, outcome.response)
+        state.gets += gets_in(request)
+        outcome.response
+    end
   end
 end
 
@@ -89,54 +99,96 @@ end
 
 fn served(journal: Handle(Journal), within: Duration, table: Table, counts: Counts,
   request: Request) : Served
-  # body gone; regenerate
+  case decide(table, counts, request)
+    Answer(response):
+      Served(table: table, response: answered(table, request, response),
+        log_bytes: counts.log_bytes)
+    Write(change): committed(journal, within, table, counts.log_bytes, change)
+  end
 end
 
 # What a request comes to against the table: an answer now, or a change to log first.
 fn decide(table: Table, counts: Counts, request: Request) : Plan
-  # body gone; regenerate
+  case request
+    Set(key: key, value: value): written(table, key, Some(value), Done)
+    Get(key): Answer(response: found(lookup(table, key)))
+    Del(key): deleted(table, key)
+    Incr(key: key, by: by): bumped(table, key, by)
+    Keys(prefix): Answer(response: Listed(keys: keys_with(table, prefix)))
+    Stats: Answer(response: Counted(counts: counts))
+    Quit: Answer(response: Bye)
+  end
 end
 
 fn found(value: Option(String)) : Response
-  # body gone; regenerate
+  case value
+    Some(text): Found(value: text)
+    None: Absent
+  end
 end
 
 # A change that would add a key to a table of a million is refused instead.
 fn written(table: Table, key: String, value: Option(String), response: Response) : Plan
-  # body gone; regenerate
+  if table.size >= 1_000_000 and lookup(table, key) is None
+    return Answer(response: Failed(reason: Full))
+  end
+  Write(change: Change(key: key, value: value, response: response))
 end
 
 fn deleted(table: Table, key: String) : Plan
-  # body gone; regenerate
+  return Answer(response: Absent) if lookup(table, key) is None
+  Write(change: Change(key: key, value: None, response: Done))
 end
 
 fn bumped(table: Table, key: String, by: Int64) : Plan
-  # body gone; regenerate
+  case incremented(lookup(table, key), by)
+    Ok(new): written(table, key, Some("#{new}"), Found(value: "#{new}"))
+    Error(reason): Answer(response: Failed(reason: reason))
+  end
 end
 
 # INCR's arithmetic: the value read as a decimal Int64, or 0 for a key with none, plus by.
 fn incremented(current: Option(String), by: Int64) : Result(Int64, Refusal)
   ensures result is Ok(new) implies number(current) is Some(before) and new == before + by
   ensures result is Error(reason) implies reason == NotANumber or reason == Overflow
-  # body gone; regenerate
+
+  case number(current)
+    Some(before): sum_of(before, by)
+    None: Error(NotANumber)
+  end
 end
 
 fn sum_of(before: Int64, by: Int64) : Result(Int64, Refusal)
-  # body gone; regenerate
+  case before.checked_add(by)
+    Some(total): Ok(total)
+    None: Error(Overflow)
+  end
 end
 
 # A value as INCR reads it: a decimal Int64, or 0 when there is no value.
 fn number(current: Option(String)) : Option(Int64)
-  # body gone; regenerate
+  case current
+    Some(text): text.to_i64
+    None: Some(0)
+  end
 end
 
 # A refusal is recorded as a step, so the nevers see that it changed nothing.
 fn answered(table: Table, request: Request, response: Response) : Response
-  # body gone; regenerate
+  key = key_of(request) or ""
+  here = lookup(table, key)
+  step = Step(key: key, before: here, after: here, logged: false, response: response)
+  step.response
 end
 
 fn key_of(request: Request) : Option(String)
-  # body gone; regenerate
+  case request
+    Set(key: key, value: _): Some(key)
+    Get(key): Some(key)
+    Del(key): Some(key)
+    Incr(key: key, by: _): Some(key)
+    Keys(_) | Stats | Quit: None
+  end
 end
 
 # The journal puts the change's line on disk first; only then is the change applied and
@@ -145,46 +197,96 @@ end
 # in the log, as a write that finished late would be.
 fn committed(journal: Handle(Journal), within: Duration, table: Table, log_bytes: UInt64,
   change: Change) : Served
-  # body gone; regenerate
+  before = lookup(table, change.key)
+  line = entry(change.key, change.value)
+  grown = applied(table, change)
+  case journal.ask(Append(line: line, keys: grown.size), within: within)
+    Ok(Ok(bytes)):
+      step = Step(key: change.key, before: before, after: lookup(grown, change.key), logged: true,
+        response: change.response)
+      Served(table: grown, response: step.response, log_bytes: bytes)
+    Ok(Error(_)): unlogged(table, log_bytes, change, before)
+    Error(_): unlogged(table, log_bytes, change, before)
+  end
 end
 
 fn unlogged(table: Table, log_bytes: UInt64, change: Change, before: Option(String)) : Served
-  # body gone; regenerate
+  step = Step(key: change.key, before: before, after: before, logged: false,
+    response: Failed(reason: Io))
+  Served(table: table, response: step.response, log_bytes: log_bytes)
 end
 
 fn applied(table: Table, change: Change) : Table
-  # body gone; regenerate
+  case change.value
+    Some(value): put(table, change.key, value)
+    None: drop(table, change.key)
+  end
 end
 
 fn sets_in(request: Request, response: Response) : UInt64
-  # body gone; regenerate
+  case request
+    Set(key: _, value: _): if response is Failed(_): 0 else: 1
+    Get(_) | Del(_) | Incr(key: _, by: _) | Keys(_) | Stats | Quit: 0
+  end
 end
 
 fn gets_in(request: Request) : UInt64
-  # body gone; regenerate
+  case request
+    Get(_): 1
+    Set(key: _, value: _) | Del(_) | Incr(key: _, by: _) | Keys(_) | Stats | Quit: 0
+  end
 end
 
 # Asks the store each request, and checks every answer against a table kept beside it: the
 # answer that table gives, with the table changed as the store's must be, or ERR io and no
 # change. An ask that gets no answer ends the check, since the store may yet take it.
 fn faithful?(store: Handle(Store), requests: List(Request)) : Bool
-  # body gone; regenerate
+  var model = empty()
+  var held = true
+  for request in requests
+    pair = expected_of(model, request)
+    case store.ask(Serve(request: request), within: 60_000.ms)
+      Ok(response):
+        held = held and agreed?(response, pair.0)
+        model = next_table(model, pair, response)
+      Error(_):
+        break
+    end
+  end
+  held
+end
+
+# An answer holds when it is the one the table gives, or an ERR io, which changed nothing.
+fn agreed?(response: Response, want: Response) : Bool
+  response == want or response == Failed(reason: Io)
+end
+
+# The table moves on only when the store gave the answer the table gives.
+fn next_table(model: Table, pair: (Response, Table), response: Response) : Table
+  return pair.1 if response == pair.0
+  model
 end
 
 fn expected_of(model: Table, request: Request) : (Response, Table)
-  # body gone; regenerate
+  case decide(model, counted_nothing(), request)
+    Answer(response): (response, model)
+    Write(change): (change.response, applied(model, change))
+  end
 end
 
 fn counted_nothing() : Counts
-  # body gone; regenerate
+  Counts(keys: 0, sets: 0, gets: 0, log_bytes: 0, uptime_ms: 0)
 end
 
 fn script() : List(Request)
-  # body gone; regenerate
+  first = [Set(key: "a", value: "1"), Get(key: "a"), Incr(key: "a", by: 2),
+    Set(key: "big", value: "x".repeat(1_000)), Del(key: "gone")]
+  first.concat([Set(key: "new", value: "two words"), Keys(prefix: ""), Del(key: "a"),
+    Get(key: "a"), Incr(key: "new", by: 1), Get(key: "new")])
 end
 
 fn opened(table: Table, at: Time, log_within: Duration) : Opening
-  # body gone; regenerate
+  Opening(table: table, log_bytes: 0, at: at, log_within: log_within)
 end
 
 test "GET, SET, DEL, KEYS, and QUIT come to the answers the protocol names"
@@ -279,3 +381,6 @@ property "a SET then a GET gives back any valid key's value"
     end
   end
 end
+
+verified: types, contracts, tests (8), property (200 seeds), sim (100 runs, invariants (kept 1, tripped 0))
+          proven: not run
