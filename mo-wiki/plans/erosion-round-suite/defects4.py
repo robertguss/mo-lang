@@ -108,12 +108,24 @@ def t_key(a):
 
 # ---------------------------------------------------------------- the key kept
 def t_keykept(a):
-    base, d = fresh_dir("keykept4-"); s, _ = serve_with(a, d, " --crash-every 3 --max-restarts 100")
-    st, j1 = keyed("q", "k1"); st, j2 = keyed("q", "k2")
-    # the third write fails the queue: a plain create, then the restart
-    st, _ = safe("POST", "/jobs", {"queue": "q", "payload": "p", "max_tries": 1}); wait_health(5.0)
+    # amended 14:55: the switch counts records the board applies, and what a program counts as a record differs (Mo counts the
+    # ids reservation), so the keyed creates are made with the switch far off, then plain creates until one fails, then the restart
+    base, d = fresh_dir("keykept4-"); s, _ = serve_with(a, d, " --crash-every 25 --max-restarts 100")
+    st, j1 = keyed("q", "k1"); check("keykept: the first keyed create is 201", st == 201, (st, j1)); st, j2 = keyed("q", "k2"); check("keykept: the second keyed create is 201", st == 201, (st, j2))
+    failed = False
+    for i in range(60):
+        st, _ = safe("POST", "/jobs", {"queue": "q", "payload": "p", "max_tries": 1})
+        if st in (503, -1): failed = True; break
+    check("keykept: a plain create eventually trips the switch", failed, i); wait_health(5.0)
     st, j = keyed("q", "k1"); check("keykept: after a chaos restart the key is still used (200, the same job)", st == 200 and isinstance(j, dict) and j.get("id") == j1.get("id"), (st, j))
-    st, j = keyed("q", "k3"); check("keykept: a new key after the restart is 201", st == 201, (st, j)); k3 = j
+    k3 = None
+    for i in range(3):
+        st, j = keyed("q", "k3")
+        if st == 201: k3 = j; break
+        if st == 200 and isinstance(j, dict) and j.get("key") == "k3": k3 = j; break
+        wait_health(5.0)
+    check("keykept: a new key after the restart is made (201, or 200 if the failed attempt landed)", k3 is not None, (st, j))
+    if k3 is None: k3 = {}
     s.stop(); s, _ = serve_with(a, d)
     st, j = keyed("q", "k2"); check("keykept: after a stop and start the key is still used", st == 200 and isinstance(j, dict) and j.get("id") == j2.get("id"), (st, j))
     st, j = keyed("q", "k3"); check("keykept: a key made just before the stop is still used", st == 200 and isinstance(j, dict) and j.get("id") == k3.get("id"), (st, j))
@@ -205,8 +217,8 @@ def t_archivekill(a):
     check("archivekill: every sampled key is still used by its job", not twice, twice[:3])
     p = archive_path(d)
     if p:
-        ids_in_archive = re.findall(r'"j_\d+"|j_\d+', open(p, errors="replace").read())
-        ids_in_archive = [x.strip('"') for x in ids_in_archive]
+        # amended 14:55: one id per line (Mo's line names the id before the record too)
+        ids_in_archive = [m.group(0) for l in open(p, errors="replace").read().splitlines() for m in [re.search(r'j_\d+', l)] if m and "deleted" not in l and '"delete"' not in l and '"del"' not in l]
         check("archivekill: no id appears twice in the archive", len(ids_in_archive) == len(set(ids_in_archive)), len(ids_in_archive) - len(set(ids_in_archive)))
     s.stop(); s, took = serve_with(a, d, " --retain-ms 1000"); h2 = health()
     total2 = sum(h2.get(k, 0) for k in ("queued", "scheduled", "leased", "done", "dead", "archived"))
