@@ -122,8 +122,9 @@ def t_keykept(a):
     s, _ = serve_with(a, d)
     st, j = keyed("q", "k1"); check("keykept: after a compaction the key is still used", st == 200 and isinstance(j, dict) and j.get("id") == j1.get("id"), (st, j))
     st, j = keyed("q", "k2"); check("keykept: a key freed before the compaction is free after it", st == 201, (st, j))
+    s.stop()  # amended 14:40: verify runs on a folder that is not being served (Go's verify refuses a served folder, a variant recorded in generation two)
     rc, out = run(a.verify.format(dir=d), a.cwd); check("keykept: verify exits 0 on a folder with keys", rc == 0, (rc, out[:120]))
-    s.stop(); shutil.rmtree(base, ignore_errors=True)
+    shutil.rmtree(base, ignore_errors=True)
 
 # ---------------------------------------------------------------- the archive
 def t_archive(a):
@@ -208,7 +209,8 @@ def t_archivekill(a):
         ids_in_archive = [x.strip('"') for x in ids_in_archive]
         check("archivekill: no id appears twice in the archive", len(ids_in_archive) == len(set(ids_in_archive)), len(ids_in_archive) - len(set(ids_in_archive)))
     s.stop(); s, took = serve_with(a, d, " --retain-ms 1000"); h2 = health()
-    check("archivekill: the counts are the same after a second reopen", all(h2.get(k) == h.get(k) for k in ("archived", "queued", "done", "dead")), (h, h2))
+    total2 = sum(h2.get(k, 0) for k in ("queued", "scheduled", "leased", "done", "dead", "archived"))
+    check("archivekill: the total is the same after a second reopen (time passes, so more may be archived)", total2 == total, (total, total2, h, h2))  # amended 14:40: the first form compared each count, and done jobs age into the archive between reopens
     s.stop(); shutil.rmtree(base, ignore_errors=True)
 
 # ---------------------------------------------------------------- verify on the archive
