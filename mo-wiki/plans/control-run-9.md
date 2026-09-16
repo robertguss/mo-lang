@@ -47,7 +47,7 @@ pick, 15 Sep, 23:00 local, for a spread of size and openness:
 | M1  | `qwen3.8:27b-mlx`, local on the Mac | Pi, `--provider ollama`      | the smallest, open weights, runs on the machine; the row direction 41 asked for first |
 | M2  | `deepseek-v4-flash:cloud`           | Pi, `--provider ollama`      | open weights, mid-size, cheap                                                         |
 | M3  | `kimi-k3:cloud`                     | Pi, `--provider ollama`      | open weights, large; Robert's Pi default                                              |
-| M4  | `gemini-3.8-flash`                  | Pi, `--provider google`      | small closed model                                                                    |
+| M4  | `gemini-3.8-flash`, replaced by `gpt-5.5` through Pi's Codex login (01:10: the Google key in Pi is invalid, `API_KEY_INVALID`; `gpt-5.3-codex-spark` is refused on a ChatGPT account; xAI has no key) | Pi, `--provider openai-codex` | the closed-model row; not small, and the page says so |
 | M5  | Haiku 4.5                           | Claude Code, `--model haiku` | the small Claude, the one row not in Pi                                               |
 
 The Opus-in-Pi baseline direction 41 wanted is unmet: Pi on this Mac has no
