@@ -25,25 +25,27 @@ type Appender interface {
 // Queue holds every job in memory. One caller at a time holds lock, the Go
 // reading of a process; a change is answered only after it is in the store.
 type Queue struct {
-	lock    chan struct{}
-	clock   Clock
-	store   Appender
-	started time.Time
-	jobs    map[uint64]*Job
-	order   []uint64 // ids ascending; deleted ids are skipped when read
-	queued  map[string]*idHeap
-	leases  leaseHeap
-	counts  map[State]int
-	nextID  uint64
+	lock      chan struct{}
+	clock     Clock
+	store     Appender
+	started   time.Time
+	jobs      map[uint64]*Job
+	order     []uint64 // ids ascending; deleted ids are skipped when read
+	queued    map[string]*idHeap
+	scheduled schedHeap
+	leases    leaseHeap
+	counts    map[State]int
+	nextID    uint64
 }
 
 // Health is the body of GET /health.
 type Health struct {
-	Queued   int   `json:"queued"`
-	Leased   int   `json:"leased"`
-	Done     int   `json:"done"`
-	Dead     int   `json:"dead"`
-	UptimeMS int64 `json:"uptime_ms"`
+	Queued    int   `json:"queued"`
+	Scheduled int   `json:"scheduled"`
+	Leased    int   `json:"leased"`
+	Done      int   `json:"done"`
+	Dead      int   `json:"dead"`
+	UptimeMS  int64 `json:"uptime_ms"`
 }
 
 // change is one job's step: old is nil on create, new is nil on delete.
@@ -135,6 +137,9 @@ func (q *Queue) install(c change) {
 		}
 		heap.Push(h, j.ID)
 	}
+	if j.State == Scheduled {
+		heap.Push(&q.scheduled, schedEntry{runAt: j.RunAt, id: j.ID})
+	}
 	if j.State == Leased {
 		heap.Push(&q.leases, leaseEntry{until: j.LeaseUntil, id: j.ID})
 	}
@@ -169,18 +174,20 @@ func checkNevers(c change, now time.Time) error {
 		return nil
 	}
 	n := c.new
-	attempts := contract.Never(n.Attempts > n.MaxAttempts, "a job's attempts exceed its max_attempts")
+	tries := contract.Never(n.Tries > n.MaxTries, "a job's tries exceed its max_tries")
 	if c.old == nil {
-		return attempts
+		return tries
 	}
 	old := c.old
 	liveLease := old.State == Leased && old.LeaseUntil.After(now)
 	terminal := old.State == Done || old.State == Dead
 	return errors.Join(
 		contract.Never(n.State == Leased && liveLease, "a job is held by two workers at once"),
-		contract.Never(n.State == Leased && terminal, "a done or dead job is leased"),
+		contract.Never(n.State == Leased && terminal, "a done or dead job is leased until it is retried"),
 		contract.Never(terminal && n.State != old.State, "a done or dead job changes state"),
-		attempts,
+		contract.Never(n.State == Scheduled && liveLease, "a scheduled job is not held by a worker"),
+		contract.Never(n.State == Scheduled && n.RunAt.Before(now), "a scheduled job's run_at is not in the past"),
+		tries,
 	)
 }
 
@@ -188,16 +195,19 @@ func checkNevers(c change, now time.Time) error {
 // store record can break are here; the report names those left out.
 func checkInvariants(j Job) error {
 	leased := j.State == Leased
+	scheduled := j.State == Scheduled
 	return errors.Join(
 		contract.Invariant(leased == (j.Worker != "") && leased == !j.LeaseUntil.IsZero(),
 			"a job has a worker and lease_until exactly when it is leased"),
-		contract.Invariant(j.State != Queued || j.Attempts < j.MaxAttempts,
-			"a queued job has attempts below max_attempts"),
+		contract.Invariant(scheduled == !j.RunAt.IsZero(),
+			"a job has run_at exactly when it is scheduled"),
+		contract.Invariant(j.State != Queued || j.Tries < j.MaxTries,
+			"a queued job has tries below max_tries"),
 		contract.Invariant(validQueueName(j.Queue) && validText(j.Payload, maxPayloadBytes) &&
-			j.MaxAttempts >= 1 && j.MaxAttempts <= 100 && (j.Worker == "" || validToken(j.Worker)),
-			"a job's queue, payload, max_attempts, and worker are valid"),
-		contract.Invariant(j.Attempts >= 0 && !j.UpdatedAt.Before(j.CreatedAt),
-			"attempts >= 0 and created_at <= updated_at"),
+			j.MaxTries >= 1 && j.MaxTries <= 100 && (j.Worker == "" || validToken(j.Worker)),
+			"a job's queue, payload, max_tries, and worker are valid"),
+		contract.Invariant(j.Tries >= 0 && !j.UpdatedAt.Before(j.CreatedAt),
+			"tries >= 0 and created_at <= updated_at"),
 	)
 }
 
@@ -217,6 +227,26 @@ func (q *Queue) begin(ctx context.Context) (*tx, error) {
 		return nil, err
 	}
 	t := &tx{q: q, now: q.clock.Now()}
+	// Process scheduled jobs whose run_at has passed
+	for q.scheduled.Len() > 0 && !q.scheduled[0].runAt.After(t.now) {
+		e := heap.Pop(&q.scheduled).(schedEntry)
+		j := q.jobs[e.id]
+		if j == nil || j.State != Scheduled || !j.RunAt.Equal(e.runAt) {
+			continue
+		}
+		n := *j
+		n.State, n.RunAt, n.UpdatedAt = Queued, time.Time{}, t.now
+		c := change{old: j, new: &n}
+		if err := checkNevers(c, t.now); err != nil {
+			heap.Push(&q.scheduled, e)
+			t.undo()
+			q.release()
+			return nil, err
+		}
+		q.install(c)
+		t.expired = append(t.expired, c)
+	}
+	// Process leases that have run out
 	for q.leases.Len() > 0 && !q.leases[0].until.After(t.now) {
 		e := heap.Pop(&q.leases).(leaseEntry)
 		j := q.jobs[e.id]
@@ -226,7 +256,10 @@ func (q *Queue) begin(ctx context.Context) (*tx, error) {
 		n := *j
 		reason := "lease ran out"
 		n.State, n.Worker, n.LeaseUntil, n.Reason, n.UpdatedAt = Queued, "", time.Time{}, &reason, t.now
-		if n.Attempts >= n.MaxAttempts {
+		if n.BackoffMS > 0 {
+			n.State = Scheduled
+			n.RunAt = t.now.Add(time.Duration(n.BackoffMS) * time.Millisecond)
+		} else if n.Tries >= n.MaxTries {
 			n.State = Dead
 		}
 		c := change{old: j, new: &n}
@@ -286,9 +319,9 @@ func (t *tx) end() {
 	t.q.release()
 }
 
-// Create adds a queued job.
-func (q *Queue) Create(ctx context.Context, queue, payload string, maxAttempts int) (Job, error) {
-	if err := errors.Join(requireQueue(queue), requirePayload(payload), requireMaxAttempts(maxAttempts)); err != nil {
+// Create adds a job, initially queued or scheduled based on delayMS.
+func (q *Queue) Create(ctx context.Context, queue, payload string, maxTries int, delayMS int64, backoffMS int) (Job, error) {
+	if err := errors.Join(requireQueue(queue), requirePayload(payload), requireMaxTries(maxTries), requireDelayMS(delayMS), requireBackoffMS(backoffMS)); err != nil {
 		return Job{}, err
 	}
 	t, err := q.begin(ctx)
@@ -298,7 +331,16 @@ func (q *Queue) Create(ctx context.Context, queue, payload string, maxAttempts i
 	defer t.end()
 	id := q.nextID
 	q.nextID++ // spent even if the write fails, so an id never repeats
-	j := Job{ID: id, Queue: queue, State: Queued, Payload: payload, MaxAttempts: maxAttempts, CreatedAt: t.now, UpdatedAt: t.now}
+	state := Queued
+	var runAt time.Time
+	if delayMS > 0 {
+		state = Scheduled
+		runAt = t.now.Add(time.Duration(delayMS) * time.Millisecond)
+	}
+	j := Job{
+		ID: id, Queue: queue, State: state, Payload: payload, Tries: 0, MaxTries: maxTries,
+		BackoffMS: backoffMS, CreatedAt: t.now, UpdatedAt: t.now, RunAt: runAt,
+	}
 	if err := t.commit(change{new: &j}); err != nil {
 		return Job{}, err
 	}
@@ -397,7 +439,7 @@ func (q *Queue) Lease(ctx context.Context, queue, worker string, leaseMS int64) 
 	}
 	old := q.jobs[(*h)[0]]
 	n := *old
-	n.State, n.Attempts, n.Worker, n.UpdatedAt = Leased, n.Attempts+1, worker, t.now
+	n.State, n.Tries, n.Worker, n.UpdatedAt = Leased, n.Tries+1, worker, t.now
 	n.LeaseUntil = t.now.Add(time.Duration(leaseMS) * time.Millisecond)
 	if err := t.commit(change{old: old, new: &n}); err != nil {
 		return Job{}, false, err
@@ -408,8 +450,8 @@ func (q *Queue) Lease(ctx context.Context, queue, worker string, leaseMS int64) 
 }
 
 func ensureLeased(before, after Job, worker string) error {
-	return contract.Ensure(after.State == Leased && after.Worker == worker && after.Attempts == before.Attempts+1,
-		"the job is leased to the caller with attempts one higher")
+	return contract.Ensure(after.State == Leased && after.Worker == worker && after.Tries == before.Tries+1,
+		"the job is leased to the caller with tries one higher")
 }
 
 func ensureDone(after Job) error {
@@ -451,7 +493,7 @@ func (q *Queue) Ack(ctx context.Context, id uint64, worker string) (Job, error) 
 	return got, ensureDone(got)
 }
 
-// Fail gives a held job back: queued while attempts remain, dead after.
+// Fail gives a held job back: queued/scheduled based on backoff while tries remain, dead after.
 func (q *Queue) Fail(ctx context.Context, id uint64, worker, reason string) (Job, error) {
 	if err := errors.Join(requireWorker(worker), requireReason(reason)); err != nil {
 		return Job{}, err
@@ -467,9 +509,34 @@ func (q *Queue) Fail(ctx context.Context, id uint64, worker, reason string) (Job
 	}
 	n := *old
 	n.State, n.Worker, n.LeaseUntil, n.Reason, n.UpdatedAt = Queued, "", time.Time{}, &reason, t.now
-	if n.Attempts >= n.MaxAttempts {
+	if n.Tries >= n.MaxTries {
 		n.State = Dead
+	} else if n.BackoffMS > 0 {
+		n.State = Scheduled
+		n.RunAt = t.now.Add(time.Duration(n.BackoffMS) * time.Millisecond)
 	}
+	if err := t.commit(change{old: old, new: &n}); err != nil {
+		return Job{}, err
+	}
+	return *q.jobs[id], nil
+}
+
+// Retry resets a dead job's tries to 0 and moves it back to queued.
+func (q *Queue) Retry(ctx context.Context, id uint64) (Job, error) {
+	t, err := q.begin(ctx)
+	if err != nil {
+		return Job{}, err
+	}
+	defer t.end()
+	old := q.jobs[id]
+	if old == nil {
+		return Job{}, errors.Join(t.commit(), ErrNotFound)
+	}
+	if old.State != Dead {
+		return Job{}, errors.Join(t.commit(), fmt.Errorf("%w: job is not dead", ErrConflict))
+	}
+	n := *old
+	n.State, n.Tries, n.Worker, n.LeaseUntil, n.Reason, n.RunAt, n.UpdatedAt = Queued, 0, "", time.Time{}, nil, time.Time{}, t.now
 	if err := t.commit(change{old: old, new: &n}); err != nil {
 		return Job{}, err
 	}
@@ -487,7 +554,7 @@ func (q *Queue) Health(ctx context.Context) (Health, error) {
 		return Health{}, err
 	}
 	return Health{
-		Queued: q.counts[Queued], Leased: q.counts[Leased], Done: q.counts[Done], Dead: q.counts[Dead],
+		Queued: q.counts[Queued], Scheduled: q.counts[Scheduled], Leased: q.counts[Leased], Done: q.counts[Done], Dead: q.counts[Dead],
 		UptimeMS: t.now.Sub(q.started).Milliseconds(),
 	}, nil
 }
@@ -499,6 +566,29 @@ func (h idHeap) Less(i, j int) bool { return h[i] < h[j] }
 func (h idHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h *idHeap) Push(x any)        { *h = append(*h, x.(uint64)) }
 func (h *idHeap) Pop() any {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return x
+}
+
+type schedEntry struct {
+	runAt time.Time
+	id    uint64
+}
+
+type schedHeap []schedEntry
+
+func (h schedHeap) Len() int { return len(h) }
+func (h schedHeap) Less(i, j int) bool {
+	if !h[i].runAt.Equal(h[j].runAt) {
+		return h[i].runAt.Before(h[j].runAt)
+	}
+	return h[i].id < h[j].id
+}
+func (h schedHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h *schedHeap) Push(x any)   { *h = append(*h, x.(schedEntry)) }
+func (h *schedHeap) Pop() any {
 	old := *h
 	x := old[len(old)-1]
 	*h = old[:len(old)-1]

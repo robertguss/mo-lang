@@ -47,6 +47,8 @@ func (a *API) match(path string) (route, bool) {
 		return route{methods: map[string]handler{"POST": a.ack}, arg: seg[1]}, true
 	case len(seg) == 3 && seg[0] == "jobs" && seg[2] == "fail":
 		return route{methods: map[string]handler{"POST": a.fail}, arg: seg[1]}, true
+	case len(seg) == 3 && seg[0] == "jobs" && seg[2] == "retry":
+		return route{methods: map[string]handler{"POST": a.retry}, arg: seg[1]}, true
 	case len(seg) == 3 && seg[0] == "queues" && seg[2] == "lease":
 		return route{methods: map[string]handler{"POST": a.lease}, arg: seg[1]}, true
 	}
@@ -163,17 +165,27 @@ func decodeBody(r *http.Request, dst any, allowEmpty bool) error {
 
 func (a *API) create(r *http.Request, _, _ string) (int, any, error) {
 	var b struct {
-		Queue       *string `json:"queue"`
-		Payload     *string `json:"payload"`
-		MaxAttempts *int    `json:"max_attempts"`
+		Queue     *string `json:"queue"`
+		Payload   *string `json:"payload"`
+		MaxTries  *int    `json:"max_tries"`
+		DelayMS   *int64  `json:"delay_ms"`
+		BackoffMS *int    `json:"backoff_ms"`
 	}
 	if err := decodeBody(r, &b, false); err != nil {
 		return 0, nil, err
 	}
-	if b.Queue == nil || b.Payload == nil || b.MaxAttempts == nil {
-		return 0, nil, &badRequest{"queue, payload, and max_attempts are required"}
+	if b.Queue == nil || b.Payload == nil || b.MaxTries == nil {
+		return 0, nil, &badRequest{"queue, payload, and max_tries are required"}
 	}
-	j, err := a.q.Create(r.Context(), *b.Queue, *b.Payload, *b.MaxAttempts)
+	delayMS := int64(0)
+	if b.DelayMS != nil {
+		delayMS = *b.DelayMS
+	}
+	backoffMS := 0
+	if b.BackoffMS != nil {
+		backoffMS = *b.BackoffMS
+	}
+	j, err := a.q.Create(r.Context(), *b.Queue, *b.Payload, *b.MaxTries, delayMS, backoffMS)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -269,6 +281,21 @@ func (a *API) fail(r *http.Request, arg, token string) (int, any, error) {
 		return 0, nil, ErrNotFound
 	}
 	j, err := a.q.Fail(r.Context(), id, token, *b.Reason)
+	if err != nil {
+		return 0, nil, err
+	}
+	return http.StatusOK, jobView(j), nil
+}
+
+func (a *API) retry(r *http.Request, arg, _ string) (int, any, error) {
+	id, ok := parseID(arg)
+	if !ok {
+		return 0, nil, ErrNotFound
+	}
+	if err := decodeBody(r, &struct{}{}, true); err != nil {
+		return 0, nil, err
+	}
+	j, err := a.q.Retry(r.Context(), id)
 	if err != nil {
 		return 0, nil, err
 	}

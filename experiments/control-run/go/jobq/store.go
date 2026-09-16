@@ -80,12 +80,36 @@ func decodeLine(line []byte) (record, error) {
 		return record{}, errors.New("checksum mismatch")
 	}
 	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.DisallowUnknownFields()
-	var r record
+	// Allow old field names (attempts, max_attempts) for backward compatibility
+	var r struct {
+		Op     string                  `json:"op"`
+		Job    *jobJSONWithOldNames    `json:"job,omitempty"`
+		ID     string                  `json:"id,omitempty"`
+		NextID uint64                  `json:"next_id,omitempty"`
+	}
+	// First decode without disallowing unknown fields to support old format
 	if err := dec.Decode(&r); err != nil {
 		return record{}, err
 	}
-	return r, nil
+	// Now check for truly unknown fields using a second decoder
+	dec2 := json.NewDecoder(bytes.NewReader(body))
+	dec2.DisallowUnknownFields()
+	var r2 struct {
+		Op     string                  `json:"op"`
+		Job    *jobJSONWithOldNames    `json:"job,omitempty"`
+		ID     string                  `json:"id,omitempty"`
+		NextID uint64                  `json:"next_id,omitempty"`
+	}
+	if err := dec2.Decode(&r2); err != nil {
+		return record{}, err
+	}
+	// Convert old format to new format
+	result := record{Op: r.Op, ID: r.ID, NextID: r.NextID}
+	if r.Job != nil {
+		j := r.Job.toJobJSON()
+		result.Job = &j
+	}
+	return result, nil
 }
 
 // replay reads whole records from r in order and applies each. It returns

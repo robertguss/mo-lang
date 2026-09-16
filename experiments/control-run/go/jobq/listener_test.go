@@ -46,7 +46,7 @@ func TestIdleConnectionsDoNotBlockAProducer(t *testing.T) {
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
 	start := time.Now()
-	status, body, err := doRequest(client, svc.addr, "producer", "POST", "/jobs", `{"queue":"emails","payload":"hi","max_attempts":3}`)
+	status, body, err := doRequest(client, svc.addr, "producer", "POST", "/jobs", `{"queue":"emails","payload":"hi","max_tries":3}`)
 	if err != nil || status != 201 {
 		t.Fatalf("producer request = %d %s, %v", status, body, err)
 	}

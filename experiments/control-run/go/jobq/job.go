@@ -16,10 +16,11 @@ import (
 type State string
 
 const (
-	Queued State = "queued"
-	Leased State = "leased"
-	Done   State = "done"
-	Dead   State = "dead"
+	Queued    State = "queued"
+	Scheduled State = "scheduled"
+	Leased    State = "leased"
+	Done      State = "done"
+	Dead      State = "dead"
 )
 
 const (
@@ -29,38 +30,45 @@ const (
 	minLeaseMS      = 100
 	maxLeaseMS      = 3_600_000
 	defaultLeaseMS  = 30_000
+	maxDelayMS      = 86_400_000
+	maxBackoffMS    = 3_600_000
 	timeLayout      = "2006-01-02T15:04:05.000Z"
 )
 
 // Job is one unit of work. Worker and LeaseUntil are set only while leased;
-// Reason is set by a fail or a lease that ran out and kept afterwards.
+// Reason is set by a fail or a lease that ran out and kept afterwards;
+// RunAt is set while scheduled.
 type Job struct {
-	ID          uint64
-	Queue       string
-	State       State
-	Payload     string
-	Attempts    int
-	MaxAttempts int
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Worker      string
-	LeaseUntil  time.Time
-	Reason      *string
+	ID        uint64
+	Queue     string
+	State     State
+	Payload   string
+	Tries     int
+	MaxTries  int
+	BackoffMS int
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	RunAt     time.Time
+	Worker    string
+	LeaseUntil time.Time
+	Reason    *string
 }
 
 // jobJSON is the {job} shape of the API and of a store record.
 type jobJSON struct {
-	ID          string  `json:"id"`
-	Queue       string  `json:"queue"`
-	State       State   `json:"state"`
-	Payload     string  `json:"payload"`
-	Attempts    int     `json:"attempts"`
-	MaxAttempts int     `json:"max_attempts"`
-	CreatedAt   string  `json:"created_at"`
-	UpdatedAt   string  `json:"updated_at"`
-	Worker      *string `json:"worker,omitempty"`
-	LeaseUntil  *string `json:"lease_until,omitempty"`
-	Reason      *string `json:"reason,omitempty"`
+	ID         string  `json:"id"`
+	Queue      string  `json:"queue"`
+	State      State   `json:"state"`
+	Payload    string  `json:"payload"`
+	Tries      int     `json:"tries"`
+	MaxTries   int     `json:"max_tries"`
+	BackoffMS  int     `json:"backoff_ms"`
+	CreatedAt  string  `json:"created_at"`
+	UpdatedAt  string  `json:"updated_at"`
+	RunAt      *string `json:"run_at,omitempty"`
+	Worker     *string `json:"worker,omitempty"`
+	LeaseUntil *string `json:"lease_until,omitempty"`
+	Reason     *string `json:"reason,omitempty"`
 }
 
 func formatTime(t time.Time) string { return t.UTC().Format(timeLayout) }
@@ -85,9 +93,13 @@ func parseID(s string) (uint64, bool) {
 func jobView(j Job) jobJSON {
 	v := jobJSON{
 		ID: formatID(j.ID), Queue: j.Queue, State: j.State, Payload: j.Payload,
-		Attempts: j.Attempts, MaxAttempts: j.MaxAttempts,
+		Tries: j.Tries, MaxTries: j.MaxTries, BackoffMS: j.BackoffMS,
 		CreatedAt: formatTime(j.CreatedAt), UpdatedAt: formatTime(j.UpdatedAt),
 		Reason: j.Reason,
+	}
+	if j.State == Scheduled {
+		runAt := formatTime(j.RunAt)
+		v.RunAt = &runAt
 	}
 	if j.State == Leased {
 		worker, until := j.Worker, formatTime(j.LeaseUntil)
@@ -98,13 +110,14 @@ func jobView(j Job) jobJSON {
 
 // jobFromView parses a stored job. It checks syntax only; what a job may
 // hold is the queue's invariants, checked when the job is applied.
+// Supports backward compatibility with old field names (attempts, max_attempts).
 func jobFromView(v jobJSON) (Job, error) {
 	id, ok := parseID(v.ID)
 	if !ok {
 		return Job{}, fmt.Errorf("bad job id %q", v.ID)
 	}
 	switch v.State {
-	case Queued, Leased, Done, Dead:
+	case Queued, Scheduled, Leased, Done, Dead:
 	default:
 		return Job{}, fmt.Errorf("bad state %q", v.State)
 	}
@@ -114,8 +127,15 @@ func jobFromView(v jobJSON) (Job, error) {
 		return Job{}, err
 	}
 	j := Job{
-		ID: id, Queue: v.Queue, State: v.State, Payload: v.Payload, Attempts: v.Attempts,
-		MaxAttempts: v.MaxAttempts, CreatedAt: created, UpdatedAt: updated, Reason: v.Reason,
+		ID: id, Queue: v.Queue, State: v.State, Payload: v.Payload, Tries: v.Tries,
+		MaxTries: v.MaxTries, BackoffMS: v.BackoffMS, CreatedAt: created, UpdatedAt: updated, Reason: v.Reason,
+	}
+	if v.RunAt != nil {
+		runAt, err := time.Parse(timeLayout, *v.RunAt)
+		if err != nil {
+			return Job{}, err
+		}
+		j.RunAt = runAt
 	}
 	if v.Worker != nil {
 		j.Worker = *v.Worker
@@ -128,6 +148,44 @@ func jobFromView(v jobJSON) (Job, error) {
 		j.LeaseUntil = until
 	}
 	return j, nil
+}
+
+// jobJSONWithOldNames is the jobJSON struct with support for old field names (attempts, max_attempts).
+// Used during store replay for backward compatibility.
+type jobJSONWithOldNames struct {
+	ID          string  `json:"id"`
+	Queue       string  `json:"queue"`
+	State       State   `json:"state"`
+	Payload     string  `json:"payload"`
+	Tries       int     `json:"tries"`
+	MaxTries    int     `json:"max_tries"`
+	Attempts    int     `json:"attempts"`     // old name
+	MaxAttempts int     `json:"max_attempts"` // old name
+	BackoffMS   int     `json:"backoff_ms"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
+	RunAt       *string `json:"run_at,omitempty"`
+	Worker      *string `json:"worker,omitempty"`
+	LeaseUntil  *string `json:"lease_until,omitempty"`
+	Reason      *string `json:"reason,omitempty"`
+}
+
+// toJobJSON converts a jobJSONWithOldNames to jobJSON, using old names as fallback.
+func (old jobJSONWithOldNames) toJobJSON() jobJSON {
+	tries := old.Tries
+	maxTries := old.MaxTries
+	if tries == 0 && old.Attempts > 0 {
+		tries = old.Attempts
+	}
+	if maxTries == 0 && old.MaxAttempts > 0 {
+		maxTries = old.MaxAttempts
+	}
+	return jobJSON{
+		ID: old.ID, Queue: old.Queue, State: old.State, Payload: old.Payload,
+		Tries: tries, MaxTries: maxTries, BackoffMS: old.BackoffMS,
+		CreatedAt: old.CreatedAt, UpdatedAt: old.UpdatedAt, RunAt: old.RunAt,
+		Worker: old.Worker, LeaseUntil: old.LeaseUntil, Reason: old.Reason,
+	}
 }
 
 func validQueueName(q string) bool {
@@ -177,8 +235,16 @@ func requirePayload(p string) error {
 	return contract.Require(validText(p, maxPayloadBytes), "payload is 0 to 60 KiB of UTF-8 with no control character but \\n")
 }
 
-func requireMaxAttempts(n int) error {
-	return contract.Require(n >= 1 && n <= 100, "max_attempts is 1 to 100")
+func requireMaxTries(n int) error {
+	return contract.Require(n >= 1 && n <= 100, "max_tries is 1 to 100")
+}
+
+func requireDelayMS(ms int64) error {
+	return contract.Require(ms >= 0 && ms <= maxDelayMS, "delay_ms is 0 to 86_400_000")
+}
+
+func requireBackoffMS(ms int) error {
+	return contract.Require(ms >= 0 && ms <= maxBackoffMS, "backoff_ms is 0 to 3_600_000")
 }
 
 func requireLeaseMS(ms int64) error {
@@ -195,5 +261,5 @@ func requireWorker(w string) error {
 
 func requireState(s string) error {
 	st := State(s)
-	return contract.Require(st == Queued || st == Leased || st == Done || st == Dead, "state is queued, leased, done, or dead")
+	return contract.Require(st == Queued || st == Scheduled || st == Leased || st == Done || st == Dead, "state is queued, scheduled, leased, done, or dead")
 }

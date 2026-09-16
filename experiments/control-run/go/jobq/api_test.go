@@ -59,14 +59,14 @@ func TestHealthNeedsNoToken(t *testing.T) {
 	h := newAPIHarness(t)
 	h.clock.Advance(1500 * time.Millisecond)
 	body := h.want("-", "GET", "/health", "", 200)
-	if body != `{"queued":0,"leased":0,"done":0,"dead":0,"uptime_ms":1500}`+"\n" {
+	if body != `{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":1500}`+"\n" {
 		t.Errorf("health body %q", body)
 	}
 }
 
 func TestAuthorization(t *testing.T) {
 	h := newAPIHarness(t)
-	create := `{"queue":"a","payload":"p","max_attempts":1}`
+	create := `{"queue":"a","payload":"p","max_tries":1}`
 	for _, token := range []string{"-", "", "Bearer ", "Basic w1", "Bearer a b", "Bearerw1"} {
 		body := h.want(token, "POST", "/jobs", create, 401)
 		if !strings.Contains(body, `"error"`) {
@@ -98,8 +98,8 @@ func TestRoutesAndMethods(t *testing.T) {
 
 func TestCreateAndGetShapes(t *testing.T) {
 	h := newAPIHarness(t)
-	body := h.want(w1, "POST", "/jobs", `{"queue":"emails","payload":"hi","max_attempts":3}`, 201)
-	want := `{"id":"j_1","queue":"emails","state":"queued","payload":"hi","attempts":0,"max_attempts":3,` +
+	body := h.want(w1, "POST", "/jobs", `{"queue":"emails","payload":"hi","max_tries":3}`, 201)
+	want := `{"id":"j_1","queue":"emails","state":"queued","payload":"hi","tries":0,"max_tries":3,"backoff_ms":0,` +
 		`"created_at":"2026-09-14T12:00:00.000Z","updated_at":"2026-09-14T12:00:00.000Z"}` + "\n"
 	if body != want {
 		t.Errorf("created\n%s\nwant\n%s", body, want)
@@ -116,16 +116,16 @@ func TestBadBodiesAre400(t *testing.T) {
 	for _, body := range []string{
 		``, `not json`, `[]`, `null`, `{}`,
 		`{"queue":"a","payload":"p"}`,
-		`{"queue":"a","payload":"p","max_attempts":"3"}`,
-		`{"queue":"a","payload":"p","max_attempts":3.5}`,
-		`{"queue":"a","payload":7,"max_attempts":3}`,
-		`{"queue":"a","payload":"p","max_attempts":3,"extra":1}`,
-		`{"queue":"a","payload":"p","max_attempts":3}{}`,
-		`{"queue":"a b","payload":"p","max_attempts":3}`,
+		`{"queue":"a","payload":"p","max_tries":"3"}`,
+		`{"queue":"a","payload":"p","max_tries":3.5}`,
+		`{"queue":"a","payload":7,"max_tries":3}`,
+		`{"queue":"a","payload":"p","max_tries":3,"extra":1}`,
+		`{"queue":"a","payload":"p","max_tries":3}{}`,
+		`{"queue":"a b","payload":"p","max_tries":3}`,
 		"{\"queue\":\"a\",\"payload\":\"\\u0000\",\"max_attempts\":3}",
-		`{"queue":"a","payload":"p","max_attempts":0}`,
+		`{"queue":"a","payload":"p","max_tries":0}`,
 		"{\"queue\":\"a\",\"payload\":\"\xff\",\"max_attempts\":3}",
-		`{"queue":"a","payload":"` + strings.Repeat("x", maxBodyBytes) + `","max_attempts":3}`,
+		`{"queue":"a","payload":"` + strings.Repeat("x", maxBodyBytes) + `","max_tries":3}`,
 	} {
 		resp := h.want(w1, "POST", "/jobs", body, 400)
 		if !strings.HasPrefix(resp, `{"error":`) {
@@ -140,10 +140,10 @@ func TestBadBodiesAre400(t *testing.T) {
 func TestListFiltersAndLimit(t *testing.T) {
 	h := newAPIHarness(t)
 	for range 105 {
-		h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_attempts":1}`, 201)
+		h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1}`, 201)
 	}
 	for range 2 {
-		h.want(w1, "POST", "/jobs", `{"queue":"b","payload":"p","max_attempts":1}`, 201)
+		h.want(w1, "POST", "/jobs", `{"queue":"b","payload":"p","max_tries":1}`, 201)
 	}
 	h.want(w1, "POST", "/queues/b/lease", "", 200)
 	count := func(path string) (int, []jobJSON) {
@@ -172,8 +172,8 @@ func TestListFiltersAndLimit(t *testing.T) {
 
 func TestDeleteStatuses(t *testing.T) {
 	h := newAPIHarness(t)
-	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_attempts":1}`, 201)
-	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_attempts":1}`, 201)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1}`, 201)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1}`, 201)
 	h.want(w1, "POST", "/queues/a/lease", "", 200)
 	h.want(w1, "DELETE", "/jobs/j_1", "", 409)
 	if body := h.want(w1, "DELETE", "/jobs/j_2", "", 204); body != "" {
@@ -188,7 +188,7 @@ func TestLeaseAckFailStatuses(t *testing.T) {
 	if body := h.want(w1, "POST", "/queues/a/lease", "", 204); body != "" {
 		t.Errorf("204 with body %q", body)
 	}
-	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_attempts":2}`, 201)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2}`, 201)
 	for _, body := range []string{`{"lease_ms":99}`, `{"lease_ms":"1000"}`, `{"lease_ms":3600001}`, `{"ms":1000}`, `nope`} {
 		h.want(w1, "POST", "/queues/a/lease", body, 400)
 	}
@@ -207,7 +207,7 @@ func TestLeaseAckFailStatuses(t *testing.T) {
 	h.want(w1, "POST", "/jobs/j_1/fail", `{"reason":"again"}`, 409)
 	h.want(w1, "POST", "/queues/a/lease", `{"lease_ms":1000}`, 200)
 	done := decodeJob(t, h.want(w1, "POST", "/jobs/j_1/ack", "", 200))
-	if done.State != Done || done.Attempts != 2 || done.LeaseUntil != nil {
+	if done.State != Done || done.Tries != 2 || done.LeaseUntil != nil {
 		t.Errorf("done %+v", done)
 	}
 	h.want(w1, "POST", "/jobs/j_1/ack", "", 409)
@@ -218,7 +218,7 @@ func TestLeaseAckFailStatuses(t *testing.T) {
 func TestStoreFailureIs503(t *testing.T) {
 	h := newAPIHarness(t)
 	h.file.fail = func(string) bool { return true }
-	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_attempts":1}`, 503)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":1}`, 503)
 	h.file.fail = nil
 	if body := h.want(w1, "GET", "/jobs", "", 200); body != `{"jobs":[]}`+"\n" {
 		t.Errorf("after a 503 the list is %q", body)
@@ -239,7 +239,7 @@ func TestPropertyCreateGetRoundTrip(t *testing.T) {
 		payloads = append(payloads, b.String())
 	}
 	for _, p := range payloads {
-		body, err := json.Marshal(map[string]any{"queue": "q", "payload": p, "max_attempts": 1})
+		body, err := json.Marshal(map[string]any{"queue": "q", "payload": p, "max_tries": 1})
 		if err != nil {
 			t.Fatal(err)
 		}

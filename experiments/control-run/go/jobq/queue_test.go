@@ -23,9 +23,9 @@ func wantKind(t *testing.T, err error, kind string) {
 	}
 }
 
-func mustCreate(t *testing.T, q *Queue, queue string, maxAttempts int) Job {
+func mustCreate(t *testing.T, q *Queue, queue string, maxTries int) Job {
 	t.Helper()
-	j, err := q.Create(ctx(t), queue, "payload", maxAttempts)
+	j, err := q.Create(ctx(t), queue, "payload", maxTries, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,11 +44,11 @@ func mustLease(t *testing.T, q *Queue, queue, worker string, ms int64) Job {
 func TestCreateLeaseAck(t *testing.T) {
 	q, _, _, clock := newMemQueue()
 	j := mustCreate(t, q, "emails", 3)
-	if j.ID != 1 || j.State != Queued || j.Attempts != 0 {
+	if j.ID != 1 || j.State != Queued || j.Tries != 0 {
 		t.Fatalf("created %+v", j)
 	}
 	l := mustLease(t, q, "emails", "w1", 30_000)
-	if l.State != Leased || l.Worker != "w1" || l.Attempts != 1 || !l.LeaseUntil.Equal(clock.Now().Add(30*time.Second)) {
+	if l.State != Leased || l.Worker != "w1" || l.Tries != 1 || !l.LeaseUntil.Equal(clock.Now().Add(30*time.Second)) {
 		t.Fatalf("leased %+v", l)
 	}
 	d, err := q.Ack(ctx(t), 1, "w1")
@@ -91,11 +91,11 @@ func TestFailRequeuesThenDead(t *testing.T) {
 	mustCreate(t, q, "a", 2)
 	mustLease(t, q, "a", "w", 1000)
 	j, err := q.Fail(ctx(t), 1, "w", "boom")
-	if err != nil || j.State != Queued || j.Attempts != 1 || j.Reason == nil || *j.Reason != "boom" {
+	if err != nil || j.State != Queued || j.Tries != 1 || j.Reason == nil || *j.Reason != "boom" {
 		t.Fatalf("first fail %+v, %v", j, err)
 	}
 	mustLease(t, q, "a", "w", 1000)
-	if j, err = q.Fail(ctx(t), 1, "w", "boom again"); err != nil || j.State != Dead || j.Attempts != 2 {
+	if j, err = q.Fail(ctx(t), 1, "w", "boom again"); err != nil || j.State != Dead || j.Tries != 2 {
 		t.Fatalf("second fail %+v, %v", j, err)
 	}
 	if _, ok, _ := q.Lease(ctx(t), "a", "w", 1000); ok {
@@ -109,7 +109,7 @@ func TestLeaseRunsOutAndIsLeasedAgain(t *testing.T) {
 	mustLease(t, q, "a", "w1", 100)
 	clock.Advance(100 * time.Millisecond)
 	j := mustLease(t, q, "a", "w2", 100)
-	if j.ID != 1 || j.Attempts != 2 || j.Worker != "w2" {
+	if j.ID != 1 || j.Tries != 2 || j.Worker != "w2" {
 		t.Fatalf("re-leased %+v", j)
 	}
 	if _, err := q.Ack(ctx(t), 1, "w1"); !errors.Is(err, ErrConflict) {
@@ -185,7 +185,7 @@ func TestWorkersRaceForOneJob(t *testing.T) {
 		}
 		wg.Wait()
 		j, _ := q.Get(ctx(t), 1)
-		if len(winners) != 1 || j.Worker != winners[0] || j.Attempts != 1 {
+		if len(winners) != 1 || j.Worker != winners[0] || j.Tries != 1 {
 			t.Fatalf("round %d: winners %v, job %+v", round, winners, j)
 		}
 	}
@@ -234,7 +234,7 @@ func TestRequiresReject(t *testing.T) {
 		{"a", "\xff", 1}, {"a", "\u0085", 1},
 		{"a", "p", 0}, {"a", "p", 101},
 	} {
-		_, err := q.Create(ctx(t), c.queue, c.payload, c.max)
+		_, err := q.Create(ctx(t), c.queue, c.payload, c.max, 0, 0)
 		wantKind(t, err, "requires")
 	}
 	for _, c := range []struct {
@@ -243,7 +243,7 @@ func TestRequiresReject(t *testing.T) {
 	}{
 		{strings.Repeat("q", 64), strings.Repeat("x", maxPayloadBytes), 1}, {"a-B_9", "line\nline é 日", 100}, {"a", "", 1},
 	} {
-		if _, err := q.Create(ctx(t), c.queue, c.payload, c.max); err != nil {
+		if _, err := q.Create(ctx(t), c.queue, c.payload, c.max, 0, 0); err != nil {
 			t.Errorf("Create(%q, %d bytes, %d) = %v", c.queue, len(c.payload), c.max, err)
 		}
 	}
@@ -278,15 +278,15 @@ func TestRequiresReject(t *testing.T) {
 }
 
 func TestEnsures(t *testing.T) {
-	before := Job{State: Queued, Attempts: 1}
-	good := Job{State: Leased, Worker: "w", Attempts: 2}
+	before := Job{State: Queued, Tries: 1}
+	good := Job{State: Leased, Worker: "w", Tries: 2}
 	if err := ensureLeased(before, good, "w"); err != nil {
 		t.Errorf("ensureLeased(good) = %v", err)
 	}
 	for _, after := range []Job{
-		{State: Queued, Worker: "w", Attempts: 2},
-		{State: Leased, Worker: "x", Attempts: 2},
-		{State: Leased, Worker: "w", Attempts: 1},
+		{State: Queued, Worker: "w", Tries: 2},
+		{State: Leased, Worker: "x", Tries: 2},
+		{State: Leased, Worker: "w", Tries: 1},
 	} {
 		wantKind(t, ensureLeased(before, after, "w"), "ensures")
 	}
@@ -299,20 +299,20 @@ func TestEnsures(t *testing.T) {
 // Tries to break each never directly; the check must refuse every one.
 func TestNeversRefuseBrokenChanges(t *testing.T) {
 	now := time.Date(2026, 9, 14, 0, 0, 10, 0, time.UTC)
-	live := &Job{State: Leased, Worker: "w1", Attempts: 1, MaxAttempts: 3, LeaseUntil: now.Add(time.Second)}
-	runOut := &Job{State: Leased, Worker: "w1", Attempts: 1, MaxAttempts: 3, LeaseUntil: now}
-	done := &Job{State: Done, Attempts: 1, MaxAttempts: 3}
-	dead := &Job{State: Dead, Attempts: 3, MaxAttempts: 3}
-	leasedBy := func(w string, attempts int) *Job {
-		return &Job{State: Leased, Worker: w, Attempts: attempts, MaxAttempts: 3, LeaseUntil: now.Add(time.Minute)}
+	live := &Job{State: Leased, Worker: "w1", Tries: 1, MaxTries: 3, LeaseUntil: now.Add(time.Second)}
+	runOut := &Job{State: Leased, Worker: "w1", Tries: 1, MaxTries: 3, LeaseUntil: now}
+	done := &Job{State: Done, Tries: 1, MaxTries: 3}
+	dead := &Job{State: Dead, Tries: 3, MaxTries: 3}
+	leasedBy := func(w string, tries int) *Job {
+		return &Job{State: Leased, Worker: w, Tries: tries, MaxTries: 3, LeaseUntil: now.Add(time.Minute)}
 	}
 	for name, c := range map[string]change{
 		"held by two workers": {old: live, new: leasedBy("w2", 2)},
 		"done leased again":   {old: done, new: leasedBy("w2", 2)},
 		"dead leased":         {old: dead, new: leasedBy("w2", 3)},
-		"dead back to queued": {old: dead, new: &Job{State: Queued, Attempts: 2, MaxAttempts: 3}},
-		"attempts over max":   {old: runOut, new: leasedBy("w2", 4)},
-		"created over max":    {new: &Job{State: Queued, Attempts: 4, MaxAttempts: 3}},
+		"dead back to queued": {old: dead, new: &Job{State: Queued, Tries: 2, MaxTries: 3}},
+		"tries over max":      {old: runOut, new: leasedBy("w2", 4)},
+		"created over max":    {new: &Job{State: Queued, Tries: 4, MaxTries: 3}},
 	} {
 		if err := checkNevers(c, now); err == nil {
 			t.Errorf("%s: allowed", name)
@@ -335,7 +335,7 @@ func TestNothingChangesWhenTheStoreFails(t *testing.T) {
 	before := snapshot(q)
 	clock.Advance(time.Second)
 	f.fail = func(op string) bool { return op == "sync" }
-	if _, err := q.Create(ctx(t), "a", "p", 1); !errors.Is(err, ErrStore) {
+	if _, err := q.Create(ctx(t), "a", "p", 1, 0, 0); !errors.Is(err, ErrStore) {
 		t.Errorf("Create = %v", err)
 	}
 	if _, _, err := q.Lease(ctx(t), "a", "w2", 100); !errors.Is(err, ErrStore) {
@@ -348,7 +348,7 @@ func TestNothingChangesWhenTheStoreFails(t *testing.T) {
 		t.Errorf("queue changed: %v", got)
 	}
 	f.fail = nil
-	if j := mustLease(t, q, "a", "w2", 100); j.ID != 1 || j.Attempts != 2 {
+	if j := mustLease(t, q, "a", "w2", 100); j.ID != 1 || j.Tries != 2 {
 		t.Errorf("after the store recovered: %+v", j)
 	}
 }
@@ -369,10 +369,10 @@ func TestBusyQueueTimesOut(t *testing.T) {
 func TestInvariantsTripThroughStoreRecords(t *testing.T) {
 	const at = "2026-09-14T00:00:00.000Z"
 	for want, job := range map[string]string{
-		"exactly when it is leased": `{"id":"j_1","queue":"a","state":"leased","payload":"","attempts":1,"max_attempts":3,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
-		"below max_attempts":        `{"id":"j_1","queue":"a","state":"queued","payload":"","attempts":3,"max_attempts":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"are valid":                 `{"id":"j_1","queue":"a b","state":"queued","payload":"","attempts":0,"max_attempts":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"created_at <= updated_at":  `{"id":"j_1","queue":"a","state":"done","payload":"","attempts":1,"max_attempts":3,"created_at":"2026-09-15T00:00:00.000Z","updated_at":"` + at + `"}`,
+		"exactly when it is leased": `{"id":"j_1","queue":"a","state":"leased","payload":"","tries":1,"max_tries":3,"backoff_ms":0,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
+		"below max_tries":           `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":3,"max_tries":3,"backoff_ms":0,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"are valid":                 `{"id":"j_1","queue":"a b","state":"queued","payload":"","tries":0,"max_tries":3,"backoff_ms":0,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"created_at <= updated_at":  `{"id":"j_1","queue":"a","state":"done","payload":"","tries":1,"max_tries":3,"backoff_ms":0,"created_at":"2026-09-15T00:00:00.000Z","updated_at":"` + at + `"}`,
 	} {
 		dir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(dir, logName), []byte(lineFor(`{"op":"put","job":`+job+`}`)), 0o644); err != nil {
@@ -404,10 +404,10 @@ func TestReplayFindsLeaseRunOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if j, _ := q.Get(ctx(t), 1); j.State != Queued || j.Attempts != 1 {
+	if j, _ := q.Get(ctx(t), 1); j.State != Queued || j.Tries != 1 {
 		t.Errorf("after restart %+v, want queued with attempts 1", j)
 	}
-	if j := mustLease(t, q, "a", "w2", 1000); j.Attempts != 2 {
-		t.Errorf("re-leased with attempts %d, want 2", j.Attempts)
+	if j := mustLease(t, q, "a", "w2", 1000); j.Tries != 2 {
+		t.Errorf("re-leased with attempts %d, want 2", j.Tries)
 	}
 }

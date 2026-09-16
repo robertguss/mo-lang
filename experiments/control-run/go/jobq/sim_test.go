@@ -129,7 +129,7 @@ func (s *simulation) randomStep() {
 		if s.rng.IntN(20) == 0 {
 			max = 0
 		}
-		s.send("prod", "POST", "/jobs", fmt.Sprintf(`{"queue":%q,"payload":"p%d","max_attempts":%d}`, queue, s.steps, max))
+		s.send("prod", "POST", "/jobs", fmt.Sprintf(`{"queue":%q,"payload":"p%d","max_tries":%d}`, queue, s.steps, max))
 	case r < 55:
 		s.send(worker, "POST", "/queues/"+queue+"/lease", fmt.Sprintf(`{"lease_ms":%d}`, 100+s.rng.IntN(300)))
 	case r < 70:
@@ -145,7 +145,7 @@ func (s *simulation) randomStep() {
 	case r < 98:
 		s.send("", "GET", "/health", "")
 	default:
-		s.send("", "POST", "/jobs", `{"queue":"a","payload":"x","max_attempts":1}`)
+		s.send("", "POST", "/jobs", `{"queue":"a","payload":"x","max_tries":1}`)
 	}
 }
 
@@ -226,7 +226,7 @@ func model(pre map[string]jobJSON, now time.Time) map[string]jobJSON {
 			until, _ := time.Parse(timeLayout, *j.LeaseUntil)
 			if !until.After(now) {
 				j.State, j.Worker, j.LeaseUntil = Queued, nil, nil
-				if j.Attempts >= j.MaxAttempts {
+				if j.Tries >= j.MaxTries {
 					j.State = Dead
 				}
 			}
@@ -251,9 +251,9 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 		want = 401
 	case method == "POST" && path == "/jobs":
 		want = 201
-		if strings.Contains(body, `"max_attempts":0`) {
+		if strings.Contains(body, `"max_tries":0`) {
 			want = 400
-		} else if status == 201 && (job.State != Queued || job.Attempts != 0 || pre[job.ID].ID != "") {
+		} else if status == 201 && (job.State != Queued || job.Tries != 0 || pre[job.ID].ID != "") {
 			s.fatalf("created %+v", job)
 		}
 	case method == "GET" && seg[0] == "health", method == "GET" && strings.HasPrefix(path, "/jobs?"):
@@ -262,7 +262,7 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 		want = 404
 		if j, ok := m[seg[1]]; ok {
 			want = 200
-			if status == 200 && (job.State != j.State || job.Attempts != j.Attempts) {
+			if status == 200 && (job.State != j.State || job.Tries != j.Tries) {
 				s.fatalf("get %s = %+v, model %+v", seg[1], job, j)
 			}
 		}
@@ -285,7 +285,7 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 			if status == 200 && seg[2] == "ack" && job.State != Done {
 				s.fatalf("ack gave %+v", job)
 			}
-			if status == 200 && seg[2] == "fail" && (job.State == Dead) != (j.Attempts >= j.MaxAttempts) {
+			if status == 200 && seg[2] == "fail" && (job.State == Dead) != (j.Tries >= j.MaxTries) {
 				s.fatalf("fail gave %+v from %+v", job, j)
 			}
 		}
@@ -313,7 +313,7 @@ func (s *simulation) expectLease(m map[string]jobJSON, queue, token string, now 
 		}
 		_ = json.Unmarshal([]byte(body), &b)
 		until := formatTime(now.Add(time.Duration(b.LeaseMS) * time.Millisecond))
-		if job.ID != oldest.ID || job.State != Leased || *job.Worker != token || job.Attempts != oldest.Attempts+1 || *job.LeaseUntil != until {
+		if job.ID != oldest.ID || job.State != Leased || *job.Worker != token || job.Tries != oldest.Tries+1 || *job.LeaseUntil != until {
 			s.fatalf("lease gave %+v, model says %+v leased to %s until %s", job, oldest, token, until)
 		}
 	}
