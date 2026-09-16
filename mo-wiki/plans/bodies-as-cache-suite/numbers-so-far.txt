@@ -1,0 +1,11 @@
+logstat A: 13m26s, 2 loops (mo fmt shape; MO0317 ordering), both first-fix; 31 tests + 4 runs all green first time; completeness 8/8 = 1.0; context unread (pane too narrow)
+logstat B: 11m22s, 1 loop (MO0403 fixture outside a test), first-fix; 31 tests + 4 runs green; completeness 8/8 = 1.0; context unread
+kv A: 10/10 oracles (40 tests + 5 runs) = 1.0
+kv B: 10/10 = 1.0
+kv A loops: 2 (MO0102 break as a case arm expression; MO0304 depth 4), first-fix; 15m16s
+kv B loops: 1 (mo check), first-fix; 14m
+elixir torn read: the torn final line is dropped in memory but not cut from the file, so the next run appends after it and the third open finds line 6 corrupt (exit 1): a durability defect
+notes A: 12/12 (42 tests + 5 runs) = 1.0; 15m31s
+notes B: 12/12 = 1.0; 17m; loops 3 (MO0101 x2, MO0102) all first-fix
+jobq B: 15/15 oracles (55 tests + 5 runs) and round 7 suite 121/121 = 1.0; 25 min; loops 4 (MO0101, MO0314 var captured, a sim test assertion, MO0xxx x3 in one check) 
+jobq A: 15/15 oracles and round 7 suite 121/121 = 1.0; 26m19s; loops 5 (MO0102 x2, MO0409 capability captured, MO0403, one sim fault test), all first-fix
