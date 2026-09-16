@@ -1,0 +1,320 @@
+      15 +            if r.status == 200: return proc, p, time.time() - t0
+      16 +        except OSError: time.sleep(0.02)
+      17 +    return proc, p, None
+      18 +proc, p, took = start(FOLDER); print("first up", took)
+      19 +stop = threading.Event(); n = [0]
+      20 +def worker(i):
+      21 +    c = None
+      22 +    while not stop.is_set():
+      23 +        try:
+      24 +            if c is None: c = http.client.HTTPConnection("127.0.0.1", p, time
+         +out=10)
+      25 +            c.request("POST", "/jobs", body=json.dumps({"queue": f"u{i%4}", "
+         +payload": "p"*100, "max_tries": 3}), headers={"authorization": f"Bearer w{i}"
+         +})
+      26 +            r = c.getresponse(); r.read(); n[0] += 1
+      27 +            if r.getheader("connection", "").lower() == "close": c.close(); c
+         + = None
+      28 +        except Exception: c = None
+      29 +ths = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+      30 +[t.start() for t in ths]; time.sleep(SECS); stop.set(); [t.join() for t in th
+         +s]
+      31 +print("creates", n[0]); proc.send_signal(signal.SIGTERM); proc.wait()
+      32 +proc, p, took = start(FOLDER); print("second up", took, "exit", proc.poll())
+      33 +if proc.poll() is not None: print(proc.stdout.read()[:3000])
+      34 +else: proc.send_signal(signal.SIGTERM); proc.wait()
+      35 +print("folder", FOLDER)
+  ⎿  Created toolchain/bench/step33/restartmem.py (+58 -0)
+       1 +"""restartmem.py RUNTIME N [ROUNDS]: a jobq log of N jobs, serve --crash-ever
+         +y 1 --max-restarts 1000, ROUNDS creates each
+       2 +followed by /health; prints resident memory before and after, growth per rest
+         +art, restart time, stderr bytes."""
+       3 +import http.client, json, os, shutil, signal, socket, subprocess, sys, tempfi
+         +le, threading, time
+       4 +SP = os.path.dirname(os.path.abspath(__file__))
+       5 +MO = os.environ.get("MO", "toolchain/zig-out/bin/mo")
+       6 +JOBQ_DIR = os.environ.get("JOBQ_DIR", "jobq")
+       7 +runtime, N = sys.argv[1], int(sys.argv[2]); ROUNDS = int(sys.argv[3]) if len(
+         +sys.argv) > 3 else 30
+       8 +cmd = [MO, "run", JOBQ_DIR + "/main.mo", "--"] if runtime == "run" else [os.e
+         +nviron.get("JOBQ", JOBQ_DIR + "/zig-out/mo-build/jobq/jobq")]
+       9 +d = tempfile.mkdtemp(prefix="rmem-")
+      10 +with open(os.path.join(d, "jobq.log"), "w") as f:
+      11 +    f.write(f"SET ids {N + 1}\n")
+      12 +    for i in range(1, N + 1):
+      13 +        j = {"id": f"j_{i}", "queue": f"q{i % 8}", "state": "queued", "payloa
+         +d": f"payload number {i} " + "x" * 60, "tries": 0, "max_tries": 3, "backoff_m
+         +s": 0, "created_at": "2026-09-16T09:00:00.000Z", "updated_at": "2026-09-16T09
+         +:00:00.000Z"}
+      14 +        f.write(f"SET j_{i} {json.dumps(j)}\n")
+      15 +s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.c
+         +lose()
+      16 +err = open(os.path.join(d, "stderr"), "w")
+      17 +p = subprocess.Popen(cmd + ["serve", d, "--port", str(port), "--crash-every",
+         + "1", "--max-restarts", "1000"], stdout=subprocess.DEVNULL, stderr=err)
+      18 +t0 = time.time()
+      19 +def rss():
+      20 +    o = subprocess.run(["ps", "-o", "rss=", "-p", str(p.pid)], capture_output
+         +=True, text=True).stdout.strip()
+      21 +    return int(o) * 1024 if o else 0
+      22 +def guard():
+      23 +    while p.poll() is None:
+      24 +        if rss() > 4 << 30 or time.time() - t0 > 600: p.kill(); print("KILLED
+         + by the guard"); return
+      25 +        time.sleep(0.2)
+      26 +threading.Thread(target=guard, daemon=True).start()
+      27 +def req(method, path, body=None):
+      28 +    try:
+      29 +        c = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+      30 +        c.request(method, path, body=json.dumps(body) if body is not None els
+         +e None, headers={"authorization": "Bearer t"})
+      31 +        r = c.getresponse(); b = r.read(); c.close()
+      32 +        return r.status, (json.loads(b) if b else None)
+      33 +    except (OSError, http.client.HTTPException, ValueError): return 0, None
+      34 +while req("GET", "/health")[0] != 200:
+      35 +    if p.poll() is not None or time.time() - t0 > 120: print("did not start",
+         + p.poll(), open(os.path.join(d, "stderr")).read()[:400]); sys.exit(1)
+      36 +    time.sleep(0.02)
+      37 +up = time.time() - t0
+      38 +time.sleep(0.5); before = rss(); times = []; rows = []
+      39 +for i in range(ROUNDS):
+      40 +    st, h = req("GET", "/health"); n0 = h["restarts"] if h else -1
+     … 18 more lines
+
+⏺ Bash(D=/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step33; cd $D && python3
+      -m py_compile *.py && rm -rf __pycache__ && python3 - <<'EOF'
+      t=open('res…)
+  ⎿  done
+  ⎿  Created README.md (+42 -0)
+       1 +# Step 33's measurements
+       2 +
+       3 +The tools behind step 33's numbers (`mo-wiki/plans/interpreter-step-33.md`),
+         +kept so they can be run
+       4 +again. Every server ran under a timeout and a 4 GB memory watchdog (`guard.py
+         + SECONDS -- cmd`, or the
+       5 +watchdog inside each script). The program is the change 3 jobq of the Mo main
+         +tainer
+       6 +(`../mo-lang-erosion3-mo/examples/programs/jobq`, copied with its `mo.root` a
+         +nd `.mo.ids` so this
+       7 +repo's `mo` builds it).
+       8 +
+       9 +- `restartmem.py run|bin N ROUNDS`: a log of N jobs, `serve --crash-every 1 -
+         +-max-restarts 1000`, then
+      10 +  ROUNDS times a create (which fails the queue) and `/health` until `restarts
+         +` goes up: resident memory
+      11 +  before, after the first restart, and after the last, the growth per restart
+         +, the time of one restart
+      12 +  (from the create to the `/health` that counts it, the report written to a f
+         +ile included), and the
+      13 +  bytes of stderr. `VMMAP=1` prints `vmmap --summary` at the end (how part A
+         +found macOS's
+      14 +  `MALLOC_LARGE (empty)` holding the freed reports).
+      15 +- `reopen.py MO SECONDS`: eight clients create for SECONDS on a plain folder,
+         + the service is stopped
+      16 +  and started again: part B's abort without the RAM disk (about 8,000 jobs we
+         +re enough).
+      17 +- `kvrss.py MO KV_MAIN`: kv's resident KiB after 50,000 SETs, the bench's `kv
+         +-50k-set-rss-kib` row alone.
+      18 +
+      19 +## Numbers
+      20 +
+      21 +Taken on 16 Sep 2026 on an Apple M-series Mac. Before is `mo` built at `42323
+         +b3` (part B, so the
+      22 +interpreter can open the logs; part A not yet) and the change 3 binary built
+         +by it; after is `a7d42a4`.
+      23 +Best of five, interleaved.
+      24 +
+      25 +| | before | after |
+      26 +|---|---|---|
+      27 +| growth a restart, 20,000 jobs, 30 restarts, binary | 46.1 MiB | 0.27 MiB |
+      28 +| growth a restart, 20,000 jobs, 30 restarts, `mo run` | 27.95 MiB | 0.00 MiB
+         + |
+      29 +| resident after 30 restarts, 20,000 jobs, binary / `mo run` | 1,412 / 902 Mi
+         +B | 37 / 64 MiB |
+      30 +| growth a restart, 100,000 jobs, 5 restarts, binary / `mo run` (the first re
+         +start included) | 270.5 / 162.7 MiB | 10.3 / 4.6 MiB |
+      31 +| resident after the 1st and after 15 restarts, 100,000 jobs, binary | | 163
+         +/ 165 MiB |
+      32 +| resident after the 1st and after 15 restarts, 100,000 jobs, `mo run` | | 22
+         +4 / 240 MiB, flat from the 9th |
+      33 +| one restart, 20,000 jobs, binary / `mo run` | 0.261 / 0.905 s | 0.266 / 0.9
+         +05 s |
+      34 +| one restart, 100,000 jobs, binary / `mo run` | 1.408 / 4.94 s | 1.447 / 4.9
+         +1 s |
+      35 +| stderr a crash, 20,000 / 100,000 jobs | 26.8 / 140 MiB | the same |
+      36 +| P6, four `"bad queue"` creates through the surface, `/memory` resident afte
+         +r, binary / `mo run` | 111.5 / 108.7 MiB | 45.5 / 92.7 MiB |
+      37 +| `kv-50k-set-rss-kib`, `mo run`, three runs each | 340,560 KiB | 340,576 KiB
+         + |
+      38 +
+      39 +At 100,000 jobs what stays past the first restart is the queue's region settl
+         +ing (it alternates between
+      40 +two sizes from one restart to the next and stops growing by the ninth), not t
+         +he reports. The restart
+     … 2 more lines
+  ⎿  Updated restartmem.py (+2 -1)
+      1 -"""restartmem.py RUNTIME N [ROUNDS]: a jobq log of N jobs, serve --crash-every
+        - 1 --max-restarts 1000, ROUNDS creates each
+      1 +"""restartmem.py run|bin N [ROUNDS], with MO (the mo to run), JOBQ_DIR (the ch
+        +ange 3 jobq folder), and JOBQ (its
+      2 +built binary, default JOBQ_DIR/zig-out/mo-build/jobq/jobq): a jobq log of N jo
+        +bs, serve --crash-every 1 --max-restarts 1000, ROUNDS creates each
+      3  followed by /health; prints resident memory before and after, growth per resta
+         rt, restart time, stderr bytes."""
+      4  import http.client, json, os, shutil, signal, socket, subprocess, sys, tempfil
+         e, threading, time
+      5  SP = os.path.dirname(os.path.abspath(__file__))
+
+
+
+
+      toolchain/bench/step33/README.md <<'EOF'…)
+  ⎿  Created autostash: 0f7c775
+     Applied autostash.
+     df89edf Step 33 part C: the reruns and the numbers
+     … +5 lines
+  ⎿  Updated toolchain/bench/step33/README.md (+12 -0)
+      40  two sizes from one restart to the next and stops growing by the ninth), not t
+          he reports. The restart
+      41  time is the queue's replay of its log plus writing its report, which is the s
+          tate twice: the invariant's
+      42  value is the state after the batch and the report's snapshot the state before
+           it, two values.
+      43 +
+      44 +## Part C's runs
+      45 +
+      46 +On the change 3 program with `a7d42a4`'s `mo`, under `mo run` and as the bina
+         +ry it built:
+      47 +
+      48 +| suite | `mo run` | binary |
+      49 +|---|---|---|
+      50 +| `defects2.py --only unwritable` (the RAM disk filled and freed, then a stop
+         + and start) | 8 of 8 (the abort gone) | 8 of 8 |
+      51 +| `defects3.py --only restart` | 14 of 14 | 14 of 14 |
+      52 +| `defects3.py --only budget` | 9 of 9 | 9 of 9 |
+      53 +| P6, four kills at 2.0, 3.5, 5.0, 6.5 s, `/health` 200 again after each | 44
+         +4, 839, 986, 1,166 ms | 109, 185, 255, 328 ms |
+      54 +| P6, acknowledged writes lost after the stop and start | 0 of 14,994 | 0 of
+         +26,863 |
+
+⏺ Step 33 is done: parts A, B and C are committed and pushed to main (42323b3 B, a7d42a4 A,
+  df89edf C). zig build test passed 198/198 at A's code; C adds only scripts and a README. The
+  corpus tests run inside zig build test, no .mo file changed, and the new test program
+  passes mo fmt --check. The two doc lines are written: the "What the runtime keeps of a
+  report" paragraph in 03-semantics.md and the README line, each tagged "Session 8, step 33".
+
+  Part B (the abort). It had nothing to do with the RAM disk: mo run panicked opening any jobq
+  log of about 8,000 jobs. When memory is compacted, a string is copied once for every value
+  that points at it, so the copy can come out larger than what was there. The top of the
+  region then passed its recorded high-water mark, and high - top in vm.compact went below
+  zero, which Zig treats as a panic (signal 6). The C runtime had the same subtraction, but
+  unsigned wrap-around there only released some pages, which is why the binary passed. Both
+  now raise the high-water mark first. A unit test reproduces the panic without a disk; it
+  fails without the fix and passes with it.
+
+  Part A (the report freed). Under mo run and in a binary, a crash report is now written to
+  stderr and then freed; only its cut copy in step 32's store stays. Crash events in the ring
+  now hold the report's number in that store instead of its text. The interpreter renders
+  reports into a per-vm arena that is emptied after each crash. The C runtime needed its own
+  fix: freeing with free() did nothing visible, because macOS malloc kept the freed blocks
+  resident (360 MiB after ten restarts). Reports are now rendered into memory the runtime maps
+  and unmaps itself. A new corpus test restarts a multi-MiB process 20 times under both
+  runtimes and reads resident memory from inside the program; the old code fails it (71 and
+  113 MiB), the new passes.
+
+  Numbers (best of five, both runtimes)
+
+  ┌──────────────────────────────────────────────┬──────────────┬─────────────────────────┐
+  │                                              │    before    │          after          │
+  │ growth per restart, 20k jobs, 30 restarts,   │ 46.1 / 27.95 │ 0.27 / 0.00 MiB         │
+  │ binary / mo run                              │  MiB         │                         │
+  │ resident after 30 restarts, 20k, binary / mo │ 1,412 / 902  │ 37 / 64 MiB             │
+  │  run                                         │ MiB          │                         │
+  │ growth per restart, 100k, 5 restarts incl.   │ 270.5 /      │ 10.3 / 4.6 MiB          │
+  │ the first, binary / mo run                   │ 162.7 MiB    │                         │
+  │ 100k, 15 restarts: resident after the 1st /  │ –            │ 163 / 165 MiB           │
+  │ after the 15th, binary                       │              │                         │
+  │ 100k, 15 restarts: resident after the 1st /  │ –            │ 224 / 240 MiB, flat     │
+  │ after the 15th, mo run                       │              │ from the 9th            │
+  ├──────────────────────────────────────────────┼──────────────┼─────────────────────────┤
+  │ one restart, 20k, binary / mo run            │ 0.261 /      │ 0.266 / 0.905 s         │
+  │                                              │ 0.905 s      │                         │
+  ├──────────────────────────────────────────────┼──────────────┼─────────────────────────┤
+  │ one restart, 100k, binary / mo run           │ 1.41 / 4.94  │ 1.45 / 4.91 s           │
+  │                                              │ s            │                         │
+  ├──────────────────────────────────────────────┼──────────────┼─────────────────────────┤
+  │ P6, /memory after four kills, binary / mo    │ 111.5 /      │ 45.5 / 92.7 MiB         │
+  │ run                                          │ 108.7 MiB    │                         │
+  ├──────────────────────────────────────────────┼──────────────┼─────────────────────────┤
+  │ standing bench                               │ –            │ unchanged within noise  │
+  │                                              │              │ (see below)             │
+  └──────────────────────────────────────────────┴──────────────┴─────────────────────────┘
+
+  - Target met at 20,000 jobs, not at 100,000 for the first restart. At 100k the first restart
+    adds memory, but that is the queue's region settling, not reports: it stops growing by
+    the ninth restart.
+❯ You are the worker on step 33 of the Mo toolchain. Read /Users/robertguss/Projects/startup…
+  - Restart time is unmet at 100k. The binary takes 1.45 s against the spec's one second (the
+    maintainer reported 1.38 s). This step didn't change it; it is the log replay plus writing
+    the report.
+  - My 20k restart time (0.266 s) is higher than the maintainer's 0.15 s. My measurement
+    includes writing the 27 MiB report.
+  - Bench. The only large swing was kv-50k-set-rss-kib under mo run (115 → 341 MiB).
+    Re-measured alone three times, both trees give about 340 MiB, so the 115 was an outlier.
+    The other swings are rows under 10 ms, or the new side improved.
+
+  Part C
+
+  ┌──────────────────────────────────────────────────────┬─────────────┬─────────────┐
+  │                        suite                         │   mo run    │   binary    │
+  ├──────────────────────────────────────────────────────┼─────────────┼─────────────┤
+  │ defects2.py --only unwritable                        │ 8/8         │ 8/8         │
+  ├──────────────────────────────────────────────────────┼─────────────┼─────────────┤
+  │ defects3.py --only restart                           │ 14/14       │ 14/14       │
+  ├──────────────────────────────────────────────────────┼─────────────┼─────────────┤
+  │ defects3.py --only budget                            │ 9/9         │ 9/9         │
+  ├──────────────────────────────────────────────────────┼─────────────┼─────────────┤
+  │ P6 ("bad queue" Create ×4), acknowledged writes lost │ 0 of 14,994 │ 0 of 26,863 │
+  └──────────────────────────────────────────────────────┴─────────────┴─────────────┘
+
+  The tools, the full table and these runs are in toolchain/bench/step33/.
+
+  Decisions the brief did not cover
+
+  1. The state is still rendered twice per crash. It can't share one rendering: the
+     invariant's value is the state after the batch and the report's snapshot is the state
+     before it, two different values. So a crash still writes 27 MiB (20k jobs) or 140 MiB
+     (100k) to stderr.
+  2. Ring crash events read their text from the crash store. Once the store has let that
+     report go, or with --crashes 0, the event's clause, message and state are empty. The last
+     10 events a failed seed prints always fall within the store's 16, so nothing printed is
+     lost.
+  3. mo test is unchanged. It still keeps every report whole (the runner prints the first
+     one). Under mo run, sim.crashes is no longer filled and the C runtime no longer keeps a
+     first report, since nothing reads them there.
+  4. Small reports are still kept. Runtime failures, mailbox-full and held-send reports hold a
+     short formatted clause (and mailbox-full a rendered message); these are not freed. Only
+     process-crash values, message log and state go through the freed memory.
+  5. C uses its own mapped chunks instead of malloc. malloc_zone_pressure_relief was tried
+     first and returned nothing, so reports are rendered into per-thread chunks of mmap'd
+     memory that are unmapped after each crash.
+  6. Part B's fix is only the high-water-mark correction. The underlying behaviour, a string
+     copied once per reference during compaction (about +50% on jobq's log), is the same in
+     both runtimes and is left as a finding for a later step.
+  7. Part B's fixture is a unit test in vm.zig, not a corpus file. A plain folder of about
+     8,000 jobs also reproduces it (bench/step33/reopen.py).
+  8. The before tree for the numbers is 42323b3 (part B applied), not the brief's commit.
+     Without B's fix, mo run can't open the 20k log at all.
+  9. Part C's commit holds evidence, not code: the tools and the numbers under
+     toolchain/bench/step33/, following steps 23 and 24.
+  10. A bench baseline to check: kv-50k-set-rss-kib is about 340 MiB on this Mac against about
+      40 MiB in results.tsv (which looks like it was recorded on the VM). It is the same
+      before and after this step, but the gap is unexplained.
+
+✻ Cooked for 1h 26m 36s · done 12:47 PM
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+❯ /exit
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang (main*) | Context: 69% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

@@ -103,7 +103,10 @@ nothing, and the restart is the program's to write, not the language's. Step
 the surface's crash row survives load, and the reopening restart in the corpus.
 Then change 3 and generation three: a Mo maintainer wrote the queue that
 restarts itself, and killed under load it was back in 106 ms with nothing lost,
-where Elixir's takes 285 to 694 ms. The BEAM's last row is answered.
+where Elixir's takes 285 to 694 ms. The BEAM's last row is answered. Step 33
+then freed the crash report both runtimes had kept for the whole run, so a
+restarting store no longer grows by its own size at every restart, and fixed
+an interpreter abort on opening a large log.
 
 ## What Mo is, today
 
@@ -235,8 +238,9 @@ does quality hold?), the incident round, and the two diagnostic columns.
    points at the spec, not the language.
 2. **Generation four and on**: nothing has eroded in three generations; the
    ten-generation prediction (Go and Python at least three defects, Mo at most
-   one) needs the seams the next changes find. And the crash report the runtime
-   never frees, 44 MB a restart on a big queue, is step 33 before placement.
+   one) needs the seams the next changes find. Carried from step 33: a restart
+   on a 100,000-job log takes 1.45 s against the spec's one second, the replay's
+   cost, and compaction copies a string once per reference.
 3. **Placement**: a process placed with its asker or a reply answered on the
    asker's scheduler, so the Mac's fourteen cores stop costing.
 4. **Round 9's Opus-in-Pi baseline**, so the harness is the same in every row,

@@ -19,22 +19,21 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Step 33, the crash report freed: the rendered report a crash keeps for the whole run bounded in both runtimes (44 MB a restart on a 20,000-job queue today), and the interpreter's abort under the full disk probed; Fable writing the brief | Fable, then the Opus worker in `w44:p3` | 16 Sep, 11:25 | [[interpreter-step-33]] |
+| Change 4 of the erosion round: Fable writing and sealing the spec (`spec/programs/01e-…`), then four fresh maintainers and the fifth hidden suite | Fable | 16 Sep, 13:05 | [[erosion-round]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | Change 4 and generation four of the erosion round: Fable writes and seals the spec, four fresh maintainers, the fifth hidden suite | one generation per change; nothing has eroded in three, and the ten-generation prediction needs the seams the next changes find | [[erosion-round]] |
-| 2 | The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; measured at 1 and 14 cores on the Mac | nothing scales on the M3 Max today; the interpreter's parked fiber at 128 held asks | [[interpreter-step-30]], [[mac-scaling-run]] |
-| 3 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
-| 4 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
-| 5 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
-| 6 | Program 7: a Redis subset against Redis's own tests, on capabilities, recipes, and the runtime surface together | the program chapter 1 says answers the BEAM | [[program-menu]] |
+| 1 | The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; measured at 1 and 14 cores on the Mac | nothing scales on the M3 Max today; the interpreter's parked fiber at 128 held asks | [[interpreter-step-30]], [[mac-scaling-run]] |
+| 2 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
+| 3 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
+| 4 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
+| 5 | Program 7: a Redis subset against Redis's own tests, on capabilities, recipes, and the runtime surface together | the program chapter 1 says answers the BEAM | [[program-menu]] |
 
 ## Later
 
-`mo prove` (tier 3); the runtime surface as MCP tools and measurement 4, the incident round, which tests whether the surface shortens an agent's diagnosis; round 9's Opus-in-Pi baseline when Pi has an Anthropic key; the package registry once an outsider runs a real service; program 8, the toolchain in Mo.
+The compaction copy per reference (half again on jobq's log) and the one-second restart at 100,000 jobs; `mo prove` (tier 3); the runtime surface as MCP tools and measurement 4, the incident round, which tests whether the surface shortens an agent's diagnosis; round 9's Opus-in-Pi baseline when Pi has an Anthropic key; the package registry once an outsider runs a real service; program 8, the toolchain in Mo.
 
 ## Waiting on Robert
 
@@ -44,6 +43,7 @@ Rows marked "for Robert" in the [[decision-log]], newest first: P6 on Mo's chang
 
 | when | what | page |
 |---|---|---|
+| 16 Sep, 13:05 | Step 33: the crash report freed in both runtimes (46 MiB a restart to under 0.3), the interpreter's abort on a large log fixed | [[interpreter-step-33]] |
 | 16 Sep, 11:20 | Generation three: change 3 by four maintainers in 10 to 23 minutes; the fourth suite Mo 55, Go 55, Python 55, Elixir 53 of 55; the Mo queue killed under load back in 106 ms, the BEAM's row answered | [[erosion-round]] |
 | 16 Sep, 10:20 | Change 3 sealed: the store restarts itself, a budget, a chaos switch | [[01d-job-queue-change-3]] |
 | 16 Sep, 10:20 | Step 32: crash reports kept apart from the ring, both runtimes; the reopening restart in the corpus; the P6 probe lists the crash with the default ring | [[interpreter-step-32]] |
@@ -77,6 +77,7 @@ Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agre
 | **The bricks page** (`deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, to be written): the shelf (TLS, crypto, compression, a database driver, HTTP/2), an audit budget per brick, the ordering rule, the fallback (a brick wrapping a C library in the platform under audit, never application FFI), a decision row | queued, Fable writes it | — |
 | **The language after the rounds** (`spec/design-v0/10-language-after-the-rounds.md`, Fable wrote it 15 Sep on the Mac, after P6): one section per candidate change the runtime's evidence supports, each with the round row that motivates it, its cost, and code options for Robert: deadlines carried by the process or the message type; the failure model stated on the process declaration and checked at the caller; placement left out until a program needs it; the runtime surface as a capability; and the laws that cost loops without catching bugs removed. Zero new syntax stays the default; no change without a control-run row behind it. Robert's locked language items fold into it | the page written 15 Sep: six sections, two with a change (a deferred reply token, §1; the restart budget asked for on every `:always` child, §2), the counted laws as settings (§3), no change to `never` and `invariant` (§4), MO0317's rewrite (§5); §1 is the step that decides P6 for Mo, for Robert | one step per accepted section, §1 first |
 | **Step 31, a deferred reply** ([[interpreter-step-31]]): chapter 10 §1 built: `Reply(T)`, `reply_to`, `answer`, in the checker and all three runtimes, a corpus file, the spec lines | done 16 Sep, 01:15, accepted: `Reply(T)`, `reply_to`, `answer`, MO0411, all three runtimes, the corpus file; the standing rows unchanged, the deferred reply level with send-and-a-message-back at 8 askers and 0.46 at 128 under `mo run` (the parked fiber, for the placement step); Fable's crash probe 8 of 8 `Down` then 8 answered | — |
+| **Step 33, the crash report freed, and the interpreter's abort on a large log** ([[interpreter-step-33]]): the report freed after printing in both runtimes; the high-water mark fixed | done 16 Sep, 13:05, accepted: 46 MiB a restart to under 0.3 as a binary, 28 to 0 under `mo run`; the abort fixed with a unit test; unwritable, restart, budget green both runtimes; carried: the 1.45 s restart at 100,000 jobs, the compaction copy per reference | — |
 | **Step 32, crash reports apart from the ring, and the reopening store** ([[interpreter-step-32]]): `/crashes` kept where load cannot evict it, both runtimes; a corpus file showing a restarted process reopening its store | done 16 Sep, 10:20, accepted: the last 16 reports in their own store, `--crashes N` and `MO_CRASHES=N`, newest first; `crash-kept.mo` and `restart-reopens.mo`; the probe lists the crash with the default ring; rows within noise; carried: the full reports both runtimes keep for a whole run, unbounded | — |
 | The language items Robert agreed to (now sections of the page above): the counted shape laws as project settings; a named function passed by name where an anonymous function goes; the grammar forms that cost loops in every program (`return` in a `case` arm, a qualified call, a split lambda body) as diagnostics that say what to write; the `invariant` construct reconsidered after round 8 | queued, one step after round 8 | 1 |
 | A compile benchmark at 5,000 generated modules (the agent-loop claim at scale) | queued, small | 1 |

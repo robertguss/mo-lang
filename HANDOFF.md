@@ -62,7 +62,7 @@ know that the wiki does not say in one place.
 >    `delay_ms` null defect; both open-weights models' Mo changes miss the
 >    run-out lease with backoff; the closed model does not. Gemini's key in Pi
 >    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.** **P6 on Mo's change 2 (16 Sep, 09:00): the queue crashed through the runtime surface under load, `503` within 2 ms from then under both runtimes, nothing acknowledged lost, no restart (`:never`); a restarted process re-runs its state initializers, so the reopening store is change 3 (`erosion-round.md`, the P6 section).**
-> 7. **Change 3 and generation three (16 Sep, 10:20 to 11:20)**: the store that restarts itself, a budget, a chaos switch; four maintainers in 10 to 23 minutes; the fourth suite Mo 55 of 55 both runtimes, Go 55, Python 55, Elixir 53; the Mo queue killed under load back in 106 ms, nothing lost (Elixir 285 to 694 ms): the BEAM's row answered. Found: `max_restarts` takes only a literal (chapter 10 §2 asks for a value); the crash report leak, 44 MB a restart (step 33). Suites: `erosion-round-suite/defects3.py`, results under `results/e3-*`.
+> 7. **Change 3 and generation three (16 Sep, 10:20 to 11:20)**: the store that restarts itself, a budget, a chaos switch; four maintainers in 10 to 23 minutes; the fourth suite Mo 55 of 55 both runtimes, Go 55, Python 55, Elixir 53; the Mo queue killed under load back in 106 ms, nothing lost (Elixir 285 to 694 ms): the BEAM's row answered. Found: `max_restarts` takes only a literal (chapter 10 §2 asks for a value); the crash report leak, 44 MB a restart, fixed by step 33 the same day (13:05: freed in both runtimes, under 0.3 MiB a restart; the interpreter's abort on a large log's open fixed too; carried: 1.45 s for a restart at 100,000 jobs). Suites: `erosion-round-suite/defects3.py`, results under `results/e3-*`.
 > 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
 >    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
 >    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
@@ -81,16 +81,15 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **Step 33, the crash report freed**: the brief to the Opus worker in `w44:p3`: the rendered crash report (state, state before, message log; the invariant's clause renders it a third time) freed or bounded in both runtimes after it is printed and the 16-slot store has its cut copy, measured on a 20,000-job queue with `--crash-every 1` (change 3's Mo program in `../mo-lang-erosion3-mo`, its `TOOLCHAIN-BUGS.md` §5 has the reproduction); and the interpreter's exit on signal 6 under `mo run` late in the third suite's unwritable category on that program probed and fixed. Step 32 and generation three are done (see the state bullet 7).
-> 2. **Change 4 and generation four** of the erosion round: the lead writes and seals `01e-…`, branches `erosion4-*` from `erosion3-*` (copy `mise.toml` into the Elixir worktree: it is untracked), the fifth hidden suite after the branching, the suites of every earlier generation as regressions.
-> 3. **The placement step** (after 31): a process placed with its asker or a
+> 1. **Change 4 and generation four** of the erosion round: the lead writes and seals `01e-…`, branches `erosion4-*` from `erosion3-*` (copy `mise.toml` into the Elixir worktree: it is untracked), the fifth hidden suite after the branching, the suites of every earlier generation as regressions.
+> 2. **The placement step** (after 31): a process placed with its asker or a
 >    reply answered on the asker's scheduler; measured on `echo-1k` and the
 >    queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128
 >    held asks (step 31's 0.46 row).
-> 4. **Chapter 10's other sections as steps**: §2 the restart budget diagnostic,
+> 3. **Chapter 10's other sections as steps**: §2 the restart budget diagnostic,
 >    §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module and
 >    the `--write` order.
-> 5. Then the roadmap's order: the bricks page; the compile benchmark;
+> 4. Then the roadmap's order: the bricks page; the compile benchmark;
 >    program 7.
 >
 > **The site.** The wiki is published at https://robertguss.github.io/mo-lang/ by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`. `mo-wiki/state-of-the-project.md` is the lead's standing account, rewritten at every pause; the maps under `mo-wiki/maps/` are kept current as pages land. Build locally with `cd site && npx quartz build -d ../mo-wiki -o public`.
