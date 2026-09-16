@@ -218,6 +218,23 @@ Tokens read, by the sessions' context at the end: Python about 36k, Go 42k, Elix
 
 **What it says.** The seam did not open. A key the log carries and an archive beside the log, written across a self-restart, a kill between two writes, and a compaction, came out whole in all four languages, from four fresh maintainers who had never seen the programs; the fifth suite's two misses are a reading of `null` and a repeated flag. After four generations the erosion hypothesis reads Mo 1 carried defect, Go 1 carried, Python 1 carried, Elixir 3 carried, and nothing new in any of them since generation one; the ten-generation prediction (Go and Python at least three, Mo at most one) is alive only in its Mo half. What the language paid this time was the tax again, 11 loops to Go's 6, two of them the maintainer's own `--write` slips; what it gave was the one `never` that states the rule the change is about, which no baseline has a place for. The next change has to find a seam the specs so far have not: the archive read from the disk, or a change that cuts across the queue's own invariants.
 
+## Generation five, pre-registered (16 Sep 2026, 17:05 local, before any session)
+
+Change 5 ([[01f-job-queue-change-5]], sealed at `897be13`): a leased job handed to another worker by name, the lease and its `tries` unchanged, the old worker `409` from then on; a queue renamed with jobs in flight in every state, live or archived, keys included, leases untouched, as one durable record the replay applies in order, `compact` folds, and `verify` checks. Written to press on the queue's own rules rather than on durability: two `never`s from the first day ("a job is never held by two workers at once"; "one record per job under its id") stand in the way of the two features, and the maintainer has to change the rule without breaking what it protected. This is the first change whose seam is a law, and so the first that can show a `never` catching a change-induced bug, the row the whole project turns on.
+
+**Setup.** Worktrees `../mo-lang-erosion5-{mo,go,python,elixir}` on `erosion5-*`, branched from the generation-four commits (`3625392`, `af977ce`, `b75266c`, `2c247ad`); the Mo one carries step 34's `mo` if step 34 is accepted before the sessions start, step 33's otherwise (the result says which), and the spec chapters as of 16 Sep; the Elixir one has `mise.toml` copied in. Agents `mo-e5-{mo,go,python,elixir}` in a workspace of their own, closed when the sessions end, Claude Code on Opus at medium effort, the brief `erosion-round-suite/e5-brief.sh` (change 4's word for word with the new spec path, commit `jobq: change 5`, report to `REPORT-change-5.md`). The sessions start after step 34's measurement is off the machine, so neither loads the other; `caffeinate` held. The sixth hidden suite (`erosion-round-suite/defects5.py`) is written after the sessions start and kept out of every worktree: the handoff from the holder, a stranger, after expiry, to oneself, in a chain, across a stop and start and a chaos restart; the old worker's ack `409` and the new one's `200`; the rename with jobs in every state and with keys, the lease in flight acked after, `404` on an empty name, `409` on an existing target and on the same name, the listings and `/queues` and the key lookup after, the rename back, a fresh queue under the old name; the rename record in the replay's order (a job created into the old name after the rename), `compact` with two renames and the archive under an old name, `verify` on a bad rename record; and under load (leases, acks, keyed creates, handoffs) a rename, a kill during it, the folder reopened, every job in exactly one queue, every key once per queue, every acknowledged write present, no job with two workers. The five earlier suites are the regressions; P6 as in generation three.
+
+| prediction | threshold |
+|---|---|
+| P1, regressions | Mo 0 under every earlier suite (round 8's two, the third, fourth, and fifth); each baseline at most 1 cause beyond what it carries |
+| P2, defects under the sixth suite | Mo's count no more than each baseline's |
+| P3, the seam | at least one baseline breaks a rule the earlier suites held, under the handoff or the rename with a kill: a job with two workers, a job in two queues or none, a key twice in a queue, a lease changed by a rename; Mo does not |
+| P4, the record | at least one program replays the rename out of order, or `compact` or `verify` mishandles the rename record or the archive's old name; not Mo's |
+| P5, the tax | the Mo maintainer takes more loops than the Go maintainer |
+| P6, the law | the Mo maintainer changes or adds a `never` or `invariant` for the handoff or the rename, and at least one trips during the work on an edit that was wrong (the report or the loop log says so): the first change-induced bug a law catches |
+
+Recorded, not predicted: wall-clock (the machine held awake, so this generation has one), loops by cause, first-fix rate per diagnostic, lines changed, tokens read, the decision lists, and which `never` each Mo edit touched.
+
 ## Related
 
 - [[d43-five-measurements]]
@@ -226,5 +243,6 @@ Tokens read, by the sessions' context at the end: Python about 36k, Go 42k, Elix
 - [[01c-job-queue-change-2]]
 - [[01d-job-queue-change-3]]
 - [[01e-job-queue-change-4]]
+- [[01f-job-queue-change-5]]
 - [[interpreter-step-31]]
 - [[roadmap]]
