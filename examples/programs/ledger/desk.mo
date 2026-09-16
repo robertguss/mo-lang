@@ -57,23 +57,40 @@ struct Flushed
 end
 
 fn desk(opened: Opened) : Desk
-  # body gone; regenerate
+  Desk(book: opened.book, durable: opened.book, table: opened.table, torn: opened.torn,
+    records: [], staged: [], fresh: [], answers: Map.new(), next: 1)
 end
 
 # The desk a journal holds before it opens: an empty book over the place's log.
 fn unopened(place: Place) : Desk
-  # body gone; regenerate
+  empty = Table(buckets: Map.new(), size: 0, dir: place.dir, name: place.log, bytes: 0, lines: 0,
+    cut: false)
+  Desk(book: book(), durable: book(), table: empty, torn: false, records: [], staged: [],
+    fresh: [], answers: Map.new(), next: 1)
 end
 
 # The call decided against the book with the batch in it; its answer waits for the flush.
 fn staged(desk: Desk, call: Call, now: Time, started: Time) : Took
-  # body gone; regenerate
+  done = decide(desk.book, call, now, started)
+  ticket = desk.next
+  var next = desk
+  next.book = done.book
+  next.records = desk.records.concat(done.records)
+  next.staged = desk.staged.push(Staged(ticket: ticket, answer: done.answer,
+    wrote: done.records.size > 0))
+  next.fresh = desk.fresh.concat(done.holds)
+  next.next = desk.next + 1
+  Took(desk: next, ticket: ticket)
 end
 
 # A decision's book, records, and holds joined to the batch with no call waiting on it: the
 # releases an Expire or an opening stages.
 fn with_decision(desk: Desk, done: Decision) : Desk
-  # body gone; regenerate
+  var next = desk
+  next.book = done.book
+  next.records = desk.records.concat(done.records)
+  next.fresh = desk.fresh.concat(done.holds)
+  next
 end
 
 # The batch written: appended in one write, or, when the log may end in part of a batch, the log
@@ -82,53 +99,110 @@ end
 # part of the batch, the log is written whole from that book at once, so the 503 changed nothing.
 fn flushed(fs: Fs, desk: Desk, by: Deadline) : Flushed
   ensures result.sent.size == desk.staged.size
-  # body gone; regenerate
+  return took(desk, desk.table, false) if desk.records.size == 0 and !desk.torn
+  written = if desk.torn
+    rewritten_from(fs, desk.table, desk.book, by)
+  else
+    flushed_to(fs, desk.table, desk.records, by)
+  end
+  case written
+    Ok(table): took(desk, table, true)
+    Error(problem): refused(fs, desk, problem, by)
+  end
+end
+
+# The batch on disk: every staged answer ready, the log as it now is, and nothing torn.
+fn took(desk: Desk, table: Table, changed: Bool) : Flushed
+  Flushed(desk: answered_all(desk, desk.book, table, false), fresh: desk.fresh, ok: true,
+    sent: desk.staged.map(fn(s) Sent(changed: changed and s.wrote, durable: true) end))
 end
 
 fn refused(fs: Fs, desk: Desk, problem: StoreError, by: Deadline) : Flushed
-  # body gone; regenerate
+  torn = desk.torn or problem == Torn
+  var mended = desk.table
+  var still = torn
+  if torn and rewritten_from(fs, desk.table, desk.durable, by) is Ok(whole)
+    mended = whole
+    still = false
+  end
+  var back = desk
+  back.staged = desk.staged.map(fn(s)
+    unavailable(s, "the ledger could not write the change")
+  end)
+  Flushed(desk: answered_all(back, desk.durable, mended, still), fresh: [], ok: false,
+    sent: desk.staged.map(fn(_) Sent(changed: false, durable: false) end))
 end
 
 fn unavailable(waiting: Staged, reason: String) : Staged
-  # body gone; regenerate
+  var next = waiting
+  next.answer = Answer(status: 503, body: "{\"error\": #{Json.encode(reason)}}")
+  next.wrote = false
+  next
 end
 
 # The desk once the batch is settled: every staged answer ready to collect, the batch empty, and
 # the book as the log now holds it.
 fn answered_all(desk: Desk, held: Book, table: Table, torn: Bool) : Desk
-  # body gone; regenerate
+  var next = desk
+  next.book = held
+  next.durable = held
+  next.table = table
+  next.torn = torn
+  next.records = []
+  next.staged = []
+  next.fresh = []
+  next.answers = desk.staged.reduce(desk.answers, fn(so_far, s) so_far.set(s.ticket, s.answer) end)
+  next
 end
 
 # The answer for a ticket, taken off the desk; 503 for a ticket the desk does not hold.
 fn collected(desk: Desk, ticket: UInt64) : (Desk, Answer)
-  # body gone; regenerate
+  case desk.answers.get(ticket)
+    Some(answer):
+      var next = desk
+      next.answers = desk.answers.remove(ticket)
+      (next, answer)
+    None:
+      (desk, Answer(status: 503,
+        body: "{\"error\": \"the ledger has no answer for that request\"}"))
+  end
 end
 
 # A call a journal that is not open takes: answered 503 at once, with why.
 fn closed(desk: Desk, why: String) : Took
-  # body gone; regenerate
+  ticket = desk.next
+  var next = desk
+  next.next = desk.next + 1
+  next.answers = desk.answers.set(ticket,
+    Answer(status: 503, body: "{\"error\": #{Json.encode(why)}}"))
+  Took(desk: next, ticket: ticket)
 end
 
 fn waiting?(desk: Desk, ticket: UInt64) : Bool
-  # body gone; regenerate
+  desk.staged.any?(fn(s) s.ticket == ticket end)
 end
 
 # When an Expire for a hold is due: when it expires, or a second from now for one already past,
 # so a release the log did not take is tried again.
 fn delay_to(expires_at: Time, now: Time) : Duration
-  # body gone; regenerate
+  return 1_000.ms if !(now < expires_at)
+  expires_at - now
 end
 
 fn t0() : Time
-  # body gone; regenerate
+  Time.from_parts(2_026, 9, 14, 10, 0, 0)
 end
 
 fn call(command: Command, key: String) : Call
-  # body gone; regenerate
+  Call(command: command, key: key, request: key)
 end
 
 fn opening(fs: Fs, by: Deadline) : Desk
-  # body gone; regenerate
+  place = Place(dir: "d", log: "ledger.log")
+  case opened_book(fs, place, by)
+    Ok(open): desk(open)
+    Error(_): unopened(place)
+  end
 end
 
 test "calls staged together are answered from one append, in order, once it is on disk"
@@ -170,3 +244,6 @@ test "a batch the log does not take is answered 503 and the book goes back to wh
   assert opened_book(fs, Place(dir: "d", log: "ledger.log"), by) is Ok(replayed)
   assert replayed.book.accounts.size == 2 and !replayed.torn
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

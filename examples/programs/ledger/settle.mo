@@ -47,7 +47,7 @@ end
 
 # The UTC day a time falls on, as YYYY-MM-DD.
 fn day_of(at: Time) : String
-  # body gone; regenerate
+  at.to_iso8601.slice(0, 10)
 end
 
 # Settles the day with a settlement entry, answering with its statement: 422 for a day that has
@@ -56,60 +56,113 @@ fn settled(book: Book, day: String, key: String, now: Time) : Result(Settled, Re
   requires day?(day)
   requires key?(key)
   ensures result is Ok(s) implies s.statement.lines.all?(fn(l) added_up?(l) end)
-  # body gone; regenerate
+  if day > day_of(now)
+    return Error(Refusal(status: 422, rule: "future_day", error: "#{day} has not begun", by: 0))
+  end
+  if book.settled.get(day) is Some(by)
+    return Error(Refusal(status: 409, rule: "settled",
+      error: "#{day} was settled by #{entry_id(by)}", by: 0))
+  end
+  number = book.next_entry
+  made = statement(book, day, number)
+  var entry = blank(number, Settlement, key, now)
+  entry.day = Some(day)
+  Ok(Settled(book: applied(book, entry), entry: entry, statement: made))
 end
 
 fn added_up?(line: Line) : Bool
-  # body gone; regenerate
+  line.opening + line.items.reduce(0, fn(i, item) i + item.amount end) == line.closing
 end
 
 # The day's statement over every entry numbered below `before`: every account the book opened,
 # and every clearing account that moved, by id.
 fn statement(book: Book, day: String, before: UInt64) : Statement
-  # body gone; regenerate
+  every = book.entries.values.flat_map(fn(page) page.values end)
+  before_it = every.filter(fn(e) e.number < before end).sort_by(fn(e) e.number end)
+  opening = sums(before_it.filter(fn(e) day_of(e.at) < day end))
+  closing = sums(before_it.filter(fn(e) !(day < day_of(e.at)) end))
+  during = before_it.filter(fn(e) day_of(e.at) == day end)
+  named = book.accounts.entries.sort_by(fn(row) account_key(row.1.number) end).map(fn(row)
+    (row.0, row.1.name, row.1.currency)
+  end)
+  moved = closing.keys.filter(fn(id) clearing?(id) end).sort.map(fn(id)
+    (id, "", id.slice(9, id.size))
+  end)
+  Statement(day: day, settlement: before,
+    lines: named.concat(moved).map(fn(row) line_of(row, opening, closing, during) end))
 end
 
 fn account_key(number: UInt64) : String
-  # body gone; regenerate
+  "#{number}".pad_left(20, "0")
 end
 
 fn sums(entries: List(Entry)) : Map(String, Int64)
-  # body gone; regenerate
+  entries.reduce(Map.new(), fn(so_far, entry) summed_in(so_far, entry) end)
+end
+
+fn item_of(entry: Entry, id: String) : Item
+  moved = entry.postings.filter(fn(p) p.account == id end).reduce(0, fn(t, p) t + p.amount end)
+  Item(entry: entry_id(entry.number), kind: kind_name(entry.kind), amount: moved)
+end
+
+fn summed_in(sums: Map(String, Int64), entry: Entry) : Map(String, Int64)
+  entry.postings.reduce(sums, fn(m, p) m.update(p.account, 0, fn(n) n + p.amount end) end)
+end
+
+fn shown_item(i: Item) : String
+  "{\"id\": #{Json.encode(i.entry)}, \"kind\": #{Json.encode(i.kind)}, \"amount\": #{i.amount}}"
 end
 
 fn line_of(named: (String, String, String), opening: Map(String, Int64),
   closing: Map(String, Int64), during: List(Entry)) : Line
-  # body gone; regenerate
+  id = named.0
+  items = during.filter(fn(e) concerns?(e, id) end).map(fn(e) item_of(e, id) end)
+  Line(account: id, name: named.1, currency: named.2, opening: opening.get(id) or 0, items: items,
+    closing: closing.get(id) or 0)
 end
 
 fn concerns?(entry: Entry, id: String) : Bool
-  # body gone; regenerate
+  entry.account == id or entry.postings.any?(fn(p) p.account == id end)
 end
 
 fn shown_statement(s: Statement) : String
-  # body gone; regenerate
+  rows = String.join(s.lines.map(fn(l) shown_line(l) end), ", ")
+  head = "{\"day\": #{Json.encode(s.day)}, \"settlement\": #{Json.encode(entry_id(s.settlement))}"
+  "#{head}, \"accounts\": [#{rows}]}"
 end
 
 fn shown_line(l: Line) : String
-  # body gone; regenerate
+  items = String.join(l.items.map(fn(i) shown_item(i) end), ", ")
+  who = "{\"id\": #{Json.encode(l.account)}, \"name\": #{Json.encode(l.name)}"
+  holds = "\"currency\": #{Json.encode(l.currency)}, \"opening\": #{l.opening}"
+  "#{who}, #{holds}, \"entries\": [#{items}], \"closing\": #{l.closing}}"
 end
 
 fn at(day: UInt64, hour: UInt64) : Time
-  # body gone; regenerate
+  Time.from_parts(2_026, 9, day, hour, 0, 0)
 end
 
 fn after(moved: Result(Moved, Refusal), book: Book) : Book
-  # body gone; regenerate
+  case moved
+    Ok(m): m.book
+    Error(_): book
+  end
 end
 
 # Ada and grace; 1,000 from ada to grace on the 13th; on the 14th 300 back, and a hold on grace
 # of 500 captured for 200.
 fn busy() : Book
-  # body gone; regenerate
+  first = opened(book(), "ada", "USD", 10_000, at(13, 9))
+  second = opened(first.book, "grace", "USD", 0, at(13, 9))
+  start = second.book
+  one = after(transferred(start, "a_1", "a_2", 1_000, "t1", at(13, 10)), start)
+  two = after(transferred(one, "a_2", "a_1", 300, "t2", at(14, 10)), one)
+  kept = after(held(two, "a_2", 500, 7_200_000, "h1", at(14, 11)), two)
+  after(captured(kept, 3, 200, "c1", at(14, 12)), kept)
 end
 
 fn line_for(s: Statement, id: String) : Option(Line)
-  # body gone; regenerate
+  s.lines.find(fn(l) l.account == id end)
 end
 
 test "a day's statement opens with the balances before it, lists its entries per account, and closes with their sum"
@@ -146,3 +199,6 @@ end
 test rejects "a settlement of a day that does not exist"
   settled(busy(), "2026-02-30", "s", Time.fixture())
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

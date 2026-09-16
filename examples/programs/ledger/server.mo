@@ -22,7 +22,15 @@ process Acceptor(journal: Handle(Journal)) mailbox: 4_096
   message Idle
 
   fn update(state, message)
-    # body gone; regenerate
+    case message
+      Accepted(exchange):
+        worker = Worker.start(exchange, journal)
+        worker.send(Go(me: worker))
+        state.accepted += 1
+      Idle:
+        wrote = if journal.ask(Flush, within: 10_000.ms) == Ok(true): 1 else: 0
+        state.flushed += wrote
+    end
   end
 end
 
@@ -39,7 +47,19 @@ process Worker(exchange: Exchange, journal: Handle(Journal))
   message Reply
 
   fn update(state, message)
-    # body gone; regenerate
+    case message
+      Go(me):
+        case staged(journal, exchange.request)
+          Ok(ticket):
+            state.ticket = ticket
+            me.send(Reply)
+          Error(response):
+            state.answered = exchange.reply(response, within: 30_000.ms) is Ok(_)
+        end
+      Reply:
+        answer = collected(journal, state.ticket)
+        state.answered = exchange.reply(answer, within: 30_000.ms) is Ok(_)
+    end
   end
 end
 
@@ -54,41 +74,83 @@ end
 # for the collect runs on what remains of those 30. A timed-out collect is 503, and the change may
 # still land, as the failure model says.
 fn staged(journal: Handle(Journal), request: Request) : Result(UInt64, Response)
-  # body gone; regenerate
+  case route(request)
+    Answered(response): Error(response)
+    Asked(call):
+      case journal.ask(Stage(call: call), within: 10_000.ms)
+        Ok(ticket): Ok(ticket)
+        Error(_): Error(unavailable())
+      end
+  end
 end
 
 fn collected(journal: Handle(Journal), ticket: UInt64) : Response
-  # body gone; regenerate
+  case journal.ask(Collect(ticket: ticket), within: 30_000.ms)
+    Ok(answer): respond(answer)
+    Error(_): unavailable()
+  end
 end
 
 fn unavailable() : Response
-  # body gone; regenerate
+  Response(status: 503, headers: Map.new().set("content-type", "application/json"),
+    body: "{\"error\": \"the ledger did not answer in time\"}")
 end
 
 fn started(http: Http, fs: Fs, clock: Clock) : (Handle(Journal), UInt16)
-  # body gone; regenerate
+  place = Place(dir: "d", log: "ledger.log")
+  journal = Journal.start(fs, clock, place, clock.now)
+  for _ in 0..5
+    made = fs.mkdir("d", within: 1.minute) is Ok(_)
+    if made and journal.ask(Open(me: journal), within: 1.minute) is Ok(Ready(accounts: _,
+      entries: _, torn: _))
+      break
+    end
+  end
+  case http.listen(0, within: 1.ms)
+    Ok(listener):
+      listener.serve(into: Acceptor.start(journal), idle: 5_000.ms)
+      (journal, listener.port)
+    Error(_): (journal, 0)
+  end
 end
 
 fn by(method: String, path: String, key: String, body: String) : Request
-  # body gone; regenerate
+  bearing = Map.new().set("authorization", "Bearer ada")
+  headers = if key == "": bearing else: bearing.set("idempotency-key", key)
+  Request(method: method, path: path, headers: headers, body: body)
 end
 
 fn status(http: Http, port: UInt16, request: Request) : UInt16
-  # body gone; regenerate
+  case http.send(request, host: "127.0.0.1", port: port, within: 60_000.ms)
+    Ok(response): response.status
+    Error(_): 0
+  end
 end
 
 fn in?(got: UInt16, statuses: List(UInt16)) : Bool
-  # body gone; regenerate
+  got == 0 or got == 503 or statuses.contains?(got)
 end
 
 # An account's balance as the journal holds it, asked directly and not over the wire; None when the
 # ask failed.
 fn balance_of(journal: Handle(Journal), id: String) : Option(String)
-  # body gone; regenerate
+  looking = Call(command: ShowAccount(id: id), key: "", request: "")
+  case journal.ask(Serve(call: looking), within: 60_000.ms)
+    Ok(answer): balance_in(answer.body)
+    Error(_): None
+  end
+end
+
+# The balance an account's JSON carries, as its digits; None for a body that carries none.
+fn balance_in(body: String) : Option(String)
+  needle = "\"balance\": "
+  at = try body.index_of(needle)
+  rest = body.slice(at + needle.size, body.size)
+  Some(rest.slice(0, rest.index_of(",") or rest.size))
 end
 
 fn transfer_body(amount: UInt64) : String
-  # body gone; regenerate
+  "{\"from\": \"a_1\", \"to\": \"a_2\", \"amount\": #{amount}}"
 end
 
 test "each status comes back over the wire, unless a call fails"
@@ -152,3 +214,6 @@ test "under faults every transfer is right or a 503 that moved nothing, and each
     assert landed == 8 and balance_of(journal, "a_2") == Some("800")
   end
 end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+          proven: not run

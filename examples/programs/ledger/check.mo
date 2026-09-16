@@ -18,69 +18,141 @@ end
 # A token, a method, a path, any JSON after them joined by spaces as they were split, and a key
 # after --key at the end.
 fn trip_of(words: List(String), host: String, port: UInt16) : Option(Trip)
-  # body gone; regenerate
+  return None if words.size < 3
+  var rest = words.drop(3)
+  var key = ""
+  if rest.size >= 2 and rest.get(rest.size - 2) == Some("--key")
+    key = rest.last or ""
+    rest = rest.take(rest.size - 2)
+  end
+  Some(Trip(host: host, port: port, token: words.first or "", method: words.get(1) or "",
+    path: words.get(2) or "", json: String.join(rest, " "), key: key))
 end
 
 # The response printed, or None when no ledger answered.
 fn client(http: Http, trip: Trip) : Option(String)
-  # body gone; regenerate
+  case http.send(request_of(trip), host: trip.host, port: trip.port, within: 30_000.ms)
+    Ok(response): Some(shown(response))
+    Error(_): None
+  end
 end
 
 fn said_unreached(host: String, port: UInt16) : String
-  # body gone; regenerate
+  "no ledger answered at #{host}:#{port}"
 end
 
 fn request_of(trip: Trip) : Request
-  # body gone; regenerate
+  bearing = if trip.token == "-"
+    Map.new()
+  else
+    Map.new().set("authorization", "Bearer #{trip.token}")
+  end
+  headers = if trip.key == "": bearing else: bearing.set("idempotency-key", trip.key)
+  Request(method: trip.method, path: bare(trip.path), query: query_of(trip.path), headers: headers,
+    body: trip.json)
 end
 
 # The query a path's ? starts, as key=value pairs split at &.
 fn query_of(path: String) : Map(String, String)
-  # body gone; regenerate
+  case path.index_of("?")
+    Some(at):
+      pairs = path.slice(at + 1, path.size).split("&")
+      pairs.reduce(Map.new(), fn(query, pair) with_pair(query, pair) end)
+    None: Map.new()
+  end
 end
 
 fn with_pair(query: Map(String, String), pair: String) : Map(String, String)
-  # body gone; regenerate
+  return query if pair == ""
+  case pair.index_of("=")
+    Some(at): query.set(pair.slice(0, at), pair.slice(at + 1, pair.size))
+    None: query.set(pair, "")
+  end
 end
 
 fn bare(path: String) : String
-  # body gone; regenerate
+  case path.index_of("?")
+    Some(at): path.slice(0, at)
+    None: path
+  end
 end
 
 fn shown(response: Response) : String
-  # body gone; regenerate
+  return "#{response.status}\n" if response.body == ""
+  "#{response.status} #{response.body}\n"
 end
 
 # Each line of the script sent as a request of its own, or a wait, and what came back steadied.
 fn checked(http: Http, clock: Clock, port: UInt16, script: List(String)) : String
-  # body gone; regenerate
+  today = clock.now.to_iso8601.slice(0, 10)
+  var transcript = ""
+  for line in script
+    transcript = "#{transcript}> #{line}\n#{sent_line(http, port, line, today)}"
+  end
+  transcript
 end
 
 # A wait: the check sends a request to a listener of its own that nothing ever accepts, which
 # times out after N milliseconds.
 fn napped(http: Http, line: String) : String
-  # body gone; regenerate
+  ms = (line.split(" ").get(1) or "").to_u64 or 0
+  waited = "waited #{ms} ms\n"
+  case http.listen(0, within: 5_000.ms)
+    Ok(listener):
+      case http.send(Request(method: "GET", path: "/"), host: "127.0.0.1", port: listener.port,
+        within: ms.ms)
+        Ok(_): waited
+        Error(_): waited
+      end
+    Error(_): waited
+  end
 end
 
 fn sent_line(http: Http, port: UInt16, line: String, today: String) : String
-  # body gone; regenerate
+  return napped(http, line) if line.starts_with?("wait ")
+  case trip_of(line.replace("<today>", today).split(" "), "127.0.0.1", port)
+    Some(trip):
+      case client(http, trip)
+        Some(text): steady(text, today)
+        None: "#{said_unreached("127.0.0.1", port)}\n"
+      end
+    None: "a request is a token, a method, a path, and any JSON after them\n"
+  end
 end
 
 # A transcript with what depends on the clock replaced: every time, the uptime, and the day.
 fn steady(text: String, today: String) : String
-  # body gone; regenerate
+  times = masked(masked(text, "at", true), "expires_at", true)
+  made = masked(masked(times, "created_at", true), "uptime_ms", false)
+  made.replace(today, "<today>")
 end
 
 fn masked(text: String, key: String, quoted: Bool) : String
-  # body gone; regenerate
+  needle = "\"#{key}\": "
+  case text.index_of(needle)
+    Some(at):
+      rest = after_value(text.slice(at + needle.size, text.size), quoted)
+      shown_as = if quoted: "\"<#{key}>\"" else: "<#{key}>"
+      "#{text.slice(0, at)}#{needle}#{shown_as}#{masked(rest, key, quoted)}"
+    None: text
+  end
 end
 
 fn after_value(piece: String, quoted: Bool) : String
-  # body gone; regenerate
+  if quoted
+    tail = piece.slice(1, piece.size)
+    at = tail.index_of("\"") or 0
+    return tail.slice(at + 1, tail.size)
+  end
+  ends = found(piece.index_of(",")).concat(found(piece.index_of("}")))
+  piece.slice(ends.min or piece.size, piece.size)
 end
 
 fn found(at: Option(UInt64)) : List(UInt64)
-  # body gone; regenerate
+  case at
+    Some(n): [n]
+    None: []
+  end
 end
 
 test "a request carries its token, its key, and its query, and a response prints as its status and body"
@@ -116,3 +188,6 @@ test "the clock's numbers and the day are steadied, and nothing else"
     "2026-09-14") == "{\"error\": \"<today> was settled by e_9\"}"
   assert steady("{\"name\": \"flat\"}", "2026-09-14") == "{\"name\": \"flat\"}"
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

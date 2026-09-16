@@ -13,129 +13,251 @@ enum Routed
 end
 
 fn route(request: Request) : Routed
-  # body gone; regenerate
+  parts = request.path.split("/").drop(1)
+  first = parts.first or ""
+  named = (parts.get(1) or "") != ""
+  return health(request) if request.path == "/health"
+  if parts.size == 1
+    return changing(request, opening(request.body)) if first == "accounts"
+    return changing(request, transfer(request.body)) if first == "transfers"
+    return changing(request, hold(request.body)) if first == "holds"
+    return changing(request, settling(request.body)) if first == "settle"
+    return reading(request, true, listing(request.query)) if first == "entries"
+  end
+  if parts.size == 2 and first == "accounts"
+    return reading(request, named, Ok(ShowAccount(id: parts.get(1) or "")))
+  end
+  if parts.size == 3 and first == "holds" and named
+    verb = parts.get(2) or ""
+    held = parts.get(1) or ""
+    return changing(request, capture(held, request.body)) if verb == "capture"
+    return changing(request, release(held, request.body)) if verb == "release"
+  end
+  if parts.size == 3 and first == "captures" and named and parts.get(2) == Some("refund")
+    return changing(request, refund(parts.get(1) or "", request.body))
+  end
+  nowhere(request)
 end
 
 fn nowhere(request: Request) : Routed
-  # body gone; regenerate
+  Answered(response: failed(404, "no route #{request.path}"))
 end
 
 fn health(request: Request) : Routed
-  # body gone; regenerate
+  return Answered(response: not_allowed("GET")) if request.method != "GET"
+  Asked(call: Call(command: CheckHealth, key: "", request: ""))
 end
 
 # A route that reads: GET, with a token.
 fn reading(request: Request, found: Bool, command: Result(Command, String)) : Routed
-  # body gone; regenerate
+  return nowhere(request) if !found
+  return Answered(response: not_allowed("GET")) if request.method != "GET"
+  return Answered(response: unauthorized()) if bearer(request) is None
+  case command
+    Ok(wanted): Asked(call: Call(command: wanted, key: "", request: ""))
+    Error(why): Answered(response: failed(400, why))
+  end
 end
 
 # A route that changes something: POST, with a token and an idempotency-key.
 fn changing(request: Request, command: Result(Command, String)) : Routed
-  # body gone; regenerate
+  return Answered(response: not_allowed("POST")) if request.method != "POST"
+  return Answered(response: unauthorized()) if bearer(request) is None
+  key = request.headers.get("idempotency-key") or ""
+  if key == ""
+    return Answered(response: failed(400, "a change needs an idempotency-key header"))
+  end
+  if !key?(key)
+    return Answered(response: failed(400,
+      "idempotency-key must be 1 to 128 bytes of plain text with no run of 16 digits"))
+  end
+  case command
+    Ok(wanted): Asked(call: Call(command: wanted, key: key, request: fingerprint(request)))
+    Error(why): Answered(response: failed(400, why))
+  end
 end
 
 # What a key is compared by: the method, the path, and the body.
 fn fingerprint(request: Request) : String
-  # body gone; regenerate
+  "#{request.method} #{request.path}\n#{request.body}"
 end
 
 # The token an authorization header carries after Bearer and a space, the scheme in any case.
 fn bearer(request: Request) : Option(String)
-  # body gone; regenerate
+  header = try request.headers.get("authorization")
+  return None if header.slice(0, 7).to_lower != "bearer "
+  token = header.slice(7, header.size).trim
+  return None if token == ""
+  Some(token)
 end
 
 fn opening(body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  name = try text_field(fields, "name")
+  if !name?(name)
+    return Error("name must be 1 to 64 letters, digits, - and _, with no run of 16 digits")
+  end
+  currency = try text_field(fields, "currency")
+  return Error("currency must be three uppercase letters") if !currency?(currency)
+  var over = 0
+  if fields.has?("overdraft")
+    over = try whole_field(fields, "overdraft")
+  end
+  if !overdraft?(over)
+    return Error("overdraft must be a whole number from 0 to 1000000000000")
+  end
+  Ok(OpenAccount(name: name, currency: currency, overdraft: over))
 end
 
 fn transfer(body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  from = try text_field(fields, "from")
+  to = try text_field(fields, "to")
+  amount = try amount_field(fields)
+  Ok(MoveMoney(from: from, to: to, amount: amount))
 end
 
 fn hold(body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  account = try text_field(fields, "account")
+  amount = try amount_field(fields)
+  ttl = try whole_field(fields, "ttl_ms")
+  return Error("ttl_ms must be a whole number from 100 to 86400000") if !ttl_ms?(ttl)
+  Ok(PlaceHold(account: account, amount: amount, ttl_ms: ttl))
 end
 
 fn capture(hold_id: String, body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  amount = try amount_field(fields)
+  Ok(CaptureHold(hold: hold_id, amount: amount))
 end
 
 # A release's body may be empty; when it is an object, its reason is optional.
 fn release(hold_id: String, body: String) : Result(Command, String)
-  # body gone; regenerate
+  return Ok(ReleaseHold(hold: hold_id, reason: "released")) if body.trim == ""
+  fields = try object_of(body)
+  return Ok(ReleaseHold(hold: hold_id, reason: "released")) if !fields.has?("reason")
+  reason = try text_field(fields, "reason")
+  if !reason?(reason)
+    return Error("reason must be 1 to 256 bytes of plain text with no run of 16 digits")
+  end
+  Ok(ReleaseHold(hold: hold_id, reason: reason))
 end
 
 fn refund(capture_id: String, body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  amount = try amount_field(fields)
+  Ok(RefundCapture(capture: capture_id, amount: amount))
 end
 
 fn settling(body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  day = try text_field(fields, "day")
+  return Error("day must be a date written YYYY-MM-DD") if !day?(day)
+  Ok(SettleDay(day: day))
 end
 
 # A listing's query: account and kind, each optional.
 fn listing(query: Map(String, String)) : Result(Command, String)
-  # body gone; regenerate
+  given = query.get("account") or ""
+  wanted = if query.has?("account"): Some(given) else: None
+  return Ok(ListEntries(account: wanted, kind: None)) if !query.has?("kind")
+  kind = try kind_of(query.get("kind") or "")
+  Ok(ListEntries(account: wanted, kind: Some(kind)))
 end
 
 fn kind_of(name: String) : Result(Kind, String)
-  # body gone; regenerate
+  case kind_named(name)
+    Some(kind): Ok(kind)
+    None: Error("kind must be transfer, hold, capture, release, refund, or settlement")
+  end
 end
 
 fn object_of(body: String) : Result(Map(String, Json), String)
-  # body gone; regenerate
+  case Json.decode(body)
+    Ok(Object(fields)): Ok(fields)
+    Ok(_): Error("the body must be a JSON object")
+    Error(_): Error("the body is not JSON")
+  end
 end
 
 fn text_field(fields: Map(String, Json), name: String) : Result(String, String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(String(text)): Ok(text)
+    Some(_): Error("#{name} must be a string")
+    None: Error("#{name} is missing")
+  end
 end
 
 fn whole_field(fields: Map(String, Json), name: String) : Result(Int64, String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(value): whole_of(value, name)
+    None: Error("#{name} is missing")
+  end
 end
 
 fn whole_of(value: Json, name: String) : Result(Int64, String)
-  # body gone; regenerate
+  case value.to_i64
+    Some(whole): Ok(whole)
+    None: Error("#{name} must be a whole number")
+  end
 end
 
 fn amount_field(fields: Map(String, Json)) : Result(Money, String)
-  # body gone; regenerate
+  amount = try whole_field(fields, "amount")
+  if !amount?(amount)
+    return Error("amount must be a whole number from 1 to 1000000000000")
+  end
+  Ok(amount)
 end
 
 fn respond(answer: Answer) : Response
-  # body gone; regenerate
+  json(answer.status, answer.body)
 end
 
 fn json(status: UInt16, body: String) : Response
-  # body gone; regenerate
+  Response(status: status, headers: Map.new().set("content-type", "application/json"),
+    body: body)
 end
 
 fn failed(status: UInt16, error: String) : Response
-  # body gone; regenerate
+  json(status, "{\"error\": #{Json.encode(error)}}")
 end
 
 fn unauthorized() : Response
-  # body gone; regenerate
+  failed(401, "a request needs authorization: Bearer <token>")
 end
 
 fn not_allowed(methods: String) : Response
-  # body gone; regenerate
+  var response = failed(405, "this route takes #{methods}")
+  response.headers = response.headers.set("allow", methods)
+  response
 end
 
 fn by(method: String, path: String, body: String) : Request
-  # body gone; regenerate
+  bearing = Map.new().set("authorization", "Bearer ada").set("idempotency-key", "k1")
+  Request(method: method, path: path, headers: bearing, body: body)
 end
 
 fn status_of(routed: Routed) : UInt16
-  # body gone; regenerate
+  case routed
+    Answered(response): response.status
+    Asked(_): 0
+  end
 end
 
 fn command_of(routed: Routed) : Option(Command)
-  # body gone; regenerate
+  case routed
+    Asked(call): Some(call.command)
+    Answered(_): None
+  end
 end
 
 fn error_of(routed: Routed) : String
-  # body gone; regenerate
+  case routed
+    Answered(response): response.body
+    Asked(_): ""
+  end
 end
 
 test "each route takes its method, and any other is 405 with the ones it takes"
@@ -226,3 +348,6 @@ test "an answer is its status and its JSON"
     headers: Map.new().set("content-type", "application/json"), body: "{}")
   assert fingerprint(by("POST", "/settle", "x")) == "POST /settle\nx"
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
