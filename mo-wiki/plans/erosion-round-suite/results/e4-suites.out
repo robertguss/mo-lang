@@ -1,0 +1,108 @@
+
+## go own checks 14:30:04
+ok  	controlrun/jobq	28.572s
+check.sh: ok
+built
+
+## go regressions 14:30:37
+121 passed, 0 defects
+
+## go defects1 14:31:14
+
+## go defects2 14:31:14
+FAIL verify: a folder the service wrote verifies with exit 0 and the counts line: (0, '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_6; archived 0', '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_')
+65 passed, 1 defects
+
+## go defects3 14:31:20
+55 passed, 0 defects
+
+## go defects4 14:32:26
+FAIL key: null is 400: (201, {'id': 'j_4', 'queue': 'emails', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-16T18:32:26.726Z', 'updated_at': '2026-09-16T18:32:26.726Z'})
+FAIL keykept: verify exits 0 on a folder with keys: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/keykept4-f2srhfip/dir/jobq.log is in use by another jobq: resourc')
+FAIL archivekill: the counts are the same after a second reopen: ({'queued': 0, 'scheduled': 0, 'leased': 0, 'done': 28, 'dead': 12, 'archived': 192, 'uptime_ms': 55, 'restarts': 0}, {'queued': 0, 'scheduled': 0, 'leased': 0, 'done': 20, 'dead': 12, 'archived': 200, 'uptime_ms': 54, 'restarts': 0})
+74 passed, 3 defects
+
+## python own checks 14:32:34
+Success: no issues found in 25 source files
+All checks passed!
+
+OK
+check.sh: ok
+
+## python paced summary 14:38:46
+41 passed, 0 defects
+18 passed, 0 defects
+4 passed, 0 defects
+5 passed, 0 defects
+15 passed, 0 defects
+7 passed, 0 defects
+19 passed, 0 defects
+4 passed, 0 defects
+12 passed, 0 defects
+7 passed, 0 defects
+6 passed, 0 defects
+62 passed, 0 defects
+17 passed, 0 defects
+12 passed, 0 defects
+FAIL verify: a folder the service wrote verifies with exit 0 and the counts line: (0, '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_6; archived 0', '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_')
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_21; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_21; archived 0')
+29 passed, 3 defects
+8 passed, 0 defects
+11 passed, 0 defects
+11 passed, 0 defects
+10 passed, 0 defects
+14 passed, 0 defects
+9 passed, 0 defects
+9 passed, 0 defects
+23 passed, 0 defects
+8 passed, 0 defects
+23 passed, 0 defects
+7 passed, 0 defects
+7 passed, 0 defects
+otp: 27
+
+## elixir own checks 14:38:46
+Generated jobq app
+485 mods/funs, found no issues.
+done (passed successfully)
+4 properties, 161 tests, 0 failures
+check.sh: ok
+Generated escript jobq with MIX_ENV=dev
+
+## elixir regressions (paced) 14:40:40
+3 passed, 0 defects
+7 passed, 0 defects
+9 passed, 0 defects
+4 passed, 0 defects
+5 passed, 0 defects
+3 passed, 0 defects
+
+## elixir defects1 14:40:40
+ok   runout: a run-out lease with backoff is handed out by a lease request once the backoff from its look has passed
+FAIL oldlog: skipped, no --old-serve given: run with --old-serve to read this category
+128 passed, 1 defects
+
+## elixir defects2 14:40:48
+FAIL contained: a body of 1 MB is answered: ConnectionResetError
+FAIL verify: a folder the service wrote verifies with exit 0 and the counts line: (0, '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_6; archived 0', '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_')
+FAIL unwritable: ran to the end: RuntimeError: server exited 1 before answering: /Users/robertguss/Projects/startups/mo-lang-erosion4-elixir/experiments/control-run/elixir/jobq/jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/ramdisk-q7ym6aiu/dir --port 64310
+62 passed, 3 defects
+
+## elixir defects3 14:40:56
+FAIL budget: four failures 1.6 s apart under a window of 1 s and the service is still serving: (70, 4)
+FAIL budget: and /health answers
+53 passed, 2 defects
+
+## elixir defects4 14:42:38
+FAIL flags: `--retain-ms 1000 --retain-ms 1000` is a usage error, exit 2: still serving
+76 passed, 1 defects
+
+## elixir p6 14:43:32
+  queue  at  1.70s, /health 200 again at  2.03s ( 324.4 ms); pid #PID<12437.108.0> -> #PID<12437.148.0>; exit -> 'true'
+  queue  at  4.70s, /health 200 again at  5.29s ( 594.4 ms); pid #PID<12437.148.0> -> #PID<12437.163.0>; exit -> 'true'
+  store  at  7.71s, /health 200 again at  8.59s ( 875.6 ms); pid #PID<12437.162.0> -> #PID<12437.176.0>; exit -> 'true'
+total requests 108535, not 200/201: 15486
+created jobs gone: 0 []
+
+## DONE 14:43:50

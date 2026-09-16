@@ -106,7 +106,10 @@ restarts itself, and killed under load it was back in 106 ms with nothing lost,
 where Elixir's takes 285 to 694 ms. The BEAM's last row is answered. Step 33
 then freed the crash report both runtimes had kept for the whole run, so a
 restarting store no longer grows by its own size at every restart, and fixed
-an interpreter abort on opening a large log.
+an interpreter abort on opening a large log. Generation four followed in the
+afternoon: idempotent creates and an archive beside the log, state a restart
+must rebuild, and all four languages carried it whole; nothing has eroded in
+four generations.
 
 ## What Mo is, today
 
@@ -236,9 +239,10 @@ does quality hold?), the incident round, and the two diagnostic columns.
    changes 3 to 10, are where a law either earns a row or is removed. The check
    that would have caught round 9's shared miss is a program `never`, which
    points at the spec, not the language.
-2. **Generation four and on**: nothing has eroded in three generations; the
+2. **Generation five and on**: nothing has eroded in four generations; the
    ten-generation prediction (Go and Python at least three defects, Mo at most
-   one) needs the seams the next changes find. Carried from step 33: a restart
+   one) is alive only in its Mo half, and the next change must find a seam the
+   specs so far have not. Carried from step 33: a restart
    on a 100,000-job log takes 1.45 s against the spec's one second, the replay's
    cost, and compaction copies a string once per reference.
 3. **Placement**: a process placed with its asker or a reply answered on the

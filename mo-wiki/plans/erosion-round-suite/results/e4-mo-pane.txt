@@ -1,0 +1,29 @@
+     an archived job a second time returns 404.
+  7. archived in /health and verify counts archived jobs, not tombstones.
+  8. In JSON, key comes right after queue and only when set; archived_at comes last. There are
+     specific 400 messages for a bad key and for key without queue.
+  9. A job is archived at any look where now - updated_at >= retain_ms. Board-level tests may
+     use less than 1,000 ms; only the command-line flag enforces 1,000 to 2,678,400,000.
+  10. verify has new rules:
+      - archive records are named archive j_N in its errors;
+      - a live record with archived_at is refused;
+      - two jobs with one key in the same queue are refused at the second;
+      - the next-id counter must be above archived jobs too.
+  11. compact rewrites the live log before the archive. Its output line is unchanged when there
+      is no archive (so the existing expected output still holds), and it never creates an
+      empty archive file.
+  12. If either file's last line was cut short, serve rewrites both files whole before serving.
+  13. jobq check writes to jobq.check.archive and hides archived_at in the transcript. Because
+      it uses the real clock, data/demo's j_1 (done 2026-09-14) is archived at the first look,
+      which changes the transcript's first /health and listing.
+  14. A repeated create with a key is answered from the board as it stands after that request's
+      own sweep. It writes nothing and uses no id.
+  15. --crash-every now counts archive changes as writes too.
+
+✻ Cogitated for 22m 22s · done 2:35 PM
+
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion4-mo (erosion4-mo) | Context: 69% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

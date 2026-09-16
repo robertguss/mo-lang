@@ -431,3 +431,6 @@
 
 ## [2026-09-16] session | Midday: step 33 accepted
 - The crash report freed after it is printed in both runtimes (46 MiB a restart to under 0.3 on a 20,000-job queue), the interpreter's abort on a large log's open fixed, the unwritable and restart categories green, P6 back in 102 and 203 ms ([[interpreter-step-33]]). One Opus session, 86 minutes, three commits. Three rows. Change 4 next.
+
+## [2026-09-16] session | Afternoon: change 4 sealed, generation four run and read
+- Change 4, idempotent creates and the archive, sealed at 13:03; four maintainers from 13:05, interrupted by the Mac sleeping (held awake from 14:13); the fifth suite Mo 77 of 77 both runtimes, Python 77, Go 76, Elixir 76; nothing new eroded in four generations ([[erosion-round]]). Two rows, one `semantic` for Robert. Robert's rules recorded in the skill: workspaces closed when done, every run in a fresh pane.

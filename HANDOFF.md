@@ -63,6 +63,7 @@ know that the wiki does not say in one place.
 >    run-out lease with backoff; the closed model does not. Gemini's key in Pi
 >    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.** **P6 on Mo's change 2 (16 Sep, 09:00): the queue crashed through the runtime surface under load, `503` within 2 ms from then under both runtimes, nothing acknowledged lost, no restart (`:never`); a restarted process re-runs its state initializers, so the reopening store is change 3 (`erosion-round.md`, the P6 section).**
 > 7. **Change 3 and generation three (16 Sep, 10:20 to 11:20)**: the store that restarts itself, a budget, a chaos switch; four maintainers in 10 to 23 minutes; the fourth suite Mo 55 of 55 both runtimes, Go 55, Python 55, Elixir 53; the Mo queue killed under load back in 106 ms, nothing lost (Elixir 285 to 694 ms): the BEAM's row answered. Found: `max_restarts` takes only a literal (chapter 10 §2 asks for a value); the crash report leak, 44 MB a restart, fixed by step 33 the same day (13:05: freed in both runtimes, under 0.3 MiB a restart; the interpreter's abort on a large log's open fixed too; carried: 1.45 s for a restart at 100,000 jobs). Suites: `erosion-round-suite/defects3.py`, results under `results/e3-*`.
+> 8. **Change 4 and generation four (16 Sep, 13:03 to 15:05)**: idempotent creates by a key, old jobs archived out of the log; four maintainers (the Mac slept and cut them short; `caffeinate -dimsu` from 14:13); the fifth suite Mo 77 of 77 both runtimes, Python 77, Go 76, Elixir 76; P6 back in 58 and 85 ms; nothing new eroded in four generations (`erosion-round.md`, generation four). Robert's rules of the afternoon, in the skill: every run or spawn in a fresh pane of his workspace; workspaces closed when their sessions are done.
 > 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
 >    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
 >    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
@@ -81,8 +82,8 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **Change 4 and generation four** of the erosion round: the lead writes and seals `01e-…`, branches `erosion4-*` from `erosion3-*` (copy `mise.toml` into the Elixir worktree: it is untracked), the fifth hidden suite after the branching, the suites of every earlier generation as regressions.
-> 2. **The placement step** (after 31): a process placed with its asker or a
+> 1. **The placement step** (the brief to the Opus worker in `w44:p3`; Fable writing it): a process placed with its asker or a reply answered on the asker's scheduler; measured on `echo-1k` and the queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128 held asks (step 31's 0.46 row). Generation four is done (state bullet 8).
+> 2. **Change 5 and generation five**: the lead writes and seals `01f-…` (a seam the specs have not found: the archive read from the disk, or a change across the queue's own invariants), branches `erosion5-*` from `erosion4-*` (copy `mise.toml` into the Elixir worktree), the sixth hidden suite after the branching.
 >    reply answered on the asker's scheduler; measured on `echo-1k` and the
 >    queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128
 >    held asks (step 31's 0.46 row).

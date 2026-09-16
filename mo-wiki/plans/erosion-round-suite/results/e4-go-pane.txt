@@ -1,0 +1,29 @@
+      Uniqueness is checked after both files are read.
+  13. A retain of 0 in the internal config means the default of one day.
+  14. verify output: it appends ; archived <n>, counted the same way as /health.
+  15. The 409 message for an archived job is conflict: j_N is archived.
+  16. --retain-ms must be a plain decimal from 1000 to 2678400000, given at most once.
+      Anything else is a usage error (exit 2).
+
+✻ Cogitated for 1m 6s · done 2:25 PM
+
+⏺ Background command "cd
+/Users/robertguss/Projects/startups/mo-lang-erosion4-go/experiments/control-run/go && timeout
+300 go test -count=1 -race ./jobq 2>&1 | tail -8" completed (exit code 0)
+
+  Read 1 file
+
+⏺ Background command "F=/private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang-er
+osion4-go/a2215126-ded8-4fb5-b0cb-78da64a86cef/tasks/bdx2s8ysp.output; until grep -qE
+"^(ok|FAIL|---)" $F; do sleep 2; done; cat $F" completed (exit code 0)
+
+⏺ The second race-detector run of jobq also passed (138 s), so change 4 still stands as
+  committed in af977ce, with nothing to change.
+
+✻ Cooked for 4s · done 2:26 PM
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+❯ push it
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion4-go (erosion4-go) | Context: 79% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

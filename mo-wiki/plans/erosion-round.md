@@ -188,6 +188,36 @@ Change 4 ([[01e-job-queue-change-4]], sealed at `feef5ca`): idempotent creates b
 
 Recorded, not predicted: wall-clock, loops by cause, first-fix rate per diagnostic, lines changed, tokens read, the decision lists.
 
+### Generation four, the result (16 Sep 2026, 13:05 to 15:05 local)
+
+Four fresh Opus maintainers at medium effort, briefed 13:05. The Mac slept several times between 13:10 and 14:10 and cut every session short at least once; each was prompted to continue, and the machine was held awake from 14:13. So the wall-clock column below is every session's own figure, 77 to 89 minutes, and every one includes the sleeps: this generation has no honest time column, and the earlier generations' 10 to 23 minutes stand as the measure of the change's size (generation four's change is larger, about 1,400 to 2,000 lines against generation three's 1,100 to 1,300). The suites: the four earlier ones as regressions and the fifth (`defects4.py`, 77 checks: the flags; the key's rule, the second create answered with the first job in every state including archived, the key freed by a delete, the lookup; the key kept across a chaos restart, a stop and start, a compaction; the archive after `retain_ms` in `/health`, the listings, `/queues`, the read, retry, delete, `verify`'s line, the file; the archive under a kill with short-lived jobs and `retain_ms` of one second, every job counted once on the reopened folder, keys of archived jobs still used; a bad archive record refusing the folder and a torn archive line cut), P6 as in generation three. Every Mo row under `mo run` and as a binary.
+
+| language | green | loops (own) | regressions (121) | change 1 (189) | third suite (66) | fourth (55) | fifth (77) | P6 | lines |
+|---|---|---|---|---|---|---|---|---|---|
+| Python | 14:23 | 11 (ruff 1, expected output 4, own tests 3, `check.sh` 2, sim 1), first fix right in every one | 0 | 0 | 65: the queued-with-`worker` record (carried) | 55 | 77 | through the switch: every check | 1,358 over 15 files |
+| Elixir | 14:25 | 7 after a baseline timing failure it did not edit, first fix right in every one | 1 cause: a token with a space is 200 (carried from round 10) | 0 (the old-log category unread) | 63 of 65: a 1 MB body closes the connection; the restart after a full disk (both carried) | 53: the budget at the window's edge (carried) | 76: a repeated `--retain-ms` accepted | three kills, `/health` back in 324, 594, 876 ms, nothing lost | 1,609 over 19 |
+| Go | 14:25 | 6, every first fix right | 0 | 1, the `delay_ms` null (carried since round 8) | 66 | 55 | 76: `"key": null` read as no key, where the spec's letter is 400 (its decision 2; a reading) | through the switch: every check | 1,808 over 19 |
+| Mo | 14:35 | 11 (MO0317 twice as process slips, MO0105 twice, MO0214 and MO0314, MO0212, MO0102, own tests 3, `--sim` 1), first fix right in 10 | 0, both runtimes | 0, both runtimes | 64: the queued-with-`worker` record, two checks of the carried cause, both runtimes | 55, both runtimes | 77 as a binary; 77 under `mo run` in three runs of three after one run counted 2,634 of 2,635 created jobs on the reopened folder (recorded as a flake until it recurs) | the queue killed through the surface twice under load: `/health` 200 again 58 and 85 ms later, 6 of 18,969 requests not 2xx, nothing lost | 1,956 over 14 |
+
+Tokens read, by the sessions' context at the end: Python about 36k, Go 42k, Elixir 44k, Mo 62k.
+
+**What each did with the archive.** All four archive at the look, record the move in the live log, and let the archive win at open when a job is in both files; all four count `archived` as undeleted archived jobs, not lines; three of four (Go, Python, Mo) answer a key lookup with an archived job, Elixir hides it ("listings never show archived jobs" read over "answers that job"). Mo writes the archive's lines before the live log's in every batch, keeps a deleted archived job as an archive tombstone `SET j_N deleted` until compaction, and keeps archived jobs in memory, paged like the live ones, so the log stops growing and memory does not shrink: a row for the spec (change 5 may ask for archived jobs read from the disk). Mo's maintainer wrote the `never` the pre-registration asked for: "a job is on the live board and in the archive at once after an open". Its switch counts the ids reservation as a record, which the first form of the suite's restart check tripped on.
+
+**The suites, amended during the run and disclosed here** (the checks are the same): the third suite's `verify` counts-line check now accepts the "; archived <a>" ending change 4 adds (every program failed it the same way); the fifth suite's key-kept category induces the chaos restart by plain creates until one fails instead of a fixed write number (the programs count records differently); the archive-under-kill category counts one id per archive line (Mo's line names the id twice) and compares totals across two reopens (done jobs age into the archive between them); `verify` runs on an unserved folder (Go's refuses a served one). The lead's slips: Go's change 1 suite ran with wrong arguments the first time and was rerun (188 of 189, the carried null); the Mo P6 message had to gain `key: None` once `Making` had the field.
+
+**Reading, against the predictions.**
+
+| prediction | threshold | result | held |
+|---|---|---|---|
+| P1, regressions | Mo 0 under every earlier suite; each baseline at most 1 cause beyond what it carries | Mo 0 new (its carried cause only); Go, Python, Elixir nothing new | yes |
+| P2, defects under the fifth suite | Mo's count no more than each baseline's | Mo 0 causes, Python 0, Go 1 (a reading), Elixir 1 | yes |
+| P3, the seam | a baseline loses a key or double-counts an archived job across a chaos restart or the kill; Mo does not | none did | no |
+| P4, the two files | a program's `verify` or `compact` mishandles the archive; not Mo's | none did | no |
+| P5, the tax | Mo more loops than Go | 11 to 6 | yes |
+| P6, the law | a `never` states the key's uniqueness or the two-file exclusion | the two-file exclusion, as a `never` in `board.mo` | yes |
+
+**What it says.** The seam did not open. A key the log carries and an archive beside the log, written across a self-restart, a kill between two writes, and a compaction, came out whole in all four languages, from four fresh maintainers who had never seen the programs; the fifth suite's two misses are a reading of `null` and a repeated flag. After four generations the erosion hypothesis reads Mo 1 carried defect, Go 1 carried, Python 1 carried, Elixir 3 carried, and nothing new in any of them since generation one; the ten-generation prediction (Go and Python at least three, Mo at most one) is alive only in its Mo half. What the language paid this time was the tax again, 11 loops to Go's 6, two of them the maintainer's own `--write` slips; what it gave was the one `never` that states the rule the change is about, which no baseline has a place for. The next change has to find a seam the specs so far have not: the archive read from the disk, or a change that cuts across the queue's own invariants.
+
 ## Related
 
 - [[d43-five-measurements]]

@@ -1,0 +1,59 @@
+
+## go defects4 --only keykept (amended) 14:43:54
+8 passed, 0 defects
+
+## go defects4 --only archivekill (amended) 14:43:54
+7 passed, 0 defects
+
+## mo regressions binary 14:43:59
+121 passed, 0 defects
+
+## mo defects1 binary 14:44:36
+ok   runout: a run-out lease with backoff is handed out by a lease request once the backoff from its look has passed
+189 passed, 0 defects
+
+## mo defects2 binary 14:44:44
+FAIL verify: a folder the service wrote verifies with exit 0 and the counts line: (0, '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_1001; archived 0', '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_')
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+63 passed, 3 defects
+
+## mo defects3 binary 14:45:23
+55 passed, 0 defects
+
+## mo defects4 binary 14:47:05
+FAIL keykept: a new key after the restart is 201: (503, {'error': 'the queue failed and is rebuilding its board from the log'})
+FAIL keykept: after a stop and start the key is still used: (200, {'id': 'j_2', 'queue': 'q', 'key': 'k2', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-16T18:47:05.975Z', 'updated_at': '2026-09-16T18:47:05.975Z'})
+FAIL keykept: a key made just before the stop is still used: (200, {'id': 'j_1002', 'queue': 'q', 'key': 'k3', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-16T18:47:05.977Z', 'updated_at': '2026-09-16T18:47:05.977Z'})
+FAIL keykept: ran to the end: KeyError: 'id'
+FAIL archivekill: no id appears twice in the archive: 4800
+69 passed, 5 defects
+
+## mo defects4 mo run 14:47:44
+FAIL keykept: a new key after the restart is 201: (503, {'error': 'the queue failed and is rebuilding its board from the log'})
+FAIL keykept: after a stop and start the key is still used: (200, {'id': 'j_2', 'queue': 'q', 'key': 'k2', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-16T18:47:45.452Z', 'updated_at': '2026-09-16T18:47:45.452Z'})
+FAIL keykept: a key made just before the stop is still used: (200, {'id': 'j_1002', 'queue': 'q', 'key': 'k3', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-16T18:47:45.455Z', 'updated_at': '2026-09-16T18:47:45.455Z'})
+FAIL keykept: ran to the end: KeyError: 'id'
+FAIL archivekill: no id appears twice in the archive: 2632
+69 passed, 5 defects
+
+## mo regressions mo run 14:48:25
+121 passed, 0 defects
+
+## mo defects2 mo run 14:49:01
+FAIL verify: a folder the service wrote verifies with exit 0 and the counts line: (0, '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_1001; archived 0', '5 jobs: queued 1, scheduled 1, leased 1, done 1, dead 1; next id j_')
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+63 passed, 3 defects
+
+## mo defects3 mo run 14:49:40
+55 passed, 0 defects
+
+## mo p6 14:51:19
+  at  2.01s: send -> 409 "{'Unparsed': {'why': 'Making takes key here, not payload, at byte 89'}}"; /health 200 again at  2.01s (   3.9 ms)
+  at  4.00s: send -> 409 "{'Unparsed': {'why': 'Making takes key here, not payload, at byte 89'}}"; /health 200 again at  4.01s (   6.2 ms)
+acked jobs not done: 0 []
+created jobs gone: 0 []
+health after restart: {'queued': 0, 'scheduled': 0, 'leased': 0, 'done': 6415, 'dead': 0, 'archived': 0, 'uptime_ms': 12192, 'restarts': 0}
+
+## DONE 14:52:10

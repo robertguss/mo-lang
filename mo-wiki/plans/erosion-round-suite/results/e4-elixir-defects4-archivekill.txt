@@ -1,0 +1,9 @@
+ok   archivekill: verify exits 0 after the kill
+ok   archivekill: every created job is counted exactly once after the reopen
+ok   archivekill: some jobs were archived under the load
+ok   archivekill: every sampled job reads 200, live or archived (152 sampled)
+ok   archivekill: every sampled key is still used by its job
+ok   archivekill: no id appears twice in the archive
+ok   archivekill: the total is the same after a second reopen (time passes, so more may be archived)
+
+7 passed, 0 defects
