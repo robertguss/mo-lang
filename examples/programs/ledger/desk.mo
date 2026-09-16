@@ -57,36 +57,23 @@ struct Flushed
 end
 
 fn desk(opened: Opened) : Desk
-  Desk(book: opened.book, durable: opened.book, table: opened.table, torn: opened.torn, records: [],
-    staged: [], fresh: [], answers: Map.new(), next: 1)
+  # body gone; regenerate
 end
 
 # The desk a journal holds before it opens: an empty book over the place's log.
 fn unopened(place: Place) : Desk
-  table = Table(buckets: Map.new(), size: 0, dir: place.dir, name: place.log, bytes: 0, lines: 0,
-    cut: false)
-  Desk(book: book(), durable: book(), table: table, torn: false, records: [], staged: [], fresh: [],
-    answers: Map.new(), next: 1)
+  # body gone; regenerate
 end
 
 # The call decided against the book with the batch in it; its answer waits for the flush.
 fn staged(desk: Desk, call: Call, now: Time, started: Time) : Took
-  done = decide(desk.book, call, now, started)
-  var after = with_decision(desk, done)
-  wait = Staged(ticket: desk.next, answer: done.answer, wrote: done.records.size > 0)
-  after.staged = desk.staged.push(wait)
-  after.next = desk.next + 1
-  Took(desk: after, ticket: desk.next)
+  # body gone; regenerate
 end
 
 # A decision's book, records, and holds joined to the batch with no call waiting on it: the
 # releases an Expire or an opening stages.
 fn with_decision(desk: Desk, done: Decision) : Desk
-  var after = desk
-  after.book = done.book
-  after.records = desk.records.concat(done.records)
-  after.fresh = desk.fresh.concat(done.holds)
-  after
+  # body gone; regenerate
 end
 
 # The batch written: appended in one write, or, when the log may end in part of a batch, the log
@@ -95,109 +82,53 @@ end
 # part of the batch, the log is written whole from that book at once, so the 503 changed nothing.
 fn flushed(fs: Fs, desk: Desk, by: Deadline) : Flushed
   ensures result.sent.size == desk.staged.size
-
-  if desk.records.size == 0
-    sent = desk.staged.map(fn(_) Sent(changed: false, durable: false) end)
-    return Flushed(desk: answered_all(desk, desk.book, desk.table, desk.torn), fresh: [], ok: true,
-      sent: sent)
-  end
-  written = if desk.torn
-    rewritten_from(fs, desk.table, desk.book, by)
-  else
-    flushed_to(fs, desk.table, desk.records, by)
-  end
-  case written
-    Ok(table):
-      sent = desk.staged.map(fn(s) Sent(changed: s.wrote, durable: true) end)
-      Flushed(desk: answered_all(desk, desk.book, table, false), fresh: desk.fresh, ok: true,
-        sent: sent)
-    Error(problem): refused(fs, desk, problem, by)
-  end
+  # body gone; regenerate
 end
 
 fn refused(fs: Fs, desk: Desk, problem: StoreError, by: Deadline) : Flushed
-  mended = if problem == Torn: rewritten_from(fs, desk.table, desk.durable, by) else: Ok(desk.table)
-  torn = desk.torn or !(mended is Ok(_))
-  table = case mended
-    Ok(t): t
-    Error(_): desk.table
-  end
-  reason = if torn
-    "the log may end in part of a change; it is written whole with the next change"
-  else
-    "the log did not take the change"
-  end
-  var back = desk
-  back.staged = desk.staged.map(fn(s) unavailable(s, reason) end)
-  sent = desk.staged.map(fn(_) Sent(changed: false, durable: false) end)
-  Flushed(desk: answered_all(back, desk.durable, table, torn), fresh: [], ok: false, sent: sent)
+  # body gone; regenerate
 end
 
 fn unavailable(waiting: Staged, reason: String) : Staged
-  var after = waiting
-  after.answer = Answer(status: 503, body: "{\"error\": #{Json.encode(reason)}}")
-  after.wrote = false
-  after
+  # body gone; regenerate
 end
 
 # The desk once the batch is settled: every staged answer ready to collect, the batch empty, and
 # the book as the log now holds it.
 fn answered_all(desk: Desk, held: Book, table: Table, torn: Bool) : Desk
-  var after = desk
-  after.book = held
-  after.durable = held
-  after.table = table
-  after.torn = torn
-  after.answers = desk.staged.reduce(desk.answers, fn(all, s) all.set(s.ticket, s.answer) end)
-  after.records = []
-  after.staged = []
-  after.fresh = []
-  after
+  # body gone; regenerate
 end
 
 # The answer for a ticket, taken off the desk; 503 for a ticket the desk does not hold.
 fn collected(desk: Desk, ticket: UInt64) : (Desk, Answer)
-  case desk.answers.get(ticket)
-    Some(answer):
-      var after = desk
-      after.answers = desk.answers.remove(ticket)
-      (after, answer)
-    None: (desk, Answer(status: 503, body: "{\"error\": \"no answer is waiting for that ticket\"}"))
-  end
+  # body gone; regenerate
 end
 
 # A call a journal that is not open takes: answered 503 at once, with why.
 fn closed(desk: Desk, why: String) : Took
-  var after = desk
-  answer = Answer(status: 503, body: "{\"error\": #{Json.encode("the ledger #{why}")}}")
-  after.answers = desk.answers.set(desk.next, answer)
-  after.next = desk.next + 1
-  Took(desk: after, ticket: desk.next)
+  # body gone; regenerate
 end
 
 fn waiting?(desk: Desk, ticket: UInt64) : Bool
-  desk.staged.any?(fn(s) s.ticket == ticket end)
+  # body gone; regenerate
 end
 
 # When an Expire for a hold is due: when it expires, or a second from now for one already past,
 # so a release the log did not take is tried again.
 fn delay_to(expires_at: Time, now: Time) : Duration
-  if expires_at > now: expires_at - now else: 1_000.ms
+  # body gone; regenerate
 end
 
 fn t0() : Time
-  Time.from_parts(2026, 9, 14, 9, 0, 0)
+  # body gone; regenerate
 end
 
 fn call(command: Command, key: String) : Call
-  Call(command: command, key: key, request: Json.encode(command))
+  # body gone; regenerate
 end
 
 fn opening(fs: Fs, by: Deadline) : Desk
-  case opened_book(fs, Place(dir: "d", log: "ledger.log"), by)
-    Ok(found): desk(found)
-    Error(_): unopened(Place(dir: "d", log: "ledger.log"))
-  end
+  # body gone; regenerate
 end
 
 test "calls staged together are answered from one append, in order, once it is on disk"
@@ -239,6 +170,3 @@ test "a batch the log does not take is answered 503 and the book goes back to wh
   assert opened_book(fs, Place(dir: "d", log: "ledger.log"), by) is Ok(replayed)
   assert replayed.book.accounts.size == 2 and !replayed.torn
 end
-
-verified: types, contracts, tests (2), property (0 seeds), sim (not run)
-          proven: not run

@@ -22,16 +22,7 @@ process Acceptor(journal: Handle(Journal)) mailbox: 4_096
   message Idle
 
   fn update(state, message)
-    case message
-      Accepted(exchange):
-        worker = Worker.start(exchange, journal)
-        worker.send(Go(me: worker))
-        state.accepted += 1
-      Idle:
-        if journal.ask(Flush, within: 10_000.ms) == Ok(true)
-          state.flushed += 1
-        end
-    end
+    # body gone; regenerate
   end
 end
 
@@ -48,19 +39,7 @@ process Worker(exchange: Exchange, journal: Handle(Journal))
   message Reply
 
   fn update(state, message)
-    case message
-      Go(me):
-        case staged(journal, exchange.request)
-          Ok(ticket):
-            state.ticket = ticket
-            me.send(Reply)
-          Error(response):
-            state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
-        end
-      Reply:
-        response = collected(journal, state.ticket)
-        state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
-    end
+    # body gone; regenerate
   end
 end
 
@@ -75,71 +54,41 @@ end
 # for the collect runs on what remains of those 30. A timed-out collect is 503, and the change may
 # still land, as the failure model says.
 fn staged(journal: Handle(Journal), request: Request) : Result(UInt64, Response)
-  case route(request)
-    Answered(response): Error(response)
-    Asked(call):
-      case journal.ask(Stage(call: call), within: 10_000.ms)
-        Ok(ticket): Ok(ticket)
-        Error(_): Error(unavailable())
-      end
-  end
+  # body gone; regenerate
 end
 
 fn collected(journal: Handle(Journal), ticket: UInt64) : Response
-  case journal.ask(Collect(ticket: ticket), within: 30_000.ms)
-    Ok(answered): respond(answered)
-    Error(_): unavailable()
-  end
+  # body gone; regenerate
 end
 
 fn unavailable() : Response
-  respond(Answer(status: 503, body: "{\"error\": \"the ledger did not answer in time\"}"))
+  # body gone; regenerate
 end
 
 fn started(http: Http, fs: Fs, clock: Clock) : (Handle(Journal), UInt16)
-  made = fs.mkdir("d", within: 1.minute) is Ok(_)
-  journal = Journal.start(fs, clock, Place(dir: "d", log: "ledger.log"), clock.now)
-  opened = made and journal.ask(Open(me: journal),
-    within: 1.minute) is Ok(Ready(accounts: _, entries: _, torn: _))
-  case http.listen(0, within: 1.minute)
-    Ok(listener):
-      listener.serve(into: Acceptor.start(journal), idle: 5_000.ms)
-      (journal, if opened: listener.port else: 0)
-    Error(_): (journal, 0)
-  end
+  # body gone; regenerate
 end
 
 fn by(method: String, path: String, key: String, body: String) : Request
-  headers = Map.new().set("authorization", "Bearer ada").set("idempotency-key", key)
-  Request(method: method, path: path, headers: headers, body: body)
+  # body gone; regenerate
 end
 
 fn status(http: Http, port: UInt16, request: Request) : UInt16
-  case http.send(request, host: "localhost", port: port, within: 1.minute)
-    Ok(response): response.status
-    Error(_): 0
-  end
+  # body gone; regenerate
 end
 
 fn in?(got: UInt16, statuses: List(UInt16)) : Bool
-  statuses.push(0).push(503).contains?(got)
+  # body gone; regenerate
 end
 
 # An account's balance as the journal holds it, asked directly and not over the wire; None when the
 # ask failed.
 fn balance_of(journal: Handle(Journal), id: String) : Option(String)
-  shown = Call(command: ShowAccount(id: id), key: "", request: "")
-  case journal.ask(Serve(call: shown), within: 1.minute)
-    Ok(Answer(status: 200, body: body)):
-      at = body.index_of("\"balance\": ") or 0
-      rest = body.slice(at + 11, body.size)
-      Some(rest.slice(0, rest.index_of(",") or 0))
-    Ok(_) | Error(_): None
-  end
+  # body gone; regenerate
 end
 
 fn transfer_body(amount: UInt64) : String
-  "{\"from\": \"a_1\", \"to\": \"a_2\", \"amount\": #{amount}}"
+  # body gone; regenerate
 end
 
 test "each status comes back over the wire, unless a call fails"
@@ -203,6 +152,3 @@ test "under faults every transfer is right or a 503 that moved nothing, and each
     assert landed == 8 and balance_of(journal, "a_2") == Some("800")
   end
 end
-
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
-          proven: not run

@@ -9,69 +9,65 @@ type Money = Int64 where value >= 0
 # An amount moved, held, captured, or refunded: above zero and at most 10^12 minor units, so
 # the sum of every balance fits an Int64 whatever the traffic.
 fn amount?(n: Int64) : Bool
-  n >= 1 and n <= 1_000_000_000_000
+  # body gone; regenerate
 end
 
 # How far below zero an account may go: 0 to 10^12 minor units.
 fn overdraft?(n: Int64) : Bool
-  n >= 0 and n <= 1_000_000_000_000
+  # body gone; regenerate
 end
 
 # Three uppercase ASCII letters.
 fn currency?(text: String) : Bool
-  text.byte_size == 3 and text.bytes.all?(fn(b) b >= 65 and b <= 90 end)
+  # body gone; regenerate
 end
 
 # 1 to 64 bytes of letters, digits, - and _, with no run of 16 digits.
 fn name?(text: String) : Bool
-  size = text.byte_size
-  size >= 1 and size <= 64 and text.bytes.all?(fn(b) named?(b) end) and !card_run?(text)
+  # body gone; regenerate
 end
 
 fn named?(b: UInt8) : Bool
-  digit?(b) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122) or b == 45 or b == 95
+  # body gone; regenerate
 end
 
 fn digit?(b: UInt8) : Bool
-  b >= 48 and b <= 57
+  # body gone; regenerate
 end
 
 # A release's reason: 1 to 256 bytes of UTF-8 with no control character and no run of 16 digits.
 fn reason?(text: String) : Bool
-  size = text.byte_size
-  size >= 1 and size <= 256 and plain?(text) and !card_run?(text)
+  # body gone; regenerate
 end
 
 # An idempotency key: 1 to 128 bytes with no control character, and no run of 16 digits, since
 # the entry it makes carries it.
 fn key?(text: String) : Bool
-  size = text.byte_size
-  size >= 1 and size <= 128 and plain?(text) and !card_run?(text)
+  # body gone; regenerate
 end
 
 fn plain?(text: String) : Bool
-  text.bytes.all?(fn(b) b >= 32 and b != 127 end)
+  # body gone; regenerate
 end
 
 # How long a hold lives before it expires: 100 ms to a day.
 fn ttl_ms?(n: Int64) : Bool
-  n >= 100 and n <= 86_400_000
+  # body gone; regenerate
 end
 
 # Whether the text holds 16 ASCII digits in a row, which could be a card number.
 fn card_run?(text: String) : Bool
-  text.bytes.reduce(0, fn(run, b) next_run(run, b) end) >= 16
+  # body gone; regenerate
 end
 
 # The digits in a row so far, kept at 16 once it gets there.
 fn next_run(run: UInt64, b: UInt8) : UInt64
-  return run if run >= 16
-  if digit?(b): run + 1 else: 0
+  # body gone; regenerate
 end
 
 # A day is YYYY-MM-DD, a date that exists.
 fn day?(text: String) : Bool
-  text.byte_size == 10 and Time.parse("#{text}T00:00:00Z") is Some(_)
+  # body gone; regenerate
 end
 
 test "an amount is 1 to 10^12, and an overdraft 0 to 10^12"
@@ -106,6 +102,3 @@ test "a day is a date that exists"
   assert day?("2026-09-14") and day?("2028-02-29")
   assert !day?("2026-02-30") and !day?("2026-9-14") and !day?("today") and !day?("2026-09-14T")
 end
-
-verified: types, contracts, tests (5), property (0 seeds), sim (not run)
-          proven: not run

@@ -61,267 +61,139 @@ end
 # The call decided against the book at `now`; `started` is when the ledger started, for health.
 fn decide(book: Book, call: Call, now: Time, started: Time) : Decision
   ensures result.book.entry_count >= book.entry_count
-
-  case keyed(book, call.key)
-    Some(row):
-      if row.request != call.request
-        return plain(book,
-          failed(409, "the idempotency key #{call.key} was used with another request"))
-      end
-      plain(book, Answer(status: row.status, body: body_of(book, row)))
-    None:
-      looked = expiries(book, due_for(book, call.command, now), now)
-      fresh(looked, call, now, started)
-  end
+  # body gone; regenerate
 end
 
 fn plain(book: Book, answer: Answer) : Decision
-  Decision(book: book, answer: answer, records: [], holds: [], made: [])
+  # body gone; regenerate
 end
 
 fn failed(status: UInt16, error: String) : Answer
-  Answer(status: status, body: "{\"error\": #{Json.encode(error)}}")
+  # body gone; regenerate
 end
 
 # The body a key's first answer had: a refusal's and a statement's as they were written, an
 # account's as it was opened, an entry's as it is.
 fn body_of(book: Book, row: Keyed) : String
-  return row.body if row.body != ""
-  if row.made.starts_with?("a_")
-    return account_of_id(book, row.made).map(fn(a) shown_account(a, 0, 0) end) or ""
-  end
-  entry_at(book, number_in("e_", row.made) or 0).map(fn(e) shown_entry(e) end) or ""
+  # body gone; regenerate
 end
 
 # The holds whose expiry has come among the accounts the command looks at.
 fn due_for(book: Book, command: Command, now: Time) : List(Hold)
-  case command
-    OpenAccount(name: _, currency: _, overdraft: _): []
-    ShowAccount(id): due_on(book, id, now)
-    MoveMoney(from: from, to: to, amount: _): due_on(book, from, now).concat(due_on(book, to, now))
-    PlaceHold(account: account, amount: _, ttl_ms: _): due_on(book, account, now)
-    CaptureHold(hold: hold, amount: _) | ReleaseHold(hold: hold, reason: _):
-      due_on(book, hold_account(book, hold), now)
-    RefundCapture(capture: capture, amount: _): due_on(book, capture_account(book, capture), now)
-    ListEntries(account: account, kind: _):
-      if account is Some(id): due_on(book, id, now) else: due_holds(book, now)
-    SettleDay(_) | CheckHealth: due_holds(book, now)
-  end
+  # body gone; regenerate
 end
 
 fn hold_account(book: Book, hold: String) : String
-  entry = entry_at(book, number_in("e_", hold) or 0)
-  entry.map(fn(e) e.account end) or ""
+  # body gone; regenerate
 end
 
 fn capture_account(book: Book, capture: String) : String
-  made = capture_at(book, number_in("e_", capture) or 0)
-  made.map(fn(c) c.account end) or ""
+  # body gone; regenerate
 end
 
 # The book with each due hold released as expired, and the records of the releases.
 fn expiries(book: Book, due: List(Hold), now: Time) : Decision
-  due.reduce(plain(book, Answer(status: 200, body: "")),
-    fn(so_far, live) expiry(so_far, live, now) end)
+  # body gone; regenerate
 end
 
 fn expiry(so_far: Decision, live: Hold, now: Time) : Decision
-  return so_far if so_far.book.holds.get(live.number) != Some(live)
-  done = expired(so_far.book, live, now)
-  var after = so_far
-  after.book = done.book
-  after.records = so_far.records.concat(entry_records(done.book, done.entry))
-  after
+  # body gone; regenerate
 end
 
 # The call itself, once the looks are folded in.
 fn fresh(looked: Decision, call: Call, now: Time, started: Time) : Decision
-  book = looked.book
-  case call.command
-    OpenAccount(name: name, currency: currency, overdraft: overdraft):
-      made = opened(book, name, currency, overdraft, now)
-      id = account_id(made.account.number)
-      body = shown_account(made.account, 0, 0)
-      account_record = (id, body)
-      answered(looked, made.book, Answer(status: 201, body: body), [account_record], call, id)
-    ShowAccount(id):
-      case account_of_id(book, id)
-        Some(account):
-          shown = shown_account(account, balance(book, id), available(book, id))
-          answered(looked, book, Answer(status: 200, body: shown), [], call, "")
-        None: answered(looked, book, failed(404, "no account #{id}"), [], call, "")
-      end
-    MoveMoney(from: from, to: to, amount: amount):
-      moved(looked, call, transferred(book, from, to, amount, call.key, now))
-    PlaceHold(account: account, amount: amount, ttl_ms: ttl):
-      moved(looked, call, held(book, account, amount, ttl, call.key, now))
-    CaptureHold(hold: hold, amount: amount):
-      moved(looked, call, captured(book, number_in("e_", hold) or 0, amount, call.key, now))
-    ReleaseHold(hold: hold, reason: reason):
-      moved(looked, call, released(book, number_in("e_", hold) or 0, reason, call.key, now))
-    RefundCapture(capture: capture, amount: amount):
-      moved(looked, call, refunded(book, number_in("e_", capture) or 0, amount, call.key, now))
-    ListEntries(account: account, kind: kind): listing(looked, call, account, kind)
-    SettleDay(day): settling(looked, call, day, now)
-    CheckHealth:
-      health = "{\"accounts\": #{book.accounts.size}, \"entries\": #{book.entry_count}, \"held\": #{held_total(book)}, \"uptime_ms\": #{(now - started).ms}}"
-      answered(looked, book, Answer(status: 200, body: health), [], call, "")
-  end
+  # body gone; regenerate
 end
 
 fn listing(looked: Decision, call: Call, account: Option(String), kind: Option(Kind)) : Decision
-  book = looked.book
-  if account is Some(id) and account_of_id(book, id) is None
-    return answered(looked, book, failed(404, "no account #{id}"), [], call, "")
-  end
-  shown = String.join(listed(book, account, kind).map(fn(e) shown_entry(e) end), ", ")
-  answered(looked, book, Answer(status: 200, body: "{\"entries\": [#{shown}]}"), [], call, "")
+  # body gone; regenerate
 end
 
 fn settling(looked: Decision, call: Call, day: String, now: Time) : Decision
-  case settled(looked.book, day, call.key, now)
-    Ok(done):
-      body = shown_statement(done.statement)
-      var after = answered(looked, done.book, Answer(status: 201, body: body),
-        entry_records(done.book, done.entry), call, entry_id(done.entry.number))
-      after.made = after.made.push(Made(key: call.key, entry: done.entry.number))
-      kept(after, call, entry_id(done.entry.number), body)
-    Error(refusal): refused(looked, call, refusal)
-  end
+  # body gone; regenerate
 end
 
 # A settlement's key row keeps the statement it answered with, in the book and in its record,
 # since accounts opened later would change a statement shown again.
 fn kept(decision: Decision, call: Call, made: String, body: String) : Decision
-  row = Keyed(request: call.request, status: 201, body: body, made: made)
-  name = key_record(call.key)
-  var after = decision
-  after.book = with_keyed(decision.book, call.key, row)
-  after.records = decision.records.map(fn(r) if r.0 == name: (name, keyed_json(row)) else: r end)
-  after
+  # body gone; regenerate
 end
 
 fn moved(looked: Decision, call: Call, outcome: Result(Moved, Refusal)) : Decision
-  case outcome
-    Ok(done):
-      var after = answered(looked, done.book, Answer(status: 201, body: shown_entry(done.entry)),
-        entry_records(done.book, done.entry), call, entry_id(done.entry.number))
-      after.made = after.made.push(Made(key: call.key, entry: done.entry.number))
-      if done.entry.kind == Hold
-        after.holds = [done.book.holds.get(done.entry.number)].flat_map(fn(h) listed_hold(h) end)
-      end
-      after
-    Error(refusal): refused(looked, call, refusal)
-  end
+  # body gone; regenerate
 end
 
 fn listed_hold(hold: Option(Hold)) : List(Hold)
-  case hold
-    Some(h): [h]
-    None: []
-  end
+  # body gone; regenerate
 end
 
 fn refused(looked: Decision, call: Call, refusal: Refusal) : Decision
-  answer = Answer(status: refusal.status, body: refusal_body(refusal))
-  answered(looked, looked.book, answer, [], call, "")
+  # body gone; regenerate
 end
 
 # The decision with its answer, the records the call adds after the looks', and the key's row
 # when the call came with a key: the body kept only for a refusal.
 fn answered(looked: Decision, book: Book, answer: Answer, records: List((String, String)),
   call: Call, made: String) : Decision
-  var after = looked
-  after.answer = answer
-  after.records = looked.records.concat(records)
-  after.book = book
-  if call.key != ""
-    body = if answer.status == 201: "" else: answer.body
-    row = Keyed(request: call.request, status: answer.status, body: body, made: made)
-    after.book = with_keyed(book, call.key, row)
-    after.records = after.records.push((key_record(call.key), keyed_json(row)))
-  end
-  after
+  # body gone; regenerate
 end
 
 # An entry's record, and the record of each account it concerns as the book now has it.
 fn entry_records(book: Book, entry: Entry) : List((String, String))
-  named = entry.postings.map(fn(p) p.account end).push(entry.account).unique
-  accounts = named.flat_map(fn(id) account_record(book, id) end)
-  [(entry_id(entry.number), shown_entry(entry))].concat(accounts)
+  # body gone; regenerate
 end
 
 fn account_record(book: Book, id: String) : List((String, String))
-  case account_of_id(book, id)
-    Some(account): [(id, shown_account(account, balance(book, id), available(book, id)))]
-    None: []
-  end
+  # body gone; regenerate
 end
 
 # The store's name for a key's row: i_ and the key's bytes in hex, so any key is a store key.
 fn key_record(key: String) : String
-  "i_#{String.join(key.bytes.map(fn(b) hex(b) end), "")}"
+  # body gone; regenerate
 end
 
 fn hex(b: UInt8) : String
-  digits = "0123456789abcdef"
-  high = (b / 16).to_u64
-  low = (b % 16).to_u64
-  "#{digits.slice(high, high + 1)}#{digits.slice(low, low + 1)}"
+  # body gone; regenerate
 end
 
 # A key row as the store keeps it, `made` first so a replay can read it without decoding.
 fn keyed_json(row: Keyed) : String
-  "{\"made\": #{Json.encode(row.made)}, \"status\": #{row.status}, \"request\": #{Json.encode(row.request)}, \"body\": #{Json.encode(row.body)}}"
+  # body gone; regenerate
 end
 
 # A key row read back from the store, or None for text that is not one.
 fn keyed_of(text: String) : Option(Keyed)
-  case Json.decode(text)
-    Ok(Object(fields)): keyed_fields(fields)
-    Ok(_): None
-    Error(_): None
-  end
+  # body gone; regenerate
 end
 
 fn keyed_fields(fields: Map(String, Json)) : Option(Keyed)
-  made = try text_of(try fields.get("made"))
-  status = try (try fields.get("status")).to_i64
-  return None if status < 200 or status > 599
-  Some(Keyed(request: try text_of(try fields.get("request")), status: status.to_u16,
-    body: try text_of(try fields.get("body")), made: made))
+  # body gone; regenerate
 end
 
 fn text_of(value: Json) : Option(String)
-  case value
-    String(text): Some(text)
-    Object(_) | Array(_) | Number(_) | Bool(_) | Null: None
-  end
+  # body gone; regenerate
 end
 
 fn t0() : Time
-  Time.from_parts(2026, 9, 14, 9, 0, 0)
+  # body gone; regenerate
 end
 
 fn asked(command: Command, key: String, request: String) : Call
-  Call(command: command, key: key, request: request)
+  # body gone; regenerate
 end
 
 # The book after each call in turn at `now`, and the last decision.
 fn after_all(book: Book, calls: List(Call), now: Time) : Decision
-  calls.reduce(plain(book, Answer(status: 0, body: "")),
-    fn(last, c) decide(last.book, c, now, t0()) end)
+  # body gone; regenerate
 end
 
 # Ada, who may go 10,000 below zero, and grace.
 fn two() : Book
-  opening = [asked(OpenAccount(name: "ada", currency: "USD", overdraft: 10_000), "o1", "ada"),
-    asked(OpenAccount(name: "grace", currency: "USD", overdraft: 0), "o2", "grace")]
-  after_all(book(), opening, t0()).book
+  # body gone; regenerate
 end
 
 fn names(decision: Decision) : List(String)
-  decision.records.map(fn(r) r.0 end)
+  # body gone; regenerate
 end
 
 test "an account opens with 201 and reads back with its balance; one that is not there is 404"
@@ -411,6 +283,3 @@ test "a key's row reads back from the store, and a key of any bytes names a stor
   assert keyed_of("{\"made\": \"\"}") is None and keyed_of("nope") is None
   assert key_record("a b") == "i_612062" and key_record("é") == "i_c3a9"
 end
-
-verified: types, contracts, tests (8), property (0 seeds), sim (not run)
-          proven: not run
