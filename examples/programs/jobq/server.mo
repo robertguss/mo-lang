@@ -3,7 +3,7 @@ module Jobq.Server
 expose Acceptor, Acceptors, Client, Clients, serving
 
 use Jobq.Board{Call, board}
-use Jobq.Queue{Opening, Queue, Worker, stamp}
+use Jobq.Queue{Opening, Policy, Queue, Worker, guarded, policy, stamp}
 use Jobq.Store{Table, blank}
 
 intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the leases that ran out and the scheduled jobs that have come due; the listener's idle time is 10 seconds, so a connection that sends no whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room for 1,200 of them at once."
@@ -35,10 +35,10 @@ supervisor Acceptors(queue: Handle(Queue), exchange: Exchange)
   child Worker(exchange, queue), restart: :never
 end
 
-# The queue, told its own handle, and the acceptor the listener is served into from here on.
-fn serving(listener: HttpListener, fs: Fs, clock: Clock, opening: Opening) : Handle(Queue)
-  queue = Queue.start(fs, clock, opening)
-  queue.send(Begin(me: queue))
+# The queue under its warden, and the acceptor the listener is served into from here on.
+fn serving(listener: HttpListener, fs: Fs, clock: Clock, opening: Opening,
+  rules: Policy) : Handle(Queue)
+  queue = guarded(fs, clock, opening, rules)
   listener.serve(into: Acceptor.start(queue), idle: 10_000.ms)
   queue
 end
@@ -111,9 +111,14 @@ fn started(http: Http, fs: Fs, clock: Clock) : UInt16
 end
 
 fn started_on(http: Http, fs: Fs, clock: Clock, table: Table) : UInt16
+  started_by(http, fs, clock, table, policy(5, 60_000, 0))
+end
+
+fn started_by(http: Http, fs: Fs, clock: Clock, table: Table, rules: Policy) : UInt16
   case http.listen(0, within: 1.minute)
     Ok(listener):
-      queue = serving(listener, fs, clock, Opening(board: board(stamp(clock), 1), table: table))
+      start = Opening(board: board(stamp(clock), 1), table: table)
+      queue = serving(listener, fs, clock, start, rules)
       if queue.ask(Serve(call: Call(worker: "", command: Health)), within: 1.minute) is Ok(_)
         return listener.port
       end
@@ -347,5 +352,36 @@ test "over the wire, every answer is right or 503, and every job ends done once 
   assert ended
 end
 
-verified: types, contracts, tests (6), property (0 seeds), sim (100 runs)
+test "health counts the restarts since the service started, none at first"
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  health = sent(http, port, Request(method: "GET", path: "/health"))
+  assert in?(health, [200])
+  if health is Ok(answer) and answer.status == 200
+    assert answer.body.ends_with?(", \"restarts\": 0}")
+  end
+end
+
+# The program's own load test with the chaos switch on: every answer is 2xx, 4xx, or 503 while
+# the queue fails at every fifth write and comes back. A process test cannot hold its asserts past
+# a crash, so this is a test rejects; the end-to-end run in restarts.py holds every 2xx job present
+# after the restarts, over a real socket.
+test rejects "over the wire, with the chaos switch on, every answer is 2xx, 4xx, or 503 while the queue fails and comes back"
+  http = Http.fixture()
+  fs = Fs.fixture()
+  port = started_by(http, fs, Clock.fixture(), fresh(), policy(1_000, 60_000, 5))
+  for round in 0..40
+    worker = "w#{round % 2}"
+    assert in?(sent(http, port, by("POST", "/jobs", "p", create("job #{round}"))), [201, 503])
+    lent = sent(http, port, by("POST", "/queues/q/lease", worker, "{\"lease_ms\": 3600000}"))
+    assert in?(lent, [200, 204, 503])
+    if lent is Ok(response) and response.status == 200
+      path = "/jobs/#{job_id(response.body)}/ack"
+      assert in?(sent(http, port, by("POST", path, worker, "")), [200, 404, 409, 503])
+    end
+    assert in?(sent(http, port, Request(method: "GET", path: "/health")), [200, 503])
+  end
+end
+
+verified: types, contracts, tests (8), property (0 seeds), sim (100 runs)
           proven: not run

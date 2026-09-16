@@ -1,13 +1,13 @@
 # sim: --faults 20 --until 0.5
 module Jobq.Queue
-expose Opening, Batch, Answer, Flushed, Queue, Queues, Worker, Workers, opening, flushed, stamp
+expose Opening, Batch, Answer, Flushed, Policy, Queue, Queues, Warden, Worker, Workers, opening, flushed, stamp, policy, guarded, spent?, due?
 
 use Jobq.Api{Routed, respond, route}
-use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, health_of, rebuilt, records, snapshot}
-use Jobq.Job{Phase, Making, shown, to_ms}
-use Jobq.Store{Table, StoreError, blank, emptied, journaled, line_of, open, pairs, rewritten}
+use Jobq.Board{Board, Call, Command, Decision, Outcome, Kept, board, decide, health_of, rebuilt, records, snapshot}
+use Jobq.Job{Job, Phase, Making, shown, to_ms}
+use Jobq.Store{Table, StoreError, blank, cut_short?, emptied, journaled, line_of, open, pairs, reopened, rewritten, writing_to}
 
-intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the log in one write, so one fsync covers every call taken since the last, and only then is each caller answered; the queue keeps the board as the log last held it beside the board it answers from, both sharing every page a batch did not change, so a batch the log did not take is answered 503 and the board goes back, a log that may end in part of a write is written whole with the next batch, and the store keeps no second copy of any job."
+intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the log in one write, so one fsync covers every call taken since the last, and only then is each caller answered; the queue keeps the board as the log last held it beside the board it answers from, both sharing every page a batch did not change, so a batch the log did not take is answered 503 and the board goes back, a log that may end in part of a write is written whole with the next batch, and the store keeps no second copy of any job. A queue that fails is started again and rebuilds its board from the log, answering 503 until it has; a warden counts the restarts and stops the service with exit 70 once more of them fall inside the window than the budget allows; and the chaos switch fails the queue on purpose after every N-th write is on disk."
 
 never "a response is sent before its record is durable"
   for a in Answer.all
@@ -124,23 +124,223 @@ fn outcome_at(answers: List(Answer), i: UInt64) : Outcome
   end
 end
 
+# How the service keeps going: at most `max_restarts` restarts of the queue inside `window_ms`,
+# and the chaos switch, which fails the queue after every `crash_every`-th write, 0 for never.
+struct Policy
+  max_restarts: UInt64
+  window_ms: UInt64
+  crash_every: UInt64
+end
+
+fn policy(max_restarts: UInt64, window_ms: UInt64, crash_every: UInt64) : Policy
+  Policy(max_restarts: max_restarts, window_ms: window_ms, crash_every: crash_every)
+end
+
+# The restarts still inside the window at `now`: those less than `window_ms` before it.
+fn recent(restarts: List(Time), now: Time, window_ms: UInt64) : List(Time)
+  restarts.filter(fn(at) (now - at).ms < window_ms.to_i64 end)
+end
+
+# Whether a failure at `now` is one more than the budget allows: the restarts already inside the
+# window have spent it.
+fn spent?(restarts: List(Time), now: Time, rules: Policy) : Bool
+  recent(restarts, now, rules.window_ms).size >= rules.max_restarts
+end
+
+# Whether the chaos switch comes round in a batch that took the board's writes from `before` to
+# `after`: a multiple of `every` lies past `before` and at or below `after`.
+fn due?(before: UInt64, after: UInt64, every: UInt64) : Bool
+  every > 0 and after / every > before / every
+end
+
+# The outcome as the queue answers it: health with the restarts since the service started.
+fn with_restarts(outcome: Outcome, restarts: UInt64) : Outcome
+  if outcome is Healthy(counts)
+    var told = counts
+    told.restarts = restarts
+    return Healthy(counts: told)
+  end
+  outcome
+end
+
+fn rebuilding() : Outcome
+  Unavailable(reason: "the queue is rebuilding its board from the log")
+end
+
+# The warden keeps what must outlive a restart of the queue: how many there have been, when the
+# recent ones were, and how many writes the board has applied. A queue announces itself from its
+# state's first line, each time it starts; every start after the first is a restart, which the
+# warden answers with the queue's `Begin`, unless it spends the budget, which trips the warden's
+# invariant, and its line gives up at once, so the service exits 70 with the restarted queue
+# still waiting and the log as the failure left it.
+process Warden(clock: Clock, rules: Policy)
+  state
+    starts: UInt64
+    restarts: UInt64
+    times: List(Time)
+    applied: UInt64
+    spent: Bool
+    queue: Option(Handle(Queue))
+  end
+
+  invariant "the queue restarts at most max_restarts times inside restart_window"
+    !state.spent
+  end
+
+  message Born
+  message Watch(queue: Handle(Queue))
+  message Applied(count: UInt64) : UInt64
+  message Restarts : UInt64
+
+  fn update(state, message)
+    case message
+      Born:
+        state.starts += 1
+        if state.starts > 1
+          now = stamp(clock)
+          state.spent = spent?(state.times, now, rules)
+          state.times = recent(state.times, now, rules.window_ms).push(now)
+          state.restarts += 1
+          if state.queue is Some(queue)
+            queue.send(Begin(me: queue, restarts: state.restarts, applied: state.applied,
+              opening: None))
+          end
+        end
+      Watch(queue):
+        state.queue = Some(queue)
+      Applied(count):
+        state.applied = count
+        count
+      Restarts: state.restarts
+    end
+  end
+end
+
+# The queue's first state line tells the warden it has started, and holds the store's log with
+# no values until `Begin` gives the board.
+fn announced(warden: Handle(Warden), store: Table) : Table
+  warden.send(Born)
+  emptied(store)
+end
+
+# The board a restarted queue rebuilds from the log its store names, None when it cannot.
+fn reopening(fs: Fs, store: Table, started: Time) : Option(Opening)
+  case reopened(fs, store)
+    Ok(table): opening(table, started)
+    Error(_): None
+  end
+end
+
+# What the queue holds between two messages, beside the askers it keeps: the board it answers
+# from, the board the log holds, the log, whether it may end in part of a write, the records and
+# outcomes of the calls taken since the last flush, the restarts the warden counted, and the
+# writes the board has applied.
+struct Desk
+  board: Board
+  durable: Board
+  table: Table
+  torn: Bool
+  writes: List((String, Option(String)))
+  outcomes: List(Outcome)
+  restarts: UInt64
+  applied: UInt64
+end
+
+# A flush done: the desk after it, the answers, and whether the chaos switch failed the queue at
+# it, once the warden holds the count.
+struct Settled
+  desk: Desk
+  answers: List(Answer)
+  failing: Bool
+end
+
+fn desk_of(start: Opening, restarts: UInt64, applied: UInt64) : Desk
+  Desk(board: start.board, durable: start.board, table: start.table, torn: cut_short?(start.table),
+    writes: [], outcomes: [], restarts: restarts, applied: applied)
+end
+
+# The desk with a call decided: its records and its outcome join the batch.
+fn joined(desk: Desk, decision: Decision) : Desk
+  var after = desk
+  after.board = decision.board
+  after.writes = desk.writes.concat(decision.writes)
+  after.outcomes = desk.outcomes.push(with_restarts(decision.outcome, desk.restarts))
+  after
+end
+
+# The desk with a look decided: its moves join the batch, with no outcome to answer.
+fn swept(desk: Desk, decision: Decision) : Desk
+  var after = desk
+  after.board = decision.board
+  after.writes = desk.writes.concat(decision.writes)
+  after
+end
+
+# The batch flushed, and the chaos switch looked at: when the batch's writes carry the count past
+# a multiple of `every`, the warden is told the count, since the failure discards the queue's
+# state, and the answers are not sent.
+fn settled(fs: Fs, warden: Handle(Warden), desk: Desk, every: UInt64) : Settled
+  done = flushed(fs,
+    Batch(board: desk.board, durable: desk.durable, table: desk.table, torn: desk.torn,
+    writes: desk.writes, outcomes: desk.outcomes))
+  took = done.answers.all?(fn(a) a.durable end)
+  applied = if took: desk.applied + desk.writes.size else: desk.applied
+  var after = desk
+  after.board = done.board
+  after.durable = done.board
+  after.table = done.table
+  after.torn = done.torn
+  after.writes = []
+  after.outcomes = []
+  after.applied = applied
+  if due?(desk.applied, applied, every)
+    case warden.ask(Applied(count: applied), within: 1_000.ms)
+      Ok(_) | Error(_):
+        return Settled(desk: after, answers: done.answers, failing: true)
+    end
+  end
+  Settled(desk: after, answers: done.answers, failing: false)
+end
+
+# The board given at the first start, or rebuilt from the log after a restart; None when the log
+# cannot give one.
+fn given_or_rebuilt(fs: Fs, store: Table, started: Time, given: Option(Opening)) : Option(Opening)
+  case given
+    Some(held): Some(held)
+    None: reopening(fs, store, started)
+  end
+end
+
+# The calls a queue took before `Begin`, each answered 503.
+fn refusals(n: UInt64) : List(Answer)
+  var answers = [Answer(outcome: rebuilding(), changed: false, durable: false)].take(0)
+  for _ in 0..n
+    answers = answers.push(Answer(outcome: rebuilding(), changed: false, durable: false))
+  end
+  answers
+end
+
 # The one process that holds the board and writes the store. A worker's `Want` joins the batch
 # and, when it is the first since a flush, sends the queue a `Flush`, which the mailbox delivers
-# after the calls already waiting; `Serve` flushes at once and answers the asker itself.
-process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
+# after the calls already waiting; `Serve` flushes at once and answers the asker itself. Until
+# `Begin` gives it its board, after its start or a restart, it writes nothing: a `Serve` is
+# answered 503 at once, and a `Want` is kept and answered 503 when `Begin` comes, before the board
+# is rebuilt.
+process Queue(fs: Fs, clock: Clock, store: Table, started: Time, rules: Policy,
+  warden: Handle(Warden)) mailbox: 100_000
   state
-    board: Board = opening.board
-    durable: Board = opening.board
-    table: Table = opening.table
-    torn: Bool
-    writes: List((String, Option(String)))
-    outcomes: List(Outcome)
+    desk: Desk = desk_of(Opening(board: board(started, 1), table: announced(warden, store)), 0, 0)
     waiting: List(Reply(Outcome))
     flushing: Bool
     me: Option(Handle(Queue))
+    failing: Bool
   end
 
-  message Begin(me: Handle(Queue))
+  invariant "the board is whole: it opened from the log, and the chaos switch has not come round"
+    !state.failing
+  end
+
+  message Begin(me: Handle(Queue), restarts: UInt64, applied: UInt64, opening: Option(Opening))
   message Want(call: Call) : Outcome
   message Sweep
   message Flush
@@ -148,76 +348,86 @@ process Queue(fs: Fs, clock: Clock, opening: Opening) mailbox: 100_000
 
   fn update(state, message)
     case message
-      Begin(me):
-        state.me = Some(me)
-      Want(call):
-        decision = decide(state.board, call, stamp(clock))
-        state.board = decision.board
-        state.writes = state.writes.concat(decision.writes)
-        state.outcomes = state.outcomes.push(decision.outcome)
-        state.waiting = state.waiting.push(reply_to)
-        if !state.flushing and state.me is Some(me)
-          me.send(Flush)
-          state.flushing = true
+      Begin(me: me, restarts: restarts, applied: applied, opening: given):
+        held_back = state.waiting.size
+        delivered(state.waiting, refusals(held_back))
+        state.waiting = []
+        start = given_or_rebuilt(fs, store, started, given)
+        state.failing = start is None
+        if start is Some(held)
+          state.desk = desk_of(held, restarts, applied)
+          state.me = Some(me)
+          me.send(Sweep)
         end
-        if state.me is None
-          done = flushed(fs,
-            Batch(board: state.board, durable: state.durable, table: state.table, torn: state.torn,
-            writes: state.writes, outcomes: state.outcomes))
-          delivered(state.waiting, done.answers)
-          state.board = done.board
-          state.durable = done.board
-          state.table = done.table
-          state.torn = done.torn
-          state.writes = []
-          state.outcomes = []
-          state.waiting = []
+      Want(call):
+        state.waiting = state.waiting.push(reply_to)
+        if state.me is Some(me)
+          state.desk = joined(state.desk, decide(state.desk.board, call, stamp(clock)))
+          if !state.flushing
+            me.send(Flush)
+            state.flushing = true
+          end
         end
       Sweep:
-        decision = decide(state.board, Call(worker: "", command: Health), stamp(clock))
-        state.board = decision.board
-        state.writes = state.writes.concat(decision.writes)
-        if decision.writes.size > 0 and !state.flushing and state.me is Some(me)
-          me.send(Flush)
-          state.flushing = true
+        if state.me is Some(me)
+          decision = decide(state.desk.board, Call(worker: "", command: Health), stamp(clock))
+          moved = decision.writes.size > 0
+          state.desk = swept(state.desk, decision)
+          if moved and !state.flushing
+            me.send(Flush)
+            state.flushing = true
+          end
         end
       Flush:
-        done = flushed(fs,
-          Batch(board: state.board, durable: state.durable, table: state.table, torn: state.torn,
-          writes: state.writes, outcomes: state.outcomes))
-        delivered(state.waiting, done.answers)
-        state.board = done.board
-        state.durable = done.board
-        state.table = done.table
-        state.torn = done.torn
-        state.writes = []
-        state.outcomes = []
-        state.waiting = []
-        state.flushing = false
+        if state.me is Some(_)
+          end_of = settled(fs, warden, state.desk, rules.crash_every)
+          if !end_of.failing
+            delivered(state.waiting, end_of.answers)
+          end
+          state.failing = end_of.failing
+          state.desk = end_of.desk
+          state.waiting = []
+          state.flushing = false
+        end
       Serve(call):
-        decision = decide(state.board, call, stamp(clock))
-        done = flushed(fs,
-          Batch(board: decision.board, durable: state.durable, table: state.table, torn: state.torn,
-          writes: state.writes.concat(decision.writes),
-          outcomes: state.outcomes.push(decision.outcome)))
-        delivered(state.waiting, done.answers)
-        state.board = done.board
-        state.durable = done.board
-        state.table = done.table
-        state.torn = done.torn
-        state.writes = []
-        state.outcomes = []
-        state.waiting = []
-        outcome_at(done.answers, done.answers.size - 1)
+        if state.me is Some(_)
+          state.desk = joined(state.desk, decide(state.desk.board, call, stamp(clock)))
+          end_of = settled(fs, warden, state.desk, rules.crash_every)
+          if !end_of.failing
+            delivered(state.waiting, end_of.answers)
+          end
+          state.failing = end_of.failing
+          state.desk = end_of.desk
+          state.waiting = []
+          outcome_at(end_of.answers, end_of.answers.size - 1)
+        else
+          rebuilding()
+        end
     end
   end
 end
 
-# A queue that crashed would come back from the store it opened with and forget every change
-# since, so it is not started again; its callers get 503 instead.
-supervisor Queues(fs: Fs, clock: Clock, opening: Opening, exchange: Exchange, queue: Handle(Queue))
-  child Queue(fs, clock, opening), restart: :never
-  child Worker(exchange, queue), restart: :never
+# A queue that fails is started again, and rebuilds its board from the log; the warden that
+# counts its restarts gives up at its first failure, since a failure there is the budget spent.
+supervisor Queues(fs: Fs, clock: Clock, store: Table, started: Time, rules: Policy,
+  warden: Handle(Warden))
+  child Warden(clock, rules), restart: :always, max_restarts: 0 per 1.minute
+  child Queue(fs, clock, store, started, rules,
+    warden), restart: :always, max_restarts: 1_000_000 per 1.minute
+end
+
+# The warden and the queue it keeps: the queue told its own handle, and given the board its store
+# opened with, so its first start replays nothing twice.
+fn guarded(fs: Fs, clock: Clock, start: Opening, rules: Policy) : Handle(Queue)
+  kept_by(fs, clock, Warden.start(clock, rules), start, rules)
+end
+
+fn kept_by(fs: Fs, clock: Clock, warden: Handle(Warden), start: Opening,
+  rules: Policy) : Handle(Queue)
+  queue = Queue.start(fs, clock, emptied(start.table), start.board.started, rules, warden)
+  warden.send(Watch(queue: queue))
+  queue.send(Begin(me: queue, restarts: 0, applied: 0, opening: Some(start)))
+  queue
 end
 
 # The queue's answer to one call, or 503: a queue that has not answered in five seconds, or that
@@ -227,7 +437,7 @@ fn answer_of(queue: Handle(Queue), call: Call) : Outcome
   case queue.ask(Want(call: call), within: 5_000.ms)
     Ok(outcome): outcome
     Error(Timeout): Unavailable(reason: "the queue did not answer within 5 seconds")
-    Error(Down): Unavailable(reason: "the queue is down")
+    Error(Down): Unavailable(reason: "the queue failed and is rebuilding its board from the log")
   end
 end
 
@@ -262,7 +472,7 @@ fn fresh() : Table
 end
 
 fn begun(fs: Fs, clock: Clock) : Handle(Queue)
-  Queue.start(fs, clock, Opening(board: board(stamp(clock), 1), table: fresh()))
+  guarded(fs, clock, Opening(board: board(stamp(clock), 1), table: fresh()), policy(5, 60_000, 0))
 end
 
 # A job to make with no backoff and no delay.
@@ -290,11 +500,11 @@ fn served(queue: Handle(Queue), worker: String, command: Command) : Outcome
 end
 
 # A queue started again from what the store holds now, asked one call.
-fn reopened(fs: Fs, clock: Clock, worker: String, command: Command) : Outcome
+fn started_again(fs: Fs, clock: Clock, worker: String, command: Command) : Outcome
   case open(fs, "d")
     Ok(table):
       case opening(table, clock.now)
-        Some(held): served(Queue.start(fs, clock, held), worker, command)
+        Some(held): served(guarded(fs, clock, held, policy(5, 60_000, 0)), worker, command)
         None: Unavailable(reason: "a record is not a job")
       end
     Error(_): Unavailable(reason: "the store did not open")
@@ -355,6 +565,26 @@ fn aged_log(fs: Fs, lent: Outcome) : Bool
     end
   end
   false
+end
+
+# The call asked until the queue answers it with anything but 503, up to 50 times with a wait
+# between, as a client asks while the queue rebuilds its board.
+fn answered(queue: Handle(Queue), slow: Fs, worker: String, command: Command) : Outcome
+  var got = rebuilding()
+  for _ in 0..50
+    got = served(queue, worker, command)
+    if !unavailable?(got) or !waited(slow)
+      break
+    end
+  end
+  got
+end
+
+# A queue under a warden whose chaos switch fails it after every `every`-th write, with a budget
+# no test spends.
+fn chaotic(fs: Fs, clock: Clock, every: UInt64) : Handle(Queue)
+  guarded(fs, clock, Opening(board: board(stamp(clock), 1), table: fresh()),
+    policy(1_000, 60_000, every))
 end
 
 enum Played
@@ -427,6 +657,17 @@ fn ended(queue: Handle(Queue), slow: Fs) : Played
     return Ended if counts.queued == 0 and counts.scheduled == 0 and counts.leased == 0
   end
   Going
+end
+
+# A record on disk whose answer the failure took: job j_500, put in the log beside the queue's.
+fn lost_answer(fs: Fs, one: Job) : Bool
+  record = shown(one).replace("\"id\": \"j_#{one.number}\"", "\"id\": \"j_500\"")
+  line = line_of(("j_500",
+    Some(record.replace("\"payload\": \"one\"", "\"payload\": \"answer lost\""))))
+  case fs.read("d/jobq.log", within: 1.minute)
+    Ok(text): fs.write("d/jobq.log", "#{text}#{line}", within: 1.minute) is Ok(_)
+    Error(_): false
+  end
 end
 
 test "a call through the queue is answered once its record is in the log"
@@ -547,7 +788,7 @@ test "a queue started again from its log finds a lease that ran out and hands th
   made = served(first, "p", Create(making: plain("q", "x", 3)))
   lent = served(first, "w1", Lease(queue: "q", lease_ms: 100))
   aged = aged_log(fs, lent)
-  again = reopened(fs, clock, "w2", Lease(queue: "q", lease_ms: 100))
+  again = started_again(fs, clock, "w2", Lease(queue: "q", lease_ms: 100))
   if made is Made(_) and aged and again is Found(back)
     assert back.tries == 2 and back.worker == Some("w2")
   end
@@ -562,7 +803,7 @@ test "a queue started on a log the previous version wrote replays every job and 
   leased_line = old_record("j_2", "leased", 1, held)
   old = "SET ids 1000\nSET j_1 #{queued_line}\nSET j_2 #{leased_line}\n"
   wrote = fs.write("d/jobq.log", old, within: 1.minute) is Ok(_)
-  listing = reopened(fs, clock, "p", Listing(queue: None, state: None))
+  listing = started_again(fs, clock, "p", Listing(queue: None, state: None))
   assert listing is Listed(_) or unavailable?(listing)
   if wrote and listing is Listed(jobs)
     assert jobs.size == 2
@@ -570,7 +811,7 @@ test "a queue started on a log the previous version wrote replays every job and 
     assert jobs.all?(fn(j) j.max_tries == 3 and j.backoff_ms == 0 end)
     assert jobs.all?(fn(j) j.state == Queued end)
   end
-  lent = reopened(fs, clock, "w1", Lease(queue: "q", lease_ms: 60_000))
+  lent = started_again(fs, clock, "w1", Lease(queue: "q", lease_ms: 60_000))
   assert lent is Found(_) or unavailable?(lent) or !wrote
   if wrote and lent is Found(_) and fs.read("d/jobq.log", within: 1.minute) is Ok(text)
     written = text.split("\n").filter(fn(line) line != "" end)
@@ -600,5 +841,105 @@ test "every answer is right or 503 with the store unchanged, and every job ends 
   assert last == Ended
 end
 
-verified: types, contracts, tests (8), property (0 seeds), sim (100 runs)
+test "a failure inside the window spends a budget whose restarts are all inside it, and one after it does not"
+  at = Time.fixture()
+  rules = policy(2, 60_000, 0)
+  assert !spent?([], at, rules)
+  assert !spent?([at], at + 1.minute, rules)
+  assert spent?([at, at + 1.seconds], at + 2.seconds, rules)
+  assert !spent?([at, at + 1.seconds], at + 1.minute, rules)
+  assert !spent?([at, at + 1.seconds], at + 61.seconds, rules)
+  assert spent?([], at, policy(0, 60_000, 0))
+  assert !spent?([at, at, at, at], at + 1.minute, policy(5, 1_000, 0))
+end
+
+test "the chaos switch comes round on every N-th write, once for a batch that passes it, and never at 0"
+  assert !due?(0, 2, 3) and due?(2, 3, 3) and due?(0, 3, 3)
+  assert !due?(3, 5, 3) and due?(5, 9, 3) and due?(4, 10, 3)
+  assert due?(0, 1, 1) and due?(1, 2, 1)
+  assert !due?(0, 1_000, 0)
+  assert !due?(3, 3, 3)
+end
+
+# A process test cannot show a crash and still hold its asserts, so the restart's path is shown
+# without one: a second queue started under the same warden is a birth after the first, which the
+# warden counts as a restart and answers by beginning the queue it watches again, with no board,
+# exactly as it answers a queue the runtime has restarted.
+test "a queue begun again rebuilds its board from the log, keeps its leases and ids, and counts the restart"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  slow = Fs.fixture(delay: 10.ms)
+  rules = policy(5, 60_000, 0)
+  warden = Warden.start(clock, rules)
+  queue = kept_by(fs, clock, warden, Opening(board: board(stamp(clock), 1), table: fresh()), rules)
+  made = served(queue, "p", Create(making: plain("q", "one", 2)))
+  lent = served(queue, "w1", Lease(queue: "q", lease_ms: 3_600_000))
+  lost = if made is Made(one): lost_answer(fs, one) else: false
+  second = Queue.start(fs, clock, fresh(), stamp(clock), rules, warden)
+  assert unavailable?(served(second, "p", Listing(queue: None, state: None)))
+  health = answered(queue, slow, "", Health)
+  assert health is Healthy(_) or unavailable?(health)
+  if health is Healthy(counts)
+    assert counts.restarts == 1
+  end
+  listing = answered(queue, slow, "p", Listing(queue: None, state: None))
+  assert matches_store?(listing, fs, stamp(clock))
+  if lost and listing is Listed(jobs)
+    assert jobs.any?(fn(j) j.number == 500 and j.payload == "answer lost" end)
+  end
+  if lent is Found(held)
+    back = answered(queue, slow, "p", Fetch(id: "j_#{held.number}"))
+    if back is Found(again)
+      assert again.worker == Some("w1") and again.lease_until == held.lease_until
+      assert again.state == Leased and again.tries == 1
+    end
+  end
+  after = answered(queue, slow, "p", Create(making: plain("q", "after", 2)))
+  if lost and after is Made(next)
+    assert next.number > 500
+  end
+end
+
+test "a queue not yet begun writes nothing, and answers every call 503, a kept one once it begins"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  rules = policy(5, 60_000, 0)
+  queue = Queue.start(fs, clock, fresh(), stamp(clock), rules, Warden.start(clock, rules))
+  assert unavailable?(served(queue, "p", Create(making: plain("q", "no", 2))))
+  queue.send(Sweep)
+  queue.send(Flush)
+  start = Opening(board: board(stamp(clock), 1), table: fresh())
+  queue.send(Begin(me: queue, restarts: 0, applied: 0, opening: Some(start)), delay: 100.ms)
+  assert answer_of(queue,
+    Call(worker: "p", command: Create(making: plain("q", "kept", 2)))) == rebuilding()
+  assert fs.read("d/jobq.log", within: 1.minute) is Error(_)
+  assert served(queue, "", Health) is Healthy(_)
+end
+
+test rejects "the chaos switch fails the queue once its third write is on disk"
+  fs = Fs.fixture()
+  queue = chaotic(fs, Clock.fixture(), 3)
+  for i in 0..12
+    outcome = served(queue, "p", Create(making: plain("q", "job #{i}", 2)))
+    assert outcome is Made(_) or unavailable?(outcome)
+  end
+end
+
+# The fault run with the failure injected: the seed decides where among the writes each seventh
+# one falls, and every answer up to the failure is right or 503.
+test rejects "under faults, the chaos switch fails the queue at a seventh write in the middle of the workers' rounds"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = chaotic(fs, clock, 7)
+  for i in 0..4
+    made = served(queue, "p", Create(making: waits("q", "job #{i}", 2, 0, 0)))
+    assert made is Made(_) or unavailable?(made)
+  end
+  slow = Fs.fixture(delay: 150.ms)
+  for round in 0..40
+    assert !(played(queue, fs, slow, clock, round) is Wrong(_))
+  end
+end
+
+verified: types, contracts, tests (14), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 1))
           proven: not run

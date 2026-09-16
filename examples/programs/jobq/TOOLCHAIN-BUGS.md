@@ -120,3 +120,23 @@ arms that listed the rest of the enum went over the limit, and each had to be wr
 
 Not worked around in the toolchain: the shapes above are fine to read, and the finding is that a
 wide enum's `case` arms are a cost the language charges again every time a variant is added.
+
+## 5. A crash keeps its rendered state for good, so every restart of a large process costs its size
+
+Change 3 restarts the queue after a failure. Each crash renders the crashed process's state, its
+state before the last message, and its message log as text (`crashed` in `toolchain/runtime/mo_rt.c`;
+the invariant's clause renders the state a third time), writes the report to stderr, and never frees
+it: the report is not in the 16 the surface keeps, and `MO_EVENTS=64` changes nothing. The queue's
+state is the whole board, so the cost is proportional to the jobs.
+
+Measured with the built binary on this Mac, `--crash-every 1` and one create per restart:
+
+| log | report on stderr per crash | RSS after the 1st restart | growth per restart |
+|---|---|---|---|
+| 5,000 jobs | about 5.5 MB | 42 MB | about 11 MB for the first 60, about 5 MB after |
+| 20,000 jobs | about 22 MB | 117 MB | about 44 MB |
+
+Reproduction: `python3` a log of 20,000 jobs into a folder, `jobq serve <dir> --crash-every 1
+--max-restarts 1000`, then POST a job and GET /health 30 times; RSS goes from 117 MB to 1,380 MB and
+stderr to 685 MB. Not worked around: the report is the runtime's, the restart itself is 0.15 s on
+that log, and the restart budget (5 in 60 seconds by default) bounds how fast it grows.

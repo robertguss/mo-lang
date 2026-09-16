@@ -1,6 +1,6 @@
 # recipe: Recipes.Store.Store
 module Jobq.Store
-expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled, rewritten, emptied, line_of
+expose StoreError, Read, Reopened, Table, key?, value?, open, reopened, get, count, log, cut_short?, put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled, rewritten, emptied, line_of
 
 intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by hand from notes's Notes.Store, its keys spread over 256 small maps so a change copies one small map: String keys to String values, a log named jobq.log in a folder with a SET or DEL line per change, each change appended and on disk before it returns, and put_all appending many changes in one write, so one fsync covers them; replay leaves out a last line cut short, and compaction writes one line per live key beside the log and renames it over the log."
 
@@ -87,6 +87,22 @@ fn open(fs: Fs, dir: String) : Result(Table, StoreError)
   size = try size_of(folder, "jobq.log")
   start = Replay(table: empty, pending: None, lines: 0, bytes: 0, bad: 0)
   replayed = try replayed_from(folder, start)
+  return Error(BadLine(number: replayed.bad)) if replayed.bad > 0
+  finished(replayed, size)
+end
+
+# The store a table names, opened again from its folder after a restart: jobq.log, then, for a
+# table writing to another log as jobq check's does, that log replayed over it.
+fn reopened(fs: Fs, table: Table) : Result(Table, StoreError)
+  base = try open(fs, table.dir)
+  return Ok(base) if table.name == base.name
+  folder = fs.scoped(table.dir)
+  names = try names_in(folder)
+  over = writing_to(base, table.name)
+  return Ok(over) if !names.contains?(table.name)
+  size = try size_of(folder, table.name)
+  start = Replay(table: over, pending: None, lines: 0, bytes: 0, bad: 0)
+  replayed = try replayed_log(folder, table.name, start)
   return Error(BadLine(number: replayed.bad)) if replayed.bad > 0
   finished(replayed, size)
 end
@@ -394,7 +410,11 @@ fn finished(replay: Replay, size: UInt64) : Result(Table, StoreError)
 end
 
 fn replayed_from(folder: Fs, start: Replay) : Result(Replay, StoreError)
-  case folder.fold_lines("jobq.log", start, within: 600_000.ms,
+  replayed_log(folder, "jobq.log", start)
+end
+
+fn replayed_log(folder: Fs, name: String, start: Replay) : Result(Replay, StoreError)
+  case folder.fold_lines(name, start, within: 600_000.ms,
     fn(replay, line) stepped(replay, line) end)
     Ok(replay): Ok(replay)
     Error(Missing(_)): Error(Unreadable)
@@ -535,6 +555,27 @@ test "a store writing to another log keeps its keys and leaves the first log alo
   assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET a 1\n")
 end
 
+test "a store opened again after a restart holds both logs when it writes to another"
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Ok(empty)
+  assert put(fs, empty, "a", "1") is Ok(one)
+  assert reopened(fs, emptied(one)) is Ok(same)
+  assert get(same, "a") == Some("1") and same.name == "jobq.log" and bytes(same) == 8
+  moved = emptied(writing_to(one, "jobq.check.log"))
+  assert reopened(fs, moved) is Ok(untouched)
+  assert get(untouched, "a") == Some("1") and untouched.name == "jobq.check.log"
+  assert bytes(untouched) == 0
+  assert put(fs, writing_to(one, "jobq.check.log"), "b", "2") is Ok(two)
+  assert delete(fs, two, "a") is Ok(_)
+  assert reopened(fs, moved) is Ok(both)
+  assert get(both, "a") is None and get(both, "b") == Some("2") and count(both) == 1
+  assert bytes(both) == 14 and lines(both) == 2
+  assert fs.write("d/jobq.check.log", "SET b 2\nSET c", within: 1.minute) is Ok(_)
+  assert reopened(fs, moved) is Ok(cut)
+  assert cut_short?(cut) and get(cut, "c") is None and get(cut, "a") == Some("1")
+end
+
 property "any valid key and value read back as written, and again once the store is opened again"
   for key in any(String), value in any(String) if key?(key) and value?(value)
     fs = Fs.fixture()
@@ -548,5 +589,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (12), property (200 seeds), sim (not run)
+verified: types, contracts, tests (13), property (200 seeds), sim (not run)
           proven: not run

@@ -1,5 +1,5 @@
 > - GET /health
-200 {"queued": 2, "scheduled": 0, "leased": 1, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>}
+200 {"queued": 2, "scheduled": 0, "leased": 1, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>, "restarts": 0}
 > - GET /jobs
 401 {"error": "a request needs authorization: Bearer <token>"}
 > p GET /jobs
@@ -111,4 +111,4 @@
 > - GET /queues
 401 {"error": "a request needs authorization: Bearer <token>"}
 > - GET /health
-200 {"queued": 0, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>}
+200 {"queued": 0, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "uptime_ms": <uptime_ms>, "restarts": 0}

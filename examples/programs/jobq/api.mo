@@ -260,7 +260,7 @@ fn tally(one: Tally) : String
 end
 
 fn health(counts: Counts) : String
-  "{\"queued\": #{counts.queued}, \"scheduled\": #{counts.scheduled}, \"leased\": #{counts.leased}, \"done\": #{counts.done}, \"dead\": #{counts.dead}, \"uptime_ms\": #{counts.uptime_ms}}"
+  "{\"queued\": #{counts.queued}, \"scheduled\": #{counts.scheduled}, \"leased\": #{counts.leased}, \"done\": #{counts.done}, \"dead\": #{counts.dead}, \"uptime_ms\": #{counts.uptime_ms}, \"restarts\": #{counts.restarts}}"
 end
 
 fn json(status: UInt16, body: String) : Response
@@ -464,8 +464,8 @@ test "each outcome is its status and its JSON"
   later.run_at = Some(at)
   assert respond(Made(job: later)).body.contains?("\"state\": \"scheduled\"")
   assert respond(Made(job: later)).body.contains?("\"backoff_ms\": 250, \"created_at\": \"2026-09-14T10:00:00Z\", \"updated_at\": \"2026-09-14T10:00:00Z\", \"run_at\": \"2026-09-14T10:00:00Z\"")
-  counts = Counts(queued: 1, scheduled: 6, leased: 2, done: 3, dead: 4, uptime_ms: 5)
-  assert respond(Healthy(counts: counts)).body == "{\"queued\": 1, \"scheduled\": 6, \"leased\": 2, \"done\": 3, \"dead\": 4, \"uptime_ms\": 5}"
+  counts = Counts(queued: 1, scheduled: 6, leased: 2, done: 3, dead: 4, uptime_ms: 5, restarts: 7)
+  assert respond(Healthy(counts: counts)).body == "{\"queued\": 1, \"scheduled\": 6, \"leased\": 2, \"done\": 3, \"dead\": 4, \"uptime_ms\": 5, \"restarts\": 7}"
   assert id_of(one.number) == "j_1"
 end
 

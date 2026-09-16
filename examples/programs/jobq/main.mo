@@ -14,15 +14,17 @@ expose Place, Trip, Task, Problem, task, steady, serving?, main
 
 use Jobq.Board{health_of, ill_formed, snapshot}
 use Jobq.Job{id_of}
-use Jobq.Queue{Opening, opening}
+use Jobq.Queue{Opening, Policy, opening, policy}
 use Jobq.Server{serving}
 use Jobq.Store{Table, StoreError, count, cut_short?, line_of, lines, open, pairs, rewritten, writing_to}
 
 intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job in the names this version writes, verify a folder without serving it, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; every command that opens a folder refuses one that holds a record the API could never have produced, a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
 
+# Where to serve, and how the service keeps going: its restart budget and its chaos switch.
 struct Place
   dir: String
   port: UInt16
+  rules: Policy
 end
 
 # One request from the client: where to, the token (- for none), and the request.
@@ -52,7 +54,7 @@ enum Problem
 end
 
 fn usage() : String
-  "usage: jobq serve <dir> [--port N] | jobq compact <dir> | jobq verify <dir> | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
+  "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] | jobq compact <dir> | jobq verify <dir> | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 end
 
 fn task(args: List(String)) : Result(Task, Problem)
@@ -68,15 +70,53 @@ fn task(args: List(String)) : Result(Task, Problem)
   end
 end
 
+# The place a serve starts from: port 7900, five restarts a minute, and no chaos.
+fn place_of(dir: String) : Place
+  Place(dir: dir, port: 7_900, rules: policy(5, 60_000, 0))
+end
+
 fn to_serve(args: List(String)) : Result(Task, Problem)
   dir = try dir_of(args)
   flags = args.drop(1)
-  return Ok(Serving(place: Place(dir: dir, port: 7_900))) if flags.size == 0
-  if flags.size != 2 or flags.first != Some("--port")
-    return Error(Usage(detail: "serve takes a folder and then --port N"))
+  if flags.size % 2 != 0
+    return Error(Usage(detail: "serve takes a folder and then flags, each with its value"))
   end
-  port = try port_of(flags.get(1) or "")
-  Ok(Serving(place: Place(dir: dir, port: port)))
+  var place = place_of(dir)
+  var seen = flags.take(0)
+  for i in 0..flags.size / 2
+    name = flags.get(i * 2) or ""
+    return Error(Usage(detail: "serve takes #{name} once")) if seen.contains?(name)
+    seen = seen.push(name)
+    place = try flagged(place, name, flags.get(i * 2 + 1) or "")
+  end
+  Ok(Serving(place: place))
+end
+
+# The place with one flag's value set.
+fn flagged(place: Place, name: String, value: String) : Result(Place, Problem)
+  var set = place
+  case name
+    "--port":
+      set.port = try port_of(value)
+    "--max-restarts":
+      set.rules.max_restarts = try number_of(name, value, 0, 1_000)
+    "--restart-window":
+      set.rules.window_ms = (try number_of(name, value, 1, 86_400)) * 1_000
+    "--crash-every":
+      set.rules.crash_every = try number_of(name, value, 0, 1_000_000_000)
+    _:
+      return Error(Usage(detail: "serve takes --port, --max-restarts, --restart-window, and --crash-every, not #{name}"))
+  end
+  Ok(set)
+end
+
+# A flag's whole number, from `least` to `most`.
+fn number_of(name: String, text: String, least: UInt64, most: UInt64) : Result(UInt64, Problem)
+  ensures result is Ok(n) implies n >= least and n <= most
+
+  n = text.to_u64 or most + 1
+  return Ok(n) if n >= least and n <= most
+  Error(Usage(detail: "#{name} takes a whole number from #{least} to #{most}, not #{text}"))
 end
 
 fn compacting(args: List(String)) : Result(Task, Problem)
@@ -157,7 +197,7 @@ fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : R
   whole = if cut_short?(opened): try compacted_from(fs, place.dir, start) else: start
   case http.listen(place.port, within: 5_000.ms)
     Ok(listener):
-      queue = serving(listener, fs, clock, whole)
+      queue = serving(listener, fs, clock, whole, place.rules)
       queue.send(Sweep)
       out.write_line("jobq: serving #{place.dir} on 127.0.0.1:#{listener.port}")
       out.flush
@@ -263,7 +303,7 @@ end
 
 fn checked_on(http: Http, listener: HttpListener, fs: Fs, clock: Clock, start: Opening,
   lines: List(String)) : String
-  queue = serving(listener, fs, clock, start)
+  queue = serving(listener, fs, clock, start, policy(5, 60_000, 0))
   queue.send(Sweep)
   var transcript = ""
   for line in lines
@@ -407,13 +447,36 @@ fn old_record(id: String, state: String, attempts: UInt64) : String
 end
 
 test "serve takes a folder and an optional port, 7900 by default"
-  assert task(["serve", "data"]) == Ok(Serving(place: Place(dir: "data", port: 7_900)))
+  assert task(["serve", "data"]) == Ok(Serving(place: place_of("data")))
   assert serving?(["serve", "data"])
   assert !serving?(["compact", "data"])
   assert task(["serve",
     "data",
     "--port",
-    "8000"]) == Ok(Serving(place: Place(dir: "data", port: 8_000)))
+    "8000"]) == Ok(Serving(place: Place(dir: "data", port: 8_000, rules: policy(5, 60_000, 0))))
+end
+
+test "serve takes a restart budget and a chaos switch, 5 in 60 seconds and 0 by default, in any order"
+  rules = policy(2, 10_000, 7)
+  words = ["serve", "d", "--crash-every", "7", "--max-restarts", "2", "--restart-window", "10"]
+  assert task(words) == Ok(Serving(place: Place(dir: "d", port: 7_900, rules: rules)))
+  with_port = ["serve", "d", "--restart-window", "10", "--port", "8000"]
+  assert task(with_port) == Ok(Serving(place: Place(dir: "d", port: 8_000,
+    rules: policy(5, 10_000, 0))))
+  no_restarts = Place(dir: "d", port: 7_900, rules: policy(0, 60_000, 0))
+  assert task(["serve", "d", "--max-restarts", "0"]) == Ok(Serving(place: no_restarts))
+  assert serving?(words)
+  assert task(["serve", "d", "--crash-every"]) is Error(Usage(_))
+  assert task(["serve", "d", "--crash-every", "-1"]) is Error(Usage(_))
+  assert task(["serve", "d", "--crash-every", "x"]) is Error(Usage(_))
+  assert task(["serve", "d", "--restart-window", "0"]) is Error(Usage(_))
+  assert task(["serve", "d", "--restart-window", "86401"]) is Error(Usage(_))
+  assert task(["serve", "d", "--max-restarts", "1001"]) is Error(Usage(_))
+  assert task(["serve", "d", "--max-restarts", "1", "--max-restarts", "2"]) is Error(Usage(_))
+  assert task(["serve", "d", "--port", "1", "--budget", "2"]) is Error(Usage(_))
+  assert task(["check", "d", "s.txt", "--crash-every", "2"]) is Error(Usage(_))
+  assert task(["compact", "d", "--crash-every", "2"]) is Error(Usage(_))
+  assert task(["verify", "d", "--crash-every", "2"]) is Error(Usage(_))
 end
 
 test "a missing folder, a bad port, a short request, or an unknown command is a usage error"
@@ -530,5 +593,5 @@ test "a usage error exits 2, and a folder, a port, or a server that cannot be ha
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (9), property (0 seeds), sim (not run)
+verified: types, contracts, tests (10), property (0 seeds), sim (not run)
           proven: not run

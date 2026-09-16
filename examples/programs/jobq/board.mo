@@ -37,6 +37,7 @@ struct Counts
   done: UInt64
   dead: UInt64
   uptime_ms: Int64
+  restarts: UInt64
 end
 
 # One queue's jobs by state, as /queues lists them; a queue with no job in any state has no Tally.
@@ -114,7 +115,7 @@ fn board(started: Time, next: UInt64) : Board
 
   Board(jobs: Map.new(), orders: Map.new(), fresh: Map.new(), leases: Map.new(), due: None,
     waits: Map.new(), wake: None, next: next, reserved: next,
-    counts: Counts(queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0),
+    counts: Counts(queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0, uptime_ms: 0, restarts: 0),
     started: started)
 end
 
@@ -982,7 +983,7 @@ test "a board rebuilt from the records the previous version wrote holds every jo
   old_leased = "{\"id\": \"j_2\", \"queue\": \"emails\", \"state\": \"leased\", \"payload\": \"two\", \"attempts\": 1, \"max_attempts\": 2, \"created_at\": \"2026-09-14T09:01:00Z\", \"updated_at\": \"2026-09-14T09:07:00Z\", \"worker\": \"w-old\", \"lease_until\": \"2026-09-14T09:08:00Z\"}"
   assert rebuilt([("ids", "1000"), ("j_1", old_queued), ("j_2", old_leased)], start()) is Some(b)
   assert health_of(b, start()) == Counts(queued: 1, scheduled: 0, leased: 1, done: 0, dead: 0,
-    uptime_ms: 0)
+    uptime_ms: 0, restarts: 0)
   assert b.next == 1_000 and b.reserved == 1_000
   assert records(b).all?(fn(r) !r.contains?("attempts") end)
   assert records(b).all?(fn(r) r.contains?("\"backoff_ms\": 0") end)
