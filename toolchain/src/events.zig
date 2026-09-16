@@ -145,15 +145,22 @@ pub const Ring = struct {
 /// updates cannot turn one over before it is read: the last `cap` (16 by default; `mo run
 /// --crashes N`, `MO_CRASHES=N` for a binary), written when the report is, whether or not the ring
 /// keeps events. Each is the `Crashed` event with its own copies of the clause, the message, and
-/// the state snapshot, each cut to `kept_text` bytes, so 16 reports hold at most about 200 KiB
+/// the state snapshot, each cut to `kept_text` bytes where a character begins, in a slot of
+/// `slot_bytes` of one buffer reserved at the first crash, so 16 reports hold at most about 200 KiB
 /// however large a state is; the printed report is whole. runtime/mo_rt.c keeps the same store.
 pub const default_crashes: u32 = 16;
 pub const kept_text: usize = 4096;
+/// A cut text's ending, ` … N bytes more`, fits in this.
+const ending: usize = 40;
+pub const slot_bytes: usize = 3 * (kept_text + ending);
 
 pub const Crashes = struct {
     cap: u32 = default_crashes,
-    gpa: std.mem.Allocator = std.heap.page_allocator,
+    /// Under Mo.Sim the store is in the run's arena; under Mo.Server, pages the system gives as they
+    /// are touched.
+    gpa: ?std.mem.Allocator = null,
     slots: []Event = &.{},
+    texts: []u8 = &.{},
     len: usize = 0,
     /// The slot the next report goes in: the oldest once the store is full.
     head: usize = 0,
@@ -161,28 +168,24 @@ pub const Crashes = struct {
 
     pub fn record(c: *Crashes, e: Event) void {
         if (c.cap == 0) return;
-        if (c.slots.len == 0) c.slots = c.gpa.alloc(Event, c.cap) catch return;
+        if (c.slots.len == 0) {
+            const gpa = c.gpa orelse std.heap.page_allocator;
+            c.slots = gpa.alloc(Event, c.cap) catch return;
+            c.texts = gpa.alloc(u8, c.cap * slot_bytes) catch {
+                gpa.free(c.slots);
+                c.slots = &.{};
+                return;
+            };
+        }
         var x = e;
-        x.clause = cut(c.gpa, e.clause) catch return;
-        x.message = cut(c.gpa, e.message) catch {
-            c.gpa.free(x.clause);
-            return;
-        };
-        x.state = cut(c.gpa, e.state) catch {
-            c.gpa.free(x.clause);
-            c.gpa.free(x.message);
-            return;
-        };
-        if (c.len < c.cap) {
-            c.len += 1;
-        } else {
-            const old = c.slots[c.head];
-            c.gpa.free(old.clause);
-            c.gpa.free(old.message);
-            c.gpa.free(old.state);
+        var room: []u8 = c.texts[c.head * slot_bytes ..][0..slot_bytes];
+        for ([_]*[]const u8{ &x.clause, &x.message, &x.state }) |field| {
+            field.* = cut(room, field.*);
+            room = room[field.len..];
         }
         c.slots[c.head] = x;
         c.head = (c.head + 1) % c.cap;
+        if (c.len < c.cap) c.len += 1;
         c.total += 1;
     }
 
@@ -191,7 +194,7 @@ pub const Crashes = struct {
         return c.slots[(c.head + c.cap - 1 - i) % c.cap];
     }
 
-    /// The bytes the store holds now: its slots and its texts.
+    /// The bytes the store holds: its slots and the texts in them.
     pub fn bytes(c: *const Crashes) usize {
         var n = c.slots.len * @sizeOf(Event);
         for (c.slots[0..c.len]) |e| n += e.clause.len + e.message.len + e.state.len;
@@ -199,23 +202,27 @@ pub const Crashes = struct {
     }
 
     pub fn deinit(c: *Crashes) void {
-        for (c.slots[0..c.len]) |e| {
-            c.gpa.free(e.clause);
-            c.gpa.free(e.message);
-            c.gpa.free(e.state);
+        if (c.slots.len > 0) {
+            const gpa = c.gpa orelse std.heap.page_allocator;
+            gpa.free(c.slots);
+            gpa.free(c.texts);
         }
-        if (c.slots.len > 0) c.gpa.free(c.slots);
         c.* = .{ .cap = c.cap, .gpa = c.gpa };
     }
 };
 
-/// `text`, or its first `kept_text` bytes, cut where a character begins, and how many more it had:
-/// `{items: [1, 2, … 10,240 bytes more`.
-fn cut(gpa: std.mem.Allocator, text: []const u8) ![]u8 {
-    if (text.len <= kept_text) return gpa.dupe(u8, text);
+/// `text` copied into `room`, or its first `kept_text` bytes, cut where a character begins, and
+/// how many more it had: `{items: [1, 2, … 10240 bytes more`.
+fn cut(room: []u8, text: []const u8) []const u8 {
+    if (text.len <= kept_text) {
+        @memcpy(room[0..text.len], text);
+        return room[0..text.len];
+    }
     var end: usize = kept_text;
     while (end > 0 and text[end] & 0xC0 == 0x80) end -= 1;
-    return std.fmt.allocPrint(gpa, "{s} … {d} bytes more", .{ text[0..end], text.len - end });
+    @memcpy(room[0..end], text[0..end]);
+    const more = std.fmt.bufPrint(room[end .. kept_text + ending], " … {d} bytes more", .{text.len - end}) catch unreachable;
+    return room[0 .. end + more.len];
 }
 
 /// `Keeper #0`, or who sent from outside a process.

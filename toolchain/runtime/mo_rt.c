@@ -4981,47 +4981,47 @@ static void record_event(Event e) {
 
 /* The crash reports the surface reads, kept apart from the ring (events.zig, Crashes; step 32): the
  * last crash_cap, MO_CRASHES=N, 16 by default, each with its own copies of the clause, the message,
- * and the state snapshot, each cut to KEPT_TEXT bytes where a character begins. */
+ * and the state snapshot, each cut to KEPT_TEXT bytes where a character begins, in a slot of
+ * SLOT_BYTES of one buffer reserved at the first crash, in pages the system gives as they are
+ * touched. */
 #define KEPT_TEXT 4096
-static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));
+#define KEPT_ENDING 40
+#define SLOT_BYTES (3 * (KEPT_TEXT + KEPT_ENDING))
 static Event *kept_crashes;
+static char *kept_texts;
 static size_t crash_cap = 16, crash_len, crash_head;
 
-static const char *kept_text(const char *text) {
-    size_t n = strlen(text);
-    if (n <= KEPT_TEXT) return text_of("%s", text);
-    size_t end = KEPT_TEXT;
-    while (end > 0 && ((unsigned char)text[end] & 0xC0) == 0x80) end--;
-    return text_of("%.*s … %zu bytes more", (int)end, text, n - end);
+/* `text` copied to `room`, or its first KEPT_TEXT bytes and how many more it had; gives the end. */
+static char *kept_text(char *room, const char *text, const char **out) {
+    size_t n = strlen(text), end = n;
+    if (n > KEPT_TEXT) {
+        end = KEPT_TEXT;
+        while (end > 0 && ((unsigned char)text[end] & 0xC0) == 0x80) end--;
+    }
+    memcpy(room, text, end);
+    if (end < n) end += (size_t)snprintf(room + end, KEPT_TEXT + KEPT_ENDING - end, " … %zu bytes more", n - end);
+    room[end] = 0;
+    *out = room;
+    return room + end + 1;
 }
 
 static void keep_crash(Event e) {
     if (crash_cap == 0 || (e.process < nprocs && is_hidden(e.process))) return;
-    if (!kept_crashes) kept_crashes = xmalloc(crash_cap * sizeof(Event));
+    if (!kept_crashes) {
+        void *at = mmap(NULL, crash_cap * (sizeof(Event) + SLOT_BYTES), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (at == MAP_FAILED) return;
+        kept_crashes = at;
+        kept_texts = (char *)at + crash_cap * sizeof(Event);
+    }
     e.at = event_now();
     e.process_name = name_of(e.process);
-    e.clause = kept_text(e.clause);
-    e.message = kept_text(e.message);
-    e.state = kept_text(e.state);
-    if (crash_len < crash_cap) {
-        crash_len++;
-    } else {
-        Event *old = &kept_crashes[crash_head];
-        free((char *)old->clause);
-        free((char *)old->message);
-        free((char *)old->state);
-    }
+    char *room = kept_texts + crash_head * SLOT_BYTES;
+    room = kept_text(room, e.clause, &e.clause);
+    room = kept_text(room, e.message, &e.message);
+    kept_text(room, e.state, &e.state);
     kept_crashes[crash_head] = e;
     crash_head = (crash_head + 1) % crash_cap;
-}
-
-static void forget_crashes(void) {
-    for (size_t i = 0; i < crash_len; i++) {
-        free((char *)kept_crashes[i].clause);
-        free((char *)kept_crashes[i].message);
-        free((char *)kept_crashes[i].state);
-    }
-    crash_len = crash_head = 0;
+    if (crash_len < crash_cap) crash_len++;
 }
 
 static bool is_timeout(MoValue v) { return mo_is(v, MO_N_ERROR) && mo_vcount(v) == 1 && mo_is(v.as.xs[0], MO_N_TIMEOUT); }
@@ -5102,7 +5102,7 @@ static void reset_processes(void) {
     sim_waited = 0;
     ring_len = ring_head = 0;
     ring_total = 0;
-    forget_crashes();
+    crash_len = crash_head = 0;
 }
 
 static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));

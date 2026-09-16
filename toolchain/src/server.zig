@@ -112,8 +112,7 @@ pub const Server = struct {
         var scheduler: Sim = .init(&machine, 0, "main");
         scheduler.server = s;
         scheduler.ring = .{ .cap = s.events_cap, .wall_ms = s.now(), .mono_us = s.monoUs() };
-        // The run's allocator is an arena, which would keep every report the store let go.
-        scheduler.kept_crashes = .{ .cap = s.crashes_cap, .gpa = std.heap.smp_allocator };
+        scheduler.kept_crashes = .{ .cap = s.crashes_cap };
         defer scheduler.kept_crashes.deinit();
         defer s.ids_used = scheduler.procs.items.len;
         machine.sim = &scheduler;
