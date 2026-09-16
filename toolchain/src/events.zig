@@ -4,8 +4,8 @@
 //! by `mo run --surface`. runtime/mo_rt.c keeps the same ring for a built binary.
 //!
 //! Recording is a copy into a slot: an event holds only numbers and names that live as long as the
-//! program (a process's, a message's, a call's), except a crash's clause, message, and state, which
-//! are the crash report's own text, kept by the run as the report is. The ring is `cap` events; the
+//! program (a process's, a message's, a call's). A crash's clause, message, and state are read from
+//! the crash store below by the report's number (step 33), so the ring keeps no report alive. The ring is `cap` events; the
 //! next overwrites the oldest. `mo run --events N` and `MO_EVENTS=N` for a binary set `cap`, 4,096
 //! by default; 0 keeps none.
 //!
@@ -31,7 +31,8 @@ pub const Kind = enum(u8) {
     ended,
     /// `count`: the restarts so far.
     restarted,
-    /// `clause`, `message` (the message it crashed on), `state` (before it), `seed`.
+    /// `clause`, `message` (the message it crashed on), `state` (before it), `seed`. In the ring,
+    /// `count` is the report's number in Crashes and the texts are read from there (step 33).
     crashed,
     /// `other` sent to `process`, whose mailbox was full.
     overflowed,
@@ -166,15 +167,17 @@ pub const Crashes = struct {
     head: usize = 0,
     total: u64 = 0,
 
-    pub fn record(c: *Crashes, e: Event) void {
-        if (c.cap == 0) return;
+    /// Keeps `e` and gives its number, which a `Crashed` event in the ring carries in `count` to
+    /// read its texts here while the store still holds it (filled); 0 when it is not kept.
+    pub fn record(c: *Crashes, e: Event) u64 {
+        if (c.cap == 0) return 0;
         if (c.slots.len == 0) {
             const gpa = c.gpa orelse std.heap.page_allocator;
-            c.slots = gpa.alloc(Event, c.cap) catch return;
+            c.slots = gpa.alloc(Event, c.cap) catch return 0;
             c.texts = gpa.alloc(u8, c.cap * slot_bytes) catch {
                 gpa.free(c.slots);
                 c.slots = &.{};
-                return;
+                return 0;
             };
         }
         var x = e;
@@ -183,10 +186,25 @@ pub const Crashes = struct {
             field.* = cut(room, field.*);
             room = room[field.len..];
         }
+        c.total += 1;
+        x.count = c.total;
         c.slots[c.head] = x;
         c.head = (c.head + 1) % c.cap;
         if (c.len < c.cap) c.len += 1;
-        c.total += 1;
+        return c.total;
+    }
+
+    /// A ring's event with a `Crashed` event's clause, message, and state read from the report it
+    /// names, or left empty once the store has let that report go (step 33): the ring holds no
+    /// text of its own, so a stream of crashes costs the ring nothing past its slots.
+    pub fn filled(c: *const Crashes, e: Event) Event {
+        if (e.kind != .crashed or e.count == 0 or e.count > c.total or c.total - e.count >= c.len) return e;
+        const kept = c.newest(@intCast(c.total - e.count));
+        var x = e;
+        x.clause = kept.clause;
+        x.message = kept.message;
+        x.state = kept.state;
+        return x;
     }
 
     /// The `i`th report kept, newest first.
@@ -306,7 +324,7 @@ test "the crash store keeps the last cap reports, newest first, each text cut to
     // A two-byte character straddling the cut is left out whole.
     big[kept_text - 1] = 0xC3;
     big[kept_text] = 0xA9;
-    for (0..5) |i| c.record(.{ .kind = .crashed, .process = @intCast(i), .clause = "ensures", .message = "Go", .state = if (i == 4) big else "{n: 1}" });
+    for (0..5) |i| try std.testing.expectEqual(@as(u64, i + 1), c.record(.{ .kind = .crashed, .process = @intCast(i), .clause = "ensures", .message = "Go", .state = if (i == 4) big else "{n: 1}" }));
     try std.testing.expectEqual(@as(usize, 3), c.len);
     try std.testing.expectEqual(@as(u64, 5), c.total);
     for (0..3) |i| try std.testing.expectEqual(@as(u32, @intCast(4 - i)), c.newest(i).process);
@@ -315,4 +333,13 @@ test "the crash store keeps the last cap reports, newest first, each text cut to
     try std.testing.expectEqual(kept_text - 1, std.mem.indexOf(u8, s, " …").?);
     try std.testing.expectEqualStrings("{n: 1}", c.newest(1).state);
     try std.testing.expect(c.bytes() < 3 * @sizeOf(Event) + kept_text + 64);
+    // A ring's Crashed event reads its texts by number while the store holds that report.
+    const in_ring: Event = .{ .kind = .crashed, .process = 3, .count = 4 };
+    try std.testing.expectEqualStrings("{n: 1}", c.filled(in_ring).state);
+    try std.testing.expectEqualStrings("Go", c.filled(in_ring).message);
+    var gone = in_ring;
+    gone.count = 2;
+    try std.testing.expectEqualStrings("", c.filled(gone).clause);
+    gone.count = 0;
+    try std.testing.expectEqualStrings("", c.filled(gone).state);
 }

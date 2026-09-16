@@ -1322,13 +1322,66 @@ static MoMap *map_without(MoMap *m, size_t stride, MoValue key, uint32_t kind) {
 
 /* ==== text: the streams, value rendering, and reports (vm.zig, runner.zig, main.zig) ==== */
 
-typedef struct { char *p; size_t len, cap; } Buf;
+/* A process's crash report under main, rendered text and all, is allocated here and let go at once
+ * when it has been written and kept cut (crashed, step 33), as vm.zig's reportGpa is: chunks the
+ * system maps and takes back whole, since the system's malloc kept every freed large block
+ * resident (a 20,000-job queue's reports held 360 MiB after ten restarts). One per thread: a
+ * report is rendered and written on the thread whose update crashed. */
+typedef struct ReportChunk {
+    struct ReportChunk *next;
+    size_t size;
+} ReportChunk;
+#define REPORT_CHUNK ((size_t)64 << 10)
+static _Thread_local ReportChunk *report_chunks, *report_big;
+static _Thread_local size_t report_used;
+
+static void *report_alloc(size_t n) {
+    n = (n + 15) & ~(size_t)15;
+    size_t head = sizeof(ReportChunk);
+    if (n + head > REPORT_CHUNK / 4) {
+        ReportChunk *c = mmap(NULL, n + head, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (c == MAP_FAILED) out_of_memory();
+        *c = (ReportChunk){report_big, n + head};
+        report_big = c;
+        return (char *)c + head;
+    }
+    if (!report_chunks || report_used + n > report_chunks->size) {
+        ReportChunk *c = mmap(NULL, REPORT_CHUNK, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (c == MAP_FAILED) out_of_memory();
+        *c = (ReportChunk){report_chunks, REPORT_CHUNK};
+        report_chunks = c;
+        report_used = head;
+    }
+    void *at = (char *)report_chunks + report_used;
+    report_used += n;
+    return at;
+}
+
+static void reports_release(void) {
+    for (ReportChunk **list = (ReportChunk *[]){report_chunks, report_big}, **end = list + 2; list < end; list++) {
+        for (ReportChunk *c = *list, *next; c; c = next) {
+            next = c->next;
+            munmap(c, c->size);
+        }
+    }
+    report_chunks = report_big = NULL;
+    report_used = 0;
+}
+
+/* `report`: the buffer grows in the report chunks. */
+typedef struct { char *p; size_t len, cap; bool report; } Buf;
 
 static void buf_put(Buf *b, const char *s, size_t n) {
     if (b->len + n + 1 > b->cap) {
         size_t cap = b->cap ? b->cap : 64;
         while (b->len + n + 1 > cap) cap *= 2;
-        b->p = xrealloc(b->p, cap);
+        if (b->report) {
+            char *p = report_alloc(cap);
+            if (b->len) memcpy(p, b->p, b->len);
+            b->p = p;
+        } else {
+            b->p = xrealloc(b->p, cap);
+        }
         b->cap = cap;
     }
     if (n) memcpy(b->p + b->len, s, n);
@@ -1585,6 +1638,14 @@ static char *render(MoValue v) {
     return buf_take(&b);
 }
 
+/* A value as a crash report shows it: under main, in the report chunks. */
+static char *render_report(MoValue v) {
+    Buf b = {0};
+    b.report = server_mode;
+    format_value(&b, v);
+    return buf_take(&b);
+}
+
 /* Text copied into the values heap. */
 static MoValue heap_string(const char *s, size_t n) {
     char *p = mo_alloc_bytes(n);
@@ -1693,7 +1754,12 @@ typedef struct {
     /* The supervisor whose child line says restart: :never, when that line kept the process down
      * (step 29); NULL when it restarts. */
     const char *not_restarted;
+    /* `values` and each value's text are in the report chunks under main, let go once a process's
+     * crash has been written (crashed, step 33). */
+    bool owns_values;
 } Report;
+
+static Involved *report_values(uint32_t n) { return server_mode ? report_alloc((n ? n : 1) * sizeof(Involved)) : xmalloc(n * sizeof(Involved)); }
 
 /* Where a crash, a skip, or a discarded attempt goes in a test; NULL under main. */
 enum { JUMP_CRASH = 1, JUMP_SKIP = 2, JUMP_DISCARD = 3 };
@@ -1714,11 +1780,18 @@ static void report_text(Buf *b, const Report *r) {
     case MO_R_DIVIDE_BY_ZERO: buf_printf(b, "division by zero in %s", r->clause); break;
     default: buf_str(b, r->clause); break;
     }
-    for (uint32_t i = 0; i < r->nvalues; i++) buf_printf(b, "%s%s = %s", i == 0 ? "; " : ", ", r->values[i].name, r->values[i].value);
+    for (uint32_t i = 0; i < r->nvalues; i++) {
+        buf_printf(b, "%s%s = ", i == 0 ? "; " : ", ", r->values[i].name);
+        buf_str(b, r->values[i].value);
+    }
     if (r->process) {
         buf_printf(b, "\n      in process %s, seed %llu\n      messages since it started: ", r->process, (unsigned long long)r->seed);
-        for (uint32_t i = 0; i < r->nlog; i++) buf_printf(b, "%s%s", i == 0 ? "" : ", ", r->log[i]);
-        buf_printf(b, "\n      state before the last message: %s", r->state);
+        for (uint32_t i = 0; i < r->nlog; i++) {
+            if (i > 0) buf_str(b, ", ");
+            buf_str(b, r->log[i]);
+        }
+        buf_str(b, "\n      state before the last message: ");
+        buf_str(b, r->state);
         if (r->not_restarted) buf_printf(b, "\n      not restarted: %s says restart: :never, so %s stays down", r->not_restarted, r->process);
     }
 }
@@ -1748,9 +1821,10 @@ _Noreturn void mo_crash(uint32_t clause) {
 
 _Noreturn void mo_crash_values(uint32_t clause, uint32_t n, const char *const *names, const MoValue *values) {
     Report r = clause_report(clause);
-    r.values = xmalloc(n * sizeof(Involved));
+    r.values = report_values(n);
     r.nvalues = n;
-    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){names[i], render(values[i])};
+    r.owns_values = true;
+    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){names[i], render_report(values[i])};
     raise_report(r, JUMP_CRASH);
 }
 
@@ -1759,9 +1833,10 @@ _Noreturn void mo_crash_arith(uint8_t kind, uint32_t clause, uint32_t n, const M
     static const char *const two[] = {"left", "right"};
     Report r = clause == UINT32_MAX ? (Report){kind, "an integer past its type", "", NULL, NULL, 0} : clause_report(clause);
     r.kind = kind;
-    r.values = xmalloc(n * sizeof(Involved));
+    r.values = report_values(n);
     r.nvalues = n;
-    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){n == 1 ? one[0] : two[i], render(operands[i])};
+    r.owns_values = true;
+    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){n == 1 ? one[0] : two[i], render_report(operands[i])};
     raise_report(r, JUMP_CRASH);
 }
 
@@ -1781,9 +1856,10 @@ _Noreturn void mo_trip(uint32_t clause, uint32_t n, const MoValue *values) {
         if (mo_nevers[k].clause == clause) never = &mo_nevers[k];
     }
     Report r = clause_report(clause);
-    r.values = xmalloc(n * sizeof(Involved));
+    r.values = report_values(n);
     r.nvalues = n;
-    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){never && i < never->nnames ? never->names[i] : "", render(values[i])};
+    r.owns_values = true;
+    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){never && i < never->nnames ? never->names[i] : "", render_report(values[i])};
     raise_report(r, JUMP_CRASH);
 }
 
@@ -4993,6 +5069,9 @@ static void record_event(Event e) {
 static Event *kept_crashes;
 static char *kept_texts;
 static size_t crash_cap = 16, crash_len, crash_head;
+/* Every report kept, the number of the newest: a Crashed event in the ring carries its report's
+ * number in `count` and reads its texts here (ring_get, step 33). */
+static uint64_t crash_total;
 
 /* `text` copied to `room`, or its first KEPT_TEXT bytes and how many more it had; gives the end. */
 static char *kept_text(char *room, const char *text, const char **out) {
@@ -5008,11 +5087,12 @@ static char *kept_text(char *room, const char *text, const char **out) {
     return room + end + 1;
 }
 
-static void keep_crash(Event e) {
-    if (crash_cap == 0 || (e.process < nprocs && is_hidden(e.process))) return;
+/* Keeps `e` and gives its number, or 0 when it is not kept. */
+static uint64_t keep_crash(Event e) {
+    if (crash_cap == 0 || (e.process < nprocs && is_hidden(e.process))) return 0;
     if (!kept_crashes) {
         void *at = mmap(NULL, crash_cap * (sizeof(Event) + SLOT_BYTES), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-        if (at == MAP_FAILED) return;
+        if (at == MAP_FAILED) return 0;
         kept_crashes = at;
         kept_texts = (char *)at + crash_cap * sizeof(Event);
     }
@@ -5022,9 +5102,22 @@ static void keep_crash(Event e) {
     room = kept_text(room, e.clause, &e.clause);
     room = kept_text(room, e.message, &e.message);
     kept_text(room, e.state, &e.state);
+    e.count = ++crash_total;
     kept_crashes[crash_head] = e;
     crash_head = (crash_head + 1) % crash_cap;
     if (crash_len < crash_cap) crash_len++;
+    return crash_total;
+}
+
+/* A ring's Crashed event with its report's texts while the store keeps that report, else empty
+ * (events.zig, Crashes.filled): the ring holds no text of its own. */
+static Event crash_filled(Event e) {
+    if (e.kind != EV_CRASHED || e.count == 0 || e.count > crash_total || crash_total - e.count >= crash_len) return e;
+    const Event *kept = &kept_crashes[(crash_head + crash_cap - 1 - (size_t)(crash_total - e.count)) % crash_cap];
+    e.clause = kept->clause;
+    e.message = kept->message;
+    e.state = kept->state;
+    return e;
 }
 
 static bool is_timeout(MoValue v) { return mo_is(v, MO_N_ERROR) && mo_vcount(v) == 1 && mo_is(v.as.xs[0], MO_N_TIMEOUT); }
@@ -5909,11 +6002,11 @@ static void settle_region(uint32_t id, size_t mark) {
 
 static void process_crashed(const Report *r) {
     Buf b = {0};
+    b.report = true;
     buf_str(&b, "process crashed: ");
     report_text(&b, r);
     buf_byte(&b, '\n');
     stream_write(&err_stream, b.p, b.len);
-    free(b.p);
 }
 
 /* The child crashed more than max_restarts times within the window: its supervisor crashes,
@@ -5956,19 +6049,33 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     return jumped == 0;
 }
 
+/* Under main, what a process's crash report rendered goes back once the report is written and kept
+ * cut: a restarted process whose state is the program's data cost that size again at every restart
+ * (step 33). The last report no longer holds the values. */
+static void report_free(void) {
+    if (last_report.owns_values) {
+        last_report.values = NULL;
+        last_report.nvalues = 0;
+        last_report.owns_values = false;
+    }
+    reports_release();
+}
+
 /* Keeps the crash with its complete report, then does what the child line says. :always and
- * :on_crash restart alike: an update never ends a process but by crashing. */
+ * :on_crash restart alike: an update never ends a process but by crashing. Under main the report is
+ * written to stderr and kept cut, and nothing else of it stays (report_free); a test keeps its first
+ * whole for the verdict. */
 static void crashed(uint32_t id, MoValue before) {
     Report report = last_report;
     Proc *p = procs[id];
     report.process = name_of(id);
     report.seed = sim_seed;
-    report.log = xmalloc((p->nlog ? p->nlog : 1) * sizeof(char *));
+    report.log = server_mode ? report_alloc((p->nlog ? p->nlog : 1) * sizeof(char *)) : xmalloc((p->nlog ? p->nlog : 1) * sizeof(char *));
     report.nlog = (uint32_t)p->nlog;
-    for (size_t i = 0; i < p->nlog; i++) report.log[i] = render(p->log[i]);
-    report.state = render(before);
+    for (size_t i = 0; i < p->nlog; i++) report.log[i] = render_report(p->log[i]);
+    report.state = render_report(before);
     if (p->policy.restart == MO_RESTART_NEVER && p->policy.line != NOBODY) report.not_restarted = mo_supervisors[p->policy.line].name;
-    if (!crashed_once) {
+    if (!crashed_once && !server_mode) {
         first_crash = report;
         crashed_once = true;
     }
@@ -5977,8 +6084,9 @@ static void crashed(uint32_t id, MoValue before) {
     crash.clause = report.clause;
     crash.message = report.nlog > 0 ? report.log[report.nlog - 1] : "";
     crash.state = report.state;
+    crash.count = keep_crash(crash);
+    crash.clause = crash.message = crash.state = "";
     record_event(crash);
-    keep_crash(crash);
     if (server_mode) process_crashed(&report);
     /* A connection closes when the process holding it stops, restarted or not. */
     close_held(p->args, p->nargs);
@@ -5996,6 +6104,7 @@ static void crashed(uint32_t id, MoValue before) {
             parcel_free(p->mailbox[i].parcel);
         }
         p->mailbox_len = p->head = 0;
+        if (server_mode) report_free();
         return;
     }
     /* Restarts are counted in simulated time under a test, and wall-clock time under main. */
@@ -6020,6 +6129,7 @@ static void crashed(uint32_t id, MoValue before) {
     p->nlog_parcels = 0;
     MoValue state;
     if (!run_init(p->process, p->args, &state)) give_up(id, last_report);
+    if (server_mode) report_free();
     procs[id]->state = state;
     Event restart = event_of(EV_RESTARTED, id);
     restart.count = procs[id]->restarted;
@@ -9905,7 +10015,7 @@ static uint64_t region_bytes_of(uint32_t id) {
     return r->end ? r->top - r->base : 0;
 }
 
-static Event ring_get(size_t i) { return ring[(ring_head + i) % ring_len]; }
+static Event ring_get(size_t i) { return crash_filled(ring[(ring_head + i) % ring_len]); }
 
 static MoValue maybe_id(uint32_t id) { return id == NOBODY ? mo_nothing() : mo_some(mo_u64(id)); }
 

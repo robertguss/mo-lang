@@ -1225,8 +1225,8 @@ pub const Sim = struct {
         for (p.invariants) |inv| {
             if ((try vm.call(inv.function, args)).bool) continue;
             const c = vm.program.clauses[inv.clause];
-            const values = try vm.gpa.alloc(contracts.Involved, 1);
-            values[0] = .{ .name = "state", .value = try vm.render(out.tuple[1]) };
+            const values = try vm.reportGpa().alloc(contracts.Involved, 1);
+            values[0] = .{ .name = "state", .value = try vm.renderReport(out.tuple[1]) };
             vm.report = .{ .kind = .invariant, .clause = c.text, .within = c.within, .at = c.at, .values = values };
             return error.Crash;
         }
@@ -1372,39 +1372,42 @@ pub const Sim = struct {
 
     /// Keeps the crash with its complete report, then does what the child line says.
     /// :always and :on_crash restart alike: an update never ends a process but by crashing.
+    /// Under Mo.Server the report is written to stderr and kept cut in `kept_crashes`, and nothing
+    /// else of it stays: what it rendered is freed below (step 33), since a large process's state
+    /// cost its size again at every restart. Under Mo.Sim the run keeps every report whole.
     fn crashed(sim: *Sim, id: u32, before: Value) Error!void {
         const vm = sim.vm;
+        const gpa = vm.reportGpa();
         var report = vm.report.?;
         var p = &sim.procs.items[id];
-        const log = try sim.gpa.alloc([]const u8, p.log.items.len);
-        for (p.log.items, log) |m, *o| o.* = try vm.render(m);
-        report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
+        const log = try gpa.alloc([]const u8, p.log.items.len);
+        for (p.log.items, log) |m, *o| o.* = try vm.renderReport(m);
+        report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.renderReport(before) };
         if (p.policy.restart == .never and p.policy.line != none) report.process.?.not_restarted = vm.program.supervisors[p.policy.line].name;
-        try sim.crashes.append(sim.gpa, report);
-        const crash: events_mod.Event = .{
+        if (sim.server == null) try sim.crashes.append(sim.gpa, report);
+        // The ring's event reads its texts from the store by number (events.zig, Crashes.filled).
+        const number = if (sim.hidden(id)) 0 else sim.kept_crashes.record(.{
             .kind = .crashed,
+            .at = sim.eventNow(),
             .process = id,
+            .process_name = sim.nameOf(id),
             .seed = sim.seed,
             .clause = report.clause,
             .message = if (log.len > 0) log[log.len - 1] else "",
             .state = report.process.?.state,
-        };
-        sim.record(crash);
-        if (!sim.hidden(id)) sim.kept_crashes.record(.{
-            .kind = crash.kind,
-            .at = sim.eventNow(),
-            .process = id,
-            .process_name = sim.nameOf(id),
-            .seed = crash.seed,
-            .clause = crash.clause,
-            .message = crash.message,
-            .state = crash.state,
         });
+        sim.record(.{ .kind = .crashed, .process = id, .seed = sim.seed, .count = number });
         if (sim.server) |s| {
             s.processCrashed(report);
             // A connection closes when the process holding it stops, restarted or not.
             s.sockets.closeHeld(p.args);
         } else sim.fixture.closeHeld(p.args);
+        // Under Mo.Server a report that gives up is main's crash, written when the run ends; any
+        // other is done with here.
+        defer if (sim.server != null and !sim.gave_up) {
+            vm.report = null;
+            vm.freeReports();
+        };
         try sim.downKept(id);
         p = &sim.procs.items[id];
         if (sim.turns) |t| t.wakeAll();

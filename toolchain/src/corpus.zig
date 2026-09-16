@@ -887,6 +887,106 @@ test "corpus: a crash 200 updates back, past a ring of 64, is still in crashes u
     try std.testing.expect(std.mem.indexOf(u8, kept_none.stdout, "0 crash kept\n") != null);
 }
 
+test "corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary" {
+    // Step 33: each crash report rendered the state before the message and, for an invariant, the state
+    // after it, and kept both for the run: 71 MiB over these twenty restarts under mo run, 113 MiB in a
+    // binary. The reports go to stderr, about 90 MiB of them, which the test does not read.
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const leak =
+        \\module Leak
+        \\expose Holder, Holders, crash, main
+        \\
+        \\intent "A process whose state is megabytes crashes and restarts twenty times, and what its reports rendered does not stay."
+        \\
+        \\process Holder()
+        \\  state
+        \\    items: List(UInt64) = []
+        \\  end
+        \\
+        \\  invariant "holds fewer than 200,000 items"
+        \\    state.items.size < 200_000
+        \\  end
+        \\
+        \\  message Grow(n: UInt64)
+        \\  message Size : UInt64
+        \\
+        \\  fn update(state, message)
+        \\    case message
+        \\      Grow(n):
+        \\        for i in 0..n
+        \\          state.items = state.items.push(i + 1_000_000_000)
+        \\        end
+        \\      Size: state.items.size
+        \\    end
+        \\  end
+        \\end
+        \\
+        \\supervisor Holders
+        \\  child Holder, restart: :always, max_restarts: 1000 per 1.minute
+        \\end
+        \\
+        \\# Crashes the holder `n` times, each with a large state before the message and after it.
+        \\fn crash(holder: Handle(Holder), n: UInt64) : UInt64
+        \\  var gone = 0
+        \\  for _ in 0..n
+        \\    holder.send(Grow(n: 100_000))
+        \\    holder.send(Grow(n: 100_000))
+        \\    # An ask the restart drops is Down; the next is answered by the restarted holder.
+        \\    var empty = false
+        \\    for _ in 0..3
+        \\      if !empty and holder.ask(Size, within: 1.minute) is Ok(size) and size == 0
+        \\        empty = true
+        \\      end
+        \\    end
+        \\    if empty
+        \\      gone += 1
+        \\    end
+        \\  end
+        \\  gone
+        \\end
+        \\
+        \\fn main(platform: Platform)
+        \\  out = platform.stdout
+        \\  case platform.runtime
+        \\    Some(runtime):
+        \\      holder = Holder.start()
+        \\      warm = crash(holder, 5)
+        \\      before = runtime.memory(within: 1.minute).resident_bytes
+        \\      gone = crash(holder, 20)
+        \\      after = runtime.memory(within: 1.minute).resident_bytes
+        \\      mib = (after - before) / 1_048_576
+        \\      out.write("25 restarts: #{warm + gone}; under 16 MiB more: #{after < before + 16 * 1_048_576} (#{mib} MiB)\n")
+        \\      kept = runtime.crashes(1, within: 1.minute)
+        \\      out.write("kept: #{kept.size}\n")
+        \\    None: out.write("no runtime: build with --surface\n")
+        \\  end
+        \\end
+        \\
+    ;
+    try tmp.dir.writeFile(io, .{ .sub_path = "leak.mo", .data = leak });
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+    const quiet = "exec \"$0\" \"$@\" 2>/dev/null";
+    const want = "25 restarts: 25; under 16 MiB more: true";
+    const interp = try std.process.run(arena, io, .{ .argv = &.{ "/bin/sh", "-c", quiet, mo_exe, "run", "leak.mo" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(std.mem.startsWith(u8, interp.stdout, want));
+    try std.testing.expect(std.mem.endsWith(u8, interp.stdout, "kept: 1\n"));
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "leak.mo", "-o", "leak-served" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    const compiled = try std.process.run(arena, io, .{ .argv = &.{ "/bin/sh", "-c", quiet, "./zig-out/mo-build/leak-served/leak-served" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(std.mem.startsWith(u8, compiled.stdout, want));
+    try std.testing.expect(std.mem.endsWith(u8, compiled.stdout, "kept: 1\n"));
+}
+
 test "corpus: a callee's body changed in another module makes its caller's verified: line stale" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;

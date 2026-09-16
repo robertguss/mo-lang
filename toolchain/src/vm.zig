@@ -180,6 +180,9 @@ pub const Vm = struct {
     entering_direct: bool = false,
     /// Set when a call fails with Crash or Skip.
     report: ?contracts.Report = null,
+    /// Under `mo run`, the values a crash report renders (reportGpa), freed once a process's crash
+    /// has been written and its cut copy kept (sim.zig, crashed; step 33).
+    reports: ?std.heap.ArenaAllocator = null,
     rng: std.Random.DefaultPrng,
     /// The values `any(T)` produced in this run, in order, for a property's report.
     generated: std.ArrayList(Generated) = .empty,
@@ -560,14 +563,14 @@ pub const Vm = struct {
                     const r = vm.pop();
                     const l = vm.pop();
                     if (!compare(@enumFromInt(inst.b), l, r)) {
-                        return vm.crash(inst.a, f, locals, &.{ .{ .name = "left", .value = try vm.render(l) }, .{ .name = "right", .value = try vm.render(r) } });
+                        return vm.crash(inst.a, f, locals, &.{ .{ .name = "left", .value = try vm.renderReport(l) }, .{ .name = "right", .value = try vm.renderReport(r) } });
                     }
                 },
                 .refine => {
                     const v = vm.stack.items[vm.stack.items.len - 1];
                     const refinement = vm.program.refinements[inst.a];
                     if (!(try vm.call(refinement.function, &.{v})).bool) {
-                        return vm.crash(refinement.clause, f, locals, &.{.{ .name = "value", .value = try vm.render(v) }});
+                        return vm.crash(refinement.clause, f, locals, &.{.{ .name = "value", .value = try vm.renderReport(v) }});
                     }
                 },
                 .generate => {
@@ -1208,7 +1211,7 @@ pub const Vm = struct {
                 }
             }
         }
-        vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "no impl gives {s} for {s}", .{ sig.name, try vm.render(receiver) }), .within = sig.name, .at = 0 };
+        vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.reportGpa(), "no impl gives {s} for {s}", .{ sig.name, try vm.renderReport(receiver) }), .within = sig.name, .at = 0 };
         return error.Crash;
     }
 
@@ -1216,12 +1219,13 @@ pub const Vm = struct {
 
     fn crash(vm: *Vm, clause_index: u32, f: bytecode.Function, locals: []const Value, extra: []const contracts.Involved) Error {
         const c = vm.program.clauses[clause_index];
+        const gpa = vm.reportGpa();
         var values: std.ArrayList(contracts.Involved) = .empty;
         if (c.kind == .requires or c.kind == .ensures) {
-            for (f.param_names, 0..) |name, k| try values.append(vm.gpa, .{ .name = name, .value = try vm.render(locals[k]) });
-            if (c.kind == .ensures) try values.append(vm.gpa, .{ .name = "result", .value = try vm.render(locals[f.result]) });
+            for (f.param_names, 0..) |name, k| try values.append(gpa, .{ .name = name, .value = try vm.renderReport(locals[k]) });
+            if (c.kind == .ensures) try values.append(gpa, .{ .name = "result", .value = try vm.renderReport(locals[f.result]) });
         }
-        try values.appendSlice(vm.gpa, extra);
+        try values.appendSlice(gpa, extra);
         vm.report = .{ .kind = c.kind, .clause = c.text, .within = c.within, .at = c.at, .values = values.items };
         return error.Crash;
     }
@@ -1231,8 +1235,8 @@ pub const Vm = struct {
         const never = for (vm.program.nevers) |n| {
             if (n.clause == clause_index) break n;
         } else unreachable;
-        const involved = try vm.gpa.alloc(contracts.Involved, values.len);
-        for (values, never.names, involved) |v, name, *o| o.* = .{ .name = name, .value = try vm.render(v) };
+        const involved = try vm.reportGpa().alloc(contracts.Involved, values.len);
+        for (values, never.names, involved) |v, name, *o| o.* = .{ .name = name, .value = try vm.renderReport(v) };
         const c = vm.program.clauses[clause_index];
         vm.report = .{ .kind = c.kind, .clause = c.text, .within = c.within, .at = c.at, .values = involved };
         return error.Crash;
@@ -1241,7 +1245,7 @@ pub const Vm = struct {
     fn crashWith(vm: *Vm, kind: contracts.Kind, clause_index: u32, values: []const Value) Error {
         var involved: std.ArrayList(contracts.Involved) = .empty;
         const names = [_][]const u8{ "left", "right" };
-        for (values, 0..) |v, k| try involved.append(vm.gpa, .{ .name = if (values.len == 1) "value" else names[k], .value = try vm.render(v) });
+        for (values, 0..) |v, k| try involved.append(vm.reportGpa(), .{ .name = if (values.len == 1) "value" else names[k], .value = try vm.renderReport(v) });
         if (clause_index == none) {
             vm.report = .{ .kind = kind, .clause = "an integer past its type", .within = "", .at = 0, .values = involved.items };
         } else {
@@ -1800,9 +1804,32 @@ pub const Vm = struct {
 
     /// A value as Mo source, for reports.
     pub fn render(vm: *Vm, v: Value) Error![]const u8 {
-        var aw: std.Io.Writer.Allocating = .init(vm.gpa);
+        return vm.renderIn(vm.gpa, v);
+    }
+
+    fn renderIn(vm: *Vm, gpa: std.mem.Allocator, v: Value) Error![]const u8 {
+        var aw: std.Io.Writer.Allocating = .init(gpa);
         vm.formatValue(&aw.writer, v) catch return error.OutOfMemory;
         return aw.written();
+    }
+
+    /// Where a crash report's rendered values go: under `mo run` an arena freeReports empties once
+    /// the report is written, since a restarted process's state can be as large as the program's
+    /// data (step 33); under `mo test`, `gpa`, which the run keeps whole for its report.
+    pub fn reportGpa(vm: *Vm) std.mem.Allocator {
+        if (vm.server == null) return vm.gpa;
+        if (vm.reports == null) vm.reports = .init(std.heap.smp_allocator);
+        return vm.reports.?.allocator();
+    }
+
+    /// A value as a crash report shows it, in reportGpa.
+    pub fn renderReport(vm: *Vm, v: Value) Error![]const u8 {
+        return vm.renderIn(vm.reportGpa(), v);
+    }
+
+    /// Everything reportGpa gave goes back: the report it was for is written and kept cut.
+    pub fn freeReports(vm: *Vm) void {
+        if (vm.reports) |*a| _ = a.reset(.free_all);
     }
 
     /// Interpolation: a string is its text, anything else as it is written in source.

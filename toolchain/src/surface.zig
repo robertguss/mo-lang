@@ -335,7 +335,8 @@ pub fn resident() u64 {
 }
 
 /// One event as the prelude's `Event` enum spells it.
-fn eventValue(vm: *Vm, sim: *const Sim, e: events.Event) Error!Value {
+fn eventValue(vm: *Vm, sim: *const Sim, ring_event: events.Event) Error!Value {
+    const e = sim.kept_crashes.filled(ring_event);
     const at: Value = .{ .time = sim.ring.timeOf(e) };
     const id = uint(e.process);
     const name = str(e.process_name);
