@@ -126,11 +126,29 @@ Round 8's outage is closed by the program: the same class of crash, under `mo ru
 
 Recorded beside it: with the default ring of 4,096 events, `GET /crashes` was empty by the time the probe read it after the crash, the ring having turned over under load; with `MO_EVENTS=262144` it listed the crash with its clause, the message, and the state snapshot. Crash reports need a place apart from the ring (step 32).
 
+## Generation three, pre-registered (16 Sep 2026, 10:40 local, before any session)
+
+Change 3 ([[01d-job-queue-change-3]], sealed at `3bd85e7`): the store restarts itself from the log after a failure inside it, `503` meanwhile; a budget of 5 restarts in 60 seconds, then exit 70 with the log whole; a chaos switch `--crash-every N` that fails the board on purpose every N-th write, so the restart path is rehearsed the same way in every language; `/health` counts restarts. Written from what P6 found on generation two (the section above): Elixir back in under a second, Mo `503` forever by its `:never`, Go and Python unprobed for want of a part to kill. The chaos switch is the fourth suite's one probe for all four programs.
+
+**Setup.** Worktrees `../mo-lang-erosion3-{mo,go,python,elixir}` on `erosion3-*`, branched from the generation-two commits (`6253a54`, `61af8a9`, `5c8f264`, `087c071`); the Mo one carries step 32's `mo`, the spec chapters as of 16 Sep (chapter 3's restart pattern among them), and `processes/restart-reopens.mo` and `crash-kept.mo` (`4c38ae5`). Agents `mo-e3-{mo,go,python,elixir}` in workspace `w4F`, Claude Code on Opus at medium effort, the brief `erosion-round-suite/e3-brief.sh` (change 2's word for word with the new spec path, commit `jobq: change 3`, report to `REPORT-change-3.md`). The fourth hidden suite (`erosion-round-suite/defects3.py`) is written after the sessions start and kept out of every worktree: the chaos switch under load (every response `2xx`, `4xx`, or `503`; `/health` `200` within one second of each failure; every `2xx` write present after the restart and after a stop and start; `restarts` counted), the budget (failures faster than the window, exit 70, `verify` exit 0 on the folder), the leases held across a restart, ids never repeated; plus round 8's two suites and the third suite as the regressions. P6 runs as before where a process can be killed (Mo through the surface, Elixir from a second node), and through the switch on all four.
+
+| prediction | threshold |
+|---|---|
+| P1, regressions | Mo 0 under round 8's suites and the third suite; each baseline at most 1 (Go's carried `delay_ms` null) |
+| P2, defects under the fourth suite | Mo's count no more than each baseline's |
+| P3, the restart | after a chaos failure under load, `/health` is `200` within one second and every `2xx` write is on the board: Mo and Elixir pass every check in the category; at least one of Go and Python fails one |
+| P4, the budget | at least one program either keeps restarting past the budget or exits with a log it cannot reopen; not Mo's |
+| P5, the tax | the Mo maintainer takes more loops than the Go maintainer |
+| P6, the pattern | the Mo maintainer opens the folder in the queue's own `state` and makes the child `:always` with a budget on the line (read from the diff); if it does not, the reason in its decision list is a row for chapter 3 |
+
+Recorded, not predicted: wall-clock, loops by cause, first-fix rate per diagnostic, lines changed, tokens read, the decision lists.
+
 ## Related
 
 - [[d43-five-measurements]]
 - [[control-run-8]]
 - [[control-run-10]]
 - [[01c-job-queue-change-2]]
+- [[01d-job-queue-change-3]]
 - [[interpreter-step-31]]
 - [[roadmap]]
