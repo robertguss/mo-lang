@@ -62,7 +62,10 @@ defmodule Bench do
   def main(argv) do
     {options, names} = OptionParser.parse!(argv, strict: [jobs: :integer])
     jobs = Keyword.get(options, :jobs, 20_000)
-    names = if names == [], do: ~w(throughput expiry silent memory replay restart), else: names
+    names =
+      if names == [],
+        do: ~w(throughput expiry backoff silent memory replay restart),
+        else: names
 
     IO.puts("jobq bench: #{Enum.join(names, ", ")}  (#{jobs} jobs where it matters)")
     IO.puts(String.duplicate("-", 64))
@@ -101,6 +104,27 @@ defmodule Bench do
     # asks the lag to be measured under.
     handed_out = poll_until_leased(worker, until)
     IO.puts(pad("lease expiry to hand-out") <> "#{handed_out - until} ms")
+    stop.()
+  end
+
+  # The same lag for the other deadline the change adds: a `run_at` that has
+  # passed, on a job put back with a backoff.
+  defp run("backoff", _jobs) do
+    %{port: port, stop: stop} = service()
+    worker = Conn.open(port)
+
+    {201, _job} =
+      Conn.request(worker, "alice", "POST", "/jobs", job_body(1, 100, backoff_ms: 200))
+
+    {200, _leased} =
+      Conn.request(worker, "bob", "POST", "/queues/#{@queue}/lease", ~s({"lease_ms":60000}))
+
+    {200, failed} = Conn.request(worker, "bob", "POST", "/jobs/j_1/fail")
+    %{"state" => "scheduled", "run_at" => run_at} = JSON.decode!(failed)
+    until = to_unix_ms(run_at)
+
+    handed_out = poll_until_leased(worker, until)
+    IO.puts(pad("backoff run_at to hand-out") <> "#{handed_out - until} ms")
     stop.()
   end
 
@@ -260,12 +284,14 @@ defmodule Bench do
     end
   end
 
-  defp job_body(n, max_tries) do
-    JSON.encode!(%{
+  defp job_body(n, max_tries, opts \\ []) do
+    %{
       "queue" => @queue,
       "payload" => "payload number #{n}, about sixty bytes of it all told.",
       "max_tries" => max_tries
-    })
+    }
+    |> Map.merge(Map.new(opts, fn {key, value} -> {Atom.to_string(key), value} end))
+    |> JSON.encode!()
   end
 
   defp to_unix_ms(iso) do
