@@ -55,7 +55,7 @@ Run 15–16 Sep 2026, 23:49 to 02:31 UTC, on Fable's decision while Robert slept
 | notes | 2,160 → 1,513 | 16 min, 0, 12 of 12 | 17 min, 3, 12 of 12 | 1.0, 1.0 |
 | jobq | 3,057 → 2,135 | 26 min, 5, 15 of 15 and the suite 121 of 121 | 25 min, 4, 15 of 15 and 121 of 121 | 1.0, 1.0 |
 | ledger | 4,450 → 3,068 | 42 min, 9, 19 of 19 | 47 min, 6, 19 of 19 | 1.0, 1.0 |
-| agent | not run tonight | | | — |
+| agent | 4,551 → 3,196 (283 bodies) | (running, started 23:21 local on the Mac) | 30 min, 11 (first fix right in 10), 24 of 24 | —, 1.0 |
 
 Ten regenerations, ten at completeness 1.0: every test kept, every transcript byte for byte, and jobq's 121 hidden checks, twice. No test in any program ever had to be changed. Every loop was fixed by its first edit; the causes were the same shape laws and diagnostics measurement 2 and round 8 saw (MO0101, MO0102, MO0403 `Time.fixture()` outside a test in four of ten runs, MO0212, MO0303, MO0307, MO0409, MO0314), a `mo fmt` pass, and, in the ledger, one convergent mistake: both runs rewrote the kept test helper `call` to compare a retry by its key alone, and both found it by the same kept test, so the test held where the helper's comment did not. Context tokens were not readable in the four-way split panes and are unrecorded; the worker reports carry their own reading lists.
 
