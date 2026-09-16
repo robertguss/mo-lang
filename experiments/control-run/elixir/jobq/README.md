@@ -6,7 +6,9 @@ A durable job queue with an HTTP API, in Elixir on OTP 27, to the spec in
 rename) and change 2, `spec/01c-job-queue-change-2.md`: the folder checked at
 open, a failing request that never takes the service down, and `GET /queues`;
 and change 3, `spec/01d-job-queue-change-3.md`: the store restarts itself,
-within a budget, and a chaos switch to rehearse it.
+within a budget, and a chaos switch to rehearse it; and change 4,
+`spec/01e-job-queue-change-4.md`: idempotent creates, and old jobs archived
+out of the log.
 
 A producer creates a job in a named queue — now, or after a delay — a worker
 leases the next one for a while and then acks or fails it, a lease that runs out
@@ -26,6 +28,7 @@ it can be written again — no restart, no operator.
     mix escript.build
 
     ./jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
+                       [--retain-ms N]
     ./jobq compact <dir>
     ./jobq verify <dir>
     ./jobq client <host> <port> <token> <method> <path> [<json>]
@@ -42,7 +45,7 @@ first and all refuse an ill-formed record the same way, one line and exit 1:
 `verify` is that check on its own, and says what it found:
 
     $ ./jobq verify /tmp/jobq
-    5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7
+    5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7; archived 0
 
     ./jobq serve /tmp/jobq &
     ./jobq client 127.0.0.1 7900 alice POST /jobs '{"queue":"emails","payload":"hi","max_tries":3}'
@@ -77,12 +80,35 @@ under load runs out quickly, which is the point.
 
     ./jobq serve /tmp/jobq --crash-every 1000 --max-restarts 100 --restart-window 60
 
+A create may carry a `key`, the queue name's rule. A second create with the
+same key in the same queue makes nothing and answers `200` with the job as it
+stands, in any state, archived included, until that job is deleted; the same
+key in another queue is another job. `GET /jobs?queue=<q>&key=<k>` finds the
+live job a key names. The key is in the job's record, so a restart, a
+compaction, or the board's own restart rebuilds the map from the folder.
+
+    ./jobq client 127.0.0.1 7900 alice POST /jobs '{"queue":"emails","payload":"hi","max_tries":3,"key":"order-42"}'
+    ./jobq client 127.0.0.1 7900 alice GET '/jobs?queue=emails&key=order-42'
+
+A done or dead job whose `updated_at` is `--retain-ms` (default a day, 1,000 to
+2,678,400,000) before a look is archived at that look: appended to
+`jobq.archive` beside the log with its `archived_at`, and then marked in the
+log as gone from the board, both on the disk before the look's answer. It is
+still read by id, still holds its key, counts in `/health`'s `archived` and
+nowhere else, is never listed, and is `409` to a retry; a delete leaves a
+tombstone in the archive. A kill between the two writes leaves the job in both
+files, and an open reads it as archived: an id the archive has ever named is
+never live again. `compact` rewrites the log without archived jobs first, then
+the archive without deleted ones; `verify` checks the archive's records too
+(done or dead, with an `archived_at`) and ends its line with `; archived <a>`.
+
 ## The checks
 
     mix compile --warnings-as-errors
     mix dialyzer
     mix credo --strict
     mix test
+    mix format --check-formatted
     ./check.sh                        # the program-level check, over a socket
     mix run bench/bench.exs           # the measurements
 
@@ -90,8 +116,9 @@ under load runs out quickly, which is the point.
 
     Jobq.Server            one service: the tree, :one_for_one
       Jobq.Board           the board, :one_for_all, within the restart budget
-        Jobq.Store         the log, one JSON record a line, fsynced in batches
+        Jobq.Store         the log and the archive, one JSON record a line, fsynced in batches
         Jobq.Queue         every job, and the only process that moves one
+          Jobq.Archive     the archive move, as a pure step
       Jobq.Http.Listener   the socket, the connections, ten acceptors
         Jobq.Http.Socket   owns the listening socket, knows the bound port
         Task.Supervisor    a process per connection

@@ -3,6 +3,7 @@ defmodule Jobq.CLI do
   The five commands.
 
       jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
+                [--retain-ms N]
       jobq compact <dir>
       jobq verify <dir>
       jobq client <host> <port> <token> <method> <path> [<json>]
@@ -12,7 +13,9 @@ defmodule Jobq.CLI do
   cannot be bound, and 70 when `serve`'s board has failed more than
   `--max-restarts` times (default 5) inside `--restart-window` seconds
   (default 60). `--crash-every N` (default 0, never) fails the board on every
-  N-th write it applies, to rehearse the restart in staging.
+  N-th write it applies, to rehearse the restart in staging. `--retain-ms N`
+  (default 86,400,000, a day; 1,000 to 2,678,400,000) is how long a done or
+  dead job stays on the board before it is moved to the archive.
 
   `serve`, `compact`, and `verify` all read the folder before they do anything
   else, and all refuse an ill-formed record the same way: one line naming the
@@ -28,20 +31,28 @@ defmodule Jobq.CLI do
 
   @usage """
   usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
+                    [--retain-ms N]
          jobq compact <dir>
          jobq verify <dir>
          jobq client <host> <port> <token> <method> <path> [<json>]
          jobq check <dir> <script>
   """
 
-  @serve_defaults [port: 7900, max_restarts: 5, restart_window: 60, crash_every: 0]
+  @serve_defaults [
+    port: 7900,
+    max_restarts: 5,
+    restart_window: 60,
+    crash_every: 0,
+    retain_ms: 86_400_000
+  ]
 
   # A window of 0 seconds is not one the supervisor can keep, so it starts at 1.
   @serve_flags %{
     "--port" => {:port, 0, 65_535},
     "--max-restarts" => {:max_restarts, 0, 1_000_000},
     "--restart-window" => {:restart_window, 1, 86_400 * 365},
-    "--crash-every" => {:crash_every, 0, 1_000_000_000}
+    "--crash-every" => {:crash_every, 0, 1_000_000_000},
+    "--retain-ms" => {:retain_ms, 1_000, 2_678_400_000}
   }
 
   @doc "The escript's entry point."
@@ -118,7 +129,7 @@ defmodule Jobq.CLI do
 
   defp verify(dir) do
     with :ok <- open_dir(dir),
-         {:ok, {jobs, next}} <- read_dir(dir) do
+         {:ok, %{jobs: jobs, next: next, archived: archived}} <- read_dir(dir) do
       counts =
         jobs
         |> Map.values()
@@ -130,7 +141,7 @@ defmodule Jobq.CLI do
            |> Enum.map_join(", ", fn name ->
              {:ok, state} = Job.parse_state(name)
              "#{name} #{Map.get(counts, state, 0)}"
-           end)) <> "; next id j_#{next}"
+           end)) <> "; next id j_#{next}; archived #{map_size(archived)}"
       )
 
       0
@@ -142,8 +153,8 @@ defmodule Jobq.CLI do
   # The folder as the service will read it, with the record that refuses it
   # named by the folder it is in.
   defp read_dir(dir) do
-    case Store.read(dir) do
-      {:ok, log} -> {:ok, log}
+    case Store.open(dir) do
+      {:ok, folder} -> {:ok, folder}
       {:error, {:record, key, rule}} -> {:error, {:record, dir, key, rule}}
       {:error, reason} -> {:error, reason}
     end
@@ -247,6 +258,7 @@ defmodule Jobq.CLI do
   defp describe({:shutdown, {:failed_to_start_child, _child, reason}}), do: describe(reason)
   defp describe({:open, path, reason}), do: "cannot open #{path}: #{:file.format_error(reason)}"
   defp describe({:corrupt, line}), do: "the log is corrupt at line #{line}"
+  defp describe({:corrupt_archive, line}), do: "the archive is corrupt at line #{line}"
 
   defp describe({:record, dir, key, rule}), do: "#{dir}: record #{key}: #{rule}"
   defp describe({:stopped, reason}), do: "the service stopped: #{describe(reason)}"

@@ -6,6 +6,11 @@ defmodule Jobq.Check do
 
   It is the program-level check: a real service, a real socket, a real client,
   and a transcript a test can diff.
+
+  Two lines are not requests. `@retain-ms N` sets the service's `retain_ms`
+  before it starts (the last one wins, wherever it stands), and `@sleep N`
+  waits N milliseconds on the real clock, so a script can watch a done job
+  move to the archive; the sleep is echoed in the transcript.
   """
 
   alias Jobq.Client
@@ -22,6 +27,8 @@ defmodule Jobq.Check do
     device = Keyword.get(opts, :device, :stdio)
 
     with {:ok, lines} <- read_script(script),
+         {:ok, retain} <- retain(lines),
+         opts = Keyword.merge(opts, retain),
          {:ok, _pid} <- Server.start_link(Keyword.merge(opts, ref: ref, dir: dir, port: 0)) do
       port = Server.port(ref)
 
@@ -40,6 +47,19 @@ defmodule Jobq.Check do
     end
   end
 
+  defp retain(lines) do
+    Enum.reduce_while(lines, {:ok, []}, fn
+      "@retain-ms " <> ms = line, {:ok, acc} ->
+        case Integer.parse(ms) do
+          {ms, ""} when ms > 0 -> {:cont, {:ok, Keyword.put(acc, :retain_ms, ms)}}
+          _other -> {:halt, {:error, {:script_line, line}}}
+        end
+
+      _line, acc ->
+        {:cont, acc}
+    end)
+  end
+
   defp play(lines, port, device) do
     Enum.reduce_while(lines, :ok, fn line, :ok ->
       case step(line, port, device) do
@@ -51,6 +71,18 @@ defmodule Jobq.Check do
 
   defp step("", _port, _device), do: :ok
   defp step("#" <> _comment, _port, _device), do: :ok
+  defp step("@retain-ms " <> _ms, _port, _device), do: :ok
+
+  defp step("@sleep " <> ms = line, _port, device) do
+    case Integer.parse(ms) do
+      {ms, ""} when ms >= 0 ->
+        IO.puts(device, "> " <> line)
+        Process.sleep(ms)
+
+      _other ->
+        {:error, {:script_line, line}}
+    end
+  end
 
   defp step(line, port, device) do
     case parse(line) do

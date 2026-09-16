@@ -103,8 +103,51 @@
 > bob POST /jobs/j_1/ack
 < 409 {"error":"caller does not hold a live lease on this job"}
 > anyone GET /health
-< 200 {"queued":0,"scheduled":1,"leased":1,"done":1,"dead":0,"uptime_ms":<ms>,"restarts":0}
+< 200 {"queued":0,"scheduled":1,"leased":1,"done":1,"dead":0,"archived":0,"uptime_ms":<ms>,"restarts":0}
 > anyone GET /queues
 < 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":0,"scheduled":0,"leased":1,"done":1,"dead":0}]}
 > alice PUT /queues
 < 405 {"error":"method not allowed"}
+> alice POST /jobs {"queue":"emails","payload":"order 42","max_tries":1,"key":"order-42"}
+< 201 {"id":"j_6","queue":"emails","state":"queued","payload":"order 42","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+< 200 {"id":"j_6","queue":"emails","state":"queued","payload":"order 42","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> alice POST /jobs {"queue":"reports","payload":"order 42","max_tries":1,"key":"order-42"}
+< 201 {"id":"j_7","queue":"reports","state":"queued","payload":"order 42","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> alice GET /jobs?queue=emails&key=order-42
+< 200 {"jobs":[{"id":"j_6","queue":"emails","state":"queued","payload":"order 42","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}]}
+> alice GET /jobs?queue=emails&key=nobody
+< 200 {"jobs":[]}
+> alice GET /jobs?key=order-42
+< 400 {"error":"key needs a queue"}
+> alice POST /jobs {"queue":"emails","payload":"x","max_tries":1,"key":"no spaces"}
+< 400 {"error":"key must be letters, digits, '-' or '_'"}
+> erin POST /queues/emails/lease
+< 200 {"id":"j_6","queue":"emails","state":"leased","payload":"order 42","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"erin","lease_until":"<ts>","key":"order-42"}
+> erin POST /jobs/j_6/ack
+< 200 {"id":"j_6","queue":"emails","state":"done","payload":"order 42","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+< 200 {"id":"j_6","queue":"emails","state":"done","payload":"order 42","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> @sleep 2100
+> alice GET /jobs/j_1
+< 200 {"id":"j_1","queue":"emails","state":"done","payload":"welcome","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","archived_at":"<ts>"}
+> alice GET /jobs/j_6
+< 200 {"id":"j_6","queue":"emails","state":"done","payload":"order 42","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42","archived_at":"<ts>"}
+> alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+< 200 {"id":"j_6","queue":"emails","state":"done","payload":"order 42","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42","archived_at":"<ts>"}
+> alice GET /jobs?queue=emails&key=order-42
+< 200 {"jobs":[]}
+> alice GET /jobs?state=done
+< 200 {"jobs":[]}
+> alice POST /jobs/j_1/retry
+< 409 {"error":"archived"}
+> anyone GET /health
+< 200 {"queued":1,"scheduled":1,"leased":1,"done":0,"dead":0,"archived":2,"uptime_ms":<ms>,"restarts":0}
+> anyone GET /queues
+< 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":0,"scheduled":0,"leased":1,"done":0,"dead":0},{"name":"reports","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> alice DELETE /jobs/j_6
+< 204
+> alice GET /jobs/j_6
+< 404 {"error":"no such job"}
+> alice POST /jobs {"queue":"emails","payload":"order 42, again","max_tries":1,"key":"order-42"}
+< 201 {"id":"j_8","queue":"emails","state":"queued","payload":"order 42, again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}

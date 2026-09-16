@@ -128,13 +128,18 @@ defmodule Jobq.Router do
 
   defp create(request, ref) do
     with {:ok, fields} <-
-           fields(request.body, ["queue", "payload", "max_tries"], ["delay_ms", "backoff_ms"]),
+           fields(request.body, ["queue", "payload", "max_tries"], [
+             "delay_ms",
+             "backoff_ms",
+             "key"
+           ]),
          {:ok, queue} <- Job.queue(fields["queue"]),
          {:ok, payload} <- Job.payload(fields["payload"]),
          {:ok, max_tries} <- Job.max_tries(fields["max_tries"]),
          {:ok, delay_ms} <- optional(fields, "delay_ms", 0, &Job.delay_ms/1),
-         {:ok, backoff_ms} <- optional(fields, "backoff_ms", 0, &Job.backoff_ms/1) do
-      reply(Queue.create(ref, queue, payload, max_tries, delay_ms, backoff_ms))
+         {:ok, backoff_ms} <- optional(fields, "backoff_ms", 0, &Job.backoff_ms/1),
+         {:ok, key} <- optional(fields, "key", nil, &Job.key/1) do
+      reply(Queue.create(ref, queue, payload, max_tries, delay_ms, backoff_ms, key))
     else
       {:error, message} -> {400, error(message)}
     end
@@ -143,12 +148,17 @@ defmodule Jobq.Router do
   defp list(ref, query) do
     with {:ok, params} <- query_params(query),
          {:ok, queue} <- filter(params, "queue", &Job.queue/1),
-         {:ok, state} <- filter(params, "state", &parse_state/1) do
-      reply(Queue.list(ref, queue, state))
+         {:ok, state} <- filter(params, "state", &parse_state/1),
+         {:ok, key} <- filter(params, "key", &Job.key/1),
+         :ok <- key_needs_queue(key, queue) do
+      reply(Queue.list(ref, queue, state, key))
     else
       {:error, message} -> {400, error(message)}
     end
   end
+
+  defp key_needs_queue(key, nil) when is_binary(key), do: {:error, "key needs a queue"}
+  defp key_needs_queue(_key, _queue), do: :ok
 
   defp parse_state(name) do
     case Job.parse_state(name) do
@@ -174,7 +184,7 @@ defmodule Jobq.Router do
   defp query_params(query) do
     params = URI.decode_query(query)
 
-    case Map.keys(params) -- ["queue", "state"] do
+    case Map.keys(params) -- ["queue", "state", "key"] do
       [] -> {:ok, params}
       [unknown | _rest] -> {:error, "unknown query parameter '#{unknown}'"}
     end

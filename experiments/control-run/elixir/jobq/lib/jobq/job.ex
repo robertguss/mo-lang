@@ -14,6 +14,10 @@ defmodule Jobq.Job do
   wrote: `attempts` and `max_attempts` are `tries` and `max_tries`, and a
   record with no `backoff_ms` has none.
 
+  A job may carry the idempotency `key` it was created with, for the rest of
+  its life, and a done or dead job that has been moved to the archive carries
+  the `archived_at` instant it was moved at.
+
   `check_record/1` is the rule a record on the disk must meet before the
   service will serve the folder it is in: each field's own rule, and the state
   the record claims agreeing with the fields that state carries.
@@ -32,6 +36,8 @@ defmodule Jobq.Job do
     :worker,
     :lease_until,
     :reason,
+    :key,
+    :archived_at,
     tries: 0,
     backoff_ms: 0
   ]
@@ -50,7 +56,9 @@ defmodule Jobq.Job do
           run_at: integer() | nil,
           worker: String.t() | nil,
           lease_until: integer() | nil,
-          reason: String.t() | nil
+          reason: String.t() | nil,
+          key: String.t() | nil,
+          archived_at: integer() | nil
         }
 
   @queue_max 64
@@ -102,17 +110,26 @@ defmodule Jobq.Job do
   A queue name: 1 to 64 bytes of letters, digits, `-` and `_`.
   """
   @spec queue(term()) :: {:ok, String.t()} | {:error, String.t()}
-  def queue(name)
-      when is_binary(name) and byte_size(name) >= 1 and byte_size(name) <= @queue_max do
+  def queue(name), do: name(name, "queue")
+
+  @doc """
+  An idempotency key: the queue name's rule, 1 to 64 bytes of letters,
+  digits, `-` and `_`.
+  """
+  @spec key(term()) :: {:ok, String.t()} | {:error, String.t()}
+  def key(name), do: name(name, "key")
+
+  defp name(name, field)
+       when is_binary(name) and byte_size(name) >= 1 and byte_size(name) <= @queue_max do
     if name =~ ~r/\A[A-Za-z0-9_-]+\z/,
       do: {:ok, name},
-      else: {:error, "queue must be letters, digits, '-' or '_'"}
+      else: {:error, "#{field} must be letters, digits, '-' or '_'"}
   end
 
-  def queue(name) when is_binary(name),
-    do: {:error, "queue must be 1 to #{@queue_max} bytes"}
+  defp name(name, field) when is_binary(name),
+    do: {:error, "#{field} must be 1 to #{@queue_max} bytes"}
 
-  def queue(_), do: {:error, "queue must be a string"}
+  defp name(_name, field), do: {:error, "#{field} must be a string"}
 
   @doc """
   A payload: 0 to 60 KiB of UTF-8 with no control characters but `\\n`.
@@ -175,7 +192,8 @@ defmodule Jobq.Job do
   @doc """
   The job as the API returns it: the common fields in a fixed order, then
   `run_at` while scheduled, then `worker` and `lease_until` while leased, then
-  `reason` once it has one.
+  `reason` once it has one, then `key` when it was created with one, then
+  `archived_at` once it is in the archive.
   """
   @spec render(t()) :: Jobq.Json.obj()
   def render(%__MODULE__{} = job) do
@@ -200,8 +218,14 @@ defmodule Jobq.Job do
         else: []
 
     reason = if job.reason, do: [{"reason", job.reason}], else: []
+    key = if job.key, do: [{"key", job.key}], else: []
 
-    {:obj, base ++ scheduled ++ lease ++ reason}
+    archived =
+      if job.archived_at,
+        do: [{"archived_at", Jobq.Clock.iso8601(job.archived_at)}],
+        else: []
+
+    {:obj, base ++ scheduled ++ lease ++ reason ++ key ++ archived}
   end
 
   @doc """
@@ -231,8 +255,10 @@ defmodule Jobq.Job do
         else: []
 
     reason = if job.reason, do: [{"reason", job.reason}], else: []
+    key = if job.key, do: [{"key", job.key}], else: []
+    archived = if job.archived_at, do: [{"archived_at", job.archived_at}], else: []
 
-    {:obj, base ++ scheduled ++ lease ++ reason}
+    {:obj, base ++ scheduled ++ lease ++ reason ++ key ++ archived}
   end
 
   @doc """
@@ -273,7 +299,9 @@ defmodule Jobq.Job do
          run_at: run_at,
          worker: optional(map, "worker"),
          lease_until: optional(map, "lease_until"),
-         reason: optional(map, "reason")
+         reason: optional(map, "reason"),
+         key: optional(map, "key"),
+         archived_at: optional(map, "archived_at")
        }}
     else
       _ -> :error
@@ -318,7 +346,8 @@ defmodule Jobq.Job do
   One function over the raw record, the whole rule in one place: the key names
   the job's id, every field keeps its own rule under the current name or the
   one the version before change 1 wrote, and the state says which of `run_at`,
-  `worker` and `lease_until` the record must carry and which it must not.
+  `worker` and `lease_until` the record must carry and which it must not. A
+  `key` keeps the queue name's rule, and a live record has no `archived_at`.
 
       queued     tries < max_tries; no run_at, worker, lease_until
       scheduled  tries < max_tries; run_at present; no worker, lease_until
@@ -340,12 +369,39 @@ defmodule Jobq.Job do
          :ok <- check_present(map, "backoff_ms", &backoff_ms/1),
          :ok <- check_required(map, "created_at", &instant(&1, "created_at")),
          :ok <- check_required(map, "updated_at", &instant(&1, "updated_at")),
-         :ok <- check_present(map, "reason", &reason/1) do
-      check_shape(map, state)
+         :ok <- check_present(map, "reason", &reason/1),
+         :ok <- check_present(map, "key", &key/1),
+         :ok <- check_shape(map, state) do
+      without(map, ["archived_at"], "live")
     end
   end
 
   def check_record(_other), do: {:error, "a record must be a JSON object"}
+
+  @doc """
+  The rule a record in the archive breaks, or `:ok` when it is well-formed:
+  a live record's rule, and only a `done` or `dead` job, with the instant it
+  was archived at.
+  """
+  @spec check_archived(term()) :: :ok | {:error, String.t()}
+  def check_archived(%{} = map) do
+    with :ok <- check_record(Map.delete(map, "archived_at")),
+         :ok <- check_archived_state(map) do
+      case present(map, "archived_at") do
+        {:ok, at} when is_integer(at) -> :ok
+        {:ok, _other} -> {:error, "archived_at must be an instant in milliseconds"}
+        :error -> {:error, "an archived job has an archived_at"}
+      end
+    end
+  end
+
+  def check_archived(_other), do: {:error, "a record must be a JSON object"}
+
+  defp check_archived_state(map) do
+    if Map.get(map, "state") in ["done", "dead"],
+      do: :ok,
+      else: {:error, "an archived job is done or dead"}
+  end
 
   @doc """
   The key a record is filed under: its `id`, or `?` when it does not have one

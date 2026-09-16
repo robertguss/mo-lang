@@ -76,6 +76,19 @@ defmodule Jobq.StoreTest do
     assert {:error, {:corrupt, 1}} = Store.read(dir)
   end
 
+  test "a job created after a compaction's counter starts at it, and the folder opens", %{
+    dir: dir
+  } do
+    write(dir, [record(1, state: :queued), record(2, state: :queued), tombstone(2)])
+    assert {:ok, 1} = Store.compact(dir)
+    write(dir, [record(3, state: :queued)])
+    assert {:ok, {jobs, 4}} = Store.read(dir)
+    assert Map.keys(jobs) == [1, 3]
+
+    write(dir, [{:obj, [{"next", 3}]}])
+    assert {:error, {:corrupt, 4}} = Store.read(dir)
+  end
+
   test "a counter that is not a number refuses the folder", %{dir: dir} do
     write(dir, [record(1, state: :queued), {:obj, [{"next", "soon"}]}])
     assert {:error, {:corrupt, 2}} = Store.read(dir)

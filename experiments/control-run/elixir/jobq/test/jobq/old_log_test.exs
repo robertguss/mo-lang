@@ -20,6 +20,10 @@ defmodule Jobq.OldLogTest do
   # Well past the hour-long leases the fixture's two leased jobs were given.
   @after_the_leases 1_790_000_000_000
 
+  # The fixture's jobs finished some five days before that; these tests are
+  # about the old shape, not the archive, so nothing is archived under them.
+  @retain_ms 2_678_400_000
+
   setup do
     dir = Service.tmp_dir()
     File.cp!(Store.log_path(@fixture), Store.log_path(dir))
@@ -27,7 +31,7 @@ defmodule Jobq.OldLogTest do
   end
 
   test "every job is there with its state, by the new rules, at the first look", %{dir: dir} do
-    %{ref: ref} = Service.start(dir: dir, clock_at: @after_the_leases)
+    %{ref: ref} = Service.start(dir: dir, clock_at: @after_the_leases, retain_ms: @retain_ms)
 
     # j_1's lease ran out with a try to spare, so it is queued again; j_5's ran
     # out on its last one, so it is dead. Neither has a backoff, so neither is
@@ -58,7 +62,7 @@ defmodule Jobq.OldLogTest do
   end
 
   test "the service goes on from there: a lease, a retry, and a backoff", %{dir: dir} do
-    %{ref: ref} = Service.start(dir: dir, clock_at: @after_the_leases)
+    %{ref: ref} = Service.start(dir: dir, clock_at: @after_the_leases, retain_ms: @retain_ms)
 
     assert {200, leased} = Queue.lease(ref, "emails", 60_000, "dave")
     assert field(leased, "id") == "j_1"
@@ -76,7 +80,9 @@ defmodule Jobq.OldLogTest do
   end
 
   test "from the first write on, only the new names are written", %{dir: dir} do
-    %{ref: ref, pid: pid} = Service.start(dir: dir, clock_at: @after_the_leases)
+    %{ref: ref, pid: pid} =
+      Service.start(dir: dir, clock_at: @after_the_leases, retain_ms: @retain_ms)
+
     assert {201, _job} = Queue.create(ref, "emails", "after the change", 3, 0, 5_000)
     Service.stop(pid)
 
@@ -88,7 +94,9 @@ defmodule Jobq.OldLogTest do
   end
 
   test "compact leaves a log with no old name in it", %{dir: dir} do
-    %{ref: ref, pid: pid} = Service.start(dir: dir, clock_at: @after_the_leases)
+    %{ref: ref, pid: pid} =
+      Service.start(dir: dir, clock_at: @after_the_leases, retain_ms: @retain_ms)
+
     before = states(ref)
     Service.stop(pid)
 
@@ -104,7 +112,7 @@ defmodule Jobq.OldLogTest do
       assert line =~ ~s("backoff_ms":)
     end
 
-    %{ref: ref} = Service.start(dir: dir, clock_at: @after_the_leases)
+    %{ref: ref} = Service.start(dir: dir, clock_at: @after_the_leases, retain_ms: @retain_ms)
     assert states(ref) == before
   end
 

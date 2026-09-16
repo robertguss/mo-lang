@@ -19,6 +19,88 @@ defmodule Jobq.JobTest do
     end
   end
 
+  describe "the key" do
+    test "is the queue name's rule, under its own name" do
+      assert {:ok, "order-42_A"} = Job.key("order-42_A")
+      assert {:ok, _key} = Job.key(String.duplicate("k", 64))
+      assert {:error, "key must be 1 to 64 bytes"} = Job.key("")
+      assert {:error, "key must be 1 to 64 bytes"} = Job.key(String.duplicate("k", 65))
+      assert {:error, "key must be letters, digits, '-' or '_'"} = Job.key("no spaces")
+      assert {:error, "key must be letters, digits, '-' or '_'"} = Job.key("é")
+      assert {:error, "key must be a string"} = Job.key(42)
+    end
+
+    test "is checked on a record, and rendered and written after the reason" do
+      job = %Job{
+        n: 1,
+        queue: "emails",
+        payload: "hi",
+        max_tries: 1,
+        tries: 1,
+        state: :dead,
+        reason: "no",
+        key: "k-1",
+        created_at: 0,
+        updated_at: 0
+      }
+
+      {:obj, fields} = Job.record(job)
+      assert fields |> Enum.map(&elem(&1, 0)) |> Enum.take(-2) == ["reason", "key"]
+      map = fields |> Map.new()
+      assert :ok = Job.check_record(map)
+      assert {:ok, %Job{key: "k-1"}} = Job.from_record(map)
+
+      assert {:error, "key must be letters, digits, '-' or '_'"} =
+               Job.check_record(%{map | "key" => "k 1"})
+
+      {:obj, rendered} = Job.render(%{job | archived_at: 1_000})
+      assert rendered |> Enum.map(&elem(&1, 0)) |> Enum.take(-2) == ["key", "archived_at"]
+    end
+  end
+
+  describe "an archived record" do
+    setup do
+      record = %{
+        "id" => "j_3",
+        "queue" => "emails",
+        "state" => "done",
+        "payload" => "hi",
+        "tries" => 1,
+        "max_tries" => 1,
+        "backoff_ms" => 0,
+        "created_at" => 0,
+        "updated_at" => 0,
+        "archived_at" => 5
+      }
+
+      %{record: record}
+    end
+
+    test "is a done or dead job with its archived_at", %{record: record} do
+      assert :ok = Job.check_archived(record)
+      assert :ok = Job.check_archived(%{record | "state" => "dead"})
+      assert {:ok, %Job{archived_at: 5}} = Job.from_record(record)
+    end
+
+    test "is refused in any other state, or without archived_at", %{record: record} do
+      queued = %{record | "state" => "queued", "tries" => 0}
+      assert {:error, "an archived job is done or dead"} = Job.check_archived(queued)
+
+      assert {:error, "an archived job has an archived_at"} =
+               Job.check_archived(Map.delete(record, "archived_at"))
+
+      assert {:error, "archived_at must be an instant in milliseconds"} =
+               Job.check_archived(%{record | "archived_at" => "now"})
+
+      assert {:error, "a done job has tried at least once and at most its max_tries"} =
+               Job.check_archived(%{record | "tries" => 0})
+    end
+
+    test "is not a live record", %{record: record} do
+      assert {:error, "a live job has no archived_at"} = Job.check_record(record)
+    end
+  end
+
   describe "the payload" do
     test "takes 0 to 60 KiB of UTF-8, and a newline" do
       assert {:ok, ""} = Job.payload("")

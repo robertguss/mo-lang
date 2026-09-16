@@ -17,6 +17,13 @@ defmodule Jobq.Queue do
   An idle service takes a look on a tick as well, so a lease that ran out or a
   delay that came due with nobody asking is still freed.
 
+  A create may carry a `key`: the queue keeps a map from `{queue, key}` to the
+  job that has it, rebuilt from the folder at every start, so a second create
+  with the key answers the first job and makes nothing, until that job is
+  deleted. The look has a third pass: a done or dead job left alone for
+  `retain_ms` is moved to the archive (`Jobq.Archive.move/2`), leaves the
+  board and its counts, and is still read by id and still holds its key.
+
   Nothing one request does to this process ends another: an operation runs
   inside a `try`, and whatever it raises, exits with, or throws is that
   request's `503` and no more. A store that could not write a batch tells the
@@ -37,9 +44,10 @@ defmodule Jobq.Queue do
   @type status :: 200 | 201 | 204 | 404 | 409
   @type reply :: {status(), Jobq.Json.value() | nil} | {:error, :store}
   @type operation ::
-          {:create, String.t(), String.t(), pos_integer(), non_neg_integer(), non_neg_integer()}
+          {:create, String.t(), String.t(), pos_integer(), non_neg_integer(), non_neg_integer(),
+           String.t() | nil}
           | {:get, String.t()}
-          | {:list, String.t() | nil, Job.state() | nil}
+          | {:list, String.t() | nil, Job.state() | nil, String.t() | nil}
           | {:delete, String.t()}
           | {:lease, String.t(), pos_integer(), String.t()}
           | {:ack, String.t(), String.t()}
@@ -53,6 +61,7 @@ defmodule Jobq.Queue do
            dir: Path.t(),
            clock: Jobq.Clock.t(),
            sweep_ms: pos_integer(),
+           retain_ms: pos_integer(),
            started_at: integer(),
            counters: Board.counters(),
            jobs: %{pos_integer() => Job.t()},
@@ -60,6 +69,9 @@ defmodule Jobq.Queue do
            queued: %{String.t() => :gb_sets.set(pos_integer())},
            leased: :gb_sets.set({integer(), pos_integer()}),
            scheduled: :gb_sets.set({integer(), pos_integer()}),
+           finished: :gb_sets.set({integer(), pos_integer()}),
+           archived: %{pos_integer() => Job.t()},
+           keys: %{{String.t(), String.t()} => pos_integer()},
            counts: counts(),
            by_queue: %{String.t() => counts()},
            epoch: non_neg_integer()
@@ -75,7 +87,8 @@ defmodule Jobq.Queue do
 
   @doc """
   Start the queue of the service `ref`. Options: `:ref`, `:dir`, `:clock`,
-  `:sweep_ms`, `:started_at`, and the service's `:counters`.
+  `:sweep_ms`, `:retain_ms` (default a day), `:started_at`, and the service's
+  `:counters`.
 
   The process takes its name only once it has read the log, so a request that
   arrives while the board is being rebuilt finds no queue and is answered
@@ -101,19 +114,31 @@ defmodule Jobq.Queue do
 
   `delay_ms` above 0 makes it scheduled until `created_at + delay_ms`;
   `backoff_ms` above 0 is how long it waits after a try that did not take.
+  A `key` that already names a job of the queue answers `200` with that job,
+  as it stands, and changes nothing.
   """
-  @spec create(ref(), String.t(), String.t(), pos_integer(), non_neg_integer(), non_neg_integer()) ::
-          reply()
-  def create(ref, queue, payload, max_tries, delay_ms \\ 0, backoff_ms \\ 0),
-    do: run(ref, {:create, queue, payload, max_tries, delay_ms, backoff_ms})
+  @spec create(
+          ref(),
+          String.t(),
+          String.t(),
+          pos_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          String.t() | nil
+        ) :: reply()
+  def create(ref, queue, payload, max_tries, delay_ms \\ 0, backoff_ms \\ 0, key \\ nil),
+    do: run(ref, {:create, queue, payload, max_tries, delay_ms, backoff_ms, key})
 
   @doc "Read a job. `GET /jobs/{id}`."
   @spec get(ref(), String.t()) :: reply()
   def get(ref, id), do: run(ref, {:get, id})
 
-  @doc "List jobs, at most 100, by id. `GET /jobs`."
-  @spec list(ref(), String.t() | nil, Job.state() | nil) :: reply()
-  def list(ref, queue, state), do: run(ref, {:list, queue, state})
+  @doc """
+  List live jobs, at most 100, by id. `GET /jobs`. A `key` narrows the list to
+  the live job of the queue that has it; an archived job is never listed.
+  """
+  @spec list(ref(), String.t() | nil, Job.state() | nil, String.t() | nil) :: reply()
+  def list(ref, queue, state, key \\ nil), do: run(ref, {:list, queue, state, key})
 
   @doc "Delete a job that is not leased. `DELETE /jobs/{id}`."
   @spec delete(ref(), String.t()) :: reply()
@@ -152,7 +177,7 @@ defmodule Jobq.Queue do
     clock = Keyword.get(opts, :clock, Jobq.Clock.system())
     sweep_ms = Keyword.get(opts, :sweep_ms, 100)
 
-    with {:ok, {jobs, next}} <- Store.read(dir),
+    with {:ok, folder} <- Store.open(dir),
          {:ok, _owner} <- Registry.register(Jobq.Registry, {ref, :queue}, nil) do
       state =
         %{
@@ -160,18 +185,12 @@ defmodule Jobq.Queue do
           dir: dir,
           clock: clock,
           sweep_ms: sweep_ms,
+          retain_ms: Keyword.get(opts, :retain_ms, 86_400_000),
           started_at: Keyword.get_lazy(opts, :started_at, clock),
           counters: Keyword.get_lazy(opts, :counters, &Board.counters/0),
-          jobs: %{},
-          next: 1,
-          queued: %{},
-          leased: :gb_sets.new(),
-          scheduled: :gb_sets.new(),
-          counts: zero(),
-          by_queue: %{},
           epoch: Store.epoch(ref)
         }
-        |> load(jobs, next)
+        |> load(folder)
 
       schedule_sweep(state)
       {:ok, state}
@@ -180,9 +199,25 @@ defmodule Jobq.Queue do
     end
   end
 
-  defp load(state, jobs, next) do
+  # The board as the folder holds it, every index built again from nothing.
+  defp load(state, %{jobs: jobs, next: next, archived: archived}) do
+    state =
+      Map.merge(state, %{
+        jobs: %{},
+        next: 1,
+        queued: %{},
+        leased: :gb_sets.new(),
+        scheduled: :gb_sets.new(),
+        finished: :gb_sets.new(),
+        archived: %{},
+        keys: %{},
+        counts: zero(),
+        by_queue: %{}
+      })
+
     state = Enum.reduce(jobs, state, fn {_n, job}, state -> index_add(state, job) end)
-    %{state | jobs: jobs, next: next}
+    keys = Enum.reduce(archived, state.keys, fn {_n, job}, keys -> key_add(keys, job) end)
+    %{state | jobs: jobs, next: next, archived: archived, keys: keys}
   end
 
   defp zero, do: %{queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0}
@@ -194,7 +229,13 @@ defmodule Jobq.Queue do
     Map.update(status, :state, nil, fn
       %{jobs: jobs} = state ->
         %{state | jobs: {map_size(jobs), :jobs}, queued: :redacted, by_queue: :redacted}
-        |> Map.merge(%{leased: :redacted, scheduled: :redacted})
+        |> Map.merge(%{
+          leased: :redacted,
+          scheduled: :redacted,
+          finished: :redacted,
+          keys: :redacted,
+          archived: {map_size(state.archived), :jobs}
+        })
 
       other ->
         other
@@ -223,7 +264,23 @@ defmodule Jobq.Queue do
       {:reply, {:error, :store}, state}
   end
 
-  defp operate({:create, queue, payload, max_tries, delay_ms, backoff_ms}, records, from, state) do
+  defp operate(
+         {:create, queue, _payload, _max_tries, _delay, _backoff, key},
+         records,
+         from,
+         state
+       )
+       when is_map_key(state.keys, {queue, key}) do
+    {:ok, job} = find_any(state, Map.fetch!(state.keys, {queue, key}))
+    answer(state, records, from, {200, Job.render(job)})
+  end
+
+  defp operate(
+         {:create, queue, payload, max_tries, delay_ms, backoff_ms, key},
+         records,
+         from,
+         state
+       ) do
     now = state.clock.()
 
     job =
@@ -236,7 +293,8 @@ defmodule Jobq.Queue do
         tries: 0,
         state: :queued,
         created_at: now,
-        updated_at: now
+        updated_at: now,
+        key: key
       }
       |> delay(delay_ms, now)
 
@@ -245,16 +303,16 @@ defmodule Jobq.Queue do
   end
 
   defp operate({:get, id}, records, from, state) do
-    case find(state, id) do
+    case find_any(state, id) do
       {:ok, job} -> answer(state, records, from, {200, Job.render(job)})
       :error -> answer(state, records, from, {404, error("no such job")})
     end
   end
 
-  defp operate({:list, queue, job_state}, records, from, state) do
+  defp operate({:list, queue, job_state, key}, records, from, state) do
     jobs =
-      state.jobs
-      |> Map.values()
+      state
+      |> listed(queue, key)
       |> Enum.filter(fn job ->
         (is_nil(queue) or job.queue == queue) and (is_nil(job_state) or job.state == job_state)
       end)
@@ -266,12 +324,21 @@ defmodule Jobq.Queue do
   end
 
   defp operate({:delete, id}, records, from, state) do
-    case find(state, id) do
+    case find_any(state, id) do
       {:ok, %Job{state: :leased}} ->
         answer(state, records, from, {409, error("job is leased")})
 
+      {:ok, %Job{archived_at: at} = job} when is_integer(at) ->
+        state = %{
+          state
+          | archived: Map.delete(state.archived, job.n),
+            keys: key_remove(state.keys, job)
+        }
+
+        answer(state, records ++ [{:unarchive, Job.id(job)}], from, {204, nil})
+
       {:ok, job} ->
-        state = drop_job(state, job)
+        state = delete_job(state, job)
         answer(state, records ++ [{:delete, Job.id(job)}], from, {204, nil})
 
       :error ->
@@ -328,7 +395,10 @@ defmodule Jobq.Queue do
   end
 
   defp operate({:retry, id}, records, from, state) do
-    case find(state, id) do
+    case find_any(state, id) do
+      {:ok, %Job{archived_at: at}} when is_integer(at) ->
+        answer(state, records, from, {409, error("archived")})
+
       {:ok, %Job{state: :dead} = job} ->
         now = state.clock.()
 
@@ -363,6 +433,7 @@ defmodule Jobq.Queue do
          {"leased", state.counts.leased},
          {"done", state.counts.done},
          {"dead", state.counts.dead},
+         {"archived", map_size(state.archived)},
          {"uptime_ms", state.clock.() - state.started_at},
          {"restarts", Board.restarts(state.counters)}
        ]}
@@ -403,21 +474,9 @@ defmodule Jobq.Queue do
   # the next request is answered off is the state on the disk; the commits
   # already on their way under the old epoch are refused by the store.
   def handle_info({:store_epoch, epoch}, state) do
-    case Store.read(state.dir) do
-      {:ok, {jobs, next}} ->
-        state = %{
-          state
-          | jobs: %{},
-            next: 1,
-            queued: %{},
-            leased: :gb_sets.new(),
-            scheduled: :gb_sets.new(),
-            counts: zero(),
-            by_queue: %{},
-            epoch: epoch
-        }
-
-        {:noreply, load(state, jobs, next)}
+    case Store.open(state.dir) do
+      {:ok, folder} ->
+        {:noreply, load(%{state | epoch: epoch}, folder)}
 
       {:error, reason} ->
         {:stop, reason, state}
@@ -437,7 +496,24 @@ defmodule Jobq.Queue do
   defp look(state, now) do
     {state, records} = expire_leases(state, now, [])
     {state, records} = promote_scheduled(state, now, records)
+    {state, records} = archive_finished(state, now, records)
     {Enum.reverse(records), state}
+  end
+
+  # A done or dead job whose `updated_at` is `retain_ms` or more before now
+  # leaves the board for the archive; its key stays where it is.
+  defp archive_finished(state, now, records) do
+    case due(state.finished, now - state.retain_ms) do
+      {:ok, n} ->
+        job = Map.fetch!(state.jobs, n)
+        {archived, [first, second]} = Jobq.Archive.move(job, now)
+        state = drop_job(state, job)
+        state = %{state | archived: Map.put(state.archived, n, archived)}
+        archive_finished(state, now, [second, first | records])
+
+      :none ->
+        {state, records}
+    end
   end
 
   defp expire_leases(state, now, records) do
@@ -513,16 +589,35 @@ defmodule Jobq.Queue do
 
   # Lookups
 
-  defp find(state, id) do
-    with {:ok, n} <- Job.parse_id(id), {:ok, job} <- Map.fetch(state.jobs, n) do
-      {:ok, job}
+  # A job on the board or in the archive, by its id or its counter.
+  defp find_any(state, n) when is_integer(n) do
+    case Map.fetch(state.jobs, n) do
+      {:ok, job} -> {:ok, job}
+      :error -> Map.fetch(state.archived, n)
+    end
+  end
+
+  defp find_any(state, id) do
+    case Job.parse_id(id) do
+      {:ok, n} -> find_any(state, n)
+      :error -> :error
+    end
+  end
+
+  # The live jobs a listing looks at: all of them, or the one a key names.
+  defp listed(state, _queue, nil), do: Map.values(state.jobs)
+
+  defp listed(state, queue, key) do
+    with {:ok, n} <- Map.fetch(state.keys, {queue, key}),
+         {:ok, job} <- Map.fetch(state.jobs, n) do
+      [job]
     else
-      _ -> :error
+      :error -> []
     end
   end
 
   defp held_by(state, id, worker) do
-    case find(state, id) do
+    case find_any(state, id) do
       {:ok, %Job{state: :leased, worker: ^worker} = job} -> {:ok, job}
       {:ok, _job} -> {:error, 409, "caller does not hold a live lease on this job"}
       :error -> {:error, 404, "no such job"}
@@ -538,9 +633,10 @@ defmodule Jobq.Queue do
     end
   end
 
-  # The state and its three indexes: the queued jobs of a queue by id, the
-  # leased jobs by the deadline their lease runs out at, and the scheduled jobs
-  # by the `run_at` they come due at.
+  # The state and its indexes: the queued jobs of a queue by id, the leased
+  # jobs by the deadline their lease runs out at, the scheduled jobs by the
+  # `run_at` they come due at, the done and dead jobs by the `updated_at` their
+  # retention runs from, and the key map, which the archived jobs share.
 
   defp put_job(state, job) do
     state =
@@ -557,6 +653,17 @@ defmodule Jobq.Queue do
     %{state | jobs: Map.delete(state.jobs, job.n)}
   end
 
+  defp delete_job(state, job) do
+    state = drop_job(state, job)
+    %{state | keys: key_remove(state.keys, job)}
+  end
+
+  defp key_add(keys, %Job{key: nil}), do: keys
+  defp key_add(keys, job), do: Map.put(keys, {job.queue, job.key}, job.n)
+
+  defp key_remove(keys, %Job{key: nil}), do: keys
+  defp key_remove(keys, job), do: Map.delete(keys, {job.queue, job.key})
+
   defp index_remove(state, job) do
     state = state |> update_in([:counts, job.state], &(&1 - 1)) |> per_queue(job, -1)
 
@@ -572,13 +679,14 @@ defmodule Jobq.Queue do
       :scheduled ->
         %{state | scheduled: :gb_sets.delete_any({job.run_at, job.n}, state.scheduled)}
 
-      _ ->
-        state
+      _finished ->
+        %{state | finished: :gb_sets.delete_any({job.updated_at, job.n}, state.finished)}
     end
   end
 
   defp index_add(state, job) do
     state = state |> update_in([:counts, job.state], &(&1 + 1)) |> per_queue(job, 1)
+    state = %{state | keys: key_add(state.keys, job)}
 
     case job.state do
       :queued ->
@@ -591,8 +699,8 @@ defmodule Jobq.Queue do
       :scheduled ->
         %{state | scheduled: :gb_sets.insert({job.run_at, job.n}, state.scheduled)}
 
-      _ ->
-        state
+      _finished ->
+        %{state | finished: :gb_sets.insert({job.updated_at, job.n}, state.finished)}
     end
   end
 

@@ -35,6 +35,17 @@ defmodule Jobq.Store do
   line a killed service left behind is cut off when the process starts, so the
   next record begins a line of its own.
 
+  Beside the log is the archive, `jobq.archive`: done and dead jobs that have
+  been left alone for longer than the service's `retain_ms`, one record a line
+  with the `archived_at` they were moved at, and a tombstone for an archived
+  job that was deleted. A move is two writes in one batch, the archive's
+  append and then the log's `{"id":...,"archived":true}`, both synced before
+  any reply of the batch; a batch that fails or a kill between them leaves the
+  job in both files, and an open reads such a job as archived, because an id
+  the archive has ever named is never live again. The archive is append-only
+  between compactions, a folder with no archive has an empty one, and its torn
+  last line is cut and dropped like the log's.
+
   A log the version before change 1 wrote opens with no tool: `Jobq.Job` reads
   the old field names off a record and the store writes only the new ones, so
   a `compact/1` of such a folder leaves no old name behind.
@@ -49,21 +60,32 @@ defmodule Jobq.Store do
   alias Jobq.Json
 
   @log_name "jobq.log"
+  @archive_name "jobq.archive"
   @max_batch 512
 
   @type ref :: term()
-  @type record :: {:put, Job.t()} | {:delete, String.t()}
-  @type log :: {%{pos_integer() => Job.t()}, pos_integer()}
+  @type record ::
+          {:put, Job.t()}
+          | {:delete, String.t()}
+          | {:archive, Job.t()}
+          | {:archived, String.t()}
+          | {:unarchive, String.t()}
+  @type jobs :: %{pos_integer() => Job.t()}
+  @type log :: {jobs(), pos_integer()}
+  @type folder :: %{jobs: jobs(), next: pos_integer(), archived: jobs()}
+  @type fault :: (non_neg_integer() -> boolean() | :between)
 
   @typep state :: %{
            path: String.t(),
+           archive_path: String.t(),
            buffer: iodata(),
+           archive: iodata(),
            waiters: [{GenServer.from(), term()}],
            pending: non_neg_integer(),
            batch: non_neg_integer(),
            epoch: non_neg_integer(),
            ref: ref(),
-           fault: (non_neg_integer() -> boolean()),
+           fault: fault(),
            crash: (pos_integer() -> boolean()),
            counters: Board.counters()
          }
@@ -72,8 +94,9 @@ defmodule Jobq.Store do
 
   @doc """
   Start the writer for `dir`. Options: `:ref`, `:dir`, the service's
-  `:counters`, a test `:fault` over batch numbers, and a `:crash` over write
-  numbers, which is the chaos switch.
+  `:counters`, a test `:fault` over batch numbers (`true` fails the batch
+  before it is written, `:between` after the archive's append and before the
+  log's), and a `:crash` over write numbers, which is the chaos switch.
   """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
@@ -105,6 +128,10 @@ defmodule Jobq.Store do
   @spec log_path(Path.t()) :: Path.t()
   def log_path(dir), do: Path.join(dir, @log_name)
 
+  @doc "The archive's path inside `dir`."
+  @spec archive_path(Path.t()) :: Path.t()
+  def archive_path(dir), do: Path.join(dir, @archive_name)
+
   # Reading and compacting, without a process
 
   @doc """
@@ -115,51 +142,154 @@ defmodule Jobq.Store do
   `{:error, {:corrupt, line_number}}`, and one that is an object but not a
   well-formed record is `{:error, {:record, key, rule}}`.
   """
-  @spec read(Path.t()) ::
-          {:ok, log()} | {:error, {:corrupt, pos_integer()} | {:record, String.t(), String.t()}}
+  @spec read(Path.t()) :: {:ok, log()} | {:error, term()}
   def read(dir) do
-    path = log_path(dir)
+    with {:ok, folder} <- open(dir), do: {:ok, {folder.jobs, folder.next}}
+  end
 
+  @doc """
+  Read the whole folder: the live jobs, the counter, and the archived jobs.
+
+  A job the archive has ever named is not live, whatever the log says: that
+  is a move a kill or a failed batch cut between its two writes. The counter
+  is past every id either file carries, and no key names two jobs of a queue.
+  A bad archive refuses the folder as a bad log does, with
+  `{:corrupt_archive, line_number}` for a line that is not a JSON object.
+  """
+  @spec open(Path.t()) :: {:ok, folder()} | {:error, term()}
+  def open(dir) do
+    with {:ok, {archived, named}} <- read_archive(dir),
+         {:ok, bytes} <- read_file(log_path(dir)),
+         {:ok, {live, next}} <- replay(bytes) do
+      jobs = Map.drop(live, named)
+      highest = named |> Enum.max(fn -> 0 end)
+
+      with :ok <- unique_keys(jobs, archived) do
+        {:ok, %{jobs: jobs, next: max(next, highest + 1), archived: archived}}
+      end
+    end
+  end
+
+  defp read_file(path) do
     case File.read(path) do
-      {:ok, bytes} -> replay(bytes)
-      {:error, :enoent} -> {:ok, {%{}, 1}}
+      {:ok, bytes} -> {:ok, bytes}
+      {:error, :enoent} -> {:ok, ""}
       {:error, reason} -> {:error, {:open, path, reason}}
     end
   end
 
+  # The archive: its jobs by counter, and every counter it has named, a
+  # deleted one included.
+  defp read_archive(dir) do
+    with {:ok, bytes} <- read_file(archive_path(dir)) do
+      {lines, _torn} = split_lines(bytes)
+
+      lines
+      |> Enum.with_index(1)
+      |> Enum.reduce_while({:ok, {%{}, MapSet.new()}}, &archive_step/2)
+      |> case do
+        {:ok, {archived, named}} -> {:ok, {archived, MapSet.to_list(named)}}
+        error -> error
+      end
+    end
+  end
+
+  defp archive_step({line, number}, {:ok, acc}) do
+    case archive_line(line, acc) do
+      {:ok, acc} -> {:cont, {:ok, acc}}
+      :error -> {:halt, {:error, {:corrupt_archive, number}}}
+      {:record, key, rule} -> {:halt, {:error, {:record, key, rule}}}
+    end
+  end
+
+  defp archive_line("", acc), do: {:ok, acc}
+
+  defp archive_line(line, {archived, named}) do
+    case Json.decode(line) do
+      {:ok, %{"deleted" => true, "id" => id}} ->
+        case Job.parse_id(id) do
+          {:ok, n} -> {:ok, {Map.delete(archived, n), MapSet.put(named, n)}}
+          :error -> :error
+        end
+
+      {:ok, map} when is_map(map) ->
+        with :ok <- Job.check_archived(map),
+             {:ok, job} <- Job.from_record(map) do
+          {:ok, {Map.put(archived, job.n, job), MapSet.put(named, job.n)}}
+        else
+          {:error, rule} -> {:record, Job.record_key(map), rule}
+          :error -> {:record, Job.record_key(map), "the record is not a job"}
+        end
+
+      _other ->
+        :error
+    end
+  end
+
+  defp unique_keys(jobs, archived) do
+    [jobs, archived]
+    |> Enum.flat_map(&Map.values/1)
+    |> Enum.filter(& &1.key)
+    |> Enum.sort_by(& &1.n)
+    |> Enum.reduce_while(MapSet.new(), fn job, seen ->
+      if MapSet.member?(seen, {job.queue, job.key}),
+        do: {:halt, {:record, Job.id(job), "the key names another job in its queue"}},
+        else: {:cont, MapSet.put(seen, {job.queue, job.key})}
+    end)
+    |> case do
+      {:record, key, rule} -> {:error, {:record, key, rule}}
+      _seen -> :ok
+    end
+  end
+
   @doc """
-  Rewrite `dir`'s log to one line per live job, by id, through a temporary file
-  and a rename. A folder that does not open is not rewritten, so a compaction
-  writes well-formed records only.
+  Rewrite `dir`'s log to one line per live job, by id, and then its archive to
+  one line per archived job that was not deleted, each through a temporary
+  file and a rename. A folder that does not open is not rewritten, so a
+  compaction writes well-formed records only.
+
+  The log goes first: once it is rewritten it names no archived job, so a kill
+  before the archive's rewrite leaves a folder whose deleted archived jobs are
+  still tombstones rather than jobs the log would bring back.
   """
   @spec compact(Path.t()) :: {:ok, non_neg_integer()} | {:error, term()}
   def compact(dir) do
-    with {:ok, {jobs, next}} <- read(dir) do
-      path = log_path(dir)
-      tmp = path <> ".compact"
-      highest = jobs |> Map.keys() |> Enum.max(fn -> 0 end)
+    with {:ok, %{jobs: jobs, next: next, archived: archived}} <- open(dir),
+         :ok <- rewrite(dir, log_path(dir), log_lines(jobs, next)),
+         :ok <- rewrite(dir, archive_path(dir), job_lines(archived)) do
+      {:ok, map_size(jobs)}
+    end
+  end
 
-      marker =
-        if next > highest + 1,
-          do: [[Json.encode({:obj, [{"next", next}]}), ?\n]],
-          else: []
+  defp log_lines(jobs, next) do
+    highest = jobs |> Map.keys() |> Enum.max(fn -> 0 end)
 
-      lines =
-        marker ++
-          (jobs
-           |> Enum.sort_by(fn {n, _job} -> n end)
-           |> Enum.map(fn {_n, job} -> [Json.encode(Job.record(job)), ?\n] end))
+    marker =
+      if next > highest + 1,
+        do: [[Json.encode({:obj, [{"next", next}]}), ?\n]],
+        else: []
 
-      with {:ok, fd} <- :file.open(tmp, [:write, :raw, :binary]),
-           :ok <- write_and_close(fd, lines),
-           :ok <- :file.rename(tmp, path),
-           :ok <- sync_dir(dir) do
-        {:ok, map_size(jobs)}
-      else
-        {:error, reason} ->
-          _ = File.rm(tmp)
-          {:error, {:compact, reason}}
-      end
+    marker ++ job_lines(jobs)
+  end
+
+  defp job_lines(jobs) do
+    jobs
+    |> Enum.sort_by(fn {n, _job} -> n end)
+    |> Enum.map(fn {_n, job} -> [Json.encode(Job.record(job)), ?\n] end)
+  end
+
+  defp rewrite(dir, path, lines) do
+    tmp = path <> ".compact"
+
+    with {:ok, fd} <- :file.open(tmp, [:write, :raw, :binary]),
+         :ok <- write_and_close(fd, lines),
+         :ok <- :file.rename(tmp, path),
+         :ok <- sync_dir(dir) do
+      :ok
+    else
+      {:error, reason} ->
+        _ = File.rm(tmp)
+        {:error, {:compact, reason}}
     end
   end
 
@@ -175,9 +305,10 @@ defmodule Jobq.Store do
   end
 
   # The replay carries the jobs, the counter, the highest id the log has ever
-  # handed out, and the `next` marker with the line it was read on, so that a
-  # counter no higher than an id the log carries is caught whatever order the
-  # two lines came in.
+  # handed out, and the `next` marker with the line it was read on. A marker is
+  # refused when it is no higher than an id written before it; the ids after it
+  # are the ones a compaction kept, which are below it, and the ones created
+  # since, which start at it. A compaction never writes a counter of 1.
   defp replay(bytes) do
     {lines, torn} = split_lines(bytes)
 
@@ -197,12 +328,7 @@ defmodule Jobq.Store do
     |> finish()
   end
 
-  defp finish({:ok, {jobs, next, seen, marker}}) do
-    case marker do
-      {line, counter} when counter <= seen -> {:error, {:corrupt, line}}
-      _other -> {:ok, {jobs, next}}
-    end
-  end
+  defp finish({:ok, {jobs, next, _seen, _marker}}), do: {:ok, {jobs, next}}
 
   defp finish({:error, reason}), do: {:error, reason}
 
@@ -223,10 +349,13 @@ defmodule Jobq.Store do
   end
 
   defp apply_record(%{"next" => n}, {jobs, next, seen, _marker}, number)
-       when is_integer(n) and n > 0,
+       when is_integer(n) and n > 1 and n > seen,
        do: {:ok, {jobs, max(next, n), seen, {number, n}}}
 
   defp apply_record(%{"next" => _n}, _log, _number), do: :error
+
+  defp apply_record(%{"archived" => true, "id" => id}, log, number),
+    do: apply_record(%{"deleted" => true, "id" => id}, log, number)
 
   defp apply_record(%{"deleted" => true, "id" => id}, {jobs, next, seen, marker}, _number) do
     case Job.parse_id(id) do
@@ -254,14 +383,16 @@ defmodule Jobq.Store do
     counters = Keyword.get_lazy(opts, :counters, &Board.counters/0)
     path = log_path(dir)
 
-    case open_log(path) do
+    case open_both(path, archive_path(dir)) do
       :ok ->
         Board.started(counters)
 
         {:ok,
          %{
            path: path,
+           archive_path: archive_path(dir),
            buffer: [],
+           archive: [],
            waiters: [],
            pending: 0,
            batch: 0,
@@ -272,8 +403,18 @@ defmodule Jobq.Store do
            counters: counters
          }}
 
-      {:error, reason} ->
-        {:stop, {:open, path, reason}}
+      {:error, {file, reason}} ->
+        {:stop, {:open, file, reason}}
+    end
+  end
+
+  defp open_both(path, archive) do
+    with {:log, :ok} <- {:log, open_log(path)},
+         {:archive, :ok} <- {:archive, open_log(archive)} do
+      :ok
+    else
+      {:log, {:error, reason}} -> {:error, {path, reason}}
+      {:archive, {:error, reason}} -> {:error, {archive, reason}}
     end
   end
 
@@ -341,7 +482,7 @@ defmodule Jobq.Store do
   def format_status(status) do
     Map.update(status, :state, nil, fn
       %{buffer: _} = state ->
-        %{state | buffer: :redacted, waiters: length(state.waiters)}
+        %{state | buffer: :redacted, archive: :redacted, waiters: length(state.waiters)}
 
       other ->
         other
@@ -362,11 +503,12 @@ defmodule Jobq.Store do
   end
 
   def handle_cast({:commit, records, from, reply, _epoch}, state) do
-    lines = Enum.map(records, &encode_record/1)
+    {archive, log} = Enum.split_with(records, &archive_record?/1)
 
     state = %{
       state
-      | buffer: [state.buffer, lines],
+      | buffer: append_lines(state.buffer, log),
+        archive: append_lines(state.archive, archive),
         waiters: add_waiter(state.waiters, from, reply),
         pending: state.pending + length(records)
     }
@@ -393,6 +535,11 @@ defmodule Jobq.Store do
     {:noreply, state}
   end
 
+  defp archive_record?({kind, _value}), do: kind in [:archive, :unarchive]
+
+  defp append_lines(buffer, []), do: buffer
+  defp append_lines(buffer, records), do: [buffer, Enum.map(records, &encode_record/1)]
+
   defp refuse(nil), do: :ok
   defp refuse(from), do: GenServer.reply(from, {:error, :store})
 
@@ -402,7 +549,7 @@ defmodule Jobq.Store do
   defp idle?, do: {:message_queue_len, 0} == Process.info(self(), :message_queue_len)
 
   @spec flush(state()) :: {:ok | {:error, term()}, state()}
-  defp flush(%{buffer: []} = state), do: {:ok, state}
+  defp flush(%{buffer: [], archive: []} = state), do: {:ok, state}
 
   defp flush(state) do
     batch = state.batch + 1
@@ -412,7 +559,7 @@ defmodule Jobq.Store do
       :ok ->
         chaos(state)
         Enum.each(state.waiters, fn {from, reply} -> GenServer.reply(from, reply) end)
-        {:ok, %{state | buffer: [], waiters: [], pending: 0}}
+        {:ok, %{state | buffer: [], archive: [], waiters: [], pending: 0}}
 
       {:error, reason} ->
         {{:error, reason}, fail_batch(state, reason)}
@@ -433,7 +580,7 @@ defmodule Jobq.Store do
     end
 
     Enum.each(state.waiters, fn {from, _reply} -> refuse(from) end)
-    %{state | buffer: [], waiters: [], pending: 0, epoch: epoch}
+    %{state | buffer: [], archive: [], waiters: [], pending: 0, epoch: epoch}
   end
 
   # The chaos switch: the batch is on the disk, its replies are not sent, and
@@ -451,11 +598,22 @@ defmodule Jobq.Store do
 
   # Every batch through a file of its own: the `open` is what a folder that
   # cannot be written any more answers, and what it answers again once it can.
+  # The archive's lines are on the disk before the log's.
   defp write(state, batch) do
-    if state.fault.(batch),
-      do: {:error, :injected},
-      else: append(state.path, state.buffer)
+    case state.fault.(batch) do
+      :between ->
+        with :ok <- append(state.archive_path, state.archive), do: {:error, :injected}
+
+      true ->
+        {:error, :injected}
+
+      false ->
+        with :ok <- append(state.archive_path, state.archive),
+             do: append(state.path, state.buffer)
+    end
   end
+
+  defp append(_path, []), do: :ok
 
   defp append(path, buffer) do
     case :file.open(path, [:append, :raw, :binary]) do
@@ -468,6 +626,13 @@ defmodule Jobq.Store do
 
   defp encode_record({:delete, id}),
     do: [Json.encode({:obj, [{"id", id}, {"deleted", true}]}), ?\n]
+
+  defp encode_record({:archive, job}), do: [Json.encode(Job.record(job)), ?\n]
+
+  defp encode_record({:archived, id}),
+    do: [Json.encode({:obj, [{"id", id}, {"archived", true}]}), ?\n]
+
+  defp encode_record({:unarchive, id}), do: encode_record({:delete, id})
 
   defp sync_dir(dir) do
     case :file.open(dir, [:read, :raw]) do

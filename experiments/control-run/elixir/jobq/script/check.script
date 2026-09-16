@@ -2,6 +2,11 @@
 # real socket against a service on a directory of its own.
 #
 #   <token> <method> <path> [<json>]
+#
+# `@retain-ms N` is the service's retain_ms, and `@sleep N` waits on the real
+# clock. Two seconds is long enough for everything above the sleep to run
+# before the first done job is due, and short enough to watch it move.
+@retain-ms 2000
 
 # Two jobs into the emails queue, and the ways of reading them back.
 alice POST /jobs {"queue":"emails","payload":"welcome","max_tries":2}
@@ -83,3 +88,34 @@ bob POST /jobs/j_1/ack
 anyone GET /health
 anyone GET /queues
 alice PUT /queues
+
+# A create with a key makes one job. The same key again in the same queue
+# answers that job, ignores the rest of the body, and makes nothing; in another
+# queue it is another job. A key is looked up only within a queue.
+alice POST /jobs {"queue":"emails","payload":"order 42","max_tries":1,"key":"order-42"}
+alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+alice POST /jobs {"queue":"reports","payload":"order 42","max_tries":1,"key":"order-42"}
+alice GET /jobs?queue=emails&key=order-42
+alice GET /jobs?queue=emails&key=nobody
+alice GET /jobs?key=order-42
+alice POST /jobs {"queue":"emails","payload":"x","max_tries":1,"key":"no spaces"}
+erin POST /queues/emails/lease
+erin POST /jobs/j_6/ack
+alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+
+# Done jobs left alone past retain_ms move to the archive: still read by id,
+# with archived_at, never listed, never retried, and counted by /health.
+@sleep 2100
+alice GET /jobs/j_1
+alice GET /jobs/j_6
+alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+alice GET /jobs?queue=emails&key=order-42
+alice GET /jobs?state=done
+alice POST /jobs/j_1/retry
+anyone GET /health
+anyone GET /queues
+
+# Deleting an archived job frees its key, and the next create is a new job.
+alice DELETE /jobs/j_6
+alice GET /jobs/j_6
+alice POST /jobs {"queue":"emails","payload":"order 42, again","max_tries":1,"key":"order-42"}

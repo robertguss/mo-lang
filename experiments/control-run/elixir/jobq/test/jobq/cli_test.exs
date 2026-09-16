@@ -45,16 +45,22 @@ defmodule Jobq.CLITest do
     test "a folder that opens is 0, with its counts and the next id" do
       dir = Service.tmp_dir()
       assert {0, output} = run(["verify", dir])
-      assert output =~ "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1"
+
+      assert output =~
+               "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1; archived 0"
 
       # The program's own fixture folders, the one the round 7 escript wrote
       # and the one this version writes.
       assert {0, output} = run(["verify", "test/fixtures/round7/data"])
-      assert output =~ "5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7"
+
+      assert output =~
+               "5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7; archived 0"
 
       assert {0, _output} = run(["check", dir, "script/check.script"])
       assert {0, output} = run(["verify", dir])
-      assert output =~ "3 jobs: queued 0, scheduled 1, leased 1, done 1, dead 0; next id j_6"
+      # The script's two done jobs were archived, and one of them was deleted.
+      assert output =~
+               "4 jobs: queued 2, scheduled 1, leased 1, done 0, dead 0; next id j_9; archived 1"
     end
 
     test "a record that is not well-formed is 1, named with its key and its rule" do
@@ -197,10 +203,50 @@ defmodule Jobq.CLITest do
     assert {0, output} = run(["check", dir, "script/check.script"])
     assert output =~ ~s(< 201 {"id":"j_1")
 
-    # The script leaves j_1 done, j_2 leased and j_4 scheduled; j_3 and j_5 it
-    # deletes.
+    # The script leaves j_2 leased, j_4 scheduled, and j_7 and j_8 queued; j_3
+    # and j_5 it deletes, j_1 it archives, and j_6 it archives and deletes. The
+    # compaction keeps j_1 in the archive and nothing of j_6 anywhere.
     assert {0, output} = run(["compact", dir])
-    assert output =~ "3 job(s)"
+    assert output =~ "4 job(s)"
+    refute File.read!(Store.log_path(dir)) =~ ~s("id":"j_1")
+    assert File.read!(Store.archive_path(dir)) =~ ~s("id":"j_1")
+    refute File.read!(Store.archive_path(dir)) =~ ~s("id":"j_6")
+    assert {0, output} = run(["verify", dir])
+    assert output =~ "4 jobs:"
+    assert output =~ "; next id j_9; archived 1"
+  end
+
+  describe "the archive" do
+    test "--retain-ms is 1,000 to 2,678,400,000" do
+      dir = Service.tmp_dir()
+      assert {2, output} = run(["serve", dir, "--retain-ms", "999"])
+      assert output =~ "--retain-ms must be a number from 1000 to 2678400000"
+      assert {2, _output} = run(["serve", dir, "--retain-ms", "2678400001"])
+      assert {2, _output} = run(["serve", dir, "--retain-ms", "a day"])
+      assert {2, output} = run([])
+      assert output =~ "[--retain-ms N]"
+    end
+
+    test "a bad archive record refuses the folder in verify, serve, and compact" do
+      dir = Service.tmp_dir()
+      File.write!(Store.log_path(dir), well_formed())
+
+      File.write!(Store.archive_path(dir), """
+      {"id":"j_2","queue":"emails","state":"queued","payload":"hi","tries":0,"max_tries":3,"backoff_ms":0,"created_at":1789000000000,"updated_at":1789000000000,"archived_at":1789000000000}
+      """)
+
+      assert {1, output} = run(["verify", dir])
+      assert output =~ "jobq: #{dir}: record j_2: an archived job is done or dead"
+      assert {1, output} = run(["serve", dir])
+      assert output =~ "record j_2:"
+      assert {1, output} = run(["compact", dir])
+      assert output =~ "record j_2:"
+      assert File.read!(Store.archive_path(dir)) =~ ~s("id":"j_2")
+
+      File.write!(Store.archive_path(dir), "not json\n")
+      assert {1, output} = run(["verify", dir])
+      assert output =~ "the archive is corrupt at line 1"
+    end
   end
 
   test "the client prints the status and the body of a request it made" do

@@ -41,6 +41,9 @@ defmodule Jobq.Test.Never do
   defp step(%{"id" => id, "deleted" => true}, seen), do: {:ok, Map.put(seen, id, :deleted)}
   defp step(%{"next" => _n}, seen), do: {:ok, seen}
 
+  # A job that left the board for the archive never moves on the board again.
+  defp step(%{"id" => id, "archived" => true}, seen), do: {:ok, Map.put(seen, id, :archived)}
+
   defp step(record, seen) do
     %{"id" => id} = record
 
@@ -74,6 +77,7 @@ defmodule Jobq.Test.Never do
       state == "queued" -> queued_fault(record, previous)
       state_of(previous) == "done" -> "left done for #{state}"
       state_of(previous) == "dead" -> "left dead for #{state}"
+      previous == :archived -> "came back from the archive as #{state}"
       true -> nil
     end
   end

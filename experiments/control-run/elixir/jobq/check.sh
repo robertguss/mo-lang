@@ -18,6 +18,11 @@
 # wrote, and a hand-written record in a state the API could never produce
 # refused by serve, compact, and verify alike.
 #
+# Six: idempotent creates and the archive. A `jobq serve --retain-ms 1000`
+# archives a done job at its first look a second later: it is still read by id,
+# its key still answers, and the folder says so to verify and compact alike.
+# A bad archive record refuses the folder the way a bad live one does.
+#
 # Five: the board restarts itself. A `jobq serve` with the chaos switch on
 # fails its second write, comes back with the record on the board and
 # `restarts` at 1, and on the failure past its budget exits 70 with a folder
@@ -123,7 +128,7 @@ expect_body "2 job(s)"
 
 # `verify` reads the same folder without serving it.
 expect_status 0 ./jobq verify "$work/served"
-expect_body "2 jobs: queued 0, scheduled 1, leased 0, done 1, dead 0; next id j_3"
+expect_body "2 jobs: queued 0, scheduled 1, leased 0, done 1, dead 0; next id j_3; archived 0"
 
 expect_status 0 ./jobq check "$work/served" script/check.script
 expect_body '< 201 {"id":"j_3"'
@@ -140,7 +145,7 @@ expect_body "5 job(s)"
 grep -q '"backoff_ms":0' "$work/round7/jobq.log" || fail "compaction did not write a backoff"
 
 expect_status 0 ./jobq verify "$work/round7"
-expect_body "5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7"
+expect_body "5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7; archived 0"
 
 expect_status 0 ./jobq check "$work/round7" script/check.script
 expect_body '< 201 {"id":"j_7"'
@@ -170,7 +175,7 @@ printf '%s' '{"id":"j_3","queue":"ema' >>"$work/ill/jobq.log.new"
 mv "$work/ill/jobq.log.new" "$work/ill/jobq.log"
 rm "$work/ill/torn"
 expect_status 0 ./jobq verify "$work/ill"
-expect_body "1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_2"
+expect_body "1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_2; archived 0"
 
 # The exit codes: 2 for a usage error, 1 for a directory that cannot be opened,
 # a port that cannot be bound, or a service that cannot be reached.
@@ -237,8 +242,76 @@ grep -q "failed more than 1 time(s) inside 60 second(s)" "$work/chaos.log" ||
   fail "the chaos service did not say why it stopped: $(cat "$work/chaos.log")"
 
 expect_status 0 ./jobq verify "$work/chaos"
-expect_body "4 jobs: queued 4, scheduled 0, leased 0, done 0, dead 0; next id j_5"
+expect_body "4 jobs: queued 4, scheduled 0, leased 0, done 0, dead 0; next id j_5; archived 0"
 expect_status 2 ./jobq verify "$work/chaos" --crash-every 1
 expect_status 2 ./jobq serve "$work/chaos" --restart-window 0
+
+# Six: idempotent creates and the archive.
+mkdir "$work/kept"
+timeout 300 ./jobq serve "$work/kept" --port "$port" --retain-ms 1000 >"$work/kept.log" 2>&1 &
+served=$!
+
+waited=0
+until grep -q "serving" "$work/kept.log" 2>/dev/null; do
+  waited=$((waited + 1))
+  [ "$waited" -gt 100 ] && fail "the archiving service did not come up: $(cat "$work/kept.log")"
+  sleep 0.1
+done
+
+keyed='{"queue":"emails","payload":"once","max_tries":1,"key":"order-7"}'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs "$keyed"
+expect_body '^201 {"id":"j_1"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs "$keyed"
+expect_body '^200 {"id":"j_1"'
+expect_body '"key":"order-7"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /queues/emails/lease
+expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /jobs/j_1/ack
+expect_body '"state":"done"'
+sleep 1.2
+expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /health
+expect_body '"done":0,"dead":0,"archived":1'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice GET /jobs/j_1
+expect_body '"archived_at":"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs/j_1/retry
+expect_body '^409 '
+
+kill "$served"
+served=""
+sleep 0.5
+
+grep -q '"archived":true' "$work/kept/jobq.log" || fail "the log does not record the move"
+grep -q '"archived_at"' "$work/kept/jobq.archive" || fail "the archive does not hold the job"
+expect_status 0 ./jobq verify "$work/kept"
+expect_body "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_2; archived 1"
+expect_status 0 ./jobq compact "$work/kept"
+expect_body "0 job(s)"
+! grep -q '"id":"j_1"' "$work/kept/jobq.log" || fail "compaction kept an archived job in the log"
+expect_status 0 ./jobq verify "$work/kept"
+expect_body "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_2; archived 1"
+
+# After a stop, a start, and a compaction, the key still names the job.
+timeout 300 ./jobq serve "$work/kept" --port "$port" >"$work/kept.log" 2>&1 &
+served=$!
+waited=0
+until grep -q "serving" "$work/kept.log" 2>/dev/null; do
+  waited=$((waited + 1))
+  [ "$waited" -gt 100 ] && fail "the archiving service did not come back: $(cat "$work/kept.log")"
+  sleep 0.1
+done
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs "$keyed"
+expect_body '^200 {"id":"j_1"'
+kill "$served"
+served=""
+sleep 0.5
+
+mkdir "$work/bad-archive"
+printf '%s\n' '{"id":"j_1","queue":"emails","state":"queued","payload":"hi","tries":0,"max_tries":3,"backoff_ms":0,"created_at":1789000000000,"updated_at":1789000000000,"archived_at":1789000000000}' \
+  >"$work/bad-archive/jobq.archive"
+expect_status 1 ./jobq verify "$work/bad-archive"
+expect_error "record j_1: an archived job is done or dead"
+expect_status 1 ./jobq serve "$work/bad-archive" --port "$port"
+expect_error "record j_1:"
+expect_status 1 ./jobq compact "$work/bad-archive"
+expect_error "record j_1:"
 
 echo "check.sh: ok"
