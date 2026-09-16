@@ -401,3 +401,6 @@
 
 ## [2026-09-15] session | Mac: the scaling run read; five sessions started
 - The scaling run: nothing scales on the M3 Max, every row best at 1 core, the disk eight times the VM's ([[interpreter-step-30]] Result). Started 23:21: measurement 1's agent program in two Opus panes (`w45`), round 9's first model, kimi-k3 in Pi, in three panes (`w46`). Step 31 next on `mo-opus`.
+
+## [2026-09-16] session | Mac, after midnight: measurement 1 complete, round 9's first model, a lead slip
+- Measurement 1 complete: twelve of twelve regenerations at 1.0 ([[bodies-as-cache]]); the stronger form on logstat, tests deleted too, 0.74 under the original tests and 1.0 under the transcripts. Round 9's kimi-k3: Go 0 regressions and 1 defect in 15 min, Python 0 and 0 in 35 min ([[control-run-9]]); Mo still running. The lead's slip: two wiki commits committed the worker's staged step 31 files with them (a bare `git commit` after `git add <paths>`); the rule in the skill is now `git commit -- <paths>`.
