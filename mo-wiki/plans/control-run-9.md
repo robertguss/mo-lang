@@ -95,6 +95,7 @@ Started 15 Sep 2026, 23:21 local, on the Mac, Fable alone. A setup slip recorded
 | M3 kimi-k3 | Python | yes, 23:57 | about 35 min | 7 failing checks over 6 causes, first fix right in 5 | 0 of 121 | 0 of 189 | 184k / 90k, one compaction |
 | M2 deepseek-v4-flash | Go | yes, 00:34 | about 11 min | 7 (2 build, 2 vet, 2 test, 1 staticcheck), every first fix right | 0 of 121 | 1 of 189 (the same `delay_ms` null as Opus's and kimi's Go) | 177k / 102k |
 | M2 deepseek-v4-flash | Python | yes, 00:37 | about 14 min | 5, every first fix right | 0 of 121 | 0 of 189 | 141k / 83k |
+| M3 kimi-k3 | Mo | **not green at 90 min** (the pre-registered rule); green at 01:00, 97 min after the brief (its own count 75 min from its first baseline run; the first 18 min lost to the Ollama outage and the missing spec path), recorded as a flagged extra | 97 min | 11 (MO0102, MO0101, MO0104, a `return` in a nothing-function, own tests 3, a `--sim` loop under the frozen clock, and one two-edit fix), first fix right in 10 | 0 of 121 | 1 cause, 2 checks of 189 (a run-out lease with backoff is not handed out by a lease once its backoff has passed: 204) | 500k / 192k, three compactions past 128k |
 
 
 ## Related
