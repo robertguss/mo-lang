@@ -38,60 +38,106 @@ end
 
 fn start(top: Top, since: Option(Time)) : Tally
   ensures result.errors + result.successes + result.malformed == 0
-  # body gone; regenerate
+
+  Tally(top: top, since: since, errors: 0, successes: 0, malformed: 0, first: None, last: None,
+    slowest: [], counts: Map.new())
 end
 
 fn add(tally: Tally, record: Record) : Tally
   ensures result.errors + result.successes <= tally.errors + tally.successes + 1
   ensures result.slowest.size <= tally.top
-  # body gone; regenerate
+
+  early = case tally.since
+    Some(start_at): record.at < start_at
+    None: false
+  end
+  return tally if early
+  key = (record.method, record.path)
+  var next = tally
+  if record.status >= 500
+    next.errors += 1
+  else
+    next.successes += 1
+  end
+  next.first = Some(min_of(next.first or record.at, record.at))
+  next.last = Some(max_of(next.last or record.at, record.at))
+  next.slowest = kept_slowest(next.slowest, record, next.top)
+  seen = (next.counts.get(key) or 0) + 1
+  next.counts = next.counts.set(key, seen)
+  next
 end
 
 fn add_malformed(tally: Tally) : Tally
   ensures result.malformed == tally.malformed + 1
-  # body gone; regenerate
+
+  var next = tally
+  next.malformed += 1
+  next
 end
 
 fn summarize(tally: Tally) : Summary
   ensures result.requests == result.errors + result.successes
   ensures result.errors <= result.requests
   ensures result.slowest.size <= tally.top and result.busiest.size <= tally.top
-  # body gone; regenerate
+
+  requests = tally.errors + tally.successes
+  span = case (tally.first, tally.last)
+    (Some(first), Some(last)): per_minute(requests, first, last)
+    (Some(_), None): 0.0
+    (None, Some(_)): 0.0
+    (None, None): 0.0
+  end
+  Summary(requests: requests, errors: tally.errors, successes: tally.successes,
+    malformed: tally.malformed, error_rate: rate(tally.errors, requests), per_minute: span,
+    slowest: tally.slowest, busiest: ranked(tally.counts, tally.top))
 end
 
 # part / whole; nothing out of nothing is 0.
 fn rate(part: UInt64, whole: UInt64) : Float64
   requires part <= whole
-  # body gone; regenerate
+
+  return 0.0 if whole == 0
+  part.to_f64 / whole.to_f64
 end
 
 # Requests per minute over the span from the first timestamp to the last. One request, or
 # every request in the same instant, is 0.
 fn per_minute(requests: UInt64, first: Time, last: Time) : Float64
   requires first <= last
-  # body gone; regenerate
+
+  minutes = (last - first).minutes
+  return 0.0 if minutes == 0.0
+  requests.to_f64 / minutes
 end
 
 # Slowest first, and at one duration the earlier first.
 fn slow_key(r: Record) : (UInt32, Time)
-  # body gone; regenerate
+  # 4_294_967_295 - ms sorts the slowest first while the key still rises.
+  (4_294_967_295 - r.ms, r.at)
 end
 
 # The slowest records, at most top of them. A record ties behind the ones already kept, so
 # the order is stable.
 fn kept_slowest(slowest: List(Record), record: Record, top: Top) : List(Record)
   ensures result.size <= top
-  # body gone; regenerate
+
+  slowest.push(record).sort_by(fn(r) slow_key(r) end).take(top)
 end
 
 # Busiest first: count descending, then path ascending, then method ascending.
 fn ranked(counts: Map((String, String), UInt64), top: Top) : List(Count)
   ensures result.size <= top
-  # body gone; regenerate
+
+  named = counts.entries.map(fn(entry)
+    key = entry.0
+    Count(count: entry.1, method: key.0, path: key.1)
+  end)
+  named.sort_by(fn(c) (c.path, c.method) end).sort_by_desc(fn(c) c.count end).take(top)
 end
 
 fn sample(second: UInt64, method: String, path: String, status: Status, ms: UInt32) : Record
-  # body gone; regenerate
+  Record(at: Time.from_parts(2026, 1, 1, 0, 0, 0) + second.seconds, method: method, path: path,
+    status: status, ms: ms)
 end
 
 test "requests split into errors and successes, and malformed lines are counted apart"
@@ -173,3 +219,6 @@ property "errors never exceed requests, for any list of records"
     assert summary.requests == records.size
   end
 end
+
+verified: types, contracts, tests (10), property (200 seeds), sim (not run)
+          proven: not run
