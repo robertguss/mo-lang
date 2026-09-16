@@ -26,16 +26,7 @@ process Acceptor(service: Handle(Service)) mailbox: 4_096
   message Idle
 
   fn update(state, message)
-    case message
-      Accepted(exchange):
-        Worker.start(exchange, service).send(Answer)
-        state.accepted += 1
-      Idle:
-        if service.ask(Sweep, within: 10_000.ms) is Ok(ended)
-          state.ended += ended
-        end
-        state.quiet += 1
-    end
+    # body gone; regenerate
   end
 end
 
@@ -48,11 +39,7 @@ process Worker(exchange: Exchange, service: Handle(Service))
   message Answer
 
   fn update(state, message)
-    case message
-      Answer:
-        response = answer(service, exchange.request)
-        state.answered = exchange.reply(response, within: 10_000.ms) is Ok(_)
-    end
+    # body gone; regenerate
   end
 end
 
@@ -66,111 +53,59 @@ end
 # 503 itself; a timed-out ask is 503 too, and the change may still land, as the failure model
 # says.
 fn answer(service: Handle(Service), request: Request) : Response
-  case route(request)
-    Answered(response): response
-    Checkup:
-      case service.ask(Tally, within: 60_000.ms)
-        Ok(counts): health(counts)
-        Error(_): respond(Unavailable(reason: "the queue did not answer in time"))
-      end
-    Asked(call):
-      case service.ask(Serve(call: call), within: 60_000.ms)
-        Ok(outcome): respond(outcome)
-        Error(_): respond(Unavailable(reason: "the queue did not answer in time"))
-      end
-  end
+  # body gone; regenerate
 end
 
 fn place() : Place
-  Place(dir: "d", log: "jobq.log")
+  # body gone; regenerate
 end
 
 fn sent(http: Http, port: UInt16, request: Request) : Result(Response, HttpError)
-  http.send(request, host: "localhost", port: port, within: 1.minute)
+  # body gone; regenerate
 end
 
 fn by(worker: String, method: String, path: String, body: String) : Request
-  Request(method: method, path: path, headers: Map.new().set("authorization", "Bearer #{worker}"),
-    body: body)
+  # body gone; regenerate
 end
 
 fn status_in?(got: Result(Response, HttpError), statuses: List(UInt16)) : Bool
-  case got
-    Ok(response): statuses.contains?(response.status)
-    Error(_): true
-  end
+  # body gone; regenerate
 end
 
 # Every job the service holds, as it holds them, asked directly and not over the wire.
 fn snapshot(service: Handle(Service)) : Option(List(Job))
-  call = Call(worker: "check", command: Listing(queue: None, status: None))
-  case service.ask(Serve(call: call), within: 1.minute)
-    Ok(Listed(jobs)): Some(jobs)
-    Ok(_): None
-    Error(_): None
-  end
+  # body gone; regenerate
 end
 
 fn open_jobs(jobs: List(Job)) : List(Job)
-  jobs.filter(fn(job) job.state == Queued or job.state == Leased end)
+  # body gone; regenerate
 end
 
 # One worker's turn over the wire: when the service shows it holding a job, whether or not its
 # lease's response arrived, an ack, or a fail on an odd job's first attempt; otherwise a lease.
 # Nothing when every response was right, and otherwise what was not.
 fn turn(http: Http, service: Handle(Service), port: UInt16, n: UInt64) : String
-  before = snapshot(service) or []
-  forgotten = before.find(fn(job) held_by_w?(job) end)
-  if forgotten is Some(held)
-    return settled(http, service, port, held, n, before)
-  end
-  lease = by("w", "POST", "/queues/q/lease", "{\"lease_ms\": 3600000}")
-  case sent(http, port, lease)
-    Ok(response):
-      if response.status == 200
-        return "" if (snapshot(service) or [unknown()]).any?(fn(job) held_by_w?(job) end)
-        return "a 200 lease left no job leased to w"
-      end
-      unchanged(response, before, snapshot(service), [204])
-    Error(_): ""
-  end
+  # body gone; regenerate
 end
 
 fn held_by_w?(job: Job) : Bool
-  job.state == Leased and job.worker == Some("w")
+  # body gone; regenerate
 end
 
 fn unknown() : Job
-  at = Time.from_parts(2000, 1, 1, 0, 0, 0)
-  Job(number: 0, queue: "q", state: Dead, payload: "", attempts: 0, max_attempts: 1, created_at: at,
-    updated_at: at, worker: None, lease_until: None, reason: None)
+  # body gone; regenerate
 end
 
 fn settled(http: Http, service: Handle(Service), port: UInt16, held: Job, n: UInt64,
   before: List(Job)) : String
-  path = if held.attempts == 1 and held.number % 2 == 1
-    "/jobs/#{id_of(held.number)}/fail"
-  else
-    "/jobs/#{id_of(held.number)}/ack"
-  end
-  case sent(http, port, by("w", "POST", path, "{\"reason\": \"turn #{n}\"}"))
-    Ok(response):
-      return "" if response.status == 200
-      unchanged(response, before, snapshot(service), [])
-    Error(_): ""
-  end
+  # body gone; regenerate
 end
 
 # A response that is not a success: one of the statuses allowed, or a 503 that left every job as
 # it was.
 fn unchanged(response: Response, before: List(Job), after: Option(List(Job)),
   allowed: List(UInt16)) : String
-  return "" if allowed.contains?(response.status)
-  if response.status == 503
-    return "" if after is None or after == Some(before)
-    return "a 503 changed the jobs"
-  end
-  "unexpected #{response.status} #{response.body}"
+  # body gone; regenerate
 end
 
 test "each status comes back over the wire, unless a call fails"
@@ -218,6 +153,3 @@ test "under faults every answer is right or a 503 that changed nothing, and afte
   end
   assert open_jobs(snapshot(service) or []) == []
 end
-
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
-          proven: not run

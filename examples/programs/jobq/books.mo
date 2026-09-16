@@ -88,121 +88,55 @@ end
 # it may end in part of them.
 fn committed(fs: Fs, books: Books, changes: List((Option(Job), Job)), ceiling: UInt64,
   at: Moment) : Committed
-  if changes.size == 0 and ceiling == 0
-    return Committed(books: books, ok: true, steps: [])
-  end
-  case mended(fs, books, at.by)
-    Ok(whole):
-      pairs = reserved(ceiling).concat(changes.map(fn(c) (id_of(c.1.number), shown(c.1)) end))
-      case put_all(fs, whole.table, pairs, at.by)
-        Ok(table):
-          var after = whole
-          after.table = table
-          after.board = changes.reduce(whole.board, fn(b, change) placed(b, change.1) end)
-          after.reserved = max_of(whole.reserved, ceiling)
-          Committed(books: after, ok: true, steps: stepped(changes, at.now, true))
-        Error(problem):
-          var torn = whole
-          torn.torn = problem == Torn
-          Committed(books: torn, ok: false, steps: stepped(changes, at.now, false))
-      end
-    Error(_): Committed(books: books, ok: false, steps: stepped(changes, at.now, false))
-  end
+  # body gone; regenerate
 end
 
 fn reserved(ceiling: UInt64) : List((String, String))
-  return [] if ceiling == 0
-  [("ids", "#{ceiling}")]
+  # body gone; regenerate
 end
 
 fn stepped(changes: List((Option(Job), Job)), now: Time, logged: Bool) : List(Step)
-  changes.map(fn(c) Step(before: c.0, after: Some(c.1), now: now, logged: logged, kept: logged) end)
+  # body gone; regenerate
 end
 
 fn mended(fs: Fs, books: Books, by: Deadline) : Result(Books, StoreError)
-  return Ok(books) if !books.torn
-  table = try compacted(fs, books.table, by)
-  var after = books
-  after.table = table
-  after.torn = false
-  Ok(after)
+  # body gone; regenerate
 end
 
 fn held_twice?(s: Step) : Bool
-  case s.after
-    Some(after):
-      before = s.before or after
-      live = holds?(before, before.worker or "", s.now)
-      live and after.state == Leased and after.worker != before.worker
-    None: false
-  end
+  # body gone; regenerate
 end
 
 fn revived?(s: Step) : Bool
-  case s.before
-    Some(before):
-      finished = before.state == Done or before.state == Dead
-      finished and (s.after or before).state == Leased
-    None: false
-  end
+  # body gone; regenerate
 end
 
 fn blocked?(s: Step) : Bool
-  case s.before
-    Some(before):
-      after = s.after or before
-      same = after.state == Leased and after.lease_until == before.lease_until
-      run_out?(before, s.now) and same
-    None: false
-  end
+  # body gone; regenerate
 end
 
 # The books a service starts with before its first message opens the store.
 fn unopened(place: Place) : Books
-  table = Table(buckets: Map.new(), size: 0, dir: place.dir, name: place.log, bytes: 0, lines: 0,
-    cut: false)
-  Books(table: table, board: board(), next_id: 1, reserved: 1, torn: false)
+  # body gone; regenerate
 end
 
 # The books the place's logs replay to on the deadline: every record a job, the next id above
 # every id the log holds and every id it reserved, and a log whose last line was cut short
 # rewritten at the first change.
 fn opened(fs: Fs, place: Place, by: Deadline) : Result(Books, String)
-  first = try table_of(opened_by(fs, place.dir, by))
-  table = if place.log == "jobq.log": first else: try table_of(continued(fs, first, place.log, by))
-  names = keys(table, "j_")
-  jobs = names.flat_map(fn(key) record_at(table, key) end)
-  if jobs.size != names.size
-    return Error("holds a jobq.log with a record that is not a job")
-  end
-  held_jobs = jobs.reduce(board(), fn(b, job) placed(b, job) end)
-  ids = (get(table, "ids") or "0").to_u64 or 0
-  next = max_of(max_of(highest(held_jobs) + 1, ids), 1)
-  Ok(Books(table: table, board: held_jobs, next_id: next, reserved: next, torn: cut_short?(table)))
+  # body gone; regenerate
 end
 
 fn record_at(table: Table, key: String) : List(Job)
-  case job_of(get(table, key) or "")
-    Some(job): [job].filter(fn(j) id_of(j.number) == key end)
-    None: []
-  end
+  # body gone; regenerate
 end
 
 fn table_of(opened_table: Result(Table, StoreError)) : Result(Table, String)
-  case opened_table
-    Ok(table): Ok(table)
-    Error(NoFolder): Error("is not a folder jobq can read")
-    Error(Unreadable): Error("holds a jobq log jobq cannot read")
-    Error(Slow): Error("took longer to read than its opening was given")
-    Error(BadLine(number)): Error("holds a jobq log whose line #{number} is not a SET or a DEL")
-    Error(Unwritten) | Error(Torn): Error("holds a jobq log jobq could not write")
-  end
+  # body gone; regenerate
 end
 
 fn health_of(books: Books, uptime_ms: Int64) : Health
-  counts = books.board.counts
-  Health(queued: counts.queued, leased: counts.leased, done: counts.done, dead: counts.dead,
-    uptime_ms: uptime_ms)
+  # body gone; regenerate
 end
 
 test "a log with a record that is not a job does not open, and one cut short opens torn"
@@ -247,6 +181,3 @@ test "a check's own log replays over the folder's, and its changes go only to it
   assert again.board.counts.dead == 1
   assert fs.read("d/jobq.log", within: 1.minute) == Ok("SET j_1 #{shown(made)}\n")
 end
-
-verified: types, contracts, tests (3), property (0 seeds), sim (not run)
-          proven: not run
