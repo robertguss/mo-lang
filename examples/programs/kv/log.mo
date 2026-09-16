@@ -70,16 +70,7 @@ process Journal(dir: Fs, name: String, opened_bytes: UInt64)
   message Append(line: String where value.ends_with?("\n"), keys: UInt64) : Result(UInt64, FsError)
 
   fn update(state, message)
-    case message
-      Append(line: line, keys: keys):
-        case dir.append(name, line, within: 10_000.ms)
-          Ok(_):
-            state.bytes += line.byte_size
-            state.keys = keys
-            Ok(state.bytes)
-          Error(problem): Error(problem)
-        end
-    end
+    # body gone; regenerate
   end
 end
 
@@ -88,25 +79,21 @@ supervisor Journals(dir: Fs, name: String, opened_bytes: UInt64)
 end
 
 fn empty() : Table
-  Table(buckets: Map.new(), size: 0)
+  # body gone; regenerate
 end
 
 # Which of the 256 maps holds a key.
 fn bucket_of(key: String) : UInt64
   ensures result < 256
-
-  key.bytes.reduce(0, fn(hash, b) mixed(hash, b) end)
+  # body gone; regenerate
 end
 
 fn mixed(hash: UInt64, b: UInt8) : UInt64
-  (hash * 31 + b.to_u64) % 256
+  # body gone; regenerate
 end
 
 fn lookup(table: Table, key: String) : Option(String)
-  case table.buckets.get(bucket_of(key))
-    Some(bucket): bucket.get(key)
-    None: None
-  end
+  # body gone; regenerate
 end
 
 # The table with the key set to the value; a key it did not hold counts one more.
@@ -114,115 +101,62 @@ fn put(table: Table, key: String, value: String) : Table
   requires key?(key)
   requires value?(value)
   ensures lookup(result, key) == Some(value)
-
-  at = bucket_of(key)
-  bucket = table.buckets.get(at) or Map.new()
-  added = if bucket.has?(key): 0 else: 1
-  Table(buckets: table.buckets.set(at, bucket.set(key, value)), size: table.size + added)
+  # body gone; regenerate
 end
 
 # The table without the key; the same table when it holds none.
 fn drop(table: Table, key: String) : Table
   ensures lookup(result, key) is None
-
-  at = bucket_of(key)
-  bucket = table.buckets.get(at) or Map.new()
-  return table if !bucket.has?(key)
-  Table(buckets: table.buckets.set(at, bucket.remove(key)), size: table.size - 1)
+  # body gone; regenerate
 end
 
 # Every key that starts with the prefix, in byte order.
 fn keys_with(table: Table, prefix: String) : List(String)
-  keys = table.buckets.values.flat_map(fn(bucket) bucket.keys end)
-  keys.filter(fn(key) key.starts_with?(prefix) end).sort
+  # body gone; regenerate
 end
 
 # The line a change is appended as: a SET with the new value, or a DEL when there is none.
 fn entry(key: String, value: Option(String)) : String
-  case value
-    Some(text): "#{line_of(Set(key: key, value: text))}\n"
-    None: "#{line_of(Del(key: key))}\n"
-  end
+  # body gone; regenerate
 end
 
 # A log's text as a table. A last line with no newline was cut short as it was written, so
 # it was never answered: it is left out, and truncated says so. Any other line that is not
 # a SET or a DEL is not kv's, and replay stops at it with its line number.
 fn replay(text: String) : Result(Replayed, LogError)
-  lines = text.lines
-  truncated = text != "" and !text.ends_with?("\n")
-  whole = if truncated: lines.take(lines.size - 1) else: lines
-  var table = empty()
-  var number = 0
-  for line in whole
-    number += 1
-    table = try applied(table, line, number)
-  end
-  Ok(Replayed(table: table, lines: number, truncated: truncated))
+  # body gone; regenerate
 end
 
 fn applied(table: Table, line: String, number: UInt64) : Result(Table, LogError)
-  case parse(line)
-    Ok(Set(key: key, value: value)): Ok(put(table, key, value))
-    Ok(Del(key)): Ok(drop(table, key))
-    Ok(Get(_)) | Ok(Incr(key: _, by: _)) | Ok(Keys(_)) | Ok(Stats) | Ok(Quit) | Error(_):
-      Error(BadLine(number: number))
-  end
+  # body gone; regenerate
 end
 
 # A log read back, replayed as a restart replays it.
 fn reopen(logged: Logged) : Result(Reopened, LogError)
-  replayed = try replay(logged.text)
-  size = replayed.table.size
-  Ok(Reopened(table: replayed.table, keys_before: logged.keys, keys_after: size))
+  # body gone; regenerate
 end
 
 # A table as a log of one SET line per live key, keys in byte order.
 fn compacted(table: Table) : String
   ensures replay(result) is Ok(again) and again.table.size == table.size
-
-  lines = keys_with(table, "").map(fn(key) entry(key, lookup(table, key)) end)
-  String.join(lines, "")
+  # body gone; regenerate
 end
 
 # The log in a folder, replayed; a folder with no kv.log yet holds an empty log.
 fn open(dir: Fs) : Result(Opened, LogError)
-  names = try names_in(dir)
-  if !names.contains?("kv.log")
-    nothing = Replayed(table: empty(), lines: 0, truncated: false)
-    return Ok(Opened(replayed: nothing, bytes: 0))
-  end
-  text = try text_of(dir)
-  bytes = try size_of(dir)
-  replayed = try replay(text)
-  Ok(Opened(replayed: replayed, bytes: bytes))
+  # body gone; regenerate
 end
 
 fn names_in(dir: Fs) : Result(List(String), LogError)
-  case dir.list(within: 10_000.ms)
-    Ok(names): Ok(names)
-    Error(Missing(_)): Error(NoFolder)
-    Error(Timeout): Error(Slow)
-    Error(NotText): Error(NoFolder)
-  end
+  # body gone; regenerate
 end
 
 fn text_of(dir: Fs) : Result(String, LogError)
-  case dir.read("kv.log", within: 60_000.ms)
-    Ok(text): Ok(text)
-    Error(Missing(_)): Error(Unreadable)
-    Error(Timeout): Error(Slow)
-    Error(NotText): Error(Unreadable)
-  end
+  # body gone; regenerate
 end
 
 fn size_of(dir: Fs) : Result(UInt64, LogError)
-  case dir.size("kv.log", within: 10_000.ms)
-    Ok(bytes): Ok(bytes)
-    Error(Missing(_)): Error(Unreadable)
-    Error(Timeout): Error(Slow)
-    Error(NotText): Error(Unreadable)
-  end
+  # body gone; regenerate
 end
 
 test "a set key reads back, and setting it again still counts one key"
@@ -331,6 +265,3 @@ test rejects "a line with no newline, which would run into the next"
   journal = Journal.start(Fs.fixture(), "kv.log", 0)
   journal.send(Append(line: "SET a 1", keys: 1))
 end
-
-verified: types, contracts, tests (14), property (0 seeds), sim (100 runs, invariants (kept 1, tripped 0))
-          proven: not run
