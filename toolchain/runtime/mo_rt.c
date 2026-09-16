@@ -6424,6 +6424,9 @@ typedef struct {
 } Waiter;
 
 static _Thread_local int poller_fd = -1;
+/* Waiters armed on this thread's poller and not yet reported or disarmed (idle: a scheduler with none
+ * but its wake spins without looking at the system). */
+static _Thread_local uint32_t poller_armed;
 
 static bool poller_open(void) {
     if (poller_fd >= 0) return true;
@@ -6461,6 +6464,7 @@ static bool poller_arm(Waiter *w) {
     }
 #endif
     w->armed = true;
+    poller_armed++;
     return true;
 }
 
@@ -6475,6 +6479,7 @@ static void epoll_forget(Waiter *w) {
 static void poller_disarm(Waiter *w) {
     if (!w->armed) return;
     w->armed = false;
+    poller_armed--;
 #ifdef MO_KQUEUE
     struct kevent change;
     EV_SET(&change, (uintptr_t)w->fd, w->write ? EVFILT_WRITE : EVFILT_READ, EV_DELETE, 0, 0, NULL);
@@ -6494,6 +6499,7 @@ static size_t poller_wait(int64_t ms, Waiter **out) {
     for (int i = 0; i < n; i++) {
         Waiter *w = events[i].udata;
         if (!w) continue;
+        if (w->armed) poller_armed--;
         w->armed = false;
         w->fired = true;
         out[k++] = w;
@@ -6505,6 +6511,7 @@ static size_t poller_wait(int64_t ms, Waiter **out) {
         Waiter *w = events[i].data.ptr;
         /* A one-shot registration stays behind, disabled, until it is deleted. */
         epoll_forget(w);
+        if (w->armed) poller_armed--;
         w->armed = false;
         w->fired = true;
         out[k++] = w;
@@ -6625,29 +6632,38 @@ typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer
  * thread holds the runtime's lock while it runs the runtime, and lets it go while a process's Mo code
  * runs, while its region compacts, and while its scheduler waits in its poller. */
 
-#define SPINS 2000
-/* Every POLL_EVERY spins the scheduler looks at its own poller without waiting (turns.zig, idle). */
+/* How long a scheduler with nothing to do spins on the poke before it sleeps in its poller, looking at
+ * the clock, and at its poller when sockets are armed, every POLL_EVERY spins; and how often one poked
+ * out of its spin looks at its armed sockets (turns.zig, spin_ns; step 34). */
+#define SPIN_NS 200000
+#define SPIN_SOCKETS_NS 200000
+#define POKED_POLL_NS 200000
 #define POLL_EVERY 64
-#define LOCK_SPINS 200
+#define LOCK_SPINS 20000
 #define STOP_WAIT_MS 20
 #define SWEEP_RETRY_MS 100
 /* A starter's scheduler keeps a process it starts while it holds at most this many times its share of the
  * live processes, the new one among them, rounded up (turns.zig, place_factor). */
 #define PLACE_FACTOR 2
-enum { THREAD_RUNNING, THREAD_SPINNING, THREAD_SLEEPING };
+enum { THREAD_RUNNING, THREAD_SPINNING, THREAD_SLEEPING, THREAD_PARKED, THREAD_POKED };
 
 typedef struct {
     uint32_t index;
     /* Who holds its thread: MAIN_TURN, or a process with a fiber. */
     uint32_t holder;
     /* A descriptor another scheduler writes when it gives this one something while it sleeps in its
-     * poller; its thread's state; whether it was given something since it began to wait. */
+     * poller, and a condition it waits on when it sleeps with no socket armed; its thread's state, one
+     * word, POKED once it was given something since it began to wait (turns.zig, Sched.state). */
     int wake_read, wake_write;
     Waiter wake_waiter;
+    pthread_mutex_t park_mutex;
+    pthread_cond_t park_cond;
     _Atomic unsigned char state;
-    _Atomic bool poked;
-    /* Its last look found nothing to hand out, and nothing has been given it since. */
-    bool resting;
+    /* Its last look found nothing to hand out, and nothing has been given it since; a sweep kept it
+     * from handing out a turn, so the sweep's end wakes it. */
+    bool resting, held_back;
+    /* When its thread last looked at its poller. */
+    int64_t polled_at;
     /* Its processes whose wait ended, oldest first from ready_head and each at most once; its processes
      * parked in an ask or a Net call; where its next round starts; its ids that may have a message. */
     uint32_t *ready;
@@ -6701,6 +6717,8 @@ static Sched *cur_sched(void) { return multi ? this_sched : &scheds[0]; }
 
 #if defined(__x86_64__)
 static void spin_hint(void) { __builtin_ia32_pause(); }
+#elif defined(__aarch64__)
+static void spin_hint(void) { __asm__("yield"); }
 #else
 static void spin_hint(void) {}
 #endif
@@ -6779,12 +6797,24 @@ static void wake_drain(Sched *s) {
     while (read(s->wake_read, buf, sizeof buf) > 0) {}
 }
 
-/* Something was given to scheduler `s`: it looks again, woken when it sleeps in its poller. */
+/* Scheduler `s`'s thread is poked, and woken if it sleeps: through its wake in its poller, through its
+ * condition when parked (turns.zig, rouse). */
+static void rouse(Sched *s) {
+    unsigned char was = atomic_exchange(&s->state, THREAD_POKED);
+    if (was == THREAD_SLEEPING) {
+        wake_signal(s);
+    } else if (was == THREAD_PARKED) {
+        pthread_mutex_lock(&s->park_mutex);
+        pthread_cond_signal(&s->park_cond);
+        pthread_mutex_unlock(&s->park_mutex);
+    }
+}
+
+/* Something was given to scheduler `s`: it looks again, woken when it sleeps. */
 static void stir(Sched *s) {
     s->resting = false;
     if (!multi || this_sched == s) return;
-    atomic_store(&s->poked, true);
-    if (atomic_load(&s->state) == THREAD_SLEEPING) wake_signal(s);
+    rouse(s);
 }
 
 static void stir_main(void) { stir(&scheds[0]); }
@@ -7119,6 +7149,7 @@ static void idle(Waiter *also, bool bounded, int64_t deadline) {
     /* While a sweep waits for its turn this scheduler hands nothing out (step), so it waits here without
      * the lock whatever it has ready, until the sweep's end pokes it. */
     bool held_back = sweeping && sweeper != s;
+    if (held_back) s->held_back = true;
     if (!held_back && (s->ready_head < s->nready || s->nto_end > 0)) return;
     if (also && also->fired) return;
     if (run_failed || stopping_run) return;
@@ -7148,22 +7179,51 @@ static void idle(Waiter *also, bool bounded, int64_t deadline) {
     if (multi) {
         poller_arm(&s->wake_waiter);
         /* Nothing can be given it while it holds the lock, so a poke from here on is news. */
-        atomic_store(&s->poked, false);
         atomic_store(&s->state, THREAD_SPINNING);
         uint32_t held = s->depth;
         s->depth = 0;
         pthread_mutex_unlock(&runtime_mutex);
-        /* While it spins it also looks at its own sockets now and then, without waiting: a reply that comes
-         * on a socket is as much news as a poke. */
+        /* It spins a moment on the poke alone (step 34). One with a socket of its own armed also looks at
+         * its poller now and then, without waiting: a reply that comes on a socket is as much news as a
+         * poke. One with nothing armed but its wake never calls the system while it spins, since a look
+         * at the poller costs as much as the handoff it waits for. */
+        bool sockets = poller_armed > 1;
+        int64_t began = awake_ns();
         n = 0;
-        for (int k = 0; k < SPINS && !atomic_load(&s->poked); k++) {
-            if (k % POLL_EVERY == POLL_EVERY - 1 && (n = poller_wait(0, out)) > 0) break;
+        for (uint32_t k = 0; atomic_load(&s->state) != THREAD_POKED; k++) {
+            if (k % POLL_EVERY == POLL_EVERY - 1) {
+                if (sockets && (n = poller_wait(0, out)) > 0) break;
+                if (awake_ns() - began >= (sockets ? SPIN_SOCKETS_NS : SPIN_NS)) break;
+            }
             spin_hint();
         }
         if (n == 0) {
-            /* Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake. */
-            if (!atomic_load(&s->poked)) atomic_store(&s->state, THREAD_SLEEPING);
-            n = poller_wait(atomic_load(&s->poked) ? 0 : left, out);
+            /* Asleep only if no poke came, in the same exchange that says so: a poke that comes after swaps
+             * the sleep out and wakes it. One with a socket armed sleeps in its poller, one with none on its
+             * condition, which costs less to wake than a descriptor. */
+            unsigned char spinning = THREAD_SPINNING;
+            if (sockets && atomic_compare_exchange_strong(&s->state, &spinning, THREAD_SLEEPING)) {
+                n = poller_wait(left, out);
+                s->polled_at = awake_ns();
+            } else if (!sockets) {
+                pthread_mutex_lock(&s->park_mutex);
+                if (atomic_compare_exchange_strong(&s->state, &spinning, THREAD_PARKED)) {
+                    struct timespec at;
+                    clock_gettime(CLOCK_REALTIME, &at);
+                    int64_t ns = at.tv_nsec + left * 1000000;
+                    at.tv_sec += ns / 1000000000;
+                    at.tv_nsec = ns % 1000000000;
+                    while (atomic_load(&s->state) == THREAD_PARKED) {
+                        if (pthread_cond_timedwait(&s->park_cond, &s->park_mutex, &at) != 0) break;
+                    }
+                }
+                pthread_mutex_unlock(&s->park_mutex);
+            } else if (sockets && awake_ns() - s->polled_at >= POKED_POLL_NS) {
+                /* Poked: its sockets are still looked at, without waiting, now and then, so a scheduler
+                 * kept busy by pokes still hears them. */
+                n = poller_wait(0, out);
+                s->polled_at = awake_ns();
+            }
         }
         atomic_store(&s->state, THREAD_RUNNING);
         acquire_runtime();
@@ -7406,7 +7466,13 @@ static void sweep(void) {
     if (multi) {
         sweeping = false;
         sweeper = NULL;
-        for (uint32_t k = 0; k < ncores; k++) stir(&scheds[k]);
+        /* Only the schedulers the sweep held back, or given something meanwhile, look again: waking every
+         * scheduler at every sweep's end costs a thread's wake each (step 34). */
+        for (uint32_t k = 0; k < ncores; k++) {
+            if (!scheds[k].held_back && scheds[k].resting) continue;
+            scheds[k].held_back = false;
+            stir(&scheds[k]);
+        }
     }
 }
 
@@ -7467,7 +7533,10 @@ static bool step(void) {
         return false;
     }
     /* A sweep waits for the updates in progress to park or end: none starts or resumes meanwhile. */
-    if (sweeping && sweeper != s) return false;
+    if (sweeping && sweeper != s) {
+        s->held_back = true;
+        return false;
+    }
     if (s->nto_end > 0) end_own(s);
     if (quiet >= sweep_at) sweep();
     while (nfibers > KEPT_FIBERS) fiber_destroy(fibers[--nfibers]);
@@ -7717,6 +7786,8 @@ static void turns_begin(void) {
         }
 #endif
         s->wake_waiter = (Waiter){s->wake_read, false, false, false, NO_PROCESS, NULL, -1};
+        pthread_mutex_init(&s->park_mutex, NULL);
+        pthread_cond_init(&s->park_cond, NULL);
     }
     runtime_lock();
     pthread_attr_t attr;
@@ -7732,7 +7803,10 @@ static void turns_begin(void) {
 static void turns_stop(void) {
     if (!multi) return;
     stopping_run = true;
-    for (uint32_t k = 1; k < ncores; k++) wake_signal(&scheds[k]);
+    for (uint32_t k = 1; k < ncores; k++) {
+        wake_signal(&scheds[k]);
+        rouse(&scheds[k]);
+    }
     uint32_t held = this_sched->depth;
     this_sched->depth = 0;
     pthread_mutex_unlock(&runtime_mutex);

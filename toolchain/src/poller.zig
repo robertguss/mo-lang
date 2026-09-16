@@ -37,6 +37,9 @@ pub const batch = 256;
 
 pub const Poller = struct {
     fd: posix.fd_t,
+    /// Waiters armed and not yet reported or disarmed (turns.zig, idle: a scheduler with none but its
+    /// wake spins without looking at the system).
+    armed: u32 = 0,
 
     pub fn init() error{SystemResources}!Poller {
         if (use_kqueue) {
@@ -88,6 +91,7 @@ pub const Poller = struct {
             }
         }
         w.armed = true;
+        p.armed += 1;
         return true;
     }
 
@@ -95,6 +99,7 @@ pub const Poller = struct {
     pub fn disarm(p: *Poller, w: *Waiter) void {
         if (!w.armed) return;
         w.armed = false;
+        p.armed -= 1;
         if (use_kqueue) {
             var change = std.mem.zeroes(posix.Kevent);
             change.ident = @intCast(w.fd);
@@ -123,6 +128,7 @@ pub const Poller = struct {
             for (events[0..@intCast(rc)]) |e| {
                 if (e.udata == 0) continue;
                 const w: *Waiter = @ptrFromInt(e.udata);
+                if (w.armed) p.armed -= 1;
                 w.armed = false;
                 w.fired = true;
                 out[k] = w;
@@ -140,6 +146,7 @@ pub const Poller = struct {
             const w: *Waiter = @ptrFromInt(e.data.ptr);
             // A one-shot registration stays behind, disabled, until it is deleted.
             p.epollDelete(w);
+            if (w.armed) p.armed -= 1;
             w.armed = false;
             w.fired = true;
             out[k] = w;
