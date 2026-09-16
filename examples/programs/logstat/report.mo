@@ -26,47 +26,99 @@ end
 
 fn text(summary: Summary) : String
   ensures !card?(result)
-  # body gone; regenerate
+
+  head = head_lines(summary).push("").push("slowest")
+  slow = head.concat(slowest_lines(summary.slowest)).push("").push("busiest")
+  lines_text(slow.concat(busiest_lines(summary.busiest)))
 end
 
+# The counts, each right-aligned in the width of the widest, the error line with its rate.
 fn head_lines(summary: Summary) : List(String)
-  # body gone; regenerate
+  values = [grouped(summary.requests), grouped(summary.errors),
+    grouped(summary.malformed), one_decimal(summary.per_minute)]
+  labels = ["requests", "errors", "malformed", "per minute"]
+  rates = ["", "  (#{one_decimal(summary.error_rate * 100.0)}%)", "", ""]
+  label_width = widest(labels)
+  value_width = widest(values)
+  rows = labels.zip(values).zip(rates)
+  rows.map(fn(row) head_line(row, label_width, value_width) end)
+end
+
+fn head_line(row: ((String, String), String), label_width: UInt64, value_width: UInt64) : String
+  case row
+    ((label, value), rate):
+      "#{label.pad_right(label_width, " ")} #{value.pad_left(value_width, " ")}#{rate}"
+  end
 end
 
 fn slowest_lines(slowest: List(Record)) : List(String)
-  # body gone; regenerate
+  ms_width = widest(slowest.map(fn(r) grouped(r.ms.to_u64) end))
+  request_width = widest(slowest.map(fn(r) requested(r) end))
+  slowest.map(fn(r) slow_line(r, ms_width, request_width) end)
+end
+
+fn requested(r: Record) : String
+  "#{r.method} #{r.path}"
+end
+
+fn slow_line(r: Record, ms_width: UInt64, request_width: UInt64) : String
+  took = grouped(r.ms.to_u64).pad_left(ms_width, " ")
+  "  #{took} ms  #{requested(r).pad_right(request_width, " ")}   #{r.at.to_iso8601}"
 end
 
 fn busiest_lines(busiest: List(Count)) : List(String)
-  # body gone; regenerate
+  count_width = widest(busiest.map(fn(c) grouped(c.count) end))
+  busiest.map(fn(c) busy_line(c, count_width) end)
+end
+
+fn busy_line(c: Count, count_width: UInt64) : String
+  "  #{grouped(c.count).pad_left(count_width, " ")}  #{c.method} #{c.path}"
 end
 
 fn json(summary: Summary) : String
   ensures !card?(result)
-  # body gone; regenerate
+
+  slowest = summary.slowest.map(fn(r) JsonSlow(ms: r.ms, method: r.method, path: r.path,
+    at: r.at) end)
+  object = JsonSummary(requests: summary.requests, errors: summary.errors,
+    error_rate: summary.error_rate, malformed: summary.malformed,
+    per_minute: summary.per_minute, slowest: slowest, busiest: summary.busiest)
+  "#{Json.encode(object)}\n"
 end
 
 # 1204 is "1_204": Mo's own thousands separator.
 fn grouped(n: UInt64) : String
-  # body gone; regenerate
+  String.grouped(n)
 end
 
 # 1234.56 is "1_234.6": one decimal, the whole part grouped.
 fn one_decimal(x: Float64) : String
   requires x >= 0.0
-  # body gone; regenerate
+
+  spelled = x.to_string(1)
+  point = spelled.index_of(".") or 0
+  whole = spelled.slice(0, point).to_u64 or 0
+  "#{String.grouped(whole)}#{spelled.slice(point, spelled.size)}"
 end
 
 fn widest(texts: List(String)) : UInt64
-  # body gone; regenerate
+  texts.map(fn(t) t.size end).max or 0
 end
 
 fn lines_text(lines: List(String)) : String
-  # body gone; regenerate
+  "#{String.join(lines, "\n")}\n"
 end
 
+# The spec's own example report, the fixture of the three section tests below.
 fn example_summary() : Summary
-  # body gone; regenerate
+  slowest = [Record(at: Time.from_parts(2026, 9, 12, 10, 0, 21), method: "POST",
+      path: "/api/orders", status: 503, ms: 1_204),
+    Record(at: Time.from_parts(2026, 9, 12, 10, 0, 2), method: "GET",
+      path: "/api/users", status: 200, ms: 340)]
+  busiest = [Count(count: 611, method: "GET", path: "/api/users"),
+    Count(count: 2, method: "GET", path: "/api/cards/****************/charge")]
+  Summary(requests: 1_204, errors: 37, successes: 1_167, malformed: 2, error_rate: 0.031,
+    per_minute: 40.1, slowest: slowest, busiest: busiest)
 end
 
 test "the counts line up on their right edge"
@@ -126,3 +178,6 @@ end
 test rejects "a negative rate has no decimal text"
   one_decimal(0.0 - 1.0)
 end
+
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+          proven: not run

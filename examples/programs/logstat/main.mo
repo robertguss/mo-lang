@@ -28,59 +28,163 @@ enum Problem
 end
 
 fn usage() : String
-  # body gone; regenerate
+  "usage: logstat <dir> [--top N] [--since <ISO-8601>] [--json]"
 end
 
 fn analyze(fs: Fs, args: List(String)) : Result(String, Problem)
-  # body gone; regenerate
+  parsed = try options(args)
+  logs = fs.scoped(parsed.dir).read_only
+  names = try log_names(logs, parsed.dir)
+  tally = try folded(logs, names, start(parsed.top, parsed.since))
+  summary = summarize(tally)
+  Ok(if parsed.json: json(summary) else: text(summary))
+end
+
+# One file read and folded in at a time, so no two files are ever held at once.
+fn folded(logs: Fs, names: List(String), tally: Tally) : Result(Tally, Problem)
+  var so_far = tally
+  for name in names
+    lines = try read_log(logs, name)
+    so_far = tally_lines(so_far, lines)
+  end
+  Ok(so_far)
 end
 
 # The .log files directly inside the directory, in name order; a directory with none, or
 # none to list, is NoLogs.
 fn log_names(logs: Fs, dir: String) : Result(List(String), Problem)
-  # body gone; regenerate
+  case logs.list(within: 10.seconds)
+    Ok(names): found_logs(logged(names), dir)
+    Error(Missing(_)): Error(NoLogs(dir: dir))
+    Error(Timeout): Error(Slow(name: dir))
+    Error(NotText): Error(NoLogs(dir: dir))
+  end
+end
+
+fn found_logs(names: List(String), dir: String) : Result(List(String), Problem)
+  if names.size == 0: Error(NoLogs(dir: dir)) else: Ok(names)
 end
 
 fn logged(names: List(String)) : List(String)
   ensures result.size <= names.size
-  # body gone; regenerate
+
+  named = names.filter(fn(name) name.ends_with?(".log") and name.size > 4 end)
+  named.sort
 end
 
 fn read_log(logs: Fs, name: String) : Result(List(String), Problem)
-  # body gone; regenerate
+  case logs.read_lines(name, within: 10.seconds)
+    Ok(lines): Ok(lines)
+    Error(Missing(_)): Error(Unread(name: name))
+    Error(Timeout): Error(Slow(name: name))
+    Error(NotText): Error(Unread(name: name))
+  end
 end
 
 fn options(args: List(String)) : Result(Options, Problem)
   ensures result is Ok(o) implies o.dir != ""
-  # body gone; regenerate
+
+  var parsed = Options(dir: "", top: 5, since: None, json: false)
+  var pending = ""
+  for arg in args
+    taken = try step(parsed, pending, arg)
+    parsed = taken.0
+    pending = taken.1
+  end
+  return Error(Usage(detail: "#{pending} needs a value")) if pending != ""
+  return Error(Usage(detail: usage())) if parsed.dir == ""
+  Ok(parsed)
 end
 
 # One argument read: the options so far, and the flag still waiting for its value, or "".
 fn step(parsed: Options, pending: String, arg: String) : Result((Options, String), Problem)
-  # body gone; regenerate
+  return with_top(parsed, arg) if pending == "--top"
+  return with_since(parsed, arg) if pending == "--since"
+  return Ok((parsed, arg)) if arg == "--top" or arg == "--since"
+  return with_json(parsed) if arg == "--json"
+  return Error(Usage(detail: "unknown flag #{arg}")) if arg.starts_with?("--")
+  return Error(Usage(detail: "one directory only, so not #{arg} too")) if parsed.dir != ""
+  with_dir(parsed, arg)
+end
+
+fn with_top(parsed: Options, arg: String) : Result((Options, String), Problem)
+  n = try top_of(arg)
+  var taken = parsed
+  taken.top = n
+  Ok((taken, ""))
+end
+
+fn with_since(parsed: Options, arg: String) : Result((Options, String), Problem)
+  at = try since_of(arg)
+  var taken = parsed
+  taken.since = Some(at)
+  Ok((taken, ""))
+end
+
+fn with_json(parsed: Options) : Result((Options, String), Problem)
+  var taken = parsed
+  taken.json = true
+  Ok((taken, ""))
+end
+
+fn with_dir(parsed: Options, dir: String) : Result((Options, String), Problem)
+  var taken = parsed
+  taken.dir = dir
+  Ok((taken, ""))
 end
 
 fn top_of(arg: String) : Result(UInt64, Problem)
   ensures result is Ok(n) implies n >= 1 and n <= 100
-  # body gone; regenerate
+
+  case arg.to_u64
+    Some(n):
+      if n >= 1 and n <= 100
+        Ok(n)
+      else
+        Error(Usage(detail: "--top is 1 to 100, not #{arg}"))
+      end
+    None: Error(Usage(detail: "--top takes a number, not #{arg}"))
+  end
 end
 
 fn since_of(arg: String) : Result(Time, Problem)
-  # body gone; regenerate
+  case Time.parse(arg)
+    Some(at): Ok(at)
+    None: Error(Usage(detail: "--since takes an ISO-8601 time, not #{arg}"))
+  end
 end
 
 fn tally_lines(tally: Tally, lines: List(String)) : Tally
-  # body gone; regenerate
+  lines.reduce(tally, fn(so_far, line) tally_line(so_far, line) end)
 end
 
 # A blank line is skipped; a line that does not parse is counted as malformed.
 fn tally_line(tally: Tally, line: String) : Tally
   requires !line.contains?("\n")
-  # body gone; regenerate
+
+  return tally if line.trim == ""
+  case parse_line(line)
+    Ok(record): add(tally, record)
+    Error(_): add_malformed(tally)
+  end
 end
 
 fn main(platform: Platform)
-  # body gone; regenerate
+  case analyze(platform.fs, platform.args)
+    Ok(report): platform.stdout.write(report)
+    Error(Usage(detail)):
+      platform.stderr.write_line("logstat: #{detail}")
+      platform.exit(2)
+    Error(NoLogs(dir)):
+      platform.stderr.write_line("logstat: no .log file in #{dir}")
+      platform.exit(1)
+    Error(Unread(name)):
+      platform.stderr.write_line("logstat: #{name} cannot be read")
+      platform.exit(1)
+    Error(Slow(name)):
+      platform.stderr.write_line("logstat: reading #{name} took too long")
+      platform.exit(1)
+  end
 end
 
 test "the defaults are the top five, no since, and text"
@@ -138,3 +242,6 @@ end
 test rejects "a line handed to the tally with its newline"
   tally_line(start(5, None), "a\nb")
 end
+
+verified: types, contracts, tests (8), property (0 seeds), sim (not run)
+          proven: not run

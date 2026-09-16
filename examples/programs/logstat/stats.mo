@@ -38,60 +38,127 @@ end
 
 fn start(top: Top, since: Option(Time)) : Tally
   ensures result.errors + result.successes + result.malformed == 0
-  # body gone; regenerate
+
+  Tally(top: top, since: since, errors: 0, successes: 0, malformed: 0, first: None,
+    last: None, slowest: [], counts: Map.new())
 end
 
 fn add(tally: Tally, record: Record) : Tally
   ensures result.errors + result.successes <= tally.errors + tally.successes + 1
   ensures result.slowest.size <= tally.top
-  # body gone; regenerate
+
+  return tally if before?(tally.since, record.at)
+  var counted = tally
+  counted.first = Some(earliest(tally.first, record.at))
+  counted.last = Some(latest(tally.last, record.at))
+  counted.slowest = kept_slowest(tally.slowest, record, tally.top)
+  counted.counts = tally.counts.update((record.method, record.path), 0, fn(n) n + 1 end)
+  if record.status >= 500
+    counted.errors = tally.errors + 1
+  else
+    counted.successes = tally.successes + 1
+  end
+  counted
+end
+
+# A record before the tally's since is no part of it.
+fn before?(since: Option(Time), at: Time) : Bool
+  case since
+    Some(t): at < t
+    None: false
+  end
+end
+
+fn earliest(known: Option(Time), at: Time) : Time
+  case known
+    Some(t): min_of(t, at)
+    None: at
+  end
+end
+
+fn latest(known: Option(Time), at: Time) : Time
+  case known
+    Some(t): max_of(t, at)
+    None: at
+  end
 end
 
 fn add_malformed(tally: Tally) : Tally
   ensures result.malformed == tally.malformed + 1
-  # body gone; regenerate
+
+  var counted = tally
+  counted.malformed = tally.malformed + 1
+  counted
 end
 
 fn summarize(tally: Tally) : Summary
   ensures result.requests == result.errors + result.successes
   ensures result.errors <= result.requests
   ensures result.slowest.size <= tally.top and result.busiest.size <= tally.top
-  # body gone; regenerate
+
+  requests = tally.errors + tally.successes
+  Summary(requests: requests, errors: tally.errors, successes: tally.successes,
+    malformed: tally.malformed, error_rate: rate(tally.errors, requests).round(3),
+    per_minute: spanned(tally, requests).round(1), slowest: tally.slowest,
+    busiest: ranked(tally.counts, tally.top))
+end
+
+# The rate over the tally's own span; a tally holding no record has no span, so it is 0.
+fn spanned(tally: Tally, requests: UInt64) : Float64
+  case (tally.first, tally.last)
+    (Some(a), Some(b)): per_minute(requests, a, b)
+    _: 0.0
+  end
 end
 
 # part / whole; nothing out of nothing is 0.
 fn rate(part: UInt64, whole: UInt64) : Float64
   requires part <= whole
-  # body gone; regenerate
+
+  if whole == 0: 0.0 else: part.to_f64 / whole.to_f64
 end
 
 # Requests per minute over the span from the first timestamp to the last. One request, or
 # every request in the same instant, is 0.
 fn per_minute(requests: UInt64, first: Time, last: Time) : Float64
   requires first <= last
-  # body gone; regenerate
+
+  minutes = last.since(first).minutes
+  if minutes == 0.0: 0.0 else: requests.to_f64 / minutes
 end
 
 # Slowest first, and at one duration the earlier first.
 fn slow_key(r: Record) : (UInt32, Time)
-  # body gone; regenerate
+  (4_294_967_295 - r.ms, r.at)
 end
 
 # The slowest records, at most top of them. A record ties behind the ones already kept, so
 # the order is stable.
 fn kept_slowest(slowest: List(Record), record: Record, top: Top) : List(Record)
   ensures result.size <= top
-  # body gone; regenerate
+
+  slowest.push(record).sort_by(fn(r) slow_key(r) end).take(top)
 end
 
 # Busiest first: count descending, then path ascending, then method ascending.
 fn ranked(counts: Map((String, String), UInt64), top: Top) : List(Count)
   ensures result.size <= top
-  # body gone; regenerate
+
+  named = counts.entries.map(fn(entry) count_of(entry) end)
+  by_request = named.sort_by(fn(c) (c.path, c.method) end)
+  by_request.sort_by_desc(fn(c) c.count end).take(top)
 end
 
+fn count_of(entry: ((String, String), UInt64)) : Count
+  case entry
+    ((method, path), n): Count(count: n, method: method, path: path)
+  end
+end
+
+# Seconds after 2026-01-01T00:00:00Z, the instant Time.fixture() gives a test.
 fn sample(second: UInt64, method: String, path: String, status: Status, ms: UInt32) : Record
-  # body gone; regenerate
+  at = Time.from_parts(2026, 1, 1, 0, 0, 0) + (second * 1_000).ms
+  Record(at: at, method: method, path: path, status: status, ms: ms)
 end
 
 test "requests split into errors and successes, and malformed lines are counted apart"
@@ -173,3 +240,6 @@ property "errors never exceed requests, for any list of records"
     assert summary.requests == records.size
   end
 end
+
+verified: types, contracts, tests (10), property (200 seeds), sim (not run)
+          proven: not run

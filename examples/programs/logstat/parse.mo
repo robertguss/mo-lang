@@ -26,47 +26,94 @@ fn parse_line(line: String) : Result(Record, Malformed)
   requires !line.contains?("\n")
   ensures result is Ok(r) implies r.status >= 100 and r.status <= 599
   ensures result is Ok(r) implies !card?(r.path)
-  # body gone; regenerate
+
+  fields = line.split(" ")
+  return Error(FieldCount(found: fields.size)) if fields.size != 5
+  at = try timestamp_of(fields.get(0) or "")
+  method = try method_of(fields.get(1) or "")
+  path = try path_of(fields.get(2) or "")
+  code = try status_of(fields.get(3) or "")
+  took = try ms_of(fields.get(4) or "")
+  Ok(Record(at: at, method: method, path: path, status: code, ms: took))
 end
 
 fn timestamp_of(text: String) : Result(Time, Malformed)
-  # body gone; regenerate
+  case Time.parse(text)
+    Some(at): Ok(at)
+    None: Error(BadTimestamp)
+  end
 end
 
+# A method is one or more capital ASCII letters, as every method in the format is.
 fn method_of(text: String) : Result(String, Malformed)
-  # body gone; regenerate
+  return Error(BadMethod) if text == ""
+  letters = text.chars.filter(fn(c) "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains?(c) end)
+  if letters.size == text.size: Ok(text) else: Error(BadMethod)
 end
 
 fn path_of(text: String) : Result(String, Malformed)
-  # body gone; regenerate
+  return Error(BadPath) if !text.starts_with?("/")
+  return Error(BadPath) if text.contains?("\"")
+  Ok(masked_cards(text))
 end
 
 fn status_of(text: String) : Result(UInt64, Malformed)
-  # body gone; regenerate
+  case text.to_u64
+    Some(code): if code >= 100 and code <= 599: Ok(code) else: Error(BadStatus)
+    None: Error(BadStatus)
+  end
 end
 
 fn ms_of(text: String) : Result(UInt32, Malformed)
-  # body gone; regenerate
+  case text.to_u64
+    Some(n):
+      case n.checked_to_u32
+        Some(took): Ok(took)
+        None: Error(BadDuration)
+      end
+    None: Error(BadDuration)
+  end
 end
 
 # A run of sixteen or more digits is starred out, so no card number is ever printed.
 fn masked_cards(path: String) : String
   ensures !card?(result)
   ensures result.size == path.size
-  # body gone; regenerate
+
+  folded = path.chars.reduce(("", ""), fn(so_far, c) grown(so_far, c) end)
+  "#{folded.0}#{starred(folded.1)}"
+end
+
+# The text so far and the run of digits it ends in, one character on.
+fn grown(so_far: (String, String), c: String) : (String, String)
+  if digit?(c)
+    (so_far.0, "#{so_far.1}#{c}")
+  else
+    ("#{so_far.0}#{starred(so_far.1)}#{c}", "")
+  end
 end
 
 fn starred(run: String) : String
-  # body gone; regenerate
+  if run.size >= 16: "*".repeat(run.size) else: run
 end
 
 # Sixteen digits in a row anywhere in the text.
 fn card?(text: String) : Bool
-  # body gone; regenerate
+  runs = text.chars.reduce((0, 0), fn(so_far, c) counted(so_far, c) end)
+  runs.1 >= 16
+end
+
+# The run of digits the text ends in, and the longest run it holds, one character on.
+fn counted(so_far: (UInt64, UInt64), c: String) : (UInt64, UInt64)
+  if digit?(c)
+    (so_far.0 + 1, max_of(so_far.0 + 1, so_far.1))
+  else
+    (0, so_far.1)
+  end
 end
 
 fn digit?(c: String) : Bool
-  # body gone; regenerate
+  "0123456789".contains?(c)
 end
 
 test "a line in the common format is a record"
@@ -119,3 +166,6 @@ property "no sixteen-digit run survives a parse"
     assert outcome is Ok(r) and !card?(r.path)
   end
 end
+
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+          proven: not run
