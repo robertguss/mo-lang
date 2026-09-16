@@ -45,30 +45,75 @@ struct Served
 end
 
 fn serve(fs: Fs, books: Books, call: Call, at: Moment) : Served
-  # body gone; regenerate
+  case call.command
+    Create(queue: queue, payload: payload, max_attempts: max):
+      creating(fs, books, job(books.next_id, queue, payload, max, at.now), at)
+    Fetch(id): fetching(fs, books, id, at)
+    Listing(queue: queue, status: status): listing(fs, books, queue, status, at)
+    Remove(id): removing(fs, books, id, at)
+    Lease(queue: queue, lease_ms: lease_ms): leasing(fs, books, call.worker, queue, lease_ms, at)
+    Ack(id): acking(fs, books, call.worker, id, at)
+    Fail(id: id, reason: reason): failing(fs, books, call.worker, id, reason, at)
+  end
 end
 
 # An id is spent whether or not its job reaches the log, so no id is handed out twice; the log
 # reserves ids a thousand at a time, so a replay never hands out one it handed out before.
 fn creating(fs: Fs, books: Books, made: Job, at: Moment) : Served
-  # body gone; regenerate
+  var spent = books
+  spent.next_id = books.next_id + 1
+  ceiling = if spent.next_id > books.reserved: spent.next_id + 1_000 else: 0
+  answered(committed(fs, spent, [(None, made)], ceiling, at), Made(job: made))
 end
 
 fn fetching(fs: Fs, books: Books, id: String, at: Moment) : Served
-  # body gone; regenerate
+  case held(books, id)
+    Some(kept):
+      done = committed(fs, books, expired_of([kept], at.now), 0, at)
+      answered(done, Found(job: find(done.books.board, kept.number) or kept))
+    None: Served(books: books, outcome: Missing, steps: [])
+  end
 end
 
 # A listing looks at the leases run out in its queue, or in every queue, before it lists.
 fn listing(fs: Fs, books: Books, queue: Option(String), status: Option(State), at: Moment) : Served
-  # body gone; regenerate
+  stale = case queue
+    Some(name): due_in(books.board, name, at.now)
+    None: due_anywhere(books.board, at.now)
+  end
+  done = committed(fs, books, expired_of(stale, at.now), 0, at)
+  answered(done, Listed(jobs: listed(done.books.board, queue, status, 100)))
 end
 
 fn removing(fs: Fs, books: Books, id: String, at: Moment) : Served
-  # body gone; regenerate
+  case held(books, id)
+    Some(kept):
+      looked = committed(fs, books, expired_of([kept], at.now), 0, at)
+      return answered(looked, unwritten(looked.books)) if !looked.ok
+      now_held = find(looked.books.board, kept.number) or kept
+      if now_held.state == Leased
+        return Served(books: looked.books, outcome: Conflict(reason: "the job is leased"),
+          steps: looked.steps)
+      end
+      deleted(fs, looked, now_held, at)
+    None: Served(books: books, outcome: Missing, steps: [])
+  end
 end
 
 fn deleted(fs: Fs, looked: Committed, job: Job, at: Moment) : Served
-  # body gone; regenerate
+  case deleted_from(fs, looked.books.table, id_of(job.number), at.by)
+    Ok(table):
+      var after = looked.books
+      after.table = table
+      after.board = removed(looked.books.board, job.number)
+      step = Step(before: Some(job), after: None, now: at.now, logged: true, kept: true)
+      Served(books: after, outcome: Removed, steps: looked.steps.push(step))
+    Error(problem):
+      var back = looked.books
+      back.torn = looked.books.torn or problem == Torn
+      step = Step(before: Some(job), after: Some(job), now: at.now, logged: false, kept: false)
+      Served(books: back, outcome: unwritten(back), steps: looked.steps.push(step))
+  end
 end
 
 # A lease looks at the queue's leases run out, then hands out its oldest queued job, both in
@@ -76,70 +121,101 @@ end
 fn leasing(fs: Fs, books: Books, worker: String, queue: String, lease_ms: UInt64,
   at: Moment) : Served
   ensures result.outcome is Handed(job) implies handed_to?(books, job, worker)
-  # body gone; regenerate
+  stale = expired_of(due_in(books.board, queue, at.now), at.now)
+  freed = stale.reduce(books.board, fn(board, change) placed(board, change.1) end)
+  case oldest_queued(freed, queue)
+    Some(next):
+      held = leased(next, worker, lease_ms, at.now)
+      done = committed(fs, books, stale.push((Some(next), held)), 0, at)
+      answered(done, Handed(job: held))
+    None: answered(committed(fs, books, stale, 0, at), Empty)
+  end
 end
 
 fn handed_to?(books: Books, job: Job, worker: String) : Bool
-  # body gone; regenerate
+  known = find(books.board, job.number) is Some(_)
+  known and job.state == Leased and job.worker == Some(worker)
 end
 
 fn acking(fs: Fs, books: Books, worker: String, id: String, at: Moment) : Served
   ensures result.outcome is Found(job) implies job.state == Done
-  # body gone; regenerate
+  case held(books, id)
+    Some(kept):
+      return refused(fs, books, kept, at) if !holds?(kept, worker, at.now)
+      done_job = acked(kept, at.now)
+      answered(committed(fs, books, [(Some(kept), done_job)], 0, at), Found(job: done_job))
+    None: Served(books: books, outcome: Missing, steps: [])
+  end
 end
 
 fn failing(fs: Fs, books: Books, worker: String, id: String, reason: String, at: Moment) : Served
-  # body gone; regenerate
+  case held(books, id)
+    Some(kept):
+      return refused(fs, books, kept, at) if !holds?(kept, worker, at.now)
+      again = failed(kept, reason, at.now)
+      answered(committed(fs, books, [(Some(kept), again)], 0, at), Found(job: again))
+    None: Served(books: books, outcome: Missing, steps: [])
+  end
 end
 
 # An ack or a fail from a worker without a live lease: 409, once a lease run out is looked at.
 fn refused(fs: Fs, books: Books, job: Job, at: Moment) : Served
-  # body gone; regenerate
+  done = committed(fs, books, expired_of([job], at.now), 0, at)
+  answered(done, Conflict(reason: "the caller does not hold a live lease on the job"))
 end
 
 # The listener's Idle: every lease run out, in every queue, is looked at.
 fn swept(fs: Fs, books: Books, at: Moment) : Served
-  # body gone; regenerate
+  ended = expired_of(due_anywhere(books.board, at.now), at.now)
+  answered(committed(fs, books, ended, 0, at), Listed(jobs: ended.map(fn(change) change.1 end)))
 end
 
 fn held(books: Books, id: String) : Option(Job)
-  # body gone; regenerate
+  find(books.board, try number_of(id))
 end
 
 # Each job whose lease has run out beside the job it becomes; the rest are looked at and left.
 fn expired_of(jobs: List(Job), now: Time) : List((Option(Job), Job))
-  # body gone; regenerate
+  ran = jobs.filter(fn(job) job.state == Leased and run_out?(job, now) end)
+  ran.map(fn(job) (Some(job), ran_out(job, now)) end)
 end
 
 # A write's answer: the outcome when the log took it, 503 when it did not.
 fn answered(done: Committed, outcome: Outcome) : Served
-  # body gone; regenerate
+  return Served(books: done.books, outcome: outcome, steps: done.steps) if done.ok
+  Served(books: done.books, outcome: unwritten(done.books), steps: done.steps)
 end
 
 fn unwritten(books: Books) : Outcome
-  # body gone; regenerate
+  return Unavailable(reason: "the log may end in part of the change") if books.torn
+  Unavailable(reason: "the log did not take the change")
 end
 
 fn place() : Place
-  # body gone; regenerate
+  Place(dir: "d", log: "jobq.log")
 end
 
 fn call(worker: String, command: Command) : Call
-  # body gone; regenerate
+  Call(worker: worker, command: command)
 end
 
 # The books of an empty folder with n jobs created in q, each allowed max attempts.
 fn with_jobs(fs: Fs, n: UInt64, max: UInt64, at: Moment) : Books
-  # body gone; regenerate
+  var books = unopened(place())
+  for i in 0..n
+    books = serve(fs, books, call("p", Create(queue: "q", payload: "#{i}", max_attempts: max)),
+      at).books
+  end
+  books
 end
 
 # The same moment, d later, on the same deadline.
 fn shifted(at: Moment, d: Duration) : Moment
-  # body gone; regenerate
+  Moment(now: at.now + d, by: at.by)
 end
 
 fn lease_of(worker: String, ms: UInt64) : Call
-  # body gone; regenerate
+  Call(worker: worker, command: Lease(queue: "q", lease_ms: ms))
 end
 
 test "a create reads back and lists; a leased job is 409 to delete; an unknown id is 404"
@@ -254,3 +330,6 @@ property "a create then a read gives back any valid payload"
     assert read.payload == payload
   end
 end
+
+verified: types, contracts, tests (8), property (200 seeds), sim (not run)
+          proven: not run

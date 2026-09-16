@@ -19,113 +19,231 @@ struct Failure
 end
 
 fn route(request: Request) : Routed
-  # body gone; regenerate
+  parts = request.path.split("/").drop(1)
+  first = parts.first or ""
+  named = (parts.get(1) or "") != ""
+  if request.path == "/health"
+    return Checkup if request.method == "GET"
+    return Answered(response: not_allowed("GET"))
+  end
+  return collection(request) if request.path == "/jobs"
+  if parts.size == 2 and first == "jobs" and named
+    return member(request, parts.get(1) or "")
+  end
+  if parts.size == 3 and first == "jobs" and named
+    return settling(request, parts.get(1) or "", parts.get(2) or "")
+  end
+  if parts.size == 3 and first == "queues" and named and parts.get(2) == Some("lease")
+    return lease_route(request, parts.get(1) or "")
+  end
+  Answered(response: failed(404, "no route #{request.path}"))
 end
 
 fn collection(request: Request) : Routed
-  # body gone; regenerate
+  if !["GET", "POST"].contains?(request.method)
+    return Answered(response: not_allowed("GET, POST"))
+  end
+  return asked(request, listing(request.query)) if request.method == "GET"
+  asked(request, created(request.body))
 end
 
 fn member(request: Request, id: String) : Routed
-  # body gone; regenerate
+  if !["GET", "DELETE"].contains?(request.method)
+    return Answered(response: not_allowed("GET, DELETE"))
+  end
+  return asked(request, Ok(Fetch(id: id))) if request.method == "GET"
+  asked(request, Ok(Remove(id: id)))
 end
 
 fn settling(request: Request, id: String, verb: String) : Routed
-  # body gone; regenerate
+  if !["ack", "fail"].contains?(verb)
+    return Answered(response: failed(404, "no route #{request.path}"))
+  end
+  return Answered(response: not_allowed("POST")) if request.method != "POST"
+  return asked(request, Ok(Ack(id: id))) if verb == "ack"
+  asked(request, failing(id, request.body))
 end
 
 fn lease_route(request: Request, queue: String) : Routed
-  # body gone; regenerate
+  return Answered(response: not_allowed("POST")) if request.method != "POST"
+  asked(request, leasing(queue, request.body))
 end
 
 # The call a request makes once its token is read: 401 without one, and 400 when its body or
 # query is not what the route takes.
 fn asked(request: Request, command: Result(Command, String)) : Routed
-  # body gone; regenerate
+  case bearer(request)
+    Some(worker):
+      case command
+        Ok(wanted): Asked(call: Call(worker: worker, command: wanted))
+        Error(why): Answered(response: failed(400, why))
+      end
+    None: Answered(response: failed(401, "a request needs authorization: Bearer <token>"))
+  end
 end
 
 # The token an authorization header carries after Bearer and a space, the scheme in any case.
 fn bearer(request: Request) : Option(String)
-  # body gone; regenerate
+  header = try request.headers.get("authorization")
+  return None if header.slice(0, 7).to_lower != "bearer "
+  token = header.slice(7, header.size).trim
+  return None if !token?(token)
+  Some(token)
 end
 
 fn created(body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  queue = try text_field(fields, "queue")
+  return Error("queue must be 1 to 64 letters, digits, - and _") if !queue?(queue)
+  payload = try text_field(fields, "payload")
+  if !payload?(payload)
+    return Error("payload must be at most 60 KiB with no control characters but newlines")
+  end
+  max = try whole_field(fields, "max_attempts")
+  return Error("max_attempts must be a whole number from 1 to 100") if !max_attempts?(max)
+  Ok(Create(queue: queue, payload: payload, max_attempts: max))
 end
 
 # A lease body is empty, or an object whose lease_ms, 30 seconds when left out, is 100 ms to an
 # hour.
 fn leasing(queue: String, body: String) : Result(Command, String)
-  # body gone; regenerate
+  return Error("queue must be 1 to 64 letters, digits, - and _") if !queue?(queue)
+  return Ok(Lease(queue: queue, lease_ms: 30_000)) if body.trim == ""
+  fields = try object_of(body)
+  return Ok(Lease(queue: queue, lease_ms: 30_000)) if !fields.has?("lease_ms")
+  lease_ms = try whole_field(fields, "lease_ms")
+  if !lease_ms?(lease_ms)
+    return Error("lease_ms must be a whole number from 100 to 3600000")
+  end
+  Ok(Lease(queue: queue, lease_ms: lease_ms))
 end
 
 fn failing(id: String, body: String) : Result(Command, String)
-  # body gone; regenerate
+  fields = try object_of(body)
+  reason = try text_field(fields, "reason")
+  if !reason?(reason)
+    return Error("reason must be at most 4 KiB with no control characters but newlines")
+  end
+  Ok(Fail(id: id, reason: reason))
 end
 
 # A fail's reason: at most 4 KiB, by the payload's rule for characters.
 fn reason?(text: String) : Bool
-  # body gone; regenerate
+  text.byte_size <= 4_096 and payload?(text)
 end
 
 # A listing's query: queue and state, each optional, each keeping its rule when given.
 fn listing(query: Map(String, String)) : Result(Command, String)
-  # body gone; regenerate
+  given = query.get("queue") or ""
+  if query.has?("queue") and !queue?(given)
+    return Error("queue must be 1 to 64 letters, digits, - and _")
+  end
+  wanted = if query.has?("queue"): Some(given) else: None
+  return Ok(Listing(queue: wanted, status: None)) if !query.has?("state")
+  status = try state_of(query.get("state") or "")
+  Ok(Listing(queue: wanted, status: Some(status)))
 end
 
 fn state_of(name: String) : Result(State, String)
-  # body gone; regenerate
+  case state_named(name)
+    Some(status): Ok(status)
+    None: Error("state must be queued, leased, done, or dead")
+  end
 end
 
 fn object_of(body: String) : Result(Map(String, Json), String)
-  # body gone; regenerate
+  case Json.decode(body)
+    Ok(Object(fields)): Ok(fields)
+    Ok(_): Error("the body must be a JSON object")
+    Error(_): Error("the body is not JSON")
+  end
 end
 
 fn text_field(fields: Map(String, Json), name: String) : Result(String, String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(String(text)): Ok(text)
+    Some(_): Error("#{name} must be a string")
+    None: Error("#{name} is missing")
+  end
 end
 
 # A whole number from 0 up; JSON numbers read as floats, so one with a fraction is refused.
 fn whole_field(fields: Map(String, Json), name: String) : Result(UInt64, String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(value):
+      case value.to_i64
+        Some(whole):
+          return Error("#{name} must be a whole number from 0 up") if whole < 0
+          Ok(whole.to_u64)
+        None: Error("#{name} must be a whole number")
+      end
+    None: Error("#{name} is missing")
+  end
 end
 
 # The response to an outcome of the service.
 fn respond(outcome: Outcome) : Response
   ensures result.status >= 200 and result.status <= 503
-  # body gone; regenerate
+  case outcome
+    Made(job): json(201, shown(job))
+    Found(job): json(200, shown(job))
+    Handed(job): json(200, shown(job))
+    Listed(jobs): json(200, "{\"jobs\": [#{String.join(jobs.map(fn(job) shown(job) end), ", ")}]}")
+    Removed: Response(status: 204, body: "")
+    Empty: Response(status: 204, body: "")
+    Missing: failed(404, "no such job")
+    Conflict(reason): failed(409, reason)
+    Unavailable(reason): failed(503, reason)
+  end
 end
 
 fn health(counts: Health) : Response
-  # body gone; regenerate
+  live = "\"queued\": #{counts.queued}, \"leased\": #{counts.leased}"
+  ended = "\"done\": #{counts.done}, \"dead\": #{counts.dead}"
+  json(200, "{#{live}, #{ended}, \"uptime_ms\": #{counts.uptime_ms}}")
 end
 
 fn json(status: UInt16, body: String) : Response
-  # body gone; regenerate
+  Response(status: status, headers: Map.new().set("content-type", "application/json"), body: body)
 end
 
 fn failed(status: UInt16, reason: String) : Response
-  # body gone; regenerate
+  json(status, Json.encode(Failure(error: reason)))
 end
 
 fn not_allowed(methods: String) : Response
-  # body gone; regenerate
+  var response = failed(405, "this route takes #{methods}")
+  response.headers = response.headers.set("allow", methods)
+  response
 end
 
 fn by(method: String, path: String, body: String) : Request
-  # body gone; regenerate
+  Request(method: method, path: path, headers: Map.new().set("authorization", "Bearer ada"),
+    body: body)
 end
 
 fn status_of(routed: Routed) : UInt16
-  # body gone; regenerate
+  case routed
+    Answered(response): response.status
+    Checkup: 200
+    Asked(_): 0
+  end
 end
 
 fn command_of(routed: Routed) : Option(Command)
-  # body gone; regenerate
+  case routed
+    Asked(call): Some(call.command)
+    Checkup: None
+    Answered(_): None
+  end
 end
 
 fn error_of(routed: Routed) : String
-  # body gone; regenerate
+  case routed
+    Answered(response): response.body
+    Checkup: ""
+    Asked(_): ""
+  end
 end
 
 test "each route takes its methods, and any other is 405 with the ones it takes"
@@ -216,3 +334,6 @@ property "any valid payload sent as JSON becomes a create of that payload"
     assert made == Some(Create(queue: "q", payload: payload, max_attempts: 2))
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run
