@@ -8,7 +8,9 @@ state, invariants, and message lines, every function's signature with its commen
 `requires`/`ensures` lines (top-level and inside a process), and every test, test-rejects, and
 property block as written. Gone: every function body and the `verified:` line.
 
-usage: strip-program.py <program-dir>     rewrites every .mo file in place
+usage: strip-program.py [--no-tests] <program-dir>     rewrites every .mo file in place
+--no-tests (the stronger form, 15 Sep on the Mac): every test, test rejects, and property block is deleted too;
+the originals are the lead's oracle, kept out of the worktree
 """
 import re, sys, os
 
@@ -32,7 +34,7 @@ def signature_lines(lines, i, indent):
     kept.append(indent + "end")
     return kept, j + 1
 
-def strip(text):
+def strip(text, keep_tests=True):
     lines = text.split("\n")
     out = []
     i = 0
@@ -40,11 +42,15 @@ def strip(text):
     while i < len(lines):
         ln = lines[i]
         if re.match(r"(test|test rejects|property)\b", ln):
-            # a test block is kept whole, to its `end` at column 0
-            out.append(ln); i += 1
+            # a test block is kept whole, to its `end` at column 0; under --no-tests it goes
+            if keep_tests: out.append(ln)
+            i += 1
             while i < len(lines) and lines[i] != "end":
-                out.append(lines[i]); i += 1
-            if i < len(lines): out.append(lines[i]); i += 1
+                if keep_tests: out.append(lines[i])
+                i += 1
+            if i < len(lines):
+                if keep_tests: out.append(lines[i])
+                i += 1
             continue
         m = re.match(r"^(\s*)fn\s+[A-Za-z_][A-Za-z0-9_?!]*\s*\(", ln)
         if m and not ln.rstrip().endswith("end"):
@@ -61,12 +67,13 @@ def strip(text):
     return re.sub(r"\n{3,}", "\n\n", text).rstrip("\n") + "\n"
 
 def main():
-    d = sys.argv[1]
+    keep = "--no-tests" not in sys.argv
+    d = [a for a in sys.argv[1:] if not a.startswith("--")][0]
     before = after = 0
     for name in sorted(os.listdir(d)):
         if not name.endswith(".mo"): continue
         p = os.path.join(d, name); src = open(p).read()
-        out = strip(src)
+        out = strip(src, keep)
         open(p, "w").write(out)
         before += src.count("\n"); after += out.count("\n")
         print(f"{name}: {src.count(chr(10))} -> {out.count(chr(10))} lines")
