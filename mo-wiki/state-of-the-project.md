@@ -109,7 +109,8 @@ restarting store no longer grows by its own size at every restart, and fixed
 an interpreter abort on opening a large log. Generation four followed in the
 afternoon: idempotent creates and an archive beside the log, state a restart
 must rebuild, and all four languages carried it whole; nothing has eroded in
-four generations.
+four generations. Step 34, placement, began at 15:08 and paused after part
+A when Robert took the Mac; its measurement needs the Mac's cores.
 
 ## What Mo is, today
 

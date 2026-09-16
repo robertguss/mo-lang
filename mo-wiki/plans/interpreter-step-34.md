@@ -5,7 +5,7 @@ updated: 2026-09-16
 type: plan
 tags: [runtime, performance, processes]
 sources: [plans/interpreter-step-30.md, plans/mac-scaling-run.md, plans/interpreter-step-31.md, spec/design-v0/03-semantics.md, spec/design-v0/07-toolchain.md]
-status: in-progress
+status: in-progress (paused after part A, 16 Sep 15:45; parts B and C need the Mac)
 ---
 
 # Step 34: placement, so the Mac's cores stop costing
@@ -35,6 +35,34 @@ The table above. Done when at 14 cores no crossing row (`echo-1k`, `kv-10k-get`,
 ## Done when
 
 `zig build test` green, the corpus green, `mo fmt` clean, the spec lines written, the numbers table with the `MO_STATS=1` lines, and a numbered list "Decisions the brief did not cover".
+
+## Status at the pause (16 Sep 2026, 15:45 local)
+
+Robert left with the Mac at 15:50. The worker (Opus, medium effort, briefed 15:08) finished part A and stopped on the lead's word: `1559554` "Step 34 part A" and `660b75c` "the bench programs formatted", both pushed, `zig build test` green at the first. Part A as committed: placement with the starter in both runtimes, `MO_PLACE=spread` keeping step 30's rule, a corpus program and a test for it. Parts B (the crossing made cheap) and C (the measurement at 1, 4, and 14 cores) are untouched and need the Mac's cores; a fresh worker resumes from part A's commit with the same brief. The worker's own note on what A did and what it measured is under `## The worker's note at the pause` below, as written to its pane.
+
+## The worker's note at the pause
+
+```
+4. Why crossings are slow: 100k asks take 75 ms on one scheduler and about 4 s across two in
+     the binary. A zero-timeout kevent costs 8 to 13 µs on this Mac, and the idle spin calls
+     it every 64 turns, so pokes wait it out. Waking a sleeping thread costs 7 to 15 µs.
+     Neither sweeps nor the runtime lock is the cause.
+  5. Part B still needs:
+     - Schedulers with no socket armed spin on the atomic poke alone, for a set time, then
+       sleep on a futex; schedulers with sockets armed keep the poller path.
+     - Held asks: constant-time removal from the parked list, and deadline scans only when one
+       is due.
+     - deferred.mo measured before and after at 8 and 128 askers, plus what a parked fiber
+       costs at rest.
+  6. Part C still needs:
+     - The full table: best of five, both runtimes, 1, 4 and 14 cores, with spread beside the
+       new rule at 14 cores.
+     - Rows to add: the queue, the ledger, 8 crunchers (program not written yet), and spread
+       with 200,000 processes.
+     - The MO_STATS=1 lines for the queue at 14 cores.
+     - The spec lines, the corpus and mo fmt checks, and the list of decisions the brief did
+       not cover.
+```
 
 ## Related
 

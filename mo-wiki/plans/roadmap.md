@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; Fable writing the brief | the Opus worker in a fresh pane of `w44`, Fable verifying | 16 Sep, 15:15 | [[interpreter-step-34]] |
+| Paused: step 34, placement, after part A (placement with the starter, pushed); parts B and C need the Mac's cores. Next on either machine: change 5 and generation five | Fable | 16 Sep, 15:45 | [[interpreter-step-34]] |
 
 ## Next, in order
 

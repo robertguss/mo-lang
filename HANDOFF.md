@@ -1,4 +1,4 @@
-# Mo Lang — Handoff, 16 Sep 2026, after the morning session on Robert's Mac
+# Mo Lang — Handoff, 16 Sep 2026, afternoon: the next session on the Mac (preferred) or the VM
 
 Paste the block below into a fresh Claude Code session in the repo. The roles,
 the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
@@ -6,128 +6,146 @@ the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
 load; this page holds only the state, the queue, and what a fresh session must
 know that the wiki does not say in one place.
 
-> We're continuing the Mo language build on Robert's Mac. Load the `mo-lead`
-> skill first and follow it: you are the lead, Opus workers in Herdr (medium
-> effort, one fresh session per piece of work) write all code; Robert reviews
-> the decision log. **Robert's standing rule (15 Sep, 23:55, locked; restated 15
-> Sep 22:50 going to bed): you make the decisions and keep the work moving;
-> never stop to ask him; a question is a decision-log row, not a wait.** The
-> lead commits wiki files with `git commit -m <msg> -- <paths>` only (a bare
-> `git commit` swept a worker's staged files twice this night). Then read, in
-> order: `mo-wiki/state-of-the-project.md` (the whole picture; you rewrite it at every pause); `mo-wiki/SCHEMA.md`; the board and the phase table at the top of
-> `mo-wiki/plans/roadmap.md` (the board is Robert's status view: rewrite it at every acceptance and pause); the last ten entries of `mo-wiki/log.md`; the last
-> thirty rows of `mo-wiki/decisions/decision-log.md` (rows tagged `semantic` are
-> the ones Robert reads, rows marked "for Robert" wait on him); `CHANGELOG.md`
-> down to "Session 7, night"; `mo-wiki/spec/design-v0/01-premise.md`,
-> `08-milestone.md`, and `10-language-after-the-rounds.md`;
-> `mo-wiki/plans/control-run-9.md`, `erosion-round.md`,
-> `interpreter-step-31.md`, `control-run-10.md`, `bodies-as-cache.md`, and
-> `mac-scaling-run.md` whole.
+> We're continuing the Mo language build. Robert prefers the Mac (the evidence
+> worktrees and step 34's fourteen-core measurement are there); the VM works for
+> everything but step 34 (`herdr pane list` shows which machine this is). Load the `mo-lead` skill
+> first and follow it: you are the lead, Opus workers in Herdr (medium effort,
+> one fresh session per piece of work) write all code; Robert reviews the
+> decision log. **Robert's standing rule (15 Sep, 23:55, locked): you make the
+> decisions and keep the work moving; never stop to ask him; a question is a
+> decision-log row, not a wait.** **His rules of 16 Sep, in the skill:** every
+> run or spawn (a build, `zig build test`, a suite, a bench, a probe, a worker)
+> goes in a fresh Herdr pane of his workspace so he can see it, never a
+> background shell of your session; close the pane when its result is read;
+> close every workspace you create once its sessions are done; the roadmap
+> board is his status view, rewritten at every acceptance and pause; reports to
+> him at a high level, the check-by-check detail on the pages. The lead commits
+> wiki files with `git commit -m <msg> -- <paths>` only. Then read, in order:
+> `mo-wiki/state-of-the-project.md` (the whole picture; rewrite it at every
+> pause); `mo-wiki/SCHEMA.md`; the board and the phase table at the top of
+> `mo-wiki/plans/roadmap.md`; the last ten entries of `mo-wiki/log.md`; the last
+> thirty rows of `mo-wiki/decisions/decision-log.md`; `CHANGELOG.md` down to
+> "Session 8"; `mo-wiki/spec/design-v0/01-premise.md`, `08-milestone.md`, and
+> `10-language-after-the-rounds.md`; `mo-wiki/plans/erosion-round.md` whole
+> (four generations), `interpreter-step-32.md`, `-33.md`, `-34.md`,
+> `control-run-9.md`, `control-run-10.md`, `mac-scaling-run.md`.
 >
-> **State (16 Sep 2026, morning; the night session ran 22:20 to 02:45, the morning session built the site).** Everything is on `main`, pushed. The Mac is set up (Zig 0.16.0, Go
-> 1.27.1, Elixir 1.18 on OTP 27 pinned in the Elixir worktrees, `uv`, Pi 0.73.1,
-> Ollama; 28 evidence worktrees plus tonight's: `../mo-lang-r9-<model>-<lang>`
-> for kimi, deepseek, codex, qwen, gemini (unused),
-> `../mo-lang-erosion2-<lang>`, `../mo-lang-cache-C`). The Herdr worker pane is
-> `w44:p2`; workspaces `w45` to `w4A` hold tonight's session panes, all finished, and `w4B` the morning's Haiku panes.
+> **State (16 Sep 2026, 15:45 local, at the pause).** Everything is on `main`,
+> pushed, and every evidence branch is pushed (`control7-*`, `control8-*`,
+> `control10-elixir`, `erosion2-*`, `erosion3-*`, `erosion4-*`, `r9-*`). The
+> worktrees for those branches exist only on the Mac; on the VM recreate what a
+> step needs with `git worktree add ../mo-lang-<name> <branch>` (the names on
+> the pages: `../mo-lang-erosion4-mo` on `erosion4-mo`, and so on), build the
+> toolchain (`cd toolchain && zig build`; Zig 0.16 is on the VM through `mise`)
+> and copy `toolchain/zig-out/bin/mo` into a Mo worktree's `toolchain/zig-out/bin/`,
+> and put this untracked `mise.toml` at the root of an Elixir worktree:
+> `[tools]` / `elixir = "1.18-otp-27"` / `erlang = "27"` (the VM has Elixir
+> through `mise` since round 10). The Mac's port and RAM-disk rules below do not
+> apply on Linux; the suites' drains are harmless there.
 >
-> **What the night found, in the order Robert should read it.**
+> **What today did, in the order Robert should read it** (each has a `semantic`
+> row for him):
 >
-> 1. **P6 on Elixir** (`control-run-10.md`): the queue process killed from
->    outside three times under 11,000 requests a second, `/health` back in 261
->    to 583 ms, nothing acknowledged lost. **The BEAM's row.** Four kills inside
->    2 s cross OTP's default intensity and the node exits. After round 10 the
->    null hypothesis reads: Mo has reliability and the loop; the BEAM has speed,
->    time to write, the dependency tie, and P6.
-> 2. **The Mac scaling run** (`mac-scaling-run.md`, the table in step 30's
->    Result): nothing scales on the M3 Max; every row fastest at 1 core; the
->    disk eight times the VM's; `MO_CORES=1` for Mac rows until placement is
->    fixed (a step after 31).
-> 3. **Chapter 10, the language after the rounds**
->    (`spec/design-v0/10-language-after-the-rounds.md`, for Robert): six
->    sections, two changes, zero syntax. §1, the deferred reply, was built the
->    same night as **step 31** (`interpreter-step-31.md`, accepted 01:15):
->    `Reply(T)`, `reply_to`, `answer`, MO0411, all three runtimes, the corpus
->    file; Fable's crash probe 8 of 8 `Down` then 8 answered.
-> 4. **Measurement 1 complete**: the agent program at 1.0 twice (34 and 30 min),
->    twelve of twelve; the stronger form on logstat (tests deleted too): 1.0
->    under the transcripts, 0.74 under the original tests, the eight failures
->    being rules the tests carried that the spec never stated
->    (`bodies-as-cache.md`).
-> 5. **Round 9, the small-model round** (`control-run-9.md`): kimi-k3 (Go 0/1 in
->    15 min, Python 0/0 in 35, Mo 0 regressions and 1 defect cause at 97 min,
->    not green at the 90-minute rule), deepseek-v4-flash (Go 0/1 in 11, Python
->    0/0 in 14, Mo 0/2 in 17), gpt-5.5 through Codex (Go 0/1 in 6, Python 0/0 in
->    7, Mo 0/0 in 14: it matched Opus). Every Go change carries the same
->    `delay_ms` null defect; both open-weights models' Mo changes miss the
->    run-out lease with backoff; the closed model does not. Gemini's key in Pi
->    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.** **P6 on Mo's change 2 (16 Sep, 09:00): the queue crashed through the runtime surface under load, `503` within 2 ms from then under both runtimes, nothing acknowledged lost, no restart (`:never`); a restarted process re-runs its state initializers, so the reopening store is change 3 (`erosion-round.md`, the P6 section).**
-> 7. **Change 3 and generation three (16 Sep, 10:20 to 11:20)**: the store that restarts itself, a budget, a chaos switch; four maintainers in 10 to 23 minutes; the fourth suite Mo 55 of 55 both runtimes, Go 55, Python 55, Elixir 53; the Mo queue killed under load back in 106 ms, nothing lost (Elixir 285 to 694 ms): the BEAM's row answered. Found: `max_restarts` takes only a literal (chapter 10 §2 asks for a value); the crash report leak, 44 MB a restart, fixed by step 33 the same day (13:05: freed in both runtimes, under 0.3 MiB a restart; the interpreter's abort on a large log's open fixed too; carried: 1.45 s for a restart at 100,000 jobs). Suites: `erosion-round-suite/defects3.py`, results under `results/e3-*`.
-> 8. **Change 4 and generation four (16 Sep, 13:03 to 15:05)**: idempotent creates by a key, old jobs archived out of the log; four maintainers (the Mac slept and cut them short; `caffeinate -dimsu` from 14:13); the fifth suite Mo 77 of 77 both runtimes, Python 77, Go 76, Elixir 76; P6 back in 58 and 85 ms; nothing new eroded in four generations (`erosion-round.md`, generation four). Robert's rules of the afternoon, in the skill: every run or spawn in a fresh pane of his workspace; workspaces closed when their sessions are done.
-> 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
->    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
->    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
->    open now and cannot restart after a full disk. Under the third suite (66
->    checks, a 64 MB RAM disk filled under load): Mo 65, Go 66, Python 65,
->    Elixir 62. Generation one already answered through the full disk in Mo, Go,
->    and Python; Elixir's generation-one node exited on `:enospc` in a second.
->    The Mo maintainer used `Reply(T)` for the queue's answer the first time it
->    was offered. Held P1, P4, P5, P6; failed P2 (Go cleaner by one) and P3 (Go
->    and Python as contained as Mo).
+> 1. **Round 9 closed** with Haiku 4.5 (`control-run-9.md`): 7 to 9 minutes a
+>    session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over
+>    6, Python 18 over 2); at that size the language decides only which checks
+>    are missing.
+> 2. **P6 on Mo's change 2** (`erosion-round.md`, the P6 section): the queue
+>    crashed through the runtime surface under load answers `503` within 2 ms
+>    from then, nothing lost, no restart by the program's `:never`; round 8's
+>    outage closed by the deferred reply; the restart the program's to take.
+> 3. **Step 32** (`interpreter-step-32.md`): crash reports kept apart from the
+>    event ring; `restart-reopens.mo` shows a restarted process re-reading its
+>    store at start (the pattern chapter 3 now names; kv replays in `main`).
+> 4. **Change 3 and generation three** (`01d-job-queue-change-3.md`,
+>    `erosion-round.md`): the store that restarts itself, a budget, a chaos
+>    switch; four maintainers in 10 to 23 minutes; the fourth suite Mo 55 of 55
+>    both runtimes, Go 55, Python 55, Elixir 53; **the Mo queue killed under
+>    load back in 106 ms, nothing lost, Elixir 285 to 694: the BEAM's row is
+>    answered.** Found: `max_restarts` on a `child` line takes only a literal
+>    (chapter 10 §2 asks for a value); the crash report never freed.
+> 5. **Step 33** (`interpreter-step-33.md`): the crash report freed in both
+>    runtimes (46 MiB a restart to under 0.3); the interpreter's abort on
+>    opening a log past 8,000 jobs fixed (a high-water mark); carried: a
+>    restart at 100,000 jobs is 1.45 s against the spec's one second; the
+>    compaction copy per reference; a bench baseline gap (`kv-50k-set-rss-kib`
+>    340 MiB on the Mac against 40 in `results.tsv`).
+> 6. **Change 4 and generation four** (`01e-job-queue-change-4.md`,
+>    `erosion-round.md`): idempotent creates by a key, old jobs archived out of
+>    the log into a second file; the fifth suite Mo 77 of 77 both runtimes,
+>    Python 77, Go 76, Elixir 76; the seam held in all four; nothing new eroded
+>    in four generations. The Mac slept and cut the sessions short: no honest
+>    time column. Mo keeps archived jobs in memory (a row for change 5).
+> 7. **Step 34, placement, paused after part A** (`interpreter-step-34.md`):
+>    see the plan's status note for exactly what part A did and what parts B
+>    (the crossing made cheap) and C (the measurement at 1, 4, and 14 cores)
+>    still need. **Parts B and C need the Mac**: the VM has four cores. Resume
+>    them the next time a session runs on the Mac; until then the rounds' Mac
+>    rows keep `MO_CORES=1`.
 >
-> **Rows for Robert** (decision log, "for Robert"): generation three and the BEAM's row answered; chapter 10 §2's budget as a value; round 9's Haiku row; P6 on Mo's change 2; P6 and the BEAM after round
-> 10; chapter 10 §1 as built (step 31); the erosion round's reading; the outage
-> row (program or runtime) from round 8; measurement 1's completeness row; the
-> 16 lint issues from his history bundle.
+> **Rows for Robert** (decision log, "for Robert"), newest first: generation
+> four; generation three and the BEAM's row answered; chapter 10 §2's budget
+> as a value; P6 on Mo's change 2; round 9's Haiku row; the earlier rows of
+> the night (P6 and the BEAM after round 10, chapter 10 §1 as built, the
+> erosion round's reading, the outage row, measurement 1's completeness, the
+> 16 lint issues from his history bundle).
 >
-> **The queue** (the roadmap table is the authority; Fable decides the order):
+> **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **The placement step** (the brief to the Opus worker in `w44:p3`; Fable writing it): a process placed with its asker or a reply answered on the asker's scheduler; measured on `echo-1k` and the queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128 held asks (step 31's 0.46 row). Generation four is done (state bullet 8).
-> 2. **Change 5 and generation five**: the lead writes and seals `01f-…` (a seam the specs have not found: the archive read from the disk, or a change across the queue's own invariants), branches `erosion5-*` from `erosion4-*` (copy `mise.toml` into the Elixir worktree), the sixth hidden suite after the branching.
->    reply answered on the asker's scheduler; measured on `echo-1k` and the
->    queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128
->    held asks (step 31's 0.46 row).
-> 3. **Chapter 10's other sections as steps**: §2 the restart budget diagnostic,
->    §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module and
->    the `--write` order.
+> 1. **Change 5 and generation five** (either machine): the lead writes and seals
+>    `spec/programs/01f-job-queue-change-5.md`, a seam the specs have not
+>    found: archived jobs read from the disk rather than kept in memory (the
+>    log stops growing and memory does not, Mo's decision of generation four),
+>    or a change that cuts across the queue's own invariants (the lease's
+>    holder changing hands, a queue renamed with jobs in flight); branch
+>    `erosion5-*` from `erosion4-*`; four fresh maintainers in a new workspace,
+>    Opus at medium effort, the brief `erosion-round-suite/e4-brief.sh` with the
+>    new spec path; the sixth hidden suite after the branching; the five earlier
+>    suites as the regressions (`control-run-8-suite/regressions.py` and
+>    `defects.py --old-serve <control7>`, `erosion-round-suite/defects2.py`,
+>    `defects3.py`, `defects4.py`); P6 (`p6-mo.py` on the Mo `--surface` binary
+>    with the `Create` whose `Making` has `key: None` and the queue name
+>    `"bad queue"`; `control-run-10-suite/p6.py` on Elixir). Pre-register on
+>    `erosion-round.md` before any session starts.
+> 2. **Chapter 10's other sections as steps**: §2 the restart budget as a
+>    value and its diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317
+>    naming the changed module and the `--write` order (the Mo maintainers lost
+>    a loop to it in every generation).
+> 3. **Step 34 parts B and C** (the Mac): a fresh worker, the same brief, starting from part A's commit and the plan's status note.
 > 4. Then the roadmap's order: the bricks page; the compile benchmark;
 >    program 7.
 >
-> **The site.** The wiki is published at https://robertguss.github.io/mo-lang/ by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`. `mo-wiki/state-of-the-project.md` is the lead's standing account, rewritten at every pause; the maps under `mo-wiki/maps/` are kept current as pages land. Build locally with `cd site && npx quartz build -d ../mo-wiki -o public`.
+> **The site.** The wiki is published at https://robertguss.github.io/mo-lang/
+> by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`.
+> `mo-wiki/state-of-the-project.md` is the lead's standing account, rewritten
+> at every pause; the maps under `mo-wiki/maps/` are kept current.
 >
-> **Things learned this night on the Mac.** `ls`, `cat`, `tr`, and `find -type`
-> are aliased to other tools here: use python3 for listings and file reads in
-> scripts. `echo =====` is a zsh equals expansion; use `---`. The Ollama app
-> must be running for Pi's ollama provider (`open -a Ollama`); cloud models pull
-> on first use. Pi has no `/exit`: close the pane. macOS keeps 16k ephemeral
-> ports to one destination and a closed client socket in TIME_WAIT for 30 s: a
-> suite that opens a connection per request (round 8's) runs out against a
-> service that closes connections (Python's), so run its categories one at a
-> time with a 35 s pause (`paced-python.sh`), and never run two suites at once.
-> The unwritable-folder category uses a RAM disk
-> (`hdiutil attach -nomount ram://131072`, `newfs_hfs`, `mount -t hfs`, no sudo)
-> filled to `ENOSPC`, because `chmod` and `chflags uchg` do not stop writes
-> through a file already open. A Claude Code worker that shows "done · 1 shell
-> still running" has stopped its turn: prompt it to continue. The change spec is
-> not in the round 7 or 8 branches: give it by absolute path. Herdr workspaces
-> are created with `herdr workspace create --cwd` and split with
-> `herdr pane split <id> --direction right|down --cwd`.
+> **Things learned on the Mac** (kept for the next Mac session). `ls`, `cat`,
+> `tr`, and `find -type` are aliased there: python3 for listings and reads in
+> scripts. `echo =====` is a zsh equals expansion. macOS keeps 16k ephemeral
+> ports to one destination and a closed socket in TIME_WAIT for 30 s: suites
+> that open a connection per request run Python's and Elixir's categories one
+> at a time with a drain (the suites' `drain()`), never two suites at once.
+> The unwritable category uses a RAM disk (`hdiutil attach -nomount
+> ram://131072`, `newfs_hfs`, `mount -t hfs`, no sudo). The Mac sleeps with the
+> lid and cuts every session short: `caffeinate -dimsu` for any long run. A
+> Claude Code worker that shows "done · 1 shell still running" has stopped its
+> turn: prompt it to continue. Herdr: `herdr workspace create --cwd`,
+> `herdr pane split <id> --direction right|down --cwd`, `herdr pane close`,
+> `herdr workspace close`. Zsh does not word-split `set -- $x`: write the
+> commands out.
 >
-> **Unmet, carried.** Round 9's Opus-in-Pi baseline (no
-> Anthropic key in Pi). Python's first unwritable
-> run on generation one died in the audit and passed on the rerun (a flake until
-> it recurs). Python's change 2 maintainer reported its own bench regression
-> (4,438 to 1,279 pairs a second, partly taken back), unmeasured by the lead.
-> The Elixir old-log category (no round 10 escript kept aside). The
-> interpreter's 780 KB per process at rest. `python3 mo-wiki/tools/lint.py`
-> reports 80 issues: 16 Robert's, most of the rest the research pages' `research`
-> page type, which the schema's table lacks (a schema row or a type change, the
-> lead's call).
+> **Unmet, carried.** Step 34 parts B and C (the Mac). Round 9's Opus-in-Pi
+> baseline (no Anthropic key in Pi). The restart at 100,000 jobs at 1.45 s.
+> The compaction copy per reference. The bench baseline gap. Python's
+> change 2 bench regression, unmeasured by the lead. The Elixir old-log
+> category (no round 10 escript kept aside). The interpreter's 780 KB per
+> process at rest. The lint reports about 90 issues: 16 Robert's, the research
+> pages' type, and size warnings on the pages that grew today.
 >
-> **Style.** Ruby-nice syntax, zero new syntax where possible, concise, define a
-> PL term in three lines before using it, no phones. Fable drives: proposing
-> what to test and measure, deciding, recording. Report against the roadmap
-> table, say what was verified and the numbers, and say plainly when something
-> is unmet. Verify with probes the brief did not name, on real inputs, with your
-> own client: every finding of this session that mattered came from an input no
-> suite sent.
+> **Style.** Ruby-nice syntax, zero new syntax where possible, concise, define
+> a PL term in three lines before using it, no phones. Fable drives: proposing
+> what to test and measure, deciding, recording. Report at a high level against
+> the board; say what was verified and the numbers on the pages; say plainly
+> when something is unmet. Verify with probes the brief did not name, on real
+> inputs, with your own client.
