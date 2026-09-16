@@ -639,6 +639,24 @@ pub const Vm = struct {
                     defer if (g) |t| t.unlock();
                     try vm.push(.{ .time = (try vm.simulator()).replyBy() });
                 },
+                .reply_to => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
+                    try vm.push(.{ .reply = (try vm.simulator()).replyTo() });
+                },
+                .defer_reply => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
+                    (try vm.simulator()).deferReply();
+                },
+                .answer => {
+                    const g = vm.lockRuntime();
+                    defer if (g) |t| t.unlock();
+                    const value = vm.pop();
+                    const seq = vm.pop().reply;
+                    try (try vm.simulator()).answerReply(seq, value);
+                    try vm.push(.none);
+                },
                 .deadline_left => {
                     const left = vm.pop().time - (try vm.simulator()).deadlineNow();
                     try vm.push(.{ .duration = if (left > 0) left else -1 });

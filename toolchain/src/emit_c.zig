@@ -349,7 +349,7 @@ const Emitter = struct {
         };
         switch (t.tag) {
             .int, .float, .cap, .decl, .state, .message, .handle => d.a = t.a,
-            .list, .option, .set => d.a = try e.desc(t.a),
+            .list, .option, .set, .reply => d.a = try e.desc(t.a),
             .result, .map => {
                 d.a = try e.desc(t.a);
                 d.b = try e.desc(t.b);
@@ -913,7 +913,11 @@ const Emitter = struct {
             const reply_by = try e.bindName("reply_by", false);
             try b.pre.print(e.gpa, "    {s} = mo_reply_by();\n", .{reply_by});
         }
-        const reply = try e.caseLower(e.node(data.update).lhs, true);
+        if (d.reads_reply_to) {
+            const reply_to = try e.bindName("reply_to", false);
+            try b.pre.print(e.gpa, "    {s} = mo_reply_to();\n", .{reply_to});
+        }
+        const reply = try e.caseArms(e.node(data.update).lhs, true, d.reads_reply_to);
         try e.line("R = {s};", .{reply});
         try e.exitLabel();
         try e.line("R = mo_tuple(2, (const MoValue[]){{R, {s}}});", .{state});
@@ -1215,6 +1219,11 @@ const Emitter = struct {
     }
 
     fn caseLower(e: *Emitter, s: Index, value: bool) Error![]const u8 {
+        return e.caseArms(s, value, false);
+    }
+
+    /// `update`: the update's own case, whose arms may keep their asker (step 31).
+    fn caseArms(e: *Emitter, s: Index, value: bool, update: bool) Error![]const u8 {
         const n = e.node(s);
         const result = if (value) try e.temp("MO_NONE_V", .{}) else "MO_NONE_V";
         const v = try e.expr(n.lhs);
@@ -1233,6 +1242,7 @@ const Emitter = struct {
                 try e.line("if (!{s}.as.b) goto F{d};", .{ g, fail.id });
             }
             const body = e.tree.span(data.body_start, data.body_end);
+            if (update and check.armDefersReply(e.tree, a)) try e.line("mo_defer_reply();", .{});
             if (value) {
                 const x = try e.blockValue(body);
                 try e.line("{s} = {s};", .{ result, x });
@@ -1890,6 +1900,15 @@ const Emitter = struct {
                 if (an.kind == .named_arg and std.mem.eql(u8, e.text(an.main_token), "within")) within = try e.withinArg(an.lhs);
             }
             return e.temp("mo_ask({s}, {s}, {s})", .{ h, message, within });
+        }
+        if (std.mem.startsWith(u8, row.recv, "Reply")) {
+            const r = try e.expr(recv.?);
+            var value: []const u8 = "MO_NONE_V";
+            for (args) |a| if (e.node(a).kind != .named_arg) {
+                value = try e.expr(a);
+                try e.share(value, e.typeOf(a));
+            };
+            return e.temp("mo_answer({s}, {s})", .{ r, value });
         }
         if (row.only == .never) {
             // `T.all`: the distinct values of T the run held.

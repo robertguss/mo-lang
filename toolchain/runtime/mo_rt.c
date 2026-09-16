@@ -4769,6 +4769,11 @@ MoValue mo_all(uint32_t index) {
  * line, by handle, and the call as a report names it (sim.zig, Wait). */
 typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
 
+/* An `answer` the running update made, delivered when it commits (step 31). */
+typedef struct { uint64_t seq; MoValue value; } PendingAnswer;
+/* Without turns: a reply that came for an inline ask still waiting. */
+typedef struct { uint64_t seq; bool has; MoValue value; } InlineAnswer;
+
 /* A message in a mailbox or an outbox; under main it came in a parcel the mailbox, then the
  * log, owns. */
 /* `deadline`, when `has_deadline`: an ask's, on the runtime's clock (deadline_now), which the update
@@ -4811,6 +4816,15 @@ typedef struct {
     /* The running update's reply_by: its message's ask deadline, or when it was taken for a message
      * that came with none (step 22). */
     int64_t reply_by;
+    /* The running update's reply_to (step 31): the seq of the message it took, whether its arm ran
+     * a defer_reply, the asks it holds unanswered, and the answers of the running update, which
+     * commit with it as its sends do. */
+    uint64_t reply_seq;
+    bool deferring;
+    uint64_t *kept;
+    size_t nkept, capkept;
+    PendingAnswer *pending;
+    size_t npending, cappending;
     /* Its update waits in an ask to this process, or NOBODY; or in a call on a peer. */
     uint32_t asking;
     bool has_wait;
@@ -4836,6 +4850,12 @@ static uint32_t *sups;
 static uint32_t nsups, capsups;
 static _Thread_local uint32_t running = NOBODY;
 static uint64_t next_seq;
+/* Without turns: the seqs of the inline asks still waiting, and the replies that came for them. An
+ * answer nobody waits for is dropped, which is what a deadline that has passed leaves (step 31). */
+static uint64_t *iwaiting;
+static size_t niwaiting, capiwaiting;
+static InlineAnswer *ianswers;
+static size_t nianswers, capianswers;
 /* A supervisor gave up: last_report says which, and the run stops. */
 static bool gave_up;
 /* The first process crash of a test, its report complete. */
@@ -5214,7 +5234,8 @@ static int64_t delay_of(uint32_t id) {
     return delay;
 }
 
-typedef struct { uint64_t seq; bool has_reply; MoValue reply; } Delivered;
+/* `deferred`: the arm kept the asker, so no reply came with the commit (step 31). */
+typedef struct { uint64_t seq; bool has_reply; MoValue reply; bool deferred; } Delivered;
 static Delivered deliver(uint32_t id);
 
 /* ---- held sends (sim.zig, step 19) */
@@ -5360,6 +5381,21 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within);
 static int64_t now_ms(void);
 static bool due_later(void);
 static void others_round(uint32_t skip, uint32_t *delivered);
+static bool deliver_round(uint32_t *delivered);
+
+/* The inline ask waiting on message `seq` is over: nothing answers it any more (step 31). */
+static void forget_iwaiting(uint64_t seq) {
+    for (size_t i = 0; i < niwaiting; i++) {
+        if (iwaiting[i] != seq) continue;
+        iwaiting[i] = iwaiting[--niwaiting];
+        break;
+    }
+    for (size_t i = 0; i < nianswers; i++) {
+        if (ianswers[i].seq != seq) continue;
+        ianswers[i] = ianswers[--nianswers];
+        break;
+    }
+}
 
 /* The clock deadlines are points on (step 22): under main the runtime's monotonic clock, and in a
  * test the run's, which only fixture waits move (sim.zig, deadlineNow). */
@@ -5369,6 +5405,67 @@ static int64_t deadline_now(void) { return turns_on ? now_ms() : sim_waited; }
 MoValue mo_reply_by(void) {
     HOLD_RUNTIME();
     return mo_time(running != NOBODY ? procs[running]->reply_by : deadline_now());
+}
+
+/* reply_to in the running update: the asker of the message it took (step 31). The value is the
+ * seq alone; the deadline stays with the asker, so an answer past it is dropped. */
+MoValue mo_reply_to(void) {
+    HOLD_RUNTIME();
+    return mo_reply_of(running != NOBODY ? procs[running]->reply_seq : 0);
+}
+
+/* The running arm kept its asker: the commit answers nothing (step 31). */
+void mo_defer_reply(void) {
+    HOLD_RUNTIME();
+    if (running != NOBODY) procs[running]->deferring = true;
+}
+
+/* An answer on its way to the asker of message `seq`: !has is Down. Nothing waiting for it means
+ * its deadline passed and the asker was released with Timeout, so it is dropped (chapter 3, "What
+ * timeout means": the message still arrived exactly once). */
+static void route_answer(uint64_t seq, bool has, MoValue value) {
+    if (turns_on) {
+        if (!turns_awaits(seq)) return;
+        Parcel *parcel = (has && packs) ? pack(value) : NULL;
+        turns_answer(seq, has, parcel ? parcel->value : value, parcel);
+        return;
+    }
+    size_t i = 0;
+    while (i < niwaiting && iwaiting[i] != seq) i++;
+    if (i == niwaiting) return;
+    GROW_ARRAY(ianswers, nianswers, capianswers);
+    ianswers[nianswers++] = (InlineAnswer){seq, has, value};
+}
+
+/* Every ask `id` holds goes Down: its process crashed, restarted, or ended (step 31). */
+static void down_kept(uint32_t id) {
+    Proc *p = procs[id];
+    while (p->nkept > 0) {
+        uint64_t seq = p->kept[0];
+        memmove(p->kept, p->kept + 1, (--p->nkept) * sizeof(uint64_t));
+        route_answer(seq, false, MO_NONE_V);
+        p = procs[id];
+    }
+}
+
+/* `reply.answer(v)`: the answer waits for the update's commit, as a send does. An answer to an ask
+ * this process does not hold, one it already answered or one whose asker is gone, is dropped. */
+MoValue mo_answer(MoValue reply, MoValue value) {
+    HOLD_RUNTIME();
+    if (running == NOBODY) return MO_NONE_V;
+    Proc *p = procs[running];
+    uint64_t seq = reply.as.u;
+    bool holds = false;
+    for (size_t i = 0; i < p->nkept; i++) {
+        if (p->kept[i] == seq) holds = true;
+    }
+    if (!holds) return MO_NONE_V;
+    for (size_t i = 0; i < p->npending; i++) {
+        if (p->pending[i].seq == seq) return MO_NONE_V;
+    }
+    GROW_ARRAY(p->pending, p->npending, p->cappending);
+    p->pending[p->npending++] = (PendingAnswer){seq, value};
+    return MO_NONE_V;
 }
 
 /* A Deadline given to within:: the Duration that remains of it, or -1 ms when nothing does. */
@@ -5438,7 +5535,39 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
     }
     MoValue reply;
     uint32_t delivered = 0;
+    /* Set once the arm that took the message kept the asker instead of answering it (step 31):
+     * from then on the ask waits for an answer from a later update, as it would under main. */
+    bool kept_asker = false;
     for (;;) {
+        if (kept_asker) {
+            for (size_t i = 0; i < nianswers; i++) {
+                if (ianswers[i].seq != seq) continue;
+                InlineAnswer got = ianswers[i];
+                ianswers[i] = ianswers[--nianswers];
+                forget_iwaiting(seq);
+                return got.has ? ok_of(got.value) : ask_error(MO_N_DOWN);
+            }
+            if (!procs[to]->up) {
+                forget_iwaiting(seq);
+                return ask_error(MO_N_DOWN);
+            }
+            if (sim_waited - waited > within.as.i) {
+                forget_iwaiting(seq);
+                return ask_error(MO_N_TIMEOUT);
+            }
+            /* Nothing left to run: simulated time moves to the next delayed send, which is what a
+             * flush on a timer is, and the ask times out when that is past its deadline. */
+            if (!deliver_round(&delivered)) {
+                int64_t ahead = nlater > 0 ? later[0].at - deadline_now() : -1;
+                if (ahead < 0) ahead = nlater > 0 ? 0 : -1;
+                if (ahead < 0 || sim_waited - waited + ahead > within.as.i) {
+                    forget_iwaiting(seq);
+                    return ask_error(MO_N_TIMEOUT);
+                }
+                sim_waited += ahead;
+            }
+            continue;
+        }
         /* While a test's ask waits, every other process takes a message too, a round at a time in
          * start order, so a test polling one process starves none (sim.zig, othersRound; step 24).
          * An update's ask delivers only its target's. */
@@ -5447,11 +5576,15 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
         /* A restart empties the mailbox, this message with it. */
         if (!p->up || queued(p) == 0 || p->mailbox[p->head].seq > seq) return ask_error(MO_N_DOWN);
         Delivered d = deliver(to);
-        if (d.seq == seq) {
-            if (!d.has_reply) return ask_error(MO_N_DOWN);
+        if (d.seq != seq) continue;
+        if (!d.has_reply) return ask_error(MO_N_DOWN);
+        if (!d.deferred) {
             reply = d.reply;
             break;
         }
+        kept_asker = true;
+        GROW_ARRAY(iwaiting, niwaiting, capiwaiting);
+        iwaiting[niwaiting++] = seq;
     }
     /* A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
      * pass its deadline, or when its slowest fixture is slower than it. A target whose calls wait on
@@ -5799,6 +5932,9 @@ static void crashed(uint32_t id, MoValue before) {
     if (server_mode) process_crashed(&report);
     /* A connection closes when the process holding it stops, restarted or not. */
     close_held(p->args, p->nargs);
+    /* Every ask it holds goes Down at once (step 31). */
+    down_kept(id);
+    p = procs[id];
     if (turns_on) turns_wake_all();
     if (p->policy.restart == MO_RESTART_NEVER) {
         /* It stays down (step 29): what waits for it is dropped, each with an event, and an ask
@@ -5857,6 +5993,8 @@ static Delivered deliver(uint32_t id) {
     log_message(p, entry);
     p->now = server_mode ? wall_ms() : FIXTURE_TIME + sim_waited;
     p->reply_by = entry.has_deadline ? entry.deadline : deadline_now();
+    p->reply_seq = entry.seq;
+    p->deferring = false;
     int64_t since = event_now();
     p->waited_us = p->longest_us = 0;
     p->longest = "";
@@ -5895,12 +6033,13 @@ static Delivered deliver(uint32_t id) {
         p->noutbox = 0;
         p->has_wait = p->doomed = false;
         p->asking = NOBODY;
+        p->npending = 0;
         if (gave_up) raise_report(last_report, JUMP_CRASH);
         crashed(id, before);
-        if (turns_on) turns_answer(entry.seq, false, MO_NONE_V, NULL);
+        route_answer(entry.seq, false, MO_NONE_V);
         if (regioned) settle_region(id, mark);
         procs[id]->busy = false;
-        return (Delivered){entry.seq, false, MO_NONE_V};
+        return (Delivered){entry.seq, false, MO_NONE_V, false};
     }
     undo_mark = frozen_below = 0;
     nundos = 0;
@@ -5924,13 +6063,32 @@ static Delivered deliver(uint32_t id) {
     }
     p->noutbox = 0;
     MoValue reply = after.as.xs[0];
-    if (turns_on && turns_awaits(entry.seq)) {
-        Parcel *parcel = packs ? pack(reply) : NULL;
-        turns_answer(entry.seq, true, parcel ? parcel->value : reply, parcel);
+    /* An answer the update made commits with it, and is dropped when nothing waits for it. */
+    for (size_t i = 0; i < p->npending; i++) {
+        PendingAnswer a = p->pending[i];
+        for (size_t k = 0; k < p->nkept; k++) {
+            if (p->kept[k] != a.seq) continue;
+            memmove(p->kept + k, p->kept + k + 1, (p->nkept - k - 1) * sizeof(uint64_t));
+            p->nkept--;
+            break;
+        }
+        route_answer(a.seq, true, a.value);
+        p = procs[id];
+    }
+    p->npending = 0;
+    /* The arm kept its asker instead of answering: the process holds the ask until it answers it,
+     * crashes, or restarts (step 31). */
+    bool deferring = p->deferring;
+    if (deferring) {
+        GROW_ARRAY(p->kept, p->nkept, p->capkept);
+        p->kept[p->nkept++] = entry.seq;
+    } else {
+        route_answer(entry.seq, true, reply);
+        p = procs[id];
     }
     if (regioned) settle_region(id, mark);
     procs[id]->busy = false;
-    return (Delivered){entry.seq, true, reply};
+    return (Delivered){entry.seq, true, reply, deferring};
 }
 
 /* ---- turns: under main, every update runs on its scheduler's thread, one at a time per scheduler,

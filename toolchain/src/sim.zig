@@ -112,6 +112,18 @@ pub const Proc = struct {
     /// The running update's `reply_by`: its message's ask deadline, or when it was taken for a
     /// message that came with none (step 22).
     reply_by: i64 = 0,
+    /// The running update's `reply_to`: the seq of the message it took, which is the asker's
+    /// name (step 31).
+    reply_seq: u64 = 0,
+    /// The running update ran a `defer_reply`: its arm kept the asker, so the commit answers
+    /// nothing and the seq joins `kept`.
+    deferring: bool = false,
+    /// The asks this process holds unanswered, oldest first (step 31): a crash or a restart
+    /// answers every one of them Down. An answer, and a deadline that has passed, take one out.
+    kept: std.ArrayList(u64) = .empty,
+    /// `reply.answer(v)` calls of the running update: an answer commits with the update, as a
+    /// send does, so an update that crashes after one answers Down instead.
+    answers: std.ArrayList(PendingAnswer) = .empty,
     /// Its update waits in an ask to this process, or none; or in a call on a peer.
     asking: u32 = none,
     wait: ?Wait = null,
@@ -135,6 +147,11 @@ pub const Proc = struct {
     }
 };
 
+/// An `answer` the running update made, delivered when it commits (step 31).
+pub const PendingAnswer = struct { seq: u64, value: Value };
+/// A reply that reached an inline ask before it woke: the value, packed when the run packs.
+pub const Answered = struct { value: Value, parcel: ?*Parcel = null };
+
 pub const Supervisor = struct { index: u32 };
 
 pub const Sim = struct {
@@ -150,6 +167,11 @@ pub const Sim = struct {
     supervisors: std.ArrayList(Supervisor) = .empty,
     /// The process whose update is running, innermost.
     running: ?u32 = null,
+    /// Without turns.zig: the replies that came for asks still waiting, by the ask's seq, and
+    /// the seqs of the asks that wait. An answer to a seq nobody waits for is dropped, which is
+    /// what a deadline that has passed leaves behind (step 31).
+    answered: std.AutoHashMapUnmanaged(u64, ?Answered) = .empty,
+    waiting: std.AutoHashMapUnmanaged(u64, void) = .empty,
     next_seq: u64 = 0,
     /// Every process crash, in order, each report complete.
     crashes: std.ArrayList(contracts.Report) = .empty,
@@ -402,6 +424,52 @@ pub const Sim = struct {
     pub fn replyBy(sim: *const Sim) i64 {
         const id = sim.running orelse return sim.deadlineNow();
         return sim.procs.items[id].reply_by;
+    }
+
+    /// `reply_to` in the running update: the asker of the message it took (step 31). The value
+    /// is the seq alone; the deadline stays with the asker, so an answer past it is dropped.
+    pub fn replyTo(sim: *const Sim) u64 {
+        return sim.procs.items[sim.running.?].reply_seq;
+    }
+
+    /// The running arm kept its asker: the commit answers nothing (step 31).
+    pub fn deferReply(sim: *Sim) void {
+        sim.procs.items[sim.running.?].deferring = true;
+    }
+
+    /// `reply.answer(v)`: the answer waits for the update's commit, as a send does. An answer
+    /// to an ask this process does not hold, one it already answered or one whose asker is
+    /// gone, is dropped.
+    pub fn answerReply(sim: *Sim, seq: u64, value: Value) Error!void {
+        const me = sim.running orelse return;
+        const p = &sim.procs.items[me];
+        if (std.mem.indexOfScalar(u64, p.kept.items, seq) == null) return;
+        for (p.answers.items) |a| if (a.seq == seq) return;
+        try p.answers.append(sim.gpa, .{ .seq = seq, .value = value });
+    }
+
+    /// An answer on its way to the asker of message `seq`: null is Down. Nothing waiting for it
+    /// means its deadline passed and the asker was released with Timeout, so it is dropped
+    /// (chapter 3, "What timeout means": the message still arrived exactly once).
+    fn routeAnswer(sim: *Sim, seq: u64, value: ?Value) Error!void {
+        if (sim.turns) |t| {
+            if (!t.awaits(seq)) return;
+            const parcel = if (value) |v| try sim.outgoing(v) else null;
+            return t.answer(seq, if (parcel) |x| x.value else value, parcel);
+        }
+        if (!sim.waiting.contains(seq)) return;
+        const packed_ = if (value) |v| try sim.outgoing(v) else null;
+        const got: ?Answered = if (value) |v| .{ .value = if (packed_) |x| x.value else v, .parcel = packed_ } else null;
+        try sim.answered.put(sim.gpa, seq, got);
+    }
+
+    /// Every ask `id` holds goes Down: its process crashed, restarted, or ended (step 31).
+    fn downKept(sim: *Sim, id: u32) Error!void {
+        const p = &sim.procs.items[id];
+        if (p.kept.items.len == 0) return;
+        const seqs = try sim.gpa.dupe(u64, p.kept.items);
+        p.kept.clearRetainingCapacity();
+        for (seqs) |seq| try sim.routeAnswer(seq, null);
     }
 
     /// `clock.now`, frozen when the running update began: under Mo.Server the wall clock, and in a
@@ -749,9 +817,38 @@ pub const Sim = struct {
         }
         // Under faults the seed decides how long the message waits to be taken, so a target that
         // reads reply_by may find nothing left of it (step 22).
-        if (sim.vm.program.processes[target.process].reads_reply_by) _ = sim.fault(null, within);
+        const p0 = sim.vm.program.processes[target.process];
+        if (p0.reads_reply_by or p0.reads_reply_to) _ = sim.fault(null, within);
         var delivered: u32 = 0;
+        // Set once the arm that took the message kept the asker instead of answering it (step 31):
+        // from then on the ask waits for an `answer` from a later update, as it would under mo run.
+        var kept = false;
+        defer if (kept) {
+            if (sim.answered.fetchRemove(seq)) |kv| if (kv.value) |got| if (got.parcel) |x| x.free();
+            _ = sim.waiting.remove(seq);
+        };
         const reply = while (true) {
+            if (kept) {
+                if (sim.answered.fetchRemove(seq)) |kv| {
+                    const got = kv.value orelse return sim.askError("Down");
+                    if (got.parcel) |x| {
+                        defer x.free();
+                        break try sim.vm.unpack(x);
+                    }
+                    break got.value;
+                }
+                if (!sim.procs.items[to].up) return sim.askError("Down");
+                if (sim.waited - waited > within) return sim.askError("Timeout");
+                // Nothing left to run: simulated time moves to the next delayed send, which is
+                // what a flush on a timer is, and the ask times out when that is past its deadline.
+                if (!try sim.deliverRound(&delivered)) {
+                    const at = sim.nextLater() orelse return sim.askError("Timeout");
+                    const ahead = @max(at - sim.deadlineNow(), 0);
+                    if (sim.waited - waited + ahead > within) return sim.askError("Timeout");
+                    sim.wait(ahead);
+                }
+                continue;
+            }
             // While a test's ask waits, every other process takes a message too, a round at a time
             // in start order or the seed's, so a test polling one process starves none (step 24).
             // An update's ask delivers only its target's, as before.
@@ -760,7 +857,10 @@ pub const Sim = struct {
             // A restart empties the mailbox, this message with it.
             if (!p.up or p.queued() == 0 or p.mailbox.items[p.head].seq > seq) return sim.askError("Down");
             const d = try sim.deliver(to);
-            if (d.seq == seq) break d.reply orelse return sim.askError("Down");
+            if (d.seq != seq) continue;
+            if (!d.deferred) break d.reply orelse return sim.askError("Down");
+            kept = true;
+            try sim.waiting.put(sim.gpa, seq, {});
         };
         // A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
         // pass its deadline, or when its slowest fixture is slower than it. A target whose calls
@@ -913,7 +1013,8 @@ pub const Sim = struct {
 
     // ---- one message
 
-    pub const Delivered = struct { seq: u64, reply: ?Value };
+    /// `deferred`: the arm kept the asker, so no reply came with the commit (step 31).
+    pub const Delivered = struct { seq: u64, reply: ?Value, deferred: bool = false };
 
     /// Runs the next message in the mailbox of `id` as one transaction. A null reply
     /// means the process crashed on it.
@@ -934,6 +1035,8 @@ pub const Sim = struct {
         }
         try sim.logMessage(p, entry);
         p.reply_by = entry.deadline orelse sim.deadlineNow();
+        p.reply_seq = entry.seq;
+        p.deferring = false;
         if (sim.schedule) |*rng| {
             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
             sim.lag = 0;
@@ -991,9 +1094,10 @@ pub const Sim = struct {
                 p.wait = null;
                 p.asking = none;
                 p.doomed = null;
+                p.answers.clearRetainingCapacity();
                 if (sim.gave_up) return error.Crash;
                 try sim.crashed(id, before);
-                if (sim.turns) |t| try t.answer(entry.seq, null, null);
+                try sim.routeAnswer(entry.seq, null);
                 if (regioned) try sim.settleRegion(id, mark);
                 return .{ .seq = entry.seq, .reply = null };
             },
@@ -1023,12 +1127,21 @@ pub const Sim = struct {
         try sim.events.appendSlice(sim.gpa, p.emits.items);
         p.emits.clearRetainingCapacity();
         const reply = after.tuple[0];
-        if (sim.turns) |t| if (t.awaits(entry.seq)) {
-            const parcel = try sim.outgoing(reply);
-            try t.answer(entry.seq, if (parcel) |x| x.value else reply, parcel);
-        };
+        // An answer the update made commits with it, and is dropped when nothing waits for it.
+        for (p.answers.items) |a| {
+            const at = std.mem.indexOfScalar(u64, p.kept.items, a.seq);
+            if (at) |k| _ = p.kept.orderedRemove(k);
+            try sim.routeAnswer(a.seq, a.value);
+        }
+        p.answers.clearRetainingCapacity();
+        // The arm kept its asker instead of answering: the process holds the ask until it
+        // answers it, crashes, or restarts (step 31).
+        const deferring = p.deferring;
+        if (deferring) {
+            try p.kept.append(sim.gpa, entry.seq);
+        } else try sim.routeAnswer(entry.seq, reply);
         if (regioned) try sim.settleRegion(id, mark);
-        return .{ .seq = entry.seq, .reply = reply };
+        return .{ .seq = entry.seq, .reply = reply, .deferred = deferring };
     }
 
     /// After an update under `mo run`: what it allocated that the new state does not reach
@@ -1278,6 +1391,8 @@ pub const Sim = struct {
             // A connection closes when the process holding it stops, restarted or not.
             s.sockets.closeHeld(p.args);
         } else sim.fixture.closeHeld(p.args);
+        try sim.downKept(id);
+        p = &sim.procs.items[id];
         if (sim.turns) |t| t.wakeAll();
         if (p.policy.restart == .never) {
             // It stays down (step 29): what waits for it is dropped, each with an event, and an ask
