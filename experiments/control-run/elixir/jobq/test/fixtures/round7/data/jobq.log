@@ -1,0 +1,13 @@
+{"id":"j_1","queue":"emails","state":"queued","payload":"welcome","attempts":0,"max_attempts":2,"created_at":1789519505226,"updated_at":1789519505226}
+{"id":"j_2","queue":"emails","state":"queued","payload":"receipt","attempts":0,"max_attempts":1,"created_at":1789519505234,"updated_at":1789519505234}
+{"id":"j_3","queue":"reports","state":"queued","payload":"nightly","attempts":0,"max_attempts":3,"created_at":1789519505235,"updated_at":1789519505235}
+{"id":"j_4","queue":"reports","state":"queued","payload":"weekly","attempts":0,"max_attempts":1,"created_at":1789519505238,"updated_at":1789519505238}
+{"id":"j_5","queue":"alerts","state":"queued","payload":"pager","attempts":0,"max_attempts":1,"created_at":1789519505239,"updated_at":1789519505239}
+{"id":"j_6","queue":"alerts","state":"queued","payload":"scratch","attempts":0,"max_attempts":1,"created_at":1789519505240,"updated_at":1789519505240}
+{"id":"j_3","queue":"reports","state":"leased","payload":"nightly","attempts":1,"max_attempts":3,"created_at":1789519505235,"updated_at":1789519505242,"worker":"bob","lease_until":1789519565242}
+{"id":"j_3","queue":"reports","state":"done","payload":"nightly","attempts":1,"max_attempts":3,"created_at":1789519505235,"updated_at":1789519505243}
+{"id":"j_4","queue":"reports","state":"leased","payload":"weekly","attempts":1,"max_attempts":1,"created_at":1789519505238,"updated_at":1789519505244,"worker":"bob","lease_until":1789519565244}
+{"id":"j_4","queue":"reports","state":"dead","payload":"weekly","attempts":1,"max_attempts":1,"created_at":1789519505238,"updated_at":1789519505245,"reason":"disk full"}
+{"id":"j_6","deleted":true}
+{"id":"j_1","queue":"emails","state":"leased","payload":"welcome","attempts":1,"max_attempts":2,"created_at":1789519505226,"updated_at":1789519505248,"worker":"bob","lease_until":1789523105248}
+{"id":"j_5","queue":"alerts","state":"leased","payload":"pager","attempts":1,"max_attempts":1,"created_at":1789519505239,"updated_at":1789519505249,"worker":"carol","lease_until":1789523105249}

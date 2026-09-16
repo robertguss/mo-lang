@@ -1,0 +1,15 @@
+# Played through the round 7 escript, before the change, to write the log in
+# test/fixtures/round7/jobq.log: the shape the previous version wrote.
+alice POST /jobs {"queue":"emails","payload":"welcome","max_attempts":2}
+alice POST /jobs {"queue":"emails","payload":"receipt","max_attempts":1}
+alice POST /jobs {"queue":"reports","payload":"nightly","max_attempts":3}
+alice POST /jobs {"queue":"reports","payload":"weekly","max_attempts":1}
+alice POST /jobs {"queue":"alerts","payload":"pager","max_attempts":1}
+alice POST /jobs {"queue":"alerts","payload":"scratch","max_attempts":1}
+bob POST /queues/reports/lease {"lease_ms":60000}
+bob POST /jobs/j_3/ack
+bob POST /queues/reports/lease {"lease_ms":60000}
+bob POST /jobs/j_4/fail {"reason":"disk full"}
+alice DELETE /jobs/j_6
+bob POST /queues/emails/lease {"lease_ms":3600000}
+carol POST /queues/alerts/lease {"lease_ms":3600000}
