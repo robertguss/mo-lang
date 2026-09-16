@@ -3,7 +3,7 @@
 send, taken from the three maintainers' "decisions the change spec did not cover", played through all
 three changed programs. Disagreement is the signal; the lead reads each against the spec.
 
-usage: oracle4.py --name NAME --serve '<cmd> serve {dir} --port {port}' [--cwd DIR] --log-format mo|go|python
+usage: oracle4.py --name NAME --serve '<cmd> serve {dir} --port {port}' [--cwd DIR] --log-format mo|go|python|elixir
 Prints one line per probe: NAME probe -> status body-head; run once per program and compare by eye.
 """
 import argparse, json, os, shutil, signal, socket, subprocess, tempfile, time
@@ -57,6 +57,13 @@ def write_log(fmt, d, jobs):
             for j in jobs:
                 body = json.dumps({"op": "put", "job": j}, separators=(",", ":")).encode()
                 f.write(f"{crc32c(body):08x} ".encode() + body + b"\n")
+    elif fmt == "elixir":
+        # the Elixir program's own shape: the API's keys, times as epoch milliseconds, one job per line
+        with open(os.path.join(d, "jobq.log"), "w") as f:
+            for j in jobs:
+                r = dict(j); r["created_at"] = 1789376400000; r["updated_at"] = 1789376400000
+                if "run_at" in r: r["run_at"] = 1789376460000
+                f.write(json.dumps(r, separators=(",", ":")) + "\n")
     else:
         # the Python program's own shape: a number, epoch milliseconds, explicit nulls
         with open(os.path.join(d, "jobs.log"), "w") as f:

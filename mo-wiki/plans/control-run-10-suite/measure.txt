@@ -1,0 +1,8 @@
+== measure elixir change
+up in 0.33s; rss empty 80.5 MiB
+creates: 100000 in 36.2s = 2765/s, errors []; rss at 100000 jobs 237.2 MiB
+pairs, 1 worker: 3846 in 10.0s = 385/s []
+pairs, 32 workers: 28724 in 10.0s = 2870/s []
+rss after pairs 223.0 MiB
+restart with a 43 MB log: 0.00s to /health; rss 1.9 MiB
+MEASUREDONE

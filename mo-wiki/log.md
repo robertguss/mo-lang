@@ -383,3 +383,6 @@
 
 ## [2026-09-16] session | Night: the outage probed, Fable decides from here
 - Robert: Fable makes the decisions and keeps moving, never waits on him (locked). The round 8 outage probed under both runtimes: the program's, by chapter 3 (a `:never` queue, a worker waiting on a `Done` message with no deadline); the language row (a wait hidden as a message pattern) goes to the language page, the fix is the erosion round's change 2.
+
+## [2026-09-16] session | Night: round 10 run and read, measurement 1 running
+- Round 10 brought forward and run while Robert slept: Elixir installed, the queue written in 31 min and changed in 16, both suites, the measure alone on the disk, the fourth oracle ([[control-run-10]]). Elixir: 2 defect causes, 0 regressions, twice Mo's speed, 7 s loop, 0 run-time deps. Three rows, one `semantic` for Robert. Measurement 1 ([[bodies-as-cache]]) at 1.0 on logstat, kv, notes, and jobq in both runs, the ledger and the agent program still to come.
