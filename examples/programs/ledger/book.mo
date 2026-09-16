@@ -89,7 +89,10 @@ fn opened(book: Book, name: String, currency: String, overdraft: Money, now: Tim
   requires currency?(currency)
   requires overdraft?(overdraft)
   ensures balance(result.book, account_id(result.account.number)) == 0
-  # body gone; regenerate
+
+  made = Account(number: book.next_account, name: name, currency: currency, overdraft: overdraft,
+    created_at: now)
+  Opening(book: with_account(book, made), account: made)
 end
 
 # Moves the amount from one account to another of the same currency, when what the first has
@@ -101,7 +104,25 @@ fn transferred(book: Book, from: String, to: String, amount: Money, key: String,
   ensures result is Ok(m) implies balance(m.book, from) == balance(book, from) - amount
   ensures result is Ok(m) implies balance(m.book, to) == balance(book, to) + amount
   ensures result is Ok(m) implies only_moved?(book, m.book, from, to)
-  # body gone; regenerate
+
+  payer = try found(book, from)
+  payee = try found(book, to)
+  if from == to
+    return Error(refused(422, "same_account", "#{from} and #{to} are one account", 0))
+  end
+  if payer.currency != payee.currency
+    return Error(refused(422, "currency",
+      "#{from} holds #{payer.currency} and #{to} holds #{payee.currency}", 0))
+  end
+  case covering(book, payer, amount)
+    Error(why): Error(why)
+    Ok(_):
+      var made = blank(book.next_entry, Transfer, key, now)
+      made.amount = amount
+      made.postings = [Posting(account: from, amount: 0 - amount),
+        Posting(account: to, amount: amount)]
+      moved(book, made, from)
+  end
 end
 
 # Keeps the amount of the account's balance for ttl_ms, when its available balance, with its
@@ -113,18 +134,58 @@ fn held(book: Book, account: String, amount: Money, ttl_ms: Int64, key: String,
   requires key?(key)
   ensures result is Ok(m) implies available(m.book, account) == available(book, account) - amount
   ensures result is Ok(m) implies only_moved?(book, m.book, account, account)
-  # body gone; regenerate
+
+  holder = try found(book, account)
+  case covering(book, holder, amount)
+    Error(why): Error(why)
+    Ok(_):
+      var made = blank(book.next_entry, Hold, key, now)
+      made.account = account
+      made.amount = amount
+      made.expires_at = Some(now + ttl_ms.ms)
+      moved(book, made, account)
+  end
 end
 
 # Turns a live hold into a transfer of the amount to the currency's clearing account, closing
 # the hold whether all of it or part was captured.
 fn captured(book: Book, hold: UInt64, amount: Money, key: String, now: Time) : Result(Moved,
-  # body gone; regenerate
+  Refusal)
+  requires amount?(amount)
+  requires key?(key)
+  ensures result is Ok(m) implies closer(m.book, hold) == Some(m.entry.number)
+  ensures result is Ok(m) implies m.entry.amount == amount and posted(m.entry) == 0
+
+  live = try live_hold(book, hold, now)
+  if amount > live.amount
+    return Error(refused(422, "over_hold", "#{entry_id(hold)} holds #{live.amount}",
+      amount - live.amount))
+  end
+  holder = try found(book, live.account)
+  var made = blank(book.next_entry, Capture, key, now)
+  made.account = live.account
+  made.amount = amount
+  made.hold = Some(hold)
+  made.postings = [Posting(account: live.account, amount: 0 - amount),
+    Posting(account: clearing_of(holder.currency), amount: amount)]
+  done = try moved(book, made, live.account)
+  Ok(closed(done,
+    Closing(hold: hold, held: live.amount, captured: amount,
+    closed_before: closer(book, hold) is Some(_))))
 end
 
 # Cancels a live hold: nothing moves, and what it held is available again.
 fn released(book: Book, hold: UInt64, reason: String, key: String, now: Time) : Result(Moved,
-  # body gone; regenerate
+  Refusal)
+  requires reason?(reason)
+  requires key?(key)
+  ensures result is Ok(m) implies closer(m.book, hold) == Some(m.entry.number)
+
+  live = try live_hold(book, hold, now)
+  done = release(book, live, reason, key, now)
+  Ok(closed(done,
+    Closing(hold: hold, held: live.amount, captured: 0,
+    closed_before: closer(book, hold) is Some(_))))
 end
 
 # The release a hold's expiry writes: no key, and the reason expired.
@@ -132,112 +193,225 @@ fn expired(book: Book, live: Hold, now: Time) : Moved
   requires live.expires_at <= now
   requires book.holds.get(live.number) == Some(live)
   ensures closer(result.book, live.number) == Some(result.entry.number)
-  # body gone; regenerate
+
+  return moved_nothing(book, live, now) if book.holds.get(live.number) is None
+  done = release(book, live, "expired", "", now)
+  closed(done, Closing(hold: live.number, held: live.amount, captured: 0, closed_before: false))
 end
 
 fn moved_nothing(book: Book, live: Hold, now: Time) : Moved
-  # body gone; regenerate
+  var made = blank(closer(book, live.number) or book.next_entry, Release, "", now)
+  made.account = live.account
+  made.amount = live.amount
+  made.hold = Some(live.number)
+  made.reason = Some("expired")
+  Moved(book: book, entry: made, standing: None, closing: None, refund: None)
 end
 
 fn release(book: Book, live: Hold, reason: String, key: String, now: Time) : Moved
-  # body gone; regenerate
+  var made = blank(book.next_entry, Release, key, now)
+  made.account = live.account
+  made.amount = live.amount
+  made.hold = Some(live.number)
+  made.reason = Some(reason)
+  moved_ok(book, made, live.account)
 end
 
 # Moves up to what remains of a capture back from the clearing account to the account it came
 # from.
 fn refunded(book: Book, capture: UInt64, amount: Money, key: String, now: Time) : Result(Moved,
-  # body gone; regenerate
+  Refusal)
+  requires amount?(amount)
+  requires key?(key)
+  ensures result is Ok(m) implies posted(m.entry) == 0
+
+  took = try capture_found(book, capture)
+  left = took.amount - took.refunded
+  if amount > left
+    return Error(refused(422, "over_capture", "#{entry_id(capture)} has #{left} left to refund",
+      amount - left))
+  end
+  var made = blank(book.next_entry, Refund, key, now)
+  made.account = took.account
+  made.amount = amount
+  made.capture = Some(capture)
+  made.postings = [Posting(account: took.clearing, amount: 0 - amount),
+    Posting(account: took.account, amount: amount)]
+  done = try moved(book, made, took.account)
+  var after = done
+  after.refund = Some(Refunded(capture: capture, captured: took.amount,
+    refunded: took.refunded + amount))
+  Ok(after)
 end
 
 fn found(book: Book, id: String) : Result(Account, Refusal)
-  # body gone; regenerate
+  case account_of_id(book, id)
+    Some(one): Ok(one)
+    None: Error(refused(404, "no_account", "no account #{id}", 0))
+  end
 end
 
 # Nothing when the account's available balance less the amount stays at or above minus its
 # overdraft; otherwise insufficient, by the shortfall.
 fn covering(book: Book, account: Account, amount: Money) : Result(Bool, Refusal)
-  # body gone; regenerate
+  id = account_id(account.number)
+  have = available(book, id)
+  short = amount - have - account.overdraft
+  return Ok(true) if short <= 0
+  Error(refused(422, "insufficient",
+    "#{id} has #{have} available and an overdraft of #{account.overdraft}", short))
 end
 
 # The hold, while it is live and has not expired; 404 for no hold, 409 once it was captured,
 # released, or expired.
 fn live_hold(book: Book, number: UInt64, now: Time) : Result(Hold, Refusal)
-  # body gone; regenerate
+  case book.holds.get(number)
+    Some(live):
+      return Ok(live) if now < live.expires_at
+      Error(refused(409, "closed", "#{entry_id(number)} expired", 0))
+    None:
+      case closer(book, number)
+        Some(by): Error(refused(409, "closed", closed_how(book, by), 0))
+        None: Error(refused(404, "no_hold", "no hold #{entry_id(number)}", 0))
+      end
+  end
 end
 
 fn capture_found(book: Book, capture: UInt64) : Result(Captured, Refusal)
-  # body gone; regenerate
+  case capture_at(book, capture)
+    Some(one): Ok(one)
+    None: Error(refused(404, "no_capture", "no capture #{entry_id(capture)}", 0))
+  end
 end
 
 fn closed_how(book: Book, by: UInt64) : String
-  # body gone; regenerate
+  case entry_at(book, by)
+    Some(one):
+      held = entry_id(one.hold or 0)
+      return "#{held} was expired" if one.reason == Some("expired")
+      return "#{held} was released by #{entry_id(by)}" if one.kind == Release
+      "#{held} was captured by #{entry_id(by)}"
+    None: "the hold was closed by #{entry_id(by)}"
+  end
 end
 
 fn refused(status: UInt16, rule: String, error: String, by: Int64) : Refusal
-  # body gone; regenerate
+  Refusal(status: status, rule: rule, error: error, by: by)
 end
 
 # A refusal as the API's body: what it says, the rule, and by how much.
 fn refusal_body(refusal: Refusal) : String
-  # body gone; regenerate
+  said = Json.encode(refusal.error)
+  "{\"error\": #{said}, \"rule\": \"#{refusal.rule}\", \"by\": #{refusal.by}}"
 end
 
 fn moved(book: Book, entry: Entry, drawn: String) : Result(Moved, Refusal)
-  # body gone; regenerate
+  Ok(moved_ok(book, entry, drawn))
 end
 
 fn moved_ok(book: Book, entry: Entry, drawn: String) : Moved
-  # body gone; regenerate
+  after = applied(book, entry)
+  stood = account_of_id(after, drawn).map(fn(a)
+    Standing(account: drawn, balance: balance(after, drawn), held: held_on(after, drawn),
+      overdraft: a.overdraft)
+  end)
+  Moved(book: after, entry: entry, standing: stood, closing: None, refund: None)
 end
 
 fn closed(done: Moved, closing: Closing) : Moved
-  # body gone; regenerate
+  var after = done
+  after.closing = Some(closing)
+  after
 end
 
 # Whether every balance but the two named is as it was, and no account appeared or went.
 fn only_moved?(before: Book, after: Book, a: String, b: String) : Bool
-  # body gone; regenerate
+  return false if before.accounts.size != after.accounts.size
+  kept = after.balances.entries.all?(fn(e) e.0 == a or e.0 == b or balance(before, e.0) == e.1 end)
+  kept and before.balances.entries.all?(fn(e)
+    e.0 == a or e.0 == b or balance(after, e.0) == e.1
+  end)
 end
 
 fn t0() : Time
-  # body gone; regenerate
+  Time.from_parts(2026, 1, 1, 0, 0, 0)
 end
 
 # Ada may go 10,000 below zero; grace may not; eur holds euros.
 fn three() : Book
-  # body gone; regenerate
+  ada = Account(number: 1, name: "ada", currency: "USD", overdraft: 10_000, created_at: t0())
+  grace = Account(number: 2, name: "grace", currency: "USD", overdraft: 0, created_at: t0())
+  eur = Account(number: 3, name: "eur", currency: "EUR", overdraft: 0, created_at: t0())
+  with_account(with_account(with_account(book(), ada), grace), eur)
 end
 
 fn paid(book: Book, from: String, to: String, amount: Money) : Book
-  # body gone; regenerate
+  case transferred(book, from, to, amount, "k", t0())
+    Ok(done): done.book
+    Error(_): book
+  end
 end
 
 fn hold_of(book: Book, account: String, amount: Money) : Moved
-  # body gone; regenerate
+  case held(book, account, amount, 60_000, "h", t0())
+    Ok(done): done
+    Error(_): moved_ok(book, blank(book.next_entry, Hold, "h", t0()), account)
+  end
 end
 
 fn refusal_of(outcome: Result(Moved, Refusal)) : Refusal
-  # body gone; regenerate
+  case outcome
+    Ok(_): refused(0, "none", "nothing was refused", 0)
+    Error(why): why
+  end
 end
 
 # The planted bug: a transfer written as two records, each half an entry of its own. The
 # balances come out as a transfer's would.
 fn split_transfer(book: Book, from: String, to: String, amount: Money, now: Time) : Book
-  # body gone; regenerate
+  var debit = blank(book.next_entry, Transfer, "k", now)
+  debit.amount = amount
+  debit.postings = [Posting(account: from, amount: 0 - amount)]
+  half = applied(book, debit)
+  var credit = blank(half.next_entry, Transfer, "k", now)
+  credit.amount = amount
+  credit.postings = [Posting(account: to, amount: amount)]
+  applied(half, credit)
 end
 
 # The next pseudo-random number of a sequence, for a property that walks many transfers.
 fn stirred(n: UInt64) : UInt64
-  # body gone; regenerate
+  n.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407)
 end
 
 fn walked(book: Book, seed: UInt64) : Book
-  # body gone; regenerate
+  var made = book
+  var n = seed
+  for _ in 0..20
+    n = stirred(n)
+    from = account_id(n % 2 + 1)
+    to = account_id((n / 4) % 2 + 1)
+    amount = ((n / 16) % 1_000 + 1).to_i64
+    if from != to
+      made = case transferred(made, from, to, amount, "p", t0())
+        Ok(done): done.book
+        Error(_): made
+      end
+    end
+  end
+  made
 end
 
 # Every balance summed again from the postings of every entry the book holds.
 fn summed(book: Book) : Map(String, Int64)
-  # body gone; regenerate
+  all = book.entries.values.flat_map(fn(page) page.values end)
+  all.reduce(Map.new(), fn(sums, e)
+    e.postings.reduce(sums, fn(so_far, p)
+      so_far.update(p.account, 0, fn(n)
+        n + p.amount
+      end)
+    end)
+  end)
 end
 
 test "a transfer moves the amount between two accounts and nothing else"
@@ -364,3 +538,6 @@ property "any sequence of valid transfers keeps every entry's postings at zero a
     assert walked_book.balances.entries.all?(fn(e) (sums.get(e.0) or 0) == e.1 end)
   end
 end
+
+verified: types, contracts, tests (15), property (200 seeds), sim (not run)
+          proven: not run

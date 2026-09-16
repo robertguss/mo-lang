@@ -39,12 +39,23 @@ struct Opened
 end
 
 fn loading() : Loading
-  # body gone; regenerate
+  Loading(accounts: Map.new(), entries: Map.new(), keys: Map.new(), pending: None, lines: 0,
+    bytes: 0, bad: 0, batch: [], expected: 0)
 end
 
 # The book the place's logs replay to, on the deadline; a folder with no log opens empty.
 fn opened_book(fs: Fs, place: Place, by: Deadline) : Result(Opened, String)
-  # body gone; regenerate
+  folder = fs.scoped(place.dir)
+  names = try names_of(folder, by)
+  first = try replayed(folder, loading(), "ledger.log", names, by)
+  var own = first
+  if place.log != "ledger.log"
+    own = try replayed(folder, fresh_lines(first), place.log, names, by)
+  end
+  made = try rebuilt(own.loading)
+  table = Table(buckets: Map.new(), size: 0, dir: place.dir, name: place.log, bytes: own.size,
+    lines: own.loading.lines, cut: own.cut)
+  Ok(Opened(book: made, table: table, torn: own.cut))
 end
 
 struct Replayed
@@ -54,123 +65,299 @@ struct Replayed
 end
 
 fn fresh_lines(done: Replayed) : Loading
-  # body gone; regenerate
+  var next = done.loading
+  next.pending = None
+  next.lines = 0
+  next.bytes = 0
+  next.batch = []
+  next.expected = 0
+  next
 end
 
 fn replayed(folder: Fs, start: Loading, name: String, names: List(String),
   by: Deadline) : Result(Replayed, String)
-  # body gone; regenerate
+  return Ok(Replayed(loading: start, size: 0, cut: false)) if !names.contains?(name)
+  size = try size_in(folder, name, by)
+  read = try folded(folder, start, name, by)
+  whole = read.bytes <= size
+  var done = read
+  if read.pending is Some(last) and whole
+    done = taken(read, last)
+  end
+  if done.bad > 0
+    return Error("holds a ledger.log whose line #{done.bad} is not a ledger record")
+  end
+  Ok(Replayed(loading: done, size: size, cut: done.expected > 0 or !whole))
 end
 
 fn names_of(folder: Fs, by: Deadline) : Result(List(String), String)
-  # body gone; regenerate
+  case folder.list(within: by)
+    Ok(names): Ok(names)
+    Error(Missing(_)): Error("is not a folder the ledger can read")
+    Error(Timeout): Error("took too long to read")
+    Error(NotText): Error("is not a folder the ledger can read")
+  end
 end
 
 fn size_in(folder: Fs, name: String, by: Deadline) : Result(UInt64, String)
-  # body gone; regenerate
+  case folder.size(name, within: by)
+    Ok(bytes): Ok(bytes)
+    Error(Missing(_)): Error("holds a ledger.log the ledger cannot read")
+    Error(Timeout): Error("took too long to read")
+    Error(NotText): Error("holds a ledger.log the ledger cannot read")
+  end
 end
 
 fn folded(folder: Fs, start: Loading, name: String, by: Deadline) : Result(Loading, String)
-  # body gone; regenerate
+  case folder.fold_lines(name, start, within: by, fn(l, line) stepped(l, line) end)
+    Ok(read): Ok(read)
+    Error(Missing(_)): Error("holds a ledger.log the ledger cannot read")
+    Error(Timeout): Error("took too long to read")
+    Error(NotText): Error("holds a ledger.log the ledger cannot read")
+  end
 end
 
 # The next line read: the one before it is whole, since another came after it, so it is taken.
 fn stepped(l: Loading, line: String) : Loading
-  # body gone; regenerate
+  var next = case l.pending
+    Some(previous): taken(l, previous)
+    None: l
+  end
+  next.bytes = l.bytes + line.byte_size + 1
+  next.pending = Some(line)
+  next
 end
 
 # A whole line taken, as the store takes one: a BEGIN opens a batch, whose lines are held until
 # its last, and any other line is kept at once.
 fn taken(l: Loading, line: String) : Loading
-  # body gone; regenerate
+  return l if l.bad > 0
+  var next = l
+  next.lines = l.lines + 1
+  if l.expected > 0
+    next.batch = l.batch.push(line)
+    return next if next.batch.size < l.expected
+    var done = kept_all(next, next.batch)
+    done.batch = []
+    done.expected = 0
+    return done
+  end
+  if line.starts_with?("BEGIN ")
+    held = line.slice(6, line.size).to_u64 or 0
+    next.bad = if held == 0: l.lines + 1 else: l.bad
+    next.expected = held
+    next.batch = []
+    return next
+  end
+  kept(next, line)
 end
 
 fn kept_all(l: Loading, lines: List(String)) : Loading
-  # body gone; regenerate
+  lines.reduce(l, fn(so_far, line) kept(so_far, line) end)
 end
 
 # A SET line kept under its key: an account's record replaces the one before, an entry is read
 # as it is kept, and a key's row replaces the one before; anything else is a bad line.
 fn kept(l: Loading, line: String) : Loading
-  # body gone; regenerate
+  var next = l
+  if !line.starts_with?("SET ")
+    next.bad = if l.bad > 0: l.bad else: l.lines
+    return next
+  end
+  rest = line.slice(4, line.size)
+  at = rest.index_of(" ") or rest.size
+  name = rest.slice(0, at)
+  value = rest.slice(at + 1, rest.size)
+  if name.starts_with?("a_")
+    next.accounts = l.accounts.set(name, value)
+    return next
+  end
+  if name.starts_with?("i_")
+    page = page_of(name)
+    held = l.keys.get(page) or Map.new()
+    next.keys = l.keys.set(page, held.set(name, value))
+    return next
+  end
+  case entry_of(value)
+    Some(one):
+      if entry_id(one.number) != name
+        next.bad = if l.bad > 0: l.bad else: l.lines
+        return next
+      end
+      at_page = one.number / 256
+      page = l.entries.get(at_page) or Map.new()
+      next.entries = l.entries.set(at_page, page.set(one.number, one))
+      next
+    None:
+      next.bad = if l.bad > 0: l.bad else: l.lines
+      next
+  end
 end
 
 fn page_of(name: String) : UInt64
-  # body gone; regenerate
+  name.bytes.reduce(0, fn(hash, b) (hash * 31 + b.to_u64) % 1_024 end)
 end
 
 # The book a replay folds to: every account from its last record, with no balance read from it;
 # every entry folded in by number, which sums every balance from the postings; and every key's row.
 fn rebuilt(l: Loading) : Result(Book, String)
-  # body gone; regenerate
+  made = l.accounts.values.flat_map(fn(text) listed(account_of(text)) end)
+  if made.size != l.accounts.size
+    return Error("holds an account record that is not an account")
+  end
+  start = made.reduce(book(), fn(so_far, a) with_account(so_far, a) end)
+  folded_book = l.entries.keys.sort.reduce(start,
+    fn(so_far, page) page_entries(l, page).reduce(so_far, fn(b, e) applied(b, e) end) end)
+  rows = l.keys.values.flat_map(fn(page) page.entries.flat_map(fn(named) row_of(named) end) end)
+  Ok(rows.reduce(folded_book, fn(so_far, r) with_keyed(so_far, r.0, r.1) end))
 end
 
 fn page_entries(l: Loading, page: UInt64) : List(Entry)
-  # body gone; regenerate
+  (l.entries.get(page) or Map.new()).values.sort_by(fn(e) e.number end)
 end
 
 fn listed(account: Option(Account)) : List(Account)
-  # body gone; regenerate
+  case account
+    Some(a): [a]
+    None: []
+  end
 end
 
 fn row_of(named: (String, String)) : List((String, Keyed))
-  # body gone; regenerate
+  case unhex(named.0.slice(2, named.0.size))
+    Some(text):
+      case keyed_of(named.1)
+        Some(one): [(text, one)]
+        None: []
+      end
+    None: []
+  end
 end
 
 # The text a key's store name spells in hex.
 fn unhex(text: String) : Option(String)
-  # body gone; regenerate
+  digits = text.bytes
+  return None if digits.size % 2 != 0
+  return None if digits.any?(fn(b) nibble(b) > 15 end)
+  made = (0..(digits.size / 2)).map(fn(i)
+    (nibble(digits.get(i * 2) or 0) * 16 + nibble(digits.get(i * 2 + 1) or 0)).to_u8
+  end)
+  String.from_bytes(made)
 end
 
 fn nibble(b: UInt8) : UInt64
-  # body gone; regenerate
+  return (b - 48).to_u64 if b >= 48 and b <= 57
+  return (b - 87).to_u64 if b >= 97 and b <= 102
+  16
 end
 
 # The batch appended in one write, on at most 5 seconds of what remains of the deadline so a
 # failed append can be looked at again: a log that holds the whole batch took it, one as long as
 # before did not, and anything else may end in part of it.
 fn flushed_to(fs: Fs, table: Table, pairs: List((String, String)), by: Deadline) : Result(Table,
-  # body gone; regenerate
+  StoreError)
+  return Ok(table) if pairs.size == 0
+  folder = fs.scoped(table.dir)
+  text = batch_text(pairs)
+  after = table.bytes + text.byte_size
+  var kept_table = table
+  kept_table.bytes = after
+  if folder.append(table.name, text, within: by.at_most(5_000.ms)) is Ok(_)
+    return Ok(kept_table)
+  end
+  case folder.size(table.name, within: by)
+    Ok(size):
+      return Ok(kept_table) if size == after
+      return Error(Unwritten) if size == table.bytes
+      Error(Torn)
+    Error(Missing(_)):
+      return Error(Unwritten) if table.bytes == 0
+      Error(Torn)
+    Error(Timeout) | Error(NotText): Error(Torn)
+  end
 end
 
 # The log written whole from the book, one SET line per account, entry, and key row, beside the
 # log and renamed over it; the rename has what remains after the write.
 fn rewritten_from(fs: Fs, table: Table, whole: Book, by: Deadline) : Result(Table, StoreError)
-  # body gone; regenerate
+  folder = fs.scoped(table.dir)
+  pairs = records_of(whole)
+  text = String.join(pairs.map(fn(r) set_line(r.0, r.1) end), "")
+  beside = "#{table.name}.new"
+  if folder.write(beside, text, within: by.at_most(20_000.ms)) is Error(_)
+    return Error(Unwritten)
+  end
+  return Error(Unwritten) if folder.rename(beside, table.name, within: by) is Error(_)
+  var after = table
+  after.bytes = text.byte_size
+  after.lines = pairs.size
+  after.cut = false
+  Ok(after)
 end
 
 fn records_of(whole: Book) : List((String, String))
-  # body gone; regenerate
+  accounts = whole.accounts.values.sort_by(fn(a) a.number end).map(fn(a) account_pair(whole, a) end)
+  entries = whole.entries.keys.sort.flat_map(fn(page)
+    (whole.entries.get(page) or Map.new()).values.sort_by(fn(e)
+      e.number
+    end).map(fn(e) (entry_id(e.number), shown_entry(e)) end)
+  end)
+  rows = whole.keys.values.flat_map(fn(page)
+    page.entries.map(fn(named)
+      (key_name(named.0), keyed_json(named.1))
+    end)
+  end)
+  accounts.concat(entries).concat(rows)
 end
 
 fn account_pair(whole: Book, account: Account) : (String, String)
-  # body gone; regenerate
+  id = account_id(account.number)
+  (id, shown_account(account, balance(whole, id), available(whole, id)))
 end
 
 fn key_name(key: String) : String
-  # body gone; regenerate
+  "i_#{String.join(key.bytes.map(fn(b) hex(b) end), "")}"
 end
 
 fn hex(b: UInt8) : String
-  # body gone; regenerate
+  digits = "0123456789abcdef"
+  high = (b / 16).to_u64
+  low = (b % 16).to_u64
+  "#{digits.slice(high, high + 1)}#{digits.slice(low, low + 1)}"
 end
 
 fn t0() : Time
-  # body gone; regenerate
+  Time.from_parts(2026, 9, 14, 12, 0, 0)
 end
 
 fn here() : Place
-  # body gone; regenerate
+  Place(dir: "d", log: "ledger.log")
 end
 
 fn call(command: Command, key: String) : Call
-  # body gone; regenerate
+  Call(command: command, key: key, request: "#{key} #{Json.encode(command)}")
 end
 
 # Ada, grace, 1,500 from ada to grace, a hold on grace of 1,000 captured for 600, and 100 of it
 # refunded: each call's records appended as a batch, as a journal writes them.
 fn written(fs: Fs, table: Table, by: Deadline) : Book
-  # body gone; regenerate
+  calls = [call(OpenAccount(name: "ada", currency: "USD", overdraft: 10_000), "a"),
+    call(OpenAccount(name: "grace", currency: "USD", overdraft: 0), "g"),
+    call(MoveMoney(from: "a_1", to: "a_2", amount: 1_500), "t"),
+    call(PlaceHold(account: "a_2", amount: 1_000, ttl_ms: 3_600_000), "h"),
+    call(CaptureHold(hold: "e_2", amount: 600), "c"),
+    call(RefundCapture(capture: "e_3", amount: 100), "r")]
+  var made = book()
+  var held_table = table
+  for one in calls
+    done = decide(made, one, t0(), t0())
+    made = done.book
+    held_table = case flushed_to(fs, held_table, done.records, by)
+      Ok(after): after
+      Error(_): held_table
+    end
+  end
+  made
 end
 
 test "a log of the teller's batches replays to the same book, every balance summed from the postings"
@@ -249,3 +436,6 @@ test "a batch the log cannot take is Unwritten or Torn, and a log with a line th
   assert fs.write("d/ledger.log", "SET a_1 {}\n", within: 1.minute) is Ok(_)
   assert opened_book(fs, here(), by) == Error("holds an account record that is not an account")
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

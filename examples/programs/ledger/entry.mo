@@ -50,108 +50,213 @@ end
 
 # An entry of the kind with nothing in it yet, for a rule to fill.
 fn blank(number: UInt64, kind: Kind, key: String, at: Time) : Entry
-  # body gone; regenerate
+  Entry(number: number, kind: kind, postings: [], key: key, at: at, account: "", amount: 0,
+    expires_at: None, hold: None, capture: None, reason: None, day: None)
 end
 
 fn account_id(number: UInt64) : String
-  # body gone; regenerate
+  "a_#{number}"
 end
 
 fn entry_id(number: UInt64) : String
-  # body gone; regenerate
+  "e_#{number}"
 end
 
 # The number in an id written as the prefix and the number, one way only.
 fn number_in(prefix: String, id: String) : Option(UInt64)
-  # body gone; regenerate
+  return None if !id.starts_with?(prefix)
+  digits = id.slice(prefix.size, id.size)
+  return None if digits != "#{digits.to_u64 or 0}"
+  digits.to_u64
 end
 
 # The account a capture credits and a refund debits, one per currency.
 fn clearing_of(currency: String) : String
-  # body gone; regenerate
+  "clearing:#{currency}"
 end
 
 fn clearing?(id: String) : Bool
-  # body gone; regenerate
+  id.starts_with?("clearing:")
 end
 
 # What the entry's postings sum to: 0 for every entry that creates or destroys no money.
 fn posted(entry: Entry) : Int64
-  # body gone; regenerate
+  entry.postings.reduce(0, fn(sum, p) sum + p.amount end)
 end
 
 fn kind_name(kind: Kind) : String
-  # body gone; regenerate
+  case kind
+    Transfer: "transfer"
+    Hold: "hold"
+    Capture: "capture"
+    Release: "release"
+    Refund: "refund"
+    Settlement: "settlement"
+  end
 end
 
 fn kind_named(name: String) : Option(Kind)
-  # body gone; regenerate
+  case name
+    "transfer": Some(Transfer)
+    "hold": Some(Hold)
+    "capture": Some(Capture)
+    "release": Some(Release)
+    "refund": Some(Refund)
+    "settlement": Some(Settlement)
+    _: None
+  end
 end
 
 # An account as the API shows it and the store keeps it; the balance and available a record
 # carries are what they were when it was written, and a replay never reads them.
 fn shown_account(account: Account, balance: Int64, available: Int64) : String
-  # body gone; regenerate
+  named = "{\"id\": \"#{account_id(account.number)}\", \"name\": #{Json.encode(account.name)}"
+  kept = "\"currency\": \"#{account.currency}\", \"overdraft\": #{account.overdraft}"
+  sums = "\"balance\": #{balance}, \"available\": #{available}"
+  made = "\"created_at\": \"#{account.created_at.to_iso8601}\""
+  "#{named}, #{kept}, #{sums}, #{made}}"
 end
 
 # An entry as JSON, written by hand so ids read e_ and a_ and each kind carries only its fields.
 fn shown_entry(entry: Entry) : String
-  # body gone; regenerate
+  head = "{\"id\": \"#{entry_id(entry.number)}\", \"kind\": \"#{kind_name(entry.kind)}\", "
+  posts = String.join(entry.postings.map(fn(p)
+    "{\"account\": \"#{p.account}\", \"amount\": #{p.amount}}"
+  end), ", ")
+  kept = "\"postings\": [#{posts}], \"key\": #{Json.encode(entry.key)}"
+  "#{head}#{concern(entry)}#{kept}, \"at\": \"#{entry.at.to_iso8601}\"#{tail(entry)}}"
 end
 
 fn concern(entry: Entry) : String
-  # body gone; regenerate
+  case entry.kind
+    Transfer: "\"amount\": #{entry.amount}, "
+    Settlement: ""
+    Hold | Capture | Release | Refund:
+      "\"account\": \"#{entry.account}\", \"amount\": #{entry.amount}, "
+  end
 end
 
 fn tail(entry: Entry) : String
-  # body gone; regenerate
+  until = optional("expires_at", entry.expires_at.map(fn(t) t.to_iso8601 end))
+  held = optional("hold", entry.hold.map(fn(n) entry_id(n) end))
+  took = optional("capture", entry.capture.map(fn(n) entry_id(n) end))
+  "#{until}#{held}#{took}#{optional("reason", entry.reason)}#{optional("day", entry.day)}"
 end
 
 fn optional(name: String, value: Option(String)) : String
-  # body gone; regenerate
+  case value
+    Some(text): ", \"#{name}\": #{Json.encode(text)}"
+    None: ""
+  end
 end
 
 # An account read back from its JSON, or None for text that is not one that keeps the rules.
 fn account_of(text: String) : Option(Account)
-  # body gone; regenerate
+  fields = try object_of(text)
+  number = try number_in("a_", try text_in(fields, "id"))
+  named = try text_in(fields, "name")
+  return None if !name?(named)
+  held = try text_in(fields, "currency")
+  return None if !currency?(held)
+  drawn = try whole_in(fields, "overdraft")
+  return None if !overdraft?(drawn)
+  Some(Account(number: number, name: named, currency: held, overdraft: drawn,
+    created_at: try time_in(fields, "created_at")))
 end
 
 # An entry read back from its JSON, or None for text that is not an entry of a kind it names.
 fn entry_of(text: String) : Option(Entry)
-  # body gone; regenerate
+  fields = try object_of(text)
+  number = try number_in("e_", try text_in(fields, "id"))
+  kind = try kind_named(try text_in(fields, "kind"))
+  postings = try postings_in(fields)
+  held = try (if fields.has?("amount"): whole_in(fields, "amount") else: Some(0))
+  return None if held < 0
+  var made = blank(number, kind, try text_in(fields, "key"), try time_in(fields, "at"))
+  made.postings = postings
+  made.account = text_in(fields, "account") or ""
+  made.amount = held
+  made.expires_at = time_in(fields, "expires_at")
+  made.hold = number_in("e_", text_in(fields, "hold") or "")
+  made.capture = number_in("e_", text_in(fields, "capture") or "")
+  made.reason = text_in(fields, "reason")
+  made.day = text_in(fields, "day")
+  Some(made)
 end
 
 fn postings_in(fields: Map(String, Json)) : Option(List(Posting))
-  # body gone; regenerate
+  return Some([]) if !fields.has?("postings")
+  items = try items_of(fields.get("postings") or Null)
+  made = items.flat_map(fn(item) posting_of(item) end)
+  return None if made.size != items.size
+  Some(made)
 end
 
 fn items_of(value: Json) : Option(List(Json))
-  # body gone; regenerate
+  case value
+    Array(items): Some(items)
+    Object(_): None
+    String(_): None
+    Number(_): None
+    Bool(_): None
+    Null: None
+  end
 end
 
 fn posting_of(item: Json) : List(Posting)
-  # body gone; regenerate
+  case value_fields(item)
+    Some(fields):
+      named = text_in(fields, "account") or ""
+      return [] if named == ""
+      case whole_in(fields, "amount")
+        Some(n): [Posting(account: named, amount: n)]
+        None: []
+      end
+    None: []
+  end
+end
+
+# The fields of a JSON object, None for any other value.
+fn value_fields(value: Json) : Option(Map(String, Json))
+  case value
+    Object(fields): Some(fields)
+    Array(_): None
+    String(_): None
+    Number(_): None
+    Bool(_): None
+    Null: None
+  end
 end
 
 fn object_of(text: String) : Option(Map(String, Json))
-  # body gone; regenerate
+  case Json.decode(text)
+    Ok(value): value_fields(value)
+    Error(_): None
+  end
 end
 
 fn text_in(fields: Map(String, Json), name: String) : Option(String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(String(text)): Some(text)
+    Some(_): None
+    None: None
+  end
 end
 
 fn time_in(fields: Map(String, Json), name: String) : Option(Time)
-  # body gone; regenerate
+  Time.parse(try text_in(fields, name))
 end
 
 # A whole number of either sign; a fraction, or anything but a number, is None.
 fn whole_in(fields: Map(String, Json), name: String) : Option(Int64)
-  # body gone; regenerate
+  (try fields.get(name)).to_i64
 end
 
 fn transfer_of(at: Time) : Entry
-  # body gone; regenerate
+  var made = blank(3, Transfer, "k1", at)
+  made.amount = 1_500
+  made.postings = [Posting(account: "a_1", amount: -1_500), Posting(account: "a_2", amount: 1_500)]
+  made
 end
 
 test "an id is its prefix and the number, written one way"
@@ -222,3 +327,6 @@ test "text that is not an account or an entry does not read back as one"
   assert account_of(shown_account(ada, 0, 0).replace("\"overdraft\": 0",
     "\"overdraft\": -1")) is None
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run
