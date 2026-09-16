@@ -398,3 +398,6 @@
 
 ## [2026-09-15] session | Mac: chapter 10 written while the scaling run measures
 - [[10-language-after-the-rounds]] (chapter 10; the roadmap's `09-` was taken by the stdlib): the rounds' nine rows in one table, six sections with code options, two recommended changes and zero syntax. Two rows, one `semantic` for Robert. The Mac scaling run started 22:46 local, the suite green in two minutes warm.
+
+## [2026-09-15] session | Mac: the scaling run read; five sessions started
+- The scaling run: nothing scales on the M3 Max, every row best at 1 core, the disk eight times the VM's ([[interpreter-step-30]] Result). Started 23:21: measurement 1's agent program in two Opus panes (`w45`), round 9's first model, kimi-k3 in Pi, in three panes (`w46`). Step 31 next on `mo-opus`.

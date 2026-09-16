@@ -5,7 +5,7 @@ updated: 2026-09-16
 type: plan
 tags: [runtime, performance]
 sources: [plans/interpreter-step-30.md, decisions/decision-log.md, plans/control-run-7-suite/measure.py]
-status: in-progress
+status: done
 ---
 
 # The Mac scaling run
@@ -34,6 +34,10 @@ It builds, runs `zig build test` (silent on success, minutes cold), builds the q
 | queue pairs a second, 32 workers | 342 / 423 (fsync-bound) | whether the Mac's disk moves it, and whether cores do |
 | ledger transfers a second | 1,990 / 1,897 | whether 10 and 14 lift it or the fsync pool is the ceiling |
 | bench `http-1k`, `kv-10k-get`, `replay-1m` | in step 30's table | the curve from 1 to 14, and the efficiency cores' share |
+
+## Result (15 Sep 2026, 22:46 to 23:20 local)
+
+Run by Fable alone on the disk, `driver.log` in `../step30-mac/` (not in git; the table is in [[interpreter-step-30]]'s Result). The suite green in two minutes warm. Every row is fastest at one core: the queue 2,908 pairs a second at 32 workers at 1 core against 2,416 at 14, creates 7,868 against 5,476, the ledger 5,106 transfers a second against 4,073, `echo-1k` 19 ms against 104, `kv-10k-get` 383 ms against 1,236, `replay-1m` unchanged. The Mac's disk moves the fsync bound eight times up; cores move nothing up and the cross-scheduler ask moves every crossing row down. Decision row: `MO_CORES=1` for the rounds' Mac rows until placement is fixed.
 
 ## Related
 - [[interpreter-step-30]]

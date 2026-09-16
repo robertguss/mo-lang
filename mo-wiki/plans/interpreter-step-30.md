@@ -88,6 +88,24 @@ Rows that moved more than 10 percent, in the worker's words: the ledger at 1 cor
 
 **Fable's acceptance probes (19:53 to 20:05).** The suite on the pulled tree: 193 of 193. The corpus's ten single-run programs under step 29b's binary and the new one at `MO_CORES=1` and `4`: every output equal. A kill under load at 4 cores with the lead's own client (32 clients, fresh idempotency keys, SIGKILL after three seconds, restart, every acknowledged transfer re-posted with its key and its answer compared, balances summed): five rounds, 2,969 to 8,871 acknowledged each, nothing lost, nothing changed, balances zero, restart 0.13 to 1.06 s. The 10,000-processes-at-rest probe under `ps`: 7,778 MiB resident and anonymous in the interpreter at 1 and 4 cores, so the number is real memory, not the reservation; native holds 130 MiB. The 1M replay with the lead's own build on a copy of the evidence log: 4 cores 96.0 s, peak 2,323 MiB, settled 1,058 MiB; 1 core 96.8 s, the same peak and book. The lead's two runs sit together and 12 s above the worker's 1-core run; the difference is the disk on the evening, not the cores.
 
+**The Mac scaling run (15 Sep 2026, 22:46 to 23:20 local, `mac-run.sh`; [[mac-scaling-run]]).** Robert's M3 Max, 14 cores (10 performance, 4 efficiency), 96 GB, the suite green in two minutes warm; native binaries, best of five, one implementation at a time on the disk. Every row is fastest at one core and slower with each core added; nothing scales.
+
+| row | 1 core | 4 cores | 10 cores | 14 cores | the VM, 1 / 4 |
+|---|---|---|---|---|---|
+| queue, creates a second (native, 100k) | 7,868 | 7,370 | 5,856 | 5,476 | 827 / 785 |
+| queue, pairs a second, 1 worker | 2,071 | 1,668 | 1,529 | 1,377 | |
+| queue, pairs a second, 32 workers | 2,908 | 2,793 | 2,553 | 2,416 | 342 / 423 |
+| queue, memory at 100k jobs (median) | 163 MiB | 145 MiB | 149 MiB | 152 MiB | 162 / 166 |
+| queue, restart on the 60 MB log | 1.52 s | 1.46 s | 1.43 s | 1.37 s | |
+| ledger, transfers a second (native, 32 clients) | 5,106 | 4,896 | 4,406 | 4,073 | 1,990 / 1,897 |
+| ledger, memory (median) | 177 MiB | 194 MiB | 195 MiB | 202 MiB | |
+| `echo-1k`, interpreter / native | 19.3 / 23.1 ms | 88.2 / 89.2 | 94.4 / 92.0 | 103.7 / 103.4 | |
+| `http-1k`, interpreter / native | 54.6 / 48.1 ms | 59.8 / 57.0 | 65.8 / 58.8 | 68.7 / 64.9 | |
+| `kv-10k-get`, interpreter / native | 383 / 177 ms | 913 / 622 | 1,150 / 908 | 1,236 / 1,026 | |
+| `replay-1m`, interpreter / native | 51.1 / 15.4 s | 51.1 / 15.4 | 50.9 / 15.3 | 51.0 / 15.4 | 84.8 s |
+
+What it says. The Mac's disk syncs about eight times faster than the VM's, so the queue at one core makes 2,908 pairs a second, the number Elixir made on the VM at 32 workers and twice the Mo binary's own 1,420 there; the fsync bound has moved, not gone (creates 7,868 a second, one sync each). Cores do not help any row on this machine and hurt every one that crosses schedulers: `echo-1k` is 4.6 times slower at 4 cores and 5.4 at 14, `kv-10k-get` 2.4 and 3.2 times, the queue's pairs lose 17 percent from 1 to 14 cores, the ledger 20 percent. The VM showed the same direction at 4 cores (echo 2.3 times) and hid it in the disk bound; the Mac's disk exposes the cross-scheduler ask as the cost it is. `replay-1m` is one process and unchanged. Step 30's rule stands (nothing is shared, an update is one transaction); its placement (fewest live processes) and its wake path (an eventfd per scheduler, a hop per ask) are what a step after 31 measures and fixes: a process placed with its asker, or a worker pool that answers on the asker's scheduler. Until then `MO_CORES=1` is the right default for a service whose processes ask each other on every request, and the rounds' Mac rows are run at 1 core and say so.
+
 **Unmet.** The interpreted ledger rows and the interpreted queue at 4 cores after the spin fix are not measured. The Mac run is Robert's, in parallel with round 8 (decision log, 15 Sep 19:30). The interpreter's 780 KB per process at rest, a crash report's 1 MB, and one update that starts thousands of processes holding them all on one core are older than this step and carried. `09-stdlib.md`'s `ProcessInfo` and `Started` lines were stale after C2 and Fable fixed them at acceptance.
 
 ## Related
