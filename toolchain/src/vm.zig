@@ -854,7 +854,10 @@ pub const Vm = struct {
         if (s.high - s.base > 16 * Region.release_keep) s.releasePast(s.base + Region.release_keep);
         for (below) |*e| e.at = r.top;
         // A compaction that freed far more than it kept gives the pages back at once; smaller ones wait
-        // for the update's end (sim.zig, settleRegion; step 28).
+        // for the update's end (sim.zig, settleRegion; step 28). The copy back can end past the old top,
+        // since a string is copied once for each value that holds it, so the high mark moves up to it
+        // first: a 20,000-job log's open under mo run panicked on the subtraction (step 33).
+        r.high = @max(r.high, r.top);
         const kept = r.top - r.base;
         if (r.high - r.top > 16 * Region.release_keep and r.high - r.top > 2 * kept) r.releasePast(r.top + Region.release_keep);
         vm.clean_from = from;
@@ -2509,6 +2512,29 @@ test "a recursion frees what each level made while the levels inside it run, and
     }.run, .{&failed});
     thread.join();
     if (failed) |err| return err;
+}
+
+test "a compaction whose copy keeps more than the region held, a string held many times, does not overflow" {
+    // Step 33: the copy back ended past the top the region had ever reached, and `high - top` overflowed.
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var values = try Region.reserveUpTo(256 << 20);
+    defer values.release();
+    var scratch = try Region.reserveUpTo(256 << 20);
+    defer scratch.release();
+    var vm: Vm = .init(arena, undefined, 0);
+    vm.useRegions(&values, &scratch);
+    const text = try vm.heap.alloc(u8, 256 << 10);
+    @memset(text, 'x');
+    const items = try rawAlloc(vm.heap, Value, 64);
+    for (items) |*item| item.* = .{ .string = text };
+    const held = values.top - values.base;
+    var roots = [_]Value{.{ .list = items }};
+    try vm.compact(values.base, &roots);
+    try std.testing.expect(values.top - values.base > held);
+    try std.testing.expect(values.high >= values.top);
+    for (roots[0].list) |item| try std.testing.expectEqual(@as(usize, 256 << 10), item.string.len);
 }
 
 test "a region moves whole into a larger reservation, and every value it held reads the same there" {

@@ -822,7 +822,10 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     if (scratch.high - scratch.base > 16 * RELEASE_KEEP) release_past(&scratch, scratch.base + RELEASE_KEEP);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
     /* A compaction that freed far more than it kept gives the pages back at once, as a loop that
-     * built and dropped a large value does; smaller ones wait for the update's end (settle_region). */
+     * built and dropped a large value does; smaller ones wait for the update's end (settle_region). The
+     * copy back can end past the old top, a string being copied once for each value that holds it, so
+     * the high mark moves up to it first (vm.zig's compact, step 33). */
+    if (mo_heap.top > mo_heap.high) mo_heap.high = mo_heap.top;
     uintptr_t kept = mo_heap.top - mo_heap.base;
     if (mo_heap.high - mo_heap.top > 16 * RELEASE_KEEP && mo_heap.high - mo_heap.top > 2 * kept) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
     mo_clean_from = from;
