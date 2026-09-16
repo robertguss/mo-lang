@@ -31,119 +31,62 @@ enum Problem
 end
 
 fn usage() : String
-  "usage: kv serve <dir> [--port N] | kv compact <dir> | kv client <host> <port> <line> | kv check <dir> <script>"
+  # body gone; regenerate
 end
 
 fn command(args: List(String)) : Result(Command, Problem)
-  rest = args.drop(1)
-  case args.first or ""
-    "serve": serving(rest)
-    "compact": compacting(rest)
-    "client": asking(rest)
-    "check": checking(rest)
-    "": Error(Usage(detail: "no command given"))
-    _: Error(Usage(detail: "unknown command #{args.first or ""}"))
-  end
+  # body gone; regenerate
 end
 
 fn serving(args: List(String)) : Result(Command, Problem)
-  dir = try dir_of(args)
-  flags = args.drop(1)
-  return Ok(Serving(dir: dir, port: 7_700)) if flags.size == 0
-  if flags.size != 2 or flags.first != Some("--port")
-    return Error(Usage(detail: "serve takes a folder and then --port N"))
-  end
-  port = try port_of(flags.get(1) or "")
-  Ok(Serving(dir: dir, port: port))
+  # body gone; regenerate
 end
 
 fn compacting(args: List(String)) : Result(Command, Problem)
-  dir = try dir_of(args)
-  return Error(Usage(detail: "compact takes one folder")) if args.size != 1
-  Ok(Compacting(dir: dir))
+  # body gone; regenerate
 end
 
 fn asking(args: List(String)) : Result(Command, Problem)
-  return Error(Usage(detail: "client takes a host, a port, and a line")) if args.size < 3
-  port = try port_of(args.get(1) or "")
-  line = String.join(args.drop(2), " ")
-  Ok(Asking(host: args.first or "", port: port, line: line))
+  # body gone; regenerate
 end
 
 fn checking(args: List(String)) : Result(Command, Problem)
-  dir = try dir_of(args)
-  return Error(Usage(detail: "check takes a folder and a script")) if args.size != 2
-  Ok(Checking(dir: dir, script: args.get(1) or ""))
+  # body gone; regenerate
 end
 
 fn dir_of(args: List(String)) : Result(String, Problem)
-  dir = args.first or ""
-  return Error(Usage(detail: "no folder given")) if dir == "" or dir.starts_with?("-")
-  Ok(dir)
+  # body gone; regenerate
 end
 
 fn port_of(text: String) : Result(UInt16, Problem)
   ensures result is Ok(port) implies port >= 1
-
-  n = text.to_u64 or 0
-  return Error(Usage(detail: "a port is a number from 1 to 65535, not #{text}")) if n < 1 or n > 65_535
-  Ok(n.to_u16)
+  # body gone; regenerate
 end
 
 fn ran(net: Net, fs: Fs, clock: Clock, err: Out, args: List(String)) : Result(String, Problem)
-  given = try command(args)
-  case given
-    Serving(dir: dir, port: port):
-      folder = fs.scoped(dir)
-      opened = try opened_log(folder, err, dir)
-      serve(net, folder, clock, opened, port)
-    Compacting(dir):
-      folder = fs.scoped(dir)
-      opened = try opened_log(folder, err, dir)
-      compact(folder, dir, opened)
-    Asking(host: host, port: port, line: line): client(net, host, port, line)
-    Checking(dir: dir, script: script):
-      lines = try script_of(fs, script)
-      folder = fs.scoped(dir)
-      opened = try opened_log(folder.read_only, err, dir)
-      check(net, folder, clock, opened, lines)
-  end
+  # body gone; regenerate
 end
 
 fn serve(net: Net, folder: Fs, clock: Clock, opened: Opened, port: UInt16) : Result(String, Problem)
-  case net.listen(port, within: 5_000.ms)
-    Ok(listener): Ok(served_on(listener, folder, clock, opened))
-    Error(_): Error(Unbound(port: port))
-  end
+  # body gone; regenerate
 end
 
 # The log rewritten as one line per live key: written whole beside the log, then renamed over
 # it, so a compaction cut short leaves the old log as it was.
 fn compact(folder: Fs, dir: String, opened: Opened) : Result(String, Problem)
-  table = opened.replayed.table
-  wrote = folder.write("kv.log.new", compacted(table), within: 60_000.ms)
-  moved = folder.rename("kv.log.new", "kv.log", within: 10_000.ms)
-  if wrote is Error(_) or moved is Error(_)
-    return Error(Unopened(dir: dir, why: "holds a kv.log kv could not rewrite"))
-  end
-  Ok("kv: compacted #{dir}/kv.log from #{opened.replayed.lines} lines to #{table.size}\n")
+  # body gone; regenerate
 end
 
 # Serves every client of the listener from here on; the runtime owns the loop, so kv serves
 # until it is stopped.
 fn served_on(listener: Listener, folder: Fs, clock: Clock, opened: Opened) : String
-  listener.serve(into: started(folder, "kv.log", opened, clock), idle: 60_000.ms)
-  ""
+  # body gone; regenerate
 end
 
 # The store, its journal appending to the file `log` in the folder, the gate, and the
 # listening process, over a log just opened.
 fn started(folder: Fs, log: String, opened: Opened, clock: Clock) : Handle(Listening)
-  journal = Journal.start(folder, log, opened.bytes)
-  table = opened.replayed.table
-  opening = Opening(table: table, log_bytes: opened.bytes, at: clock.now, log_within: 1_000.ms)
-  store = Store.start(journal, clock, opening)
-  Listening.start(store, Gate.start())
+  # body gone; regenerate
 end
 
 # Reads one line of its connection per message, so a client takes an answer of several lines
@@ -156,11 +99,7 @@ process Reply(conn: Conn)
   message Next : Result(Option(String), NetError)
 
   fn update(state, message)
-    case message
-      Next:
-        state.read += 1
-        conn.read_line(within: 5_000.ms)
-    end
+    # body gone; regenerate
   end
 end
 
@@ -170,132 +109,60 @@ end
 
 # One request over a connection of its own, and the lines of its answer.
 fn client(net: Net, host: String, port: UInt16, line: String) : Result(String, Problem)
-  case exchanged(net, host, port, line)
-    Ok(text): Ok(text)
-    Error(_): Error(Unreached(host: host, port: port))
-  end
+  # body gone; regenerate
 end
 
 fn exchanged(net: Net, host: String, port: UInt16, line: String) : Result(String, NetError)
-  conn = try net.connect(host, port, within: 5_000.ms)
-  try conn.write("#{line}\n", within: 5_000.ms)
-  reply = Reply.start(conn)
-  first = try next_line(reply)
-  head = first or ""
-  var text = "#{head}\n"
-  for _ in 0..follows(head)
-    more = try next_line(reply)
-    text = "#{text}#{more or ""}\n"
-  end
-  conn.close
-  return Error(Closed) if first is None
-  Ok(text)
+  # body gone; regenerate
 end
 
 fn next_line(reply: Handle(Reply)) : Result(Option(String), NetError)
-  case reply.ask(Next, within: 6_000.ms)
-    Ok(got): got
-    Error(_): Error(Timeout)
-  end
+  # body gone; regenerate
 end
 
 # Serves a folder's log on a free port and plays a script through kv's own client, each line
 # over a connection of its own; the transcript is every line sent and what came back. The
 # folder's log is only read: the changes go to kv.check.log beside it, removed at the end.
 fn check(net: Net, folder: Fs, clock: Clock, opened: Opened, lines: List(String)) : Result(String,
-  Problem)
-  case net.listen(0, within: 5_000.ms)
-    Ok(listener):
-      transcript = checked_on(net, listener, folder, clock, opened, lines)
-      if folder.remove("kv.check.log", within: 10_000.ms) is Error(_)
-        return Ok(transcript)
-      end
-      Ok(transcript)
-    Error(_): Error(Unbound(port: 0))
-  end
+  # body gone; regenerate
 end
 
 fn checked_on(net: Net, listener: Listener, folder: Fs, clock: Clock, opened: Opened,
   lines: List(String)) : String
-  listener.serve(into: started(folder, "kv.check.log", opened, clock), idle: 60_000.ms)
-  var transcript = ""
-  for line in lines
-    heard = client(net, "127.0.0.1", listener.port, line)
-    transcript = "#{transcript}> #{line}\n#{shown(heard)}"
-  end
-  transcript
+  # body gone; regenerate
 end
 
 fn shown(heard: Result(String, Problem)) : String
-  case heard
-    Ok(text): text
-    Error(problem): "#{said(problem)}\n"
-  end
+  # body gone; regenerate
 end
 
 fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
-  case fs.read_only.read_lines(script, within: 10_000.ms)
-    Ok(lines): Ok(lines)
-    Error(Missing(_)): Error(Unopened(dir: script, why: "is not a script kv can read"))
-    Error(Timeout): Error(Unopened(dir: script, why: "took longer than 10 seconds to read"))
-    Error(NotText): Error(Unopened(dir: script, why: "is not UTF-8 text"))
-  end
+  # body gone; regenerate
 end
 
 # The folder's log, replayed. A last line cut short is left out and said on stderr, once, at
 # once.
 fn opened_log(dir: Fs, err: Out, name: String) : Result(Opened, Problem)
-  case open(dir)
-    Ok(opened):
-      if opened.replayed.truncated
-        err.write_line("kv: the last line of #{name}/kv.log was cut short, so it is left out")
-        err.flush
-      end
-      Ok(opened)
-    Error(NoFolder): Error(Unopened(dir: name, why: "is not a folder kv can read"))
-    Error(Unreadable): Error(Unopened(dir: name, why: "holds a kv.log kv cannot read"))
-    Error(Slow): Error(Unopened(dir: name, why: "took longer than a minute to read"))
-    Error(BadLine(number)):
-      Error(Unopened(dir: name, why: "holds a kv.log whose line #{number} is not a SET or a DEL"))
-  end
+  # body gone; regenerate
 end
 
 fn said(problem: Problem) : String
-  case problem
-    Usage(detail): "#{detail}; #{usage()}"
-    Unopened(dir: dir, why: why): "#{dir} #{why}"
-    Unbound(port): "cannot listen on 127.0.0.1:#{port}"
-    Unreached(host: host, port: port): "no kv answered at #{host}:#{port}"
-  end
+  # body gone; regenerate
 end
 
 fn code_of(problem: Problem) : UInt8
-  case problem
-    Usage(_): 2
-    Unopened(dir: _, why: _): 1
-    Unbound(_): 1
-    Unreached(host: _, port: _): 1
-  end
+  # body gone; regenerate
 end
 
 # Whether the arguments say to serve, which goes on until kv is stopped.
 fn serving?(args: List(String)) : Bool
-  command(args) is Ok(Serving(dir: _, port: _))
+  # body gone; regenerate
 end
 
 # Serving goes on until kv is stopped; every other command ends kv with exit once it is done,
 # since check serves a listener of its own.
 fn main(platform: Platform)
-  case ran(platform.net, platform.fs, platform.clock, platform.stderr, platform.args)
-    Ok(text):
-      platform.stdout.write(text)
-      if !serving?(platform.args)
-        platform.exit(0)
-      end
-    Error(problem):
-      platform.stderr.write_line("kv: #{said(problem)}")
-      platform.exit(code_of(problem))
-  end
+  # body gone; regenerate
 end
 
 test "serve takes a folder and an optional port, 7700 by default"
@@ -346,6 +213,3 @@ test "a usage error exits 2, and a folder or port that cannot be had exits 1"
   assert code_of(Unbound(port: 7_700)) == 1
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
-
-verified: types, contracts, tests (5), property (0 seeds), sim (not run)
-          proven: not run

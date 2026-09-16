@@ -45,142 +45,79 @@ fn parse(line: String) : Result(Request, Refusal)
   requires !line.contains?("\n")
   ensures result is Ok(request) implies keyed?(request)
   ensures result is Error(reason) implies reason == Malformed
-
-  words = line.split(" ")
-  rest = words.drop(1)
-  case words.first or ""
-    "SET": set_of(rest)
-    "GET": get_of(rest)
-    "DEL": del_of(rest)
-    "INCR": incr_of(rest)
-    "KEYS": keys_of(rest)
-    "STATS": bare(rest, Stats)
-    "QUIT": bare(rest, Quit)
-    _: Error(Malformed)
-  end
+  # body gone; regenerate
 end
 
 # The value is everything after the key's space, spaces included, and may be empty.
 fn set_of(words: List(String)) : Result(Request, Refusal)
-  return Error(Malformed) if words.size < 2
-  key = words.first or ""
-  value = String.join(words.drop(1), " ")
-  return Error(Malformed) if !key?(key) or !value?(value)
-  Ok(Set(key: key, value: value))
+  # body gone; regenerate
 end
 
 fn get_of(words: List(String)) : Result(Request, Refusal)
-  key = try only_key(words)
-  Ok(Get(key: key))
+  # body gone; regenerate
 end
 
 fn del_of(words: List(String)) : Result(Request, Refusal)
-  key = try only_key(words)
-  Ok(Del(key: key))
+  # body gone; regenerate
 end
 
 fn incr_of(words: List(String)) : Result(Request, Refusal)
-  key = try only_key(words.take(1))
-  return Error(Malformed) if words.size != 2
-  case (words.get(1) or "").to_i64
-    Some(by): Ok(Incr(key: key, by: by))
-    None: Error(Malformed)
-  end
+  # body gone; regenerate
 end
 
 # KEYS alone, or KEYS with an empty prefix, lists every key.
 fn keys_of(words: List(String)) : Result(Request, Refusal)
-  prefix = words.first or ""
-  return Error(Malformed) if words.size > 1
-  return Error(Malformed) if prefix != "" and !key?(prefix)
-  Ok(Keys(prefix: prefix))
+  # body gone; regenerate
 end
 
 fn only_key(words: List(String)) : Result(String, Refusal)
-  key = words.first or ""
-  return Error(Malformed) if words.size != 1 or !key?(key)
-  Ok(key)
+  # body gone; regenerate
 end
 
 fn bare(words: List(String), request: Request) : Result(Request, Refusal)
-  return Error(Malformed) if words.size != 0
-  Ok(request)
+  # body gone; regenerate
 end
 
 # A key is 1 to 256 bytes, with no space and no control character.
 fn key?(text: String) : Bool
-  return false if text == "" or text.byte_size > 256
-  text.bytes.all?(fn(b) b > 32 and b != 127 end)
+  # body gone; regenerate
 end
 
 # A value is at most 60 KiB and holds no newline.
 fn value?(text: String) : Bool
-  text.byte_size <= 61_440 and !text.contains?("\n")
+  # body gone; regenerate
 end
 
 # Whether the key a request names, if it names one, keeps the key rules.
 fn keyed?(request: Request) : Bool
-  case request
-    Set(key: key, value: _): key?(key)
-    Get(key): key?(key)
-    Del(key): key?(key)
-    Incr(key: key, by: _): key?(key)
-    Keys(prefix): prefix == "" or key?(prefix)
-    Stats: true
-    Quit: true
-  end
+  # body gone; regenerate
 end
 
 # The line a request is written as, without its newline; parse reads it back.
 fn line_of(request: Request) : String
-  case request
-    Set(key: key, value: value): "SET #{key} #{value}"
-    Get(key): "GET #{key}"
-    Del(key): "DEL #{key}"
-    Incr(key: key, by: by): "INCR #{key} #{by}"
-    Keys(prefix): "KEYS #{prefix}"
-    Stats: "STATS"
-    Quit: "QUIT"
-  end
+  # body gone; regenerate
 end
 
 # The text a response is on the wire: one line, or for KEYS a count line and a line per key.
 fn render(response: Response) : String
-  case response
-    Done: "OK\n"
-    Found(value): "VALUE #{value}\n"
-    Absent: "MISSING\n"
-    Listed(keys): listed(keys)
-    Counted(counts): counted(counts)
-    Bye: "BYE\n"
-    Failed(reason): "ERR #{word_of(reason)}\n"
-  end
+  # body gone; regenerate
 end
 
 fn listed(keys: List(String)) : String
-  return "KEYS 0\n" if keys.size == 0
-  "KEYS #{keys.size}\n#{String.join(keys, "\n")}\n"
+  # body gone; regenerate
 end
 
 fn counted(c: Counts) : String
-  "STATS keys=#{c.keys} sets=#{c.sets} gets=#{c.gets} log_bytes=#{c.log_bytes} uptime_ms=#{c.uptime_ms}\n"
+  # body gone; regenerate
 end
 
 fn word_of(reason: Refusal) : String
-  case reason
-    Malformed: "malformed"
-    NotANumber: "not_a_number"
-    Overflow: "overflow"
-    Busy: "busy"
-    Io: "io"
-    Full: "full"
-  end
+  # body gone; regenerate
 end
 
 # How many key lines follow a response's first line: the count after KEYS, else none.
 fn follows(first: String) : UInt64
-  return 0 if !first.starts_with?("KEYS ")
-  first.slice(5, first.size).to_u64 or 0
+  # body gone; regenerate
 end
 
 test "each command parses into its request"
@@ -271,6 +208,3 @@ property "every request's line parses back to the request"
     end
   end
 end
-
-verified: types, contracts, tests (8), property (200 seeds), sim (not run)
-          proven: not run

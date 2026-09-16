@@ -77,18 +77,7 @@ process Store(journal: Handle(Journal), clock: Clock, opening: Opening)
   message Serve(request: Request) : Response
 
   fn update(state, message)
-    case message
-      Serve(request):
-        uptime = (clock.now - opening.at).ms
-        counts = Counts(keys: state.table.size, sets: state.sets, gets: state.gets,
-          log_bytes: state.log_bytes, uptime_ms: uptime)
-        done = served(journal, opening.log_within, state.table, counts, request)
-        state.table = done.table
-        state.log_bytes = done.log_bytes
-        state.sets += sets_in(request, done.response)
-        state.gets += gets_in(request)
-        done.response
-    end
+    # body gone; regenerate
   end
 end
 
@@ -100,99 +89,54 @@ end
 
 fn served(journal: Handle(Journal), within: Duration, table: Table, counts: Counts,
   request: Request) : Served
-  case decide(table, counts, request)
-    Answer(response):
-      answer = answered(table, request, response)
-      Served(table: table, response: answer, log_bytes: counts.log_bytes)
-    Write(change): committed(journal, within, table, counts.log_bytes, change)
-  end
+  # body gone; regenerate
 end
 
 # What a request comes to against the table: an answer now, or a change to log first.
 fn decide(table: Table, counts: Counts, request: Request) : Plan
-  case request
-    Set(key: key, value: value): written(table, key, Some(value), Done)
-    Get(key): Answer(response: found(lookup(table, key)))
-    Del(key): deleted(table, key)
-    Incr(key: key, by: by): bumped(table, key, by)
-    Keys(prefix): Answer(response: Listed(keys: keys_with(table, prefix)))
-    Stats: Answer(response: Counted(counts: counts))
-    Quit: Answer(response: Bye)
-  end
+  # body gone; regenerate
 end
 
 fn found(value: Option(String)) : Response
-  case value
-    Some(text): Found(value: text)
-    None: Absent
-  end
+  # body gone; regenerate
 end
 
 # A change that would add a key to a table of a million is refused instead.
 fn written(table: Table, key: String, value: Option(String), response: Response) : Plan
-  if table.size >= 1_000_000 and lookup(table, key) is None
-    return Answer(response: Failed(reason: Full))
-  end
-  Write(change: Change(key: key, value: value, response: response))
+  # body gone; regenerate
 end
 
 fn deleted(table: Table, key: String) : Plan
-  return Answer(response: Absent) if lookup(table, key) is None
-  Write(change: Change(key: key, value: None, response: Done))
+  # body gone; regenerate
 end
 
 fn bumped(table: Table, key: String, by: Int64) : Plan
-  case incremented(lookup(table, key), by)
-    Ok(new): written(table, key, Some("#{new}"), Found(value: "#{new}"))
-    Error(reason): Answer(response: Failed(reason: reason))
-  end
+  # body gone; regenerate
 end
 
 # INCR's arithmetic: the value read as a decimal Int64, or 0 for a key with none, plus by.
 fn incremented(current: Option(String), by: Int64) : Result(Int64, Refusal)
   ensures result is Ok(new) implies number(current) is Some(before) and new == before + by
   ensures result is Error(reason) implies reason == NotANumber or reason == Overflow
-
-  case number(current)
-    Some(before): sum_of(before, by)
-    None: Error(NotANumber)
-  end
+  # body gone; regenerate
 end
 
 fn sum_of(before: Int64, by: Int64) : Result(Int64, Refusal)
-  case before.checked_add(by)
-    Some(new): Ok(new)
-    None: Error(Overflow)
-  end
+  # body gone; regenerate
 end
 
 # A value as INCR reads it: a decimal Int64, or 0 when there is no value.
 fn number(current: Option(String)) : Option(Int64)
-  case current
-    Some(text): text.to_i64
-    None: Some(0)
-  end
+  # body gone; regenerate
 end
 
 # A refusal is recorded as a step, so the nevers see that it changed nothing.
 fn answered(table: Table, request: Request, response: Response) : Response
-  key = key_of(request) or ""
-  return response if key == "" or !(response is Failed(_))
-  before = lookup(table, key)
-  step = Step(key: key, before: before, after: before, logged: false, response: response)
-  step.response
+  # body gone; regenerate
 end
 
 fn key_of(request: Request) : Option(String)
-  case request
-    Set(key: key, value: _): Some(key)
-    Get(key): Some(key)
-    Del(key): Some(key)
-    Incr(key: key, by: _): Some(key)
-    Keys(_): None
-    Stats: None
-    Quit: None
-  end
+  # body gone; regenerate
 end
 
 # The journal puts the change's line on disk first; only then is the change applied and
@@ -201,88 +145,46 @@ end
 # in the log, as a write that finished late would be.
 fn committed(journal: Handle(Journal), within: Duration, table: Table, log_bytes: UInt64,
   change: Change) : Served
-  before = lookup(table, change.key)
-  after = applied(table, change)
-  line = entry(change.key, change.value)
-  case journal.ask(Append(line: line, keys: after.size), within: within)
-    Ok(Ok(bytes)):
-      step = Step(key: change.key, before: before, after: change.value, logged: true,
-        response: change.response)
-      Served(table: after, response: step.response, log_bytes: bytes)
-    Ok(Error(_)): unlogged(table, log_bytes, change, before)
-    Error(_): unlogged(table, log_bytes, change, before)
-  end
+  # body gone; regenerate
 end
 
 fn unlogged(table: Table, log_bytes: UInt64, change: Change, before: Option(String)) : Served
-  step = Step(key: change.key, before: before, after: before, logged: false,
-    response: Failed(reason: Io))
-  Served(table: table, response: step.response, log_bytes: log_bytes)
+  # body gone; regenerate
 end
 
 fn applied(table: Table, change: Change) : Table
-  case change.value
-    Some(value): put(table, change.key, value)
-    None: drop(table, change.key)
-  end
+  # body gone; regenerate
 end
 
 fn sets_in(request: Request, response: Response) : UInt64
-  return 1 if request is Set(key: _, value: _) and response == Done
-  0
+  # body gone; regenerate
 end
 
 fn gets_in(request: Request) : UInt64
-  return 1 if request is Get(_)
-  0
+  # body gone; regenerate
 end
 
 # Asks the store each request, and checks every answer against a table kept beside it: the
 # answer that table gives, with the table changed as the store's must be, or ERR io and no
 # change. An ask that gets no answer ends the check, since the store may yet take it.
 fn faithful?(store: Handle(Store), requests: List(Request)) : Bool
-  var model = empty()
-  for request in requests
-    case store.ask(Serve(request: request), within: 60_000.ms)
-      Ok(response):
-        expected = expected_of(model, request)
-        if response != Failed(reason: Io)
-          return false if response != expected.0
-          model = expected.1
-        end
-      Error(_):
-        return true
-    end
-  end
-  true
+  # body gone; regenerate
 end
 
 fn expected_of(model: Table, request: Request) : (Response, Table)
-  case decide(model, counted_nothing(), request)
-    Answer(response): (response, model)
-    Write(change): (change.response, applied(model, change))
-  end
+  # body gone; regenerate
 end
 
 fn counted_nothing() : Counts
-  Counts(keys: 0, sets: 0, gets: 0, log_bytes: 0, uptime_ms: 0)
+  # body gone; regenerate
 end
 
 fn script() : List(Request)
-  first = [Set(key: "a", value: "1"),
-    Incr(key: "a", by: 41),
-    Get(key: "a"),
-    Set(key: "w", value: "word")]
-  second = [Incr(key: "w", by: 1),
-    Set(key: "big", value: "9223372036854775807"),
-    Incr(key: "big", by: 1)]
-  third = [Get(key: "big"), Del(key: "a"), Get(key: "a"), Del(key: "a"), Incr(key: "new", by: -3)]
-  fourth = [Keys(prefix: ""), Set(key: "b", value: "two words"), Keys(prefix: "b"), Get(key: "w")]
-  first.concat(second).concat(third).concat(fourth)
+  # body gone; regenerate
 end
 
 fn opened(table: Table, at: Time, log_within: Duration) : Opening
-  Opening(table: table, log_bytes: 0, at: at, log_within: log_within)
+  # body gone; regenerate
 end
 
 test "GET, SET, DEL, KEYS, and QUIT come to the answers the protocol names"
@@ -377,6 +279,3 @@ property "a SET then a GET gives back any valid key's value"
     end
   end
 end
-
-verified: types, contracts, tests (8), property (200 seeds), sim (100 runs, invariants (kept 1, tripped 0))
-          proven: not run
