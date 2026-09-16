@@ -179,5 +179,4 @@ defmodule Jobq.Http.Conn do
   defp reason_phrase(405), do: "Method Not Allowed"
   defp reason_phrase(409), do: "Conflict"
   defp reason_phrase(503), do: "Service Unavailable"
-  defp reason_phrase(_status), do: "Status"
 end

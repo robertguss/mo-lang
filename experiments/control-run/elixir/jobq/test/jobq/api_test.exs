@@ -28,19 +28,27 @@ defmodule Jobq.ApiTest do
 
     test "a token that is empty, or not a bearer, is 401", %{port: port} do
       assert String.starts_with?(
-               Api.raw(port, "GET /jobs HTTP/1.1\r\nconnection: close\r\nauthorization: Bearer \r\n\r\n"),
+               Api.raw(
+                 port,
+                 "GET /jobs HTTP/1.1\r\nconnection: close\r\nauthorization: Bearer \r\n\r\n"
+               ),
                "HTTP/1.1 401"
              )
 
       assert String.starts_with?(
-               Api.raw(port, "GET /jobs HTTP/1.1\r\nconnection: close\r\nauthorization: Basic abc\r\n\r\n"),
+               Api.raw(
+                 port,
+                 "GET /jobs HTTP/1.1\r\nconnection: close\r\nauthorization: Basic abc\r\n\r\n"
+               ),
                "HTTP/1.1 401"
              )
     end
 
     test "the token names the worker on a lease", %{port: port} do
       assert {201, _job} = create(port)
-      assert {200, %{"worker" => "bob"}} = Api.request(port, "bob", "POST", "/queues/emails/lease")
+
+      assert {200, %{"worker" => "bob"}} =
+               Api.request(port, "bob", "POST", "/queues/emails/lease")
     end
   end
 
@@ -63,7 +71,8 @@ defmodule Jobq.ApiTest do
 
   describe "POST /jobs" do
     test "creates a job and answers 201 with it", %{port: port} do
-      assert {201, job} = create(port, %{"queue" => "emails", "payload" => "hi", "max_attempts" => 3})
+      assert {201, job} =
+               create(port, %{"queue" => "emails", "payload" => "hi", "max_attempts" => 3})
 
       assert %{
                "id" => "j_1",
@@ -88,32 +97,69 @@ defmodule Jobq.ApiTest do
     end
 
     test "a missing field, an unknown field, or a field of the wrong shape is 400", %{port: port} do
-      assert {400, _error} = Api.request(port, "alice", "POST", "/jobs", ~s({"payload":"hi","max_attempts":1}))
-      assert {400, _error} = Api.request(port, "alice", "POST", "/jobs", ~s({"queue":"q","max_attempts":1}))
-      assert {400, _error} = Api.request(port, "alice", "POST", "/jobs", ~s({"queue":"q","payload":"hi"}))
+      assert {400, _error} =
+               Api.request(port, "alice", "POST", "/jobs", ~s({"payload":"hi","max_attempts":1}))
 
       assert {400, _error} =
-               create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => 1, "extra" => 1})
+               Api.request(port, "alice", "POST", "/jobs", ~s({"queue":"q","max_attempts":1}))
 
-      assert {400, _error} = create(port, %{"queue" => "", "payload" => "hi", "max_attempts" => 1})
-      assert {400, _error} = create(port, %{"queue" => "a b", "payload" => "hi", "max_attempts" => 1})
+      assert {400, _error} =
+               Api.request(port, "alice", "POST", "/jobs", ~s({"queue":"q","payload":"hi"}))
+
+      assert {400, _error} =
+               create(port, %{
+                 "queue" => "e",
+                 "payload" => "hi",
+                 "max_attempts" => 1,
+                 "extra" => 1
+               })
+
+      assert {400, _error} =
+               create(port, %{"queue" => "", "payload" => "hi", "max_attempts" => 1})
+
+      assert {400, _error} =
+               create(port, %{"queue" => "a b", "payload" => "hi", "max_attempts" => 1})
+
       assert {400, _error} = create(port, %{"queue" => "e", "payload" => 7, "max_attempts" => 1})
-      assert {400, _error} = create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => 0})
-      assert {400, _error} = create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => 101})
-      assert {400, _error} = create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => "3"})
-      assert {400, _error} = create(port, %{"queue" => "e", "payload" => "a\tb", "max_attempts" => 3})
+
+      assert {400, _error} =
+               create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => 0})
+
+      assert {400, _error} =
+               create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => 101})
+
+      assert {400, _error} =
+               create(port, %{"queue" => "e", "payload" => "hi", "max_attempts" => "3"})
+
+      assert {400, _error} =
+               create(port, %{"queue" => "e", "payload" => "a\tb", "max_attempts" => 3})
     end
 
     test "a payload of 60 KiB is taken and one byte more is not", %{port: port} do
-      assert {201, _job} = create(port, %{"queue" => "e", "payload" => String.duplicate("x", 61_440), "max_attempts" => 1})
-      assert {400, _error} = create(port, %{"queue" => "e", "payload" => String.duplicate("x", 61_441), "max_attempts" => 1})
+      assert {201, _job} =
+               create(port, %{
+                 "queue" => "e",
+                 "payload" => String.duplicate("x", 61_440),
+                 "max_attempts" => 1
+               })
+
+      assert {400, _error} =
+               create(port, %{
+                 "queue" => "e",
+                 "payload" => String.duplicate("x", 61_441),
+                 "max_attempts" => 1
+               })
     end
   end
 
   describe "GET /jobs" do
     test "filters by queue and by state", %{port: port} do
-      assert {201, _job} = create(port, %{"queue" => "a", "payload" => "one", "max_attempts" => 1})
-      assert {201, _job} = create(port, %{"queue" => "b", "payload" => "two", "max_attempts" => 1})
+      assert {201, _job} =
+               create(port, %{"queue" => "a", "payload" => "one", "max_attempts" => 1})
+
+      assert {201, _job} =
+               create(port, %{"queue" => "b", "payload" => "two", "max_attempts" => 1})
+
       assert {200, _job} = Api.request(port, "bob", "POST", "/queues/b/lease")
 
       assert {200, %{"jobs" => [%{"id" => "j_1"}, %{"id" => "j_2"}]}} =
@@ -125,7 +171,8 @@ defmodule Jobq.ApiTest do
       assert {200, %{"jobs" => [%{"id" => "j_2"}]}} =
                Api.request(port, "alice", "GET", "/jobs?state=leased")
 
-      assert {200, %{"jobs" => []}} = Api.request(port, "alice", "GET", "/jobs?queue=a&state=done")
+      assert {200, %{"jobs" => []}} =
+               Api.request(port, "alice", "GET", "/jobs?queue=a&state=done")
     end
 
     test "a filter that is not a queue name or a state is 400", %{port: port} do
@@ -137,12 +184,15 @@ defmodule Jobq.ApiTest do
 
   describe "the lease, the ack and the fail over the wire" do
     test "the whole life of a job", %{port: port, clock: clock} do
-      assert {201, _job} = create(port, %{"queue" => "emails", "payload" => "hi", "max_attempts" => 2})
+      assert {201, _job} =
+               create(port, %{"queue" => "emails", "payload" => "hi", "max_attempts" => 2})
 
       assert {200, leased} =
                Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":1000}))
 
-      assert %{"state" => "leased", "attempts" => 1, "worker" => "bob", "lease_until" => until} = leased
+      assert %{"state" => "leased", "attempts" => 1, "worker" => "bob", "lease_until" => until} =
+               leased
+
       assert {:ok, _datetime, 0} = DateTime.from_iso8601(until)
 
       assert {200, %{"state" => "queued", "reason" => "boom"}} =
@@ -156,18 +206,34 @@ defmodule Jobq.ApiTest do
       assert {200, %{"state" => "done"}} = Api.request(port, "eve", "GET", "/jobs/j_1")
     end
 
-    test "a lease with no body takes the default, and a lease_ms out of range is 400", %{port: port} do
+    test "a lease with no body takes the default, and a lease_ms out of range is 400", %{
+      port: port
+    } do
       assert {201, _job} = create(port)
-      assert {200, %{"lease_until" => _until}} = Api.request(port, "bob", "POST", "/queues/emails/lease")
+
+      assert {200, %{"lease_until" => _until}} =
+               Api.request(port, "bob", "POST", "/queues/emails/lease")
+
       assert {204, nil} = Api.request(port, "bob", "POST", "/queues/emails/lease")
-      assert {400, _error} = Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":99}))
-      assert {400, _error} = Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":3600001}))
-      assert {400, _error} = Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":"long"}))
-      assert {400, _error} = Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"ms":1000}))
+
+      assert {400, _error} =
+               Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":99}))
+
+      assert {400, _error} =
+               Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":3600001}))
+
+      assert {400, _error} =
+               Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"lease_ms":"long"}))
+
+      assert {400, _error} =
+               Api.request(port, "bob", "POST", "/queues/emails/lease", ~s({"ms":1000}))
+
       assert {400, _error} = Api.request(port, "bob", "POST", "/queues/a%20b/lease")
     end
 
-    test "a fail with no reason keeps the job's, and a reason of the wrong shape is 400", %{port: port} do
+    test "a fail with no reason keeps the job's, and a reason of the wrong shape is 400", %{
+      port: port
+    } do
       assert {201, _job} = create(port)
       assert {200, _job} = Api.request(port, "bob", "POST", "/queues/emails/lease")
       assert {200, job} = Api.request(port, "bob", "POST", "/jobs/j_1/fail")

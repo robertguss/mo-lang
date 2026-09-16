@@ -56,7 +56,9 @@ defmodule Jobq.QueueTest do
   end
 
   describe "lease, ack and fail" do
-    test "a lease hands out the oldest queued job of its queue and counts the attempt", %{ref: ref} do
+    test "a lease hands out the oldest queued job of its queue and counts the attempt", %{
+      ref: ref
+    } do
       assert {201, _job} = Queue.create(ref, "emails", "one", 3)
       assert {201, _job} = Queue.create(ref, "other", "two", 3)
       assert {201, _job} = Queue.create(ref, "emails", "three", 3)
@@ -129,7 +131,10 @@ defmodule Jobq.QueueTest do
   end
 
   describe "a lease is a deadline, not a timer" do
-    test "a lease that runs out is queued again, with its attempts kept", %{ref: ref, clock: clock} do
+    test "a lease that runs out is queued again, with its attempts kept", %{
+      ref: ref,
+      clock: clock
+    } do
       assert {201, _job} = Queue.create(ref, "emails", "hi", 3)
       assert {200, _job} = Queue.lease(ref, "emails", 1_000, "bob")
 
@@ -164,7 +169,11 @@ defmodule Jobq.QueueTest do
       assert {200, _job} = Queue.ack(ref, "j_1", "alice")
     end
 
-    test "a lease that ran out with nobody asking is freed on the idle look", %{ref: ref, clock: clock, dir: dir} do
+    test "a lease that ran out with nobody asking is freed on the idle look", %{
+      ref: ref,
+      clock: clock,
+      dir: dir
+    } do
       assert {201, _job} = Queue.create(ref, "emails", "hi", 3)
       assert {200, _job} = Queue.lease(ref, "emails", 1_000, "bob")
 

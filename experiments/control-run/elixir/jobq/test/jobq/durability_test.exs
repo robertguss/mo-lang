@@ -143,7 +143,7 @@ defmodule Jobq.DurabilityTest do
                status in [200, 201, 204, 409] or status == :error
              end)
 
-      assert Enum.count(answers, &match?({:error, :store}, &1)) > 0
+      assert Enum.any?(answers, &match?({:error, :store}, &1))
       assert :ok = Never.check(dir)
       assert :counters.get(writes, 1) > 40
 
@@ -199,7 +199,11 @@ defmodule Jobq.DurabilityTest do
   end
 
   defp records(dir) do
-    dir |> Store.log_path() |> File.read!() |> String.split("\n", trim: true) |> Enum.map(&JSON.decode!/1)
+    dir
+    |> Store.log_path()
+    |> File.read!()
+    |> String.split("\n", trim: true)
+    |> Enum.map(&JSON.decode!/1)
   end
 
   defp states(ref) do

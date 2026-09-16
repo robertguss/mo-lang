@@ -20,7 +20,9 @@ defmodule Jobq.Json do
   @spec decode(binary()) :: {:ok, term()} | {:error, term()}
   def decode(binary) when is_binary(binary), do: JSON.decode(binary)
 
-  defp encoder({:obj, kvs}, encode) when is_list(kvs), do: :json.encode_key_value_list(kvs, encode)
+  defp encoder({:obj, kvs}, encode) when is_list(kvs),
+    do: :json.encode_key_value_list(kvs, encode)
+
   defp encoder(nil, _encode), do: "null"
   defp encoder(other, encode), do: :json.encode_value(other, encode)
 end

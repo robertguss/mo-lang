@@ -1,0 +1,48 @@
+# The program-level check: every line is played through `jobq client` over a
+# real socket against a service on a directory of its own.
+#
+#   <token> <method> <path> [<json>]
+
+# Two jobs into the emails queue, and the ways of reading them back.
+alice POST /jobs {"queue":"emails","payload":"welcome","max_attempts":2}
+alice POST /jobs {"queue":"emails","payload":"receipt","max_attempts":1}
+alice GET /jobs/j_1
+alice GET /jobs
+alice GET /jobs?queue=emails&state=queued
+
+# A worker takes the oldest of the queue and acks it.
+bob POST /queues/emails/lease {"lease_ms":60000}
+bob POST /jobs/j_1/ack
+alice GET /jobs/j_1
+
+# The second job has one attempt, and a fail takes it to dead.
+bob POST /queues/emails/lease
+bob POST /jobs/j_2/fail {"reason":"smtp said no"}
+alice GET /jobs?state=dead
+
+# Nothing is queued in emails now.
+bob POST /queues/emails/lease
+
+# A leased job is not deleted; a queued one is.
+alice POST /jobs {"queue":"reports","payload":"nightly","max_attempts":3}
+carol POST /queues/reports/lease
+alice DELETE /jobs/j_3
+carol POST /jobs/j_3/ack
+alice DELETE /jobs/j_3
+alice GET /jobs/j_3
+
+# What the API refuses.
+alice POST /jobs {"queue":"emails"}
+alice POST /jobs {"queue":"em ails","payload":"x","max_attempts":1}
+alice POST /jobs {"queue":"emails","payload":"x","max_attempts":1,"extra":true}
+alice POST /jobs nonsense
+alice POST /queues/emails/lease {"lease_ms":1}
+alice GET /jobs?state=sideways
+alice PUT /jobs
+alice GET /jobs/j_1/ack
+alice GET /nowhere
+alice POST /jobs/j_9/ack
+bob POST /jobs/j_1/ack
+
+# The counters.
+anyone GET /health

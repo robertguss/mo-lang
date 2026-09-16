@@ -12,6 +12,8 @@ defmodule Jobq.Server do
 
   use Supervisor
 
+  alias Jobq.Http.Socket
+
   @type ref :: term()
 
   @doc """
@@ -24,12 +26,15 @@ defmodule Jobq.Server do
   @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(opts) do
     ref = Keyword.get(opts, :ref, :default)
-    Supervisor.start_link(__MODULE__, Keyword.put(opts, :ref, ref), name: Jobq.Registry.via(ref, :server))
+
+    Supervisor.start_link(__MODULE__, Keyword.put(opts, :ref, ref),
+      name: Jobq.Registry.via(ref, :server)
+    )
   end
 
   @doc "The port the service listens on."
   @spec port(ref()) :: :inet.port_number()
-  def port(ref), do: Jobq.Http.Socket.port(ref)
+  def port(ref), do: Socket.port(ref)
 
   @doc "Stop a service and everything under it."
   @spec stop(ref()) :: :ok

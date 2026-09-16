@@ -160,26 +160,27 @@ defmodule Jobq.Store do
 
   defp apply_line("", log), do: {:ok, log}
 
-  defp apply_line(line, {jobs, next}) do
-    with {:ok, map} when is_map(map) <- Json.decode(line) do
-      case map do
-        %{"next" => n} when is_integer(n) and n > 0 ->
-          {:ok, {jobs, max(next, n)}}
+  defp apply_line(line, log) do
+    case Json.decode(line) do
+      {:ok, map} when is_map(map) -> apply_record(map, log)
+      _other -> :error
+    end
+  end
 
-        %{"deleted" => true, "id" => id} ->
-          case Job.parse_id(id) do
-            {:ok, n} -> {:ok, {Map.delete(jobs, n), max(next, n + 1)}}
-            :error -> :error
-          end
+  defp apply_record(%{"next" => n}, {jobs, next}) when is_integer(n) and n > 0,
+    do: {:ok, {jobs, max(next, n)}}
 
-        _ ->
-          case Job.from_record(map) do
-            {:ok, job} -> {:ok, {Map.put(jobs, job.n, job), max(next, job.n + 1)}}
-            :error -> :error
-          end
-      end
-    else
-      _ -> :error
+  defp apply_record(%{"deleted" => true, "id" => id}, {jobs, next}) do
+    case Job.parse_id(id) do
+      {:ok, n} -> {:ok, {Map.delete(jobs, n), max(next, n + 1)}}
+      :error -> :error
+    end
+  end
+
+  defp apply_record(map, {jobs, next}) do
+    case Job.from_record(map) do
+      {:ok, job} -> {:ok, {Map.put(jobs, job.n, job), max(next, job.n + 1)}}
+      :error -> :error
     end
   end
 

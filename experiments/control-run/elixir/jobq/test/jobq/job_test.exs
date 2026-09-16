@@ -68,7 +68,9 @@ defmodule Jobq.JobTest do
   describe "the two shapes" do
     test "a queued job renders without a worker or a reason" do
       assert {:obj, fields} = Job.render(job(1))
-      assert Keyword.keys(rename(fields)) == ~w(id queue state payload attempts max_attempts created_at updated_at)a
+
+      assert Keyword.keys(rename(fields)) ==
+               ~w(id queue state payload attempts max_attempts created_at updated_at)a
     end
 
     test "a leased job renders its worker and lease, a failed job its reason" do

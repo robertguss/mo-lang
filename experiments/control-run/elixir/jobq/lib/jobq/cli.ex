@@ -34,6 +34,7 @@ defmodule Jobq.CLI do
   @spec run([String.t()]) :: 0 | 1 | 2
   def run(["serve", dir | rest]), do: serve(dir, rest)
   def run(["compact", dir]), do: compact(dir)
+
   def run(["client", host, port, token, method, path | rest]),
     do: client(host, port, token, method, path, rest)
 
@@ -48,11 +49,18 @@ defmodule Jobq.CLI do
   defp serve(dir, rest) do
     with {:ok, port} <- port_option(rest),
          :ok <- open_dir(dir) do
+      # The tree is linked to this process: trapping exits is what turns a
+      # listener that cannot bind, or a tree that gives up later, into a
+      # message and an exit status rather than a dead command.
+      Process.flag(:trap_exit, true)
+
       case Server.start_link(dir: dir, port: port) do
-        {:ok, _pid} ->
+        {:ok, pid} ->
           IO.puts("jobq: serving #{dir} on port #{Server.port(:default)}")
-          Process.sleep(:infinity)
-          0
+
+          receive do
+            {:EXIT, ^pid, reason} -> fail({:stopped, reason})
+          end
 
         {:error, reason} ->
           fail(reason)
@@ -64,19 +72,18 @@ defmodule Jobq.CLI do
   end
 
   defp compact(dir) do
-    with :ok <- open_dir(dir) do
-      case Store.compact(dir) do
-        {:ok, count} ->
-          IO.puts("jobq: compacted #{dir} to #{count} job(s)")
-          0
-
-        {:error, reason} ->
-          fail(reason)
-      end
-    else
+    case open_dir(dir) do
+      :ok -> report_compact(dir, Store.compact(dir))
       {:error, reason} -> fail(reason)
     end
   end
+
+  defp report_compact(dir, {:ok, count}) do
+    IO.puts("jobq: compacted #{dir} to #{count} job(s)")
+    0
+  end
+
+  defp report_compact(_dir, {:error, reason}), do: fail(reason)
 
   defp client(host, port, token, method, path, rest) do
     body =
@@ -86,30 +93,30 @@ defmodule Jobq.CLI do
         _more -> nil
       end
 
-    with {:ok, port} <- integer(port, "port") do
-      case Client.request(host, port, token, method, path, body) do
-        {:ok, status, ""} ->
-          IO.puts(Integer.to_string(status))
-          0
-
-        {:ok, status, body} ->
-          IO.puts(Integer.to_string(status) <> " " <> body)
-          0
-
-        {:error, reason} ->
-          fail(reason)
-      end
-    else
+    case integer(port, "port") do
+      {:ok, port} -> report_request(Client.request(host, port, token, method, path, body))
       {:usage, message} -> usage_error(message)
     end
   end
 
+  defp report_request({:ok, status, ""}) do
+    IO.puts(Integer.to_string(status))
+    0
+  end
+
+  defp report_request({:ok, status, body}) do
+    IO.puts(Integer.to_string(status) <> " " <> body)
+    0
+  end
+
+  defp report_request({:error, reason}), do: fail(reason)
+
   defp check(dir, script) do
-    with :ok <- open_dir(dir) do
-      case Jobq.Check.run(dir, script) do
-        :ok -> 0
-        {:error, reason} -> fail(reason)
-      end
+    Process.flag(:trap_exit, true)
+
+    with :ok <- open_dir(dir),
+         :ok <- Jobq.Check.run(dir, script) do
+      0
     else
       {:error, reason} -> fail(reason)
     end
@@ -156,6 +163,7 @@ defmodule Jobq.CLI do
   defp describe({:shutdown, {:failed_to_start_child, _child, reason}}), do: describe(reason)
   defp describe({:open, path, reason}), do: "cannot open #{path}: #{:file.format_error(reason)}"
   defp describe({:corrupt, line}), do: "the log is corrupt at line #{line}"
+  defp describe({:stopped, reason}), do: "the service stopped: #{describe(reason)}"
   defp describe({:script, path, reason}), do: "cannot read #{path}: #{:file.format_error(reason)}"
   defp describe({:script_line, line}), do: "cannot read the script line: #{line}"
   defp describe({:request, line, reason}), do: "request failed (#{line}): #{inspect(reason)}"

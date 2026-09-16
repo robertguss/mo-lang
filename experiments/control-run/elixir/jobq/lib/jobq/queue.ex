@@ -24,6 +24,15 @@ defmodule Jobq.Queue do
   @type ref :: term()
   @type status :: 200 | 201 | 204 | 404 | 409
   @type reply :: {status(), Jobq.Json.value() | nil} | {:error, :store}
+  @type operation ::
+          {:create, String.t(), String.t(), pos_integer()}
+          | {:get, String.t()}
+          | {:list, String.t() | nil, Job.state() | nil}
+          | {:delete, String.t()}
+          | {:lease, String.t(), pos_integer(), String.t()}
+          | {:ack, String.t(), String.t()}
+          | {:fail, String.t(), String.t(), String.t() | nil}
+          | :health
 
   @typep state :: %{
            ref: ref(),
@@ -54,7 +63,7 @@ defmodule Jobq.Queue do
   comes back once the write is durable. A queue that is down or too slow is
   `{:error, :store}`, which the router answers with `503`.
   """
-  @spec run(ref(), tuple()) :: reply()
+  @spec run(ref(), operation()) :: reply()
   def run(ref, operation) do
     GenServer.call(Jobq.Registry.via(ref, :queue), operation, @call_timeout)
   catch

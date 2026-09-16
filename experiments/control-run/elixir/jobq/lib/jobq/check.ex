@@ -58,6 +58,10 @@ defmodule Jobq.Check do
         IO.puts(device, "> " <> line)
 
         case Client.request({127, 0, 0, 1}, port, token, method, path, body) do
+          {:ok, status, ""} ->
+            IO.puts(device, "< " <> Integer.to_string(status))
+            :ok
+
           {:ok, status, body} ->
             IO.puts(device, "< " <> Integer.to_string(status) <> " " <> body)
             :ok

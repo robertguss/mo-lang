@@ -77,7 +77,8 @@ defmodule Jobq.Job do
   A queue name: 1 to 64 bytes of letters, digits, `-` and `_`.
   """
   @spec queue(term()) :: {:ok, String.t()} | {:error, String.t()}
-  def queue(name) when is_binary(name) and byte_size(name) >= 1 and byte_size(name) <= @queue_max do
+  def queue(name)
+      when is_binary(name) and byte_size(name) >= 1 and byte_size(name) <= @queue_max do
     if name =~ ~r/\A[A-Za-z0-9_-]+\z/,
       do: {:ok, name},
       else: {:error, "queue must be letters, digits, '-' or '_'"}

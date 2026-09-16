@@ -36,24 +36,37 @@ defmodule Jobq.Test.Never do
   defp step(%{"id" => id, "deleted" => true}, seen), do: {:ok, Map.put(seen, id, :deleted)}
 
   defp step(record, seen) do
-    %{"id" => id, "state" => state, "attempts" => attempts, "max_attempts" => max} = record
-    previous = Map.get(seen, id)
+    %{"id" => id, "state" => state, "attempts" => attempts} = record
+
+    case fault(record, Map.get(seen, id)) do
+      nil -> {:ok, Map.put(seen, id, %{state: state, attempts: attempts})}
+      message -> {:error, "#{id}: #{message}"}
+    end
+  end
+
+  defp fault(record, previous) do
+    %{"state" => state, "attempts" => attempts, "max_attempts" => max} = record
 
     cond do
       attempts > max ->
-        {:error, "#{id}: attempts #{attempts} over max_attempts #{max}"}
+        "attempts #{attempts} over max_attempts #{max}"
 
-      state == "leased" and state_of(previous) == "leased" ->
-        {:error, "#{id}: leased while already leased"}
+      state == "leased" ->
+        lease_fault(attempts, previous)
 
-      state == "leased" and is_map(previous) and attempts != previous.attempts + 1 ->
-        {:error, "#{id}: leased with attempts #{attempts} after #{previous.attempts}"}
-
-      state_of(previous) in ["done", "dead"] and state not in ["done", "dead"] ->
-        {:error, "#{id}: left #{state_of(previous)} for #{state}"}
+      state_of(previous) in ["done", "dead"] ->
+        "left #{state_of(previous)} for #{state}"
 
       true ->
-        {:ok, Map.put(seen, id, %{state: state, attempts: attempts})}
+        nil
+    end
+  end
+
+  defp lease_fault(attempts, previous) do
+    cond do
+      state_of(previous) == "leased" -> "leased while already leased"
+      is_map(previous) and attempts != previous.attempts + 1 -> "leased with attempts #{attempts}"
+      true -> nil
     end
   end
 

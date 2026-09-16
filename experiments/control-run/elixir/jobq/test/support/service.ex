@@ -5,6 +5,7 @@ defmodule Jobq.Test.Service do
   """
 
   alias Jobq.Server
+  alias Jobq.Test.Clock
 
   @doc """
   Start a service for the calling test and return `%{ref: ref, dir: dir, port: port, clock: clock}`.
@@ -16,13 +17,17 @@ defmodule Jobq.Test.Service do
   def start(opts \\ []) do
     ref = make_ref()
     dir = Keyword.get_lazy(opts, :dir, &tmp_dir/0)
-    clock = Keyword.get_lazy(opts, :clock, fn -> Jobq.Test.Clock.new(Keyword.get(opts, :clock_at, 1_789_000_000_000)) end)
+
+    clock =
+      Keyword.get_lazy(opts, :clock, fn ->
+        Clock.new(Keyword.get(opts, :clock_at, 1_789_000_000_000))
+      end)
 
     opts =
       opts
       |> Keyword.drop([:clock_at, :dir, :clock])
       |> Keyword.merge(ref: ref, dir: dir, port: Keyword.get(opts, :port, 0))
-      |> Keyword.put(:clock, Jobq.Test.Clock.reader(clock))
+      |> Keyword.put(:clock, Clock.reader(clock))
 
     {:ok, pid} = Server.start_link(opts)
     ExUnit.Callbacks.on_exit(fn -> stop(pid) end)

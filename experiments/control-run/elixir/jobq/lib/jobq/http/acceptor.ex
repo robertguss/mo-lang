@@ -11,6 +11,9 @@ defmodule Jobq.Http.Acceptor do
 
   use GenServer, restart: :permanent
 
+  alias Jobq.Http.Conn
+  alias Jobq.Http.Socket
+
   require Logger
 
   @accept_timeout 1_000
@@ -26,7 +29,7 @@ defmodule Jobq.Http.Acceptor do
 
   @impl GenServer
   def handle_continue(:accept, state) do
-    socket = Jobq.Http.Socket.socket(state.ref)
+    socket = Socket.socket(state.ref)
 
     case :gen_tcp.accept(socket, @accept_timeout) do
       {:ok, client} ->
@@ -48,7 +51,7 @@ defmodule Jobq.Http.Acceptor do
   defp hand_over(client, state) do
     conns = Jobq.Registry.via(state.ref, :conns)
 
-    case Task.Supervisor.start_child(conns, Jobq.Http.Conn, :serve, [client, state.conn_opts]) do
+    case Task.Supervisor.start_child(conns, Conn, :serve, [client, state.conn_opts]) do
       {:ok, pid} ->
         case :gen_tcp.controlling_process(client, pid) do
           :ok -> send(pid, :handover)
