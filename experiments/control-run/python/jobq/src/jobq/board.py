@@ -21,6 +21,7 @@ from pathlib import Path
 from jobq.api import Api, Request, Response, error
 from jobq.clock import Clock, SystemClock
 from jobq.contract import BoardFailure, ContractError, require
+from jobq.jobs import DEFAULT_RETAIN_MS
 from jobq.queue import Chaos, Queue
 from jobq.store import FileOps, Store, StoreOpenError
 
@@ -34,11 +35,13 @@ SPENT = "jobq is stopping: the restart budget is spent"
 
 @dataclass(frozen=True)
 class BoardOptions:
-    """The restart budget and the chaos switch, as `serve` takes them."""
+    """The restart budget, the chaos switch, and the archive's retention, as `serve` takes
+    them."""
 
     max_restarts: int = DEFAULT_MAX_RESTARTS
     restart_window_s: float = DEFAULT_RESTART_WINDOW_S
     crash_every: int = 0
+    retain_ms: int = DEFAULT_RETAIN_MS
 
 
 class Board:
@@ -69,7 +72,7 @@ class Board:
     def _open(self) -> tuple[Queue, Api]:
         store, replayed = Store.open(self._directory, self._ops)
         try:
-            queue = Queue(store, self._clock, replayed, self._chaos)
+            queue = Queue(store, self._clock, replayed, self._chaos, self._budget.retain_ms)
         except BaseException:
             store.close()
             raise

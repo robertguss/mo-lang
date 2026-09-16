@@ -191,14 +191,16 @@ class VerifyTest(CliCase):
     def test_an_empty_folder_verifies_to_nothing(self) -> None:
         code, out, err = invoke("verify", str(self.dir))
         self.assertEqual((code, err), (EXIT_OK, ""))
-        empty = "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1\n"
+        empty = "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1; archived 0\n"
         self.assertEqual(out, empty)
 
     def test_a_folder_that_opens_prints_its_counts_and_the_next_id(self) -> None:
         self.fill()
         code, out, err = invoke("verify", str(self.dir))
         self.assertEqual((code, err), (EXIT_OK, ""))
-        filled = "4 jobs: queued 1, scheduled 1, leased 1, done 1, dead 0; next id j_6\n"
+        filled = (
+            "4 jobs: queued 1, scheduled 1, leased 1, done 1, dead 0; next id j_6; archived 0\n"
+        )
         self.assertEqual(out, filled)
 
     def test_verify_leaves_the_folder_servable(self) -> None:
@@ -227,7 +229,8 @@ class VerifyTest(CliCase):
         code, out, err = invoke("verify", str(self.dir))
         self.assertEqual((code, err), (EXIT_OK, ""))
         self.assertEqual(
-            out, "5 jobs: queued 2, scheduled 0, leased 1, done 1, dead 1; next id j_7\n"
+            out,
+            "5 jobs: queued 2, scheduled 0, leased 1, done 1, dead 1; next id j_7; archived 0\n",
         )
 
     def test_a_folder_that_cannot_be_opened_exits_1(self) -> None:

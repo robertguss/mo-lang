@@ -157,7 +157,7 @@ class HealthAndStoreTest(QueueCase):
         self.call("POST", "/queues/emails/lease")
         health = body_of(self.call("GET", "/health", token=None))
         counts = {"queued": 0, "scheduled": 1, "leased": 1, "done": 1, "dead": 1}
-        self.assertEqual(health, counts | {"uptime_ms": 250, "restarts": 0})
+        self.assertEqual(health, counts | {"archived": 0, "uptime_ms": 250, "restarts": 0})
 
     def test_a_store_failure_is_503_with_the_store_unchanged(self) -> None:
         self.create()

@@ -6,14 +6,18 @@
 # folder holding one ill-formed record, which no command will serve. In between, `jobq serve`
 # with the chaos switch on: the board restarts once, `restarts` counts it, the second failure
 # spends the budget and serve exits 70, and the folder verifies with every write in it.
+# Last in the transcript, `jobq serve --retain-ms 1000`: a keyed create and its repeat, a
+# finished job archived and read by id, then a stop, a compaction, and a start that still
+# know the archived job and its key.
 set -euo pipefail
 cd "$(dirname "$0")"
 work=$(mktemp -d)
 old=$(mktemp -d)
 bad=$(mktemp -d)
 chaos=$(mktemp -d)
+arch=$(mktemp -d)
 actual=$(mktemp)
-trap 'rm -rf "$work" "$old" "$bad" "$chaos" "$actual"' EXIT
+trap 'rm -rf "$work" "$old" "$bad" "$chaos" "$arch" "$actual"' EXIT
 cp tests/fixtures/round7/jobs.log "$old/jobs.log"
 
 # `checks/chaos.txt` through `jobq client`, one process per line, against a served folder.
@@ -41,6 +45,33 @@ play_chaos() {
   timeout 60 uv run --quiet jobq verify "$chaos/data"
 }
 mkdir "$chaos/data"
+
+# A script through `jobq client` against `jobq serve --retain-ms 1000`, one process per
+# line; a `sleep S` line waits. The service is stopped with SIGTERM at the end.
+play_archive() {
+  local script=$1 line="" port="" token method path body
+  timeout 60 uv run --quiet jobq serve "$arch/data" --port 0 --retain-ms 1000 \
+    2> "$arch/serve.err" &
+  local pid=$!
+  for _ in $(seq 100); do
+    line=$(head -n 1 "$arch/serve.err")
+    [ -n "$line" ] && break
+    sleep 0.1
+  done
+  port=${line##*:}
+  while IFS= read -r line; do
+    case "$line" in ''|'#'*) continue ;; 'sleep '*) ${line}; continue ;; esac
+    read -r token method path body <<< "$line"
+    echo "> $line"
+    timeout 60 uv run --quiet jobq client 127.0.0.1 "$port" "$token" "$method" "$path" \
+      ${body:+"$body"}
+  done < "$script"
+  kill -TERM "$pid"
+  local code=0
+  wait "$pid" || code=$?
+  echo "serve exited $code"
+}
+mkdir "$arch/data"
 cp tests/fixtures/illformed/jobs.log "$bad/jobs.log"
 
 {
@@ -54,11 +85,18 @@ cp tests/fixtures/illformed/jobs.log "$bad/jobs.log"
   timeout 60 uv run --quiet jobq compact "$old"
   timeout 60 uv run --quiet jobq check "$old" checks/round7-after.txt
   play_chaos
+  play_archive checks/archive-first.txt
+  timeout 60 uv run --quiet jobq verify "$arch/data"
+  timeout 60 uv run --quiet jobq compact "$arch/data"
+  play_archive checks/archive-second.txt
+  timeout 60 uv run --quiet jobq compact "$arch/data"
+  timeout 60 uv run --quiet jobq verify "$arch/data"
 } | sed -E \
   -e 's/"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"/"<time>"/g' \
   -e 's/"uptime_ms":[0-9]+/"uptime_ms":<n>/' \
   -e "s|$work|<dir>|" \
   -e "s|$old|<old>|" \
+  -e "s|$arch/data|<arch>|" \
   -e 's/: [0-9]+ records to/: <n> records to/' > "$actual"
 diff -u checks/expected.txt "$actual"
 if grep -q attempts "$old/jobs.log"; then

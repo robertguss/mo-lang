@@ -3,7 +3,7 @@
 {"error":"missing bearer token"}
 > - GET /health
 200
-{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>,"restarts":0}
+{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":0,"uptime_ms":<n>,"restarts":0}
 > w1 POST /jobs {"queue": "emails", "payload": "hello\nworld", "max_tries": 2}
 201
 {"id":"j_1","queue":"emails","state":"queued","payload":"hello\nworld","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -132,9 +132,9 @@
 > w1 POST /queues
 405
 {"error":"method not allowed"}
-5 jobs: queued 0, scheduled 2, leased 1, done 2, dead 0; next id j_7
+5 jobs: queued 0, scheduled 2, leased 1, done 2, dead 0; next id j_7; archived 0
 jobq: compacted <dir>: <n> records to 6
-5 jobs: queued 0, scheduled 2, leased 1, done 2, dead 0; next id j_7
+5 jobs: queued 0, scheduled 2, leased 1, done 2, dead 0; next id j_7; archived 0
 > w1 GET /jobs/j_2
 200
 {"id":"j_2","queue":"emails","state":"dead","payload":"second","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -157,7 +157,7 @@ jobq: compacted <dir>: <n> records to 6
 {"id":"j_7","queue":"emails","state":"queued","payload":"after restart","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
 > - GET /health
 200
-{"queued":2,"scheduled":1,"leased":0,"done":2,"dead":0,"uptime_ms":<n>,"restarts":0}
+{"queued":2,"scheduled":1,"leased":0,"done":2,"dead":0,"archived":0,"uptime_ms":<n>,"restarts":0}
 > w1 GET /jobs/j_1
 200
 {"id":"j_1","queue":"emails","state":"done","payload":"done job","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -179,7 +179,7 @@ jobq: compacted <dir>: <n> records to 6
 > w1 GET /queues
 200
 {"queues":[{"name":"emails","queued":2,"scheduled":0,"leased":1,"done":1,"dead":0},{"name":"reports","queued":2,"scheduled":0,"leased":0,"done":0,"dead":0}]}
-6 jobs: queued 4, scheduled 0, leased 1, done 1, dead 0; next id j_8
+6 jobs: queued 4, scheduled 0, leased 1, done 1, dead 0; next id j_8; archived 0
 jobq: compacted <old>: <n> records to 7
 > w1 GET /jobs/j_6
 200
@@ -189,7 +189,7 @@ jobq: compacted <old>: <n> records to 7
 {"jobs":[{"id":"j_1","queue":"emails","state":"done","payload":"done job","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}]}
 > - GET /health
 200
-{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"uptime_ms":<n>,"restarts":0}
+{"queued":0,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":0,"uptime_ms":<n>,"restarts":0}
 > w1 POST /jobs {"queue": "emails", "payload": "first", "max_tries": 2}
 201
 {"id":"j_1","queue":"emails","state":"queued","payload":"first","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -204,7 +204,7 @@ jobq: compacted <old>: <n> records to 7
 {"id":"j_1","queue":"emails","state":"done","payload":"first","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
 > - GET /health
 200
-{"queued":0,"scheduled":0,"leased":0,"done":1,"dead":0,"uptime_ms":<n>,"restarts":1}
+{"queued":0,"scheduled":0,"leased":0,"done":1,"dead":0,"archived":0,"uptime_ms":<n>,"restarts":1}
 > w1 POST /jobs {"queue": "emails", "payload": "second", "max_tries": 2}
 201
 {"id":"j_2","queue":"emails","state":"queued","payload":"second","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -216,4 +216,72 @@ jobq: compacted <old>: <n> records to 7
 {"error":"jobq is stopping: the restart budget is spent; read the job to learn what happened"}
 serve exited 70
 board failures logged: 2
-4 jobs: queued 3, scheduled 0, leased 0, done 1, dead 0; next id j_5
+4 jobs: queued 3, scheduled 0, leased 0, done 1, dead 0; next id j_5; archived 0
+> w1 POST /jobs {"queue": "orders", "payload": "charge 17", "max_tries": 1, "key": "order-17"}
+201
+{"id":"j_1","queue":"orders","state":"queued","payload":"charge 17","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17"}
+> w1 POST /jobs {"queue": "orders", "payload": "charge 17 again", "max_tries": 3, "key": "order-17"}
+200
+{"id":"j_1","queue":"orders","state":"queued","payload":"charge 17","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17"}
+> w1 POST /jobs {"queue": "orders", "payload": "no key", "max_tries": 1}
+201
+{"id":"j_2","queue":"orders","state":"queued","payload":"no key","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /jobs {"queue": "orders", "payload": "x", "max_tries": 1, "key": "bad key!"}
+400
+{"error":"key: Value error, key must be 1 to 64 bytes of letters, digits, - and _"}
+> w1 GET /jobs?queue=orders&key=order-17
+200
+{"jobs":[{"id":"j_1","queue":"orders","state":"queued","payload":"charge 17","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17"}]}
+> w1 GET /jobs?key=order-17
+400
+{"error":"key needs queue"}
+> w1 POST /queues/orders/lease {"lease_ms": 60000}
+200
+{"id":"j_1","queue":"orders","state":"leased","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>","key":"order-17"}
+> w1 POST /jobs/j_1/ack
+200
+{"id":"j_1","queue":"orders","state":"done","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17"}
+> - GET /health
+200
+{"queued":1,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":1,"uptime_ms":<n>,"restarts":0}
+> w1 GET /jobs/j_1
+200
+{"id":"j_1","queue":"orders","state":"done","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17","archived_at":"<time>"}
+> w1 GET /jobs?queue=orders
+200
+{"jobs":[{"id":"j_2","queue":"orders","state":"queued","payload":"no key","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}]}
+> w1 POST /jobs/j_1/retry
+409
+{"error":"archived"}
+> w1 POST /jobs {"queue": "orders", "payload": "charge 17 later", "max_tries": 1, "key": "order-17"}
+200
+{"id":"j_1","queue":"orders","state":"done","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17","archived_at":"<time>"}
+> w1 GET /jobs?queue=orders&key=order-17
+200
+{"jobs":[{"id":"j_1","queue":"orders","state":"done","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17","archived_at":"<time>"}]}
+serve exited 0
+1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_3; archived 1
+jobq: compacted <arch>: <n> records to 2
+> - GET /health
+200
+{"queued":1,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":1,"uptime_ms":<n>,"restarts":0}
+> w1 GET /jobs/j_1
+200
+{"id":"j_1","queue":"orders","state":"done","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17","archived_at":"<time>"}
+> w1 POST /jobs {"queue": "orders", "payload": "after restart", "max_tries": 1, "key": "order-17"}
+200
+{"id":"j_1","queue":"orders","state":"done","payload":"charge 17","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17","archived_at":"<time>"}
+> w1 DELETE /jobs/j_1
+204
+> w1 GET /jobs/j_1
+404
+{"error":"no such job"}
+> w1 POST /jobs {"queue": "orders", "payload": "freed", "max_tries": 1, "key": "order-17"}
+201
+{"id":"j_3","queue":"orders","state":"queued","payload":"freed","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"order-17"}
+> - GET /health
+200
+{"queued":2,"scheduled":0,"leased":0,"done":0,"dead":0,"archived":0,"uptime_ms":<n>,"restarts":0}
+serve exited 0
+jobq: compacted <arch>: <n> records to 3
+2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_4; archived 0

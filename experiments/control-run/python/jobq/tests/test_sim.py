@@ -9,6 +9,12 @@ disk: the request is a 503, the board restarts, and it holds exactly what the lo
 Then the folder refuses every write for a while: each write is a 503, reads still answer,
 nothing changes, and the first write after it goes through with no restart.
 Once the faults stop and the workers keep working, every job ends done or dead.
+
+Change 4: creates carry keys, some reused, and a retain_ms of a second archives finished jobs
+at the looks. The board and the archive are checked as one view: a job leaves the board only
+to its delete or to the archive, unchanged but for `archived_ms`, and the log and the archive
+replay to exactly what the queue holds, including after the board fails between the
+archive's write and the log's.
 """
 
 import contextlib
@@ -37,7 +43,7 @@ FILE_FAULT_RATE = 0.15
 SOCKET_DROP_RATE = 0.1
 CRASH_RATE = 0.05
 # The simulation's restarts are never meant to spend the budget.
-UNSPENT = BoardOptions(max_restarts=10**9)
+UNSPENT = BoardOptions(max_restarts=10**9, retain_ms=1_000)
 QUEUES = ("mail", "report")
 WORKERS = ("w1", "w2", "w3")
 
@@ -80,8 +86,15 @@ class Violation(AssertionError):
     pass
 
 
+def _unarchived(job: Job) -> Job:
+    return job.model_copy(update={"archived_ms": None})
+
+
 def _moved_at_a_look(before: Job, after: Job) -> bool:
-    """A run-out lease returned or a due scheduled job queued: the changes a look makes."""
+    """A run-out lease returned, a due scheduled job queued, or a finished job archived: the
+    changes a look makes."""
+    if before.archived_ms is None and after.archived_ms is not None:
+        return before.state in {"done", "dead"} and _unarchived(after) == before
     returned = (
         before.state == "leased"
         and after.state in {"queued", "scheduled", "dead"}
@@ -109,10 +122,16 @@ class Sim:
         self.scheduled = 0
         self.retried = 0
         self.crashes = 0
+        self.keyed_repeats = 0
+        self.archived_reads = 0
 
     @property
     def queue(self) -> Queue:
         return self.board.queue
+
+    def view(self) -> dict[int, Job]:
+        """The live board and the archive together."""
+        return self.queue.snapshot() | self.queue.archived_snapshot()
 
     def check(self, condition: bool, text: str) -> None:
         if not condition:
@@ -124,7 +143,7 @@ class Sim:
         if self.rng.random() < self.drop_rate:
             self.dropped += 1
             return None
-        before = self.queue.snapshot()
+        before = self.view()
         restarts = self.board.restarts
         quiet = contextlib.redirect_stderr(io.StringIO())
         with mock.patch.object(Chaos, "fails", self.chaos.fails), quiet:
@@ -143,10 +162,14 @@ class Sim:
     ) -> None:
         """`crashed`: the board failed in this request, so its 503 may have left the write on
         disk, and so on the board; every other 503 changed nothing."""
-        after = self.queue.snapshot()
+        after = self.view()
         now = self.clock.now_ms()
         self.check(response.status != 500, "no request is an internal error")
-        self.check(replay(self.dir).jobs == after, "the store holds exactly what the queue holds")
+        replayed = replay(self.dir)
+        live, archived = self.queue.snapshot(), self.queue.archived_snapshot()
+        self.check(replayed.jobs == live, "the store holds exactly what the queue holds")
+        self.check(replayed.archived == archived, "the archive holds exactly the archived jobs")
+        self.check_archive(before, live, archived)
         if crashed:
             self.crashes += 1
         elif response.status == 503:
@@ -168,21 +191,46 @@ class Sim:
             if job.state == "scheduled" and (was is None or was.state != "scheduled"):
                 self.scheduled += 1
             if number in self.finished:
-                if job != self.finished[number]:
+                if _unarchived(job) != self.finished[number]:
                     self.check(
                         self._retried(request, response, self.finished[number], job, crashed),
                         "a done job never changes, and a dead one only by its retry",
                     )
                     self.retried += 1
                     del self.finished[number]
-            elif job.state in {"done", "dead"}:
+            elif job.state in {"done", "dead"} and job.archived_ms is None:
                 self.finished[number] = job
         if request.path == "/queues" and response.status == 200:
-            self.check_queues(response, after)
+            self.check_queues(response, live)
         if response.status in {200, 201} and response.body.startswith(b'{"id"'):
             number = int(json.loads(response.body)["id"][2:])
             shown = JobOut.of(after[number]).to_json() if number in after else b""
             self.check(shown == response.body, "a job response shows the durable job")
+            self.archived_reads += int(number in archived)
+        self.check_keys(request, response, before, after)
+
+    def check_archive(
+        self, before: dict[int, Job], live: dict[int, Job], archived: dict[int, Job]
+    ) -> None:
+        """No job is live and archived at once, and only a finished job, as it was, archives."""
+        self.check(not live.keys() & archived.keys(), "a job is never live and archived")
+        for number, job in archived.items():
+            was = before.get(number)
+            self.check(was is None or was.state in {"done", "dead"}, "only finished jobs archive")
+            self.check(was is None or job.state == was.state, "an archived job never changes")
+
+    def check_keys(
+        self, request: Request, response: Response, before: dict[int, Job], after: dict[int, Job]
+    ) -> None:
+        """A repeated key answers its job and makes none; no key ever names two jobs."""
+        if request.path == "/jobs" and request.method == "POST" and response.status == 200:
+            self.keyed_repeats += 1
+            sent = json.loads(request.body)
+            shown = json.loads(response.body)
+            self.check(shown["key"] == sent["key"], "a repeated key answers its job")
+            self.check(len(after) == len(before), "a repeated key makes no job")
+        held = [(job.queue, job.key) for job in after.values() if job.key is not None]
+        self.check(len(held) == len(set(held)), "a key never names two jobs")
 
     def check_queues(self, response: Response, after: dict[int, Job]) -> None:
         """`/queues` shows every queue holding a job, and its counts are the jobs there."""
@@ -208,13 +256,15 @@ class Sim:
     # The clients.
 
     def create(self) -> None:
-        body = {
+        body: dict[str, object] = {
             "queue": self.rng.choice(QUEUES),
             "payload": f"job {self.rng.randrange(10**6)}",
             "max_tries": self.rng.randrange(1, 4),
             "delay_ms": self.rng.choice([0, 0, 0, self.rng.randrange(1, 1000)]),
             "backoff_ms": self.rng.choice([0, 0, self.rng.randrange(1, 500)]),
         }
+        if self.rng.random() < 0.5:
+            body["key"] = f"k{self.rng.randrange(8)}"
         self.send(Request("POST", "/jobs", "", "producer", json.dumps(body).encode()))
 
     def lease(self, worker: str, queue: str) -> None:
@@ -247,14 +297,14 @@ class Sim:
         self.send(Request("POST", f"/jobs/{job_id}/retry", "", worker))
 
     def some_id(self) -> str:
-        numbers = list(self.queue.snapshot()) or [1]
+        numbers = list(self.view()) or [1]
         return f"j_{self.rng.choice(numbers) + self.rng.choice([0, 0, 0, 1])}"
 
     def restart(self) -> None:
-        before = self.queue.snapshot()
+        before = self.view()
         self.board.close()
         self.board = Board(self.dir, self.clock, self.ops, UNSPENT)
-        self.check(self.queue.snapshot() == before, "no job is lost across a restart")
+        self.check(self.view() == before, "no job or archived job is lost across a restart")
 
     def step(self) -> None:
         roll = self.rng.random()
@@ -307,7 +357,7 @@ class Sim:
         self.chaos.rate = 0.0
         settled = self.send(Request("GET", "/health"))  # nothing is due, so no read writes
         self.check(settled is not None and settled.status == 200, "the look before is taken")
-        before = self.queue.snapshot()
+        before = self.view()
         self.ops.rate = 1.0
         body = json.dumps(
             {"queue": QUEUES[0], "payload": "while unwritable", "max_tries": 2}
@@ -320,7 +370,7 @@ class Sim:
             for path in ("/health", "/queues", "/jobs"):
                 read = self.send(Request("GET", path, "", "operator"))
                 self.check(read is not None and read.status == 200, f"{path} still answers")
-            self.check(self.queue.snapshot() == before, "the unwritable folder changes no job")
+            self.check(self.view() == before, "the unwritable folder changes no job")
         self.ops.rate = 0.0
         resumed = self.send(Request("POST", "/jobs", "", "producer", body))
         self.check(resumed is not None and resumed.status == 201, "the write resumes on its own")
@@ -334,6 +384,10 @@ class Sim:
         self.unwritable()
         self.drain()
         self.check(replay(self.dir).jobs == self.queue.snapshot(), "the store matches at the end")
+        self.clock.advance(UNSPENT.retain_ms)
+        self.send(Request("GET", "/health"))
+        self.check(not self.queue.snapshot(), "every finished job is archived at last")
+        self.check(replay(self.dir).archived == self.queue.archived_snapshot(), "archive matches")
 
 
 def run_seed(seed: int) -> Sim:
@@ -357,6 +411,9 @@ class SimulationTest(unittest.TestCase):
         self.assertGreater(sum(sim.retried for sim in sims), SEEDS // 10)
         self.assertGreater(sum(sim.listed for sim in sims), SEEDS)
         self.assertGreater(sum(sim.crashes for sim in sims), SEEDS)
+        self.assertGreater(sum(sim.keyed_repeats for sim in sims), SEEDS)
+        self.assertGreater(sum(sim.archived_reads for sim in sims), SEEDS // 10)
+        self.assertGreater(sum(len(sim.queue.archived_snapshot()) for sim in sims), SEEDS)
 
     def test_the_simulation_catches_a_change_applied_before_it_is_durable(self) -> None:
         def applied_first(queue: Queue, before: Job | None, after: Job | None) -> None:

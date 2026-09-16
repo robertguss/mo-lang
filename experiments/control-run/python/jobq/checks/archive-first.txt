@@ -1,0 +1,17 @@
+# Played against `jobq serve --retain-ms 1000`: a keyed create and its repeat, then the
+# job finishes, a second passes, and the next look archives it; it is still read by id.
+w1 POST /jobs {"queue": "orders", "payload": "charge 17", "max_tries": 1, "key": "order-17"}
+w1 POST /jobs {"queue": "orders", "payload": "charge 17 again", "max_tries": 3, "key": "order-17"}
+w1 POST /jobs {"queue": "orders", "payload": "no key", "max_tries": 1}
+w1 POST /jobs {"queue": "orders", "payload": "x", "max_tries": 1, "key": "bad key!"}
+w1 GET /jobs?queue=orders&key=order-17
+w1 GET /jobs?key=order-17
+w1 POST /queues/orders/lease {"lease_ms": 60000}
+w1 POST /jobs/j_1/ack
+sleep 1.5
+- GET /health
+w1 GET /jobs/j_1
+w1 GET /jobs?queue=orders
+w1 POST /jobs/j_1/retry
+w1 POST /jobs {"queue": "orders", "payload": "charge 17 later", "max_tries": 1, "key": "order-17"}
+w1 GET /jobs?queue=orders&key=order-17

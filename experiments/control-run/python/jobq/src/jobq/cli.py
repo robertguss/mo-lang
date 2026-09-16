@@ -12,21 +12,22 @@ from typing import TextIO
 
 from jobq import client
 from jobq.board import BoardOptions
-from jobq.jobs import STATES
+from jobq.jobs import DEFAULT_RETAIN_MS, MAX_RETAIN_MS, MIN_RETAIN_MS, STATES
 from jobq.server import EXIT_SPENT, HOST, HttpServer, ServerThread, serve
 from jobq.store import Store, StoreOpenError, compact
 
 USAGE = (
     "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] "
-    "[--crash-every N] | jobq compact <dir> | jobq verify <dir> | "
+    "[--crash-every N] [--retain-ms N] | jobq compact <dir> | jobq verify <dir> | "
     "jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 )
 DEFAULT_PORT = 7900
 EXIT_OK, EXIT_FAILURE, EXIT_USAGE = 0, 1, 2
-SERVE_FLAGS = ("--port", "--max-restarts", "--restart-window", "--crash-every")
+SERVE_FLAGS = ("--port", "--max-restarts", "--restart-window", "--crash-every", "--retain-ms")
 NO_TOKEN = "-"  # noqa: S105 - the word for "send no authorization header"
 
 _DIGITS = re.compile(r"[0-9]{1,5}")
+_LONG_DIGITS = re.compile(r"[0-9]{1,10}")
 _METHOD = re.compile(r"[A-Z]{1,16}")
 
 
@@ -68,8 +69,8 @@ def parse_port(text: str, allow_zero: bool) -> int:
 
 
 def parse_serve_flags(flags: Sequence[str]) -> tuple[int, BoardOptions]:
-    """`[--port N] [--max-restarts K] [--restart-window S] [--crash-every N]`, in any order,
-    each at most once."""
+    """`[--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N]`,
+    in any order, each at most once."""
     if len(flags) % 2:
         raise UsageError("every serve option takes a value")
     given: dict[str, str] = {}
@@ -86,6 +87,7 @@ def parse_serve_flags(flags: Sequence[str]) -> tuple[int, BoardOptions]:
             "--restart-window", given, int(BoardOptions.restart_window_s), 1
         ),
         crash_every=parse_count("--crash-every", given, BoardOptions.crash_every, 0),
+        retain_ms=parse_retain_ms(given.get("--retain-ms")),
     )
     return port, options
 
@@ -97,6 +99,18 @@ def parse_count(flag: str, given: dict[str, str], default: int, least: int) -> i
         return default
     if _DIGITS.fullmatch(text) is None or int(text) < least:
         raise UsageError(f"{flag} must be a whole number from {least} to 99999, got {text!r}")
+    return int(text)
+
+
+def parse_retain_ms(text: str | None) -> int:
+    """Milliseconds from 1,000 to 2,678,400,000 (31 days); a day when not given."""
+    if text is None:
+        return DEFAULT_RETAIN_MS
+    if _LONG_DIGITS.fullmatch(text) is None or not MIN_RETAIN_MS <= int(text) <= MAX_RETAIN_MS:
+        raise UsageError(
+            f"--retain-ms must be a whole number from {MIN_RETAIN_MS} to {MAX_RETAIN_MS}, "
+            f"got {text!r}"
+        )
     return int(text)
 
 
@@ -151,8 +165,9 @@ def _compact(directory: Path, stdout: TextIO, stderr: TextIO) -> int:
 
 
 def _verify(directory: Path, stdout: TextIO, stderr: TextIO) -> int:
-    """The check `serve` runs before it binds, and nothing else: every record against the
-    job's rules. One line of counts on a folder that opens, exit 1 on one that does not."""
+    """The check `serve` runs before it binds, and nothing else: every record of the log and
+    the archive against the job's rules. One line of counts on a folder that opens, exit 1 on
+    one that does not."""
     try:
         store, replayed = Store.open(directory)
     except StoreOpenError as unopened:
@@ -164,7 +179,8 @@ def _verify(directory: Path, stdout: TextIO, stderr: TextIO) -> int:
         counts[job.state] += 1
     shown = ", ".join(f"{state} {counts[state]}" for state in STATES)
     print(
-        f"{len(replayed.jobs)} jobs: {shown}; next id j_{replayed.next_number}",
+        f"{len(replayed.jobs)} jobs: {shown}; next id j_{replayed.next_number}; "
+        f"archived {len(replayed.archived)}",
         file=stdout,
     )
     return EXIT_OK

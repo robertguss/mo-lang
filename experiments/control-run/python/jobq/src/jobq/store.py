@@ -1,7 +1,13 @@
-"""The store: an append-only log of JSON lines in `<dir>/jobs.log` that replays.
+"""The store: an append-only log of JSON lines in `<dir>/jobs.log` that replays, and beside
+it the archive `<dir>/jobq.archive`, append-only between compactions.
 
-One record per job change, under the job's number. A write is durable when `append`
-returns; when it raises, the log is truncated back to what it held before.
+One record per job change, under the job's number. A done or dead job that is archived is
+appended to the archive first (with `archived_ms`), and then the live log records that it
+left the board (an `archived` record). At open the archive wins: a job in both files is
+archived, whichever write a kill fell between. A delete of an archived job writes a live
+`delete` first and then a `delete` tombstone in the archive; compaction drops both. A write
+is durable when `append` returns; when it raises, the file is truncated back to what it held
+before.
 
 Every record is checked against the job's rules as it replays (`jobs.job_problem`): a record
 in a state the API can never produce refuses the folder rather than being served.
@@ -16,7 +22,7 @@ import fcntl
 import json
 import os
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, Protocol
 
@@ -28,6 +34,8 @@ from jobq.jobs import Job, job_problem
 LOG_NAME = "jobs.log"
 LOCK_NAME = "jobq.lock"
 COMPACT_NAME = "jobs.log.compact"
+ARCHIVE_NAME = "jobq.archive"
+ARCHIVE_COMPACT_NAME = "jobq.archive.compact"
 
 # A job record's field names before the tries rename, and the names they have now.
 LEGACY_NAMES = {"attempts": "tries", "max_attempts": "max_tries"}
@@ -75,8 +83,21 @@ class CounterRecord(BaseModel):
     next_number: int = Field(ge=1)
 
 
-type Record = Annotated[PutRecord | DeleteRecord | CounterRecord, Field(discriminator="kind")]
-_RECORD: TypeAdapter[PutRecord | DeleteRecord | CounterRecord] = TypeAdapter(Record)
+class ArchivedRecord(BaseModel):
+    """In the live log: the job left the board for the archive."""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    kind: Literal["archived"] = "archived"
+    number: int = Field(ge=1)
+
+
+type LiveRecord = PutRecord | DeleteRecord | CounterRecord | ArchivedRecord
+type ArchiveRecord = PutRecord | DeleteRecord
+type Record = Annotated[LiveRecord, Field(discriminator="kind")]
+type ArchiveLine = Annotated[ArchiveRecord, Field(discriminator="kind")]
+_RECORD: TypeAdapter[LiveRecord] = TypeAdapter(Record)
+_ARCHIVE_RECORD: TypeAdapter[ArchiveRecord] = TypeAdapter(ArchiveLine)
 
 
 class StoreError(Exception):
@@ -88,10 +109,11 @@ class StoreOpenError(Exception):
 
 
 class IllFormed(StoreOpenError):
-    """A record in the log breaks a rule a job record must meet. `<dir>` is never served."""
+    """A record in the log or the archive breaks a rule a job record must meet. `<dir>` is
+    never served."""
 
-    def __init__(self, key: str, rule: str) -> None:
-        super().__init__(f"record {key}: {rule}")
+    def __init__(self, key: str, rule: str, where: str = "record") -> None:
+        super().__init__(f"{where} {key}: {rule}")
         self.key = key
         self.rule = rule
 
@@ -114,19 +136,23 @@ class RealFileOps:
 
 @dataclass
 class Replayed:
-    """The state a log replays to: jobs in number order and the next number to hand out."""
+    """The state a log replays to: live jobs in number order, archived jobs in number order,
+    and the next number to hand out. `records` counts the live log's lines and
+    `archive_records` the archive's."""
 
     jobs: dict[int, Job]
     next_number: int
     records: int
+    archived: dict[int, Job] = field(default_factory=dict)
+    archive_records: int = 0
 
 
-def apply_record(state: Replayed, record: PutRecord | DeleteRecord | CounterRecord) -> None:
+def apply_record(state: Replayed, record: LiveRecord) -> None:
     match record:
         case PutRecord(job=job):
             state.jobs[job.number] = job
             state.next_number = max(state.next_number, job.number + 1)
-        case DeleteRecord(number=number):
+        case DeleteRecord(number=number) | ArchivedRecord(number=number):
             state.jobs.pop(number, None)
             state.next_number = max(state.next_number, number + 1)
         case CounterRecord(next_number=next_number):
@@ -134,48 +160,56 @@ def apply_record(state: Replayed, record: PutRecord | DeleteRecord | CounterReco
     state.records += 1
 
 
-class Store:
-    def __init__(self, dir_fd: int, lock_fd: int, fd: int, size: int, ops: FileOps) -> None:
-        self._dir_fd = dir_fd
-        self._lock_fd = lock_fd
+def apply_archive_record(state: Replayed, record: ArchiveRecord) -> None:
+    match record:
+        case PutRecord(job=job):
+            state.archived[job.number] = job
+            state.next_number = max(state.next_number, job.number + 1)
+        case DeleteRecord(number=number):
+            state.archived.pop(number, None)
+            state.next_number = max(state.next_number, number + 1)
+    state.archive_records += 1
+
+
+def resolve(state: Replayed) -> None:
+    """The archive wins: a job in both files is archived and its live record is stale. Then
+    no key names two jobs in one queue, live or archived; IllFormed when one does."""
+    for number in state.archived:
+        state.jobs.pop(number, None)
+    state.jobs = dict(sorted(state.jobs.items()))
+    state.archived = dict(sorted(state.archived.items()))
+    seen: dict[tuple[str, str], int] = {}
+    for job in [*state.jobs.values(), *state.archived.values()]:
+        if job.key is None:
+            continue
+        other = seen.setdefault((job.queue, job.key), job.number)
+        if other != job.number:
+            raise IllFormed(job.id, f"key {job.key!r} also names j_{other} in {job.queue}")
+
+
+def key_map(state: Replayed) -> dict[tuple[str, str], int]:
+    """Every used key, by (queue, key), from the live and the archived jobs."""
+    return {
+        (job.queue, job.key): job.number
+        for job in [*state.jobs.values(), *state.archived.values()]
+        if job.key is not None
+    }
+
+
+class LogFile:
+    """One append-only file of JSON lines. A write is durable when `append_all` returns; when
+    it raises, the file is truncated back to what it held before."""
+
+    def __init__(self, fd: int, size: int, ops: FileOps) -> None:
         self._fd = fd
         self._size = size
         self._ops = ops
         self._dirty = False
-        self._closed = False
 
-    @classmethod
-    def open(cls, directory: Path, ops: FileOps | None = None) -> tuple[Store, Replayed]:
-        """Lock `<dir>`, replay its log, and cut a torn last line off."""
-        dir_fd, lock_fd = _open_and_lock(directory)
-        opened: list[int] = [lock_fd, dir_fd]
-        try:
-            flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_CLOEXEC
-            fd = os.open(LOG_NAME, flags, 0o600, dir_fd=dir_fd)
-            opened.insert(0, fd)
-            os.fsync(dir_fd)
-            replayed, good_size = replay_fd(fd)
-            if good_size != os.fstat(fd).st_size:
-                os.ftruncate(fd, good_size)
-                os.fsync(fd)
-        except (OSError, StoreOpenError) as error:
-            for each in opened:
-                os.close(each)
-            if isinstance(error, IllFormed):
-                raise StoreOpenError(f"{directory}: {error}") from error
-            if isinstance(error, StoreOpenError):
-                raise
-            raise StoreOpenError(f"{directory}/{LOG_NAME}: {error.strerror}") from error
-        return cls(dir_fd, lock_fd, fd, good_size, ops or RealFileOps()), replayed
-
-    def append(self, record: PutRecord | DeleteRecord) -> None:
-        """Write one record and fsync it; on any failure, roll the log back and raise."""
-        self.append_all([record])
-
-    def append_all(self, records: Sequence[PutRecord | DeleteRecord]) -> None:
+    def append_all(self, records: Sequence[BaseModel]) -> None:
         """Write records with one fsync: all of them become durable, or none do.
 
-        A store that cannot be written raises `StoreError` and nothing else: no failure is
+        A file that cannot be written raises `StoreError` and nothing else: no failure is
         latched, so the first write after the file can be written again goes through.
         """
         data = b"".join(record.model_dump_json().encode() + b"\n" for record in records)
@@ -190,7 +224,7 @@ class Store:
         self._size = start + len(data)
 
     def _clean(self, size: int) -> None:
-        """Cut off what a roll-back could not: a write only ever goes on a log of `size`."""
+        """Cut off what a roll-back could not: a write only ever goes on a file of `size`."""
         if not self._dirty:
             return
         os.ftruncate(self._fd, size)
@@ -214,17 +248,92 @@ class Store:
         except OSError:
             self._dirty = True
 
+    @property
+    def size(self) -> int:
+        return self._size
+
+
+class Store:
+    def __init__(
+        self,
+        dir_fd: int,
+        lock_fd: int,
+        log: tuple[int, int],
+        archive: tuple[int, int],
+        ops: FileOps,
+    ) -> None:
+        self._dir_fd = dir_fd
+        self._lock_fd = lock_fd
+        self._fds = (log[0], archive[0])
+        self._log = LogFile(log[0], log[1], ops)
+        self._archive = LogFile(archive[0], archive[1], ops)
+        self._closed = False
+
+    @classmethod
+    def open(cls, directory: Path, ops: FileOps | None = None) -> tuple[Store, Replayed]:
+        """Lock `<dir>`, replay its log and its archive, and cut a torn last line off each."""
+        dir_fd, lock_fd = _open_and_lock(directory)
+        opened: list[int] = [lock_fd, dir_fd]
+        name = LOG_NAME
+        try:
+            flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_CLOEXEC
+            fd = os.open(LOG_NAME, flags, 0o600, dir_fd=dir_fd)
+            opened.insert(0, fd)
+            os.fsync(dir_fd)
+            replayed, good_size = replay_fd(fd)
+            name = ARCHIVE_NAME
+            archive_fd = os.open(ARCHIVE_NAME, flags, 0o600, dir_fd=dir_fd)
+            opened.insert(0, archive_fd)
+            os.fsync(dir_fd)
+            archive_size = replay_archive_fd(archive_fd, replayed)
+            resolve(replayed)
+            for each, size in ((fd, good_size), (archive_fd, archive_size)):
+                if size != os.fstat(each).st_size:
+                    os.ftruncate(each, size)
+                    os.fsync(each)
+        except (OSError, StoreOpenError) as error:
+            for each in opened:
+                os.close(each)
+            if isinstance(error, IllFormed):
+                raise StoreOpenError(f"{directory}: {error}") from error
+            if isinstance(error, StoreOpenError):
+                raise
+            raise StoreOpenError(f"{directory}/{name}: {error.strerror}") from error
+        store = cls(
+            dir_fd, lock_fd, (fd, good_size), (archive_fd, archive_size), ops or RealFileOps()
+        )
+        return store, replayed
+
+    def append(self, record: PutRecord | DeleteRecord | ArchivedRecord) -> None:
+        """Write one record and fsync it; on any failure, roll the log back and raise."""
+        self.append_all([record])
+
+    def append_all(self, records: Sequence[PutRecord | DeleteRecord | ArchivedRecord]) -> None:
+        """Write live records with one fsync: all of them become durable, or none do."""
+        self._log.append_all(records)
+
+    def append_archive(self, records: Sequence[PutRecord | DeleteRecord]) -> None:
+        """Write archive records with one fsync: all of them become durable, or none do."""
+        for record in records:
+            if isinstance(record, PutRecord):
+                ensure(archive_problem(record.job) is None, "only an archivable job is archived")
+        self._archive.append_all(records)
+
     def close(self) -> None:
-        """Close the log and give up the lock; a second close does nothing."""
+        """Close both files and give up the lock; a second close does nothing."""
         if self._closed:
             return
         self._closed = True
-        for fd in (self._fd, self._lock_fd, self._dir_fd):
+        for fd in (*self._fds, self._lock_fd, self._dir_fd):
             os.close(fd)
 
     @property
     def size(self) -> int:
-        return self._size
+        return self._log.size
+
+    @property
+    def archive_size(self) -> int:
+        return self._archive.size
 
     @property
     def dir_fd(self) -> int:
@@ -276,8 +385,28 @@ def _first_problem(invalid: ValidationError) -> str:
     return f"{where} {first['msg'].lower()}" if where else str(first["msg"]).lower()
 
 
+def live_problem(job: Job) -> str | None:
+    """The rule a job in the live log breaks, or None."""
+    problem = job_problem(job)
+    if problem is None and job.archived_ms is not None:
+        return "a live job has no archived_at"
+    return problem
+
+
+def archive_problem(job: Job) -> str | None:
+    """The rule a job in the archive breaks, or None: only done and dead jobs, each with an
+    `archived_at`."""
+    problem = job_problem(job)
+    if problem is None and job.state not in {"done", "dead"}:
+        return f"an archived job is done or dead, not {job.state}"
+    if problem is None and job.archived_ms is None:
+        return "an archived job has an archived_at"
+    return problem
+
+
 def replay_fd(fd: int) -> tuple[Replayed, int]:
-    """The replayed state and the size of the log up to its last whole line.
+    """The live log's replayed state (before the archive is applied) and the size of the log
+    up to its last whole line.
 
     IllFormed for the first record that breaks a rule: the folder is refused, not served.
     """
@@ -291,7 +420,7 @@ def replay_fd(fd: int) -> tuple[Replayed, int]:
         except ValidationError as error:
             raise IllFormed(record_key(line, line_number), _first_problem(error)) from error
         if isinstance(record, PutRecord):
-            problem = job_problem(record.job)
+            problem = live_problem(record.job)
             if problem is not None:
                 raise IllFormed(record.job.id, problem)
         apply_record(state, record)
@@ -300,43 +429,92 @@ def replay_fd(fd: int) -> tuple[Replayed, int]:
     return state, good_size
 
 
+def replay_archive_fd(fd: int, state: Replayed) -> int:
+    """Apply the archive to `state`; the size of the archive up to its last whole line."""
+    good_size = 0
+    for line_number, line in enumerate(_lines(fd), start=1):
+        if not line.endswith(b"\n"):
+            break  # a torn last write, cut like the log's
+        try:
+            record = _ARCHIVE_RECORD.validate_json(line)
+        except ValidationError as error:
+            key = record_key(line, line_number)
+            raise IllFormed(key, _first_problem(error), "archive record") from error
+        if isinstance(record, PutRecord):
+            problem = archive_problem(record.job)
+            if problem is not None:
+                raise IllFormed(record.job.id, problem, "archive record")
+        apply_archive_record(state, record)
+        good_size += len(line)
+    return good_size
+
+
 def replay(directory: Path) -> Replayed:
-    """Replay a log without taking the lock, for checks while a queue holds it."""
+    """Replay the log and the archive without taking the lock, for checks while a queue
+    holds it."""
     fd = os.open(directory / LOG_NAME, os.O_RDONLY | os.O_CLOEXEC)
     try:
-        return replay_fd(fd)[0]
+        state = replay_fd(fd)[0]
     finally:
         os.close(fd)
+    try:
+        archive_fd = os.open(directory / ARCHIVE_NAME, os.O_RDONLY | os.O_CLOEXEC)
+    except FileNotFoundError:
+        archive_fd = -1
+    if archive_fd >= 0:
+        try:
+            replay_archive_fd(archive_fd, state)
+        finally:
+            os.close(archive_fd)
+    resolve(state)
+    return state
+
+
+def _write_file(dir_fd: int, name: str, final: str, lines: Sequence[BaseModel]) -> None:
+    """`lines` into `name`, fsynced, then renamed over `final`."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_CLOEXEC
+    fd = os.open(name, flags, 0o600, dir_fd=dir_fd)
+    try:
+        data = b"".join(line.model_dump_json().encode() + b"\n" for line in lines)
+        view = memoryview(data)
+        while view:
+            view = view[os.write(fd, view) :]
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.rename(name, final, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+    os.fsync(dir_fd)
 
 
 def compact(directory: Path) -> tuple[int, int]:
-    """Rewrite the log to a counter line and one line per live job; (records before, after)."""
+    """Rewrite the log to a counter line and one line per live job, and the archive to one
+    line per archived job that is not deleted; (live records before, after).
+
+    The archive is rewritten first: a kill between the two renames leaves a live log whose
+    stale lines the archive still overrides, and deletes the live log still records."""
     store, state = Store.open(directory)
     try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_CLOEXEC
-        fd = os.open(COMPACT_NAME, flags, 0o600, dir_fd=store.dir_fd)
-        try:
-            lines = [CounterRecord(next_number=state.next_number).model_dump_json()]
-            lines += [PutRecord(job=job).model_dump_json() for job in state.jobs.values()]
-            data = ("\n".join(lines) + "\n").encode()
-            view = memoryview(data)
-            while view:
-                view = view[os.write(fd, view) :]
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-        os.rename(COMPACT_NAME, LOG_NAME, src_dir_fd=store.dir_fd, dst_dir_fd=store.dir_fd)
-        os.fsync(store.dir_fd)
+        archived = [PutRecord(job=job) for job in state.archived.values()]
+        _write_file(store.dir_fd, ARCHIVE_COMPACT_NAME, ARCHIVE_NAME, archived)
+        live: list[BaseModel] = [CounterRecord(next_number=state.next_number)]
+        live += [PutRecord(job=job) for job in state.jobs.values()]
+        _write_file(store.dir_fd, COMPACT_NAME, LOG_NAME, live)
     except OSError as error:
         raise StoreOpenError(f"compacting {directory}: {error.strerror}") from error
     finally:
         store.close()
     after = replay(directory)
     ensure(
-        all(job_problem(job) is None for job in after.jobs.values()),
+        all(live_problem(job) is None for job in after.jobs.values()),
         "compaction writes only well-formed records",
     )
+    ensure(
+        all(archive_problem(job) is None for job in after.archived.values()),
+        "compaction writes only well-formed archive records",
+    )
     ensure(after.jobs == state.jobs, "compaction keeps every live job as it was")
+    ensure(after.archived == state.archived, "compaction keeps every archived job as it was")
     ensure(after.next_number == state.next_number, "compaction keeps the counter")
     ensure(after.records == len(state.jobs) + 1, "one line per live job and the counter")
+    ensure(after.archive_records == len(state.archived), "one line per archived job")
     return state.records, after.records

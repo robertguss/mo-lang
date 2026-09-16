@@ -1,0 +1,9 @@
+# After a stop, a compaction, and a start: the archived job and its key are still there,
+# and a delete frees the key.
+- GET /health
+w1 GET /jobs/j_1
+w1 POST /jobs {"queue": "orders", "payload": "after restart", "max_tries": 1, "key": "order-17"}
+w1 DELETE /jobs/j_1
+w1 GET /jobs/j_1
+w1 POST /jobs {"queue": "orders", "payload": "freed", "max_tries": 1, "key": "order-17"}
+- GET /health

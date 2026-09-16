@@ -3,11 +3,15 @@
 Every change goes through `_commit`, which checks the nevers, makes the record durable,
 and only then applies it. A lease and a `run_at` are deadlines, not timers: every
 operation first looks at the clock, returns each lease that ran out, and queues each
-scheduled job that is due (`_look`).
+scheduled job that is due (`_look`); then it archives each done or dead job whose
+`updated_ms` is `retain_ms` or more before now (`archive_step`, then `_archive_due`).
+
+A job carries an optional idempotency `key`; the key map names the job, live or archived,
+that holds each (queue, key), until that job is deleted.
 """
 
 import heapq
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Concatenate
 
@@ -22,24 +26,37 @@ from jobq.contract import (
     require,
 )
 from jobq.jobs import (
+    DEFAULT_RETAIN_MS,
+    FINISHED,
     LIST_LIMIT,
     MAX_BACKOFF_MS,
     MAX_DELAY_MS,
     MAX_LEASE_MS,
     MAX_REASON_BYTES,
+    MAX_RETAIN_MS,
     MAX_TRIES,
     MIN_LEASE_MS,
+    MIN_RETAIN_MS,
     MIN_TRIES,
     STATES,
     Job,
     JobState,
+    key_problem,
     parse_job_id,
     payload_problem,
     queue_name_problem,
     text_problem,
     token_problem,
 )
-from jobq.store import DeleteRecord, PutRecord, Replayed, Store, StoreError
+from jobq.store import (
+    ArchivedRecord,
+    DeleteRecord,
+    PutRecord,
+    Replayed,
+    Store,
+    StoreError,
+    key_map,
+)
 
 type Edge = tuple[JobState | None, JobState | None]
 
@@ -113,19 +130,43 @@ class Chaos:
         return self.every > 0 and self.applied // self.every > before // self.every
 
 
+def archive_step(jobs: Iterable[Job], now: int, retain_ms: int) -> list[Job]:
+    """The archive move over the board, apart from any file: each done or dead job whose
+    `updated_ms` is at least `retain_ms` before `now`, as the archive holds it."""
+    require(MIN_RETAIN_MS <= retain_ms <= MAX_RETAIN_MS, "retain_ms is 1,000 to 2,678,400,000")
+    moved = [
+        job.model_copy(update={"archived_ms": now})
+        for job in jobs
+        if job.state in FINISHED and now - job.updated_ms >= retain_ms
+    ]
+    ensure(all(job.archived_ms == now for job in moved), "every moved job is archived now")
+    return moved
+
+
 class Queue:
     def __init__(
-        self, store: Store, clock: Clock, replayed: Replayed, chaos: Chaos | None = None
+        self,
+        store: Store,
+        clock: Clock,
+        replayed: Replayed,
+        chaos: Chaos | None = None,
+        retain_ms: int = DEFAULT_RETAIN_MS,
     ) -> None:
+        require(MIN_RETAIN_MS <= retain_ms <= MAX_RETAIN_MS, "retain_ms is 1,000 to 2,678,400,000")
         self._store = store
         self._clock = clock
         self._chaos = chaos or Chaos()
+        self._retain_ms = retain_ms
         self._jobs: dict[int, Job] = dict(replayed.jobs)
+        self._archived: dict[int, Job] = dict(replayed.archived)
+        self._keys: dict[tuple[str, str], int] = key_map(replayed)
         self._next_number = replayed.next_number
         self._counts: dict[JobState, int] = dict.fromkeys(STATES, 0)
         self._queued: dict[str, list[int]] = {}
         self._leases: list[tuple[int, int]] = []
         self._scheduled: list[tuple[int, int]] = []
+        self._finished: list[tuple[int, int]] = []  # (updated_ms, number) of done and dead jobs
+        self._unmarked: list[int] = []  # archived jobs the live log does not yet say left
         self._touched: list[int] = []
         for job in self._jobs.values():
             self._counts[job.state] += 1
@@ -136,15 +177,39 @@ class Queue:
 
     @operation
     def get(self, job_id: str) -> Job | None:
+        """The job, live or archived."""
         self._look()
         number = parse_job_id(job_id)
-        return None if number is None else self._jobs.get(number)
+        if number is None:
+            return None
+        return self._jobs.get(number) or self._archived.get(number)
 
     @operation
-    def jobs(self, queue: str | None, state: JobState | None) -> list[Job]:
-        """Jobs by id, at most 100, filtered by queue and state when given."""
-        require(queue is None or queue_name_problem(queue) is None, "the queue name is valid")
+    def keyed(self, queue: str, key: str) -> Job | None:
+        """The job, live or archived, that holds `key` in `queue`."""
+        require(queue_name_problem(queue) is None, "the queue name is valid")
+        require(key_problem(key) is None, "the key is valid")
         self._look()
+        return self._keyed(queue, key)
+
+    def _keyed(self, queue: str, key: str) -> Job | None:
+        number = self._keys.get((queue, key))
+        if number is None:
+            return None
+        job = self._jobs.get(number) or self._archived.get(number)
+        ensure(job is not None and job.key == key and job.queue == queue, "a key names its job")
+        return job
+
+    @operation
+    def jobs(self, queue: str | None, state: JobState | None, key: str | None = None) -> list[Job]:
+        """Live jobs by id, at most 100, filtered by queue and state when given. With a key,
+        the one job that holds it in `queue`, live or archived, if its state matches."""
+        require(queue is None or queue_name_problem(queue) is None, "the queue name is valid")
+        require(key is None or (queue is not None and key_problem(key) is None), "a key's queue")
+        self._look()
+        if key is not None and queue is not None:
+            job = self._keyed(queue, key)
+            return [] if job is None or state not in {None, job.state} else [job]
         found = []
         for job in self._jobs.values():
             if (queue is None or job.queue == queue) and (state is None or job.state == state):
@@ -158,6 +223,11 @@ class Queue:
         self._look()
         return dict(self._counts)
 
+    @property
+    def archived_count(self) -> int:
+        """How many jobs the archive holds; read after a look."""
+        return len(self._archived)
+
     @operation
     def queue_counts(self) -> dict[str, dict[JobState, int]]:
         """Every queue that holds at least one job, by name, with its counts per state."""
@@ -170,16 +240,26 @@ class Queue:
     # Changes.
 
     @operation
-    def create(
-        self, queue: str, payload: str, max_tries: int, delay_ms: int = 0, backoff_ms: int = 0
+    def create(  # noqa: PLR0913 - the body's five fields and its optional key
+        self,
+        queue: str,
+        payload: str,
+        max_tries: int,
+        delay_ms: int = 0,
+        backoff_ms: int = 0,
+        *,
+        key: str | None = None,
     ) -> Job:
-        """A new job: queued, or scheduled `delay_ms` from now when there is a delay."""
+        """A new job: queued, or scheduled `delay_ms` from now when there is a delay. A `key`
+        must not be in use in `queue` (`keyed` answers a create that reuses one)."""
         require(queue_name_problem(queue) is None, "the queue name is valid")
         require(payload_problem(payload) is None, "the payload is valid")
         require(MIN_TRIES <= max_tries <= MAX_TRIES, "max_tries is 1 to 100")
         require(0 <= delay_ms <= MAX_DELAY_MS, "delay_ms is 0 to 86,400,000")
         require(0 <= backoff_ms <= MAX_BACKOFF_MS, "backoff_ms is 0 to 3,600,000")
+        require(key is None or key_problem(key) is None, "the key is valid")
         now = self._look()
+        require(key is None or (queue, key) not in self._keys, "the key is not in use")
         job = Job(
             number=self._next_number,
             queue=queue,
@@ -191,9 +271,11 @@ class Queue:
             created_ms=now,
             updated_ms=now,
             run_at_ms=now + delay_ms if delay_ms > 0 else None,
+            key=key,
         )
         self._commit(None, job)
         ensure(self._jobs[job.number] is job, "the job is kept")
+        ensure(key is None or self._keys[(queue, key)] == job.number, "the key names the job")
         if delay_ms > 0:
             ensure(job.state == "scheduled" and job.run_at_ms == now + delay_ms, "scheduled")
         else:
@@ -234,9 +316,9 @@ class Queue:
         now = self._look()
         job = self._find(job_id)
         if job is None:
-            return NotFound()
+            return self._missing(job_id, _NOT_HELD)
         if not _holds_live_lease(job, worker, now):
-            return Conflict("the caller does not hold a live lease on this job")
+            return Conflict(_NOT_HELD)
         done = job.model_copy(
             update={"state": "done", "worker": None, "lease_until_ms": None, "updated_ms": now}
         )
@@ -250,9 +332,9 @@ class Queue:
         now = self._look()
         job = self._find(job_id)
         if job is None:
-            return NotFound()
+            return self._missing(job_id, _NOT_HELD)
         if not _holds_live_lease(job, worker, now):
-            return Conflict("the caller does not hold a live lease on this job")
+            return Conflict(_NOT_HELD)
         failed = _returned(job, now).model_copy(update={"reason": reason})
         self._commit(job, failed)
         return failed
@@ -263,7 +345,7 @@ class Queue:
         now = self._look()
         job = self._find(job_id)
         if job is None:
-            return NotFound()
+            return self._missing(job_id, "archived")
         if job.state != "dead":
             return Conflict("the job is not dead")
         retried = job.model_copy(
@@ -284,10 +366,20 @@ class Queue:
 
     @operation
     def delete(self, job_id: str) -> Job | NotFound | Conflict:
+        """A live job is deleted by a live `delete`; an archived one by a live `delete` and
+        then a tombstone in the archive, so no stale live record of it can come back."""
         self._look()
         job = self._find(job_id)
         if job is None:
-            return NotFound()
+            number = parse_job_id(job_id)
+            archived = None if number is None else self._archived.get(number)
+            if archived is None:
+                return NotFound()
+            self._store.append(DeleteRecord(number=archived.number))
+            self._store.append_archive([DeleteRecord(number=archived.number)])
+            self._unarchive(archived)
+            ensure(archived.number not in self._archived, "the archived job is deleted")
+            return archived
         if job.state == "leased":
             return Conflict("the job is leased")
         self._commit(job, None)
@@ -305,6 +397,11 @@ class Queue:
         now = self._clock.now_ms()
         self._expire(now)
         return now
+
+    def _missing(self, job_id: str, reason: str) -> NotFound | Conflict:
+        """No live job: a Conflict naming `reason` when it is archived, NotFound otherwise."""
+        number = parse_job_id(job_id)
+        return NotFound() if number is None or number not in self._archived else Conflict(reason)
 
     def _expire(self, now: int) -> int:
         """Return every run-out lease and queue every due scheduled job in one durable write,
@@ -333,7 +430,57 @@ class Queue:
             for entry in popped_runs:
                 heapq.heappush(self._scheduled, entry)
             raise
-        return len(due)
+        return len(due) + self._archive_due(now)
+
+    def _archive_due(self, now: int) -> int:
+        """Move every done or dead job past `retain_ms` to the archive: the archive's write,
+        then the live log's `archived` records, both durable before the look answers. The
+        archive wins at open, so once its write is on disk the move is made; a live record
+        that cannot be written is written at a later look. How many jobs moved."""
+        popped: list[tuple[int, int]] = []
+        candidates: list[Job] = []
+        while self._finished and self._finished[0][0] <= now - self._retain_ms:
+            updated, number = heapq.heappop(self._finished)
+            popped.append((updated, number))
+            job = self._jobs.get(number)
+            if job is not None and job.state in FINISHED and job.updated_ms == updated:
+                candidates.append(job)
+        moved = archive_step(candidates, now, self._retain_ms)
+        if moved:
+            try:
+                self._store.append_archive([PutRecord(job=job) for job in moved])
+            except StoreError:
+                for entry in popped:
+                    heapq.heappush(self._finished, entry)
+                raise
+            if self._chaos.fails(len(moved)):
+                raise ChaosFailure(
+                    f"--crash-every {self._chaos.every} between the archive and the log"
+                )
+            for job in moved:
+                self._archive(job)
+        if self._unmarked:
+            try:
+                self._store.append_all([ArchivedRecord(number=n) for n in self._unmarked])
+                self._unmarked.clear()
+            except StoreError:
+                pass  # the archive already holds the jobs; the next look writes the records
+        return len(moved)
+
+    def _archive(self, archived: Job) -> None:
+        live = self._jobs.pop(archived.number)
+        never(live.state in FINISHED, "only a done or dead job is archived")
+        never(archived.model_copy(update={"archived_ms": None}) == live, "a job archives as is")
+        self._counts[live.state] -= 1
+        self._archived[archived.number] = archived
+        self._unmarked.append(archived.number)
+        self._touched.append(archived.number)
+
+    def _unarchive(self, archived: Job) -> None:
+        del self._archived[archived.number]
+        if archived.key is not None:
+            del self._keys[(archived.queue, archived.key)]
+        self._touched.append(archived.number)
 
     def _find(self, job_id: str) -> Job | None:
         number = parse_job_id(job_id)
@@ -349,6 +496,7 @@ class Queue:
         records: list[PutRecord | DeleteRecord] = []
         for before, after in changes:
             check_transition(before, after)
+            never(after is None or after.archived_ms is None, "a live job is never archived")
             if after is not None:
                 records.append(PutRecord(job=after))
             elif before is not None:
@@ -365,8 +513,13 @@ class Queue:
         if after is None:
             if before is not None:
                 del self._jobs[before.number]
+                if before.key is not None:
+                    del self._keys[(before.queue, before.key)]
                 self._touched.append(before.number)
             return
+        if before is None and after.key is not None:
+            never((after.queue, after.key) not in self._keys, "a key never names two jobs")
+            self._keys[(after.queue, after.key)] = after.number
         self._jobs[after.number] = after
         self._counts[after.state] += 1
         self._next_number = max(self._next_number, after.number + 1)
@@ -380,6 +533,8 @@ class Queue:
             heapq.heappush(self._leases, (job.lease_until_ms, job.number))
         elif job.state == "scheduled" and job.run_at_ms is not None:
             heapq.heappush(self._scheduled, (job.run_at_ms, job.number))
+        elif job.state in FINISHED:
+            heapq.heappush(self._finished, (job.updated_ms, job.number))
 
     # Invariants: checked after every operation on the touched jobs, in O(1) otherwise.
 
@@ -389,8 +544,11 @@ class Queue:
         for number in self._touched:
             job = self._jobs.get(number)
             invariant(number < self._next_number, "a job number is below the counter")
-            if job is not None:
-                check_job(number, job)
+            archived = self._archived.get(number)
+            invariant(job is None or archived is None, "a job is live or archived, not both")
+            for held in (job, archived):
+                if held is not None:
+                    check_job(number, held)
         self._touched.clear()
 
     def check_all(self) -> None:
@@ -399,6 +557,7 @@ class Queue:
         for state in STATES:
             actual = sum(1 for job in self._jobs.values() if job.state == state)
             invariant(self._counts[state] == actual, f"the {state} count is right")
+        invariant(self._keys == key_map(Replayed(self._jobs, 0, 0, self._archived)), "keys")
 
     @property
     def store(self) -> Store:
@@ -407,9 +566,14 @@ class Queue:
     def snapshot(self) -> dict[int, Job]:
         return dict(self._jobs)
 
+    def archived_snapshot(self) -> dict[int, Job]:
+        return dict(self._archived)
+
 
 def check_job(number: int, job: Job) -> None:
     invariant(job.number == number, "a job sits under its own number")
+    archived = job.archived_ms is not None
+    invariant(not archived or job.state in FINISHED, "only a done or dead job is archived")
     leased = job.state == "leased"
     invariant(leased == (job.worker is not None), "a job has a worker exactly while leased")
     invariant(leased == (job.lease_until_ms is not None), "lease_until exactly while leased")
@@ -428,7 +592,7 @@ def check_transition(before: Job | None, after: Job | None) -> None:
     if before is None or after is None:
         return
     never(before.number == after.number, "a change never moves a job to another number")
-    fixed = ("queue", "payload", "max_tries", "backoff_ms", "created_ms")
+    fixed = ("queue", "payload", "max_tries", "backoff_ms", "created_ms", "key")
     never(all(getattr(before, f) == getattr(after, f) for f in fixed), "a job's fields are fixed")
     never(after.tries <= after.max_tries, "tries never exceed max_tries")
     if after.state == "leased":
@@ -446,6 +610,9 @@ def check_transition(before: Job | None, after: Job | None) -> None:
     if edge == ("scheduled", "queued"):
         due = before.run_at_ms is not None and after.updated_ms >= before.run_at_ms
         never(due, "a scheduled job is never queued before its run_at")
+
+
+_NOT_HELD = "the caller does not hold a live lease on this job"
 
 
 def _holds_live_lease(job: Job, worker: str, now: int) -> bool:

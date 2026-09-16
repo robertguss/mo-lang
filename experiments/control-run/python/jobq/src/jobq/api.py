@@ -136,6 +136,7 @@ class Api:
             leased=counts["leased"],
             done=counts["done"],
             dead=counts["dead"],
+            archived=self._queue.archived_count,
             uptime_ms=uptime,
             restarts=self._restarts(),
         )
@@ -161,8 +162,12 @@ class Api:
             body = CreateJob.model_validate_json(request.body)
         except ValidationError as invalid:
             return error(400, _problem(invalid))
+        if body.key is not None:
+            existing = self._queue.keyed(body.queue, body.key)
+            if existing is not None:
+                return _json(200, JobOut.of(existing))
         job = self._queue.create(
-            body.queue, body.payload, body.max_tries, body.delay_ms, body.backoff_ms
+            body.queue, body.payload, body.max_tries, body.delay_ms, body.backoff_ms, key=body.key
         )
         return _json(201, JobOut.of(job))
 
@@ -175,7 +180,9 @@ class Api:
             query = ListQuery.model_validate(fields)
         except ValidationError as invalid:
             return error(400, _problem(invalid))
-        jobs = self._queue.jobs(query.queue, query.state)
+        if query.key is not None and query.queue is None:
+            return error(400, "key needs queue")
+        jobs = self._queue.jobs(query.queue, query.state, query.key)
         return _json(200, JobList(jobs=[JobOut.of(job) for job in jobs]))
 
     def _get(self, _request: Request, job_id: str) -> Response:
