@@ -410,3 +410,6 @@
 
 ## [2026-09-16] session | Mac: the erosion round's generation two, round 9 at four models
 - Change 2 by four Opus maintainers in 12 to 18 minutes ([[erosion-round]]): nothing eroded in Mo, Go, or Python on the old suites; Elixir refuses a torn line now and cannot restart after a full disk; Mo used the deferred reply. Round 9 ([[control-run-9]]): gpt-5.5 matched Opus on Mo in 14 minutes; the local qwen 27B runs to its limit. Step 31 accepted. Two `semantic` rows for Robert.
+
+## [2026-09-16] session | Mac, 02:45: round 9 read, the night closed
+- Round 9 done except Haiku ([[control-run-9]]): the local 27B made no edit in 92 minutes; the reading written. Every session pane is saved in the lead's scratchpad; every worktree is on disk; `HANDOFF.md` is the morning's. Robert's rows: P6 and the BEAM, chapter 10 §1 as built, the erosion round, round 9.

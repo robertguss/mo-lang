@@ -83,15 +83,7 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **Round 9's last rows.** qwen (`w48:p1-3`, Pi, local `qwen3.8:27b-mlx`,
->    started 01:09, limit 02:40): if the session at 02:40 shows no
->    `jobq: the change` commit in `../mo-lang-r9-qwen-<lang>`, save the pane
->    (`herdr pane read <pane> --lines 400`), close it, and score P5 in
->    `control-run-9.md`; then the round's Result reading against P1 to P5 and
->    the roadmap row. Haiku 4.5 through Claude Code (`--model haiku`) is M5,
->    unrun: `r9-setup.sh haiku`, three panes, the Claude kind, `r9-brief.sh`.
->    The suites per language are in `control-run-9-suite/` (the Python one paced
->    by category on macOS: `paced-python.sh`).
+> 1. **Round 9's last row.** Haiku 4.5 through Claude Code (`--model haiku`) is M5, unrun: `r9-setup.sh haiku`, three panes in a new workspace, the Claude kind with `/effort medium`, `r9-brief.sh`, the suites per language from `control-run-9-suite/` (the Python one paced: `paced-python.sh`). The round is otherwise read (`control-run-9.md`, status done): qwen made no edit in 92 minutes in any language.
 > 2. **P6 on Mo's change 2 program** (`../mo-lang-erosion2-mo`, the binary at
 >    `examples/programs/jobq/zig-out/mo-build/jobq-e2/jobq-e2`): the queue
 >    crashed under load with the service still answering. The binary's queue

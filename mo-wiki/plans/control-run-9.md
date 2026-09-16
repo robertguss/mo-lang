@@ -12,7 +12,7 @@ sources:
     spec/programs/01b-job-queue-change.md,
     decisions/decision-log.md,
   ]
-status: in-progress
+status: done
 ---
 
 # The control run, round 9
@@ -100,11 +100,26 @@ Started 15 Sep 2026, 23:21 local, on the Mac, Fable alone. A setup slip recorded
 | M4 gpt-5.5 (Codex) | Go | yes, 01:15 | 6 min by the lead's clock (the brief at 01:09, the commit at 01:15; its report says "about 45 minutes") | 2 (both fixture drift after the rename), first fix right in both | 0 of 121 | 1 of 189 (the same `delay_ms` null; four of four Go changes now) | 97k / 15k |
 | M4 gpt-5.5 (Codex) | Mo | yes, 01:23 | 14 min | 13 (MO0101, MO0303 twice, MO0317 twice, own tests 3, the 'held by two workers' `never` after a retry as in round 8, the old-name replay fallback caught by its own replay check, two harness slips), every first fix right | 0 of 121 | 0 of 189 | 200k / 36k |
 | M4 gpt-5.5 (Codex) | Python | yes, 01:16 | 7 min by the lead's clock (its report says 55) | 7 failing checks over 4 causes, first fix right in each | 0 of 121 | 0 of 189 | 122k / 18k |
+| M1 qwen3.8 27B, local | Mo, Go, Python | **not green at 90 min, all three**: no edit made in 92 minutes (0 files changed in every worktree); it read the program and reasoned in text, 6 shell calls in Mo, 4 in Go, 0 in Python; the three sessions shared one local model, so each waited on the others' prompts | 92 min, stopped | 0 | — | — | 384k / 2.5k, 277k / 2.4k, 280k / 2.0k |
 
 
 **After three models (16 Sep, 01:30 local).** gpt-5.5 through Codex matched Opus on the Mo change (0 and 0) in 14 minutes against Opus's 34, with the same `never` false positive after a retry that cost Opus two loops (one here), and its own replay check caught the one real slip (the old-name fallback). Its Go change carries the one defect every Go change carries (four of four now), its Python change is under the suites. So after three models the Mo row's defects come from the two open-weights models only, and the run-out-with-backoff miss is theirs alone.
 
 **After two models (16 Sep, 01:10 local).** Six sessions, six green. Reliability moved with the model on the Mo side only: both small models' Mo changes carry the same defect Opus's did not (a run-out lease with `backoff_ms` is put back as scheduled and never handed out once its backoff has passed, 204), deepseek's a second (`run_at` from the client accepted), while their Go changes carry exactly Opus's one defect and their Python changes none. P1 holds. P2 fails for both models: Mo's defects are above Python's (1 and 2 against 0) and, for deepseek, above Go's. P4 holds for both (Mo 11 and 12 loops against Go's 4 and 7). P3 is unread until the loop logs are read against the diffs; nothing in either report says a law stopped a bug, and deepseek's `requires` trip was its own test's wrong lease length. P5 waits on M1. The time column: kimi 15, 35, and 97 minutes; deepseek 11, 14, and 17. The pane column: Mo cost kimi 500k input tokens and three compactions of a 128k window, the Go change 139k; the Mo program is the one the model has never seen, and the loop rate says the diagnostics carried it (first fix right in 21 of 23 loops across the two Mo sessions).
+
+## Reading, against the predictions (16 Sep, 02:45 local)
+
+Four of five models run: three cloud models in Pi and the local 27B; Haiku 4.5 through Claude Code is unrun, and the Opus-in-Pi baseline has no key. Every cloud model reached green in every language; the local model made no edit.
+
+| prediction | threshold | result | held |
+|---|---|---|---|
+| P1, reliability moves with the model | one model's Mo change has a regression or a defect | kimi 1 cause, deepseek 2 (both miss the run-out lease with backoff), gpt-5.5 0; regressions 0 everywhere | yes |
+| P2, the claim holds per model | Mo's defects no more than Go's and Python's | kimi: Mo 1, Go 1, Python 0; deepseek: Mo 2, Go 1, Python 0; gpt-5.5: Mo 0, Go 1, Python 0 | no for the two open-weights models, yes for gpt-5.5 |
+| P3, the laws catch something | a contract, `never`, `invariant`, or diagnostic stops a change-induced bug | nothing in nine reports says so; gpt-5.5's own replay check caught its old-name fallback slip, the same `never` false positive after a retry cost it and Opus a loop; deepseek's `requires` trip was its own test's wrong lease | no |
+| P4, the tax | Mo takes more loops than Go | kimi 11 to 4, deepseek 12 to 7, gpt-5.5 13 to 2 | yes |
+| P5, the floor | the local 27B does not reach green in Mo, and does in Go or Python | green in none | half: the floor is below Go and Python too |
+
+**What it says.** Reliability moves with the model on the Mo side and only there. Every Go change, Opus's included, carries the same `delay_ms` null defect, a reading of one spec sentence that no model caught; every Python change is at 0; the Mo changes go 0 (Opus, gpt-5.5), 1 (kimi), 2 (deepseek), and the defect the two open-weights models share is a scheduling case the change added (a run-out lease with `backoff_ms` put back as scheduled and never handed out once due) that the checks do not state and the tests they wrote did not reach. So the language's checks did not carry the weaker models past the mistake they made, and the diagnostics did carry them to green: first fix right in 21 of 23 loops for kimi and deepseek in Mo, every loop for gpt-5.5, in a language no model has seen. The time column: Mo cost the open-weights models 97 and 17 minutes against Go's 15 and 11; gpt-5.5 did the Mo change in 14 minutes, Opus in 34. The local 27B could not do the task in any language in this harness: it read the program and thought, and never wrote, which is the floor direction 41 asked for and it sits below Go and Python as well. The row for the language page: the checks that would have caught the open-weights models' miss are a `never` on the lease path ("a due job is never left scheduled") that none of the programs states; that is a spec row, not a law.
 
 ## Related
 
