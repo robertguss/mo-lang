@@ -1,4 +1,12 @@
+---
+title: "Mo"
+type: index
+---
+
 # Mo Lang — Index
+
+> **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] table is the authority on order; the [[decision-log]] is what Robert reads.
+
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
 > Last updated: 2026-09-13 | Total pages: 137

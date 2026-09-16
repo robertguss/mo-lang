@@ -5,7 +5,7 @@ from pathlib import Path
 from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parent.parent
-WIKI_DIRS = ["directions", "questions", "decisions", "syntax", "deep-dives", "plans", "sessions", "research"]
+WIKI_DIRS = ["directions", "questions", "decisions", "syntax", "deep-dives", "plans", "sessions", "research", "maps"]
 REQUIRED = ["title", "created", "updated", "type", "tags", "sources"]
 TYPES = {"direction", "question", "decision", "syntax-pick", "example", "deep-dive", "plan", "session", "comparison", "concept"}
 
