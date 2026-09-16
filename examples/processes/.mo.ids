@@ -210,6 +210,23 @@
       "verified": { "hash": "77f75ec5e0ab036b", "declarations": "15e5b89260b28bd5" }
     },
     {
+      "path": "restart-reopens.mo",
+      "module": "Processes.RestartReopens",
+      "declarations": [
+        { "id": "866e5e86e1d8", "name": "module Processes.RestartReopens", "hash": "153e08b02d715a43" },
+        { "id": "1620ec95face", "name": "expose", "hash": "24ff9d3e8231d35b" },
+        { "id": "bea00b778a4d", "name": "intent", "hash": "6dc259e28ff0edcb" },
+        { "id": "c11e8874f915", "name": "fn opened", "hash": "2a0424fd1303afc0" },
+        { "id": "0ca3513f1256", "name": "process Store", "hash": "1c8feeceeefb1d32" },
+        { "id": "80a149996702", "name": "supervisor Stores", "hash": "728e7bbf7b86293c" },
+        { "id": "34f7c6323fe6", "name": "fn told", "hash": "9af246bf96ed8074" },
+        { "id": "b4a05d5bc574", "name": "fn main", "hash": "79088c921be7493a" },
+        { "id": "aee5387e7d93", "name": "test \"a store's initializer reads the file through the Fs it was started with\"", "hash": "e5f012151562f181" },
+        { "id": "ca4be5a3fc02", "name": "test rejects \"a second write trips the invariant\"", "hash": "b83c6e6ad8afb04a" }
+      ],
+      "verified": { "hash": "8ba7d2cb34a86b05", "declarations": "02d81b148e81f2c1" }
+    },
+    {
       "path": "supervisor.mo",
       "module": "Processes.Supervisor",
       "declarations": [
