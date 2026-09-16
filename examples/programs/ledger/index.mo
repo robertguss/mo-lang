@@ -60,274 +60,173 @@ struct Book
 end
 
 fn book() : Book
-  Book(accounts: Map.new(), balances: Map.new(), held: Map.new(), holds: Map.new(),
-    closed: Map.new(), captures: Map.new(), entries: Map.new(), lists: Map.new(), keys: Map.new(),
-    settled: Map.new(), next_account: 1, next_entry: 1, entry_count: 0, posted: 0, unbalanced: 0,
-    keyed_entries: 0, naming: 0, dangling: 0)
+  # body gone; regenerate
 end
 
 fn account_of_id(book: Book, id: String) : Option(Account)
-  book.accounts.get(id)
+  # body gone; regenerate
 end
 
 fn balance(book: Book, id: String) : Int64
-  book.balances.get(id) or 0
+  # body gone; regenerate
 end
 
 fn held_on(book: Book, id: String) : Int64
-  book.held.get(id) or 0
+  # body gone; regenerate
 end
 
 # The balance less what live holds keep.
 fn available(book: Book, id: String) : Int64
-  balance(book, id) - held_on(book, id)
+  # body gone; regenerate
 end
 
 fn entry_at(book: Book, number: UInt64) : Option(Entry)
-  page = try book.entries.get(number / 256)
-  page.get(number)
+  # body gone; regenerate
 end
 
 # The entry that captured or released a hold, None while it is live or when it is no hold.
 fn closer(book: Book, hold: UInt64) : Option(UInt64)
-  page = try book.closed.get(hold / 256)
-  page.get(hold)
+  # body gone; regenerate
 end
 
 fn capture_at(book: Book, number: UInt64) : Option(Captured)
-  page = try book.captures.get(number / 256)
-  page.get(number)
+  # body gone; regenerate
 end
 
 fn keyed(book: Book, key: String) : Option(Keyed)
-  page = try book.keys.get(bucket_of(key))
-  page.get(key)
+  # body gone; regenerate
 end
 
 fn bucket_of(key: String) : UInt64
   ensures result < 1_024
-
-  key.bytes.reduce(0, fn(hash, b) (hash * 31 + b.to_u64) % 1_024 end)
+  # body gone; regenerate
 end
 
 # The book with one more entry folded in: its postings into the balances, a hold opened or closed,
 # a capture recorded or refunded, a day settled, and its number listed under its accounts.
 fn applied(book: Book, entry: Entry) : Book
   ensures result.entry_count == book.entry_count + 1
-
-  var after = book
-  page = book.entries.get(entry.number / 256) or Map.new()
-  after.entries = book.entries.set(entry.number / 256, page.set(entry.number, entry))
-  after.entry_count = book.entry_count + 1
-  after.next_entry = max_of(book.next_entry, entry.number + 1)
-  sum = posted(entry)
-  after.posted = book.posted + sum
-  after.unbalanced = if sum == 0: book.unbalanced else: book.unbalanced + 1
-  after.keyed_entries = if entry.key == "": book.keyed_entries else: book.keyed_entries + 1
-  after.balances = entry.postings.reduce(book.balances, fn(sums, p) with_posting(sums, p) end)
-  after.lists = listed_under(book.lists, entry)
-  case entry.kind
-    Hold: opened_hold(after, entry)
-    Capture: captured_hold(closed_hold(after, entry), entry)
-    Release: closed_hold(after, entry)
-    Refund: refunded_capture(after, entry)
-    Settlement: settled_day(after, entry)
-    Transfer: after
-  end
+  # body gone; regenerate
 end
 
 fn with_posting(sums: Map(String, Int64), p: Posting) : Map(String, Int64)
-  sums.set(p.account, (sums.get(p.account) or 0) + p.amount)
+  # body gone; regenerate
 end
 
 fn opened_hold(book: Book, entry: Entry) : Book
-  var after = book
-  until = entry.expires_at or entry.at
-  live = Hold(number: entry.number, account: entry.account, amount: entry.amount, expires_at: until)
-  after.holds = book.holds.set(entry.number, live)
-  after.held = book.held.set(entry.account, held_on(book, entry.account) + entry.amount)
-  after
+  # body gone; regenerate
 end
 
 # A capture or a release closes its hold: what it held is no longer held, and the hold is closed
 # by this entry.
 fn closed_hold(book: Book, entry: Entry) : Book
-  number = entry.hold or 0
-  var after = book
-  if book.holds.get(number) is Some(live)
-    after.holds = book.holds.remove(number)
-    after.held = book.held.set(live.account, held_on(book, live.account) - live.amount)
-  end
-  page = book.closed.get(number / 256) or Map.new()
-  after.closed = book.closed.set(number / 256, page.set(number, entry.number))
-  after
+  # body gone; regenerate
 end
 
 fn captured_hold(book: Book, entry: Entry) : Book
-  credit = entry.postings.find(fn(p) p.amount > 0 end)
-  made = Captured(number: entry.number, account: entry.account,
-    clearing: credit.map(fn(p) p.account end) or "", amount: entry.amount, refunded: 0)
-  var after = book
-  page = book.captures.get(entry.number / 256) or Map.new()
-  after.captures = book.captures.set(entry.number / 256, page.set(entry.number, made))
-  after
+  # body gone; regenerate
 end
 
 fn refunded_capture(book: Book, entry: Entry) : Book
-  number = entry.capture or 0
-  case capture_at(book, number)
-    Some(capture):
-      var more = capture
-      more.refunded = capture.refunded + entry.amount
-      var after = book
-      page = book.captures.get(number / 256) or Map.new()
-      after.captures = book.captures.set(number / 256, page.set(number, more))
-      after
-    None: book
-  end
+  # body gone; regenerate
 end
 
 fn settled_day(book: Book, entry: Entry) : Book
-  var after = book
-  after.settled = book.settled.set(entry.day or "", entry.number)
-  after
+  # body gone; regenerate
 end
 
 # The entry's number under each account it concerns, and under its kind, while the list is under
 # a hundred: a listing is the first hundred by id.
 fn listed_under(lists: Map(String, List(UInt64)), entry: Entry) : Map(String, List(UInt64))
-  named = entry.postings.map(fn(p) p.account end).push(entry.account)
-  accounts = named.filter(fn(id) id != "" and !clearing?(id) end).unique.push("")
-  kind = kind_name(entry.kind)
-  names = accounts.flat_map(fn(id) ["#{id}/", "#{id}/#{kind}"] end)
-  names.reduce(lists, fn(all, name) pushed(all, name, entry.number) end)
+  # body gone; regenerate
 end
 
 fn pushed(lists: Map(String, List(UInt64)), name: String, number: UInt64) : Map(String,
-  List(UInt64))
-  numbers = lists.get(name) or []
-  return lists if numbers.size >= 100
-  lists.set(name, numbers.push(number))
+  # body gone; regenerate
 end
 
 # The first hundred entries by id, of an account or of all, of a kind or of all.
 fn listed(book: Book, account: Option(String), kind: Option(Kind)) : List(Entry)
   ensures result.size <= 100
-
-  name = "#{account or ""}/#{kind.map(fn(k) kind_name(k) end) or ""}"
-  numbers = book.lists.get(name) or []
-  numbers.flat_map(fn(n) found(book, n) end)
+  # body gone; regenerate
 end
 
 fn found(book: Book, number: UInt64) : List(Entry)
-  case entry_at(book, number)
-    Some(entry): [entry]
-    None: []
-  end
+  # body gone; regenerate
 end
 
 fn with_account(book: Book, account: Account) : Book
-  id = account_id(account.number)
-  var after = book
-  after.accounts = book.accounts.set(id, account)
-  after.balances = book.balances.set(id, balance(book, id))
-  after.next_account = max_of(book.next_account, account.number + 1)
-  after
+  # body gone; regenerate
 end
 
 # The book with the key's row, counted by what it names.
 fn with_keyed(book: Book, key: String, row: Keyed) : Book
-  at = bucket_of(key)
-  page = book.keys.get(at) or Map.new()
-  var after = uncounted(book, page.get(key))
-  after.keys = book.keys.set(at, page.set(key, row))
-  after.naming = after.naming + (if row.made.starts_with?("e_"): 1 else: 0)
-  after.dangling = after.dangling + (if names_nothing?(book, row.made): 1 else: 0)
-  after
+  # body gone; regenerate
 end
 
 fn uncounted(book: Book, row: Option(Keyed)) : Book
-  case row
-    Some(old_row):
-      var after = book
-      after.naming = book.naming - (if old_row.made.starts_with?("e_"): 1 else: 0)
-      after.dangling = book.dangling - (if names_nothing?(book, old_row.made): 1 else: 0)
-      after
-    None: book
-  end
+  # body gone; regenerate
 end
 
 fn names_nothing?(book: Book, made: String) : Bool
-  return false if made == ""
-  if made.starts_with?("a_")
-    !book.accounts.has?(made)
-  else
-    entry_at(book, number_in("e_", made) or 0) is None
-  end
+  # body gone; regenerate
 end
 
 # Every live hold whose expiry has come, oldest first.
 fn due_holds(book: Book, now: Time) : List(Hold)
-  book.holds.values.filter(fn(h) h.expires_at <= now end).sort_by(fn(h) h.number end)
+  # body gone; regenerate
 end
 
 # The account's live holds whose expiry has come, oldest first.
 fn due_on(book: Book, account: String, now: Time) : List(Hold)
-  due_holds(book, now).filter(fn(h) h.account == account end)
+  # body gone; regenerate
 end
 
 fn held_total(book: Book) : Int64
-  book.holds.values.map(fn(h) h.amount end).sum
+  # body gone; regenerate
 end
 
 # The sum of every positive balance equals the overdraft drawn by every negative one, every
 # balance together equals the sum of the journal's postings, and no entry's postings are
 # unbalanced.
 fn balanced?(book: Book) : Bool
-  values = book.balances.values
-  positive = values.map(fn(b) max_of(b, 0) end).sum
-  drawn = values.map(fn(b) max_of(0 - b, 0) end).sum
-  positive == drawn and values.sum == book.posted and book.unbalanced == 0
+  # body gone; regenerate
 end
 
 # What the live holds keep, summed from the holds themselves, is at most what the accounts have
 # before the holds: every balance plus its overdraft.
 fn covered?(book: Book) : Bool
-  room = book.accounts.values.map(fn(a) balance(book, account_id(a.number)) + a.overdraft end).sum
-  held_total(book) <= room
+  # body gone; regenerate
 end
 
 # Every live hold expires later than now, or an Expire for it is on its way.
 fn timed?(book: Book, pending: Set(UInt64), now: Time) : Bool
-  book.holds.values.all?(fn(h) h.expires_at > now or pending.has?(h.number) end)
+  # body gone; regenerate
 end
 
 # Every key row names something the book holds, and every entry a client's key made has its row.
 fn keyed?(book: Book) : Bool
-  book.dangling == 0 and book.keyed_entries == book.naming
+  # body gone; regenerate
 end
 
 fn t0() : Time
-  Time.from_parts(2026, 1, 1, 0, 0, 0)
+  # body gone; regenerate
 end
 
 fn ada() : Account
-  Account(number: 1, name: "ada", currency: "USD", overdraft: 10_000, created_at: t0())
+  # body gone; regenerate
 end
 
 fn grace() : Account
-  Account(number: 2, name: "grace", currency: "USD", overdraft: 0, created_at: t0())
+  # body gone; regenerate
 end
 
 fn moved(number: UInt64, kind: Kind, postings: List(Posting), key: String) : Entry
-  var made = blank(number, kind, key, t0())
-  made.postings = postings
-  made.amount = postings.map(fn(p) max_of(p.amount, 0) end).sum
-  made
+  # body gone; regenerate
 end
 
 fn opened() : Book
-  with_account(with_account(book(), ada()), grace())
+  # body gone; regenerate
 end
 
 test "a transfer moves two balances, lists its number, and keeps the book balanced"
@@ -398,6 +297,3 @@ test "a key row replaced is counted once, and a listing stops at a hundred"
     None).last == entries.get(99)
   assert balance(many, "a_2") == 150 and keyed?(many)
 end
-
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
-          proven: not run
