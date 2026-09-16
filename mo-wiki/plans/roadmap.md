@@ -19,13 +19,14 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Paused: step 34, placement, after part A (placement with the starter, pushed); parts B and C need the Mac's cores. Next on either machine: change 5 and generation five | Fable | 16 Sep, 15:45 | [[interpreter-step-34]] |
+| Step 34 parts B (the crossing made cheap) and C (the measurement at 1, 4, and 14 cores), a fresh Opus worker on the Mac from part A's commit | Opus, briefed by Fable | 16 Sep, 16:50 | [[interpreter-step-34]] |
+| Change 5 sealed and generation five pre-registered (the seam is a law: a lease handed off, a queue renamed with jobs in flight); the four worktrees branched; the sessions start once step 34's measurement is off the machine | Fable | 16 Sep, 17:05 | [[erosion-round]], [[01f-job-queue-change-5]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | Change 5 and generation five of the erosion round: a change that cuts across the queue's own invariants, or the archive read from the disk | nothing has eroded in four generations; the next change must find a seam the specs so far have not | [[erosion-round]] |
+| 1 | Generation five's four sessions, the sixth suite, the regressions, P6, the reading | pre-registered; the first change whose seam is a law | [[erosion-round]] |
 | 2 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
 | 3 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
 | 4 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
