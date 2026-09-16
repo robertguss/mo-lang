@@ -17,6 +17,11 @@
 # Four: the folder checked at the door — `verify` on the folders the run
 # wrote, and a hand-written record in a state the API could never produce
 # refused by serve, compact, and verify alike.
+#
+# Five: the board restarts itself. A `jobq serve` with the chaos switch on
+# fails its second write, comes back with the record on the board and
+# `restarts` at 1, and on the failure past its budget exits 70 with a folder
+# that verifies.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -176,5 +181,64 @@ expect_status 2 ./jobq verify
 expect_status 1 ./jobq verify /proc/self/mem/nope
 expect_status 1 ./jobq compact /proc/self/mem/nope
 expect_status 1 ./jobq client 127.0.0.1 "$port" alice GET /health
+
+# Five: the restart, the budget, and exit 70.
+mkdir "$work/chaos"
+timeout 300 ./jobq serve "$work/chaos" --port "$port" --crash-every 2 --max-restarts 1 \
+  --restart-window 60 >"$work/chaos.log" 2>&1 &
+served=$!
+
+waited=0
+until grep -q "serving" "$work/chaos.log" 2>/dev/null; do
+  waited=$((waited + 1))
+  [ "$waited" -gt 100 ] && fail "the chaos service did not come up: $(cat "$work/chaos.log")"
+  sleep 0.1
+done
+
+expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /health
+expect_body '"restarts":0'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"emails","payload":"first","max_tries":1}'
+expect_body '201 {"id":"j_1"'
+
+# The second write is on the disk and its response is lost to the failure.
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"emails","payload":"second","max_tries":1}'
+expect_body '^503 '
+
+waited=0
+until ./jobq client 127.0.0.1 "$port" anyone GET /health >"$work/out" 2>&1 &&
+  grep -q '^200 ' "$work/out"; do
+  waited=$((waited + 1))
+  [ "$waited" -gt 50 ] && fail "the board did not come back: $(cat "$work/out")"
+  sleep 0.1
+done
+expect_body '"restarts":1'
+expect_body '"queued":2'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice GET /jobs/j_2
+expect_body '200 {"id":"j_2","queue":"emails","state":"queued","payload":"second"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"emails","payload":"third","max_tries":1}'
+expect_body '201 {"id":"j_3"'
+
+# The fourth write fails the board a second time inside the window: one past
+# a budget of 1, and the service stops.
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"emails","payload":"fourth","max_tries":1}'
+expect_body '^503 '
+
+set +e
+wait "$served"
+got=$?
+set -e
+served=""
+[ "$got" = "70" ] || fail "expected the chaos service to exit 70, got $got: $(cat "$work/chaos.log")"
+grep -q "failed more than 1 time(s) inside 60 second(s)" "$work/chaos.log" ||
+  fail "the chaos service did not say why it stopped: $(cat "$work/chaos.log")"
+
+expect_status 0 ./jobq verify "$work/chaos"
+expect_body "4 jobs: queued 4, scheduled 0, leased 0, done 0, dead 0; next id j_5"
+expect_status 2 ./jobq verify "$work/chaos" --crash-every 1
+expect_status 2 ./jobq serve "$work/chaos" --restart-window 0
 
 echo "check.sh: ok"

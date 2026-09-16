@@ -29,6 +29,7 @@ defmodule Jobq.Queue do
 
   require Logger
 
+  alias Jobq.Board
   alias Jobq.Job
   alias Jobq.Store
 
@@ -53,6 +54,7 @@ defmodule Jobq.Queue do
            clock: Jobq.Clock.t(),
            sweep_ms: pos_integer(),
            started_at: integer(),
+           counters: Board.counters(),
            jobs: %{pos_integer() => Job.t()},
            next: pos_integer(),
            queued: %{String.t() => :gb_sets.set(pos_integer())},
@@ -71,12 +73,16 @@ defmodule Jobq.Queue do
 
   # Client
 
-  @doc "Start the queue of the service `ref`. Options: `:ref`, `:dir`, `:clock`, `:sweep_ms`."
+  @doc """
+  Start the queue of the service `ref`. Options: `:ref`, `:dir`, `:clock`,
+  `:sweep_ms`, `:started_at`, and the service's `:counters`.
+
+  The process takes its name only once it has read the log, so a request that
+  arrives while the board is being rebuilt finds no queue and is answered
+  `503` at once rather than held until the replay is over.
+  """
   @spec start_link(keyword()) :: GenServer.on_start()
-  def start_link(opts) do
-    ref = Keyword.fetch!(opts, :ref)
-    GenServer.start_link(__MODULE__, opts, name: Jobq.Registry.via(ref, :queue))
-  end
+  def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
 
   @doc """
   Run one operation and wait for its reply, which for anything that writes
@@ -146,31 +152,31 @@ defmodule Jobq.Queue do
     clock = Keyword.get(opts, :clock, Jobq.Clock.system())
     sweep_ms = Keyword.get(opts, :sweep_ms, 100)
 
-    case Store.read(dir) do
-      {:ok, {jobs, next}} ->
-        state =
-          %{
-            ref: ref,
-            dir: dir,
-            clock: clock,
-            sweep_ms: sweep_ms,
-            started_at: clock.(),
-            jobs: %{},
-            next: 1,
-            queued: %{},
-            leased: :gb_sets.new(),
-            scheduled: :gb_sets.new(),
-            counts: zero(),
-            by_queue: %{},
-            epoch: Store.epoch(ref)
-          }
-          |> load(jobs, next)
+    with {:ok, {jobs, next}} <- Store.read(dir),
+         {:ok, _owner} <- Registry.register(Jobq.Registry, {ref, :queue}, nil) do
+      state =
+        %{
+          ref: ref,
+          dir: dir,
+          clock: clock,
+          sweep_ms: sweep_ms,
+          started_at: Keyword.get_lazy(opts, :started_at, clock),
+          counters: Keyword.get_lazy(opts, :counters, &Board.counters/0),
+          jobs: %{},
+          next: 1,
+          queued: %{},
+          leased: :gb_sets.new(),
+          scheduled: :gb_sets.new(),
+          counts: zero(),
+          by_queue: %{},
+          epoch: Store.epoch(ref)
+        }
+        |> load(jobs, next)
 
-        schedule_sweep(state)
-        {:ok, state}
-
-      {:error, reason} ->
-        {:stop, reason}
+      schedule_sweep(state)
+      {:ok, state}
+    else
+      {:error, reason} -> {:stop, reason}
     end
   end
 
@@ -181,9 +187,32 @@ defmodule Jobq.Queue do
 
   defp zero, do: %{queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0}
 
+  # A crash report carries the counts, not the jobs: a board is up to
+  # millions of them, and their payloads are the clients'.
+  @impl GenServer
+  def format_status(status) do
+    Map.update(status, :state, nil, fn
+      %{jobs: jobs} = state ->
+        %{state | jobs: {map_size(jobs), :jobs}, queued: :redacted, by_queue: :redacted}
+        |> Map.merge(%{leased: :redacted, scheduled: :redacted})
+
+      other ->
+        other
+    end)
+  end
+
+  # The look is the board's and the operation is the request's: a look that
+  # fails means a rule inside the service is broken, and the process ends so
+  # the board is rebuilt from the log; an operation that fails is that
+  # request's 503, and the state is left as the request found it.
   @impl GenServer
   def handle_call(operation, from, state) do
-    operate(operation, from, state)
+    {records, looked} = look(state)
+    attempt(operation, records, from, looked, state)
+  end
+
+  defp attempt(operation, records, from, looked, state) do
+    operate(operation, records, from, looked)
   rescue
     error ->
       Logger.error("jobq: #{inspect(operation)} failed: " <> Exception.message(error))
@@ -194,8 +223,7 @@ defmodule Jobq.Queue do
       {:reply, {:error, :store}, state}
   end
 
-  defp operate({:create, queue, payload, max_tries, delay_ms, backoff_ms}, from, state) do
-    {records, state} = look(state)
+  defp operate({:create, queue, payload, max_tries, delay_ms, backoff_ms}, records, from, state) do
     now = state.clock.()
 
     job =
@@ -216,18 +244,14 @@ defmodule Jobq.Queue do
     answer(state, records ++ [{:put, job}], from, {201, Job.render(job)})
   end
 
-  defp operate({:get, id}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:get, id}, records, from, state) do
     case find(state, id) do
       {:ok, job} -> answer(state, records, from, {200, Job.render(job)})
       :error -> answer(state, records, from, {404, error("no such job")})
     end
   end
 
-  defp operate({:list, queue, job_state}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:list, queue, job_state}, records, from, state) do
     jobs =
       state.jobs
       |> Map.values()
@@ -241,9 +265,7 @@ defmodule Jobq.Queue do
     answer(state, records, from, {200, {:obj, [{"jobs", jobs}]}})
   end
 
-  defp operate({:delete, id}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:delete, id}, records, from, state) do
     case find(state, id) do
       {:ok, %Job{state: :leased}} ->
         answer(state, records, from, {409, error("job is leased")})
@@ -257,9 +279,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  defp operate({:lease, queue, lease_ms, worker}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:lease, queue, lease_ms, worker}, records, from, state) do
     case next_queued(state, queue) do
       {:ok, job} ->
         now = state.clock.()
@@ -282,9 +302,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  defp operate({:ack, id, worker}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:ack, id, worker}, records, from, state) do
     case held_by(state, id, worker) do
       {:ok, job} ->
         now = state.clock.()
@@ -297,9 +315,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  defp operate({:fail, id, worker, reason}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:fail, id, worker, reason}, records, from, state) do
     case held_by(state, id, worker) do
       {:ok, job} ->
         failed = %{after_try(job, state.clock.()) | reason: reason || job.reason}
@@ -311,9 +327,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  defp operate({:retry, id}, from, state) do
-    {records, state} = look(state)
-
+  defp operate({:retry, id}, records, from, state) do
     case find(state, id) do
       {:ok, %Job{state: :dead} = job} ->
         now = state.clock.()
@@ -340,9 +354,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  defp operate(:health, from, state) do
-    {records, state} = look(state)
-
+  defp operate(:health, records, from, state) do
     body =
       {:obj,
        [
@@ -351,15 +363,14 @@ defmodule Jobq.Queue do
          {"leased", state.counts.leased},
          {"done", state.counts.done},
          {"dead", state.counts.dead},
-         {"uptime_ms", state.clock.() - state.started_at}
+         {"uptime_ms", state.clock.() - state.started_at},
+         {"restarts", Board.restarts(state.counters)}
        ]}
 
     answer(state, records, from, {200, body})
   end
 
-  defp operate(:queues, from, state) do
-    {records, state} = look(state)
-
+  defp operate(:queues, records, from, state) do
     queues =
       state.by_queue
       |> Enum.sort_by(fn {name, _counts} -> name end)
@@ -380,6 +391,7 @@ defmodule Jobq.Queue do
 
   @impl GenServer
   def handle_info(:sweep, state) do
+    # Outside any `try`: a look that fails is the board's failure.
     {records, state} = look(state)
     if records != [], do: Store.commit(state.ref, records, nil, nil, state.epoch)
     schedule_sweep(state)

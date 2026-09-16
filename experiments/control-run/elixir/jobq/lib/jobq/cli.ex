@@ -2,14 +2,17 @@ defmodule Jobq.CLI do
   @moduledoc """
   The five commands.
 
-      jobq serve <dir> [--port N]      default port 7900
+      jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
       jobq compact <dir>
       jobq verify <dir>
       jobq client <host> <port> <token> <method> <path> [<json>]
       jobq check <dir> <script>
 
   Exit 2 on a usage error, 1 when the directory cannot be opened or the port
-  cannot be bound.
+  cannot be bound, and 70 when `serve`'s board has failed more than
+  `--max-restarts` times (default 5) inside `--restart-window` seconds
+  (default 60). `--crash-every N` (default 0, never) fails the board on every
+  N-th write it applies, to rehearse the restart in staging.
 
   `serve`, `compact`, and `verify` all read the folder before they do anything
   else, and all refuse an ill-formed record the same way: one line naming the
@@ -24,14 +27,22 @@ defmodule Jobq.CLI do
   alias Jobq.Store
 
   @usage """
-  usage: jobq serve <dir> [--port N]
+  usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
          jobq compact <dir>
          jobq verify <dir>
          jobq client <host> <port> <token> <method> <path> [<json>]
          jobq check <dir> <script>
   """
 
-  @default_port 7900
+  @serve_defaults [port: 7900, max_restarts: 5, restart_window: 60, crash_every: 0]
+
+  # A window of 0 seconds is not one the supervisor can keep, so it starts at 1.
+  @serve_flags %{
+    "--port" => {:port, 0, 65_535},
+    "--max-restarts" => {:max_restarts, 0, 1_000_000},
+    "--restart-window" => {:restart_window, 1, 86_400 * 365},
+    "--crash-every" => {:crash_every, 0, 1_000_000_000}
+  }
 
   @doc "The escript's entry point."
   @spec main([String.t()]) :: no_return()
@@ -40,7 +51,7 @@ defmodule Jobq.CLI do
   end
 
   @doc "Run one command and return its exit status."
-  @spec run([String.t()]) :: 0 | 1 | 2
+  @spec run([String.t()]) :: 0 | 1 | 2 | 70
   def run(["serve", dir | rest]), do: serve(dir, rest)
   def run(["compact", dir]), do: compact(dir)
   def run(["verify", dir]), do: verify(dir)
@@ -57,7 +68,7 @@ defmodule Jobq.CLI do
   end
 
   defp serve(dir, rest) do
-    with {:ok, port} <- port_option(rest),
+    with {:ok, options} <- serve_options(rest, @serve_defaults),
          :ok <- open_dir(dir),
          {:ok, _log} <- read_dir(dir) do
       # The tree is linked to this process: trapping exits is what turns a
@@ -65,12 +76,12 @@ defmodule Jobq.CLI do
       # message and an exit status rather than a dead command.
       Process.flag(:trap_exit, true)
 
-      case Server.start_link(dir: dir, port: port) do
+      case Server.start_link([dir: dir] ++ options) do
         {:ok, pid} ->
           IO.puts("jobq: serving #{dir} on port #{Server.port(:default)}")
 
           receive do
-            {:EXIT, ^pid, reason} -> fail({:stopped, reason})
+            {:EXIT, ^pid, reason} -> stopped(reason, options)
           end
 
         {:error, reason} ->
@@ -81,6 +92,20 @@ defmodule Jobq.CLI do
       {:error, reason} -> fail(reason)
     end
   end
+
+  # The board used its budget, and the service stopped on its own: the log is
+  # whole, since the store wrote nothing more once the board was down.
+  defp stopped(:shutdown, options) do
+    IO.write(
+      :stderr,
+      "jobq: the service failed more than #{options[:max_restarts]} time(s) " <>
+        "inside #{options[:restart_window]} second(s), and stopped\n"
+    )
+
+    70
+  end
+
+  defp stopped(reason, _options), do: fail({:stopped, reason})
 
   defp compact(dir) do
     with :ok <- open_dir(dir),
@@ -169,14 +194,26 @@ defmodule Jobq.CLI do
     end
   end
 
-  defp port_option([]), do: {:ok, @default_port}
-  defp port_option(["--port", value]), do: integer(value, "--port")
-  defp port_option(_rest), do: {:usage, "unknown option"}
+  # `serve`'s options, in any order, the last of a name winning.
+  defp serve_options([], options), do: {:ok, options}
 
-  defp integer(value, name) do
+  defp serve_options([flag, value | rest], options) when is_map_key(@serve_flags, flag) do
+    {key, min, max} = Map.fetch!(@serve_flags, flag)
+
+    case number(value, flag, min, max) do
+      {:ok, number} -> serve_options(rest, Keyword.put(options, key, number))
+      {:usage, message} -> {:usage, message}
+    end
+  end
+
+  defp serve_options(_rest, _options), do: {:usage, "unknown option"}
+
+  defp integer(value, name), do: number(value, name, 0, 65_535)
+
+  defp number(value, name, min, max) do
     case Integer.parse(value) do
-      {number, ""} when number >= 0 and number <= 65_535 -> {:ok, number}
-      _other -> {:usage, "#{name} must be a number from 0 to 65535"}
+      {number, ""} when number >= min and number <= max -> {:ok, number}
+      _other -> {:usage, "#{name} must be a number from #{min} to #{max}"}
     end
   end
 

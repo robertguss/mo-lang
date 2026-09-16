@@ -24,6 +24,12 @@ defmodule Jobq.CLITest do
     assert {2, _output} = run(["serve", dir, "--port", "seven"])
     assert {2, _output} = run(["serve", dir, "--port", "99999"])
     assert {2, _output} = run(["serve", dir, "--quiet"])
+    assert {2, _output} = run(["serve", dir, "--max-restarts", "-1"])
+    assert {2, _output} = run(["serve", dir, "--restart-window", "0"])
+    assert {2, _output} = run(["serve", dir, "--crash-every", "often"])
+    assert {2, _output} = run(["serve", dir, "--crash-every"])
+    assert {2, _output} = run(["compact", dir, "--crash-every", "1"])
+    assert {2, _output} = run(["verify", dir, "--crash-every", "1"])
     assert {2, _output} = run(["client", "127.0.0.1", "seven", "alice", "GET", "/health"])
   end
 
@@ -86,6 +92,89 @@ defmodule Jobq.CLITest do
     assert output =~ "cannot bind port #{port}"
 
     :gen_tcp.close(socket)
+  end
+
+  describe "serve's restart budget" do
+    test "a board that fails past its budget is 70, and the folder verifies" do
+      dir = Service.tmp_dir()
+
+      serving =
+        Task.async(fn ->
+          run(~w(serve #{dir} --port 0 --crash-every 1 --max-restarts 2 --restart-window 60))
+        end)
+
+      port = wait_port()
+
+      # Every write fails the board; the third failure is one past the budget.
+      statuses =
+        Enum.map(1..3, fn n ->
+          body = ~s({"queue":"emails","payload":"#{n}","max_tries":1})
+          answer = Jobq.Client.request({127, 0, 0, 1}, port, "alice", "POST", "/jobs", body)
+          wait_board()
+          answer
+        end)
+
+      assert Enum.all?(statuses, &match?({:ok, 503, _body}, &1))
+      assert {70, output} = Task.await(serving, 10_000)
+      assert output =~ "failed more than 2 time(s) inside 60 second(s)"
+
+      assert {0, output} = run(["verify", dir])
+      assert output =~ "3 jobs: queued 3,"
+    end
+
+    test "the options are taken in any order" do
+      dir = Service.tmp_dir()
+
+      serving =
+        Task.async(fn ->
+          run(~w(serve #{dir} --restart-window 30 --crash-every 0 --max-restarts 1 --port 0))
+        end)
+
+      port = wait_port()
+      board = Jobq.Registry.whereis(:default, :board)
+      Process.exit(Jobq.Registry.whereis(:default, :queue), :kill)
+      wait_board()
+
+      assert {:ok, 200, body} = Jobq.Client.request({127, 0, 0, 1}, port, "", "GET", "/health")
+      assert %{"restarts" => 1} = JSON.decode!(body)
+      assert Jobq.Registry.whereis(:default, :board) == board
+
+      Process.exit(Jobq.Registry.whereis(:default, :store), :kill)
+      assert {70, _output} = Task.await(serving, 10_000)
+    end
+  end
+
+  # The port of the service `serve` started, once it is listening.
+  defp wait_port(tries \\ 500) do
+    case Jobq.Registry.whereis(:default, :socket) do
+      nil when tries > 0 ->
+        Process.sleep(10)
+        wait_port(tries - 1)
+
+      _pid ->
+        Jobq.Server.port(:default)
+    end
+  end
+
+  # The board back after a failure, or gone for good.
+  defp wait_board(tries \\ 500) do
+    board = Jobq.Registry.whereis(:default, :board)
+    queue = Jobq.Registry.whereis(:default, :queue)
+
+    cond do
+      is_nil(board) or not Process.alive?(board) ->
+        :gone
+
+      is_pid(queue) and Process.alive?(queue) ->
+        :ok
+
+      tries == 0 ->
+        :timeout
+
+      true ->
+        Process.sleep(10)
+        wait_board(tries - 1)
+    end
   end
 
   test "a client that cannot reach the service is 1" do

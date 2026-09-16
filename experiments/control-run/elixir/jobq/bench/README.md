@@ -18,3 +18,6 @@ serves. What it reports is what the spec's *Measured* section asks for.
   memory      resident memory and the BEAM's own total at 100k jobs
   replay      the time to replay a 1M-record log
   restart     the time to start again on a store with 10,000 leased jobs
+  chaos       creates with the chaos switch failing every 500th write: the
+              answers, the restarts, any 201 missing from the log, and the
+              longest `/health` was not 200

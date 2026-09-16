@@ -28,6 +28,13 @@ defmodule Jobq.Store do
   complete line that is not a JSON object is a corrupt log, and an object that
   is not a well-formed record refuses the folder by `Jobq.Job.check_record/1`.
 
+  A failure that is not a write's is the board's: anything this process did not
+  expect while it applied a batch ends it, and `Jobq.Board` starts it again with
+  the queue. So does the chaos switch, which fails the N-th write on purpose
+  after its record is on the disk and before its reply is sent. A torn final
+  line a killed service left behind is cut off when the process starts, so the
+  next record begins a line of its own.
+
   A log the version before change 1 wrote opens with no tool: `Jobq.Job` reads
   the old field names off a record and the store writes only the new ones, so
   a `compact/1` of such a folder leaves no old name behind.
@@ -37,6 +44,7 @@ defmodule Jobq.Store do
 
   require Logger
 
+  alias Jobq.Board
   alias Jobq.Job
   alias Jobq.Json
 
@@ -51,15 +59,22 @@ defmodule Jobq.Store do
            path: String.t(),
            buffer: iodata(),
            waiters: [{GenServer.from(), term()}],
+           pending: non_neg_integer(),
            batch: non_neg_integer(),
            epoch: non_neg_integer(),
            ref: ref(),
-           fault: (non_neg_integer() -> boolean())
+           fault: (non_neg_integer() -> boolean()),
+           crash: (pos_integer() -> boolean()),
+           counters: Board.counters()
          }
 
   # Client
 
-  @doc "Start the writer for `dir`. Options: `:ref`, `:dir`, and a test `:fault`."
+  @doc """
+  Start the writer for `dir`. Options: `:ref`, `:dir`, the service's
+  `:counters`, a test `:fault` over batch numbers, and a `:crash` over write
+  numbers, which is the chaos switch.
+  """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     ref = Keyword.fetch!(opts, :ref)
@@ -236,19 +251,108 @@ defmodule Jobq.Store do
   def init(opts) do
     ref = Keyword.fetch!(opts, :ref)
     dir = Keyword.fetch!(opts, :dir)
-    fault = Keyword.get(opts, :fault, fn _ -> false end)
+    counters = Keyword.get_lazy(opts, :counters, &Board.counters/0)
     path = log_path(dir)
 
-    case :file.open(path, [:append, :raw, :binary]) do
-      {:ok, fd} ->
-        _ = :file.close(fd)
+    case open_log(path) do
+      :ok ->
+        Board.started(counters)
 
-        {:ok, %{path: path, buffer: [], waiters: [], batch: 0, epoch: 0, ref: ref, fault: fault}}
+        {:ok,
+         %{
+           path: path,
+           buffer: [],
+           waiters: [],
+           pending: 0,
+           batch: 0,
+           epoch: 0,
+           ref: ref,
+           fault: Keyword.get(opts, :fault, fn _ -> false end),
+           crash: Keyword.get(opts, :crash, fn _ -> false end),
+           counters: counters
+         }}
 
       {:error, reason} ->
         {:stop, {:open, path, reason}}
     end
   end
+
+  # The log as the writer needs it: there, and ending at a line's end.
+  defp open_log(path) do
+    case :file.open(path, [:read, :append, :raw, :binary]) do
+      {:ok, fd} ->
+        result = cut_torn(fd)
+        _ = :file.close(fd)
+        result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp cut_torn(fd) do
+    with {:ok, size} <- :file.position(fd, :eof),
+         {:ok, keep} <- line_end(fd, size, size) do
+      cut_at(fd, keep, size)
+    end
+  end
+
+  defp cut_at(_fd, size, size), do: :ok
+
+  defp cut_at(fd, keep, size) do
+    Logger.warning("jobq: cutting a torn final line of #{size - keep} bytes")
+
+    with {:ok, _position} <- :file.position(fd, keep),
+         :ok <- :file.truncate(fd) do
+      :file.sync(fd)
+    end
+  end
+
+  # The offset just past the last `\n` at or before `upto`, read backwards in
+  # chunks; 0 when the log has no complete line.
+  @chunk 65_536
+  defp line_end(_fd, 0, _size), do: {:ok, 0}
+
+  defp line_end(fd, upto, size) do
+    from = max(upto - @chunk, 0)
+
+    case :file.pread(fd, from, upto - from) do
+      {:ok, bytes} ->
+        case :binary.matches(bytes, "\n") do
+          [] ->
+            line_end(fd, from, size)
+
+          matches ->
+            {at, 1} = List.last(matches)
+            {:ok, from + at + 1}
+        end
+
+      :eof ->
+        {:ok, 0}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # A crash report names the batch, not its records: the payloads are the
+  # clients' and a full buffer is hundreds of them.
+  @impl GenServer
+  def format_status(status) do
+    Map.update(status, :state, nil, fn
+      %{buffer: _} = state ->
+        %{state | buffer: :redacted, waiters: length(state.waiters)}
+
+      other ->
+        other
+    end)
+    |> Map.update(:message, nil, &redact_message/1)
+  end
+
+  defp redact_message({:"$gen_cast", {:commit, records, _from, _reply, epoch}}),
+    do: {:"$gen_cast", {:commit, {length(records), :records}, epoch}}
+
+  defp redact_message(message), do: message
 
   @impl GenServer
   def handle_cast({:commit, _records, from, _reply, epoch}, %{epoch: current} = state)
@@ -263,7 +367,8 @@ defmodule Jobq.Store do
     state = %{
       state
       | buffer: [state.buffer, lines],
-        waiters: add_waiter(state.waiters, from, reply)
+        waiters: add_waiter(state.waiters, from, reply),
+        pending: state.pending + length(records)
     }
 
     if length(state.waiters) >= @max_batch or idle?() do
@@ -305,8 +410,9 @@ defmodule Jobq.Store do
 
     case write(state, batch) do
       :ok ->
+        chaos(state)
         Enum.each(state.waiters, fn {from, reply} -> GenServer.reply(from, reply) end)
-        {:ok, %{state | buffer: [], waiters: []}}
+        {:ok, %{state | buffer: [], waiters: [], pending: 0}}
 
       {:error, reason} ->
         {{:error, reason}, fail_batch(state, reason)}
@@ -327,7 +433,20 @@ defmodule Jobq.Store do
     end
 
     Enum.each(state.waiters, fn {from, _reply} -> refuse(from) end)
-    %{state | buffer: [], waiters: [], epoch: epoch}
+    %{state | buffer: [], waiters: [], pending: 0, epoch: epoch}
+  end
+
+  # The chaos switch: the batch is on the disk, its replies are not sent, and
+  # if one of its writes is one the switch fails, the board fails here, as an
+  # unexpected error at this point would.
+  defp chaos(state) do
+    {before, total} = Board.applied(state.counters, state.pending)
+
+    if total > before and Enum.any?((before + 1)..total, state.crash) do
+      exit({:chaos, total})
+    end
+
+    :ok
   end
 
   # Every batch through a file of its own: the `open` is what a folder that

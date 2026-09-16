@@ -64,7 +64,7 @@ defmodule Bench do
     jobs = Keyword.get(options, :jobs, 20_000)
     names =
       if names == [],
-        do: ~w(throughput expiry backoff silent memory replay restart),
+        do: ~w(throughput expiry backoff silent memory replay restart chaos),
         else: names
 
     IO.puts("jobq bench: #{Enum.join(names, ", ")}  (#{jobs} jobs where it matters)")
@@ -229,14 +229,96 @@ defmodule Bench do
     File.rm_rf(dir)
   end
 
+  # The chaos switch under the create load: every 500th write fails the board,
+  # and a client told 503 creates again. Every answer is 201 or 503, every 201 is on the log afterwards, and the
+  # longest the service answered /health with anything but 200 is the time a
+  # restart takes on a log of the size the load has made.
+  defp run("chaos", jobs) do
+    dir = tmp_dir()
+    %{port: port, stop: stop, ref: ref} = service(dir, crash_every: 500, max_restarts: 1_000_000)
+    watcher = Task.async(fn -> watch_health(port, nil, 0) end)
+
+    {microseconds, answers} =
+      :timer.tc(fn ->
+        1..jobs
+        |> Enum.chunk_every(div(jobs, 8) + 1)
+        |> Task.async_stream(
+          fn chunk ->
+            connection = Conn.open(port)
+
+            Enum.flat_map(chunk, &create_until_served(connection, &1, []))
+          end,
+          max_concurrency: 8,
+          timeout: :infinity
+        )
+        |> Enum.flat_map(fn {:ok, answers} -> answers end)
+      end)
+
+    send(watcher.pid, :stop)
+    longest = Task.await(watcher, :infinity)
+    health = settled_health(ref)
+    restarts = health |> Jobq.Json.encode() |> JSON.decode!() |> Map.fetch!("restarts")
+    stop.()
+
+    {:ok, {log, _next}} = Jobq.Store.read(dir)
+    ids = MapSet.new(Map.values(log), &Jobq.Job.id/1)
+    created = for {201, id} <- answers, do: id
+    refused = Enum.count(answers, &match?({503, _id}, &1))
+    missing = Enum.count(created, &(not MapSet.member?(ids, &1)))
+
+    report("create under --crash-every 500", jobs, microseconds)
+    IO.puts(pad("answers") <> "#{length(created)} x 201, #{refused} x 503, #{restarts} restarts")
+    IO.puts(pad("201s missing from the log") <> "#{missing}")
+    IO.puts(pad("longest /health gap") <> "#{longest} ms, on a log of up to #{map_size(log)} jobs")
+    File.rm_rf(dir)
+  end
+
   defp run(name, _jobs), do: IO.puts("bench: no such measurement: #{name}")
+
+  # A client that is told 503 waits a moment and creates again, as a real one
+  # would; the job the 503 was for may be on the log as well, which is the
+  # spec's word on a 503 the failure caused.
+  defp create_until_served(connection, n, answers) do
+    case Conn.request(connection, "alice", "POST", "/jobs", job_body(n, 3)) do
+      {201, body} ->
+        [{201, body |> JSON.decode!() |> Map.fetch!("id")} | answers]
+
+      {503, _body} ->
+        Process.sleep(5)
+        create_until_served(connection, n, [{503, nil} | answers])
+    end
+  end
+
+  defp settled_health(ref) do
+    case Jobq.Queue.health(ref) do
+      {200, health} -> health
+      _restarting -> Process.sleep(5) && settled_health(ref)
+    end
+  end
+
+  # The longest stretch, in ms, over which /health was not 200.
+  defp watch_health(port, down_since, longest) do
+    receive do
+      :stop -> longest
+    after
+      2 ->
+        now = System.monotonic_time(:millisecond)
+
+        case {Jobq.Client.request({127, 0, 0, 1}, port, "", "GET", "/health", nil), down_since} do
+          {{:ok, 200, _body}, nil} -> watch_health(port, nil, longest)
+          {{:ok, 200, _body}, since} -> watch_health(port, nil, max(longest, now - since))
+          {_down, nil} -> watch_health(port, now, longest)
+          {_down, since} -> watch_health(port, since, longest)
+        end
+    end
+  end
 
   # The service, and the two ways of talking to it.
 
-  defp service(dir \\ nil) do
+  defp service(dir \\ nil, opts \\ []) do
     dir = dir || tmp_dir()
     ref = make_ref()
-    {:ok, pid} = Jobq.Server.start_link(ref: ref, dir: dir, port: 0)
+    {:ok, pid} = Jobq.Server.start_link([ref: ref, dir: dir, port: 0] ++ opts)
 
     %{
       ref: ref,

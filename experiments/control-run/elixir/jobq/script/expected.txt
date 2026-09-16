@@ -103,7 +103,7 @@
 > bob POST /jobs/j_1/ack
 < 409 {"error":"caller does not hold a live lease on this job"}
 > anyone GET /health
-< 200 {"queued":0,"scheduled":1,"leased":1,"done":1,"dead":0,"uptime_ms":<ms>}
+< 200 {"queued":0,"scheduled":1,"leased":1,"done":1,"dead":0,"uptime_ms":<ms>,"restarts":0}
 > anyone GET /queues
 < 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":0,"scheduled":0,"leased":1,"done":1,"dead":0}]}
 > alice PUT /queues
