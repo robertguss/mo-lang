@@ -107,6 +107,25 @@ So generation one already contains the containment the change asks for in Mo, Go
 
 **Rows.** For the spec (`01c`): the rule table's "no worker" for a queued record needs a sentence that a record with a field its state forbids is ill-formed, since two of four read it as "ignore"; whether `verify` may rewrite the log; whether `verify` on a missing folder is exit 1 (three of four). For the language page: MO0317 after every edit is the Mo maintainer's loop 0, again; MO0104 on an or-pattern too long for the column limit has nowhere to go (its `TOOLCHAIN-BUGS.md`, finding 4). For chapter 10 §1: the deferred reply was used the first time it was offered, in 18 minutes, with no loop on it. For the Elixir row: a torn line from a failed write is the ordinary state of a log after a full disk, and a program that refuses it at open cannot recover from the failure it survived.
 
+## P6 on Mo's change 2 program (16 Sep, 08:50 to 09:05 local)
+
+`erosion-round-suite/p6-mo.py`, round 10's probe with the kill done through the runtime surface: the change 2 program built with `--surface`, eight clients creating, leasing, and acking on keep-alive connections at about 10,000 requests a second, and at 2.0 s a `POST /send/1` with a call the API would have refused (`Create` with the queue name `"bad queue"`), which `decide` hands to `job` unchecked, so `requires queue?(making.queue)` trips inside the queue process. A lease with `lease_ms` below the rule did not crash it: `lent` re-checks before `handed`. Three runs, the binary twice and `mo run` once (`results/p6-mo-run{2,4,5}.txt`).
+
+| | the binary | `mo run` |
+|---|---|---|
+| the queue crashed at | 2.00 s | 2.01 s |
+| the first answer after the crash | `503 {"error": "the queue is down"}`, `/health` included | the same |
+| time to that answer | under 2 ms | under 2 ms |
+| requests after the crash | 8,690 of 8,690 answered 503, about 1,100 a second with the clients backing off 10 ms | 4,667 of 4,667 |
+| the queue restarted | never: `Queues` says `restart: :never`, and the crash report says so | never |
+| acknowledged jobs lost, on a reopen of the folder | 0 of 6,638 | 0 of 5,767 |
+| created jobs lost | 0 of 6,642 | 0 of 5,774 |
+| the reopen took | 0.11 s | 0.43 s |
+
+Round 8's outage is closed by the program: the same class of crash, under `mo run` and as a binary, answers every request within milliseconds instead of hanging, because the worker asks with a deadline and the deferred reply carries it (chapter 10 §1, step 31). What the BEAM still has is the restart: Elixir's queue was back in 261 to 583 ms, Mo's never comes back. The reason is not the runtime. `main` opens the folder and passes an `Opening` to the child line, so a restart would begin from a stale board, and the maintainer wrote `:never` and said why in a comment. A ten-line probe (`erosion-round-suite/reopen-run.mo`) shows a restarted process runs its `state` initializers again with its capabilities, under `mo run` and as a binary (the file read "one" before the crash and "two" after the restart): a queue whose state opens the folder from `fs` and `dir` at start, with `restart: :always` and a budget, restarts correctly today. No program in the corpus does this; kv's store, which chapter 3 named as the pattern, replays in `main` too. That is change 3.
+
+Recorded beside it: with the default ring of 4,096 events, `GET /crashes` was empty by the time the probe read it after the crash, the ring having turned over under load; with `MO_EVENTS=262144` it listed the crash with its clause, the message, and the state snapshot. Crash reports need a place apart from the ring (step 32).
+
 ## Related
 
 - [[d43-five-measurements]]

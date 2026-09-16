@@ -78,6 +78,8 @@ The two causes under round 7's suite: a bearer token with a space is accepted (G
 
 The honest reading of chapter 1's null hypothesis after round 10: the language layer has earned reliability and the loop; the BEAM has taken speed, time to write, the dependency tie, and P6, the runtime row. What the runtime and process model were argued to give, restart with the service answering, the BEAM gives today from a supervisor the program did not have to think about, and Mo's spec-as-written program did not give it. That is the row the language page (`09-language-after-the-rounds.md`) has to answer, and the erosion round's change 2 is the first test of whether a Mo program can be written to give it: the same probe runs on the Mo change 2 program when it exists, and on the Elixir one again under the same script.
 
+**P6 on Mo's change 2, 16 Sep morning** ([[erosion-round]], the section of that name): the queue crashed through the runtime surface under about 10,000 requests a second; every request from then answered `503` within 2 ms, `/health` included, nothing acknowledged lost, no restart. So the row splits. The outage, a hang, is closed by the program with the deferred reply; the restart is still the BEAM's, and it is the program's to take: a restarted Mo process re-runs its state initializers and could reopen its log, and change 3 asks it to.
+
 **Rows.** For the language page: a `never` at rest on the log (round 7's `store.mo`) is what would have caught the torn line; Elixir has no place to write it. For the erosion round: the Elixir program joins generation two with change 2. For measurement 5: 21 loops over two sessions, every first fix right, none a language law.
 
 ## Related

@@ -61,7 +61,7 @@ know that the wiki does not say in one place.
 >    7, Mo 0/0 in 14: it matched Opus). Every Go change carries the same
 >    `delay_ms` null defect; both open-weights models' Mo changes miss the
 >    run-out lease with backoff; the closed model does not. Gemini's key in Pi
->    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.**
+>    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.** **P6 on Mo's change 2 (16 Sep, 09:00): the queue crashed through the runtime surface under load, `503` within 2 ms from then under both runtimes, nothing acknowledged lost, no restart (`:never`); a restarted process re-runs its state initializers, so the reopening store is change 3 (`erosion-round.md`, the P6 section).**
 > 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
 >    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
 >    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
@@ -80,14 +80,8 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **P6 on Mo's change 2 program** (`../mo-lang-erosion2-mo`, the binary at
->    `examples/programs/jobq/zig-out/mo-build/jobq-e2/jobq-e2`): the queue
->    crashed under load with the service still answering. The binary's queue
->    cannot be killed from outside; find the input that trips a contract inside
->    the queue under load (a record that passes `verify` but breaks a `never` at
->    lease, or a fault under `--sim` in `server.mo`'s tests), or add a runtime
->    hook. This is the row that closes round 8's outage or does not.
-> 2. **Generation three of the erosion round**: change 3 written and sealed by
+> 1. **Step 32 in flight** (`interpreter-step-32.md`, the worker `mo-opus` in `w44:p3`, briefed 16 Sep morning): crash reports kept apart from the event ring, both runtimes; `examples/processes/restart-reopens.mo`; the P6 probe rerun. Verify per the skill, record, merge.
+> 2. **Generation three of the erosion round**: change 3 is the reopening store (decided 16 Sep morning from P6 on Mo: a queue that crashes is restarted from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, and Elixir), written and sealed by
 >    the lead (`spec/programs/01d-...`), branched from `erosion2-*`, a fourth
 >    hidden suite after the branching; the change 2 spec first gains the three
 >    sentences decided at 02:00 (a record with a field its state forbids is
@@ -122,7 +116,7 @@ know that the wiki does not say in one place.
 > are created with `herdr workspace create --cwd` and split with
 > `herdr pane split <id> --direction right|down --cwd`.
 >
-> **Unmet, carried.** P6 on Mo's change 2. Round 9's Opus-in-Pi baseline (no
+> **Unmet, carried.** Round 9's Opus-in-Pi baseline (no
 > Anthropic key in Pi). Python's first unwritable
 > run on generation one died in the audit and passed on the rerun (a flake until
 > it recurs). Python's change 2 maintainer reported its own bench regression

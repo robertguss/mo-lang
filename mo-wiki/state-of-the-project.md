@@ -95,8 +95,10 @@ of six programs.
 **Session 8, the night of 15 to 16 Sep, on the Mac.** The scaling run, P6 on
 Elixir, chapter 10 (the language after the rounds) and its first change built as
 step 31, the sixth program's regeneration, round 9 with four smaller models, and
-generation two of the erosion round. The wiki became a site, and round 9's last
-row, Haiku 4.5, ran the same morning.
+generation two of the erosion round. The wiki became a site, and the same
+morning round 9's last row, Haiku 4.5, ran, and P6 was probed on Mo's change 2
+program: the crash under load answers `503` within milliseconds and loses
+nothing, and the restart is the program's to write, not the language's.
 
 ## What Mo is, today
 
@@ -226,9 +228,10 @@ does quality hold?), the incident round, and the two diagnostic columns.
    changes 3 to 10, are where a law either earns a row or is removed. The check
    that would have caught round 9's shared miss is a program `never`, which
    points at the spec, not the language.
-2. **P6 on Mo's change 2 program**: the queue crashed under load with the
-   service still answering. This is the row that closes round 8's outage or does
-   not, and it decides whether the runtime's own claim is Mo's or the BEAM's.
+2. **The reopening store, change 3**: P6 on Mo's change 2 closed round 8's
+   outage (`503` within 2 ms, nothing lost) and showed the restart is writable
+   today, since a restarted process re-runs its state initializers; change 3
+   asks the four programs for it, and the BEAM's P6 row is answered or not.
 3. **Placement**: a process placed with its asker or a reply answered on the
    asker's scheduler, so the Mac's fourteen cores stop costing.
 4. **Round 9's Opus-in-Pi baseline**, so the harness is the same in every row,

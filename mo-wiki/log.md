@@ -419,3 +419,6 @@
 
 ## [2026-09-16] session | Morning: round 9's Haiku row, the round closed
 - Haiku 4.5 through Claude Code on round 8's change in three panes (`w4B`), 08:22 to 08:45: 7 to 9 minutes a session, every session stopping at its own tests with the other checks red; 0 regressions everywhere; defects Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2 ([[control-run-9]]). The first model defective in every language; Mo's miss is the due job never queued. One `semantic` row for Robert. The suite outputs and the panes of every round 9 row saved under `control-run-9-suite/results/`.
+
+## [2026-09-16] session | Morning: P6 on Mo's change 2, the outage closed, the restart the program's
+- The change 2 queue crashed through the runtime surface under 10,000 requests a second, under both runtimes: every request `503` within 2 ms from then, nothing acknowledged lost, no restart by the program's `:never` ([[erosion-round]], the P6 section). A ten-line probe shows a restarted process re-runs its state initializers with its capabilities, so the reopening store is writable today and is change 3. `/crashes` was empty under the default ring: step 32 ([[interpreter-step-32]]) briefed to the worker in `w44:p3`. Chapters 3 and 10 amended; three rows, one `semantic` for Robert.

@@ -137,6 +137,7 @@ type: index
 ## Plans
 - [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; a sketch until step 29 lands
 - [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
+- [[interpreter-step-32|Step 32: crash reports apart from the ring, and the reopening store]] — what P6 on Mo found: `/crashes` empty under load, and the restart pattern no corpus file shows
 - [[interpreter-step-29b|Step 29b: replay memory on a real log]] — Fable's 1M probe on an HTTP-written log passed 8 GB after the fold; the rule bounded-by-what-the-update-reaches made to hold in every loop shape
 - [[interpreter-step-29|Step 29: the runtime honest]] — `restart: :never` honoured, `platform.exit` with a pending delayed send, replay streamed, simulated time only when a test waits, invariants counted
 - [[program-6|Program 6: ledger in Mo]] — the brief for the payments ledger whose invariants are the point; after step 28
