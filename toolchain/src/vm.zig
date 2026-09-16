@@ -2446,7 +2446,10 @@ test "closures, patterns, strings, and try" {
     try std.testing.expectEqual(@as(i128, 8), doubled.variant.fields[0].int);
 }
 
-test "a recursion frees what each level made while the levels inside it run, and keeps what they reach" {
+/// The body of the recursion test, run on a thread with the stack `mo` gives Mo code
+/// (main.zig, turns.zig): the test runner's own thread is 8 MiB on macOS, which 1,500 levels
+/// of the vm overrun, so the test would not be testing the stack the product runs on.
+fn recursionWalk() anyerror!void {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -2475,6 +2478,19 @@ test "a recursion frees what each level made while the levels inside it run, and
     try std.testing.expectEqual(@as(i128, 1_500 * 3_072), done[0].int);
     try std.testing.expectEqual(@as(i128, 1_500), done[1].int);
     try std.testing.expectEqualStrings("k500", done[2].string);
+}
+
+test "a recursion frees what each level made while the levels inside it run, and keeps what they reach" {
+    var failed: ?anyerror = null;
+    const thread = try std.Thread.spawn(.{ .stack_size = contracts.vm_stack_bytes }, struct {
+        fn run(out: *?anyerror) void {
+            recursionWalk() catch |err| {
+                out.* = err;
+            };
+        }
+    }.run, .{&failed});
+    thread.join();
+    if (failed) |err| return err;
 }
 
 test "a region moves whole into a larger reservation, and every value it held reads the same there" {

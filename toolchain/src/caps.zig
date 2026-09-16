@@ -1794,7 +1794,7 @@ test "an arm that mentions reply_to hands it to a state field once; a Reply live
         \\      Held:
         \\        state.many = state.many.push(reply_to)
         \\      Loose:
-        \\        state.n = reply_to.as_seen()
+        \\        reply_to.answer(state.n)
         \\      Twice:
         \\        state.many = state.many.push(reply_to)
         \\        state.one = Some(reply_to)

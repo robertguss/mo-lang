@@ -87,11 +87,12 @@ session's "decisions the spec did not cover".
 
 ## Result
 
-Started 15 Sep 2026, 23:21 local, on the Mac, Fable alone. A setup slip recorded first: the change spec is not in round 7's branches, and the brief named it by a relative path; the Go session found it in the main branch's history with `git show` (identical to the file), the Mo and Python sessions were told the absolute path at 23:41, and `r9-brief.sh` now gives it. The Pi sessions ran with the Ollama app started by Fable (its server was down at first, the three first prompts errored and were re-sent at 23:23). Every session's pane is saved to the scratchpad and its `REPORT.md` is in its worktree.
+Started 15 Sep 2026, 23:21 local, on the Mac, Fable alone. A setup slip recorded first: the change spec is not in round 7's branches, and the brief named it by a relative path; the Go session found it in the main branch's history with `git show` (identical to the file), the Mo and Python sessions were told the absolute path at 23:41, and `r9-brief.sh` now gives it. The Pi sessions ran with the Ollama app started by Fable (its server was down at first, the three first prompts errored and were re-sent at 23:23). Every session's pane is saved to the scratchpad and its `REPORT.md` is in its worktree. The Python suites had to run one category at a time with a 35 s pause between (`control-run-9-suite/paced-python.sh`): the Python service closes every connection, and on macOS the client runs out of ephemeral ports to one destination inside the suite (`EADDRNOTAVAIL`), which never happened on the Linux VM; the checks are the same.
 
 | model | language | green | wall-clock | loops (own) | regressions | defects | tokens (↑ in, ↓ out, per Pi) |
 |---|---|---|---|---|---|---|---|
 | M3 kimi-k3 | Go | yes, 23:39 | about 15 min | 4 | 0 of 121 | 1 of 189 (`delay_ms` null accepted as absent, 201; Opus's Go had the same one) | 139k / 78k, one compaction |
+| M3 kimi-k3 | Python | yes, 23:57 | about 35 min | 7 failing checks over 6 causes, first fix right in 5 | 0 of 121 | 0 of 189 | 184k / 90k, one compaction |
 
 
 ## Related

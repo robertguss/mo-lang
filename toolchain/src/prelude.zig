@@ -59,7 +59,9 @@ pub const types = [_]Type{
     .{ .name = "Set", .arity = 1, .kind = .set, .origin = .stdlib },
     .{ .name = "Handle", .arity = 1, .kind = .handle },
     // The asker an arm kept instead of answering (step 31): held in a state field, answered later.
-    .{ .name = "Reply", .arity = 1, .kind = .reply, .origin = .stdlib },
+    // `Reply` is a name programs already give their own types (programs/agent, programs/kv,
+    // recipes/model-client), so a module's own hides the prelude's from its code.
+    .{ .name = "Reply", .arity = 1, .kind = .reply, .origin = .stdlib, .hideable = true },
     .{ .name = "Clock", .kind = .capability },
     .{ .name = "Fs", .kind = .capability },
     .{ .name = "Events", .kind = .capability },
