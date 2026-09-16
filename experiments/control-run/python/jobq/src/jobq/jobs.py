@@ -143,6 +143,35 @@ class Job(BaseModel):
         return f"j_{self.number}"
 
 
+# The fields a job carries in some states and never in others, by the name a record shows.
+_OPTIONAL = {"run_at": "run_at_ms", "worker": "worker", "lease_until": "lease_until_ms"}
+_PRESENT: dict[JobState, frozenset[str]] = {
+    "queued": frozenset(),
+    "scheduled": frozenset({"run_at"}),
+    "leased": frozenset({"worker", "lease_until"}),
+    "done": frozenset(),
+    "dead": frozenset(),
+}
+_WAITING: frozenset[JobState] = frozenset({"queued", "scheduled"})
+
+
+def job_problem(job: Job) -> str | None:
+    """The rule this job breaks, or None when it is well-formed. Every state's tries range
+    and the fields it carries; no preconditions, so any decoded job may be handed to it."""
+    if job.state in _WAITING:
+        if job.tries >= job.max_tries:
+            return f"a {job.state} job has tries below max_tries"
+    elif not MIN_TRIES <= job.tries <= job.max_tries:
+        return f"a {job.state} job has 1 to max_tries tries"
+    for shown, field in _OPTIONAL.items():
+        present = getattr(job, field) is not None
+        if present and shown not in _PRESENT[job.state]:
+            return f"a {job.state} job has no {shown}"
+        if not present and shown in _PRESENT[job.state]:
+            return f"a {job.state} job has a {shown}"
+    return None
+
+
 class JobOut(BaseModel):
     """The `{job}` JSON shape: `run_at` while scheduled, `worker` and `lease_until` while
     leased, `reason` after a fail."""
@@ -200,6 +229,25 @@ class Health(BaseModel):
     done: int = Field(ge=0)
     dead: int = Field(ge=0)
     uptime_ms: int = Field(ge=0)
+
+
+class QueueCounts(BaseModel):
+    """One queue's jobs by state, as `GET /queues` shows them."""
+
+    model_config = _STRICT
+
+    name: str
+    queued: int = Field(ge=0)
+    scheduled: int = Field(ge=0)
+    leased: int = Field(ge=0)
+    done: int = Field(ge=0)
+    dead: int = Field(ge=0)
+
+
+class QueueList(BaseModel):
+    model_config = _STRICT
+
+    queues: list[QueueCounts]
 
 
 class ErrorBody(BaseModel):

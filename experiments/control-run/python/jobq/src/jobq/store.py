@@ -3,6 +3,9 @@
 One record per job change, under the job's number. A write is durable when `append`
 returns; when it raises, the log is truncated back to what it held before.
 
+Every record is checked against the job's rules as it replays (`jobs.job_problem`): a record
+in a state the API can never produce refuses the folder rather than being served.
+
 A log the previous version wrote replays too: its job records say `attempts` and
 `max_attempts` and have no `backoff_ms`, and they are read in the current shape
 (`upgrade_job_fields`). Every write, compaction included, uses only the current names.
@@ -10,6 +13,7 @@ A log the previous version wrote replays too: its job records say `attempts` and
 
 import errno
 import fcntl
+import json
 import os
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
@@ -19,7 +23,7 @@ from typing import Annotated, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
 from jobq.contract import ensure
-from jobq.jobs import Job
+from jobq.jobs import Job, job_problem
 
 LOG_NAME = "jobs.log"
 LOCK_NAME = "jobq.lock"
@@ -83,6 +87,15 @@ class StoreOpenError(Exception):
     """`<dir>` cannot be opened, is served by another process, or its log is corrupt."""
 
 
+class IllFormed(StoreOpenError):
+    """A record in the log breaks a rule a job record must meet. `<dir>` is never served."""
+
+    def __init__(self, key: str, rule: str) -> None:
+        super().__init__(f"record {key}: {rule}")
+        self.key = key
+        self.rule = rule
+
+
 class FileOps(Protocol):
     """The two calls a write can fail in; the simulation injects failures here."""
 
@@ -128,7 +141,7 @@ class Store:
         self._fd = fd
         self._size = size
         self._ops = ops
-        self._broken = False
+        self._dirty = False
 
     @classmethod
     def open(cls, directory: Path, ops: FileOps | None = None) -> tuple[Store, Replayed]:
@@ -147,6 +160,8 @@ class Store:
         except (OSError, StoreOpenError) as error:
             for each in opened:
                 os.close(each)
+            if isinstance(error, IllFormed):
+                raise StoreOpenError(f"{directory}: {error}") from error
             if isinstance(error, StoreOpenError):
                 raise
             raise StoreOpenError(f"{directory}/{LOG_NAME}: {error.strerror}") from error
@@ -157,18 +172,29 @@ class Store:
         self.append_all([record])
 
     def append_all(self, records: Sequence[PutRecord | DeleteRecord]) -> None:
-        """Write records with one fsync: all of them become durable, or none do."""
-        if self._broken:
-            raise StoreError("the store failed to roll back a write; restart jobq")
+        """Write records with one fsync: all of them become durable, or none do.
+
+        A store that cannot be written raises `StoreError` and nothing else: no failure is
+        latched, so the first write after the file can be written again goes through.
+        """
         data = b"".join(record.model_dump_json().encode() + b"\n" for record in records)
         start = self._size
         try:
+            self._clean(start)
             self._write_all(data)
             self._ops.fsync(self._fd)
         except OSError as error:
             self._roll_back(start)
             raise StoreError(f"write failed: {error.strerror or error}") from error
         self._size = start + len(data)
+
+    def _clean(self, size: int) -> None:
+        """Cut off what a roll-back could not: a write only ever goes on a log of `size`."""
+        if not self._dirty:
+            return
+        os.ftruncate(self._fd, size)
+        os.fsync(self._fd)
+        self._dirty = False
 
     def _write_all(self, data: bytes) -> None:
         written = 0
@@ -179,11 +205,13 @@ class Store:
             written += count
 
     def _roll_back(self, size: int) -> None:
+        """Back to `size`; a roll-back that fails is tried again before the next write."""
         try:
             os.ftruncate(self._fd, size)
             os.fsync(self._fd)
+            self._dirty = False
         except OSError:
-            self._broken = True
+            self._dirty = True
 
     def close(self) -> None:
         for fd in (self._fd, self._lock_fd, self._dir_fd):
@@ -223,8 +251,31 @@ def _lines(fd: int) -> Iterator[bytes]:
         yield from log
 
 
+def record_key(line: bytes, line_number: int) -> str:
+    """The key a record sits under: the job id its number names, or its line when it has none."""
+    try:
+        fields = json.loads(line)
+    except ValueError:
+        return f"line {line_number}"
+    if isinstance(fields, dict):
+        job = fields.get("job")
+        number = job.get("number") if isinstance(job, dict) else fields.get("number")
+        if isinstance(number, int) and not isinstance(number, bool) and number >= 1:
+            return f"j_{number}"
+    return f"line {line_number}"
+
+
+def _first_problem(invalid: ValidationError) -> str:
+    first = invalid.errors()[0]
+    where = ".".join(str(part) for part in first["loc"] if part != "put")
+    return f"{where} {first['msg'].lower()}" if where else str(first["msg"]).lower()
+
+
 def replay_fd(fd: int) -> tuple[Replayed, int]:
-    """The replayed state and the size of the log up to its last whole line."""
+    """The replayed state and the size of the log up to its last whole line.
+
+    IllFormed for the first record that breaks a rule: the folder is refused, not served.
+    """
     state = Replayed(jobs={}, next_number=1, records=0)
     good_size = 0
     for line_number, line in enumerate(_lines(fd), start=1):
@@ -233,7 +284,11 @@ def replay_fd(fd: int) -> tuple[Replayed, int]:
         try:
             record = _RECORD.validate_json(line)
         except ValidationError as error:
-            raise StoreOpenError(f"{LOG_NAME} line {line_number} is not a record") from error
+            raise IllFormed(record_key(line, line_number), _first_problem(error)) from error
+        if isinstance(record, PutRecord):
+            problem = job_problem(record.job)
+            if problem is not None:
+                raise IllFormed(record.job.id, problem)
         apply_record(state, record)
         good_size += len(line)
     state.jobs = dict(sorted(state.jobs.items()))
@@ -272,6 +327,10 @@ def compact(directory: Path) -> tuple[int, int]:
     finally:
         store.close()
     after = replay(directory)
+    ensure(
+        all(job_problem(job) is None for job in after.jobs.values()),
+        "compaction writes only well-formed records",
+    )
     ensure(after.jobs == state.jobs, "compaction keeps every live job as it was")
     ensure(after.next_number == state.next_number, "compaction keeps the counter")
     ensure(after.records == len(state.jobs) + 1, "one line per live job and the counter")

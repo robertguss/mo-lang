@@ -5,3 +5,4 @@ w1 GET /jobs?state=dead
 w1 POST /jobs/j_2/retry
 w1 POST /queues/emails/lease {"lease_ms": 60000}
 w1 POST /jobs {"queue": "emails", "payload": "new", "max_tries": 1, "backoff_ms": 10}
+w1 GET /queues

@@ -1,5 +1,6 @@
-"""The entry point: `serve`, `compact`, `client`, and `check`. Exit 2 on a usage error, 1 if
-`<dir>` cannot be opened or the port cannot be bound."""
+"""The entry point: `serve`, `compact`, `verify`, `client`, and `check`. Exit 2 on a usage
+error, 1 if `<dir>` cannot be opened, holds an ill-formed record, or the port cannot be
+bound."""
 
 import asyncio
 import re
@@ -10,11 +11,12 @@ from pathlib import Path
 from typing import TextIO
 
 from jobq import client
+from jobq.jobs import STATES
 from jobq.server import HOST, HttpServer, ServerThread, serve
-from jobq.store import StoreOpenError, compact
+from jobq.store import Store, StoreOpenError, compact
 
 USAGE = (
-    "usage: jobq serve <dir> [--port N] | jobq compact <dir> | "
+    "usage: jobq serve <dir> [--port N] | jobq compact <dir> | jobq verify <dir> | "
     "jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 )
 DEFAULT_PORT = 7900
@@ -46,6 +48,8 @@ def _dispatch(argv: list[str], stdout: TextIO, stderr: TextIO) -> int:
             return _serve(Path(directory), parse_port(port, allow_zero=True), stderr)
         case ["compact", directory]:
             return _compact(Path(directory), stdout, stderr)
+        case ["verify", directory]:
+            return _verify(Path(directory), stdout, stderr)
         case ["client", host, port, *words] if 3 <= len(words) <= 4:
             return _client(host, parse_port(port, allow_zero=False), words, stdout, stderr)
         case ["check", directory, script]:
@@ -106,6 +110,26 @@ def _compact(directory: Path, stdout: TextIO, stderr: TextIO) -> int:
         print(f"jobq: {unopened}", file=stderr)
         return EXIT_FAILURE
     print(f"jobq: compacted {directory}: {before} records to {after}", file=stdout)
+    return EXIT_OK
+
+
+def _verify(directory: Path, stdout: TextIO, stderr: TextIO) -> int:
+    """The check `serve` runs before it binds, and nothing else: every record against the
+    job's rules. One line of counts on a folder that opens, exit 1 on one that does not."""
+    try:
+        store, replayed = Store.open(directory)
+    except StoreOpenError as unopened:
+        print(f"jobq: {unopened}", file=stderr)
+        return EXIT_FAILURE
+    store.close()
+    counts = dict.fromkeys(STATES, 0)
+    for job in replayed.jobs.values():
+        counts[job.state] += 1
+    shown = ", ".join(f"{state} {counts[state]}" for state in STATES)
+    print(
+        f"{len(replayed.jobs)} jobs: {shown}; next id j_{replayed.next_number}",
+        file=stdout,
+    )
     return EXIT_OK
 
 

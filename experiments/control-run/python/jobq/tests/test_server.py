@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from jobq import server
-from jobq.api import Response
+from jobq.api import Api, Request, Response
 from jobq.client import Call, ClientResponse, request
 from jobq.server import (
     HOST,
@@ -227,6 +227,34 @@ class SocketTest(ServerCase):
     def test_a_second_server_on_the_same_directory_is_refused(self) -> None:
         with self.assertRaises(StoreOpenError), ServerThread(self.dir):
             pass
+
+
+class QueueTimeoutTest(unittest.TestCase):
+    """A queue touch that does not answer is a 503 for that request; the next is answered."""
+
+    def test_a_touch_that_hangs_is_503_and_the_next_request_is_answered(self) -> None:
+        hang = threading.Event()
+        answered = Api.handle
+
+        def slow(api: Api, request: Request) -> Response:
+            if request.path == "/jobs/j_9":
+                hang.wait(SOCKET_TIMEOUT_S)
+            return answered(api, request)
+
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.object(server, "QUEUE_TIMEOUT_S", 0.3),
+            mock.patch.object(Api, "handle", slow),
+            ServerThread(Path(tmp)) as thread,
+        ):
+            started = time.monotonic()
+            hung = request(HOST, thread.port, Call("w1", "GET", "/jobs/j_9"), SOCKET_TIMEOUT_S)
+            self.assertEqual(hung.status, 503)
+            self.assertIn("did not answer", hung.body)
+            self.assertLess(time.monotonic() - started, 3.0)
+            hang.set()
+            health = request(HOST, thread.port, Call(None, "GET", "/health"), SOCKET_TIMEOUT_S)
+            self.assertEqual(health.status, 200)
 
 
 if __name__ == "__main__":

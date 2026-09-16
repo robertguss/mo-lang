@@ -124,6 +124,15 @@ class Queue:
         self._look()
         return dict(self._counts)
 
+    @operation
+    def queue_counts(self) -> dict[str, dict[JobState, int]]:
+        """Every queue that holds at least one job, by name, with its counts per state."""
+        self._look()
+        counts: dict[str, dict[JobState, int]] = {}
+        for job in self._jobs.values():
+            counts.setdefault(job.queue, dict.fromkeys(STATES, 0))[job.state] += 1
+        return dict(sorted(counts.items()))
+
     # Changes.
 
     @operation

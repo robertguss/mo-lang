@@ -1,6 +1,10 @@
 import unittest
+from typing import ClassVar
+from unittest import mock
 
 from jobq.clock import iso_utc
+from jobq.contract import ContractError
+from jobq.queue import Queue
 from jobq.store import replay
 from support import QueueCase, body_of
 
@@ -281,6 +285,148 @@ class RetryTest(QueueCase):
         self.assertEqual(self.call("POST", "/jobs/j_1/retry").status, 503)
         self.ops.failing = False
         self.assertEqual(body_of(self.call("GET", "/jobs/j_1"))["state"], "dead")
+
+
+class QueuesTest(QueueCase):
+    """`GET /queues`: every queue holding a job, by name, with its counts per state."""
+
+    def counts(self) -> list[dict[str, object]]:
+        response = self.call("GET", "/queues")
+        self.assertEqual(response.status, 200, response.body)
+        queues = body_of(response)["queues"]
+        assert isinstance(queues, list)
+        return [dict(queue) for queue in queues]
+
+    def test_an_empty_folder_lists_no_queue(self) -> None:
+        self.assertEqual(self.counts(), [])
+
+    def test_every_queue_is_listed_by_name_with_its_states(self) -> None:
+        self.create("reports")
+        self.create("emails")
+        self.create("emails", delay_ms=1000)
+        self.create("audit", max_tries=1)
+        self.call("POST", "/queues/audit/lease", token="w1")
+        self.assertEqual(
+            self.counts(),
+            [
+                {"name": "audit", "queued": 0, "scheduled": 0, "leased": 1, "done": 0, "dead": 0},
+                {"name": "emails", "queued": 1, "scheduled": 1, "leased": 0, "done": 0, "dead": 0},
+                {"name": "reports", "queued": 1, "scheduled": 0, "leased": 0, "done": 0, "dead": 0},
+            ],
+        )
+
+    def test_a_queue_whose_last_job_is_deleted_disappears(self) -> None:
+        self.create("emails")
+        self.create("reports")
+        self.assertEqual([queue["name"] for queue in self.counts()], ["emails", "reports"])
+        self.assertEqual(self.call("DELETE", "/jobs/j_2").status, 204)
+        self.assertEqual([queue["name"] for queue in self.counts()], ["emails"])
+
+    def test_health_totals_are_the_sums_of_the_queues(self) -> None:
+        self.create("emails", max_tries=1)
+        self.create("reports", delay_ms=1000)
+        self.create("reports")
+        self.call("POST", "/queues/emails/lease", token="w1")
+        self.call("POST", "/jobs/j_1/fail", {"reason": "boom"}, token="w1")
+        health = body_of(self.call("GET", "/health"))
+        for state in ("queued", "scheduled", "leased", "done", "dead"):
+            total = sum(int(str(queue[state])) for queue in self.counts())
+            self.assertEqual(health[state], total, state)
+
+    def test_queues_takes_a_token_and_only_get(self) -> None:
+        self.assertEqual(self.call("GET", "/queues", token=None).status, 401)
+        response = self.call("POST", "/queues")
+        self.assertEqual((response.status, response.allow), (405, "GET"))
+
+    def test_a_look_the_store_refuses_makes_queues_a_503(self) -> None:
+        self.create("emails", delay_ms=100)
+        self.clock.advance(100)
+        self.ops.failing = True
+        self.assertEqual(self.call("GET", "/queues").status, 503)
+        self.ops.failing = False
+        self.assertEqual(self.counts()[0]["queued"], 1)
+
+
+class UnwritableFolderTest(QueueCase):
+    """The spec's test: read-only folder, a write is 503, a read is 200, writable again, 2xx.
+
+    A folder made read-only while the log is open does not stop a write on POSIX: the mode is
+    read when a file is opened, not when it is written. So the folder is really made read-only
+    and the store's refusal is injected at the `FileOps` boundary the simulation uses.
+    """
+
+    BODY: ClassVar[dict[str, object]] = {
+        "queue": "emails",
+        "payload": "while read-only",
+        "max_tries": 1,
+    }
+
+    def test_writes_are_503_reads_are_200_and_writes_resume_by_themselves(self) -> None:
+        job_id = self.create()
+        before = replay(self.dir)
+        health = body_of(self.call("GET", "/health"))
+        mode = self.dir.stat().st_mode
+        self.dir.chmod(0o500)
+        self.ops.failing = True
+        try:
+            for _ in range(3):
+                self.assertEqual(self.call("POST", "/jobs", self.BODY).status, 503)
+            self.assertEqual(self.call("GET", f"/jobs/{job_id}").status, 200)
+            self.assertEqual(body_of(self.call("GET", "/health")), health)
+            self.assertEqual(replay(self.dir), before)
+        finally:
+            self.ops.failing = False
+            self.dir.chmod(mode)
+        created = self.call("POST", "/jobs", self.BODY)
+        self.assertEqual(created.status, 201)
+        self.assertEqual(list(replay(self.dir).jobs), [1, 2])
+        self.assertEqual(body_of(self.call("GET", "/health"))["queued"], 2)
+
+
+class RequestFailureTest(QueueCase):
+    """A failure inside one request costs that request and nothing else."""
+
+    def test_a_store_that_cannot_be_written_refuses_writes_and_still_answers_reads(self) -> None:
+        job_id = self.create()
+        before = replay(self.dir)
+        self.ops.failing = True
+        for method, path, body in (
+            ("POST", "/jobs", {"queue": "emails", "payload": "p", "max_tries": 1}),
+            ("POST", "/queues/emails/lease", None),
+            ("DELETE", f"/jobs/{job_id}", None),
+        ):
+            self.assertEqual(self.call(method, path, body).status, 503, path)
+        for path in ("/health", "/queues", "/jobs", f"/jobs/{job_id}"):
+            self.assertEqual(self.call("GET", path).status, 200, path)
+        self.assertEqual(replay(self.dir), before)
+        self.ops.failing = False
+        again = self.call("POST", "/jobs", {"queue": "e", "payload": "p", "max_tries": 1})
+        self.assertEqual(again.status, 201)
+        self.assertEqual(body_of(self.call("GET", f"/jobs/{job_id}"))["state"], "queued")
+
+    def test_a_bad_request_is_still_a_400_while_the_store_cannot_be_written(self) -> None:
+        self.ops.failing = True
+        self.assertEqual(self.call("POST", "/jobs", {"queue": "e"}).status, 400)
+        self.assertEqual(self.call("GET", "/jobs/j_9").status, 404)
+
+    def test_a_broken_contract_is_a_503_and_the_next_request_is_answered(self) -> None:
+        job_id = self.create()
+        broken = mock.patch.object(Queue, "get", side_effect=ContractError("invariant a bug"))
+        with broken:
+            response = self.call("GET", f"/jobs/{job_id}")
+        refused = {"error": "the request could not be completed"}
+        self.assertEqual((response.status, response.json()), (503, refused))
+        self.assertEqual(body_of(self.call("GET", f"/jobs/{job_id}"))["state"], "queued")
+
+    def test_anything_unexpected_is_a_503_that_leaves_the_job_alone(self) -> None:
+        job_id = self.create()
+        before = replay(self.dir)
+        surprise = mock.patch.object(Queue, "lease", side_effect=ZeroDivisionError("surprise"))
+        with surprise:
+            self.assertEqual(self.call("POST", "/queues/emails/lease").status, 503)
+        self.assertEqual(replay(self.dir), before)
+        leased = body_of(self.call("POST", "/queues/emails/lease"))
+        self.assertEqual((leased["id"], leased["state"]), (job_id, "leased"))
 
 
 if __name__ == "__main__":

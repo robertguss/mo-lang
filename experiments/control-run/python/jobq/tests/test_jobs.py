@@ -12,6 +12,7 @@ from jobq.jobs import (
     JobOut,
     LeaseRequest,
     ListQuery,
+    job_problem,
     parse_job_id,
 )
 
@@ -196,6 +197,88 @@ class JobOutTest(unittest.TestCase):
             ],
         )
         self.assertEqual((out["run_at"], out["backoff_ms"]), ("1970-01-01T00:00:09.000Z", 500))
+
+
+WELL_FORMED: dict[str, dict[str, object]] = {
+    "queued": {"tries": 0},
+    "scheduled": {"tries": 1, "run_at_ms": 9000},
+    "leased": {"tries": 1, "worker": "w1", "lease_until_ms": 9000},
+    "done": {"tries": 3},
+    "dead": {"tries": 3},
+}
+
+
+class WellFormedTest(unittest.TestCase):
+    """`job_problem`: the rule a record must meet in each state, one test per state."""
+
+    BASE = Job.model_validate(
+        {
+            "number": 7,
+            "queue": "emails",
+            "state": "queued",
+            "payload": "hi",
+            "tries": 0,
+            "max_tries": 3,
+            "backoff_ms": 0,
+            "created_ms": 1000,
+            "updated_ms": 2000,
+        }
+    )
+
+    def job(self, state: str, **fields: object) -> Job:
+        return self.BASE.model_copy(update={"state": state} | WELL_FORMED[state] | fields)
+
+    def assertWellFormed(self, state: str, **fields: object) -> None:
+        self.assertIsNone(job_problem(self.job(state, **fields)), (state, fields))
+
+    def assertBreaks(self, rule: str, state: str, **fields: object) -> None:
+        self.assertEqual(job_problem(self.job(state, **fields)), rule, (state, fields))
+
+    def test_a_queued_job_has_tries_left_and_none_of_the_three_fields(self) -> None:
+        self.assertWellFormed("queued")
+        self.assertWellFormed("queued", tries=2)
+        self.assertBreaks("a queued job has tries below max_tries", "queued", tries=3)
+        self.assertBreaks("a queued job has no run_at", "queued", run_at_ms=9000)
+        self.assertBreaks("a queued job has no worker", "queued", worker="w1")
+        self.assertBreaks("a queued job has no lease_until", "queued", lease_until_ms=9000)
+
+    def test_a_scheduled_job_has_tries_left_and_a_run_at_alone(self) -> None:
+        self.assertWellFormed("scheduled")
+        self.assertWellFormed("scheduled", tries=0)
+        self.assertBreaks("a scheduled job has tries below max_tries", "scheduled", tries=3)
+        self.assertBreaks("a scheduled job has a run_at", "scheduled", run_at_ms=None)
+        self.assertBreaks("a scheduled job has no worker", "scheduled", worker="w1")
+        self.assertBreaks(
+            "a scheduled job has no lease_until", "scheduled", lease_until_ms=9000
+        )
+
+    def test_a_leased_job_has_a_try_a_worker_and_a_lease_until(self) -> None:
+        self.assertWellFormed("leased")
+        self.assertWellFormed("leased", tries=3)
+        self.assertBreaks("a leased job has 1 to max_tries tries", "leased", tries=0)
+        self.assertBreaks("a leased job has no run_at", "leased", run_at_ms=9000)
+        self.assertBreaks("a leased job has a worker", "leased", worker=None)
+        self.assertBreaks("a leased job has a lease_until", "leased", lease_until_ms=None)
+
+    def test_a_done_job_has_a_try_and_none_of_the_three_fields(self) -> None:
+        self.assertWellFormed("done")
+        self.assertWellFormed("done", tries=1)
+        self.assertBreaks("a done job has 1 to max_tries tries", "done", tries=0)
+        self.assertBreaks("a done job has no run_at", "done", run_at_ms=9000)
+        self.assertBreaks("a done job has no worker", "done", worker="w1")
+        self.assertBreaks("a done job has no lease_until", "done", lease_until_ms=9000)
+
+    def test_a_dead_job_has_a_try_and_none_of_the_three_fields(self) -> None:
+        self.assertWellFormed("dead")
+        self.assertWellFormed("dead", tries=1, reason="boom")
+        self.assertBreaks("a dead job has 1 to max_tries tries", "dead", tries=0)
+        self.assertBreaks("a dead job has no run_at", "dead", run_at_ms=9000)
+        self.assertBreaks("a dead job has no worker", "dead", worker="w1")
+        self.assertBreaks("a dead job has no lease_until", "dead", lease_until_ms=9000)
+
+    def test_tries_above_max_tries_break_every_state(self) -> None:
+        for state in WELL_FORMED:
+            self.assertIsNotNone(job_problem(self.job(state, tries=4)), state)
 
 
 if __name__ == "__main__":

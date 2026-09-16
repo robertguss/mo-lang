@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 # The program-level check: `jobq check` through real sockets, then a compaction, then a
-# second `jobq check` on the same directory after the restart. Then the same on a copy of a
-# folder the round 7 program served, before the tries rename: it opens, takes the new
-# routes, and compacts to a log with no old name in it.
+# second `jobq check` on the same directory after the restart, with `jobq verify` reading
+# the folder between them. Then the same on a copy of a folder the round 7 program served:
+# it opens, takes the new routes, and compacts to a log with no old name in it. Last, a
+# folder holding one ill-formed record, which no command will serve.
 set -euo pipefail
 cd "$(dirname "$0")"
 work=$(mktemp -d)
 old=$(mktemp -d)
+bad=$(mktemp -d)
 actual=$(mktemp)
-trap 'rm -rf "$work" "$old" "$actual"' EXIT
+trap 'rm -rf "$work" "$old" "$bad" "$actual"' EXIT
 cp tests/fixtures/round7/jobs.log "$old/jobs.log"
+cp tests/fixtures/illformed/jobs.log "$bad/jobs.log"
 
 {
   timeout 60 uv run --quiet jobq check "$work" checks/first.txt
+  timeout 60 uv run --quiet jobq verify "$work"
   timeout 60 uv run --quiet jobq compact "$work"
+  timeout 60 uv run --quiet jobq verify "$work"
   timeout 60 uv run --quiet jobq check "$work" checks/second.txt
   timeout 60 uv run --quiet jobq check "$old" checks/round7.txt
+  timeout 60 uv run --quiet jobq verify "$old"
   timeout 60 uv run --quiet jobq compact "$old"
   timeout 60 uv run --quiet jobq check "$old" checks/round7-after.txt
 } | sed -E \
@@ -35,8 +41,22 @@ timeout 60 uv run --quiet jobq serve "$work/missing" --port 0 2> /dev/null
 code=$?
 timeout 60 uv run --quiet jobq bogus 2> /dev/null
 usage=$?
+refusal=$(timeout 60 uv run --quiet jobq verify "$bad" 2>&1 > /dev/null)
+refused=$?
+timeout 60 uv run --quiet jobq serve "$bad" --port 0 2> /dev/null
+unserved=$?
+timeout 60 uv run --quiet jobq compact "$bad" 2> /dev/null
+uncompacted=$?
 set -e
 [ "$code" -eq 1 ] || { echo "check.sh: serve on a missing dir exited $code, expected 1"; exit 1; }
 [ "$usage" -eq 2 ] || { echo "check.sh: a usage error exited $usage, expected 2"; exit 1; }
+[ "$refused" -eq 1 ] || { echo "check.sh: verify of an ill-formed folder exited $refused"; exit 1; }
+[ "$unserved" -eq 1 ] || { echo "check.sh: serve of an ill-formed folder exited $unserved"; exit 1; }
+[ "$uncompacted" -eq 1 ] || { echo "check.sh: compact of it exited $uncompacted"; exit 1; }
+want="jobq: $bad: record j_2: a leased job has no run_at"
+[ "$refusal" = "$want" ] || { echo "check.sh: the refusal said: $refusal"; exit 1; }
+# The refused folder is left as it was found: only the lock file every open makes is added.
+cmp -s "$bad/jobs.log" tests/fixtures/illformed/jobs.log ||
+  { echo "check.sh: a refused folder had its log rewritten"; exit 1; }
 
 echo "check.sh: ok"

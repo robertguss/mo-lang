@@ -3,8 +3,10 @@
 After every request: the store holds exactly what the queue holds, a 503 changed nothing
 but what a look moves (run-out leases and due scheduled jobs), no job was held by two
 workers, tries stayed within bounds, no scheduled job moved before its run_at, a done job
-never changed, and a dead job changed only by its retry. Once the faults stop and the
-workers keep working, every job ends done or dead.
+never changed, a dead job changed only by its retry, and `/queues` lists exactly the queues
+holding a job. Then the folder refuses every write for a while: each write is a 503, reads
+still answer, nothing changes, and the first write after it goes through with no restart.
+Once the faults stop and the workers keep working, every job ends done or dead.
 """
 
 import errno
@@ -18,13 +20,14 @@ from unittest import mock
 
 from jobq.api import Request, Response
 from jobq.clock import FakeClock
-from jobq.jobs import Job, JobOut
+from jobq.jobs import STATES, Job, JobOut
 from jobq.queue import Queue
 from jobq.server import open_queue
 from jobq.store import DeleteRecord, PutRecord, replay
 
 SEEDS = 100
 FAULT_STEPS = 80
+UNWRITABLE_STEPS = 5
 DRAIN_ROUNDS = 400
 FILE_FAULT_RATE = 0.15
 SOCKET_DROP_RATE = 0.1
@@ -83,6 +86,7 @@ class Sim:
         self.finished: dict[int, Job] = {}
         self.dropped = 0
         self.unavailable = 0
+        self.listed = 0
         self.scheduled = 0
         self.retried = 0
 
@@ -137,10 +141,24 @@ class Sim:
                     del self.finished[number]
             elif job.state in {"done", "dead"}:
                 self.finished[number] = job
+        if request.path == "/queues" and response.status == 200:
+            self.check_queues(response, after)
         if response.status in {200, 201} and response.body.startswith(b'{"id"'):
             number = int(json.loads(response.body)["id"][2:])
             shown = JobOut.of(after[number]).to_json() if number in after else b""
             self.check(shown == response.body, "a job response shows the durable job")
+
+    def check_queues(self, response: Response, after: dict[int, Job]) -> None:
+        """`/queues` shows every queue holding a job, and its counts are the jobs there."""
+        held: dict[str, dict[str, int]] = {}
+        for job in after.values():
+            held.setdefault(job.queue, dict.fromkeys(STATES, 0))[job.state] += 1
+        listed = {row["name"]: row for row in json.loads(response.body)["queues"]}
+        self.check(set(listed) == set(held), "/queues lists exactly the queues holding a job")
+        for name, counts in held.items():
+            shown = [listed[name][state] for state in STATES]
+            self.check(shown == [counts[state] for state in STATES], f"{name}'s counts are right")
+        self.listed += 1
 
     @staticmethod
     def _retried(request: Request, response: Response, finished: Job, job: Job) -> bool:
@@ -217,6 +235,8 @@ class Sim:
         elif roll < 0.9:
             queries = ["", "state=leased", "queue=mail&state=queued", "state=scheduled"]
             self.send(Request("GET", "/jobs", self.rng.choice(queries), worker))
+        elif roll < 0.93:
+            self.send(Request("GET", "/queues", "", "operator"))
         elif roll < 0.95:
             self.send(Request("GET", "/health"))
         elif roll < 0.98:
@@ -238,11 +258,38 @@ class Sim:
             self.clock.advance(self.rng.randrange(50, 400))
         self.check(False, "every job is done or dead once the faults stop")
 
+    def unwritable(self) -> None:
+        """The folder refuses every write for a while, as the round 8 incident had it: every
+        write is a 503, the reads still answer, no job changes, and the first write after the
+        folder can be written again goes through with no restart."""
+        self.ops.rate = 0.0
+        self.drop_rate = 0.0
+        settled = self.send(Request("GET", "/health"))  # nothing is due, so no read writes
+        self.check(settled is not None and settled.status == 200, "the look before is taken")
+        before = self.queue.snapshot()
+        self.ops.rate = 1.0
+        body = json.dumps(
+            {"queue": QUEUES[0], "payload": "while unwritable", "max_tries": 2}
+        ).encode()
+        for _ in range(UNWRITABLE_STEPS):
+            refused = self.send(Request("POST", "/jobs", "", "producer", body))
+            self.check(refused is not None and refused.status == 503, "a write is refused")
+            leased = self.send(Request("POST", f"/queues/{QUEUES[0]}/lease", "", "w1"))
+            self.check(leased is not None and leased.status in {204, 503}, "a lease is refused")
+            for path in ("/health", "/queues", "/jobs"):
+                read = self.send(Request("GET", path, "", "operator"))
+                self.check(read is not None and read.status == 200, f"{path} still answers")
+            self.check(self.queue.snapshot() == before, "the unwritable folder changes no job")
+        self.ops.rate = 0.0
+        resumed = self.send(Request("POST", "/jobs", "", "producer", body))
+        self.check(resumed is not None and resumed.status == 201, "the write resumes on its own")
+
     def run(self) -> None:
         self.ops.rate = FILE_FAULT_RATE
         self.drop_rate = SOCKET_DROP_RATE
         for _ in range(FAULT_STEPS):
             self.step()
+        self.unwritable()
         self.drain()
         self.check(replay(self.dir).jobs == self.queue.snapshot(), "the store matches at the end")
 
@@ -266,6 +313,7 @@ class SimulationTest(unittest.TestCase):
         self.assertGreater(sum(len(sim.finished) for sim in sims), SEEDS)
         self.assertGreater(sum(sim.scheduled for sim in sims), SEEDS)
         self.assertGreater(sum(sim.retried for sim in sims), SEEDS // 10)
+        self.assertGreater(sum(sim.listed for sim in sims), SEEDS)
 
     def test_the_simulation_catches_a_change_applied_before_it_is_durable(self) -> None:
         def applied_first(queue: Queue, before: Job | None, after: Job | None) -> None:

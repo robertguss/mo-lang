@@ -126,7 +126,15 @@
 > w1 GET /jobs/j_6/retry
 405
 {"error":"method not allowed"}
+> - GET /queues
+401
+{"error":"missing bearer token"}
+> w1 POST /queues
+405
+{"error":"method not allowed"}
+5 jobs: queued 0, scheduled 2, leased 1, done 2, dead 0; next id j_7
 jobq: compacted <dir>: <n> records to 6
+5 jobs: queued 0, scheduled 2, leased 1, done 2, dead 0; next id j_7
 > w1 GET /jobs/j_2
 200
 {"id":"j_2","queue":"emails","state":"dead","payload":"second","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
@@ -138,6 +146,9 @@ jobq: compacted <dir>: <n> records to 6
 {"id":"j_2","queue":"emails","state":"queued","payload":"second","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
 > w1 DELETE /jobs/j_4
 204
+> w1 GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"flaky","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"once","queued":0,"scheduled":0,"leased":0,"done":1,"dead":0}]}
 > w1 GET /jobs?state=scheduled
 200
 {"jobs":[{"id":"j_5","queue":"flaky","state":"scheduled","payload":"backs off","tries":1,"max_tries":2,"backoff_ms":3600000,"created_at":"<time>","updated_at":"<time>","run_at":"<time>","reason":"try again later"}]}
@@ -165,6 +176,10 @@ jobq: compacted <dir>: <n> records to 6
 > w1 POST /jobs {"queue": "emails", "payload": "new", "max_tries": 1, "backoff_ms": 10}
 201
 {"id":"j_7","queue":"emails","state":"queued","payload":"new","tries":0,"max_tries":1,"backoff_ms":10,"created_at":"<time>","updated_at":"<time>"}
+> w1 GET /queues
+200
+{"queues":[{"name":"emails","queued":2,"scheduled":0,"leased":1,"done":1,"dead":0},{"name":"reports","queued":2,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+6 jobs: queued 4, scheduled 0, leased 1, done 1, dead 0; next id j_8
 jobq: compacted <old>: <n> records to 7
 > w1 GET /jobs/j_6
 200

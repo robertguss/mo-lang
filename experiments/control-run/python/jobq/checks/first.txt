@@ -43,3 +43,5 @@ w1 POST /queues/once/lease {"lease_ms": 60000}
 w1 POST /jobs/j_6/ack
 w1 POST /jobs/j_1/retry
 w1 GET /jobs/j_6/retry
+- GET /queues
+w1 POST /queues

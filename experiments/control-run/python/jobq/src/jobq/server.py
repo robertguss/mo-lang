@@ -1,7 +1,8 @@
-"""The listener: HTTP/1.1 over asyncio streams, one queue, one thread.
+"""The listener: HTTP/1.1 over asyncio streams, one queue, one worker thread.
 
-The queue is only touched from the event loop, so its operations never interleave.
-Every wait on a socket carries a timeout; the store's fsync does not (see `store.py`).
+The queue is only touched from one thread (`QueueRunner`), so its operations never
+interleave. Every wait on a socket carries a timeout, and so does every queue touch: one
+that does not answer in five seconds is a 503 and the listener goes on to the next request.
 """
 
 import asyncio
@@ -9,15 +10,17 @@ import contextlib
 import re
 import sys
 import threading
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from jobq.api import Api, Request, Response, error
 from jobq.clock import Clock, SystemClock
 from jobq.jobs import token_problem
 from jobq.queue import Queue
-from jobq.store import FileOps, Store, StoreError
+from jobq.store import FileOps, Store
 
 HOST = "127.0.0.1"
 # within: an accepted connection must finish sending a request head in this long, or it
@@ -30,6 +33,9 @@ CLOSE_TIMEOUT_S = 1.0
 # The listener's Idle: how often run-out leases are returned and due scheduled jobs are
 # queued without a request.
 SWEEP_INTERVAL_S = 1.0
+# within: a queue touch that has not answered in this long is a 503 for that request alone,
+# and the listener is free again (the spec's five seconds).
+QUEUE_TIMEOUT_S = 5.0
 BACKLOG = 4096
 MAX_HEAD_BYTES = 16 * 1024
 MAX_BODY_BYTES = 1024 * 1024
@@ -129,12 +135,87 @@ def encode_response(response: Response, keep_alive: bool) -> bytes:
     return head if response.status == 204 else head + response.body
 
 
+def _drop[T](future: asyncio.Future[T]) -> None:
+    """Take the outcome of a touch nobody waits for any more, so it is never logged as lost."""
+    with contextlib.suppress(BaseException):
+        future.exception()
+
+
+def _finish(future: asyncio.Future[object], value: object, failure: BaseException | None) -> None:
+    if future.done():
+        return
+    if failure is not None:
+        future.set_exception(failure)
+    else:
+        future.set_result(value)
+
+
+class QueueRunner:
+    """Every queue touch on one thread of its own: no two ever interleave, and one that does
+    not answer within `QUEUE_TIMEOUT_S` raises `TimeoutError` to its caller, leaving the
+    listener free for the next request. The touch itself is never abandoned — it runs on, and
+    whatever comes after it waits behind it — so a job is never left half changed.
+
+    Touches that are waiting together are taken in one batch, so a busy listener pays one
+    handoff for many requests rather than one for each.
+    """
+
+    def __init__(self) -> None:
+        self._pending: deque[tuple[Callable[[], object], asyncio.Future[object]]] = deque()
+        self._wake = threading.Event()
+        self._closed = False
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread = threading.Thread(target=self._work, name="jobq-queue", daemon=True)
+
+    async def run[T](self, work: Callable[[], T]) -> T:
+        loop = asyncio.get_running_loop()
+        if self._loop is None:
+            self._loop = loop
+            self._thread.start()
+        future: asyncio.Future[object] = loop.create_future()
+        self._pending.append((cast(Callable[[], object], work), future))
+        self._wake.set()
+        done, _ = await asyncio.wait([future], timeout=QUEUE_TIMEOUT_S)
+        if not done:
+            future.add_done_callback(_drop)
+            raise TimeoutError(f"the queue did not answer in {QUEUE_TIMEOUT_S:.0f} s")
+        return cast(T, future.result())
+
+    def close(self) -> None:
+        self._closed = True
+        self._wake.set()
+
+    def _work(self) -> None:
+        """Wait, then take everything that is waiting, in the order it was asked for."""
+        while True:
+            self._wake.wait()
+            self._wake.clear()
+            if self._closed:
+                return
+            while self._pending:
+                work, future = self._pending.popleft()
+                try:
+                    self._settle(future, work(), None)
+                except BaseException as failure:  # noqa: BLE001 - handed to the request
+                    self._settle(future, None, failure)
+
+    def _settle(
+        self, future: asyncio.Future[object], value: object, failure: BaseException | None
+    ) -> None:
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            return
+        with contextlib.suppress(RuntimeError):
+            loop.call_soon_threadsafe(_finish, future, value, failure)
+
+
 class HttpServer:
     def __init__(self, api: Api, queue: Queue) -> None:
         self._api = api
         self._queue = queue
         self._server: asyncio.Server | None = None
         self._sweeper: asyncio.Task[None] | None = None
+        self._runner = QueueRunner()
         self.connections = 0
         self.port = 0
 
@@ -154,13 +235,15 @@ class HttpServer:
         if self._server is not None:
             self._server.close()
             self._server.close_clients()
+        self._runner.close()
 
     async def _sweep(self) -> None:
+        """The idle look, on the queue's own thread. A look that fails costs this round only."""
         while True:
             await asyncio.sleep(SWEEP_INTERVAL_S)
             try:
-                self._queue.expire_due()
-            except StoreError as failure:
+                await self._runner.run(self._queue.expire_due)
+            except Exception as failure:  # noqa: BLE001 - the next look is taken all the same
                 print(f"jobq: the idle look failed: {failure}", file=sys.stderr)
 
     async def _connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -175,6 +258,8 @@ class HttpServer:
             asyncio.LimitOverrunError,
         ):
             pass
+        except Exception as failure:  # noqa: BLE001 - this connection ends, the service does not
+            print(f"jobq: a connection failed: {failure!r}", file=sys.stderr)
         finally:
             self.connections -= 1
             writer.close()
@@ -205,7 +290,10 @@ class HttpServer:
             token=bearer_token(head.headers.get("authorization")),
             body=body,
         )
-        response = self._api.handle(request)
+        try:
+            response = await self._runner.run(lambda: self._api.handle(request))
+        except TimeoutError as slow:
+            response = error(503, str(slow))
         await self._send(writer, response, head.keep_alive, deadline)
         return head.keep_alive
 
@@ -233,13 +321,13 @@ async def serve(
 ) -> None:
     """Serve until `stop` is set. StoreOpenError or OSError before `ready` is called."""
     queue, api = open_queue(directory)
+    server = HttpServer(api, queue)
     try:
-        server = HttpServer(api, queue)
         await server.start(HOST, port)
         ready(server)
         await stop.wait()
-        await server.stop()
     finally:
+        await server.stop()
         queue.store.close()
 
 

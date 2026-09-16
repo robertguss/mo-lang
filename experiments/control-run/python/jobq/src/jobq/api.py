@@ -9,7 +9,6 @@ from urllib.parse import parse_qsl
 from pydantic import BaseModel, ValidationError
 
 from jobq.clock import Clock
-from jobq.contract import ContractError
 from jobq.jobs import (
     CreateJob,
     ErrorBody,
@@ -20,6 +19,8 @@ from jobq.jobs import (
     JobOut,
     LeaseRequest,
     ListQuery,
+    QueueCounts,
+    QueueList,
     queue_name_problem,
 )
 from jobq.queue import Conflict, NotFound, Queue
@@ -69,7 +70,21 @@ class Api:
         self._started_ms = clock.now_ms()
 
     def handle(self, request: Request) -> Response:
-        """Route, check the token, and answer; a store failure is a 503 with nothing changed."""
+        """Route, check the token, and answer.
+
+        Whatever goes wrong in here costs this request and nothing else: a store that cannot
+        be written, a broken contract, or anything unforeseen is a 503 with the job the
+        request named unchanged, and the next request is answered as if it never arrived.
+        """
+        try:
+            return self._answer(request)
+        except StoreError as failure:
+            return error(503, f"store unavailable: {failure}")
+        except Exception as unexpected:  # noqa: BLE001 - one request never takes the rest down
+            print(f"jobq: {request.method} {request.path}: {unexpected!r}", file=sys.stderr)
+            return error(503, "the request could not be completed")
+
+    def _answer(self, request: Request) -> Response:
         routes, param = self._match(request.path)
         if routes is None:
             return error(404, "no such route")
@@ -78,13 +93,7 @@ class Api:
             return error(405, "method not allowed", allow=", ".join(routes))
         if request.path != "/health" and request.token is None:
             return error(401, "missing bearer token")
-        try:
-            return handler(request, param)
-        except StoreError as failure:
-            return error(503, f"store unavailable: {failure}")
-        except ContractError as bug:
-            print(f"jobq: {bug}", file=sys.stderr)
-            return error(500, "internal error")
+        return handler(request, param)
 
     def _match(self, path: str) -> tuple[dict[str, Handler] | None, str]:
         match path.split("/"):
@@ -100,6 +109,8 @@ class Api:
                 return {"POST": self._fail}, job_id
             case ["", "jobs", job_id, "retry"]:
                 return {"POST": self._retry}, job_id
+            case ["", "queues"]:
+                return {"GET": self._queues}, ""
             case ["", "queues", queue, "lease"]:
                 return {"POST": self._lease}, queue
             case _:
@@ -117,6 +128,21 @@ class Api:
             uptime_ms=uptime,
         )
         return _json(200, health)
+
+    def _queues(self, _request: Request, _param: str) -> Response:
+        """Every queue holding a job, by name, with its counts; `/health` sums these."""
+        queues = [
+            QueueCounts(
+                name=name,
+                queued=counts["queued"],
+                scheduled=counts["scheduled"],
+                leased=counts["leased"],
+                done=counts["done"],
+                dead=counts["dead"],
+            )
+            for name, counts in self._queue.queue_counts().items()
+        ]
+        return _json(200, QueueList(queues=queues))
 
     def _create(self, request: Request, _param: str) -> Response:
         try:

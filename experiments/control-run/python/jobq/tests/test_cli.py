@@ -15,6 +15,7 @@ from jobq.clock import SystemClock
 from jobq.queue import Queue
 from jobq.server import HOST, ServerThread
 from jobq.store import LOG_NAME, Store
+from support import FIXTURES
 
 PROCESS_TIMEOUT_S = 20.0  # within: chosen, a Python start plus a request
 
@@ -53,6 +54,8 @@ class UsageTest(CliCase):
             ["serve", d, "--port", "65536"],
             ["serve", d, "--verbose", "1"],
             ["compact"],
+            ["verify"],
+            ["verify", d, "extra"],
             ["client", HOST, "0", "w1", "GET", "/health"],
             ["client", HOST, "7900", "w1", "get", "/health"],
             ["client", HOST, "7900", "w1", "GET", "health"],
@@ -119,6 +122,69 @@ class CompactTest(CliCase):
 
     def test_compact_of_a_missing_directory_exits_1(self) -> None:
         self.assertEqual(invoke("compact", str(self.dir / "missing"))[0], EXIT_FAILURE)
+
+
+class VerifyTest(CliCase):
+    """`jobq verify`: the check `serve` runs before it binds, without serving."""
+
+    def fill(self) -> None:
+        store, replayed = Store.open(self.dir)
+        queue = Queue(store, SystemClock(), replayed)
+        for n in range(4):
+            queue.create("emails", str(n), 2)
+        queue.create("reports", "later", 2, delay_ms=60_000)
+        queue.lease("emails", "w1", 60_000)
+        queue.ack("j_1", "w1")
+        queue.lease("emails", "w1", 60_000)
+        queue.delete("j_4")
+        store.close()
+
+    def test_an_empty_folder_verifies_to_nothing(self) -> None:
+        code, out, err = invoke("verify", str(self.dir))
+        self.assertEqual((code, err), (EXIT_OK, ""))
+        empty = "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1\n"
+        self.assertEqual(out, empty)
+
+    def test_a_folder_that_opens_prints_its_counts_and_the_next_id(self) -> None:
+        self.fill()
+        code, out, err = invoke("verify", str(self.dir))
+        self.assertEqual((code, err), (EXIT_OK, ""))
+        filled = "4 jobs: queued 1, scheduled 1, leased 1, done 1, dead 0; next id j_6\n"
+        self.assertEqual(out, filled)
+
+    def test_verify_leaves_the_folder_servable(self) -> None:
+        self.fill()
+        self.assertEqual(invoke("verify", str(self.dir))[0], EXIT_OK)
+        with ServerThread(self.dir) as server:
+            got = request(HOST, server.port, Call("w1", "GET", "/jobs/j_1"))
+        self.assertEqual(got.status, 200)
+
+    def test_an_ill_formed_record_exits_1_with_one_line_naming_the_key_and_the_rule(self) -> None:
+        (self.dir / LOG_NAME).write_bytes((FIXTURES / "illformed" / LOG_NAME).read_bytes())
+        code, out, err = invoke("verify", str(self.dir))
+        self.assertEqual((code, out), (EXIT_FAILURE, ""))
+        self.assertEqual(err, f"jobq: {self.dir}: record j_2: a leased job has no run_at\n")
+
+    def test_serve_and_compact_refuse_the_same_folder(self) -> None:
+        (self.dir / LOG_NAME).write_bytes((FIXTURES / "illformed" / LOG_NAME).read_bytes())
+        for argv in (["serve", str(self.dir), "--port", "0"], ["compact", str(self.dir)]):
+            code, out, err = invoke(*argv)
+            self.assertEqual((code, out), (EXIT_FAILURE, ""), argv)
+            self.assertEqual(err.count("\n"), 1, argv)
+            self.assertIn("record j_2: a leased job has no run_at", err)
+
+    def test_the_round7_fixture_folder_verifies(self) -> None:
+        (self.dir / LOG_NAME).write_bytes((FIXTURES / "round7" / LOG_NAME).read_bytes())
+        code, out, err = invoke("verify", str(self.dir))
+        self.assertEqual((code, err), (EXIT_OK, ""))
+        self.assertEqual(
+            out, "5 jobs: queued 2, scheduled 0, leased 1, done 1, dead 1; next id j_7\n"
+        )
+
+    def test_a_folder_that_cannot_be_opened_exits_1(self) -> None:
+        code, _, err = invoke("verify", str(self.dir / "missing"))
+        self.assertEqual(code, EXIT_FAILURE)
+        self.assertIn("missing", err)
 
 
 class ClientAndCheckTest(CliCase):
