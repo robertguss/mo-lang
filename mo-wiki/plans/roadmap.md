@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; Fable writing the brief | Fable, then the Opus worker in `w44:p3` | 16 Sep, 15:10 | [[interpreter-step-30]], [[mac-scaling-run]] |
+| The placement step: a process placed with its asker, or a reply answered on the asker's scheduler; Fable writing the brief | the Opus worker in a fresh pane of `w44`, Fable verifying | 16 Sep, 15:15 | [[interpreter-step-34]] |
 
 ## Next, in order
 
