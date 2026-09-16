@@ -50,63 +50,91 @@ end
 fn note(id: UInt64, title: String, body: String, now: Time) : Note
   requires title?(title)
   requires body?(body)
-  # body gone; regenerate
+
+  Note(id: "n_#{id}", title: title, body: body, created_at: now, updated_at: now)
 end
 
 # A note as the store keeps it, read back.
 fn note_of(text: String) : Option(Note)
-  # body gone; regenerate
+  case Json.decode(text)
+    Ok(Object(fields)):
+      id = try text_in(fields, "id")
+      title = try text_in(fields, "title")
+      body = try text_in(fields, "body")
+      made = try Time.parse(try text_in(fields, "created_at"))
+      changed = try Time.parse(try text_in(fields, "updated_at"))
+      Some(Note(id: id, title: title, body: body, created_at: made, updated_at: changed))
+    Ok(_): None
+    Error(_): None
+  end
 end
 
 fn text_in(fields: Map(String, Json), name: String) : Option(String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(String(text)): Some(text)
+    Some(_): None
+    None: None
+  end
 end
 
 # The store key of a client's note: its token, a slash, and the id. No token holds a slash,
 # so no client's keys are under another's.
 fn key_of(owner: ClientId, id: String) : String
   requires token?(owner)
-  # body gone; regenerate
+
+  "#{owner}/#{id}"
 end
 
 # The number in an id: n_ and digits.
 fn id_number(id: String) : Option(UInt64)
-  # body gone; regenerate
+  return None if !id.starts_with?("n_")
+  digits = id.slice(2, id.size)
+  return None if digits == "" or !digits.bytes.all?(fn(b) b >= 48 and b <= 57 end)
+  digits.to_u64
 end
 
 # A title is 1 to 200 bytes with no control character.
 fn title?(text: String) : Bool
-  # body gone; regenerate
+  text.byte_size >= 1 and text.byte_size <= 200 and plain?(text, false)
 end
 
 # A body is at most 60 KiB with no control character but a newline.
 fn body?(text: String) : Bool
-  # body gone; regenerate
+  text.byte_size <= 61_440 and plain?(text, true)
 end
 
 # No C0 control character (a newline allowed when newlines is true), no DEL, and no C1
 # control character (U+0080 to U+009F).
 fn plain?(text: String, newlines: Bool) : Bool
-  # body gone; regenerate
+  text.chars.all?(fn(c)
+    b = c.bytes.first or 32
+    if c == "\n": newlines else: b >= 32 and b != 127 and !c1?(c)
+  end)
 end
 
 # A C1 control character is two bytes in UTF-8: C2, then 80 to 9F.
 fn c1?(c: String) : Bool
-  # body gone; regenerate
+  bytes = c.bytes
+  return false if bytes.size != 2 or bytes.first != Some(194)
+  second = bytes.get(1) or 0
+  second >= 128 and second <= 159
 end
 
 # The client a store key belongs to, and the note id in it: a key is the client, a slash, and
 # the id.
 fn owner_of(key: String) : String
-  # body gone; regenerate
+  key.slice(0, key.index_of("/") or key.size)
 end
 
 fn id_of(key: String) : String
-  # body gone; regenerate
+  case key.index_of("/")
+    Some(at): key.slice(at + 1, key.size)
+    None: ""
+  end
 end
 
 fn counted(counts: Map(String, UInt64), owner: String) : Map(String, UInt64)
-  # body gone; regenerate
+  counts.set(owner, (counts.get(owner) or 0) + 1)
 end
 
 test "a title is 1 to 200 bytes and a body up to 60 KiB, with no control character but a newline in the body"
@@ -161,3 +189,6 @@ property "any valid title and body survive the store's JSON"
     assert note_of(Json.encode(made)) == Some(made)
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

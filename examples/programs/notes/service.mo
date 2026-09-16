@@ -108,7 +108,24 @@ process Service(fs: Fs, clock: Clock, opening: Opening)
   message Health : Counts
 
   fn update(state, message)
-    # body gone; regenerate
+    case message
+      Serve(call):
+        now = clock.now
+        pass = allow?(state.limits, call.owner, now)
+        state.limits = pass.0
+        books = Books(notes: state.notes, next_id: state.next_id, reserved: state.reserved,
+          torn: state.torn)
+        done = if pass.1: served(fs, books, call, now) else: limited(books, state.limits, call, now)
+        state.notes = done.books.notes
+        state.next_id = done.books.next_id
+        state.reserved = done.books.reserved
+        state.torn = done.books.torn
+        state.owners = owned(state.owners, call.owner, done.outcome)
+        done.outcome
+      Health:
+        Counts(notes: state.owners.values.sum, clients: state.owners.size,
+          uptime_ms: (clock.now - opening.at).ms)
+    end
   end
 end
 
@@ -122,109 +139,233 @@ end
 # every id the log holds and every id it reserved.
 fn opening(notes: Table, at: Time) : Opening
   ensures result.next_id >= 1
-  # body gone; regenerate
+
+  held_keys = keys(notes, "").filter(fn(key) key != "ids" end)
+  owners = held_keys.reduce(Map.new(), fn(counts, key) counted(counts, owner_of(key)) end)
+  highest = held_keys.map(fn(key) id_number(id_of(key)) or 0 end).max or 0
+  floor = (get(notes, "ids") or "").to_u64 or 1
+  Opening(notes: notes, next_id: max_of(floor, highest + 1), owners: owners, at: at)
 end
 
 # What a call comes to against the store: an answer now, or a change to log first.
 fn decide(notes: Table, call: Call, next_id: UInt64, now: Time) : Plan
-  # body gone; regenerate
+  case call.command
+    Create(title: title, body: body): created(notes, call.owner, note(next_id, title, body, now))
+    Fetch(id): Answer(outcome: found(notes, call.owner, id))
+    Listing(prefix): Answer(outcome: Listed(notes: listed(notes, call.owner, prefix)))
+    Update(id: id, title: title, body: body): updated(notes, call.owner, id, title, body, now)
+    Remove(id): removed(notes, call.owner, id)
+    Refuse(reason): Answer(outcome: Refused(reason: reason))
+  end
 end
 
 # A create that would take the store past a million keys, the reserved ids among them, is
 # refused instead.
 fn created(notes: Table, owner: ClientId, made: Note) : Plan
-  # body gone; regenerate
+  if count(notes) >= 1_000_000
+    return Answer(outcome: Refused(reason: "the service holds a million notes already"))
+  end
+  Write(edit: Edit(key: key_of(owner, made.id), value: Some(Json.encode(made)),
+    outcome: Made(note: made), issues: true))
 end
 
 fn found(notes: Table, owner: ClientId, id: String) : Outcome
-  # body gone; regenerate
+  case held(notes, owner, id)
+    Some(kept): Found(note: kept)
+    None: Missing
+  end
 end
 
 fn held(notes: Table, owner: ClientId, id: String) : Option(Note)
-  # body gone; regenerate
+  return None if id_number(id) is None
+  text = try get(notes, key_of(owner, id))
+  note_of(text)
 end
 
 # A client's notes whose titles start with the prefix, by id, the first 100.
 fn listed(notes: Table, owner: ClientId, prefix: String) : List(Note)
-  # body gone; regenerate
+  mine = kept_at(notes, key_of(owner, ""))
+  wanted = mine.filter(fn(kept) kept.title.starts_with?(prefix) end)
+  wanted.sort_by(fn(kept) id_number(kept.id) or 0 end).take(100)
 end
 
 fn kept_at(notes: Table, key: String) : List(Note)
-  # body gone; regenerate
+  keys(notes, key).flat_map(fn(k)
+    case note_of(get(notes, k) or "")
+      Some(kept): [kept]
+      None: []
+    end
+  end)
 end
 
 fn updated(notes: Table, owner: ClientId, id: String, title: String, body: String, now: Time) : Plan
-  # body gone; regenerate
+  case held(notes, owner, id)
+    Some(kept):
+      var after = kept
+      after.title = title
+      after.body = body
+      after.updated_at = now
+      Write(edit: Edit(key: key_of(owner, id), value: Some(Json.encode(after)),
+        outcome: Found(note: after), issues: false))
+    None: Answer(outcome: Missing)
+  end
 end
 
 fn removed(notes: Table, owner: ClientId, id: String) : Plan
-  # body gone; regenerate
+  case held(notes, owner, id)
+    Some(_): Write(edit: Edit(key: key_of(owner, id), value: None, outcome: Removed, issues: false))
+    None: Answer(outcome: Missing)
+  end
 end
 
 fn served(fs: Fs, books: Books, call: Call, now: Time) : Served
-  # body gone; regenerate
+  case decide(books.notes, call, books.next_id, now)
+    Answer(outcome): Served(books: books, outcome: outcome, step: looked(call))
+    Write(edit): written(fs, books, call, edit)
+  end
 end
 
 # A read, recorded as a step that touched its note's key and changed nothing.
 fn looked(call: Call) : Step
-  # body gone; regenerate
+  touched = case call.command
+    Fetch(id): key_of(call.owner, id)
+    Update(id: id, title: _, body: _): key_of(call.owner, id)
+    Remove(id): key_of(call.owner, id)
+    Create(title: _, body: _): ""
+    Listing(_): ""
+    Refuse(_): ""
+  end
+  Step(owner: call.owner, key: touched, before: None, after: None, logged: true, limited: false)
 end
 
 # The log takes the change first, and an id reservation before it when the change hands out an
 # id past the reserved ones; only then is the change applied and answered. A log that may end in
 # part of a change is rewritten whole first, as the store recipe says.
 fn written(fs: Fs, books: Books, call: Call, edit: Edit) : Served
-  # body gone; regenerate
+  before = get(books.notes, edit.key)
+  spent = issued(books, edit)
+  case reserved(fs, spent, edit)
+    Ok(ready):
+      case stored(fs, ready.notes, edit)
+        Ok(after):
+          var done = ready
+          done.notes = after
+          step = Step(owner: call.owner, key: edit.key, before: before, after: get(after, edit.key),
+            logged: true, limited: false)
+          Served(books: done, outcome: edit.outcome, step: step)
+        Error(problem): unwritten(torn_by(ready, problem), call, edit, before)
+      end
+    Error(problem): unwritten(torn_by(spent, problem), call, edit, before)
+  end
 end
 
 fn reserved(fs: Fs, books: Books, edit: Edit) : Result(Books, StoreError)
-  # body gone; regenerate
+  var ready = books
+  if books.torn
+    whole = try compact(fs, books.notes)
+    ready.notes = whole
+    ready.torn = false
+  end
+  return Ok(ready) if !edit.issues or ready.next_id <= ready.reserved
+  floor = ready.next_id + 100
+  kept = try put(fs, ready.notes, "ids", "#{floor}")
+  ready.notes = kept
+  ready.reserved = floor
+  Ok(ready)
 end
 
 fn stored(fs: Fs, notes: Table, edit: Edit) : Result(Table, StoreError)
-  # body gone; regenerate
+  case edit.value
+    Some(value): put(fs, notes, edit.key, value)
+    None: delete(fs, notes, edit.key)
+  end
 end
 
 # A create's id is spent whether or not its line reaches the log, so no id is handed out twice.
 fn issued(books: Books, edit: Edit) : Books
-  # body gone; regenerate
+  return books if !edit.issues
+  record = Issued(id: books.next_id, floor: books.next_id)
+  var after = books
+  after.next_id = record.id + 1
+  after
 end
 
 fn torn_by(books: Books, problem: StoreError) : Books
-  # body gone; regenerate
+  var after = books
+  after.torn = books.torn or problem == Torn
+  after
 end
 
 fn unwritten(books: Books, call: Call, edit: Edit, before: Option(String)) : Served
-  # body gone; regenerate
+  step = Step(owner: call.owner, key: edit.key, before: before, after: before, logged: false,
+    limited: false)
+  Served(books: books, outcome: Unavailable(reason: "the log did not take the change"), step: step)
 end
 
 fn limited(books: Books, limits: Limiter, call: Call, now: Time) : Served
-  # body gone; regenerate
+  wait = retry_after(limits, call.owner, now)
+  step = Step(owner: call.owner, key: "", before: None, after: None, logged: true, limited: true)
+  Served(books: books, outcome: Limited(retry_after_ms: wait.ms), step: step)
 end
 
 fn owned(owners: Map(String, UInt64), owner: String, outcome: Outcome) : Map(String, UInt64)
-  # body gone; regenerate
+  case outcome
+    Made(_): counted(owners, owner)
+    Removed:
+      held = owners.get(owner) or 1
+      if held <= 1: owners.remove(owner) else: owners.set(owner, held - 1)
+    Found(_): owners
+    Listed(_): owners
+    Missing: owners
+    Refused(_): owners
+    Limited(_): owners
+    Unavailable(_): owners
+  end
 end
 
 # An empty store over the log d/notes.log, for a test that must not fail before it starts.
 fn fresh() : Table
-  # body gone; regenerate
+  Table(buckets: Map.new(), size: 0, dir: "d", name: "notes.log", bytes: 0, lines: 0, cut: false)
 end
 
 fn ask(service: Handle(Service), owner: String, command: Command) : Outcome
-  # body gone; regenerate
+  case service.ask(Serve(call: Call(owner: owner, command: command)), within: 60_000.ms)
+    Ok(outcome): outcome
+    Error(_): Unavailable(reason: "the service did not answer")
+  end
 end
 
 fn made_id(outcome: Outcome) : String
-  # body gone; regenerate
+  case outcome
+    Made(note): note.id
+    Found(_): ""
+    Listed(_): ""
+    Removed: ""
+    Missing: ""
+    Refused(_): ""
+    Limited(_): ""
+    Unavailable(_): ""
+  end
 end
 
 fn titles(outcome: Outcome) : List(String)
-  # body gone; regenerate
+  case outcome
+    Listed(notes): notes.map(fn(kept) kept.title end)
+    Made(_): []
+    Found(_): []
+    Removed: []
+    Missing: []
+    Refused(_): []
+    Limited(_): []
+    Unavailable(_): []
+  end
 end
 
 fn live(service: Handle(Service)) : Option(UInt64)
-  # body gone; regenerate
+  case service.ask(Health, within: 60_000.ms)
+    Ok(counts): Some(counts.notes)
+    Error(_): None
+  end
 end
 
 test "create, read, list, update, and delete answer with the note or 404"
@@ -357,3 +498,6 @@ test rejects "a call from a client whose token holds a slash"
   call = Call(owner: "ada/grace", command: Fetch(id: "n_1"))
   service.send(Serve(call: call))
 end
+
+verified: types, contracts, tests (8), property (200 seeds), sim (100 runs, invariants (kept 2, tripped 0))
+          proven: not run

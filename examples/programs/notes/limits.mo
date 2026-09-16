@@ -20,43 +20,65 @@ end
 
 fn limiter(capacity: UInt32, refill: Duration) : Limiter
   requires capacity > 0
-  # body gone; regenerate
+
+  Limiter(capacity: capacity, refill: refill, buckets: Map.new())
 end
 
 # The tokens a client had left after its last request; a client never seen has a full bucket.
 fn tokens(l: Limiter, id: ClientId) : UInt32
-  # body gone; regenerate
+  case l.buckets.get(id)
+    Some(bucket): bucket.tokens
+    None: l.capacity
+  end
 end
 
 # Whether a request from the client may go on now, and the limiter after it: a token taken,
 # or, when the bucket is empty, none.
 fn allow?(l: Limiter, id: ClientId, now: Time) : (Limiter, Bool)
   ensures result.0.tokens(id) <= l.capacity
-  # body gone; regenerate
+
+  bucket = refilled(l, id, now)
+  return (kept(l, id, bucket), false) if bucket.tokens == 0
+  var taken = bucket
+  taken.tokens = bucket.tokens - 1
+  (kept(l, id, taken), true)
 end
 
 # How long a refused client waits for its bucket to fill again; nothing when it has a token.
 fn retry_after(l: Limiter, id: ClientId, now: Time) : Duration
   ensures result <= l.refill
-  # body gone; regenerate
+
+  bucket = refilled(l, id, now)
+  return 0.ms if bucket.tokens > 0
+  ready = bucket.since + l.refill
+  return 0.ms if now >= ready
+  ready - now
 end
 
 # A client token: 1 to 64 bytes of ASCII letters, digits, - and _.
 fn token?(text: String) : Bool
-  # body gone; regenerate
+  return false if text == "" or text.byte_size > 64
+  text.bytes.all?(fn(b) token_byte?(b) end)
 end
 
 fn token_byte?(b: UInt8) : Bool
-  # body gone; regenerate
+  (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122) or b == 45 or b == 95
 end
 
 # The client's bucket as of now: full for a client never seen, or once its period is over.
 fn refilled(l: Limiter, id: ClientId, now: Time) : Bucket
-  # body gone; regenerate
+  case l.buckets.get(id)
+    Some(bucket):
+      return Bucket(tokens: l.capacity, since: now) if now - bucket.since >= l.refill
+      bucket
+    None: Bucket(tokens: l.capacity, since: now)
+  end
 end
 
 fn kept(l: Limiter, id: ClientId, bucket: Bucket) : Limiter
-  # body gone; regenerate
+  var after = l
+  after.buckets = l.buckets.set(id, bucket)
+  after
 end
 
 # The recipe's test rejects, here as well since every requires has one in its own module;
@@ -112,3 +134,6 @@ property "no run of requests leaves a client more tokens than the capacity"
     assert tokens(l, "ada") <= capacity.to_u32
   end
 end
+
+verified: types, contracts, tests (5), property (200 seeds), sim (not run)
+          proven: not run

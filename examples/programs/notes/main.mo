@@ -45,78 +45,154 @@ enum Problem
 end
 
 fn usage() : String
-  # body gone; regenerate
+  "usage: notes serve <dir> [--port N] | notes compact <dir> | notes client <host> <port> <token> <method> <path> [<json>] | notes check <dir> <script>"
 end
 
 fn job(args: List(String)) : Result(Job, Problem)
-  # body gone; regenerate
+  rest = args.drop(1)
+  case args.first or ""
+    "serve": serving(rest)
+    "compact": compacting(rest)
+    "client": asking(rest)
+    "check": checking(rest)
+    "": Error(Usage(detail: "no command given"))
+    _: Error(Usage(detail: "unknown command #{args.first or ""}"))
+  end
 end
 
 fn serving(args: List(String)) : Result(Job, Problem)
-  # body gone; regenerate
+  dir = try dir_of(args)
+  flags = args.drop(1)
+  return Ok(Serving(place: Place(dir: dir, port: 7_800))) if flags.size == 0
+  if flags.size != 2 or flags.first != Some("--port")
+    return Error(Usage(detail: "serve takes a folder and then --port N"))
+  end
+  port = try port_of(flags.get(1) or "")
+  Ok(Serving(place: Place(dir: dir, port: port)))
 end
 
 fn compacting(args: List(String)) : Result(Job, Problem)
-  # body gone; regenerate
+  dir = try dir_of(args)
+  return Error(Usage(detail: "compact takes one folder")) if args.size != 1
+  Ok(Compacting(dir: dir))
 end
 
 fn asking(args: List(String)) : Result(Job, Problem)
-  # body gone; regenerate
+  if args.size < 5
+    return Error(Usage(detail: "client takes a host, a port, a token, a method, and a path"))
+  end
+  port = try port_of(args.get(1) or "")
+  trip = try trip_of(args.drop(2), args.first or "", port)
+  Ok(Asking(trip: trip))
 end
 
 # A token, a method, a path, and any JSON after them, joined by spaces as they were split.
 fn trip_of(words: List(String), host: String, port: UInt16) : Result(Trip, Problem)
-  # body gone; regenerate
+  if words.size < 3
+    return Error(Usage(detail: "a request is a token, a method, a path, and any JSON after them"))
+  end
+  Ok(Trip(host: host, port: port, token: words.first or "", method: words.get(1) or "",
+    path: words.get(2) or "", json: String.join(words.drop(3), " ")))
 end
 
 fn checking(args: List(String)) : Result(Job, Problem)
-  # body gone; regenerate
+  dir = try dir_of(args)
+  return Error(Usage(detail: "check takes a folder and a script")) if args.size != 2
+  Ok(Checking(dir: dir, script: args.get(1) or ""))
 end
 
 fn dir_of(args: List(String)) : Result(String, Problem)
-  # body gone; regenerate
+  dir = args.first or ""
+  return Error(Usage(detail: "no folder given")) if dir == "" or dir.starts_with?("-")
+  Ok(dir)
 end
 
 fn port_of(text: String) : Result(UInt16, Problem)
   ensures result is Ok(port) implies port >= 1
-  # body gone; regenerate
+
+  n = text.to_u64 or 0
+  if n < 1 or n > 65_535
+    return Error(Usage(detail: "a port is a number from 1 to 65535, not #{text}"))
+  end
+  Ok(n.to_u16)
 end
 
 fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String)) : Result(String,
-  # body gone; regenerate
+  Problem)
+  given = try job(args)
+  case given
+    Serving(place): serve(http, fs, clock, out, err, place)
+    Compacting(dir):
+      opened = try opened_store(fs, err, dir)
+      compacted(fs, dir, opened)
+    Asking(trip): client(http, trip)
+    Checking(dir: dir, script: script):
+      script_lines = try script_of(fs, script)
+      opened = try opened_store(fs, err, dir)
+      check(http, fs, clock, opened, script_lines)
+  end
 end
 
 # Serves a folder until notes is stopped. A log whose last line was cut short is compacted
 # first, so the next change starts on a line of its own.
 fn serve(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, place: Place) : Result(String,
-  # body gone; regenerate
+  Problem)
+  opened = try opened_store(fs, err, place.dir)
+  whole = try compacted_store(fs, place.dir, opened)
+  case http.listen(place.port, within: 5_000.ms)
+    Ok(listener): Ok(served_on(listener, fs, clock, out, whole))
+    Error(_): Error(Unbound(port: place.port))
+  end
 end
 
 fn compacted_store(fs: Fs, dir: String, opened: Table) : Result(Table, Problem)
-  # body gone; regenerate
+  return Ok(opened) if !cut_short?(opened)
+  case compact(fs, opened)
+    Ok(whole): Ok(whole)
+    Error(problem):
+      Error(Unopened(dir: dir, why: "holds a notes.log notes cannot rewrite: #{problem}"))
+  end
 end
 
 fn compacted(fs: Fs, dir: String, opened: Table) : Result(String, Problem)
-  # body gone; regenerate
+  case compact(fs, opened)
+    Ok(whole):
+      Ok("notes: compacted #{dir}/notes.log from #{lines(opened)} lines to #{lines(whole)}\n")
+    Error(problem):
+      Error(Unopened(dir: dir, why: "holds a notes.log notes cannot rewrite: #{problem}"))
+  end
 end
 
 # The service and its acceptor over a store just opened, and the listener served into the
 # acceptor from here on; the runtime owns the loop, so notes serves until it is stopped.
 fn served_on(listener: HttpListener, fs: Fs, clock: Clock, out: Out, table: Table) : String
-  # body gone; regenerate
+  opened = opening(table, clock.now)
+  service = Service.start(fs, clock, opened)
+  listener.serve(into: Acceptor.start(service), idle: 30_000.ms)
+  out.flush
+  "notes: serving #{opened.owners.values.sum} notes on 127.0.0.1:#{listener.port}\n"
 end
 
 fn client(http: Http, trip: Trip) : Result(String, Problem)
-  # body gone; regenerate
+  case http.send(request_of(trip), host: trip.host, port: trip.port, within: 30_000.ms)
+    Ok(response): Ok(shown(response))
+    Error(_): Error(Unreached(host: trip.host, port: trip.port))
+  end
 end
 
 fn request_of(trip: Trip) : Request
-  # body gone; regenerate
+  bearing = if trip.token == "-"
+    Map.new()
+  else
+    Map.new().set("authorization", "Bearer #{trip.token}")
+  end
+  Request(method: trip.method, path: trip.path, headers: bearing, body: trip.json)
 end
 
 # A response as the client prints it: the status, then the body when there is one.
 fn shown(response: Response) : String
-  # body gone; regenerate
+  return "#{response.status}\n" if response.body == ""
+  "#{response.status} #{response.body}\n"
 end
 
 # Serves a folder's log on a free port and plays a script through the client, each line a
@@ -124,73 +200,155 @@ end
 # waits that depend on the clock steadied. The folder's log is only read: the changes go to
 # notes.check.log beside it, removed before and after.
 fn check(http: Http, fs: Fs, clock: Clock, opened: Table, lines: List(String)) : Result(String,
-  # body gone; regenerate
+  Problem)
+  folder = fs.scoped(opened.dir)
+  if !cleared(folder)
+    return Error(Unopened(dir: "notes.check.log", why: "is a file notes cannot remove"))
+  end
+  case http.listen(0, within: 5_000.ms)
+    Ok(listener):
+      transcript = checked_on(http, listener, fs, clock, opened, lines)
+      return Ok(transcript) if cleared(folder)
+      Error(Unopened(dir: "notes.check.log", why: "is a file notes cannot remove"))
+    Error(_): Error(Unbound(port: 0))
+  end
 end
 
 fn cleared(folder: Fs) : Bool
-  # body gone; regenerate
+  removed = folder.remove("notes.check.log", within: 10_000.ms) is Ok(_)
+  removed or folder.size("notes.check.log", within: 10_000.ms) is Error(Missing(_))
 end
 
 fn checked_on(http: Http, listener: HttpListener, fs: Fs, clock: Clock, table: Table,
   lines: List(String)) : String
-  # body gone; regenerate
+  moved = writing_to(table, "notes.check.log")
+  service = Service.start(fs, clock, opening(moved, clock.now))
+  listener.serve(into: Acceptor.start(service), idle: 30_000.ms)
+  var transcript = ""
+  for line in lines
+    transcript = "#{transcript}> #{line}\n#{played(http, line, listener.port)}"
+  end
+  transcript
 end
 
 fn played(http: Http, line: String, port: UInt16) : String
-  # body gone; regenerate
+  case trip_of(line.split(" "), "127.0.0.1", port)
+    Ok(trip):
+      case client(http, trip)
+        Ok(text): steady(text)
+        Error(problem): "#{said(problem)}\n"
+      end
+    Error(problem): "#{said(problem)}\n"
+  end
 end
 
 # A transcript with what depends on the clock replaced: each note's times, the service's
 # uptime, and a rate-limited client's wait.
 fn steady(text: String) : String
-  # body gone; regenerate
+  times = masked(masked(text, "created_at", true), "updated_at", true)
+  masked(masked(times, "uptime_ms", false), "retry_after_ms", false)
 end
 
 fn masked(text: String, key: String, quoted: Bool) : String
-  # body gone; regenerate
+  needle = "\"#{key}\": "
+  case text.index_of(needle)
+    Some(at):
+      rest = after_value(text.slice(at + needle.size, text.size), quoted)
+      shown_as = if quoted: "\"<#{key}>\"" else: "<#{key}>"
+      "#{text.slice(0, at)}#{needle}#{shown_as}#{masked(rest, key, quoted)}"
+    None: text
+  end
 end
 
 # What follows a JSON value at the start of a piece: past the closing quote of a string, or
 # from the first , or } after a number.
 fn after_value(piece: String, quoted: Bool) : String
-  # body gone; regenerate
+  if quoted
+    tail = piece.slice(1, piece.size)
+    at = tail.index_of("\"") or 0
+    return tail.slice(at + 1, tail.size)
+  end
+  ends = found(piece.index_of(",")).concat(found(piece.index_of("}")))
+  piece.slice(ends.min or piece.size, piece.size)
 end
 
 fn found(at: Option(UInt64)) : List(UInt64)
-  # body gone; regenerate
+  case at
+    Some(n): [n]
+    None: []
+  end
 end
 
 fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
-  # body gone; regenerate
+  case fs.read_only.read_lines(script, within: 10_000.ms)
+    Ok(read): Ok(read)
+    Error(problem): Error(Unopened(dir: script, why: "is not a script notes can read: #{problem}"))
+  end
 end
 
 # The folder's store, replayed. A last line cut short is left out and said on stderr, once, at
 # once.
 fn opened_store(fs: Fs, err: Out, dir: String) : Result(Table, Problem)
-  # body gone; regenerate
+  case open(fs, dir)
+    Ok(table):
+      if cut_short?(table)
+        err.write_line("notes: the last line of #{dir}/notes.log was cut short, so it is left out")
+        err.flush
+      end
+      Ok(table)
+    Error(problem): Error(Unopened(dir: dir, why: why_unopened(problem)))
+  end
 end
 
 fn why_unopened(problem: StoreError) : String
-  # body gone; regenerate
+  case problem
+    NoFolder: "is not a folder notes can open"
+    Unreadable: "holds a notes.log notes cannot read"
+    Slow: "is a folder too slow to read"
+    BadLine(number): "holds a notes.log whose line #{number} is not a change"
+    Unwritten: "holds a notes.log notes cannot write"
+    Torn: "holds a notes.log that may end in part of a change"
+  end
 end
 
 fn said(problem: Problem) : String
-  # body gone; regenerate
+  case problem
+    Usage(detail): "#{detail}; #{usage()}"
+    Unopened(dir: dir, why: why): "#{dir} #{why}"
+    Unbound(port): "cannot listen on 127.0.0.1:#{port}"
+    Unreached(host: host, port: port): "no notes answered at #{host}:#{port}"
+  end
 end
 
 fn code_of(problem: Problem) : UInt8
-  # body gone; regenerate
+  case problem
+    Usage(_): 2
+    Unopened(dir: _, why: _): 1
+    Unbound(_): 1
+    Unreached(host: _, port: _): 1
+  end
 end
 
 # Whether the arguments say to serve, which goes on until notes is stopped.
 fn serving?(args: List(String)) : Bool
-  # body gone; regenerate
+  job(args) is Ok(Serving(_))
 end
 
 # Serving goes on until notes is stopped; every other command ends notes with exit once it is
 # done, since check serves a listener of its own.
 fn main(platform: Platform)
-  # body gone; regenerate
+  args = platform.args
+  case ran(platform.http, platform.fs, platform.clock, platform.stdout, platform.stderr, args)
+    Ok(text):
+      platform.stdout.write(text)
+      platform.stdout.flush
+      if !serving?(args)
+        platform.exit(0)
+      end
+    Error(problem):
+      platform.stderr.write_line("notes: #{said(problem)}")
+      platform.exit(code_of(problem))
+  end
 end
 
 test "serve takes a folder and an optional port, 7800 by default"
@@ -255,3 +413,6 @@ test "a usage error exits 2, and a folder or port that cannot be had exits 1"
   assert code_of(Unbound(port: 7_800)) == 1
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
