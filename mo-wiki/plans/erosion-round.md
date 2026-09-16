@@ -171,6 +171,23 @@ Four fresh Opus maintainers at medium effort, briefed 10:22. The suites: round 8
 
 **What it says.** The BEAM's row is answered. Yesterday Mo's queue stayed down after a crash and the service answered `503` until an operator came; today, with the same runtime and a program written to chapter 3's pattern, the queue killed under load is back in 106 ms where Elixir's takes 285 to 694, with nothing lost in either. Every language did the change in 10 to 23 minutes and every program passes the fourth suite but Elixir, by one edge that OTP's own supervisor imposes; the erosion hypothesis after three generations reads Mo 1 carried defect, Go 1 carried, Python 1 carried, Elixir 3, nothing new eroded anywhere, and the prediction that Go and Python would fail the restart was wrong: a rebuild from the log is a small thing to write in any language once the spec asks for it. What the language paid: the budget cannot be a value on the `child` line, so the Mo maintainer wrote a process to hold it, and the restart's cost is the crash report the runtime renders and never frees, 44 MB a restart at 20,000 jobs (`TOOLCHAIN-BUGS.md` §5, step 32's carried row, now measured), which is the next toolchain step.
 
+## Generation four, pre-registered (16 Sep 2026, 13:15 local, before any session)
+
+Change 4 ([[01e-job-queue-change-4]], sealed at `feef5ca`): idempotent creates by a `key` the log carries and a restart rebuilds; done and dead jobs older than `--retain-ms` archived out of the live log into `jobq.archive` at the next look, readable by id, counted by `/health`, checked by `verify`, with the kill between the move's two writes decided at open. Written to press on the seams change 3 opened: what a self-restart rebuilds, what compaction keeps, what `verify` checks, and a second file beside the log.
+
+**Setup.** Worktrees `../mo-lang-erosion4-{mo,go,python,elixir}` on `erosion4-*`, branched from the generation-three commits (`ca550e5`, `208d62e`, `a35acf8`, `404628b`); the Mo one carries step 33's `mo` and the spec chapters as of 16 Sep (`5460279`); the Elixir one has `mise.toml` copied in (untracked, the lesson of generation three). Agents `mo-e4-{mo,go,python,elixir}` in workspace `w4J`, Claude Code on Opus at medium effort, the brief `erosion-round-suite/e4-brief.sh` (change 2's word for word with the new spec path, commit `jobq: change 4`, report to `REPORT-change-4.md`). The fifth hidden suite (`erosion-round-suite/defects4.py`) is written after the sessions start and kept out of every worktree: the key in every state and after a delete, across a stop and start, across a chaos restart, across a compaction; the archive move with a small `retain_ms` under a load of short-lived jobs, killed under it, the folder reopened and every job counted once; `verify` on a bad archive record; the listings and `/queues` without archived jobs; the read, retry, and delete of an archived job. The suites of the three earlier generations are the regressions.
+
+| prediction | threshold |
+|---|---|
+| P1, regressions | Mo 0 under every earlier suite (round 8's two, the third, the fourth); each baseline at most 1 cause beyond what it carries |
+| P2, defects under the fifth suite | Mo's count no more than each baseline's |
+| P3, the seam | at least one baseline loses a key or double-counts an archived job across a chaos restart or a kill between the move's two writes; Mo does not |
+| P4, the two files | at least one program's `verify` or `compact` mishandles the archive (a torn archive line, a job in both files); not Mo's |
+| P5, the tax | the Mo maintainer takes more loops than the Go maintainer |
+| P6, the law | a `never` in the Mo program states the key's uniqueness or the two-file exclusion, and trips or is kept under `--sim` with the move's writes failing between (read from the diff and the report) |
+
+Recorded, not predicted: wall-clock, loops by cause, first-fix rate per diagnostic, lines changed, tokens read, the decision lists.
+
 ## Related
 
 - [[d43-five-measurements]]
@@ -178,5 +195,6 @@ Four fresh Opus maintainers at medium effort, briefed 10:22. The suites: round 8
 - [[control-run-10]]
 - [[01c-job-queue-change-2]]
 - [[01d-job-queue-change-3]]
+- [[01e-job-queue-change-4]]
 - [[interpreter-step-31]]
 - [[roadmap]]
