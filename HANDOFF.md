@@ -1,4 +1,4 @@
-# Mo Lang — Handoff, the morning of 16 Sep 2026, on Robert's Mac
+# Mo Lang — Handoff, 16 Sep 2026, after the morning session on Robert's Mac
 
 Paste the block below into a fresh Claude Code session in the repo. The roles,
 the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
@@ -14,7 +14,7 @@ know that the wiki does not say in one place.
 > never stop to ask him; a question is a decision-log row, not a wait.** The
 > lead commits wiki files with `git commit -m <msg> -- <paths>` only (a bare
 > `git commit` swept a worker's staged files twice this night). Then read, in
-> order: `mo-wiki/SCHEMA.md`; the "Where we are" table at the top of
+> order: `mo-wiki/state-of-the-project.md` (the whole picture; you rewrite it at every pause); `mo-wiki/SCHEMA.md`; the "Where we are" table at the top of
 > `mo-wiki/plans/roadmap.md`; the last ten entries of `mo-wiki/log.md`; the last
 > thirty rows of `mo-wiki/decisions/decision-log.md` (rows tagged `semantic` are
 > the ones Robert reads, rows marked "for Robert" wait on him); `CHANGELOG.md`
@@ -24,8 +24,7 @@ know that the wiki does not say in one place.
 > `interpreter-step-31.md`, `control-run-10.md`, `bodies-as-cache.md`, and
 > `mac-scaling-run.md` whole.
 >
-> **State (16 Sep 2026, about 02:00 local; the Mac session ran from 22:20 on 15
-> Sep).** Everything is on `main`, pushed. The Mac is set up (Zig 0.16.0, Go
+> **State (16 Sep 2026, morning; the night session ran 22:20 to 02:45, the morning session built the site).** Everything is on `main`, pushed. The Mac is set up (Zig 0.16.0, Go
 > 1.27.1, Elixir 1.18 on OTP 27 pinned in the Elixir worktrees, `uv`, Pi 0.73.1,
 > Ollama; 28 evidence worktrees plus tonight's: `../mo-lang-r9-<model>-<lang>`
 > for kimi, deepseek, codex, qwen, gemini (unused),
