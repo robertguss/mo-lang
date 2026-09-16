@@ -220,10 +220,11 @@ const Loops = struct {
         return true;
     }
 
-    /// A value of a capability or handle type.
+    /// A value of a capability, handle, or kept-asker type: answering an ask is an effect on
+    /// the asker, as sending to a handle is (step 31).
     fn effectful(l: *Loops, i: Index) bool {
         const t = l.k.pool.get(l.k.pool.base(l.k.typeOf(i)));
-        return t.tag == .cap or t.tag == .handle;
+        return t.tag == .cap or t.tag == .handle or t.tag == .reply;
     }
 
     // ---- the three loops mo fix rewrites

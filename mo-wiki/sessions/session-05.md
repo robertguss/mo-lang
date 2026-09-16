@@ -62,6 +62,9 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - [[program-6]]: the ledger in 92 minutes, 14 modules; four invariants kept, three tripped by tests over a torn or doubled log, the planted bug caught by a `never` and an invariant; native 1,168 transfers a second at 32 clients; Fable's 35-check session green under both runtimes. Found: `restart: :never` not honoured, `platform.exit` waiting on a delayed send, replay memory superlinear (1M entries killed at 4.2 GB), and no check earning its keep strictly for the third program. Robert asked for a stop and a discussion before round 8.
 - The forest: Fable's reading of the three days for Robert (the claim not yet earned, the runtime the bottleneck, first writing the only thing measured) and Robert's go-ahead on Fable's order; the roadmap rewritten from here: step 29, step 30, round 8 as a maintenance round, the bricks page, the language items, program 7.
 - [[interpreter-step-29]] (15 Sep, morning): the runtime honest: `restart: :never` kept in both runtimes with its report, `exit` past a pending delayed send, replay compacting in generations (1M native 716 → 81 s, the peak now the book's own 2.5 GB), simulated time only when a test waits, `invariants (kept n, tripped m)` on the `verified:` line; Fable's probes green under both runtimes; ten rows, one open (an overflow in a `test rejects` fails rather than rejects). Fable's 1M probe on a real HTTP-written log passed 8 GB after the fold: [[interpreter-step-29b]] briefed and started.
+- [[interpreter-step-29b]] (15 Sep, midday): where the replay's memory went (a 1 GiB region filled in one update, then malloc forever), address space reserved, the walk through waiting frames; the real 1M log 2.3 GB where it was killed past 9; five rows. Robert's small-model round as [[d41-small-model-round|direction 41]].
+- Robert, midday: direction 41 locked (round 9 after round 8, several models, the Pi harness, his subscriptions); pause after round 8 to plan round 9 together; this session closed with the handoff rewritten whole.
+- [[interpreter-step-30]] (15 Sep, afternoon and evening): processes on every core in both runtimes, the fsync on a thread pool, the same seeds the same traces; two 4-core bugs found by measuring; the queue fsync-bound on this disk, the ledger doubled, CPU-bound work 3.7× at 4 cores; accepted 20:05 with the lead's own kill client and replay. Robert's evening: the Mac run in parallel, the conjunction rule, the Elixir round (d42), runtime first then the language page; Fable's direction 43.
 
 ## Numbers at the end of the session
 
@@ -81,6 +84,10 @@ The longest session so far, about twenty hours across an evening, an overnight r
 - Workers find the spec's holes better than we do; their gap lists are the second-best artifact after the code.
 - The interpreter's memory model, not the language, was the whole cost of the first real programs.
 - Two defaults a worker chooses per hour need ratifying; about one in twenty deserves overturning, and the log makes that cheap.
+
+## Session 7, night of 15 Sep (the same page, the same branch)
+
+Round 8's change spec, pre-registration, worktrees, and suites; measurement 2 run first in one pane: five regenerations of the board identical over 132k operations, one crash-versus-skip disagreement on a hand-made log ([[sampling-as-verification]], [[control-run-8]]). Five decision rows. Then round 8 itself, 22:22 to 23:35: held on all five, the conjunction survives, the laws' value for the second agent still unshown, an outage found by the fourth oracle ([[control-run-8]]). The pause.
 
 ## Next
 

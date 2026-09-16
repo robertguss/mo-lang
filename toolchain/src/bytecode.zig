@@ -113,6 +113,14 @@ pub const Op = enum(u8) {
     ask,
     /// push the running update's reply_by, the asker's deadline on the runtime's clock (step 22)
     reply_by,
+    /// push the running update's reply_to, the asker it may keep instead of answering (step 31)
+    reply_to,
+    /// the arm being run keeps its asker: the update commits without answering the ask, and the
+    /// process holds the Reply until it answers it, crashes, or restarts (step 31)
+    defer_reply,
+    /// pop a value, then a Reply; answer that ask with the value when the update commits, or
+    /// drop it when its deadline has passed; push no value (step 31)
+    answer,
     /// pop a Deadline; push the Duration that remains of it, or -1 ms when nothing remains
     deadline_left,
     /// deliver waiting messages, in start order, until every mailbox is empty
@@ -319,6 +327,8 @@ pub const Process = struct {
     reads_old: bool = false,
     /// Its update reads reply_by, so under faults an ask to it may arrive with nothing left.
     reads_reply_by: bool = false,
+    /// An arm of its update keeps its asker (step 31), so the runtimes bind reply_to.
+    reads_reply_to: bool = false,
 };
 
 /// A `child` line: `args` takes the supervisor's parameters and gives the child's
@@ -1265,8 +1275,13 @@ const Lower = struct {
             _ = try l.emit(.reply_by, 0, 0);
             _ = try l.emit(.store, reply_by, 0);
         }
+        if (d.reads_reply_to) {
+            const reply_to = try l.bindName("reply_to", false);
+            _ = try l.emit(.reply_to, 0, 0);
+            _ = try l.emit(.store, reply_to, 0);
+        }
         b.result = l.slot();
-        try l.caseLower(update.lhs, true);
+        try l.caseArms(update.lhs, true, d.reads_reply_to);
         _ = try l.emit(.store, b.result, 0);
         for (b.exits.items) |e| l.patch(e);
         _ = try l.emit(.load, b.result, 0);
@@ -1306,6 +1321,7 @@ const Lower = struct {
             .invariants = invariants.items,
             .reads_old = reads_old,
             .reads_reply_by = d.reads_reply_by,
+            .reads_reply_to = d.reads_reply_to,
         };
     }
 
@@ -1555,6 +1571,11 @@ const Lower = struct {
     }
 
     fn caseLower(l: *Lower, s: Index, value: bool) Error!void {
+        return l.caseArms(s, value, false);
+    }
+
+    /// `update`: the update's own case, whose arms may keep their asker (step 31).
+    fn caseArms(l: *Lower, s: Index, value: bool, update: bool) Error!void {
         const n = l.node(s);
         try l.expr(n.lhs);
         const subject = l.slot();
@@ -1571,6 +1592,7 @@ const Lower = struct {
                 try fails.append(l.gpa, try l.emit(.jump_if_false, 0, 0));
             }
             const body = l.tree.span(data.body_start, data.body_end);
+            if (update and check.armDefersReply(l.tree, a)) _ = try l.emit(.defer_reply, 0, 0);
             if (value) try l.blockValue(body) else try l.blockStmts(body);
             try ends.append(l.gpa, try l.emit(.jump, 0, 0));
             for (fails.items) |f| l.patch(f);
@@ -2098,6 +2120,15 @@ const Lower = struct {
                 if (an.kind == .named_arg and std.mem.eql(u8, l.text(an.main_token), "within")) try l.withinArg(an.lhs);
             }
             _ = try l.emit(.ask, 0, 0);
+            return;
+        }
+        if (std.mem.startsWith(u8, row.recv, "Reply")) {
+            try l.expr(recv.?);
+            for (args) |a| {
+                try l.expr(a);
+                try l.share(l.typeOf(a));
+            }
+            _ = try l.emit(.answer, 0, 0);
             return;
         }
         if (row.only == .never) {

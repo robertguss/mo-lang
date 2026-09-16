@@ -39,6 +39,9 @@
 - [[d32-proving-is-a-separate-tool|Direction 32: Proving is a separate tool; tier 3 v0 is testing in the interpreter]] — (session 3, tension 4) property tests + simulation in the interpreter; `mo prove` vendors a solver outside the zero-dep law
 - [[d33-bounded-mailboxes|Direction 33: Bounded mailboxes; `send` never blocks; overflow is a roof]] — (session 3, tension 5) `mailbox: N` per process, sender crashes on overflow, backpressure via `ask`
 - [[d34-packages-are-recipes|Direction 34: Packages are recipes; the spec is shared, the bodies are yours]] — (Robert, session 3, to be proven) stdlib is the bricks, a package is the booklet, the agent builds it in your repo; zero dependencies by construction
+- [[d41-small-model-round|Direction 41: The small-model round]] — (Robert, 15 Sep) rerun the control run's reliability and loop measures with smaller models; speed, memory, and dependencies do not move with the model, the two that do are where the checks would first earn their keep
+- [[d42-elixir-round|Direction 42: The Elixir round]] — (Robert, 15 Sep) round 10: the BEAM null hypothesis run in a pane, round 7's job queue and round 8's change in Elixir, read on reliability, the loop, dependencies, and the runtime rows
+- [[d43-five-measurements|Direction 43: Five measurements]] — (Fable, 15 Sep evening, at Robert's request to drive) bodies as cache, sampling as verification, the erosion round, the incident round, tokens and first-fix rate as columns; the unfamiliarity tax named as the risk against the thesis
 - [[d40-structured-runtime-events|Direction 40: Structured runtime events, not log lines]] — (outside session, 13 Sep) every scheduler, supervisor, capability, and mailbox event with a schema; feeds the MCP surface and the crash report
 - [[d39-hot-code-reload|Direction 39: Hot code reload]] — (Robert, 13 Sep) swap a module's code under running processes; state migration is the design work
 - [[d38-time-travel-debugging|Direction 38: Time-travel debugging for Mo processes]] — (outside session, 13 Sep) snapshots plus the message log as a stepwise query interface; mostly built under mo test
@@ -125,11 +128,20 @@
 
 ## Plans
 - [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; a sketch until step 29 lands
+- [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
 - [[interpreter-step-29b|Step 29b: replay memory on a real log]] — Fable's 1M probe on an HTTP-written log passed 8 GB after the fold; the rule bounded-by-what-the-update-reaches made to hold in every loop shape
 - [[interpreter-step-29|Step 29: the runtime honest]] — `restart: :never` honoured, `platform.exit` with a pending delayed send, replay streamed, simulated time only when a test waits, invariants counted
 - [[program-6|Program 6: ledger in Mo]] — the brief for the payments ledger whose invariants are the point; after step 28
 - [[interpreter-step-28|Step 28: what round 7 found in the runtime]] — a map written in place, the tuple `reduce`, resident memory, replay, the `never` rule's `if` gap, six gaps
 - [[control-run-7|The control run, round 7]] — pre-registered on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, dependencies
+- [[sampling-as-verification|Sampling as verification]] — measurement 2 of direction 43: five regenerations of the queue's board, a random driver, disagreements against the hidden suite
+- [[mac-scaling-run|The Mac scaling run]] — step 30's rows at 1, 4, 10, and 14 cores on the M3 Max, one script
+- [[bodies-as-cache|Bodies as cache]] — measurement 1 of direction 43: every program regenerated from its stripped spec, twice; completeness per program
+- [[control-run-10|The control run, round 10, the Elixir round]] — pre-registered: the BEAM null hypothesis in a pane, round 7's queue and round 8's change in Elixir under the same suites
+- [[mac-scaling-run|The Mac scaling run]] — the one script for step 30 at 1, 4, 10, 14 cores on the M3 Max, and what to read from it
+- [[erosion-round|The erosion round, generation two]] — pre-registered: change 2 to the Mo, Go, Python, and Elixir queues by fresh maintainers, the third hidden suite, P6 on the Mo change
+- [[control-run-9|The control run, round 9, the small-model round]] — pre-registered: round 8's change by five smaller models in the Pi harness, reliability and loops as the columns that move
+- [[control-run-8|The control run, round 8, the maintenance round]] — pre-registered: the finished queues handed to fresh agents with a changed spec, regressions and defects, read on reliability and dependencies together
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
 - [[control-run-6|The control run, round 6]] — pre-registered: logstat and jobq, the baselines with their checks bolted on, the null hypothesis stated as P3
 - [[interpreter-step-26|Step 26: the one-line if in tail position]] — what step 25's acceptance found: tail position is a value, two keyword diagnostics; before round 6

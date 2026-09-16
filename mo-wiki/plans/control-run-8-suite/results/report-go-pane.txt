@@ -1,0 +1,400 @@
+           *testing
+           .T) {
+  ⎿  (timeout 10m)
+
+  Ran 1 shell command
+
+● I need: (1) to fix my
+  new lines in
+  TestDeleteStatuses — j_1
+  is already leased at
+  that point, so my extra
+  lease call correctly got
+  204; (2) a re-run of
+  the suite. They're
+  ordered, so one chained
+  call.
+
+
+● Bash(cd /home/exedev/Pro
+      jects/mo-lang-contro
+      l8-go/experiments/co
+      ntrol-run/go/jobq &&
+      python3 - <<'PY'
+      p='api_test.go';
+      s=open(p).read()…)
+  ⎿  ok         controlrun
+     ontract    (cached)
+     ok         controlrun
+     … +3 lines
+
+
+
+
+  ⎿  Updated
+     experiments/cont
+     rol-run/go/jobq/
+     api_test.go (+0
+     -1)
+      191
+           h.want(w
+           1, "DELE
+           TE", "/j
+           obs/j_2"
+           , "", 40
+           4)
+      192
+           h.want(w
+           1, "POST
+           ", "/job
+           s", `{"q
+           ueue":"a
+           ","paylo
+           ad":"p",
+           "max_tri
+           es":1,"d
+           elay_ms"
+           :60000}`
+           , 201)
+      193
+           h.want(w
+           1, "DELE
+           TE", "/j
+           obs/j_3"
+           , "", 20
+           4) // sc
+           heduled
+      194 -
+          -h.want(w
+          -1, "POST
+          -", "/que
+          -ues/a/le
+          -ase", ""
+          -, 200)
+      194
+           h.want(w
+           1, "POST
+           ", "/job
+           s/j_1/ac
+           k", "",
+           200)
+      195
+           h.want(w
+           1, "DELE
+           TE", "/j
+           obs/j_1"
+           , "", 20
+           4) // do
+           ne
+      196
+           if got :
+           = h.want
+           ("-", "G
+           ET", "/h
+           ealth",
+           "", 200)
+           ; !strin
+           gs.Conta
+           ins(got,
+            `"sched
+           uled":0`
+           ) {
+  ⎿  (timeout 10m)
+
+● Needed next: commit the
+  tests, then run all four
+  checks end to end one
+  final time, confirm the
+  fixture wasn't mutated
+  by the test run, and
+  take the end timestamp.
+  Only the commit is
+  ordered first; the rest
+  chain after it.
+
+  Ran 1 shell command
+
+
+● Privately, what's left:
+  one clean (uncached)
+  final test run — the
+  last run reported
+  (cached). Nothing else
+  depends on anything, so
+  that single call goes
+  now.
+
+
+  Ran 1 shell command
+
+● Nothing further to
+  verify — all four checks
+  are green on an
+  uncached run, the
+  worktree is clean, and
+  the three commits are
+  in. Report follows.
+
+  The change is complete
+  and green
+
+  go vet ./...,
+  staticcheck ./..., go
+  test -count=1 ./..., and
+  jobq/check.sh all pass.
+  Commits: b6e8eee
+  (fixture), bbf0aa0 (the
+  change), a003067
+  (tests). Nothing pushed.
+
+  Wall-clock: ~15 minutes
+  (22:22 → 22:37 UTC).
+
+  Loops to green, by cause
+  — 8 failures, and the
+  next edit fixed each
+  one:
+
+
+  #: 1
+  Diagnostic: build output
+
+
+  "jobq"  already  exists
+   and is  a directory
+  Cause: my command, not
+  the code (-o
+  /dev/null)
+  First fix worked: yes
+  ────────────────────────
+  ─
+  #: 2
+  Diagnostic:
+  done.Attempts
+   undefined
+  Cause: tests still on
+  the
+  old names
+  First fix worked: fixed
+  that
+   diagnostic, uncovered
+  #3
+  ────────────────────────
+  ─
+  #: 3
+  Diagnostic: not enough
+  arguments in  call to
+  q.Create
+  Cause: Create grew
+  delayMS, backoffMS
+  First fix worked: yes
+  ────────────────────────
+  ─
+  #: 4
+  Diagnostic: 3 tests:
+  health body, create
+  shape, check output
+  Cause: expected shapes
+  gained
+  backoff_ms/scheduled
+  First fix worked: yes
+  ────────────────────────
+  ─
+  #: 5
+  Diagnostic: python patch
+
+  aborted on an anchor
+  Cause: gofmt realigned a
+
+  map literal during the
+  rename; no file written
+  First fix worked: yes
+  ────────────────────────
+  ─
+  #: 6
+  Diagnostic: undefined:
+  reflect
+  Cause: missing import in
+
+  a new test
+  First fix worked: yes
+  ────────────────────────
+  ─
+  #: 7
+  Diagnostic: TestReplayRe
+  adsTheOldNames:
+  next id 4 vs 5
+  Cause: my expectation
+  was
+   wrong, the code was
+  right (j_4 was created
+  then deleted)
+  First fix worked: yes
+  ────────────────────────
+  ─
+  #: 8
+  Diagnostic:
+  TestDeleteStatuses:
+  lease gave 204
+  Cause: my new test
+  leased
+  a queue with nothing
+  queued
+  First fix worked: yes
+
+  Only #2/#3 were a
+  cascade; the rest were
+  single-shot.
+
+  Files changed (18):
+  job.go, queue.go,
+  api.go, store.go;
+  job_test.go,
+  queue_test.go,
+  api_test.go,
+  store_test.go,
+  sim_test.go,
+  bench_test.go,
+  main_test.go,
+  listener_test.go;
+  check.sh,
+  testdata/check.script,
+  testdata/check.expected;
+  new testdata/v1/{jobq.l
+  og,write-1.script,write-
+  2.script}.
+
+  The repo had no folder
+  from the previous
+  version, so before
+  touching any code I
+  built the round-7 binary
+  and had it write
+  testdata/v1/jobq.log
+  (meta, puts, a del, old
+  names, two jobs still
+  leased). Both
+  TestServesAFolderTheOldV
+  ersionWrote and check.sh
+  now serve a copy of it:
+  j_4's attempts reads as
+  tries, the run-out
+  leases resolve (j_5
+  queued, j_6 dead on its
+  last try), a retry and a
+  delayed create work on
+  it, and after compact
+  the log contains no old
+  name.
+
+  Decisions the change
+  spec did not cover
+
+  1. A record with both
+     names, or neither, is
+     corruption.
+     storedJob reads
+     attempts/max_attempts
+     or tries/max_tries;
+     a record carrying
+     both, or missing a
+     count under either
+     name, refuses replay
+     rather than guessing.
+  2. backoff_ms is always
+     in {job}, including
+     0; run_at appears
+     only while scheduled.
+     The spec listed
+     run_at as conditional
+     and backoff_ms in
+     the base shape, so I
+     read it literally.
+  3. "run_at reached"
+     means run_at <= now —
+     the same comparison
+     a lease uses — so a
+     job is leasable
+     exactly at its
+     run_at, not a
+     millisecond later.
+  4. Every look queues
+     every due job, not
+     only those in the
+     queue being read,
+     matching the existing
+     behaviour for
+     run-out leases.
+  5. The two sweeps in a
+     look are
+     order-independent,
+     and the code says
+     why: a lease ending
+     with a backoff
+     schedules at now +
+     backoff_ms > now, so
+     it can never be due
+     in the same look.
+  6. delay_ms/backoff_ms
+     as JSON null are
+     treated as absent
+     (0), consistent with
+     how lease_ms already
+     behaved.
+  7. /retry ignores a body
+     rather than
+     rejecting one, like
+     /ack.
+  8. The retry conflict
+     names the state:
+     conflict: j_6 is
+❯ You are maintaining a …
+     scheduled, not dead.
+  9. A retry keeps
+     created_at and moves
+     updated_at; reason,
+     worker, lease_until,
+     and run_at are
+     dropped.
+  10. New contract
+      wording. The old
+      never "a done or
+      dead job changes
+      state" split in two,
+      since a retry must
+      leave dead; the
+      never that catches a
+      misapplied retry is
+      "tries go down on a
+      job that is not
+      dead"; a new
+      invariant says a job
+      has run_at exactly
+      when scheduled and
+      that run_at is after
+      updated_at.
+  11. The simulation had
+      to prove it reached
+      the new states — it
+      now fails if across
+      100 seeds it never
+      scheduled a job or
+      never retried a dead
+      one, so the added
+      transitions can't
+      pass vacuously.
+  12. check.sh's serve()
+      takes a directory,
+      so the same helpers
+      drive both the fresh
+      folder and the old
+      one.
+
+✻ Churned for 14m 46s ·
+  done 10:36 PM
+
+──────────────────────────
+❯
+──────────────────────────
+  exedev@aurora-but-gol…
+  ⏵⏵ bypass permissions

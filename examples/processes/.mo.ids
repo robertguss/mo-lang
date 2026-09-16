@@ -45,6 +45,23 @@
       "verified": { "hash": "77f75ec5e0ab036b", "declarations": "2106d9f820b0adb9" }
     },
     {
+      "path": "deferred-reply.mo",
+      "module": "Processes.DeferredReply",
+      "declarations": [
+        { "id": "321fbc9456b9", "name": "module Processes.DeferredReply", "hash": "58f85879002d99d6" },
+        { "id": "1d5907ca7feb", "name": "expose", "hash": "15f08afd11960abe" },
+        { "id": "c4fdfe0c343e", "name": "intent", "hash": "bd1ceb8e8ebafda4" },
+        { "id": "db4e4734cb24", "name": "process Batcher", "hash": "a79098f5580b810a" },
+        { "id": "e7afb4d10d15", "name": "process Asker", "hash": "806cd51e0c44daad" },
+        { "id": "e31b7951567c", "name": "supervisor Batchers", "hash": "42f1ff2b014e68d2" },
+        { "id": "600b792b5cf3", "name": "fn main", "hash": "5b570a5c4944f30f" },
+        { "id": "195f0a4a6276", "name": "test \"ten asks the batcher keeps are answered by a flush, never by the arm that took them\"", "hash": "c8c7b007d1967149" },
+        { "id": "425be36536ed", "name": "test \"an asker whose deadline is shorter than the flush sees Timeout, and the later answer is dropped\"", "hash": "d0f156f9269c18a0" },
+        { "id": "b5945d47a4ec", "name": "test rejects \"a crash between the ask and the flush gives every asker it kept Down\"", "hash": "8f69505a7942fb32" }
+      ],
+      "verified": { "hash": "520f28d6aad2b92c", "declarations": "a617bb1af9e01224" }
+    },
+    {
       "path": "handoff.mo",
       "module": "Processes.Handoff",
       "declarations": [

@@ -286,6 +286,20 @@ fn runTest(gpa: std.mem.Allocator, arena: std.mem.Allocator, program: *const byt
     return r;
 }
 
+/// A test's run under `seed` with no faults: its messages in order, as a failing seeded run prints
+/// them (interleaving).
+pub fn seededTrace(gpa: std.mem.Allocator, program: *const bytecode.Program, t: bytecode.Test, seed: u64) Error![]const []const u8 {
+    var machine: vm.Vm = .init(gpa, program, seed);
+    var simulator: sim.Sim = .seeded(&machine, seed, t.name, 0);
+    machine.sim = &simulator;
+    simulator.records = program.nevers.len > 0;
+    body(&machine, &simulator, t.function) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+        else => {},
+    };
+    return interleaving(gpa, &machine, &simulator);
+}
+
 /// The body, then every message still waiting, then every never.
 fn body(machine: *vm.Vm, simulator: *sim.Sim, function: u32) vm.Error!void {
     _ = try machine.call(function, &.{});
@@ -1045,4 +1059,39 @@ test "mo test prints a process crash with its seed, message log, and state befor
         \\      state before the last message: Meter(n: 200)
         \\
     , w.buffered());
+}
+
+/// The seed the recorded traces were run under (step 30).
+const trace_seed: u64 = 7;
+
+test "a seeded run gives the trace step 29b recorded: mo test runs on one thread, in the seed's order, however many cores mo run uses (step 30)" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const io = std.testing.io;
+    // MO_TRACE_WRITE=dir writes the traces there instead: how the files in testdata/traces were
+    // recorded, by this test run on the step 29b toolchain.
+    const write_to = std.testing.environ.getAlloc(arena, "MO_TRACE_WRITE") catch null;
+    const files = [_][2][]const u8{
+        .{ "../examples/processes/registry.mo", "testdata/traces/registry.txt" },
+        .{ "../examples/programs/ledger/journal.mo", "testdata/traces/journal.txt" },
+    };
+    for (files) |f| {
+        var diags: diag.List = .empty;
+        const prog = try @import("program.zig").load(arena, io, f[0], &diags);
+        const lowered = try @import("pipeline.zig").loweredOwn(arena, prog, &diags);
+        var text: std.ArrayList(u8) = .empty;
+        for (lowered.tests) |t| {
+            if (t.kind == .property) continue;
+            try text.print(arena, "test \"{s}\", seed {d}\n", .{ t.name, trace_seed });
+            for (try seededTrace(arena, lowered, t, trace_seed)) |line| try text.print(arena, "  {s}\n", .{line});
+        }
+        if (write_to) |dir| {
+            const out = try std.fs.path.join(arena, &.{ dir, std.fs.path.basename(f[1]) });
+            try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = out, .data = text.items });
+        } else {
+            const recorded = try std.Io.Dir.cwd().readFileAlloc(io, f[1], arena, .limited(16 << 20));
+            try std.testing.expectEqualStrings(recorded, text.items);
+        }
+    }
 }

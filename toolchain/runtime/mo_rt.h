@@ -19,6 +19,7 @@
  *   MO_VARIANT  aux: name id (mo_names) | fields << 16, xs: the fields
  *   MO_FUNC     fn: code, id, and captures
  *   MO_CAP      aux: kind | handle << 8, i: an Fs fixture's delay
+ *   MO_REPLY    u: the seq of a kept asker's message (step 31)
  */
 #ifndef MO_RT_H
 #define MO_RT_H
@@ -33,7 +34,7 @@
 
 enum {
     MO_NONE, MO_BOOL, MO_INT, MO_UINT, MO_BIG, MO_FLOAT, MO_STRING, MO_TIME, MO_DURATION,
-    MO_LIST, MO_TUPLE, MO_MAP, MO_SET, MO_RECORD, MO_VARIANT, MO_FUNC, MO_CAP, MO_HANDLE
+    MO_LIST, MO_TUPLE, MO_MAP, MO_SET, MO_RECORD, MO_VARIANT, MO_FUNC, MO_CAP, MO_HANDLE, MO_REPLY
 };
 
 typedef struct MoValue MoValue;
@@ -215,6 +216,8 @@ static inline MoValue mo_str(const char *s, uint32_t len) { MoValue v = {MO_STRI
 static inline MoValue mo_list(MoValue *xs, uint32_t n) { MoValue v = {MO_LIST, n, {0}}; v.as.xs = xs; return v; }
 static inline MoValue mo_tuple_of(MoValue *xs, uint32_t n) { MoValue v = {MO_TUPLE, n, {0}}; v.as.xs = xs; return v; }
 static inline MoValue mo_cap(uint32_t kind, uint32_t handle, int64_t delay) { MoValue v = {MO_CAP, kind | handle << 8, {0}}; v.as.i = delay; return v; }
+/* A kept asker (step 31): the seq of its message. */
+static inline MoValue mo_reply_of(uint64_t seq) { MoValue v = {MO_REPLY, 0, {0}}; v.as.u = seq; return v; }
 static inline uint32_t mo_cap_kind(MoValue v) { return v.aux & 0xff; }
 static inline uint32_t mo_cap_handle(MoValue v) { return v.aux >> 8; }
 static inline uint32_t mo_vname(MoValue v) { return v.aux & 0xffff; }
@@ -231,11 +234,20 @@ static inline MoValue mo_field(MoValue v, uint32_t k) { return v.as.xs[k]; }
 
 /* `high`: past `top`, how far the region's pages may still be resident (step 28). */
 typedef struct { uintptr_t base, end, top, high; } MoRegion;
-extern MoRegion mo_heap;
+extern _Thread_local MoRegion mo_heap;
 /* Compaction runs: under a program's main, not in a test, whose memory goes whole. */
 extern bool mo_compacts;
+#ifdef MO_STRESS
+/* Every budget 0: each safe point compacts whenever it can, the hardest case for what is kept, as
+ * vm.zig's tests run the interpreter (step 29b). */
+#define MO_FRAME_BUDGET ((size_t)0)
+#define MO_LOOP_BUDGET ((size_t)0)
+#define MO_WALK_BUDGET ((size_t)0)
+#else
 #define MO_FRAME_BUDGET ((size_t)1 << 20)
 #define MO_LOOP_BUDGET ((size_t)256 << 10)
+#define MO_WALK_BUDGET ((size_t)1 << 20)
+#endif
 
 void *mo_alloc_bytes(size_t n);
 MoValue *mo_alloc_values(size_t n);
@@ -252,7 +264,44 @@ void mo_compact(size_t from, MoValue *roots, size_t n);
 /* The locals of a frame whose function can hold a process's handle, innermost first: what a
  * sweep reads under main to end the processes nothing can reach (mo_rt.c, processes). */
 typedef struct MoHandleFrame { struct MoHandleFrame *next; MoValue *const *slots; uint32_t n; } MoHandleFrame;
-extern MoHandleFrame *mo_handle_frames;
+extern _Thread_local MoHandleFrame *mo_handle_frames;
+/* A frame a compaction may reach through while it waits in a call (step 29b): the depth it runs at,
+ * whether it waits in a call made as a whole statement now, when nothing but its roots is live, whether
+ * it reads what its closure captured (through a pointer a walk from further out would leave behind, so
+ * a walk goes no further out than it), the mark of the outermost frame a walk from it reaches and what
+ * the last walk through it kept, its roots (copied here at such a call and read back after a walk), and
+ * its marks: its own first, then each loop's mark and what that loop kept. Innermost first. */
+typedef struct MoFrame {
+    struct MoFrame *next;
+    uint32_t depth;
+    bool walking;
+    bool pinned;
+    size_t base, kept;
+    MoValue *roots;
+    uint32_t nroots;
+    size_t *const *marks;
+    uint32_t nmarks;
+} MoFrame;
+extern _Thread_local MoFrame *mo_frames;
+/* How many walks have run: a frame reads its roots back only when a walk ran while it waited. */
+extern _Thread_local uint64_t mo_walks;
+/* The range the last compaction left, all of it reached when it ran. */
+extern _Thread_local uintptr_t mo_clean_from, mo_clean_to;
+/* A walk is due once what the frames it reaches made has grown past twice what is known to be live there,
+ * and the budget: a loop's rule. Known to be live is what the last walk through them kept, or the range the
+ * last compaction left when it lies inside, as a callee's return leaves its result: so a frame a row calls
+ * once per step, whose walk reaches no further than the step, never walks, and neither does a frame whose
+ * callee just returned a book it compacted. */
+static inline bool mo_walk_due(const MoFrame *f) {
+    if (MO_LIKELY(!mo_compacts || mo_heap.top <= f->base)) return false;
+    size_t live = f->kept;
+    if (mo_clean_from >= f->base && mo_clean_to <= mo_heap.top && mo_clean_to - mo_clean_from > live) live = mo_clean_to - mo_clean_from;
+    return MO_UNLIKELY(mo_heap.top - f->base > 2 * live + MO_WALK_BUDGET);
+}
+/* The walk: from `frame` out through each frame that waits in a call it made to the one inside it,
+ * everything past the outermost one's mark that their roots do not reach is freed, and every mark
+ * inside moves to the new top. */
+void mo_walk(MoFrame *frame);
 /* A read of a var other than by an update of it: a map or set it holds may be held twice. */
 void mo_disown_in(MoValue v);
 
@@ -555,6 +604,10 @@ MoValue mo_ask(MoValue handle, MoValue message, MoValue within);
 /* Deadlines (step 22): reply_by in the running update, what remains of a Deadline as a Duration
  * (-1 ms when nothing does), and the Timeout a call with nothing left gives at once. */
 MoValue mo_reply_by(void);
+/* The asker the running update may keep instead of answering, and the two rows that do it (step 31). */
+MoValue mo_reply_to(void);
+void mo_defer_reply(void);
+MoValue mo_answer(MoValue reply, MoValue value);
 MoValue mo_deadline_left(MoValue deadline);
 MoValue mo_timed_out_now(void);
 /* A row that waits, timed for the events (step 23): the events' clock before it, and its result,

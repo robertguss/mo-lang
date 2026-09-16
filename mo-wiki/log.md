@@ -360,3 +360,56 @@
 
 ## [2026-09-15] session | Morning: step 29 accepted
 - The runtime honest: `restart: :never` honoured in both runtimes with its report, `platform.exit` past a pending delayed send, replay compacting in generations (1M native 716 → 81 s), simulated time moving only when a test waits, the `verified:` line counting invariants. Fable's probes green under `mo run`, binaries, `mo test`, and `--sim`, except the 1M replay of a real HTTP-written log, which passed 8 GB after the fold: step 29b briefed and started. Ten decision rows, five `semantic`, one open. Chapter 5's vocabulary gains the invariants clause. Merged to `main`.
+
+## [2026-09-15] session | Midday: step 29b accepted, direction 41
+- Replay memory on a real log: a process region reserved 1 GiB and an update that filled it allocated past it forever; now address space is reserved and a walk compacts the frames waiting in whole-statement calls. Fable's evidence log replays at 2.3 GB where it was killed past 9 GB, twice. Five rows, three `semantic`. Robert's small-model round filed as direction 41 and a round-9 row, its order for Robert. Merged to `main`.
+
+## [2026-09-15] session | Midday: direction 41 locked, the session closed
+- Robert: round 9 (the small-model round) after round 8, several models of different sizes in the Pi harness from his Grok, Codex, and Ollama cloud subscriptions, small ones on his Mac; pause after round 8 to plan it together in a fresh session. Two locked rows. `HANDOFF.md` rewritten whole: step 30, round 8, then stop. Lint 25 issues (16 Robert's). The loop is stopped.
+
+## [2026-09-15] session | Evening: step 30 accepted, Robert's five decisions, direction 43
+- Step 30 (processes on every core) accepted at 20:05: five commits, 193 tests, the lead's probes (corpus under the 29b binary and the new one at 1 and 4 cores; a kill under load at 4 cores with the lead's own client, five of five; the 1M replay on a copy of the evidence log, 4 cores 96.0 s at the same 2,323 MiB peak, 1 core 96.8 s, same peak and book). Eight decision rows: the rule, four ratified defaults, `programs/agent` at one core in the corpus (for Robert), the same-disk rule for round 8 (round 7's 981 was not measured under today's disk; 29b's binary makes 353 today), the interpreter's 780 KB per process carried.
+- Robert, evening: the Mac scaling run (M3 Max, 14 cores) in parallel with round 8; Mo's claim is reliability at zero dependencies, read on both columns together, baselines keep their checkers; round 10 is the Elixir round (direction 42); runtime first, the language revised to its evidence in "The language after the rounds" at the pause; Fable to drive with proposals. Direction 43 written: five measurements and the unfamiliarity tax.
+- `09-stdlib.md`'s `ProcessInfo` and `Started` lines fixed at acceptance. Merged to `main`. Next: round 8's change spec, then its plan page.
+
+## [2026-09-15] session | Night: round 8's change spec and suites, measurement 2 run
+- Session 7 started from the handoff at about 20:15. Round 8's change spec written (`spec/programs/01b-job-queue-change.md`: scheduled jobs, retry backoff, `/retry`, the `tries` rename, the old log replayed); the pre-registration on [[control-run-8]]; the three worktrees branched and verified; both hidden suites written after the branching and smoke-tested on all three round 7 programs.
+- Measurement 2, [[sampling-as-verification]], run in `w7:p7` meanwhile: a frozen harness, the board stripped to its spec, five fresh Opus regenerations at 7 to 9.5 minutes each, 132,000 random operations with every variant identical to the original, round 7's suite at 0 defects on each, one crash-versus-skip disagreement on a hand-written log. Five decision rows, two `semantic`, one for the spec, one for the toolchain (MO0317 on dependents cost every regeneration a loop). Round 8's fourth oracle takes the form the measurement earned.
+- Next: the three round 8 sessions (`mo-r8-mo`, `mo-r8-go`, `mo-r8-python`), then the reading.
+
+## [2026-09-15] session | Night: round 8 run and read
+- Three fresh Opus sessions from 22:22 UTC: Go green at 22:37 (8 loops), Python at 22:38 (6), Mo at 22:57 (9). Both hidden suites on all three, Mo under both runtimes: regressions 0/0/0, defects 0/1/0. Speed, memory, the loop, and dependencies measured on this disk the same night, Go and Python rerun alone. Held on all five ([[control-run-8]]).
+- The fourth oracle (`oracle4.py`, fourteen inputs from the three decision lists): three disagreements, one an outage in Mo on a log record in an impossible state where both baselines refuse the folder. Five decision rows, two `semantic`, two for Robert. The round is recorded and the lead pauses, per Robert's 15 Sep decision.
+
+## [2026-09-16] session | Night: the outage probed, Fable decides from here
+- Robert: Fable makes the decisions and keeps moving, never waits on him (locked). The round 8 outage probed under both runtimes: the program's, by chapter 3 (a `:never` queue, a worker waiting on a `Done` message with no deadline); the language row (a wait hidden as a message pattern) goes to the language page, the fix is the erosion round's change 2.
+
+## [2026-09-16] session | Night: round 10 run and read, measurement 1 running
+- Round 10 brought forward and run while Robert slept: Elixir installed, the queue written in 31 min and changed in 16, both suites, the measure alone on the disk, the fourth oracle ([[control-run-10]]). Elixir: 2 defect causes, 0 regressions, twice Mo's speed, 7 s loop, 0 run-time deps. Three rows, one `semantic` for Robert. Measurement 1 ([[bodies-as-cache]]) at 1.0 on logstat, kv, notes, and jobq in both runs, the ledger and the agent program still to come.
+
+## [2026-09-16] session | Night: measurement 1 at 1.0 on five programs, the pause for the Mac
+- Ten regenerations (logstat, kv, notes, jobq, ledger, two runs each), ten at completeness 1.0 with every kept test, every transcript, and jobq's hidden suite ([[bodies-as-cache]]). Robert at 02:20: pause when they finish, continue on the Mac. Every branch pushed, instruments committed, `HANDOFF.md` rewritten for a Mac session. Two rows, one `semantic` for Robert.
+
+## [2026-09-15] session | Mac: set up, every suite green, Robert to bed
+- The Mac set up in half an hour: tools installed or pinned (Elixir 1.18/OTP 27 in the Elixir worktree only, Pi from npm), 13 worktrees recreated, the toolchain built in 34 s, the four queues' suites green. The Herdr worker pane is `w44:p2` now. Robert to bed at 22:50: the lead decides, Opus on medium effort works. Next: the P6 probe on Elixir and Mo.
+
+## [2026-09-15] session | Mac: P6 on Elixir, the BEAM's row
+- The queue GenServer killed from outside three times under load, the service back in under 600 ms each time, nothing acknowledged lost; four kills in 2 s and the node exits on the default intensity. The null hypothesis reading written into [[control-run-10]]: P6 is the BEAM's. One `semantic` row for Robert. Next: the Mac scaling run alone on the disk, the lead on the language page meanwhile.
+
+## [2026-09-15] session | Mac: chapter 10 written while the scaling run measures
+- [[10-language-after-the-rounds]] (chapter 10; the roadmap's `09-` was taken by the stdlib): the rounds' nine rows in one table, six sections with code options, two recommended changes and zero syntax. Two rows, one `semantic` for Robert. The Mac scaling run started 22:46 local, the suite green in two minutes warm.
+
+## [2026-09-15] session | Mac: the scaling run read; five sessions started
+- The scaling run: nothing scales on the M3 Max, every row best at 1 core, the disk eight times the VM's ([[interpreter-step-30]] Result). Started 23:21: measurement 1's agent program in two Opus panes (`w45`), round 9's first model, kimi-k3 in Pi, in three panes (`w46`). Step 31 next on `mo-opus`.
+
+## [2026-09-16] session | Mac, after midnight: measurement 1 complete, round 9's first model, a lead slip
+- Measurement 1 complete: twelve of twelve regenerations at 1.0 ([[bodies-as-cache]]); the stronger form on logstat, tests deleted too, 0.74 under the original tests and 1.0 under the transcripts. Round 9's kimi-k3: Go 0 regressions and 1 defect in 15 min, Python 0 and 0 in 35 min ([[control-run-9]]); Mo still running. The lead's slip: two wiki commits committed the worker's staged step 31 files with them (a bare `git commit` after `git add <paths>`); the rule in the skill is now `git commit -- <paths>`.
+
+## [2026-09-16] session | Mac: step 31 accepted, round 9 at four models
+- Step 31, the deferred reply, accepted at 01:15 ([[interpreter-step-31]]): the rule as chapter 10 §1 stated it, MO0411, all three runtimes, the corpus file; the crash probe 8 of 8 `Down`. Round 9 ([[control-run-9]]): kimi and deepseek done in all three languages (Mo carries a defect Opus's did not, both models); gemini out (invalid key), gpt-5.5 through Codex and the local qwen 27B running.
+
+## [2026-09-16] session | Mac: the erosion round's generation two, round 9 at four models
+- Change 2 by four Opus maintainers in 12 to 18 minutes ([[erosion-round]]): nothing eroded in Mo, Go, or Python on the old suites; Elixir refuses a torn line now and cannot restart after a full disk; Mo used the deferred reply. Round 9 ([[control-run-9]]): gpt-5.5 matched Opus on Mo in 14 minutes; the local qwen 27B runs to its limit. Step 31 accepted. Two `semantic` rows for Robert.
+
+## [2026-09-16] session | Mac, 02:45: round 9 read, the night closed
+- Round 9 done except Haiku ([[control-run-9]]): the local 27B made no edit in 92 minutes; the reading written. Every session pane is saved in the lead's scratchpad; every worktree is on disk; `HANDOFF.md` is the morning's. Robert's rows: P6 and the BEAM, chapter 10 §1 as built, the erosion round, round 9.

@@ -64,6 +64,8 @@ pub const Tag = enum(u8) {
     variable,
     /// A point on the runtime's clock that a call may wait until: an ask's `reply_by` (step 22).
     deadline,
+    /// Reply(T): the asker an arm kept instead of answering, answered later (step 31). a: T
+    reply,
 };
 
 pub const Type = struct { tag: Tag, a: u32 = 0, b: u32 = 0 };
@@ -260,7 +262,7 @@ pub const Pool = struct {
         return switch (ta.tag) {
             .none, .bool, .string, .time, .duration, .self_, .deadline => true,
             .int, .float, .cap, .decl, .handle, .message, .state, .param => ta.a == tb.a,
-            .list, .option, .set => p.unify(ta.a, tb.a),
+            .list, .option, .set, .reply => p.unify(ta.a, tb.a),
             .result, .map => p.unify(ta.a, tb.a) and p.unify(ta.b, tb.b),
             .tuple => ta.b == tb.b and for (0..ta.b) |i| {
                 if (!p.unify(p.items.items[ta.a + i], p.items.items[tb.a + i])) break false;
@@ -278,7 +280,7 @@ pub const Pool = struct {
         for (from, to) |f, t| if (r == f) return t;
         const t = p.get(r);
         switch (t.tag) {
-            .list, .option, .set => {
+            .list, .option, .set, .reply => {
                 const inner = try p.subst(t.a, from, to);
                 return if (inner == t.a) r else p.add(.{ .tag = t.tag, .a = inner });
             },
@@ -385,6 +387,11 @@ pub const Pool = struct {
             },
             .decl, .alias => try w.writeAll(p.decl_names.items[t.a]),
             .handle => try w.print("Handle({s})", .{p.decl_names.items[t.a]}),
+            .reply => {
+                try w.writeAll("Reply(");
+                try p.format(w, t.a);
+                try w.writeAll(")");
+            },
             .message => try w.print("a message of {s}", .{p.decl_names.items[t.a]}),
             .state => try w.print("the state of {s}", .{p.decl_names.items[t.a]}),
             .param => try w.writeAll("a type parameter"),

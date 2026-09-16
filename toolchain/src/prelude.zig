@@ -11,6 +11,7 @@
 //!   P                                               the process a handle or message belongs to
 //!   Message(P)                                      one of P's `message` lines
 //!   Reply                                           the reply type of the message passed
+//!   Reply(T)                                        the kept asker of a message replying T (step 31)
 //!   none                                            no value (a statement-only call)
 const std = @import("std");
 
@@ -21,7 +22,7 @@ pub const Origin = enum { grammar, stdlib, corpus_only };
 
 /// `error_enum` and `enum_` are both enums whose variants are rows below; an error enum
 /// is what a capability call fails with.
-pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, capability, error_enum, enum_ };
+pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, reply, capability, error_enum, enum_ };
 
 pub const Type = struct {
     name: []const u8,
@@ -57,6 +58,10 @@ pub const types = [_]Type{
     .{ .name = "Map", .arity = 2, .kind = .map, .origin = .stdlib },
     .{ .name = "Set", .arity = 1, .kind = .set, .origin = .stdlib },
     .{ .name = "Handle", .arity = 1, .kind = .handle },
+    // The asker an arm kept instead of answering (step 31): held in a state field, answered later.
+    // `Reply` is a name programs already give their own types (programs/agent, programs/kv,
+    // recipes/model-client), so a module's own hides the prelude's from its code.
+    .{ .name = "Reply", .arity = 1, .kind = .reply, .origin = .stdlib, .hideable = true },
     .{ .name = "Clock", .kind = .capability },
     .{ .name = "Fs", .kind = .capability },
     .{ .name = "Events", .kind = .capability },
@@ -139,6 +144,8 @@ pub const structs = [_]Struct{
         .{ .name = "restarts", .type = "UInt64" },
         .{ .name = "region_bytes", .type = "UInt64" },
         .{ .name = "paused", .type = "Bool" },
+        // The scheduler it runs on for its life (step 30).
+        .{ .name = "scheduler", .type = "UInt64" },
     } },
     .{ .name = "SourceInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "kind", .type = "String" },
@@ -223,7 +230,7 @@ pub const variants = [_]Variant{
     .{ .owner = "RuntimeError", .name = "MailboxFull", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "Timeout", .origin = .stdlib },
     .{ .owner = "Event", .name = "Updated", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "took_us", .type = "UInt64" }, .{ .name = "waited_us", .type = "UInt64" }, .{ .name = "longest", .type = "String" } }, .origin = .stdlib },
-    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
+    .{ .owner = "Event", .name = "Started", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "scheduler", .type = "UInt64" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Ended", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Restarted", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "restarts", .type = "UInt64" } }, .origin = .stdlib },
     .{ .owner = "Event", .name = "Crashed", .fields = &.{ .{ .name = "at", .type = "Time" }, .{ .name = "pid", .type = "UInt64" }, .{ .name = "name", .type = "String" }, .{ .name = "seed", .type = "UInt64" }, .{ .name = "clause", .type = "String" }, .{ .name = "taking", .type = "String" }, .{ .name = "snapshot", .type = "String" } }, .origin = .stdlib },
@@ -486,6 +493,9 @@ pub const fns = [_]Fn{
     // Delivered no earlier than `delay` after the sending update ends (step 24).
     .{ .recv = "Handle(P)", .name = "send", .params = &.{"Message(P)"}, .named = &.{.{ .name = "delay", .type = "Duration" }}, .ret = "none" },
     .{ .recv = "Handle(P)", .name = "ask", .params = &.{"Message(P)"}, .ret = "Result(Reply, AskError)", .can_wait = true },
+    // Answers the ask an arm kept (step 31): the asker's deadline travels with the Reply, and an
+    // answer after it is dropped. An effect on the process that holds it, so no capability.
+    .{ .recv = "Reply(T)", .name = "answer", .params = &.{"T"}, .ret = "none", .origin = .stdlib },
     // Inside `never` only
     .{ .recv = "Type", .on_type = true, .name = "all", .ret = "List(T)", .only = .never },
     .{ .recv = "", .name = "flows", .params = &.{"T"}, .named = &.{.{ .name = "into", .type = "Capability" }}, .ret = "Bool", .only = .never },
@@ -522,7 +532,7 @@ pub fn findStandIn(name: []const u8) bool {
 }
 
 /// Words a type string may use that are not type names.
-const type_string_words = [_][]const u8{ "T", "U", "A", "E", "K", "V", "N", "P", "Message", "Reply", "none", "fn", "Capability" };
+const type_string_words = [_][]const u8{ "T", "U", "A", "E", "K", "V", "N", "P", "Message", "none", "fn", "Capability" };
 
 test "every name in a prelude type string is a prelude type or a type-string word" {
     var strings: std.ArrayList([]const u8) = .empty;

@@ -1,0 +1,2 @@
+SET j_1 {"id": "j_1", "queue": "q", "state": "queued", "payload": "p1", "attempts": 0, "max_attempts": 3, "created_at": "2026-09-14T09:00:00Z", "updated_at": "2026-09-14T09:00:00Z"}
+SET j_2 {"id": "j_2", "queue": "q", "state": "queued", "payload": "p2", "attempts": 0, "max_attempts": 3, "created_at": "2026-09-14T09:00:00Z", "updated_at": "2026-09-14T09:00:00Z"}

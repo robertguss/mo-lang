@@ -2610,6 +2610,24 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "6266134e768db2e2" }
     },
     {
+      "path": "spread/main.mo",
+      "module": "Spread.Main",
+      "declarations": [
+        { "id": "e4a6c9e69cff", "name": "module Spread.Main", "hash": "84c2b9f3cbbf41f8" },
+        { "id": "0619d8a11b53", "name": "expose", "hash": "d15eec4df98b1e15" },
+        { "id": "d32485b709d5", "name": "intent", "hash": "622fdcd74600db96" },
+        { "id": "f21baddd7275", "name": "process Idle", "hash": "eac8a6c1fe6b3978" },
+        { "id": "d367eb8b9621", "name": "process Tally", "hash": "929218bb4d49c133" },
+        { "id": "4a15e3d50a57", "name": "process Spawner", "hash": "7a8766855bd7d621" },
+        { "id": "ab2493126182", "name": "process Launcher", "hash": "de9e2bd779f4fa17" },
+        { "id": "ba291df88a1c", "name": "supervisor Spread", "hash": "533051065d8367a6" },
+        { "id": "e11cbaf33844", "name": "fn answered", "hash": "85823ee28aa97b0c" },
+        { "id": "927bd4a8ba51", "name": "fn asked", "hash": "f816d7ebf58e7e7a" },
+        { "id": "97530a50c59c", "name": "fn main", "hash": "bde0db911078eedb" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "1abb0046f4c437d5" }
+    },
+    {
       "path": "surface/main.mo",
       "module": "Surface.Main",
       "declarations": [

@@ -74,7 +74,7 @@ pub const Code = enum {
 pub const Entry = diag.Entry;
 
 pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
-    .unknown_name = .{ .code = "MO0201", .category = .types, .what = "there is no <name> in scope", .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline, bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration.", .fixes = &.{} },
+    .unknown_name = .{ .code = "MO0201", .category = .types, .what = "there is no <name> in scope", .why = "A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.", .fixes = &.{} },
     .unknown_type = .{ .code = "MO0202", .category = .types, .what = "there is no type named <Type>", .why = "A type is a prelude type, a type declared in this module, a name brought in by use, or a one-letter type parameter in a function signature.", .fixes = &.{} },
     .expose_undeclared = .{ .code = "MO0203", .category = .types, .what = "<name> is exposed but not declared in this module", .why = "The expose line is the module's table of contents; every name on it must be declared in the module (grammar, semantic rules).", .fixes = &.{} },
     .expose_twice = .{ .code = "MO0204", .category = .types, .what = "<name> is on the expose line twice", .why = "The expose line names each public declaration exactly once.", .fixes = &.{} },
@@ -151,7 +151,27 @@ pub const Decl = struct {
     module: u32 = 0,
     /// A process whose update reads `reply_by` (step 22), which the runtimes bind only then.
     reads_reply_by: bool = false,
+    /// A process whose update keeps an asker in a state field (step 31): the runtimes bind
+    /// `reply_to` in every arm that answers one.
+    reads_reply_to: bool = false,
 };
+
+/// Whether update arm `arm` mentions `reply_to`: the arm keeps the asker instead of answering,
+/// and the runtimes must not answer the ask when it commits (step 31). The arm's nodes are the
+/// run of indices from just after its pattern (or its guard) to the last node of its body.
+pub fn armDefersReply(tree: ast.Tree, arm: Index) bool {
+    const n = tree.nodes[arm];
+    const d = tree.extraData(ast.Arm, n.rhs);
+    const body = tree.span(d.body_start, d.body_end);
+    if (body.len == 0) return false;
+    const head = if (d.guard != 0) d.guard else n.lhs;
+    var i = head + 1;
+    while (i <= body[body.len - 1]) : (i += 1) {
+        const m = tree.nodes[i];
+        if (m.kind == .name_ref and std.mem.eql(u8, tree.tokenText(m.main_token), "reply_to")) return true;
+    }
+    return false;
+}
 
 /// `optional`: a stdlib struct's field that may be left out when it is built (prelude.zig).
 pub const Field = struct { name: []const u8, type: Id, node: Index = 0, optional: bool = false };
@@ -216,7 +236,7 @@ pub fn authorityIn(pool: *const types.Pool, t: Id, depth: u8) ?Id {
     const r = pool.base(t);
     const b = pool.get(r);
     return switch (b.tag) {
-        .cap, .handle => r,
+        .cap, .handle, .reply => r,
         .list, .option, .set => authorityIn(pool, b.a, depth + 1),
         .result, .map => authorityIn(pool, b.a, depth + 1) orelse authorityIn(pool, b.b, depth + 1),
         .tuple => for (pool.elems(b)) |e| {
@@ -503,6 +523,8 @@ const Checker = struct {
     verified_lines: []const VerifiedLine = &.{},
     /// An arm of the update being checked read its reply_by.
     update_reads_reply_by: bool = false,
+    /// An arm of the update being checked kept its reply_to (step 31).
+    update_reads_reply_to: bool = false,
 
     // ---- small helpers
 
@@ -1244,6 +1266,7 @@ const Checker = struct {
                 .map => c.pool.add(.{ .tag = .map, .a = try c.resolveType(args[0], ctx), .b = try c.resolveType(args[1], ctx) }),
                 .set => c.pool.list1(.set, try c.resolveType(args[0], ctx)),
                 .error_enum, .enum_ => c.preludeEnum(name),
+                .reply => c.pool.list1(.reply, try c.resolveType(args[0], ctx)),
                 .handle => {
                     const an = c.node(args[0]);
                     if (an.kind == .type_ref) {
@@ -1362,7 +1385,7 @@ const Checker = struct {
             return slot.*;
         }
         if (std.mem.eql(u8, word, "none")) return types.none;
-        if (std.mem.eql(u8, word, "Reply")) return env.reply;
+        if (std.mem.eql(u8, word, "Reply")) return if (args.items.len == 1) c.pool.list1(.reply, args.items[0]) else env.reply;
         if (std.mem.eql(u8, word, "List")) return c.pool.list1(.list, args.items[0]);
         if (std.mem.eql(u8, word, "Option")) return c.pool.list1(.option, args.items[0]);
         if (std.mem.eql(u8, word, "Result")) return c.pool.result(args.items[0], args.items[1]);
@@ -1385,6 +1408,7 @@ const Checker = struct {
         if (std.mem.eql(u8, head, "Set")) return b.tag == .set;
         if (std.mem.eql(u8, head, "Option")) return b.tag == .option;
         if (std.mem.eql(u8, head, "Handle")) return b.tag == .handle;
+        if (std.mem.eql(u8, head, "Reply")) return b.tag == .reply;
         if (c.type_names.get(head)) |d| if (c.decls.items[d].node == 0) return c.pool.resolve(t) == c.decls.items[d].type;
         // A prelude enum (Json) is a decl of its own, not in type_names (registerPrelude).
         if (prelude.findType(head)) |pt| if (pt.kind == .enum_ or pt.kind == .error_enum) return c.pool.resolve(t) == c.preludeEnum(head);
@@ -1517,8 +1541,10 @@ const Checker = struct {
         try c.bind("state", state_t, .state, update.main_token);
         try c.bind("message", message_t, .state, update.main_token);
         c.update_reads_reply_by = false;
+        c.update_reads_reply_to = false;
         _ = try c.caseCheck(update.lhs, types.unknown, .update);
         c.decls.items[d].reads_reply_by = c.update_reads_reply_by;
+        c.decls.items[d].reads_reply_to = c.update_reads_reply_to;
         try c.popScope(mark);
         try c.endFrame(saved);
     }
@@ -2456,10 +2482,20 @@ const Checker = struct {
                         const other = c.replyOfPattern(alt, subject) orelse types.none;
                         if (!c.pool.unify(reply, other)) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("{s} replies with {s} and the first alternative with {s}, so it takes an arm of its own", .{ c.text(c.node(alt).main_token), try c.tn(other), try c.tn(reply) }));
                     };
-                    // The asker's deadline, in an arm that answers one (step 22).
-                    const reply_by: ?usize = if (c.pool.resolve(reply) != types.none) c.bindings.items.len else null;
-                    if (reply_by != null) try c.bind("reply_by", types.deadline, .param, an.main_token);
-                    _ = try c.blockValue(body, reply);
+                    // The asker's deadline, in an arm that answers one (step 22), and the asker
+                    // itself, which the arm may keep instead of answering (step 31).
+                    const answers = c.pool.resolve(reply) != types.none;
+                    const reply_by: ?usize = if (answers) c.bindings.items.len else null;
+                    if (answers) {
+                        try c.bind("reply_by", types.deadline, .param, an.main_token);
+                        try c.bind("reply_to", try c.pool.list1(.reply, reply), .param, an.main_token);
+                    }
+                    // An arm that mentions reply_to keeps the asker, so it gives no value: its
+                    // last line is one more statement (caps.zig checks that it is moved into a
+                    // state field, MO0411).
+                    const defers = answers and armDefersReply(c.tree, a);
+                    if (defers) c.update_reads_reply_to = true;
+                    _ = try c.blockValue(body, if (defers) types.none else reply);
                     if (reply_by) |k| c.update_reads_reply_by = c.update_reads_reply_by or c.bindings.items[k].used;
                 } else try c.blockStmts(body),
             }

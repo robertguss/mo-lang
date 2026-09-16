@@ -1,0 +1,129 @@
+test "a call is answered once its records are in the log, and calls staged together share one append", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o1", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o1", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Serve(Call(command: OpenAccount(name: "grace", currency: "USD", overdraft: 0), key: "o2", request: "{"OpenAccount": {"name": "grace", "currency": "USD", "overdraft": 0}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "grace", currency: "USD", overdraft: 0), key: "o2", request: "{"OpenAccount": {"name": "grace", "currency": "USD", "overdraft": 0}}"))
+  the test sent Stage(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 100), key: "t1", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 100}}")) to Journal #0
+  Journal #0 took Stage(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 100), key: "t1", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 100}}"))
+  the test sent Stage(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 100), key: "t2", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 100}}")) to Journal #0
+  Journal #0 took Stage(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 100), key: "t2", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 100}}"))
+  the test sent Collect(3) to Journal #0
+  Journal #0 took Collect(3)
+  the test sent Collect(4) to Journal #0
+  Journal #0 took Collect(4)
+test "a hold expires by the Expire it sent itself, leaving a release entry", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Serve(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 100), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 100}}")) to Journal #0
+  Journal #0 took Serve(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 100), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 100}}"))
+  the test sent Flush to Journal #0
+  Journal #0 took Flush
+  Journal #0 sent Expire(1) to Journal #0
+  the test sent Flush to Journal #0
+  Journal #0 took Expire(1)
+  Journal #0 took Flush
+test "a hold that expired while the ledger was stopped is released when it opens again", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Serve(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 100), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 100}}")) to Journal #0
+  Journal #0 took Serve(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 100), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 100}}"))
+  Journal #0 sent Expire(1) to Journal #0
+  the test sent Open(Journal #1) to Journal #1
+  Journal #0 took Expire(1)
+  Journal #1 took Open(Journal #1)
+  the test sent Serve(Call(command: ListEntries(account: Some("a_1"), kind: Some(Release)), key: "", request: "{"ListEntries": {"account": "a_1", "kind": "Release"}}")) to Journal #1
+  Journal #1 took Serve(Call(command: ListEntries(account: Some("a_1"), kind: Some(Release)), key: "", request: "{"ListEntries": {"account": "a_1", "kind": "Release"}}"))
+test "two captures of one hold arrive at once, and exactly one is 201", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Serve(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 3600000), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 3600000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 3600000), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 3600000}}"))
+  the test sent Go to Racer #1
+  the test sent Go to Racer #2
+  the test sent Status to Racer #1
+  Racer #2 took Go
+  Racer #2 sent Stage(Call(command: CaptureHold(hold: "e_1", amount: 100), key: "c2", request: "{"CaptureHold": {"hold": "e_1", "amount": 100}}")) to Journal #0
+  Journal #0 took Stage(Call(command: CaptureHold(hold: "e_1", amount: 100), key: "c2", request: "{"CaptureHold": {"hold": "e_1", "amount": 100}}"))
+  Racer #2 sent Collect(3) to Journal #0
+  Journal #0 took Collect(3)
+  Racer #1 took Go
+  Racer #1 sent Stage(Call(command: CaptureHold(hold: "e_1", amount: 100), key: "c1", request: "{"CaptureHold": {"hold": "e_1", "amount": 100}}")) to Journal #0
+  Journal #0 took Stage(Call(command: CaptureHold(hold: "e_1", amount: 100), key: "c1", request: "{"CaptureHold": {"hold": "e_1", "amount": 100}}"))
+  Racer #1 sent Collect(4) to Journal #0
+  Journal #0 took Collect(4)
+  Racer #1 took Status
+  the test sent Status to Racer #2
+  Racer #2 took Status
+  Journal #0 sent Expire(1) to Journal #0
+  Journal #0 took Expire(1)
+test "a retry with the same key is answered as the first time, and one with a different body is 409", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o1", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o1", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Serve(Call(command: OpenAccount(name: "grace", currency: "USD", overdraft: 0), key: "o2", request: "{"OpenAccount": {"name": "grace", "currency": "USD", "overdraft": 0}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "grace", currency: "USD", overdraft: 0), key: "o2", request: "{"OpenAccount": {"name": "grace", "currency": "USD", "overdraft": 0}}"))
+  the test sent Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 700), key: "k", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 700}}")) to Journal #0
+  Journal #0 took Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 700), key: "k", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 700}}"))
+  the test sent Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 700), key: "k", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 700}}")) to Journal #0
+  Journal #0 took Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 700), key: "k", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 700}}"))
+  the test sent Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 800), key: "k", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 800}}")) to Journal #0
+  Journal #0 took Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 800), key: "k", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 800}}"))
+test "a replay after a stop finds every balance and hold the ledger answered with", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o1", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o1", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Serve(Call(command: OpenAccount(name: "grace", currency: "USD", overdraft: 0), key: "o2", request: "{"OpenAccount": {"name": "grace", "currency": "USD", "overdraft": 0}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "grace", currency: "USD", overdraft: 0), key: "o2", request: "{"OpenAccount": {"name": "grace", "currency": "USD", "overdraft": 0}}"))
+  the test sent Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 1500), key: "t", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 1500}}")) to Journal #0
+  Journal #0 took Serve(Call(command: MoveMoney(from: "a_1", to: "a_2", amount: 1500), key: "t", request: "{"MoveMoney": {"from": "a_1", "to": "a_2", "amount": 1500}}"))
+  the test sent Serve(Call(command: PlaceHold(account: "a_2", amount: 700, ttl_ms: 3600000), key: "h", request: "{"PlaceHold": {"account": "a_2", "amount": 700, "ttl_ms": 3600000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: PlaceHold(account: "a_2", amount: 700, ttl_ms: 3600000), key: "h", request: "{"PlaceHold": {"account": "a_2", "amount": 700, "ttl_ms": 3600000}}"))
+  the test sent Serve(Call(command: ShowAccount("a_1"), key: "", request: "{"ShowAccount": {"id": "a_1"}}")) to Journal #0
+  Journal #0 took Serve(Call(command: ShowAccount("a_1"), key: "", request: "{"ShowAccount": {"id": "a_1"}}"))
+  the test sent Serve(Call(command: ShowAccount("a_2"), key: "", request: "{"ShowAccount": {"id": "a_2"}}")) to Journal #0
+  Journal #0 took Serve(Call(command: ShowAccount("a_2"), key: "", request: "{"ShowAccount": {"id": "a_2"}}"))
+  the test sent Open(Journal #1) to Journal #1
+  Journal #1 took Open(Journal #1)
+  the test sent Serve(Call(command: ShowAccount("a_1"), key: "", request: "{"ShowAccount": {"id": "a_1"}}")) to Journal #1
+  Journal #1 took Serve(Call(command: ShowAccount("a_1"), key: "", request: "{"ShowAccount": {"id": "a_1"}}"))
+  the test sent Serve(Call(command: ShowAccount("a_2"), key: "", request: "{"ShowAccount": {"id": "a_2"}}")) to Journal #1
+  Journal #1 took Serve(Call(command: ShowAccount("a_2"), key: "", request: "{"ShowAccount": {"id": "a_2"}}"))
+  Journal #1 sent Expire(2) to Journal #1
+  Journal #1 took Expire(2)
+  Journal #0 sent Expire(2) to Journal #0
+  Journal #0 took Expire(2)
+test "a hold staged and never collected is still covered when its expiry passes before the next call", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+  the test sent Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}")) to Journal #0
+  Journal #0 took Serve(Call(command: OpenAccount(name: "ada", currency: "USD", overdraft: 10000), key: "o", request: "{"OpenAccount": {"name": "ada", "currency": "USD", "overdraft": 10000}}"))
+  the test sent Stage(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 100), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 100}}")) to Journal #0
+  Journal #0 took Stage(Call(command: PlaceHold(account: "a_1", amount: 500, ttl_ms: 100), key: "h", request: "{"PlaceHold": {"account": "a_1", "amount": 500, "ttl_ms": 100}}"))
+  Journal #0 sent Expire(1) to Journal #0
+  Journal #0 took Expire(1)
+  the test sent Stage(Call(command: ShowAccount("a_9"), key: "", request: "{"ShowAccount": {"id": "a_9"}}")) to Journal #0
+  Journal #0 took Stage(Call(command: ShowAccount("a_9"), key: "", request: "{"ShowAccount": {"id": "a_9"}}"))
+  Journal #0 sent Expire(1) to Journal #0
+  Journal #0 took Expire(1)
+test "a journal opened over a transfer whose second posting was not written", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+test "a journal opened over holds that keep more than the accounts have", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+test "a journal opened over a retry that landed twice", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)
+test "a journal opened over a transfer written as two records", seed 7
+  the test sent Open(Journal #0) to Journal #0
+  Journal #0 took Open(Journal #0)

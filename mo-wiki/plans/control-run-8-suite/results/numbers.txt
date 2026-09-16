@@ -1,0 +1,6 @@
+go: done 22:37 (15 min); loops 8, all first-fix; context ~180k (18%), messages 156.3k; 18 files; commits b6e8eee bbf0aa0 a003067
+python: done 22:38 (15m50s); loops 6, one first fix failed; 173 tests; context tokens UNREAD (pane too narrow, session exited before a readable /context)
+go measure (provisional, overlapped with python's suite run): creates 655/s; pairs 271/s@1, 325/s@32; rss 81.0 MiB at 100k, 87.2 after pairs; restart 0.71s on 35 MB log. RERUN sequentially.
+python measure (provisional): creates 606/s; pairs 347/s@1, 325/s@32; rss 189.0 MiB at 100k, 190.2 after; restart 1.32s on 39 MB log
+go loop cached 0.25-0.37 s; uncached test see above; python loop 7.46-7.87 s (best 7.46); go runout amended: 0 defects (go total 1: delay_ms null -> 201); python runout amended: 0 (python total 0)
+mo: done 22:57 (34m08s); loops 9 (7 first-fix; the never re-key took 2; one queue test under faults abandoned after 4); context ~347k (messages 323.2k); 10 files; one commit 6e38709; tests 25/15/12/8/7/4/7, recipe 8, check matches

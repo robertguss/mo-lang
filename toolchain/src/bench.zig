@@ -836,7 +836,7 @@ fn reuse100k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
             const a = scratch.allocator();
             var out_buffer: [256]u8 = undefined;
             var discard: Io.Writer.Discarding = .init(&out_buffer);
-            const before = mo.region.allocations;
+            const before = mo.region.total().allocations;
             const t0 = Io.Clock.Timestamp.now(io, .awake);
             var diags: mo.diag.List = .empty;
             const program = try mo.program.load(a, io, path, &diags);
@@ -847,7 +847,7 @@ fn reuse100k(arena: std.mem.Allocator, io: Io, environ: *const std.process.Envir
                 .crashed => break,
             }
             const ns = t0.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.toNanoseconds();
-            r.allocs = mo.region.allocations - before;
+            r.allocs = mo.region.total().allocations - before;
             r.ns = if (r.ns) |b| @min(b, ns) else ns;
         }
         var diags: mo.diag.List = .empty;

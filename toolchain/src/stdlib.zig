@@ -1416,6 +1416,7 @@ fn hashInto(h: *std.hash.Wyhash, v: Value) void {
             h.update(std.mem.asBytes(&c.handle));
         },
         .handle => |x| h.update(std.mem.asBytes(&x)),
+        .reply => |seq| h.update(std.mem.asBytes(&seq)),
     }
 }
 

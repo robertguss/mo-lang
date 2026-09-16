@@ -1,4 +1,5 @@
-//! Fibers (step 21): a stack and a saved stack pointer, switched to and from on one thread.
+//! Fibers (step 21): a stack and a saved stack pointer, switched to and from on one thread, its
+//! scheduler's (step 30): a fiber never moves to another thread.
 //! Under `mo run` a process's update runs on one (turns.zig), so an update that waits in `ask`,
 //! `accept`, `read_line`, or `write` keeps its place without holding a thread. A fiber is
 //! borrowed for one delivery and given back when the update ends; only an update that is waiting
