@@ -3,7 +3,7 @@ title: "Step 31: a deferred reply, brief for the worker"
 created: 2026-09-15
 updated: 2026-09-15
 type: plan
-tags: [runtime, processes, language]
+tags: [runtime, processes, syntax]
 sources:
   [
     spec/design-v0/10-language-after-the-rounds.md,
