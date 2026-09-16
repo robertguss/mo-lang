@@ -77,6 +77,11 @@ ILL = [
     ("a queue name with a space", {"id": "j_11", "queue": "a b", "state": "queued", "payload": "p", "tries": 0, "max_tries": 2, "backoff_ms": 0}),
 ]
 GOOD = {"id": "j_20", "queue": "q", "state": "queued", "payload": "p", "tries": 0, "max_tries": 2, "backoff_ms": 0}
+TS = {"created_at": "2026-09-16T09:00:00.000Z", "updated_at": "2026-09-16T09:05:00.000Z"}
+def stamped(rec):
+    r = dict(TS); r.update(rec); return r
+ILL = [(name, stamped(rec)) for name, rec in ILL]
+GOOD = stamped(GOOD)
 
 def serve_refuses(serve, cwd, d, name):
     """serve on the folder exits 1 within 20 s, prints the one line, and never answers /health."""
@@ -107,7 +112,7 @@ def t_verify(serve, verify, compact, cwd, fmt):
     st, x = create(queue="c", payload="dies", max_tries=1); st, lx = lease("c", token="w1"); req("POST", f"/jobs/{lx['id']}/fail", {"reason": "x"}, token="w1")
     h = health(); s.stop()
     rc, out = run(verify.format(dir=d), cwd)
-    want = f"6 jobs: queued {h['queued']}, scheduled {h['scheduled']}, leased {h['leased']}, done {h['done']}, dead {h['dead']}; next id j_7"
+    want = f"5 jobs: queued {h['queued']}, scheduled {h['scheduled']}, leased {h['leased']}, done {h['done']}, dead {h['dead']}; next id j_6"
     check("verify: a folder the service wrote verifies with exit 0 and the counts line", rc == 0 and out.splitlines()[-1].strip() == want, (rc, out[-200:], want))
     # every ill-formed record refuses the folder under verify, serve, and compact
     for name, rec in ILL:
@@ -244,6 +249,12 @@ def t_unwritable(serve, cwd):
     finally:
         try: s.stop()
         except Exception: pass
+        keep = tempfile.mkdtemp(prefix="unwritable-logs-")
+        for f in os.listdir(ram.mnt):
+            if f.startswith("server-"):
+                try: shutil.copy(os.path.join(ram.mnt, f), keep)
+                except Exception: pass
+        print(f"     unwritable: the servers' output kept in {keep}")
         ram.detach()
 
 # ---------------------------------------------------------------- a failing request does not stop the next

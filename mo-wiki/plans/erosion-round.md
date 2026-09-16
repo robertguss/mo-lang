@@ -79,6 +79,12 @@ diagnostic, lines changed, tokens read, the decision lists.
 
 So generation one already contains the containment the change asks for in Mo, Go, and Python, from round 7's spec ("a store that cannot be written answers `503`"), and Elixir's supervision turns a transient disk failure into a total outage. Change 2's `verify`, `/queues`, and the refusal at open are what the maintainers add; the erosion columns are whether they keep the containment while adding them.
 
+**Generation two, the maintainers' rows** (the suites: round 8's regressions and change 1's defects with the round 7 program as old serve; the third suite, 66 checks; P6 where a process can be killed).
+
+| language | green | wall-clock | loops (own) | regressions (121) | change 1 defects (189) | third suite (66) | notes |
+|---|---|---|---|---|---|---|---|
+| Go | 01:27 | 12 min | 5 (two store tests on the old read rule, an invariant test's message, the sim's model of a read under faults, two build slips, two wrong own expectations), every first fix right | 0 | 1, the carried `delay_ms` null | 66 of 66 | 799 lines over 16 files |
+
 
 ## Related
 
