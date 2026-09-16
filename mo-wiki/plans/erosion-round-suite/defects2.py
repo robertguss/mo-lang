@@ -13,7 +13,7 @@ usage: defects2.py --serve '<cmd> serve {dir} --port {port}' --verify '<cmd> ver
                    --log-format mo|go|python|elixir [--cwd DIR] [--only NAME] [--no-ramdisk]
 The harness (Server, req, create, lease, get, health, check) is round 8's, imported from control-run-8-suite.
 """
-import argparse, json, os, shutil, signal, subprocess, sys, tempfile, threading, time
+import argparse, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "control-run-8-suite"))
 import defects as d8
@@ -83,6 +83,12 @@ def stamped(rec):
 ILL = [(name, stamped(rec)) for name, rec in ILL]
 GOOD = stamped(GOOD)
 
+def counts_line(out):
+    """the `<n> jobs: ...` line wherever it is in the output (a torn-line notice may follow it)"""
+    for l in out.splitlines():
+        if re.match(r"\d+ jobs: ", l.strip()): return l.strip()
+    return ""
+
 def serve_refuses(serve, cwd, d, name):
     """serve on the folder exits 1 within 20 s, prints the one line, and never answers /health."""
     port = d8.free_port(); cmd = serve.format(dir=d, port=port)
@@ -112,8 +118,10 @@ def t_verify(serve, verify, compact, cwd, fmt):
     st, x = create(queue="c", payload="dies", max_tries=1); st, lx = lease("c", token="w1"); req("POST", f"/jobs/{lx['id']}/fail", {"reason": "x"}, token="w1")
     h = health(); s.stop()
     rc, out = run(verify.format(dir=d), cwd)
-    want = f"5 jobs: queued {h['queued']}, scheduled {h['scheduled']}, leased {h['leased']}, done {h['done']}, dead {h['dead']}; next id j_6"
-    check("verify: a folder the service wrote verifies with exit 0 and the counts line", rc == 0 and out.splitlines()[-1].strip() == want, (rc, out[-200:], want))
+    want = f"5 jobs: queued {h['queued']}, scheduled {h['scheduled']}, leased {h['leased']}, done {h['done']}, dead {h['dead']}; next id j_"
+    line = counts_line(out)
+    # the next id is the implementation's (Mo reserves ids in blocks of 1,000 on open); the counts and the shape are the spec's
+    check("verify: a folder the service wrote verifies with exit 0 and the counts line", rc == 0 and line.startswith(want) and re.fullmatch(r"j_\d+", line[len(want) - 2:]) is not None, (rc, out[-200:], want))
     # every ill-formed record refuses the folder under verify, serve, and compact
     for name, rec in ILL:
         b2 = tempfile.mkdtemp(prefix="ill-"); d2 = os.path.join(b2, "dir"); os.mkdir(d2)
@@ -135,11 +143,11 @@ def t_verify(serve, verify, compact, cwd, fmt):
     logs = [p for p in os.listdir(d3) if os.path.isfile(os.path.join(d3, p))]
     with open(os.path.join(d3, logs[0]), "ab") as f: f.write(b'{"id": "j_5", "queue": "t", "state": "queu')
     rc, out = run(verify.format(dir=d3), cwd)
-    check("verify: a torn last line still opens under verify, exit 0, 4 jobs", rc == 0 and out.strip().splitlines()[-1].startswith("4 jobs:"), (rc, out[-200:]))
+    check("verify: a torn last line still opens under verify, exit 0, 4 jobs", rc == 0 and counts_line(out).startswith("4 jobs:"), (rc, out[-200:]))
     s = Server(serve, cwd, d3)
     try:
         s.start(); d8.PORT = s.port; h = health(); check("verify: a torn last line still serves, with the 4 whole jobs", h.get("queued") == 4, h)
-        st, c = create(queue="t", payload="after the tear", max_tries=1); check("verify: a create after the torn line is 201 with the next id", st == 201 and c.get("id") == "j_5", (st, c))
+        st, c = create(queue="t", payload="after the tear", max_tries=1); check("verify: a create after the torn line is 201 with an id above the four", st == 201 and int(c.get("id", "j_0")[2:]) >= 5, (st, c))
     except Exception as e: check("verify: a torn last line still serves", False, str(e))
     finally: s.stop()
     shutil.rmtree(base, ignore_errors=True); shutil.rmtree(b3, ignore_errors=True)

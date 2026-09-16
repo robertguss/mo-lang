@@ -46,9 +46,11 @@ def main():
     s.stop()
     rc, out = run(a.compact.format(dir=d), a.cwd); check("oracle5: compact after four deletes exits 0", rc == 0, (rc, out[-160:]))
     rc, out = run(a.verify.format(dir=d), a.cwd)
-    check("oracle5: verify after the compaction says 1 job and next id j_6", rc == 0 and out.strip().splitlines()[-1].startswith("1 jobs:") and out.strip().endswith("next id j_6"), (rc, out[-160:]))
+    nxt = [l for l in out.splitlines() if l.strip().startswith("1 jobs:")]
+    check("oracle5: verify after the compaction says 1 job and a next id above j_5", rc == 0 and nxt and int(nxt[-1].strip().split("next id j_")[-1]) >= 6, (rc, out[-160:]))
     s = Server(a.serve, a.cwd, d); s.start(); d8.PORT = s.port
-    st, c = create(queue="q", payload="after", max_tries=1); check("oracle5: the next id after deletes, a compaction, and a restart is j_6", st == 201 and c.get("id") == "j_6", (st, c))
+    st, c = create(queue="q", payload="after", max_tries=1); check("oracle5: the id after deletes, a compaction, and a restart is above every id handed out (j_6 or more; Mo reserves a block)", st == 201 and int(c.get("id", "j_0")[2:]) >= 6, (st, c))
+    print(f"     oracle5: the id after deletes, a compaction, and a restart: {c.get('id')}")
     # 5. /queues with only a dead job, only a scheduled job
     st, x = create(queue="dead-only", payload="p", max_tries=1); st, l = lease("dead-only", token="w1"); req("POST", f"/jobs/{l['id']}/fail", {"reason": "x"}, token="w1")
     create(queue="sched-only", payload="p", max_tries=1, delay_ms=60000)

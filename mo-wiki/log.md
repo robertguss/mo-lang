@@ -407,3 +407,6 @@
 
 ## [2026-09-16] session | Mac: step 31 accepted, round 9 at four models
 - Step 31, the deferred reply, accepted at 01:15 ([[interpreter-step-31]]): the rule as chapter 10 §1 stated it, MO0411, all three runtimes, the corpus file; the crash probe 8 of 8 `Down`. Round 9 ([[control-run-9]]): kimi and deepseek done in all three languages (Mo carries a defect Opus's did not, both models); gemini out (invalid key), gpt-5.5 through Codex and the local qwen 27B running.
+
+## [2026-09-16] session | Mac: the erosion round's generation two, round 9 at four models
+- Change 2 by four Opus maintainers in 12 to 18 minutes ([[erosion-round]]): nothing eroded in Mo, Go, or Python on the old suites; Elixir refuses a torn line now and cannot restart after a full disk; Mo used the deferred reply. Round 9 ([[control-run-9]]): gpt-5.5 matched Opus on Mo in 14 minutes; the local qwen 27B runs to its limit. Step 31 accepted. Two `semantic` rows for Robert.

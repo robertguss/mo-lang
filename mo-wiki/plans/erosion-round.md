@@ -13,7 +13,7 @@ sources:
     spec/programs/01c-job-queue-change-2.md,
     plans/interpreter-step-31.md,
   ]
-status: in-progress
+status: done
 ---
 
 # The erosion round, generation two
@@ -84,7 +84,28 @@ So generation one already contains the containment the change asks for in Mo, Go
 | language | green | wall-clock | loops (own) | regressions (121) | change 1 defects (189) | third suite (66) | notes |
 |---|---|---|---|---|---|---|---|
 | Go | 01:27 | 12 min | 5 (two store tests on the old read rule, an invariant test's message, the sim's model of a read under faults, two build slips, two wrong own expectations), every first fix right | 0 | 1, the carried `delay_ms` null | 66 of 66 | 799 lines over 16 files |
+| Mo | 01:35 | 18 min | 8 plus MO0317 after every edit (a wrong own test, MO0308 exhaustiveness at four `case`s, MO0104 an or-pattern too long for the column limit, MO0309, MO0102 `return` in an arm, a wrong own premise, the new check refusing an old fixture, a `chmod 555` probe that did not refuse an append), every first fix right | 0 | 0 | 65 of 66: a queued record carrying a `worker` is accepted | 686 lines over 15 files; `Want` is an ask whose `Reply(Outcome)` the queue keeps until the batch is on disk (P6 yes); `verify` never writes |
+| Python | 01:35 | 18 min | 10 (ruff 5, mypy 2, own tests 2, its own `check.sh` assertion 1), every first fix right | 0 | 0 | 65 of 66: the same queued-with-`worker` record accepted | 873 lines over 19 files; its own bench caught a thread per queue touch costing 4,438 to 1,279 pairs a second, partly taken back; `verify` takes the lock and refuses a served folder |
+| Elixir | 01:33 | 16 min | 10 (deps, five old tests met by the new contract, one implementation defect its new test caught, test code 2, credo, `mix format`), first fix right in 9 | 1 cause, 3 checks: a torn last line is refused at open (`the log is corrupt`) where round 10's program dropped it with a warning, and the service exits | 0 (the old-log category skipped: no round 10 escript kept aside) | 62 of 66: a 1 MB body breaks the pipe (carried); under the full disk 30 connections refused, the node later died with an escript crash while logging, and the restart was refused on the torn line the failed write left | 1,263 lines over 15 files; `:enospc` is a warning now, not a store crash; P6 held: three kills, `/health` back in 474 to 766 ms, nothing lost |
 
+**The fourth oracle** (`erosion-round-suite/oracle5.py`, six inputs from the decision lists): Mo 13 of 13; Go 12 of 13 and Python 12 of 13, both because `verify` rewrites the log to cut the torn line (1,439 to 1,396 bytes; the spec says `verify` runs the check without serving, and Mo's maintainer read that as never writing); Elixir 12 of 13: `verify` on a folder that does not exist exits 0 and prints `0 jobs`. Recorded, not decided: `verify` on a served folder reads it (Mo, Elixir) or refuses the lock (Go, Python); the id after deletes, a compaction, and a restart is `j_6` in three and `j_1001` in Mo, which reserves ids in blocks of a thousand on open; every program lists a queue whose only job is dead or scheduled.
+
+
+
+## Reading, against the predictions (16 Sep, 02:00 local)
+
+| prediction | threshold | result | held |
+|---|---|---|---|
+| P1, regressions | Mo 0; each baseline at most 1 | Mo 0, Go 0, Python 0, Elixir 1 cause (the torn line, now fatal at open) | yes |
+| P2, defects under the third suite | Mo no more than each baseline | Mo 1 cause, Go 0, Python 1, Elixir 3 | no: Go is cleaner by one |
+| P3, the service through a failure | Mo and Elixir pass the unwritable folder; one of Go and Python fails | Mo, Go, and Python pass 8 of 8; Elixir fails: connections refused while full, the node dead afterwards, the restart refused | no, on both halves |
+| P4, the fourth oracle | at least one input breaks one program, not Mo's | Elixir's `verify` on a missing folder; Go's and Python's `verify` rewrite the log (recorded, not counted); Mo 13 of 13 | yes |
+| P5, the tax | Mo more loops than Go | 8 (and MO0317 after every edit) against 5 | yes |
+| P6, the deferred reply | the Mo maintainer uses `Reply(T)` | `Want` is an ask whose `Reply(Outcome)` the queue keeps; the worker's five-second deadline, `Timeout` and `Down` answered `503` | yes |
+
+**What it says.** Generation two did not erode any of the three original programs on the old suites: 0 regressions and 0 new change-1 defects in Mo, Go, and Python, Go still carrying its `delay_ms` null from generation one. Elixir eroded: the maintainer's new refusal at open swallowed the torn-line tolerance change 1 had, and because a full disk leaves a torn line, the program that now survives `:enospc` where round 10's node died cannot be restarted afterwards. Under the third suite the four programs sit within one defect of each other on the new behaviour, and the one defect Mo and Python share is the same reading of the rule table (a queued record's `worker` field ignored rather than refused). The runtime rows: Mo's change 2 program answers through the full disk as its generation one did, and it now answers its workers through an `ask` with a deadline, so the outage of round 8 is closed by the program the way chapter 10 §1 said it would be; the probe that decides it, the queue crashed under load with the service still answering, is the first thing to run on it (the Mo binary cannot be killed from outside; a `never`-tripping record under load, or a fault under `--sim`, is the way). Elixir's P6 still holds with kills, and fails with the disk. The erosion hypothesis after two generations: Mo 1 defect, Go 1, Python 1, Elixir 3 under every suite that exists; nothing separates the three originals yet; the ten-generation prediction (Go and Python at least three, Mo at most one) is alive only if the next changes find the seams this one did not.
+
+**Rows.** For the spec (`01c`): the rule table's "no worker" for a queued record needs a sentence that a record with a field its state forbids is ill-formed, since two of four read it as "ignore"; whether `verify` may rewrite the log; whether `verify` on a missing folder is exit 1 (three of four). For the language page: MO0317 after every edit is the Mo maintainer's loop 0, again; MO0104 on an or-pattern too long for the column limit has nowhere to go (its `TOOLCHAIN-BUGS.md`, finding 4). For chapter 10 §1: the deferred reply was used the first time it was offered, in 18 minutes, with no loop on it. For the Elixir row: a torn line from a failed write is the ordinary state of a log after a full disk, and a program that refuses it at open cannot recover from the failure it survived.
 
 ## Related
 
