@@ -17,13 +17,13 @@ from jobq.jobs import (
 
 
 def create(**fields: object) -> CreateJob:
-    body = {"queue": "emails", "payload": "hi", "max_attempts": 3} | fields
+    body = {"queue": "emails", "payload": "hi", "max_tries": 3} | fields
     return CreateJob.model_validate_json(json.dumps(body))
 
 
 class CreateJobTest(unittest.TestCase):
     def test_a_valid_body(self) -> None:
-        self.assertEqual(create(), CreateJob(queue="emails", payload="hi", max_attempts=3))
+        self.assertEqual(create(), CreateJob(queue="emails", payload="hi", max_tries=3))
 
     def test_queue_names(self) -> None:
         for name in ("a", "A-z_09", "q" * 64):
@@ -53,17 +53,17 @@ class CreateJobTest(unittest.TestCase):
     def test_rejects_a_payload_that_is_not_utf8(self) -> None:
         with self.assertRaises(ValidationError):
             CreateJob.model_validate_json(
-                b'{"queue": "q", "payload": "\\ud800", "max_attempts": 1}'
+                b'{"queue": "q", "payload": "\\ud800", "max_tries": 1}'
             )
 
     def test_max_attempts_bounds(self) -> None:
-        self.assertEqual(create(max_attempts=1).max_attempts, 1)
-        self.assertEqual(create(max_attempts=100).max_attempts, 100)
+        self.assertEqual(create(max_tries=1).max_tries, 1)
+        self.assertEqual(create(max_tries=100).max_tries, 100)
 
     def test_rejects_max_attempts_outside_1_to_100_or_not_an_integer(self) -> None:
         for value in (0, 101, -1, "3", 3.0, True, None):
             with self.assertRaises(ValidationError, msg=repr(value)):
-                create(max_attempts=value)
+                create(max_tries=value)
 
     def test_rejects_a_missing_or_extra_field(self) -> None:
         with self.assertRaises(ValidationError):
@@ -116,8 +116,9 @@ class JobOutTest(unittest.TestCase):
         queue="emails",
         state="queued",
         payload="hi",
-        attempts=0,
-        max_attempts=3,
+        tries=0,
+        max_tries=3,
+        backoff_ms=0,
         created_ms=1000,
         updated_ms=2000,
     )
@@ -130,8 +131,9 @@ class JobOutTest(unittest.TestCase):
                 "queue": "emails",
                 "state": "queued",
                 "payload": "hi",
-                "attempts": 0,
-                "max_attempts": 3,
+                "tries": 0,
+                "max_tries": 3,
+                "backoff_ms": 0,
                 "created_at": "1970-01-01T00:00:01.000Z",
                 "updated_at": "1970-01-01T00:00:02.000Z",
             },
@@ -139,14 +141,14 @@ class JobOutTest(unittest.TestCase):
 
     def test_a_leased_job_adds_worker_and_lease_until(self) -> None:
         leased = self.BASE.model_copy(
-            update={"state": "leased", "attempts": 1, "worker": "w1", "lease_until_ms": 5000}
+            update={"state": "leased", "tries": 1, "worker": "w1", "lease_until_ms": 5000}
         )
         out = json.loads(JobOut.of(leased).to_json())
         self.assertEqual((out["worker"], out["lease_until"]), ("w1", "1970-01-01T00:00:05.000Z"))
         self.assertNotIn("reason", out)
 
     def test_a_failed_job_adds_reason(self) -> None:
-        failed = self.BASE.model_copy(update={"attempts": 1, "reason": "boom"})
+        failed = self.BASE.model_copy(update={"tries": 1, "reason": "boom"})
         out = json.loads(JobOut.of(failed).to_json())
         self.assertEqual(out["reason"], "boom")
         self.assertNotIn("worker", out)

@@ -65,9 +65,9 @@ class QueueCase(unittest.TestCase):
         data = raw if raw is not None else b"" if body is None else json.dumps(body).encode()
         return self.api.handle(Request(method, path, query, token, data))
 
-    def create(self, queue: str = "emails", payload: str = "p", max_attempts: int = 3) -> str:
+    def create(self, queue: str = "emails", payload: str = "p", max_tries: int = 3, delay_ms: int = 0, backoff_ms: int = 0) -> str:
         response = self.call(
-            "POST", "/jobs", {"queue": queue, "payload": payload, "max_attempts": max_attempts}
+            "POST", "/jobs", {"queue": queue, "payload": payload, "max_tries": max_tries, "delay_ms": delay_ms, "backoff_ms": backoff_ms}
         )
         self.assertEqual(response.status, 201, response.body)
         return str(body_of(response)["id"])

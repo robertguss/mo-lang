@@ -1,7 +1,7 @@
 """`--sim 100 --faults`: the queue under 100 seeds of injected file and socket failures.
 
 After every request: the store holds exactly what the queue holds, a 503 changed nothing
-but run-out leases, no job was held by two workers, attempts stayed within bounds, and a
+but run-out leases, no job was held by two workers, tries stayed within bounds, and a
 done or dead job never changed. Once the faults stop and the workers keep working, every
 job ends done or dead.
 """
@@ -62,7 +62,7 @@ def _expired(before: Job, after: Job) -> bool:
     return (
         before.state == "leased"
         and after.state in {"queued", "dead"}
-        and after.attempts == before.attempts
+        and after.tries == before.tries
         and after.worker is None
     )
 
@@ -114,7 +114,7 @@ class Sim:
             deleted = request.method == "DELETE" and response.status == 204
             self.check(deleted and len(removed) == 1, "a job is only ever lost to its delete")
         for number, job in after.items():
-            self.check(job.attempts <= job.max_attempts, "attempts never exceed max_attempts")
+            self.check(job.tries <= job.max_tries, "tries never exceed max_tries")
             if number in self.finished:
                 self.check(job == self.finished[number], "a done or dead job never changes")
             elif job.state in {"done", "dead"}:
@@ -130,7 +130,7 @@ class Sim:
         body = {
             "queue": self.rng.choice(QUEUES),
             "payload": f"job {self.rng.randrange(10**6)}",
-            "max_attempts": self.rng.randrange(1, 4),
+            "max_tries": self.rng.randrange(1, 4),
         }
         self.send(Request("POST", "/jobs", "", "producer", json.dumps(body).encode()))
 

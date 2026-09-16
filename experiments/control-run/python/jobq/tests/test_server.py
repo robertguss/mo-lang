@@ -111,7 +111,7 @@ class ServerCase(unittest.TestCase):
 class SocketTest(ServerCase):
     def test_create_then_get_over_a_socket(self) -> None:
         created = self.call(
-            "w1", "POST", "/jobs", {"queue": "q", "payload": "hi\n", "max_attempts": 2}
+            "w1", "POST", "/jobs", {"queue": "q", "payload": "hi\n", "max_tries": 2}
         )
         self.assertEqual(created.status, 201)
         got = self.call("w1", "GET", "/jobs/j_1")
@@ -162,7 +162,7 @@ class SocketTest(ServerCase):
                 "p",
                 "POST",
                 "/jobs",
-                {"queue": "race", "payload": str(round_number), "max_attempts": 1},
+                {"queue": "race", "payload": str(round_number), "max_tries": 1},
             )
             workers = [f"w{n}" for n in range(8)]
             gate = threading.Barrier(len(workers))
@@ -196,7 +196,7 @@ class SocketTest(ServerCase):
                 idle.append(socket.create_connection((HOST, self.thread.port), SOCKET_TIMEOUT_S))
             started = time.monotonic()
             created = self.call(
-                "producer", "POST", "/jobs", {"queue": "q", "payload": "x", "max_attempts": 1}
+                "producer", "POST", "/jobs", {"queue": "q", "payload": "x", "max_tries": 1}
             )
             elapsed = time.monotonic() - started
             self.assertEqual(created.status, 201)
@@ -217,7 +217,7 @@ class SocketTest(ServerCase):
             self.assertLess(time.monotonic() - started, 3.0)
 
     def test_run_out_leases_are_recorded_while_the_listener_is_idle(self) -> None:
-        self.call("p", "POST", "/jobs", {"queue": "q", "payload": "x", "max_attempts": 2})
+        self.call("p", "POST", "/jobs", {"queue": "q", "payload": "x", "max_tries": 2})
         self.call("w1", "POST", "/queues/q/lease", {"lease_ms": 100})
         deadline = time.monotonic() + 5.0  # within: chosen, five sweeps
         while replay(self.dir).jobs[1].state != "queued":

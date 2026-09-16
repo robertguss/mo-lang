@@ -13,12 +13,15 @@ from typing import Concatenate
 from jobq.clock import Clock
 from jobq.contract import ensure, invariant, never, require
 from jobq.jobs import (
+    DEFAULT_BACKOFF_MS,
     LIST_LIMIT,
-    MAX_ATTEMPTS,
+    MAX_BACKOFF_MS,
     MAX_LEASE_MS,
     MAX_REASON_BYTES,
-    MIN_ATTEMPTS,
+    MAX_TRIES,
+    MIN_BACKOFF_MS,
     MIN_LEASE_MS,
+    MIN_TRIES,
     STATES,
     Job,
     JobState,
@@ -33,12 +36,16 @@ from jobq.store import DeleteRecord, PutRecord, Replayed, Store, StoreError
 _LEGAL: frozenset[tuple[JobState | None, JobState | None]] = frozenset(
     {
         (None, "queued"),
+        (None, "scheduled"),
         ("queued", "leased"),
+        ("queued", None),
+        ("scheduled", "queued"),
         ("leased", "done"),
         ("leased", "queued"),
+        ("leased", "scheduled"),
         ("leased", "dead"),
-        ("queued", None),
         ("done", None),
+        ("dead", "queued"),
         ("dead", None),
     }
 )
@@ -75,6 +82,7 @@ class Queue:
         self._next_number = replayed.next_number
         self._counts: dict[JobState, int] = dict.fromkeys(STATES, 0)
         self._queued: dict[str, list[int]] = {}
+        self._scheduled: list[tuple[int, int]] = []
         self._leases: list[tuple[int, int]] = []
         self._touched: list[int] = []
         for job in self._jobs.values():
@@ -111,23 +119,28 @@ class Queue:
     # Changes.
 
     @operation
-    def create(self, queue: str, payload: str, max_attempts: int) -> Job:
+    def create(self, queue: str, payload: str, max_tries: int, delay_ms: int = 0, backoff_ms: int = 0) -> Job:
         require(queue_name_problem(queue) is None, "the queue name is valid")
         require(payload_problem(payload) is None, "the payload is valid")
-        require(MIN_ATTEMPTS <= max_attempts <= MAX_ATTEMPTS, "max_attempts is 1 to 100")
+        require(MIN_TRIES <= max_tries <= MAX_TRIES, "max_tries is 1 to 100")
+        require(MIN_BACKOFF_MS <= backoff_ms <= MAX_BACKOFF_MS, "backoff_ms is 0 to 3,600,000")
         now = self._look()
+        run_at = now + delay_ms if delay_ms > 0 else None
+        state: JobState = "scheduled" if delay_ms > 0 else "queued"
         job = Job(
             number=self._next_number,
             queue=queue,
-            state="queued",
+            state=state,
             payload=payload,
-            attempts=0,
-            max_attempts=max_attempts,
+            tries=0,
+            max_tries=max_tries,
+            backoff_ms=backoff_ms,
             created_ms=now,
             updated_ms=now,
+            run_at=run_at,
         )
         self._commit(None, job)
-        ensure(self._jobs[job.number] is job and job.state == "queued", "the job is queued")
+        ensure(self._jobs[job.number] is job and job.state in ("queued", "scheduled"), "the job is queued or scheduled")
         return job
 
     @operation
@@ -146,7 +159,8 @@ class Queue:
             leased = job.model_copy(
                 update={
                     "state": "leased",
-                    "attempts": job.attempts + 1,
+                    "tries": job.tries + 1,
+                    "run_at": None,
                     "worker": worker,
                     "lease_until_ms": now + lease_ms,
                     "updated_ms": now,
@@ -155,7 +169,7 @@ class Queue:
             self._commit(job, leased)
             heapq.heappop(waiting)
             ensure(leased.state == "leased" and leased.worker == worker, "leased to the caller")
-            ensure(leased.attempts == job.attempts + 1, "attempts is one higher")
+            ensure(leased.tries == job.tries + 1, "tries is one higher")
             return leased
         return None
 
@@ -199,6 +213,29 @@ class Queue:
         return job
 
     @operation
+    def retry(self, job_id: str) -> Job | NotFound | Conflict:
+        """Put a dead job back in its queue with tries reset to 0."""
+        self._look()
+        job = self._find(job_id)
+        if job is None:
+            return NotFound()
+        if job.state != "dead":
+            return Conflict("the job is not dead")
+        retried = job.model_copy(
+            update={
+                "state": "queued",
+                "tries": 0,
+                "worker": None,
+                "lease_until_ms": None,
+                "reason": None,
+                "updated_ms": self._clock.now_ms(),
+            }
+        )
+        self._commit(job, retried)
+        ensure(self._jobs[retried.number].state == "queued" and self._jobs[retried.number].tries == 0, "the job is queued with tries at 0")
+        return retried
+
+    @operation
     def expire_due(self) -> int:
         """The listener's idle look: return every lease that ran out. How many were."""
         return self._expire(self._clock.now_ms())
@@ -207,8 +244,27 @@ class Queue:
 
     def _look(self) -> int:
         now = self._clock.now_ms()
+        self._promote_scheduled(now)
         self._expire(now)
         return now
+
+    def _promote_scheduled(self, now: int) -> None:
+        """Move scheduled jobs to queued when their run_at has passed, in one durable write."""
+        due: list[tuple[Job | None, Job | None]] = []
+        popped: list[tuple[int, int]] = []
+        while self._scheduled and self._scheduled[0][0] <= now:
+            run_at, number = heapq.heappop(self._scheduled)
+            popped.append((run_at, number))
+            job = self._jobs.get(number)
+            if job is not None and job.state == "scheduled" and job.run_at == run_at:
+                queued = job.model_copy(update={"state": "queued", "run_at": None, "updated_ms": now})
+                due.append((job, queued))
+        try:
+            self._commit_all(due)
+        except StoreError:
+            for entry in popped:
+                heapq.heappush(self._scheduled, entry)
+            raise
 
     def _expire(self, now: int) -> int:
         """Return every run-out lease in one durable write, so a look after a long stop is
@@ -268,6 +324,8 @@ class Queue:
     def _index(self, job: Job) -> None:
         if job.state == "queued":
             heapq.heappush(self._queued.setdefault(job.queue, []), job.number)
+        elif job.state == "scheduled" and job.run_at is not None:
+            heapq.heappush(self._scheduled, (job.run_at, job.number))
         elif job.state == "leased" and job.lease_until_ms is not None:
             heapq.heappush(self._leases, (job.lease_until_ms, job.number))
 
@@ -303,7 +361,9 @@ def check_job(number: int, job: Job) -> None:
     leased = job.state == "leased"
     invariant(leased == (job.worker is not None), "a job has a worker exactly while leased")
     invariant(leased == (job.lease_until_ms is not None), "lease_until exactly while leased")
-    invariant(job.state != "queued" or job.attempts < job.max_attempts, "queued has attempts left")
+    scheduled = job.state == "scheduled"
+    invariant(scheduled == (job.run_at is not None), "run_at exactly while scheduled")
+    invariant(job.state != "queued" or job.tries < job.max_tries, "queued has tries left")
 
 
 def check_transition(before: Job | None, after: Job | None) -> None:
@@ -315,17 +375,19 @@ def check_transition(before: Job | None, after: Job | None) -> None:
     if before is None or after is None:
         return
     never(before.number == after.number, "a change never moves a job to another number")
-    fixed = ("queue", "payload", "max_attempts", "created_ms")
+    fixed = ("queue", "payload", "max_tries", "backoff_ms", "created_ms")
     never(all(getattr(before, f) == getattr(after, f) for f in fixed), "a job's fields are fixed")
-    never(after.attempts <= after.max_attempts, "attempts never exceed max_attempts")
+    never(after.tries <= after.max_tries, "tries never exceed max_tries")
     if after.state == "leased":
         never(before.state == "queued", "a job is never held by two workers at once")
-        never(after.attempts == before.attempts + 1, "a lease counts one attempt")
-    else:
-        never(after.attempts == before.attempts, "only a lease counts an attempt")
-    if edge in {("leased", "queued"), ("leased", "dead")}:
-        dead = after.attempts == after.max_attempts
-        never((after.state == "dead") == dead, "dead exactly when attempts reach max_attempts")
+        never(after.tries == before.tries + 1, "a lease counts one try")
+    elif edge in {("scheduled", "queued"), ("leased", "queued"), ("leased", "scheduled"), ("dead", "queued")}:
+        never(after.tries == before.tries, "only a lease counts a try")
+    elif edge != ("leased", "dead"):
+        pass
+    if edge in {("leased", "queued"), ("leased", "scheduled"), ("leased", "dead")}:
+        is_dead = after.tries >= after.max_tries
+        never((after.state == "dead") == is_dead, "dead exactly when tries reach max_tries")
 
 
 def _holds_live_lease(job: Job, worker: str, now: int) -> bool:
@@ -338,8 +400,25 @@ def _holds_live_lease(job: Job, worker: str, now: int) -> bool:
 
 
 def _returned(job: Job, now: int) -> Job:
-    """A leased job back from a fail or a run-out lease: queued, or dead on its last attempt."""
-    state: JobState = "dead" if job.attempts >= job.max_attempts else "queued"
-    return job.model_copy(
-        update={"state": state, "worker": None, "lease_until_ms": None, "updated_ms": now}
-    )
+    """A leased job back from a fail or a run-out lease: queued, scheduled, or dead."""
+    if job.tries >= job.max_tries:
+        state: JobState = "dead"
+        return job.model_copy(
+            update={"state": state, "worker": None, "lease_until_ms": None, "updated_ms": now}
+        )
+    elif job.backoff_ms > 0:
+        state = "scheduled"
+        return job.model_copy(
+            update={
+                "state": state,
+                "worker": None,
+                "lease_until_ms": None,
+                "run_at": now + job.backoff_ms,
+                "updated_ms": now,
+            }
+        )
+    else:
+        state = "queued"
+        return job.model_copy(
+            update={"state": state, "worker": None, "lease_until_ms": None, "updated_ms": now}
+        )

@@ -7,7 +7,7 @@ from support import QueueCase, body_of
 class CreateAndGetTest(QueueCase):
     def test_create_is_201_with_the_job(self) -> None:
         response = self.call(
-            "POST", "/jobs", {"queue": "emails", "payload": "hi", "max_attempts": 3}
+            "POST", "/jobs", {"queue": "emails", "payload": "hi", "max_tries": 3}
         )
         self.assertEqual(response.status, 201)
         job = body_of(response)
@@ -18,13 +18,14 @@ class CreateAndGetTest(QueueCase):
                 "queue",
                 "state",
                 "payload",
-                "attempts",
-                "max_attempts",
+                "tries",
+                "max_tries",
+                "backoff_ms",
                 "created_at",
                 "updated_at",
             ],
         )
-        self.assertEqual((job["id"], job["state"], job["attempts"]), ("j_1", "queued", 0))
+        self.assertEqual((job["id"], job["state"], job["tries"]), ("j_1", "queued", 0))
 
     def test_create_rejects_bad_bodies_with_400(self) -> None:
         for raw in (
@@ -32,9 +33,9 @@ class CreateAndGetTest(QueueCase):
             b"[]",
             b"",
             b'{"queue": "emails", "payload": "hi"}',
-            b'{"queue": "emails", "payload": 5, "max_attempts": 3}',
-            b'{"queue": "no way", "payload": "hi", "max_attempts": 3}',
-            b'{"queue": "emails", "payload": "hi", "max_attempts": 0}',
+            b'{"queue": "emails", "payload": 5, "max_tries": 3}',
+            b'{"queue": "no way", "payload": "hi", "max_tries": 3}',
+            b'{"queue": "emails", "payload": "hi", "max_tries": 0}',
         ):
             response = self.call("POST", "/jobs", raw=raw)
             self.assertEqual(response.status, 400, raw)
@@ -99,7 +100,7 @@ class LeaseAckFailTest(QueueCase):
         response = self.call("POST", "/queues/emails/lease", {"lease_ms": 1000}, token="w7")
         self.assertEqual(response.status, 200)
         job = body_of(response)
-        self.assertEqual((job["state"], job["worker"], job["attempts"]), ("leased", "w7", 1))
+        self.assertEqual((job["state"], job["worker"], job["tries"]), ("leased", "w7", 1))
         self.assertIn("lease_until", job)
         self.assertEqual(self.call("POST", "/queues/emails/lease").status, 204)
 
@@ -126,7 +127,7 @@ class LeaseAckFailTest(QueueCase):
         self.assertEqual(self.call("POST", "/jobs/j_5/ack").status, 404)
 
     def test_fail_statuses(self) -> None:
-        self.create(max_attempts=1)
+        self.create(max_tries=1)
         self.assertEqual(self.call("POST", "/jobs/j_1/fail", {"reason": "x"}).status, 409)
         self.call("POST", "/queues/emails/lease")
         self.assertEqual(self.call("POST", "/jobs/j_1/fail", {}).status, 400)
@@ -141,7 +142,7 @@ class LeaseAckFailTest(QueueCase):
 class HealthAndStoreTest(QueueCase):
     def test_health_counts_each_state(self) -> None:
         for _ in range(3):
-            self.create(max_attempts=1)
+            self.create(max_tries=1)
         self.call("POST", "/queues/emails/lease")
         self.call("POST", "/jobs/j_1/ack")
         self.call("POST", "/queues/emails/lease")
@@ -149,14 +150,14 @@ class HealthAndStoreTest(QueueCase):
         self.clock.advance(250)
         self.call("POST", "/queues/emails/lease")
         health = body_of(self.call("GET", "/health", token=None))
-        self.assertEqual(health, {"queued": 0, "leased": 1, "done": 1, "dead": 1, "uptime_ms": 250})
+        self.assertEqual(health, {"queued": 0, "scheduled": 0, "leased": 1, "done": 1, "dead": 1, "uptime_ms": 250})
 
     def test_a_store_failure_is_503_with_the_store_unchanged(self) -> None:
         self.create()
         before = replay(self.dir)
         self.ops.failing = True
         for method, path, body in (
-            ("POST", "/jobs", {"queue": "emails", "payload": "b", "max_attempts": 1}),
+            ("POST", "/jobs", {"queue": "emails", "payload": "b", "max_tries": 1}),
             ("POST", "/queues/emails/lease", None),
             ("DELETE", "/jobs/j_1", None),
         ):

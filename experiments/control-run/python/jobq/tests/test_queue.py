@@ -19,7 +19,7 @@ class LifecycleTest(QueueCase):
         first = self.queue.create("emails", "a", 3)
         second = self.queue.create("emails", "b", 3)
         self.assertEqual((first.id, second.id), ("j_1", "j_2"))
-        self.assertEqual((first.state, first.attempts), ("queued", 0))
+        self.assertEqual((first.state, first.tries), ("queued", 0))
 
     def test_lease_hands_out_the_oldest_queued_job_of_that_queue(self) -> None:
         self.queue.create("other", "x", 3)
@@ -33,7 +33,7 @@ class LifecycleTest(QueueCase):
         self.queue.create("emails", "a", 3)
         job = self.queue.lease("emails", "w1", 1000)
         assert job is not None
-        self.assertEqual((job.state, job.worker, job.attempts), ("leased", "w1", 1))
+        self.assertEqual((job.state, job.worker, job.tries), ("leased", "w1", 1))
         self.assertEqual(job.lease_until_ms, self.clock.ms + 1000)
 
     def test_lease_with_nothing_queued_is_none(self) -> None:
@@ -62,11 +62,11 @@ class LifecycleTest(QueueCase):
         self.queue.lease("emails", "w1", 1000)
         first = self.queue.fail("j_1", "w1", "smtp down")
         assert isinstance(first, Job)
-        self.assertEqual((first.state, first.attempts, first.reason), ("queued", 1, "smtp down"))
+        self.assertEqual((first.state, first.tries, first.reason), ("queued", 1, "smtp down"))
         self.queue.lease("emails", "w2", 1000)
         second = self.queue.fail("j_1", "w2", "still down")
         assert isinstance(second, Job)
-        self.assertEqual((second.state, second.attempts), ("dead", 2))
+        self.assertEqual((second.state, second.tries), ("dead", 2))
         self.assertIsNone(self.queue.lease("emails", "w1", 1000))
 
     def test_fail_without_the_lease_is_a_conflict(self) -> None:
@@ -115,7 +115,7 @@ class LeaseRunsOutTest(QueueCase):
         self.clock.advance(1000)
         again = self.queue.lease("emails", "w2", 1000)
         assert again is not None
-        self.assertEqual((again.id, again.worker, again.attempts), ("j_1", "w2", 2))
+        self.assertEqual((again.id, again.worker, again.tries), ("j_1", "w2", 2))
 
     def test_a_lease_that_runs_out_on_its_last_attempt_is_dead(self) -> None:
         self.queue.create("emails", "a", 1)
@@ -190,7 +190,7 @@ class ReplayTest(QueueCase):
         self.clock.advance(5000)
         self.restart()
         job = leased(self, "j_1")
-        self.assertEqual((job.state, job.attempts, job.worker), ("queued", 1, None))
+        self.assertEqual((job.state, job.tries, job.worker), ("queued", 1, None))
 
     def test_no_job_is_lost_across_a_restart(self) -> None:
         for n in range(10):
@@ -227,7 +227,7 @@ class DurabilityTest(QueueCase):
         self.ops.failing = False
         job = self.queue.lease("emails", "w1", 1000)
         assert job is not None
-        self.assertEqual((job.id, job.attempts), ("j_1", 1))
+        self.assertEqual((job.id, job.tries), ("j_1", 1))
         self.assertEqual(self.queue.create("emails", "b", 3).id, "j_2")
 
     def test_the_record_is_in_the_store_when_the_change_returns(self) -> None:
@@ -252,7 +252,7 @@ class RequiresTest(QueueCase):
 
     def test_rejects_max_attempts_outside_1_to_100(self) -> None:
         for value in (0, 101):
-            with self.assertRaisesRegex(ContractError, "requires max_attempts is 1 to 100"):
+            with self.assertRaisesRegex(ContractError, "requires max_tries is 1 to 100"):
                 self.queue.create("q", "a", value)
 
     def test_rejects_lease_ms_outside_100_to_3600000(self) -> None:
@@ -276,7 +276,7 @@ class NeversTest(QueueCase):
         self.queue.create("emails", "a", 3)
         first = self.queue.lease("emails", "w1", 1000)
         assert first is not None
-        second = first.model_copy(update={"worker": "w2", "attempts": 2})
+        second = first.model_copy(update={"worker": "w2", "tries": 2})
         with self.assertRaisesRegex(ContractError, "never held by two workers"):
             check_transition(first, second)
         size = self.queue.store.size
@@ -286,21 +286,21 @@ class NeversTest(QueueCase):
 
     def test_a_done_or_dead_job_is_never_leased(self) -> None:
         for state in ("done", "dead"):
-            before = self.job(state=state, attempts=2)
+            before = self.job(state=state, tries=2)
             after = before.model_copy(
-                update={"state": "leased", "worker": "w1", "lease_until_ms": 1, "attempts": 3}
+                update={"state": "leased", "worker": "w1", "lease_until_ms": 1, "tries": 3}
             )
             with self.assertRaisesRegex(ContractError, f"never goes {state} -> leased"):
                 check_transition(before, after)
 
     def test_attempts_never_exceed_max_attempts(self) -> None:
-        before = self.job(state="leased", attempts=2, worker="w1", lease_until_ms=1)
-        after = before.model_copy(update={"state": "queued", "attempts": 3, "worker": None})
-        with self.assertRaisesRegex(ContractError, "attempts never exceed max_attempts"):
+        before = self.job(state="leased", tries=2, worker="w1", lease_until_ms=1)
+        after = before.model_copy(update={"state": "queued", "tries": 3, "worker": None})
+        with self.assertRaisesRegex(ContractError, "tries never exceed max_tries"):
             check_transition(before, after)
 
     def test_a_leased_job_on_its_last_attempt_never_goes_back_to_queued(self) -> None:
-        before = self.job(state="leased", attempts=2, worker="w1", lease_until_ms=1)
+        before = self.job(state="leased", tries=2, worker="w1", lease_until_ms=1)
         after = before.model_copy(update={"state": "queued", "worker": None})
         with self.assertRaisesRegex(ContractError, "dead exactly when"):
             check_transition(before, after)
@@ -311,7 +311,7 @@ class NeversTest(QueueCase):
             check_transition(before, before.model_copy(update={"state": "done"}))
 
     def test_a_job_never_changes_its_payload(self) -> None:
-        before = self.job(state="leased", attempts=1, worker="w1", lease_until_ms=1)
+        before = self.job(state="leased", tries=1, worker="w1", lease_until_ms=1)
         after = before.model_copy(update={"state": "done", "payload": "other"})
         with self.assertRaisesRegex(ContractError, "fields are fixed"):
             check_transition(before, after)

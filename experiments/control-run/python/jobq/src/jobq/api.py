@@ -98,6 +98,8 @@ class Api:
                 return {"POST": self._ack}, job_id
             case ["", "jobs", job_id, "fail"]:
                 return {"POST": self._fail}, job_id
+            case ["", "jobs", job_id, "retry"]:
+                return {"POST": self._retry}, job_id
             case ["", "queues", queue, "lease"]:
                 return {"POST": self._lease}, queue
             case _:
@@ -108,6 +110,7 @@ class Api:
         uptime = max(0, self._clock.now_ms() - self._started_ms)
         health = Health(
             queued=counts["queued"],
+            scheduled=counts["scheduled"],
             leased=counts["leased"],
             done=counts["done"],
             dead=counts["dead"],
@@ -120,7 +123,7 @@ class Api:
             body = CreateJob.model_validate_json(request.body)
         except ValidationError as invalid:
             return error(400, _problem(invalid))
-        job = self._queue.create(body.queue, body.payload, body.max_attempts)
+        job = self._queue.create(body.queue, body.payload, body.max_tries, body.delay_ms, body.backoff_ms)
         return _json(201, JobOut.of(job))
 
     def _list(self, request: Request, _param: str) -> Response:
@@ -171,6 +174,9 @@ class Api:
             return error(400, _problem(invalid))
         assert request.token is not None
         return _outcome(self._queue.fail(job_id, request.token, body.reason))
+
+    def _retry(self, _request: Request, job_id: str) -> Response:
+        return _outcome(self._queue.retry(job_id))
 
 
 def _outcome(result: Job | NotFound | Conflict) -> Response:
