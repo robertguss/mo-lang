@@ -126,7 +126,7 @@ Round 8's outage is closed by the program: the same class of crash, under `mo ru
 
 Recorded beside it: with the default ring of 4,096 events, `GET /crashes` was empty by the time the probe read it after the crash, the ring having turned over under load; with `MO_EVENTS=262144` it listed the crash with its clause, the message, and the state snapshot. Crash reports need a place apart from the ring (step 32).
 
-## Generation three, pre-registered (16 Sep 2026, 10:40 local, before any session)
+## Generation three, pre-registered (16 Sep 2026, 10:20 local, before any session; the four sessions briefed 10:22)
 
 Change 3 ([[01d-job-queue-change-3]], sealed at `3bd85e7`): the store restarts itself from the log after a failure inside it, `503` meanwhile; a budget of 5 restarts in 60 seconds, then exit 70 with the log whole; a chaos switch `--crash-every N` that fails the board on purpose every N-th write, so the restart path is rehearsed the same way in every language; `/health` counts restarts. Written from what P6 found on generation two (the section above): Elixir back in under a second, Mo `503` forever by its `:never`, Go and Python unprobed for want of a part to kill. The chaos switch is the fourth suite's one probe for all four programs.
 
