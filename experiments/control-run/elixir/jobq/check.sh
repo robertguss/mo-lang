@@ -9,6 +9,10 @@
 # Two: the other three commands against a `jobq serve` of their own — the
 # client over a real socket, compact on the log it wrote, and the exit codes
 # the spec asks for.
+#
+# Three: a folder the version before change 1 served, from
+# test/fixtures/round7, opened and compacted with no tool and no old name
+# left in the log.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -64,7 +68,7 @@ until grep -q "serving" "$work/serve.log" 2>/dev/null; do
 done
 
 expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
-  '{"queue":"emails","payload":"from check.sh","max_attempts":2}'
+  '{"queue":"emails","payload":"from check.sh","max_tries":2}'
 expect_body '201 {"id":"j_1"'
 
 expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /queues/emails/lease '{"lease_ms":60000}'
@@ -74,19 +78,47 @@ expect_body '"state":"done"'
 expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /health
 expect_body '"done":1'
 
+# A job with a delay waits in scheduled, and nothing leases it; a retry of a
+# job that is not dead is refused.
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"digests","payload":"tomorrow","max_tries":1,"delay_ms":3600000,"backoff_ms":1000}'
+expect_body '"id":"j_2"'
+expect_body '"state":"scheduled"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" dave POST /queues/digests/lease
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs/j_1/retry
+expect_body '"error":"job is not dead"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /health
+expect_body '"scheduled":1'
+
 kill "$served"
 served=""
 sleep 0.5
 
 # The log the service wrote has one record per change; compaction leaves one
 # line per live job, and the service reads its own compacted log.
-[ "$(grep -c '' "$work/served/jobq.log")" = "3" ] || fail "expected three records in the log"
+[ "$(grep -c '' "$work/served/jobq.log")" = "4" ] || fail "expected four records in the log"
+grep -q '"max_tries"' "$work/served/jobq.log" || fail "the log does not use the new names"
+! grep -q 'attempts' "$work/served/jobq.log" || fail "the log still uses an old name"
 expect_status 0 ./jobq compact "$work/served"
-expect_body "1 job(s)"
-[ "$(grep -c '' "$work/served/jobq.log")" = "1" ] || fail "expected one line after compaction"
+expect_body "2 job(s)"
+[ "$(grep -c '' "$work/served/jobq.log")" = "2" ] || fail "expected two lines after compaction"
 
 expect_status 0 ./jobq check "$work/served" script/check.script
-expect_body '< 201 {"id":"j_2"'
+expect_body '< 201 {"id":"j_3"'
+
+# Three: a folder the version before this change served. It opens with no
+# tool: the leases that ran out are read by the rules of the change, and a
+# compaction leaves no old name behind.
+cp -R test/fixtures/round7/data "$work/round7"
+grep -q '"max_attempts"' "$work/round7/jobq.log" || fail "the fixture is not in the old shape"
+
+expect_status 0 ./jobq compact "$work/round7"
+expect_body "5 job(s)"
+! grep -q 'attempts' "$work/round7/jobq.log" || fail "compaction left an old name behind"
+grep -q '"backoff_ms":0' "$work/round7/jobq.log" || fail "compaction did not write a backoff"
+
+expect_status 0 ./jobq check "$work/round7" script/check.script
+expect_body '< 201 {"id":"j_7"'
 
 # The exit codes: 2 for a usage error, 1 for a directory that cannot be opened,
 # a port that cannot be bound, or a service that cannot be reached.

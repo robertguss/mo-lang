@@ -66,6 +66,13 @@ defmodule Jobq.Router do
     end
   end
 
+  defp authorized(%{method: "POST"} = request, ref, ["jobs", id, "retry"], _query, _token) do
+    case fields(request.body, [], []) do
+      {:ok, _fields} -> reply(Queue.retry(ref, id))
+      {:error, message} -> {400, error(message)}
+    end
+  end
+
   defp authorized(%{method: "POST"} = request, ref, ["jobs", id, "fail"], _query, token) do
     with {:ok, fields} <- fields(request.body, [], ["reason"]),
          {:ok, reason} <- optional(fields, "reason", nil, &Job.reason/1) do
@@ -91,16 +98,19 @@ defmodule Jobq.Router do
       else: {404, error("no such route")}
   end
 
-  defp known_route?(["jobs", _id, suffix]) when suffix in ["ack", "fail"], do: true
+  defp known_route?(["jobs", _id, suffix]) when suffix in ["ack", "fail", "retry"], do: true
   defp known_route?(["queues", _queue, "lease"]), do: true
   defp known_route?(_segments), do: false
 
   defp create(request, ref) do
-    with {:ok, fields} <- fields(request.body, ["queue", "payload", "max_attempts"], []),
+    with {:ok, fields} <-
+           fields(request.body, ["queue", "payload", "max_tries"], ["delay_ms", "backoff_ms"]),
          {:ok, queue} <- Job.queue(fields["queue"]),
          {:ok, payload} <- Job.payload(fields["payload"]),
-         {:ok, max_attempts} <- Job.max_attempts(fields["max_attempts"]) do
-      reply(Queue.create(ref, queue, payload, max_attempts))
+         {:ok, max_tries} <- Job.max_tries(fields["max_tries"]),
+         {:ok, delay_ms} <- optional(fields, "delay_ms", 0, &Job.delay_ms/1),
+         {:ok, backoff_ms} <- optional(fields, "backoff_ms", 0, &Job.backoff_ms/1) do
+      reply(Queue.create(ref, queue, payload, max_tries, delay_ms, backoff_ms))
     else
       {:error, message} -> {400, error(message)}
     end
@@ -119,8 +129,13 @@ defmodule Jobq.Router do
   defp parse_state(name) do
     case Job.parse_state(name) do
       {:ok, state} -> {:ok, state}
-      :error -> {:error, "state must be queued, leased, done or dead"}
+      :error -> {:error, "state must be " <> state_list()}
     end
+  end
+
+  defp state_list do
+    {last, rest} = List.pop_at(Job.state_names(), -1)
+    Enum.join(rest, ", ") <> " or " <> last
   end
 
   defp filter(params, name, check) do

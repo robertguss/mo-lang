@@ -36,20 +36,32 @@ defmodule Jobq.JobTest do
     end
   end
 
-  describe "max_attempts and lease_ms" do
+  describe "max_tries, lease_ms, delay_ms and backoff_ms" do
     test "take their range and nothing else" do
-      assert {:ok, 1} = Job.max_attempts(1)
-      assert {:ok, 100} = Job.max_attempts(100)
-      assert {:error, _why} = Job.max_attempts(0)
-      assert {:error, _why} = Job.max_attempts(101)
-      assert {:error, _why} = Job.max_attempts("3")
-      assert {:error, _why} = Job.max_attempts(3.0)
+      assert {:ok, 1} = Job.max_tries(1)
+      assert {:ok, 100} = Job.max_tries(100)
+      assert {:error, _why} = Job.max_tries(0)
+      assert {:error, _why} = Job.max_tries(101)
+      assert {:error, _why} = Job.max_tries("3")
+      assert {:error, _why} = Job.max_tries(3.0)
 
       assert {:ok, 100} = Job.lease_ms(100)
       assert {:ok, 3_600_000} = Job.lease_ms(3_600_000)
       assert {:error, _why} = Job.lease_ms(99)
       assert {:error, _why} = Job.lease_ms(3_600_001)
       assert {:error, _why} = Job.lease_ms(nil)
+
+      assert {:ok, 0} = Job.delay_ms(0)
+      assert {:ok, 86_400_000} = Job.delay_ms(86_400_000)
+      assert {:error, _why} = Job.delay_ms(-1)
+      assert {:error, _why} = Job.delay_ms(86_400_001)
+      assert {:error, _why} = Job.delay_ms("soon")
+
+      assert {:ok, 0} = Job.backoff_ms(0)
+      assert {:ok, 3_600_000} = Job.backoff_ms(3_600_000)
+      assert {:error, _why} = Job.backoff_ms(-1)
+      assert {:error, _why} = Job.backoff_ms(3_600_001)
+      assert {:error, _why} = Job.backoff_ms(1.5)
     end
   end
 
@@ -70,7 +82,17 @@ defmodule Jobq.JobTest do
       assert {:obj, fields} = Job.render(job(1))
 
       assert Keyword.keys(rename(fields)) ==
-               ~w(id queue state payload attempts max_attempts created_at updated_at)a
+               ~w(id queue state payload tries max_tries backoff_ms created_at updated_at)a
+    end
+
+    test "a scheduled job renders its run_at, and nothing else does" do
+      scheduled = %{job(1) | state: :scheduled, run_at: 1_789_000_060_000}
+      {:obj, fields} = Job.render(scheduled)
+      assert {"state", "scheduled"} in fields
+      assert {"run_at", "2026-09-10T00:27:40.000Z"} in fields
+
+      {:obj, queued} = Job.render(%{job(1) | run_at: 1_789_000_060_000})
+      refute Enum.any?(queued, fn {key, _value} -> key == "run_at" end)
     end
 
     test "a leased job renders its worker and lease, a failed job its reason" do
@@ -84,7 +106,7 @@ defmodule Jobq.JobTest do
     end
 
     test "a record round-trips through the store's shape" do
-      job = %{job(3) | state: :leased, worker: "bob", lease_until: 1_789_000_060_000, attempts: 2}
+      job = %{job(3) | state: :leased, worker: "bob", lease_until: 1_789_000_060_000, tries: 2}
       record = job |> Job.record() |> Jobq.Json.encode() |> JSON.decode!()
       assert {:ok, ^job} = Job.from_record(record)
     end
@@ -92,10 +114,87 @@ defmodule Jobq.JobTest do
     test "a record that is missing a field, or has one of the wrong shape, is not a job" do
       record = job(1) |> Job.record() |> Jobq.Json.encode() |> JSON.decode!()
       assert :error = Job.from_record(Map.delete(record, "queue"))
-      assert :error = Job.from_record(Map.put(record, "attempts", "two"))
+      assert :error = Job.from_record(Map.put(record, "tries", "two"))
       assert :error = Job.from_record(Map.put(record, "state", "sideways"))
       assert :error = Job.from_record(Map.put(record, "id", "nope"))
       assert :error = Job.from_record("not a record")
+    end
+
+    test "a scheduled record without a run_at is not a job" do
+      record =
+        %{job(1) | state: :scheduled, run_at: 1_789_000_060_000}
+        |> Job.record()
+        |> Jobq.Json.encode()
+        |> JSON.decode!()
+
+      assert {:ok, %Job{state: :scheduled, run_at: 1_789_000_060_000}} = Job.from_record(record)
+      assert :error = Job.from_record(Map.delete(record, "run_at"))
+      assert :error = Job.from_record(Map.put(record, "run_at", "soon"))
+    end
+  end
+
+  describe "a record the version before the change wrote" do
+    test "reads attempts as tries, max_attempts as max_tries, and no backoff as 0" do
+      old = %{
+        "id" => "j_4",
+        "queue" => "emails",
+        "state" => "leased",
+        "payload" => "hi",
+        "attempts" => 2,
+        "max_attempts" => 3,
+        "created_at" => 1_789_000_000_000,
+        "updated_at" => 1_789_000_030_000,
+        "worker" => "bob",
+        "lease_until" => 1_789_000_060_000
+      }
+
+      assert {:ok, job} = Job.from_record(old)
+
+      assert %Job{
+               n: 4,
+               state: :leased,
+               tries: 2,
+               max_tries: 3,
+               backoff_ms: 0,
+               run_at: nil,
+               worker: "bob",
+               lease_until: 1_789_000_060_000
+             } = job
+    end
+
+    test "is written back under the new names only" do
+      old = %{
+        "id" => "j_1",
+        "queue" => "emails",
+        "state" => "queued",
+        "payload" => "hi",
+        "attempts" => 0,
+        "max_attempts" => 1,
+        "created_at" => 1_789_000_000_000,
+        "updated_at" => 1_789_000_000_000
+      }
+
+      assert {:ok, job} = Job.from_record(old)
+      line = job |> Job.record() |> Jobq.Json.encode()
+      refute line =~ "attempts"
+      assert line =~ ~s("tries":0)
+      assert line =~ ~s("max_tries":1)
+      assert line =~ ~s("backoff_ms":0)
+    end
+
+    test "still needs a count of tries under one name or the other" do
+      old = %{
+        "id" => "j_1",
+        "queue" => "emails",
+        "state" => "queued",
+        "payload" => "hi",
+        "max_attempts" => 1,
+        "created_at" => 1_789_000_000_000,
+        "updated_at" => 1_789_000_000_000
+      }
+
+      assert :error = Job.from_record(old)
+      assert :error = Job.from_record(Map.delete(Map.put(old, "attempts", 0), "max_attempts"))
     end
   end
 
@@ -104,8 +203,8 @@ defmodule Jobq.JobTest do
       n: n,
       queue: "emails",
       payload: "hi",
-      max_attempts: 3,
-      attempts: 0,
+      max_tries: 3,
+      tries: 0,
       state: :queued,
       created_at: 1_789_000_000_000,
       updated_at: 1_789_000_000_000

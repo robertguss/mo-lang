@@ -1,54 +1,96 @@
-> alice POST /jobs {"queue":"emails","payload":"welcome","max_attempts":2}
-< 201 {"id":"j_1","queue":"emails","state":"queued","payload":"welcome","attempts":0,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>"}
-> alice POST /jobs {"queue":"emails","payload":"receipt","max_attempts":1}
-< 201 {"id":"j_2","queue":"emails","state":"queued","payload":"receipt","attempts":0,"max_attempts":1,"created_at":"<ts>","updated_at":"<ts>"}
+> alice POST /jobs {"queue":"emails","payload":"welcome","max_tries":2}
+< 201 {"id":"j_1","queue":"emails","state":"queued","payload":"welcome","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
+> alice POST /jobs {"queue":"emails","payload":"receipt","max_tries":1}
+< 201 {"id":"j_2","queue":"emails","state":"queued","payload":"receipt","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > alice GET /jobs/j_1
-< 200 {"id":"j_1","queue":"emails","state":"queued","payload":"welcome","attempts":0,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>"}
+< 200 {"id":"j_1","queue":"emails","state":"queued","payload":"welcome","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > alice GET /jobs
-< 200 {"jobs":[{"id":"j_1","queue":"emails","state":"queued","payload":"welcome","attempts":0,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>"},{"id":"j_2","queue":"emails","state":"queued","payload":"receipt","attempts":0,"max_attempts":1,"created_at":"<ts>","updated_at":"<ts>"}]}
+< 200 {"jobs":[{"id":"j_1","queue":"emails","state":"queued","payload":"welcome","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"},{"id":"j_2","queue":"emails","state":"queued","payload":"receipt","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}]}
 > alice GET /jobs?queue=emails&state=queued
-< 200 {"jobs":[{"id":"j_1","queue":"emails","state":"queued","payload":"welcome","attempts":0,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>"},{"id":"j_2","queue":"emails","state":"queued","payload":"receipt","attempts":0,"max_attempts":1,"created_at":"<ts>","updated_at":"<ts>"}]}
+< 200 {"jobs":[{"id":"j_1","queue":"emails","state":"queued","payload":"welcome","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"},{"id":"j_2","queue":"emails","state":"queued","payload":"receipt","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}]}
 > bob POST /queues/emails/lease {"lease_ms":60000}
-< 200 {"id":"j_1","queue":"emails","state":"leased","payload":"welcome","attempts":1,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>","worker":"bob","lease_until":"<ts>"}
+< 200 {"id":"j_1","queue":"emails","state":"leased","payload":"welcome","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"bob","lease_until":"<ts>"}
 > bob POST /jobs/j_1/ack
-< 200 {"id":"j_1","queue":"emails","state":"done","payload":"welcome","attempts":1,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>"}
+< 200 {"id":"j_1","queue":"emails","state":"done","payload":"welcome","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > alice GET /jobs/j_1
-< 200 {"id":"j_1","queue":"emails","state":"done","payload":"welcome","attempts":1,"max_attempts":2,"created_at":"<ts>","updated_at":"<ts>"}
+< 200 {"id":"j_1","queue":"emails","state":"done","payload":"welcome","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > bob POST /queues/emails/lease
-< 200 {"id":"j_2","queue":"emails","state":"leased","payload":"receipt","attempts":1,"max_attempts":1,"created_at":"<ts>","updated_at":"<ts>","worker":"bob","lease_until":"<ts>"}
+< 200 {"id":"j_2","queue":"emails","state":"leased","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"bob","lease_until":"<ts>"}
 > bob POST /jobs/j_2/fail {"reason":"smtp said no"}
-< 200 {"id":"j_2","queue":"emails","state":"dead","payload":"receipt","attempts":1,"max_attempts":1,"created_at":"<ts>","updated_at":"<ts>","reason":"smtp said no"}
+< 200 {"id":"j_2","queue":"emails","state":"dead","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","reason":"smtp said no"}
 > alice GET /jobs?state=dead
-< 200 {"jobs":[{"id":"j_2","queue":"emails","state":"dead","payload":"receipt","attempts":1,"max_attempts":1,"created_at":"<ts>","updated_at":"<ts>","reason":"smtp said no"}]}
+< 200 {"jobs":[{"id":"j_2","queue":"emails","state":"dead","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","reason":"smtp said no"}]}
 > bob POST /queues/emails/lease
 < 204
-> alice POST /jobs {"queue":"reports","payload":"nightly","max_attempts":3}
-< 201 {"id":"j_3","queue":"reports","state":"queued","payload":"nightly","attempts":0,"max_attempts":3,"created_at":"<ts>","updated_at":"<ts>"}
+> alice POST /jobs {"queue":"reports","payload":"nightly","max_tries":3}
+< 201 {"id":"j_3","queue":"reports","state":"queued","payload":"nightly","tries":0,"max_tries":3,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > carol POST /queues/reports/lease
-< 200 {"id":"j_3","queue":"reports","state":"leased","payload":"nightly","attempts":1,"max_attempts":3,"created_at":"<ts>","updated_at":"<ts>","worker":"carol","lease_until":"<ts>"}
+< 200 {"id":"j_3","queue":"reports","state":"leased","payload":"nightly","tries":1,"max_tries":3,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"carol","lease_until":"<ts>"}
 > alice DELETE /jobs/j_3
 < 409 {"error":"job is leased"}
 > carol POST /jobs/j_3/ack
-< 200 {"id":"j_3","queue":"reports","state":"done","payload":"nightly","attempts":1,"max_attempts":3,"created_at":"<ts>","updated_at":"<ts>"}
+< 200 {"id":"j_3","queue":"reports","state":"done","payload":"nightly","tries":1,"max_tries":3,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > alice DELETE /jobs/j_3
 < 204
 > alice GET /jobs/j_3
 < 404 {"error":"no such job"}
+> alice POST /jobs {"queue":"digests","payload":"tomorrow","max_tries":3,"delay_ms":3600000}
+< 201 {"id":"j_4","queue":"digests","state":"scheduled","payload":"tomorrow","tries":0,"max_tries":3,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","run_at":"<ts>"}
+> alice GET /jobs/j_4
+< 200 {"id":"j_4","queue":"digests","state":"scheduled","payload":"tomorrow","tries":0,"max_tries":3,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","run_at":"<ts>"}
+> dave POST /queues/digests/lease
+< 204
+> alice GET /jobs?state=scheduled
+< 200 {"jobs":[{"id":"j_4","queue":"digests","state":"scheduled","payload":"tomorrow","tries":0,"max_tries":3,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","run_at":"<ts>"}]}
+> alice POST /jobs {"queue":"retries","payload":"flaky","max_tries":3,"backoff_ms":600000}
+< 201 {"id":"j_5","queue":"retries","state":"queued","payload":"flaky","tries":0,"max_tries":3,"backoff_ms":600000,"created_at":"<ts>","updated_at":"<ts>"}
+> dave POST /queues/retries/lease
+< 200 {"id":"j_5","queue":"retries","state":"leased","payload":"flaky","tries":1,"max_tries":3,"backoff_ms":600000,"created_at":"<ts>","updated_at":"<ts>","worker":"dave","lease_until":"<ts>"}
+> dave POST /jobs/j_5/fail {"reason":"connection reset"}
+< 200 {"id":"j_5","queue":"retries","state":"scheduled","payload":"flaky","tries":1,"max_tries":3,"backoff_ms":600000,"created_at":"<ts>","updated_at":"<ts>","run_at":"<ts>","reason":"connection reset"}
+> dave POST /queues/retries/lease
+< 204
+> alice DELETE /jobs/j_5
+< 204
+> alice POST /jobs/j_2/retry
+< 200 {"id":"j_2","queue":"emails","state":"queued","payload":"receipt","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
+> alice POST /jobs/j_2/retry
+< 409 {"error":"job is not dead"}
+> bob POST /queues/emails/lease
+< 200 {"id":"j_2","queue":"emails","state":"leased","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"bob","lease_until":"<ts>"}
+> alice POST /jobs/j_2/retry
+< 409 {"error":"job is not dead"}
+> alice POST /jobs/j_1/retry
+< 409 {"error":"job is not dead"}
+> alice POST /jobs/j_4/retry
+< 409 {"error":"job is not dead"}
+> alice POST /jobs/j_9/retry
+< 404 {"error":"no such job"}
 > alice POST /jobs {"queue":"emails"}
 < 400 {"error":"'payload' is required"}
-> alice POST /jobs {"queue":"em ails","payload":"x","max_attempts":1}
+> alice POST /jobs {"queue":"em ails","payload":"x","max_tries":1}
 < 400 {"error":"queue must be letters, digits, '-' or '_'"}
-> alice POST /jobs {"queue":"emails","payload":"x","max_attempts":1,"extra":true}
+> alice POST /jobs {"queue":"emails","payload":"x","max_tries":1,"extra":true}
 < 400 {"error":"unknown field 'extra'"}
 > alice POST /jobs nonsense
 < 400 {"error":"the body must be JSON"}
+> alice POST /jobs {"queue":"emails","payload":"x","max_attempts":1}
+< 400 {"error":"'max_tries' is required"}
+> alice POST /jobs {"queue":"emails","payload":"x","max_tries":1,"delay_ms":-1}
+< 400 {"error":"delay_ms must be 0 to 86400000"}
+> alice POST /jobs {"queue":"emails","payload":"x","max_tries":1,"delay_ms":"soon"}
+< 400 {"error":"delay_ms must be an integer"}
+> alice POST /jobs {"queue":"emails","payload":"x","max_tries":1,"backoff_ms":3600001}
+< 400 {"error":"backoff_ms must be 0 to 3600000"}
 > alice POST /queues/emails/lease {"lease_ms":1}
 < 400 {"error":"lease_ms must be 100 to 3600000"}
 > alice GET /jobs?state=sideways
-< 400 {"error":"state must be queued, leased, done or dead"}
+< 400 {"error":"state must be queued, scheduled, leased, done or dead"}
 > alice PUT /jobs
 < 405 {"error":"method not allowed"}
 > alice GET /jobs/j_1/ack
+< 405 {"error":"method not allowed"}
+> alice PUT /jobs/j_1/retry
 < 405 {"error":"method not allowed"}
 > alice GET /nowhere
 < 404 {"error":"no such route"}
@@ -57,4 +99,4 @@
 > bob POST /jobs/j_1/ack
 < 409 {"error":"caller does not hold a live lease on this job"}
 > anyone GET /health
-< 200 {"queued":0,"leased":0,"done":1,"dead":1,"uptime_ms":<ms>}
+< 200 {"queued":0,"scheduled":1,"leased":1,"done":1,"dead":0,"uptime_ms":<ms>}

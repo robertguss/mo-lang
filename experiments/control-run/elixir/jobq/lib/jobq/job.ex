@@ -6,33 +6,44 @@ defmodule Jobq.Job do
   counter, `j_<n>` is what the API says. The struct carries everything a
   response and a store record need; `render/1` and `record/1` are the two
   shapes it is written in, both with their keys in a fixed order.
+
+  A job counts its leases in `tries` against `max_tries`, waits in `scheduled`
+  until its `run_at` when it was created with a delay or put back with a
+  backoff, and carries the `backoff_ms` it was created with for the rest of its
+  life. `from_record/1` also reads the shape the version before this change
+  wrote: `attempts` and `max_attempts` are `tries` and `max_tries`, and a
+  record with no `backoff_ms` has none.
   """
 
-  @enforce_keys [:n, :queue, :payload, :max_attempts, :state, :created_at, :updated_at]
+  @enforce_keys [:n, :queue, :payload, :max_tries, :state, :created_at, :updated_at]
   defstruct [
     :n,
     :queue,
     :payload,
-    :max_attempts,
+    :max_tries,
     :state,
     :created_at,
     :updated_at,
+    :run_at,
     :worker,
     :lease_until,
     :reason,
-    attempts: 0
+    tries: 0,
+    backoff_ms: 0
   ]
 
-  @type state :: :queued | :leased | :done | :dead
+  @type state :: :queued | :scheduled | :leased | :done | :dead
   @type t :: %__MODULE__{
           n: pos_integer(),
           queue: String.t(),
           payload: String.t(),
-          max_attempts: pos_integer(),
-          attempts: non_neg_integer(),
+          max_tries: pos_integer(),
+          tries: non_neg_integer(),
+          backoff_ms: non_neg_integer(),
           state: state(),
           created_at: integer(),
           updated_at: integer(),
+          run_at: integer() | nil,
           worker: String.t() | nil,
           lease_until: integer() | nil,
           reason: String.t() | nil
@@ -41,7 +52,13 @@ defmodule Jobq.Job do
   @queue_max 64
   @payload_max 61_440
   @reason_max 4_096
-  @states %{"queued" => :queued, "leased" => :leased, "done" => :done, "dead" => :dead}
+  @states %{
+    "queued" => :queued,
+    "scheduled" => :scheduled,
+    "leased" => :leased,
+    "done" => :done,
+    "dead" => :dead
+  }
 
   @doc "The job's public id, `j_<counter>`."
   @spec id(t()) :: String.t()
@@ -61,6 +78,10 @@ defmodule Jobq.Job do
   @doc "The state name the API and the store use."
   @spec state_name(state()) :: String.t()
   def state_name(state) when is_atom(state), do: Atom.to_string(state)
+
+  @doc "The state names the API takes on a filter, in the order it names them."
+  @spec state_names() :: [String.t()]
+  def state_names, do: ~w(queued scheduled leased done dead)
 
   @doc "A state name from the API or the store."
   @spec parse_state(term()) :: {:ok, state()} | :error
@@ -117,17 +138,29 @@ defmodule Jobq.Job do
   def reason(text) when is_binary(text), do: {:error, "reason must be at most 4 KiB"}
   def reason(_), do: {:error, "reason must be a string"}
 
-  @doc "`max_attempts`: an integer from 1 to 100."
-  @spec max_attempts(term()) :: {:ok, pos_integer()} | {:error, String.t()}
-  def max_attempts(n) when is_integer(n) and n >= 1 and n <= 100, do: {:ok, n}
-  def max_attempts(n) when is_integer(n), do: {:error, "max_attempts must be 1 to 100"}
-  def max_attempts(_), do: {:error, "max_attempts must be an integer"}
+  @doc "`max_tries`: an integer from 1 to 100."
+  @spec max_tries(term()) :: {:ok, pos_integer()} | {:error, String.t()}
+  def max_tries(n) when is_integer(n) and n >= 1 and n <= 100, do: {:ok, n}
+  def max_tries(n) when is_integer(n), do: {:error, "max_tries must be 1 to 100"}
+  def max_tries(_), do: {:error, "max_tries must be an integer"}
 
   @doc "`lease_ms`: an integer from 100 to 3,600,000."
   @spec lease_ms(term()) :: {:ok, pos_integer()} | {:error, String.t()}
   def lease_ms(n) when is_integer(n) and n >= 100 and n <= 3_600_000, do: {:ok, n}
   def lease_ms(n) when is_integer(n), do: {:error, "lease_ms must be 100 to 3600000"}
   def lease_ms(_), do: {:error, "lease_ms must be an integer"}
+
+  @doc "`delay_ms`: an integer from 0 to 86,400,000. It is not stored; `run_at` is."
+  @spec delay_ms(term()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  def delay_ms(n) when is_integer(n) and n >= 0 and n <= 86_400_000, do: {:ok, n}
+  def delay_ms(n) when is_integer(n), do: {:error, "delay_ms must be 0 to 86400000"}
+  def delay_ms(_), do: {:error, "delay_ms must be an integer"}
+
+  @doc "`backoff_ms`: an integer from 0 to 3,600,000, fixed at creation."
+  @spec backoff_ms(term()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  def backoff_ms(n) when is_integer(n) and n >= 0 and n <= 3_600_000, do: {:ok, n}
+  def backoff_ms(n) when is_integer(n), do: {:error, "backoff_ms must be 0 to 3600000"}
+  def backoff_ms(_), do: {:error, "backoff_ms must be an integer"}
 
   defp control_char?(text) do
     text
@@ -137,7 +170,8 @@ defmodule Jobq.Job do
 
   @doc """
   The job as the API returns it: the common fields in a fixed order, then
-  `worker` and `lease_until` while leased, then `reason` once it has one.
+  `run_at` while scheduled, then `worker` and `lease_until` while leased, then
+  `reason` once it has one.
   """
   @spec render(t()) :: Jobq.Json.obj()
   def render(%__MODULE__{} = job) do
@@ -146,11 +180,15 @@ defmodule Jobq.Job do
       {"queue", job.queue},
       {"state", state_name(job.state)},
       {"payload", job.payload},
-      {"attempts", job.attempts},
-      {"max_attempts", job.max_attempts},
+      {"tries", job.tries},
+      {"max_tries", job.max_tries},
+      {"backoff_ms", job.backoff_ms},
       {"created_at", Jobq.Clock.iso8601(job.created_at)},
       {"updated_at", Jobq.Clock.iso8601(job.updated_at)}
     ]
+
+    scheduled =
+      if job.state == :scheduled, do: [{"run_at", Jobq.Clock.iso8601(job.run_at)}], else: []
 
     lease =
       if job.state == :leased,
@@ -159,12 +197,13 @@ defmodule Jobq.Job do
 
     reason = if job.reason, do: [{"reason", job.reason}], else: []
 
-    {:obj, base ++ lease ++ reason}
+    {:obj, base ++ scheduled ++ lease ++ reason}
   end
 
   @doc """
   The job as the store writes it: every field it needs to come back, with
-  millisecond timestamps rather than their rendering.
+  millisecond timestamps rather than their rendering. Only the new names are
+  ever written.
   """
   @spec record(t()) :: Jobq.Json.obj()
   def record(%__MODULE__{} = job) do
@@ -173,11 +212,14 @@ defmodule Jobq.Job do
       {"queue", job.queue},
       {"state", state_name(job.state)},
       {"payload", job.payload},
-      {"attempts", job.attempts},
-      {"max_attempts", job.max_attempts},
+      {"tries", job.tries},
+      {"max_tries", job.max_tries},
+      {"backoff_ms", job.backoff_ms},
       {"created_at", job.created_at},
       {"updated_at", job.updated_at}
     ]
+
+    scheduled = if job.state == :scheduled, do: [{"run_at", job.run_at}], else: []
 
     lease =
       if job.state == :leased,
@@ -186,10 +228,16 @@ defmodule Jobq.Job do
 
     reason = if job.reason, do: [{"reason", job.reason}], else: []
 
-    {:obj, base ++ lease ++ reason}
+    {:obj, base ++ scheduled ++ lease ++ reason}
   end
 
-  @doc "A job back from a store record, or `:error` if the record is not one."
+  @doc """
+  A job back from a store record, or `:error` if the record is not one.
+
+  A record the version before this change wrote is read too: `attempts` is
+  `tries`, `max_attempts` is `max_tries`, and a record with no `backoff_ms` has
+  a backoff of 0. A record that says it is scheduled needs its `run_at`.
+  """
   @spec from_record(map()) :: {:ok, t()} | :error
   def from_record(%{} = map) do
     with {:ok, id} <- fetch(map, "id"),
@@ -198,12 +246,14 @@ defmodule Jobq.Job do
          {:ok, state_name} <- fetch(map, "state"),
          {:ok, state} <- parse_state(state_name),
          {:ok, payload} <- fetch(map, "payload"),
-         {:ok, attempts} <- fetch(map, "attempts"),
-         {:ok, max_attempts} <- fetch(map, "max_attempts"),
+         {:ok, tries} <- fetch_either(map, "tries", "attempts"),
+         {:ok, max_tries} <- fetch_either(map, "max_tries", "max_attempts"),
+         {:ok, backoff_ms} <- fetch_or(map, "backoff_ms", 0),
          {:ok, created_at} <- fetch(map, "created_at"),
          {:ok, updated_at} <- fetch(map, "updated_at"),
+         {:ok, run_at} <- fetch_run_at(map, state),
          true <- is_binary(queue) and is_binary(payload),
-         true <- is_integer(attempts) and is_integer(max_attempts),
+         true <- is_integer(tries) and is_integer(max_tries) and is_integer(backoff_ms),
          true <- is_integer(created_at) and is_integer(updated_at) do
       {:ok,
        %__MODULE__{
@@ -211,10 +261,12 @@ defmodule Jobq.Job do
          queue: queue,
          state: state,
          payload: payload,
-         attempts: attempts,
-         max_attempts: max_attempts,
+         tries: tries,
+         max_tries: max_tries,
+         backoff_ms: backoff_ms,
          created_at: created_at,
          updated_at: updated_at,
+         run_at: run_at,
          worker: optional(map, "worker"),
          lease_until: optional(map, "lease_until"),
          reason: optional(map, "reason")
@@ -232,6 +284,27 @@ defmodule Jobq.Job do
       :error -> :error
     end
   end
+
+  # The new name, or the name the previous version wrote.
+  defp fetch_either(map, key, old_key) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> fetch(map, old_key)
+    end
+  end
+
+  defp fetch_or(map, key, default), do: {:ok, Map.get(map, key, default)}
+
+  # A scheduled job is its `run_at`; any other state has none, whatever the
+  # record carries.
+  defp fetch_run_at(map, :scheduled) do
+    case Map.fetch(map, "run_at") do
+      {:ok, run_at} when is_integer(run_at) -> {:ok, run_at}
+      _other -> :error
+    end
+  end
+
+  defp fetch_run_at(_map, _state), do: {:ok, nil}
 
   defp optional(map, key), do: Map.get(map, key)
 end

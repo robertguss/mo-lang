@@ -20,13 +20,14 @@ defmodule Jobq.PropertyTest do
   end
 
   property "a record round-trips a payload through the store's shape" do
-    check all(payload <- payload(), max_runs: 500) do
+    check all(payload <- payload(), backoff_ms <- StreamData.integer(0..3_600_000), max_runs: 500) do
       job = %Job{
         n: 1,
         queue: "emails",
         payload: payload,
-        max_attempts: 3,
-        attempts: 0,
+        max_tries: 3,
+        tries: 0,
+        backoff_ms: backoff_ms,
         state: :queued,
         created_at: 1_789_000_000_000,
         updated_at: 1_789_000_000_000
@@ -36,6 +37,15 @@ defmodule Jobq.PropertyTest do
 
       assert {:ok, ^job} =
                job |> Job.record() |> Jobq.Json.encode() |> JSON.decode!() |> Job.from_record()
+
+      scheduled = %{job | state: :scheduled, run_at: 1_789_000_060_000}
+
+      assert {:ok, ^scheduled} =
+               scheduled
+               |> Job.record()
+               |> Jobq.Json.encode()
+               |> JSON.decode!()
+               |> Job.from_record()
     end
   end
 
@@ -45,16 +55,27 @@ defmodule Jobq.PropertyTest do
     check all(
             payload <- payload(),
             queue <- queue_name(),
-            max_attempts <- StreamData.integer(1..100),
+            max_tries <- StreamData.integer(1..100),
+            delay_ms <- StreamData.integer(0..86_400_000),
+            backoff_ms <- StreamData.integer(0..3_600_000),
             max_runs: 100
           ) do
       body =
-        JSON.encode!(%{"queue" => queue, "payload" => payload, "max_attempts" => max_attempts})
+        JSON.encode!(%{
+          "queue" => queue,
+          "payload" => payload,
+          "max_tries" => max_tries,
+          "delay_ms" => delay_ms,
+          "backoff_ms" => backoff_ms
+        })
 
       assert {201, created} = Api.request(port, "alice", "POST", "/jobs", body)
       assert created["payload"] == payload
       assert created["queue"] == queue
-      assert created["max_attempts"] == max_attempts
+      assert created["max_tries"] == max_tries
+      assert created["backoff_ms"] == backoff_ms
+      assert created["state"] == if(delay_ms > 0, do: "scheduled", else: "queued")
+      refute Map.has_key?(created, "delay_ms")
 
       assert {200, read} = Api.request(port, "alice", "GET", "/jobs/" <> created["id"])
       assert read == created
@@ -73,7 +94,30 @@ defmodule Jobq.PropertyTest do
               ]),
             max_runs: 100
           ) do
-      body = JSON.encode!(%{"queue" => "emails", "payload" => payload, "max_attempts" => 1})
+      body = JSON.encode!(%{"queue" => "emails", "payload" => payload, "max_tries" => 1})
+      assert {400, %{"error" => _why}} = Api.request(port, "alice", "POST", "/jobs", body)
+    end
+  end
+
+  property "a delay or a backoff the rules refuse never reaches a job" do
+    %{port: port} = Service.start()
+
+    check all(
+            field <- StreamData.member_of(["delay_ms", "backoff_ms"]),
+            value <-
+              StreamData.one_of([
+                StreamData.integer(-1_000_000..-1),
+                StreamData.integer(86_400_001..90_000_000),
+                StreamData.string(:alphanumeric),
+                StreamData.boolean()
+              ]),
+            max_runs: 100
+          ) do
+      body =
+        JSON.encode!(
+          Map.put(%{"queue" => "emails", "payload" => "hi", "max_tries" => 1}, field, value)
+        )
+
       assert {400, %{"error" => _why}} = Api.request(port, "alice", "POST", "/jobs", body)
     end
   end

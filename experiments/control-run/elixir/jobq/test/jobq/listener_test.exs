@@ -23,7 +23,7 @@ defmodule Jobq.ListenerTest do
           "alice",
           "POST",
           "/jobs",
-          ~s({"queue":"emails","payload":"hi","max_attempts":1})
+          ~s({"queue":"emails","payload":"hi","max_tries":1})
         )
       end)
 
@@ -67,7 +67,7 @@ defmodule Jobq.ListenerTest do
                "alice",
                "POST",
                "/jobs",
-               ~s({"queue":"emails","payload":"hi","max_attempts":1})
+               ~s({"queue":"emails","payload":"hi","max_tries":1})
              )
 
     assert {:error, :closed} = :gen_tcp.recv(socket, 0, 5_000)

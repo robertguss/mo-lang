@@ -5,9 +5,14 @@ defmodule Jobq.Test.Never do
   The log is the durable order of everything the service did, so the claims
   that matter can be checked against it after a run rather than guessed at
   from the inside: a job is never leased while it is already leased (which is
-  what "never held by two workers" comes to on one service), a job's attempts
-  never exceed its `max_attempts` and only grow by one at a lease, and a job
-  that is done or dead never moves again except to be deleted.
+  what "never held by two workers" comes to on one service), a job's `tries`
+  never exceed its `max_tries` and only grow by one at a lease, a scheduled job
+  is never leased and never queued before its `run_at`, a done job never moves
+  again, and a dead job moves only to the `queued` of a retry, with its `tries`
+  back at 0.
+
+  A log may carry lines the version before this change wrote, so a record's
+  count of tries is read under either name.
   """
 
   @doc """
@@ -34,39 +39,70 @@ defmodule Jobq.Test.Never do
   end
 
   defp step(%{"id" => id, "deleted" => true}, seen), do: {:ok, Map.put(seen, id, :deleted)}
+  defp step(%{"next" => _n}, seen), do: {:ok, seen}
 
   defp step(record, seen) do
-    %{"id" => id, "state" => state, "attempts" => attempts} = record
+    %{"id" => id} = record
 
     case fault(record, Map.get(seen, id)) do
-      nil -> {:ok, Map.put(seen, id, %{state: state, attempts: attempts})}
+      nil -> {:ok, Map.put(seen, id, remember(record))}
       message -> {:error, "#{id}: #{message}"}
     end
   end
 
+  defp remember(record) do
+    %{
+      state: record["state"],
+      tries: tries(record),
+      run_at: record["run_at"],
+      updated_at: record["updated_at"]
+    }
+  end
+
+  # `tries` under the name the record was written with.
+  defp tries(record), do: record["tries"] || record["attempts"]
+  defp max_tries(record), do: record["max_tries"] || record["max_attempts"]
+
   defp fault(record, previous) do
-    %{"state" => state, "attempts" => attempts, "max_attempts" => max} = record
+    %{"state" => state} = record
+    tries = tries(record)
+    max = max_tries(record)
 
     cond do
-      attempts > max ->
-        "attempts #{attempts} over max_attempts #{max}"
-
-      state == "leased" ->
-        lease_fault(attempts, previous)
-
-      state_of(previous) in ["done", "dead"] ->
-        "left #{state_of(previous)} for #{state}"
-
-      true ->
-        nil
+      tries > max -> "tries #{tries} over max_tries #{max}"
+      state == "leased" -> lease_fault(tries, previous)
+      state == "queued" -> queued_fault(record, previous)
+      state_of(previous) == "done" -> "left done for #{state}"
+      state_of(previous) == "dead" -> "left dead for #{state}"
+      true -> nil
     end
   end
 
-  defp lease_fault(attempts, previous) do
+  defp lease_fault(tries, previous) do
     cond do
       state_of(previous) == "leased" -> "leased while already leased"
-      is_map(previous) and attempts != previous.attempts + 1 -> "leased with attempts #{attempts}"
+      state_of(previous) == "scheduled" -> "leased while scheduled"
+      state_of(previous) in ["done", "dead"] -> "leased while #{state_of(previous)}"
+      is_map(previous) and tries != previous.tries + 1 -> "leased with tries #{tries}"
       true -> nil
+    end
+  end
+
+  # A scheduled job is queued only once its `run_at` has been reached; a dead
+  # job is queued only by a retry, which puts its tries back to 0.
+  defp queued_fault(record, previous) do
+    cond do
+      state_of(previous) == "scheduled" and record["updated_at"] < previous.run_at ->
+        "queued at #{record["updated_at"]}, before its run_at #{previous.run_at}"
+
+      state_of(previous) == "dead" and tries(record) != 0 ->
+        "retried with tries #{tries(record)}"
+
+      state_of(previous) == "done" ->
+        "left done for queued"
+
+      true ->
+        nil
     end
   end
 

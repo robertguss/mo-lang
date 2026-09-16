@@ -62,8 +62,10 @@ defmodule Jobq.CLITest do
     assert {0, output} = run(["check", dir, "script/check.script"])
     assert output =~ ~s(< 201 {"id":"j_1")
 
+    # The script leaves j_1 done, j_2 leased and j_4 scheduled; j_3 and j_5 it
+    # deletes.
     assert {0, output} = run(["compact", dir])
-    assert output =~ "2 job(s)"
+    assert output =~ "3 job(s)"
   end
 
   test "the client prints the status and the body of a request it made" do
@@ -77,7 +79,7 @@ defmodule Jobq.CLITest do
                "alice",
                "POST",
                "/jobs",
-               ~s({"queue":"emails","payload":"hi","max_attempts":1})
+               ~s({"queue":"emails","payload":"hi","max_tries":1})
              ])
 
     assert output =~ ~s(201 {"id":"j_1")

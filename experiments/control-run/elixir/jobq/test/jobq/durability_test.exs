@@ -68,6 +68,34 @@ defmodule Jobq.DurabilityTest do
     assert :ok = Never.check(dir)
   end
 
+  test "a scheduled job comes back scheduled, and is queued once its run_at passes" do
+    %{ref: ref, dir: dir, pid: pid, clock: clock} = Service.start()
+
+    assert {201, _job} = Queue.create(ref, "emails", "delayed", 3, 60_000, 0)
+    assert {201, _job} = Queue.create(ref, "emails", "backoff", 3, 0, 30_000)
+    assert {200, _job} = Queue.lease(ref, "emails", 1_000, "bob")
+    assert {200, _job} = Queue.fail(ref, "j_2", "bob", "boom")
+    assert states(ref) == %{"j_1" => "scheduled", "j_2" => "scheduled"}
+
+    Service.stop(pid)
+    %{ref: ref} = Service.start(dir: dir, clock: clock)
+
+    assert states(ref) == %{"j_1" => "scheduled", "j_2" => "scheduled"}
+    assert {204, nil} = Queue.lease(ref, "emails", 1_000, "alice")
+
+    Clock.advance(clock, 30_000)
+    assert {200, job} = Queue.lease(ref, "emails", 1_000, "alice")
+    assert id_of(job) == "j_2"
+    assert field(job, "tries") == 2
+    assert {204, nil} = Queue.lease(ref, "emails", 1_000, "alice")
+
+    Clock.advance(clock, 30_000)
+    assert {200, delayed} = Queue.lease(ref, "emails", 1_000, "alice")
+    assert id_of(delayed) == "j_1"
+    assert field(delayed, "tries") == 1
+    assert :ok = Never.check(dir)
+  end
+
   test "a lease that had not run out is still held after a restart" do
     %{ref: ref, dir: dir, pid: pid, clock: clock} = Service.start()
 
@@ -132,7 +160,17 @@ defmodule Jobq.DurabilityTest do
 
       answers =
         for round <- 1..100 do
-          {created, tries} = attempt(fn -> Queue.create(ref, "emails", "payload #{round}", 3) end)
+          # A third of the jobs carry a backoff, so a fail or a lease that runs
+          # out under the faults goes through `scheduled` rather than straight
+          # back to `queued`; every fifth job has one try only, so some of them
+          # reach `dead` and there is something for a retry to take.
+          backoff = if rem(round, 3) == 0, do: 1_000, else: 0
+          max_tries = if rem(round, 5) == 0, do: 1, else: 3
+
+          {created, tries} =
+            attempt(fn ->
+              Queue.create(ref, "emails", "payload #{round}", max_tries, 0, backoff)
+            end)
           {leased, more} = attempt(fn -> Queue.lease(ref, "emails", 60_000, "bob") end)
           {_finished, last} = attempt(fn -> finish(ref, leased, round) end)
           tries ++ more ++ [created, leased] ++ last
@@ -147,17 +185,32 @@ defmodule Jobq.DurabilityTest do
       assert :ok = Never.check(dir)
       assert :counters.get(writes, 1) > 40
 
-      # With the faults behind it, and the leases of the run given their time,
-      # a worker takes everything that is left to done or dead.
+      # With the faults behind it, and the leases and backoffs of the run given
+      # their time, a worker takes everything that is left to done or dead.
       Clock.advance(clock, 60_001)
       drain(ref)
 
       states = states(ref)
       counts = states |> Map.values() |> Enum.frequencies()
       assert Map.get(counts, "queued", 0) == 0
+      assert Map.get(counts, "scheduled", 0) == 0
       assert Map.get(counts, "leased", 0) == 0
       assert Map.get(counts, "done", 0) + Map.get(counts, "dead", 0) == map_size(states)
       assert map_size(states) > 90
+      assert :ok = Never.check(dir)
+
+      # And an operator retries the dead ones, which go round again and end
+      # done or dead once more, with nothing left queued or scheduled.
+      dead = for {id, "dead"} <- states, do: id
+      assert dead != []
+      Enum.each(dead, fn id -> attempt(fn -> Queue.retry(ref, id) end) end)
+      Clock.advance(clock, 60_001)
+      drain(ref)
+
+      after_retry = states(ref) |> Map.values() |> Enum.frequencies()
+      assert Map.get(after_retry, "queued", 0) == 0
+      assert Map.get(after_retry, "scheduled", 0) == 0
+      assert Map.get(after_retry, "leased", 0) == 0
       assert :ok = Never.check(dir)
     end
   end
@@ -198,6 +251,11 @@ defmodule Jobq.DurabilityTest do
     end
   end
 
+  defp field({:obj, fields}, name) do
+    {_name, value} = Enum.find(fields, fn {key, _value} -> key == name end) || {name, nil}
+    value
+  end
+
   defp records(dir) do
     dir
     |> Store.log_path()
@@ -213,9 +271,4 @@ defmodule Jobq.DurabilityTest do
 
   defp id_of(job), do: field(job, "id")
   defp state_of(job), do: field(job, "state")
-
-  defp field({:obj, fields}, name) do
-    {_name, value} = Enum.find(fields, fn {key, _value} -> key == name end)
-    value
-  end
 end

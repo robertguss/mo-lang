@@ -164,8 +164,8 @@ defmodule Bench do
               n: n,
               queue: @queue,
               payload: "a payload of the usual size, about sixty bytes of it.",
-              max_attempts: 3,
-              attempts: rem(n, 3),
+              max_tries: 3,
+              tries: rem(n, 3),
               state: :queued,
               created_at: 1_789_000_000_000,
               updated_at: 1_789_000_000_000
@@ -260,11 +260,11 @@ defmodule Bench do
     end
   end
 
-  defp job_body(n, max_attempts) do
+  defp job_body(n, max_tries) do
     JSON.encode!(%{
       "queue" => @queue,
       "payload" => "payload number #{n}, about sixty bytes of it all told.",
-      "max_attempts" => max_attempts
+      "max_tries" => max_tries
     })
   end
 

@@ -18,13 +18,13 @@ defmodule Jobq.StoreTest do
     write(dir, [
       record(1, state: :queued),
       record(2, state: :queued),
-      record(1, state: :leased, attempts: 1),
+      record(1, state: :leased, tries: 1),
       tombstone(2)
     ])
 
     assert {:ok, {jobs, _next}} = Store.read(dir)
     assert Map.keys(jobs) == [1]
-    assert %Job{state: :leased, attempts: 1} = jobs[1]
+    assert %Job{state: :leased, tries: 1} = jobs[1]
   end
 
   test "a torn last line is dropped, everything before it is kept", %{dir: dir} do
@@ -112,8 +112,8 @@ defmodule Jobq.StoreTest do
       n: n,
       queue: "emails",
       payload: "hi",
-      max_attempts: 3,
-      attempts: Keyword.get(fields, :attempts, 0),
+      max_tries: 3,
+      tries: Keyword.get(fields, :tries, 0),
       state: Keyword.get(fields, :state, :queued),
       created_at: 1_789_000_000_000,
       updated_at: 1_789_000_000_000

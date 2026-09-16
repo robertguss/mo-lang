@@ -9,11 +9,13 @@ defmodule Jobq.Queue do
   `Jobq.Store`, which answers once they are durable, and goes on to the next
   request while the disk catches up.
 
-  A lease is a deadline, not a timer. Every operation takes a *look* first:
-  leases that ran out by the clock's reading are moved back to `queued`, or to
-  `dead` on their last attempt, and those moves are written before the
-  operation's own reply. An idle service takes a look on a tick as well, so a
-  lease that ran out with nobody asking is still freed.
+  A lease is a deadline, not a timer, and so is a scheduled job's `run_at`.
+  Every operation takes a *look* first: leases that ran out by the clock's
+  reading are moved on — back to `queued`, to `scheduled` when the job has a
+  backoff, or to `dead` on its last try — and scheduled jobs whose `run_at` has
+  passed are queued. Both moves are written before the operation's own reply.
+  An idle service takes a look on a tick as well, so a lease that ran out or a
+  delay that came due with nobody asking is still freed.
   """
 
   use GenServer
@@ -25,13 +27,14 @@ defmodule Jobq.Queue do
   @type status :: 200 | 201 | 204 | 404 | 409
   @type reply :: {status(), Jobq.Json.value() | nil} | {:error, :store}
   @type operation ::
-          {:create, String.t(), String.t(), pos_integer()}
+          {:create, String.t(), String.t(), pos_integer(), non_neg_integer(), non_neg_integer()}
           | {:get, String.t()}
           | {:list, String.t() | nil, Job.state() | nil}
           | {:delete, String.t()}
           | {:lease, String.t(), pos_integer(), String.t()}
           | {:ack, String.t(), String.t()}
           | {:fail, String.t(), String.t(), String.t() | nil}
+          | {:retry, String.t()}
           | :health
 
   @typep state :: %{
@@ -44,6 +47,7 @@ defmodule Jobq.Queue do
            next: pos_integer(),
            queued: %{String.t() => :gb_sets.set(pos_integer())},
            leased: :gb_sets.set({integer(), pos_integer()}),
+           scheduled: :gb_sets.set({integer(), pos_integer()}),
            counts: %{Job.state() => non_neg_integer()}
          }
 
@@ -70,10 +74,16 @@ defmodule Jobq.Queue do
     :exit, _reason -> {:error, :store}
   end
 
-  @doc "Create a job. `POST /jobs`."
-  @spec create(ref(), String.t(), String.t(), pos_integer()) :: reply()
-  def create(ref, queue, payload, max_attempts),
-    do: run(ref, {:create, queue, payload, max_attempts})
+  @doc """
+  Create a job. `POST /jobs`.
+
+  `delay_ms` above 0 makes it scheduled until `created_at + delay_ms`;
+  `backoff_ms` above 0 is how long it waits after a try that did not take.
+  """
+  @spec create(ref(), String.t(), String.t(), pos_integer(), non_neg_integer(), non_neg_integer()) ::
+          reply()
+  def create(ref, queue, payload, max_tries, delay_ms \\ 0, backoff_ms \\ 0),
+    do: run(ref, {:create, queue, payload, max_tries, delay_ms, backoff_ms})
 
   @doc "Read a job. `GET /jobs/{id}`."
   @spec get(ref(), String.t()) :: reply()
@@ -98,6 +108,10 @@ defmodule Jobq.Queue do
   @doc "Fail a job the caller holds. `POST /jobs/{id}/fail`."
   @spec fail(ref(), String.t(), String.t(), String.t() | nil) :: reply()
   def fail(ref, id, worker, reason), do: run(ref, {:fail, id, worker, reason})
+
+  @doc "Put a dead job back in its queue with its tries reset. `POST /jobs/{id}/retry`."
+  @spec retry(ref(), String.t()) :: reply()
+  def retry(ref, id), do: run(ref, {:retry, id})
 
   @doc "The counts and the uptime. `GET /health`."
   @spec health(ref()) :: reply()
@@ -125,7 +139,8 @@ defmodule Jobq.Queue do
             next: 1,
             queued: %{},
             leased: :gb_sets.new(),
-            counts: %{queued: 0, leased: 0, done: 0, dead: 0}
+            scheduled: :gb_sets.new(),
+            counts: %{queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0}
           }
           |> load(jobs, next)
 
@@ -143,20 +158,23 @@ defmodule Jobq.Queue do
   end
 
   @impl GenServer
-  def handle_call({:create, queue, payload, max_attempts}, from, state) do
+  def handle_call({:create, queue, payload, max_tries, delay_ms, backoff_ms}, from, state) do
     {records, state} = look(state)
     now = state.clock.()
 
-    job = %Job{
-      n: state.next,
-      queue: queue,
-      payload: payload,
-      max_attempts: max_attempts,
-      attempts: 0,
-      state: :queued,
-      created_at: now,
-      updated_at: now
-    }
+    job =
+      %Job{
+        n: state.next,
+        queue: queue,
+        payload: payload,
+        max_tries: max_tries,
+        backoff_ms: backoff_ms,
+        tries: 0,
+        state: :queued,
+        created_at: now,
+        updated_at: now
+      }
+      |> delay(delay_ms, now)
 
     state = %{state | next: state.next + 1} |> put_job(job)
     answer(state, records ++ [{:put, job}], from, {201, Job.render(job)})
@@ -213,9 +231,10 @@ defmodule Jobq.Queue do
         leased = %{
           job
           | state: :leased,
-            attempts: job.attempts + 1,
+            tries: job.tries + 1,
             worker: worker,
             lease_until: now + lease_ms,
+            run_at: nil,
             updated_at: now
         }
 
@@ -247,12 +266,41 @@ defmodule Jobq.Queue do
 
     case held_by(state, id, worker) do
       {:ok, job} ->
-        failed = %{give_up_or_requeue(job, state.clock.()) | reason: reason || job.reason}
+        failed = %{after_try(job, state.clock.()) | reason: reason || job.reason}
         state = put_job(state, failed)
         answer(state, records ++ [{:put, failed}], from, {200, Job.render(failed)})
 
       {:error, status, message} ->
         answer(state, records, from, {status, error(message)})
+    end
+  end
+
+  def handle_call({:retry, id}, from, state) do
+    {records, state} = look(state)
+
+    case find(state, id) do
+      {:ok, %Job{state: :dead} = job} ->
+        now = state.clock.()
+
+        queued = %{
+          job
+          | state: :queued,
+            tries: 0,
+            worker: nil,
+            lease_until: nil,
+            run_at: nil,
+            reason: nil,
+            updated_at: now
+        }
+
+        state = put_job(state, queued)
+        answer(state, records ++ [{:put, queued}], from, {200, Job.render(queued)})
+
+      {:ok, _job} ->
+        answer(state, records, from, {409, error("job is not dead")})
+
+      :error ->
+        answer(state, records, from, {404, error("no such job")})
     end
   end
 
@@ -263,6 +311,7 @@ defmodule Jobq.Queue do
       {:obj,
        [
          {"queued", state.counts.queued},
+         {"scheduled", state.counts.scheduled},
          {"leased", state.counts.leased},
          {"done", state.counts.done},
          {"dead", state.counts.dead},
@@ -282,34 +331,79 @@ defmodule Jobq.Queue do
 
   defp schedule_sweep(state), do: Process.send_after(self(), :sweep, state.sweep_ms)
 
-  # A look: every lease that has run out by the clock's reading, moved back.
+  # A look: every lease that has run out and every `run_at` that has passed by
+  # the clock's reading, moved on. A lease that runs out on a job with a
+  # backoff becomes scheduled at `now + backoff_ms`, which is after `now`, so
+  # the two passes never chase each other.
 
   @spec look(state()) :: {[Store.record()], state()}
-  defp look(state), do: look(state, state.clock.(), [])
+  defp look(state), do: look(state, state.clock.())
 
-  defp look(state, now, records) do
-    case :gb_sets.is_empty(state.leased) do
-      true ->
-        {Enum.reverse(records), state}
+  defp look(state, now) do
+    {state, records} = expire_leases(state, now, [])
+    {state, records} = promote_scheduled(state, now, records)
+    {Enum.reverse(records), state}
+  end
 
-      false ->
-        {{lease_until, n}, rest} = :gb_sets.take_smallest(state.leased)
+  defp expire_leases(state, now, records) do
+    case due(state.leased, now) do
+      {:ok, n} ->
+        job = Map.fetch!(state.jobs, n)
+        moved = after_try(job, now)
+        expire_leases(put_job(state, moved), now, [{:put, moved} | records])
 
-        if lease_until <= now do
-          job = Map.fetch!(state.jobs, n)
-          moved = give_up_or_requeue(job, now)
-          state = %{state | leased: rest} |> put_job(moved, skip_index_remove: true)
-          look(state, now, [{:put, moved} | records])
-        else
-          {Enum.reverse(records), state}
-        end
+      :none ->
+        {state, records}
     end
   end
 
-  defp give_up_or_requeue(job, now) do
-    state = if job.attempts >= job.max_attempts, do: :dead, else: :queued
-    %{job | state: state, worker: nil, lease_until: nil, updated_at: now}
+  defp promote_scheduled(state, now, records) do
+    case due(state.scheduled, now) do
+      {:ok, n} ->
+        job = Map.fetch!(state.jobs, n)
+        queued = %{job | state: :queued, run_at: nil, updated_at: now}
+        promote_scheduled(put_job(state, queued), now, [{:put, queued} | records])
+
+      :none ->
+        {state, records}
+    end
   end
+
+  # The smallest deadline of a `{deadline, counter}` index, if it has passed.
+  defp due(set, now) do
+    if :gb_sets.is_empty(set) do
+      :none
+    else
+      case :gb_sets.smallest(set) do
+        {deadline, n} when deadline <= now -> {:ok, n}
+        _later -> :none
+      end
+    end
+  end
+
+  # Where a job goes when a try did not take: a fail, or a lease that ran out.
+  defp after_try(job, now) do
+    cond do
+      job.tries >= job.max_tries ->
+        %{job | state: :dead, worker: nil, lease_until: nil, run_at: nil, updated_at: now}
+
+      job.backoff_ms > 0 ->
+        %{
+          job
+          | state: :scheduled,
+            worker: nil,
+            lease_until: nil,
+            run_at: now + job.backoff_ms,
+            updated_at: now
+        }
+
+      true ->
+        %{job | state: :queued, worker: nil, lease_until: nil, run_at: nil, updated_at: now}
+    end
+  end
+
+  defp delay(job, 0, _now), do: job
+  defp delay(job, delay_ms, now), do: %{job | state: :scheduled, run_at: now + delay_ms}
 
   # Replies
 
@@ -349,13 +443,14 @@ defmodule Jobq.Queue do
     end
   end
 
-  # The state and its two indexes: the queued jobs of a queue by id, and the
-  # leased jobs by the deadline their lease runs out at.
+  # The state and its three indexes: the queued jobs of a queue by id, the
+  # leased jobs by the deadline their lease runs out at, and the scheduled jobs
+  # by the `run_at` they come due at.
 
-  defp put_job(state, job, opts \\ []) do
+  defp put_job(state, job) do
     state =
       case Map.fetch(state.jobs, job.n) do
-        {:ok, old} -> index_remove(state, old, Keyword.get(opts, :skip_index_remove, false))
+        {:ok, old} -> index_remove(state, old)
         :error -> state
       end
 
@@ -363,11 +458,11 @@ defmodule Jobq.Queue do
   end
 
   defp drop_job(state, job) do
-    state = index_remove(state, job, false)
+    state = index_remove(state, job)
     %{state | jobs: Map.delete(state.jobs, job.n)}
   end
 
-  defp index_remove(state, job, skip_set) do
+  defp index_remove(state, job) do
     state = update_in(state, [:counts, job.state], &(&1 - 1))
 
     case job.state do
@@ -376,8 +471,11 @@ defmodule Jobq.Queue do
           :gb_sets.delete_any(job.n, set || :gb_sets.new())
         end)
 
-      :leased when not skip_set ->
+      :leased ->
         %{state | leased: :gb_sets.delete_any({job.lease_until, job.n}, state.leased)}
+
+      :scheduled ->
+        %{state | scheduled: :gb_sets.delete_any({job.run_at, job.n}, state.scheduled)}
 
       _ ->
         state
@@ -394,6 +492,9 @@ defmodule Jobq.Queue do
 
       :leased ->
         %{state | leased: :gb_sets.insert({job.lease_until, job.n}, state.leased)}
+
+      :scheduled ->
+        %{state | scheduled: :gb_sets.insert({job.run_at, job.n}, state.scheduled)}
 
       _ ->
         state
