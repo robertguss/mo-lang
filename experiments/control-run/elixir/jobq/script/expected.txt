@@ -50,8 +50,12 @@
 < 200 {"id":"j_5","queue":"retries","state":"scheduled","payload":"flaky","tries":1,"max_tries":3,"backoff_ms":600000,"created_at":"<ts>","updated_at":"<ts>","run_at":"<ts>","reason":"connection reset"}
 > dave POST /queues/retries/lease
 < 204
+> anyone GET /queues
+< 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":0,"scheduled":0,"leased":0,"done":1,"dead":1},{"name":"retries","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0}]}
 > alice DELETE /jobs/j_5
 < 204
+> anyone GET /queues
+< 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":0,"scheduled":0,"leased":0,"done":1,"dead":1}]}
 > alice POST /jobs/j_2/retry
 < 200 {"id":"j_2","queue":"emails","state":"queued","payload":"receipt","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
 > alice POST /jobs/j_2/retry
@@ -100,3 +104,7 @@
 < 409 {"error":"caller does not hold a live lease on this job"}
 > anyone GET /health
 < 200 {"queued":0,"scheduled":1,"leased":1,"done":1,"dead":0,"uptime_ms":<ms>}
+> anyone GET /queues
+< 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":0,"scheduled":0,"leased":1,"done":1,"dead":0}]}
+> alice PUT /queues
+< 405 {"error":"method not allowed"}

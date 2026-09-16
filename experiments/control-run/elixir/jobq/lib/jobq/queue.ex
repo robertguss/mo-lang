@@ -16,9 +16,18 @@ defmodule Jobq.Queue do
   passed are queued. Both moves are written before the operation's own reply.
   An idle service takes a look on a tick as well, so a lease that ran out or a
   delay that came due with nobody asking is still freed.
+
+  Nothing one request does to this process ends another: an operation runs
+  inside a `try`, and whatever it raises, exits with, or throws is that
+  request's `503` and no more. A store that could not write a batch tells the
+  queue its new epoch; the queue answers by reloading its jobs from the log,
+  which is the state the disk agrees with, so a request that was told `503`
+  left the job it named exactly as it found it.
   """
 
   use GenServer
+
+  require Logger
 
   alias Jobq.Job
   alias Jobq.Store
@@ -36,6 +45,7 @@ defmodule Jobq.Queue do
           | {:fail, String.t(), String.t(), String.t() | nil}
           | {:retry, String.t()}
           | :health
+          | :queues
 
   @typep state :: %{
            ref: ref(),
@@ -48,10 +58,16 @@ defmodule Jobq.Queue do
            queued: %{String.t() => :gb_sets.set(pos_integer())},
            leased: :gb_sets.set({integer(), pos_integer()}),
            scheduled: :gb_sets.set({integer(), pos_integer()}),
-           counts: %{Job.state() => non_neg_integer()}
+           counts: counts(),
+           by_queue: %{String.t() => counts()},
+           epoch: non_neg_integer()
          }
 
-  @call_timeout 15_000
+  @typep counts :: %{Job.state() => non_neg_integer()}
+
+  # The spec's deadline for the queue: a request it has not answered in five
+  # seconds is the service's failure, not the client's, and is a `503`.
+  @call_timeout 5_000
 
   # Client
 
@@ -117,6 +133,10 @@ defmodule Jobq.Queue do
   @spec health(ref()) :: reply()
   def health(ref), do: run(ref, :health)
 
+  @doc "Every queue that has a job, with its counts per state. `GET /queues`."
+  @spec queues(ref()) :: reply()
+  def queues(ref), do: run(ref, :queues)
+
   # Server
 
   @impl GenServer
@@ -140,7 +160,9 @@ defmodule Jobq.Queue do
             queued: %{},
             leased: :gb_sets.new(),
             scheduled: :gb_sets.new(),
-            counts: %{queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0}
+            counts: zero(),
+            by_queue: %{},
+            epoch: Store.epoch(ref)
           }
           |> load(jobs, next)
 
@@ -157,8 +179,22 @@ defmodule Jobq.Queue do
     %{state | jobs: jobs, next: next}
   end
 
+  defp zero, do: %{queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0}
+
   @impl GenServer
-  def handle_call({:create, queue, payload, max_tries, delay_ms, backoff_ms}, from, state) do
+  def handle_call(operation, from, state) do
+    operate(operation, from, state)
+  rescue
+    error ->
+      Logger.error("jobq: #{inspect(operation)} failed: " <> Exception.message(error))
+      {:reply, {:error, :store}, state}
+  catch
+    kind, reason ->
+      Logger.error("jobq: #{inspect(operation)} failed: #{inspect(kind)} #{inspect(reason)}")
+      {:reply, {:error, :store}, state}
+  end
+
+  defp operate({:create, queue, payload, max_tries, delay_ms, backoff_ms}, from, state) do
     {records, state} = look(state)
     now = state.clock.()
 
@@ -180,7 +216,7 @@ defmodule Jobq.Queue do
     answer(state, records ++ [{:put, job}], from, {201, Job.render(job)})
   end
 
-  def handle_call({:get, id}, from, state) do
+  defp operate({:get, id}, from, state) do
     {records, state} = look(state)
 
     case find(state, id) do
@@ -189,7 +225,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  def handle_call({:list, queue, job_state}, from, state) do
+  defp operate({:list, queue, job_state}, from, state) do
     {records, state} = look(state)
 
     jobs =
@@ -205,7 +241,7 @@ defmodule Jobq.Queue do
     answer(state, records, from, {200, {:obj, [{"jobs", jobs}]}})
   end
 
-  def handle_call({:delete, id}, from, state) do
+  defp operate({:delete, id}, from, state) do
     {records, state} = look(state)
 
     case find(state, id) do
@@ -221,7 +257,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  def handle_call({:lease, queue, lease_ms, worker}, from, state) do
+  defp operate({:lease, queue, lease_ms, worker}, from, state) do
     {records, state} = look(state)
 
     case next_queued(state, queue) do
@@ -246,7 +282,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  def handle_call({:ack, id, worker}, from, state) do
+  defp operate({:ack, id, worker}, from, state) do
     {records, state} = look(state)
 
     case held_by(state, id, worker) do
@@ -261,7 +297,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  def handle_call({:fail, id, worker, reason}, from, state) do
+  defp operate({:fail, id, worker, reason}, from, state) do
     {records, state} = look(state)
 
     case held_by(state, id, worker) do
@@ -275,7 +311,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  def handle_call({:retry, id}, from, state) do
+  defp operate({:retry, id}, from, state) do
     {records, state} = look(state)
 
     case find(state, id) do
@@ -304,7 +340,7 @@ defmodule Jobq.Queue do
     end
   end
 
-  def handle_call(:health, from, state) do
+  defp operate(:health, from, state) do
     {records, state} = look(state)
 
     body =
@@ -321,12 +357,59 @@ defmodule Jobq.Queue do
     answer(state, records, from, {200, body})
   end
 
+  defp operate(:queues, from, state) do
+    {records, state} = look(state)
+
+    queues =
+      state.by_queue
+      |> Enum.sort_by(fn {name, _counts} -> name end)
+      |> Enum.map(fn {name, counts} ->
+        {:obj,
+         [
+           {"name", name},
+           {"queued", counts.queued},
+           {"scheduled", counts.scheduled},
+           {"leased", counts.leased},
+           {"done", counts.done},
+           {"dead", counts.dead}
+         ]}
+      end)
+
+    answer(state, records, from, {200, {:obj, [{"queues", queues}]}})
+  end
+
   @impl GenServer
   def handle_info(:sweep, state) do
     {records, state} = look(state)
-    if records != [], do: Store.commit(state.ref, records, nil, nil)
+    if records != [], do: Store.commit(state.ref, records, nil, nil, state.epoch)
     schedule_sweep(state)
     {:noreply, state}
+  end
+
+  # A batch the store could not write. Everything this process had moved on
+  # top of the log is dropped and the jobs are read back from it, so the state
+  # the next request is answered off is the state on the disk; the commits
+  # already on their way under the old epoch are refused by the store.
+  def handle_info({:store_epoch, epoch}, state) do
+    case Store.read(state.dir) do
+      {:ok, {jobs, next}} ->
+        state = %{
+          state
+          | jobs: %{},
+            next: 1,
+            queued: %{},
+            leased: :gb_sets.new(),
+            scheduled: :gb_sets.new(),
+            counts: zero(),
+            by_queue: %{},
+            epoch: epoch
+        }
+
+        {:noreply, load(state, jobs, next)}
+
+      {:error, reason} ->
+        {:stop, reason, state}
+    end
   end
 
   defp schedule_sweep(state), do: Process.send_after(self(), :sweep, state.sweep_ms)
@@ -410,7 +493,7 @@ defmodule Jobq.Queue do
   defp answer(state, [], _from, reply), do: {:reply, reply, state}
 
   defp answer(state, records, from, reply) do
-    Store.commit(state.ref, records, from, reply)
+    Store.commit(state.ref, records, from, reply, state.epoch)
     {:noreply, state}
   end
 
@@ -463,7 +546,7 @@ defmodule Jobq.Queue do
   end
 
   defp index_remove(state, job) do
-    state = update_in(state, [:counts, job.state], &(&1 - 1))
+    state = state |> update_in([:counts, job.state], &(&1 - 1)) |> per_queue(job, -1)
 
     case job.state do
       :queued ->
@@ -483,7 +566,7 @@ defmodule Jobq.Queue do
   end
 
   defp index_add(state, job) do
-    state = update_in(state, [:counts, job.state], &(&1 + 1))
+    state = state |> update_in([:counts, job.state], &(&1 + 1)) |> per_queue(job, 1)
 
     case job.state do
       :queued ->
@@ -499,5 +582,21 @@ defmodule Jobq.Queue do
       _ ->
         state
     end
+  end
+
+  # The counts `GET /queues` reads, one row per queue. A queue whose last job
+  # is gone has no row, which is what makes it leave the list.
+  defp per_queue(state, job, delta) do
+    counts =
+      state.by_queue
+      |> Map.get(job.queue, zero())
+      |> Map.update!(job.state, &(&1 + delta))
+
+    by_queue =
+      if Enum.all?(counts, fn {_state, count} -> count == 0 end),
+        do: Map.delete(state.by_queue, job.queue),
+        else: Map.put(state.by_queue, job.queue, counts)
+
+    %{state | by_queue: by_queue}
   end
 end

@@ -18,7 +18,7 @@ defmodule Jobq.StoreTest do
     write(dir, [
       record(1, state: :queued),
       record(2, state: :queued),
-      record(1, state: :leased, tries: 1),
+      record(1, state: :leased, tries: 1, worker: "bob", lease_until: 1_789_000_060_000),
       tombstone(2)
     ])
 
@@ -35,10 +35,49 @@ defmodule Jobq.StoreTest do
     assert Map.keys(jobs) == [1]
   end
 
-  test "a complete line that is not a record is a corrupt log", %{dir: dir} do
+  test "a complete line that is not JSON at all is a corrupt log", %{dir: dir} do
+    write(dir, [record(1, state: :queued)])
+    File.write!(Store.log_path(dir), "not json\n", [:append])
+
+    assert {:error, {:corrupt, 2}} = Store.read(dir)
+  end
+
+  test "a record that is not a job names its key and the rule it breaks", %{dir: dir} do
     write(dir, [record(1, state: :queued)])
     File.write!(Store.log_path(dir), ~s({"id":"j_2","half":true}\n), [:append])
 
+    assert {:error, {:record, "j_2", "'state' is required"}} = Store.read(dir)
+  end
+
+  test "a record in a state its fields do not fit refuses the folder", %{dir: dir} do
+    write(dir, [
+      record(1, state: :queued),
+      %{
+        "id" => "j_2",
+        "queue" => "emails",
+        "state" => "leased",
+        "payload" => "hi",
+        "tries" => 1,
+        "max_tries" => 3,
+        "backoff_ms" => 0,
+        "created_at" => 1_789_000_000_000,
+        "updated_at" => 1_789_000_000_000
+      }
+    ])
+
+    assert {:error, {:record, "j_2", "a leased job has a worker and a lease_until"}} =
+             Store.read(dir)
+
+    assert {:error, {:record, "j_2", _rule}} = Store.compact(dir)
+  end
+
+  test "a counter below an id the log carries refuses the folder", %{dir: dir} do
+    write(dir, [{:obj, [{"next", 1}]}, record(1, state: :queued)])
+    assert {:error, {:corrupt, 1}} = Store.read(dir)
+  end
+
+  test "a counter that is not a number refuses the folder", %{dir: dir} do
+    write(dir, [record(1, state: :queued), {:obj, [{"next", "soon"}]}])
     assert {:error, {:corrupt, 2}} = Store.read(dir)
   end
 
@@ -46,7 +85,7 @@ defmodule Jobq.StoreTest do
     write(dir, [
       record(2, state: :queued),
       record(1, state: :queued),
-      record(1, state: :done),
+      record(1, state: :done, tries: 1),
       record(3, state: :queued),
       tombstone(3)
     ])
@@ -86,18 +125,32 @@ defmodule Jobq.StoreTest do
     assert {:ok, {_jobs, 9}} = Store.read(dir)
   end
 
-  test "a write that fails takes the store down and tells its waiters", %{dir: dir} do
+  test "a write that fails tells its waiters, keeps the store, and moves the epoch", %{dir: dir} do
     ref = make_ref()
     {:ok, pid} = Store.start_link(ref: ref, dir: dir, fault: fn batch -> batch == 1 end)
-    Process.unlink(pid)
     monitor = Process.monitor(pid)
     tag = make_ref()
 
-    Store.commit(ref, [{:put, job(1)}], {self(), tag}, {201, nil})
+    assert Store.epoch(ref) == 0
+    Store.commit(ref, [{:put, job(1)}], {self(), tag}, {201, nil}, 0)
 
     assert_receive {^tag, {:error, :store}}, 1_000
-    assert_receive {:DOWN, ^monitor, :process, ^pid, {:write, _path, :injected}}, 1_000
+    refute_receive {:DOWN, ^monitor, :process, ^pid, _reason}, 200
     assert File.read!(Store.log_path(dir)) == ""
+    assert Store.epoch(ref) == 1
+
+    # The next write, under the epoch the store is in now, goes through on its
+    # own; one still tagged with the epoch the failure left is refused.
+    stale = make_ref()
+    Store.commit(ref, [{:put, job(2)}], {self(), stale}, {201, nil}, 0)
+    assert_receive {^stale, {:error, :store}}, 1_000
+
+    fresh = make_ref()
+    Store.commit(ref, [{:put, job(2)}], {self(), fresh}, {201, nil}, 1)
+    assert_receive {^fresh, {201, nil}}, 1_000
+    assert File.read!(Store.log_path(dir)) =~ ~s("id":"j_2")
+
+    Supervisor.stop(pid)
   end
 
   defp write(dir, records) do
@@ -115,6 +168,8 @@ defmodule Jobq.StoreTest do
       max_tries: 3,
       tries: Keyword.get(fields, :tries, 0),
       state: Keyword.get(fields, :state, :queued),
+      worker: Keyword.get(fields, :worker),
+      lease_until: Keyword.get(fields, :lease_until),
       created_at: 1_789_000_000_000,
       updated_at: 1_789_000_000_000
     }

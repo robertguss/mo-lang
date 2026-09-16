@@ -1,23 +1,32 @@
 defmodule Jobq.CLI do
   @moduledoc """
-  The four commands.
+  The five commands.
 
       jobq serve <dir> [--port N]      default port 7900
       jobq compact <dir>
+      jobq verify <dir>
       jobq client <host> <port> <token> <method> <path> [<json>]
       jobq check <dir> <script>
 
   Exit 2 on a usage error, 1 when the directory cannot be opened or the port
   cannot be bound.
+
+  `serve`, `compact`, and `verify` all read the folder before they do anything
+  else, and all refuse an ill-formed record the same way: one line naming the
+  record's key and the rule it breaks, and exit 1. `serve` refuses before it
+  binds the port, so a folder with a record the API could never have produced
+  is never served.
   """
 
   alias Jobq.Client
+  alias Jobq.Job
   alias Jobq.Server
   alias Jobq.Store
 
   @usage """
   usage: jobq serve <dir> [--port N]
          jobq compact <dir>
+         jobq verify <dir>
          jobq client <host> <port> <token> <method> <path> [<json>]
          jobq check <dir> <script>
   """
@@ -34,6 +43,7 @@ defmodule Jobq.CLI do
   @spec run([String.t()]) :: 0 | 1 | 2
   def run(["serve", dir | rest]), do: serve(dir, rest)
   def run(["compact", dir]), do: compact(dir)
+  def run(["verify", dir]), do: verify(dir)
 
   def run(["client", host, port, token, method, path | rest]),
     do: client(host, port, token, method, path, rest)
@@ -48,7 +58,8 @@ defmodule Jobq.CLI do
 
   defp serve(dir, rest) do
     with {:ok, port} <- port_option(rest),
-         :ok <- open_dir(dir) do
+         :ok <- open_dir(dir),
+         {:ok, _log} <- read_dir(dir) do
       # The tree is linked to this process: trapping exits is what turns a
       # listener that cannot bind, or a tree that gives up later, into a
       # message and an exit status rather than a dead command.
@@ -72,9 +83,44 @@ defmodule Jobq.CLI do
   end
 
   defp compact(dir) do
-    case open_dir(dir) do
-      :ok -> report_compact(dir, Store.compact(dir))
+    with :ok <- open_dir(dir),
+         {:ok, _log} <- read_dir(dir) do
+      report_compact(dir, Store.compact(dir))
+    else
       {:error, reason} -> fail(reason)
+    end
+  end
+
+  defp verify(dir) do
+    with :ok <- open_dir(dir),
+         {:ok, {jobs, next}} <- read_dir(dir) do
+      counts =
+        jobs
+        |> Map.values()
+        |> Enum.frequencies_by(& &1.state)
+
+      IO.puts(
+        "#{map_size(jobs)} jobs: " <>
+          (Job.state_names()
+           |> Enum.map_join(", ", fn name ->
+             {:ok, state} = Job.parse_state(name)
+             "#{name} #{Map.get(counts, state, 0)}"
+           end)) <> "; next id j_#{next}"
+      )
+
+      0
+    else
+      {:error, reason} -> fail(reason)
+    end
+  end
+
+  # The folder as the service will read it, with the record that refuses it
+  # named by the folder it is in.
+  defp read_dir(dir) do
+    case Store.read(dir) do
+      {:ok, log} -> {:ok, log}
+      {:error, {:record, key, rule}} -> {:error, {:record, dir, key, rule}}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -115,6 +161,7 @@ defmodule Jobq.CLI do
     Process.flag(:trap_exit, true)
 
     with :ok <- open_dir(dir),
+         {:ok, _log} <- read_dir(dir),
          :ok <- Jobq.Check.run(dir, script) do
       0
     else
@@ -163,6 +210,8 @@ defmodule Jobq.CLI do
   defp describe({:shutdown, {:failed_to_start_child, _child, reason}}), do: describe(reason)
   defp describe({:open, path, reason}), do: "cannot open #{path}: #{:file.format_error(reason)}"
   defp describe({:corrupt, line}), do: "the log is corrupt at line #{line}"
+
+  defp describe({:record, dir, key, rule}), do: "#{dir}: record #{key}: #{rule}"
   defp describe({:stopped, reason}), do: "the service stopped: #{describe(reason)}"
   defp describe({:script, path, reason}), do: "cannot read #{path}: #{:file.format_error(reason)}"
   defp describe({:script_line, line}), do: "cannot read the script line: #{line}"

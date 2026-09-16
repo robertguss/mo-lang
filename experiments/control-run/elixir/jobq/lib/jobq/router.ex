@@ -7,7 +7,13 @@ defmodule Jobq.Router do
   unknown route is `404`, and a body that is not JSON, is missing a field, has
   a field of the wrong shape, or carries a field the route does not know is
   `400`. `/health` is the one route that takes no token.
+
+  Nothing that goes wrong inside a request leaves this function by any door but
+  its own: a queue that is down or too slow, and anything the implementation
+  did not expect, are `503` with the connection and the next request untouched.
   """
+
+  require Logger
 
   alias Jobq.Job
   alias Jobq.Json
@@ -31,7 +37,18 @@ defmodule Jobq.Router do
       {status, nil} -> {status, nil}
       {status, body} -> {status, Json.encode(body)}
     end
+  rescue
+    error ->
+      Logger.error("jobq: #{request.method} #{request.path}: " <> Exception.message(error))
+      unavailable()
+  catch
+    kind, reason ->
+      Logger.error("jobq: #{request.method} #{request.path}: #{inspect(kind)} #{inspect(reason)}")
+      unavailable()
   end
+
+  defp unavailable,
+    do: {503, Json.encode(error("the service could not complete this request"))}
 
   defp dispatch(%{method: "GET"}, ref, ["health"], _query), do: reply(Queue.health(ref))
   defp dispatch(_request, _ref, ["health"], _query), do: {405, error("method not allowed")}
@@ -40,6 +57,13 @@ defmodule Jobq.Router do
     case token(request) do
       {:ok, token} -> authorized(request, ref, segments, query, token)
       :error -> {401, error("a bearer token is required")}
+    end
+  end
+
+  defp authorized(request, ref, ["queues"], _query, _token) do
+    case request.method do
+      "GET" -> reply(Queue.queues(ref))
+      _other -> {405, error("method not allowed")}
     end
   end
 

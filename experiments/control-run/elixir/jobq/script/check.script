@@ -44,7 +44,12 @@ alice POST /jobs {"queue":"retries","payload":"flaky","max_tries":3,"backoff_ms"
 dave POST /queues/retries/lease
 dave POST /jobs/j_5/fail {"reason":"connection reset"}
 dave POST /queues/retries/lease
+
+# Every queue that has a job, with its counts per state. The retries queue is
+# in the list while j_5 is scheduled in it, and gone once it is deleted.
+anyone GET /queues
 alice DELETE /jobs/j_5
+anyone GET /queues
 
 # A dead job goes back to its queue with a retry, its tries at 0 and its
 # reason dropped, and is leased again. A retry of anything else is 409.
@@ -74,5 +79,7 @@ alice GET /nowhere
 alice POST /jobs/j_9/ack
 bob POST /jobs/j_1/ack
 
-# The counters.
+# The counters, whose totals are the sums of the queues' rows.
 anyone GET /health
+anyone GET /queues
+alice PUT /queues

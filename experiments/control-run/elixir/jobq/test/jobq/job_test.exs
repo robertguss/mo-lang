@@ -198,6 +198,180 @@ defmodule Jobq.JobTest do
     end
   end
 
+  describe "check_record/1: the rule a record on the disk must meet" do
+    test "a well-formed record of every state" do
+      assert :ok = Job.check_record(queued())
+      assert :ok = Job.check_record(scheduled())
+      assert :ok = Job.check_record(leased())
+      assert :ok = Job.check_record(finished("done"))
+      assert :ok = Job.check_record(finished("dead"))
+    end
+
+    test "a queued job has a try left and carries nothing of a lease or a delay" do
+      assert {:error, "a queued job has tried fewer times than its max_tries"} =
+               Job.check_record(%{queued() | "tries" => 3})
+
+      assert {:error, "a queued job has no run_at"} =
+               Job.check_record(Map.put(queued(), "run_at", 1_789_000_060_000))
+
+      assert {:error, "a queued job has no worker"} =
+               Job.check_record(Map.put(queued(), "worker", "bob"))
+
+      assert {:error, "a queued job has no lease_until"} =
+               Job.check_record(Map.put(queued(), "lease_until", 1_789_000_060_000))
+    end
+
+    test "a scheduled job has a run_at and no lease" do
+      assert {:error, "a scheduled job has a run_at"} =
+               Job.check_record(Map.delete(scheduled(), "run_at"))
+
+      assert {:error, "a scheduled job's run_at is an instant in milliseconds"} =
+               Job.check_record(%{scheduled() | "run_at" => "tomorrow"})
+
+      assert {:error, "a scheduled job has no worker"} =
+               Job.check_record(Map.put(scheduled(), "worker", "bob"))
+
+      assert {:error, "a scheduled job has tried fewer times than its max_tries"} =
+               Job.check_record(%{scheduled() | "tries" => 3})
+    end
+
+    test "a leased job has a worker and a lease_until, and has been tried" do
+      assert {:error, "a leased job has a worker and a lease_until"} =
+               Job.check_record(Map.delete(leased(), "worker"))
+
+      assert {:error, "a leased job has a worker and a lease_until"} =
+               Job.check_record(%{leased() | "lease_until" => nil})
+
+      assert {:error, "a leased job has no run_at"} =
+               Job.check_record(Map.put(leased(), "run_at", 1_789_000_060_000))
+
+      assert {:error, "a leased job has tried at least once and at most its max_tries"} =
+               Job.check_record(%{leased() | "tries" => 0})
+
+      assert {:error, "a leased job has tried at least once and at most its max_tries"} =
+               Job.check_record(%{leased() | "tries" => 4})
+    end
+
+    test "a done or dead job has been tried and holds nothing else" do
+      for state <- ["done", "dead"] do
+        record = finished(state)
+
+        assert Job.check_record(%{record | "tries" => 0}) ==
+                 {:error, "a #{state} job has tried at least once and at most its max_tries"}
+
+        assert Job.check_record(Map.put(record, "worker", "bob")) ==
+                 {:error, "a #{state} job has no worker"}
+
+        assert Job.check_record(Map.put(record, "run_at", 1_789_000_060_000)) ==
+                 {:error, "a #{state} job has no run_at"}
+      end
+
+      # The reason a job was failed with belongs to no state in particular.
+      assert :ok = Job.check_record(Map.put(finished("dead"), "reason", "smtp said no"))
+      assert :ok = Job.check_record(Map.put(queued(), "reason", "smtp said no"))
+    end
+
+    test "the key names the job's id" do
+      assert {:error, "the key must name the job's id, 'j_' and a counter"} =
+               Job.check_record(Map.delete(queued(), "id"))
+
+      assert {:error, "the key must name the job's id, 'j_' and a counter"} =
+               Job.check_record(%{queued() | "id" => "seven"})
+
+      assert Job.record_key(queued()) == "j_1"
+      assert Job.record_key(%{}) == "?"
+    end
+
+    test "the fields keep the rules the API holds them to" do
+      assert {:error, "queue must be letters, digits, '-' or '_'"} =
+               Job.check_record(%{queued() | "queue" => "em ails"})
+
+      assert {:error, "payload must be a string"} =
+               Job.check_record(%{queued() | "payload" => 7})
+
+      assert {:error, "max_tries must be 1 to 100"} =
+               Job.check_record(%{queued() | "max_tries" => 0})
+
+      assert {:error, "backoff_ms must be 0 to 3600000"} =
+               Job.check_record(%{queued() | "backoff_ms" => 3_600_001})
+
+      assert {:error, "tries must be an integer"} =
+               Job.check_record(%{queued() | "tries" => "one"})
+
+      assert {:error, "created_at must be an instant in milliseconds"} =
+               Job.check_record(%{queued() | "created_at" => "yesterday"})
+
+      assert {:error, "state must be queued, scheduled, leased, done or dead"} =
+               Job.check_record(%{queued() | "state" => "sideways"})
+
+      assert {:error, "'state' is required"} = Job.check_record(Map.delete(queued(), "state"))
+      assert {:error, "'tries' is required"} = Job.check_record(Map.delete(queued(), "tries"))
+      assert {:error, "a record must be a JSON object"} = Job.check_record("j_1")
+    end
+
+    test "the shape the version before change 1 wrote is well-formed too" do
+      old =
+        queued()
+        |> Map.drop(["tries", "max_tries", "backoff_ms"])
+        |> Map.merge(%{"attempts" => 0, "max_attempts" => 3})
+
+      assert :ok = Job.check_record(old)
+
+      assert {:error, "'max_tries' is required"} =
+               Job.check_record(Map.delete(old, "max_attempts"))
+    end
+
+    test "every record the store writes is well-formed" do
+      for state <- [:queued, :scheduled, :leased, :done, :dead] do
+        record =
+          1
+          |> job()
+          |> Map.merge(shape(state))
+          |> Job.record()
+          |> encode_decode()
+
+        assert :ok = Job.check_record(record)
+      end
+    end
+  end
+
+  defp shape(:queued), do: %{state: :queued}
+  defp shape(:scheduled), do: %{state: :scheduled, run_at: 1_789_000_060_000}
+
+  defp shape(:leased),
+    do: %{state: :leased, tries: 1, worker: "bob", lease_until: 1_789_000_060_000}
+
+  defp shape(state), do: %{state: state, tries: 1}
+
+  defp encode_decode(record) do
+    {:ok, map} = record |> Jobq.Json.encode() |> Jobq.Json.decode()
+    map
+  end
+
+  defp queued do
+    %{
+      "id" => "j_1",
+      "queue" => "emails",
+      "state" => "queued",
+      "payload" => "hi",
+      "tries" => 0,
+      "max_tries" => 3,
+      "backoff_ms" => 0,
+      "created_at" => 1_789_000_000_000,
+      "updated_at" => 1_789_000_000_000
+    }
+  end
+
+  defp scheduled, do: %{queued() | "state" => "scheduled"} |> Map.put("run_at", 1_789_000_060_000)
+
+  defp leased do
+    queued()
+    |> Map.merge(%{"state" => "leased", "tries" => 1})
+    |> Map.merge(%{"worker" => "bob", "lease_until" => 1_789_000_060_000})
+  end
+
+  defp finished(state), do: %{queued() | "state" => state, "tries" => 1}
+
   defp job(n) do
     %Job{
       n: n,

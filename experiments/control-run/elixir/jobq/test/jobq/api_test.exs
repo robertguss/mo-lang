@@ -61,11 +61,11 @@ defmodule Jobq.ApiTest do
       assert {405, _error} = Api.request(port, "alice", "PUT", "/jobs/j_1/retry")
       assert {405, _error} = Api.request(port, "alice", "GET", "/queues/emails/lease")
       assert {405, _error} = Api.request(port, "alice", "POST", "/health")
+      assert {405, _error} = Api.request(port, "alice", "POST", "/queues")
     end
 
     test "a route that is not there is 404", %{port: port} do
       assert {404, _error} = Api.request(port, "alice", "GET", "/")
-      assert {404, _error} = Api.request(port, "alice", "GET", "/queues")
       assert {404, _error} = Api.request(port, "alice", "GET", "/jobs/j_1/nope")
       assert {404, _error} = Api.request(port, "alice", "GET", "/health/extra")
     end
@@ -324,6 +324,89 @@ defmodule Jobq.ApiTest do
 
       Clock.advance(clock, 1_000)
       assert {200, %{"queued" => 1, "scheduled" => 0}} = Api.request(port, "", "GET", "/health")
+    end
+  end
+
+  describe "GET /queues" do
+    test "an empty service has no queue", %{port: port} do
+      assert {200, %{"queues" => []}} = Api.request(port, "alice", "GET", "/queues")
+      assert {401, _error} = Api.request(port, "", "GET", "/queues")
+    end
+
+    test "every queue with a job, by name, with its counts per state", %{port: port} do
+      for queue <- ["reports", "emails", "digests"] do
+        assert {201, _job} =
+                 create(port, %{"queue" => queue, "payload" => "hi", "max_tries" => 2})
+      end
+
+      assert {201, _job} =
+               create(port, %{"queue" => "emails", "payload" => "second", "max_tries" => 1})
+
+      assert {200, leased} = Api.request(port, "bob", "POST", "/queues/emails/lease")
+      assert {200, _done} = Api.request(port, "bob", "POST", "/jobs/#{leased["id"]}/ack")
+
+      assert {200, %{"queues" => queues}} = Api.request(port, "alice", "GET", "/queues")
+
+      assert queues == [
+               %{
+                 "name" => "digests",
+                 "queued" => 1,
+                 "scheduled" => 0,
+                 "leased" => 0,
+                 "done" => 0,
+                 "dead" => 0
+               },
+               %{
+                 "name" => "emails",
+                 "queued" => 1,
+                 "scheduled" => 0,
+                 "leased" => 0,
+                 "done" => 1,
+                 "dead" => 0
+               },
+               %{
+                 "name" => "reports",
+                 "queued" => 1,
+                 "scheduled" => 0,
+                 "leased" => 0,
+                 "done" => 0,
+                 "dead" => 0
+               }
+             ]
+
+      # /health's totals are the sums of the rows.
+      assert {200, health} = Api.request(port, "", "GET", "/health")
+
+      for state <- ["queued", "scheduled", "leased", "done", "dead"] do
+        assert health[state] == queues |> Enum.map(& &1[state]) |> Enum.sum()
+      end
+    end
+
+    test "a queue whose last job is deleted leaves the list", %{port: port} do
+      assert {201, job} =
+               create(port, %{"queue" => "only", "payload" => "hi", "max_tries" => 1})
+
+      assert {200, %{"queues" => [%{"name" => "only"}]}} =
+               Api.request(port, "alice", "GET", "/queues")
+
+      assert {204, nil} = Api.request(port, "alice", "DELETE", "/jobs/#{job["id"]}")
+      assert {200, %{"queues" => []}} = Api.request(port, "alice", "GET", "/queues")
+    end
+  end
+
+  describe "a failure inside a request" do
+    test "a store that cannot be written is 503, and the next request is answered" do
+      # The first batch of the run does not reach the disk.
+      %{port: port} = Service.start(sweep_ms: 50, fault: fn batch -> batch == 1 end)
+
+      assert {200, before} = Api.request(port, "", "GET", "/health")
+      assert {503, %{"error" => _message}} = create(port)
+
+      # Nothing moved, and the id the refused create took is free again.
+      assert {200, ^before} = Api.request(port, "", "GET", "/health")
+      assert {200, %{"jobs" => []}} = Api.request(port, "alice", "GET", "/jobs")
+      assert {201, %{"id" => "j_1"}} = create(port)
+      assert {200, %{"queued" => 1}} = Api.request(port, "", "GET", "/health")
     end
   end
 

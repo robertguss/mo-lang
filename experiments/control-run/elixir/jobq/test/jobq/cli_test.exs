@@ -4,6 +4,7 @@ defmodule Jobq.CLITest do
   import ExUnit.CaptureIO, only: [with_io: 1, with_io: 2]
 
   alias Jobq.CLI
+  alias Jobq.Store
   alias Jobq.Test.Service
 
   test "a command that is not one of the four is a usage error" do
@@ -13,6 +14,8 @@ defmodule Jobq.CLITest do
     assert {2, _output} = run(["serve"])
     assert {2, _output} = run(["compact"])
     assert {2, _output} = run(["check", "one"])
+    assert {2, _output} = run(["verify"])
+    assert {2, _output} = run(["verify", "one", "two"])
     assert {2, _output} = run(["client", "127.0.0.1", "7900", "alice", "GET"])
   end
 
@@ -29,6 +32,49 @@ defmodule Jobq.CLITest do
     assert output =~ "cannot open"
     assert {1, _output} = run(["serve", "/proc/self/mem/nope"])
     assert {1, _output} = run(["check", "/proc/self/mem/nope", "script/check.script"])
+    assert {1, _output} = run(["verify", "/proc/self/mem/nope"])
+  end
+
+  describe "verify" do
+    test "a folder that opens is 0, with its counts and the next id" do
+      dir = Service.tmp_dir()
+      assert {0, output} = run(["verify", dir])
+      assert output =~ "0 jobs: queued 0, scheduled 0, leased 0, done 0, dead 0; next id j_1"
+
+      # The program's own fixture folders, the one the round 7 escript wrote
+      # and the one this version writes.
+      assert {0, output} = run(["verify", "test/fixtures/round7/data"])
+      assert output =~ "5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7"
+
+      assert {0, _output} = run(["check", dir, "script/check.script"])
+      assert {0, output} = run(["verify", dir])
+      assert output =~ "3 jobs: queued 0, scheduled 1, leased 1, done 1, dead 0; next id j_6"
+    end
+
+    test "a record that is not well-formed is 1, named with its key and its rule" do
+      dir = ill_formed_dir()
+
+      assert {1, output} = run(["verify", dir])
+      assert output =~ "jobq: #{dir}: record j_2: a leased job has a worker and a lease_until"
+
+      # And the same folder is refused by everything else that opens one.
+      assert {1, output} = run(["serve", dir])
+      assert output =~ "record j_2:"
+      assert {1, output} = run(["compact", dir])
+      assert output =~ "record j_2:"
+      assert {1, _output} = run(["check", dir, "script/check.script"])
+
+      # Nothing was rewritten: the folder is as it was.
+      assert File.read!(Store.log_path(dir)) =~ ~s("id":"j_2")
+    end
+
+    test "a torn last line is still cut off rather than refused" do
+      dir = Service.tmp_dir()
+      File.write!(Store.log_path(dir), well_formed() <> ~s({"id":"j_2","queue":"ema))
+
+      assert {0, output} = run(["verify", dir])
+      assert output =~ "1 jobs: queued 1,"
+    end
   end
 
   test "a port that cannot be bound is 1" do
@@ -95,6 +141,26 @@ defmodule Jobq.CLITest do
              ])
 
     assert String.trim(output) == "204"
+  end
+
+  defp ill_formed_dir do
+    dir = Service.tmp_dir()
+
+    File.write!(
+      Store.log_path(dir),
+      well_formed() <>
+        ~s({"id":"j_2","queue":"emails","state":"leased","payload":"held","tries":1,) <>
+        ~s("max_tries":3,"backoff_ms":0,"created_at":1789000000000,) <>
+        ~s("updated_at":1789000000000}\n)
+    )
+
+    dir
+  end
+
+  defp well_formed do
+    ~s({"id":"j_1","queue":"emails","state":"queued","payload":"hi","tries":0,) <>
+      ~s("max_tries":3,"backoff_ms":0,"created_at":1789000000000,) <>
+      ~s("updated_at":1789000000000}\n)
   end
 
   defp run(argv) do

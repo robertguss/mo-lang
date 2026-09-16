@@ -13,6 +13,10 @@ defmodule Jobq.Job do
   life. `from_record/1` also reads the shape the version before this change
   wrote: `attempts` and `max_attempts` are `tries` and `max_tries`, and a
   record with no `backoff_ms` has none.
+
+  `check_record/1` is the rule a record on the disk must meet before the
+  service will serve the folder it is in: each field's own rule, and the state
+  the record claims agreeing with the fields that state carries.
   """
 
   @enforce_keys [:n, :queue, :payload, :max_tries, :state, :created_at, :updated_at]
@@ -307,4 +311,181 @@ defmodule Jobq.Job do
   defp fetch_run_at(_map, _state), do: {:ok, nil}
 
   defp optional(map, key), do: Map.get(map, key)
+
+  @doc """
+  The rule a store record breaks, or `:ok` when it is well-formed.
+
+  One function over the raw record, the whole rule in one place: the key names
+  the job's id, every field keeps its own rule under the current name or the
+  one the version before change 1 wrote, and the state says which of `run_at`,
+  `worker` and `lease_until` the record must carry and which it must not.
+
+      queued     tries < max_tries; no run_at, worker, lease_until
+      scheduled  tries < max_tries; run_at present; no worker, lease_until
+      leased     1 <= tries <= max_tries; worker and lease_until; no run_at
+      done       1 <= tries <= max_tries; no run_at, worker, lease_until
+      dead       1 <= tries <= max_tries; no run_at, worker, lease_until
+
+  A `reason` belongs to no state in particular: a job carries the one it was
+  last failed with until a retry drops it.
+  """
+  @spec check_record(term()) :: :ok | {:error, String.t()}
+  def check_record(%{} = map) do
+    with :ok <- check_key(map),
+         {:ok, state} <- check_state(map),
+         :ok <- check_required(map, "queue", &queue/1),
+         :ok <- check_required(map, "payload", &payload/1),
+         :ok <- check_either(map, "max_tries", "max_attempts", &max_tries/1),
+         :ok <- check_tries(map),
+         :ok <- check_present(map, "backoff_ms", &backoff_ms/1),
+         :ok <- check_required(map, "created_at", &instant(&1, "created_at")),
+         :ok <- check_required(map, "updated_at", &instant(&1, "updated_at")),
+         :ok <- check_present(map, "reason", &reason/1) do
+      check_shape(map, state)
+    end
+  end
+
+  def check_record(_other), do: {:error, "a record must be a JSON object"}
+
+  @doc """
+  The key a record is filed under: its `id`, or `?` when it does not have one
+  a message can name.
+  """
+  @spec record_key(term()) :: String.t()
+  def record_key(%{"id" => id}) when is_binary(id) and byte_size(id) <= 64, do: id
+  def record_key(_other), do: "?"
+
+  defp check_key(map) do
+    with {:ok, id} when is_binary(id) <- fetch(map, "id"),
+         {:ok, _n} <- parse_id(id) do
+      :ok
+    else
+      _ -> {:error, "the key must name the job's id, 'j_' and a counter"}
+    end
+  end
+
+  defp check_state(map) do
+    case fetch(map, "state") do
+      {:ok, name} ->
+        case parse_state(name) do
+          {:ok, state} -> {:ok, state}
+          :error -> {:error, "state must be queued, scheduled, leased, done or dead"}
+        end
+
+      :error ->
+        {:error, "'state' is required"}
+    end
+  end
+
+  defp check_required(map, key, rule) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> checked(rule.(value))
+      :error -> {:error, "'#{key}' is required"}
+    end
+  end
+
+  defp check_either(map, key, old_key, rule) do
+    case fetch_either(map, key, old_key) do
+      {:ok, value} -> checked(rule.(value))
+      :error -> {:error, "'#{key}' is required"}
+    end
+  end
+
+  # A field a record may leave out: the old shape has no `backoff_ms`, and a
+  # job that was never failed has no `reason`.
+  defp check_present(map, key, rule) do
+    case Map.fetch(map, key) do
+      {:ok, nil} -> :ok
+      {:ok, value} -> checked(rule.(value))
+      :error -> :ok
+    end
+  end
+
+  defp checked({:ok, _value}), do: :ok
+  defp checked({:error, message}), do: {:error, message}
+
+  defp check_tries(map) do
+    case fetch_either(map, "tries", "attempts") do
+      {:ok, tries} when is_integer(tries) and tries >= 0 -> :ok
+      {:ok, tries} when is_integer(tries) -> {:error, "tries must be 0 or more"}
+      {:ok, _other} -> {:error, "tries must be an integer"}
+      :error -> {:error, "'tries' is required"}
+    end
+  end
+
+  defp instant(value, _name) when is_integer(value), do: {:ok, value}
+  defp instant(_value, name), do: {:error, "#{name} must be an instant in milliseconds"}
+
+  defp check_shape(map, state) do
+    with :ok <- check_count(map, state) do
+      case state do
+        :queued -> without(map, ["run_at", "worker", "lease_until"], "queued")
+        :scheduled -> with_run_at(map)
+        :leased -> with_lease(map)
+        :done -> without(map, ["run_at", "worker", "lease_until"], "done")
+        :dead -> without(map, ["run_at", "worker", "lease_until"], "dead")
+      end
+    end
+  end
+
+  # A job that has not been leased yet has a try left; a job that has been
+  # leased has used at least one and never more than its max.
+  defp check_count(map, state) do
+    tries = count(map, "tries", "attempts")
+    max = count(map, "max_tries", "max_attempts")
+
+    cond do
+      state in [:queued, :scheduled] and tries >= max ->
+        {:error, "a #{state_name(state)} job has tried fewer times than its max_tries"}
+
+      state in [:leased, :done, :dead] and (tries < 1 or tries > max) ->
+        {:error, "a #{state_name(state)} job has tried at least once and at most its max_tries"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp count(map, key, old_key) do
+    case fetch_either(map, key, old_key) do
+      {:ok, value} when is_integer(value) -> value
+      _other -> 0
+    end
+  end
+
+  defp with_run_at(map) do
+    case present(map, "run_at") do
+      {:ok, run_at} when is_integer(run_at) ->
+        without(map, ["worker", "lease_until"], "scheduled")
+
+      {:ok, _other} ->
+        {:error, "a scheduled job's run_at is an instant in milliseconds"}
+
+      :error ->
+        {:error, "a scheduled job has a run_at"}
+    end
+  end
+
+  defp with_lease(map) do
+    with {:ok, worker} when is_binary(worker) <- present(map, "worker"),
+         {:ok, until} when is_integer(until) <- present(map, "lease_until") do
+      without(map, ["run_at"], "leased")
+    else
+      _ -> {:error, "a leased job has a worker and a lease_until"}
+    end
+  end
+
+  defp present(map, key) do
+    case Map.fetch(map, key) do
+      {:ok, nil} -> :error
+      other -> other
+    end
+  end
+
+  defp without(map, keys, state) do
+    case Enum.find(keys, fn key -> match?({:ok, _value}, present(map, key)) end) do
+      nil -> :ok
+      key -> {:error, "a #{state} job has no #{key}"}
+    end
+  end
 end

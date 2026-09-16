@@ -145,10 +145,10 @@ defmodule Jobq.DurabilityTest do
 
   describe "under faults" do
     test "every answer is right or a 503, the store keeps its word, and the work finishes" do
-      # The tenth and the fortieth write of the run fail, counted across the
-      # store's restarts. A write that fails takes the store down; the tree
-      # brings the queue back on the log, which is the state the disk agrees
-      # with, and the callers of that batch are told 503.
+      # The tenth and the fortieth write of the run fail. A write that fails
+      # leaves the store standing and moves it to a new epoch; the queue reads
+      # its jobs back off the log, which is the state the disk agrees with, and
+      # the callers of that batch are told 503.
       writes = :counters.new(1, [])
 
       fault = fn _batch ->
@@ -214,6 +214,98 @@ defmodule Jobq.DurabilityTest do
       assert Map.get(after_retry, "leased", 0) == 0
       assert :ok = Never.check(dir)
     end
+  end
+
+  describe "a folder that cannot be written" do
+    test "every write is 503, the reads go on, and the writes resume on their own" do
+      %{ref: ref, dir: dir} = Service.start()
+      on_exit(fn -> writable(dir) end)
+
+      assert {201, _job} = Queue.create(ref, "emails", "one", 3)
+      assert {200, health} = Queue.health(ref)
+
+      read_only(dir)
+
+      # Every write is refused, and refused again: nothing an operator does is
+      # asked for in between.
+      assert {:error, :store} = Queue.create(ref, "emails", "two", 3)
+      assert {:error, :store} = Queue.lease(ref, "emails", 60_000, "bob")
+      assert {:error, :store} = Queue.delete(ref, "j_1")
+
+      # The reads are answered all the while, and the counts have not moved.
+      assert {200, job} = Queue.get(ref, "j_1")
+      assert state_of(job) == "queued"
+      assert {200, ^health} = Queue.health(ref)
+      assert states(ref) == %{"j_1" => "queued"}
+
+      # And the log is what it was before the first refusal.
+      assert [created] = records(dir)
+      assert created["id"] == "j_1"
+
+      writable(dir)
+
+      # No restart: the next write goes through, and the id the refused create
+      # took is free again.
+      assert {201, second} = Queue.create(ref, "emails", "three", 3)
+      assert id_of(second) == "j_2"
+      assert {200, leased} = Queue.lease(ref, "emails", 60_000, "bob")
+      assert id_of(leased) == "j_1"
+      assert [_created, _second, _leased] = records(dir)
+      assert :ok = Never.check(dir)
+    end
+
+    test "under load it goes unwritable and back with no restart and no lie" do
+      %{ref: ref, dir: dir, pid: pid} = Service.start()
+      on_exit(fn -> writable(dir) end)
+
+      producers =
+        for producer <- 1..8 do
+          Task.async(fn ->
+            for round <- 1..60 do
+              answer = Queue.create(ref, "emails", "#{producer}-#{round}", 3)
+              Process.sleep(2)
+              answer
+            end
+          end)
+        end
+
+      Process.sleep(30)
+      read_only(dir)
+      Process.sleep(60)
+      writable(dir)
+
+      answers = producers |> Task.await_many(60_000) |> List.flatten()
+
+      # Every answer is a 201 whose record is on the disk, or a 503; the ids
+      # the 503s took are free again, so the log is exactly the 201s.
+      assert Enum.all?(answers, fn answer ->
+               match?({201, _job}, answer) or answer == {:error, :store}
+             end)
+
+      assert Enum.any?(answers, &(&1 == {:error, :store}))
+
+      created = for {201, job} <- answers, into: MapSet.new(), do: id_of(job)
+      on_disk = records(dir) |> Enum.map(& &1["id"]) |> MapSet.new()
+      assert created == on_disk
+
+      # No restart, and the next write goes through.
+      assert Process.alive?(pid)
+      assert {201, _job} = Queue.create(ref, "emails", "after", 3)
+      assert {200, health} = Queue.health(ref)
+      assert field(health, "queued") == MapSet.size(created) + 1
+      assert :ok = Never.check(dir)
+    end
+  end
+
+  defp read_only(dir) do
+    File.chmod!(Store.log_path(dir), 0o444)
+    File.chmod!(dir, 0o555)
+  end
+
+  defp writable(dir) do
+    _ = File.chmod(dir, 0o755)
+    _ = File.chmod(Store.log_path(dir), 0o644)
+    :ok
   end
 
   # A client that is told 503 tries again, as a producer or a worker would.

@@ -13,6 +13,10 @@
 # Three: a folder the version before change 1 served, from
 # test/fixtures/round7, opened and compacted with no tool and no old name
 # left in the log.
+#
+# Four: the folder checked at the door — `verify` on the folders the run
+# wrote, and a hand-written record in a state the API could never produce
+# refused by serve, compact, and verify alike.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -47,6 +51,11 @@ expect_body() {
   grep -q -- "$1" "$work/out" || fail "expected '$1' in: $(cat "$work/out")"
 }
 
+# What a refusal says, which the commands write to stderr.
+expect_error() {
+  grep -q -- "$1" "$work/err" || fail "expected '$1' in: $(cat "$work/err")"
+}
+
 mix escript.build >/dev/null
 
 # One: the transcript.
@@ -77,6 +86,8 @@ expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /jobs/j_1/ack
 expect_body '"state":"done"'
 expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /health
 expect_body '"done":1'
+expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /queues
+expect_body '{"name":"emails","queued":0,"scheduled":0,"leased":0,"done":1,"dead":0}'
 
 # A job with a delay waits in scheduled, and nothing leases it; a retry of a
 # job that is not dead is refused.
@@ -89,6 +100,8 @@ expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs/j_1/retry
 expect_body '"error":"job is not dead"'
 expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /health
 expect_body '"scheduled":1'
+expect_status 0 ./jobq client 127.0.0.1 "$port" anyone GET /queues
+expect_body '{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0}'
 
 kill "$served"
 served=""
@@ -102,6 +115,10 @@ grep -q '"max_tries"' "$work/served/jobq.log" || fail "the log does not use the 
 expect_status 0 ./jobq compact "$work/served"
 expect_body "2 job(s)"
 [ "$(grep -c '' "$work/served/jobq.log")" = "2" ] || fail "expected two lines after compaction"
+
+# `verify` reads the same folder without serving it.
+expect_status 0 ./jobq verify "$work/served"
+expect_body "2 jobs: queued 0, scheduled 1, leased 0, done 1, dead 0; next id j_3"
 
 expect_status 0 ./jobq check "$work/served" script/check.script
 expect_body '< 201 {"id":"j_3"'
@@ -117,14 +134,46 @@ expect_body "5 job(s)"
 ! grep -q 'attempts' "$work/round7/jobq.log" || fail "compaction left an old name behind"
 grep -q '"backoff_ms":0' "$work/round7/jobq.log" || fail "compaction did not write a backoff"
 
+expect_status 0 ./jobq verify "$work/round7"
+expect_body "5 jobs: queued 1, scheduled 0, leased 2, done 1, dead 1; next id j_7"
+
 expect_status 0 ./jobq check "$work/round7" script/check.script
 expect_body '< 201 {"id":"j_7"'
+
+# Four: the folder checked at the door.
+# A record in a state the API can never produce: a leased job with no worker.
+mkdir "$work/ill"
+{
+  printf '%s' '{"id":"j_1","queue":"emails","state":"queued","payload":"hi","tries":0,'
+  printf '%s\n' '"max_tries":3,"backoff_ms":0,"created_at":1789000000000,"updated_at":1789000000000}'
+  printf '%s' '{"id":"j_2","queue":"emails","state":"leased","payload":"held","tries":1,'
+  printf '%s\n' '"max_tries":3,"backoff_ms":0,"created_at":1789000000000,"updated_at":1789000000000}'
+} >"$work/ill/jobq.log"
+
+expect_status 1 ./jobq verify "$work/ill"
+expect_error "record j_2: a leased job has a worker and a lease_until"
+expect_status 1 ./jobq serve "$work/ill" --port "$port"
+expect_error "record j_2:"
+expect_status 1 ./jobq compact "$work/ill"
+expect_error "record j_2:"
+[ "$(grep -c '' "$work/ill/jobq.log")" = "2" ] || fail "the refused folder was rewritten"
+
+# A torn last line is still cut off rather than refused.
+cp "$work/ill/jobq.log" "$work/ill/torn"
+head -1 "$work/ill/jobq.log" >"$work/ill/jobq.log.new"
+printf '%s' '{"id":"j_3","queue":"ema' >>"$work/ill/jobq.log.new"
+mv "$work/ill/jobq.log.new" "$work/ill/jobq.log"
+rm "$work/ill/torn"
+expect_status 0 ./jobq verify "$work/ill"
+expect_body "1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_2"
 
 # The exit codes: 2 for a usage error, 1 for a directory that cannot be opened,
 # a port that cannot be bound, or a service that cannot be reached.
 expect_status 2 ./jobq
 expect_status 2 ./jobq dance
 expect_status 2 ./jobq serve "$work/served" --port seven
+expect_status 2 ./jobq verify
+expect_status 1 ./jobq verify /proc/self/mem/nope
 expect_status 1 ./jobq compact /proc/self/mem/nope
 expect_status 1 ./jobq client 127.0.0.1 "$port" alice GET /health
 
