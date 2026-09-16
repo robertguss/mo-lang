@@ -49,6 +49,8 @@ func (a *API) match(path string) (route, bool) {
 		return route{methods: map[string]handler{"POST": a.fail}, arg: seg[1]}, true
 	case len(seg) == 3 && seg[0] == "jobs" && seg[2] == "retry":
 		return route{methods: map[string]handler{"POST": a.retry}, arg: seg[1]}, true
+	case len(seg) == 1 && seg[0] == "queues":
+		return route{methods: map[string]handler{"GET": a.queues}}, true
 	case len(seg) == 3 && seg[0] == "queues" && seg[2] == "lease":
 		return route{methods: map[string]handler{"POST": a.lease}, arg: seg[1]}, true
 	}
@@ -56,13 +58,26 @@ func (a *API) match(path string) (route, bool) {
 }
 
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	status, body := a.respond(w, r)
+	writeJSON(w, status, body)
+}
+
+// respond handles one request and returns what to write. Whatever goes
+// wrong inside it costs this request and nothing else: a panic is caught
+// here, after the queue's own defers have released the lock and undone the
+// moves, so the next request is answered as if this one had never arrived.
+func (a *API) respond(w http.ResponseWriter, r *http.Request) (status int, body any) {
+	defer func() {
+		if v := recover(); v != nil {
+			status, body = http.StatusServiceUnavailable, errorBody("the request could not be completed")
+		}
+	}()
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	defer cancel()
 	r = r.WithContext(ctx)
 	rt, ok := a.match(r.URL.Path)
 	if !ok {
-		writeJSON(w, http.StatusNotFound, errorBody("no such route"))
-		return
+		return http.StatusNotFound, errorBody("no such route")
 	}
 	h, ok := rt.methods[r.Method]
 	if !ok {
@@ -72,23 +87,21 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		sort.Strings(allowed)
 		w.Header().Set("Allow", strings.Join(allowed, ", "))
-		writeJSON(w, http.StatusMethodNotAllowed, errorBody("method not allowed"))
-		return
+		return http.StatusMethodNotAllowed, errorBody("method not allowed")
 	}
 	token := ""
 	if !rt.public {
 		if token, ok = bearer(r); !ok {
-			writeJSON(w, http.StatusUnauthorized, errorBody("missing or empty bearer token"))
-			return
+			return http.StatusUnauthorized, errorBody("missing or empty bearer token")
 		}
 	}
 	// The handler returns only after the queue's change is durable, so the
 	// response below is never written before its record.
 	status, body, err := h(r, rt.arg, token)
 	if err != nil {
-		status, body = errorStatus(err), errorBody(err.Error())
+		return errorStatus(err), errorBody(err.Error())
 	}
-	writeJSON(w, status, body)
+	return status, body
 }
 
 func errorBody(msg string) map[string]string { return map[string]string{"error": msg} }
@@ -103,10 +116,10 @@ func errorStatus(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, ErrConflict):
 		return http.StatusConflict
-	case errors.Is(err, ErrStore), errors.Is(err, ErrBusy):
-		return http.StatusServiceUnavailable
 	}
-	return http.StatusInternalServerError
+	// The store, a queue that did not answer in time, and anything the
+	// implementation did not expect are all the service's failure: 503.
+	return http.StatusServiceUnavailable
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
@@ -297,6 +310,14 @@ func (a *API) retry(r *http.Request, arg, _ string) (int, any, error) {
 		return 0, nil, err
 	}
 	return http.StatusOK, jobView(j), nil
+}
+
+func (a *API) queues(r *http.Request, _, _ string) (int, any, error) {
+	qs, err := a.q.Queues(r.Context())
+	if err != nil {
+		return 0, nil, err
+	}
+	return http.StatusOK, map[string][]QueueCounts{"queues": qs}, nil
 }
 
 func (a *API) health(r *http.Request, _, _ string) (int, any, error) {

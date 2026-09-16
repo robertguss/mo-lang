@@ -89,6 +89,9 @@ func (q *Queue) applyRecord(rec record) error {
 		if rec.Job == nil {
 			return errors.New("put without a job")
 		}
+		if err := wellFormed(rec.Job.ID, *rec.Job); err != nil {
+			return err
+		}
 		j, err := jobFromView(*rec.Job)
 		if err != nil {
 			return err
@@ -320,6 +323,17 @@ func (t *tx) commit(changes ...change) error {
 	return errors.Join(errs...)
 }
 
+// commitReads writes the look's moves if it can. A read is answered even
+// while the store refuses writes: the moves are undone, the read sees the
+// state before them, and the next look makes them again. So an unwritable
+// store costs the writes and nothing else.
+func (t *tx) commitReads() error {
+	if err := t.commit(); err != nil && !errors.Is(err, ErrStore) {
+		return err
+	}
+	return nil
+}
+
 // end releases the lock; moves never committed are undone first.
 func (t *tx) end() {
 	t.undo()
@@ -358,7 +372,7 @@ func (q *Queue) Get(ctx context.Context, id uint64) (Job, error) {
 		return Job{}, err
 	}
 	defer t.end()
-	if err := t.commit(); err != nil {
+	if err := t.commitReads(); err != nil {
 		return Job{}, err
 	}
 	j := q.jobs[id]
@@ -385,7 +399,7 @@ func (q *Queue) List(ctx context.Context, queue, state string) ([]Job, error) {
 		return nil, err
 	}
 	defer t.end()
-	if err := t.commit(); err != nil {
+	if err := t.commitReads(); err != nil {
 		return nil, err
 	}
 	out := []Job{}
@@ -412,9 +426,9 @@ func (q *Queue) Delete(ctx context.Context, id uint64) error {
 	j := q.jobs[id]
 	switch {
 	case j == nil:
-		return errors.Join(t.commit(), ErrNotFound)
+		return errors.Join(t.commitReads(), ErrNotFound)
 	case j.State == Leased:
-		return errors.Join(t.commit(), fmt.Errorf("%w: job is leased", ErrConflict))
+		return errors.Join(t.commitReads(), fmt.Errorf("%w: job is leased", ErrConflict))
 	}
 	return t.commit(change{old: j})
 }
@@ -439,7 +453,7 @@ func (q *Queue) Lease(ctx context.Context, queue, worker string, leaseMS int64) 
 		heap.Pop(h)
 	}
 	if h == nil || h.Len() == 0 {
-		return Job{}, false, t.commit()
+		return Job{}, false, t.commitReads()
 	}
 	old := q.jobs[(*h)[0]]
 	n := *old
@@ -490,7 +504,7 @@ func (q *Queue) Ack(ctx context.Context, id uint64, worker string) (Job, error) 
 	defer t.end()
 	old, err := q.held(id, worker, t.now)
 	if err != nil {
-		return Job{}, errors.Join(t.commit(), err)
+		return Job{}, errors.Join(t.commitReads(), err)
 	}
 	n := *old
 	n.State, n.Worker, n.LeaseUntil, n.UpdatedAt = Done, "", time.Time{}, t.now
@@ -514,7 +528,7 @@ func (q *Queue) Fail(ctx context.Context, id uint64, worker, reason string) (Job
 	defer t.end()
 	old, err := q.held(id, worker, t.now)
 	if err != nil {
-		return Job{}, errors.Join(t.commit(), err)
+		return Job{}, errors.Join(t.commitReads(), err)
 	}
 	n := *old
 	n.Reason = &reason
@@ -535,9 +549,9 @@ func (q *Queue) Retry(ctx context.Context, id uint64) (Job, error) {
 	old := q.jobs[id]
 	switch {
 	case old == nil:
-		return Job{}, errors.Join(t.commit(), ErrNotFound)
+		return Job{}, errors.Join(t.commitReads(), ErrNotFound)
 	case old.State != Dead:
-		return Job{}, errors.Join(t.commit(), fmt.Errorf("%w: %s is %s, not dead", ErrConflict, formatID(id), old.State))
+		return Job{}, errors.Join(t.commitReads(), fmt.Errorf("%w: %s is %s, not dead", ErrConflict, formatID(id), old.State))
 	}
 	n := *old
 	n.State, n.Tries, n.Reason, n.UpdatedAt = Queued, 0, nil, t.now
@@ -549,6 +563,56 @@ func (q *Queue) Retry(ctx context.Context, id uint64) (Job, error) {
 	return got, ensureRetried(got)
 }
 
+// QueueCounts is one queue's jobs by state in GET /queues.
+type QueueCounts struct {
+	Name      string `json:"name"`
+	Queued    int    `json:"queued"`
+	Scheduled int    `json:"scheduled"`
+	Leased    int    `json:"leased"`
+	Done      int    `json:"done"`
+	Dead      int    `json:"dead"`
+}
+
+// Queues counts the jobs of every queue that holds at least one, by name. A
+// queue whose last job is deleted is not in the list, and the sums of the
+// counts are what Health reports.
+func (q *Queue) Queues(ctx context.Context) ([]QueueCounts, error) {
+	t, err := q.begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer t.end()
+	if err := t.commitReads(); err != nil {
+		return nil, err
+	}
+	by := map[string]*QueueCounts{}
+	for _, j := range q.jobs {
+		c := by[j.Queue]
+		if c == nil {
+			c = &QueueCounts{Name: j.Queue}
+			by[j.Queue] = c
+		}
+		switch j.State {
+		case Queued:
+			c.Queued++
+		case Scheduled:
+			c.Scheduled++
+		case Leased:
+			c.Leased++
+		case Done:
+			c.Done++
+		case Dead:
+			c.Dead++
+		}
+	}
+	out := make([]QueueCounts, 0, len(by))
+	for _, c := range by {
+		out = append(out, *c)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
 // Health counts jobs by state.
 func (q *Queue) Health(ctx context.Context) (Health, error) {
 	t, err := q.begin(ctx)
@@ -556,7 +620,7 @@ func (q *Queue) Health(ctx context.Context) (Health, error) {
 		return Health{}, err
 	}
 	defer t.end()
-	if err := t.commit(); err != nil {
+	if err := t.commitReads(); err != nil {
 		return Health{}, err
 	}
 	return Health{

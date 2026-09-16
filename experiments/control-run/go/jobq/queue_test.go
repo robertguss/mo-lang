@@ -296,8 +296,8 @@ func TestScheduledMoveIsUndoneWhenTheStoreFails(t *testing.T) {
 	before := snapshot(q)
 	clock.Advance(2 * time.Second)
 	f.fail = func(op string) bool { return op == "sync" }
-	if _, err := q.Get(ctx(t), 1); !errors.Is(err, ErrStore) {
-		t.Errorf("Get, which must write the move = %v", err)
+	if j, err := q.Get(ctx(t), 1); err != nil || j.State != Scheduled {
+		t.Errorf("Get, whose move cannot be written = %+v, %v; want the job still scheduled", j, err)
 	}
 	if got := snapshot(q); !reflect.DeepEqual(got, before) {
 		t.Errorf("the queue changed: %v", got)
@@ -541,8 +541,8 @@ func TestNothingChangesWhenTheStoreFails(t *testing.T) {
 	if _, _, err := q.Lease(ctx(t), "a", "w2", 100); !errors.Is(err, ErrStore) {
 		t.Errorf("Lease = %v", err)
 	}
-	if _, err := q.Get(ctx(t), 1); !errors.Is(err, ErrStore) {
-		t.Errorf("Get, which must write the run-out lease = %v", err)
+	if j, err := q.Get(ctx(t), 1); err != nil || j.State != Leased {
+		t.Errorf("Get, whose run-out lease cannot be written = %+v, %v; want the job still leased", j, err)
 	}
 	if got := snapshot(q); len(got) != len(before) || got["j_1"].State != Leased {
 		t.Errorf("queue changed: %v", got)
@@ -565,26 +565,30 @@ func TestBusyQueueTimesOut(t *testing.T) {
 	}
 }
 
-// Each invariant is tripped by a store record the queue accepts on replay.
-func TestInvariantsTripThroughStoreRecords(t *testing.T) {
+// Every rule of change 2 is tripped by a hand-written record, and the
+// folder is refused at open with the record's key and the rule.
+func TestIllFormedRecordsRefuseTheFolder(t *testing.T) {
 	const at = "2026-09-14T00:00:00.000Z"
 	for want, job := range map[string]string{
-		"exactly when it is leased":           `{"id":"j_1","queue":"a","state":"leased","payload":"","tries":1,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
-		"below max_tries":                     `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"run_at exactly when it is scheduled": `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"run_at is after updated_at":          `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","run_at":"` + at + `"}`,
-		"backoff_ms, and worker are valid":    `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":0,"max_tries":3,"backoff_ms":3600001,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"scheduled job has tries below":       `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","run_at":"2026-09-15T00:00:00.000Z"}`,
-		"are valid":                           `{"id":"j_1","queue":"a b","state":"queued","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
-		"created_at <= updated_at":            `{"id":"j_1","queue":"a","state":"done","payload":"","tries":1,"max_tries":3,"created_at":"2026-09-15T00:00:00.000Z","updated_at":"` + at + `"}`,
+		"a leased job has a worker":                `{"id":"j_1","queue":"a","state":"leased","payload":"","tries":1,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
+		"a queued job has tries from 0 below":      `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"a scheduled job has a run_at":             `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"a scheduled job's run_at is after":        `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","run_at":"` + at + `"}`,
+		"backoff_ms is 0 to 3_600_000":             `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":0,"max_tries":3,"backoff_ms":3600001,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"a scheduled job has tries from 0 below":   `{"id":"j_1","queue":"a","state":"scheduled","payload":"","tries":3,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","run_at":"2026-09-15T00:00:00.000Z"}`,
+		"queue is 1 to 64 bytes":                   `{"id":"j_1","queue":"a b","state":"queued","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"created_at is at or before updated_at":    `{"id":"j_1","queue":"a","state":"done","payload":"","tries":1,"max_tries":3,"created_at":"2026-09-15T00:00:00.000Z","updated_at":"` + at + `"}`,
+		"a done job has tries from 1 to max_tries": `{"id":"j_1","queue":"a","state":"done","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `"}`,
+		"a queued job has no lease_until":          `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":0,"max_tries":3,"created_at":"` + at + `","updated_at":"` + at + `","lease_until":"` + at + `"}`,
+		"max_tries is 1 to 100":                    `{"id":"j_1","queue":"a","state":"queued","payload":"","tries":0,"max_tries":0,"created_at":"` + at + `","updated_at":"` + at + `"}`,
 	} {
 		dir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(dir, logName), []byte(lineFor(`{"op":"put","job":`+job+`}`)), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		_, _, err := openQueue(dir, realClock{})
-		if err == nil || !strings.Contains(err.Error(), "invariant failed") || !strings.Contains(err.Error(), want) {
-			t.Errorf("replay err = %v, want invariant %q", err, want)
+		if err == nil || !strings.HasPrefix(err.Error(), dir+": record j_1: ") || !strings.Contains(err.Error(), want) {
+			t.Errorf("open err = %v, want %q", err, want)
 		}
 	}
 }

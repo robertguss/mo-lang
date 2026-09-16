@@ -56,5 +56,12 @@ prod POST /jobs/j_9/retry
 prod GET /jobs
 - GET /health
 prod GET /jobs/j_2
+# /queues: every queue that holds a job, and a delete that empties one
+prod GET /queues
+- GET /queues
+prod POST /jobs {"queue":"only","payload":"alone","max_tries":1}
+prod GET /queues
+prod DELETE /jobs/j_7
+prod GET /queues
 prod PUT /jobs
 prod GET /nope

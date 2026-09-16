@@ -4,7 +4,10 @@
 # 2: `jobq serve` and `jobq client` as separate processes: create, lease,
 # stop with SIGTERM, start again, and the lease is still there; then compact.
 # 3: a folder the previous version served (testdata/v1, written before the
-# tries rename) opens, and compact leaves no old name in its log.
+# tries rename) opens, and compact leaves no old name in its log. 4: `jobq
+# verify` on the folders the run leaves behind, and serve, compact, and
+# verify all refusing testdata/ill, whose second record is a leased job with
+# no worker. 5: GET /queues through the served process.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 tmp="$(mktemp -d)"
@@ -75,5 +78,21 @@ fi
 serve "$tmp/old"
 expect 200 '"state":"queued"' prod GET /jobs/j_6
 expect 200 '"scheduled":1' - GET /health
+expect 200 '{"name":"push","queued":3,"scheduled":1,"leased":0,"done":0,"dead":0}' prod GET /queues
+expect 401 'error' - GET /queues
 stop
+
+# 4: verify on the folders this run leaves behind, and the ill-formed one.
+timeout 30 "$jobq" verify "$tmp/serve" | grep -q '^1 jobs: queued 0, scheduled 0, leased 0, done 1, dead 0; next id j_2$' || {
+  echo "check.sh: verify of the served folder printed the wrong line" >&2; exit 1; }
+timeout 30 "$jobq" verify "$tmp/old" > /dev/null
+mkdir "$tmp/ill"
+cp "$here/testdata/ill/jobq.log" "$tmp/ill/jobq.log"
+want="jobq: $tmp/ill: record j_2: a leased job has a worker"
+for cmd in verify serve compact; do
+  if out="$(timeout 30 "$jobq" "$cmd" "$tmp/ill" 2>&1)"; then
+    echo "check.sh: jobq $cmd served an ill-formed folder" >&2; exit 1
+  fi
+  [ "$out" = "$want" ] || { echo "check.sh: jobq $cmd said '$out', want '$want'" >&2; exit 1; }
+done
 echo "check.sh: ok"

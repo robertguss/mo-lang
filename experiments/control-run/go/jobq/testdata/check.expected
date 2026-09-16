@@ -141,6 +141,23 @@
 > prod GET /jobs/j_2
 404
 {"error":"no such job"}
+> prod GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"later","queued":0,"scheduled":0,"leased":2,"done":0,"dead":0},{"name":"sms","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> - GET /queues
+401
+{"error":"missing or empty bearer token"}
+> prod POST /jobs {"queue":"only","payload":"alone","max_tries":1}
+201
+{"id":"j_7","queue":"only","state":"queued","payload":"alone","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-14T00:00:08.500Z","updated_at":"2026-09-14T00:00:08.500Z"}
+> prod GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"later","queued":0,"scheduled":0,"leased":2,"done":0,"dead":0},{"name":"only","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"sms","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> prod DELETE /jobs/j_7
+204
+> prod GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"later","queued":0,"scheduled":0,"leased":2,"done":0,"dead":0},{"name":"sms","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
 > prod PUT /jobs
 405
 {"error":"method not allowed"}

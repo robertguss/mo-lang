@@ -21,6 +21,7 @@ func TestUsageErrorsExit2(t *testing.T) {
 		{}, {"bogus"}, {"serve"}, {"serve", dir, "--port"}, {"serve", dir, "--port", "0"},
 		{"serve", dir, "--port", "70000"}, {"serve", dir, "--port", "08"}, {"serve", dir, "extra"},
 		{"compact"}, {"compact", dir, dir},
+		{"verify"}, {"verify", dir, dir},
 		{"client", "localhost", "7900", "t", "GET"},
 		{"client", "localhost", "x", "t", "GET", "/health"},
 		{"client", "localhost", "7900", "t", "get", "/health"},

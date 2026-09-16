@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -313,5 +316,169 @@ func TestPropertyCreateGetRoundTrip(t *testing.T) {
 		if got.Payload != p || created.Payload != p {
 			t.Fatalf("payload %q came back as %q", p, got.Payload)
 		}
+	}
+}
+
+// GET /queues names every queue that holds a job, sorted, with its counts;
+// /health's totals are the sums, and a queue whose last job is deleted is
+// gone from the list.
+func TestQueuesListsEveryQueueWithItsCounts(t *testing.T) {
+	h := newAPIHarness(t)
+	h.want("-", "GET", "/queues", "", 401)
+	if body := h.want(w1, "GET", "/queues", "", 200); body != `{"queues":[]}`+"\n" {
+		t.Errorf("an empty service lists %q", body)
+	}
+	for _, queue := range []string{"sms", "emails", "emails", "push"} {
+		h.want(w1, "POST", "/jobs", `{"queue":"`+queue+`","payload":"p","max_tries":2}`, 201)
+	}
+	h.want(w1, "POST", "/queues/emails/lease", "", 200) // j_2 leased
+	h.want(w1, "POST", "/jobs/j_2/ack", "", 200)        // and done
+	want := `{"queues":[` +
+		`{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":1,"dead":0},` +
+		`{"name":"push","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},` +
+		`{"name":"sms","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}` + "\n"
+	if body := h.want(w1, "GET", "/queues", "", 200); body != want {
+		t.Errorf("/queues = %s, want %s", body, want)
+	}
+	checkQueuesSumToHealth(t, h)
+	h.want(w1, "DELETE", "/jobs/j_4", "", 204) // push is now empty
+	body := h.want(w1, "GET", "/queues", "", 200)
+	if strings.Contains(body, "push") {
+		t.Errorf("a queue whose last job is deleted is still listed: %s", body)
+	}
+	checkQueuesSumToHealth(t, h)
+}
+
+func checkQueuesSumToHealth(t *testing.T, h *apiHarness) {
+	t.Helper()
+	var qs struct {
+		Queues []QueueCounts `json:"queues"`
+	}
+	var got Health
+	if err := json.Unmarshal([]byte(h.want(w1, "GET", "/queues", "", 200)), &qs); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(h.want("-", "GET", "/health", "", 200)), &got); err != nil {
+		t.Fatal(err)
+	}
+	sum := Health{UptimeMS: got.UptimeMS}
+	for _, c := range qs.Queues {
+		sum.Queued += c.Queued
+		sum.Scheduled += c.Scheduled
+		sum.Leased += c.Leased
+		sum.Done += c.Done
+		sum.Dead += c.Dead
+	}
+	if sum != got {
+		t.Errorf("/queues sums to %+v, /health says %+v", sum, got)
+	}
+}
+
+// A store that cannot be written answers 503 to every write and keeps
+// answering reads; writes resume on their own once it can be written again.
+func TestUnwritableStoreAnswers503ForWritesAndStillReads(t *testing.T) {
+	h := newAPIHarness(t)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2,"backoff_ms":0}`, 201)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"q","max_tries":2}`, 201)
+	h.want(w1, "POST", "/queues/a/lease", `{"lease_ms":1000}`, 200)
+	before := h.want("-", "GET", "/health", "", 200)
+	h.file.fail = func(string) bool { return true }
+	for _, w := range []struct{ method, path, body string }{
+		{"POST", "/jobs", `{"queue":"a","payload":"q","max_tries":1}`},
+		{"POST", "/jobs/j_1/ack", ""},
+		{"POST", "/jobs/j_1/fail", `{"reason":"no"}`},
+		{"DELETE", "/jobs/j_2", ""},
+	} {
+		h.want(w1, w.method, w.path, w.body, 503)
+	}
+	// Reads keep answering, and a 503 moved no count.
+	if body := h.want("-", "GET", "/health", "", 200); body != before {
+		t.Errorf("health moved on a 503: %s, was %s", body, before)
+	}
+	if v := decodeJob(t, h.want(w1, "GET", "/jobs/j_1", "", 200)); v.State != Leased {
+		t.Errorf("the job changed under a 503: %+v", v)
+	}
+	h.want(w1, "GET", "/jobs", "", 200)
+	h.want(w1, "GET", "/queues", "", 200)
+	// The lease runs out while the store refuses writes: the read still
+	// answers, and the move is made as soon as the store takes it.
+	h.clock.Advance(2 * time.Second)
+	if v := decodeJob(t, h.want(w1, "GET", "/jobs/j_1", "", 200)); v.State != Leased {
+		t.Errorf("a move that cannot be written was answered: %+v", v)
+	}
+	h.file.fail = nil
+	if v := decodeJob(t, h.want(w1, "GET", "/jobs/j_1", "", 200)); v.State != Queued {
+		t.Errorf("after the store recovered: %+v", v)
+	}
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"q","max_tries":1}`, 201)
+}
+
+// A failure inside one request never stops the next: a panic under the
+// queue's lock is one 503, and the request after it is answered normally.
+func TestAPanicCostsOnlyItsOwnRequest(t *testing.T) {
+	h := newAPIHarness(t)
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2}`, 201)
+	h.want(w1, "POST", "/queues/a/lease", `{"lease_ms":1000}`, 200)
+	before := snapshot(h.q)
+	h.file.fail = func(string) bool { panic("the store blew up") }
+	if body := h.want(w1, "POST", "/jobs/j_1/ack", "", 503); !strings.Contains(body, `"error"`) {
+		t.Errorf("a panic answered %q", body)
+	}
+	if got := snapshot(h.q); !reflect.DeepEqual(got, before) {
+		t.Errorf("the panic changed a job: %v", got)
+	}
+	h.file.fail = nil
+	if v := decodeJob(t, h.want(w1, "POST", "/jobs/j_1/ack", "", 200)); v.State != Done {
+		t.Errorf("the request after a panic: %+v", v)
+	}
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"p","max_tries":2}`, 201)
+}
+
+// The same on a real folder made read-only. A write to an fd already open
+// still reaches the disk on macOS, so the folder's mode cannot force the
+// 503 here; what is asserted is the spec's list of allowed answers, that a
+// 503 moves no count, and that writes are 2xx again afterwards.
+func TestReadOnlyFolderNeverTakesTheServiceDown(t *testing.T) {
+	dir := t.TempDir()
+	clock := newManualClock(time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC))
+	q, s, err := openQueue(dir, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	h := &apiHarness{t: t, api: &API{q: q}, q: q, clock: clock}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	health := func() Health {
+		var got Health
+		if err := json.Unmarshal([]byte(h.want("-", "GET", "/health", "", 200)), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	for i := range 20 {
+		before := health()
+		status, body, _ := h.do(w1, "POST", "/jobs", fmt.Sprintf(`{"queue":"a","payload":"p%d","max_tries":1}`, i))
+		switch {
+		case status == 201:
+		case status == 503:
+			if after := health(); after.Queued != before.Queued {
+				t.Fatalf("a 503 moved the counts: %+v, was %+v", after, before)
+			}
+		case status >= 400 && status < 500:
+		default:
+			t.Fatalf("POST /jobs on a read-only folder = %d %s", status, body)
+		}
+		h.want(w1, "GET", "/jobs", "", 200)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// No restart: the same service writes again.
+	h.want(w1, "POST", "/jobs", `{"queue":"a","payload":"after","max_tries":1}`, 201)
+	got := health()
+	if got.Queued == 0 {
+		t.Errorf("nothing was written after the folder was writable: %+v", got)
 	}
 }

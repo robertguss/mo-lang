@@ -236,13 +236,11 @@ func syncDir(dir string) error {
 // Compact rewrites <dir>/jobq.log as a meta record and one put per job, by
 // id, through a temporary file renamed over the log.
 func Compact(dir string) error {
-	q := newQueue(realClock{})
-	s, err := OpenStore(dir, q.applyRecord)
+	q, s, err := openQueue(dir, realClock{})
 	if err != nil {
 		return err
 	}
 	defer s.Close()
-	q.finishReplay(s)
 	tmp := filepath.Join(dir, logName+".compact")
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {

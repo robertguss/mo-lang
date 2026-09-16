@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const usage = "usage: jobq serve <dir> [--port N] | jobq compact <dir> | " +
+const usage = "usage: jobq serve <dir> [--port N] | jobq compact <dir> | jobq verify <dir> | " +
 	"jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 
 func main() {
@@ -23,6 +23,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdServe(args[1:], stderr)
 	case "compact":
 		return cmdCompact(args[1:], stderr)
+	case "verify":
+		return cmdVerify(args[1:], stdout, stderr)
 	case "client":
 		return cmdClient(args[1:], stdout, stderr)
 	case "check":

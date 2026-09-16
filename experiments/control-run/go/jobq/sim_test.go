@@ -157,8 +157,10 @@ func (s *simulation) randomStep() {
 		s.send("prod", "DELETE", "/jobs/"+s.randomID(), "")
 	case r < 93:
 		s.send("prod", "GET", "/jobs?queue="+queue, "")
-	case r < 96:
+	case r < 94:
 		s.send("", "GET", "/health", "")
+	case r < 96:
+		s.send("prod", "GET", "/queues", "")
 	case r < 99:
 		s.send("prod", "POST", "/jobs/"+s.randomID()+"/retry", "")
 	default:
@@ -308,11 +310,18 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 		}
 	case method == "GET" && seg[0] == "health", method == "GET" && strings.HasPrefix(path, "/jobs?"):
 		want = 200
+	case method == "GET" && path == "/queues":
+		want = 200
+		if status == 200 {
+			s.checkQueues(resp)
+		}
 	case method == "GET":
 		want = 404
 		if j, ok := m[seg[1]]; ok {
 			want = 200
-			if status == 200 && (job.State != j.State || job.Tries != j.Tries) {
+			// A read is answered even while the store refuses writes, and
+			// then the look's moves were undone: the job is as it was.
+			if status == 200 && !sameJob(job, j) && !(s.faults && sameJob(job, pre[seg[1]])) {
 				s.fatalf("get %s = %+v, model %+v", seg[1], job, j)
 			}
 		}
@@ -361,6 +370,33 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 	}
 	if status != want {
 		s.fatalf("%s %s %s by %q = %d %s, model says %d", method, path, body, token, status, resp, want)
+	}
+}
+
+func sameJob(a, b jobJSON) bool { return a.State == b.State && a.Tries == b.Tries }
+
+// checkQueues: every queue in the answer is named once, the names are
+// sorted, and the counts add up to the jobs in memory.
+func (s *simulation) checkQueues(resp []byte) {
+	var body struct {
+		Queues []QueueCounts `json:"queues"`
+	}
+	if err := json.Unmarshal(resp, &body); err != nil {
+		s.fatalf("body %s: %v", resp, err)
+	}
+	total := 0
+	for i, c := range body.Queues {
+		if i > 0 && body.Queues[i-1].Name >= c.Name {
+			s.fatalf("/queues is not sorted by name: %s", resp)
+		}
+		n := c.Queued + c.Scheduled + c.Leased + c.Done + c.Dead
+		if n == 0 {
+			s.fatalf("queue %s is in the list with no job", c.Name)
+		}
+		total += n
+	}
+	if total != len(s.q.jobs) {
+		s.fatalf("/queues counts %d jobs, memory holds %d", total, len(s.q.jobs))
 	}
 }
 

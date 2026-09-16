@@ -29,7 +29,7 @@ func openQueue(dir string, clock Clock) (*Queue, *Store, error) {
 	q := newQueue(clock)
 	s, err := OpenStore(dir, q.applyRecord)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, asIllFormed(dir, err)
 	}
 	q.finishReplay(s)
 	return q, s, nil
