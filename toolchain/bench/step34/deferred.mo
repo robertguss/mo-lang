@@ -103,7 +103,8 @@ process Asker(batcher: Handle(Batcher), count: UInt64)
   end
 end
 
-supervisor Batching(bound: UInt64, total: UInt64, clock: Clock, batcher: Handle(Batcher), count: UInt64)
+supervisor Batching(bound: UInt64, total: UInt64, clock: Clock, batcher: Handle(Batcher),
+  count: UInt64)
   child Batcher(bound, total, clock), restart: :always
   child Asker(batcher, count), restart: :always
 end
@@ -123,7 +124,8 @@ fn main(platform: Platform)
     end
   end
   case batcher.ask(Wait, within: 600.seconds)
-    Ok(ms): platform.stdout.write_line("#{shape}: #{each * askers} asks from #{askers} askers in #{ms} ms")
+    Ok(ms):
+      platform.stdout.write_line("#{shape}: #{each * askers} asks from #{askers} askers in #{ms} ms")
     Error(e): platform.stdout.write_line("#{shape}: no answer: #{e}")
   end
 end

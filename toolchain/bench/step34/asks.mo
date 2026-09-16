@@ -51,11 +51,7 @@ fn main(platform: Platform)
   count = (platform.args.first or "100000").to_u64 or 100_000
   apart = platform.args.get(1) == Some("apart")
   clock = platform.clock
-  given = if apart
-    Some(Ponger.start())
-  else
-    None
-  end
+  given = if apart: Some(Ponger.start()) else: None
   pinger = Pinger.start(given)
   began = clock.now
   answered = case pinger.ask(Go(count: count), within: 600.seconds)
@@ -63,10 +59,6 @@ fn main(platform: Platform)
     Error(_): 0
   end
   took = (clock.now - began).ms
-  placing = if apart
-    "two schedulers"
-  else
-    "one scheduler"
-  end
+  placing = if apart: "two schedulers" else: "one scheduler"
   platform.stdout.write_line("#{answered} asks, #{placing}: #{took} ms")
 end
