@@ -130,7 +130,9 @@ know that the wiki does not say in one place.
 > (4,438 to 1,279 pairs a second, partly taken back), unmeasured by the lead.
 > The Elixir old-log category (no round 10 escript kept aside). The
 > interpreter's 780 KB per process at rest. `python3 mo-wiki/tools/lint.py`
-> reports about 28 issues, 16 Robert's.
+> reports 80 issues: 16 Robert's, most of the rest the research pages' `research`
+> page type, which the schema's table lacks (a schema row or a type change, the
+> lead's call).
 >
 > **Style.** Ruby-nice syntax, zero new syntax where possible, concise, define a
 > PL term in three lines before using it, no phones. Fable drives: proposing
