@@ -274,7 +274,10 @@ defmodule Jobq.ApiTest do
   end
 
   describe "POST /jobs/{id}/retry" do
-    test "a dead job goes back to its queue, and anything else is 409", %{port: port, clock: clock} do
+    test "a dead job goes back to its queue, and anything else is 409", %{
+      port: port,
+      clock: clock
+    } do
       assert {201, _job} =
                create(port, %{"queue" => "emails", "payload" => "hi", "max_tries" => 1})
 

@@ -17,6 +17,10 @@ defmodule Jobq.Store do
   The log's framing is one line per record, `\\n` terminated, under the job's
   id; the last line of a log may be torn by a crash and is dropped on replay, a
   complete line that is not a record is a corrupt log and refuses to open.
+
+  A log the version before change 1 wrote opens with no tool: `Jobq.Job` reads
+  the old field names off a record and the store writes only the new ones, so
+  a `compact/1` of such a folder leaves no old name behind.
   """
 
   use GenServer

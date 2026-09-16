@@ -171,6 +171,7 @@ defmodule Jobq.DurabilityTest do
             attempt(fn ->
               Queue.create(ref, "emails", "payload #{round}", max_tries, 0, backoff)
             end)
+
           {leased, more} = attempt(fn -> Queue.lease(ref, "emails", 60_000, "bob") end)
           {_finished, last} = attempt(fn -> finish(ref, leased, round) end)
           tries ++ more ++ [created, leased] ++ last
