@@ -38,7 +38,10 @@ fn job(number: UInt64, queue: String, payload: String, max_attempts: UInt64, now
   requires payload?(payload)
   requires max_attempts?(max_attempts)
   ensures result.state == Queued and result.attempts == 0
-  # body gone; regenerate
+
+  Job(number: number, queue: queue, state: Queued, payload: payload, attempts: 0,
+    max_attempts: max_attempts, created_at: now, updated_at: now, worker: None, lease_until: None,
+    reason: None)
 end
 
 # The job leased to the worker for lease_ms from now: one attempt more.
@@ -47,100 +50,147 @@ fn leased(job: Job, worker: String, lease_ms: UInt64, now: Time) : Job
   requires job.state == Queued and job.attempts < job.max_attempts
   ensures result.state == Leased and result.worker == Some(worker)
   ensures result.attempts == job.attempts + 1
-  # body gone; regenerate
+
+  var held = job
+  held.state = Leased
+  held.attempts = job.attempts + 1
+  held.worker = Some(worker)
+  held.lease_until = Some(now + lease_ms.ms)
+  held.updated_at = now
+  held
 end
 
 fn acked(job: Job, now: Time) : Job
   requires job.state == Leased
   ensures result.state == Done
-  # body gone; regenerate
+
+  var done_job = released(job, now)
+  done_job.state = Done
+  done_job
 end
 
 # A fail: queued again while attempts are left, dead on the last one.
 fn failed(job: Job, reason: String, now: Time) : Job
   requires job.state == Leased
   ensures result.state == Queued or result.state == Dead
-  # body gone; regenerate
+
+  var next = released(job, now)
+  next.state = if job.attempts >= job.max_attempts: Dead else: Queued
+  next.reason = Some(reason)
+  next
 end
 
 # A lease that ran out: queued or dead by the same rule as a fail, the reason kept.
 fn ran_out(job: Job, now: Time) : Job
   requires job.state == Leased
   ensures result.state == Queued or result.state == Dead
-  # body gone; regenerate
+
+  var next = released(job, now)
+  next.state = if job.attempts >= job.max_attempts: Dead else: Queued
+  next
 end
 
 fn released(job: Job, now: Time) : Job
-  # body gone; regenerate
+  var next = job
+  next.worker = None
+  next.lease_until = None
+  next.updated_at = now
+  next
 end
 
 # A lease is a deadline: it has run out once the clock reaches lease_until.
 fn run_out?(job: Job, now: Time) : Bool
-  # body gone; regenerate
+  case job.lease_until
+    Some(until): !(now < until)
+    None: false
+  end
 end
 
 # Whether the worker holds a live lease on the job.
 fn holds?(job: Job, worker: String, now: Time) : Bool
-  # body gone; regenerate
+  job.state == Leased and job.worker == Some(worker) and !run_out?(job, now)
 end
 
 # A queue name is 1 to 64 bytes of letters, digits, - and _.
 fn queue?(text: String) : Bool
-  # body gone; regenerate
+  return false if text == "" or text.byte_size > 64
+  text.bytes.all?(fn(b) named?(b) end)
 end
 
 fn named?(b: UInt8) : Bool
-  # body gone; regenerate
+  return true if b >= 48 and b <= 57
+  return true if b >= 65 and b <= 90
+  return true if b >= 97 and b <= 122
+  b == 45 or b == 95
 end
 
 # A payload is at most 60 KiB of UTF-8 with no control character but a newline.
 fn payload?(text: String) : Bool
-  # body gone; regenerate
+  text.byte_size <= 61_440 and plain?(text)
 end
 
 # No C0 control character but a newline, no DEL, and no C1 control character.
 fn plain?(text: String) : Bool
-  # body gone; regenerate
+  return false if !text.bytes.all?(fn(b) b >= 32 or b == 10 end)
+  return false if text.bytes.contains?(127)
+  !text.chars.any?(fn(c) c1?(c) end)
 end
 
 # A C1 control character is two bytes in UTF-8: C2, then 80 to 9F.
 fn c1?(c: String) : Bool
-  # body gone; regenerate
+  both = c.bytes
+  return false if both.size != 2
+  (both.first or 0) == 194 and (both.get(1) or 0) >= 128 and (both.get(1) or 0) <= 159
 end
 
 fn max_attempts?(n: UInt64) : Bool
-  # body gone; regenerate
+  n >= 1 and n <= 100
 end
 
 fn lease_ms?(n: UInt64) : Bool
-  # body gone; regenerate
+  n >= 100 and n <= 3_600_000
 end
 
 # A token names a worker: 1 to 256 bytes with no space or control character.
 fn token?(text: String) : Bool
-  # body gone; regenerate
+  return false if text == "" or text.byte_size > 256
+  text.bytes.all?(fn(b) b > 32 and b != 127 end)
 end
 
 fn id_of(number: UInt64) : String
-  # body gone; regenerate
+  "j_#{number}"
 end
 
 # The number in an id, which is j_ and the number as id_of writes it.
 fn number_of(id: String) : Option(UInt64)
-  # body gone; regenerate
+  return None if !id.starts_with?("j_")
+  digits = id.slice(2, id.size)
+  return None if digits != "#{digits.to_u64 or 0}"
+  digits.to_u64
 end
 
 fn state_name(status: State) : String
-  # body gone; regenerate
+  case status
+    Queued: "queued"
+    Leased: "leased"
+    Done: "done"
+    Dead: "dead"
+  end
 end
 
 fn state_named(name: String) : Option(State)
-  # body gone; regenerate
+  case name
+    "queued": Some(Queued)
+    "leased": Some(Leased)
+    "done": Some(Done)
+    "dead": Some(Dead)
+    _: None
+  end
 end
 
 # A string as a JSON string, quotes and escapes included.
 fn quoted(text: String) : String
-  # body gone; regenerate
+  Json.encode(text)
 end
 
 # A job as JSON: what the API shows and the record the store keeps under its id, the spec's
@@ -149,37 +199,75 @@ end
 # its variant's name where the API writes it in lowercase, and worker, lease_until, and reason as
 # null where the API leaves them out.
 fn shown(job: Job) : String
-  # body gone; regenerate
+  named = "{\"id\": \"#{id_of(job.number)}\", \"queue\": #{quoted(job.queue)}"
+  what = "\"state\": \"#{state_name(job.state)}\", \"payload\": #{quoted(job.payload)}"
+  tried = "\"attempts\": #{job.attempts}, \"max_attempts\": #{job.max_attempts}"
+  made_at = "\"created_at\": \"#{job.created_at.to_iso8601}\""
+  changed = "\"updated_at\": \"#{job.updated_at.to_iso8601}\""
+  "#{named}, #{what}, #{tried}, #{made_at}, #{changed}#{held_part(job)}#{reason_part(job)}}"
 end
 
 fn held_part(job: Job) : String
-  # body gone; regenerate
+  return "" if job.state != Leased
+  until = job.lease_until or job.updated_at
+  ", \"worker\": #{quoted(job.worker or "")}, \"lease_until\": \"#{until.to_iso8601}\""
 end
 
 fn reason_part(job: Job) : String
-  # body gone; regenerate
+  case job.reason
+    Some(why): ", \"reason\": #{quoted(why)}"
+    None: ""
+  end
 end
 
 # A job read back from its JSON, or None for text that is not a job that keeps the rules.
 fn job_of(text: String) : Option(Job)
-  # body gone; regenerate
+  fields = try object_of(text)
+  number = try number_of(try text_in(fields, "id"))
+  queue = try text_in(fields, "queue")
+  return None if !queue?(queue)
+  status = try state_named(try text_in(fields, "state"))
+  payload = try text_in(fields, "payload")
+  return None if !payload?(payload)
+  attempts = try count_in(fields, "attempts")
+  max = try count_in(fields, "max_attempts")
+  return None if !max_attempts?(max) or attempts > max
+  return None if status == Queued and attempts == max
+  worker = text_in(fields, "worker")
+  until = time_in(fields, "lease_until")
+  held = status == Leased
+  return None if held != (worker is Some(_)) or held != (until is Some(_))
+  Some(Job(number: number, queue: queue, state: status, payload: payload, attempts: attempts,
+    max_attempts: max, created_at: try time_in(fields, "created_at"),
+    updated_at: try time_in(fields, "updated_at"), worker: worker, lease_until: until,
+    reason: text_in(fields, "reason")))
 end
 
 fn object_of(text: String) : Option(Map(String, Json))
-  # body gone; regenerate
+  case Json.decode(text)
+    Ok(Object(fields)): Some(fields)
+    Ok(_): None
+    Error(_): None
+  end
 end
 
 fn text_in(fields: Map(String, Json), name: String) : Option(String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(String(text)): Some(text)
+    Some(_): None
+    None: None
+  end
 end
 
 fn time_in(fields: Map(String, Json), name: String) : Option(Time)
-  # body gone; regenerate
+  Time.parse(try text_in(fields, name))
 end
 
 # A whole number from 0 up; a number with a fraction, or anything but a number, is None.
 fn count_in(fields: Map(String, Json), name: String) : Option(UInt64)
-  # body gone; regenerate
+  n = try (try fields.get(name)).to_i64
+  return None if n < 0
+  Some(n.to_u64)
 end
 
 test "a queue name, a payload, max_attempts, a lease, and a token each keep their rule"
@@ -290,3 +378,6 @@ property "any valid payload survives a job's JSON"
     assert job_of(shown(made)) == Some(made)
   end
 end
+
+verified: types, contracts, tests (14), property (200 seeds), sim (not run)
+          proven: not run

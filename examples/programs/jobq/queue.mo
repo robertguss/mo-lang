@@ -49,7 +49,32 @@ process Service(fs: Fs, clock: Clock, place: Place, started: Time) mailbox: 4_09
   message Tally : Health
 
   fn update(state, message)
-    # body gone; regenerate
+    case message
+      Open:
+        ready = readied(fs, place, state.books, state.opened, reply_by)
+        state.books = ready.books
+        state.opened = ready.opened
+        opened_answer(ready)
+      Serve(call):
+        at = Moment(now: clock.now, by: reply_by)
+        ready = readied(fs, place, state.books, state.opened, reply_by)
+        state.opened = ready.opened
+        done = served_by(fs, place, ready, call, at)
+        state.books = done.books
+        done.outcome
+      Sweep:
+        at = Moment(now: clock.now, by: reply_by)
+        ready = readied(fs, place, state.books, state.opened, reply_by)
+        state.opened = ready.opened
+        done = swept_by(fs, ready, at)
+        state.books = done.books
+        counted(done.outcome)
+      Tally:
+        ready = readied(fs, place, state.books, state.opened, reply_by)
+        state.books = ready.books
+        state.opened = ready.opened
+        health_of(ready.books, (clock.now - started).ms)
+    end
   end
 end
 
@@ -58,20 +83,44 @@ supervisor Services(fs: Fs, clock: Clock, place: Place, started: Time)
 end
 
 fn readied(fs: Fs, place: Place, books: Books, already: Bool, by: Deadline) : Readied
-  # body gone; regenerate
+  return Readied(books: books, opened: true, why: "") if already
+  case opened(fs, place, by)
+    Ok(fresh): Readied(books: fresh, opened: true, why: "")
+    Error(why): Readied(books: books, opened: false, why: why)
+  end
 end
 
 fn opened_answer(ready: Readied) : Opened
-  # body gone; regenerate
+  return Unready(why: ready.why) if !ready.opened
+  Ready(jobs: ready.books.board.size, cut: ready.books.torn)
 end
 
 fn served_by(fs: Fs, place: Place, ready: Readied, call: Call, at: Moment) : Served
-  # body gone; regenerate
+  if !ready.opened
+    down = Unavailable(reason: "#{place.dir} #{ready.why}")
+    return Served(books: ready.books, outcome: down, steps: [])
+  end
+  serve(fs, ready.books, call, at)
 end
 
 # The books after a sweep, and the jobs whose leases it ended; none when the store is not open.
 fn swept_by(fs: Fs, ready: Readied, at: Moment) : Served
-  # body gone; regenerate
+  return Served(books: ready.books, outcome: Empty, steps: []) if !ready.opened
+  swept(fs, ready.books, at)
+end
+
+fn counted(outcome: Outcome) : UInt64
+  case outcome
+    Listed(jobs): jobs.size
+    Made(_): 0
+    Found(_): 0
+    Handed(_): 0
+    Removed: 0
+    Empty: 0
+    Missing: 0
+    Conflict(_): 0
+    Unavailable(_): 0
+  end
 end
 
 # A worker for the race test: it asks for a lease on q when told to, and keeps what it got. The
@@ -86,7 +135,11 @@ process Racer(service: Handle(Service), token: String)
   message Got : String
 
   fn update(state, message)
-    # body gone; regenerate
+    case message
+      Go:
+        state.got = named(ask(service, token, Lease(queue: "q", lease_ms: 3_600_000)))
+      Got: state.got
+    end
   end
 end
 
@@ -96,27 +149,63 @@ end
 
 # What a lease came to: the job's id, empty, or unavailable.
 fn named(outcome: Outcome) : String
-  # body gone; regenerate
+  case outcome
+    Handed(job): id_of(job.number)
+    Empty: "empty"
+    Made(_): "unavailable"
+    Found(_): "unavailable"
+    Listed(_): "unavailable"
+    Removed: "unavailable"
+    Missing: "unavailable"
+    Conflict(_): "unavailable"
+    Unavailable(_): "unavailable"
+  end
 end
 
 fn place() : Place
-  # body gone; regenerate
+  Place(dir: "d", log: "jobq.log")
 end
 
 fn ask(service: Handle(Service), worker: String, command: Command) : Outcome
-  # body gone; regenerate
+  case service.ask(Serve(call: Call(worker: worker, command: command)), within: 1.minute)
+    Ok(outcome): outcome
+    Error(_): Unavailable(reason: "the service did not answer in time")
+  end
 end
 
 fn made_id(outcome: Outcome) : String
-  # body gone; regenerate
+  case outcome
+    Made(job): id_of(job.number)
+    Found(_): ""
+    Handed(_): ""
+    Listed(_): ""
+    Removed: ""
+    Empty: ""
+    Missing: ""
+    Conflict(_): ""
+    Unavailable(_): ""
+  end
 end
 
 fn shown_of(outcome: Outcome) : String
-  # body gone; regenerate
+  case outcome
+    Made(job): shown(job)
+    Found(job): shown(job)
+    Handed(job): shown(job)
+    Listed(_): ""
+    Removed: ""
+    Empty: ""
+    Missing: ""
+    Conflict(_): ""
+    Unavailable(_): ""
+  end
 end
 
 fn got(racer: Handle(Racer)) : String
-  # body gone; regenerate
+  case racer.ask(Got, within: 1.minute)
+    Ok(text): text
+    Error(_): ""
+  end
 end
 
 test "two workers race for one job, and exactly one holds it"
@@ -175,3 +264,6 @@ test "a service whose folder cannot be read says why at every call"
     within: 1.minute) is Error(_)
   assert ask(service, "p", Fetch(id: "j_1")) is Unavailable(_)
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (100 runs)
+          proven: not run

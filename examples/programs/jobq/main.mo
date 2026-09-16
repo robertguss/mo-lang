@@ -53,45 +53,96 @@ enum Problem
 end
 
 fn usage() : String
-  # body gone; regenerate
+  serving = "jobq serve <dir> [--port N] | jobq compact <dir>"
+  asking = "jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
+  "usage: #{serving} | #{asking}"
 end
 
 fn task(args: List(String)) : Result(Task, Problem)
-  # body gone; regenerate
+  rest = args.drop(1)
+  case args.first or ""
+    "serve": serving(rest)
+    "compact": compacting(rest)
+    "client": asking(rest)
+    "check": checking(rest)
+    "": Error(Usage(detail: "no command given"))
+    _: Error(Usage(detail: "unknown command #{args.first or ""}"))
+  end
 end
 
 fn serving(args: List(String)) : Result(Task, Problem)
-  # body gone; regenerate
+  dir = try dir_of(args)
+  flags = args.drop(1)
+  return Ok(Serving(spot: Spot(dir: dir, port: 7_900))) if flags.size == 0
+  if flags.size != 2 or flags.first != Some("--port")
+    return Error(Usage(detail: "serve takes a folder and then --port N"))
+  end
+  port = try port_of(flags.get(1) or "")
+  Ok(Serving(spot: Spot(dir: dir, port: port)))
 end
 
 fn compacting(args: List(String)) : Result(Task, Problem)
-  # body gone; regenerate
+  dir = try dir_of(args)
+  return Error(Usage(detail: "compact takes one folder")) if args.size != 1
+  Ok(Compacting(dir: dir))
 end
 
 fn asking(args: List(String)) : Result(Task, Problem)
-  # body gone; regenerate
+  if args.size < 5
+    return Error(Usage(detail: "client takes a host, a port, a token, a method, and a path"))
+  end
+  port = try port_of(args.get(1) or "")
+  trip = try trip_of(args.drop(2), args.first or "", port)
+  Ok(Asking(trip: trip))
 end
 
 # A token, a method, a path, and any JSON after them, joined by spaces as they were split.
 fn trip_of(words: List(String), host: String, port: UInt16) : Result(Trip, Problem)
-  # body gone; regenerate
+  if words.size < 3
+    return Error(Usage(detail: "a request is a token, a method, a path, and any JSON"))
+  end
+  json = String.join(words.drop(3), " ")
+  Ok(Trip(host: host, port: port, token: words.first or "", method: words.get(1) or "",
+    path: words.get(2) or "", json: json))
 end
 
 fn checking(args: List(String)) : Result(Task, Problem)
-  # body gone; regenerate
+  dir = try dir_of(args)
+  return Error(Usage(detail: "check takes a folder and a script")) if args.size != 2
+  Ok(Checking(dir: dir, script: args.get(1) or ""))
 end
 
 fn dir_of(args: List(String)) : Result(String, Problem)
-  # body gone; regenerate
+  dir = args.first or ""
+  return Error(Usage(detail: "no folder given")) if dir == "" or dir.starts_with?("-")
+  Ok(dir)
 end
 
 fn port_of(text: String) : Result(UInt16, Problem)
   ensures result is Ok(port) implies port >= 1
-  # body gone; regenerate
+
+  n = text.to_u64 or 0
+  if n < 1 or n > 65_535
+    return Error(Usage(detail: "a port is a number from 1 to 65535, not #{text}"))
+  end
+  Ok(n.to_u16)
 end
 
 fn ran(http: Http, net: Net, fs: Fs, clock: Clock, err: Out, args: List(String)) : Result(String,
-  # body gone; regenerate
+  Problem)
+  case try task(args)
+    Serving(spot): serve(http, fs, clock, err, spot)
+    Compacting(dir): compacted(fs, err, dir)
+    Asking(trip): client(http, trip)
+    Checking(dir: dir, script: script):
+      script_lines = try script_of(fs, script)
+      if !cleared(fs.scoped(dir))
+        return Error(Unopened(dir: dir, why: "holds a jobq.check.log jobq cannot remove"))
+      end
+      place = Place(dir: dir, log: "jobq.check.log")
+      service = try opened_service(fs, clock, err, place)
+      check(http, net, fs, err, service, Script(dir: dir, lines: script_lines))
+  end
 end
 
 # The service over the folder, opened before the listener is served, so a folder that cannot
@@ -99,50 +150,115 @@ end
 # minutes, and the replay of both logs (check replays its own after the folder's) runs on what
 # remains of them.
 fn opened_service(fs: Fs, clock: Clock, err: Out, place: Place) : Result(Handle(Service), Problem)
-  # body gone; regenerate
+  service = Service.start(fs, clock, place, clock.now)
+  case service.ask(Open, within: 21.minute)
+    Ok(Ready(jobs: _, cut: cut)):
+      if cut
+        err.write_line("jobq: the last line of #{place.dir}/jobq.log was cut short, left out")
+        err.flush
+      end
+      Ok(service)
+    Ok(Unready(why)): Error(Unopened(dir: place.dir, why: why))
+    Error(_): Error(Unopened(dir: place.dir, why: "took longer than 21 minutes to open"))
+  end
 end
 
 # Serves a folder until jobq is stopped; the runtime owns the loop. A request not whole within 5
 # seconds of its connection is closed, which with the acceptor's mailbox of 4,096 is what keeps a
 # crowd of silent connections from holding up the rest.
 fn serve(http: Http, fs: Fs, clock: Clock, err: Out, spot: Spot) : Result(String, Problem)
-  # body gone; regenerate
+  service = try opened_service(fs, clock, err, Place(dir: spot.dir, log: "jobq.log"))
+  case http.listen(spot.port, within: 5_000.ms)
+    Ok(listener):
+      listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
+      Ok("jobq: serving #{spot.dir} on 127.0.0.1:#{listener.port}\n")
+    Error(_): Error(Unbound(port: spot.port))
+  end
 end
 
 fn compacted(fs: Fs, err: Out, dir: String) : Result(String, Problem)
-  # body gone; regenerate
+  case open(fs, dir)
+    Ok(table):
+      if cut_short?(table)
+        err.write_line("jobq: the last line of #{dir}/jobq.log was cut short, so it is left out")
+        err.flush
+      end
+      whole = try compacted_table(fs, dir, table)
+      Ok("jobq: compacted #{dir}/jobq.log from #{lines(table)} lines to #{count(whole)}\n")
+    Error(_): Error(Unopened(dir: dir, why: "is not a folder jobq can read"))
+  end
 end
 
 fn compacted_table(fs: Fs, dir: String, table: Table) : Result(Table, Problem)
-  # body gone; regenerate
+  case compact(fs, table)
+    Ok(whole): Ok(whole)
+    Error(_): Error(Unopened(dir: dir, why: "holds a jobq.log jobq could not rewrite"))
+  end
 end
 
 fn client(http: Http, trip: Trip) : Result(String, Problem)
-  # body gone; regenerate
+  case http.send(request_of(trip), host: trip.host, port: trip.port, within: 10_000.ms)
+    Ok(response): Ok(shown(response))
+    Error(_): Error(Unreached(host: trip.host, port: trip.port))
+  end
 end
 
 fn request_of(trip: Trip) : Request
-  # body gone; regenerate
+  headers = if trip.token == "-"
+    Map.new()
+  else
+    Map.new().set("authorization", "Bearer #{trip.token}")
+  end
+  Request(method: trip.method, path: bare(trip.path), query: query_of(trip.path), headers: headers,
+    body: trip.json)
+end
+
+# What a path holds after its ?, or "".
+fn trip_query(path: String) : String
+  return "" if path.index_of("?") is None
+  path.slice((path.index_of("?") or 0) + 1, path.size)
+end
+
+# Opens one more connection that sends nothing and plays the rest of the script while it is
+# open, so the crowd is still there when the next request is answered; a connection the system
+# will not open stops the crowd and says how many were left.
+fn crowded(http: Http, net: Net, err: Out, port: UInt16, rest: List(String), crowd: UInt64) : String
+  return played(http, net, err, port, rest) if crowd == 0
+  case net.connect("127.0.0.1", port, within: 5_000.ms)
+    Ok(conn):
+      answered = crowded(http, net, err, port, rest, crowd - 1)
+      conn.close
+      answered
+    Error(_):
+      err.write_line("jobq: #{crowd} of the crowd could not be opened")
+      err.flush
+      played(http, net, err, port, rest)
+  end
 end
 
 # The query a path's ? starts, as key=value pairs split at &; the client sends the path before
 # the ? and the query as the request's query, so the runtime writes them back as they were.
 fn query_of(path: String) : Map(String, String)
-  # body gone; regenerate
+  return Map.new() if trip_query(path) == ""
+  trip_query(path).split("&").reduce(Map.new(), fn(query, pair) with_pair(query, pair) end)
 end
 
 fn with_pair(query: Map(String, String), pair: String) : Map(String, String)
-  # body gone; regenerate
+  return query if pair == ""
+  at = pair.index_of("=") or pair.size
+  query.set(pair.slice(0, at), pair.slice(at + 1, pair.size))
 end
 
 # The path a request line names, without its query.
 fn bare(path: String) : String
-  # body gone; regenerate
+  return path if path.index_of("?") is None
+  path.slice(0, path.index_of("?") or 0)
 end
 
 # A response as the client prints it: the status, then the body when there is one.
 fn shown(response: Response) : String
-  # body gone; regenerate
+  return "#{response.status}\n" if response.body == ""
+  "#{response.status} #{response.body}\n"
 end
 
 # Serves a folder's jobs on a free port, their changes going to jobq.check.log beside its
@@ -150,68 +266,132 @@ end
 # through the client.
 fn check(http: Http, net: Net, fs: Fs, err: Out, service: Handle(Service),
   script: Script) : Result(String, Problem)
-  # body gone; regenerate
+  folder = fs.scoped(script.dir)
+  held = "holds a jobq.check.log jobq cannot remove"
+  case http.listen(0, within: 5_000.ms)
+    Ok(listener):
+      listener.serve(into: Acceptor.start(service), idle: 5_000.ms)
+      transcript = played(http, net, err, listener.port, script.lines)
+      return Ok(transcript) if cleared(folder)
+      Error(Unopened(dir: script.dir, why: held))
+    Error(_): Error(Unbound(port: 0))
+  end
 end
 
 fn cleared(folder: Fs) : Bool
-  # body gone; regenerate
+  gone = folder.remove("jobq.check.log", within: 10_000.ms) is Ok(_)
+  gone or folder.size("jobq.check.log", within: 10_000.ms) is Error(Missing(_))
 end
 
 # Each line of the script sent as a request of its own, and what came back, with the clock's
 # numbers steadied. A line `crowd N` opens N connections that send nothing, held until the script
 # ends; how many opened goes to stderr, since the system's descriptor limit decides it.
 fn played(http: Http, net: Net, err: Out, port: UInt16, script: List(String)) : String
-  # body gone; regenerate
+  return "" if script.size == 0
+  line = script.first or ""
+  rest = script.drop(1)
+  crowd = crowd_of(line)
+  head = "> #{line}\n#{heard(http, line, port, crowd)}"
+  return "#{head}#{played(http, net, err, port, rest)}" if crowd == 0
+  err.write_line("jobq: opening #{crowd} connections that send nothing until the script ends")
+  err.flush
+  "#{head}#{crowded(http, net, err, port, rest, crowd)}"
 end
 
 fn crowd_of(line: String) : UInt64
-  # body gone; regenerate
+  return 0 if !line.starts_with?("crowd ")
+  line.slice(6, line.size).to_u64 or 0
 end
 
 fn heard(http: Http, line: String, port: UInt16, crowd: UInt64) : String
-  # body gone; regenerate
+  return "the connections stay open, sending nothing, until the script ends\n" if crowd > 0
+  case trip_of(line.split(" "), "127.0.0.1", port)
+    Ok(trip):
+      case client(http, trip)
+        Ok(text): steady(text)
+        Error(problem): "#{said(problem)}\n"
+      end
+    Error(problem): "#{said(problem)}\n"
+  end
 end
 
 # A transcript with what depends on the clock replaced: a job's times and the service's uptime.
 fn steady(text: String) : String
-  # body gone; regenerate
+  times = masked(masked(text, "created_at", true), "updated_at", true)
+  masked(masked(times, "lease_until", true), "uptime_ms", false)
 end
 
 fn masked(text: String, key: String, quoted: Bool) : String
-  # body gone; regenerate
+  label = "\"#{key}\": "
+  pieces = text.split(label)
+  mark = if quoted: "\"<#{key}>\"" else: "<#{key}>"
+  rest = pieces.drop(1).map(fn(piece) "#{label}#{mark}#{after_value(piece, quoted)}" end)
+  String.join([pieces.first or ""].concat(rest), "")
 end
 
 # What follows a JSON value at the start of a piece: past the closing quote of a string, or
 # from the first , or } after a number.
 fn after_value(piece: String, quoted: Bool) : String
-  # body gone; regenerate
+  if quoted
+    inside = piece.slice(1, piece.size)
+    return inside.slice((inside.index_of("\"") or 0) + 1, inside.size)
+  end
+  ends = [piece.index_of(","), piece.index_of("}")].flat_map(fn(at) found(at) end)
+  piece.slice(ends.min or piece.size, piece.size)
 end
 
 fn found(at: Option(UInt64)) : List(UInt64)
-  # body gone; regenerate
+  case at
+    Some(i): [i]
+    None: []
+  end
 end
 
 fn script_of(fs: Fs, script: String) : Result(List(String), Problem)
-  # body gone; regenerate
+  case fs.read_only.read_lines(script, within: 10_000.ms)
+    Ok(script_lines): Ok(script_lines)
+    Error(Missing(_)): Error(Unopened(dir: script, why: "is not a script jobq can read"))
+    Error(Timeout): Error(Unopened(dir: script, why: "took longer than 10 seconds to read"))
+    Error(NotText): Error(Unopened(dir: script, why: "is not UTF-8 text"))
+  end
 end
 
 fn said(problem: Problem) : String
-  # body gone; regenerate
+  case problem
+    Usage(detail): "#{detail}; #{usage()}"
+    Unopened(dir: dir, why: why): "#{dir} #{why}"
+    Unbound(port): "cannot listen on 127.0.0.1:#{port}"
+    Unreached(host: host, port: port): "no jobq answered at #{host}:#{port}"
+  end
 end
 
 fn code_of(problem: Problem) : UInt8
-  # body gone; regenerate
+  case problem
+    Usage(_): 2
+    Unopened(dir: _, why: _) | Unbound(_) | Unreached(host: _, port: _): 1
+  end
 end
 
 # Whether the arguments say to serve, which goes on until jobq is stopped.
 fn serving?(args: List(String)) : Bool
-  # body gone; regenerate
+  task(args) is Ok(Serving(_))
 end
 
 # Serving goes on until jobq is stopped; every other command ends jobq with exit once it is
 # done, since check serves a listener of its own.
 fn main(platform: Platform)
-  # body gone; regenerate
+  args = platform.args
+  case ran(platform.http, platform.net, platform.fs, platform.clock, platform.stderr, args)
+    Ok(text):
+      platform.stdout.write(text)
+      platform.stdout.flush
+      if !serving?(args)
+        platform.exit(0)
+      end
+    Error(problem):
+      platform.stderr.write_line("jobq: #{said(problem)}")
+      platform.exit(code_of(problem))
+  end
 end
 
 test "serve takes a folder and an optional port, 7900 by default"
@@ -270,3 +450,6 @@ test "a usage error exits 2, and a folder or port that cannot be had exits 1"
   assert code_of(Unbound(port: 7_900)) == 1
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

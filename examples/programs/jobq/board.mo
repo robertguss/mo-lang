@@ -25,118 +25,186 @@ struct Board
 end
 
 fn board() : Board
-  # body gone; regenerate
+  Board(jobs: Map.new(), waiting: Map.new(), due: Map.new(),
+    counts: Counts(queued: 0, leased: 0, done: 0, dead: 0), size: 0)
 end
 
 fn find(board: Board, number: UInt64) : Option(Job)
-  # body gone; regenerate
+  case board.jobs.get(number % 256)
+    Some(bucket): bucket.get(number)
+    None: None
+  end
 end
 
 fn counts(board: Board) : Counts
-  # body gone; regenerate
+  board.counts
 end
 
 # The board with the job in its number's place, every index moved from the job it replaces.
 fn placed(board: Board, job: Job) : Board
   ensures find(result, job.number) == Some(job)
-  # body gone; regenerate
+
+  var next = unindexed(board, job.number)
+  at = job.number % 256
+  bucket = next.jobs.get(at) or Map.new()
+  next.jobs = next.jobs.set(at, bucket.set(job.number, job))
+  next.waiting = with_number(next.waiting, job, job.state == Queued, at)
+  next.due = with_number(next.due, job, job.state == Leased, due_key(job))
+  next.counts = counted(next.counts, job.state, true)
+  next.size = next.size + 1
+  next
 end
 
 # The board without the job.
 fn removed(board: Board, number: UInt64) : Board
   ensures find(result, number) is None
-  # body gone; regenerate
+
+  unindexed(board, number)
 end
 
 # The board with the job of that number, if it holds one, out of every index and count.
 fn unindexed(board: Board, number: UInt64) : Board
-  # body gone; regenerate
+  if find(board, number) is Some(held)
+    at = number % 256
+    bucket = board.jobs.get(at) or Map.new()
+    left = bucket.remove(number)
+    var next = board
+    next.jobs = if left.size == 0: board.jobs.remove(at) else: board.jobs.set(at, left)
+    next.waiting = without_number(board.waiting, held, held.state == Queued, at)
+    next.due = without_number(board.due, held, held.state == Leased, due_key(held))
+    next.counts = counted(board.counts, held.state, false)
+    next.size = board.size - 1
+    return next
+  end
+  board
 end
 
 # A job's key in the due index: the second its lease runs out.
 fn due_key(job: Job) : Int64
-  # body gone; regenerate
+  second_of(job.lease_until or job.updated_at)
 end
 
 # The whole seconds from 2000 to a time; a later time never has a smaller second.
 fn second_of(at: Time) : Int64
-  # body gone; regenerate
+  (at - Time.from_parts(2000, 1, 1, 0, 0, 0)).ms / 1_000
 end
 
 fn with_number(index: Map(String, Map(K, Set(UInt64))), job: Job, when: Bool, key: K) : Map(String,
-  # body gone; regenerate
+  Map(K, Set(UInt64)))
+  return index if !when
+  inner = index.get(job.queue) or Map.new()
+  numbers = inner.get(key) or Set.new()
+  index.set(job.queue, inner.set(key, numbers.add(job.number)))
 end
 
 fn without_number(index: Map(String, Map(K, Set(UInt64))), job: Job, when: Bool,
   key: K) : Map(String, Map(K, Set(UInt64)))
-  # body gone; regenerate
+  return index if !when
+  inner = index.get(job.queue) or Map.new()
+  numbers = (inner.get(key) or Set.new()).remove(job.number)
+  left = if numbers.size == 0: inner.remove(key) else: inner.set(key, numbers)
+  if left.size == 0: index.remove(job.queue) else: index.set(job.queue, left)
 end
 
 fn counted(counts: Counts, status: State, adding: Bool) : Counts
-  # body gone; regenerate
+  Counts(queued: if status == Queued: moved(counts.queued, adding) else: counts.queued,
+    leased: if status == Leased: moved(counts.leased, adding) else: counts.leased,
+    done: if status == Done: moved(counts.done, adding) else: counts.done,
+    dead: if status == Dead: moved(counts.dead, adding) else: counts.dead)
 end
 
 fn moved(n: UInt64, adding: Bool) : UInt64
-  # body gone; regenerate
+  if adding: n + 1 else: n - 1
 end
 
 # The queued job of the queue with the lowest number, which is the oldest.
 fn oldest_queued(board: Board, queue: String) : Option(Job)
-  # body gone; regenerate
+  buckets = board.waiting.get(queue) or Map.new()
+  lowest = try buckets.values.flat_map(fn(held) held.to_list end).min
+  find(board, lowest)
 end
 
 # The queue's leased jobs whose lease has run out by now, oldest first.
 fn due_in(board: Board, queue: String, now: Time) : List(Job)
-  # body gone; regenerate
+  sets = board.due.get(queue) or Map.new()
+  limit = second_of(now)
+  numbers = sets.keys.filter(fn(second) second <= limit end)
+  jobs = numbers.flat_map(fn(second) numbers_at(sets, second) end)
+  out = jobs.flat_map(fn(number) found(board, number) end)
+  out.filter(fn(job) run_out?(job, now) end).sort_by(fn(job) job.number end)
 end
 
 # Every queue's leased jobs whose lease has run out by now, oldest first.
 fn due_anywhere(board: Board, now: Time) : List(Job)
-  # body gone; regenerate
+  board.due.keys.flat_map(fn(queue) due_in(board, queue, now) end).sort_by(fn(job) job.number end)
 end
 
 fn numbers_at(sets: Map(Int64, Set(UInt64)), key: Int64) : List(UInt64)
-  # body gone; regenerate
+  (sets.get(key) or Set.new()).to_list
 end
 
 fn found(board: Board, number: UInt64) : List(Job)
-  # body gone; regenerate
+  case find(board, number)
+    Some(job): [job]
+    None: []
+  end
 end
 
 # The jobs in the queue and the state asked for, either one or both left out, by number, the
 # first `limit`.
 fn listed(board: Board, queue: Option(String), status: Option(State), limit: UInt64) : List(Job)
   ensures result.size <= limit
-  # body gone; regenerate
+
+  all = board.jobs.values.flat_map(fn(bucket) bucket.values end)
+  wanted = all.filter(fn(job) wanted?(job, queue, status) end)
+  wanted.sort_by(fn(job) job.number end).take(limit)
 end
 
 fn wanted?(job: Job, queue: Option(String), status: Option(State)) : Bool
-  # body gone; regenerate
+  by_queue = case queue
+    Some(name): name == job.queue
+    None: true
+  end
+  by_state = case status
+    Some(kind): kind == job.state
+    None: true
+  end
+  by_queue and by_state
 end
 
 # The highest job number held, or 0.
 fn highest(board: Board) : UInt64
-  # body gone; regenerate
+  board.jobs.values.flat_map(fn(bucket) bucket.keys end).max or 0
 end
 
 fn fresh(number: UInt64, queue: String, at: Time) : Job
-  # body gone; regenerate
+  Job(number: number, queue: queue, state: Queued, payload: "", attempts: 0, max_attempts: 3,
+    created_at: at, updated_at: at, worker: None, lease_until: None, reason: None)
 end
 
 fn leased_until(job: Job, worker: String, until: Time) : Job
-  # body gone; regenerate
+  var held = job
+  held.state = Leased
+  held.attempts = job.attempts + 1
+  held.worker = Some(worker)
+  held.lease_until = Some(until)
+  held
 end
 
 fn with_status(job: Job, status: State) : Job
-  # body gone; regenerate
+  var next = job
+  next.state = status
+  next.worker = None
+  next.lease_until = None
+  next
 end
 
 fn parity(n: UInt64) : String
-  # body gone; regenerate
+  if n % 2 == 0: "even" else: "odd"
 end
 
 fn numbers(jobs: List(Job)) : List(UInt64)
-  # body gone; regenerate
+  jobs.map(fn(job) job.number end)
 end
 
 test "the oldest queued job of a queue is the one with the lowest number, over buckets"
@@ -197,3 +265,6 @@ test "a listing is by number, filtered by queue and state, at most the limit"
   assert numbers(listed(b, Some("even"), Some(Done), 100)) == []
   assert numbers(listed(b, Some("odd"), Some(Queued), 300)).last == Some(399)
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

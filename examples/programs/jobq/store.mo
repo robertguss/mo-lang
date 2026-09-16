@@ -66,40 +66,53 @@ end
 
 # A key is 1 to 256 bytes with no space and no control character.
 fn key?(text: String) : Bool
-  # body gone; regenerate
+  return false if text == "" or text.byte_size > 256
+  text.bytes.all?(fn(b) b > 32 and b != 127 end)
 end
 
 # A value is at most 1 MiB and holds no line break.
 fn value?(text: String) : Bool
-  # body gone; regenerate
+  text.byte_size <= 1_048_576 and !text.contains?("\n") and !text.contains?("\r")
 end
 
 # The store whose log is jobq.log in the folder dir, replayed; a folder with no log yet
 # holds an empty store.
 fn open(fs: Fs, dir: String) : Result(Table, StoreError)
-  # body gone; regenerate
+  folder = fs.scoped(dir)
+  names = try names_in(folder)
+  empty = Table(buckets: Map.new(), size: 0, dir: dir, name: "jobq.log", bytes: 0, lines: 0,
+    cut: false)
+  return Ok(empty) if !names.contains?("jobq.log")
+  bytes = try size_of(folder, "jobq.log")
+  start = Replay(table: empty, pending: None, lines: 0, bytes: 0, bad: 0)
+  replayed = try replayed_from(folder, start, "jobq.log")
+  return Error(BadLine(number: replayed.bad)) if replayed.bad > 0
+  finished(replayed, bytes)
 end
 
 fn get(table: Table, key: String) : Option(String)
-  # body gone; regenerate
+  case table.buckets.get(bucket_of(key))
+    Some(bucket): bucket.get(key)
+    None: None
+  end
 end
 
 fn count(table: Table) : UInt64
-  # body gone; regenerate
+  table.size
 end
 
 # The log's path, from the Fs the store was opened on.
 fn log(table: Table) : String
-  # body gone; regenerate
+  "#{table.dir}/#{table.name}"
 end
 
 fn cut_short?(table: Table) : Bool
-  # body gone; regenerate
+  table.cut
 end
 
 # The lines open replayed, or compact wrote.
 fn lines(table: Table) : UInt64
-  # body gone; regenerate
+  table.lines
 end
 
 # The store with the key set to the value, once its SET line is on disk.
@@ -107,106 +120,215 @@ fn put(fs: Fs, table: Table, key: String, value: String) : Result(Table, StoreEr
   requires key?(key)
   requires value?(value)
   ensures result is Ok(after) implies get(after, key) == Some(value)
-  # body gone; regenerate
+
+  bytes = try appended(fs, table, "SET #{key} #{value}\n")
+  Ok(resized(placed(table, key, value), bytes))
 end
 
 # The store without the key, once its DEL line is on disk; a key it does not hold writes
 # nothing.
 fn delete(fs: Fs, table: Table, key: String) : Result(Table, StoreError)
   ensures result is Ok(after) implies get(after, key) is None
-  # body gone; regenerate
+
+  return Ok(table) if get(table, key) is None
+  bytes = try appended(fs, table, "DEL #{key}\n")
+  Ok(resized(dropped(table, key), bytes))
 end
 
 # Every key that starts with the prefix, in byte order.
 fn keys(table: Table, prefix: String) : List(String)
   ensures result.all?(fn(key) key.starts_with?(prefix) end)
-  # body gone; regenerate
+
+  all = table.buckets.values.flat_map(fn(bucket) bucket.keys end)
+  all.filter(fn(key) key.starts_with?(prefix) end).sort
 end
 
 # The log rewritten as one SET line per live key, keys in byte order: written whole beside the
 # log, then renamed over it, so a compaction cut short leaves the old log as it was.
 fn compact(fs: Fs, table: Table) : Result(Table, StoreError)
   ensures result is Ok(after) implies count(after) == count(table) and !cut_short?(after)
-  # body gone; regenerate
+
+  folder = fs.scoped(table.dir)
+  text = whole_text(table)
+  fresh = "#{table.name}.new"
+  return Error(Unwritten) if folder.write(fresh, text, within: 20_000.ms) is Error(_)
+  return Error(Unwritten) if folder.rename(fresh, table.name, within: 5_000.ms) is Error(_)
+  Ok(rewritten(table, text))
 end
 
 # Every live key as its SET line, keys in byte order: what a compaction writes.
 fn whole_text(table: Table) : String
-  # body gone; regenerate
+  String.join(keys(table, "").map(fn(key) set_line(table, key) end), "")
 end
 
 # The table once its log holds exactly the text a compaction wrote.
 fn rewritten(table: Table, text: String) : Table
-  # body gone; regenerate
+  var after = table
+  after.bytes = text.byte_size
+  after.lines = table.size
+  after.cut = false
+  after
 end
 
 # The same keys and values, their changes appended from now on to the empty log `name` in the
 # same folder: jobq check serves a folder's log without writing to it.
 fn writing_to(table: Table, name: String) : Table
-  # body gone; regenerate
+  var moved = table
+  moved.name = name
+  moved.bytes = 0
+  moved.lines = 0
+  moved.cut = false
+  moved
 end
 
 fn set_line(table: Table, key: String) : String
-  # body gone; regenerate
+  "SET #{key} #{get(table, key) or ""}\n"
 end
 
 # Appends a line and gives the log's size after it. An append that fails is looked at again:
 # a log that holds the whole line took it, one as long as before did not, and anything else,
 # or a size that cannot be read, may end in part of the line.
 fn appended(fs: Fs, table: Table, line: String) : Result(UInt64, StoreError)
-  # body gone; regenerate
+  folder = fs.scoped(table.dir)
+  after = table.bytes + line.byte_size
+  return Ok(after) if folder.append(table.name, line, within: 5_000.ms) is Ok(_)
+  case folder.size(table.name, within: 5_000.ms)
+    Ok(size):
+      return Ok(after) if size == after
+      return Error(Unwritten) if size == table.bytes
+      Error(Torn)
+    Error(Missing(_)):
+      return Error(Unwritten) if table.bytes == 0
+      Error(Torn)
+    Error(Timeout): Error(Torn)
+    Error(NotText): Error(Torn)
+  end
 end
 
 fn resized(table: Table, bytes: UInt64) : Table
-  # body gone; regenerate
+  var after = table
+  after.bytes = bytes
+  after
 end
 
 # Which of the 256 maps holds a key.
 fn bucket_of(key: String) : UInt64
   ensures result < 256
-  # body gone; regenerate
+
+  key.bytes.reduce(0, fn(hash, b) mixed(hash, b) end)
 end
 
 fn mixed(hash: UInt64, b: UInt8) : UInt64
-  # body gone; regenerate
+  (hash * 31 + b.to_u64) % 256
 end
 
 fn placed(table: Table, key: String, value: String) : Table
-  # body gone; regenerate
+  at = bucket_of(key)
+  bucket = table.buckets.get(at) or Map.new()
+  added = if bucket.has?(key): 0 else: 1
+  var after = table
+  after.buckets = table.buckets.set(at, bucket.set(key, value))
+  after.size = table.size + added
+  after
 end
 
 fn dropped(table: Table, key: String) : Table
-  # body gone; regenerate
+  at = bucket_of(key)
+  bucket = table.buckets.get(at) or Map.new()
+  return table if !bucket.has?(key)
+  var after = table
+  after.buckets = table.buckets.set(at, bucket.remove(key))
+  after.size = table.size - 1
+  after
 end
 
 # One whole line of the log applied to the table: a SET with its key and the rest of the line
 # as the value, or a DEL with its key; None for anything else.
 fn applied(table: Table, line: String) : Option(Table)
-  # body gone; regenerate
+  if line.starts_with?("DEL ")
+    gone = line.slice(4, line.size)
+    return None if !key?(gone)
+    return Some(dropped(table, gone))
+  end
+  return None if !line.starts_with?("SET ")
+  rest = line.slice(4, line.size)
+  at = rest.index_of(" ") or 0
+  key = rest.slice(0, at)
+  return None if !key?(key)
+  Some(placed(table, key, rest.slice(at + 1, rest.size)))
 end
 
 # The next line read: the one before it is whole, since another came after it, so it is
 # applied. Replay stops applying at the first line that is not the store's.
 fn stepped(replay: Replay, line: String) : Replay
-  # body gone; regenerate
+  var next = replay
+  next.bytes = replay.bytes + line.byte_size + 1
+  next.pending = Some(line)
+  return next if replay.bad > 0
+  case replay.pending
+    Some(previous):
+      case applied(replay.table, previous)
+        Some(table):
+          next.table = table
+          next.lines = replay.lines + 1
+        None:
+          next.bad = replay.lines + 1
+      end
+    None:
+      next.bad = replay.bad
+  end
+  next
 end
 
 # The replay once the file is read: its last line applied when the file ends with its newline,
 # and left out, cut short, when it does not.
 fn finished(replay: Replay, bytes: UInt64) : Result(Table, StoreError)
-  # body gone; regenerate
+  var table = replay.table
+  table.bytes = bytes
+  table.lines = replay.lines
+  whole = replay.bytes <= bytes
+  if replay.pending is Some(last)
+    if !whole
+      table.cut = true
+      return Ok(table)
+    end
+    case applied(table, last)
+      Some(done):
+        table = done
+        table.lines = replay.lines + 1
+      None:
+        return Error(BadLine(number: replay.lines + 1))
+    end
+  end
+  Ok(table)
 end
 
 fn replayed_from(folder: Fs, start: Replay, name: String) : Result(Replay, StoreError)
-  # body gone; regenerate
+  case folder.fold_lines(name, start, within: 600_000.ms,
+    fn(replay, line) stepped(replay, line) end)
+    Ok(replay): Ok(replay)
+    Error(Missing(_)): Error(Unreadable)
+    Error(Timeout): Error(Slow)
+    Error(NotText): Error(Unreadable)
+  end
 end
 
 fn names_in(folder: Fs) : Result(List(String), StoreError)
-  # body gone; regenerate
+  case folder.list(within: 10_000.ms)
+    Ok(names): Ok(names)
+    Error(Missing(_)): Error(NoFolder)
+    Error(Timeout): Error(Slow)
+    Error(NotText): Error(NoFolder)
+  end
 end
 
 fn size_of(folder: Fs, name: String) : Result(UInt64, StoreError)
-  # body gone; regenerate
+  case folder.size(name, within: 10_000.ms)
+    Ok(bytes): Ok(bytes)
+    Error(Missing(_)): Error(Unreadable)
+    Error(Timeout): Error(Slow)
+    Error(NotText): Error(Unreadable)
+  end
 end
 
 # The recipe's tests rejects, here as well since every requires has one in its own module;
@@ -279,3 +401,6 @@ property "any valid key and value read back as written, and again once the store
     assert get(again, key) == Some(value)
   end
 end
+
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+          proven: not run
