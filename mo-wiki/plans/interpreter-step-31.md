@@ -12,7 +12,7 @@ sources:
     plans/control-run-10.md,
     plans/interpreter-step-30.md,
   ]
-status: queued
+status: done
 ---
 
 # Step 31: a deferred reply
@@ -153,6 +153,20 @@ runtimes with every `.expected` unchanged, the spec lines in, the numbers table
 filled, and the report at `REPORT-step-31.md` at the repo root (also in the
 pane) with the rule's paragraph, the diagnostic's code and text, the numbers,
 and a numbered list "Decisions the brief did not cover".
+
+## Result (16 Sep 2026, accepted 01:15 local)
+
+Done by Opus (medium effort) in one session on the Mac, brief at 23:22 on 15 Sep, report at 01:09: parts B `a82535b`, C `7aee53b`, D `1f298b1`; part A has no commit of its own because the lead's `6f2727d` and `92a4c46` swept the staged files in (the rule since: the lead commits by path). `zig build test` green on the accepted tree in 2 min 17 s warm. The rule is in `03-semantics.md` (Processes) and the `Reply(T)` row in `09-stdlib.md`, as the brief's part A states it; the diagnostic is **MO0411** beside MO0410.
+
+**What was built.** `Reply(T)` as a prelude type with the state-field shapes of `Handle(P)`, hideable because three corpus modules declare their own `Reply`; `reply_to` bound in the arm of a message with a reply; `armDefersReply` deciding once, at check time, that an arm keeps its asker, emitted as a `defer_reply` instruction; `answer` lowered like `send` and committed with the update, so a crash after it answers `Down`; a per-process list of held asks answered `Down` on a crash or restart, in the simulator, the scheduler runtime (no change needed: the asker already parks on its seq), and the C runtime; answering an ask counted as an effect for the loop rule; the corpus file `processes/deferred-reply.mo` with three tests (a flush answers ten kept asks; a short deadline sees `Timeout` and the later answer is dropped; a crash between ask and flush gives `Down`) and a `main` of eight askers, run through the corpus test by a new rule (a file whose first line is `# run:` is runnable). A `Reply` is the ask's sequence number alone; the deadline stays with the asker.
+
+**Numbers (the worker's, best of five, back to back with step 30's binary).** The standing rows unchanged within noise (`echo-1k`, `http-1k`, `kv-10k-get`, both runtimes, 1 and 14 cores; deltas from -18 to +5 percent with the signs both ways, inside the run-to-run spread). The deferred reply against the send-and-a-message-back shape at 10,000 asks: at 8 askers 1.00 (`mo run`) and 1.11 (binary) at one core, 1.37 and 1.66 at fourteen; at 128 askers 0.46 under `mo run` on one scheduler (128 fibers parked in `turns.ask`, each woken through `answers[seq]`, where the send shape parks nothing), 1.11 as a binary, 0.83 and 1.53 at fourteen cores.
+
+**Fable's acceptance probes.** `mo test`, `mo test --sim 100 --faults 5` (3 held under faults, the invariant kept 1 and tripped 1 as the `Orphan` test means), `mo run` at `MO_CORES=1` and 14 against the `.expected`, the binary the same; a probe the brief did not name (`probe31/deferred-crash.mo` in the scratchpad): eight asking processes, the batcher crashed by `Orphan` while it holds all eight replies, every asker sees `Down` (8 of 8), the restarted batcher answers all eight on the next round, `written 8`, under `mo run` and as a binary at 1 and 14 cores.
+
+**Ratified from the worker's defaults.** A `Reply` is a seq, not a seq and a deadline (1); the held list over a walk of the crashed state, so a dropped `Reply` is invisible and its asker times out (2); the deferral as a compiled fact (3); "mentions `reply_to` exactly once, inside an assignment under `state`" as the move rule (4); the runnable-corpus rule for `# run:` files (5); answering as an effect (6); an answer commits with its update (7); a second answer dropped (8); `errors.md` regenerated (9); `Reply` hideable (10); the recursion unit test moved onto a 256 MiB thread, since on macOS the Zig test runner's 8 MiB stack crashed it on a clean `main` (11); the measurement's flush bound set to the asker count and both programs timing themselves inside the batcher (12, 13).
+
+**Unmet, carried.** The interpreter's parked fiber per held ask at 128 askers (0.46) is a row for the placement step. Change 2's Mo program under `p6.py` is the first real test of the rule.
 
 ## Related
 

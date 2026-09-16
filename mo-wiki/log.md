@@ -404,3 +404,6 @@
 
 ## [2026-09-16] session | Mac, after midnight: measurement 1 complete, round 9's first model, a lead slip
 - Measurement 1 complete: twelve of twelve regenerations at 1.0 ([[bodies-as-cache]]); the stronger form on logstat, tests deleted too, 0.74 under the original tests and 1.0 under the transcripts. Round 9's kimi-k3: Go 0 regressions and 1 defect in 15 min, Python 0 and 0 in 35 min ([[control-run-9]]); Mo still running. The lead's slip: two wiki commits committed the worker's staged step 31 files with them (a bare `git commit` after `git add <paths>`); the rule in the skill is now `git commit -- <paths>`.
+
+## [2026-09-16] session | Mac: step 31 accepted, round 9 at four models
+- Step 31, the deferred reply, accepted at 01:15 ([[interpreter-step-31]]): the rule as chapter 10 §1 stated it, MO0411, all three runtimes, the corpus file; the crash probe 8 of 8 `Down`. Round 9 ([[control-run-9]]): kimi and deepseek done in all three languages (Mo carries a defect Opus's did not, both models); gemini out (invalid key), gpt-5.5 through Codex and the local qwen 27B running.
