@@ -101,6 +101,9 @@ program: the crash under load answers `503` within milliseconds and loses
 nothing, and the restart is the program's to write, not the language's. Step
 32 followed the same morning: crash reports kept apart from the event ring, so
 the surface's crash row survives load, and the reopening restart in the corpus.
+Then change 3 and generation three: a Mo maintainer wrote the queue that
+restarts itself, and killed under load it was back in 106 ms with nothing lost,
+where Elixir's takes 285 to 694 ms. The BEAM's last row is answered.
 
 ## What Mo is, today
 
@@ -230,10 +233,10 @@ does quality hold?), the incident round, and the two diagnostic columns.
    changes 3 to 10, are where a law either earns a row or is removed. The check
    that would have caught round 9's shared miss is a program `never`, which
    points at the spec, not the language.
-2. **The reopening store, change 3**: P6 on Mo's change 2 closed round 8's
-   outage (`503` within 2 ms, nothing lost) and showed the restart is writable
-   today, since a restarted process re-runs its state initializers; change 3
-   asks the four programs for it, and the BEAM's P6 row is answered or not.
+2. **Generation four and on**: nothing has eroded in three generations; the
+   ten-generation prediction (Go and Python at least three defects, Mo at most
+   one) needs the seams the next changes find. And the crash report the runtime
+   never frees, 44 MB a restart on a big queue, is step 33 before placement.
 3. **Placement**: a process placed with its asker or a reply answered on the
    asker's scheduler, so the Mac's fourteen cores stop costing.
 4. **Round 9's Opus-in-Pi baseline**, so the harness is the same in every row,

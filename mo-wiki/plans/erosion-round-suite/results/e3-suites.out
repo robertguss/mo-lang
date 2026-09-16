@@ -1,0 +1,143 @@
+
+## go own checks 10:42:01
+ok  	controlrun/jobq	19.627s
+check.sh: ok
+built
+
+## go regressions 10:42:23
+server up in 0.27s on 53682, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects-0sbs2vm6/dir
+     load: 200 acks in 2.6s (77/s), health {'queued': 120, 'scheduled': 0, 'leased': 1, 'done': 202, 'dead': 1, 'uptime_ms': 3954, 'restarts': 0}
+     durability: restarted in 0.06s
+     kill: 120 created, 116 acked before the kill; restarted in 0.06s
+
+121 passed, 0 defects
+
+## go defects1 10:42:59
+     durable: restarted in 0.06s
+     load: 160 jobs, each failed once and acked, in 3.6s
+     oldlog: opened in 0.06s
+
+188 passed, 1 defects
+  - fields: delay_ms null is 400 with an error: (201, {'id': 'j_6', 'queue': 'f', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-16T14:42:59.343Z', 'updated_at': '2026-09-16T14:42:59.343Z'})
+
+## go defects2 10:43:11
+server up in 0.06s on 57655, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects2-7r05vnkn/dir
+     unwritable: 42466 creates under load, statuses {201: 22834, 503: 19632}; full for 1.5s
+     unwritable: the servers' output kept in /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/unwritable-logs-al7le35y
+
+66 passed, 0 defects
+
+## go defects3 10:43:17
+FAIL restart: the load got through (over 500 creates acknowledged): 453
+
+55 passed, 1 defects
+  - restart: the load got through (over 500 creates acknowledged): 453
+
+## python own checks 10:44:14
+Success: no issues found in 24 source files
+All checks passed!
+
+OK
+check.sh: ok
+
+## python paced summary 10:47:29
+8 passed, 0 defects
+31 passed, 0 defects
+6 passed, 0 defects
+6 passed, 0 defects
+8 passed, 0 defects
+4 passed, 0 defects
+3 passed, 0 defects
+7 passed, 0 defects
+9 passed, 0 defects
+4 passed, 0 defects
+5 passed, 0 defects
+3 passed, 0 defects
+41 passed, 0 defects
+18 passed, 0 defects
+4 passed, 0 defects
+5 passed, 0 defects
+15 passed, 0 defects
+7 passed, 0 defects
+19 passed, 0 defects
+4 passed, 0 defects
+12 passed, 0 defects
+7 passed, 0 defects
+6 passed, 0 defects
+62 passed, 0 defects
+17 passed, 0 defects
+12 passed, 0 defects
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_21')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_21')
+30 passed, 2 defects
+8 passed, 0 defects
+11 passed, 0 defects
+11 passed, 0 defects
+10 passed, 0 defects
+FAIL restart: restarts is no more than one per 40 writes plus one: (212, 8286)
+FAIL restart: every acked job is done (after a stop and start): [('j_955', -1, 'OSError'), ('j_956', -1, 'OSError'), ('j_954', -1, 'OSError')]
+FAIL restart: every created job is present (after a stop and start): [('j_1', -1), ('j_2', -1), ('j_3', -1)]
+FAIL restart: every open lease is leased, queued, or scheduled (after a stop and start): [('j_11', -1, 'OSError'), ('j_12', -1, 'OSError'), ('j_25', -1, 'OSError')]
+FAIL restart: restarts is 0 after a fresh start
+10 passed, 5 defects
+9 passed, 0 defects
+
+## elixir own checks 10:47:29
+Compilation failed due to warnings while using the --warnings-as-errors option
+Use `mix credo explain` to explain issues, `mix credo --help` for options.
+Halting VM with exit status 2
+
+Result: 144 passed (4 properties, 140 tests)
+
+check.sh: ok
+Generated escript jobq with MIX_ENV=dev
+
+## elixir regressions 10:48:25
+
+111 passed, 4 defects
+  - auth: a token with a space is refused (401 or 400): 200
+  - kill: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - torn: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - health: ran to the end: OSError: [Errno 49] Can't assign requested address
+
+## elixir defects1 (no old serve) 10:49:00
+     durable: restarted in 0.23s
+     load: 160 jobs, each failed once and acked, in 1.2s
+FAIL oldlog: skipped, no --old-serve given: run with --old-serve to read this category
+
+128 passed, 1 defects
+  - oldlog: skipped, no --old-serve given: run with --old-serve to read this category
+
+## elixir defects2 10:49:09
+FAIL contained: a body of 1 MB is answered: ConnectionResetError
+     unwritable: 23085 creates under load, statuses {201: 22965, 503: 120}; full for 1.5s
+FAIL unwritable: ran to the end: RuntimeError: server exited 1 before answering: /Users/robertguss/Projects/startups/mo-lang-erosion3-elixir/experiments/control-run/elixir/jobq/jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/ramdisk-3q7z1yoj/dir --port 53884
+     unwritable: the servers' output kept in /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/unwritable-logs-2ax7qkfd
+
+63 passed, 2 defects
+  - contained: a body of 1 MB is answered: ConnectionResetError
+  - unwritable: ran to the end: RuntimeError: server exited 1 before answering: /Users/robertguss/Projects/startups/mo-lang-erosion3-elixir/experiments/control-run/elixir/jobq/jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/ramdisk-3q7z1yoj/dir --port 53884
+
+## elixir defects3 10:49:17
+FAIL restart: restarts is 0 after a fresh start
+FAIL budget: four failures 1.6 s apart under a window of 1 s and the service is still serving: (70, 4)
+FAIL budget: and /health answers
+
+49 passed, 7 defects
+  - restart: restarts is no more than one per 40 writes plus one: (174, 6159)
+  - restart: every acked job is done (after a stop and start): [('j_871', -1, 'OSError'), ('j_880', -1, 'OSError'), ('j_873', -1, 'OSError')]
+  - restart: every created job is present (after a stop and start): [('j_7', -1), ('j_3', -1), ('j_8', -1)]
+  - restart: every open lease is leased, queued, or scheduled (after a stop and start): [('j_9', -1, 'OSError'), ('j_10', -1, 'OSError'), ('j_11', -1, 'OSError')]
+  - restart: restarts is 0 after a fresh start: None
+  - budget: four failures 1.6 s apart under a window of 1 s and the service is still serving: (70, 4)
+  - budget: and /health answers: None
+
+## elixir p6 (kills) 10:49:58
+kills:
+  queue  at  1.71s, /health 200 again at  1.96s ( 255.3 ms); pid #PID<12666.108.0> -> #PID<12666.148.0>; exit -> 'true'
+  queue  at  4.72s, /health 200 again at  5.14s ( 422.1 ms); pid #PID<12666.148.0> -> #PID<12666.163.0>; exit -> 'true'
+  store  at  7.71s, /health 200 again at  8.42s ( 713.8 ms); pid #PID<12666.162.0> -> #PID<12666.176.0>; exit -> 'true'
+total requests 86879, not 200/201: 10178
+created jobs gone: 0 []
+
+## DONE 10:50:15

@@ -1,0 +1,127 @@
+server up in 0.27s on 54313, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects-pbb5sz8y/dir
+ok   auth: no token is 401
+ok   auth: empty token is 401
+ok   auth: /health needs no token
+ok   auth: a token with a space is refused (401 or 400)
+ok   validation: non-JSON body is 400
+ok   validation: non-JSON body carries an error string
+ok   validation: missing payload is 400
+ok   validation: missing payload carries an error string
+ok   validation: queue 65 bytes is 400
+ok   validation: queue 65 bytes carries an error string
+ok   validation: queue empty is 400
+ok   validation: queue empty carries an error string
+ok   validation: queue with a space is 400
+ok   validation: queue with a space carries an error string
+ok   validation: payload with \x01 is 400
+ok   validation: payload with \x01 carries an error string
+ok   validation: payload 60 KiB + 1 is 400
+ok   validation: payload 60 KiB + 1 carries an error string
+ok   validation: max_tries 0 is 400
+ok   validation: max_tries 0 carries an error string
+ok   validation: max_tries 101 is 400
+ok   validation: max_tries 101 carries an error string
+ok   validation: max_tries as a string is 400
+ok   validation: max_tries as a string carries an error string
+ok   validation: max_tries 2.5 is 400
+ok   validation: max_tries 2.5 carries an error string
+ok   validation: payload as a number is 400
+ok   validation: payload as a number carries an error string
+ok   validation: body is a list is 400
+ok   validation: body is a list carries an error string
+ok   validation: payload invalid UTF-8 is 400
+ok   validation: payload invalid UTF-8 carries an error string
+ok   validation: payload of exactly 60 KiB is 201
+ok   validation: a newline in the payload is allowed
+ok   validation: a tab in the payload is 400 (the spec allows only \n)
+ok   validation: lease_ms 99 is 400
+ok   validation: lease_ms 3,600,001 is 400
+ok   validation: a 65-byte queue name in the lease path is 400 or 404
+ok   routes: unknown route is 404
+ok   routes: GET on a POST route is 405
+ok   routes: PUT /jobs is 405
+ok   routes: missing job is 404
+ok   routes: ack on a missing job is 404
+ok   routes: delete on a missing job is 404
+ok   routes: a dotted path is not a job
+ok   life: create is 201
+ok   life: created job has id
+ok   life: created job has queue
+ok   life: created job has state
+ok   life: created job has payload
+ok   life: created job has tries
+ok   life: created job has max_tries
+ok   life: created job has created_at
+ok   life: created job has updated_at
+ok   life: created job is queued with 0 tries
+ok   life: id has the j_ shape
+ok   life: created job carries no worker or lease_until
+ok   life: get returns the job
+ok   life: lease hands out the oldest queued job
+ok   life: leased job is leased to the caller with tries 1
+ok   life: second lease hands out the second job
+ok   life: lease on an empty queue is 204
+ok   life: ack by another worker is 409
+ok   life: delete of a leased job is 409
+ok   life: ack by the holder is 200 done
+ok   life: a second ack is 409
+ok   life: fail on a done job is 409
+ok   life: fail below max is 200 queued with the reason
+ok   life: fail without a live lease is 409 (or 400 for the body)
+ok   life: a job failed at max_tries is dead with tries == max
+ok   life: a dead job is never leased
+ok   life: delete of a done job is 204
+ok   life: a deleted job is 404
+ok   life: delete of a dead job is 204
+ok   life: delete of a queued job is 204
+ok   list: queue+state filter
+ok   list: state filter alone
+ok   list: ordered by id
+ok   list: a bad state filter is 400
+ok   list: at most 100 jobs
+ok   roundtrip: unicode
+ok   roundtrip: quotes and backslashes
+ok   roundtrip: newline
+ok   roundtrip: empty payload
+ok   roundtrip: a non-ASCII token is handled (201, 400, or 401), not a crash
+ok   expiry: lease with 100 ms
+ok   expiry: a run-out lease is handed out again with tries 2
+ok   expiry: the old holder's ack is 409
+ok   expiry: the job still belongs to the new holder after the stale ack
+ok   expiry: the new holder acks
+ok   expiry: a lease that runs out on the last attempt is dead at the next look
+ok   expiry: nothing to lease after that
+ok   race: exactly one of 32 racing workers holds the job
+ok   race: no racer got an error
+ok   race: exactly one ack succeeds and it is the holder's
+ok   load: 8 workers x 25 create/lease/ack with no error
+ok   load: no job left leased by a worker that acked
+     load: 200 acks in 0.1s (3028/s), health {'queued': 120, 'scheduled': 0, 'leased': 1, 'done': 202, 'dead': 1, 'uptime_ms': 800, 'restarts': 0}
+ok   idle: 1,200 quiet connections can be opened
+ok   idle: a producer is answered within 5 s while 1,200 quiet connections are open
+ok   idle: a slow client with half a request does not block another
+ok   idle: the server answers after the crowd leaves
+ok   idle: a 2 MiB body is refused (400 or 413) or the connection closed, not a crash
+ok   idle: the server answers after the oversized body
+     durability: restarted in 0.06s
+ok   durability: every job survives a SIGKILL
+ok   durability: the deleted job stays deleted
+ok   durability: a live lease is still held by its worker after restart
+ok   durability: a lease that ran out during the restart is queued (or dead) at the next look
+ok   durability: a fail before the kill is kept with its reason
+ok   durability: unchanged jobs are byte-for-byte the same after replay
+ok   durability: ids continue after the restart and never repeat
+ok   durability: the live lease's holder can still ack after restart
+     kill: 5218 created, 5213 acked before the kill; restarted in 0.11s
+ok   kill: every job answered 201 before the kill is present after restart
+ok   kill: every job acked 200 before the kill is done after restart
+ok   kill: the service takes writes after the kill
+ok   torn: the service starts with a torn last line
+ok   torn: every whole record survives, the torn one is dropped
+ok   torn: writes work after the tear
+ok   torn: a second restart keeps the write made after the tear
+ok   health: shape
+ok   health: dead count is at least the dead jobs the listing shows (capped at 100)
+ok   end: the server is still alive
+
+121 passed, 0 defects

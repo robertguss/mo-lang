@@ -1,0 +1,34 @@
+
+## go defects3 (amended) 10:54:59
+     restart: restarts 31 over about 1209 acknowledged writes (one per 40 applied would be about 30; recorded, not checked: the applied count is not visible through HTTP)
+FAIL restart: every acked job is done (running): [('j_1', 503, None), ('j_2', 503, None), ('j_3', 503, None)]
+ok   restart: restarts is 0 after a fresh start
+54 passed, 1 defects
+
+## python defects3 (amended) 10:58:36
+11 passed, 0 defects
+11 passed, 0 defects
+10 passed, 0 defects
+     restart: restarts 216 over about 8437 acknowledged writes (one per 40 applied would be about 210; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: restarts is 0 after a fresh start
+14 passed, 0 defects
+9 passed, 0 defects
+
+## elixir regressions (paced) 10:59:47
+8 passed, 0 defects
+4 passed, 0 defects
+3 passed, 0 defects
+7 passed, 0 defects
+9 passed, 0 defects
+4 passed, 0 defects
+5 passed, 0 defects
+3 passed, 0 defects
+
+## elixir defects3 (amended) 10:59:47
+     restart: restarts 171 over about 6076 acknowledged writes (one per 40 applied would be about 151; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: restarts is 0 after a fresh start
+FAIL budget: four failures 1.6 s apart under a window of 1 s and the service is still serving: (70, 4)
+FAIL budget: and /health answers
+53 passed, 2 defects
+
+## DONE 11:01:29

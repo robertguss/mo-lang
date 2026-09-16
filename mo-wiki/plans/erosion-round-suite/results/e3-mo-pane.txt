@@ -1,0 +1,29 @@
+  13. Ids jump by 1,000 per restart: nothing is handed out twice. This was already how a stop
+      and start behaved.
+  14. Testing split: the rebuild path is tested by starting a second queue under the same
+      warden, which the warden treats as a restart. The chaos switch is tested with test
+      rejects. The real crash and exit 70 are tested by restarts.py.
+  15. New 503 reason after a crash: "the queue failed and is rebuilding its board from the
+      log".
+  16. Restart time grows with the log (measured on the binary):
+
+  | Jobs in log | /health 200 again after a failure |
+  |-------------|-----------------------------------|
+  | 20,000      | 0.27 s                            |
+  | 50,000      | 0.71 s                            |
+  | 100,000     | 1.38 s                            |
+
+  17. Memory leak per restart: recorded as a toolchain bug, not worked around.
+
+✻ Churned for 22m 59s · done 10:45 AM · 1 shell still running
+
+※ recap: Job queue change 3 (self-restart, restart budget, chaos switch) is done and committed
+  as ca550e5, with all tests green on both runtimes. Next, review REPORT-change-3.md,
+  especially the one miss: restarting on a 100,000-job log takes 1.38 seconds, over the spec's
+  one-second limit. (disable recaps in /config)
+
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion3-mo (erosion3-mo) | Context: 72% left
+  ⏵⏵ bypass permissions on · 1 shell · ← for agents

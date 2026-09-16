@@ -1,0 +1,28 @@
+     until the budget is spent, then the service exits 70.
+  9. A dying queue thread: the request in flight and those waiting get 503, a new thread
+     starts, and the board is rebuilt on it (counted as a restart).
+  10. The once-a-second background sweep is supervised the same way as a request.
+  11. uptime_ms is measured from process start and a restart doesn't reset it. restarts is the
+      last field in the /health JSON.
+  12. Exit 70 prints jobq: stopped serving <dir>: the restart budget is spent to stderr.
+  13. Test plumbing:
+      - Closing the store twice is now safe, because a restart closes it and the board's own
+        close later closes it again.
+      - open_queue is gone; tests build a Board, and the test helpers read the queue from the
+        board so they follow its restarts.
+      - jobq check still takes no chaos options.
+  14. The simulation's injected failures fire at random (5% of applied batches) with an
+      effectively unlimited budget. The rule that a 503 changes nothing is relaxed only for a
+      request during which the board restarted; every other rule is still checked after every
+      request.
+  15. Formatter style: I kept the parentheses in except (A, B): even though ruff format for
+      Python 3.14 would drop them. ruff format isn't one of this project's checks, and three
+      test files were already unformatted before this change.
+
+✻ Churned for 10m 46s · done 10:33 AM
+
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion3-python (erosion3-python) | Context: 84% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

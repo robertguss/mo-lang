@@ -1,0 +1,13 @@
+ok   count: restarts 0 before any failure
+ok   count: write 1 fails with 503 or a closed connection
+ok   count: restarts is 1 after failure 1
+ok   count: the write the failure interrupted is on the board (1 queued)
+ok   count: write 2 fails with 503 or a closed connection
+ok   count: restarts is 2 after failure 2
+ok   count: the write the failure interrupted is on the board (2 queued)
+ok   count: write 3 fails with 503 or a closed connection
+ok   count: restarts is 3 after failure 3
+ok   count: the write the failure interrupted is on the board (3 queued)
+ok   count: /health's other counts agree with three creates
+
+11 passed, 0 defects

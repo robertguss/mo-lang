@@ -425,3 +425,6 @@
 
 ## [2026-09-16] session | Morning: step 32 accepted
 - Crash reports kept apart from the event ring in both runtimes, the last 16; `restart-reopens.mo` in the corpus; the P6 probe with the default ring lists the crash under both runtimes ([[interpreter-step-32]]). One Opus session, 63 minutes, three commits. Verified by Fable's own probes; the bench rows within noise. Four rows: the acceptance, the ratified defaults, the unbounded full-report list as a queued step, a corpus flake under load.
+
+## [2026-09-16] session | Late morning: change 3 sealed, generation three run and read
+- Change 3, the store that restarts itself with a budget and a chaos switch, sealed at 10:20; four Opus maintainers at 10:22, done in 10 to 23 minutes ([[erosion-round]]). The fourth suite: Mo 55 of 55 under both runtimes, Go 55, Python 55, Elixir 53. P6 on Mo: the queue killed under load back in 106 ms, nothing lost; the BEAM's row answered. Chapter 10 §2 gains the budget as a value. Four rows, two `semantic` for Robert. Step 33, the crash report leak, next.

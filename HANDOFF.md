@@ -62,6 +62,7 @@ know that the wiki does not say in one place.
 >    `delay_ms` null defect; both open-weights models' Mo changes miss the
 >    run-out lease with backoff; the closed model does not. Gemini's key in Pi
 >    is invalid; xAI has no key; the local qwen 27B made no edit in any language in 92 minutes (P5's floor is below Go and Python too). **The Haiku row ran the morning of 16 Sep (08:22 to 08:45): 7 to 9 minutes a session, wrong in every language (Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2), none green by every check at its commit; the round is closed.** **P6 on Mo's change 2 (16 Sep, 09:00): the queue crashed through the runtime surface under load, `503` within 2 ms from then under both runtimes, nothing acknowledged lost, no restart (`:never`); a restarted process re-runs its state initializers, so the reopening store is change 3 (`erosion-round.md`, the P6 section).**
+> 7. **Change 3 and generation three (16 Sep, 10:20 to 11:20)**: the store that restarts itself, a budget, a chaos switch; four maintainers in 10 to 23 minutes; the fourth suite Mo 55 of 55 both runtimes, Go 55, Python 55, Elixir 53; the Mo queue killed under load back in 106 ms, nothing lost (Elixir 285 to 694 ms): the BEAM's row answered. Found: `max_restarts` takes only a literal (chapter 10 §2 asks for a value); the crash report leak, 44 MB a restart (step 33). Suites: `erosion-round-suite/defects3.py`, results under `results/e3-*`.
 > 6. **The erosion round, generation two** (`erosion-round.md`, for Robert):
 >    change 2 by four Opus maintainers in 12 to 18 minutes. Under round 8's
 >    suites nothing eroded in Mo, Go, or Python; Elixir refuses a torn line at
@@ -73,19 +74,15 @@ know that the wiki does not say in one place.
 >    was offered. Held P1, P4, P5, P6; failed P2 (Go cleaner by one) and P3 (Go
 >    and Python as contained as Mo).
 >
-> **Rows for Robert** (decision log, "for Robert"): P6 and the BEAM after round
+> **Rows for Robert** (decision log, "for Robert"): generation three and the BEAM's row answered; chapter 10 §2's budget as a value; round 9's Haiku row; P6 on Mo's change 2; P6 and the BEAM after round
 > 10; chapter 10 §1 as built (step 31); the erosion round's reading; the outage
 > row (program or runtime) from round 8; measurement 1's completeness row; the
 > 16 lint issues from his history bundle.
 >
 > **The queue** (the roadmap table is the authority; Fable decides the order):
 >
-> 1. **Change 3 of the erosion round, the reopening store**: the lead writes and seals `spec/programs/01d-job-queue-change-3.md` (a queue that crashes is restarted from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, and Elixir in their own terms; the three sentences decided at 02:00 folded into change 2's spec first), then generation three below. Step 32 is done (16 Sep, 10:20: crash reports apart from the ring, `restart-reopens.mo`).
-> 2. **Generation three of the erosion round**: change 3 is the reopening store (decided 16 Sep morning from P6 on Mo: a queue that crashes is restarted from its log, `503` meanwhile, `200` after, a budget on the line; the same asked of Go, Python, and Elixir), written and sealed by
->    the lead (`spec/programs/01d-...`), branched from `erosion2-*`, a fourth
->    hidden suite after the branching; the change 2 spec first gains the three
->    sentences decided at 02:00 (a record with a field its state forbids is
->    ill-formed; `verify` never writes; `verify` on a missing folder exits 1).
+> 1. **Step 33, the crash report freed**: the brief to the Opus worker in `w44:p3`: the rendered crash report (state, state before, message log; the invariant's clause renders it a third time) freed or bounded in both runtimes after it is printed and the 16-slot store has its cut copy, measured on a 20,000-job queue with `--crash-every 1` (change 3's Mo program in `../mo-lang-erosion3-mo`, its `TOOLCHAIN-BUGS.md` §5 has the reproduction); and the interpreter's exit on signal 6 under `mo run` late in the third suite's unwritable category on that program probed and fixed. Step 32 and generation three are done (see the state bullet 7).
+> 2. **Change 4 and generation four** of the erosion round: the lead writes and seals `01e-…`, branches `erosion4-*` from `erosion3-*` (copy `mise.toml` into the Elixir worktree: it is untracked), the fifth hidden suite after the branching, the suites of every earlier generation as regressions.
 > 3. **The placement step** (after 31): a process placed with its asker or a
 >    reply answered on the asker's scheduler; measured on `echo-1k` and the
 >    queue at 1 and 14 cores on the Mac; the interpreter's parked fiber at 128

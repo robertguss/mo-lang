@@ -1,0 +1,42 @@
+otp: 27
+
+## elixir regressions (OTP 27, paced) 11:09:45
+8 passed, 0 defects
+4 passed, 0 defects
+3 passed, 0 defects
+7 passed, 0 defects
+9 passed, 0 defects
+4 passed, 0 defects
+5 passed, 0 defects
+3 passed, 0 defects
+
+## elixir defects1 (OTP 27) 11:09:45
+ok   runout: a run-out lease with backoff is handed out by a lease request once the backoff from its look has passed
+FAIL oldlog: skipped, no --old-serve given: run with --old-serve to read this category
+128 passed, 1 defects
+
+## elixir defects2 (OTP 27) 11:09:53
+FAIL contained: a body of 1 MB is answered: BrokenPipeError
+FAIL unwritable: ran to the end: RuntimeError: server exited 1 before answering: /Users/robertguss/Projects/startups/mo-lang-erosion3-elixir/experiments/control-run/elixir/jobq/jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/ramdisk-xiel58lp/dir --port 55674
+63 passed, 2 defects
+
+## elixir defects3 (OTP 27) 11:10:01
+     restart: restarts 170 over about 6005 acknowledged writes (one per 40 applied would be about 150; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: restarts is 0 after a fresh start
+FAIL budget: four failures 1.6 s apart under a window of 1 s and the service is still serving: (70, 4)
+FAIL budget: and /health answers
+53 passed, 2 defects
+
+## elixir p6 (OTP 27) 11:11:43
+  queue  at  1.71s, /health 200 again at  1.99s ( 285.2 ms); pid #PID<12437.108.0> -> #PID<12437.148.0>; exit -> 'true'
+  queue  at  4.71s, /health 200 again at  5.10s ( 394.5 ms); pid #PID<12437.148.0> -> #PID<12437.163.0>; exit -> 'true'
+  store  at  7.72s, /health 200 again at  8.41s ( 693.5 ms); pid #PID<12437.162.0> -> #PID<12437.176.0>; exit -> 'true'
+total requests 88662, not 200/201: 9880
+created jobs gone: 0 []
+
+## go defects3 --only restart (amended) 11:12:02
+     restart: restarts 30 over about 1194 acknowledged writes (one per 40 applied would be about 29; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: restarts is 0 after a fresh start
+14 passed, 0 defects
+
+## DONE 11:13:09

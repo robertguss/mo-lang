@@ -1,0 +1,58 @@
+
+## mo regressions binary 11:01:34
+121 passed, 0 defects
+
+## mo defects1 binary 11:02:10
+ok   runout: a run-out lease with backoff is handed out by a lease request once the backoff from its look has passed
+189 passed, 0 defects
+
+## mo defects2 binary 11:02:19
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000')
+64 passed, 2 defects
+
+## mo defects3 binary 11:02:57
+FAIL count: the write the failure interrupted is on the board (j_2): (404, {'error': 'no such job'})
+FAIL count: the write the failure interrupted is on the board (j_3): (404, {'error': 'no such job'})
+     restart: restarts 206 over about 7666 acknowledged writes (one per 40 applied would be about 191; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: restarts is 0 after a fresh start
+53 passed, 2 defects
+
+## mo defects3 mo run 11:04:38
+FAIL count: the write the failure interrupted is on the board (j_2): (404, {'error': 'no such job'})
+FAIL count: the write the failure interrupted is on the board (j_3): (404, {'error': 'no such job'})
+     restart: restarts 89 over about 3180 acknowledged writes (one per 40 applied would be about 79; recorded, not checked: the applied count is not visible through HTTP)
+FAIL restart: every created job is present (running): [('j_18008', 503)]
+ok   restart: restarts is 0 after a fresh start
+52 passed, 3 defects
+
+## mo regressions mo run 11:06:15
+121 passed, 0 defects
+
+## mo defects2 mo run 11:06:52
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000')
+FAIL unwritable: ran to the end: RuntimeError: server exited -6 before answering: /Users/robertguss/Projects/startups/mo-lang-erosion3-mo/toolchain/zig-out/bin/mo run /Users/robertguss/Projects/startups/mo-lang-erosion3-mo/examples/programs/jobq/main.mo -- serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/ramdisk-eqewz4i_/dir --port 54857
+62 passed, 3 defects
+
+## mo p6 surface kill 11:07:27
+up in 0.33s on port 54937, surface 54938; processes [(1, 'Warden'), (2, 'Queue'), (3, 'Acceptor'), (4, 'Worker')]; queue id 2
+
+kills through the surface:
+  at  2.01s: send -> 200 'done'; /health 200 again at  2.11s ( 106.1 ms)
+
+requests by second and status:
+
+total requests 77647, not 200/201: 4
+created 25883, acked 25879
+resident after: 51642368
+server exit code -15
+restarted on the same folder in 0.41s
+acked jobs' states on the reopened folder: {'done': 25879}
+acked jobs not done: 0 []
+created jobs gone: 0 []
+health after restart: {'queued': 4, 'scheduled': 0, 'leased': 0, 'done': 25879, 'dead': 0, 'uptime_ms': 23612, 'restarts': 0}
+server log: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-vb5ddfku/server.log
+
+
+## DONE 11:08:31
