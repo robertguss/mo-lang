@@ -4,6 +4,7 @@ created: 2026-09-16
 updated: 2026-09-16
 type: map
 tags: [programs, corpus]
+sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
 status: living
 ---
 

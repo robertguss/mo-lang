@@ -4,6 +4,7 @@ created: 2026-09-16
 updated: 2026-09-16
 type: map
 tags: [syntax, laws]
+sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
 status: living
 ---
 

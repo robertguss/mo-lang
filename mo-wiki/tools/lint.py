@@ -30,6 +30,8 @@ def main():
         for p in (ROOT / d).rglob("*.md"):
             if p.name.startswith("_") or p.name == "README.md": continue
             pages[p.stem] = p
+    for p in ROOT.glob("*.md"):  # the root's standing pages (the state of the project); index, log, and SCHEMA are not pages
+        if p.name not in ("index.md", "log.md", "SCHEMA.md"): pages[p.stem] = p
     issues = defaultdict(list)
     inbound = defaultdict(int)
     index_text = (ROOT / "index.md").read_text()
