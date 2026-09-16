@@ -386,3 +386,6 @@
 
 ## [2026-09-16] session | Night: round 10 run and read, measurement 1 running
 - Round 10 brought forward and run while Robert slept: Elixir installed, the queue written in 31 min and changed in 16, both suites, the measure alone on the disk, the fourth oracle ([[control-run-10]]). Elixir: 2 defect causes, 0 regressions, twice Mo's speed, 7 s loop, 0 run-time deps. Three rows, one `semantic` for Robert. Measurement 1 ([[bodies-as-cache]]) at 1.0 on logstat, kv, notes, and jobq in both runs, the ledger and the agent program still to come.
+
+## [2026-09-16] session | Night: measurement 1 at 1.0 on five programs, the pause for the Mac
+- Ten regenerations (logstat, kv, notes, jobq, ledger, two runs each), ten at completeness 1.0 with every kept test, every transcript, and jobq's hidden suite ([[bodies-as-cache]]). Robert at 02:20: pause when they finish, continue on the Mac. Every branch pushed, instruments committed, `HANDOFF.md` rewritten for a Mac session. Two rows, one `semantic` for Robert.
