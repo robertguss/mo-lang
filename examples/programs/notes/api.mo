@@ -33,78 +33,161 @@ struct Page
 end
 
 fn route(request: Request) : Routed
-  # body gone; regenerate
+  parts = request.path.split("/").drop(1)
+  if request.path == "/health"
+    return Checkup if request.method == "GET"
+    return Answered(response: not_allowed("GET"))
+  end
+  return collection(request) if request.path == "/notes"
+  if parts.size == 2 and parts.first == Some("notes") and (parts.get(1) or "") != ""
+    return member(request, parts.get(1) or "")
+  end
+  Answered(response: failed(404, "no route #{request.path}"))
 end
 
 fn collection(request: Request) : Routed
-  # body gone; regenerate
+  return Answered(response: not_allowed("GET, POST")) if !["GET",
+    "POST"].contains?(request.method)
+  case bearer(request)
+    Some(owner):
+      return Asked(call: Call(owner: owner,
+        command: Listing(prefix: request.query.get("prefix") or ""))) if request.method == "GET"
+      Asked(call: Call(owner: owner, command: creating(request.body)))
+    None: Answered(response: unauthorized())
+  end
 end
 
 fn member(request: Request, id: String) : Routed
-  # body gone; regenerate
+  return Answered(response: not_allowed("GET, PUT, DELETE")) if !["GET", "PUT",
+    "DELETE"].contains?(request.method)
+  case bearer(request)
+    Some(owner): Asked(call: Call(owner: owner, command: member_command(request, id)))
+    None: Answered(response: unauthorized())
+  end
+end
+
+# What a member route's method asks of the note.
+fn member_command(request: Request, id: String) : Command
+  return Fetch(id: id) if request.method == "GET"
+  return Remove(id: id) if request.method == "DELETE"
+  updating(id, request.body)
 end
 
 # The client token an authorization header carries: Bearer, a space, and a token of 1 to 64
 # letters, digits, - and _. The scheme's case does not matter.
 fn bearer(request: Request) : Option(String)
-  # body gone; regenerate
+  header = try request.headers.get("authorization")
+  return None if header.slice(0, 7).to_lower != "bearer "
+  token = header.slice(7, header.size).trim
+  return None if !token?(token)
+  Some(token)
 end
 
 fn creating(body: String) : Command
-  # body gone; regenerate
+  case drafted(body)
+    Ok(draft): Create(title: draft.title, body: draft.body)
+    Error(reason): Refuse(reason: reason)
+  end
 end
 
 fn updating(id: String, body: String) : Command
-  # body gone; regenerate
+  case drafted(body)
+    Ok(draft): Update(id: id, title: draft.title, body: draft.body)
+    Error(reason): Refuse(reason: reason)
+  end
 end
 
 # A request body as a title and a body, or why it is not one: not JSON, not an object, a field
 # missing or not a string, or a title or body that breaks its rule.
 fn drafted(text: String) : Result(Draft, String)
   ensures result is Ok(draft) implies title?(draft.title) and body?(draft.body)
-  # body gone; regenerate
+
+  fields = try object_of(text)
+  title = try field(fields, "title")
+  body = try field(fields, "body")
+  if !title?(title)
+    return Error("title must be 1 to 200 bytes with no control characters")
+  end
+  if !body?(body)
+    return Error("body must be at most 60 KiB with no control characters but a newline")
+  end
+  Ok(Draft(title: title, body: body))
 end
 
 fn field(fields: Map(String, Json), name: String) : Result(String, String)
-  # body gone; regenerate
+  case fields.get(name)
+    Some(String(text)): Ok(text)
+    Some(_): Error("#{name} must be a string")
+    None: Error("#{name} is missing")
+  end
+end
+
+fn object_of(text: String) : Result(Map(String, Json), String)
+  case Json.decode(text)
+    Ok(Object(fields)): Ok(fields)
+    Ok(_): Error("the body must be a JSON object")
+    Error(_): Error("the body is not JSON")
+  end
 end
 
 # The response to an outcome of the service.
 fn respond(outcome: Outcome) : Response
   ensures result.status >= 200 and result.status <= 503
-  # body gone; regenerate
+
+  case outcome
+    Made(note): json(201, Json.encode(note))
+    Found(note): json(200, Json.encode(note))
+    Listed(notes): json(200, Json.encode(Page(notes: notes)))
+    Removed: Response(status: 204, body: "")
+    Missing: failed(404, "no such note")
+    Refused(reason): failed(400, reason)
+    Limited(retry_after_ms):
+      json(429, Json.encode(Waiting(error: "rate limited", retry_after_ms: retry_after_ms)))
+    Unavailable(reason): failed(503, reason)
+  end
 end
 
 fn health(counts: Counts) : Response
-  # body gone; regenerate
+  json(200, Json.encode(counts))
 end
 
 fn json(status: UInt16, body: String) : Response
-  # body gone; regenerate
+  Response(status: status, headers: Map.new().set("content-type", "application/json"),
+    body: body)
 end
 
 fn failed(status: UInt16, reason: String) : Response
-  # body gone; regenerate
+  json(status, Json.encode(Failure(error: reason)))
 end
 
 fn unauthorized() : Response
-  # body gone; regenerate
+  failed(401, "a request needs authorization: Bearer <token>")
 end
 
 fn not_allowed(methods: String) : Response
-  # body gone; regenerate
+  var response = failed(405, "this route takes #{methods}")
+  response.headers = response.headers.set("allow", methods)
+  response
 end
 
 fn authorized(method: String, path: String, token: String, body: String) : Request
-  # body gone; regenerate
+  Request(method: method, path: path,
+    headers: Map.new().set("authorization", "Bearer #{token}"), body: body)
 end
 
 fn asked(routed: Routed) : Option(Call)
-  # body gone; regenerate
+  case routed
+    Asked(call): Some(call)
+    Checkup | Answered(_): None
+  end
 end
 
 fn status_of(routed: Routed) : UInt16
-  # body gone; regenerate
+  case routed
+    Answered(response): response.status
+    Checkup: 200
+    Asked(_): 0
+  end
 end
 
 test "each route takes its methods, and any other method is 405 with the ones it takes"
@@ -190,3 +273,6 @@ property "any valid title and body sent as JSON become a create of that title an
     assert asked(route(post)) == Some(Call(owner: "ada", command: Create(title: title, body: body)))
   end
 end
+
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run
