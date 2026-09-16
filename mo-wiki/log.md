@@ -413,3 +413,6 @@
 
 ## [2026-09-16] session | Mac, 02:45: round 9 read, the night closed
 - Round 9 done except Haiku ([[control-run-9]]): the local 27B made no edit in 92 minutes; the reading written. Every session pane is saved in the lead's scratchpad; every worktree is on disk; `HANDOFF.md` is the morning's. Robert's rows: P6 and the BEAM, chapter 10 §1 as built, the erosion round, round 9.
+
+## [2026-09-16] session | Morning: the wiki as a site, the state of the project, the maps
+- Robert's ask on waking: the whole picture, not the trees, and the wiki readable from his phone. Quartz in `site/`, GitHub Pages, every push publishes; [[state-of-the-project]] written from the first commit to this morning; seven maps of content. The lint sees `maps/` and the root pages now (80 issues, most the research pages' type).

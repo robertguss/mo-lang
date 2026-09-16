@@ -104,6 +104,8 @@ know that the wiki does not say in one place.
 > 6. Then the roadmap's order: the bricks page; the compile benchmark;
 >    program 7.
 >
+> **The site.** The wiki is published at https://robertguss.github.io/mo-lang/ by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`. `mo-wiki/state-of-the-project.md` is the lead's standing account, rewritten at every pause; the maps under `mo-wiki/maps/` are kept current as pages land. Build locally with `cd site && npx quartz build -d ../mo-wiki -o public`.
+>
 > **Things learned this night on the Mac.** `ls`, `cat`, `tr`, and `find -type`
 > are aliased to other tools here: use python3 for listings and file reads in
 > scripts. `echo =====` is a zsh equals expansion; use `---`. The Ollama app
