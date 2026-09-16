@@ -1,0 +1,3 @@
+before the crash the store read one
+after the crash and the restart the store read two
+removed restart-reopens.txt
