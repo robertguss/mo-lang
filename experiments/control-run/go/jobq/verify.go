@@ -124,6 +124,24 @@ func wellFormedFields(key string, v jobJSON) error {
 	return nil
 }
 
+// wellFormedRename checks a rename record: two different queue names and
+// the id counter at the time, and nothing else.
+func wellFormedRename(rec record) error {
+	key := fmt.Sprintf("rename %q to %q", rec.From, rec.To)
+	bad := func(rule string) error { return &illFormed{key: key, rule: rule} }
+	switch {
+	case !validQueueName(rec.From) || !validQueueName(rec.To):
+		return bad("a rename's from and to are 1 to 64 bytes of letters, digits, '-' and '_'")
+	case rec.From == rec.To:
+		return bad("a rename's from and to differ")
+	case rec.NextID < 1:
+		return bad("a rename has next_id")
+	case rec.Job != nil || rec.ID != "":
+		return bad("a rename has no job and no id")
+	}
+	return nil
+}
+
 func none(want bool) string {
 	if want {
 		return "a"

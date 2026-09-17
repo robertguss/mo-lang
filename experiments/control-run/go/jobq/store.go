@@ -19,7 +19,8 @@ import (
 // The store is an append-only log in <dir>/jobq.log. One line per record:
 // eight hex digits of CRC-32C, a space, the record's JSON, a newline. A put
 // holds a job's whole state, a del removes a job, a meta (written by compact)
-// carries the id counter, an arch says the job left the board for the archive.
+// carries the id counter, an arch says the job left the board for the archive,
+// and a rename moves every job of one queue to another (see Queue.Rename).
 //
 // The archive is <dir>/jobq.archive, the same line format, append-only
 // between compactions: a put holds an archived job with archived_at, a del
@@ -47,6 +48,8 @@ type record struct {
 	Job    *jobJSON `json:"job,omitempty"`
 	ID     string   `json:"id,omitempty"`
 	NextID uint64   `json:"next_id,omitempty"`
+	From   string   `json:"from,omitempty"`
+	To     string   `json:"to,omitempty"`
 }
 
 // File is what the store needs from the file under it; the tests inject
@@ -97,11 +100,13 @@ func decodeLine(line []byte) (record, error) {
 		Job    *storedJob `json:"job"`
 		ID     string     `json:"id"`
 		NextID uint64     `json:"next_id"`
+		From   string     `json:"from"`
+		To     string     `json:"to"`
 	}
 	if err := dec.Decode(&sr); err != nil {
 		return record{}, err
 	}
-	r := record{Op: sr.Op, ID: sr.ID, NextID: sr.NextID}
+	r := record{Op: sr.Op, ID: sr.ID, NextID: sr.NextID, From: sr.From, To: sr.To}
 	if sr.Job != nil {
 		v, err := sr.Job.view()
 		if err != nil {
@@ -327,10 +332,15 @@ func syncDir(dir string) error {
 }
 
 // Compact rewrites <dir>/jobq.log as a meta record and one put per job on
-// the board, by id, then <dir>/jobq.archive as one put per archived job not
-// deleted, each through a temporary file renamed over the old one. The log
-// goes first: a kill between the two leaves an archive that still holds
-// tombstones for jobs the new log no longer names, which opens the same.
+// the board, by id, under its current queue, then <dir>/jobq.archive as one
+// put per archived job not deleted, under its current queue. Renames are
+// folded into the job records, so the new log has none, and the new archive
+// must replace the old one with the log: an old archive under a new log would
+// lose the renames. So both new files are written and synced first, the log
+// is renamed over the old one, then the archive. A kill leaves jobq.log.compact
+// (nothing was replaced; the open drops both temporaries) or only
+// jobq.archive.compact (the log was replaced; the open finishes the archive's
+// rename). See finishCompaction.
 func Compact(dir string) error {
 	q, s, err := openQueue(dir, realClock{})
 	if err != nil {
@@ -338,19 +348,64 @@ func Compact(dir string) error {
 	}
 	defer s.Close()
 	defer q.closeArchive()
-	if err := rewrite(dir, logName, func(w io.Writer) error { return writeCompacted(w, q) }); err != nil {
+	_, statErr := os.Stat(filepath.Join(dir, archiveName))
+	withArchive := !errors.Is(statErr, fs.ErrNotExist) || len(q.archived) > 0
+	if err := writeTemp(dir, logName, func(w io.Writer) error { return writeCompacted(w, q) }); err != nil {
 		return err
 	}
-	_, statErr := os.Stat(filepath.Join(dir, archiveName))
-	if errors.Is(statErr, fs.ErrNotExist) && len(q.archived) == 0 {
+	if withArchive {
+		if err := writeTemp(dir, archiveName, func(w io.Writer) error { return writeArchive(w, q) }); err != nil {
+			os.Remove(tempPath(dir, logName))
+			return err
+		}
+	}
+	if err := errors.Join(os.Rename(tempPath(dir, logName), filepath.Join(dir, logName)), syncDir(dir)); err != nil {
+		return err
+	}
+	if !withArchive {
 		return nil
 	}
-	return rewrite(dir, archiveName, func(w io.Writer) error { return writeArchive(w, q) })
+	return errors.Join(os.Rename(tempPath(dir, archiveName), filepath.Join(dir, archiveName)), syncDir(dir))
 }
 
-// rewrite replaces <dir>/<name> with what write writes, durably.
-func rewrite(dir, name string, write func(io.Writer) error) error {
-	tmp := filepath.Join(dir, name+".compact")
+func tempPath(dir, name string) string { return filepath.Join(dir, name+".compact") }
+
+// finishCompaction makes a folder a killed Compact left whole: the old pair
+// of files, or the new pair. The caller holds the log's lock.
+func finishCompaction(dir string) error {
+	logTemp, archTemp := tempPath(dir, logName), tempPath(dir, archiveName)
+	_, logErr := os.Stat(logTemp)
+	_, archErr := os.Stat(archTemp)
+	switch {
+	case logErr == nil:
+		// The archive's temporary goes first: a kill between the two
+		// removals still leaves the log's, which says nothing was replaced.
+		if err := errors.Join(removeIfThere(archTemp), syncDir(dir)); err != nil {
+			return err
+		}
+		if err := os.Remove(logTemp); err != nil {
+			return err
+		}
+	case archErr == nil:
+		if err := os.Rename(archTemp, filepath.Join(dir, archiveName)); err != nil {
+			return err
+		}
+	default:
+		return nil
+	}
+	return syncDir(dir)
+}
+
+func removeIfThere(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+// writeTemp writes <dir>/<name>.compact with what write writes, synced.
+func writeTemp(dir, name string, write func(io.Writer) error) error {
+	tmp := tempPath(dir, name)
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
@@ -367,10 +422,7 @@ func rewrite(dir, name string, write func(io.Writer) error) error {
 		os.Remove(tmp)
 		return err
 	}
-	if err := os.Rename(tmp, filepath.Join(dir, name)); err != nil {
-		return err
-	}
-	return syncDir(dir)
+	return nil
 }
 
 func writeCompacted(w io.Writer, q *Queue) error {

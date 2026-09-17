@@ -54,6 +54,10 @@ type Queue struct {
 	keys     map[keyRef]uint64
 	ends     deadlineHeap
 	unlogged []uint64
+	// unarched is, during a replay, the archived ids the log has a put for
+	// and no arch after it yet: the job was on the board then, so a rename
+	// replayed now is already in the archive's record of it.
+	unarched map[uint64]bool
 
 	// broken is set under lock by a failure that is not one request's: a
 	// broken rule or a panic. Every later holder of lock leaves at once, and
@@ -91,7 +95,7 @@ func newQueue(clock Clock) *Queue {
 		lock: make(chan struct{}, 1), clock: clock, jobs: map[uint64]*Job{},
 		queued: map[string]*idHeap{}, counts: map[State]int{}, nextID: 1,
 		retain: defaultRetainMS * time.Millisecond, archived: map[uint64]*Job{}, gone: map[uint64]bool{},
-		keys: map[keyRef]uint64{},
+		keys: map[keyRef]uint64{}, unarched: map[uint64]bool{},
 	}
 }
 
@@ -105,8 +109,13 @@ func (q *Queue) closeArchive() error {
 // checkApart holds after an open: no job is on the board and archived, and
 // no key names two jobs in one queue. An open reads the archive before the
 // log, out of the order the records were written, so the key map is built
-// again here from what the replay left, and checked as it is.
+// again here from what the replay left, and checked as it is. An archived job
+// whose arch record the log lacks (a kill fell between the two writes) gets
+// one with the next commit, so a rename written after this open applies to
+// it at the next.
 func (q *Queue) checkApart() error {
+	q.unlogged = append(q.unlogged, sortedSet(q.unarched)...)
+	q.unarched = map[uint64]bool{}
 	var errs []error
 	for id := range q.archived {
 		errs = append(errs, contract.Never(q.jobs[id] != nil, "a job is on the live board and in the archive at once"))
@@ -182,6 +191,9 @@ func (q *Queue) applyRecord(rec record) error {
 		}
 		q.nextID = max(q.nextID, j.ID+1)
 		if q.archived[j.ID] != nil || q.gone[j.ID] {
+			if q.archived[j.ID] != nil {
+				q.unarched[j.ID] = true
+			}
 			return nil // stale: the archive's record wins
 		}
 		c := change{old: q.jobs[j.ID], new: &j}
@@ -195,9 +207,16 @@ func (q *Queue) applyRecord(rec record) error {
 		if !ok || (q.archived[id] == nil && !q.gone[id]) {
 			return fmt.Errorf("arch of a job not in the archive %q", rec.ID)
 		}
+		delete(q.unarched, id)
 		if q.jobs[id] != nil {
 			q.leave(id)
 		}
+		return nil
+	case "rename":
+		if err := wellFormedRename(rec); err != nil {
+			return err
+		}
+		q.replayRename(rec.From, rec.To, rec.NextID)
 		return nil
 	case "del":
 		id, ok := parseID(rec.ID)
@@ -266,6 +285,7 @@ func (q *Queue) applyArchiveRecord(rec record) error {
 func (q *Queue) forget(id uint64) {
 	j := q.archived[id]
 	delete(q.archived, id)
+	delete(q.unarched, id)
 	q.gone[id] = true
 	if ref, ok := j.keyRef(); ok && q.keys[ref] == id {
 		delete(q.keys, ref)
@@ -313,7 +333,7 @@ func (q *Queue) install(c change) {
 		}
 		heap.Push(h, j.ID)
 	}
-	if j.State == Leased {
+	if j.State == Leased && (c.old == nil || c.old.State != Leased || !c.old.LeaseUntil.Equal(j.LeaseUntil)) {
 		heap.Push(&q.leases, deadline{at: j.LeaseUntil, id: j.ID})
 	}
 	if j.State == Scheduled {
@@ -358,9 +378,15 @@ func checkNevers(c change, now time.Time) error {
 	liveLease := old.State == Leased && old.LeaseUntil.After(now)
 	terminal := old.State == Done || old.State == Dead
 	retry := old.State == Dead && n.State == Queued && n.Tries == 0
+	// A handoff moves a live lease to another worker with its lease_until
+	// and tries; any other change that leaves a live lease leased is a
+	// second worker taking the job, or a handoff that changed the lease.
+	handoff := isHandoff(*old, *n)
 	return errors.Join(
 		contract.Never(n.Key != old.Key, "a job's key changes"),
-		contract.Never(n.State == Leased && liveLease, "a job is held by two workers at once"),
+		contract.Never(n.Queue != old.Queue, "a job changes queue but by a rename"),
+		contract.Never(n.State == Leased && liveLease && !handoff,
+			"a job is held by two workers at once, or a handoff changes lease_until or tries"),
 		contract.Never(n.State == Leased && terminal, "a done job is leased again, or a dead job before it is retried"),
 		contract.Never(old.State == Done && n.State != Done, "a done job changes state"),
 		contract.Never(old.State == Dead && n.State != Dead && !retry, "a dead job changes state but by a retry"),
@@ -389,6 +415,12 @@ func checkInvariants(j Job) error {
 		contract.Invariant(j.Tries >= 0 && !j.UpdatedAt.Before(j.CreatedAt),
 			"tries >= 0 and created_at <= updated_at"),
 	)
+}
+
+// isHandoff is the handoff step's shape: leased before and after, to the
+// same lease_until, with the same tries.
+func isHandoff(old, n Job) bool {
+	return old.State == Leased && n.State == Leased && n.Tries == old.Tries && n.LeaseUntil.Equal(old.LeaseUntil)
 }
 
 // tx is one operation under the lock. Its look ends every lease that has run
@@ -535,9 +567,14 @@ func (t *tx) undo() {
 }
 
 // commit makes the moves and changes durable, then applies the changes.
-func (t *tx) commit(changes ...change) error {
+func (t *tx) commit(changes ...change) error { return t.commitWith(nil, nil, changes...) }
+
+// commitWith is commit with extra records written after the changes' and
+// apply run after the changes are installed, both only once the write is
+// durable.
+func (t *tx) commitWith(extra []record, apply func(), changes ...change) error {
 	all := append(t.moved, changes...)
-	if len(all) == 0 && len(t.q.unlogged) == 0 {
+	if len(all) == 0 && len(t.q.unlogged) == 0 && len(extra) == 0 {
 		return nil
 	}
 	for _, c := range changes {
@@ -553,6 +590,7 @@ func (t *tx) commit(changes ...change) error {
 		recs = append(recs, record{Op: "arch", ID: formatID(id)})
 	}
 	recs = append(recs, records(all)...)
+	recs = append(recs, extra...)
 	if err := t.q.store.Append(recs...); err != nil {
 		t.undo()
 		return err
@@ -565,6 +603,9 @@ func (t *tx) commit(changes ...change) error {
 	var errs []error
 	for _, c := range changes {
 		t.q.install(c)
+	}
+	if apply != nil {
+		apply()
 	}
 	for _, c := range all {
 		if c.new != nil {
@@ -865,6 +906,189 @@ func (q *Queue) Retry(ctx context.Context, id uint64) (Job, error) {
 	}
 	got := *q.jobs[id]
 	return got, q.guard(ensureRetried(got))
+}
+
+// Handoff moves the lease the caller holds on a job to the worker to.
+// requires: worker and to are tokens, and worker holds a live lease on the
+// job (409 otherwise, as for ack). ensures: the job is leased to to, with
+// the lease_until and tries it had. A handoff to the caller itself changes
+// nothing and writes nothing.
+func (q *Queue) Handoff(ctx context.Context, id uint64, worker, to string) (Job, error) {
+	if err := errors.Join(requireWorker(worker), requireWorker(to)); err != nil {
+		return Job{}, err
+	}
+	t, err := q.begin(ctx)
+	if err != nil {
+		return Job{}, err
+	}
+	defer t.end()
+	old, err := q.held(id, worker, t.now)
+	if err != nil {
+		return Job{}, errors.Join(t.commitReads(), err)
+	}
+	if to == worker {
+		if err := t.commitReads(); err != nil {
+			return Job{}, err
+		}
+		return *q.jobs[id], nil
+	}
+	n := handoffStep(*old, to, t.now)
+	if err := t.commit(change{old: old, new: &n}); err != nil {
+		return Job{}, err
+	}
+	got := *q.jobs[id]
+	return got, q.guard(ensureHandedOff(*old, got, to))
+}
+
+// handoffStep is the handoff on a leased job: the worker changes, and
+// updated_at, and nothing else.
+func handoffStep(j Job, to string, now time.Time) Job {
+	j.Worker, j.UpdatedAt = to, now
+	return j
+}
+
+func ensureHandedOff(before, after Job, to string) error {
+	return contract.Ensure(after.State == Leased && after.Worker == to && isHandoff(before, after),
+		"the job is leased to the new worker with the lease_until and tries it had")
+}
+
+// errExists is a rename onto a queue that holds a job.
+var errExists = fmt.Errorf("%w: exists", ErrConflict)
+
+// noQueue is a rename of a queue that holds no job.
+type noQueue struct{ name string }
+
+func (e *noQueue) Error() string        { return fmt.Sprintf("no such queue %q", e.name) }
+func (e *noQueue) Is(target error) bool { return target == ErrNotFound }
+
+// Rename moves every job of from, on the board or archived, in any state,
+// to the queue to, with its key. It is one record, written before any job
+// moves. requires: from and to are queue names. from holds a job (404
+// otherwise); to holds none and is not from (409). ensures: from holds no
+// job and to holds the moved ones. A lease in flight moves with its job and
+// is otherwise untouched: renameStep changes only Queue.
+func (q *Queue) Rename(ctx context.Context, from, to string) (moved int, err error) {
+	if err := errors.Join(requireQueue(from), requireQueue(to)); err != nil {
+		return 0, err
+	}
+	t, err := q.begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer t.end()
+	switch {
+	case q.queueSize(from) == 0:
+		return 0, errors.Join(t.commitReads(), &noQueue{from})
+	case from == to:
+		return 0, errors.Join(t.commitReads(), fmt.Errorf("%w: queue %q is the queue renamed", errExists, to))
+	case q.queueSize(to) > 0:
+		return 0, errors.Join(t.commitReads(), fmt.Errorf("%w: queue %q holds jobs", errExists, to))
+	}
+	before := q.queueSize(from)
+	rec := record{Op: "rename", From: from, To: to, NextID: q.nextID}
+	var clash error
+	if err := t.commitWith([]record{rec}, func() { moved, clash = q.rename(from, to, q.nextID) }); err != nil {
+		return 0, err
+	}
+	return moved, q.guard(errors.Join(clash, contract.Ensure(moved == before && q.queueSize(from) == 0 && q.queueSize(to) == moved,
+		"every job of the old queue is in the new one, and none is left behind")))
+}
+
+// queueSize counts the jobs of a queue, on the board and archived.
+func (q *Queue) queueSize(name string) int {
+	n := 0
+	for _, jobs := range []map[uint64]*Job{q.jobs, q.archived} {
+		for _, j := range jobs {
+			if j.Queue == name {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// renameStep is the rename on one job: a job of from is in to, any other job
+// is as it was.
+func renameStep(j Job, from, to string) (Job, bool) {
+	if j.Queue != from {
+		return j, false
+	}
+	j.Queue = to
+	return j, true
+}
+
+// renameKeys is the rename on the key map: every key used in from is used
+// in to, for the same job, and free in from. A key already used in to would
+// name two jobs there; Rename never gets one, as to holds no job and every
+// used key names a job that is still held.
+func renameKeys(keys map[keyRef]uint64, from, to string) (map[keyRef]uint64, error) {
+	out := make(map[keyRef]uint64, len(keys))
+	var clash bool
+	for ref, id := range keys {
+		if ref.queue == from {
+			continue
+		}
+		out[ref] = id
+	}
+	for ref, id := range keys {
+		if ref.queue != from {
+			continue
+		}
+		_, used := out[keyRef{to, ref.key}]
+		clash = clash || used
+		out[keyRef{to, ref.key}] = id
+	}
+	return out, contract.Never(clash, "a rename lets a key name two jobs in one queue")
+}
+
+// rename applies a durable rename in memory: the jobs, the key map, and the
+// queued index. An archived job moves only if it existed when the rename
+// was written (its id is below nextID) and the replay has not seen it on the
+// board since its last archive point (unarched): otherwise its archive record
+// was written after the rename, under the name it has now.
+func (q *Queue) rename(from, to string, nextID uint64) (moved int, err error) {
+	move := func(j *Job) {
+		if n, ok := renameStep(*j, from, to); ok {
+			*j = n
+			moved++
+		}
+	}
+	for _, j := range q.jobs {
+		move(j)
+	}
+	for id, j := range q.archived {
+		if id < nextID && !q.unarched[id] {
+			move(j)
+		}
+	}
+	q.keys, err = renameKeys(q.keys, from, to)
+	if h := q.queued[from]; h != nil {
+		delete(q.queued, from)
+		if dst := q.queued[to]; dst != nil {
+			for _, id := range *h {
+				heap.Push(dst, id)
+			}
+		} else {
+			q.queued[to] = h
+		}
+	}
+	return moved, err
+}
+
+// replayRename is a rename record replayed. The key map is rebuilt at the
+// end of the open (checkApart), so a clash in the half-built one here says
+// nothing.
+func (q *Queue) replayRename(from, to string, nextID uint64) {
+	_, _ = q.rename(from, to, nextID)
+}
+
+func sortedSet(set map[uint64]bool) []uint64 {
+	ids := make([]uint64, 0, len(set))
+	for id := range set {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return ids
 }
 
 // QueueCounts is one queue's jobs by state in GET /queues.

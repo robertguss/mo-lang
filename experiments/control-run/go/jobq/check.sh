@@ -12,6 +12,8 @@
 # restarts itself and counts it in /health; with a budget of 1 the second
 # failure inside the window exits 70 and the folder verifies. 7: keys and
 # the archive on the served process, through a restart and a compaction.
+# 8: a handoff and a rename on the served process, through a stop and start,
+# a compaction that folds the rename, and verify.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 tmp="$(mktemp -d)"
@@ -156,4 +158,34 @@ timeout 30 "$jobq" verify "$tmp/arch" | grep -q '^1 jobs: queued 1, .*; archived
 if timeout 10 "$jobq" serve "$tmp/arch" --retain-ms 999 2> /dev/null; then
   echo "check.sh: serve took --retain-ms 999" >&2; exit 1
 fi
+# 8: a lease handed to another worker and a queue renamed with it in flight.
+mkdir "$tmp/move"
+serve "$tmp/move"
+expect 201 '"id":"j_1"' prod POST /jobs '{"queue":"old","key":"once","payload":"p","max_tries":2}'
+expect 201 '"id":"j_2"' prod POST /jobs '{"queue":"old","payload":"q","max_tries":1}'
+expect 200 '"worker":"w1"' w1 POST /queues/old/lease '{"lease_ms":600000}'
+expect 200 '"worker":"w2"' w1 POST /jobs/j_1/handoff '{"to":"w2"}'
+expect 409 'error' w1 POST /jobs/j_1/ack
+expect 200 '{"queue":"new","moved":2}' prod POST /queues/old/rename '{"to":"new"}'
+expect 409 'exists' prod POST /queues/new/rename '{"to":"new"}'
+expect 404 'error' prod POST /queues/old/rename '{"to":"other"}'
+stop
+lines="$(python3 -c 'import sys; print(sum(1 for l in open(sys.argv[1]) if "\"op\":\"rename\"" in l))' "$tmp/move/jobq.log")"
+[ "$lines" = 1 ] || { echo "check.sh: the rename wrote $lines rename records, want 1" >&2; exit 1; }
+serve "$tmp/move"
+expect 200 '"queue":"new","key":"once","state":"leased"' prod GET /jobs?queue=new\&key=once
+expect 200 '"worker":"w2"' prod GET /jobs/j_1
+expect 204 '' w3 POST /queues/old/lease
+expect 200 '"state":"done"' w2 POST /jobs/j_1/ack
+stop
+timeout 30 "$jobq" compact "$tmp/move"
+if grep -q -e rename -e '"old"' "$tmp/move/jobq.log"; then
+  echo "check.sh: compact left a rename or the old name in the log" >&2; exit 1
+fi
+timeout 30 "$jobq" verify "$tmp/move" | grep -q '^2 jobs: queued 1, scheduled 0, leased 0, done 1, dead 0; next id j_3; archived 0$' || {
+  echo "check.sh: verify after the rename printed the wrong line" >&2; exit 1; }
+serve "$tmp/move"
+expect 200 '"name":"new","queued":1,"scheduled":0,"leased":0,"done":1' prod GET /queues
+expect 201 '"queue":"old"' prod POST /jobs '{"queue":"old","key":"once","payload":"fresh","max_tries":1}'
+stop
 echo "check.sh: ok"

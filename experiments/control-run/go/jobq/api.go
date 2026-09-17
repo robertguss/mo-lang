@@ -47,6 +47,10 @@ func (a *API) match(path string) (route, bool) {
 		return route{methods: map[string]handler{"POST": a.ack}, arg: seg[1]}, true
 	case len(seg) == 3 && seg[0] == "jobs" && seg[2] == "fail":
 		return route{methods: map[string]handler{"POST": a.fail}, arg: seg[1]}, true
+	case len(seg) == 3 && seg[0] == "jobs" && seg[2] == "handoff":
+		return route{methods: map[string]handler{"POST": a.handoff}, arg: seg[1]}, true
+	case len(seg) == 3 && seg[0] == "queues" && seg[2] == "rename":
+		return route{methods: map[string]handler{"POST": a.rename}, arg: seg[1]}, true
 	case len(seg) == 3 && seg[0] == "jobs" && seg[2] == "retry":
 		return route{methods: map[string]handler{"POST": a.retry}, arg: seg[1]}, true
 	case len(seg) == 1 && seg[0] == "queues":
@@ -322,6 +326,54 @@ func (a *API) fail(q *Queue, r *http.Request, arg, token string) (int, any, erro
 		return 0, nil, err
 	}
 	return http.StatusOK, jobView(j), nil
+}
+
+// toBody reads {"to": "<name>"}, to required.
+func toBody(r *http.Request) (string, error) {
+	var b struct {
+		To *string `json:"to"`
+	}
+	if err := decodeBody(r, &b, false); err != nil {
+		return "", err
+	}
+	if b.To == nil {
+		return "", &badRequest{"to is required"}
+	}
+	return *b.To, nil
+}
+
+func (a *API) handoff(q *Queue, r *http.Request, arg, token string) (int, any, error) {
+	to, err := toBody(r)
+	if err != nil {
+		return 0, nil, err
+	}
+	id, ok := parseID(arg)
+	if !ok {
+		return 0, nil, ErrNotFound
+	}
+	j, err := q.Handoff(r.Context(), id, token, to)
+	if err != nil {
+		return 0, nil, err
+	}
+	return http.StatusOK, jobView(j), nil
+}
+
+// renamed is the body of a rename's 200.
+type renamed struct {
+	Queue string `json:"queue"`
+	Moved int    `json:"moved"`
+}
+
+func (a *API) rename(q *Queue, r *http.Request, queue, _ string) (int, any, error) {
+	to, err := toBody(r)
+	if err != nil {
+		return 0, nil, err
+	}
+	moved, err := q.Rename(r.Context(), queue, to)
+	if err != nil {
+		return 0, nil, err
+	}
+	return http.StatusOK, renamed{Queue: to, Moved: moved}, nil
 }
 
 // retry takes no body; like ack, it does not read one.

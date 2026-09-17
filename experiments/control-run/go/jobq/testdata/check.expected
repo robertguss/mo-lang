@@ -271,3 +271,79 @@
 > - GET /health
 200
 {"queued":5,"scheduled":1,"leased":0,"done":0,"dead":0,"archived":2,"uptime_ms":0,"restarts":0}
+> prod POST /jobs {"queue":"hand","key":"h-1","payload":"pass it on","max_tries":2}
+201
+{"id":"j_12","queue":"hand","key":"h-1","state":"queued","payload":"pass it on","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> prod POST /jobs {"queue":"hand","payload":"second","max_tries":1}
+201
+{"id":"j_13","queue":"hand","state":"queued","payload":"second","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> w9 POST /queues/hand/lease {"lease_ms":60000}
+200
+{"id":"j_12","queue":"hand","key":"h-1","state":"leased","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z","worker":"w9","lease_until":"2026-09-15T00:01:08.500Z"}
+> w9 POST /jobs/j_12/handoff {"to":"w10"}
+200
+{"id":"j_12","queue":"hand","key":"h-1","state":"leased","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z","worker":"w10","lease_until":"2026-09-15T00:01:08.500Z"}
+> w9 POST /jobs/j_12/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_12"}
+> w9 POST /jobs/j_12/handoff {"to":"w11"}
+409
+{"error":"conflict: the caller does not hold a live lease on j_12"}
+> w10 POST /jobs/j_12/handoff {"to":"w10"}
+200
+{"id":"j_12","queue":"hand","key":"h-1","state":"leased","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z","worker":"w10","lease_until":"2026-09-15T00:01:08.500Z"}
+> w10 POST /jobs/j_12/handoff {"to":"bad token"}
+400
+{"error":"requires failed: token is 1 to 256 visible ASCII characters"}
+> w10 POST /jobs/j_9/handoff {"to":"w11"}
+404
+{"error":"no such job"}
+> prod POST /queues/hand/rename {"to":"keyed"}
+409
+{"error":"conflict: exists: queue \"keyed\" holds jobs"}
+> prod POST /queues/hand/rename {"to":"hand"}
+409
+{"error":"conflict: exists: queue \"hand\" is the queue renamed"}
+> prod POST /queues/nope/rename {"to":"elsewhere"}
+404
+{"error":"no such queue \"nope\""}
+> prod POST /queues/hand/rename {"to":"passed"}
+200
+{"queue":"passed","moved":2}
+> prod GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"keyed","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"later","queued":1,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"other","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"passed","queued":1,"scheduled":0,"leased":1,"done":0,"dead":0},{"name":"sms","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> prod GET /jobs?queue=passed&key=h-1
+200
+{"jobs":[{"id":"j_12","queue":"passed","key":"h-1","state":"leased","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z","worker":"w10","lease_until":"2026-09-15T00:01:08.500Z"}]}
+> prod GET /jobs?queue=hand&key=h-1
+200
+{"jobs":[]}
+> w12 POST /queues/hand/lease
+204
+> restart
+> prod GET /jobs/j_12
+200
+{"id":"j_12","queue":"passed","key":"h-1","state":"leased","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z","worker":"w10","lease_until":"2026-09-15T00:01:08.500Z"}
+> w9 POST /jobs/j_12/ack
+409
+{"error":"conflict: the caller does not hold a live lease on j_12"}
+> w10 POST /jobs/j_12/ack
+200
+{"id":"j_12","queue":"passed","key":"h-1","state":"done","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> crash
+> prod POST /queues/passed/rename {"to":"hand"}
+503
+{"error":"the request could not be completed"}
+> prod GET /jobs?queue=hand
+200
+{"jobs":[{"id":"j_12","queue":"hand","key":"h-1","state":"done","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"},{"id":"j_13","queue":"hand","state":"queued","payload":"second","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}]}
+> prod POST /jobs {"queue":"passed","key":"h-1","payload":"fresh","max_tries":1}
+201
+{"id":"j_14","queue":"passed","key":"h-1","state":"queued","payload":"fresh","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> prod POST /jobs {"queue":"hand","key":"h-1","payload":"dup","max_tries":1}
+200
+{"id":"j_12","queue":"hand","key":"h-1","state":"done","payload":"pass it on","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-15T00:00:08.500Z","updated_at":"2026-09-15T00:00:08.500Z"}
+> - GET /health
+200
+{"queued":7,"scheduled":1,"leased":0,"done":1,"dead":0,"archived":2,"uptime_ms":0,"restarts":1}

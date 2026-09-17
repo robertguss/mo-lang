@@ -31,6 +31,9 @@ func openQueue(dir string, clock Clock) (*Queue, *Store, error) {
 	q := newQueue(clock)
 	var archive *Store
 	s, err := openLog(dir, func() (err error) {
+		if err := finishCompaction(dir); err != nil {
+			return err
+		}
 		archive, err = openArchive(dir, q.applyArchived)
 		return err
 	}, q.applyRecord)

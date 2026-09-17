@@ -25,6 +25,9 @@ import (
 // so the archive move's two writes fail on either side of each other, and
 // retain is short enough that jobs are archived, read, retried, and deleted
 // under the faults. A third of the creates carry one of a few keys.
+//
+// Change 5: workers hand leases to each other, and queues are renamed among
+// four names while jobs are in flight; leases reach every name.
 
 const (
 	simSeeds      = 100
@@ -63,10 +66,13 @@ type simulation struct {
 	sawArch  int // requests that read, retried, or deleted an archived job
 	sawKey   int // keyed creates answered from the key map
 	sawSplit int // archive moves on disk whose arch record the log lacks
+	sawMove  int // renames that moved jobs
+	sawHand  int // handoffs to another worker
+	sawFail  int // renames answered 503 under the faults
 }
 
 func TestSimulationWithFaults(t *testing.T) {
-	total503, totalSched, totalRetry, totalArch, totalKey, totalSplit := 0, 0, 0, 0, 0, 0
+	total503, totalSched, totalRetry, totalArch, totalKey, totalSplit, totalMove, totalHand, totalFail := 0, 0, 0, 0, 0, 0, 0, 0, 0
 	for seed := uint64(1); seed <= simSeeds; seed++ {
 		s := newSimulation(t, seed)
 		s.run()
@@ -76,6 +82,13 @@ func TestSimulationWithFaults(t *testing.T) {
 		totalArch += s.sawArch
 		totalKey += s.sawKey
 		totalSplit += s.sawSplit
+		totalMove += s.sawMove
+		totalHand += s.sawHand
+		totalFail += s.sawFail
+	}
+	if totalMove == 0 || totalHand == 0 || totalFail == 0 {
+		t.Errorf("the simulation never renamed a queue (%d), handed off a lease (%d), or failed a rename's write (%d)",
+			totalMove, totalHand, totalFail)
 	}
 	if totalArch == 0 || totalKey == 0 || totalSplit == 0 {
 		t.Errorf("the simulation never touched an archived job (%d), hit a key (%d), or split the move (%d)",
@@ -153,11 +166,26 @@ func mustID(s string) uint64 {
 	return id
 }
 
-var simWorkers = []string{"w0", "w1", "w2", "w3"}
+var (
+	simWorkers = []string{"w0", "w1", "w2", "w3"}
+	simQueues  = []string{"a", "b", "c", "d"}
+)
 
 func (s *simulation) randomStep() {
 	queue := []string{"a", "b"}[s.rng.IntN(2)]
 	worker := simWorkers[s.rng.IntN(len(simWorkers))]
+	switch r := s.rng.IntN(100); {
+	case r < 4:
+		s.send("prod", "POST", "/queues/"+simQueues[s.rng.IntN(4)]+"/rename", fmt.Sprintf(`{"to":%q}`, simQueues[s.rng.IntN(4)]))
+		return
+	case r < 10:
+		to := simWorkers[s.rng.IntN(len(simWorkers))]
+		s.send(worker, "POST", "/jobs/"+s.pickHeld(worker)+"/handoff", fmt.Sprintf(`{"to":%q}`, to))
+		return
+	}
+	if s.rng.IntN(2) == 0 {
+		queue = simQueues[s.rng.IntN(4)] // leases and lists reach every name
+	}
 	switch r := s.rng.IntN(100); {
 	case r < 25:
 		max := 1 + s.rng.IntN(4)
@@ -255,6 +283,9 @@ func (s *simulation) send(token, method, path, body string) (int, []byte, bool) 
 	}
 	if rec.Code == http.StatusServiceUnavailable {
 		s.saw503++
+		if strings.HasSuffix(path, "/rename") {
+			s.sawFail++
+		}
 		if !s.faults {
 			s.fatalf("503 with no faults: %s", rec.Body)
 		}
@@ -426,6 +457,10 @@ func (s *simulation) checkAnswer(pre map[string]jobJSON, now time.Time, token, m
 		} else if status == 204 {
 			s.sawArchived(seg[1])
 		}
+	case seg[0] == "queues" && seg[2] == "rename":
+		want = s.expectRename(pre, seg[1], body, status, resp)
+	case seg[0] == "jobs" && seg[2] == "handoff":
+		want = s.expectHandoff(m, seg[1], token, body, status, job)
 	case seg[0] == "queues":
 		want = s.expectLease(m, seg[1], token, now, body, status, job)
 	case len(seg) == 3 && seg[2] == "retry":
@@ -567,10 +602,77 @@ func (s *simulation) expectLease(m map[string]jobJSON, queue, token string, now 
 	return 200
 }
 
+// expectRename: 404 for a name no job has, 409 onto itself or onto a name
+// a job has, else every job of the name, archived too, is in the new one.
+func (s *simulation) expectRename(pre map[string]jobJSON, from, body string, status int, resp []byte) int {
+	var b struct {
+		To string `json:"to"`
+	}
+	_ = json.Unmarshal([]byte(body), &b)
+	count := func(name string) int {
+		n := 0
+		for _, j := range pre {
+			if j.Queue == name {
+				n++
+			}
+		}
+		return n
+	}
+	switch {
+	case count(from) == 0:
+		return 404
+	case from == b.To || count(b.To) > 0:
+		return 409
+	}
+	if status == 200 {
+		s.sawMove++
+		if want := fmt.Sprintf(`{"queue":%q,"moved":%d}`+"\n", b.To, count(from)); string(resp) != want {
+			s.fatalf("rename answered %s, want %s", resp, want)
+		}
+		for id, j := range pre {
+			if now := s.q.lookup(mustID(id)); j.Queue == from && now.Queue != b.To {
+				s.fatalf("%s stayed in %s", id, now.Queue)
+			}
+		}
+		if count := s.q.queueSize(from); count != 0 {
+			s.fatalf("%d jobs left in %s", count, from)
+		}
+	}
+	return 200
+}
+
+// expectHandoff: the holder's handoff moves the lease and nothing else.
+func (s *simulation) expectHandoff(m map[string]jobJSON, id, token, body string, status int, job jobJSON) int {
+	j, ok := m[id]
+	switch {
+	case !ok:
+		return 404
+	case j.State != Leased || *j.Worker != token:
+		return 409
+	}
+	var b struct {
+		To string `json:"to"`
+	}
+	_ = json.Unmarshal([]byte(body), &b)
+	if status == 200 {
+		if b.To != token {
+			s.sawHand++
+		}
+		if job.State != Leased || *job.Worker != b.To || job.Tries != j.Tries || *job.LeaseUntil != *j.LeaseUntil || job.Queue != j.Queue {
+			s.fatalf("handoff gave %+v from %+v", job, j)
+		}
+	}
+	return 200
+}
+
 // learn records the jobs a worker was told it holds.
 func (s *simulation) learn(token, path string, status int, resp []byte) {
-	if status == 200 && strings.HasPrefix(path, "/queues/") {
+	switch {
+	case status == 200 && strings.HasPrefix(path, "/queues/") && strings.HasSuffix(path, "/lease"):
 		s.held[token] = append(s.held[token], decodeID(resp))
+	case status == 200 && strings.HasSuffix(path, "/handoff"):
+		j := decodeJob(s.t, string(resp))
+		s.held[*j.Worker] = append(s.held[*j.Worker], j.ID)
 	}
 }
 
@@ -591,7 +693,7 @@ func (s *simulation) drain() {
 		}
 		leasedAny := false
 		for _, w := range simWorkers {
-			for _, queue := range []string{"a", "b"} {
+			for _, queue := range simQueues {
 				status, resp, _ := s.send(w, "POST", "/queues/"+queue+"/lease", `{"lease_ms":100}`)
 				if status != 200 {
 					continue

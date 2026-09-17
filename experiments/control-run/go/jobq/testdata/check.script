@@ -108,3 +108,31 @@ prod POST /jobs {"queue":"keyed","key":"order-1","payload":"again","max_tries":1
 restart
 prod POST /jobs {"queue":"keyed","key":"order-1","payload":"again","max_tries":1}
 - GET /health
+# a lease handed to another worker, and a queue renamed with jobs in flight
+prod POST /jobs {"queue":"hand","key":"h-1","payload":"pass it on","max_tries":2}
+prod POST /jobs {"queue":"hand","payload":"second","max_tries":1}
+w9 POST /queues/hand/lease {"lease_ms":60000}
+w9 POST /jobs/j_12/handoff {"to":"w10"}
+w9 POST /jobs/j_12/ack
+w9 POST /jobs/j_12/handoff {"to":"w11"}
+w10 POST /jobs/j_12/handoff {"to":"w10"}
+w10 POST /jobs/j_12/handoff {"to":"bad token"}
+w10 POST /jobs/j_9/handoff {"to":"w11"}
+prod POST /queues/hand/rename {"to":"keyed"}
+prod POST /queues/hand/rename {"to":"hand"}
+prod POST /queues/nope/rename {"to":"elsewhere"}
+prod POST /queues/hand/rename {"to":"passed"}
+prod GET /queues
+prod GET /jobs?queue=passed&key=h-1
+prod GET /jobs?queue=hand&key=h-1
+w12 POST /queues/hand/lease
+restart
+prod GET /jobs/j_12
+w9 POST /jobs/j_12/ack
+w10 POST /jobs/j_12/ack
+crash
+prod POST /queues/passed/rename {"to":"hand"}
+prod GET /jobs?queue=hand
+prod POST /jobs {"queue":"passed","key":"h-1","payload":"fresh","max_tries":1}
+prod POST /jobs {"queue":"hand","key":"h-1","payload":"dup","max_tries":1}
+- GET /health
