@@ -1,0 +1,13 @@
+  13. Waiting jobs: the renamed queue's waiting jobs are merged into the new name's list; the list of lease deadlines is left alone.
+  14. Startup cost: each rename record costs time proportional to the number of jobs at startup, until a compaction folds it away.
+  15. verify: a bad rename record is refused with its line number (record line N: rename.name …), and verify counts jobs after the renames.
+  16. The old check.sh failure: fixed by moving the fixture copy's timestamps to the present. The fixture file itself is unchanged.
+  17. New program check: it uses two new scripts, so the earlier transcripts stay exactly as they were.
+
+✻ Crunched for 14m 46s · done 9:33 PM
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion5-python (erosion5-python) | Context: 79% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

@@ -96,7 +96,7 @@ def t_handoff(a):
     st, b = handoff(l["id"], "bob", "alice"); check("handoff: after the lease ran out is 409", st == 409, (st, b))
     st, g = get(l["id"]); check("handoff: the run-out job is queued again, no worker", st == 200 and isinstance(g, dict) and g.get("state") == "queued" and not g.get("worker"), g)
     # a handoff counts in /health as leased still
-    h = health(); check("handoff: /health still counts the handed-off jobs as leased", h.get("leased", 0) >= 2, h)
+    h = health(); check("handoff: /health still counts the job leased to alice (1)", h.get("leased", 0) == 1, h)  # amended 21:58: the category leaves one job leased, not two
     s.stop(); shutil.rmtree(base, ignore_errors=True)
 
 # ---------------------------------------------------------------- the handoff kept
@@ -135,20 +135,21 @@ def t_handoffkept(a):
 
 # ---------------------------------------------------------------- the rename
 def setup_states(queue, tag):
-    """jobs in every state in `queue`, with keys; returns id by state"""
+    """jobs in every state in `queue`, with keys; returns id by state. Amended 21:58: each job that is leased is created
+    when nothing else is queued (a lease hands out the oldest queued job), and the queued job comes last."""
     ids = {}
-    st, j = keyed(queue, f"{tag}-queued"); ids["queued"] = j["id"]
-    st, j = keyed(queue, f"{tag}-scheduled", delay_ms=600000); ids["scheduled"] = j["id"]
     st, j = keyed(queue, f"{tag}-done", max_tries=3); st, l = lease(queue, ms=60000, token="w-done"); ack(l["id"], "w-done"); ids["done"] = l["id"]
     st, j = keyed(queue, f"{tag}-dead", max_tries=1); st, l = lease(queue, ms=60000, token="w-dead"); fail(l["id"], "w-dead"); ids["dead"] = l["id"]
     st, j = keyed(queue, f"{tag}-leased", max_tries=3); st, l = lease(queue, ms=120000, token="w-hold"); ids["leased"] = l["id"]; ids["_lease"] = l
+    st, j = keyed(queue, f"{tag}-scheduled", delay_ms=600000); ids["scheduled"] = j["id"]
+    st, j = keyed(queue, f"{tag}-queued"); ids["queued"] = j["id"]
     return ids
 
 def t_rename(a):
     base, d = fresh_dir("rename5-"); s, _ = serve_with(a, d, " --retain-ms 1000")
-    ids = setup_states("old", "o")
-    # an archived job too
-    st, j = keyed("old", "o-archived", max_tries=3); st, l = lease("old", ms=60000, token="w-arc"); ack(l["id"], "w-arc"); ids["archived"] = l["id"]
+    # an archived job first, while nothing else is queued (amended 22:12: it was created after the queued job, and the lease took that one)
+    st, j = keyed("old", "o-archived", max_tries=3); st, l = lease("old", ms=60000, token="w-arc"); ack(l["id"], "w-arc"); ids = {"archived": l["id"]}
+    ids.update(setup_states("old", "o"))
     time.sleep(1.6); looked(); h = health()
     check("rename: an archived job to set up (the done job of the setup may be archived too)", h.get("archived", 0) >= 1, h)
     live_before = queues_named().get("old") if queues_named() else None
@@ -163,7 +164,7 @@ def t_rename(a):
     q = queues_named()
     check("rename: /queues shows `new` with the counts `old` had and no `old`", q is not None and "new" in q and "old" not in q and all(q["new"].get(k) == live_before.get(k) for k in ("queued", "scheduled", "leased", "done", "dead")), (live_before, q))
     st, j = safe("GET", "/jobs?queue=old"); check("rename: the listing of `old` is empty", st == 200 and jobs_of(j) == [], j)
-    st, j = safe("GET", "/jobs?queue=new"); check("rename: the listing of `new` shows the live jobs (5)", st == 200 and len(jobs_of(j) or []) == 5, j)
+    st, j = safe("GET", "/jobs?queue=new"); check("rename: the listing of `new` shows the live jobs (3: the done and dead jobs aged into the archive)", st == 200 and len(jobs_of(j) or []) == 3, j)  # amended 21:58 (was 5) and 22:24 (was 4: the dead job ages too)
     st, j = safe("GET", "/jobs?queue=new&key=o-queued"); check("rename: the key lookup in `new` finds the job", st == 200 and [x.get("id") for x in (jobs_of(j) or [])] == [ids["queued"]], j)
     st, j = safe("GET", "/jobs?queue=old&key=o-queued"); check("rename: the key lookup in `old` is empty", st == 200 and jobs_of(j) == [], j)
     st, j = keyed("new", "o-queued"); check("rename: the key is used in `new` (200, the same job)", st == 200 and isinstance(j, dict) and j.get("id") == ids["queued"], (st, j))
@@ -236,14 +237,16 @@ def t_renamerecord(a):
 # ---------------------------------------------------------------- the rename under a kill
 def t_renamekill(a):
     base, d = fresh_dir("renamekill5-"); s, _ = serve_with(a, d)
-    stop = threading.Event(); lock = threading.Lock(); created = {}; acked = set(); handed = {}
+    stop = threading.Event(); renaming = threading.Event(); lock = threading.Lock(); created = {}; acked = set(); handed = {}; sent = [0]
     def worker(i):
         tok = f"w{i}"; n = 0
         while not stop.is_set():
             n += 1; k = f"k{i}-{n}"
-            st, b = safe("POST", "/jobs", {"queue": "src", "payload": "p", "max_tries": 2, "key": k}, token=tok)
-            if st == 201 and isinstance(b, dict):
-                with lock: created[b["id"]] = k
+            if not renaming.is_set():  # amended 21:58: no create into the old name once the rename is on its way (a fresh queue under it is by the spec)
+                with lock: sent[0] += 1
+                st, b = safe("POST", "/jobs", {"queue": "src", "payload": "p", "max_tries": 2, "key": k}, token=tok)
+                if st == 201 and isinstance(b, dict):
+                    with lock: created[b["id"]] = k
             st, b = safe("POST", "/queues/src/lease", {"lease_ms": 60000}, token=tok)
             if st == 200 and isinstance(b, dict) and b.get("id"):
                 if n % 2:
@@ -259,13 +262,14 @@ def t_renamekill(a):
     time.sleep(2.5)
     result = {}
     def renamer(): result["r"] = rename("src", "dst")
+    renaming.set(); time.sleep(0.15)
     rt = threading.Thread(target=renamer, daemon=True); rt.start(); time.sleep(0.02); s.kill(); stop.set(); rt.join(3); time.sleep(0.3)
     drain()
     rc, out = run(a.verify.format(dir=d), a.cwd); check("renamekill: verify exits 0 after the kill", rc == 0, (rc, out[:160]))
     s, took = serve_with(a, d); h = health()
     q = queues_named() or {}
     total = sum(h.get(k, 0) for k in ("queued", "scheduled", "leased", "done", "dead", "archived"))
-    check("renamekill: every created job is counted exactly once after the reopen", total == len(created), (total, len(created), h))
+    check("renamekill: every created job is counted once after the reopen (a create durable but unanswered under the kill may add one)", len(created) <= total <= sent[0], (total, len(created), sent[0], h))  # amended 21:58
     check("renamekill: the jobs are in exactly one queue, `src` or `dst`", set(q) in ({"src"}, {"dst"}), (list(q), result.get("r")))
     home = "dst" if "dst" in q else "src"
     check(f"renamekill: a lease on the other name is 204 (home is `{home}`)", lease("src" if home == "dst" else "dst", ms=1000, token="w-x")[0] == 204, home)

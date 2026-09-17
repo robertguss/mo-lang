@@ -1,0 +1,82 @@
+ok   flags: serve accepts --retain-ms 1000 and /health carries archived 0
+ok   flags: without the option /health still carries archived
+ok   flags: `--retain-ms 999` is a usage error, exit 2
+ok   flags: `--retain-ms 2678400001` is a usage error, exit 2
+ok   flags: `--retain-ms -5` is a usage error, exit 2
+ok   flags: `--retain-ms x` is a usage error, exit 2
+ok   flags: `--retain-ms 1000 --retain-ms 1000` is a usage error, exit 2
+ok   flags: verify does not take --retain-ms (exit 2)
+ok   flags: compact does not take --retain-ms (exit 2)
+ok   key: a create with a key is 201
+ok   key: the job carries its key
+ok   key: the same key in the same queue is 200 with the first job
+ok   key: the second body is ignored (payload and max_tries unchanged)
+ok   key: no second job was made
+ok   key: the same key in another queue is 201 and another job
+ok   key: a create without a key still works
+ok   key: empty is 400
+ok   key: a space is 400
+ok   key: 65 bytes is 400
+ok   key: not ascii is 400
+ok   key: a number is 400
+ok   key: null is 400
+ok   key: GET /jobs?queue&key finds the job
+ok   key: an unused key lists nothing
+ok   key: key without queue is 400
+ok   key: while leased the second create is 200 the same job
+ok   key: once done the second create is still 200 the same job
+ok   key: once dead the second create is 200 the dead job
+ok   key: a scheduled job's key is used
+ok   key: a delete frees the key, the next create is 201 a new job
+ok   key: the key shows on a read
+ok   key: keys show in listings, plain jobs have none
+ok   keykept: the first keyed create is 201
+ok   keykept: the second keyed create is 201
+ok   keykept: a plain create eventually trips the switch
+ok   keykept: after a chaos restart the key is still used (200, the same job)
+ok   keykept: a new key after the restart is made (201, or 200 if the failed attempt landed)
+ok   keykept: after a stop and start the key is still used
+ok   keykept: a key made just before the stop is still used
+ok   keykept: compact exits 0
+ok   keykept: after a compaction the key is still used
+ok   keykept: a key freed before the compaction is free after it
+ok   keykept: verify exits 0 on a folder with keys
+ok   archive: before retain_ms nothing is archived
+ok   archive: after retain_ms and a look, 3 archived
+ok   archive: done and dead no longer count them
+ok   archive: the listing shows only the live job
+ok   archive: /queues counts only live jobs
+ok   archive: an archived job reads 200 with archived_at
+ok   archive: the archived dead job reads 200 as dead
+ok   archive: retry of an archived job is 409
+ok   archive: the key of an archived job is still used (200, that job)
+ok   archive: the queued job is not archived
+ok   archive: the archive file exists in the folder
+ok   archive: the file holds three records
+ok   archive: delete of an archived job is 204
+ok   archive: a deleted archived job reads 404
+ok   archive: /health archived drops to 2 after the delete
+ok   verify: exits 0 with the archive
+ok   verify: the line ends with '; archived 2'
+ok   archive: compact exits 0
+ok   archive: after compact the archive holds the two undeleted records
+ok   archive: after compact and a restart /health counts 2 archived, 1 queued
+ok   archive: the archived job still reads after the restart
+ok   archive: its key is still used after the restart
+ok   archive: the listing after the restart shows only the live job
+ok   verifyarchive: one record archived to set up
+ok   verifyarchive: a torn last archive line is cut, verify exits 0
+ok   verifyarchive: serve opens the torn archive and counts 1 archived
+ok   verifyarchive: a queued record in the archive is refused, exit 1
+ok   verifyarchive: the refusal names a record
+ok   verifyarchive: serve refuses the folder with exit 1
+ok   verifyarchive: restored, verify exits 0
+ok   archivekill: verify exits 0 after the kill
+ok   archivekill: every created job is counted exactly once after the reopen
+ok   archivekill: some jobs were archived under the load
+ok   archivekill: every sampled job reads 200, live or archived (151 sampled)
+ok   archivekill: every sampled key is still used by its job
+ok   archivekill: no id appears twice in the archive
+ok   archivekill: the total is the same after a second reopen (time passes, so more may be archived)
+
+80 passed, 0 defects

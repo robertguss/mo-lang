@@ -1,0 +1,169 @@
+## go regressions 21:41:42
+121 passed, 0 defects
+## go defects1 21:42:18
+FAIL fields: delay_ms null is 400 with an error: (201, {'id': 'j_6', 'queue': 'f', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:42:18.944Z', 'updated_at': '2026-09-17T01:42:18.944Z'})
+188 passed, 1 defects
+## go defects2 21:42:32
+## go defects3 21:42:32
+55 passed, 0 defects
+## go defects4 21:43:38
+FAIL key: null is 400: (201, {'id': 'j_4', 'queue': 'emails', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:38.441Z', 'updated_at': '2026-09-17T01:43:38.441Z'})
+FAIL archivekill: every created job is counted exactly once after the reopen: (207, 206, {'queued': 3, 'scheduled': 0, 'leased': 0, 'done': 20, 'dead': 12, 'archived': 172, 'uptime_ms': 53, 'restarts': 0})
+78 passed, 2 defects
+## go defects5 21:43:46
+FAIL handoff: `{"to": "xxxxxxxxxxxxxxxx` is 400: (200, {'id': 'j_2', 'queue': 'h', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:47.109Z', 'updated_at': '2026-09-17T01:43:47.142Z', 'worker': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'lease_until': '2026-09-17T01:44:47.137Z', 'reason': 'x'})
+FAIL handoff: the bad requests changed nothing: {'id': 'j_2', 'queue': 'h', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:47.109Z', 'updated_at': '2026-09-17T01:43:47.142Z', 'worker': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'lease_until': '2026-09-17T01:44:47.137Z', 'reason': 'x'}
+FAIL handoff: /health still counts the handed-off jobs as leased: {'queued': 3, 'scheduled': 0, 'leased': 1, 'done': 1, 'dead': 0, 'archived': 0, 'uptime_ms': 633, 'restarts': 0}
+FAIL rename: the listing of `new` shows the live jobs (5): {'jobs': [{'id': 'j_2', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.721Z', 'updated_at': '2026-09-17T01:43:49.721Z', 'run_at': '2026-09-17T01:53:49.721Z'}, {'id': 'j_3', 'queue': 'new', 'key': 'o-done', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.726Z', 'updated_at': '2026-09-17T01:43:49.763Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T01:45:49.763Z', 'reason': 'x'}, {'id': 'j_5', 'queue': 'new', 'key': 'o-leased', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.758Z', 'updated_at': '2026-09-17T01:43:49.758Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.768Z', 'updated_at': '2026-09-17T01:43:49.768Z'}]}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_5', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.758Z', 'updated_at': '2026-09-17T01:43:51.433Z', 'worker': 'w-y', 'lease_until': '2026-09-17T01:44:51.433Z'})
+FAIL rename: the dead job's key moved to `third` (200, the same job): (200, {'id': 'j_4', 'queue': 'third', 'key': 'o-dead', 'state': 'done', 'payload': 'p', 'tries': 1, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.743Z', 'updated_at': '2026-09-17T01:43:49.778Z', 'archived_at': '2026-09-17T01:43:51.388Z'})
+FAIL rename: after a delete the key is free in `third` (201): (200, {'id': 'j_4', 'queue': 'third', 'key': 'o-dead', 'state': 'done', 'payload': 'p', 'tries': 1, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:43:49.743Z', 'updated_at': '2026-09-17T01:43:49.778Z', 'archived_at': '2026-09-17T01:43:51.388Z'})
+FAIL renamekill: every created job is counted exactly once after the reopen: (130, 129, {'queued': 2, 'scheduled': 0, 'leased': 64, 'done': 64, 'dead': 0, 'archived': 0, 'uptime_ms': 44, 'restarts': 0})
+FAIL renamekill: the jobs are in exactly one queue, `src` or `dst`: (['dst', 'src'], (200, {'queue': 'dst', 'moved': 129}))
+FAIL renamekill: a lease on the other name is 204 (home is `dst`): dst
+84 passed, 10 defects
+## go done 21:44:17
+## python regressions 21:44:17
+121 passed, 0 defects
+## python defects1 21:44:54
+189 passed, 0 defects
+## python defects2 21:45:04
+## python defects3 21:45:04
+55 passed, 0 defects
+## python defects4 21:46:49
+80 passed, 0 defects
+## python defects5 21:47:31
+FAIL handoff: /health still counts the handed-off jobs as leased: {'queued': 3, 'scheduled': 0, 'leased': 1, 'done': 1, 'dead': 0, 'archived': 0, 'uptime_ms': 539, 'restarts': 0}
+FAIL rename: the listing of `new` shows the live jobs (5): {'jobs': [{'id': 'j_2', 'queue': 'new', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.169Z', 'updated_at': '2026-09-17T01:47:35.169Z', 'run_at': '2026-09-17T01:57:35.169Z', 'key': 'o-scheduled'}, {'id': 'j_3', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.169Z', 'updated_at': '2026-09-17T01:47:35.173Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T01:49:35.173Z', 'reason': 'x', 'key': 'o-done'}, {'id': 'j_5', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.173Z', 'updated_at': '2026-09-17T01:47:35.173Z', 'key': 'o-leased'}, {'id': 'j_6', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.174Z', 'updated_at': '2026-09-17T01:47:35.174Z', 'key': 'o-archived'}]}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_5', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.173Z', 'updated_at': '2026-09-17T01:47:36.809Z', 'worker': 'w-y', 'lease_until': '2026-09-17T01:48:36.809Z', 'key': 'o-leased'})
+FAIL rename: the dead job's key moved to `third` (200, the same job): (200, {'id': 'j_4', 'queue': 'third', 'state': 'done', 'payload': 'p', 'tries': 1, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.171Z', 'updated_at': '2026-09-17T01:47:35.175Z', 'key': 'o-dead', 'archived_at': '2026-09-17T01:47:36.788Z'})
+FAIL rename: after a delete the key is free in `third` (201): (200, {'id': 'j_4', 'queue': 'third', 'state': 'done', 'payload': 'p', 'tries': 1, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:47:35.171Z', 'updated_at': '2026-09-17T01:47:35.175Z', 'key': 'o-dead', 'archived_at': '2026-09-17T01:47:36.788Z'})
+89 passed, 5 defects
+## python done 21:48:45
+## elixir regressions 21:48:46
+FAIL auth: a token with a space is refused (401 or 400): 200
+FAIL kill: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL torn: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL health: ran to the end: OSError: [Errno 49] Can't assign requested address
+111 passed, 4 defects
+## elixir defects1 21:49:22
+FAIL oldlog: setup, the old service creates: (400, {'error': "'max_tries' is required"})
+128 passed, 1 defects
+## elixir defects2 21:49:31
+## elixir defects3 21:49:31
+FAIL budget: four failures 1.6 s apart under a window of 1 s and the service is still serving: (70, 4)
+FAIL budget: and /health answers
+53 passed, 2 defects
+## elixir defects4 21:51:16
+FAIL flags: `--retain-ms 1000 --retain-ms 1000` is a usage error, exit 2: still serving
+79 passed, 1 defects
+## elixir defects5 21:52:10
+FAIL handoff: /health still counts the handed-off jobs as leased: {'queued': 3, 'scheduled': 0, 'leased': 1, 'done': 1, 'dead': 0, 'archived': 0, 'uptime_ms': 580, 'restarts': 0}
+FAIL rename: the listing of `new` shows the live jobs (5): {'jobs': [{'id': 'j_2', 'queue': 'new', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.100Z', 'updated_at': '2026-09-17T01:52:14.100Z', 'run_at': '2026-09-17T02:02:14.100Z', 'key': 'o-scheduled'}, {'id': 'j_3', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.100Z', 'updated_at': '2026-09-17T01:52:14.105Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T01:54:14.105Z', 'reason': 'x', 'key': 'o-done'}, {'id': 'j_5', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.104Z', 'updated_at': '2026-09-17T01:52:14.104Z', 'key': 'o-leased'}, {'id': 'j_6', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.105Z', 'updated_at': '2026-09-17T01:52:14.105Z', 'key': 'o-archived'}]}
+FAIL rename: the key lookup in `new` finds the job: {'jobs': []}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_5', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.104Z', 'updated_at': '2026-09-17T01:52:15.740Z', 'worker': 'w-y', 'lease_until': '2026-09-17T01:53:15.740Z', 'key': 'o-leased'})
+FAIL rename: the dead job's key moved to `third` (200, the same job): (200, {'id': 'j_4', 'queue': 'third', 'state': 'done', 'payload': 'p', 'tries': 1, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.102Z', 'updated_at': '2026-09-17T01:52:14.106Z', 'key': 'o-dead', 'archived_at': '2026-09-17T01:52:15.191Z'})
+FAIL rename: after a delete the key is free in `third` (201): (200, {'id': 'j_4', 'queue': 'third', 'state': 'done', 'payload': 'p', 'tries': 1, 'max_tries': 1, 'backoff_ms': 0, 'created_at': '2026-09-17T01:52:14.102Z', 'updated_at': '2026-09-17T01:52:14.106Z', 'key': 'o-dead', 'archived_at': '2026-09-17T01:52:15.191Z'})
+88 passed, 6 defects
+## elixir done 21:53:24
+## go defects5 (rerun, the suite amended 21:58) 21:56:48
+FAIL handoff: `{"to": "xxxxxxxxxxxxxxxx` is 400: (200, {'id': 'j_2', 'queue': 'h', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:56:48.648Z', 'updated_at': '2026-09-17T01:56:48.684Z', 'worker': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'lease_until': '2026-09-17T01:57:48.678Z', 'reason': 'x'})
+FAIL handoff: the bad requests changed nothing: {'id': 'j_2', 'queue': 'h', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:56:48.648Z', 'updated_at': '2026-09-17T01:56:48.684Z', 'worker': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'lease_until': '2026-09-17T01:57:48.678Z', 'reason': 'x'}
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_3', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:56:51.314Z', 'updated_at': '2026-09-17T01:56:51.319Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T01:58:51.319Z'}, {'id': 'j_4', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:56:51.324Z', 'updated_at': '2026-09-17T01:56:51.324Z', 'run_at': '2026-09-17T02:06:51.324Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:56:51.334Z', 'updated_at': '2026-09-17T01:56:51.334Z'}]}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:56:51.334Z', 'updated_at': '2026-09-17T01:56:52.995Z', 'worker': 'w-y', 'lease_until': '2026-09-17T01:57:52.995Z'})
+90 passed, 4 defects
+## python defects5 (rerun, the suite amended 21:58) 21:57:28
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_3', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:57:32.085Z', 'updated_at': '2026-09-17T01:57:32.086Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T01:59:32.086Z', 'key': 'o-leased'}, {'id': 'j_4', 'queue': 'new', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:57:32.086Z', 'updated_at': '2026-09-17T01:57:32.086Z', 'run_at': '2026-09-17T02:07:32.086Z', 'key': 'o-scheduled'}, {'id': 'j_6', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:57:32.087Z', 'updated_at': '2026-09-17T01:57:32.087Z', 'key': 'o-archived'}]}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_6', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:57:32.087Z', 'updated_at': '2026-09-17T01:57:33.716Z', 'worker': 'w-y', 'lease_until': '2026-09-17T01:58:33.716Z', 'key': 'o-archived'})
+92 passed, 2 defects
+## elixir defects5 (rerun, the suite amended 21:58) 21:58:42
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_3', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:58:45.925Z', 'updated_at': '2026-09-17T01:58:45.926Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:00:45.926Z', 'key': 'o-leased'}, {'id': 'j_4', 'queue': 'new', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T01:58:45.927Z', 'updated_at': '2026-09-17T01:58:45.927Z', 'run_at': '2026-09-17T02:08:45.927Z', 'key': 'o-scheduled'}, {'id': 'j_6', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:58:45.928Z', 'updated_at': '2026-09-17T01:58:45.928Z', 'key': 'o-archived'}]}
+FAIL rename: the key lookup in `new` finds the job: {'jobs': []}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_6', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T01:58:45.928Z', 'updated_at': '2026-09-17T01:58:47.557Z', 'worker': 'w-y', 'lease_until': '2026-09-17T01:59:47.557Z', 'key': 'o-archived'})
+91 passed, 3 defects
+## elixir regressions (rerun, the suite amended 21:58) 21:59:59
+FAIL auth: a token with a space is refused (401 or 400): 200
+120 passed, 1 defects
+## mo regressions 22:00:43
+121 passed, 0 defects
+## mo defects1 22:01:19
+189 passed, 0 defects
+## mo defects2 22:01:28
+## mo defects3 22:01:28
+55 passed, 0 defects
+## mo defects4 22:03:08
+80 passed, 0 defects
+## mo defects5 22:03:48
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_3', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:03:50.994Z', 'updated_at': '2026-09-17T02:03:50.994Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:05:50.994Z'}, {'id': 'j_4', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:03:50.995Z', 'updated_at': '2026-09-17T02:03:50.995Z', 'run_at': '2026-09-17T02:13:50.995Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:03:50.996Z', 'updated_at': '2026-09-17T02:03:50.996Z'}]}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:03:50.996Z', 'updated_at': '2026-09-17T02:03:52.631Z', 'worker': 'w-y', 'lease_until': '2026-09-17T02:04:52.631Z'})
+FAIL renamerecord: restored, verify exits 0: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerecord5-wv5_j_ct/dir: record renames: the rename count is below rename_3')
+91 passed, 3 defects
+## mo done 22:05:00
+## morun regressions 22:05:00
+121 passed, 0 defects
+## morun defects1 22:05:36
+189 passed, 0 defects
+## morun defects2 22:05:45
+## morun defects3 22:05:45
+55 passed, 0 defects
+## morun defects4 22:07:24
+80 passed, 0 defects
+## morun defects5 22:08:04
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_3', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:08:07.463Z', 'updated_at': '2026-09-17T02:08:07.464Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:10:07.464Z'}, {'id': 'j_4', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:08:07.465Z', 'updated_at': '2026-09-17T02:08:07.465Z', 'run_at': '2026-09-17T02:18:07.465Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:08:07.466Z', 'updated_at': '2026-09-17T02:08:07.466Z'}]}
+FAIL rename: a lease on `new` hands out the queued job: (200, {'id': 'j_6', 'queue': 'new', 'key': 'o-archived', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:08:07.466Z', 'updated_at': '2026-09-17T02:08:09.102Z', 'worker': 'w-y', 'lease_until': '2026-09-17T02:09:09.102Z'})
+FAIL renamerecord: restored, verify exits 0: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerecord5-9erxrbvs/dir: record renames: the rename count is below rename_3')
+91 passed, 3 defects
+## morun done 22:09:16
+## chain2 done 22:09:16
+## go defects5 (rerun 2, the suite amended 22:12) 22:11:18
+FAIL handoff: `{"to": "xxxxxxxxxxxxxxxx` is 400: (200, {'id': 'j_2', 'queue': 'h', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:11:18.990Z', 'updated_at': '2026-09-17T02:11:19.024Z', 'worker': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'lease_until': '2026-09-17T02:12:19.019Z', 'reason': 'x'})
+FAIL handoff: the bad requests changed nothing: {'id': 'j_2', 'queue': 'h', 'state': 'leased', 'payload': 'p', 'tries': 2, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:11:18.990Z', 'updated_at': '2026-09-17T02:11:19.024Z', 'worker': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'lease_until': '2026-09-17T02:12:19.019Z', 'reason': 'x'}
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:11:21.647Z', 'updated_at': '2026-09-17T02:11:21.651Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:13:21.651Z'}, {'id': 'j_5', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:11:21.656Z', 'updated_at': '2026-09-17T02:11:21.656Z', 'run_at': '2026-09-17T02:21:21.656Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-queued', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:11:21.661Z', 'updated_at': '2026-09-17T02:11:21.661Z'}]}
+91 passed, 3 defects
+## python defects5 (rerun 2, the suite amended 22:12) 22:11:59
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:12:02.378Z', 'updated_at': '2026-09-17T02:12:02.379Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:14:02.379Z', 'key': 'o-leased'}, {'id': 'j_5', 'queue': 'new', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:12:02.379Z', 'updated_at': '2026-09-17T02:12:02.379Z', 'run_at': '2026-09-17T02:22:02.379Z', 'key': 'o-scheduled'}, {'id': 'j_6', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:12:02.380Z', 'updated_at': '2026-09-17T02:12:02.380Z', 'key': 'o-queued'}]}
+93 passed, 1 defects
+## elixir defects5 (rerun 2, the suite amended 22:12) 22:13:12
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:13:16.021Z', 'updated_at': '2026-09-17T02:13:16.021Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:15:16.021Z', 'key': 'o-leased'}, {'id': 'j_5', 'queue': 'new', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:13:16.022Z', 'updated_at': '2026-09-17T02:13:16.022Z', 'run_at': '2026-09-17T02:23:16.022Z', 'key': 'o-scheduled'}, {'id': 'j_6', 'queue': 'new', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:13:16.022Z', 'updated_at': '2026-09-17T02:13:16.022Z', 'key': 'o-queued'}]}
+93 passed, 1 defects
+## mo defects5 (rerun 2, the suite amended 22:12) 22:14:29
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:14:31.936Z', 'updated_at': '2026-09-17T02:14:31.937Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:16:31.937Z'}, {'id': 'j_5', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:14:31.937Z', 'updated_at': '2026-09-17T02:14:31.937Z', 'run_at': '2026-09-17T02:24:31.937Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-queued', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:14:31.938Z', 'updated_at': '2026-09-17T02:14:31.938Z'}]}
+FAIL renamerecord: restored, verify exits 0: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerecord5-8qhsgzs9/dir: record renames: the rename count is below rename_3')
+92 passed, 2 defects
+## morun defects5 (rerun 2, the suite amended 22:12) 22:15:43
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.574Z', 'updated_at': '2026-09-17T02:15:46.575Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:17:46.575Z'}, {'id': 'j_5', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.576Z', 'updated_at': '2026-09-17T02:15:46.576Z', 'run_at': '2026-09-17T02:25:46.576Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-queued', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.576Z', 'updated_at': '2026-09-17T02:15:46.576Z'}]}
+FAIL renamerecord: restored, verify exits 0: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerecord5-pjke46gn/dir: record renames: the rename count is below rename_3')
+92 passed, 2 defects
+## mo p6 22:16:55
+## elixir p6 22:16:56
+  queue  at  1.71s, /health 200 again at  1.99s ( 278.5 ms); pid #PID<12437.108.0> -> #PID<12437.148.0>; exit -> 'true'
+  queue  at  4.70s, /health 200 again at  5.19s ( 491.2 ms); pid #PID<12437.148.0> -> #PID<12437.163.0>; exit -> 'true'
+  store  at  7.70s, /health 200 again at  8.56s ( 856.4 ms); pid #PID<12437.162.0> -> #PID<12437.176.0>; exit -> 'true'
+health: {'queued': 0, 'scheduled': 0, 'leased': 7, 'done': 28421, 'dead': 0, 'archived': 0, 'uptime_ms': 14405, 'restarts': 3}
+after a restart on the same folder (3.29s): acked jobs not acked 0; health {'queued': 0, 'scheduled': 0, 'leased': 7, 'done': 28421, 'dead': 0, 'archived': 0, 'uptime_ms': 2674, 'restarts': 0}
+jobq: the service failed more than 5 time(s) inside 60 second(s), and stopped
+## chain3 done 22:17:14
+## go defects5-rename (amended 22:24) 22:21:33
+## python defects5-rename (amended 22:24) 22:21:33
+## elixir defects5-rename (amended 22:24) 22:21:33
+## mo defects5-rename (amended 22:24) 22:21:33
+## morun defects5-rename (amended 22:24) 22:21:33
+## mo p6 (the --surface binary) 22:21:33
+  at  2.01s: send -> 200 'done'; /health 200 again at  2.06s (  55.1 ms)
+  at  5.00s: send -> 200 'done'; /health 200 again at  5.10s (  98.8 ms)
+acked jobs not done: 0 []
+created jobs gone: 0 []
+health after restart: {'queued': 1, 'scheduled': 0, 'leased': 6, 'done': 7130, 'dead': 0, 'archived': 0, 'uptime_ms': 14989, 'restarts': 0}
+3, Map.new()).set(24, Map.new().set(6197, Time.fixture() + 22386129145.ms).set(6198, Time.fixture() + 22386129145.ms).set(6200, Time.fixture() + 22386129146.ms)), due: Some(Time.fixture() + 22386126155.ms), waits: Map.new(), wake: None, next: 6204, reserved: 7001, counts: Counts(queued: 3, scheduled: 0, leased: 6, done: 5447, dead: 0, archived: 0, uptime_ms: 0, restarts: 0), started: Time.fixture() + 22386094146.ms, renames: 0, moves: []), table: Table(buckets: Map.new(), size: 0, dir: "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-gpq8u5s7/dir", base: "jobq.log", name: "jobq.log", bytes: 3689822, lines: 16363, cut: false), torn: false, archive: Table(buckets: Map.new(), size: 0, dir: "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-gpq8u5s7/dir", base: "jobq.archive", name: "jobq.archive", bytes: 0, lines: 0, cut: false), archive_torn: false, writes: [("j_6197", Some("{"id": "j_6197", "queue": "q2", "state": "done", "payload": "p", "tries": 1, "max_tries": 3, "backoff_ms": 0, "created_at": "2026-09-17T02:21:39.138Z", "updated_at": "2026-09-17T02:21:39.150Z"}"))], shelved: [], outcomes: [Found(Job(number: 6197, queue: "q2", key: None, state: Done, payload: "p", tries: 1, max_tries: 3, backoff_ms: 0, created_at: Time.fixture() + 22386099138.ms, updated_at: Time.fixture() + 22386099150.ms, run_at: None, worker: None, lease_until: None, reason: None, archived_at: None))], restarts: 1, applied: 6609), waiting: [], flushing: true, me: Some(Queue #2), failing: false)
+## chain4 done 22:52:40
+## go defects5-rename 22:55:09
+32 passed, 0 defects
+## python defects5-rename 22:55:11
+32 passed, 0 defects
+## elixir defects5-rename 22:55:13
+32 passed, 0 defects
+## mo defects5-rename 22:55:15
+32 passed, 0 defects
+## morun defects5-rename 22:55:17
+32 passed, 0 defects
+## chain5 done 22:55:19

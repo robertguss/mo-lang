@@ -1,0 +1,4 @@
+usage: defects2.py [-h] --serve SERVE --verify VERIFY --compact COMPACT
+                   --log-format LOG_FORMAT [--cwd CWD] [--only ONLY]
+                   [--no-ramdisk]
+defects2.py: error: the following arguments are required: --log-format

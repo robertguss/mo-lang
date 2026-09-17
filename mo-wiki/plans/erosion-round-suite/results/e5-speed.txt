@@ -1,0 +1,60 @@
+== mo change 5, binary 22:22:29
+creates: 100000 in 12.2s = 8182/s, errors []; rss at 100000 jobs 96.0 MiB
+pairs, 1 worker: 7252 in 10.0s = 725/s []
+pairs, 32 workers: 4281 in 10.1s = 425/s []
+rss after pairs 104.1 MiB
+restart with a 39 MB log: 2.22s to /health; rss 123.0 MiB
+== go change 5 22:23:31
+creates: 100000 in 495.1s = 202/s, errors []; rss at 100000 jobs 71.0 MiB
+pairs, 1 worker: 521 in 10.0s = 52/s []
+pairs, 32 workers: 1089 in 10.2s = 107/s []
+rss after pairs 72.6 MiB
+restart with a 32 MB log: 0.30s to /health; rss 63.8 MiB
+== python change 5 22:32:07
+creates: 100000 in 9.8s = 10189/s, errors []; rss at 100000 jobs 27.0 MiB
+pairs, 1 worker: 22800 in 10.0s = 2280/s []
+pairs, 32 workers: 48487 in 10.0s = 4847/s []
+rss after pairs 26.9 MiB
+restart with a 90 MB log: 1.62s to /health; rss 27.1 MiB
+== elixir change 5 22:32:39
+creates: 100000 in 10.3s = 9729/s, errors []; rss at 100000 jobs 267.9 MiB
+pairs, 1 worker: 13763 in 10.0s = 1376/s []
+pairs, 32 workers: 56205 in 10.0s = 5619/s []
+rss after pairs 245.3 MiB
+restart with a 64 MB log: 4.78s to /health; rss 434.8 MiB
+== go change 4 22:33:15
+creates: 100000 in 493.2s = 203/s, errors []; rss at 100000 jobs 72.5 MiB
+pairs, 1 worker: 558 in 10.0s = 56/s []
+pairs, 32 workers: 1062 in 10.2s = 104/s []
+rss after pairs 74.2 MiB
+restart with a 32 MB log: 0.34s to /health; rss 65.0 MiB
+== python change 4 22:41:49
+creates: 100000 in 9.9s = 10071/s, errors []; rss at 100000 jobs 26.9 MiB
+pairs, 1 worker: 22183 in 10.0s = 2218/s []
+pairs, 32 workers: 48353 in 10.0s = 4834/s []
+rss after pairs 26.9 MiB
+restart with a 90 MB log: 1.60s to /health; rss 27.1 MiB
+== elixir change 4 22:42:22
+creates: 100000 in 9.8s = 10201/s, errors []; rss at 100000 jobs 261.9 MiB
+pairs, 1 worker: 17255 in 10.0s = 1725/s []
+pairs, 32 workers: 56257 in 10.0s = 5624/s []
+rss after pairs 226.3 MiB
+restart with a 65 MB log: 4.98s to /health; rss 429.4 MiB
+== go change 3 22:42:57
+creates: 100000 in 495.3s = 202/s, errors []; rss at 100000 jobs 66.0 MiB
+pairs, 1 worker: 867 in 10.0s = 87/s []
+pairs, 32 workers: 670 in 10.3s = 65/s []
+rss after pairs 67.4 MiB
+restart with a 32 MB log: 0.34s to /health; rss 63.6 MiB
+== python change 3 22:51:33
+creates: 100000 in 9.1s = 10987/s, errors []; rss at 100000 jobs 27.1 MiB
+pairs, 1 worker: 24647 in 10.0s = 2465/s []
+pairs, 32 workers: 49133 in 10.0s = 4911/s []
+rss after pairs 27.0 MiB
+restart with a 85 MB log: 1.46s to /health; rss 27.1 MiB
+== elixir change 3 22:52:05
+creates: 100000 in 9.8s = 10168/s, errors []; rss at 100000 jobs 228.9 MiB
+pairs, 1 worker: 16696 in 10.0s = 1670/s []
+pairs, 32 workers: 57537 in 10.0s = 5752/s []
+rss after pairs 226.1 MiB
+restart with a 66 MB log: 4.58s to /health; rss 377.7 MiB
