@@ -36,7 +36,7 @@ The loop with the auditor, as it runs today (charter option B, manual, Robert-dr
 
 ## Rules that were learned the hard way
 
-- Nothing is final until measured; every step ends in a numbers table, best of five, both runtimes.
+- Nothing is final until measured; every step ends in a numbers table, best of five, both runtimes. Before any measurement read `uptime` and `ps -eo pid,etimes,pcpu,args --sort=-pcpu | head`, kill what is an orphan (17 Sep 2026: a 43-hour `python3 -` from a finished session held one of the VM's four cores through a whole day of numbers), and write the load average on the page beside the numbers.
 - Zero new syntax where possible; a grammar change is Robert's call, asked with code options.
 - The laws stay unless a control run shows them costing loops; five rounds have shown none.
 - Install what a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for a Python project, `uv tool install` for a command), `go install`; record it.

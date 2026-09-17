@@ -477,3 +477,6 @@
 
 ## [2026-09-17] update | Evening on the VM: the nine times named, step 36 started
 - The probe into generation four's lease-path loss ran on the quiet VM after the fuzz hour (pane `w7:pN`): both generations' queues rebuilt with step 35's `mo`, 30,000 jobs, `MO_CORES=1`, `perf` and the surface. Generation three 1,664 pairs a second at 32 workers, generation four 533; with `MO_CONTRACTS=0` 1,793 and 1,736. `perf`: 23 percent of the server in `sweep`'s postcondition over every finished job, run by `decide` on every request. One `semantic` row for Robert; the erosion page, the state page, the board, and the handoff say so. A fresh Opus worker started on [[interpreter-step-36]] at 19:27 UTC in pane `w7:pP`.
+
+## [2026-09-17] update | An orphan on one of the VM's four cores
+- A `python3 -` from the measurement 1 session (16 Sep, `../mo-lang-cache-A`) had spun at 100 percent of one core for 43 hours, through step 35's numbers and the speed probe; killed 5:26 PM ET. The evidence README carries the condition; the readings stand (each comparison ran under the same load); the absolute rates on the VM today are low by an unknown share. The skill now says: read `uptime` and `ps` before a measurement and write the load on the page.

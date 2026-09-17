@@ -26,6 +26,10 @@ charter the auditor reads the raw evidence first and Fable's reading after.
 
 A speed probe's bundle carries the source diff at every site its reading names, beside the numbers, from now on (the auditor's gap of 17 Sep).
 
+## A condition on every number taken on the VM today
+
+Found 17 Sep, 21:25 UTC (5:25 PM ET) while checking the machine: a `python3 -` process from the bodies-as-cache session of 15 to 16 Sep (`../mo-lang-cache-A/examples/programs/ledger`, a `fill` script launched from a Claude Code shell) had been spinning at 100 percent of one core for 43 hours, through every run in this bundle. The VM has four cores, so step 35's timings and the speed probe were taken on three effective cores with a load average near 2.4. The speed probe's reading stands, since every pair it compares (generation three against four, contracts on against off) ran under the same condition; the absolute rates in both bundles are low by an unknown share and should not be compared with a later run on this VM without this note. The process was killed at 21:26 UTC. The rule that follows: `uptime` and the top of `ps` are read before any measurement, and the load is written on the page (added to the `mo-lead` skill).
+
 ## Where the two readings will meet
 
 The rows of 17 Sep in `mo-wiki/decisions/decision-log.md` marked "for Robert": step 35's acceptance row, the row on generation four's cause (19:25 UTC), and step 36's two design rows. The auditor's file on any of these subjects goes beside this folder as `audit/mo-audit-2026-09-17-<subject>.md`; Fable's parallel readings: `audit/fable-reading-2026-09-17-step-35-crypto-brick.md` and `audit/fable-reading-2026-09-17-gen4-speed-probe.md`, filed 20:30 to 20:40 UTC against this bundle, before the auditor's files were opened.
