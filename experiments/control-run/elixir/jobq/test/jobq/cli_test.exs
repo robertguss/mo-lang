@@ -58,9 +58,11 @@ defmodule Jobq.CLITest do
 
       assert {0, _output} = run(["check", dir, "script/check.script"])
       assert {0, output} = run(["verify", dir])
-      # The script's two done jobs were archived, and one of them was deleted.
+      # The script's two done jobs were archived, and one of them was deleted;
+      # j_2 was handed off and acked by the worker it was handed to, and j_9 was
+      # created and deleted around the rename.
       assert output =~
-               "4 jobs: queued 2, scheduled 1, leased 1, done 0, dead 0; next id j_9; archived 1"
+               "4 jobs: queued 2, scheduled 1, leased 0, done 1, dead 0; next id j_10; archived 1"
     end
 
     test "a record that is not well-formed is 1, named with its key and its rule" do
@@ -203,9 +205,10 @@ defmodule Jobq.CLITest do
     assert {0, output} = run(["check", dir, "script/check.script"])
     assert output =~ ~s(< 201 {"id":"j_1")
 
-    # The script leaves j_2 leased, j_4 scheduled, and j_7 and j_8 queued; j_3
-    # and j_5 it deletes, j_1 it archives, and j_6 it archives and deletes. The
-    # compaction keeps j_1 in the archive and nothing of j_6 anywhere.
+    # The script leaves j_2 done, j_4 scheduled, and j_7 and j_8 queued; j_3,
+    # j_5 and j_9 it deletes, j_1 it archives, and j_6 it archives and deletes.
+    # The compaction keeps j_1 in the archive and nothing of j_6 anywhere, and
+    # the two renames, which cancel out, leave no record.
     assert {0, output} = run(["compact", dir])
     assert output =~ "4 job(s)"
     refute File.read!(Store.log_path(dir)) =~ ~s("id":"j_1")
@@ -213,7 +216,8 @@ defmodule Jobq.CLITest do
     refute File.read!(Store.archive_path(dir)) =~ ~s("id":"j_6")
     assert {0, output} = run(["verify", dir])
     assert output =~ "4 jobs:"
-    assert output =~ "; next id j_9; archived 1"
+    assert output =~ "; next id j_10; archived 1"
+    refute File.read!(Store.log_path(dir)) =~ ~s("rename")
   end
 
   describe "the archive" do

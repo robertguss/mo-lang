@@ -8,7 +8,8 @@ open, a failing request that never takes the service down, and `GET /queues`;
 and change 3, `spec/01d-job-queue-change-3.md`: the store restarts itself,
 within a budget, and a chaos switch to rehearse it; and change 4,
 `spec/01e-job-queue-change-4.md`: idempotent creates, and old jobs archived
-out of the log.
+out of the log; and change 5, `spec/01f-job-queue-change-5.md`: a lease handed
+off, and a queue renamed.
 
 A producer creates a job in a named queue — now, or after a delay — a worker
 leases the next one for a while and then acks or fails it, a lease that runs out
@@ -65,6 +66,20 @@ with its counts per state. `/health`'s totals are the sums of the rows, and a
 queue whose last job is deleted leaves the list.
 
     ./jobq client 127.0.0.1 7900 anyone GET /queues
+
+With change 5, `spec/01f-job-queue-change-5.md`, a worker that holds a lease
+may hand it to another worker by name: the job keeps its `lease_until` and its
+`tries`, and from the response on only the new worker may ack, fail, or hand it
+on. An operator may rename a queue that has jobs, in any state, archived ones
+included, to a name that has none: every job and every key moves in one record
+on the log, a lease in flight is untouched, and the old name is free again.
+
+    ./jobq client 127.0.0.1 7900 bob POST /jobs/j_1/handoff '{"to":"carol"}'
+    ./jobq client 127.0.0.1 7900 ops POST /queues/emails/rename '{"to":"outbox"}'
+
+The archive is not rewritten by a rename; an archived job's queue is the log's
+renames applied to it, and `jobq compact` folds every rename into the records it
+writes.
 
 The board — the store and the queue — restarts itself. When either fails in a
 way that is not one request's failure (the process dies, a look finds a rule

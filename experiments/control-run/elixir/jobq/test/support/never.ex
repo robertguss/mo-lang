@@ -11,6 +11,11 @@ defmodule Jobq.Test.Never do
   again, and a dead job moves only to the `queued` of a retry, with its `tries`
   back at 0.
 
+  Change 5 moved the first of them rather than dropped it: a leased record
+  after a leased one is a handoff, and is one only when the worker changed and
+  the `tries` and the `lease_until` did not, so the job still has one worker at
+  every line. A rename record names no job and moves no state.
+
   A log may carry lines the version before this change wrote, so a record's
   count of tries is read under either name.
   """
@@ -40,6 +45,7 @@ defmodule Jobq.Test.Never do
 
   defp step(%{"id" => id, "deleted" => true}, seen), do: {:ok, Map.put(seen, id, :deleted)}
   defp step(%{"next" => _n}, seen), do: {:ok, seen}
+  defp step(%{"rename" => _from, "to" => _to}, seen), do: {:ok, seen}
 
   # A job that left the board for the archive never moves on the board again.
   defp step(%{"id" => id, "archived" => true}, seen), do: {:ok, Map.put(seen, id, :archived)}
@@ -58,6 +64,8 @@ defmodule Jobq.Test.Never do
       state: record["state"],
       tries: tries(record),
       run_at: record["run_at"],
+      worker: record["worker"],
+      lease_until: record["lease_until"],
       updated_at: record["updated_at"]
     }
   end
@@ -73,7 +81,7 @@ defmodule Jobq.Test.Never do
 
     cond do
       tries > max -> "tries #{tries} over max_tries #{max}"
-      state == "leased" -> lease_fault(tries, previous)
+      state == "leased" -> lease_fault(record, tries, previous)
       state == "queued" -> queued_fault(record, previous)
       state_of(previous) == "done" -> "left done for #{state}"
       state_of(previous) == "dead" -> "left dead for #{state}"
@@ -82,12 +90,22 @@ defmodule Jobq.Test.Never do
     end
   end
 
-  defp lease_fault(tries, previous) do
+  defp lease_fault(record, tries, previous) do
     cond do
-      state_of(previous) == "leased" -> "leased while already leased"
+      state_of(previous) == "leased" -> handoff_fault(record, tries, previous)
       state_of(previous) == "scheduled" -> "leased while scheduled"
       state_of(previous) in ["done", "dead"] -> "leased while #{state_of(previous)}"
       is_map(previous) and tries != previous.tries + 1 -> "leased with tries #{tries}"
+      true -> nil
+    end
+  end
+
+  # A handoff: another worker, the same lease, the same tries.
+  defp handoff_fault(record, tries, previous) do
+    cond do
+      record["worker"] == previous.worker -> "leased while already leased"
+      tries != previous.tries -> "handed off with tries #{tries}, was #{previous.tries}"
+      record["lease_until"] != previous.lease_until -> "handed off with a new lease_until"
       true -> nil
     end
   end

@@ -132,6 +132,22 @@ defmodule Jobq.Job do
   defp name(_name, field), do: {:error, "#{field} must be a string"}
 
   @doc """
+  A worker's name, as a lease's token names it and a handoff's `to` does:
+  1 to 128 bytes with no whitespace.
+  """
+  @spec worker(term()) :: {:ok, String.t()} | {:error, String.t()}
+  def worker(name) when is_binary(name) and byte_size(name) >= 1 and byte_size(name) <= 128 do
+    cond do
+      not String.valid?(name) -> {:error, "to must be UTF-8"}
+      name =~ ~r/\s/u -> {:error, "to must have no whitespace"}
+      true -> {:ok, name}
+    end
+  end
+
+  def worker(name) when is_binary(name), do: {:error, "to must be 1 to 128 bytes"}
+  def worker(_name), do: {:error, "to must be a string"}
+
+  @doc """
   A payload: 0 to 60 KiB of UTF-8 with no control characters but `\\n`.
   """
   @spec payload(term()) :: {:ok, String.t()} | {:error, String.t()}

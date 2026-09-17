@@ -46,6 +46,18 @@ defmodule Jobq.Store do
   between compactions, a folder with no archive has an empty one, and its torn
   last line is cut and dropped like the log's.
 
+  A queue renamed is one record on the log, `{"rename":from,"to":to}`, which
+  the replay applies in order to the jobs it has read so far and to the queue
+  of every job the log has sent to the archive; a job created into `from`
+  after it stays in `from`. The archive is not rewritten by a rename: an
+  archived job's queue is the one the log last gave it, when the log still
+  names it, and otherwise the archive's own with every rename on the log
+  applied. A compaction folds the renames into the records it writes and
+  leaves none: the log first, with an `archived` word carrying the current
+  queue of each archived job whose archive record has an old one, and then the
+  archive with current names, so a kill between the two rewrites leaves a
+  folder that opens with the same names.
+
   A log the version before change 1 wrote opens with no tool: `Jobq.Job` reads
   the old field names off a record and the store writes only the new ones, so
   a `compact/1` of such a folder leaves no old name behind.
@@ -58,6 +70,7 @@ defmodule Jobq.Store do
   alias Jobq.Board
   alias Jobq.Job
   alias Jobq.Json
+  alias Jobq.Rename
 
   @log_name "jobq.log"
   @archive_name "jobq.archive"
@@ -70,6 +83,7 @@ defmodule Jobq.Store do
           | {:archive, Job.t()}
           | {:archived, String.t()}
           | {:unarchive, String.t()}
+          | {:rename, String.t(), String.t()}
   @type jobs :: %{pos_integer() => Job.t()}
   @type log :: {jobs(), pos_integer()}
   @type folder :: %{jobs: jobs(), next: pos_integer(), archived: jobs()}
@@ -158,16 +172,37 @@ defmodule Jobq.Store do
   """
   @spec open(Path.t()) :: {:ok, folder()} | {:error, term()}
   def open(dir) do
-    with {:ok, {archived, named}} <- read_archive(dir),
+    with {:ok, folder, _as_filed} <- open_folder(dir), do: {:ok, folder}
+  end
+
+  # The folder, and the archived jobs under the queue names the archive file
+  # gives them, which a compaction compares with the current ones.
+  defp open_folder(dir) do
+    with {:ok, {as_filed, named}} <- read_archive(dir),
          {:ok, bytes} <- read_file(log_path(dir)),
-         {:ok, {live, next}} <- replay(bytes) do
+         {:ok, {live, next, gone, renames}} <- replay(bytes) do
       jobs = Map.drop(live, named)
       highest = named |> Enum.max(fn -> 0 end)
+      archived = Map.new(as_filed, fn {n, job} -> {n, current(job, live, gone, renames)} end)
 
       with :ok <- unique_keys(jobs, archived) do
-        {:ok, %{jobs: jobs, next: max(next, highest + 1), archived: archived}}
+        {:ok, %{jobs: jobs, next: max(next, highest + 1), archived: archived}, as_filed}
       end
     end
+  end
+
+  # An archived job's queue now: the log's, while the log still names the job
+  # (a move a kill cut short, or the word the move wrote), and otherwise the
+  # archive's with every rename the log carries applied.
+  defp current(job, live, gone, renames) do
+    queue =
+      case {Map.fetch(live, job.n), Map.fetch(gone, job.n)} do
+        {{:ok, on_log}, _gone} -> on_log.queue
+        {:error, {:ok, queue}} -> queue
+        {:error, :error} -> Rename.apply_all(job.queue, renames)
+      end
+
+    %{job | queue: queue}
   end
 
   defp read_file(path) do
@@ -254,14 +289,22 @@ defmodule Jobq.Store do
   """
   @spec compact(Path.t()) :: {:ok, non_neg_integer()} | {:error, term()}
   def compact(dir) do
-    with {:ok, %{jobs: jobs, next: next, archived: archived}} <- open(dir),
-         :ok <- rewrite(dir, log_path(dir), log_lines(jobs, next)),
+    with {:ok, %{jobs: jobs, next: next, archived: archived}, as_filed} <- open_folder(dir),
+         :ok <- rewrite(dir, log_path(dir), log_lines(jobs, next, renamed(archived, as_filed))),
          :ok <- rewrite(dir, archive_path(dir), job_lines(archived)) do
       {:ok, map_size(jobs)}
     end
   end
 
-  defp log_lines(jobs, next) do
+  # The archived jobs whose archive record names a queue that has since been
+  # renamed, with the name they have now.
+  defp renamed(archived, as_filed) do
+    archived
+    |> Enum.filter(fn {n, job} -> Map.fetch!(as_filed, n).queue != job.queue end)
+    |> Enum.sort_by(fn {n, _job} -> n end)
+  end
+
+  defp log_lines(jobs, next, renamed) do
     highest = jobs |> Map.keys() |> Enum.max(fn -> 0 end)
 
     marker =
@@ -269,7 +312,15 @@ defmodule Jobq.Store do
         do: [[Json.encode({:obj, [{"next", next}]}), ?\n]],
         else: []
 
-    marker ++ job_lines(jobs)
+    words =
+      Enum.map(renamed, fn {_n, job} ->
+        [
+          Json.encode({:obj, [{"id", Job.id(job)}, {"archived", true}, {"queue", job.queue}]}),
+          ?\n
+        ]
+      end)
+
+    marker ++ words ++ job_lines(jobs)
   end
 
   defp job_lines(jobs) do
@@ -305,7 +356,8 @@ defmodule Jobq.Store do
   end
 
   # The replay carries the jobs, the counter, the highest id the log has ever
-  # handed out, and the `next` marker with the line it was read on. A marker is
+  # handed out, the `next` marker with the line it was read on, the queue of
+  # every job the log sent to the archive, and the renames, latest first. A marker is
   # refused when it is no higher than an id written before it; the ids after it
   # are the ones a compaction kept, which are below it, and the ones created
   # since, which start at it. A compaction never writes a counter of 1.
@@ -318,7 +370,7 @@ defmodule Jobq.Store do
 
     lines
     |> Enum.with_index(1)
-    |> Enum.reduce_while({:ok, {%{}, 1, 0, nil}}, fn {line, number}, {:ok, log} ->
+    |> Enum.reduce_while({:ok, {%{}, 1, 0, nil, %{}, []}}, fn {line, number}, {:ok, log} ->
       case apply_line(line, log, number) do
         {:ok, log} -> {:cont, {:ok, log}}
         :error -> {:halt, {:error, {:corrupt, number}}}
@@ -328,7 +380,8 @@ defmodule Jobq.Store do
     |> finish()
   end
 
-  defp finish({:ok, {jobs, next, _seen, _marker}}), do: {:ok, {jobs, next}}
+  defp finish({:ok, {jobs, next, _seen, _marker, gone, renames}}),
+    do: {:ok, {jobs, next, gone, Enum.reverse(renames)}}
 
   defp finish({:error, reason}), do: {:error, reason}
 
@@ -348,29 +401,87 @@ defmodule Jobq.Store do
     end
   end
 
-  defp apply_record(%{"next" => n}, {jobs, next, seen, _marker}, number)
+  defp apply_record(%{"next" => n}, {jobs, next, seen, _marker, gone, renames}, number)
        when is_integer(n) and n > 1 and n > seen,
-       do: {:ok, {jobs, max(next, n), seen, {number, n}}}
+       do: {:ok, {jobs, max(next, n), seen, {number, n}, gone, renames}}
 
   defp apply_record(%{"next" => _n}, _log, _number), do: :error
 
-  defp apply_record(%{"archived" => true, "id" => id}, log, number),
-    do: apply_record(%{"deleted" => true, "id" => id}, log, number)
+  defp apply_record(%{"rename" => _from} = map, log, _number) do
+    {jobs, next, seen, marker, gone, renames} = log
 
-  defp apply_record(%{"deleted" => true, "id" => id}, {jobs, next, seen, marker}, _number) do
-    case Job.parse_id(id) do
-      {:ok, n} -> {:ok, {Map.delete(jobs, n), max(next, n + 1), max(seen, n), marker}}
-      :error -> :error
+    with :ok <- Rename.check_record(map),
+         %{"rename" => from, "to" => to} = map,
+         :ok <- target_empty(jobs, to) do
+      {moved, _count} = Rename.jobs(jobs, from, to)
+      gone = Map.new(gone, fn {n, queue} -> {n, Rename.apply_name(queue, from, to)} end)
+      {:ok, {moved, next, seen, marker, gone, [{from, to} | renames]}}
+    else
+      {:error, rule} -> {:record, "rename " <> inspect(map["rename"]), rule}
     end
   end
 
-  defp apply_record(map, {jobs, next, seen, marker}, _number) do
+  # The word a move writes, or the one a compaction writes with the queue the
+  # job has now: either way the job is off the board.
+  defp apply_record(%{"archived" => true, "id" => id} = map, log, number) do
+    with {:ok, n} <- Job.parse_id(id),
+         {:ok, queue} <- gone_queue(map, log, n),
+         {:ok, {jobs, next, seen, marker, gone, renames}} <-
+           apply_record(%{"deleted" => true, "id" => id}, log, number) do
+      gone = if queue, do: Map.put(gone, n, queue), else: gone
+      {:ok, {jobs, next, seen, marker, gone, renames}}
+    else
+      {:record, key, rule} -> {:record, key, rule}
+      _error -> :error
+    end
+  end
+
+  defp apply_record(%{"deleted" => true, "id" => id}, log, _number) do
+    {jobs, next, seen, marker, gone, renames} = log
+
+    case Job.parse_id(id) do
+      {:ok, n} ->
+        {:ok,
+         {Map.delete(jobs, n), max(next, n + 1), max(seen, n), marker, Map.delete(gone, n),
+          renames}}
+
+      :error ->
+        :error
+    end
+  end
+
+  defp apply_record(map, {jobs, next, seen, marker, gone, renames}, _number) do
     with :ok <- Job.check_record(map),
          {:ok, job} <- Job.from_record(map) do
-      {:ok, {Map.put(jobs, job.n, job), max(next, job.n + 1), max(seen, job.n), marker}}
+      {:ok,
+       {Map.put(jobs, job.n, job), max(next, job.n + 1), max(seen, job.n), marker, gone, renames}}
     else
       {:error, rule} -> {:record, Job.record_key(map), rule}
       :error -> {:record, Job.record_key(map), "the record is not a job"}
+    end
+  end
+
+  # A rename's target has no job on the log's board at that point: the service
+  # never merges two queues, so a record that would is not one it wrote.
+  defp target_empty(jobs, to) do
+    if Enum.any?(jobs, fn {_n, job} -> job.queue == to end),
+      do: {:error, "a rename's target has no job"},
+      else: :ok
+  end
+
+  # The queue an archived job had when the log sent it off: the one the word
+  # carries, or the job's on the log.
+  defp gone_queue(%{"queue" => queue} = map, _log, _n) do
+    case Job.queue(queue) do
+      {:ok, queue} -> {:ok, queue}
+      {:error, rule} -> {:record, Job.record_key(map), rule}
+    end
+  end
+
+  defp gone_queue(_map, {jobs, _next, _seen, _marker, gone, _renames}, n) do
+    case Map.fetch(jobs, n) do
+      {:ok, job} -> {:ok, job.queue}
+      :error -> {:ok, Map.get(gone, n)}
     end
   end
 
@@ -536,6 +647,7 @@ defmodule Jobq.Store do
   end
 
   defp archive_record?({kind, _value}), do: kind in [:archive, :unarchive]
+  defp archive_record?(_record), do: false
 
   defp append_lines(buffer, []), do: buffer
   defp append_lines(buffer, records), do: [buffer, Enum.map(records, &encode_record/1)]
@@ -633,6 +745,9 @@ defmodule Jobq.Store do
     do: [Json.encode({:obj, [{"id", id}, {"archived", true}]}), ?\n]
 
   defp encode_record({:unarchive, id}), do: encode_record({:delete, id})
+
+  defp encode_record({:rename, from, to}),
+    do: [Json.encode({:obj, [{"rename", from}, {"to", to}]}), ?\n]
 
   defp sync_dir(dir) do
     case :file.open(dir, [:read, :raw]) do

@@ -23,6 +23,11 @@
 # its key still answers, and the folder says so to verify and compact alike.
 # A bad archive record refuses the folder the way a bad live one does.
 #
+# Seven: a lease handed off and a queue renamed, through a real `jobq serve`
+# killed with -9 once both are acknowledged: the reopened folder has the job
+# with the new worker and the same lease_until, every job in the new queue,
+# its key there, and one rename record, which a compaction folds away.
+#
 # Five: the board restarts itself. A `jobq serve` with the chaos switch on
 # fails its second write, comes back with the record on the board and
 # `restarts` at 1, and on the failure past its budget exits 70 with a folder
@@ -313,5 +318,78 @@ expect_status 1 ./jobq serve "$work/bad-archive" --port "$port"
 expect_error "record j_1:"
 expect_status 1 ./jobq compact "$work/bad-archive"
 expect_error "record j_1:"
+
+# Seven: a handoff and a rename, and a kill.
+mkdir "$work/renamed"
+timeout 300 ./jobq serve "$work/renamed" --port "$port" >"$work/renamed.log" 2>&1 &
+served=$!
+waited=0
+until grep -q "serving" "$work/renamed.log" 2>/dev/null; do
+  waited=$((waited + 1))
+  [ "$waited" -gt 100 ] && fail "the renaming service did not come up: $(cat "$work/renamed.log")"
+  sleep 0.1
+done
+
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"emails","payload":"held","max_tries":2,"key":"k-1"}'
+expect_body '^201 {"id":"j_1"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice POST /jobs \
+  '{"queue":"emails","payload":"waiting","max_tries":2}'
+expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /queues/emails/lease '{"lease_ms":3600000}'
+expect_body '"worker":"bob"'
+until_before=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1].split(" ",1)[1])["lease_until"])' "$(cat "$work/out")")
+expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /jobs/j_1/handoff '{"to":"carol"}'
+expect_body '^200 .*"worker":"carol"'
+expect_body "\"lease_until\":\"$until_before\""
+expect_status 0 ./jobq client 127.0.0.1 "$port" bob POST /jobs/j_1/ack
+expect_body '^409 '
+expect_status 0 ./jobq client 127.0.0.1 "$port" operator POST /queues/emails/rename '{"to":"outbox"}'
+expect_body '^200 {"queue":"outbox","moved":2}'
+expect_status 0 ./jobq client 127.0.0.1 "$port" operator POST /queues/nobody/rename '{"to":"outbox"}'
+expect_body '^404 '
+
+# -9 to the service itself: `timeout` cannot pass on a signal it never sees.
+pkill -9 -P "$served"
+wait "$served" 2>/dev/null || true
+served=""
+
+[ "$(grep -c '"rename"' "$work/renamed/jobq.log")" = "1" ] || fail "expected one rename record"
+expect_status 0 ./jobq verify "$work/renamed"
+expect_body "2 jobs: queued 1, scheduled 0, leased 1, done 0, dead 0; next id j_3; archived 0"
+
+timeout 300 ./jobq serve "$work/renamed" --port "$port" >"$work/renamed.log" 2>&1 &
+served=$!
+waited=0
+until grep -q "serving" "$work/renamed.log" 2>/dev/null; do
+  waited=$((waited + 1))
+  [ "$waited" -gt 100 ] && fail "the renaming service did not come back: $(cat "$work/renamed.log")"
+  sleep 0.1
+done
+expect_status 0 ./jobq client 127.0.0.1 "$port" alice GET '/jobs?queue=outbox&key=k-1'
+expect_body "\"worker\":\"carol\",\"lease_until\":\"$until_before\""
+expect_status 0 ./jobq client 127.0.0.1 "$port" carol POST /jobs/j_1/ack
+expect_body '^200 {"id":"j_1","queue":"outbox","state":"done"'
+expect_status 0 ./jobq client 127.0.0.1 "$port" dave POST /queues/emails/lease
+expect_body '^204'
+kill "$served"
+served=""
+sleep 0.5
+
+expect_status 0 ./jobq compact "$work/renamed"
+! grep -q '"rename"' "$work/renamed/jobq.log" || fail "compaction left a rename record"
+[ "$(grep -c '"queue":"outbox"' "$work/renamed/jobq.log")" = "2" ] || fail "compaction lost the new name"
+
+mkdir "$work/bad-rename"
+{
+  printf '%s' '{"id":"j_1","queue":"emails","state":"queued","payload":"hi","tries":0,'
+  printf '%s\n' '"max_tries":3,"backoff_ms":0,"created_at":1789000000000,"updated_at":1789000000000}'
+  printf '%s\n' '{"rename":"emails","to":"out box"}'
+} >"$work/bad-rename/jobq.log"
+expect_status 1 ./jobq verify "$work/bad-rename"
+expect_error "a rename's to: queue must be letters"
+expect_status 1 ./jobq serve "$work/bad-rename" --port "$port"
+expect_error "rename"
+expect_status 1 ./jobq compact "$work/bad-rename"
+expect_error "rename"
 
 echo "check.sh: ok"

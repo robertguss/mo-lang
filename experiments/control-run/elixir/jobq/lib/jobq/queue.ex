@@ -38,6 +38,7 @@ defmodule Jobq.Queue do
 
   alias Jobq.Board
   alias Jobq.Job
+  alias Jobq.Rename
   alias Jobq.Store
 
   @type ref :: term()
@@ -53,6 +54,8 @@ defmodule Jobq.Queue do
           | {:ack, String.t(), String.t()}
           | {:fail, String.t(), String.t(), String.t() | nil}
           | {:retry, String.t()}
+          | {:handoff, String.t(), String.t(), String.t()}
+          | {:rename, String.t(), String.t()}
           | :health
           | :queues
 
@@ -159,6 +162,20 @@ defmodule Jobq.Queue do
   @doc "Put a dead job back in its queue with its tries reset. `POST /jobs/{id}/retry`."
   @spec retry(ref(), String.t()) :: reply()
   def retry(ref, id), do: run(ref, {:retry, id})
+
+  @doc """
+  Hand a job the caller holds to the worker `to`, lease and tries as they are.
+  `POST /jobs/{id}/handoff`.
+  """
+  @spec handoff(ref(), String.t(), String.t(), String.t()) :: reply()
+  def handoff(ref, id, worker, to), do: run(ref, {:handoff, id, worker, to})
+
+  @doc """
+  Move every job of a queue, live or archived, to a queue that has none, in
+  one record. `POST /queues/{name}/rename`.
+  """
+  @spec rename(ref(), String.t(), String.t()) :: reply()
+  def rename(ref, from, to), do: run(ref, {:rename, from, to})
 
   @doc "The counts and the uptime. `GET /health`."
   @spec health(ref()) :: reply()
@@ -424,6 +441,58 @@ defmodule Jobq.Queue do
     end
   end
 
+  defp operate({:handoff, id, worker, to}, records, from, state) do
+    with {:ok, job} <- find_any(state, id),
+         {:ok, handed, changed?} <- Jobq.Handoff.step(job, worker, to, state.clock.()) do
+      if changed? do
+        state = put_job(state, handed)
+        answer(state, records ++ [{:put, handed}], from, {200, Job.render(handed)})
+      else
+        answer(state, records, from, {200, Job.render(handed)})
+      end
+    else
+      :error ->
+        answer(state, records, from, {404, error("no such job")})
+
+      :not_held ->
+        answer(
+          state,
+          records,
+          from,
+          {409, error("caller does not hold a live lease on this job")}
+        )
+    end
+  end
+
+  # The jobs, the key map, and the two indexes that know a queue by name move
+  # together; the deadline indexes and the counts do not know queues. `to`
+  # has no job, so its rows are empty and taking `from`'s whole is the move.
+  defp operate({:rename, name, to}, records, from, state) do
+    case Rename.check([state.jobs, state.archived], name, to) do
+      :ok ->
+        {jobs, live} = Rename.jobs(state.jobs, name, to)
+        {archived, gone} = Rename.jobs(state.archived, name, to)
+
+        state = %{
+          state
+          | jobs: jobs,
+            archived: archived,
+            keys: Rename.keys(state.keys, name, to),
+            queued: move_row(state.queued, name, to),
+            by_queue: move_row(state.by_queue, name, to)
+        }
+
+        body = {:obj, [{"queue", to}, {"moved", live + gone}]}
+        answer(state, records ++ [{:rename, name, to}], from, {200, body})
+
+      :not_found ->
+        answer(state, records, from, {404, error("no such queue")})
+
+      :exists ->
+        answer(state, records, from, {409, error("exists")})
+    end
+  end
+
   defp operate(:health, records, from, state) do
     body =
       {:obj,
@@ -480,6 +549,13 @@ defmodule Jobq.Queue do
 
       {:error, reason} ->
         {:stop, reason, state}
+    end
+  end
+
+  defp move_row(rows, from, to) do
+    case Map.pop(rows, from) do
+      {nil, rows} -> rows
+      {row, rows} -> Map.put(rows, to, row)
     end
   end
 

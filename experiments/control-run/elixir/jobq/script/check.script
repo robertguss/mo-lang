@@ -119,3 +119,34 @@ anyone GET /queues
 alice DELETE /jobs/j_6
 alice GET /jobs/j_6
 alice POST /jobs {"queue":"emails","payload":"order 42, again","max_tries":1,"key":"order-42"}
+
+# Change 5: a worker hands its lease to a colleague. The lease and the tries go
+# with it, and the old worker is a stranger from then on; a handoff to oneself
+# changes nothing.
+bob POST /jobs/j_2/handoff {"to":"frank"}
+bob POST /jobs/j_2/ack
+bob POST /jobs/j_2/handoff {"to":"bob"}
+frank POST /jobs/j_2/handoff {"to":"frank"}
+frank POST /jobs/j_2/handoff {"to":"no spaces"}
+frank POST /jobs/j_2/handoff {}
+alice POST /jobs/j_99/handoff {"to":"frank"}
+
+# An operator renames a busy queue: every job, the archived and the leased
+# ones too, and its keys, move in one record. The old name is free again, a
+# target with any job is refused, and a rename back restores the keys.
+operator POST /queues/emails/rename {"to":"outbox"}
+operator POST /queues/emails/rename {"to":"outbox"}
+operator POST /queues/outbox/rename {"to":"reports"}
+operator POST /queues/outbox/rename {"to":"outbox"}
+operator POST /queues/outbox/rename {"to":"no spaces"}
+anyone GET /queues
+alice GET /jobs/j_1
+alice GET /jobs?queue=outbox&key=order-42
+bob POST /queues/emails/lease
+frank POST /jobs/j_2/ack
+alice POST /jobs {"queue":"emails","payload":"fresh","max_tries":1,"key":"order-42"}
+operator POST /queues/outbox/rename {"to":"emails"}
+alice DELETE /jobs/j_9
+operator POST /queues/outbox/rename {"to":"emails"}
+alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+anyone GET /queues

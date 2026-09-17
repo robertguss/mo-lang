@@ -106,6 +106,25 @@ defmodule Jobq.Router do
     end
   end
 
+  defp authorized(%{method: "POST"} = request, ref, ["jobs", id, "handoff"], _query, token) do
+    with {:ok, fields} <- fields(request.body, ["to"], []),
+         {:ok, to} <- Job.worker(fields["to"]) do
+      reply(Queue.handoff(ref, id, token, to))
+    else
+      {:error, message} -> {400, error(message)}
+    end
+  end
+
+  defp authorized(%{method: "POST"} = request, ref, ["queues", queue, "rename"], _query, _token) do
+    with {:ok, queue} <- Job.queue(queue),
+         {:ok, fields} <- fields(request.body, ["to"], []),
+         {:ok, to} <- Job.queue(fields["to"]) do
+      reply(Queue.rename(ref, queue, to))
+    else
+      {:error, message} -> {400, error(message)}
+    end
+  end
+
   defp authorized(%{method: "POST"} = request, ref, ["queues", queue, "lease"], _query, token) do
     with {:ok, queue} <- Job.queue(queue),
          {:ok, fields} <- fields(request.body, [], ["lease_ms"]),
@@ -122,8 +141,10 @@ defmodule Jobq.Router do
       else: {404, error("no such route")}
   end
 
-  defp known_route?(["jobs", _id, suffix]) when suffix in ["ack", "fail", "retry"], do: true
-  defp known_route?(["queues", _queue, "lease"]), do: true
+  defp known_route?(["jobs", _id, suffix]) when suffix in ["ack", "fail", "retry", "handoff"],
+    do: true
+
+  defp known_route?(["queues", _queue, suffix]) when suffix in ["lease", "rename"], do: true
   defp known_route?(_segments), do: false
 
   defp create(request, ref) do

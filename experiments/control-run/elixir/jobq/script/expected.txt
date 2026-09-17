@@ -151,3 +151,49 @@
 < 404 {"error":"no such job"}
 > alice POST /jobs {"queue":"emails","payload":"order 42, again","max_tries":1,"key":"order-42"}
 < 201 {"id":"j_8","queue":"emails","state":"queued","payload":"order 42, again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> bob POST /jobs/j_2/handoff {"to":"frank"}
+< 200 {"id":"j_2","queue":"emails","state":"leased","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"frank","lease_until":"<ts>"}
+> bob POST /jobs/j_2/ack
+< 409 {"error":"caller does not hold a live lease on this job"}
+> bob POST /jobs/j_2/handoff {"to":"bob"}
+< 409 {"error":"caller does not hold a live lease on this job"}
+> frank POST /jobs/j_2/handoff {"to":"frank"}
+< 200 {"id":"j_2","queue":"emails","state":"leased","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","worker":"frank","lease_until":"<ts>"}
+> frank POST /jobs/j_2/handoff {"to":"no spaces"}
+< 400 {"error":"to must have no whitespace"}
+> frank POST /jobs/j_2/handoff {}
+< 400 {"error":"'to' is required"}
+> alice POST /jobs/j_99/handoff {"to":"frank"}
+< 404 {"error":"no such job"}
+> operator POST /queues/emails/rename {"to":"outbox"}
+< 200 {"queue":"outbox","moved":3}
+> operator POST /queues/emails/rename {"to":"outbox"}
+< 404 {"error":"no such queue"}
+> operator POST /queues/outbox/rename {"to":"reports"}
+< 409 {"error":"exists"}
+> operator POST /queues/outbox/rename {"to":"outbox"}
+< 409 {"error":"exists"}
+> operator POST /queues/outbox/rename {"to":"no spaces"}
+< 400 {"error":"queue must be letters, digits, '-' or '_'"}
+> anyone GET /queues
+< 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"outbox","queued":1,"scheduled":0,"leased":1,"done":0,"dead":0},{"name":"reports","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> alice GET /jobs/j_1
+< 200 {"id":"j_1","queue":"outbox","state":"done","payload":"welcome","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","archived_at":"<ts>"}
+> alice GET /jobs?queue=outbox&key=order-42
+< 200 {"jobs":[{"id":"j_8","queue":"outbox","state":"queued","payload":"order 42, again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}]}
+> bob POST /queues/emails/lease
+< 204
+> frank POST /jobs/j_2/ack
+< 200 {"id":"j_2","queue":"outbox","state":"done","payload":"receipt","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>"}
+> alice POST /jobs {"queue":"emails","payload":"fresh","max_tries":1,"key":"order-42"}
+< 201 {"id":"j_9","queue":"emails","state":"queued","payload":"fresh","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> operator POST /queues/outbox/rename {"to":"emails"}
+< 409 {"error":"exists"}
+> alice DELETE /jobs/j_9
+< 204
+> operator POST /queues/outbox/rename {"to":"emails"}
+< 200 {"queue":"emails","moved":3}
+> alice POST /jobs {"queue":"emails","payload":"ignored","max_tries":9,"key":"order-42"}
+< 200 {"id":"j_8","queue":"emails","state":"queued","payload":"order 42, again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<ts>","updated_at":"<ts>","key":"order-42"}
+> anyone GET /queues
+< 200 {"queues":[{"name":"digests","queued":0,"scheduled":1,"leased":0,"done":0,"dead":0},{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"reports","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
