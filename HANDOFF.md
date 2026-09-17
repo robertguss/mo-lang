@@ -108,9 +108,9 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **Step 35, the crypto brick: accepted 17 Sep, 18:40 UTC** on the VM
->    (`interpreter-step-35.md` has the Result; Fable's hour of fuzzing ran
->    after, its count on that page). Next in the bricks lane: **the TLS brick**
+> 1. **Step 35, the crypto brick: accepted 17 Sep, 18:16 UTC** on the VM
+>    (`interpreter-step-35.md` has the Result; Fable's hour of fuzzing after
+>    it: 3.9 million inputs, 0 crashes). Next in the bricks lane: **the TLS brick**
 >    (two steps: a TLS 1.3 server on Zig's `std.crypto.tls` client; the
 >    certificate chain and the differential run against OpenSSL), the brief
 >    `interpreter-step-36.md` if it exists, else Fable writes it. Both before
