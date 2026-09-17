@@ -1,4 +1,4 @@
-# Mo Lang — Handoff, 16 Sep 2026, late evening: the next session on the Mac or the VM
+# Mo Lang — Handoff, 17 Sep 2026, morning: the next session on the Mac or the VM
 
 Paste the block below into a fresh Claude Code session in the repo. The roles,
 the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
@@ -41,6 +41,21 @@ know that the wiki does not say in one place.
 > the root of an Elixir worktree: `[tools]` / `elixir = "1.18-otp-27"` /
 > `erlang = "27"`. Step 34 is done, so the Mac's rows no longer need
 > `MO_CORES=1`, though at one core nothing is slower and the rounds keep it.
+>
+> **17 Sep, morning (Fable, on the Mac).** Research PR 2 (the Hermes lane,
+> branch `research/hermes-monitoring`, wiki only) merged into `main`: two daily
+> notes under `research/concepts/hermes-daily-2026-09-1{6,7}.md`, the plan
+> `plans/hermes-research-monitoring.md`, six raw snapshots. The branch stays
+> open for the next scan; review its PR, never merge it unread. Its one
+> correction is applied: chapter 10's restart-budget row now says the 3-in-5
+> budget is Elixir `Supervisor`'s default, not OTP's (Erlang's `supervisor`
+> defaults to 1 in 5 s). Its one gap check was right: `erosion2-*` and
+> `erosion5-*` had never been pushed; all eight are on the remote now, so the
+> sentence above about evidence branches is true from this morning. Its two
+> checklists are queued reading for change 6, not steps: the crash-consistency
+> sequence (create, compact, rename, reopen, write again) sits on the exact
+> path of generation five's Mo defect, and error-path reachability as a recipe
+> acceptance question (Yuan et al., OSDI 2014).
 >
 > **What the evening did, in the order Robert should read it** (each has a
 > `semantic` row for him; the morning and afternoon are in the changelog):
