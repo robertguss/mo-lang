@@ -2,6 +2,23 @@
   "version": 1,
   "files": [
     {
+      "path": "aead-vectors.mo",
+      "module": "Basics.AeadVectors",
+      "declarations": [
+        { "id": "11b1345feaea", "name": "module Basics.AeadVectors", "hash": "12e4675603d7f981" },
+        { "id": "3c2087f3e40d", "name": "expose", "hash": "c270e8ab6e97a527" },
+        { "id": "6da878f0618e", "name": "intent", "hash": "27c2cec1276674a0" },
+        { "id": "40194c136644", "name": "fn unhex", "hash": "239f07562c3a1ecf" },
+        { "id": "8b54974b66dc", "name": "fn sunscreen", "hash": "965a07fd65d45711" },
+        { "id": "8b589122a29b", "name": "fn main", "hash": "871548a60a79cd0a" },
+        { "id": "323a29c2ff82", "name": "test \"NIST GCM test cases 13 and 14: AES-256, a zero key and a zero IV\"", "hash": "a52d7a629ee0705e" },
+        { "id": "7241d9723e88", "name": "test \"NIST GCM test case 16: AES-256 with aad, sealed and opened\"", "hash": "237b8ef16a035a31" },
+        { "id": "bdf9aac1ab6c", "name": "test \"RFC 8439 2.8.2: ChaCha20-Poly1305, sealed and opened\"", "hash": "ed53338ece1391ee" },
+        { "id": "c0071871e75d", "name": "test \"an empty text seals to its tag alone and opens to an empty list\"", "hash": "b1d10c4a26b02546" }
+      ],
+      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "82502d3fc7b9f841" }
+    },
+    {
       "path": "anonymous-functions.mo",
       "module": "Basics.AnonymousFunctions",
       "declarations": [
@@ -57,6 +74,25 @@
         { "id": "a4d0d3a93d05", "name": "test \"break stops the range early\"", "hash": "cc4abfe402e228e0" }
       ],
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "710d5f8f6d7f1f6c" }
+    },
+    {
+      "path": "hash-vectors.mo",
+      "module": "Basics.HashVectors",
+      "declarations": [
+        { "id": "bf314e6e6540", "name": "module Basics.HashVectors", "hash": "b302f9302b2ee1de" },
+        { "id": "fdd0878e17c0", "name": "expose", "hash": "65861f7d193ee803" },
+        { "id": "b057f138392d", "name": "intent", "hash": "52a039d09b8f65eb" },
+        { "id": "d26b42853c66", "name": "fn unhex", "hash": "239f07562c3a1ecf" },
+        { "id": "2ee816bc82d4", "name": "fn sha256_hex", "hash": "3cab1494bf85b548" },
+        { "id": "592a9c783db3", "name": "fn main", "hash": "a5df5f59b4fe2998" },
+        { "id": "703875b143ce", "name": "test \"FIPS 180-4: SHA-256 of nothing, of abc, and of two blocks\"", "hash": "5a6ff1a91495401c" },
+        { "id": "6269e0d4030a", "name": "test \"FIPS 180-4: SHA-512 of abc and of two blocks\"", "hash": "b411d76d713a818a" },
+        { "id": "fbbec6c4dfd1", "name": "test \"RFC 4231: HMAC-SHA256, cases 1, 2, and 6\"", "hash": "9d6f0a9fa7fed324" },
+        { "id": "adf49ad90a28", "name": "test \"RFC 5869: HKDF-SHA256, cases 1 and 3\"", "hash": "3d5d5ae5492c91aa" },
+        { "id": "ecd88fecea61", "name": "test \"hex is lowercase, and from_hex reads either case and refuses the rest\"", "hash": "465170ba90df77e7" },
+        { "id": "4604fea3feed", "name": "test \"equal? compares bytes, and lists of other sizes are unequal\"", "hash": "7298d49d2c6117a8" }
+      ],
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "78a4da0fbbcdad10" }
     },
     {
       "path": "if.mo",
@@ -222,6 +258,22 @@
         { "id": "0e4fc601cd7f", "name": "test \"a function that only succeeds or fails gives Result(none, E)\"", "hash": "001936d127336dcd" }
       ],
       "verified": { "hash": "d077f8946b30c29c", "declarations": "21e6bad25a382a52" }
+    },
+    {
+      "path": "sign-vectors.mo",
+      "module": "Basics.SignVectors",
+      "declarations": [
+        { "id": "85125dd24168", "name": "module Basics.SignVectors", "hash": "f558e9dd5d63e1fb" },
+        { "id": "e408ce1a014e", "name": "expose", "hash": "c270e8ab6e97a527" },
+        { "id": "c592644255c5", "name": "intent", "hash": "92f6e822a5bf9a62" },
+        { "id": "7f79b68627e7", "name": "fn unhex", "hash": "239f07562c3a1ecf" },
+        { "id": "a47c4f136ddf", "name": "fn main", "hash": "b3ef8e5c76f82218" },
+        { "id": "6c28c570aa64", "name": "test \"RFC 7748 6.1: X25519 public keys and the shared secret, both ways\"", "hash": "3d82c2ace5b94a81" },
+        { "id": "34e1ee78b7fa", "name": "test \"X25519 agrees to None with a low-order point\"", "hash": "b4fc3054358d9cf6" },
+        { "id": "833c73c3c2eb", "name": "test \"RFC 8032 7.1 test 1: Ed25519 over the empty message\"", "hash": "54f93602f19e8b9f" },
+        { "id": "f4ebd2756e29", "name": "test \"RFC 8032 7.1 test 2: Ed25519 over one byte, and what does not verify\"", "hash": "a71cd1dc16d5e62f" }
+      ],
+      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "2c190de03882262e" }
     },
     {
       "path": "strings.mo",

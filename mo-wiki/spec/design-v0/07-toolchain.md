@@ -3,7 +3,7 @@
 ## Build order
 
 1. **Interpreter first.** A bytecode interpreter in Zig for the edit loop. It is also the executable reference semantics, and the host for the simulator, replay, fault injection, and crash reports. It is a dev tool and never ships inside a release binary.
-2. **C via the Zig toolchain for release.** Differential-tested against the interpreter. Zig is also the C cross-compiler, so the whole build has exactly one dependency. Static linking, trivial cross-compilation, single binary.
+2. **C via the Zig toolchain for release.** Differential-tested against the interpreter. Zig is also the C cross-compiler, so the whole build has exactly one dependency. Static linking, trivial cross-compilation, single binary. A brick (the crypto brick, step 35) is Zig, compiled for the target by `zig build-obj` and linked beside the C runtime, while the interpreter imports the same source, so both runtimes run one implementation.
 3. **A native backend only if a real program proves the first two insufficient.**
 
 Precedent: OCaml's `ocamlc` / `ocamlopt`. Warning taken from Bosque: don't build the language, the verifier, and the runtime at once.

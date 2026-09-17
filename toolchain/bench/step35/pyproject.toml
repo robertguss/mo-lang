@@ -1,0 +1,8 @@
+[project]
+name = "step35"
+version = "0.1.0"
+description = "Step 35: the crypto brick's differential run, fuzz harness, and numbers"
+requires-python = ">=3.14"
+dependencies = [
+    "cryptography>=50.0.1",
+]

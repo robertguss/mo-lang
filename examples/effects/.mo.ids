@@ -80,6 +80,21 @@
       "verified": { "hash": "77f75ec5e0ab036b", "declarations": "6d3374c71dbaab38" }
     },
     {
+      "path": "password.mo",
+      "module": "Effects.Password",
+      "declarations": [
+        { "id": "dca546d8713d", "name": "module Effects.Password", "hash": "8536e71dcb2c475f" },
+        { "id": "c7c95b604c7a", "name": "expose", "hash": "5d7316236768ec7b" },
+        { "id": "1af5b13a3865", "name": "intent", "hash": "0ccadef1ab1518cd" },
+        { "id": "03ac134d8a0a", "name": "fn stored", "hash": "8e7a064dd40d3b94" },
+        { "id": "0c82498b06ed", "name": "fn main", "hash": "4bbbdc76f3bc0946" },
+        { "id": "9fcce028c5a3", "name": "test \"a hash with a fixed salt is the same PHC string every run\"", "hash": "b61aacfab9e28ce0" },
+        { "id": "ab3aebb835f3", "name": "test \"the password verifies and another does not\"", "hash": "2ee6c20cd80a870d" },
+        { "id": "6cc7495e92b1", "name": "test \"a malformed or foreign PHC string verifies to false\"", "hash": "19f71b0471447ba2" }
+      ],
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "f15117fd519da3c4" }
+    },
+    {
       "path": "pure-vs-effectful.mo",
       "module": "Effects.PureVsEffectful",
       "declarations": [
@@ -92,6 +107,23 @@
         { "id": "f2ecaa850332", "name": "test \"the effectful version reads the clock\"", "hash": "850561542ea6dbc5" }
       ],
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "c6070b381a0b033c" }
+    },
+    {
+      "path": "random-fixture.mo",
+      "module": "Effects.RandomFixture",
+      "declarations": [
+        { "id": "d2134a40cad6", "name": "module Effects.RandomFixture", "hash": "40fa2f2e4a597251" },
+        { "id": "c39c3c97ca4a", "name": "expose", "hash": "354ab0fa9c4072f2" },
+        { "id": "2b32872d46ba", "name": "intent", "hash": "af0632655096e5d0" },
+        { "id": "1136b26adb31", "name": "fn new_key", "hash": "404a176be3a869d6" },
+        { "id": "b18d25e8ad6b", "name": "process Keys", "hash": "31dd92562c4128f0" },
+        { "id": "540eadb92701", "name": "supervisor KeyMakers", "hash": "6faa457771923472" },
+        { "id": "91b05d287175", "name": "fn main", "hash": "16e4e8c64d2910e2" },
+        { "id": "93ce2db13c11", "name": "test \"a fixture draws the run's stream, so the test replays its bytes\"", "hash": "6b57874d1eb8f936" },
+        { "id": "b749fe525710", "name": "test \"two fixtures in one run draw the same stream, and one fixture's draws go on along it\"", "hash": "8fc454e4a3024b28" },
+        { "id": "094b4ccc785b", "name": "test \"a process started with a fixture draws from it, and two draws differ\"", "hash": "f67b5f9ba99ee849" }
+      ],
+      "verified": { "hash": "73013b24376f37b4", "declarations": "a06773868c6f3494" }
     },
     {
       "path": "runtime.mo",

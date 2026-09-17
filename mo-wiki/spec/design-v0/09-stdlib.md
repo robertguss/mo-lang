@@ -405,3 +405,41 @@ end
 Over HTTP the same rows are the development on-ramp: `mo run --surface PORT`, and `MO_SURFACE=PORT` for a binary built with `--surface`, serve them as JSON on 127.0.0.1 from a process of the toolchain's own the surface does not list, `GET /processes`, `/state/<id>`, `/recent/<id>?n=`, `/events?since=<ISO-8601>&n=`, `/crashes?n=`, `/sources`, `/memory`, `/slowest?n=`, and `POST /send/<id>` with the message's text as the body, `/pause/<id>`, `/resume/<id>`; a refusal is 404 for no process, 403 for read only, and 409 otherwise, with the `RuntimeError` as the body. An MCP wrapper is a later step.
 
 Session 5, step 23: the runtime surface and the events, from Robert's call of 13 Sep night (the surface is a capability, on in development, off in a binary unless held) and the nine questions program 1's worker wanted to ask its service.
+
+## Crypto
+
+The crypto brick (step 35, [[bricks-and-the-cost-of-zero-dependencies]]): pure rows on names that hold no values, so each follows the first rule, deterministic. They are written once, in Zig over `std.crypto` (`toolchain/src/bricks/crypto.zig`), and both runtimes call that code: the interpreter imports it, and `mo build` links it beside the C runtime. Bytes are `List(UInt8)`; a text is a `String`. Every key, nonce, seed, salt, and signature has one size, and another size is a crash whose message names the row and the size it got (`AesGcm.seal takes a key of 32 bytes, not 31`): the caller broke a rule. A sealed text, a public key, a signature, or a PHC string that comes from outside is checked by the row that reads it, and failing is a value.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Hash` (on type) | `sha256` | `bytes: List(UInt8)` | `List(UInt8)` | SHA-256 (FIPS 180-4), 32 bytes |
+| `Hash` (on type) | `sha512` | `bytes: List(UInt8)` | `List(UInt8)` | SHA-512, 64 bytes |
+| `Hash` (on type) | `hmac_sha256` | `key: List(UInt8)`, `bytes: List(UInt8)` | `List(UInt8)` | HMAC-SHA256 (RFC 2104), 32 bytes; a key of any size |
+| `Hash` (on type) | `hkdf_sha256` | `ikm: List(UInt8)`, `salt: List(UInt8)`, `info: List(UInt8)`, `size: UInt64` | `List(UInt8)` | HKDF-SHA256 (RFC 5869), extract then expand, `size` bytes; a size past 8,160 (255 blocks) crashes |
+| `Hash` (on type) | `hex` | `bytes: List(UInt8)` | `String` | lowercase hex, two digits a byte |
+| `Hash` (on type) | `from_hex` | `text: String` | `Option(List(UInt8))` | the bytes hex text spells, either case; `None` for an odd length or anything that is not a hex digit |
+| `Hash` (on type) | `equal?` | `a: List(UInt8)`, `b: List(UInt8)` | `Bool` | whether the bytes are equal, in time that depends only on the sizes; lists of other sizes are unequal at once |
+| `AesGcm` (on type) | `seal` | `key: List(UInt8)`, `nonce: List(UInt8)`, `plain: List(UInt8)`, `aad: List(UInt8)` | `List(UInt8)` | AES-256-GCM: the ciphertext, then the 16-byte tag; a key of 32 bytes and a nonce of 12, or a crash |
+| `AesGcm` (on type) | `open` | `key`, `nonce`, `sealed: List(UInt8)`, `aad` | `Option(List(UInt8))` | the plain text; `None` when the tag does not match the key, nonce, text, and aad, or the text is shorter than a tag; the sizes as `seal` |
+| `ChaCha` (on type) | `seal`, `open` | as `AesGcm`'s | as `AesGcm`'s | ChaCha20-Poly1305 (RFC 8439), the same shape and sizes |
+| `X25519` (on type) | `public` | `secret: List(UInt8)` | `List(UInt8)` | the 32-byte public key of a 32-byte secret (RFC 7748) |
+| `X25519` (on type) | `shared` | `secret: List(UInt8)`, `public: List(UInt8)` | `Option(List(UInt8))` | the 32-byte shared secret; `None` when `public` is a low-order point, whose secret would be all zeros; both 32 bytes, or a crash |
+| `Ed25519` (on type) | `public` | `seed: List(UInt8)` | `List(UInt8)` | the 32-byte public key of a 32-byte seed (RFC 8032) |
+| `Ed25519` (on type) | `sign` | `seed: List(UInt8)`, `bytes: List(UInt8)` | `List(UInt8)` | the 64-byte signature, deterministic |
+| `Ed25519` (on type) | `verify?` | `public: List(UInt8)`, `bytes: List(UInt8)`, `signature: List(UInt8)` | `Bool` | whether the signature is valid for the bytes under the key; a 32-byte key that is not a point is `false`; a key of another size or a signature of other than 64 bytes crashes |
+| `Password` (on type) | `hash` | `password: String`, `salt: List(UInt8)` | `String` | Argon2id (RFC 9106) at `m=65536,t=3,p=1`, a 32-byte tag, as a PHC string (`$argon2id$v=19$m=65536,t=3,p=1$<salt>$<tag>`, 97 bytes); the salt is 16 bytes, or a crash; take it from `random.bytes(16)` |
+| `Password` (on type) | `verify?` | `password: String`, `phc: String` | `Bool` | whether the password hashes to the string; a string `hash` does not write (malformed, another algorithm or version, other parameters, another salt or tag size, another spelling of the same values) is `false`, so a stored string cannot make a check cost more than a hash |
+
+Nothing else until a program asks: no SHA-3, no ECDSA, no RSA, no scrypt or bcrypt, no streaming hash. Step 35: the rows program 7 and the TLS brick of step 36 need.
+
+## Random
+
+`Random` is the one capability that gives bytes no row can predict, so it is not deterministic and is held like `Fs`: `platform.random` in `main`, passed down as a parameter, never captured by an anonymous function (MO0409), never stored in a value (MO0403), and held by a process only when it is started with one.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Platform` | `random` | | `Random` | the operating system's generator: `getrandom(2)` on Linux, `arc4random_buf(3)` on macOS, read on every call |
+| `Random` | `bytes` | `size: UInt64` | `List(UInt8)` | `size` bytes; more than 1 GiB at once crashes |
+| `Random` (on type) | `fixture` | | `Random` | a stream from the run's seed (ChaCha20 keyed by SHA-256 of the seed), so a test that draws a key draws the same bytes every run, under `mo test`, `--sim`, and in a test binary; each fixture starts at the stream's beginning, and each draw goes on along it; tests only |
+
+Step 35.
