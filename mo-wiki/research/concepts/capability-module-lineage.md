@@ -1,7 +1,7 @@
 ---
 title: "Capability module lineage"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: concept
 tags: [research, security, effects]
 sources: [raw/research-runs/pl-ideas-that-did-not-win.pplx.md, raw/research-runs/supply-chain-defenses-survey.pplx.md, raw/papers/newspeak-modules-as-objects.md, raw/papers/joe-e-security-oriented-subset-java.md, raw/papers/wyvern-type-specific-languages-ecoop14.md, raw/papers/wyvern-capability-safe-modules-ecoop17.md, raw/papers/kernighan-descent-into-limbo.md, raw/papers/hardy-confused-deputy-1988.md]
@@ -64,6 +64,8 @@ Five older designs that bear on how Mo hands out authority. Each is mapped to [[
 - E and Hardy: pass capabilities, not names.
 
 ## Related
+
+- [[hermes-daily-2026-09-17]] — Hermes follow-up on storage crash consistency and capability API boundaries.
 - [[landscape-second-lane]]
 - [[p13-capabilities-and-logging]]
 - [[q16-escape-hatch]]

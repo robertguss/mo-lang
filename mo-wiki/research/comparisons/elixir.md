@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-16
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -77,6 +77,10 @@ Elixir is a dynamically typed functional language on the Erlang VM, used by comp
 - **Question for Robert:** should `if` and `case` narrow a value into a refinement type inside the branch (flow typing), or must refinements always be constructed explicitly?
 - ⚠️ **Tension with [[q01-comments|Q1]]:** Valim's case for a separate doc form with tested examples cuts against Q1's "no doc-comment variant". Not resolved here. A possible middle is `test` blocks as the examples, which Mo already has.
 - **Proposal:** use Breitig's critique of AutoCodeBench as a checklist for Mo's own LLM eval: native problems, human-checked tests, and a per-language difficulty filter.
+
+## Dated research follow-up
+
+Hermes, 2026-09-16: [[hermes-daily-2026-09-16]] distinguishes the versioned Elixir and Erlang supervisor defaults, inspects the round-10 supervisor, and records recovery/error-path coverage questions. The comparison above is retained as the 12 September reading; its “Mo today” statements and open questions are historical, not the current implementation status. Consult the current chapter 3 and [[roadmap]] before using them.
 
 ## Related
 - [[language-landscape]]

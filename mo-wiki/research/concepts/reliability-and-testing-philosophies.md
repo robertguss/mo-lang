@@ -1,7 +1,7 @@
 ---
 title: "Reliability and testing philosophies"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, verification, tooling]
 sources: [raw/research-runs/2026-09-13-manifestos-safety-reliability.pplx.md]
@@ -119,6 +119,8 @@ Judgment: combined with Ravenscar's ban on relative delays, the evidence favours
 | Mutation testing scoped to contract machinery only | [[d28-nothing-final-until-measured]] | strengthens Mo |
 
 ## Related
+
+- [[hermes-daily-2026-09-17]] — Hermes follow-up on storage crash consistency and capability API boundaries.
 
 - [[tiger-style-and-power-of-ten]]
 - [[q08-verification-tiers]]

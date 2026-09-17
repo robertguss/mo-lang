@@ -42,6 +42,8 @@ The control run is the run's Experiment 1, the null hypothesis, at the smallest 
 - Spec-altitude review, the premise itself, is the experiment that needs people, and it waits for a public Mo.
 
 ## Related
+
+- [[hermes-research-monitoring]] — Ongoing independent evidence monitoring; not an experiment run.
 - [[control-run-4]]
 - [[case-against-new-languages]]
 - [[research-summary-2026-09]]
