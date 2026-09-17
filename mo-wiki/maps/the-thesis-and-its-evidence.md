@@ -33,7 +33,7 @@ A map of content: the claim, the layers it stands on, and the page where each cl
 - [[06-packages]] — chapter 6: bricks, kits, recipes, the registry
 - [[d15-effects-via-capabilities]], [[d30-supply-chain-security]], [[d34-packages-are-recipes]], [[d35-mo-is-an-ecosystem]], [[effects-and-capabilities]]
 - [[q17-package-management-and-supply-chain]] — the open question
-- Evidence: the dependency column of every round from [[control-run-6]] on (Mo 0 and 0); the store recipe in [[program-4]] and [[program-1]]; the bricks page is still to be written
+- Evidence: the dependency column of every round from [[control-run-6]] on (Mo 0 and 0); the store recipe in [[program-4]] and [[program-1]]; [[bricks-and-the-cost-of-zero-dependencies|the bricks page]] (17 Sep) draws the shelf boundary and prices it
 
 ## Layer 3, the language as the surface
 

@@ -26,7 +26,8 @@ here, and the [[roadmap]] table is the authority on order.
 
 **Last rewritten:** 16 Sep 2026, late evening on Robert's Mac, after step 34 and
 generation five; amended 17 Sep, morning, for the research lane, and
-afternoon, for the auditor role and the three ratified stopping rules. Five days since
+afternoon, for the auditor role, the three ratified stopping rules, and the
+bricks page. Five days since
 the first commit.
 
 ## In one paragraph
@@ -303,9 +304,17 @@ exists and before generation six runs:
 | Capabilities and recipes (secondary), on program 7 | 0 dependencies; recipe drift caught; at most 1 capability escape in Mo; maintenance time at most 1.5× Elixir's | T-A, T-B (bricks without recipes), T-C (fixes follow) |
 | The language's own catch claim, at generation ten | `never`/`invariant` catch at least 2 defects no test caught, false positives at most 1.5× catches, at most 5 per 1,000 lines | R-B on its own: kept as tools, dropped from the claim |
 
-What follows from it: program 7 moves up to third on the board, after the
-bricks page, which the capabilities rule requires before program 7's first
-commit, and after the probe into generation four's speed loss. That probe comes
+What follows from it: program 7 moves up the board, behind the bricks page,
+which the capabilities rule requires before program 7's first commit, and the
+probe into generation four's speed loss. The bricks page shipped the same
+afternoon ([[bricks-and-the-cost-of-zero-dependencies]]): a brick is anything
+whose bug is a security or data-loss event, or that implements a standard
+others must interoperate with, or that needs native code; the rest is a recipe
+or the program's own. Priced against Zig's standard library, which the
+toolchain already trusts: about 70,000 lines to read and 12,000 to 15,000 to
+write for the five bricks the review named, of which program 7 needs two,
+crypto and a TLS 1.3 server. Each brick ships with five audit items and a
+capped cut of its standard, written once in Zig for both runtimes. That probe comes
 first because the runtime rule's speed row is already at its limit on today's
 record: round 10's Elixir queue ran at twice Mo's rate. Fable's disagreements
 are rows for Robert. Program 7 as specified (a Redis subset) needs no hex
@@ -347,18 +356,17 @@ exists. The auditor, not Fable, writes program 7's hidden suites.
    counted laws into `mo.toml`, MO0317 naming the changed module.
 6. **The unfamiliarity tax**, sized: the same agent writing the same program
    twice.
-7. **Program 7** (now third on the board, after the bricks page and the
-   speed probe), a real open-source service reimplemented against its own
+7. **Program 7** (fourth on the board, after the crypto and TLS bricks and
+   the speed probe), a real open-source service reimplemented against its own
    tests, the first program built on capabilities, recipes, and the runtime
    surface together, and the one chapter 1 says answers the BEAM.
-8. **The bricks page** (first on the board, a hard prerequisite for
-   program 7), then the compile benchmark at 5,000 modules, `mo prove`, the
+8. The compile benchmark at 5,000 modules, `mo prove`, the
    package registry, and the toolchain in Mo, in that order and all later.
 
 ## Rows waiting on Robert
 
 In the decision log, marked "for Robert", newest first (the same list is on
-the [[roadmap]] board and [[for-robert]]): the auditor role taken up, with M-3 accepted, the bricks prerequisite, and three disagreements with the ratified rules (17 Sep, afternoon); research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
+the [[roadmap]] board and [[for-robert]]): the bricks page's two rows (17 Sep, afternoon); the auditor role taken up, with M-3 accepted, the bricks prerequisite, and three disagreements with the ratified rules (17 Sep, afternoon); research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
 
 ## Related
 

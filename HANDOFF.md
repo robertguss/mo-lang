@@ -106,9 +106,12 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **The bricks page** (`deep-dives/bricks-and-the-cost-of-zero-dependencies.md`,
->    Fable writes it): the shelf boundary, an audit budget per brick, the update
->    cadence, the bricks' own dependencies, the fallback. A hard prerequisite of
+> 1. **The crypto brick** (one step; the bricks page,
+>    `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, shipped 17 Sep
+>    and holds the cut, the five audit items, and the rule that a brick is
+>    written once in Zig and linked into both runtimes). Then **the TLS brick**
+>    (two steps: a TLS 1.3 server on Zig's `std.crypto.tls` client; the
+>    certificate chain and the differential run against OpenSSL). Both before
 >    program 7's first commit.
 > 2. **The probe** naming the cause of generation four's nine-times loss in the
 >    Mo queue (`../mo-lang-erosion4-mo`, its binary built with this `mo`; `sample`

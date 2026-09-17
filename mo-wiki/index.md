@@ -102,6 +102,7 @@ type: index
 - [[syntax-overview|Syntax: how we got to Ruby's look with Go's discipline]] — AI-first constraint: Mo has zero corpus, so bodies borrow shapes models know cold; novelty is spent only where semantics need it (`intent…
 
 ## Deep dives
+- [[bricks-and-the-cost-of-zero-dependencies|Bricks and the cost of zero dependencies]] — the shelf boundary (three tests), the cost measured against Zig's std, five audit items per brick, the surface caps, the ordering rule, the vendored-C fallback; program 7's two bricks (17 Sep)
 - [[compilation-target-and-compile-speed|Compilation target and compile speed]] — C via the Zig toolchain for release, a VM for the edit loop; the compile-speed bets and how they are measured
 - [[effects-and-capabilities|Effects and capabilities]] — - Effect: what a function does beyond computing (reads clock, writes ledger, sends to a process, calls network)
 - [[errors-and-failure|Errors and failure: rain vs broken roof]] — Rain vs broken roof
