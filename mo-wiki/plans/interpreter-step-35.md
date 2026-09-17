@@ -33,8 +33,7 @@ interpreter's row bodies), `emit_c.zig` (the binary's), `cbuild.zig` (how
 joins that link), `sim.zig` (the seed, for `Random.fixture`),
 `spec/design-v0/09-stdlib.md` (`## Rules for every row`; `## Files` for the
 shape of a capability's rows), `examples/effects/` (capability examples with
-`.expected`), the bricks page's cut for crypto. Zig 0.16's `std.crypto` on this
-Mac: `sha2.zig`, `hmac.zig`, `hkdf.zig`, `aes_gcm.zig`, `chacha20.zig`,
+`.expected`), the bricks page's cut for crypto. Zig 0.16's `std.crypto` (on the VM through `mise`; `zig env` gives `std_dir`): `sha2.zig`, `hmac.zig`, `hkdf.zig`, `aes_gcm.zig`, `chacha20.zig`,
 `25519/`, `argon2.zig`, `phc_encoding.zig`, `timing_safe.zig`,
 `std.crypto.random`.
 
@@ -124,7 +123,7 @@ binary, crash count on the page (the lead runs the hour).
 
 ## Numbers
 
-Best of five, both runtimes, on the Mac: SHA-256 of 1 MiB (MB/s); HMAC-SHA256 of
+Best of five, both runtimes, on the VM (Robert, 17 Sep: this step runs on the VM, not the Mac): SHA-256 of 1 MiB (MB/s); HMAC-SHA256 of
 64 bytes, 100,000 times; AES-256-GCM seal of 64 KiB (MB/s); Ed25519 sign and
 verify, 10,000 each; `Password.hash` once (ms); `mo build` warm on
 `examples/programs/jobq` before and after (s) and the binary's size before and

@@ -1,4 +1,4 @@
-# Mo Lang — Handoff, 17 Sep 2026, afternoon: the next session on the Mac or the VM
+# Mo Lang — Handoff, 17 Sep 2026, afternoon, for the VM: the next session on the Mac or the VM
 
 Paste the block below into a fresh Claude Code session in the repo. The roles,
 the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
@@ -6,9 +6,11 @@ the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
 load; this page holds only the state, the queue, and what a fresh session must
 know that the wiki does not say in one place.
 
-> We're continuing the Mo language build. Robert prefers the Mac (the evidence
-> worktrees and step 34's fourteen-core measurement are there); the VM works for
-> everything but step 34 (`herdr pane list` shows which machine this is). Load the `mo-lead` skill
+> We're continuing the Mo language build. **This session runs on the VM**
+> (Robert, 17 Sep, 16:10: step 35 and what follows run on the VM, not his
+> laptop; `herdr pane list` shows which machine this is; the worker pane there
+> is `w7:p7`, Zig 0.16 through `mise`). The evidence worktrees are on the Mac;
+> recreate what a step needs with `git worktree add`, as below. Load the `mo-lead` skill
 > first and follow it: you are the lead, Opus workers in Herdr (medium effort,
 > one fresh session per piece of work) write all code; Robert reviews the
 > decision log. **Robert's standing rule (15 Sep, 23:55, locked): you make the
@@ -106,7 +108,13 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **The crypto brick** (one step; the bricks page,
+> 1. **Step 35, the crypto brick, first thing**: the brief is sealed at
+>    `mo-wiki/plans/interpreter-step-35.md`; start a fresh Opus worker on it
+>    (the prompt is the brief pointer, the write scope from the brief, one
+>    commit per part `Step 35 part X`, push after each, `zig build test`
+>    green, `uv` for `bench/step35`, never `tr`). A Mac worker was started at
+>    16:05 and ended at 16:10 before it wrote anything, on Robert's ask. The
+>    numbers are taken on the VM. (The bricks page,
 >    `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, shipped 17 Sep
 >    and holds the cut, the five audit items, and the rule that a brick is
 >    written once in Zig and linked into both runtimes). Then **the TLS brick**
