@@ -29,6 +29,15 @@ Ratified in-session on 17 Sep 2026, before program 7 exists. Any change to the b
 - **Workflow requirement:** Fable drafts a parallel independent reading of program 7's numbers against this rule and files it alongside the auditor's before Robert reads either. Disagreements become decision-log rows.
 - **Roadmap ordering (auditor's separate finding, M-3 accepted):** the bricks page ships first, then the generation-4 speed-loss probe, then program 7. Program 7 moves from #6 to #3 on the roadmap's "Next, in order."
 
+### Clarifications from Fable's first parallel reading (17 Sep 2026)
+
+File these as decision-log rows citing Fable's `for Robert` rows on the audit README. All accepted by the auditor.
+
+- **Who writes the hidden defect suite (§4 clarification):** the auditor writes it in the pre-registration session that seals program 7's suites. Fable does not read it before program 7's builds finish. The README is authoritative on this point; §4's earlier wording was ambiguous.
+- **RC3 amber/red boundary (clarification):** RC3 is amber when Mo's steady RSS is ≤ 2× Elixir's AND Mo's peak RSS is ≤ 3× Elixir's peak. RC3 is red when either Mo's steady RSS > 2× Elixir's OR Mo's peak RSS > 3× Elixir's peak.
+- **R4 and R7 failure handling (accepted, does not change S-A/S-B/S-C):** R4 (runtime honesty) and R7 (single binary) are load-bearing but scored separately from the 4-of-5 Tier-1 count (R1, R2, R3, R5, R6). A failed R4 or R7 does not by itself trigger S-A, S-B, or S-C. Instead, a failure adds a claim-narrowing sentence to chapter 1: "Mo delivers on the runtime layer where the BEAM does, with better tooling on those axes; on the honesty axis (R4) / on the deployment axis (R7) it does not exceed the BEAM." This is the "matches BEAM with better tooling" narrative downgrade Fable named.
+- **P3 Elixir-half asymmetry (noted, no rule change):** the ex-ante expectation is that P3's Elixir half (Elixir ≥ 3 escapes) is nearly automatic because the auditor writes the malicious-package suite and the BEAM does not confine untrusted third-party code. This means P3's binding half in practice is Mo's absolute count (≤ 1 escape), and the clean-differential footnote applies only in the surprise case where Elixir confines all 10 shapes cleanly. The rule stands; this row documents what the evidence is likely to look like.
+
 ---
 
 ## 0. Why this is the important pre-registration

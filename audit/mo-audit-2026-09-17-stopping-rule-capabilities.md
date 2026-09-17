@@ -34,6 +34,10 @@ Ratified in-session on 17 Sep 2026, before program 7 exists. Any change to the b
 - **Workflow requirement:** Fable drafts a parallel independent reading of program 7's capabilities/recipes evidence against this rule and files it alongside the auditor's before Robert reads either. Disagreements become decision-log rows.
 - **Prerequisite (auditor's separate finding):** the bricks page must ship before program 7's first commit. Chapter 6's shelf boundary is unspecified without it, and this rule cannot bind well against a moving target. This is item #1 on the ratified M-3 roadmap ordering.
 
+### Clarifications from Fable's first parallel reading (17 Sep 2026)
+
+- **Program 7 spec expansion (accepted, program changes, rule stands):** the capabilities rule assumes program 7's shape requires Elixir to pull hex packages for its production surface. Fable identified that a basic Redis subset in Elixir needs no hex packages (Erlang's stdlib has `:ssl` and `:crypto`; Elixir 1.18 ships JSON), which means P1 and P4 do not bind against that spec. Fable's response is correct: the program spec expands rather than the rule changing. Program 7's spec adds TLS, ACL users with hashed passwords (Elixir's argon2_elixir is the P4 target), and a named hex-installed component in Elixir (job queue or equivalent). The audit session that seals program 7's pre-registrations will read the expanded spec and confirm the capabilities rule now has real signal to measure.
+
 ---
 
 ## 0. Why this pre-registration matters

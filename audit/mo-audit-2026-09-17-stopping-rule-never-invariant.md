@@ -20,7 +20,7 @@ Ratified in-session on 17 Sep 2026, before generation 6 runs. Any change to the 
 >
 > - **Clear (claim vindicated):** `never`/`invariant` has caught ≥ 2 Mo defects that no test would have caught, at ≤ 1.5× false-positive rate, at density ≤ 5 per 1,000 lines of Mo.
 > - **Rule fires, R-B automatic:** any of the three thresholds fails. Chapter 1's third-layer sentence is rewritten to formalize the pivot (the language is the *surface* of the thesis, not a catcher of bugs). `never` and `invariant` remain in the language as project-setting-level tools; they are no longer counted as part of the language layer's catch claim.
-> - **Escalate to R-A (remove from language):** Tier 3 breaks badly — density > 10 per 1,000 lines OR false positives > 3× catches. Robert's call at that point.
+> - **Escalate to R-A (remove from language):** Tier 3 breaks badly — density > 10 per 1,000 lines OR false positives > max(3× catches, 3). Robert's call at that point.
 
 **Retirement mapping:**
 
@@ -28,9 +28,13 @@ Ratified in-session on 17 Sep 2026, before generation 6 runs. Any change to the 
 |---|---|
 | ≥ 2 catches, ≤ 1.5× FP, ≤ 5/1,000 density | claim vindicated |
 | Any threshold fails; density ≤ 10/1,000 and FPs ≤ 3× catches | **R-B** — retire from claim, keep in language |
-| Any threshold fails; density > 10/1,000 OR FPs > 3× catches | **R-A** escalation — Robert's call to remove from language |
+| Any threshold fails; density > 10/1,000 OR FPs > max(3× catches, 3) | **R-A** escalation — Robert's call to remove from language |
 
 **Workflow requirement:** Fable drafts a parallel independent reading of the generation-10 ledger against this rule and files it alongside the auditor's before Robert reads either. Disagreements become decision-log rows.
+
+### Clarifications from Fable's first parallel reading (17 Sep 2026)
+
+- **R-A trigger amended (accepted):** the original R-A trigger was "false positives > 3× catches," which fires vacuously when catches are zero (3 × 0 = 0, so any positive FP count trips R-A). Fable caught this before evidence; the amended trigger is `FPs > max(3× catches, 3)`. The `max(…, 3)` floor prevents R-A from firing on a single false positive when catches are zero, and requires either a genuine density problem or a genuinely bad false-positive rate to remove `never`/`invariant` from the grammar.
 
 ---
 
