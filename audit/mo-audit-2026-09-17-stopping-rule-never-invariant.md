@@ -8,13 +8,27 @@
 
 ---
 
+## 0. Scope of this rule (added 17 Sep 2026, after the pivot check)
+
+This rule binds only **the language layer's own catch claim** (`never`/`invariant` as language constructs that catch bugs tests miss). It is not the project's main stopping rule. Chapter 1's thesis, as restated on 14 Sep 2026 and consistently held across `state-of-the-project.md`, `01-premise.md`, `10-language-after-the-rounds.md`, and the roadmap, ranks the three layers in order of load-bearing weight:
+
+1. **Runtime and process model** — the primary claim.
+2. **Capabilities and recipes** — the secondary claim.
+3. **The language** — "the surface of the thesis, not the thesis" (chapter 1). Its job is to expose layers 1 and 2 at spec altitude.
+
+`never` and `invariant` sit inside layer 3. This document proposes their scoped retirement rule. The two more consequential pre-registrations — **runtime** and **capabilities/recipes** — are in their own audit files and matter more to whether the whole project's thesis clears.
+
+The auditor's warning to Robert: ratifying this rule without pre-registering the other two would be rigor on the smallest claim while the load-bearing claims drift un-measured. Read all three files together.
+
+---
+
 ## 1. Why this document exists
 
 The state-of-project page says it plainly, on 16 Sep 2026:
 
 > the laws have not caught a bug that tests would have missed, in any language, in ten rounds and nine round-9 sessions.
 
-Chapter 1 of the design v0 states that the language's job is layer 3 of the thesis, and that "a law belongs in the language when it removes a class of bug." Chapter 10 §4 records that after generation 5, no `never` has tripped on a wrong edit written to press on a law, and that the one `never` false positive of round 8 cost the maintainer two loops. Chapter 10 §4's recommendation is "keep `never` and `invariant`; record false positives as a column from round 9 on." That recommendation contains no retirement condition.
+Chapter 1 states that layer 3's job is to *expose* the runtime and capabilities at spec altitude — it is not the layer that catches bugs. Chapter 10 §4 records that after generation 5, no `never` has tripped on a wrong edit written to press on a law, and that the one `never` false positive of round 8 cost the maintainer two loops. Chapter 10 §4's recommendation is "keep `never` and `invariant`; record false positives as a column from round 9 on." That recommendation contains no retirement condition.
 
 Every research program that runs long enough on a claim that keeps failing eventually faces the same question: **at what evidence point do we retire the claim rather than run one more round hoping it turns?** Mo has run ten rounds hoping it turns. This document proposes the answer, so that the answer exists in writing *before* generations 6–10 add their evidence, rather than being negotiated after.
 
@@ -26,7 +40,7 @@ The auditor does not decide. Robert decides. The auditor's job is to make sure t
 
 Loose statements of "the laws catch bugs" have two failure modes: they either promise too much (any law that fires once is vindicated) or promise nothing (any run of failures can be reframed). The claim needs to be made precise before a stopping rule can bind it.
 
-The claim, restated from chapter 1 and chapter 10 §4:
+The claim, restated from chapter 1 (as the specific layer-3 sub-claim) and chapter 10 §4:
 
 > `never` clauses and `invariant`s, as language-level checks that run on values at rest and after every state update, catch a non-trivial class of change-induced bugs that the program's own tests, the toolchain's type and effect checks, and the runtime's supervision and deadline laws would not catch. The `never`/`invariant` layer is worth its cost — false positives, additional program text, additional maintainer attention — because that class exists and matters.
 
@@ -107,9 +121,9 @@ The rule below is stated in three tiers matching C1, C2, C3. All three must clea
 `never` and `invariant` are removed from Mo's grammar. The `never` clauses in existing programs are converted to test-suite entries (an assertion in a `# run:` transcript or a `test "the invariant holds"` block) by an automated `mo fix`. The diagnostic MO0403-adjacent surface remains for `Time.fixture()` and other proven-value checks. The language surface shrinks; chapter 2 and chapter 3 lose their sections on `never`.
 
 **R-B: Retire from the reading rule, keep in the language.**
-`never` and `invariant` stay as language constructs for the user who wants them, but they are no longer counted as part of the claim "the language removes classes of bug." Chapter 1's third layer is rewritten to say the language layer's job is *readability at spec altitude and machine-checkable contracts*, not "removes classes of bug tests miss." The `never` construct is downgraded from language-level claim to project-setting-level tool, similar to what happened to the counted shape laws after round 6.
+`never` and `invariant` stay as language constructs for the user who wants them, but they are no longer counted as part of the claim "the language removes classes of bug." Chapter 1's third layer is rewritten to state, even more explicitly than it does now, that the language layer's job is *surfacing runtime and capability guarantees at spec altitude*, not catching bugs. The `never` construct is downgraded from language-level claim to project-setting-level tool, similar to what happened to the counted shape laws after round 6.
 
-**Auditor's recommendation.** R-B, unless Tier 3 fails badly (density > 10 per 1,000 lines with false positives > 3× catches), in which case R-A. R-B is honest and reversible: if a future round produces evidence that vindicates the construct, R-B can reverse without a language-grammar change. R-A is stronger but harder to undo and imposes a migration on any code already using `never`. The corpus is small enough today (175 `.mo` files) that R-A migration would be one worker session; that will change fast, so the choice window is short.
+**Auditor's recommendation (updated for the pivot).** R-B, unless Tier 3 fails badly (density > 10 per 1,000 lines with false positives > 3× catches), in which case R-A. R-B is the honest move under the pivot: the language layer's job is already framed as *surface*, not catch, so retiring `never`/`invariant` from the catch claim is closer to a clarification than a demotion. R-A is stronger but harder to undo and imposes a migration on any code already using `never`. The corpus is small enough today (175 `.mo` files) that R-A migration would be one worker session; that will change fast, so the choice window is short.
 
 Robert's call. This is a design decision, not an audit finding.
 
@@ -123,6 +137,7 @@ To be fair to the construct and to Fable's likely reading, list what this rule i
 - **The `verified:` line and MO0317.** These are toolchain-honesty diagnostics, not language-layer defect catchers. Their value is not covered by this rule.
 - **The `never` at rest on the log** (round 7's `store.mo`). This is a state-invariant on persistent data structures. If chapter 10 §4's reading holds — that this exact construct catches a class Elixir cannot state — then generations 6–10 can produce the case that clears Tier 1 on the strength of this one construct alone. That would be a clean C1 win.
 - **Types, effects, capabilities, deadlines.** All separately claimed, all separately validated, all outside this rule's scope. Do not confuse a `never` retirement with a type-system retirement; they are different layers of the thesis.
+- **The runtime and capability claims themselves.** See the two sibling audit files.
 
 If the rule fires and `never`/`invariant` retire, the language is *still* differentiated on types, effects, capabilities, deadlines, the runtime surface, and the `verified:` line. This rule is a scoped retirement, not a project retirement.
 
@@ -194,7 +209,7 @@ The auditor thinks (17 Sep 2026, on the evidence) that this second version is mo
 
 Written as priors, before the evidence, so they can be checked.
 
-- **Most likely (subjective probability ~0.65): the rule fires at generation 10 and R-B is the right retirement.** Historical base rate: no language check has caught a bug tests missed in ten rounds. The prior on that continuing is high.
+- **Most likely (subjective probability ~0.65): the rule fires at generation 10 and R-B is the right retirement.** Historical base rate: no language check has caught a bug tests missed in ten rounds. The prior on that continuing is high. R-B is even easier to accept under the pivot because it is close to what chapter 1 already says.
 - **Second most likely (~0.25): the rule clears at Tier 1 (one clean case, probably the log-integrity case chapter 10 §4 already flags), fails at Tier 2 (single catch, not two).** In that case, Robert has a live decision: promote the log-integrity-`never` to a language-supported pattern (a specific typed construct, not the general `never`), and retire the general form.
 - **Least likely (~0.10): the rule clears fully.** The corpus expands (program 7 arrives; the ledger's `invariant`s finally exercise the construct on state changes), and the maintenance work under those programs produces the 2+ catches at low false-positive rate.
 
@@ -216,7 +231,9 @@ The auditor does not need Fable's answers to any of this before the next generat
 
 ## 14. Related pages
 
-- `mo-wiki/spec/design-v0/01-premise.md` — the three-layer thesis and its layer-3 claim.
+- `audit/mo-audit-2026-09-17-stopping-rule-runtime.md` — the primary stopping rule for layer 1 (runtime and process model). Matters more than this one.
+- `audit/mo-audit-2026-09-17-stopping-rule-capabilities.md` — the secondary stopping rule for layer 2 (capabilities and recipes). Also matters more than this one.
+- `mo-wiki/spec/design-v0/01-premise.md` — the three-layer thesis, with the language as the surface.
 - `mo-wiki/spec/design-v0/10-language-after-the-rounds.md` §4 — the current position on `never`/`invariant`.
 - `mo-wiki/state-of-the-project.md` — the "laws catch what tests miss" row, current standing "not shown; the biggest open risk."
 - `mo-wiki/plans/erosion-round.md` — the generation record; the ledger from §7 lives here or beside it.
