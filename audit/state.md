@@ -2,7 +2,7 @@
 
 Living state of the audit function: what has been ratified, what is queued, what standing concerns are open. Updated by the auditor at every reading; `audit/AUDITOR.md` describes the loop.
 
-**Current commit anchor:** `a507b54` (the step-35 crypto brick reading + gen-4 speed probe reading, pushed 17 Sep 2026 afternoon).
+**Current commit anchor:** `67823dd` (this file, on top of Fable's parallel readings at `9b48c6b` and the bricks-page compounding rows at `afebaa5`, 17 Sep 2026 afternoon).
 
 ---
 
@@ -20,23 +20,30 @@ Ratification clarifications (from Fable's first parallel reading, 17 Sep): R6 ha
 
 ## Readings filed to date
 
-| Date | Subject | File |
-|---|---|---|
-| 17 Sep 2026 | Runtime stopping rule | `mo-audit-2026-09-17-stopping-rule-runtime.md` |
-| 17 Sep 2026 | Capabilities stopping rule | `mo-audit-2026-09-17-stopping-rule-capabilities.md` |
-| 17 Sep 2026 | `never`/`invariant` stopping rule | `mo-audit-2026-09-17-stopping-rule-never-invariant.md` |
-| 17 Sep 2026 | Step 35 crypto brick | `mo-audit-2026-09-17-step-35-crypto-brick.md` |
-| 17 Sep 2026 | Gen-4 speed-loss probe | `mo-audit-2026-09-17-gen4-speed-probe.md` |
+| Date | Subject | Auditor file | Fable's parallel |
+|---|---|---|---|
+| 17 Sep 2026 | Runtime stopping rule | `mo-audit-2026-09-17-stopping-rule-runtime.md` | (see rule file, in-line) |
+| 17 Sep 2026 | Capabilities stopping rule | `mo-audit-2026-09-17-stopping-rule-capabilities.md` | (see rule file, in-line) |
+| 17 Sep 2026 | `never`/`invariant` stopping rule | `mo-audit-2026-09-17-stopping-rule-never-invariant.md` | (see rule file, in-line) |
+| 17 Sep 2026 | Step 35 crypto brick | `mo-audit-2026-09-17-step-35-crypto-brick.md` | `fable-reading-2026-09-17-step-35-crypto-brick.md` |
+| 17 Sep 2026 | Gen-4 speed-loss probe | `mo-audit-2026-09-17-gen4-speed-probe.md` | `fable-reading-2026-09-17-gen4-speed-probe.md` |
+
+Disagreements between the auditor and Fable on the two parallel-reading subjects, if any, become decision-log rows citing both files (per the workflow page). Next auditor session should scan both readings for disagreements as a first task if that has not already been done.
 
 ## Standing concerns open
 
 Raised in a reading, not yet resolved. Each has a pointer back to the reading that raised it. These do not require Fable to act; they are what the auditor will look for in the next relevant reading.
 
-1. **`List(UInt8)` overhead in the bricks page's P4 crypto footnote** (from the step-35 reading). Ratio is 6.3× under `mo run` and 2.9× under the binary on 1 MiB SHA-256 relative to raw Zig. Bricks page should name this before program 7 measures against it. Will be re-checked when the byte-string value lands or when the bricks page is next revised.
-2. **`List.all?` on capability-carrying `List` in hot per-message paths** (from the gen-4 speed-probe reading). Repeatable 2-3× contracts-on throughput cliff via `mo_disown_in` under `mo_r_List_all_q`. Worth naming in the language guide before program 7 lands.
-3. **Contracts-on cost compounding on `List(UInt8)` payloads** (from the gen-4 speed-probe reading). Program 7's contracts-on numbers on `List(UInt8)` payloads will be materially worse than the raw-brick numbers on the bricks page. Bricks page P4 story should be honest about this before program 7's build.
-4. **The "Reading" step for each brick should not default to the auditor** (from the step-35 reading). Design-vs-evaluation firewall collapses at the brick level if it does. Recommendation: a fresh session per brick reading. If crypto and TLS bricks ship before the bricks page's item 5 ("read the bricks") is done by anyone, the program-7 reading will note P1 clears technically but the shelf-audit budget the bricks page implicitly promises has not been paid.
-5. **Speed-probe evidence bundles should carry the source diff** (from the gen-4 speed-probe reading). The erosion-3 / erosion-4 board.mo diff was not in the bundle; the reading rested on the perf profile plus Fable's word for the code change. Future speed probes about a code change should include the diff snippet at the sites the report calls out.
+1. **`List.all?` on capability-carrying `List` in hot per-message paths** (from the gen-4 speed-probe reading). Repeatable 2-3× contracts-on throughput cliff via `mo_disown_in` under `mo_r_List_all_q`. Worth naming in the language guide before program 7 lands. (Cause named on the bricks page at `afebaa5`; still open as a language-guide item.)
+2. **The "Reading" step for each brick should not default to the auditor** (from the step-35 reading). Design-vs-evaluation firewall collapses at the brick level if it does. Recommendation: a fresh session per brick reading. If crypto and TLS bricks ship before the bricks page's item 5 ("read the bricks") is done by anyone, the program-7 reading will note P1 clears technically but the shelf-audit budget the bricks page implicitly promises has not been paid.
+
+## Standing concerns closed on 17 Sep 2026 by Fable's afternoon push
+
+1. **`List(UInt8)` overhead in the bricks page's P4 crypto footnote** — closed by the bricks-page rows at `afebaa5`.
+2. **Contracts-on cost compounding on `List(UInt8)` payloads** — closed by the bricks-page rows at `afebaa5`.
+3. **Speed-probe evidence bundles should carry the source diff** — closed by the sweep diff, decide diff, emitted-lambda dump, and `mo_disown_in` source added to the gen-4 evidence bundle at `9b48c6b`. Fable's parallel reading walks the diff.
+
+Future speed-probe bundles should continue the pattern the gen-4 bundle now sets.
 
 ## Pre-registration work queued
 
