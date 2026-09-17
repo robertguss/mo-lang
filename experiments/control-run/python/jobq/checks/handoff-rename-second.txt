@@ -1,0 +1,10 @@
+# jobq check, change 5, second run, after compaction: the handoff and the rename held
+w1 GET /jobs/j_2
+w1 POST /jobs/j_2/ack
+w1 POST /jobs {"queue": "mail", "payload": "repeat", "max_tries": 1, "key": "k2"}
+w1 GET /queues
+w1 POST /queues/mail/rename {"to": "post"}
+w3 POST /jobs/j_2/ack
+w1 POST /queues/post/rename {"to": "mail"}
+w1 GET /jobs?queue=mail&key=k1
+w1 GET /jobs/j_3

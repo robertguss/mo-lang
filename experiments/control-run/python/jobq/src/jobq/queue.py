@@ -8,6 +8,10 @@ scheduled job that is due (`_look`); then it archives each done or dead job whos
 
 A job carries an optional idempotency `key`; the key map names the job, live or archived,
 that holds each (queue, key), until that job is deleted.
+
+A lease may be handed to another worker (`handoff`, the one leased -> leased change: the
+worker changes, the deadline and the tries do not). A queue may be renamed with jobs in
+flight (`rename_step` over the board and the key map, written as one rename record).
 """
 
 import heapq
@@ -41,6 +45,7 @@ from jobq.jobs import (
     STATES,
     Job,
     JobState,
+    handoff_token_problem,
     key_problem,
     parse_job_id,
     payload_problem,
@@ -50,12 +55,15 @@ from jobq.jobs import (
 )
 from jobq.store import (
     ArchivedRecord,
+    ArchivePutRecord,
     DeleteRecord,
     PutRecord,
+    RenameRecord,
     Replayed,
     Store,
     StoreError,
     key_map,
+    rename_jobs,
 )
 
 type Edge = tuple[JobState | None, JobState | None]
@@ -67,6 +75,7 @@ _LEGAL: frozenset[Edge] = frozenset(
         ("scheduled", "queued"),
         ("queued", "leased"),
         ("leased", "done"),
+        ("leased", "leased"),
         ("leased", "queued"),
         ("leased", "scheduled"),
         ("leased", "dead"),
@@ -82,6 +91,7 @@ _RETURNS: frozenset[Edge] = frozenset(
     {("leased", "queued"), ("leased", "scheduled"), ("leased", "dead")}
 )
 _RETRY: Edge = ("dead", "queued")
+_HANDOFF: Edge = ("leased", "leased")
 
 
 @dataclass(frozen=True)
@@ -143,6 +153,50 @@ def archive_step(jobs: Iterable[Job], now: int, retain_ms: int) -> list[Job]:
     return moved
 
 
+@dataclass(frozen=True)
+class Renamed:
+    """A rename's result: the board, the archive, and the key map after it, and how many
+    jobs moved."""
+
+    jobs: dict[int, Job]
+    archived: dict[int, Job]
+    keys: dict[tuple[str, str], int]
+    moved: int
+
+
+def rename_step(
+    jobs: dict[int, Job],
+    archived: dict[int, Job],
+    keys: dict[tuple[str, str], int],
+    name: str,
+    to: str,
+) -> Renamed:
+    """The rename over the board, the archive, and the key map, apart from any file: every job
+    in `name`, live or archived, is in `to`, and every key used in `name` is used in `to`.
+
+    `to` holds no job, so no key is used in it and no key can come to name two jobs there.
+    """
+    require(queue_name_problem(name) is None and queue_name_problem(to) is None, "valid names")
+    require(name != to, "a queue is renamed to another name")
+    require(all(job.queue != to for job in [*jobs.values(), *archived.values()]), "to is empty")
+    require(all(queue != to for queue, _ in keys), "no key is used in to")
+    after = Renamed(
+        jobs=rename_jobs(jobs, name, to),
+        archived=rename_jobs(archived, name, to),
+        keys={(to if queue == name else queue, key): n for (queue, key), n in keys.items()},
+        moved=sum(1 for job in [*jobs.values(), *archived.values()] if job.queue == name),
+    )
+    for old, new in [
+        *zip(jobs.values(), after.jobs.values(), strict=True),
+        *zip(archived.values(), after.archived.values(), strict=True),
+    ]:
+        check_renamed(old, new, name, to)
+    never(len(after.keys) == len(keys), "a rename never lets a key name two jobs in one queue")
+    never(all(queue != name for queue, _ in after.keys), "a key used in name is free in name")
+    ensure(after.moved >= 1, "a rename moves a job")
+    return after
+
+
 class Queue:
     def __init__(
         self,
@@ -161,6 +215,7 @@ class Queue:
         self._archived: dict[int, Job] = dict(replayed.archived)
         self._keys: dict[tuple[str, str], int] = key_map(replayed)
         self._next_number = replayed.next_number
+        self._renames = replayed.renames
         self._counts: dict[JobState, int] = dict.fromkeys(STATES, 0)
         self._queued: dict[str, list[int]] = {}
         self._leases: list[tuple[int, int]] = []
@@ -340,6 +395,64 @@ class Queue:
         return failed
 
     @operation
+    def handoff(self, job_id: str, worker: str, to: str) -> Job | NotFound | Conflict:
+        """The job `worker` holds a live lease on, leased to `to` from now on.
+
+        requires: `worker` holds a live lease on the job (a Conflict otherwise).
+        ensures: the job is leased to `to`, with the same `lease_until` and `tries`.
+        A handoff to the holder itself changes nothing and writes nothing.
+        """
+        require(token_problem(worker) is None, "the worker is a token")
+        require(handoff_token_problem(to) is None, "to is a token of at most 128 bytes")
+        now = self._look()
+        job = self._find(job_id)
+        if job is None:
+            return self._missing(job_id, _NOT_HELD)
+        if not _holds_live_lease(job, worker, now):
+            return Conflict(_NOT_HELD)
+        if to == worker:
+            return job
+        handed = job.model_copy(update={"worker": to, "updated_ms": now})
+        self._commit(job, handed)
+        ensure(self._jobs[job.number] is handed, "the job is kept")
+        ensure(handed.state == "leased" and handed.worker == to, "the job is leased to to")
+        ensure(handed.lease_until_ms == job.lease_until_ms, "lease_until is unchanged")
+        ensure(handed.tries == job.tries, "tries is unchanged")
+        return handed
+
+    @operation
+    def rename(self, name: str, to: str) -> int | NotFound | Conflict:
+        """Every job in `name`, live or archived, moved to `to`, with its key, in one durable
+        record; how many moved. NotFound when `name` holds no job; a Conflict when `to` is
+        `name` or holds a job."""
+        require(queue_name_problem(name) is None, "the queue name is valid")
+        require(queue_name_problem(to) is None, "the new name is valid")
+        self._look()
+        held = {job.queue for job in [*self._jobs.values(), *self._archived.values()]}
+        if name not in held:
+            return NotFound()
+        if to == name or to in held:
+            return Conflict("exists")
+        after = rename_step(self._jobs, self._archived, self._keys, name, to)
+        self._store.append(RenameRecord(name=name, to=to))
+        if self._chaos.fails(1):
+            raise ChaosFailure(f"--crash-every {self._chaos.every} at a rename")
+        leases = {n: (j.worker, j.lease_until_ms) for n, j in self._jobs.items()}
+        moved = [n for n, j in self._jobs.items() if j.queue == name]
+        moved += [n for n, j in self._archived.items() if j.queue == name]
+        self._jobs, self._archived, self._keys = after.jobs, after.archived, after.keys
+        self._renames += 1
+        waiting = self._queued.pop(name, []) + self._queued.get(to, [])
+        heapq.heapify(waiting)
+        self._queued[to] = waiting
+        self._touched.extend(moved)
+        never(
+            all((j.worker, j.lease_until_ms) == leases[n] for n, j in self._jobs.items()),
+            "a rename never touches a lease",
+        )
+        return after.moved
+
+    @operation
     def retry(self, job_id: str) -> Job | NotFound | Conflict:
         """A dead job back in its queue with its tries at 0 and no reason."""
         now = self._look()
@@ -448,7 +561,9 @@ class Queue:
         moved = archive_step(candidates, now, self._retain_ms)
         if moved:
             try:
-                self._store.append_archive([PutRecord(job=job) for job in moved])
+                self._store.append_archive(
+                    [ArchivePutRecord(job=job, renames=self._renames) for job in moved]
+                )
             except StoreError:
                 for entry in popped:
                     heapq.heappush(self._finished, entry)
@@ -524,7 +639,8 @@ class Queue:
         self._counts[after.state] += 1
         self._next_number = max(self._next_number, after.number + 1)
         self._touched.append(after.number)
-        self._index(after)
+        if before is None or before.state != after.state:
+            self._index(after)  # a handoff keeps its deadline, so its heap entry stands
 
     def _index(self, job: Job) -> None:
         if job.state == "queued":
@@ -586,8 +702,6 @@ def check_job(number: int, job: Job) -> None:
 def check_transition(before: Job | None, after: Job | None) -> None:
     """The nevers, checked on every state change before it is written."""
     edge: Edge = (before.state if before else None, after.state if after else None)
-    if edge == ("leased", "leased"):
-        never(False, "a job is never held by two workers at once")
     never(edge in _LEGAL, f"a job never goes {edge[0]} -> {edge[1]}")
     if before is None or after is None:
         return
@@ -595,7 +709,9 @@ def check_transition(before: Job | None, after: Job | None) -> None:
     fixed = ("queue", "payload", "max_tries", "backoff_ms", "created_ms", "key")
     never(all(getattr(before, f) == getattr(after, f) for f in fixed), "a job's fields are fixed")
     never(after.tries <= after.max_tries, "tries never exceed max_tries")
-    if after.state == "leased":
+    if edge == _HANDOFF:
+        check_handoff(before, after)
+    elif after.state == "leased":
         never(before.state == "queued", "a job is never held by two workers at once")
         never(after.tries == before.tries + 1, "a lease counts one try")
     elif edge == _RETRY:
@@ -610,6 +726,27 @@ def check_transition(before: Job | None, after: Job | None) -> None:
     if edge == ("scheduled", "queued"):
         due = before.run_at_ms is not None and after.updated_ms >= before.run_at_ms
         never(due, "a scheduled job is never queued before its run_at")
+
+
+def check_handoff(before: Job, after: Job) -> None:
+    """A handoff moves the lease; it never copies it, extends it, or counts a try."""
+    never(after.worker is not None, "a handed-off job has one worker")
+    never(after.worker != before.worker, "a job is never held by two workers at once")
+    # A try counted on a leased job is a second lease taken on it, not a handoff.
+    never(after.tries == before.tries, "a job is never held by two workers at once")
+    never(after.lease_until_ms == before.lease_until_ms, "a handoff never changes lease_until")
+    live = before.lease_until_ms is not None and after.updated_ms < before.lease_until_ms
+    never(live, "only a live lease is handed off")
+    unchanged = ("state", "reason", "run_at_ms", "archived_ms")
+    never(all(getattr(before, f) == getattr(after, f) for f in unchanged), "only the worker moves")
+
+
+def check_renamed(before: Job, after: Job, name: str, to: str) -> None:
+    """A rename moves a job in `name` to `to` and leaves every other field, and every other
+    job, as it was."""
+    moved = before.queue == name
+    never(after.queue == (to if moved else before.queue), "a rename moves exactly name's jobs")
+    never(after.model_copy(update={"queue": before.queue}) == before, "a rename moves only queue")
 
 
 _NOT_HELD = "the caller does not hold a live lease on this job"

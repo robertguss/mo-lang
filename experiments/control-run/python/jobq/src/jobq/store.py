@@ -9,6 +9,14 @@ archived, whichever write a kill fell between. A delete of an archived job write
 is durable when `append` returns; when it raises, the file is truncated back to what it held
 before.
 
+A rename is one live record naming the queue and its new name, never one per job. It
+replays in order with the job records, so it moves the jobs that are in the queue at its
+place in the log. The archive is not rewritten by a rename: each archive `put` carries
+`renames`, how many renames the live log held when it was written, and at open the renames
+after that count are applied to it. A compaction folds every rename into the job records it
+rewrites and carries the count on in its `counter` record, so the archive's counts still
+line up with the log's.
+
 Every record is checked against the job's rules as it replays (`jobs.job_problem`): a record
 in a state the API can never produce refuses the folder rather than being served.
 
@@ -26,10 +34,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+    model_serializer,
+)
 
 from jobq.contract import ensure
-from jobq.jobs import Job, job_problem
+from jobq.jobs import Job, QueueName, job_problem
 
 LOG_NAME = "jobs.log"
 LOCK_NAME = "jobq.lock"
@@ -39,6 +56,22 @@ ARCHIVE_COMPACT_NAME = "jobq.archive.compact"
 
 # A job record's field names before the tries rename, and the names they have now.
 LEGACY_NAMES = {"attempts": "tries", "max_attempts": "max_tries"}
+
+
+class RenamesCounted(BaseModel):
+    """A record carrying a `renames` count, written last and left out while it is 0, so a
+    folder that was never renamed is written as before renames existed."""
+
+    renames: int = Field(default=0, ge=0)
+
+    @model_serializer(mode="wrap")
+    def _without_zero_renames(self, handler: SerializerFunctionWrapHandler) -> object:
+        fields = handler(self)
+        if isinstance(fields, dict):
+            renames = fields.pop("renames", 0)
+            if renames:
+                fields["renames"] = renames  # last on the line
+        return fields
 
 
 def upgrade_job_fields(value: object) -> object:
@@ -67,6 +100,11 @@ class PutRecord(BaseModel):
         return upgrade_job_fields(value)
 
 
+class ArchivePutRecord(PutRecord, RenamesCounted):
+    """An archive `put`: the job, and how many renames the live log held when it was written.
+    An archive written before renames existed says none."""
+
+
 class DeleteRecord(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
@@ -74,8 +112,9 @@ class DeleteRecord(BaseModel):
     number: int = Field(ge=1)
 
 
-class CounterRecord(BaseModel):
-    """Written first by compaction, so a job number never repeats after its record is gone."""
+class CounterRecord(RenamesCounted):
+    """Written first by compaction, so a job number never repeats after its record is gone,
+    and the renames count carries on after the rename records are folded away."""
 
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
@@ -92,8 +131,19 @@ class ArchivedRecord(BaseModel):
     number: int = Field(ge=1)
 
 
-type LiveRecord = PutRecord | DeleteRecord | CounterRecord | ArchivedRecord
-type ArchiveRecord = PutRecord | DeleteRecord
+class RenameRecord(BaseModel):
+    """In the live log: every job in queue `name` is in queue `to` from here on."""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    kind: Literal["rename"] = "rename"
+    name: QueueName
+    to: QueueName
+
+
+type LiveRecord = PutRecord | DeleteRecord | CounterRecord | ArchivedRecord | RenameRecord
+type Appended = PutRecord | DeleteRecord | ArchivedRecord | RenameRecord
+type ArchiveRecord = ArchivePutRecord | DeleteRecord
 type Record = Annotated[LiveRecord, Field(discriminator="kind")]
 type ArchiveLine = Annotated[ArchiveRecord, Field(discriminator="kind")]
 _RECORD: TypeAdapter[LiveRecord] = TypeAdapter(Record)
@@ -138,13 +188,24 @@ class RealFileOps:
 class Replayed:
     """The state a log replays to: live jobs in number order, archived jobs in number order,
     and the next number to hand out. `records` counts the live log's lines and
-    `archive_records` the archive's."""
+    `archive_records` the archive's. `renames` counts every rename the log has held, and
+    `renamed` holds the ones still in it, by their count, for the archive to apply."""
 
     jobs: dict[int, Job]
     next_number: int
     records: int
     archived: dict[int, Job] = field(default_factory=dict)
     archive_records: int = 0
+    renames: int = 0
+    renamed: list[tuple[int, str, str]] = field(default_factory=list)
+
+
+def rename_jobs(jobs: dict[int, Job], name: str, to: str) -> dict[int, Job]:
+    """`jobs` with every job in queue `name` moved to queue `to`, and nothing else changed."""
+    return {
+        number: job.model_copy(update={"queue": to}) if job.queue == name else job
+        for number, job in jobs.items()
+    }
 
 
 def apply_record(state: Replayed, record: LiveRecord) -> None:
@@ -155,14 +216,23 @@ def apply_record(state: Replayed, record: LiveRecord) -> None:
         case DeleteRecord(number=number) | ArchivedRecord(number=number):
             state.jobs.pop(number, None)
             state.next_number = max(state.next_number, number + 1)
-        case CounterRecord(next_number=next_number):
+        case CounterRecord(next_number=next_number, renames=renames):
             state.next_number = max(state.next_number, next_number)
+            state.renames = max(state.renames, renames)
+        case RenameRecord(name=name, to=to):
+            state.jobs = rename_jobs(state.jobs, name, to)
+            state.renames += 1
+            state.renamed.append((state.renames, name, to))
     state.records += 1
 
 
 def apply_archive_record(state: Replayed, record: ArchiveRecord) -> None:
+    """Apply one archive record, with every rename the log wrote after it to its job."""
     match record:
-        case PutRecord(job=job):
+        case ArchivePutRecord(job=job, renames=renames):
+            for count, name, to in state.renamed:
+                if count > renames and job.queue == name:
+                    job = job.model_copy(update={"queue": to})
             state.archived[job.number] = job
             state.next_number = max(state.next_number, job.number + 1)
         case DeleteRecord(number=number):
@@ -304,18 +374,18 @@ class Store:
         )
         return store, replayed
 
-    def append(self, record: PutRecord | DeleteRecord | ArchivedRecord) -> None:
+    def append(self, record: Appended) -> None:
         """Write one record and fsync it; on any failure, roll the log back and raise."""
         self.append_all([record])
 
-    def append_all(self, records: Sequence[PutRecord | DeleteRecord | ArchivedRecord]) -> None:
+    def append_all(self, records: Sequence[Appended]) -> None:
         """Write live records with one fsync: all of them become durable, or none do."""
         self._log.append_all(records)
 
-    def append_archive(self, records: Sequence[PutRecord | DeleteRecord]) -> None:
+    def append_archive(self, records: Sequence[ArchivePutRecord | DeleteRecord]) -> None:
         """Write archive records with one fsync: all of them become durable, or none do."""
         for record in records:
-            if isinstance(record, PutRecord):
+            if isinstance(record, ArchivePutRecord):
                 ensure(archive_problem(record.job) is None, "only an archivable job is archived")
         self._archive.append_all(records)
 
@@ -440,8 +510,10 @@ def replay_archive_fd(fd: int, state: Replayed) -> int:
         except ValidationError as error:
             key = record_key(line, line_number)
             raise IllFormed(key, _first_problem(error), "archive record") from error
-        if isinstance(record, PutRecord):
+        if isinstance(record, ArchivePutRecord):
             problem = archive_problem(record.job)
+            if problem is None and record.renames > state.renames:
+                problem = f"renames {record.renames} is past the log's {state.renames}"
             if problem is not None:
                 raise IllFormed(record.job.id, problem, "archive record")
         apply_archive_record(state, record)
@@ -488,15 +560,21 @@ def _write_file(dir_fd: int, name: str, final: str, lines: Sequence[BaseModel]) 
 
 def compact(directory: Path) -> tuple[int, int]:
     """Rewrite the log to a counter line and one line per live job, and the archive to one
-    line per archived job that is not deleted; (live records before, after).
+    line per archived job that is not deleted; (live records before, after). Every job is
+    written under its current queue, so no rename record is left; the counter line and each
+    archive line carry the renames count on.
 
     The archive is rewritten first: a kill between the two renames leaves a live log whose
     stale lines the archive still overrides, and deletes the live log still records."""
     store, state = Store.open(directory)
     try:
-        archived = [PutRecord(job=job) for job in state.archived.values()]
+        archived = [
+            ArchivePutRecord(job=job, renames=state.renames) for job in state.archived.values()
+        ]
         _write_file(store.dir_fd, ARCHIVE_COMPACT_NAME, ARCHIVE_NAME, archived)
-        live: list[BaseModel] = [CounterRecord(next_number=state.next_number)]
+        live: list[BaseModel] = [
+            CounterRecord(next_number=state.next_number, renames=state.renames)
+        ]
         live += [PutRecord(job=job) for job in state.jobs.values()]
         _write_file(store.dir_fd, COMPACT_NAME, LOG_NAME, live)
     except OSError as error:
@@ -515,6 +593,7 @@ def compact(directory: Path) -> tuple[int, int]:
     ensure(after.jobs == state.jobs, "compaction keeps every live job as it was")
     ensure(after.archived == state.archived, "compaction keeps every archived job as it was")
     ensure(after.next_number == state.next_number, "compaction keeps the counter")
+    ensure(after.renames == state.renames and not after.renamed, "compaction folds renames")
     ensure(after.records == len(state.jobs) + 1, "one line per live job and the counter")
     ensure(after.archive_records == len(state.archived), "one line per archived job")
     return state.records, after.records

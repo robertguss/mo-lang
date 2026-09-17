@@ -14,6 +14,7 @@ from jobq.jobs import (
     CreateJob,
     ErrorBody,
     FailRequest,
+    HandoffRequest,
     Health,
     Job,
     JobList,
@@ -22,6 +23,8 @@ from jobq.jobs import (
     ListQuery,
     QueueCounts,
     QueueList,
+    RenameOut,
+    RenameRequest,
     queue_name_problem,
 )
 from jobq.queue import Conflict, NotFound, Queue
@@ -118,12 +121,16 @@ class Api:
                 return {"POST": self._ack}, job_id
             case ["", "jobs", job_id, "fail"]:
                 return {"POST": self._fail}, job_id
+            case ["", "jobs", job_id, "handoff"]:
+                return {"POST": self._handoff}, job_id
             case ["", "jobs", job_id, "retry"]:
                 return {"POST": self._retry}, job_id
             case ["", "queues"]:
                 return {"GET": self._queues}, ""
             case ["", "queues", queue, "lease"]:
                 return {"POST": self._lease}, queue
+            case ["", "queues", queue, "rename"]:
+                return {"POST": self._rename}, queue
             case _:
                 return None, ""
 
@@ -221,6 +228,31 @@ class Api:
             return error(400, _problem(invalid))
         assert request.token is not None
         return _outcome(self._queue.fail(job_id, request.token, body.reason))
+
+    def _handoff(self, request: Request, job_id: str) -> Response:
+        try:
+            body = HandoffRequest.model_validate_json(request.body)
+        except ValidationError as invalid:
+            return error(400, _problem(invalid))
+        assert request.token is not None
+        return _outcome(self._queue.handoff(job_id, request.token, body.to))
+
+    def _rename(self, request: Request, name: str) -> Response:
+        """A malformed name is a 400, as on `/lease`; a name holding no job is a 404."""
+        problem = queue_name_problem(name)
+        if problem is not None:
+            return error(400, problem)
+        try:
+            body = RenameRequest.model_validate_json(request.body)
+        except ValidationError as invalid:
+            return error(400, _problem(invalid))
+        match self._queue.rename(name, body.to):
+            case NotFound():
+                return error(404, "no such queue")
+            case Conflict(reason=reason):
+                return error(409, reason)
+            case int(moved):
+                return _json(200, RenameOut(queue=body.to, moved=moved))
 
     def _retry(self, _request: Request, job_id: str) -> Response:
         """Needs no body; one that is sent is ignored, as on `/ack`."""

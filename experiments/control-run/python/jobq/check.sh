@@ -9,6 +9,8 @@
 # Last in the transcript, `jobq serve --retain-ms 1000`: a keyed create and its repeat, a
 # finished job archived and read by id, then a stop, a compaction, and a start that still
 # know the archived job and its key.
+# Change 5: a check of handoffs and renames, a verify, a compaction, and a second check that
+# finds the handed-off lease and the renamed queue as they were.
 set -euo pipefail
 cd "$(dirname "$0")"
 work=$(mktemp -d)
@@ -16,9 +18,19 @@ old=$(mktemp -d)
 bad=$(mktemp -d)
 chaos=$(mktemp -d)
 arch=$(mktemp -d)
+moved=$(mktemp -d)
 actual=$(mktemp)
-trap 'rm -rf "$work" "$old" "$bad" "$chaos" "$arch" "$actual"' EXIT
-cp tests/fixtures/round7/jobs.log "$old/jobs.log"
+trap 'rm -rf "$work" "$old" "$bad" "$chaos" "$arch" "$moved" "$actual"' EXIT
+# The round 7 folder, its times moved to now: its finished jobs are fresh, so the default
+# day's retention does not archive them however long ago the fixture was written.
+python3 - tests/fixtures/round7/jobs.log "$old/jobs.log" <<'PY'
+import re, sys, time
+text = open(sys.argv[1], encoding="utf-8").read()
+stamps = [int(n) for n in re.findall(r'"\w+_ms":(\d{13})', text)]
+delta = int(time.time() * 1000) - max(stamps)
+moved = re.sub(r'("\w+_ms":)(\d{13})', lambda m: m[1] + str(int(m[2]) + delta), text)
+open(sys.argv[2], "w", encoding="utf-8").write(moved)
+PY
 
 # `checks/chaos.txt` through `jobq client`, one process per line, against a served folder.
 play_chaos() {
@@ -91,14 +103,27 @@ cp tests/fixtures/illformed/jobs.log "$bad/jobs.log"
   play_archive checks/archive-second.txt
   timeout 60 uv run --quiet jobq compact "$arch/data"
   timeout 60 uv run --quiet jobq verify "$arch/data"
+  timeout 60 uv run --quiet jobq check "$moved" checks/handoff-rename-first.txt
+  timeout 60 uv run --quiet jobq verify "$moved"
+  timeout 60 uv run --quiet jobq compact "$moved"
+  timeout 60 uv run --quiet jobq check "$moved" checks/handoff-rename-second.txt
+  timeout 60 uv run --quiet jobq verify "$moved"
 } | sed -E \
   -e 's/"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"/"<time>"/g' \
   -e 's/"uptime_ms":[0-9]+/"uptime_ms":<n>/' \
   -e "s|$work|<dir>|" \
   -e "s|$old|<old>|" \
   -e "s|$arch/data|<arch>|" \
+  -e "s|$moved|<moved>|" \
   -e 's/: [0-9]+ records to/: <n> records to/' > "$actual"
 diff -u checks/expected.txt "$actual"
+grep -q '"kind":"rename"' "$moved/jobs.log" ||
+  { echo "check.sh: the second run's renames are not in the log"; exit 1; }
+timeout 60 uv run --quiet jobq compact "$moved" > /dev/null
+if grep -q '"kind":"rename"' "$moved/jobs.log"; then
+  echo "check.sh: the compacted log still holds a rename record"
+  exit 1
+fi
 if grep -q attempts "$old/jobs.log"; then
   echo "check.sh: the compacted round 7 log still holds an old name"
   exit 1

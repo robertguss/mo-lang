@@ -23,6 +23,7 @@ MIN_RETAIN_MS, MAX_RETAIN_MS, DEFAULT_RETAIN_MS = 1_000, 2_678_400_000, 86_400_0
 _QUEUE_NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _JOB_ID = re.compile(r"j_[1-9][0-9]{0,17}")
 _TOKEN = re.compile(r"[\x21-\x7e]{1,256}")
+_HANDOFF_TOKEN = re.compile(r"[\x21-\x7e]{1,128}")
 # Unicode category Cc is exactly U+0000-U+001F and U+007F-U+009F; `\n` is allowed.
 _CONTROL = re.compile(r"[\x00-\x09\x0b-\x1f\x7f-\x9f]")
 
@@ -65,6 +66,13 @@ def token_problem(token: str) -> str | None:
     return None
 
 
+def handoff_token_problem(token: str) -> str | None:
+    """The worker a lease is handed to: a token of at most 128 bytes."""
+    if _HANDOFF_TOKEN.fullmatch(token) is None:
+        return "to must be 1 to 128 visible ASCII characters"
+    return None
+
+
 def parse_job_id(text: str) -> int | None:
     """The counter inside `j_<n>`, or None if `text` is not a job id."""
     return int(text[2:]) if _JOB_ID.fullmatch(text) else None
@@ -89,6 +97,7 @@ Payload = Annotated[str, _validated_by(payload_problem)]
 Reason = Annotated[str, _validated_by(_reason_problem)]
 Token = Annotated[str, _validated_by(token_problem)]
 Key = Annotated[str, _validated_by(key_problem)]
+HandoffToken = Annotated[str, _validated_by(handoff_token_problem)]
 
 
 class CreateJob(BaseModel):
@@ -127,6 +136,31 @@ class FailRequest(BaseModel):
     model_config = _STRICT
 
     reason: Reason
+
+
+class HandoffRequest(BaseModel):
+    """The body of `POST /jobs/{id}/handoff`."""
+
+    model_config = _STRICT
+
+    to: HandoffToken
+
+
+class RenameRequest(BaseModel):
+    """The body of `POST /queues/{name}/rename`."""
+
+    model_config = _STRICT
+
+    to: QueueName
+
+
+class RenameOut(BaseModel):
+    """The answer to a rename: the queue's new name and how many jobs moved to it."""
+
+    model_config = _STRICT
+
+    queue: str
+    moved: int = Field(ge=1)
 
 
 class ListQuery(BaseModel):

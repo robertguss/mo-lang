@@ -15,6 +15,12 @@ at the looks. The board and the archive are checked as one view: a job leaves th
 to its delete or to the archive, unchanged but for `archived_ms`, and the log and the archive
 replay to exactly what the queue holds, including after the board fails between the
 archive's write and the log's.
+
+Change 5: workers hand their leases to one another, and an operator renames queues back and
+forth under the load, the rename's write failing or the board failing after it like any other.
+A handoff moves the belief of who holds the job, so the two-workers check follows the lease; a
+rename that answered moved every job of its queue and no other, and changed nothing else of
+any job, done and archived ones included; one refused changed nothing.
 """
 
 import contextlib
@@ -45,6 +51,8 @@ CRASH_RATE = 0.05
 # The simulation's restarts are never meant to spend the budget.
 UNSPENT = BoardOptions(max_restarts=10**9, retain_ms=1_000)
 QUEUES = ("mail", "report")
+# The names a rename moves the queues between; producers write only to QUEUES.
+NAMES = (*QUEUES, "post", "archive")
 WORKERS = ("w1", "w2", "w3")
 
 
@@ -124,6 +132,9 @@ class Sim:
         self.crashes = 0
         self.keyed_repeats = 0
         self.archived_reads = 0
+        self.handoffs = 0
+        self.renames = 0
+        self.rename_faults = 0
 
     @property
     def queue(self) -> Queue:
@@ -163,7 +174,6 @@ class Sim:
         """`crashed`: the board failed in this request, so its 503 may have left the write on
         disk, and so on the board; every other 503 changed nothing."""
         after = self.view()
-        now = self.clock.now_ms()
         self.check(response.status != 500, "no request is an internal error")
         replayed = replay(self.dir)
         live, archived = self.queue.snapshot(), self.queue.archived_snapshot()
@@ -182,6 +192,30 @@ class Sim:
         if removed:
             deleted = request.method == "DELETE" and (response.status == 204 or crashed)
             self.check(deleted and len(removed) == 1, "a job is only ever lost to its delete")
+        self.check_jobs(request, response, before, after, crashed)
+        if request.path == "/queues" and response.status == 200:
+            self.check_queues(response, live)
+        if request.path.endswith("/rename"):
+            self.check_rename(request, response, before, after, crashed)
+        if response.status in {200, 201} and response.body.startswith(b'{"id"'):
+            number = int(json.loads(response.body)["id"][2:])
+            shown = JobOut.of(after[number]).to_json() if number in after else b""
+            self.check(shown == response.body, "a job response shows the durable job")
+            self.archived_reads += int(number in archived)
+        self.check_keys(request, response, before, after)
+
+    def check_jobs(
+        self,
+        request: Request,
+        response: Response,
+        before: dict[int, Job],
+        after: dict[int, Job],
+        crashed: bool,
+    ) -> None:
+        """Tries in bounds, no scheduled job early, and no finished job changed but by its
+        retry, or by a rename of its queue."""
+        now = self.clock.now_ms()
+        renamed = request.path.endswith("/rename") and (response.status == 200 or crashed)
         for number, job in after.items():
             self.check(job.tries <= job.max_tries, "tries never exceed max_tries")
             was = before.get(number)
@@ -191,6 +225,10 @@ class Sim:
             if job.state == "scheduled" and (was is None or was.state != "scheduled"):
                 self.scheduled += 1
             if number in self.finished:
+                if self.finished[number].queue != job.queue and renamed:
+                    self.finished[number] = self.finished[number].model_copy(
+                        update={"queue": job.queue}
+                    )
                 if _unarchived(job) != self.finished[number]:
                     self.check(
                         self._retried(request, response, self.finished[number], job, crashed),
@@ -200,14 +238,41 @@ class Sim:
                     del self.finished[number]
             elif job.state in {"done", "dead"} and job.archived_ms is None:
                 self.finished[number] = job
-        if request.path == "/queues" and response.status == 200:
-            self.check_queues(response, live)
-        if response.status in {200, 201} and response.body.startswith(b'{"id"'):
-            number = int(json.loads(response.body)["id"][2:])
-            shown = JobOut.of(after[number]).to_json() if number in after else b""
-            self.check(shown == response.body, "a job response shows the durable job")
-            self.archived_reads += int(number in archived)
-        self.check_keys(request, response, before, after)
+
+    def check_rename(
+        self,
+        request: Request,
+        response: Response,
+        before: dict[int, Job],
+        after: dict[int, Job],
+        crashed: bool,
+    ) -> None:
+        """A rename moves every job of its queue and nothing else, or changes nothing."""
+        name = request.path.split("/")[2]
+        to = json.loads(request.body)["to"]
+        moved = response.status == 200 or crashed
+        self.rename_faults += int(response.status == 503)
+        for number, old in before.items():
+            job = after[number]
+            if moved and old.queue == name:
+                self.check(job.queue == to, "a rename moves every job of its queue")
+            else:
+                self.check(job.queue == old.queue, "a rename moves no other job")
+            if job.state == old.state and job.updated_ms == old.updated_ms:
+                # The rename's look may archive a finished job, which sets only archived_ms.
+                same = _unarchived(job.model_copy(update={"queue": old.queue})) == _unarchived(old)
+                self.check(same, "a rename changes nothing but the queue")
+        if response.status == 200:
+            self.renames += 1
+            count = sum(1 for job in before.values() if job.queue == name)
+            self.check(json.loads(response.body) == {"queue": to, "moved": count}, "moved n")
+        elif not crashed:
+            self.check(response.status in {404, 409, 503}, "a rename is refused as the spec says")
+            held = {job.queue for job in before.values()}
+            if response.status == 404:
+                self.check(name not in held, "a 404 rename names an empty queue")
+            if response.status == 409:
+                self.check(to in held or to == name, "a 409 rename names a used target")
 
     def check_archive(
         self, before: dict[int, Job], live: dict[int, Job], archived: dict[int, Job]
@@ -290,6 +355,57 @@ class Sim:
             else:
                 self.send(Request("POST", f"/jobs/{job_id}/fail", "", worker, b'{"reason": "sim"}'))
 
+    def handoff(self, worker: str) -> None:
+        """Hand a job this worker believes it holds to another worker, or try a stranger's."""
+        mine = [j for j, (w, _) in self.beliefs.items() if w == worker]
+        if not mine:
+            self.lease(worker, self.rng.choice(NAMES))
+            mine = [j for j, (w, _) in self.beliefs.items() if w == worker]
+        job_id = self.rng.choice(mine) if mine and self.rng.random() < 0.9 else self.some_id()
+        to = self.rng.choice(WORKERS)
+        was = self.queue.snapshot().get(int(job_id[2:]))
+        body = json.dumps({"to": to}).encode()
+        response = self.send(Request("POST", f"/jobs/{job_id}/handoff", "", worker, body))
+        if response is None or response.status != 200:
+            return  # the belief stays with the sender, who may still hold the lease
+        # A belief can be missing (a lease's answer was dropped), so the server's is the truth.
+        self.check(was is not None and was.worker == worker, "only the holder hands a lease off")
+        assert was is not None and was.lease_until_ms is not None
+        shown = json.loads(response.body)
+        now = self.queue.snapshot()[was.number]
+        self.check(now.lease_until_ms == was.lease_until_ms, "a handoff keeps the deadline")
+        self.check(now.tries == was.tries and shown["worker"] == to, "a handoff keeps the tries")
+        self.beliefs[job_id] = (to, was.lease_until_ms)
+        self.handoffs += 1
+
+    def hand_over(self, worker: str, roll: float) -> None:
+        """Change 5's steps, and the health read whose share they took."""
+        if roll < 0.93:
+            self.handoff(worker)
+        elif roll < 0.945:
+            self.rename()
+        else:
+            self.send(Request("GET", "/health"))
+
+    def rename(self) -> None:
+        """Rename a queue holding jobs to a free name most of the time, and any pair otherwise."""
+        held = sorted({job.queue for job in self.view().values()})
+        free = [name for name in NAMES if name not in held]
+        name, to = self.rng.choice(NAMES), self.rng.choice(NAMES)
+        if held and free and self.rng.random() < 0.8:
+            name, to = self.rng.choice(held), self.rng.choice(free)
+        was = self.queue.archived_snapshot()
+        body = json.dumps({"to": to}).encode()
+        response = self.send(Request("POST", f"/queues/{name}/rename", "", "operator", body))
+        moved = [number for number, job in was.items() if job.queue == name]
+        if response is None or response.status != 200 or not moved:
+            return
+        number = self.rng.choice(moved)
+        read = self.send(Request("GET", f"/jobs/j_{number}", "", "operator"))
+        if read is not None and read.status == 200:
+            shown = json.loads(read.body)["queue"]
+            self.check(shown == to, "an archived job reads under its queue's new name")
+
     def retry(self, worker: str) -> None:
         """Retry a dead job most of the time, and any id otherwise."""
         dead = [job.id for job in self.queue.snapshot().values() if job.state == "dead"]
@@ -312,22 +428,22 @@ class Sim:
         if roll < 0.25:
             self.create()
         elif roll < 0.5:
-            self.lease(worker, self.rng.choice(QUEUES))
+            self.lease(worker, self.rng.choice(NAMES))
         elif roll < 0.7:
             self.finish(worker, ack_rate=0.7, walk_away_rate=0.2)
         elif roll < 0.75:
             self.send(Request("GET", f"/jobs/{self.some_id()}", "", worker))
         elif roll < 0.8:
             self.retry(worker)
-        elif roll < 0.85:
+        elif roll < 0.84:
             self.send(Request("DELETE", f"/jobs/{self.some_id()}", "", worker))
-        elif roll < 0.9:
+        elif roll < 0.87:
             queries = ["", "state=leased", "queue=mail&state=queued", "state=scheduled"]
             self.send(Request("GET", "/jobs", self.rng.choice(queries), worker))
-        elif roll < 0.93:
+        elif roll < 0.89:
             self.send(Request("GET", "/queues", "", "operator"))
         elif roll < 0.95:
-            self.send(Request("GET", "/health"))
+            self.hand_over(worker, roll)
         elif roll < 0.98:
             self.clock.advance(self.rng.randrange(0, 1500))
         else:
@@ -342,7 +458,7 @@ class Sim:
             if all(job.state in {"done", "dead"} for job in self.queue.snapshot().values()):
                 return
             for worker in WORKERS:
-                for queue in QUEUES:
+                for queue in NAMES:
                     self.lease(worker, queue)
                 self.finish(worker, ack_rate=0.8, walk_away_rate=0.1)
             self.clock.advance(self.rng.randrange(50, 400))
@@ -414,6 +530,9 @@ class SimulationTest(unittest.TestCase):
         self.assertGreater(sum(sim.keyed_repeats for sim in sims), SEEDS)
         self.assertGreater(sum(sim.archived_reads for sim in sims), SEEDS // 10)
         self.assertGreater(sum(len(sim.queue.archived_snapshot()) for sim in sims), SEEDS)
+        self.assertGreater(sum(sim.handoffs for sim in sims), SEEDS // 4)
+        self.assertGreater(sum(sim.renames for sim in sims), SEEDS // 4)
+        self.assertGreater(sum(sim.rename_faults for sim in sims), 0)
 
     def test_the_simulation_catches_a_change_applied_before_it_is_durable(self) -> None:
         def applied_first(queue: Queue, before: Job | None, after: Job | None) -> None:

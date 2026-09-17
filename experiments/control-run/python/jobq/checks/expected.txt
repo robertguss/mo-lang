@@ -285,3 +285,116 @@ jobq: compacted <arch>: <n> records to 2
 serve exited 0
 jobq: compacted <arch>: <n> records to 3
 2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_4; archived 0
+> w1 POST /jobs {"queue": "emails", "payload": "handed", "max_tries": 2, "key": "k1"}
+201
+{"id":"j_1","queue":"emails","state":"queued","payload":"handed","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k1"}
+> w1 POST /jobs {"queue": "emails", "payload": "kept leased", "max_tries": 2, "key": "k2"}
+201
+{"id":"j_2","queue":"emails","state":"queued","payload":"kept leased","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k2"}
+> w1 POST /jobs {"queue": "emails", "payload": "waiting", "max_tries": 2}
+201
+{"id":"j_3","queue":"emails","state":"queued","payload":"waiting","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+> w1 POST /jobs {"queue": "other", "payload": "same key elsewhere", "max_tries": 1, "key": "k1"}
+201
+{"id":"j_4","queue":"other","state":"queued","payload":"same key elsewhere","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k1"}
+> w1 POST /queues/emails/lease {"lease_ms": 60000}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"handed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>","key":"k1"}
+> w1 POST /queues/emails/lease {"lease_ms": 600000}
+200
+{"id":"j_2","queue":"emails","state":"leased","payload":"kept leased","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w1","lease_until":"<time>","key":"k2"}
+> w1 POST /jobs/j_1/handoff {"to": "w2"}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"handed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w2","lease_until":"<time>","key":"k1"}
+> w1 POST /jobs/j_1/handoff {"to": "w3"}
+409
+{"error":"the caller does not hold a live lease on this job"}
+> w1 POST /jobs/j_1/ack
+409
+{"error":"the caller does not hold a live lease on this job"}
+> w2 POST /jobs/j_1/handoff {"to": "w2"}
+200
+{"id":"j_1","queue":"emails","state":"leased","payload":"handed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w2","lease_until":"<time>","key":"k1"}
+> w2 POST /jobs/j_1/handoff {"to": "has space"}
+400
+{"error":"to: Value error, to must be 1 to 128 visible ASCII characters"}
+> w2 POST /jobs/j_3/handoff {"to": "w1"}
+409
+{"error":"the caller does not hold a live lease on this job"}
+> w2 POST /jobs/j_99/handoff {"to": "w1"}
+404
+{"error":"no such job"}
+> w1 POST /jobs/j_2/handoff {"to": "w3"}
+200
+{"id":"j_2","queue":"emails","state":"leased","payload":"kept leased","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w3","lease_until":"<time>","key":"k2"}
+> w1 POST /queues/emails/rename {"to": "other"}
+409
+{"error":"exists"}
+> w1 POST /queues/emails/rename {"to": "emails"}
+409
+{"error":"exists"}
+> w1 POST /queues/nothing/rename {"to": "x"}
+404
+{"error":"no such queue"}
+> w1 POST /queues/emails/rename {"to": "bad name"}
+400
+{"error":"to: Value error, queue must be 1 to 64 bytes of letters, digits, - and _"}
+> w1 POST /queues/emails/rename {"to": "mail"}
+200
+{"queue":"mail","moved":3}
+> w1 GET /queues
+200
+{"queues":[{"name":"mail","queued":1,"scheduled":0,"leased":2,"done":0,"dead":0},{"name":"other","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> w1 GET /jobs?queue=mail&key=k1
+200
+{"jobs":[{"id":"j_1","queue":"mail","state":"leased","payload":"handed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w2","lease_until":"<time>","key":"k1"}]}
+> w1 GET /jobs?queue=emails&key=k1
+200
+{"jobs":[]}
+> w1 GET /jobs?queue=other&key=k1
+200
+{"jobs":[{"id":"j_4","queue":"other","state":"queued","payload":"same key elsewhere","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k1"}]}
+> w1 POST /queues/emails/lease
+204
+> w2 POST /jobs/j_1/ack
+200
+{"id":"j_1","queue":"mail","state":"done","payload":"handed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k1"}
+> w1 POST /jobs {"queue": "emails", "payload": "fresh", "max_tries": 1, "key": "k1"}
+201
+{"id":"j_5","queue":"emails","state":"queued","payload":"fresh","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k1"}
+> w1 POST /queues/mail/rename {"to": "emails"}
+409
+{"error":"exists"}
+> w1 GET /jobs/j_2
+200
+{"id":"j_2","queue":"mail","state":"leased","payload":"kept leased","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w3","lease_until":"<time>","key":"k2"}
+5 jobs: queued 3, scheduled 0, leased 1, done 1, dead 0; next id j_6; archived 0
+jobq: compacted <moved>: <n> records to 6
+> w1 GET /jobs/j_2
+200
+{"id":"j_2","queue":"mail","state":"leased","payload":"kept leased","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w3","lease_until":"<time>","key":"k2"}
+> w1 POST /jobs/j_2/ack
+409
+{"error":"the caller does not hold a live lease on this job"}
+> w1 POST /jobs {"queue": "mail", "payload": "repeat", "max_tries": 1, "key": "k2"}
+200
+{"id":"j_2","queue":"mail","state":"leased","payload":"kept leased","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","worker":"w3","lease_until":"<time>","key":"k2"}
+> w1 GET /queues
+200
+{"queues":[{"name":"emails","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"mail","queued":1,"scheduled":0,"leased":1,"done":1,"dead":0},{"name":"other","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> w1 POST /queues/mail/rename {"to": "post"}
+200
+{"queue":"post","moved":3}
+> w3 POST /jobs/j_2/ack
+200
+{"id":"j_2","queue":"post","state":"done","payload":"kept leased","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k2"}
+> w1 POST /queues/post/rename {"to": "mail"}
+200
+{"queue":"mail","moved":3}
+> w1 GET /jobs?queue=mail&key=k1
+200
+{"jobs":[{"id":"j_1","queue":"mail","state":"done","payload":"handed","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>","key":"k1"}]}
+> w1 GET /jobs/j_3
+200
+{"id":"j_3","queue":"mail","state":"queued","payload":"waiting","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"<time>","updated_at":"<time>"}
+5 jobs: queued 3, scheduled 0, leased 0, done 2, dead 0; next id j_6; archived 0

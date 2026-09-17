@@ -1,0 +1,29 @@
+# jobq check, change 5, first run: a lease handed off, and a busy queue renamed
+w1 POST /jobs {"queue": "emails", "payload": "handed", "max_tries": 2, "key": "k1"}
+w1 POST /jobs {"queue": "emails", "payload": "kept leased", "max_tries": 2, "key": "k2"}
+w1 POST /jobs {"queue": "emails", "payload": "waiting", "max_tries": 2}
+w1 POST /jobs {"queue": "other", "payload": "same key elsewhere", "max_tries": 1, "key": "k1"}
+w1 POST /queues/emails/lease {"lease_ms": 60000}
+w1 POST /queues/emails/lease {"lease_ms": 600000}
+w1 POST /jobs/j_1/handoff {"to": "w2"}
+w1 POST /jobs/j_1/handoff {"to": "w3"}
+w1 POST /jobs/j_1/ack
+w2 POST /jobs/j_1/handoff {"to": "w2"}
+w2 POST /jobs/j_1/handoff {"to": "has space"}
+w2 POST /jobs/j_3/handoff {"to": "w1"}
+w2 POST /jobs/j_99/handoff {"to": "w1"}
+w1 POST /jobs/j_2/handoff {"to": "w3"}
+w1 POST /queues/emails/rename {"to": "other"}
+w1 POST /queues/emails/rename {"to": "emails"}
+w1 POST /queues/nothing/rename {"to": "x"}
+w1 POST /queues/emails/rename {"to": "bad name"}
+w1 POST /queues/emails/rename {"to": "mail"}
+w1 GET /queues
+w1 GET /jobs?queue=mail&key=k1
+w1 GET /jobs?queue=emails&key=k1
+w1 GET /jobs?queue=other&key=k1
+w1 POST /queues/emails/lease
+w2 POST /jobs/j_1/ack
+w1 POST /jobs {"queue": "emails", "payload": "fresh", "max_tries": 1, "key": "k1"}
+w1 POST /queues/mail/rename {"to": "emails"}
+w1 GET /jobs/j_2
