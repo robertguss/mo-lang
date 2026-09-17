@@ -199,6 +199,36 @@
         { "id": "3ab9144f9253", "name": "test \"a timeout is passed on, not papered over\"", "hash": "c6933d6a23d501b7" }
       ],
       "verified": { "hash": "6942e5dcb90b68c4", "declarations": "b37ed02760ac14a7" }
+    },
+    {
+      "path": "tls-echo.mo",
+      "module": "Effects.TlsEcho",
+      "declarations": [
+        { "id": "2699fc636847", "name": "module Effects.TlsEcho", "hash": "1d3f9725e53664dd" },
+        { "id": "7df0197f1861", "name": "expose", "hash": "51c2ba3ba92a8080" },
+        { "id": "70cefdd2a44f", "name": "intent", "hash": "c9644c794adf6685" },
+        { "id": "acbf006be57b", "name": "process Echo", "hash": "bc503e7931135d9f" },
+        { "id": "7e73f48ab6ed", "name": "process Acceptor", "hash": "0c8fc2d837e9d030" },
+        { "id": "c8cfcfaac21d", "name": "process EchoServer", "hash": "e8414e06469de9ca" },
+        { "id": "9072952af9f7", "name": "supervisor Echoes", "hash": "5e910dea8c1504c0" },
+        { "id": "a5f31a00cd06", "name": "struct Options", "hash": "e3bff8e2a3b92e54" },
+        { "id": "33e07e94ca49", "name": "fn listen", "hash": "04a633f99440c5e1" },
+        { "id": "7b9cc3f48e85", "name": "fn bad_pem?", "hash": "0f65f6ec6fa38cd4" },
+        { "id": "4d7f60f37d17", "name": "fn handshook?", "hash": "f5bdd12e3f0c8dce" },
+        { "id": "9afd2985f570", "name": "fn spoke_plainly?", "hash": "abbc1391868dbecf" },
+        { "id": "520775e85020", "name": "fn plain_client?", "hash": "94813d2f4d45a9e4" },
+        { "id": "4804cbb464b3", "name": "fn serve", "hash": "525c15bacf08e9b6" },
+        { "id": "cd7c00ad81e2", "name": "fn quieted", "hash": "22d2e31dba4bde31" },
+        { "id": "528c697dbfec", "name": "fn options", "hash": "f8f914476d2cba0e" },
+        { "id": "ed1e5cee8a50", "name": "fn main", "hash": "6d530d0b643b18e1" },
+        { "id": "95895491a8f5", "name": "fn cert_pem", "hash": "34612801d229f3fd" },
+        { "id": "199f11f3d6a9", "name": "fn key_pem", "hash": "d9251326741381db" },
+        { "id": "29e13fa7cd35", "name": "fn other_key_pem", "hash": "da2c539d041244f5" },
+        { "id": "3003e8f07f54", "name": "test \"text that is not PEM makes no server\"", "hash": "ae658d093dcdbbe9" },
+        { "id": "597dd140de26", "name": "test \"a certificate and a key that are not a pair make no server\"", "hash": "af9f3a6e5f354687" },
+        { "id": "d9ec1399b110", "name": "test \"a client that writes plain text where a hello belongs never handshakes\"", "hash": "d2336c4744301c7b" }
+      ],
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "d1bf208f8a2d25f2" }
     }
   ]
 }

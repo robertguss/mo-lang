@@ -554,7 +554,8 @@ fn linesServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
         }
         // A line too long is taken before the buffer fills, so there is always room to read.
         _ = try c.roomToRead(net.buffer_initial, 2 * net.line_limit);
-        switch (net.readOne(c.fd(), c.buf[c.end..])) {
+        // Through the TLS engine when the connection has one (step 36); a plain read otherwise.
+        switch (n.readInto(c)) {
             .done => |k| if (k == 0) {
                 c.eof = true;
             } else {
@@ -613,7 +614,7 @@ fn requestServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
             n.close(c);
             return finishRequest(sim, t, s);
         }
-        switch (net.readOne(c.fd(), c.buf[c.end..])) {
+        switch (n.readInto(c)) {
             .done => |k| if (k == 0) {
                 c.eof = true;
             } else {

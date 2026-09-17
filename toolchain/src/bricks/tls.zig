@@ -1042,16 +1042,23 @@ pub export fn mo_tls_write(c: ?*Conn, plain: ?[*]const u8, n: usize) c_int {
 }
 
 /// Ciphertext for the socket, at most `cap` bytes; `got` is 0 when there is nothing to write.
-/// Always `ok`: a connection that failed still has its alert to put on the wire.
+/// The bytes stay in the engine until `mo_tls_sent` says how many reached the socket, so a
+/// runtime that may write only part of them (a nonblocking socket with a full buffer) loses
+/// none. Always `ok`: a connection that failed still has its alert to put on the wire.
 pub export fn mo_tls_flush(c: ?*Conn, out: ?[*]u8, cap: usize, got: *usize) c_int {
     got.* = 0;
     const conn = c orelse return failed;
     const held = conn.out.slice();
     const n = @min(cap, held.len);
     if (n > 0) @memcpy(out.?[0..n], held[0..n]);
-    conn.out.consume(n);
     got.* = n;
     return ok;
+}
+
+/// `n` of the bytes `mo_tls_flush` gave reached the socket: the engine forgets them.
+pub export fn mo_tls_sent(c: ?*Conn, n: usize) void {
+    const conn = c orelse return;
+    conn.out.consume(@min(n, conn.out.slice().len));
 }
 
 /// Queues `close_notify`; the runtime flushes it before it shuts the socket.
@@ -1258,6 +1265,7 @@ fn serveEcho(conn: *Conn, in_fd: std.posix.fd_t, out_fd: std.posix.fd_t) !void {
         while (true) {
             try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
             if (n == 0) break;
+            mo_tls_sent(conn, n);
             try pending.appendSlice(testing.allocator, wire[0..n]);
         }
         // Every plaintext byte goes straight back through the engine.
@@ -1308,7 +1316,10 @@ fn serveEcho(conn: *Conn, in_fd: std.posix.fd_t, out_fd: std.posix.fd_t) !void {
         if (got == 0) return;
         if (mo_tls_feed(conn, &wire, got) == failed) {
             try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
-            if (n > 0) writeAllFd(out_fd, wire[0..n]) catch {};
+            if (n > 0) {
+                mo_tls_sent(conn, n);
+                writeAllFd(out_fd, wire[0..n]) catch {};
+            }
             return;
         }
     }
@@ -1555,6 +1566,7 @@ test "a wrong Finished is decrypt_error, and a bad tag is bad_record_mac" {
             while (true) {
                 try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
                 if (n == 0) break;
+                mo_tls_sent(conn, n);
                 try writeAllFd(pair.to_client[1], wire[0..n]);
             }
             const got = readSomeFd(pair.to_server[0], &wire) catch break;
@@ -1601,6 +1613,7 @@ test "a Finished whose verify data is wrong is decrypt_error" {
     while (true) {
         try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
         if (n == 0) break;
+        mo_tls_sent(conn, n);
         try writeAllFd(pair.to_client[1], wire[0..n]);
     }
     // A Finished of 32 zero bytes, sealed under the client's own handshake key.
@@ -2016,6 +2029,7 @@ fn sessionWithTestClient(cert: []const u8, key: []const u8, suite: Suite, size: 
         while (true) {
             try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
             if (n == 0) break;
+            mo_tls_sent(conn, n);
             try client.feed(wire[0..n]);
         }
         if (client.state == .running and !written) {
@@ -2040,6 +2054,7 @@ fn sessionWithTestClient(cert: []const u8, key: []const u8, suite: Suite, size: 
     mo_tls_close(conn);
     try testing.expect(mo_tls_pending(conn) > 0);
     try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
+    mo_tls_sent(conn, n);
     try client.feed(wire[0..n]);
     const bye = [2]u8{ @intFromEnum(tls.Alert.Level.warning), @intFromEnum(tls.Alert.Description.close_notify) };
     try client.sealRecord(.alert, &bye);

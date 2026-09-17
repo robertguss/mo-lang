@@ -35,6 +35,7 @@ const net_mod = @import("net.zig");
 const http_mod = @import("http.zig");
 const surface_mod = @import("surface.zig");
 const sources = @import("sources.zig");
+const tls_rows = @import("tls_rows.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const region_stats = @import("region.zig");
@@ -1362,6 +1363,9 @@ pub const Vm = struct {
         /// An Http, HttpListener, or Exchange row (http.zig).
         http_row,
         http_fixture,
+        /// A Tls or TlsServer row (tls_rows.zig, step 36).
+        tls_row,
+        tls_fixture,
         /// A Runtime row (surface.zig, step 23).
         runtime_row,
         runtime_fixture,
@@ -1395,6 +1399,8 @@ pub const Vm = struct {
         .{ "Http.listen", .http_row },              .{ "Http.send", .http_row },                  .{ "HttpListener.accept", .http_row },
         .{ "HttpListener.port", .http_row },        .{ "Exchange.request", .http_row },           .{ "Exchange.reply", .http_row },
         .{ "Http.fixture", .http_fixture },         .{ "Platform.http", .platform_part },
+        .{ "Platform.tls", .platform_part },        .{ "Tls.server", .tls_row },                  .{ "TlsServer.accept", .tls_row },
+        .{ "Tls.fixture", .tls_fixture },
         .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
@@ -1435,7 +1441,7 @@ pub const Vm = struct {
         var table: [prelude.fns.len]bool = undefined;
         for (0..prelude.fns.len) |i| {
             table[i] = switch (prim_of[i]) {
-                .clock_now, .fs_read, .fs_narrow, .events_emit, .platform_part, .platform_exit, .env_get, .out_write, .net_row, .http_row, .runtime_row => true,
+                .clock_now, .fs_read, .fs_narrow, .events_emit, .platform_part, .platform_exit, .env_get, .out_write, .net_row, .http_row, .tls_row, .runtime_row => true,
                 .stdlib => std.mem.startsWith(u8, @tagName(stdlib.row_of[i]), "fs_") or std.mem.startsWith(u8, @tagName(stdlib.row_of[i]), "out_"),
                 else => false,
             };
@@ -1602,6 +1608,8 @@ pub const Vm = struct {
             .net_fixture => .{ .cap = .{ .kind = .net } },
             .http_row => try vm.httpRow(std.meta.stringToEnum(http_mod.Row, row.name).?, a),
             .http_fixture => .{ .cap = .{ .kind = .http } },
+            .tls_row => try tls_rows.call(vm, row, std.meta.stringToEnum(tls_rows.Row, row.name).?, a),
+            .tls_fixture => .{ .cap = .{ .kind = .tls } },
             .runtime_row => try surface_mod.call(vm, std.meta.stringToEnum(surface_mod.Row, row.name).?, a),
             .runtime_fixture => .{ .cap = .{ .kind = .runtime } },
             .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
@@ -1916,6 +1924,8 @@ pub const Vm = struct {
                 .http_listener => "an HttpListener",
                 .exchange => "an Exchange",
                 .random => if (c.handle == 0) "a Random" else "Random.fixture()",
+                .tls => "a Tls",
+                .tls_server => "a TlsServer",
                 .runtime => if (vm.server == null) "Runtime.fixture()" else if (c.handle == surface_mod.read_only_handle) "a read-only Runtime" else "a Runtime",
             }),
             .handle => |h| if (vm.sim) |s| {

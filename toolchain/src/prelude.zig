@@ -99,6 +99,11 @@ pub const types = [_]Type{
     .{ .name = "Ed25519", .kind = .rows, .origin = .stdlib, .hideable = true },
     .{ .name = "Password", .kind = .rows, .origin = .stdlib, .hideable = true },
     .{ .name = "Random", .kind = .capability, .origin = .stdlib, .hideable = true },
+    // The TLS brick's one capability and the server a program starts its workers with (step 36).
+    // What `accept` gives back is a `Conn`, so every row after the handshake is unchanged.
+    .{ .name = "Tls", .kind = .capability, .origin = .stdlib, .hideable = true },
+    .{ .name = "TlsServer", .kind = .capability, .origin = .stdlib, .hideable = true },
+    .{ .name = "TlsError", .kind = .error_enum, .origin = .stdlib, .hideable = true },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -235,6 +240,10 @@ pub const variants = [_]Variant{
     .{ .owner = "HttpError", .name = "Malformed", .origin = .stdlib },
     .{ .owner = "HttpError", .name = "TooLarge", .origin = .stdlib },
     .{ .owner = "HttpError", .name = "Unsupported", .origin = .stdlib },
+    .{ .owner = "TlsError", .name = "BadPem", .origin = .stdlib },
+    .{ .owner = "TlsError", .name = "Handshake", .origin = .stdlib },
+    .{ .owner = "TlsError", .name = "Timeout", .origin = .stdlib },
+    .{ .owner = "TlsError", .name = "Closed", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "NoProcess", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "Unparsed", .fields = &.{.{ .name = "why", .type = "String" }}, .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "ReadOnly", .origin = .stdlib },
@@ -434,6 +443,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "http", .ret = "Http", .origin = .stdlib },
     .{ .recv = "Platform", .name = "runtime", .ret = "Option(Runtime)", .origin = .stdlib },
     .{ .recv = "Platform", .name = "random", .ret = "Random", .origin = .stdlib },
+    .{ .recv = "Platform", .name = "tls", .ret = "Tls", .origin = .stdlib },
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
@@ -509,6 +519,11 @@ pub const fns = [_]Fn{
     // Random (step 35): the OS CSPRNG under main, and in a test a stream from the run's seed.
     .{ .recv = "Random", .name = "bytes", .params = &.{"UInt64"}, .ret = "List(UInt8)", .origin = .stdlib },
     .{ .recv = "Random", .on_type = true, .name = "fixture", .ret = "Random", .only = .tests, .origin = .stdlib },
+    // TLS (step 36): the brick's server, and the handshake that turns a Conn's bytes into
+    // records. `accept` waits for the client, so it takes within:.
+    .{ .recv = "Tls", .name = "server", .named = &.{ .{ .name = "cert", .type = "String" }, .{ .name = "key", .type = "String" } }, .ret = "Result(TlsServer, TlsError)", .origin = .stdlib },
+    .{ .recv = "TlsServer", .name = "accept", .params = &.{"Conn"}, .ret = "Result(Conn, TlsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Tls", .on_type = true, .name = "fixture", .ret = "Tls", .only = .tests, .origin = .stdlib },
     .{ .recv = "Deadline", .name = "at_most", .params = &.{"Duration"}, .ret = "Deadline", .origin = .stdlib },
     // What remains of the deadline, zero once it has passed (step 24).
     .{ .recv = "Deadline", .name = "remaining", .ret = "Duration", .origin = .stdlib },

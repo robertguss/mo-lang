@@ -15,6 +15,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Io = std.Io;
 const posix = std.posix;
+const brick = @import("bricks/tls.zig");
 const poller = @import("poller.zig");
 const sim_mod = @import("sim.zig");
 const vm_mod = @import("vm.zig");
@@ -42,6 +43,14 @@ pub const Outcome = union(enum) { ok: u32, failed: Failure };
 
 /// What one read into a connection's buffer came to (`Net.fill`).
 pub const Filled = enum { got, eof, timeout, closed, busy, full };
+
+/// What one read of ciphertext into the TLS engine came to (step 36). `broken`: a record the
+/// engine refused, whose alert is written before the connection closes.
+const Fed = enum { got, eof, timeout, closed, broken };
+
+/// What `TlsServer.accept` came to: the handshake finished, or the `TlsError` it gives back
+/// (every one but `BadPem`, which only `Tls.server` can give).
+pub const Handshook = enum { done, Handshake, Timeout, Closed };
 
 fn connResult(vm: *Vm, o: Outcome) Error!Value {
     return switch (o) {
@@ -127,6 +136,14 @@ pub const Conn = struct {
     /// The listener that accepted it, or no_listener: a wait on that listener can hear from
     /// a process holding it only after that process acts (sim.zig, held sends).
     listener: u32 = no_listener,
+    /// The TLS engine behind it (step 36, bricks/tls.zig), or null for a plain socket. With
+    /// one, `fill` reads ciphertext off the socket and gives the plaintext the records held,
+    /// and `writeAll` puts the engine's ciphertext on the socket; `buf`, `read_line`, `write`,
+    /// `lines`, and the NetErrors are the same either way.
+    tls: ?*brick.Conn = null,
+    /// The row that first read or wrote on it: `TlsServer.accept` takes only a connection
+    /// nothing has used, and names this row in its crash when one has.
+    used: []const u8 = "",
 
     pub fn scan(c: *Conn) Scan {
         const taken, const what = scanLine(c.buf[c.start..c.end], c.eof, &c.skipping);
@@ -257,6 +274,10 @@ pub const Net = struct {
     conns: std.ArrayList(*Conn) = .empty,
     /// Each Exchange's connection and request (http.zig); its handle is its index.
     exchanges: std.ArrayList(Exchange) = .empty,
+    /// The TLS servers `Tls.server` made (step 36): a `TlsServer`'s handle is its index. They
+    /// live here, beside the listeners, because every process's vm reaches the same sockets;
+    /// the brick owns each one's chain and key, and `closeAll` gives them back.
+    tls_servers: std.ArrayList(*brick.Server) = .empty,
 
     fn now(n: *const Net) i64 {
         return Io.Clock.Timestamp.now(n.io, .awake).raw.toMilliseconds();
@@ -393,6 +414,7 @@ pub const Net = struct {
 
     /// `conn.read_line`: the next line, `None` at the end of the stream, or why not.
     fn readLine(n: *Net, vm: *Vm, c: *Conn, ms: i64) Error!Value {
+        if (c.used.len == 0) c.used = "Conn.read_line";
         if (c.closed) return fail(vm, .Closed);
         if (c.reading or c.lining) return fail(vm, .Busy);
         const t0 = n.now();
@@ -417,6 +439,7 @@ pub const Net = struct {
     /// that broke closes the connection.
     pub fn fill(n: *Net, vm: *Vm, c: *Conn, ms: i64, initial: usize, cap: usize) Error!Filled {
         if (!try c.roomToRead(initial, cap)) return .full;
+        if (c.tls) |t| return n.fillTls(vm, c, t, ms, initial, cap);
         const deadline = n.now() + @max(ms, 0);
         c.reading = true;
         const got: Io1 = while (true) {
@@ -460,8 +483,10 @@ pub const Net = struct {
 
     /// All of `text` on `c`, as `write` writes it: null, or why not.
     pub fn writeAll(n: *Net, vm: *Vm, c: *Conn, text: []const u8, ms: i64) Error!?Failure {
+        if (c.used.len == 0) c.used = "Conn.write";
         if (c.closed) return .Closed;
         if (c.writing) return .Busy;
+        if (c.tls) |t| return n.writeAllTls(vm, c, t, text, ms);
         c.writing = true;
         const deadline = n.now() + @max(ms, 0);
         var done: usize = 0;
@@ -499,9 +524,242 @@ pub const Net = struct {
         return null;
     }
 
+    // ---- TLS (step 36): the same rows, with the brick's engine between the socket and `buf`
+
+    /// The ciphertext a socket read or a flush moves at once: one record and its header.
+    const wire_size = brick.max_ciphertext + 5;
+
+    /// Everything the engine owes the socket, written before anything is read. Null when it
+    /// all went; a Failure when the deadline passed or the stream broke.
+    fn flushTls(n: *Net, vm: *Vm, c: *Conn, t: *brick.Conn, deadline: i64) Error!?Failure {
+        var wire: [wire_size]u8 = undefined;
+        while (true) {
+            var got: usize = 0;
+            if (brick.mo_tls_flush(t, &wire, wire.len, &got) != brick.ok) return .Closed;
+            if (got == 0) return null;
+            var done: usize = 0;
+            c.writing = true;
+            defer brick.mo_tls_sent(t, done);
+            while (done < got) {
+                switch (writeOne(c.fd(), wire[done..got])) {
+                    .done => |k| done += k,
+                    .broke => {
+                        c.writing = false;
+                        return .Closed;
+                    },
+                    .again => {
+                        const left = deadline - n.now();
+                        const in_time = left > 0 and (n.wait(vm, c.fd(), .write, left) catch |err| {
+                            c.writing = false;
+                            return err;
+                        });
+                        if (c.closed) {
+                            c.writing = false;
+                            return .Closed;
+                        }
+                        if (!in_time) {
+                            c.writing = false;
+                            return .Timeout;
+                        }
+                    },
+                }
+            }
+            c.writing = false;
+        }
+    }
+
+    /// One read of ciphertext off the socket into the engine. `got` and `eof` say what came;
+    /// `timeout` and `closed` are the Filled the caller gives back.
+    fn feedTls(n: *Net, vm: *Vm, c: *Conn, t: *brick.Conn, deadline: i64) Error!Fed {
+        var wire: [wire_size]u8 = undefined;
+        c.reading = true;
+        const got: Io1 = while (true) {
+            const r = readOne(c.fd(), &wire);
+            if (r != .again) break r;
+            const left = deadline - n.now();
+            if (left <= 0) break .again;
+            const in_time = n.wait(vm, c.fd(), .read, left) catch |err| {
+                c.reading = false;
+                return err;
+            };
+            if (c.closed or !in_time) break .again;
+        };
+        c.reading = false;
+        if (c.closed) {
+            n.release(c);
+            return .closed;
+        }
+        switch (got) {
+            .again => return .timeout,
+            .broke => {
+                n.close(c);
+                return .closed;
+            },
+            .done => |k| {
+                // The peer's stream ended with no close_notify: a truncated session, which the
+                // program sees as the end of the stream, as a plain socket's end is.
+                if (k == 0) return .eof;
+                if (brick.mo_tls_feed(t, &wire, k) != brick.ok) return .broken;
+                return .got;
+            },
+        }
+    }
+
+    /// `fill` behind TLS: the plaintext the records held, read into `buf` as a plain read
+    /// fills it. A record that does not check out ends the connection, after its alert has
+    /// been written.
+    fn fillTls(n: *Net, vm: *Vm, c: *Conn, t: *brick.Conn, ms: i64, initial: usize, cap: usize) Error!Filled {
+        const deadline = n.now() + @max(ms, 0);
+        while (true) {
+            var got: usize = 0;
+            const rc = brick.mo_tls_read(t, c.buf[c.end..].ptr, c.buf.len - c.end, &got);
+            if (rc == brick.ok and got > 0) {
+                c.end += got;
+                return .got;
+            }
+            switch (rc) {
+                brick.closed => {
+                    c.eof = true;
+                    return .eof;
+                },
+                brick.failed => {
+                    _ = try n.flushTls(vm, c, t, deadline);
+                    n.close(c);
+                    return .closed;
+                },
+                else => {},
+            }
+            if (try n.flushTls(vm, c, t, deadline)) |f| {
+                if (f == .Timeout) return .timeout;
+                n.close(c);
+                return .closed;
+            }
+            switch (try n.feedTls(vm, c, t, deadline)) {
+                .got => {},
+                .eof => {
+                    c.eof = true;
+                    return .eof;
+                },
+                .timeout => return .timeout,
+                .closed => return .closed,
+                // The engine answered with an alert: it goes out, then the connection closes.
+                .broken => {
+                    _ = try n.flushTls(vm, c, t, deadline);
+                    n.close(c);
+                    return .closed;
+                },
+            }
+            if (!try c.roomToRead(initial, cap)) return .full;
+        }
+    }
+
+    /// `writeAll` behind TLS: the text as records, then the ciphertext on the socket.
+    fn writeAllTls(n: *Net, vm: *Vm, c: *Conn, t: *brick.Conn, text: []const u8, ms: i64) Error!?Failure {
+        const deadline = n.now() + @max(ms, 0);
+        if (brick.mo_tls_write(t, text.ptr, text.len) != brick.ok) {
+            n.close(c);
+            return .Closed;
+        }
+        if (try n.flushTls(vm, c, t, deadline)) |f| {
+            n.close(c);
+            return f;
+        }
+        return null;
+    }
+
+    /// One nonblocking read into `c.buf`, through the TLS engine when there is one: what the
+    /// runtime's loops use (sources.zig), since they do their own waiting in the poller. The
+    /// engine's own bytes (a KeyUpdate answered, an alert) go out first, as far as the socket
+    /// takes them now, and never while a `write` is in the middle of its own flush.
+    pub fn readInto(n: *Net, c: *Conn) Io1 {
+        const t = c.tls orelse return readOne(c.fd(), c.buf[c.end..]);
+        var wire: [wire_size]u8 = undefined;
+        while (true) {
+            n.drainNow(c, t, &wire);
+            var got: usize = 0;
+            const rc = brick.mo_tls_read(t, c.buf[c.end..].ptr, c.buf.len - c.end, &got);
+            if (rc == brick.ok and got > 0) return .{ .done = got };
+            // close_notify from the client is the end of the stream, as a plain socket's is.
+            if (rc == brick.closed) return .{ .done = 0 };
+            if (rc == brick.failed) return .broke;
+            switch (readOne(c.fd(), &wire)) {
+                .done => |k| {
+                    if (k == 0) return .{ .done = 0 };
+                    if (brick.mo_tls_feed(t, &wire, k) != brick.ok) {
+                        n.drainNow(c, t, &wire);
+                        return .broke;
+                    }
+                },
+                .again => return .again,
+                .broke => return .broke,
+            }
+        }
+    }
+
+    /// What the engine owes the socket, as far as a nonblocking write takes it now.
+    fn drainNow(n: *Net, c: *Conn, t: *brick.Conn, wire: []u8) void {
+        _ = n;
+        if (c.writing) return;
+        while (true) {
+            var got: usize = 0;
+            if (brick.mo_tls_flush(t, wire.ptr, wire.len, &got) != brick.ok or got == 0) return;
+            switch (writeOne(c.fd(), wire[0..got])) {
+                .done => |k| {
+                    brick.mo_tls_sent(t, k);
+                    if (k < got) return;
+                },
+                else => return,
+            }
+        }
+    }
+
+    /// `tls_server.accept(conn, within:)`: the server's half of the handshake on `c`'s socket.
+    /// The connection it gives back is the same one; from here its bytes are records.
+    pub fn handshake(n: *Net, vm: *Vm, c: *Conn, server: *brick.Server, ms: i64) Error!Handshook {
+        const deadline = n.now() + @max(ms, 0);
+        if (c.closed) return .Closed;
+        const t = brick.mo_tls_conn_new(server) orelse return error.OutOfMemory;
+        errdefer brick.mo_tls_conn_free(t);
+        const failed: Handshook = fail: while (true) {
+            if (try n.flushTls(vm, c, t, deadline)) |f| break :fail if (f == .Timeout) .Timeout else .Closed;
+            if (brick.mo_tls_ready(t)) {
+                c.tls = t;
+                return .done;
+            }
+            switch (try n.feedTls(vm, c, t, deadline)) {
+                .got => {},
+                // A hello that stops mid-record, or a client that never finishes.
+                .eof => break :fail .Closed,
+                .timeout => break :fail .Timeout,
+                .closed => break :fail .Closed,
+                // The engine answered with an alert; it reaches the client before the socket goes.
+                .broken => {
+                    _ = try n.flushTls(vm, c, t, deadline);
+                    break :fail .Handshake;
+                },
+            }
+        };
+        brick.mo_tls_conn_free(t);
+        n.close(c);
+        return failed;
+    }
+
     /// `conn.close`: a call waiting on the connection ends, and every later call is Closed.
     pub fn close(n: *Net, c: *Conn) void {
         if (!c.closed) {
+            // A TLS connection says goodbye before the socket goes: close_notify is written if
+            // it fits in the socket's buffer, and never waited for, since `close` cannot wait.
+            if (c.tls) |t| {
+                brick.mo_tls_close(t);
+                var wire: [4096]u8 = undefined;
+                var got: usize = 0;
+                while (brick.mo_tls_flush(t, &wire, wire.len, &got) == brick.ok and got > 0) {
+                    switch (writeOne(c.fd(), wire[0..got])) {
+                        .done => |k| brick.mo_tls_sent(t, k),
+                        else => break,
+                    }
+                }
+            }
             c.closed = true;
             c.stream.shutdown(n.io, .both) catch {};
         }
@@ -513,6 +771,10 @@ pub const Net = struct {
         if (c.released or c.reading or c.writing) return;
         c.released = true;
         c.stream.close(n.io);
+        if (c.tls) |t| {
+            brick.mo_tls_conn_free(t);
+            c.tls = null;
+        }
         if (c.buf.len > 0) std.heap.smp_allocator.free(c.buf);
         c.buf = &.{};
         c.start = 0;
@@ -530,6 +792,8 @@ pub const Net = struct {
 
     /// The run is over: every connection and listener closes.
     pub fn closeAll(n: *Net) void {
+        for (n.tls_servers.items) |s| brick.mo_tls_server_free(s);
+        n.tls_servers.clearRetainingCapacity();
         for (n.exchanges.items) |*e| e.forget(n.gpa);
         for (n.conns.items) |c| n.close(c);
         for (n.listeners.items) |l| l.server.socket.close(n.io);
@@ -585,6 +849,8 @@ pub const Fixture = struct {
     listeners: std.ArrayList(FixtureListener) = .empty,
     conns: std.ArrayList(FixtureConn) = .empty,
     exchanges: std.ArrayList(Exchange) = .empty,
+    /// The TLS servers `Tls.server` made in this test (step 36).
+    tls_servers: std.ArrayList(*brick.Server) = .empty,
     /// The port `listen(0)` tries next.
     next_port: u16 = 49_152,
 
@@ -603,7 +869,69 @@ pub const Fixture = struct {
         listener: u32 = no_listener,
         /// `lines` gave its reading to the runtime (sources.zig): a read_line on it is Busy.
         lining: bool = false,
+        /// The TLS engine behind it (step 36), or null. With one, `inbound` holds the peer's
+        /// ciphertext and `clear` the plaintext the records gave up, which is what a line is
+        /// cut from; a write is sealed into the peer's `inbound`.
+        tls: ?*brick.Conn = null,
+        clear: std.ArrayList(u8) = .empty,
+        clear_start: usize = 0,
+        /// The row that first read or wrote on it (`TlsServer.accept` takes neither).
+        used: []const u8 = "",
     };
+
+    /// The plaintext a fixture connection has, after every record its peer wrote is read.
+    /// Nothing waits here: a simulated call cannot wait for bytes that have not been written.
+    fn pumpTls(f: *Fixture, gpa: std.mem.Allocator, h: u32) Error!bool {
+        const c = &f.conns.items[h];
+        const t = c.tls orelse return true;
+        const fed = c.inbound.items[c.start..];
+        if (fed.len > 0) {
+            const answer = brick.mo_tls_feed(t, fed.ptr, fed.len);
+            c.inbound.clearRetainingCapacity();
+            c.start = 0;
+            if (answer != brick.ok and answer != brick.failed) return error.OutOfMemory;
+        }
+        var wire: [brick.max_ciphertext + 5]u8 = undefined;
+        while (true) {
+            var got: usize = 0;
+            if (brick.mo_tls_flush(t, &wire, wire.len, &got) != brick.ok or got == 0) break;
+            brick.mo_tls_sent(t, got);
+            const peer = &f.conns.items[c.peer];
+            if (!peer.closed) try peer.inbound.appendSlice(gpa, wire[0..got]);
+        }
+        while (true) {
+            var got: usize = 0;
+            const room = try c.clear.addManyAsSlice(gpa, brick.max_ciphertext);
+            const rc = brick.mo_tls_read(t, room.ptr, room.len, &got);
+            c.clear.items.len -= room.len - got;
+            if (rc == brick.failed) return false;
+            if (got == 0) break;
+        }
+        return true;
+    }
+
+    /// `tls_server.accept` on the in-memory network: the handshake over the bytes the peer has
+    /// already written. Nothing happens while a simulated call waits, so a client that has sent
+    /// nothing is `Timeout` and one that sent something that is not a hello is `Handshake`.
+    pub fn handshake(f: *Fixture, sim: *sim_mod.Sim, h: u32, server: *brick.Server, ms: i64) Error!Handshook {
+        const c = &f.conns.items[h];
+        if (c.closed) return .Closed;
+        const t = brick.mo_tls_conn_new(server) orelse return error.OutOfMemory;
+        c.tls = t;
+        const whole = try f.pumpTls(sim.gpa, h);
+        if (!whole) {
+            f.conns.items[h].tls = null;
+            brick.mo_tls_conn_free(t);
+            f.conns.items[h].closed = true;
+            return .Handshake;
+        }
+        if (brick.mo_tls_ready(t)) return .done;
+        f.conns.items[h].tls = null;
+        brick.mo_tls_conn_free(t);
+        f.conns.items[h].closed = true;
+        sim.wait(ms);
+        return .Timeout;
+    }
 
     pub fn call(f: *Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: []const Value) Error!Value {
         const gpa = sim.gpa;
@@ -647,12 +975,31 @@ pub const Fixture = struct {
             .read_line => {
                 const h = a[0].cap.handle;
                 const within = a[1].duration;
+                if (f.conns.items[h].used.len == 0) f.conns.items[h].used = "Conn.read_line";
                 if (f.conns.items[h].closed) return fail(vm, .Closed);
                 if (f.conns.items[h].lining) return fail(vm, .Busy);
                 if (sim.fault(.closed, within)) |fault| {
                     if (fault == .timeout) return fail(vm, .Timeout);
                     f.conns.items[h].closed = true;
                     return fail(vm, .Closed);
+                }
+                if (f.conns.items[h].tls != null) {
+                    if (!try f.pumpTls(gpa, h)) {
+                        f.conns.items[h].closed = true;
+                        return fail(vm, .Closed);
+                    }
+                    const c = &f.conns.items[h];
+                    const taken, const what = scanLine(c.clear.items[c.clear_start..], f.conns.items[c.peer].closed, &c.skipping);
+                    c.clear_start += taken;
+                    const got = try lineResult(vm, what) orelse {
+                        sim.wait(within);
+                        return fail(vm, .Timeout);
+                    };
+                    if (c.clear_start == c.clear.items.len) {
+                        c.clear.clearRetainingCapacity();
+                        c.clear_start = 0;
+                    }
+                    return got;
                 }
                 const c = &f.conns.items[h];
                 const taken, const what = scanLine(c.inbound.items[c.start..], f.conns.items[c.peer].closed, &c.skipping);
@@ -670,6 +1017,7 @@ pub const Fixture = struct {
             .write => {
                 const h = a[0].cap.handle;
                 const peer = f.conns.items[h].peer;
+                if (f.conns.items[h].used.len == 0) f.conns.items[h].used = "Conn.write";
                 if (f.conns.items[h].closed) return fail(vm, .Closed);
                 if (f.conns.items[peer].closed) {
                     f.conns.items[h].closed = true;
@@ -680,11 +1028,27 @@ pub const Fixture = struct {
                     f.conns.items[h].closed = true;
                     return fail(vm, if (fault == .timeout) .Timeout else .Closed);
                 }
+                if (f.conns.items[h].tls) |t| {
+                    const text = a[1].string;
+                    if (brick.mo_tls_write(t, text.ptr, text.len) != brick.ok) {
+                        f.conns.items[h].closed = true;
+                        return fail(vm, .Closed);
+                    }
+                    _ = try f.pumpTls(gpa, h);
+                    return vm.variant("Ok", &.{.none});
+                }
                 try f.conns.items[peer].inbound.appendSlice(gpa, a[1].string);
                 return vm.variant("Ok", &.{.none});
             },
             .close => {
-                f.conns.items[a[0].cap.handle].closed = true;
+                const h = a[0].cap.handle;
+                if (f.conns.items[h].tls) |t| {
+                    brick.mo_tls_close(t);
+                    _ = try f.pumpTls(gpa, h);
+                    brick.mo_tls_conn_free(t);
+                    f.conns.items[h].tls = null;
+                }
+                f.conns.items[h].closed = true;
                 return .none;
             },
             .serve, .lines => unreachable,
@@ -694,6 +1058,16 @@ pub const Fixture = struct {
     pub fn portTaken(f: *const Fixture, port: u16) bool {
         for (f.listeners.items) |l| if (l.port == port) return true;
         return false;
+    }
+
+    /// The test is over: every server it made goes back.
+    pub fn closeAll(f: *Fixture) void {
+        for (f.conns.items) |*c| if (c.tls) |t| {
+            brick.mo_tls_conn_free(t);
+            c.tls = null;
+        };
+        for (f.tls_servers.items) |s| brick.mo_tls_server_free(s);
+        f.tls_servers.clearRetainingCapacity();
     }
 
     /// A process holding these arguments stopped: every Conn and Exchange among them closes.

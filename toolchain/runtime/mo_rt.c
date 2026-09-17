@@ -8158,7 +8158,18 @@ typedef struct {
     uint32_t listener;
     /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
     bool lining;
+    /* The TLS engine behind it (step 36, src/bricks/tls.zig), or NULL for a plain socket. With
+     * one, net_fill gives the plaintext the records held and net_write_all seals what it writes;
+     * buf, read_line, write, lines, and the NetErrors are the same either way. */
+    MoTlsConn *tls;
+    /* The row that first read or wrote on it: TlsServer.accept takes only a connection nothing
+     * has used, and names this row in its crash when one has. */
+    const char *used;
 } Conn;
+
+/* The TLS servers Tls.server made: a TlsServer's handle is its index here. */
+static MoTlsServer **tls_servers;
+static size_t ntls_servers, captls_servers;
 
 static Listener **listeners;
 static size_t nlisteners, caplisteners;
@@ -8383,6 +8394,10 @@ static void net_release(Conn *c) {
     if (c->released || c->reading || c->writing) return;
     c->released = true;
     close(c->fd);
+    if (c->tls) {
+        mo_tls_conn_free(c->tls);
+        c->tls = NULL;
+    }
     free(c->buf);
     c->buf = NULL;
     c->start = c->end = c->cap = 0;
@@ -8391,6 +8406,19 @@ static void net_release(Conn *c) {
 /* `conn.close`: a call waiting on the connection ends, and every later call is Closed. */
 static void net_close(Conn *c) {
     if (!c->closed) {
+        /* A TLS connection says goodbye before the socket goes: close_notify is written if it
+         * fits in the socket's buffer, and never waited for, since close cannot wait. */
+        if (c->tls) {
+            uint8_t wire[4096];
+            size_t got = 0;
+            mo_tls_close(c->tls);
+            while (mo_tls_flush(c->tls, wire, sizeof wire, &got) == MO_TLS_OK && got > 0) {
+                ssize_t w = write(c->fd, wire, got);
+                if (w <= 0) break;
+                mo_tls_sent(c->tls, (size_t)w);
+                if ((size_t)w < got) break;
+            }
+        }
         c->closed = true;
         shutdown(c->fd, SHUT_RDWR);
     }
@@ -8515,6 +8543,132 @@ enum { FILL_GOT, FILL_EOF, FILL_TIMEOUT, FILL_CLOSED, FILL_FULL };
  * bytes at the first read and grows to at most `cap`; FILL_FULL when it holds `cap` bytes not
  * given out. A read past its deadline keeps what was buffered; a stream that broke closes the
  * connection. */
+/* The ciphertext one socket read or one flush moves: a record and its header. */
+#define TLS_WIRE (MO_TLS_MAX_CIPHERTEXT + 5)
+
+/* Everything the engine owes the socket, written before anything is read. -1 when it all went,
+ * else the NetError to give back. */
+static int tls_flush(Conn *c, int64_t deadline) {
+    uint8_t wire[TLS_WIRE];
+    for (;;) {
+        size_t got = 0;
+        if (mo_tls_flush(c->tls, wire, sizeof wire, &got) != MO_TLS_OK) return NET_CLOSED;
+        if (got == 0) return -1;
+        size_t done = 0;
+        c->writing = true;
+        int failed = -1;
+        while (done < got) {
+            ssize_t w = write(c->fd, wire + done, got - done);
+            if (w > 0) {
+                done += (size_t)w;
+                continue;
+            }
+            if (w < 0 && errno == EINTR) continue;
+            if (w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                int64_t left = deadline - now_ms();
+                if (left <= 0 || !net_wait(c->fd, POLLOUT, left)) {
+                    failed = NET_TIMEOUT;
+                    break;
+                }
+                if (c->closed) break;
+                continue;
+            }
+            failed = NET_CLOSED;
+            break;
+        }
+        mo_tls_sent(c->tls, done);
+        c->writing = false;
+        if (c->closed) return NET_CLOSED;
+        if (failed >= 0) return failed;
+    }
+}
+
+/* One read of ciphertext off the socket into the engine: FILL_GOT, FILL_EOF, FILL_TIMEOUT,
+ * FILL_CLOSED, or FILL_BROKEN when the engine refused a record. */
+enum { FILL_BROKEN = 100 };
+
+static int tls_feed(Conn *c, int64_t deadline) {
+    uint8_t wire[TLS_WIRE];
+    ssize_t got;
+    bool in_time = true;
+    c->reading = true;
+    for (;;) {
+        got = read(c->fd, wire, sizeof wire);
+        if (got >= 0) break;
+        if (errno == EINTR) continue;
+        if (errno != EAGAIN && errno != EWOULDBLOCK) break;
+        in_time = net_wait(c->fd, POLLIN, deadline - now_ms());
+        if (!in_time || c->closed) break;
+    }
+    c->reading = false;
+    if (c->closed) {
+        net_release(c);
+        return FILL_CLOSED;
+    }
+    if (!in_time) return FILL_TIMEOUT;
+    if (got < 0) {
+        net_close(c);
+        return FILL_CLOSED;
+    }
+    /* The peer's stream ended with no close_notify: a truncated session, which the program sees
+     * as the end of the stream, as a plain socket's end is. */
+    if (got == 0) return FILL_EOF;
+    if (mo_tls_feed(c->tls, wire, (size_t)got) != MO_TLS_OK) return FILL_BROKEN;
+    return FILL_GOT;
+}
+
+/* net_fill behind TLS: the plaintext the records held, read into buf as a plain read fills it. */
+static int tls_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
+    int64_t deadline = now_ms() + max0(ms);
+    for (;;) {
+        size_t got = 0;
+        int rc = mo_tls_read(c->tls, (uint8_t *)c->buf + c->end, c->cap - c->end, &got);
+        if (rc == MO_TLS_OK && got > 0) {
+            c->end += got;
+            return FILL_GOT;
+        }
+        if (rc == MO_TLS_CLOSED) {
+            c->eof = true;
+            return FILL_EOF;
+        }
+        if (rc == MO_TLS_FAILED) {
+            tls_flush(c, deadline);
+            net_close(c);
+            return FILL_CLOSED;
+        }
+        int sent = tls_flush(c, deadline);
+        if (sent == NET_TIMEOUT) return FILL_TIMEOUT;
+        if (sent >= 0) {
+            net_close(c);
+            return FILL_CLOSED;
+        }
+        int fed = tls_feed(c, deadline);
+        if (fed == FILL_EOF) {
+            c->eof = true;
+            return FILL_EOF;
+        }
+        if (fed == FILL_TIMEOUT) return FILL_TIMEOUT;
+        if (fed == FILL_CLOSED) return FILL_CLOSED;
+        if (fed == FILL_BROKEN) {
+            /* The engine answered with an alert: it goes out, then the connection closes. */
+            tls_flush(c, deadline);
+            net_close(c);
+            return FILL_CLOSED;
+        }
+        if (c->start > 0) {
+            memmove(c->buf, c->buf + c->start, c->end - c->start);
+            c->end -= c->start;
+            c->start = 0;
+        }
+        if (c->end == c->cap) {
+            if (c->cap >= cap) return FILL_FULL;
+            size_t size = c->cap == 0 ? initial : 2 * c->cap < cap ? 2 * c->cap : cap;
+            c->buf = xrealloc(c->buf, size);
+            c->cap = size;
+        }
+    }
+}
+
 static int net_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
     if (c->start > 0) {
         memmove(c->buf, c->buf + c->start, c->end - c->start);
@@ -8527,6 +8681,7 @@ static int net_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
         c->buf = xrealloc(c->buf, size);
         c->cap = size;
     }
+    if (c->tls) return tls_fill(c, ms, initial, cap);
     int64_t deadline = now_ms() + max0(ms);
     c->reading = true;
     ssize_t got;
@@ -8558,6 +8713,7 @@ static int net_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
 }
 
 static MoValue net_read_line(Conn *c, int64_t ms) {
+    if (!c->used) c->used = "Conn.read_line";
     if (c->closed) return net_fail(NET_CLOSED);
     if (c->reading || c->lining) return net_fail(NET_BUSY);
     int64_t t0 = now_ms();
@@ -8582,8 +8738,22 @@ static MoValue net_read_line(Conn *c, int64_t ms) {
 /* All of `text` on `c`: -1, or why not. A call past its deadline closes the connection, since part
  * of the text may have gone. */
 static int net_write_all(Conn *c, const char *text, size_t n, int64_t ms) {
+    if (!c->used) c->used = "Conn.write";
     if (c->closed) return NET_CLOSED;
     if (c->writing) return NET_BUSY;
+    if (c->tls) {
+        int64_t deadline = now_ms() + max0(ms);
+        if (mo_tls_write(c->tls, (const uint8_t *)text, n) != MO_TLS_OK) {
+            net_close(c);
+            return NET_CLOSED;
+        }
+        int failed = tls_flush(c, deadline);
+        if (failed >= 0) {
+            net_close(c);
+            return failed;
+        }
+        return -1;
+    }
     c->writing = true;
     int64_t deadline = now_ms() + max0(ms);
     size_t done = 0;
@@ -8642,6 +8812,13 @@ typedef struct {
     uint32_t listener;
     /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
     bool lining;
+    /* The TLS engine behind it (step 36), or NULL. With one, inbound holds the peer's ciphertext
+     * and clear the plaintext the records gave up, which is what a line is cut from. */
+    MoTlsConn *tls;
+    char *clear;
+    size_t clear_len, clear_cap, clear_start;
+    /* The row that first read or wrote on it (TlsServer.accept takes neither). */
+    const char *used;
 } FixConn;
 
 static FixListener *fix_listeners;
@@ -8704,21 +8881,6 @@ static MoValue fix_accept(uint32_t h, int64_t within) {
     return ok_of(mo_cap(MO_CAP_CONN, l->backlog[l->head - 1], 0));
 }
 
-static MoValue fix_read_line(uint32_t h, int64_t within) {
-    FixConn *c = &fix_conns[h];
-    if (c->closed) return net_fail(NET_CLOSED);
-    if (c->lining) return net_fail(NET_BUSY);
-    Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_conns[c->peer].closed, &c->skipping);
-    c->start += s.taken;
-    MoValue out;
-    if (!line_result(s, &out)) {
-        sim_waited += within;
-        return net_fail(NET_TIMEOUT);
-    }
-    if (c->start == c->len) c->start = c->len = 0;
-    return out;
-}
-
 /* What one end writes, waiting for connection `to` to read it. */
 static void fix_append(uint32_t to, const char *text, size_t n) {
     FixConn *c = &fix_conns[to];
@@ -8730,13 +8892,85 @@ static void fix_append(uint32_t to, const char *text, size_t n) {
     c->len += n;
 }
 
+/* The plaintext a fixture connection has, after every record its peer wrote is read. Nothing
+ * waits here: a simulated call cannot wait for bytes that have not been written. False when the
+ * engine refused what came (step 36). */
+static bool fix_pump_tls(uint32_t h) {
+    FixConn *c = &fix_conns[h];
+    uint8_t wire[TLS_WIRE];
+    if (!c->tls) return true;
+    if (c->len > c->start) {
+        int answer = mo_tls_feed(c->tls, (const uint8_t *)c->inbound + c->start, c->len - c->start);
+        c->start = c->len = 0;
+        (void)answer;
+    }
+    for (;;) {
+        size_t got = 0;
+        if (mo_tls_flush(c->tls, wire, sizeof wire, &got) != MO_TLS_OK || got == 0) break;
+        mo_tls_sent(c->tls, got);
+        if (!fix_conns[c->peer].closed) fix_append(c->peer, (const char *)wire, got);
+    }
+    for (;;) {
+        size_t got = 0;
+        if (c->clear_len + MO_TLS_MAX_CIPHERTEXT > c->clear_cap) {
+            c->clear_cap = c->clear_len + MO_TLS_MAX_CIPHERTEXT;
+            c->clear = xrealloc(c->clear, c->clear_cap);
+        }
+        int rc = mo_tls_read(c->tls, (uint8_t *)c->clear + c->clear_len, c->clear_cap - c->clear_len, &got);
+        if (rc == MO_TLS_FAILED) return false;
+        if (got == 0) break;
+        c->clear_len += got;
+    }
+    return true;
+}
+
+static MoValue fix_read_line(uint32_t h, int64_t within) {
+    FixConn *c = &fix_conns[h];
+    if (!c->used) c->used = "Conn.read_line";
+    if (c->closed) return net_fail(NET_CLOSED);
+    if (c->lining) return net_fail(NET_BUSY);
+    if (c->tls) {
+        if (!fix_pump_tls(h)) {
+            c->closed = true;
+            return net_fail(NET_CLOSED);
+        }
+        Scan t = scan_line(c->clear + c->clear_start, c->clear_len - c->clear_start, fix_conns[c->peer].closed, &c->skipping);
+        c->clear_start += t.taken;
+        MoValue held;
+        if (!line_result(t, &held)) {
+            sim_waited += within;
+            return net_fail(NET_TIMEOUT);
+        }
+        if (c->clear_start == c->clear_len) c->clear_start = c->clear_len = 0;
+        return held;
+    }
+    Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_conns[c->peer].closed, &c->skipping);
+    c->start += s.taken;
+    MoValue out;
+    if (!line_result(s, &out)) {
+        sim_waited += within;
+        return net_fail(NET_TIMEOUT);
+    }
+    if (c->start == c->len) c->start = c->len = 0;
+    return out;
+}
+
 static MoValue fix_write(uint32_t h, MoValue text) {
     FixConn *c = &fix_conns[h];
     FixConn *peer = &fix_conns[c->peer];
+    if (!c->used) c->used = "Conn.write";
     if (c->closed) return net_fail(NET_CLOSED);
     if (peer->closed) {
         c->closed = true;
         return net_fail(NET_CLOSED);
+    }
+    if (c->tls) {
+        if (mo_tls_write(c->tls, (const uint8_t *)text.as.s, text.aux) != MO_TLS_OK) {
+            c->closed = true;
+            return net_fail(NET_CLOSED);
+        }
+        fix_pump_tls(h);
+        return ok_none();
     }
     fix_append(c->peer, text.as.s, text.aux);
     return ok_none();
@@ -8789,12 +9023,110 @@ MO_ROW(mo_r_Conn_write) {
 MO_ROW(mo_r_Conn_close) {
     HOLD_RUNTIME();
     (void)kind;
-    if (server_mode) net_close(conns[mo_cap_handle(a[0])]);
-    else fix_conns[mo_cap_handle(a[0])].closed = true;
+    if (server_mode) {
+        net_close(conns[mo_cap_handle(a[0])]);
+    } else {
+        uint32_t h = mo_cap_handle(a[0]);
+        if (fix_conns[h].tls) {
+            mo_tls_close(fix_conns[h].tls);
+            fix_pump_tls(h);
+            mo_tls_conn_free(fix_conns[h].tls);
+            fix_conns[h].tls = NULL;
+        }
+        fix_conns[h].closed = true;
+    }
     return MO_NONE_V;
 }
 
 MO_ROW(mo_r_Net_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_NET, 0, 0); }
+
+/* ==== Tls: the TLS brick's server rows (step 36, design-v0/09 ## Tls). Tls.server parses a
+ * certificate chain and a key; TlsServer.accept runs the server's half of the handshake on a
+ * Conn and gives the same Conn back with the engine behind it, so read_line, write, close, and
+ * lines are the rows they always were. The brick is the one implementation, shared with the
+ * interpreter (src/bricks/tls.zig, src/tls_rows.zig); nothing of TLS is written here. */
+
+/* TlsError's variants, in the order tls_fail takes them. */
+enum { TLS_BAD_PEM, TLS_HANDSHAKE, TLS_TIMEOUT, TLS_CLOSED };
+
+static MoValue tls_fail(int f) {
+    static const uint32_t names[] = {MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_TIMEOUT, MO_N_CLOSED};
+    return error_of(mo_variant(names[f], 0, NULL));
+}
+
+MO_ROW(mo_r_Platform_tls) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "tls"); return mo_cap(MO_CAP_TLS, 0, 0); }
+
+MO_ROW(mo_r_Tls_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_TLS, 0, 0); }
+
+MO_ROW(mo_r_Tls_server) {
+    HOLD_RUNTIME();
+    (void)kind;
+    MoTlsServer *server = mo_tls_server_new(a[1].as.s, a[1].aux, a[2].as.s, a[2].aux);
+    if (!server) return tls_fail(TLS_BAD_PEM);
+    if (ntls_servers == captls_servers) {
+        captls_servers = captls_servers ? 2 * captls_servers : 4;
+        tls_servers = xrealloc(tls_servers, captls_servers * sizeof *tls_servers);
+    }
+    tls_servers[ntls_servers++] = server;
+    return ok_of(mo_cap(MO_CAP_TLS_SERVER, (uint32_t)(ntls_servers - 1), 0));
+}
+
+/* The server's half of the handshake on a real socket: TLS_* or -1 when it finished. */
+static int tls_handshake(Conn *c, MoTlsServer *server, int64_t ms) {
+    int64_t deadline = now_ms() + max0(ms);
+    if (c->closed) return TLS_CLOSED;
+    MoTlsConn *t = mo_tls_conn_new(server);
+    if (!t) mo_fail(MO_R_OTHER, "accept", "the TLS brick could not start a connection");
+    c->tls = t;
+    for (;;) {
+        int sent = tls_flush(c, deadline);
+        if (sent >= 0) {
+            c->tls = NULL;
+            mo_tls_conn_free(t);
+            net_close(c);
+            return sent == NET_TIMEOUT ? TLS_TIMEOUT : TLS_CLOSED;
+        }
+        if (mo_tls_ready(t)) return -1;
+        int fed = tls_feed(c, deadline);
+        if (fed == FILL_GOT) continue;
+        /* The engine answered with an alert; it reaches the client before the socket goes. */
+        if (fed == FILL_BROKEN) tls_flush(c, deadline);
+        c->tls = NULL;
+        mo_tls_conn_free(t);
+        net_close(c);
+        /* A hello that stops mid-record, or a client that never finishes, is Timeout. */
+        return fed == FILL_TIMEOUT ? TLS_TIMEOUT : fed == FILL_BROKEN ? TLS_HANDSHAKE : TLS_CLOSED;
+    }
+}
+
+/* The same handshake on the in-memory network: the bytes the peer has already written, and no
+ * waiting, so a client that has sent nothing is Timeout and one that sent something that is not
+ * a hello is Handshake. */
+static int fix_handshake(uint32_t h, MoTlsServer *server, int64_t ms) {
+    FixConn *c = &fix_conns[h];
+    if (c->closed) return TLS_CLOSED;
+    MoTlsConn *t = mo_tls_conn_new(server);
+    if (!t) mo_fail(MO_R_OTHER, "accept", "the TLS brick could not start a connection");
+    c->tls = t;
+    bool whole = fix_pump_tls(h);
+    if (whole && mo_tls_ready(t)) return -1;
+    fix_conns[h].tls = NULL;
+    mo_tls_conn_free(t);
+    fix_conns[h].closed = true;
+    if (whole) sim_waited += ms;
+    return whole ? TLS_TIMEOUT : TLS_HANDSHAKE;
+}
+
+MO_ROW(mo_r_TlsServer_accept) {
+    HOLD_RUNTIME();
+    (void)kind;
+    MoTlsServer *server = tls_servers[mo_cap_handle(a[0])];
+    uint32_t h = mo_cap_handle(a[1]);
+    const char *used = server_mode ? conns[h]->used : fix_conns[h].used;
+    if (used) mo_fail(MO_R_OTHER, "accept", "TlsServer.accept takes a connection nothing has read or written, and %s was called on this one", used);
+    int failed = server_mode ? tls_handshake(conns[h], server, a[2].as.i) : fix_handshake(h, server, a[2].as.i);
+    return failed < 0 ? ok_of(a[1]) : tls_fail(failed);
+}
 
 /* ==== Http: HTTP/1.1 over Net, real sockets under main and Net.fixture()'s network in a test (http.zig)
  * An HttpListener is a Listener, its handle the same index. One request per connection: accept reads
@@ -9943,6 +10275,55 @@ static void serve_server(Source *s, int64_t now) {
 
 /* Reads what has arrived on `c` without waiting: FILL_GOT, FILL_EOF, FILL_TIMEOUT when nothing
  * has, FILL_CLOSED when the stream broke, FILL_FULL when the buffer holds `cap` bytes. */
+/* What the engine owes the socket, as far as a nonblocking write takes it now: the runtime's
+ * loops do their own waiting in the poller, so they never block here, and never touch the
+ * engine's output while a write is in the middle of its own flush. */
+static void tls_drain_now(Conn *c) {
+    uint8_t wire[TLS_WIRE];
+    if (c->writing) return;
+    for (;;) {
+        size_t got = 0;
+        if (mo_tls_flush(c->tls, wire, sizeof wire, &got) != MO_TLS_OK || got == 0) return;
+        ssize_t w = write(c->fd, wire, got);
+        if (w <= 0) return;
+        mo_tls_sent(c->tls, (size_t)w);
+        if ((size_t)w < got) return;
+    }
+}
+
+/* One nonblocking read into buf, through the TLS engine when there is one (step 36). */
+static int source_read_tls(Conn *c) {
+    uint8_t wire[TLS_WIRE];
+    for (;;) {
+        tls_drain_now(c);
+        size_t got = 0;
+        int rc = mo_tls_read(c->tls, (uint8_t *)c->buf + c->end, c->cap - c->end, &got);
+        if (rc == MO_TLS_OK && got > 0) {
+            c->end += got;
+            return FILL_GOT;
+        }
+        /* close_notify from the client is the end of the stream, as a plain socket's is. */
+        if (rc == MO_TLS_CLOSED) {
+            c->eof = true;
+            return FILL_EOF;
+        }
+        if (rc == MO_TLS_FAILED) return FILL_CLOSED;
+        ssize_t n = read(c->fd, wire, sizeof wire);
+        if (n == 0) {
+            c->eof = true;
+            return FILL_EOF;
+        }
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            return errno == EAGAIN || errno == EWOULDBLOCK ? FILL_TIMEOUT : FILL_CLOSED;
+        }
+        if (mo_tls_feed(c->tls, wire, (size_t)n) != MO_TLS_OK) {
+            tls_drain_now(c);
+            return FILL_CLOSED;
+        }
+    }
+}
+
 static int source_read(Conn *c, size_t initial, size_t cap) {
     if (c->start > 0) {
         memmove(c->buf, c->buf + c->start, c->end - c->start);
@@ -9955,6 +10336,7 @@ static int source_read(Conn *c, size_t initial, size_t cap) {
         c->buf = xrealloc(c->buf, size);
         c->cap = size;
     }
+    if (c->tls) return source_read_tls(c);
     for (;;) {
         ssize_t got = read(c->fd, c->buf + c->end, c->cap - c->end);
         if (got > 0) {

@@ -215,6 +215,8 @@ pub const Server = struct {
             .{ .kind = .http }
         else if (std.mem.eql(u8, name, "random"))
             .{ .kind = .random }
+        else if (std.mem.eql(u8, name, "tls"))
+            .{ .kind = .tls }
         else
             .{ .kind = .clock };
         return .{ .cap = cap };

@@ -52,6 +52,9 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `Event` | | enum: one of the runtime's events | stdlib (09), Session 5, step 23 |
 | `Hash`, `AesGcm`, `ChaCha`, `X25519`, `Ed25519`, `Password` | | rows only: the crypto brick's, called on the name, with no values of their own, so none is a type a signature can name (MO0202) | stdlib (09), step 35 |
 | `Random` | | capability: bytes from the OS CSPRNG, `platform.random`; `Random.fixture()` in a test | stdlib (09), step 35 |
+| `Tls` | | capability: the TLS brick's server side, `platform.tls`; `Tls.fixture()` in a test | stdlib (09), step 36 |
+| `TlsServer` | | capability: a certificate chain and its key; no authority beyond them, so a program hands one to every worker | stdlib (09), step 36 |
+| `TlsError` | | error enum: `BadPem`, `Handshake`, `Timeout`, `Closed` | stdlib (09), step 36 |
 
 ## Stand-ins
 
@@ -108,6 +111,10 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `HttpError` | `Malformed` | | stdlib (09) |
 | `HttpError` | `TooLarge` | | stdlib (09) |
 | `HttpError` | `Unsupported` | | stdlib (09) |
+| `TlsError` | `BadPem` | | stdlib (09), step 36 |
+| `TlsError` | `Handshake` | | stdlib (09), step 36 |
+| `TlsError` | `Timeout` | | stdlib (09), step 36 |
+| `TlsError` | `Closed` | | stdlib (09), step 36 |
 | `RuntimeError` | `NoProcess` | | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `Unparsed` | `why: String` | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `ReadOnly` | | stdlib (09), Session 5, step 23 |
@@ -260,6 +267,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `http` | | `Http` | | `main` | stdlib (09) |
 | `Platform` | `runtime` | | `Option(Runtime)`: `Some` under `mo run` and in a binary built with `--surface` | | `main` | stdlib (09), Session 5, step 23 |
 | `Platform` | `random` | | `Random` | | `main` | stdlib (09), step 35 |
+| `Platform` | `tls` | | `Tls` | | `main` | stdlib (09), step 36 |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
@@ -277,6 +285,9 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Listener` | `serve` | `into: Handle(P)`, `idle: Duration` | none: the runtime accepts from here on and sends `P` `Accepted(conn: Conn)` per connection and `Idle` after `idle` with none, which `P` declares (MO0223) | | | stdlib (09), Session 5, step 20 |
 | `Conn` | `lines` | `into: Handle(P)`, `idle: Duration` | none: the runtime reads from here on and sends `P` `Line(text: String)`, `LineTooLong`, `Closed` at the end, and `Idle` after `idle` with no line, closing the connection; `P` declares all four (MO0223) | | | stdlib (09), Session 5, step 20 |
 | `Net` (on type) | `fixture` | | `Net` | | tests | stdlib (09) |
+| `Tls` | `server` | `cert: String`, `key: String` | `Result(TlsServer, TlsError)`: PEM text, chain leaf first and a PKCS#8 key (Ed25519 or P-256); `BadPem` when either does not parse or the key is not the leaf's | | | stdlib (09), step 36 |
+| `TlsServer` | `accept` | `Conn` | `Result(Conn, TlsError)`: the server's half of the TLS 1.3 handshake, giving the same connection back with its bytes now records; the connection must have had no `read_line`, `write`, or `lines` on it | yes | | stdlib (09), step 36 |
+| `Tls` (on type) | `fixture` | | `Tls`: the same rows on `Net.fixture()`'s network | | tests | stdlib (09), step 36 |
 | `Http` | `listen` | `UInt16` | `Result(HttpListener, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `accept` | | `Result(Exchange, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `port` | | `UInt16` | | | stdlib (09) |
