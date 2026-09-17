@@ -468,3 +468,6 @@
 ## [2026-09-17] update | Afternoon: the bricks page
 - `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, M-3 item 1 and the capabilities rule's prerequisite. The shelf boundary as three tests; the cost measured against Zig 0.16's `std` on the Mac (59,059 lines of `crypto` with a TLS 1.3 client and no server, 7,780 of `compress`, 3,262 of `http`) and estimated for what must be written (12,000 to 15,000 lines for the review's five bricks); five audit items and a surface cap per brick; bricks written once in Zig from now on; the vendored-C fallback, never application FFI; the ordering rule. Program 7 needs crypto and TLS; its metrics format is a recipe, the P4 target. Five rows, two for Robert. Index, the thesis map, the board, the state page, the handoff.
 
+
+## [2026-09-17] session | Afternoon on the VM: step 35 started
+- The lead resumed on the VM as the rewritten handoff asked. A fresh Opus worker (`mo-opus`, pane `w7:pJ`, medium effort) started on [[interpreter-step-35]] at 15:50 UTC with the brief's write scope; the Mac worker of 16:05 had ended before writing. Fable's verification (the differential run, the hour of fuzzing, its own probes under both runtimes) follows the worker's report.

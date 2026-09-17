@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Step 35, the crypto brick ([[interpreter-step-35]]): the brief is sealed; Robert asked (17 Sep, 16:10) that it run on the VM, so the Mac worker was ended before it wrote anything and the next lead session starts on the VM | Fable | 17 Sep, 16:10 | [[interpreter-step-35]] |
+| Step 35, the crypto brick: one Opus session on [[interpreter-step-35]] on the VM (pane `w7:pJ`; the Mac worker of 16:05 ended before writing, on Robert's ask); Fable verifies with the differential run, the hour of fuzzing, and its own probes | worker | 17 Sep, 15:50 UTC | [[interpreter-step-35]] |
 
 ## Next, in order
 
