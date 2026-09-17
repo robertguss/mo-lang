@@ -19,18 +19,19 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Nothing in flight (paused 16 Sep, 23:00; a wiki-only morning on 17 Sep). Next: change 6's spec, written with generation four's speed loss and generation five's count slip in view | Fable | 16 Sep, 23:00 | [[erosion-round]] |
+| Nothing in flight. 17 Sep, afternoon: the auditor role taken up and the three ratified stopping rules linked from the wiki; the order below rewritten under M-3. Next: the bricks page | Fable | 17 Sep | [audit/README.md](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | A probe naming the cause of generation four's nine-times loss in the Mo queue (quiet machine, `sample` under load), then change 6 and generation six | the round's speed column is new and the loss is unexplained; six generations to go | [[erosion-round]] |
-| 2 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
-| 3 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
-| 4 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
-| 5 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
-| 6 | Program 7: a Redis subset against Redis's own tests, on capabilities, recipes, and the runtime surface together | the program chapter 1 says answers the BEAM | [[program-menu]] |
+| 1 | The bricks page (Fable writes it): the shelf boundary, an audit budget per brick, the update cadence, the fallback | a hard prerequisite for program 7's first commit in the ratified capabilities rule (M-3) | `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, to be written |
+| 2 | A probe naming the cause of generation four's nine-times loss in the Mo queue (quiet machine, `sample` under load) | the runtime rule's speed row (RC2) is at its line on today's record; a red cost row decides the claim | [[erosion-round]] |
+| 3 | Program 7: a Redis subset against Redis's own tests, with TLS, hashed ACL passwords, and a metrics endpoint. Fable's sealed spec, then the auditor's pre-registration (Robert opens it: the hidden suite of 50 or more, the wait probe, the abuse suite, the drift seeds, the P4 change), then the Mo and Elixir builds | the pre-registered test of the primary claim (chapter 1, M-3) | [[program-menu]], [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
+| 4 | Change 6 and generation six (may run while program 7 waits on the auditor's seal, never ahead of its build) | the language rule is read at generation ten | [[erosion-round]] |
+| 5 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
+| 6 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
+| 7 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
 
 ## Later
 
@@ -38,12 +39,15 @@ The compaction copy per reference (half again on jobq's log) and the one-second 
 
 ## Waiting on Robert
 
-Rows marked "for Robert" in the [[decision-log]], newest first: research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle. None blocks the work: Fable decides and records, Robert overturns.
+**Blocking program 7:** once the bricks page and program 7's spec land, an audit session opened by Robert to seal program 7's pre-registration (only Robert opens audit sessions).
+
+Rows marked "for Robert" in the [[decision-log]], newest first: the auditor role taken up, M-3 accepted, the bricks prerequisite, and three disagreements with the ratified rules (program 7's shape against the capabilities rule, the R-A trigger at zero catches, Fable's reading of the runtime rule's open clauses) (17 Sep, afternoon); research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle. Apart from the audit session, none blocks the work: Fable decides and records, Robert overturns.
 
 ## Recently done
 
 | when | what | page |
 |---|---|---|
+| 17 Sep, afternoon | The auditor role taken up: three stopping rules ratified by Robert, linked from chapter 1, chapter 10, and the state page; M-3 accepted; Fable's disagreements filed as rows | [audit/README.md](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 | 17 Sep, morning | Research PR 2 (the Hermes lane, wiki only) read and merged: restart budgets, error-path coverage, crash consistency, capability confinement; chapter 10's 3-in-5 budget reattributed to Elixir `Supervisor`; `erosion2-*` and `erosion5-*` pushed at last | [[hermes-daily-2026-09-17]] |
 | 16 Sep, 22:55 | Generation five: change 5 by four maintainers in 11 to 25 minutes; the sixth suite Python 94, Elixir 94, Go 92, Mo 93 of 94; the first Mo-only defect, the laws silent; the speed row per generation | [[erosion-round]] |
 | 16 Sep, 21:20 | Step 34: placement with the starter, the crossing made cheap (100k asks across schedulers 4 s to 0.14), measured at 1, 4, and 14 cores; the change 4 Mo queue found nine times slower on the lease path | [[interpreter-step-34]] |
@@ -89,7 +93,7 @@ Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agre
 | **Step 32, crash reports apart from the ring, and the reopening store** ([[interpreter-step-32]]): `/crashes` kept where load cannot evict it, both runtimes; a corpus file showing a restarted process reopening its store | done 16 Sep, 10:20, accepted: the last 16 reports in their own store, `--crashes N` and `MO_CRASHES=N`, newest first; `crash-kept.mo` and `restart-reopens.mo`; the probe lists the crash with the default ring; rows within noise; carried: the full reports both runtimes keep for a whole run, unbounded | — |
 | The language items Robert agreed to (now sections of the page above): the counted shape laws as project settings; a named function passed by name where an anonymous function goes; the grammar forms that cost loops in every program (`return` in a `case` arm, a qualified call, a split lambda body) as diagnostics that say what to write; the `invariant` construct reconsidered after round 8 | superseded: these became chapter 10 §§2, 3, 5 and sit in the Next table as row 3 | — |
 | A compile benchmark at 5,000 generated modules (the agent-loop claim at scale) | queued, small | 1 |
-| Program 7, a real open-source service reimplemented against its own test suite (a Redis subset with streams, persistence, auth, pub/sub, its operation set pre-registered from Redis's own tests), once a program finishes with no new gap or bug note | after the erosion round (Next, row 6) | 2 |
+| Program 7, a real open-source service reimplemented against its own test suite (a Redis subset with streams, persistence, auth, pub/sub, its operation set pre-registered from Redis's own tests), once a program finishes with no new gap or bug note | Next, row 3 (M-3, 17 Sep): after the bricks page and the speed probe, before generation six's build | 2 |
 | Tier 3 proving, `mo prove` | queued | 2–3 |
 | The package registry | deferred until an outsider runs a real service | — |
 | Program 8, the toolchain in Mo | late | — |

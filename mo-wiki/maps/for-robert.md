@@ -21,6 +21,7 @@ The pages Robert reads, and the rows that wait on him. He reviews the decision l
 
 ## Rows waiting on him, as of 17 Sep 2026, newest first
 
+- The auditor role taken up (17 Sep, afternoon): M-3 accepted, the bricks page before program 7, and three disagreements with the ratified rules: program 7's shape against the capabilities rule, the R-A trigger at zero catches, the runtime rule's open clauses read in advance ([[decision-log]])
 - Research PR 2 read and merged; chapter 10's restart-budget attribution corrected ([[hermes-daily-2026-09-16]], [[hermes-daily-2026-09-17]])
 - Generation five's reading: the first Mo-only defect, the laws still silent ([[erosion-round]])
 - The change 4 Mo queue nine times slower on the lease path; speed recorded per generation ([[erosion-round]], [[interpreter-step-34]])

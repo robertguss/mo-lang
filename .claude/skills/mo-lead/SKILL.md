@@ -13,6 +13,10 @@ Mo is a programming language Robert Guss and Claude are designing and building i
 - **The worker (an Opus session in Herdr).** Does every line of code and prose in `toolchain/`, `examples/`, and the generated or table files a brief names. One fresh session per step. It never writes under `mo-wiki/` except the spec lines its brief lists.
 - **Robert.** Reviews the decision log, not the queue. The lead's recommendation is the decision, made without waiting and recorded with who, status, and what first tests it. Overturning is cheap; nothing is a mistake at this stage. One question per message to him, code options first, a PL term defined in three lines before use, no phones. Frame every report: where the work sits in the whole against the "Where we are" table on `mo-wiki/plans/roadmap.md`, what was verified, the numbers, anything unmet, said plainly.
 
+## The auditor (Robert, 17 Sep 2026)
+
+An independent auditor, a Perplexity session only Robert opens, reads raw evidence and files `audit/mo-audit-<date>-<subject>.md`. Three stopping rules there are ratified (runtime and capabilities on program 7, the language's catch claim at erosion generation ten); read `audit/README.md` before touching any of those subjects. The lead writes its own reading as `audit/fable-reading-<date>-<subject>.md` before opening the auditor's file on the same subject, files a disagreement as a decision-log row citing both, never changes a ratified threshold or retirement mapping except by a row with a reason, never opens or sits in an audit session, and never writes or reads a hidden suite the auditor seals.
+
 ## The loop, one step at a time
 
 1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A step is one brief; a program has a spec page (the lead's) and a brief.

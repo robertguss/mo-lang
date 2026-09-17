@@ -2,6 +2,10 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Session 10, the Mac, afternoon — 17 Sep 2026
+
+- **The auditor role taken up** (Robert installed it; Fable wired it into the wiki). Three stopping rules Robert ratified under `audit/`: the runtime layer on program 7 (S-A/S-B/S-C), capabilities and recipes on program 7 (T-A/T-B/T-C), and the language's catch claim at generation ten (R-B automatic). Linked from chapter 1, chapter 10 §4, the state page, the board, the handoff, and the `mo-lead` skill. The board reordered under M-3: the bricks page, the generation-four speed probe, then program 7. Fable's disagreements filed as rows for Robert before program 7 exists: program 7's Redis subset needs no hex in Elixir, so its spec adds TLS, hashed ACL passwords, and a metrics endpoint; the language rule's R-A trigger fires on one false positive at zero catches; the runtime rule's open clauses read in advance.
+
 ## Session 10, the Mac, morning — 17 Sep 2026
 
 - **Research PR 2 read and merged** (Fable; the Hermes lane on `research/hermes-monitoring`, wiki only, no code, no spec or decision edits by the agent). Two daily notes, `mo-wiki/research/concepts/hermes-daily-2026-09-16.md` and `-17.md`, a monitoring plan, six raw snapshots with pinned hashes: the versioned Elixir and Erlang supervisor defaults against the round-10 source; a restart budget as containment rather than recovery; Yuan et al. (OSDI 2014) on error handlers that exist and are wrong; Pillai et al. (OSDI 2014) on crash consistency, file against directory-entry persistence; the `cap-std` README's own line that a capability API is not confinement. Read as sharpening, not news; the two checklists (the sequence create, compact, rename, reopen, write again; error-path reachability at recipe acceptance) are queued reading for change 6. The decision-log row is for Robert.

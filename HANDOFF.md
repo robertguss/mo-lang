@@ -1,4 +1,4 @@
-# Mo Lang — Handoff, 17 Sep 2026, morning: the next session on the Mac or the VM
+# Mo Lang — Handoff, 17 Sep 2026, afternoon: the next session on the Mac or the VM
 
 Paste the block below into a fresh Claude Code session in the repo. The roles,
 the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
@@ -95,40 +95,38 @@ know that the wiki does not say in one place.
 >
 > **Rows for Robert** (decision log, "for Robert"), newest first: research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
 >
+> **17 Sep, afternoon: the auditor.** Robert installed an independent auditor
+> (a Perplexity session only he opens) and ratified three stopping rules under
+> `audit/`; read `audit/README.md`, `CHARTER.md`, and the three rule files
+> before any work on program 7, the stopping rules, or the language's catch
+> claim. Fable writes its own reading of each subject as
+> `audit/fable-reading-<date>-<subject>.md` before opening the auditor's file
+> on it, never opens an audit session, and changes no ratified threshold
+> except by a row. M-3 is accepted; the queue below follows it.
+>
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **The probe** naming the cause of generation four's nine-times loss in the
+> 1. **The bricks page** (`deep-dives/bricks-and-the-cost-of-zero-dependencies.md`,
+>    Fable writes it): the shelf boundary, an audit budget per brick, the update
+>    cadence, the bricks' own dependencies, the fallback. A hard prerequisite of
+>    program 7's first commit.
+> 2. **The probe** naming the cause of generation four's nine-times loss in the
 >    Mo queue (`../mo-lang-erosion4-mo`, its binary built with this `mo`; `sample`
 >    the server during `bench/step34/jobq_measure.py`'s pairs at 32 workers,
->    `MO_CORES=1`; compare with `../mo-lang-erosion3-mo`'s), a decision row, and
->    what change 6's spec says about it, if anything.
-> 2. **Change 6 and generation six** (either machine): the lead writes and seals
->    `spec/programs/01g-job-queue-change-6.md` with generation four's speed loss
->    and generation five's count slip in view (the archive read from the disk is
->    still the spec's own candidate; the spec's archive-rename sentence is
->    rewritten the way all four maintainers built it, and "`updated_at`
->    changes" said plainly); branch `erosion6-*` from `erosion5-*` (the Mo one
->    carries a defect: after a compaction and a rename the folder refuses to
->    open; the maintainer inherits it, as every generation does); four fresh
->    maintainers in a new workspace, Opus at medium effort, the brief
->    `erosion-round-suite/e5-brief.sh` with the new spec path; the seventh
->    hidden suite after the branching; the six earlier suites as regressions
->    (`e5-suites.sh` runs them all for one program, one language at a time);
->    P6 (`p6-mo.py` on a `mo build --surface` binary with the `Create` whose
->    `Making` has `key: None` and the queue name `"bad queue"`; `p6.py` on
->    Elixir); the speed row for all four with `control-run-8-suite/measure.py`
->    (`python3 -u`, `timeout 900`), only when no suite runs. Pre-register on
->    `erosion-round.md` before any session starts.
-> 3. **Step 34's follow-up**: placement for what `main` starts (a floor on the
->    starter's share, or a process placed with its first asker), a unit test for
->    the step-aside, measured on `echo-1k` and the binary's `kv-10k-get` at 14
->    cores.
-> 4. **Chapter 10's other sections as steps**: §2 the restart budget as a value
->    and its diagnostic, §3 the counted laws to `mo.toml` (six of Mo's fourteen
->    loops tonight were shape rules), §5 MO0317 naming the changed module and
->    the `--write` order (three more).
-> 5. Then the roadmap's order: the bricks page; the compile benchmark;
->    program 7.
+>    `MO_CORES=1`; compare with `../mo-lang-erosion3-mo`'s), and a decision row.
+>    It is RC2's evidence: on today's record the speed row is at its line.
+> 3. **Program 7**: Fable writes and seals its spec (a Redis subset against
+>    Redis's own tests, with TLS, ACL users with SHA-256 passwords, and a
+>    Prometheus metrics endpoint as the P4 target); then Robert opens the audit
+>    session that seals the hidden suites (tell him when the spec is ready);
+>    then the Mo and Elixir builds under matched conditions. Fable does not write
+>    or read the hidden suites.
+> 4. **Change 6 and generation six**, allowed while program 7 waits on the
+>    auditor, never ahead of its build (the detail: `erosion-round.md`, the
+>    brief `erosion-round-suite/e5-brief.sh` with the new spec path, the seven
+>    suites, P6, the speed row; pre-register before any session starts).
+> 5. **Step 34's follow-up**, then **chapter 10's other sections** as steps,
+>    then **the compile benchmark**.
 >
 > **The site.** The wiki is published at https://robertguss.github.io/mo-lang/
 > by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`.

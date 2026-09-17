@@ -25,7 +25,8 @@ the date at the top is the last one. The trees are one link away: the maps under
 here, and the [[roadmap]] table is the authority on order.
 
 **Last rewritten:** 16 Sep 2026, late evening on Robert's Mac, after step 34 and
-generation five; amended 17 Sep, morning, for the research lane. Five days since
+generation five; amended 17 Sep, morning, for the research lane, and
+afternoon, for the auditor role and the three ratified stopping rules. Five days since
 the first commit.
 
 ## In one paragraph
@@ -279,6 +280,41 @@ does quality hold?), the incident round, and the two diagnostic columns.
   shared scheduling miss, the full-disk death) came from inputs no suite sent
   until the lead wrote one.
 
+## The auditor, and the rules that say when a claim retires (17 Sep)
+
+An outside review of 17 Sep 2026 (`mo-review-2026-09-17.md`, in Robert's
+project files) named the weakness in how the project has been checking itself:
+pre-registration and hidden suites prove little when one agent writes the
+predictions, runs the rounds, and reads the results. Fable had been doing all
+three. Robert's fix, the same day, was an **auditor**: a separate Perplexity
+session that he opens himself. It reads only raw evidence, never Fable's
+reading, and files its own account under
+[`audit/`](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) at
+the repo root. Fable remains the lead. For each subject, Fable writes its own
+reading before opening the auditor's. Where the two disagree, a decision-log row
+cites both, and Robert decides.
+
+In that first session Robert ratified three stopping rules, before program 7
+exists and before generation six runs:
+
+| layer | what clears it | if it fails |
+|---|---|---|
+| Runtime (primary), on program 7 against Elixir | at least 4 of 5 reliability rows (hidden suite of 50 or more defects, time to recover, no unbounded wait, exact replay, a diagnosis from the surface alone) with no cost row red (time to write, speed, memory, dependencies) | S-A full retirement, S-B a scoped claim, S-C provisional with program 8 deciding |
+| Capabilities and recipes (secondary), on program 7 | 0 dependencies; recipe drift caught; at most 1 capability escape in Mo; maintenance time at most 1.5× Elixir's | T-A, T-B (bricks without recipes), T-C (fixes follow) |
+| The language's own catch claim, at generation ten | `never`/`invariant` catch at least 2 defects no test caught, false positives at most 1.5× catches, at most 5 per 1,000 lines | R-B on its own: kept as tools, dropped from the claim |
+
+What follows from it: program 7 moves up to third on the board, after the
+bricks page, which the capabilities rule requires before program 7's first
+commit, and after the probe into generation four's speed loss. That probe comes
+first because the runtime rule's speed row is already at its limit on today's
+record: round 10's Elixir queue ran at twice Mo's rate. Fable's disagreements
+are rows for Robert. Program 7 as specified (a Redis subset) needs no hex
+package in Elixir, so its spec will add TLS, hashed ACL passwords, and a
+metrics endpoint. The language rule's escalation to removal from the grammar
+would fire on one false positive when there are no catches. Fable also
+recorded how it reads the runtime rule's unclear clauses, before any evidence
+exists. The auditor, not Fable, writes program 7's hidden suites.
+
 ## What is still to test, measure, and verify
 
 1. **The laws' value for the second agent.** No check has caught a
@@ -311,16 +347,18 @@ does quality hold?), the incident round, and the two diagnostic columns.
    counted laws into `mo.toml`, MO0317 naming the changed module.
 6. **The unfamiliarity tax**, sized: the same agent writing the same program
    twice.
-7. **Program 7**, a real open-source service reimplemented against its own
+7. **Program 7** (now third on the board, after the bricks page and the
+   speed probe), a real open-source service reimplemented against its own
    tests, the first program built on capabilities, recipes, and the runtime
    surface together, and the one chapter 1 says answers the BEAM.
-8. **The bricks page**, the compile benchmark at 5,000 modules, `mo prove`, the
+8. **The bricks page** (first on the board, a hard prerequisite for
+   program 7), then the compile benchmark at 5,000 modules, `mo prove`, the
    package registry, and the toolchain in Mo, in that order and all later.
 
 ## Rows waiting on Robert
 
 In the decision log, marked "for Robert", newest first (the same list is on
-the [[roadmap]] board and [[for-robert]]): research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
+the [[roadmap]] board and [[for-robert]]): the auditor role taken up, with M-3 accepted, the bricks prerequisite, and three disagreements with the ratified rules (17 Sep, afternoon); research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
 
 ## Related
 

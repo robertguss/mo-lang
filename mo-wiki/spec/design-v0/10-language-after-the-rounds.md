@@ -10,6 +10,7 @@ chapter 10. Amended 16 Sep after P6 on Mo's change 2 program (§2, the table,
 the reading). Amended 17 Sep: the 3-in-5 budget is Elixir `Supervisor`'s default,
 not OTP's; Erlang's `supervisor` defaults to 1 in 5 s (Hermes, PR 2,
 `hermes-daily-2026-09-16`, from the versioned docs and the round-10 source).
+Amended 17 Sep, afternoon: §4 is now bound by a ratified stopping rule (below).
 
 ## What the rounds said, in one table
 
@@ -182,6 +183,25 @@ ledger is built around; nothing has tripped one outside a test.
 program's own wrong claim, and one has caught a class of defect a baseline paid
 for. The `invariant` question stays open until the ledger is changed in the
 erosion round, the first program built around one.
+
+**Bound by a stopping rule** (17 Sep 2026). Option A stands, and it now has an
+end. Robert ratified the auditor's rule for this section
+([`audit/mo-audit-2026-09-17-stopping-rule-never-invariant.md`](https://github.com/robertguss/mo-lang/blob/main/audit/mo-audit-2026-09-17-stopping-rule-never-invariant.md)).
+He simplified it to one tier (L-2): the three tiers of the auditor's draft are
+kept only as its reasoning. By the reading of erosion generation ten, `never`
+and `invariant` keep their place in the claim only if they have caught at least
+2 Mo defects that no test would have caught, with false positives at most 1.5
+times the catches and at most 5 hand-written clauses per 1,000 lines. If any of
+the three fails, R-B follows on its own: both constructs stay in the language
+as tools set per project, and chapter 1's sentence about the language layer
+drops the claim that they catch bugs. Removing them from the grammar (R-A)
+comes up only if density passes 10 per 1,000 lines or false positives pass 3
+times the catches, and then it is Robert's call. The auditor keeps the ledger
+after each generation, and Fable files a separate reading of generation ten.
+This changes Option A in one way: the false-positive column it asked for is
+now an input to the rule, not a note. Fable's proposed floor on the R-A
+trigger (it fires on one false positive when catches are 0) is a decision-log
+row for Robert, not an edit to the rule.
 
 ## 5. Diagnostics that say what to write
 
