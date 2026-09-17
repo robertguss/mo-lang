@@ -322,6 +322,32 @@ The wire, read and written the same way by both runtimes:
 
 An `Http.fixture()` runs on the network `Net.fixture()` does, so a test can connect with a `Net` fixture to an `HttpListener` and write a request by hand. As on `Net`, a call with nothing to take (an `accept` with no client, or with a request cut short) waits its whole deadline and is `Timeout`. `send` alone does not wait for nothing: while its response is not whole it delivers the processes' waiting messages a round at a time, as a settle does, and it is `Timeout` when no message is waiting. So a test that sends a server process a message to accept, or serves a listener into it, then sends a request in the same statement, gets the server's response. Under `mo test --sim`, `accept` and `send` time out by the seed, and `reply` and `send` find their connection `Closed` by the seed.
 
+## Tls
+
+`Tls` is TLS 1.3 for a listening program, `platform.tls` in `main` (step 36, [[bricks-and-the-cost-of-zero-dependencies]]). Like the crypto rows it is written once, in Zig over `std.crypto` (`toolchain/src/bricks/tls.zig`), and both runtimes call that code: the interpreter imports it, and `mo build` links it beside the C runtime. It is a capability like `Net`: passed as a parameter, never captured in an anonymous function (MO0409), never reached from a pure function (MO0403), and held by a process only when it is started with one. A `TlsServer` is a capability too, but it holds no authority beyond its own key and its own certificate, so a program makes one and hands it to every worker that answers a connection.
+
+What a connection it gives back does is what a plain `Conn` does: `read_line`, `write`, `close`, and `lines` are the same rows with the same buffering and the same `NetError`s, and every program written against a socket works behind TLS unchanged. `close` sends `close_notify` before the socket closes; a peer whose stream ends without one is the end of the stream, as a plain socket's end is.
+
+```ruby
+enum TlsError
+  BadPem
+  Handshake
+  Timeout
+  Closed
+end
+```
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Platform` | `tls` | | `Tls` | the TLS brick, in `main` alone |
+| `Tls` | `server` | `cert: String`, `key: String` | `Result(TlsServer, TlsError)` | PEM text, not a path: the certificate chain leaf first, and a PKCS#8 private key (`BEGIN PRIVATE KEY`, Ed25519 or ECDSA P-256). `BadPem` when either does not parse, when there is not exactly one key, or when the key is not the leaf certificate's. It does not wait |
+| `TlsServer` | `accept` | `Conn` | `Result(Conn, TlsError)` | the server's half of the handshake on that connection, within the deadline; the `Conn` it gives back is the same connection, its bytes now records. `Handshake` when the client's hello or finish is wrong or it sent an alert, `Timeout` when the handshake did not finish in time, `Closed` when the stream ended first; each closes the connection, after the alert RFC 8446 names has been written. The connection must have had no `read_line`, `write`, or `lines` on it: a crash names the row otherwise, since the caller broke a rule |
+| `Tls` (on type) | `fixture` | | `Tls` | the same rows on `Net.fixture()`'s network; tests only |
+
+**What it speaks**, and nothing else (the bricks page's cut): TLS 1.3 alone, the two suites `TLS_AES_128_GCM_SHA256` and `TLS_CHACHA20_POLY1305_SHA256`, X25519 for the key exchange with one HelloRetryRequest when a client supports X25519 but sent no share for it, Ed25519 and ECDSA P-256 server certificates, `KeyUpdate` from the client answered, and `close_notify` both ways. A client that offers no TLS 1.3 is answered `protocol_version`, one with no X25519 at all `handshake_failure`, bytes that are not a record `unexpected_message`, a record past 16 KiB plus 256 `record_overflow`, a record whose tag does not check `bad_record_mac`, and a wrong Finished `decrypt_error`. Not here, in either direction: TLS 1.2, session tickets, PSK, 0-RTT, client certificates, renegotiation. SNI is read and ignored; ALPN is read and left unanswered until step 37, which adds the client side.
+
+Under `Tls.fixture()` the rows run on `Net.fixture()`'s in-memory network. Nothing happens while a simulated call waits, so `accept` sees only what the other end has already written: a client that has written nothing is `Timeout`, and one that wrote something that is not a hello is `Handshake`.
+
 ## Runtime
 
 `Runtime` is the runtime surface (design-v0/03, the runtime surface; directions 37 and 40): what a running program's processes are doing, as rows a program, an agent, or an operator calls. It is a capability like `Fs`: `platform.runtime` is `Some` under `mo run`, `None` in a binary unless it was built with `mo build --surface`, and a test holds its own run's through `Runtime.fixture()`. `main` passes it down as it passes an `Fs`, narrowed by `read_only` for a process that may look but not act. A read is a snapshot taken between two updates, never inside one: every update runs on one thread, so a row sees no transaction half done, and a process whose update waits in a call is read once that update ends, within the row's deadline. Every row but `read_only` takes `within:`. `send`, `pause`, and `resume` act, each act is an event, and a read-only `Runtime` refuses them with `ReadOnly`. `Json.encode` of each struct and event is the surface's wire form.

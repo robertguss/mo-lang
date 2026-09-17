@@ -1,0 +1,6 @@
+[project]
+name = "step36"
+version = "0.1.0"
+description = "Step 36: the TLS brick's handshake, bulk, idle, and abuse runs, and its numbers"
+requires-python = ">=3.14"
+dependencies = []
