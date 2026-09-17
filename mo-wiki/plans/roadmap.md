@@ -19,14 +19,13 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Step 34 parts B (the crossing made cheap) and C (the measurement at 1, 4, and 14 cores), a fresh Opus worker on the Mac from part A's commit | Opus, briefed by Fable | 16 Sep, 16:50 | [[interpreter-step-34]] |
-| Change 5 sealed and generation five pre-registered (the seam is a law: a lease handed off, a queue renamed with jobs in flight); the four worktrees branched; the sessions start once step 34's measurement is off the machine | Fable | 16 Sep, 17:05 | [[erosion-round]], [[01f-job-queue-change-5]] |
+| Generation five: four fresh maintainers on change 5 (the seam is a law), the sixth suite, the regressions, P6, the speed rows per generation, the reading | Fable | 16 Sep, 21:30 | [[erosion-round]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | Generation five's four sessions, the sixth suite, the regressions, P6, the reading | pre-registered; the first change whose seam is a law | [[erosion-round]] |
+| 1 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
 | 2 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
 | 3 | The bricks page (Fable writes it): the shelf, the audit budget, the fallback | the dependency claim needs its cost stated | [[roadmap]] |
 | 4 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
@@ -44,6 +43,8 @@ Rows marked "for Robert" in the [[decision-log]], newest first: P6 on Mo's chang
 
 | when | what | page |
 |---|---|---|
+| 16 Sep, 21:20 | Step 34: placement with the starter, the crossing made cheap (100k asks across schedulers 4 s to 0.14), measured at 1, 4, and 14 cores; the change 4 Mo queue found nine times slower on the lease path | [[interpreter-step-34]] |
+| 16 Sep, 17:05 | Change 5 sealed, generation five pre-registered: a lease handed off, a queue renamed with jobs in flight | [[01f-job-queue-change-5]] |
 | 16 Sep, 15:05 | Generation four: change 4 by four maintainers; the fifth suite Mo 77, Python 77, Go 76, Elixir 76 of 77; nothing new eroded in four generations | [[erosion-round]] |
 | 16 Sep, 13:03 | Change 4 sealed: idempotent creates, the archive | [[01e-job-queue-change-4]] |
 | 16 Sep, 13:05 | Step 33: the crash report freed in both runtimes (46 MiB a restart to under 0.3), the interpreter's abort on a large log fixed | [[interpreter-step-33]] |
@@ -71,6 +72,7 @@ Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agre
 | Outside reviews of 13 and 14 Sep, the thesis restated (chapter 1), the measure restated (chapter 8), the closure audit, the reading pack; Fable's earlier readings ([[empirical-validation-plan]], [[ecosystem-strategy]], [[research-agenda-2026-09-response]]) | done | — |
 | Step 29, the runtime honest ([[interpreter-step-29]]): `restart: :never` honoured, `platform.exit` with a pending delayed send, replay streamed instead of held in one `Open` update, the simulated-time jump gap, the `invariant`-untrippable rule as a diagnostic | done 15 Sep; part C's memory bound unmet on a real log | — |
 | Step 29b, replay memory on a real log ([[interpreter-step-29b]]): Fable's acceptance probe replayed a 1M log an HTTP session wrote and passed 8 GB fifteen seconds after the fold, where the worker's generated log peaked at 2.5 GB; the rule made to hold in every loop shape | done 15 Sep; the evidence log replays at 2.3 GB where it was killed past 9 | — |
+| **Step 34, placement** ([[interpreter-step-34]]): a process an update starts placed with its starter, the cross-scheduler crossing made cheap, measured on the Mac at 1, 4, and 14 cores | done 16 Sep, 21:20, accepted: the queue's pairs and `kv-10k-get` under `mo run` level across cores, the crunchers 7.3×, `echo-1k` and the binary's `kv-10k-get` still slower at 14 by the main-starts rule; carried: placement for what `main` starts, a test for the step-aside, the compaction copy measured on the ledger | 1 (the follow-up) |
 | **Step 30, processes on every core** ([[interpreter-step-30]]): a scheduler per core, messages across threads, the store's fsync off the scheduler, measured against Go on the queue and the ledger | done 15 Sep, accepted; the queue is fsync-bound on this disk (round 8 reruns the baselines on it); the ledger doubled from the fsync pool; CPU-bound work 3.7× at 4 cores; two 4-core bugs found by measuring. The Mac run (15 Sep, night): every row fastest at 1 core, the cross-scheduler ask the cost; placement is a step after 31 | 1 (placement) |
 | **Round 8, the maintenance round** ([[control-run-8]]): round 7's three finished job queues handed to fresh agents with a changed spec; a second hidden suite for the change; defects and regressions counted; the experiment the laws were written for | done 15 Sep, night: held on all five (regressions 0/0/0, defects 0/1/0, 1,420 pairs a second against 428 and 325, the loop 0.81 s against 14.4 and 7.5, 0 dependencies); the conjunction survives, the laws' value for the second agent still unshown (no check caught a bug, Mo 2.2× Go's time); the fourth oracle found an outage on an impossible log record, for Robert | — |
 | **Round 9, the small-model round** ([[d41-small-model-round|direction 41]], Robert, 15 Sep): the same pre-registered task and hidden suite with a small model in all three panes, several models of different sizes, open-weights ones among them (Robert, locked); reliability and loops are the columns that move with the model | done 16 Sep, 08:45 ([[control-run-9]]), five of five models: reliability moved with the model on the Mo side for the cloud models (kimi 1, deepseek 2, gpt-5.5 0 defect causes; every Go change 1, every Python 0) and in every language for Haiku 4.5 (Mo 28 checks over 4 causes, Go 22 over 6, Python 18 over 2, in 7 to 9 minutes, none green by every check); the diagnostics carried the cloud models to green (first fix right in 21 of 23 loops); the local 27B made no edit in any language; P1 held, P4 for four of five, P2 (open-weights and Haiku), P3, P5 failed; the Opus-in-Pi baseline unmet | — |

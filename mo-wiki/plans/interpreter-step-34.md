@@ -5,7 +5,7 @@ updated: 2026-09-16
 type: plan
 tags: [runtime, performance, processes]
 sources: [plans/interpreter-step-30.md, plans/mac-scaling-run.md, plans/interpreter-step-31.md, spec/design-v0/03-semantics.md, spec/design-v0/07-toolchain.md]
-status: in-progress (paused after part A, 16 Sep 15:45; parts B and C need the Mac)
+status: done, accepted 16 Sep 2026, 21:20 local (four rows past the 10 percent criterion by the main-starts rule, recorded)
 ---
 
 # Step 34: placement, so the Mac's cores stop costing
@@ -35,6 +35,41 @@ The table above. Done when at 14 cores no crossing row (`echo-1k`, `kv-10k-get`,
 ## Done when
 
 `zig build test` green, the corpus green, `mo fmt` clean, the spec lines written, the numbers table with the `MO_STATS=1` lines, and a numbered list "Decisions the brief did not cover".
+
+## Result (16 Sep 2026, 21:20 local; parts B and C by a second Opus session, 16:50 to 20:46)
+
+Commits `1559554` and `660b75c` (part A, the afternoon), `9716cd8` (part B), `d429dd9` (part C), all on `main`; `zig build test` green at each and in Fable's run after the merge (exit 0, two minutes warm). The full tables are in `toolchain/bench/step34/RESULTS.md`; the worker's report is quoted in the decision log's rows.
+
+**Part B, the crossing made cheap.** 100,000 asks across two schedulers took 4.0 to 5.6 s on the Mac (part A's build, one run) and take 0.14 s as a binary and 0.15 s under `mo run` now, against 0.07 to 0.08 s on one scheduler, at 2, 4, and 14 cores alike. The cost was never the runtime lock or the sweeps: a poked scheduler ran a zero-timeout `kevent` on every poke (8 to 13 µs on this Mac), and with the poke flag and the sleep state apart the Zig runtime lost a wake now and then and a scheduler slept out its full second. Now a scheduler spins 200 µs on its poke, looks at its poller only when a socket of its own is armed, and otherwise sleeps on its state word (a futex; a condition variable in a binary); the poke and the sleep are one atomic word; a sweep's end wakes only the schedulers it held back; a parked process leaves the parked list in constant time and deadlines are scanned only when one is due; the lock spins 20,000 times before it waits. A parked fiber at rest costs about 24 KiB under `mo run` and 7.5 KiB in a binary; at 128 held asks on one core the deferred reply runs at 0.59 of the send shape (step 31 measured 0.46).
+
+**Part C, a regression found and fixed.** With placement beside the starter, a process that starts processes and asks them never parks, so sweeps missed and ended processes piled up: 200,000 short-lived processes under `mo run` kept 2,605 ids and 2 GB at 2 cores and passed 4 GB at 4 on part A's build, where step 33 kept 47 to 164 ids. An update about to deliver an ask on its own scheduler now steps aside while a sweep waits or is due (both runtimes): 81 to 127 ids, 72 to 108 MiB, and the row faster than step 33's at 14 cores (3.1 s against 5.8 under `mo run`, 5.0 against 6.7 as a binary). No unit test covers the step-aside (the worker's decision 12): carried.
+
+**The table** (best of five unless marked, ms unless marked, `run` / `bin`; the change 4 queue from `../mo-lang-erosion4-mo`; part A's 14-core column from the pause):
+
+| row | 1 core | 4 cores | 14 cores | 14, spread | part A, 14 |
+|---|---|---|---|---|---|
+| `echo-1k` | 24.4 / 27.2 | 33.6 / 36.3 | 35.0 / 37.9 | 29.6 / 35.4 | 83.6 / 84.9 |
+| `kv-10k-get` | 428 / 212 | 434 / 256 | 441 / 257 | 444 / 258 | 1,249 / 1,043 |
+| `http-1k` | 57.6 / 55.1 | 60.2 / 58.6 | 63.3 / 59.2 | 63.6 / 60.4 | 70.2 / 67.1 |
+| queue creates a second, bin (best of 3) | 8,367 | 7,254 | 6,278 | 6,066 | 5,349 |
+| queue pairs a second at 32 workers, bin (best of 3) | 456 | 453 | 444 | 445 | 451 |
+| queue creates / pairs at 32, run | 5,715 / 195 | 5,437 / 203 | 5,276 / 206 | 5,232 / 206 | |
+| ledger transfers a second, bin (best of 3) / run | 4,819 / 659 | 4,814 / 651 | 4,347 / 646 | 4,321 / 640 | |
+| 100k asks, one scheduler, s, run / bin | 0.080 / 0.072 | 0.083 / 0.074 | 0.082 / 0.074 | 0.149 / 0.138 | |
+| 100k asks, two schedulers, s, run / bin | 0.080 / 0.072 | 0.153 / 0.139 | 0.151 / 0.140 | 0.152 / 0.140 | 4.0 / 4.7 (part B's baseline) |
+| 8 crunchers, run (2M rounds) / bin (20M) | 1,307 / 511 | 344 / 141 | 179 / 85 | 181 / 85 | |
+| 200k short-lived processes, s, run / bin | 8.65 / 8.39 | 1.79 / 1.92 | 3.13 / 4.95 | 3.37 / 6.29 | bin 5.46 |
+| deferred reply, 8 askers, reply / send, run | 29 / 30 | 31 / 46 | 41 / 61 | 42 / 61 | 90 / 135 |
+| deferred reply, 128 askers, reply / send, run | 64 / 38 | 43 / 32 | 62 / 65 | 62 / 65 | 61 / 54 |
+| deferred reply, 128 askers, reply / send, bin | 20 / 19 | 21 / 30 | 46 / 71 | 47 / 69 | |
+
+The 1-core rows match part A within noise except `kv-10k-get` under `mo run` (428 against 396). **Against the criterion at 14 cores against 1:** met by `kv-10k-get` under `mo run` (+3 percent), the queue's pairs (−3 percent), and the crunchers (7.3× under `mo run`, 6.0× as a binary); **not met** by `echo-1k` (+43 percent `mo run`, +39 binary: `main` starts both the client and the acceptor, so they land on different schedulers by the rule, and each round trip wakes two kqueue threads over the socket, about 10 µs a trip), the binary's `kv-10k-get` (+21: `main` starts the store, journal, gate, and listener on schedulers 0 to 3, the listener's worker lands with it, and all 10,001 asks cross to the store), and the queue's creates (−25, not a row the criterion names: every create asks the queue `main` started on scheduler 1). The `MO_STATS=1` lines for the queue at 14 cores (binary): the acceptor's scheduler 2 placed 17,518, 17,517 with their starter; every other scheduler placed 5,800 to 10,600 by the fewest-live rule, each with as many asks across as it placed; under `MO_PLACE=spread` `with_starter` is 0 everywhere (the lines in `RESULTS.md`). What remains is placement for what `main` starts, which the brief left as it was (the worker's decision 10): a floor on the starter's share would keep more workers with their acceptor, and the queue's workers would still cross to the queue.
+
+**Fable's probes** (pane `w44:p9` and `w44:pA`, after the suite). The ledger under `mo run` at 1 core on step 33's binary: 669 transfers a second in 149.5 s, peak 593 MiB, each tenth of the load slower than the last (9 s to 20 s), the same as this step's 650 to 659: the interpreter ledger's cost is step 33's carried compaction copy (about 39 percent of samples in `vm.Vm.compact`, most in `copySlice`'s forwarding lookup), not this step's. The queue's pairs a second at 32 workers, 1 core, binary, each generation's program built with this step's `mo`: round 7's 4,040 and 4,052, change 1's 4,045 and 4,035, change 2's 4,142 and 4,121, change 3's 4,068 and 4,041, **change 4's 452 and 457** (1 worker: 2,000 for every earlier generation, 730 for change 4), and change 4 on step 33's binary 455 and 458. The 456 in the table is the change 4 Mo program's, nine times slower on the lease path than the program it was handed, on either binary: a performance erosion in generation four that the fifth suite did not count, recorded on [[erosion-round]] with the three baselines' change 4 rows.
+
+**The orphan.** The first ledger phase was contaminated by the worker's wrapper: the ledger load script killed the watchdog, which orphaned the `mo run` server; every later run failed to bind the port and talked to the orphan, which Fable found at 18:57 at 99 percent CPU and 1.3 GB, thirty-one minutes old, compacting a book the later runs kept growing. Killed; the phase rerun with `ledger_probe.py`, which starts the server in its own process group, kills it TERM then KILL, and checks nothing is left (every run: none).
+
+**Carried.** The crunchers binary's memory (about 15 bytes a loop iteration a running process, freed only when the update ends: 161 MiB at 1 core and 1,223 at 8 or more for 10M rounds, identical on step 33's `mo`; past 6 GB at 100M rounds at 4 cores, so the binary rows use 20M); the interpreter ledger's compaction cost; the 780 KB a process at rest; a unit test for the step-aside; placement for what `main` starts.
 
 ## Status at the pause (16 Sep 2026, 15:45 local)
 

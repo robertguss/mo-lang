@@ -437,3 +437,6 @@
 
 ## [2026-09-16] session | Afternoon pause: step 34 at part A, the handoff for either machine
 - Step 34, placement, begun 15:08 and paused after part A (placement with the starter, both runtimes, pushed) because Robert takes the Mac; parts B and C need its cores ([[interpreter-step-34]]). Every evidence branch pushed (`erosion3-*`, `erosion4-*`, `r9-haiku-*`). `HANDOFF.md` rewritten for the next session on the Mac (preferred) or the VM. One row.
+
+## [2026-09-16] session | Evening on the Mac: step 34 accepted, change 5 sealed, generation five pre-registered
+- Back on the Mac at 16:40. Step 34 parts B and C by a fresh Opus session (16:50 to 20:46), accepted 21:20: the cross-scheduler ask from 4 to 5.6 s per 100,000 to 0.14, the queue's pairs level across cores, four rows still past the criterion by the main-starts rule ([[interpreter-step-34]]). Fable's probe found generation four's Mo queue nine times slower on the lease path than every earlier generation (452 against 4,040 pairs a second): the round records speed per generation from now on. Change 5 sealed at 17:00 and generation five pre-registered on [[erosion-round]]; the four worktrees branched. Five rows, one `semantic` for Robert.
