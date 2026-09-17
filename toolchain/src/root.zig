@@ -47,6 +47,8 @@ pub const fmt = @import("fmt.zig");
 pub const fix = @import("fix.zig");
 pub const diff = @import("diff.zig");
 pub const errors = @import("errors.zig");
+/// The crypto brick (step 35): both runtimes call its exports.
+pub const crypto_brick = @import("bricks/crypto.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());
