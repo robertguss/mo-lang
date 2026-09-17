@@ -1,7 +1,7 @@
 ---
-title: "Q6: The `verified by` line"
+title: "Q6: The `verified:` line"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: question
 tags: [verification]
 sources: [raw/notion/open-questions-2026-09-12.md]
@@ -11,7 +11,7 @@ answer: in
 asked: 2026-09-12
 ---
 
-# Q6: The `verified by` line
+# Q6: The `verified:` line
 
 **Options:** written by the agent as a claim / computed by the compiler and displayed / both.
 **Recommendation:** computed by the compiler, never written by hand. The toolchain appends and maintains a line per module: `verified: contracts, tests, simulation(1_000 runs), proofs(3 of 5)`. Editing it by hand is a compile error.

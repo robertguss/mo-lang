@@ -1,17 +1,17 @@
 ---
 title: "Direction 43: Five measurements only an AI-written world allows"
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-17
 type: direction
 tags: [verification, agents, roadmap, thesis]
 sources: [spec/design-v0/01-premise.md, spec/design-v0/08-milestone.md, plans/control-run-7.md, decisions/decision-log.md]
 number: 43
-status: proposed
+status: locked
 origin: "Fable, 15 Sep 2026, evening, at Robert's request to drive"
 confidence: medium
 ---
 
-# Direction 43: Five measurements
+# Direction 43: Five measurements only an AI-written world allows
 
 Robert, 15 Sep 2026, evening: the project is for AI, not humans; Fable should propose what to test and measure, including things opposite the thesis. This page is the first answer. It starts from what a model knows about itself when it writes code: it generates left to right with no global view, so its errors are losses of coherence across distance; it reads expensively, so a language's readability for it is tokens read per correct change; it verifies badly by thought and well by running, so the compiler's answer is its real interface; and it is not one writer but a distribution, so the same spec can be implemented many times cheaply, which no human team could do and which almost no language design uses.
 
@@ -25,7 +25,7 @@ Robert, 15 Sep 2026, evening: the project is for AI, not humans; Fable should pr
 
 ## 3. The erosion round
 
-**Hypothesis.** Mo's laws hold a program's quality across generations of fresh maintainers; Go and Python drift. **Measure.** Ten changes in sequence to round 7's job queue, each by a fresh agent that sees only the current program, in all three languages; the hidden suites after every generation; defects and regressions per generation, tokens read per change. **Prediction.** Go and Python each accumulate at least three defects by generation ten; Mo at most one. If wrong, it is the most important result the project could produce. **Cost.** Thirty sessions; the maintenance round (round 8) is generation one.
+**Hypothesis.** Mo's laws hold a program's quality across generations of fresh maintainers; Go and Python drift. **Measure.** Ten changes in sequence to round 7's job queue, each by a fresh agent that sees only the current program, in all three languages (four from round 10: Elixir joined as the BEAM's row); the hidden suites after every generation; defects and regressions per generation, tokens read per change. **Prediction.** Go and Python each accumulate at least three defects by generation ten; Mo at most one. If wrong, it is the most important result the project could produce. **Cost.** Forty sessions; the maintenance round (round 8) is generation one. Running: five generations by 16 Sep, the reading on [[erosion-round]] (Mo carries one new defect and one carried, Go and Python one carried each, Elixir three).
 
 ## 4. The incident round
 
@@ -45,9 +45,11 @@ A compiler pass that is a model: each function carries an intent line, and a sec
 
 ## Order
 
-1 and 3 reuse round 7's programs and slot into the pause after round 8; 5 starts with round 8; 2 is a day's experiment whenever a pane is free; 4 waits for program 7 or a planted fault in the ledger. Robert's answer to which of the five would change his mind most is pending (decision log, rows for Robert).
+1 and 3 reuse round 7's programs and slot into the pause after round 8; 5 starts with round 8; 2 is a day's experiment whenever a pane is free; 4 waits for program 7 or a planted fault in the ledger. Asked which of the five would change his mind most if it came out against Mo, Robert (15 Sep, 21:30): not sure; Fable's answer, bodies as cache, orders the five. All five locked the same evening; 1, 2, and 3 have run ([[bodies-as-cache]], [[sampling-as-verification]], [[erosion-round]]).
 
 ## Related
+- [[bodies-as-cache]], [[sampling-as-verification]], [[erosion-round]] (measurements 1, 2, 3 as run)
+- [[d38-time-travel-debugging]], [[d40-structured-runtime-events]] (what measurement 4 decides)
 - [[d42-elixir-round]]
 - [[d41-small-model-round]]
 - `spec/design-v0/01-premise.md`, the thesis

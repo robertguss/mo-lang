@@ -1,7 +1,7 @@
 ---
 title: "Current base example (Robert's style)"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: example
 tags: [syntax]
 sources: [raw/notion/design-journal-2026-09-12.md, raw/notion/open-questions-2026-09-12.md]
@@ -17,6 +17,7 @@ intent "Refund a captured charge, at most once, within 90 days of capture."
 never "a refund exceeds its charge"
   for r in Refund.all, c in Charge.all if r.charge == c.id
     r.amount > c.captured_amount
+  end
 end
 
 struct Charge
@@ -79,7 +80,7 @@ test "second refund is rejected"
   assert apply_refund(charge, 1_00) == Error(AlreadyRefunded(charge.id))
 end
 ```
-*The older Ruby-shaped draft below is superseded by the base above.*
+*The older Ruby-shaped draft, [[draft-example-ruby-shaped]], is superseded by this base. Session 4 closed the comprehension `for` with `end` (pick 11); applied here 17 Sep 2026.*
 
 ## Related
 - [[syntax-overview]]

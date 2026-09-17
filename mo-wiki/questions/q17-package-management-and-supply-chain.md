@@ -1,7 +1,7 @@
 ---
 title: "Q17: Package management and supply-chain security"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: question
 tags: [security, stdlib]
 sources: [raw/notion/open-questions-2026-09-12.md]
@@ -26,11 +26,11 @@ asked: 2026-09-12
 
 ## Answer
 
-✅ **Robert: IN on ordering B** (session 2): start `spec/design-v0.md` now, research Q17 in parallel, slot the package chapter in when it lands. No package design is recommended until the research pass is done. Robert will run deep-research prompts with his own tools and share results back (see SCHEMA, "Research"). Research must include academic papers (arXiv etc.), not only blog posts and incident reports.
+✅ **Robert: IN on ordering B** (session 2): start the design (now `spec/design-v0/`) now, research Q17 in parallel, slot the package chapter in when it lands. No package design is recommended until the research pass is done. Robert will run deep-research prompts with his own tools and share results back (see SCHEMA, "Research"). Research must include academic papers (arXiv etc.), not only blog posts and incident reports.
 
 ## Session 3 answer: the package design
 
-✅ **Robert: IN** (session 3) on Claude's recommendation from [[supply-chain-defenses]]. Six layers, no new language syntax:
+✅ **Robert: IN** (session 3) on Claude's recommendation from [[supply-chain-defenses]]. Six layers, no new language syntax. The design, unbuilt: `mo add`, `mo update`, `mo find-hash`, and the registry are deferred until an outsider runs a real service ([[roadmap]], later); chapter 6 holds the current shape, bricks, kits, and recipes:
 
 1. **Language.** No install scripts, macros, or build-time code. Capabilities are the permission system; [[d31-effects-never-hide-in-a-value|direction 31]] closes the callback hole. Platforms are the whole trusted base: the lockfile records each platform's native-code hash, and `mo` refuses an unaudited platform without a human's `--trust`.
 2. **Identity.** A package version is a set of declaration hashes ([[unison]], [[q10-semantic-ids-and-editing|Q10]]) pinned in the lockfile. The registry serves bytes that must match; every version goes into a transparency log ([[go]]). Source only, never binaries.

@@ -1,7 +1,7 @@
 ---
 title: "Q18: The shape of main and the first real platform"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: question
 tags: [effects, runtime, syntax]
 sources: [spec/design-v0/03-semantics.md, spec/grammar.md]
@@ -13,7 +13,7 @@ asked: 2026-09-12
 
 # Q18: The shape of `main` and the first real platform
 
-The milestone runs modules and their tests. Nothing yet runs a program: `main` is not in the grammar, and `Mo.Server` does not exist. This is the first surface a user of Mo touches, so it is Robert's call; the recommendation is written so that "in" is enough.
+As asked (13 Sep): the milestone ran modules and their tests, nothing yet ran a program, `main` was not in the grammar, and `Mo.Server` did not exist. Both shipped in session 5 (`main` in `grammar.md`, `mo run` with a platform; the current form is chapter 3's runtime surface section). This is the first surface a user of Mo touches, so it is Robert's call; the recommendation is written so that "in" is enough.
 
 ## Option A: `main` is a known shape, like `update`
 

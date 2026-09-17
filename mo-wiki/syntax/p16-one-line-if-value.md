@@ -6,6 +6,7 @@ type: syntax-pick
 tags: [syntax]
 sources: [plans/control-run-4.md, plans/interpreter-step-21.md, decisions/decision-log.md]
 number: 16
+status: liked
 ---
 
 # Pick 16: the one-line `if` as a value

@@ -1,7 +1,7 @@
 ---
 title: "Q12: Law numbers"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: question
 tags: [laws]
 sources: [raw/notion/open-questions-2026-09-12.md]
@@ -20,7 +20,7 @@ asked: 2026-09-12
 
 ## Answer
 
-↩ **Robert: COUNTER** (session 2). Adopt Tiger Style's **70 lines** per function, not 40 — 40 is too small, and fitting a phone screen is not a design criterion. Other numbers stand: file ≤ 500, params ≤ 6, nesting ≤ 3, process state ≤ 12 fields; errors not warnings; tighten-only per project. All hypotheses under [[d28-nothing-final-until-measured|direction 28]]. 70 still keeps a declaration to one [[id-addressed-editing|ID edit]].
+↩ **Robert: COUNTER** (session 2). Adopt Tiger Style's **70 lines** per function, not 40 — 40 is too small, and fitting a phone screen is not a design criterion. Other numbers stand: file ≤ 500, params ≤ 6, nesting ≤ 3, process state ≤ 12 fields; errors not warnings; tighten-only per project. (Since: the file-length law was dropped and MO0302 retired at step 27, and on the review of 14 Sep the counted shape laws became project settings with defaults, chapter 2 and chapter 10 §3; the 70-line function rule is a setting too.) All hypotheses under [[d28-nothing-final-until-measured|direction 28]]. 70 still keeps a declaration to one [[id-addressed-editing|ID edit]].
 
 ## Related
 - [[tiger-style-and-power-of-ten]]

@@ -1,7 +1,7 @@
 ---
 title: "Direction 40: Structured runtime events, not log lines"
 created: 2026-09-13
-updated: 2026-09-14
+updated: 2026-09-17
 type: direction
 tags: [runtime, agents, tooling, errors]
 sources: [deep-dives/agent-native-runtime-features.md, spec/design-v0/05-verification.md]
@@ -15,7 +15,7 @@ confidence: medium
 
 Every scheduler preemption, GC pass, supervisor restart, capability check, mailbox overflow, and timeout is a structured event with a schema — not a log message.
 
-The gap: chapter 5's structured diagnostics apply to compiler output; the crash report is structured; runtime events currently emit as prose. That leaves the same gap Mo already rejects everywhere else — the agent parses text at runtime that could have been structured at emission.
+The gap, as of 13 Sep (closed by step 23, below): chapter 5's structured diagnostics applied to compiler output; the crash report was structured; runtime events emitted as prose. That leaves the same gap Mo already rejects everywhere else — the agent parses text at runtime that could have been structured at emission.
 
 Two forms of the same event, for contrast:
 
