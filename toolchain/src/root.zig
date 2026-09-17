@@ -49,6 +49,8 @@ pub const diff = @import("diff.zig");
 pub const errors = @import("errors.zig");
 /// The crypto brick (step 35): both runtimes call its exports.
 pub const crypto_brick = @import("bricks/crypto.zig");
+/// The TLS brick (step 36): a TLS 1.3 server as an engine over bytes, driven by both runtimes.
+pub const tls_brick = @import("bricks/tls.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());
