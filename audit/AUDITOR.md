@@ -1,5 +1,7 @@
 # The auditor's operating manual
 
+**Workflow update, approved by Robert 17 Sep 2026:** the automated-handoff amendment in `CHARTER.md` supersedes the manual-start and direct-push instructions below. Ready-for-audit repository handoffs authorize isolated auditor sessions; outputs use audit branches and PRs. See `WORKFLOW.md` for the protocol and deployment status. Cold-reading rules remain binding.
+
 **What this is.** How a fresh audit session actually runs, from opening the repo to filing a reading. Complements `CHARTER.md` (the rules) and `README.md` (the folder guide). If this file and the charter disagree, the charter wins.
 
 **Who this is for.** Any model Robert seats in the auditor role — Perplexity, Claude via Codex, or a human reviewer walking through the same steps.

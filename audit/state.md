@@ -28,7 +28,9 @@ Ratification clarifications (from Fable's first parallel reading, 17 Sep): R6 ha
 | 17 Sep 2026 | Step 35 crypto brick | `mo-audit-2026-09-17-step-35-crypto-brick.md` | `fable-reading-2026-09-17-step-35-crypto-brick.md` |
 | 17 Sep 2026 | Gen-4 speed-loss probe | `mo-audit-2026-09-17-gen4-speed-probe.md` | `fable-reading-2026-09-17-gen4-speed-probe.md` |
 
-Disagreements between the auditor and Fable on the two parallel-reading subjects, if any, become decision-log rows citing both files (per the workflow page). Next auditor session should scan both readings for disagreements as a first task if that has not already been done.
+The successor auditor compared both pairs at `9c753e176ad70b383211eae255307bd5654d5280`; see `mo-audit-2026-09-17-auditor-handoff.md`. **Pending disagreement row:** the gen-4 auditor reading treats the lower contracts-on RSS as a memory benefit; Fable disputes that interpretation and proposes contract-triggered compaction, explicitly without having run the confirming control probe. No corresponding decision-log row was found. Neither interpretation was independently tested in the handoff. Both Fable readings also disclose receiving relayed auditor summaries before writing; retain that independence caveat. No substantive crypto-verdict disagreement identified.
+
+**Filing instruction for this handoff:** Robert directed a separate auditor branch because Fable works on `main`. The handoff and this update are filed on `audit/2026-09-17-auditor-handoff`; integration into `main` is pending. No stopping-rule amendment.
 
 ## Standing concerns open
 
@@ -63,6 +65,10 @@ The auditor writes these when the bricks page lands and program 7's spec is read
 3. TLS brick, step 36 (Fable's worker in progress at time of the step-35 reading; brief at `mo-wiki/plans/interpreter-step-36.md`).
 4. Program 7's spec, sealed by Fable, then the auditor's pre-registration session that seals the hidden suites.
 5. Program 7's Mo and Elixir builds under matched conditions.
+
+## Automated handoff approval
+
+Robert approved automated two-way repository handoffs on 17 Sep 2026: Fable's ready subject triggers an isolated auditor session; the auditor returns readings or evidence requests via audit branches/PRs; Fable's evidence responses trigger follow-up. Only unresolved decisions and blockers require Robert. See the amendment in `CHARTER.md` and `WORKFLOW.md`. **Deployment status: auditor-side GitHub polling active once per hour in the isolated profile; real fresh-agent canary passed. Fable-side wake-up and two-way delivery remain unconfigured/unverified. No webhook endpoint deployed.** See `automation/README.md` for jobs, tests, and limitations. Stopping rules unchanged.
 
 ## Model handoffs
 

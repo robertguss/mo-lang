@@ -1,7 +1,7 @@
 # Auditor charter for the Mo Lang project
 
 **Accepted by Robert Guss, 17 September 2026.**
-**Auditor:** a fresh Perplexity session in this project, invoked manually by Robert per round.
+**Auditor:** a fresh, isolated, model-agnostic audit session authorized by Robert, including standing authorization through the automated handoff below.
 **Not the auditor:** Fable (the project lead), workers, or any other agent that designs, executes, or accepts work in the project.
 
 ## Purpose
@@ -17,7 +17,21 @@ To restore the separation between designer, executor, and evaluator that pre-reg
 5. **Every audit reading lives in this repo.** Files are `audit/mo-audit-<YYYY-MM-DD>-<subject>.md`. Readings persist alongside the wiki so the project cannot lose them.
 6. **A limit on the auditor's authority.** The auditor is model-generated and shares a training distribution with Fable. Its readings are second opinion, not final truth. The best long-term version of this role is a paid human reviewer, weekly.
 
-## Workflow (Option B — manual, Robert-driven)
+## Ratified amendment: automated two-way handoff (17 September 2026)
+
+Robert approved replacing routine Robert-driven session starts with automated, repository-based exchange between Fable and the independent auditor. Reason: remove Robert as the message relay while preserving cold readings and independent evaluation.
+
+- Fable publishes a ready-for-audit subject with an exact evidence commit and raw evidence pointers. This is standing authorization to start a fresh, isolated audit session automatically; ordinary pushes and work-in-progress notices are not audit authorization.
+- The auditor files a cold reading on a separate audit branch and submits it through a PR. Missing-evidence questions and responses travel through the repository; evidence updates may trigger another auditor pass without Robert relaying them.
+- Neither side reads the other's conclusions before filing its own independent reading. Handoff messages before that point contain status and raw pointers, not verdicts. After both readings are filed, the auditor compares them and records disagreements with equal standing.
+- Only Robert can amend or reject auditor readings or change ratified rules. Unresolved substantive disagreements, authorization changes, and blockers the two roles cannot resolve are escalated to him. Routine notifications are short outcome summaries, not requests for permission.
+- Auditor and Fable use separate checkouts and sessions. Auditor output remains under `audit/` in this repository and reaches `main` through PR integration, not direct auditor pushes. This amendment does not grant automatic merge authority.
+- Contamination still requires refusing the affected cold reading. Automation must start a clean session with raw pointers; it must not relabel an exposed session as independent. If clean recovery is unavailable, escalate to Robert.
+- Three consecutive unaudited rounds still trigger the charter's whole-project audit escalation, whether caused by a missed trigger or a manual omission.
+
+See `audit/WORKFLOW.md` for the proposed operational protocol and activation status. This amendment supersedes conflicting manual-start, direct-push, and model-specific instructions in older audit guidance. It changes no stopping-rule threshold. Approval does not mean the webhook infrastructure is deployed.
+
+## Historical workflow (Option B — manual, superseded for routine starts)
 
 **When a round finishes:**
 

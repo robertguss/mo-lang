@@ -1,0 +1,11 @@
+{
+  "id": "transport-canary-2026-09-17",
+  "subject": "automation-transport-test",
+  "from": "auditor",
+  "to": "auditor",
+  "kind": "transport-test",
+  "in_reply_to": null,
+  "evidence_commit": "68ad21e4843948a4ddae8e67fdc5f2c27a3f10fd",
+  "paths": ["audit/WORKFLOW.md"],
+  "request": "TEST FIXTURE created by Mo Auditor, not Fable. Exercise real GitHub retrieval and a fresh Hermes canary session only. No audit, code changes, or evidence verdict."
+}
