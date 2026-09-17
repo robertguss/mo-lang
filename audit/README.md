@@ -1,6 +1,6 @@
 # The audit folder
 
-**Workflow update, approved by Robert 17 Sep 2026:** see the automated two-way handoff amendment in `CHARTER.md` and `WORKFLOW.md`. It supersedes older manual-only session starts, Perplexity-only wording, and direct auditor pushes to `main`. Automation is approved but not yet deployed.
+**Workflow update, approved by Robert 17 Sep 2026:** see the automated two-way handoff amendment in `CHARTER.md` and `WORKFLOW.md`. It supersedes older manual-only session starts, Perplexity-only wording, and direct auditor pushes to `main`. Auditor-side polling intake is deployed and canary-tested; Fable-side wake-up remains pending. See `automation/README.md`.
 
 **What this is.** A separate reviewer role for the Mo project. Fable is the lead — designer, executor, evaluator. The auditor reads the same evidence Fable does, cold, and files an independent reading before Fable's is read. Where the two readings disagree, that disagreement is a decision-log row with equal standing.
 

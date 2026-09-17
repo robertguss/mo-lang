@@ -53,6 +53,15 @@ class IntakeTests(unittest.TestCase):
         self.assertIn('a'*40, p)
         self.assertIn('Do not open Fable', p)
 
+    def test_comparison_requires_both_filed_readings(self):
+        m = dict(self.m, kind='parallel-filed', paths=['audit/mo-audit-example.md', 'audit/fable-reading-example.md'])
+        poll.validate(m, self.path)
+        prompt = poll.make_prompt(m, 'b'*40, '/tmp/record', '/tmp/checkout', False)
+        self.assertIn('NOT a new cold technical audit', prompt)
+        for paths in [['audit/fable-reading-example.md'], ['audit/mo-audit-example.md'], ['audit/mo-audit-example.md', 'audit/fable-reading-example.md', 'mo-wiki/decisions/decision-log.md']]:
+            with self.assertRaises(ValueError):
+                poll.validate(dict(m, paths=paths), self.path)
+
     def test_canary_cannot_start_an_audit(self):
         p = poll.make_prompt(self.m, 'b'*40, '/tmp/record', '/tmp/checkout', True)
         self.assertIn('NOT an audit', p)

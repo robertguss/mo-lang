@@ -138,8 +138,8 @@ def run(canary_ref=None):
             if canary_ref and isinstance(decoded, dict) and decoded.get('kind') != 'transport-test':
                 continue
             m = validate(decoded, path, bool(canary_ref))
-            # Branch protection is the sender boundary: a from field is not authentication.
-            # Only the explicitly trusted main branch (or labelled test ref) is consumed.
+            # Repository write access is the trust boundary, not the self-declared from field.
+            # Only main is consumed in production. Repository collaborators can enqueue work.
             if api('commits/' + m['evidence_commit'])['sha'] != m['evidence_commit']:
                 raise ValueError('evidence commit lookup mismatch')
             evidence_tree = api('git/trees/' + m['evidence_commit'] + '?recursive=1')

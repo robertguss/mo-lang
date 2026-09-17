@@ -1,7 +1,7 @@
 # Automated auditor–Fable exchange
 
 **Authority:** Robert approved the two-way automated handoff on 17 September 2026; see `CHARTER.md` and the decision-log amendment. No routine Robert relay is required.
-**Status:** protocol proposal under that approval; transport is not deployed. A pushed document or PR is not proof that Fable has received or acted on it.
+**Status:** auditor-side polling intake deployed and fresh-agent canary tested; Fable-side wake-up remains unconfigured/unverified. See `automation/README.md` for installation, exact message format, checks, and limitations. A pushed document or PR is not proof that Fable has received or acted on it.
 
 ## Durable handoffs
 
@@ -31,7 +31,7 @@ Evidence revisions remain separately anchored. A session already exposed to conc
 
 ## Transport requirements
 
-- Signed GitHub webhook ingress, exact repository/ref filtering, bounded payloads, authorized senders, and least-privilege credentials. Signatures authenticate delivery, not prose instructions.
+- Initial transport: authenticated outbound GitHub polling of the exact repository and main branch, with bounded records and repository write access as the enqueue trust boundary. Future webhook ingress must verify signatures and retain reconciliation polling; signatures authenticate delivery, not prose instructions.
 - Durable queue and receipts keyed by message ID and evidence commit; replayed deliveries do not start duplicate work. Process all unhandled records after a push, not merely the newest payload. Auditor notifications must not trigger themselves.
 - Independent profile/checkout/session for the auditor. Do not modify another Hermes profile or drive Fable's worker panes.
 - A supported Fable-side receiver is necessary for the return path. A Telegram message to Robert alone is not two-way automation.
