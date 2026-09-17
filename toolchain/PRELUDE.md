@@ -50,6 +50,8 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `EntryKind` | `File`, `Folder` | enum | stdlib (09), step 28 |
 | `RuntimeError` | | error enum | stdlib (09), Session 5, step 23 |
 | `Event` | | enum: one of the runtime's events | stdlib (09), Session 5, step 23 |
+| `Hash`, `AesGcm`, `ChaCha`, `X25519`, `Ed25519`, `Password` | | rows only: the crypto brick's, called on the name, with no values of their own, so none is a type a signature can name (MO0202) | stdlib (09), step 35 |
+| `Random` | | capability: bytes from the OS CSPRNG, `platform.random`; `Random.fixture()` in a test | stdlib (09), step 35 |
 
 ## Stand-ins
 
@@ -206,6 +208,23 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Time` | `since` | `Time` | `Duration` | | | stdlib (09) |
 | `Duration` | `ms` | | `Int64` | | | stdlib (09) |
 | `Duration` | `seconds`, `minutes` | | `Float64` | | | stdlib (09) |
+| `Hash` (on type) | `sha256`, `sha512` | `List(UInt8)` | `List(UInt8)`: 32 or 64 bytes | | | stdlib (09), step 35 |
+| `Hash` (on type) | `hmac_sha256` | `List(UInt8)` (key), `List(UInt8)` | `List(UInt8)`: 32 bytes | | | stdlib (09), step 35 |
+| `Hash` (on type) | `hkdf_sha256` | `List(UInt8)` (ikm), `List(UInt8)` (salt), `List(UInt8)` (info), `UInt64` (size) | `List(UInt8)`; a size past 8,160 crashes | | | stdlib (09), step 35 |
+| `Hash` (on type) | `hex` | `List(UInt8)` | `String`, lowercase | | | stdlib (09), step 35 |
+| `Hash` (on type) | `from_hex` | `String` | `Option(List(UInt8))` | | | stdlib (09), step 35 |
+| `Hash` (on type) | `equal?` | `List(UInt8)`, `List(UInt8)` | `Bool`, in constant time | | | stdlib (09), step 35 |
+| `AesGcm`, `ChaCha` (on type) | `seal` | `List(UInt8)` (key, 32), `List(UInt8)` (nonce, 12), `List(UInt8)` (plain), `List(UInt8)` (aad) | `List(UInt8)`: the ciphertext, then the 16-byte tag | | | stdlib (09), step 35 |
+| `AesGcm`, `ChaCha` (on type) | `open` | key, nonce, `List(UInt8)` (sealed), aad | `Option(List(UInt8))` | | | stdlib (09), step 35 |
+| `X25519` (on type) | `public` | `List(UInt8)` (secret, 32) | `List(UInt8)` | | | stdlib (09), step 35 |
+| `X25519` (on type) | `shared` | `List(UInt8)` (secret, 32), `List(UInt8)` (public, 32) | `Option(List(UInt8))`: `None` for a low-order point | | | stdlib (09), step 35 |
+| `Ed25519` (on type) | `public` | `List(UInt8)` (seed, 32) | `List(UInt8)` | | | stdlib (09), step 35 |
+| `Ed25519` (on type) | `sign` | `List(UInt8)` (seed, 32), `List(UInt8)` | `List(UInt8)`: 64 bytes | | | stdlib (09), step 35 |
+| `Ed25519` (on type) | `verify?` | `List(UInt8)` (public, 32), `List(UInt8)`, `List(UInt8)` (signature, 64) | `Bool` | | | stdlib (09), step 35 |
+| `Password` (on type) | `hash` | `String`, `List(UInt8)` (salt, 16) | `String`: Argon2id, a PHC string | | | stdlib (09), step 35 |
+| `Password` (on type) | `verify?` | `String`, `String` (PHC) | `Bool` | | | stdlib (09), step 35 |
+| `Random` | `bytes` | `UInt64` | `List(UInt8)` | | | stdlib (09), step 35 |
+| `Random` (on type) | `fixture` | | `Random`: the run's seeded stream | | tests | stdlib (09), step 35 |
 | `Deadline` | `at_most` | `Duration` | `Deadline`: the earlier of the deadline and now plus the duration | | | stdlib (09), Session 5, step 22 |
 | `Deadline` | `remaining` | | `Duration`: what remains of the deadline, zero once it has passed | | | stdlib (09), Session 5, step 24 |
 | `Deadline` (on type) | `fixture` | `Duration` | `Deadline`: now plus the duration on the test's clock | | tests | stdlib (09), Session 5, step 22 |
@@ -240,6 +259,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `net` | | `Net` | | `main` | stdlib (09) |
 | `Platform` | `http` | | `Http` | | `main` | stdlib (09) |
 | `Platform` | `runtime` | | `Option(Runtime)`: `Some` under `mo run` and in a binary built with `--surface` | | `main` | stdlib (09), Session 5, step 23 |
+| `Platform` | `random` | | `Random` | | `main` | stdlib (09), step 35 |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |

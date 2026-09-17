@@ -21,6 +21,13 @@
 //! runs process tests in the fixed order. The seeded runs of `mo test --sim` are the
 //! interpreter's and have no compiled form.
 //!
+//! The crypto brick (step 35, `src/bricks/crypto.zig`) is inside `mo` too. A build compiles it for
+//! the build's target with `zig build-obj -OReleaseFast` once, into
+//! `zig-out/mo-build/.bricks/<hash>/crypto.o`, the hash taken over the brick's source, the target,
+//! and the zig that compiles it, and every build for that target links the object beside the
+//! runtime. The brick needs nothing from libc on Linux (`getrandom` is a system call) and only
+//! `arc4random_buf` from libSystem on macOS.
+//!
 //! `zig` is found next to the running `mo`, else on PATH.
 const std = @import("std");
 const builtin = @import("builtin");
@@ -31,6 +38,7 @@ const program = @import("program.zig");
 
 pub const runtime_c = @embedFile("mo_rt.c");
 pub const runtime_h = @embedFile("mo_rt.h");
+pub const crypto_brick = @embedFile("bricks/crypto.zig");
 
 pub const Options = struct {
     name: []const u8,
@@ -89,18 +97,21 @@ pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ
     const t1 = Io.Clock.Timestamp.now(io, .awake);
 
     const zig = try findZig(gpa, io, environ) orelse return .{ .failed = "there is no zig next to mo or on PATH, and mo build compiles with zig cc" };
+    const target: ?[]const u8 = options.target orelse if (builtin.os.tag == .linux) try std.fmt.allocPrint(gpa, "{t}-linux-musl", .{builtin.cpu.arch}) else null;
+    const brick = switch (try brickObject(gpa, io, zig, options.out_dir, target)) {
+        .built => |path| path,
+        .failed => |why| return .{ .failed = why },
+    };
     const binary = try std.fmt.allocPrint(gpa, "{s}/{s}", .{ dir, options.name });
     var argv: std.ArrayList([]const u8) = .empty;
     try argv.appendSlice(gpa, &.{ zig, "cc", "-std=c11", "-Wall", "-Werror", "-O2" });
     if (options.wrap) try argv.appendSlice(gpa, &.{ "-fwrapv", "-DMO_WRAP" });
     if (options.salt) |salt| try argv.append(gpa, try std.fmt.allocPrint(gpa, "-DMO_BUILD_SALT={d}", .{salt}));
-    if (options.target) |t| {
+    if (target) |t| {
         try argv.appendSlice(gpa, &.{ "-target", t });
         if (std.mem.indexOf(u8, t, "linux") != null) try argv.append(gpa, "-static");
-    } else if (builtin.os.tag == .linux) {
-        try argv.appendSlice(gpa, &.{ "-target", try std.fmt.allocPrint(gpa, "{t}-linux-musl", .{builtin.cpu.arch}), "-static" });
     }
-    try argv.appendSlice(gpa, &.{ "-o", binary, c_path, rt_path });
+    try argv.appendSlice(gpa, &.{ "-o", binary, c_path, rt_path, brick });
     const ran = std.process.run(gpa, io, .{ .argv = argv.items }) catch |err| {
         return .{ .failed = try std.fmt.allocPrint(gpa, "{s} cc did not run: {t}", .{ zig, err }) };
     };
@@ -114,6 +125,40 @@ pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ
         .emit_ns = t0.durationTo(t1).raw.toNanoseconds(),
         .cc_ns = t1.durationTo(t2).raw.toNanoseconds(),
     } };
+}
+
+/// The crypto brick compiled for `target` (null: the host), from the cache when it is there.
+/// Concurrent builds each compile into a file of their own and rename it into place, so none
+/// links a half-written object.
+fn brickObject(gpa: std.mem.Allocator, io: Io, zig: []const u8, out_dir: []const u8, target: ?[]const u8) !union(enum) { built: []const u8, failed: []const u8 } {
+    var h = std.hash.Wyhash.init(0);
+    h.update(crypto_brick);
+    h.update(target orelse "native");
+    h.update(zig);
+    const cache = try std.fmt.allocPrint(gpa, "{s}/.bricks/{x:0>16}", .{ out_dir, h.final() });
+    const object = try std.fmt.allocPrint(gpa, "{s}/crypto.o", .{cache});
+    const cwd = Io.Dir.cwd();
+    if (cwd.access(io, object, .{})) |_| return .{ .built = object } else |_| {}
+    try cwd.createDirPath(io, cache);
+    var nonce: [8]u8 = undefined;
+    io.random(&nonce);
+    const tag = std.mem.readInt(u64, &nonce, .little);
+    const source = try std.fmt.allocPrint(gpa, "{s}/crypto-{x}.zig", .{ cache, tag });
+    const partial = try std.fmt.allocPrint(gpa, "{s}/crypto-{x}.o", .{ cache, tag });
+    try cwd.writeFile(io, .{ .sub_path = source, .data = crypto_brick });
+    defer cwd.deleteFile(io, source) catch {};
+    var argv: std.ArrayList([]const u8) = .empty;
+    try argv.appendSlice(gpa, &.{ zig, "build-obj", "-OReleaseFast", "-fno-compiler-rt", "-fstrip", "--name", "crypto" });
+    if (target) |t| try argv.appendSlice(gpa, &.{ "-target", t });
+    try argv.appendSlice(gpa, &.{ try std.fmt.allocPrint(gpa, "-femit-bin={s}", .{partial}), source });
+    const ran = std.process.run(gpa, io, .{ .argv = argv.items }) catch |err| {
+        return .{ .failed = try std.fmt.allocPrint(gpa, "{s} build-obj did not run on the crypto brick: {t}", .{ zig, err }) };
+    };
+    if (ran.term != .exited or ran.term.exited != 0) {
+        return .{ .failed = try std.fmt.allocPrint(gpa, "zig build-obj rejected the crypto brick in {s}:\n{s}", .{ cache, ran.stderr }) };
+    }
+    cwd.rename(partial, cwd, object, io) catch |err| return .{ .failed = try std.fmt.allocPrint(gpa, "the crypto brick's object did not move into {s}: {t}", .{ object, err }) };
+    return .{ .built = object };
 }
 
 /// `zig` next to the running `mo`, else the first on PATH.

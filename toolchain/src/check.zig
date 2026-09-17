@@ -1267,6 +1267,10 @@ const Checker = struct {
                 .set => c.pool.list1(.set, try c.resolveType(args[0], ctx)),
                 .error_enum, .enum_ => c.preludeEnum(name),
                 .reply => c.pool.list1(.reply, try c.resolveType(args[0], ctx)),
+                .rows => {
+                    try c.reportTok(.unknown_type, path.main_token, try c.print("{s} names the rows {s}.name(...) and has no values, so it is not a type", .{ name, name }));
+                    return types.unknown;
+                },
                 .handle => {
                     const an = c.node(args[0]);
                     if (an.kind == .type_ref) {
@@ -3630,7 +3634,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
         .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
-        .{ "Runtime", types.cap(.runtime) },
+        .{ "Runtime", types.cap(.runtime) },   .{ "Random", types.cap(.random) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

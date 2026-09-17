@@ -10,6 +10,7 @@
 const std = @import("std");
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
+const crypto_rows = @import("crypto_rows.zig");
 const json = @import("json.zig");
 const prelude = @import("prelude.zig");
 const server_mod = @import("server.zig");
@@ -118,6 +119,8 @@ pub const Row = enum {
     deadline_fixture,
     option_map,
     string_grouped,
+    /// A crypto or Random row (crypto_rows.zig, step 35).
+    crypto,
 };
 
 pub const names = std.StaticStringMap(Row).initComptime(.{
@@ -156,6 +159,26 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
     .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },         .{ "Deadline.at_most", .deadline_at_most }, .{ "Deadline.remaining", .deadline_remaining },
+    .{ "Hash.sha256", .crypto },
+    .{ "Hash.sha512", .crypto },
+    .{ "Hash.hmac_sha256", .crypto },
+    .{ "Hash.hkdf_sha256", .crypto },
+    .{ "Hash.hex", .crypto },
+    .{ "Hash.from_hex", .crypto },
+    .{ "Hash.equal?", .crypto },
+    .{ "AesGcm.seal", .crypto },
+    .{ "AesGcm.open", .crypto },
+    .{ "ChaCha.seal", .crypto },
+    .{ "ChaCha.open", .crypto },
+    .{ "X25519.public", .crypto },
+    .{ "X25519.shared", .crypto },
+    .{ "Ed25519.public", .crypto },
+    .{ "Ed25519.sign", .crypto },
+    .{ "Ed25519.verify?", .crypto },
+    .{ "Password.hash", .crypto },
+    .{ "Password.verify?", .crypto },
+    .{ "Random.bytes", .crypto },
+    .{ "Random.fixture", .crypto },
     .{ "Deadline.fixture", .deadline_fixture },   .{ "Option.map", .option_map },             .{ "String.grouped", .string_grouped },
 });
 
@@ -176,6 +199,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
     return switch (which) {
         .none => unreachable,
         .json_encode => json.encode(vm, a[0], int_kind),
+        .crypto => crypto_rows.call(vm, row, a),
         .json_decode => json.decode(vm, a[0].string),
         .json_to_i64 => option(vm, json.whole(a[0])),
         // The earlier of the deadline and now plus d: a nested deadline tightens, never extends.

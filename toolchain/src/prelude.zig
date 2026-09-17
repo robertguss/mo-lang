@@ -22,7 +22,9 @@ pub const Origin = enum { grammar, stdlib, corpus_only };
 
 /// `error_enum` and `enum_` are both enums whose variants are rows below; an error enum
 /// is what a capability call fails with.
-pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, reply, capability, error_enum, enum_ };
+/// `rows` names a group of rows called on the name (`Hash.sha256`) that has no values of its own
+/// (step 35).
+pub const TypeKind = enum { int, float, bool, string, time, duration, deadline, list, option, result, map, set, handle, reply, capability, error_enum, enum_, rows };
 
 pub const Type = struct {
     name: []const u8,
@@ -88,6 +90,15 @@ pub const types = [_]Type{
     .{ .name = "Event", .kind = .enum_, .origin = .stdlib, .hideable = true },
     // What `Fs.list_kinds` tells apart (step 28).
     .{ .name = "EntryKind", .kind = .enum_, .origin = .stdlib, .hideable = true },
+    // The crypto brick's rows and the one capability that is not deterministic (step 35). Each is a
+    // name a program may give its own type, which then hides the prelude's from its code.
+    .{ .name = "Hash", .kind = .rows, .origin = .stdlib, .hideable = true },
+    .{ .name = "AesGcm", .kind = .rows, .origin = .stdlib, .hideable = true },
+    .{ .name = "ChaCha", .kind = .rows, .origin = .stdlib, .hideable = true },
+    .{ .name = "X25519", .kind = .rows, .origin = .stdlib, .hideable = true },
+    .{ .name = "Ed25519", .kind = .rows, .origin = .stdlib, .hideable = true },
+    .{ .name = "Password", .kind = .rows, .origin = .stdlib, .hideable = true },
+    .{ .name = "Random", .kind = .capability, .origin = .stdlib, .hideable = true },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -422,6 +433,7 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "net", .ret = "Net", .origin = .stdlib },
     .{ .recv = "Platform", .name = "http", .ret = "Http", .origin = .stdlib },
     .{ .recv = "Platform", .name = "runtime", .ret = "Option(Runtime)", .origin = .stdlib },
+    .{ .recv = "Platform", .name = "random", .ret = "Random", .origin = .stdlib },
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
@@ -474,6 +486,29 @@ pub const fns = [_]Fn{
     .{ .recv = "Json", .on_type = true, .name = "encode", .params = &.{"T"}, .ret = "String", .origin = .stdlib },
     .{ .recv = "Json", .on_type = true, .name = "decode", .params = &.{"String"}, .ret = "Result(Json, JsonError)", .origin = .stdlib },
     .{ .recv = "Json", .name = "to_i64", .ret = "Option(Int64)", .origin = .stdlib },
+    // Crypto (step 35): pure rows over the crypto brick (bricks/crypto.zig, crypto_rows.zig), which
+    // both runtimes call; a key, nonce, seed, salt, or signature of another size is a crash.
+    .{ .recv = "Hash", .on_type = true, .name = "sha256", .params = &.{"List(UInt8)"}, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Hash", .on_type = true, .name = "sha512", .params = &.{"List(UInt8)"}, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Hash", .on_type = true, .name = "hmac_sha256", .params = &.{ "List(UInt8)", "List(UInt8)" }, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Hash", .on_type = true, .name = "hkdf_sha256", .params = &.{ "List(UInt8)", "List(UInt8)", "List(UInt8)", "UInt64" }, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Hash", .on_type = true, .name = "hex", .params = &.{"List(UInt8)"}, .ret = "String", .origin = .stdlib },
+    .{ .recv = "Hash", .on_type = true, .name = "from_hex", .params = &.{"String"}, .ret = "Option(List(UInt8))", .origin = .stdlib },
+    .{ .recv = "Hash", .on_type = true, .name = "equal?", .params = &.{ "List(UInt8)", "List(UInt8)" }, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "AesGcm", .on_type = true, .name = "seal", .params = &.{ "List(UInt8)", "List(UInt8)", "List(UInt8)", "List(UInt8)" }, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "AesGcm", .on_type = true, .name = "open", .params = &.{ "List(UInt8)", "List(UInt8)", "List(UInt8)", "List(UInt8)" }, .ret = "Option(List(UInt8))", .origin = .stdlib },
+    .{ .recv = "ChaCha", .on_type = true, .name = "seal", .params = &.{ "List(UInt8)", "List(UInt8)", "List(UInt8)", "List(UInt8)" }, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "ChaCha", .on_type = true, .name = "open", .params = &.{ "List(UInt8)", "List(UInt8)", "List(UInt8)", "List(UInt8)" }, .ret = "Option(List(UInt8))", .origin = .stdlib },
+    .{ .recv = "X25519", .on_type = true, .name = "public", .params = &.{"List(UInt8)"}, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "X25519", .on_type = true, .name = "shared", .params = &.{ "List(UInt8)", "List(UInt8)" }, .ret = "Option(List(UInt8))", .origin = .stdlib },
+    .{ .recv = "Ed25519", .on_type = true, .name = "public", .params = &.{"List(UInt8)"}, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Ed25519", .on_type = true, .name = "sign", .params = &.{ "List(UInt8)", "List(UInt8)" }, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Ed25519", .on_type = true, .name = "verify?", .params = &.{ "List(UInt8)", "List(UInt8)", "List(UInt8)" }, .ret = "Bool", .origin = .stdlib },
+    .{ .recv = "Password", .on_type = true, .name = "hash", .params = &.{ "String", "List(UInt8)" }, .ret = "String", .origin = .stdlib },
+    .{ .recv = "Password", .on_type = true, .name = "verify?", .params = &.{ "String", "String" }, .ret = "Bool", .origin = .stdlib },
+    // Random (step 35): the OS CSPRNG under main, and in a test a stream from the run's seed.
+    .{ .recv = "Random", .name = "bytes", .params = &.{"UInt64"}, .ret = "List(UInt8)", .origin = .stdlib },
+    .{ .recv = "Random", .on_type = true, .name = "fixture", .ret = "Random", .only = .tests, .origin = .stdlib },
     .{ .recv = "Deadline", .name = "at_most", .params = &.{"Duration"}, .ret = "Deadline", .origin = .stdlib },
     // What remains of the deadline, zero once it has passed (step 24).
     .{ .recv = "Deadline", .name = "remaining", .ret = "Duration", .origin = .stdlib },

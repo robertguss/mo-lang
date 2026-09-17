@@ -220,6 +220,9 @@ pub const Sim = struct {
     files: stdlib.FixtureFs = .{},
     /// What each `Out.fixture()` of the run was given, one text per call.
     outs: std.ArrayList(std.ArrayList([]const u8)) = .empty,
+    /// Each `Random.fixture()` of the run, by its handle less one: how far into the run's
+    /// stream it has drawn (step 35).
+    randoms: std.ArrayList(u64) = .empty,
     /// Under `mo run`, every vm allocates in a region of its own, so a value that goes from
     /// one vm to another goes packed (Vm.pack): a message, a reply, and a process's start
     /// arguments and first state. After each update the process's region keeps only what

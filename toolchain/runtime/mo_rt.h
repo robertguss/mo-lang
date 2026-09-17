@@ -107,7 +107,7 @@ enum { MO_I8, MO_I16, MO_I32, MO_I64, MO_U8, MO_U16, MO_U32, MO_U64 };
 /* types.CapKind, in its order. */
 enum {
     MO_CAP_CLOCK, MO_CAP_FS, MO_CAP_EVENTS, MO_CAP_LEDGER, MO_CAP_PLATFORM, MO_CAP_ENV, MO_CAP_OUT, MO_CAP_NET,
-    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE, MO_CAP_RUNTIME
+    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE, MO_CAP_RUNTIME, MO_CAP_RANDOM
 };
 
 /* check.DeclKind, in its order. */
@@ -559,6 +559,37 @@ MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
 MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64); MO_ROW(mo_r_Deadline_at_most); MO_ROW(mo_r_Deadline_remaining); MO_ROW(mo_r_Deadline_fixture);
 MO_ROW(mo_r_Charge_fixture); MO_ROW(mo_r_Charge_fixture_at); MO_ROW(mo_r_Charge_refunded_q);
 MO_ROW(mo_r_Money_cents); MO_ROW(mo_r_Money_zero);
+MO_ROW(mo_r_Hash_sha256); MO_ROW(mo_r_Hash_sha512); MO_ROW(mo_r_Hash_hmac_sha256); MO_ROW(mo_r_Hash_hkdf_sha256);
+MO_ROW(mo_r_Hash_hex); MO_ROW(mo_r_Hash_from_hex); MO_ROW(mo_r_Hash_equal_q);
+MO_ROW(mo_r_AesGcm_seal); MO_ROW(mo_r_AesGcm_open); MO_ROW(mo_r_ChaCha_seal); MO_ROW(mo_r_ChaCha_open);
+MO_ROW(mo_r_X25519_public); MO_ROW(mo_r_X25519_shared);
+MO_ROW(mo_r_Ed25519_public); MO_ROW(mo_r_Ed25519_sign); MO_ROW(mo_r_Ed25519_verify_q);
+MO_ROW(mo_r_Password_hash); MO_ROW(mo_r_Password_verify_q);
+MO_ROW(mo_r_Platform_random); MO_ROW(mo_r_Random_bytes); MO_ROW(mo_r_Random_fixture);
+
+/* ---- the crypto brick (step 35): toolchain/src/bricks/crypto.zig, compiled for the target and
+ * linked beside this runtime by mo build. The rows above call these; this runtime implements none. */
+enum { MO_CRYPTO_OK = 0, MO_CRYPTO_REJECTED = 1, MO_CRYPTO_BAD_SIZE = -1, MO_CRYPTO_NO_MEMORY = -2 };
+#define MO_CRYPTO_HKDF_MAX (255 * 32)
+#define MO_CRYPTO_PHC_SIZE 97
+void mo_crypto_sha256(const uint8_t *in, size_t n, uint8_t *digest);
+void mo_crypto_sha512(const uint8_t *in, size_t n, uint8_t *digest);
+void mo_crypto_hmac_sha256(const uint8_t *key, size_t key_n, const uint8_t *in, size_t n, uint8_t *mac);
+int mo_crypto_hkdf_sha256(const uint8_t *ikm, size_t ikm_n, const uint8_t *salt, size_t salt_n, const uint8_t *info, size_t info_n, uint8_t *dk, size_t size);
+bool mo_crypto_equal(const uint8_t *a, size_t a_n, const uint8_t *b, size_t b_n);
+void mo_crypto_hex(const uint8_t *in, size_t n, char *text);
+int mo_crypto_from_hex(const char *text, size_t n, uint8_t *bytes);
+typedef int MoAead(const uint8_t *key, size_t key_n, const uint8_t *nonce, size_t nonce_n, const uint8_t *in, size_t n, const uint8_t *aad, size_t aad_n, uint8_t *out);
+MoAead mo_crypto_aes256gcm_seal, mo_crypto_aes256gcm_open, mo_crypto_chacha20poly1305_seal, mo_crypto_chacha20poly1305_open;
+int mo_crypto_x25519_public(const uint8_t *secret, size_t secret_n, uint8_t *public_key);
+int mo_crypto_x25519_shared(const uint8_t *secret, size_t secret_n, const uint8_t *public_key, size_t public_n, uint8_t *shared);
+int mo_crypto_ed25519_public(const uint8_t *seed, size_t seed_n, uint8_t *public_key);
+int mo_crypto_ed25519_sign(const uint8_t *seed, size_t seed_n, const uint8_t *msg, size_t n, uint8_t *signature);
+int mo_crypto_ed25519_verify(const uint8_t *public_key, size_t public_n, const uint8_t *msg, size_t n, const uint8_t *signature, size_t signature_n);
+int mo_crypto_argon2id_hash(const char *password, size_t n, const uint8_t *salt, size_t salt_n, char *text);
+int mo_crypto_argon2id_verify(const char *password, size_t n, const char *text, size_t text_n);
+int mo_crypto_random(uint8_t *bytes, size_t n);
+void mo_crypto_fixture_bytes(uint64_t seed, uint64_t offset, uint8_t *bytes, size_t n);
 
 /* A row compiled programs do not run: a clear crash. */
 _Noreturn void mo_not_compiled(const char *what);

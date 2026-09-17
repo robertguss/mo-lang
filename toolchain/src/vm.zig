@@ -1399,7 +1399,7 @@ pub const Vm = struct {
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
         .{ "Env.get", .env_get },                   .{ "Out.write", .out_write },
-        .{ "Platform.runtime", .platform_part },    .{ "Runtime.processes", .runtime_row },       .{ "Runtime.state", .runtime_row },
+        .{ "Platform.runtime", .platform_part },    .{ "Platform.random", .platform_part },    .{ "Runtime.processes", .runtime_row },       .{ "Runtime.state", .runtime_row },
         .{ "Runtime.recent", .runtime_row },        .{ "Runtime.events", .runtime_row },          .{ "Runtime.crashes", .runtime_row },
         .{ "Runtime.sources", .runtime_row },       .{ "Runtime.memory", .runtime_row },          .{ "Runtime.slowest", .runtime_row },
         .{ "Runtime.send", .runtime_row },          .{ "Runtime.pause", .runtime_row },           .{ "Runtime.resume", .runtime_row },
@@ -1915,6 +1915,7 @@ pub const Vm = struct {
                 .http => if (vm.server != null) "an Http" else "Http.fixture()",
                 .http_listener => "an HttpListener",
                 .exchange => "an Exchange",
+                .random => if (c.handle == 0) "a Random" else "Random.fixture()",
                 .runtime => if (vm.server == null) "Runtime.fixture()" else if (c.handle == surface_mod.read_only_handle) "a read-only Runtime" else "a Runtime",
             }),
             .handle => |h| if (vm.sim) |s| {

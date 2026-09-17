@@ -1614,6 +1614,7 @@ static void format_value(Buf *b, MoValue v) {
         case MO_CAP_HTTP: buf_str(b, server_mode ? "an Http" : "Http.fixture()"); return;
         case MO_CAP_HTTP_LISTENER: buf_str(b, "an HttpListener"); return;
         case MO_CAP_EXCHANGE: buf_str(b, "an Exchange"); return;
+        case MO_CAP_RANDOM: buf_str(b, mo_cap_handle(v) == 0 ? "a Random" : "Random.fixture()"); return;
         default: buf_str(b, !server_mode ? "Runtime.fixture()" : mo_cap_handle(v) == 1 ? "a read-only Runtime" : "a Runtime"); return;
         }
     case MO_HANDLE:
@@ -3492,7 +3493,242 @@ static bool fix_remove(FixSystem *sys, const char *path) {
     return true;
 }
 
+/* ---- crypto and Random (step 35): each row hands its bytes to the crypto brick (mo_rt.h) and
+ * turns the bytes it gives back into a value, as crypto_rows.zig does for the interpreter. */
+
+/* A List(UInt8)'s bytes, freed by the row. */
+static uint8_t *bytes_of(MoValue list) {
+    uint8_t *b = malloc(list.aux ? list.aux : 1);
+    if (!b) mo_fail(MO_R_OTHER, "crypto", "out of memory");
+    for (uint32_t i = 0; i < list.aux; i++) b[i] = (uint8_t)list.as.xs[i].as.u;
+    return b;
+}
+
+static MoValue list_of_bytes(const uint8_t *b, size_t n) {
+    MoValue *out = mo_alloc_values(n);
+    for (size_t i = 0; i < n; i++) out[i] = mo_i64(b[i]);
+    return mo_list(out, (uint32_t)n);
+}
+
+/* A crash unless the list holds `want` bytes: `AesGcm.seal takes a key of 32 bytes, not 31`. */
+static void crypto_size(const char *recv, const char *name, const char *what, uint32_t want, MoValue list) {
+    if (list.aux != want) mo_fail(MO_R_OTHER, name, "%s.%s takes %s of %u bytes, not %u", recv, name, what, want, list.aux);
+}
+
+static void crypto_answer(const char *recv, const char *name, int rc) {
+    if (rc == MO_CRYPTO_NO_MEMORY) mo_fail(MO_R_OTHER, name, "out of memory");
+    if (rc != MO_CRYPTO_OK) mo_fail(MO_R_OTHER, name, "%s.%s: the crypto brick answered %d", recv, name, rc);
+}
+
+MO_ROW(mo_r_Hash_sha256) {
+    (void)kind;
+    uint8_t *in = bytes_of(a[0]), d[32];
+    mo_crypto_sha256(in, a[0].aux, d);
+    free(in);
+    return list_of_bytes(d, 32);
+}
+
+MO_ROW(mo_r_Hash_sha512) {
+    (void)kind;
+    uint8_t *in = bytes_of(a[0]), d[64];
+    mo_crypto_sha512(in, a[0].aux, d);
+    free(in);
+    return list_of_bytes(d, 64);
+}
+
+MO_ROW(mo_r_Hash_hmac_sha256) {
+    (void)kind;
+    uint8_t *key = bytes_of(a[0]), *in = bytes_of(a[1]), d[32];
+    mo_crypto_hmac_sha256(key, a[0].aux, in, a[1].aux, d);
+    free(key);
+    free(in);
+    return list_of_bytes(d, 32);
+}
+
+MO_ROW(mo_r_Hash_hkdf_sha256) {
+    (void)kind;
+    if (a[3].as.u > MO_CRYPTO_HKDF_MAX) mo_fail(MO_R_OTHER, "hkdf_sha256", "Hash.hkdf_sha256 gives at most %d bytes, not %llu", MO_CRYPTO_HKDF_MAX, (unsigned long long)a[3].as.u);
+    uint8_t *ikm = bytes_of(a[0]), *salt = bytes_of(a[1]), *info = bytes_of(a[2]), dk[MO_CRYPTO_HKDF_MAX];
+    int rc = mo_crypto_hkdf_sha256(ikm, a[0].aux, salt, a[1].aux, info, a[2].aux, dk, (size_t)a[3].as.u);
+    free(ikm);
+    free(salt);
+    free(info);
+    crypto_answer("Hash", "hkdf_sha256", rc);
+    return list_of_bytes(dk, (size_t)a[3].as.u);
+}
+
+MO_ROW(mo_r_Hash_hex) {
+    (void)kind;
+    uint8_t *in = bytes_of(a[0]);
+    char *text = mo_alloc_bytes(2 * (size_t)a[0].aux);
+    mo_crypto_hex(in, a[0].aux, text);
+    free(in);
+    return mo_str(text, 2 * a[0].aux);
+}
+
+MO_ROW(mo_r_Hash_from_hex) {
+    (void)kind;
+    uint8_t *b = malloc(a[0].aux / 2 + 1);
+    if (!b) mo_fail(MO_R_OTHER, "from_hex", "out of memory");
+    MoValue got = mo_crypto_from_hex(a[0].as.s, a[0].aux, b) == MO_CRYPTO_OK ? mo_some(list_of_bytes(b, a[0].aux / 2)) : mo_nothing();
+    free(b);
+    return got;
+}
+
+MO_ROW(mo_r_Hash_equal_q) {
+    (void)kind;
+    uint8_t *x = bytes_of(a[0]), *y = bytes_of(a[1]);
+    bool same = mo_crypto_equal(x, a[0].aux, y, a[1].aux);
+    free(x);
+    free(y);
+    return mo_bool(same);
+}
+
+static MoValue aead(const MoValue *a, const char *recv, const char *name, MoAead *f, bool sealing) {
+    crypto_size(recv, name, "a key", 32, a[0]);
+    crypto_size(recv, name, "a nonce", 12, a[1]);
+    uint8_t *key = bytes_of(a[0]), *nonce = bytes_of(a[1]), *in = bytes_of(a[2]), *aad = bytes_of(a[3]);
+    size_t n = sealing ? (size_t)a[2].aux + 16 : a[2].aux < 16 ? 0 : a[2].aux - 16;
+    uint8_t *got = malloc(n ? n : 1);
+    if (!got) mo_fail(MO_R_OTHER, name, "out of memory");
+    int rc = f(key, 32, nonce, 12, in, a[2].aux, aad, a[3].aux, got);
+    free(key);
+    free(nonce);
+    free(in);
+    free(aad);
+    if (rc == MO_CRYPTO_REJECTED && !sealing) {
+        free(got);
+        return mo_nothing();
+    }
+    crypto_answer(recv, name, rc);
+    MoValue out = list_of_bytes(got, n);
+    free(got);
+    return sealing ? out : mo_some(out);
+}
+
+MO_ROW(mo_r_AesGcm_seal) { (void)kind; return aead(a, "AesGcm", "seal", mo_crypto_aes256gcm_seal, true); }
+MO_ROW(mo_r_AesGcm_open) { (void)kind; return aead(a, "AesGcm", "open", mo_crypto_aes256gcm_open, false); }
+MO_ROW(mo_r_ChaCha_seal) { (void)kind; return aead(a, "ChaCha", "seal", mo_crypto_chacha20poly1305_seal, true); }
+MO_ROW(mo_r_ChaCha_open) { (void)kind; return aead(a, "ChaCha", "open", mo_crypto_chacha20poly1305_open, false); }
+
+MO_ROW(mo_r_X25519_public) {
+    (void)kind;
+    crypto_size("X25519", "public", "a secret", 32, a[0]);
+    uint8_t *secret = bytes_of(a[0]), public_key[32];
+    int rc = mo_crypto_x25519_public(secret, 32, public_key);
+    free(secret);
+    crypto_answer("X25519", "public", rc);
+    return list_of_bytes(public_key, 32);
+}
+
+MO_ROW(mo_r_X25519_shared) {
+    (void)kind;
+    crypto_size("X25519", "shared", "a secret", 32, a[0]);
+    crypto_size("X25519", "shared", "a public key", 32, a[1]);
+    uint8_t *secret = bytes_of(a[0]), *public_key = bytes_of(a[1]), shared[32];
+    int rc = mo_crypto_x25519_shared(secret, 32, public_key, 32, shared);
+    free(secret);
+    free(public_key);
+    if (rc == MO_CRYPTO_REJECTED) return mo_nothing();
+    crypto_answer("X25519", "shared", rc);
+    return mo_some(list_of_bytes(shared, 32));
+}
+
+MO_ROW(mo_r_Ed25519_public) {
+    (void)kind;
+    crypto_size("Ed25519", "public", "a seed", 32, a[0]);
+    uint8_t *seed = bytes_of(a[0]), public_key[32];
+    int rc = mo_crypto_ed25519_public(seed, 32, public_key);
+    free(seed);
+    crypto_answer("Ed25519", "public", rc);
+    return list_of_bytes(public_key, 32);
+}
+
+MO_ROW(mo_r_Ed25519_sign) {
+    (void)kind;
+    crypto_size("Ed25519", "sign", "a seed", 32, a[0]);
+    uint8_t *seed = bytes_of(a[0]), *msg = bytes_of(a[1]), sig[64];
+    int rc = mo_crypto_ed25519_sign(seed, 32, msg, a[1].aux, sig);
+    free(seed);
+    free(msg);
+    crypto_answer("Ed25519", "sign", rc);
+    return list_of_bytes(sig, 64);
+}
+
+MO_ROW(mo_r_Ed25519_verify_q) {
+    (void)kind;
+    crypto_size("Ed25519", "verify?", "a public key", 32, a[0]);
+    crypto_size("Ed25519", "verify?", "a signature", 64, a[2]);
+    uint8_t *public_key = bytes_of(a[0]), *msg = bytes_of(a[1]), *sig = bytes_of(a[2]);
+    int rc = mo_crypto_ed25519_verify(public_key, 32, msg, a[1].aux, sig, 64);
+    free(public_key);
+    free(msg);
+    free(sig);
+    if (rc != MO_CRYPTO_REJECTED) crypto_answer("Ed25519", "verify?", rc);
+    return mo_bool(rc == MO_CRYPTO_OK);
+}
+
+MO_ROW(mo_r_Password_hash) {
+    (void)kind;
+    crypto_size("Password", "hash", "a salt", 16, a[1]);
+    uint8_t *salt = bytes_of(a[1]);
+    char *text = mo_alloc_bytes(MO_CRYPTO_PHC_SIZE);
+    int rc = mo_crypto_argon2id_hash(a[0].as.s, a[0].aux, salt, 16, text);
+    free(salt);
+    crypto_answer("Password", "hash", rc);
+    return mo_str(text, MO_CRYPTO_PHC_SIZE);
+}
+
+MO_ROW(mo_r_Password_verify_q) {
+    (void)kind;
+    int rc = mo_crypto_argon2id_verify(a[0].as.s, a[0].aux, a[1].as.s, a[1].aux);
+    if (rc != MO_CRYPTO_REJECTED) crypto_answer("Password", "verify?", rc);
+    return mo_bool(rc == MO_CRYPTO_OK);
+}
+
+/* The running test's seed (below); a fixture's stream is drawn from it. */
+static uint64_t sim_seed;
+/* How far each Random.fixture() of the running test has drawn into the test's stream. */
+static uint64_t *random_fixtures;
+static size_t nrandom_fixtures, caprandom_fixtures;
+
+MO_ROW(mo_r_Platform_random) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "random"); return mo_cap(MO_CAP_RANDOM, 0, 0); }
+
+MO_ROW(mo_r_Random_fixture) {
+    HOLD_RUNTIME();
+    (void)a;
+    (void)kind;
+    if (server_mode) mo_fail(MO_R_OTHER, "fixture", "Random.fixture() runs only in a test");
+    if (nrandom_fixtures == caprandom_fixtures) {
+        caprandom_fixtures = caprandom_fixtures ? 2 * caprandom_fixtures : 8;
+        random_fixtures = realloc(random_fixtures, caprandom_fixtures * sizeof *random_fixtures);
+        if (!random_fixtures) mo_fail(MO_R_OTHER, "fixture", "out of memory");
+    }
+    random_fixtures[nrandom_fixtures++] = 0;
+    return mo_cap(MO_CAP_RANDOM, (uint32_t)nrandom_fixtures, 0);
+}
+
+MO_ROW(mo_r_Random_bytes) {
+    (void)kind;
+    uint64_t n = a[1].as.u;
+    if (n > (UINT64_C(1) << 30)) mo_fail(MO_R_OTHER, "bytes", "Random.bytes gives at most 1 GiB at once, not %llu bytes", (unsigned long long)n);
+    uint8_t *b = malloc(n ? (size_t)n : 1);
+    if (!b) mo_fail(MO_R_OTHER, "bytes", "out of memory");
+    uint32_t h = mo_cap_handle(a[0]);
+    if (h == 0) {
+        if (mo_crypto_random(b, (size_t)n) != MO_CRYPTO_OK) mo_fail(MO_R_OTHER, "bytes", "the OS gave no random bytes");
+    } else {
+        HOLD_RUNTIME();
+        mo_crypto_fixture_bytes(sim_seed, random_fixtures[h - 1], b, (size_t)n);
+        random_fixtures[h - 1] += n;
+    }
+    MoValue out = list_of_bytes(b, (size_t)n);
+    free(b);
+    return out;
+}
+
 static void reset_fixtures(void) {
+    nrandom_fixtures = 0;
     nfix_systems = 0;
     nfix_scopes = 0;
     nout_fixtures = 0;
