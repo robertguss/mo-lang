@@ -1,0 +1,59 @@
+  2. A client of the tests' own. To get both suites × both key types × a whole megabyte
+     session hermetically, the brick's tests carry a small TLS 1.3 client that shares the
+     brick's record layer but states the client's checks (the CertificateVerify signature
+     against the leaf certificate's key, the server's Finished) independently. Zig's client,
+     RFC 8448's vectors, and OpenSSL are the independent checks; this one supplies the
+     matrix.
+  3. mo_tls_flush peeks; mo_tls_sent consumes. The brief's sketch had flush hand bytes over
+     outright, which loses them when a nonblocking socket takes only part of a record —
+     which is exactly what the runtime's lines loop does. Two exports instead of one.
+  4. One object per brick, each cached by its own source hash (.bricks/<hash>/crypto.o,
+     .bricks/<hash>/tls.o), so a change to one does not rebuild the other. The brief allowed
+     either.
+  5. The TLS brick carries its own ten-line entropy function (getrandom(2) / arc4random_buf)
+     rather than calling the crypto brick's, because the two are linked as separate objects
+     and neither may call the other's exports without duplicating symbols.
+  6. Tls.fixture() was added (not in the brief) so the corpus tests can hold a Tls at all;
+     without it bad_pem? and the plain-client test would need a Platform.
+  7. Tls.server takes named parameters (cert:, key:), matching the bricks page's sketch, and
+     takes PEM text, not a path, as the brief's part B says.
+  8. TlsServer is a capability kind like Listener, so the checker's uniform rules (MO0403,
+     MO0409, MO0410) apply to it as to a Conn; "may be stored and shared" is then the same
+     freedom a Listener already has, not a new kind.
+  9. The TLS server table lives beside the sockets (net.Net, net.Fixture), not on the Vm:
+     every process has a vm of its own and they all reach one network. This was a real bug
+     found by running the example.
+  10. A Conn records the first row that read or wrote on it (used), so TlsServer.accept's
+      crash can name it, in both runtimes.
+  11. Alerts for the cases the brief did not name: a plain HTTP request (or anything whose
+      first byte is not a content type) is unexpected_message; a second ClientHello with
+      still no X25519 share is illegal_parameter.
+  12. The server picks TLS_AES_128_GCM_SHA256 when offered, else ChaCha20-Poly1305 — the
+      server's preference, not the client's order.
+  13. A peer whose stream ends with no close_notify is the end of the stream (eof), the same
+      as a plain socket's end, rather than an error: a truncation attack is the
+      application's to detect, as chapter 9 leaves it for a plain Conn.
+  14. bench/step36/plain-echo.mo, a copy of the echo with no handshake, is the baseline for
+      bulk.py and idle.py, so every comparison is the same program against itself.
+  15. idle.py's client is Python's ssl (OpenSSL too, in the standard library) rather than a
+      thousand s_client processes, whose own three megabytes each would swamp the machine.
+      Every other run uses s_client itself.
+  16. handshake.py's client is openssl s_time -new; a loop of s_client measures fork and
+      exec (38 a second), not the server.
+  17. abuse.py has a seventh case, retry (-groups P-256:X25519), the one handshake that
+      takes two rounds — the HelloRetryRequest path, which no in-test client can drive
+      because Zig's client refuses HRR outright.
+  18. tls-echo.mo ends on Idle through a kept reply (step 31): the server process holds the
+      asker from main and answers it from its Idle arm, which is how "prints its port and
+      exits on Idle" is expressible without a process reaching a Platform. It takes its port
+      and its idle from # run: 18443.
+  19. The example carries the PEM text as three functions so its tests need no file; main
+      still reads examples/effects/tls/ with Fs, as the brief says.
+
+✻ Cooked for 3h 20m 25s · done 10:41 PM · 1 shell still running
+
+────────────────────────────────────────────────────────────────────────────────────────────
+❯ run the hour of fuzzing against the handshake
+────────────────────────────────────────────────────────────────────────────────────────────
+  exedev@aurora-but-gold:~/Projects/mo-lang
+  ⏵⏵ bypass permissions on · 1 shell · ← for agents

@@ -1,0 +1,11 @@
+| runtime | key     | suite     | handshakes/s | echoes lost |
+|---------|---------|-----------|--------------|-------------|
+| run     | ed25519 | aes128gcm | 1026         | 0           |
+| run     | ed25519 | chacha20  | 1046         | 0           |
+| run     | p256    | aes128gcm | 765          | 0           |
+| run     | p256    | chacha20  | 754          | 0           |
+| binary  | ed25519 | aes128gcm | 1196         | 0           |
+| binary  | ed25519 | chacha20  | 1172         | 0           |
+| binary  | p256    | aes128gcm | 804          | 0           |
+| binary  | p256    | chacha20  | 818          | 0           |
+EXIT=0

@@ -1,0 +1,18 @@
+| runtime | over      | MB/s (100 MiB each way) |
+|---------|-----------|-------------------------|
+| run     | plain     | 488.1                   |
+| run     | aes128gcm | 202.7                   |
+| run     | chacha20  | 121.3                   |
+| binary  | plain     | 477.1                   |
+| binary  | aes128gcm | 267.7                   |
+| binary  | chacha20  | 155.3                   |
+
+| runtime | over      | µs a round trip (1000 of them) |
+|---------|-----------|--------------------------------|
+| run     | plain     | 27                             |
+| run     | aes128gcm | 38                             |
+| run     | chacha20  | 40                             |
+| binary  | plain     | 23                             |
+| binary  | aes128gcm | 28                             |
+| binary  | chacha20  | 25                             |
+EXIT=0

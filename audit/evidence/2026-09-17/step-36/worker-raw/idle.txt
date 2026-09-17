@@ -1,0 +1,7 @@
+| runtime | over                   | before    | after 1000 | per connection |
+|---------|------------------------|-----------|------------|----------------|
+| run     | plain                  | 21492 KiB | 24384 KiB  | 2.9 KiB        |
+| run     | TLS_AES_128_GCM_SHA256 | 21784 KiB | 31356 KiB  | 9.6 KiB        |
+| binary  | plain                  | 15092 KiB | 20992 KiB  | 5.9 KiB        |
+| binary  | TLS_AES_128_GCM_SHA256 | 15656 KiB | 28248 KiB  | 12.6 KiB       |
+EXIT=0
