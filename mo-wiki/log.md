@@ -483,3 +483,4 @@
 
 ## [2026-09-17] update | Evening: the audit exchange automated
 - Robert seated a new auditor (Hermes profile `mo-auditor`) and approved two-way repository handoffs (PR #3). Fable read the protocol, wrote and tested its receiver, installed the hourly wake-up, merged the PR at 6:05 PM ET, published the outbound transport record, and brought the skill, CLAUDE.md, SCHEMA, the handoff, and [[the-audit-workflow]] into line. The inbound leg waits on the auditor's canary.
+- 6:20 PM ET: Robert prefers to pass on the auditor's notifications himself; the lead's hourly cron was removed the same hour and the receiver script stays for `publish` and for `check` on his word. Docs, skill, CLAUDE.md, SCHEMA, handoff updated.

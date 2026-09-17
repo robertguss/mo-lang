@@ -104,7 +104,7 @@ know that the wiki does not say in one place.
 > claim. Fable writes its own reading of each subject as
 > `audit/fable-reading-<date>-<subject>.md` before opening the auditor's file
 > on it, never opens an audit session, and changes no ratified threshold
-> except by a row; raw pointers and outputs for the auditor go under `audit/evidence/<date>/` (17 Sep's bundle is filed), and every report names what is ready for an audit session. The loop is on `mo-wiki/plans/the-audit-workflow.md` and in the skill. **Since 17 Sep, 6 PM ET, the exchange is automated (PR #3 merged):** publish `ready` records with `audit/automation/fable_poll.py publish`, and at the start of every lead session create the hourly `CronCreate` job that runs `fable_poll.py check` (the skill has the prompt's contents; the job dies with the session). The transport test's inbound leg is still pending the auditor's `to: fable` canary. M-3 is accepted; the queue below follows it.
+> except by a row; raw pointers and outputs for the auditor go under `audit/evidence/<date>/` (17 Sep's bundle is filed), and every report names what is ready for an audit session. The loop is on `mo-wiki/plans/the-audit-workflow.md` and in the skill. **Since 17 Sep, 6 PM ET, the exchange is automated (PR #3 merged):** publish `ready` records with `audit/automation/fable_poll.py publish`, and when Robert says the auditor has posted something, run `fable_poll.py check` (pointers only); no cron on the lead's side, by his choice. The transport test's inbound leg is still pending the auditor's `to: fable` canary. M-3 is accepted; the queue below follows it.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
