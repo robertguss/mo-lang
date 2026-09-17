@@ -68,7 +68,7 @@ The auditor writes these when the bricks page lands and program 7's spec is read
 
 ## Automated handoff approval
 
-Robert approved automated two-way repository handoffs on 17 Sep 2026: Fable's ready subject triggers an isolated auditor session; the auditor returns readings or evidence requests via audit branches/PRs; Fable's evidence responses trigger follow-up. Only unresolved decisions and blockers require Robert. See the amendment in `CHARTER.md` and `WORKFLOW.md`. **Deployment status: auditor-side GitHub polling active every two minutes in the isolated profile; real fresh-agent canary passed. Fable-side wake-up and two-way delivery remain unconfigured/unverified. No webhook endpoint deployed.** See `automation/README.md` for jobs, tests, and limitations. Stopping rules unchanged.
+Robert approved automated two-way repository handoffs on 17 Sep 2026: Fable's ready subject triggers an isolated auditor session; the auditor returns readings or evidence requests via audit branches/PRs; Fable's evidence responses trigger follow-up. Only unresolved decisions and blockers require Robert. See the amendment in `CHARTER.md` and `WORKFLOW.md`. **Deployment status: auditor-side GitHub polling active once per hour in the isolated profile; real fresh-agent canary passed. Fable-side wake-up and two-way delivery remain unconfigured/unverified. No webhook endpoint deployed.** See `automation/README.md` for jobs, tests, and limitations. Stopping rules unchanged.
 
 ## Model handoffs
 

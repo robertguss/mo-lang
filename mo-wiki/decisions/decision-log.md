@@ -504,6 +504,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Auditor automation implementation, 17 Sep 2026: deploy profile-local outbound GitHub polling every two minutes, rather than public webhook ingress, because the existing auditor gateway can already schedule work and no webhook listener is configured. Immutable main-branch handoffs trigger fresh audit/comparison jobs; no agent runs on empty polls. Real GitHub-to-fresh-Hermes canary passed; duplicate consumption scheduled no second job. Fable-side wake-up is still an integration blocker, so two-way automation is not claimed. Reason: make the auditor intake operational without opening a public listener or changing other profiles. See `audit/automation/README.md`. | Mo Auditor, under Robert's automation setup request | auditor intake deployed; return receiver pending | actual Fable receiver acknowledgement |
 
+| Auditor intake cadence revised to once per hour at Robert's request on 17 Sep 2026. Reason: the initial two-minute polling interval was too frequent. The active `mo-audit-inbox` job and deployment documentation were updated; no other workflow or stopping rule changed. | Robert; applied by Mo Auditor | active | hourly intake |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

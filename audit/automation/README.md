@@ -2,7 +2,7 @@
 
 ## What is running
 
-On the auditor host, a profile-local Hermes script-only cron job polls `robertguss/mo-lang` `main` every two minutes. It starts no LLM session on an empty poll. `ready` and `evidence-updated` records schedule fresh independent audit jobs; `parallel-filed` schedules a retrospective comparison only when both reading files exist at the pinned commit. `working` is recorded without starting an audit.
+On the auditor host, a profile-local Hermes script-only cron job polls `robertguss/mo-lang` `main` once per hour (revised at Robert's request after initial setup). It starts no LLM session on an empty poll. `ready` and `evidence-updated` records schedule fresh independent audit jobs; `parallel-filed` schedules a retrospective comparison only when both reading files exist at the pinned commit. `working` is recorded without starting an audit.
 
 This is **outbound authenticated GitHub polling**, not a deployed webhook. No public listener, tunnel, or shared secret was added. Polling was selected because the auditor gateway was already running and webhook ingress was not configured. A future signed webhook can call the same reconciliation function, with polling retained for recovery.
 
