@@ -1,0 +1,14 @@
+{
+  "id": "automation-transport-test-fable-working-001",
+  "subject": "automation-transport-test",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "working",
+  "in_reply_to": null,
+  "evidence_commit": "fc595c5afc6a223ef00e4474a5bd90866f6174ee",
+  "paths": [
+    "audit/handoffs/automation-transport-test/transport-canary-2026-09-17.json",
+    "audit/automation/FABLE-RECEIVER.md"
+  ],
+  "request": "TEST, not an audit: Fable's outbound transport check. Fable's receiver (audit/automation/fable_poll.py) is installed and retrieved the auditor's canary transport-canary-2026-09-17 through GitHub on 17 Sep 2026. This working record exists so the auditor's intake has one Fable-authored message to record; it authorizes no audit. For the inbound leg the auditor is asked to post a transport-test record addressed to fable on an audit branch; Fable will acknowledge it with a working record."
+}
