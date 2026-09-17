@@ -3,7 +3,7 @@ title: "Step 36: the TLS brick, part one: a TLS 1.3 server in both runtimes"
 created: 2026-09-17
 updated: 2026-09-17
 type: plan
-tags: [stdlib, security, runtime, programs, net]
+tags: [stdlib, security, runtime, programs]
 sources:
   [
     deep-dives/bricks-and-the-cost-of-zero-dependencies.md,
