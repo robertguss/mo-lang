@@ -2,8 +2,9 @@
 
 A programming language for the AI era, designed and built by Robert Guss and Claude. Start every session by invoking the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`): it holds the roles, the worker loop in Herdr, and the acceptance checklist. Then read `HANDOFF.md` for the current state and queue, then `mo-wiki/SCHEMA.md` for the working agreements.
 
-- The lead session directs, verifies, decides, and records. An Opus worker in Herdr pane `w3M:p2` (agent `mo-opus`, one fresh session per step) writes all code under `toolchain/` and `examples/`.
+- The lead session directs, verifies, decides, and records. An Opus worker in a Herdr pane split to the right of the lead's (agent `mo-opus`, one fresh session per step; `herdr pane list` shows the machine and the ids) writes all code under `toolchain/` and `examples/`.
 - Commit wiki work with `git add <paths>`, never `git add -A`: the worker shares the tree.
 - Robert's decisions and the lead's are rows in `mo-wiki/decisions/decision-log.md`; he reviews the log, not the queue.
 - Never use `tr` in shell commands (aliased on this machine); use python3.
 - Install any tool a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for Python projects), `go install`.
+- An independent auditor (a Perplexity session only Robert opens) reads raw evidence and files `audit/mo-audit-<date>-<subject>.md`; its charter and three ratified stopping rules are under `audit/`. Read `audit/README.md` before touching program 7, the stopping rules, or the language's catch claim. The lead never opens an audit session, never reads or writes a hidden suite the auditor seals, writes its own reading as `audit/fable-reading-<date>-<subject>.md` before opening the auditor's, files disagreements as decision-log rows, and leaves raw pointers and outputs for the auditor under `audit/evidence/<date>/` (the wiki page `mo-wiki/plans/the-audit-workflow.md` has the whole loop).

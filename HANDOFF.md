@@ -104,7 +104,7 @@ know that the wiki does not say in one place.
 > claim. Fable writes its own reading of each subject as
 > `audit/fable-reading-<date>-<subject>.md` before opening the auditor's file
 > on it, never opens an audit session, and changes no ratified threshold
-> except by a row. M-3 is accepted; the queue below follows it.
+> except by a row; raw pointers and outputs for the auditor go under `audit/evidence/<date>/` (17 Sep's bundle is filed), and every report names what is ready for an audit session. The loop is on `mo-wiki/plans/the-audit-workflow.md` and in the skill. M-3 is accepted; the queue below follows it.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >

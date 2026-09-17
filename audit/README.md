@@ -40,7 +40,8 @@ All three ratified in-session by Robert on 17 Sep 2026, before program 7 exists 
 1. For each ratified rule, draft a parallel independent reading of program 7's numbers (runtime, capabilities) and generation 10's ledger (language) — **before** reading the auditor's file for the same subject.
 2. File the parallel reading alongside the auditor's, under the same `audit/` folder, with filename `fable-reading-YYYY-MM-DD-<subject>.md`.
 3. When Fable's reading disagrees with the auditor's, file a decision-log row citing both files and stating Fable's position. Robert reads both and either amends the rule or lets the disagreement stand as a row.
-4. Do not amend a ratified rule silently. Any threshold change is a decision-log row with a stated reason (per the ratification blocks in each rule file).
+4. Leave raw pointers and outputs under `audit/evidence/<date>/` (a README per day in the charter's form) whenever a step, a round, or a probe produces something the auditor may read, including Fable's own probe scripts and their outputs, so an audit session can read and reproduce the evidence cold; tell Robert in the report when a subject is ready for a session.
+5. Do not amend a ratified rule silently. Any threshold change is a decision-log row with a stated reason (per the ratification blocks in each rule file).
 
 **When a new audit is needed:**
 

@@ -139,6 +139,7 @@ type: index
 - [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
 - [[interpreter-step-32|Step 32: crash reports apart from the ring, and the reopening store]] — what P6 on Mo found: `/crashes` empty under load, and the restart pattern no corpus file shows
 - [[interpreter-step-33|Step 33: the crash report freed, and the interpreter's abort on a full disk]] — what generation three found: the leak per restart, the abort under mo run
+- [[the-audit-workflow|The audit workflow: who reads what, and when]] — the auditor Robert opens, the three ratified stopping rules, Fable's parallel readings, the evidence bundles under `audit/evidence/`, the loop and its violations
 - [[interpreter-step-36|Step 36: the TLS brick, part one: a TLS 1.3 server in both runtimes]] — an engine over bytes in Zig, `platform.tls`, a `Conn` that stays a `Conn` behind the handshake; step 37 is the client, the chain, ALPN, and the differential run
 - [[interpreter-step-35|Step 35: the crypto brick, written once for both runtimes]] — SHA-2, HMAC, HKDF, AES-GCM, ChaCha20-Poly1305, X25519, Ed25519, Argon2id, `Random`; one Zig file over `std.crypto` linked into both runtimes; the five audit items (17 Sep)
 - [[interpreter-step-34|Step 34: placement, so the Mac's cores stop costing]] — a process placed with its starter, the crossing made cheap, measured at 1, 4, and 14 cores

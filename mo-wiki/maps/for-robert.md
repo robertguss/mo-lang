@@ -22,6 +22,7 @@ The pages Robert reads, and the rows that wait on him. He reviews the decision l
 ## Rows waiting on him, as of 17 Sep 2026, newest first
 
 - The bricks page (17 Sep, afternoon): the shelf boundary and program 7's two bricks; the five audit items, the caps, and the cost ([[bricks-and-the-cost-of-zero-dependencies]])
+- How the audit runs, in one page: [[the-audit-workflow]] (17 Sep, evening); the day's raw evidence for an audit session is under `audit/evidence/2026-09-17/`
 - The auditor role taken up (17 Sep, afternoon): M-3 accepted, the bricks page before program 7, and three disagreements with the ratified rules: program 7's shape against the capabilities rule, the R-A trigger at zero catches, the runtime rule's open clauses read in advance ([[decision-log]])
 - Research PR 2 read and merged; chapter 10's restart-budget attribution corrected ([[hermes-daily-2026-09-16]], [[hermes-daily-2026-09-17]])
 - Generation five's reading: the first Mo-only defect, the laws still silent ([[erosion-round]])

@@ -297,7 +297,9 @@ reading, and files its own account under
 [`audit/`](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) at
 the repo root. Fable remains the lead. For each subject, Fable writes its own
 reading before opening the auditor's. Where the two disagree, a decision-log row
-cites both, and Robert decides.
+cites both, and Robert decides. Fable leaves the raw evidence for each day's
+work under `audit/evidence/<date>/` so a session can read it cold; the loop
+is on [[the-audit-workflow]].
 
 In that first session Robert ratified three stopping rules, before program 7
 exists and before generation six runs:

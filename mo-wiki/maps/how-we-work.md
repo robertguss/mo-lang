@@ -1,7 +1,7 @@
 ---
 title: "How we work"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: map
 tags: [process]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -23,6 +23,10 @@ The working agreements, the roles, the loop, and the instruments, for anyone (or
 ## The roles
 
 The lead (a Fable session) writes briefs, verifies, decides, and records; it never writes code by hand. A worker (an Opus session in Herdr, one fresh session per step, medium effort) writes every line under `toolchain/` and `examples/`. Robert reviews the decision log. The rounds' agents are fresh sessions in their own worktrees, and the suites are written after the branching and never shown to them.
+
+## The auditor (17 Sep 2026)
+
+A separate reader Robert installed after the outside review of 17 Sep: a Perplexity session only he opens, which reads raw evidence and files `audit/mo-audit-<date>-<subject>.md` in the repo, never Fable's synthesis first. Three stopping rules are ratified there (the runtime claim and the capabilities claim on program 7, the language's catch claim at erosion generation ten). Fable's parallel readings, the evidence bundles under `audit/evidence/<date>/`, and where the two readings meet: [[the-audit-workflow]].
 
 ## The rules that were learned the hard way
 
