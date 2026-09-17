@@ -142,3 +142,59 @@
 201 {"id": "j_1005", "queue": "emails", "key": "order-17", "state": "queued", "payload": "again", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
 > - GET /health
 200 {"queued": 2, "scheduled": 1, "leased": 3, "done": 1, "dead": 0, "archived": 1, "uptime_ms": <uptime_ms>, "restarts": 0}
+> w-slow POST /jobs/j_3/handoff {"to": "w-fresh"}
+200 {"id": "j_3", "queue": "reports", "state": "leased", "payload": "weekly", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w-fresh", "lease_until": "<lease_until>"}
+> w-slow POST /jobs/j_3/handoff {"to": "w-other"}
+409 {"error": "j_3 is not leased to this worker"}
+> w-slow POST /jobs/j_3/ack
+409 {"error": "j_3 is not leased to this worker"}
+> w-fresh POST /jobs/j_3/handoff {"to": "w-fresh"}
+200 {"id": "j_3", "queue": "reports", "state": "leased", "payload": "weekly", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w-fresh", "lease_until": "<lease_until>"}
+> w-fresh POST /jobs/j_3/handoff {"to": "not a token"}
+400 {"error": "to must be a token of 1 to 128 bytes with no space"}
+> w-fresh POST /jobs/j_3/handoff {"to": "w-fresh", "lease_ms": 5}
+400 {"error": "lease_ms is not a field here; the body is {\"to\": ...}"}
+> w-fresh POST /jobs/j_99/handoff {"to": "w-slow"}
+404 {"error": "no such job"}
+> w-fresh POST /jobs/j_7/handoff {"to": "w-slow"}
+409 {"error": "j_7 is archived"}
+> w-fresh GET /jobs/j_3/handoff
+405 {"error": "this route takes POST"}
+> p POST /queues/reports/rename {"to": "weekly"}
+200 {"queue": "weekly", "moved": 3}
+> p GET /queues
+200 {"queues": [{"name": "emails", "queued": 1, "scheduled": 0, "leased": 2, "done": 1, "dead": 0}, {"name": "flaky", "queued": 0, "scheduled": 1, "leased": 0, "done": 0, "dead": 0}, {"name": "weekly", "queued": 1, "scheduled": 0, "leased": 1, "done": 0, "dead": 0}]}
+> p GET /jobs/j_3
+200 {"id": "j_3", "queue": "weekly", "state": "leased", "payload": "weekly", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "worker": "w-fresh", "lease_until": "<lease_until>"}
+> p GET /jobs?queue=weekly&key=weekly-7
+200 {"jobs": [{"id": "j_7", "queue": "weekly", "key": "weekly-7", "state": "dead", "payload": "weekly, old", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "disk full", "archived_at": "<archived_at>"}]}
+> p GET /jobs?queue=reports&key=weekly-7
+200 {"jobs": []}
+> w4 POST /queues/reports/lease
+204
+> p POST /queues/nowhere/rename {"to": "elsewhere"}
+404 {"error": "no such queue nowhere"}
+> p POST /queues/weekly/rename {"to": "emails"}
+409 {"error": "emails exists"}
+> p POST /queues/weekly/rename {"to": "weekly"}
+409 {"error": "weekly exists"}
+> p POST /queues/weekly/rename {"to": "bad name"}
+400 {"error": "to must be 1 to 64 letters, digits, - or _"}
+> p POST /queues/weekly/rename
+400 {"error": "the body is not JSON"}
+> w-fresh POST /jobs/j_3/ack
+200 {"id": "j_3", "queue": "weekly", "state": "done", "payload": "weekly", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p POST /jobs {"queue": "reports", "payload": "a fresh reports", "max_tries": 1, "key": "weekly-7"}
+201 {"id": "j_1006", "queue": "reports", "key": "weekly-7", "state": "queued", "payload": "a fresh reports", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p POST /queues/weekly/rename {"to": "reports"}
+409 {"error": "reports exists"}
+> p DELETE /jobs/j_1006
+204
+> p POST /queues/weekly/rename {"to": "reports"}
+200 {"queue": "reports", "moved": 3}
+> p GET /jobs?queue=reports&key=weekly-7
+200 {"jobs": [{"id": "j_7", "queue": "reports", "key": "weekly-7", "state": "dead", "payload": "weekly, old", "tries": 1, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>", "reason": "disk full", "archived_at": "<archived_at>"}]}
+> p GET /queues
+200 {"queues": [{"name": "emails", "queued": 1, "scheduled": 0, "leased": 2, "done": 1, "dead": 0}, {"name": "flaky", "queued": 0, "scheduled": 1, "leased": 0, "done": 0, "dead": 0}, {"name": "reports", "queued": 1, "scheduled": 0, "leased": 0, "done": 1, "dead": 0}]}
+> - GET /health
+200 {"queued": 2, "scheduled": 1, "leased": 2, "done": 2, "dead": 0, "archived": 1, "uptime_ms": <uptime_ms>, "restarts": 0}

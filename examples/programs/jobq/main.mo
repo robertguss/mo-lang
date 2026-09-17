@@ -12,7 +12,7 @@
 module Jobq.Main
 expose Place, Trip, Task, Problem, Folder, task, steady, serving?, main
 
-use Jobq.Board{health_of, ill_formed, shelf_snapshot, snapshot}
+use Jobq.Board{folded_in, health_of, ill_formed, records, shelf_records, shelf_snapshot, snapshot}
 use Jobq.Job{id_of}
 use Jobq.Queue{Opening, Policy, opening, policy, retained, shelf_lines}
 use Jobq.Server{serving}
@@ -227,12 +227,23 @@ end
 # The log written whole from the board the stores replayed: one line per live job, in the names
 # this version writes, so a log the previous version wrote leaves no old name behind, and no
 # stale record of an archived job; then the archive written whole, one line per archived job and
-# no tombstone; a folder with no archive file gets an empty one. The log goes first: a kill between the two leaves every tombstone standing over
-# the log it guards.
+# no tombstone; a folder with no archive file gets an empty one. The log goes first: a kill between
+# the two leaves every tombstone standing over the log it guards.
+#
+# Renames are folded in: every record in the queue it is in now, carrying every rename, and no
+# rename record. While the archive still holds records in old names, the log keeps its rename
+# records, so a log with renames is written whole twice: with them, then, once the archive is
+# written in the new names, without them. A kill between any two writes leaves a folder that opens
+# to the same jobs in the same queues.
 fn compacted_from(fs: Fs, dir: String, start: Opening) : Result(Opening, Problem)
-  table = try whole_log(fs, dir, start.table, snapshot(start.board).map(fn(w) line_of(w) end))
+  kept = try whole_log(fs, dir, start.table, snapshot(start.board).map(fn(w) line_of(w) end))
   archive = try whole_log(fs, dir, start.archive, shelf_lines(shelf_snapshot(start.board)))
-  Ok(Opening(board: start.board, table: table, archive: archive))
+  folded = folded_in(start.board)
+  if folded.moves.size == start.board.moves.size
+    return Ok(Opening(board: start.board, table: kept, archive: archive))
+  end
+  table = try whole_log(fs, dir, kept, snapshot(folded).map(fn(w) line_of(w) end))
+  Ok(Opening(board: folded, table: table, archive: archive))
 end
 
 # A log written whole, except an empty one that was empty before, which is left as it is, so
@@ -490,6 +501,12 @@ fn archived_record(id: String, key: String) : String
   "{\"id\": \"#{id}\", \"queue\": \"emails\", \"key\": \"#{key}\", \"state\": \"done\", \"payload\": \"p\", \"tries\": 1, \"max_tries\": 3, \"backoff_ms\": 0, \"created_at\": \"2026-09-14T09:00:00Z\", \"updated_at\": \"2026-09-14T09:05:00Z\", \"archived_at\": \"2026-09-14T10:00:00Z\"}"
 end
 
+# A record as this version writes it, in `queue`, queued, with the renames it carries.
+fn queued_record(id: String, queue: String, renames: UInt64) : String
+  seen = if renames == 0: "" else: ", \"renames\": #{renames}"
+  "{\"id\": \"#{id}\", \"queue\": \"#{queue}\", \"state\": \"queued\", \"payload\": \"p\", \"tries\": 0, \"max_tries\": 3, \"backoff_ms\": 0, \"created_at\": \"2026-09-14T09:00:00Z\", \"updated_at\": \"2026-09-14T09:05:00Z\"#{seen}}"
+end
+
 test "serve takes a folder and an optional port, 7900 by default"
   assert task(["serve", "data"]) == Ok(Serving(place: place_of("data")))
   assert serving?(["serve", "data"])
@@ -714,6 +731,77 @@ test "compact drops archived jobs from the log and deleted ones from the archive
     Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
 end
 
+test "compact folds two renames into the log and the archive, and leaves no rename record"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  live = "SET ids 1000\nSET j_1 #{queued_record("j_1", "emails", 0)}\nSET rename_1 {\"from\": \"emails\", \"to\": \"mail\"}\nSET j_3 #{queued_record("j_3", "emails", 1)}\nSET rename_2 {\"from\": \"mail\", \"to\": \"post\"}\n"
+  shelf = "SET j_2 #{archived_record("j_2", "k")}\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert fs.write("d/jobq.archive", shelf, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert counted(folder,
+    Time.fixture()) == Ok("2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
+  assert compacted(fs, "d", folder,
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 5 lines to 4, and d/jobq.archive from 1 to 1\n")
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(log_text)
+  assert !log_text.contains?("rename_") and log_text.contains?("SET renames 2\n")
+  assert log_text.contains?("SET j_1 #{queued_record("j_1", "post", 2)}\n")
+  assert log_text.contains?("SET j_3 #{queued_record("j_3", "emails", 2)}\n")
+  assert fs.read("d/jobq.archive", within: 1.minute) is Ok(shelf_text)
+  assert shelf_text.contains?("\"queue\": \"post\"") and shelf_text.contains?("\"renames\": 2}")
+  assert opened_store(fs, err, "d") is Ok(again)
+  assert opening_of(again, Time.fixture()) is Ok(start)
+  assert health_of(start.board, Time.fixture()).archived == 1 and start.board.renames == 2
+  assert compacted(fs, "d", again,
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 4 lines to 4, and d/jobq.archive from 1 to 1\n")
+end
+
+test "a compact cut short after its first or second write leaves a folder that opens to the same queues"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  live = "SET ids 1000\nSET j_1 #{queued_record("j_1", "emails", 0)}\nSET rename_1 {\"from\": \"emails\", \"to\": \"mail\"}\n"
+  shelf = "SET j_2 #{archived_record("j_2", "k")}\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert fs.write("d/jobq.archive", shelf, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert opening_of(folder, Time.fixture()) is Ok(start)
+  first = String.join(snapshot(start.board).map(fn(w) line_of(w) end), "")
+  assert first.contains?("SET rename_1 ") and first.contains?("\"queue\": \"mail\", \"state\"")
+  assert fs.write("d/jobq.log", first, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(after_first)
+  assert opening_of(after_first, Time.fixture()) is Ok(one)
+  assert records(one.board) == records(start.board)
+  assert shelf_records(one.board) == shelf_records(start.board)
+  second = String.join(shelf_lines(shelf_snapshot(start.board)), "")
+  assert fs.write("d/jobq.archive", second, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(after_second)
+  assert opening_of(after_second, Time.fixture()) is Ok(two)
+  assert records(two.board) == records(start.board)
+  assert shelf_records(two.board) == shelf_records(start.board)
+  assert shelf_records(two.board).all?(fn(r) r.contains?("\"queue\": \"mail\"") end)
+end
+
+test "verify refuses a folder with a bad rename record, and counts with the renames applied"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  good = "SET ids 1000\nSET j_1 #{queued_record("j_1", "emails", 0)}\nSET rename_1 {\"from\": \"emails\", \"to\": \"mail\"}\n"
+  assert fs.write("d/jobq.log", good, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert counted(folder,
+    Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0\n")
+  bad = good.replace("\"to\": \"mail\"", "\"to\": \"no mail\"")
+  assert fs.write("d/jobq.log", bad, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "rename_1",
+    rule: "its to is not 1 to 64 letters, digits, - or _"))
+  shelf = "SET j_2 #{archived_record("j_2", "k")}\n"
+  clash = "#{good}SET j_3 #{queued_record("j_3", "mail", 1).replace("\"queue\": \"mail\"", "\"queue\": \"mail\", \"key\": \"k\"")}\n"
+  assert fs.write("d/jobq.log", clash, within: 1.minute) is Ok(_)
+  assert fs.write("d/jobq.archive", shelf, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "j_3", rule: "its key k is j_2's too"))
+end
+
 test "the steadied transcript masks archived_at"
   shown_job = "{\"id\": \"j_1\", \"updated_at\": \"2026-09-14T10:00:01Z\", \"archived_at\": \"2026-09-16T10:00:01.5Z\"}"
   assert steady(shown_job) == "{\"id\": \"j_1\", \"updated_at\": \"<updated_at>\", \"archived_at\": \"<archived_at>\"}"
@@ -726,5 +814,5 @@ test "a usage error exits 2, and a folder, a port, or a server that cannot be ha
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (15), property (0 seeds), sim (not run)
+verified: types, contracts, tests (18), property (0 seeds), sim (not run)
           proven: not run

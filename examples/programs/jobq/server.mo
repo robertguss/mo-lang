@@ -428,6 +428,42 @@ test "over the wire, a job done longer ago than the retention is archived, read 
   end
 end
 
+test "over the wire, a handoff moves a lease and a rename moves a queue, and each answers its statuses"
+  http = Http.fixture()
+  port = started(http, Fs.fixture(), Clock.fixture())
+  made = sent(http, port, by("POST", "/jobs", "p", keyed_create("one", "k-1")))
+  lent = sent(http, port, by("POST", "/queues/q/lease", "w1", "{\"lease_ms\": 3600000}"))
+  assert in?(sent(http, port, by("POST", "/jobs/j_1/handoff", "w2", "{\"to\": \"w3\"}")),
+    [409, 404, 503])
+  assert in?(sent(http, port, by("POST", "/jobs/j_1/handoff", "w1", "{\"to\": \"a b\"}")), [400])
+  assert in?(sent(http, port, by("POST", "/jobs/j_1/handoff", "w1", "")), [400])
+  assert in?(sent(http, port, by("GET", "/jobs/j_1/handoff", "w1", "")), [405])
+  passed = sent(http, port, by("POST", "/jobs/j_1/handoff", "w1", "{\"to\": \"w2\"}"))
+  assert in?(passed, [200, 409, 404, 503])
+  if status(made) == 201 and status(lent) == 200 and status(passed) == 200
+    assert body_of(passed).contains?("\"worker\": \"w2\"")
+    assert in?(sent(http, port, by("POST", "/jobs/j_1/ack", "w1", "")), [409, 503])
+  end
+  assert in?(sent(http, port, by("POST", "/queues/nowhere/rename", "op", "{\"to\": \"r\"}")),
+    [404, 503])
+  assert in?(sent(http, port, by("POST", "/queues/q/rename", "op", "{\"to\": \"q\"}")),
+    [409, 404, 503])
+  assert in?(sent(http, port, by("POST", "/queues/q/rename", "op", "{\"to\": \"a b\"}")), [400])
+  moved = sent(http, port, by("POST", "/queues/q/rename", "op", "{\"to\": \"r\"}"))
+  assert in?(moved, [200, 404, 503])
+  if status(made) == 201 and status(moved) == 200
+    assert body_of(moved) == "{\"queue\": \"r\", \"moved\": 1}"
+    assert in?(sent(http, port, by("POST", "/queues/q/lease", "w4", "")), [204, 503])
+    listed = sent(http, port, by("GET", "/queues", "p", ""))
+    if status(listed) == 200
+      assert body_of(listed).starts_with?("{\"queues\": [{\"name\": \"r\",")
+    end
+    if status(passed) == 200
+      assert in?(sent(http, port, by("POST", "/jobs/j_1/ack", "w2", "")), [200, 503])
+    end
+  end
+end
+
 # The program's own load test with the chaos switch on: every answer is 2xx, 4xx, or 503 while
 # the queue fails at every fifth write and comes back. A process test cannot hold its asserts past
 # a crash, so this is a test rejects; the end-to-end run in restarts.py holds every 2xx job present
@@ -449,5 +485,5 @@ test rejects "over the wire, with the chaos switch on, every answer is 2xx, 4xx,
   end
 end
 
-verified: types, contracts, tests (10), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (11), property (0 seeds), sim (100 runs)
           proven: not run

@@ -343,6 +343,53 @@ fn desk_of(start: Opening, restarts: UInt64, applied: UInt64) : Desk
     outcomes: [], restarts: restarts, applied: applied)
 end
 
+# Whether a call renames a queue. A rename is a batch of its own: the calls before it are flushed
+# first and it is flushed at once, so no call decided after it shares its write. Otherwise an
+# archive move decided after it would carry the new name to the archive, and a log that then
+# refused the batch would leave that one job renamed while the rename was answered 503.
+fn renames?(call: Call) : Bool
+  call.command is Rename(queue: _, to: _)
+end
+
+# Whether the desk holds calls or moves not yet flushed.
+fn pending?(desk: Desk) : Bool
+  desk.outcomes.size > 0 or desk.writes.size > 0 or desk.shelved.size > 0
+end
+
+# The desk after a rename taken as a batch of its own, and whether the chaos switch failed the
+# queue on the way: the calls kept before it flushed and answered, then the rename decided,
+# flushed, and answered; the last asker kept is the rename's.
+struct Alone
+  desk: Desk
+  failing: Bool
+end
+
+# A rename to take alone: the call, the time it is decided at, and the chaos switch's count.
+struct Taken
+  call: Call
+  now: Time
+  every: UInt64
+end
+
+fn alone(fs: Fs, warden: Handle(Warden), desk: Desk, waiting: List(Reply(Outcome)),
+  taken: Taken) : Alone
+  earlier = waiting.take(waiting.size - 1)
+  var held = desk
+  if pending?(desk)
+    before = settled(fs, warden, desk, taken.every)
+    if before.failing
+      return Alone(desk: before.desk, failing: true)
+    end
+    delivered(earlier, before.answers)
+    held = before.desk
+  end
+  end_of = settled(fs, warden, joined(held, decide(held.board, taken.call, taken.now)), taken.every)
+  if !end_of.failing
+    delivered(waiting.drop(earlier.size), end_of.answers)
+  end
+  Alone(desk: end_of.desk, failing: end_of.failing)
+end
+
 # The desk with a call decided: its records and its outcome join the batch.
 fn joined(desk: Desk, decision: Decision) : Desk
   var after = desk
@@ -460,7 +507,14 @@ process Queue(fs: Fs, clock: Clock, logs: Logs, started: Time, rules: Policy,
         end
       Want(call):
         state.waiting = state.waiting.push(reply_to)
-        if state.me is Some(me)
+        if state.me is Some(_) and renames?(call)
+          taken = Taken(call: call, now: stamp(clock), every: rules.crash_every)
+          after = alone(fs, warden, state.desk, state.waiting, taken)
+          state.desk = after.desk
+          state.failing = after.failing
+          state.waiting = []
+        end
+        if state.me is Some(me) and !renames?(call)
           state.desk = joined(state.desk, decide(state.desk.board, call, stamp(clock)))
           if !state.flushing
             me.send(Flush)
@@ -734,7 +788,8 @@ fn played(queue: Handle(Queue), fs: Fs, slow: Fs, clock: Clock, round: UInt64) :
         revived(queue)
       end
       return ended(queue, slow)
-    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Healthy(_) | Tallied(_):
+    Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Healthy(_) | Tallied(_) | Renamed(queue: _,
+      moved: _) | Absent(_):
       return Wrong(why: "a lease gave #{lent}")
   end
   Going
@@ -822,6 +877,35 @@ fn held_once?(live: List(String), shelf: List(String), number: UInt64) : Bool
   in_live = live.any?(fn(r) r.starts_with?(mark) end)
   in_shelf = shelf.any?(fn(r) r.starts_with?(mark) end)
   in_live != in_shelf
+end
+
+# The queues every job a board holds is in, live and archived, by number.
+fn placements(b: Board) : List(String)
+  records(b).concat(shelf_records(b)).map(fn(r) queue_named(r) end)
+end
+
+fn queue_named(record: String) : String
+  case Json.decode(record)
+    Ok(Object(fields)):
+      case fields.get("queue")
+        Some(String(name)): name
+        Some(_) | None: ""
+      end
+    Ok(_) | Error(_): ""
+  end
+end
+
+fn job_of_outcome(outcome: Outcome) : Job
+  case outcome
+    Found(one): one
+    Made(one): one
+    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
+      moved: _) | Absent(_) | Unavailable(_):
+      Job(number: 0, queue: "", key: None, state: Queued, payload: "", tries: 0, max_tries: 1,
+        backoff_ms: 0, created_at: Time.from_parts(2026, 1, 1, 0, 0, 0),
+        updated_at: Time.from_parts(2026, 1, 1, 0, 0, 0), run_at: None, worker: None,
+        lease_until: None, reason: None, archived_at: None)
+  end
 end
 
 test "a call through the queue is answered once its record is in the log"
@@ -1181,6 +1265,143 @@ test "under faults, old done jobs move to the archive and each is kept exactly o
   assert matches_store?(listing, fs, stamp(clock))
 end
 
+test "a handoff and a rename are answered once their records are in the log, and a restart keeps both"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = begun(fs, clock)
+  made = served(queue, "p", Create(making: keyed("q", "k", "one")))
+  lent = served(queue, "w1", Lease(queue: "q", lease_ms: 3_600_000))
+  passed = served(queue, "w1", Handoff(id: "j_1", to: "w2"))
+  moved = served(queue, "op", Rename(queue: "q", to: "r"))
+  clean = made is Made(_) and lent is Found(_) and passed is Found(_) and moved is Renamed(queue: _,
+    moved: _)
+  assert passed is Found(_) or unavailable?(passed) or passed is Conflict(_) or passed == Missing
+  if clean and fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+    assert moved == Renamed(queue: "r", moved: 1)
+    assert text.ends_with?("\"worker\": \"w2\", \"lease_until\": #{Json.encode((job_of_outcome(lent)).lease_until or stamp(clock))}}\nSET rename_1 {\"from\": \"q\", \"to\": \"r\"}\n")
+    again = started_again(fs, clock, "p", Fetch(id: "j_1"))
+    if again is Found(held)
+      assert held.queue == "r" and held.worker == Some("w2") and held.tries == 1
+      assert held.lease_until == job_of_outcome(lent).lease_until
+    end
+    keyed_again = started_again(fs, clock, "p",
+      Listing(queue: Some("r"), state: None, key: Some("k")))
+    assert keyed_again is Listed(_) or unavailable?(keyed_again)
+    if keyed_again is Listed(found)
+      assert found.size == 1
+    end
+    old_worker = started_again(fs, clock, "w1", Ack(id: "j_1"))
+    assert old_worker is Conflict(_) or unavailable?(old_worker)
+    new_worker = started_again(fs, clock, "w2", Ack(id: "j_1"))
+    assert new_worker is Found(_) or unavailable?(new_worker)
+    lease_old = started_again(fs, clock, "w3", Lease(queue: "q", lease_ms: 1_000))
+    assert lease_old == Empty or unavailable?(lease_old)
+  end
+end
+
+test "a rename the log did not take is 503 and moves nothing, and the next batch takes it whole"
+  fs = Fs.fixture()
+  at = Time.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  base = written_whole(fs, done_board(at))
+  now = at + 1_000.ms
+  archived_one = decide(base.board, Call(worker: "p", command: Health), now)
+  shelf_first = flushed(fs,
+    Batch(board: archived_one.board, durable: base.board, table: base.table, torn: false,
+    archive: base.archive, archive_torn: false, writes: archived_one.writes,
+    shelved: archived_one.shelved, outcomes: [archived_one.outcome]))
+  assert shelf_first.answers.all?(fn(a) a.durable end)
+  second = decide(shelf_first.board, Call(worker: "p", command: Create(making: plain("q", "2", 1))),
+    now)
+  took = flushed(fs,
+    Batch(board: second.board, durable: shelf_first.board, table: shelf_first.table, torn: false,
+    archive: shelf_first.archive, archive_torn: false, writes: second.writes, shelved: [],
+    outcomes: [second.outcome]))
+  moved = decide(took.board, Call(worker: "op", command: Rename(queue: "q", to: "r")), now)
+  assert moved.outcome == Renamed(queue: "r", moved: 2)
+  slow = Fs.fixture(delay: 1.minute)
+  stuck = flushed(slow,
+    Batch(board: moved.board, durable: took.board, table: took.table, torn: false,
+    archive: took.archive, archive_torn: false, writes: moved.writes, shelved: [],
+    outcomes: [moved.outcome]))
+  assert stuck.answers.all?(fn(a) unavailable?(a.outcome) and !a.changed end)
+  assert placements(stuck.board) == ["q", "q"]
+  assert reread(fs, now) is Some(unmoved)
+  assert placements(unmoved) == ["q", "q"]
+  again = decide(stuck.board, Call(worker: "op", command: Rename(queue: "q", to: "r")), now)
+  after = decide(again.board, Call(worker: "p", command: Create(making: plain("q", "3", 1))), now)
+  whole = flushed(fs,
+    Batch(board: after.board, durable: stuck.board, table: stuck.table, torn: stuck.torn,
+    archive: stuck.archive, archive_torn: false, writes: again.writes.concat(after.writes),
+    shelved: [], outcomes: [again.outcome, after.outcome]))
+  assert whole.answers.map(fn(a) a.outcome end) == [again.outcome, after.outcome]
+  assert reread(fs, now) is Some(renamed)
+  assert placements(renamed) == ["r", "q", "r"]
+  assert records(renamed) == records(after.board)
+  assert shelf_records(renamed) == shelf_records(after.board)
+  torn = flushed(fs,
+    Batch(board: after.board, durable: whole.board, table: whole.table, torn: true,
+    archive: whole.archive, archive_torn: true, writes: [("ids", Some("1001"))],
+    shelved: [("j_9", None)], outcomes: []))
+  assert !torn.torn and !torn.archive_torn
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+  assert text.contains?("SET rename_1 ") and text.contains?("\"renames\": 1}")
+  assert reread(fs, now) is Some(rewritten_whole)
+  assert placements(rewritten_whole) == ["r", "q", "r"]
+end
+
+# The rename's one write under faults: the seed fails it or not, and a reopened folder shows every
+# job of the queue moved or none, each key used once, and no job held by two workers.
+test "under faults, a rename under a load of leases, acks, keyed creates, and handoffs moves every job or none"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = begun(fs, clock)
+  for i in 0..4
+    made = served(queue, "p", Create(making: keyed("q", "k#{i}", "job #{i}")))
+    assert made is Made(_) or unavailable?(made)
+  end
+  lent = served(queue, "w1", Lease(queue: "q", lease_ms: 3_600_000))
+  passed = if lent is Found(held)
+    served(queue, "w1", Handoff(id: "j_#{held.number}", to: "w2"))
+  else
+    lent
+  end
+  assert passed is Found(_) or unavailable?(passed) or passed == Empty or passed is Conflict(_)
+  queue.send(Sweep)
+  moved = answer_of(queue, Call(worker: "op", command: Rename(queue: "q", to: "r")))
+  assert moved is Renamed(queue: _, moved: _) or unavailable?(moved) or moved is Absent(_)
+  after = served(queue, "p", Create(making: keyed("q", "k0", "after")))
+  assert after is Made(_) or after is Found(_) or unavailable?(after)
+  case reread(fs, stamp(clock))
+    Some(held):
+      later = if after is Made(one): one.number else: 0
+      before = records(held).concat(shelf_records(held)).filter(fn(r)
+        !r.starts_with?("{\"id\": \"j_#{later}\",")
+      end).map(fn(r) queue_named(r) end)
+      if moved is Renamed(queue: _, moved: _)
+        assert before.all?(fn(name) name == "r" end)
+      end
+      if unavailable?(moved)
+        assert !placements(held).contains?("r")
+      end
+      leased = decide(held,
+        Call(worker: "p", command: Listing(queue: None, state: Some(Leased), key: None)),
+        stamp(clock))
+      if leased.outcome is Listed(jobs)
+        assert jobs.size <= 1
+        if passed is Found(one) and jobs.size == 1
+          assert (jobs.first or one).worker == Some("w2")
+        end
+      end
+    None:
+      assert true
+  end
+  if moved is Renamed(queue: _, moved: _)
+    ack = served(queue, "w2", Ack(id: "j_1"))
+    assert ack is Found(_) or unavailable?(ack) or ack is Conflict(_) or ack == Missing
+  end
+end
+
 test "a failure inside the window spends a budget whose restarts are all inside it, and one after it does not"
   at = Time.fixture()
   rules = policy(2, 60_000, 0)
@@ -1281,5 +1502,5 @@ test rejects "under faults, the chaos switch fails the queue at a seventh write 
   end
 end
 
-verified: types, contracts, tests (20), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 1))
+verified: types, contracts, tests (23), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 1))
           proven: not run

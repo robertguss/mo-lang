@@ -1,9 +1,9 @@
 module Jobq.Board
-expose Command, Call, Outcome, Counts, Tally, Order, Board, Decision, Kept, Placement, board, retaining, decide, shelved, shelved_into, shelf_applied, tombstone?, rebuilt, records, shelf_records, health_of, tallies, ill_formed, snapshot, shelf_snapshot
+expose Command, Call, Outcome, Counts, Tally, Order, Move, Board, Decision, Kept, Placement, Relabeled, board, retaining, decide, relabeled, folded_in, shelved, shelved_into, shelf_applied, tombstone?, rebuilt, records, shelf_records, health_of, tallies, ill_formed, snapshot, shelf_snapshot
 
-use Jobq.Job{Phase, Job, Making, job, archived, leased, acked, failed, retried, looked, holds?, due?, payload?, token?, lease_ms?, id_of, number_of, shown, decoded, rule_broken, archive_broken}
+use Jobq.Job{Phase, Job, Making, job, archived, leased, acked, failed, retried, handed_off, looked, holds?, due?, queue?, payload?, token?, worker?, lease_ms?, id_of, number_of, shown, decoded, rule_broken, archive_broken, tagged, renames_of}
 
-intent "The queue as a value: every job by number, each queue's queued jobs oldest first, the leases and when the first runs out, the scheduled jobs and when the first is due, and the counts; a call becomes a decision, the board after it, the answer, and the records the store must hold before the answer is sent; every decision first puts back the leases that have run out, queues the scheduled jobs whose run_at has passed, and moves to the archive the done and dead jobs older than the retention; a create with a key answers the job the key already names; and the archived jobs are kept beside the board, readable by id and by key, never listed."
+intent "The queue as a value: every job by number, each queue's queued jobs oldest first, the leases and when the first runs out, the scheduled jobs and when the first is due, and the counts; a call becomes a decision, the board after it, the answer, and the records the store must hold before the answer is sent; every decision first puts back the leases that have run out, queues the scheduled jobs whose run_at has passed, and moves to the archive the done and dead jobs older than the retention; a create with a key answers the job the key already names; the archived jobs are kept beside the board, readable by id and by key, never listed; a lease is handed from the worker that holds it to another; and a queue is renamed, every job in it, live or archived, with its key, by one record that a replay applies to the records written before it."
 
 never "a job is lost or changed by a replay"
   for k in Kept.all
@@ -17,6 +17,18 @@ never "a job is on the live board and in the archive at once after an open"
   end
 end
 
+never "a rename leaves a job in no queue but its own or the new one, or moves a job of another queue"
+  for r in Relabeled.all
+    (r.before == r.from and r.after != r.to) or (r.before != r.from and r.after != r.before)
+  end
+end
+
+never "a rename touches a lease"
+  for r in Relabeled.all
+    r.worker_before != r.worker_after or r.until_before != r.until_after
+  end
+end
+
 # What a caller asks of the queue once its request is read. `worker` is the caller's token.
 enum Command
   Create(making: Making)
@@ -27,6 +39,8 @@ enum Command
   Ack(id: String)
   Fail(id: String, reason: String)
   Retry(id: String)
+  Handoff(id: String, to: String)
+  Rename(queue: String, to: String)
   Health
   Tallying
 end
@@ -67,7 +81,30 @@ enum Outcome
   Empty
   Healthy(counts: Counts)
   Tallied(queues: List(Tally))
+  Renamed(queue: String, moved: UInt64)
+  Absent(reason: String)
   Unavailable(reason: String)
+end
+
+# A rename as the log keeps it: the renames before it and it, `from`, and `to`.
+struct Move
+  number: UInt64
+  from: String
+  to: String
+end
+
+# One job a rename moved: its queue before and after, the rename's two names, and its lease before
+# and after.
+struct Relabeled
+  number: UInt64
+  before: String
+  after: String
+  from: String
+  to: String
+  worker_before: Option(String)
+  worker_after: Option(String)
+  until_before: Option(Time)
+  until_after: Option(Time)
 end
 
 # One queue's queued jobs, oldest first: the jobs queued when they were made hold positions
@@ -87,8 +124,8 @@ end
 # it; each queue's order, and the jobs at its
 # fresh positions, in pages of 256 positions; each leased job's lease end, in pages of 256, and
 # the earliest of them, or earlier; each scheduled job's run_at the same way, and the earliest of
-# them; the next number and the numbers below `reserved` the log has reserved; the counts; and
-# when the queue started. Changing a map's existing entry copies the whole map (TOOLCHAIN-BUGS.md,
+# them; the next number and the numbers below `reserved` the log has reserved; the counts; when
+# the queue started; and the renames so far, with the ones the log still holds as records. Changing a map's existing entry copies the whole map (TOOLCHAIN-BUGS.md,
 # bug 1), so every change copies one page and sets one entry in a map of pages, never a map of
 # every job.
 struct Board
@@ -109,6 +146,8 @@ struct Board
   reserved: UInt64
   counts: Counts
   started: Time
+  renames: UInt64
+  moves: List(Move)
 end
 
 # The board after a call, the answer to send, and the records to write first: a job's record
@@ -145,7 +184,7 @@ fn board(started: Time, next: UInt64) : Board
     due: None, waits: Map.new(), wake: None, next: next, reserved: next,
     counts: Counts(queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0, archived: 0, uptime_ms: 0,
     restarts: 0),
-    started: started)
+    started: started, renames: 0, moves: [])
 end
 
 # The board keeping a done or dead job `ms` after its last change before it archives it.
@@ -167,11 +206,33 @@ fn decide(board: Board, call: Call, now: Time) : Decision
     Ack(id): settled(swept.board, call.worker, id, "", false, now)
     Fail(id: id, reason: reason): settled(swept.board, call.worker, id, reason, true, now)
     Retry(id): revived(swept.board, id, now)
+    Handoff(id: id, to: to): passed_on(swept.board, call.worker, id, to, now)
+    Rename(queue: queue, to: to): renaming(swept.board, queue, to)
     Health: answered(swept.board, Healthy(counts: health_of(swept.board, now)))
     Tallying: answered(swept.board, Tallied(queues: tallies(swept.board)))
   end
   Decision(board: decided.board, outcome: decided.outcome,
-    writes: swept.writes.concat(decided.writes), shelved: swept.shelved.concat(decided.shelved))
+    writes: tags(swept.writes.concat(decided.writes), board.renames),
+    shelved: tags(swept.shelved.concat(decided.shelved), board.renames))
+end
+
+# A decision's job records with the renames the board had before it: no decision both renames a
+# queue and writes a job's record, so every record a decision writes has seen exactly those.
+fn tags(changes: List((String, Option(String))), renames: UInt64) : List((String, Option(String)))
+  return changes if renames == 0
+  changes.map(fn(c) tag(c, renames) end)
+end
+
+fn tag(change: (String, Option(String)), renames: UInt64) : (String, Option(String))
+  case change.1
+    Some(record):
+      (change.0, Some(if change.0.starts_with?("j_")
+        tagged(record, renames)
+      else
+        record
+      end))
+    None: change
+  end
 end
 
 fn answered(board: Board, outcome: Outcome) : Decision
@@ -830,6 +891,204 @@ fn revived(board: Board, id: String, now: Time) : Decision
   end
 end
 
+# A leased job handed by the worker that holds a live lease on it to another worker, its lease end
+# and tries kept; 409 for anyone else, and the job as it is when the worker hands it to itself.
+fn passed_on(board: Board, worker: String, id: String, to: String, now: Time) : Decision
+  case job_at(board, id)
+    Some(held):
+      if !holds?(held, worker, now)
+        return answered(board, Conflict(reason: "#{id} is not leased to this worker"))
+      end
+      return answered(board, Found(job: held)) if to == worker
+      if !worker?(to)
+        return answered(board, Unavailable(reason: "#{to} is not a worker a lease can go to"))
+      end
+      next = handed_off(held, worker, to, now)
+      Decision(board: with_job(board, next), outcome: Found(job: next),
+        writes: [(id, Some(shown(next)))], shelved: [])
+    None: answered(board, on_shelf(board, id))
+  end
+end
+
+# A queue renamed: 404 when `from` holds no job, live or archived, and 409 when `to` holds one,
+# which also covers `to` equal to `from`; otherwise the rename as a pure step, and one record for
+# the log naming the two queues. Since `to` holds no job, no key in it can meet one of `from`'s.
+fn renaming(board: Board, from: String, to: String) : Decision
+  if !queue?(from) or !queue?(to)
+    return answered(board, Unavailable(reason: "a rename names two queues"))
+  end
+  if !holds_queue?(board, from)
+    return answered(board, Absent(reason: "no such queue #{from}"))
+  end
+  return answered(board, Conflict(reason: "#{to} exists")) if holds_queue?(board, to)
+  step = relabeled(board, from, to)
+  number = board.renames + 1
+  var after = step.0
+  after.renames = number
+  after.moves = board.moves.push(Move(number: number, from: from, to: to))
+  Decision(board: after, outcome: Renamed(queue: to, moved: step.1),
+    writes: [(rename_key(number), Some(rename_record(from, to)))], shelved: [])
+end
+
+# Whether a queue holds a job in any state, live or archived.
+fn holds_queue?(board: Board, name: String) : Bool
+  all_jobs(board).any?(fn(j)
+    j.queue == name
+  end) or all_shelved(board).any?(fn(j) j.queue == name end)
+end
+
+# The rename as a pure step over the board and its key map: every job in `from`, live or archived,
+# is in `to`, its key names it under `to` and is free under `from`, `from`'s order and fresh
+# positions are `to`'s, and nothing else changes, leases and counts included. Gives the board and
+# how many jobs moved.
+fn relabeled(board: Board, from: String, to: String) : (Board, UInt64)
+  requires from != to
+  requires !holds_queue?(board, to)
+  ensures !holds_queue?(result.0, from)
+  ensures result.0.counts == board.counts and result.0.shelved == board.shelved
+  ensures all_jobs(result.0).size == all_jobs(board).size
+
+  live = all_jobs(board).filter(fn(j) j.queue == from end)
+  shelf = all_shelved(board).filter(fn(j) j.queue == from end)
+  var after = live.reduce(board, fn(b, j) relabeled_live(b, j, from, to) end)
+  after = shelf.reduce(after, fn(b, j) relabeled_shelf(b, j, from, to) end)
+  after.orders = moved_order(board.orders, from, to)
+  after.fresh = moved_fresh(board.fresh, from, to)
+  (after, live.size + shelf.size)
+end
+
+fn relabeled_live(board: Board, held: Job, from: String, to: String) : Board
+  next = relabel(held, from, to)
+  with_key(with_job(without_key(board, held), next), next)
+end
+
+fn relabeled_shelf(board: Board, held: Job, from: String, to: String) : Board
+  next = relabel(held, from, to)
+  at = page_of(held.number)
+  var after = without_key(board, held)
+  after.shelf = after.shelf.set(at, (after.shelf.get(at) or Map.new()).set(held.number, next))
+  with_key(after, next)
+end
+
+# The job in `to`, if it was in `from`.
+fn relabel(held: Job, from: String, to: String) : Job
+  var next = held
+  next.queue = if held.queue == from: to else: held.queue
+  moved = Relabeled(number: held.number, before: held.queue, after: next.queue, from: from, to: to,
+    worker_before: held.worker, worker_after: next.worker, until_before: held.lease_until,
+    until_after: next.lease_until)
+  if moved.after == to: next else: held
+end
+
+# The orders with `from`'s under `to`; `to` held no job, so any order it had is spent.
+fn moved_order(orders: Map(String, Order), from: String, to: String) : Map(String, Order)
+  case orders.get(from)
+    Some(order): orders.remove(from).set(to, order)
+    None: orders.remove(to)
+  end
+end
+
+# The fresh positions with `from`'s pages under `to`, and any page `to` had left dropped first, so
+# a create into `to` or into `from` later starts on pages of its own.
+fn moved_fresh(fresh: Map((String, UInt64), List(UInt64)), from: String,
+  to: String) : Map((String, UInt64), List(UInt64))
+  pages = fresh.entries
+  cleared = pages.filter(fn(e) e.0.0 == to end).reduce(fresh, fn(f, e) f.remove(e.0) end)
+  pages.filter(fn(e) e.0.0 == from end).reduce(cleared,
+    fn(f, e) f.remove(e.0).set((to, e.0.1), e.1) end)
+end
+
+# The key a rename's record is kept under, by its number.
+fn rename_key(number: UInt64) : String
+  "rename_#{number}"
+end
+
+fn rename_record(from: String, to: String) : String
+  "{\"from\": #{Json.encode(from)}, \"to\": #{Json.encode(to)}}"
+end
+
+# The number in a rename's key: rename_ and digits, no sign and no leading zero.
+fn rename_number(key: String) : Option(UInt64)
+  return None if !key.starts_with?("rename_") or key.byte_size < 8
+  digits = key.slice(7, key.size)
+  return None if digits.starts_with?("0")
+  digits.to_u64
+end
+
+# The rule a rename's record breaks, or None when it is one a rename could have written.
+fn rename_broken(entry: (String, String)) : Option(String)
+  return Some("its key is not rename_ and a number") if rename_number(entry.0) is None
+  case Json.decode(entry.1)
+    Ok(Object(fields)):
+      from = name_in(fields, "from")
+      to = name_in(fields, "to")
+      return Some("its from is not 1 to 64 letters, digits, - or _") if !queue?(from)
+      return Some("its to is not 1 to 64 letters, digits, - or _") if !queue?(to)
+      return Some("it renames #{from} to itself") if from == to
+      None
+    Ok(_): Some("is not a rename")
+    Error(_): Some("is not a rename")
+  end
+end
+
+fn name_in(fields: Map(String, Json), name: String) : String
+  case fields.get(name)
+    Some(String(text)): text
+    Some(_): ""
+    None: ""
+  end
+end
+
+# The rename a record holds, as a list of one, or none when it is not a good one.
+fn moves_in(entry: (String, String)) : List(Move)
+  return [] if rename_broken(entry) is Some(_)
+  case (rename_number(entry.0), Json.decode(entry.1))
+    (Some(number), Ok(Object(fields))):
+      [Move(number: number, from: name_in(fields, "from"), to: name_in(fields, "to"))]
+    _: []
+  end
+end
+
+# A folder's records with the renames applied: each job record, live or archived, in the queue the
+# renames written after it put it in, in order, and no rename record left among the live ones; the
+# rename count, the highest of the renames kept and the count the log keeps; and the renames.
+struct Folded
+  live: List((String, String))
+  shelf: List((String, String))
+  renames: UInt64
+  moves: List(Move)
+end
+
+fn folded(entries: List((String, String)), shelf: List((String, String))) : Folded
+  moves = entries.flat_map(fn(e) moves_in(e) end).sort_by(fn(m) m.number end)
+  kept = case entries.find(fn(e) e.0 == "renames" end)
+    Some(e): e.1.to_u64 or 0
+    None: 0
+  end
+  count = max_of(kept, (moves.last or Move(number: 0, from: "", to: "")).number)
+  live = entries.filter(fn(e) e.0 != "renames" and !e.0.starts_with?("rename_") end)
+  return Folded(live: live, shelf: shelf, renames: count, moves: []) if moves.size == 0
+  Folded(live: live.map(fn(e) refolded(e, moves) end),
+    shelf: shelf.map(fn(e) refolded(e, moves) end), renames: count, moves: moves)
+end
+
+# One record with the renames it has not seen applied, in order.
+fn refolded(entry: (String, String), moves: List(Move)) : (String, String)
+  return entry if !entry.0.starts_with?("j_") or tombstone?(entry.1)
+  seen = renames_of(entry.1)
+  later = moves.filter(fn(m) m.number > seen end)
+  return entry if later.size == 0
+  case decoded(entry.1)
+    Some(held):
+      queue = later.reduce(held.queue, fn(q, m) if q == m.from: m.to else: q end)
+      return entry if queue == held.queue
+      var next = held
+      next.queue = queue
+      (entry.0, shown(next))
+    None: entry
+  end
+end
+
 # The first record a folder holds that no request could have left, in key order, the live log's
 # before the archive's: its key, named `archive <key>` for the archive's, and the rule it breaks,
 # None when every record is one. Every command that opens a folder checks it against this, so a
@@ -841,13 +1100,22 @@ fn ill_formed(entries: List((String, String)),
   sorted = entries.sort_by(fn(e) e.0 end)
   held = shelf.filter(fn(e) !tombstone?(e.1) end).sort_by(fn(e) e.0 end)
   top = max_of(highest(sorted), highest(shelf))
-  if sorted.find(fn(e) entry_broken(e, top) is Some(_) end) is Some(bad)
-    return Some((bad.0, entry_broken(bad, top) or ""))
+  last = sorted.flat_map(fn(e) numbered_rename(e.0) end).max or 0
+  if sorted.find(fn(e) entry_broken(e, top, last) is Some(_) end) is Some(bad)
+    return Some((bad.0, entry_broken(bad, top, last) or ""))
   end
   if held.find(fn(e) archive_broken(e.0, e.1) is Some(_) end) is Some(bad)
     return Some(("archive #{bad.0}", archive_broken(bad.0, bad.1) or ""))
   end
-  twice(entries, shelf)
+  fold = folded(entries, shelf)
+  twice(fold.live, fold.shelf)
+end
+
+fn numbered_rename(key: String) : List(UInt64)
+  case rename_number(key)
+    Some(n): [n]
+    None: []
+  end
 end
 
 # The first job whose key another job in its queue already has, by number, the archive's taking
@@ -872,8 +1140,20 @@ fn keyed_once(acc: (Map((String, String), UInt64), List((String, String))),
   end
 end
 
-fn entry_broken(entry: (String, String), top: UInt64) : Option(String)
-  if entry.0 == "ids": ids_broken(entry.1, top) else: rule_broken(entry.0, entry.1)
+fn entry_broken(entry: (String, String), top: UInt64, last: UInt64) : Option(String)
+  return ids_broken(entry.1, top) if entry.0 == "ids"
+  return renames_broken(entry.1, last) if entry.0 == "renames"
+  return rename_broken(entry) if entry.0.starts_with?("rename_")
+  rule_broken(entry.0, entry.1)
+end
+
+# The rename count is a number, and no lower than the last rename the log holds.
+fn renames_broken(value: String, last: UInt64) : Option(String)
+  case value.to_u64
+    Some(count):
+      if count >= last: None else: Some("the rename count is below rename_#{last}")
+    None: Some("is not a number")
+  end
 end
 
 # The ids counter is a number, and no lower than the highest job's, so no number is handed twice.
@@ -901,13 +1181,20 @@ end
 # reservation; None when a record is not the job its key names. A job in both files was archived
 # by a move a kill cut short: the archive's record wins, and the live one is left out, as it is
 # when the archive holds the job's tombstone.
-fn rebuilt(entries: List((String, String)), shelf: List((String, String)),
+#
+# A rename record applies to the job records written before it, live and archived, as `folded`
+# says; a rename record that is not one is None too.
+fn rebuilt(entries: List((String, String)), shelf_entries: List((String, String)),
   started: Time) : Option(Board)
-  floor = case entries.find(fn(e) e.0 == "ids" end)
+  fold = folded(entries, shelf_entries)
+  renamings = entries.filter(fn(e) e.0.starts_with?("rename_") end)
+  return None if renamings.any?(fn(e) rename_broken(e) is Some(_) end)
+  shelf = fold.shelf
+  floor = case fold.live.find(fn(e) e.0 == "ids" end)
     Some(e): try e.1.to_u64
     None: 1
   end
-  held = entries.filter(fn(e) e.0 != "ids" end)
+  held = fold.live.filter(fn(e) e.0 != "ids" end)
   jobs = held.flat_map(fn(e) job_under(e) end)
   kept = shelf.filter(fn(e) !tombstone?(e.1) end)
   gone = shelf.filter(fn(e) tombstone?(e.1) end).reduce(Map.new(),
@@ -924,6 +1211,8 @@ fn rebuilt(entries: List((String, String)), shelf: List((String, String)),
   end)
   var built = live.reduce(shelved_first, fn(so_far, j) placed(so_far, j) end)
   built.reserved = max_of(floor, built.next)
+  built.renames = fold.renames
+  built.moves = fold.moves
   whole = built
   placements = live.map(fn(j)
     Placement(number: j.number, live: true, shelved: shelf_job(whole, j.number) is Some(_))
@@ -964,21 +1253,36 @@ fn placed(board: Board, held: Job) : Board
   after
 end
 
-# The board as the changes that write it whole: the reserved numbers, then every job's record by
-# number.
+# The board as the changes that write it whole: the reserved numbers, the rename count and the
+# rename records the board still keeps, once there has been a rename, then every job's record by
+# number, in its current queue and carrying every rename, so no rename applies to it again. The
+# renames are kept because the archive's records may still need them.
 fn snapshot(board: Board) : List((String, Option(String)))
-  ensures result.size == all_jobs(board).size + 1
+  ensures result.size >= all_jobs(board).size + 1
+  ensures board.moves.size == 0 implies result.all?(fn(w) !w.0.starts_with?("rename_") end)
 
-  [("ids", Some("#{board.reserved}"))].concat(all_jobs(board).map(fn(j)
-    (id_of(j.number), Some(shown(j)))
+  counter = if board.renames > 0: [("renames", Some("#{board.renames}"))] else: []
+  moves = board.moves.map(fn(m) (rename_key(m.number), Some(rename_record(m.from, m.to))) end)
+  [("ids",
+    Some("#{board.reserved}"))].concat(counter).concat(moves).concat(all_jobs(board).map(fn(j)
+    (id_of(j.number), Some(tagged(shown(j), board.renames)))
   end))
 end
 
-# The archive as the changes that write it whole: every archived job's record by number.
+# The board once every rename is folded into the records that write it whole: no rename record
+# left to keep, the count kept.
+fn folded_in(board: Board) : Board
+  var after = board
+  after.moves = []
+  after
+end
+
+# The archive as the changes that write it whole: every archived job's record by number, in its
+# current queue and carrying every rename.
 fn shelf_snapshot(board: Board) : List((String, Option(String)))
   ensures result.size == board.shelved
 
-  all_shelved(board).map(fn(j) (id_of(j.number), Some(shown(j))) end)
+  all_shelved(board).map(fn(j) (id_of(j.number), Some(tagged(shown(j), board.renames))) end)
 end
 
 # Every job's record, by number, as the store holds them.
@@ -1025,7 +1329,8 @@ fn number_in(decision: Decision) : UInt64
   case decision.outcome
     Made(one): one.number
     Found(one): one.number
-    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Unavailable(_):
+    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
+      moved: _) | Absent(_) | Unavailable(_):
       0
   end
 end
@@ -1034,7 +1339,8 @@ fn job_in(decision: Decision) : Option(Job)
   case decision.outcome
     Made(one): Some(one)
     Found(one): Some(one)
-    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Unavailable(_):
+    Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
+      moved: _) | Absent(_) | Unavailable(_):
       None
   end
 end
@@ -1077,6 +1383,63 @@ fn one_done(key: String) : Board
   made = create_keyed(board(start(), 1), "a", key, start())
   held = lease_by(made.board, "w1", "a", 1_000, start())
   decide(held.board, call("w1", Ack(id: "j_1")), start()).board
+end
+
+# The store a run of decisions leaves: each write applied in order, as the log's replay applies its
+# lines.
+fn logged(store: Map(String, String), decision: Decision) : Map(String, String)
+  decision.writes.reduce(store, fn(held, w) kept_in(held, w) end)
+end
+
+fn kept_in(store: Map(String, String), change: (String, Option(String))) : Map(String, String)
+  case change.1
+    Some(value): store.set(change.0, value)
+    None: store.remove(change.0)
+  end
+end
+
+fn hand(b: Board, worker: String, id: String, to: String, now: Time) : Decision
+  decide(b, call(worker, Handoff(id: id, to: to)), now)
+end
+
+fn rename(b: Board, from: String, to: String, now: Time) : Decision
+  decide(b, call("op", Rename(queue: from, to: to)), now)
+end
+
+# Whether a lookup by the queue and key finds one job.
+fn keyed_under?(b: Board, queue: String, key: String, now: Time) : Bool
+  found = decide(b, call("p", Listing(queue: Some(queue), state: None, key: Some(key))), now)
+  case found.outcome
+    Listed(jobs): jobs.size == 1
+    Made(_) | Found(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
+      moved: _) | Absent(_) | Unavailable(_):
+      false
+  end
+end
+
+fn queue_in(decision: Decision) : String
+  case job_in(decision)
+    Some(one): one.queue
+    None: ""
+  end
+end
+
+# The board a rename test starts from, at `now`: in queue a, j_1 done and archived (key k1), j_2 dead
+# (key k2), j_3 leased to w1 (key k3), j_4 queued, j_5 scheduled; in queue b, j_6 queued with key k1.
+fn busy(now: Time) : Board
+  var b = ["k1", "k2", "k3"].reduce(retaining(board(start(), 1), 1_000),
+    fn(so_far, key) create_keyed(so_far, "a", key, start()).board end)
+  b = decide(b, call("p", Create(making: plain("a", "four", 2))), start()).board
+  b = decide(b, call("p", Create(making: making("a", "five", 2, 0, 3_600_000))), start()).board
+  b = create_keyed(b, "b", "k1", start()).board
+  b = decide(lease_by(b, "w1", "a", 100, start()).board, call("w1", Ack(id: "j_1")), start()).board
+  later = start() + 500.ms
+  b = decide(lease_by(b, "w1", "a", 100, later).board, call("w1", Fail(id: "j_2", reason: "x")),
+    later).board
+  b = decide(lease_by(b, "w1", "a", 100, later).board, call("w1", Fail(id: "j_2", reason: "y")),
+    later).board
+  b = lease_by(b, "w1", "a", 3_600_000, later).board
+  shelved(b, now).board
 end
 
 test "a job made is found by its id, and its record is written under that id"
@@ -1547,6 +1910,281 @@ test "an archive with a bad record, or a key on two jobs, is ill-formed by name"
   assert ill_formed(store_of(elsewhere), shelf) is None
 end
 
+test "a handoff from the holder moves the lease; a stranger, a run-out lease, and an archived job are 409"
+  b = with_jobs(["a", "a"])
+  lent = lease_by(b, "w1", "a", 1_000, start())
+  assert job_in(lent) is Some(held)
+  moved = hand(lent.board, "w1", "j_1", "w2", start() + 10.ms)
+  assert job_in(moved) is Some(passed)
+  assert passed.worker == Some("w2") and passed.lease_until == held.lease_until
+  assert passed.tries == held.tries and passed.state == Leased
+  assert passed.updated_at == start() + 10.ms
+  assert moved.writes == [("j_1", Some(shown(passed)))]
+  assert health_of(moved.board, start()) == health_of(lent.board, start())
+  stranger = hand(lent.board, "w3", "j_1", "w3", start())
+  assert stranger.outcome == Conflict(reason: "j_1 is not leased to this worker")
+  assert stranger.writes == []
+  assert hand(lent.board, "w1", "j_2", "w2", start()).outcome is Conflict(_)
+  assert hand(lent.board, "w1", "j_9", "w2", start()).outcome == Missing
+  late = hand(lent.board, "w1", "j_1", "w2", start() + 1_000.ms)
+  assert late.outcome is Conflict(_)
+  assert late.writes.map(fn(w) w.0 end) == ["j_1"]
+  now = start() + 2_000.ms
+  archived_one = shelved(retaining(one_done("k"), 1_000), now).board
+  assert hand(archived_one, "w1", "j_1", "w2", now).outcome == Conflict(reason: "j_1 is archived")
+end
+
+test "a handoff to the holder itself is 200 and changes nothing"
+  lent = lease_by(with_jobs(["a"]), "w1", "a", 1_000, start())
+  same = hand(lent.board, "w1", "j_1", "w1", start() + 5.ms)
+  assert job_in(same) == job_in(lent) and same.writes == [] and same.board == lent.board
+end
+
+test "A hands to B, B to C: A and B are 409 from then on, and C acks"
+  lent = lease_by(with_jobs(["a"]), "a-1", "a", 1_000, start())
+  to_b = hand(lent.board, "a-1", "j_1", "b-1", start())
+  to_c = hand(to_b.board, "b-1", "j_1", "c-1", start())
+  assert queue_in(to_c) == "a"
+  assert job_in(to_c) is Some(held)
+  assert held.worker == Some("c-1") and held.tries == 1
+  assert decide(to_c.board, call("a-1", Ack(id: "j_1")), start()).outcome is Conflict(_)
+  assert decide(to_c.board, call("a-1", Fail(id: "j_1", reason: "x")),
+    start()).outcome is Conflict(_)
+  assert hand(to_c.board, "a-1", "j_1", "a-1", start()).outcome is Conflict(_)
+  assert decide(to_c.board, call("b-1", Ack(id: "j_1")), start()).outcome is Conflict(_)
+  assert hand(to_b.board, "a-1", "j_1", "d-1", start()).outcome is Conflict(_)
+  done = decide(to_c.board, call("c-1", Ack(id: "j_1")), start())
+  assert job_in(done) is Some(finished)
+  assert finished.state == Done
+  failing = decide(to_c.board, call("c-1", Fail(id: "j_1", reason: "x")), start())
+  assert job_in(failing) is Some(back)
+  assert back.state == Queued and back.tries == 1
+end
+
+test "a handoff is replayed from the log: after a restart the job is leased to the new worker until the same time"
+  made = decide(board(start(), 1), call("p", Create(making: plain("a", "x", 2))), start())
+  lent = lease_by(made.board, "w1", "a", 60_000, start())
+  moved = hand(lent.board, "w1", "j_1", "w2", start() + 1.ms)
+  store = logged(logged(logged(Map.new(), made), lent), moved)
+  assert rebuilt(store.entries, [], start()) is Some(again)
+  assert decide(again, call("p", Fetch(id: "j_1")), start() + 2.ms).outcome is Found(held)
+  assert held.worker == Some("w2") and held.lease_until == Some(start() + 60_000.ms)
+  assert held.tries == 1
+  assert decide(again, call("w1", Ack(id: "j_1")), start() + 2.ms).outcome is Conflict(_)
+  assert job_in(decide(again, call("w2", Ack(id: "j_1")), start() + 2.ms)) is Some(done)
+  assert done.state == Done
+  assert rebuilt(snapshot(moved.board).map(fn(w) (w.0, w.1 or "") end), [], start()) is Some(whole)
+  assert records(whole) == records(moved.board)
+end
+
+test "a rename moves every job of the queue in every state, archived too, with its key, and leaves the lease alone"
+  now = start() + 1_000.ms
+  b = busy(now)
+  assert decide(b, call("p", Tallying), now).outcome is Tallied(before)
+  assert before.map(fn(t) t.name end) == ["a", "b"]
+  assert decide(b, call("p", Fetch(id: "j_3")), now).outcome is Found(lent)
+  assert lent.state == Leased and lent.worker == Some("w1")
+  step = relabeled(b, "a", "c")
+  assert step.1 == 5
+  done = rename(b, "a", "c", now)
+  assert done.outcome == Renamed(queue: "c", moved: 5)
+  assert done.writes == [("rename_1", Some("{\"from\": \"a\", \"to\": \"c\"}"))]
+  assert done.shelved == [] and done.board.renames == 1
+  after = done.board
+  assert decide(after, call("p", Tallying), now).outcome is Tallied(queues)
+  assert queues.map(fn(t) t.name end) == ["b", "c"]
+  assert queues.first == Some(Tally(name: "b", queued: 1, scheduled: 0, leased: 0, done: 0,
+    dead: 0))
+  assert queues.get(1) == Some(Tally(name: "c", queued: 1, scheduled: 1, leased: 1, done: 0,
+    dead: 1))
+  assert health_of(after, now) == health_of(b, now)
+  assert ["j_1",
+    "j_2",
+    "j_3",
+    "j_4",
+    "j_5"].all?(fn(id) queue_in(decide(after, call("p", Fetch(id: id)), now)) == "c" end)
+  assert queue_in(decide(after, call("p", Fetch(id: "j_6")), now)) == "b"
+  assert decide(after, call("p", Fetch(id: "j_3")), now).outcome is Found(still)
+  assert still.worker == lent.worker and still.lease_until == lent.lease_until
+  assert still.tries == lent.tries
+  assert ["k1", "k2", "k3"].all?(fn(key) keyed_under?(after, "c", key, now) end)
+  assert !["k1", "k2", "k3"].any?(fn(key) keyed_under?(after, "a", key, now) end)
+  assert job_in(create_keyed(after, "c", "k1", now)) is Some(old_one)
+  assert old_one.number == 1 and old_one.archived_at is Some(_)
+  assert job_in(create_keyed(after, "b", "k1", now)) is Some(other)
+  assert other.number == 6
+  in_c = decide(after, call("p", Listing(queue: Some("c"), state: None, key: None)), now)
+  assert in_c.outcome is Listed(listed_c)
+  assert listed_c.map(fn(j) j.number end) == [2, 3, 4, 5]
+  acked = decide(after, call("w1", Ack(id: "j_3")), now)
+  assert job_in(acked) is Some(finished)
+  assert finished.state == Done and finished.queue == "c"
+  assert lease_by(after, "w2", "a", 1_000, now).outcome == Empty
+  assert number_in(lease_by(after, "w2", "c", 1_000, now)) == 4
+  fresh = create_keyed(after, "a", "k1", now)
+  assert fresh.outcome is Made(new_one)
+  assert new_one.number == 7 and new_one.queue == "a"
+  assert number_in(lease_by(fresh.board, "w2", "a", 1_000, now)) == 7
+  assert number_in(lease_by(fresh.board, "w2", "c", 1_000, now)) == 4
+end
+
+test "a rename to a queue that holds a job is 409, to itself is 409, and from an empty one is 404"
+  now = start() + 1_000.ms
+  b = busy(now)
+  assert rename(b, "a", "b", now).outcome == Conflict(reason: "b exists")
+  assert rename(b, "a", "a", now).outcome == Conflict(reason: "a exists")
+  assert rename(b, "zzz", "c", now).outcome == Absent(reason: "no such queue zzz")
+  assert rename(b, "a", "b", now).writes == []
+  only_archived = shelved(retaining(one_done("k"), 1_000), now).board
+  assert rename(only_archived, "a", "b", now).outcome == Renamed(queue: "b", moved: 1)
+  assert rename(only_archived, "c", "a", now).outcome == Absent(reason: "no such queue c")
+  assert rename(only_archived, "z", "a", now).outcome is Absent(_)
+  assert rename(with_jobs(["a"]), "b", "a", now).outcome is Absent(_)
+  assert rename(with_jobs(["a", "b"]), "b", "a", now).outcome == Conflict(reason: "a exists")
+end
+
+# A key clash cannot happen: a key names one job per queue in the key map, a rename's target holds
+# no job in any state (or the rename is 409), so it holds no key, and each of the source's keys
+# already named one job there. The key map is moved entry for entry, so the target ends with
+# exactly the source's keys and no second job under any of them.
+test "a rename never lets a key name two jobs in one queue, since its target holds no key at all"
+  now = start() + 1_000.ms
+  b = create_keyed(create_keyed(busy(now), "d", "k1", now).board, "d", "k9", now).board
+  assert rename(b, "a", "d", now).outcome is Conflict(_)
+  gone = decide(decide(b, call("p", Remove(id: "j_7")), now).board, call("p", Remove(id: "j_8")),
+    now).board
+  moved = rename(gone, "a", "d", now)
+  assert moved.outcome == Renamed(queue: "d", moved: 5)
+  assert job_in(create_keyed(moved.board, "d", "k1", now)) is Some(one)
+  assert one.number == 1
+  assert create_keyed(moved.board, "d", "k9", now).outcome is Made(_)
+  assert ill_formed(moved.board.jobs.values.flat_map(fn(p)
+    p.values
+  end).map(fn(j)
+    (id_of(j.number), shown(j))
+  end), shelf_snapshot(moved.board).map(fn(w) (w.0, w.1 or "") end)) is None
+end
+
+test "a rename undone by a rename restores every job and key, and a freed name is used again"
+  now = start() + 1_000.ms
+  b = busy(now)
+  there = rename(b, "a", "c", now)
+  back = rename(there.board, "c", "a", now)
+  assert back.outcome == Renamed(queue: "a", moved: 5)
+  assert records(back.board) == records(b) and shelf_records(back.board) == shelf_records(b)
+  assert back.board.renames == 2 and back.board.moves.size == 2
+  assert ["k1", "k2", "k3"].all?(fn(key) keyed_under?(back.board, "a", key, now) end)
+  assert !["k1", "k2", "k3"].any?(fn(key) keyed_under?(back.board, "c", key, now) end)
+  assert number_in(lease_by(back.board, "w2", "a", 1_000, now)) == 4
+  assert decide(back.board, call("w1", Ack(id: "j_3")), now).outcome is Found(_)
+  reused = decide(there.board, call("p", Create(making: plain("a", "new", 1))), now)
+  assert reused.outcome is Made(fresh)
+  assert fresh.queue == "a"
+  assert rename(reused.board, "c", "a", now).outcome == Conflict(reason: "a exists")
+end
+
+test "a replay applies a rename to the records written before it and not to those after, archive included"
+  now = start() + 1_000.ms
+  b = busy(now)
+  first = decide(retaining(board(start(), 1), 1_000), call("p", Create(making: keyed("a", "k1"))),
+    start())
+  lent = lease_by(first.board, "w1", "a", 100, start())
+  acked = decide(lent.board, call("w1", Ack(id: "j_1")), start())
+  second = decide(acked.board, call("p", Create(making: keyed("a", "k2"))), start())
+  third = decide(second.board, call("p", Create(making: plain("a", "three", 1))), start())
+  moved = rename(third.board, "a", "c", now)
+  assert moved.shelved.size == 1 and moved.writes.map(fn(w) w.0 end) == ["j_1", "rename_1"]
+  after = decide(moved.board, call("p", Create(making: keyed("a", "k1"))), now)
+  held = lease_by(after.board, "w2", "c", 1_000, now)
+  assert number_in(held) == 2
+  assert (held.writes.first or ("",
+    None)).1 == Some(tagged(shown(job_in(held) or job(1, plain("q", "", 1), now)), 1))
+  decisions = [first, lent, acked, second, third, moved, after, held]
+  store = decisions.reduce(Map.new(), fn(s, d) logged(s, d) end)
+  shelf = moved.shelved.map(fn(w) (w.0, w.1 or "") end)
+  assert shelf.all?(fn(e) e.1.contains?("\"queue\": \"a\"") end)
+  assert ill_formed(store.entries, shelf) is None
+  assert rebuilt(store.entries, shelf, now) is Some(again)
+  assert records(again) == records(held.board)
+  assert shelf_records(again) == shelf_records(held.board)
+  assert again.renames == 1
+  assert queue_in(decide(again, call("p", Fetch(id: "j_1")), now)) == "c"
+  assert queue_in(decide(again, call("p", Fetch(id: "j_2")), now)) == "c"
+  assert queue_in(decide(again, call("p", Fetch(id: "j_3")), now)) == "c"
+  assert queue_in(decide(again, call("p", Fetch(id: "j_4")), now)) == "a"
+  assert job_in(create_keyed(again, "c", "k1", now)) is Some(old_one)
+  assert old_one.number == 1
+  assert number_in(create_keyed(again, "a", "k1", now)) == 4
+  twice = rename(again, "c", "a", now)
+  assert twice.outcome is Conflict(_)
+  out = rename(again, "a", "e", now)
+  back = rename(out.board, "c", "a", now)
+  assert back.writes.map(fn(w) w.0 end) == ["rename_3"]
+  later = [out, back].reduce(store, fn(s, d) logged(s, d) end)
+  assert rebuilt(later.entries, shelf, now) is Some(third_time)
+  assert records(third_time) == records(back.board)
+  assert shelf_records(third_time) == shelf_records(back.board)
+  assert queue_in(decide(third_time, call("p", Fetch(id: "j_1")), now)) == "a"
+  assert queue_in(decide(third_time, call("p", Fetch(id: "j_4")), now)) == "e"
+  assert records(b).size > 0
+end
+
+test "a snapshot keeps the renames and the count, and a compacted one keeps only the count"
+  now = start() + 1_000.ms
+  b = busy(now)
+  moved = rename(rename(b, "a", "c", now).board, "b", "a", now).board
+  lines = snapshot(moved)
+  assert lines.map(fn(w) w.0 end).take(4) == ["ids", "renames", "rename_1", "rename_2"]
+  assert lines.get(1) == Some(("renames", Some("2")))
+  shelf = shelf_snapshot(moved).map(fn(w) (w.0, w.1 or "") end)
+  assert shelf.all?(fn(e) renames_of(e.1) == 2 and e.1.contains?("\"queue\": \"c\"") end)
+  assert rebuilt(lines.map(fn(w) (w.0, w.1 or "") end), shelf, now) is Some(again)
+  assert records(again) == records(moved) and shelf_records(again) == shelf_records(moved)
+  bare = snapshot(folded_in(moved))
+  assert bare.map(fn(w) w.0 end).take(2) == ["ids", "renames"]
+  assert bare.all?(fn(w) !w.0.starts_with?("rename_") end)
+  assert rebuilt(bare.map(fn(w) (w.0, w.1 or "") end), shelf, now) is Some(folded_board)
+  assert records(folded_board) == records(moved) and folded_board.renames == 2
+  next = rename(folded_board, "c", "f", now)
+  assert next.writes.map(fn(w) w.0 end) == ["rename_3"]
+  assert snapshot(b).size == records(b).size + 1
+end
+
+test "a folder with a rename record that is not one is ill-formed by name"
+  entries = [("ids", "1000"), ("j_1", shown(job(1, plain("a", "", 1), start())))]
+  good = entries.push(("rename_1", "{\"from\": \"a\", \"to\": \"b\"}"))
+  assert ill_formed(good, []) is None
+  assert rebuilt(good, [], start()) is Some(b)
+  assert queue_in(decide(b, call("p", Fetch(id: "j_1")), start())) == "b"
+  bad_to = entries.push(("rename_1", "{\"from\": \"a\", \"to\": \"b c\"}"))
+  assert ill_formed(bad_to,
+    []) == Some(("rename_1", "its to is not 1 to 64 letters, digits, - or _"))
+  assert rebuilt(bad_to, [], start()) is None
+  bad_from = entries.push(("rename_1", "{\"to\": \"b\"}"))
+  assert ill_formed(bad_from,
+    []) == Some(("rename_1", "its from is not 1 to 64 letters, digits, - or _"))
+  assert ill_formed(entries.push(("rename_1", "[1]")), []) == Some(("rename_1", "is not a rename"))
+  assert ill_formed(entries.push(("rename_1", "{\"from\": \"a\", \"to\": \"a\"}")),
+    []) == Some(("rename_1", "it renames a to itself"))
+  assert ill_formed(entries.push(("rename_01", "{\"from\": \"a\", \"to\": \"b\"}")),
+    []) == Some(("rename_01", "its key is not rename_ and a number"))
+  assert ill_formed(good.push(("renames", "x")), []) == Some(("renames", "is not a number"))
+  assert ill_formed(good.push(("renames", "0")),
+    []) == Some(("renames", "the rename count is below rename_1"))
+  assert ill_formed(good.push(("renames", "1")), []) is None
+  clash = good.push(("j_2", shown(job(2, keyed("b", "k"), start())))).push(("j_3",
+    shown(job(3, keyed("a", "k"), start()))))
+  assert ill_formed(clash, []) == Some(("j_3", "its key k is j_2's too"))
+end
+
+test rejects "a rename step whose target is its source"
+  relabeled(with_jobs(["a"]), "a", "a")
+end
+
+test rejects "a rename step whose target holds a job"
+  relabeled(with_jobs(["a", "b"]), "a", "b")
+end
+
 test rejects "an archived job put on the shelf with no archived_at"
   shelved_into(board(start(), 1), job(1, plain("a", "", 1), start()))
 end
@@ -1564,5 +2202,5 @@ property "a job made then fetched gives back any valid payload"
   end
 end
 
-verified: types, contracts, tests (28), property (200 seeds), sim (not run)
+verified: types, contracts, tests (41), property (200 seeds), sim (not run)
           proven: not run

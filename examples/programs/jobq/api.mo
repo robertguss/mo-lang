@@ -1,8 +1,8 @@
 module Jobq.Api
-expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from
+expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from, handoff_from, rename_from
 
 use Jobq.Board{Command, Call, Outcome, Counts, Tally}
-use Jobq.Job{Job, Making, queue?, key?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, phase_named, id_of, shown}
+use Jobq.Job{Job, Making, queue?, key?, payload?, reason?, token?, worker?, tries?, lease_ms?, delay_ms?, backoff_ms?, phase_named, id_of, shown}
 
 intent "Read an HTTP request into a call on the queue, or answer it at once: 404 for a route that does not exist, 405 for a method the route does not take, 401 for a missing or malformed token, and 400 for a body or a name of the wrong shape, the names the previous version took among them; and write every outcome as its status and JSON."
 
@@ -32,7 +32,9 @@ fn route(request: Request) : Routed
         ("jobs", "ack"): settling(request, parts.get(2) or "", false)
         ("jobs", "fail"): settling(request, parts.get(2) or "", true)
         ("jobs", "retry"): retrying(request, parts.get(2) or "")
+        ("jobs", "handoff"): handing(request, parts.get(2) or "")
         ("queues", "lease"): leasing(request, parts.get(2) or "")
+        ("queues", "rename"): renaming(request, parts.get(2) or "")
         _: nowhere(request)
       end
     _: nowhere(request)
@@ -101,6 +103,47 @@ fn leasing(request: Request, queue: String) : Routed
     Ok(ms): Asked(call: Call(worker: worker, command: Lease(queue: queue, lease_ms: ms)))
     Error(why): Answered(response: failed(400, why))
   end
+end
+
+# A handoff takes the holder's token and names the worker the lease goes to.
+fn handing(request: Request, id: String) : Routed
+  return Answered(response: not_allowed("POST")) if request.method != "POST"
+  worker = try_token(request)
+  return Answered(response: unauthorized()) if worker == ""
+  asked(worker, handoff_from(id, request.body))
+end
+
+# A rename names the queue in its path and the new name in its body.
+fn renaming(request: Request, queue: String) : Routed
+  return Answered(response: not_allowed("POST")) if request.method != "POST"
+  worker = try_token(request)
+  return Answered(response: unauthorized()) if worker == ""
+  if !queue?(queue)
+    return Answered(response: failed(400, "a queue's name is 1 to 64 letters, digits, - or _"))
+  end
+  asked(worker, rename_from(queue, request.body))
+end
+
+# A handoff's body: `to`, a token as a lease's is, at most 128 bytes; no other field.
+fn handoff_from(id: String, body: String) : Result(Command, String)
+  to = try only_to(body)
+  return Error("to must be a token of 1 to 128 bytes with no space") if !worker?(to)
+  Ok(Handoff(id: id, to: to))
+end
+
+# A rename's body: `to`, a queue's name; no other field.
+fn rename_from(queue: String, body: String) : Result(Command, String)
+  to = try only_to(body)
+  return Error("to must be 1 to 64 letters, digits, - or _") if !queue?(to)
+  Ok(Rename(queue: queue, to: to))
+end
+
+fn only_to(body: String) : Result(String, String)
+  fields = try object_of(body)
+  if fields.keys.find(fn(name) name != "to" end) is Some(name)
+    return Error("#{name} is not a field here; the body is {\"to\": ...}")
+  end
+  text_field(fields, "to")
 end
 
 fn asked(worker: String, command: Result(Command, String)) : Routed
@@ -266,6 +309,9 @@ fn respond(outcome: Outcome) : Response
     Healthy(counts): json(200, health(counts))
     Tallied(queues):
       json(200, "{\"queues\": [#{String.join(queues.map(fn(t) tally(t) end), ", ")}]}")
+    Renamed(queue: queue, moved: moved):
+      json(200, "{\"queue\": #{Json.encode(queue)}, \"moved\": #{moved}}")
+    Absent(reason): failed(404, reason)
     Unavailable(reason): failed(503, reason)
   end
 end
@@ -528,6 +574,53 @@ test "an archived job shows its archived_at, and a retry of it is 409"
     "{\"error\": \"j_2 is archived\"}")
 end
 
+test "a handoff and a rename take POST with a token and a body naming where to"
+  assert route(by("POST", "/jobs/j_4/handoff", "w1",
+    "{\"to\": \"w2\"}")) == Asked(call: Call(worker: "w1", command: Handoff(id: "j_4", to: "w2")))
+  assert route(by("POST", "/queues/emails/rename", "op",
+    "{\"to\": \"mail\"}")) == Asked(call: Call(worker: "op",
+    command: Rename(queue: "emails", to: "mail")))
+  assert route(by("GET", "/jobs/j_4/handoff", "w1", "")) is Answered(refused)
+  assert refused.status == 405 and refused.headers.get("allow") == Some("POST")
+  assert status_of(route(by("PUT", "/queues/q/rename", "w1", ""))) == 405
+  assert status_of(route(Request(method: "POST", path: "/jobs/j_4/handoff",
+    body: "{\"to\": \"w2\"}"))) == 401
+  assert status_of(route(Request(method: "POST", path: "/queues/q/rename",
+    body: "{\"to\": \"r\"}"))) == 401
+  assert status_of(route(by("POST", "/queues/q/rename/x", "w", ""))) == 404
+  assert status_of(route(by("POST", "/queues/a%20b/rename", "w", "{\"to\": \"r\"}"))) == 400
+end
+
+test "a handoff's to is a token of at most 128 bytes, and a rename's is a queue name; anything else is 400"
+  assert handoff_from("j_1", "{\"to\": \"#{"w".repeat(128)}\"}") is Ok(_)
+  bad_worker = "to must be a token of 1 to 128 bytes with no space"
+  assert handoff_from("j_1", "{\"to\": \"#{"w".repeat(129)}\"}") == Error(bad_worker)
+  assert handoff_from("j_1", "{\"to\": \"a b\"}") == Error(bad_worker)
+  assert handoff_from("j_1", "{\"to\": \"\"}") == Error(bad_worker)
+  assert handoff_from("j_1", "{\"to\": \"a\\tb\"}") == Error(bad_worker)
+  assert handoff_from("j_1", "{\"to\": 7}") == Error("to must be a string")
+  assert handoff_from("j_1", "{}") == Error("to is missing")
+  assert handoff_from("j_1", "") == Error("the body is not JSON")
+  assert handoff_from("j_1", "[\"w\"]") == Error("the body must be a JSON object")
+  assert handoff_from("j_1", "{\"to\": \"w\", \"lease_ms\": 5}") is Error(_)
+  bad_queue = "to must be 1 to 64 letters, digits, - or _"
+  assert rename_from("q", "{\"to\": \"r-2_x\"}") == Ok(Rename(queue: "q", to: "r-2_x"))
+  assert rename_from("q", "{\"to\": \"a b\"}") == Error(bad_queue)
+  assert rename_from("q", "{\"to\": \"#{"q".repeat(65)}\"}") == Error(bad_queue)
+  assert rename_from("q", "{\"to\": \"é\"}") == Error(bad_queue)
+  assert rename_from("q", "{\"to\": null}") == Error("to must be a string")
+  assert rename_from("q", "{\"from\": \"q\", \"to\": \"r\"}") is Error(_)
+  assert status_of(route(by("POST", "/jobs/j_1/handoff", "w", "{\"to\": \"a b\"}"))) == 400
+  assert status_of(route(by("POST", "/queues/q/rename", "w", "{}"))) == 400
+end
+
+test "a rename answers the new name and how many jobs moved, and a queue with no job is 404"
+  assert respond(Renamed(queue: "mail", moved: 3)) == json(200,
+    "{\"queue\": \"mail\", \"moved\": 3}")
+  assert respond(Absent(reason: "no such queue q")) == json(404, "{\"error\": \"no such queue q\"}")
+  assert respond(Conflict(reason: "mail exists")).status == 409
+end
+
 property "any valid payload sent as JSON becomes a create of that payload"
   for payload in any(String) if payload?(payload)
     body = "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 2}"
@@ -535,5 +628,5 @@ property "any valid payload sent as JSON becomes a create of that payload"
   end
 end
 
-verified: types, contracts, tests (11), property (200 seeds), sim (not run)
+verified: types, contracts, tests (14), property (200 seeds), sim (not run)
           proven: not run

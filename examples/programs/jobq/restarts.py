@@ -13,7 +13,12 @@ end the service with exit 70 and a folder verify opens; and failures further apa
 start a fresh count. Change 4 adds the archive under kills: with a small --retain-ms, serve is killed
 at random under a load of short-lived keyed jobs, and after each start no acked job is lost, none is
 counted twice, a retried create with a used key is 200 with the first job, and verify opens the
-folder. Every server is killed past 300 seconds or 4 GB.
+folder. Change 5 adds renames and handoffs under kills: serve is killed at random while workers make
+keyed jobs, lease them, hand them to each other, and ack them, and an operator renames the busy queue
+to a fresh name again and again; after the kills every job is in exactly one queue, the first rename
+after it that took place, every key names its job once in that queue, every acknowledged write is
+there, and no job is held by two workers or by any but the last worker it was handed to. Every
+server is killed past 300 seconds or 4 GB.
 """
 
 import http.client
@@ -305,6 +310,152 @@ def archive_under_kills(root):
     check(set(statuses) <= {200, 201, 204, 409, 503, 0}, f"every answer under the kills is expected: {sorted(set(statuses))}")
 
 
+def handing_worker(port, stop, me, other, log, lock, statuses):
+    i = 0
+    while not stop.is_set():
+        key = f"{me}-{i}"
+        i += 1
+        sent = time.monotonic()
+        status, body = request(port, "POST", "/jobs", "p", {"queue": "q", "payload": key, "max_tries": 3, "key": key})
+        statuses.append(status)
+        if status == 201:
+            with lock:
+                log["made"][body["id"]] = (key, sent, time.monotonic())
+        status, body = request(port, "POST", "/queues/q/lease", me, {"lease_ms": 3600000})
+        statuses.append(status)
+        if status != 200:
+            continue
+        job = body["id"]
+        holder = me
+        if i % 2 == 0:
+            status, body = request(port, "POST", f"/jobs/{job}/handoff", me, {"to": other})
+            statuses.append(status)
+            if status == 200:
+                if body["worker"] != other:
+                    with lock:
+                        log["wrong"].append((job, "handed to", other, "names", body["worker"]))
+                holder = other
+                with lock:
+                    log["holder"][job] = other
+                late = request(port, "POST", f"/jobs/{job}/ack", me)[0]
+                statuses.append(late)
+                if late not in (409, 503, 0):
+                    with lock:
+                        log["wrong"].append((job, "old worker's ack", late))
+            elif status in (503, 0):
+                continue
+        if i % 3 == 0:
+            with lock:
+                log["holder"].setdefault(job, holder)
+            continue
+        status, body = request(port, "POST", f"/jobs/{job}/ack", holder)
+        statuses.append(status)
+        if status == 200:
+            with lock:
+                log["acked"].add(job)
+
+
+def renamer(port, stop, log, lock, statuses, rng):
+    n = 0
+    while not stop.is_set():
+        time.sleep(0.05 + rng.random() * 0.15)
+        n += 1
+        name = f"r{len(log['renames'])}-{n}"
+        sent = time.monotonic()
+        status, body = request(port, "POST", "/queues/q/rename", "op", {"to": name})
+        statuses.append(status)
+        with lock:
+            log["renames"].append((sent, time.monotonic(), name, status))
+        if status == 200 and body["queue"] != name:
+            with lock:
+                log["wrong"].append(("rename", name, body))
+
+
+def rename_under_kills(root):
+    folder = os.path.join(root, "rename")
+    os.mkdir(folder)
+    log = {"made": {}, "acked": set(), "holder": {}, "renames": [], "wrong": []}
+    lock = threading.Lock()
+    statuses = []
+    rng = random.Random(5)
+    for round_ in range(5):
+        server = Server(folder)
+        stop = threading.Event()
+        threads = [threading.Thread(target=handing_worker, args=(server.port, stop, f"w{k}", f"w{(k + 1) % 3}", log, lock, statuses)) for k in range(3)]
+        threads.append(threading.Thread(target=renamer, args=(server.port, stop, log, lock, statuses, rng)))
+        for t in threads:
+            t.start()
+        time.sleep(1.0 + rng.random() * 1.5)
+        server.proc.kill()
+        server.proc.wait()
+        stop.set()
+        for t in threads:
+            t.join()
+        result = verify(folder)
+        check(result.returncode == 0, f"rename kill {round_ + 1}: verify opens the folder: {result.stdout.strip()} {result.stderr.strip()}")
+    check(not log["wrong"], f"no old worker acked a job it handed off, and every rename answered its name: {log['wrong'][:5]}")
+    done_renames = [r for r in log["renames"] if r[3] == 200]
+    check(len(done_renames) >= 3 and len(log["made"]) > 0,
+          f"the kills came among {len(done_renames)} renames answered 200 of {len(log['renames'])}, {len(log['made'])} creates, {len(log['acked'])} acks")
+    server = Server(folder)
+    port = server.port
+    wrong = []
+    queues = {}
+    for job, (key, made_sent, made_at) in log["made"].items():
+        status, body = request(port, "GET", f"/jobs/{job}", "p")
+        if status != 200:
+            wrong.append((job, "not found", status))
+            continue
+        queue = body["queue"]
+        queues[job] = queue
+        # A rename answered before the create was sent came before it; one sent after the create was
+        # answered came after it; the renamer sends one at a time, so the rest are in order between.
+        later = [r for r in log["renames"] if r[1] >= made_sent]
+        first_done = next((i for i, r in enumerate(later) if r[3] == 200 and r[0] > made_at), None)
+        allowed = {r[2] for r in (later if first_done is None else later[: first_done + 1])}
+        if first_done is None:
+            allowed.add("q")
+        if queue not in allowed:
+            wrong.append((job, "in", queue, "not one of", sorted(allowed)[:4]))
+        status, found = request(port, "GET", f"/jobs?queue={queue}&key={key}", "p")
+        if status != 200 or [j["id"] for j in found["jobs"]] != [job]:
+            wrong.append((job, "key", key, "in", queue, status, found))
+        if job in log["acked"] and body["state"] != "done":
+            wrong.append((job, "acked but", body["state"]))
+        if body["state"] == "leased" and job in log["holder"] and body["worker"] != log["holder"][job]:
+            wrong.append((job, "held by", body["worker"], "not", log["holder"][job]))
+    check(not wrong, f"each of {len(log['made'])} jobs is in one queue, the first rename after it that took place, its key names it there, acks and handoffs held: {wrong[:5]}")
+    by_queue = {}
+    for job, queue in queues.items():
+        by_queue.setdefault(queue, []).append(job)
+    status, listed = request(port, "GET", "/queues", "p")
+    status_h, health = request(port, "GET", "/health")
+    total = sum(q["queued"] + q["scheduled"] + q["leased"] + q["done"] + q["dead"] for q in listed["queues"])
+    live = health["queued"] + health["scheduled"] + health["leased"] + health["done"] + health["dead"]
+    check(status == 200 and total == live, f"/queues' {len(listed['queues'])} queues hold {total} jobs, /health's total {live}")
+    names = [q["name"] for q in listed["queues"]]
+    check(len(names) == len(set(names)) and all(name in names for name in by_queue),
+          "every queue a job is in is listed once")
+    leased = request(port, "GET", "/jobs?state=leased", "p")[1]["jobs"]
+    check(all(isinstance(j.get("worker"), str) for j in leased), f"each of {len(leased)} leased jobs names one worker")
+    request(port, "POST", "/jobs", "p", {"queue": "q", "payload": "last", "max_tries": 1})
+    moved = request(port, "POST", "/queues/q/rename", "op", {"to": "final"})
+    back = request(port, "POST", "/queues/final/rename", "op", {"to": "q"})
+    check(moved[0] == 200 and back[0] == 200 and back[1]["moved"] == moved[1]["moved"],
+          f"a rename is undone by a rename after the kills: {moved} {back}")
+    server.stop()
+    check(verify(folder).returncode == 0, "verify opens the folder after the renames")
+    before = open(os.path.join(folder, "jobq.log")).read().count("SET rename_")
+    compacted = subprocess.run(COMMAND + ["compact", folder], capture_output=True, text=True, timeout=300)
+    after = open(os.path.join(folder, "jobq.log")).read().count("SET rename_")
+    check(compacted.returncode == 0 and after == 0, f"compact folds all {before} rename records away: {compacted.stdout.strip()}")
+    again = Server(folder)
+    still = [job for job, queue in queues.items() if request(again.port, "GET", f"/jobs/{job}", "p")[1]["queue"] != queue]
+    check(not still, f"every job is in the same queue after compact: {still[:5]}")
+    again.stop()
+    check(set(statuses) <= {200, 201, 204, 404, 409, 503, 0}, f"every answer under the kills is expected: {sorted(set(statuses))}")
+
+
 def window_passes(root):
     folder = os.path.join(root, "window")
     os.mkdir(folder)
@@ -340,6 +491,7 @@ def main():
         budget_spent(root)
         window_passes(root)
         archive_under_kills(root)
+        rename_under_kills(root)
     finally:
         shutil.rmtree(root, ignore_errors=True)
     print(f"all restarts checks held in {time.monotonic() - started:.1f} s")

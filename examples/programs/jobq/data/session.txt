@@ -70,3 +70,31 @@ p POST /jobs/j_7/retry
 p DELETE /jobs/j_1003
 p POST /jobs {"queue": "emails", "payload": "again", "max_tries": 1, "key": "order-17"}
 - GET /health
+w-slow POST /jobs/j_3/handoff {"to": "w-fresh"}
+w-slow POST /jobs/j_3/handoff {"to": "w-other"}
+w-slow POST /jobs/j_3/ack
+w-fresh POST /jobs/j_3/handoff {"to": "w-fresh"}
+w-fresh POST /jobs/j_3/handoff {"to": "not a token"}
+w-fresh POST /jobs/j_3/handoff {"to": "w-fresh", "lease_ms": 5}
+w-fresh POST /jobs/j_99/handoff {"to": "w-slow"}
+w-fresh POST /jobs/j_7/handoff {"to": "w-slow"}
+w-fresh GET /jobs/j_3/handoff
+p POST /queues/reports/rename {"to": "weekly"}
+p GET /queues
+p GET /jobs/j_3
+p GET /jobs?queue=weekly&key=weekly-7
+p GET /jobs?queue=reports&key=weekly-7
+w4 POST /queues/reports/lease
+p POST /queues/nowhere/rename {"to": "elsewhere"}
+p POST /queues/weekly/rename {"to": "emails"}
+p POST /queues/weekly/rename {"to": "weekly"}
+p POST /queues/weekly/rename {"to": "bad name"}
+p POST /queues/weekly/rename
+w-fresh POST /jobs/j_3/ack
+p POST /jobs {"queue": "reports", "payload": "a fresh reports", "max_tries": 1, "key": "weekly-7"}
+p POST /queues/weekly/rename {"to": "reports"}
+p DELETE /jobs/j_1006
+p POST /queues/weekly/rename {"to": "reports"}
+p GET /jobs?queue=reports&key=weekly-7
+p GET /queues
+- GET /health

@@ -1,5 +1,5 @@
 module Jobq.Job
-expose Phase, Job, Making, Settled, Look, Woken, Retried, job, archived, leased, acked, failed, retried, looked, holds?, run_out?, due?, queue?, key?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, rule_broken, archive_broken, to_ms
+expose Phase, Job, Making, Settled, Look, Woken, Retried, Handed, job, archived, leased, acked, failed, retried, handed_off, looked, holds?, worker?, tagged, renames_of, run_out?, due?, queue?, key?, payload?, reason?, token?, tries?, lease_ms?, delay_ms?, backoff_ms?, id_of, number_of, phase_named, phase_name, shown, decoded, rule_broken, archive_broken, to_ms
 
 intent "A job and its rules: a queue's name, a payload, tries, a backoff, a lease, and a time to run at; each move between the five states as a function whose contracts say what it leaves; and the one line of JSON a job is kept as, which is also what the API shows, read back from the names the previous version wrote as well."
 
@@ -26,6 +26,12 @@ end
 never "a scheduled job is leased before its run_at"
   for w in Woken.all
     w.run_at > w.at
+  end
+end
+
+never "a handoff changes a lease's lease_until or a job's tries, or leaves the job with no worker"
+  for h in Handed.all
+    h.until_before != h.until_after or h.tries_before != h.tries_after or h.worker_after is None
   end
 end
 
@@ -110,6 +116,17 @@ struct Retried
   state: Phase
 end
 
+# A lease handed from one worker to another: the job's lease end and tries before and after, and
+# the worker it is leased to after.
+struct Handed
+  number: UInt64
+  until_before: Option(Time)
+  until_after: Option(Time)
+  tries_before: UInt64
+  tries_after: UInt64
+  worker_after: Option(String)
+end
+
 # A queue's name is 1 to 64 bytes of ASCII letters, digits, - and _.
 fn queue?(name: String) : Bool
   size = name.byte_size
@@ -160,6 +177,11 @@ end
 
 fn token_byte?(b: UInt8) : Bool
   word_byte?(b) or b == 46 or b == 126 or b == 43 or b == 47
+end
+
+# A worker named in a handoff: a token as a lease's is, and at most 128 bytes.
+fn worker?(text: String) : Bool
+  token?(text) and text.byte_size <= 128
 end
 
 fn tries?(n: UInt64) : Bool
@@ -321,6 +343,23 @@ fn retried(job: Job, now: Time) : Job
   next
 end
 
+# The job's lease handed by the worker that holds it to another worker: still leased, with the same
+# lease end and tries, and from now on the other worker's alone; the lease moves, it is not copied.
+fn handed_off(job: Job, worker: String, to: String, now: Time) : Job
+  requires holds?(job, worker, now)
+  requires worker?(to)
+  ensures result.state == Leased and result.worker == Some(to)
+  ensures result.lease_until == job.lease_until and result.tries == job.tries
+  ensures result.updated_at == now
+
+  var next = job
+  next.worker = Some(to)
+  next.updated_at = now
+  handed = Handed(number: job.number, until_before: job.lease_until, until_after: next.lease_until,
+    tries_before: job.tries, tries_after: next.tries, worker_after: next.worker)
+  if handed.worker_after is Some(_): next else: job
+end
+
 # A look at the job: a lease that has run out ends by the fail rule, a scheduled job whose run_at
 # has passed is queued, and anything else is left as it is.
 fn looked(job: Job, now: Time) : Job
@@ -406,6 +445,23 @@ fn shown(job: Job) : String
     None: ""
   end
   "#{head}, #{counts}, #{times}#{wait}#{lease}#{why}#{moved}}"
+end
+
+# A record as the logs keep it: the job's JSON, and, once a queue has been renamed, how many
+# renames the record already carries, so a replay applies only the renames written after it. A
+# record written before any rename is the job's JSON alone.
+fn tagged(record: String, renames: UInt64) : String
+  return record if renames == 0 or !record.ends_with?("}")
+  "#{record.slice(0, record.size - 1)}, \"renames\": #{renames}}"
+end
+
+# How many renames a record already carries: its `renames`, or 0 when it has none.
+fn renames_of(record: String) : UInt64
+  case Json.decode(record)
+    Ok(Object(fields)): count_in(fields, "renames") or 0
+    Ok(_): 0
+    Error(_): 0
+  end
 end
 
 # A job read back from its JSON, or None for anything that is not one. A record the previous
@@ -770,6 +826,48 @@ test "an archived job carries archived_at, and only a done or dead one is a good
   assert archive_broken("j_7", bad) == Some("a done job has at least one try")
 end
 
+test "a handoff moves the lease to the other worker, and keeps its lease end and tries"
+  now = at("2026-09-14T10:00:00Z")
+  held = leased(sample(), "w-1", 30_000, now)
+  moved = handed_off(held, "w-1", "w-2", now + 5.ms)
+  assert moved.state == Leased and moved.worker == Some("w-2")
+  assert moved.lease_until == held.lease_until and moved.tries == held.tries
+  assert moved.updated_at == now + 5.ms and moved.created_at == held.created_at
+  assert !holds?(moved, "w-1", now + 5.ms) and holds?(moved, "w-2", now + 5.ms)
+  assert decoded(shown(moved)) == Some(moved)
+  assert acked(moved, "w-2", now + 6.ms).state == Done
+  again = handed_off(moved, "w-2", "w-3", now + 7.ms)
+  assert again.worker == Some("w-3") and again.lease_until == held.lease_until
+  assert worker?("w".repeat(128)) and !worker?("w".repeat(129)) and !worker?("a b")
+  assert !worker?("")
+end
+
+test "a record carries the renames it has seen only once there is one, and reads back the same"
+  made = sample()
+  assert tagged(shown(made), 0) == shown(made)
+  assert tagged(shown(made),
+    3).ends_with?("\"updated_at\": \"2026-09-14T10:00:00Z\", \"renames\": 3}")
+  assert decoded(tagged(shown(made), 3)) == Some(made)
+  assert renames_of(tagged(shown(made), 3)) == 3
+  assert renames_of(shown(made)) == 0 and renames_of("nope") == 0
+  assert rule_broken("j_7", tagged(shown(made), 2)) is None
+end
+
+test rejects "a handoff by a worker that does not hold the lease"
+  now = at("2026-09-14T10:00:00Z")
+  handed_off(leased(sample(), "w-1", 1_000, now), "w-2", "w-3", now)
+end
+
+test rejects "a handoff after the lease ran out"
+  now = at("2026-09-14T10:00:00Z")
+  handed_off(leased(sample(), "w-1", 1_000, now), "w-1", "w-2", now + 1_000.ms)
+end
+
+test rejects "a handoff to a worker whose name has a space"
+  now = at("2026-09-14T10:00:00Z")
+  handed_off(leased(sample(), "w-1", 1_000, now), "w-1", "w 2", now)
+end
+
 test rejects "an archive of a job that is still queued"
   archived(sample(), at("2026-09-14T10:00:00Z"))
 end
@@ -851,5 +949,5 @@ property "any valid job reads back from its JSON as it was, scheduled, leased, o
   end
 end
 
-verified: types, contracts, tests (31), property (200 seeds), sim (not run)
+verified: types, contracts, tests (36), property (200 seeds), sim (not run)
           proven: not run
