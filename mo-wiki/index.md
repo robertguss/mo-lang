@@ -9,7 +9,7 @@ type: index
 
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-16 | Total pages: 231
+> Last updated: 2026-09-17 | Total pages: 243
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -264,5 +264,6 @@ type: index
 
 
 ## Research monitoring
+- [[hermes-daily-2026-09-17]] — Crash-consistency fault models, capability API confinement boundaries, and daily validation.
 - [[hermes-daily-2026-09-16]] — Versioned restart-budget defaults, error-path coverage evidence, and daily scan validation.
 - [[hermes-research-monitoring]] — Independent daily evidence scan and Monday synthesis, reviewed through a research PR.
