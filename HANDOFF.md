@@ -116,11 +116,11 @@ know that the wiki does not say in one place.
 >    `interpreter-step-36.md` if it exists, else Fable writes it. Both before
 >    program 7's first commit (the bricks page,
 >    `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`).
-> 2. **The probe** naming the cause of generation four's nine-times loss in the
->    Mo queue (`../mo-lang-erosion4-mo`, its binary built with this `mo`; `sample`
->    the server during `bench/step34/jobq_measure.py`'s pairs at 32 workers,
->    `MO_CORES=1`; compare with `../mo-lang-erosion3-mo`'s), and a decision row.
->    It is RC2's evidence: on today's record the speed row is at its line.
+> 2. **The probe is done** (17 Sep, 19:25 UTC, on the VM): change 4's `sweep`
+>    postcondition walks every finished job on every request; `MO_CONTRACTS=0`
+>    restores generation three's rate; the row in the decision log, the note on
+>    `erosion-round.md`. A chapter 10 candidate: a diagnostic for a contract whose
+>    cost grows with the state it walks.
 > 3. **Program 7**: Fable writes and seals its spec (a Redis subset against
 >    Redis's own tests, with TLS, ACL users with SHA-256 passwords, and a
 >    Prometheus metrics endpoint as the P4 target); then Robert opens the audit
@@ -163,8 +163,7 @@ know that the wiki does not say in one place.
 > `herdr workspace close`. Zsh does not word-split `set -- $x`: write the
 > commands out.
 >
-> **Unmet, carried.** The cause of generation four's speed loss in the Mo
-> queue. Placement for what `main` starts; a unit test for the step-aside; the
+> **Unmet, carried.** Placement for what `main` starts; a unit test for the step-aside; the
 > crunchers binary's memory growth. Round 9's Opus-in-Pi baseline (no Anthropic
 > key in Pi). The restart at 100,000 jobs at 1.45 s and the compaction copy per
 > reference (the interpreter ledger at 650 transfers a second). The bench

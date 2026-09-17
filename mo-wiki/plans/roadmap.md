@@ -19,19 +19,18 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| The probe naming the cause of generation four's nine-times loss in the Mo queue, on the VM with `perf` and the runtime surface (`../mo-lang-erosion3-mo` and `-erosion4-mo` rebuilt with step 35's `mo`) | Fable | 17 Sep, 19:15 UTC | [[erosion-round]] |
+| Step 36, the TLS brick, part one: one Opus session on [[interpreter-step-36]] (pane `w7:pP`); Fable verifies with `openssl s_client`, its own abuse cases, and the numbers | worker | 17 Sep, 19:27 UTC | [[interpreter-step-36]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | A probe naming the cause of generation four's nine-times loss in the Mo queue (quiet machine, `sample` under load) | the runtime rule's speed row (RC2) is at its line on today's record; a red cost row decides the claim | [[erosion-round]] |
-| 2 | The TLS brick (two steps: a TLS 1.3 server on Zig's client code; the certificate chain and the differential run against OpenSSL) | program 7's listener; Redis's suite runs with `--tls` | [[bricks-and-the-cost-of-zero-dependencies]] |
-| 3 | Program 7: a Redis subset against Redis's own tests, with TLS, hashed ACL passwords, and a metrics endpoint. Fable's sealed spec, then the auditor's pre-registration (Robert opens it: the hidden suite of 50 or more, the wait probe, the abuse suite, the drift seeds, the P4 change), then the Mo and Elixir builds | the pre-registered test of the primary claim (chapter 1, M-3) | [[program-menu]], [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
-| 4 | Change 6 and generation six (may run while program 7 waits on the auditor's seal, never ahead of its build) | the language rule is read at generation ten | [[erosion-round]] |
-| 5 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
-| 6 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
-| 7 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
+| 1 | The TLS brick (two steps: a TLS 1.3 server on Zig's client code; the certificate chain and the differential run against OpenSSL) | program 7's listener; Redis's suite runs with `--tls` | [[bricks-and-the-cost-of-zero-dependencies]] |
+| 2 | Program 7: a Redis subset against Redis's own tests, with TLS, hashed ACL passwords, and a metrics endpoint. Fable's sealed spec, then the auditor's pre-registration (Robert opens it: the hidden suite of 50 or more, the wait probe, the abuse suite, the drift seeds, the P4 change), then the Mo and Elixir builds | the pre-registered test of the primary claim (chapter 1, M-3) | [[program-menu]], [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
+| 3 | Change 6 and generation six (may run while program 7 waits on the auditor's seal, never ahead of its build) | the language rule is read at generation ten | [[erosion-round]] |
+| 4 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
+| 5 | Chapter 10's other sections as steps: §2 the restart budget diagnostic, §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | decided on the language page, each with a round row behind it | [[10-language-after-the-rounds]] |
+| 6 | The compile benchmark at 5,000 generated modules | the agent-loop claim at scale, small | — |
 
 ## Later
 
@@ -51,6 +50,7 @@ Rows marked "for Robert" in the [[decision-log]], newest first: the bricks page'
 | 17 Sep, afternoon | The auditor role taken up: three stopping rules ratified by Robert, linked from chapter 1, chapter 10, and the state page; M-3 accepted; Fable's disagreements filed as rows | [audit/README.md](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 | 17 Sep, morning | Research PR 2 (the Hermes lane, wiki only) read and merged: restart budgets, error-path coverage, crash consistency, capability confinement; chapter 10's 3-in-5 budget reattributed to Elixir `Supervisor`; `erosion2-*` and `erosion5-*` pushed at last | [[hermes-daily-2026-09-17]] |
 | 16 Sep, 22:55 | Generation five: change 5 by four maintainers in 11 to 25 minutes; the sixth suite Python 94, Elixir 94, Go 92, Mo 93 of 94; the first Mo-only defect, the laws silent; the speed row per generation | [[erosion-round]] |
+| 17 Sep, 19:25 UTC | The cause of generation four's nine-times loss named: change 4's `sweep` postcondition walks every finished job on every request; contracts off restores generation three's rate; a chapter 10 candidate | [[erosion-round]] |
 | 17 Sep, 18:16 UTC | Step 35, the crypto brick: one Zig file over `std.crypto` for both runtimes, the rows on seven names and the capability `Random`, the standards' vectors in the tests and the corpus, the differential run 0 of 18,000 per runtime, the fuzz 0 crashes; `List(UInt8)` at 6.3× and 2.9× the raw call carried | [[interpreter-step-35]] |
 | 16 Sep, 21:20 | Step 34: placement with the starter, the crossing made cheap (100k asks across schedulers 4 s to 0.14), measured at 1, 4, and 14 cores; the change 4 Mo queue found nine times slower on the lease path | [[interpreter-step-34]] |
 | 16 Sep, 17:05 | Change 5 sealed, generation five pre-registered: a lease handed off, a queue renamed with jobs in flight | [[01f-job-queue-change-5]] |

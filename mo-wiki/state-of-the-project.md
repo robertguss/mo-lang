@@ -246,7 +246,11 @@ does quality hold?), the incident round, and the two diagnostic columns.
   rule is now to commit by path.
 - **The erosion round counted correctness and not speed for four generations.**
   Generation four's Mo maintainer made the lease path nine times slower and the
-  fifth suite, 77 checks green, could not see it. Chapter 8 puts native speed
+  fifth suite, 77 checks green, could not see it. The cause, named 17 Sep on
+  the VM: a postcondition on `sweep` that walks every finished job, run on
+  every request; with contracts off the queue is back at generation three's
+  rate, so the runtime was never the cause, and the diagnostic that would have
+  shown it is a chapter 10 candidate. Chapter 8 puts native speed
   second in the measure; the round applies it per generation from five on.
 - **A change written to press on a law found no law that catches.** Change 5's
   Mo maintainer wrote three `never`s and neither of its bugs tripped one; the
