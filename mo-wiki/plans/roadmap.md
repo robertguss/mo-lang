@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| The bricks page shipped 17 Sep, afternoon (M-3 item 1). Next: the crypto brick's brief, then the speed probe on a quiet machine, then the TLS brick | Fable | 17 Sep | [[bricks-and-the-cost-of-zero-dependencies]] |
+| Step 35, the crypto brick: one Opus session on [[interpreter-step-35]] (the brick in Zig, the rows in both runtimes, the audit items); Fable verifies with the differential run and the hour of fuzzing | worker | 17 Sep, 16:05 | [[interpreter-step-35]] |
 
 ## Next, in order
 
