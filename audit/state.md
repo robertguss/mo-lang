@@ -66,6 +66,10 @@ The auditor writes these when the bricks page lands and program 7's spec is read
 4. Program 7's spec, sealed by Fable, then the auditor's pre-registration session that seals the hidden suites.
 5. Program 7's Mo and Elixir builds under matched conditions.
 
+## Automated handoff approval
+
+Robert approved automated two-way repository handoffs on 17 Sep 2026: Fable's ready subject triggers an isolated auditor session; the auditor returns readings or evidence requests via audit branches/PRs; Fable's evidence responses trigger follow-up. Only unresolved decisions and blockers require Robert. See the amendment in `CHARTER.md` and `WORKFLOW.md`. **Deployment status: not active; signed ingress and Fable's supported wake-up integration are not yet configured or tested.** Stopping rules unchanged.
+
 ## Model handoffs
 
 The auditor role is model-agnostic. When Robert moves the seat to a different model (e.g., from Perplexity to Codex, or to a human), the receiving session reads `AUDITOR.md`, this file, and the charter, and continues the loop unchanged. Standing conventions Robert established with the previous seat carry across; they are recorded in `AUDITOR.md`.
