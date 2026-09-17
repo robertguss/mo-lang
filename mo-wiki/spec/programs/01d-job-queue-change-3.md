@@ -1,6 +1,6 @@
 # Program 1, change 3: the store restarts itself, with a budget and a chaos switch
 
-The third change to `jobq`, the erosion round's generation three (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 from what P6 found on the four generation-two programs: killed or crashed under load, the Elixir service came back on its own in under a second, and the Mo service answered `503` to every request from then on until an operator restarted it; Go and Python have no part to kill and were not probed. Everything in `01-job-queue.md`, `01b-job-queue-change.md`, and `01c-job-queue-change-2.md` still holds unless a line below changes it. The shape is an operations ticket after a night on call: the service must come back by itself, it must stop trying when coming back does not help, and the people running it must be able to rehearse the failure in staging.
+**Status:** sealed 16 Sep 2026, 10:20; generation three run 16 Sep, 11:20, read on `plans/erosion-round.md`. The third change to `jobq`, the erosion round's generation three (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 from what P6 found on the four generation-two programs: killed or crashed under load, the Elixir service came back on its own in under a second, and the Mo service answered `503` to every request from then on until an operator restarted it; Go and Python have no part to kill and were not probed. Everything in `01-job-queue.md`, `01b-job-queue-change.md`, and `01c-job-queue-change-2.md` still holds unless a line below changes it. The shape is an operations ticket after a night on call: the service must come back by itself, it must stop trying when coming back does not help, and the people running it must be able to rehearse the failure in staging.
 
 ## What changes, in one screen
 
@@ -13,7 +13,7 @@ The third change to `jobq`, the erosion round's generation three (direction 43, 
 
 The board after a restart is the board the log holds: every record a `2xx` response reported is present with the state that response reported; a write that reached the disk but whose response was lost to the failure is present too. So a client that received a `503` during a restart must read the job to learn what happened, as it must after a kill; change 2's rule that "a `503` never leaves a job changed" holds for every `503` except the ones the failure itself caused, and this page is the one that says so. Leases held before the failure are still held after it, with their `lease_until`; a lease that ran out during the restart is put back at the next look as always. Ids continue; nothing is handed out twice. Connections open at the failure may be closed; the port stays bound, and a client that reconnects is served.
 
-The restart takes what replaying the log takes. The hidden suite will hold the service to answering `200` on `/health` within one second of a failure on a log of the size its load creates, and to every acknowledged write being present on the board after the restart and again after `serve` is stopped and started on the folder.
+The restart takes what replaying the log takes. The hidden suite (the fourth, run 16 Sep) held the service to answering `200` on `/health` within one second of a failure on a log of the size its load creates, and to every acknowledged write being present on the board after the restart and again after `serve` is stopped and started on the folder.
 
 ## The budget
 
@@ -47,4 +47,4 @@ The restart as a test: a failure injected inside the board (the chaos switch or 
 
 ## Measured, for the round
 
-The round's page says what is measured. For the maintainer nothing is asked beyond the report: loops to green by cause, wall-clock, files changed, and the numbered list of decisions this page did not cover.
+The round's page (`plans/erosion-round.md`) says what is measured. For the maintainer nothing is asked beyond the report: loops to green by cause, wall-clock, files changed, and the numbered list of decisions this page did not cover.

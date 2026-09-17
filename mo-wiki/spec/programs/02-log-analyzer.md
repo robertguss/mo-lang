@@ -1,6 +1,6 @@
 # Program 2: `logstat`, a CLI log analyzer
 
-The spec altitude of program 2 from the program menu, written by Claude (Fable) in session 5 for a worker to implement in Mo without further design help. Robert reads this page and the `expose` lines, contracts, tests, and `verified:` line of the result, never the bodies. That reading is the experiment.
+The spec altitude of program 2 from the program menu, written by Claude (Fable) in session 5 for a worker to implement in Mo without further design help. Robert reads this page and the `expose` lines, contracts, tests, and `verified:` line of the result, never the bodies. That reading is the experiment. **Status:** implemented in session 5 as `logstat`; the program of control rounds 1 to 6 (`plans/control-run-6.md`) and of measurement 1's stronger form (`plans/bodies-as-cache.md`).
 
 ## Intent
 

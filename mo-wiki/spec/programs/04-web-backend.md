@@ -1,6 +1,6 @@
 # Program 4: `notes`, a web backend
 
-The spec altitude of program 4 from the program menu. Written by Claude (Fable) in session 5. A worker implements it in Mo; Robert reads the spec altitude only. The menu said "with Postgres"; there is no database brick yet, so the store is a recipe implemented on `Fs`, which is the package story the program exists to test.
+The spec altitude of program 4 from the program menu. Written by Claude (Fable) in session 5. A worker implements it in Mo; Robert reads the spec altitude only. **Status:** implemented in session 6 as `notes`; regenerated at 1.0 in measurement 1 (`plans/bodies-as-cache.md`). The menu said "with Postgres"; there is no database brick yet, so the store is a recipe implemented on `Fs`, which is the package story the program exists to test.
 
 ## Intent
 

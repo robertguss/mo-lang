@@ -1,6 +1,6 @@
 # Program 1, change 4: idempotent creates, and old jobs archived out of the log
 
-The fourth change to `jobq`, the erosion round's generation four (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 after generation three, whose maintainers all made the store restart itself from its log. This change adds state that the log must carry and a restart must rebuild, and a second file beside the log, so it presses on the seams the last change opened: what a restart rebuilds, what compaction keeps, what `verify` checks. Everything in `01-job-queue.md`, `01b-…`, `01c-…`, and `01d-…` still holds unless a line below changes it. The shape is a product ticket: a producer wants to retry a create without making two jobs, and an operator wants the log to stop growing with jobs nobody reads any more.
+**Status:** sealed 16 Sep 2026, 13:03; generation four run 16 Sep, 15:05, read on `plans/erosion-round.md`. The fourth change to `jobq`, the erosion round's generation four (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 after generation three, whose maintainers all made the store restart itself from its log. This change adds state that the log must carry and a restart must rebuild, and a second file beside the log, so it presses on the seams the last change opened: what a restart rebuilds, what compaction keeps, what `verify` checks. Everything in `01-job-queue.md`, `01b-…`, `01c-…`, and `01d-…` still holds unless a line below changes it. The shape is a product ticket: a producer wants to retry a create without making two jobs, and an operator wants the log to stop growing with jobs nobody reads any more.
 
 ## What changes, in one screen
 
@@ -48,4 +48,4 @@ The key rule as one function with a test; the second create answered from the ma
 
 ## Measured, for the round
 
-The round's page says what is measured. For the maintainer nothing is asked beyond the report: loops to green by cause, wall-clock, files changed, and the numbered list of decisions this page did not cover.
+The round's page (`plans/erosion-round.md`) says what is measured. For the maintainer nothing is asked beyond the report: loops to green by cause, wall-clock, files changed, and the numbered list of decisions this page did not cover.

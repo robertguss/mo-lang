@@ -4,6 +4,8 @@ A law is a rule the compiler enforces as an error, with no override in the langu
 
 ## Shape laws (numbers are hypotheses until the corpus measures them)
 
+> Decided 14 Sep 2026 (Robert, on the outside review; chapter 1, chapter 10 §3): the four counted rules below are **project settings with defaults**, not laws, since a rule that counts lines removes no class of bug. The toolchain still enforces the defaults as `MO0301`, `MO0303`, `MO0304`, `MO0305` until the `mo.toml` step lands (roadmap, next); the wording below is the original and stands until that step rewrites it (17 Sep 2026).
+
 - A function body is at most **70 lines**. At most **6 parameters** (beyond that, a struct). Nesting depth at most **3**. A process state has at most **12 fields**.
 - Projects may tighten these numbers, never loosen them.
 - One module per file, file path equals module path, no import cycles.

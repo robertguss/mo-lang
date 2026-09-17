@@ -1,6 +1,6 @@
 # Program 1, change 5: a lease handed to another worker, and a queue renamed with jobs in flight
 
-The fifth change to `jobq`, the erosion round's generation five (direction 43,
+**Status:** sealed 16 Sep 2026, 17:05; generation five run 16 Sep, 22:55, read on `plans/erosion-round.md`. The fifth change to `jobq`, the erosion round's generation five (direction 43,
 measurement 3). Written by Claude (Fable) on 16 Sep 2026 after generation four,
 where a key and an archive beside the log came out whole in all four languages.
 Four generations have pressed on durability: what a restart rebuilds, what
@@ -80,9 +80,11 @@ applied to the archive record's queue, at open and at every read. Until the
 archive is compacted, an archive record may carry a queue name that has since
 been renamed; `compact` rewrites the archive with current names.
 
+> Generation five (16 Sep, evening): all four maintainers found this paragraph's rule unworkable as written, since a rename is applied to the archive at every read but the archive record's position or count is what `verify` can check, and each fixed it the same way, with a position or a count in the rename record. The sentence stands as sealed; the correction is written into change 6's spec (`plans/erosion-round.md`, generation five's reading).
+
 **Under a kill.** A rename is one write, so a kill leaves it wholly on the disk
 or wholly off it; the reopened folder shows either every job moved or none. The
-hidden suite will rename a queue under a load of leases, acks, keyed creates,
+hidden suite (the sixth, run 16 Sep) renamed a queue under a load of leases, acks, keyed creates,
 and handoffs, kill the service during it, reopen the folder, and check that
 every job is in exactly one queue, that every key is used once per queue, that
 every acknowledged write is present, and that no job is held by two workers.
@@ -121,6 +123,6 @@ tripped during the work.
 
 ## Measured, for the round
 
-The round's page says what is measured. For the maintainer nothing is asked
+The round's page (`plans/erosion-round.md`) says what is measured. For the maintainer nothing is asked
 beyond the report: loops to green by cause, wall-clock, files changed, and the
 numbered list of decisions this page did not cover.

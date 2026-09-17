@@ -24,7 +24,6 @@ not OTP's; Erlang's `supervisor` defaults to 1 in 5 s (Hermes, PR 2,
 | MO0403, `Time.fixture()` outside a test             | measurement 1                | four of ten regenerations, the same fix every time                                                                                                                                                                           | §5, no change   |
 | a `never` at rest on the log                        | 10                           | the class of Elixir's torn-line defect; round 7's `store.mo` states it, Elixir has nowhere to                                                                                                                                | §4, keep        |
 | the grammar forms that cost a loop in every program | 6 to 8, measurements 1 and 2 | MO0101 5/5, MO0501 4/4: an assignment on a `case` arm's line, a `for` with a pure body                                                                                                                                       | §5              |
-| the "frozen fixture clock" note                     | measurement 1                | chapter 3 still says the fixture clock is frozen per test; step 24 moved it                                                                                                                                                  | §6              |
 
 ## 1. A reply awaited as a message
 
@@ -208,17 +207,19 @@ time is the language teaching, which is what the third layer is for.
 
 ## 6. Already decided, recorded here so the page is whole
 
-- **Placement** stays the runtime's (step 30: a process on the scheduler with
-  the fewest live processes; no syntax until a program needs one). The Mac
-  scaling run of 15 Sep is its measure.
+- **Placement** stays the runtime's, no syntax: step 30 put a process on the
+  scheduler with the fewest live processes; step 34 (16 Sep) places it with its
+  starter while that scheduler holds at most twice its share, and made the
+  crossing cheap (chapter 3, chapter 7). The Mac scaling run of 15 Sep and step
+  34's rows at 1, 4, and 14 cores are its measure.
 - **The runtime surface is a capability**, `platform.runtime`, chapter 3,
   direction 37. It has been used only by a worker's probe; program 7 is where an
   agent operates a service through it.
 - **A named function where an anonymous function goes** (Robert's item): zero
   syntax; chapter 4's call-argument rule admits a name. One step, first tested
   by the corpus.
-- **The "frozen fixture clock" note** in chapter 3 is stale since step 24; a
-  fixture call's wait moves the run's clock. One edit.
+- **The "frozen fixture clock" note** in chapter 3 was stale since step 24; a
+  fixture call's wait moves the run's clock. Edited (chapter 3 and chapter 9 carry step 28's rule).
 - **A contract tripped by replayed data** is a refusal at open, not a crash
   (change 2, the fourth oracle, both rounds' Go and Python). That is the
   program's and the spec's; the runtime did what chapter 3 says.

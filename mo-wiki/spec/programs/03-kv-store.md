@@ -1,6 +1,6 @@
 # Program 3: `kv`, a key-value store over TCP
 
-The spec altitude of program 3 from the program menu. Written by Claude (Fable) in session 5. A worker implements it in Mo; Robert reads the spec altitude only.
+The spec altitude of program 3 from the program menu. Written by Claude (Fable) in session 5. A worker implements it in Mo; Robert reads the spec altitude only. **Status:** implemented in session 5 (step 12, `examples/programs/kv/`); regenerated at 1.0 in measurement 1 (`plans/bodies-as-cache.md`).
 
 ## Intent
 
@@ -31,6 +31,8 @@ Every `SET`, `DEL`, and `INCR` is appended to `<dir>/kv.log` before the response
 ```
 kv serve <dir> [--port N]     default port 7700
 kv compact <dir>
+kv client <host:port> <command...>
+kv check <dir> <script>       the script's commands against a fresh store, for tests
 ```
 
 Exit 2 on a usage error, 1 if `<dir>` cannot be opened or the port cannot be bound.

@@ -1,6 +1,6 @@
 # Program 1: `jobq`, a durable job queue with an HTTP API
 
-The spec altitude of program 1 from the program menu, the founding premise's first real test: an agent builds a service that must not lose work, and Robert reads only this page, the exposed signatures, the contracts, the `never`s, and the `verified:` lines. Written by Claude (Fable) in session 5, night of 13–14 Sep 2026, after step 21. A worker implements it in Mo.
+The spec altitude of program 1 from the program menu, the founding premise's first real test: an agent builds a service that must not lose work, and Robert reads only this page, the exposed signatures, the contracts, the `never`s, and the `verified:` lines. Written by Claude (Fable) in session 5, night of 13–14 Sep 2026, after step 21. A worker implements it in Mo. **Status:** implemented in session 5; the program of rounds 7 and 8 (`plans/control-run-7.md`, `plans/control-run-8.md`) and, as `jobq`, of measurement 1 (`plans/bodies-as-cache.md`); its changes are `01b` to `01f`.
 
 ## Intent
 
@@ -75,7 +75,7 @@ Every call that can wait carries `within:`. The report counts the `within:` lite
 
 ## The listener
 
-`Http.serve(into:, idle:)` counts accepted connections that have sent no request against the acceptor's mailbox bound, about 1,000 with the default bound (step 21's finding), and `idle:` is what frees them; the spec asks for `idle:` chosen with that in view and stated in the report, and for a test in which 1,200 connections that send nothing do not stop a producer's request from being answered.
+`HttpListener.serve(into:, idle:)` counts accepted connections that have sent no request against the acceptor's mailbox bound, about 1,000 with the default bound (step 21's finding), and `idle:` is what frees them; the spec asks for `idle:` chosen with that in view and stated in the report, and for a test in which 1,200 connections that send nothing do not stop a producer's request from being answered.
 
 ## Tests the reader expects to see
 
@@ -87,4 +87,4 @@ Leases and acks per second with 1 and with 32 workers over a local socket, under
 
 ## The runtime surface, later
 
-Program 1 is the testbed for directions 37 to 40. The report lists the questions the worker wanted to ask the running service during the measurements that the runtime could have answered (which process holds job `j_9`, what a stuck lease's state is, the last ten messages a queue process took); a later step designs the surface against that list, as a capability held by `mo run` and off in a binary unless `main` holds it.
+Program 1 is the testbed for directions 37 to 40. The report lists the questions the worker wanted to ask the running service during the measurements that the runtime could have answered (which process holds job `j_9`, what a stuck lease's state is, the last ten messages a queue process took); step 23 built the surface from that list (chapter 3, chapter 9) against that list, as a capability held by `mo run` and off in a binary unless `main` holds it.

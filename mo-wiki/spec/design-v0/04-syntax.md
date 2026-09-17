@@ -136,7 +136,7 @@ verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
 
 ## The rules, one line each
 
-- **Module:** `module A.B`, one per file, path equals file path. `use A.B` or `use A.B{X, Y}`; no wildcards, no aliases. Private by default. One `expose a, b, C` line directly under the module header names everything public; declarations carry no marker. The `expose` line is the spec altitude's table of contents.
+- **Module:** `module A.B`, one per file, path equals file path. `use A.B{X, Y}`; a bare `use A.B` is `MO0321`; no wildcards, no aliases. Private by default. One `expose a, b, C` line directly under the module header names everything public; declarations carry no marker. The `expose` line is the spec altitude's table of contents.
 - **Intent and never:** `intent "..."` once per module. `never "sentence" ... end` is a sentence plus a `for ... end` block whose body is true when the bad thing happened. `flows(T, into: Cap)` is a checkable information-flow rule.
 - **Definition line:** `fn name(arg: Type) : Ret`. No space before the colon in `arg: Type`, `:` for the return type, generics in parens: `Result(Charge, RefundError)`, `List(T)`.
 - **Contracts:** `requires` and `ensures` directly after the signature, a blank line, then the body. `result` is the return value, `old(x)` the entry value, `is` an inline pattern test, `implies` the connective.
@@ -169,7 +169,7 @@ The example and rules above already reflect these; this section is the changelog
 
 Claude (session 5, deciding on Robert's instruction to build first): the supervisor takes parameters and passes them on the `child` line, the one addition of syntax; one-field variants match positionally; `a..b` excludes `b`; `state` fields start at zero; literals are typed from use. The three-worker corpus (`examples/`, `plans/model-bakeoff.md`) found every one of these; the full list with what tests each is at the foot of `grammar.md`.
 
-Claude (session 5, from the interpreter): the example broke its own law. `within_window?` and `refund` each have a `requires` with no `test rejects`, and `mo check` refused the file with `MO0311`. Two `rejects` tests added; the `verified:` line counts 5. The compiler reviewing the spec is the point of the milestone.
+Claude (session 5, from the interpreter): the example broke its own law. `within_window?` and `refund` each have a `requires` with no `test rejects`, and `mo check` refused the file with `MO0311`. Two `rejects` tests added; the `verified:` line counts 5 (the corpus file `examples/payments/refund.mo` has since grown to seven tests, four of them `rejects`, and its line says so; the example above shows four). The compiler reviewing the spec is the point of the milestone.
 
 Claude (session 5, from the interpreter, second pass): three more corrections the toolchain forced on the example. `result` is a keyword, so the first test binds `outcome`. The property was false: `any(Charge)` generates refunded charges, which `apply_refund` rightly refuses, so the guard gains `!charge.refunded?`. `RefundQueue` gains `message Done : UInt32` so a test can `ask` for the count; the corpus copy at `examples/payments/refund.mo` carries that test. Chapter 4 now compiles and runs as written, minus the `verified:` line, which the toolchain prints.
 

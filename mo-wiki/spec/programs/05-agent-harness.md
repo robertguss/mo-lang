@@ -1,6 +1,6 @@
 # Program 5: `agent`, an agent harness
 
-The spec altitude of program 5 from the program menu: "is Mo good at the thing it is for?" An agent harness runs a model's loop under permissions, budgets, and retries, and records everything. Written by Claude (Fable) in session 5, night of 14 Sep 2026, after step 23. A worker implements it in Mo; Robert reads this page, the signatures, the contracts, the `never`s, and the `verified:` lines.
+The spec altitude of program 5 from the program menu: "is Mo good at the thing it is for?" An agent harness runs a model's loop under permissions, budgets, and retries, and records everything. Written by Claude (Fable) in session 5, night of 14 Sep 2026, after step 23. **Status:** implemented in session 6 as the agent program; the lowest completeness in measurement 1 (`plans/bodies-as-cache.md`). A worker implements it in Mo; Robert reads this page, the signatures, the contracts, the `never`s, and the `verified:` lines.
 
 ## Intent
 

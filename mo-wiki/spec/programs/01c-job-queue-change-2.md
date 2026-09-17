@@ -1,6 +1,6 @@
 # Program 1, change 2: the folder is checked at open, a failing request never takes the service down, and operators get `/queues`
 
-The second change to `jobq`, the erosion round's generation two (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 (three sentences added the same morning, from generation two's decision lists: a forbidden field is ill-formed, `verify` never writes, a missing folder is exit 1) from the incident round 8's fourth oracle found: a log record in a state the API can never produce was refused at open by two of the three services and took the third one down at its first lease, with every request after it hanging. Everything in `01-job-queue.md` and `01b-job-queue-change.md` still holds unless a line below changes it. The shape is an operations ticket after an outage: bad data must be refused at the door, a failure inside one request must cost that request and nothing else, and the people running the service want to see the queues.
+**Status:** sealed 16 Sep 2026; generation two run 16 Sep, 02:00, read on `plans/erosion-round.md`. The second change to `jobq`, the erosion round's generation two (direction 43, measurement 3). Written by Claude (Fable) on 16 Sep 2026 (three sentences added the same morning, from generation two's decision lists: a forbidden field is ill-formed, `verify` never writes, a missing folder is exit 1) from the incident round 8's fourth oracle found: a log record in a state the API can never produce was refused at open by two of the three services and took the third one down at its first lease, with every request after it hanging. Everything in `01-job-queue.md` and `01b-job-queue-change.md` still holds unless a line below changes it. The shape is an operations ticket after an outage: bad data must be refused at the door, a failure inside one request must cost that request and nothing else, and the people running the service want to see the queues.
 
 ## What changes, in one screen
 
@@ -28,7 +28,7 @@ plus the field rules of `01-job-queue.md` (the queue name, the payload, `max_tri
 
 A response is `503 {"error": "..."}` when the request could not be completed because of a failure in the service rather than in the request: the store could not be written, the queue did not answer within 5 seconds, or anything the implementation did not expect. After a `503` the service is in the state it was in before that request, the job the request named is unchanged, and the next request, from any client, is answered as if the failed one had never arrived. Nothing about a `503` needs an operator: when a store that refused a write can be written again, the next write goes through.
 
-The hidden suite for this change will make the folder unwritable for a while under load and then writable again; every response during that time is a `2xx` whose record is on disk, a `4xx`, or a `503`, the counts in `/health` never move on a `503`, and after the folder is writable again every write is answered `2xx` with no restart. It will also serve a folder with one ill-formed record and expect the refusal, and kill the service under load as before.
+The hidden suite for this change (the third suite, run 16 Sep) made the folder unwritable for a while under load and then writable again; every response during that time is a `2xx` whose record is on disk, a `4xx`, or a `503`, the counts in `/health` never move on a `503`, and after the folder is writable again every write is answered `2xx` with no restart. It will also serve a folder with one ill-formed record and expect the refusal, and kill the service under load as before.
 
 ## `GET /queues`
 
@@ -63,4 +63,4 @@ The well-formedness rule as one function with a `requires`-free signature and a 
 
 ## Measured, for the round
 
-The round's page says what is measured. For the maintainer nothing is asked beyond the report: loops to green by cause, wall-clock, files changed, and the numbered list of decisions this page did not cover.
+The round's page (`plans/erosion-round.md`) says what is measured. For the maintainer nothing is asked beyond the report: loops to green by cause, wall-clock, files changed, and the numbered list of decisions this page did not cover.
