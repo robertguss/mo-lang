@@ -1,0 +1,22 @@
+void mo_disown_in(MoValue v) {
+    if (owned.used == 0) return;
+    switch (v.tag) {
+    case MO_MAP:
+    case MO_SET:
+        if (v.as.m) disown(v.as.m->entries, v.as.m->len);
+        break;
+    case MO_RECORD:
+        disown(v.as.xs, mo_decls[v.aux].nfields);
+        for (uint32_t k = 0; k < mo_decls[v.aux].nfields; k++) mo_disown_in(v.as.xs[k]);
+        break;
+    case MO_TUPLE:
+        for (uint32_t k = 0; k < v.aux; k++) mo_disown_in(v.as.xs[k]);
+        break;
+    case MO_VARIANT:
+        for (uint32_t k = 0; k < mo_vcount(v); k++) mo_disown_in(v.as.xs[k]);
+        break;
+    default:
+        break;
+    }
+}
+

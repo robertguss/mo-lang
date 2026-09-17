@@ -1,0 +1,15 @@
+fn decide(board: Board, call: Call, now: Time) : Decision
+  swept = sweep(board, now)
+  decided = case call.command
+    Create(making): created(swept.board, making, now)
+    Fetch(id): answered(swept.board, fetched(swept.board, id))
+    Listing(queue: queue, state: state, key: key):
+      answered(swept.board, Listed(jobs: listed(swept.board, queue, state, key)))
+    Remove(id): removed(swept.board, id)
+    Lease(queue: queue, lease_ms: lease_ms): lent(swept.board, call.worker, queue, lease_ms, now)
+    Ack(id): settled(swept.board, call.worker, id, "", false, now)
+    Fail(id: id, reason: reason): settled(swept.board, call.worker, id, reason, true, now)
+    Retry(id): revived(swept.board, id, now)
+    Health: answered(swept.board, Healthy(counts: health_of(swept.board, now)))
+    Tallying: answered(swept.board, Tallied(queues: tallies(swept.board)))
+  end

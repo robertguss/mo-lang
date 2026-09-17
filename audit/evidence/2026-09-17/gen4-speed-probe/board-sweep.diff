@@ -1,0 +1,17 @@
+--- erosion3-mo:examples/programs/jobq/board.mo lines 244-262 (left) / erosion4-mo lines 377-395 (right)
++++ erosion3-mo:examples/programs/jobq/board.mo lines 244-262 (left) / erosion4-mo lines 377-395 (right)
+@@ -4,6 +4,7 @@
+ fn sweep(board: Board, now: Time) : Decision
+   ensures all_leases(result.board).all?(fn(e) e.1 > now end)
+   ensures all_waits(result.board).all?(fn(e) e.1 > now end)
++  ensures all_ends(result.board).all?(fn(e) !old_enough?(board, e.1, now) end)
+ 
+   return answered(board, Empty) if !looks_due?(board, now)
+   ran_out = all_leases(board).filter(fn(e) e.1 <= now end).map(fn(e) e.0 end)
+@@ -15,5 +16,4 @@
+   cleared.wake = all_waits(after).map(fn(e) e.1 end).min
+   cleared.orders = requeued(after, moved)
+   writes = moved.flat_map(fn(n) record_of(after, n) end)
+-  Decision(board: cleared, outcome: Empty, writes: writes)
+-end
++  shelving = shelved(cleared, now)

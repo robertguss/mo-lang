@@ -1,0 +1,20 @@
+MO_U static MoValue a27(const MoValue *cap, const MoValue *args) {
+    size_t F_ MO_U = mo_mark();
+    MoValue R MO_U = MO_NONE_V;
+    if (++mo_depth > MO_DEPTH_LIMIT) mo_too_deep("sweep");
+    MoValue L0 MO_U = MO_NONE_V;
+    L0 = args[0];
+    (void)cap;
+    (void)args;
+    mo_disown_in(cap[0]);
+    MoValue t0 MO_U = cap[0];
+    MoValue t1 MO_U = L0.as.xs[1];
+    MoValue t2 MO_U = cap[1];
+    MoValue t3 MO_U = f79(t0, t1, t2);
+    MoValue t4 MO_U = mo_bool(!t3.as.b);
+    R = t4;
+    if (mo_frame_due(F_)) {
+        MoValue r_[] = {R};
+        mo_compact(F_, r_, 1);
+        R = r_[0];
+    }
