@@ -22,7 +22,7 @@ John McCarthy started Lisp at MIT in 1958 as an AI language for the IBM 704 ([Wi
 
 - **Common Lisp (ANSI 1994).** Kitchen sink. Object system (CLOS), condition system, restarts, powerful macros, over 1,000 pages of spec.
 - **Scheme (1975, Sussman & Steele).** Minimalist counter-reformation. ~50-page core, hygienic macros, tail calls, continuations.
-- **Clojure (2007, Rich Hickey).** Lisp reborn on the JVM with immutable data structures, [[software transactional memory]], and a values-first philosophy. Hickey's "Simple Made Easy" is required reading.
+- **Clojure (2007, Rich Hickey).** Lisp reborn on the JVM with immutable data structures, software transactional memory, and a values-first philosophy. Hickey's "Simple Made Easy" is required reading.
 
 ### What Mo takes
 

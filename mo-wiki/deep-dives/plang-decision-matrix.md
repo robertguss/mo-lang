@@ -61,7 +61,7 @@ The recommended starting stack sits between them: strictly more security-first t
 
 1. When a decision is locked, mark the row **Chosen** with the RFC that adopted it.
 2. When an axis grows a new option (e.g., a new memory-management technique), add a row and re-run the "reinforce each other" checks — an isolated change on one axis often forces revisits elsewhere.
-3. Cross-link each Chosen row to its [[d##-...]] direction page and its [[q##-...]] question page.
+3. Cross-link each Chosen row to its `dNN` direction page and its `qNN` question page.
 
 ## Related
 

@@ -35,7 +35,7 @@ mo-wiki/                the Obsidian vault root; everything below is relative to
   tools/             lint.py, exa.py and other vault tooling
 ```
 
-Wiki pages are the `.md` files in `mo-wiki/{directions,questions,decisions,syntax,deep-dives,plans,sessions,research}`. Everything else is either raw, an artifact, or tooling.
+Wiki pages are the `.md` files in `mo-wiki/{directions,questions,decisions,syntax,deep-dives,plans,sessions,research,maps}` and the root's `state-of-the-project.md`. Everything else is either raw, an artifact, or tooling. A wikilink may still name an artifact under `spec/` by its stem, or `index`, `log`, `SCHEMA`, or `HANDOFF`; the linter resolves those and checks nothing else about them (17 Sep 2026).
 
 ## Page types
 
@@ -51,6 +51,7 @@ Wiki pages are the `.md` files in `mo-wiki/{directions,questions,decisions,synta
 | `session` | sessions/ | what happened in one sitting, chronological |
 | `comparison` | research/comparisons/ | Mo held against one other language or system |
 | `concept` | research/concepts/ | a researched topic (e.g. supply-chain attacks 2025–26) |
+| `research` | research/languages/ | a language's history and what Mo takes from it, from the plang history run (13 Sep 2026) |
 | `map` | maps/ | a map of content: one topic, the pages behind it, in reading order; living, rewritten as pages land (16 Sep 2026) |
 | `synthesis` | the wiki root | a standing account across the whole project (`state-of-the-project`), rewritten at every pause (16 Sep 2026) |
 

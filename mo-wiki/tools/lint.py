@@ -6,8 +6,12 @@ from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parent.parent
 WIKI_DIRS = ["directions", "questions", "decisions", "syntax", "deep-dives", "plans", "sessions", "research", "maps"]
+# Link targets that are not wiki pages: the spec artifacts (chapters, programs, grammar, errors), the vault's own
+# standing files, and the repo-root handoff. They get no frontmatter, index, or orphan check; a link to them is not broken.
+ARTIFACT_DIRS = ["spec"]
+STANDING = {"index": "index.md", "log": "log.md", "SCHEMA": "SCHEMA.md", "HANDOFF": "../HANDOFF.md"}
 REQUIRED = ["title", "created", "updated", "type", "tags", "sources"]
-TYPES = {"direction", "question", "decision", "syntax-pick", "example", "deep-dive", "plan", "session", "comparison", "concept"}
+TYPES = {"direction", "question", "decision", "syntax-pick", "example", "deep-dive", "plan", "session", "comparison", "concept", "research", "map", "synthesis"}
 
 def taxonomy():
     text = (ROOT / "SCHEMA.md").read_text()
@@ -32,6 +36,18 @@ def main():
             pages[p.stem] = p
     for p in ROOT.glob("*.md"):  # the root's standing pages (the state of the project); index, log, and SCHEMA are not pages
         if p.name not in ("index.md", "log.md", "SCHEMA.md"): pages[p.stem] = p
+    targets = dict(pages)  # everything a [[link]] may name: pages, artifacts, standing files, and path-form links
+    for d in ARTIFACT_DIRS:
+        for p in (ROOT / d).rglob("*.md"):
+            targets.setdefault(p.stem, p)
+    for slug, rel in STANDING.items():
+        if (ROOT / rel).exists(): targets[slug] = ROOT / rel
+    def resolves(link):
+        if link in targets: return True
+        if "/" in link:  # a path-form link such as research/README, relative to the vault root
+            q = ROOT / (link if link.endswith(".md") else link + ".md")
+            return q.exists()
+        return False
     issues = defaultdict(list)
     inbound = defaultdict(int)
     index_text = (ROOT / "index.md").read_text()
@@ -47,7 +63,7 @@ def main():
             if t not in tags_ok: issues["tags"].append(f"{p.relative_to(ROOT)}: tag `{t}` not in taxonomy")
         links = set(re.findall(r"\[\[([^\]|#]+)", text))
         for l in links:
-            if l not in pages: issues["broken-links"].append(f"{p.relative_to(ROOT)} -> [[{l}]]")
+            if not resolves(l): issues["broken-links"].append(f"{p.relative_to(ROOT)} -> [[{l}]]")
             else: inbound[l] += 1
         if len(links) < 2: issues["few-links"].append(f"{p.relative_to(ROOT)}: {len(links)} outbound links")
         if f"[[{slug}" not in index_text: issues["index"].append(f"{p.relative_to(ROOT)}: not in index.md")
@@ -59,7 +75,7 @@ def main():
         if inbound[slug] == 0: issues["orphans"].append(f"{pages[slug].relative_to(ROOT)}")
     # index entries pointing nowhere
     for l in set(re.findall(r"\[\[([^\]|#]+)", index_text)):
-        if l not in pages: issues["index"].append(f"index.md -> [[{l}]] does not exist")
+        if not resolves(l): issues["index"].append(f"index.md -> [[{l}]] does not exist")
     # raw drift
     for p in (ROOT / "raw").rglob("*.md"):
         text = p.read_text(); fm = frontmatter(text)
