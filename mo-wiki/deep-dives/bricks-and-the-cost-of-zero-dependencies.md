@@ -170,6 +170,8 @@ cut is a decision row:
 | Database    | Postgres v3 with SCRAM-SHA-256, simple and extended query, no `COPY`, no replication                                                                                             |
 | HTTP/2      | framing and HPACK for a server behind the TLS brick; no push, no prioritization                                                                                                  |
 
+**What the shipped numbers will look like (added 17 Sep, evening, after step 35 and the speed probe).** The rates a brick reports are the brick's own; a Mo program reaches them through `List(UInt8)` and with contracts on, and both cost. Step 35 measured the first: a 1 MiB SHA-256 at 1,548 MB/s from Zig is 532 MB/s from a Mo binary and 245 under `mo run`, 2.9× and 6.3× (a `Value` per byte). The speed probe of the same evening measured the second on the job queue: one postcondition that walks the state on every request took generation four's lease path from 1,793 to 533 pairs a second, and the closure that walked it paid a structural walk over its captured record per element (`mo_disown_in`, 23 percent of the server). The two ratios compound in one direction. Program 7 will be measured as shipped, contracts on and payloads as `List(UInt8)`, so its numbers against Redis will sit below this page's raw rates by both factors until a byte-string value and a cheaper closure capture land; the auditor's speed row reads the shipped number, and this paragraph is the page's warning that it will. The audit files: `audit/fable-reading-2026-09-17-step-35-crypto-brick.md`, `-gen4-speed-probe.md`, and the auditor's two of the same date.
+
 ## The ordering rule
 
 Among the bricks a program demands, dependency order first, then the worst bug
