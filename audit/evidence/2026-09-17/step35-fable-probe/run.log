@@ -1,0 +1,25 @@
+== mo run probe
+exit 0
+rss_kib 104816 wall 0.58
+== mo build probe
+zig-out/mo-build/probe/probe
+exit 0
+== binary probe
+exit 0
+rss_kib 77988 wall 0.42
+== capture (expect MO0409)
+capture.mo:7:28: MO0409 the anonymous function captures random, a Random; pass random as a parameter to a named function instead.
+    sizes = [4, 8].map(fn(n) random.bytes(n).size end)
+                             ^
+  why: An anonymous function captures read-only, but a capability or a handle is authority: captured, it lets a call that takes only data, such as map, perform an effect no signature shows (chapter 3, effects). Authority travels only as a parameter, so a named function that takes it says what it touches.
+exit 1
+== crash under mo run
+main crashed: AesGcm.seal takes a key of 32 bytes, not 3
+exit 70
+== crash as binary
+main crashed: AesGcm.seal takes a key of 32 bytes, not 3
+exit 70
+== probe tests under mo test
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run
+DONE

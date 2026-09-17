@@ -1,0 +1,15 @@
+== surface run gen 3, MO_CORES=1, 30000 jobs, surface on 18703
+up in 0.00s; rss empty 1.9 MiB
+creates: 30000 in 10.4s = 2873/s, errors []; rss at 30000 jobs 141.8 MiB
+pairs, 1 worker: 3588 in 10.0s = 359/s []
+pairs, 32 workers: 16655 in 10.0s = 1664/s []
+rss after pairs 202.6 MiB
+restart with a 23 MB log: 0.92s to /health; rss 29.9 MiB
+== surface run gen 4, MO_CORES=1, 30000 jobs, surface on 18704
+up in 0.00s; rss empty 1.9 MiB
+creates: 30000 in 11.3s = 2654/s, errors []; rss at 30000 jobs 143.1 MiB
+pairs, 1 worker: 2659 in 10.0s = 266/s []
+pairs, 32 workers: 5357 in 10.0s = 533/s []
+rss after pairs 167.3 MiB
+restart with a 15 MB log: 1.14s to /health; rss 34.4 MiB
+SURFACE-DONE

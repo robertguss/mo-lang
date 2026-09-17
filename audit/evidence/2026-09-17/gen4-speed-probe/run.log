@@ -1,0 +1,111 @@
+== gen 3, field max_tries, MO_CORES=1, 30000 jobs
+up in 0.05s; rss empty 1.9 MiB
+creates: 30000 in 16.6s = 1804/s, errors []; rss at 30000 jobs 145.0 MiB
+pairs, 1 worker: 3011 in 10.0s = 301/s []
+pairs, 32 workers: 9424 in 10.0s = 940/s []
+rss after pairs 173.3 MiB
+restart with a 18 MB log: 0.80s to /health; rss 30.3 MiB
+-- hot symbols in the server, gen 3
+     4.67%  jobq              [.] ptab_drop
+            |
+            ---ptab_drop
+               |          
+                --4.66%--mo_compact
+                          |          
+                           --4.65%--settle_region
+                                     deliver
+                                     mo_fiber_start
+                                     0
+     4.58%  jobq              [.] copy_slice
+            |
+            ---copy_slice
+               |          
+                --3.47%--copy_out
+                          |          
+                           --2.98%--copy_slice
+                                     |          
+                                      --1.70%--copy_out
+     3.27%  jobq              [.] copy_out
+            |
+            ---copy_out
+               |          
+                --2.81%--copy_slice
+                          |          
+                           --1.63%--copy_out
+                                     |          
+                                      --1.57%--copy_slice
+     2.36%  jobq              [.] compiler_rt.memcpy.memcpyFast
+            |
+            ---compiler_rt.memcpy.memcpyFast
+     1.87%  jobq              [.] mark_value
+            |
+            ---mark_value
+               |          
+                --1.85%--mark_value
+                          |          
+                           --1.83%--mark_value
+                                     |          
+                                      --1.82%--mark_value
+== gen 4, field max_tries, MO_CORES=1, 30000 jobs
+up in 0.00s; rss empty 1.9 MiB
+creates: 30000 in 16.8s = 1786/s, errors []; rss at 30000 jobs 40.1 MiB
+pairs, 1 worker: 2826 in 10.0s = 283/s []
+pairs, 32 workers: 5215 in 10.0s = 519/s []
+rss after pairs 46.1 MiB
+restart with a 15 MB log: 1.13s to /health; rss 34.4 MiB
+-- hot symbols in the server, gen 4
+    23.15%  jobq              [.] mo_disown_in
+            |
+            ---mo_disown_in
+               |          
+               |--17.81%--mo_disown_in
+               |          |          
+               |          |--11.99%--a27
+               |          |          mo_r_List_all_q
+               |          |          f47
+               |          |          pu1
+               |          |          run_update
+               |          |          deliver
+               |          |          mo_fiber_start
+               |          |          0
+               |          |          
+               |           --5.37%--mo_disown_in
+               |                     |          
+               |                      --5.04%--a27
+               |                                mo_r_List_all_q
+               |                                f47
+               |                                pu1
+               |                                run_update
+               |                                deliver
+               |                                mo_fiber_start
+               |                                0
+               |          
+                --4.93%--a27
+                          mo_r_List_all_q
+                          f47
+                          pu1
+                          run_update
+                          deliver
+                          mo_fiber_start
+                          0
+     9.21%  jobq              [.] copy_slice
+            |
+            ---copy_slice
+               |          
+                --8.50%--copy_out
+                          |          
+== gen 4 again with MO_CONTRACTS=0 (the contracts off at run time), 30000 jobs
+up in 0.00s; rss empty 1.9 MiB
+creates: 30000 in 13.4s = 2247/s, errors []; rss at 30000 jobs 138.7 MiB
+pairs, 1 worker: 3919 in 10.0s = 392/s []
+pairs, 32 workers: 17379 in 10.0s = 1736/s []
+rss after pairs 169.3 MiB
+restart with a 24 MB log: 1.29s to /health; rss 34.4 MiB
+== gen 3 again with MO_CONTRACTS=0
+up in 0.00s; rss empty 1.9 MiB
+creates: 30000 in 12.4s = 2413/s, errors []; rss at 30000 jobs 152.5 MiB
+pairs, 1 worker: 3402 in 10.0s = 340/s []
+pairs, 32 workers: 17944 in 10.0s = 1793/s []
+rss after pairs 168.5 MiB
+restart with a 24 MB log: 0.99s to /health; rss 29.8 MiB
+PROBE2-DONE

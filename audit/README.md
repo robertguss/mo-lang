@@ -22,6 +22,10 @@ All three ratified in-session by Robert on 17 Sep 2026, before program 7 exists 
 - **[`mo-audit-2026-09-17-stopping-rule-capabilities.md`](./mo-audit-2026-09-17-stopping-rule-capabilities.md)** — the secondary claim (layer 2: capabilities and recipes, zero third-party runtime dependencies). Program 7 is also the test. Sub-claims P1–P4, retirement mapping T-A/T-B/T-C.
 - **[`mo-audit-2026-09-17-stopping-rule-never-invariant.md`](./mo-audit-2026-09-17-stopping-rule-never-invariant.md)** — the residual layer-3 claim (the language's `never`/`invariant` catch a class of bug tests miss). Simplified to single-tier under L-2; R-B fires automatically if the rule fails.
 
+### Evidence bundles
+
+- **[`evidence/2026-09-17/`](./evidence/2026-09-17/README.md)** — raw pointers and outputs for the bricks page, step 35 (the crypto brick) and its verification, step 36's sealed brief, and the probe naming generation four's speed loss. Fable files one per working day it has evidence the auditor may want.
+
 ### Standing recommendations (findings from the same session)
 
 - **Roadmap M-3 reordering (auditor's finding, awaiting Fable's response):** the bricks page ships first, then the generation-4 speed-loss probe, then program 7. Program 7 moves from #6 to #3 on `roadmap.md`'s "Next, in order." Chapter 1 names program 7 as the pre-registered test of the primary claim; leaving it at #6 while the runtime claim goes untested is inconsistent with the pivot.

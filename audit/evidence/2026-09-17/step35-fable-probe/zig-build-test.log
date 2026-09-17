@@ -1,0 +1,2 @@
+( zig build && zig build test; )  324.88s user 19.88s system 99% cpu 5:47.94 total
+EXIT 0
