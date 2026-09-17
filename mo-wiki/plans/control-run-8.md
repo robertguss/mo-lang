@@ -1,7 +1,7 @@
 ---
 title: "The control run, round 8: the maintenance round, pre-registered"
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-17
 type: plan
 tags: [agents, verification, roadmap]
 sources: [plans/control-run-7.md, spec/programs/01-job-queue.md, spec/programs/01b-job-queue-change.md, spec/design-v0/01-premise.md, spec/design-v0/08-milestone.md, decisions/decision-log.md, directions/d43-five-measurements.md]
@@ -10,7 +10,7 @@ status: done
 
 # The control run, round 8
 
-The experiment the laws were written for. Every program so far was written once and never changed; the contracts, the `never`s, the `invariant`s, and the recipe check exist for the second agent, the one who did not write the program, and that has never been measured. Round 8 hands round 7's three finished job queues ([[control-run-7]]: Mo, Go, Python, 0 defects each under a 121-check hidden suite) to three fresh agents with one changed spec, `spec/programs/01b-job-queue-change.md`: scheduled jobs and retry backoff (a new state, a new route), `attempts` and `max_attempts` renamed `tries` and `max_tries`, and a durability rule that changes (the store must replay the log the old service wrote). Two hidden suites read the result: round 7's for regressions, a new one for defects in the change. The claim under test is the conjunction of chapter 1, reliability at zero dependencies, read on both columns together (Robert, 15 Sep 17:45). Generation one of the erosion round ([[d43-five-measurements|direction 43]], measurement 3); the same change runs on the Elixir program in round 10. The predictions below were written before any worktree was branched; the start time is the first line of the Result.
+The experiment the laws were written for (generation one of the [[erosion-round]]; the same change ran in Elixir as [[control-run-10]]). Every program so far was written once and never changed; the contracts, the `never`s, the `invariant`s, and the recipe check exist for the second agent, the one who did not write the program, and that has never been measured. Round 8 hands round 7's three finished job queues ([[control-run-7]]: Mo, Go, Python, 0 defects each under a 121-check hidden suite) to three fresh agents with one changed spec, `spec/programs/01b-job-queue-change.md`: scheduled jobs and retry backoff (a new state, a new route), `attempts` and `max_attempts` renamed `tries` and `max_tries`, and a durability rule that changes (the store must replay the log the old service wrote). Two hidden suites read the result: round 7's for regressions, a new one for defects in the change. The claim under test is the conjunction of chapter 1, reliability at zero dependencies, read on both columns together (Robert, 15 Sep 17:45). Generation one of the erosion round ([[d43-five-measurements|direction 43]], measurement 3); the same change runs on the Elixir program in round 10. The predictions below were written before any worktree was branched; the start time is the first line of the Result.
 
 ## The suites
 

@@ -1,20 +1,20 @@
 ---
-title: "Step 33: the crash report freed, and the interpreter's abort on a full disk"
+title: "Step 33: the crash report freed, and the interpreter's abort on a large log"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: plan
 tags: [runtime, processes, performance, tooling]
 sources: [plans/erosion-round.md, plans/interpreter-step-32.md, spec/design-v0/03-semantics.md, decisions/decision-log.md]
 status: done
 ---
 
-# Step 33: the crash report freed, and the interpreter's abort on a full disk
+# Step 33: the crash report freed, and the interpreter's abort on a large log (titled "a full disk" until the Result found the cause)
 
 Two things generation three of the erosion round found on the change 3 program ([[erosion-round]], "Generation three, the result"). One: both runtimes keep every crash report's rendered text for the whole run, so a store that restarts itself after a failure leaks its own size on every restart; the Mo maintainer measured about 44 MB a restart on a 20,000-job queue and 1.4 GB resident after 30 (`erosion-round-suite/results/e3-mo-TOOLCHAIN-BUGS.md.txt`, §5, with the reproduction). Step 32 recorded it as carried; change 3 makes it a leak per failure. Two: under `mo run` alone, the third suite's unwritable category ended with the interpreter exiting on signal 6 (an abort) when the service was stopped and started on the RAM-disk folder after the disk had been filled and freed; the binary passed the category whole. No syntax.
 
 ## Orientation
 
-`toolchain/runtime/mo_rt.c` (`report_text`, `raise_report`, `last_report`, the rendering of a crashed process's state, its state before, and the message log; the invariant's clause renders the state a third time), `toolchain/src/sim.zig` (`crashes`, the list of `contracts.Report` appended at every crash and read by the runner and the surface; `kept_crashes` from step 32), `toolchain/src/contracts.zig` (`Report`), `toolchain/src/events.zig` (step 32's crash store with its 4,096-byte cut), `toolchain/src/store.zig` or wherever `Fs.append` and the log's open and rewrite live, `mo-wiki/plans/erosion-round-suite/defects2.py` (`t_unwritable`: a 64 MB RAM disk filled under load, freed, then the service stopped and started on the folder), the change 3 Mo program in `../mo-lang-erosion3-mo/examples/programs/jobq` (its toolchain binary is that worktree's; build with this repo's `mo` to reproduce), `mo-wiki/spec/design-v0/03-semantics.md` (the failure model: what a crash report holds).
+`toolchain/runtime/mo_rt.c` (`report_text`, `raise_report`, `last_report`, the rendering of a crashed process's state, its state before, and the message log; the invariant's clause renders the state a third time), `toolchain/src/sim.zig` (`crashes`, the list of `contracts.Report` appended at every crash and read by the runner and the surface; `kept_crashes` from step 32), `toolchain/src/contracts.zig` (`Report`), `toolchain/src/events.zig` (step 32's crash store with its 4,096-byte cut), `toolchain/src/server.zig` or wherever `Fs.append` and the log's open and rewrite live, `mo-wiki/plans/erosion-round-suite/defects2.py` (`t_unwritable`: a 64 MB RAM disk filled under load, freed, then the service stopped and started on the folder), the change 3 Mo program in `../mo-lang-erosion3-mo/examples/programs/jobq` (its toolchain binary is that worktree's; build with this repo's `mo` to reproduce), `mo-wiki/spec/design-v0/03-semantics.md` (the failure model: what a crash report holds).
 
 ## Write scope
 

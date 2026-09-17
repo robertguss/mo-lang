@@ -1,7 +1,7 @@
 ---
 title: "The Mac scaling run: step 30 at 1, 4, 10, and 14 cores, the commands"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: plan
 tags: [runtime, performance]
 sources: [plans/interpreter-step-30.md, decisions/decision-log.md, plans/control-run-7-suite/measure.py]
@@ -14,7 +14,7 @@ Robert's decision of 15 Sep 2026, 19:30: the suite and step 30's measurements on
 
 ## Before
 
-The Mac has not run the suite since 14 Sep morning, and neither step 29b's `MAP_NORESERVE` reservation nor step 30's threads have run there. So the suite comes first, and a failure there is the first result.
+The Mac has not run the suite since 14 Sep morning, and neither [[interpreter-step-29b]]'s `MAP_NORESERVE` reservation nor step 30's threads have run there. So the suite comes first, and a failure there is the first result.
 
 ## The commands
 
@@ -37,7 +37,7 @@ It builds, runs `zig build test` (silent on success, minutes cold), builds the q
 
 ## Result (15 Sep 2026, 22:46 to 23:20 local)
 
-Run by Fable alone on the disk, `driver.log` in `../step30-mac/` (not in git; the table is in [[interpreter-step-30]]'s Result). The suite green in two minutes warm. Every row is fastest at one core: the queue 2,908 pairs a second at 32 workers at 1 core against 2,416 at 14, creates 7,868 against 5,476, the ledger 5,106 transfers a second against 4,073, `echo-1k` 19 ms against 104, `kv-10k-get` 383 ms against 1,236, `replay-1m` unchanged. The Mac's disk moves the fsync bound eight times up; cores move nothing up and the cross-scheduler ask moves every crossing row down. Decision row: `MO_CORES=1` for the rounds' Mac rows until placement is fixed.
+Superseded by [[interpreter-step-34]] (16 Sep): placement with the starter and the crossing made cheap, 100,000 cross-scheduler asks from 4 s to 0.14, the queue's pairs level across cores, `MO_CORES=1` no longer needed on the Mac. Run by Fable alone on the disk, `driver.log` in `../step30-mac/` (not in git; the table is in [[interpreter-step-30]]'s Result). The suite green in two minutes warm. Every row is fastest at one core: the queue 2,908 pairs a second at 32 workers at 1 core against 2,416 at 14, creates 7,868 against 5,476, the ledger 5,106 transfers a second against 4,073, `echo-1k` 19 ms against 104, `kv-10k-get` 383 ms against 1,236, `replay-1m` unchanged. The Mac's disk moves the fsync bound eight times up; cores move nothing up and the cross-scheduler ask moves every crossing row down. Decision row: `MO_CORES=1` for the rounds' Mac rows until placement is fixed.
 
 ## Related
 - [[interpreter-step-30]]

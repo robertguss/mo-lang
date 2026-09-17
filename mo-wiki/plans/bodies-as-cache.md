@@ -1,7 +1,7 @@
 ---
 title: "Bodies as cache: every program regenerated from its spec, twice, pre-registered"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: plan
 tags: [verification, agents, research]
 sources: [directions/d43-five-measurements.md, plans/sampling-as-verification.md, plans/control-run-8.md, decisions/decision-log.md]
@@ -28,7 +28,7 @@ For every program: the program's own tests as kept (the regenerator may not chan
 
 | what | where |
 |---|---|
-| worktrees | `../mo-lang-cache-A` and `../mo-lang-cache-B`, branches `cache-A` and `cache-B` from `main` at `a2d220a`, the step 30 toolchain's binary copied in |
+| worktrees | `../mo-lang-cache-A` and `../mo-lang-cache-B`, branches `cache-A` and `cache-B` from `main` at `a2d220a`, the [[interpreter-step-30]] toolchain's binary copied in; run C, the stronger form, in `../mo-lang-cache-C` on `cache-C` (never pushed) |
 | order | logstat, kv, notes, jobq, ledger, agent; run A and run B of one program at the same time in two panes, then the next program |
 | agents | `mo-cache-a-<name>`, `mo-cache-b-<name>` (Herdr names are lowercase), one fresh session each |
 | the stripped state | committed on each branch before its session as `<name> stripped to its spec` |
@@ -56,7 +56,7 @@ Run 15–16 Sep 2026, 23:49 to 02:31 UTC, on Fable's decision while Robert slept
 | jobq | 3,057 → 2,135 | 26 min, 5, 15 of 15 and the suite 121 of 121 | 25 min, 4, 15 of 15 and 121 of 121 | 1.0, 1.0 |
 | ledger | 4,450 → 3,068 | 42 min, 9, 19 of 19 | 47 min, 6, 19 of 19 | 1.0, 1.0 |
 | agent | 4,551 → 3,196 (283 bodies) | 34 min, 10 (first fix right in 10), 24 of 24 | 30 min, 11 (first fix right in 10), 24 of 24 | 1.0, 1.0 |
-| logstat, the stronger form: tests deleted too (`strip-program.py --no-tests`, 769 → 319 lines) | run C: 13 min, its own tests and 8 of 8 transcripts | the original 31 tests spliced onto its bodies: 23 pass, 8 fail (main 6/8, parse 5/6, report 3/7, stats 9/10) | 0.74 under the original tests, 1.0 under the transcripts |
+| logstat, the stronger form: tests deleted too (`strip-program.py --no-tests`, 769 → 319 lines) | run C: 13 min, its own tests and 8 of 8 transcripts | the original 31 tests spliced onto its bodies: 23 pass, 8 fail (main 6/8, parse 5/6, report 3/7, stats 9/10) | 0.74 under the original tests, 1.0 under the transcripts | — |
 
 Ten regenerations, ten at completeness 1.0: every test kept, every transcript byte for byte, and jobq's 121 hidden checks, twice. No test in any program ever had to be changed. Every loop was fixed by its first edit; the causes were the same shape laws and diagnostics measurement 2 and round 8 saw (MO0101, MO0102, MO0403 `Time.fixture()` outside a test in four of ten runs, MO0212, MO0303, MO0307, MO0409, MO0314), a `mo fmt` pass, and, in the ledger, one convergent mistake: both runs rewrote the kept test helper `call` to compare a retry by its key alone, and both found it by the same kept test, so the test held where the helper's comment did not. Context tokens were not readable in the four-way split panes and are unrecorded; the worker reports carry their own reading lists.
 
@@ -71,11 +71,12 @@ Ten regenerations, ten at completeness 1.0: every test kept, every transcript by
 | P3 | the agent program lowest, below the ledger | 1.0 and 1.0, 34 and 30 minutes, below the ledger's 42 and 47; not lowest | no: the sixth program is as complete as the first five |
 | P4 | two runs differ where they differ from the original | no run differed from the original on any oracle; the holes showed as the workers' decision lists, not as failures | not testable at 1.0 |
 
-**What it says.** For five programs of 769 to 4,450 lines, what a reader is meant to read (the intent, the types, the processes, the signatures with their contracts, and the tests) is enough for a fresh agent to write the bodies back correctly, first time, in 11 to 47 minutes, with every kept oracle passing. Bodies are cache for these programs: the spec altitude is real, and the supply-chain claim that a recipe can be regenerated rather than downloaded has its first evidence. The number is 1.0 because the tests were kept; the direction's stronger form, tests deleted too, is the next run, and the agent program, the one whose check depends on arrival order and whose spec is the loosest, is the one predicted to fall. Cost: about four hours of two panes for five programs, both runs.
+**What it says** (written after five programs; the agent program and the stronger form followed, above, and hold it: twelve of twelve at 1.0, the stronger form 0.74 under the original tests). For five programs of 769 to 4,450 lines, what a reader is meant to read (the intent, the types, the processes, the signatures with their contracts, and the tests) is enough for a fresh agent to write the bodies back correctly, first time, in 11 to 47 minutes, with every kept oracle passing. Bodies are cache for these programs: the spec altitude is real, and the supply-chain claim that a recipe can be regenerated rather than downloaded has its first evidence. The number is 1.0 because the tests were kept; the direction's stronger form, tests deleted too, is the next run, and the agent program, the one whose check depends on arrival order and whose spec is the loosest, is the one predicted to fall. Cost: about four hours of two panes for five programs, both runs.
 
 **Rows.** For the language page: `Time.fixture()` outside a test (MO0403) cost a loop in four of ten runs and every fix was the same, so the diagnostic is right and the rule is learned only at the point of use, as run B of logstat said. For the spec: the ledger's idempotency key is compared by the whole request, and the test helper's comment should say so, since two independent regenerations read it as the key alone.
 
 ## Related
+- [[control-run-7]]
 - [[d43-five-measurements]]
 - [[sampling-as-verification]]
 - [[control-run-8]]

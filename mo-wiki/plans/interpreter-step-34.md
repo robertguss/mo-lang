@@ -1,11 +1,11 @@
 ---
 title: "Step 34: placement, so the Mac's cores stop costing"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: plan
 tags: [runtime, performance, processes]
 sources: [plans/interpreter-step-30.md, plans/mac-scaling-run.md, plans/interpreter-step-31.md, spec/design-v0/03-semantics.md, spec/design-v0/07-toolchain.md]
-status: done, accepted 16 Sep 2026, 21:20 local (four rows past the 10 percent criterion by the main-starts rule, recorded)
+status: done
 ---
 
 # Step 34: placement, so the Mac's cores stop costing
@@ -14,7 +14,7 @@ Step 30 put a scheduler on every core and placed each new process on the schedul
 
 ## Orientation
 
-`toolchain/src/turns.zig` (`place`, the fewest-live rule; `ask`, the parked fiber and `answers[seq]`; the cross-scheduler delivery and the eventfd wake; the runtime lock), `toolchain/runtime/mo_rt.c` (the native schedulers, the same rule and the same crossing), `toolchain/src/bench.zig` and `bench/results.tsv` (the rows: `echo-1k`, `kv-10k-get`, `http-1k`, jobq pairs and creates, the ledger, `100k asks`, `8 crunchers`, `200,000 short-lived processes`), `examples/programs/spread` (step 30's corpus program for placement), `../step30-mac/driver.log` and [[mac-scaling-run]] (the Mac's numbers per core count), step 31's deferred-reply bench (`processes/deferred-reply.mo` and the worker's driver under `bench/step31/` if kept), `mo-wiki/spec/design-v0/03-semantics.md` (Processes: "a process runs on one scheduler for its life"), `07-toolchain.md` (the bets). The Mac has 14 cores; `MO_CORES=N` sets the count; `MO_STATS=1` prints a line per scheduler.
+`toolchain/src/turns.zig` (`place`, the fewest-live rule; `ask`, the parked fiber and `answers[seq]`; the cross-scheduler delivery and the eventfd wake; the runtime lock), `toolchain/runtime/mo_rt.c` (the native schedulers, the same rule and the same crossing), `toolchain/src/bench.zig` and `bench/results.tsv` (the rows: `echo-1k`, `kv-10k-get`, `http-1k`, jobq pairs and creates, the ledger, `100k asks`, `8 crunchers`, `200,000 short-lived processes`), `examples/programs/spread` (step 30's corpus program for placement), `../step30-mac/driver.log` and [[mac-scaling-run]] (the Mac's numbers per core count), step 31's deferred-reply bench (`processes/deferred-reply.mo` and the worker's driver under `toolchain/bench/step34/` if kept), `mo-wiki/spec/design-v0/03-semantics.md` (Processes: "a process runs on one scheduler for its life"), `07-toolchain.md` (the bets). The Mac has 14 cores; `MO_CORES=N` sets the count; `MO_STATS=1` prints a line per scheduler.
 
 ## Write scope
 
@@ -37,6 +37,8 @@ The table above. Done when at 14 cores no crossing row (`echo-1k`, `kv-10k-get`,
 `zig build test` green, the corpus green, `mo fmt` clean, the spec lines written, the numbers table with the `MO_STATS=1` lines, and a numbered list "Decisions the brief did not cover".
 
 ## Result (16 Sep 2026, 21:20 local; parts B and C by a second Opus session, 16:50 to 20:46)
+
+Accepted 16 Sep 2026, 21:20 local; four rows past the 10 percent criterion by the main-starts rule, recorded below.
 
 Commits `1559554` and `660b75c` (part A, the afternoon), `9716cd8` (part B), `d429dd9` (part C), all on `main`; `zig build test` green at each and in Fable's run after the merge (exit 0, two minutes warm). The full tables are in `toolchain/bench/step34/RESULTS.md`; the worker's report is quoted in the decision log's rows.
 
@@ -101,6 +103,7 @@ Robert left with the Mac at 15:50. The worker (Opus, medium effort, briefed 15:0
 
 ## Related
 
+- [[interpreter-step-33]]
 - [[interpreter-step-30]]
 - [[mac-scaling-run]]
 - [[interpreter-step-31]]

@@ -1,7 +1,7 @@
 ---
 title: "Step 21: memory and green threads, brief for the worker"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: plan
 tags: [runtime, performance, processes, tooling]
 sources: [spec/design-v0/07-toolchain.md, plans/interpreter-step-20.md, plans/control-run-4.md, decisions/decision-log.md]
@@ -62,3 +62,4 @@ Written in about two hours, four commits, green at each. A process is a stackful
 - [[control-run-4]]
 - [[research-agenda-2026-09-response]]
 - [[roadmap]]
+- [[control-run-6]] (where the Linux epoll path, unmet at acceptance, first ran: the VM, 14 Sep, and every round since)

@@ -1,7 +1,7 @@
 ---
 title: "Step 32: crash reports apart from the ring, and the reopening store"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: plan
 tags: [runtime, agents, processes, tooling]
 sources: [plans/erosion-round.md, plans/interpreter-step-23.md, spec/design-v0/03-semantics.md, spec/design-v0/10-language-after-the-rounds.md, decisions/decision-log.md]
@@ -50,7 +50,7 @@ Written by one Opus session at medium effort, 09:01 to 10:04 on 16 Sep, three co
 
 **Verified by Fable.** `zig build test` green alone (196 of 196; one earlier run under the P6 probe's and the worker's bench load failed the `agent` program's corpus transcript, a run on wall-clock budgets, and passed on the rerun alone: a flake until it recurs). `restart-reopens.mo` matches its `.expected` under `mo run` and as a binary; `crash-kept.mo` passes; the P6 probe with the default ring lists the crash under both runtimes, nothing lost; a probe of three crashes of an `:always` child keeps 3 by default, 2 under `--crashes 2` and `MO_CRASHES=2`, 0 under 0, both runtimes.
 
-**Carried, the worker's row 11.** Both runtimes still keep every full crash report for the whole run (the sim's crash list under `mo run`; the rendered strings never freed in a binary): 16 crashes with 64 KB states grew resident memory by about 2.3 MB with the store off. A service that crashes often grows without bound. A step of its own, queued. Also: `mo test` has no flag for the store's size (always 16); the memory row's `event_bytes` counts the ring, not the store.
+**Carried, the worker's row 11** (done by [[interpreter-step-33]]: 46.1 to 0.27 MiB a restart). Both runtimes still kept every full crash report for the whole run (the sim's crash list under `mo run`; the rendered strings never freed in a binary): 16 crashes with 64 KB states grew resident memory by about 2.3 MB with the store off. A service that crashes often grows without bound. A step of its own, queued. Also: `mo test` has no flag for the store's size (always 16); the memory row's `event_bytes` counts the ring, not the store.
 
 ## Related
 

@@ -1,11 +1,11 @@
 ---
 title: "Corpus: brief for the worker session"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: plan
 tags: [roadmap, syntax]
 sources: [spec/design-v0/04-syntax.md, spec/grammar.md]
-status: in-progress
+status: done
 ---
 
 # Corpus: brief for the worker session

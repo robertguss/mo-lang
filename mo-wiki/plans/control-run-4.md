@@ -1,7 +1,7 @@
 ---
 title: "The control run, round 4: logstat after steps 17–20, the timing round"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: plan
 tags: [agents, research, roadmap]
 sources: [plans/control-run-3.md, plans/control-run.md, spec/programs/02-log-analyzer.md, deep-dives/outside-review-2026-09-13-response.md]
@@ -37,7 +37,7 @@ Briefs are word for word [[program-2]] and [[control-run]]; agents `mo-r4-mo`, `
 
 **Reading.** With the timing valid again, Mo is about 1.75 times Go and Python on wall-clock, worse than round 2's 1.45 and on a toolchain that has grown since. Loops fell from nine to five, and every one of the four tooling loops is the model's first guess at a shape the grammar does not have: a one-line `if` as an expression, a two-field variant matched by position, a range method call binding to the last integer, a `_` arm. None is a law. The reworded diagnostics did their job (the `MO0309` fix was applied verbatim), and `MO0101` recurred twice, as it did for Fable writing probes the same evening; that pattern, statements and expressions on one-line arms, is the single most expensive habit in the language for a model, and it is a grammar ergonomics question, not a shape law. No check caught a behaviour bug in any language this round, and there was none to catch; round 3 remains the only round with a bug, and Mo caught it. Mo's functions are a third the length of Go's, the program half the size. The fictional-bound count is not exercised by a CLI, and after step 20 it is zero in every server.
 
-**The laws, re-evaluated against [[outside-review-2026-09-13-response]].** Across rounds 2 to 4 no loop was caused by a shape law: no run tripped the 70-line, 500-line, six-parameter, or nesting limits. The no-`while` law cost fictional bounds in every server until step 20 removed the need for them without a keyword. The `test rejects` per `requires` law cost no loops. The laws are not where Mo's time goes; the grammar's one-line forms and a misleading type error are. Fable's recommendation: keep every law as it is; spend the next ergonomics step on the grammar's one-line arm and `if` forms and on `MO0206`'s wording when a method binds to a literal; rerun after program 1 as round 5.
+**The laws, re-evaluated against [[outside-review-2026-09-13-response]].** Across rounds 2 to 4 no loop was caused by a shape law: no run tripped the 70-line, 500-line, six-parameter, or nesting limits. The no-`while` law cost fictional bounds in every server until step 20 removed the need for them without a keyword. The `test rejects` per `requires` law cost no loops. The laws are not where Mo's time goes; the grammar's one-line forms and a misleading type error are. Fable's recommendation: keep every law as it is; spend the next ergonomics step on the grammar's one-line arm and `if` forms and on `MO0206`'s wording when a method binds to a literal; rerun after program 1 as round 5 ([[control-run-5]]).
 
 ## Related
 - [[control-run-3]]

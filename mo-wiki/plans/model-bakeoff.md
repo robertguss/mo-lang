@@ -1,11 +1,11 @@
 ---
 title: "Model bake-off: Opus vs Grok vs Codex as workers"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: plan
 tags: [roadmap, agents, meta]
 sources: [plans/corpus.md]
-status: in-progress
+status: done
 ---
 
 # Model bake-off: Opus vs Grok vs Codex as workers
@@ -19,8 +19,8 @@ Task: [[corpus]], word for word. Every worker starts from branch `session-05` wi
 | worker | where | branch |
 |---|---|---|
 | Claude Opus 5 | the main tree, Herdr pane `w3M:p2` | `session-05` (`examples/` there is the Opus entry) |
-| Grok 4.6 | worktree `../mo-lang-grok`, pane `w3Q:p1` | `corpus-grok` |
-| OpenAI Codex (gpt-6-astra) | worktree `../mo-lang-codex`, pane `w3R:p1` | `corpus-codex` |
+| Grok 4.6 | worktree `../mo-lang-grok` (removed; the branch stays), pane `w3Q:p1` | `corpus-grok` |
+| OpenAI Codex (gpt-6-astra) | worktree `../mo-lang-codex` (removed; the branch stays), pane `w3R:p1` | `corpus-codex` |
 
 Started: Opus at 19:34, Grok and Codex at 19:46 (12 Sep 2026). All three ran with approvals off and the identical prompt; only the branch name and the commit trailer differed.
 
@@ -52,7 +52,7 @@ All three delivered 50 files, `README.md`, `GAPS.md`, and 12 `rejects/` files wi
 - **Grok.** Fastest and shortest, but ten tautological asserts (`assert t == t`, `assert h == h`), nine tests named "never reached", `state.n = state.n` to fill an arm, a `rejects` test that trips no `requires`, `within:` passed to a plain function. 17 gaps; several holes it hit went unrecorded. Not competitive on this task.
 - **Codex.** The most careful reader of the grammar: found that `cmp` demands a range after `is pattern`, that `assert` is missing from `stmt`, and that `old` is restricted to `ensures` while `invariant` needs it. Law-clean. But it dodges the construct under test (the clock file tests a budget number, the counter file tests a pure helper), runs declarations together with no blank lines, and its gap prose is dense.
 
-**Result:** Opus's `examples/` is the base. Robert (session 5): Fable chooses the worker model for all building and writing from here; Fable chose **Opus**, on taste and gap discipline, with Codex-style grammar rigour supplied in Fable's review. Codex's grammar findings go into `grammar.md` as Session 5 fixes. Grok's branch stays as evidence.
+**Result** (round 1 scored and decided; round 2 never ran and is dropped)**:** Opus's `examples/` is the base. Robert (session 5): Fable chooses the worker model for all building and writing from here; Fable chose **Opus**, on taste and gap discipline, with Codex-style grammar rigour supplied in Fable's review. Codex's grammar findings go into `grammar.md` as Session 5 fixes. Grok's branch stays as evidence.
 
 ## Round 2 (proposed): the lexer
 

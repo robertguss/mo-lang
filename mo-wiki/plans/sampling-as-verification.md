@@ -1,7 +1,7 @@
 ---
 title: "Sampling as verification: five regenerations of the queue's board, pre-registered"
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-17
 type: plan
 tags: [verification, agents, research]
 sources: [directions/d43-five-measurements.md, plans/control-run-7.md, spec/programs/01-job-queue.md, decisions/decision-log.md]
@@ -36,7 +36,7 @@ Round 7's hidden suite (`control-run-7-suite/defects.py`, 121 checks) is run on 
 
 | what | where |
 |---|---|
-| worktree | `../mo-lang-sampling`, branch `sampling` from `main`, the round 7 jobq copied in from `../mo-lang-control7-mo` as `examples/programs/jobq/` |
+| worktree | `../mo-lang-sampling`, branch `sampling`, planned from `main` with the round 7 jobq copied in; as run, branched from `control7-mo` (the Result below) |
 | pane, agents | `w7:p7`; `mo-sample-0` writes the harness, `mo-sample-1` to `mo-sample-5` regenerate, one fresh session each, sequential |
 | branches | `sampling-k` from `sampling` after the stripped file is committed; each variant is one branch |
 | the brief | "The bodies of `board.mo` are gone; write them so `mo check` and `mo test` on `examples/programs/jobq` are green and `mo run main.mo -- check data/demo data/session.txt` matches `jobq.expected`; touch no other file; commit when green; report loops by cause, wall-clock, and the decisions the spec did not cover" |

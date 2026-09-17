@@ -1,7 +1,7 @@
 ---
 title: "Step 30: processes on every core, brief for the worker"
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-17
 type: plan
 tags: [runtime, processes, performance]
 sources: [plans/interpreter-step-21.md, plans/interpreter-step-29.md, plans/interpreter-step-29b.md, spec/design-v0/03-semantics.md, spec/design-v0/07-toolchain.md, plans/control-run-7.md]
@@ -104,11 +104,12 @@ Rows that moved more than 10 percent, in the worker's words: the ledger at 1 cor
 | `kv-10k-get`, interpreter / native | 383 / 177 ms | 913 / 622 | 1,150 / 908 | 1,236 / 1,026 | |
 | `replay-1m`, interpreter / native | 51.1 / 15.4 s | 51.1 / 15.4 | 50.9 / 15.3 | 51.0 / 15.4 | 84.8 s |
 
-What it says. The Mac's disk syncs about eight times faster than the VM's, so the queue at one core makes 2,908 pairs a second, the number Elixir made on the VM at 32 workers and twice the Mo binary's own 1,420 there; the fsync bound has moved, not gone (creates 7,868 a second, one sync each). Cores do not help any row on this machine and hurt every one that crosses schedulers: `echo-1k` is 4.6 times slower at 4 cores and 5.4 at 14, `kv-10k-get` 2.4 and 3.2 times, the queue's pairs lose 17 percent from 1 to 14 cores, the ledger 20 percent. The VM showed the same direction at 4 cores (echo 2.3 times) and hid it in the disk bound; the Mac's disk exposes the cross-scheduler ask as the cost it is. `replay-1m` is one process and unchanged. Step 30's rule stands (nothing is shared, an update is one transaction); its placement (fewest live processes) and its wake path (an eventfd per scheduler, a hop per ask) are what a step after 31 measures and fixes: a process placed with its asker, or a worker pool that answers on the asker's scheduler. Until then `MO_CORES=1` is the right default for a service whose processes ask each other on every request, and the rounds' Mac rows are run at 1 core and say so.
+What it says (the crossing was fixed by [[interpreter-step-34]], 16 Sep: placement with the starter, `MO_CORES=1` no longer the Mac default). The Mac's disk syncs about eight times faster than the VM's, so the queue at one core makes 2,908 pairs a second, the number Elixir made on the VM at 32 workers and twice the Mo binary's own 1,420 there; the fsync bound has moved, not gone (creates 7,868 a second, one sync each). Cores do not help any row on this machine and hurt every one that crosses schedulers: `echo-1k` is 4.6 times slower at 4 cores and 5.4 at 14, `kv-10k-get` 2.4 and 3.2 times, the queue's pairs lose 17 percent from 1 to 14 cores, the ledger 20 percent. The VM showed the same direction at 4 cores (echo 2.3 times) and hid it in the disk bound; the Mac's disk exposes the cross-scheduler ask as the cost it is. `replay-1m` is one process and unchanged. Step 30's rule stands (nothing is shared, an update is one transaction); its placement (fewest live processes) and its wake path (an eventfd per scheduler, a hop per ask) are what a step after 31 measures and fixes: a process placed with its asker, or a worker pool that answers on the asker's scheduler. Until then `MO_CORES=1` is the right default for a service whose processes ask each other on every request, and the rounds' Mac rows are run at 1 core and say so.
 
 **Unmet.** The interpreted ledger rows and the interpreted queue at 4 cores after the spin fix are not measured. The Mac run is Robert's, in parallel with round 8 (decision log, 15 Sep 19:30). The interpreter's 780 KB per process at rest, a crash report's 1 MB, and one update that starts thousands of processes holding them all on one core are older than this step and carried. `09-stdlib.md`'s `ProcessInfo` and `Started` lines were stale after C2 and Fable fixed them at acceptance.
 
 ## Related
+- [[control-run-8]]
 - [[interpreter-step-29b]]
 - [[interpreter-step-29]]
 - [[interpreter-step-21]]

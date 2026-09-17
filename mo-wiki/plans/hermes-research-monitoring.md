@@ -1,10 +1,11 @@
 ---
 title: "Hermes research monitoring"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-17
 type: plan
 tags: [research, runtime, verification, security]
-sources: []
+sources: [decisions/decision-log.md, spec/design-v0/01-premise.md]
+status: living
 ---
 
 # Hermes research monitoring
@@ -34,6 +35,11 @@ Use this wiki, not a competing knowledge base. Preserve raw evidence with the sc
 Work in an isolated research checkout on a dedicated research branch. Commit explicit research/wiki paths and publish a reviewable PR against main; never auto-merge. No implementation, language decisions, experiments, build-worker control, or changes to the implementation lead's handoff/roadmap are part of this lane.
 
 Run the wiki linter and report new issues separately from the existing baseline. If upstream changes conflict, stop publication and report the conflict rather than resolving design disagreements automatically. Do not publish credentials or private operational/account details.
+
+## The notes so far
+
+- [[hermes-daily-2026-09-16]] — restart budgets and error-path coverage
+- [[hermes-daily-2026-09-17]] — crash consistency and capability boundaries
 
 ## Related
 

@@ -1,7 +1,7 @@
 ---
 title: "Step 31: a deferred reply, brief for the worker"
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-17
 type: plan
 tags: [runtime, processes, syntax]
 sources:
@@ -166,7 +166,7 @@ Done by Opus (medium effort) in one session on the Mac, brief at 23:22 on 15 Sep
 
 **Ratified from the worker's defaults.** A `Reply` is a seq, not a seq and a deadline (1); the held list over a walk of the crashed state, so a dropped `Reply` is invisible and its asker times out (2); the deferral as a compiled fact (3); "mentions `reply_to` exactly once, inside an assignment under `state`" as the move rule (4); the runnable-corpus rule for `# run:` files (5); answering as an effect (6); an answer commits with its update (7); a second answer dropped (8); `errors.md` regenerated (9); `Reply` hideable (10); the recursion unit test moved onto a 256 MiB thread, since on macOS the Zig test runner's 8 MiB stack crashed it on a clean `main` (11); the measurement's flush bound set to the asker count and both programs timing themselves inside the batcher (12, 13).
 
-**Unmet, carried.** The interpreter's parked fiber per held ask at 128 askers (0.46) is a row for the placement step. Change 2's Mo program under `p6.py` is the first real test of the rule.
+**Unmet, carried.** The interpreter's parked fiber per held ask at 128 askers (0.46) is a row for the placement step (done, [[interpreter-step-34]]: 0.59). Change 2's Mo program under `p6.py` is the first real test of the rule (run 16 Sep, [[erosion-round]]: `503` within 2 ms, nothing lost).
 
 ## Related
 
