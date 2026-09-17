@@ -1,0 +1,400 @@
+ timeout 300 python3 /tmp/run4g.py uv run python -m unittest tests.test_store -v 2>&1 | tail
+ -4 (timeout 320s)
+
+ ----------------------------------------------------------------------
+ Ran 1 test in 0.000s
+
+ FAILED (errors=1)
+
+
+ Hmm — python -m unittest tests.test_store fails with 1 error. Probably an import error:
+ running with module path tests.test_store — the tests dir isn't a package (no init.py), and
+ test_store.py imports from support import ... which works only when run via discover -s
+ tests (which puts tests/ on sys.path). Earlier I ran python -m unittest tests.test_sim -v
+ and it worked — because that invocation ALSO fails?? No wait, earlier it ran 2 tests fine.
+ Why does test_store fail?
+
+ Earlier: timeout 300 uv run python -m unittest tests.test_sim -v → "Ran 2 tests". So
+ tests.test_sim importable. For test_store... the error may be the fixture path? No — an
+ ERROR, not failure. Let me look at the actual error.
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 uv run python -m unittest
+ tests.test_store -v 2>&1 | head -20 (timeout 320s)
+
+ ... (17 earlier lines, ctrl+o to expand)
+
+ ----------------------------------------------------------------------
+ Ran 1 test in 0.000s
+
+ FAILED (errors=1)
+
+
+ My invocation mistake: python -m unittest tests.test_store from the jobq root doesn't put
+ tests/ on sys.path (works for test_sim earlier? — wait, that worked before... because I ran
+ tests.test_sim when? Yes twice: "Ran 2 tests in 1.488s" — huh. Oh! There IS no
+ tests/init.py... but unittest tests.test_sim worked. Because... namespace packages? tests/
+ without init is importable as a namespace package in py3.14, and test_sim doesn't import
+ support at module level? It does NOT: test_sim imports from jobq.* only — no from support
+ import — right! test_store/test_queue/test_api DO import support.
+
+ The discovery command python -m unittest discover -s tests inserts tests/ into sys.path
+ (top_level_dir defaults to start dir). My direct-module invocation lacks that. Not a defect
+ in the suite (the canonical runner is discover, also used by CI/checks? Let me confirm how
+ tests are normally run — is there a test script? check.sh runs jobq check + exit codes only,
+ no unit tests. So how do "the checkers" run? uv run mypy/ruff + unittest discover. I ran
+ discover all along ✓.
+
+ To run a single module correctly: uv run python -m unittest discover -s tests -k test_store
+ (-k filters) — or cd tests? discover -s tests -k works in py3.12+. This was an invocation
+ error on my side, not a code failure. Count it as a loop? "every time a check, a build, or a
+ test fails" — this failure was my harness invocation (module path without support on
+ sys.path), fixed by using discover -k. I'll count it as loop 8, cause: wrong test
+ invocation, fixed by discover -k.
+
+ Let me rerun with discover -k and also confirm OldLogTest ran inside the full suite (163
+ tests: let me verify by listing test ids via discover -k OldLog -v).
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 uv run python -m unittest discover
+ -s tests -k OldLogTest -v 2>&1 | tail -8 (timeout 320s)
+
+ ... (7 earlier lines, ctrl+o to expand)
+
+ ----------------------------------------------------------------------
+ Ran 3 tests in 0.004s
+
+ OK
+
+
+ All 3 old-log tests pass. Now flake-confidence: run the full suite 2 more times and check.sh
+ once more (already 5 green check.sh runs total plus this). Then write REPORT.md and commit.
+
+ All old-log tests pass. Final confidence runs:
+
+
+ $ cd experiments/control-run/python/jobq && for i in 1 2; do timeout 300 python3
+ /tmp/run4g.py uv run python -m unittest discover -s tests -q 2>&1 | tail -1; done && timeout
+ 300 python3 /tmp/run4g.py bash check.sh (timeout 920s)
+
+ OK
+ OK
+ check.sh: ok
+
+
+ Everything is green, repeatedly. Total: 163 tests, ruff check, ruff format, mypy strict,
+ check.sh — all green multiple times.
+
+ Now let me capture the exact wall-clock for my session and write the REPORT.md. The task
+ started when I began reading — I don't have a precise session start timestamp... I can
+ reconstruct from the fixture generation time (03:42:51 UTC recorded in the fixture) — that
+ was maybe 10 minutes in (baseline checks + reading). Actually the fixture's created_at was
+ 2026-09-16T03:42:51 UTC. Now? Let me get current time and estimate; honest disclosure:
+ report wall-clock from first command to commit. I'll state approximately, based on fixture
+ time vs. finish time.
+
+ Wall-clock: started roughly ~03:25 UTC (reading spec + baseline runs before fixture at
+ 03:42). I'll measure "now" and compute from the fixture timestamp as a lower bound, stating
+ the estimate honestly.
+
+ Loop count by cause (failures only; each with whether the first/next edit fixed it):
+ 1. mypy: 17 errors — tests/bench still on old names after the src rename (mid-migration).
+ Fixed by the rename pass → next mypy run clean. First fix worked: yes (this was the planned
+ propagation, one pass).
+ 2. ruff: B007 unused loop variable number in new test_sim check loop. Fix: iterate
+ .values(). First fix worked: yes.
+ 3. unittest: test_a_store_failure_is_503_with_the_store_unchanged — 409 ≠ 503 on retry: my
+ test leased j_1 instead of j_2 (oldest-first), so j_2 wasn't dead and retry was a 409
+ without a store write. Fix: put j_1 in its own queue. First fix worked: yes.
+ 4. unittest sim: retried counter 18 ≤ 100 — retry traffic rarely hit dead jobs. Fix (target
+ known-dead ids 70%): 56 — insufficient. Fix (retry share 4%→8%): 78 — insufficient. Fix
+ (more dead supply: ack_rate 0.55, max_tries ≤ 2, dead-target 85%): 123 → green. First fix
+ worked: no (3 attempts).
+ — Count these as 3 failing checks under one cause.
+ 5. mypy/... anything else? The lease_ms... no.
+ 6. ruff format --check: 4 files unformatted. Fix: ruff format. First fix worked: yes.
+ 7. unittest invocation error: python -m unittest tests.test_store → ModuleNotFoundError
+ support (my harness, not code). Fix: discover -k. First fix worked: yes.
+
+ Hmm wait, also that edit-tool schema error — that's a tooling artifact, not a
+ check/build/test failure. Not counted.
+
+ So failing checks total: 7 (mypy 1, ruff 1, unittest 1, sim 3, format 1, invocation 1).
+ Cause breakdown:
+ - rename propagation (planned mid-migration mypy errors): 1, fixed first try
+ - ruff lint in new test code: 1, fixed first try
+ - my own new-test sequencing bug: 1, fixed first try
+ - sim transition-coverage tuning: 3 failures, fixed on third
+ - formatting: 1, fixed first try
+ - my own test-runner invocation: 1, fixed first try
+
+ Decisions the spec did not cover:
+ 1. Where run_at sits in the {job} JSON: after updated_at, before worker/lease_until/reason
+ (spec lists field set but not order).
+ 2. Old-log replay mechanism: pydantic validation_alias=AliasChoices("tries","attempts") on
+ Job (+populate_by_name) rather than rewriting JSON lines at replay; a record holding BOTH
+ names is refused as corrupt (extra=forbid).
+ 3. The old-log fixture: generated with the pre-change program's own CLI (lease_ms 60000 so
+ leases are run out by test time; states:
+ queued/done/dead/leased-with-tries-left/leased-on-last-try/deleted), committed at
+ tests/fixtures/old-log/jobs.log; tests copy it to a tmp dir.
+ 4. The idle look's name kept as expire_due; it now also queues due scheduled jobs and
+ returns the total moved count.
+ 5. Run-out lease returns and scheduled-to-queued promotions share one durable write per look
+ (extension of round-8's single-write expiry; store.py itself unchanged).
+ 6. Retry conflict message: "the job is not dead"; retry ignores any request body.
+ 7. Retry sets updated_at to now (spec lists what retry keeps/drops/reset; updated_at
+ unmentioned).
+ 8. A failed job keeps its reason while scheduled (spec: "reason after a fail").
+ 9. check.sh determinism: delayed job delay_ms 3600000 (never due in either run), backoff
+ 300000 (outlives both runs), the 100 ms lease never displayed again in run 1 (as the
+ original script did).
+ 10. Sim bounds: delay_ms/backoff_ms < 1200 mg so the drain terminates; retry traffic biased
+ to known-dead ids so the transition is exercised >100× across 100 seeds;
+ done-jobs-never-change check now allows the one legal change (dead→queued via the seen 200
+ retry).
+ 11. Memory-cap mechanism: macOS Python build refuses RLIMIT_AS/DATA/RSS, so a watchdog
+ wrapper (ps-based tree RSS poll, kill at 4 GB, exit 97) at /tmp/run4g.py; every
+ checker/test/server ran under timeout 300 + the watchdog.
+ 12. Health key order queued, scheduled, leased, done, dead, uptime_ms — spec ordered. Not a
+ decision. Skip.
+ 13. CreateJob accepts delay_ms exactly 0 → queued (spec said 0 → queued explicitly,
+ covered).
+ 14. test_store job() helper switched to new names; compact "records to" line count stays.
+
+ Also the report should say "which contracts and nevers the change forced open and which it
+ left alone" (change spec, contracts section):
+ - Forced open: create ensures (queued → "scheduled or queued"); lease ensures renamed tries;
+ transition nevers (edge set extended; dead-exactly-when reconditioned on backoff; new: retry
+ resets tries, backoff schedules, queued carries no run_at); invariants (run_at exactly while
+ scheduled; waiting-has-tries-left covering scheduled); fixed-fields list gained backoff_ms;
+ requires gained delay_ms/backoff_ms.
+ - Left alone: never-held-by-two (wording/mechanics), replay/never-lost, one-look bound,
+ store framing/torn line, token rules, 401/404/405 statuses, the _commit order (check nevers
+ → durable write → apply), counts invariants.
+
+ Within literals: the change spec said for the maintainer: nothing beyond the brief — the
+ Python program's within:-equivalents (timeouts) were unchanged; no new waits added... except
+ test deadlines (SOCKET_TIMEOUT_S reuse; sweeper test deadline 5.0 chosen). I'll mention: no
+ new within:-style waits in the service; two chosen test deadlines (5 s sweep deadlines in
+ test_server).
+
+ Now — the wall-clock. Fixture created 03:42:51 UTC. Let me get current UTC time and compute.
+ I'll present: "about N minutes, from spec read to green". Let me just time it now.
+
+ Everything is green repeatedly. Writing REPORT.md now, then committing. First, the
+ wall-clock:
+
+
+ $ python3 -c "
+ from datetime import datetime, UTC
+ now = datetime.now(UTC)
+ print('now:', now.isoformat(timespec='seconds'))
+ # fixture records 2026-09-16T03:42:51.585Z, written ~17 min after session start (spec read,
+ baseline runs)
+ start_fixture = datetime(2026, 9, 16, 3, 42, 51, tzinfo=UTC)
+ print(f'since fixture gen: {(now - start_fixture).total_seconds() / 60:.0f} min')
+ "
+
+ now: 2026-09-16T03:57:05+00:00
+ since fixture gen: 14 min
+
+
+
+ write REPORT.md
+
+ # jobq: the change — maintainer's report
+
+ Program 1, change 1 (`mo-wiki/spec/programs/01b-job-queue-change.md`): scheduled jobs
+ (`delay_ms` → `run_at`, promoted at the next look), retry backoff (`backoff_ms`; a failed
+ or run-out job with tries left waits in `scheduled`), the `POST /jobs/{id}/retry` route
+ (dead → queued, tries reset), and the `attempts`/`max_attempts` → `tries`/`max_tries`
+ rename — with old logs still opening. Applied to `experiments/control-run/python/jobq/`.
+
+ ## Result: green
+
+ ... (132 more lines, 142 total, ctrl+o to expand)
+
+
+ Wait — wall-clock: let me recompute. Session start: my first commands. The fixture was
+ created at 03:42:51 UTC and that was after reading spec + all source files + baseline (4
+ command batches) — so session start ≈ 03:25 (≈17 min before fixture). Now is 03:57. That's
+ ~32 min to green + report. My "≈35 minutes" estimate covers the report + commit. OK, honest.
+
+ Also REPORT.md at worktree root ✓ (I wrote to REPORT.md relative to CWD = worktree root ✓).
+
+ One last check on the fixture: git status — the fixture jobs.log needs adding. And I should
+ double-check gitignore doesn't exclude it (jobq/.gitignore ignores .venv, pycache, caches —
+ not fixtures ✓).
+
+ CLAUDE.md: "Commit wiki work with git add <paths>, never git add -A: the worker shares the
+ tree." I'll add explicit paths:
+ - experiments/control-run/python/jobq/src
+ - experiments/control-run/python/jobq/tests
+ - experiments/control-run/python/jobq/checks
+ - experiments/control-run/python/jobq/bench
+ - REPORT.md
+
+ Should the spec file be copied into this branch? The instruction said "make the change
+ described in mo-wiki/spec/programs/01b-job-queue-change.md" — the user pointed me to the
+ canonical location at /Users/robertguss/Projects/startups/mo-lang/mo-wiki/. It's not in my
+ worktree and the lead manages the wiki. I'll not add it (worker writes code under
+ toolchain/examples... here: the program). REPORT.md at root per instructions.
+
+ Also — should REPORT.md live at the worktree root even though the change spec says the
+ report is part of the round? The task explicitly says "write that same report to REPORT.md
+ at the worktree root" ✓.
+
+ Final: one absolutely-final full green run right before commit (everything again), then git
+ add + commit with subject 'jobq: the change'.
+
+ One final full battery immediately before committing:
+
+
+ $ cd experiments/control-run/python/jobq && timeout 300 python3 /tmp/run4g.py uv run ruff
+ check src tests bench && timeout 300 python3 /tmp/run4g.py uv run ruff format --check src
+ tests bench | tail -1 && timeout 300 python3 /tmp/run4g.py uv run mypy | tail -1 && timeout
+ 300 python3 /tmp/run4g.py uv run python -m unittest discover -s tests 2>&1 | tail -3 &&
+ timeout 300 python3 /tmp/run4g.py bash check.sh (timeout 920s)
+
+ ... (2 earlier lines, ctrl+o to expand)
+ Success: no issues found in 22 source files
+ Ran 163 tests in 4.205s
+
+ OK
+ check.sh: ok
+
+
+
+ $ git status --porcelain && git add REPORT.md experiments/control-run/python/jobq/src
+ experiments/control-run/python/jobq/tests experiments/control-run/python/jobq/checks
+ experiments/control-run/python/jobq/bench && git status --porcelain | head -30
+
+ ... (31 earlier lines, ctrl+o to expand)
+ M  experiments/control-run/python/jobq/tests/test_jobs.py
+ M  experiments/control-run/python/jobq/tests/test_queue.py
+ M  experiments/control-run/python/jobq/tests/test_server.py
+ M  experiments/control-run/python/jobq/tests/test_sim.py
+ M  experiments/control-run/python/jobq/tests/test_store.py
+
+
+
+ $ git commit -m "jobq: the change" && git log --oneline -2 && git status --porcelain
+
+ ... (1 earlier lines, ctrl+o to expand)
+  18 files changed, 1147 insertions(+), 182 deletions(-)
+  create mode 100644 REPORT.md
+  create mode 100644 experiments/control-run/python/jobq/tests/fixtures/old-log/jobs.log
+ a487a74 jobq: the change
+ 3379a0d jobq: return run-out leases in one durable write; tests/test_queue.py
+
+
+ Committed cleanly, working tree clean, not pushed. Now the final report to the user,
+ matching REPORT.md.
+
+ Committed as a487a74, not pushed, worktree clean. Final report (same text written to
+ REPORT.md at the worktree root):
+
+ jobq: the change — maintainer's report
+
+ Program 1, change 1 (01b-job-queue-change.md): scheduled jobs (delay_ms → run_at, promoted
+ at the next look), retry backoff (backoff_ms; a failed or run-out job with tries left waits
+ in scheduled), POST /jobs/{id}/retry (dead → queued, tries reset), and the
+ attempts/max_attempts → tries/max_tries rename — with old logs still opening. Applied to
+ experiments/control-run/python/jobq/.
+
+ Result: green
+
+ - ruff check, ruff format --check, mypy --strict (pydantic plugin): clean, 22 files
+ - unittest discover: 163 tests OK (114 before) in ~4.2 s, run 4× green; check.sh (real
+ sockets: delayed job, 300 s backoff fail, dead-job retry, scheduled listing,
+ retry-of-live-job 409, old-name 400, compact, restart) run 6× green; bench smoke-ran. Every
+ process under timeout 300 + a 4 GB kill watchdog.
+
+ Durability
+
+ store.py untouched (same log, torn-line rule, one fsync batch, rollback-before-raise). The
+ _look that starts every operation now moves run-out leases and due scheduled jobs in that
+ same single write, so no response reports a change before its record exists — the
+ scheduled-to-queued move included. Retry goes through the one _commit path.
+
+ Old logs
+
+ Job reads attempts/max_attempts as tries/max_tries via AliasChoices; missing backoff_ms
+ reads 0; writes are new-names only. tests/fixtures/old-log/jobs.log was written by this
+ program's previous version through its own CLI (queued/done/dead/leased×2/deleted).
+ OldLogTest opens it with no tool: run-out leases come back queued/dead at the first look,
+ compact leaves no old name.
+
+ Loops to green by cause
+
+ Baseline green at start. 7 failing checks across 6 causes:
+ 1. mypy ×17 — tests/bench still on old names after the src rename. → rename pass; first fix
+ worked.
+ 2. ruff B007 — unused loop var in new sim check. → .values(); first fix worked.
+ 3. unittest 503-test got 409 — my sequencing bug (lease took j_1, j_2 never dead). → own
+ queue for j_1; first fix worked.
+ 4. sim retried 18, then 56, then 78, then 123 (>100) — dead-job supply too low. Two tuning
+ attempts (targeting, share) insufficient; third (ack_rate 0.55, max_tries ≤ 2, 0.85
+ dead-targeting) worked. First fix did not work.
+ 5. ruff format — 4 files never formatted mid-work. → ruff format; first fix worked.
+ 6. invocation error — python -m unittest tests.test_store can't see support; my harness
+ mistake, not the suite's. → discover -k; first fix worked.
+
+ First fix worked in 5 of 6 causes.
+
+ Wall-clock
+
+ ≈ 35 minutes from spec read (with baseline re-derivation) to green, including fixture
+ generation, the sim tuning loop, and verification re-runs.
+
+ Contracts/nevers the change forced open
+
+ ensure on create (queued → scheduled-or-queued) and on lease (renamed); requires added for
+ delay_ms/backoff_ms; ensure on retry (queued, tries 0). Legal-edge set gained (None,
+ scheduled), (scheduled, queued), (leased, scheduled), (dead, queued), (scheduled, None);
+ nevers added: backoff-schedules-else-queued-or-dead, run_at-is-one-backoff-past-the-fail,
+ retry-resets-the-tries, queued-carries-no-run_at; fixed-fields gained backoff_ms; invariant
+ added: run_at exactly while scheduled; "queued has attempts left" widened to
+ waiting-has-tries-left. Left alone: store framing/lock/compaction, token rules, 401/404/405,
+ _commit ordering, never-held-by-two, one-look bound. Timeouts: no new waits in the service;
+ sweep (1 s) now also promotes due jobs; two chosen test deadlines (5 s sweep waits).
+
+ Decisions the spec did not cover
+
+ 1. run_at sits after updated_at, before worker/lease_until/reason in {job}.
+ 2. Old records read via pydantic validation_alias=AliasChoices (+populate_by_name), not a
+ JSON rewrite; a record with both names is refused as corrupt.
+ 3. Old-log fixture made by the previous version's own CLI (60 s leases, always run out at
+ test time); tests copy it since Store.open locks.
+ 4. The idle look keeps the name expire_due; its count includes promoted scheduled jobs; one
+ durable write per look for both move kinds.
+ 5. Retry conflict message "the job is not dead"; any request body on /retry ignored.
+ 6. Retry sets updated_at to now (spec silent on it).
+ 7. A failed job keeps reason while scheduled ("reason after a fail" is tied to the fail, not
+ a state).
+ 8. check-script determinism: delay 3,600,000 ms never due in-run; backoff 300,000 outlives
+ both runs; nothing in run 1 reveals the 100 ms lease's job (precedent from the original
+ script).
+ 9. Sim bounds: delay/backoff < 1,200 ms so the drain terminates; retries biased to
+ known-dead ids with totals asserted; the finished-jobs check permits the one legal change
+ (dead → queued via the observed 200 retry).
+ 10. Health order queued, scheduled, leased, done, dead, uptime_ms; the state=bogus error now
+ names five states.
+ 11. The 4 GB cap: this macOS Python build refuses all rlimit changes, so the cap is
+ /tmp/run4g.py (ps-based tree-RSS poll, kill at 4 GB, verified against a 5 GB hog; harness
+ tool, not committed).
+ 12. test_store.py's job() helper and the bench log writer switched to new names; old-shape
+ coverage lives in the fixture and JobCompatTest.
+
+
+ [compaction]
+
+ Compacted from 153,361 tokens (ctrl+o to expand)
+
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-kimi-python (r9-kimi-python)
+↑152k ↓90k R7.6M ?/128k (auto)                                          (ollama) kimi-k3:cloud

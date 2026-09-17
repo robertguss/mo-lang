@@ -1,0 +1,28 @@
+  Decisions the spec did not cover
+
+  1. Token rule for to: the spec says "as the lease's is" but then describes 1 to 128 bytes. I used this code's actual lease rule, 1 to 256 visible ASCII characters.
+  2. Handoff timestamps: a handoff sets updated_at to now and leaves lease_until and tries alone.
+  3. Handoff to yourself: still needs a live lease and writes nothing.
+  4. Handoff of an archived job: 409, as for ack.
+  5. Order of the rename's checks: an unknown name is 404 first, then renaming onto itself is 409, then a target that has jobs is 409. A bad name in the path is 400.
+  6. Archived jobs count as a queue's jobs for both the 404 and the 409, although GET /queues doesn't list archived jobs.
+  7. Error bodies: the 409s start conflict: exists: … and the 404 reads no such queue "x".
+  8. Rename record format: it also carries next_id, the id counter at the time. Replay needs it to tell which archived jobs existed when the rename happened. A record with the same name
+     twice, no next_id, or a job attached is refused by verify.
+  9. Renames and archived jobs at open: read literally, the spec applies every rename in the log to every archived job. That puts a job archived after a rename in the wrong queue. Instead, a
+     rename applies to an archived job only if it was written after the job was archived and the job already existed.
+  10. Kill between the archive write and the log write: such a job now gets its missing "archived" record in the log at the next write, so a later rename applies to it.
+  11. Compaction order: it now writes both new files first, then replaces the log, then the archive. The open finishes or rolls back a killed compaction. Without this, a kill could leave the
+      old archive, with old queue names, next to a new log that no longer holds the renames.
+  12. "One record": read as one rename record. The same single write may also carry the run-out-lease updates and any owed "archived" records.
+  13. Chaos switch: it counts a rename's write the same way as any other write.
+  14. Pending-job list on rename: the old name's list of waiting jobs is merged into the new name's.
+  15. Deleted archived jobs don't count as jobs of a queue.
+
+✻ Baked for 14m 9s · done 9:32 PM
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion5-go (erosion5-go) | Context: 79% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

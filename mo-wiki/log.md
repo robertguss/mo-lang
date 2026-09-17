@@ -413,3 +413,33 @@
 
 ## [2026-09-16] session | Mac, 02:45: round 9 read, the night closed
 - Round 9 done except Haiku ([[control-run-9]]): the local 27B made no edit in 92 minutes; the reading written. Every session pane is saved in the lead's scratchpad; every worktree is on disk; `HANDOFF.md` is the morning's. Robert's rows: P6 and the BEAM, chapter 10 §1 as built, the erosion round, round 9.
+
+## [2026-09-16] session | Morning: the wiki as a site, the state of the project, the maps
+- Robert's ask on waking: the whole picture, not the trees, and the wiki readable from his phone. Quartz in `site/`, GitHub Pages, every push publishes; [[state-of-the-project]] written from the first commit to this morning; seven maps of content. The lint sees `maps/` and the root pages now (80 issues, most the research pages' type).
+
+## [2026-09-16] session | Morning: round 9's Haiku row, the round closed
+- Haiku 4.5 through Claude Code on round 8's change in three panes (`w4B`), 08:22 to 08:45: 7 to 9 minutes a session, every session stopping at its own tests with the other checks red; 0 regressions everywhere; defects Mo 28 of 189 over 4 causes, Go 22 over 6, Python 18 over 2 ([[control-run-9]]). The first model defective in every language; Mo's miss is the due job never queued. One `semantic` row for Robert. The suite outputs and the panes of every round 9 row saved under `control-run-9-suite/results/`.
+
+## [2026-09-16] session | Morning: P6 on Mo's change 2, the outage closed, the restart the program's
+- The change 2 queue crashed through the runtime surface under 10,000 requests a second, under both runtimes: every request `503` within 2 ms from then, nothing acknowledged lost, no restart by the program's `:never` ([[erosion-round]], the P6 section). A ten-line probe shows a restarted process re-runs its state initializers with its capabilities, so the reopening store is writable today and is change 3. `/crashes` was empty under the default ring: step 32 ([[interpreter-step-32]]) briefed to the worker in `w44:p3`. Chapters 3 and 10 amended; three rows, one `semantic` for Robert.
+
+## [2026-09-16] session | Morning: step 32 accepted
+- Crash reports kept apart from the event ring in both runtimes, the last 16; `restart-reopens.mo` in the corpus; the P6 probe with the default ring lists the crash under both runtimes ([[interpreter-step-32]]). One Opus session, 63 minutes, three commits. Verified by Fable's own probes; the bench rows within noise. Four rows: the acceptance, the ratified defaults, the unbounded full-report list as a queued step, a corpus flake under load.
+
+## [2026-09-16] session | Late morning: change 3 sealed, generation three run and read
+- Change 3, the store that restarts itself with a budget and a chaos switch, sealed at 10:20; four Opus maintainers at 10:22, done in 10 to 23 minutes ([[erosion-round]]). The fourth suite: Mo 55 of 55 under both runtimes, Go 55, Python 55, Elixir 53. P6 on Mo: the queue killed under load back in 106 ms, nothing lost; the BEAM's row answered. Chapter 10 §2 gains the budget as a value. Four rows, two `semantic` for Robert. Step 33, the crash report leak, next.
+
+## [2026-09-16] session | Midday: step 33 accepted
+- The crash report freed after it is printed in both runtimes (46 MiB a restart to under 0.3 on a 20,000-job queue), the interpreter's abort on a large log's open fixed, the unwritable and restart categories green, P6 back in 102 and 203 ms ([[interpreter-step-33]]). One Opus session, 86 minutes, three commits. Three rows. Change 4 next.
+
+## [2026-09-16] session | Afternoon: change 4 sealed, generation four run and read
+- Change 4, idempotent creates and the archive, sealed at 13:03; four maintainers from 13:05, interrupted by the Mac sleeping (held awake from 14:13); the fifth suite Mo 77 of 77 both runtimes, Python 77, Go 76, Elixir 76; nothing new eroded in four generations ([[erosion-round]]). Two rows, one `semantic` for Robert. Robert's rules recorded in the skill: workspaces closed when done, every run in a fresh pane.
+
+## [2026-09-16] session | Afternoon pause: step 34 at part A, the handoff for either machine
+- Step 34, placement, begun 15:08 and paused after part A (placement with the starter, both runtimes, pushed) because Robert takes the Mac; parts B and C need its cores ([[interpreter-step-34]]). Every evidence branch pushed (`erosion3-*`, `erosion4-*`, `r9-haiku-*`). `HANDOFF.md` rewritten for the next session on the Mac (preferred) or the VM. One row.
+
+## [2026-09-16] session | Evening on the Mac: step 34 accepted, change 5 sealed, generation five pre-registered
+- Back on the Mac at 16:40. Step 34 parts B and C by a fresh Opus session (16:50 to 20:46), accepted 21:20: the cross-scheduler ask from 4 to 5.6 s per 100,000 to 0.14, the queue's pairs level across cores, four rows still past the criterion by the main-starts rule ([[interpreter-step-34]]). Fable's probe found generation four's Mo queue nine times slower on the lease path than every earlier generation (452 against 4,040 pairs a second): the round records speed per generation from now on. Change 5 sealed at 17:00 and generation five pre-registered on [[erosion-round]]; the four worktrees branched. Five rows, one `semantic` for Robert.
+
+## [2026-09-16] session | Late evening: generation five run and read
+- Four Opus maintainers on change 5 from 21:18, done in 11 to 25 minutes; the sixth suite written after they started and amended four times as every program failed the same checks the same way; Python 94, Elixir 94, Go 92, Mo 93 of 94 under both runtimes: the first Mo-only defect in six suites (a folder its own `compact` leaves in a state its own `verify` refuses), and no `never` tripped on a wrong edit ([[erosion-round]]). The speed row per generation added. Four rows, one `semantic` for Robert. The state page and the handoff rewritten; the workspace closed.

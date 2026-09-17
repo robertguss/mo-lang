@@ -1,8 +1,11 @@
 //! Turns: how Mo.Server runs processes (design-v0/03, effects and processes; steps 11, 21, 30).
 //! A program runs its processes on every core (step 30): one scheduler per core, `MO_CORES` of them
 //! when it is set and the machine's cores otherwise, scheduler 0 on main's thread and each other on a
-//! thread of its own. A process is placed at its start on the scheduler with the fewest live
-//! processes and stays there for its life. Each scheduler runs its processes' updates one at a time,
+//! thread of its own. A process is placed at its start and stays there for its life (placeFor): one an
+//! update starts goes on its starter's scheduler, unless that one holds more than place_factor times
+//! its share of the live processes, and one main starts, or one past the share, goes on the scheduler
+//! with the fewest live processes (step 34). So a worker runs where the process that started it runs,
+//! and a request path that never crosses costs what one scheduler costs. Each scheduler runs its processes' updates one at a time,
 //! each on a fiber of its own (fiber.zig) with a Vm of its own, and nothing a process sees depends on
 //! where it runs: nothing is shared, and a message is a copy. `MO_CORES=1` is one scheduler, no
 //! thread, and no lock: the runtime of step 29b.
@@ -23,10 +26,11 @@
 //! every other process keeps taking messages.
 //!
 //! A scheduler hands its thread out: first to a process whose wait ended, then to the next of its
-//! processes with a message waiting, round by round in start order. With none to hand out it waits
-//! in its own poller (poller.zig) for a socket one of its processes waits on, for a wake another
-//! scheduler writes when it puts something in one of this one's mailboxes, or for the earliest
-//! deadline. Scheduler 0 also runs main's code, the runtime's loops (sources.zig), and the delayed
+//! processes with a message waiting, round by round in start order. With none to hand out it spins a
+//! moment, then waits in its own poller (poller.zig) for a socket one of its processes waits on, for a
+//! wake another scheduler writes when it puts something in one of this one's mailboxes, or for the
+//! earliest deadline; with no socket of its own armed it waits on its state word instead (idle, step
+//! 34). Scheduler 0 also runs main's code, the runtime's loops (sources.zig), and the delayed
 //! sends (one heap, under the lock). main's thread runs main's code whenever no update of scheduler
 //! 0 does; after each of main's statements it hands the thread out until every scheduler has
 //! nothing left to hand out, so main's sends are delivered before its next statement, as before. A
@@ -111,6 +115,21 @@ pub fn coresFrom(text: ?[]const u8) u32 {
     return @intCast(@min(@max(n, 1), most_cores));
 }
 
+/// How placement chooses (step 34): `MO_PLACE=spread` places every process on the scheduler with the
+/// fewest live processes, step 30's rule, for the comparison rows; anything else places with the
+/// starter.
+pub const Placing = enum { starter, spread };
+
+pub fn placingFrom(text: ?[]const u8) Placing {
+    if (text) |t| if (std.mem.eql(u8, std.mem.trim(u8, t, " \t"), "spread")) return .spread;
+    return .starter;
+}
+
+/// A starter's scheduler keeps a process it starts while it holds at most this many times its share
+/// of the live processes, the share being the live processes, the new one among them, over the
+/// schedulers, rounded up (step 34). Past it, the new process goes where the fewest live.
+pub const place_factor: u32 = 2;
+
 /// The fewest quiet events (Turns.quiet) between two sweeps.
 pub const sweep_min: u32 = 64;
 /// Ended processes whose regions wait for the next processes given their ids, at most, per scheduler:
@@ -141,6 +160,8 @@ pub const Worker = struct {
     phase: enum { idle, running, waiting } = .idle,
     /// In its scheduler's ready queue.
     queued: bool = false,
+    /// Where it is in its scheduler's parked list, while it is there (step 34).
+    parked_at: ?u32 = null,
     /// What its update ended with, for whoever gets the thread back.
     failed: ?Error = null,
     /// Its region is released, after a sweep ended its process and more than kept_workers
@@ -211,14 +232,19 @@ pub const Sched = struct {
     /// Made when something first waits on a socket; with more than one scheduler, at the start.
     poller: ?Poller = null,
     wake: Wake = .{},
-    /// Its thread: `running`, `spinning` a moment before it sleeps, or `sleeping` in its poller, with
-    /// the lock let go (Turns.idle); and whether it was given something since it began to wait. A
-    /// scheduler that gives it something sets `poked`, and writes its wake only when it sleeps, so a
-    /// handoff between two busy schedulers costs no system call.
-    state: std.atomic.Value(u8) = .init(thread_running),
-    poked: std.atomic.Value(bool) = .init(false),
+    /// Its thread: `running`, `spinning` a moment before it sleeps, `sleeping` in its poller, or
+    /// `parked` on this value when no socket of its own is armed, with the lock let go (Turns.idle),
+    /// or `poked`: given something since it began to wait. A scheduler that gives it something swaps in
+    /// `poked` and wakes it only when what it swapped out says it sleeps, so a handoff between two busy
+    /// schedulers costs no system call. One word, so a poke and a sleep cannot miss each other (step
+    /// 34: with a flag and a state apart, a thread now and then slept out its second with a poke in).
+    state: std.atomic.Value(u32) = .init(thread_running),
+    /// When its thread last looked at its poller.
+    polled_at: Io.Clock.Timestamp = .{ .raw = .zero, .clock = .awake },
     /// Its last look found nothing to hand out, and nothing has been given it since (Turns.settle).
     resting: bool = true,
+    /// A sweep kept it from handing out a turn: the sweep's end wakes it.
+    held_back: bool = false,
     /// Processes whose wait ended, oldest first from `ready_head`; each at most once.
     ready: std.ArrayList(u32) = .empty,
     ready_head: usize = 0,
@@ -226,6 +252,9 @@ pub const Sched = struct {
     fibers: std.ArrayList(*Fiber) = .empty,
     /// Its processes parked in an ask or a Net call, each with its deadline.
     parked: std.ArrayList(Parked) = .empty,
+    /// No parked deadline is earlier than this; one may be later, since a wake does not raise it
+    /// (step 34): the list is scanned only once this has passed.
+    parked_due: i64 = std.math.maxInt(i64),
     /// Where the next round of deliveries starts.
     cursor: u32 = 0,
     /// Its process ids that may have a message waiting: set when one is put in a mailbox
@@ -239,6 +268,11 @@ pub const Sched = struct {
     arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator),
     /// Processes live on it, which placement counts.
     live: u32 = 0,
+    /// Processes placed on it: in all, and those with their starter (step 34), for `MO_STATS=1`.
+    placed: u32 = 0,
+    with_starter: u32 = 0,
+    /// Asks its processes made of a process on another scheduler, for `MO_STATS=1`.
+    asks_across: u64 = 0,
     /// Its processes a sweep found ended, whose Vms and regions it has yet to free.
     to_end: std.ArrayList(u32) = .empty,
     /// Ids of its ended processes, the last ended last: the next start placed here takes the last.
@@ -260,17 +294,24 @@ pub const Sched = struct {
     }
 };
 
-const thread_running: u8 = 0;
-const thread_spinning: u8 = 1;
-const thread_sleeping: u8 = 2;
-/// How many times a scheduler with nothing to do looks for a poke before it sleeps in its poller:
-/// about 50 µs, longer than an update another scheduler hands it usually takes. Every poll_every
-/// of them it looks at its own poller without waiting, so a socket's reply is not kept waiting.
-const spins: u32 = 2_000;
-/// How many spins go by between two looks at the scheduler's own poller while it spins.
+const thread_running: u32 = 0;
+const thread_spinning: u32 = 1;
+const thread_sleeping: u32 = 2;
+const thread_parked: u32 = 3;
+const thread_poked: u32 = 4;
+/// How long a scheduler with nothing to do spins on the poke before it sleeps (step 34): longer than
+/// an update another scheduler hands it usually takes, so an ask across schedulers meets a thread
+/// awake. One with sockets armed spins as long, looking at its poller every poll_every spins; one with
+/// none never calls the system while it spins, since a look at the poller costs 8 to 13 µs on macOS,
+/// as much as the handoff it waits for.
+const spin_ns: i96 = 200_000;
+const spin_sockets_ns: i96 = 200_000;
+/// A scheduler poked out of its spin looks at its armed sockets at most this often.
+const poked_poll_ns: i96 = 200_000;
+/// How many spins go by between two looks at the clock, and at the poller when sockets are armed.
 const poll_every: u32 = 64;
 /// How many times a thread tries for the runtime's lock before it waits for it in the system.
-const lock_spins: u32 = 200;
+const lock_spins: u32 = 20_000;
 
 /// Sweeps the last run made, and the ones that did not run because a scheduler stayed in Mo code
 /// past stop_wait_ms, for `MO_STATS=1`.
@@ -285,6 +326,21 @@ pub threadlocal var here: ?*Sched = null;
 /// The last run's schedulers' counts, for `MO_STATS=1` (main.zig): `last_cores` of them.
 pub var last_stats: [most_cores]region_mod.Stats = [_]region_mod.Stats{.{}} ** most_cores;
 pub var last_cores: u32 = 0;
+/// The last run's placement counts per scheduler, for `MO_STATS=1`: placed, with the starter, live
+/// at the end, and asks made across.
+pub const Placement = struct { placed: u32 = 0, with_starter: u32 = 0, live: u32 = 0, asks_across: u64 = 0 };
+pub var last_placement: [most_cores]Placement = [_]Placement{.{}} ** most_cores;
+/// While a run lasts, its schedulers, so a signal can print where the processes went.
+pub var live_turns: ?*Turns = null;
+
+/// Scheduler `k`'s placement counts: the running run's, read without the lock, else the last run's.
+pub fn placementOf(k: usize) Placement {
+    if (live_turns) |t| if (k < t.scheds.len) {
+        const s = t.scheds[k];
+        return .{ .placed = s.placed, .with_starter = s.with_starter, .live = s.live, .asks_across = s.asks_across };
+    };
+    return last_placement[k];
+}
 /// While a run lasts, where each scheduler's thread counts, so a signal can print them.
 pub var live_stats: [most_cores]?*const region_mod.Stats = [_]?*const region_mod.Stats{null} ** most_cores;
 
@@ -299,6 +355,8 @@ pub const Turns = struct {
     scheds: []*Sched = &.{},
     /// More than one scheduler: the lock is taken.
     multi: bool = false,
+    /// How a process about to start is placed (`MO_PLACE`).
+    placing: Placing = .starter,
     mutex: Io.Mutex = .init,
     /// Each process's scheduler, by process id.
     homes: std.ArrayList(u16) = .empty,
@@ -349,8 +407,9 @@ pub const Turns = struct {
     /// The run's schedulers: `cores` of them, scheduler 0 on this thread compacting through
     /// `scratch`, each other through a scratch region of its own. With more than one, their threads
     /// start, and this thread holds the lock while main's code runs.
-    pub fn begin(t: *Turns, sim: *Sim, main_vm: *Vm, cores: u32, scratch: ?*Region) Error!void {
+    pub fn begin(t: *Turns, sim: *Sim, main_vm: *Vm, cores: u32, placing: Placing, scratch: ?*Region) Error!void {
         t.sim = sim;
+        t.placing = placing;
         t.main_vm = main_vm;
         const n = @max(cores, 1);
         t.scheds = std.heap.smp_allocator.alloc(*Sched, n) catch return error.OutOfMemory;
@@ -367,6 +426,7 @@ pub const Turns = struct {
         }
         t.multi = n > 1;
         last_cores = n;
+        live_turns = t;
         sweeps_run = 0;
         sweeps_missed = 0;
         if (!t.multi) return;
@@ -433,8 +493,17 @@ pub const Turns = struct {
     pub fn stir(t: *Turns, s: *Sched) void {
         s.resting = false;
         if (!t.multi or here == s) return;
-        s.poked.store(true, .release);
-        if (s.state.load(.acquire) == thread_sleeping) s.wake.signal();
+        t.rouse(s);
+    }
+
+    /// Scheduler `s`'s thread is poked, and woken if it sleeps: through its wake when it sleeps in its
+    /// poller, through its state when it sleeps on that (Turns.idle).
+    fn rouse(t: *Turns, s: *Sched) void {
+        switch (s.state.swap(thread_poked, .seq_cst)) {
+            thread_sleeping => s.wake.signal(),
+            thread_parked => Io.futexWake(t.io, u32, &s.state.raw, 1),
+            else => {},
+        }
     }
 
     /// Scheduler `s` found nothing to hand out.
@@ -547,7 +616,12 @@ pub const Turns = struct {
     fn startTurns(t: *Turns) void {
         t.sweeping = false;
         t.sweeper = null;
-        for (t.scheds) |x| t.stir(x);
+        // Only the schedulers the sweep held back, or given something meanwhile, look again: waking
+        // every scheduler at every sweep's end costs a thread's wake each (step 34).
+        for (t.scheds) |x| if (x.held_back or !x.resting) {
+            x.held_back = false;
+            t.stir(x);
+        };
     }
 
     /// A scheduler's thread goes from `from` to `to`: `updating` counts the schedulers whose thread runs
@@ -559,14 +633,36 @@ pub const Turns = struct {
 
     // ---- placing
 
-    /// Where a process about to start goes: the scheduler with the fewest live processes, the first
-    /// of those tied, and the id of the last process that ended there, if one waits.
+    /// Where a process about to start goes, and the id of the last process that ended there, if one
+    /// waits: its starter's scheduler when an update starts it and that scheduler holds no more than
+    /// place_factor times its share of the live processes (step 34), else the scheduler with the
+    /// fewest live processes, the first of those tied.
     pub fn place(t: *Turns) struct { sched: u32, id: ?u32 } {
+        const k = t.placeFor();
+        const s = t.scheds[k];
+        s.placed += 1;
+        return .{ .sched = k, .id = s.free_ids.pop() };
+    }
+
+    fn placeFor(t: *Turns) u32 {
+        if (t.multi and t.placing == .starter) {
+            const s = t.cur();
+            if (s.holder != main_turn) {
+                var total: u32 = 1;
+                for (t.scheds) |x| total += x.live;
+                const n: u32 = @intCast(t.scheds.len);
+                const share = (total + n - 1) / n;
+                if (s.live + 1 <= place_factor * share) {
+                    s.with_starter += 1;
+                    return s.index;
+                }
+            }
+        }
         var best: usize = 0;
         for (t.scheds, 0..) |s, k| if (s.live < t.scheds[best].live) {
             best = k;
         };
-        return .{ .sched = @intCast(best), .id = t.scheds[best].free_ids.pop() };
+        return @intCast(best);
     }
 
     /// Process `id` started on scheduler `k`; `quiet` when a start call began it, so it may finish.
@@ -737,7 +833,7 @@ pub const Turns = struct {
         const running = sim.running;
         // Woken early (a crash elsewhere wakes every parked process), it parks again.
         while (!w.fired and t.now() < deadline) {
-            try s.parked.append(std.heap.smp_allocator, .{ .id = id, .deadline = deadline });
+            try t.parkOn(s, id, deadline);
             me.phase = .waiting;
             t.switchTo(s, me.caller);
         }
@@ -753,8 +849,23 @@ pub const Turns = struct {
         const w = t.workers.items[id].?;
         const vm = sim.vm;
         const running = sim.running;
-        try s.parked.append(std.heap.smp_allocator, .{ .id = id, .deadline = deadline });
+        try t.parkOn(s, id, deadline);
         w.phase = .waiting;
+        t.switchTo(s, w.caller);
+        sim.vm = vm;
+        sim.running = running;
+    }
+
+    /// The update holding this thread gives it back and is handed it again once a sweep has ended:
+    /// it waits in its scheduler's ready queue, which no step reads while the sweep waits.
+    fn stepAside(t: *Turns, sim: *Sim) Error!void {
+        const s = t.cur();
+        const id = s.holder;
+        const w = t.workers.items[id].?;
+        const vm = sim.vm;
+        const running = sim.running;
+        w.phase = .waiting;
+        t.pushReady(id);
         t.switchTo(s, w.caller);
         sim.vm = vm;
         sim.running = running;
@@ -763,11 +874,26 @@ pub const Turns = struct {
     /// Process `id`'s wait ended: it leaves its scheduler's parked list and is switched to next.
     fn wake(t: *Turns, id: u32) void {
         const s = t.scheds[t.homeOf(id)];
-        for (s.parked.items, 0..) |p, k| if (p.id == id) {
-            _ = s.parked.swapRemove(k);
-            break;
-        };
+        if (t.workers.items[id].?.parked_at) |k| _ = t.unpark(s, k);
         t.pushReady(id);
+    }
+
+    /// Process `id` goes on `s`'s parked list until `deadline`.
+    fn parkOn(t: *Turns, s: *Sched, id: u32, deadline: i64) Error!void {
+        const w = t.workers.items[id].?;
+        std.debug.assert(w.parked_at == null);
+        try s.parked.append(std.heap.smp_allocator, .{ .id = id, .deadline = deadline });
+        w.parked_at = @intCast(s.parked.items.len - 1);
+        s.parked_due = @min(s.parked_due, deadline);
+    }
+
+    /// The process at `k` of `s`'s parked list leaves it, in constant time; its id.
+    fn unpark(t: *Turns, s: *Sched, k: u32) u32 {
+        const gone = s.parked.swapRemove(k);
+        t.workers.items[gone.id].?.parked_at = null;
+        if (k < s.parked.items.len) t.workers.items[s.parked.items[k].id].?.parked_at = k;
+        if (s.parked.items.len == 0) s.parked_due = std.math.maxInt(i64);
+        return gone.id;
     }
 
     /// A scheduler with no turn to hand out: waits in its poller until a socket something on it waits
@@ -777,6 +903,7 @@ pub const Turns = struct {
         // While a sweep waits for its turn this scheduler hands nothing out (step), so it waits here
         // without the lock whatever it has ready, until the sweep's end pokes it.
         const held_back = t.sweeping and t.sweeper != s;
+        if (held_back) s.held_back = true;
         if (!held_back and (s.ready_head < s.ready.items.len or s.to_end.items.len > 0)) return;
         if (also) |w| if (w.fired) return;
         if (t.failure != null or t.stopping) return;
@@ -786,7 +913,7 @@ pub const Turns = struct {
             if (sources.nextDeadline(sim)) |d| until = if (until) |u| @min(u, d) else d;
             if (sim.nextLater()) |d| until = if (until) |u| @min(u, d) else d;
         }
-        for (s.parked.items) |p| until = if (until) |u| @min(u, p.deadline) else p.deadline;
+        if (s.parked.items.len > 0) until = if (until) |u| @min(u, s.parked_due) else s.parked_due;
         const p = s.pollerOf() catch return;
         if (t.multi) _ = p.arm(&s.wake.waiter);
         // At least once a second, whatever the deadlines say: nothing waits past a lost report.
@@ -794,24 +921,45 @@ pub const Turns = struct {
         var n: usize = 0;
         if (t.multi) {
             // Nothing can be given it while it holds the lock, so a poke from here on is news.
-            s.poked.store(false, .release);
             s.state.store(thread_spinning, .release);
             const h = t.letGo(s);
-            // While it spins it also looks at its own sockets now and then, without waiting: a reply that
-            // comes on a socket is as much news as a poke.
+            // It spins a moment on the poke alone (step 34). One with a socket of its own armed also looks
+            // at its poller now and then, without waiting: a reply that comes on a socket is as much news
+            // as a poke. One with nothing armed but its wake never calls the system while it spins, since
+            // a look at the poller costs as much as the handoff it waits for.
+            const sockets = p.armed > 1;
+            const began = Io.Clock.Timestamp.now(t.io, .awake);
             var k: u32 = 0;
-            while (k < spins and !s.poked.load(.acquire)) : (k += 1) {
+            while (s.state.load(.acquire) != thread_poked) : (k += 1) {
                 if (k % poll_every == poll_every - 1) {
-                    n = p.wait(0, &s.fired);
-                    if (n > 0) break;
+                    if (sockets) {
+                        n = p.wait(0, &s.fired);
+                        if (n > 0) break;
+                    }
+                    const spun = began.durationTo(Io.Clock.Timestamp.now(t.io, .awake)).raw.toNanoseconds();
+                    if (spun >= if (sockets) spin_sockets_ns else spin_ns) break;
                 }
                 std.atomic.spinLoopHint();
             }
             if (n == 0) {
-                // Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake.
-                if (!s.poked.load(.acquire)) s.state.store(thread_sleeping, .release);
-                // Poked: its sockets are still looked at, without waiting.
-                n = p.wait(if (s.poked.load(.acquire)) 0 else left, &s.fired);
+                // Asleep only if no poke came, in the same exchange that says so: a poke that comes after
+                // swaps the sleep out and wakes it. One with a socket armed sleeps in its poller, one with
+                // none on its state, which costs less to wake than a descriptor.
+                const sleep = if (sockets) thread_sleeping else thread_parked;
+                if (s.state.cmpxchgStrong(thread_spinning, sleep, .seq_cst, .seq_cst) == null) {
+                    if (sockets) {
+                        n = p.wait(left, &s.fired);
+                        s.polled_at = Io.Clock.Timestamp.now(t.io, .awake);
+                    } else {
+                        const d: Io.Clock.Duration = .{ .raw = .fromMilliseconds(left), .clock = .awake };
+                        Io.futexWaitTimeout(t.io, u32, &s.state.raw, thread_parked, .{ .duration = d }) catch {};
+                    }
+                } else if (sockets and s.polled_at.durationTo(Io.Clock.Timestamp.now(t.io, .awake)).raw.toNanoseconds() >= poked_poll_ns) {
+                    // Poked: its sockets are still looked at, without waiting, now and then, so a scheduler
+                    // kept busy by pokes still hears them.
+                    n = p.wait(0, &s.fired);
+                    s.polled_at = Io.Clock.Timestamp.now(t.io, .awake);
+                }
             }
             s.state.store(thread_running, .release);
             t.takeBack(s, h);
@@ -831,7 +979,10 @@ pub const Turns = struct {
         const s = t.cur();
         if (t.failure) |err| return err;
         // A sweep waits for the updates in progress to park or end: none starts or resumes meanwhile.
-        if (t.sweeping and t.sweeper != s) return false;
+        if (t.sweeping and t.sweeper != s) {
+            s.held_back = true;
+            return false;
+        }
         if (s.to_end.items.len > 0) t.endOwn(s);
         if (t.quiet >= t.sweep_at) try t.sweep(sim);
         while (s.fibers.items.len > kept_fibers) s.fibers.pop().?.destroy();
@@ -840,9 +991,20 @@ pub const Turns = struct {
         if (s.index == 0) try sources.pumpServer(sim, t);
         _ = try sim.dueLater();
         const now_ms = t.now();
-        var k: usize = 0;
-        while (k < s.parked.items.len) {
-            if (s.parked.items[k].deadline <= now_ms) t.pushReady(s.parked.swapRemove(k).id) else k += 1;
+        if (now_ms >= s.parked_due) {
+            // A deadline is due: the list is scanned, and the earliest left is found again.
+            var due: i64 = std.math.maxInt(i64);
+            var k: u32 = 0;
+            while (k < s.parked.items.len) {
+                const d = s.parked.items[k].deadline;
+                if (d <= now_ms) {
+                    t.pushReady(t.unpark(s, k));
+                } else {
+                    due = @min(due, d);
+                    k += 1;
+                }
+            }
+            s.parked_due = due;
         }
         while (t.popReady(s)) |id| {
             const w = t.workers.items[id].?;
@@ -1085,6 +1247,7 @@ pub const Turns = struct {
         const target = &sim.procs.items[to];
         target.mailbox.items[target.mailbox.items.len - 1].deadline = deadline;
         const same = t.homeOf(to) == s.index;
+        if (!same) s.asks_across += 1;
         while (true) {
             // A wait elsewhere doomed this ask (sim.zig, held sends): Sim.ask crashes the update.
             if (sim.running) |me| if (sim.procs.items[me].doomed != null) {
@@ -1107,7 +1270,13 @@ pub const Turns = struct {
                 _ = t.awaiting.remove(seq);
                 return sim.askError(if (p.up) "Timeout" else "Down");
             }
-            if (same and !p.busy and !p.paused and p.queued() > 0) {
+            if (same and t.multi and s.holder != main_turn and (if (t.sweeping) t.sweeper != s else t.quiet >= t.sweep_at)) {
+                // A sweep waits, or is due, and waits for every update in progress to park or end: this
+                // one steps aside at its ask rather than deliver on its own thread, so its scheduler's
+                // loop may sweep, and goes on after (step 34: with its targets on its own scheduler, a
+                // spawner never parked, sweeps missed, and ended processes piled up).
+                try t.stepAside(sim);
+            } else if (same and !p.busy and !p.paused and p.queued() > 0) {
                 try t.handTo(sim, to, .deliver);
             } else if (s.holder != main_turn) {
                 try t.park(sim, deadline);
@@ -1190,13 +1359,19 @@ pub const Turns = struct {
         try t.answers.put(std.heap.smp_allocator, seq, if (reply) |v| .{ .value = v, .parcel = parcel } else null);
         // main looks for its answer each time round its ask; a parked process is woken.
         if (kv.value == main_turn) return t.stir(t.scheds[0]);
-        const s = t.scheds[t.homeOf(kv.value)];
-        for (s.parked.items) |p| if (p.id == kv.value) return t.wake(p.id);
+        if (t.workers.items[kv.value].?.parked_at != null) t.wake(kv.value);
     }
 
     /// A process crashed: every parked process looks at what it waits for again.
     pub fn wakeAll(t: *Turns) void {
-        for (t.scheds) |s| while (s.parked.pop()) |p| t.pushReady(p.id);
+        for (t.scheds) |s| {
+            for (s.parked.items) |p| {
+                t.workers.items[p.id].?.parked_at = null;
+                t.pushReady(p.id);
+            }
+            s.parked.clearRetainingCapacity();
+            s.parked_due = std.math.maxInt(i64);
+        }
         if (t.multi) t.stir(t.scheds[0]);
     }
 
@@ -1213,7 +1388,10 @@ pub const Turns = struct {
         sources.stopServer(sim, t);
         if (t.multi) {
             t.stopping = true;
-            for (t.scheds[1..]) |s| s.wake.signal();
+            for (t.scheds[1..]) |s| {
+                s.wake.signal();
+                t.rouse(s);
+            }
             const main_sched = t.scheds[0];
             const h = t.letGo(main_sched);
             for (t.scheds[1..]) |s| if (s.thread) |th| th.join();
@@ -1228,6 +1406,8 @@ pub const Turns = struct {
             w.values = null;
             w.ended = true;
         }
+        for (0..t.scheds.len) |k| last_placement[k] = placementOf(k);
+        live_turns = null;
         for (t.scheds) |s| {
             for (s.fibers.items) |f| f.destroy();
             s.fibers.clearRetainingCapacity();

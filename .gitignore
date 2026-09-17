@@ -4,3 +4,5 @@ zig-cache/
 zig-out/
 mo-wiki/.obsidian/workspace.json
 .amp/portals/*
+.zig-cache/
+__pycache__/

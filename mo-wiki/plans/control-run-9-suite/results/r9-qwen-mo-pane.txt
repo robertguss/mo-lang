@@ -1,0 +1,400 @@
+
+ I'll start by reading the spec and understanding the project structure.
+
+
+ read ~/Projects/startups/mo-lang/mo-wiki/spec/programs/01b-job-queue-change.md
+
+ # Program 1, change 1: scheduled jobs, retry backoff, and the `tries` rename
+
+ A change to `jobq` as specified in `01-job-queue.md`, the first change any program in this
+ project has received after it was finished. Written by Claude (Fable) in session 7, 15 Sep
+ 2026, for control run 8, the maintenance round: a fresh agent that has never seen the
+ program gets the finished program, this page, and the instruction that the tests must pass
+ and the service must keep its durability. Everything `01-job-queue.md` says still holds
+ unless a line below changes it. The shape is a product ticket: a producer wants to delay a
+ job, a worker wants a failed job to wait before it is tried again, an operator wants a dead
+ job back, and the API's counters get the names the team uses.
+
+ ## What changes, in one screen
+
+ 1. A job may be **scheduled**: created with a delay, or put back with a backoff after a
+ fail, it waits until its `run_at` and is queued at the next look after that.
+ 2. A dead job may be **retried** through a new route, which puts it back in its queue with
+ its tries reset.
+ 3. `attempts` and `max_attempts` are renamed **`tries`** and **`max_tries`** everywhere the
+ service speaks: requests, responses, listings, and the records it writes.
+ 4. **A log the old service wrote still opens.** The rename and the new fields change the
+ record; the store must replay a log written before this change, read the old names, and
+ after `compact` hold only the new ones.
+ ... (73 more lines, ctrl+o to expand)
+
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/README.md
+
+ # examples/
+
+ The Mo program corpus: 50 tiny modules. Together they cover every construct in
+ `mo-wiki/spec/design-v0/04-syntax.md` and every production in `mo-wiki/spec/grammar.md`, one
+ construct per file. The corpus is the first test of the syntax, the first training material
+ for agents, and the first test suite for the interpreter.
+
+ Two rules a reader needs:
+
+ - **File path equals module path.** `module Basics.Bindings` lives at `basics/bindings.mo`.
+ A multi-word segment is hyphenated: `Basics.AnonymousFunctions` lives at
+ `basics/anonymous-functions.mo`.
+ - **Everything in `rejects/` must fail to compile.** Each file there breaks exactly one law,
+ named on its `# expect MO0xxx: sentence` line: the code the checker's first diagnostic must
+ carry, and the sentence it prints.
+
+ Where the grammar and chapter 4 ran out, the corpus used the plainest option and recorded it
+ in `GAPS.md`.
+ ... (123 more lines, ctrl+o to expand)
+
+
+ Let me explore the jobq program directory and understand its current structure.
+
+ Let me explore the jobq program structure and read the key files.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-mo && ls -la
+ examples/programs/jobq/ && echo "---DATA---" && ls -la examples/programs/jobq/data/
+ 2>/dev/null && echo "---TREE---" && find examples/programs/jobq -type f | sort
+
+ ... (36 earlier lines, ctrl+o to expand)
+ examples/programs/jobq/main.mo
+ examples/programs/jobq/queue.mo
+ examples/programs/jobq/server.mo
+ examples/programs/jobq/store.mo
+ examples/programs/jobq/TOOLCHAIN-BUGS.md
+
+ Took 0.0s
+
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-mo && ls -la toolchain/zig-out/bin/
+ && echo "---" && cat toolchain/zig-out/bin/*.ids 2>/dev/null | head -1; file
+ toolchain/zig-out/bin/mo
+
+ ... (1 earlier lines, ctrl+o to expand)
+ drwxr-xr-x@ 3 robertguss  staff       96 Sep 16 01:09 .
+ drwxr-xr-x@ 3 robertguss  staff       96 Sep 16 01:09 ..
+ -rwxr-xr-x@ 1 robertguss  staff  2831408 Sep 16 01:09 mo
+ ---
+ toolchain/zig-out/bin/mo: Mach-O 64-bit executable arm64
+
+ Took 0.0s
+
+
+ Let me read all the mo files. Let me start with job.mo, store.mo, and then the rest.
+
+ Let me read the core module files. Starting with job.mo.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/job.mo
+
+ module Jobq.Job
+ expose Phase, Job, Settled, Look, job, leased, acked, failed, looked, holds?, run_out?,
+ queue?, payload?, reason?, token?, attempts?, lease_ms?, id_of, number_of, phase_named,
+ phase_name, shown, decoded, to_ms
+
+ intent "A job and its rules: a queue's name, a payload, attempts, and a lease; each move
+ between the four states as a function whose contracts say what it leaves; and the one line
+ of JSON a job is kept as, which is also what the API shows."
+
+ never "a job's attempts exceed its max_attempts"
+   for j in Job.all
+     j.attempts > j.max_attempts
+   end
+ end
+ ... (425 more lines, ctrl+o to expand)
+
+
+ This is a large task. Let me read all the other modules to understand the full picture. Let
+ me read store.mo, board.mo, api.mo, queue.mo, server.mo, main.mo.
+
+ Now let me read store.mo, board.mo, and the others.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/store.mo
+
+ # recipe: Recipes.Store.Store
+ module Jobq.Store
+ expose StoreError, Read, Reopened, Table, key?, value?, open, get, count, log, cut_short?,
+ put, delete, keys, compact, put_all, writing_to, lines, bytes, blank, pairs, journaled,
+ rewritten, emptied, line_of
+
+ intent "The store recipe (examples/recipes/store.mo) implemented for jobq over Fs, copied by
+ hand from notes's Notes.Store, its keys spread over 256 small maps so a change copies one
+ small map: String keys to String values, a log named jobq.log in a folder with a SET or DEL
+ line per change, each change appended and on disk before it returns, and put_all appending
+ many changes in one write, so one fsync covers them; replay leaves out a last line cut
+ short, and compaction writes one line per live key beside the log and renames it over the
+ log."
+
+ never "a value read is not the last one written"
+   for r in Read.all
+     r.value != r.written
+   end
+ ... (542 more lines, ctrl+o to expand)
+
+
+ The store's log format is SET key value\n / DEL key\n. The value is the job's JSON. So the
+ rename of attempts->tries etc. happens at the job.mo level (JSON), not the store level. The
+ replay of old log: the store replays the log and the value is a JSON string, which is
+ decoded by job.decodded. So to replay a log that the old service wrote, the decoded function
+ in job.mo must read old names (attempts, max_attempts) and treat missing backoff_ms as 0,
+ and missing run_at as no scheduled state.
+
+ Let me continue reading the other modules.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/board.mo
+
+ module Jobq.Board
+ expose Command, Call, Outcome, Counts, Order, Board, Decision, Kept, board, decide, rebuilt,
+ records, health_of, snapshot
+
+ use Jobq.Job{Phase, Job, job, leased, acked, failed, looked, holds?, payload?, id_of,
+ number_of, shown, decoded}
+
+ intent "The queue as a value: every job by number, each queue's queued jobs oldest first,
+ the leases and when the first runs out, and the counts; a call becomes a decision, the board
+ after it, the answer, and the records the store must hold before the answer is sent; every
+ decision first puts back the leases that have run out."
+
+ never "a job is lost or changed by a replay"
+   for k in Kept.all
+     k.after != k.before
+ ... (688 more lines, ctrl+o to expand)
+
+
+ This is a large task. Let me read the remaining files: api.mo, queue.mo, server.mo, main.mo.
+ Then I'll understand the whole system.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/api.mo
+
+ module Jobq.Api
+ expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from
+
+ use Jobq.Board{Command, Call, Outcome, Counts}
+ use Jobq.Job{Job, queue?, payload?, reason?, token?, attempts?, lease_ms?, phase_named,
+ id_of, shown}
+
+ intent "Read an HTTP request into a call on the queue, or answer it at once: 404 for a route
+ that does not exist, 405 for a method the route does not take, 401 for a missing or
+ malformed token, and 400 for a body or a name of the wrong shape; and write every outcome as
+ its status and JSON."
+
+ # Where a request goes: a call on the queue, or an answer now.
+ enum Routed
+ ... (365 more lines, ctrl+o to expand)
+
+
+ Now, notice that the route structure. The API has /queues/q/lease route. Wait, the spec says
+ the lease is through... let me re-read. Actually the spec API table doesn't mention lease
+ route explicitly but the existing program has /queues/q/lease. The route structure has 4
+ parts: jobs, ack, fail, and queues, lease. Now, a retry route is POST /jobs/{id}/retry.
+ That's 4 parts: jobs, {id}, retry. So I need to add a retry case in the 4-parts routing.
+
+ Let me read queue.mo, server.mo, main.mo.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/queue.mo
+
+ # sim: --faults 20 --until 0.5
+ module Jobq.Queue
+ expose Opening, Batch, Answer, Flushed, Queue, Queues, Worker, Workers, opening, flushed,
+ stamp
+
+ use Jobq.Api{Routed, respond, route}
+ use Jobq.Board{Board, Call, Command, Outcome, Kept, board, decide, rebuilt, records,
+ snapshot}
+ use Jobq.Job{Phase, shown, to_ms}
+ use Jobq.Store{Table, StoreError, blank, emptied, journaled, line_of, open, pairs,
+ rewritten}
+
+ intent "The queue process: every call is decided against the board at once, and its records
+ join a batch; the batch is appended to the log in one write, so one fsync covers every call
+ taken since the last, and only then is each caller answered; the queue keeps the board as
+ the log last held it beside the board it answers from, both sharing every page a batch did
+ not change, so a batch the log did not take is answered 503 and the board goes back, a log
+ that may end in part of a write is written whole with the next batch, and the store keeps no
+ second copy of any job."
+ ... (439 more lines, ctrl+o to expand)
+
+
+ Now let me read server.mo and main.mo.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/server.mo
+
+ # sim: --faults 20 --until 0.5
+ module Jobq.Server
+ expose Acceptor, Acceptors, Client, Clients, serving
+
+ use Jobq.Board{Call, board}
+ use Jobq.Queue{Opening, Queue, Worker, stamp}
+ use Jobq.Store{Table, blank}
+
+ intent "Serve jobq over HTTP: the runtime serves the listener into an acceptor, which starts
+ a worker per exchange and tells it to go, and turns each quiet spell into a sweep of the
+ leases that ran out; the listener's idle time is 10 seconds, so a connection that sends no
+ whole request is closed within 10 seconds, and the acceptor's mailbox of 4,096 leaves room
+ for 1,200 of them at once."
+
+ ... (262 more lines, ctrl+o to expand)
+
+
+ Now let me read main.mo.
+
+
+ read ~/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq/main.mo
+
+ # run: check data/demo data/session.txt
+ # run: compact data/compact
+ # run: serve
+ # exit: 2
+ # run: serve data/nowhere
+ # exit: 1
+ # run: client 127.0.0.1 1 p GET /jobs
+ # exit: 1
+ module Jobq.Main
+ expose Place, Trip, Task, Problem, task, steady, serving?, main
+ ... (417 more lines, ctrl+o to expand)
+
+
+ Now I have a comprehensive picture. Let me look at the data files and expected outputs, and
+ the demo/compact logs.
+
+ Now let me look at the data files, session.txt, expected outputs, and how to run the
+ toolchain.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq && echo
+ "=== session.txt ===" && cat data/session.txt && echo "" && echo "=== jobq.expected ===" &&
+ cat jobq.expected && echo "" && echo "=== jobq-2.expected ===" && cat jobq-2.expected &&
+ echo "---3---" && cat jobq-3.expected && echo "---4---" && cat jobq-4.expected && echo
+ "---5---" && cat jobq-5.expected
+
+ ... (146 earlier lines, ctrl+o to expand)
+ === jobq-2.expected ===
+ jobq: compacted data/compact/jobq.log from 4 lines to 4
+ ---3---
+ ---4---
+ ---5---
+
+ Took 0.0s
+
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq && echo
+ "=== demo/jobq.log ===" && cat data/demo/jobq.log && echo "" && echo "=== compact/jobq.log
+ ===" && cat data/compact/jobq.log
+
+ ... (37 earlier lines, ctrl+o to expand)
+ "attempts": 0, "max_attempts": 3, "created_at": "2026-09-14T09:01:00Z", "updated_at":
+ "2026-09-14T09:01:00Z"}
+ SET j_7 {"id": "j_7", "queue": "reports", "state": "dead", "payload": "failed twice",
+ "attempts": 2, "max_attempts": 2, "created_at": "2026-09-14T09:02:00Z", "updated_at":
+ "2026-09-14T09:08:00Z", "reason": "disk full"}
+
+ Took 0.0s
+
+
+ Now I understand the full picture. This is a big change. Let me understand the key semantics
+ before I start changing.
+
+ Let me think about the change conceptually:
+
+ 1. Job fields rename: attempts -> tries, max_attempts -> max_tries in job.mo and throughout.
+ Plus new fields backoff_ms (0 to 3,600,000, default 0, fixed at creation) and while
+ scheduled, run_at.
+ 2. New state Scheduled:
+     - created with delay_ms = 0 -> queued
+     - created with delay_ms > 0 -> scheduled, run_at = created_at + delay_ms
+     - scheduled -- run_at reached, at next look --> queued
+     - on fail/run-out, if tries < max_tries and backoff_ms == 0 -> queued; if tries <
+ max_tries and backoff_ms > 0 -> scheduled, run_at = now + backoff_ms
+     - dead -- retry --> queued, tries = 0
+ 3. Retry route: POST /jobs/{id}/retry -> 200 {job} | 409 when not dead | 404
+ 4. API:
+     - Create: add delay_ms?, backoff_ms? (default 0)
+     - attempts/max_attempts renamed to tries/max_tries in responses.
+     - A request that still says attempts or max_attempts is 400.
+     - /health now includes "scheduled".
+     - Listing state may be "scheduled".
+ 5. Durability: scheduled-to-queued move written to store before response.
+ 6. Replay of old log: decoded reads old names. Old log has attempts/max_attempts. New log
+ has tries/max_tries/backoff_ms. After compact, only new names.
+
+ Let me look at how the demo and compact fixtures need changing. The demo log has old field
+ names, so the replay should read them. But the spec says the check script and expected
+ output are updated with the change. The demo log is the folder the old service wrote —
+ should we keep it old-shaped to test replay? The spec says: "a replay test that starts the
+ service on a folder the previous version wrote (the program's own data/ folders and fixtures
+ from before the change count...)". So data/demo/jobq.log and data/compact/jobq.log can stay
+ old-shaped (with attempts/max_attempts and no backoff_ms), and be a test of replay. The
+ session.txt check script plays against data/demo. The check writes changes to jobq.check.log
+  (new shape) and removes it. So the check output (jobq.expected) would show new field names
+ (tries/max_tries) because they get re-shown by the board after decoding into new Job.
+
+ Wait — the demo log is read by open, which replays into a Table of (key, value) pairs where
+ value is the raw JSON string. Then rebuilt decodes each value JSON via job.decoded. The
+ board holds Job values (new shape). When a job is fetched, shown(job) prints with the NEW
+ field names. So jobq.expected will show tries/max_tries even though demo log has
+ attempts/max_attempts. Good. That's the replay behavior.
+
+ So the check script (session.txt) can keep the same request bodies but max_attempts ->
+ max_tries. Actually the spec says the check script is updated with the change. Let me figure
+ out what changes.
+
+ Actually, wait. Let me carefully think about the design. This is a huge task with lots of
+ interlocking pieces. Let me be systematic.
+
+ Let me first understand the existing verified lines and how to run tests. The mo binary is
+ at toolchain/zig-out/bin/mo. Let me check how to run these. The README says mo test <file>.
+ Let me test running the existing tests first to get a baseline and understand the runner.
+
+ Let me set up PATH and run a quick test on one module.
+
+ Let me establish a baseline by running the existing tests. First, let me check the runner.
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-mo && which mo 2>/dev/null; ls -la
+ toolchain/zig-out/bin/mo; echo "--- help ---"; timeout 120 toolchain/zig-out/bin/mo --help
+ 2>&1 | head -40
+
+ ... (7 earlier lines, ctrl+o to expand)
+ args...]
+        mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--surface]
+ [--json]
+        mo fmt [--check | --stdout] <file.mo> [--json]
+        mo fix [--dry-run] <file.mo> [--json]
+
+ Took 0.3s
+
+
+
+ $ cd /Users/robertguss/Projects/startups/mo-lang-r9-qwen-mo/examples/programs/jobq && cat
+ TOOLCHAIN-BUGS.md
+
+ ... (147 earlier lines, ctrl+o to expand)
+ A test's `Clock.fixture()` does not move while a fixture call waits, so a lease never runs
+ out on a running queue in a test. Grammar §8 says the fixture clock is frozen, so it is
+ recorded in `GAPS.md` as a gap. The reproduction: `clock = Clock.fixture()`, `before =
+ clock.now`, `Fs.fixture(delay: 200.ms).list(within: 1.minute)`, an `ask` of a process, then
+ `clock.now - before` is `0.ms`, under `mo test` and `mo test --sim 5`.
+
+ Took 0.0s
+
+
+ ⠦ Working...
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-qwen-mo (r9-qwen-mo)
+↑384k ↓2.5k 48.7%/128k (auto)                                (ollama) qwen3.8:27b-mlx • medium

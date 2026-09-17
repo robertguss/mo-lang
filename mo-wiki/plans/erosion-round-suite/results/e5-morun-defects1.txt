@@ -1,0 +1,195 @@
+server up in 0.06s on 62561, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects8-7o8rd8bn/dir
+ok   fields: create with max_tries is 201
+ok   fields: a job has id
+ok   fields: a job has queue
+ok   fields: a job has state
+ok   fields: a job has payload
+ok   fields: a job has tries
+ok   fields: a job has max_tries
+ok   fields: a job has backoff_ms
+ok   fields: a job has created_at
+ok   fields: a job has updated_at
+ok   fields: a fresh queued job has no attempts
+ok   fields: a fresh queued job has no max_attempts
+ok   fields: a fresh queued job has no run_at
+ok   fields: a fresh queued job has no worker
+ok   fields: a fresh queued job has no lease_until
+ok   fields: a fresh queued job has no reason
+ok   fields: backoff_ms defaults to 0
+ok   fields: tries starts at 0
+ok   fields: delay_ms 0 and backoff_ms 0 is 201 queued
+ok   fields: backoff_ms is kept on the job
+ok   fields: delay_ms at its top is 201 scheduled
+ok   fields: backoff_ms at its top is 201
+ok   fields: the old name max_attempts is 400 with an error
+ok   fields: the old name attempts is 400 with an error
+ok   fields: both names is 400 with an error
+ok   fields: max_tries missing is 400 with an error
+ok   fields: max_tries 0 is 400 with an error
+ok   fields: max_tries 101 is 400 with an error
+ok   fields: delay_ms -1 is 400 with an error
+ok   fields: delay_ms 86,400,001 is 400 with an error
+ok   fields: delay_ms as a string is 400 with an error
+ok   fields: delay_ms 2.5 is 400 with an error
+ok   fields: delay_ms null is 400 with an error
+ok   fields: backoff_ms -1 is 400 with an error
+ok   fields: backoff_ms 3,600,001 is 400 with an error
+ok   fields: backoff_ms as a string is 400 with an error
+ok   fields: backoff_ms true is 400 with an error
+ok   fields: run_at given by the client is 400 with an error
+ok   fields: state=scheduled is a listing filter
+ok   fields: an unknown state filter is 400
+ok   scheduled: create with a delay is 201 scheduled
+ok   scheduled: run_at is created_at plus the delay
+ok   scheduled: tries is 0 and no worker
+ok   scheduled: a lease before run_at is 204
+ok   scheduled: a read before run_at shows scheduled with run_at
+ok   scheduled: /health counts it under scheduled
+ok   scheduled: /health has the five states
+ok   scheduled: listed under state=scheduled
+ok   scheduled: not listed under state=queued
+ok   scheduled: listed with no state filter
+ok   scheduled: a lease after run_at hands it out with tries 1
+ok   scheduled: the leased job has no run_at
+ok   scheduled: /health no longer counts it under scheduled
+ok   scheduled: the holder acks it
+ok   scheduled: a read after run_at shows it queued
+ok   scheduled: a listing after run_at shows it queued
+ok   scheduled: without a delay the job is queued
+ok   order: a due scheduled job takes its place by id behind an older queued job
+ok   order: before run_at the newer queued job is handed out
+ok   order: after run_at the older scheduled job is handed out
+ok   delete: a scheduled job is deleted with 204
+ok   delete: it is gone
+ok   delete: /health does not count it
+ok   delete: it is not listed
+ok   backoff: first lease is 200 tries 1
+ok   backoff: a fail with backoff is 200 scheduled
+ok   backoff: the failed job keeps tries 1 and its reason
+ok   backoff: run_at is now plus backoff_ms
+ok   backoff: no worker or lease_until while scheduled
+ok   backoff: a lease before run_at is 204
+ok   backoff: the old holder's ack is 409
+ok   backoff: after run_at it is leased with tries 2
+ok   backoff: the reason is still shown while leased again
+ok   backoff: a second fail is scheduled again
+ok   backoff: the last try is leased with tries 3
+ok   backoff: a fail on the last try is dead, not scheduled
+ok   backoff: a fail without backoff is queued at once
+ok   backoff: and leased again at once with tries 2
+ok   runout: a run-out lease with backoff is scheduled at the next look
+ok   runout: its run_at is the look plus backoff_ms
+ok   runout: not leased before run_at
+ok   runout: leased after run_at with tries 2
+ok   runout: a run-out lease on the last try is dead even with backoff
+ok   runout: a run-out lease with backoff is handed out by a lease request once the backoff from its look has passed
+ok   retry: setup, the job is dead
+ok   retry: without a token is 401
+ok   retry: a dead job is 200 queued
+ok   retry: tries is 0 and reason, worker, lease_until, run_at are gone
+ok   retry: queue, payload, max_tries, backoff_ms are kept
+ok   retry: a read agrees
+ok   retry: a queued job is 409
+ok   retry: the retried job is leased with tries 1
+ok   retry: a leased job is 409
+ok   retry: a done job is 409
+ok   retry: a scheduled job is 409
+ok   retry: a missing job is 404
+ok   retry: GET on the retry route is 405
+ok   retry: a body is ignored or refused, never a crash (200/400/409)
+ok   retry: a retried job is handed out by id, ahead of a newer queued job
+ok   retry: setup, dead after two fails
+ok   retry: after a retry the job counts tries from 0 again
+ok   retry: and is dead again at max_tries
+ok   health: the scheduled count agrees with the listing (under the cap)
+ok   health: a new scheduled job raises the count by one
+ok   health: deleting it lowers the count by one
+ok   durable: setup, both scheduled
+ok   durable: setup, the third is queued by a read
+ok   durable: setup, the fourth is retried
+ok   durable: setup, the fifth is scheduled by a run-out
+     durable: restarted in 0.06s
+ok   durable: a delayed job is scheduled with the same run_at after the kill
+ok   durable: a backed-off job is scheduled with the same run_at after the kill
+ok   durable: a job queued by its run_at before the kill is queued after
+ok   durable: a retried job is queued with tries 0 after the kill
+ok   durable: a job scheduled by a run-out keeps its run_at after the kill
+ok   durable: /health counts the scheduled jobs after the kill
+ok   durable: nothing scheduled is handed out early after the kill
+ok   race: round 1, exactly one of 16 workers holds the job
+ok   race: round 1, the holder is the winner with tries 1
+ok   race: round 1, the holder's fail schedules it
+ok   race: round 2, exactly one of 16 workers holds the job
+ok   race: round 2, the holder is the winner with tries 2
+ok   race: round 2, the holder's fail schedules it
+ok   load: no request failed
+ok   load: no job was held by two workers at once
+ok   load: every job was failed once then acked
+ok   load: nothing in the queue is left scheduled or queued
+ok   load: every done job has tries 2
+     load: 160 jobs, each failed once and acked, in 1.3s
+ok   end: the server is still alive
+ok   oldlog: setup, the old service creates
+ok   oldlog: setup, the live lease is on the fifth job
+ok   oldlog: setup, the short lease is on the sixth job
+ok   oldlog: the old service left a log
+ok   oldlog: the changed service opens the old folder
+     oldlog: opened in 0.06s
+ok   oldlog: every old job is present, the deleted one is not
+ok   oldlog: 'queued forever' keeps its state (queued)
+ok   oldlog: 'queued forever' has tries == the old attempts
+ok   oldlog: 'queued forever' max_tries
+ok   oldlog: 'queued forever' speaks no old name
+ok   oldlog: 'queued forever' backoff_ms reads as 0
+ok   oldlog: 'queued forever' payload, queue, created_at unchanged
+ok   oldlog: 'done' keeps its state (done)
+ok   oldlog: 'done' has tries == the old attempts
+ok   oldlog: 'done' max_tries
+ok   oldlog: 'done' speaks no old name
+ok   oldlog: 'done' backoff_ms reads as 0
+ok   oldlog: 'done' payload, queue, created_at unchanged
+ok   oldlog: 'dead' keeps its state (dead)
+ok   oldlog: 'dead' has tries == the old attempts
+ok   oldlog: 'dead' max_tries
+ok   oldlog: 'dead' speaks no old name
+ok   oldlog: 'dead' backoff_ms reads as 0
+ok   oldlog: 'dead' payload, queue, created_at unchanged
+ok   oldlog: 'failed once, queued' keeps its state (queued)
+ok   oldlog: 'failed once, queued' has tries == the old attempts
+ok   oldlog: 'failed once, queued' max_tries
+ok   oldlog: 'failed once, queued' speaks no old name
+ok   oldlog: 'failed once, queued' backoff_ms reads as 0
+ok   oldlog: 'failed once, queued' payload, queue, created_at unchanged
+ok   oldlog: 'leased live' keeps its state (leased)
+ok   oldlog: 'leased live' has tries == the old attempts
+ok   oldlog: 'leased live' max_tries
+ok   oldlog: 'leased live' speaks no old name
+ok   oldlog: 'leased live' backoff_ms reads as 0
+ok   oldlog: 'leased live' payload, queue, created_at unchanged
+ok   oldlog: 'leased, runs out' keeps its state (queued)
+ok   oldlog: 'leased, runs out' has tries == the old attempts
+ok   oldlog: 'leased, runs out' max_tries
+ok   oldlog: 'leased, runs out' speaks no old name
+ok   oldlog: 'leased, runs out' backoff_ms reads as 0
+ok   oldlog: 'leased, runs out' payload, queue, created_at unchanged
+ok   oldlog: 'unicode é 世 "quoted"' keeps its state (queued)
+ok   oldlog: 'unicode é 世 "quoted"' has tries == the old attempts
+ok   oldlog: 'unicode é 世 "quoted"' max_tries
+ok   oldlog: 'unicode é 世 "quoted"' speaks no old name
+ok   oldlog: 'unicode é 世 "quoted"' backoff_ms reads as 0
+ok   oldlog: 'unicode é 世 "quoted"' payload, queue, created_at unchanged
+ok   oldlog: the dead job keeps its reason
+ok   oldlog: the live lease is still held by its worker
+ok   oldlog: the live lease's holder acks it under the new service
+ok   oldlog: the old queued job is handed out with tries 1
+ok   oldlog: the old dead job can be retried
+ok   oldlog: a new scheduled job is created beside the old ones
+ok   oldlog: ids continue after the old log
+ok   oldlog: /health counts the old jobs
+ok   oldlog: compact exits 0 on the old folder
+ok   oldlog: after compact no old name is left in the folder
+ok   oldlog: after compact the new names are in the folder
+ok   oldlog: after compact and restart every job is present with its state
+ok   oldlog: the new scheduled job keeps its run_at across compact
+
+189 passed, 0 defects

@@ -1,0 +1,31 @@
+up in 0.06s on port 57089, surface 57090; processes [(1, 'Warden'), (2, 'Queue'), (3, 'Acceptor'), (4, 'Worker')]; queue id 2
+
+kills through the surface:
+  at  2.01s: send -> 200 'done'; /health 200 again at  2.06s (  57.5 ms)
+    queue row after: {'id': 2, 'name': 'Queue', 'alive': True, 'mailbox': 7, 'bound': 100000, 'waiting_in': 'Fs.append', 'restarts': 1, 'region_bytes': 5071956, 'paused': False, 'scheduler': 0}
+    crashes: [[{"Crashed": {"at": "2026-09-16T18:58:01.089Z", "pid": 2, "name": "Queue", "seed": 0, "clause": "requires queue?(making.queue)", "taking": "Want(Call(worker: \"w1\", command: Create(Making(queue: \"bad queue\", key: None, payload: \"p\", max_tries: 3, backoff_ms: 0, delay_ms: 0))))", "snapshot": "Queue(desk: Desk(board: Board(jobs: Map.new().set(0, Map.new().set(1, Job(number: 1, queue: \"q0\", key: None, state: Done, payload: \"p\", tries: 1, max_tries: 3, backoff_ms: 0, created_at: Time.fixture() + 22359479176.ms, updated_at: Time.fixture() + 22359479179.ms, run_at: None, worker: None, leas
+  at  4.01s: send -> 200 'done'; /health 200 again at  4.09s (  84.6 ms)
+    queue row after: {'id': 2, 'name': 'Queue', 'alive': True, 'mailbox': 7, 'bound': 100000, 'waiting_in': 'Fs.append', 'restarts': 2, 'region_bytes': 3717996, 'paused': False, 'scheduler': 0}
+    crashes: [[{"Crashed": {"at": "2026-09-16T18:58:03.097Z", "pid": 2, "name": "Queue", "seed": 0, "clause": "requires queue?(making.queue)", "taking": "Want(Call(worker: \"w1\", command: Create(Making(queue: \"bad queue\", key: None, payload: \"p\", max_tries: 3, backoff_ms: 0, delay_ms: 0))))", "snapshot": "Queue(desk: Desk(board: Board(jobs: Map.new().set(0, Map.new().set(1, Job(number: 1, queue: \"q0\", key: None, state: Done, payload: \"p\", tries: 1, max_tries: 3, backoff_ms: 0, created_at: Time.fixture() + 22359479176.ms, updated_at: Time.fixture() + 22359479179.ms, run_at: None, worker: None, leas
+
+requests by second and status:
+   0s  200:3906  201:1960
+   1s  200:2364  201:1182
+   2s  200:1716  201:859  204:1  503:2
+   3s  200:1508  201:754
+   4s  200:1230  201:615  204:1  503:2
+   5s  200:977  201:489
+   6s  200:881  201:441
+   7s  200:59  201:22
+
+total requests 18969, not 200/201: 6
+created 6322, acked 6320
+resident after: 21512192
+server exit code -15
+restarted on the same folder in 0.17s
+acked jobs' states on the reopened folder: {'done': 6320}
+acked jobs not done: 0 []
+created jobs gone: 0 []
+health after restart: {'queued': 1, 'scheduled': 0, 'leased': 1, 'done': 6320, 'dead': 0, 'archived': 0, 'uptime_ms': 12639, 'restarts': 0}
+server log: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-5ixuetew/server.log
+5611, Time.fixture() + 22359513184.ms).set(5612, Time.fixture() + 22359513185.ms)), due: Some(Time.fixture() + 22359511179.ms), waits: Map.new(), wake: None, next: 5615, reserved: 6001, counts: Counts(queued: 2, scheduled: 0, leased: 3, done: 4754, dead: 0, archived: 0, uptime_ms: 0, restarts: 0), started: Time.fixture() + 22359479119.ms), table: Table(buckets: Map.new(), size: 0, dir: "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-5ixuetew/dir", base: "jobq.log", name: "jobq.log", bytes: 3218353, lines: 14276, cut: false), torn: false, archive: Table(buckets: Map.new(), size: 0, dir: "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-5ixuetew/dir", base: "jobq.archive", name: "j [cut]

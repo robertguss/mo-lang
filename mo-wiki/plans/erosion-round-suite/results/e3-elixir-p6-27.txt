@@ -1,0 +1,35 @@
+up in 0.78s on port 59066, node jobq@Roberts-MacBook-Pro; ping -> :"jobq@Roberts-MacBook-Pro"
+queue pid before: #PID<12437.108.0>
+
+kills:
+  queue  at  1.71s, /health 200 again at  1.99s ( 285.2 ms); pid #PID<12437.108.0> -> #PID<12437.148.0>; exit -> 'true'
+  queue  at  4.71s, /health 200 again at  5.10s ( 394.5 ms); pid #PID<12437.148.0> -> #PID<12437.163.0>; exit -> 'true'
+  store  at  7.72s, /health 200 again at  8.41s ( 693.5 ms); pid #PID<12437.162.0> -> #PID<12437.176.0>; exit -> 'true'
+
+requests by second and status:
+   0s  200:5486  201:2749
+   1s  200:6306  201:3157  204:4  503:983
+   2s  200:3425  201:1712
+   3s  200:3622  201:1811
+   4s  200:6633  201:3312  503:1315
+   5s  200:6920  201:3467  204:3  503:1239
+   6s  200:8312  201:4155
+   7s  200:6907  201:3452  503:1088
+   8s  200:4614  201:2314  204:2  503:5246
+   9s  200:290  201:138
+
+total requests 88662, not 200/201: 9880
+created 26267, acked 26251; acked jobs' states now: {'done': 26251}
+acked jobs no longer acked: 0 []
+created jobs gone: 0 []
+health: {'queued': 3, 'scheduled': 0, 'leased': 11, 'done': 26253, 'dead': 0, 'uptime_ms': 15100, 'restarts': 3}
+
+after a restart on the same folder (3.09s): acked jobs not acked 0; health {'queued': 3, 'scheduled': 0, 'leased': 11, 'done': 26253, 'dead': 0, 'uptime_ms': 2467, 'restarts': 0}
+
+server log: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6-l86j_wdz/server.log
+server log lines: 5; first 15 lines:
+jobq: serving /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6-l86j_wdz/dir on port 59066
+
+11:11:59.266 [notice] SIGTERM received - shutting down
+
+jobq: the service failed more than 5 time(s) inside 60 second(s), and stopped

@@ -1,0 +1,35 @@
+up in 0.50s on port 53267, node jobq@Roberts-MacBook-Pro; ping -> :"jobq@Roberts-MacBook-Pro"
+queue pid before: #PID<12666.108.0>
+
+kills:
+  queue  at  1.71s, /health 200 again at  1.96s ( 255.3 ms); pid #PID<12666.108.0> -> #PID<12666.148.0>; exit -> 'true'
+  queue  at  4.72s, /health 200 again at  5.14s ( 422.1 ms); pid #PID<12666.148.0> -> #PID<12666.163.0>; exit -> 'true'
+  store  at  7.71s, /health 200 again at  8.42s ( 713.8 ms); pid #PID<12666.162.0> -> #PID<12666.176.0>; exit -> 'true'
+
+requests by second and status:
+   0s  200:3651  201:1832
+   1s  200:3357  201:1680  204:2  503:796
+   2s  200:3521  201:1760
+   3s  200:6817  201:3409
+   4s  200:6679  201:3337  503:942
+   5s  200:6840  201:3425  204:3  503:1771
+   6s  200:8418  201:4208
+   7s  200:7150  201:3574  503:1238
+   8s  200:4617  201:2312  204:1  503:5425
+   9s  200:81  201:33
+
+total requests 86879, not 200/201: 10178
+created 25570, acked 25562; acked jobs' states now: {'done': 25562}
+acked jobs no longer acked: 0 []
+created jobs gone: 0 []
+health: {'queued': 0, 'scheduled': 0, 'leased': 6, 'done': 25566, 'dead': 0, 'uptime_ms': 13816, 'restarts': 3}
+
+after a restart on the same folder (2.96s): acked jobs not acked 0; health {'queued': 0, 'scheduled': 0, 'leased': 6, 'done': 25566, 'dead': 0, 'uptime_ms': 2441, 'restarts': 0}
+
+server log: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6-dje5u0_i/server.log
+server log lines: 5; first 15 lines:
+jobq: serving /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6-dje5u0_i/dir on port 53267
+
+10:50:12.623 [notice] SIGTERM received - shutting down
+
+{error,badarg,[{erlang,send,[code_server,{code_call,<0.10.0>,{finish_loading,[],true}}],[{error_info,#{module=>erl_erts_errors}}]},{code_server,call,1,[{file,"code_server.erl"},{line,164}]},{code,ensure_modules_loaded_1,1,[{file,"code.erl"},{line,1331}]},{io_lib,test_modules_loaded,3,[{file,"io_lib.erl"},{line,465}]},{io_lib,format,2,[{file,"io_lib.erl"},{line,345}]},{escript,start,1,[{file,"escript.erl"},{line,432}]},{init,start_it,1,[]},{init,start_em,1,[]}]}

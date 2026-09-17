@@ -51,6 +51,8 @@ Wiki pages are the `.md` files in `mo-wiki/{directions,questions,decisions,synta
 | `session` | sessions/ | what happened in one sitting, chronological |
 | `comparison` | research/comparisons/ | Mo held against one other language or system |
 | `concept` | research/concepts/ | a researched topic (e.g. supply-chain attacks 2025–26) |
+| `map` | maps/ | a map of content: one topic, the pages behind it, in reading order; living, rewritten as pages land (16 Sep 2026) |
+| `synthesis` | the wiki root | a standing account across the whole project (`state-of-the-project`), rewritten at every pause (16 Sep 2026) |
 
 ## Frontmatter (required on every wiki page)
 

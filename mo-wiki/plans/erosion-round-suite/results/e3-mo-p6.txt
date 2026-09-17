@@ -1,0 +1,29 @@
+up in 0.33s on port 54937, surface 54938; processes [(1, 'Warden'), (2, 'Queue'), (3, 'Acceptor'), (4, 'Worker')]; queue id 2
+
+kills through the surface:
+  at  2.01s: send -> 200 'done'; /health 200 again at  2.11s ( 106.1 ms)
+    queue row after: {'id': 2, 'name': 'Queue', 'alive': True, 'mailbox': 2, 'bound': 100000, 'waiting_in': None, 'restarts': 1, 'region_bytes': 1869144, 'paused': False, 'scheduler': 0}
+    crashes: [[{"Crashed": {"at": "2026-09-16T15:07:29.766Z", "pid": 2, "name": "Queue", "seed": 0, "clause": "requires queue?(making.queue)", "taking": "Want(Call(worker: \"w1\", command: Create(Making(queue: \"bad queue\", payload: \"p\", max_tries: 3, backoff_ms: 0, delay_ms: 0))))", "snapshot": "Queue(desk: Desk(board: Board(jobs: Map.new().set(0, Map.new().set(1, Job(number: 1, queue: \"q0\", state: Done, payload: \"p\", tries: 1, max_tries: 3, backoff_ms: 0, created_at: Time.fixture() + 22345647746.ms, updated_at: Time.fixture() + 22345647752.ms, run_at: None, worker: None, lease_until: None, reason:
+
+requests by second and status:
+   0s  200:6840  201:3427
+   1s  200:6943  201:3471
+   2s  200:5993  201:3000  503:4
+   3s  200:6680  201:3339
+   4s  200:6556  201:3279
+   5s  200:6253  201:3126
+   6s  200:6150  201:3075
+   7s  200:6262  201:3132
+   8s  200:83  201:34
+
+total requests 77647, not 200/201: 4
+created 25883, acked 25879
+resident after: 51642368
+server exit code -15
+restarted on the same folder in 0.41s
+acked jobs' states on the reopened folder: {'done': 25879}
+acked jobs not done: 0 []
+created jobs gone: 0 []
+health after restart: {'queued': 4, 'scheduled': 0, 'leased': 0, 'done': 25879, 'dead': 0, 'uptime_ms': 23612, 'restarts': 0}
+server log: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/p6mo-vb5ddfku/server.log
+Map.new()).set(18, Map.new()).set(19, Map.new()).set(20, Map.new()).set(21, Map.new()).set(22, Map.new()).set(23, Map.new()).set(24, Map.new()).set(25, Map.new()).set(26, Map.new()).set(27, Map.new().set(6918, Time.fixture() + 22345679751.ms).set(6916, Time.fixture() + 22345679751.ms).set(6917, Time.fixture() + 22345679751.ms).set(6919, Time.fixture() + 22345679751.ms)), due: Some(Time.fixture() + 22345677750.ms), waits: Map.new(), wake: None, next: 6923, reserved: 7001, counts: Counts(queued: 3, scheduled: 0, leased: 4, done: 6915, dead: 0, uptime_ms: 0, restarts: 0), started: Time.fixture() + 22345647732.ms), table: Table(buckets: Map.new(), size: 0, dir: "/var/folders/f8/ft7ygqg92pj8qh0rw [cut]

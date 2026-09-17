@@ -1,0 +1,400 @@
+ The listener test (1,200 idle connections) ✓ unchanged, passed.
+
+ Now — the checkInvariants scheduled-at-max case: is a scheduled job with tries == max_tries
+ actually rejected by the wait?... invariant !waiting || j.Tries < j.MaxTries — for Dead
+ state it's not waiting ✓ dead keeps tries == max.
+
+ Hmm — one more edge: a scheduled job deleted while a lease-req promotion is pending? Fine,
+ map-based.
+
+ Potential subtle issue: Retry on a job that has a stale entry in the wakes heap — retry
+ only from Dead (never scheduled at that moment) ✓ no stale wakes entries created by retry.
+ But promotion pops stale entries ✓ handled.
+
+ install on replay of an old log leased job: pushes into leases heap ✓ (state Leased) —
+ expiry at next look ✓.
+
+ install for scheduled job on replay (new log): pushes wakes ✓ promotion after restart works
+ — tested in TestReplayFindsScheduledJobDue ✓.
+
+ One more: q.order and listing of retried jobs — retry doesn't touch order (old non-nil → no
+ append) ✓ position by id unchanged ✓.
+
+ bench writeLog with leased variants — uses new names via jobView ✓ compiles (vet passed).
+
+ Also double check check.expected contains no inadvertent nondeterminism (port numbers etc.)
+ — it's manual clock + real socket on free ports, output stable ✓ and
+ TestCheckCommandMatchesExpected already passed in the test run ✓.
+
+ Now commit. Also confirm: git add specific paths (never -A):
+ - experiments/control-run/go/jobq/ (all modified files)
+ - mo-wiki/spec/programs/01b-job-queue-change.md (restored spec)
+ - REPORT.md (to write first)
+
+ Let me write REPORT.md first. Requirements for the report:
+ - wall-clock
+ - loop count by cause (and whether the first fix worked)
+ - numbered list "Decisions the spec did not cover"
+
+ Wall clock: I started around... I don't have exact start time; the session began when I
+ read the spec. Let me estimate from file timestamps: first tool call to now. I can check
+ file mtimes: /tmp/jobq-guard.py creation vs now. git will tell. Let me compute at commit
+ time — check mtime of the first file I touched.
+
+ Loops to green by cause:
+ 1. First full go test run after implementation (loop 1): three failure causes:
+ a. TestCheckCommandMatchesExpected — stale fixtures using old field names (expected
+ mid-change; fixed by regenerating script+expected). First fix worked (after rewrite, passed
+ on next full run — via fixtures regenerated from verified output; then green).
+ b. TestRunOutLeaseWithBackoffSchedules — my test captured now before the clock advance, so
+ the expected run_at was stale (test bug, not implementation). Also carried a leftover
+ noLease line and the retry-only-invariant keys... Let me recount precisely by test-run
+ iterations:
+
+ Loop counting (each check/build/test invocation and its outcome):
+ - L1 baseline build+vet+staticcheck: green.
+ - L2 baseline go test ./...: green.
+ - L3 baseline check.sh: green.
+ - L4 go build after main-code change: go build ./jobq → "build output jobq already exists
+ and is a directory" (my usage error, not code) → reran ./... → green. Count as 1 failed
+ invocation, cause: command usage. Fixed immediately.
+ - L5 go build ./... → green.
+ - L6 go vet (after job_test/queue_test writes) → failed: api_test.go still referenced
+ done.Attempts (expected mid-migration) — informational, I hadn't updated api_test yet.
+ Cause: test files mid-migration. Fixed by rewriting api_test.go. First fix worked.
+ - L7 go test ./jobq → FAILED: (a) TestCheckCommandMatchesExpected fixtures old names; (b)
+ TestRunOutLeaseWithBackoffSchedules stale expected run_at in my new test; (c)
+ TestInvariantsTripThroughStoreRecords — map keys not substrings of messages (my
+ rejected-edit fix hadn't landed). Fixes applied → next run: only (a) remains. So one round,
+ three causes; the fixes for b and c worked first time; a needed fixture regeneration (by
+ design).
+ - L8 go test after fixture regeneration → green. check.sh green.
+ - L9 vet + staticcheck + gofmt green; race run green.
+
+ Also mid-sequence: the atomic-edit rejection and the cat -A/go build ./jobq usage slips —
+ administrative, count the notable ones.
+
+ Decisions the spec did not cover (numbered):
+ 1. Where run_at sits in the {job} JSON field order (after updated_at, before
+ worker/lease_until/reason) — spec lists membership, not order.
+ 2. A store record that carries BOTH old and new names: old name wins (never occurs in
+ practice; new service never writes old names).
+ 3. Retry request body handling: empty or {} accepted, anything else 400 (mirrors lease
+ body's strictness); spec says "needs no body".
+ 4. The 409 message text for retry of a non-dead job: "conflict: job is <state>, not dead".
+ 5. New never added: "a dead job leaves only through a retry, back to queued" (dead→done
+ etc. refused on replay) — the spec's "a retry never touches a job that is not dead" covers
+ the other direction; this closes the dead→X hole the old "a done or dead job changes state"
+ never covered before the change.
+ 6. New invariants: "a job has a run_at exactly when it is scheduled" and the
+ queued-or-scheduled widening of the tries-below-max invariant; backoff_ms added to the
+ validity invariant. (Spec asked which invariants were forced open — these were.)
+ 7. Promotion at a look runs AFTER lease expiries in the same look (both are committed as
+ one store write; a lease request answers with the resulting state).
+ 8. Keeps reason when a scheduled job is promoted to queued (mirrors the lease-ran-out
+ behavior of keeping reason on requeue).
+ 9. delay_ms/backoff_ms typed as int in the API body, so non-integer JSON numbers are
+ rejected as 400 by decoding; non-integer strings likewise.
+ 10. In check.sh, the compacted-log line count went from 2 to 4 because the scenario grew (3
+ live jobs); old-name absence asserted with a substring scan for "attempts".
+ 11. The delayed/scheduled lifecycle over real HTTP in check.sh uses a real 300 ms delay and
+ sleep 0.4 (only non-deterministic-by-necessity timing in the suite; the script-based check
+ uses the manual clock).
+ 12. sim probabilities redistributed to make room for retry (4%) and delayed/backoff creates
+ (~1/8 and ~1/8 of creates), with delays/backoffs ≤ 800 ms so drain still converges through
+ clock advances.
+
+ Also the spec asks the report to name "which contracts and nevers the change forced open
+ and which it left alone" (for Go: the checks the program carries) — include in report:
+ - Forced open: requireMaxAttempts → requireMaxTries; ensureLeased text now "tries one
+ higher"; the "done or dead job changes state" never split into done-unchanged +
+ dead-leaves-only-via-retry; "done or dead leased" never split into done-leased-again +
+ dead-leased-without-retry; tries/max invariant widened to scheduled; validity invariant
+ gained backoff_ms; new run_at invariant; new scheduled-leased never; new requires
+ delay/backoff; new ensureRetried.
+ - Left alone: store framing/checksum/torn-line rules, id rules,
+ queue-name/payload/lease_ms/reason/worker validation, the durability mechanism, the
+ two-worker never, tries-over-max never.
+
+ Also report the within: count note — for the Go reading, the timeouts: unchanged, no new
+ timeouts added. The change spec says for Go "the equivalent is the checks the program
+ already carries... kept, extended the same way, and green" — and for the maintainer report:
+ loops to green by cause, wall-clock, numbered list of decisions. Good.
+
+ Wall-clock: measure from session start. My first command ran at some point; let me get
+ mtimes: stat -f %m /tmp/jobq-guard.py (created early) and compare with now.
+
+ All green including -race. Quick sanity on the one deliberate runtime-timed path in
+ check.sh and then gather wall-clock for the report.
+
+
+ $ start=$(stat -f %m /tmp/jobq-guard.py); now=$(date +%s); python3 -c "print('elapsed
+ wall-clock: %.1f minutes' % (($now-$start)/60))"; cd experiments/control-run/go/jobq && for
+ i in 1 2 3; do python3 /tmp/jobq-guard.py bash check.sh || echo "RUN $i FAILED"; done
+ (timeout 320s)
+
+ elapsed wall-clock: 12.4 minutes
+ check.sh: ok
+ check.sh: ok
+ check.sh: ok
+
+
+ check.sh stable over 3 runs (the 0.4s sleep path). Wall clock ≈ 12.4 min so far (guard
+ script created right at the start after reading spec... actually I read a lot of files
+ before creating the guard. The reading took maybe 4-5 min. My first tool call was at
+ session start; guard created after exploring. Total wall clock at commit time — I'll
+ measure again when writing the report and note the span from first tool call. Let me
+ approximate: session start to guard creation ≈ reading 20 files ≈ 4-6 minutes. I'll report
+ elapsed from first command I can date: .git index? Simpler: the mtime of mo-wiki/spec file
+ restoration happened before guard creation... Actually the guard was created AFTER I read
+ everything but before coding. Hmm, honest approach: report wall-clock from the moment work
+ began. I can use bash history? Let me just use: now=stat of REPORT.md when written minus a
+ fixed reference. I'll compute at report time as (now - guard_mtime) + note it's from the
+ first scripted command; the whole session including reading/spec-extraction is roughly that
+ plus the reading preamble — I'll measure both: guard mtime was 12.4 min ago. Before guard,
+ I did: spec discovery + full code read. Estimate ~5 min. I'll report "≈17 minutes total (≈5
+ spec/code reading, ≈12 implementation+checks)". Actually let me find an earlier timestamp:
+ git reflog of the worktree? The git show commands don't touch files. Terminal logs? The
+ first file I modified was the spec restoration → check its mtime: that's early (right after
+ spec discovery, before reading code). stat it.
+
+
+ $ t0=$(stat -f %m mo-wiki/spec/programs/01b-job-queue-change.md); t1=$(stat -f %m
+ /tmp/jobq-guard.py); now=$(date +%s); python3 -c "
+ print('since spec restored (first deliberate action): %.1f min' % (($now-$t0)/60))
+ print('since guard (first command under the harness): %.1f min' % (($now-$t1)/60))"
+
+ since spec restored (first deliberate action): 15.3 min
+ since guard (first command under the harness): 12.6 min
+
+
+ Now write REPORT.md at the worktree root, then commit with git add on specific paths,
+ subject 'jobq: the change', no push.
+
+ Report contents:
+ - What was done (the change summary).
+ - Checks: build, vet, staticcheck, gofmt, go test ./..., -race, check.sh ×3 — all green.
+ - Wall-clock.
+ - Loop count by cause + whether first fix worked.
+ - Numbered list "Decisions the spec did not cover".
+ - Also (per the spec's ask): which contracts/nevers the change forced open and which it
+ left alone.
+
+ Let me recount loops honestly:
+
+ Green baseline: build+vet+staticcheck (1 invocation, green), go test (green), check.sh
+ (green) — loops with no failure, "0 failed loops" for baseline.
+
+ Implementation-phase failures:
+ 1. go build ./jobq — failed: "build output jobq already exists and is a directory" — cause:
+ my command shape (binary output name collides with the package dir); not a code issue.
+ First fix (go build ./...) worked.
+ 2. go vet ./... after first test-file writes — failed: api_test.go still referenced
+ done.Attempts (test files mid-migration; expected while updating tests one file at a time).
+ Fixed by the api_test.go rewrite; first fix worked.
+ 3. go test ./jobq — failed, three causes:
+ a. TestCheckCommandMatchesExpected: fixtures still in the old JSON names (expected until
+ regeneration). Fixed by writing the new script and blessing verified output; green on the
+ next run.
+ b. TestRunOutLeaseWithBackoffSchedules: my new test captured now before the clock advance,
+ so it expected run_at from the pre-advance time; also carried one stale noLease line.
+ Cause: test bug (expectation arithmetic), not the program. First fix worked.
+ c. TestInvariantsTripThroughStoreRecords: case keys I chose were not substrings of the new
+ invariant messages (and my batched edit fixing them had been rejected atomically earlier,
+ so none of its changes had landed). First fix after diagnosis worked.
+ 4. One tool-call incident: my 4-part edit to queue_test.go was rejected in full because one
+ oldText (the \u0085 case — the write tool had stored it as a literal control character)
+ didn't match; rediscovered via grep/python, fixed; counted as admin, not a check/build/test
+ failure.
+ 5. cat -A unsupported flag on macOS — admin slip, no bearing.
+
+ Also U+0085 literal fixed for readability (python replace) before green.
+
+ After fixes: go test ./... green; check.sh green ×3; go vet green; staticcheck green; gofmt
+ clean; go test -race green.
+
+ Loops to green by cause (failed check/build/test invocations): 1 command-usage (build
+ output dir), 1 mid-migration vet, 1 test run covering 3 test-level causes (fixtures,
+ expectation arithmetic, key-substring slip) = 3 failed invocations, 5 root causes; every
+ first fix after diagnosis worked.
+
+ Wait — also jobq check first run: "stat /tmp/jobq-check-dir: no such file or directory" —
+ my invocation forgot to create the dir. That's a failed command invocation, cause: harness
+ usage. First fix (mkdir) worked. Count it: 4 failed invocations, 6 causes? Let me be
+ accurate and include it.
+
+ Final count of failed invocations: 6 (build-usage, vet-migration, test-run, missing-dir,
+ plus... that's 4; plus the atomic-edit rejection is a tool rejection not a
+ check/build/test; cat -A same). The instruction: "every time a check, a build, or a test
+ fails, note the diagnostic". So 4 failed check/build/test invocations. I'll list those 4
+ with diagnostics and mark the 2 tool-level slips separately as administrative notes.
+
+ Decisions the spec did not cover — numbered list (from my analysis):
+ 1. JSON field order of run_at in {job}.
+ 2. Both-names record resolution (old wins).
+ 3. Retry body: empty or {} accepted; anything else 400.
+ 4. 409 message text for retry of non-dead ("job is <state>, not dead").
+ 5. New never: dead leaves only through retry to queued.
+ 6. New invariants: run_at exactly when scheduled; waiting-jobs tries<max widened to
+ scheduled; backoff_ms range in the validity invariant.
+ 7. Look processes lease expiries before scheduled promotions, committed as one store write.
+ 8. Promotion keeps reason (mirrors requeue behavior).
+ 9. delay_ms/backoff_ms as JSON ints — floats/strings 400 via decoding, ranges via requires.
+ 10. check.sh compact line count 2→4 (scenario grew); old-name absence via substring scan
+ for "attempts".
+ 11. Real-clock 300 ms delay + sleep 0.4 for the over-the-wire scheduled case in check.sh
+ (script check uses the manual clock).
+ 12. Sim: probabilities redistributed (retry 4%, delayed/backoff creates), backoffs/delays ≤
+ 800 ms so drain converges.
+ 13. Legacy fields kept inside jobJSON as pointers with omitempty — one struct serves wire,
+ store, and old-log decode. That's an implementation decision not covered: reuse of the same
+ struct vs a separate legacy struct.
+
+ Now, write REPORT.md. Also spec asks (report obligations from previous brief): loops to
+ green by cause, wall-clock, decisions list — all here. I'll also name forced-open vs
+ untouched contracts/nevers (the change spec asks "the report says which contracts and
+ nevers the change forced open and which it left alone").
+
+ Then commit:
+ git add experiments/control-run/go/jobq mo-wiki/spec/programs/01b-job-queue-change.md
+ REPORT.md
+ git commit -m "jobq: the change"
+
+ Let me double check nothing else modified: git status should show only these. Also the
+ experiments/control-run/go has contract/ and logstat/ untouched ✓.
+
+ Everything is green and stable. Writing REPORT.md.
+
+
+ write REPORT.md
+
+ # jobq: the change — implementation report
+
+ Change: `mo-wiki/spec/programs/01b-job-queue-change.md` (scheduled jobs with
+ `delay_ms`/`run_at`,
+ fail/lease-expiry backoff via `backoff_ms`, `POST /jobs/{id}/retry` for dead jobs, the
+ `attempts`/`max_attempts` → `tries`/`max_tries` rename everywhere the service speaks, and
+ replay of
+ logs the previous version wrote). Target: the Go program in `experiments/control-run/go/`.
+
+ ## Result: green
+
+ All from `experiments/control-run/go/`, each under `timeout` 300 and a 4 GB RSS watchdog
+ ... (128 more lines, 138 total, ctrl+o to expand)
+
+
+
+ $ git status --short && git diff --stat | tail -3
+
+ ... (14 earlier lines, ctrl+o to expand)
+ ?? REPORT.md
+ ?? mo-wiki/spec/programs/01b-job-queue-change.md
+  .../control-run/go/jobq/testdata/check.expected    | 108 +++++--
+  .../control-run/go/jobq/testdata/check.script      |  39 ++-
+  14 files changed, 1091 insertions(+), 271 deletions(-)
+
+
+ Final full gate once more right before commit (fresh, in order), then commit with the
+ specific paths. Also confirm the final wall-clock for the report — the report says ≈15 min;
+ let me get the final number and adjust if materially different. Run the final suite.
+
+ Final gate right before commit, run fresh in order.
+
+
+ $ cd experiments/control-run/go && python3 /tmp/jobq-guard.py go build ./... && python3
+ /tmp/jobq-guard.py go vet ./... && python3 /tmp/jobq-guard.py staticcheck ./... && gofmt -l
+ . | python3 -c "import sys; sys.exit(1 if sys.stdin.read().strip() else 0)" && python3
+ /tmp/jobq-guard.py go test ./... && python3 /tmp/jobq-guard.py bash jobq/check.sh && echo
+ ALL-GREEN (timeout 320s)
+
+ ok     controlrun/contract   (cached)
+ ok     controlrun/jobq   (cached)
+ ok     controlrun/logstat   (cached)
+ check.sh: ok
+ ALL-GREEN
+
+
+
+ $ git add experiments/control-run/go/jobq mo-wiki/spec/programs/01b-job-queue-change.md
+ REPORT.md && git commit -m "jobq: the change" && git log --oneline -2 && git status --short
+
+ ... (1 earlier lines, ctrl+o to expand)
+  16 files changed, 1311 insertions(+), 271 deletions(-)
+  create mode 100644 REPORT.md
+  create mode 100644 mo-wiki/spec/programs/01b-job-queue-change.md
+ fef656e jobq: the change
+ 09614b4 jobq: bench_test.go
+
+
+ Committed as fef656e on branch r9-kimi-go, working tree clean, not pushed. Done. Final
+ summary to the user with the report contents (wall-clock final number: let me grab the
+ final elapsed for accuracy — the report says ≈15 min; total at commit ≈16-17 min. It's
+ approximate ("≈15 minutes"), acceptable as written; the substantive gate ended at ~15.3 min
+ measured; commit followed within the same minute-ish. I'll state final in the response.
+
+ Provide the final answer: concise summary with the report duplicated essence. The task says
+ "stop when every check and test is green with the wall-clock, the loop count by cause ...,
+ and a numbered list 'Decisions the spec did not cover', and write that same report to
+ REPORT.md" — REPORT.md has it all. My final message should carry the summary.
+
+ Committed as fef656e on r9-kimi-go, working tree clean, not pushed. Full report is in
+ REPORT.md at the worktree root. Summary:
+
+ Done. The change spec mo-wiki/spec/programs/01b-job-queue-change.md was not in the worktree
+ (round 10's commit had moved it to spec/); I restored it verbatim from git history and
+ implemented it against that text: delay_ms/backoff_ms on create, the scheduled state with
+ run_at promoted at any look (durable, same batch as the request's own write), backoff on
+ fail/lease-expiry, POST /jobs/{id}/retry, the attempts→tries / max_attempts→max_tries
+ rename everywhere, and old-log replay via two never-written legacy pointer fields in
+ jobJSON (strict decoding kept). Contracts: new requireDelayMS/requireBackoffMS,
+ ensureRetried, lease ensures reworded to tries, two new invariants (run_at exactly when
+ scheduled; scheduled included in tries-below-max), nevers split for the retry transition
+ plus a new scheduled→leased never — old-log test + compact-with-no-old-names test included;
+ check script/expected regenerated and hand-verified; sim extended with delay/backoff/retry;
+ check.sh extended and durable restart path preserved.
+
+ Green gate (each under timeout 300 + 4 GB watchdog): go build, go vet, staticcheck, gofmt
+ -l clean, go test ./..., go test -race ./..., bash jobq/check.sh ×3 — all ok.
+
+ Wall-clock: ≈15 minutes from first deliberate action to all-green; ≈17 including commit.
+
+ Loops (failed check/build/test invocations: 4; root causes 6):
+ 1. go build ./jobq — binary name collides with package dir (invocation shape). First fix
+ worked.
+ 2. go vet mid-migration — api_test.go still referenced done.Attempts. First fix worked.
+ 3. go test ./jobq — (a) check fixtures still old field names; (b) my new backoff-expiry
+ test computed run_at from a pre-advance now; (c) invariant-test keys weren't substrings of
+ the new messages. All three first fixes worked; no program bug found by any test.
+ 4. Fixture-gen run against a non-existent dir. First fix worked.
+
+ Decisions the spec did not cover (full text in REPORT.md):
+ 1. Restored the moved spec file itself from commit 3bfc5d4.
+ 2. run_at JSON placement: after updated_at, before leased/fail extras.
+ 3. Record with both old and new names: old name wins (hand-written only).
+ 4. /retry accepts empty body or {}; anything else 400 (mirrors lease strictness).
+ 5. Non-dead retry 409 text: conflict: job is <state>, not dead.
+ 6. Intra-look order: lease expiries before scheduled promotions, one store write.
+ 7. Promotion keeps a prior fail's reason (mirrors requeue behavior).
+ 8. delay_ms/backoff_ms decoded as ints: floats/strings 400 via decoder, range via requires.
+ 9. Legacy names as never-written pointer fields inside jobJSON (one struct for
+ wire+store+old-log); attemptz still rejected.
+ 10. check.sh compact line count 2→4 (scenario grew); old-name check via "attempts"
+ substring scan.
+ 11. Over-the-wire scheduled case uses real 300 ms delay + 0.4 s sleep; deterministic path
+ uses the manual clock.
+ 12. Sim probabilities redistributed (retry 4%, delayed/backoff creates at ~1/8 each, ≤800
+ ms so drain converges).
+ 13. tries/max_tries/backoff_ms unconditional in {job}; run_at omitempty exactly while
+ scheduled.
+
+
+ [compaction]
+
+ Compacted from 140,177 tokens (ctrl+o to expand)
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-kimi-go (r9-kimi-go)
+↑139k ↓78k R5.2M ?/128k (auto)                                         (ollama) kimi-k3:cloud

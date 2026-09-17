@@ -348,7 +348,7 @@ fn lastEvents(gpa: std.mem.Allocator, simulator: *const sim.Sim) Error![]const [
     const out = try gpa.alloc([]const u8, n);
     for (out, ring.len - n..) |*line, i| {
         var aw: std.Io.Writer.Allocating = .init(gpa);
-        events_mod.describe(&aw.writer, ring.get(i), "the test") catch return error.OutOfMemory;
+        events_mod.describe(&aw.writer, simulator.kept_crashes.filled(ring.get(i)), "the test") catch return error.OutOfMemory;
         line.* = aw.written();
     }
     return out;

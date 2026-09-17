@@ -1,0 +1,58 @@
+ok   flags: serve accepts crash-every 0 and answers /health
+ok   flags: /health carries restarts 0 at start (crash-every 0)
+ok   flags: serve accepts a budget and answers /health
+ok   flags: /health carries restarts 0 at start (a budget)
+ok   flags: serve accepts every option and answers /health
+ok   flags: /health carries restarts 0 at start (every option)
+ok   flags: `--crash-every -1` is a usage error, exit 2
+ok   flags: `--crash-every abc` is a usage error, exit 2
+ok   flags: `--max-restarts 0.5` is a usage error, exit 2
+ok   flags: `--restart-window x` is a usage error, exit 2
+ok   flags: verify does not take --crash-every (exit 2)
+ok   count: restarts 0 before any failure
+ok   count: write 1 fails with 503 or a closed connection
+ok   count: restarts is 1 after failure 1
+ok   count: the write the failure interrupted is on the board (1 queued)
+ok   count: write 2 fails with 503 or a closed connection
+ok   count: restarts is 2 after failure 2
+ok   count: the write the failure interrupted is on the board (2 queued)
+ok   count: write 3 fails with 503 or a closed connection
+ok   count: restarts is 3 after failure 3
+ok   count: the write the failure interrupted is on the board (3 queued)
+ok   count: /health's other counts agree with three creates
+ok   leases: a lease before the failure
+ok   leases: the fifth write fails with 503 or a closed connection
+ok   leases: /health 200 within one second
+ok   leases: the job leased before the failure is still leased to its worker
+ok   leases: with the same lease_until
+ok   leases: the holder acks it after the restart
+ok   leases: an ack without a lease is still 409
+ok   leases: no id handed out twice across restarts
+ok   leases: ids keep rising across restarts
+ok   leases: restarts counted at least twice
+ok   restart: the service answers /health after 6 s of load with a failure every 40 writes
+ok   restart: every answer is 2xx, 4xx, 503, or a closed connection
+ok   restart: the load got through (over 200 creates acknowledged)
+ok   restart: /health is 200 within one second of every failure (longest gap)
+ok   restart: /health counts at least one restart
+     restart: restarts 32 over about 1272 acknowledged writes (one per 40 applied would be about 31; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: every acked job is done (running)
+ok   restart: every created job is present (running)
+ok   restart: every open lease is leased, queued, or scheduled (running)
+ok   restart: verify exits 0 on the folder after the run
+ok   restart: the folder reopens without the switch
+ok   restart: every acked job is done (after a stop and start)
+ok   restart: every created job is present (after a stop and start)
+ok   restart: every open lease is leased, queued, or scheduled (after a stop and start)
+ok   restart: restarts is 0 after a fresh start
+ok   budget: the third failure inside the window ends the service
+ok   budget: with exit code 70
+ok   budget: it took no more than five failures to get there
+ok   budget: verify exits 0 on the folder it left
+ok   budget: the folder reopens
+ok   budget: every 201 job is on the reopened board
+ok   budget: restarts is 0 on the fresh start
+ok   budget: four failures 1.6 s apart under a window of 1 s and the service is still serving
+ok   budget: and /health answers
+
+55 passed, 0 defects

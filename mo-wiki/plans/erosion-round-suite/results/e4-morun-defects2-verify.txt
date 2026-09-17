@@ -1,0 +1,37 @@
+server up in 0.06s on 64718, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects2-1wke5rk0/dir
+ok   end: the server is still alive
+ok   verify: no folder is a usage error, exit 2
+ok   verify: a folder the service wrote verifies with exit 0 and the counts line
+ok   verify: queued at its max_tries (round 8's outage record) is refused with exit 1
+ok   verify: queued at its max_tries (round 8's outage record) names the record's key
+ok   verify: serve refuses queued at its max_tries (round 8's outage record) with exit 1 and no /health
+ok   verify: compact refuses the impossible record with exit 1
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+ok   verify: scheduled without run_at is refused with exit 1
+ok   verify: scheduled without run_at names the record's key
+ok   verify: serve refuses scheduled without run_at with exit 1 and no /health
+ok   verify: leased with tries 0 is refused with exit 1
+ok   verify: leased with tries 0 names the record's key
+ok   verify: leased without a worker is refused with exit 1
+ok   verify: leased without a worker names the record's key
+ok   verify: serve refuses leased without a worker with exit 1 and no /health
+ok   verify: done with tries 0 is refused with exit 1
+ok   verify: done with tries 0 names the record's key
+ok   verify: dead with tries above max_tries is refused with exit 1
+ok   verify: dead with tries above max_tries names the record's key
+ok   verify: dead with a run_at is refused with exit 1
+ok   verify: dead with a run_at names the record's key
+ok   verify: max_tries 0 is refused with exit 1
+ok   verify: max_tries 0 names the record's key
+ok   verify: backoff_ms above the bound is refused with exit 1
+ok   verify: backoff_ms above the bound names the record's key
+ok   verify: a queue name with a space is refused with exit 1
+ok   verify: a queue name with a space names the record's key
+ok   verify: a torn last line still opens under verify, exit 0, 4 jobs
+ok   verify: a torn last line still serves, with the 4 whole jobs
+ok   verify: a create after the torn line is 201 with an id above the four
+
+30 passed, 2 defects
+  - verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+  - verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')

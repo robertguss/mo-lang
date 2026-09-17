@@ -6,13 +6,15 @@ the round row that motivates it, what it costs, code options, and Fable's
 recommendation as a decision-log row. Zero new syntax stays the default: nothing
 here adds a keyword. No change without a row behind it. Chapter 1 asked for this
 page; the roadmap named it `09-`, but chapter 9 was the stdlib by then, so it is
-chapter 10.
+chapter 10. Amended 16 Sep after P6 on Mo's change 2 program (§2, the table,
+the reading).
 
 ## What the rounds said, in one table
 
 | row                                                 | round                        | what happened                                                                                                                                                                                                                | where it points |
 | --------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | a wait hidden as a message pattern                  | 8, the outage; 10, P6        | the queue crashed on a replayed record and the service never answered again: the worker sent `Want` and waited for `Done`, a wait the deadline law cannot see; Elixir's supervisor restored the same service in under 600 ms | §1, §2          |
+| a store that never restarts                         | P6 on Mo, 16 Sep             | the change 2 queue crashed by an input through the surface under load: `503` within 2 ms from then, nothing lost, no restart, because `opening` is computed in `main` and the line says `:never`; a restarted process re-runs its state initializers with its capabilities, so it could have reopened | §2, change 3    |
 | the restart budget by default                       | 10, P6                       | four kills in 2 s and the Elixir node exits on OTP's default of 3 restarts in 5 s, which the program never wrote; Mo's budget is on the `child` line                                                                         | §2              |
 | the six-parameter law                               | 8; measurement 1             | MO0303 cost the maintainer a loop and a `Making` struct, caught nothing                                                                                                                                                      | §3              |
 | a `never` keyed on `(number, tries)`                | 8                            | a retry reset `tries` and the `never` tripped twice as a false positive: two loops, no bug                                                                                                                                   | §4              |
@@ -112,8 +114,20 @@ requires the `Error` arm to exist (it does: `Error(_)`). No change; the outage
 was a `send`. Folds into §1: once a worker asks, `Down` reaches it.
 
 B. The `child` line is the whole failure model, and a process that replays its
-state in `start` may be `:always`; change 2's queue does this (it opens the
-folder in its own start, so a restart replays the log, as kv's store does). Then
+state in `start` may be `:always`. No program does this yet: change 2's queue
+and kv's store both take an `Opening` that `main` computed and say `:never`. A
+restarted process re-runs its `state` initializers with its capabilities
+(verified 16 Sep, `erosion-round-suite/reopen-run.mo`, both runtimes), so a
+queue whose state opens the folder from `fs` and `dir` at start restarts
+correctly today, and the erosion round's change 3 asks for it. Change 3's Mo
+maintainer did it (16 Sep, 10:45): `:always`, the board rebuilt inside the
+process, the killed queue back in 106 ms under load. What it could not do is
+put the budget on the line: `max_restarts` takes a literal, and the budget came
+from the command line, so it wrote a `Warden` process whose invariant trips when
+the budget is spent. So §2 asks for one more thing, zero syntax: `max_restarts`
+and its window may be values the supervisor's arguments carry, as `child
+Queue(fs, clock, dir), restart: :always, max_restarts: rules.max_restarts per
+rules.window`. Then
 `:never` is for a process whose state is truly unrecoverable, and the compiler
 asks for a `max_restarts` on every `:always` line (today it defaults). Zero
 syntax; one diagnostic: "an `:always` child without `max_restarts`; the budget
@@ -217,4 +231,9 @@ durability claim Elixir's maintainer could only test. The changes above spend
 nothing on syntax and everything on the two places the rounds found the language
 silent: a reply awaited as a message, and a restart budget nobody wrote. §1 is
 the one step that decides whether Mo's program can answer P6 as Elixir's did; it
-runs before round 9's models see the language.
+runs before round 9's models see the language. Built and probed (16 Sep): with
+§1 the change 2 queue's crash under load costs the requests in flight, and every
+request after it answers `503` within 2 ms with nothing acknowledged lost, the
+outage closed; the service does not come back because the program said
+`:never`, and the runtime already re-runs a process's state initializers at
+restart, so the reopening store is change 3's to write, not the language's.

@@ -1,5 +1,7 @@
 # Mo
 
+**The wiki is a site: [robertguss.github.io/mo-lang](https://robertguss.github.io/mo-lang/).** Start with [the state of the project](https://robertguss.github.io/mo-lang/state-of-the-project), the whole picture rewritten at every pause; the spec, every control round, every measurement, and the decision log are one link from there.
+
 Mo is a programming language for code that agents write and people review at the level of intent: signatures, contracts, `never` clauses, effects, and tests. It reads like Ruby, keeps Go's discipline, runs processes under supervisors as BEAM does, and turns every style rule into a compiler law with a stable error code. This repository holds the design, a Zig toolchain that checks, tests, simulates, formats, fixes, and runs Mo programs on an interpreter, and the corpus of Mo files the toolchain is measured against.
 
 ## A one-minute tour

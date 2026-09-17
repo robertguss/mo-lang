@@ -1,0 +1,17 @@
+ok   restart: the service answers /health after 6 s of load with a failure every 40 writes
+ok   restart: every answer is 2xx, 4xx, 503, or a closed connection
+ok   restart: the load got through (over 200 creates acknowledged)
+ok   restart: /health is 200 within one second of every failure (longest gap)
+ok   restart: /health counts at least one restart
+     restart: restarts 204 over about 7561 acknowledged writes (one per 40 applied would be about 189; recorded, not checked: the applied count is not visible through HTTP)
+ok   restart: every acked job is done (running)
+ok   restart: every created job is present (running)
+ok   restart: every open lease is leased, queued, or scheduled (running)
+ok   restart: verify exits 0 on the folder after the run
+ok   restart: the folder reopens without the switch
+ok   restart: every acked job is done (after a stop and start)
+ok   restart: every created job is present (after a stop and start)
+ok   restart: every open lease is leased, queued, or scheduled (after a stop and start)
+ok   restart: restarts is 0 after a fresh start
+
+14 passed, 0 defects

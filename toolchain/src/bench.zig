@@ -46,6 +46,8 @@
 //! then 2_000 updates that each add eight keys through `reduce` with a tuple accumulator. Each row
 //! is the best of three runs of the 2_000 updates less the best of three runs that only fill.
 //! `--updates` runs only these rows, and with `--record` appends only them.
+//! `--network` (step 34) runs only the rows that cross a socket: `echo-1k`, `kv-10k-get`, `http-1k`, and
+//! their `-c` rows, printed and never recorded, so a placement change is measured in minutes.
 //! `replay-1m` and `replay-1m-c` (step 28) time programs/jobq opening a log of 1_000_000 records under
 //! `mo run` and as its `mo build` binary: from the process's start to its first answer to `GET /health`,
 //! the log's replay whole. The log is 500_000 jobs each set twice, queued then leased, written once to
@@ -74,6 +76,7 @@ pub fn main(init: std.process.Init) !void {
     var record = false;
     var updates_only = false;
     var replay_only = false;
+    var network_only = false;
     var positional: u32 = 0;
     for (args[1..]) |a| {
         if (std.mem.eql(u8, a, "--record")) {
@@ -82,6 +85,8 @@ pub fn main(init: std.process.Init) !void {
             updates_only = true;
         } else if (std.mem.eql(u8, a, "--replay")) {
             replay_only = true;
+        } else if (std.mem.eql(u8, a, "--network")) {
+            network_only = true;
         } else if (positional == 0) {
             root = a;
             positional += 1;
@@ -103,6 +108,24 @@ pub fn main(init: std.process.Init) !void {
         const replay = try replay1m(arena, io, init.environ_map, root, try mo.corpus.moExe(arena, io, init.environ_map.get("MO_EXE")));
         try printReplay(out, replay);
         if (record) try appendReplay(io, replay);
+        return;
+    }
+
+    if (network_only) {
+        const mo_exe = try mo.corpus.moExe(arena, io, init.environ_map.get("MO_EXE"));
+        const rows = .{
+            .{ "echo-1k", try echo1k(arena, io, init.environ_map, root, iters, &scratch) },
+            .{ "echo-1k-c", try echo1kC(arena, io, init.environ_map, root, iters) },
+            .{ "kv-10k-get", try kv10kGet(arena, io, mo_exe, root, iters) },
+            .{ "kv-10k-get-c", if (try buildNative(arena, io, init.environ_map, root, "kv")) |b| try kvGets(arena, io, &.{b}, iters) else null },
+            .{ "http-1k", if (try programMain(arena, io, root, "httpd")) |m| try httpTrips(arena, io, &.{ mo_exe, "run", m, "--" }, iters) else null },
+            .{ "http-1k-c", if (try buildNative(arena, io, init.environ_map, root, "httpd")) |b| try httpTrips(arena, io, &.{b}, iters) else null },
+        };
+        inline for (rows) |row| {
+            if (row[1]) |ns| {
+                try out.print("{s:<8} {d:>9} µs\n", .{ row[0], @as(u64, @intCast(@divTrunc(ns, 1000))) });
+            } else try out.print("{s:<8} {s:>12}\n", .{ row[0], "n/a" });
+        }
         return;
     }
 

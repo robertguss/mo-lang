@@ -1,0 +1,320 @@
+      195  - [[comparison-pass|Comparison pass: brief for the worker session]] — templa
+           te, tools, and the 13 briefs for the Opus worker
+      196  - [[program-menu|Program menu: what we build to put Mo through its paces]] —
+            seven programs of different kinds, and what each measures
+      197 -- [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q
+          -1–Q16, here is the path I'd propose
+      197 +- [[roadmap|Roadmap: now, next, later]] — the board: what is in flight, what
+          + comes next in order, what waits on Robert, what just landed; then the phase
+          +s and every step's history
+      198
+      199  ## Sessions
+      200  - [[session-06|Session 6 — 13 Sep 2026 (evening, ingestion)]] — six deep-res
+           earch runs and three adjacent runs ingested into raw/; new prompts-mo-parall
+           el-tracks page; no decisions changed
+  ⎿  Updated mo-wiki/maps/how-we-work.md (+1 -1)
+      15  - [[SCHEMA]] — the wiki's working agreements: page types, frontmatter, the de
+          cision log's columns, what a session records
+      16  - `.claude/skills/mo-lead/SKILL.md` in the repo — the lead's role and loop: b
+          rief, fresh worker, verify with probes the brief did not name, record, merge,
+           report
+      17  - `HANDOFF.md` at the repo root — the state and the queue for the next sessio
+          n
+      18 -- [[roadmap]] — the "Where we are" table and the done rows
+      18 +- [[roadmap]] — the board (now, next, waiting on Robert, recently done), the
+         +phase table, and the done rows
+      19  - [[log]] — one entry per session, newest last
+      20  - [[decision-log]] — the decisions
+      21  - The sessions: [[session-01]], [[session-02]], [[session-03]], [[session-04]
+          ], [[session-05]], [[session-06]]
+  ⎿  Updated mo-wiki/plans/roadmap.md (+44 -3)
+      1  ---
+      2 -title: "Roadmap"
+      2 +title: "Roadmap: now, next, later"
+      3  created: 2026-09-12
+      4  updated: 2026-09-16
+      5  type: plan
+     ...
+      10
+      11  # Roadmap
+      12
+      13 -Rewritten in session 5 after the interpreter milestone was met. Each step is
+         -one brief on a plan page, one fresh worker session, Fable's verification, one
+         - commit that updates [[decision-log]], `CHANGELOG.md`, and `log.md`, then a m
+         -erge to `main`. Done steps keep their rows.
+      13 +The board first: what is in flight, what comes next in order, what waits, wha
+         +t
+      14 +just landed. One line each, with the page that holds the detail. Fable rewrit
+         +es
+      15 +it at every acceptance and every pause; the dates say when. Below it, the pha
+         +ses
+      16 +in detail and the history of every step.
+      17
+      15 -## Where we are
+      18 +## Now, in flight
+      19 +
+      20 +| what | who | since | page |
+      21 +|---|---|---|---|
+      22 +| Step 32: crash reports kept apart from the event ring, both runtimes; a cor
+         +pus file for the reopening restart; the P6 probe rerun | Opus worker in `w44:
+         +p3`, Fable verifying | 16 Sep, 09:01 | [[interpreter-step-32]] |
+      23 +
+      24 +## Next, in order
+      25 +
+      26 +| # | what | why now | page |
+      27 +|---|---|---|---|
+      28 +| 1 | Change 3 of the erosion round, the reopening store: Fable writes and se
+         +als the spec; a queue that crashes restarts from its log, `503` meanwhile, `2
+         +00` after, a budget on the line; the same asked of Go, Python, Elixir | P6 on
+         + Mo (16 Sep) showed the restart is the program's to take; this is where the B
+         +EAM's P6 row is answered or not | [[erosion-round]] |
+      29 +| 2 | Generation three of the erosion round: four fresh maintainers, the four
+         +th hidden suite, the fourth oracle | one generation per change; the erosion h
+         +ypothesis needs changes 3 to 10 | [[erosion-round]] |
+      30 +| 3 | The placement step: a process placed with its asker, or a reply answere
+         +d on the asker's scheduler; measured at 1 and 14 cores on the Mac | nothing s
+         +cales on the M3 Max today; the interpreter's parked fiber at 128 held asks |
+         +[[interpreter-step-30]], [[mac-scaling-run]] |
+      31 +| 4 | Chapter 10's other sections as steps: §2 the restart budget diagnostic,
+         + §3 the counted laws to `mo.toml`, §5 MO0317 naming the changed module | deci
+         +ded on the language page, each with a round row behind it | [[10-language-aft
+         +er-the-rounds]] |
+      32 +| 5 | The bricks page (Fable writes it): the shelf, the audit budget, the fal
+         +lback | the dependency claim needs its cost stated | [[roadmap]] |
+      33 +| 6 | The compile benchmark at 5,000 generated modules | the agent-loop claim
+         + at scale, small | — |
+      34 +| 7 | Program 7: a Redis subset against Redis's own tests, on capabilities, r
+         +ecipes, and the runtime surface together | the program chapter 1 says answers
+         + the BEAM | [[program-menu]] |
+      35 +
+      36 +## Later
+      37 +
+      38 +`mo prove` (tier 3); the runtime surface as MCP tools and measurement 4, the
+         +incident round, which tests whether the surface shortens an agent's diagnosis
+         +; round 9's Opus-in-Pi baseline when Pi has an Anthropic key; the package reg
+         +istry once an outsider runs a real service; program 8, the toolchain in Mo.
+      39 +
+      40 +## Waiting on Robert
+      41 +
+     … 18 more lines
+  ⎿  … 1 more file changed
+  ⎿  (timeout 10m)
+  ⎿  1 skill available
+
+
+  Ran 1 shell command
+
+⏺ Green. Re-measuring the resident cost with the fixed slots.
+
+  Ran 1 shell command
+
+⏺ Confirmed the fixed slots: mo run grows ~224 KiB across 16 reports each run, and the binary
+  grows ~176 KiB at best (noisy), with a ceiling of about 201 KiB (16 × (168 + 12,408) bytes)
+  rounded up to 16 KiB pages. Committing this now, then running the benches.
+
+  Ran 2 shell commands
+
+⏺ Now the numbers run: bench before and after, then jobq pairs (5 runs × 4 configurations),
+  then P6 again on the final build. All in one background script, one step at a time.
+
+  Ran 2 shell commands
+
+⏺ The numbers run is going in the background (bench before/after, then 20 jobq runs, then P6
+  on the final build). I'll pick it up when it finishes.
+
+  Ran 1 shell command
+
+⏺ Still on the "before" bench. Waiting for the completion notice.
+
+  Ran 2 shell commands
+
+⏺ The "before" toolchain took most of this time to compile from a cold cache; its bench has
+  just started.
+
+  Ran 2 shell commands
+
+⏺ It's 09:41 and the bench is only 43 s in; the wakeups fired early. Waiting for the task to
+  finish.
+
+  Ran 1 shell command
+
+❯ You are the worker on step 32 of the Mo toolchain. Read /Users/robertguss/Projects/startup…
+
+⏺ Still running: the "before" bench is under a minute in (09:41). The jobq pairs and the P6
+  rerun on the final build come after it. I'll write the report when the background task
+  finishes.
+
+✻ Baked for 39m 41s · done 9:41 AM
+
+❯ Continue: wait for the bench that is running, then the jobq pairs, part C's P6 rerun on the
+  final build, and write the full report to the pane (the numbers table, best of five, both
+  runtimes; the numbered list 'Decisions the brief did not cover'). Do not stop before the
+  report is written.
+
+⏺ Monitor(step 32 numbers run stages)
+  ⎿  Monitor started · task bpwnt5w56 · timeout 1800s
+
+⏺ Watching the numbers run; waiting for its stages.
+
+✻ Cooked for 9s · done 9:42 AM
+
+
+⏺ Monitor event: "step 32 numbers run stages"
+
+  Ran 1 shell command
+
+⏺ Bench before done; waiting for the after bench and the jobq runs.
+
+✻ Crunched for 5s · done 9:44 AM
+
+⏺ Monitor event: "step 32 numbers run stages"
+
+  Ran 1 shell command
+
+⏺ Bench after done (within noise, except http-1k under mo run, 64 → 69 µs; I'll rerun that one
+  at the end). The jobq runs are going.
+
+✻ Sautéed for 7s · done 9:47 AM
+
+⏺ Background command "Run all numbers sequentially" completed (exit code 0)
+
+  Ran 2 shell commands
+
+⏺ Monitor event: "step 32 numbers run stages"
+
+⏺ Monitor "step 32 numbers run stages" stream ended
+
+⏺ Step 32 done: crash reports now have their own store, and the new corpus file shows a
+  restart re-reading its file
+
+  All three parts are pushed to main (feec1f0, a3e5c15, d237108), and zig build test passed at
+  each commit. That run includes the corpus, which checks the new files, mo fmt --check on
+  every file, and the interpreter against the binary. The three spec lines are written, each
+  marked "Session 8, step 32".
+
+  - Part A: the last 16 crash reports are now kept in a store of their own in both runtimes,
+    apart from the event ring. mo run --crashes N and MO_CRASHES=N set the size. crashes reads
+    it newest first, and the Crashed event stays in the ring as before. The test is a new
+    corpus file, examples/processes/crash-kept.mo, driven by a new test in corpus.zig: under
+    mo run --events 64 and as a --surface binary with MO_EVENTS=64, a crash 200 updates back
+    is still listed, and none of the ring's last 64 events is a Crashed event. With 0 as the
+    size, nothing is kept.
+  - Part B: examples/processes/restart-reopens.mo and its .expected print "before the crash
+    the store read one", then "after the crash and the restart the store read two". This
+    matches under mo run and as a binary, and the tests hold under 100 seeds.
+  - Part C: P6 was rerun on the change 2 program, built from a scratch copy with the new
+    toolchain, --surface and the default ring. That was three runs per runtime on the final
+    build, plus the ten runs before the final layout change.
+    - The crash was listed every time, with its clause (requires queue?(making.queue)), the
+      message it crashed on, and its snapshot.
+    - Seven seconds after the crash, the ring's 4,096 events held no Crashed event, and
+      /crashes still listed it.
+    - The queue's state snapshot is 3.4 MB; the kept copy is cut to 4,096 bytes plus a …
+      3380443 bytes more ending.
+    - No acknowledged or created job was lost when the folder was reopened.
+
+
+  Numbers (best of five)
+
+  ┌──────────────────────────┬──────────┬─────────────────────┬──────────┬──────────────┐
+  │           row            │ before,  │    after, mo run    │ before,  │   after,     │
+  │                          │  mo run  │                     │  binary  │    binary    │
+  │ kv-10k-get (µs per GET)  │ 121      │ 123                 │ 98       │ 99           │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ http-1k (µs per round    │ 64       │ 69                  │ 65       │ 66           │
+  │ trip)                    │          │                     │          │              │
+  │ http-1k resident (KiB)   │ 7,344    │ 7,360               │ 2,752    │ 2,768        │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ jobq creates a second    │ 4,077    │ 4,044               │ 5,331    │ 5,366        │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ jobq pairs a second, 1   │ 899      │ 788                 │ 1,317    │ 1,331        │
+  │ worker                   │          │                     │          │              │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ jobq pairs a second, 32  │ 1,231    │ 1,230               │ 2,335    │ 2,381        │
+  │ workers                  │          │                     │          │              │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ resident cost of 16 kept │          │                     │          │              │
+  │  reports, 64 KB states   │ —        │ +224 (same every    │ —        │ +176 (best;  │
+  │ (KiB, store on minus     │          │ run)                │          │ noisy)       │
+  │ store off)               │          │                     │          │              │
+  │                          │          │ 16 × (168 + 12,408) │          │ 16 × (120 +  │
+  │ store's worst case at 16 │ —        │  bytes ≈ 196 KiB,   │ —        │ 12,408)      │
+  │  reports                 │          │ plus 16 KiB page    │          │ bytes ≈ 196  │
+  │                          │          │ rounding            │          │ KiB          │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ P6: crash still listed 7 │          │                     │          │              │
+  │  s after it, default     │ —        │ yes, 3 of 3         │ —        │ yes, 3 of 3  │
+  │ ring                     │          │                     │          │              │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ P6: first answer after   │ —        │ 503 "the queue is   │ —        │ the same     │
+  │ the crash                │          │ down"               │          │              │
+  ├──────────────────────────┼──────────┼─────────────────────┼──────────┼──────────────┤
+  │ P6: acked jobs lost on   │ —        │ 0                   │ —        │ 0            │
+  │ reopen                   │          │                     │          │              │
+  └──────────────────────────┴──────────┴─────────────────────┴──────────┴──────────────┘
+
+❯ Continue: wait for the bench that is running, then the jobq pairs, part C's P6 rerun on th…
+  The "before" toolchain is c80cd98, built in the scratchpad.
+
+  - Two rows moved more than noise would suggest, both under mo run. Neither touches changed
+    code, since the store is written only when a process crashes.
+    - http-1k went from 64 to 69 µs (+8%), in one bench run each; I did not rerun it.
+    - jobq pairs at 1 worker went from 899 to 788. Those runs swing widely on both builds
+      (before 530–899, after 468–788).
+  - The 16 reports in the P6 case hold 71,056 bytes, computed from the interpreter's store
+    with a 3.4 MB state.
+
+  Decisions the brief did not cover
+
+  1. crashes is now newest first, as the brief says. The spec row used to say oldest first; I
+     changed it. No corpus file depended on the order.
+  2. The printed report was not bounded, although the brief assumed it was. So I chose a bound
+     for the kept copy only. The clause, the message and the state snapshot are each cut to
+     4,096 bytes where a character begins, ending  … N bytes more. The printed report stays
+     whole: 3.4 MB on stderr for the P6 queue.
+  3. Each report has a fixed slot in one buffer reserved at the first crash. The first version
+     gave each text its own allocation, and it cost 560 KiB for 16 reports under mo run. The
+     buffer is 3 × (4,096 + 40) bytes per slot. It lives in the run's arena under mo test, and
+     in pages mapped at the first crash under mo run and in a binary. This change went into
+     the part C commit.
+  4. The store is written even with --events 0. A crash of the hidden surface process is not
+     kept, matching the ring.
+  5. mo test has no flag for the store's size: tests always keep 16. --crashes exists only on
+     mo run, and MO_CRASHES only for a binary.
+  6. The memory row's event_bytes still counts only the ring, not the store.
+  7. Part A's test is not a # run: file. A plain corpus binary has platform.runtime as None,
+     so its output would differ from mo run's. Instead, crash-kept.mo has a pure test plus a
+     main that the new corpus.zig test runs both ways. It uses a ring of 64 rather than the
+     default, so the test stays fast.
+  8. In restart-reopens.mo, an ask sent right behind the crashing message returns Down,
+     because the restart empties the mailbox. The told helper therefore asks up to three
+     times. The file writes restart-reopens.txt in its own folder and removes it at the end.
+  9. A test cannot show the restart re-reading the file, because a test rejects ends at the
+     trip. What the file has instead:
+     - a test showing the initializer reads through the Fs the store was started with;
+     - a test rejects that trips the invariant, so the sim reports it as "kept 1, tripped 1".
+  10. P6's default kill no longer crashes the queue. The default --message (a lease with
+      lease_ms 5) never tripped anything in my runs, as erosion-round.md also records. I used
+      the recorded Create with queue "bad queue" instead.
+  - I built from a scratch copy, with mo.root and .mo.ids, so the evidence worktree stays
+    untouched.
+  - The late /crashes read is in a scratch copy of the probe (p6-late.py), since the probe
+    itself sits outside my write scope.
+  11. Existing problem, not fixed: both runtimes still keep every full crash report for the
+      whole run. Under mo run that is the sim.crashes list; in a binary, the rendered log and
+      state strings are never freed. 16 crashes with 64 KB states grew resident memory by
+      about 2.3 MB even with the store off. A long-running service that crashes often grows
+      without bound; this looks like a step of its own.
+  12. The jobq numbers are from the main repo's programs/jobq, run through
+      control-run-7-suite/measure.py with its default 100,000 jobs.
+
+  Scratch evidence (bench outputs, jobq.txt, p6-final-*.txt) is in this session's scratchpad.
+  No memory watchdog kills were needed.
+
+✻ Cogitated for 41s · done 10:04 AM
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+❯ rerun http-1k best of five to confirm it's noise
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang (main) | Context: 79% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

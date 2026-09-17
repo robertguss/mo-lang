@@ -236,6 +236,8 @@ pub const Sim = struct {
     sources: sources_mod.Sources = .{},
     /// What the processes did, most recent last (events.zig, step 23).
     ring: events_mod.Ring = .{},
+    /// The last crash reports, which the surface reads, kept apart from the ring (step 32).
+    kept_crashes: events_mod.Crashes = .{},
     /// The process `mo run --surface` starts to serve the surface, which the surface does not list
     /// and the ring does not record (step 23): its index in `Program.processes`, or none.
     hidden_process: u32 = none,
@@ -245,7 +247,7 @@ pub const Sim = struct {
     /// The fixed order: start order, every send delivered before the next statement, and
     /// a clock that does not move.
     pub fn init(vm: *Vm, seed: u64, test_name: []const u8) Sim {
-        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .ring = .{ .gpa = vm.gpa } };
+        return .{ .gpa = vm.gpa, .vm = vm, .seed = seed, .test_name = test_name, .ring = .{ .gpa = vm.gpa }, .kept_crashes = .{ .gpa = vm.gpa } };
     }
 
     /// A seeded run: the same rules, with the scheduler's choices drawn from `seed`, and
@@ -260,6 +262,7 @@ pub const Sim = struct {
             .faults = if (fault_percent > 0) .init(seed ^ fault_stream) else null,
             .fault_percent = fault_percent,
             .ring = .{ .gpa = vm.gpa },
+            .kept_crashes = .{ .gpa = vm.gpa },
         };
     }
 
@@ -439,11 +442,13 @@ pub const Sim = struct {
 
     /// `reply.answer(v)`: the answer waits for the update's commit, as a send does. An answer
     /// to an ask this process does not hold, one it already answered or one whose asker is
-    /// gone, is dropped.
+    /// gone, is dropped. The ask the running arm keeps is held from the arm on, so the arm may
+    /// answer it itself (step 34: it was held only from the commit, and its answer was dropped).
     pub fn answerReply(sim: *Sim, seq: u64, value: Value) Error!void {
         const me = sim.running orelse return;
         const p = &sim.procs.items[me];
-        if (std.mem.indexOfScalar(u64, p.kept.items, seq) == null) return;
+        const own = p.deferring and p.reply_seq == seq;
+        if (!own and std.mem.indexOfScalar(u64, p.kept.items, seq) == null) return;
         for (p.answers.items) |a| if (a.seq == seq) return;
         try p.answers.append(sim.gpa, .{ .seq = seq, .value = value });
     }
@@ -856,11 +861,16 @@ pub const Sim = struct {
             const p = &sim.procs.items[to];
             // A restart empties the mailbox, this message with it.
             if (!p.up or p.queued() == 0 or p.mailbox.items[p.head].seq > seq) return sim.askError("Down");
+            // The ask waits from its delivery on, so an arm that keeps it may answer it at once (step 34).
+            if (p.mailbox.items[p.head].seq == seq) try sim.waiting.put(sim.gpa, seq, {});
             const d = try sim.deliver(to);
             if (d.seq != seq) continue;
-            if (!d.deferred) break d.reply orelse return sim.askError("Down");
+            if (!d.deferred) {
+                _ = sim.waiting.remove(seq);
+                if (sim.answered.fetchRemove(seq)) |kv| if (kv.value) |got| if (got.parcel) |x| x.free();
+                break d.reply orelse return sim.askError("Down");
+            }
             kept = true;
-            try sim.waiting.put(sim.gpa, seq, {});
         };
         // A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
         // pass its deadline, or when its slowest fixture is slower than it. A target whose calls
@@ -1128,7 +1138,9 @@ pub const Sim = struct {
         p.emits.clearRetainingCapacity();
         const reply = after.tuple[0];
         // An answer the update made commits with it, and is dropped when nothing waits for it.
+        var answered_own = false;
         for (p.answers.items) |a| {
+            if (a.seq == entry.seq) answered_own = true;
             const at = std.mem.indexOfScalar(u64, p.kept.items, a.seq);
             if (at) |k| _ = p.kept.orderedRemove(k);
             try sim.routeAnswer(a.seq, a.value);
@@ -1138,7 +1150,7 @@ pub const Sim = struct {
         // answers it, crashes, or restarts (step 31).
         const deferring = p.deferring;
         if (deferring) {
-            try p.kept.append(sim.gpa, entry.seq);
+            if (!answered_own) try p.kept.append(sim.gpa, entry.seq);
         } else try sim.routeAnswer(entry.seq, reply);
         if (regioned) try sim.settleRegion(id, mark);
         return .{ .seq = entry.seq, .reply = reply, .deferred = deferring };
@@ -1222,8 +1234,8 @@ pub const Sim = struct {
         for (p.invariants) |inv| {
             if ((try vm.call(inv.function, args)).bool) continue;
             const c = vm.program.clauses[inv.clause];
-            const values = try vm.gpa.alloc(contracts.Involved, 1);
-            values[0] = .{ .name = "state", .value = try vm.render(out.tuple[1]) };
+            const values = try vm.reportGpa().alloc(contracts.Involved, 1);
+            values[0] = .{ .name = "state", .value = try vm.renderReport(out.tuple[1]) };
             vm.report = .{ .kind = .invariant, .clause = c.text, .within = c.within, .at = c.at, .values = values };
             return error.Crash;
         }
@@ -1369,28 +1381,42 @@ pub const Sim = struct {
 
     /// Keeps the crash with its complete report, then does what the child line says.
     /// :always and :on_crash restart alike: an update never ends a process but by crashing.
+    /// Under Mo.Server the report is written to stderr and kept cut in `kept_crashes`, and nothing
+    /// else of it stays: what it rendered is freed below (step 33), since a large process's state
+    /// cost its size again at every restart. Under Mo.Sim the run keeps every report whole.
     fn crashed(sim: *Sim, id: u32, before: Value) Error!void {
         const vm = sim.vm;
+        const gpa = vm.reportGpa();
         var report = vm.report.?;
         var p = &sim.procs.items[id];
-        const log = try sim.gpa.alloc([]const u8, p.log.items.len);
-        for (p.log.items, log) |m, *o| o.* = try vm.render(m);
-        report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.render(before) };
+        const log = try gpa.alloc([]const u8, p.log.items.len);
+        for (p.log.items, log) |m, *o| o.* = try vm.renderReport(m);
+        report.process = .{ .process = sim.nameOf(id), .seed = sim.seed, .log = log, .state = try vm.renderReport(before) };
         if (p.policy.restart == .never and p.policy.line != none) report.process.?.not_restarted = vm.program.supervisors[p.policy.line].name;
-        try sim.crashes.append(sim.gpa, report);
-        sim.record(.{
+        if (sim.server == null) try sim.crashes.append(sim.gpa, report);
+        // The ring's event reads its texts from the store by number (events.zig, Crashes.filled).
+        const number = if (sim.hidden(id)) 0 else sim.kept_crashes.record(.{
             .kind = .crashed,
+            .at = sim.eventNow(),
             .process = id,
+            .process_name = sim.nameOf(id),
             .seed = sim.seed,
             .clause = report.clause,
             .message = if (log.len > 0) log[log.len - 1] else "",
             .state = report.process.?.state,
         });
+        sim.record(.{ .kind = .crashed, .process = id, .seed = sim.seed, .count = number });
         if (sim.server) |s| {
             s.processCrashed(report);
             // A connection closes when the process holding it stops, restarted or not.
             s.sockets.closeHeld(p.args);
         } else sim.fixture.closeHeld(p.args);
+        // Under Mo.Server a report that gives up is main's crash, written when the run ends; any
+        // other is done with here.
+        defer if (sim.server != null and !sim.gave_up) {
+            vm.report = null;
+            vm.freeReports();
+        };
         try sim.downKept(id);
         p = &sim.procs.items[id];
         if (sim.turns) |t| t.wakeAll();

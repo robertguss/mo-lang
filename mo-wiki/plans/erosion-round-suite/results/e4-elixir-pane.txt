@@ -1,0 +1,28 @@
+     - A live record that carries archived_at.
+
+     An "archived" marker with no archive record is tolerated.
+  9. The counter-marker fix described above.
+  10. Archived jobs are kept in memory, to serve reads by id and the key map. The log file
+      stops growing, but the process's memory doesn't shrink until archived jobs are deleted.
+  11. Archiving is the third pass of every look, including the idle tick, with the test
+      updated_at <= now - retain_ms. A job that dies in a look isn't archived in that same
+      look. As with the lease expiries from change 1, a move made by the idle tick has no
+      request waiting on it.
+  12. The store's test fault gains a :between mode: the archive write succeeds and the log
+      write fails.
+  13. The check script gets two directive lines, @retain-ms N and @sleep N, so the jobq check
+      usage stays unchanged. The script uses 2 s retention; the work before the sleep takes
+      about 55 ms.
+  14. The store creates an empty jobq.archive when it starts. verify and compact treat a
+      missing archive as empty.
+  15. Changes to existing tests: 31-day retention in the old-log tests, and updated counts and
+      ; archived N in the CLI tests and check.sh. No assertion about behaviour from changes
+      1–3 was loosened.
+
+✻ Crunched for 12m 6s · done 2:25 PM
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+❯
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion4-elixir (erosion4-elixir*) | Context: 78% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

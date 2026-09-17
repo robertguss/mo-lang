@@ -121,7 +121,8 @@ def t_verify(serve, verify, compact, cwd, fmt):
     want = f"5 jobs: queued {h['queued']}, scheduled {h['scheduled']}, leased {h['leased']}, done {h['done']}, dead {h['dead']}; next id j_"
     line = counts_line(out)
     # the next id is the implementation's (Mo reserves ids in blocks of 1,000 on open); the counts and the shape are the spec's
-    check("verify: a folder the service wrote verifies with exit 0 and the counts line", rc == 0 and line.startswith(want) and re.fullmatch(r"j_\d+", line[len(want) - 2:]) is not None, (rc, out[-200:], want))
+    # amended 16 Sep 14:55, generation four: change 4 adds "; archived <a>" after the id, so the line may end that way (every program's did; the checks are unchanged)
+    check("verify: a folder the service wrote verifies with exit 0 and the counts line", rc == 0 and line.startswith(want) and re.fullmatch(r"j_\d+(; archived \d+)?", line[len(want) - 2:]) is not None, (rc, out[-200:], want))
     # every ill-formed record refuses the folder under verify, serve, and compact
     for name, rec in ILL:
         b2 = tempfile.mkdtemp(prefix="ill-"); d2 = os.path.join(b2, "dir"); os.mkdir(d2)

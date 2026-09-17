@@ -1,0 +1,28 @@
+  12. Refusal messages:
+      - A live-log record carrying archived_ms is refused.
+      - Archive errors start with archive record j_n:.
+  13. Memory: the whole archive is kept in memory.
+  14. Missing archive file: it's created empty when the folder is opened, the way jobs.log is.
+      The read-only replay treats a missing file as empty.
+  15. Compaction order: compact rewrites the archive first, then the live log. Its output line
+      still counts live records only.
+  16. --retain-ms values: up to 10 digits within the spec's bounds; anything else is a usage
+      error (exit 2).
+  17. Retention after a retry: retention counts from updated_at, so a retried job's clock
+      restarts when it finishes again.
+  18. Finding due jobs: a heap ordered by updated_ms avoids scanning every job on each pass.
+      The pure function archive_step filters the jobs it's given.
+  19. Keyed create: the key is looked up and the job created in the same request, and the
+      create itself refuses a key already in use.
+  20. Check script: the new steps use jobq serve --retain-ms 1000 driven by jobq client. jobq
+      check got no new flag, since the spec's usage lists none.
+  21. Existing format failure: ruff format --check already failed on 5 files before this
+      change, and I left those alone.
+
+✻ Crunched for 10m 23s · done 2:23 PM
+
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion4-python (erosion4-python) | Context: 82% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

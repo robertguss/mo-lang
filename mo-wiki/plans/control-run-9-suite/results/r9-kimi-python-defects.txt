@@ -1,0 +1,28 @@
+server up in 0.16s on 50227, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects8-pxw25vow/dir
+FAIL fields: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL scheduled: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL order: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL delete: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL backoff: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL runout: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL retry: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL health: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL durable: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL race: ran to the end: OSError: [Errno 49] Can't assign requested address
+FAIL load: ran to the end: OSError: [Errno 49] Can't assign requested address
+ok   end: the server is still alive
+FAIL oldlog: the round 7 service starts: server did not answer /health within 20.0s: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/oldlog-9pmgwt42/dir --port 50227
+
+1 passed, 12 defects
+  - fields: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - scheduled: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - order: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - delete: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - backoff: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - runout: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - retry: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - health: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - durable: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - race: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - load: ran to the end: OSError: [Errno 49] Can't assign requested address
+  - oldlog: the round 7 service starts: server did not answer /health within 20.0s: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/oldlog-9pmgwt42/dir --port 50227

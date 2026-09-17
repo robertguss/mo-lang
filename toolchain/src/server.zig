@@ -87,6 +87,9 @@ pub const Server = struct {
     ids_used: usize = 0,
     /// The events the run keeps (events.zig): `mo run --events N`, 4,096 by default (step 23).
     events_cap: u32 = @import("events.zig").default_cap,
+    /// The crash reports the surface reads, kept apart from the ring: `mo run --crashes N`, 16 by
+    /// default (step 32).
+    crashes_cap: u32 = @import("events.zig").default_crashes,
     /// `mo run --surface PORT`: the runtime surface is served over HTTP on 127.0.0.1 from before
     /// main runs (step 23); the program must hold its module (program.withSurface).
     surface_port: ?u16 = null,
@@ -109,6 +112,8 @@ pub const Server = struct {
         var scheduler: Sim = .init(&machine, 0, "main");
         scheduler.server = s;
         scheduler.ring = .{ .cap = s.events_cap, .wall_ms = s.now(), .mono_us = s.monoUs() };
+        scheduler.kept_crashes = .{ .cap = s.crashes_cap };
+        defer scheduler.kept_crashes.deinit();
         defer s.ids_used = scheduler.procs.items.len;
         machine.sim = &scheduler;
         // Values live in regions freed at safe points (vm.zig): main's here, and each
@@ -132,8 +137,9 @@ pub const Server = struct {
         if (processes) {
             scheduler.turns = &turns;
             if (regions) scheduler.packs = true;
-            // A scheduler per core (step 30): MO_CORES, else the machine's cores.
-            try turns.begin(&scheduler, &machine, turns_mod.coresFrom(s.environ.get("MO_CORES")), if (regions) &scratch.? else null);
+            // A scheduler per core (step 30): MO_CORES, else the machine's cores; placement with the
+            // starter unless MO_PLACE=spread (step 34).
+            try turns.begin(&scheduler, &machine, turns_mod.coresFrom(s.environ.get("MO_CORES")), turns_mod.placingFrom(s.environ.get("MO_PLACE")), if (regions) &scratch.? else null);
         }
         runMain(&machine, &scheduler, main_fn) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,

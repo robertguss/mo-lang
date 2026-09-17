@@ -1,0 +1,60 @@
+  Report
+
+  - REPORT.md created at worktree root documenting:
+    - Wall-clock time: ~90 minutes
+    - Loop count: 1 loop with multiple fixes
+    - 6 decisions the spec didn't cover
+
+  The implementation maintains full durability (every job write before API response) and passes
+  all existing tests plus new tests for scheduled jobs, backoff, and retry functionality.
+
+✻ Cogitated for 9m 58s · done 8:32 AM
+
+※ recap: Completed jobq feature change: scheduled jobs, retry backoff, and field renames. All
+  48 tests passing, commit made. Task is done. (disable recaps in /config)
+
+❯ /context
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Haiku 4.5
+     ⛁ ⛀ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-haiku-4-5-20251001
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   167.8k/200k tokens (84%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Estimated usage by category
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ System prompt: 4.4k tokens (2.2%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ System tools: 17.4k tokens (8.7%)
+❯ You are a worker on a software project in the worktree /Users/robertguss/Projects/startups/…
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ Custom agents: 295 tokens (0.1%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛶ ⛶ ⛶ ⛶   ⛁ Memory files: 362 tokens (0.2%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Skills: 2k tokens (1.0%)
+                           ⛁ Messages: 143.7k tokens (71.8%)
+                           ⛶ Free space: 31.8k (15.9%)
+
+
+     MCP tools · /mcp (loaded on-demand)
+     └ 77 tools · 0 tokens
+
+     Custom agents · .claude/agents/
+     └ 5 agents · 295 tokens
+
+     Memory files · /memory
+     └ 2 files · 362 tokens
+
+     Skills · /skills
+     └ 44 skills · 2k tokens
+
+     /context all to expand
+
+      Suggestions
+      ⚠ Context is 84% full
+        Autocompact will trigger soon, which discards older messages. Use /compact now to
+     control what gets kept.
+
+      ℹ Read results using 34k tokens (17%) → save ~10.2k
+        Use offset and limit parameters to read only the sections you need. Avoid re-reading
+     entire files when you only need a few lines.
+                                                                             94% context used
+───────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────
+  Haiku 4.5 ~/P/s/mo-lang-r9-haiku-mo (r9-haiku-mo*) | Context: 16% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

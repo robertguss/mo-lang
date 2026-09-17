@@ -1,0 +1,10 @@
+ok   archivekill: verify exits 0 after the kill
+FAIL archivekill: every created job is counted exactly once after the reopen: (2635, 2634, {'queued': 2, 'scheduled': 0, 'leased': 0, 'done': 0, 'dead': 2, 'archived': 2631, 'uptime_ms': 144, 'restarts': 0})
+ok   archivekill: some jobs were archived under the load
+ok   archivekill: every sampled job reads 200, live or archived (155 sampled)
+ok   archivekill: every sampled key is still used by its job
+ok   archivekill: no id appears twice in the archive
+ok   archivekill: the total is the same after a second reopen (time passes, so more may be archived)
+
+6 passed, 1 defects
+  - archivekill: every created job is counted exactly once after the reopen: (2635, 2634, {'queued': 2, 'scheduled': 0, 'leased': 0, 'done': 0, 'dead': 2, 'archived': 2631, 'uptime_ms': 144, 'restarts': 0})

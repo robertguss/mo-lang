@@ -1,0 +1,28 @@
+  9. Where restarts goes: it is the last field of /health.
+  10. Torn last line: the store now cuts a torn last line (with a warning) when it starts.
+      Otherwise the first new record after a kill would join the torn line and corrupt the
+      log.
+  11. Redacted crash reports: they leave out client payloads and the queue's jobs. On a big
+      queue they would otherwise be megabytes of client data.
+  12. serve flags: they are accepted in any order and the last one of a name wins. The other
+      commands reject them as a usage error (exit 2).
+  13. jobq check: it runs with the default budget and no chaos, so its transcript shows
+      "restarts":0.
+  14. The spec's --sim fault run: the "equivalent" is an ExUnit test that uses a test-only
+      option to fail random writes. The run under load exists both as an HTTP test and as the
+      bench's chaos measurement.
+  15. Bench retries: bench clients retry a 503 after 5 ms. A few jobs whose response was lost
+      then exist twice (about 20,200 jobs for 20,000 201s), which the spec allows for 503s
+      caused by a failure.
+  16. Toolchain: commands ran under mise exec with pinned versions, because the worktree has
+      no mise config.
+  17. README reflow: a formatting hook re-wrapped two README paragraphs I edited; the wording
+      is unchanged.
+
+✻ Cooked for 11m 19s · done 10:33 AM
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+❯
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion3-elixir (erosion3-elixir) | Context: 83% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

@@ -1,0 +1,13 @@
+ok   keykept: the first keyed create is 201
+ok   keykept: the second keyed create is 201
+ok   keykept: a plain create eventually trips the switch
+ok   keykept: after a chaos restart the key is still used (200, the same job)
+ok   keykept: a new key after the restart is made (201, or 200 if the failed attempt landed)
+ok   keykept: after a stop and start the key is still used
+ok   keykept: a key made just before the stop is still used
+ok   keykept: compact exits 0
+ok   keykept: after a compaction the key is still used
+ok   keykept: a key freed before the compaction is free after it
+ok   keykept: verify exits 0 on a folder with keys
+
+11 passed, 0 defects

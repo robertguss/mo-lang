@@ -1,0 +1,29 @@
+     window. If there are already max_restarts of them, it exits 70. With --max-restarts 0,
+     the first failure exits 70.
+  9. The window uses the service's clock: the real clock in serve, the manual clock in tests.
+  10. Option ranges:
+      - --max-restarts is 0 to 1,000,000.
+      - --restart-window is 1 to 86,400 seconds.
+      - --crash-every is any whole number, 0 for never.
+      - Options can come in any order, each at most once; non-canonical numbers such as 05
+        exit 2.
+  11. uptime_ms is not reset by a board restart, only by stopping and starting the service.
+  12. A restart that itself fails exits 70 instead of retrying. This covers the store failing
+      to close, the log failing to replay, or a panic during the restart.
+  13. Before exiting 70, the store is closed first (torn tail cut), and every request gets 503
+      until shutdown finishes.
+  14. Store.Append marks the store dirty before writing, so a panic partway through a write
+      still has its partial tail cut.
+  15. The check script gets a crash step, which fails the next write. jobq check waits for the
+      board after each request, so its output is the same on every run.
+  16. 503 bodies: a failure caused by chaos or a panic keeps the existing the request could
+      not be completed, and a request that arrives during a restart gets the service is
+      restarting.
+
+✻ Crunched for 12m 13s · done 10:34 AM
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+❯ Stop here and exit
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion3-go (erosion3-go) | Context: 85% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

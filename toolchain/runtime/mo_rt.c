@@ -192,6 +192,8 @@ static void stats_add(Stats *to, const Stats *c) {
 
 /* With more than one scheduler (step 30), a line for the run, one for the schedulers, and one for each
  * scheduler, whose counts are its thread's (main.zig, printStats). */
+static void print_placement(void);
+
 static void print_stats(void) {
     const Stats *own = main_stats_at ? main_stats_at : &stats;
     Stats total = *own;
@@ -211,6 +213,7 @@ static void print_stats(void) {
         snprintf(label, sizeof label, "scheduler %u ", k);
         stats_line(label, k == 0 ? own : sched_stats[k] ? sched_stats[k] : &stopped_stats[k]);
     }
+    print_placement();
 }
 
 static void stats_on_term(int sig) {
@@ -822,7 +825,10 @@ void mo_compact(size_t from, MoValue *roots, size_t n) {
     if (scratch.high - scratch.base > 16 * RELEASE_KEEP) release_past(&scratch, scratch.base + RELEASE_KEEP);
     for (size_t i = 0; i < nbelow; i++) below[i].at = mo_heap.top;
     /* A compaction that freed far more than it kept gives the pages back at once, as a loop that
-     * built and dropped a large value does; smaller ones wait for the update's end (settle_region). */
+     * built and dropped a large value does; smaller ones wait for the update's end (settle_region). The
+     * copy back can end past the old top, a string being copied once for each value that holds it, so
+     * the high mark moves up to it first (vm.zig's compact, step 33). */
+    if (mo_heap.top > mo_heap.high) mo_heap.high = mo_heap.top;
     uintptr_t kept = mo_heap.top - mo_heap.base;
     if (mo_heap.high - mo_heap.top > 16 * RELEASE_KEEP && mo_heap.high - mo_heap.top > 2 * kept) release_past(&mo_heap, mo_heap.top + RELEASE_KEEP);
     mo_clean_from = from;
@@ -1319,13 +1325,66 @@ static MoMap *map_without(MoMap *m, size_t stride, MoValue key, uint32_t kind) {
 
 /* ==== text: the streams, value rendering, and reports (vm.zig, runner.zig, main.zig) ==== */
 
-typedef struct { char *p; size_t len, cap; } Buf;
+/* A process's crash report under main, rendered text and all, is allocated here and let go at once
+ * when it has been written and kept cut (crashed, step 33), as vm.zig's reportGpa is: chunks the
+ * system maps and takes back whole, since the system's malloc kept every freed large block
+ * resident (a 20,000-job queue's reports held 360 MiB after ten restarts). One per thread: a
+ * report is rendered and written on the thread whose update crashed. */
+typedef struct ReportChunk {
+    struct ReportChunk *next;
+    size_t size;
+} ReportChunk;
+#define REPORT_CHUNK ((size_t)64 << 10)
+static _Thread_local ReportChunk *report_chunks, *report_big;
+static _Thread_local size_t report_used;
+
+static void *report_alloc(size_t n) {
+    n = (n + 15) & ~(size_t)15;
+    size_t head = sizeof(ReportChunk);
+    if (n + head > REPORT_CHUNK / 4) {
+        ReportChunk *c = mmap(NULL, n + head, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (c == MAP_FAILED) out_of_memory();
+        *c = (ReportChunk){report_big, n + head};
+        report_big = c;
+        return (char *)c + head;
+    }
+    if (!report_chunks || report_used + n > report_chunks->size) {
+        ReportChunk *c = mmap(NULL, REPORT_CHUNK, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (c == MAP_FAILED) out_of_memory();
+        *c = (ReportChunk){report_chunks, REPORT_CHUNK};
+        report_chunks = c;
+        report_used = head;
+    }
+    void *at = (char *)report_chunks + report_used;
+    report_used += n;
+    return at;
+}
+
+static void reports_release(void) {
+    for (ReportChunk **list = (ReportChunk *[]){report_chunks, report_big}, **end = list + 2; list < end; list++) {
+        for (ReportChunk *c = *list, *next; c; c = next) {
+            next = c->next;
+            munmap(c, c->size);
+        }
+    }
+    report_chunks = report_big = NULL;
+    report_used = 0;
+}
+
+/* `report`: the buffer grows in the report chunks. */
+typedef struct { char *p; size_t len, cap; bool report; } Buf;
 
 static void buf_put(Buf *b, const char *s, size_t n) {
     if (b->len + n + 1 > b->cap) {
         size_t cap = b->cap ? b->cap : 64;
         while (b->len + n + 1 > cap) cap *= 2;
-        b->p = xrealloc(b->p, cap);
+        if (b->report) {
+            char *p = report_alloc(cap);
+            if (b->len) memcpy(p, b->p, b->len);
+            b->p = p;
+        } else {
+            b->p = xrealloc(b->p, cap);
+        }
         b->cap = cap;
     }
     if (n) memcpy(b->p + b->len, s, n);
@@ -1582,6 +1641,14 @@ static char *render(MoValue v) {
     return buf_take(&b);
 }
 
+/* A value as a crash report shows it: under main, in the report chunks. */
+static char *render_report(MoValue v) {
+    Buf b = {0};
+    b.report = server_mode;
+    format_value(&b, v);
+    return buf_take(&b);
+}
+
 /* Text copied into the values heap. */
 static MoValue heap_string(const char *s, size_t n) {
     char *p = mo_alloc_bytes(n);
@@ -1690,7 +1757,12 @@ typedef struct {
     /* The supervisor whose child line says restart: :never, when that line kept the process down
      * (step 29); NULL when it restarts. */
     const char *not_restarted;
+    /* `values` and each value's text are in the report chunks under main, let go once a process's
+     * crash has been written (crashed, step 33). */
+    bool owns_values;
 } Report;
+
+static Involved *report_values(uint32_t n) { return server_mode ? report_alloc((n ? n : 1) * sizeof(Involved)) : xmalloc(n * sizeof(Involved)); }
 
 /* Where a crash, a skip, or a discarded attempt goes in a test; NULL under main. */
 enum { JUMP_CRASH = 1, JUMP_SKIP = 2, JUMP_DISCARD = 3 };
@@ -1711,11 +1783,18 @@ static void report_text(Buf *b, const Report *r) {
     case MO_R_DIVIDE_BY_ZERO: buf_printf(b, "division by zero in %s", r->clause); break;
     default: buf_str(b, r->clause); break;
     }
-    for (uint32_t i = 0; i < r->nvalues; i++) buf_printf(b, "%s%s = %s", i == 0 ? "; " : ", ", r->values[i].name, r->values[i].value);
+    for (uint32_t i = 0; i < r->nvalues; i++) {
+        buf_printf(b, "%s%s = ", i == 0 ? "; " : ", ", r->values[i].name);
+        buf_str(b, r->values[i].value);
+    }
     if (r->process) {
         buf_printf(b, "\n      in process %s, seed %llu\n      messages since it started: ", r->process, (unsigned long long)r->seed);
-        for (uint32_t i = 0; i < r->nlog; i++) buf_printf(b, "%s%s", i == 0 ? "" : ", ", r->log[i]);
-        buf_printf(b, "\n      state before the last message: %s", r->state);
+        for (uint32_t i = 0; i < r->nlog; i++) {
+            if (i > 0) buf_str(b, ", ");
+            buf_str(b, r->log[i]);
+        }
+        buf_str(b, "\n      state before the last message: ");
+        buf_str(b, r->state);
         if (r->not_restarted) buf_printf(b, "\n      not restarted: %s says restart: :never, so %s stays down", r->not_restarted, r->process);
     }
 }
@@ -1745,9 +1824,10 @@ _Noreturn void mo_crash(uint32_t clause) {
 
 _Noreturn void mo_crash_values(uint32_t clause, uint32_t n, const char *const *names, const MoValue *values) {
     Report r = clause_report(clause);
-    r.values = xmalloc(n * sizeof(Involved));
+    r.values = report_values(n);
     r.nvalues = n;
-    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){names[i], render(values[i])};
+    r.owns_values = true;
+    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){names[i], render_report(values[i])};
     raise_report(r, JUMP_CRASH);
 }
 
@@ -1756,9 +1836,10 @@ _Noreturn void mo_crash_arith(uint8_t kind, uint32_t clause, uint32_t n, const M
     static const char *const two[] = {"left", "right"};
     Report r = clause == UINT32_MAX ? (Report){kind, "an integer past its type", "", NULL, NULL, 0} : clause_report(clause);
     r.kind = kind;
-    r.values = xmalloc(n * sizeof(Involved));
+    r.values = report_values(n);
     r.nvalues = n;
-    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){n == 1 ? one[0] : two[i], render(operands[i])};
+    r.owns_values = true;
+    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){n == 1 ? one[0] : two[i], render_report(operands[i])};
     raise_report(r, JUMP_CRASH);
 }
 
@@ -1778,9 +1859,10 @@ _Noreturn void mo_trip(uint32_t clause, uint32_t n, const MoValue *values) {
         if (mo_nevers[k].clause == clause) never = &mo_nevers[k];
     }
     Report r = clause_report(clause);
-    r.values = xmalloc(n * sizeof(Involved));
+    r.values = report_values(n);
     r.nvalues = n;
-    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){never && i < never->nnames ? never->names[i] : "", render(values[i])};
+    r.owns_values = true;
+    for (uint32_t i = 0; i < n; i++) r.values[i] = (Involved){never && i < never->nnames ? never->names[i] : "", render_report(values[i])};
     raise_report(r, JUMP_CRASH);
 }
 
@@ -4979,6 +5061,68 @@ static void record_event(Event e) {
     ring_total++;
 }
 
+/* The crash reports the surface reads, kept apart from the ring (events.zig, Crashes; step 32): the
+ * last crash_cap, MO_CRASHES=N, 16 by default, each with its own copies of the clause, the message,
+ * and the state snapshot, each cut to KEPT_TEXT bytes where a character begins, in a slot of
+ * SLOT_BYTES of one buffer reserved at the first crash, in pages the system gives as they are
+ * touched. */
+#define KEPT_TEXT 4096
+#define KEPT_ENDING 40
+#define SLOT_BYTES (3 * (KEPT_TEXT + KEPT_ENDING))
+static Event *kept_crashes;
+static char *kept_texts;
+static size_t crash_cap = 16, crash_len, crash_head;
+/* Every report kept, the number of the newest: a Crashed event in the ring carries its report's
+ * number in `count` and reads its texts here (ring_get, step 33). */
+static uint64_t crash_total;
+
+/* `text` copied to `room`, or its first KEPT_TEXT bytes and how many more it had; gives the end. */
+static char *kept_text(char *room, const char *text, const char **out) {
+    size_t n = strlen(text), end = n;
+    if (n > KEPT_TEXT) {
+        end = KEPT_TEXT;
+        while (end > 0 && ((unsigned char)text[end] & 0xC0) == 0x80) end--;
+    }
+    memcpy(room, text, end);
+    if (end < n) end += (size_t)snprintf(room + end, KEPT_TEXT + KEPT_ENDING - end, " … %zu bytes more", n - end);
+    room[end] = 0;
+    *out = room;
+    return room + end + 1;
+}
+
+/* Keeps `e` and gives its number, or 0 when it is not kept. */
+static uint64_t keep_crash(Event e) {
+    if (crash_cap == 0 || (e.process < nprocs && is_hidden(e.process))) return 0;
+    if (!kept_crashes) {
+        void *at = mmap(NULL, crash_cap * (sizeof(Event) + SLOT_BYTES), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (at == MAP_FAILED) return 0;
+        kept_crashes = at;
+        kept_texts = (char *)at + crash_cap * sizeof(Event);
+    }
+    e.at = event_now();
+    e.process_name = name_of(e.process);
+    char *room = kept_texts + crash_head * SLOT_BYTES;
+    room = kept_text(room, e.clause, &e.clause);
+    room = kept_text(room, e.message, &e.message);
+    kept_text(room, e.state, &e.state);
+    e.count = ++crash_total;
+    kept_crashes[crash_head] = e;
+    crash_head = (crash_head + 1) % crash_cap;
+    if (crash_len < crash_cap) crash_len++;
+    return crash_total;
+}
+
+/* A ring's Crashed event with its report's texts while the store keeps that report, else empty
+ * (events.zig, Crashes.filled): the ring holds no text of its own. */
+static Event crash_filled(Event e) {
+    if (e.kind != EV_CRASHED || e.count == 0 || e.count > crash_total || crash_total - e.count >= crash_len) return e;
+    const Event *kept = &kept_crashes[(crash_head + crash_cap - 1 - (size_t)(crash_total - e.count)) % crash_cap];
+    e.clause = kept->clause;
+    e.message = kept->message;
+    e.state = kept->state;
+    return e;
+}
+
 static bool is_timeout(MoValue v) { return mo_is(v, MO_N_ERROR) && mo_vcount(v) == 1 && mo_is(v.as.xs[0], MO_N_TIMEOUT); }
 
 /* A call that waits, begun at `since` on the events' clock, gave `result`: its time counts toward the
@@ -5057,6 +5201,7 @@ static void reset_processes(void) {
     sim_waited = 0;
     ring_len = ring_head = 0;
     ring_total = 0;
+    crash_len = crash_head = 0;
 }
 
 static char *text_of(const char *format, ...) __attribute__((format(printf, 1, 2)));
@@ -5455,7 +5600,8 @@ MoValue mo_answer(MoValue reply, MoValue value) {
     if (running == NOBODY) return MO_NONE_V;
     Proc *p = procs[running];
     uint64_t seq = reply.as.u;
-    bool holds = false;
+    /* The ask the running arm keeps is held from the arm on (sim.zig, answerReply; step 34). */
+    bool holds = p->deferring && p->reply_seq == seq;
     for (size_t i = 0; i < p->nkept; i++) {
         if (p->kept[i] == seq) holds = true;
     }
@@ -5575,16 +5721,28 @@ static MoValue ask_inline(uint32_t to, MoValue message, MoValue within) {
         Proc *p = procs[to];
         /* A restart empties the mailbox, this message with it. */
         if (!p->up || queued(p) == 0 || p->mailbox[p->head].seq > seq) return ask_error(MO_N_DOWN);
+        /* The ask waits from its delivery on, so an arm that keeps it may answer it at once (step 34). */
+        bool mine = p->mailbox[p->head].seq == seq;
+        if (mine) {
+            GROW_ARRAY(iwaiting, niwaiting, capiwaiting);
+            iwaiting[niwaiting++] = seq;
+        }
         Delivered d = deliver(to);
         if (d.seq != seq) continue;
+        if (!d.deferred) {
+            forget_iwaiting(seq);
+            for (size_t i = 0; i < nianswers; i++) {
+                if (ianswers[i].seq != seq) continue;
+                ianswers[i] = ianswers[--nianswers];
+                break;
+            }
+        }
         if (!d.has_reply) return ask_error(MO_N_DOWN);
         if (!d.deferred) {
             reply = d.reply;
             break;
         }
         kept_asker = true;
-        GROW_ARRAY(iwaiting, niwaiting, capiwaiting);
-        iwaiting[niwaiting++] = seq;
     }
     /* A fixture call's wait moves the clock (step 22): the ask is Timeout once the target's waits
      * pass its deadline, or when its slowest fixture is slower than it. A target whose calls wait on
@@ -5860,11 +6018,11 @@ static void settle_region(uint32_t id, size_t mark) {
 
 static void process_crashed(const Report *r) {
     Buf b = {0};
+    b.report = true;
     buf_str(&b, "process crashed: ");
     report_text(&b, r);
     buf_byte(&b, '\n');
     stream_write(&err_stream, b.p, b.len);
-    free(b.p);
 }
 
 /* The child crashed more than max_restarts times within the window: its supervisor crashes,
@@ -5907,19 +6065,33 @@ static bool run_init(uint32_t process, const MoValue *args, MoValue *out) {
     return jumped == 0;
 }
 
+/* Under main, what a process's crash report rendered goes back once the report is written and kept
+ * cut: a restarted process whose state is the program's data cost that size again at every restart
+ * (step 33). The last report no longer holds the values. */
+static void report_free(void) {
+    if (last_report.owns_values) {
+        last_report.values = NULL;
+        last_report.nvalues = 0;
+        last_report.owns_values = false;
+    }
+    reports_release();
+}
+
 /* Keeps the crash with its complete report, then does what the child line says. :always and
- * :on_crash restart alike: an update never ends a process but by crashing. */
+ * :on_crash restart alike: an update never ends a process but by crashing. Under main the report is
+ * written to stderr and kept cut, and nothing else of it stays (report_free); a test keeps its first
+ * whole for the verdict. */
 static void crashed(uint32_t id, MoValue before) {
     Report report = last_report;
     Proc *p = procs[id];
     report.process = name_of(id);
     report.seed = sim_seed;
-    report.log = xmalloc((p->nlog ? p->nlog : 1) * sizeof(char *));
+    report.log = server_mode ? report_alloc((p->nlog ? p->nlog : 1) * sizeof(char *)) : xmalloc((p->nlog ? p->nlog : 1) * sizeof(char *));
     report.nlog = (uint32_t)p->nlog;
-    for (size_t i = 0; i < p->nlog; i++) report.log[i] = render(p->log[i]);
-    report.state = render(before);
+    for (size_t i = 0; i < p->nlog; i++) report.log[i] = render_report(p->log[i]);
+    report.state = render_report(before);
     if (p->policy.restart == MO_RESTART_NEVER && p->policy.line != NOBODY) report.not_restarted = mo_supervisors[p->policy.line].name;
-    if (!crashed_once) {
+    if (!crashed_once && !server_mode) {
         first_crash = report;
         crashed_once = true;
     }
@@ -5928,6 +6100,8 @@ static void crashed(uint32_t id, MoValue before) {
     crash.clause = report.clause;
     crash.message = report.nlog > 0 ? report.log[report.nlog - 1] : "";
     crash.state = report.state;
+    crash.count = keep_crash(crash);
+    crash.clause = crash.message = crash.state = "";
     record_event(crash);
     if (server_mode) process_crashed(&report);
     /* A connection closes when the process holding it stops, restarted or not. */
@@ -5946,6 +6120,7 @@ static void crashed(uint32_t id, MoValue before) {
             parcel_free(p->mailbox[i].parcel);
         }
         p->mailbox_len = p->head = 0;
+        if (server_mode) report_free();
         return;
     }
     /* Restarts are counted in simulated time under a test, and wall-clock time under main. */
@@ -5970,6 +6145,7 @@ static void crashed(uint32_t id, MoValue before) {
     p->nlog_parcels = 0;
     MoValue state;
     if (!run_init(p->process, p->args, &state)) give_up(id, last_report);
+    if (server_mode) report_free();
     procs[id]->state = state;
     Event restart = event_of(EV_RESTARTED, id);
     restart.count = procs[id]->restarted;
@@ -6064,8 +6240,10 @@ static Delivered deliver(uint32_t id) {
     p->noutbox = 0;
     MoValue reply = after.as.xs[0];
     /* An answer the update made commits with it, and is dropped when nothing waits for it. */
+    bool answered_own = false;
     for (size_t i = 0; i < p->npending; i++) {
         PendingAnswer a = p->pending[i];
+        if (a.seq == entry.seq) answered_own = true;
         for (size_t k = 0; k < p->nkept; k++) {
             if (p->kept[k] != a.seq) continue;
             memmove(p->kept + k, p->kept + k + 1, (p->nkept - k - 1) * sizeof(uint64_t));
@@ -6080,8 +6258,10 @@ static Delivered deliver(uint32_t id) {
      * crashes, or restarts (step 31). */
     bool deferring = p->deferring;
     if (deferring) {
-        GROW_ARRAY(p->kept, p->nkept, p->capkept);
-        p->kept[p->nkept++] = entry.seq;
+        if (!answered_own) {
+            GROW_ARRAY(p->kept, p->nkept, p->capkept);
+            p->kept[p->nkept++] = entry.seq;
+        }
     } else {
         route_answer(entry.seq, true, reply);
         p = procs[id];
@@ -6244,6 +6424,9 @@ typedef struct {
 } Waiter;
 
 static _Thread_local int poller_fd = -1;
+/* Waiters armed on this thread's poller and not yet reported or disarmed (idle: a scheduler with none
+ * but its wake spins without looking at the system). */
+static _Thread_local uint32_t poller_armed;
 
 static bool poller_open(void) {
     if (poller_fd >= 0) return true;
@@ -6281,6 +6464,7 @@ static bool poller_arm(Waiter *w) {
     }
 #endif
     w->armed = true;
+    poller_armed++;
     return true;
 }
 
@@ -6295,6 +6479,7 @@ static void epoll_forget(Waiter *w) {
 static void poller_disarm(Waiter *w) {
     if (!w->armed) return;
     w->armed = false;
+    poller_armed--;
 #ifdef MO_KQUEUE
     struct kevent change;
     EV_SET(&change, (uintptr_t)w->fd, w->write ? EVFILT_WRITE : EVFILT_READ, EV_DELETE, 0, 0, NULL);
@@ -6314,6 +6499,7 @@ static size_t poller_wait(int64_t ms, Waiter **out) {
     for (int i = 0; i < n; i++) {
         Waiter *w = events[i].udata;
         if (!w) continue;
+        if (w->armed) poller_armed--;
         w->armed = false;
         w->fired = true;
         out[k++] = w;
@@ -6325,6 +6511,7 @@ static size_t poller_wait(int64_t ms, Waiter **out) {
         Waiter *w = events[i].data.ptr;
         /* A one-shot registration stays behind, disabled, until it is deleted. */
         epoll_forget(w);
+        if (w->armed) poller_armed--;
         w->armed = false;
         w->fired = true;
         out[k++] = w;
@@ -6439,30 +6626,44 @@ typedef struct { uint64_t seq; bool has; MoValue value; Parcel *parcel; } Answer
 
 /* ---- schedulers (turns.zig, step 30): one per core, MO_CORES of them when it is set and the
  * machine's cores otherwise, scheduler 0 on main's thread and each other on a thread of its own. A
- * process is placed at its start on the scheduler with the fewest live processes and stays there. A
+ * process is placed at its start and stays there: one an update starts on its starter's scheduler while
+ * that one holds at most PLACE_FACTOR times its share of the live processes, else, and for one main
+ * starts, on the scheduler with the fewest live processes (step 34). A
  * thread holds the runtime's lock while it runs the runtime, and lets it go while a process's Mo code
  * runs, while its region compacts, and while its scheduler waits in its poller. */
 
-#define SPINS 2000
-/* Every POLL_EVERY spins the scheduler looks at its own poller without waiting (turns.zig, idle). */
+/* How long a scheduler with nothing to do spins on the poke before it sleeps in its poller, looking at
+ * the clock, and at its poller when sockets are armed, every POLL_EVERY spins; and how often one poked
+ * out of its spin looks at its armed sockets (turns.zig, spin_ns; step 34). */
+#define SPIN_NS 200000
+#define SPIN_SOCKETS_NS 200000
+#define POKED_POLL_NS 200000
 #define POLL_EVERY 64
-#define LOCK_SPINS 200
+#define LOCK_SPINS 20000
 #define STOP_WAIT_MS 20
 #define SWEEP_RETRY_MS 100
-enum { THREAD_RUNNING, THREAD_SPINNING, THREAD_SLEEPING };
+/* A starter's scheduler keeps a process it starts while it holds at most this many times its share of the
+ * live processes, the new one among them, rounded up (turns.zig, place_factor). */
+#define PLACE_FACTOR 2
+enum { THREAD_RUNNING, THREAD_SPINNING, THREAD_SLEEPING, THREAD_PARKED, THREAD_POKED };
 
 typedef struct {
     uint32_t index;
     /* Who holds its thread: MAIN_TURN, or a process with a fiber. */
     uint32_t holder;
     /* A descriptor another scheduler writes when it gives this one something while it sleeps in its
-     * poller; its thread's state; whether it was given something since it began to wait. */
+     * poller, and a condition it waits on when it sleeps with no socket armed; its thread's state, one
+     * word, POKED once it was given something since it began to wait (turns.zig, Sched.state). */
     int wake_read, wake_write;
     Waiter wake_waiter;
+    pthread_mutex_t park_mutex;
+    pthread_cond_t park_cond;
     _Atomic unsigned char state;
-    _Atomic bool poked;
-    /* Its last look found nothing to hand out, and nothing has been given it since. */
-    bool resting;
+    /* Its last look found nothing to hand out, and nothing has been given it since; a sweep kept it
+     * from handing out a turn, so the sweep's end wakes it. */
+    bool resting, held_back;
+    /* When its thread last looked at its poller. */
+    int64_t polled_at;
     /* Its processes whose wait ended, oldest first from ready_head and each at most once; its processes
      * parked in an ask or a Net call; where its next round starts; its ids that may have a message. */
     uint32_t *ready;
@@ -6475,6 +6676,10 @@ typedef struct {
     /* Its live processes; those a sweep ended whose regions it has yet to free; its ended ids, the
      * last ended last. */
     uint32_t live;
+    /* Processes placed on it, in all and with their starter, and asks its processes made across
+     * schedulers (step 34), for MO_STATS=1. */
+    uint32_t placed, with_starter;
+    uint64_t asks_across;
     uint32_t *to_end;
     size_t nto_end, capto_end;
     uint32_t *free_ids;
@@ -6494,6 +6699,8 @@ static pthread_mutex_t runtime_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* A sweep waits for every update in progress to park or end; the run is over; main waits for the
  * other schedulers to rest; schedulers whose thread runs an update now. */
 static bool sweeping, stopping_run, main_waits;
+/* MO_PLACE=spread: every process where the fewest live, step 30's rule, for the comparison rows. */
+static bool place_spread;
 static Sched *sweeper;
 static uint32_t updating_scheds;
 static int64_t sweep_retry_at;
@@ -6510,6 +6717,8 @@ static Sched *cur_sched(void) { return multi ? this_sched : &scheds[0]; }
 
 #if defined(__x86_64__)
 static void spin_hint(void) { __builtin_ia32_pause(); }
+#elif defined(__aarch64__)
+static void spin_hint(void) { __asm__("yield"); }
 #else
 static void spin_hint(void) {}
 #endif
@@ -6588,12 +6797,24 @@ static void wake_drain(Sched *s) {
     while (read(s->wake_read, buf, sizeof buf) > 0) {}
 }
 
-/* Something was given to scheduler `s`: it looks again, woken when it sleeps in its poller. */
+/* Scheduler `s`'s thread is poked, and woken if it sleeps: through its wake in its poller, through its
+ * condition when parked (turns.zig, rouse). */
+static void rouse(Sched *s) {
+    unsigned char was = atomic_exchange(&s->state, THREAD_POKED);
+    if (was == THREAD_SLEEPING) {
+        wake_signal(s);
+    } else if (was == THREAD_PARKED) {
+        pthread_mutex_lock(&s->park_mutex);
+        pthread_cond_signal(&s->park_cond);
+        pthread_mutex_unlock(&s->park_mutex);
+    }
+}
+
+/* Something was given to scheduler `s`: it looks again, woken when it sleeps. */
 static void stir(Sched *s) {
     s->resting = false;
     if (!multi || this_sched == s) return;
-    atomic_store(&s->poked, true);
-    if (atomic_load(&s->state) == THREAD_SLEEPING) wake_signal(s);
+    rouse(s);
 }
 
 static void stir_main(void) { stir(&scheds[0]); }
@@ -6635,14 +6856,28 @@ static uint32_t cores_from(const char *text) {
     return n < 1 ? 1 : n > MOST_CORES ? MOST_CORES : (uint32_t)n;
 }
 
-/* Where a process about to start goes: the scheduler with the fewest live processes, the first of
- * those tied. */
+static uint32_t place_for(void);
+
+/* Where a process about to start goes: its starter's scheduler when an update starts it and that one
+ * holds at most PLACE_FACTOR times its share of the live processes, else the scheduler with the fewest
+ * live processes, the first of those tied (turns.zig, place). */
 static uint32_t place(void) {
-    uint32_t best = 0;
-    for (uint32_t k = 1; k < ncores; k++) {
-        if (scheds[k].live < scheds[best].live) best = k;
+    uint32_t k = place_for();
+    scheds[k].placed++;
+    return k;
+}
+
+static void print_placement(void) {
+    if (ncores < 2) return;
+    for (uint32_t k = 0; k < ncores; k++) {
+        const Sched *s = &scheds[k];
+        char line[160];
+        int n = snprintf(line, sizeof line, "mo stats: scheduler %u placed %u with_starter %u live %u asks_across %llu\n", k, s->placed, s->with_starter, s->live, (unsigned long long)s->asks_across);
+        if (n > 0) {
+            ssize_t w = write(2, line, (size_t)n);
+            (void)w;
+        }
     }
-    return best;
 }
 
 /* The id of the last process that ended on scheduler `k`, if one waits. */
@@ -6654,7 +6889,11 @@ static bool take_free_id(uint32_t k, uint32_t *id) {
 }
 
 static void reset_free_ids(void) {
-    for (uint32_t k = 0; k < MOST_CORES; k++) scheds[k].nfree_ids = scheds[k].nto_end = scheds[k].live = 0;
+    for (uint32_t k = 0; k < MOST_CORES; k++) {
+        scheds[k].nfree_ids = scheds[k].nto_end = scheds[k].live = 0;
+        scheds[k].placed = scheds[k].with_starter = 0;
+        scheds[k].asks_across = 0;
+    }
 }
 
 /* Process `id` started on scheduler `k`; a start call began it when `quiet_event`, so it may finish. */
@@ -6687,6 +6926,24 @@ static VmState main_vm;
 /* The vm state of whoever holds this thread, and a scheduler loop's own. */
 static _Thread_local VmState *my_vm;
 static _Thread_local VmState loop_vm;
+
+static uint32_t place_for(void) {
+    if (multi && !place_spread && holder != MAIN_TURN) {
+        Sched *s = this_sched;
+        uint32_t total = 1;
+        for (uint32_t k = 0; k < ncores; k++) total += scheds[k].live;
+        uint32_t share = (total + ncores - 1) / ncores;
+        if (s->live + 1 <= PLACE_FACTOR * share) {
+            s->with_starter++;
+            return s->index;
+        }
+    }
+    uint32_t best = 0;
+    for (uint32_t k = 1; k < ncores; k++) {
+        if (scheds[k].live < scheds[best].live) best = k;
+    }
+    return best;
+}
 
 static FiberContext *context_of(uint32_t id) { return id == MAIN_TURN ? &main_context : &workers[id]->fiber->context; }
 
@@ -6883,6 +7140,22 @@ static void park(int64_t deadline) {
     running = was_running;
 }
 
+/* The update holding this thread gives it back and is handed it again once a sweep has ended: it waits
+ * in its scheduler's ready queue, which no step reads while the sweep waits (turns.zig, stepAside). */
+static void step_aside(void) {
+    uint32_t id = holder;
+    Worker *w = workers[id];
+    uint32_t was_running = running;
+    VmState *mine = my_vm;
+    w->phase = PHASE_WAITING;
+    push_ready(id);
+    save_vm(mine);
+    switch_to(w->caller);
+    my_vm = mine;
+    load_vm(mine);
+    running = was_running;
+}
+
 /* A scheduler with no turn to hand out: waits in its poller until a socket something on it waits on is
  * ready, `also` is reported, another scheduler wakes it, or the earliest deadline passes, and at least
  * once a second. With more than one scheduler it looks for a poke a moment before it sleeps, so a
@@ -6892,6 +7165,7 @@ static void idle(Waiter *also, bool bounded, int64_t deadline) {
     /* While a sweep waits for its turn this scheduler hands nothing out (step), so it waits here without
      * the lock whatever it has ready, until the sweep's end pokes it. */
     bool held_back = sweeping && sweeper != s;
+    if (held_back) s->held_back = true;
     if (!held_back && (s->ready_head < s->nready || s->nto_end > 0)) return;
     if (also && also->fired) return;
     if (run_failed || stopping_run) return;
@@ -6921,22 +7195,51 @@ static void idle(Waiter *also, bool bounded, int64_t deadline) {
     if (multi) {
         poller_arm(&s->wake_waiter);
         /* Nothing can be given it while it holds the lock, so a poke from here on is news. */
-        atomic_store(&s->poked, false);
         atomic_store(&s->state, THREAD_SPINNING);
         uint32_t held = s->depth;
         s->depth = 0;
         pthread_mutex_unlock(&runtime_mutex);
-        /* While it spins it also looks at its own sockets now and then, without waiting: a reply that comes
-         * on a socket is as much news as a poke. */
+        /* It spins a moment on the poke alone (step 34). One with a socket of its own armed also looks at
+         * its poller now and then, without waiting: a reply that comes on a socket is as much news as a
+         * poke. One with nothing armed but its wake never calls the system while it spins, since a look
+         * at the poller costs as much as the handoff it waits for. */
+        bool sockets = poller_armed > 1;
+        int64_t began = awake_ns();
         n = 0;
-        for (int k = 0; k < SPINS && !atomic_load(&s->poked); k++) {
-            if (k % POLL_EVERY == POLL_EVERY - 1 && (n = poller_wait(0, out)) > 0) break;
+        for (uint32_t k = 0; atomic_load(&s->state) != THREAD_POKED; k++) {
+            if (k % POLL_EVERY == POLL_EVERY - 1) {
+                if (sockets && (n = poller_wait(0, out)) > 0) break;
+                if (awake_ns() - began >= (sockets ? SPIN_SOCKETS_NS : SPIN_NS)) break;
+            }
             spin_hint();
         }
         if (n == 0) {
-            /* Asleep only once no poke came; a poke that comes after sees it asleep and writes the wake. */
-            if (!atomic_load(&s->poked)) atomic_store(&s->state, THREAD_SLEEPING);
-            n = poller_wait(atomic_load(&s->poked) ? 0 : left, out);
+            /* Asleep only if no poke came, in the same exchange that says so: a poke that comes after swaps
+             * the sleep out and wakes it. One with a socket armed sleeps in its poller, one with none on its
+             * condition, which costs less to wake than a descriptor. */
+            unsigned char spinning = THREAD_SPINNING;
+            if (sockets && atomic_compare_exchange_strong(&s->state, &spinning, THREAD_SLEEPING)) {
+                n = poller_wait(left, out);
+                s->polled_at = awake_ns();
+            } else if (!sockets) {
+                pthread_mutex_lock(&s->park_mutex);
+                if (atomic_compare_exchange_strong(&s->state, &spinning, THREAD_PARKED)) {
+                    struct timespec at;
+                    clock_gettime(CLOCK_REALTIME, &at);
+                    int64_t ns = at.tv_nsec + left * 1000000;
+                    at.tv_sec += ns / 1000000000;
+                    at.tv_nsec = ns % 1000000000;
+                    while (atomic_load(&s->state) == THREAD_PARKED) {
+                        if (pthread_cond_timedwait(&s->park_cond, &s->park_mutex, &at) != 0) break;
+                    }
+                }
+                pthread_mutex_unlock(&s->park_mutex);
+            } else if (sockets && awake_ns() - s->polled_at >= POKED_POLL_NS) {
+                /* Poked: its sockets are still looked at, without waiting, now and then, so a scheduler
+                 * kept busy by pokes still hears them. */
+                n = poller_wait(0, out);
+                s->polled_at = awake_ns();
+            }
         }
         atomic_store(&s->state, THREAD_RUNNING);
         acquire_runtime();
@@ -7179,7 +7482,13 @@ static void sweep(void) {
     if (multi) {
         sweeping = false;
         sweeper = NULL;
-        for (uint32_t k = 0; k < ncores; k++) stir(&scheds[k]);
+        /* Only the schedulers the sweep held back, or given something meanwhile, look again: waking every
+         * scheduler at every sweep's end costs a thread's wake each (step 34). */
+        for (uint32_t k = 0; k < ncores; k++) {
+            if (!scheds[k].held_back && scheds[k].resting) continue;
+            scheds[k].held_back = false;
+            stir(&scheds[k]);
+        }
     }
 }
 
@@ -7240,7 +7549,10 @@ static bool step(void) {
         return false;
     }
     /* A sweep waits for the updates in progress to park or end: none starts or resumes meanwhile. */
-    if (sweeping && sweeper != s) return false;
+    if (sweeping && sweeper != s) {
+        s->held_back = true;
+        return false;
+    }
     if (s->nto_end > 0) end_own(s);
     if (quiet >= sweep_at) sweep();
     while (nfibers > KEPT_FIBERS) fiber_destroy(fibers[--nfibers]);
@@ -7312,6 +7624,7 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
     procs[to]->mailbox[procs[to]->mailbox_len - 1].has_deadline = true;
     procs[to]->mailbox[procs[to]->mailbox_len - 1].deadline = deadline;
     bool same = home_of(to) == cur_sched()->index;
+    if (!same) cur_sched()->asks_across++;
     for (;;) {
         /* A wait elsewhere doomed this ask (held sends): mo_ask crashes the update. */
         if (running != NOBODY && procs[running]->doomed) {
@@ -7338,7 +7651,11 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
             forget_awaiting(seq);
             return ask_error(p->up ? MO_N_TIMEOUT : MO_N_DOWN);
         }
-        if (same && !p->busy && !p->paused && queued(p) > 0) {
+        if (same && multi && holder != MAIN_TURN && (sweeping ? sweeper != cur_sched() : quiet >= sweep_at)) {
+            /* A sweep waits, or is due: this update steps aside at its ask rather than deliver on its own
+             * thread, so its scheduler's loop may sweep (turns.zig, stepAside; step 34). */
+            step_aside();
+        } else if (same && !p->busy && !p->paused && queued(p) > 0) {
             hand_to(to, JOB_DELIVER);
         } else if (holder != MAIN_TURN) {
             park(deadline);
@@ -7460,6 +7777,8 @@ static void *sched_loop(void *arg) {
 static void turns_begin(void) {
     ncores = cores_from(getenv("MO_CORES"));
     multi = ncores > 1;
+    const char *placing = getenv("MO_PLACE");
+    place_spread = placing && strcmp(placing, "spread") == 0;
     for (uint32_t k = 0; k < ncores; k++) {
         scheds[k].index = k;
         scheds[k].holder = MAIN_TURN;
@@ -7487,6 +7806,8 @@ static void turns_begin(void) {
         }
 #endif
         s->wake_waiter = (Waiter){s->wake_read, false, false, false, NO_PROCESS, NULL, -1};
+        pthread_mutex_init(&s->park_mutex, NULL);
+        pthread_cond_init(&s->park_cond, NULL);
     }
     runtime_lock();
     pthread_attr_t attr;
@@ -7502,7 +7823,10 @@ static void turns_begin(void) {
 static void turns_stop(void) {
     if (!multi) return;
     stopping_run = true;
-    for (uint32_t k = 1; k < ncores; k++) wake_signal(&scheds[k]);
+    for (uint32_t k = 1; k < ncores; k++) {
+        wake_signal(&scheds[k]);
+        rouse(&scheds[k]);
+    }
     uint32_t held = this_sched->depth;
     this_sched->depth = 0;
     pthread_mutex_unlock(&runtime_mutex);
@@ -9855,7 +10179,7 @@ static uint64_t region_bytes_of(uint32_t id) {
     return r->end ? r->top - r->base : 0;
 }
 
-static Event ring_get(size_t i) { return ring[(ring_head + i) % ring_len]; }
+static Event ring_get(size_t i) { return crash_filled(ring[(ring_head + i) % ring_len]); }
 
 static MoValue maybe_id(uint32_t id) { return id == NOBODY ? mo_nothing() : mo_some(mo_u64(id)); }
 
@@ -9980,10 +10304,17 @@ static MoValue last_events(size_t n, bool (*keep)(const Event *, __int128), __in
 }
 
 static bool of_process(const Event *e, __int128 id) { return (__int128)e->process == id; }
-static bool is_crash(const Event *e, __int128 unused) { (void)unused; return e->kind == EV_CRASHED; }
 
 MO_ROW(mo_r_Runtime_recent) { HOLD_RUNTIME(); (void)kind; return last_events(row_count(a[2], ring_len), of_process, mo_wide(a[1])); }
-MO_ROW(mo_r_Runtime_crashes) { HOLD_RUNTIME(); (void)kind; return last_events(row_count(a[1], ring_len), is_crash, 0); }
+/* The last `n` crash reports, newest first, from their own store (step 32). */
+MO_ROW(mo_r_Runtime_crashes) {
+    HOLD_RUNTIME();
+    (void)kind;
+    size_t n = row_count(a[1], crash_len);
+    MoValue *out = mo_alloc_values(n);
+    for (size_t i = 0; i < n; i++) out[i] = event_value(&kept_crashes[(crash_head + crash_cap - 1 - i) % crash_cap]);
+    return mo_list(out, (uint32_t)n);
+}
 
 MO_ROW(mo_r_Runtime_events) {
     HOLD_RUNTIME();
@@ -10460,6 +10791,9 @@ void mo_program_start(int argc, char **argv) {
     /* MO_EVENTS=N: the events the run keeps, as mo run --events N (step 23). */
     const char *events = getenv("MO_EVENTS");
     if (events) ring_cap = (size_t)strtoull(events, NULL, 10);
+    /* MO_CRASHES=N: the crash reports the surface keeps, as mo run --crashes N (step 32). */
+    const char *kept = getenv("MO_CRASHES");
+    if (kept) crash_cap = (size_t)strtoull(kept, NULL, 10);
     ring_wall_ms = wall_ms();
     ring_mono_us = awake_ns() / 1000;
     hidden_process = mo_surface_process;

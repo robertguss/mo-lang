@@ -1,0 +1,98 @@
+ok   handoff: a stranger is 409
+ok   handoff: the holder hands the job to bob, 200
+ok   handoff: the job is leased to bob
+ok   handoff: lease_until and tries unchanged
+ok   handoff: the response carries the id and the queue
+ok   handoff: alice's ack is 409 after
+ok   handoff: alice's fail is 409 after
+ok   handoff: alice's second handoff is 409
+ok   handoff: the read shows bob as the worker
+ok   handoff: to oneself is 200 and changes nothing
+ok   handoff: bob hands it on to carol (a chain), 200
+ok   handoff: bob's ack is 409 after the chain
+ok   handoff: carol's ack is 200
+ok   handoff: a done job is 409
+ok   handoff: the new worker's fail is 200
+ok   handoff: on a queued job is 409
+ok   handoff: `{"to": ""}` is 400
+ok   handoff: `{"to": "has space"}` is 400
+ok   handoff: `{}` is 400
+ok   handoff: `{"to": 5}` is 400
+ok   handoff: `{"to": "xxxxxxxxxxxxxxxx` is 400
+ok   handoff: no body is 400
+ok   handoff: the bad requests changed nothing
+ok   handoff: an unknown job is 404
+ok   handoff: no token is 401
+ok   handoff: GET on the route is 405
+ok   handoff: after the lease ran out is 409
+ok   handoff: the run-out job is queued again, no worker
+ok   handoff: /health still counts the job leased to alice (1)
+ok   handoffkept: after a stop and start the job is leased to bob with the same lease_until
+ok   handoffkept: alice's ack is 409 after the restart
+ok   handoffkept: bob's ack is 200 after the restart
+ok   handoffkept: compact exits 0
+ok   handoffkept: after a compaction the job is leased to bob with the same lease_until
+ok   handoffkept: bob's ack is 200 after the compaction
+ok   handoffkept: the chaos switch restarted the board at least once
+ok   handoffkept: every handed-off job (5) is with its new worker and lease after the chaos restarts
+ok   rename: an archived job to set up (the done job of the setup may be archived too)
+ok   rename: 200 with the new name and a count
+ok   rename: `moved` counts every job, the archived ones included (6)
+ok   rename: every job reads as being in `new`, the archived one too
+ok   rename: /queues shows `new` with the counts `old` had and no `old`
+ok   rename: the listing of `old` is empty
+FAIL rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.574Z', 'updated_at': '2026-09-17T02:15:46.575Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:17:46.575Z'}, {'id': 'j_5', 'queue': 'new', 'key': 'o-scheduled', 'state': 'scheduled', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.576Z', 'updated_at': '2026-09-17T02:15:46.576Z', 'run_at': '2026-09-17T02:25:46.576Z'}, {'id': 'j_6', 'queue': 'new', 'key': 'o-queued', 'state': 'queued', 'payload': 'p', 'tries': 0, 'max_tries': 2, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.576Z', 'updated_at': '2026-09-17T02:15:46.576Z'}]}
+ok   rename: the key lookup in `new` finds the job
+ok   rename: the key lookup in `old` is empty
+ok   rename: the key is used in `new` (200, the same job)
+ok   rename: a lease on `old` is 204
+ok   rename: a lease on `new` hands out the queued job
+ok   rename: the lease in flight is untouched (same worker, same lease_until)
+ok   rename: the holder's ack is 200 after the rename
+ok   rename: the archived job reads with queue `new` and archived_at
+ok   rename: the key is free in `old`: a create there is 201, a fresh queue
+ok   rename: /queues now shows both
+ok   rename: renaming onto a queue with a job is 409
+ok   rename: to the same name is 409
+ok   rename: an empty name is 404
+ok   rename: `{"to": ""}` is 400
+ok   rename: `{"to": "bad name"}` is 400
+ok   rename: `{"to": "xxxxxxxxxxxx` is 400
+ok   rename: `{}` is 400
+ok   rename: `{"to": 3}` is 400
+ok   rename: no token is 401
+ok   rename: GET on the route is 405
+ok   rename: renamed again, to `third`
+ok   rename: the dead job's key moved to `third` (200, the same job)
+ok   rename: after a delete the key is free in `third` (201)
+ok   rename: renamed back to `new` (now empty), 200
+ok   rename: the key lookup follows the rename back
+ok   renamerecord: a job archived under `beta-dst` to set up
+ok   renamerecord: a second rename, `beta-dst` to `gamma-dst`, 200
+ok   renamerecord: before the restart, the first job in `gamma-dst`, the second in `alpha-src`, the archived in `gamma-dst`
+ok   renamerecord: the replay applies the rename in order (the same after a stop and start)
+ok   renamerecord: /queues after the replay: `alpha-src` and `gamma-dst`, no `beta-dst`
+ok   renamerecord: the key followed two renames (200, the same job)
+ok   renamerecord: verify exits 0 on a log with two renames
+ok   renamerecord: compact exits 0
+ok   renamerecord: after compact no file names `beta-dst` (the renames folded, the archive rewritten)
+ok   renamerecord: the same board after the compaction
+ok   renamerecord: the archived job reads with `gamma-dst` after the compaction
+ok   renamerecord: the rename to `delta-dst` is on the disk (in one file)
+ok   renamerecord: a rename record with a bad name refuses the folder, verify exits 1
+ok   renamerecord: serve refuses the folder with exit 1
+FAIL renamerecord: restored, verify exits 0: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerecord5-pjke46gn/dir: record renames: the rename count is below rename_3')
+ok   renamekill: verify exits 0 after the kill
+ok   renamekill: every created job is counted once after the reopen (a create durable but unanswered under the kill may add one)
+ok   renamekill: the jobs are in exactly one queue, `src` or `dst`
+ok   renamekill: a lease on the other name is 204 (home is `src`)
+ok   renamekill: every sampled job reads 200 (156 sampled)
+ok   renamekill: every sampled job is in the home queue (all moved or none)
+ok   renamekill: every sampled key is used once in the home queue
+ok   renamekill: no leased job carries other than one worker
+ok   renamekill: every acknowledged ack is present (1162 acked)
+ok   renamekill: every acknowledged handoff is present (1165 handed off)
+
+92 passed, 2 defects
+  - rename: the listing of `new` shows the live jobs (4: the done job aged into the archive): {'jobs': [{'id': 'j_4', 'queue': 'new', 'key': 'o-leased', 'state': 'leased', 'payload': 'p', 'tries': 1, 'max_tries': 3, 'backoff_ms': 0, 'created_at': '2026-09-17T02:15:46.574Z', 'updated_at': '2026-09-17T02:15:46.575Z', 'worker': 'w-hold', 'lease_until': '2026-09-17T02:17:46.575Z'}, {'id': 'j_5',
+  - renamerecord: restored, verify exits 0: (1, 'jobq: /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerecord5-pjke46gn/dir: record renames: the rename count is below rename_3')

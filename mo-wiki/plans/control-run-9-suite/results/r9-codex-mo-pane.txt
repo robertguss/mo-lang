@@ -1,0 +1,400 @@
+
+
+ Correcting command directory usage
+
+
+ $ set -e
+ cd examples/programs/jobq
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- check data/demo
+ data/session.txt > /tmp/jobq1.out 2>/tmp/jobq1.err
+ diff -u jobq.expected /tmp/jobq1.out
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- compact data/compact >
+ /tmp/jobq2.out 2>/tmp/jobq2.err
+ diff -u jobq-2.expected /tmp/jobq2.out
+ set +e
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- serve > /tmp/jobq3.out
+ 2>/tmp/jobq3.err
+ c=$?
+ set -e
+ test $c -eq 2
+ diff -u jobq-3.expected /tmp/jobq3.out
+ set +e
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- serve data/nowhere >
+ /tmp/jobq4.out 2>/tmp/jobq4.err
+ c=$?
+ set -e
+ test $c -eq 1
+ diff -u jobq-4.expected /tmp/jobq4.out
+ set +e
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- client 127.0.0.1 1 p GET /jobs
+ > /tmp/jobq5.out 2>/tmp/jobq5.err
+ c=$?
+ set -e
+ test $c -eq 1
+ diff -u jobq-5.expected /tmp/jobq5.out
+ echo ok (timeout 300s)
+
+ ok
+
+ Took 0.2s
+
+
+ Verifying data integrity
+
+
+ read examples/programs/jobq/data/compact/jobq.log:1-5
+
+ SET ids 1000
+ SET j_1 {"id": "j_1", "queue": "emails", "state": "done", "payload": "sent", "tries": 1,
+ "max_tries": 3, "backoff_ms": 0, "created_at": "2026-09-14T09:00:00Z", "updated_at":
+ "2026-09-14T09:05:00Z"}
+ SET j_2 {"id": "j_2", "queue": "emails", "state": "queued", "payload": "pending", "tries":
+ 0, "max_tries": 3, "backoff_ms": 0, "created_at": "2026-09-14T09:01:00Z", "updated_at":
+ "2026-09-14T09:01:00Z"}
+ SET j_7 {"id": "j_7", "queue": "reports", "state": "dead", "payload": "failed twice",
+ "tries": 2, "max_tries": 2, "backoff_ms": 0, "created_at": "2026-09-14T09:02:00Z",
+ "updated_at": "2026-09-14T09:08:00Z", "reason": "disk full"}
+
+
+ Restoring original state after test
+
+
+ write examples/programs/jobq/data/compact/jobq.log
+
+ SET ids 1000
+ SET j_1 {"id": "j_1", "queue": "emails", "state": "done", "payload": "sent", "attempts": 1,
+ "max_attempts": 3, "created_at": "2026-09-14T09:00:00Z", "updated_at":
+ "2026-09-14T09:05:00Z"}
+ SET j_2 {"id": "j_2", "queue": "emails", "state": "queued", "payload": "pending",
+ "attempts": 0, "max_attempts": 3, "created_at": "2026-09-14T09:01:00Z", "updated_at":
+ "2026-09-14T09:01:00Z"}
+ SET j_7 {"id": "j_7", "queue": "reports", "state": "dead", "payload": "failed twice",
+ "attempts": 2, "max_attempts": 2, "created_at": "2026-09-14T09:02:00Z", "updated_at":
+ "2026-09-14T09:08:00Z", "reason": "disk full"}
+
+
+ Planning comprehensive test execution with simulation
+
+
+ $ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/job.mo &&
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/board.mo &&
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/api.mo && timeout
+ 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/store.mo && timeout 300
+ toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/queue.mo && timeout 300
+ toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/server.mo && timeout 300
+ toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/main.mo (timeout 300s)
+
+ ... (114 earlier lines, ctrl+o to expand)
+ pass  test "a usage error exits 2, and a folder, a port, or a server that cannot be had
+ exits 1"
+ 6 passed, 0 failed, 0 skipped
+ verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+           proven: not run
+
+ Took 1.3s
+
+
+ Verifying simulation with mo build output
+
+
+ $ cd examples/programs/jobq && timeout 300 ../../../toolchain/zig-out/bin/mo build main.mo
+ (timeout 300s)
+
+ zig-out/mo-build/main/main
+
+ Took 3.0s
+
+
+ Planning binary integrity check
+
+
+ $ set -e
+ cd examples/programs/jobq
+ timeout 300 zig-out/mo-build/main/main check data/demo data/session.txt > /tmp/jobqbin1.out
+ 2>/tmp/jobqbin1.err
+ diff -u jobq.expected /tmp/jobqbin1.out
+ rm -rf /tmp/jobqcompact && cp -R data/compact /tmp/jobqcompact
+ timeout 300 zig-out/mo-build/main/main compact /tmp/jobqcompact > /tmp/jobqbin2.out
+ 2>/tmp/jobqbin2.err
+ printf 'jobq: compacted data/compact/jobq.log from 4 lines to 4\n' > /tmp/jobqbin2.exp
+ # path differs for tmp, just assert log no old names
+ python3 - <<'PY'
+ from pathlib import Path
+ log=Path('/tmp/jobqcompact/jobq.log').read_text()
+ assert 'attempts' not in log and 'max_attempts' not in log
+ assert 'tries' in log and 'max_tries' in log
+ PY
+ echo ok (timeout 300s)
+
+ ok
+
+ Took 0.3s
+
+
+ Planning comprehensive test runs
+
+
+ $ git status --short (timeout 300s)
+
+ ... (4 earlier lines, ctrl+o to expand)
+  M examples/programs/jobq/job.mo
+  M examples/programs/jobq/jobq.expected
+  M examples/programs/jobq/main.mo
+  M examples/programs/jobq/queue.mo
+  M examples/programs/jobq/server.mo
+
+ Took 0.0s
+
+
+ Verifying build artifact tracking
+
+
+ $ grep -n "scheduled\|retry\|backoff\|run_at\|tries" examples/programs/jobq/jobq.expected |
+ tail -30 (timeout 300s)
+
+ ... (68 earlier lines, ctrl+o to expand)
+ \"world\"\nline two é", "tries": 1, "max_tries": 2, "backoff_ms": 0, "created_at":
+ "<created_at>", "updated_at": "<updated_at>", "worker": "w4", "lease_until":
+ "<lease_until>"}
+ 92:200 {"queued": 0, "scheduled": 2, "leased": 3, "done": 1, "dead": 0, "uptime_ms":
+ <uptime_ms>}
+
+ Took 0.0s
+
+
+ Considering running tests build step
+
+
+ $ cd examples/programs/jobq && timeout 300 ../../../toolchain/zig-out/bin/mo build --tests
+ main.mo && timeout 300 zig-out/mo-build/main/main-tests (timeout 300s)
+
+ zig-out/mo-build/main/main
+ timeout: failed to run command ‘zig-out/mo-build/main/main-tests’: No such file or directory
+
+
+ Command exited with code 127
+
+ Took 2.6s
+
+
+ Requesting verified output list
+
+
+ $ find examples/programs/jobq/zig-out/mo-build -maxdepth 3 -type f -perm +111 -print || true
+  (timeout 300s)
+
+ examples/programs/jobq/zig-out/mo-build/main/main
+
+ Took 0.0s
+
+
+ Testing binary output consistency
+
+
+ $ cd examples/programs/jobq && timeout 300 zig-out/mo-build/main/main (timeout 300s)
+
+ ... (8 earlier lines, ctrl+o to expand)
+ pass  test "a usage error exits 2, and a folder, a port, or a server that cannot be had
+ exits 1"
+ 6 passed, 0 failed, 0 skipped
+ verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+           proven: not run
+
+ Took 0.2s
+
+
+ Fixing build and execution process
+
+
+ $ cd examples/programs/jobq && timeout 300 ../../../toolchain/zig-out/bin/mo build main.mo
+ && timeout 300 zig-out/mo-build/main/main check data/demo data/session.txt >
+ /tmp/jobqbin1.out 2>/tmp/jobqbin1.err && diff -u jobq.expected /tmp/jobqbin1.out && rm -rf
+ /tmp/jobqcompact && cp -R data/compact /tmp/jobqcompact && timeout 300
+ zig-out/mo-build/main/main compact /tmp/jobqcompact > /tmp/jobqbin2.out 2>/tmp/jobqbin2.err
+ && python3 - <<'PY'
+ from pathlib import Path
+ log=Path('/tmp/jobqcompact/jobq.log').read_text()
+ assert 'attempts' not in log and 'max_attempts' not in log
+ assert 'tries' in log and 'max_tries' in log
+ PY
+
+ echo ok (timeout 300s)
+
+ zig-out/mo-build/main/main
+ ok
+
+ Took 3.2s
+
+
+ Performing final code diff check
+
+
+ $ git diff --stat && git diff -- examples/programs/jobq/job.mo | head -80 (timeout 300s)
+
+ ... (95 earlier lines, ctrl+o to expand)
+    worker: String
+ +  at: Time
+  end
+
+  # A look at a job: when, whether it is still leased after the look, and until when.
+
+ Took 0.0s
+
+
+ Estimating wall-clock duration from timestamps
+
+
+ $ date '+%Y-%m-%d %H:%M:%S %Z' (timeout 300s)
+
+ 2026-09-16 01:22:32 EDT
+
+ Took 0.0s
+
+
+ Planning final test timing and report details
+
+ Preparing final exact test commands
+
+
+ $ set -e
+ # Mo tests, with simulator for process modules
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/job.mo
+ >/tmp/final-jobq-tests.log
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/board.mo
+ >>/tmp/final-jobq-tests.log
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/api.mo
+ >>/tmp/final-jobq-tests.log
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/store.mo
+ >>/tmp/final-jobq-tests.log
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/queue.mo
+ >>/tmp/final-jobq-tests.log
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/server.mo
+ >>/tmp/final-jobq-tests.log
+ timeout 300 toolchain/zig-out/bin/mo test --sim 100 examples/programs/jobq/main.mo
+ >>/tmp/final-jobq-tests.log
+ # Program runs, compact against a temp old log
+ cd examples/programs/jobq
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- check data/demo
+ data/session.txt >/tmp/final-jobq-run1.out 2>/tmp/final-jobq-run1.err
+ diff -u jobq.expected /tmp/final-jobq-run1.out
+ rm -rf /tmp/jobqcompact-final && cp -R data/compact /tmp/jobqcompact-final
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- compact /tmp/jobqcompact-final
+ >/tmp/final-jobq-run2.out 2>/tmp/final-jobq-run2.err
+ python3 - <<'PY'
+ from pathlib import Path
+ log=Path('/tmp/jobqcompact-final/jobq.log').read_text()
+ assert 'attempts' not in log and 'max_attempts' not in log
+ assert 'tries' in log and 'max_tries' in log
+ PY
+ set +e
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- serve >/tmp/final-jobq-run3.out
+ 2>/tmp/final-jobq-run3.err; c=$?
+ set -e; test $c -eq 2; diff -u jobq-3.expected /tmp/final-jobq-run3.out
+ set +e
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- serve data/nowhere
+ >/tmp/final-jobq-run4.out 2>/tmp/final-jobq-run4.err; c=$?
+ set -e; test $c -eq 1; diff -u jobq-4.expected /tmp/final-jobq-run4.out
+ set +e
+ timeout 300 ../../../toolchain/zig-out/bin/mo run main.mo -- client 127.0.0.1 1 p GET /jobs
+ >/tmp/final-jobq-run5.out 2>/tmp/final-jobq-run5.err; c=$?
+ set -e; test $c -eq 1; diff -u jobq-5.expected /tmp/final-jobq-run5.out
+ # Native build tests and run check
+ timeout 300 ../../../toolchain/zig-out/bin/mo build --tests main.mo
+ >/tmp/final-jobq-build-tests.log
+ timeout 300 zig-out/mo-build/main/main >/tmp/final-jobq-built-tests.out
+ timeout 300 ../../../toolchain/zig-out/bin/mo build main.mo >/tmp/final-jobq-build.log
+ timeout 300 zig-out/mo-build/main/main check data/demo data/session.txt
+ >/tmp/final-jobq-bin.out 2>/tmp/final-jobq-bin.err
+ diff -u jobq.expected /tmp/final-jobq-bin.out
+ echo FINAL_OK (timeout 300s)
+
+ FINAL_OK
+
+ Took 7.1s
+
+
+ Planning detailed report with loop diagnostics
+
+ Summarizing loop failure causes and fixes
+
+ Adding loops 12 and 13 for test path errors
+
+ Planning report on loop count by cause
+
+
+ write REPORT.md
+
+ # jobq change report
+
+ Wall-clock: about 14 minutes (2026-09-16 01:09-01:23 EDT).
+
+ Green checks (all under `timeout 300`):
+
+ - `mo test --sim 100` for `job.mo`, `board.mo`, `api.mo`, `store.mo`, `queue.mo`,
+ `server.mo`, and `main.mo`.
+ - `mo run main.mo -- check data/demo data/session.txt` matches `jobq.expected`.
+ - `mo run main.mo -- compact` on a temp copy of `data/compact` rewrites old
+ `attempts`/`max_attempts` records to `tries`/`max_tries`.
+ - `mo run` usage/error runs match the existing expected files.
+ ... (25 more lines, 35 total, ctrl+o to expand)
+
+
+
+ $ git status --short (timeout 300s)
+
+ ... (5 earlier lines, ctrl+o to expand)
+  M examples/programs/jobq/jobq.expected
+  M examples/programs/jobq/main.mo
+  M examples/programs/jobq/queue.mo
+  M examples/programs/jobq/server.mo
+ ?? REPORT.md
+
+ Took 0.0s
+
+
+ Verifying unchanged compact fixture and staging paths
+
+
+ $ git add examples/programs/.mo.ids examples/programs/jobq/api.mo
+ examples/programs/jobq/board.mo examples/programs/jobq/data/session.txt
+ examples/programs/jobq/job.mo examples/programs/jobq/jobq.expected
+ examples/programs/jobq/main.mo examples/programs/jobq/queue.mo
+ examples/programs/jobq/server.mo REPORT.md && git commit -m 'jobq: the change' (timeout
+ 300s)
+
+ [r9-codex-mo a850b08] jobq: the change
+  10 files changed, 608 insertions(+), 242 deletions(-)
+  create mode 100644 REPORT.md
+
+ Took 0.1s
+
+
+
+ $ git status --short (timeout 300s)
+
+ (no output)
+
+ Took 0.0s
+
+
+ Implemented and committed:
+
+ - Commit: a850b08 jobq: the change
+ - Report written: REPORT.md
+ - Working tree clean.
+
+ Green checks included:
+
+ - mo test --sim 100 for all examples/programs/jobq/*.mo
+ - mo run transcript checks
+ - old-log compact rewrite check
+ - mo build --tests main.mo
+ - mo build main.mo plus binary check run
+
+ Loop count and decisions are in REPORT.md.
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+~/Projects/startups/mo-lang-r9-codex-mo (r9-codex-mo)
+↑200k ↓36k R11M $7.489 (sub) 51.4%/272k (auto)                 (openai-codex) gpt-5.5 • medium

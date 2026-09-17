@@ -1,4 +1,12 @@
+---
+title: "Mo"
+type: index
+---
+
 # Mo Lang — Index
+
+> **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
+
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
 > Last updated: 2026-09-16 | Total pages: 231
@@ -128,6 +136,9 @@
 ## Plans
 - [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; a sketch until step 29 lands
 - [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
+- [[interpreter-step-32|Step 32: crash reports apart from the ring, and the reopening store]] — what P6 on Mo found: `/crashes` empty under load, and the restart pattern no corpus file shows
+- [[interpreter-step-33|Step 33: the crash report freed, and the interpreter's abort on a full disk]] — what generation three found: the leak per restart, the abort under mo run
+- [[interpreter-step-34|Step 34: placement, so the Mac's cores stop costing]] — a process placed with its starter, the crossing made cheap, measured at 1, 4, and 14 cores
 - [[interpreter-step-29b|Step 29b: replay memory on a real log]] — Fable's 1M probe on an HTTP-written log passed 8 GB after the fold; the rule bounded-by-what-the-update-reaches made to hold in every loop shape
 - [[interpreter-step-29|Step 29: the runtime honest]] — `restart: :never` honoured, `platform.exit` with a pending delayed send, replay streamed, simulated time only when a test waits, invariants counted
 - [[program-6|Program 6: ledger in Mo]] — the brief for the payments ledger whose invariants are the point; after step 28
@@ -184,7 +195,7 @@
 - [[corpus|Corpus: brief for the worker session]] — 50 tiny programs in examples/, one construct each, plus rejects/ that must not compile
 - [[comparison-pass|Comparison pass: brief for the worker session]] — template, tools, and the 13 briefs for the Opus worker
 - [[program-menu|Program menu: what we build to put Mo through its paces]] — seven programs of different kinds, and what each measures
-- [[roadmap|Roadmap: the path after alignment]] — Once you've gone through Q1–Q16, here is the path I'd propose
+- [[roadmap|Roadmap: now, next, later]] — the board: what is in flight, what comes next in order, what waits on Robert, what just landed; then the phases and every step's history
 
 ## Sessions
 - [[session-06|Session 6 — 13 Sep 2026 (evening, ingestion)]] — six deep-research runs and three adjacent runs ingested into raw/; new prompts-mo-parallel-tracks page; no decisions changed
