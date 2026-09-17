@@ -235,6 +235,8 @@ Change 5 ([[01f-job-queue-change-5]], sealed at `897be13`): a leased job handed 
 
 Recorded, not predicted: wall-clock (the machine held awake, so this generation has one), loops by cause, first-fix rate per diagnostic, lines changed, tokens read, the decision lists, and which `never` each Mo edit touched.
 
+**Started** 21:18 local, after step 34's acceptance: the Mo worktree carries step 34's `mo` and the spec chapters as of step 34 (`b7203c1`); agents `mo-e5-{mo,go,python,elixir}` in workspace `w4M`. The sixth suite, `defects5.py`, written 21:20 to 21:40 (91 checks over five categories; on the change 4 Mo program 26 pass and 65 fail on the missing routes, the harness running to its end). **Added to the record before any result** (from Fable's step 34 probe, in the decision log): pairs and creates a second at 32 workers, 1 core, for every program of this generation against its generation-four program, the round's speed column applied per generation from now on; the three baselines' generation-four rows are being measured while the sessions read their briefs (fsync-bound rows, the overlap noted).
+
 ## Related
 
 - [[d43-five-measurements]]
