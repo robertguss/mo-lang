@@ -59,7 +59,7 @@ Fable needs a lead-side receiver that notices these audit PRs/records and wakes 
 4. Publish `parallel-filed` once both files are committed and available, so comparison runs automatically.
 5. Acknowledge a labelled transport test through the actual receiver before declaring two-way automation live.
 
-**Not yet verified:** Fable has no configured receiver known to this deployment. PR availability is not proof of awakening. Automatic merge is not enabled or authorized.
+**Fable's receiver** is `fable_poll.py` in this folder, described in `FABLE-RECEIVER.md` (17 Sep 2026, evening). **Not yet verified:** a `to: fable` message received through it and its reply recorded by this intake. PR availability is not proof of awakening. Automatic merge is not enabled or authorized.
 
 ## Checks actually performed (17 September 2026)
 

@@ -1,7 +1,7 @@
 # Automated auditor–Fable exchange
 
 **Authority:** Robert approved the two-way automated handoff on 17 September 2026; see `CHARTER.md` and the decision-log amendment. No routine Robert relay is required.
-**Status:** auditor-side polling intake deployed and fresh-agent canary tested; Fable-side wake-up remains unconfigured/unverified. See `automation/README.md` for installation, exact message format, checks, and limitations. A pushed document or PR is not proof that Fable has received or acted on it.
+**Status:** auditor-side polling intake deployed and fresh-agent canary tested; Fable-side receiver written, unit-tested, and installed as an hourly wake-up in the lead's session on 17 Sep 2026, 6:00 PM ET (`automation/FABLE-RECEIVER.md`); its first inbound message and the auditor's receipt of its reply are still unverified, pending the labelled transport test. See `automation/README.md` for installation, exact message format, checks, and limitations. A pushed document or PR is not proof that Fable has received or acted on it.
 
 ## Durable handoffs
 
