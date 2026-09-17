@@ -8,6 +8,29 @@
 
 ---
 
+## Robert's ratifications, 17 Sep 2026
+
+Ratified in-session on 17 Sep 2026, before program 7 exists. Any change to the below is a decision-log row with a stated reason.
+
+- **R1, R2, R3, R5, R7:** as written.
+- **R6:** as written, **no token budget.** The rule is now a ceiling-of-capability test (can the runtime surface produce a correct diagnosis given room to reason?), not a production-realism differentiator. Auditor's flag: if R6 clears, we will not know from R6 alone whether Mo's surface is *better* than Elixir's or just *sufficient*; the sharpest differential test moves to program 8 or a follow-up.
+- **R4:** as written.
+- **Tier-1 clearing threshold:** 4 of 5 reliability rows (R1, R2, R3, R5, R6).
+- **RC1, RC2, RC3, RC4:** all as written.
+- **Retirement mapping** (severity-graded, committed in advance):
+
+  | Outcome | Retirement |
+  |---|---|
+  | ≤ 2 reliability rows clear | **S-A** — full retirement |
+  | 3 reliability rows clear, OR any cost row red | **S-B** — scoped retirement, name the domain |
+  | Exactly 4 reliability rows clear, no cost row red | **S-C** — provisional, program 8 gates |
+  | All 5 reliability rows clear, no cost row red | claim vindicated |
+
+- **Workflow requirement:** Fable drafts a parallel independent reading of program 7's numbers against this rule and files it alongside the auditor's before Robert reads either. Disagreements become decision-log rows.
+- **Roadmap ordering (auditor's separate finding, M-3 accepted):** the bricks page ships first, then the generation-4 speed-loss probe, then program 7. Program 7 moves from #6 to #3 on the roadmap's "Next, in order."
+
+---
+
 ## 0. Why this is the important pre-registration
 
 The pivot of 14 Sep 2026, held across `01-premise.md`, `state-of-the-project.md`, and `10-language-after-the-rounds.md`, ranks the thesis's three layers by how much they carry:
@@ -37,7 +60,7 @@ Loose statements of "Mo's runtime is better" fail the same two ways the language
 - **R3: Honest supervision.** No Mo program under test can be put into a "wait no law bounds" state (the outage class from round 8). Round 8's defect must not reproduce under Mo's chapter 10 §1 fix on a program shaped like program 7's.
 - **R4: Runtime honesty vs. instrumentation.** The `verified:` line and MO0317 track *actual* verification status on program 7; no `verified:` line is stale by more than one build across 100 sequential edits.
 - **R5: Bounded replay.** A crashed process replays to the same state on the same seed, byte for byte, in 100/100 replays across program 7's states.
-- **R6: The runtime surface (`platform.runtime`) is queryable and load-bearing.** An outside diagnostic session, using only `platform.runtime` and the crash store, can produce a correct root-cause reading for at least 8 of 10 injected faults on program 7 within a fixed token budget.
+- **R6: The runtime surface (`platform.runtime`) is queryable and load-bearing.** An outside diagnostic session, using only `platform.runtime` and the crash store, can produce a correct root-cause reading for at least 8 of 10 injected faults on program 7. No token budget: the test measures whether the surface *can* produce the correct diagnosis given room to reason, not whether it does so under production time pressure.
 - **R7: One static binary.** Program 7 ships as a single native binary of ≤ 50 MB, boots in ≤ 500 ms cold, and needs no runtime installation on a bare Linux image.
 
 **Costs (bounded, not maximized):**
@@ -77,7 +100,7 @@ The rule below is stated as **the pre-registration for program 7**. It should be
 - **R2 clear:** Mo's MTTR on `--faults 0.05 --until 0.5` is ≤ 1.2× Elixir's MTTR.
 - **R3 clear:** Round 8's outage class does not reproduce in Mo. An adversarial "wait-no-law-bounds" probe (10 shapes: batched reply, chained ask, mutual send/wait, timer-driven wait, etc.) finds ≤ 1 case in Mo where a wait is un-bounded.
 - **R5 clear:** 100/100 replays of program 7's state on the same seed produce byte-identical state.
-- **R6 clear:** An outside session with a fixed token budget correctly names the root cause of 8/10 injected faults using only `platform.runtime` output.
+- **R6 clear:** An outside session (no token budget) correctly names the root cause of 8/10 injected faults using only `platform.runtime` output.
 
 **If 3 or fewer rows clear:** the runtime claim fails against the BEAM. This is the project-changing finding chapter 1 flags.
 **If exactly 4 clear:** the runtime claim clears with a caveat; the failed row is a pre-registered follow-up.

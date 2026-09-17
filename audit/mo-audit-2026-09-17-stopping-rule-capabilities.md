@@ -8,6 +8,34 @@
 
 ---
 
+## Robert's ratifications, 17 Sep 2026
+
+Ratified in-session on 17 Sep 2026, before program 7 exists. Any change to the below is a decision-log row with a stated reason.
+
+- **P1:** hard row, 0 third-party runtime packages. Any dep > 0 fails P1.
+- **P2a:** ≥ 2 of 3 drift bugs caught by `mo check --recipe`. As written.
+- **P2b:** no recipe in program 7 needs a just-trust-me clause. As written.
+- **P2c:** ≤ 1 of 5 seeded regeneration-drift cases missed. As written.
+- **P3:** Mo ≤ 1 escape AND Elixir ≥ 3 escapes. Amendments accepted:
+  - **Clean-differential footnote:** if both languages have 0 escapes, P3 still clears but the differential claim is downgraded to "capabilities confine, and so does Elixir with review."
+  - **Hard fail:** if Mo has > 1 escape regardless of Elixir's count, P3 fails. The confinement claim is Mo's to earn on absolute grounds, not on differential.
+- **P4:** Mo maintainer time on a change-6-style modification ≤ 1.5× Elixir's. As written.
+- **Retirement mapping** (severity-graded, committed in advance):
+
+  | Outcome | Retirement |
+  |---|---|
+  | P1 fails (any dep > 0) | **T-A or T-B**, Robert picks based on *why*: if bricks were adequate but recipes weren't, **T-B**; if bricks were also inadequate, **T-A** |
+  | P3 fails (Mo escapes > 1) | **T-A** — the confinement claim was the strongest one; its failure retires the whole claim |
+  | P2 fails, P1 and P3 clear | **T-C** — recipe experience is bad, zero-dep ships, fix follows |
+  | P4 fails, others clear | **T-C** — velocity issue, fix follows |
+  | P2 and P4 both fail | **T-B** — bricks yes, recipes no |
+  | Everything clears | claim vindicated |
+
+- **Workflow requirement:** Fable drafts a parallel independent reading of program 7's capabilities/recipes evidence against this rule and files it alongside the auditor's before Robert reads either. Disagreements become decision-log rows.
+- **Prerequisite (auditor's separate finding):** the bricks page must ship before program 7's first commit. Chapter 6's shelf boundary is unspecified without it, and this rule cannot bind well against a moving target. This is item #1 on the ratified M-3 roadmap ordering.
+
+---
+
 ## 0. Why this pre-registration matters
 
 The pivot of 14 Sep 2026 rewrote the thesis as:
@@ -32,7 +60,7 @@ Four sub-claims fold inside this:
 
 - **P1: Zero third-party dependencies is achievable.** Program 7 ships with 0 third-party runtime packages, using only bricks and recipe-generated code for every function that a normal Elixir program would use `hex` for (probably: crypto, JSON handling, HTTP server, database driver, background job queue, rate limiting, TLS, logging, metrics).
 - **P2: Recipes actually work as advertised.** `mo check --recipe` catches drift when the maintainer's implementation strays from the recipe's contract; the recipe surface is expressive enough to state real production contracts.
-- **P3: Capability confinement is real.** A hidden capability-abuse suite (10 shapes: log-writing HTTP client that shouldn't, JSON parser that opens files, rate limiter that talks to the network, etc.) finds ≤ 1 escape in Mo where a capability is used beyond its declared scope; the Elixir counterpart finds ≥ 3.
+- **P3: Capability confinement is real.** A hidden capability-abuse suite (10 shapes: log-writing HTTP client that shouldn't, JSON parser that opens files, rate limiter that talks to the network, etc.) finds ≤ 1 escape in Mo where a capability is used beyond its declared scope; the Elixir counterpart finds ≥ 3. **Amendment (ratified 17 Sep 2026):** if both languages have 0 escapes, P3 still clears with a footnote ("capabilities confine, and so does Elixir with review"); if Mo has > 1 escape regardless of Elixir's count, P3 fails.
 - **P4: No velocity penalty on maintenance.** When a change 6-style modification requires updating a piece of functionality that in Elixir would be `hex update`, the Mo maintainer's time to make the equivalent modification (regenerating a recipe body, updating a brick's usage) is within 1.5× of the Elixir maintainer's `hex update` + audit time.
 
 The order matters: P1 is the strongest claim (present or absent, binary); P2 is the mechanism; P3 is what makes zero-dependency worth having; P4 is the cost check.

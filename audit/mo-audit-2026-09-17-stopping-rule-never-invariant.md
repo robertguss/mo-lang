@@ -8,6 +8,32 @@
 
 ---
 
+## Robert's ratifications, 17 Sep 2026
+
+Ratified in-session on 17 Sep 2026, before generation 6 runs. Any change to the below is a decision-log row with a stated reason.
+
+**Simplification accepted (L-2):** the three-tier rule below is replaced, for binding purposes, by a single-tier rule with R-B firing automatically. The three tiers are preserved in the body of this document as their design rationale and as a reference for the ledger; the *binding rule* is what follows.
+
+**The ratified rule:**
+
+> By the reading of erosion generation 10:
+>
+> - **Clear (claim vindicated):** `never`/`invariant` has caught ≥ 2 Mo defects that no test would have caught, at ≤ 1.5× false-positive rate, at density ≤ 5 per 1,000 lines of Mo.
+> - **Rule fires, R-B automatic:** any of the three thresholds fails. Chapter 1's third-layer sentence is rewritten to formalize the pivot (the language is the *surface* of the thesis, not a catcher of bugs). `never` and `invariant` remain in the language as project-setting-level tools; they are no longer counted as part of the language layer's catch claim.
+> - **Escalate to R-A (remove from language):** Tier 3 breaks badly — density > 10 per 1,000 lines OR false positives > 3× catches. Robert's call at that point.
+
+**Retirement mapping:**
+
+| Outcome | Retirement |
+|---|---|
+| ≥ 2 catches, ≤ 1.5× FP, ≤ 5/1,000 density | claim vindicated |
+| Any threshold fails; density ≤ 10/1,000 and FPs ≤ 3× catches | **R-B** — retire from claim, keep in language |
+| Any threshold fails; density > 10/1,000 OR FPs > 3× catches | **R-A** escalation — Robert's call to remove from language |
+
+**Workflow requirement:** Fable drafts a parallel independent reading of the generation-10 ledger against this rule and files it alongside the auditor's before Robert reads either. Disagreements become decision-log rows.
+
+---
+
 ## 0. Scope of this rule (added 17 Sep 2026, after the pivot check)
 
 This rule binds only **the language layer's own catch claim** (`never`/`invariant` as language constructs that catch bugs tests miss). It is not the project's main stopping rule. Chapter 1's thesis, as restated on 14 Sep 2026 and consistently held across `state-of-the-project.md`, `01-premise.md`, `10-language-after-the-rounds.md`, and the roadmap, ranks the three layers in order of load-bearing weight:
