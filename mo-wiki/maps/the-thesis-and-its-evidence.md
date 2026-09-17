@@ -1,7 +1,7 @@
 ---
 title: "The thesis and its evidence"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: map
 tags: [thesis, research]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -44,5 +44,6 @@ A map of content: the claim, the layers it stands on, and the page where each cl
 
 ## The null hypotheses
 
-- The BEAM: [[d42-elixir-round]], [[control-run-10]], the P6 rows in [[control-run-10]] and [[erosion-round]]
+- The BEAM: [[d42-elixir-round]], [[control-run-10]], the P6 rows in [[control-run-10]] and [[erosion-round]]; the versioned restart-budget defaults in [[hermes-daily-2026-09-16]]
+- The research lane against all three layers: [[hermes-research-monitoring]] (an independent daily scan, wiki-only PRs, the lead merges after reading); [[hermes-daily-2026-09-16]] (restart budgets, error-path coverage), [[hermes-daily-2026-09-17]] (crash consistency, capability confinement)
 - A familiar language with the checks bolted on: [[control-run-6]] (the Go and Python baselines with vet, staticcheck, mypy, ruff, contracts), and the unfamiliarity-tax experiment named in [[d43-five-measurements]]

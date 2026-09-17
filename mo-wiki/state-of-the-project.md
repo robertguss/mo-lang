@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -25,7 +25,8 @@ the date at the top is the last one. The trees are one link away: the maps under
 here, and the [[roadmap]] table is the authority on order.
 
 **Last rewritten:** 16 Sep 2026, late evening on Robert's Mac, after step 34 and
-generation five. Five days since the first commit.
+generation five; amended 17 Sep, morning, for the research lane. Five days since
+the first commit.
 
 ## In one paragraph
 
@@ -125,6 +126,20 @@ maintainers carried it in 11 to 25 minutes, all four found the same wrong
 sentence in the spec, and Mo's shipped the first defect of the round that no
 baseline shared, a folder its own `compact` leaves in a state its own `verify`
 refuses; the three `never`s its maintainer wrote caught neither of its bugs.
+
+**Session 10, the morning of 17 Sep, on the Mac.** A second lane exists beside
+the build: an independent research agent (Hermes, [[hermes-research-monitoring]])
+scans primary sources daily and publishes wiki-only PRs the lead reads before
+merging, never code, never decisions. Its first two notes were merged this
+morning ([[hermes-daily-2026-09-16]], [[hermes-daily-2026-09-17]]): a correction
+to chapter 10 (the 3-in-5 restart budget that ended the Elixir node is Elixir
+`Supervisor`'s default, not OTP's), the OSDI 2014 evidence that catastrophic
+failures come from error handlers that exist and are wrong, the crash-consistency
+distinction between a file's bytes and its directory entry that sits on the exact
+path of generation five's Mo defect, and the `cap-std` line that a capability API
+is not confinement. Nothing in it changes a decision; the two checklists are
+queued reading for change 6. The same review found `erosion2-*` and `erosion5-*`
+had never been pushed; they are now.
 
 ## What Mo is, today
 
@@ -275,7 +290,12 @@ does quality hold?), the incident round, and the two diagnostic columns.
    generation four's nine-times slowdown and generation five's count slip in
    view: what does a maintainer need to see to avoid both? Carried from step
    33: a restart on a 100,000-job log takes 1.45 s against the spec's one
-   second, and compaction copies a string once per reference.
+   second, and compaction copies a string once per reference. From the
+   research lane, two acceptance questions for the seventh suite: the sequence
+   create, compact, rename, reopen, write again, with file and directory-entry
+   persistence named separately; and whether every error path a recipe
+   declares is reachable by a test ([[hermes-daily-2026-09-17]],
+   [[hermes-daily-2026-09-16]]).
 3. **Placement for what `main` starts**: step 34 placed a process with its
    starter and made the crossing cheap; `echo-1k` and the binary's `kv-10k-get`
    are still slower at 14 cores because their two ends are both `main`'s. A
@@ -296,7 +316,8 @@ does quality hold?), the incident round, and the two diagnostic columns.
 
 ## Rows waiting on Robert
 
-In the decision log, marked "for Robert", newest first: generation five's
+In the decision log, marked "for Robert", newest first: research PR 2 read
+and merged, with chapter 10's attribution corrected (17 Sep); generation five's
 reading (the first Mo-only defect, the laws still silent); generation four's Mo
 queue nine times slower on the lease path and speed recorded per generation;
 step 34 accepted; generation four and three; chapter 10 §2's budget as a value;

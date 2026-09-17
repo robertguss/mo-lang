@@ -1,7 +1,7 @@
 ---
 title: "Roadmap: now, next, later"
 created: 2026-09-12
-updated: 2026-09-16
+updated: 2026-09-17
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -38,12 +38,13 @@ The compaction copy per reference (half again on jobq's log) and the one-second 
 
 ## Waiting on Robert
 
-Rows marked "for Robert" in the [[decision-log]], newest first: generation five's reading (16 Sep, evening); the change 4 Mo queue nine times slower on the lease path (16 Sep, evening); P6 on Mo's change 2 and change 3 as the reopening store (16 Sep); round 9's Haiku row and the round's reading (16 Sep); the erosion round's generation two; measurement 1's completeness; chapter 10 §1 as built (step 31); the BEAM row after round 10 and P6 on Elixir; the outage row from round 8; the 16 lint issues from his history bundle. None blocks the work: Fable decides and records, Robert overturns.
+Rows marked "for Robert" in the [[decision-log]], newest first: research PR 2 read and merged, chapter 10's budget attribution corrected, the Hermes checklists queued for change 6 (17 Sep, morning); generation five's reading (16 Sep, evening); the change 4 Mo queue nine times slower on the lease path (16 Sep, evening); P6 on Mo's change 2 and change 3 as the reopening store (16 Sep); round 9's Haiku row and the round's reading (16 Sep); the erosion round's generation two; measurement 1's completeness; chapter 10 §1 as built (step 31); the BEAM row after round 10 and P6 on Elixir; the outage row from round 8; the 16 lint issues from his history bundle. None blocks the work: Fable decides and records, Robert overturns.
 
 ## Recently done
 
 | when | what | page |
 |---|---|---|
+| 17 Sep, morning | Research PR 2 (the Hermes lane, wiki only) read and merged: restart budgets, error-path coverage, crash consistency, capability confinement; chapter 10's 3-in-5 budget reattributed to Elixir `Supervisor`; `erosion2-*` and `erosion5-*` pushed at last | [[hermes-daily-2026-09-17]] |
 | 16 Sep, 22:55 | Generation five: change 5 by four maintainers in 11 to 25 minutes; the sixth suite Python 94, Elixir 94, Go 92, Mo 93 of 94; the first Mo-only defect, the laws silent; the speed row per generation | [[erosion-round]] |
 | 16 Sep, 21:20 | Step 34: placement with the starter, the crossing made cheap (100k asks across schedulers 4 s to 0.14), measured at 1, 4, and 14 cores; the change 4 Mo queue found nine times slower on the lease path | [[interpreter-step-34]] |
 | 16 Sep, 17:05 | Change 5 sealed, generation five pre-registered: a lease handed off, a queue renamed with jobs in flight | [[01f-job-queue-change-5]] |
