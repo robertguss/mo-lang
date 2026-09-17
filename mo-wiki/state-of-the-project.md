@@ -314,7 +314,11 @@ or the program's own. Priced against Zig's standard library, which the
 toolchain already trusts: about 70,000 lines to read and 12,000 to 15,000 to
 write for the five bricks the review named, of which program 7 needs two,
 crypto and a TLS 1.3 server. Each brick ships with five audit items and a
-capped cut of its standard, written once in Zig for both runtimes. That probe comes
+capped cut of its standard, written once in Zig for both runtimes. The
+crypto brick landed the same evening (step 35, [[interpreter-step-35]]): the
+differential run against python's `cryptography` at 0 mismatches, the fuzz at 0
+crashes, SHA-256 at 532 MB/s in a binary against 1,548 for the Zig call, the
+difference the `List(UInt8)` value, a later step. That probe comes
 first because the runtime rule's speed row is already at its limit on today's
 record: round 10's Elixir queue ran at twice Mo's rate. Fable's disagreements
 are rows for Robert. Program 7 as specified (a Redis subset) needs no hex
@@ -356,8 +360,8 @@ exists. The auditor, not Fable, writes program 7's hidden suites.
    counted laws into `mo.toml`, MO0317 naming the changed module.
 6. **The unfamiliarity tax**, sized: the same agent writing the same program
    twice.
-7. **Program 7** (fourth on the board, after the crypto and TLS bricks and
-   the speed probe), a real open-source service reimplemented against its own
+7. **Program 7** (third on the board, after the speed probe and the TLS
+   brick; the crypto brick is done), a real open-source service reimplemented against its own
    tests, the first program built on capabilities, recipes, and the runtime
    surface together, and the one chapter 1 says answers the BEAM.
 8. The compile benchmark at 5,000 modules, `mo prove`, the

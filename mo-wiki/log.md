@@ -471,3 +471,6 @@
 
 ## [2026-09-17] session | Afternoon on the VM: step 35 started
 - The lead resumed on the VM as the rewritten handoff asked. A fresh Opus worker (`mo-opus`, pane `w7:pJ`, medium effort) started on [[interpreter-step-35]] at 15:50 UTC with the brief's write scope; the Mac worker of 16:05 had ended before writing. Fable's verification (the differential run, the hour of fuzzing, its own probes under both runtimes) follows the worker's report.
+
+## [2026-09-17] session | Evening on the VM: step 35 accepted
+- One Opus session (15:50 to 17:56 UTC) shipped the crypto brick in three parts, each green in a clean worktree ([[interpreter-step-35]]). Fable's verification: the suite green on `main` in 5 min 48 s; a 29-line probe of its own inputs from python's `cryptography` equal under both runtimes and the two runtimes identical; the Argon2id tag rederived outside; the size crash the same message and exit in both runtimes; MO0409 on a captured `Random`; the fixture example under 200 sim seeds; `mo fmt` clean; the worker's differential run 0 of 18,000 per runtime and its ten-minute fuzz 0 crashes; Fable's hour of fuzzing started 18:35 UTC in pane `w7:pK`. Seven rows, one `semantic` for Robert. The board, the changelog, the state page, and the handoff brought current. Lint: 19 findings, none new but the bricks page over 200 lines.

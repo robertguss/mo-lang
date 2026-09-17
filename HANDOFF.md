@@ -108,19 +108,14 @@ know that the wiki does not say in one place.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **Step 35, the crypto brick, first thing**: the brief is sealed at
->    `mo-wiki/plans/interpreter-step-35.md`; start a fresh Opus worker on it
->    (the prompt is the brief pointer, the write scope from the brief, one
->    commit per part `Step 35 part X`, push after each, `zig build test`
->    green, `uv` for `bench/step35`, never `tr`). A Mac worker was started at
->    16:05 and ended at 16:10 before it wrote anything, on Robert's ask. The
->    numbers are taken on the VM. (The bricks page,
->    `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, shipped 17 Sep
->    and holds the cut, the five audit items, and the rule that a brick is
->    written once in Zig and linked into both runtimes). Then **the TLS brick**
+> 1. **Step 35, the crypto brick: accepted 17 Sep, 18:40 UTC** on the VM
+>    (`interpreter-step-35.md` has the Result; Fable's hour of fuzzing ran
+>    after, its count on that page). Next in the bricks lane: **the TLS brick**
 >    (two steps: a TLS 1.3 server on Zig's `std.crypto.tls` client; the
->    certificate chain and the differential run against OpenSSL). Both before
->    program 7's first commit.
+>    certificate chain and the differential run against OpenSSL), the brief
+>    `interpreter-step-36.md` if it exists, else Fable writes it. Both before
+>    program 7's first commit (the bricks page,
+>    `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`).
 > 2. **The probe** naming the cause of generation four's nine-times loss in the
 >    Mo queue (`../mo-lang-erosion4-mo`, its binary built with this `mo`; `sample`
 >    the server during `bench/step34/jobq_measure.py`'s pairs at 32 workers,
