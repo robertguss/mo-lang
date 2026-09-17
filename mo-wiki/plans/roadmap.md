@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Nothing in flight (paused 16 Sep, 23:00). Next: change 6's spec, written with generation four's speed loss and generation five's count slip in view | Fable | 16 Sep, 23:00 | [[erosion-round]] |
+| Nothing in flight (paused 16 Sep, 23:00; a wiki-only morning on 17 Sep). Next: change 6's spec, written with generation four's speed loss and generation five's count slip in view | Fable | 16 Sep, 23:00 | [[erosion-round]] |
 
 ## Next, in order
 
@@ -38,7 +38,7 @@ The compaction copy per reference (half again on jobq's log) and the one-second 
 
 ## Waiting on Robert
 
-Rows marked "for Robert" in the [[decision-log]], newest first: research PR 2 read and merged, chapter 10's budget attribution corrected, the Hermes checklists queued for change 6 (17 Sep, morning); generation five's reading (16 Sep, evening); the change 4 Mo queue nine times slower on the lease path (16 Sep, evening); P6 on Mo's change 2 and change 3 as the reopening store (16 Sep); round 9's Haiku row and the round's reading (16 Sep); the erosion round's generation two; measurement 1's completeness; chapter 10 §1 as built (step 31); the BEAM row after round 10 and P6 on Elixir; the outage row from round 8; the 16 lint issues from his history bundle. None blocks the work: Fable decides and records, Robert overturns.
+Rows marked "for Robert" in the [[decision-log]], newest first: research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle. None blocks the work: Fable decides and records, Robert overturns.
 
 ## Recently done
 

@@ -56,7 +56,7 @@ type: index
 - [[d36-vm-first-runtime|Direction 36: VM-first runtime, C backend as an optimization]] — (Robert, 13 Sep, "you are beginning to persuade me") the VM as the reference, native as ahead-of-time compilation of it; the frame for d37–d40
 - [[d35-mo-is-an-ecosystem|Direction 35: Mo is an ecosystem; first-party batteries you own]] — (Robert, session 3) Laravel model for first-party tooling, Phoenix-auth/shadcn model for kits you own; three shelves: bricks, kits, recipes
 
-## Open questions
+## Questions and their answers
 - [[q01-comments|Q1: Comments]] — ✅ in — Options: `#` (Ruby, Python, Elixir) or `//` (Rust, Go, C)
 - [[q02-strings-and-interpolation|Q2: Strings and interpolation]] — ✅ in — Options: Ruby `"Hello #{name}"` / Python `f"Hello {name}"` / Rust `format!("Hello {name}")`
 - [[q03-numbers-and-units|Q3: Numbers and units]] — ✅ in — Options: plain numerals only / numerals with unit suffixes as methods (`200.ms`, `90.days`) / a full units system
@@ -80,20 +80,20 @@ type: index
 - [[decision-log|Decision log]] — every choice in order, who made it, status, what first tests it
 
 ## Syntax picks and examples
-- [[base-example|Current base example (Robert's style)]] — ```ruby
-- [[draft-example-ruby-shaped|Draft example, Ruby-shaped (superseded)]] — ```ruby
+- [[base-example|Current base example (Robert's style)]] — the refund module in Robert's chosen style, the base every pick is applied to
+- [[draft-example-ruby-shaped|Draft example, Ruby-shaped (superseded)]] — the first Ruby-shaped draft of the refund module, superseded by the base example
 - [[full-example-q1-q7|Full example with Q1–Q7 applied]] — This is the base with every pick applied, including Q1–Q7 above
 - [[p01-blocks-keyword-end|Syntax pick 1: Blocks: keyword ... `end`]] — Robert first rejected `def`/`end`, then braces, then wrote his own version with `fn 
 - [[p02-definition-line|Syntax pick 2: Definition line]] — `fn refund(db: Ledger, clock: Clock) : Result(Refund, RefundError)`
 - [[p03-bindings|Syntax pick 3: Bindings]] — bare `now = clock.now` is an immutable binding, bound exactly once per scope; rebinding is a compile error; `var` is the only way to get …
 - [[p04-conditionals|Syntax pick 4: Conditionals]] — `if` is an expression, no parens around the condition, braces
-- [[p05-pattern-matching|Syntax pick 5: Pattern matching]] — `case value 
+- [[p05-pattern-matching|Syntax pick 5: Pattern matching]] — `case` with arms, no catch-all on a closed enum, `is` for one pattern
 - [[p06-results-and-propagation|Syntax pick 6: Results and propagation]] — predicates end in `?` (`charge.refunded?`); propagation is the `try` prefix (`charge = try db.find_charge(id, within: 200.ms)`), never po…
-- [[p07-types-struct-enum-refinement|Syntax pick 7: Types]] — `struct Charge 
+- [[p07-types-struct-enum-refinement|Syntax pick 7: Types]] — `struct`, `enum` with data, refinements with `where`; construction by named fields
 - [[p08-contracts|Syntax pick 8: Contracts]] — `requires` / `ensures` lines come directly after the signature line, then a blank line, then the body, all inside the `fn 
 - [[p09-module-header-and-never|Syntax pick 9: Module header and `never`]] — `module Payments.Refund` with dot paths (Robert's pick; `::` rejected, one symbol one idea, Elixir made the same call)
-- [[p10-process|Syntax pick 10: Process]] — `process Name(db: Ledger, clock: Clock) 
-- [[p11-loops-and-anonymous-functions|Syntax pick 11: Loops and anonymous functions]] — `for x in xs 
+- [[p10-process|Syntax pick 10: Process]] — `process` with capabilities as parameters, a `state` block, `message` lines, one `update`, `invariant`
+- [[p11-loops-and-anonymous-functions|Syntax pick 11: Loops and anonymous functions]] — `for` closed with `end`, `map`/`filter`/`reduce` kept, anonymous functions as call arguments only
 - [[p12-tests|Syntax pick 12: Tests]] — in the same file as the code, under it
 - [[p13-capabilities-and-logging|Syntax pick 13: Capabilities and logging]] — capabilities are ordinary types obtained only at the program root (`fn main(platform: Platform)`), passed down explicitly, narrowed on th…
 - [[p14-modules|Syntax pick 14: Modules]] — private by default, `pub` to expose (the `pub` lines are the spec altitude's table of contents)
@@ -102,7 +102,7 @@ type: index
 - [[syntax-overview|Syntax: how we got to Ruby's look with Go's discipline]] — AI-first constraint: Mo has zero corpus, so bodies borrow shapes models know cold; novelty is spent only where semantics need it (`intent…
 
 ## Deep dives
-- [[compilation-target-and-compile-speed|Compilation target and compile speed]] — 1
+- [[compilation-target-and-compile-speed|Compilation target and compile speed]] — C via the Zig toolchain for release, a VM for the edit loop; the compile-speed bets and how they are measured
 - [[effects-and-capabilities|Effects and capabilities]] — - Effect: what a function does beyond computing (reads clock, writes ledger, sends to a process, calls network)
 - [[errors-and-failure|Errors and failure: rain vs broken roof]] — Rain vs broken roof
 - [[fork-in-the-road|The fork in the road: three products called 'a language for AI']] — "A language for AI" means three different products:
@@ -128,13 +128,13 @@ type: index
 - [[plang-implementation-menu|Implementation menu: what a language builder chooses]] — parsers, IRs, type-check algorithms, GC, VMs/JITs, package managers, verification, bootstrapping
 - [[plang-mo-synthesis|Mo synthesis: what history says to Mo]] — camp-by-camp mapping to Mo's directions with reasoning
 - [[plang-decision-matrix|PL design decision matrix for Mo]] — 18 design axes as a compact table: Options | Mo direction | Rationale
-- [[state-model|State model]] — Not mutation itself
+- [[state-model|State model]] — why immutable values with `var` in place, no aliasing, and processes as the only identity
 - [[steal-list|Steal list: what to take from other languages]] — Framing: Go ships a scheduler and GC inside every binary and nobody calls it a VM
 - [[tiger-style-and-power-of-ten|Tiger Style + Power of 10, rethought AI-first]] — Key move: both documents are style guides enforced socially by review
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
-- [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; a sketch until step 29 lands
+- [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; accepted 15 Sep, the Mac table, the row that led to step 34
 - [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
 - [[interpreter-step-32|Step 32: crash reports apart from the ring, and the reopening store]] — what P6 on Mo found: `/crashes` empty under load, and the restart pattern no corpus file shows
 - [[interpreter-step-33|Step 33: the crash report freed, and the interpreter's abort on a full disk]] — what generation three found: the leak per restart, the abort under mo run
@@ -145,11 +145,10 @@ type: index
 - [[interpreter-step-28|Step 28: what round 7 found in the runtime]] — a map written in place, the tuple `reduce`, resident memory, replay, the `never` rule's `if` gap, six gaps
 - [[control-run-7|The control run, round 7]] — pre-registered on Robert's measure: the hidden defect suite, native speed and memory, the feedback loop, dependencies
 - [[sampling-as-verification|Sampling as verification]] — measurement 2 of direction 43: five regenerations of the queue's board, a random driver, disagreements against the hidden suite
-- [[mac-scaling-run|The Mac scaling run]] — step 30's rows at 1, 4, 10, and 14 cores on the M3 Max, one script
 - [[bodies-as-cache|Bodies as cache]] — measurement 1 of direction 43: every program regenerated from its stripped spec, twice; completeness per program
 - [[control-run-10|The control run, round 10, the Elixir round]] — pre-registered: the BEAM null hypothesis in a pane, round 7's queue and round 8's change in Elixir under the same suites
 - [[mac-scaling-run|The Mac scaling run]] — the one script for step 30 at 1, 4, 10, 14 cores on the M3 Max, and what to read from it
-- [[erosion-round|The erosion round, generation two]] — pre-registered: change 2 to the Mo, Go, Python, and Elixir queues by fresh maintainers, the third hidden suite, P6 on the Mo change
+- [[erosion-round|The erosion round, generations two to five]] — changes 2 to 5 to the Mo, Go, Python, and Elixir queues by fresh maintainers, a hidden suite per generation, P6, the speed row per generation; the live round
 - [[control-run-9|The control run, round 9, the small-model round]] — pre-registered: round 8's change by five smaller models in the Pi harness, reliability and loops as the columns that move
 - [[control-run-8|The control run, round 8, the maintenance round]] — pre-registered: the finished queues handed to fresh agents with a changed spec, regressions and defects, read on reliability and dependencies together
 - [[interpreter-step-27|Step 27: what round 6 found]] — the file law gone, `state`/`result`/`old` as names, a `never` reads values at rest, the escape, `fold_lines`
@@ -199,9 +198,9 @@ type: index
 
 ## Sessions
 - [[session-06|Session 6 — 13 Sep 2026 (evening, ingestion)]] — six deep-research runs and three adjacent runs ingested into raw/; new prompts-mo-parallel-tracks page; no decisions changed
-- [[session-05|Session 5 — 12 Sep 2026]] — review closed, corpus and toolchain begun, bake-off, build-first process, gap decisions
-- [[session-01|Session 1 — 12 Sep 2026 (night)]] — - 12 Sep 2026, session 1 (cont)
-- [[session-02|Session 2 — 12 Sep 2026]] — - Walked the Open Questions page one at a time
+- [[session-05|Session 5 — 12–15 Sep 2026]] — review closed, corpus and toolchain begun, bake-off, build-first process, gap decisions
+- [[session-01|Session 1 — 12 Sep 2026 (night)]] — the first design conversation: the directions, the premise, the first syntax
+- [[session-02|Session 2 — 12 Sep 2026]] — the open questions walked one at a time, Robert's answers, the syntax picks
 - [[session-03|Session 3 — 12 Sep 2026]] — tensions 1–7, Q17, aube, recipes and the ecosystem (d31–d35), design-v0 folder
 - [[session-04|Session 4 — 12 Sep 2026]] — expose line replaces pub, use A.B{X}, every for closes with end, loops vs combinators rule
 
@@ -264,6 +263,6 @@ type: index
 
 
 ## Research monitoring
+- [[hermes-research-monitoring]] — the plan of the Hermes lane: an independent daily evidence scan and Monday synthesis, wiki-only, reviewed through a research PR before merging
 - [[hermes-daily-2026-09-17]] — Crash-consistency fault models, capability API confinement boundaries, and daily validation.
 - [[hermes-daily-2026-09-16]] — Versioned restart-budget defaults, error-path coverage evidence, and daily scan validation.
-- [[hermes-research-monitoring]] — Independent daily evidence scan and Monday synthesis, reviewed through a research PR.

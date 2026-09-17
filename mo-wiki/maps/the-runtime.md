@@ -1,7 +1,7 @@
 ---
 title: "The runtime"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: map
 tags: [runtime, processes]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -38,7 +38,10 @@ A map of content for layer 1: the process model, the failure model, the two runt
 - [[interpreter-step-29]] and [[interpreter-step-29b]] — `restart: :never` honoured; replay memory bounded on a real log
 - [[interpreter-step-30]] — a scheduler per core, `fsync` off the scheduler; the Mac table
 - [[interpreter-step-31]] — the deferred reply
-- [[mac-scaling-run]] — nothing scales on the M3 Max; placement is the next step
+- [[mac-scaling-run]] — nothing scales on the M3 Max; the row that led to step 34
+- [[interpreter-step-32]] — crash reports kept apart from the ring; the reopening restart in the corpus
+- [[interpreter-step-33]] — the crash report freed after printing (46 MiB a restart to under 0.3); the interpreter's abort on a large log
+- [[interpreter-step-34]] — placement with the starter, the crossing made cheap (100,000 cross-scheduler asks 4 s to 0.14), measured at 1, 4, and 14 cores
 
 ## The runtime's own row
 

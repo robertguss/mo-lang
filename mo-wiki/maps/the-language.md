@@ -1,7 +1,7 @@
 ---
 title: "The language"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: map
 tags: [syntax, laws]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -34,7 +34,7 @@ A map of content for layer 3: what Mo looks like, why, what the compiler enforce
 - [[q12-law-numbers]], [[q04-integer-types-and-overflow]], [[q05-option-and-no-nil]], [[q06-verified-line]], [[q09-compiler-diagnostics]]
 - Where the laws met agents: [[control-run-6]] (three laws removed), [[interpreter-step-27]] (the removals), [[control-run-8]] (the six-parameter law costing a loop, the `never` false positive), [[control-run-9]] (first-fix rates per diagnostic)
 
-## The questions still open
+## The questions, answered, whose subject is still moving
 
 - [[q01-comments]], [[q02-strings-and-interpolation]], [[q03-numbers-and-units]], [[q10-semantic-ids-and-editing]], [[q15-the-name]], [[q16-escape-hatch]]
 - [[d29-edit-by-declaration-id]] and [[id-addressed-editing]] — editing by id, not by text

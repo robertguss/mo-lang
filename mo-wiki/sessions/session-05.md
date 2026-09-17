@@ -1,7 +1,7 @@
 ---
-title: "Session 5 — 12–13 Sep 2026"
+title: "Session 5 — 12–15 Sep 2026"
 created: 2026-09-12
-updated: 2026-09-15
+updated: 2026-09-17
 type: session
 tags: [meta, compiler, syntax, agents, runtime]
 sources: [spec/grammar.md, plans/corpus.md, plans/model-bakeoff.md, plans/control-run-2.md, decisions/decision-log.md]
@@ -9,7 +9,7 @@ date: 2026-09-12
 session: 5
 ---
 
-# Session 5 — 12–13 Sep 2026
+# Session 5 — 12–15 Sep 2026 (this page runs to the night of 15 Sep; sessions 6 and 7 are in `CHANGELOG.md`)
 
 The longest session so far, about twenty hours across an evening, an overnight run with Robert asleep, and a morning. The design review closed; Mo went from prose to a toolchain that checks, tests, simulates, formats, fixes, runs, and compiles programs; three real programs were written from specs; the founding premise got its first two numbers. The process changed twice: build first and decide as we go, then Fable decides and documents while Opus builds everything.
 

@@ -1,7 +1,7 @@
 ---
 title: "The programs"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 type: map
 tags: [programs, corpus]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -25,6 +25,9 @@ Six real programs, each written by a fresh Opus session from a spec the lead wro
 
 - [[01b-job-queue-change]] — change 1: scheduled jobs, backoff, retry, the `tries` rename; the maintenance round ([[control-run-8]]), the small-model round ([[control-run-9]]), the Elixir round ([[control-run-10]])
 - [[01c-job-queue-change-2]] — change 2: the folder checked at open, `503` and the service still answering, `/queues`, `verify`; generation two of the [[erosion-round]]
+- [[01d-job-queue-change-3]] — change 3: the store restarts itself from its log, a budget on the `child` line, a chaos switch; generation three, the BEAM's row answered (back in 106 ms)
+- [[01e-job-queue-change-4]] — change 4: idempotent creates, the archive beside the log; generation four, nothing eroded, the Mo queue found nine times slower on the lease path
+- [[01f-job-queue-change-5]] — change 5: a lease handed to another worker, a queue renamed with jobs in flight; generation five, the first Mo-only defect, the laws silent
 
 ## The corpus and the menu
 

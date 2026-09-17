@@ -89,11 +89,7 @@ know that the wiki does not say in one place.
 >    with a position or a count; P6 55 and 99 ms, nothing lost. P1 and P5 held;
 >    P2, P3, P4, P6 failed. Speed: Mo 425, Go 107, Python 4,847, Elixir 5,619.
 >
-> **Rows for Robert** (decision log, "for Robert"), newest first: generation
-> five's reading; the change 4 Mo queue's speed loss and speed per generation;
-> step 34 accepted; generation four; generation three and the BEAM's row
-> answered; chapter 10 §2's budget as a value; P6 on Mo's change 2; round 9's
-> Haiku row; the earlier rows of the night.
+> **Rows for Robert** (decision log, "for Robert"), newest first: research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
@@ -166,8 +162,10 @@ know that the wiki does not say in one place.
 > reference (the interpreter ledger at 650 transfers a second). The bench
 > baseline gap. Python's change 2 bench regression, unmeasured by the lead. The
 > Elixir old-log category (no round 10 escript kept aside). The interpreter's
-> 780 KB per process at rest. The lint reports about 90 issues: 16 Robert's,
-> the research pages' type, and size warnings on the pages that grew today.
+> 780 KB per process at rest. The lint reports 11 issues: 8 intentional
+> review flags on contested pages and 3 pages over 200 lines (the decision log,
+> the erosion round, the state page); the linter was taught the spec folder
+> and the map, synthesis, and research types on 17 Sep.
 >
 > **Style.** Ruby-nice syntax, zero new syntax where possible, concise, define
 > a PL term in three lines before using it, no phones. Fable drives: proposing

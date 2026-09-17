@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wiki lint for the Mo Lang vault. Run from the repo root: python3 tools/lint.py"""
+"""Wiki lint for the Mo Lang vault. Run from the repo root: python3 mo-wiki/tools/lint.py"""
 import re, sys, hashlib
 from pathlib import Path
 from collections import defaultdict

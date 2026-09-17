@@ -88,7 +88,7 @@ feedback loop, and the dependency count. The counted shape laws became project
 settings in principle. Round 7 was the first round on that measure, and it held
 on all four.
 
-**Session 7, the night of 15 to 16 Sep, on the VM.** Steps 29 to 30 made the
+**Sessions 6 and 7, 15 Sep, on the VM** (the changelog's numbering). Steps 29 to 30 made the
 runtime honest (a `:never` child stays down, replay memory bounded on a real
 million-entry log, a scheduler per core). Round 8, the maintenance round, handed
 the finished queues to fresh agents with a changed spec: held on all five
@@ -99,7 +99,9 @@ of six programs.
 **Session 8, the night of 15 to 16 Sep, on the Mac.** The scaling run, P6 on
 Elixir, chapter 10 (the language after the rounds) and its first change built as
 step 31, the sixth program's regeneration, round 9 with four smaller models, and
-generation two of the erosion round. The wiki became a site, and the same
+generation two of the erosion round.
+
+**Session 9, 16 Sep, on the Mac.** The wiki became a site, and the same
 morning round 9's last row, Haiku 4.5, ran, and P6 was probed on Mo's change 2
 program: the crash under load answers `503` within milliseconds and loses
 nothing, and the restart is the program's to write, not the language's. Step
@@ -148,15 +150,16 @@ had never been pushed; they are now.
   `mo run`, `mo build` to a static binary, `mo fmt`, `mo fix`, a runtime surface
   over HTTP, 60-odd diagnostics that say what to write. A cold full test of the
   toolchain is ten minutes on the VM and two warm on the Mac.
-- **A corpus of 175 Mo files**: 50-odd single-construct files, the standard
+- **A corpus of 177 Mo files**: 50-odd single-construct files, the standard
   library's tests, and six programs of 769 to 4,551 lines (a log analyzer, a job
   queue, a key-value store, a notes service, an agent harness, a ledger), every
   one with a spec page, transcripts checked byte for byte, and a hidden test
   suite or a session of the lead's own probes.
-- **A wiki of 460 pages**, of which this is one: 43 directions, 18 questions, 22
-  spec pages, 73 plans, 30 deep dives, 54 research pages, 190 raw sources, a
-  decision log of 418 rows, and a changelog.
-- **Forty-eight worktrees beside the repo**, one per control-run session, kept
+- **A wiki of 243 pages** (483 markdown files with the raw sources and the spec),
+  of which this is one: 43 directions, 18 questions, 25 spec pages, 62 plans,
+  32 deep dives, 56 research pages, 7 maps, 196 raw sources, a decision log of
+  447 rows, and a changelog (counted 17 Sep).
+- **Sixty-two worktrees beside the repo**, one per control-run session, kept
   as evidence and never merged.
 
 ## The thesis, and the hypotheses under it
@@ -316,14 +319,8 @@ does quality hold?), the incident round, and the two diagnostic columns.
 
 ## Rows waiting on Robert
 
-In the decision log, marked "for Robert", newest first: research PR 2 read
-and merged, with chapter 10's attribution corrected (17 Sep); generation five's
-reading (the first Mo-only defect, the laws still silent); generation four's Mo
-queue nine times slower on the lease path and speed recorded per generation;
-step 34 accepted; generation four and three; chapter 10 §2's budget as a value;
-P6 on Mo's change 2; round 9's reading; chapter 10 §1 as built; measurement 1's
-completeness row; the BEAM row after round 10; the outage row; the 16 lint
-issues from his history bundle.
+In the decision log, marked "for Robert", newest first (the same list is on
+the [[roadmap]] board and [[for-robert]]): research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
 
 ## Related
 

@@ -1,12 +1,12 @@
 # Mo Lang Wiki — Schema
 
-Read this first, every session. Then `index.md`, then the last 20 entries of `log.md`. Only then touch anything.
+Read this first, every session. Then `index.md`, then the last ten entries of `log.md`. Only then touch anything.
 
 ## Domain
 
 The design of **Mo**, a from-scratch programming language for the AI era, co-designed by Robert Guss and Claude. This vault is the single record of the design: what we like, what is asked, what is decided, what we researched, and what happened in each session. It replaces the two Notion pages that held sessions 1–2 (exported verbatim into `raw/notion/`).
 
-This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. The spec (`mo-wiki/spec/`: design-v0, grammar, error catalog) is prose humans read, so it lives inside the vault as an artifact folder, like `raw/`. Code lives beside the vault and never inside it: `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `spec/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`.
+This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. The spec (`mo-wiki/spec/`: design-v0, grammar, error catalog) is prose humans read, so it lives inside the vault as an artifact folder, like `raw/`. Code lives beside the vault and never inside it: `examples/` (the Mo corpus), `toolchain/` (Zig). Wiki pages may cite `spec/` and `examples/`; nothing outside `mo-wiki/` links to a wiki page. Worker sessions get a folder as their write scope (`examples/`, `toolchain/`) and never write to `mo-wiki/`, with one exception each: a worker's one wiki write is the stdlib table it extends (`spec/design-v0/09-stdlib.md`), and the Hermes research lane writes only under `mo-wiki/`, on its own branch, through a PR the lead reads before merging (17 Sep 2026).
 
 ## Layout
 
@@ -22,14 +22,16 @@ mo-wiki/                the Obsidian vault root; everything below is relative to
   SCHEMA.md          this file
   index.md           every wiki page, one line each, by section
   log.md             append-only action log
-  directions/        one page per "direction we like" (d01–d40, numbered, never renumbered)
-  questions/         one page per open question (q01–q17), answer in frontmatter
+  directions/        one page per "direction we like" (d01–d43, numbered, never renumbered)
+  questions/         one page per question for Robert (q01–q18), answer in frontmatter
   decisions/         decision-log.md (every choice, in order, with status) + one page per locked decision at the v0 lock
-  syntax/            the 15 syntax picks (p01–p15) + the example programs
+  syntax/            the 16 syntax picks (p01–p16) + the example programs
   deep-dives/        long-form explorations of one topic
   plans/             roadmap and other plans
   sessions/          one page per design session
-  research/          comparisons/ and concepts/ — pages backed by web research
+  research/          comparisons/, concepts/, languages/ (and prompts/) — pages backed by reading
+  maps/              maps of content, one per subject, living
+  state-of-the-project.md   the lead's standing account, rewritten at every pause
   raw/               immutable sources: notion/ exports, articles/, papers/, research-runs/
   spec/              artifacts humans read: design-v0/, grammar.md, laws, error catalog (not wiki pages)
   tools/             lint.py, exa.py and other vault tooling
@@ -109,8 +111,8 @@ Add a tag here before using it. Keep it under 30.
 3. **A long unpack** → `deep-dives/slug.md`, linked from the direction or question it serves.
 4. **Research** is a two-lane job. Claude does web research and saves sources to `raw/articles/` or `raw/papers/` with frontmatter. Robert runs deep-research tools of his own: Claude writes the prompts (short, one topic each, filed in `research/prompts/`), Robert runs them and drops the results in `raw/research-runs/<date>-<topic>.md`. Both lanes must include academic papers (arXiv, conference proceedings), not only blog posts. Findings are synthesized into `research/concepts/` or `research/comparisons/` pages that cite the raw files.
 5. **The v0 lock** → each locked rule becomes `decisions/DNN-slug.md` with `reopen if:`; the source direction gets `status: locked` and a link. History is never rewritten.
-6. **Every session** → `sessions/session-NN.md` written at the end (what happened, what is next), the root `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended, `CHANGELOG.md` gets its entry.
-7. **Every decision, Robert's or Claude's** → a row in `decisions/decision-log.md` at the checkpoint it was made, with who, status, and what first tests it (Robert, session 5: the log must show how things change over time). Status changes are appended, never rewritten.
+6. **Every session** → from session 7 on, the session's record is its `CHANGELOG.md` section and its `log.md` entry, and `state-of-the-project.md` carries the narrative; the `sessions/` pages stop at session 6 (17 Sep 2026). Before that: `sessions/session-NN.md` written at the end (what happened, what is next), the root `HANDOFF.md` rewritten to hold only the next session's prompt, `log.md` appended, `CHANGELOG.md` gets its entry.
+7. **Every decision, Robert's or Claude's** → a row in `decisions/decision-log.md` at the checkpoint it was made, with who, status, and what first tests it (Robert, session 5: the log must show how things change over time). The status column reads `provisional`, `locked`, `overturned`, `accepted` (a step or round taken as read), `decided` or `recommended` (the lead's call, standing), `for Robert` (awaiting his eye), `open`, `recorded`, or `—` (a plain record); a status changes by a later row, never by an edit (17 Sep 2026). Status changes are appended, never rewritten.
 
 ## Working agreements with Robert (non-negotiable)
 
