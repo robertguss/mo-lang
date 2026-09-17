@@ -506,6 +506,8 @@ Recorded at the time on the pages themselves: the 35 directions (`directions/`),
 
 | Auditor intake cadence revised to once per hour at Robert's request on 17 Sep 2026. Reason: the initial two-minute polling interval was too frequent. The active `mo-audit-inbox` job and deployment documentation were updated; no other workflow or stopping rule changed. | Robert; applied by Mo Auditor | active | hourly intake |
 
+| Robert's amendment of 17 Sep 2026 (evening, PR #3) taken up: the audit exchange runs through immutable JSON handoffs under `audit/handoffs/` polled hourly by both sides; Fable wrote its receiver (`audit/automation/fable_poll.py`, 18 tests, `FABLE-RECEIVER.md`), installed the hourly wake-up in the lead session, merged PR #3 (`fc595c5`), and published a labelled `working` record (`automation-transport-test-fable-working-001`, status only) for the outbound leg. Not claimed: the inbound leg, pending the auditor's `to: fable` canary; two-way automation is called live only when both ledgers show the exchange. Limits recorded: both pollers depend on a running session or gateway; the lead's cron is session-scoped and re-created each session | Fable | decided | the transport test's inbound leg, then step 36's `ready` record |
+
 ## Related
 - [[session-05]]
 - [[model-bakeoff]]

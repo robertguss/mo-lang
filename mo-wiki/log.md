@@ -480,3 +480,6 @@
 
 ## [2026-09-17] update | An orphan on one of the VM's four cores
 - A `python3 -` from the measurement 1 session (16 Sep, `../mo-lang-cache-A`) had spun at 100 percent of one core for 43 hours, through step 35's numbers and the speed probe; killed 5:26 PM ET. The evidence README carries the condition; the readings stand (each comparison ran under the same load); the absolute rates on the VM today are low by an unknown share. The skill now says: read `uptime` and `ps` before a measurement and write the load on the page.
+
+## [2026-09-17] update | Evening: the audit exchange automated
+- Robert seated a new auditor (Hermes profile `mo-auditor`) and approved two-way repository handoffs (PR #3). Fable read the protocol, wrote and tested its receiver, installed the hourly wake-up, merged the PR at 6:05 PM ET, published the outbound transport record, and brought the skill, CLAUDE.md, SCHEMA, the handoff, and [[the-audit-workflow]] into line. The inbound leg waits on the auditor's canary.

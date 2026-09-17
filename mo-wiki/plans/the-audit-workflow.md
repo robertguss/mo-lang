@@ -49,7 +49,11 @@ A threshold or a retirement mapping in these changes only by a decision-log
 row with a reason. Fable's disagreements with them are rows of 17 Sep, marked
 for Robert ([[decision-log]]).
 
-## The loop, as it runs today
+## The loop, automated (Robert's amendment of 17 Sep, evening; PR #3)
+
+Robert seated a new auditor (a Hermes profile, `mo-auditor`, with its own checkout and sessions) and approved a two-way exchange through the repository, so he relays nothing routine. The protocol is `audit/WORKFLOW.md`; the auditor's intake is `audit/automation/README.md`; Fable's receiver is `audit/automation/FABLE-RECEIVER.md`. In one paragraph: Fable commits raw evidence, then publishes an immutable JSON record on `main` at `audit/handoffs/<subject>/<id>.json` (`kind: ready`, the exact evidence commit, raw paths, a bounded request with no verdict). The auditor's hourly poll of `main` starts one fresh, isolated audit session per `ready` (`working` records status only; `evidence-updated` answers an evidence request; `parallel-filed` asks for a comparison of two committed readings). The auditor files its reading or an `evidence-needed` record on an `audit/*` branch with a pull request; Fable's hourly receiver announces it with pointers only. Fable files its own reading before opening the auditor's, then publishes `parallel-filed`; the comparison files disagreements. Audit output reaches `main` by pull request that the lead integrates; nothing merges automatically. Robert gets short outcome summaries and unresolved decisions. Independence rules unchanged: no conclusions cross before both readings are filed; a contaminated session never writes a reading called cold; hidden suites and seeds never appear in a handoff.
+
+## The loop, as it ran on 17 Sep before the amendment (manual, superseded for routine starts)
 
 1. **Before a round or a program.** The pre-registration is on its page and
    pushed before any session starts (predictions, the suites' shape, the
@@ -85,9 +89,7 @@ rounds in a row (the next session opens with a whole-project audit).
 
 ## Where it is going
 
-Manual and Robert-driven now. After two or three audit rounds, a GitHub
-Actions webhook opening an audit session on every merge to `main` that touches
-`mo-wiki/decisions/` or an evidence branch. The end state the charter names is
+Automated by repository handoffs and hourly polling on both sides since 17 Sep, evening (each side's poller depends on its own running session or gateway; neither has boot-time availability). A signed webhook may later call the same intake, with polling kept for recovery. The end state the charter names is
 a paid human reviewer weekly, with the session as the fallback between reviews.
 
 ## Related
