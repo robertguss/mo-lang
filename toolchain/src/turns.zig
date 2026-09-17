@@ -856,6 +856,21 @@ pub const Turns = struct {
         sim.running = running;
     }
 
+    /// The update holding this thread gives it back and is handed it again once a sweep has ended:
+    /// it waits in its scheduler's ready queue, which no step reads while the sweep waits.
+    fn stepAside(t: *Turns, sim: *Sim) Error!void {
+        const s = t.cur();
+        const id = s.holder;
+        const w = t.workers.items[id].?;
+        const vm = sim.vm;
+        const running = sim.running;
+        w.phase = .waiting;
+        t.pushReady(id);
+        t.switchTo(s, w.caller);
+        sim.vm = vm;
+        sim.running = running;
+    }
+
     /// Process `id`'s wait ended: it leaves its scheduler's parked list and is switched to next.
     fn wake(t: *Turns, id: u32) void {
         const s = t.scheds[t.homeOf(id)];
@@ -1255,7 +1270,13 @@ pub const Turns = struct {
                 _ = t.awaiting.remove(seq);
                 return sim.askError(if (p.up) "Timeout" else "Down");
             }
-            if (same and !p.busy and !p.paused and p.queued() > 0) {
+            if (same and t.multi and s.holder != main_turn and (if (t.sweeping) t.sweeper != s else t.quiet >= t.sweep_at)) {
+                // A sweep waits, or is due, and waits for every update in progress to park or end: this
+                // one steps aside at its ask rather than deliver on its own thread, so its scheduler's
+                // loop may sweep, and goes on after (step 34: with its targets on its own scheduler, a
+                // spawner never parked, sweeps missed, and ended processes piled up).
+                try t.stepAside(sim);
+            } else if (same and !p.busy and !p.paused and p.queued() > 0) {
                 try t.handTo(sim, to, .deliver);
             } else if (s.holder != main_turn) {
                 try t.park(sim, deadline);

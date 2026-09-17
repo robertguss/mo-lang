@@ -7140,6 +7140,22 @@ static void park(int64_t deadline) {
     running = was_running;
 }
 
+/* The update holding this thread gives it back and is handed it again once a sweep has ended: it waits
+ * in its scheduler's ready queue, which no step reads while the sweep waits (turns.zig, stepAside). */
+static void step_aside(void) {
+    uint32_t id = holder;
+    Worker *w = workers[id];
+    uint32_t was_running = running;
+    VmState *mine = my_vm;
+    w->phase = PHASE_WAITING;
+    push_ready(id);
+    save_vm(mine);
+    switch_to(w->caller);
+    my_vm = mine;
+    load_vm(mine);
+    running = was_running;
+}
+
 /* A scheduler with no turn to hand out: waits in its poller until a socket something on it waits on is
  * ready, `also` is reported, another scheduler wakes it, or the earliest deadline passes, and at least
  * once a second. With more than one scheduler it looks for a poke a moment before it sleeps, so a
@@ -7635,7 +7651,11 @@ static MoValue turns_ask(uint32_t to, MoValue message, int64_t within) {
             forget_awaiting(seq);
             return ask_error(p->up ? MO_N_TIMEOUT : MO_N_DOWN);
         }
-        if (same && !p->busy && !p->paused && queued(p) > 0) {
+        if (same && multi && holder != MAIN_TURN && (sweeping ? sweeper != cur_sched() : quiet >= sweep_at)) {
+            /* A sweep waits, or is due: this update steps aside at its ask rather than deliver on its own
+             * thread, so its scheduler's loop may sweep (turns.zig, stepAside; step 34). */
+            step_aside();
+        } else if (same && !p->busy && !p->paused && queued(p) > 0) {
             hand_to(to, JOB_DELIVER);
         } else if (holder != MAIN_TURN) {
             park(deadline);
