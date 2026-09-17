@@ -1,6 +1,6 @@
 # Mo Lang
 
-A programming language for the AI era, designed and built by Robert Guss and Claude. Start every session by invoking the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`): it holds the roles, the worker loop in Herdr, and the acceptance checklist. Then read `HANDOFF.md` for the current state and queue, then `mo-wiki/SCHEMA.md` for the working agreements.
+A programming language for the AI era, designed and built by Robert Guss and Claude. Start every session by invoking the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`): it holds the roles, the worker loop in Herdr, and the acceptance checklist. Then read `HANDOFF.md` for the current state and queue, then `mo-wiki/SCHEMA.md` for the working agreements. Then, before any work, check what the auditor has posted since the last session: `git fetch origin && python3 audit/automation/fable_poll.py check` (pointers only; follow the lead skill's Receive rules for each line, and never open an auditor reading before the lead's own is on `main`).
 
 - The lead session directs, verifies, decides, and records. An Opus worker in a Herdr pane split to the right of the lead's (agent `mo-opus`, one fresh session per step; `herdr pane list` shows the machine and the ids) writes all code under `toolchain/` and `examples/`.
 - Commit wiki work with `git add <paths>`, never `git add -A`: the worker shares the tree.
