@@ -51,7 +51,11 @@ know that the wiki does not say in one place.
 > budget is Elixir `Supervisor`'s default, not OTP's (Erlang's `supervisor`
 > defaults to 1 in 5 s). Its one gap check was right: `erosion2-*` and
 > `erosion5-*` had never been pushed; all eight are on the remote now, so the
-> sentence above about evidence branches is true from this morning. Its two
+> sentence above about evidence branches is true from this morning. The rest
+> of the morning was a fresh-eyes pass over the whole wiki (six commits; the
+> log's entry of 17 Sep has the list and what was skipped on purpose); the
+> plang syntheses under `deep-dives/` are marked contested since they describe
+> a hypothetical Mo, which is why lint shows 15 review flags. Its two
 > checklists are queued reading for change 6, not steps: the crash-consistency
 > sequence (create, compact, rename, reopen, write again) sits on the exact
 > path of generation five's Mo defect, and error-path reachability as a recipe
