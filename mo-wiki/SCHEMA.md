@@ -82,13 +82,14 @@ Every page starts with `# Title` matching the frontmatter title, then body, then
 
 ## Tag taxonomy
 
-Add a tag here before using it. Keep it under 25.
+Add a tag here before using it. Keep it under 30.
 
 - **Philosophy:** `philosophy`, `laws`, `meta`, `roadmap`
 - **Language:** `syntax`, `types`, `state`, `effects`, `processes`, `errors`, `contracts`, `negative-space`
 - **Verification & tooling:** `verification`, `compiler`, `tooling`, `runtime`, `performance`
 - **Ecosystem:** `stdlib`, `security`, `agents`
 - **Research:** `research`, `history`, `languages`
+- **Maps and the state page (16 Sep 2026):** `thesis`, `programs`, `corpus`, `process`
 
 ## Conventions
 
