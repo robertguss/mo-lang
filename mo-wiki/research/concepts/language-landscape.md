@@ -1,7 +1,7 @@
 ---
 title: "Language landscape: which languages deserve a deep comparison"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: concept
 tags: [research, philosophy]
 sources: [raw/articles/agentlanguages-dev-catalogue-2026-09-12.md]
@@ -55,7 +55,7 @@ Status labels are as of Sep 2026 from the cited source. `confidence: medium` bec
 ## F. Simplicity by law, and tooling as language
 
 - **Go** — one formatter, one build tool, batteries stdlib, ~25 keywords. (session 1)
-- **Zig** — comptime, own backend for debug builds, the C toolchain we'll use. Roc's rewrite from Rust to Zig: 487 days, ~300K lines, incremental rebuilds 3.4s → 35ms, fewer memory bugs than the Rust version; Roc 0.1.0 targeted for later 2026.[15]
+- **Zig** — comptime, own backend for debug builds, the C toolchain we'll use. Roc's rewrite from Rust to Zig: 487 days, ~300K lines, incremental rebuilds 3.4s → 35ms (on a Zig nightly on x86-64; stable was 8.6 s — qualifier added 17 Sep 2026, from [[roc]]), fewer memory bugs than the Rust version; Roc 0.1.0 targeted for later 2026.[15]
 - **Roc** — the *platform* concept we adopted in [[q11-platform-and-stdlib|Q11]].[15]
 - **Unison** — every definition identified by the hash of its syntax tree; code stored as ASTs in a database; exact dependencies by hash, no dependency hell, renames can't break references; 1.0 shipped (Nov 2025).[4][5] Direct ancestor of [[q10-semantic-ids-and-editing|Q10]] — and the cautionary tale (no text files).
 - **MoonBit** — self-described "AI-native language toolchain": Wasm-first, multi-backend, with *MoonBit Pilot*, a code agent built into the toolchain that generates libraries with docs and tests and does large refactors that pass CI.[2][3] The closest *shipping* competitor to Mo's premise; must be a comparison page.

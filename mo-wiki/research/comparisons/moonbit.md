@@ -1,7 +1,7 @@
 ---
 title: "Mo vs MoonBit"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, agents, tooling]
 sources: [raw/articles/moonbit-pilot-intro.md, raw/articles/moonbit-ai-native-toolchain-2024.md, raw/papers/moonbit-ai-friendly-language-llm4code24.md, raw/articles/moonbit-0-10-0-release.md, raw/articles/moonbit-0-10-9-release.md, raw/articles/moonbit-seekmoon-ide-to-ade.md, raw/articles/moonbit-multiple-targets.md, raw/articles/moonbit-docs-error-handling.md, raw/articles/moonbit-docs-fundamentals.md, raw/articles/moonbit-value-type-benchmark.md, raw/articles/robotsatlas-moonbit-2026.md, raw/papers/no-resource-no-benchmarks-gleam-moonbit.md, raw/papers/swe-agi-moonbit-benchmark.md, raw/articles/allen-moonbit-fft-rebuttal.md, raw/research-runs/llm-authored-programming-languages.pplx.md]
@@ -65,7 +65,7 @@ MoonBit launched in October 2022, alongside ChatGPT. It was conceived as a whole
 - **The bet holds, with a condition.** Zero-shot code in a new language is nearly useless on hard tasks.[90] Agents working against specs, public APIs, hidden tests and a fast compiler still finish most real systems.[91] So Mo's toolchain loop ([[q09-compiler-diagnostics|Q9]], [[q08-verification-tiers|Q8]]) is necessary before any corpus exists.
 - **Proposal:** use SWE-AGI's task format for Mo's eval suite. A fixed `pub` API with contracts, reference specs, public tests, and hidden tests. It is [[d19-negative-space-is-the-contract|direction 19]] as a benchmark.[91]
 - **Proposal:** a *shape diff* review view that shows only spec-altitude changes, the human-facing half of [[d20-human-pulled-in-when-shape-changes|direction 20]].[84]
-- **Proposal:** seed the corpus (roadmap step 4) with agent-written, toolchain-verified libraries, as Pilot does.[79]
+- **Proposal:** seed the corpus (done, session 5) with agent-written, toolchain-verified libraries, as Pilot does.[79]
 - **Question for Robert:** does Mo ship its own agent (MoonBit's route) or only tools that any agent drives (MCP, Unison's route)? Recommendation: tools only.
 - **Evidence for [[d18-two-kinds-of-failure|direction 18]]:** a catchable cancellation error caused misbehaviour in MoonBit's own async library.[83]
 - **Risk:** MoonBit may already have contracts or verification, per the unconfirmed secondary claim.[89] Mo's differentiation (spec altitude, capabilities, verification tiers, supply chain) needs a primary-source check before the v0 design doc.
@@ -79,6 +79,8 @@ MoonBit launched in October 2022, alongside ChatGPT. It was conceived as a whole
 - [[d18-two-kinds-of-failure]]
 - [[unison]]
 - [[koka]]
+- [[d37-runtime-mcp-surface]]
+- [[d40-structured-runtime-events]]
 
 ## Sources
 

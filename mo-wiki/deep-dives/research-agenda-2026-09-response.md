@@ -1,7 +1,7 @@
 ---
 title: "Research agenda, Sep 2026: Fable's response to the contradictions"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [meta, laws, research, verification, processes]
 sources: [research/prompts/prompts-research-agenda-2026-09.md, research/concepts/agents-and-verification-2026.md, research/concepts/language-design-for-llms-evidence.md, research/concepts/reliability-and-testing-philosophies.md, research/concepts/safety-critical-coding-standards.md, research/concepts/author-joe-armstrong.md, research/concepts/author-edsger-dijkstra.md, decisions/decision-log.md]
@@ -27,7 +27,7 @@ Three contradictions were already settled before the pages were written. Step 20
 | Agents may write a Mo generator instead of Mo | [[language-design-for-llms-evidence]] | **agree.** Round 5 records whether each worker wrote Mo directly. So far every round did; the worktrees hold the evidence. |
 | Deadlines should be inherited and tightened, not restated per call | [[reliability-and-testing-philosophies]] | **test.** The law stays: every call that can wait carries `within:`. Program 1 counts the deadlines it writes and how many are derived from an enclosing one. If literals lie, an inherited budget is designed then. |
 | Annotated non-terminating loop instead of a ban | [[safety-critical-coding-standards]] | **agree, already in Mo.** Ravenscar's "all tasks are non-terminating" is a Mo process under step 20's runtime: the runtime loops, the process never does. |
-| Drop the nine-nines claim | [[reliability-and-testing-philosophies]] | **agree.** No Mo page outside the raw runs cites it. Rule: Mo's materials cite Erlang's practice and scale, never the number. |
+| Drop the nine-nines claim | [[reliability-and-testing-philosophies]] | **agree.** [[erlang]] cited it until 17 Sep 2026, when the number was struck there; no other Mo page outside the raw runs does. Rule: Mo's materials cite Erlang's practice and scale, never the number. |
 | Bounded loops need a real termination argument; `while` ban satisfied by a fake constant | [[author-edsger-dijkstra]] | **agree, done in step 20** for loops. For recursion chapter 2 still promised "structural only, proved terminating", which the toolchain never did: it bounds depth at 10,000 and crashes. The chapter now says what is true; termination is `mo prove`'s obligation. |
 | The `verified:` line implies proof from tests | [[author-edsger-dijkstra]] | **disagree.** The line's vocabulary already names each obligation and prints `proven: not run` beneath it. |
 | R6 stable storage is unanswered | [[author-joe-armstrong]] | **agree that it must be named.** Chapter 3 already answers it: restart recovers the service, never the state; a process whose state must outlive a crash writes through a capability and replays on start; the store recipe is the pattern. Chapter 3 now names R6. Program 1 is the test. |

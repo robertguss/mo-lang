@@ -1,7 +1,7 @@
 ---
 title: "Agents and verification: the 2025-2026 evidence"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, verification, contracts]
 sources: [raw/research-runs/2026-09-13-papers-llm-facing.pplx.md]
@@ -54,6 +54,8 @@ Judgment: Mo's many-small-functions laws walk straight into the composition fron
 
 Judgment: the invariant result weakens the verification argument for banning `while`. The legibility argument stands on its own.
 
+17 Sep 2026: ruled **agree** on 13 Sep ([[research-agenda-2026-09-response]]), and round 5 ran.
+
 ## Diagnostics are a measurable interface
 
 An eBPF study reproduced 235 verifier rejections and found "47% of rejections return only EINVAL, one error string maps to as many as nine distinct root causes." Replacing the raw log with a reconstructed, Rust-styled localization improved LLM repair by 11-21 percentage points on a 75-task benchmark where models scored 0-37% one-shot ([arXiv:2607.02748](https://arxiv.org/abs/2607.02748)).
@@ -99,6 +101,8 @@ end
 | Invariant synthesis is cheap, so verifiability is a weak reason to ban `while` | [[q16-escape-hatch]] | contradicts Mo |
 | Coded, localized, hand-written diagnostics | [[q09-compiler-diagnostics]] | already in Mo |
 | Offer a whole-declaration rewrite channel alongside ID edits | [[d29-edit-by-declaration-id]] | new idea for Mo |
+
+17 Sep 2026: the `while` row above was ruled **agree** on 13 Sep — see [[research-agenda-2026-09-response]].
 | Roundtrip and ambiguity checks on `never` sentences | [[d19-negative-space-is-the-contract]] | new idea for Mo |
 
 ## Related
@@ -110,3 +114,4 @@ end
 - [[d29-edit-by-declaration-id]]
 - [[spark-ada-and-dafny]]
 - [[prompts-research-agenda-2026-09]]
+- [[research-agenda-2026-09-response]]

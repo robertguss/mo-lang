@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Unison"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, tooling, agents]
 sources: [raw/articles/unison-the-big-idea.md, raw/articles/unison-1-0-announcement.md, raw/articles/lwn-programming-in-unison.md, raw/articles/unison-scratch-files.md, raw/articles/unison-release-1-1-0.md, raw/articles/unison-release-1-4-0.md, raw/articles/unison-update-code-workflow.md]
@@ -44,6 +44,8 @@ Unison has been in development since 2013. It stores code "in a database, instea
 
 - **An agent interface in the toolchain.** Since 1.1.0 `ucm` exposes MCP tools for history, reflog, and project info,[76] with further MCP tweaks in 1.4.0.[77]
   - *Mo today:* `mo edit <id>`, `mo rename`, and JSON diagnostics are designed for agents ([[q10-semantic-ids-and-editing|Q10]], [[q09-compiler-diagnostics|Q9]]). No MCP decision yet.
+
+  Answered since (17 Sep 2026): [[d37-runtime-mcp-surface]] and the shipped runtime surface answer it.
   - *Verdict:* **steal**: an MCP server over Mo's edit-by-ID, diagnostics and history from the first toolchain release.
 
 ## What it gives up
@@ -70,6 +72,8 @@ Mo keeps text, so it keeps Git, GitHub review, grep and every editor ([[q10-sema
 - **Question for Robert (Q17):** may one program hold two versions of a package, as Unison allows, or exactly one per package, as Go's minimal version selection allows ([[go]])?
 - **Proposal:** every published version carries a toolchain-generated patch (old hash → new hash)[74] so dependents upgrade mechanically. It pairs with `mo fix` from [[go]].
 - **Proposal:** ship an MCP server over `mo edit` / `rename` / diagnostics / history in the first toolchain release.[76]
+
+  Answered since (17 Sep 2026): [[d37-runtime-mcp-surface]], built at steps 23 and 32.
 - **Risk to measure:** `.mo.ids` drift after plain-text edits ([[d29-edit-by-declaration-id|direction 29]]). Count ID-loss events in the corpus.
 
 ## Related
@@ -81,6 +85,8 @@ Mo keeps text, so it keeps Git, GitHub review, grep and every editor ([[q10-sema
 - [[q08-verification-tiers]]
 - [[go]]
 - [[roc]]
+- [[d37-runtime-mcp-surface]]
+- [[d40-structured-runtime-events]]
 
 ## Sources
 

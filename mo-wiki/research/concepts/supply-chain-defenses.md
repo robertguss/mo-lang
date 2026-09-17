@@ -1,7 +1,7 @@
 ---
 title: "Supply-chain defenses: what exists, what it stops, and Q17's options"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: concept
 tags: [research, security, stdlib]
 sources: [raw/research-runs/supply-chain-incidents-2024-2026.pplx.md, raw/research-runs/supply-chain-defenses-survey.pplx.md, raw/research-runs/package-security-research-review.pplx.md]
@@ -44,7 +44,7 @@ Input for [[q17-package-management-and-supply-chain|Q17]] and [[d30-supply-chain
 
 ## (b) The 2024–26 incident record, and what would have stopped it
 
-The incident run catalogues 47 incidents and campaigns; the ones below are 20 of them, at least one per category. Each line gives ecosystem and date, the category *as the reporters classified it*, reach, detection, and the ecosystem-level mitigation adopted ("n.a." where no registry or platform change followed).[151] It uses labelled lines instead of an eight-column table to stay phone-readable. **Stopped by / not stopped by** is *Claude's reading* of each defense's documented scope, not a verdict from the runs.
+The incident run catalogues 47 incidents and campaigns; the ones below are 20 of them, at least one per category. Each line gives ecosystem and date, the category *as the reporters classified it*, reach, detection, and the ecosystem-level mitigation adopted ("n.a." where no registry or platform change followed).[151] It uses labelled lines instead of an eight-column table for readability (17 Sep 2026: the phone justification struck; phones are not a criterion in this project). **Stopped by / not stopped by** is *Claude's reading* of each defense's documented scope, not a verdict from the runs.
 
 **Worms (rank 1)**
 - **Shai-Hulud wave 1** (npm, 14–16 Sep 2025). Self-propagating credential-stealing worm, "the first ever registry-native worm". 526 packages. Detected by StepSecurity and Socket. Mitigation: GitHub blocked uploads matching known indicators, then planned 7-day tokens, trusted publishing, and FIDO instead of TOTP.[151] *Stopped by:* phishing-resistant 2FA, short-lived tokens. *Not by:* checksums, provenance.
@@ -107,11 +107,13 @@ Overall malicious-package volume is up 75% year over year. Detection latency is 
 ## (c) What Mo already has, against that shape
 
 - **Capabilities as package permissions** ([[d30-supply-chain-security|direction 30]], [[p13-capabilities-and-logging|pick 13]]). This is the granularity the survey calls "the decisive design variable": per function parameter, not per process like Deno.[125] It stops a JSON library, or a cache library like ChainDrop's `keyv`, from reading tokens or phoning home, and it bounds a poisoned MCP-style tool to what it was handed. It does *not* stop a malicious payload in a package that legitimately holds `Network`. That is where attacks move next.
-- **No install scripts, macros, or build-time code execution** ([[d30-supply-chain-security|direction 30]]). This removes the install-time vector that DySec and the PyPI studies measure.[126] This matches the incident run's takeaway to treat install-time and build-time execution as one surface, off by default.[151] It does nothing about CI-pipeline hijacks like TanStack. Those are about how Mo's *registry* accepts publishes, not the language.
+- **No install scripts, macros, or build-time code execution** ([[d30-supply-chain-security|direction 30]]). This removes the install-time vector that DySec and the PyPI studies measure.[126] This matches the incident run's takeaway to treat install-time and build-time execution as one surface, off by default.[151] It does nothing about CI-pipeline hijacks like TanStack (not in the catalogue above; source not captured). Those are about how Mo's *registry* accepts publishes, not the language.
 - **Content hashes per declaration** ([[q10-semantic-ids-and-editing|Q10]], [[unison]]). "What changed" becomes exact, and served-bytes tampering is detectable, as with Go's checksum database.[72] Like the checksum database, hashes authenticate consistency, not intent. The 2,289 Go modules would still verify.[125]
 - **`flows(...)`** ([[p09-module-header-and-never|pick 9]]). The closest research relative is "Static IFC made simpler".[126] It could prove that a `Secret` never reaches a dependency's `Network`. The literature has designs but no ecosystem evidence.
 - **The platform is the only unsafe layer** ([[q16-escape-hatch|Q16]]). Every surveyed capability language failed at its native boundary.[125] Mo concentrates that boundary in platforms, so **auditing platforms is the whole trusted base**, not a side question. Pony's FFI allow-list and Austral's lockfile audit of unsafe modules are the precedents.[125][57]
 - ⚠️ **The closure-capture hole** ([[koka]], [[d15-effects-via-capabilities|direction 15]]). A package that declares "needs: nothing" but takes a callback can do I/O through capabilities the caller captured in that closure.[51] This is E's confused deputy in type form,[125] and it defeats the "visible at install time" guarantee for any higher-order API. The candidate fixes are on [[koka]] and [[bosque]]. Not resolved here.
+
+  Answered since (17 Sep 2026): [[d31-effects-never-hide-in-a-value]], with its cost measured in [[closure-audit-2026-09-14]].
 - **Not covered by anything Mo has:** resource exhaustion (deadlines bound waits, not CPU or memory; [[d17-mandatory-deadlines|direction 17]]), covert channels, and publish-pipeline compromise.[125]
 
 ## Design options for Q17
@@ -123,7 +125,7 @@ Evidence for and against each. No ranking.
    - *Against:* doesn't catch malicious-from-first-publish code, the immutable cache preserves malware, tags can be rewritten (BoltDB), and verification code has had bugs.[125][15]
 2. **Central registry with mandatory trusted publishing and provenance.**
    - *For:* ends long-lived token theft; adoption follows registry *policy* (an IEEE S&P 2024 finding).[125]
-   - *Against:* TanStack produced valid attestations, few consumers verify, and it authenticates the actor, not intent.[125] ChainDrop and Mini Shai-Hulud shipped under valid OIDC identities, and `axios` got around OIDC with a leftover long-lived token.[151]
+   - *Against:* TanStack (not in the catalogue above; source not captured) produced valid attestations, few consumers verify, and it authenticates the actor, not intent.[125] ChainDrop and Mini Shai-Hulud shipped under valid OIDC identities, and `axios` got around OIDC with a leftover long-lived token.[151]
    - *Composable additions the incident run supports:* WebAuthn as the only second factor, no token type that can publish without it, and a release-age gate.[151]
 3. **A capability manifest as the published interface, derived by the compiler from `pub` signatures; any widening is a breaking change a human approves.**
    - *For:* the npm permission study (31.9% of packages fully protectable), Mir's low overhead, and Deno's process-wide failure showing granularity matters. Mo computes the manifest rather than trusting the author's declaration.[126][125]
@@ -150,6 +152,8 @@ The options compose. The survey's own conclusion is that no single layer closes 
 - [[koka]]
 - [[agent-native-cluster]]
 - [[comparison-synthesis-draft]]
+- [[d31-effects-never-hide-in-a-value]]
+- [[closure-audit-2026-09-14]]
 
 ## Sources
 

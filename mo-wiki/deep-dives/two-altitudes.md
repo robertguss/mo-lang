@@ -1,7 +1,7 @@
 ---
 title: "Two altitudes in one language"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: deep-dive
 tags: [philosophy, contracts]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -11,8 +11,8 @@ sources: [raw/notion/design-journal-2026-09-12.md]
 
 - **Spec altitude** (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` statement per unit, and a visible verification level (`verified by tests, contracts` vs `proof`). Semantically binding, not comments. Reads like a design doc.
 - **Implementation altitude** (what agents write): function bodies, checked against the spec altitude, collapsed by default.
-Sketch:
-```javascript
+Sketch (the 12 Sep sketch, pre-pick syntax; noted 17 Sep 2026):
+```ruby
 module payments.refund
 
 intent "Refund a captured charge, at most once, within 90 days of capture."

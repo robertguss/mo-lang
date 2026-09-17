@@ -1,7 +1,7 @@
 ---
 title: "Author: Niklaus Wirth (Pascal, Modula-2, Oberon)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, compiler, performance]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -59,6 +59,8 @@ No type-system loopholes. "The loophole lets the programmer breach the type chec
 | No loophole, but supply the mechanism that makes it unnecessary | [[q16-escape-hatch]] | strengthens Mo |
 | "Characterized by what it prevents" as the framing sentence | [[d19-negative-space-is-the-contract]] | already in Mo |
 
+17 Sep 2026: the feature-cost ledger he asks for exists — the semantic rows of the [[decision-log]] are it. Ruled 13 Sep, [[research-agenda-2026-09-response]].
+
 ## Related
 
 - [[d23-compile-speed-first-class]]
@@ -68,3 +70,4 @@ No type-system loopholes. "The loophole lets the programmer breach the type chec
 - [[prompts-research-agenda-2026-09]]
 - [[author-edsger-dijkstra]]
 - [[author-tony-hoare]]
+- [[research-agenda-2026-09-response]]

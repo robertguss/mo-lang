@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Go"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, laws, security]
 sources: [raw/articles/pike-go-at-google-2012.md, raw/articles/go-error-syntax-2025.md, raw/articles/go-1-27-released.md, raw/articles/go-1-18-released.md, raw/articles/go-type-parameters-proposal.md, raw/articles/go1-compat-promise.md, raw/articles/go-supply-chain-mitigations.md, raw/articles/go-module-mirror-launch.md, raw/articles/go-sumdb-proposal.md, raw/articles/socket-boltdb-go-typosquat.md, raw/articles/cox-our-software-dependency-problem.md, raw/papers/tu-go-concurrency-bugs-asplos19.md, raw/articles/go-developer-survey-2025.md, raw/articles/go-testing-time-synctest.md]
@@ -73,6 +73,8 @@ Go was conceived at Google in late 2007 for server software of tens of millions 
 - **Question for Robert:** restrict `try` to the head of a binding or statement (`x = try …`, `try save(…)`), never nested inside an expression? That is Go's own post-mortem on why `try` failed.[11] Mo's examples already use only those positions.
 - **Proposal:** `Mo.Sim` advances virtual time only when every process is blocked, taken from `synctest`.[24]
 - ⚠️ **Tension between [[q07-process-api|Q7]] and [[d04-style-rules-become-laws|direction 4]]:** "`send` never blocks or fails" implies an unbounded mailbox. Power of Ten–style laws want a bound on everything. A bound makes `send` either block or return rain. Not resolved here.
+
+  Answered since (17 Sep 2026): resolved by [[d33-bounded-mailboxes]].
 - **Q17 inputs, not recommendations:** locked builds with minimal version selection, a transparency log, no execution at fetch or build, and the BoltDB lesson (review the hashed bytes).[19][15]
 - **Question for Robert:** a Go-style compatibility promise at Mo v1, with a per-module language-version line so new keywords can arrive without breaking old code?[11][17]
 - **Proposal:** a keyword budget as a law number ([[q12-law-numbers|Q12]] style). Go has 25.[16]
@@ -86,6 +88,8 @@ Go was conceived at Google in late 2007 for server software of tens of millions 
 - [[q11-platform-and-stdlib]]
 - [[q17-package-management-and-supply-chain]]
 - [[p06-results-and-propagation]]
+- [[d33-bounded-mailboxes]]
+- [[go-history]]
 
 ## Sources
 

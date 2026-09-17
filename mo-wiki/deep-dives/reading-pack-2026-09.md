@@ -1,14 +1,14 @@
 ---
 title: "Reading pack for an outside reviewer, September 2026"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-17
 type: deep-dive
 tags: [meta, roadmap, research]
 sources: [spec/design-v0/01-premise.md, spec/design-v0/03-semantics.md, spec/design-v0/06-packages.md, deep-dives/outside-review-2026-09-14.md, plans/control-run-6.md, plans/control-run-7.md, decisions/decision-log.md]
 confidence: medium
 ---
 
-# Reading pack for an outside reviewer
+# Reading pack for an outside reviewer, September 2026
 
 For a reader from the Erlang and OTP world, and one who has built a capability system (Pony, Wyvern, Newspeak, E). One sitting, in this order; the appendix is there so a reviewer does not re-suggest what was already tried. Everything is in this repository; nothing is private.
 
@@ -19,7 +19,7 @@ For a reader from the Erlang and OTP world, and one who has built a capability s
 3. **Capabilities and packages**: `spec/design-v0/06-packages.md`, then `directions/d34-packages-are-recipes.md` and `research/concepts/` on supply-chain attacks. This is the page a capability-systems reader should attack: authority as a parameter, obtained only at `main`, recipes at spec altitude, bricks as audited platform code.
 4. **The two reviews so far**: [[outside-review-2026-09-13]] with [[outside-review-2026-09-13-response]], and [[outside-review-2026-09-14]] with [[outside-review-2026-09-14-response]]. The second reviewer's replies are summarized in the decision log rows of 14 Sep afternoon.
 5. **The evidence**: [[control-run-6]] (the round Mo lost on the old measure, all four predictions) and [[control-run-7]] (the round on the new measure, all four held, reliability level). Read the Result tables, not the prose, first.
-6. **A program**: `examples/programs/jobq/` (nine modules, the durable job queue) with `examples/README.md`'s two rules. Read `queue.mo`'s `update`, the `never`s, and the `verified:` lines; skip bodies as Robert does.
+6. **A program**: `examples/programs/jobq/` (nine modules, the durable job queue; eleven by 16 Sep, after the changes) with `examples/README.md`'s two rules. Read `queue.mo`'s `update`, the `never`s, and the `verified:` lines; skip bodies as Robert does.
 7. **The working agreements**: `mo-wiki/SCHEMA.md`, the "Working agreements with Robert" section, and the decision-log conventions. The process is part of what is under review.
 
 ## What we want from you

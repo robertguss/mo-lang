@@ -118,6 +118,10 @@ Judgment: combined with Ravenscar's ban on relative delays, the evidence favours
 | Deadlines inherited and tightened, not restated per call | [[d17-mandatory-deadlines]] | contradicts Mo |
 | Mutation testing scoped to contract machinery only | [[d28-nothing-final-until-measured]] | strengthens Mo |
 
+17 Sep 2026: two rows are settled. The nine-nines row was ruled **agree** on 13 Sep (Mo's materials cite Erlang's scale, never the number), and the inherited-deadlines row is no longer a contradiction — the derived deadline shipped at step 22. See [[research-agenda-2026-09-response]].
+
+17 Sep 2026: the only other change today was adding the Hermes link below.
+
 ## Related
 
 - [[hermes-daily-2026-09-17]] — Hermes follow-up on storage crash consistency and capability API boundaries.
@@ -129,3 +133,4 @@ Judgment: combined with Ravenscar's ban on relative delays, the evidence favours
 - [[d17-mandatory-deadlines]]
 - [[prompts-research-agenda-2026-09]]
 - [[author-joe-armstrong]]
+- [[research-agenda-2026-09-response]]

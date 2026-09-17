@@ -1,7 +1,7 @@
 ---
 title: "Author: Dennis Ritchie (C, Unix)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, philosophy, types]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -47,6 +47,8 @@ Ritchie's diagnosis is that C lacked help "for writing very large systems" ([chi
 | Push a few models to the limit rather than adding mechanisms | [[d27-simple-and-elegant-like-ruby]] | already in Mo |
 | Publish a "what we knowingly deferred" list, as chist does | [[d19-negative-space-is-the-contract]] | new idea for Mo |
 
+17 Sep 2026: the numeric-caps row was ruled **agree, already in Mo** on 13 Sep — see [[research-agenda-2026-09-response]].
+
 ## Related
 
 - [[d11-statically-typed]]
@@ -56,3 +58,4 @@ Ritchie's diagnosis is that C lacked help "for writing very large systems" ([chi
 - [[prompts-research-agenda-2026-09]]
 - [[author-ken-thompson]]
 - [[author-brian-kernighan]]
+- [[research-agenda-2026-09-response]]

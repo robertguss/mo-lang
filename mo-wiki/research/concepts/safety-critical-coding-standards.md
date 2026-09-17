@@ -1,11 +1,13 @@
 ---
 title: "Safety-critical coding standards"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, laws, verification]
 sources: [raw/research-runs/2026-09-13-manifestos-safety-reliability.pplx.md]
 confidence: high
+contested: true
+contradictions: [research-agenda-2026-09-response]
 ---
 
 # Safety-critical coding standards
@@ -14,7 +16,7 @@ Tiger Style and the Power of Ten already have a page. This one covers the wider 
 
 ## Levels of compliance, not one rulebook
 
-The JPL Institutional Coding Standard is organised into six Levels of Compliance — LOC-1 Language Compliance, LOC-2 Predictable Execution, LOC-3 Defensive Coding, LOC-4 Code Clarity, LOC-5 MISRA Shall Rules, LOC-6 MISRA Should Rules — across 120 rules ([JPL standard](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)).
+The JPL Institutional Coding Standard is organised into six Levels of Compliance — LOC-1 Language Compliance, LOC-2 Predictable Execution, LOC-3 Defensive Coding, LOC-4 Code Clarity, LOC-5 MISRA Shall Rules, LOC-6 MISRA Should Rules — 31 JPL rules, plus MISRA's rules imported at LOC-5 and LOC-6 (corrected 17 Sep 2026) ([JPL standard](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)).
 
 Where a rule sits matters. The bounding rules are "shall" rules in LOC-2. The shape numbers are "should" rules in LOC-4: a function "should be no longer than 60 lines of text" and "should be declared with no more than 6 parameters" ([JPL standard](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)).
 
@@ -48,16 +50,13 @@ Google's meta-rule points the same way: "The benefit of a style rule must be lar
 
 Ravenscar is a language subset requested by one pragma and defined in the Ada standard, expanding to restrictions including `No_Task_Hierarchy`, `No_Task_Allocators`, `No_Abort_Statements`, `No_Select_Statements`, `Simple_Barriers`, `Max_Protected_Entries => 1` and `Max_Entry_Queue_Length => 1` ([WG9 N575](https://www.open-std.org/jtc1/sc22/wg9/n575.pdf)).
 
-```ruby
-# Ravenscar's queue bound is 1, enforced at runtime by failing the caller.
-# Mo's bounded mailbox is the same mechanism with a larger constant.
-```
+Ravenscar's queue bound is 1, enforced at runtime by failing the caller; Mo's bounded mailbox is the same mechanism with a larger constant.
 
 The queue bounds exist to avoid "the associated non-determinism of the length of the waiting time in the queue" and to enable "a tight time bound" ([WG9 N575](https://www.open-std.org/jtc1/sc22/wg9/n575.pdf)). `No_Relative_Delay` bans duration-based delays because a relative delay "exhibits non-determinism with respect to the absolute time at which the delay expires" when preemption intervenes, while "the delay_until_statement is deterministic" ([WG9 N575](https://www.open-std.org/jtc1/sc22/wg9/n575.pdf)).
 
 SPARK excludes side-effecting functions, aliasing and backward `goto`, requires function termination as a proof obligation, and reports violations as errors ([SPARK 2014 User's Guide](https://docs.adacore.com/spark2014-docs/html/ug/en/source/language_restrictions.html)).
 
-Ada's general mechanism, `pragma Restrictions`, "expresses the user's intent to abide by certain restrictions", and a partition obeys a restriction if the pragma applies to any unit in it ([Ada RM 13.12](https://www.adaic.org/resources/add_content/standards/05rm/html/RM-13-12.html)). The page does not state that restrictions can only remove features — n.a.
+Ada's general mechanism, `pragma Restrictions`, "expresses the user's intent to abide by certain restrictions", and a partition obeys a restriction if the pragma applies to any unit in it ([Ada RM 13.12](https://www.adaic.org/resources/add_content/standards/05rm/html/RM-13-12.html)). Ada RM 13.12 does not state that restrictions can only remove features — n.a.
 
 ## Proof has a price and a CI gate
 
@@ -88,6 +87,8 @@ The design heuristic is the durable part: "If a program looks hard to verify, it
 | Annotated non-terminating loop instead of a ban | [[d17-mandatory-deadlines]] | contradicts Mo |
 | Termination as a proof obligation, not a syntax rule | [[d32-proving-is-a-separate-tool]] | strengthens Mo |
 | Absolute deadlines instead of relative delays | [[d17-mandatory-deadlines]] | strengthens Mo |
+
+17 Sep 2026: both "contradicts Mo" rows were ruled on 13 Sep — the shape numbers became project settings, and the annotated non-terminating loop is **agree, already in Mo** (a Mo process under step 20's runtime). See [[research-agenda-2026-09-response]].
 | Bounded entry queues with runtime failure | [[d33-bounded-mailboxes]] | already in Mo |
 | No asynchronous abort of another task | [[d14-processes-are-the-only-identity]] | new idea for Mo |
 | Breaking a proof fails the build | [[d32-proving-is-a-separate-tool]] | new idea for Mo |
@@ -102,3 +103,4 @@ The design heuristic is the durable part: "If a program looks hard to verify, it
 - [[q12-law-numbers]]
 - [[d04-style-rules-become-laws]]
 - [[prompts-research-agenda-2026-09]]
+- [[research-agenda-2026-09-response]]

@@ -1,7 +1,7 @@
 ---
 title: "Author: Joe Armstrong (Erlang)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, processes, errors]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -61,6 +61,8 @@ Source gap: no primary verbatim transcript of "The Mess We're In" (Strange Loop 
 | Functions, not files, as the unit of identity and review | [[d29-edit-by-declaration-id]] | already in Mo |
 | The four error slogans as written law | [[d18-two-kinds-of-failure]] | already in Mo |
 
+17 Sep 2026: the R6 row is answered — chapter 3's failure model names what a restart loses and when a reply is durable (ruled 13 Sep, [[research-agenda-2026-09-response]]). The "500-line law" above was struck: the shape laws are project settings, not laws. And the BEAM comparison he is owed has run: [[control-run-10]] and the [[erosion-round]].
+
 ## Related
 
 - [[d18-two-kinds-of-failure]]
@@ -70,3 +72,6 @@ Source gap: no primary verbatim transcript of "The Mess We're In" (Strange Loop 
 - [[prompts-research-agenda-2026-09]]
 - [[reliability-and-testing-philosophies]]
 - [[author-tony-hoare]]
+- [[d42-elixir-round]]
+- [[research-agenda-2026-09-response]]
+- [[control-run-10]]

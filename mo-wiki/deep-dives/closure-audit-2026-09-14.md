@@ -1,14 +1,14 @@
 ---
 title: "The closure audit: what direction 31 cost round 7's job queue"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-17
 type: deep-dive
 tags: [syntax, effects, meta, research]
 sources: [plans/control-run-7.md, deep-dives/outside-review-2026-09-14-response.md, spec/design-v0/03-semantics.md, spec/design-v0/09-stdlib.md]
 confidence: medium
 ---
 
-# The closure audit
+# The closure audit: what direction 31 cost round 7's job queue
 
 The outside review of 14 Sep ([[outside-review-2026-09-14]]) predicted that direction 31 (an anonymous function is a call argument only: never stored, returned, or capturing a `var`) would cost programs in shapes no loop ever records, and its reply asked for two columns: the mechanical count of sites that exist only because a closure could not be stored or returned, and a judgment column of sites shaped at a coarser altitude than a fluent Elixir or Rust author would choose. Fable had a reader (a fresh general-purpose session, read-only) go through round 7's Mo job queue, `../mo-lang-control7-mo/examples/programs/jobq/`, all seven modules, 2,843 non-blank lines, on 14 Sep evening.
 

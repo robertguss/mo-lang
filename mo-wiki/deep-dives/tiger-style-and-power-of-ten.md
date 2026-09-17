@@ -1,7 +1,7 @@
 ---
 title: "Tiger Style + Power of 10, rethought AI-first"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: deep-dive
 tags: [laws, philosophy]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -13,7 +13,9 @@ sources: [raw/notion/design-journal-2026-09-12.md]
 **Become laws of Mo (compiler-enforced):**
 - No unbounded loops. No `while true`. Loops iterate finite collections or carry an explicit bound in the signature.
 - No general recursion. Only structural recursion the compiler proves terminates. Totality by default.
-- Hard function length limit (number TBD). Also a context-window-sized unit of agent work.
+
+  17 Sep 2026: not what Mo did — chapter 2 bounds recursion at depth 10,000 and then crashes; termination is `mo prove`'s job, not the compiler's.
+- Hard function length limit: 70 lines, a `mo.toml` setting since 14 Sep. Also a context-window-sized unit of agent work.
 - Minimum contract density: a function with no `requires`/`ensures` does not compile.
 - No compound asserts. A failure always names one property.
 - Exhaustive error handling. Every result consumed. No exceptions.

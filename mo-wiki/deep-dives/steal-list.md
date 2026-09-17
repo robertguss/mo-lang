@@ -1,7 +1,7 @@
 ---
 title: "Steal list: what to take from other languages"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: deep-dive
 tags: [research, philosophy]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -19,6 +19,8 @@ sources: [raw/notion/design-journal-2026-09-12.md]
 - **Steal:** pattern matching everywhere, tagged results (`ok` / `error`), the pipe operator.
 - **Adapt:** immutable data with structural sharing, implemented via Perceus-style reference counting with in-place reuse rather than per-process GC.
 - **Leave:** dynamic typing, hot reload, Erlang term format, the VM.
+
+  17 Sep 2026: two of these were taken after all — the bytecode VM is Mo's reference runtime ([[d36-vm-first-runtime|d36]]) and hot reload is [[d39-hot-code-reload|d39]].
 ### From Rust
 - **Steal:** enums with data, exhaustive matching, Result/Option, no null, no exceptions, traits not classes, "if it compiles it works."
 - **Steal:** compiler-as-teacher diagnostics, then go further: structured, machine-consumable errors with suggested fixes.

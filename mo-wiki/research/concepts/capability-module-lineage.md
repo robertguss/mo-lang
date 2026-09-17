@@ -12,6 +12,8 @@ confidence: medium
 
 Five older designs that bear on how Mo hands out authority. Each is mapped to [[p13-capabilities-and-logging|pick 13]] (capabilities obtained at `main` and passed down), [[q16-escape-hatch|Q16]] (the platform is the only escape hatch) and [[q17-package-management-and-supply-chain|Q17]] (packages). A follow-up from [[landscape-second-lane]]. Nothing here is decided.
 
+17 Sep 2026: the only change today was adding the Hermes link below.
+
 ## Newspeak: every module receives `platform`
 
 - **What.** Newspeak has "no global namespace" and no static state. A top-level class is a module definition, and every external dependency arrives as a factory argument: `class ShapeLibrary usingPlatform: platform = ( … private List = platform collections List. … )`.[143] Because there are no globals, the same library can be instantiated twice with different platform objects, side by side.[143] The did-not-win run's reading: this boilerplate is "what agents are for", and it bounds an agent's blast radius "by construction". The real costs are awkward mutual recursion and hostility to static analysis.[142]

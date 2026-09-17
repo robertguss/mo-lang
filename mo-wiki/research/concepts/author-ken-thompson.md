@@ -1,7 +1,7 @@
 ---
 title: "Author: Ken Thompson (Unix, C, Go)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, security, philosophy]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -51,6 +51,8 @@ Sources not found: no primary Thompson statement on xz or 2023-2026 supply-chain
 | Redundancy is excess: one way to do each thing | [[d04-style-rules-become-laws]] | already in Mo |
 | A written admission test standing in for unanimous designer consent | [[q12-law-numbers]] | new idea for Mo |
 
+17 Sep 2026: the trusting-trust row was ruled **agree** on 13 Sep and the bootstrap surface measured — see [[research-agenda-2026-09-response]] and the [[decision-log]].
+
 ## Related
 
 - [[d30-supply-chain-security]]
@@ -60,3 +62,5 @@ Sources not found: no primary Thompson statement on xz or 2023-2026 supply-chain
 - [[prompts-research-agenda-2026-09]]
 - [[author-dennis-ritchie]]
 - [[author-rob-pike]]
+- [[research-agenda-2026-09-response]]
+- [[decision-log]]

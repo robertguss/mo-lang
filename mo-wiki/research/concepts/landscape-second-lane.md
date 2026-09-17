@@ -1,7 +1,7 @@
 ---
 title: "Landscape, second lane: what Robert's research runs add"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: concept
 tags: [research, philosophy]
 sources: [raw/research-runs/emerging_languages_2022_2026.md, raw/research-runs/pl-ideas-that-did-not-win.pplx.md, raw/research-runs/llm-authored-programming-languages.pplx.md]
@@ -81,10 +81,14 @@ Claude's lane is [[language-landscape]] (web + catalogue, 12 Sep 2026) plus the 
 - **Star counts.** [[agent-native-cluster]] quotes the catalogue snapshot: Zero 3.3K, Codong 67, AILANG 26. The run's live API: Zero 5,360, Codong 73, AILANG 34, and Fabro rising from 1,221 to 1,595. **The run is newer;** both labelled their source.
 - **The syntactic camp.** The landscape calls Axis's LL(1) grammar "the syntactic camp's strongest technical argument". The run: Axis went dormant a month after launch, and decoding research removes most syntax errors in existing languages. **The run is better evidenced.**
 - **Gleam's version.** The landscape says v1.16 (Apr 2026); the run says v1.18.0 (29 Jul 2026). **The landscape entry is stale.**
+
+  17 Sep 2026: closed — Gleam was dropped from the shortlist and the entry is not maintained.
 - **Pel.** The landscape lists grammar-level capability control as Pel's idea to steal. Both runs: paper only, with no implementation or benchmark. **No conflict in substance,** but it lowers Pel's weight.
 - **MoonBit's camp.** The catalogue and Claude's lane file it under verification; the agent-languages run files it as syntactic, because its argument is grammar shape plus a sampler. A classification choice with no effect on the page.
 
 ## Should the 13-entry shortlist change?
+
+17 Sep 2026: all the recommendations below were done — Motoko, [[case-against-new-languages]] and [[capability-module-lineage]] were written, [[agent-native-cluster]] refreshed, and the note added to [[moonbit]].
 
 *Claude's recommendation. The shortlist is not changed here; Robert decides.* The comparison pass is already done, so "change" means follow-up pages.
 

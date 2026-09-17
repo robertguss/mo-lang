@@ -1,24 +1,29 @@
 ---
 title: "Mo synthesis: what history says to Mo"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/synthesis/mo_synthesis.md"
+contested: true
+contradictions: [01-premise, d24-compile-to-c-via-zig, q13-implementation-language]
 ---
+# Mo synthesis: what history says to Mo
 
-### Headline
+> **17 Sep 2026.** This page is the 13 Sep synthesis of an external research run. The Mo it describes — brace syntax, effect rows, a Rust implementation, a package registry, an RFC process — was never Mo's design. Mo's decisions are the spec chapters under `spec/design-v0/` and the [[decision-log]]. Read this page as landscape only.
+
+## Headline
 
 A Mo-specific reading of the 145,000-word research bundle. Mo's design bet is that AI agents will author most Mo code, so annotation cost paid by an agent is worth much more per keystroke than annotation cost paid by a human. Every previous generation of language designers hit the same wall: a property could be enforced in the type system only when the marginal keystroke cost to a *human* was less than the marginal reasoning benefit. When the agent is the author, that wall moves.
 
-### Three findings that shape everything
+## Three findings that shape everything
 
 - **The annotation economy is inverted.** Eiffel's contracts, Ada/SPARK, Clean's uniqueness types, Coq/Agda/Lean, Liquid Haskell, Rust's lifetimes — all crossed the human-cost threshold for specific communities and stayed niche. Agent authorship removes the threshold. See [Peyton Jones, "Wearing the Hair Shirt"](https://simon.peytonjones.org/wearing-the-hair-shirt/) and [Verus](https://arxiv.org/abs/2303.05491).
 - **Coherence is the scarcest resource.** No mainstream language has integrated grammar, type system, effect discipline, tooling, and supply-chain security into a coherent whole. Mo has the freedom to do so because its user base is being formed now.
 - **The five deliverables that matter for the next six months** (Recommendations 5→1): supply-chain-secured demo registry, RFC process + first three RFCs, package manifest with capability declarations, LSP + tree-sitter + formatter + JSON diagnostics, formal Mo spec.
 
-### Paradigm — pick concepts, not paradigms
+## Paradigm — pick concepts, not paradigms
 
 Van Roy's *Programming Paradigms for Dummies* frames this exactly: paradigms differ "only in one or a few concepts." Mo's synthesis:
 
@@ -31,7 +36,7 @@ Van Roy's *Programming Paradigms for Dummies* frames this exactly: paradigms dif
 
 **Result:** Mo is *pure-by-default, imperative-when-declared, ADT-and-trait-oriented*. It looks to a working Rust or TypeScript programmer like a language they can read on day one.
 
-### Type system — the composed stack
+## Type system — the composed stack
 
 Mo commits to a *composed* type system whose apparent surface is larger than any mainstream language today, but whose annotation cost is agent-paid and human-consumed:
 
@@ -43,7 +48,7 @@ Mo commits to a *composed* type system whose apparent surface is larger than any
 
 Not adopted: full dependent types (B7) as default, gradual typing (B3), fully inferred HM as the only mode.
 
-### Memory — regions + linear handles
+## Memory — regions + linear handles
 
 Mo's active repo already has region allocation. This is the leading indicator: **regions as primary memory-management primitive**, with linear/affine handles for external resources.
 
@@ -54,7 +59,7 @@ Mo's active repo already has region allocation. This is the leading indicator: *
 
 Not adopted: pure Rust-style borrow checking (learning curve), tracing GC (pollutes effect signatures), mutable value semantics (constrains data structures).
 
-### Concurrency — structured on top of effects
+## Concurrency — structured on top of effects
 
 Mo adopts **structured concurrency on top of effect handlers**, presented as async/await-style syntax. Reasoning:
 
@@ -66,7 +71,7 @@ Mo adopts **structured concurrency on top of effect handlers**, presented as asy
 
 Fallback: Rust-style async/await + structured wrappers if effect handlers prove too complex to ship early.
 
-### Syntax — LL(1)/LALR(1) parseable, familiar to Rust/Swift readers
+## Syntax — LL(1)/LALR(1) parseable, familiar to Rust/Swift readers
 
 - Rust-style `fn name(args) -> Ret { body }` and `let x = expr;`.
 - Expression-oriented `if`, `match`, blocks.
@@ -77,7 +82,7 @@ Fallback: Rust-style async/await + structured wrappers if effect handlers prove 
 - Reserved keywords: `gen`, `effect`, `region`, `cap`, `contract`, `where`.
 - Statement-level annotations: `@requires`, `@ensures`, `@invariant` — dispatched to SMT verifier.
 
-### Compilation — staged, agent-friendly
+## Compilation — staged, agent-friendly
 
 - **Stage 0** (now): custom VM. Fastest iteration.
 - **Stage 1**: Cranelift AOT. ~10× faster compile than LLVM.
@@ -86,7 +91,7 @@ Fallback: Rust-style async/await + structured wrappers if effect handlers prove 
 
 C-via-Zig ([[d24-compile-to-c-via-zig]]) is a practical shortcut for reaching every target `zig cc` supports without an LLVM dependency. Not MLIR — overkill for a general-purpose language.
 
-### Package system — the differentiator
+## Package system — the differentiator
 
 Mo has more freedom than any existing ecosystem to design this correctly from scratch. Nine principles:
 
@@ -102,7 +107,7 @@ Mo has more freedom than any existing ecosystem to design this correctly from sc
 
 See [[q17-package-management-and-supply-chain]] and [[supply-chain-defenses]].
 
-### Governance — staged evolution
+## Governance — staged evolution
 
 - **Stage 0 (now, pre-1.0)**: BDFL (Robert). Public RFC process from day one.
 - **Stage 1 (post-1.0)**: Steering council. Small (3–5), delegated authority, at least one non-founder.
@@ -110,7 +115,7 @@ See [[q17-package-management-and-supply-chain]] and [[supply-chain-defenses]].
 
 **Do not appoint a successor BDFL.** Guido's model of stepping down without one was correct.
 
-### Lessons from failure
+## Lessons from failure
 
 - **Dylan** — killed by Newton cancellation. Lesson: pick a first workload that survives sponsor changes.
 - **Fortress** — design ambition outstripped engineering budget.
@@ -118,7 +123,7 @@ See [[q17-package-management-and-supply-chain]] and [[supply-chain-defenses]].
 - **Python 2 → 3** — 12 years of ecosystem pain. Backward-incompatible transitions are an emergency mechanism.
 - **Scala 2 → 3** — even well-executed migrations cost users.
 
-### Lessons from success (Rust, Go, TypeScript, Elixir)
+## Lessons from success (Rust, Go, TypeScript, Elixir)
 
 - Ship the toolchain in one binary (Go).
 - Structured JSON diagnostics from day one (Rust).
@@ -127,7 +132,7 @@ See [[q17-package-management-and-supply-chain]] and [[supply-chain-defenses]].
 - RFC discipline from pre-1.0.
 - Compatibility promise + edition mechanism.
 
-### Ten anti-patterns Mo must avoid
+## Ten anti-patterns Mo must avoid
 
 1. Ambient authority in package code.
 2. Install-time / build-time arbitrary code execution.
@@ -140,7 +145,7 @@ See [[q17-package-management-and-supply-chain]] and [[supply-chain-defenses]].
 9. Global-state singleton APIs.
 10. Backward-incompatible major versions without an edition mechanism.
 
-### Five actionable recommendations for the next six months
+## Five actionable recommendations for the next six months
 
 1. **Publish a formal spec** — EBNF grammar, region semantics, effect-row syntax, type-check algorithm. Rust Reference / Go Spec model.
 2. **Ship LSP + tree-sitter + formatter + structured JSON diagnostics** before adding language features.
@@ -149,6 +154,18 @@ See [[q17-package-management-and-supply-chain]] and [[supply-chain-defenses]].
 5. **Ship a supply-chain-secured demo registry** — OIDC auth, content-addressed store, capability subset checking, release-age gate, Sigstore signing, SLSA attestations. Even at toy scale.
 
 Combined, these five set Mo up to be the first language whose response to the AI era is *coherent across all layers*.
+
+## Sources
+
+- [Full Mo synthesis](../raw/plang-history-2026-09/synthesis/mo_synthesis.md)
+- [Van Roy, "Programming Paradigms for Dummies"](https://webperso.info.ucl.ac.be/~pvr/VanRoyChapter.pdf)
+- [Peyton Jones, "Wearing the Hair Shirt"](https://simon.peytonjones.org/wearing-the-hair-shirt/)
+- [Verus arXiv paper](https://arxiv.org/abs/2303.05491)
+- [Austral spec](https://austral-lang.org/spec/spec.html)
+- [Koka book](https://koka-lang.github.io/koka/doc/book.html)
+- [Russ Cox, "Minimal Version Selection"](https://research.swtch.com/vgo-mvs)
+- [Rust Foundation launch](https://blog.rust-lang.org/2021/02/08/Foundation-Launch/)
+
 
 ## Related
 
@@ -161,14 +178,3 @@ Combined, these five set Mo up to be the first language whose response to the AI
 - [[d22-rust-plus-refinements-types]]
 - [[d30-supply-chain-security]]
 - [[rust]] · [[koka]] · [[austral]] · [[hylo]] · [[roc]] · [[unison]]
-
-## Sources
-
-- [Full Mo synthesis](../raw/plang-history-2026-09/synthesis/mo_synthesis.md)
-- [Van Roy, "Programming Paradigms for Dummies"](https://webperso.info.ucl.ac.be/~pvr/VanRoyChapter.pdf)
-- [Peyton Jones, "Wearing the Hair Shirt"](https://simon.peytonjones.org/wearing-the-hair-shirt/)
-- [Verus arXiv paper](https://arxiv.org/abs/2303.05491)
-- [Austral spec](https://austral-lang.org/spec/spec.html)
-- [Koka book](https://koka-lang.github.io/koka/doc/book.html)
-- [Russ Cox, "Minimal Version Selection"](https://research.swtch.com/vgo-mvs)
-- [Rust Foundation launch](https://blog.rust-lang.org/2021/02/08/Foundation-Launch/)

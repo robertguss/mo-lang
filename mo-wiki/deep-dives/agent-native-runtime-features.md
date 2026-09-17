@@ -1,7 +1,7 @@
 ---
 title: "Agent-native runtime features to test"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [runtime, agents, tooling, verification]
 sources: [spec/design-v0/03-semantics.md, spec/design-v0/05-verification.md, spec/design-v0/07-toolchain.md, spec/design-v0/08-milestone.md]
@@ -26,6 +26,8 @@ Every running Mo program exposes an MCP server the agent can call. Tools like `l
 
 What Mo has today: `mo check --json`, `mo test --json`, and the error catalog as the compile-time surface; no MCP command yet. The runtime is opaque beyond the crash report.
 
+17 Sep 2026: shipped — the `Runtime` capability and `mo build --surface` give the running program a queryable surface (chapter 9's Runtime section, steps 23 and 32).
+
 What it would give the agent: a real API into the running system. Debugging shifts from grep-the-log to programmatic inspection. Because Mo already has process isolation, capability tracking, and deterministic execution, most of the data is already there — the surface just needs to be exposed.
 
 Cost: modest. A few weeks. Belongs in the VM (see [[vm-first-vs-c-first]]).
@@ -47,6 +49,8 @@ Without it: agent-driven debugging is much weaker than it could be. The building
 Every scheduler preemption, GC pass, supervisor restart, capability check, mailbox overflow, and timeout emits a structured event the agent can query. Not log messages — structured events with schema, tied to the code location and the reason.
 
 What Mo has today: chapter 5's structured diagnostic format for compile-time errors. The crash report is structured. Runtime events currently go to stdout as prose.
+
+17 Sep 2026: shipped — structured runtime events landed with [[d40-structured-runtime-events|d40]] at step 23.
 
 What it would give the agent: instead of "the process timed out," "process #42 was preempted after 4096 reductions while blocked on `Http.get(url)` with 340 ms remaining on a 500 ms deadline, and its mailbox depth is 14 (limit 100)." The agent can reason about performance and reliability the same way it reasons about correctness.
 

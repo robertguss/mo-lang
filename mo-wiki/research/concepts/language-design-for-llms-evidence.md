@@ -1,11 +1,13 @@
 ---
 title: "Language design for LLMs: what is actually measured"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, laws, meta]
 sources: [raw/research-runs/2026-09-13-papers-llm-facing.pplx.md]
 confidence: medium
+contested: true
+contradictions: [research-agenda-2026-09-response]
 ---
 
 # Language design for LLMs: what is actually measured
@@ -33,6 +35,8 @@ Two levers make this cheaper. Cross-lingual transfer beats zero-shot across 10-4
 The risk is that agents route around the language entirely. Across six agents and four esoteric languages, the strongest models spontaneously wrote Python metaprograms that emit the target language, and performance dropped substantially when that was restricted ([arXiv:2606.10933](https://arxiv.org/abs/2606.10933)). An earlier system made this a deliberate design: generate an intermediate language the model knows, then compile down to the very low-resource target ([arXiv:2406.03636](https://arxiv.org/abs/2406.03636)).
 
 Judgment: Mo's evals must record whether the model wrote Mo or wrote a Mo generator, or the cold-start numbers measure the wrong thing.
+
+17 Sep 2026, recorded: every round so far wrote Mo directly; no worker wrote a generator.
 
 ## Grammar and types at generation time remove the cheap errors
 
@@ -74,9 +78,11 @@ Prompt-level style control decays as code grows. Over N=160 paired programs, com
 
 Judgment: keep the length law, which has support; justify nesting and parameter caps as human-review economics; consider restating shape laws in compositional-depth terms.
 
+17 Sep 2026, outcome: the 500-line law is gone and the shape laws became project settings on 14 Sep.
+
 ## Humans review worse over time
 
-400 repeat reviewers submitting 11,429 reviews over seven months approved 30.1% early and 36.8% late, a +14.5 point gradient across experience deciles, with review latency up 3.5x and inline comments down 22% ([arXiv:2606.22721](https://arxiv.org/abs/2606.22721)).
+400 repeat reviewers submitting 11,429 reviews over seven months approved 30.1% early and 36.8% late — a 6.7-point rise across the population, while the +14.5 points is the cumulative within-reviewer gradient across experience deciles, a different measure (noted 17 Sep 2026) — with review latency up 3.5x and inline comments down 22% ([arXiv:2606.22721](https://arxiv.org/abs/2606.22721)).
 
 Practitioners (N=17, validated N=43) describe reviewing multi-file LLM changes as trust calibration rather than diffing, and want risk signals per line and per file; 63% expected reduced overall review effort from such a workflow ([arXiv:2606.01969](https://arxiv.org/abs/2606.01969)).
 
@@ -100,6 +106,8 @@ Finally, developer intuition about agent productivity was wrong by about 40 poin
 | Pure-functional, no-`while` shape carries a measured error-rate risk | [[d10-immutable-by-default]] | contradicts Mo |
 | Multi-tokenizer check before any compactness claim | [[d28-nothing-final-until-measured]] | new idea for Mo |
 
+17 Sep 2026: both "contradicts Mo" rows were ruled on 13 Sep — see [[research-agenda-2026-09-response]]. Rounds 5 and 6 ran on them.
+
 ## Related
 
 - [[q12-law-numbers]]
@@ -109,3 +117,6 @@ Finally, developer intuition about agent productivity was wrong by about 40 poin
 - [[d01-agents-write-the-code]]
 - [[d26-developer-and-agent-happiness]]
 - [[prompts-research-agenda-2026-09]]
+- [[d41-small-model-round]]
+- [[control-run-9]]
+- [[research-agenda-2026-09-response]]

@@ -1,24 +1,29 @@
 ---
 title: "Implementation menu: what a language builder chooses"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [tooling, history, research]
 sources:
   - "../raw/plang-history-2026-09/camps/implementation_engineering.md"
+contested: true
+contradictions: [01-premise, d24-compile-to-c-via-zig, q13-implementation-language]
 ---
+# Implementation menu: what a language builder chooses
 
-### Headline
+> **17 Sep 2026.** This page is the 13 Sep synthesis of an external research run. The Mo it describes — brace syntax, effect rows, a Rust implementation, a package registry, an RFC process — was never Mo's design. Mo's decisions are the spec chapters under `spec/design-v0/` and the [[decision-log]]. Read this page as landscape only.
+
+## Headline
 
 A new language is a stack of engineering decisions. Some are visible (syntax, type system, memory model); most are invisible (parser strategy, IR choice, GC algorithm, package resolver). The invisible ones determine whether the language *ships* and whether developers *want* to use it. The raw report walks through eleven sections; this page distills the menu for Mo.
 
-### Three findings that shape everything
+## Three findings that shape everything
 
 - **Hand-written recursive descent + Pratt beats generators for production compilers.** Better error messages, incremental-tooling compatibility, faster code, easier context-sensitive tokens. Almost every successful modern compiler ships this stack.
 - **Type checking should be bidirectional, not fully HM-inferred.** Bidirectional propagation gives local error messages, easier IDE integration, and composability with refinements and effects.
 - **Tooling ships with the language or it doesn't ship at all.** `gofmt`, `rustfmt`, LSP, package manager, docgen — all bundled from day one, in every language that has succeeded since 2010.
 
-### Section 1 — Lexing and parsing
+## Section 1 — Lexing and parsing
 
 - **Lexer**: hand-written, not `lex`/`flex`. Better errors, context-sensitive tokens, incremental tooling.
 - **Parser**: hand-written recursive descent for the outer skeleton; Pratt (Vaughan Pratt, 1973) for expressions.
@@ -27,7 +32,7 @@ A new language is a stack of engineering decisions. Some are visible (syntax, ty
 
 Mo direction: hand-written RD + Pratt, LL(1)/LALR(1)-friendly grammar for [[q13-implementation-language]] compatibility.
 
-### Section 2 — Intermediate representations
+## Section 2 — Intermediate representations
 
 - **AST → typed AST → HIR → MIR → LIR** is the modern shape.
 - **SSA (static single assignment)** is the middle-end lingua franca. Every serious optimizer uses it.
@@ -37,7 +42,7 @@ Mo direction: hand-written RD + Pratt, LL(1)/LALR(1)-friendly grammar for [[q13-
 
 Mo direction: typed AST → MIR → C emission. LLVM/Cranelift optional later.
 
-### Section 3 — Type checking algorithms
+## Section 3 — Type checking algorithms
 
 - **Hindley-Milner (Algorithm W, Algorithm J)** — the classic, full inference.
 - **Bidirectional type checking** (Pierce & Turner) — annotations at function boundaries; propagates inward. Better error messages.
@@ -48,7 +53,7 @@ Mo direction: typed AST → MIR → C emission. LLVM/Cranelift optional later.
 
 Mo direction: bidirectional System F + row types + refinements + effects (see decision matrix).
 
-### Section 4 — Memory management
+## Section 4 — Memory management
 
 - **Manual + capabilities** — Zig's allocator model.
 - **RAII + destructors** — C++ / Rust.
@@ -61,7 +66,7 @@ Mo direction: bidirectional System F + row types + refinements + effects (see de
 
 Mo direction: regions + capabilities as primary; RAII at scope boundaries; capability-declared allocator per runtime.
 
-### Section 5 — Runtimes and VMs
+## Section 5 — Runtimes and VMs
 
 - **Custom VM** (Erlang BEAM, Lua, Python) — full control; long build time.
 - **Cranelift** — Rust's faster JIT; Wasmtime; production-grade.
@@ -71,7 +76,7 @@ Mo direction: regions + capabilities as primary; RAII at scope boundaries; capab
 
 Mo direction: C emission via `zig cc` for release ([[d24-compile-to-c-via-zig]]); tree-walking interpreter for edit-loop. Cranelift later if needed.
 
-### Section 6 — Concurrency implementation
+## Section 6 — Concurrency implementation
 
 - **OS threads** — the substrate; too heavy for high fan-out.
 - **Green threads** — M:N scheduling. BEAM, Go goroutines, Java virtual threads.
@@ -82,7 +87,7 @@ Mo direction: C emission via `zig cc` for release ([[d24-compile-to-c-via-zig]])
 
 Mo direction: structured concurrency + capability-declared runtimes. Multiple runtime backends selected per capability.
 
-### Section 7 — Package managers and dependency systems
+## Section 7 — Package managers and dependency systems
 
 **The big three algorithms:**
 
@@ -99,7 +104,7 @@ Mo direction: structured concurrency + capability-declared runtimes. Multiple ru
 
 Mo direction: MVS + content-addressed store + capability manifests + transparency log. See [[q17-package-management-and-supply-chain]].
 
-### Section 8 — Tooling ecosystem
+## Section 8 — Tooling ecosystem
 
 - **LSP** (Language Server Protocol, Microsoft) — one server, every editor. Non-negotiable.
 - **tree-sitter** (Max Brunsfeld) — incremental parsing for editors and query-based linters.
@@ -112,7 +117,7 @@ Mo direction: MVS + content-addressed store + capability manifests + transparenc
 
 Mo direction: all of the above, bundled, from v0.
 
-### Section 9 — Verification and formal methods integration
+## Section 9 — Verification and formal methods integration
 
 - **SMT solvers** — Z3, CVC5. The workhorse for refinements.
 - **Model checkers** — TLA+ (Lamport), Alloy — for specifying and checking designs, not code.
@@ -121,7 +126,7 @@ Mo direction: all of the above, bundled, from v0.
 
 Mo direction: tiered ([[q08-verification-tiers]]). Ordinary code type-checks. Capability-guarded code discharges refinement obligations via SMT. High-assurance code can escalate to Lean/F*-style proofs.
 
-### Section 10 — Bootstrapping
+## Section 10 — Bootstrapping
 
 - **Trusted first compiler** — Rust started in OCaml; Zig started in C++; SBCL started in C.
 - **Self-hosting** — the milestone that says the language is real.
@@ -129,7 +134,7 @@ Mo direction: tiered ([[q08-verification-tiers]]). Ordinary code type-checks. Ca
 
 Mo direction: implementation in Zig ([[q13-implementation-language]]), self-hosting when maturity permits.
 
-### Section 11 — Documentation and community engineering
+## Section 11 — Documentation and community engineering
 
 - **The Book** (Rust, Elixir, Zig) — one canonical intro.
 - **The Reference** — spec-level detail.
@@ -137,12 +142,20 @@ Mo direction: implementation in Zig ([[q13-implementation-language]]), self-host
 - **RFC process** — Rust-style structured proposals.
 - **Governance** — how decisions get made and by whom.
 
-### What changes when the language is for AI
+## What changes when the language is for AI
 
 - **Small, stable grammar** so grammar-constrained decoding stays cheap.
 - **Explicit imports and dependencies** with capability declarations.
 - **Machine-verifiable contracts** for spec-carrying source ([[d02-spec-altitude]], [[d03-source-carries-its-evidence]]).
 - **Deterministic tooling** — repeatable builds are a security property, not a convenience.
+
+## Sources
+
+- [Full report](../raw/plang-history-2026-09/camps/implementation_engineering.md)
+- [Wirth, *Compiler Construction*](https://people.inf.ethz.ch/wirth/CompilerConstruction/CompilerConstruction1.pdf)
+- [Crockford, *Top Down Operator Precedence*](https://www.crockford.com/javascript/tdop/tdop.html)
+- [Russ Cox, "Minimal Version Selection"](https://research.swtch.com/vgo-mvs)
+
 
 ## Related
 
@@ -151,10 +164,3 @@ Mo direction: implementation in Zig ([[q13-implementation-language]]), self-host
 - [[plang-decision-matrix]]
 - [[compilation-target-and-compile-speed]]
 - [[q13-implementation-language]]
-
-## Sources
-
-- [Full report](../raw/plang-history-2026-09/camps/implementation_engineering.md)
-- [Wirth, *Compiler Construction*](https://people.inf.ethz.ch/wirth/CompilerConstruction/CompilerConstruction1.pdf)
-- [Crockford, *Top Down Operator Precedence*](https://www.crockford.com/javascript/tdop/tdop.html)
-- [Russ Cox, "Minimal Version Selection"](https://research.swtch.com/vgo-mvs)

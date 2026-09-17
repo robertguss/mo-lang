@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Verse"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, errors, processes]
 sources: [raw/articles/book-of-verse-00_overview.md, raw/articles/book-of-verse-08_failure.md, raw/articles/book-of-verse-13_effects.md, raw/articles/book-of-verse-14_concurrency.md, raw/papers/verse-calculus-icfp23.md, raw/articles/road-to-ue6-2026.md, raw/articles/gamedeveloper-ue6-verse-2026.md, raw/articles/epic-autortfm-verse-transactions-cpp.md, raw/articles/spj-oplss-2026-verse-lectures.md]
@@ -70,7 +70,11 @@ Verse is Epic's language for Unreal Editor for Fortnite. It draws "from function
 
 - **The skeptical answer:** transactions do *not* replace crash-and-restart. Verse keeps uncatchable runtime errors beside rollback,[117] hasn't yet made those errors roll back,[123] and can't undo I/O.[123] They *can* complement it at one boundary Mo already has. A process's `update` owns private state ([[d14-processes-are-the-only-identity|direction 14]]) and hands effects to the runtime as commands ([[d16-direct-style-io|direction 16]]). So `update` is a natural transaction, with no C++ to instrument.
 - **Proposal:** if `update` crashes, the runtime discards that message's state writes *and* its queued outgoing effects (sends, `events.emit`). Nothing half-done leaks. This is AutoRTFM's on-commit and on-abort behaviour, at the process level.[123]
+
+  Answered since (17 Sep 2026): shipped.
 - **Question for Robert:** after a crash, does the supervisor restart from `init` (OTP, and direction 18 as written), or resume from the last committed state with the poison message set aside for the agent ([[d21-autonomous-crash-fixing|direction 21]])? Both keep the rule that a bug is never handled as rain.
+
+  Answered since (17 Sep 2026): chapter 3 answers it — a restart clears the mailbox and reruns the state initializers (`spec/design-v0/03-semantics.md`).
 - **Proposal:** freeze `clock.now` for the length of one `update`.[118] That makes a message's handling a pure function of state, message and one timestamp, which is what replay needs.
 - **Proposal:** `race` semantics for deadlines: when `within:` fires, the pending work is cancelled at once.[119] `Task.run` gets `branch`'s scope-bound lifetime, with no `rush` or `spawn`.
 - **Confirmed, no change:** direction 18's split between failure and bugs. Verse reached the same design independently.[117]

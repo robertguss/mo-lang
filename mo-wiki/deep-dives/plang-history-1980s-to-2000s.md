@@ -1,24 +1,27 @@
 ---
 title: "PL history: 1980s through 2000s"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/history/02_1980s_to_2000s.md"
 ---
+# PL history: 1980s through 2000s
 
-### Headline
+> **17 Sep 2026.** This page is the 13 Sep synthesis of an external research run. The Mo it describes — brace syntax, effect rows, a Rust implementation, a package registry, an RFC process — was never Mo's design. Mo's decisions are the spec chapters under `spec/design-v0/` and the [[decision-log]]. Read this page as landscape only.
+
+## Headline
 
 Three decades in which language design became an *industrial* activity, not just an academic one. The 1980s: object orientation goes mainstream (C++, Objective-C, Eiffel) and functional programming standardizes (SML, Haskell, Erlang). The 1990s: the Web and virtual machines (Java, JavaScript) redefine what a language must be. The 2000s: scripting reaches maturity (Ruby, Python) and the JVM/CLR family diversifies (C#, Scala).
 
-### Three findings that shape everything
+## Three findings that shape everything
 
 - **Design by Contract (Meyer, 1985) invented what Mo now calls "spec altitude."** Eiffel put preconditions, postconditions, and invariants *in the language*, not as annotations. Every modern verification tool descends from this. See [[d02-spec-altitude]].
 - **The JVM proved managed runtimes were commercially viable.** Java's success — write once, run anywhere; garbage collection at scale; ecosystem gravity — is the template for every runtime after (CLR, V8, BEAM, Erlang HiPE, HotSpot).
 - **CPAN invented the ecosystem-as-language.** Perl 5 + CPAN (1995) demonstrated that a language's *package repository* could matter more than its syntax. Every subsequent language (npm, gems, PyPI, crates.io, Hex) has re-litigated this design choice — and inherited CPAN's supply-chain problems ([[d30-supply-chain-security]]).
 
-### The 1980s
+## The 1980s
 
 **Object orientation goes mainstream.**
 
@@ -43,7 +46,7 @@ Three decades in which language design became an *industrial* activity, not just
 - **PostScript** (Warnock, Geschke; Adobe 1984) — stack-based, Turing-complete page description. Ancestor of PDF.
 - **Self** (Ungar, Smith at PARC/Sun; 1986) — prototype-based OO. Invented modern JIT: inline caches, polymorphic inline caches, adaptive recompilation. Direct ancestor of HotSpot and V8.
 
-### The 1990s
+## The 1990s
 
 **The Web and virtual machines.**
 
@@ -55,7 +58,7 @@ Three decades in which language design became an *industrial* activity, not just
 - **JavaScript** (Eich, Netscape; 10 days in May 1995) — the language that ate the world. See [[javascript]].
 - **OCaml** (Leroy, INRIA; 1996) — SML lineage with objects, native codegen.
 
-### The 2000s
+## The 2000s
 
 **The 2000s were consolidation, not revolution.**
 
@@ -66,33 +69,26 @@ Three decades in which language design became an *industrial* activity, not just
 - **Clojure** (Hickey, 2007) — Lisp on the JVM with immutable data structures and STM. "Simple Made Easy" (Hickey, 2011) is required reading for anyone thinking about complexity.
 - **Erlang open-sourced** (1998) → **Rails/Django boom** (2004–2008) → **Node.js** (Dahl, 2009) — server-side JS.
 
-### The ecosystem revolution: 1995 → 2010
+## The ecosystem revolution: 1995 → 2010
 
 - **CPAN** (Perl, 1995) — first mass package repository.
 - **PyPI** (Python, 2002); **RubyGems** (2003); **npm** (Node, 2010).
 - **Maven Central** (Java, 2002) — declarative dependency management for the JVM.
 - **Nix** (Dolstra, 2003) — content-addressed derivations. Ahead of its time; ecosystem catches up in the 2020s.
 
-### What Mo takes
+## What Mo takes
 
 - **Design by Contract** — a first-class language feature, not annotations ([[d02-spec-altitude]], [[d03-source-carries-its-evidence]]).
 - **Actors + supervisors** — Erlang's crash-and-restart model, minus BEAM ([[d08-beam-qualities-without-the-beam]], [[d12-concurrency-at-the-edges]]).
 - **Type classes / traits** — Wadler & Blott's principled polymorphism, now Rust traits.
 - **Package manager from day one** — Cargo (2014) will show what this looks like done right; Mo commits to the same discipline ([[d34-packages-are-recipes]]).
 
-### What Mo refuses
+## What Mo refuses
 
 - **Class-based OO** — Simula's legacy. [[d06-never-oop]].
 - **Laziness by default** — Haskell's genius trap.
 - **Late binding as core** — Smalltalk's escape hatch turned into runtime instability.
 - **Kitchen-sink standard libraries** — C++, Perl, Common Lisp all suffered.
-
-## Related
-
-- [[plang-history-lambda-to-1970s]]
-- [[plang-history-2010-to-2026]]
-- [[plang-design-camps]]
-- [[cpp]] · [[java]] · [[python]] · [[javascript]] · [[haskell]] · [[erlang]] · [[ml]]
 
 ## Sources
 
@@ -100,3 +96,11 @@ Three decades in which language design became an *industrial* activity, not just
 - [Peyton Jones, "A History of Haskell: Being Lazy with Class"](https://simon.peytonjones.org/assets/pdfs/haskell-being-lazy-with-class.pdf)
 - [Stroustrup, HOPL-II C++ paper](https://www.stroustrup.com/hopl2.pdf)
 - [Eiffel: Design by Contract](https://en.wikipedia.org/wiki/Design_by_contract)
+
+
+## Related
+
+- [[plang-history-lambda-to-1970s]]
+- [[plang-history-2010-to-2026]]
+- [[plang-design-camps]]
+- [[cpp]] · [[java]] · [[python]] · [[javascript]] · [[haskell]] · [[erlang]] · [[ml]]

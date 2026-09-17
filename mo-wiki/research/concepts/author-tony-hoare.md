@@ -1,7 +1,7 @@
 ---
 title: "Author: Tony Hoare (CSP, Algol W, Hoare logic)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, verification, processes]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -34,7 +34,7 @@ Security as a language property, checks always on. "A consequence of this princi
 
 Null references. "This led me to suggest that the null value is a member of every type, and a null check is required on every use of that reference variable, and it may be perhaps a billion dollar mistake." ([Null References: The Billion Dollar Mistake, QCon 2009](https://www.infoq.com/presentations/Null-References-The-Billion-Dollar-Mistake-Tony-Hoare/)) He assigns the blame to designers: "A programming language designer should be responsible for the mistakes made by programmers using the language." ([InfoQ](https://www.infoq.com/presentations/Null-References-The-Billion-Dollar-Mistake-Tony-Hoare/))
 
-CSP, with its limits stated. "This paper suggests that input and output are basic primitives of programming and that parallel composition of communicating sequential processes is a fundamental program structuring method." ([CSP, 1978](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)) The published model is synchronous and static: "There is no automatic buffeting", and "it is consequently a rather static language: The text of a program determines a fixed upper bound on the number of processes operating concurrently; there is no recursion and no facility for process-valued variables." He also names the gap: "it fails to suggest any proof method to assist in the development and verification of correct programs." ([CSP](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf))
+CSP, with its limits stated. "This paper suggests that input and output are basic primitives of programming and that parallel composition of communicating sequential processes is a fundamental program structuring method." ([CSP, 1978](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)) The published model is synchronous and static: "There is no automatic buffering" (the raw extract's "buffeting" corrected here, 17 Sep 2026), and "it is consequently a rather static language: The text of a program determines a fixed upper bound on the number of processes operating concurrently; there is no recursion and no facility for process-valued variables." He also names the gap: "it fails to suggest any proof method to assist in the development and verification of correct programs." ([CSP](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf))
 
 A verifying compiler as a separate instrument. "A verifying compiler uses mathematical and logical reasoning to check the correctness of the programs that it compiles," and "The verifying compiler does not itself have to be verified, though it would be desirable to do so, at least partially." ([The Verifying Compiler, 2003](https://www.csl.sri.com/users/shankar/GC04/hoare-compiler.pdf))
 
@@ -53,6 +53,8 @@ A verifying compiler as a separate instrument. "A verifying compiler uses mathem
 | Intent expressible below the signature, not only at it | [[d02-spec-altitude]] | contradicts Mo |
 | A published "what this model does not solve" section, as CSP has | [[d19-negative-space-is-the-contract]] | new idea for Mo |
 
+17 Sep 2026: the intent-below-the-signature row was ruled **already in Mo** on 13 Sep. His inefficiency objection was also measured: contract cost was re-measured at step 21 and the derived deadline shipped at step 22. See [[research-agenda-2026-09-response]].
+
 ## Related
 
 - [[d32-proving-is-a-separate-tool]]
@@ -62,3 +64,4 @@ A verifying compiler as a separate instrument. "A verifying compiler uses mathem
 - [[prompts-research-agenda-2026-09]]
 - [[author-edsger-dijkstra]]
 - [[author-niklaus-wirth]]
+- [[research-agenda-2026-09-response]]

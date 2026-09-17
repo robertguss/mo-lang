@@ -1,7 +1,7 @@
 ---
 title: "Author: Brian Kernighan (Unix tools, AWK, The Practice of Programming)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, philosophy, tooling]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -16,7 +16,7 @@ Kernighan is the field's best writer about programming practice and its most eff
 
 "C is the best balance I've ever seen between power and expressiveness." ([Interview with Brian Kernighan, 2000](https://ioi.di.unimi.it/kernighan.php))
 
-"I think that the real problem with C is that it doesn't give you enough mechanisms for structuring really big programs, for creating ``firewalls'' within programs so you can keep the various pieces apart." ([Interview, 2000](https://ioi.di.unimi.it/kernighan.php))
+"I think that the real problem with C is that it doesn't give you enough mechanisms for structuring really big programs, for creating “firewalls” within programs so you can keep the various pieces apart." ([Interview, 2000](https://ioi.di.unimi.it/kernighan.php))
 
 "C++ I think is basically too big a language, although there's a reason for almost everything that's in it." ([Interview, 2000](https://ioi.di.unimi.it/kernighan.php))
 
@@ -52,6 +52,8 @@ Mo's laws are unoverridable compiler errors. Kernighan's Pascal essay is the can
 | Show the plausible-but-wrong version and label it wrong | [[q09-compiler-diagnostics]] | new idea for Mo |
 | Limbo's removal list as precedent for Mo's negative space | [[d06-never-oop]] | already in Mo |
 
+17 Sep 2026: the escape-hatch row was ruled **disagree** on 13 Sep — it is Robert's call, recorded on [[q16-escape-hatch|Q16]]. See [[research-agenda-2026-09-response]].
+
 ## Related
 
 - [[q16-escape-hatch]]
@@ -61,3 +63,4 @@ Mo's laws are unoverridable compiler errors. Kernighan's Pascal essay is the can
 - [[prompts-research-agenda-2026-09]]
 - [[author-dennis-ritchie]]
 - [[author-rob-pike]]
+- [[research-agenda-2026-09-response]]

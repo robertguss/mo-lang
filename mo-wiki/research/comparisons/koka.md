@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Koka"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, effects, performance]
 sources: [raw/articles/koka-book.md, raw/articles/koka-release-v3-2-3.md, raw/papers/perceus-reference-counting-with-reuse.md, raw/papers/fp2-fully-in-place-functional-programming.md, raw/papers/generalized-evidence-passing-effect-handlers.md, raw/papers/effects-as-capabilities-oopsla20.md, raw/papers/effects-capabilities-boxes-oopsla22.md, raw/papers/capabilities-effects-for-free-icfem18.md]
@@ -27,6 +27,8 @@ Koka describes itself as "a strongly typed functional-style language with effect
   ```
   - *Mo today:* no effect types. A function is pure unless it takes a capability parameter ([[d15-effects-via-capabilities|direction 15]]).
   - *Verdict:* **reject** effect rows, as already decided. **Open:** Koka's `div` makes *non-termination* visible. Mo's loops are bounded ([[p11-loops-and-anonymous-functions|pick 11]]), but nothing yet says whether recursion is bounded.
+
+  Answered since: chapter 2 bounds recursion at depth 10,000 and then crashes (`spec/design-v0/02-laws.md`).
 
 - **Effect handlers: control flow as a library.** An operation is declared abstractly, and a handler in scope gives it meaning. That makes exceptions, async/await and probabilistic programs user libraries.[45]
   ```koka
@@ -60,6 +62,8 @@ Koka describes itself as "a strongly typed functional-style language with effect
   - *Mo today:* direct-style I/O on green threads ([[d16-direct-style-io|direction 16]]), emitted as C through Zig ([[d24-compile-to-c-via-zig|direction 24]]).
   - *Verdict:* **open.** Mo needs *some* way to suspend and resume in C: stack switching, segmented stacks, or a Koka-style translation. The choice is unmade and belongs in the benchmark suite.
 
+  Answered since (17 Sep 2026): green threads shipped at step 21.
+
 ## What it gives up
 
 - **Readable signatures.** The Effekt authors say effect systems "track too much information. Types quickly become verbose, difficult to understand".[51] Mo does not accept this cost, but see the closure gap below.
@@ -76,13 +80,20 @@ Koka describes itself as "a strongly typed functional-style language with effect
 
 ## What Mo should take from this
 
-- ⚠️ **Contradicts the wording of [[d15-effects-via-capabilities|direction 15]] ("the signature is the purity proof").** An anonymous function can capture a capability. So `xs.filter(fn(r) db.exists?(r, within: 50.ms) end)` does I/O, while `filter`'s signature holds no capability.[51] Three known ways out, none resolved here:
+- ⚠️ **Contradicts the wording of [[d15-effects-via-capabilities|direction 15]] ("the signature is the purity proof").** An anonymous function can capture a capability. So `xs.filter(fn(r) db.exists?(r, within: 50.ms) end)` does I/O, while `filter`'s signature holds no capability.[51] Three known ways out, none resolved here.
+
+  Answered since (17 Sep 2026): taken as [[d31-effects-never-hide-in-a-value]], and its cost measured in [[closure-audit-2026-09-14]].
+
   - (a) Capabilities are second-class and can't be captured, stored, or returned.[51] This conflicts with narrowing, `fs.scoped(...)` in [[p13-capabilities-and-logging|pick 13]].
   - (b) A function *type* marks that it captures capabilities, like System C's boxes.[51]
   - (c) Anonymous functions alone may not capture capabilities. This is Mo-specific and untested.
 - **Question for Robert:** recursion. Ban it (Power of Ten, rule 1), bound it, or allow it? Koka shows that otherwise non-termination is an effect you can't see.
+
+  Answered since (17 Sep 2026): bounded — depth 10,000, then a crash (`spec/design-v0/02-laws.md`).
 - **Proposal:** a checkable "allocates nothing, constant stack" property on chosen functions, in the `fip` style,[48] run as a tier-1 check ([[q08-verification-tiers|Q8]]).
 - **Proposal (hypothesis):** give each process its own heap region, so a crash frees the region whole. The crash is the one exit Perceus's explicit-control-flow precondition doesn't cover.[47] Measure it under [[d28-nothing-final-until-measured|direction 28]].
+
+  Answered since (17 Sep 2026): built at step 12 — each process has its own region and address reservation.
 - **Proposal:** before committing [[d16-direct-style-io|direction 16]]'s suspension strategy in C, prototype two options (stack switching, and a Koka-style translation)[49] and benchmark them.
 - **Confirmed, no change:** no effect handlers in user code. A handler for failure is a catch, and [[d18-two-kinds-of-failure|direction 18]] forbids that.
 
@@ -95,6 +106,8 @@ Koka describes itself as "a strongly typed functional-style language with effect
 - [[d24-compile-to-c-via-zig]]
 - [[p13-capabilities-and-logging]]
 - [[roc]]
+- [[d31-effects-never-hide-in-a-value]]
+- [[closure-audit-2026-09-14]]
 
 ## Sources
 

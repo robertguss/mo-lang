@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-09-16
+updated: 2026-09-17
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -14,7 +14,7 @@ confidence: medium
 
 ## What it is (status as of Sep 2026)
 
-Elixir is a dynamically typed functional language on the Erlang VM, used by companies such as Discord and PepsiCo.[4] Elixir v1.20 shipped on 3 June 2026 and type checks every program by inference, with no annotations.[1] The type system came out of a partnership between CNRS and Remote. Its development is now sponsored by Fresha and Tidewave.[1] The theory is in two papers by Castagna, Duboc and Valim.[3][4] User-written type signatures are not in yet, and the team gates them on unsolved performance and research problems.[1] Admiration is high: 66% in the 2025 Stack Overflow survey, third behind Rust and Gleam.[10]
+Elixir is a gradually typed functional language on the Erlang VM (v1.20; corrected 17 Sep 2026), used by companies such as Discord and PepsiCo.[4] Elixir v1.20 shipped on 3 June 2026 and type checks every program by inference, with no annotations.[1] The type system came out of a partnership between CNRS and Remote. Its development is now sponsored by Fresha and Tidewave.[1] The theory is in two papers by Castagna, Duboc and Valim.[3][4] User-written type signatures are not in yet, and the team gates them on unsolved performance and research problems.[1] Admiration is high: 66% in the 2025 Stack Overflow survey, third behind Rust and Gleam.[10]
 
 ## The ideas, one by one
 
@@ -91,6 +91,7 @@ Hermes, 2026-09-16: [[hermes-daily-2026-09-16]] distinguishes the versioned Elix
 - [[q07-process-api]]
 - [[q09-compiler-diagnostics]]
 - [[q01-comments]]
+- [[erlang]]
 
 ## Sources
 

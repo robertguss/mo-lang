@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Motoko"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, processes, agents]
 sources: [raw/research-runs/emerging_languages_2022_2026.md, raw/articles/motoko-actors-async.md, raw/articles/icp-inter-canister-calls.md, raw/articles/motoko-upgrade-compatibility.md, raw/articles/motoko-changelog.md, raw/articles/motoko-github-repo.md, raw/articles/caffeine-how-it-works.md, raw/articles/venturebeat-caffeine-launch.md, raw/articles/motoko-book-async.md, raw/articles/motoko-docs-home.md]
@@ -32,6 +32,8 @@ Motoko is the language for Internet Computer "canisters", now maintained at `caf
   ```
   (Illustrative, following the documented rules.)
   - *Mo today:* a crash restarts the process ([[d18-two-kinds-of-failure|direction 18]]). [[verse]] proposes that `update` should discard state writes and queued effects on a crash.
+
+  Answered since (17 Sep 2026): built — steps 4 and 18.
   - *Verdict:* **steal as evidence.** A production platform already reverts state *and* revokes sends per message. **But** in Motoko every suspension is a commit point, which bears directly on Mo's direct-style calls (⚠️ below).
 
 - **Clean and non-clean rejects.** A failed call returns either a *clean* reject, meaning "the callee never executed the method. Safe to retry", or a *non-clean* reject, meaning "may or may not have executed. Use idempotent APIs". Calls can have a bounded wait with a timeout.[130] `try`/`catch` exists only for these messaging errors, and only in async code.[136]
@@ -66,9 +68,13 @@ Motoko is the language for Internet Computer "canisters", now maintained at `caf
 
 - **Evidence for [[verse]]'s proposal** (discard a crashed `update`'s state writes and queued effects): Motoko ships exactly that per message.[129]
 - ⚠️ **Tension between [[d16-direct-style-io|direction 16]] (direct-style I/O that suspends) and whole-`update` rollback.** In Motoko each suspension is a commit point, so a trap undoes only the work since the last `await`.[129] If `ask` or an effectful call inside `update` suspends, Mo must either commit there (as Motoko does) or buffer the whole message until it ends. Not resolved here.
+
+  Answered since (17 Sep 2026): chapter 3's failure model answers it (`spec/design-v0/03-semantics.md`).
 - **Proposal:** `ask` errors separate "never ran" from "outcome unknown", following the clean/non-clean reject distinction.[130]
 - **Question for Robert:** is a destructive change to a process's `state` block a shape change that needs a migration and a human ([[d20-human-pulled-in-when-shape-changes|direction 20]])? Motoko and Caffeine reject such upgrades by default.[131][134]
 - **Question for Robert:** when an `ask`'s target process crashes, does the caller get rain (Motoko's reject)? And is that consistent with [[d18-two-kinds-of-failure|direction 18]], given the bug stays the callee's?[130][136]
+
+  Answered since (17 Sep 2026): chapter 3 answers it — a restart clears the mailbox and reruns the state initializers (`spec/design-v0/03-semantics.md`).
 - **Proposal:** [[q07-process-api|Q7]] states the ordering guarantee: in send order per sender, none across senders.[136]
 
 ## Related

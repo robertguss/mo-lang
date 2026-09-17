@@ -1,7 +1,7 @@
 ---
 title: "Ecosystem strategy: the stdlib, kits, and the registry"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, stdlib, security, roadmap]
 sources: [raw/research-runs/ecosystem-stdlib-platform-depth.pplx.md, raw/research-runs/mo-parallel-tracks-brief-2-ecosystem.pplx.md, spec/design-v0/09-stdlib.md, plans/program-4.md]
@@ -11,6 +11,10 @@ confidence: medium
 # Ecosystem strategy: the stdlib, kits, and the registry
 
 Fable's reading of the session 6 deep run on ecosystems, as an answer to [[q11-platform-and-stdlib|Q11]]: what Mo ships first-party, what it ships as recipes, and what it never ships. Held against what the stdlib holds today after step 20.
+
+`confidence: medium` because the run is one deep-research pass and the "Mo today" column is a snapshot, not a measurement.
+
+17 Sep 2026: the "Mo today" column below predates steps 21 to 34 and is stale in several rows; the TLS and crypto steps named at the end never happened — they are inside the bricks page instead.
 
 ## Three findings the run rests on
 
@@ -64,3 +68,5 @@ Checksums and trusted publishing from day one and not optional, as Go did; a rec
 - [[program-4]]
 - [[outside-review-2026-09-13-response]]
 - [[prompts-mo-parallel-tracks]]
+- [[q17-package-management-and-supply-chain]]
+- [[d35-mo-is-an-ecosystem]]

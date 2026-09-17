@@ -1,7 +1,7 @@
 ---
 title: "Author: Edsger Dijkstra (structured programming, guarded commands)"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, verification, philosophy]
 sources: [raw/research-runs/2026-09-13-authors-the-elders.pplx.md]
@@ -56,6 +56,8 @@ Mo's tier-2 verified line is computed from tests, contracts and properties; Dijk
 | Explore all admissible interleavings, not one seed | [[q08-verification-tiers]] | new idea for Mo |
 | Contracts must carry the body's whole obligation, since small edits are not small | [[d02-spec-altitude]] | strengthens Mo |
 
+17 Sep 2026: the fake-bound row is answered — [[interpreter-step-20|step 20]] removed the fictional loop bounds, and the numeric shape laws became project settings on 14 Sep. Ruled 13 Sep in [[research-agenda-2026-09-response]].
+
 ## Related
 
 - [[q08-verification-tiers]]
@@ -65,3 +67,5 @@ Mo's tier-2 verified line is computed from tests, contracts and properties; Dijk
 - [[prompts-research-agenda-2026-09]]
 - [[author-tony-hoare]]
 - [[author-niklaus-wirth]]
+- [[interpreter-step-20]]
+- [[research-agenda-2026-09-response]]

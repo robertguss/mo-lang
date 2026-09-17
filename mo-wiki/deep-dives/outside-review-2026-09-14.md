@@ -1,7 +1,7 @@
 ---
 title: "Outside review, 14 Sep 2026: a deep review of Mo after round 6"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-17
 type: deep-dive
 tags: [meta, laws, processes, verification, roadmap, security]
 sources: [decisions/decision-log.md, plans/control-run-6.md, spec/design-v0/02-laws.md]
@@ -10,7 +10,7 @@ contested: true
 contradictions: [outside-review-2026-09-14-response]
 ---
 
-# Outside review, 14 Sep 2026
+# Outside review, 14 Sep 2026: a deep review of Mo after round 6
 
 Robert ran an outside review of the whole vault after round 6 and pasted it to Fable on 14 Sep 2026 in the afternoon. Filed verbatim below; Fable's reaction is [[outside-review-2026-09-14-response]]. The reviewer read the vault as it stood before step 27 and before Robert's reframing of the control run, so several of its recommendations were already built or decided when it arrived; the response says which.
 

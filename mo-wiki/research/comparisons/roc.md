@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Roc"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, runtime, compiler]
 sources: [raw/articles/feldman-roc-rust-to-zig.md, raw/articles/roc-platform-template-main-roc.md, raw/articles/roc-platform-template-rust.md, raw/articles/roc-mini-tutorial-new-compiler.md, raw/articles/roc-functional.md, raw/articles/roc-langref-functions.md, raw/articles/roc-langref-static-dispatch.md, raw/articles/roc-langref-expressions.md]
@@ -51,6 +51,8 @@ Roc is a pure functional language with automatic memory management through refer
   - *Mo today:* the interpreter is a dev tool, never shipped ([[d25-interpreter-for-the-edit-loop|direction 25]]). [[steal-list]] says "leave hot reload".
   - *Verdict:* **open.** Hot loading that exists only in development could fall out of the direction-25 interpreter at no release cost.
 
+  Answered since (17 Sep 2026): recorded as [[d39-hot-code-reload]]; nothing has been built, deliberately.
+
 ## What it gives up
 
 - **Effect polymorphism.** Higher-order helpers come in pure and `!` pairs.[40] Mo avoids this through closure capture, at a cost to purity reasoning ([[koka]]).
@@ -81,6 +83,8 @@ Everything below comes from Feldman's July 2026 retrospective.[35] An incrementa
 - **Proposal:** from day one, pointer-free, index-based compiler data with a load-without-parsing disk cache ([[d23-compile-speed-first-class|direction 23]]). Also cache test outcomes by hash ([[p12-tests|pick 12]]), which Roc already does per file.
 - **Question for Robert:** keep named traits with `impl … for`, or take Roc's per-method `where` with methods only in the type's block? The second removes the coherence question and loses impls on types you don't own.
 - **Question for Robert:** hot code loading in development only, served by the direction-25 interpreter, or stay with the steal list's "leave hot reload"?
+
+  Answered since (17 Sep 2026): [[d39-hot-code-reload]] holds the answer; nothing built yet, deliberately.
 - **Proposal:** evaluate pure top-level constants at compile time, and treat a crash there as a compile error.[40]
 
 ## Related
@@ -92,6 +96,7 @@ Everything below comes from Feldman's July 2026 retrospective.[35] An incrementa
 - [[d15-effects-via-capabilities]]
 - [[p15-methods-traits-generics]]
 - [[rust]]
+- [[d39-hot-code-reload]]
 
 ## Sources
 

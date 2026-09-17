@@ -1,7 +1,7 @@
 ---
 title: "The case against new languages"
 created: 2026-09-12
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, agents, philosophy]
 sources: [raw/research-runs/llm-authored-programming-languages.pplx.md, raw/articles/ronacher-a-language-for-agents-2026.md, raw/articles/anup-markov-cold-start.md, raw/papers/codeact-executable-code-actions.md, raw/papers/syncode-grammar-augmentation.md]
@@ -11,6 +11,8 @@ confidence: medium
 # The case against new languages
 
 **The null hypothesis the v0 design doc must answer:** agents would do as well or better writing an *existing* language, with better tooling and checks around it, than writing Mo. This page states that case as strongly as the evidence allows. It carries **no verdict**. It is a follow-up from [[landscape-second-lane]] and the counterweight to [[d01-agents-write-the-code|direction 1]].
+
+`confidence: medium` because the case rests on one deep run and a handful of self-reported persona runs, none of them replicated.
 
 ## The case, piece by piece
 
@@ -41,6 +43,8 @@ These are the arguments Mo would lean on, not a rebuttal.
 
 ## What Mo would have to show to beat this
 
+17 Sep 2026, what has run since: the measure below was superseded on 14 Sep by [[d43-five-measurements]] — reliability under a hidden suite, native speed and memory, the loop, and dependencies — and ten rounds have run on it ([[the-rounds]]). The Quasar-style subset control is still unrun.
+
 - **Beat the baseline, not a strawman.** On the program menu ([[program-menu]]), agents writing Mo must beat agents writing a mainstream language (Go, or TypeScript, the strongest in VeraBench)[137] given the *same* checks: contracts via a verifier, tests, and linters. Measure time to green, defects found later, and human review minutes ([[d28-nothing-final-until-measured|direction 28]]).
 - **Guarantees that can't be retrofitted.** A property an existing language can't enforce even with a Quasar-style subset or tooling, and that shows up in the measurement: capabilities as package permissions, no try/catch, bounded everything.
 - **A spec altitude a human can actually use.** The claim that humans read contracts and `never` clauses instead of bodies ([[d02-spec-altitude|direction 2]]) needs a timed reading study, not an assertion.
@@ -60,15 +64,6 @@ The agent-authoring deep run states the counter-position at its strongest, Pytho
 
 Absent one of the four, the run says, the counter-position stands. Mo's next four programs are one attempt at each.
 
-## Related
-- [[landscape-second-lane]]
-- [[d01-agents-write-the-code]]
-- [[d28-nothing-final-until-measured]]
-- [[moonbit]]
-- [[agent-native-cluster]]
-- [[program-menu]]
-- [[comparison-synthesis-draft]]
-
 ## Sources
 
 [90] https://arxiv.org/abs/2606.16827 — No Resource, No Benchmarks, No Problem? Evaluating and Improving LLMs for Code Generation in No-Resource Languages (accepted IEEE TSE)
@@ -78,3 +73,14 @@ Absent one of the four, the run says, the counter-position stands. Mo's next fou
 [139] https://www.anup.io/til-markov-language — TIL: Markov language, and the cold-start problem (anup.io)
 [140] https://arxiv.org/abs/2402.01030 — Executable Code Actions Elicit Better LLM Agents (CodeAct)
 [141] https://arxiv.org/abs/2403.01632 — SynCode: LLM Generation with Grammar Augmentation
+
+## Related
+- [[landscape-second-lane]]
+- [[d01-agents-write-the-code]]
+- [[d28-nothing-final-until-measured]]
+- [[moonbit]]
+- [[agent-native-cluster]]
+- [[program-menu]]
+- [[comparison-synthesis-draft]]
+- [[d43-five-measurements]]
+- [[the-rounds]]

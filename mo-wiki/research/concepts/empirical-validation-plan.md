@@ -1,7 +1,7 @@
 ---
 title: "Empirical validation plan: how Mo gets judged"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: concept
 tags: [research, agents, verification, roadmap]
 sources: [raw/research-runs/empirical-validation-agent-language.pplx.md, raw/research-runs/mo-parallel-tracks-brief-1-empirical.pplx.md, raw/research-runs/agent-authoring-research-frontier.pplx.md, plans/control-run-4.md]
@@ -18,7 +18,9 @@ A new language starts in the no-resource tier: on the one benchmark that transla
 
 ## What the control runs are, and are not
 
-The control run is the run's Experiment 1, the null hypothesis, at the smallest possible scale: one task, one model, three languages, four rounds. It has already produced the two numbers that matter, that Mo takes about 1.75 times Go's wall-clock and that Mo's checks caught a real bug in one round out of four. It fails every threat-to-validity test the run lists: one task, so no power; the same model each time, so contamination across rounds (the spec is read for the fourth time); Fable grades its own experiment; nothing is pre-registered; tokens are not counted; and the Go and Python baselines carry no bolted-on checks beyond vet and mypy. The run's reference precedent for what happens to unreplicated language claims is the 2019 reanalysis that found the practical effect of language on defects "exceedingly small" once an outside group redid the work.^[raw/research-runs/empirical-validation-agent-language.pplx.md]
+The control run is the run's Experiment 1, the null hypothesis, at the smallest possible scale: one task, one model, three languages, four rounds. It has already produced the two numbers that matter, that Mo takes about 1.75 times Go's wall-clock and that Mo's checks caught a real bug in one round out of four.
+
+17 Sep 2026, what has run since: ten rounds against four languages (Go, Python, Elixir, and Mo), and agent time was dropped as a measure on 14 Sep. It fails every threat-to-validity test the run lists: one task, so no power; the same model each time, so contamination across rounds (the spec is read for the fourth time); Fable grades its own experiment; nothing is pre-registered; tokens are not counted; and the Go and Python baselines carry no bolted-on checks beyond vet and mypy. The run's reference precedent for what happens to unreplicated language claims is the 2019 reanalysis that found the practical effect of language on defects "exceedingly small" once an outside group redid the work.^[raw/research-runs/empirical-validation-agent-language.pplx.md]
 
 ## What Mo can run now, in order of cost
 
@@ -33,6 +35,8 @@ The control run is the run's Experiment 1, the null hypothesis, at the smallest 
 | E3, maintainability | 32 developers, six months | not before a public Mo |
 
 ## What changes because of this page
+
+17 Sep 2026: this programme was replaced. Rounds 5 to 10 ran on the measure of [[d43-five-measurements]] — reliability, speed and memory, the loop, and dependencies — and E7, the feature ablation, never ran.
 
 - Round 5 is pre-registered: thresholds written on its plan page before it runs, following the run's committed shape (success at least 5 points higher, defects at least 15 percent lower, iterations no more than 15 percent higher, all three or it is "mixed").
 - Every round records tokens per attempt and separates the amortized preamble from the marginal task cost, as the run's Experiment 6 does.
@@ -49,3 +53,7 @@ The control run is the run's Experiment 1, the null hypothesis, at the smallest 
 - [[research-summary-2026-09]]
 - [[language-design-for-llms-evidence]]
 - [[prompts-mo-parallel-tracks]]
+- [[erosion-round]]
+- [[bodies-as-cache]]
+- [[sampling-as-verification]]
+- [[d43-five-measurements]]

@@ -1,10 +1,11 @@
 ---
 title: "Q13: Implementation language for the Mo toolchain"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: question
 tags: [compiler, tooling]
 sources: [raw/notion/open-questions-2026-09-12.md]
+contradictions: [plang-decision-matrix, plang-mo-synthesis, plang-implementation-menu, plang-design-camps, plang-landscape-2026]  # the 13 Sep research syntheses describe a hypothetical Mo this page decided against
 number: 13
 status: answered
 answer: in

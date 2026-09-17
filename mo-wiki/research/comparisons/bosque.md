@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Bosque"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, laws, verification]
 sources: [raw/articles/bosquecore-repo.md, raw/articles/bosque-microsoft-archived-repo.md, raw/papers/regularized-programming-bosque-2019.md, raw/papers/toward-programming-languages-for-reasoning.md, raw/papers/toward-programming-languages-for-reasoning-part2.md, raw/articles/bosque-go-for-1-0.md, raw/articles/bosque-no-gc-has-gone-2026.md, raw/articles/bosquecore-discussion-66-status.md, raw/papers/catalpa-gc-bosque.md]
@@ -30,6 +30,8 @@ Bosque started at Microsoft Research in 2019 as "an experiment in regularized de
   ```
   - *Mo today:* bounded `for x in xs` loops and anonymous `fn(r) … end` ([[p11-loops-and-anonymous-functions|pick 11]]).
   - *Verdict:* **open.** Mo kept loops; see the ⚠️ below. **Steal** the lambda rule: it gives the closure-capture gap on [[koka]] a working precedent.
+
+  Answered since (17 Sep 2026): it became [[d31-effects-never-hide-in-a-value|d31]], measured in [[closure-audit-2026-09-14]].
 
 - **Referential transparency and full determinism.** Only primitive-like "key types" support equality, so no aliasing enters reasoning.[95] Under-specified behaviour, such as sort stability and map enumeration order, is removed, because it makes tests flaky and behaviour hard to follow.[95]
   - *Mo today:* values only, and processes are the only identity ([[d13-local-var-and-inout|direction 13]], [[d14-processes-are-the-only-identity|direction 14]]). Crashes replay from seed plus message log ([[d21-autonomous-crash-fixing|direction 21]]).
@@ -66,6 +68,8 @@ Bosque started at Microsoft Research in 2019 as "an experiment in regularized de
 
 - ⚠️ **Tension between [[p11-loops-and-anonymous-functions|pick 11]] (bounded `for` loops) and [[q08-verification-tiers|Q8]] (tier 3 discharges `requires` / `ensures` / `never`).** Bosque removed loops precisely because "generalized technique[s]" for loop invariants are impossible.[95] Mo keeps loops, so tier 3 must (a) have agents write loop invariants, (b) bound loop unrolling and settle for small-model checks, or (c) move to functors. The SPARK/Dafny comparison (next page) should report how well LLMs write invariants. Not resolved here.
 - **Proposal:** Bosque's lambda rule for Mo anonymous functions: never stored or returned, captures read-only.[95] A capability captured by such a lambda can't outlive the call, so the enclosing signature still bounds its effects. That is option (c) on [[koka]], with a precedent.
+
+  Answered since (17 Sep 2026): taken, as [[d31-effects-never-hide-in-a-value|d31]].
 - **Proposal:** a determinism law for the stdlib: stable sort, defined map iteration order, and no environment reads outside capabilities.[95] It is required for replay ([[d21-autonomous-crash-fixing|direction 21]]).
 - **Question for Robert:** add a spec-only contract kind that is proved or sampled in tier 3 but never run at runtime? The base example's `never` over all refunds needs one.[95]
 - **Proposal:** define tier 3 as small-model counterexample search over a decidable fragment.[92][95] It keeps `proofs(k of n)` honest.
@@ -80,6 +84,8 @@ Bosque started at Microsoft Research in 2019 as "an experiment in regularized de
 - [[p08-contracts]]
 - [[koka]]
 - [[austral]]
+- [[d31-effects-never-hide-in-a-value]]
+- [[closure-audit-2026-09-14]]
 
 ## Sources
 

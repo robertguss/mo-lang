@@ -1,12 +1,13 @@
 ---
 title: "Outside review, 13 Sep 2026: what to keep, revise, drop"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [philosophy, laws, meta, agents, processes, verification]
 sources: [spec/design-v0, decisions/decision-log.md, plans/control-run-2.md, examples/programs/kv, toolchain/src]
 confidence: medium
 contested: true
+contradictions: [outside-review-2026-09-13-response]
 ---
 
 # Outside review, 13 Sep 2026: what to keep, revise, drop

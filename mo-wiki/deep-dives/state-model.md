@@ -1,7 +1,7 @@
 ---
 title: "State model"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: deep-dive
 tags: [state, processes]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -39,7 +39,7 @@ For an agent reasoning over a context window, each one means "you must read code
 - `var x` is rebinding that reaches inside a value; identical to `x = x.with(i, v)` observably, in-place on the machine.
 - **Rule:** a `var` can never be aliased: no references, cannot be sent to a process, cannot be captured by an escaping closure. Passed to a function it is either copied or declared `inout` (caller's name inaccessible until return; mutation visible in the signature).
 - **Unlocks:** loops with accumulators in the form models generate reliably (folds are where off-by-one bugs cluster); in-place algorithms (sort, sieve, DP tables, parser cursors); guaranteed in-place memory rather than hoping Perceus proves uniqueness (Roc's gap); honest mutation via `inout`.
-- **Costs:** `let` and `var` are two forms; agents may overuse `var`; `inout` rules must be taught well.
+- **Costs:** bare `x = …` and `var` are two forms ([[p03-bindings|pick 3]]; corrected 17 Sep 2026, the page predates the pick); agents may overuse `var`; `inout` rules must be taught well.
 - **Fit:** a `var` lives and dies in one call, never becomes identity. Model unchanged: values immutable and unaliased, processes the only identity.
 
 ## Related

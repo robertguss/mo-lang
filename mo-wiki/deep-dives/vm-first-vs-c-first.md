@@ -1,7 +1,7 @@
 ---
 title: "VM-first vs C-first for the Mo runtime"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [runtime, compiler, performance, agents]
 sources: [spec/design-v0/07-toolchain.md, spec/design-v0/03-semantics.md, toolchain/src/vm.zig, toolchain/runtime/mo_rt.c]
@@ -154,9 +154,13 @@ Each row: what it is in one line, what it would give Mo, what Mo has toward it t
 
 **Today.** Crash reports, structured diagnostics, MCP-over-toolchain for edits. No `mo attach pid 1234`.
 
+17 Sep 2026: built — the runtime surface over HTTP answers exactly these queries (step 23, step 32).
+
 **Cost.** Modest. A few percent overhead when active. Protocol design is straightforward.
 
 **For Mo.** Almost certainly worth building. Belongs in the VM. Covered separately in [[d37-runtime-mcp-surface|d37]].
+
+17 Sep 2026: built, at steps 23 and 32.
 
 ## Where Mo actually sits
 

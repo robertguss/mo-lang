@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Hylo"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, state, types]
 sources: [raw/articles/hylo-introduction.md, raw/articles/hylo-tour-functions.md, raw/articles/hylo-tour-bindings.md, raw/articles/hylo-tour-subscripts.md, raw/articles/hylo-tour-concurrency.md, raw/articles/hylo-spec-trait-conformance.md, raw/articles/hylo-new-compiler-repo.md, raw/articles/hylo-compiler-repo.md, raw/papers/implementation-strategies-mutable-value-semantics-jot22.md, raw/papers/native-implementation-mutable-value-semantics.md]
@@ -41,6 +41,8 @@ Hylo "leverages mutable value semantics and generic programming for high-level s
   - *Mo today:* nothing comparable. Process `update` writes `state.count += 1` ([[p10-process|pick 10]]).
   - *Verdict:* **open.** Mo will need *some* in-place path into a big value, such as `state.jobs[id].attempts += 1` inside a queue process. Full user-defined subscripts are probably more than Mo wants.
 
+  Answered since (17 Sep 2026): in-place writes extend to nested field paths under any `var` (decision log, step 28).
+
 - **Coherence, stated in one paragraph.** "A type may have at most one source of conformance to a specific trait." A conformance may be exposed outside a module only if the type or the trait is declared there. A private conformance to an imported trait is fine.[71]
   ```hylo
   public type A {}
@@ -73,6 +75,8 @@ Hylo "leverages mutable value semantics and generic programming for high-level s
 - **Proposal:** adopt Hylo's coherence rule for Mo traits. At most one `impl` per type/trait pair. A `pub` impl only in the module of the type or the trait. Private impls allowed.[71] This closes the open question from [[rust]] and [[roc]] without Roc's loss of retroactive impls.
 - **Question for Robert:** mark mutation at the call site? The options are nothing (today's examples), Hylo's `&v`, or a word (`inout v`). An agent reading a call can then see which arguments change.
 - **Question for Robert:** allow nested place paths (`state.jobs[id].attempts += 1`) as Mo's only form of projection, with no user-defined subscripts?
+
+  Answered since (17 Sep 2026): yes — in-place writes on field paths under any `var`, no user-defined subscripts (decision log, step 28).
 - **Proposal:** no `sink` or `set` keywords. The compiler infers moves through Perceus. Count copies in the benchmark suite to check this ([[d28-nothing-final-until-measured|direction 28]]).
 - **Proposal:** add "overlapping `inout` access" as an error code with Hylo's example ([[q09-compiler-diagnostics|Q9]]).
 - **Proposal:** make `Task.run` structured: the task ends before its function returns.[70]

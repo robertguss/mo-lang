@@ -1,7 +1,7 @@
 ---
 title: "Comparison synthesis (draft)"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: concept
 tags: [research, meta]
 sources: [research/comparisons/elixir.md, research/comparisons/go.md, research/comparisons/rust.md, research/comparisons/roc.md, research/comparisons/koka.md, research/comparisons/austral.md, research/comparisons/hylo.md, research/comparisons/unison.md, research/comparisons/moonbit.md, research/comparisons/bosque.md, research/comparisons/spark-ada-and-dafny.md, research/comparisons/agent-native-cluster.md, research/comparisons/verse.md]
@@ -89,7 +89,7 @@ Collected from the pages, for Fable to order and ask **one at a time**.
 - Two versions of one package in a program? ([[unison]])
 - Launch-time capability grants on top of in-code narrowing? ([[agent-native-cluster]])
 
-**Plus a decision on each ⚠️ above.**
+17 Sep 2026: this list is stale — recursion, crash-and-restart, hot reload, and ship-an-agent are all settled, and the "Session 3 answers" below already decide several of the ⚠️ rows.
 
 ## Cross-cutting observations
 
@@ -102,7 +102,7 @@ Collected from the pages, for Fable to order and ask **one at a time**.
 ## Notes for Fable
 
 - All 13 pages are `confidence: medium`. The agent-native cluster page uses short per-language entries instead of the idea template, as the brief allowed.
-- The shared ledger `research/comparisons/.ledger.json` holds 124 sources, and ids were never renumbered. A few are uncited: fetches that returned junk were deleted before commit, including [36], [37] and [115]. Where a fetch cut off before a cited section, a `-part2` or section excerpt was saved to `raw/`.
+- The shared ledger `research/comparisons/.ledger.json` holds 152 sources, and ids were never renumbered. Three are uncited: [50], [55] and [87] — fetches that returned junk, deleted before commit. (Counted and corrected 17 Sep 2026.) Where a fetch cut off before a cited section, a `-part2` or section excerpt was saved to `raw/`.
 - Two pages were edited after they were first committed:
   - Roc: its effect-polymorphism line now points to the closure gap on Koka.
   - MoonBit: the IEEE TSE acceptance is marked as a secondary-source claim.

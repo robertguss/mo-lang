@@ -1,7 +1,7 @@
 ---
 title: "Compilation target and compile speed"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: deep-dive
 tags: [compiler, performance, runtime]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -15,11 +15,13 @@ sources: [raw/notion/design-journal-2026-09-12.md]
 3. **Compile to Rust:** tempting for Verus/Aeneas verification, but our semantics (value semantics, Perceus) fight the borrow checker and generated-Rust-that-doesn't-compile is a nightmare. **A trap.**
 4. **WebAssembly first:** sandboxing fits capabilities; not yet a home for green threads or native single binaries. Later.
 5. **Own bytecode VM:** the BEAM route. Off the table.
+
+17 Sep 2026: reversed — Mo's bytecode VM is the reference runtime, with the C backend checked against it ([[d36-vm-first-runtime|d36]]).
 Verification path is independent of target: SMT (Z3) talks to the compiler's own IR.
 ### Why Rust is slow (all design decisions, all avoidable)
 Monomorphization per concrete type; trait solver + borrow checker before codegen; proc macros run arbitrary code; crate as compilation unit; LLVM even on debug builds. Rust's 2026 roadmap fights all five for single-digit wins.
 ### Evidence it can be different
-- Roc rewrote 300K lines from Rust to Zig: incremental rebuilds 3.4s → 35ms (~100x).
+- Roc rewrote 300K lines from Rust to Zig: incremental rebuilds 3.4s → 35ms (~100x), but only on a Zig nightly on x86-64; the stable toolchain was 8.6 s (qualifier added 17 Sep 2026, from [[roc]]).
 - Zig: own x86 backend for debug builds (no LLVM), in-place incremental binary patching, sub-300ms rebuilds with C sources.
 - Unison: content-addressed functions compiled once per hash; test results cached by hash, never re-run unless a dependency changed.
 ### Levers for Mo (most already held)

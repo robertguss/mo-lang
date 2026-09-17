@@ -1,7 +1,7 @@
 ---
 title: "Mo vs aube"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: comparison
 tags: [research, security, tooling]
 sources: [raw/articles/aube-security-docs-2026-09-12.md]
@@ -15,7 +15,7 @@ confidence: medium
 ## What aube does, and the Mo verdict
 
 - **A defaults table with a boundary per check.** Every protection is listed with its default and whether it fails, warns, or needs opt-in; `paranoid: true` flips the whole strict bundle. Stable error codes (`ERR_AUBE_MALICIOUS_PACKAGE`, exit 48).[152]
-  - *Verdict:* **steal the form.** Mo's package chapter in `spec/design-v0.md` gets the same table, and the package manager's errors go in the [[q09-compiler-diagnostics|Q9]] error catalog. Mo's difference: agents are the caller, so every "prompt the human" row is "fail; a human overrides".
+  - *Verdict:* **steal the form.** Mo's package chapter in `spec/design-v0/06-packages.md` gets the same table, and the package manager's errors go in the [[q09-compiler-diagnostics|Q9]] error catalog. Mo's difference: agents are the caller, so every "prompt the human" row is "fail; a human overrides".
 - **Trust policy `no-downgrade`.** A version with weaker publishing evidence (staged approval > trusted publisher > provenance > none) than an earlier version is blocked. Versions already in the lockfile are trusted. A built-in list of 12 popular packages is exempted because their release process is inconsistent.[152]
   - *Verdict:* **steal, moved to the registry.** Mo's registry refuses the publish, so no client ever needs an exceptions list. The built-in exemptions are what a client-only policy costs. It joins Mo's rule that capability widening is a breaking change: *trust and capabilities are both monotone across versions unless a human says otherwise.*
 - **Release age gate.** 24 hours by default (3 days in their example), separate from a 30-day new-*name* quarantine. Non-strict mode falls back to the newest old-enough version; strict fails.[152]

@@ -1,24 +1,29 @@
 ---
 title: "Mo design decision matrix"
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 type: deep-dive
 tags: [history, research]
 sources:
   - "../raw/plang-history-2026-09/synthesis/decision_matrix.md"
+contested: true
+contradictions: [01-premise, d24-compile-to-c-via-zig, q13-implementation-language]
 ---
+# Mo design decision matrix
 
-### Headline
+> **17 Sep 2026.** This page is the 13 Sep synthesis of an external research run. The Mo it describes — brace syntax, effect rows, a Rust implementation, a package registry, an RFC process — was never Mo's design. Mo's decisions are the spec chapters under `spec/design-v0/` and the [[decision-log]]. Read this page as landscape only.
+
+## Headline
 
 A menu, not a set of pronouncements. Eighteen design axes, each with mainstream options and a defensible default for Mo. Every choice includes the strongest case for its exemplars — Robert's preferred comparison style — so a future contributor can weigh a divergent choice with the reasoning in hand. When a choice is locked in, the row should be marked **Chosen** with the corresponding RFC number.
 
-### How to read the matrix
+## How to read the matrix
 
 - **Implementation cost** is a rough Low/Medium/High engineering estimate for a small team on the existing Mo VM baseline.
 - **Reversibility** is how hard the choice is to change after Mo has users — Easy = one edition cycle; Medium = several years of migration; Hard = essentially a new language.
 - Each recommendation carries a brief rationale that ties it to [[plang-mo-synthesis]] and the underlying research.
 
-### The eighteen axes
+## The eighteen axes
 
 | # | Axis | Options considered | Mo direction | Rationale |
 |---|---|---|---|---|
@@ -41,7 +46,7 @@ A menu, not a set of pronouncements. Eighteen design axes, each with mainstream 
 | 17 | **Syntax family** | C-family curly, ML expression, Lisp S-expr, indentation, hybrid | C-family curly braces + expression-oriented semantics (Rust/Swift model); LL(1)/LALR(1); mandatory terminators; fixed operator precedence; canonical `mo fmt` | Grammar-constrained LLM decoding, tree-sitter, LSP all trivially implementable. |
 | 18 | **Verification integration** | None, refinement (SMT), dependent-adjacent, proof-first, hybrid staged, model checking | Hybrid: ordinary code type-checks; SMT-backed refinement types opt-in via annotations dispatched to Z3; `--verify` flag runs the SMT checks | Where Mo's central design bet — machine verification cheaper than novel syntax — cashes out. Verus/Dafny prior art. [[q08-verification-tiers]] |
 
-### Why the choices reinforce each other
+## Why the choices reinforce each other
 
 - **Type system + memory + effects**: refinement predicates over regions, affine handles as linear-typed capabilities, effect rows carrying capability parameters. Three features, one integrated system.
 - **Effects + concurrency + errors**: async is an effect; cancellation is an effect; errors are an effect. One handler mechanism, one mental model.
@@ -50,30 +55,18 @@ A menu, not a set of pronouncements. Eighteen design axes, each with mainstream 
 - **Bootstrapping + governance + stdlib**: small stdlib is BDFL-maintainable; self-hosting becomes tractable once type/effect system stabilizes; foundation eventually funds ongoing maintenance.
 - **Verification + agent authorship + editions**: editions let the verification vocabulary evolve without breaking verified code; agent-supplied annotations amortize verifier cost that would be prohibitive for humans.
 
-### Two provocative alternatives (from the raw)
+## Two provocative alternatives (from the raw)
 
 - **"Rust with better manifest security"** — Keep every Rust axis; move all innovation into supply-chain security (capability manifests, OIDC signing, release-age gates, default-off build scripts). Argument for: minimizes design risk, ships 1.0 faster, ports Rust's tooling knowledge. Argument against: gives up Mo's central bet that agent authorship inverts annotation economics.
 - **"Verus/Dafny-shaped, verify-heavy"** — Push further into verification: pure functional first (Roc/F* shape), refinement + dependent-adjacent types, SMT default-on, minimal core, every function contract-annotated. Argument for: maximum machine-verifiability. Argument against: verification cliff is real; risks becoming a research language.
 
 The recommended starting stack sits between them: strictly more security-first than crates.io, strictly less verification-heavy than F*/Dafny, coherent across all layers.
 
-### How to use this as a living document
+## How to use this as a living document
 
 1. When a decision is locked, mark the row **Chosen** with the RFC that adopted it.
 2. When an axis grows a new option (e.g., a new memory-management technique), add a row and re-run the "reinforce each other" checks — an isolated change on one axis often forces revisits elsewhere.
 3. Cross-link each Chosen row to its `dNN` direction page and its `qNN` question page.
-
-## Related
-
-- [[plang-mo-synthesis]]
-- [[plang-design-camps]]
-- [[plang-implementation-menu]]
-- [[plang-history-2010-to-2026]]
-- [[d09-primary-inspirations]]
-- [[d15-effects-via-capabilities]]
-- [[d22-rust-plus-refinements-types]]
-- [[d30-supply-chain-security]]
-- [[q13-implementation-language]]
 
 ## Sources
 
@@ -86,3 +79,16 @@ The recommended starting stack sits between them: strictly more security-first t
 - [Cranelift](https://cranelift.dev/)
 - [Verus paper](https://arxiv.org/abs/2303.05491)
 - [SLSA specification](https://slsa.dev/spec/v1.0/levels)
+
+
+## Related
+
+- [[plang-mo-synthesis]]
+- [[plang-design-camps]]
+- [[plang-implementation-menu]]
+- [[plang-history-2010-to-2026]]
+- [[d09-primary-inspirations]]
+- [[d15-effects-via-capabilities]]
+- [[d22-rust-plus-refinements-types]]
+- [[d30-supply-chain-security]]
+- [[q13-implementation-language]]

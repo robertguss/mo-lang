@@ -1,7 +1,7 @@
 ---
 title: "Effects and capabilities"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-17
 type: deep-dive
 tags: [effects, runtime]
 sources: [raw/notion/design-journal-2026-09-12.md]
@@ -32,8 +32,8 @@ Under the hood `fs.read(path)` compiles to suspend / hand command to runtime / r
 A blocking call can block forever, breaking bounded-everything. So: **every effectful call carries a deadline**, e.g. `fs.read(path, within: 2.seconds)`. Timeout is an ordinary `Err`. Deadline and capability are the same kind of thing: a limit on authority (the "Lingering Authority" pairing).
 ### Result
 No effect type system. No `async`. No callbacks. A function is pure unless it takes a capability; a capability call reads like Go, blocks like Erlang, records like Elm, and cannot hang.
-Example:
-```javascript
+Example (the 12 Sep sketch, pre-pick syntax; noted 17 Sep 2026):
+```ruby
 fn append_log(fs: FileSystem, line: Text) -> Result<Unit, IoError>
   let config = fs.read("app.toml", within: 1.second)?
   let path   = parse_log_path(config)?
