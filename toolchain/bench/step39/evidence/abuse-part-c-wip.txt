@@ -1,0 +1,74 @@
+2026-09-18 20:26:53 UTC
+16:26  up  8:51, 1 user, load averages: 4.40 4.13 4.48
+abuse.py --runtimes run,binary --mo /Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo (Python 3.14.7, OpenSSL 3.6.4 25 Aug 2026)
+
+| runtime | side   | state      | peer sends   | on the wire      | expected                      | the Mo side said              | alive after |      |
+|---------|--------|------------|--------------|------------------|-------------------------------|-------------------------------|-------------|------|
+| run     | server | hello      | alert        | alert 2/40 clear | accept=Handshake              | accept=Handshake              | yes         | pass |
+| run     | server | hello      | close_notify | alert 1/0 clear  | accept=Closed                 | accept=Closed                 | yes         | pass |
+| run     | server | hello      | reset        | RST              | accept=Closed                 | accept=Closed                 | yes         | pass |
+| run     | server | hello      | nothing      | (held open)      | accept=Timeout                | accept=Timeout                | yes         | pass |
+| run     | server | partial    | alert        | alert 2/40 clear | accept=Handshake              | accept=Handshake              | yes         | pass |
+| run     | server | partial    | close_notify | alert 1/0 clear  | accept=Closed                 | accept=Closed                 | yes         | pass |
+| run     | server | partial    | reset        | RST              | accept=Closed                 | accept=Closed                 | yes         | pass |
+| run     | server | partial    | nothing      | (held open)      | accept=Timeout                | accept=Timeout                | yes         | pass |
+| run     | server | flight     | alert        | alert 2/48 clear | accept=Handshake              | accept=Handshake              | yes         | pass |
+| run     | server | flight     | close_notify | alert 1/0 clear  | accept=Closed                 | accept=Closed                 | yes         | pass |
+| run     | server | flight     | reset        | RST              | accept=Closed                 | accept=Closed                 | yes         | pass |
+| run     | server | flight     | nothing      | (held open)      | accept=Timeout                | accept=Timeout                | yes         | pass |
+| run     | server | finished   | alert        | encrypted 19 B   | accept=Ok lines=0 end=Closed  | accept=Ok lines=0 end=Closed  | yes         | pass |
+| run     | server | finished   | close_notify | encrypted 19 B   | accept=Ok lines=0 end=None    | accept=Closed                 | yes         | FAIL |
+| run     | server | finished   | reset        | RST              | accept=Ok lines=0 end=Closed  | accept=Ok lines=0 end=Closed  | yes         | pass |
+| run     | server | finished   | nothing      | (held open)      | accept=Ok lines=0 end=Timeout | accept=Ok lines=0 end=Timeout | yes         | pass |
+| run     | server | record     | alert        | encrypted 19 B   | accept=Ok lines=1 end=Closed  | accept=Ok lines=1 end=Closed  | yes         | pass |
+| run     | server | record     | close_notify | encrypted 19 B   | accept=Ok lines=1 end=None    | accept=Ok lines=1 end=None    | yes         | pass |
+| run     | server | record     | reset        | RST              | accept=Ok lines=1 end=Closed  | accept=Ok lines=1 end=Closed  | yes         | pass |
+| run     | server | record     | nothing      | (held open)      | accept=Ok lines=1 end=Timeout | accept=Ok lines=1 end=Timeout | yes         | pass |
+| run     | client | hello      | alert        | alert 2/40 clear | connect=Handshake             | connect=Handshake             | yes         | pass |
+| run     | client | hello      | close_notify | alert 1/0 clear  | connect=Closed                | connect=Closed                | yes         | pass |
+| run     | client | hello      | reset        | RST              | connect=Closed                | connect=Closed                | yes         | pass |
+| run     | client | hello      | nothing      | (held open)      | connect=Timeout               | connect=Timeout               | yes         | pass |
+| run     | client | mid-flight | alert        | alert 2/40 clear | connect=Handshake             | connect=Handshake             | yes         | pass |
+| run     | client | mid-flight | close_notify | alert 1/0 clear  | connect=Handshake             | connect=Handshake             | yes         | pass |
+| run     | client | mid-flight | reset        | RST              | connect=Closed                | connect=Closed                | yes         | pass |
+| run     | client | mid-flight | nothing      | (held open)      | connect=Timeout               | connect=Timeout               | yes         | pass |
+| run     | client | finished   | alert        | encrypted 19 B   | connect=Ok read=Closed        | connect=Ok read=Closed        | yes         | pass |
+| run     | client | finished   | close_notify | encrypted 19 B   | connect=Ok read=None          | connect=Ok read=None          | yes         | pass |
+| run     | client | finished   | reset        | RST              | connect=Ok read=Closed        | connect=Ok read=Closed        | yes         | pass |
+| run     | client | finished   | nothing      | (held open)      | connect=Ok read=Timeout       | connect=Ok read=Timeout       | yes         | pass |
+| binary  | server | hello      | alert        | alert 2/40 clear | accept=Handshake              | accept=Handshake              | yes         | pass |
+| binary  | server | hello      | close_notify | alert 1/0 clear  | accept=Closed                 | accept=Closed                 | yes         | pass |
+| binary  | server | hello      | reset        | RST              | accept=Closed                 | accept=Closed                 | yes         | pass |
+| binary  | server | hello      | nothing      | (held open)      | accept=Timeout                | accept=Timeout                | yes         | pass |
+| binary  | server | partial    | alert        | alert 2/40 clear | accept=Handshake              | accept=Handshake              | yes         | pass |
+| binary  | server | partial    | close_notify | alert 1/0 clear  | accept=Closed                 | accept=Closed                 | yes         | pass |
+| binary  | server | partial    | reset        | RST              | accept=Closed                 | accept=Closed                 | yes         | pass |
+| binary  | server | partial    | nothing      | (held open)      | accept=Timeout                | accept=Timeout                | yes         | pass |
+| binary  | server | flight     | alert        | alert 2/48 clear | accept=Handshake              | accept=Handshake              | yes         | pass |
+| binary  | server | flight     | close_notify | alert 1/0 clear  | accept=Closed                 | accept=Closed                 | yes         | pass |
+| binary  | server | flight     | reset        | RST              | accept=Closed                 | accept=Closed                 | yes         | pass |
+| binary  | server | flight     | nothing      | (held open)      | accept=Timeout                | accept=Timeout                | yes         | pass |
+| binary  | server | finished   | alert        | encrypted 19 B   | accept=Ok lines=0 end=Closed  | accept=Ok lines=0 end=Closed  | yes         | pass |
+| binary  | server | finished   | close_notify | encrypted 19 B   | accept=Ok lines=0 end=None    | accept=Ok lines=0 end=None    | yes         | pass |
+| binary  | server | finished   | reset        | RST              | accept=Ok lines=0 end=Closed  | accept=Ok lines=0 end=Closed  | yes         | pass |
+| binary  | server | finished   | nothing      | (held open)      | accept=Ok lines=0 end=Timeout | accept=Ok lines=0 end=Timeout | yes         | pass |
+| binary  | server | record     | alert        | encrypted 19 B   | accept=Ok lines=1 end=Closed  | accept=Ok lines=1 end=Closed  | yes         | pass |
+| binary  | server | record     | close_notify | encrypted 19 B   | accept=Ok lines=1 end=None    | accept=Ok lines=1 end=None    | yes         | pass |
+| binary  | server | record     | reset        | RST              | accept=Ok lines=1 end=Closed  | accept=Ok lines=1 end=Closed  | yes         | pass |
+| binary  | server | record     | nothing      | (held open)      | accept=Ok lines=1 end=Timeout | accept=Ok lines=1 end=Timeout | yes         | pass |
+| binary  | client | hello      | alert        | alert 2/40 clear | connect=Handshake             | connect=Handshake             | yes         | pass |
+| binary  | client | hello      | close_notify | alert 1/0 clear  | connect=Closed                | connect=Closed                | yes         | pass |
+| binary  | client | hello      | reset        | RST              | connect=Closed                | connect=Closed                | yes         | pass |
+| binary  | client | hello      | nothing      | (held open)      | connect=Timeout               | connect=Timeout               | yes         | pass |
+| binary  | client | mid-flight | alert        | alert 2/40 clear | connect=Handshake             | connect=Handshake             | yes         | pass |
+| binary  | client | mid-flight | close_notify | alert 1/0 clear  | connect=Handshake             | connect=Handshake             | yes         | pass |
+| binary  | client | mid-flight | reset        | RST              | connect=Closed                | connect=Closed                | yes         | pass |
+| binary  | client | mid-flight | nothing      | (held open)      | connect=Timeout               | connect=Timeout               | yes         | pass |
+| binary  | client | finished   | alert        | encrypted 19 B   | connect=Ok read=Closed        | connect=Ok read=Closed        | yes         | pass |
+| binary  | client | finished   | close_notify | encrypted 19 B   | connect=Ok read=None          | connect=Ok read=None          | yes         | pass |
+| binary  | client | finished   | reset        | RST              | connect=Ok read=Closed        | connect=Ok read=Closed        | yes         | pass |
+| binary  | client | finished   | nothing      | (held open)      | connect=Ok read=Timeout       | connect=Ok read=Timeout       | yes         | pass |
+
+63 of 64 cells pass
+2026-09-18 20:27:44 UTC
+16:27  up  8:52, 1 user, load averages: 3.38 3.90 4.38
