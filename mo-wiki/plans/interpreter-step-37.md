@@ -3,7 +3,7 @@ title: "Step 37: the TLS brick, part two: the client, the chain, ALPN, and the a
 created: 2026-09-18
 updated: 2026-09-18
 type: plan
-tags: [stdlib, security, runtime, programs, audit]
+tags: [stdlib, security, runtime, programs]
 sources:
   [
     plans/interpreter-step-36.md,
