@@ -1,0 +1,105 @@
+[
+  {
+    "check": "locate pinned Zig",
+    "command": [
+      "uv",
+      "tool",
+      "run",
+      "--from",
+      "ziglang==0.16.0",
+      "python",
+      "-c",
+      "import ziglang,pathlib; print(pathlib.Path(ziglang.__file__).parent)"
+    ],
+    "returncode": 0,
+    "stdout": "/home/exedev/.cache/uv/archive-v0/x9Qd3fmHN2RveM18/lib/python3.11/site-packages/ziglang\n",
+    "stderr": ""
+  },
+  {
+    "check": "TLS native tests",
+    "command": [
+      "/home/exedev/.cache/uv/archive-v0/x9Qd3fmHN2RveM18/lib/python3.11/site-packages/ziglang/zig",
+      "test",
+      "src/bricks/tls.zig"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "1/16 tls.test.a handshake and a megabyte both ways against Zig's own client...OK\n2/16 tls.test.a small handshake against Zig's own client...OK\n3/16 tls.test.a truncated record waits, and never answers on its own...OK\n4/16 tls.test.a record past 16 KiB plus 256 is record_overflow...OK\n5/16 tls.test.a plain HTTP request is unexpected_message...OK\n6/16 tls.test.a client with no TLS 1.3 is protocol_version...OK\n7/16 tls.test.a client with no X25519 at all is handshake_failure...OK\n8/16 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK\n9/16 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK\n10/16 tls.test.a Finished whose verify data is wrong is decrypt_error...OK\n11/16 tls.test.a KeyUpdate round trip...OK\n12/16 tls.test.PEM: a chain, a key, and the pair that does not match...OK\n13/16 tls.test.RFC 8448 section 3: the key schedule's derived secrets...OK\n14/16 tls.test.a record's nonce is the IV xor the sequence number...OK\n15/16 tls.test.a megabyte both ways, each suite and each key type...OK\n16/16 tls.test.a small session, each suite and each key type...OK\nAll 16 tests passed.\n"
+  },
+  {
+    "check": "build interpreter",
+    "command": [
+      "/home/exedev/.cache/uv/archive-v0/x9Qd3fmHN2RveM18/lib/python3.11/site-packages/ziglang/zig",
+      "build"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "check": "example format",
+    "command": [
+      "/home/exedev/.hermes/profiles/mo-auditor/automation/runs/step36-manual/toolchain/zig-out/bin/mo",
+      "fmt",
+      "--check",
+      "examples/effects/tls-echo.mo"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "check": "example tests",
+    "command": [
+      "/home/exedev/.hermes/profiles/mo-auditor/automation/runs/step36-manual/toolchain/zig-out/bin/mo",
+      "test",
+      "examples/effects/tls-echo.mo"
+    ],
+    "returncode": 0,
+    "stdout": "pass  test \"text that is not PEM makes no server\"\npass  test \"a certificate and a key that are not a pair make no server\"\npass  test \"a client that writes plain text where a hello belongs never handshakes\"\n3 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (3), property (0 seeds), sim (not run)\n          proven: not run\n",
+    "stderr": ""
+  },
+  {
+    "check": "example run from corpus cwd",
+    "command": [
+      "/home/exedev/.hermes/profiles/mo-auditor/automation/runs/step36-manual/toolchain/zig-out/bin/mo",
+      "run",
+      "tls-echo.mo",
+      "--",
+      "18443"
+    ],
+    "returncode": 0,
+    "stdout": "listening on 18443\nserved 0 connections, then went quiet\n",
+    "stderr": ""
+  },
+  {
+    "check": "abuse both runtimes",
+    "command": [
+      "/usr/bin/python3",
+      "abuse.py"
+    ],
+    "returncode": 0,
+    "stdout": "| runtime | case      | wanted                                | got                         | as named | serving after |\n|---------|-----------|---------------------------------------|-----------------------------|----------|---------------|\n| run     | http      | alert 10 unexpected_message           | alert 10 unexpected_message | yes      | yes           |\n| run     | tls1_2    | alert 70 protocol_version             | alert 70 protocol_version   | yes      | yes           |\n| run     | p256only  | alert 40 handshake_failure            | alert 40 handshake_failure  | yes      | yes           |\n| run     | truncated | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes           |\n| run     | silent    | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes           |\n| run     | oversized | alert 22 record_overflow              | alert 22 record_overflow    | yes      | yes           |\n| run     | retry     | a HelloRetryRequest, then a handshake | echoed                      | yes      | yes           |\n| binary  | http      | alert 10 unexpected_message           | alert 10 unexpected_message | yes      | yes           |\n| binary  | tls1_2    | alert 70 protocol_version             | alert 70 protocol_version   | yes      | yes           |\n| binary  | p256only  | alert 40 handshake_failure            | alert 40 handshake_failure  | yes      | yes           |\n| binary  | truncated | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes           |\n| binary  | silent    | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes           |\n| binary  | oversized | alert 22 record_overflow              | alert 22 record_overflow    | yes      | yes           |\n| binary  | retry     | a HelloRetryRequest, then a handshake | echoed                      | yes      | yes           |\n",
+    "stderr": ""
+  },
+  {
+    "check": "MOCKED abuse ordering",
+    "events": [
+      "http",
+      "tls1_2",
+      "p256only",
+      "truncated",
+      "silent",
+      "oversized",
+      "retry",
+      "health",
+      "health",
+      "health",
+      "health",
+      "health",
+      "health",
+      "health"
+    ],
+    "observation": "All cases execute before any of the seven health checks."
+  }
+]
