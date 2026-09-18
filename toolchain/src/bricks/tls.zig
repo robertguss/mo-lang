@@ -1167,9 +1167,13 @@ fn socketPair(out: *[2]std.posix.fd_t) !void {
     out[1] = fds[1];
 }
 
+/// A write that gives up rather than hanging a test, as `readSomeFd` does: a peer that stops
+/// reading for thirty seconds fills the socket's buffer, and that is a hang, not slowness.
 fn writeAllFd(fd: std.posix.fd_t, bytes: []const u8) !void {
     var at: usize = 0;
     while (at < bytes.len) {
+        var p = [_]std.posix.pollfd{.{ .fd = fd, .events = std.posix.POLL.OUT, .revents = 0 }};
+        if (try std.posix.poll(&p, 30_000) == 0) return error.TestTimedOut;
         const rc = std.posix.system.write(fd, bytes[at..].ptr, bytes.len - at);
         if (std.posix.errno(rc) != .SUCCESS) return error.WriteFailed;
         if (rc == 0) return error.WriteFailed;
@@ -1239,6 +1243,40 @@ const ClientRun = struct {
         r.round_tripped = mem.eql(u8, sent, back);
         try client.end();
         try writer.interface.flush();
+    }
+};
+
+/// Zig's client on its own thread over a fresh pair. `stop` shuts every end both ways, which
+/// ends any read or write the client is blocked in, and joins; the tests defer it, so a test that
+/// fails early still leaves no thread behind, and a client stuck on a quiet pipe cannot outlive
+/// the main thread's own thirty-second bounds.
+const ClientThread = struct {
+    pair: Pair,
+    run: ClientRun,
+    thread: ?std.Thread = null,
+
+    fn start(c: *ClientThread, echo_size: usize) !void {
+        c.pair = try Pair.open();
+        errdefer c.pair.close();
+        c.run = .{ .echo_size = echo_size, .in_fd = c.pair.to_client[0], .out_fd = c.pair.to_server[1] };
+        c.thread = try std.Thread.spawn(.{}, ClientRun.run, .{&c.run});
+    }
+
+    fn join(c: *ClientThread) void {
+        if (c.thread) |t| t.join();
+        c.thread = null;
+    }
+
+    fn stop(c: *ClientThread) void {
+        for ([_]std.posix.fd_t{ c.pair.to_server[0], c.pair.to_server[1], c.pair.to_client[0], c.pair.to_client[1] }) |fd| {
+            _ = std.posix.system.shutdown(fd, std.posix.SHUT.RDWR);
+        }
+        c.join();
+    }
+
+    fn deinit(c: *ClientThread) void {
+        c.stop();
+        c.pair.close();
     }
 };
 
@@ -1331,17 +1369,16 @@ fn handshakeAndEcho(cert: []const u8, key: []const u8, size: usize) !void {
     const conn = mo_tls_conn_new(server) orelse return error.OutOfMemory;
     defer mo_tls_conn_free(conn);
 
-    var pair = try Pair.open();
-    defer pair.close();
-    var run: ClientRun = .{ .echo_size = size, .in_fd = pair.to_client[0], .out_fd = pair.to_server[1] };
-    const thread = try std.Thread.spawn(.{}, ClientRun.run, .{&run});
-    const served = serveEcho(conn, pair.to_server[0], pair.to_client[1]);
+    var client: ClientThread = undefined;
+    try client.start(size);
+    defer client.deinit();
+    const served = serveEcho(conn, client.pair.to_server[0], client.pair.to_client[1]);
     // The client's read ends when the server's end of the pipe closes.
-    _ = std.posix.system.shutdown(pair.to_client[1], std.posix.SHUT.WR);
-    thread.join();
+    _ = std.posix.system.shutdown(client.pair.to_client[1], std.posix.SHUT.WR);
+    client.join();
     try served;
-    if (run.failed) |err| return err;
-    try testing.expect(run.round_tripped);
+    if (client.run.failed) |err| return err;
+    try testing.expect(client.run.round_tripped);
     // The client's `end` sends close_notify, so a whole session leaves the connection over.
     try testing.expectEqual(Phase.over, conn.phase);
 }
@@ -1554,10 +1591,10 @@ test "a wrong Finished is decrypt_error, and a bad tag is bad_record_mac" {
         const conn = mo_tls_conn_new(server).?;
         defer mo_tls_conn_free(conn);
 
-        var pair = try Pair.open();
-        defer pair.close();
-        var run: ClientRun = .{ .echo_size = 1, .in_fd = pair.to_client[0], .out_fd = pair.to_server[1] };
-        const thread = try std.Thread.spawn(.{}, ClientRun.run, .{&run});
+        var client: ClientThread = undefined;
+        try client.start(1);
+        defer client.deinit();
+        const pair = &client.pair;
 
         var wire: [8192]u8 = undefined;
         var n: usize = 0;
@@ -1585,9 +1622,7 @@ test "a wrong Finished is decrypt_error, and a bad tag is bad_record_mac" {
             }
             if (mo_tls_feed(conn, bytes.ptr, got) == failed) break;
         }
-        _ = std.posix.system.shutdown(pair.to_client[1], std.posix.SHUT.WR);
-        _ = std.posix.system.shutdown(pair.to_server[1], std.posix.SHUT.WR);
-        thread.join();
+        client.stop();
         try testing.expectEqual(@as(c_int, @intFromEnum(tls.Alert.Description.bad_record_mac)), mo_tls_alert(conn));
         try testing.expect(!mo_tls_ready(conn));
     }
@@ -1601,10 +1636,10 @@ test "a Finished whose verify data is wrong is decrypt_error" {
     const conn = mo_tls_conn_new(server).?;
     defer mo_tls_conn_free(conn);
 
-    var pair = try Pair.open();
-    defer pair.close();
-    var run: ClientRun = .{ .echo_size = 1, .in_fd = pair.to_client[0], .out_fd = pair.to_server[1] };
-    const thread = try std.Thread.spawn(.{}, ClientRun.run, .{&run});
+    var client: ClientThread = undefined;
+    try client.start(1);
+    defer client.deinit();
+    const pair = &client.pair;
     var wire: [8192]u8 = undefined;
     var n: usize = 0;
     // The hello alone, so the client's keys are up and its Finished has not come yet.
@@ -1630,9 +1665,7 @@ test "a Finished whose verify data is wrong is decrypt_error" {
     forged.seal(conn.suite, rec[5..42], rec[42..58], &body, rec[0..5]);
     try testing.expectEqual(failed, mo_tls_feed(conn, &rec, rec.len));
     try testing.expectEqual(@as(c_int, @intFromEnum(tls.Alert.Description.decrypt_error)), mo_tls_alert(conn));
-    _ = std.posix.system.shutdown(pair.to_client[1], std.posix.SHUT.WR);
-    _ = std.posix.system.shutdown(pair.to_server[1], std.posix.SHUT.WR);
-    thread.join();
+    client.stop();
 }
 
 test "a KeyUpdate round trip" {
@@ -1641,16 +1674,19 @@ test "a KeyUpdate round trip" {
     const conn = mo_tls_conn_new(server).?;
     defer mo_tls_conn_free(conn);
 
-    var pair = try Pair.open();
-    defer pair.close();
-    var run: ClientRun = .{ .echo_size = 16, .in_fd = pair.to_client[0], .out_fd = pair.to_server[1] };
-    const thread = try std.Thread.spawn(.{}, ClientRun.run, .{&run});
+    var client: ClientThread = undefined;
+    try client.start(16);
+    defer client.deinit();
+    const pair = &client.pair;
     var wire: [8192]u8 = undefined;
     var n: usize = 0;
     while (!mo_tls_ready(conn) and conn.phase != .broken) {
         while (true) {
             try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.len, &n));
             if (n == 0) break;
+            // Without this the engine hands back the same flight forever: the client rejects
+            // the second copy, stops reading, and the pipe fills under this loop.
+            mo_tls_sent(conn, n);
             try writeAllFd(pair.to_client[1], wire[0..n]);
         }
         if (mo_tls_ready(conn)) break;
@@ -1681,9 +1717,7 @@ test "a KeyUpdate round trip" {
     try testing.expectEqual(@as(u64, 0), conn.read_cipher.seq);
     try testing.expect(mo_tls_pending(conn) > 0);
 
-    _ = std.posix.system.shutdown(pair.to_client[1], std.posix.SHUT.WR);
-    _ = std.posix.system.shutdown(pair.to_server[1], std.posix.SHUT.WR);
-    thread.join();
+    client.stop();
 }
 
 test "PEM: a chain, a key, and the pair that does not match" {
