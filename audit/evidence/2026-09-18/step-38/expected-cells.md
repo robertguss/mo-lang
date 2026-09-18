@@ -1,6 +1,6 @@
 # Step 38 part C: the expected answer per cell, fixed before the run
 
-Written by Fable, 18 Sep 2026, 10:00 AM ET, from chapter 9's `## Tls` rows and the decision of 18 Sep
+Written by Fable, 18 Sep 2026, 9:56 AM ET (the commit 90cbc2f), from chapter 9's `## Tls` rows and the decision of 18 Sep
 ("a fatal alert from the peer during the handshake is `Handshake` on both roles and both runtimes;
 `close_notify`, `user_canceled`, or the stream's end stays `Closed`; after the handshake a peer's alert
 ends the stream as it does today"). Fable had not opened `toolchain/bench/step38/`, the worker's pane
