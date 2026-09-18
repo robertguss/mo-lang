@@ -1,0 +1,10 @@
+# 2026-09-18 11:50:59 EDT load (4.37060546875, 4.09521484375, 4.470703125) server: /Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo run tls-echo.mo --
+ok   cores=1 n=1600 size=4096 hold=0s: sent 6553600 of 6553600 (65536 before the first read), echoed 6553600, 0.07s, first wrong byte None, note None, server alive True, server rss KiB ['23968']
+ok   cores=1 n=20000 size=1024 hold=0s: sent 20480000 of 20480000 (65536 before the first read), echoed 20480000, 0.29s, first wrong byte None, note None, server alive True, server rss KiB ['32096']
+ok   cores=1 n=20000 size=1024 hold=3s: sent 20480000 of 20480000 (3342336 before the first read), echoed 20480000, 3.26s, first wrong byte None, note None, server alive True, server rss KiB ['32080']
+ok   cores=1 n=100000 size=256 hold=3s: sent 25600000 of 25600000 (2490368 before the first read), echoed 25600000, 4.05s, first wrong byte None, note None, server alive True, server rss KiB ['39632']
+ok   cores=14 n=1600 size=4096 hold=0s: sent 6553600 of 6553600 (65536 before the first read), echoed 6553600, 0.07s, first wrong byte None, note None, server alive True, server rss KiB ['27232']
+ok   cores=14 n=20000 size=1024 hold=0s: sent 20480000 of 20480000 (65536 before the first read), echoed 20480000, 0.29s, first wrong byte None, note None, server alive True, server rss KiB ['32848']
+ok   cores=14 n=20000 size=1024 hold=3s: sent 20480000 of 20480000 (2359296 before the first read), echoed 20480000, 3.27s, first wrong byte None, note None, server alive True, server rss KiB ['32848']
+ok   cores=14 n=100000 size=256 hold=3s: sent 25600000 of 25600000 (2293760 before the first read), echoed 25600000, 4.09s, first wrong byte None, note None, server alive True, server rss KiB ['40160']
+# 8 of 8 cases

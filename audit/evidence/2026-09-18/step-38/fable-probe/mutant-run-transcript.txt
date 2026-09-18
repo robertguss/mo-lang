@@ -1,0 +1,13 @@
+# Fri Sep 18 11:45:43 EDT 2026 the mutant, second form: main's duplex.mo RUN (its # run: transcript against duplex.expected) by the runtime of b0b2ac4, then by main's
+## /private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang/19ba221d-878a-497b-89f8-cc63f5053d64/scratchpad/mo-old/toolchain/zig-out/bin/mo
+exit=0
+real 0.77
+user 0.88
+sys 0.08
+transcript EQUAL to duplex.expected
+## /Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo
+exit=0
+real 0.81
+user 0.94
+sys 0.11
+transcript EQUAL to duplex.expected

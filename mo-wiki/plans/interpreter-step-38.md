@@ -10,7 +10,7 @@ sources:
     spec/programs/07-redis-subset.md,
     spec/design-v0/09-stdlib.md,
   ]
-status: in-progress
+status: done
 ---
 
 # Step 38: a full-duplex `Conn`, `TCP_NODELAY`, and the handshake abuse rows
@@ -91,6 +91,16 @@ exit code in the report; the duplex test green under both runtimes and the
 fixture; the abuse table at 64 of 64; the numbers table; the spec lines; a
 numbered list "Decisions the brief did not cover". One commit per part,
 subject `Step 38 part X`, pushed after each.
+
+## Result (18 Sep 2026, 11:59 AM ET; one Opus session 9:26 to 11:06 AM ET on Robert's Mac; accepted by Fable)
+
+Three commits: `ebf59b3` (part A: a read proceeds while a write on the same `Conn` waits, both runtimes, plain and TLS, `examples/effects/duplex.mo`), `1bb5612` (part B: `TCP_NODELAY` at `connect` and `accept`), `26610d6` (part C: `bench/step38/abuse.py`, 32 cells per runtime). The changes are in `net.zig` and `mo_rt.c`; `tls.zig`'s production code is untouched (a test helper's `fcntl` made portable, which was the Mac's SIGSYS in two brick tests).
+
+**Numbers** (the worker's, best of five, loads 4 to 6 on the Mac; the Linux rows from an OrbStack container, aarch64): `duplex.mo` whole 0.819 s under `mo run`, 0.482 s as a binary; bulk in windows of 16 lines on Linux 8.84 s to 0.19 s plain and 9.33 to 0.65 over TLS under `mo run`, 8.70 to 0.06 and 9.66 to 0.49 as a binary; windows of 1 and 256 unchanged within noise; on the Mac windows of 16 are 0.150 to 0.153 s (its loopback shows no delayed-ACK wait); `echo-1k` 33.9 to 34.2 µs a round trip; `jobq`'s warm build 0.11 to 0.12 s, 780,072 to 780,056 bytes. The abuse table 64 of 64; against the runtime before step 37's fix, 0 of 33.
+
+**What the lead verified** is the decision-log row of 18 Sep ("step 38 accepted"): the suite 237 of 237; the mutant (the old runtime red at one core in 5 of 5, a 60 s stall in 1 of 5 at 14 cores; main's equal in 10 of 10); the held-reader pipelining probe 16 of 16 with every byte checked; the abuse table against the lead's pre-committed cells, 56 equal, 6 accepted, 4 for step 39. **Not verified by anyone:** a KeyUpdate during duplex traffic, a ThreadSanitizer build, and part B's gain outside the worker's container.
+
+**Carried into [[interpreter-step-39]]:** a client acting on a plaintext record after the handshake keys exist; the corpus running scheduling-sensitive examples at `MO_CORES=1` as well.
 
 ## Related
 

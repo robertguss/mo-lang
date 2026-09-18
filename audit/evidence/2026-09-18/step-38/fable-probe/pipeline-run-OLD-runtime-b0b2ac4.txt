@@ -1,0 +1,10 @@
+# 2026-09-18 11:50:40 EDT load (4.025390625, 4.0029296875, 4.447265625) server: /private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang/19ba221d-878a-497b-89f8-cc63f5053d64/scratchpad/mo-old/toolchain/zig-out/bin/mo run tls-echo.mo --
+ok   cores=1 n=1600 size=4096 hold=0s: sent 6553600 of 6553600 (65536 before the first read), echoed 6553600, 0.05s, first wrong byte None, note None, server alive True, server rss KiB ['23952']
+ok   cores=1 n=20000 size=1024 hold=0s: sent 20480000 of 20480000 (65536 before the first read), echoed 20480000, 0.22s, first wrong byte None, note None, server alive True, server rss KiB ['32112']
+ok   cores=1 n=20000 size=1024 hold=3s: sent 20480000 of 20480000 (3473408 before the first read), echoed 20480000, 3.21s, first wrong byte None, note None, server alive True, server rss KiB ['32080']
+ok   cores=1 n=100000 size=256 hold=3s: sent 25600000 of 25600000 (2228224 before the first read), echoed 25600000, 3.86s, first wrong byte None, note None, server alive True, server rss KiB ['39632']
+ok   cores=14 n=1600 size=4096 hold=0s: sent 6553600 of 6553600 (65536 before the first read), echoed 6553600, 0.06s, first wrong byte None, note None, server alive True, server rss KiB ['27216']
+ok   cores=14 n=20000 size=1024 hold=0s: sent 20480000 of 20480000 (65536 before the first read), echoed 20480000, 0.23s, first wrong byte None, note None, server alive True, server rss KiB ['32832']
+ok   cores=14 n=20000 size=1024 hold=3s: sent 20480000 of 20480000 (3342336 before the first read), echoed 20480000, 3.22s, first wrong byte None, note None, server alive True, server rss KiB ['32880']
+ok   cores=14 n=100000 size=256 hold=3s: sent 25600000 of 25600000 (2490368 before the first read), echoed 25600000, 3.85s, first wrong byte None, note None, server alive True, server rss KiB ['40192']
+# 8 of 8 cases

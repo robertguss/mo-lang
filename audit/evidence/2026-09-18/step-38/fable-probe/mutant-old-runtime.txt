@@ -1,0 +1,14 @@
+# Fri Sep 18 11:44:04 EDT 2026 the mutant: main's examples/effects/duplex.mo tested by the runtime of b0b2ac4 (before step 38); it must go red
+pass  test "the echoes come back through lines while main writes on the same Conn (Net.fixture)"
+pass  test "the same behind Tls.fixture(): records each way on one connection"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+mo test exit=0
+# and by main's mo, for the control:
+pass  test "the echoes come back through lines while main writes on the same Conn (Net.fixture)"
+pass  test "the same behind Tls.fixture(): records each way on one connection"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+mo test exit=0
