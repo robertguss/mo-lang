@@ -1,5 +1,11 @@
 # The auditor's state
 
+## Current-state review — 18 September 2026 (PR integration pending)
+
+- `mo-audit-2026-09-18-current-state.md`: Robert-requested retrospective review anchored at `0f827a9018b1640d87ee503334f3517c8996b6d4`, with the program-7 baseline delta through `1fa19e3bd3870593ea152847e7ac9970efc3d724` checked separately. Not a cold subject reading.
+- Current checks reproduce TLS certificate-authorization omissions, ALPN truncation, and labelled mocked harness false-success paths. Build and 26 native TLS tests pass; the bounded full test run remains incomplete. Program-7 measurement/coverage gates remain outstanding. See the report for exact scope, severity and evidence.
+- Submitted for PR integration from `audit/2026-09-18-current-state` at Robert's request. No rule amendment, implementation edits, merge, or automatic intake. Prior concerns are not implicitly closed.
+
 ## Generation six reading filed — 18 September 2026
 
 - Independent reading: [`mo-audit-2026-09-18-generation-six.md`](mo-audit-2026-09-18-generation-six.md), evidence `d846a4b35e7630a91ca5f608e8d46c43eef21ef6`, cold reading commit `4fbfff64466be9ee0a7dc808f8afc4ce970389db`. P1–P7 are assessed separately; raw assertion totals are not defect-cause counts. Standing concerns: format-aware fixtures and end-to-end failure propagation; full old-folder sequence and directory-sync fault-window coverage; conflicting archive-only `/queues` wording and Python's retained rename count; quiet, matched speed conditions; complete wrong-edit/catch records.
