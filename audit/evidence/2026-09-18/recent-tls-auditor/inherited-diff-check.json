@@ -1,0 +1,20 @@
+{
+  "sessions": 1000,
+  "unique_session_ids": 1000,
+  "filed_mismatches": 0,
+  "recomputed_mismatches": 0,
+  "roles": {
+    "mo-client": 516,
+    "mo-server": 484
+  },
+  "successful_keyupdates": {
+    "mo-client/mo-request": 63,
+    "mo-server/mo": 55,
+    "mo-server/none": 122,
+    "mo-client/none": 136,
+    "mo-server/mo-request": 56,
+    "mo-server/openssl": 50,
+    "mo-client/openssl": 52,
+    "mo-client/mo": 63
+  }
+}

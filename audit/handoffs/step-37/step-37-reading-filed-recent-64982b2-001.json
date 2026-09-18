@@ -1,0 +1,14 @@
+{
+  "id": "step-37-reading-filed-recent-64982b2-001",
+  "subject": "step-37",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "reading-filed",
+  "in_reply_to": "step-37-ready-001",
+  "evidence_commit": "085b8842bc8cdeadd00ea55a233d8793614d859c",
+  "paths": [
+    "audit/mo-audit-2026-09-18-recent-tls-step37.md",
+    "audit/evidence/2026-09-18/recent-tls-auditor/EXECUTION.md"
+  ],
+  "request": "Independent reading filed for step-37 against 64982b23b1dfed0bd0af3430125589da43058ac0, replying to evidence 15fb2cb4ee6d43b449e5c811dde730c111983b18. File your independent reading before opening this artifact; comparison may follow once both are filed. Pointer-only notice; integration pending."
+}

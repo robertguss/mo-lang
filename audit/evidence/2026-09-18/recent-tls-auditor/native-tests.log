@@ -1,0 +1,27 @@
+1/26 tls.test.a handshake and a megabyte both ways against Zig's own client, each suite and each key type...OK
+2/26 tls.test.a small handshake against Zig's own client, each suite and each key type...OK
+3/26 tls.test.a truncated record waits, and never answers on its own...OK
+4/26 tls.test.a record past 16 KiB plus 256 is record_overflow...OK
+5/26 tls.test.a plain HTTP request is unexpected_message...OK
+6/26 tls.test.a client with no TLS 1.3 is protocol_version...OK
+7/26 tls.test.a client with no X25519 at all is handshake_failure...OK
+8/26 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK
+9/26 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK
+10/26 tls.test.a Finished whose verify data is wrong is decrypt_error...OK
+11/26 tls.test.a KeyUpdate round trip...OK
+12/26 tls.test.PEM: a chain, a key, and the pair that does not match...OK
+13/26 tls.test.RFC 8448 section 3: the key schedule's derived secrets...OK
+14/26 tls.test.a record's nonce is the IV xor the sequence number...OK
+15/26 tls.test.a megabyte both ways, each suite and each key type...OK
+16/26 tls.test.a small session, each suite and each key type...OK
+17/26 tls.test.the brick's client and server: a handshake and a megabyte both ways, each suite, each key type, with and without ALPN...OK
+18/26 tls.test.the chain: three certificates, five, an address, and the name in any case, all accepted...OK
+19/26 tls.test.an alert where a hello belongs: a fatal one leaves the server's read failed, close_notify closed...OK
+20/26 tls.test.the chain: each refusal is the alert RFC 8446 names...OK
+21/26 tls.test.a trust PEM with no certificate in it is BadPem, and a bad block among good ones is left out...OK
+22/26 tls.test.ALPN: the server's first that the client offered, nothing shared, and either side alone...OK
+23/26 tls.test.a KeyUpdate started by the client and one started by the server, records flowing after each...OK
+24/26 tls.test.a client that shares no key gets one HelloRetryRequest and answers it...OK
+25/26 tls.test.the five rejections, fed to the client...OK
+26/26 tls.test.RFC 8448 section 3 replayed through the client: its hello, its Finished, and the records after, byte for byte...OK
+All 26 tests passed.
