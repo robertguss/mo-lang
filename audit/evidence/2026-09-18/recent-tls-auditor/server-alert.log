@@ -1,0 +1,2 @@
+PASS binary [('good1', b'ok\n'), ('other root', '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verif'), ('good2', b'ok\n'), ('wrong host', '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verif'), ('good3', b'ok\n')] alive: True rc: -15
+PASS run [('good1', b'ok\n'), ('other root', '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verif'), ('good2', b'ok\n'), ('wrong host', '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verif'), ('good3', b'ok\n')] alive: True rc: -15
