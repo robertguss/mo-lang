@@ -1,0 +1,19 @@
+# 2026-09-18 12:18:30 EDT load averages: 3.34 3.54 3.77 ; go only, 30,000 jobs (the registered workload), three alternating rounds, after the auditor held that the 5,000-job rounds do not cancel the first 30,000-job row
+== go change 3, round 1 12:18:30 load { 3.34 3.54 3.77 }
+up in 0.06s; rss empty 12.1 MiB
+creates: 30000 in 130.2s = 230/s, errors []; rss at 30000 jobs 32.9 MiB
+pairs, 1 worker: 1152 in 10.0s = 115/s []
+pairs, 32 workers: 1152 in 10.3s = 112/s []
+rss after pairs 35.9 MiB
+restart with a 11 MB log: 0.16s to /health; rss 31.0 MiB
+== go change 6, round 1 12:21:06 load { 4.33 3.86 3.87 }
+up in 0.05s; rss empty 12.3 MiB
+creates: 30000 in 133.3s = 225/s, errors []; rss at 30000 jobs 35.5 MiB
+pairs, 1 worker: 162 in 82.5s = 2/s []
+pairs, 32 workers: 722 in 10.3s = 70/s []
+rss after pairs 37.0 MiB
+restart with a 10 MB log: 1.11s to /health; rss 29.8 MiB
+== go change 3, round 2 12:32:32 load { 32.75 10.88 6.42 }
+up in 0.06s; rss empty 12.1 MiB
+== go change 6, round 2 13:02:20 load { 23.78 18.27 10.14 }
+up in 0.06s; rss empty 12.2 MiB

@@ -1,0 +1,400 @@
+        chain = ",".join(der(p).hex() for p
+in sent_chain(case))
+        trust = ",".join(der(p).hex() for p
+in case["trusted_certs"])
+        lines.append("\t".join([case["id"],
+chain, trust,
+case["expected_peer_name"]["value"],
+str(now)]))
+    inputs = WORK / "limbo-input.tsv"
+    inputs.write_text("\n".join(lines) +
+"\n")
+    ran = subprocess.run(GUARD + ["600",
+"--", str(TOOL), str(inputs)],
+capture_output=True, text=True)
+    if ran.returncode != 0:
+        raise SystemExit(f"mo-tls-limbo
+exited
+{ran.returncode}:\n{ran.stderr[-4000:]}")
+    answers = dict(line.split("\t") for line
+in ran.stdout.splitlines())
+    by_id = {c["id"]: c for c in kept}
+    wrong_accept, wrong_reject, agree = [],
+[], 0
+    out = []
+    for cid, answer in answers.items():
+        want = by_id[cid]["expected_result"]
+
+out.append(f"{cid}\t{want}\t{answer}")
+        if answer == "ok" and want ==
+"FAILURE":
+            wrong_accept.append(cid)
+        elif answer != "ok" and want ==
+"SUCCESS":
+            wrong_reject.append((cid,
+answer, reason(by_id[cid], answer)))
+        else:
+            agree += 1
+    (WORK /
+"limbo-cases.tsv").write_text(head +
+"id\tlimbo\tbrick\n" + "\n".join(out) +
+"\n")
+    reasons = collections.Counter(r for _,
+_, r in wrong_reject)
+    report = [head, f"limbo.py --limbo
+{args.limbo} (limbo version
+{doc.get('version')}, {len(cases)} cases)",
+""]
+    report.append(f"in the cut: {len(kept)};
+outside it: {sum(skipped.values())}")
+    for why, n in skipped.most_common():
+        report.append(f"  outside, {why}:
+{n}")
+    report.append("")
+    report.append(f"accepted but limbo says
+reject: {len(wrong_accept)}")
+    for cid in wrong_accept:
+        report.append(f"  {cid}")
+    report.append(f"rejected but limbo says
+accept: {len(wrong_reject)}")
+    for why, n in reasons.most_common():
+        report.append(f"  {n}: {why}")
+    for cid, answer, why in wrong_reject:
+        report.append(f"    {cid}: {answer}:
+{why}")
+    report.append(f"agreeing: {agree}
+(limbo's expected result and the brick's
+answer the same)")
+    text = "\n".join(report) + "\n"
+    (WORK / "limbo.txt").write_text(text)
+    print(text)
+    sys.exit(1 if wrong_accept else 0)
+
+
+
+if __name__ == "__main__":
+    main()
+EOF
+python3 ../step36/guard.py 1200 -- python3
+limbo.py 2>&1 | grep -v "^    " | head -60"
+failed with exit code 144
+
+⏺ Bash(pkill -f "zig
+      build-obj.*mo-build/.bricks" ; sleep
+      1; ps -Ao pid,command | grep -E "zig
+      build|limbo|guard.py" | grep -v grep;
+      python3 - <<'EOF'
+      p='toolchain/ben…)
+  ⎿  63837 /opt/homebrew/bin/zig build-
+     obj -OReleaseFast -fno-compiler-rt
+      -fstrip --name crypto -mcpu nativ
+     … +8 lines
+  ⎿  Deleted examples/effects/tls/c-lim
+     it-key-p256.pem (+0 -5)
+      1 ------BEGIN PRIVATE KEY-----
+      2 -MIGHAgEAMBMGByqGSM49AgEGCCqG
+        -SM49AwEHBG0wawIBAQQgNwPdTiJD
+        -UihNhmOl
+      3 -VFGnQvIhitzJq3fOnbm+pnVVPdqh
+        -RANCAARgLGvQPlVnFVl14x/v1UJs
+        -cfh5Gl8r
+      4 -nrBdhP4f72GyZfKAY/jfAlFCbJBd
+        -p+Htw+IOmvSPyvjheAnG/TdU4dVz
+      5 ------END PRIVATE KEY-----
+  ⎿  Deleted examples/effects/tls/c-lim
+     it-key.pem (+0 -3)
+      1 ------BEGIN PRIVATE KEY-----
+      2 -MC4CAQAwBQYDK2VwBCIEIPmXOXTa
+        -sVZvGb7AgXr3JTfCCVJJG/ORrhJc
+        -SuN7tzXB
+      3 ------END PRIVATE KEY-----
+  ⎿  Deleted examples/effects/tls/c-lim
+     it-p256.pem (+0 -34)
+       1 ------BEGIN CERTIFICATE-----
+       2 -MIIBwDCCAWagAwIBAgICIBYwCgY
+         -IKoZIzj0EAwIwKTEnMCUGA1UEAw
+         -weTW8gQ29u
+       3 -c3RyYWluZWQgbGltaXQgMiAoUC0
+         -yNTYpMB4XDTI1MDEwMTAwMDAwMF
+         -oXDTM1MDEw
+       4 -MTAwMDAwMFowFDESMBAGA1UEAww
+         -JbG9jYWxob3N0MFkwEwYHKoZIzj
+         -0CAQYIKoZI
+       5 -zj0DAQcDQgAEYCxr0D5VZxVZdeM
+         -f79VCbHH4eRpfK56wXYT+H+9hsm
+         -XygGP43wJR
+       6 -QmyQXafh7cPiDpr0j8r44XgJxv0
+         -3VOHVc6OBkjCBjzAMBgNVHRMBAf
+         -8EAjAAMA4G
+       7 -A1UdDwEB/wQEAwIHgDATBgNVHSU
+         -EDDAKBggrBgEFBQcDATAaBgNVHR
+         -EEEzARggls
+       8 -b2NhbGhvc3SHBH8AAAEwHQYDVR0
+         -OBBYEFHjjDshdAL0uDBGLddUBW9
+         -8/ErcwMB8G
+       9 -A1UdIwQYMBaAFFPt9b+oDCC+fjx
+         -CMBpFDocHb3Y+MAoGCCqGSM49BA
+         -MCA0gAMEUC
+      10 -IH/iXCEOXMv1gw//JQWJF7dmryB
+         -M0kJrOCdK31Ewpe+FAiEA16SK99
+         -6FdlGYMQZf
+      11 -N8mDTyx/xM2AYBkseo5G8T/V+HQ
+         -=
+      12 ------END CERTIFICATE-----
+      13 ------BEGIN CERTIFICATE-----
+      14 -MIIBpDCCAUugAwIBAgICIBUwCgY
+         -IKoZIzj0EAwIwKTEnMCUGA1UEAw
+         -weTW8gQ29u
+      15 -c3RyYWluZWQgbGltaXQgMSAoUC0
+         -yNTYpMB4XDTI1MDEwMTAwMDAwMF
+         -oXDTM1MDEw
+      16 -MTAwMDAwMFowKTEnMCUGA1UEAww
+         -eTW8gQ29uc3RyYWluZWQgbGltaX
+         -QgMiAoUC0y
+      17 -NTYpMFkwEwYHKoZIzj0CAQYIKoZ
+         -Izj0DAQcDQgAEPm8zssPJip1/93
+         -iBnnHNEyYl
+      18 -lsplf1blhCbeUNPbQTtWXApyywB
+         -vEg4jZYQ4qaJUBtuNSMtywuFAHb
+         -zVNzNS1qNj
+      19 -MGEwDwYDVR0TAQH/BAUwAwEB/zA
+         -OBgNVHQ8BAf8EBAMCAQYwHQYDVR
+         -0OBBYEFFPt
+      20 -9b+oDCC+fjxCMBpFDocHb3Y+MB8
+         -GA1UdIwQYMBaAFBuzUQ4HP/tj7E
+         -p9cWoIZK7w
+      21 -01fTMAoGCCqGSM49BAMCA0cAMEQ
+         -CIE8QvyGqaSq1C5TPolrN8GeQ9Q
+         -e1JgFpqPSd
+      22 -4VuqORGhAiBM2Uc3biosWPA43gk
+         -4VHXnJyiqAai6q3ahpKTRy3bYpA
+         -==
+      23 ------END CERTIFICATE-----
+      24 ------BEGIN CERTIFICATE-----
+      25 -MIIBpTCCAUugAwIBAgICIBQwCgY
+         -IKoZIzj0EAwIwJjEkMCIGA1UEAw
+         -wbTW8gQ29u
+      26 -c3RyYWluZWQgUm9vdCAoUC0yNTY
+         -pMB4XDTI1MDEwMTAwMDAwMFoXDT
+         -M1MDEwMTAw
+      27 -MDAwMFowKTEnMCUGA1UEAwweTW8
+         -gQ29uc3RyYWluZWQgbGltaXQgMS
+         -AoUC0yNTYp
+      28 -MFkwEwYHKoZIzj0CAQYIKoZIzj0
+         -DAQcDQgAEXuaQmFVSDSkHSu3+XB
+         -p2QoYwtrtO
+      29 -utm4SKIttR0EKmY2TMVwMInZ12C
+         -FDlO1gJUj/GRuOJAYnnMP0Sk7Ob
+         -GqxqNmMGQw
+      30 -EgYDVR0TAQH/BAgwBgEB/wIBATA
+         -OBgNVHQ8BAf8EBAMCAQYwHQYDVR
+         -0OBBYEFBuz
+      31 -UQ4HP/tj7Ep9cWoIZK7w01fTMB8
+         -GA1UdIwQYMBaAFM/RnQxnBCYyep
+         -uj7fX7l3TU
+      32 -9tqLMAoGCCqGSM49BAMCA0gAMEU
+         -CIQC4EmJiCAHLZ0FoSDqyAWZMmV
+         -wOi41Uuv3R
+      33 -fK6tA92BRwIgeA9vEgG7seT8PSM
+         -LutIPWpB57qDImYMW9rc77JD8hA
+         -s=
+      34 ------END CERTIFICATE-----
+  ⎿  Deleted
+     examples/effects/tls/c-limit.pem
+     (+0 -31)
+       1 ------BEGIN CERTIFICATE-----
+       2 -MIIBgjCCATSgAwIBAgICIAMwBQY
+         -DK2VwMCsxKTAnBgNVBAMMIE1vIE
+         -NvbnN0cmFp
+       3 -bmVkIGxpbWl0IDIgKEVkMjU1MTk
+         -pMB4XDTI1MDEwMTAwMDAwMFoXDT
+         -M1MDEwMTAw
+       4 -MDAwMFowFDESMBAGA1UEAwwJbG9
+         -jYWxob3N0MCowBQYDK2VwAyEAog
+         -ChMOcczX9z
+       5 -R2ilARxjTnrEf/Ak7N67W8thDh2
+         -sz/ijgZIwgY8wDAYDVR0TAQH/BA
+         -IwADAOBgNV
+       6 -HQ8BAf8EBAMCB4AwEwYDVR0lBAw
+         -wCgYIKwYBBQUHAwEwGgYDVR0RBB
+         -MwEYIJbG9j
+       7 -YWxob3N0hwR/AAABMB0GA1UdDgQ
+         -WBBRXrHMcd0TFdvJCxck2vpdxte
+         -Y4FzAfBgNV
+       8 -HSMEGDAWgBRowlmkOD1XbLXOD6Y
+         -8TUcHKeVTxDAFBgMrZXADQQColJ
+         -/1tG7JnUCn
+       9 -PsUfRmAmrxkr9jGSrvjuil6XdF7
+         -0eWRbYne9Tr8aUV1lUzbLa3qlRJ
+         -q7P05WDEQY
+      10 -rIk5Q2UP
+      11 ------END CERTIFICATE-----
+      12 ------BEGIN CERTIFICATE-----
+      13 -MIIBaTCCARugAwIBAgICIAIwBQY
+         -DK2VwMCsxKTAnBgNVBAMMIE1vIE
+         -NvbnN0cmFp
+      14 -bmVkIGxpbWl0IDEgKEVkMjU1MTk
+         -pMB4XDTI1MDEwMTAwMDAwMFoXDT
+         -M1MDEwMTAw
+      15 -MDAwMFowKzEpMCcGA1UEAwwgTW8
+         -gQ29uc3RyYWluZWQgbGltaXQgMi
+         -AoRWQyNTUx
+      16 -OSkwKjAFBgMrZXADIQBEVAAt8KF
+         -RLd4ZSo8IOPT34daGM1i9pFE2Rc
+         -wh0c4aXqNj
+      17 -MGEwDwYDVR0TAQH/BAUwAwEB/zA
+         -OBgNVHQ8BAf8EBAMCAQYwHQYDVR
+         -0OBBYEFGjC
+      18 -WaQ4PVdstc4PpjxNRwcp5VPEMB8
+         -GA1UdIwQYMBaAFE2mVv+PDoih0W
+         -ZERwABwDGl
+      19 -EVx4MAUGAytlcANBAAUTitiJe+3
+         -0/A1ZwjNA02lCMdHA/t/1rqnizT
+         -tMjH3/9HEv
+      20 -Uto3aBg6Z/i7dB7I3szbePbDlE2
+         -mPt2nzs4+nwM=
+      21 ------END CERTIFICATE-----
+      22 ------BEGIN CERTIFICATE-----
+      23 -MIIBaTCCARugAwIBAgICIAEwBQY
+         -DK2VwMCgxJjAkBgNVBAMMHU1vIE
+         -NvbnN0cmFp
+      24 -bmVkIFJvb3QgKEVkMjU1MTkpMB4
+         -XDTI1MDEwMTAwMDAwMFoXDTM1MD
+         -EwMTAwMDAw
+      25 -MFowKzEpMCcGA1UEAwwgTW8gQ29
+         -uc3RyYWluZWQgbGltaXQgMSAoRW
+         -QyNTUxOSkw
+      26 -KjAFBgMrZXADIQAkNLqDQGQixZk
+         -jz22R3Mf+3uNpdovk8FQks3Fvvj
+         -vznKNmMGQw
+      27 -EgYDVR0TAQH/BAgwBgEB/wIBATA
+         -OBgNVHQ8BAf8EBAMCAQYwHQYDVR
+         -0OBBYEFE2m
+      28 -Vv+PDoih0WZERwABwDGlEVx4MB8
+         -GA1UdIwQYMBaAFBX/g4Yg++1T/O
+         -XhKE7z6RH1
+      29 -FVpcMAUGAytlcANBAKbAErEVxE1
+         -G6UY6Iq357TIVLuNDMISkoCMIyR
+         -JW+bsw+Tdc
+      30 -O/JgIvWJQM5pRbkgRCodR/MdoV2
+         -uHgZONQ6XWQw=
+      31 ------END CERTIFICATE-----
+  ⎿  Deleted examples/effects/tls/c-ref
+     use-critical-key-p256.pem (+0 -5)
+      1 ------BEGIN PRIVATE KEY-----
+      2 -MIGHAgEAMBMGByqGSM49AgEGCCqG
+        -SM49AwEHBG0wawIBAQQg5PEbp5JU
+        -0enBK4kF
+      3 -Pp+vhcedg9zJbl7PBvY92O2Lifeh
+        -RANCAAStX1oP5xMvZls3TMFTHQac
+        -khqGXsd8
+      4 -t2hPrCuGoTnrjhn8uRWVefXvI0OA
+        -sGI6yDsgmTdwJCKy6+S9PL9zxXki
+      5 ------END PRIVATE KEY-----
+  ⎿  … 31 more files changed
+
+⏺ Bash(lsof -p 63837 2>/dev/null | grep cwd;
+      python3 - <<'EOF'
+      p='toolchain/bench/step39/wip-part-a.p
+      atch'…)
+  ⎿  PATCH-APPLIES
+  ⎿  Updated
+     toolchain/bench/step39/WIP.md (+1
+     -2)
+      110     guard and had not finis
+           hed by 12:32 PM (the machi
+           ne loaded, the limbo run b
+           eside it), so it was
+      111     killed and **part A is
+           not on main**: everything
+           above is in `wip-part-a.pa
+           tch` beside this
+      112     file (`git apply toolch
+           ain/bench/step39/wip-part-
+           a.patch` from the reposito
+           ry root; it holds
+      113 -   the diffs of `tls.zig`
+          -and `build.zig` and the ne
+          -w files `limbo.py`, `limbo
+          -.zig`, this folder's
+      114 -   `.gitignore`, `gen-cons
+          -trained.sh`, and the 28 `c
+          --*.pem` fixtures). The tre
+          -e was put back to
+      113 +   the diffs of `tls.zig`
+          +and `build.zig` and the ne
+          +w files `limbo.py`, `limbo
+          +.zig`, `gen-constrained.sh
+          +`, and the 28 `c-*.pem` fi
+          +xtures). The tree was put
+          +back to
+      114     main. Only `zig test sr
+           c/bricks/tls.zig -lc --tes
+           t-filter "chain made here"
+           ` (2 of 2) and the
+      115     auditor's scripts were
+           run on it; the whole brick
+            test and the suite are ow
+           ed.
+      116  2. **The limbo run to the
+           end** (`uv run`/`python3 l
+           imbo.py` from
+  ⎿  Updated toolchain/bench/step39/wip
+❯ A change of plan from the lead: this mac…
+     -part-a.patch (+0 -8)
+      647   test "a trust PEM with no
+            certificate in it is BadP
+           em, and a bad block among
+           good ones is left out" {
+      648       try testing.expect(mo
+           _tls_client_new("hello", 5
+           ) == null);
+      649       try testing.expect(mo
+           _tls_client_new(fx_key.ptr
+           , fx_key.len) == null);
+      650 -diff --git a/toolchain/ben
+          -ch/step39/.gitignore b/too
+          -lchain/bench/step39/.gitig
+          -nore
+      651 -new file mode 100644
+      652 -index 0000000..e958bd4
+      653 ---- /dev/null
+      654 -+++ b/toolchain/bench/step
+          -39/.gitignore
+      655 -@@ -0,0 +1,2 @@
+      656 -+work/
+      657 -+__pycache__/
+      650  diff --git a/toolchain/ben
+           ch/step39/limbo.py b/toolc
+           hain/bench/step39/limbo.py
+      651  new file mode 100644
+      652  index 0000000..3832611
+
+  Ran 2 shell commands
+
+⏺ The orphaned build runner from my killed
+  suite is still running; killing it.
+
+  Ran 2 shell commands
+
+⏺ Background command "kill 56830 57121 64090
+64219 2>/dev/null; sleep 2; ps -Ao
+pid,command | grep -E "zig-cache/o|mo
+build|zig build|guard.py|limbo" | grep -v
+grep; cd
+/Users/robertguss/Projects/startups/mo-lang
+&& git status --short | grep -v
+"mo-wiki\|audit/"; git log origin/main
+--oneline -1" completed (exit code 0)
+
+⏺ API Error: Your computer went to
+  sleep mid-response. The response
+  above may be incomplete.
+
+✻ Cogitated for 45m 41s · done 1:18 PM
+
+────────────────────────────────────────────
+❯ Commit and push by 12:38, then stop
+────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang (main*) | Context:…
+  ⏵⏵ bypass permissions on (shift+tab to
