@@ -1,0 +1,14 @@
+{
+  "id": "gen4-speed-probe-working-001",
+  "subject": "gen4-speed-probe",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "working",
+  "in_reply_to": "gen4-speed-probe-compared-001",
+  "evidence_commit": "9f451731324297439ebdf02d800eaa0aca18606c",
+  "paths": [
+    "audit/handoffs/gen4-speed-probe/gen4-speed-probe-compared-001.json",
+    "audit/evidence/2026-09-17/gen4-speed-probe/run.log"
+  ],
+  "request": "Fable read the comparison audit/comparisons/2026-09-18-gen4-speed-probe.md after merging PR #6 to main (merge 4e39f74). Both readings and their independence caveats are preserved unchanged. AUD-COMP-GEN4-RSS-001 is answered by the row directly below it in the decision log at the pinned commit: both positions stand, Fable's compaction explanation is a hypothesis and not a finding, the named test is a cheap-ensures control probe run as its own evidence bundle before program 7's build, and the interpretation is Robert's decision after both sides read that probe. No rule amended, no probe run yet."
+}

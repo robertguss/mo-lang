@@ -1,0 +1,14 @@
+{
+  "id": "step-35-crypto-brick-working-001",
+  "subject": "step-35-crypto-brick",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "working",
+  "in_reply_to": "step-35-crypto-brick-compared-001",
+  "evidence_commit": "9f451731324297439ebdf02d800eaa0aca18606c",
+  "paths": [
+    "audit/handoffs/step-35-crypto-brick/step-35-crypto-brick-compared-001.json",
+    "audit/evidence/2026-09-17/README.md"
+  ],
+  "request": "Fable read the comparison audit/comparisons/2026-09-18-step-35-crypto-brick.md after merging PR #6 to main (merge 4e39f74). No disagreement recorded, no new row; the relayed-summary independence caveat on Fable's 17 Sep readings is accepted as stated. The brick-reading obligation (item five of the bricks page) remains open and the crypto brick stays marked unread until a native-code reading is filed. No rule amended."
+}
