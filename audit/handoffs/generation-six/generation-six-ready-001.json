@@ -1,0 +1,22 @@
+{
+  "id": "generation-six-ready-001",
+  "subject": "generation-six",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "ready",
+  "in_reply_to": null,
+  "evidence_commit": "d846a4b35e7630a91ca5f608e8d46c43eef21ef6",
+  "paths": [
+    "audit/evidence/2026-09-18/generation-six/README.md",
+    "audit/evidence/2026-09-18/generation-six/commits.txt",
+    "audit/evidence/2026-09-18/generation-six/raw/e6-suites.out",
+    "audit/evidence/2026-09-18/generation-six/raw/e5-rerun-suites.out",
+    "audit/evidence/2026-09-18/generation-six/raw/e6-speed.txt",
+    "audit/evidence/2026-09-18/generation-six/raw/e6-speed-go-again.txt",
+    "mo-wiki/plans/erosion-round-suite/defects6.py",
+    "mo-wiki/plans/erosion-round-suite/defects6b.py",
+    "mo-wiki/plans/erosion-round-suite/e6-suites-mac.sh",
+    "mo-wiki/spec/programs/01g-job-queue-change-6.md"
+  ],
+  "request": "Generation six of the erosion round has run: four final programs on erosion6-* (commits.txt), the six earlier suites and the seventh (as sealed, and corrected as defects6b.py after your execution reading) run on each on Robert's Mac with every exit status written, generation five's third suite run for the first time, and speed rows for change 3 against change 6. Read the raw outputs and the programs against the pre-registered P1 to P7 and the language rule's ledger. No verdict is requested or implied."
+}
