@@ -1,0 +1,24 @@
+PASS run utf8 line
+PASS run empty line
+PASS run 60000-byte line got 60001 bytes
+PASS run KeyUpdate then a line keyupdate=True echoed=True
+PASS run only AES-256-GCM offered -> refused 4017FC0E757F0000:error:0A000410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure
+PASS run still serving after the refusal
+PASS run 50 concurrent handshakes 50/50 echoed
+PASS run served certificate equals cert.pem
+PASS run wrong CA refused by client [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signe
+PASS run still serving after a dropped socket
+PASS run resident memory after 200 connections 61504 -> 62772 KiB (+1268)
+PASS binary utf8 line
+PASS binary empty line
+PASS binary 60000-byte line got 60001 bytes
+PASS binary KeyUpdate then a line keyupdate=True echoed=True
+PASS binary only AES-256-GCM offered -> refused 4017B61C5C7F0000:error:0A000410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure
+PASS binary still serving after the refusal
+PASS binary 50 concurrent handshakes 50/50 echoed
+PASS binary served certificate equals cert.pem
+PASS binary wrong CA refused by client [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signe
+PASS binary still serving after a dropped socket
+PASS binary resident memory after 200 connections 17360 -> 17996 KiB (+636)
+22/22 passed
+PROBE-DONE

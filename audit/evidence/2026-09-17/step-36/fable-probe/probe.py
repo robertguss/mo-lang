@@ -1,7 +1,7 @@
 """Fable's own conformance probes for step 36's TLS server, cases the brief did not name.
 Runs the example echo under `mo run` and as a binary, drives it with openssl s_client and Python's
 ssl (both OpenSSL 3.0), and prints one line per case: PASS or FAIL with what was seen."""
-import socket, ssl, subprocess, sys, threading, time
+import os, socket, ssl, subprocess, sys, threading, time
 sys.path.insert(0, '/home/exedev/Projects/mo-lang/toolchain/bench/step36')
 import common as c  # noqa: E402
 
@@ -94,7 +94,7 @@ def probe(runtime):
             report(f'{runtime} wrong CA refused by client', 'CERTIFICATE_VERIFY_FAILED' in str(e), str(e)[:70])
         # 8. a client that drops the socket mid-line with no close_notify; the server serves on
         x = ctx(); s = x.wrap_socket(socket.create_connection(('127.0.0.1', port), timeout=20), server_hostname='localhost')
-        s.sendall(b'half a line with no newline'); s.detach().close()
+        s.sendall(b'half a line with no newline'); os.close(s.detach())
         report(f'{runtime} still serving after a dropped socket', tls_echo(port, b'after-drop') == b'after-drop\n')
         # 9. memory after 200 connections opened and closed
         before = c.rss_of(pid) // 1024

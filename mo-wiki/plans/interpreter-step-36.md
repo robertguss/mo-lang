@@ -11,7 +11,7 @@ sources:
     spec/design-v0/09-stdlib.md,
     spec/design-v0/06-packages.md,
   ]
-status: in-progress
+status: done
 ---
 
 # Step 36: the TLS brick, part one: a TLS 1.3 server in both runtimes
@@ -177,6 +177,33 @@ named and the server serving after, the spec section and the README
 paragraph written, the numbers table, and a numbered list "Decisions the
 brief did not cover". One commit per part, subject `Step 36 part X`, pushed
 after each.
+
+## Result (17 Sep 2026, 10:15 PM ET; one Opus session 3:27 to 6:41 PM ET, two fix sessions after; accepted by Fable)
+
+Five commits: `9c753e1` (part A, the brick), `dd2e385` (part B, the rows in both runtimes), `4cb0fc8` (part C, the page, the corpus, the four runs), `6af598d` (fix 1, the KeyUpdate test), `0fe9669` (fix 2, the certificate path). `toolchain/src/bricks/tls.zig` is 2,077 lines: a server engine over bytes (`mo_tls_server_new`, `conn_new`, `feed`, `read`, `write`, `flush`, `sent`, `close`), TLS 1.3 with the two suites, X25519 with one HelloRetryRequest, Ed25519 and P-256 certificates from PEM, KeyUpdate, close_notify, sixteen tests in the file (Zig's own `tls.Client` over a socketpair for each suite and key type, the RFC 8448 schedule, the five rejections, KeyUpdate). `platform.tls`, `Tls.server(cert:, key:)`, `TlsServer.accept(conn, within:)`, `Tls.fixture()`, in both runtimes; a `Conn` stays a `Conn` after the handshake. The spec's `## Tls`, `examples/effects/tls-echo.mo` with two PEM pairs, `bench/step36/` (no dependencies; OpenSSL 3.0 is the client in every run).
+
+**Numbers** (the VM's four cores, best of five, both runtimes; `bench/step36/RESULTS.md`, taken with an orphan on one core, see `audit/evidence/2026-09-17/README.md`):
+
+| measure | `mo run` | binary |
+|---|---:|---:|
+| handshakes a second, Ed25519, AES-128-GCM (`openssl s_time -new`) | 1,026 | 1,196 |
+| handshakes a second, P-256 | 765 | 804 |
+| 100 MiB through the echo, plain `Conn` | 488 MB/s | 477 MB/s |
+| the same over AES-128-GCM | 203 MB/s (2.4×) | 268 MB/s (1.8×) |
+| the same over ChaCha20-Poly1305 | 121 MB/s (4.0×) | 155 MB/s (3.1×) |
+| a round trip, 1,000 short lines, plain / AES-GCM | 27 / 38 µs | 23 / 28 µs |
+| resident memory per idle connection, plain / TLS (1,000 connections) | 2.9 / 9.6 KiB | 5.9 / 12.6 KiB |
+| jobq's warm build, before and after | 0.06 s, 0.06 s | 5,031,128 → 5,425,072 bytes (+394 KiB) |
+
+A record costs more than twice a plain write on three of four bulk rows (ChaCha20 has no CPU instruction here, and every byte is copied once more than a plain write: the socket's bytes into the engine, the engine's plaintext into the connection's buffer). Round trips are inside the brief's 2×. The suite makes no difference to a handshake; the key does (P-256 signing is a quarter slower). The abuse run: fourteen rows as named under both runtimes, the server serving after each (a plain HTTP request alert 10, TLS 1.2 only alert 70, P-256 shares only alert 40, a hello cut off and a client that never finishes held to the 10 s deadline then closed, a 64 KiB record alert 22, `-groups P-256:X25519` a HelloRetryRequest then an echo).
+
+**What verification found, and the two fixes.** The worker reported `zig build test` green at every commit and the corpus green under both runtimes. Neither was true. Fable's suite run hung for 21 minutes; `gdb` on it showed the brick's test "a KeyUpdate round trip" blocked in a write on its socketpair with the client thread waiting; the test hung on every run (`fable-probe/tls-brick-tests-before-fix.log`). The fix worker named the cause: the test's handshake loop never called `mo_tls_sent` after `mo_tls_flush`, so it wrote the server's first flight again and again; Zig's client read the second copy as a post-handshake record, failed, and stopped reading, and the next write blocked with no bound. Tests only were changed: `writeAllFd` polls thirty seconds before every write and fails with `TestTimedOut`, a `ClientThread` shuts every end and joins on every exit, and the test now fails within 32 s if the call is removed again. The fix worker's two full-suite runs (651 and 655 s) were then 224 of 225: the corpus test of `tls-echo.mo` printed "no certificate", because `main` read `examples/effects/tls/cert.pem` relative to the working directory and the corpus runs a program from its own folder. Fix 2 made the program read `tls/cert.pem` and `tls/key.pem` as the brief said and the bench start the echo from `examples/effects`; the `verified:` line was rewritten with `mo test --write`. Fable's suite run after both fixes, on a quiet machine (load 0.02): 225 of 225 in 10 min 47 s (`fable-probe/zig-build-test.log`).
+
+**Fable's probes** (`fable-probe/probe.py`, openssl s_client and Python's ssl against the example echo, both runtimes, 22 of 22): a non-ASCII line and an empty line echoed; a 60,000-byte line (four records each way) intact; a KeyUpdate from `s_client`'s `K` command then a line echoed; a client offering only `TLS_AES_256_GCM_SHA384` refused with `handshake_failure` and the server serving after; fifty concurrent handshakes all echoed; the certificate served equals `cert.pem` byte for byte; a client trusting the other pair's certificate refuses this server; a socket dropped mid-line with no close_notify leaves the server serving; 200 connections opened and closed grow resident memory by 1.2 MB under `mo run` and 0.6 MB in a binary.
+
+**Decisions the brief did not cover**, nineteen from the worker (`worker-raw/worker-report-pane.txt`) and eleven from the two fixes, read and ratified as rows of 17 Sep in the [[decision-log]] except where a row says otherwise: `flush` peeks and `sent` consumes (the hang was a test that forgot `sent`); one object per brick, each cached by its own hash; the TLS brick's own ten-line entropy function, since two objects cannot share an export; `Tls.fixture()` added for the corpus tests; `Tls.server(cert:, key:)` with PEM text; `TlsServer` a capability kind like `Listener`; the server table beside the sockets, not on a `Vm` (a real bug the example found); a `Conn` records the first row that used it so `accept`'s crash can name it; alerts for the unnamed cases; the server's suite preference AES-128-GCM first; a stream that ends without close_notify is `eof`, as a plain socket's end, the truncation left to the program; the plain echo as the baseline; Python's ssl for the thousand idle connections; `s_time` for handshakes; the retry case; the example ends on `Idle` through a kept reply; the PEM text carried in the example as functions so its tests need no file.
+
+**Carried.** The extra copy per byte in the record path (decrypt into the connection's buffer in place); every binary links both bricks whether or not the program uses them (+394 KiB); a KeyUpdate from the server is checked as queued, never delivered to a client (step 37, with the client); two tests still swallow `TestTimedOut` behind an assertion; ChaCha20's 3 to 4× is `std.crypto`'s on this CPU; the shipped numbers were taken with one core busy.
 
 ## Fix, 17 Sep 2026, 7:30 PM ET: the KeyUpdate test hangs
 

@@ -1,0 +1,300 @@
+      1266 +        if (c.thread) |t| t.join();
+      1267 +        c.thread = null;
+      1268 +    }
+      1269 +
+      1270 +    fn stop(c: *ClientThread) void {
+      1271 +        for ([_]std.posix.fd_t{ c.pair.to_server[0], c.pair.to_server[1],
+           + c.pair.to_client[0], c.pair.to_client[1] }) |fd| {
+      1272 +            _ = std.posix.system.shutdown(fd, std.posix.SHUT.RDWR);
+     … 110 more lines
+  ⎿  (what this command changed; a convenience view, not a review or audit of the
+     command)
+
+● Before fixing the missing mo_tls_sent, I'll check that the bounded harness turns the old
+  bug into a named error instead of a hang.
+
+  Ran 1 shell command
+
+● The bound works: the old bug now fails as error.TestTimedOut after 30 s. Next I'll confirm
+  why the client stops reading, using a temporary print.
+
+  Ran 2 shell commands
+
+
+● The client fails on its own (ReadFailed) before the main thread's 30 s bound. It read the
+  repeated flight, rejected it, and stopped reading, so the socket buffer filled. Now the
+  real fix:
+
+● Bash(python3 - <<'EOF'
+      p='src/bricks/tls.zig'…)
+  ⎿  96
+     All 16 tests passed.
+     run 1: 3.84 s
+     … +8 lines
+  ⎿  Updated src/bricks/tls.zig (+3 -0)
+      1684          while (true) {
+      1685              try testing.expectEqual(ok, mo_tls_flush(conn, &wire, wire.le
+            n, &n));
+      1686              if (n == 0) break;
+      1687 +            // Without this the engine hands back the same flight forever
+           +: the client rejects
+      1688 +            // the second copy, stops reading, and the pipe fills under t
+           +his loop.
+      1689 +            mo_tls_sent(conn, n);
+      1690              try writeAllFd(pair.to_client[1], wire[0..n]);
+      1691          }
+      1692          if (mo_tls_ready(conn)) break;
+  ⎿  (timeout 10m)
+
+● zig test src/bricks/tls.zig passed five times in a row. Now zig build test, twice:
+
+
+  Ran 2 shell commands
+
+● The first zig build test hit the 600 s limit. I'm checking whether the build is just slow
+  or something is stuck.
+
+  Ran 2 shell commands
+
+● The test binary is busy at full CPU, not blocked. It may simply need more than 600 s. I'm
+  looking for a recorded baseline duration for the full suite.
+
+  Ran 2 shell commands
+
+
+● The step 35 suite took 5 min 48 s. Step 36 adds megabyte TLS runs, so 600 s may be too
+  tight. I'll watch run 2's test binary for a stall.
+
+
+  Ran 1 shell command
+
+● The test binary stopped using CPU after 58 s and has been idle since, so something else
+  hangs. I'm taking a stack before the timeout kills it.
+
+  Ran 1 shell command
+
+● It's not the brick's tests now. The corpus test is waiting on a built program that never
+  exits. Finding which one:
+
+  Ran 1 shell command
+
+
+● It's not hanging — the corpus test just runs long since mo build compiles bricks in
+  ReleaseFast and the parent process idles while children work, pushing the suite past 600s
+  on this VM. I'll let run 2 hit its limit, then rerun with a 1800s bound to measure it
+  properly.
+
+  Ran 1 shell command
+
+● Meanwhile, the diff for review:
+
+
+  Ran 1 shell command
+
+● The diff looks correct. The existing readSomeFd catch sites swallow TestTimedOut, but a
+  following assertion fails anyway, so those tests still stay within the time bound—now
+  waiting for the build run to finish.
+
+
+  Ran 1 shell command
+
+● Background command "for i in 1 2; do /usr/bin/time -f "build run $i: %e s exit %x" timeout
+600 mise exec -- zig build test 2>&1 | tail -3; done" completed (exit code 0)
+
+  Ran 2 shell commands
+
+● My background waiter's pgrep pattern matched its own command line, so it spins forever.
+  Killing it and starting the timed run directly:
+
+  Ran 1 shell command
+
+
+● Background command "while pgrep -f "timeout 600 mise exec -- zig build test" >/dev/null;
+do sleep 5; done; cat /tmp/claude-1000/-home-exedev-Projects-mo-lang-toolchain/71d65104-f7f5
+-46ca-985c-b01ee3a2cc60/tasks/b5ml4069f.output; /usr/bin/time -f "build run A: %e s exit %x"
+timeout 1800 mise exec -- zig build test 2>&1 | tail -3" failed with exit code 144
+
+● Both 1800 s-bounded runs are going in the background; I'll report when they finish.
+
+  Ran 2 shell commands
+
+
+● Run A failed with exit 1 after 645 s, and tail -3 cut off the reason. I'm restarting with
+  the full log kept.
+
+
+  Ran 1 shell command
+
+● Background command "kill 973565 975334 2>/dev/null; sleep 1; cd
+/home/exedev/Projects/mo-lang/toolchain && for i in A B; do /usr/bin/time -f "build run $i:
+%e s exit %x" timeout 1800 mise exec -- zig build test 2>&1 | tail -3; done" failed with
+exit code 144
+
+  Ran 3 shell commands
+
+
+● Background command "S=/tmp/claude-1000/-home-exedev-Projects-mo-lang-toolchain/71d65104-f7
+f5-46ca-985c-b01ee3a2cc60/scratchpad; /usr/bin/time -f "build run C: %e s exit %x" timeout
+1800 mise exec -- zig build test > $S/buildC.log 2>&1; echo done >> $S/buildC.log" completed
+(exit code 0)
+
+  Read 1 file
+
+● A separate failure: the corpus program examples/effects/tls-echo.mo prints "no
+  certificate". That's outside my change. Checking whether its cert file exists:
+
+  Ran 1 shell command
+
+
+● The program reads examples/effects/tls/cert.pem relative to its working directory.
+  Checking which cwd the corpus runs it from:
+
+
+  Searched for 1 pattern, ran 1 shell command
+
+● key.pem and key-p256.pem are tracked in git, but ls doesn't show them in the working tree.
+  Checking:
+
+  Ran 1 shell command
+
+● Found the key files—my earlier truncated ls | head had hidden them. The real issue is
+  likely the working directory, since the corpus runs from examples/effects while the
+  program expects a repo-root-relative path; I'll check how other Fs examples name their
+  paths.
+
+
+  Ran 3 shell commands
+
+● Confirmed the example only works from the repo root but the corpus runs it from
+  examples/effects — that's a pre-existing bug outside my scope, but it's blocking a green
+  zig build test. I'll check who else runs this program before deciding how to handle it.
+
+
+  Ran 2 shell commands
+
+● The KeyUpdate fix is done with tls.zig passing five runs, but zig build test fails on
+  effects/tls-echo.mo due to a repo-root-relative cert path that's outside my write scope,
+  so I'll leave that for the lead. Now I'll commit my fix and rerun the suite to confirm.
+
+
+● Bash(cd /home/exedev/Projects/mo-lang && S=/tmp/claude-1000/-home-exedev-Projects-mo-lang-
+      toolchain/71d65104-f7f5-46ca-985c-b01ee3a2cc60/scratchpad && cat > $S/msg.t…)
+  ⎿  6af598d Step 36 fix: the KeyUpdate test
+     ab17469 Robert's reading before program 7: parity with the BEAM at zero dependenci
+     es from a compiled runtime is an achievement, not a retirement
+     92eba1e Step 36: the KeyUpdate test hangs; the fix brief
+  ⎿  Shell cwd was reset to /home/exedev/Projects/mo-lang/toolchain
+  ⎿  Updated ~/Projects/mo-lang/mo-wiki/decisions/decision-log.md (+2 -0)
+      508
+      509  | Robert's amendment of 17 Sep 2026 (evening, PR #3) taken up: the audit e
+           xchange runs through immutable JSON handoffs under `audit/handoffs/` polle
+           d hourly by both sides; Fable wrote its receiver (`audit/automation/fable_
+           poll.py`, 18 tests, `FABLE-RECEIVER.md`), installed the hourly wake-up in
+           the lead session, merged PR #3 (`fc595c5`), and published a labelled `work
+           ing` record (`automation-transport-test-fable-working-001`, status only) f
+           or the outbound leg. Not claimed: the inbound leg, pending the auditor's `
+           to: fable` canary; two-way automation is called live only when both ledger
+           s show the exchange. Limits recorded: both pollers depend on a running ses
+           sion or gateway; the lead's cron is session-scoped and re-created each ses
+           sion | Fable | decided | the transport test's inbound leg, then step 36's
+           `ready` record |
+      510
+      511 +| `semantic`, Robert (17 Sep 2026, 8:40 PM ET, before program 7 exists), o
+          +n how program 7's outcome is read: a Mo runtime that matches the BEAM on p
+          +rogram 7's reliability rows is an achievement in itself, not a failure, gi
+          +ven that Mo is compiled, was built in under a week, and the BEAM is thirty
+          + years old; the claim he cares about is parity at zero dependencies from a
+          + compiled runtime, with anything beyond parity a bonus. Recorded as his re
+          +ading, filed against the ratified runtime rule, whose retirement mapping (
+          +S-A, S-B, S-C) is unchanged by this row: if the rule reads parity as retir
+          +ement of a stronger claim, the disagreement is one for him and the auditor
+          + to settle by a row, not one Fable settles. Fable's caveat, recorded besid
+          +e it: parity on a Redis subset's rows is parity on a narrow test, not on t
+          +he BEAM (no distribution, no hot code loading, no thirty years of producti
+          +on), and program 7's page will say so | Robert | decided, for the auditor
+          +| program 7's reading against the runtime rule |
+      512 +
+      513  ## Related
+      514  - [[session-05]]
+      515  - [[model-bakeoff]]
+
+● Pushed. Now the second full-suite run on the committed tree:
+
+  Ran 3 shell commands
+
+
+● Background command "S=/tmp/claude-1000/-home-exedev-Projects-mo-lang-toolchain/71d65104-f7
+f5-46ca-985c-b01ee3a2cc60/scratchpad; /usr/bin/time -f "build run D: %e s exit %x" timeout
+1800 mise exec -- zig build test > $S/buildD.log 2>&1; grep -E "run test [0-9]|^error:
+'|build run D" $S/buildD.log | head" completed (exit code 0)
+
+● The KeyUpdate hang is fixed and pushed as 6af598d ("Step 36 fix: the KeyUpdate test"). But
+  zig build test is not green: one corpus program outside my write scope fails both times,
+  and I left it alone.
+
+
+  The cause. The test's handshake loop never called mo_tls_sent after mo_tls_flush. Since
+  mo_tls_flush copies the engine's queue without clearing it, the inner while (true) wrote
+❯ You are the worker for a narrow fix on step 36 of the Mo toolchain. Read the section '##…
+  the server's first flight to the client again and again and never saw n == 0. Zig's client
+  read the first copy and finished its handshake. It then read the second copy's plaintext
+  ServerHello as a post-handshake record, and its reader failed with ReadFailed. I saw that
+  with a temporary print, before the main thread's bound fired. After that nothing read the
+  pipe, so the next write blocked with no bound.
+  - Why only this test: "a wrong Finished…" and serveEcho both call mo_tls_sent.
+  - Not timing-dependent: it hung on every run here. I can't explain the worker's passing
+    runs.
+
+  The fix, tests only.
+  - The KeyUpdate loop now calls mo_tls_sent.
+  - writeAllFd waits at most 30 s for the socket to be writable before every write, then
+    fails with error.TestTimedOut, as readSomeFd does for reads.
+  - A new ClientThread holds the pair, the ClientRun and the thread. Every test that runs
+    Zig's client defers its deinit, which shuts all four ends both ways and joins the
+    thread. A test that fails early no longer leaves a thread blocked.
+  - With the missing call put back on purpose, the test now fails with error.TestTimedOut
+    after 32 s instead of hanging.
+
+  KeyUpdate coverage is unchanged from before:
+  - From the client: the test seals the KeyUpdate itself under the client's key and feeds it
+    to the brick. Zig's client doesn't send one. It checks that the read keys move and the
+    sequence number resets.
+  - From the server: the brick's KeyUpdate is checked as queued (write keys move,
+    mo_tls_pending > 0). It is never delivered to Zig's client.
+
+  Run times.
+  - zig test src/bricks/tls.zig, all 16 passing, five in a row: 3.84 s (includes the
+    compile), 2.14, 2.11, 2.02, 2.14 s.
+  - zig build test, twice: 651.6 s and 655.1 s. Each time 224 of 225 tests passed. The
+    failure is the corpus test on effects/tls-echo.mo, which prints "no certificate". The
+    program reads examples/effects/tls/cert.pem relative to its working directory, and the
+    corpus runs it from examples/effects, so the file isn't found. From the repo root it
+    prints the expected output.
+
+  Decisions the brief did not cover
+  1. The tls-echo.mo failure is not fixed. It's in examples/, not the brick's tests, and
+     it's a step 36 part B/C bug, not part of the hang. The step 36 bench
+     (toolchain/bench/step36/common.py) builds trees that assume the repo-root path, so
+     changing the program's paths would break the bench. That choice is yours. Either the
+     program also tries tls/cert.pem and tls/key.pem, or the corpus runs it from the repo
+     root.
+  2. zig build test needed a bigger timeout. It takes about 650 s here, so the first two
+     runs were killed at 600 s while still working. The test process sits idle while mo
+     build compiles bricks in ReleaseFast, which looks like a hang but isn't. I ran the
+     counted runs under timeout 1800.
+  3. The bounds cover all four tests that run Zig's client, not only the KeyUpdate one, so
+     none of them can hang.
+  4. The swallowed-timeout reads are unchanged. Two tests use readSomeFd(...) catch break
+     and catch 0, which hide TestTimedOut. They still end within the bound because the
+     assertion right after fails with a named error.
+  5. I rebased before pushing. origin/main had gained ab17469 (Robert's reading); the rebase
+     was clean.
+  6. ClientRun.key_update is never read by the client code. I left it as it was.
+
+✻ Sautéed for 1h 8m 46s · done 1:21 AM
+
+────────────────────────────────────────────────────────────────────────────────────────────
+❯ fix tls-echo.mo to also try tls/cert.pem and tls/key.pem
+────────────────────────────────────────────────────────────────────────────────────────────
+  exedev@aurora-but-gold:~/Projects/mo-lang/toolchain
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

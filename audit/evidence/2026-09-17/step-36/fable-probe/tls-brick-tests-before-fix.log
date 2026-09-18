@@ -1,0 +1,18 @@
+== brick tests, run 1
+8/16 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK
+9/16 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK
+10/16 tls.test.a Finished whose verify data is wrong is decrypt_error...OK
+11/16 tls.test.a KeyUpdate round trip...timeout 300 zig test src/bricks/tls.zig  2.37s user 0.20s system 0% cpu 5:00.01 total
+exit 0
+== brick tests, run 2
+8/16 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK
+9/16 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK
+10/16 tls.test.a Finished whose verify data is wrong is decrypt_error...OK
+11/16 tls.test.a KeyUpdate round trip...timeout 300 zig test src/bricks/tls.zig  0.01s user 0.00s system 0% cpu 3:27.52 total
+exit 0
+== brick tests, run 3
+8/16 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK
+9/16 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK
+10/16 tls.test.a Finished whose verify data is wrong is decrypt_error...OK
+11/16 tls.test.a KeyUpdate round trip...timeout 300 zig test src/bricks/tls.zig  0.00s user 0.01s system 0% cpu 17.665 total
+exit 0

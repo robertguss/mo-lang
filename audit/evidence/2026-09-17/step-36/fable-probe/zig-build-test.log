@@ -1,0 +1,9 @@
+Build Summary: 5/5 steps succeeded; 225/225 tests passed
+test success
++- run test 225 pass (225 total) 10m MaxRSS:465M
+   +- compile test Debug native cached 7ms MaxRSS:40M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 8ms MaxRSS:41M
+
+( timeout 1500 zig build && timeout 1500 zig build test --summary all; )  613.82s user 30.66s system 99% cpu 10:46.57 total
+EXIT 0

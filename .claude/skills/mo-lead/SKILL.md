@@ -43,6 +43,7 @@ The loop with the auditor, as it runs today (charter option B, manual, Robert-dr
 
 ## Rules that were learned the hard way
 
+- A worker's "green" is a claim, not a result (step 36, 17 Sep 2026: two defects behind a reported green suite). Every brief's Done-when asks for `zig build test --summary all` under a timeout with the summary line and exit code in the report; the lead runs the suite itself before any acceptance; a test that can block on a socket has a deadline on every read and write.
 - Nothing is final until measured; every step ends in a numbers table, best of five, both runtimes. Before any measurement read `uptime` and `ps -eo pid,etimes,pcpu,args --sort=-pcpu | head`, kill what is an orphan (17 Sep 2026: a 43-hour `python3 -` from a finished session held one of the VM's four cores through a whole day of numbers), and write the load average on the page beside the numbers.
 - Zero new syntax where possible; a grammar change is Robert's call, asked with code options.
 - The laws stay unless a control run shows them costing loops; five rounds have shown none.
