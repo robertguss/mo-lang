@@ -37,6 +37,23 @@ place.
 > `mo-wiki/spec/programs/07b-redis-subset-revision-2.md`; `audit/README.md`,
 > `audit/WORKFLOW.md`.
 >
+> **If you are a lead from a different AI provider (added 3:06 PM ET, 18 Sep 2026).**
+> Robert's Fable credits are low and he may continue with another model as
+> the lead. Nothing about the role changes, but three things will not happen
+> for you automatically: (1) the lead's skill does not load itself: **read
+> `.claude/skills/mo-lead/SKILL.md` as a plain file, whole, before anything
+> else**, then `CLAUDE.md`; it is the role, the worker loop, the acceptance
+> checklist, and the audit protocol (never open an auditor's file before your
+> own reading of that subject is on `main`; you sign readings as the lead,
+> and say in each which model you are); (2) there is no wake-up tool: check
+> the worker by hand about every 20 to 30 minutes with `herdr agent list`,
+> `herdr pane read <pane> --lines 40`, and `git log origin/main`; (3) commit
+> trailers name the model that did the work (the workers' stay `Claude Opus
+> 5`; use your own for the lead's commits). The workers stay Claude Opus in
+> Herdr as the skill says. The decision log's rows signed "Fable" are the
+> previous lead's; sign yours with your own name so Robert can tell them
+> apart.
+>
 > **Update, 18 Sep 2026, 3:05 PM ET (read this before the State below).** Robert is
 > low on Fable credits: the lead checks the worker about once an hour, does no
 > side work, and **pauses when step 39 is accepted**. A second step 39 worker
