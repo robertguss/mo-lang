@@ -298,6 +298,8 @@ Found by the lead's probe (`audit/evidence/2026-09-18/step-37/fable-probe/probe3
 ## Related
 
 - [[interpreter-step-36]]
+- [[interpreter-step-38]]
+- [[07-redis-subset]]
 - [[bricks-and-the-cost-of-zero-dependencies]]
 - [[09-stdlib]]
 - [[the-audit-workflow]]

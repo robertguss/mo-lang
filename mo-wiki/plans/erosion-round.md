@@ -16,7 +16,7 @@ sources:
 status: in-progress
 ---
 
-# The erosion round, generations two to five (the live round: change 6 next)
+# The erosion round, generations two to six (the live round: generation six pre-registered)
 
 [[d43-five-measurements|Direction 43]] §3: Mo's laws hold a program's quality
 across generations of fresh maintainers, Go and Python drift. Round 8 was
@@ -279,6 +279,26 @@ The Mo rows before change 5 are the step 34 probe's (two runs each, [[interprete
 | P6, the law | the Mo maintainer changes or adds a `never` or `invariant`, and one trips on a wrong edit during the work | three `never`s added, none tripped on a wrong edit; the bug during the work was found by reading; the shipped bug is refused at open by the program's own rule, after the fact | no |
 
 **What it says.** The seam was a law, and the law did not earn its row: the Mo maintainer wrote three `never`s for the change and none caught the two bugs it made, one found by reading and one shipped. What the shipped bug shows is the other half of the language's bet, and it cuts both ways. Mo's change 5 program is the only one of the four that can write a folder it will not reopen, because it is the only one whose `compact` keeps a count beside the records it folds; but it is also the only one that *says so*, loudly and at once, because its `verify` states the count's rule and refuses the folder, where a baseline with the same slip would have replayed the log and silently put the job in the wrong queue. So the sixth suite's one Mo miss is an outage on restart that an operator sees, against a corruption nobody sees; and it is still a miss, the first Mo defect a baseline did not share in six suites. The erosion tally after five generations: Mo 1 carried and 1 new, Go 1 carried, Python 1 carried, Elixir 3 carried; the ten-generation prediction (Go and Python at least three, Mo at most one) is alive on both halves only if Mo's count stops here. The tax held again, 14 loops to Go's 3, six of them the shape rules (MO0301, MO0303, MO0304, MO0501, MO0105) and three the `--write` order (MO0317), the rows chapter 10 §3 and §5 already own. And the speed column, added this generation after generation four's nine-times slower lease path was found, is now measured for every program at every generation from here.
+
+## Generation six, pre-registered (18 Sep 2026, 4:45 AM ET, before any session)
+
+Change 6 ([[01g-job-queue-change-6]], sealed by the commit that adds this section): the archive pruned on demand and in the background as one durable record with the keys freed; a `bench` command and a **speed budget** (creates and pairs at 32 workers at least 0.8× the program's own change-3 numbers, measured by the maintainer before and after, a program under it not done); the rename rule corrected with a `next_id` boundary, as every generation-five maintainer fixed it; the generation-five bug reported as a ticket with a persistence sequence (create, archive, compact, rename, create into the old name, prune, stop, reopen, verify) that names file and directory-entry persistence separately; every declared error path reached by a test or removed. Written to press on two things the round has not: whether a maintainer given a budget finds and removes a cost it did not create (generation four's walk is still in Mo's program, nine times on the lease path), and whether a persistence sequence stated in the spec catches what the sixth suite caught after the fact.
+
+**Setup.** Worktrees `../mo-lang-erosion6-{mo,go,python,elixir}` on `erosion6-*`, branched from the generation-five commits on `erosion5-*`; the Mo one carries the `mo` of `main` at the start (step 37's, with the fix `b0b2ac4`; the result says the commit) and the spec chapters as of that commit; the Elixir one has `mise.toml` copied in. Agents `mo-e6-{mo,go,python,elixir}` in a workspace of their own, closed when the sessions end, Claude Code on Opus at medium effort, the brief `erosion-round-suite/e6-brief.sh` (change 5's word for word with the new spec path, commit `jobq: change 6`, report to `REPORT-change-6.md`). The seventh suite is written by Fable before the sessions start and sealed in the decision log by its hash; it runs the earlier suites too. The machine quiet, `uptime` on the page, the speed row per generation as before (`measure.py`, 30,000 jobs on the VM, 1 core), and the maintainers' own `bench` lines beside it.
+
+| prediction | threshold |
+|---|---|
+| P1, regressions | Mo 0 under every earlier suite; each baseline at most 1 cause beyond what it carries |
+| P2, defects under the seventh suite | Mo's count no more than each baseline's |
+| P3, the prune under a kill | at least one baseline loses a job the prune should have kept, resurrects a pruned one at open, or frees a key it should not; Mo does not |
+| P4, the sequence | at least one program fails the spec's sequence on a change-5 folder or the directory-entry case; Mo passes both |
+| P5, the tax | the Mo maintainer takes more loops than the Go maintainer |
+| P6, the law | the Mo maintainer changes or adds a `never` or `invariant`, and at least one trips during the work on a wrong edit |
+| P7, the budget | the Mo maintainer, told only the budget, finds the change-4 postcondition and brings the lease path back to at least 0.8× change 3 (at least 1,300 pairs a second at 32 workers on the VM, from 425 to 533); every baseline is within its budget without a change |
+
+Fable's honest priors: P7 is the one this generation is for and the one most likely to hold; P6 has failed five times and is predicted to fail again (the laws catch shipped bugs at open, not edits); P4 is a coin toss. Recorded, not predicted: wall-clock, loops by cause, first-fix rate, lines changed, tokens read, the decision lists, which `never` each Mo edit touched, the two `bench` lines per program.
+
+**Not started** at the seal: Robert asked for the night's work to keep moving, but four maintainer sessions at once on the VM's four cores while the memory control probe measures would spoil both; the sessions start when the machine is quiet, the seventh suite is written, and the lead is watching, the morning of 18 Sep at the earliest.
 
 ## Related
 
