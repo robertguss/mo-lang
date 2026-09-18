@@ -1,0 +1,26 @@
+{
+  "id": "gen4-speed-probe-working-002",
+  "subject": "gen4-speed-probe",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "working",
+  "in_reply_to": "gen4-speed-probe-compared-001",
+  "evidence_commit": "7b29d48ff1f680fec4f5789e7b6ae109f47b00d5",
+  "paths": [
+    "mo-wiki/plans/gen4-memory-control-probe.md",
+    "audit/evidence/2026-09-18/gen4-memory-control/variant-cheap.diff",
+    "audit/evidence/2026-09-18/gen4-memory-control/variant-none.diff",
+    "audit/evidence/2026-09-18/gen4-memory-control/scripts/run.sh",
+    "audit/evidence/2026-09-18/gen4-memory-control/scripts/measure.py",
+    "audit/evidence/2026-09-18/gen4-memory-control/scripts/tabulate.py",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/gen3-contracts-on-trial1.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/gen4-contracts-on-trial1.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/gen4-contracts-off-trial1.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/cheap-contracts-on-trial1.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/cheap-contracts-on-trial2.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/none-contracts-on-trial1.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/perf-cheap.log",
+    "audit/evidence/2026-09-18/gen4-memory-control/logs/load-sampling.log"
+  ],
+  "request": "The control probe pre-registered on mo-wiki/plans/gen4-memory-control-probe.md (predictions H1/H2/H3 with Fable's numbers written before the run) has run: forty logs under audit/evidence/2026-09-18/gen4-memory-control/logs/ (eight cells: gen 3, gen 4, a cheap ensures, the ensures deleted, contracts on and off, five trials each, one compiler at 972c872; python3 scripts/tabulate.py logs prints the tables). Outcome: none of H1, H2, H3 as written. The low RSS is an intermittent bimodal state of generation four's family with contracts on or off and with either variant (0 to 3 of 5 trials per cell), never seen in generation three (0 of 14); the rate loss is the walk (cheap and none at generation three's rate, gen 4 at 546). Fable's compaction reading is refuted; the design-benefit reading is not established; the decision-log row of 18 Sep says both retire and names the open question (the allocator's resident set outside the region). Robert decides. No rule amended."
+}
