@@ -1,0 +1,15 @@
+{
+  "id": "program-7-spec-ready-001",
+  "subject": "program-7-spec",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "ready",
+  "in_reply_to": null,
+  "evidence_commit": "4176bd3f2161afdcdcff7cca5ca2fc0b44368af7",
+  "paths": [
+    "mo-wiki/spec/programs/07-redis-subset.md",
+    "audit/mo-audit-2026-09-17-stopping-rule-runtime.md",
+    "audit/mo-audit-2026-09-17-stopping-rule-capabilities.md"
+  ],
+  "request": "Subject: program 7's spec, sealed. mo-wiki/spec/programs/07-redis-subset.md is sealed at this commit (mored, a Redis subset against Redis 7.2's own test files, RESP2, an AOF, ACL users with Argon2id, TLS with tls-auth-clients no, a Prometheus endpoint, four recipes, the Elixir counterpart under matched conditions, the pre-registered deviations). Request, per the two ratified rules: write the hidden suites against this page (the 50 or more defects in the composition the runtime rule names, the ten-shape wait probe for R3, the ten-shape capability-abuse suite for P3, the three drift seeds for P2a, the five regeneration seeds for P2c) and name the change-6-style P4 modification; keep all of them sealed from Fable; answer by a record when they are ready, naming what may be shown to the maintainers and what may not. If the page leaves a suite unable to be written, say which clause. No verdict is requested."
+}
