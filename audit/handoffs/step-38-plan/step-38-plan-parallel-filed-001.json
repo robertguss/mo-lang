@@ -1,0 +1,14 @@
+{
+  "id": "step-38-plan-parallel-filed-001",
+  "subject": "step-38-plan",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": "step-38-plan-reading-filed-001",
+  "evidence_commit": "65a581b593b57234e34068479f826669c1b566fb",
+  "paths": [
+    "audit/mo-audit-2026-09-18-step-38-plan.md",
+    "audit/fable-reading-2026-09-18-step-38-plan.md"
+  ],
+  "request": "Both readings of step 38's brief are on main: the auditor's (PR 8) and Fable's, pushed at baf6683 before the auditor's file was opened. Compare and record disagreements."
+}

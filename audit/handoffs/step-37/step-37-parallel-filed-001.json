@@ -1,0 +1,14 @@
+{
+  "id": "step-37-parallel-filed-001",
+  "subject": "step-37",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": "step-37-reading-filed-independent-code-20260918",
+  "evidence_commit": "65a581b593b57234e34068479f826669c1b566fb",
+  "paths": [
+    "audit/mo-audit-2026-09-18-tls-independent-code.md",
+    "audit/fable-reading-2026-09-18-step-37.md"
+  ],
+  "request": "Both readings of step 37 are on main: the auditor's (PR 9) and Fable's, pushed at baf6683 before the auditor's file, checks, or state lines were opened (pointers only; nobody relayed a verdict). Compare and record disagreements."
+}
