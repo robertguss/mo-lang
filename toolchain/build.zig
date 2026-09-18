@@ -7,6 +7,7 @@ const std = @import("std");
 //                        examples/programs/ through the installed mo (MO_EXE)
 //   zig build bench    → zig-out/bin/mo-bench  the benchmark harness, run against ../examples
 //   zig build errors   → ../mo-wiki/spec/errors.md, the error catalog, from the diagnostic tables
+//   zig build tls-tools → zig-out/bin/mo-tls-peer and mo-tls-fuzz, step 37's bench tools
 // Compile speed is a first-class requirement (design-v0/07), so the harness exists
 // before any stage does. bench/rebuild.sh times this build file itself.
 pub fn build(b: *std.Build) void {
@@ -79,6 +80,34 @@ pub fn build(b: *std.Build) void {
         }),
     });
     b.installArtifact(bench_exe);
+
+    // zig build tls-tools → zig-out/bin/mo-tls-peer and mo-tls-fuzz, step 37's two tools over the
+    // TLS brick (bench/step37): the differential run's peer, which drives the brick's exports over
+    // a real socket against OpenSSL, and the fuzz driver, a test executable so the brick's test
+    // hooks (fixed entropy) exist. Both ReleaseSafe: a fuzzed input that trips a safety check
+    // must panic, not run on.
+    const brick_mod = b.createModule(.{ .root_source_file = b.path("src/bricks/tls.zig"), .target = target, .optimize = .ReleaseSafe });
+    const peer_exe = b.addExecutable(.{
+        .name = "mo-tls-peer",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/step37/peer.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+            .imports = &.{.{ .name = "tls_brick", .module = brick_mod }},
+        }),
+    });
+    const fuzz_exe = b.addTest(.{
+        .name = "mo-tls-fuzz",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/step37/fuzz.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+            .imports = &.{.{ .name = "tls_brick", .module = brick_mod }},
+        }),
+    });
+    const tools_step = b.step("tls-tools", "Build step 37's TLS peer and fuzz driver into zig-out/bin");
+    tools_step.dependOn(&b.addInstallArtifact(peer_exe, .{}).step);
+    tools_step.dependOn(&b.addInstallArtifact(fuzz_exe, .{}).step);
     const bench_step = b.step("bench", "Time every stage over ../examples (args after -- go to mo-bench)");
     const bench_cmd = b.addRunArtifact(bench_exe);
     bench_cmd.step.dependOn(b.getInstallStep());

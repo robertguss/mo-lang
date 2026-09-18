@@ -127,3 +127,14 @@ brick the program's rows never reach.
 The two deadline cases are the `within:` `tls-echo.mo` gives `accept` (10 s): the connection is
 held that long and closed with nothing said, so a client that stops mid-hello costs the server one
 connection and no CPU, and cannot be made to answer early or to hang.
+
+## After step 37's fixes
+
+Step 37 fixed four things in these scripts after the auditor's reading of step 36
+(`audit/mo-audit-2026-09-18-step-36.md`): `abuse.py` checks the server immediately after each
+case, and adds a whole 65,535-byte record beside the header-only `oversized` case; `handshake.py`
+checks `s_time`'s exit code and reports the connections it counted; `bulk.py` states its units;
+every file under `work/` begins with the date and `uptime`. The fixture `cert.pem` is now a chain
+and clients trust `root.pem`. The reruns, and step 36's handshakes reproduced with step 36's own
+pairs (`handshake.py --pairs step36`), are in `bench/step37/RESULTS.md`. The abuse table above ran
+all its checks after the whole batch, as the auditor found; the rerun there checks after each case.

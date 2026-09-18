@@ -83,6 +83,8 @@ def over_plain(port: int, data: bytes) -> float:
 
 
 def rate(mib: int, took: float) -> str:
+    """Decimal megabytes a second (10^6 bytes) of the `mib` mebibytes (2^20 bytes each) that went
+    one way: 100 MiB is 104.9 MB."""
     return f"{(mib << 20) / took / 1e6:.1f}"
 
 
@@ -163,9 +165,9 @@ def main() -> None:
                 raise SystemExit("the echo stopped serving during the run")
         finally:
             server.stop()
-    print(common.table(rows, ("runtime", "over", f"MB/s ({args.mib} MiB each way)")))
-    print()
-    print(common.table(trips, ("runtime", "over", f"µs a round trip ({args.trips} of them)")))
+    common.write_output("bulk.txt", common.table(
+        rows, ("runtime", "over", f"MB/s: 10^6 bytes a second, {args.mib} MiB (2^20 bytes each) each way"))
+        + "\n\n" + common.table(trips, ("runtime", "over", f"µs a round trip ({args.trips} of them)")))
 
 
 if __name__ == "__main__":

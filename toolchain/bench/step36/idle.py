@@ -27,10 +27,10 @@ def context(key: str) -> ssl.SSLContext:
     """A client that trusts the fixture's certificate and speaks TLS 1.3 alone. Python's `ssl`
     has no way to narrow the TLS 1.3 suites, so the server picks from both it offers, which is
     the choice `handshake.py` and `bulk.py` measure apart."""
-    cert, _ = common.KEYS[key]
+    _, _, root = common.KEYS[key]
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_3
-    ctx.load_verify_locations(str(common.CERTS / cert))
+    ctx.load_verify_locations(str(common.CERTS / root))
     return ctx
 
 
@@ -97,7 +97,7 @@ def main() -> None:
                     except OSError:
                         pass
                 server.stop()
-    print(common.table(rows, ("runtime", "over", "before", f"after {args.connections}", "per connection")))
+    common.write_output("idle.txt", common.table(rows, ("runtime", "over", "before", f"after {args.connections}", "per connection")))
 
 
 if __name__ == "__main__":

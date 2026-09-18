@@ -1,0 +1,6 @@
+[project]
+name = "step37"
+version = "0.1.0"
+description = "Step 37: the TLS brick's differential run against OpenSSL, the fuzz hour, and the client's numbers"
+requires-python = ">=3.14"
+dependencies = []

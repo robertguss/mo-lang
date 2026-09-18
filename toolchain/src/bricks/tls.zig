@@ -863,6 +863,10 @@ pub const TestHooks = if (builtin.is_test) struct {
     no_share: bool = false,
     skip_auth: bool = false,
     hello: ?HelloLayout = null,
+    /// Every handshake message this side sends, as it goes out: how the fuzz driver
+    /// (bench/step37/fuzz.zig) records the plaintext its corpus mutates.
+    sent: ?*const fn (ctx: *anyopaque, message: []const u8) void = null,
+    ctx: ?*anyopaque = null,
 } else struct {};
 
 /// A ClientHello's suites and extensions as given, with the client's own key share written
@@ -1048,6 +1052,7 @@ pub const Conn = struct {
 
     /// A handshake message that is not part of the transcript (a KeyUpdate).
     fn sendUntracked(c: *Conn, bytes: []const u8) Fail!void {
+        if (builtin.is_test) if (c.hooks.sent) |f| f(c.hooks.ctx.?, bytes);
         var at: usize = 0;
         while (at < bytes.len) {
             const n = @min(max_plaintext, bytes.len - at);
@@ -1148,7 +1153,8 @@ pub const Conn = struct {
     }
 
     /// Handshake bytes, which may be part of a message or several: whole ones are dispatched.
-    fn handshakeBytes(c: *Conn, bytes: []const u8) Fail!void {
+    /// Public for the fuzz driver, which feeds it plaintext behind the record layer's AEAD.
+    pub fn handshakeBytes(c: *Conn, bytes: []const u8) Fail!void {
         try c.hs.append(bytes);
         while (c.phase != .broken) {
             const held = c.hs.slice();
@@ -3284,7 +3290,7 @@ test "a small session, each suite and each key type" {
 
 // The chain fixtures, as examples/effects/tls/gen.sh wrote them (OpenSSL 3.0, `openssl ca`,
 // every certificate valid 2025-01-01 to 2035-01-01 but the expired leaf's 2020 to 2021).
-const fx_root =
+pub const fx_root =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBMzCB5qADAgECAgIQADAFBgMrZXAwITEfMB0GA1UEAwwWTW8gVGVzdCBSb290
     \\IChFZDI1NTE5KTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAwMDBaMCExHzAd
@@ -3295,7 +3301,7 @@ const fx_root =
     \\hYQFwRexU17XhtvxIZAD59ceKq62xAE=
     \\-----END CERTIFICATE-----
 ;
-const fx_chain =
+pub const fx_chain =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBgDCCATKgAwIBAgICEAIwBQYDK2VwMCkxJzAlBgNVBAMMHk1vIFRlc3QgSW50
     \\ZXJtZWRpYXRlIChFZDI1NTE5KTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAw
@@ -3318,12 +3324,12 @@ const fx_chain =
     \\swc6mTQOkJVG9wOjFsYbnQs=
     \\-----END CERTIFICATE-----
 ;
-const fx_key =
+pub const fx_key =
     \\-----BEGIN PRIVATE KEY-----
     \\MC4CAQAwBQYDK2VwBCIEIJRPytK0+NsKYitWFX7mQgdwAI6ZovJtK98lEdxY7lWl
     \\-----END PRIVATE KEY-----
 ;
-const fx_root_p256 =
+pub const fx_root_p256 =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBcDCCARagAwIBAgICEA8wCgYIKoZIzj0EAwIwHzEdMBsGA1UEAwwUTW8gVGVz
     \\dCBSb290IChQLTI1NikwHhcNMjUwMTAxMDAwMDAwWhcNMzUwMTAxMDAwMDAwWjAf
@@ -3335,7 +3341,7 @@ const fx_root_p256 =
     \\5wIhANC4nWy6BJ9H5LFJrPTGe1fQ0M/ETz5U58mSCID9LpBX
     \\-----END CERTIFICATE-----
 ;
-const fx_chain_p256 =
+pub const fx_chain_p256 =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBvTCCAWSgAwIBAgICEBEwCgYIKoZIzj0EAwIwJzElMCMGA1UEAwwcTW8gVGVz
     \\dCBJbnRlcm1lZGlhdGUgKFAtMjU2KTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEw
@@ -3360,14 +3366,14 @@ const fx_chain_p256 =
     \\H8KWnl7/pwutGO5/adGV3oMC8SUYbsNjdJRdRZQ=
     \\-----END CERTIFICATE-----
 ;
-const fx_key_p256 =
+pub const fx_key_p256 =
     \\-----BEGIN PRIVATE KEY-----
     \\MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgYnkbU3QrLcA6+13H
     \\ZBhL4H1INO7H5uZTfyv2KhLose2hRANCAAT9FpyZq4tys8RXs2pDHN5lwtaOa4gh
     \\SSsUBtwgThPcHwADCF5yswEh/7qrO9OmPpXLJ7kmMkse969zOsfgais3
     \\-----END PRIVATE KEY-----
 ;
-const fx_root_other =
+pub const fx_root_other =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBNTCB6KADAgECAgIQDjAFBgMrZXAwIjEgMB4GA1UEAwwXTW8gT3RoZXIgUm9v
     \\dCAoRWQyNTUxOSkwHhcNMjUwMTAxMDAwMDAwWhcNMzUwMTAxMDAwMDAwWjAiMSAw
@@ -3378,7 +3384,7 @@ const fx_root_other =
     \\PCg1Ur6mGiLv/ndwWY74QTKUCEbxmoYqBg==
     \\-----END CERTIFICATE-----
 ;
-const fx_host =
+pub const fx_host =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBfjCCATCgAwIBAgICEAMwBQYDK2VwMCkxJzAlBgNVBAMMHk1vIFRlc3QgSW50
     \\ZXJtZWRpYXRlIChFZDI1NTE5KTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAw
@@ -3401,12 +3407,12 @@ const fx_host =
     \\swc6mTQOkJVG9wOjFsYbnQs=
     \\-----END CERTIFICATE-----
 ;
-const fx_host_key =
+pub const fx_host_key =
     \\-----BEGIN PRIVATE KEY-----
     \\MC4CAQAwBQYDK2VwBCIEIJ5cRlG2FVcKL27aJf5PVjJW1LQJDHT6I0e2c95n6lqh
     \\-----END PRIVATE KEY-----
 ;
-const fx_expired =
+pub const fx_expired =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBgDCCATKgAwIBAgICEAQwBQYDK2VwMCkxJzAlBgNVBAMMHk1vIFRlc3QgSW50
     \\ZXJtZWRpYXRlIChFZDI1NTE5KTAeFw0yMDAxMDEwMDAwMDBaFw0yMTAxMDEwMDAw
@@ -3429,12 +3435,12 @@ const fx_expired =
     \\swc6mTQOkJVG9wOjFsYbnQs=
     \\-----END CERTIFICATE-----
 ;
-const fx_expired_key =
+pub const fx_expired_key =
     \\-----BEGIN PRIVATE KEY-----
     \\MC4CAQAwBQYDK2VwBCIEINXnWuyctmMYDmCVa1Zj+oPFitEPQWN5eT0HiFKgPbwD
     \\-----END PRIVATE KEY-----
 ;
-const fx_depth6 =
+pub const fx_depth6 =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBezCCAS2gAwIBAgICEAowBQYDK2VwMCQxIjAgBgNVBAMMGU1vIFRlc3QgRGVw
     \\dGggNSAoRWQyNTUxOSkwHhcNMjUwMTAxMDAwMDAwWhcNMzUwMTAxMDAwMDAwWjAU
@@ -3496,12 +3502,12 @@ const fx_depth6 =
     \\n4L76UrNIsYtm5EN
     \\-----END CERTIFICATE-----
 ;
-const fx_depth6_key =
+pub const fx_depth6_key =
     \\-----BEGIN PRIVATE KEY-----
     \\MC4CAQAwBQYDK2VwBCIEIOQ2f+SYrldkntiNfx1RbK/QqQ9YHDi1iC6tH+pBbTf2
     \\-----END PRIVATE KEY-----
 ;
-const fx_depth5 =
+pub const fx_depth5 =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBezCCAS2gAwIBAgICEAswBQYDK2VwMCQxIjAgBgNVBAMMGU1vIFRlc3QgRGVw
     \\dGggNCAoRWQyNTUxOSkwHhcNMjUwMTAxMDAwMDAwWhcNMzUwMTAxMDAwMDAwWjAU
@@ -3553,12 +3559,12 @@ const fx_depth5 =
     \\n4L76UrNIsYtm5EN
     \\-----END CERTIFICATE-----
 ;
-const fx_depth5_key =
+pub const fx_depth5_key =
     \\-----BEGIN PRIVATE KEY-----
     \\MC4CAQAwBQYDK2VwBCIEID8RziCz4lH6rtqswoYyY3zQ75XtDj6+l0tgTem7Zx5e
     \\-----END PRIVATE KEY-----
 ;
-const fx_notca =
+pub const fx_notca =
     \\-----BEGIN CERTIFICATE-----
     \\MIIBbTCCAR+gAwIBAgICEA0wBQYDK2VwMBYxFDASBgNVBAMMC2V4YW1wbGUub3Jn
     \\MB4XDTI1MDEwMTAwMDAwMFoXDTM1MDEwMTAwMDAwMFowFDESMBAGA1UEAwwJbG9j
@@ -3591,12 +3597,12 @@ const fx_notca =
     \\swc6mTQOkJVG9wOjFsYbnQs=
     \\-----END CERTIFICATE-----
 ;
-const fx_notca_key =
+pub const fx_notca_key =
     \\-----BEGIN PRIVATE KEY-----
     \\MC4CAQAwBQYDK2VwBCIEIH7e9XGWCu3oYygWFhd76uBr5NwVZbclvf4EvSRC6IjE
     \\-----END PRIVATE KEY-----
 ;
-const fx_rsa =
+pub const fx_rsa =
     \\-----BEGIN CERTIFICATE-----
     \\MIICejCCAiygAwIBAgICEAwwBQYDK2VwMCkxJzAlBgNVBAMMHk1vIFRlc3QgSW50
     \\ZXJtZWRpYXRlIChFZDI1NTE5KTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAw
@@ -3626,7 +3632,7 @@ const fx_rsa =
 ;
 
 /// 2026-01-01T00:00:00Z: inside every fixture's dates but the expired leaf's.
-const test_now: i64 = 1767225600;
+pub const test_now: i64 = 1767225600;
 
 fn hex(comptime text: []const u8) [text.len / 2]u8 {
     @setEvalBranchQuota(100_000);

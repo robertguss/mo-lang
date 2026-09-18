@@ -11,6 +11,7 @@ a timeout and a 4 GB resident watchdog, so no run of this folder can hang or eat
 
 from __future__ import annotations
 
+import datetime
 import os
 import socket
 import subprocess
@@ -33,8 +34,26 @@ SUITES = {
     "aes128gcm": "TLS_AES_128_GCM_SHA256",
     "chacha20": "TLS_CHACHA20_POLY1305_SHA256",
 }
-# The two key pairs the brick signs with; the Ed25519 one is what `tls-echo.mo` reads by name.
-KEYS = {"ed25519": ("cert.pem", "key.pem"), "p256": ("cert-p256.pem", "key-p256.pem")}
+# The two key types the brick signs with, each a chain (leaf, intermediate), the leaf's key, and
+# the root a client trusts (step 37's gen.sh); the Ed25519 one is what `tls-echo.mo` reads by name.
+KEYS = {"ed25519": ("cert.pem", "key.pem", "root.pem"), "p256": ("cert-p256.pem", "key-p256.pem", "root-p256.pem")}
+
+
+def stamp() -> str:
+    """The first two lines of every file this folder writes under work/: the date, and `uptime`
+    as it printed (step 37's fix: the load belongs beside every number)."""
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    up = subprocess.run(["uptime"], capture_output=True, text=True).stdout.strip()
+    return f"{now}\n{up}\n"
+
+
+def write_output(name: str, text: str) -> Path:
+    """A run's table under work/, stamped, and printed."""
+    WORK.mkdir(exist_ok=True)
+    path = WORK / name
+    path.write_text(stamp() + text + "\n")
+    print(text)
+    return path
 
 
 def guarded(cmd: list[str], seconds: float, **kw) -> list[str]:
@@ -73,18 +92,46 @@ class Server:
     log: Path
 
     def stop(self) -> None:
-        self.proc.kill()
+        # SIGTERM first: guard.py forwards it to the echo and exits as the echo does. A SIGKILL
+        # reaches only the guard and leaves the echo running as an orphan (step 37 found one
+        # still serving a minute after a handshake run), so it is the last resort.
+        self.proc.terminate()
         try:
             self.proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            pass
+            self.proc.kill()
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
 
     def alive(self) -> bool:
         return self.proc.poll() is None
 
 
+# Step 36's own pairs, self-signed, as the tree held them before step 37 made cert.pem a chain:
+# `handshake.py --pairs step36` serves these, so its numbers can be set beside step 36's.
+STEP36_COMMIT = "6f449c9"
+
+
+def step36_pair(key: str) -> tuple[Path, Path]:
+    """Step 36's certificate and key for `key`, from git, into work/ (stamped: PEM readers skip
+    what comes before a BEGIN line). The certificate is its own trust anchor."""
+    cert, secret, _ = KEYS[key]
+    tree = WORK / "step36-pairs"
+    tree.mkdir(parents=True, exist_ok=True)
+    out = []
+    for name in (cert, secret):
+        text = subprocess.run(["git", "show", f"{STEP36_COMMIT}:examples/effects/tls/{name}"], cwd=ROOT,
+                              capture_output=True, text=True, check=True).stdout
+        path = tree / name
+        path.write_text(stamp() + text)
+        out.append(path)
+    return out[0], out[1]
+
+
 def start_echo(runtime: str, key: str = "ed25519", idle_ms: int = 600_000, seconds: float = 900,
-               plain: bool = False) -> Server:
+               plain: bool = False, pairs: str = "chain") -> Server:
     """An echo listening on a free port. `runtime` is "run" or "binary"; `plain` is the baseline
     with no handshake.
 
@@ -96,19 +143,29 @@ def start_echo(runtime: str, key: str = "ed25519", idle_ms: int = 600_000, secon
     port = free_port()
     cwd = ECHO.parent
     source = PLAIN if plain else ECHO
-    if not plain and key != "ed25519":
+    if not plain and pairs == "step36":
+        cwd = WORK / f"tree-step36-{key}"
+        (cwd / "tls").mkdir(parents=True, exist_ok=True)
+        cert, secret = step36_pair(key)
+        (cwd / "tls/cert.pem").write_text(cert.read_text())
+        (cwd / "tls/key.pem").write_text(secret.read_text())
+    elif not plain and key != "ed25519":
         cwd = WORK / f"tree-{key}"
         (cwd / "tls").mkdir(parents=True, exist_ok=True)
-        cert, secret = KEYS[key]
-        (cwd / "tls/cert.pem").write_bytes((CERTS / cert).read_bytes())
-        (cwd / "tls/key.pem").write_bytes((CERTS / secret).read_bytes())
+        cert, secret, _ = KEYS[key]
+        # Stamped like every file under work/: PEM readers skip what comes before a BEGIN line.
+        (cwd / "tls/cert.pem").write_text(stamp() + (CERTS / cert).read_text())
+        (cwd / "tls/key.pem").write_text(stamp() + (CERTS / secret).read_text())
     argv = (
         [mo_exe(), "run", str(source), "--", str(port), str(idle_ms)]
         if runtime == "run"
         else [build(source), str(port), str(idle_ms)]
     )
     log = WORK / f"echo-{'plain' if plain else 'tls'}-{runtime}-{key}-{port}.log"
-    proc = subprocess.Popen(guarded(argv, seconds), cwd=cwd, stdout=log.open("w"), stderr=subprocess.STDOUT)
+    sink = log.open("w")
+    sink.write(stamp())
+    sink.flush()
+    proc = subprocess.Popen(guarded(argv, seconds), cwd=cwd, stdout=sink, stderr=subprocess.STDOUT)
     wait_for_port(port, proc)
     return Server(proc, port, log)
 
@@ -126,12 +183,13 @@ def wait_for_port(port: int, proc: subprocess.Popen, seconds: float = 20) -> Non
     raise SystemExit(f"nothing listened on {port} within {seconds} s")
 
 
-def s_client_argv(port: int, suite: str | None = None, key: str = "ed25519", extra: list[str] = ()) -> list[str]:
-    cert, _ = KEYS[key]
+def s_client_argv(port: int, suite: str | None = None, key: str = "ed25519", extra: list[str] = (),
+                  trust: str | None = None) -> list[str]:
+    _, _, root = KEYS[key]
     argv = [
         OPENSSL, "s_client",
         "-connect", f"127.0.0.1:{port}",
-        "-CAfile", str(CERTS / cert),
+        "-CAfile", trust or str(CERTS / root),
         "-verify_return_error",
         "-servername", "localhost",
         "-quiet", "-no_ign_eof",
@@ -142,10 +200,10 @@ def s_client_argv(port: int, suite: str | None = None, key: str = "ed25519", ext
 
 
 def echo_once(port: int, suite: str | None, key: str, text: bytes, seconds: float = 15,
-              extra: list[str] = ()) -> bytes | None:
+              extra: list[str] = (), trust: str | None = None) -> bytes | None:
     """One handshake, one line written and read back. None when anything went wrong."""
     p = subprocess.Popen(
-        guarded(s_client_argv(port, suite, key, extra), seconds),
+        guarded(s_client_argv(port, suite, key, extra, trust), seconds),
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
     try:
