@@ -298,7 +298,7 @@ Change 6 ([[01g-job-queue-change-6]], sealed by the commit that adds this sectio
 
 Fable's honest priors: P7 is the one this generation is for and the one most likely to hold; P6 has failed five times and is predicted to fail again (the laws catch shipped bugs at open, not edits); P4 is a coin toss. Recorded, not predicted: wall-clock, loops by cause, first-fix rate, lines changed, tokens read, the decision lists, which `never` each Mo edit touched, the two `bench` lines per program.
 
-**Not started** at the seal: Robert asked for the night's work to keep moving, but four maintainer sessions at once on the VM's four cores while the memory control probe measures would spoil both; the sessions start when the machine is quiet, the seventh suite is written, and the lead is watching, the morning of 18 Sep at the earliest.
+**Started** 18 Sep 2026, 4:45 AM ET (08:45 UTC), on the VM, after the memory control probe ended and with the machine quiet (load 0.26): the seventh suite `defects6.py` sealed at `48640d3` (sha256 `d4dab05cc331b7fa`), the four worktrees on `erosion6-*` from the generation-five commits (`23118a3`, `20b050c`, `a06375d`, `eb8a219`), the Mo one at `4ab5c24` with the spec as of step 37 and step 37's `mo` (`b0b2ac4`), agents `mo-e6-{mo,go,python,elixir}` in workspace `wD`, panes `wD:p1` to `p4`, the brief `e6-brief.sh`. Robert asleep; Fable watching every twenty minutes.
 
 ## Related
 
