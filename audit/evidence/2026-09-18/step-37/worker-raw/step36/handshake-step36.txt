@@ -1,0 +1,12 @@
+2026-09-18 04:42:37 UTC
+04:42:37 up 3 days, 16:21,  0 user,  load average: 1.82, 1.49, 1.29
+| runtime | key     | suite     | handshakes/s | connections s_time counted | echoes lost |
+|---------|---------|-----------|--------------|----------------------------|-------------|
+| run     | ed25519 | aes128gcm | 1113         | 4451                       | 0           |
+| run     | ed25519 | chacha20  | 1086         | 4346                       | 0           |
+| run     | p256    | aes128gcm | 806          | 3226                       | 0           |
+| run     | p256    | chacha20  | 798          | 3193                       | 0           |
+| binary  | ed25519 | aes128gcm | 1240         | 4960                       | 0           |
+| binary  | ed25519 | chacha20  | 1238         | 4953                       | 0           |
+| binary  | p256    | aes128gcm | 838          | 3354                       | 0           |
+| binary  | p256    | chacha20  | 850          | 3398                       | 0           |

@@ -1,0 +1,8 @@
+run: alert then close -> Closed (rc 1)
+run: alert, socket kept open -> Closed (rc 1)
+run: close only -> Closed (rc 1)
+run: RST -> Closed (rc 1)
+binary: alert then close -> Closed (rc 1)
+binary: alert, socket kept open -> Closed (rc 1)
+binary: close only -> Closed (rc 1)
+binary: RST -> Closed (rc 1)

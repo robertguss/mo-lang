@@ -1,0 +1,53 @@
+2026-09-18 04:51:45 UTC
+04:51:45 up 3 days, 16:30,  0 user,  load average: 0.14, 0.43, 0.82
+measure.py --best-of 5 --handshakes 300 --mib 100
+
+## The brick's client against openssl s_server, the chain of three checked (load average 0.33, 0.45, 0.82)
+
+| runtime | key     | handshakes/s |
+|---------|---------|--------------|
+| run     | ed25519 | 1001         |
+| binary  | ed25519 | 1354         |
+| run     | p256    | 286          |
+| binary  | p256    | 295          |
+
+## Mo client to Mo server (tls-dial.mo to tls-echo.mo, each runtime against itself) (load average 0.55, 0.50, 0.83)
+
+| runtime | key     | handshakes/s |
+|---------|---------|--------------|
+| run     | ed25519 | 942          |
+| run     | p256    | 271          |
+| binary  | ed25519 | 1445         |
+| binary  | p256    | 280          |
+
+## 100 MiB through a Mo-to-Mo connection and back (tls-dial.mo to tls-echo.mo / plain-echo.mo), MB/s = 10^6 bytes a second one way (load average 1.44, 0.71, 0.89)
+
+| runtime | over  | MB/s  | against plain |
+|---------|-------|-------|---------------|
+| run     | plain | 43.7  |               |
+| run     | tls   | 38.6  | 1.1×          |
+| binary  | plain | 336.9 |               |
+| binary  | tls   | 256.6 | 1.3×          |
+
+## The chain check's cost: the client's handshakes against openssl s_server (load average 1.40, 0.77, 0.91)
+
+| runtime | key     | server presents  | handshakes/s | µs a handshake |
+|---------|---------|------------------|--------------|----------------|
+| binary  | ed25519 | chain of three   | 1382         | 723            |
+| run     | ed25519 | chain of three   | 927          | 1079           |
+| binary  | ed25519 | self-signed leaf | 1239         | 807            |
+| run     | ed25519 | self-signed leaf | 1036         | 966            |
+| binary  | p256    | chain of three   | 294          | 3405           |
+| run     | p256    | chain of three   | 285          | 3507           |
+| binary  | p256    | self-signed leaf | 369          | 2713           |
+| run     | p256    | self-signed leaf | 362          | 2762           |
+
+## mo build examples/programs/jobq, warm (best of five) and cold, and the binary's size (load average 1.50, 1.08, 1.01)
+
+| mo               | warm   | cold (bricks compiled) | binary          |
+|------------------|--------|------------------------|-----------------|
+| before (6f449c9) | 0.10 s | 20.1 s                 | 5,429,960 bytes |
+| after            | 0.09 s | 21.8 s                 | 5,541,240 bytes |
+
+2026-09-18 04:55:25 UTC
+04:55:25 up 3 days, 16:34,  0 user,  load average: 1.50, 1.08, 1.01

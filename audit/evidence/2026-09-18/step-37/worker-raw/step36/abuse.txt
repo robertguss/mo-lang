@@ -1,0 +1,20 @@
+2026-09-18 03:59:13 UTC
+03:59:13 up 3 days, 15:37,  0 user,  load average: 1.32, 1.28, 1.20
+| runtime | case      | wanted                                | got                         | as named | serving right after this case |
+|---------|-----------|---------------------------------------|-----------------------------|----------|-------------------------------|
+| run     | http      | alert 10 unexpected_message           | alert 10 unexpected_message | yes      | yes                           |
+| run     | tls1_2    | alert 70 protocol_version             | alert 70 protocol_version   | yes      | yes                           |
+| run     | p256only  | alert 40 handshake_failure            | alert 40 handshake_failure  | yes      | yes                           |
+| run     | truncated | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes                           |
+| run     | silent    | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes                           |
+| run     | oversized | alert 22 record_overflow              | alert 22 record_overflow    | yes      | yes                           |
+| run     | 64kib     | alert 22 record_overflow              | alert 22 record_overflow    | yes      | yes                           |
+| run     | retry     | a HelloRetryRequest, then a handshake | echoed                      | yes      | yes                           |
+| binary  | http      | alert 10 unexpected_message           | alert 10 unexpected_message | yes      | yes                           |
+| binary  | tls1_2    | alert 70 protocol_version             | alert 70 protocol_version   | yes      | yes                           |
+| binary  | p256only  | alert 40 handshake_failure            | alert 40 handshake_failure  | yes      | yes                           |
+| binary  | truncated | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes                           |
+| binary  | silent    | held to the deadline, then closed     | closed after 10.0 s         | yes      | yes                           |
+| binary  | oversized | alert 22 record_overflow              | alert 22 record_overflow    | yes      | yes                           |
+| binary  | 64kib     | alert 22 record_overflow              | alert 22 record_overflow    | yes      | yes                           |
+| binary  | retry     | a HelloRetryRequest, then a handshake | echoed                      | yes      | yes                           |

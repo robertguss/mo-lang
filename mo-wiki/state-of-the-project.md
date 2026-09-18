@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-18
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -48,8 +48,9 @@ hidden suites and lost it by one in the sixth, holds the feedback loop every
 time, holds the dependency column by construction, has lost the speed column to
 Elixir and, in one generation of maintenance, to its own maintainer, has
 answered the BEAM's restart row, has built the first two bricks of its shelf at
-zero dependencies (crypto and a TLS 1.3 server, 17 Sep) so that program 7 can
-be written, and has not yet shown that its laws catch a bug an agent's own
+zero dependencies (crypto, 17 Sep; a whole TLS 1.3 brick, server and client,
+with its differential run at 0 mismatches and its fuzz hour at 0 crashes, 18
+Sep) so that program 7 can be written, and has sealed program 7's spec, and has not yet shown that its laws catch a bug an agent's own
 tests would miss: five generations of changes, three of them
 written to press on a law, and no `never` has tripped on a wrong edit. That last
 sentence is the one the project turns on.
@@ -304,9 +305,14 @@ cites both, and Robert decides. Since the evening of 17 Sep the exchange is
 automated (PR #3): Fable leaves raw evidence under `audit/evidence/<date>/`
 and publishes `ready` records under `audit/handoffs/`, the auditor's intake
 polls `main` hourly and answers by pull request, and Fable checks the
-auditor's inbox at every session's start. The first two subjects (step 35, the
-speed probe) have readings from both sides; step 36's `ready` record is
-published; the loop is on [[the-audit-workflow]].
+auditor's inbox at every session's start. The first three subjects (step 35, the
+speed probe, step 36) have readings from both sides and the auditor's
+comparisons of the first two are merged; step 37's `ready` record and program
+7's sealed spec are published; the loop is on [[the-audit-workflow]]. The
+auditor's reading of step 36 found four things the lead's had not, all
+conceded and closed in step 37; the one open disagreement, what generation
+four's low memory number means, has a pre-registered control probe
+([[gen4-memory-control-probe]]).
 
 In that first session Robert ratified three stopping rules, before program 7
 exists and before generation six runs:
@@ -343,16 +349,23 @@ exists. The auditor, not Fable, writes program 7's hidden suites.
 
 ## What is still to test, measure, and verify
 
-0. **Step 37, the TLS brick's second half, then program 7.** The client side
-   (`Tls.connect`), the certificate chain, ALPN, a KeyUpdate delivered, the
-   differential run against OpenSSL and the fuzz of the handshake parser: the
-   TLS brick's audit items 2 and 3 are open until then. Then Fable seals
-   program 7's spec (a Redis subset against Redis's own tests, with TLS, hashed
-   ACL passwords, a metrics endpoint), publishes it to the auditor, the auditor
-   writes the hidden suites, and the Mo and Elixir builds run. Robert's reading
-   before the evidence (17 Sep, 8:40 PM ET): parity with the BEAM at zero
-   dependencies from a compiled runtime is an achievement, not a retirement;
-   Fable's caveat beside it: a Redis subset is a narrow test of the BEAM.
+0. **Program 7, waiting on the auditor's suites.** Step 37 closed the TLS
+   brick (18 Sep, [[interpreter-step-37]]): the client side, the chain to a
+   trusted root, ALPN, KeyUpdate either way, 1,000 sessions against OpenSSL at
+   0 mismatches, a fuzz hour at 0 crashes, and the four findings of the
+   auditor's step-36 reading closed; the lead's probes found two runtime
+   defects behind the worker's green (a peer's alert read as the stream's end;
+   a double free that crashed the binary server), both fixed the same night.
+   Program 7's spec is sealed ([[07-redis-subset]]): a Redis subset against
+   Redis 7.2's own tests, RESP2, an append-only file, ACL users with Argon2id,
+   TLS, a metrics endpoint, four recipes, the deviations pre-registered. The
+   auditor writes the hidden suites and names the P4 modification; then the Mo
+   and Elixir builds. Before the build, **step 38**: a `Conn` that reads while
+   a write on it waits, and `TCP_NODELAY`, both found by step 37's bench and
+   both needed by a pipelining Redis client. Robert's reading before the
+   evidence (17 Sep, 8:40 PM ET): parity with the BEAM at zero dependencies
+   from a compiled runtime is an achievement, not a retirement; Fable's caveat
+   beside it: a Redis subset is a narrow test of the BEAM.
 1. **The laws' value for the second agent.** No check has caught a
    change-induced bug in any language. The erosion round's later generations,
    changes 3 to 10, are where a law either earns a row or is removed. The check

@@ -1,0 +1,96 @@
+2026-09-18 05:01:54 UTC
+05:01:53 up 3 days, 16:40,  0 user,  load average: 0.76, 0.88, 0.94
+fuzz.py --seed 3701 --minutes 60.0 --batch 40
+self-check: a planted panic: exit 134, counted as a crash
+self-check: a planted hang: exit 3, counted as a crash
+1000 inputs, 0 crashes, 41 CPU s, 41 s
+2000 inputs, 0 crashes, 83 CPU s, 82 s
+3000 inputs, 0 crashes, 124 CPU s, 123 s
+4000 inputs, 0 crashes, 164 CPU s, 163 s
+5000 inputs, 0 crashes, 207 CPU s, 205 s
+6000 inputs, 0 crashes, 249 CPU s, 247 s
+7000 inputs, 0 crashes, 290 CPU s, 287 s
+8000 inputs, 0 crashes, 331 CPU s, 328 s
+9000 inputs, 0 crashes, 372 CPU s, 370 s
+10000 inputs, 0 crashes, 413 CPU s, 410 s
+11000 inputs, 0 crashes, 455 CPU s, 451 s
+12000 inputs, 0 crashes, 495 CPU s, 492 s
+13000 inputs, 0 crashes, 536 CPU s, 532 s
+14000 inputs, 0 crashes, 577 CPU s, 573 s
+15000 inputs, 0 crashes, 617 CPU s, 613 s
+16000 inputs, 0 crashes, 658 CPU s, 654 s
+17000 inputs, 0 crashes, 700 CPU s, 695 s
+18000 inputs, 0 crashes, 740 CPU s, 735 s
+19000 inputs, 0 crashes, 782 CPU s, 777 s
+20000 inputs, 0 crashes, 823 CPU s, 818 s
+21000 inputs, 0 crashes, 864 CPU s, 858 s
+22000 inputs, 0 crashes, 905 CPU s, 899 s
+23000 inputs, 0 crashes, 945 CPU s, 939 s
+24000 inputs, 0 crashes, 986 CPU s, 980 s
+25000 inputs, 0 crashes, 1027 CPU s, 1020 s
+26000 inputs, 0 crashes, 1067 CPU s, 1060 s
+27000 inputs, 0 crashes, 1109 CPU s, 1101 s
+28000 inputs, 0 crashes, 1150 CPU s, 1141 s
+29000 inputs, 0 crashes, 1191 CPU s, 1182 s
+30000 inputs, 0 crashes, 1232 CPU s, 1223 s
+31000 inputs, 0 crashes, 1273 CPU s, 1264 s
+32000 inputs, 0 crashes, 1315 CPU s, 1305 s
+33000 inputs, 0 crashes, 1357 CPU s, 1346 s
+34000 inputs, 0 crashes, 1399 CPU s, 1388 s
+35000 inputs, 0 crashes, 1439 CPU s, 1428 s
+36000 inputs, 0 crashes, 1481 CPU s, 1470 s
+37000 inputs, 0 crashes, 1522 CPU s, 1510 s
+38000 inputs, 0 crashes, 1563 CPU s, 1551 s
+39000 inputs, 0 crashes, 1604 CPU s, 1591 s
+40000 inputs, 0 crashes, 1644 CPU s, 1632 s
+41000 inputs, 0 crashes, 1685 CPU s, 1672 s
+42000 inputs, 0 crashes, 1727 CPU s, 1713 s
+43000 inputs, 0 crashes, 1768 CPU s, 1754 s
+44000 inputs, 0 crashes, 1810 CPU s, 1795 s
+45000 inputs, 0 crashes, 1851 CPU s, 1836 s
+46000 inputs, 0 crashes, 1893 CPU s, 1878 s
+47000 inputs, 0 crashes, 1934 CPU s, 1919 s
+48000 inputs, 0 crashes, 1976 CPU s, 1960 s
+49000 inputs, 0 crashes, 2019 CPU s, 2002 s
+50000 inputs, 0 crashes, 2061 CPU s, 2044 s
+51000 inputs, 0 crashes, 2102 CPU s, 2085 s
+52000 inputs, 0 crashes, 2144 CPU s, 2126 s
+53000 inputs, 0 crashes, 2186 CPU s, 2168 s
+54000 inputs, 0 crashes, 2229 CPU s, 2210 s
+55000 inputs, 0 crashes, 2269 CPU s, 2251 s
+56000 inputs, 0 crashes, 2311 CPU s, 2292 s
+57000 inputs, 0 crashes, 2354 CPU s, 2334 s
+58000 inputs, 0 crashes, 2396 CPU s, 2376 s
+59000 inputs, 0 crashes, 2438 CPU s, 2417 s
+60000 inputs, 0 crashes, 2478 CPU s, 2457 s
+61000 inputs, 0 crashes, 2519 CPU s, 2498 s
+62000 inputs, 0 crashes, 2560 CPU s, 2538 s
+63000 inputs, 0 crashes, 2601 CPU s, 2579 s
+64000 inputs, 0 crashes, 2641 CPU s, 2618 s
+65000 inputs, 0 crashes, 2681 CPU s, 2658 s
+66000 inputs, 0 crashes, 2723 CPU s, 2700 s
+67000 inputs, 0 crashes, 2763 CPU s, 2739 s
+68000 inputs, 0 crashes, 2804 CPU s, 2780 s
+69000 inputs, 0 crashes, 2844 CPU s, 2820 s
+70000 inputs, 0 crashes, 2885 CPU s, 2860 s
+71000 inputs, 0 crashes, 2927 CPU s, 2901 s
+72000 inputs, 0 crashes, 2968 CPU s, 2942 s
+73000 inputs, 0 crashes, 3008 CPU s, 2982 s
+74000 inputs, 0 crashes, 3050 CPU s, 3023 s
+75000 inputs, 0 crashes, 3091 CPU s, 3064 s
+76000 inputs, 0 crashes, 3131 CPU s, 3104 s
+77000 inputs, 0 crashes, 3171 CPU s, 3144 s
+78000 inputs, 0 crashes, 3211 CPU s, 3183 s
+79000 inputs, 0 crashes, 3252 CPU s, 3223 s
+80000 inputs, 0 crashes, 3292 CPU s, 3263 s
+81000 inputs, 0 crashes, 3334 CPU s, 3304 s
+82000 inputs, 0 crashes, 3375 CPU s, 3345 s
+83000 inputs, 0 crashes, 3417 CPU s, 3386 s
+84000 inputs, 0 crashes, 3459 CPU s, 3428 s
+85000 inputs, 0 crashes, 3501 CPU s, 3470 s
+86000 inputs, 0 crashes, 3542 CPU s, 3510 s
+87000 inputs, 0 crashes, 3584 CPU s, 3551 s
+# 87440 inputs in 2186 batches, seed 3701: 0 crashes; 3601 CPU s (60.0 min), 3569 s wall
+# mutations: cut 20098, delete 19897, drop 19976, dup 19753, flip 19926, insert 19684, kind 19739, length 19853, repeat 19917, set 19801, splice 19806
+2026-09-18 06:01:25 UTC
+06:01:25 up 3 days, 17:40,  0 user,  load average: 1.51, 1.27, 1.23

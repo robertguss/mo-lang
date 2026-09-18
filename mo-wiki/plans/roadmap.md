@@ -19,13 +19,13 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Step 37, the TLS brick part two: the client, the chain, ALPN, KeyUpdate delivered, the differential run and the fuzz hour, the four step-36 findings closed. Brief sealed 11:05 PM ET; one Opus worker in `w7:pR` | Opus worker, Fable verifying | 17 Sep, 11:05 PM ET | [[interpreter-step-37]] |
+| Program 7's spec sealed and published to the auditor (18 Sep, 3:50 AM ET); waiting on the hidden suites and the P4 modification. Meanwhile the generation-four memory control probe runs (a worker in `w7:pR`), then step 38 | the auditor; an Opus worker on the probe | 18 Sep, 3:50 AM ET | [[07-redis-subset]], [[gen4-memory-control-probe]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | (in flight) Step 37, the TLS brick, part two: the client side (`Tls.connect`), the certificate chain, ALPN, KeyUpdate delivered, the differential run against OpenSSL, the fuzz of the handshake parser | program 7's listener is done; its client side and the audit items 2 and 3 for TLS remain | [[interpreter-step-36]] |
+| 1 | Step 38, before program 7's build: a `Conn` that reads while a write on it waits (a pipelining client stalls today), and `TCP_NODELAY` in both runtimes, measured on `echo-1k` and `tls-dial`; then the abuse rows for every handshake state (resets and alerts, both runtimes) | program 7's listener is done; its client side and the audit items 2 and 3 for TLS remain | [[interpreter-step-36]] |
 | 2 | Program 7: a Redis subset against Redis's own tests, with TLS, hashed ACL passwords, and a metrics endpoint. Fable's sealed spec, then the auditor's pre-registration (Robert opens it: the hidden suite of 50 or more, the wait probe, the abuse suite, the drift seeds, the P4 change), then the Mo and Elixir builds | the pre-registered test of the primary claim (chapter 1, M-3) | [[program-menu]], [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 | 3 | Change 6 and generation six (may run while program 7 waits on the auditor's seal, never ahead of its build) | the language rule is read at generation ten | [[erosion-round]] |
 | 4 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
@@ -46,6 +46,9 @@ Rows marked "for Robert" in the [[decision-log]], newest first: the bricks page'
 
 | when | what | page |
 |---|---|---|
+| 18 Sep, 3:50 AM ET | Step 37, the TLS brick, part two: the client, the chain, ALPN, KeyUpdate; 1,000 sessions against OpenSSL at 0 mismatches, a fuzz hour at 0 crashes; two runtime defects found by the lead's probes and fixed the same night | [[interpreter-step-37]] |
+| 18 Sep, 3:50 AM ET | Program 7's spec sealed: `mored`, a Redis subset against Redis's own tests | [[07-redis-subset]] |
+| 17 Sep, 10:30 PM ET | Step 36's two readings compared: four points conceded to the auditor, all closed in step 37 | [[interpreter-step-36]] |
 | 17 Sep, afternoon | The bricks page: the shelf boundary as three tests, the cost measured against Zig's `std` (about 70,000 lines to read, 12,000 to 15,000 to write, estimated), five audit items and a surface cap per brick, bricks written once in Zig for both runtimes, the vendored-C fallback; program 7 needs crypto and TLS | [[bricks-and-the-cost-of-zero-dependencies]] |
 | 17 Sep, afternoon | The auditor role taken up: three stopping rules ratified by Robert, linked from chapter 1, chapter 10, and the state page; M-3 accepted; Fable's disagreements filed as rows | [audit/README.md](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 | 17 Sep, morning | Research PR 2 (the Hermes lane, wiki only) read and merged: restart budgets, error-path coverage, crash consistency, capability confinement; chapter 10's 3-in-5 budget reattributed to Elixir `Supervisor`; `erosion2-*` and `erosion5-*` pushed at last | [[hermes-daily-2026-09-17]] |

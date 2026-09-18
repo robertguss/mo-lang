@@ -1,0 +1,78 @@
+Step 37 fix: a peer's alert is Handshake. Report from the fix worker, 18 Sep 2026.
+
+Commit: b0b2ac4 "Step 37 fix: a peer's alert is Handshake", pushed to origin main (main...origin/main, even).
+Files: toolchain/src/net.zig, toolchain/runtime/mo_rt.c, toolchain/src/bricks/tls.zig (tests only, no export),
+toolchain/src/corpus.zig (one test and a small loopback helper). Nothing under mo-wiki/ touched; abuse.py unchanged.
+
+== Suite (timeout 1800 zig build test --summary all, once, on the final tree) ==
+Build Summary: 5/5 steps succeeded; 236/236 tests passed
+test success
++- run test 236 pass (236 total) 28m MaxRSS:430M
+exit code: 0
+(It took 28 minutes, inside the 1800 s timeout, so it was not rerun with 2400.)
+
+== alert-probe.py (python3 alert-probe.py toolchain/zig-out/bin/mo <tls-client binary>) ==
+run: alert then close -> Handshake (rc 1)
+run: alert, socket kept open -> Handshake (rc 1)
+run: close only -> Closed (rc 1)
+run: RST -> Closed (rc 1)
+binary: alert then close -> Handshake (rc 1)
+binary: alert, socket kept open -> Handshake (rc 1)
+binary: close only -> Closed (rc 1)
+binary: RST -> Closed (rc 1)
+(The binary is examples/effects/zig-out/mo-build/tls-client/tls-client: `mo build tls-client.mo -o tls-client`
+puts it under zig-out/mo-build/, not in examples/effects.)
+
+== server-alert-probe.py (from examples/effects, mo + zig-out/mo-build/tls-echo/tls-echo) ==
+PASS binary [('good1', b'ok\n'), ('other root', '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verif'), ('good2', b'ok\n'), ('wrong host', '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verif'), ('good3', b'ok\n')] alive: True rc: -15
+PASS run [same five steps] alive: True rc: -15
+exit 0   (rc -15 is the probe's own terminate of a live server)
+
+== TlsServer.accept against a client that sends a fatal alert instead of a hello (python client) ==
+A Mo server (the corpus test's program, alerted.mo) prints accept's outcome for five connections from a python
+raw-socket client: a fatal unknown_ca alert in place of a hello, a partial hello then RST, alert, RST, alert.
+mo run: 'Handshake\nClosed\nHandshake\nClosed\nHandshake\n' exit 0
+binary: 'Handshake\nClosed\nHandshake\nClosed\nHandshake\n' exit 0
+(drive.py and alerted.mo are in the worker's scratchpad; the same steps are the corpus test.)
+
+== abuse.py (bench/step36, uv run python abuse.py) ==
+exit 0; all 16 rows (8 cases x run, binary) "as named: yes", "serving right after: yes".
+
+== What changed and why ==
+1. Closed for a peer's alert (both runtimes). The brick's peerAlert records the alert and sets phase=broken, but
+   it returns no error, so mo_tls_feed returns ok (the alert was read, not answered). The socket handshakes
+   (net.zig Net.handshake, mo_rt.c tls_handshake) then read again and got the stream's end (EOF) -> Closed.
+   The fixture path already asked mo_tls_read after each pump, which is why it gave Handshake. Fix: both socket
+   handshakes now ask the engine before each read: mo_tls_read(t, NULL, 0) == failed -> flush (nothing, or this
+   side's alert) and refused(t) (Handshake, or Untrusted when this client refused the chain); == closed
+   (close_notify / user_canceled) -> Closed. No new export: mo_tls_read's existing failed/closed answer is what
+   tells a peer's fatal alert from the stream's end.
+2. The binary's SIGSEGV: a double free in mo_rt.c's tls_handshake. It sets c->tls = t for the whole handshake. When
+   a read broke (read() < 0, e.g. ECONNRESET from the OpenSSL client that refuses the chain and aborts with the
+   server's flight unread, or any RST mid-hello), tls_feed called net_close -> net_release, which frees c->tls;
+   tls_handshake then called mo_tls_conn_free(t) again. With the brick's heap corrupted, the next connection's
+   engine crashed in mo_tls_feed (gdb backtrace: mo_tls_feed <- tls_feed <- tls_handshake <- mo_r_TlsServer_accept,
+   the wire holding the next client's ClientHello). A new tls_give_up frees the engine only while c->tls still
+   holds it, then closes. Confirmed on the old runtime: a binary tls-echo died after a single raw client that
+   sent 8 bytes of a hello and reset (the next connect was refused); fixed, three such clients then a good client
+   each echo. mo run never had it: net.zig puts the engine on the Conn only once the handshake is done.
+   The alert fix (1) also moved the probe's case off the broken-read path, but (2) is fixed on its own.
+3. Tests. Brick (tls.zig): "an alert where a hello belongs: a fatal one leaves the server's read failed,
+   close_notify closed" (unknown_ca, protocol_version -> failed; close_notify, user_canceled -> closed; feed ok,
+   alert_from_peer, nothing to send back), and expectRefused (every chain refusal, i.e. a fatal alert the client
+   sends the server after the server's flight, mid-handshake) now also checks the server's mo_tls_read is failed.
+   Corpus (corpus.zig): "a fatal alert where a hello belongs is Handshake and a reset mid-hello is Closed, under
+   mo run and in a binary, and the server takes the next connection": a Mo TLS server written into a tmp dir,
+   run both ways over real sockets, five raw clients (alert, reset, alert, reset, alert), expects
+   Handshake/Closed/Handshake/Closed/Handshake and exit 0. On the old net.zig and mo_rt.c it fails with Closed x5.
+
+== Decisions the section did not cover ==
+- The runtime row test lives in corpus.zig (where the both-runtimes socket tests are), one test for both runtimes,
+  with its Mo program inline and written to a tmp dir, not a new file under examples/ or testdata/.
+- The corpus test's "fatal alert to a server mid-handshake" is a cleartext alert in place of the hello, plus a reset
+  mid-hello, because that is raw-socket-drivable with no TLS client. The truly mid-handshake case (the client's
+  encrypted unknown_ca after the server's flight) is covered at the brick level by expectRefused's new check and on
+  the wire by server-alert-probe.py; the corpus test covers the double free through the reset case.
+- The brick is unchanged (it still returns ok from mo_tls_feed for a peer's fatal alert); the runtimes ask
+  mo_tls_read instead, matching the fixture path. Changing mo_tls_feed would have been outside the write scope.
+- After the handshake, nothing changed.

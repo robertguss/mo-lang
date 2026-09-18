@@ -1,0 +1,9 @@
+2026-09-18 03:53:33 UTC
+03:53:33 up 3 days, 15:32,  0 user,  load average: 1.47, 1.30, 1.19
+fuzz.py --seed 8 --minutes 0.05 --batch 40
+self-check: a planted panic: exit 134, counted as a crash
+self-check: a planted hang: exit 3, counted as a crash
+# 80 inputs in 2 batches, seed 8: 0 crashes; 3 CPU s (0.1 min), 3 s wall
+# mutations: cut 19, delete 17, drop 24, dup 14, flip 16, insert 18, kind 18, length 18, repeat 25, set 19, splice 11
+2026-09-18 03:53:38 UTC
+03:53:38 up 3 days, 15:32,  0 user,  load average: 1.52, 1.31, 1.19

@@ -1,0 +1,7 @@
+2026-09-18 03:52:35 UTC
+03:52:35 up 3 days, 15:31,  0 user,  load average: 1.07, 1.22, 1.15
+fuzz.py --seed 7 --minutes 0.2 --batch 40
+# 320 inputs in 8 batches, seed 7: 0 crashes; 13 CPU s (0.2 min), 13 s wall
+# mutations: cut 78, delete 77, drop 73, dup 83, flip 80, insert 63, kind 87, length 72, repeat 74, set 83, splice 68
+2026-09-18 03:52:48 UTC
+03:52:48 up 3 days, 15:31,  0 user,  load average: 1.28, 1.26, 1.16

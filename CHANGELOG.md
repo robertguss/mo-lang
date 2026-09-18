@@ -2,7 +2,13 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
-## Session 11, the VM, night — 18 Sep 2026
+## Session 11, the VM, night — 18 Sep 2026, 3:50 AM ET
+
+- **Step 37, the TLS brick, part two, accepted** (one Opus session 10:37 PM to 2:15 AM ET, one fix session after; Fable's brief, verification, and reading, `mo-wiki/plans/interpreter-step-37.md`). The client side (`Tls.client`, `TlsClient.connect`), the chain checked to a trusted root with the name and the dates, ALPN by `offer`, a KeyUpdate either side can start; the differential run against OpenSSL 3.0 at 1,000 sessions and 0 mismatches, the fuzz hour at 87,440 inputs and 0 crashes, the RFC 8448 client replay byte for byte; the four findings of the auditor's step-36 reading closed. Fable's probes against a second OpenSSL (Python's 3.5.7) found a peer's alert reported `Closed` and a double free that crashed the binary server after a client's reset; fixed in `b0b2ac4`, 236 of 236. The cut refuses RSA and P-384, so the public internet is out of reach by design; two runtime rows carried to step 38 (full-duplex `Conn`, `TCP_NODELAY`).
+- **Program 7's spec sealed** (`mo-wiki/spec/programs/07-redis-subset.md`) and published to the auditor: `mored`, a Redis subset against Redis 7.2's own test files with a pre-registered skip rule, RESP2, an AOF, ACL users with Argon2id, TLS, a Prometheus endpoint, four recipes, the Elixir counterpart under matched conditions, the deviations named before any build.
+- **The generation-four memory control probe pre-registered** (`mo-wiki/plans/gen4-memory-control-probe.md`): three hypotheses with Fable's numbers written before the run, to settle `AUD-COMP-GEN4-RSS-001` for Robert.
+
+## Session 11, the VM, late evening — 17 Sep 2026
 
 - **The auditor's step 36 reading, received and answered.** The receiver found it at onboarding (PR #5) with a labelled transport test (PR #4). Fable's own reading (`audit/fable-reading-2026-09-18-step-36.md`) was filed at `258d1e2` before the auditor's was opened; both PRs merged; `parallel-filed` and a test acknowledgement published; the exchange's inbound leg verified. The comparison conceded four points to the auditor (rows of 18 Sep in the decision log) and corrected the step 36 Result's load caveat, which was the lead's error.
 

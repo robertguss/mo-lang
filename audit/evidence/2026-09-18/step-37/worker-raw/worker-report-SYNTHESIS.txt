@@ -1,0 +1,344 @@
+STEP 37 WORKER REPORT (18 Sep 2026; times UTC, ET = UTC-4)
+
+Three commits, each pushed to origin main:
+  f8d8dfc  Step 37 part A
+  9f83dde  Step 37 part B
+  0493b26  Step 37 part C
+
+======================================================================
+THE TWO FINAL SUITE RUNS (part C's code), as printed
+======================================================================
+
+timeout 1800 zig build test --summary all
+
+Run 1, 05:04:32 to 05:18:02 UTC (worktree holding exactly part C's files):
+  Build Summary: 5/5 steps succeeded; 234/234 tests passed
+  exit=0
+
+Run 2, 06:01:58 to 06:14:17 UTC (the main tree, the committed tree):
+  Build Summary: 5/5 steps succeeded; 234/234 tests passed
+  exit=0
+
+The suites behind the earlier commits:
+  Part A, run 1 (02:56 UTC): exit=124, no summary. That brick took 14.4 s to compile, and I was
+    running other work beside the suite.
+  Part A, run 2 (03:30 to 03:44): Build Summary: 5/5 steps succeeded; 234/234 tests passed, exit=0
+  Part B, run 1 (03:52): exit=124, no summary, with my own abuse.py builds running beside it.
+  Part B, run 2 (04:23 to 04:35): Build Summary: 5/5 steps succeeded; 234/234 tests passed, exit=0
+
+All six logs are in toolchain/bench/step37/work/suites/ (git-ignored), each beginning with the
+date and uptime.
+
+======================================================================
+WHAT EACH PART DID
+======================================================================
+
+Part A (f8d8dfc): the brick, in toolchain/src/bricks/tls.zig
+  The brick gains the client half of TLS 1.3, as an engine over bytes on the same record layer
+  as the server. mo_tls_connect makes a client's connection and mo_tls_conn_new a server's;
+  every export after that is the same for both.
+
+  The client:
+  - sends a ClientHello with X25519, the two suites, SNI for a name, Ed25519 and ECDSA P-256
+    SHA-256, and ALPN when offered, and answers one HelloRetryRequest;
+  - checks the transcript, the CertificateVerify against the leaf's key, and the server's
+    Finished, then sends its own Finished;
+  - carries records both ways, answers and starts KeyUpdate, sends and reads close_notify, and
+    reads session tickets and drops them.
+
+  The chain check:
+  - at most five certificates, each signed by the next, up to a root in the trust set;
+  - every issuer a CA;
+  - the leaf for the host (DNS and IP SANs, the CN only when there are no SANs);
+  - every certificate's dates at now_sec;
+  - refusals send the alert OpenSSL 3.0 sends for the same chain.
+
+  Other changes:
+  - ALPN on both sides, with no_application_protocol when both lists share nothing.
+  - New exports: mo_tls_client_new, client_offer, server_offer, connect, protocol, key_update,
+    client_free, untrusted.
+
+  Tests:
+  - Zig's own tls.Client over both suites and both key types, four sessions each for the
+    megabyte and the small handshake;
+  - the swallowed TestTimedOut now reported by name;
+  - the RFC 8448 section 3 trace replayed through the client, its ClientHello, Finished,
+    application record and close_notify equal to the trace byte for byte;
+  - brick to brick: each suite, each key, with and without ALPN, a megabyte both ways;
+  - chains of three and five accepted, and each refusal produced from a chain built for it;
+  - ALPN's cases, KeyUpdate from each side with records after, one HelloRetryRequest, and the
+    five rejections fed to the client.
+
+  Fixtures: examples/effects/tls/gen.sh (openssl ca, dated 2025-01-01 for ten years) and the
+  34 PEM files it wrote.
+
+Part B (9f83dde): the rows, in both runtimes
+  New rows: Tls.client(trust:), TlsClient.connect(conn, host:, within:), TlsClient.offer,
+  TlsServer.offer, Conn.protocol, and TlsError.Untrusted. TlsClient is a capability kind like
+  TlsServer.
+
+  Each runtime has one handshake path for both roles. The interpreter's is net.zig's Side; the
+  C runtime's is tls_handshake, which takes the engine. The chain's dates are checked against
+  the runtime's clock, which is the simulator's under Tls.fixture().
+
+  Under Tls.fixture() both halves of a handshake now run on Net.fixture()'s network, in both
+  runtimes. A connect or an accept with nothing to read lets the peer's engine read and answer,
+  and delivers messages to the other processes, as Http.send's fixture does.
+
+  Two step-36 bugs fixed on the way, in both runtimes:
+  - the fixture's lines loop on a TLS connection scanned ciphertext; it now reads through the
+    engine;
+  - the C runtime printed a TlsServer as "a Runtime".
+
+  examples/effects/tls-client.mo:
+  - main reads tls/root.pem, connects to the host and port in args, handshakes, writes a line,
+    and prints the echo;
+  - its .expected is a run against a port nothing listens on: "Refused", exit 1;
+  - six tests on the fixture: a line each way; ALPN agreed and refused; a client trusting the
+    other root, and one connecting for example.org, both Untrusted; a trust PEM with no
+    certificate is BadPem;
+  - each test holds under 100 seeds with faults.
+
+  Also changed: PRELUDE.md, examples/README.md, and .mo.ids. A real-socket check across all
+  four runtime pairings (mo run and binary on each side) echoed "hello from mo".
+
+Part C (0493b26): the audit items, the spec, and the bench
+  Spec (mo-wiki/spec/design-v0/09-stdlib.md): Untrusted, the five rows, and a paragraph on what
+  the client checks. toolchain/README.md: its runtime paragraph and table.
+
+  bench/step37 is a uv project with no dependencies, with step 36's guard.py on every process:
+  - diff.py: the differential run. The brick's side is mo-tls-peer (peer.zig); OpenSSL's side
+    is read from its -msg log.
+  - fuzz.py: the fuzz hour, through mo-tls-fuzz (fuzz.zig, a test executable with fixed
+    entropy).
+  - measure.py, with tls-dial.mo as its client.
+  - zig build tls-tools builds both tools.
+
+  bench/step36 fixes:
+  - abuse.py checks the server right after each case, and adds a whole 65,535-byte record beside
+    the relabelled header-only case;
+  - handshake.py checks s_time's exit code, reports s_time's connection count, and gains
+    --pairs step36;
+  - bulk.py states its units;
+  - every file under work/ begins with the date and uptime;
+  - the CA file is root.pem;
+  - stop() no longer orphans the process under the guard.
+
+======================================================================
+NUMBERS
+======================================================================
+The raw tables are in toolchain/bench/step37/RESULTS.md, with each output under work/.
+
+Differential run (diff.py --seed 3737 --sessions 1000), 04:58 UTC, load 0.58
+  1,000 sessions, seed 3737: 0 mismatches (159 s)
+
+  A first run with the same seed had 3 mismatches, none in the brick:
+  - my model checked X25519 before ALPN (the brick and OpenSSL agreed on alert 120);
+  - two were a harness race (K written after the brick had closed; both sides agreed that no
+    KeyUpdate happened).
+  Both are fixed. Three more model errors about OpenSSL's behaviour were found on short runs;
+  they are listed in RESULTS.md.
+
+  Coverage:
+    brick server vs s_client / brick client vs s_server        484 / 516
+    completed / refused                                        597 / 403
+    AES-128-GCM / ChaCha20 agreed                              495 / 102
+    ALPN agreed / none                                         127 / 470
+    HelloRetryRequest from the brick's server (drawn)           176 (109 handshook)
+    chains: good 653, depth5 34, depth6 41, expired 44, host 37, name 37, link 52, notca 35,
+            other-root 42, rsa 25
+    refusals by the brick, alert 40/42/45/48/120               34/35/11/72/33
+    refusals by OpenSSL, alert 40/42/45/48/120                 52/32/27/75/32
+    KeyUpdate from s_client / s_server (K), read and answered   50 / 52
+    KeyUpdate from the brick's server / client, not asking      55 / 63
+    KeyUpdate from the brick's server / client, asking:        56 (35 answered; in 21 s_client
+                                                               had nothing more to write) / 63 (63)
+
+  One session of each KeyUpdate kind (sent / read counts; the echo came back whole in each):
+    session  role                     KeyUpdate from       bytes   mo sent/read  openssl sent/read
+    1        brick server, s_client   the brick, not asking 13,912  1/0           0/1
+    7        brick server, s_client   the brick, asking      4,098  1/1           1/1
+    15       brick server, s_client   s_client (K)          16,697  1/1           1/1
+    35       brick client, s_server   the brick, not asking 16,385  1/0           0/1
+    0        brick client, s_server   the brick, asking      6,610  1/1           1/1
+    23       brick client, s_server   s_server (K)          16,383  1/1           1/1
+
+Fuzz hour (fuzz.py --seed 3701 --minutes 60), 05:01:54 to 06:01:25 UTC
+  87,440 inputs in 2,186 batches, seed 3701: 0 crashes; 3,601 CPU s (60.0 min), 3,569 s wall
+  Before the hour: a planted panic exited 134 and a planted hang exited 3 (the watchdog); each
+  was counted as a crash.
+
+measure.py (best of five, both runtimes), 04:51 UTC, load 0.14 at the start
+  The brick's client against openssl s_server, the chain of three checked:
+    runtime   key       handshakes/s
+    mo run    Ed25519   1,001
+    binary    Ed25519   1,354
+    mo run    P-256       286
+    binary    P-256       295
+
+  Mo client to Mo server (tls-dial.mo to tls-echo.mo):
+    mo run    Ed25519     942
+    mo run    P-256       271
+    binary    Ed25519   1,445
+    binary    P-256       280
+
+  100 MiB Mo to Mo and back (MB/s = 10^6 bytes a second, one way):
+    mo run    plain  43.7    TLS  38.6  (1.1x)
+    binary    plain 336.9    TLS 256.6  (1.3x)
+
+  Chain check cost: the client's handshakes against s_server:
+    runtime  key      server presents     handshakes/s  us a handshake
+    binary   Ed25519  chain of three      1,382           723
+    mo run   Ed25519  chain of three        927         1,079
+    binary   Ed25519  self-signed leaf    1,239           807
+    mo run   Ed25519  self-signed leaf    1,036           966
+    binary   P-256    chain of three        294         3,405
+    mo run   P-256    chain of three        285         3,507
+    binary   P-256    self-signed leaf      369         2,713
+    mo run   P-256    self-signed leaf      362         2,762
+
+  mo build examples/programs/jobq:
+    mo                 warm     cold     binary
+    before (6f449c9)   0.10 s   20.1 s   5,429,960 bytes
+    after              0.09 s   21.8 s   5,541,240 bytes (+111,280, +2.0 %)
+
+  Where a client handshake costs more than a server one: with P-256, by more than twice. The
+  brick's client makes 286-295 handshakes/s; the brick's server makes 649-664/s (step 36's
+  script, same chain). The client verifies three ECDSA P-256 signatures; the server makes one.
+  One P-256 check in Zig's std costs about 700 us. With Ed25519 the client is not the slower
+  side: client 1,001-1,354/s, server 790-856/s.
+
+  What the chain check costs: about 700 us a handshake with P-256, a fifth of it, for the one
+  extra signature. With Ed25519 the difference is within noise.
+
+Step 36's bench after its fixes
+  abuse.py, both runtimes (03:59 UTC): all 16 rows as named, and the server serving right
+  after each case. The rows are http 10, tls1_2 70, p256only 40, truncated and silent closed
+  after 10.0 s, oversized 22, 64kib 22, and retry echoed.
+
+  handshake.py --pairs step36 (step 36's own certificates; step 36's figures in brackets),
+  04:42 UTC, load 1.82:
+    mo run  Ed25519 AES 1,113 (1,026)   ChaCha 1,086 (1,046)
+    mo run  P-256   AES   806   (765)   ChaCha   798   (754)
+    binary  Ed25519 AES 1,240 (1,196)   ChaCha 1,238 (1,172)
+    binary  P-256   AES   838   (804)   ChaCha   850   (818)
+    Every rate is within 9 % of step 36's, above it, so the fixes changed nothing.
+    s_time's connection counts are 2,500 to 5,000 per best run (listed in RESULTS.md); 0 echoes
+    lost.
+
+  handshake.py with the current chain fixture, 04:39 UTC:
+    mo run: Ed25519 790 / 796, P-256 649 / 629
+    binary: Ed25519 837 / 856, P-256 664 / 664
+    The chain costs these rates a fifth to a third: s_time verifies two more signatures.
+
+  bulk.py (MB/s = 10^6 bytes a second of 100 MiB; step 36's in brackets), 04:36 UTC:
+    mo run  plain 545.8 (488.1)  AES 202.1 (202.7)  ChaCha 125.5 (121.3)
+    binary  plain 482.1 (477.1)  AES 309.2 (267.7)  ChaCha 165.1 (155.3)
+    Round trips (us): mo run 28 / 33 / 47, binary 22 / 25 / 21
+
+======================================================================
+NOTE: A CONN CANNOT BE READ AND WRITTEN AT ONCE
+======================================================================
+A Conn does not read while a write on it is waiting (net.zig's `writing` flag). So a Mo
+program that writes lines while the runtime's `lines` loop reads the same connection stalls:
+- the write waits for the peer;
+- the peer waits for its own write, which waits for us to read;
+- our read waits for our write.
+It clears only at the write's deadline: 1,600 lines of 4 KiB took 58.5 s, whether the writes
+ran from main or from a process. A Mo program cannot stream both ways through one Conn at once
+today; this matters for program 7.
+
+Separately, neither runtime sets TCP_NODELAY. A Mo client that writes a window of 4 KiB lines
+and then reads it back waits out the peer's delayed ACK, about 40 ms a window: 3,200 lines took
+8.98 s in windows of 16, and 0.39 s in windows of 256.
+
+tls-dial.mo works around both by keeping two windows of 64 lines in flight. Neither runtime
+behaviour was changed in this step.
+
+======================================================================
+DECISIONS THE BRIEF DID NOT COVER
+======================================================================
+1. The fixtures and gen.sh went into part A, not part C, because the brick's chain tests need
+   them.
+2. I added refusal fixtures beyond the brief, each for both key types: a leaf with its
+   intermediate left out, a six-certificate chain, a five-certificate chain (accepted), a leaf
+   signed by a non-CA, and an RSA leaf.
+3. Refusal alerts follow what OpenSSL 3.0 sends for the same chain.
+   - A chain past five certificates, an untrusted root, a missing link, or a non-CA issuer is
+     unknown_ca, not bad_certificate.
+   - A wrong name, or a date not yet begun, is bad_certificate.
+   - A bad certificate signature is bad_certificate (RFC 8446), where OpenSSL sends
+     decrypt_error.
+4. Every issuer between the leaf and the root must be a CA (basicConstraints), and the root's
+   own dates are checked too.
+5. The chain is checked strictly as sent, each certificate signed by the next. The brick does
+   not reorder or skip extra certificates, which RFC 8446 says a client should tolerate.
+   OpenSSL's s_server must be given the chain without the leaf repeated.
+6. Zig's Certificate.parse and der.Element.parse index DER with no bounds checks, so a hostile
+   certificate could panic them. The brick checks each certificate's shape before parsing it:
+   certificates off the wire, the trust PEM, and the server's own leaf.
+7. Zig's Parsed.verify is replaced by the brick's own check (Ed25519, and ECDSA P-256 with
+   SHA-256). Its RSA code took the brick's compile time from 8.6 s to 14.4 s; it is now 10.3 s.
+   P-384 alone added 2.5 s, so P-384 and SHA-384 chains are refused as unsupported_certificate.
+   Real-world chains through P-384 CAs are therefore refused.
+8. Zig 0.16's own client cannot check an Ed25519 CertificateVerify. The two Ed25519 cells of
+   the Zig-client matrix assert its TlsBadSignatureScheme answer. Full Ed25519 sessions are
+   covered against OpenSSL and the brick's own client.
+9. A test-only suite preference (Server.prefer, default AES-128-GCM) makes Zig's client land
+   on ChaCha20.
+10. The RFC 8448 replay uses test-only hooks: the trace's random, X25519 key and empty session
+    id; the trace's hello layout (suites, and extensions around the key share); and the chain
+    check skipped, since the trace's certificate is RSA. It compares the ClientHello, Finished,
+    application record and close_notify byte for byte, and reads the ticket and the server's
+    data.
+11. The offer exports return a new object, so a TlsClient or TlsServer is a value in the rows.
+    A name that is empty, over 255 bytes, or contains a NUL is a crash.
+12. A plaintext alert is accepted during the handshake.
+13. The client does what common clients do:
+    - sends a 32-byte random session id (middlebox-compatibility mode, with the one
+      change_cipher_spec that goes with it);
+    - sends no SNI for an IP address, and checks IP SANs instead;
+    - checks a NewSessionTicket's shape and drops it;
+    - answers a requested KeyUpdate at once.
+14. A new export, mo_tls_untrusted, is how both runtimes map a refused chain to Untrusted.
+15. Under the fixture, connect and accept run the peer's engine and deliver messages to other
+    processes, as Http.send's fixture does. So a test runs the server in a process that serve
+    feeds, and dials in one statement.
+16. The fixture's lines loop on a TLS connection scanned ciphertext, a step 36 bug never
+    exercised. It now reads through the engine, in both runtimes.
+17. The C runtime printed a TlsServer as "a Runtime". It now prints "a TlsServer", "a Tls" and
+    "a TlsClient", as the interpreter does.
+18. tls-client.mo's asserts also accept the Timeout or Closed a seeded fault run makes, because
+    the corpus runs process tests under 100 seeds with faults. A scratch copy without that
+    escape passes all 6 tests under both runtimes, so the plain run is strict.
+19. tls-client.mo exits 1 on failure (# exit: 1), and prints the error's name.
+20. The differential run drives the brick's side through a Zig peer over its exports, not a Mo
+    program. No Mo row starts a KeyUpdate, and the suite and alert aren't visible to a program.
+21. s_server -stateless drops the connection after the brick's change_cipher_spec, so the
+    client's cookie HelloRetryRequest is not tested against OpenSSL. It is tested only brick to
+    brick. The differential run's retry is s_client's -groups P-256:X25519.
+22. The echo data uses an alphabet with no s_client or s_server command letters and no
+    character that s_server prints. s_server's echo is read only after its connection report.
+23. The fuzz driver is a test executable built by zig build tls-tools, so the brick's test
+    hooks exist. The brick gains three test-only openings: the TestHooks.sent capture, a public
+    handshakeBytes, and public fixtures. The driver has a 2 s watchdog per step, and fuzz.py
+    checks itself with a planted panic and a planted hang. The budget is CPU time from
+    RUSAGE_CHILDREN.
+24. OpenSSL 3.0's s_time -new exits 1 on a good run, even against OpenSSL's own s_server. So
+    handshake.py's exit-code check accepts 0 or 1 with the count printed and no error line.
+25. handshake.py --pairs step36 serves step 36's own certificates from git, so its numbers
+    compare like for like. With the new chain, rates drop a fifth to a third, from the client's
+    extra verification.
+26. A SIGKILL to guard.py orphaned the echo under it. stop() now sends SIGTERM first, in both
+    benches.
+27. Step 36's unstamped outputs were removed from work/. The originals are in
+    audit/evidence/2026-09-17/step-36/worker-raw/.
+28. measure.py makes the self-signed leaf at run time with openssl req -x509. The "before" mo
+    was built from 6f449c9 in a worktree, which was removed afterwards. A rate is
+    count / (t(count) - t(0)).
+29. measure.py's client keeps two windows of 64 lines in flight, because of the Nagle and
+    read-while-write behaviour in the note above.
+30. The part A and part B suites ran in worktrees holding exactly each part's files, so every
+    commit is the tree its suite tested. The two timed-out runs are reported above.
+31. The step-36 sentence in 09-stdlib.md, "ALPN is read and left unanswered until step 37", is
+    now false. It is outside the brief's write scope, so I left it for the lead.
