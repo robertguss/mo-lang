@@ -19,7 +19,9 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Moving to the Mac (18 Sep, 8:50 AM ET) after the VM's out-of-memory wedge: generation six half done (Python complete; Mo, Go, Elixir as pushed work in progress to continue there), program 7 waiting on the auditor's suites, step 38 queued | Fable, on the Mac | 18 Sep, 8:50 AM ET | [[erosion-round]], [[07-redis-subset]], [[interpreter-step-38]] |
+| Generation six, continued on the Mac: the Go, Elixir, and Mo maintainers resumed from their pushed work in progress (Python finished on the VM); then the seven suites on all four programs, one language at a time, the speed row, the result against P1 to P7 | Fable; `mo-e6-{go,elixir,mo}` in workspace `w6` | 18 Sep, 9:23 AM ET | [[erosion-round]] |
+| Step 38: a `Conn` that reads while a write on it waits, `TCP_NODELAY`, the 64 handshake abuse cells | worker `mo-opus`, pane `w4:p2` | 18 Sep, 9:26 AM ET | [[interpreter-step-38]] |
+| Program 7 waits on the auditor's hidden suites and P4 change (`program-7-spec-ready-001`); step 37's `ready` record awaits the auditor's reading | the auditor | 18 Sep, 3:50 AM ET | [[07-redis-subset]] |
 
 ## Next, in order
 

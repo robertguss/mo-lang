@@ -10,7 +10,7 @@ sources:
     spec/programs/07-redis-subset.md,
     spec/design-v0/09-stdlib.md,
   ]
-status: queued
+status: in-progress
 ---
 
 # Step 38: a full-duplex `Conn`, `TCP_NODELAY`, and the handshake abuse rows
