@@ -24,10 +24,12 @@ engine over memory (`MemoryBIO`), so each state is a point between two records t
 The peer's four acts: `alert`, a fatal alert: in the clear during the handshake (at `flight`, the
 one OpenSSL 3.6's client writes itself when it refuses the server's chain, `unknown_ca`, which it
 sends in the clear; mid-flight, `handshake_failure`, since OpenSSL has written its whole flight and
-moved to its application keys), and encrypted once the handshake is done, by the peer's own
-OpenSSL on meeting a record it cannot open (`bad_record_mac`); `close_notify` (in the clear before the handshake is done, and encrypted by
-OpenSSL's own shutdown after); `reset` (SO_LINGER 0, then close); `nothing` (the socket held open
-past the Mo side's one-second deadline).
+moved to its application keys), and encrypted once the handshake is done, by the peer's own OpenSSL
+on meeting a record it cannot open (`bad_record_mac`); `close_notify` (in the clear before the
+handshake is done, and encrypted by OpenSSL's own shutdown after; mid-flight, after the
+ServerHello, the client acts on neither in the clear and both are `Handshake`, step 39's part C);
+`reset` (SO_LINGER 0, then close); `nothing` (the socket held open past the Mo side's one-second
+deadline).
 
 Every process runs under step 36's guard.py; every socket read here has a deadline.
 """
@@ -89,7 +91,9 @@ CLIENT_EXPECTED = {
     ("hello", "reset"): "connect=Closed",
     ("hello", "nothing"): "connect=Timeout",
     ("mid-flight", "alert"): "connect=Handshake",
-    ("mid-flight", "close_notify"): "connect=Closed",
+    # Step 39, part C: after the ServerHello the client acts on nothing in the clear, so a
+    # plaintext close_notify there is its own failure, as a plaintext alert is.
+    ("mid-flight", "close_notify"): "connect=Handshake",
     ("mid-flight", "reset"): "connect=Closed",
     ("mid-flight", "nothing"): "connect=Timeout",
     ("finished", "alert"): "connect=Ok read=Closed",

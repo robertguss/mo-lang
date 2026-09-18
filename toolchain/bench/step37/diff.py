@@ -22,9 +22,9 @@ ways, the brick's view, OpenSSL's view, and what the parameters say should happe
   keyupdate  a KeyUpdate injected was sent by one side, read by the other, and answered when asked
   close      each side's close_notify, as the other saw it
 
-A session where any two disagree is a mismatch; the count is the result (expected 0). Every
-session's parameters and both views are one line of `work/diff-<seed>.log`, which begins with
-the date and `uptime`. Every process runs under guard.py.
+A session where any two disagree is a mismatch; the count is the result (expected 0), and the
+script exits 1 when it is not. Every session's parameters and both views are one line of
+`work/diff-<seed>.log`, which begins with the date and `uptime`. Every process runs under guard.py.
 """
 
 from __future__ import annotations
@@ -444,7 +444,7 @@ def compare(p: Params, mo: dict, ossl: dict) -> list[str]:
     return wrong
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, required=True)
     ap.add_argument("--sessions", type=int, default=1000)
@@ -480,7 +480,8 @@ def main() -> None:
     print(summary)
     for k in sorted(tally):
         print(f"  {k}: {tally[k]}")
+    return 1 if mismatches else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

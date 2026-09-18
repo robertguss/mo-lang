@@ -1425,8 +1425,13 @@ pub const Conn = struct {
             return;
         }
         // An alert in the clear during the handshake: a peer that gave up before it had keys,
-        // or before it installed them (OpenSSL's client refuses a chain that way).
-        if (ct == .alert and c.handshaking()) return c.peerAlert(body);
+        // or, read by a server, a client that gave up before it installed its own (OpenSSL's
+        // client refuses a chain that way, in the clear before its Finished). A client never
+        // acts on a record in the clear once the server's handshake keys are installed (step
+        // 39): the server has them before it writes a byte the client decrypts, so a plaintext
+        // record after its ServerHello, an alert or a close_notify among them, is not the
+        // server's word, and the client ends the handshake itself (`unexpected_message`).
+        if (ct == .alert and c.handshaking() and (c.role == .server or !c.decrypting)) return c.peerAlert(body);
         if (!c.decrypting) {
             if (ct != .handshake) return c.fatal(.unexpected_message);
             return c.handshakeBytes(body);
@@ -4798,6 +4803,53 @@ const Flight = struct {
         return mo_tls_feed(f.se.c, f.records[i].ptr, f.records[i].len);
     }
 };
+
+test "a record in the clear after the ServerHello is the client's own failure; the server still reads a client's plaintext alert before its Finished" {
+    // Step 39, part C. Before, the client acted on such an alert: a fatal one was the server's
+    // refusal and a close_notify ended the stream, from bytes anyone on the path could write.
+    const plain = [_][]const u8{
+        &.{ 0x15, 3, 3, 0, 2, 2, 40 }, // a fatal handshake_failure
+        &.{ 0x15, 3, 3, 0, 2, 1, 0 }, // a close_notify
+        &.{ 0x16, 3, 3, 0, 4, 20, 0, 0, 0 }, // a handshake message
+    };
+    for (plain) |record_bytes| {
+        var f: Flight = .{ .se = undefined };
+        try f.start();
+        defer f.se.deinit();
+        try testing.expectEqual(ok, f.feed(0));
+        try testing.expect(f.se.c.decrypting);
+        try testing.expectEqual(failed, mo_tls_feed(f.se.c, record_bytes.ptr, record_bytes.len));
+        try testing.expect(!mo_tls_ready(f.se.c));
+        try testing.expectEqual(@as(c_int, @intFromEnum(tls.Alert.Description.unexpected_message)), mo_tls_alert(f.se.c));
+        try testing.expect(!f.se.c.alert_from_peer);
+        // Its own alert goes back, under the handshake keys.
+        try testing.expect(mo_tls_pending(f.se.c) > 0);
+    }
+    // Before the ServerHello a fatal alert in the clear is still the server's refusal.
+    {
+        var f: Flight = .{ .se = undefined };
+        try f.start();
+        defer f.se.deinit();
+        // The peer's alert is not the engine's own failure: the feed takes it, and the handshake
+        // is over.
+        _ = mo_tls_feed(f.se.c, plain[0].ptr, plain[0].len);
+        try testing.expect(!mo_tls_ready(f.se.c));
+        try testing.expectEqual(@as(c_int, 40), mo_tls_alert(f.se.c));
+        try testing.expect(f.se.c.alert_from_peer);
+    }
+    // The server's side keeps its tolerance: a client that refuses the chain says so in the clear
+    // after the server's flight, before any Finished, as OpenSSL's client does.
+    {
+        var f: Flight = .{ .se = undefined };
+        try f.start();
+        defer f.se.deinit();
+        const refusal = [_]u8{ 0x15, 3, 3, 0, 2, 2, 48 };
+        _ = mo_tls_feed(f.se.s, &refusal, refusal.len);
+        try testing.expect(!mo_tls_ready(f.se.s));
+        try testing.expectEqual(@as(c_int, 48), mo_tls_alert(f.se.s));
+        try testing.expect(f.se.s.alert_from_peer);
+    }
+}
 
 test "the five rejections, fed to the client" {
     // 1. A truncated record waits and answers nothing; its last byte completes it.

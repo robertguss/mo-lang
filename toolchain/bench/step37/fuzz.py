@@ -13,11 +13,14 @@ records and, behind the AEAD, as handshake messages.
 
 A crash is a signal, an abort, a Zig panic (the driver is built ReleaseSafe), a step that runs
 past its two seconds (the driver's watchdog, exit 3), or a batch that outlives guard.py. Before
-the hour, a planted panic and a planted hang are each run and must each be seen as a crash. A batch
-that crashes is run again an input at a time, and each input that crashes alone is kept under
-`work/fuzz-<seed>/crashes/`. The run stops when the driver has used `--minutes` of CPU (user and
-system, from the kernel's accounting of the children), and `work/fuzz-<seed>.txt`, which begins
-with the date and `uptime`, has the count.
+the hour, a planted panic and a planted hang are each run and must each be seen as a crash. Every
+batch that fails is counted and kept, its inputs and the driver's output, under
+`work/fuzz-<seed>/failed-batches/` (step 39: before, a failed batch whose inputs all passed alone
+left no trace in the count), and is then run again an input at a time; each input that crashes
+alone is also kept under `work/fuzz-<seed>/crashes/`. The run stops when the driver has used
+`--minutes` of CPU (user and system, from the kernel's accounting of the children), and
+`work/fuzz-<seed>.txt`, which begins with the date and `uptime`, has both counts. The script exits
+1 when either is not zero.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ import argparse
 import os
 import random
 import resource
+import shutil
 import struct
 import subprocess
 import time
@@ -122,7 +126,7 @@ def run(listing: str, seconds: float) -> tuple[int, str]:
     return ran.returncode, ran.stdout + ran.stderr
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, required=True)
     ap.add_argument("--minutes", type=float, default=60.0)
@@ -133,7 +137,8 @@ def main() -> None:
     corpus_dir = work / "corpus"
     crash_dir = work / "crashes"
     batch_dir = work / "batch"
-    for d in (corpus_dir, crash_dir, batch_dir):
+    failed_dir = work / "failed-batches"
+    for d in (corpus_dir, crash_dir, batch_dir, failed_dir):
         d.mkdir(parents=True, exist_ok=True)
     rec = subprocess.run(c.guarded([c.FUZZ], 120), env={**os.environ, "MO_FUZZ_RECORD": str(corpus_dir)},
                          capture_output=True, text=True)
@@ -163,7 +168,7 @@ def main() -> None:
     budget = args.minutes * 60
     cpu0 = cpu_seconds()
     t0 = time.time()
-    inputs = crashes = batches = 0
+    inputs = crashes = batches = failed = 0
     ops: dict[str, int] = {}
     while cpu_seconds() - cpu0 < budget:
         paths = []
@@ -180,6 +185,16 @@ def main() -> None:
         batches += 1
         inputs += len(paths)
         if code != 0:
+            # The batch failed: counted and kept whole, whatever its inputs do alone.
+            failed += 1
+            kept_batch = failed_dir / f"batch-{batches:05d}"
+            kept_batch.mkdir(parents=True, exist_ok=True)
+            for p in paths:
+                shutil.copy(p, kept_batch / p.name)
+            (kept_batch / "output.txt").write_text(f"exit {code}\n{text[-8000:]}")
+            out.write(f"FAILED BATCH {kept_batch.name}: exit {code}\n")
+            out.flush()
+            print(f"FAILED BATCH {kept_batch.name}: exit {code}", flush=True)
             # Which input: each again, alone.
             for p in paths:
                 one = batch_dir / "one.txt"
@@ -194,19 +209,20 @@ def main() -> None:
                     out.flush()
                     print(f"CRASH {kept.name}: exit {code1}", flush=True)
         if batches % 25 == 0:
-            line = f"{inputs} inputs, {crashes} crashes, {cpu_seconds() - cpu0:.0f} CPU s, {time.time() - t0:.0f} s"
+            line = f"{inputs} inputs, {failed} failed batches, {crashes} crashes, {cpu_seconds() - cpu0:.0f} CPU s, {time.time() - t0:.0f} s"
             out.write(line + "\n")
             out.flush()
             print(line, flush=True)
     cpu = cpu_seconds() - cpu0
-    summary = (f"{inputs} inputs in {batches} batches, seed {args.seed}: {crashes} crashes; "
+    summary = (f"{inputs} inputs in {batches} batches, seed {args.seed}: {failed} failed batches, {crashes} crashes; "
                f"{cpu:.0f} CPU s ({cpu / 60:.1f} min), {time.time() - t0:.0f} s wall")
     out.write("# " + summary + "\n")
     out.write("# mutations: " + ", ".join(f"{k} {v}" for k, v in sorted(ops.items())) + "\n")
     out.write(c.stamp())
     out.close()
     print(summary)
+    return 1 if failed or crashes else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
