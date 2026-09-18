@@ -161,8 +161,9 @@ def echo(trees: list[Tree], best_of: int) -> list[tuple]:
             raise SystemExit(f"mo-bench failed:\n{ran.stdout}{ran.stderr}")
         for line in ran.stdout.splitlines():
             if line.startswith("echo-1k"):
+                # `--network` prints the row and its best total: 1,000 round trips.
                 parts = line.split()
-                rows.append((tree.label, parts[0], f"{parts[1]} µs", f"{parts[3]} µs", load()))
+                rows.append((tree.label, parts[0], f"{int(parts[1]):,} µs", f"{int(parts[1]) / 1000:.1f} µs", load()))
                 print(rows[-1], flush=True)
     return rows
 

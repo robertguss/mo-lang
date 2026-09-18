@@ -28,3 +28,10 @@ The numbers are in `RESULTS.md`.
   waits out the peer's delayed ACK under Nagle; `echo` is `mo-bench --network`'s
   `echo-1k` rows; `duplex` times `examples/effects/duplex.mo` whole; `jobq` is
   `mo build examples/programs/jobq` warm and the binary's size.
+- `linux.py [--best-of 5] [--trees label=toolchain,...]`: `measure.py`'s windows on Linux, where
+  the delayed ACK that Nagle's algorithm waits for lives (macOS's loopback shows none). Each tree's
+  `mo` is cross-compiled for aarch64 Linux and the programs are built with its own `mo build
+  --target aarch64-linux-musl`; the script then runs itself in a container (OrbStack's Docker,
+  `python:3.13-alpine`, 4 GB of memory). `work/linux.txt` has the table.
+- `abuse.py --mo <an older mo> --runtimes binary --out <file>` is the control: against step 37's
+  `mo` before its fix (`0493b26`) the server dies after the first reset, so the table can fail.
