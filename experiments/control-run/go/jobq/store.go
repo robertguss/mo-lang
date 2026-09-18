@@ -14,13 +14,17 @@ import (
 	"sort"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 // The store is an append-only log in <dir>/jobq.log. One line per record:
 // eight hex digits of CRC-32C, a space, the record's JSON, a newline. A put
 // holds a job's whole state, a del removes a job, a meta (written by compact)
 // carries the id counter, an arch says the job left the board for the archive,
-// and a rename moves every job of one queue to another (see Queue.Rename).
+// a rename moves every job of one queue to another (see Queue.Rename), and a
+// prune removes the archived jobs archived at or before its cutoff whose
+// archive record lies in the archive's first archive_size bytes (see
+// Queue.Prune).
 //
 // The archive is <dir>/jobq.archive, the same line format, append-only
 // between compactions: a put holds an archived job with archived_at, a del
@@ -50,6 +54,11 @@ type record struct {
 	NextID uint64   `json:"next_id,omitempty"`
 	From   string   `json:"from,omitempty"`
 	To     string   `json:"to,omitempty"`
+	// A prune's: the cutoff, the count of jobs it removed, and the archive's
+	// length when it was written.
+	Cutoff      string `json:"cutoff,omitempty"`
+	Count       int    `json:"count,omitempty"`
+	ArchiveSize int64  `json:"archive_size,omitempty"`
 }
 
 // File is what the store needs from the file under it; the tests inject
@@ -102,11 +111,15 @@ func decodeLine(line []byte) (record, error) {
 		NextID uint64     `json:"next_id"`
 		From   string     `json:"from"`
 		To     string     `json:"to"`
+		Cutoff      string `json:"cutoff"`
+		Count       int    `json:"count"`
+		ArchiveSize int64  `json:"archive_size"`
 	}
 	if err := dec.Decode(&sr); err != nil {
 		return record{}, err
 	}
-	r := record{Op: sr.Op, ID: sr.ID, NextID: sr.NextID, From: sr.From, To: sr.To}
+	r := record{Op: sr.Op, ID: sr.ID, NextID: sr.NextID, From: sr.From, To: sr.To,
+		Cutoff: sr.Cutoff, Count: sr.Count, ArchiveSize: sr.ArchiveSize}
 	if sr.Job != nil {
 		v, err := sr.Job.view()
 		if err != nil {
@@ -121,6 +134,11 @@ func decodeLine(line []byte) (record, error) {
 // the length of the whole records. A last line with no newline is a torn
 // write and is left out; a whole line that does not decode is corruption.
 func replay(r io.Reader, apply func(record) error) (int64, error) {
+	return replayAt(r, func(rec record, _ int64) error { return apply(rec) })
+}
+
+// replayAt is replay with each record's offset in the file.
+func replayAt(r io.Reader, apply func(rec record, off int64) error) (int64, error) {
 	br := bufio.NewReaderSize(r, maxRecordBytes)
 	var size int64
 	for n := 1; ; n++ {
@@ -136,7 +154,7 @@ func replay(r io.Reader, apply func(record) error) (int64, error) {
 		}
 		rec, err := decodeLine(line[:len(line)-1])
 		if err == nil {
-			err = apply(rec)
+			err = apply(rec, size)
 		}
 		if err != nil {
 			return size, fmt.Errorf("record %d: %w", n, err)
@@ -232,7 +250,7 @@ func openLog(dir string, first func() error, apply func(record) error) (*Store, 
 		f.Close()
 		return nil, err
 	}
-	s, err := loadStore(f, f, path, apply)
+	s, err := loadStore(f, f, path, func(rec record, _ int64) error { return apply(rec) })
 	if err != nil {
 		f.Close()
 		return nil, err
@@ -242,8 +260,8 @@ func openLog(dir string, first func() error, apply func(record) error) (*Store, 
 
 // loadStore replays osf through apply and returns a store over file whose
 // torn tail, if any, is cut.
-func loadStore(osf *os.File, file File, path string, apply func(record) error) (*Store, error) {
-	size, err := replay(osf, apply)
+func loadStore(osf *os.File, file File, path string, apply func(record, int64) error) (*Store, error) {
+	size, err := replayAt(osf, apply)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -258,9 +276,9 @@ func loadStore(osf *os.File, file File, path string, apply func(record) error) (
 	return s, nil
 }
 
-// openArchive replays <dir>/jobq.archive through apply, when there is one.
-// The caller holds the log's lock.
-func openArchive(dir string, apply func(record) error) (*Store, error) {
+// openArchive replays <dir>/jobq.archive through apply, with each record's
+// offset, when there is one. The caller holds the log's lock.
+func openArchive(dir string, apply func(record, int64) error) (*Store, error) {
 	path := filepath.Join(dir, archiveName)
 	lf := &lazyFile{path: path, dir: dir}
 	f, err := os.OpenFile(path, os.O_RDWR, 0)
@@ -359,13 +377,30 @@ func Compact(dir string) error {
 			return err
 		}
 	}
-	if err := errors.Join(os.Rename(tempPath(dir, logName), filepath.Join(dir, logName)), syncDir(dir)); err != nil {
+	if err := os.Rename(tempPath(dir, logName), filepath.Join(dir, logName)); err != nil {
+		return err
+	}
+	crashPoint("compact-log-renamed")
+	if err := syncDir(dir); err != nil {
 		return err
 	}
 	if !withArchive {
 		return nil
 	}
-	return errors.Join(os.Rename(tempPath(dir, archiveName), filepath.Join(dir, archiveName)), syncDir(dir))
+	if err := os.Rename(tempPath(dir, archiveName), filepath.Join(dir, archiveName)); err != nil {
+		return err
+	}
+	crashPoint("compact-archive-renamed")
+	return syncDir(dir)
+}
+
+// crashPoint kills the process where JOBQ_CRASH_AT names it, so check.sh can
+// kill a compaction between a file's rename and the fsync of its directory.
+func crashPoint(name string) {
+	if os.Getenv("JOBQ_CRASH_AT") == name {
+		_ = syscall.Kill(os.Getpid(), syscall.SIGKILL)
+		time.Sleep(time.Minute)
+	}
 }
 
 func tempPath(dir, name string) string { return filepath.Join(dir, name+".compact") }

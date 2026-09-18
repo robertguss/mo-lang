@@ -25,7 +25,7 @@ func newMemBoard(t *testing.T, f, a *memFile, clock *manualClock, cfg BoardConfi
 	open := func() (*Queue, *Store, error) {
 		q := newQueue(clock)
 		q.retain = cfg.retain()
-		as, err := memStore(a, q.applyArchived)
+		as, err := memStoreAt(a, q.applyArchived)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -49,7 +49,12 @@ func newMemBoard(t *testing.T, f, a *memFile, clock *manualClock, cfg BoardConfi
 
 // memStore replays f through apply and cuts its torn tail.
 func memStore(f *memFile, apply func(record) error) (*Store, error) {
-	size, err := replay(bytes.NewReader(f.data), apply)
+	return memStoreAt(f, func(rec record, _ int64) error { return apply(rec) })
+}
+
+// memStoreAt is memStore with each record's offset.
+func memStoreAt(f *memFile, apply func(record, int64) error) (*Store, error) {
+	size, err := replayAt(bytes.NewReader(f.data), apply)
 	if err != nil {
 		return nil, err
 	}

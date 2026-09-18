@@ -35,6 +35,8 @@ const (
 	maxRetainMS     = 2_678_400_000
 	maxDelayMS      = 86_400_000
 	maxBackoffMS    = 3_600_000
+	minPruneMS      = 1_000
+	maxPruneMS      = 3_153_600_000_000 // a hundred years
 	timeLayout      = "2006-01-02T15:04:05.000Z"
 )
 
@@ -270,6 +272,10 @@ func requireKey(k string) error {
 
 func requireRetainMS(ms int64) error {
 	return contract.Require(ms >= minRetainMS && ms <= maxRetainMS, "retain_ms is 1_000 to 2_678_400_000")
+}
+
+func requireOlderThanMS(ms int64) error {
+	return contract.Require(ms >= minPruneMS && ms <= maxPruneMS, "older_than_ms is 1_000 to 3_153_600_000_000")
 }
 
 func requirePayload(p string) error {

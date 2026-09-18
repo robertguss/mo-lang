@@ -29,6 +29,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdClient(args[1:], stdout, stderr)
 	case "check":
 		return cmdCheck(args[1:], stdout, stderr)
+	case "prune":
+		return cmdPrune(args[1:], stdout, stderr)
+	case "bench":
+		return cmdBench(args[1:], stdout, stderr)
 	}
 	return usageError(stderr, "unknown command "+args[0])
 }

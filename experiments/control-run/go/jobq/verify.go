@@ -124,8 +124,10 @@ func wellFormedFields(key string, v jobJSON) error {
 	return nil
 }
 
-// wellFormedRename checks a rename record: two different queue names and
-// the id counter at the time, and nothing else.
+// wellFormedRename checks a rename record: two different queue names, the id
+// counter at the time when it has one (a record the change-5 program wrote
+// may not; the replay reads it as naming every job the log has named so
+// far), and nothing else.
 func wellFormedRename(rec record) error {
 	key := fmt.Sprintf("rename %q to %q", rec.From, rec.To)
 	bad := func(rule string) error { return &illFormed{key: key, rule: rule} }
@@ -134,10 +136,28 @@ func wellFormedRename(rec record) error {
 		return bad("a rename's from and to are 1 to 64 bytes of letters, digits, '-' and '_'")
 	case rec.From == rec.To:
 		return bad("a rename's from and to differ")
-	case rec.NextID < 1:
-		return bad("a rename has next_id")
-	case rec.Job != nil || rec.ID != "":
-		return bad("a rename has no job and no id")
+	case rec.Job != nil || rec.ID != "" || rec.Cutoff != "" || rec.Count != 0 || rec.ArchiveSize != 0:
+		return bad("a rename has no job, no id, and no prune field")
+	}
+	return nil
+}
+
+// wellFormedPrune checks a prune record: a cutoff in the time format, a
+// count of at least one, an archive_size within the archive read before the
+// log, and nothing else.
+func wellFormedPrune(rec record, archiveSize int64) error {
+	key := fmt.Sprintf("prune at %q", rec.Cutoff)
+	bad := func(rule string) error { return &illFormed{key: key, rule: rule} }
+	if _, err := time.Parse(timeLayout, rec.Cutoff); err != nil {
+		return bad("a prune's cutoff is a time as 2006-01-02T15:04:05.000Z")
+	}
+	switch {
+	case rec.Count < 1:
+		return bad("a prune's count is at least 1")
+	case rec.ArchiveSize < 1 || rec.ArchiveSize > archiveSize:
+		return bad("a prune's archive_size is within the archive")
+	case rec.Job != nil || rec.ID != "" || rec.From != "" || rec.To != "" || rec.NextID != 0:
+		return bad("a prune has only a cutoff, a count, and an archive_size")
 	}
 	return nil
 }

@@ -29,22 +29,21 @@ type service struct {
 // queue on clock, which archives after the default retain_ms.
 func openQueue(dir string, clock Clock) (*Queue, *Store, error) {
 	q := newQueue(clock)
-	var archive *Store
-	s, err := openLog(dir, func() (err error) {
+	s, err := openLog(dir, func() error {
 		if err := finishCompaction(dir); err != nil {
 			return err
 		}
-		archive, err = openArchive(dir, q.applyArchived)
+		archive, err := openArchive(dir, q.applyArchived)
+		q.archive = archive
 		return err
 	}, q.applyRecord)
 	if err == nil {
-		q.archive = archive
 		err = q.checkApart()
 		if err != nil {
 			err = errors.Join(err, s.Close(), q.closeArchive())
 		}
-	} else if archive != nil {
-		_ = archive.Close()
+	} else if q.archive != nil {
+		_ = q.archive.Close()
 	}
 	if err != nil {
 		return nil, nil, asIllFormed(dir, err)

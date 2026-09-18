@@ -328,7 +328,9 @@ func (s *simulation) checkDurable() {
 	if int64(len(arch)) < s.astore.size || !bytes.Equal(arch[:s.archSize], s.archBytes) {
 		s.fatalf("durable archive records changed")
 	}
-	if _, err := replay(bytes.NewReader(arch[s.archSize:s.astore.size]), s.mirror.applyArchived); err != nil {
+	if _, err := replayAt(bytes.NewReader(arch[s.archSize:s.astore.size]), func(rec record, off int64) error {
+		return s.mirror.applyArchived(rec, s.archSize+off)
+	}); err != nil {
 		s.fatalf("replaying new archive records: %v", err)
 	}
 	s.archBytes = append(s.archBytes, arch[s.archSize:s.astore.size]...)

@@ -445,7 +445,7 @@ func TestKillAtEveryWriteOfTheMove(t *testing.T) {
 	archivedBy := map[uint64]int{} // the first point that holds each archived job
 	for n, p := range points {
 		q := newQueue(clock)
-		if _, err := replay(bytes.NewReader(p.arch), q.applyArchived); err != nil {
+		if _, err := replayAt(bytes.NewReader(p.arch), q.applyArchived); err != nil {
 			t.Fatalf("point %d: %v", n, err)
 		}
 		if _, err := replay(bytes.NewReader(p.log), q.applyRecord); err != nil {

@@ -87,7 +87,7 @@ func snapshot(q *Queue) map[string]jobJSON {
 func replayBoth(t *testing.T, archive, log []byte) *Queue {
 	t.Helper()
 	q := newQueue(realClock{})
-	if _, err := replay(bytes.NewReader(archive), q.applyArchived); err != nil {
+	if _, err := replayAt(bytes.NewReader(archive), q.applyArchived); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := replay(bytes.NewReader(log), q.applyRecord); err != nil {

@@ -58,6 +58,13 @@ type Queue struct {
 	// and no arch after it yet: the job was on the board then, so a rename
 	// replayed now is already in the archive's record of it.
 	unarched map[uint64]bool
+	// archOff is each archived job's offset in the archive file, so a
+	// replayed prune removes only jobs whose record was written before it.
+	archOff map[uint64]int64
+	// logNext is, during a replay, one past the highest id the live log has
+	// named so far: where a rename record without next_id (the change-5
+	// reading) draws its line.
+	logNext uint64
 
 	// broken is set under lock by a failure that is not one request's: a
 	// broken rule or a panic. Every later holder of lock leaves at once, and
@@ -95,7 +102,7 @@ func newQueue(clock Clock) *Queue {
 		lock: make(chan struct{}, 1), clock: clock, jobs: map[uint64]*Job{},
 		queued: map[string]*idHeap{}, counts: map[State]int{}, nextID: 1,
 		retain: defaultRetainMS * time.Millisecond, archived: map[uint64]*Job{}, gone: map[uint64]bool{},
-		keys: map[keyRef]uint64{}, unarched: map[uint64]bool{},
+		keys: map[keyRef]uint64{}, unarched: map[uint64]bool{}, archOff: map[uint64]int64{}, logNext: 1,
 	}
 }
 
@@ -177,6 +184,7 @@ func (q *Queue) applyRecord(rec record) error {
 	switch rec.Op {
 	case "meta":
 		q.nextID = max(q.nextID, rec.NextID)
+		q.logNext = max(q.logNext, rec.NextID)
 		return nil
 	case "put":
 		if rec.Job == nil {
@@ -190,6 +198,7 @@ func (q *Queue) applyRecord(rec record) error {
 			return err
 		}
 		q.nextID = max(q.nextID, j.ID+1)
+		q.logNext = max(q.logNext, j.ID+1)
 		if q.archived[j.ID] != nil || q.gone[j.ID] {
 			if q.archived[j.ID] != nil {
 				q.unarched[j.ID] = true
@@ -216,8 +225,17 @@ func (q *Queue) applyRecord(rec record) error {
 		if err := wellFormedRename(rec); err != nil {
 			return err
 		}
-		q.replayRename(rec.From, rec.To, rec.NextID)
+		next := rec.NextID
+		if next == 0 {
+			next = q.logNext // a change-5 record: every job named so far
+		}
+		q.replayRename(rec.From, rec.To, next)
 		return nil
+	case "prune":
+		if err := wellFormedPrune(rec, q.archiveSize()); err != nil {
+			return err
+		}
+		return q.replayPrune(rec)
 	case "del":
 		id, ok := parseID(rec.ID)
 		if !ok || q.jobs[id] == nil {
@@ -232,8 +250,8 @@ func (q *Queue) applyRecord(rec record) error {
 // applyArchived replays one archive record. A put archives the job, taking
 // it off the board if the board still holds it; a del forgets an archived
 // job and frees its key.
-func (q *Queue) applyArchived(rec record) error {
-	err := q.applyArchiveRecord(rec)
+func (q *Queue) applyArchived(rec record, off int64) error {
+	err := q.applyArchiveRecord(rec, off)
 	var ill *illFormed
 	if errors.As(err, &ill) {
 		ill.archived = true
@@ -241,7 +259,7 @@ func (q *Queue) applyArchived(rec record) error {
 	return err
 }
 
-func (q *Queue) applyArchiveRecord(rec record) error {
+func (q *Queue) applyArchiveRecord(rec record, off int64) error {
 	switch rec.Op {
 	case "put":
 		if rec.Job == nil {
@@ -264,6 +282,7 @@ func (q *Queue) applyArchiveRecord(rec record) error {
 			q.leave(j.ID)
 		}
 		q.archived[j.ID] = &j
+		q.archOff[j.ID] = off
 		if ref, ok := j.keyRef(); ok {
 			q.keys[ref] = j.ID
 		}
@@ -286,6 +305,7 @@ func (q *Queue) forget(id uint64) {
 	j := q.archived[id]
 	delete(q.archived, id)
 	delete(q.unarched, id)
+	delete(q.archOff, id)
 	q.gone[id] = true
 	if ref, ok := j.keyRef(); ok && q.keys[ref] == id {
 		delete(q.keys, ref)
@@ -531,6 +551,7 @@ func (t *tx) archiveOld() {
 		v := jobView(due[i])
 		recs[i] = record{Op: "put", Job: &v}
 	}
+	off := q.archive.size
 	if err := q.archive.Append(recs...); err != nil {
 		for _, e := range popped {
 			heap.Push(&q.ends, e)
@@ -541,6 +562,7 @@ func (t *tx) archiveOld() {
 		a := due[i]
 		q.leave(a.ID)
 		q.archived[a.ID] = &a
+		q.archOff[a.ID] = off
 		q.unlogged = append(q.unlogged, a.ID)
 	}
 }
@@ -1080,6 +1102,126 @@ func (q *Queue) rename(from, to string, nextID uint64) (moved int, err error) {
 // nothing.
 func (q *Queue) replayRename(from, to string, nextID uint64) {
 	_, _ = q.rename(from, to, nextID)
+}
+
+// archiveSize is the archive file's length as far as it is whole and synced.
+func (q *Queue) archiveSize() int64 {
+	if q.archive == nil {
+		return 0
+	}
+	return q.archive.size
+}
+
+// pruneStep is the prune as a pure step over the archive: the ids, ascending,
+// of every archived job archived at or before cutoff whose archive record
+// starts before the archive's first before bytes. requires: cutoff is at
+// least minPruneMS before the look that asks (Prune checks it). ensures: no
+// live job is named, since only archived ones are looked at; every id named
+// is archived at or before cutoff.
+func pruneStep(archived map[uint64]*Job, offs map[uint64]int64, cutoff time.Time, before int64) []uint64 {
+	var ids []uint64
+	for id, j := range archived {
+		if !j.ArchivedAt.After(cutoff) && offs[id] < before {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return ids
+}
+
+// ensurePruned is the prune's ensures, checked on the queue after it: no id
+// pruned is on the board or archived, every one was archived at or before
+// cutoff, and no key names it.
+func (q *Queue) ensurePruned(pruned []*Job, cutoff time.Time) error {
+	ok := true
+	for _, j := range pruned {
+		ok = ok && q.jobs[j.ID] == nil && q.archived[j.ID] == nil && !j.ArchivedAt.After(cutoff)
+		if ref, keyed := j.keyRef(); keyed {
+			ok = ok && q.keys[ref] != j.ID
+		}
+	}
+	return contract.Ensure(ok, "every pruned job was archived at or before the cutoff, is gone, and frees its key")
+}
+
+// Prune removes every archived job archived at least olderThanMS before now,
+// as one record in the live log naming the cutoff and the count, written
+// before any job goes. A prune that finds nothing writes nothing but the
+// look's moves. requires: olderThanMS is minPruneMS to maxPruneMS. A live job
+// is never looked at.
+func (q *Queue) Prune(ctx context.Context, olderThanMS int64) (pruned, remaining int, err error) {
+	if err := requireOlderThanMS(olderThanMS); err != nil {
+		return 0, 0, err
+	}
+	t, err := q.begin(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer t.end()
+	cutoff := t.now.Add(-time.Duration(olderThanMS) * time.Millisecond)
+	ids := pruneStep(q.archived, q.archOff, cutoff, q.archiveSize())
+	if len(ids) == 0 {
+		return 0, len(q.archived), t.commitReads()
+	}
+	gone := make([]*Job, len(ids))
+	for i, id := range ids {
+		gone[i] = q.archived[id]
+	}
+	rec := record{Op: "prune", Cutoff: formatTime(cutoff), Count: len(ids), ArchiveSize: q.archiveSize()}
+	if err := t.commitWith([]record{rec}, func() {
+		for _, id := range ids {
+			q.forget(id)
+		}
+	}); err != nil {
+		return 0, 0, err
+	}
+	return len(ids), len(q.archived), q.guard(q.ensurePruned(gone, cutoff))
+}
+
+// replayPrune is a prune record replayed: the archive was read before the
+// log, so the jobs whose archive record lies past the record's archive_size
+// were archived after the prune and stay.
+func (q *Queue) replayPrune(rec record) error {
+	cutoff, _ := time.Parse(timeLayout, rec.Cutoff)
+	ids := pruneStep(q.archived, q.archOff, cutoff, rec.ArchiveSize)
+	if err := contract.Never(len(ids) != rec.Count, "a replayed prune removes other than the count its record names"); err != nil {
+		return fmt.Errorf("prune at %s: %w (count %d, found %d)", rec.Cutoff, err, rec.Count, len(ids))
+	}
+	for _, id := range ids {
+		q.forget(id)
+	}
+	return nil
+}
+
+// ArchiveInfo is the body of GET /archive.
+type ArchiveInfo struct {
+	Archived int     `json:"archived"`
+	Oldest   *string `json:"oldest_archived_at"`
+	Bytes    int64   `json:"bytes"`
+}
+
+// Archive counts the archive: its jobs, the oldest archived_at, and the
+// file's bytes, pruned and deleted records included until a compaction.
+func (q *Queue) Archive(ctx context.Context) (ArchiveInfo, error) {
+	t, err := q.begin(ctx)
+	if err != nil {
+		return ArchiveInfo{}, err
+	}
+	defer t.end()
+	if err := t.commitReads(); err != nil {
+		return ArchiveInfo{}, err
+	}
+	info := ArchiveInfo{Archived: len(q.archived), Bytes: q.archiveSize()}
+	var oldest time.Time
+	for _, j := range q.archived {
+		if oldest.IsZero() || j.ArchivedAt.Before(oldest) {
+			oldest = j.ArchivedAt
+		}
+	}
+	if !oldest.IsZero() {
+		s := formatTime(oldest)
+		info.Oldest = &s
+	}
+	return info, nil
 }
 
 func sortedSet(set map[uint64]bool) []uint64 {
