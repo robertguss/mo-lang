@@ -1,0 +1,18 @@
+# cheap, contracts off, trial 3, 30000 jobs, MO_CORES=1, binary /tmp/claude-1000/-home-exedev-Projects-mo-lang/b2557fa4-9d5d-4e16-b574-25ec6f9b23b8/scratchpad/g4c/bin/cheap/jobq, cwd /home/exedev/Projects/mo-lang-erosion4-control
+# date: 2026-09-18 08:19:58 UTC
+# uptime:  08:19:58 up 3 days, 19:58,  0 user,  load average: 2.63, 2.84, 2.38
+# top of ps:
+#   USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+#   exedev   1132959  4.4  2.1 5582212 352992 pts/4  Sl+  07:51   1:14 claude --model opus --dangerously-skip-permissions
+#   exedev   1006522  2.2  1.9 5582508 323144 pts/3  Sl+  02:16   8:04 claude --dangerously-skip-permissions
+#   exedev       708  1.3  0.1  69520 20476 ?        Ssl  Sep14  75:10 /home/exedev/.local/bin/herdr server
+#   exedev   1137262  0.9  0.0  36896 12124 ?        S    08:07   0:07 python3 /tmp/claude-1000/-home-exedev-Projects-mo-lang/b2557fa4-9d5d-4e16-b574-25ec6f9b23b8/scratchpad/g4c/watchdog.py
+#   root         254  0.1  0.0      0     0 ?        S    Sep14   9:26 [jbd2/vda-8]
+up in 0.05s; rss empty 2.1 MiB
+creates: 30000 in 12.5s = 2408/s, errors []; rss at 30000 jobs 135.5 MiB
+pairs, 1 worker: 3255 in 10.0s = 325/s []
+pairs, 32 workers: 18499 in 10.0s = 1848/s []
+rss after pairs 153.4 MiB
+restart with a 24 MB log: 1.21s to /health; rss 34.5 MiB
+# exit: 0
+# jobq left: none

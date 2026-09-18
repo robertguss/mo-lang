@@ -1,0 +1,89 @@
+# perf of the cheap variant, contracts on, 30000 jobs, MO_CORES=1
+# date: 2026-09-18 08:31:41 UTC
+# uptime:  08:31:41 up 3 days, 20:10,  0 user,  load average: 1.98, 2.37, 2.36
+# top of ps:
+#   USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+#   exedev   1132959  4.7  2.2 5582212 372608 pts/4  Sl+  07:51   1:53 claude --model opus --dangerously-skip-permissions
+#   exedev   1006522  2.1  2.0 5582508 329996 pts/3  Sl+  02:16   8:12 claude --dangerously-skip-permissions
+#   exedev       708  1.3  0.1  69520 20476 ?        Ssl  Sep14  75:15 /home/exedev/.local/bin/herdr server
+#   root         254  0.1  0.0      0     0 ?        S    Sep14   9:40 [jbd2/vda-8]
+#   exedev       607  0.1  0.0   8944  4756 pts/1    S+   Sep14   5:51 top
+up in 0.05s; rss empty 2.2 MiB
+creates: 30000 in 14.0s = 2146/s, errors []; rss at 30000 jobs 119.9 MiB
+pairs, 1 worker: 2820 in 10.0s = 282/s []
+pairs, 32 workers: 12100 in 10.0s = 1208/s []
+rss after pairs 129.0 MiB
+restart with a 19 MB log: 1.06s to /health; rss 34.2 MiB
+-- hot symbols in the server, cheap
+     5.98%  jobq              [.] copy_slice
+            |
+            ---copy_slice
+               |          
+                --4.79%--copy_out
+                          |          
+                           --4.29%--copy_slice
+                                     |          
+                                      --3.00%--copy_out
+                                                |          
+                                                 --2.33%--copy_slice
+                                                           |          
+                                                            --1.50%--copy_map
+                                                                      copy_out
+                                                                      copy_slice
+                                                                      copy_map
+                                                                      copy_out
+                                                                      copy_slice
+                                                                      copy_out
+                                                                      copy_slice
+                                                                      copy_out
+     4.38%  jobq              [.] ptab_drop
+            |
+            ---ptab_drop
+               |          
+                --4.37%--mo_compact
+                          |          
+                           --4.34%--settle_region
+                                     deliver
+                                     mo_fiber_start
+                                     0
+     3.86%  jobq              [.] copy_out
+            |
+            ---copy_out
+               |          
+                --3.39%--copy_slice
+                          |          
+                          |--1.84%--copy_out
+                          |          |          
+                          |           --1.75%--copy_slice
+                          |          
+                           --1.55%--copy_map
+                                     copy_out
+                                     copy_slice
+     2.44%  jobq              [.] mark_value
+            |
+            ---mark_value
+               |          
+                --2.39%--mark_value
+                          |          
+                           --2.38%--mark_value
+                                     |          
+                                      --2.34%--mark_value
+                                                |          
+                                                 --1.82%--mark_value
+                                                           |          
+                                                            --1.79%--step
+                                                                      mo_program_end
+                                                                      main
+                                                                      libc_start_main_stage2
+-- flat, top 15
+     5.98%  jobq              [.] copy_slice
+     4.38%  jobq              [.] ptab_drop
+     3.86%  jobq              [.] copy_out
+     2.44%  jobq              [.] mark_value
+     2.38%  jobq              [.] compiler_rt.memcpy.memcpyFast
+     1.73%  jobq              [.] mo_disown_in
+     1.72%  jobq              [.] next_grapheme
+     0.86%  jobq              [.] printf_core
+     0.67%  jobq              [.] compiler_rt.memset
+     0.65%  [unknown]         [k] 0xffffffff82a00cf0
+     0.54%  jobq              [.] heap.SmpAllocator.alloc
