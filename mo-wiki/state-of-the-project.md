@@ -28,6 +28,19 @@ here, and the [[roadmap]] table is the authority on order.
 bricks page; **amended 18 Sep, 12:30 PM ET, at a pause on Robert's Mac**, for
 the morning below. Six days since the first commit.
 
+## Move checkpoint, 18 Sep 2026, 3:40 PM ET
+
+Robert will move the project to a cloud VM himself after the current Step 39
+worker finishes. Codex (GPT-6) now leads, monitors `mo-opus` in `w4:pA`, and
+will save its report and evidence, identify acceptance still owed, end the
+worker, and stop the queue for that move. Step 39 is still in progress and the
+TLS brick is not accepted. The completed OrbStack Linux Redis baseline is
+preserved under `audit/evidence/2026-09-18/program-7-spec-r2/`: 22 files
+attempted, 909 ok, 5 err, 22 ignored, 3 exceptions and 3 timeouts. Two files
+show leftover background work on the reused server; the skip list needs
+fresh-server checks. Program 7 still waits on the auditor's sealing session.
+`HANDOFF.md` lists what must be retained before the Mac is left.
+
 ## The morning of 18 Sep, in one screen (read this first)
 
 The auditor read five subjects and the lead conceded every finding; three of

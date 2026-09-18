@@ -1,0 +1,15 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10411
+Testing unit/info
+[ignore]: Not supported on external server
+[1/1 done]: unit/info (0 seconds)
+
+                   The End
+
+Execution time of different units:
+  0 seconds - unit/info
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK

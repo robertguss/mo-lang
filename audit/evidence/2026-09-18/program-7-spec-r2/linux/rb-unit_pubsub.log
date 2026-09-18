@@ -1,0 +1,48 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10329
+Testing unit/pubsub
+[ok]: Pub/Sub PING on RESP2 (1 ms)
+[ok]: Pub/Sub PING on RESP3 (0 ms)
+[ok]: PUBLISH/SUBSCRIBE basics (0 ms)
+[ok]: PUBLISH/SUBSCRIBE with two clients (1 ms)
+[ok]: PUBLISH/SUBSCRIBE after UNSUBSCRIBE without arguments (0 ms)
+[ok]: SUBSCRIBE to one channel more than once (0 ms)
+[ok]: UNSUBSCRIBE from non-subscribed channels (0 ms)
+[ok]: PUBLISH/PSUBSCRIBE basics (1 ms)
+[ok]: PUBLISH/PSUBSCRIBE with two clients (0 ms)
+[ok]: PUBLISH/PSUBSCRIBE after PUNSUBSCRIBE without arguments (0 ms)
+[ok]: PubSub messages with CLIENT REPLY OFF (85 ms)
+[ok]: PUNSUBSCRIBE from non-subscribed channels (0 ms)
+[ok]: NUMSUB returns numbers, not strings (#1561) (0 ms)
+[ok]: NUMPATs returns the number of unique patterns (0 ms)
+[ok]: Mix SUBSCRIBE and PSUBSCRIBE (1 ms)
+[ok]: PUNSUBSCRIBE and UNSUBSCRIBE should always reply (0 ms)
+[ok]: Keyspace notifications: we receive keyspace notifications (41 ms)
+[ok]: Keyspace notifications: we receive keyevent notifications (42 ms)
+[ok]: Keyspace notifications: we can receive both kind of events (0 ms)
+[ok]: Keyspace notifications: we are able to mask events (0 ms)
+[ok]: Keyspace notifications: general events test (1 ms)
+[ok]: Keyspace notifications: list events test (0 ms)
+[ok]: Keyspace notifications: set events test (0 ms)
+[ok]: Keyspace notifications: zset events test (0 ms)
+[ok]: Keyspace notifications: hash events test (0 ms)
+[ok]: Keyspace notifications: stream events test (0 ms)
+[ok]: Keyspace notifications: expired events (triggered expire) (106 ms)
+[ok]: Keyspace notifications: expired events (background expire) (154 ms)
+[ok]: Keyspace notifications: evicted events (0 ms)
+[ok]: Keyspace notifications: test CONFIG GET/SET of event flags (1 ms)
+[ok]: Keyspace notifications: new key test (0 ms)
+[ok]: publish to self inside multi (0 ms)
+[ok]: publish to self inside script (0 ms)
+[ok]: unsubscribe inside multi, and publish to self (1 ms)
+[1/1 done]: unit/pubsub (0 seconds)
+
+                   The End
+
+Execution time of different units:
+  0 seconds - unit/pubsub
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK

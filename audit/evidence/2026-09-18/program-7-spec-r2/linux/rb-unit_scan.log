@@ -1,0 +1,41 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10293
+Testing unit/scan
+[ok]: SCAN basic (19 ms)
+[ok]: SCAN COUNT (20 ms)
+[ok]: SCAN MATCH (17 ms)
+[ok]: SCAN TYPE (24 ms)
+[ok]: SCAN unknown type (21 ms)
+[ok]: SCAN with expired keys (24 ms)
+[ok]: SCAN with expired keys with TYPE filter (23 ms)
+[ok]: SSCAN with encoding intset (1 ms)
+[err]: SSCAN with encoding listpack in tests/unit/scan.tcl
+Expected 'hashtable' to match 'listpack' (context: type source line 100 file /root/redis/tests/support/test.tcl cmd {assert_match $enc $val} proc ::assert_encoding level 1) 
+[ok]: SSCAN with encoding hashtable (1 ms)
+[err]: HSCAN with encoding listpack in tests/unit/scan.tcl
+Expected 'hashtable' to match 'listpack' (context: type source line 100 file /root/redis/tests/support/test.tcl cmd {assert_match $enc $val} proc ::assert_encoding level 1) 
+[ok]: HSCAN with encoding hashtable (48 ms)
+[ok]: ZSCAN with encoding listpack (0 ms)
+[ok]: ZSCAN with encoding skiplist (50 ms)
+[ok]: SCAN guarantees check under write load (4 ms)
+[ok]: SSCAN with integer encoded object (issue #1345) (0 ms)
+[ok]: SSCAN with PATTERN (0 ms)
+[ok]: HSCAN with PATTERN (0 ms)
+[ok]: ZSCAN with PATTERN (0 ms)
+[ok]: ZSCAN scores: regression test for issue #2175 (9 ms)
+[ok]: SCAN regression test for issue #4906 (3207 ms)
+[1/1 done]: unit/scan (4 seconds)
+
+                   The End
+
+Execution time of different units:
+  4 seconds - unit/scan
+
+!!! WARNING The following tests failed:
+
+*** [err]: SSCAN with encoding listpack in tests/unit/scan.tcl
+Expected 'hashtable' to match 'listpack' (context: type source line 100 file /root/redis/tests/support/test.tcl cmd {assert_match $enc $val} proc ::assert_encoding level 1) 
+*** [err]: HSCAN with encoding listpack in tests/unit/scan.tcl
+Expected 'hashtable' to match 'listpack' (context: type source line 100 file /root/redis/tests/support/test.tcl cmd {assert_match $enc $val} proc ::assert_encoding level 1) 
+Cleanup: may take some time... OK

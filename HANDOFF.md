@@ -7,6 +7,48 @@ exchange live in the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which
 queue, and what a fresh session must know that the wiki does not say in one
 place.
 
+## Latest instruction: prepare for Robert's cloud move
+
+**18 Sep 2026, 3:40 PM ET; recorded by Codex (GPT-6).** Robert will perform
+the move himself **after the current Step 39 worker finishes**. This overrides
+the older instruction to continue down the queue. Keep watching `mo-opus` in
+`w4:pA`; let it finish its existing brief, then save the full report and raw
+evidence, ensure its part commits are pushed, end the worker, and stop. Start
+no Go rerun, instrument-fix worker, generation seven, or program-7 build before
+the move. The lead must not provision or transfer to a VM.
+
+Before declaring the Mac ready to leave:
+
+1. Save the worker's final report before closing its pane. Record the exact
+   last pushed SHA, completed parts, unresolved decisions, and all acceptance
+   still owed. **A completed worker is not an accepted Step 39.** The TLS brick
+   remains incomplete until the lead's acceptance list below is satisfied.
+2. Preserve the worker's Darwin `F_FULLFSYNC` counter/trace and before/after
+   measurements, plus every raw result needed to reproduce its claims. Name
+   any Mac-only lead check still owed; Linux cannot supply that evidence.
+3. Preserve local-only evidence, dirty/untracked files, branch/worktree refs
+   and the worktree mapping under `~/Projects/startups/mo-lang-worktrees/`.
+   Worktrees are evidence: do not delete or merge them. Record the lead's
+   receiver ledger `~/.mo-lead/fable-intake.json` as local state to carry.
+   Keep credentials outside the repository. Rebuild binaries on Linux.
+4. Update this handoff, the board, the state page, and log with the final
+   checkpoint; push only named paths. Close completed run panes and the
+   sleeping wake-up timer. Leave no lead-owned run to keep the Mac busy.
+
+**Current checkpoint, not yet the final move handoff:** Step 39 is still
+working; no resumed part commit is on `main`. The Linux Redis baseline in
+`w4:pB` finished at **3:34:59 PM ET**: all 22 files attempted, 909 ok, 5 err,
+22 ignored, 3 exceptions, 3 timeouts. Its raw files and table are under
+`audit/evidence/2026-09-18/program-7-spec-r2/`. This is OrbStack Linux on the
+Mac, not a cloud rig. Shared-server background activity affects at least two
+files; the skip list is still owed and must not turn those into unverified
+permanent skips. The auditor's sealing session on `program-7-spec-ready-002`
+still gates program 7.
+
+A sleeping timer in `w4:pC` re-prompts this lead at **3:47:28 PM ET**; it makes
+no model calls while waiting. On waking, obey this stop-after-worker update
+rather than the older queued-work wording in the timer's message.
+
 > We're continuing the Mo language build. **This session runs on Robert's Mac**
 > (M3 Max, 14 cores, 96 GB; `herdr pane list` shows the machine; the lead's pane
 > is `w4:p1`; worker and run panes are split to the **right**, never below).

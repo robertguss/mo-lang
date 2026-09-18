@@ -1,0 +1,48 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10466
+Testing unit/other
+[ok]: Coverage: HELP commands (1 ms)
+[ok]: Coverage: MEMORY MALLOC-STATS (2 ms)
+[ok]: Coverage: MEMORY PURGE (0 ms)
+[ok]: SAVE - make sure there are all the types as values (40044 ms)
+[ok]: FUZZ stresser with data model binary (143 ms)
+[ok]: FUZZ stresser with data model alpha (146 ms)
+[ok]: FUZZ stresser with data model compr (131 ms)
+[ignore]: Not supported on external server
+[exception]: Executing test client: ERR Another child process is active (AOF?): can't BGSAVE right now. Use BGSAVE SCHEDULE in order to schedule a BGSAVE whenever possible..
+ERR Another child process is active (AOF?): can't BGSAVE right now. Use BGSAVE SCHEDULE in order to schedule a BGSAVE whenever possible.
+    while executing
+"[srv $level "client"] {*}$args"
+    (procedure "r" line 7)
+    invoked from within
+"r bgsave"
+    ("uplevel" body line 7)
+    invoked from within
+"uplevel 1 $code"
+    (procedure "test" line 58)
+    invoked from within
+"test {BGSAVE} {
+        # Use FLUSHALL instead of FLUSHDB, FLUSHALL do a foreground save
+        # and reset the dirty counter to 0, so we won't trigg..."
+    ("uplevel" body line 80)
+    invoked from within
+"uplevel 2 $code"
+    (procedure "run_external_server_test" line 41)
+    invoked from within
+"run_external_server_test $code $overrides"
+    (procedure "start_server" line 55)
+    invoked from within
+"start_server {tags {"other"}} {
+    if {$::force_failure} {
+        # This is used just for test suite development purposes.
+        test {Failing tes..."
+    (file "tests/unit/other.tcl" line 1)
+    invoked from within
+"source $path"
+    (procedure "execute_test_file" line 4)
+    invoked from within
+"execute_test_file $data"
+    (procedure "test_client_main" line 10)
+    invoked from within
+"test_client_main $::test_server_port "

@@ -1,0 +1,25 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10190
+Testing unit/type/list-3
+[ok]: Explicit regression for a list bug (0 ms)
+[ok]: Regression for quicklist #3343 bug (126 ms)
+[ok]: Check compression with recompress (85 ms)
+[ok]: Crash due to wrongly recompress after lrem (222 ms)
+[ok]: LINSERT correctly recompress full quicklistNode after inserting a element before it (44 ms)
+[ok]: LINSERT correctly recompress full quicklistNode after inserting a element after it (44 ms)
+[ok]: Stress tester for #3343-alike bugs comp: 2 (8462 ms)
+[ok]: Stress tester for #3343-alike bugs comp: 1 (8805 ms)
+[ok]: Stress tester for #3343-alike bugs comp: 0 (8366 ms)
+[ok]: ziplist implementation: value encoding and backlink (11691 ms)
+[ok]: ziplist implementation: encoding stress testing (1519 ms)
+[1/1 done]: unit/type/list-3 (39 seconds)
+
+                   The End
+
+Execution time of different units:
+  39 seconds - unit/type/list-3
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK

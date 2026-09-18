@@ -1,0 +1,66 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10448
+Testing unit/introspection-2
+[ok]: The microsecond part of the TIME command will not overflow (0 ms)
+[ok]: TTL, TYPE and EXISTS do not alter the last access time of a key (3004 ms)
+[err]: TOUCH alters the last access time of a key in tests/unit/introspection-2.tcl
+Expected [r object idletime foo] < 2 (context: type eval line 5 cmd {assert {[r object idletime foo] < 2}} proc ::test)
+[err]: Operations in no-touch mode do not alter the last access time of a key in tests/unit/introspection-2.tcl
+Expected '11375155' to be more than '11375155' (context: type eval line 12 cmd {assert_morethan $newlru $oldlru} proc ::test)
+[ok]: TOUCH returns the number of existing keys specified (1 ms)
+[ok]: command stats for GEOADD (0 ms)
+[ok]: errors stats for GEOADD (0 ms)
+[ok]: command stats for EXPIRE (0 ms)
+[ok]: command stats for BRPOP (0 ms)
+[ok]: command stats for MULTI (1 ms)
+[ok]: command stats for scripts (0 ms)
+[ok]: COMMAND COUNT get total number of Redis commands (0 ms)
+[ok]: COMMAND GETKEYS GET (0 ms)
+[ok]: COMMAND GETKEYSANDFLAGS (1 ms)
+[ok]: COMMAND GETKEYS MEMORY USAGE (1 ms)
+[ok]: COMMAND GETKEYS XGROUP (0 ms)
+[ok]: COMMAND GETKEYS EVAL with keys (0 ms)
+[ok]: COMMAND GETKEYS EVAL without keys (0 ms)
+[ok]: COMMAND GETKEYS LCS (0 ms)
+[ok]: COMMAND GETKEYS MORE THAN 256 KEYS (1 ms)
+[ok]: COMMAND LIST syntax error (0 ms)
+[ok]: COMMAND LIST WITHOUT FILTERBY (1 ms)
+[ok]: COMMAND LIST FILTERBY ACLCAT against non existing category (0 ms)
+[ok]: COMMAND LIST FILTERBY ACLCAT - list all commands/subcommands (0 ms)
+[ok]: COMMAND LIST FILTERBY PATTERN - list all commands/subcommands (0 ms)
+[ok]: COMMAND LIST FILTERBY MODULE against non existing module (0 ms)
+[ok]: COMMAND INFO of invalid subcommands (0 ms)
+[ok]: SET command will not be marked with movablekeys (1 ms)
+[ok]: GET command will not be marked with movablekeys (0 ms)
+[ok]: MSET command will not be marked with movablekeys (0 ms)
+[ok]: BITFIELD command will not be marked with movablekeys (0 ms)
+[ok]: LMOVE command will not be marked with movablekeys (0 ms)
+[ok]: LPOP command will not be marked with movablekeys (0 ms)
+[ok]: BLPOP command will not be marked with movablekeys (1 ms)
+[ok]: PING command will not be marked with movablekeys (0 ms)
+[ok]: MEMORY command will not be marked with movablekeys (0 ms)
+[ok]: MEMORY|USAGE command will not be marked with movablekeys (0 ms)
+[ok]: RENAME command will not be marked with movablekeys (0 ms)
+[ok]: GEORADIUS_RO command will not be marked with movablekeys (0 ms)
+[ok]: ZUNIONSTORE command is marked with movablekeys (0 ms)
+[ok]: XREAD command is marked with movablekeys (0 ms)
+[ok]: EVAL command is marked with movablekeys (0 ms)
+[ok]: SORT command is marked with movablekeys (1 ms)
+[ok]: SORT_RO command is marked with movablekeys (0 ms)
+[ok]: MIGRATE command is marked with movablekeys (0 ms)
+[ok]: GEORADIUS command is marked with movablekeys (0 ms)
+[1/1 done]: unit/introspection-2 (7 seconds)
+
+                   The End
+
+Execution time of different units:
+  7 seconds - unit/introspection-2
+
+!!! WARNING The following tests failed:
+
+*** [err]: TOUCH alters the last access time of a key in tests/unit/introspection-2.tcl
+Expected [r object idletime foo] < 2 (context: type eval line 5 cmd {assert {[r object idletime foo] < 2}} proc ::test)
+*** [err]: Operations in no-touch mode do not alter the last access time of a key in tests/unit/introspection-2.tcl
+Expected '11375155' to be more than '11375155' (context: type eval line 12 cmd {assert_morethan $newlru $oldlru} proc ::test)
+Cleanup: may take some time... OK

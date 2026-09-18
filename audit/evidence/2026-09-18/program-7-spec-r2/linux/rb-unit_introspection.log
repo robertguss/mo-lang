@@ -1,0 +1,48 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10429
+Testing unit/introspection
+[ok]: PING (1 ms)
+[ok]: CLIENT LIST (0 ms)
+[ok]: CLIENT LIST with IDs (0 ms)
+[ok]: CLIENT INFO (0 ms)
+[ok]: CLIENT KILL with illegal arguments (0 ms)
+[ok]: CLIENT KILL SKIPME YES/NO will kill all clients (1 ms)
+[exception]: Executing test client: ERR Another child process is active (AOF?): can't BGSAVE right now. Use BGSAVE SCHEDULE in order to schedule a BGSAVE whenever possible..
+ERR Another child process is active (AOF?): can't BGSAVE right now. Use BGSAVE SCHEDULE in order to schedule a BGSAVE whenever possible.
+    while executing
+"[srv $level "client"] {*}$args"
+    (procedure "r" line 7)
+    invoked from within
+"r bgsave"
+    ("uplevel" body line 6)
+    invoked from within
+"uplevel 1 $code"
+    (procedure "test" line 58)
+    invoked from within
+"test "CLIENT KILL close the client connection during bgsave" {
+        # Start a slow bgsave, trigger an active fork.
+        r flushall
+        r set..."
+    ("uplevel" body line 64)
+    invoked from within
+"uplevel 2 $code"
+    (procedure "run_external_server_test" line 41)
+    invoked from within
+"run_external_server_test $code $overrides"
+    (procedure "start_server" line 55)
+    invoked from within
+"start_server {tags {"introspection"}} {
+    test "PING" {
+        assert_equal {PONG} [r ping]
+        assert_equal {redis} [r ping redis]
+        ass..."
+    (file "tests/unit/introspection.tcl" line 1)
+    invoked from within
+"source $path"
+    (procedure "execute_test_file" line 4)
+    invoked from within
+"execute_test_file $data"
+    (procedure "test_client_main" line 10)
+    invoked from within
+"test_client_main $::test_server_port "

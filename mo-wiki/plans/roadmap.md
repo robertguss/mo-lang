@@ -15,12 +15,18 @@ just landed. One line each, with the page that holds the detail. Fable rewrites
 it at every acceptance and every pause; the dates say when. Below it, the phases
 in detail and the history of every step.
 
+**Move checkpoint, 18 Sep 2026, 3:40 PM ET (Codex / GPT-6):** Robert will
+move the project to a cloud VM himself after Step 39's current worker finishes.
+The lead saves its report, commits and raw evidence, names acceptance still
+owed, ends the worker, and stops the queue. The Next table resumes only after
+the move. `HANDOFF.md` has the transfer preparation checklist.
+
 ## Now, in flight
 
 | what | who | since | page |
 |---|---|---|---|
-| **Step 39: the TLS brick's corrections** (two auditor readings showed the client accepting four certificate chains OpenSSL rejects; also ALPN past 64 names, the fuzz count, a corpus test that tested nothing, plaintext records after the handshake keys) and `F_FULLFSYNC` on macOS. **The TLS brick is not complete until it lands.** Its gate is the auditor's own script | stopped for Robert's pause at part A (`toolchain/bench/step39/WIP.md`); a fresh worker continues | started 18 Sep, 12:01 PM ET; paused about 12:40 | [[interpreter-step-39]] |
-| Program 7: revision 2 of the spec is sealed and published (`program-7-spec-ready-002`). Owed by the lead before the builds: Redis's suite against Redis itself on Linux, then the skip list. **Owed by Robert: the auditor's sealing session** | Fable, then Robert | 18 Sep, 12:19 PM ET | [[07b-redis-subset-revision-2]] |
+| **Step 39: the TLS brick's corrections** (two auditor readings showed the client accepting four certificate chains OpenSSL rejects; also ALPN past 64 names, the fuzz count, a corpus test that tested nothing, plaintext records after the handshake keys) and `F_FULLFSYNC` on macOS. **The TLS brick is not complete until it lands.** Its gate is the auditor's own script | Opus resumed in `w4:pA`; Codex monitors, then prepares the move checkpoint | resumed 18 Sep, 3:01 PM ET | [[interpreter-step-39]] |
+| Program 7: revision 2 of the spec is sealed and published (`program-7-spec-ready-002`). OrbStack Linux baseline finished: 22 files attempted, 909 ok, 5 err, 3 exceptions, 3 timeouts; raw evidence saved. Fresh-server checks and the skip list remain owed after the move. **Owed by Robert: the auditor's sealing session** | Codex prepares handoff; Robert moves and opens sealing session | 18 Sep, 12:19 PM ET | [[07b-redis-subset-revision-2]] |
 | With the auditor: `generation-six-ready-001`, `step-38-ready-001`, the comparisons of five readings filed this morning | the auditor | 18 Sep, 11:35 AM ET | [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 
 ## Next, in order

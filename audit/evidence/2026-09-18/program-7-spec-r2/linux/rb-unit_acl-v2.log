@@ -1,0 +1,16 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 10391
+Testing unit/acl-v2
+[ignore]: Not supported on external server
+[ignore]: Not supported on external server
+[1/1 done]: unit/acl-v2 (1 seconds)
+
+                   The End
+
+Execution time of different units:
+  1 seconds - unit/acl-v2
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK
