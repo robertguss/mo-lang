@@ -1,0 +1,1073 @@
+{
+  "recorded_et": "2026-09-18T16:31:26.963615-04:00",
+  "root": "/Users/robertguss/Projects/startups/mo-lang",
+  "refs": {
+    "refs/heads/cache-A": "f6a82137761acfd2c58607cd042b928388c81cc9",
+    "refs/heads/cache-B": "791b1355ccc79250f3111bc05f42ed55a48d6f86",
+    "refs/heads/cache-C": "08fb79481a5e87e5054eaa45b49f58b4b03634d2",
+    "refs/heads/control-go": "86e5e952443e2c0c518f05ef775a424da7b338b6",
+    "refs/heads/control-python": "b8af8a0f509c919467d5a0f00c086efaac2f117f",
+    "refs/heads/control10-elixir": "89ed4c90aa65a4b3e31c8e7737c6077e0d5721bc",
+    "refs/heads/control2-go": "f4a84f34c7f9c832ca142837d0ccfcdb71ecc1b1",
+    "refs/heads/control2-mo": "c699fd6b932c62f60387cc09e498d445662eb0bd",
+    "refs/heads/control2-python": "107cecaf67390cc60dd9f6312f1c5c4ad77c7862",
+    "refs/heads/control3-go": "6fb5348f53d915de65eab613a92ae40277bb5689",
+    "refs/heads/control3-mo": "15f27b6ef80a8c46f02d832131f7cc4501bf5795",
+    "refs/heads/control3-python": "6fc155209e618b9bca24d0d7f4725168826ffe81",
+    "refs/heads/control4-go": "a7777cf14f3a1bf5753f59ecc70efc95f886b4cc",
+    "refs/heads/control4-mo": "09ba48ebc95c837193d20687e5a92ba369779a91",
+    "refs/heads/control4-python": "8f1e1a5c2b5bc06ae5277e3fe7faf1b55f6f0422",
+    "refs/heads/control5-go": "119c5e84446488f78f4ade8727314bea0f2b4d4c",
+    "refs/heads/control5-mo": "a746b8a0df0b37f072cfe745d40cebc4c8daa0d1",
+    "refs/heads/control5-python": "0d0f52f1ef9097349850c819a67185209548cf0c",
+    "refs/heads/control6-go": "daceb050e82140ca33e8398c389fc300fb3aa317",
+    "refs/heads/control6-mo": "3e5a09b72ac672107f07ad65ea5c15c4ec579e19",
+    "refs/heads/control6-python": "4d3833712deb982e469525d1f5f203fbc1d1a939",
+    "refs/heads/control7-go": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+    "refs/heads/control7-mo": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+    "refs/heads/control7-python": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+    "refs/heads/control8-go": "a003067f2d3f4e2fa6cc161c272bab40b5d6f7f7",
+    "refs/heads/control8-mo": "07d1322d1b437c95ae9386e263b57e15c617e0cc",
+    "refs/heads/control8-python": "3a8ed96dc074f0c335e8706448fa574130a99443",
+    "refs/heads/corpus-codex": "8384e32cc11480984769de386c93af6ca7b5895a",
+    "refs/heads/corpus-grok": "9e881e0b06f4a217a5c4c8a56721df4be0afba94",
+    "refs/heads/erosion2-elixir": "087c071d21ea579b96697b485ee4e42de1587c0e",
+    "refs/heads/erosion2-go": "61af8a940252fffd9cb29b43a48d074a97eb36eb",
+    "refs/heads/erosion2-mo": "6253a544adbcb3a64e1c3ea106c5182a77cfca48",
+    "refs/heads/erosion2-python": "5c8f2648c16b07c5da11d77e887d8a0e6573fc56",
+    "refs/heads/erosion3-elixir": "404628b8bd0ab96e4e6047ffd91dab7e8c6831dc",
+    "refs/heads/erosion3-go": "208d62e09892416f73124fc8b1ccd01b3a6b52c2",
+    "refs/heads/erosion3-mo": "ca550e5056c254ba95cace9b282b6d76505f4bbd",
+    "refs/heads/erosion3-python": "a35acf8e496b806292bb934f670173539d2f59a0",
+    "refs/heads/erosion4-elixir": "2c247ad9120f35b793208cdc7857f82b296f7ce0",
+    "refs/heads/erosion4-go": "af977ceb254188ac6e0e2f393e50bb43d9e48cac",
+    "refs/heads/erosion4-mo": "36253923bf5b43cd56fe9dcd03a6563a3bc3e37c",
+    "refs/heads/erosion4-python": "b75266ce3338f0066f34971654bf763988822c58",
+    "refs/heads/erosion5-elixir": "eb8a21928e4f3bd39995d55d9b2f54c44f364142",
+    "refs/heads/erosion5-go": "20b050cf17c638ce5e5dbd0da6f961b8a77551d7",
+    "refs/heads/erosion5-mo": "23118a3799fbeb21d796ab1e64795e783d80ae20",
+    "refs/heads/erosion5-python": "a06375da8084fcb24e02817b69e5367e0ff48029",
+    "refs/heads/erosion6-elixir": "1e46b99bae4654c02c65c1f313374ec3033a0faa",
+    "refs/heads/erosion6-go": "765aa6f3277185bb35938224639f12dced63da12",
+    "refs/heads/erosion6-mo": "53ee60d3751aac327e6e9ba4e1a9889f0d137ef1",
+    "refs/heads/erosion6-python": "618853729bc32907e9f0eb6c0c8ed771a2f35fb5",
+    "refs/heads/main": "bba9fdaab7a48563d109861c29a53edeb6a8d51a",
+    "refs/heads/r9-codex-go": "a8122ae380ff506f469973748af2660d044c16d3",
+    "refs/heads/r9-codex-mo": "a850b085ac54b79f17e5d2cfd3b9f95d15da1302",
+    "refs/heads/r9-codex-python": "8abcc13de52c95d6ccf9f2def469aab99c4deb7d",
+    "refs/heads/r9-deepseek-go": "ec57c627acf1f5e4b566c13a0384025546320d0d",
+    "refs/heads/r9-deepseek-mo": "c88b803357dcdabe5402e5e5dbc1b97a4e297b58",
+    "refs/heads/r9-deepseek-python": "251cff1d5fe3f2fa598acbc5149cc5220cce7d71",
+    "refs/heads/r9-gemini-go": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+    "refs/heads/r9-gemini-mo": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+    "refs/heads/r9-gemini-python": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+    "refs/heads/r9-haiku-go": "40bdbfc2cd50cc8559cf5d24fd33a009c1af3853",
+    "refs/heads/r9-haiku-mo": "2e1c33792de1c9c1c605b479c8c6dfc9d349c52d",
+    "refs/heads/r9-haiku-python": "d4bf3383ccb9597d293ff96a4700c6dea327182b",
+    "refs/heads/r9-kimi-go": "fef656e4caf482c2c688cc4ca1df39ce9eba8e56",
+    "refs/heads/r9-kimi-mo": "a1dd8c424bc29a30c86cc5de94023b953dc3d1cf",
+    "refs/heads/r9-kimi-python": "a487a740360ad81a8b4acac5df96a7f111d7652b",
+    "refs/heads/r9-qwen-go": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+    "refs/heads/r9-qwen-mo": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+    "refs/heads/r9-qwen-python": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+    "refs/heads/sampling": "682e7db77d366cf0ce56ba14a936bcef9f1d8153",
+    "refs/heads/session-05": "ac7cd47002bb56eae6febdd1ae1fe9c551d75509",
+    "refs/remotes/origin/HEAD": "bba9fdaab7a48563d109861c29a53edeb6a8d51a",
+    "refs/remotes/origin/audit/2026-09-17-auditor-handoff": "880880ca4b435a693c554003bdca81d65f0b88c7",
+    "refs/remotes/origin/audit/2026-09-18-current-state": "7368afcedf2134db98fddcafa5138bef1fbfd12e",
+    "refs/remotes/origin/audit/automation-transport-test-002": "8d147af20ce1495b7acf7ea15ca8acdae7ee1800",
+    "refs/remotes/origin/audit/generation-six-generation-six-ready-001": "ad56e3482ba358588835c93aed08eaef3947a6c9",
+    "refs/remotes/origin/audit/recent-specs-gen6-64982b2": "7ee34773ede7e1a3d5c7f1cffbb8109cd5814c9b",
+    "refs/remotes/origin/audit/recent-tls-64982b2-step37-ready-001": "d4b71dcdaf20ba7ce4ba2aeb74754545bc7d2c2e",
+    "refs/remotes/origin/audit/retrospective-step35-gen4-compared-001": "ff36724be10c4d5d32f204afe3a24c0f786424a9",
+    "refs/remotes/origin/audit/step-36-step-36-ready-001": "e336eca59e032472237949f17487c0b0b3291e34",
+    "refs/remotes/origin/audit/tls-independent-code-20260918": "c3b72ed6c9348a391921d1cdd89798016b68f658",
+    "refs/remotes/origin/cache-A": "f7d18c4118a7f4f17e3498150d5f01e074236976",
+    "refs/remotes/origin/cache-B": "236d926d30911ab6acef41637b5a94ffbf1f9f4f",
+    "refs/remotes/origin/control-go": "86e5e952443e2c0c518f05ef775a424da7b338b6",
+    "refs/remotes/origin/control-python": "b8af8a0f509c919467d5a0f00c086efaac2f117f",
+    "refs/remotes/origin/control10-elixir": "89ed4c90aa65a4b3e31c8e7737c6077e0d5721bc",
+    "refs/remotes/origin/control2-go": "f4a84f34c7f9c832ca142837d0ccfcdb71ecc1b1",
+    "refs/remotes/origin/control2-mo": "c699fd6b932c62f60387cc09e498d445662eb0bd",
+    "refs/remotes/origin/control2-python": "107cecaf67390cc60dd9f6312f1c5c4ad77c7862",
+    "refs/remotes/origin/control3-go": "6fb5348f53d915de65eab613a92ae40277bb5689",
+    "refs/remotes/origin/control3-mo": "15f27b6ef80a8c46f02d832131f7cc4501bf5795",
+    "refs/remotes/origin/control3-python": "6fc155209e618b9bca24d0d7f4725168826ffe81",
+    "refs/remotes/origin/control4-go": "a7777cf14f3a1bf5753f59ecc70efc95f886b4cc",
+    "refs/remotes/origin/control4-mo": "09ba48ebc95c837193d20687e5a92ba369779a91",
+    "refs/remotes/origin/control4-python": "8f1e1a5c2b5bc06ae5277e3fe7faf1b55f6f0422",
+    "refs/remotes/origin/control5-go": "119c5e84446488f78f4ade8727314bea0f2b4d4c",
+    "refs/remotes/origin/control5-mo": "a746b8a0df0b37f072cfe745d40cebc4c8daa0d1",
+    "refs/remotes/origin/control5-python": "0d0f52f1ef9097349850c819a67185209548cf0c",
+    "refs/remotes/origin/control6-go": "daceb050e82140ca33e8398c389fc300fb3aa317",
+    "refs/remotes/origin/control6-mo": "3e5a09b72ac672107f07ad65ea5c15c4ec579e19",
+    "refs/remotes/origin/control6-python": "4d3833712deb982e469525d1f5f203fbc1d1a939",
+    "refs/remotes/origin/control7-go": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+    "refs/remotes/origin/control7-mo": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+    "refs/remotes/origin/control7-python": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+    "refs/remotes/origin/control8-go": "a003067f2d3f4e2fa6cc161c272bab40b5d6f7f7",
+    "refs/remotes/origin/control8-mo": "07d1322d1b437c95ae9386e263b57e15c617e0cc",
+    "refs/remotes/origin/control8-python": "3a8ed96dc074f0c335e8706448fa574130a99443",
+    "refs/remotes/origin/corpus-codex": "8384e32cc11480984769de386c93af6ca7b5895a",
+    "refs/remotes/origin/corpus-grok": "9e881e0b06f4a217a5c4c8a56721df4be0afba94",
+    "refs/remotes/origin/erosion2-elixir": "087c071d21ea579b96697b485ee4e42de1587c0e",
+    "refs/remotes/origin/erosion2-go": "61af8a940252fffd9cb29b43a48d074a97eb36eb",
+    "refs/remotes/origin/erosion2-mo": "6253a544adbcb3a64e1c3ea106c5182a77cfca48",
+    "refs/remotes/origin/erosion2-python": "5c8f2648c16b07c5da11d77e887d8a0e6573fc56",
+    "refs/remotes/origin/erosion3-elixir": "404628b8bd0ab96e4e6047ffd91dab7e8c6831dc",
+    "refs/remotes/origin/erosion3-go": "208d62e09892416f73124fc8b1ccd01b3a6b52c2",
+    "refs/remotes/origin/erosion3-mo": "ca550e5056c254ba95cace9b282b6d76505f4bbd",
+    "refs/remotes/origin/erosion3-python": "a35acf8e496b806292bb934f670173539d2f59a0",
+    "refs/remotes/origin/erosion4-control": "5cbd3ebdd7c6fca235be2e1d26071b3f28ff4806",
+    "refs/remotes/origin/erosion4-elixir": "2c247ad9120f35b793208cdc7857f82b296f7ce0",
+    "refs/remotes/origin/erosion4-go": "af977ceb254188ac6e0e2f393e50bb43d9e48cac",
+    "refs/remotes/origin/erosion4-mo": "36253923bf5b43cd56fe9dcd03a6563a3bc3e37c",
+    "refs/remotes/origin/erosion4-python": "b75266ce3338f0066f34971654bf763988822c58",
+    "refs/remotes/origin/erosion5-elixir": "eb8a21928e4f3bd39995d55d9b2f54c44f364142",
+    "refs/remotes/origin/erosion5-go": "20b050cf17c638ce5e5dbd0da6f961b8a77551d7",
+    "refs/remotes/origin/erosion5-mo": "23118a3799fbeb21d796ab1e64795e783d80ae20",
+    "refs/remotes/origin/erosion5-python": "a06375da8084fcb24e02817b69e5367e0ff48029",
+    "refs/remotes/origin/erosion6-elixir": "1e46b99bae4654c02c65c1f313374ec3033a0faa",
+    "refs/remotes/origin/erosion6-go": "765aa6f3277185bb35938224639f12dced63da12",
+    "refs/remotes/origin/erosion6-mo": "53ee60d3751aac327e6e9ba4e1a9889f0d137ef1",
+    "refs/remotes/origin/erosion6-python": "618853729bc32907e9f0eb6c0c8ed771a2f35fb5",
+    "refs/remotes/origin/main": "bba9fdaab7a48563d109861c29a53edeb6a8d51a",
+    "refs/remotes/origin/r9-haiku-go": "40bdbfc2cd50cc8559cf5d24fd33a009c1af3853",
+    "refs/remotes/origin/r9-haiku-mo": "2e1c33792de1c9c1c605b479c8c6dfc9d349c52d",
+    "refs/remotes/origin/r9-haiku-python": "d4bf3383ccb9597d293ff96a4700c6dea327182b",
+    "refs/remotes/origin/research-2026-09-13-perplexity": "74906392d3488d1b3c72c094f6aac457f398867a",
+    "refs/remotes/origin/research/hermes-20260918": "19e6a9a009ed4d79a0e477b2d68a625f06092da0",
+    "refs/remotes/origin/research/hermes-monitoring": "79d7e610617a6d8edc34df87c92395e2ada6c4a8",
+    "refs/remotes/origin/sampling": "682e7db77d366cf0ce56ba14a936bcef9f1d8153",
+    "refs/remotes/origin/sampling-1": "b8f9d4b97a50ac859505b61c28a0c1f64aadf0e0",
+    "refs/remotes/origin/sampling-2": "bce57e25cd565e754bc6590e671f1a70f566378e",
+    "refs/remotes/origin/sampling-3": "7982466f13a46ac1231fa59e5f60450f275cc264",
+    "refs/remotes/origin/sampling-4": "c1ba23901eac67d66e33319f9b79f532ca375a9a",
+    "refs/remotes/origin/sampling-5": "3ceeb7c16562b0f975896250a18f9b084445a2fe",
+    "refs/remotes/origin/session-05": "a8b38bbe55f46a6ddeeda2507aa75fd8e84d2264",
+    "refs/tags/r10-v1": "24ff1e0890b985de5d8f47c63e941a0d8b833454"
+  },
+  "worktrees": [
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang",
+      "HEAD": "bba9fdaab7a48563d109861c29a53edeb6a8d51a",
+      "branch": "refs/heads/main",
+      "status": [
+        " M mo-wiki/spec/design-v0/09-stdlib.md",
+        " M toolchain/bench/step37/diff.py",
+        " M toolchain/bench/step37/fuzz.py",
+        " M toolchain/bench/step38/abuse.py",
+        " M toolchain/src/bricks/tls.zig",
+        "?? audit/evidence/2026-09-18/step-39-move-checkpoint/suite-a.log",
+        "?? audit/evidence/2026-09-18/step-39-move-checkpoint/suite-a2.log",
+        "?? audit/evidence/2026-09-18/step-39-move-checkpoint/suite-b.log",
+        "?? audit/evidence/2026-09-18/step-39-move-checkpoint/worker-report.txt",
+        "?? audit/evidence/2026-09-18/step-39-move-checkpoint/working-tree.patch"
+      ],
+      "ignored_directories": [
+        ".DS_Store",
+        ".claude/.DS_Store",
+        ".claude/skills/.DS_Store",
+        ".claude/skills/grounded-citations/.DS_Store",
+        ".claude/skills/note-taking/.DS_Store",
+        ".zig-cache/",
+        "examples/programs/agent/data/demo/runs.check/",
+        "examples/programs/agent/data/solo/runs/",
+        "examples/programs/folders/made/",
+        "mo-wiki/.DS_Store",
+        "mo-wiki/.obsidian/workspace.json",
+        "mo-wiki/plans/control-run-8-suite/__pycache__/",
+        "mo-wiki/plans/erosion-round-suite/__pycache__/",
+        "raw/",
+        "raw/.DS_Store",
+        "raw/research-runs/",
+        "raw/research-runs/.DS_Store",
+        "research/",
+        "research/.DS_Store",
+        "site/.gitignore",
+        "site/.quartz/",
+        "site/node_modules/",
+        "site/public/",
+        "site/quartz/.quartz-cache/",
+        "toolchain/.zig-cache/",
+        "toolchain/bench/step36/__pycache__/",
+        "toolchain/bench/step36/work/",
+        "toolchain/bench/step37/__pycache__/",
+        "toolchain/bench/step38/__pycache__/",
+        "toolchain/bench/step38/work/",
+        "toolchain/bench/step39/__pycache__/",
+        "toolchain/bench/step39/work/",
+        "toolchain/zig-out/",
+        "zig-out/"
+      ],
+      "origin_same_branch_head": "bba9fdaab7a48563d109861c29a53edeb6a8d51a",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/cache-A",
+      "HEAD": "f6a82137761acfd2c58607cd042b928388c81cc9",
+      "branch": "refs/heads/cache-A",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/agent/data/demo/runs.check/",
+        "examples/programs/agent/data/solo/runs/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "f7d18c4118a7f4f17e3498150d5f01e074236976",
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/cache-B",
+      "HEAD": "791b1355ccc79250f3111bc05f42ed55a48d6f86",
+      "branch": "refs/heads/cache-B",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/agent/data/demo/runs.check/",
+        "examples/programs/agent/data/solo/runs/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "236d926d30911ab6acef41637b5a94ffbf1f9f4f",
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/cache-C",
+      "HEAD": "08fb79481a5e87e5054eaa45b49f58b4b03634d2",
+      "branch": "refs/heads/cache-C",
+      "status": [
+        "?? REPORT-logstat.md"
+      ],
+      "ignored_directories": [
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control-go",
+      "HEAD": "86e5e952443e2c0c518f05ef775a424da7b338b6",
+      "branch": "refs/heads/control-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "86e5e952443e2c0c518f05ef775a424da7b338b6",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control-python",
+      "HEAD": "b8af8a0f509c919467d5a0f00c086efaac2f117f",
+      "branch": "refs/heads/control-python",
+      "status": [
+        "?? experiments/control-run/python/__pycache__/logstat.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_logstat.cpython-314.pyc"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/python/.mypy_cache/",
+        "experiments/control-run/python/.mypy_cache/.gitignore",
+        "experiments/control-run/python/.mypy_cache/3.13/",
+        "experiments/control-run/python/.mypy_cache/CACHEDIR.TAG"
+      ],
+      "origin_same_branch_head": "b8af8a0f509c919467d5a0f00c086efaac2f117f",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control10-elixir",
+      "HEAD": "89ed4c90aa65a4b3e31c8e7737c6077e0d5721bc",
+      "branch": "refs/heads/control10-elixir",
+      "status": [
+        "?? mise.toml"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/elixir/jobq/_build/",
+        "experiments/control-run/elixir/jobq/deps/",
+        "experiments/control-run/elixir/jobq/jobq"
+      ],
+      "origin_same_branch_head": "89ed4c90aa65a4b3e31c8e7737c6077e0d5721bc",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control2-go",
+      "HEAD": "f4a84f34c7f9c832ca142837d0ccfcdb71ecc1b1",
+      "branch": "refs/heads/control2-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "f4a84f34c7f9c832ca142837d0ccfcdb71ecc1b1",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control2-mo",
+      "HEAD": "c699fd6b932c62f60387cc09e498d445662eb0bd",
+      "branch": "refs/heads/control2-mo",
+      "status": [],
+      "ignored_directories": [
+        "toolchain/.zig-cache/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "c699fd6b932c62f60387cc09e498d445662eb0bd",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control2-python",
+      "HEAD": "107cecaf67390cc60dd9f6312f1c5c4ad77c7862",
+      "branch": "refs/heads/control2-python",
+      "status": [
+        "?? experiments/control-run/python/__pycache__/files.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/logstat.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/records.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/render.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/tally.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_files.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_logstat.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_records.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_render.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_tally.cpython-314.pyc"
+      ],
+      "ignored_directories": [],
+      "origin_same_branch_head": "107cecaf67390cc60dd9f6312f1c5c4ad77c7862",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control3-go",
+      "HEAD": "6fb5348f53d915de65eab613a92ae40277bb5689",
+      "branch": "refs/heads/control3-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "6fb5348f53d915de65eab613a92ae40277bb5689",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control3-mo",
+      "HEAD": "15f27b6ef80a8c46f02d832131f7cc4501bf5795",
+      "branch": "refs/heads/control3-mo",
+      "status": [],
+      "ignored_directories": [
+        "toolchain/.zig-cache/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "15f27b6ef80a8c46f02d832131f7cc4501bf5795",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control3-python",
+      "HEAD": "6fc155209e618b9bca24d0d7f4725168826ffe81",
+      "branch": "refs/heads/control3-python",
+      "status": [
+        "?? experiments/control-run/python/__pycache__/files.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/logstat.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/mask.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/parse.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/render.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/summary.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_files.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_logstat.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_mask.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_parse.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_render.cpython-314.pyc",
+        "?? experiments/control-run/python/__pycache__/test_summary.cpython-314.pyc"
+      ],
+      "ignored_directories": [],
+      "origin_same_branch_head": "6fc155209e618b9bca24d0d7f4725168826ffe81",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control4-go",
+      "HEAD": "a7777cf14f3a1bf5753f59ecc70efc95f886b4cc",
+      "branch": "refs/heads/control4-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "a7777cf14f3a1bf5753f59ecc70efc95f886b4cc",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control4-mo",
+      "HEAD": "09ba48ebc95c837193d20687e5a92ba369779a91",
+      "branch": "refs/heads/control4-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/folders/made/",
+        "toolchain/.zig-cache/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "09ba48ebc95c837193d20687e5a92ba369779a91",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control4-python",
+      "HEAD": "8f1e1a5c2b5bc06ae5277e3fe7faf1b55f6f0422",
+      "branch": "refs/heads/control4-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/.mypy_cache/",
+        "experiments/control-run/python/.mypy_cache/.gitignore",
+        "experiments/control-run/python/.mypy_cache/3.13/",
+        "experiments/control-run/python/.mypy_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/logstat/__pycache__/",
+        "experiments/control-run/python/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "8f1e1a5c2b5bc06ae5277e3fe7faf1b55f6f0422",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control5-go",
+      "HEAD": "119c5e84446488f78f4ade8727314bea0f2b4d4c",
+      "branch": "refs/heads/control5-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "119c5e84446488f78f4ade8727314bea0f2b4d4c",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control5-mo",
+      "HEAD": "a746b8a0df0b37f072cfe745d40cebc4c8daa0d1",
+      "branch": "refs/heads/control5-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/folders/made/",
+        "toolchain/.zig-cache/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "a746b8a0df0b37f072cfe745d40cebc4c8daa0d1",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control5-python",
+      "HEAD": "0d0f52f1ef9097349850c819a67185209548cf0c",
+      "branch": "refs/heads/control5-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/.mypy_cache/",
+        "experiments/control-run/python/.mypy_cache/.gitignore",
+        "experiments/control-run/python/.mypy_cache/3.13/",
+        "experiments/control-run/python/.mypy_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/__pycache__/"
+      ],
+      "origin_same_branch_head": "0d0f52f1ef9097349850c819a67185209548cf0c",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control6-go",
+      "HEAD": "daceb050e82140ca33e8398c389fc300fb3aa317",
+      "branch": "refs/heads/control6-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "daceb050e82140ca33e8398c389fc300fb3aa317",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control6-mo",
+      "HEAD": "3e5a09b72ac672107f07ad65ea5c15c4ec579e19",
+      "branch": "refs/heads/control6-mo",
+      "status": [],
+      "ignored_directories": [
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "3e5a09b72ac672107f07ad65ea5c15c4ec579e19",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control6-python",
+      "HEAD": "4d3833712deb982e469525d1f5f203fbc1d1a939",
+      "branch": "refs/heads/control6-python",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "4d3833712deb982e469525d1f5f203fbc1d1a939",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control7-go",
+      "HEAD": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+      "branch": "refs/heads/control7-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control7-mo",
+      "HEAD": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+      "branch": "refs/heads/control7-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/",
+        "zig-out/"
+      ],
+      "origin_same_branch_head": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control7-python",
+      "HEAD": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+      "branch": "refs/heads/control7-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/"
+      ],
+      "origin_same_branch_head": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control8-go",
+      "HEAD": "a003067f2d3f4e2fa6cc161c272bab40b5d6f7f7",
+      "branch": "refs/heads/control8-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "a003067f2d3f4e2fa6cc161c272bab40b5d6f7f7",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control8-mo",
+      "HEAD": "07d1322d1b437c95ae9386e263b57e15c617e0cc",
+      "branch": "refs/heads/control8-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "07d1322d1b437c95ae9386e263b57e15c617e0cc",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/control8-python",
+      "HEAD": "3a8ed96dc074f0c335e8706448fa574130a99443",
+      "branch": "refs/heads/control8-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.pytest_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/.gitignore",
+        "experiments/control-run/python/jobq/.pytest_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/jobq/.pytest_cache/README.md",
+        "experiments/control-run/python/jobq/.pytest_cache/v/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "3a8ed96dc074f0c335e8706448fa574130a99443",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion2-elixir",
+      "HEAD": "087c071d21ea579b96697b485ee4e42de1587c0e",
+      "branch": "refs/heads/erosion2-elixir",
+      "status": [
+        "?? mise.toml"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/elixir/jobq/_build/",
+        "experiments/control-run/elixir/jobq/deps/",
+        "experiments/control-run/elixir/jobq/jobq",
+        "experiments/control-run/elixir/jobq/priv/",
+        "experiments/control-run/elixir/jobq/priv/plts/"
+      ],
+      "origin_same_branch_head": "087c071d21ea579b96697b485ee4e42de1587c0e",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion2-go",
+      "HEAD": "61af8a940252fffd9cb29b43a48d074a97eb36eb",
+      "branch": "refs/heads/erosion2-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "61af8a940252fffd9cb29b43a48d074a97eb36eb",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion2-mo",
+      "HEAD": "6253a544adbcb3a64e1c3ea106c5182a77cfca48",
+      "branch": "refs/heads/erosion2-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "6253a544adbcb3a64e1c3ea106c5182a77cfca48",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion2-python",
+      "HEAD": "5c8f2648c16b07c5da11d77e887d8a0e6573fc56",
+      "branch": "refs/heads/erosion2-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "5c8f2648c16b07c5da11d77e887d8a0e6573fc56",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion3-elixir",
+      "HEAD": "404628b8bd0ab96e4e6047ffd91dab7e8c6831dc",
+      "branch": "refs/heads/erosion3-elixir",
+      "status": [
+        "?? mise.toml"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/elixir/jobq/_build/",
+        "experiments/control-run/elixir/jobq/deps/",
+        "experiments/control-run/elixir/jobq/jobq",
+        "experiments/control-run/elixir/jobq/priv/",
+        "experiments/control-run/elixir/jobq/priv/plts/"
+      ],
+      "origin_same_branch_head": "404628b8bd0ab96e4e6047ffd91dab7e8c6831dc",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion3-go",
+      "HEAD": "208d62e09892416f73124fc8b1ccd01b3a6b52c2",
+      "branch": "refs/heads/erosion3-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "208d62e09892416f73124fc8b1ccd01b3a6b52c2",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion3-mo",
+      "HEAD": "ca550e5056c254ba95cace9b282b6d76505f4bbd",
+      "branch": "refs/heads/erosion3-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "ca550e5056c254ba95cace9b282b6d76505f4bbd",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion3-python",
+      "HEAD": "a35acf8e496b806292bb934f670173539d2f59a0",
+      "branch": "refs/heads/erosion3-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "a35acf8e496b806292bb934f670173539d2f59a0",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion4-elixir",
+      "HEAD": "2c247ad9120f35b793208cdc7857f82b296f7ce0",
+      "branch": "refs/heads/erosion4-elixir",
+      "status": [
+        "?? mise.toml"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/elixir/jobq/_build/",
+        "experiments/control-run/elixir/jobq/deps/",
+        "experiments/control-run/elixir/jobq/jobq",
+        "experiments/control-run/elixir/jobq/priv/",
+        "experiments/control-run/elixir/jobq/priv/plts/"
+      ],
+      "origin_same_branch_head": "2c247ad9120f35b793208cdc7857f82b296f7ce0",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion4-go",
+      "HEAD": "af977ceb254188ac6e0e2f393e50bb43d9e48cac",
+      "branch": "refs/heads/erosion4-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "af977ceb254188ac6e0e2f393e50bb43d9e48cac",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion4-mo",
+      "HEAD": "36253923bf5b43cd56fe9dcd03a6563a3bc3e37c",
+      "branch": "refs/heads/erosion4-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "36253923bf5b43cd56fe9dcd03a6563a3bc3e37c",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion4-python",
+      "HEAD": "b75266ce3338f0066f34971654bf763988822c58",
+      "branch": "refs/heads/erosion4-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "b75266ce3338f0066f34971654bf763988822c58",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion5-elixir",
+      "HEAD": "eb8a21928e4f3bd39995d55d9b2f54c44f364142",
+      "branch": "refs/heads/erosion5-elixir",
+      "status": [
+        "?? mise.toml"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/elixir/jobq/_build/",
+        "experiments/control-run/elixir/jobq/deps/",
+        "experiments/control-run/elixir/jobq/jobq",
+        "experiments/control-run/elixir/jobq/priv/",
+        "experiments/control-run/elixir/jobq/priv/plts/"
+      ],
+      "origin_same_branch_head": "eb8a21928e4f3bd39995d55d9b2f54c44f364142",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion5-go",
+      "HEAD": "20b050cf17c638ce5e5dbd0da6f961b8a77551d7",
+      "branch": "refs/heads/erosion5-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "20b050cf17c638ce5e5dbd0da6f961b8a77551d7",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion5-mo",
+      "HEAD": "23118a3799fbeb21d796ab1e64795e783d80ae20",
+      "branch": "refs/heads/erosion5-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "examples/programs/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "23118a3799fbeb21d796ab1e64795e783d80ae20",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion5-python",
+      "HEAD": "a06375da8084fcb24e02817b69e5367e0ff48029",
+      "branch": "refs/heads/erosion5-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "a06375da8084fcb24e02817b69e5367e0ff48029",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion6-elixir",
+      "HEAD": "1e46b99bae4654c02c65c1f313374ec3033a0faa",
+      "branch": "refs/heads/erosion6-elixir",
+      "status": [
+        "?? mise.toml"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/elixir/jobq/_build/",
+        "experiments/control-run/elixir/jobq/deps/",
+        "experiments/control-run/elixir/jobq/jobq",
+        "experiments/control-run/elixir/jobq/priv/",
+        "experiments/control-run/elixir/jobq/priv/plts/"
+      ],
+      "origin_same_branch_head": "1e46b99bae4654c02c65c1f313374ec3033a0faa",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion6-go",
+      "HEAD": "765aa6f3277185bb35938224639f12dced63da12",
+      "branch": "refs/heads/erosion6-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": "765aa6f3277185bb35938224639f12dced63da12",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion6-mo",
+      "HEAD": "53ee60d3751aac327e6e9ba4e1a9889f0d137ef1",
+      "branch": "refs/heads/erosion6-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "53ee60d3751aac327e6e9ba4e1a9889f0d137ef1",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/erosion6-python",
+      "HEAD": "618853729bc32907e9f0eb6c0c8ed771a2f35fb5",
+      "branch": "refs/heads/erosion6-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/"
+      ],
+      "origin_same_branch_head": "618853729bc32907e9f0eb6c0c8ed771a2f35fb5",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-codex-go",
+      "HEAD": "a8122ae380ff506f469973748af2660d044c16d3",
+      "branch": "refs/heads/r9-codex-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-codex-mo",
+      "HEAD": "a850b085ac54b79f17e5d2cfd3b9f95d15da1302",
+      "branch": "refs/heads/r9-codex-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-codex-python",
+      "HEAD": "8abcc13de52c95d6ccf9f2def469aab99c4deb7d",
+      "branch": "refs/heads/r9-codex-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/.gitignore",
+        "experiments/control-run/python/jobq/.pytest_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/jobq/.pytest_cache/README.md",
+        "experiments/control-run/python/jobq/.pytest_cache/v/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/dist/",
+        "experiments/control-run/python/jobq/dist/.gitignore",
+        "experiments/control-run/python/jobq/dist/jobq-0.1.0-py3-none-any.whl",
+        "experiments/control-run/python/jobq/dist/jobq-0.1.0.tar.gz",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-deepseek-go",
+      "HEAD": "ec57c627acf1f5e4b566c13a0384025546320d0d",
+      "branch": "refs/heads/r9-deepseek-go",
+      "status": [
+        "?? REPORT.md"
+      ],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-deepseek-mo",
+      "HEAD": "c88b803357dcdabe5402e5e5dbc1b97a4e297b58",
+      "branch": "refs/heads/r9-deepseek-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-deepseek-python",
+      "HEAD": "251cff1d5fe3f2fa598acbc5149cc5220cce7d71",
+      "branch": "refs/heads/r9-deepseek-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/.gitignore",
+        "experiments/control-run/python/jobq/.pytest_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/jobq/.pytest_cache/README.md",
+        "experiments/control-run/python/jobq/.pytest_cache/v/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-gemini-go",
+      "HEAD": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+      "branch": "refs/heads/r9-gemini-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-gemini-mo",
+      "HEAD": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+      "branch": "refs/heads/r9-gemini-mo",
+      "status": [],
+      "ignored_directories": [
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-gemini-python",
+      "HEAD": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+      "branch": "refs/heads/r9-gemini-python",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-haiku-go",
+      "HEAD": "40bdbfc2cd50cc8559cf5d24fd33a009c1af3853",
+      "branch": "refs/heads/r9-haiku-go",
+      "status": [
+        "?? experiments/control-run/go/jobq/REPORT.md"
+      ],
+      "ignored_directories": [],
+      "origin_same_branch_head": "40bdbfc2cd50cc8559cf5d24fd33a009c1af3853",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-haiku-mo",
+      "HEAD": "2e1c33792de1c9c1c605b479c8c6dfc9d349c52d",
+      "branch": "refs/heads/r9-haiku-mo",
+      "status": [
+        "?? REPORT.md"
+      ],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "2e1c33792de1c9c1c605b479c8c6dfc9d349c52d",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-haiku-python",
+      "HEAD": "d4bf3383ccb9597d293ff96a4700c6dea327182b",
+      "branch": "refs/heads/r9-haiku-python",
+      "status": [
+        "?? experiments/control-run/python/jobq/REPORT.md"
+      ],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/.gitignore",
+        "experiments/control-run/python/jobq/.pytest_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/jobq/.pytest_cache/README.md",
+        "experiments/control-run/python/jobq/.pytest_cache/v/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": "d4bf3383ccb9597d293ff96a4700c6dea327182b",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-kimi-go",
+      "HEAD": "fef656e4caf482c2c688cc4ca1df39ce9eba8e56",
+      "branch": "refs/heads/r9-kimi-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-kimi-mo",
+      "HEAD": "a1dd8c424bc29a30c86cc5de94023b953dc3d1cf",
+      "branch": "refs/heads/r9-kimi-mo",
+      "status": [],
+      "ignored_directories": [
+        "examples/programs/jobq/zig-out/",
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-kimi-python",
+      "HEAD": "a487a740360ad81a8b4acac5df96a7f111d7652b",
+      "branch": "refs/heads/r9-kimi-python",
+      "status": [],
+      "ignored_directories": [
+        "experiments/control-run/python/jobq/.mypy_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/",
+        "experiments/control-run/python/jobq/.pytest_cache/.gitignore",
+        "experiments/control-run/python/jobq/.pytest_cache/CACHEDIR.TAG",
+        "experiments/control-run/python/jobq/.pytest_cache/README.md",
+        "experiments/control-run/python/jobq/.pytest_cache/v/",
+        "experiments/control-run/python/jobq/.ruff_cache/",
+        "experiments/control-run/python/jobq/.venv/",
+        "experiments/control-run/python/jobq/bench/__pycache__/",
+        "experiments/control-run/python/jobq/src/jobq/__pycache__/",
+        "experiments/control-run/python/jobq/tests/__pycache__/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-qwen-go",
+      "HEAD": "09614b4848ef65e3d7ec6f0416226d0d38ac236b",
+      "branch": "refs/heads/r9-qwen-go",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-qwen-mo",
+      "HEAD": "ed5444e45ef722b45e3e6fd2d0b60219036a821f",
+      "branch": "refs/heads/r9-qwen-mo",
+      "status": [],
+      "ignored_directories": [
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/r9-qwen-python",
+      "HEAD": "3379a0df93f0dd96dfb0e9c1f873a715bd64d56c",
+      "branch": "refs/heads/r9-qwen-python",
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/sampling",
+      "HEAD": "682e7db77d366cf0ce56ba14a936bcef9f1d8153",
+      "branch": "refs/heads/sampling",
+      "status": [],
+      "ignored_directories": [
+        "toolchain/zig-out/"
+      ],
+      "origin_same_branch_head": "682e7db77d366cf0ce56ba14a936bcef9f1d8153",
+      "head_matches_origin": true
+    },
+    {
+      "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/step39-before",
+      "HEAD": "d6534b3f69a0f032a6dd79cbc430597c9b3290e3",
+      "detached": true,
+      "status": [],
+      "ignored_directories": [],
+      "origin_same_branch_head": null,
+      "head_matches_origin": false
+    }
+  ],
+  "note": "Inventory only; active main may change until the worker finishes. Ignored files are not archived by this inventory."
+}

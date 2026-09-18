@@ -7,50 +7,66 @@ exchange live in the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which
 queue, and what a fresh session must know that the wiki does not say in one
 place.
 
-## Latest instruction: prepare for Robert's cloud move
+## Latest instruction: stopped and prepared for Robert's cloud move
 
-**18 Sep 2026, 3:40 PM ET; recorded by Codex (GPT-6).** Robert will perform
-the move himself **after the current Step 39 worker finishes**. This overrides
-the older instruction to continue down the queue. Keep watching `mo-opus` in
-`w4:pA`; let it finish its existing brief, then save the full report and raw
-evidence, ensure its part commits are pushed, end the worker, and stop. Start
-no Go rerun, instrument-fix worker, generation seven, or program-7 build before
-the move. The lead must not provision or transfer to a VM.
+**18 Sep 2026, 4:33 PM ET; Codex (GPT-6).** Robert asked to wrap the worker
+up ASAP and will perform the move himself. The worker stopped at its nearest
+safe checkpoint and its session is ended. **Do not resume the queue on this
+Mac or perform the transfer.** No wake-up timer remains.
 
-Before declaring the Mac ready to leave:
+### What is saved
 
-1. Save the worker's final report before closing its pane. Record the exact
-   last pushed SHA, completed parts, unresolved decisions, and all acceptance
-   still owed. **A completed worker is not an accepted Step 39.** The TLS brick
-   remains incomplete until the lead's acceptance list below is satisfied.
-2. Preserve the worker's Darwin `F_FULLFSYNC` counter/trace and before/after
-   measurements, plus every raw result needed to reproduce its claims. Name
-   any Mac-only lead check still owed; Linux cannot supply that evidence.
-3. Preserve local-only evidence, dirty/untracked files, branch/worktree refs
-   and the worktree mapping under `~/Projects/startups/mo-lang-worktrees/`.
-   Worktrees are evidence: do not delete or merge them. Record the lead's
-   receiver ledger `~/.mo-lead/fable-intake.json` as local state to carry.
-   Keep credentials outside the repository. Rebuild binaries on Linux.
-4. Update this handoff, the board, the state page, and log with the final
-   checkpoint; push only named paths. Close completed run panes and the
-   sleeping wake-up timer. Leave no lead-owned run to keep the Mac busy.
+- Parts **A `faec6b5` and B `18d45a6`** are pushed. Worker suite outputs:
+  A 240/240, B 242/242, exit 0. These are not the lead's acceptance runs.
+- **C/D are WIP**, saved in `bba9fda` as
+  `toolchain/bench/step39/wip-parts-c-d.patch`, with `WIP.md` and raw outputs.
+  The Mac still has those same five source edits applied; their diff is
+  byte-identical to the committed patch and the reverse-apply check passed.
+  **Apply the patch only to a clean clone; do not apply twice.**
+- **E/F not started. Step 39 and the TLS brick remain unaccepted.**
+  Limbo has 27 accepted-but-should-reject against the required zero; C's abuse
+  run is 63/64. The worker's proposed explanations/defaults remain for the
+  next lead to decide, with no threshold silently changed.
+- **Darwin `F_FULLFSYNC` is still unimplemented**. There is no Mac call-counter
+  trace or before/after measurement to carry; Mac verification will still be
+  needed when F is implemented. Linux cannot satisfy that gate.
+- Full worker report, suite logs, exact patch and inventory:
+  `audit/evidence/2026-09-18/step-39-move-checkpoint/`. The worker's
+  `toolchain/bench/step39/WIP.md` gives the continuation commands.
 
-**Current checkpoint, not yet the final move handoff:** Step 39 is still
-working; no resumed part commit is on `main`. The Linux Redis baseline in
-`w4:pB` finished at **3:34:59 PM ET**: all 22 files attempted, 909 ok, 5 err,
-22 ignored, 3 exceptions, 3 timeouts. Its raw files and table are under
-`audit/evidence/2026-09-18/program-7-spec-r2/`. This is OrbStack Linux on the
-Mac, not a cloud rig. Shared-server background activity affects at least two
-files; the skip list is still owed and must not turn those into unverified
-permanent skips. The auditor's sealing session on `program-7-spec-ready-002`
-still gates program 7.
+### What Robert should carry
 
-The completed baseline pane is closed and the raw evidence has been published
-as `program-7-spec-evidence-updated-linux-001` (`61c0614`, evidence at
-`85093fa`). The first sleeping timer pane was also closed before it fired; a
-replacement runs in `w4:pD`. It makes no model calls while waiting and its
-wake-up message says to stop after this worker for Robert's move. Check live
-pane state rather than assuming an old timer remains active.
+The verified private transfer package is
+`~/Projects/startups/mo-lang-transfer-2026-09-18/` (README and SHA256SUMS
+included). It holds a Git bundle of all local branches/tags, an archive of
+local-only files, the exact main WIP patch, a 68-worktree inventory,
+`MOVED-2026-09-18.json`, and the private `fable-intake.json` receiver ledger.
+Sixteen of the 70 local branch names have no same-name origin ref: **a fresh
+GitHub clone alone does not preserve the full local state**. Use the bundle
+and inventory, and preserve the old checkout/worktrees until the restored
+state is verified. Rebuild native binaries and dependency environments on
+Linux. The private package README explains fetching the final documentation
+checkpoint after restoring its worker-checkpoint bundle.
+
+### On the VM, when Robert resumes
+
+Read the cross-provider note and lead skill below. Check the auditor inbox
+with `git fetch origin && python3 audit/automation/fable_poll.py check`
+before opening any auditor file; file the new lead's own reading first.
+There was a new `origin/audit/2026-09-18-current-state` ref at the last fetch;
+its contents have not been opened by Codex. Apply C/D's patch once in a clean
+tree, resume Step 39 in a fresh Opus worker, then complete the original lead
+acceptance list before marking the TLS brick complete.
+
+Redis's OrbStack Linux baseline is preserved and published as
+`program-7-spec-evidence-updated-linux-001` (`61c0614`, evidence at
+`85093fa`): 22 files attempted, 909 ok, 5 err, 22 ignored, 3 exceptions and
+3 timeouts. The script reuses one server; two exceptions show leftover
+background activity, so fresh-server checks and `07c-mored-skip-list.md`
+remain owed. After Step 39: the Linux Go 30,000-job rerun; instrument fixes
+with negative controls; change 7 and its pre-seal smoke run/auditor reading.
+Program 7 still cannot start before the auditor's sealing session on
+`program-7-spec-ready-002`. The older queue below is historical until resumed.
 
 > We're continuing the Mo language build. **This session runs on Robert's Mac**
 > (M3 Max, 14 cores, 96 GB; `herdr pane list` shows the machine; the lead's pane

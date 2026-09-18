@@ -13,7 +13,7 @@ sources:
     deep-dives/bricks-and-the-cost-of-zero-dependencies.md,
     spec/design-v0/09-stdlib.md,
   ]
-status: queued
+status: paused
 ---
 
 # Step 39: the TLS brick's corrections, and a write that reaches the disk on macOS
@@ -147,6 +147,21 @@ intermediates below it; an intermediate whose key usage is present and empty)
 and expect a refusal; break one check in `tls.zig` by hand in a scratch worktree
 and confirm a corpus test and a brick test go red (the mutant rule); read the
 `F_FULLFSYNC` call in both runtimes and trace it with `dtruss` or the counter.
+
+## Result at the move checkpoint: incomplete
+
+18 Sep 2026, 4:33 PM ET, recorded by Codex (GPT-6). Robert asked to wrap the
+worker up ASAP. A (`faec6b5`) and B (`18d45a6`) are pushed; their worker
+suites report 240/240 and 242/242, exit 0. C/D are preserved in
+`bba9fda` as `toolchain/bench/step39/wip-parts-c-d.patch`, with continuation
+notes in `WIP.md`; E/F and Linux verification have not started.
+
+**Not accepted.** Limbo is 27 accepted-but-should-reject, not the required
+zero. The worker's rationale is in its report for the next lead to assess;
+this checkpoint changes no gate. C's abuse table is 63/64 and its full suite
+is unrun. The lead's complete acceptance list remains owed. Darwin full-sync
+and its Mac-specific trace/measurements are still outstanding. Raw preservation
+bundle: `audit/evidence/2026-09-18/step-39-move-checkpoint/`.
 
 ## Related
 

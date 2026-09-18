@@ -1,0 +1,320 @@
+      21 +| run     | server | finished   | reset        | RST              | accep
+         +t=Ok lines=0 end=Closed  | accept=Ok lines=0 end=Closed  | yes         |
+      22 +| run     | server | finished   | nothing      | (held open)      | accep
+         +t=Ok lines=0 end=Timeout | accept=Ok lines=0 end=Timeout | yes         |
+      23 +| run     | server | record     | alert        | encrypted 19 B   | accep
+         +t=Ok lines=1 end=Closed  | accept=Ok lines=1 end=Closed  | yes         |
+      24 +| run     | server | record     | close_notify | encrypted 19 B   | accep
+         +t=Ok lines=1 end=None    | accept=Ok lines=1 end=None    | yes         |
+      25 +| run     | server | record     | reset        | RST              | accep
+         +t=Ok lines=1 end=Closed  | accept=Ok lines=1 end=Closed  | yes         |
+      26 +| run     | server | record     | nothing      | (held open)      | accep
+         +t=Ok lines=1 end=Timeout | accept=Ok lines=1 end=Timeout | yes         |
+      27 +| run     | client | hello      | alert        | alert 2/40 clear | conne
+         +ct=Handshake             | connect=Handshake             | yes         |
+      28 +| run     | client | hello      | close_notify | alert 1/0 clear  | conne
+         +ct=Closed                | connect=Closed                | yes         |
+      29 +| run     | client | hello      | reset        | RST              | conne
+         +ct=Closed                | connect=Closed                | yes         |
+      30 +| run     | client | hello      | nothing      | (held open)      | conne
+         +ct=Timeout               | connect=Timeout               | yes         |
+      31 +| run     | client | mid-flight | alert        | alert 2/40 clear | conne
+         +ct=Handshake             | connect=Handshake             | yes         |
+      32 +| run     | client | mid-flight | close_notify | alert 1/0 clear  | conne
+         +ct=Handshake             | connect=Handshake             | yes         |
+      33 +| run     | client | mid-flight | reset        | RST              | conne
+         +ct=Closed                | connect=Closed                | yes         |
+      34 +| run     | client | mid-flight | nothing      | (held open)      | conne
+         +ct=Timeout               | connect=Timeout               | yes         |
+      35 +| run     | client | finished   | alert        | encrypted 19 B   | conne
+         +ct=Ok read=Closed        | connect=Ok read=Closed        | yes         |
+         +pass |
+      36 +| run     | client | finished   | close_notify | encrypted 19 B   | conne
+         +ct=Ok read=None          | connect=Ok read=None          | yes         |
+         +pass |
+      37 +| run     | client | finished   | reset        | RST              | conne
+         +ct=Ok read=Closed        | connect=Ok read=Closed        | yes         |
+         +pass |
+      38 +| run     | client | finished   | nothing      | (held open)      | conne
+         +ct=Ok read=Timeout       | connect=Ok read=Timeout       | yes         |
+         +pass |
+      39 +| binary  | server | hello      | alert        | alert 2/40 clear | accep
+         +t=Handshake              | accept=Handshake              | yes         |
+         +pass |
+      40 +| binary  | server | hello      | close_notify | alert 1/0 clear  | accep
+         +t=Closed                 | accept=Closed                 | yes         |
+         +pass |
+     … 34 more lines
+  ⎿  Created toolchain/bench/step39/evidence/fuzz-accounting-check-wip.txt (+16 -0)
+       1 +MOCK invocation exit: 134 mock panic
+       2 +MOCK invocation exit: 3 mock hang
+       3 +MOCK invocation exit: 134 MOCK BATCH FAILURE
+       4 +FAILED BATCH batch-00001: exit 134
+       5 +MOCK invocation exit: 0
+       6 +MOCK invocation exit: 0
+       7 +2 inputs in 1 batches, seed 1: 1 failed batches, 0 crashes; 1 CPU s (0.0
+         +min), 0 s wall
+       8 +MOCKED report from unchanged fuzz.py:
+       9 +MOCKED date/load
+      10 +fuzz.py --seed 1 --minutes 0.001 --batch 2
+      11 +self-check: a planted panic: exit 134, counted as a crash
+      12 +self-check: a planted hang: exit 3, counted as a crash
+      13 +FAILED BATCH batch-00001: exit 134
+      14 +# 2 inputs in 1 batches, seed 1: 1 failed batches, 0 crashes; 1 CPU s (0.
+         +0 min), 0 s wall
+      15 +# mutations: mock 2
+      16 +MOCKED date/load
+  ⎿  Created toolchain/bench/step39/wip-parts-c-d.patch (+256 -0)
+        1 +diff --git a/mo-wiki/spec/design-v0/09-stdlib.md b/mo-wiki/spec/design-v
+          +0/09-stdlib.md
+        2 +index 86abf78..f0e3a1a 100644
+        3 +--- a/mo-wiki/spec/design-v0/09-stdlib.md
+        4 ++++ b/mo-wiki/spec/design-v0/09-stdlib.md
+        5 +@@ -354,7 +354,7 @@ end
+        6 +
+        7 + Under `Tls.fixture()` the rows run on `Net.fixture()`'s in-memory netwo
+          +rk. Nothing happens while a simulated call waits, so `accept` sees only
+          +what the other end has already written: a client that has written nothin
+          +g is `Timeout`, and one that wrote something that is not a hello is `Han
+          +dshake`.
+        8 +
+        9 +-**What the client checks** (steps 37 and 39). `connect` offers what the
+          + server side speaks (TLS 1.3, the two suites, X25519, the signature sche
+          +mes Ed25519 and ECDSA P-256 SHA-256), answers one HelloRetryRequest, and
+          + checks the server's flight: the transcript, the CertificateVerify again
+          +st the leaf's key, and the Finished. Before the CertificateVerify it che
+          +cks the chain the server sent, as sent, leaf first: at most five certifi
+          +cates; each one's issuer the next, until one is signed by a root in the
+          +trust set; every certificate between the leaf and that root a CA (basicC
+          +onstraints); every certificate's extensions, the root's among them as Op
+          +enSSL checks them, read by the brick itself for what the cut supports of
+          + RFC 5280 (step 39): a CA's `pathLenConstraint` counts the CAs below it
+          +that are not self-issued, an issuer with a key usage must hold `keyCertS
+          +ign`, an extended key usage anywhere in the path must include server aut
+          +hentication (`anyExtendedKeyUsage` alone does not, as OpenSSL's `sslserv
+          +er` purpose has it), the leaf's key usage when it has one must hold `dig
+          +italSignature` (RFC 8446 4.4.2.2), a critical extension the brick does n
+          +ot read is refused, and so are name constraints on any certificate, crit
+          +ical or not, since the brick does not check names against them and will
+          +not ignore them; what RFC 5280 asks of a conforming CA's certificates wh
+          +ere the certificate alone shows it (a serial number positive and at most
+          + 20 octets, `keyCertSign` only on a CA, the root a CA too, every CA's ba
+          +sicConstraints critical and its subject not empty, an empty subject only
+          + beside a critical subject alternative name, a DNS name in the preferred
+          + syntax, an authority key identifier with its key identifier, and neithe
+          +r it nor authority information access critical); policy constraints are
+          +refused as name constraints are, since the brick does no policy processi
+          +ng; the leaf for `host` (a DNS name or an IP address among its subject a
+          +lternative names, a wildcard for one leftmost label; a l … [+2138 chars]
+       10 ++**What the client checks** (steps 37 and 39). `connect` offers what the
+          + server side speaks (TLS 1.3, the two suites, X25519, the signature sche
+          +mes Ed25519 and ECDSA P-256 SHA-256), answers one HelloRetryRequest, and
+          + checks the server's flight: the transcript, the CertificateVerify again
+          +st the leaf's key, and the Finished. Before the CertificateVerify it che
+          +cks the chain the server sent, as sent, leaf first: at most five certifi
+          +cates; each one's issuer the next, until one is signed by a root in the
+          +trust set; every certificate between the leaf and that root a CA (basicC
+          +onstraints); every certificate's extensions, the root's among them as Op
+          +enSSL checks them, read by the brick itself for what the cut supports of
+          + RFC 5280 (step 39): a CA's `pathLenConstraint` counts the CAs below it
+          +that are not self-issued, an issuer with a key usage must hold `keyCertS
+          +ign`, an extended key usage anywhere in the path must include server aut
+          +hentication (`anyExtendedKeyUsage` alone does not, as OpenSSL's `sslserv
+          +er` purpose has it), the leaf's key usage when it has one must hold `dig
+          +italSignature` (RFC 8446 4.4.2.2), a critical extension the brick does n
+          +ot read is refused, and so are name constraints on any certificate, crit
+          +ical or not, since the brick does not check names against them and will
+          +not ignore them; what RFC 5280 asks of a conforming CA's certificates wh
+          +ere the certificate alone shows it (a serial number positive and at most
+          + 20 octets, `keyCertSign` only on a CA, the root a CA too, every CA's ba
+          +sicConstraints critical and its subject not empty, an empty subject only
+          + beside a critical subject alternative name, a DNS name in the preferred
+          + syntax, an authority key identifier with its key identifier, and neithe
+          +r it nor authority information access critical); policy constraints are
+          +refused as name constraints are, since the brick does no policy processi
+          +ng; the leaf for `host` (a DNS name or an IP address among its subject a
+          +lternative names, a wildcard for one leftmost label; a l … [+2501 chars]
+       11 +
+       12 + ## Runtime
+       13 +
+       14 +diff --git a/toolchain/bench/step37/diff.py b/toolchain/bench/step37/dif
+          +f.py
+       15 +index 60c7193..0d4044d 100644
+       16 +--- a/toolchain/bench/step37/diff.py
+       17 ++++ b/toolchain/bench/step37/diff.py
+       18 +@@ -22,9 +22,9 @@ ways, the brick's view, OpenSSL's view, and what the p
+          +arameters say should happe
+       19 +   keyupdate  a KeyUpdate injected was sent by one side, read by the oth
+          +er, and answered when asked
+       20 +   close      each side's close_notify, as the other saw it
+       21 +
+       22 +-A session where any two disagree is a mismatch; the count is the result
+          + (expected 0). Every
+       23 +-session's parameters and both views are one line of `work/diff-<seed>.l
+          +og`, which begins with
+       24 +-the date and `uptime`. Every process runs under guard.py.
+       25 ++A session where any two disagree is a mismatch; the count is the result
+          + (expected 0), and the
+       26 ++script exits 1 when it is not. Every session's parameters and both view
+          +s are one line of
+       27 ++`work/diff-<seed>.log`, which begins with the date and `uptime`. Every
+          +process runs under guard.py.
+       28 + """
+       29 +
+       30 + from __future__ import annotations
+       31 +@@ -444,7 +444,7 @@ def compare(p: Params, mo: dict, ossl: dict) -> list
+          +[str]:
+       32 +     return wrong
+       33 +
+       34 +
+       35 +-def main() -> None:
+       36 ++def main() -> int:
+       37 +     ap = argparse.ArgumentParser()
+       38 +     ap.add_argument("--seed", type=int, required=True)
+       39 +     ap.add_argument("--sessions", type=int, default=1000)
+       40 +@@ -480,7 +480,8 @@ def main() -> None:
+     … 216 more lines
+
+
+
+⏺ Write(toolchain/bench/step39/WIP.md)
+  ⎿  Wrote 113 lines to toolchain/bench/step39/WIP.md
+       1 # Step 39, work in progress (the second worker stopped for the VM move, 18
+       2
+       3 The brief is `mo-wiki/plans/interpreter-step-39.md`. Parts A and B are on
+       4 C and D are partly written and **not green**: their edits are in `wip-part
+       5 this file (from the repository root, `git apply toolchain/bench/step39/wip
+         -parts-c-d.patch` on
+          and B's results.
+       7
+       9
+         zig build test --summary
+     … +174 lines
+
+⏺ Now I'll commit only the WIP record: the patch, WIP.md, and the two evidence files,
+  labelled WIP. The source edits stay in the working tree.
+
+  Ran 1 shell command
+
+⏺ I've stopped at a safe checkpoint. Parts A and B are committed, green and pushed. Parts
+  C and D are saved as a patch and are not green. Parts E and F are not started. Nothing
+  is running, and the uncommitted edits are still in the working tree.
+
+  Commits on main
+  - faec6b5 Step 39 part A: suite Build Summary: 5/5 steps succeeded; 240/240 tests
+    passed, exit 0, 442 s.
+  - 18d45a6 Step 39 part B: suite Build Summary: 5/5 steps succeeded; 242/242 tests
+    passed, exit 0, 959 s.
+  - bba9fda Step 39 WIP: toolchain/bench/step39/WIP.md, wip-parts-c-d.patch, and two
+    evidence files. It records the next commands and what is left.
+
+  Results so far
+  - Auditor chain-checks.py, both copies, unedited:
+    - The valid control is ready on both sides.
+    - The four constrained chains are refused: pathlen 48, ca-keyusage 48, eku-client-only
+      43, unknown-critical 43.
+    - alpn-65 is ready on both sides since part B.
+    - Raw output is in toolchain/bench/step39/evidence/chain-checks-*.json.
+  - Auditor fuzz-accounting-check.py, run against the part D edit in the patch: it now
+    reports 1 failed batches, 0 crashes (evidence/fuzz-accounting-check-wip.txt).
+  - Auditor example-assertion-check.py: not run. That is part E.
+  - x509-limbo: 9,723 cases in the cut, 8,893 agree (evidence/limbo.txt).
+    - Accepted but limbo says reject: 27, not the 0 the brief requires. 6 are rules the
+      auditor's valid control itself breaks (it has no AKI, no SKI, and no EKU on its
+      leaf), so enforcing them would refuse the control. The other 21 are CA/Browser Forum
+      profile rules, not RFC 5280 ones.
+    - Rejected but limbo says accept: 803. 795 are name constraints (refused by design), 6
+      are path-building cases, 2 are a leaf whose key usage lacks digitalSignature.
+  - Limbo found two real bugs, both fixed in part A:
+    - Zig's certificate parser reads a two-digit UTCTime year of 50 or more as 20YY. RFC
+      5280 says 19YY, so every certificate dated before 2000 looked not yet valid.
+    - The common-name fallback accepted a leaf with no subjectAltName, including a CN of
+      127.0.0.1 matching that address.
+  - Numbers: 2026-09-18 19:57 UTC, load 3.28, best of five (evidence/cost.txt):
+
+  ┌──────────────────┬─────────┬──────────────────┬─────────────────────┐
+  │      brick       │   key   │ µs a chain check │ handshakes a second │
+  ├──────────────────┼─────────┼──────────────────┼─────────────────────┤
+  │ before (d6534b3) │ Ed25519 │            197.0 │               1,976 │
+  ├──────────────────┼─────────┼──────────────────┼─────────────────────┤
+  │ after            │ Ed25519 │            199.2 │               1,964 │
+  ├──────────────────┼─────────┼──────────────────┼─────────────────────┤
+  │ before (d6534b3) │ P-256   │            827.9 │                 694 │
+  ├──────────────────┼─────────┼──────────────────┼─────────────────────┤
+  │ after            │ P-256   │            829.6 │                 694 │
+  └──────────────────┴─────────┴──────────────────┴─────────────────────┘
+
+  - Part C (in the patch, not green): the brick's tests pass 31/31, and the new test goes
+    red when the check is removed. The abuse table is 63 of 64. Both C2 cells now give
+    Handshake as part C wants. The one failure is a server cell part C didn't touch (mo
+    run, finished, close_notify: accept=Closed); the binary passes it, and I haven't rerun
+    it. No suite has run on part C.
+
+  Not done
+  - Part C's suite and commit.
+  - Part D's 1,000-session differential run and fuzz CPU-hour.
+  - All of part E, including the new fault-count row, tls-vectors.mo, and the MO_CORES=1
+    corpus runs.
+  - All of part F. The F_FULLFSYNC counter trace and the jobq before/after rows are
+    Mac-only and must be taken on the Mac.
+  - The brick's tests on Linux.
+
+
+  Decisions the brief did not cover
+  1. Alerts follow OpenSSL for pathLen, keyCertSign and EKU (48, 48, 43). An unknown
+     critical extension is 43 where OpenSSL sends 46; name constraints are 43.
+  2. The root's extensions are checked like any issuer's, as OpenSSL does.
+  3. anyExtendedKeyUsage alone does not count as server authentication, on the leaf or a
+     CA.
+  4. The leaf's key usage must include digitalSignature (RFC 8446). This is stricter than
+     OpenSSL.
+  5. An extension that appears twice is bad_certificate.
+  6. The brick's tests build their chains in Zig; the corpus and the differential read the
+     c- files gen-constrained.sh writes.
+  7. The limbo run calls checkChain directly, with the chain ordered as a server would
+     send it.
+  8. The brick reads certificate dates itself, so a two-digit year of 50 or more is 19YY
+     as RFC 5280 says.
+  9. No common-name fallback (RFC 9525): a leaf with no subjectAltName matches no host.
+     This is stricter than OpenSSL.
+  10. RFC 5280 rules a certificate alone shows are now enforced: serial number form,
+      keyCertSign only on a CA, the root must be a CA, every CA's basicConstraints
+      critical and subject non-empty, an empty-subject leaf's SAN critical, DNS name
+      syntax, the AKI's keyIdentifier, AKI and AIA not critical, AIA's shape.
+      policyConstraints is refused as unsupported.
+  11. Not enforced, which is why limbo's count is 27:
+      - AKI/SKI presence and the leaf's EKU, which would refuse the auditor's control.
+        This conflict between two Done-when items is yours to decide.
+      - CN must appear in the SAN, which would refuse private-CA servers such as
+        Kubernetes API servers.
+      - Wildcards over a public suffix, which need a public suffix list the brick doesn't
+        carry.
+      - The other CA/Browser Forum profile rules.
+  12. limbo.py now finds the server's chain breadth-first by names and signatures; the old
+      depth-first search was exponential. The 6 path-building cases stay refused because
+      the brick does no path building.
+  13. The ALPN offer is limited to 8,192 bytes on the wire, so the whole offer fits a
+      ClientHello the other end can read. Past that, offer crashes naming the row,
+      identically in both runtimes. The limit is written in chapter 9's offer rows, which
+      sit outside the spec lines the write scope names.
+  14. fuzz.py and diff.py return their status from main() and exit with it, so the
+      auditor's mock, which calls main(), still prints its report.
+  15. I stopped two processes by hand:
+      - The first limbo run, after 11 minutes at 100% CPU. This was before Robert's
+        message; the cause was the exponential search.
+      - An orphaned profile run, after its guard had already expired and killed its
+        parent.
+
+  Still pending for you: the conflict in item 11; parts C to F; the Linux run; and part
+  D's differential run and fuzz hour.
+
+  Everything is in toolchain/bench/step39/: WIP.md (the next commands), RESULTS.md, the
+  patch, and the raw outputs under evidence/.
+
+✻ Worked for 1h 27m 17s · done 4:28 PM
+
+──────────────────────────────────────────────────────────────────────────────────────────
+❯
+──────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang (main*) | Context: 63% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents
