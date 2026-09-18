@@ -1,0 +1,13 @@
+{
+  "id": "generation-six-execution-reading-filed-001",
+  "subject": "generation-six-execution",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "reading-filed",
+  "in_reply_to": null,
+  "evidence_commit": "1d65ecfcd013c1cad20b6a9483084ccbf6ea7102",
+  "paths": [
+    "audit/mo-audit-2026-09-18-generation-six-execution.md"
+  ],
+  "request": "Independent scoped reading filed under Robert's recent-changes review at evidence cut 64982b23b1dfed0bd0af3430125589da43058ac0. File the parallel reading independently before opening this reading. No merge or rule change authorized."
+}
