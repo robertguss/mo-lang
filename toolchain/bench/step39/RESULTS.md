@@ -72,3 +72,23 @@ whole handshakes in memory through the ABI, one thread.
 
 The extensions cost about 2 µs a chain, 1% of an Ed25519 check; the handshake
 rate does not move beyond the run's noise.
+
+## B: ALPN
+
+The brick kept the first 64 names of a client's offer and searched those, so the auditor's 65
+names with the server's one last came to `no_application_protocol`. Now both ends read the
+validated list in place, every name (`alpnList`, `nextAlpn`), and the offer has a stated limit:
+8,192 bytes on the wire, each name's length and one (`max_alpn_bytes`), which keeps a ClientHello
+holding the whole offer inside the 16 KiB a handshake message may be, so what one end may offer
+the other reads whole. An `offer` past it is a crash that names the row, the same message in both
+runtimes (before, the brick's refusal of a list past 65,280 bytes came back as out of memory).
+
+- Both copies of the auditor's `chain-checks.py`, unedited (`evidence/chain-checks-*.json`):
+  `alpn-65` ready/ready, the control and the four constrained chains as in part A.
+- Brick test: 65 names with the last shared, and the longest list (32 names of 255 bytes, 8,192
+  bytes), agreed with each key type; one name more refused by `offer` on either side.
+- `tls-client.mo`: a client offering `p0` to `p64` agrees on `p64` (both runtimes: `mo test` and
+  the test binary).
+- `corpus.zig`: 32 names of 255 bytes are taken and 33 are `main crashed: an ALPN list is at most
+  8192 bytes on the wire, each name's length and one, and this one is 8448`, exit 70, the same
+  stdout and stderr under `mo run` and in a binary.

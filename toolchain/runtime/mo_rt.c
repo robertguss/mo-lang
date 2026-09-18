@@ -9133,8 +9133,14 @@ MO_ROW(mo_r_Tls_client) {
     return ok_of(mo_cap(MO_CAP_TLS_CLIENT, keep_client(client), 0));
 }
 
+/* The most an ALPN list may be on the wire, each name's length and one: the brick's
+ * max_alpn_bytes (step 39), so that a ClientHello holding it fits the 16 KiB a handshake message
+ * may be and the other end reads the whole offer. */
+#define MO_TLS_MAX_ALPN_BYTES 8192
+
 /* ALPN's names as the brick takes them, NUL-separated, in `out` (freed by the caller). A name that
- * is empty, longer than 255 bytes, or holds a NUL is the caller's broken rule, and a crash. */
+ * is empty, longer than 255 bytes, or holds a NUL is the caller's broken rule, and a crash; so is a
+ * list past MO_TLS_MAX_ALPN_BYTES. */
 static size_t alpn_names(MoValue list, const char *row, char **out) {
     size_t len = 0;
     for (uint32_t i = 0; i < list.aux; i++) len += list.as.xs[i].aux + 1;
@@ -9148,6 +9154,8 @@ static size_t alpn_names(MoValue list, const char *row, char **out) {
         at += name.aux;
         buf[at++] = 0;
     }
+    if (at > MO_TLS_MAX_ALPN_BYTES)
+        mo_fail(MO_R_OTHER, row, "an ALPN list is at most %d bytes on the wire, each name's length and one, and this one is %zu", MO_TLS_MAX_ALPN_BYTES, at);
     *out = buf;
     return at;
 }

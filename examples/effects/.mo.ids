@@ -249,7 +249,7 @@
       "module": "Effects.TlsClient",
       "declarations": [
         { "id": "f1b35933f2a7", "name": "module Effects.TlsClient", "hash": "7a611ec46364b269" },
-        { "id": "83972625448c", "name": "expose", "hash": "a7f92275bb12ca0f" },
+        { "id": "83972625448c", "name": "expose", "hash": "faa30a512c7d65a9" },
         { "id": "54156be990a4", "name": "intent", "hash": "3492dc5f65b4baea" },
         { "id": "b1116b04b14a", "name": "process Echo", "hash": "bc503e7931135d9f" },
         { "id": "0d607b038301", "name": "process Acceptor", "hash": "27bc29397fec9be9" },
@@ -263,6 +263,7 @@
         { "id": "c2cac7e69b87", "name": "fn tried", "hash": "b407af307af2e798" },
         { "id": "ce6c4c96ef82", "name": "fn talked", "hash": "7b780a7cf337f9c0" },
         { "id": "a42e379ecc12", "name": "fn spoke", "hash": "4469b095da2ca08d" },
+        { "id": "f2a773332e6f", "name": "fn numbered", "hash": "543af328d8e131a9" },
         { "id": "299996aad9b9", "name": "fn faulted?", "hash": "d81249486bf9a71c" },
         { "id": "0aa83cebe850", "name": "fn heard?", "hash": "ec5d85606efbc44b" },
         { "id": "3a1f29605eb7", "name": "struct Served", "hash": "8b439653dcd15a8d" },
@@ -279,12 +280,13 @@
         { "id": "2b5c3ab331b5", "name": "fn other_root_pem", "hash": "15beb9427cde9551" },
         { "id": "38300fe20d5c", "name": "test \"a client that trusts the root handshakes with the server from its chain, and a line goes each way\"", "hash": "13cf1fb573d2c687" },
         { "id": "b52725704012", "name": "test \"ALPN: the server's protocol that the client also offered is the one agreed\"", "hash": "6b183c20b4471ba6" },
+        { "id": "54d8c0c5aa36", "name": "test \"ALPN: a client offering sixty-five names agrees on the last, the one the server speaks\"", "hash": "5111dc14e2c3ae1a" },
         { "id": "6e9cd7877b19", "name": "test \"ALPN: a client offering only what the server does not speak is Handshake\"", "hash": "4b40fc62b62b085a" },
         { "id": "b8d5664dc735", "name": "test \"a client that trusts another root refuses the server's chain\"", "hash": "9a3bce682b24b2d0" },
         { "id": "20d1f49c10a3", "name": "test \"a client connecting for example.org refuses a leaf for localhost\"", "hash": "18d55b0583eb08f5" },
         { "id": "a4e000ca03c6", "name": "test \"text with no certificate in it makes no client\"", "hash": "465de16583d0f51c" }
       ],
-      "verified": { "hash": "44bc382363130932", "declarations": "36ad5bf130b8ec12" }
+      "verified": { "hash": "221a4ce2b2f08b51", "declarations": "097454fd7bf4e34f" }
     },
     {
       "path": "tls-echo.mo",

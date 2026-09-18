@@ -2,7 +2,7 @@
 # exit: 1
 # run: chains
 module Effects.TlsClient
-expose Echo, Acceptor, Heard, Echoes, Target, Attempt, target, dialed, echoed, tried, talked, spoke, faulted?, heard?, Served, constrained, chains, served, reached, back, text, chain_pem, key_pem, root_pem, other_root_pem
+expose Echo, Acceptor, Heard, Echoes, Target, Attempt, target, dialed, echoed, tried, talked, spoke, faulted?, heard?, numbered, Served, constrained, chains, served, reached, back, text, chain_pem, key_pem, root_pem, other_root_pem
 
 intent "Open a TLS connection from a Mo program: main reads the roots it trusts with Fs, makes a TlsClient from them, connects to the host and port on its command line, runs the client's half of the handshake on that Conn, writes one line, and prints what comes back. Its tests put a TlsServer and a TlsClient on the two ends of Net.fixture()'s network, both halves of the handshake driven by the simulator: a line each way, ALPN agreed and refused, and a chain refused for its root and for its name."
 
@@ -176,6 +176,16 @@ fn spoke(client: TlsClient, plain: Conn, host: String,
   case secure.write("hello\n", within: 1.minute)
     Ok(_): Ok(secure.protocol)
     Error(_): Error(Closed)
+  end
+end
+
+# `names` with `left` more after it, each `p` and its place: p0, p1, ... (step 39's offer as long as
+# the auditor's, sixty-five names).
+fn numbered(left: UInt64, names: List(String)) : List(String)
+  if left == 0
+    names
+  else
+    numbered(left - 1, names.push("p#{names.size}"))
   end
 end
 
@@ -381,6 +391,14 @@ test "ALPN: the server's protocol that the client also offered is the one agreed
   assert heard?(talk, heard.ask(Lines, within: 1.minute))
 end
 
+test "ALPN: a client offering sixty-five names agrees on the last, the one the server speaks"
+  heard = Heard.start()
+  talk = tried(Tls.fixture(), Net.fixture(), heard,
+    Attempt(trust: root_pem(), host: "localhost", offered: numbered(65, []), accepted: ["p64"]))
+  assert talk == Ok(Some("p64")) or faulted?(talk)
+  assert heard?(talk, heard.ask(Lines, within: 1.minute))
+end
+
 test "ALPN: a client offering only what the server does not speak is Handshake"
   talk = tried(Tls.fixture(), Net.fixture(), Heard.start(),
     Attempt(trust: root_pem(), host: "localhost", offered: ["mo/1"], accepted: ["echo/1"]))
@@ -404,5 +422,5 @@ test "text with no certificate in it makes no client"
   assert Tls.fixture().client(trust: key_pem()) is Error(BadPem)
 end
 
-verified: types, contracts, tests (6), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (7), property (0 seeds), sim (100 runs)
           proven: not run

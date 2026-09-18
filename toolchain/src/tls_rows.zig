@@ -66,6 +66,9 @@ fn names(vm: *Vm, row: prelude.Fn, list: []const Value) Error![]const u8 {
         try out.appendSlice(vm.gpa, name);
         try out.append(vm.gpa, 0);
     }
+    // The list's size on the wire is its NUL-separated size: each name's length and one.
+    if (out.items.len > brick.max_alpn_bytes)
+        return crash(vm, row, "an ALPN list is at most {d} bytes on the wire, each name's length and one, and this one is {d}", .{ brick.max_alpn_bytes, out.items.len });
     return out.toOwnedSlice(vm.gpa);
 }
 

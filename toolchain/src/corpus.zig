@@ -1245,6 +1245,72 @@ test "corpus: a fatal alert where a hello belongs is Handshake and a reset mid-h
     }
 }
 
+test "corpus: an ALPN offer of 8,192 bytes on the wire is taken and one past it is a crash that names the row, the same under mo run and in a binary" {
+    // Step 39, part B: the limit is the brick's max_alpn_bytes, which keeps a ClientHello holding
+    // the whole offer inside the 16 KiB a handshake message may be, so the other end reads every
+    // name; before, a list past it came back from the brick as out of memory.
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const pems = "../examples/effects/tls";
+    Io.Dir.cwd().access(io, pems ++ "/root.pem", .{}) catch return;
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const offered =
+        \\module Offered
+        \\expose names
+        \\
+        \\intent "Offer ALPN lists up to the limit and one name past it: thirty-two names of 255 bytes, 8,192 bytes on the wire, are taken, and a thirty-third is a crash that names the row."
+        \\
+        \\fn names(left: UInt64, got: List(String)) : List(String)
+        \\  if left == 0
+        \\    got
+        \\  else
+        \\    names(left - 1, got.push("#{got.size}".pad_left(255, "a")))
+        \\  end
+        \\end
+        \\
+        \\fn main(platform: Platform)
+        \\  out = platform.stdout
+        \\  case platform.fs.read("tls/root.pem", within: 10.seconds)
+        \\    Ok(roots):
+        \\      case platform.tls.client(trust: roots)
+        \\        Ok(client):
+        \\          taken = client.offer(names(32, []))
+        \\          out.write_line("32 names offered")
+        \\          past = taken.offer(names(33, []))
+        \\          out.write_line("33 names offered")
+        \\          past.offer([])
+        \\          out.write_line("done")
+        \\        Error(_): out.write_line("no client")
+        \\      end
+        \\    Error(_): out.write_line("no root")
+        \\  end
+        \\end
+    ;
+    try tmp.dir.writeFile(io, .{ .sub_path = "offered.mo", .data = offered });
+    try tmp.dir.createDirPath(io, "tls");
+    const root = try Io.Dir.cwd().readFileAlloc(io, pems ++ "/root.pem", arena, .limited(1 << 16));
+    try tmp.dir.writeFile(io, .{ .sub_path = "tls/root.pem", .data = root });
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "offered.mo" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "offered.mo" }, .cwd = .{ .path = cwd } });
+    const compiled = try std.process.run(arena, io, .{ .argv = &.{"./zig-out/mo-build/offered/offered"}, .cwd = .{ .path = cwd } });
+    for ([_]std.process.RunResult{ interp, compiled }) |r| {
+        try std.testing.expectEqualStrings("32 names offered\n", r.stdout);
+        try std.testing.expect(r.term == .exited and r.term.exited != 0);
+        try std.testing.expect(std.mem.indexOf(u8, r.stderr, "an ALPN list is at most 8192 bytes on the wire, each name's length and one, and this one is 8448") != null);
+    }
+    try std.testing.expect(sameRun(interp, compiled));
+}
+
 /// A connection to 127.0.0.1 at `port`, or null while nothing listens there.
 fn loopback(port: u16) ?std.posix.socket_t {
     const posix = std.posix;

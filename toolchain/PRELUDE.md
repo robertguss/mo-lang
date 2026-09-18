@@ -292,8 +292,8 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Tls` (on type) | `fixture` | | `Tls`: the same rows on `Net.fixture()`'s network | | tests | stdlib (09), step 36 |
 | `Tls` | `client` | `trust: String` | `Result(TlsClient, TlsError)`: PEM text holding one or more root certificates; `BadPem` when none parses | | | stdlib (09), step 37 |
 | `TlsClient` | `connect` | `Conn`, `host: String` | `Result(Conn, TlsError)`: the client's half of the TLS 1.3 handshake on a connection from `Net.connect`, the leaf checked for `host` and the chain up to a trusted root at the runtime's clock; `Untrusted` when the chain is refused (its alert sent); the connection must have had no `read_line`, `write`, or `lines` on it | yes | | stdlib (09), step 37 |
-| `TlsClient` | `offer` | `List(String)` | `TlsClient`: a new client offering these ALPN protocols in order, the old one unchanged; a name empty, past 255 bytes, or holding a NUL is a crash | | | stdlib (09), step 37 |
-| `TlsServer` | `offer` | `List(String)` | `TlsServer`: a new server accepting these ALPN protocols in its order of preference, the old one unchanged; the same crash rule | | | stdlib (09), step 37 |
+| `TlsClient` | `offer` | `List(String)` | `TlsClient`: a new client offering these ALPN protocols in order, the old one unchanged; a name empty, past 255 bytes, or holding a NUL is a crash, and so is a list past 8,192 bytes on the wire (each name's length and one) | | | stdlib (09), steps 37 and 39 |
+| `TlsServer` | `offer` | `List(String)` | `TlsServer`: a new server accepting these ALPN protocols in its order of preference, the old one unchanged; the same crash rules; a client's whole offer is searched | | | stdlib (09), steps 37 and 39 |
 | `Conn` | `protocol` | | `Option(String)`: the ALPN protocol the handshake agreed; `None` on a plain `Conn` or when none was | | | stdlib (09), step 37 |
 | `Http` | `listen` | `UInt16` | `Result(HttpListener, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `accept` | | `Result(Exchange, HttpError)` | yes | | stdlib (09) |

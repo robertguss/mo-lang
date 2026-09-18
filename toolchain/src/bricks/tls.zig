@@ -352,8 +352,14 @@ pub const Client = struct {
 
 // ---- ALPN's names (RFC 7301): what the runtimes pass as NUL-separated text
 
+/// The most an ALPN list may be on the wire, each name's length and one (step 39): a ClientHello
+/// holding it stays inside the 16 KiB a handshake message may be (`max_plaintext`), so whatever
+/// one end may offer the other reads whole. Both runtimes refuse an `offer` past it with a crash
+/// that names the row, before the brick sees it.
+pub const max_alpn_bytes = 8192;
+
 /// The names in `text`, each ended by a NUL or by the text's end; empty names are skipped. A name
-/// is 1 to 255 bytes, and the whole list must fit one extension.
+/// is 1 to 255 bytes, and the whole list at most `max_alpn_bytes`.
 fn parseNames(text: []const u8) error{ OutOfMemory, BadName }![][]u8 {
     var list: std.ArrayList([]u8) = .empty;
     errdefer {
@@ -366,7 +372,7 @@ fn parseNames(text: []const u8) error{ OutOfMemory, BadName }![][]u8 {
         if (name.len == 0) continue;
         if (name.len > 255) return error.BadName;
         total += 1 + name.len;
-        if (total > 0xff00) return error.BadName;
+        if (total > max_alpn_bytes) return error.BadName;
         try list.append(gpa, try gpa.dupe(u8, name));
     }
     return list.toOwnedSlice(gpa);
@@ -391,23 +397,26 @@ fn dupeList(list: []const []u8) error{OutOfMemory}![][]u8 {
     return out;
 }
 
-/// An ALPN extension's body: the list of names, each 8-bit-length prefixed, 16-bit-length
-/// prefixed. `null` when it does not parse or holds an empty name.
-fn alpnNames(body: []const u8, into: *[64][]const u8) ?[]const []const u8 {
+/// An ALPN extension's body checked whole (step 39): the list of names, each 8-bit-length
+/// prefixed, 16-bit-length prefixed, every name read to the end, so a long offer is searched in
+/// full and never cut short. The list's bytes, which `nextAlpn` walks in place; `null` when it
+/// does not parse, is empty, or holds an empty name.
+fn alpnList(body: []const u8) ?[]const u8 {
     var cur: Cursor = .{ .b = body };
-    var list: Cursor = .{ .b = cur.vec(u16) catch return null };
-    if (!cur.done() or list.done()) return null;
-    var n: usize = 0;
+    const bytes = cur.vec(u16) catch return null;
+    if (!cur.done() or bytes.len == 0) return null;
+    var list: Cursor = .{ .b = bytes };
     while (!list.done()) {
         const name = list.vec(u8) catch return null;
         if (name.len == 0) return null;
-        // Past sixty-four names the rest are not read: no server's list is that long.
-        if (n < into.len) {
-            into[n] = name;
-            n += 1;
-        }
     }
-    return into[0..n];
+    return bytes;
+}
+
+/// The next name of a list `alpnList` checked, `null` at its end.
+fn nextAlpn(list: *Cursor) ?[]const u8 {
+    if (list.done()) return null;
+    return list.vec(u8) catch null;
 }
 
 // ---- a certificate's shape, checked before std.crypto.Certificate reads it
@@ -1641,8 +1650,7 @@ pub const Conn = struct {
         var share: ?[32]u8 = null;
         var supports_x25519 = false;
         var signatures: []const u8 = &.{};
-        var alpn: ?[]const []const u8 = null;
-        var alpn_buf: [64][]const u8 = undefined;
+        var alpn: ?[]const u8 = null;
         if (!cur.done()) {
             var exts: Cursor = .{ .b = try cur.vec(u16) };
             if (!cur.done()) return c.fatal(.decode_error);
@@ -1677,7 +1685,7 @@ pub const Conn = struct {
                         }
                     },
                     .signature_algorithms => signatures = try ext.vec(u16),
-                    .application_layer_protocol_negotiation => alpn = alpnNames(body, &alpn_buf) orelse return c.fatal(.decode_error),
+                    .application_layer_protocol_negotiation => alpn = alpnList(body) orelse return c.fatal(.decode_error),
                     // SNI is read and ignored: a server here has one chain.
                     else => {},
                 }
@@ -1718,7 +1726,8 @@ pub const Conn = struct {
         c.protocol_len = 0;
         if (alpn) |offered| if (server.protocols.len > 0) {
             const chosen = choose: for (server.protocols) |mine| {
-                for (offered) |theirs| if (mem.eql(u8, mine, theirs)) break :choose mine;
+                var theirs: Cursor = .{ .b = offered };
+                while (nextAlpn(&theirs)) |name| if (mem.eql(u8, mine, name)) break :choose mine;
             } else return c.fatal(.no_application_protocol);
             @memcpy(c.protocol[0..chosen.len], chosen);
             c.protocol_len = @intCast(chosen.len);
@@ -2119,14 +2128,14 @@ pub const Conn = struct {
                 .application_layer_protocol_negotiation => {
                     // RFC 7301 3.1: exactly one name, and one this client offered.
                     if (client.protocols.len == 0) return c.fatal(.unsupported_extension);
-                    var names_buf: [64][]const u8 = undefined;
-                    const names = alpnNames(body, &names_buf) orelse return c.fatal(.decode_error);
-                    if (names.len != 1) return c.fatal(.illegal_parameter);
+                    var names: Cursor = .{ .b = alpnList(body) orelse return c.fatal(.decode_error) };
+                    const name = nextAlpn(&names).?;
+                    if (!names.done()) return c.fatal(.illegal_parameter);
                     for (client.protocols) |mine| {
-                        if (mem.eql(u8, mine, names[0])) break;
+                        if (mem.eql(u8, mine, name)) break;
                     } else return c.fatal(.illegal_parameter);
-                    @memcpy(c.protocol[0..names[0].len], names[0]);
-                    c.protocol_len = @intCast(names[0].len);
+                    @memcpy(c.protocol[0..name.len], name);
+                    c.protocol_len = @intCast(name.len);
                 },
                 // Answers a ServerHello may not carry (RFC 8446 4.2's table).
                 .supported_versions, .key_share, .cookie, .pre_shared_key, .signature_algorithms => return c.fatal(.illegal_parameter),
@@ -4654,6 +4663,50 @@ test "ALPN: the server's first that the client offered, nothing shared, and eith
             try testing.expectEqual(@as(usize, 0), mo_tls_protocol(se.c, &name, name.len));
         }
     }
+}
+
+test "ALPN: an offer is searched whole, sixty-five names or the longest list, and a list past max_alpn_bytes cannot be offered" {
+    // The auditor's case (step 39): p0 to p64 offered, p64 alone accepted. Before, the server read
+    // the first sixty-four names and answered no_application_protocol.
+    var many: [65 * 4]u8 = undefined;
+    var at: usize = 0;
+    for (0..65) |i| at += (try std.fmt.bufPrint(many[at..], "p{d}\x00", .{i})).len;
+    // The longest list that may be offered: 32 names of 255 bytes, 8,192 bytes on the wire, the
+    // one shared the last.
+    var longest: [32 * 256]u8 = undefined;
+    for (0..32) |i| {
+        const name = longest[i * 256 ..][0..255];
+        @memset(name, 'a' + @as(u8, @intCast(i % 26)));
+        name[0] = '0' + @as(u8, @intCast(i / 10));
+        name[1] = '0' + @as(u8, @intCast(i % 10));
+        longest[i * 256 + 255] = 0;
+    }
+    const Case = struct { client: []const u8, server: []const u8 };
+    const cases = [_]Case{
+        .{ .client = many[0..at], .server = "p64" },
+        .{ .client = &longest, .server = longest[31 * 256 ..][0..255] },
+    };
+    for (cases) |k| for ([_]bool{ false, true }) |p256| {
+        var se = try Session.start(try testServerOf(if (p256) fx_chain_p256 else fx_chain, if (p256) fx_key_p256 else fx_key, k.server), try testClient(if (p256) fx_root_p256 else fx_root, k.client), "localhost", test_now, .{});
+        defer se.deinit();
+        var name: [255]u8 = undefined;
+        try testing.expect(mo_tls_ready(se.c));
+        try testing.expectEqualStrings(k.server, name[0..mo_tls_protocol(se.c, &name, name.len)]);
+        try testing.expectEqualStrings(k.server, name[0..mo_tls_protocol(se.s, &name, name.len)]);
+    };
+    // One name more is past the limit on either side.
+    const client = try testClient(fx_root, "");
+    defer mo_tls_client_free(client);
+    var past: [32 * 256 + 2]u8 = undefined;
+    @memcpy(past[0 .. 32 * 256], &longest);
+    past[32 * 256] = 'x';
+    past[32 * 256 + 1] = 0;
+    try testing.expect(mo_tls_client_offer(client, &past, past.len) == null);
+    const fits = mo_tls_client_offer(client, &longest, longest.len) orelse return error.TestUnexpectedResult;
+    mo_tls_client_free(fits);
+    const server = testServer();
+    defer mo_tls_server_free(server);
+    try testing.expect(mo_tls_server_offer(server, &past, past.len) == null);
 }
 
 test "a KeyUpdate started by the client and one started by the server, records flowing after each" {
