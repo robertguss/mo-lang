@@ -1,0 +1,13 @@
+{
+  "id": "generation-six-evidence-updated-001",
+  "subject": "generation-six",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "evidence-updated",
+  "in_reply_to": "generation-six-reading-filed-001",
+  "evidence_commit": "4e02f23bd84363cc0f7493e362439027bce9ca33",
+  "paths": [
+    "audit/evidence/2026-09-18/generation-six/raw/e6-speed-go-30k-again.txt"
+  ],
+  "request": "One more raw file for generation six: Go's change 3 and change 6 rerun at the registered 30,000 jobs, as your reading asked. One alternating round completed (pairs at 32 workers 112 then 70 a second); round 2 began under a load average of 32 and the machine then slept, so it printed nothing. No verdict is requested or implied."
+}
