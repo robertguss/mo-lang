@@ -1,13 +1,13 @@
 # sim: --faults 20 --until 0.5
 module Jobq.Queue
-expose Opening, Logs, Batch, Answer, Flushed, Policy, Queue, Queues, Warden, Worker, Workers, opening, flushed, stamp, policy, retained, guarded, spent?, due?, shelf_lines
+expose Opening, Logs, Batch, Answer, Flushed, Policy, Queue, Queues, Warden, Worker, Workers, opening, flushed, stamp, policy, retained, pruned_every, guarded, spent?, due?, shelf_lines
 
 use Jobq.Api{Routed, respond, route}
 use Jobq.Board{Board, Call, Command, Decision, Outcome, Kept, board, decide, health_of, rebuilt, records, retaining, shelf_applied, shelf_records, shelf_snapshot, shelved, snapshot}
 use Jobq.Job{Job, Phase, Making, shown, to_ms}
 use Jobq.Store{Table, StoreError, blank, blank_log, cut_short?, emptied, journaled, line_of, open, open_log, pairs, reopened, rewritten, writing_to}
 
-intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the log in one write, so one fsync covers every call taken since the last, and only then is each caller answered; the queue keeps the board as the log last held it beside the board it answers from, both sharing every page a batch did not change, so a batch the log did not take is answered 503 and the board goes back, a log that may end in part of a write is written whole with the next batch, and the store keeps no second copy of any job. The archive, jobq.archive beside the log, takes the done and dead jobs a look finds older than the retention, and every batch writes the archive's changes before the log's, so a kill between the two leaves the job archived. A queue that fails is started again and rebuilds its board from the log, answering 503 until it has; a warden counts the restarts and stops the service with exit 70 once more of them fall inside the window than the budget allows; and the chaos switch fails the queue on purpose after every N-th write is on disk."
+intent "The queue process: every call is decided against the board at once, and its records join a batch; the batch is appended to the log in one write, so one fsync covers every call taken since the last, and only then is each caller answered; the queue keeps the board as the log last held it beside the board it answers from, both sharing every page a batch did not change, so a batch the log did not take is answered 503 and the board goes back, a log that may end in part of a write is written whole with the next batch, and the store keeps no second copy of any job. The archive, jobq.archive beside the log, takes the done and dead jobs a look finds older than the retention, and every batch writes the archive's changes before the log's, so a kill between the two leaves the job archived. A queue that fails is started again and rebuilds its board from the log, answering 503 until it has; a warden counts the restarts and stops the service with exit 70 once more of them fall inside the window than the budget allows; and the chaos switch fails the queue on purpose after every N-th write is on disk. A rename or a prune is a batch of its own, and with a retention the queue prunes the archive every minute by itself, the same rule and the same record as a prune an operator asks for."
 
 never "a response is sent before its record is durable"
   for a in Answer.all
@@ -195,19 +195,32 @@ fn outcome_at(answers: List(Answer), i: UInt64) : Outcome
 end
 
 # How the service keeps going: at most `max_restarts` restarts of the queue inside `window_ms`,
-# the chaos switch, which fails the queue after every `crash_every`-th write, 0 for never, and how
-# long a done or dead job stays on the board before it is archived.
+# the chaos switch, which fails the queue after every `crash_every`-th write, 0 for never, how
+# long a done or dead job stays on the board before it is archived, and the age past which the
+# queue prunes an archived job every minute by itself, 0 for never.
 struct Policy
   max_restarts: UInt64
   window_ms: UInt64
   crash_every: UInt64
   retain_ms: UInt64
+  retention_ms: UInt64
 end
 
-# A policy that keeps done and dead jobs a day.
+# A policy that keeps done and dead jobs a day, and archived ones until an operator prunes them.
 fn policy(max_restarts: UInt64, window_ms: UInt64, crash_every: UInt64) : Policy
   Policy(max_restarts: max_restarts, window_ms: window_ms, crash_every: crash_every,
-    retain_ms: 86_400_000)
+    retain_ms: 86_400_000, retention_ms: 0)
+end
+
+# How often the queue prunes by itself when it has a retention.
+fn prune_period() : Duration
+  60_000.ms
+end
+
+fn pruned_every(rules: Policy, ms: UInt64) : Policy
+  var after = rules
+  after.retention_ms = ms
+  after
 end
 
 fn retained(rules: Policy, ms: UInt64) : Policy
@@ -296,6 +309,37 @@ process Warden(clock: Clock, rules: Policy)
   end
 end
 
+# A queue with a retention prunes by itself a minute after a call or an idle look finds no prune
+# waiting, so while it is in use, or only served (the listener's idle time sends it a look every 10
+# seconds), it prunes about every minute, and a queue nothing reaches arms nothing. Each tick names
+# the start it belongs to, so a tick from before a restart is dropped. Gives whether a tick waits.
+fn armed(me: Handle(Queue), rules: Policy, restarts: UInt64, ticking: Bool) : Bool
+  return ticking if ticking or rules.retention_ms == 0
+  me.send(Tick(restarts: restarts), delay: prune_period())
+  true
+end
+
+# The batch flushed and, unless the chaos switch failed the queue at it, every asker answered.
+fn answered_all(fs: Fs, warden: Handle(Warden), desk: Desk, waiting: List(Reply(Outcome)),
+  every: UInt64) : Settled
+  end_of = settled(fs, warden, desk, every)
+  if !end_of.failing
+    delivered(waiting, end_of.answers)
+  end
+  end_of
+end
+
+# A rename or a prune an asker sent, to take alone.
+fn asked_mark(call: Call, clock: Clock, rules: Policy) : Taken
+  Taken(call: call, now: stamp(clock), every: rules.crash_every, asked: true)
+end
+
+# The prune the queue makes by itself, with its retention as the age, to take alone.
+fn own_prune(clock: Clock, rules: Policy) : Taken
+  prune = Call(worker: "", command: Pruning(older_than_ms: rules.retention_ms))
+  Taken(call: prune, now: stamp(clock), every: rules.crash_every, asked: false)
+end
+
 # The queue's first state line tells the warden it has started, and holds the store's log with
 # no values until `Begin` gives the board.
 fn announced(warden: Handle(Warden), store: Table) : Table
@@ -343,12 +387,14 @@ fn desk_of(start: Opening, restarts: UInt64, applied: UInt64) : Desk
     outcomes: [], restarts: restarts, applied: applied)
 end
 
-# Whether a call renames a queue. A rename is a batch of its own: the calls before it are flushed
-# first and it is flushed at once, so no call decided after it shares its write. Otherwise an
-# archive move decided after it would carry the new name to the archive, and a log that then
-# refused the batch would leave that one job renamed while the rename was answered 503.
-fn renames?(call: Call) : Bool
-  call.command is Rename(queue: _, to: _)
+# Whether a call writes a mark, a rename or a prune. A mark is a batch of its own: the calls before
+# it are flushed first and it is flushed at once, so no call decided after it shares its write.
+# Otherwise an archive move decided after a rename would carry the new name to the archive, and a
+# log that then refused the batch would leave that one job renamed while the rename was answered
+# 503; and a record decided after a mark carries its number, which a mark the log refused gives to
+# the next one.
+fn marks?(call: Call) : Bool
+  call.command is Rename(queue: _, to: _) or call.command is Pruning(_)
 end
 
 # Whether the desk holds calls or moves not yet flushed.
@@ -356,24 +402,27 @@ fn pending?(desk: Desk) : Bool
   desk.outcomes.size > 0 or desk.writes.size > 0 or desk.shelved.size > 0
 end
 
-# The desk after a rename taken as a batch of its own, and whether the chaos switch failed the
-# queue on the way: the calls kept before it flushed and answered, then the rename decided,
-# flushed, and answered; the last asker kept is the rename's.
+# The desk after a mark taken as a batch of its own, and whether the chaos switch failed the
+# queue on the way: the calls kept before it flushed and answered, then the mark decided,
+# flushed, and answered; the last asker kept is the mark's when an asker sent it, and a prune the
+# queue makes by itself has none.
 struct Alone
   desk: Desk
   failing: Bool
 end
 
-# A rename to take alone: the call, the time it is decided at, and the chaos switch's count.
+# A mark to take alone: the call, the time it is decided at, the chaos switch's count, and whether
+# an asker waits for it.
 struct Taken
   call: Call
   now: Time
   every: UInt64
+  asked: Bool
 end
 
 fn alone(fs: Fs, warden: Handle(Warden), desk: Desk, waiting: List(Reply(Outcome)),
   taken: Taken) : Alone
-  earlier = waiting.take(waiting.size - 1)
+  earlier = if taken.asked: waiting.take(waiting.size - 1) else: waiting
   var held = desk
   if pending?(desk)
     before = settled(fs, warden, desk, taken.every)
@@ -417,6 +466,7 @@ fn settled(fs: Fs, warden: Handle(Warden), desk: Desk, every: UInt64) : Settled
     Batch(board: desk.board, durable: desk.durable, table: desk.table, torn: desk.torn,
     archive: desk.archive, archive_torn: desk.archive_torn, writes: desk.writes,
     shelved: desk.shelved, outcomes: desk.outcomes))
+  answers = done.answers.map(fn(a) sized(a, done.archive) end)
   took = done.answers.all?(fn(a) a.durable end)
   applied = if took: desk.applied + desk.writes.size + desk.shelved.size else: desk.applied
   var after = desk
@@ -433,10 +483,20 @@ fn settled(fs: Fs, warden: Handle(Warden), desk: Desk, every: UInt64) : Settled
   if due?(desk.applied, applied, every)
     case warden.ask(Applied(count: applied), within: 1_000.ms)
       Ok(_) | Error(_):
-        return Settled(desk: after, answers: done.answers, failing: true)
+        return Settled(desk: after, answers: answers, failing: true)
     end
   end
-  Settled(desk: after, answers: done.answers, failing: false)
+  Settled(desk: after, answers: answers, failing: false)
+end
+
+# An answer about the archive with the archive file's size once the batch is on disk.
+fn sized(answer: Answer, archive: Table) : Answer
+  if answer.outcome is Shelf(archived: archived, oldest: oldest, bytes: _)
+    var told = answer
+    told.outcome = Shelf(archived: archived, oldest: oldest, bytes: archive.bytes)
+    return told
+  end
+  answer
 end
 
 # The board given at the first start, or rebuilt from the log after a restart; None when the log
@@ -480,6 +540,7 @@ process Queue(fs: Fs, clock: Clock, logs: Logs, started: Time, rules: Policy,
     flushing: Bool
     me: Option(Handle(Queue))
     failing: Bool
+    ticking: Bool
   end
 
   invariant "the board is whole: it opened from the log, and the chaos switch has not come round"
@@ -489,14 +550,14 @@ process Queue(fs: Fs, clock: Clock, logs: Logs, started: Time, rules: Policy,
   message Begin(me: Handle(Queue), restarts: UInt64, applied: UInt64, opening: Option(Opening))
   message Want(call: Call) : Outcome
   message Sweep
+  message Tick(restarts: UInt64)
   message Flush
   message Serve(call: Call) : Outcome
 
   fn update(state, message)
     case message
       Begin(me: me, restarts: restarts, applied: applied, opening: given):
-        held_back = state.waiting.size
-        delivered(state.waiting, refusals(held_back))
+        delivered(state.waiting, refusals(state.waiting.size))
         state.waiting = []
         start = given_or_rebuilt(fs, logs, started, given)
         state.failing = start is None
@@ -507,36 +568,41 @@ process Queue(fs: Fs, clock: Clock, logs: Logs, started: Time, rules: Policy,
         end
       Want(call):
         state.waiting = state.waiting.push(reply_to)
-        if state.me is Some(_) and renames?(call)
-          taken = Taken(call: call, now: stamp(clock), every: rules.crash_every)
-          after = alone(fs, warden, state.desk, state.waiting, taken)
+        if state.me is Some(_) and marks?(call)
+          after = alone(fs, warden, state.desk, state.waiting, asked_mark(call, clock, rules))
           state.desk = after.desk
           state.failing = after.failing
           state.waiting = []
         end
-        if state.me is Some(me) and !renames?(call)
+        if state.me is Some(me) and !marks?(call)
+          state.ticking = armed(me, rules, state.desk.restarts, state.ticking)
           state.desk = joined(state.desk, decide(state.desk.board, call, stamp(clock)))
           if !state.flushing
             me.send(Flush)
             state.flushing = true
           end
         end
+      Tick(started_at):
+        if state.me is Some(_) and started_at == state.desk.restarts
+          after = alone(fs, warden, state.desk, state.waiting, own_prune(clock, rules))
+          state.desk = after.desk
+          state.failing = after.failing
+          state.waiting = []
+          state.ticking = false
+        end
       Sweep:
         if state.me is Some(me)
-          decision = decide(state.desk.board, Call(worker: "", command: Health), stamp(clock))
-          moved = decision.writes.size > 0 or decision.shelved.size > 0
-          state.desk = swept(state.desk, decision)
-          if moved and !state.flushing
+          state.ticking = armed(me, rules, state.desk.restarts, state.ticking)
+          state.desk = swept(state.desk,
+            decide(state.desk.board, Call(worker: "", command: Health), stamp(clock)))
+          if pending?(state.desk) and !state.flushing
             me.send(Flush)
             state.flushing = true
           end
         end
       Flush:
         if state.me is Some(_)
-          end_of = settled(fs, warden, state.desk, rules.crash_every)
-          if !end_of.failing
-            delivered(state.waiting, end_of.answers)
-          end
+          end_of = answered_all(fs, warden, state.desk, state.waiting, rules.crash_every)
           state.failing = end_of.failing
           state.desk = end_of.desk
           state.waiting = []
@@ -545,10 +611,7 @@ process Queue(fs: Fs, clock: Clock, logs: Logs, started: Time, rules: Policy,
       Serve(call):
         if state.me is Some(_)
           state.desk = joined(state.desk, decide(state.desk.board, call, stamp(clock)))
-          end_of = settled(fs, warden, state.desk, rules.crash_every)
-          if !end_of.failing
-            delivered(state.waiting, end_of.answers)
-          end
+          end_of = answered_all(fs, warden, state.desk, state.waiting, rules.crash_every)
           state.failing = end_of.failing
           state.desk = end_of.desk
           state.waiting = []
@@ -789,7 +852,8 @@ fn played(queue: Handle(Queue), fs: Fs, slow: Fs, clock: Clock, round: UInt64) :
       end
       return ended(queue, slow)
     Made(_) | Listed(_) | Removed | Missing | Conflict(_) | Healthy(_) | Tallied(_) | Renamed(queue: _,
-      moved: _) | Absent(_):
+      moved: _) | Cleared(pruned: _, remaining: _) | Shelf(archived: _, oldest: _,
+      bytes: _) | Absent(_):
       return Wrong(why: "a lease gave #{lent}")
   end
   Going
@@ -895,12 +959,49 @@ fn queue_named(record: String) : String
   end
 end
 
+# A queue that archives a done job a second after it and prunes nothing by itself.
+fn archiving(fs: Fs, clock: Clock) : Handle(Queue)
+  guarded(fs, clock, empty_start(clock), retained(policy(5, 60_000, 0), 1_000))
+end
+
+# A job made under `key`, leased, and acked; the job, or None when a step was answered 503.
+fn finished(queue: Handle(Queue), key: String) : Option(Job)
+  made = served(queue, "p", Create(making: keyed("q", key, key)))
+  lent = served(queue, "w", Lease(queue: "q", lease_ms: 3_600_000))
+  return None if !(made is Made(_))
+  held = try found_in(lent)
+  found_in(served(queue, "w", Ack(id: "j_#{held.number}")))
+end
+
+fn found_in(outcome: Outcome) : Option(Job)
+  if outcome is Found(one): Some(one) else: None
+end
+
+# The time passing while a test waits on a slow fixture, and a look that archives what is old
+# enough.
+fn aged(queue: Handle(Queue), slow: Fs) : Bool
+  passed = slow.write("wait", "x", within: 3.minute) is Ok(_)
+  looked = served(queue, "", Health)
+  passed and looked is Healthy(_)
+end
+
+# The log as it was before a prune, with the prune's record cut short after it, as a kill in the
+# middle of the write leaves it: a queue started again leaves the record out and finds j_1 still
+# archived. True too when the write itself was refused, or the queue answered 503.
+fn torn_prune_left_out?(fs: Fs, clock: Clock, earlier: String) : Bool
+  torn = "#{earlier}SET prune_1 {\"cutoff\": \"2026-"
+  return true if fs.write("d/jobq.log", torn, within: 1.minute) is Error(_)
+  kept = started_again(fs, clock, "p", Fetch(id: "j_1"))
+  if kept is Found(one): one.archived_at is Some(_) else: unavailable?(kept)
+end
+
 fn job_of_outcome(outcome: Outcome) : Job
   case outcome
     Found(one): one
     Made(one): one
     Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
-      moved: _) | Absent(_) | Unavailable(_):
+      moved: _) | Cleared(pruned: _, remaining: _) | Shelf(archived: _, oldest: _,
+      bytes: _) | Absent(_) | Unavailable(_):
       Job(number: 0, queue: "", key: None, state: Queued, payload: "", tries: 0, max_tries: 1,
         backoff_ms: 0, created_at: Time.from_parts(2026, 1, 1, 0, 0, 0),
         updated_at: Time.from_parts(2026, 1, 1, 0, 0, 0), run_at: None, worker: None,
@@ -1278,7 +1379,7 @@ test "a handoff and a rename are answered once their records are in the log, and
   assert passed is Found(_) or unavailable?(passed) or passed is Conflict(_) or passed == Missing
   if clean and fs.read("d/jobq.log", within: 1.minute) is Ok(text)
     assert moved == Renamed(queue: "r", moved: 1)
-    assert text.ends_with?("\"worker\": \"w2\", \"lease_until\": #{Json.encode((job_of_outcome(lent)).lease_until or stamp(clock))}}\nSET rename_1 {\"from\": \"q\", \"to\": \"r\"}\n")
+    assert text.ends_with?("\"worker\": \"w2\", \"lease_until\": #{Json.encode((job_of_outcome(lent)).lease_until or stamp(clock))}}\nSET rename_1 {\"from\": \"q\", \"to\": \"r\", \"next_id\": 2}\n")
     again = started_again(fs, clock, "p", Fetch(id: "j_1"))
     if again is Found(held)
       assert held.queue == "r" and held.worker == Some("w2") and held.tries == 1
@@ -1477,6 +1578,101 @@ test "a queue not yet begun writes nothing, and answers every call 503, a kept o
   assert served(queue, "", Health) is Healthy(_)
 end
 
+test "a prune is answered once its one record is on disk, a pruned job never comes back, and its key is free"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = archiving(fs, clock)
+  first = finished(queue, "k")
+  moved = aged(queue, Fs.fixture(delay: 1_100.ms))
+  waited_more = aged(queue, Fs.fixture(delay: 2_000.ms))
+  second = finished(queue, "k2")
+  before = fs.read("d/jobq.log", within: 1.minute)
+  cut = served(queue, "op", Pruning(older_than_ms: 2_000))
+  assert cut is Cleared(pruned: _, remaining: _) or unavailable?(cut)
+  if first is Some(_) and second is Some(_) and moved and waited_more and cut is Cleared(pruned: count,
+    remaining: _)
+    assert count >= 1
+    written = fs.read("d/jobq.log", within: 1.minute)
+    if written is Ok(text)
+      assert text.contains?("\nSET prune_1 {\"cutoff\": ")
+      assert text.split("SET prune_").size == 2
+    end
+    gone = served(queue, "p", Fetch(id: "j_1"))
+    assert gone == Missing or unavailable?(gone)
+    kept_live = served(queue, "p", Fetch(id: "j_2"))
+    assert kept_live is Found(_) or unavailable?(kept_live)
+    shelf = served(queue, "p", Archive)
+    assert shelf is Shelf(archived: _, oldest: _, bytes: _) or unavailable?(shelf)
+    if shelf is Shelf(archived: archived, oldest: _, bytes: size)
+      assert archived == 0 or size > 0
+    end
+    none = served(queue, "op", Pruning(older_than_ms: 2_000))
+    assert none is Cleared(pruned: _, remaining: _) or unavailable?(none)
+    if none is Cleared(pruned: 0, remaining: _)
+      if fs.read("d/jobq.log", within: 1.minute) is Ok(later)
+        assert !later.contains?("SET prune_2 ")
+      end
+    end
+    again = started_again(fs, clock, "p", Fetch(id: "j_1"))
+    assert again == Missing or unavailable?(again)
+    fresh = started_again(fs, clock, "p", Create(making: keyed("q", "k", "again")))
+    assert fresh is Made(_) or unavailable?(fresh)
+    if fresh is Made(new_one)
+      assert new_one.number > 2
+    end
+    if before is Ok(earlier)
+      assert torn_prune_left_out?(fs, clock, earlier)
+    end
+  end
+end
+
+test "with a retention the queue prunes by itself every minute, and a prune that removes nothing writes nothing"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = guarded(fs, clock, empty_start(clock),
+    pruned_every(retained(policy(5, 60_000, 0), 1_000), 2_000))
+  first = finished(queue, "k")
+  moved = aged(queue, Fs.fixture(delay: 1_100.ms))
+  archived_first = served(queue, "p", Fetch(id: "j_1"))
+  ticked = aged(queue, Fs.fixture(delay: 60_000.ms))
+  if first is Some(_) and moved and ticked and archived_first is Found(held) and held.archived_at is Some(_)
+    if fs.read("d/jobq.log", within: 1.minute) is Ok(text) and text.contains?("SET prune_1 ")
+      gone = served(queue, "p", Fetch(id: "j_1"))
+      assert gone == Missing or unavailable?(gone)
+      shelf = served(queue, "p", Archive)
+      assert shelf is Shelf(archived: 0, oldest: None, bytes: _) or unavailable?(shelf)
+      quiet = aged(queue, Fs.fixture(delay: 60_000.ms))
+      if quiet and fs.read("d/jobq.log", within: 1.minute) is Ok(later)
+        assert !later.contains?("SET prune_2 ")
+      end
+    end
+  end
+end
+
+test "under faults, a prune removes an archived job wholly or not at all, and the store agrees with the queue"
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  queue = archiving(fs, clock)
+  var ended = [0].take(0)
+  for round in 0..4
+    if finished(queue, "k#{round}") is Some(done)
+      ended = ended.push(done.number)
+    end
+    moved = aged(queue, Fs.fixture(delay: 1_500.ms))
+    cut = served(queue, "op", Pruning(older_than_ms: 1_000))
+    assert cut is Cleared(pruned: _, remaining: _) or unavailable?(cut)
+    held = reread(fs, stamp(clock))
+    for number in ended
+      read = served(queue, "p", Fetch(id: "j_#{number}"))
+      assert read is Found(_) or read == Missing or unavailable?(read)
+      if held is Some(board_now) and read == Missing and moved
+        assert decide(board_now, Call(worker: "p", command: Fetch(id: "j_#{number}")),
+          stamp(clock)).outcome == Missing
+      end
+    end
+  end
+end
+
 test rejects "the chaos switch fails the queue once its third write is on disk"
   fs = Fs.fixture()
   queue = chaotic(fs, Clock.fixture(), 3)
@@ -1502,5 +1698,5 @@ test rejects "under faults, the chaos switch fails the queue at a seventh write 
   end
 end
 
-verified: types, contracts, tests (23), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 1))
+verified: types, contracts, tests (26), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 1))
           proven: not run

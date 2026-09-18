@@ -98,3 +98,17 @@ p POST /queues/weekly/rename {"to": "reports"}
 p GET /jobs?queue=reports&key=weekly-7
 p GET /queues
 - GET /health
+p GET /archive
+p POST /archive/prune {"older_than_ms": 999}
+p POST /archive/prune {"older_than_ms": "soon"}
+p POST /archive/prune {"older_than_ms": 1000, "queue": "reports"}
+p GET /archive/prune
+- GET /archive
+p POST /archive/prune {"older_than_ms": 1000}
+p GET /jobs/j_7
+p GET /jobs?queue=reports&key=weekly-7
+p POST /jobs {"queue": "reports", "payload": "weekly, new", "max_tries": 1, "key": "weekly-7"}
+p POST /jobs {"queue": "reports", "payload": "weekly, again", "max_tries": 1, "key": "weekly-7"}
+p GET /archive
+p POST /archive/prune {"older_than_ms": 1000}
+- GET /health

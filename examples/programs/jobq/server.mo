@@ -303,7 +303,7 @@ test "two workers race over the wire for one job, and at most one of them holds 
   http = Http.fixture()
   port = started(http, Fs.fixture(), Clock.fixture())
   made = sent(http, port, by("POST", "/jobs", "p", create("only one")))
-  lease = "{\"lease_ms\": 60000}"
+  lease = "{\"lease_ms\": 3600000}"
   first = Client.start(http, port, by("POST", "/queues/q/lease", "w1", lease))
   second = Client.start(http, port, by("POST", "/queues/q/lease", "w2", lease))
   first.send(Go)
@@ -464,6 +464,46 @@ test "over the wire, a handoff moves a lease and a rename moves a queue, and eac
   end
 end
 
+test "over the wire, the archive counts its jobs and a prune removes the old ones, each with its statuses"
+  http = Http.fixture()
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  port = started_by(http, fs, clock, fresh(), retained(policy(5, 60_000, 0), 200))
+  made = sent(http, port, by("POST", "/jobs", "p", keyed_create("brief", "b-1")))
+  lent = sent(http, port, by("POST", "/queues/q/lease", "w", ""))
+  acked = if status(lent) == 200: sent(http, port, by("POST", "/jobs/j_1/ack", "w", "")) else: lent
+  waited = Fs.fixture(delay: 300.ms).write("wait", "x", within: 1.minute) is Ok(_)
+  shelf = sent(http, port, by("GET", "/archive", "p", ""))
+  assert in?(shelf, [200, 503])
+  assert in?(sent(http, port, Request(method: "GET", path: "/archive")), [401])
+  assert in?(sent(http, port, by("POST", "/archive", "p", "")), [405])
+  assert in?(sent(http, port, by("GET", "/archive/prune", "p", "")), [405])
+  assert in?(sent(http, port, by("POST", "/archive/prune", "p", "{\"older_than_ms\": 999}")), [400])
+  assert in?(sent(http, port, by("POST", "/archive/prune", "p", "{}")), [400])
+  young = sent(http, port, by("POST", "/archive/prune", "p", "{\"older_than_ms\": 1000}"))
+  assert in?(young, [200, 503])
+  aged = Fs.fixture(delay: 1_100.ms).write("wait", "x", within: 1.minute) is Ok(_)
+  cut = sent(http, port, by("POST", "/archive/prune", "p", "{\"older_than_ms\": 1000}"))
+  assert in?(cut, [200, 503])
+  clean = status(made) == 201 and status(acked) == 200 and waited and aged
+  if clean and status(shelf) == 200 and status(young) == 200 and status(cut) == 200
+    assert body_of(shelf).starts_with?("{\"archived\": 1, \"oldest_archived_at\": \"")
+    if body_of(young) == "{\"pruned\": 0, \"remaining\": 1}"
+      assert body_of(cut) == "{\"pruned\": 1, \"remaining\": 0}"
+    else
+      assert body_of(young) == "{\"pruned\": 1, \"remaining\": 0}"
+      assert body_of(cut) == "{\"pruned\": 0, \"remaining\": 0}"
+    end
+    assert in?(sent(http, port, by("GET", "/jobs/j_1", "p", "")), [404, 503])
+    again = sent(http, port, by("POST", "/jobs", "p", keyed_create("again", "b-1")))
+    assert in?(again, [201, 503])
+    empty = sent(http, port, by("GET", "/archive", "p", ""))
+    if status(empty) == 200
+      assert body_of(empty).starts_with?("{\"archived\": 0, \"oldest_archived_at\": null, \"bytes\": ")
+    end
+  end
+end
+
 # The program's own load test with the chaos switch on: every answer is 2xx, 4xx, or 503 while
 # the queue fails at every fifth write and comes back. A process test cannot hold its asserts past
 # a crash, so this is a test rejects; the end-to-end run in restarts.py holds every 2xx job present
@@ -485,5 +525,5 @@ test rejects "over the wire, with the chaos switch on, every answer is 2xx, 4xx,
   end
 end
 
-verified: types, contracts, tests (11), property (0 seeds), sim (100 runs)
+verified: types, contracts, tests (12), property (0 seeds), sim (100 runs)
           proven: not run

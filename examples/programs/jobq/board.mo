@@ -1,9 +1,9 @@
 module Jobq.Board
-expose Command, Call, Outcome, Counts, Tally, Order, Move, Board, Decision, Kept, Placement, Relabeled, board, retaining, decide, relabeled, folded_in, shelved, shelved_into, shelf_applied, tombstone?, rebuilt, records, shelf_records, health_of, tallies, ill_formed, snapshot, shelf_snapshot
+expose Command, Call, Outcome, Counts, Tally, Order, Move, Cut, Board, Decision, Kept, Placement, Relabeled, Pruned, board, retaining, decide, relabeled, pruned, oldest_shelved, folded_in, shelved, shelved_into, shelf_applied, tombstone?, rebuilt, records, shelf_records, health_of, tallies, ill_formed, snapshot, shelf_snapshot
 
-use Jobq.Job{Phase, Job, Making, job, archived, leased, acked, failed, retried, handed_off, looked, holds?, due?, queue?, payload?, token?, worker?, lease_ms?, id_of, number_of, shown, decoded, rule_broken, archive_broken, tagged, renames_of}
+use Jobq.Job{Phase, Job, Making, job, archived, leased, acked, failed, retried, handed_off, looked, holds?, due?, queue?, payload?, token?, worker?, lease_ms?, id_of, number_of, shown, decoded, rule_broken, archive_broken, tagged, renames_of, to_ms}
 
-intent "The queue as a value: every job by number, each queue's queued jobs oldest first, the leases and when the first runs out, the scheduled jobs and when the first is due, and the counts; a call becomes a decision, the board after it, the answer, and the records the store must hold before the answer is sent; every decision first puts back the leases that have run out, queues the scheduled jobs whose run_at has passed, and moves to the archive the done and dead jobs older than the retention; a create with a key answers the job the key already names; the archived jobs are kept beside the board, readable by id and by key, never listed; a lease is handed from the worker that holds it to another; and a queue is renamed, every job in it, live or archived, with its key, by one record that a replay applies to the records written before it."
+intent "The queue as a value: every job by number, each queue's queued jobs oldest first, the leases and when the first runs out, the scheduled jobs and when the first is due, and the counts; a call becomes a decision, the board after it, the answer, and the records the store must hold before the answer is sent; every decision first puts back the leases that have run out, queues the scheduled jobs whose run_at has passed, and moves to the archive the done and dead jobs older than the retention; a create with a key answers the job the key already names; the archived jobs are kept beside the board, readable by id and by key, never listed; a lease is handed from the worker that holds it to another; a queue is renamed, every job in it, live or archived, with its key, by one record that names the id the next job would take, which a replay applies to the records written before it and to no job numbered from that id on; and the archived jobs older than an age are pruned, their keys freed, by one record naming the cutoff, which a replay applies to the archive records written before it."
 
 never "a job is lost or changed by a replay"
   for k in Kept.all
@@ -20,6 +20,12 @@ end
 never "a rename leaves a job in no queue but its own or the new one, or moves a job of another queue"
   for r in Relabeled.all
     (r.before == r.from and r.after != r.to) or (r.before != r.from and r.after != r.before)
+  end
+end
+
+never "a prune removes a live job, or an archived job younger than its age"
+  for p in Pruned.all
+    p.live or p.archived_at > p.cutoff
   end
 end
 
@@ -41,6 +47,8 @@ enum Command
   Retry(id: String)
   Handoff(id: String, to: String)
   Rename(queue: String, to: String)
+  Pruning(older_than_ms: UInt64)
+  Archive
   Health
   Tallying
 end
@@ -82,15 +90,36 @@ enum Outcome
   Healthy(counts: Counts)
   Tallied(queues: List(Tally))
   Renamed(queue: String, moved: UInt64)
+  Cleared(pruned: UInt64, remaining: UInt64)
+  Shelf(archived: UInt64, oldest: Option(Time), bytes: UInt64)
   Absent(reason: String)
   Unavailable(reason: String)
 end
 
-# A rename as the log keeps it: the renames before it and it, `from`, and `to`.
+# A rename as the log keeps it: its place among the log's marks (renames and prunes, numbered in one
+# run), `from`, `to`, and the id the next created job would have taken at the rename, which a record
+# the previous version wrote leaves out (None).
 struct Move
   number: UInt64
   from: String
   to: String
+  next_id: Option(UInt64)
+end
+
+# A prune as the log keeps it: its place among the log's marks, the cutoff (an archived job whose
+# archived_at is at or before it is gone), and how many jobs it removed.
+struct Cut
+  number: UInt64
+  cutoff: Time
+  pruned: UInt64
+end
+
+# One job a prune removed: whether it was live, when it was archived, and the prune's cutoff.
+struct Pruned
+  number: UInt64
+  live: Bool
+  archived_at: Time
+  cutoff: Time
 end
 
 # One job a rename moved: its queue before and after, the rename's two names, and its lease before
@@ -125,7 +154,8 @@ end
 # fresh positions, in pages of 256 positions; each leased job's lease end, in pages of 256, and
 # the earliest of them, or earlier; each scheduled job's run_at the same way, and the earliest of
 # them; the next number and the numbers below `reserved` the log has reserved; the counts; when
-# the queue started; and the renames so far, with the ones the log still holds as records. Changing a map's existing entry copies the whole map (TOOLCHAIN-BUGS.md,
+# the queue started; and the marks so far (renames and prunes, numbered in one run), with the
+# renames and the prunes the log still holds as records. Changing a map's existing entry copies the whole map (TOOLCHAIN-BUGS.md,
 # bug 1), so every change copies one page and sets one entry in a map of pages, never a map of
 # every job.
 struct Board
@@ -146,8 +176,9 @@ struct Board
   reserved: UInt64
   counts: Counts
   started: Time
-  renames: UInt64
+  marks: UInt64
   moves: List(Move)
+  cuts: List(Cut)
 end
 
 # The board after a call, the answer to send, and the records to write first: a job's record
@@ -184,7 +215,7 @@ fn board(started: Time, next: UInt64) : Board
     due: None, waits: Map.new(), wake: None, next: next, reserved: next,
     counts: Counts(queued: 0, scheduled: 0, leased: 0, done: 0, dead: 0, archived: 0, uptime_ms: 0,
     restarts: 0),
-    started: started, renames: 0, moves: [])
+    started: started, marks: 0, moves: [], cuts: [])
 end
 
 # The board keeping a done or dead job `ms` after its last change before it archives it.
@@ -208,26 +239,28 @@ fn decide(board: Board, call: Call, now: Time) : Decision
     Retry(id): revived(swept.board, id, now)
     Handoff(id: id, to: to): passed_on(swept.board, call.worker, id, to, now)
     Rename(queue: queue, to: to): renaming(swept.board, queue, to)
+    Pruning(older_than_ms): pruning(swept.board, older_than_ms, now)
+    Archive: answered(swept.board, shelf_of(swept.board))
     Health: answered(swept.board, Healthy(counts: health_of(swept.board, now)))
     Tallying: answered(swept.board, Tallied(queues: tallies(swept.board)))
   end
   Decision(board: decided.board, outcome: decided.outcome,
-    writes: tags(swept.writes.concat(decided.writes), board.renames),
-    shelved: tags(swept.shelved.concat(decided.shelved), board.renames))
+    writes: tags(swept.writes.concat(decided.writes), board.marks),
+    shelved: tags(swept.shelved.concat(decided.shelved), board.marks))
 end
 
-# A decision's job records with the renames the board had before it: no decision both renames a
-# queue and writes a job's record, so every record a decision writes has seen exactly those.
-fn tags(changes: List((String, Option(String))), renames: UInt64) : List((String, Option(String)))
-  return changes if renames == 0
-  changes.map(fn(c) tag(c, renames) end)
+# A decision's job records with the marks the board had before it: no decision both writes a mark
+# (a rename or a prune) and a job's record, so every record a decision writes has seen exactly those.
+fn tags(changes: List((String, Option(String))), marks: UInt64) : List((String, Option(String)))
+  return changes if marks == 0
+  changes.map(fn(c) tag(c, marks) end)
 end
 
-fn tag(change: (String, Option(String)), renames: UInt64) : (String, Option(String))
+fn tag(change: (String, Option(String)), marks: UInt64) : (String, Option(String))
   case change.1
     Some(record):
       (change.0, Some(if change.0.starts_with?("j_")
-        tagged(record, renames)
+        tagged(record, marks)
       else
         record
       end))
@@ -441,7 +474,7 @@ end
 fn sweep(board: Board, now: Time) : Decision
   ensures all_leases(result.board).all?(fn(e) e.1 > now end)
   ensures all_waits(result.board).all?(fn(e) e.1 > now end)
-  ensures all_ends(result.board).all?(fn(e) !old_enough?(board, e.1, now) end)
+  ensures !looks_due?(result.board, now)
 
   return answered(board, Empty) if !looks_due?(board, now)
   ran_out = all_leases(board).filter(fn(e) e.1 <= now end).map(fn(e) e.0 end)
@@ -912,7 +945,8 @@ end
 
 # A queue renamed: 404 when `from` holds no job, live or archived, and 409 when `to` holds one,
 # which also covers `to` equal to `from`; otherwise the rename as a pure step, and one record for
-# the log naming the two queues. Since `to` holds no job, no key in it can meet one of `from`'s.
+# the log naming the two queues and the id the next created job will take, so a replay moves no job
+# numbered from it on. Since `to` holds no job, no key in it can meet one of `from`'s.
 fn renaming(board: Board, from: String, to: String) : Decision
   if !queue?(from) or !queue?(to)
     return answered(board, Unavailable(reason: "a rename names two queues"))
@@ -922,12 +956,116 @@ fn renaming(board: Board, from: String, to: String) : Decision
   end
   return answered(board, Conflict(reason: "#{to} exists")) if holds_queue?(board, to)
   step = relabeled(board, from, to)
-  number = board.renames + 1
+  number = board.marks + 1
   var after = step.0
-  after.renames = number
-  after.moves = board.moves.push(Move(number: number, from: from, to: to))
+  after.marks = number
+  after.moves = board.moves.push(Move(number: number, from: from, to: to,
+    next_id: Some(board.next)))
   Decision(board: after, outcome: Renamed(queue: to, moved: step.1),
-    writes: [(rename_key(number), Some(rename_record(from, to)))], shelved: [])
+    writes: [(rename_key(number), Some(rename_record(from, to, board.next)))], shelved: [])
+end
+
+# The archived jobs older than `older_than_ms` pruned: none removed writes nothing, and otherwise
+# one record for the log naming the cutoff and the count, never one per job.
+fn pruning(board: Board, older_than_ms: UInt64, now: Time) : Decision
+  if !age?(older_than_ms)
+    return answered(board, Unavailable(reason: "a prune's age is 1000 ms or more"))
+  end
+  step = pruned(board, older_than_ms, now)
+  return answered(board, Cleared(pruned: 0, remaining: board.shelved)) if step.1.size == 0
+  number = board.marks + 1
+  cut = Cut(number: number, cutoff: cutoff_of(older_than_ms, now), pruned: step.1.size)
+  var after = step.0
+  after.marks = number
+  after.cuts = board.cuts.push(cut)
+  Decision(board: after, outcome: Cleared(pruned: step.1.size, remaining: after.shelved),
+    writes: [(prune_key(number), Some(prune_record(cut)))], shelved: [])
+end
+
+# A prune's age: at least a second, and at most a hundred years, so its cutoff is a time.
+fn age?(ms: UInt64) : Bool
+  ms >= 1_000 and ms <= 3_153_600_000_000
+end
+
+# The cutoff of a prune at `now`: an archived job whose archived_at is at or before it is pruned.
+fn cutoff_of(older_than_ms: UInt64, now: Time) : Time
+  to_ms(now - older_than_ms.to_i64.ms)
+end
+
+# Whether an archived job is old enough for a prune whose cutoff is `cutoff`.
+fn aged?(held: Job, cutoff: Time) : Bool
+  case held.archived_at
+    Some(at): at <= cutoff
+    None: false
+  end
+end
+
+# The prune as a pure step over the archive and the key map: every archived job whose archived_at is
+# at least `older_than_ms` before now leaves the archive, and its key is free in its queue; nothing
+# live changes. Gives the board and the jobs removed.
+fn pruned(board: Board, older_than_ms: UInt64, now: Time) : (Board, List(Job))
+  requires age?(older_than_ms)
+  ensures result.0.jobs == board.jobs and result.0.counts == board.counts
+  ensures result.1.all?(fn(j) aged?(j, cutoff_of(older_than_ms, now)) end)
+  ensures keys_freed?(result.0, result.1)
+  ensures result.0.shelved + result.1.size == board.shelved
+
+  cutoff = cutoff_of(older_than_ms, now)
+  gone = all_shelved(board).filter(fn(j) aged?(j, cutoff) end).sort_by(fn(j) j.number end)
+  after = gone.reduce(board, fn(b, j) cut_from(b, j, cutoff) end)
+  (after, gone)
+end
+
+# One archived job pruned: out of the archive, and its key free when the key still names it.
+fn cut_from(board: Board, held: Job, cutoff: Time) : Board
+  removed = Pruned(number: held.number, live: job_of(board, held.number) is Some(_),
+    archived_at: held.archived_at or cutoff, cutoff: cutoff)
+  after = without_own_key(without_shelf_job(board, held.number), held)
+  if removed.live: board else: after
+end
+
+# Whether no key names any of the jobs any more.
+fn keys_freed?(board: Board, gone: List(Job)) : Bool
+  gone.all?(fn(j) key_free?(board, j) end)
+end
+
+# Whether no key names the job any more.
+fn key_free?(board: Board, held: Job) : Bool
+  case held.key
+    Some(key): keyed_number(board, held.queue, key) != Some(held.number)
+    None: true
+  end
+end
+
+# The board with the job's key free, when it names this job and not a later one.
+fn without_own_key(board: Board, held: Job) : Board
+  case held.key
+    Some(key):
+      if keyed_number(board, held.queue, key) == Some(held.number)
+        without_key(board, held)
+      else
+        board
+      end
+    None: board
+  end
+end
+
+# The archive as GET /archive shows it: how many jobs, the oldest archived_at, and the file's bytes,
+# which the queue fills in once the batch is on disk.
+fn shelf_of(board: Board) : Outcome
+  Shelf(archived: board.shelved, oldest: oldest_shelved(board), bytes: 0)
+end
+
+# The earliest archived_at in the archive, or None when it holds no job.
+fn oldest_shelved(board: Board) : Option(Time)
+  all_shelved(board).flat_map(fn(j) times_of(j.archived_at) end).min
+end
+
+fn times_of(at: Option(Time)) : List(Time)
+  case at
+    Some(t): [t]
+    None: []
+  end
 end
 
 # Whether a queue holds a job in any state, live or archived.
@@ -1003,8 +1141,63 @@ fn rename_key(number: UInt64) : String
   "rename_#{number}"
 end
 
-fn rename_record(from: String, to: String) : String
-  "{\"from\": #{Json.encode(from)}, \"to\": #{Json.encode(to)}}"
+fn rename_record(from: String, to: String, next_id: UInt64) : String
+  "{\"from\": #{Json.encode(from)}, \"to\": #{Json.encode(to)}, \"next_id\": #{next_id}}"
+end
+
+fn move_record(move: Move) : String
+  case move.next_id
+    Some(next_id): rename_record(move.from, move.to, next_id)
+    None: "{\"from\": #{Json.encode(move.from)}, \"to\": #{Json.encode(move.to)}}"
+  end
+end
+
+# The key a prune's record is kept under, by its number among the marks.
+fn prune_key(number: UInt64) : String
+  "prune_#{number}"
+end
+
+fn prune_record(cut: Cut) : String
+  "{\"cutoff\": #{Json.encode(cut.cutoff)}, \"pruned\": #{cut.pruned}}"
+end
+
+# The number in a prune's key: prune_ and digits, no sign and no leading zero.
+fn prune_number(key: String) : Option(UInt64)
+  return None if !key.starts_with?("prune_") or key.byte_size < 7
+  digits = key.slice(6, key.size)
+  return None if digits.starts_with?("0")
+  digits.to_u64
+end
+
+# The rule a prune's record breaks, or None when it is one a prune could have written: a cutoff
+# that is a time, and a count of at least one.
+fn prune_broken(entry: (String, String)) : Option(String)
+  return Some("its key is not prune_ and a number") if prune_number(entry.0) is None
+  case Json.decode(entry.1)
+    Ok(Object(fields)):
+      return Some("its cutoff is not a time") if Time.parse(name_in(fields, "cutoff")) is None
+      case fields.get("pruned")
+        Some(value):
+          count = value.to_i64 or 0
+          return Some("its pruned is not a whole number above 0") if count < 1
+          None
+        None: Some("its pruned is not a whole number above 0")
+      end
+    Ok(_): Some("is not a prune")
+    Error(_): Some("is not a prune")
+  end
+end
+
+# The prune a record holds, as a list of one, or none when it is not a good one.
+fn cuts_in(entry: (String, String)) : List(Cut)
+  return [] if !entry.0.starts_with?("prune_") or prune_broken(entry) is Some(_)
+  case (prune_number(entry.0), Json.decode(entry.1))
+    (Some(number), Ok(Object(fields))):
+      cutoff = Time.parse(name_in(fields, "cutoff")) or Time.from_parts(1970, 1, 1, 0, 0, 0)
+      count = (fields.get("pruned") or Null).to_i64 or 0
+      [Cut(number: number, cutoff: cutoff, pruned: count.to_u64)]
+    _: []
+  end
 end
 
 # The number in a rename's key: rename_ and digits, no sign and no leading zero.
@@ -1025,6 +1218,9 @@ fn rename_broken(entry: (String, String)) : Option(String)
       return Some("its from is not 1 to 64 letters, digits, - or _") if !queue?(from)
       return Some("its to is not 1 to 64 letters, digits, - or _") if !queue?(to)
       return Some("it renames #{from} to itself") if from == to
+      if fields.has?("next_id") and next_id_in(fields) is None
+        return Some("its next_id is not a whole number above 0")
+      end
       None
     Ok(_): Some("is not a rename")
     Error(_): Some("is not a rename")
@@ -1039,54 +1235,120 @@ fn name_in(fields: Map(String, Json), name: String) : String
   end
 end
 
-# The rename a record holds, as a list of one, or none when it is not a good one.
+# A rename record's next_id: a whole number above 0.
+fn next_id_in(fields: Map(String, Json)) : Option(UInt64)
+  value = try fields.get("next_id")
+  whole = try value.to_i64
+  return None if whole < 1
+  Some(whole.to_u64)
+end
+
+# The rename a record holds, as a list of one, or none when it is not a good one. A record the
+# previous version wrote has no next_id: it applies to every job the records before it hold, which
+# is every job numbered below the highest id in the folder when it was written.
 fn moves_in(entry: (String, String)) : List(Move)
-  return [] if rename_broken(entry) is Some(_)
+  return [] if !entry.0.starts_with?("rename_") or rename_broken(entry) is Some(_)
   case (rename_number(entry.0), Json.decode(entry.1))
     (Some(number), Ok(Object(fields))):
-      [Move(number: number, from: name_in(fields, "from"), to: name_in(fields, "to"))]
+      [Move(number: number, from: name_in(fields, "from"), to: name_in(fields, "to"),
+        next_id: next_id_in(fields))]
     _: []
   end
 end
 
-# A folder's records with the renames applied: each job record, live or archived, in the queue the
-# renames written after it put it in, in order, and no rename record left among the live ones; the
-# rename count, the highest of the renames kept and the count the log keeps; and the renames.
+# A folder's records with the marks applied: each job record, live or archived, in the queue the
+# renames written after it put it in, in order, each archived one the prunes written after it
+# removed left out, and no mark left among the live ones; the ids of the archived jobs pruned; the
+# mark count, the highest of the marks kept, of the ones the records say they have seen, and of the
+# count the previous version kept; the renames; and the prunes.
 struct Folded
   live: List((String, String))
   shelf: List((String, String))
-  renames: UInt64
+  pruned: Map(String, Bool)
+  marks: UInt64
   moves: List(Move)
+  cuts: List(Cut)
 end
 
 fn folded(entries: List((String, String)), shelf: List((String, String))) : Folded
   moves = entries.flat_map(fn(e) moves_in(e) end).sort_by(fn(m) m.number end)
+  cuts = entries.flat_map(fn(e) cuts_in(e) end).sort_by(fn(c) c.number end)
   kept = case entries.find(fn(e) e.0 == "renames" end)
     Some(e): e.1.to_u64 or 0
     None: 0
   end
-  count = max_of(kept, (moves.last or Move(number: 0, from: "", to: "")).number)
-  live = entries.filter(fn(e) e.0 != "renames" and !e.0.starts_with?("rename_") end)
-  return Folded(live: live, shelf: shelf, renames: count, moves: []) if moves.size == 0
+  last = max_of((moves.last or no_move()).number, (cuts.last or no_cut()).number)
+  seen = max_of(highest_seen(entries), highest_seen(shelf))
+  count = max_of(max_of(kept, last), seen)
+  live = entries.filter(fn(e) !mark_key?(e.0) end)
+  if moves.size == 0 and cuts.size == 0
+    return Folded(live: live, shelf: shelf, pruned: Map.new(), marks: count, moves: [], cuts: [])
+  end
+  gone = shelf.filter(fn(e) cut_by?(e, cuts) end)
+  kept_shelf = shelf.filter(fn(e) !cut_by?(e, cuts) end)
   Folded(live: live.map(fn(e) refolded(e, moves) end),
-    shelf: shelf.map(fn(e) refolded(e, moves) end), renames: count, moves: moves)
+    shelf: kept_shelf.map(fn(e) refolded(e, moves) end),
+    pruned: gone.reduce(Map.new(), fn(ids, e) ids.set(e.0, true) end), marks: count, moves: moves,
+    cuts: cuts)
 end
 
-# One record with the renames it has not seen applied, in order.
+fn no_move() : Move
+  Move(number: 0, from: "", to: "", next_id: None)
+end
+
+fn no_cut() : Cut
+  Cut(number: 0, cutoff: Time.from_parts(1970, 1, 1, 0, 0, 0), pruned: 0)
+end
+
+# Whether a live entry is the log's own and not a job's: the ids counter, the count the previous
+# version kept, or a mark.
+fn mark_key?(key: String) : Bool
+  key == "renames" or key.starts_with?("rename_") or key.starts_with?("prune_")
+end
+
+# The most marks any record says it has seen; only a record that carries the count is decoded.
+fn highest_seen(entries: List((String, String))) : UInt64
+  entries.filter(fn(e) e.1.contains?("\"renames\": ") end).map(fn(e) renames_of(e.1) end).max or 0
+end
+
+# Whether a prune written after an archived record removes it: its archived_at at or before the
+# cutoff of a prune the record has not seen.
+fn cut_by?(entry: (String, String), cuts: List(Cut)) : Bool
+  return false if cuts.size == 0 or !entry.0.starts_with?("j_") or tombstone?(entry.1)
+  seen = renames_of(entry.1)
+  later = cuts.filter(fn(c) c.number > seen end)
+  return false if later.size == 0
+  case decoded(entry.1)
+    Some(held): later.any?(fn(c) aged?(held, c.cutoff) end)
+    None: false
+  end
+end
+
+# One record with the renames it has not seen applied, in order: a rename moves a job numbered
+# below its next_id that is in its `from` at that point.
 fn refolded(entry: (String, String), moves: List(Move)) : (String, String)
-  return entry if !entry.0.starts_with?("j_") or tombstone?(entry.1)
+  return entry if moves.size == 0 or !entry.0.starts_with?("j_") or tombstone?(entry.1)
   seen = renames_of(entry.1)
   later = moves.filter(fn(m) m.number > seen end)
   return entry if later.size == 0
   case decoded(entry.1)
     Some(held):
-      queue = later.reduce(held.queue, fn(q, m) if q == m.from: m.to else: q end)
+      queue = later.reduce(held.queue, fn(q, m) moved_by(q, held.number, m) end)
       return entry if queue == held.queue
       var next = held
       next.queue = queue
       (entry.0, shown(next))
     None: entry
   end
+end
+
+# The queue a job numbered `number` in `queue` is in after the rename.
+fn moved_by(queue: String, number: UInt64, move: Move) : String
+  below = case move.next_id
+    Some(next_id): number < next_id
+    None: true
+  end
+  if queue == move.from and below: move.to else: queue
 end
 
 # The first record a folder holds that no request could have left, in key order, the live log's
@@ -1100,29 +1362,48 @@ fn ill_formed(entries: List((String, String)),
   sorted = entries.sort_by(fn(e) e.0 end)
   held = shelf.filter(fn(e) !tombstone?(e.1) end).sort_by(fn(e) e.0 end)
   top = max_of(highest(sorted), highest(shelf))
-  last = sorted.flat_map(fn(e) numbered_rename(e.0) end).max or 0
-  if sorted.find(fn(e) entry_broken(e, top, last) is Some(_) end) is Some(bad)
-    return Some((bad.0, entry_broken(bad, top, last) or ""))
+  if sorted.find(fn(e) entry_broken(e, top) is Some(_) end) is Some(bad)
+    return Some((bad.0, entry_broken(bad, top) or ""))
   end
   if held.find(fn(e) archive_broken(e.0, e.1) is Some(_) end) is Some(bad)
     return Some(("archive #{bad.0}", archive_broken(bad.0, bad.1) or ""))
   end
+  if shared_mark(sorted) is Some(clash)
+    return Some(clash)
+  end
   fold = folded(entries, shelf)
-  twice(fold.live, fold.shelf)
+  twice(fold.live, fold.shelf, fold.pruned)
 end
 
-fn numbered_rename(key: String) : List(UInt64)
-  case rename_number(key)
-    Some(n): [n]
-    None: []
+# The first mark whose number another mark already has: renames and prunes are numbered in one run.
+fn shared_mark(sorted: List((String, String))) : Option((String, String))
+  numbers = sorted.flat_map(fn(e) mark_number(e.0) end)
+  seen = numbers.reduce((Map.new(), [("", "")].take(0)), fn(acc, n) marked_once(acc, n) end)
+  seen.1.first
+end
+
+fn mark_number(key: String) : List((String, UInt64))
+  case (rename_number(key), prune_number(key))
+    (Some(n), _): [(key, n)]
+    (None, Some(n)): [(key, n)]
+    (None, None): []
+  end
+end
+
+fn marked_once(acc: (Map(UInt64, String), List((String, String))),
+  mark: (String, UInt64)) : (Map(UInt64, String), List((String, String)))
+  case acc.0.get(mark.1)
+    Some(first): (acc.0, acc.1.push((mark.0, "its number is #{first}'s too")))
+    None: (acc.0.set(mark.1, mark.0), acc.1)
   end
 end
 
 # The first job whose key another job in its queue already has, by number, the archive's taking
 # the place of any live record of the same job.
-fn twice(entries: List((String, String)), shelf: List((String, String))) : Option((String, String))
+fn twice(entries: List((String, String)), shelf: List((String, String)),
+  pruned: Map(String, Bool)) : Option((String, String))
   archived = shelf.flat_map(fn(e) job_under(e) end)
-  held = shelf.reduce(Map.new(), fn(ids, e) ids.set(e.0, true) end)
+  held = shelf.reduce(pruned, fn(ids, e) ids.set(e.0, true) end)
   live = entries.flat_map(fn(e) job_under(e) end).filter(fn(j) !held.has?(id_of(j.number)) end)
   jobs = live.concat(archived).filter(fn(j) j.key is Some(_) end).sort_by(fn(j) j.number end)
   seen = jobs.reduce((Map.new(), [("", "")].take(0)), fn(acc, j) keyed_once(acc, j) end)
@@ -1140,20 +1421,19 @@ fn keyed_once(acc: (Map((String, String), UInt64), List((String, String))),
   end
 end
 
-fn entry_broken(entry: (String, String), top: UInt64, last: UInt64) : Option(String)
+fn entry_broken(entry: (String, String), top: UInt64) : Option(String)
   return ids_broken(entry.1, top) if entry.0 == "ids"
-  return renames_broken(entry.1, last) if entry.0 == "renames"
+  return renames_broken(entry.1) if entry.0 == "renames"
   return rename_broken(entry) if entry.0.starts_with?("rename_")
+  return prune_broken(entry) if entry.0.starts_with?("prune_")
   rule_broken(entry.0, entry.1)
 end
 
-# The rename count is a number, and no lower than the last rename the log holds.
-fn renames_broken(value: String, last: UInt64) : Option(String)
-  case value.to_u64
-    Some(count):
-      if count >= last: None else: Some("the rename count is below rename_#{last}")
-    None: Some("is not a number")
-  end
+# The rename count the previous version kept is a number. It is only ever a floor: the marks a
+# folder holds and the counts its records carry are what number the next mark, so a count below the
+# last rename, which that version wrote after a compaction and one more rename, is no fault.
+fn renames_broken(value: String) : Option(String)
+  if value.to_u64 is Some(_): None else: Some("is not a number")
 end
 
 # The ids counter is a number, and no lower than the highest job's, so no number is handed twice.
@@ -1182,13 +1462,16 @@ end
 # by a move a kill cut short: the archive's record wins, and the live one is left out, as it is
 # when the archive holds the job's tombstone.
 #
-# A rename record applies to the job records written before it, live and archived, as `folded`
-# says; a rename record that is not one is None too.
+# A rename record applies to the job records written before it, live and archived, and a prune
+# record to the archive records written before it, as `folded` says: a pruned job is in neither
+# file, and a stale live record of it stays gone. A mark record that is not one is None too.
 fn rebuilt(entries: List((String, String)), shelf_entries: List((String, String)),
   started: Time) : Option(Board)
   fold = folded(entries, shelf_entries)
   renamings = entries.filter(fn(e) e.0.starts_with?("rename_") end)
   return None if renamings.any?(fn(e) rename_broken(e) is Some(_) end)
+  prunings = entries.filter(fn(e) e.0.starts_with?("prune_") end)
+  return None if prunings.any?(fn(e) prune_broken(e) is Some(_) end)
   shelf = fold.shelf
   floor = case fold.live.find(fn(e) e.0 == "ids" end)
     Some(e): try e.1.to_u64
@@ -1203,16 +1486,19 @@ fn rebuilt(entries: List((String, String)), shelf_entries: List((String, String)
   return None if jobs.size != held.size or archived.size != kept.size
   return None if !archived.all?(fn(j) j.archived_at is Some(_) end)
   sorted = jobs.sort_by(fn(j) j.number end)
-  top = max_of(numbers_top(sorted), numbers_top(archived.sort_by(fn(j) j.number end)))
+  top = max_of(max_of(numbers_top(sorted), numbers_top(archived.sort_by(fn(j) j.number end))),
+    highest(fold.pruned.keys.map(fn(k) (k, "") end)))
   start = board(started, max_of(top + 1, max_of(floor, 1)))
   shelved_first = archived.reduce(start, fn(so_far, j) shelved_into(so_far, j) end)
   live = sorted.filter(fn(j)
-    shelf_job(shelved_first, j.number) is None and !gone.has?(id_of(j.number))
+    shelf_job(shelved_first,
+      j.number) is None and !gone.has?(id_of(j.number)) and !fold.pruned.has?(id_of(j.number))
   end)
   var built = live.reduce(shelved_first, fn(so_far, j) placed(so_far, j) end)
   built.reserved = max_of(floor, built.next)
-  built.renames = fold.renames
+  built.marks = fold.marks
   built.moves = fold.moves
+  built.cuts = fold.cuts
   whole = built
   placements = live.map(fn(j)
     Placement(number: j.number, live: true, shelved: shelf_job(whole, j.number) is Some(_))
@@ -1253,36 +1539,39 @@ fn placed(board: Board, held: Job) : Board
   after
 end
 
-# The board as the changes that write it whole: the reserved numbers, the rename count and the
-# rename records the board still keeps, once there has been a rename, then every job's record by
-# number, in its current queue and carrying every rename, so no rename applies to it again. The
-# renames are kept because the archive's records may still need them.
+# The board as the changes that write it whole: the reserved numbers, the rename and prune records
+# the board still keeps, then every job's record by number, in its current queue and carrying the
+# count of every mark, so no mark applies to it again. The marks are kept because the archive's
+# records may still need them; no count is kept, since the marks and the records carry it.
 fn snapshot(board: Board) : List((String, Option(String)))
   ensures result.size >= all_jobs(board).size + 1
   ensures board.moves.size == 0 implies result.all?(fn(w) !w.0.starts_with?("rename_") end)
+  ensures board.cuts.size == 0 implies result.all?(fn(w) !w.0.starts_with?("prune_") end)
 
-  counter = if board.renames > 0: [("renames", Some("#{board.renames}"))] else: []
-  moves = board.moves.map(fn(m) (rename_key(m.number), Some(rename_record(m.from, m.to))) end)
-  [("ids",
-    Some("#{board.reserved}"))].concat(counter).concat(moves).concat(all_jobs(board).map(fn(j)
-    (id_of(j.number), Some(tagged(shown(j), board.renames)))
+  moves = board.moves.map(fn(m) (rename_key(m.number), Some(move_record(m))) end)
+  cuts = board.cuts.map(fn(c) (prune_key(c.number), Some(prune_record(c))) end)
+  [("ids", Some("#{board.reserved}"))].concat(moves).concat(cuts).concat(all_jobs(board).map(fn(j)
+    (id_of(j.number), Some(tagged(shown(j), board.marks)))
   end))
 end
 
-# The board once every rename is folded into the records that write it whole: no rename record
-# left to keep, the count kept.
+# The board once every mark is folded into the records that write it whole: no rename or prune
+# record left to keep, and no count, so the records it writes carry none and the next mark is the
+# first.
 fn folded_in(board: Board) : Board
   var after = board
   after.moves = []
+  after.cuts = []
+  after.marks = 0
   after
 end
 
 # The archive as the changes that write it whole: every archived job's record by number, in its
-# current queue and carrying every rename.
+# current queue, the pruned ones gone, and carrying the count of every mark.
 fn shelf_snapshot(board: Board) : List((String, Option(String)))
   ensures result.size == board.shelved
 
-  all_shelved(board).map(fn(j) (id_of(j.number), Some(tagged(shown(j), board.renames))) end)
+  all_shelved(board).map(fn(j) (id_of(j.number), Some(tagged(shown(j), board.marks))) end)
 end
 
 # Every job's record, by number, as the store holds them.
@@ -1330,7 +1619,8 @@ fn number_in(decision: Decision) : UInt64
     Made(one): one.number
     Found(one): one.number
     Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
-      moved: _) | Absent(_) | Unavailable(_):
+      moved: _) | Cleared(pruned: _, remaining: _) | Shelf(archived: _, oldest: _,
+      bytes: _) | Absent(_) | Unavailable(_):
       0
   end
 end
@@ -1340,7 +1630,8 @@ fn job_in(decision: Decision) : Option(Job)
     Made(one): Some(one)
     Found(one): Some(one)
     Listed(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
-      moved: _) | Absent(_) | Unavailable(_):
+      moved: _) | Cleared(pruned: _, remaining: _) | Shelf(archived: _, oldest: _,
+      bytes: _) | Absent(_) | Unavailable(_):
       None
   end
 end
@@ -1412,7 +1703,8 @@ fn keyed_under?(b: Board, queue: String, key: String, now: Time) : Bool
   case found.outcome
     Listed(jobs): jobs.size == 1
     Made(_) | Found(_) | Removed | Missing | Conflict(_) | Empty | Healthy(_) | Tallied(_) | Renamed(queue: _,
-      moved: _) | Absent(_) | Unavailable(_):
+      moved: _) | Cleared(pruned: _, remaining: _) | Shelf(archived: _, oldest: _,
+      bytes: _) | Absent(_) | Unavailable(_):
       false
   end
 end
@@ -1440,6 +1732,28 @@ fn busy(now: Time) : Board
     later).board
   b = lease_by(b, "w1", "a", 3_600_000, later).board
   shelved(b, now).board
+end
+
+# In queue a with a retention of a second: j_1 (key k1) done at start and archived at start + 2 s,
+# j_2 (key k2) done at start + 5 s and archived at start + 7 s, and j_3 (key k3) queued, live.
+fn aging() : Board
+  var b = ["k1", "k2", "k3"].reduce(retaining(board(start(), 1), 1_000),
+    fn(so_far, key) create_keyed(so_far, "a", key, start()).board end)
+  b = decide(lease_by(b, "w1", "a", 100, start()).board, call("w1", Ack(id: "j_1")), start()).board
+  b = shelved(b, start() + 2_000.ms).board
+  later = start() + 5_000.ms
+  b = decide(lease_by(b, "w1", "a", 100, later).board, call("w1", Ack(id: "j_2")), later).board
+  shelved(b, start() + 7_000.ms).board
+end
+
+# A rename record as the previous version wrote it, with no next_id.
+fn without_next_id(entry: (String, String)) : (String, String)
+  return entry if !entry.0.starts_with?("rename_")
+  (entry.0, entry.1.replace(", \"next_id\": 2}", "}"))
+end
+
+fn prune(b: Board, older_than_ms: UInt64, now: Time) : Decision
+  decide(b, call("op", Pruning(older_than_ms: older_than_ms)), now)
 end
 
 test "a job made is found by its id, and its record is written under that id"
@@ -1988,8 +2302,8 @@ test "a rename moves every job of the queue in every state, archived too, with i
   assert step.1 == 5
   done = rename(b, "a", "c", now)
   assert done.outcome == Renamed(queue: "c", moved: 5)
-  assert done.writes == [("rename_1", Some("{\"from\": \"a\", \"to\": \"c\"}"))]
-  assert done.shelved == [] and done.board.renames == 1
+  assert done.writes == [("rename_1", Some("{\"from\": \"a\", \"to\": \"c\", \"next_id\": 7}"))]
+  assert done.shelved == [] and done.board.marks == 1
   after = done.board
   assert decide(after, call("p", Tallying), now).outcome is Tallied(queues)
   assert queues.map(fn(t) t.name end) == ["b", "c"]
@@ -2072,7 +2386,7 @@ test "a rename undone by a rename restores every job and key, and a freed name i
   back = rename(there.board, "c", "a", now)
   assert back.outcome == Renamed(queue: "a", moved: 5)
   assert records(back.board) == records(b) and shelf_records(back.board) == shelf_records(b)
-  assert back.board.renames == 2 and back.board.moves.size == 2
+  assert back.board.marks == 2 and back.board.moves.size == 2
   assert ["k1", "k2", "k3"].all?(fn(key) keyed_under?(back.board, "a", key, now) end)
   assert !["k1", "k2", "k3"].any?(fn(key) keyed_under?(back.board, "c", key, now) end)
   assert number_in(lease_by(back.board, "w2", "a", 1_000, now)) == 4
@@ -2107,7 +2421,7 @@ test "a replay applies a rename to the records written before it and not to thos
   assert rebuilt(store.entries, shelf, now) is Some(again)
   assert records(again) == records(held.board)
   assert shelf_records(again) == shelf_records(held.board)
-  assert again.renames == 1
+  assert again.marks == 1
   assert queue_in(decide(again, call("p", Fetch(id: "j_1")), now)) == "c"
   assert queue_in(decide(again, call("p", Fetch(id: "j_2")), now)) == "c"
   assert queue_in(decide(again, call("p", Fetch(id: "j_3")), now)) == "c"
@@ -2129,25 +2443,48 @@ test "a replay applies a rename to the records written before it and not to thos
   assert records(b).size > 0
 end
 
-test "a snapshot keeps the renames and the count, and a compacted one keeps only the count"
+test "a snapshot keeps the renames and no count, and a compacted one keeps neither"
   now = start() + 1_000.ms
   b = busy(now)
   moved = rename(rename(b, "a", "c", now).board, "b", "a", now).board
   lines = snapshot(moved)
-  assert lines.map(fn(w) w.0 end).take(4) == ["ids", "renames", "rename_1", "rename_2"]
-  assert lines.get(1) == Some(("renames", Some("2")))
+  assert lines.map(fn(w) w.0 end).take(3) == ["ids", "rename_1", "rename_2"]
+  assert lines.all?(fn(w) w.0 != "renames" end)
   shelf = shelf_snapshot(moved).map(fn(w) (w.0, w.1 or "") end)
   assert shelf.all?(fn(e) renames_of(e.1) == 2 and e.1.contains?("\"queue\": \"c\"") end)
   assert rebuilt(lines.map(fn(w) (w.0, w.1 or "") end), shelf, now) is Some(again)
   assert records(again) == records(moved) and shelf_records(again) == shelf_records(moved)
+  assert again.marks == 2
   bare = snapshot(folded_in(moved))
-  assert bare.map(fn(w) w.0 end).take(2) == ["ids", "renames"]
-  assert bare.all?(fn(w) !w.0.starts_with?("rename_") end)
-  assert rebuilt(bare.map(fn(w) (w.0, w.1 or "") end), shelf, now) is Some(folded_board)
-  assert records(folded_board) == records(moved) and folded_board.renames == 2
-  next = rename(folded_board, "c", "f", now)
-  assert next.writes.map(fn(w) w.0 end) == ["rename_3"]
+  assert bare.all?(fn(w) !mark_key?(w.0) end)
+  assert bare.all?(fn(w) renames_of(w.1 or "") == 0 end)
+  plain_shelf = shelf_snapshot(folded_in(moved)).map(fn(w) (w.0, w.1 or "") end)
+  assert plain_shelf.all?(fn(e) renames_of(e.1) == 0 end)
+  assert rebuilt(bare.map(fn(w) (w.0, w.1 or "") end), plain_shelf, now) is Some(folded_board)
+  assert records(folded_board) == records(moved) and folded_board.marks == 0
+  assert shelf_records(folded_board) == shelf_records(moved)
+  assert rename(folded_board, "c", "f", now).writes.map(fn(w) w.0 end) == ["rename_1"]
+  assert rebuilt(bare.map(fn(w) (w.0, w.1 or "") end), shelf, now) is Some(half)
+  assert half.marks == 2 and shelf_records(half) == shelf_records(moved)
+  assert rename(half, "c", "f", now).writes.map(fn(w) w.0 end) == ["rename_3"]
   assert snapshot(b).size == records(b).size + 1
+end
+
+# The generation-five bug: the previous version compacted a folder with renames to a count and no
+# rename record, then renamed once more, and refused the folder it had written itself ("the rename
+# count is below rename_3"). The count is a floor now, and the marks and records number the next.
+test "a folder the previous version compacted and renamed once more opens, and numbers the next mark past both"
+  entries = [("ids", "1000"),
+    ("renames", "2"),
+    ("j_1", tagged(shown(job(1, plain("c", "", 1), start())), 2)),
+    ("rename_3", "{\"from\": \"c\", \"to\": \"d\"}")]
+  assert ill_formed(entries, []) is None
+  assert rebuilt(entries, [], start()) is Some(b)
+  assert b.marks == 3
+  assert queue_in(decide(b, call("p", Fetch(id: "j_1")), start())) == "d"
+  assert rename(b, "d", "e", start()).writes.map(fn(w) w.0 end) == ["rename_4"]
+  made = decide(b, call("p", Create(making: plain("c", "new", 1))), start())
+  assert queue_in(made) == "c"
 end
 
 test "a folder with a rename record that is not one is ill-formed by name"
@@ -2169,12 +2506,144 @@ test "a folder with a rename record that is not one is ill-formed by name"
   assert ill_formed(entries.push(("rename_01", "{\"from\": \"a\", \"to\": \"b\"}")),
     []) == Some(("rename_01", "its key is not rename_ and a number"))
   assert ill_formed(good.push(("renames", "x")), []) == Some(("renames", "is not a number"))
-  assert ill_formed(good.push(("renames", "0")),
-    []) == Some(("renames", "the rename count is below rename_1"))
+  assert ill_formed(good.push(("renames", "0")), []) is None
   assert ill_formed(good.push(("renames", "1")), []) is None
+  assert ill_formed(entries.push(("rename_1", "{\"from\": \"a\", \"to\": \"b\", \"next_id\": 0}")),
+    []) == Some(("rename_1", "its next_id is not a whole number above 0"))
+  assert ill_formed(entries.push(("rename_1",
+    "{\"from\": \"a\", \"to\": \"b\", \"next_id\": \"2\"}")),
+    []) == Some(("rename_1", "its next_id is not a whole number above 0"))
   clash = good.push(("j_2", shown(job(2, keyed("b", "k"), start())))).push(("j_3",
     shown(job(3, keyed("a", "k"), start()))))
   assert ill_formed(clash, []) == Some(("j_3", "its key k is j_2's too"))
+end
+
+test "a prune removes each archived job at least its age old, frees its key, and leaves the rest and every live job alone"
+  b = aging()
+  now = start() + 10_000.ms
+  assert health_of(b, now).archived == 2 and health_of(b, now).queued == 1
+  done = prune(b, 5_000, now)
+  assert done.outcome == Cleared(pruned: 1, remaining: 1)
+  assert done.writes == [("prune_1", Some("{\"cutoff\": \"2026-09-14T10:00:05Z\", \"pruned\": 1}"))]
+  assert done.shelved == [] and done.board.marks == 1 and done.board.cuts.size == 1
+  after = done.board
+  assert decide(after, call("p", Fetch(id: "j_1")), now).outcome == Missing
+  assert decide(after, call("p", Fetch(id: "j_2")), now).outcome is Found(kept)
+  assert kept.archived_at == Some(start() + 7_000.ms)
+  assert records(after) == records(b) and health_of(after, now).queued == 1
+  assert health_of(after, now).archived == 1
+  assert create_keyed(after, "a", "k1", now).outcome is Made(fresh)
+  assert fresh.number == 4
+  assert number_in(create_keyed(after, "a", "k2", now)) == 2
+  assert number_in(create_keyed(after, "a", "k3", now)) == 3
+  assert decide(after, call("p", Archive), now).outcome == Shelf(archived: 1,
+    oldest: Some(start() + 7_000.ms), bytes: 0)
+  none = prune(after, 5_000, now)
+  assert none.outcome == Cleared(pruned: 0, remaining: 1) and none.writes == []
+  assert none.board == after
+  at_edge = prune(b, 8_000, now)
+  assert at_edge.outcome == Cleared(pruned: 1, remaining: 1)
+  assert prune(b, 8_001, now).outcome == Cleared(pruned: 0, remaining: 2)
+  assert prune(b, 999, now).outcome is Unavailable(_)
+  assert decide(board(start(), 1), call("p", Archive), now).outcome == Shelf(archived: 0,
+    oldest: None, bytes: 0)
+  step = pruned(b, 1_000, now)
+  assert step.1.map(fn(j) j.number end) == [1, 2] and step.0.jobs == b.jobs
+end
+
+test "a replay applies a prune to the archive records written before it and not after, and a pruned job's stale live record stays gone"
+  b = aging()
+  now = start() + 10_000.ms
+  entries = store_of(b)
+  shelf = shelf_snapshot(b).map(fn(w) (w.0, w.1 or "") end)
+  done = prune(b, 5_000, now)
+  logged_entries = done.writes.reduce(Map.new(), fn(m, w) kept_in(m, w) end)
+  live = entries.concat(logged_entries.entries)
+  assert ill_formed(live, shelf) is None
+  assert rebuilt(live, shelf, now) is Some(again)
+  assert records(again) == records(done.board) and shelf_records(again) == shelf_records(done.board)
+  assert again.marks == 1 and health_of(again, now).archived == 1
+  assert create_keyed(again, "a", "k1", now).outcome is Made(_)
+  stale = live.push(("j_1", records(one_done("k1")).first or ""))
+  assert rebuilt(stale, shelf, now) is Some(no_stale)
+  assert records(no_stale) == records(again)
+  old_one = shelf.find(fn(e) e.0 == "j_1" end) or ("", "")
+  after_it = shelf.push(("j_9",
+    tagged(old_one.1.replace("\"j_1\"", "\"j_9\"").replace("\"k1\"", "\"k9\""), 1)))
+  assert rebuilt(live.push(("ids", "1000")), after_it, now) is Some(written_after)
+  assert decide(written_after, call("p", Fetch(id: "j_9")), now).outcome is Found(nine)
+  assert nine.archived_at == Some(start() + 2_000.ms)
+  whole = snapshot(done.board).map(fn(w) (w.0, w.1 or "") end)
+  shelf_whole = shelf_snapshot(done.board).map(fn(w) (w.0, w.1 or "") end)
+  assert rebuilt(whole, shelf_whole, now) is Some(compacted)
+  assert records(compacted) == records(done.board)
+  assert shelf_records(compacted) == shelf_records(done.board)
+  plain_log = snapshot(folded_in(done.board)).map(fn(w) (w.0, w.1 or "") end)
+  plain_shelf = shelf_snapshot(folded_in(done.board)).map(fn(w) (w.0, w.1 or "") end)
+  assert plain_log.all?(fn(e) !mark_key?(e.0) end)
+  assert rebuilt(plain_log, plain_shelf, now) is Some(folded_board)
+  assert shelf_records(folded_board) == shelf_records(done.board) and folded_board.marks == 0
+end
+
+test "a rename record's next_id keeps a job numbered from it in the old name, and one without moves every job before it"
+  one = shown(job(1, plain("a", "one", 1), start()))
+  two = shown(job(2, plain("a", "two", 1), start()))
+  done_two = archived(acked(leased(job(3, plain("a", "three", 1), start()), "w", 100, start()), "w",
+    start()),
+    start() + 1.ms)
+  entries = [("ids", "1000"),
+    ("j_1", one),
+    ("j_2", two),
+    ("rename_1", "{\"from\": \"a\", \"to\": \"c\", \"next_id\": 2}")]
+  shelf = [("j_3", shown(done_two))]
+  assert ill_formed(entries, shelf) is None
+  assert rebuilt(entries, shelf, start()) is Some(b)
+  assert queue_in(decide(b, call("p", Fetch(id: "j_1")), start())) == "c"
+  assert queue_in(decide(b, call("p", Fetch(id: "j_2")), start())) == "a"
+  assert queue_in(decide(b, call("p", Fetch(id: "j_3")), start())) == "a"
+  old = entries.map(fn(e) without_next_id(e) end)
+  assert rebuilt(old, shelf, start()) is Some(every)
+  assert ["j_1",
+    "j_2",
+    "j_3"].all?(fn(id) queue_in(decide(every, call("p", Fetch(id: id)), start())) == "c" end)
+  made = decide(board(start(), 1), call("p", Create(making: plain("a", "x", 1))), start())
+  moved = rename(made.board, "a", "c", start())
+  again = decide(moved.board, call("p", Create(making: keyed("a", "k"))), start())
+  assert moved.writes == [("rename_1", Some("{\"from\": \"a\", \"to\": \"c\", \"next_id\": 2}"))]
+  held = lease_by(again.board, "w", "a", 100, start())
+  acked_two = decide(held.board, call("w", Ack(id: "j_2")), start())
+  shelving = shelved(retaining(acked_two.board, 1_000), start() + 1_000.ms)
+  untagged = shelving.shelved.map(fn(w) (w.0, (w.1 or "").replace(", \"renames\": 1", "")) end)
+  store = [made, moved, again, held, acked_two, shelving].reduce(Map.new(),
+    fn(s, d) logged(s, d) end)
+  assert rebuilt(store.entries, untagged, start() + 1_000.ms) is Some(replayed)
+  assert queue_in(decide(replayed, call("p", Fetch(id: "j_2")), start() + 1_000.ms)) == "a"
+  assert number_in(create_keyed(replayed, "a", "k", start() + 1_000.ms)) == 2
+  assert queue_in(decide(replayed, call("p", Fetch(id: "j_1")), start() + 1_000.ms)) == "c"
+end
+
+test "a folder with a prune record that is not one, or two marks with one number, is ill-formed by name"
+  entries = [("ids", "1000"), ("j_1", shown(job(1, plain("a", "", 1), start())))]
+  good = entries.push(("prune_1", "{\"cutoff\": \"2026-09-14T10:00:05Z\", \"pruned\": 2}"))
+  assert ill_formed(good, []) is None
+  assert rebuilt(good, [], start()) is Some(b)
+  assert b.marks == 1 and b.cuts.size == 1
+  bad_cutoff = entries.push(("prune_1", "{\"cutoff\": \"yesterday\", \"pruned\": 2}"))
+  assert ill_formed(bad_cutoff, []) == Some(("prune_1", "its cutoff is not a time"))
+  assert rebuilt(bad_cutoff, [], start()) is None
+  none = entries.push(("prune_1", "{\"cutoff\": \"2026-09-14T10:00:05Z\", \"pruned\": 0}"))
+  assert ill_formed(none, []) == Some(("prune_1", "its pruned is not a whole number above 0"))
+  assert ill_formed(entries.push(("prune_1", "{\"cutoff\": \"2026-09-14T10:00:05Z\"}")),
+    []) == Some(("prune_1", "its pruned is not a whole number above 0"))
+  assert ill_formed(entries.push(("prune_1", "7")), []) == Some(("prune_1", "is not a prune"))
+  assert ill_formed(entries.push(("prune_x", "{}")),
+    []) == Some(("prune_x", "its key is not prune_ and a number"))
+  shared = good.push(("rename_1", "{\"from\": \"a\", \"to\": \"b\", \"next_id\": 2}"))
+  assert ill_formed(shared, []) == Some(("rename_1", "its number is prune_1's too"))
+end
+
+test rejects "a prune step whose age is under a second"
+  pruned(aging(), 999, start() + 10_000.ms)
 end
 
 test rejects "a rename step whose target is its source"
@@ -2202,5 +2671,5 @@ property "a job made then fetched gives back any valid payload"
   end
 end
 
-verified: types, contracts, tests (41), property (200 seeds), sim (not run)
+verified: types, contracts, tests (47), property (200 seeds), sim (not run)
           proven: not run

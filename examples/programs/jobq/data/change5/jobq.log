@@ -1,0 +1,8 @@
+SET ids 1001
+SET renames 1
+SET j_2 {"id": "j_2", "queue": "old-c", "key": "a2", "state": "queued", "payload": "a2", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "2026-09-18T12:39:45.261Z", "updated_at": "2026-09-18T12:39:45.261Z", "renames": 1}
+SET j_3 {"id": "j_3", "queue": "old-c", "key": "a3", "state": "queued", "payload": "a3", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "2026-09-18T12:39:45.263Z", "updated_at": "2026-09-18T12:39:45.263Z", "renames": 1}
+SET j_5 {"id": "j_5", "queue": "old-b", "key": "b2", "state": "queued", "payload": "b2", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "2026-09-18T12:39:45.268Z", "updated_at": "2026-09-18T12:39:45.268Z", "renames": 1}
+SET rename_2 {"from": "old-c", "to": "old-d"}
+SET ids 2001
+SET j_1001 {"id": "j_1001", "queue": "old-c", "key": "c1", "state": "queued", "payload": "c1", "tries": 0, "max_tries": 2, "backoff_ms": 0, "created_at": "2026-09-18T12:39:46.612Z", "updated_at": "2026-09-18T12:39:46.612Z", "renames": 2}

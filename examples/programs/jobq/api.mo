@@ -1,5 +1,5 @@
 module Jobq.Api
-expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from, handoff_from, rename_from
+expose Routed, route, respond, bearer, created_from, lease_from, fail_from, listing_from, handoff_from, rename_from, prune_from
 
 use Jobq.Board{Command, Call, Outcome, Counts, Tally}
 use Jobq.Job{Job, Making, queue?, key?, payload?, reason?, token?, worker?, tries?, lease_ms?, delay_ms?, backoff_ms?, phase_named, id_of, shown}
@@ -20,13 +20,16 @@ fn route(request: Request) : Routed
         "health": healthy(request)
         "jobs": collection(request)
         "queues": every_queue(request)
+        "archive": looking(request)
         _: nowhere(request)
       end
-    3: if parts.get(1) == Some("jobs") and parts.get(2) != Some("")
-      member(request, parts.get(2) or "")
-    else
-      nowhere(request)
-    end
+    3:
+      case (parts.get(1) or "", parts.get(2) or "")
+        ("jobs", ""): nowhere(request)
+        ("jobs", id): member(request, id)
+        ("archive", "prune"): pruning(request)
+        _: nowhere(request)
+      end
     4:
       case (parts.get(1) or "", parts.get(3) or "")
         ("jobs", "ack"): settling(request, parts.get(2) or "", false)
@@ -103,6 +106,36 @@ fn leasing(request: Request, queue: String) : Routed
     Ok(ms): Asked(call: Call(worker: worker, command: Lease(queue: queue, lease_ms: ms)))
     Error(why): Answered(response: failed(400, why))
   end
+end
+
+# The archive's count, its oldest job, and its size, with a token like every route but health.
+fn looking(request: Request) : Routed
+  return Answered(response: not_allowed("GET")) if request.method != "GET"
+  worker = try_token(request)
+  return Answered(response: unauthorized()) if worker == ""
+  Asked(call: Call(worker: worker, command: Archive))
+end
+
+# A prune names the age in its body.
+fn pruning(request: Request) : Routed
+  return Answered(response: not_allowed("POST")) if request.method != "POST"
+  worker = try_token(request)
+  return Answered(response: unauthorized()) if worker == ""
+  asked(worker, prune_from(request.body))
+end
+
+# A prune's body: older_than_ms, a whole number of at least 1,000 (and at most a hundred years, so
+# its cutoff is a time); no other field.
+fn prune_from(body: String) : Result(Command, String)
+  fields = try object_of(body)
+  if fields.keys.find(fn(name) name != "older_than_ms" end) is Some(name)
+    return Error("#{name} is not a field here; the body is {\"older_than_ms\": ...}")
+  end
+  ms = try count_field(fields, "older_than_ms")
+  if ms < 1_000 or ms > 3_153_600_000_000
+    return Error("older_than_ms must be a whole number of at least 1000")
+  end
+  Ok(Pruning(older_than_ms: ms))
 end
 
 # A handoff takes the holder's token and names the worker the lease goes to.
@@ -311,9 +344,21 @@ fn respond(outcome: Outcome) : Response
       json(200, "{\"queues\": [#{String.join(queues.map(fn(t) tally(t) end), ", ")}]}")
     Renamed(queue: queue, moved: moved):
       json(200, "{\"queue\": #{Json.encode(queue)}, \"moved\": #{moved}}")
+    Cleared(pruned: pruned, remaining: remaining):
+      json(200, "{\"pruned\": #{pruned}, \"remaining\": #{remaining}}")
+    Shelf(archived: archived, oldest: oldest, bytes: bytes):
+      json(200, shelf(archived, oldest, bytes))
     Absent(reason): failed(404, reason)
     Unavailable(reason): failed(503, reason)
   end
+end
+
+fn shelf(archived: UInt64, oldest: Option(Time), bytes: UInt64) : String
+  since = case oldest
+    Some(at): Json.encode(at)
+    None: "null"
+  end
+  "{\"archived\": #{archived}, \"oldest_archived_at\": #{since}, \"bytes\": #{bytes}}"
 end
 
 fn tally(one: Tally) : String
@@ -621,6 +666,41 @@ test "a rename answers the new name and how many jobs moved, and a queue with no
   assert respond(Conflict(reason: "mail exists")).status == 409
 end
 
+test "the archive takes GET and a prune POST with a token, and a prune's age is a whole number of at least 1000"
+  assert route(by("GET", "/archive", "op", "")) == Asked(call: Call(worker: "op", command: Archive))
+  assert route(by("POST", "/archive/prune", "op",
+    "{\"older_than_ms\": 1000}")) == Asked(call: Call(worker: "op",
+    command: Pruning(older_than_ms: 1_000)))
+  assert route(by("POST", "/archive", "op", "")) is Answered(refused)
+  assert refused.status == 405 and refused.headers.get("allow") == Some("GET")
+  assert status_of(route(by("GET", "/archive/prune", "op", ""))) == 405
+  assert status_of(route(Request(method: "GET", path: "/archive"))) == 401
+  assert status_of(route(Request(method: "POST", path: "/archive/prune",
+    body: "{\"older_than_ms\": 5000}"))) == 401
+  assert status_of(route(by("POST", "/archive/other", "op", ""))) == 404
+  assert status_of(route(by("POST", "/archive/prune/x", "op", ""))) == 404
+  too_young = "older_than_ms must be a whole number of at least 1000"
+  assert prune_from("{\"older_than_ms\": 999}") == Error(too_young)
+  assert prune_from("{\"older_than_ms\": 0}") == Error(too_young)
+  assert prune_from("{\"older_than_ms\": 3153600000001}") == Error(too_young)
+  assert prune_from("{\"older_than_ms\": -5}") == Error("older_than_ms must be a whole number")
+  assert prune_from("{\"older_than_ms\": 1.5}") == Error("older_than_ms must be a whole number")
+  assert prune_from("{\"older_than_ms\": \"5000\"}") == Error("older_than_ms must be a whole number")
+  assert prune_from("{}") == Error("older_than_ms is missing")
+  assert prune_from("") == Error("the body is not JSON")
+  assert prune_from("{\"older_than_ms\": 5000, \"queue\": \"q\"}") is Error(_)
+  assert status_of(route(by("POST", "/archive/prune", "op", "{\"older_than_ms\": 10}"))) == 400
+end
+
+test "a prune answers how many jobs it removed and how many are left, and the archive its count, oldest, and size"
+  assert respond(Cleared(pruned: 3, remaining: 2)) == json(200, "{\"pruned\": 3, \"remaining\": 2}")
+  at = Time.parse("2026-09-14T10:00:00Z") or Time.from_parts(2026, 1, 1, 0, 0, 0)
+  assert respond(Shelf(archived: 2, oldest: Some(at), bytes: 512)) == json(200,
+    "{\"archived\": 2, \"oldest_archived_at\": \"2026-09-14T10:00:00Z\", \"bytes\": 512}")
+  assert respond(Shelf(archived: 0, oldest: None, bytes: 0)) == json(200,
+    "{\"archived\": 0, \"oldest_archived_at\": null, \"bytes\": 0}")
+end
+
 property "any valid payload sent as JSON becomes a create of that payload"
   for payload in any(String) if payload?(payload)
     body = "{\"queue\": \"q\", \"payload\": #{Json.encode(payload)}, \"max_tries\": 2}"
@@ -628,5 +708,5 @@ property "any valid payload sent as JSON becomes a create of that payload"
   end
 end
 
-verified: types, contracts, tests (14), property (200 seeds), sim (not run)
+verified: types, contracts, tests (16), property (200 seeds), sim (not run)
           proven: not run

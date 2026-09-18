@@ -10,15 +10,16 @@
 # run: verify data/ill
 # exit: 1
 module Jobq.Main
-expose Place, Trip, Task, Problem, Folder, task, steady, serving?, main
+expose Place, Trip, Measured, Task, Problem, Folder, task, steady, serving?, main
 
-use Jobq.Board{folded_in, health_of, ill_formed, records, shelf_records, shelf_snapshot, snapshot}
-use Jobq.Job{id_of}
-use Jobq.Queue{Opening, Policy, opening, policy, retained, shelf_lines}
+use Jobq.Bench{Load, loaded, paired, rate_line, resident_mib, seconds}
+use Jobq.Board{Call, Decision, Outcome, decide, folded_in, health_of, ill_formed, records, shelf_records, shelf_snapshot, snapshot}
+use Jobq.Job{id_of, tagged, to_ms}
+use Jobq.Queue{Opening, Policy, opening, policy, pruned_every, retained, shelf_lines}
 use Jobq.Server{serving}
-use Jobq.Store{Table, StoreError, bytes, count, cut_short?, line_of, lines, open, open_log, pairs, rewritten, writing_to}
+use Jobq.Store{Table, StoreError, bytes, count, cut_short?, journaled, line_of, lines, open, open_log, pairs, rewritten, writing_to}
 
-intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job in the names this version writes and its archive to one line per archived job, verify a folder and its archive without serving it, send one request as a client, or check a folder by serving it on a free port and playing a script through the client; every command that opens a folder refuses one that holds a record the API could never have produced, a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
+intent "Run jobq: serve a folder's jobs over HTTP, compact its log to one line per live job in the names this version writes and its archive to one line per archived job, verify a folder and its archive without serving it, prune its archive of the jobs older than an age, measure it with bench (creates and lease-and-ack pairs a second, resident memory, and a restart, on a free port), send one request as a client, or check a folder by serving it on a free port and playing a script through the client; every command that opens a folder refuses one that holds a record the API could never have produced, a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1."
 
 # Where to serve, and how the service keeps going: its restart budget and its chaos switch.
 struct Place
@@ -37,12 +38,21 @@ struct Trip
   json: String
 end
 
+# What bench measures: the folder it serves, the jobs it creates, and the workers that lease them.
+struct Measured
+  dir: String
+  jobs: UInt64
+  workers: UInt64
+end
+
 enum Task
   Serving(place: Place)
   Compacting(dir: String)
   Verifying(dir: String)
   Asking(trip: Trip)
   Checking(dir: String, script: String)
+  Trimming(dir: String, older_than_ms: UInt64)
+  Benching(measured: Measured)
 end
 
 # A folder's two logs, replayed: the live log and the archive.
@@ -60,7 +70,7 @@ enum Problem
 end
 
 fn usage() : String
-  "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N] | jobq compact <dir> | jobq verify <dir> | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
+  "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N] [--retention <ms>] | jobq compact <dir> | jobq verify <dir> | jobq prune <dir> --older-than-ms <n> | jobq bench <dir> [--jobs N] [--workers N] | jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 end
 
 fn task(args: List(String)) : Result(Task, Problem)
@@ -71,6 +81,8 @@ fn task(args: List(String)) : Result(Task, Problem)
     "verify": verifying(rest)
     "client": asking(rest)
     "check": checking(rest)
+    "prune": trimming(rest)
+    "bench": benching(rest)
     "": Error(Usage(detail: "no command given"))
     _: Error(Usage(detail: "unknown command #{args.first or ""}"))
   end
@@ -113,8 +125,10 @@ fn flagged(place: Place, name: String, value: String) : Result(Place, Problem)
       set.rules.crash_every = try number_of(name, value, 0, 1_000_000_000)
     "--retain-ms":
       set.rules = retained(set.rules, try number_of(name, value, 1_000, 2_678_400_000))
+    "--retention":
+      set.rules = pruned_every(set.rules, try age_of(name, value, true))
     _:
-      return Error(Usage(detail: "serve takes --port, --max-restarts, --restart-window, --crash-every, and --retain-ms, not #{name}"))
+      return Error(Usage(detail: "serve takes --port, --max-restarts, --restart-window, --crash-every, --retain-ms, and --retention, not #{name}"))
   end
   Ok(set)
 end
@@ -126,6 +140,53 @@ fn number_of(name: String, text: String, least: UInt64, most: UInt64) : Result(U
   n = text.to_u64 or most + 1
   return Ok(n) if n >= least and n <= most
   Error(Usage(detail: "#{name} takes a whole number from #{least} to #{most}, not #{text}"))
+end
+
+# An age to prune at: a whole number of milliseconds from 1,000 to a hundred years, or 0 for never
+# where the flag allows it.
+fn age_of(name: String, text: String, or_never: Bool) : Result(UInt64, Problem)
+  n = text.to_u64 or 0
+  return Ok(0) if or_never and text == "0"
+  return Ok(n) if n >= 1_000 and n <= 3_153_600_000_000
+  least = if or_never: "0 or from 1000" else: "from 1000"
+  Error(Usage(detail: "#{name} takes a whole number of milliseconds #{least} to 3153600000000, not #{text}"))
+end
+
+# prune takes a folder and --older-than-ms with its age, and nothing else.
+fn trimming(args: List(String)) : Result(Task, Problem)
+  dir = try dir_of(args)
+  if args.size != 3 or args.get(1) != Some("--older-than-ms")
+    return Error(Usage(detail: "prune takes a folder and --older-than-ms <n>"))
+  end
+  ms = try age_of("--older-than-ms", args.get(2) or "", false)
+  Ok(Trimming(dir: dir, older_than_ms: ms))
+end
+
+# bench takes a folder and, in any order, once each, --jobs (30,000 by default) and --workers (32).
+fn benching(args: List(String)) : Result(Task, Problem)
+  dir = try dir_of(args)
+  flags = args.drop(1)
+  if flags.size % 2 != 0
+    return Error(Usage(detail: "bench takes a folder and then flags, each with its value"))
+  end
+  var jobs = 30_000
+  var workers = 32
+  var seen = flags.take(0)
+  for i in 0..flags.size / 2
+    name = flags.get(i * 2) or ""
+    value = flags.get(i * 2 + 1) or ""
+    return Error(Usage(detail: "bench takes #{name} once")) if seen.contains?(name)
+    seen = seen.push(name)
+    if name == "--jobs"
+      jobs = try number_of(name, value, 8, 10_000_000)
+    else
+      if name != "--workers"
+        return Error(Usage(detail: "bench takes --jobs and --workers, not #{name}"))
+      end
+      workers = try number_of(name, value, 1, 1_024)
+    end
+  end
+  Ok(Benching(measured: Measured(dir: dir, jobs: jobs, workers: workers)))
 end
 
 fn compacting(args: List(String)) : Result(Task, Problem)
@@ -194,6 +255,10 @@ fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String))
       lines = try script_of(fs, script)
       opened = try opened_store(fs.read_only, err, dir)
       check(http, fs, clock, opened, lines)
+    Trimming(dir: dir, older_than_ms: ms):
+      opened = try opened_store(fs, err, dir)
+      trimmed(fs, dir, opened, ms, clock.now)
+    Benching(measured): bench(http, fs, clock, err, measured)
   end
 end
 
@@ -230,20 +295,22 @@ end
 # no tombstone; a folder with no archive file gets an empty one. The log goes first: a kill between
 # the two leaves every tombstone standing over the log it guards.
 #
-# Renames are folded in: every record in the queue it is in now, carrying every rename, and no
-# rename record. While the archive still holds records in old names, the log keeps its rename
-# records, so a log with renames is written whole twice: with them, then, once the archive is
-# written in the new names, without them. A kill between any two writes leaves a folder that opens
-# to the same jobs in the same queues.
+# Renames and prunes (the marks) are folded in: every record in the queue it is in now, every
+# pruned job gone, and no mark record and no count left. While the archive still holds records in
+# old names or pruned ones, the log keeps its marks, so a folder with marks is written in four
+# steps: the log with its marks and its records carrying their count; the archive in the new names,
+# without the pruned jobs, carrying the count; the log without the marks and with no count; and the
+# archive with no count. A kill between any two writes leaves a folder that opens to the same jobs
+# in the same queues, and one between the last two numbers the next mark past the count the archive
+# still carries.
 fn compacted_from(fs: Fs, dir: String, start: Opening) : Result(Opening, Problem)
   kept = try whole_log(fs, dir, start.table, snapshot(start.board).map(fn(w) line_of(w) end))
   archive = try whole_log(fs, dir, start.archive, shelf_lines(shelf_snapshot(start.board)))
+  return Ok(Opening(board: start.board, table: kept, archive: archive)) if start.board.marks == 0
   folded = folded_in(start.board)
-  if folded.moves.size == start.board.moves.size
-    return Ok(Opening(board: start.board, table: kept, archive: archive))
-  end
   table = try whole_log(fs, dir, kept, snapshot(folded).map(fn(w) line_of(w) end))
-  Ok(Opening(board: folded, table: table, archive: archive))
+  plain = try whole_log(fs, dir, archive, shelf_lines(shelf_snapshot(folded)))
+  Ok(Opening(board: folded, table: table, archive: plain))
 end
 
 # A log written whole, except an empty one that was empty before, which is left as it is, so
@@ -273,6 +340,104 @@ fn counted(opened: Folder, now: Time) : Result(String, Problem)
   states = "queued #{counts.queued}, scheduled #{counts.scheduled}, leased #{counts.leased}"
   ended = "done #{counts.done}, dead #{counts.dead}"
   Ok("#{jobs} jobs: #{states}, #{ended}; next id #{id_of(start.board.next)}; archived #{counts.archived}\n")
+end
+
+# The archive pruned offline, as a prune over HTTP does: one record in the log, on disk before the
+# counts are printed, after the archive's changes the same look made; nothing written when nothing
+# is old enough. A log or an archive whose last line was cut short is written whole first.
+fn trimmed(fs: Fs, dir: String, opened: Folder, ms: UInt64, now: Time) : Result(String, Problem)
+  start = try opening_of(opened, now)
+  cut = cut_short?(opened.live) or cut_short?(opened.shelf)
+  whole = if cut: try compacted_from(fs, dir, start) else: start
+  decision = decide(whole.board, Call(worker: "", command: Pruning(older_than_ms: ms)), to_ms(now))
+  if decision.outcome is Cleared(pruned: pruned, remaining: remaining)
+    wrote = try written(fs, dir, whole, decision)
+    return Ok("jobq: pruned #{pruned} archived jobs from #{dir}; #{remaining} remain; #{wrote} lines written\n")
+  end
+  Error(Unopened(dir: dir, why: "holds an archive jobq could not prune"))
+end
+
+# A decision's archive changes, then its records, appended; gives the lines written.
+fn written(fs: Fs, dir: String, whole: Opening, decision: Decision) : Result(UInt64, Problem)
+  shelf = shelf_lines(decision.shelved)
+  live = decision.writes.map(fn(w) line_of(w) end)
+  if journaled(fs, whole.archive, shelf) is Error(_)
+    return Error(Unopened(dir: dir, why: "holds a jobq.archive jobq could not write"))
+  end
+  if journaled(fs, whole.table, live) is Error(_)
+    return Error(Unopened(dir: dir, why: "holds a jobq.log jobq could not write"))
+  end
+  Ok(shelf.size + live.size)
+end
+
+# Serves a folder on a free port, then measures it from inside the same program as the round's
+# measure.py does from outside: `jobs` creates from 8 producers, lease-and-ack pairs for 10 seconds
+# from 1 worker and then from `workers`, the resident memory after the pairs, and the time a
+# second service takes to open the folder again and answer /health. The first service is left
+# serving until bench exits, so the restart measures the replay, not a stop.
+fn bench(http: Http, fs: Fs, clock: Clock, err: Out, measured: Measured) : Result(String, Problem)
+  dir = measured.dir
+  jobs = measured.jobs
+  workers = measured.workers
+  if fs.mkdir(dir, within: 10_000.ms) is Error(_)
+    return Error(Unopened(dir: dir, why: "is not a folder jobq can make or use"))
+  end
+  load = load_average(fs)
+  port = try served_on(http, fs, clock, err, dir)
+  made = loaded(http, clock, port, jobs)
+  one = paired(http, clock, port, 1, 10_000)
+  many = paired(http, clock, port, workers, 10_000)
+  resident = resident_mib(fs) or "n/a"
+  began = clock.now
+  opened = try opened_store(fs, err, dir)
+  again = try served_on(http, fs, clock, err, dir)
+  up = health_within(http, again)
+  took = (clock.now - began).ms.to_u64
+  size = (bytes(opened.live) + bytes(opened.shelf)) / 1_000_000
+  head = "jobq bench: #{dir}, #{jobs} jobs, #{workers} workers; load average before #{load}"
+  counts = [rate_line("creates", made),
+    rate_line("pairs, 1 worker", one),
+    rate_line("pairs, #{workers} worker#{if workers == 1: "" else: "s"}", many)]
+  tail = ["resident memory after the pairs: #{resident} MiB",
+    "restart with a #{size} MB log: #{seconds(took)} s to /health#{if up: "" else: " (no 200)"}"]
+  Ok("#{String.join([head].concat(counts).concat(tail), "\n")}\n")
+end
+
+# The folder served on a free port, as serve serves it; the port.
+fn served_on(http: Http, fs: Fs, clock: Clock, err: Out, dir: String) : Result(UInt16, Problem)
+  opened = try opened_store(fs, err, dir)
+  start = try opening_of(opened, clock.now)
+  cut = cut_short?(opened.live) or cut_short?(opened.shelf)
+  whole = if cut: try compacted_from(fs, dir, start) else: start
+  case http.listen(0, within: 5_000.ms)
+    Ok(listener):
+      queue = serving(listener, fs, clock, whole, policy(5, 60_000, 0))
+      queue.send(Sweep)
+      Ok(listener.port)
+    Error(_): Error(Unbound(port: 0))
+  end
+end
+
+# Whether /health answers 200, asked up to 100 times.
+fn health_within(http: Http, port: UInt16) : Bool
+  var up = false
+  for _ in 0..100
+    got = http.send(Request(method: "GET", path: "/health"), host: "127.0.0.1", port: port,
+      within: 10_000.ms)
+    up = got is Ok(response) and response.status == 200
+    if up
+      break
+    end
+  end
+  up
+end
+
+# The machine's load averages over 1, 5, and 15 minutes, from /proc/loadavg, or n/a.
+fn load_average(fs: Fs) : String
+  case fs.read_only.fold_lines("/proc/loadavg", "", within: 5_000.ms, fn(_, line) line end)
+    Ok(line): String.join(line.split(" ").take(3), " ")
+    Error(_): "n/a"
+  end
 end
 
 fn client(http: Http, trip: Trip) : Result(String, Problem)
@@ -372,14 +537,23 @@ end
 fn steady(text: String) : String
   times = masked(masked(text, "created_at", true), "updated_at", true)
   waits = masked(masked(times, "run_at", true), "archived_at", true)
-  masked(masked(waits, "lease_until", true), "uptime_ms", false)
+  shelf = masked(masked(waits, "oldest_archived_at", true), "bytes", false)
+  masked(masked(shelf, "lease_until", true), "uptime_ms", false)
 end
 
+# The value under the key masked wherever it appears; a quoted one only when it is a string, so a
+# null stays null.
 fn masked(text: String, key: String, quoted: Bool) : String
   label = "\"#{key}\": "
   pieces = text.split(label)
   mark = if quoted: "\"<#{key}>\"" else: "<#{key}>"
-  rest = pieces.drop(1).map(fn(piece) "#{label}#{mark}#{after_value(piece, quoted)}" end)
+  rest = pieces.drop(1).map(fn(piece)
+    if quoted and !piece.starts_with?("\"")
+      "#{label}#{piece}"
+    else
+      "#{label}#{mark}#{after_value(piece, quoted)}"
+    end
+  end)
   String.join([pieces.first or ""].concat(rest), "")
 end
 
@@ -731,7 +905,7 @@ test "compact drops archived jobs from the log and deleted ones from the archive
     Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
 end
 
-test "compact folds two renames into the log and the archive, and leaves no rename record"
+test "compact folds two renames into the log and the archive, and leaves no rename record and no count"
   fs = Fs.fixture()
   err = Out.fixture()
   live = "SET ids 1000\nSET j_1 #{queued_record("j_1", "emails", 0)}\nSET rename_1 {\"from\": \"emails\", \"to\": \"mail\"}\nSET j_3 #{queued_record("j_3", "emails", 1)}\nSET rename_2 {\"from\": \"mail\", \"to\": \"post\"}\n"
@@ -742,21 +916,21 @@ test "compact folds two renames into the log and the archive, and leaves no rena
   assert counted(folder,
     Time.fixture()) == Ok("2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
   assert compacted(fs, "d", folder,
-    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 5 lines to 4, and d/jobq.archive from 1 to 1\n")
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 5 lines to 3, and d/jobq.archive from 1 to 1\n")
   assert fs.read("d/jobq.log", within: 1.minute) is Ok(log_text)
-  assert !log_text.contains?("rename_") and log_text.contains?("SET renames 2\n")
-  assert log_text.contains?("SET j_1 #{queued_record("j_1", "post", 2)}\n")
-  assert log_text.contains?("SET j_3 #{queued_record("j_3", "emails", 2)}\n")
+  assert !log_text.contains?("rename_") and !log_text.contains?("renames")
+  assert log_text.contains?("SET j_1 #{queued_record("j_1", "post", 0)}\n")
+  assert log_text.contains?("SET j_3 #{queued_record("j_3", "emails", 0)}\n")
   assert fs.read("d/jobq.archive", within: 1.minute) is Ok(shelf_text)
-  assert shelf_text.contains?("\"queue\": \"post\"") and shelf_text.contains?("\"renames\": 2}")
+  assert shelf_text.contains?("\"queue\": \"post\"") and !shelf_text.contains?("renames")
   assert opened_store(fs, err, "d") is Ok(again)
   assert opening_of(again, Time.fixture()) is Ok(start)
-  assert health_of(start.board, Time.fixture()).archived == 1 and start.board.renames == 2
+  assert health_of(start.board, Time.fixture()).archived == 1 and start.board.marks == 0
   assert compacted(fs, "d", again,
-    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 4 lines to 4, and d/jobq.archive from 1 to 1\n")
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 3 lines to 3, and d/jobq.archive from 1 to 1\n")
 end
 
-test "a compact cut short after its first or second write leaves a folder that opens to the same queues"
+test "a compact cut short after its first, second, or third write leaves a folder that opens to the same queues"
   fs = Fs.fixture()
   err = Out.fixture()
   live = "SET ids 1000\nSET j_1 #{queued_record("j_1", "emails", 0)}\nSET rename_1 {\"from\": \"emails\", \"to\": \"mail\"}\n"
@@ -779,6 +953,130 @@ test "a compact cut short after its first or second write leaves a folder that o
   assert records(two.board) == records(start.board)
   assert shelf_records(two.board) == shelf_records(start.board)
   assert shelf_records(two.board).all?(fn(r) r.contains?("\"queue\": \"mail\"") end)
+  third = String.join(snapshot(folded_in(start.board)).map(fn(w) line_of(w) end), "")
+  assert !third.contains?("rename_") and !third.contains?("renames")
+  assert fs.write("d/jobq.log", third, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(after_third)
+  assert opening_of(after_third, Time.fixture()) is Ok(three)
+  assert records(three.board) == records(start.board)
+  assert shelf_records(three.board) == shelf_records(start.board)
+  assert three.board.marks == 1
+end
+
+# The generation-five bug report as a test: the previous version compacted a folder with renames
+# to a rename count and no rename record, renamed once more, and then refused to open the folder it
+# had written ("the rename count is below rename_3"). A folder the program wrote and closed cleanly
+# opens.
+test "a folder the previous version compacted and renamed once more opens, verifies, and compacts"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  live = "SET ids 1000\nSET renames 2\nSET j_1 #{queued_record("j_1", "post", 2)}\nSET rename_3 {\"from\": \"post\", \"to\": \"mail\"}\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert counted(folder,
+    Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0\n")
+  assert opening_of(folder, Time.fixture()) is Ok(start)
+  assert start.board.marks == 3 and records(start.board).all?(fn(r)
+    r.contains?("\"queue\": \"mail\"")
+  end)
+  assert compacted(fs, "d", folder,
+    Time.fixture()) == Ok("jobq: compacted d/jobq.log from 4 lines to 2\n")
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+  assert text == "SET ids 1000\nSET j_1 #{queued_record("j_1", "mail", 0)}\n"
+end
+
+test "prune takes a folder and an age of at least a second, bench a folder and its sizes, and serve a retention"
+  assert task(["prune", "d", "--older-than-ms", "5000"]) == Ok(Trimming(dir: "d",
+    older_than_ms: 5_000))
+  assert task(["prune", "d", "--older-than-ms", "999"]) is Error(Usage(_))
+  assert task(["prune", "d", "--older-than-ms", "0"]) is Error(Usage(_))
+  assert task(["prune", "d"]) is Error(Usage(_))
+  assert task(["prune", "d", "--older-than", "5000"]) is Error(Usage(_))
+  assert task(["prune", "d", "--older-than-ms", "5000", "x"]) is Error(Usage(_))
+  assert task(["bench",
+    "d"]) == Ok(Benching(measured: Measured(dir: "d", jobs: 30_000, workers: 32)))
+  assert task(["bench",
+    "d",
+    "--workers",
+    "8",
+    "--jobs",
+    "1000"]) == Ok(Benching(measured: Measured(dir: "d", jobs: 1_000, workers: 8)))
+  assert task(["bench", "d", "--jobs", "7"]) is Error(Usage(_))
+  assert task(["bench", "d", "--workers", "0"]) is Error(Usage(_))
+  assert task(["bench", "d", "--jobs", "10", "--jobs", "20"]) is Error(Usage(_))
+  assert task(["bench", "d", "--port", "1"]) is Error(Usage(_))
+  assert !serving?(["bench", "d"]) and !serving?(["prune", "d", "--older-than-ms", "5000"])
+  assert place_of("d").rules.retention_ms == 0
+  assert task(["serve", "d", "--retention", "60000"]) is Ok(Serving(kept))
+  assert kept.rules.retention_ms == 60_000
+  assert task(["serve", "d", "--retention", "0"]) is Ok(Serving(never_pruned))
+  assert never_pruned.rules.retention_ms == 0
+  assert task(["serve", "d", "--retention", "500"]) is Error(Usage(_))
+  assert task(["serve", "d", "--retention", "soon"]) is Error(Usage(_))
+  assert usage().contains?("jobq prune <dir> --older-than-ms <n>") and usage().contains?("[--retention <ms>]")
+end
+
+test "prune writes one record, removes only the jobs old enough, frees their keys, and a stale live record stays gone"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  stale = archived_record("j_2", "k").replace(", \"archived_at\": \"2026-09-14T10:00:00Z\"", "")
+  live = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET j_2 #{stale}\n"
+  later = archived_record("j_3", "k3").replace("\"archived_at\": \"2026-09-14T10:00:00Z\"",
+    "\"archived_at\": \"2026-09-14T11:00:00Z\"")
+  shelf = "SET j_2 #{archived_record("j_2", "k")}\nSET j_3 #{later}\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert fs.write("d/jobq.archive", shelf, within: 1.minute) is Ok(_)
+  now = Time.parse("2026-09-14T11:00:00Z") or Time.fixture()
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert trimmed(fs, "d", folder, 3_600_000,
+    now) == Ok("jobq: pruned 1 archived jobs from d; 1 remain; 1 lines written\n")
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(text)
+  assert text == "#{live}SET prune_1 {\"cutoff\": \"2026-09-14T10:00:00Z\", \"pruned\": 1}\n"
+  assert fs.read("d/jobq.archive", within: 1.minute) == Ok(shelf)
+  assert opened_store(fs, err, "d") is Ok(again)
+  assert counted(again,
+    now) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
+  assert opening_of(again, now) is Ok(start)
+  assert shelf_records(start.board).all?(fn(r) r.contains?("\"id\": \"j_3\"") end)
+  assert trimmed(fs, "d", again, 3_600_000,
+    now) == Ok("jobq: pruned 0 archived jobs from d; 1 remain; 0 lines written\n")
+  assert fs.read("d/jobq.log", within: 1.minute) == Ok(text)
+  assert compacted(fs, "d", again,
+    now) == Ok("jobq: compacted d/jobq.log from 4 lines to 2, and d/jobq.archive from 2 to 1\n")
+  assert fs.read("d/jobq.archive", within: 1.minute) == Ok("SET j_3 #{later}\n")
+  assert fs.read("d/jobq.log", within: 1.minute) is Ok(compact_text)
+  assert !compact_text.contains?("prune_") and !compact_text.contains?("j_2")
+  assert opened_store(fs, err, "d") is Ok(third)
+  assert counted(third,
+    now) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
+end
+
+test "a prune record cut short by a kill is left out, and the folder opens with every archived job"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  live = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\n"
+  assert fs.write("d/jobq.log", "#{live}SET prune_1 {\"cutoff\": \"2026-09",
+    within: 1.minute) is Ok(_)
+  assert fs.write("d/jobq.archive", "SET j_2 #{archived_record("j_2", "k")}\n",
+    within: 1.minute) is Ok(_)
+  assert opened_store(fs, err, "d") is Ok(folder)
+  assert err.written.contains?("jobq: the last line of d/jobq.log was cut short, so it is left out\n")
+  assert counted(folder,
+    Time.fixture()) == Ok("1 jobs: queued 1, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 1\n")
+end
+
+test "verify refuses a folder with a bad prune record, naming it"
+  fs = Fs.fixture()
+  err = Out.fixture()
+  live = "SET ids 1000\nSET j_1 #{old_record("j_1", "queued", 0)}\nSET prune_1 {\"cutoff\": \"soon\", \"pruned\": 1}\n"
+  assert fs.write("d/jobq.log", live, within: 1.minute) is Ok(_)
+  assert opened_store(fs, err,
+    "d") == Error(Ill(dir: "d", key: "prune_1", rule: "its cutoff is not a time"))
+end
+
+test "the steadied transcript masks the archive's oldest time and size, and leaves a null alone"
+  assert steady("{\"archived\": 2, \"oldest_archived_at\": \"2026-09-14T10:00:00Z\", \"bytes\": 512}") == "{\"archived\": 2, \"oldest_archived_at\": \"<oldest_archived_at>\", \"bytes\": <bytes>}"
+  assert steady("{\"archived\": 0, \"oldest_archived_at\": null, \"bytes\": 0}") == "{\"archived\": 0, \"oldest_archived_at\": null, \"bytes\": <bytes>}"
 end
 
 test "verify refuses a folder with a bad rename record, and counts with the renames applied"
@@ -814,5 +1112,5 @@ test "a usage error exits 2, and a folder, a port, or a server that cannot be ha
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (18), property (0 seeds), sim (not run)
+verified: types, contracts, tests (24), property (0 seeds), sim (not run)
           proven: not run

@@ -198,3 +198,31 @@
 200 {"queues": [{"name": "emails", "queued": 1, "scheduled": 0, "leased": 2, "done": 1, "dead": 0}, {"name": "flaky", "queued": 0, "scheduled": 1, "leased": 0, "done": 0, "dead": 0}, {"name": "reports", "queued": 1, "scheduled": 0, "leased": 0, "done": 1, "dead": 0}]}
 > - GET /health
 200 {"queued": 2, "scheduled": 1, "leased": 2, "done": 2, "dead": 0, "archived": 1, "uptime_ms": <uptime_ms>, "restarts": 0}
+> p GET /archive
+200 {"archived": 1, "oldest_archived_at": "<oldest_archived_at>", "bytes": <bytes>}
+> p POST /archive/prune {"older_than_ms": 999}
+400 {"error": "older_than_ms must be a whole number of at least 1000"}
+> p POST /archive/prune {"older_than_ms": "soon"}
+400 {"error": "older_than_ms must be a whole number"}
+> p POST /archive/prune {"older_than_ms": 1000, "queue": "reports"}
+400 {"error": "queue is not a field here; the body is {\"older_than_ms\": ...}"}
+> p GET /archive/prune
+405 {"error": "this route takes POST"}
+> - GET /archive
+401 {"error": "a request needs authorization: Bearer <token>"}
+> p POST /archive/prune {"older_than_ms": 1000}
+200 {"pruned": 1, "remaining": 0}
+> p GET /jobs/j_7
+404 {"error": "no such job"}
+> p GET /jobs?queue=reports&key=weekly-7
+200 {"jobs": []}
+> p POST /jobs {"queue": "reports", "payload": "weekly, new", "max_tries": 1, "key": "weekly-7"}
+201 {"id": "j_1007", "queue": "reports", "key": "weekly-7", "state": "queued", "payload": "weekly, new", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p POST /jobs {"queue": "reports", "payload": "weekly, again", "max_tries": 1, "key": "weekly-7"}
+200 {"id": "j_1007", "queue": "reports", "key": "weekly-7", "state": "queued", "payload": "weekly, new", "tries": 0, "max_tries": 1, "backoff_ms": 0, "created_at": "<created_at>", "updated_at": "<updated_at>"}
+> p GET /archive
+200 {"archived": 0, "oldest_archived_at": null, "bytes": <bytes>}
+> p POST /archive/prune {"older_than_ms": 1000}
+200 {"pruned": 0, "remaining": 0}
+> - GET /health
+200 {"queued": 3, "scheduled": 1, "leased": 2, "done": 2, "dead": 0, "archived": 0, "uptime_ms": <uptime_ms>, "restarts": 0}
