@@ -1,0 +1,16 @@
+{
+  "id": "program-7-spec-ready-002",
+  "subject": "program-7-spec",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "ready",
+  "in_reply_to": null,
+  "evidence_commit": "44d0bea91305fb4f18eae7881281cd91c8b4b9aa",
+  "paths": [
+    "mo-wiki/spec/programs/07-redis-subset.md",
+    "mo-wiki/spec/programs/07b-redis-subset-revision-2.md",
+    "audit/evidence/2026-09-18/program-7-spec-r2/README.md",
+    "audit/evidence/2026-09-18/program-7-spec-r2/redis-baseline.sh"
+  ],
+  "request": "Program 7's spec is revised before any build: 07-redis-subset.md as sealed, amended by 07b-redis-subset-revision-2.md. This supersedes program-7-spec-ready-001 as the page to author against. Requested, as before and sealed from Fable: the hidden runtime suite of 50 or more defects in the rule's composition, the ten wait shapes, the ten capability-abuse shapes, the three drift seeds, the five regeneration seeds, and the named P4 modification on a hex package behind the metrics endpoint. Section 6 of the revision defines a rig for R2 that both builds can run; say whether you read that as within the ratified rule. No verdict is requested or implied."
+}
