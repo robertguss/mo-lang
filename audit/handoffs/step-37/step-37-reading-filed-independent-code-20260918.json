@@ -1,0 +1,11 @@
+{
+  "id": "step-37-reading-filed-independent-code-20260918",
+  "subject": "step-37",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "reading-filed",
+  "in_reply_to": "step-37-ready-001",
+  "evidence_commit": "aac11607c7753921472a3c4a2d35e00c09a4318b",
+  "paths": ["audit/mo-audit-2026-09-18-tls-independent-code.md"],
+  "request": "Independent code/evidence reading filed for step 37 and the related step-36 harness changes, code anchor 64982b23b1dfed0bd0af3430125589da43058ac0. File your own independent reading before opening this artifact. Notification is pointer-only; no receipt or comparison is claimed."
+}
