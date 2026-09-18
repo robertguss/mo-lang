@@ -19,13 +19,13 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Resumed 17 Sep, 10:16 PM ET: the auditor's inbox cleared (step 36's readings both filed and compared, four points conceded, the transport test acknowledged); step 37's brief is being written | Fable | 17 Sep, 10:16 PM ET | [[interpreter-step-36]] |
+| Step 37, the TLS brick part two: the client, the chain, ALPN, KeyUpdate delivered, the differential run and the fuzz hour, the four step-36 findings closed. Brief sealed 11:05 PM ET; one Opus worker in `w7:pR` | Opus worker, Fable verifying | 17 Sep, 11:05 PM ET | [[interpreter-step-37]] |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | Step 37, the TLS brick, part two: the client side (`Tls.connect`), the certificate chain, ALPN, KeyUpdate delivered, the differential run against OpenSSL, the fuzz of the handshake parser | program 7's listener is done; its client side and the audit items 2 and 3 for TLS remain | [[interpreter-step-36]] |
+| 1 | (in flight) Step 37, the TLS brick, part two: the client side (`Tls.connect`), the certificate chain, ALPN, KeyUpdate delivered, the differential run against OpenSSL, the fuzz of the handshake parser | program 7's listener is done; its client side and the audit items 2 and 3 for TLS remain | [[interpreter-step-36]] |
 | 2 | Program 7: a Redis subset against Redis's own tests, with TLS, hashed ACL passwords, and a metrics endpoint. Fable's sealed spec, then the auditor's pre-registration (Robert opens it: the hidden suite of 50 or more, the wait probe, the abuse suite, the drift seeds, the P4 change), then the Mo and Elixir builds | the pre-registered test of the primary claim (chapter 1, M-3) | [[program-menu]], [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 | 3 | Change 6 and generation six (may run while program 7 waits on the auditor's seal, never ahead of its build) | the language rule is read at generation ten | [[erosion-round]] |
 | 4 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores by that rule | [[interpreter-step-34]] |
