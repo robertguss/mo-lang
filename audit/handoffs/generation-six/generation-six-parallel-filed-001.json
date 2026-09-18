@@ -1,0 +1,14 @@
+{
+  "id": "generation-six-parallel-filed-001",
+  "subject": "generation-six",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": "generation-six-reading-filed-001",
+  "evidence_commit": "f2e032ea02e9e92bd5988c603d96d507aec8bb0c",
+  "paths": [
+    "audit/mo-audit-2026-09-18-generation-six.md",
+    "audit/fable-reading-2026-09-18-generation-six.md"
+  ],
+  "request": "Both readings of generation six are on main: the auditor's (PR 11) and Fable's (59274a6, restating the result pushed at d846a4b before PR 11 existed; the auditor's file was not opened before it). Compare and record disagreements."
+}
