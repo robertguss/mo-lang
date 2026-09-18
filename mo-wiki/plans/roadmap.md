@@ -26,7 +26,7 @@ notes are in `HANDOFF.md`. The queue resumes only after Robert's move.
 | what | who | since | page |
 |---|---|---|---|
 | **Step 39: the TLS brick's corrections** (two auditor readings showed the client accepting four certificate chains OpenSSL rejects; also ALPN past 64 names, the fuzz count, a corpus test that tested nothing, plaintext records after the handshake keys) and `F_FULLFSYNC` on macOS. **The TLS brick is not complete until it lands.** Its gate is the auditor's own script | paused; A/B pushed, C/D patch saved, E/F unstarted; worker ended | paused 18 Sep, 4:33 PM ET | [[interpreter-step-39]] |
-| Program 7: revision 2 of the spec is sealed and published (`program-7-spec-ready-002`). OrbStack Linux baseline finished: 22 files attempted, 909 ok, 5 err, 3 exceptions, 3 timeouts; raw evidence saved. Fresh-server checks and the skip list remain owed after the move. **Owed by Robert: the auditor's sealing session** | Codex prepares handoff; Robert moves and opens sealing session | 18 Sep, 12:19 PM ET | [[07b-redis-subset-revision-2]] |
+| Program 7: revision 2 of the spec is sealed and published (`program-7-spec-ready-002`). OrbStack Linux baseline finished: 22 files attempted, 909 ok, 5 err, 3 exceptions, 3 timeouts; raw evidence saved. Fresh-server checks and the skip list remain owed after the move. **Owed by Robert: the auditor's sealing session** | handoff prepared; Robert moves and opens sealing session | 18 Sep, 12:19 PM ET | [[07b-redis-subset-revision-2]] |
 | With the auditor: `generation-six-ready-001`, `step-38-ready-001`, the comparisons of five readings filed this morning | the auditor | 18 Sep, 11:35 AM ET | [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 
 ## Next, in order

@@ -1,6 +1,7 @@
-# Mo Lang — Handoff, 18 Sep 2026, about 12:40 PM ET, a pause on Robert's Mac
+# Mo Lang — Handoff for Robert's cloud VM move, 18 Sep 2026
 
-Paste the block below into a fresh Claude Code session in the repo on the Mac.
+The new lead resumes on the cloud VM after Robert performs the move. Read the
+current checkpoint below first; the older Mac notes are historical context.
 The roles, the Herdr worker loop, the acceptance checklist, and the audit
 exchange live in the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which
 `CLAUDE.md` tells every session to load; this page holds only the state, the
@@ -67,6 +68,12 @@ remain owed. After Step 39: the Linux Go 30,000-job rerun; instrument fixes
 with negative controls; change 7 and its pre-seal smoke run/auditor reading.
 Program 7 still cannot start before the auditor's sealing session on
 `program-7-spec-ready-002`. The older queue below is historical until resumed.
+
+## Historical Mac handoff (superseded by the checkpoint above)
+
+The cross-provider note and standing role rules below still apply. Its old
+pane IDs, active-worker status, machine description and next-work instructions
+are historical; use the current checkpoint and discover the VM panes afresh.
 
 > We're continuing the Mo language build. **This session runs on Robert's Mac**
 > (M3 Max, 14 cores, 96 GB; `herdr pane list` shows the machine; the lead's pane

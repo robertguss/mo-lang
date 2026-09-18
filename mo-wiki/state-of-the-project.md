@@ -24,9 +24,9 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last rewritten:** 16 Sep 2026; amended 17 Sep for the auditor role and the
-bricks page; **amended 18 Sep, 12:30 PM ET, at a pause on Robert's Mac**, for
-the morning below. Six days since the first commit.
+**Last updated:** 18 Sep 2026, for the paused VM-move checkpoint below.
+The historical account was rewritten 16 Sep and extended on 17–18 Sep.
+Six days since the first commit.
 
 ## Paused for Robert's move, 18 Sep 2026, 4:33 PM ET
 
