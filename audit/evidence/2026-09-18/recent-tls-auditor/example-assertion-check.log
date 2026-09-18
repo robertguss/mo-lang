@@ -9,4 +9,3 @@ pass  test "text with no certificate in it makes no client"
 6 passed, 0 failed, 0 skipped
 verified: types, contracts, tests (6), property (0 seeds), sim (not run)
           proven: not run
- 

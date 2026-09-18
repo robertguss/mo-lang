@@ -16,4 +16,4 @@ with tempfile.TemporaryDirectory() as d:
     run = subprocess.run([str(ROOT / 'toolchain/zig-out/bin/mo'), 'test', str(p)], text=True, capture_output=True, timeout=90)
     print('MUTATED TEMPORARY COPY: tried() unconditionally Error(Timeout), no handshake or echo')
     print('exit:', run.returncode)
-    print(run.stdout, run.stderr)
+    print((run.stdout + run.stderr).rstrip())

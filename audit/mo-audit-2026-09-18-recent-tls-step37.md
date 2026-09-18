@@ -1,9 +1,9 @@
 # Audit reading: step 37 TLS client and step 36 harness closure
 
-**Date:** 2026-09-18  
-**Author:** Mo Auditor, isolated model session independent of Fable  
-**Charter:** independent evidence reading; only Robert can amend or reject it.  
-**Scope:** TLS code and harness changes from `aace4ee36516c9dc67cdb7b0d0c8cab3a5f9c024` through pinned main `64982b23b1dfed0bd0af3430125589da43058ac0`; step 37 client, chain, ALPN and KeyUpdate, the runtime seams and step 36 concerns. Not a program-7 stopping-rule verdict, performance replication, or security certification.  
+**Date:** 2026-09-18
+**Author:** Mo Auditor, isolated model session independent of Fable
+**Charter:** independent evidence reading; only Robert can amend or reject it.
+**Scope:** TLS code and harness changes from `aace4ee36516c9dc67cdb7b0d0c8cab3a5f9c024` through pinned main `64982b23b1dfed0bd0af3430125589da43058ac0`; step 37 client, chain, ALPN and KeyUpdate, the runtime seams and step 36 concerns. Not a program-7 stopping-rule verdict, performance replication, or security certification.
 **Status:** filed cold. Ready message `step-37-ready-001` pins `15fb2cb4ee6d43b449e5c811dde730c111983b18`. Its metadata/paths were extracted without its request prose. There is no diff from that evidence commit to the pinned audit target in `toolchain/` or the client example. The sealed brief was read at `6f449c9`, strictly before the actual `## Result` heading. Worker changes `f8d8dfc`, `9f83dde`, `0493b26` and fix `b0b2ac4` are in scope. The dedicated clone was branched at the requested target; remote main had already advanced to `fa4260a6ac93f40a3d0033c1bd99d6965a877a5f`. That advancement is not included in this reading.
 
 **Explicit gap in this reading:** a full project-suite reproduction did not finish through the available tool transport. A background invocation returned without a usable log; a foreground invocation was terminated by the tool's 420-second limit before its requested timeout, with no summary captured. Neither is a passing suite or an established project-test failure. Native tests, live abuse and focused probes did finish. I did not rerun the historical CPU-hour, thousand-session network campaign, best-of-five performance tables, or complete corpus/format pass. I read selected linked Zig certificate parsing code, not every linked cryptographic primitive. Excluded throughout: decision log, state summaries, Fable readings, `RESULTS.md`, `*SYNTHESIS*`, HANDOFF and the lead skill. Thus a numbered worker decisions list is not verified here. No parallel reading was opened.

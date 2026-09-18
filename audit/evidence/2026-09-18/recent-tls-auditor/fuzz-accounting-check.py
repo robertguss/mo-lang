@@ -21,9 +21,9 @@ with tempfile.TemporaryDirectory() as d:
     returns = iter([(134, 'mock panic'), (3, 'mock hang'), (134, 'MOCK BATCH FAILURE'), (0, ''), (0, '')])
     def run(*args):
         rc, text = next(returns)
-        print('MOCK invocation exit:', rc, text)
+        print(('MOCK invocation exit: %s %s' % (rc, text)).rstrip())
         return rc, text
     with patch.object(fuzz.c, 'WORK', work), patch.object(fuzz.c, 'ensure_tools', lambda: None), patch.object(fuzz.subprocess, 'run', record), patch.object(fuzz, 'run', run), patch.object(fuzz, 'cpu_seconds', side_effect=[0, 0, 1, 1]), patch.object(fuzz, 'mutate', lambda *a: (b'MOFZ\x00', ['mock'])), patch.object(fuzz.c, 'stamp', lambda: 'MOCKED date/load\n'), patch.object(sys, 'argv', ['fuzz.py', '--seed', '1', '--minutes', '.001', '--batch', '2']):
         fuzz.main()
     print('MOCKED report from unchanged fuzz.py:')
-    print((work / 'fuzz-1.txt').read_text())
+    print((work / 'fuzz-1.txt').read_text().rstrip())
