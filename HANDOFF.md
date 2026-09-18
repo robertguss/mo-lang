@@ -1,143 +1,122 @@
-# Mo Lang — Handoff, 17 Sep 2026, afternoon, for the VM: the next session on the Mac or the VM
+# Mo Lang — Handoff, 17 Sep 2026, 10:20 PM ET, at the pause on the VM
 
 Paste the block below into a fresh Claude Code session in the repo. The roles,
-the Herdr worker loop, and the acceptance checklist live in the `mo-lead` skill
-(`.claude/skills/mo-lead/SKILL.md`), which `CLAUDE.md` tells every session to
-load; this page holds only the state, the queue, and what a fresh session must
-know that the wiki does not say in one place.
+the Herdr worker loop, the acceptance checklist, and the audit exchange live in
+the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which `CLAUDE.md`
+tells every session to load; this page holds only the state, the queue, and
+what a fresh session must know that the wiki does not say in one place.
 
 > We're continuing the Mo language build. **This session runs on the VM**
-> (Robert, 17 Sep, 16:10: step 35 and what follows run on the VM, not his
-> laptop; `herdr pane list` shows which machine this is; the worker pane there
-> is `w7:p7`, Zig 0.16 through `mise`). The evidence worktrees are on the Mac;
-> recreate what a step needs with `git worktree add`, as below. Load the `mo-lead` skill
-> first and follow it: you are the lead, Opus workers in Herdr (medium effort,
-> one fresh session per piece of work) write all code; Robert reviews the
-> decision log. **Robert's standing rule (15 Sep, 23:55, locked): you make the
-> decisions and keep the work moving; never stop to ask him; a question is a
-> decision-log row, not a wait.** **His rules of 16 Sep, in the skill:** every
-> run or spawn (a build, `zig build test`, a suite, a bench, a probe, a worker)
-> goes in a fresh Herdr pane of his workspace so he can see it, never a
-> background shell of your session; close the pane when its result is read;
-> close every workspace you create once its sessions are done; the roadmap
-> board is his status view, rewritten at every acceptance and pause; reports to
-> him at a high level, the check-by-check detail on the pages. The lead commits
-> wiki files with `git commit -m <msg> -- <paths>` only. Then read, in order:
+> (Robert, 17 Sep: steps run here, not on his laptop; `herdr pane list` shows
+> which machine this is; Zig 0.16 through `mise`; the worker pane is split to
+> the **right** of the lead's, never below, Robert's rule of 17 Sep). Load the
+> `mo-lead` skill first and follow it: you are the lead, Opus workers in Herdr
+> (medium effort, one fresh session per piece of work) write all code; Robert
+> reviews the decision log. **His standing rules:** you make the decisions and
+> keep the work moving, never stop to ask him (a question is a decision-log
+> row); every run or spawn goes in a fresh Herdr pane of his workspace, closed
+> when its result is read; the roadmap board is his status view, rewritten at
+> every acceptance and pause; **every time you give him is US Eastern**
+> (`TZ=America/New_York date`); reports at a high level, the detail on the
+> pages. The lead commits wiki files with `git commit -m <msg> -- <paths>`
+> only, and when a worker holds the shared tree, from a detached worktree of
+> `origin/main` (`git worktree add --detach ../mo-lang-lead-main origin/main`,
+> commit there, `git push origin HEAD:main`, remove it). Then, **before any
+> other work, the auditor's inbox:** `git fetch origin && python3
+> audit/automation/fable_poll.py check` (pointers only; the skill's Receive
+> bullet says what to do with each line; never open an auditor reading before
+> the lead's own is on `main`). Then read, in order:
 > `mo-wiki/state-of-the-project.md` (the whole picture; rewrite it at every
 > pause); `mo-wiki/SCHEMA.md`; the board and the phase table at the top of
-> `mo-wiki/plans/roadmap.md`; the last ten entries of `mo-wiki/log.md`; the last
-> thirty rows of `mo-wiki/decisions/decision-log.md`; `CHANGELOG.md` down to
-> "Session 8"; `mo-wiki/spec/design-v0/01-premise.md`, `08-milestone.md`, and
-> `10-language-after-the-rounds.md`; `mo-wiki/plans/erosion-round.md` whole
-> (four generations), `interpreter-step-32.md`, `-33.md`, `-34.md`,
-> `control-run-9.md`, `control-run-10.md`, `mac-scaling-run.md`.
+> `mo-wiki/plans/roadmap.md`; the last ten entries of `mo-wiki/log.md`; the
+> last forty rows of `mo-wiki/decisions/decision-log.md`; `CHANGELOG.md` down
+> to "Session 9"; `audit/README.md`, `audit/WORKFLOW.md`,
+> `mo-wiki/plans/the-audit-workflow.md`;
+> `mo-wiki/deep-dives/bricks-and-the-cost-of-zero-dependencies.md`;
+> `mo-wiki/plans/interpreter-step-35.md` and `-36.md` whole (both Results,
+> the two fixes); `mo-wiki/spec/design-v0/01-premise.md` and
+> `10-language-after-the-rounds.md`; `mo-wiki/plans/erosion-round.md` (the
+> speed row and the note naming generation four's cause).
 >
-> **State (16 Sep 2026, 23:00 local, at the pause).** Everything is on `main`,
-> pushed, and every evidence branch is pushed (`control7-*`, `control8-*`,
-> `control10-elixir`, `erosion2-*` to `erosion5-*`, `r9-*`; push `erosion5-*`
-> first if `git branch -r` lacks them). The worktrees for those branches exist
-> only on the Mac; on the VM recreate what a step needs with `git worktree add
-> ../mo-lang-<name> <branch>`, build the toolchain (`cd toolchain && zig build`;
-> Zig 0.16 is on the VM through `mise`) and copy `toolchain/zig-out/bin/mo` into
-> a Mo worktree's `toolchain/zig-out/bin/`, and put this untracked `mise.toml` at
-> the root of an Elixir worktree: `[tools]` / `elixir = "1.18-otp-27"` /
-> `erlang = "27"`. Step 34 is done, so the Mac's rows no longer need
-> `MO_CORES=1`, though at one core nothing is slower and the rounds keep it.
+> **State (17 Sep 2026, 10:20 PM ET, at the pause).** Everything is on `main`
+> at `8e2fe01` and pushed; no worker is running; no pane but the lead's is
+> open; no `mo`, `openssl`, or `zig` process is left; the Zig cache was
+> cleared (the next `zig build test` is cold, about 15 minutes; warm it is 11
+> on this VM's four cores). The evidence worktrees are on the Mac, plus
+> `../mo-lang-erosion3-mo` and `-erosion4-mo` here (the speed probe's,
+> rebuilt with step 35's `mo`); recreate others with `git worktree add`.
 >
-> **17 Sep, morning (Fable, on the Mac).** Research PR 2 (the Hermes lane,
-> branch `research/hermes-monitoring`, wiki only) merged into `main`: two daily
-> notes under `research/concepts/hermes-daily-2026-09-1{6,7}.md`, the plan
-> `plans/hermes-research-monitoring.md`, six raw snapshots. The branch stays
-> open for the next scan; review its PR, never merge it unread. Its one
-> correction is applied: chapter 10's restart-budget row now says the 3-in-5
-> budget is Elixir `Supervisor`'s default, not OTP's (Erlang's `supervisor`
-> defaults to 1 in 5 s). Its one gap check was right: `erosion2-*` and
-> `erosion5-*` had never been pushed; all eight are on the remote now, so the
-> sentence above about evidence branches is true from this morning. The rest
-> of the morning was a fresh-eyes pass over the whole wiki (six commits; the
-> log's entry of 17 Sep has the list and what was skipped on purpose); the
-> plang syntheses under `deep-dives/` are marked contested since they describe
-> a hypothetical Mo, which is why lint shows 15 review flags. Its two
-> checklists are queued reading for change 6, not steps: the crash-consistency
-> sequence (create, compact, rename, reopen, write again) sits on the exact
-> path of generation five's Mo defect, and error-path reachability as a recipe
-> acceptance question (Yuan et al., OSDI 2014).
+> **What today did, in the order Robert should read it** (every item has a row
+> for him in the decision log; the changelog has the detail):
 >
-> **What the evening did, in the order Robert should read it** (each has a
-> `semantic` row for him; the morning and afternoon are in the changelog):
->
-> 1. **Step 34 accepted** (`interpreter-step-34.md`): placement with the
->    starter; the cross-scheduler ask from 4 to 5.6 s per 100,000 to 0.14 (a
->    zero-timeout `kevent` on every poke and a lost wake, never the lock);
->    measured at 1, 4, and 14 cores: the queue's pairs and `kv-10k-get` under
->    `mo run` level across cores, the crunchers 7×; `echo-1k`, the binary's
->    `kv-10k-get`, and the queue's creates still slower at 14 by the rule for
->    what `main` starts (the follow-up). A regression of part A found and fixed
->    (a spawner that never parked). Carried: a unit test for the step-aside, the
->    crunchers' memory growth (step 33's), the interpreter ledger at 650
->    transfers a second (the compaction copy, now measured).
-> 2. **Generation four's Mo queue is nine times slower on the lease path** than
->    every earlier generation (452 pairs a second at 32 workers against 4,040,
->    the same on step 33's and step 34's binaries): the round had counted
->    correctness only. The speed row is measured per generation from five on.
->    The cause in the program is not yet named (the archive scan is gated; no
->    invariant was added; the board's one new `never` and the key map are the
->    suspects): a `sample` under load on a quiet machine is the first thing to
->    do before change 6 is written.
-> 3. **Change 5 and generation five** (`01f-job-queue-change-5.md`,
->    `erosion-round.md`): a lease handed to another worker, a queue renamed
->    with jobs in flight as one record, the seam a law; four maintainers in 11
->    to 25 minutes; the sixth suite Python 94, Elixir 94, Go 92, **Mo 93 of 94
->    under both runtimes: after a compaction, one more rename, and a stop, the
->    folder refuses to open** (its own `compact` leaves a count its own `verify`
->    refuses); the three `never`s the Mo maintainer wrote caught neither of its
->    bugs; all four found the spec's archive-rename sentence wrong and fixed it
->    with a position or a count; P6 55 and 99 ms, nothing lost. P1 and P5 held;
->    P2, P3, P4, P6 failed. Speed: Mo 425, Go 107, Python 4,847, Elixir 5,619.
->
-> **Rows for Robert** (decision log, "for Robert"), newest first: research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle.
->
-> **17 Sep, afternoon: the auditor.** Robert installed an independent auditor
-> (a Perplexity session only he opens) and ratified three stopping rules under
-> `audit/`; read `audit/README.md`, `CHARTER.md`, and the three rule files
-> before any work on program 7, the stopping rules, or the language's catch
-> claim. Fable writes its own reading of each subject as
-> `audit/fable-reading-<date>-<subject>.md` before opening the auditor's file
-> on it, never opens an audit session, and changes no ratified threshold
-> except by a row; raw pointers and outputs for the auditor go under `audit/evidence/<date>/` (17 Sep's bundle is filed), and every report names what is ready for an audit session. The loop is on `mo-wiki/plans/the-audit-workflow.md` and in the skill. **Since 17 Sep, 6 PM ET, the exchange is automated (PR #3 merged):** publish `ready` records with `audit/automation/fable_poll.py publish`, run `fable_poll.py check` at every session's start (CLAUDE.md says so) and when Robert says the auditor has posted something (pointers only); no cron on the lead's side, by his choice. The transport test's inbound leg is still pending the auditor's `to: fable` canary. M-3 is accepted; the queue below follows it.
+> 1. **Step 35, the crypto brick, accepted** (6:16 PM UTC, 2:16 PM ET): SHA-2,
+>    HMAC, HKDF, AES-GCM, ChaCha20-Poly1305, X25519, Ed25519, Argon2id, and
+>    `Random` as a capability, one Zig file for both runtimes; 0 mismatches
+>    against python's `cryptography`, 0 crashes in 4.5 million fuzz inputs;
+>    `List(UInt8)` at 2.9× and 6.3× the raw call, carried.
+> 2. **Generation four's nine times, named:** change 4's `sweep` gained a
+>    postcondition that walks every finished job and `decide` runs it on every
+>    request; contracts off restores generation three's rate; the closure's
+>    capture of `board` costs a structural walk per element in the binary
+>    (`mo_disown_in`, 23 percent), a runtime row for a later step.
+> 3. **The auditor, automated** (Robert's PR #3): handoff records under
+>    `audit/handoffs/`, the auditor's hourly intake, Fable's receiver
+>    (`audit/automation/fable_poll.py`), Fable's two parallel readings filed
+>    against `69860b0` before the auditor's were opened, the bricks page's
+>    note on shipped numbers. Robert relays the auditor's notices himself; no
+>    cron on the lead's side; the inbox is checked at every session's start.
+> 4. **Step 36, the TLS brick part one, accepted** (10:15 PM ET) after two
+>    fixes the lead's verification forced: a hanging brick test and a wrong
+>    certificate path, both behind the worker's reported green. 225 of 225;
+>    1,026 and 1,196 handshakes a second; a `Conn` that stays a `Conn`.
+> 5. **Robert's reading before program 7:** parity with the BEAM at zero
+>    dependencies from a compiled runtime is an achievement.
+> 6. **The machine:** a 43-hour orphan held one core through the day's numbers
+>    (the condition is on the evidence README; read `uptime` before any
+>    measurement, now in the skill); disk from 79 to 45 percent.
 >
 > **The queue** (the roadmap board is the authority; Fable decides the order):
 >
-> 1. **Step 35, the crypto brick: accepted 17 Sep, 18:16 UTC** on the VM
->    (`interpreter-step-35.md` has the Result; Fable's hour of fuzzing after
->    it: 3.9 million inputs, 0 crashes). Next in the bricks lane: **the TLS brick**
->    (two steps: a TLS 1.3 server on Zig's `std.crypto.tls` client; the
->    certificate chain and the differential run against OpenSSL), the brief
->    `interpreter-step-36.md` if it exists, else Fable writes it. Both before
->    program 7's first commit (the bricks page,
->    `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`).
-> 2. **The probe is done** (17 Sep, 19:25 UTC, on the VM): change 4's `sweep`
->    postcondition walks every finished job on every request; `MO_CONTRACTS=0`
->    restores generation three's rate; the row in the decision log, the note on
->    `erosion-round.md`. A chapter 10 candidate: a diagnostic for a contract whose
->    cost grows with the state it walks.
-> 3. **Program 7**: Fable writes and seals its spec (a Redis subset against
->    Redis's own tests, with TLS, ACL users with SHA-256 passwords, and a
->    Prometheus metrics endpoint as the P4 target); then Robert opens the audit
->    session that seals the hidden suites (tell him when the spec is ready);
->    then the Mo and Elixir builds under matched conditions. Fable does not write
->    or read the hidden suites.
-> 4. **Change 6 and generation six**, allowed while program 7 waits on the
->    auditor, never ahead of its build (the detail: `erosion-round.md`, the
->    brief `erosion-round-suite/e5-brief.sh` with the new spec path, the seven
->    suites, P6, the speed row; pre-register before any session starts).
-> 5. **Step 34's follow-up**, then **chapter 10's other sections** as steps,
->    then **the compile benchmark**.
+> 1. **Step 37, the TLS brick, part two** (Fable writes the brief first: the
+>    client side `Tls.connect`, the certificate chain, ALPN, a KeyUpdate
+>    delivered, the differential run against OpenSSL, the fuzz of the
+>    handshake parser; the carried rows of step 36 in view: the copy per byte
+>    in the record path, both bricks linked into every binary, the two
+>    swallowed timeouts, the missing-close_notify reading for program 7).
+>    Then its worker, then the evidence bundle and a `ready` record.
+> 2. **Program 7:** Fable writes and seals its spec (a Redis subset against
+>    Redis's own tests, with TLS, ACL users with Argon2id passwords, a
+>    Prometheus metrics endpoint as the P4 target; the request path's
+>    contracts named as what the speed row reads; the truncation reading
+>    decided), publishes it as a `ready` record; the auditor writes the hidden
+>    suites; then the Mo and Elixir builds under matched conditions.
+> 3. **Change 6 and generation six**, allowed while program 7 waits on the
+>    auditor, never ahead of its build.
+> 4. **The closure-capture step** (disown a closure's captures once, with a
+>    micro-benchmark first), **step 34's follow-up**, **chapter 10's other
+>    sections**, **the compile benchmark**, **a byte-string value** for
+>    `List(UInt8)`.
+>
+> **The auditor's inbox at this pause:** step 35 and the speed probe have both
+> sides' readings (`audit/mo-audit-2026-09-17-*.md`, `audit/fable-reading-*`);
+> Robert reads the pairs and files disagreements. Step 36's `ready` record is
+> `audit/handoffs/step-36/step-36-ready-001.json` at `cb61ac6`; expect a
+> `reading-filed` or `evidence-needed` PR from the auditor. The transport
+> test's inbound leg (a `to: fable` canary) is still unverified.
 >
 > **The site.** The wiki is published at https://robertguss.github.io/mo-lang/
 > by `.github/workflows/site.yml` (Quartz in `site/`) on every push to `main`.
-> `mo-wiki/state-of-the-project.md` is the lead's standing account, rewritten
-> at every pause; the maps under `mo-wiki/maps/` are kept current.
+>
+> **Things learned on the VM today.** `perf` for this kernel is at
+> `/usr/lib/linux-tools-6.8.0-139/perf` (the wrapper refuses); `curl` in the
+> lead's shell is redirected by a hook, use python's `urllib`; `pgrep -f` and
+> `pkill -f` match the lead's own command line when the pattern is in it
+> (exit 144 kills the lead's shell): use `pgrep -x` by name; `$c:t` in zsh is
+> a path modifier, quote `"${c}:path"`; a `zig build test` of the corpus
+> takes 11 minutes warm and hangs silently if a brick test blocks (`gdb -p`
+> on the test binary names the test); the lead's cleanup must never `git
+> worktree remove` before its push is confirmed. A worker's "green" is a
+> claim: the lead's own suite run is the gate.
 >
 > **Things learned on the Mac** (kept for the next Mac session). `ls`, `cat`,
 > `tr`, and `find -type` are aliased there: python3 for listings and reads in
@@ -163,16 +142,13 @@ know that the wiki does not say in one place.
 > `herdr workspace close`. Zsh does not word-split `set -- $x`: write the
 > commands out.
 >
-> **Unmet, carried.** Placement for what `main` starts; a unit test for the step-aside; the
-> crunchers binary's memory growth. Round 9's Opus-in-Pi baseline (no Anthropic
-> key in Pi). The restart at 100,000 jobs at 1.45 s and the compaction copy per
-> reference (the interpreter ledger at 650 transfers a second). The bench
-> baseline gap. Python's change 2 bench regression, unmeasured by the lead. The
-> Elixir old-log category (no round 10 escript kept aside). The interpreter's
-> 780 KB per process at rest. The lint reports 11 issues: 8 intentional
-> review flags on contested pages and 3 pages over 200 lines (the decision log,
-> the erosion round, the state page); the linter was taught the spec folder
-> and the map, synthesis, and research types on 17 Sep.
+> **Unmet, carried.** Step 36's carried rows (above). Placement for what
+> `main` starts; a unit test for the step-aside; the crunchers binary's memory
+> growth. Round 9's Opus-in-Pi baseline. The restart at 100,000 jobs at 1.45 s
+> and the compaction copy per reference. The bench baseline gap. Python's
+> change 2 bench regression. The Elixir old-log category. The interpreter's
+> 780 KB per process at rest. The transport test's inbound leg. Lint: 20
+> findings, 15 review flags on contested pages and 5 pages over 200 lines.
 >
 > **Style.** Ruby-nice syntax, zero new syntax where possible, concise, define
 > a PL term in three lines before using it, no phones. Fable drives: proposing

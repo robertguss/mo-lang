@@ -47,8 +47,10 @@ So far Mo holds the reliability column against every baseline in five of six
 hidden suites and lost it by one in the sixth, holds the feedback loop every
 time, holds the dependency column by construction, has lost the speed column to
 Elixir and, in one generation of maintenance, to its own maintainer, has
-answered the BEAM's restart row, and has not yet shown that its laws catch a bug
-an agent's own tests would miss: five generations of changes, three of them
+answered the BEAM's restart row, has built the first two bricks of its shelf at
+zero dependencies (crypto and a TLS 1.3 server, 17 Sep) so that program 7 can
+be written, and has not yet shown that its laws catch a bug an agent's own
+tests would miss: five generations of changes, three of them
 written to press on a law, and no `never` has tripped on a wrong edit. That last
 sentence is the one the project turns on.
 
@@ -213,6 +215,7 @@ does quality hold?), the incident round, and the two diagnostic columns.
 | Sampling as verification (measurement 2)                  | five regenerations of the queue's board compared over 132,000 operations                                  | identical, except on one impossible record a random driver never sends                                                                                                                                                                                                                                                                      | **held for a spec'd module**; directed inputs from the maintainers' own decisions find what random ones do not                                                           |
 | Quality holds across maintainers (erosion, measurement 3) | generations one (round 8) to five                                                                         | nothing eroded on the old suites in Mo, Go, or Python in five generations; Elixir eroded once (a torn line refused at open); under each generation's own suite the four programs came out within one defect of each other, and in generation five Mo alone carried one; generation four's Mo program lost nine times on the lease path, a performance erosion no correctness suite counts | **too early, and no longer one-sided**: the ten-generation prediction (Go and Python at least three defects, Mo at most one) is alive on both halves only if Mo's count stops at one; speed per generation is a column from now on |
 | Reliability moves with the model (round 9)                | round 8's change by kimi-k3, deepseek-v4-flash, gpt-5.5, Haiku 4.5, and a local 27B                       | for the cloud models it moved on the Mo side only, and the diagnostics carried them to green (first fix right in 21 of 23 loops); gpt-5.5 matched Opus in 14 minutes; Haiku 4.5 was wrong in every language in under ten minutes, most in Mo by checks (28, 22, 18), least by cause in Python (4, 6, 2); the local 27B made no edit in any language | **held**; for the cloud models the language teaches without the laws catching; at Haiku's size the language does not change whether the change is right, only which checks are missing |
+| The shelf at zero dependencies (bricks)                   | steps 35 and 36: the crypto brick and a TLS 1.3 server, each with the bricks page's audit items                | crypto 0 mismatches in 18,000 inputs per runtime against python's `cryptography`, 0 crashes in 4.5 million fuzz inputs; the TLS server 14 abuse rows as named, 22 lead probes, 1,026 handshakes a second; the cost: `List(UInt8)` at 2.9× and 6.3× the raw call, a record at 1.8× to 4× a plain write, +800 KiB per binary; two defects behind a worker's reported green found by the lead's own suite run |
 | Agent time                                                | rounds 1 to 6, recorded since                                                                             | Mo 1.3 to 2.5 times Go's time and two to five times its loops, nearly all loops the grammar's and the laws'                                                                                                                                                                                                                                 | **recorded, not a prediction**: the unfamiliarity tax is real and unmeasured against the value                                                                           |
 
 ## Where we were wrong
@@ -297,9 +300,13 @@ reading, and files its own account under
 [`audit/`](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) at
 the repo root. Fable remains the lead. For each subject, Fable writes its own
 reading before opening the auditor's. Where the two disagree, a decision-log row
-cites both, and Robert decides. Fable leaves the raw evidence for each day's
-work under `audit/evidence/<date>/` so a session can read it cold; the loop
-is on [[the-audit-workflow]].
+cites both, and Robert decides. Since the evening of 17 Sep the exchange is
+automated (PR #3): Fable leaves raw evidence under `audit/evidence/<date>/`
+and publishes `ready` records under `audit/handoffs/`, the auditor's intake
+polls `main` hourly and answers by pull request, and Fable checks the
+auditor's inbox at every session's start. The first two subjects (step 35, the
+speed probe) have readings from both sides; step 36's `ready` record is
+published; the loop is on [[the-audit-workflow]].
 
 In that first session Robert ratified three stopping rules, before program 7
 exists and before generation six runs:
@@ -336,6 +343,16 @@ exists. The auditor, not Fable, writes program 7's hidden suites.
 
 ## What is still to test, measure, and verify
 
+0. **Step 37, the TLS brick's second half, then program 7.** The client side
+   (`Tls.connect`), the certificate chain, ALPN, a KeyUpdate delivered, the
+   differential run against OpenSSL and the fuzz of the handshake parser: the
+   TLS brick's audit items 2 and 3 are open until then. Then Fable seals
+   program 7's spec (a Redis subset against Redis's own tests, with TLS, hashed
+   ACL passwords, a metrics endpoint), publishes it to the auditor, the auditor
+   writes the hidden suites, and the Mo and Elixir builds run. Robert's reading
+   before the evidence (17 Sep, 8:40 PM ET): parity with the BEAM at zero
+   dependencies from a compiled runtime is an achievement, not a retirement;
+   Fable's caveat beside it: a Redis subset is a narrow test of the BEAM.
 1. **The laws' value for the second agent.** No check has caught a
    change-induced bug in any language. The erosion round's later generations,
    changes 3 to 10, are where a law either earns a row or is removed. The check
