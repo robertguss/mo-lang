@@ -45,9 +45,12 @@ files; the skip list is still owed and must not turn those into unverified
 permanent skips. The auditor's sealing session on `program-7-spec-ready-002`
 still gates program 7.
 
-A sleeping timer in `w4:pC` re-prompts this lead at **3:47:28 PM ET**; it makes
-no model calls while waiting. On waking, obey this stop-after-worker update
-rather than the older queued-work wording in the timer's message.
+The completed baseline pane is closed and the raw evidence has been published
+as `program-7-spec-evidence-updated-linux-001` (`61c0614`, evidence at
+`85093fa`). The first sleeping timer pane was also closed before it fired; a
+replacement runs in `w4:pD`. It makes no model calls while waiting and its
+wake-up message says to stop after this worker for Robert's move. Check live
+pane state rather than assuming an old timer remains active.
 
 > We're continuing the Mo language build. **This session runs on Robert's Mac**
 > (M3 Max, 14 cores, 96 GB; `herdr pane list` shows the machine; the lead's pane
