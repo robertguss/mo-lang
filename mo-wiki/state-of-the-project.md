@@ -24,9 +24,39 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, for the paused VM-move checkpoint below.
-The historical account was rewritten 16 Sep and extended on 17–18 Sep.
-Six days since the first commit.
+**Last updated:** 18 Sep 2026, after the lead transition and PR 12 review. The
+historical account was rewritten 16 Sep and extended on 17–18 Sep. Six days
+since the first commit.
+
+## PR 12 reviewed; acceptance evidence still needs repair
+
+Robert authorized Amp as lead in the Linux Amp orb. The lead published its
+reading before opening the auditor's conclusions, then merged PR 12 unchanged.
+The comparison is `audit/fable-comparison-2026-09-18-current-state.md`. No
+implementation or retirement rule was accepted or changed by the review.
+
+The audit's certificate and ALPN failures predate step 39 A/B; their saved
+worker outputs now pass those specific cases. **Step 39 remains unaccepted**:
+Limbo is still 27 against zero, C/D are WIP, E/F unstarted, and independent
+acceptance is owed. Fresh unchanged harness probes at 5:28 PM ET reproduce
+false-success paths on current main: failed/timed-out suites return success,
+mocked failed stimuli score 20/20, a failed fuzz batch is reported as zero
+crashes, and an invalid category selection exits successfully with zero checks.
+These show broken instruments, not a newly observed TLS or application failure.
+
+**Program 7 is not ready for its binding comparison.** PR 12 adds explicit
+reconciliation of R2's fault regime, RC1's timing endpoint, and R4's
+hundred-edit requirement to the baseline/skip-list and auditor-seal gates.
+Recommendations are in [[decision-log]], not silently applied amendments. Lead
+orientation also identified binary-safe input and snapshot/log replay gaps; the
+directory-sync durability boundary remains unresolved. Repair and negatively
+test acceptance instruments before relying on them, and add a compiler/corpus CI
+gate rather than treating a wiki deployment as one.
+
+No worker or comparative run has restarted. The orb's private transfer and old
+worktrees are not verified as restored; Herdr is not on PATH. The move
+checkpoint below still holds for code, saved WIP, and Mac-only verification
+obligations.
 
 ## Paused for Robert's move, 18 Sep 2026, 4:33 PM ET
 

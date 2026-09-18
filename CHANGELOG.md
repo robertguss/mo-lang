@@ -2,6 +2,21 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Lead transition and PR 12 — 18 Sep 2026
+
+- Robert authorized Amp as lead. The current-state lead reading was published
+  before the auditor's conclusions were opened; PR 12 was reviewed and merged
+  unchanged, with the comparison and fresh harness-control outputs preserved
+  under `audit/`.
+- False-success runner, empty-selection, fuzz-accounting and abuse-stimulus
+  paths reproduced on current main. The audit's TLS/ALPN failures predate step
+  39 A/B; their worker outputs are not independent acceptance. No toolchain code
+  changed and step 39 remains incomplete.
+- Program 7's R2/RC1/R4 measurement discrepancies recorded for explicit
+  reconciliation before its seal and builds. The handoff and board retain
+  baseline, implementation-readiness and environment-restoration gates. No
+  ratified threshold or retirement mapping changed.
+
 ## Session 12, Robert's Mac, morning — 18 Sep 2026, 11:34 AM ET
 
 - **Step 39 paused for Robert's VM move** (4:33 PM ET): parts A/B committed (chain restrictions and ALPN), C/D saved as an unfinished patch, E/F unstarted. Worker suite outputs A 240/240, B 242/242; **not lead acceptance**. Limbo's 27 accepted-but-should-reject and C's 63/64 abuse run remain unresolved, Darwin full-sync is unimplemented. The worker is ended, local-only evidence and refs are packaged, and `HANDOFF.md` names the continuation and outstanding gates.

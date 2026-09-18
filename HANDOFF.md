@@ -1,14 +1,44 @@
-# Mo Lang — Handoff for Robert's cloud VM move, 18 Sep 2026
+# Mo Lang — Lead handoff after PR 12, 18 Sep 2026
 
-The new lead resumes on the cloud VM after Robert performs the move. Read the
-current checkpoint below first; the older Mac notes are historical context.
-The roles, the Herdr worker loop, the acceptance checklist, and the audit
-exchange live in the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which
+Robert authorized Amp to take the lead role in the Linux Amp orb. Read the audit
+checkpoint below first; the older move and Mac notes are historical context. The
+roles, the Herdr worker loop, the acceptance checklist, and the audit exchange
+live in the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which
 `CLAUDE.md` tells every session to load; this page holds only the state, the
 queue, and what a fresh session must know that the wiki does not say in one
 place.
 
-## Latest instruction: stopped and prepared for Robert's cloud move
+## Latest checkpoint: lead transition and PR 12 reviewed
+
+18 Sep 2026, after the 5:28 PM ET harness reproductions. Amp filed
+`audit/fable-reading-2026-09-18-current-state.md` on main before opening the
+auditor's conclusions, then merged PR 12 unchanged. The comparison is
+`audit/fable-comparison-2026-09-18-current-state.md`; fresh raw controls are
+under `audit/evidence/2026-09-18/current-state-lead/`. No substantive
+disagreement with the audit at its anchor; no implementation accepted.
+
+Step 39 stays first and incomplete at the exact checkpoint below. Its A/B fixes
+postdate the audit's TLS reproductions; worker outputs now pass those specific
+cases, but independent acceptance and Limbo's zero gate are owed. Before further
+acceptance, fix false-success status propagation, empty selection, fuzz-batch
+counting and abuse stimulus/state scoring, with negative controls. Preserve
+sealed suites and historical evidence. A reproducible Zig/corpus CI gate is also
+owed; the site deployment is not one.
+
+Program 7 remains pre-build: fresh-server Redis checks and the lead-owned skip
+list; R2/RC1/R4 reconciliation with the ratified rules (recommendations in the
+comparison and decision log, **not amendments**); then the auditor's seal.
+Resolve binary-safe Conn input, R5's missing snapshot/log restore path, and the
+directory-sync durability boundary before briefing the builds. No hidden suite
+was opened and no retirement rule triggered.
+
+No worker or experiment started in this audit review. This orb has Zig 0.16, one
+registered worktree and no Herdr executable on PATH; the private transfer and
+previous worktrees are **not verified as restored**. Keep the worker role and
+Mac-only acceptance obligations; do not substitute a Linux run for Darwin
+full-sync evidence. C/D's patch is not applied here and passes apply-check.
+
+## Previous checkpoint: stopped and prepared for Robert's cloud move
 
 **18 Sep 2026, 4:33 PM ET; Codex (GPT-6).** Robert asked to wrap the worker
 up ASAP and will perform the move himself. The worker stopped at its nearest
@@ -51,13 +81,13 @@ checkpoint after restoring its worker-checkpoint bundle.
 
 ### On the VM, when Robert resumes
 
-Read the cross-provider note and lead skill below. Check the auditor inbox
-with `git fetch origin && python3 audit/automation/fable_poll.py check`
-before opening any auditor file; file the new lead's own reading first.
-There was a new `origin/audit/2026-09-18-current-state` ref at the last fetch;
-its contents have not been opened by Codex. Apply C/D's patch once in a clean
-tree, resume Step 39 in a fresh Opus worker, then complete the original lead
-acceptance list before marking the TLS brick complete.
+Read the cross-provider note and lead skill below. Check the auditor inbox with
+`git fetch origin && python3 audit/automation/fable_poll.py check` before
+opening any auditor file; file the new lead's own reading first. The
+`audit/2026-09-18-current-state` review is now integrated as PR 12; see the
+latest checkpoint above for its acceptance prerequisites. Apply C/D's patch once
+in a clean tree, resume Step 39 in a fresh Opus worker, then complete the
+original lead acceptance list before marking the TLS brick complete.
 
 Redis's OrbStack Linux baseline is preserved and published as
 `program-7-spec-evidence-updated-linux-001` (`61c0614`, evidence at

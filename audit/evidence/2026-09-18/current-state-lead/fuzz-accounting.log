@@ -1,0 +1,14 @@
+MOCK invocation exit: 134 mock panic
+MOCK invocation exit: 3 mock hang
+MOCK invocation exit: 134 MOCK BATCH FAILURE
+MOCK invocation exit: 0
+MOCK invocation exit: 0
+2 inputs in 1 batches, seed 1: 0 crashes; 1 CPU s (0.0 min), 0 s wall
+MOCKED report from unchanged fuzz.py:
+MOCKED date/load
+fuzz.py --seed 1 --minutes 0.001 --batch 2
+self-check: a planted panic: exit 134, counted as a crash
+self-check: a planted hang: exit 3, counted as a crash
+# 2 inputs in 1 batches, seed 1: 0 crashes; 1 CPU s (0.0 min), 0 s wall
+# mutations: mock 2
+MOCKED date/load

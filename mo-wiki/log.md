@@ -232,6 +232,7 @@
 
 ## [2026-09-13] session | Afternoon: step 17 accepted, merged; the outside review answered; step 18 started
 - Fable verified: suite green (22 s), refined-type properties of Fable's own under both runtimes, MO0325 on an unsatisfiable where, a bad-byte file through read, read_lines, read_bytes under both runtimes, fold_lines, the six sentences tripped by hand. Three step rows. The outside review read and probed (recursion, closure capture, grouped patterns confirmed on today's binary); response page with baselines; Robert: laws and no-while stay, test and re-evaluate, document as baselines. Five review rows, two locked (Robert's call; the `semantic` tag). Merged to main. Step 18 (the review's no-compat fixes) to a fresh session; program 4 after it.
+
 ## [2026-09-13] session | Afternoon: outside review (Amp)
 - Robert asked an outside agent for a full critique with the oracle and librarian. Two deep dives added: outside-review-2026-09-13 (verdict, ranked disagreements, keep/revise/drop, next five moves) and its evidence page (13 probes: unbounded recursion passes check, for-only loops give fictional bounds, invariant polarity, vacuous fault-injection asserts, handles not classified as capabilities, update-as-transaction not holding across ask/fs, durability never checks self-built witnesses, Roc platform precedent). Nothing merged or decided; pages marked contested for Robert to answer.
 
@@ -243,6 +244,7 @@
 
 ## [2026-09-13] session | Evening: session 6 ingestion (Perplexity Computer)
 - Robert had Perplexity Computer sweep his Perplexity library for Mo-related research not yet in the vault. Six new files in `raw/research-runs/` (3 deep runs from sessions 4a4e7abb, 45e714aa, 256a997f answering the Mo parallel-tracks prompts + the 3 short briefs from session 2c696217). Three adjacent runs into `raw/articles/` as `pplx-*`. New prompts page `research/prompts/prompts-mo-parallel-tracks.md` pairs each brief with its deep run. Session page `sessions/session-06.md`. No decisions changed; the three deep runs are inputs for Fable, to become `empirical-validation-plan` and `ecosystem-strategy` concept pages and revisions to `research-summary-2026-09` and `case-against-new-languages` on the next pass.
+
 ## [2026-09-13] session | Evening: a correction to the record
 - Fable wrote in earlier entries and in reports to Robert that Robert typed instructions into the worker pane (the README and stdlib-intro fixes after step 16, the README fix after round 3, "merge to main" lines). Robert: "it's definitely not me". The text was Claude Code's own prompt suggestion shown in the worker's input after each turn. The edits themselves were sound and stay; the attribution was wrong. HANDOFF corrected; the suggestion line is ignored from now on.
 
@@ -251,6 +253,7 @@
 
 ## [2026-09-13] session | Night: step 20 accepted, merged; round 4 started
 - Fable verified: suite green (31 s); a server of Fable's own on serve and lines (an acceptor handing each Conn to a router by message, a slow worker with a mailbox of 4 taking a 2,000-line burst with no crash and the right count, an idle client closed at 1.5 s) under both runtimes; a capability in a struct field still refused; MO0327 and MO0326 through a plain check; a process starting its supervisor's child without a capability; no for reaching accept or read_line anywhere in examples; echo native identical; workers at 20,000 under both. Ten decision rows, four tagged semantic, one flagged (MO0327's strength). Fable tripped MO0101 three times writing probes, the same diagnostic round 3's worker tripped: the one-line arm with an assignment is the syntax models reach for. Merged to main. Round 4 of the control run started. Queued for Fable: the three session 6 deep runs into two concept pages; the Perplexity VM-first drafts once their pages arrive.
+
 ## [2026-09-13] ingest | Research agenda 2026-09: R1 papers, R3 authors, R6 manifestos (Perplexity Computer, branch research-2026-09-13-perplexity)
 - Robert asked Perplexity Computer to inspect the repo and wiki and propose further research. Scope settled by one-question-at-a-time clarification: an agenda page plus execution of one run per theme, full wiki integration on a branch as a PR.
 - Agenda page `research/prompts/prompts-research-agenda-2026-09` with six runs: R1 papers (LLM-facing), R2 papers (systems and PL), R3 authors (the elders), R4 authors (the moderns), R5 manifestos (philosophies and specification), R6 manifestos (safety and reliability). R2, R4, R5 hold ready-to-run prompts; not executed.
@@ -468,7 +471,6 @@
 ## [2026-09-17] update | Afternoon: the bricks page
 - `deep-dives/bricks-and-the-cost-of-zero-dependencies.md`, M-3 item 1 and the capabilities rule's prerequisite. The shelf boundary as three tests; the cost measured against Zig 0.16's `std` on the Mac (59,059 lines of `crypto` with a TLS 1.3 client and no server, 7,780 of `compress`, 3,262 of `http`) and estimated for what must be written (12,000 to 15,000 lines for the review's five bricks); five audit items and a surface cap per brick; bricks written once in Zig from now on; the vendored-C fallback, never application FFI; the ordering rule. Program 7 needs crypto and TLS; its metrics format is a recipe, the P4 target. Five rows, two for Robert. Index, the thesis map, the board, the state page, the handoff.
 
-
 ## [2026-09-17] session | Afternoon on the VM: step 35 started
 - The lead resumed on the VM as the rewritten handoff asked. A fresh Opus worker (`mo-opus`, pane `w7:pJ`, medium effort) started on [[interpreter-step-35]] at 15:50 UTC with the brief's write scope; the Mac worker of 16:05 had ended before writing. Fable's verification (the differential run, the hour of fuzzing, its own probes under both runtimes) follows the worker's report.
 
@@ -510,7 +512,6 @@
 - 11:59 AM ET: step 38 accepted (the suite 237 of 237, the mutant over ten runs, the pipelining probe, the abuse table against pre-committed cells); the lead's 11:55 AM status that part A was unproven corrected by the ten runs; step 39's brief written.
 - 12:07 to 12:21 PM ET: PR 11 (the auditor's reading of generation six) received; Fable's reading filed as a file first, merged, compared: six concessions (P1 not met as written, Python's third-suite failures were the round-8 fixture writer's, `/queues` a disputed common discrepancy, Go's 30,000-job row stands and is rerun, unequal coverage in `defects6b`, the instruments). Program 7's spec revision 2 sealed and published (`program-7-spec-ready-002`) with a partial measured baseline of Redis's suite against Redis itself. Step 39's worker started 12:01 PM ET and told to stop cleanly for Robert's pause (the Mac sleeps). The state page's one-screen account and the handoff rewritten. Not done: the worktree move Robert asked for.
 
-
 ## [2026-09-18] update | Codex takes the lead; prepare for Robert's cloud move
 - 3:40 PM ET: Robert will move the project himself after the current Step 39 worker finishes. Codex (GPT-6) records the stop-after-worker boundary in the handoff, board, state page and decision log; no later queued work starts before the move. Step 39 remains unaccepted. The sleeping Herdr timer avoids model calls between checks.
 - The existing Linux Redis baseline finished at 3:34:59 PM ET. All 22 retained files attempted: 909 ok, 5 err, 22 ignored, 3 exceptions, 3 timeouts. Raw files and the table preserved under `audit/evidence/2026-09-18/program-7-spec-r2/`. This was OrbStack on the Mac; two exceptions reveal background activity on the reused server, so clean per-file checks and the skip list remain owed.
@@ -520,3 +521,24 @@
 - 4:33 PM ET: Robert asked to wrap up ASAP. A/B pushed, C/D preserved as an explicit WIP patch (`bba9fda`), E/F unstarted. Worker report and original suite logs saved; the current five-file diff is byte-identical to the committed WIP patch and passes its reverse-apply check. Step 39 remains unaccepted; limbo 27 versus the zero gate, abuse 63/64, all lead acceptance still owed. Darwin full-sync and its Mac-only proof remain outstanding.
 - The Opus session exited and its pane closed. Inventory: 68 worktrees, 70 local branches, 16 without a same-name origin ref. The private transfer package at `~/Projects/startups/mo-lang-transfer-2026-09-18/` includes a verified Git bundle, a readable 692-member local-files archive, the WIP patch, receiver ledger and worktree map. No worktree was deleted, moved or merged. The final handoff and board stop the queue; Robert performs the move.
 - Final wiki lint: 252 pages, the same 21 review/size findings; no new category of issue.
+
+## [2026-09-18] session | Amp takes the lead; PR 12 reviewed
+
+- Robert authorized Amp as lead. The lead reading was pushed before opening PR
+  12's conclusions; PR 12 merged unchanged. The subsequent comparison is
+  `audit/fable-comparison-2026-09-18-current-state.md`; no substantive
+  disagreement with the auditor at its anchor, no implementation accepted, no
+  ratified rule changed.
+- At 5:28 PM ET the unchanged harness and fuzz-accounting mock probes reproduced
+  false-success paths on current main. Raw outputs and commands:
+  `audit/evidence/2026-09-18/current-state-lead/`. The TLS findings predate A/B;
+  their saved worker probes pass the specific chain/ALPN cases but do not close
+  step 39.
+- R2/RC1/R4 discrepancies and the incomplete baseline/security coverage
+  conceded; recommendations recorded for Robert before any program-7 seal/build.
+  The handoff, state page and roadmap carry the acceptance and environment
+  gates. No worker or experiment started; the orb's private transfer remains
+  unverified.
+- Wiki lint: 252 pages, 21 existing review/size findings after removing
+  automatic formatting churn; no broken-link, frontmatter, index or tag errors.
+  No full toolchain acceptance run was performed for this audit integration.

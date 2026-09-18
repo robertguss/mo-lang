@@ -15,25 +15,27 @@ just landed. One line each, with the page that holds the detail. Fable rewrites
 it at every acceptance and every pause; the dates say when. Below it, the phases
 in detail and the history of every step.
 
-**Paused for Robert's move, 18 Sep 2026, 4:33 PM ET (Codex / GPT-6).**
-Robert asked to wrap up ASAP. The worker is ended; A/B are pushed, C/D are
-saved as WIP, E/F have not started. The lead's acceptance is still owed and
-the TLS brick remains incomplete. The transfer package and final continuation
-notes are in `HANDOFF.md`. The queue resumes only after Robert's move.
+**Lead transition and audit review, 18 Sep 2026 (Amp; reproductions at 5:28 PM
+ET).** Robert authorized Amp as lead. PR 12 is integrated after the lead's
+reading was filed first. No worker has restarted: A/B are pushed, C/D are saved
+WIP, E/F unstarted, step 39 unaccepted. Repair acceptance instruments before
+using their counts again. The orb's private transfer/worktree state is
+unverified; `HANDOFF.md` and the new [[decision-log]] rows hold the continuation
+boundary.
 
 ## Now, in flight
 
 | what | who | since | page |
 |---|---|---|---|
 | **Step 39: the TLS brick's corrections** (two auditor readings showed the client accepting four certificate chains OpenSSL rejects; also ALPN past 64 names, the fuzz count, a corpus test that tested nothing, plaintext records after the handshake keys) and `F_FULLFSYNC` on macOS. **The TLS brick is not complete until it lands.** Its gate is the auditor's own script | paused; A/B pushed, C/D patch saved, E/F unstarted; worker ended | paused 18 Sep, 4:33 PM ET | [[interpreter-step-39]] |
-| Program 7: revision 2 of the spec is sealed and published (`program-7-spec-ready-002`). OrbStack Linux baseline finished: 22 files attempted, 909 ok, 5 err, 3 exceptions, 3 timeouts; raw evidence saved. Fresh-server checks and the skip list remain owed after the move. **Owed by Robert: the auditor's sealing session** | handoff prepared; Robert moves and opens sealing session | 18 Sep, 12:19 PM ET | [[07b-redis-subset-revision-2]] |
+| Program 7: revision 2 sealed; fresh-server baseline/skip list unfinished. PR 12 requires R2/RC1/R4 reconciliation before the seal. Lead readiness findings also require binary-safe input, snapshot/log replay and durability resolution. **No builds yet**                                                                                                                    | lead; ratified-rule decisions and auditor's sealing session with Robert | 18 Sep, after PR 12       | [[07b-redis-subset-revision-2]], [[decision-log]]                         |
 | With the auditor: `generation-six-ready-001`, `step-38-ready-001`, the comparisons of five readings filed this morning | the auditor | 18 Sep, 11:35 AM ET | [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
 
 ## Next, in order
 
 | # | what | why now | page |
 |---|---|---|---|
-| 1 | Program 7: after revision 2, the auditor's sealing session (Robert opens it: the hidden suite of 50 or more, the wait probe, the abuse suite, the drift seeds, the P4 change on a named hex package), then the Mo and Elixir builds, on Linux | the pre-registered test of the primary claim; step 38 (its pipelining prerequisite) is accepted | [[07-redis-subset]], [[program-menu]] |
+| 1   | Program 7 readiness: repair acceptance instruments with negative controls; finish baseline/skips; resolve R2/RC1/R4 and the binary-input/replay/durability gaps; explicitly version any spec changes; auditor's seal, then matched Linux builds             | the primary claim needs a valid experiment; step 38's acceptance does not prove abuse stimulus coverage    | [[07-redis-subset]], [[07b-redis-subset-revision-2]], [[decision-log]] |
 | 2 | A toolchain step from generation six: the simulator bounded on a process with a perpetual timer (the 13.4 GB process), `for _ in 0..n` as a counter, an `Fs` row that syncs a folder; then the allocator's resident set behind generation four's two states | a maintainer's plausible design took a machine down; a Mo program cannot make a rename durable by the book | [[erosion-round]], [[gen4-memory-control-probe]] |
 | 3 | Change 7 and generation seven, with the suite smoke-run on generation six's programs before its seal and the `/queues` sentence settled | the language rule is read at generation ten; the ledger stands at zero catches of two after six | [[erosion-round]] |
 | 4 | Placement for what `main` starts, and a unit test for the step-aside: the step 34 follow-up | `echo-1k` and the binary's `kv-10k-get` still slower at 14 cores | [[interpreter-step-34]] |
@@ -46,7 +48,12 @@ The compaction copy per reference (half again on jobq's log) and the one-second 
 
 ## Waiting on Robert
 
-**Blocking program 7:** the auditor's sealing session, which only Robert opens: `program-7-spec-ready-002` is published (revision 2 of the spec), so it can be opened now.
+**Blocking program 7:** ratified measurement reconciliation (R2's fault rig,
+RC1's clock, R4's hundred edits) and the auditor's sealing session, which only
+Robert opens. `program-7-spec-ready-002` remains published, but PR 12 shows that
+publication is not proof the measurement setup is compliant. Lead
+recommendations are rows in [[decision-log]]; no rule was amended by this
+review.
 
 Rows marked "for Robert" in the [[decision-log]], newest first: **the morning of 18 Sep on the Mac** (step 38 accepted; generation six read, the laws silent a sixth time; on macOS Mo's `fsync` does not reach the disk, the Mac's speed comparisons with Go withdrawn; **three corrections of the lead's own**: the sealed seventh suite was invalid and had never been run, generation five's third-suite column was never measured, P7's threshold re-read with evidence in view; five auditor readings compared, every finding conceded, **the TLS brick not complete**; program 7's spec to a revision 2; the 13.4 GB process named); the night of 17 to 18 Sep on the VM (step 37 and its fix, the VM's wedge, the memory control probe); the bricks page's two rows (the shelf boundary and program 7's two bricks; the audit items, caps, and cost); the auditor role taken up, M-3 accepted, the bricks prerequisite, and three disagreements with the ratified rules (program 7's shape against the capabilities rule, the R-A trigger at zero catches, Fable's reading of the runtime rule's open clauses) (17 Sep, afternoon); research PR 2 read and merged, chapter 10's attribution corrected (17 Sep); generation five's reading, the first Mo-only defect, the laws still silent; the change 4 Mo queue nine times slower on the lease path, speed recorded per generation; generation four; chapter 10 §2's budget as a value; generation three, the BEAM's row answered; P6 on Mo's change 2; round 9's Haiku row and its reading; generation two; chapter 10 §1 as built (step 31); chapter 10 itself; P6 on Elixir; measurement 1's completeness row; the BEAM row after round 10; the outage, probed and read; round 8 read; the 16 lint issues from his history bundle. Apart from the audit session, none blocks the work: Fable decides and records, Robert overturns.
 
@@ -54,6 +61,7 @@ Rows marked "for Robert" in the [[decision-log]], newest first: **the morning of
 
 | when | what | page |
 |---|---|---|
+| 18 Sep, after 5:28 PM ET | PR 12 integrated; lead reading filed first; current harness false-success paths reproduced with unchanged mock probes; TLS findings qualified by their pre-A/B anchor; program 7 measurement discrepancies conceded; no implementation accepted                                                                   | [[decision-log]]                                                                   |
 | 18 Sep, 11:59 AM ET | Step 38: a `Conn` reads while a write on it waits, `TCP_NODELAY`, 64 handshake abuse cells; the lead's suite 237 of 237, the mutant over ten runs, a byte-exact pipelining probe, the table against cells committed before it was seen | [[interpreter-step-38]] |
 | 18 Sep, 11:33 AM ET | Generation six: nothing eroded, no defect under the corrected seventh suite, Mo's generation-five defect fixed, the lease path back to change 3's rate; P3, P4, P6 failed, P7 void; the sealed suite invalid and generation five's third suite never run, both corrected | [[erosion-round]] |
 | 18 Sep, 10:00 AM ET | Five auditor readings and one research note received, Fable's four readings filed first, every finding conceded: the TLS brick not complete, the seventh suite's defects, program 7's spec to a revision 2, step 38's cells fixed in advance | [audit/](https://github.com/robertguss/mo-lang/blob/main/audit/README.md) |
