@@ -1,5 +1,10 @@
 # The auditor's state
 
+## Step 36 reading filed — 18 September 2026
+
+- Independent reading: [`mo-audit-2026-09-18-step-36.md`](mo-audit-2026-09-18-step-36.md), against evidence `cb61ac625d4b2e2a07b338105fa32780cdf66272`. Standing concerns: preserve the server-half/full-shelf distinction; explicitly resolve Done-when coverage and measurement mismatches; supply synthesis-free command/output evidence instead of mixed pane transcripts. The reading contains the observations, limits and falsifier. No stopping rule, prior concern or ratification is amended.
+
+
 Living state of the audit function: what has been ratified, what is queued, what standing concerns are open. Updated by the auditor at every reading; `audit/AUDITOR.md` describes the loop.
 
 **Current commit anchor:** `67823dd` (this file, on top of Fable's parallel readings at `9b48c6b` and the bricks-page compounding rows at `afebaa5`, 17 Sep 2026 afternoon).
