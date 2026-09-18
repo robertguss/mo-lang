@@ -50,7 +50,31 @@ const Fed = enum { got, eof, timeout, closed, broken };
 
 /// What `TlsServer.accept` came to: the handshake finished, or the `TlsError` it gives back
 /// (every one but `BadPem`, which only `Tls.server` can give).
-pub const Handshook = enum { done, Handshake, Timeout, Closed };
+pub const Handshook = enum { done, Handshake, Timeout, Closed, Untrusted };
+
+/// The engine a handshake starts (step 37): a server's connection, or a client's with its hello
+/// queued. Every step after is the same for both.
+pub const Side = union(enum) {
+    server: *brick.Server,
+    client: struct { client: *brick.Client, host: []const u8, now: i64 },
+
+    pub fn start(side: Side) Error!*brick.Conn {
+        return switch (side) {
+            .server => |s| brick.mo_tls_conn_new(s),
+            .client => |c| brick.mo_tls_connect(c.client, c.host.ptr, c.host.len, c.now),
+        } orelse error.OutOfMemory;
+    }
+
+    pub fn row(side: Side) []const u8 {
+        return if (side == .server) "TlsServer.accept" else "TlsClient.connect";
+    }
+};
+
+/// What an engine that failed its handshake gives the program: `Untrusted` when this client
+/// refused the server's chain (its alert already written), `Handshake` for anything else.
+fn refused(t: *brick.Conn) Handshook {
+    return if (brick.mo_tls_untrusted(t)) .Untrusted else .Handshake;
+}
 
 fn connResult(vm: *Vm, o: Outcome) Error!Value {
     return switch (o) {
@@ -276,8 +300,10 @@ pub const Net = struct {
     exchanges: std.ArrayList(Exchange) = .empty,
     /// The TLS servers `Tls.server` made (step 36): a `TlsServer`'s handle is its index. They
     /// live here, beside the listeners, because every process's vm reaches the same sockets;
-    /// the brick owns each one's chain and key, and `closeAll` gives them back.
+    /// the brick owns each one's chain and key, and `closeAll` gives them back. The clients
+    /// `Tls.client` made (step 37) are kept the same way.
     tls_servers: std.ArrayList(*brick.Server) = .empty,
+    tls_clients: std.ArrayList(*brick.Client) = .empty,
 
     fn now(n: *const Net) i64 {
         return Io.Clock.Timestamp.now(n.io, .awake).raw.toMilliseconds();
@@ -713,12 +739,13 @@ pub const Net = struct {
         }
     }
 
-    /// `tls_server.accept(conn, within:)`: the server's half of the handshake on `c`'s socket.
-    /// The connection it gives back is the same one; from here its bytes are records.
-    pub fn handshake(n: *Net, vm: *Vm, c: *Conn, server: *brick.Server, ms: i64) Error!Handshook {
+    /// `tls_server.accept(conn, within:)` and `tls_client.connect(conn, host:, within:)`: one
+    /// side's half of the handshake on `c`'s socket, the server's or the client's. The connection
+    /// it gives back is the same one; from here its bytes are records.
+    pub fn handshake(n: *Net, vm: *Vm, c: *Conn, side: Side, ms: i64) Error!Handshook {
         const deadline = n.now() + @max(ms, 0);
         if (c.closed) return .Closed;
-        const t = brick.mo_tls_conn_new(server) orelse return error.OutOfMemory;
+        const t = try side.start();
         errdefer brick.mo_tls_conn_free(t);
         const failed: Handshook = fail: while (true) {
             if (try n.flushTls(vm, c, t, deadline)) |f| break :fail if (f == .Timeout) .Timeout else .Closed;
@@ -728,14 +755,14 @@ pub const Net = struct {
             }
             switch (try n.feedTls(vm, c, t, deadline)) {
                 .got => {},
-                // A hello that stops mid-record, or a client that never finishes.
+                // A hello that stops mid-record, or a peer that never finishes.
                 .eof => break :fail .Closed,
                 .timeout => break :fail .Timeout,
                 .closed => break :fail .Closed,
-                // The engine answered with an alert; it reaches the client before the socket goes.
+                // The engine answered with an alert; it reaches the peer before the socket goes.
                 .broken => {
                     _ = try n.flushTls(vm, c, t, deadline);
-                    break :fail .Handshake;
+                    break :fail refused(t);
                 },
             }
         };
@@ -794,6 +821,8 @@ pub const Net = struct {
     pub fn closeAll(n: *Net) void {
         for (n.tls_servers.items) |s| brick.mo_tls_server_free(s);
         n.tls_servers.clearRetainingCapacity();
+        for (n.tls_clients.items) |cl| brick.mo_tls_client_free(cl);
+        n.tls_clients.clearRetainingCapacity();
         for (n.exchanges.items) |*e| e.forget(n.gpa);
         for (n.conns.items) |c| n.close(c);
         for (n.listeners.items) |l| l.server.socket.close(n.io);
@@ -849,8 +878,9 @@ pub const Fixture = struct {
     listeners: std.ArrayList(FixtureListener) = .empty,
     conns: std.ArrayList(FixtureConn) = .empty,
     exchanges: std.ArrayList(Exchange) = .empty,
-    /// The TLS servers `Tls.server` made in this test (step 36).
+    /// The TLS servers `Tls.server` and the clients `Tls.client` made in this test.
     tls_servers: std.ArrayList(*brick.Server) = .empty,
+    tls_clients: std.ArrayList(*brick.Client) = .empty,
     /// The port `listen(0)` tries next.
     next_port: u16 = 49_152,
 
@@ -881,7 +911,7 @@ pub const Fixture = struct {
 
     /// The plaintext a fixture connection has, after every record its peer wrote is read.
     /// Nothing waits here: a simulated call cannot wait for bytes that have not been written.
-    fn pumpTls(f: *Fixture, gpa: std.mem.Allocator, h: u32) Error!bool {
+    pub fn pumpTls(f: *Fixture, gpa: std.mem.Allocator, h: u32) Error!bool {
         const c = &f.conns.items[h];
         const t = c.tls orelse return true;
         const fed = c.inbound.items[c.start..];
@@ -910,27 +940,40 @@ pub const Fixture = struct {
         return true;
     }
 
-    /// `tls_server.accept` on the in-memory network: the handshake over the bytes the peer has
-    /// already written. Nothing happens while a simulated call waits, so a client that has sent
-    /// nothing is `Timeout` and one that sent something that is not a hello is `Handshake`.
-    pub fn handshake(f: *Fixture, sim: *sim_mod.Sim, h: u32, server: *brick.Server, ms: i64) Error!Handshook {
-        const c = &f.conns.items[h];
-        if (c.closed) return .Closed;
-        const t = brick.mo_tls_conn_new(server) orelse return error.OutOfMemory;
-        c.tls = t;
-        const whole = try f.pumpTls(sim.gpa, h);
-        if (!whole) {
-            f.conns.items[h].tls = null;
-            brick.mo_tls_conn_free(t);
-            f.conns.items[h].closed = true;
-            return .Handshake;
-        }
-        if (brick.mo_tls_ready(t)) return .done;
+    /// `accept` and `connect` on the in-memory network: one side's half of the handshake over the
+    /// bytes the peer has written. A handshake takes two rounds, so while this side has nothing
+    /// to read, the peer goes on: when the peer's own handshake is under way (in an update that
+    /// called `accept` or `connect` and is waiting in this call's rounds, or the other way round)
+    /// its engine reads what this side wrote and answers, as its own read would; and the other
+    /// processes take their messages, a round at a time, as a fixture call that waits for a
+    /// process does (http.zig's `send`), so a server whose `serve` hands it the connection
+    /// accepts it here. Nothing to take and nobody to run is `Timeout`, after the whole deadline;
+    /// a peer that sent something that is not the handshake is `Handshake`, and a chain this
+    /// client refused is `Untrusted`.
+    pub fn handshake(f: *Fixture, sim: *sim_mod.Sim, h: u32, side: Side, ms: i64) Error!Handshook {
+        if (f.conns.items[h].closed) return .Closed;
+        const t = try side.start();
+        f.conns.items[h].tls = t;
+        var delivered: u32 = 0;
+        const since = sim.deadlineNow();
+        const outcome: Handshook = while (true) {
+            if (!try f.pumpTls(sim.gpa, h)) break refused(t);
+            if (brick.mo_tls_ready(t)) return .done;
+            const peer = f.conns.items[h].peer;
+            if (f.conns.items[peer].tls != null) {
+                const before = f.conns.items[h].inbound.items.len;
+                _ = try f.pumpTls(sim.gpa, peer);
+                if (f.conns.items[h].inbound.items.len > before) continue;
+            }
+            if (f.conns.items[peer].closed and f.conns.items[h].inbound.items.len == 0) break .Closed;
+            if (try sim.deliverRound(&delivered)) continue;
+            sim.wait(@max(since + ms - sim.deadlineNow(), 0));
+            break .Timeout;
+        };
         f.conns.items[h].tls = null;
         brick.mo_tls_conn_free(t);
         f.conns.items[h].closed = true;
-        sim.wait(ms);
-        return .Timeout;
+        return outcome;
     }
 
     pub fn call(f: *Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: []const Value) Error!Value {
@@ -1068,6 +1111,8 @@ pub const Fixture = struct {
         };
         for (f.tls_servers.items) |s| brick.mo_tls_server_free(s);
         f.tls_servers.clearRetainingCapacity();
+        for (f.tls_clients.items) |cl| brick.mo_tls_client_free(cl);
+        f.tls_clients.clearRetainingCapacity();
     }
 
     /// A process holding these arguments stopped: every Conn and Exchange among them closes.

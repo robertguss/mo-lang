@@ -48,7 +48,7 @@ pub const Options = struct {
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed", "File", "Folder", "Dropped", "BadPem", "Handshake" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed", "File", "Folder", "Dropped", "BadPem", "Handshake", "Untrusted" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {

@@ -1615,6 +1615,10 @@ static void format_value(Buf *b, MoValue v) {
         case MO_CAP_HTTP_LISTENER: buf_str(b, "an HttpListener"); return;
         case MO_CAP_EXCHANGE: buf_str(b, "an Exchange"); return;
         case MO_CAP_RANDOM: buf_str(b, mo_cap_handle(v) == 0 ? "a Random" : "Random.fixture()"); return;
+        /* As the interpreter prints them (vm.zig); a TlsServer printed "a Runtime" before step 37. */
+        case MO_CAP_TLS: buf_str(b, "a Tls"); return;
+        case MO_CAP_TLS_SERVER: buf_str(b, "a TlsServer"); return;
+        case MO_CAP_TLS_CLIENT: buf_str(b, "a TlsClient"); return;
         default: buf_str(b, !server_mode ? "Runtime.fixture()" : mo_cap_handle(v) == 1 ? "a read-only Runtime" : "a Runtime"); return;
         }
     case MO_HANDLE:
@@ -9040,19 +9044,47 @@ MO_ROW(mo_r_Conn_close) {
 
 MO_ROW(mo_r_Net_fixture) { (void)a; (void)kind; return mo_cap(MO_CAP_NET, 0, 0); }
 
-/* ==== Tls: the TLS brick's server rows (step 36, design-v0/09 ## Tls). Tls.server parses a
- * certificate chain and a key; TlsServer.accept runs the server's half of the handshake on a
- * Conn and gives the same Conn back with the engine behind it, so read_line, write, close, and
- * lines are the rows they always were. The brick is the one implementation, shared with the
- * interpreter (src/bricks/tls.zig, src/tls_rows.zig); nothing of TLS is written here. */
+/* ==== Tls: the TLS brick's rows (steps 36 and 37, design-v0/09 ## Tls). Tls.server parses a
+ * certificate chain and a key, Tls.client the roots a client trusts; TlsServer.accept and
+ * TlsClient.connect run one side's half of the handshake on a Conn and give the same Conn back
+ * with the engine behind it, so read_line, write, close, and lines are the rows they always were;
+ * offer gives each side a new value with its ALPN list, and Conn.protocol says what the two
+ * agreed. The brick is the one implementation, shared with the interpreter (src/bricks/tls.zig,
+ * src/tls_rows.zig); nothing of TLS is written here. */
 
 /* TlsError's variants, in the order tls_fail takes them. */
-enum { TLS_BAD_PEM, TLS_HANDSHAKE, TLS_TIMEOUT, TLS_CLOSED };
+enum { TLS_BAD_PEM, TLS_HANDSHAKE, TLS_TIMEOUT, TLS_CLOSED, TLS_UNTRUSTED };
 
 static MoValue tls_fail(int f) {
-    static const uint32_t names[] = {MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_TIMEOUT, MO_N_CLOSED};
+    static const uint32_t names[] = {MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_TIMEOUT, MO_N_CLOSED, MO_N_UNTRUSTED};
     return error_of(mo_variant(names[f], 0, NULL));
 }
+
+/* The clients Tls.client made: a TlsClient's handle is its index here. */
+static MoTlsClient **tls_clients;
+static size_t ntls_clients, captls_clients;
+
+static uint32_t keep_server(MoTlsServer *server) {
+    if (ntls_servers == captls_servers) {
+        captls_servers = captls_servers ? 2 * captls_servers : 4;
+        tls_servers = xrealloc(tls_servers, captls_servers * sizeof *tls_servers);
+    }
+    tls_servers[ntls_servers++] = server;
+    return (uint32_t)(ntls_servers - 1);
+}
+
+static uint32_t keep_client(MoTlsClient *client) {
+    if (ntls_clients == captls_clients) {
+        captls_clients = captls_clients ? 2 * captls_clients : 4;
+        tls_clients = xrealloc(tls_clients, captls_clients * sizeof *tls_clients);
+    }
+    tls_clients[ntls_clients++] = client;
+    return (uint32_t)(ntls_clients - 1);
+}
+
+/* A failed handshake as the program sees it: Untrusted when this client refused the server's
+ * chain (its alert already written), Handshake for anything else. */
+static int tls_refused(MoTlsConn *t) { return mo_tls_untrusted(t) ? TLS_UNTRUSTED : TLS_HANDSHAKE; }
 
 MO_ROW(mo_r_Platform_tls) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "tls"); return mo_cap(MO_CAP_TLS, 0, 0); }
 
@@ -9063,20 +9095,66 @@ MO_ROW(mo_r_Tls_server) {
     (void)kind;
     MoTlsServer *server = mo_tls_server_new(a[1].as.s, a[1].aux, a[2].as.s, a[2].aux);
     if (!server) return tls_fail(TLS_BAD_PEM);
-    if (ntls_servers == captls_servers) {
-        captls_servers = captls_servers ? 2 * captls_servers : 4;
-        tls_servers = xrealloc(tls_servers, captls_servers * sizeof *tls_servers);
-    }
-    tls_servers[ntls_servers++] = server;
-    return ok_of(mo_cap(MO_CAP_TLS_SERVER, (uint32_t)(ntls_servers - 1), 0));
+    return ok_of(mo_cap(MO_CAP_TLS_SERVER, keep_server(server), 0));
 }
 
-/* The server's half of the handshake on a real socket: TLS_* or -1 when it finished. */
-static int tls_handshake(Conn *c, MoTlsServer *server, int64_t ms) {
+MO_ROW(mo_r_Tls_client) {
+    HOLD_RUNTIME();
+    (void)kind;
+    MoTlsClient *client = mo_tls_client_new(a[1].as.s, a[1].aux);
+    if (!client) return tls_fail(TLS_BAD_PEM);
+    return ok_of(mo_cap(MO_CAP_TLS_CLIENT, keep_client(client), 0));
+}
+
+/* ALPN's names as the brick takes them, NUL-separated, in `out` (freed by the caller). A name that
+ * is empty, longer than 255 bytes, or holds a NUL is the caller's broken rule, and a crash. */
+static size_t alpn_names(MoValue list, const char *row, char **out) {
+    size_t len = 0;
+    for (uint32_t i = 0; i < list.aux; i++) len += list.as.xs[i].aux + 1;
+    char *buf = xrealloc(NULL, len ? len : 1);
+    size_t at = 0;
+    for (uint32_t i = 0; i < list.aux; i++) {
+        MoValue name = list.as.xs[i];
+        if (name.aux == 0 || name.aux > 255 || memchr(name.as.s, 0, name.aux))
+            mo_fail(MO_R_OTHER, row, "an ALPN protocol name is 1 to 255 bytes with no NUL, and \"%.*s\" is not", (int)name.aux, name.as.s);
+        memcpy(buf + at, name.as.s, name.aux);
+        at += name.aux;
+        buf[at++] = 0;
+    }
+    *out = buf;
+    return at;
+}
+
+MO_ROW(mo_r_TlsServer_offer) {
+    HOLD_RUNTIME();
+    (void)kind;
+    char *names;
+    size_t n = alpn_names(a[1], "offer", &names);
+    MoTlsServer *server = mo_tls_server_offer(tls_servers[mo_cap_handle(a[0])], names, n);
+    free(names);
+    if (!server) mo_fail(MO_R_OTHER, "offer", "the TLS brick is out of memory");
+    return mo_cap(MO_CAP_TLS_SERVER, keep_server(server), 0);
+}
+
+MO_ROW(mo_r_TlsClient_offer) {
+    HOLD_RUNTIME();
+    (void)kind;
+    char *names;
+    size_t n = alpn_names(a[1], "offer", &names);
+    MoTlsClient *client = mo_tls_client_offer(tls_clients[mo_cap_handle(a[0])], names, n);
+    free(names);
+    if (!client) mo_fail(MO_R_OTHER, "offer", "the TLS brick is out of memory");
+    return mo_cap(MO_CAP_TLS_CLIENT, keep_client(client), 0);
+}
+
+/* One side's half of the handshake on a real socket, the engine `t` already made (a server's, or
+ * a client's with its hello queued): TLS_* or -1 when it finished. */
+static int tls_handshake(Conn *c, MoTlsConn *t, int64_t ms) {
     int64_t deadline = now_ms() + max0(ms);
-    if (c->closed) return TLS_CLOSED;
-    MoTlsConn *t = mo_tls_conn_new(server);
-    if (!t) mo_fail(MO_R_OTHER, "accept", "the TLS brick could not start a connection");
+    if (c->closed) {
+        mo_tls_conn_free(t);
+        return TLS_CLOSED;
+    }
     c->tls = t;
     for (;;) {
         int sent = tls_flush(c, deadline);
@@ -9089,43 +9167,100 @@ static int tls_handshake(Conn *c, MoTlsServer *server, int64_t ms) {
         if (mo_tls_ready(t)) return -1;
         int fed = tls_feed(c, deadline);
         if (fed == FILL_GOT) continue;
-        /* The engine answered with an alert; it reaches the client before the socket goes. */
+        /* The engine answered with an alert; it reaches the peer before the socket goes. */
+        int failed = fed == FILL_TIMEOUT ? TLS_TIMEOUT : fed == FILL_BROKEN ? tls_refused(t) : TLS_CLOSED;
         if (fed == FILL_BROKEN) tls_flush(c, deadline);
         c->tls = NULL;
         mo_tls_conn_free(t);
         net_close(c);
-        /* A hello that stops mid-record, or a client that never finishes, is Timeout. */
-        return fed == FILL_TIMEOUT ? TLS_TIMEOUT : fed == FILL_BROKEN ? TLS_HANDSHAKE : TLS_CLOSED;
+        /* A hello that stops mid-record, or a peer that never finishes, is Timeout. */
+        return failed;
     }
 }
 
-/* The same handshake on the in-memory network: the bytes the peer has already written, and no
- * waiting, so a client that has sent nothing is Timeout and one that sent something that is not
- * a hello is Handshake. */
-static int fix_handshake(uint32_t h, MoTlsServer *server, int64_t ms) {
-    FixConn *c = &fix_conns[h];
-    if (c->closed) return TLS_CLOSED;
-    MoTlsConn *t = mo_tls_conn_new(server);
-    if (!t) mo_fail(MO_R_OTHER, "accept", "the TLS brick could not start a connection");
-    c->tls = t;
-    bool whole = fix_pump_tls(h);
-    if (whole && mo_tls_ready(t)) return -1;
+/* The same handshake on the in-memory network (net.zig, Fixture.handshake): the bytes the peer
+ * has written. While this side has nothing to read the peer goes on: its engine, when its own
+ * handshake is under way, reads what this side wrote and answers, and the other processes take
+ * their messages a round at a time, as Http.send's does. Nothing to take and nobody to run is
+ * Timeout after the whole deadline; a peer that sent something that is not the handshake is
+ * Handshake, and a chain this client refused is Untrusted. */
+static int fix_handshake(uint32_t h, MoTlsConn *t, int64_t ms) {
+    if (fix_conns[h].closed) {
+        mo_tls_conn_free(t);
+        return TLS_CLOSED;
+    }
+    fix_conns[h].tls = t;
+    uint32_t delivered = 0;
+    int64_t since = sim_waited;
+    int failed;
+    for (;;) {
+        if (!fix_pump_tls(h)) {
+            failed = tls_refused(t);
+            break;
+        }
+        if (mo_tls_ready(t)) return -1;
+        uint32_t peer = fix_conns[h].peer;
+        if (fix_conns[peer].tls) {
+            size_t before = fix_conns[h].len;
+            fix_pump_tls(peer);
+            if (fix_conns[h].len > before) continue;
+        }
+        if (fix_conns[peer].closed && fix_conns[h].len == fix_conns[h].start) {
+            failed = TLS_CLOSED;
+            break;
+        }
+        if (deliver_round(&delivered)) continue;
+        if (since + ms > sim_waited) sim_waited = since + ms;
+        failed = TLS_TIMEOUT;
+        break;
+    }
     fix_conns[h].tls = NULL;
     mo_tls_conn_free(t);
     fix_conns[h].closed = true;
-    if (whole) sim_waited += ms;
-    return whole ? TLS_TIMEOUT : TLS_HANDSHAKE;
+    return failed;
+}
+
+static MoValue tls_handshake_row(const MoValue *a, MoTlsConn *t, int64_t ms, const char *row, const char *within) {
+    uint32_t h = mo_cap_handle(a[1]);
+    const char *used = server_mode ? conns[h]->used : fix_conns[h].used;
+    if (used) {
+        mo_tls_conn_free(t);
+        mo_fail(MO_R_OTHER, within, "%s takes a connection nothing has read or written, and %s was called on this one", row, used);
+    }
+    int failed = server_mode ? tls_handshake(conns[h], t, ms) : fix_handshake(h, t, ms);
+    return failed < 0 ? ok_of(a[1]) : tls_fail(failed);
 }
 
 MO_ROW(mo_r_TlsServer_accept) {
     HOLD_RUNTIME();
     (void)kind;
-    MoTlsServer *server = tls_servers[mo_cap_handle(a[0])];
-    uint32_t h = mo_cap_handle(a[1]);
-    const char *used = server_mode ? conns[h]->used : fix_conns[h].used;
-    if (used) mo_fail(MO_R_OTHER, "accept", "TlsServer.accept takes a connection nothing has read or written, and %s was called on this one", used);
-    int failed = server_mode ? tls_handshake(conns[h], server, a[2].as.i) : fix_handshake(h, server, a[2].as.i);
-    return failed < 0 ? ok_of(a[1]) : tls_fail(failed);
+    MoTlsConn *t = mo_tls_conn_new(tls_servers[mo_cap_handle(a[0])]);
+    if (!t) mo_fail(MO_R_OTHER, "accept", "the TLS brick could not start a connection");
+    return tls_handshake_row(a, t, a[2].as.i, "TlsServer.accept", "accept");
+}
+
+MO_ROW(mo_r_TlsClient_connect) {
+    HOLD_RUNTIME();
+    (void)kind;
+    /* The chain's dates are checked against the runtime's clock: the wall clock under main, and
+     * in a test the simulator's (Time.fixture(), 2026-01-01, moved by fixture waits). */
+    int64_t now_sec = clock_now_ms() / 1000;
+    MoTlsConn *t = mo_tls_connect(tls_clients[mo_cap_handle(a[0])], a[2].as.s, a[2].aux, now_sec);
+    if (!t) mo_fail(MO_R_OTHER, "connect", "the TLS brick could not start a connection");
+    return tls_handshake_row(a, t, a[3].as.i, "TlsClient.connect", "connect");
+}
+
+/* conn.protocol: the ALPN protocol the handshake agreed, None on a plain Conn. */
+MO_ROW(mo_r_Conn_protocol) {
+    HOLD_RUNTIME();
+    (void)kind;
+    uint32_t h = mo_cap_handle(a[0]);
+    MoTlsConn *t = server_mode ? conns[h]->tls : fix_conns[h].tls;
+    uint8_t name[255];
+    size_t n = t ? mo_tls_protocol(t, name, sizeof name) : 0;
+    if (n == 0) return mo_variant(MO_N_NONE, 0, NULL);
+    MoValue text = heap_string((const char *)name, n);
+    return mo_variant(MO_N_SOME, 1, &text);
 }
 
 /* ==== Http: HTTP/1.1 over Net, real sockets under main and Net.fixture()'s network in a test (http.zig)
@@ -10083,6 +10218,19 @@ static bool serve_fixture(Source *s) {
     return true;
 }
 
+/* A line's bytes taken off a fixture connection: the plaintext behind TLS, the inbound bytes
+ * otherwise. */
+static void lines_taken(FixConn *c, bool tls, size_t taken, bool skipping) {
+    c->skipping = skipping;
+    if (tls) {
+        c->clear_start += taken;
+        if (c->clear_start == c->clear_len) c->clear_start = c->clear_len = 0;
+    } else {
+        c->start += taken;
+        if (c->start == c->len) c->start = c->len = 0;
+    }
+}
+
 static bool lines_fixture(Source *s) {
     FixConn *c = &fix_conns[s->handle];
     if (c->closed) {
@@ -10094,15 +10242,28 @@ static bool lines_fixture(Source *s) {
         s->done = true;
         return false;
     }
+    /* Behind TLS (steps 36 and 37) the lines are cut from the plaintext the peer's records gave
+     * up, as the socket's loop reads through the engine; a record that does not check out ends
+     * the stream. */
+    if (c->tls && !fix_pump_tls(s->handle)) {
+        if (!source_room(s, 0)) return false;
+        source_send(s->to, MO_N_CLOSED, 0, NULL);
+        fix_conns[s->handle].closed = true;
+        s->done = true;
+        return true;
+    }
+    c = &fix_conns[s->handle];
+    bool tls = c->tls != NULL;
+    const char *base = tls ? (c->clear ? c->clear : "") : (c->inbound ? c->inbound : "");
+    size_t start = tls ? c->clear_start : c->start;
+    size_t len = tls ? c->clear_len : c->len;
     bool skipping = c->skipping;
-    Scan sc = scan_line(c->inbound ? c->inbound + c->start : "", c->len - c->start, fix_conns[c->peer].closed, &skipping);
+    Scan sc = scan_line(base + start, len - start, fix_conns[c->peer].closed, &skipping);
     if (sc.what == SCAN_MORE) {
-        c->start += sc.taken;
-        c->skipping = skipping;
-        if (c->start == c->len) c->start = c->len = 0;
+        lines_taken(c, tls, sc.taken, skipping);
         if (sim_waited - s->since < s->idle_ms || !source_room(s, 0)) return false;
         source_send(s->to, MO_N_IDLE, 0, NULL);
-        c->closed = true;
+        fix_conns[s->handle].closed = true;
         s->done = true;
         return true;
     }
@@ -10116,10 +10277,7 @@ static bool lines_fixture(Source *s) {
         source_send(s->to, MO_N_CLOSED, 0, NULL);
         s->done = true;
     }
-    c = &fix_conns[s->handle];
-    c->start += sc.taken;
-    c->skipping = skipping;
-    if (c->start == c->len) c->start = c->len = 0;
+    lines_taken(&fix_conns[s->handle], tls, sc.taken, skipping);
     s->since = sim_waited;
     return true;
 }

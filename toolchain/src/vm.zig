@@ -1401,6 +1401,8 @@ pub const Vm = struct {
         .{ "Http.fixture", .http_fixture },         .{ "Platform.http", .platform_part },
         .{ "Platform.tls", .platform_part },        .{ "Tls.server", .tls_row },                  .{ "TlsServer.accept", .tls_row },
         .{ "Tls.fixture", .tls_fixture },
+        .{ "Tls.client", .tls_row },                  .{ "TlsClient.connect", .tls_row },      .{ "TlsClient.offer", .tls_row },
+        .{ "TlsServer.offer", .tls_row },             .{ "Conn.protocol", .tls_row },
         .{ "Type.all", .never_only },               .{ ".flows", .never_only },                   .{ "Platform.args", .platform_part },
         .{ "Platform.env", .platform_part },        .{ "Platform.stdout", .platform_part },       .{ "Platform.stderr", .platform_part },
         .{ "Platform.fs", .platform_part },         .{ "Platform.clock", .platform_part },        .{ "Platform.exit", .platform_exit },
@@ -1926,6 +1928,7 @@ pub const Vm = struct {
                 .random => if (c.handle == 0) "a Random" else "Random.fixture()",
                 .tls => "a Tls",
                 .tls_server => "a TlsServer",
+                .tls_client => "a TlsClient",
                 .runtime => if (vm.server == null) "Runtime.fixture()" else if (c.handle == surface_mod.read_only_handle) "a read-only Runtime" else "a Runtime",
             }),
             .handle => |h| if (vm.sim) |s| {

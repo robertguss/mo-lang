@@ -103,6 +103,8 @@ pub const types = [_]Type{
     // What `accept` gives back is a `Conn`, so every row after the handshake is unchanged.
     .{ .name = "Tls", .kind = .capability, .origin = .stdlib, .hideable = true },
     .{ .name = "TlsServer", .kind = .capability, .origin = .stdlib, .hideable = true },
+    // The client side (step 37): a trust set of roots and an ALPN list, no authority beyond them.
+    .{ .name = "TlsClient", .kind = .capability, .origin = .stdlib, .hideable = true },
     .{ .name = "TlsError", .kind = .error_enum, .origin = .stdlib, .hideable = true },
 };
 
@@ -244,6 +246,7 @@ pub const variants = [_]Variant{
     .{ .owner = "TlsError", .name = "Handshake", .origin = .stdlib },
     .{ .owner = "TlsError", .name = "Timeout", .origin = .stdlib },
     .{ .owner = "TlsError", .name = "Closed", .origin = .stdlib },
+    .{ .owner = "TlsError", .name = "Untrusted", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "NoProcess", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "Unparsed", .fields = &.{.{ .name = "why", .type = "String" }}, .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "ReadOnly", .origin = .stdlib },
@@ -524,6 +527,14 @@ pub const fns = [_]Fn{
     .{ .recv = "Tls", .name = "server", .named = &.{ .{ .name = "cert", .type = "String" }, .{ .name = "key", .type = "String" } }, .ret = "Result(TlsServer, TlsError)", .origin = .stdlib },
     .{ .recv = "TlsServer", .name = "accept", .params = &.{"Conn"}, .ret = "Result(Conn, TlsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Tls", .on_type = true, .name = "fixture", .ret = "Tls", .only = .tests, .origin = .stdlib },
+    // TLS's client side and ALPN (step 37): a client from PEM roots, the client's half of the
+    // handshake on a Conn from Net.connect, each side's ALPN list as a new value, and the
+    // protocol a handshake agreed.
+    .{ .recv = "Tls", .name = "client", .named = &.{.{ .name = "trust", .type = "String" }}, .ret = "Result(TlsClient, TlsError)", .origin = .stdlib },
+    .{ .recv = "TlsClient", .name = "connect", .params = &.{"Conn"}, .named = &.{.{ .name = "host", .type = "String" }}, .ret = "Result(Conn, TlsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "TlsClient", .name = "offer", .params = &.{"List(String)"}, .ret = "TlsClient", .origin = .stdlib },
+    .{ .recv = "TlsServer", .name = "offer", .params = &.{"List(String)"}, .ret = "TlsServer", .origin = .stdlib },
+    .{ .recv = "Conn", .name = "protocol", .ret = "Option(String)", .origin = .stdlib },
     .{ .recv = "Deadline", .name = "at_most", .params = &.{"Duration"}, .ret = "Deadline", .origin = .stdlib },
     // What remains of the deadline, zero once it has passed (step 24).
     .{ .recv = "Deadline", .name = "remaining", .ret = "Duration", .origin = .stdlib },

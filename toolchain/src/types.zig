@@ -13,9 +13,10 @@ pub const IntKind = enum(u8) { i8, i16, i32, i64, u8, u16, u32, u64 };
 /// `platform`, `env`, and `out` are Mo.Server's (Q18): `main`'s parameter and its parts.
 /// `net` is `platform.net`; a `listener` and a `conn` come from its calls (step 11). `http` is
 /// `platform.http`; an `http_listener` and an `exchange` come from its calls (step 16). `tls` is
-/// `platform.tls`, and a `tls_server` comes from its one call (step 36); what `accept` gives is a
-/// `conn` again, so every row after the handshake is the same row.
-pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out, net, listener, conn, http, http_listener, exchange, runtime, random, tls, tls_server };
+/// `platform.tls`, and a `tls_server` and a `tls_client` come from its calls (steps 36 and 37);
+/// what `accept` and `connect` give is a `conn` again, so every row after the handshake is the
+/// same row.
+pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out, net, listener, conn, http, http_listener, exchange, runtime, random, tls, tls_server, tls_client };
 
 pub const Tag = enum(u8) {
     /// Error recovery and "no expectation": unifies with everything.
@@ -349,6 +350,7 @@ pub const Pool = struct {
                 .random => "Random",
                 .tls => "Tls",
                 .tls_server => "TlsServer",
+                .tls_client => "TlsClient",
             }),
             .list, .option, .set => {
                 try w.writeAll(switch (t.tag) {

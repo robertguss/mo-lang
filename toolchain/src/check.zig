@@ -3635,7 +3635,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
         .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
         .{ "Runtime", types.cap(.runtime) },   .{ "Random", types.cap(.random) },
-        .{ "Tls", types.cap(.tls) },           .{ "TlsServer", types.cap(.tls_server) },
+        .{ "Tls", types.cap(.tls) },           .{ "TlsServer", types.cap(.tls_server) }, .{ "TlsClient", types.cap(.tls_client) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

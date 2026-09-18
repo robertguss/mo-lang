@@ -326,20 +326,33 @@ fn serveFixture(sim: *Sim, s: *Source) Error!bool {
 
 fn linesFixture(sim: *Sim, s: *Source) Error!bool {
     const f = &sim.fixture;
-    const c = &f.conns.items[s.handle];
-    if (c.closed) {
+    if (f.conns.items[s.handle].closed) {
         s.done = true;
         return false;
     }
     if (!sim.procs.items[s.to].up) {
-        c.closed = true;
+        f.conns.items[s.handle].closed = true;
         s.done = true;
         return false;
     }
+    // Behind TLS (steps 36 and 37) the lines are cut from the plaintext the peer's records gave
+    // up, as the socket's loop reads through the engine; a record that does not check out ends
+    // the stream.
+    if (f.conns.items[s.handle].tls != null and !try f.pumpTls(sim.gpa, s.handle)) {
+        if (!room(sim, s, 0)) return false;
+        try send(sim, s.to, "Closed", &.{});
+        f.conns.items[s.handle].closed = true;
+        s.done = true;
+        return true;
+    }
+    const c = &f.conns.items[s.handle];
+    const tls = c.tls != null;
+    const start = if (tls) &c.clear_start else &c.start;
+    const bytes = if (tls) c.clear.items else c.inbound.items;
     var skipping = c.skipping;
-    const taken, const what = net.scanLine(c.inbound.items[c.start..], f.conns.items[c.peer].closed, &skipping);
+    const taken, const what = net.scanLine(bytes[start.*..], f.conns.items[c.peer].closed, &skipping);
     if (what == .more) {
-        c.start += taken;
+        start.* += taken;
         c.skipping = skipping;
         compactInbound(c);
         if (elapsed(sim) - s.since < s.idle_ms or !room(sim, s, 0)) return false;
@@ -364,7 +377,7 @@ fn linesFixture(sim: *Sim, s: *Source) Error!bool {
         },
         .more => unreachable,
     }
-    c.start += taken;
+    start.* += taken;
     c.skipping = skipping;
     compactInbound(c);
     s.since = elapsed(sim);
@@ -375,6 +388,10 @@ fn compactInbound(c: *net.Fixture.FixtureConn) void {
     if (c.start == c.inbound.items.len) {
         c.inbound.clearRetainingCapacity();
         c.start = 0;
+    }
+    if (c.clear_start == c.clear.items.len) {
+        c.clear.clearRetainingCapacity();
+        c.clear_start = 0;
     }
 }
 
