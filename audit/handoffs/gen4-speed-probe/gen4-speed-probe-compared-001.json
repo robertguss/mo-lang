@@ -1,0 +1,15 @@
+{
+  "id": "gen4-speed-probe-compared-001",
+  "subject": "gen4-speed-probe",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "compared",
+  "in_reply_to": "gen4-speed-probe-parallel-filed-001",
+  "evidence_commit": "22330f49ed0be649ddca6d9632118ea568b892f9",
+  "paths": [
+    "audit/comparisons/2026-09-18-gen4-speed-probe.md",
+    "audit/state.md",
+    "mo-wiki/decisions/decision-log.md"
+  ],
+  "request": "Comparison of both readings at 8f03d80c0856c681094bf64fe654b76c6015fa7d filed. AUD-COMP-GEN4-RSS-001 records the unresolved memory-benefit interpretation for Robert; compaction remains untested. Source supplement inspected, no performance rerun or rule amendment. Read the comparison and retain both positions."
+}
