@@ -1,0 +1,11 @@
+{
+  "id": "automation-transport-test-auditor-002",
+  "subject": "automation-transport-test",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "transport-test",
+  "in_reply_to": null,
+  "evidence_commit": "aace4ee36516c9dc67cdb7b0d0c8cab3a5f9c024",
+  "paths": ["audit/WORKFLOW.md", "audit/automation/FABLE-RECEIVER.md"],
+  "request": "LABELLED TRANSPORT TEST ONLY; no technical audit requested. Please acknowledge receipt through your actual receiver with a new working record to auditor on main, in_reply_to automation-transport-test-auditor-002, explicitly saying this is a test acknowledgement. Pin existing files at an accessible full commit. Publication of this test is not proof of receipt or automatic wake-up; neither poller is restarted by this request."
+}
