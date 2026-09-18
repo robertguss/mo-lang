@@ -1,0 +1,64 @@
+{
+  "categories": [
+    "prune",
+    "retention",
+    "prunerecord",
+    "prunekill",
+    "renamerule",
+    "sequence",
+    "bench"
+  ],
+  "check_call_sites_by_function": {
+    "main": 1,
+    "t_bench": 4,
+    "t_prune": 26,
+    "t_prunekill": 7,
+    "t_prunerecord": 17,
+    "t_renamerule": 12,
+    "t_retention": 5,
+    "t_sequence": 16
+  },
+  "check_call_sites_total": 88,
+  "defects6_sha256": "d4dab05cc331b7fac4e48961eeefdaa271c7444fc83bd3361b2251d7f7b1955a",
+  "kind": "static and explicitly mocked harness checks; no implementation results",
+  "mock_fifo_sequence": {
+    "ack_calls": [],
+    "helper_return": null,
+    "meaning": "the newly created job is not acknowledged; the helper returns on the older FIFO lease"
+  },
+  "mock_lost_ack": {
+    "lost": [],
+    "meaning": "ack rollback to queued is not reported by this assertion",
+    "reply": [
+      200,
+      {
+        "state": "queued"
+      }
+    ]
+  },
+  "mock_main_failures": {
+    "defects": 7,
+    "meaning": "normal return despite failures; __main__ does not call sys.exit with a defect status",
+    "return": null,
+    "stdout": "\n0 passed, 7 defects\n  - t_prune: MOCK failure\n  - t_retention: MOCK failure\n  - t_prunerecord: MOCK failure\n  - t_prunekill: MOCK failure\n  - t_renamerule: MOCK failure\n  - t_sequence: MOCK failure\n  - t_bench: MOCK failure\n"
+  },
+  "mock_wrapper_timeout": {
+    "e6-suites-mac.sh": {
+      "exit": 0,
+      "raw": "MOCK timeout\n",
+      "summary": "## MOCK example 13:29:41 load MOCK load\n"
+    },
+    "e6-suites.sh": {
+      "exit": 0,
+      "raw": "MOCK timeout\n",
+      "summary": "## MOCK example 13:29:41 load 1.79\n"
+    }
+  },
+  "program7_seal_unchanged": true,
+  "shell_syntax": {
+    "e6-brief-mac.sh": 0,
+    "e6-brief.sh": 0,
+    "e6-suites-mac.sh": 0,
+    "e6-suites.sh": 0
+  }
+}
