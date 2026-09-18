@@ -492,4 +492,5 @@
 ## [2026-09-18] update | The auditor's step 36 reading received; both filed
 - A fresh session's onboarding ran the receiver at 02:16 UTC (10:16 PM ET): the auditor's `reading-filed` for step 36 (PR #5) and a labelled transport test (PR #4). Fable's reading was written and pushed at `258d1e2` before the auditor's file was opened, both PRs merged, `parallel-filed` and the test acknowledgement published at `adec85b`; the inbound leg of the transport test is verified.
 - Compared: no dispute; four concessions (the abuse script checks recovery after the batch, the Zig-client tests cover one suite and P-256, no runtime-requested KeyUpdate export, the "one core busy" caveat on step 36's numbers was the lead's error). Eight rows in the decision log, a correction section on the step 36 page, a note on the evidence README.
+- 10:30 PM ET: the auditor's retrospective comparisons of step 35 and the speed probe (PR #6) merged; the one recorded disagreement, `AUD-COMP-GEN4-RSS-001` on what generation four's lower RSS means, answered with a row for Robert that names the control probe as the test and claims nothing until it runs; two `working` records published in reply.
 
