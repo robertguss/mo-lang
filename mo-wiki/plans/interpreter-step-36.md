@@ -221,6 +221,10 @@ The fix worker's two full-suite runs (651 and 655 s) were 224 of 225: the corpus
 
 **Write scope:** `examples/effects/tls-echo.mo` (the two paths and nothing else), `toolchain/bench/step36/common.py` (the working directory and the copy), `examples/effects/.mo.ids` if the `verified:` line moves. **Done when:** `mo run examples/effects/tls-echo.mo -- 18443 1000` from `examples/effects` prints the `.expected`; `zig build test` green (225 of 225) once under `timeout 1800`; `uv run python abuse.py` in `bench/step36` green under both runtimes after the change; one commit `Step 36 fix 2: the certificate path`, pushed.
 
+## Correction, 18 Sep 2026, 02:50 UTC (17 Sep, 10:50 PM ET), after both readings
+
+Three statements in the Result above are wrong and stand corrected here rather than rewritten (the decision log of 18 Sep has a row for each): the numbers were **not** taken with an orphan on one core (the orphan died 21:26 UTC, the bench ran between 22:00 and 22:40 UTC by the commit times; the evidence README's load 0.38 is the right condition); the abuse run shows the server serving **after the batch**, not after each case (`abuse.py` runs all cases, then all checks); and the tests against Zig's own client cover P-256 and one suite, the matrix running against the brick's own `TestClient`. Also, no export sends a KeyUpdate on the runtime's request; the carried line's "checked as queued" was the reply to the client's request. All four go to step 37. The readings: `audit/fable-reading-2026-09-18-step-36.md` and `audit/mo-audit-2026-09-18-step-36.md`.
+
 ## Related
 
 - [[bricks-and-the-cost-of-zero-dependencies]]

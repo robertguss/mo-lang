@@ -1,7 +1,7 @@
 ---
 title: "Roadmap: now, next, later"
 created: 2026-09-12
-updated: 2026-09-17
+updated: 2026-09-18
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Paused (Robert, 17 Sep, 10:15 PM ET) after step 36. Nothing in flight. The next session starts with the auditor's inbox, then step 37's brief | — | 17 Sep, 10:15 PM ET | [[interpreter-step-36]] |
+| Resumed 17 Sep, 10:16 PM ET: the auditor's inbox cleared (step 36's readings both filed and compared, four points conceded, the transport test acknowledged); step 37's brief is being written | Fable | 17 Sep, 10:16 PM ET | [[interpreter-step-36]] |
 
 ## Next, in order
 

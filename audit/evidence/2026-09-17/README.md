@@ -33,3 +33,5 @@ Found 17 Sep, 21:25 UTC (5:25 PM ET) while checking the machine: a `python3 -` p
 ## Where the two readings will meet
 
 The rows of 17 Sep in `mo-wiki/decisions/decision-log.md` marked "for Robert": step 35's acceptance row, the row on generation four's cause (19:25 UTC), and step 36's two design rows. The auditor's file on any of these subjects goes beside this folder as `audit/mo-audit-2026-09-17-<subject>.md`; Fable's parallel readings: `audit/fable-reading-2026-09-17-step-35-crypto-brick.md` and `audit/fable-reading-2026-09-17-gen4-speed-probe.md`, filed 20:30 to 20:40 UTC against this bundle, before the auditor's files were opened.
+
+**Added 18 Sep 2026, 02:50 UTC:** the condition above does not cover step 36's bench. Its four runs needed part B's rows (`dd2e385`, 22:00 UTC) and were committed with part C (`4cb0fc8`, 22:40 UTC), after the orphan was killed; `step-36/README.md`'s load 0.38 is their condition. Both readings of step 36 agree.
