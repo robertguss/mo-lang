@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Program 7's spec sealed and published to the auditor (18 Sep, 3:50 AM ET); waiting on the hidden suites and the P4 modification. The memory control probe is done (4:45 AM ET: none of the three hypotheses; a runtime allocator question instead). Generation six pre-registered, its sessions next when the machine is quiet; step 38 after | the auditor; Fable | 18 Sep, 4:45 AM ET | [[07-redis-subset]], [[gen4-memory-control-probe]], [[erosion-round]] |
+| Moving to the Mac (18 Sep, 8:50 AM ET) after the VM's out-of-memory wedge: generation six half done (Python complete; Mo, Go, Elixir as pushed work in progress to continue there), program 7 waiting on the auditor's suites, step 38 queued | Fable, on the Mac | 18 Sep, 8:50 AM ET | [[erosion-round]], [[07-redis-subset]], [[interpreter-step-38]] |
 
 ## Next, in order
 
