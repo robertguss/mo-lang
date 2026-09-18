@@ -176,11 +176,11 @@ defmodule Jobq.Change5Test do
       assert :ok = Rename.check([%{}, archived], "emails", "mail")
       assert :exists = Rename.check([live, archived], "other", "emails")
 
-      assert {moved, 1} = Rename.jobs(live, "emails", "mail")
+      assert {moved, 1} = Rename.jobs(live, "emails", "mail", 4)
       assert moved == %{1 => %{a1 | queue: "mail"}, 3 => b3}
 
       assert {%{2 => %Job{queue: "mail", archived_at: 5}}, 1} =
-               Rename.jobs(archived, "emails", "mail")
+               Rename.jobs(archived, "emails", "mail", 4)
 
       assert Rename.keys(keys, "emails", "mail") ==
                %{{"mail", "k"} => 1, {"mail", "m"} => 2, {"other", "k"} => 3}
@@ -193,10 +193,10 @@ defmodule Jobq.Change5Test do
     end
 
     test "a name after renames, in order" do
-      assert Rename.apply_all("a", [{"a", "b"}, {"b", "c"}]) == "c"
-      assert Rename.apply_all("a", [{"b", "c"}, {"a", "b"}]) == "b"
-      assert Rename.apply_all("a", [{"a", "b"}, {"b", "a"}]) == "a"
-      assert Rename.apply_all("z", [{"a", "b"}]) == "z"
+      assert Rename.apply_all("a", 1, [{"a", "b", 9}, {"b", "c", 9}]) == "c"
+      assert Rename.apply_all("a", 1, [{"b", "c", 9}, {"a", "b", 9}]) == "b"
+      assert Rename.apply_all("a", 1, [{"a", "b", 9}, {"b", "a", 9}]) == "a"
+      assert Rename.apply_all("z", 1, [{"a", "b", 9}]) == "z"
     end
 
     test "a rename record's rule" do
@@ -249,7 +249,9 @@ defmodule Jobq.Change5Test do
       assert {200, %{"queue" => "mail", "moved" => 6}} = rename(port, "emails", "mail")
 
       # One record, on the disk before the response; the archive untouched.
-      assert lines(Store.log_path(dir)) == log_before ++ [%{"rename" => "emails", "to" => "mail"}]
+      assert lines(Store.log_path(dir)) ==
+               log_before ++ [%{"rename" => "emails", "to" => "mail", "next_id" => 8}]
+
       assert File.read!(Store.archive_path(dir)) == archive_before
 
       for n <- 1..6 do
@@ -521,7 +523,10 @@ defmodule Jobq.Change5Test do
       wait_health(ref)
 
       bytes = File.read!(Store.log_path(dir))
-      {rename_at, rename_len} = :binary.match(bytes, ~s({"rename":"emails","to":"mail"}\n))
+
+      [{rename_at, rename_len}] =
+        Regex.run(~r/\{"rename":"emails","to":"mail","next_id":\d+\}\n/, bytes, return: :index)
+
       assert :ok = Never.check(dir)
 
       cuts =

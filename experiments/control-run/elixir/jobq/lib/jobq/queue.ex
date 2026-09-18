@@ -23,6 +23,10 @@ defmodule Jobq.Queue do
   deleted. The look has a third pass: a done or dead job left alone for
   `retain_ms` is moved to the archive (`Jobq.Archive.move/2`), leaves the
   board and its counts, and is still read by id and still holds its key.
+  A prune (`Jobq.Prune.step/3`) removes the archived jobs older than an age,
+  on request and, with a `retention_ms`, on a tick of its own, and frees
+  their keys; it is one record, and a prune that removes nothing writes
+  nothing.
 
   Nothing one request does to this process ends another: an operation runs
   inside a `try`, and whatever it raises, exits with, or throws is that
@@ -56,6 +60,8 @@ defmodule Jobq.Queue do
           | {:retry, String.t()}
           | {:handoff, String.t(), String.t(), String.t()}
           | {:rename, String.t(), String.t()}
+          | {:prune, pos_integer()}
+          | :archive
           | :health
           | :queues
 
@@ -65,6 +71,8 @@ defmodule Jobq.Queue do
            clock: Jobq.Clock.t(),
            sweep_ms: pos_integer(),
            retain_ms: pos_integer(),
+           retention_ms: non_neg_integer(),
+           prune_every_ms: pos_integer(),
            started_at: integer(),
            counters: Board.counters(),
            jobs: %{pos_integer() => Job.t()},
@@ -90,8 +98,9 @@ defmodule Jobq.Queue do
 
   @doc """
   Start the queue of the service `ref`. Options: `:ref`, `:dir`, `:clock`,
-  `:sweep_ms`, `:retain_ms` (default a day), `:started_at`, and the service's
-  `:counters`.
+  `:sweep_ms`, `:retain_ms` (default a day), `:retention_ms` (default 0,
+  never: the age the background prune removes), `:prune_every_ms` (default
+  60,000), `:started_at`, and the service's `:counters`.
 
   The process takes its name only once it has read the log, so a request that
   arrives while the board is being rebuilt finds no queue and is answered
@@ -177,6 +186,17 @@ defmodule Jobq.Queue do
   @spec rename(ref(), String.t(), String.t()) :: reply()
   def rename(ref, from, to), do: run(ref, {:rename, from, to})
 
+  @doc """
+  Remove every archived job archived `older_than_ms` or more before now, in
+  one record. `POST /archive/prune`.
+  """
+  @spec prune(ref(), pos_integer()) :: reply()
+  def prune(ref, older_than_ms), do: run(ref, {:prune, older_than_ms})
+
+  @doc "The archive's count, its oldest `archived_at`, and its bytes. `GET /archive`."
+  @spec archive(ref()) :: reply()
+  def archive(ref), do: run(ref, :archive)
+
   @doc "The counts and the uptime. `GET /health`."
   @spec health(ref()) :: reply()
   def health(ref), do: run(ref, :health)
@@ -203,6 +223,8 @@ defmodule Jobq.Queue do
           clock: clock,
           sweep_ms: sweep_ms,
           retain_ms: Keyword.get(opts, :retain_ms, 86_400_000),
+          retention_ms: Keyword.get(opts, :retention_ms, 0),
+          prune_every_ms: Keyword.get(opts, :prune_every_ms, 60_000),
           started_at: Keyword.get_lazy(opts, :started_at, clock),
           counters: Keyword.get_lazy(opts, :counters, &Board.counters/0),
           epoch: Store.epoch(ref)
@@ -210,6 +232,7 @@ defmodule Jobq.Queue do
         |> load(folder)
 
       schedule_sweep(state)
+      schedule_prune(state)
       {:ok, state}
     else
       {:error, reason} -> {:stop, reason}
@@ -470,8 +493,8 @@ defmodule Jobq.Queue do
   defp operate({:rename, name, to}, records, from, state) do
     case Rename.check([state.jobs, state.archived], name, to) do
       :ok ->
-        {jobs, live} = Rename.jobs(state.jobs, name, to)
-        {archived, gone} = Rename.jobs(state.archived, name, to)
+        {jobs, live} = Rename.jobs(state.jobs, name, to, state.next)
+        {archived, gone} = Rename.jobs(state.archived, name, to, state.next)
 
         state = %{
           state
@@ -483,7 +506,7 @@ defmodule Jobq.Queue do
         }
 
         body = {:obj, [{"queue", to}, {"moved", live + gone}]}
-        answer(state, records ++ [{:rename, name, to}], from, {200, body})
+        answer(state, records ++ [{:rename, name, to, state.next}], from, {200, body})
 
       :not_found ->
         answer(state, records, from, {404, error("no such queue")})
@@ -491,6 +514,32 @@ defmodule Jobq.Queue do
       :exists ->
         answer(state, records, from, {409, error("exists")})
     end
+  end
+
+  defp operate({:prune, older_than_ms}, records, from, state) do
+    {state, pruned, cutoff} = prune_archive(state, older_than_ms)
+    body = {:obj, [{"pruned", length(pruned)}, {"remaining", map_size(state.archived)}]}
+    answer(state, records ++ prune_record(pruned, cutoff), from, {200, body})
+  end
+
+  defp operate(:archive, records, from, state) do
+    oldest =
+      case Enum.min_by(Map.values(state.archived), & &1.archived_at, fn -> nil end) do
+        nil -> nil
+        job -> Jobq.Clock.iso8601(job.archived_at)
+      end
+
+    bytes =
+      case File.stat(Store.archive_path(state.dir)) do
+        {:ok, stat} -> stat.size
+        {:error, _reason} -> 0
+      end
+
+    body =
+      {:obj,
+       [{"archived", map_size(state.archived)}, {"oldest_archived_at", oldest}, {"bytes", bytes}]}
+
+    answer(state, records, from, {200, body})
   end
 
   defp operate(:health, records, from, state) do
@@ -538,6 +587,17 @@ defmodule Jobq.Queue do
     {:noreply, state}
   end
 
+  # The background prune: the look first, as every operation takes one, then
+  # the prune, and only what changed is written.
+  def handle_info(:prune, state) do
+    {records, state} = look(state)
+    {state, pruned, cutoff} = prune_archive(state, state.retention_ms)
+    records = records ++ prune_record(pruned, cutoff)
+    if records != [], do: Store.commit(state.ref, records, nil, nil, state.epoch)
+    schedule_prune(state)
+    {:noreply, state}
+  end
+
   # A batch the store could not write. Everything this process had moved on
   # top of the log is dropped and the jobs are read back from it, so the state
   # the next request is answered off is the state on the disk; the commits
@@ -560,6 +620,24 @@ defmodule Jobq.Queue do
   end
 
   defp schedule_sweep(state), do: Process.send_after(self(), :sweep, state.sweep_ms)
+
+  defp schedule_prune(%{retention_ms: 0}), do: :ok
+
+  defp schedule_prune(state) do
+    _timer = Process.send_after(self(), :prune, state.prune_every_ms)
+    :ok
+  end
+
+  # The prune's step over the archive and the key map, at the clock's reading.
+  # The cutoff it used goes in the record, so the replay needs no clock.
+  defp prune_archive(state, older_than_ms) do
+    cutoff = Jobq.Prune.cutoff(state.clock.(), older_than_ms)
+    {archived, keys, pruned} = Jobq.Prune.step(state.archived, state.keys, cutoff)
+    {%{state | archived: archived, keys: keys}, pruned, cutoff}
+  end
+
+  defp prune_record([], _cutoff), do: []
+  defp prune_record(pruned, cutoff), do: [{:prune, cutoff, length(pruned)}]
 
   # A look: every lease that has run out and every `run_at` that has passed by
   # the clock's reading, moved on. A lease that runs out on a job with a

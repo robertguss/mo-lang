@@ -67,6 +67,22 @@ defmodule Jobq.Router do
     end
   end
 
+  defp authorized(request, ref, ["archive"], _query, _token) do
+    case request.method do
+      "GET" -> reply(Queue.archive(ref))
+      _other -> {405, error("method not allowed")}
+    end
+  end
+
+  defp authorized(%{method: "POST"} = request, ref, ["archive", "prune"], _query, _token) do
+    with {:ok, fields} <- fields(request.body, ["older_than_ms"], []),
+         {:ok, older_than_ms} <- older_than_ms(fields["older_than_ms"]) do
+      reply(Queue.prune(ref, older_than_ms))
+    else
+      {:error, message} -> {400, error(message)}
+    end
+  end
+
   defp authorized(request, ref, ["jobs"], query, _token) do
     case request.method do
       "POST" -> create(request, ref)
@@ -145,6 +161,7 @@ defmodule Jobq.Router do
     do: true
 
   defp known_route?(["queues", _queue, suffix]) when suffix in ["lease", "rename"], do: true
+  defp known_route?(["archive", "prune"]), do: true
   defp known_route?(_segments), do: false
 
   defp create(request, ref) do
@@ -177,6 +194,13 @@ defmodule Jobq.Router do
       {:error, message} -> {400, error(message)}
     end
   end
+
+  # An age of at least a second, and no more than the clock can go back.
+  defp older_than_ms(n) when is_integer(n) and n >= 1_000 and n <= 9_007_199_254_740_991,
+    do: {:ok, n}
+
+  defp older_than_ms(_value),
+    do: {:error, "older_than_ms must be a whole number of at least 1000"}
 
   defp key_needs_queue(key, nil) when is_binary(key), do: {:error, "key needs a queue"}
   defp key_needs_queue(_key, _queue), do: :ok

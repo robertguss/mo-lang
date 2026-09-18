@@ -1,5 +1,9 @@
 # bench
 
+The speed budget of change 6 is measured by `jobq bench <dir>` (`Jobq.Bench`,
+`lib/jobq/bench.ex`), not by this script: see the README. What follows is the
+older bench, kept for its other measurements.
+
     mix run bench/bench.exs           # everything
     mix run bench/bench.exs throughput expiry
     mix run bench/bench.exs --jobs 20000 throughput

@@ -9,7 +9,8 @@ and change 3, `spec/01d-job-queue-change-3.md`: the store restarts itself,
 within a budget, and a chaos switch to rehearse it; and change 4,
 `spec/01e-job-queue-change-4.md`: idempotent creates, and old jobs archived
 out of the log; and change 5, `spec/01f-job-queue-change-5.md`: a lease handed
-off, and a queue renamed.
+off, and a queue renamed; and change 6, `spec/01g-job-queue-change-6.md`: the
+archive pruned, a speed budget with its bench, and the rename rule corrected.
 
 A producer creates a job in a named queue — now, or after a delay — a worker
 leases the next one for a while and then acks or fails it, a lease that runs out
@@ -29,7 +30,9 @@ it can be written again — no restart, no operator.
     mix escript.build
 
     ./jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
-                       [--retain-ms N]
+                       [--retain-ms N] [--retention MS]
+    ./jobq prune <dir> --older-than-ms N
+    ./jobq bench <dir> [--jobs N] [--workers N] [--serve CMD] [--seconds S]
     ./jobq compact <dir>
     ./jobq verify <dir>
     ./jobq client <host> <port> <token> <method> <path> [<json>]
@@ -79,7 +82,38 @@ on the log, a lease in flight is untouched, and the old name is free again.
 
 The archive is not rewritten by a rename; an archived job's queue is the log's
 renames applied to it, and `jobq compact` folds every rename into the records it
-writes.
+writes. Since change 6 a rename record carries `next_id`, the id the next job
+would get, `{"rename":"emails","to":"outbox","next_id":42}`: it moves the jobs
+below it, so a job created into the old name after the rename is in a fresh
+queue of that name, and stays there when it is archived. A record the change-5
+program wrote has no `next_id` and is read as reaching every job the folder had
+at that point; `test/fixtures/change5/data` is such a folder.
+
+With change 6 the archive is pruned. `POST /archive/prune {"older_than_ms": n}`
+(n at least 1,000) removes every archived job whose `archived_at` is `n` or more
+before now, and answers `{"pruned": k, "remaining": m}`: the job is `404` from
+the response on, in no count, and its key is free in its queue. A live job is
+never touched. `GET /archive` answers `{"archived": m, "oldest_archived_at":
+<iso> | null, "bytes": b}`, `b` the archive file's size. `serve --retention MS`
+(default 0, never) prunes with that age every 60 seconds, and `jobq prune <dir>
+--older-than-ms N` does it offline and prints `pruned k; remaining m`. A prune
+is one record on the log, `{"prune":cutoff,"count":k}`, on the disk before the
+response, and a prune that removes nothing writes nothing. The replay applies it
+to the jobs the log had sent off before it; `compact` appends a tombstone for
+each pruned job the archive still holds, then rewrites the log with no prune
+record and the archive without the pruned jobs.
+
+    ./jobq client 127.0.0.1 7900 ops POST /archive/prune '{"older_than_ms":604800000}'
+    ./jobq client 127.0.0.1 7900 ops GET /archive
+
+`jobq bench <dir>` is the speed budget's measurement: it starts `serve` in
+`<dir>` on a free port (this escript's own, or `--serve '<cmd> serve {dir}
+--port {port}'` for another build), creates `--jobs` jobs (default 30,000)
+from eight producers, leases and acks them from 1 and from `--workers` workers
+(default 32), restarts the service, and prints creates a second, pairs a second
+at each worker count, the restart to `/health`, and the resident memory after
+the pairs, one line each. The budget: on one machine, change 6's creates and
+pairs at 32 workers at least 0.8 of change 3's, by this same command.
 
 The board — the store and the queue — restarts itself. When either fails in a
 way that is not one request's failure (the process dies, a look finds a rule
@@ -125,7 +159,8 @@ the archive without deleted ones; `verify` checks the archive's records too
     mix test
     mix format --check-formatted
     ./check.sh                        # the program-level check, over a socket
-    mix run bench/bench.exs           # the measurements
+    ./jobq bench /tmp/bench           # the budget's measurement
+    mix run bench/bench.exs           # the older measurements
 
 ## The shape of it
 
@@ -134,6 +169,8 @@ the archive without deleted ones; `verify` checks the archive's records too
         Jobq.Store         the log and the archive, one JSON record a line, fsynced in batches
         Jobq.Queue         every job, and the only process that moves one
           Jobq.Archive     the archive move, as a pure step
+          Jobq.Prune       the archive pruned, as a pure step
+          Jobq.Rename      a queue renamed, as a pure step
       Jobq.Http.Listener   the socket, the connections, ten acceptors
         Jobq.Http.Socket   owns the listening socket, knows the bound port
         Task.Supervisor    a process per connection

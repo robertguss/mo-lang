@@ -46,17 +46,53 @@ defmodule Jobq.Store do
   between compactions, a folder with no archive has an empty one, and its torn
   last line is cut and dropped like the log's.
 
-  A queue renamed is one record on the log, `{"rename":from,"to":to}`, which
-  the replay applies in order to the jobs it has read so far and to the queue
-  of every job the log has sent to the archive; a job created into `from`
-  after it stays in `from`. The archive is not rewritten by a rename: an
-  archived job's queue is the one the log last gave it, when the log still
-  names it, and otherwise the archive's own with every rename on the log
+  A queue renamed is one record on the log,
+  `{"rename":from,"to":to,"next_id":n}`, which the replay applies in order to
+  the jobs below `n` it has read so far and to the queue of every job below
+  `n` the log has sent to the archive; a job created into `from` after it
+  (at `n` or above) stays in `from`, a fresh queue. A record the change-5
+  program wrote has no `next_id` and reaches every job the folder had at that
+  point. The archive is not rewritten by a rename: an archived job's queue is
+  the one the log last gave it, when the log still names it, and otherwise the
+  archive's own with every rename on the log whose `next_id` is above its id
   applied. A compaction folds the renames into the records it writes and
   leaves none: the log first, with an `archived` word carrying the current
   queue of each archived job whose archive record has an old one, and then the
   archive with current names, so a kill between the two rewrites leaves a
   folder that opens with the same names.
+
+  A prune is one record on the log, `{"prune":cutoff,"count":k}`: every
+  archived job the log had sent off before it whose `archived_at` is at or
+  before `cutoff` is gone, and its key is free. The replay applies it in
+  order, so a job the log names after the record is not reached by it. A
+  compaction rewrites the archive without the pruned jobs and writes no prune
+  record.
+
+  The errors the store declares, each reached by a test (`REPORT-change-6.md`
+  lists which). A rename or a directory `fsync` that fails is handled the
+  same way but not declared: no folder that opens can make one fail.
+
+    * at open (`open/1`, and so `serve`, `verify`, `compact`, `prune`, and the
+      queue's start and reload): a file that cannot be read,
+      `{:open, path, reason}`; a log line that is not a JSON object, or a
+      `next` marker not above the ids before it, `{:corrupt, line}`; an
+      archive line that is not one, `{:corrupt_archive, line}`; a record that
+      breaks a rule, `{:record, key, rule}`, which covers a job record, an
+      archive record, a rename record (a bad name, the same name twice, a
+      field it does not have, a bad `next_id`, a target that has jobs), a
+      prune record (a bad cutoff or count, a field it does not have), and a
+      key that names two jobs of a queue;
+    * at start: a log or an archive the process cannot open to append,
+      `{:stop, {:open, file, reason}}`;
+    * at a write: a write or a sync that fails, a full disk's `:enospc`
+      among them, which is the batch's `503`, a new epoch, and the queue's
+      reload; a reload that finds the folder refused stops the queue, and the
+      board restarts it within its budget or stops;
+    * at a compaction: a tombstone or a temporary file that cannot be
+      written, `{:compact, reason}`, with the folder as it was or as a kill
+      at that point would leave it;
+    * at an offline prune: a log it cannot append to,
+      `{:open, path, reason}`.
 
   A log the version before change 1 wrote opens with no tool: `Jobq.Job` reads
   the old field names off a record and the store writes only the new ones, so
@@ -70,11 +106,13 @@ defmodule Jobq.Store do
   alias Jobq.Board
   alias Jobq.Job
   alias Jobq.Json
+  alias Jobq.Prune
   alias Jobq.Rename
 
   @log_name "jobq.log"
   @archive_name "jobq.archive"
   @max_batch 512
+  @replay_chunk 2_000
 
   @type ref :: term()
   @type record ::
@@ -83,11 +121,12 @@ defmodule Jobq.Store do
           | {:archive, Job.t()}
           | {:archived, String.t()}
           | {:unarchive, String.t()}
-          | {:rename, String.t(), String.t()}
+          | {:rename, String.t(), String.t(), pos_integer()}
+          | {:prune, integer(), pos_integer()}
   @type jobs :: %{pos_integer() => Job.t()}
   @type log :: {jobs(), pos_integer()}
   @type folder :: %{jobs: jobs(), next: pos_integer(), archived: jobs()}
-  @type fault :: (non_neg_integer() -> boolean() | :between)
+  @type fault :: (non_neg_integer() -> boolean() | :between | {:error, atom()})
 
   @typep state :: %{
            path: String.t(),
@@ -109,7 +148,8 @@ defmodule Jobq.Store do
   @doc """
   Start the writer for `dir`. Options: `:ref`, `:dir`, the service's
   `:counters`, a test `:fault` over batch numbers (`true` fails the batch
-  before it is written, `:between` after the archive's append and before the
+  before it is written, `{:error, reason}` fails it with that reason, as a
+  full disk's `:enospc`, `:between` after the archive's append and before the
   log's), and a `:crash` over write numbers, which is the chaos switch.
   """
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -180,29 +220,65 @@ defmodule Jobq.Store do
   defp open_folder(dir) do
     with {:ok, {as_filed, named}} <- read_archive(dir),
          {:ok, bytes} <- read_file(log_path(dir)),
-         {:ok, {live, next, gone, renames}} <- replay(bytes) do
-      jobs = Map.drop(live, named)
+         {:ok, log} <- replay(bytes) do
+      jobs = Map.drop(log.jobs, named)
       highest = named |> Enum.max(fn -> 0 end)
-      archived = Map.new(as_filed, fn {n, job} -> {n, current(job, live, gone, renames)} end)
+
+      archived =
+        as_filed
+        |> Map.new(fn {n, job} -> {n, current(job, log)} end)
+        |> unpruned(log)
 
       with :ok <- unique_keys(jobs, archived) do
-        {:ok, %{jobs: jobs, next: max(next, highest + 1), archived: archived}, as_filed}
+        {:ok, %{jobs: jobs, next: max(log.next, highest + 1), archived: archived}, as_filed}
       end
     end
   end
 
   # An archived job's queue now: the log's, while the log still names the job
   # (a move a kill cut short, or the word the move wrote), and otherwise the
-  # archive's with every rename the log carries applied.
-  defp current(job, live, gone, renames) do
+  # archive's with every rename the log carries whose `next_id` is above the
+  # job's id applied, in order. The job left the log before every rename the
+  # log still carries, since a compaction folds them all away.
+  defp current(job, log) do
     queue =
-      case {Map.fetch(live, job.n), Map.fetch(gone, job.n)} do
+      case {Map.fetch(log.jobs, job.n), Map.fetch(log.gone, job.n)} do
         {{:ok, on_log}, _gone} -> on_log.queue
         {:error, {:ok, queue}} -> queue
-        {:error, :error} -> Rename.apply_all(job.queue, renames)
+        {:error, :error} -> Rename.apply_all(job.queue, job.n, log.renames)
       end
 
     %{job | queue: queue}
+  end
+
+  # The archived jobs a prune record on the log has not removed. A prune
+  # reaches the jobs the log had sent off before it: a job the log names after
+  # the prune (it was still on the board then) is not one it reaches, whatever
+  # its `archived_at`. The log remembers where it last named a job only once
+  # it has read a prune, so a log with none pays nothing for it.
+  defp unpruned(archived, %{prunes: []}), do: archived
+
+  defp unpruned(archived, log) do
+    latest = log.prunes |> Enum.map(fn {_line, cutoff} -> cutoff end) |> Enum.max()
+
+    archived
+    |> Enum.reject(fn {n, job} ->
+      cutoff =
+        case Map.fetch(log.mentions, n) do
+          :error -> latest
+          {:ok, line} -> cutoff_after(log.prunes, line)
+        end
+
+      Prune.due?(job, cutoff)
+    end)
+    |> Map.new()
+  end
+
+  defp cutoff_after(prunes, line) do
+    prunes
+    |> Enum.filter(fn {at, _cutoff} -> at > line end)
+    |> Enum.map(fn {_at, cutoff} -> cutoff end)
+    |> Enum.max(fn -> -1 end)
   end
 
   defp read_file(path) do
@@ -286,13 +362,84 @@ defmodule Jobq.Store do
   The log goes first: once it is rewritten it names no archived job, so a kill
   before the archive's rewrite leaves a folder whose deleted archived jobs are
   still tombstones rather than jobs the log would bring back.
+
+  A pruned job is still in the archive file until the archive's rewrite, and
+  the log's rewrite drops the prune record that removes it, so before either a
+  compaction appends a tombstone for every pruned job the archive file still
+  holds, synced: a kill anywhere after leaves the job gone.
+
+  `:stop_at` is a test's hook, called with `:tombstones`, `:log`, and
+  `:archive` right after each of those steps and before the directory's
+  `fsync` of a rename, which is where a check kills a compaction.
   """
-  @spec compact(Path.t()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def compact(dir) do
+  @spec compact(Path.t(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def compact(dir, opts \\ []) do
+    stop_at = Keyword.get(opts, :stop_at, fn _step -> :ok end)
+
     with {:ok, %{jobs: jobs, next: next, archived: archived}, as_filed} <- open_folder(dir),
-         :ok <- rewrite(dir, log_path(dir), log_lines(jobs, next, renamed(archived, as_filed))),
-         :ok <- rewrite(dir, archive_path(dir), job_lines(archived)) do
+         :ok <- tombstones(dir, as_filed |> Map.drop(Map.keys(archived)) |> Map.values()),
+         :ok <- stop_at.(:tombstones),
+         :ok <-
+           rewrite(
+             dir,
+             log_path(dir),
+             log_lines(jobs, next, renamed(archived, as_filed)),
+             fn -> stop_at.(:log) end
+           ),
+         :ok <- rewrite(dir, archive_path(dir), job_lines(archived), fn -> stop_at.(:archive) end) do
       {:ok, map_size(jobs)}
+    end
+  end
+
+  defp tombstones(_dir, []), do: :ok
+
+  defp tombstones(dir, pruned) do
+    lines =
+      pruned
+      |> Enum.sort_by(& &1.n)
+      |> Enum.map(&encode_record({:unarchive, Job.id(&1)}))
+
+    case append(archive_path(dir), lines) do
+      :ok -> :ok
+      {:error, reason} -> {:error, {:compact, reason}}
+    end
+  end
+
+  @doc """
+  `jobq prune`: remove from `dir`'s archive every job archived `older_than_ms`
+  or more before `now`, with one prune record appended to the log and synced,
+  as the service's own prune does. A prune that removes nothing writes
+  nothing. Returns the jobs removed and the archived jobs left.
+  """
+  @spec prune(Path.t(), pos_integer(), integer()) ::
+          {:ok, non_neg_integer(), non_neg_integer()} | {:error, term()}
+  def prune(dir, older_than_ms, now) do
+    with {:ok, folder, _as_filed} <- open_folder(dir) do
+      cutoff = Prune.cutoff(now, older_than_ms)
+      {kept, _keys, gone} = Prune.step(folder.archived, %{}, cutoff)
+
+      with :ok <- prune_record(dir, cutoff, length(gone)) do
+        {:ok, length(gone), map_size(kept)}
+      end
+    end
+  end
+
+  defp prune_record(_dir, _cutoff, 0), do: :ok
+
+  defp prune_record(dir, cutoff, count),
+    do: append_new(dir, [encode_record({:prune, cutoff, count})])
+
+  # An append to the log from outside the service: its torn last line cut
+  # first, the record synced, and the directory synced when the log is new.
+  defp append_new(dir, lines) do
+    path = log_path(dir)
+    existed? = File.exists?(path)
+
+    with :ok <- open_log(path),
+         :ok <- append(path, lines) do
+      if existed?, do: :ok, else: sync_dir(dir)
+    else
+      {:error, reason} -> {:error, {:open, path, reason}}
     end
   end
 
@@ -329,12 +476,13 @@ defmodule Jobq.Store do
     |> Enum.map(fn {_n, job} -> [Json.encode(Job.record(job)), ?\n] end)
   end
 
-  defp rewrite(dir, path, lines) do
+  defp rewrite(dir, path, lines, renamed) do
     tmp = path <> ".compact"
 
     with {:ok, fd} <- :file.open(tmp, [:write, :raw, :binary]),
          :ok <- write_and_close(fd, lines),
          :ok <- :file.rename(tmp, path),
+         :ok <- renamed.(),
          :ok <- sync_dir(dir) do
       :ok
     else
@@ -356,11 +504,13 @@ defmodule Jobq.Store do
   end
 
   # The replay carries the jobs, the counter, the highest id the log has ever
-  # handed out, the `next` marker with the line it was read on, the queue of
-  # every job the log sent to the archive, and the renames, latest first. A marker is
-  # refused when it is no higher than an id written before it; the ids after it
-  # are the ones a compaction kept, which are below it, and the ones created
-  # since, which start at it. A compaction never writes a counter of 1.
+  # handed out (`seen`), the `next` marker with the line it was read on, the
+  # queue of every job the log sent to the archive (`gone`), the renames and
+  # the prunes, latest first, and, once a prune has been read, the line each
+  # id was last named on (`mentions`). A marker is refused when it is no
+  # higher than an id written before it; the ids after it are the ones a
+  # compaction kept, which are below it, and the ones created since, which
+  # start at it. A compaction never writes a counter of 1.
   defp replay(bytes) do
     {lines, torn} = split_lines(bytes)
 
@@ -368,22 +518,84 @@ defmodule Jobq.Store do
       Logger.warning("jobq: dropping a torn final line of #{byte_size(torn)} bytes")
     end
 
+    empty = %{
+      jobs: %{},
+      next: 1,
+      seen: 0,
+      marker: nil,
+      gone: %{},
+      renames: [],
+      prunes: [],
+      mentions: %{}
+    }
+
+    # Reading a line and checking it as a job record owe nothing to the lines
+    # before it, so chunks of lines are read on every scheduler at once; the
+    # records are then applied one by one, in order, which is all the replay
+    # needs to be sequential for. At most a chunk per scheduler is in flight.
     lines
     |> Enum.with_index(1)
-    |> Enum.reduce_while({:ok, {%{}, 1, 0, nil, %{}, []}}, fn {line, number}, {:ok, log} ->
-      case apply_line(line, log, number) do
-        {:ok, log} -> {:cont, {:ok, log}}
-        :error -> {:halt, {:error, {:corrupt, number}}}
-        {:record, key, rule} -> {:halt, {:error, {:record, key, rule}}}
-      end
-    end)
+    |> Enum.chunk_every(@replay_chunk)
+    |> Task.async_stream(fn chunk -> Enum.map(chunk, &prepare/1) end,
+      ordered: true,
+      timeout: :infinity,
+      max_concurrency: System.schedulers_online()
+    )
+    |> Enum.reduce_while({:ok, empty}, fn {:ok, chunk}, acc -> apply_chunk(chunk, acc) end)
     |> finish()
   end
 
-  defp finish({:ok, {jobs, next, _seen, _marker, gone, renames}}),
-    do: {:ok, {jobs, next, gone, Enum.reverse(renames)}}
+  defp apply_chunk(chunk, acc) do
+    case Enum.reduce_while(chunk, acc, &apply_prepared/2) do
+      {:ok, log} -> {:cont, {:ok, log}}
+      error -> {:halt, error}
+    end
+  end
 
+  defp apply_prepared({prepared, number}, {:ok, log}) do
+    case apply_line(prepared, log, number) do
+      {:ok, log} -> {:cont, {:ok, log}}
+      :error -> {:halt, {:error, {:corrupt, number}}}
+      {:record, key, rule} -> {:halt, {:error, {:record, key, rule}}}
+    end
+  end
+
+  # A line read on its own: blank, not a JSON object, a record the replay's
+  # order decides (a marker, a rename, a prune, a word, a tombstone), or a job
+  # record checked and read.
+  defp prepare({"", number}), do: {:empty, number}
+
+  defp prepare({line, number}) do
+    case Json.decode(line) do
+      {:ok, map} when is_map(map) -> {prepare_map(map), number}
+      _other -> {:corrupt, number}
+    end
+  end
+
+  defp prepare_map(map) do
+    if ordered?(map), do: {:map, map}, else: prepare_job(map)
+  end
+
+  defp prepare_job(map) do
+    with :ok <- Job.check_record(map),
+         {:ok, job} <- Job.from_record(map) do
+      {:job, job}
+    else
+      {:error, rule} -> {:record, Job.record_key(map), rule}
+      :error -> {:record, Job.record_key(map), "the record is not a job"}
+    end
+  end
+
+  defp ordered?(map) do
+    Map.has_key?(map, "next") or Map.has_key?(map, "rename") or Map.has_key?(map, "prune") or
+      (Map.has_key?(map, "id") and (map["archived"] == true or map["deleted"] == true))
+  end
+
+  defp finish({:ok, log}), do: {:ok, %{log | renames: Enum.reverse(log.renames)}}
   defp finish({:error, reason}), do: {:error, reason}
+
+  defp mention(%{prunes: []} = log, _n, _number), do: log
+  defp mention(log, n, number), do: %{log | mentions: Map.put(log.mentions, n, number)}
 
   defp split_lines(bytes) do
     case String.split(bytes, "\n") do
@@ -392,32 +604,37 @@ defmodule Jobq.Store do
     end
   end
 
-  defp apply_line("", log, _number), do: {:ok, log}
+  defp apply_line(:empty, log, _number), do: {:ok, log}
+  defp apply_line(:corrupt, _log, _number), do: :error
+  defp apply_line({:record, key, rule}, _log, _number), do: {:record, key, rule}
+  defp apply_line({:map, map}, log, number), do: apply_record(map, log, number)
+  defp apply_line({:job, job}, log, number), do: apply_job(job, log, number)
 
-  defp apply_line(line, log, number) do
-    case Json.decode(line) do
-      {:ok, map} when is_map(map) -> apply_record(map, log, number)
-      _other -> :error
-    end
-  end
-
-  defp apply_record(%{"next" => n}, {jobs, next, seen, _marker, gone, renames}, number)
-       when is_integer(n) and n > 1 and n > seen,
-       do: {:ok, {jobs, max(next, n), seen, {number, n}, gone, renames}}
+  defp apply_record(%{"next" => n}, log, number)
+       when is_integer(n) and n > 1 and n > log.seen,
+       do: {:ok, %{log | next: max(log.next, n), marker: {number, n}}}
 
   defp apply_record(%{"next" => _n}, _log, _number), do: :error
 
+  # A rename moves the jobs below its `next_id`; a record without one (the
+  # change-5 program's) is read as reaching every job the folder had then.
   defp apply_record(%{"rename" => _from} = map, log, _number) do
-    {jobs, next, seen, marker, gone, renames} = log
-
     with :ok <- Rename.check_record(map),
          %{"rename" => from, "to" => to} = map,
-         :ok <- target_empty(jobs, to) do
-      {moved, _count} = Rename.jobs(jobs, from, to)
-      gone = Map.new(gone, fn {n, queue} -> {n, Rename.apply_name(queue, from, to)} end)
-      {:ok, {moved, next, seen, marker, gone, [{from, to} | renames]}}
+         :ok <- target_empty(log.jobs, to) do
+      rename = {from, to, Map.get(map, "next_id", log.next)}
+      {moved, _count} = Rename.jobs(log.jobs, from, to, elem(rename, 2))
+      gone = Map.new(log.gone, fn {n, queue} -> {n, Rename.apply_name(queue, n, rename)} end)
+      {:ok, %{log | jobs: moved, gone: gone, renames: [rename | log.renames]}}
     else
       {:error, rule} -> {:record, "rename " <> inspect(map["rename"]), rule}
+    end
+  end
+
+  defp apply_record(%{"prune" => cutoff} = map, log, number) do
+    case Prune.check_record(map) do
+      :ok -> {:ok, %{log | prunes: [{number, cutoff} | log.prunes]}}
+      {:error, rule} -> {:record, "prune " <> inspect(cutoff), rule}
     end
   end
 
@@ -426,39 +643,42 @@ defmodule Jobq.Store do
   defp apply_record(%{"archived" => true, "id" => id} = map, log, number) do
     with {:ok, n} <- Job.parse_id(id),
          {:ok, queue} <- gone_queue(map, log, n),
-         {:ok, {jobs, next, seen, marker, gone, renames}} <-
-           apply_record(%{"deleted" => true, "id" => id}, log, number) do
-      gone = if queue, do: Map.put(gone, n, queue), else: gone
-      {:ok, {jobs, next, seen, marker, gone, renames}}
+         {:ok, log} <- apply_record(%{"deleted" => true, "id" => id}, log, number) do
+      gone = if queue, do: Map.put(log.gone, n, queue), else: log.gone
+      {:ok, %{log | gone: gone}}
     else
       {:record, key, rule} -> {:record, key, rule}
       _error -> :error
     end
   end
 
-  defp apply_record(%{"deleted" => true, "id" => id}, log, _number) do
-    {jobs, next, seen, marker, gone, renames} = log
-
+  defp apply_record(%{"deleted" => true, "id" => id}, log, number) do
     case Job.parse_id(id) do
       {:ok, n} ->
-        {:ok,
-         {Map.delete(jobs, n), max(next, n + 1), max(seen, n), marker, Map.delete(gone, n),
-          renames}}
+        log = %{
+          log
+          | jobs: Map.delete(log.jobs, n),
+            next: max(log.next, n + 1),
+            seen: max(log.seen, n),
+            gone: Map.delete(log.gone, n)
+        }
+
+        {:ok, mention(log, n, number)}
 
       :error ->
         :error
     end
   end
 
-  defp apply_record(map, {jobs, next, seen, marker, gone, renames}, _number) do
-    with :ok <- Job.check_record(map),
-         {:ok, job} <- Job.from_record(map) do
-      {:ok,
-       {Map.put(jobs, job.n, job), max(next, job.n + 1), max(seen, job.n), marker, gone, renames}}
-    else
-      {:error, rule} -> {:record, Job.record_key(map), rule}
-      :error -> {:record, Job.record_key(map), "the record is not a job"}
-    end
+  defp apply_job(job, log, number) do
+    log = %{
+      log
+      | jobs: Map.put(log.jobs, job.n, job),
+        next: max(log.next, job.n + 1),
+        seen: max(log.seen, job.n)
+    }
+
+    {:ok, mention(log, job.n, number)}
   end
 
   # A rename's target has no job on the log's board at that point: the service
@@ -478,10 +698,10 @@ defmodule Jobq.Store do
     end
   end
 
-  defp gone_queue(_map, {jobs, _next, _seen, _marker, gone, _renames}, n) do
-    case Map.fetch(jobs, n) do
+  defp gone_queue(_map, log, n) do
+    case Map.fetch(log.jobs, n) do
       {:ok, job} -> {:ok, job.queue}
-      :error -> {:ok, Map.get(gone, n)}
+      :error -> {:ok, Map.get(log.gone, n)}
     end
   end
 
@@ -493,29 +713,38 @@ defmodule Jobq.Store do
     dir = Keyword.fetch!(opts, :dir)
     counters = Keyword.get_lazy(opts, :counters, &Board.counters/0)
     path = log_path(dir)
+    existed? = File.exists?(path) and File.exists?(archive_path(dir))
 
-    case open_both(path, archive_path(dir)) do
-      :ok ->
-        Board.started(counters)
+    # A file the open creates is on the disk only once the directory that
+    # names it is: its entry is synced here, before any record goes in it.
+    with :ok <- open_both(path, archive_path(dir)),
+         :ok <- if(existed?, do: :ok, else: dir_synced(dir)) do
+      Board.started(counters)
 
-        {:ok,
-         %{
-           path: path,
-           archive_path: archive_path(dir),
-           buffer: [],
-           archive: [],
-           waiters: [],
-           pending: 0,
-           batch: 0,
-           epoch: 0,
-           ref: ref,
-           fault: Keyword.get(opts, :fault, fn _ -> false end),
-           crash: Keyword.get(opts, :crash, fn _ -> false end),
-           counters: counters
-         }}
+      {:ok,
+       %{
+         path: path,
+         archive_path: archive_path(dir),
+         buffer: [],
+         archive: [],
+         waiters: [],
+         pending: 0,
+         batch: 0,
+         epoch: 0,
+         ref: ref,
+         fault: Keyword.get(opts, :fault, fn _ -> false end),
+         crash: Keyword.get(opts, :crash, fn _ -> false end),
+         counters: counters
+       }}
+    else
+      {:error, {file, reason}} -> {:stop, {:open, file, reason}}
+    end
+  end
 
-      {:error, {file, reason}} ->
-        {:stop, {:open, file, reason}}
+  defp dir_synced(dir) do
+    case sync_dir(dir) do
+      :ok -> :ok
+      {:error, reason} -> {:error, {dir, reason}}
     end
   end
 
@@ -719,6 +948,9 @@ defmodule Jobq.Store do
       true ->
         {:error, :injected}
 
+      {:error, reason} ->
+        {:error, reason}
+
       false ->
         with :ok <- append(state.archive_path, state.archive),
              do: append(state.path, state.buffer)
@@ -746,8 +978,11 @@ defmodule Jobq.Store do
 
   defp encode_record({:unarchive, id}), do: encode_record({:delete, id})
 
-  defp encode_record({:rename, from, to}),
-    do: [Json.encode({:obj, [{"rename", from}, {"to", to}]}), ?\n]
+  defp encode_record({:rename, from, to, next_id}),
+    do: [Json.encode({:obj, [{"rename", from}, {"to", to}, {"next_id", next_id}]}), ?\n]
+
+  defp encode_record({:prune, cutoff, count}),
+    do: [Json.encode({:obj, [{"prune", cutoff}, {"count", count}]}), ?\n]
 
   defp sync_dir(dir) do
     case :file.open(dir, [:read, :raw]) do

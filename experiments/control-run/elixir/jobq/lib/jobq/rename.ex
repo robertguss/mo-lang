@@ -13,10 +13,15 @@ defmodule Jobq.Rename do
   the `requires` on `to` buys, and why a rename never lets a key name two jobs
   in one queue.
 
-  A rename is one record on the log, `{"rename": from, "to": to}`, and the
-  replay applies it in order: `apply_name/3` is the step one job's queue name
+  A rename is one record on the log, `{"rename": from, "to": to, "next_id":
+  n}`, where `n` is the id the service would give the next job it created:
+  the rename moves the jobs below `n` that are in `from` at that point of the
+  replay, and a job created after it (at `n` or above) into `from` is in a
+  fresh queue of that name. `apply_name/4` is the step one job's queue name
   takes, and what the store runs over an archived job's name for every rename
-  the log carries after the job left it.
+  the log carries after the job left it. A record the change-5 program wrote
+  has no `next_id`; the store reads it as the counter at that point of the
+  replay, which is every job the folder had then.
   """
 
   alias Jobq.Job
@@ -37,11 +42,14 @@ defmodule Jobq.Rename do
   defp any_in?(boards, queue),
     do: Enum.any?(boards, fn jobs -> Enum.any?(jobs, fn {_n, job} -> job.queue == queue end) end)
 
-  @doc "The jobs with every one of `from` moved to `to`, and how many moved."
-  @spec jobs(jobs(), String.t(), String.t()) :: {jobs(), non_neg_integer()}
-  def jobs(jobs, from, to) do
+  @doc """
+  The jobs with every one of `from` below `next_id` moved to `to`, and how
+  many moved. The service's own jobs are all below its counter.
+  """
+  @spec jobs(jobs(), String.t(), String.t(), pos_integer()) :: {jobs(), non_neg_integer()}
+  def jobs(jobs, from, to, next_id) do
     Enum.reduce(jobs, {jobs, 0}, fn
-      {n, %Job{queue: ^from} = job}, {acc, moved} ->
+      {n, %Job{queue: ^from} = job}, {acc, moved} when n < next_id ->
         {Map.put(acc, n, %{job | queue: to}), moved + 1}
 
       _other, acc ->
@@ -58,24 +66,29 @@ defmodule Jobq.Rename do
     end)
   end
 
-  @doc "A queue name after one rename."
-  @spec apply_name(String.t(), String.t(), String.t()) :: String.t()
-  def apply_name(from, from, to), do: to
-  def apply_name(name, _from, _to), do: name
+  @typedoc "One rename as the replay holds it: `from`, `to`, and its `next_id`."
+  @type t :: {String.t(), String.t(), pos_integer()}
 
-  @doc "A queue name after a list of renames, in order."
-  @spec apply_all(String.t(), [{String.t(), String.t()}]) :: String.t()
-  def apply_all(name, renames),
-    do: Enum.reduce(renames, name, fn {from, to}, name -> apply_name(name, from, to) end)
+  @doc "The queue name of job `n` after one rename."
+  @spec apply_name(String.t(), pos_integer(), t()) :: String.t()
+  def apply_name(from, n, {from, to, next_id}) when n < next_id, do: to
+  def apply_name(name, _n, _rename), do: name
+
+  @doc "The queue name of job `n` after a list of renames, in order."
+  @spec apply_all(String.t(), pos_integer(), [t()]) :: String.t()
+  def apply_all(name, n, renames),
+    do: Enum.reduce(renames, name, fn rename, name -> apply_name(name, n, rename) end)
 
   @doc """
   The rule a rename record on the disk breaks, or `:ok`: both names keep the
-  queue name's rule, and they differ.
+  queue name's rule, they differ, and a `next_id`, when the record has one, is
+  an id counter of at least 1.
   """
   @spec check_record(map()) :: :ok | {:error, String.t()}
   def check_record(%{} = map) do
     with :ok <- name(map, "rename"),
          :ok <- name(map, "to"),
+         :ok <- next_id(map),
          :ok <- only(map) do
       if map["rename"] == map["to"],
         do: {:error, "a rename names two different queues"},
@@ -90,8 +103,15 @@ defmodule Jobq.Rename do
     end
   end
 
+  defp next_id(%{"next_id" => n}) when is_integer(n) and n >= 1, do: :ok
+
+  defp next_id(%{"next_id" => _n}),
+    do: {:error, "a rename's next_id is a whole number of at least 1"}
+
+  defp next_id(_map), do: :ok
+
   defp only(map) do
-    case Map.keys(map) -- ["rename", "to"] do
+    case Map.keys(map) -- ["rename", "to", "next_id"] do
       [] -> :ok
       [field | _rest] -> {:error, "a rename has no #{field}"}
     end

@@ -28,6 +28,15 @@
 # with the new worker and the same lease_until, every job in the new queue,
 # its key there, and one rename record, which a compaction folds away.
 #
+# Eight: change 6. script/sequence.py plays the change's sequence, every
+# answer written in it, on a fresh folder and on test/fixtures/change5/data, a
+# folder the change-5 program wrote (its rename record has no next_id): keys
+# into two queues, the archive, a compaction killed after the log's rename and
+# before the directory's fsync, a rename and a create into the old name, a
+# prune that splits the archive, kill -9, verify, freed and used keys, and a
+# compaction killed after each of its steps. Then `jobq prune` offline, a prune
+# record with a bad cutoff refused at the door, and a small `jobq bench`.
+#
 # Five: the board restarts itself. A `jobq serve` with the chaos switch on
 # fails its second write, comes back with the record on the board and
 # `restarts` at 1, and on the failure past its budget exits 70 with a folder
@@ -391,5 +400,41 @@ expect_status 1 ./jobq serve "$work/bad-rename" --port "$port"
 expect_error "rename"
 expect_status 1 ./jobq compact "$work/bad-rename"
 expect_error "rename"
+
+# Eight: change 6.
+mkdir "$work/sequence-fresh"
+timeout 300 python3 script/sequence.py ./jobq "$work/sequence-fresh" fresh
+cp -R test/fixtures/change5/data "$work/sequence-change5"
+timeout 300 python3 script/sequence.py ./jobq "$work/sequence-change5" change5
+
+cp -R test/fixtures/change5/data "$work/pruned"
+expect_status 0 ./jobq verify "$work/pruned"
+expect_body "3 jobs: queued 3, scheduled 0, leased 0, done 0, dead 0; next id j_6; archived 2"
+expect_status 0 ./jobq prune "$work/pruned" --older-than-ms 1000
+expect_body "pruned 2; remaining 0"
+[ "$(grep -c '"prune"' "$work/pruned/jobq.log")" = "1" ] || fail "expected one prune record"
+expect_status 0 ./jobq prune "$work/pruned" --older-than-ms 1000
+expect_body "pruned 0; remaining 0"
+[ "$(grep -c '"prune"' "$work/pruned/jobq.log")" = "1" ] || fail "an empty prune wrote a record"
+expect_status 0 ./jobq verify "$work/pruned"
+expect_body "3 jobs: queued 3, scheduled 0, leased 0, done 0, dead 0; next id j_6; archived 0"
+expect_status 2 ./jobq prune "$work/pruned" --older-than-ms 999
+expect_status 2 ./jobq serve "$work/pruned" --retention 999
+
+mkdir "$work/bad-prune"
+printf '%s\n' '{"prune":-1,"count":1}' >"$work/bad-prune/jobq.log"
+expect_status 1 ./jobq verify "$work/bad-prune"
+expect_error "record prune -1: a prune's cutoff is a whole number of milliseconds"
+expect_status 1 ./jobq serve "$work/bad-prune" --port "$port"
+expect_error "record prune -1:"
+expect_status 1 ./jobq compact "$work/bad-prune"
+expect_error "record prune -1:"
+expect_status 1 ./jobq prune "$work/bad-prune" --older-than-ms 1000
+expect_error "record prune -1:"
+
+expect_status 0 timeout 300 ./jobq bench "$work/bench" --jobs 400 --workers 4 --seconds 1
+expect_body "^creates/s: [0-9]* (400 in"
+expect_body "^pairs/s at 4 worker(s): "
+expect_body "^restart to /health: "
 
 echo "check.sh: ok"

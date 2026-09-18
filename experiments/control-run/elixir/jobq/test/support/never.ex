@@ -14,7 +14,8 @@ defmodule Jobq.Test.Never do
   Change 5 moved the first of them rather than dropped it: a leased record
   after a leased one is a handoff, and is one only when the worker changed and
   the `tries` and the `lease_until` did not, so the job still has one worker at
-  every line. A rename record names no job and moves no state.
+  every line. A rename record names no job and moves no state, and neither
+  does a prune record (change 6), which touches only the archive.
 
   A log may carry lines the version before this change wrote, so a record's
   count of tries is read under either name.
@@ -46,6 +47,7 @@ defmodule Jobq.Test.Never do
   defp step(%{"id" => id, "deleted" => true}, seen), do: {:ok, Map.put(seen, id, :deleted)}
   defp step(%{"next" => _n}, seen), do: {:ok, seen}
   defp step(%{"rename" => _from, "to" => _to}, seen), do: {:ok, seen}
+  defp step(%{"prune" => _cutoff, "count" => _count}, seen), do: {:ok, seen}
 
   # A job that left the board for the archive never moves on the board again.
   defp step(%{"id" => id, "archived" => true}, seen), do: {:ok, Map.put(seen, id, :archived)}

@@ -1,9 +1,11 @@
 defmodule Jobq.CLI do
   @moduledoc """
-  The five commands.
+  The seven commands.
 
       jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
-                [--retain-ms N]
+                [--retain-ms N] [--retention MS]
+      jobq prune <dir> --older-than-ms N
+      jobq bench <dir> [--jobs N] [--workers N] [--serve CMD] [--seconds S]
       jobq compact <dir>
       jobq verify <dir>
       jobq client <host> <port> <token> <method> <path> [<json>]
@@ -16,6 +18,17 @@ defmodule Jobq.CLI do
   N-th write it applies, to rehearse the restart in staging. `--retain-ms N`
   (default 86,400,000, a day; 1,000 to 2,678,400,000) is how long a done or
   dead job stays on the board before it is moved to the archive.
+  `--retention MS` (default 0, never; else at least 1,000) prunes the archive
+  of every job archived that long ago, every 60 seconds.
+
+  `prune` does the same once, offline, and prints the two counts. `bench`
+  measures a service it starts in `<dir>` (`Jobq.Bench`): by default this
+  escript's own `serve`, or `--serve '<cmd> serve {dir} --port {port}'` for
+  another build of the program.
+
+  `compact` stops where `JOBQ_COMPACT_STOP_AT` (`tombstones`, `log`, or
+  `archive`) names, right after that step's rename and before the directory's
+  `fsync`, exiting 137 as a kill there would: the check script's way in.
 
   `serve`, `compact`, and `verify` all read the folder before they do anything
   else, and all refuse an ill-formed record the same way: one line naming the
@@ -31,7 +44,9 @@ defmodule Jobq.CLI do
 
   @usage """
   usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N]
-                    [--retain-ms N]
+                    [--retain-ms N] [--retention MS]
+         jobq prune <dir> --older-than-ms N
+         jobq bench <dir> [--jobs N] [--workers N] [--serve CMD] [--seconds S]
          jobq compact <dir>
          jobq verify <dir>
          jobq client <host> <port> <token> <method> <path> [<json>]
@@ -43,7 +58,8 @@ defmodule Jobq.CLI do
     max_restarts: 5,
     restart_window: 60,
     crash_every: 0,
-    retain_ms: 86_400_000
+    retain_ms: 86_400_000,
+    retention_ms: 0
   ]
 
   # A window of 0 seconds is not one the supervisor can keep, so it starts at 1.
@@ -52,7 +68,14 @@ defmodule Jobq.CLI do
     "--max-restarts" => {:max_restarts, 0, 1_000_000},
     "--restart-window" => {:restart_window, 1, 86_400 * 365},
     "--crash-every" => {:crash_every, 0, 1_000_000_000},
-    "--retain-ms" => {:retain_ms, 1_000, 2_678_400_000}
+    "--retain-ms" => {:retain_ms, 1_000, 2_678_400_000},
+    "--retention" => {:retention_ms, 0, 315_360_000_000}
+  }
+
+  @bench_flags %{
+    "--jobs" => {:jobs, 8, 10_000_000},
+    "--workers" => {:workers, 1, 10_000},
+    "--seconds" => {:seconds, 1, 3_600}
   }
 
   @doc "The escript's entry point."
@@ -65,6 +88,8 @@ defmodule Jobq.CLI do
   @spec run([String.t()]) :: 0 | 1 | 2 | 70
   def run(["serve", dir | rest]), do: serve(dir, rest)
   def run(["compact", dir]), do: compact(dir)
+  def run(["prune", dir, "--older-than-ms", age]), do: prune(dir, age)
+  def run(["bench", dir | rest]), do: bench(dir, rest)
   def run(["verify", dir]), do: verify(dir)
 
   def run(["client", host, port, token, method, path | rest]),
@@ -80,6 +105,7 @@ defmodule Jobq.CLI do
 
   defp serve(dir, rest) do
     with {:ok, options} <- serve_options(rest, @serve_defaults),
+         :ok <- retention(options[:retention_ms]),
          :ok <- open_dir(dir),
          {:ok, _log} <- read_dir(dir) do
       # The tree is linked to this process: trapping exits is what turns a
@@ -121,11 +147,71 @@ defmodule Jobq.CLI do
   defp compact(dir) do
     with :ok <- open_dir(dir),
          {:ok, _log} <- read_dir(dir) do
-      report_compact(dir, Store.compact(dir))
+      report_compact(
+        dir,
+        Store.compact(dir, stop_at: stop_at(System.get_env("JOBQ_COMPACT_STOP_AT")))
+      )
     else
       {:error, reason} -> fail(reason)
     end
   end
+
+  defp stop_at(nil), do: fn _step -> :ok end
+
+  defp stop_at(name) do
+    fn step ->
+      if Atom.to_string(step) == name, do: System.halt(137), else: :ok
+    end
+  end
+
+  defp prune(dir, age) do
+    with {:ok, older_than_ms} <- number(age, "--older-than-ms", 1_000, 315_360_000_000),
+         :ok <- open_dir(dir),
+         {:ok, _folder} <- read_dir(dir),
+         {:ok, pruned, remaining} <-
+           Store.prune(dir, older_than_ms, System.system_time(:millisecond)) do
+      IO.puts("pruned #{pruned}; remaining #{remaining}")
+      0
+    else
+      {:usage, message} -> usage_error(message)
+      {:error, {:record, key, rule}} -> fail({:record, dir, key, rule})
+      {:error, reason} -> fail(reason)
+    end
+  end
+
+  defp bench(dir, rest) do
+    with {:ok, options} <- bench_options(rest, []),
+         :ok <- open_dir(dir) do
+      options = Keyword.put_new_lazy(options, :serve, &Jobq.Bench.own_serve/0)
+
+      case Jobq.Bench.run(dir, options) do
+        :ok -> 0
+        {:error, reason} -> fail(reason)
+      end
+    else
+      {:usage, message} -> usage_error(message)
+      {:error, reason} -> fail(reason)
+    end
+  end
+
+  defp bench_options([], options), do: {:ok, options}
+
+  defp bench_options(["--serve", command | rest], options),
+    do: bench_options(rest, Keyword.put(options, :serve, command))
+
+  defp bench_options([flag, value | rest], options) when is_map_key(@bench_flags, flag) do
+    {key, min, max} = Map.fetch!(@bench_flags, flag)
+
+    case number(value, flag, min, max) do
+      {:ok, number} -> bench_options(rest, Keyword.put(options, key, number))
+      {:usage, message} -> {:usage, message}
+    end
+  end
+
+  defp bench_options(_rest, _options), do: {:usage, "unknown option"}
+
+  defp retention(ms) when ms == 0 or ms >= 1_000, do: :ok
+  defp retention(_ms), do: {:usage, "--retention must be 0 or at least 1000"}
 
   defp verify(dir) do
     with :ok <- open_dir(dir),

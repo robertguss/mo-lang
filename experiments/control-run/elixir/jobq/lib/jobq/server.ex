@@ -24,7 +24,8 @@ defmodule Jobq.Server do
   Start a service.
 
   Options: `:ref` (default `:default`), `:dir`, `:port` (default 7900, 0 asks
-  the kernel for a free one), `:clock`, `:sweep_ms`, `:retain_ms`, `:fault`, the budget's
+  the kernel for a free one), `:clock`, `:sweep_ms`, `:retain_ms`, the background
+  prune's `:retention_ms` (default 0, never) and `:prune_every_ms`, `:fault`, the budget's
   `:max_restarts` (default 5) and `:restart_window` (seconds, default 60), the
   chaos switch `:crash_every` (default 0, never) or a test's `:crash`, and the
   listener's options.
@@ -78,7 +79,9 @@ defmodule Jobq.Server do
         # restart of the board does not start it again.
         started_at: clock.(),
         sweep_ms: Keyword.get(opts, :sweep_ms, 100),
-        retain_ms: Keyword.get(opts, :retain_ms, 86_400_000)
+        retain_ms: Keyword.get(opts, :retain_ms, 86_400_000),
+        retention_ms: Keyword.get(opts, :retention_ms, 0),
+        prune_every_ms: Keyword.get(opts, :prune_every_ms, 60_000)
       ]
     ]
 
