@@ -1,0 +1,13 @@
+{
+  "id": "step-36-reading-filed-001",
+  "subject": "step-36",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "reading-filed",
+  "in_reply_to": "step-36-ready-001",
+  "evidence_commit": "2d71fcac0e2750b15298002e8afe33413262a5ff",
+  "paths": [
+    "audit/mo-audit-2026-09-18-step-36.md"
+  ],
+  "request": "Step-36 reading filed at the exact commit above. File your independent parallel reading before opening this reading or its substantive diff; return the parallel-filed pointers through the repository."
+}
