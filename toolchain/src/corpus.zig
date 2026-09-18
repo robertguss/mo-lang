@@ -1121,6 +1121,144 @@ test "corpus: a process an update starts runs on its starter's scheduler up to t
     try std.testing.expect(std.mem.indexOf(u8, test_binary.stdout, "1 passed, 0 failed") != null);
 }
 
+test "corpus: a fatal alert where a hello belongs is Handshake and a reset mid-hello is Closed, under mo run and in a binary, and the server takes the next connection" {
+    // Step 37's fix: over a socket a peer's fatal alert during the handshake was Closed, and in a
+    // binary a read that broke mid-handshake freed the engine twice, so a later connection's engine
+    // crashed in mo_tls_feed. The server here says what each of five handshakes came to.
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const pems = "../examples/effects/tls";
+    Io.Dir.cwd().access(io, pems ++ "/cert.pem", .{}) catch return;
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const alerted =
+        \\module Alerted
+        \\expose named
+        \\
+        \\intent "A TLS server that says what each handshake came to: it listens on the port its command line names, accepts as many connections as it names, runs the server's half of the handshake on each, and prints the outcome's name."
+        \\
+        \\fn named(shook: Result(Conn, TlsError)) : String
+        \\  case shook
+        \\    Ok(_): "Ok"
+        \\    Error(Handshake): "Handshake"
+        \\    Error(Closed): "Closed"
+        \\    Error(Timeout): "Timeout"
+        \\    Error(_): "another error"
+        \\  end
+        \\end
+        \\
+        \\fn accepts(server: TlsServer, listener: Listener, out: Out, left: UInt32) : UInt8
+        \\  if left == 0
+        \\    0
+        \\  else
+        \\    case listener.accept(within: 1.minute)
+        \\      Ok(conn):
+        \\        out.write_line(named(server.accept(conn, within: 10.seconds)))
+        \\        accepts(server, listener, out, left - 1)
+        \\      Error(_):
+        \\        out.write_line("no connection")
+        \\        1
+        \\    end
+        \\  end
+        \\end
+        \\
+        \\fn serve(net: Net, tls: Tls, out: Out, cert: String, key: String, args: List(String)) : UInt8
+        \\  port = ((args.get(0) or "0").to_u64 or 0).checked_to_u16 or 0
+        \\  count = ((args.get(1) or "0").to_u64 or 0).checked_to_u32 or 0
+        \\  case tls.server(cert: cert, key: key)
+        \\    Ok(server):
+        \\      case net.listen(port, within: 1.minute)
+        \\        Ok(listener): accepts(server, listener, out, count)
+        \\        Error(_): 1
+        \\      end
+        \\    Error(_): 1
+        \\  end
+        \\end
+        \\
+        \\fn main(platform: Platform)
+        \\  out = platform.stdout
+        \\  fs = platform.fs
+        \\  case fs.read("tls/cert.pem", within: 10.seconds)
+        \\    Ok(cert):
+        \\      case fs.read("tls/key.pem", within: 10.seconds)
+        \\        Ok(key): platform.exit(serve(platform.net, platform.tls, out, cert, key, platform.args))
+        \\        Error(_): out.write_line("no key")
+        \\      end
+        \\    Error(_): out.write_line("no certificate")
+        \\  end
+        \\end
+    ;
+    try tmp.dir.writeFile(io, .{ .sub_path = "alerted.mo", .data = alerted });
+    try tmp.dir.createDirPath(io, "tls");
+    for ([_][]const u8{ "cert.pem", "key.pem" }) |name| {
+        const pem = try Io.Dir.cwd().readFileAlloc(io, try std.fs.path.join(arena, &.{ pems, name }), arena, .limited(1 << 16));
+        try tmp.dir.writeFile(io, .{ .sub_path = try std.fs.path.join(arena, &.{ "tls", name }), .data = pem });
+    }
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "alerted.mo" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    // Ports picked by the clock, below the ephemeral ranges, as the surface test's are.
+    const base: u16 = @intCast(23_000 + @mod(Io.Clock.real.now(io).toMilliseconds(), 2_000) * 2);
+    const commands = [_][]const u8{
+        try std.fmt.allocPrint(arena, "exec '{s}' run alerted.mo -- {d} 5 > run.txt 2>&1", .{ mo_exe, base }),
+        try std.fmt.allocPrint(arena, "exec ./zig-out/mo-build/alerted/alerted {d} 5 > binary.txt 2>&1", .{base + 1}),
+    };
+    const outs = [_][]const u8{ "run.txt", "binary.txt" };
+    for (commands, outs, 0..) |command, out, i| {
+        var child = try std.process.spawn(io, .{ .argv = &.{ "sh", "-c", command }, .cwd = .{ .path = cwd }, .stdin = .ignore, .stdout = .ignore, .stderr = .ignore });
+        const port: u16 = base + @as(u16, @intCast(i));
+        for (0..5) |k| {
+            const fd = for (0..500) |_| {
+                if (loopback(port)) |fd| break fd;
+                io.sleep(.fromMilliseconds(20), .awake) catch {};
+            } else {
+                child.kill(io);
+                return error.NeverListened;
+            };
+            const sys = std.posix.system;
+            if (k % 2 == 0) {
+                // A fatal unknown_ca alert in the clear, where the ClientHello belongs.
+                const alert = [_]u8{ 0x15, 3, 3, 0, 2, 2, 48 };
+                _ = sys.write(fd, &alert, alert.len);
+            } else {
+                // The start of a hello, then a reset while the server waits for the rest.
+                const hello = [_]u8{ 0x16, 3, 1, 0, 0x50, 1, 0, 0 };
+                _ = sys.write(fd, &hello, hello.len);
+                io.sleep(.fromMilliseconds(200), .awake) catch {};
+                const linger = [2]i32{ 1, 0 };
+                _ = sys.setsockopt(fd, std.posix.SOL.SOCKET, std.posix.SO.LINGER, @ptrCast(&linger), @sizeOf(@TypeOf(linger)));
+            }
+            io.sleep(.fromMilliseconds(200), .awake) catch {};
+            _ = sys.close(fd);
+        }
+        const term = try child.wait(io);
+        const said = try tmp.dir.readFileAlloc(io, out, arena, .limited(1 << 16));
+        try std.testing.expectEqualStrings("Handshake\nClosed\nHandshake\nClosed\nHandshake\n", said);
+        try std.testing.expect(term == .exited and term.exited == 0);
+    }
+}
+
+/// A connection to 127.0.0.1 at `port`, or null while nothing listens there.
+fn loopback(port: u16) ?std.posix.socket_t {
+    const posix = std.posix;
+    const rc = posix.system.socket(posix.AF.INET, posix.SOCK.STREAM, posix.IPPROTO.TCP);
+    if (posix.errno(rc) != .SUCCESS) return null;
+    const fd: posix.socket_t = @intCast(rc);
+    var addr: posix.sockaddr.in = .{ .port = std.mem.nativeToBig(u16, port), .addr = std.mem.nativeToBig(u32, 0x7f00_0001) };
+    if (posix.errno(posix.system.connect(fd, @ptrCast(&addr), @sizeOf(posix.sockaddr.in))) != .SUCCESS) {
+        _ = posix.system.close(fd);
+        return null;
+    }
+    return fd;
+}
+
 test "corpus: a callee's body changed in another module makes its caller's verified: line stale" {
     const gpa = std.testing.allocator;
     const io = std.testing.io;

@@ -753,6 +753,17 @@ pub const Net = struct {
                 c.tls = t;
                 return .done;
             }
+            // A fatal alert from the peer leaves the engine failed though its read went in, and
+            // is `Handshake`, as under the fixture; close_notify or user_canceled is `Closed`.
+            var none: usize = 0;
+            switch (brick.mo_tls_read(t, null, 0, &none)) {
+                brick.failed => {
+                    _ = try n.flushTls(vm, c, t, deadline);
+                    break :fail refused(t);
+                },
+                brick.closed => break :fail .Closed,
+                else => {},
+            }
             switch (try n.feedTls(vm, c, t, deadline)) {
                 .got => {},
                 // A hello that stops mid-record, or a peer that never finishes.

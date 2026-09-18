@@ -3801,6 +3801,34 @@ fn expectRefused(server: *Server, trust: []const u8, host: []const u8, now: i64,
     var buf: [8]u8 = undefined;
     try testing.expectEqual(failed, mo_tls_read(se.c, &buf, buf.len, &n));
     try testing.expectEqual(failed, mo_tls_write(se.c, "x", 1));
+    // The server's read says the handshake failed, which both runtimes' handshakes ask after
+    // each read (net.zig, mo_rt.c): the client's alert is `Handshake`, never the stream's end.
+    try testing.expectEqual(failed, mo_tls_read(se.s, &buf, buf.len, &n));
+}
+
+test "an alert where a hello belongs: a fatal one leaves the server's read failed, close_notify closed" {
+    const Case = struct { level: tls.Alert.Level, desc: tls.Alert.Description, read: c_int };
+    const cases = [_]Case{
+        .{ .level = .fatal, .desc = .unknown_ca, .read = failed },
+        .{ .level = .fatal, .desc = .protocol_version, .read = failed },
+        .{ .level = .warning, .desc = .close_notify, .read = closed },
+        .{ .level = .warning, .desc = .user_canceled, .read = closed },
+    };
+    for (cases) |k| {
+        const server = testServer();
+        defer mo_tls_server_free(server);
+        const conn = mo_tls_conn_new(server).?;
+        defer mo_tls_conn_free(conn);
+        const record = [_]u8{ 0x15, 3, 3, 0, 2, @intFromEnum(k.level), @intFromEnum(k.desc) };
+        // The feed itself goes in: the alert is read, not answered.
+        try testing.expectEqual(ok, mo_tls_feed(conn, &record, record.len));
+        var n: usize = 0;
+        try testing.expectEqual(k.read, mo_tls_read(conn, null, 0, &n));
+        try testing.expect(!mo_tls_ready(conn));
+        try testing.expectEqual(@as(c_int, @intFromEnum(k.desc)), mo_tls_alert(conn));
+        try testing.expect(conn.alert_from_peer);
+        try testing.expectEqual(@as(usize, 0), mo_tls_pending(conn));
+    }
 }
 
 test "the chain: each refusal is the alert RFC 8446 names" {

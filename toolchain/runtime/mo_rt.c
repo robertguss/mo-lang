@@ -9147,6 +9147,18 @@ MO_ROW(mo_r_TlsClient_offer) {
     return mo_cap(MO_CAP_TLS_CLIENT, keep_client(client), 0);
 }
 
+/* A handshake that failed: the engine goes, then the socket. A read or a write that broke has
+ * already closed the connection, and net_release freed the engine with it (it was c->tls), so it
+ * is freed here only while the connection still holds it: freeing it twice corrupted the brick's
+ * heap, and the next connection's engine crashed in mo_tls_feed. */
+static void tls_give_up(Conn *c, MoTlsConn *t) {
+    if (c->tls == t) {
+        c->tls = NULL;
+        mo_tls_conn_free(t);
+    }
+    net_close(c);
+}
+
 /* One side's half of the handshake on a real socket, the engine `t` already made (a server's, or
  * a client's with its hello queued): TLS_* or -1 when it finished. */
 static int tls_handshake(Conn *c, MoTlsConn *t, int64_t ms) {
@@ -9159,20 +9171,20 @@ static int tls_handshake(Conn *c, MoTlsConn *t, int64_t ms) {
     for (;;) {
         int sent = tls_flush(c, deadline);
         if (sent >= 0) {
-            c->tls = NULL;
-            mo_tls_conn_free(t);
-            net_close(c);
+            tls_give_up(c, t);
             return sent == NET_TIMEOUT ? TLS_TIMEOUT : TLS_CLOSED;
         }
         if (mo_tls_ready(t)) return -1;
-        int fed = tls_feed(c, deadline);
+        /* A fatal alert from the peer leaves the engine failed though its read went in, and is
+         * Handshake, as under the fixture; close_notify or user_canceled is Closed. */
+        size_t none = 0;
+        int state = mo_tls_read(t, NULL, 0, &none);
+        int fed = state == MO_TLS_FAILED ? FILL_BROKEN : state == MO_TLS_CLOSED ? FILL_CLOSED : tls_feed(c, deadline);
         if (fed == FILL_GOT) continue;
         /* The engine answered with an alert; it reaches the peer before the socket goes. */
         int failed = fed == FILL_TIMEOUT ? TLS_TIMEOUT : fed == FILL_BROKEN ? tls_refused(t) : TLS_CLOSED;
         if (fed == FILL_BROKEN) tls_flush(c, deadline);
-        c->tls = NULL;
-        mo_tls_conn_free(t);
-        net_close(c);
+        tls_give_up(c, t);
         /* A hello that stops mid-record, or a peer that never finishes, is Timeout. */
         return failed;
     }
