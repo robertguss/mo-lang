@@ -530,41 +530,267 @@ fn certShape(b: []const u8) bool {
 
 // ---- the chain a client checks
 
-const oid_basic_constraints = [_]u8{ 0x55, 0x1d, 0x13 };
 /// The most certificates a server's chain may hold, the leaf among them.
 pub const max_chain = 5;
 
-/// The extension with `oid` in a certificate `certShape` has passed: its value's bytes.
-fn extensionValue(b: []const u8, oid: []const u8) ?[]const u8 {
+// The extensions the brick reads (RFC 5280 4.2); every other one marked critical is a refusal.
+const oid_basic_constraints = [_]u8{ 0x55, 0x1d, 0x13 };
+const oid_key_usage = [_]u8{ 0x55, 0x1d, 0x0f };
+const oid_ext_key_usage = [_]u8{ 0x55, 0x1d, 0x25 };
+const oid_subject_alt_name = [_]u8{ 0x55, 0x1d, 0x11 };
+const oid_name_constraints = [_]u8{ 0x55, 0x1d, 0x1e };
+const oid_authority_key_id = [_]u8{ 0x55, 0x1d, 0x23 };
+const oid_policy_constraints = [_]u8{ 0x55, 0x1d, 0x24 };
+const oid_authority_info_access = [_]u8{ 0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x01, 0x01 };
+// Extended key usages: TLS server authentication (1.3.6.1.5.5.7.3.1), and any (2.5.29.37.0).
+const oid_server_auth = [_]u8{ 0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x03, 0x01 };
+const oid_any_eku = [_]u8{ 0x55, 0x1d, 0x25, 0x00 };
+// KeyUsage's bits, as the first byte of its BIT STRING holds them (bit 0 is 0x80).
+const ku_digital_signature: u8 = 0x80;
+const ku_key_cert_sign: u8 = 0x04;
+
+/// What a certificate's extensions say, read by the brick itself (Zig's `Certificate.parse` keeps
+/// the subject alternative names alone and skips every other extension, critical or not).
+const Extensions = struct {
+    /// basicConstraints: cA, and the pathLenConstraint when there is one.
+    ca: bool = false,
+    path_len: ?u32 = null,
+    /// keyUsage's first byte, when the extension is there (an empty one is 0).
+    key_usage: ?u8 = null,
+    /// extendedKeyUsage, when it is there: whether it names server authentication.
+    eku_server: ?bool = null,
+    /// nameConstraints, critical or not: the brick does not check names against them.
+    name_constraints: bool = false,
+    /// A critical extension the brick does not read.
+    unknown_critical: bool = false,
+    /// basicConstraints there at all, and marked critical (RFC 5280 4.2.1.9: critical in every CA).
+    has_bc: bool = false,
+    bc_critical: bool = false,
+    /// subjectAltName marked critical (RFC 5280 4.2.1.6: critical when the subject is empty).
+    san_critical: bool = false,
+    /// policyConstraints: the brick does no policy processing, so it is refused, never ignored.
+    policy_constraints: bool = false,
+};
+
+/// The extensions of a certificate `certShape` has passed. `Bad` for one that appears twice
+/// (RFC 5280 4.2) or one the brick reads that does not parse.
+fn readExtensions(b: []const u8) error{Bad}!Extensions {
+    var out: Extensions = .{};
     const cert = tlvAt(b, 0, b.len).?;
     var top_buf: [3]Tlv = undefined;
     const top = kids(b, cert, &top_buf).?;
     var tbs_buf: [12]Tlv = undefined;
     const tbs = kids(b, top[0], &tbs_buf).?;
     const last = tbs[tbs.len - 1];
-    if (last.tag != 0xa3) return null;
+    if (last.tag != 0xa3) return out;
     var outer_buf: [1]Tlv = undefined;
     const outer = kids(b, last, &outer_buf).?;
     var ext_buf: [32]Tlv = undefined;
-    for (kids(b, outer[0], &ext_buf).?) |ext| {
+    const exts = kids(b, outer[0], &ext_buf).?;
+    for (exts, 0..) |ext, i| {
         var part_buf: [3]Tlv = undefined;
         const part = kids(b, ext, &part_buf).?;
-        if (!mem.eql(u8, b[part[0].start..part[0].end], oid)) continue;
+        const oid = b[part[0].start..part[0].end];
+        for (exts[0..i]) |before| {
+            var before_buf: [3]Tlv = undefined;
+            const earlier = kids(b, before, &before_buf).?;
+            if (mem.eql(u8, b[earlier[0].start..earlier[0].end], oid)) return error.Bad;
+        }
+        var critical = false;
+        if (part.len == 3) {
+            const flag = part[1];
+            if (flag.tag != 0x01 or flag.end - flag.start != 1) return error.Bad;
+            critical = b[flag.start] != 0;
+        }
         const value = part[part.len - 1];
-        if (value.tag != 0x04) return null;
-        return b[value.start..value.end];
+        if (value.tag != 0x04) return error.Bad;
+        const v = b[value.start..value.end];
+        if (mem.eql(u8, oid, &oid_basic_constraints)) {
+            try basicConstraints(v, &out);
+            out.has_bc = true;
+            out.bc_critical = critical;
+        } else if (mem.eql(u8, oid, &oid_key_usage)) {
+            out.key_usage = try keyUsage(v);
+        } else if (mem.eql(u8, oid, &oid_ext_key_usage)) {
+            out.eku_server = try extKeyUsage(v);
+        } else if (mem.eql(u8, oid, &oid_name_constraints)) {
+            out.name_constraints = true;
+        } else if (mem.eql(u8, oid, &oid_subject_alt_name)) {
+            // Its names are matched by `leafIsFor`, through Zig's parser; here, their form.
+            try altNames(v);
+            out.san_critical = critical;
+        } else if (mem.eql(u8, oid, &oid_policy_constraints)) {
+            out.policy_constraints = true;
+        } else if (mem.eql(u8, oid, &oid_authority_key_id)) {
+            // RFC 5280 4.2.1.1 and 4.2.2.1: both are marked non-critical.
+            if (critical) return error.Bad;
+            try authorityKeyId(v);
+        } else if (mem.eql(u8, oid, &oid_authority_info_access)) {
+            if (critical) return error.Bad;
+            try infoAccess(v);
+        } else if (critical) {
+            out.unknown_critical = true;
+        }
     }
-    return null;
+    return out;
+}
+
+/// GeneralNames ::= SEQUENCE SIZE (1..MAX) OF GeneralName: each dNSName in the preferred name
+/// syntax RFC 5280 4.2.1.6 asks for (letters, digits, and hyphens in dot-separated labels, a
+/// leftmost `*` label the one exception), since a name outside it matches nothing a client asks
+/// for correctly (x509-limbo's underscore case).
+fn altNames(v: []const u8) error{Bad}!void {
+    const list = tlvAt(v, 0, v.len) orelse return error.Bad;
+    if (list.tag != 0x30 or list.end != v.len or list.start == list.end) return error.Bad;
+    var i = list.start;
+    while (i < list.end) {
+        const name = tlvAt(v, i, list.end) orelse return error.Bad;
+        i = name.end;
+        if (name.tag != 0x82) continue;
+        var labels = mem.splitScalar(u8, v[name.start..name.end], '.');
+        var first = true;
+        while (labels.next()) |label| {
+            defer first = false;
+            if (first and mem.eql(u8, label, "*")) continue;
+            if (label.len == 0 or label.len > 63 or label[0] == '-' or label[label.len - 1] == '-') return error.Bad;
+            for (label) |ch| if (!std.ascii.isAlphanumeric(ch) and ch != '-') return error.Bad;
+        }
+    }
+}
+
+/// AuthorityKeyIdentifier ::= SEQUENCE { keyIdentifier [0] OPTIONAL, authorityCertIssuer [1]
+/// OPTIONAL, authorityCertSerialNumber [2] OPTIONAL }: the keyIdentifier MUST be there (RFC 5280
+/// 4.2.1.1) when the extension is.
+fn authorityKeyId(v: []const u8) error{Bad}!void {
+    const aki = tlvAt(v, 0, v.len) orelse return error.Bad;
+    if (aki.tag != 0x30 or aki.end != v.len or aki.start == aki.end) return error.Bad;
+    const first = tlvAt(v, aki.start, aki.end) orelse return error.Bad;
+    if (first.tag != 0x80) return error.Bad;
+}
+
+/// AuthorityInfoAccessSyntax ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE { accessMethod OBJECT
+/// IDENTIFIER, accessLocation GeneralName }: not used, but read for its shape.
+fn infoAccess(v: []const u8) error{Bad}!void {
+    const list = tlvAt(v, 0, v.len) orelse return error.Bad;
+    if (list.tag != 0x30 or list.end != v.len or list.start == list.end) return error.Bad;
+    var i = list.start;
+    while (i < list.end) {
+        const ad = tlvAt(v, i, list.end) orelse return error.Bad;
+        i = ad.end;
+        if (ad.tag != 0x30) return error.Bad;
+        const method = tlvAt(v, ad.start, ad.end) orelse return error.Bad;
+        if (method.tag != 0x06 or method.end == method.start) return error.Bad;
+        const location = tlvAt(v, method.end, ad.end) orelse return error.Bad;
+        if (location.tag & 0x80 == 0 or location.end != ad.end) return error.Bad;
+    }
+}
+
+/// The serial number is positive and at most 20 octets (RFC 5280 4.1.2.2), and whether the
+/// subject is empty, of a certificate `certShape` has passed.
+fn serialAndSubject(b: []const u8) ?struct { serial_ok: bool, subject_empty: bool } {
+    const cert = tlvAt(b, 0, b.len) orelse return null;
+    var top_buf: [3]Tlv = undefined;
+    const top = kids(b, cert, &top_buf) orelse return null;
+    var tbs_buf: [12]Tlv = undefined;
+    const tbs = kids(b, top[0], &tbs_buf) orelse return null;
+    const v: usize = if (tbs.len > 0 and tbs[0].tag == 0xa0) 1 else 0;
+    if (tbs.len < v + 5) return null;
+    const serial = b[tbs[v].start..tbs[v].end];
+    var good = serial.len > 0 and serial[0] & 0x80 == 0;
+    // Its leading zero octet, when the next has its top bit set, is not counted.
+    const octets = if (serial.len > 1 and serial[0] == 0) serial.len - 1 else serial.len;
+    if (octets > 20) good = false;
+    var zero = true;
+    for (serial) |x| if (x != 0) {
+        zero = false;
+    };
+    if (zero) good = false;
+    return .{ .serial_ok = good, .subject_empty = tbs[v + 4].start == tbs[v + 4].end };
+}
+
+/// BasicConstraints ::= SEQUENCE { cA BOOLEAN DEFAULT FALSE, pathLenConstraint INTEGER (0..MAX)
+/// OPTIONAL }. A path length on a certificate that is no CA is `Bad` (RFC 5280 4.2.1.9).
+fn basicConstraints(v: []const u8, out: *Extensions) error{Bad}!void {
+    const bc = tlvAt(v, 0, v.len) orelse return error.Bad;
+    if (bc.tag != 0x30 or bc.end != v.len) return error.Bad;
+    var i = bc.start;
+    if (i < bc.end) {
+        const e = tlvAt(v, i, bc.end) orelse return error.Bad;
+        if (e.tag == 0x01) {
+            if (e.end - e.start != 1) return error.Bad;
+            out.ca = v[e.start] != 0;
+            i = e.end;
+        }
+    }
+    if (i < bc.end) {
+        const e = tlvAt(v, i, bc.end) orelse return error.Bad;
+        if (e.tag != 0x02 or e.end == e.start or v[e.start] & 0x80 != 0) return error.Bad;
+        var n: u64 = 0;
+        for (v[e.start..e.end]) |x| {
+            if (n > 0xffff_ffff) return error.Bad;
+            n = n << 8 | x;
+        }
+        out.path_len = @intCast(@min(n, 0xffff_ffff));
+        if (!out.ca) return error.Bad;
+        i = e.end;
+    }
+    if (i != bc.end) return error.Bad;
+}
+
+/// KeyUsage ::= BIT STRING: its first byte of bits (digitalSignature to keyCertSign's neighbours).
+fn keyUsage(v: []const u8) error{Bad}!u8 {
+    const bits = tlvAt(v, 0, v.len) orelse return error.Bad;
+    if (bits.tag != 0x03 or bits.end != v.len or bits.end == bits.start) return error.Bad;
+    if (v[bits.start] > 7) return error.Bad;
+    return if (bits.end - bits.start > 1) v[bits.start + 1] else 0;
+}
+
+/// ExtKeyUsageSyntax ::= SEQUENCE SIZE (1..MAX) OF KeyPurposeId: whether server authentication
+/// is among them (`anyExtendedKeyUsage` is not: OpenSSL's `sslserver` purpose refuses it alone).
+fn extKeyUsage(v: []const u8) error{Bad}!bool {
+    const list = tlvAt(v, 0, v.len) orelse return error.Bad;
+    if (list.tag != 0x30 or list.end != v.len or list.start == list.end) return error.Bad;
+    var server = false;
+    var i = list.start;
+    while (i < list.end) {
+        const id = tlvAt(v, i, list.end) orelse return error.Bad;
+        if (id.tag != 0x06 or id.end == id.start) return error.Bad;
+        if (mem.eql(u8, v[id.start..id.end], &oid_server_auth)) server = true;
+        i = id.end;
+    }
+    return server;
 }
 
 /// Whether a certificate may sign others: basicConstraints with cA true (RFC 5280 4.2.1.9).
 /// A certificate without the extension is not a CA.
 fn isCa(der_bytes: []const u8) bool {
-    const value = extensionValue(der_bytes, &oid_basic_constraints) orelse return false;
-    const bc = tlvAt(value, 0, value.len) orelse return false;
-    if (bc.tag != 0x30 or bc.end != value.len or bc.start == bc.end) return false;
-    const first = tlvAt(value, bc.start, bc.end) orelse return false;
-    return first.tag == 0x01 and first.end - first.start == 1 and value[first.start] != 0;
+    const e = readExtensions(der_bytes) catch return false;
+    return e.ca;
+}
+
+/// What a certificate's extensions allow at its place in the path (RFC 5280 6.1, for what the cut
+/// supports, checked from the leaf up as OpenSSL's `check_chain_extensions` checks them, the root
+/// included): `below` is how many certificates that are not self-issued sit between it and the
+/// leaf. Null when it may stand there.
+fn extensionsAllow(e: Extensions, is_leaf: bool, below: usize) ?tls.Alert.Description {
+    // Semantics the brick does not implement are refused, never ignored. OpenSSL sends
+    // `certificate_unknown` for an unhandled critical extension; this brick names what it is:
+    // a certificate of a kind it does not support.
+    if (e.unknown_critical or e.name_constraints or e.policy_constraints) return .unsupported_certificate;
+    // The purpose (OpenSSL's `sslserver`, and its alert for X509_V_ERR_INVALID_PURPOSE): an
+    // extended key usage, on any certificate in the path, must name server authentication.
+    if (e.eku_server) |server| if (!server) return .unsupported_certificate;
+    if (is_leaf) {
+        // RFC 8446 4.4.2.2: a key usage on the leaf must allow signing, since the leaf's key
+        // signs the CertificateVerify.
+        if (e.key_usage) |ku| if (ku & ku_digital_signature == 0) return .unsupported_certificate;
+        return null;
+    }
+    // An issuer: a key usage must hold keyCertSign (RFC 5280 4.2.1.3), and its path length
+    // covers every CA below it (4.2.1.9); both are `unknown_ca`, as OpenSSL answers them.
+    if (e.key_usage) |ku| if (ku & ku_key_cert_sign == 0) return .unknown_ca;
+    if (e.path_len) |n| if (below > n) return .unknown_ca;
+    return null;
 }
 
 fn isRsa(p: Certificate.Parsed) bool {
@@ -612,14 +838,16 @@ fn hostAddress(host: []const u8, out: *[16]u8) ?[]const u8 {
     return null;
 }
 
-/// The leaf is for `host`: a DNS name or an IP address in its subject alternative names, or,
-/// when it has none, its common name (Zig's `verifyHostName`, which reads DNS names alone, plus
-/// the addresses RFC 6125 6.2.1 checks when the host is an IP literal).
+/// The leaf is for `host`: a DNS name or an IP address in its subject alternative names (Zig's
+/// `verifyHostName`, which reads DNS names alone, plus the addresses RFC 6125 6.2.1 checks when
+/// the host is an IP literal). A leaf with none is for no host (step 39): its common name is not
+/// read, as RFC 9525 6.3 has it and x509-limbo expects, where OpenSSL falls back to it; a common
+/// name of `127.0.0.1` had been accepted for that address.
 fn leafIsFor(leaf: Certificate.Parsed, host: []const u8) bool {
     var addr_buf: [16]u8 = undefined;
     const addr = hostAddress(host, &addr_buf);
     const san = leaf.subjectAltName();
-    if (san.len == 0) return hostMatches(host, leaf.commonName());
+    if (san.len == 0) return false;
     const names = tlvAt(san, 0, san.len) orelse return false;
     if (names.tag != 0x30 or names.end != san.len) return false;
     var i = names.start;
@@ -643,9 +871,12 @@ fn leafIsFor(leaf: Certificate.Parsed, host: []const u8) bool {
 /// The whole check a client makes of the chain a server sent, leaf first, before it reads the
 /// CertificateVerify: at most `max_chain` certificates (a longer chain is `unknown_ca`); no RSA anywhere (the cut); each one's
 /// issuer the next one sent, until one's issuer is a root in `trust`; every issuer in the chain
-/// a CA; the leaf for `host`; every signature good; and every certificate's dates, the root's
-/// too, around `now`. The answer is the alert RFC 8446 6.2 names, or null for a good chain.
-fn checkChain(chain: []const []const u8, trust: []const []u8, host: []const u8, now: i64) ?tls.Alert.Description {
+/// a CA; every certificate's extensions, the root's too (`extensionsAllow`: path length, key
+/// usage, extended key usage, and every critical extension the brick does not read refused); the
+/// leaf for `host`; every signature good; and every certificate's dates, the root's too, around
+/// `now`, both ends inclusive (RFC 5280 4.1.2.5). The answer is the alert RFC 8446 6.2 names, or
+/// null for a good chain.
+pub fn checkChain(chain: []const []const u8, trust: []const []u8, host: []const u8, now: i64) ?tls.Alert.Description {
     if (chain.len == 0) return .decode_error;
     // A chain past the depth is `unknown_ca`, as OpenSSL answers one (its
     // X509_V_ERR_CERT_CHAIN_TOO_LONG): no root was reached within the depth.
@@ -662,6 +893,7 @@ fn checkChain(chain: []const []const u8, trust: []const []u8, host: []const u8, 
     // The path as sent: each certificate's issuer the next, up to the first a root signed.
     var last: usize = 0;
     var root: ?Certificate.Parsed = null;
+    var root_der: []const u8 = &.{};
     while (true) : (last += 1) {
         for (trust) |r| {
             const p = parseCert(r) catch continue;
@@ -670,6 +902,7 @@ fn checkChain(chain: []const []const u8, trust: []const []u8, host: []const u8, 
             // A root with the right name and the wrong key is not this chain's.
             signedBy(parsed[last], p) catch continue;
             root = p;
+            root_der = r;
             break;
         }
         if (root != null) break;
@@ -677,12 +910,36 @@ fn checkChain(chain: []const []const u8, trust: []const []u8, host: []const u8, 
         if (!mem.eql(u8, parsed[last].issuer(), parsed[last + 1].subject())) return .unknown_ca;
     }
     for (chain[1 .. last + 1]) |issuer| if (!isCa(issuer)) return .unknown_ca;
+
+    // Every certificate's extensions, the leaf's first and the root's last: what each may do at
+    // its place in the path. `below` counts the certificates under an issuer that are not
+    // self-issued (RFC 5280 6.1.4 (l)), the leaf not among them.
+    var below: usize = 0;
+    for (0..last + 2) |i| {
+        const der_bytes = if (i == last + 1) root_der else chain[i];
+        const e = readExtensions(der_bytes) catch return .bad_certificate;
+        if (extensionsAllow(e, i == 0, below)) |desc| return desc;
+        // What RFC 5280 asks of every certificate a conforming CA writes, where the certificate
+        // alone shows it (step 39, from x509-limbo): the serial's form; keyCertSign only on a
+        // CA (4.2.1.3); every issuer, the root too, a CA whose basicConstraints is critical
+        // (4.2.1.9) and whose subject is not empty (4.1.2.6); and an empty subject only beside a
+        // critical subjectAltName (4.2.1.6).
+        const basics = serialAndSubject(der_bytes) orelse return .bad_certificate;
+        if (!basics.serial_ok) return .bad_certificate;
+        if (e.key_usage) |ku| if (ku & ku_key_cert_sign != 0 and !e.ca) return .bad_certificate;
+        if (i > 0) {
+            if (!e.ca) return .unknown_ca;
+            if (!e.bc_critical or basics.subject_empty) return .bad_certificate;
+        }
+        if (i == 0 and basics.subject_empty and !e.san_critical) return .bad_certificate;
+        if (i > 0 and i <= last and !mem.eql(u8, parsed[i].subject(), parsed[i].issuer())) below += 1;
+    }
     if (!leafIsFor(parsed[0], host)) return .bad_certificate;
 
     // From the top down, as OpenSSL's `internal_verify` goes: each certificate's signature, then
     // its dates; the root's dates first.
     const r = root.?;
-    if (datesOf(r, now)) |desc| return desc;
+    if (datesOf(root_der, now)) |desc| return desc;
     var j: usize = last + 1;
     while (j > 0) {
         j -= 1;
@@ -690,15 +947,71 @@ fn checkChain(chain: []const []const u8, trust: []const []u8, host: []const u8, 
             error.Unsupported => .unsupported_certificate,
             error.Bad => .bad_certificate,
         };
-        if (datesOf(parsed[j], now)) |desc| return desc;
+        if (datesOf(chain[j], now)) |desc| return desc;
     }
     return null;
 }
 
-fn datesOf(p: Certificate.Parsed, now: i64) ?tls.Alert.Description {
-    if (now < 0 or @as(u64, @intCast(now)) < p.validity.not_before) return .bad_certificate;
-    if (@as(u64, @intCast(now)) > p.validity.not_after) return .certificate_expired;
+/// A certificate's dates around `now`, both ends inclusive, read by the brick itself (step 39):
+/// Zig's `parseTime` reads every UTCTime year as 20YY, where RFC 5280 4.1.2.5.1 has YY of 50 and
+/// more as 19YY, so a certificate valid from 1970 read as valid from 2070 and was refused as not
+/// yet begun (x509-limbo's chains are dated so). A validity that does not read is
+/// `bad_certificate`.
+fn datesOf(der_bytes: []const u8, now: i64) ?tls.Alert.Description {
+    const when = validityOf(der_bytes) orelse return .bad_certificate;
+    if (now < 0 or @as(u64, @intCast(now)) < when[0]) return .bad_certificate;
+    if (@as(u64, @intCast(now)) > when[1]) return .certificate_expired;
     return null;
+}
+
+/// notBefore and notAfter in seconds since 1970 (a moment before 1970 is 0), of a certificate
+/// `certShape` has passed.
+fn validityOf(b: []const u8) ?[2]u64 {
+    const cert = tlvAt(b, 0, b.len) orelse return null;
+    var top_buf: [3]Tlv = undefined;
+    const top = kids(b, cert, &top_buf) orelse return null;
+    var tbs_buf: [12]Tlv = undefined;
+    const tbs = kids(b, top[0], &tbs_buf) orelse return null;
+    const v: usize = if (tbs.len > 0 and tbs[0].tag == 0xa0) 1 else 0;
+    if (tbs.len < v + 4) return null;
+    var when_buf: [2]Tlv = undefined;
+    const when = kids(b, tbs[v + 3], &when_buf) orelse return null;
+    if (when.len != 2) return null;
+    return .{ timeOf(b[when[0].start..when[0].end], when[0].tag) orelse return null, timeOf(b[when[1].start..when[1].end], when[1].tag) orelse return null };
+}
+
+/// A Time (RFC 5280 4.1.2.5): UTCTime `YYMMDDHHMMSSZ`, YY below 50 in 20YY and the rest in 19YY,
+/// or GeneralizedTime `YYYYMMDDHHMMSS` and more, as Zig's parser reads it.
+fn timeOf(t: []const u8, tag: u8) ?u64 {
+    var year: u16 = 0;
+    var at: usize = 0;
+    switch (tag) {
+        0x17 => {
+            if (t.len != 13 or t[12] != 'Z') return null;
+            const yy = Certificate.parseTimeDigits(t[0..2], 0, 99) catch return null;
+            year = @as(u16, if (yy < 50) 2000 else 1900) + yy;
+            at = 2;
+        },
+        0x18 => {
+            if (t.len < 15) return null;
+            year = Certificate.parseYear4(t[0..4]) catch return null;
+            at = 4;
+        },
+        else => return null,
+    }
+    const month = Certificate.parseTimeDigits(t[at..][0..2], 1, 12) catch return null;
+    const day = Certificate.parseTimeDigits(t[at + 2 ..][0..2], 1, 31) catch return null;
+    const hour = Certificate.parseTimeDigits(t[at + 4 ..][0..2], 0, 23) catch return null;
+    const minute = Certificate.parseTimeDigits(t[at + 6 ..][0..2], 0, 59) catch return null;
+    const second = Certificate.parseTimeDigits(t[at + 8 ..][0..2], 0, 59) catch return null;
+    if (year < 1970) return 0;
+    var days: u64 = 0;
+    var y: u16 = 1970;
+    while (y < year) : (y += 1) days += std.time.epoch.getDaysInYear(y);
+    var m: u4 = 1;
+    while (m < month) : (m += 1) days += std.time.epoch.getDaysInMonth(year, @enumFromInt(m));
+    days += day - 1;
+    return days * std.time.epoch.secs_per_day + @as(u64, hour) * 3600 + @as(u64, minute) * 60 + second;
 }
 
 /// `subject` was signed by `issuer`'s key, with an algorithm the cut covers: Ed25519, or ECDSA
@@ -3873,6 +4186,427 @@ test "the chain: each refusal is the alert RFC 8446 names" {
         server.* = .{ .chain = try chain.toOwnedSlice(gpa), .key = try parsePkcs8(keys.items[0]) };
         try expectRefused(server, fx_root, "localhost", test_now, .unsupported_certificate);
     }
+}
+
+// ---- chains made here (step 39): each restriction RFC 5280 puts on a path, for both key types
+
+/// A DER writer for the certificates the tests below make: a tag and its content.
+const DerOut = struct {
+    list: std.ArrayList(u8) = .empty,
+
+    fn tlv(d: *DerOut, tag: u8, content: []const u8) !void {
+        try d.list.append(testing.allocator, tag);
+        if (content.len < 0x80) {
+            try d.list.append(testing.allocator, @intCast(content.len));
+        } else if (content.len < 0x100) {
+            try d.list.appendSlice(testing.allocator, &.{ 0x81, @intCast(content.len) });
+        } else {
+            try d.list.appendSlice(testing.allocator, &.{ 0x82, @intCast(content.len >> 8), @truncate(content.len) });
+        }
+        try d.list.appendSlice(testing.allocator, content);
+    }
+
+    /// The bytes so far, owned by the caller; the writer is empty again.
+    fn take(d: *DerOut) ![]u8 {
+        return d.list.toOwnedSlice(testing.allocator);
+    }
+};
+
+/// `tag` around the concatenation of `parts`.
+fn derOf(tag: u8, parts: []const []const u8) ![]u8 {
+    var body: std.ArrayList(u8) = .empty;
+    defer body.deinit(testing.allocator);
+    for (parts) |x| try body.appendSlice(testing.allocator, x);
+    var d: DerOut = .{};
+    try d.tlv(tag, body.items);
+    return d.take();
+}
+
+const GenKind = enum { ed25519, p256 };
+
+/// A key the tests sign with: Ed25519 or ECDSA P-256, from a one-byte seed.
+const GenKey = union(enum) {
+    ed25519: Ed25519.KeyPair,
+    p256: EcdsaP256.KeyPair,
+
+    fn of(kind: GenKind, seed: u8) GenKey {
+        const bytes: [32]u8 = @splat(seed);
+        return switch (kind) {
+            .ed25519 => .{ .ed25519 = Ed25519.KeyPair.generateDeterministic(bytes) catch unreachable },
+            .p256 => .{ .p256 = EcdsaP256.KeyPair.generateDeterministic(bytes) catch unreachable },
+        };
+    }
+
+    fn algorithm(k: GenKey) ![]u8 {
+        return switch (k) {
+            .ed25519 => derOf(0x30, &.{&oid_ed25519_der}),
+            .p256 => derOf(0x30, &.{&oid_ecdsa_sha256_der}),
+        };
+    }
+
+    fn spki(k: GenKey) ![]u8 {
+        switch (k) {
+            .ed25519 => |kp| {
+                const alg = try derOf(0x30, &.{&oid_ed25519_der});
+                defer testing.allocator.free(alg);
+                const bits = try derOf(0x03, &.{ &.{0}, &kp.public_key.toBytes() });
+                defer testing.allocator.free(bits);
+                return derOf(0x30, &.{ alg, bits });
+            },
+            .p256 => |kp| {
+                const alg = try derOf(0x30, &.{ &(.{0x06} ++ .{@as(u8, oid_ec_public_key.len)} ++ oid_ec_public_key), &(.{0x06} ++ .{@as(u8, oid_prime256v1.len)} ++ oid_prime256v1) });
+                defer testing.allocator.free(alg);
+                const bits = try derOf(0x03, &.{ &.{0}, &kp.public_key.toUncompressedSec1() });
+                defer testing.allocator.free(bits);
+                return derOf(0x30, &.{ alg, bits });
+            },
+        }
+    }
+
+    fn sign(k: GenKey, message: []const u8) ![]u8 {
+        switch (k) {
+            .ed25519 => |kp| {
+                const sig = try kp.sign(message, null);
+                return derOf(0x03, &.{ &.{0}, &sig.toBytes() });
+            },
+            .p256 => |kp| {
+                const sig = try kp.sign(message, null);
+                var buf: [EcdsaP256.Signature.der_encoded_length_max]u8 = undefined;
+                return derOf(0x03, &.{ &.{0}, sig.toDer(&buf) });
+            },
+        }
+    }
+
+    fn brickKey(k: GenKey) Key {
+        return switch (k) {
+            .ed25519 => |kp| .{ .ed25519 = kp },
+            .p256 => |kp| .{ .p256 = kp },
+        };
+    }
+};
+
+const oid_ed25519_der = [_]u8{ 0x06, 0x03 } ++ oid_ed25519;
+const oid_ecdsa_sha256_der = [_]u8{ 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02 };
+
+/// An extension a test puts on a certificate: its OID, whether it is critical, and its value.
+const GenExt = struct { oid: []const u8, critical: bool, value: []const u8 };
+
+// The values the tests use, as DER.
+const bc_leaf = [_]u8{ 0x30, 0x00 };
+const bc_ca = [_]u8{ 0x30, 0x03, 0x01, 0x01, 0xff };
+fn bcCaPath(comptime n: u8) [8]u8 {
+    return .{ 0x30, 0x06, 0x01, 0x01, 0xff, 0x02, 0x01, n };
+}
+const ku_ca = [_]u8{ 0x03, 0x02, 0x01, 0x06 }; // keyCertSign, cRLSign
+const ku_sign = [_]u8{ 0x03, 0x02, 0x07, 0x80 }; // digitalSignature
+const ku_encipher = [_]u8{ 0x03, 0x02, 0x05, 0x20 }; // keyEncipherment
+const ku_empty = [_]u8{ 0x03, 0x01, 0x00 }; // present, and no bit set
+const eku_server = [_]u8{ 0x30, 0x0a } ++ [_]u8{ 0x06, 0x08 } ++ oid_server_auth;
+const eku_client = [_]u8{ 0x30, 0x0a, 0x06, 0x08, 0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x03, 0x02 };
+const eku_both = [_]u8{ 0x30, 0x14, 0x06, 0x08, 0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x03, 0x02 } ++ [_]u8{ 0x06, 0x08 } ++ oid_server_auth;
+const eku_any = [_]u8{ 0x30, 0x06, 0x06, 0x04 } ++ oid_any_eku;
+const san_localhost = [_]u8{ 0x30, 0x0b, 0x82, 0x09 } ++ "localhost".*;
+const nc_localhost = [_]u8{ 0x30, 0x0f, 0xa0, 0x0d, 0x30, 0x0b, 0x82, 0x09 } ++ "localhost".*;
+const oid_unknown = [_]u8{ 0x2a, 0x03, 0x04, 0x05, 0x06 }; // 1.2.3.4.5.6, as the auditor's
+const null_value = [_]u8{ 0x05, 0x00 };
+
+/// One certificate: `name` for `key`, signed by `signer` in the name `issuer`, valid from
+/// `not_before` to `not_after` (seconds, as UTCTime), carrying `exts`.
+fn genCert(name: []const u8, key: GenKey, issuer: []const u8, signer: GenKey, not_before: i64, not_after: i64, exts: []const GenExt) ![]u8 {
+    const a = testing.allocator;
+    var parts: std.ArrayList([]u8) = .empty;
+    defer {
+        for (parts.items) |x| a.free(x);
+        parts.deinit(a);
+    }
+    try parts.append(a, try derOf(0xa0, &.{&.{ 0x02, 0x01, 0x02 }}));
+    try parts.append(a, try derOf(0x02, &.{&.{ 0x01, name[0] }}));
+    try parts.append(a, try signer.algorithm());
+    try parts.append(a, try genName(issuer));
+    const nb = try genTime(not_before);
+    defer a.free(nb);
+    const na = try genTime(not_after);
+    defer a.free(na);
+    try parts.append(a, try derOf(0x30, &.{ nb, na }));
+    try parts.append(a, try genName(name));
+    try parts.append(a, try key.spki());
+    if (exts.len > 0) {
+        var list: std.ArrayList([]u8) = .empty;
+        defer {
+            for (list.items) |x| a.free(x);
+            list.deinit(a);
+        }
+        for (exts) |e| {
+            const oid = try derOf(0x06, &.{e.oid});
+            defer a.free(oid);
+            const value = try derOf(0x04, &.{e.value});
+            defer a.free(value);
+            try list.append(a, if (e.critical) try derOf(0x30, &.{ oid, &.{ 0x01, 0x01, 0xff }, value }) else try derOf(0x30, &.{ oid, value }));
+        }
+        const ext_list = try derOf(0x30, list.items);
+        defer a.free(ext_list);
+        try parts.append(a, try derOf(0xa3, &.{ext_list}));
+    }
+    const tbs = try derOf(0x30, parts.items);
+    defer a.free(tbs);
+    const alg = try signer.algorithm();
+    defer a.free(alg);
+    const sig = try signer.sign(tbs);
+    defer a.free(sig);
+    return derOf(0x30, &.{ tbs, alg, sig });
+}
+
+fn genName(cn: []const u8) ![]u8 {
+    const a = testing.allocator;
+    const value = try derOf(0x0c, &.{cn});
+    defer a.free(value);
+    const atav = try derOf(0x30, &.{ &.{ 0x06, 0x03, 0x55, 0x04, 0x03 }, value });
+    defer a.free(atav);
+    const rdn = try derOf(0x31, &.{atav});
+    defer a.free(rdn);
+    return derOf(0x30, &.{rdn});
+}
+
+/// A Time as RFC 5280 4.1.2.5 writes it: UTCTime from 1950 through 2049, GeneralizedTime past.
+fn genTime(sec: i64) ![]u8 {
+    const es: std.time.epoch.EpochSeconds = .{ .secs = @intCast(sec) };
+    const day = es.getEpochDay().calculateYearDay();
+    const md = day.calculateMonthDay();
+    const ds = es.getDaySeconds();
+    if (day.year >= 2050) {
+        var buf: [15]u8 = undefined;
+        _ = std.fmt.bufPrint(&buf, "{d:0>4}{d:0>2}{d:0>2}{d:0>2}{d:0>2}{d:0>2}Z", .{
+            day.year, md.month.numeric(), md.day_index + 1, ds.getHoursIntoDay(), ds.getMinutesIntoHour(), ds.getSecondsIntoMinute(),
+        }) catch unreachable;
+        return derOf(0x18, &.{&buf});
+    }
+    var buf: [13]u8 = undefined;
+    _ = std.fmt.bufPrint(&buf, "{d:0>2}{d:0>2}{d:0>2}{d:0>2}{d:0>2}{d:0>2}Z", .{
+        day.year % 100, md.month.numeric(), md.day_index + 1, ds.getHoursIntoDay(), ds.getMinutesIntoHour(), ds.getSecondsIntoMinute(),
+    }) catch unreachable;
+    return derOf(0x17, &.{&buf});
+}
+
+// Every certificate made here is valid from 2025-01-01 to 2035-01-01 unless a test says otherwise.
+const gen_from: i64 = 1735689600;
+const gen_to: i64 = 2051222400;
+
+/// A path to make: the root's extensions, each intermediate's under it (top down), and the leaf's.
+/// Each certificate's name is its place; a `self_issued` intermediate takes the name of the one
+/// above it.
+const GenPath = struct {
+    root: []const GenExt = &.{ .{ .oid = &oid_basic_constraints, .critical = true, .value = &bc_ca }, .{ .oid = &oid_key_usage, .critical = true, .value = &ku_ca } },
+    inters: []const []const GenExt = &.{&ca_exts},
+    leaf: []const GenExt = &leaf_exts,
+    self_issued: ?usize = null,
+    leaf_from: i64 = gen_from,
+    leaf_to: i64 = gen_to,
+};
+const ca_exts = [_]GenExt{ .{ .oid = &oid_basic_constraints, .critical = true, .value = &bc_ca }, .{ .oid = &oid_key_usage, .critical = true, .value = &ku_ca } };
+const leaf_exts = [_]GenExt{
+    .{ .oid = &oid_basic_constraints, .critical = true, .value = &bc_leaf },
+    .{ .oid = &oid_key_usage, .critical = true, .value = &ku_sign },
+    .{ .oid = &oid_ext_key_usage, .critical = false, .value = &eku_server },
+    .{ .oid = &oid_subject_alt_name, .critical = false, .value = &san_localhost },
+};
+
+/// A brick server presenting the path's chain (leaf first) with the leaf's key, and a client
+/// trusting its root, both made directly (the chain is DER already).
+fn genSession(kind: GenKind, path: GenPath, now: i64) !Session {
+    const a = gpa;
+    const names = [_][]const u8{ "Mo Gen Root", "Mo Gen Intermediate 1", "Mo Gen Intermediate 2", "Mo Gen Intermediate 3" };
+    const root_key = GenKey.of(kind, 1);
+    const root = try genCert(names[0], root_key, names[0], root_key, gen_from, gen_to, path.root);
+    var chain: std.ArrayList([]u8) = .empty;
+    var issuer_name: []const u8 = names[0];
+    var issuer_key = root_key;
+    var inters: [4][]u8 = undefined;
+    for (path.inters, 0..) |exts, i| {
+        const name = if (path.self_issued == i) issuer_name else names[i + 1];
+        const key = GenKey.of(kind, @intCast(2 + i));
+        inters[i] = try genCert(name, key, issuer_name, issuer_key, gen_from, gen_to, exts);
+        issuer_name = name;
+        issuer_key = key;
+    }
+    const leaf_key = GenKey.of(kind, 9);
+    const leaf = try genCert("localhost", leaf_key, issuer_name, issuer_key, path.leaf_from, path.leaf_to, path.leaf);
+    // The test allocator made them; the brick frees with its own.
+    try chain.append(a, try a.dupe(u8, leaf));
+    testing.allocator.free(leaf);
+    var i = path.inters.len;
+    while (i > 0) {
+        i -= 1;
+        try chain.append(a, try a.dupe(u8, inters[i]));
+        testing.allocator.free(inters[i]);
+    }
+    const server = try a.create(Server);
+    server.* = .{ .chain = try chain.toOwnedSlice(a), .key = leaf_key.brickKey() };
+    const trust = try a.alloc([]u8, 1);
+    trust[0] = try a.dupe(u8, root);
+    testing.allocator.free(root);
+    const client = try a.create(Client);
+    client.* = .{ .trust = trust };
+    return Session.start(server, client, "localhost", now, .{});
+}
+
+/// The path is accepted: both ends ready, a line each way.
+fn expectGenAccepted(path: GenPath, now: i64) !void {
+    for ([_]GenKind{ .ed25519, .p256 }) |kind| {
+        var se = try genSession(kind, path, now);
+        defer se.deinit();
+        testing.expect(mo_tls_ready(se.c) and mo_tls_ready(se.s)) catch |err| {
+            std.debug.print("{t}: refused with alert {d}\n", .{ kind, mo_tls_alert(se.c) });
+            return err;
+        };
+        try flow(se.c, se.s, 100, 3);
+        try flow(se.s, se.c, 100, 5);
+    }
+}
+
+/// The client refuses the path with `want`, `Untrusted`, and the server reads the alert.
+fn expectGenRefused(path: GenPath, now: i64, want: tls.Alert.Description) !void {
+    for ([_]GenKind{ .ed25519, .p256 }) |kind| {
+        var se = try genSession(kind, path, now);
+        defer se.deinit();
+        testing.expect(!mo_tls_ready(se.c) and mo_tls_alert(se.c) == @intFromEnum(want)) catch |err| {
+            std.debug.print("{t}: ready {}, alert {d}, wanted {t}\n", .{ kind, mo_tls_ready(se.c), mo_tls_alert(se.c), want });
+            return err;
+        };
+        try testing.expect(mo_tls_untrusted(se.c));
+        try testing.expect(!se.c.alert_from_peer);
+        try testing.expect(!mo_tls_ready(se.s));
+        try testing.expectEqual(@as(c_int, @intFromEnum(want)), mo_tls_alert(se.s));
+    }
+}
+
+fn gx(oid: []const u8, critical: bool, value: []const u8) GenExt {
+    return .{ .oid = oid, .critical = critical, .value = value };
+}
+
+test "the chain made here: a plain path, and each restriction met, accepted with both key types" {
+    // Root, intermediate, leaf, as gen.sh writes them.
+    try expectGenAccepted(.{}, test_now);
+    // No key usage and no extended key usage anywhere.
+    const bare_ca = [_]GenExt{gx(&oid_basic_constraints, true, &bc_ca)};
+    try expectGenAccepted(.{ .root = &bare_ca, .inters = &.{&bare_ca}, .leaf = &.{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_subject_alt_name, false, &san_localhost) } }, test_now);
+    // pathLenConstraint 0 on the intermediate right above the leaf; 1 with one intermediate
+    // below; 1 on the root with one intermediate; 0 above a self-issued one, which is not counted.
+    const len0 = [_]GenExt{ gx(&oid_basic_constraints, true, &bcCaPath(0)), gx(&oid_key_usage, true, &ku_ca) };
+    const len1 = [_]GenExt{ gx(&oid_basic_constraints, true, &bcCaPath(1)), gx(&oid_key_usage, true, &ku_ca) };
+    try expectGenAccepted(.{ .inters = &.{&len0} }, test_now);
+    try expectGenAccepted(.{ .inters = &.{ &len1, &ca_exts } }, test_now);
+    try expectGenAccepted(.{ .root = &len1, .inters = &.{&ca_exts} }, test_now);
+    try expectGenAccepted(.{ .inters = &.{ &len0, &ca_exts }, .self_issued = 1 }, test_now);
+    // An extended key usage with server authentication among others, on the leaf and on the
+    // intermediate.
+    const leaf_both = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_ext_key_usage, true, &eku_both), gx(&oid_subject_alt_name, false, &san_localhost) };
+    try expectGenAccepted(.{ .leaf = &leaf_both }, test_now);
+    const ca_server = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_ca), gx(&oid_ext_key_usage, false, &eku_server) };
+    try expectGenAccepted(.{ .inters = &.{&ca_server} }, test_now);
+    // An extension the brick does not read, not critical, on each certificate.
+    const leaf_unknown = leaf_exts ++ [_]GenExt{gx(&oid_unknown, false, &null_value)};
+    const ca_unknown = ca_exts ++ [_]GenExt{gx(&oid_unknown, false, &null_value)};
+    try expectGenAccepted(.{ .root = &ca_unknown, .inters = &.{&ca_unknown}, .leaf = &leaf_unknown }, test_now);
+    // Dates at their boundary seconds: the leaf's first second and its last are both in it.
+    try expectGenAccepted(.{ .leaf_from = test_now }, test_now);
+    try expectGenAccepted(.{ .leaf_to = test_now }, test_now);
+    // A leaf valid from 1970 (UTCTime 70, which RFC 5280 reads as 1970 and Zig's parser as 2070)
+    // and one valid until 2969 (GeneralizedTime), as x509-limbo dates its chains (step 39).
+    try expectGenAccepted(.{ .leaf_from = 1 }, test_now);
+    try expectGenAccepted(.{ .leaf_to = 31_536_000_001 }, test_now);
+    // An authorityKeyIdentifier with its keyIdentifier, and an authorityInfoAccess that parses.
+    const leaf_aki = leaf_exts ++ [_]GenExt{ gx(&oid_authority_key_id, false, &.{ 0x30, 0x03, 0x80, 0x01, 0x01 }), gx(&oid_authority_info_access, false, &([_]u8{ 0x30, 0x12, 0x30, 0x10, 0x06, 0x08, 0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x30, 0x01, 0x86, 0x04 } ++ "http".*)) };
+    try expectGenAccepted(.{ .leaf = &leaf_aki }, test_now);
+}
+
+test "the chain made here: each restriction broken is refused, with both key types" {
+    const len0 = [_]GenExt{ gx(&oid_basic_constraints, true, &bcCaPath(0)), gx(&oid_key_usage, true, &ku_ca) };
+    const len1 = [_]GenExt{ gx(&oid_basic_constraints, true, &bcCaPath(1)), gx(&oid_key_usage, true, &ku_ca) };
+    // pathLenConstraint: 0 with one intermediate below it (the auditor's first case), 1 with two
+    // below, and 0 on the root with one intermediate.
+    try expectGenRefused(.{ .inters = &.{ &len0, &ca_exts } }, test_now, .unknown_ca);
+    try expectGenRefused(.{ .inters = &.{ &len1, &ca_exts, &ca_exts } }, test_now, .unknown_ca);
+    try expectGenRefused(.{ .root = &len0, .inters = &.{&ca_exts} }, test_now, .unknown_ca);
+    // An issuer's key usage without keyCertSign: signing only (the auditor's), present and empty,
+    // and on the root.
+    const ca_sign = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_ca), gx(&oid_key_usage, true, &ku_sign) };
+    const ca_empty = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_ca), gx(&oid_key_usage, true, &ku_empty) };
+    try expectGenRefused(.{ .inters = &.{&ca_sign} }, test_now, .unknown_ca);
+    try expectGenRefused(.{ .inters = &.{&ca_empty} }, test_now, .unknown_ca);
+    try expectGenRefused(.{ .root = &ca_sign }, test_now, .unknown_ca);
+    // Extended key usage without server authentication: client only on the leaf (the auditor's),
+    // any alone on the leaf, client only on the intermediate and on the root.
+    const leaf_client = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_ext_key_usage, false, &eku_client), gx(&oid_subject_alt_name, false, &san_localhost) };
+    const leaf_any = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_ext_key_usage, false, &eku_any), gx(&oid_subject_alt_name, false, &san_localhost) };
+    const ca_client = ca_exts ++ [_]GenExt{gx(&oid_ext_key_usage, false, &eku_client)};
+    try expectGenRefused(.{ .leaf = &leaf_client }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .leaf = &leaf_any }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .inters = &.{&ca_client} }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .root = &ca_client }, test_now, .unsupported_certificate);
+    // The leaf's key usage without digitalSignature (RFC 8446 4.4.2.2).
+    const leaf_encipher = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_key_usage, true, &ku_encipher), gx(&oid_subject_alt_name, false, &san_localhost) };
+    try expectGenRefused(.{ .leaf = &leaf_encipher }, test_now, .unsupported_certificate);
+    // A critical extension the brick does not read (the auditor's), on the leaf, the intermediate,
+    // and the root.
+    const leaf_critical = leaf_exts ++ [_]GenExt{gx(&oid_unknown, true, &null_value)};
+    const ca_critical = ca_exts ++ [_]GenExt{gx(&oid_unknown, true, &null_value)};
+    try expectGenRefused(.{ .leaf = &leaf_critical }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .inters = &.{&ca_critical} }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .root = &ca_critical }, test_now, .unsupported_certificate);
+    // Name constraints the leaf satisfies, critical and not: refused, since the brick does not
+    // check them.
+    const ca_nc = ca_exts ++ [_]GenExt{gx(&oid_name_constraints, true, &nc_localhost)};
+    const ca_nc_quiet = ca_exts ++ [_]GenExt{gx(&oid_name_constraints, false, &nc_localhost)};
+    try expectGenRefused(.{ .inters = &.{&ca_nc} }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .inters = &.{&ca_nc_quiet} }, test_now, .unsupported_certificate);
+    try expectGenRefused(.{ .root = &ca_nc }, test_now, .unsupported_certificate);
+    // An extension twice (RFC 5280 4.2), and a path length on a certificate that is no CA.
+    const leaf_twice = leaf_exts ++ [_]GenExt{gx(&oid_subject_alt_name, false, &san_localhost)};
+    try expectGenRefused(.{ .leaf = &leaf_twice }, test_now, .bad_certificate);
+    const leaf_len = [_]GenExt{ gx(&oid_basic_constraints, true, &.{ 0x30, 0x03, 0x02, 0x01, 0x00 }), gx(&oid_subject_alt_name, false, &san_localhost) };
+    try expectGenRefused(.{ .leaf = &leaf_len }, test_now, .bad_certificate);
+    // Dates one second past each boundary.
+    try expectGenRefused(.{ .leaf_from = test_now + 1 }, test_now, .bad_certificate);
+    try expectGenRefused(.{ .leaf_to = test_now - 1 }, test_now, .certificate_expired);
+    // A leaf with no subject alternative name is for no host, its common name (here `localhost`)
+    // not read (RFC 9525 6.3; step 39, from x509-limbo's bettertls cases).
+    const leaf_cn = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_key_usage, true, &ku_sign) };
+    try expectGenRefused(.{ .leaf = &leaf_cn }, test_now, .bad_certificate);
+    // What RFC 5280 asks of a conforming CA's certificates, seen in the certificate alone (step
+    // 39, from x509-limbo): a root with no basicConstraints is no CA; a CA's basicConstraints not
+    // critical; keyCertSign on a leaf; policyConstraints, which the brick does not process; a
+    // dNSName outside the preferred syntax; an authorityKeyIdentifier with no keyIdentifier; an
+    // authorityInfoAccess that does not parse.
+    try expectGenRefused(.{ .root = &.{} }, test_now, .unknown_ca);
+    try expectGenRefused(.{ .root = &.{gx(&oid_key_usage, true, &ku_ca)} }, test_now, .bad_certificate);
+    const ca_soft = [_]GenExt{ gx(&oid_basic_constraints, false, &bc_ca), gx(&oid_key_usage, true, &ku_ca) };
+    try expectGenRefused(.{ .inters = &.{&ca_soft} }, test_now, .bad_certificate);
+    try expectGenRefused(.{ .root = &ca_soft }, test_now, .bad_certificate);
+    const leaf_certsign = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_key_usage, true, &.{ 0x03, 0x02, 0x02, 0x84 }), gx(&oid_subject_alt_name, false, &san_localhost) };
+    try expectGenRefused(.{ .leaf = &leaf_certsign }, test_now, .bad_certificate);
+    const ca_pc = ca_exts ++ [_]GenExt{gx(&oid_policy_constraints, true, &.{ 0x30, 0x03, 0x80, 0x01, 0x00 })};
+    try expectGenRefused(.{ .inters = &.{&ca_pc} }, test_now, .unsupported_certificate);
+    const leaf_underscore = [_]GenExt{ gx(&oid_basic_constraints, true, &bc_leaf), gx(&oid_subject_alt_name, false, &([_]u8{ 0x30, 0x18, 0x82, 0x09 } ++ "localhost".* ++ [_]u8{ 0x82, 0x0b } ++ "a_b.example".*)) };
+    try expectGenRefused(.{ .leaf = &leaf_underscore }, test_now, .bad_certificate);
+    const leaf_aki = leaf_exts ++ [_]GenExt{gx(&oid_authority_key_id, false, &.{ 0x30, 0x03, 0x82, 0x01, 0x01 })};
+    try expectGenRefused(.{ .leaf = &leaf_aki }, test_now, .bad_certificate);
+    const leaf_aia = leaf_exts ++ [_]GenExt{gx(&oid_authority_info_access, false, &.{ 0x30, 0x03, 0x06, 0x01, 0x2b })};
+    try expectGenRefused(.{ .leaf = &leaf_aia }, test_now, .bad_certificate);
+    const leaf_aki_critical = leaf_exts ++ [_]GenExt{gx(&oid_authority_key_id, true, &.{ 0x30, 0x03, 0x80, 0x01, 0x01 })};
+    try expectGenRefused(.{ .leaf = &leaf_aki_critical }, test_now, .bad_certificate);
+}
+
+test "a certificate's Time as RFC 5280 reads it: UTCTime's two-digit year in 1950 to 2049, GeneralizedTime as written" {
+    try testing.expectEqual(@as(?u64, 1), timeOf("700101000001Z", 0x17));
+    try testing.expectEqual(@as(?u64, 2524607999), timeOf("491231235959Z", 0x17));
+    try testing.expectEqual(@as(?u64, 0), timeOf("500101000000Z", 0x17));
+    try testing.expectEqual(@as(?u64, 946684800), timeOf("000101000000Z", 0x17));
+    try testing.expectEqual(@as(?u64, 2524608000), timeOf("20500101000000Z", 0x18));
+    try testing.expectEqual(@as(?u64, 31_536_000_001), timeOf("29690503000001Z", 0x18));
+    try testing.expectEqual(@as(?u64, 0), timeOf("19690101000000Z", 0x18));
+    try testing.expectEqual(@as(?u64, null), timeOf("700101000001", 0x17));
+    try testing.expectEqual(@as(?u64, null), timeOf("701301000000Z", 0x17));
+    try testing.expectEqual(@as(?u64, null), timeOf("700101000000Z", 0x04));
 }
 
 test "a trust PEM with no certificate in it is BadPem, and a bad block among good ones is left out" {

@@ -1,7 +1,8 @@
 # run: 127.0.0.1 1
 # exit: 1
+# run: chains
 module Effects.TlsClient
-expose Echo, Acceptor, Heard, Echoes, Target, Attempt, target, dialed, echoed, tried, talked, spoke, faulted?, heard?, chain_pem, key_pem, root_pem, other_root_pem
+expose Echo, Acceptor, Heard, Echoes, Target, Attempt, target, dialed, echoed, tried, talked, spoke, faulted?, heard?, Served, constrained, chains, served, reached, back, text, chain_pem, key_pem, root_pem, other_root_pem
 
 intent "Open a TLS connection from a Mo program: main reads the roots it trusts with Fs, makes a TlsClient from them, connects to the host and port on its command line, runs the client's half of the handshake on that Conn, writes one line, and prints what comes back. Its tests put a TlsServer and a TlsClient on the two ends of Net.fixture()'s network, both halves of the handshake driven by the simulator: a line each way, ALPN agreed and refused, and a chain refused for its root and for its name."
 
@@ -193,18 +194,111 @@ fn heard?(talk: Result(Option(String), TlsError), heard: Result(List(String), As
   end
 end
 
+# A chain tls/gen-constrained.sh wrote (step 39): its file, its leaf's key, and the root it is under.
+struct Served
+  chain: String
+  key: String
+  root: String
+end
+
+# Run 2's chains, each key type: the one accepted (its path length met exactly), then each one
+# restriction of RFC 5280's broken, which the client refuses as Untrusted.
+fn constrained() : List(Served)
+  names = ["limit",
+    "refuse-pathlen",
+    "refuse-pathlen1",
+    "refuse-keyusage",
+    "refuse-eku",
+    "refuse-critical",
+    "refuse-names"]
+  names.map(fn(name)
+    Served(chain: "c-#{name}", key: "c-#{name}-key", root: "c-root")
+  end).concat(names.map(fn(name)
+    Served(chain: "c-#{name}-p256", key: "c-#{name}-key-p256", root: "c-root-p256")
+  end))
+end
+
+# Run 2 (`chains`): each chain served from its own listener over a real socket to a client that
+# trusts its root, and what the client's connect came to: the line echoed back, or its error.
+fn chains(fs: Fs, tls: Tls, net: Net, out: Out, left: List(Served)) : UInt8
+  case left.get(0)
+    Some(files):
+      shown = served(tls, net, text(fs, "tls/#{files.chain}.pem"), text(fs, "tls/#{files.key}.pem"),
+        text(fs, "tls/#{files.root}.pem"))
+      out.write_line("#{files.chain}: #{shown}")
+      chains(fs, tls, net, out, left.drop(1))
+    None: 0
+  end
+end
+
+# One chain's server and a client trusting `root`, or why either could not be made.
+fn served(tls: Tls, net: Net, chain: String, key: String, root: String) : String
+  case tls.server(cert: chain, key: key)
+    Ok(server):
+      case tls.client(trust: root)
+        Ok(client): reached(net, server, client)
+        Error(why): "#{why}"
+      end
+    Error(why): "#{why}"
+  end
+end
+
+# The server on a listener the runtime serves into an acceptor, the client's handshake with it
+# for localhost, and the line that comes back.
+fn reached(net: Net, server: TlsServer, client: TlsClient) : String
+  case net.listen(0, within: 1.minute)
+    Ok(listener):
+      listener.serve(into: Acceptor.start(server), idle: 1.minute)
+      case net.connect("localhost", listener.port, within: 1.minute)
+        Ok(plain):
+          case client.connect(plain, host: "localhost", within: 10.seconds)
+            Ok(secure): back(secure)
+            Error(why): "#{why}"
+          end
+        Error(why): "#{why}"
+      end
+    Error(why): "#{why}"
+  end
+end
+
+# A line written on a connection and the line that comes back, or why none did.
+fn back(secure: Conn) : String
+  case secure.write("hello\n", within: 10.seconds)
+    Ok(_):
+      case secure.read_line(within: 10.seconds)
+        Ok(got):
+          secure.close
+          got or "the server closed"
+        Error(why): "#{why}"
+      end
+    Error(why): "#{why}"
+  end
+end
+
+# A file's text, or nothing when it cannot be read (its PEM is then BadPem).
+fn text(fs: Fs, path: String) : String
+  case fs.read(path, within: 10.seconds)
+    Ok(got): got
+    Error(_): ""
+  end
+end
+
 fn main(platform: Platform)
   out = platform.stdout
   fs = platform.fs
   tls = platform.tls
   net = platform.net
-  case fs.read("tls/root.pem", within: 10.seconds)
-    Ok(roots):
-      case tls.client(trust: roots)
-        Ok(client): platform.exit(dialed(net, client, out, target(platform.args)))
-        Error(_): out.write_line("no root certificate in tls/root.pem")
-      end
-    Error(_): out.write_line("no tls/root.pem")
+  if platform.args.get(0) == Some("chains")
+    platform.exit(chains(fs, tls, net, out, constrained()))
+  else
+    case fs.read("tls/root.pem", within: 10.seconds)
+      Ok(roots):
+        case tls.client(trust: roots)
+          Ok(client): platform.exit(dialed(net, client, out, target(platform.args)))
+          Error(_): out.write_line("no root certificate in tls/root.pem")
+        end
+      Error(_): out.write_line("no tls/root.pem")
+    end
   end
 end
 

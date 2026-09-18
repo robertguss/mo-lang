@@ -1,0 +1,17 @@
+2026-09-18 19:57:51 UTC
+15:57  up  8:22, 1 user, load averages: 3.28 3.86 4.27
+  PID  %CPU    RSS COMM
+  670  35.5 290352 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 1057   6.3  60960 /opt/homebrew/opt/moshi-hook/bin/moshi-hook
+80983   2.8 304656 /Applications/Telegram.app/Contents/MacOS/Telegram
+ 7187   1.9 423600 /Applications/WezTerm.app/Contents/MacOS/wezterm-gui
+66851   1.7 551328 claude
+
+cost.py --best-of 5 --calls 20000 --handshakes 2000
+
+| brick | key | µs a chain check (chain of three) | handshakes a second (in memory) |
+|---|---|---:|---:|
+| before (d6534b3) | Ed25519 | 197.0 | 1,976 |
+| before (d6534b3) | P-256 | 827.9 | 694 |
+| after | Ed25519 | 199.2 | 1,964 |
+| after | P-256 | 829.6 | 694 |

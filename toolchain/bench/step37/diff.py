@@ -3,11 +3,12 @@ against OpenSSL 3.0, one session at a time.
 
 Each session draws its parameters from the seed: the role (the brick's server against
 `openssl s_client`, or the brick's client against `openssl s_server`, about half each); the key
-type; the OpenSSL client's suites (order and subset) or the OpenSSL server's; the OpenSSL client's
-groups, `P-256:X25519` among them for the HelloRetryRequest; an ALPN list on each side or none;
-SNI on or off; a chain from gen.sh's fixture set, good or one of the refusals; the sizes of an echo
-exchange's writes, 0 to 20,000 bytes in all; a KeyUpdate from OpenSSL (`K` on its stdin) or from
-the brick (`mo_tls_key_update`, asking for an answer or not), or none; and who closes first.
+type; the OpenSSL client's suites (order and subset) or the OpenSSL server's; the OpenSSL side's
+groups in either role, `P-256:X25519` among them for the HelloRetryRequest; an ALPN list on each
+side or none; SNI on or off; a chain from gen.sh's fixture set or gen-constrained.sh's (step 39),
+good or one of the refusals; the sizes of an echo exchange's writes, 0 to 20,000 bytes in all; a
+KeyUpdate from OpenSSL (`K` on its stdin) or from the brick (`mo_tls_key_update`, asking for an
+answer or not), or none; and who closes first.
 
 The brick's side is `mo-tls-peer` (bench/step37/peer.zig: the brick's exports over a real socket,
 as the runtimes drive them), which prints what the engine saw. OpenSSL's side is read from its
@@ -44,20 +45,32 @@ import common37 as c
 ALPHABET = "23456789bfjlmpvxyz"
 NAMES = ["mo/1", "echo/1", "h2", "http/1.1"]
 
-# Each chain: gen.sh's chain and key files, the trust file, the host the client names, and the
-# alert the verifying client sends (None: accepted). RSA is the brick's client's refusal alone: no
-# brick server signs with RSA.
+# Each chain: the chain and key files (gen.sh's, and gen-constrained.sh's `c-` chains of step 39),
+# the trust file, the host the client names, and the alert each verifier sends (None: accepted):
+# OpenSSL's `s_client` when it checks the brick's server, and the brick's client when it checks
+# `s_server`. The two differ where the brick is stricter or names the refusal differently (step 39,
+# part A): an unknown critical extension is OpenSSL's certificate_unknown (46) and the brick's
+# unsupported_certificate (43); name constraints the leaf meets OpenSSL checks and accepts, and the
+# brick refuses as unsupported (43). OpenSSL's column is what OpenSSL does. RSA is the brick's
+# client's refusal alone: no brick server signs with RSA.
 CHAINS = {
-    "good": ("cert", "key", "root", "localhost", None),
-    "depth5": ("depth5", "depth5-key", "root", "localhost", None),
-    "host": ("refuse-host", "refuse-host-key", "root", "localhost", 42),
-    "name": ("cert", "key", "root", "example.org", 42),
-    "expired": ("refuse-expired", "refuse-expired-key", "root", "localhost", 45),
-    "link": ("refuse-link", "key", "root", "localhost", 48),
-    "depth6": ("refuse-depth", "refuse-depth-key", "root", "localhost", 48),
-    "notca": ("refuse-notca", "refuse-notca-key", "root", "localhost", 48),
-    "other-root": ("cert", "key", "root-other", "localhost", 48),
-    "rsa": ("refuse-rsa", "refuse-rsa-key", "root", "localhost", "rsa"),
+    "good": ("cert", "key", "root", "localhost", None, None),
+    "depth5": ("depth5", "depth5-key", "root", "localhost", None, None),
+    "host": ("refuse-host", "refuse-host-key", "root", "localhost", 42, 42),
+    "name": ("cert", "key", "root", "example.org", 42, 42),
+    "expired": ("refuse-expired", "refuse-expired-key", "root", "localhost", 45, 45),
+    "link": ("refuse-link", "key", "root", "localhost", 48, 48),
+    "depth6": ("refuse-depth", "refuse-depth-key", "root", "localhost", 48, 48),
+    "notca": ("refuse-notca", "refuse-notca-key", "root", "localhost", 48, 48),
+    "other-root": ("cert", "key", "root-other", "localhost", 48, 48),
+    "rsa": ("refuse-rsa", "refuse-rsa-key", "root", "localhost", "rsa", "rsa"),
+    "c-limit": ("c-limit", "c-limit-key", "c-root", "localhost", None, None),
+    "c-pathlen": ("c-refuse-pathlen", "c-refuse-pathlen-key", "c-root", "localhost", 48, 48),
+    "c-pathlen1": ("c-refuse-pathlen1", "c-refuse-pathlen1-key", "c-root", "localhost", 48, 48),
+    "c-keyusage": ("c-refuse-keyusage", "c-refuse-keyusage-key", "c-root", "localhost", 48, 48),
+    "c-eku": ("c-refuse-eku", "c-refuse-eku-key", "c-root", "localhost", 43, 43),
+    "c-critical": ("c-refuse-critical", "c-refuse-critical-key", "c-root", "localhost", 46, 43),
+    "c-names": ("c-refuse-names", "c-refuse-names-key", "c-root", "localhost", None, 43),
 }
 
 
@@ -105,7 +118,8 @@ def draw(rng: random.Random, n: int) -> Params:
 
 def expected(p: Params) -> dict:
     """What the parameters say the session comes to."""
-    chain_file, _, _, _, refusal = CHAINS[p.chain]
+    _, _, _, _, by_openssl, by_mo = CHAINS[p.chain]
+    refusal = by_openssl if p.role == "mo-server" else by_mo
     ours = [s for s in ("TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256") if s in p.suites]
     groups = p.groups.split(":")
     out = {"handshake": False, "suite": "", "alpn": "", "alert": None, "alert_by": None}
@@ -133,6 +147,10 @@ def expected(p: Params) -> dict:
         if not ours:
             return {**out, "alert": 40, "alert_by": "openssl"}
         suite = "TLS_AES_128_GCM_SHA256" if "TLS_AES_128_GCM_SHA256" in ours else ours[0]
+        if "X25519" not in groups:
+            # The brick's client offers X25519 alone (its supported_groups), so a server without
+            # it shares no group.
+            return {**out, "alert": 40, "alert_by": "openssl"}
         alpn = ""
         if p.client_alpn and p.server_alpn:
             shared = [x for x in p.server_alpn if x in p.client_alpn]
@@ -173,7 +191,7 @@ def peer_json(text: str) -> dict:
 
 
 def run_mo_server(p: Params, work) -> tuple[dict, dict]:
-    chain_file, key_file, trust, host, _ = CHAINS[p.chain]
+    chain_file, key_file, trust, host, _, _ = CHAINS[p.chain]
     port = c.free_port()
     total = sum(p.sizes)
     argv = [c.PEER, "server", "--port", port, "--cert", c.fixture(chain_file, p.key), "--key", c.fixture(key_file, p.key),
@@ -265,7 +283,7 @@ def run_mo_server(p: Params, work) -> tuple[dict, dict]:
 
 
 def run_mo_client(p: Params, work) -> tuple[dict, dict]:
-    chain_file, key_file, trust, host, _ = CHAINS[p.chain]
+    chain_file, key_file, trust, host, _, _ = CHAINS[p.chain]
     if not p.sni and host == "localhost":
         host = "127.0.0.1"
     port = c.free_port()
@@ -273,7 +291,7 @@ def run_mo_client(p: Params, work) -> tuple[dict, dict]:
     leaf, rest = c.split_chain(c.fixture(chain_file, p.key), work)
     msgfile = work / f"msg-{p.n}.txt"
     s_argv = [c.OPENSSL, "s_server", "-accept", port, "-naccept", "1", "-cert", leaf, "-key", c.fixture(key_file, p.key),
-              "-msg", "-msgfile", msgfile, "-ciphersuites", ":".join(p.suites)]
+              "-msg", "-msgfile", msgfile, "-ciphersuites", ":".join(p.suites), "-groups", p.groups]
     if rest:
         s_argv += ["-cert_chain", rest]
     if p.server_alpn:

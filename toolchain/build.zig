@@ -7,7 +7,7 @@ const std = @import("std");
 //                        examples/programs/ through the installed mo (MO_EXE)
 //   zig build bench    → zig-out/bin/mo-bench  the benchmark harness, run against ../examples
 //   zig build errors   → ../mo-wiki/spec/errors.md, the error catalog, from the diagnostic tables
-//   zig build tls-tools → zig-out/bin/mo-tls-peer and mo-tls-fuzz, step 37's bench tools
+//   zig build tls-tools → zig-out/bin/mo-tls-peer, mo-tls-fuzz, and mo-tls-limbo, steps 37 and 39's bench tools
 // Compile speed is a first-class requirement (design-v0/07), so the harness exists
 // before any stage does. bench/rebuild.sh times this build file itself.
 pub fn build(b: *std.Build) void {
@@ -105,9 +105,20 @@ pub fn build(b: *std.Build) void {
             .imports = &.{.{ .name = "tls_brick", .module = brick_mod }},
         }),
     });
-    const tools_step = b.step("tls-tools", "Build step 37's TLS peer and fuzz driver into zig-out/bin");
+    // And step 39's: the x509-limbo run's checker, the brick's chain check on each case.
+    const limbo_exe = b.addExecutable(.{
+        .name = "mo-tls-limbo",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/step39/limbo.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+            .imports = &.{.{ .name = "tls_brick", .module = brick_mod }},
+        }),
+    });
+    const tools_step = b.step("tls-tools", "Build steps 37 and 39's TLS peer, fuzz driver, and limbo checker into zig-out/bin");
     tools_step.dependOn(&b.addInstallArtifact(peer_exe, .{}).step);
     tools_step.dependOn(&b.addInstallArtifact(fuzz_exe, .{}).step);
+    tools_step.dependOn(&b.addInstallArtifact(limbo_exe, .{}).step);
     const bench_step = b.step("bench", "Time every stage over ../examples (args after -- go to mo-bench)");
     const bench_cmd = b.addRunArtifact(bench_exe);
     bench_cmd.step.dependOn(b.getInstallStep());

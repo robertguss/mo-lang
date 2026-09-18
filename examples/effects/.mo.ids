@@ -249,7 +249,7 @@
       "module": "Effects.TlsClient",
       "declarations": [
         { "id": "f1b35933f2a7", "name": "module Effects.TlsClient", "hash": "7a611ec46364b269" },
-        { "id": "83972625448c", "name": "expose", "hash": "d13486c3611d37cf" },
+        { "id": "83972625448c", "name": "expose", "hash": "a7f92275bb12ca0f" },
         { "id": "54156be990a4", "name": "intent", "hash": "3492dc5f65b4baea" },
         { "id": "b1116b04b14a", "name": "process Echo", "hash": "bc503e7931135d9f" },
         { "id": "0d607b038301", "name": "process Acceptor", "hash": "27bc29397fec9be9" },
@@ -265,7 +265,14 @@
         { "id": "a42e379ecc12", "name": "fn spoke", "hash": "4469b095da2ca08d" },
         { "id": "299996aad9b9", "name": "fn faulted?", "hash": "d81249486bf9a71c" },
         { "id": "0aa83cebe850", "name": "fn heard?", "hash": "ec5d85606efbc44b" },
-        { "id": "092a16f51db2", "name": "fn main", "hash": "f3ca560bdfe6bb3d" },
+        { "id": "3a1f29605eb7", "name": "struct Served", "hash": "8b439653dcd15a8d" },
+        { "id": "6b0c802cd89b", "name": "fn constrained", "hash": "a494df549769fc46" },
+        { "id": "0d7ef137c622", "name": "fn chains", "hash": "4e3de12d7c9875b2" },
+        { "id": "a447ca8afb50", "name": "fn served", "hash": "19a849694e6d2203" },
+        { "id": "b0c9d646c454", "name": "fn reached", "hash": "6e9c770eedc6be0c" },
+        { "id": "94ebe1e8468b", "name": "fn back", "hash": "102febff4d01d5fe" },
+        { "id": "2498babe66a3", "name": "fn text", "hash": "04f5d098266e7980" },
+        { "id": "092a16f51db2", "name": "fn main", "hash": "8d718ec042791ea8" },
         { "id": "9bd4919dbd70", "name": "fn chain_pem", "hash": "1bedee077c32ea05" },
         { "id": "402e11e278e7", "name": "fn key_pem", "hash": "6e214f8ba49040bd" },
         { "id": "020dd4aaa0d5", "name": "fn root_pem", "hash": "bc3d404bad2bca58" },
@@ -277,7 +284,7 @@
         { "id": "20d1f49c10a3", "name": "test \"a client connecting for example.org refuses a leaf for localhost\"", "hash": "18d55b0583eb08f5" },
         { "id": "a4e000ca03c6", "name": "test \"text with no certificate in it makes no client\"", "hash": "465de16583d0f51c" }
       ],
-      "verified": { "hash": "44bc382363130932", "declarations": "59bd219a21f669e1" }
+      "verified": { "hash": "44bc382363130932", "declarations": "36ad5bf130b8ec12" }
     },
     {
       "path": "tls-echo.mo",

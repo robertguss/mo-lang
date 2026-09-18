@@ -1,0 +1,50 @@
+[
+  {
+    "case": "control",
+    "brick_client_ready": true,
+    "brick_server_ready": true,
+    "brick_client_alert": -1,
+    "openssl_exit": 0,
+    "openssl_output": "TMP/leaf: OK"
+  },
+  {
+    "case": "pathlen",
+    "brick_client_ready": false,
+    "brick_server_ready": false,
+    "brick_client_alert": 48,
+    "openssl_exit": 2,
+    "openssl_output": "CN=inter\nerror 25 at 2 depth lookup: path length constraint exceeded\nerror TMP/leaf: verification failed"
+  },
+  {
+    "case": "ca-keyusage",
+    "brick_client_ready": false,
+    "brick_server_ready": false,
+    "brick_client_alert": 48,
+    "openssl_exit": 2,
+    "openssl_output": "CN=inter\nerror 79 at 1 depth lookup: invalid CA certificate\nCN=inter\nerror 26 at 1 depth lookup: unsuitable certificate purpose\nCN=inter\nerror 32 at 1 depth lookup: key usage does not include certificate signing\nerror TMP/leaf: verification failed"
+  },
+  {
+    "case": "eku-client-only",
+    "brick_client_ready": false,
+    "brick_server_ready": false,
+    "brick_client_alert": 43,
+    "openssl_exit": 2,
+    "openssl_output": "CN=localhost\nerror 26 at 0 depth lookup: unsuitable certificate purpose\nerror TMP/leaf: verification failed"
+  },
+  {
+    "case": "unknown-critical",
+    "brick_client_ready": false,
+    "brick_server_ready": false,
+    "brick_client_alert": 43,
+    "openssl_exit": 2,
+    "openssl_output": "CN=localhost\nerror 34 at 0 depth lookup: unhandled critical extension\nerror TMP/leaf: verification failed"
+  },
+  {
+    "case": "alpn-65",
+    "brick_client_ready": false,
+    "brick_server_ready": false,
+    "brick_client_alert": 120,
+    "openssl_exit": 0,
+    "openssl_output": "TMP/leaf: OK"
+  }
+]
