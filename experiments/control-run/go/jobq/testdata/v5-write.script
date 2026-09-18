@@ -1,0 +1,22 @@
+# Writes testdata/v5, a folder the change-5 program (commit 20b050c) wrote:
+#   jobq-change-5 check testdata/v5 testdata/v5-write.script
+# Two queues with keys, a done and a dead job archived, a rename that moved
+# an archived job, and a job created into the old name after it and archived.
+p POST /jobs {"queue":"orders","key":"o1","payload":"first order","max_tries":2}
+p POST /jobs {"queue":"orders","key":"o2","payload":"second order","max_tries":2}
+p POST /jobs {"queue":"refunds","key":"r1","payload":"refund","max_tries":1}
+w POST /queues/orders/lease
+w POST /jobs/j_1/ack
+w POST /queues/refunds/lease
+w POST /jobs/j_3/fail {"reason":"bank down"}
+clock +86400001
+- GET /health
+p POST /queues/orders/rename {"to":"sales"}
+p POST /jobs {"queue":"orders","key":"o1","payload":"after the rename","max_tries":1}
+w POST /queues/orders/lease
+w POST /jobs/j_4/ack
+clock +86400001
+- GET /health
+restart
+p GET /queues
+- GET /health

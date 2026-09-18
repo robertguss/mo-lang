@@ -55,6 +55,10 @@ func (a *API) match(path string) (route, bool) {
 		return route{methods: map[string]handler{"POST": a.retry}, arg: seg[1]}, true
 	case len(seg) == 1 && seg[0] == "queues":
 		return route{methods: map[string]handler{"GET": a.queues}}, true
+	case len(seg) == 1 && seg[0] == "archive":
+		return route{methods: map[string]handler{"GET": a.archive}}, true
+	case len(seg) == 2 && seg[0] == "archive" && seg[1] == "prune":
+		return route{methods: map[string]handler{"POST": a.prune}}, true
 	case len(seg) == 3 && seg[0] == "queues" && seg[2] == "lease":
 		return route{methods: map[string]handler{"POST": a.lease}, arg: seg[1]}, true
 	}
@@ -395,6 +399,37 @@ func (a *API) queues(q *Queue, r *http.Request, _, _ string) (int, any, error) {
 		return 0, nil, err
 	}
 	return http.StatusOK, map[string][]QueueCounts{"queues": qs}, nil
+}
+
+// prunedBody is the body of a prune's 200.
+type prunedBody struct {
+	Pruned    int `json:"pruned"`
+	Remaining int `json:"remaining"`
+}
+
+func (a *API) prune(q *Queue, r *http.Request, _, _ string) (int, any, error) {
+	var b struct {
+		OlderThanMS *int64 `json:"older_than_ms"`
+	}
+	if err := decodeBody(r, &b, false); err != nil {
+		return 0, nil, err
+	}
+	if b.OlderThanMS == nil {
+		return 0, nil, &badRequest{"older_than_ms is required"}
+	}
+	pruned, remaining, err := q.Prune(r.Context(), *b.OlderThanMS)
+	if err != nil {
+		return 0, nil, err
+	}
+	return http.StatusOK, prunedBody{Pruned: pruned, Remaining: remaining}, nil
+}
+
+func (a *API) archive(q *Queue, r *http.Request, _, _ string) (int, any, error) {
+	info, err := q.Archive(r.Context())
+	if err != nil {
+		return 0, nil, err
+	}
+	return http.StatusOK, info, nil
 }
 
 func (a *API) health(q *Queue, r *http.Request, _, _ string) (int, any, error) {

@@ -277,8 +277,8 @@ func TestVerifyRefusesABadRenameRecord(t *testing.T) {
 		{`{"op":"rename","from":"a b","to":"c","next_id":2}`, `record rename "a b" to "c": a rename's from and to are 1 to 64 bytes`},
 		{`{"op":"rename","from":"a","to":"","next_id":2}`, `record rename "a" to "": a rename's from and to are 1 to 64 bytes`},
 		{`{"op":"rename","from":"a","to":"a","next_id":2}`, `record rename "a" to "a": a rename's from and to differ`},
-		{`{"op":"rename","from":"a","to":"c"}`, `record rename "a" to "c": a rename has next_id`},
-		{`{"op":"rename","from":"a","to":"c","next_id":2,"id":"j_1"}`, `a rename has no job and no id`},
+		{`{"op":"rename","from":"a","to":"c","next_id":2,"id":"j_1"}`, `a rename has no job, no id, and no prune field`},
+		{`{"op":"rename","from":"a","to":"c","next_id":2,"count":1}`, `a rename has no job, no id, and no prune field`},
 	} {
 		dir := t.TempDir()
 		writeLines(t, filepath.Join(dir, logName), jobLine("j_1", "a", "queued", ""), c.rename)

@@ -105,3 +105,36 @@ func TestCheckCommandMatchesExpected(t *testing.T) {
 		t.Errorf("check with a missing script = %d, want 1", code)
 	}
 }
+
+// Change 6's sequence on a fresh folder and on a copy of the folder the
+// change-5 program wrote (testdata/v5); check.sh plays the same two.
+func TestSequenceMatchesExpected(t *testing.T) {
+	for _, c := range []struct{ from, expected string }{
+		{"", "testdata/sequence.expected"},
+		{"testdata/v5", "testdata/sequence-v5.expected"},
+	} {
+		want, err := os.ReadFile(c.expected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		dir := t.TempDir()
+		if c.from != "" {
+			for _, name := range []string{logName, archiveName} {
+				data, err := os.ReadFile(filepath.Join(c.from, name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		code, out, errOut := runCmd("check", dir, "testdata/sequence.script")
+		if code != 0 || out != string(want) {
+			t.Errorf("sequence from %q = %d, stderr %q\n%s\nwant\n%s", c.from, code, errOut, out, want)
+		}
+		if code, out, _ := runCmd("verify", dir); code != 0 || !strings.HasSuffix(out, "; archived 1\n") {
+			t.Errorf("verify after the sequence from %q = %d %q", c.from, code, out)
+		}
+	}
+}

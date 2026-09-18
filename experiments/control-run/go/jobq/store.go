@@ -35,6 +35,25 @@ import (
 // A log written before the tries rename still replays: decodeLine reads a
 // job's old names (see storedJob), and every record written since, compact's
 // included, has only the new ones.
+//
+// Persistence is named twice: a record is on the disk when its file is
+// synced (Append), and a file is when its directory is synced after the
+// file is made (openLog, lazyFile) or renamed into place (Compact,
+// finishCompaction). A response is written only after both.
+//
+// The errors the store declares, each reached by a test named in
+// REPORT-change-6.md (errors_test.go holds most):
+//   - at open: a missing folder, a file where the folder should be, a folder
+//     in use by another jobq, a line that is not a record, a bad checksum
+//     field, a checksum mismatch, a record longer than maxRecordBytes, a
+//     field no record has, an unknown op, a put without a job, an ill-formed
+//     job (verify.go), a del or arch of a job the replay does not hold, a job
+//     archived twice, an unknown archive op, a rename record with a bad name,
+//     a prune record with a bad cutoff, count, or archive_size, a prune whose
+//     count the replay does not find, a key clash, and a job whose key
+//     changes;
+//   - on a write (ErrStore, answered 503): a write that fails, a full disk
+//     (ENOSPC), a sync that fails, and a cut of a torn tail that fails.
 
 const (
 	logName        = "jobq.log"
@@ -105,15 +124,15 @@ func decodeLine(line []byte) (record, error) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	var sr struct {
-		Op     string     `json:"op"`
-		Job    *storedJob `json:"job"`
-		ID     string     `json:"id"`
-		NextID uint64     `json:"next_id"`
-		From   string     `json:"from"`
-		To     string     `json:"to"`
-		Cutoff      string `json:"cutoff"`
-		Count       int    `json:"count"`
-		ArchiveSize int64  `json:"archive_size"`
+		Op          string     `json:"op"`
+		Job         *storedJob `json:"job"`
+		ID          string     `json:"id"`
+		NextID      uint64     `json:"next_id"`
+		From        string     `json:"from"`
+		To          string     `json:"to"`
+		Cutoff      string     `json:"cutoff"`
+		Count       int        `json:"count"`
+		ArchiveSize int64      `json:"archive_size"`
 	}
 	if err := dec.Decode(&sr); err != nil {
 		return record{}, err

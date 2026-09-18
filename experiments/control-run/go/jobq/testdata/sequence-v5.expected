@@ -1,0 +1,123 @@
+> clock +259200000
+> p GET /jobs?queue=sales&key=o1
+200
+{"jobs":[{"id":"j_1","queue":"sales","key":"o1","state":"done","payload":"first order","tries":1,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z","archived_at":"2026-09-15T00:00:00.001Z"}]}
+> p GET /jobs?queue=orders&key=o1
+200
+{"jobs":[{"id":"j_4","queue":"orders","key":"o1","state":"done","payload":"after the rename","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-15T00:00:00.001Z","updated_at":"2026-09-15T00:00:00.001Z","archived_at":"2026-09-16T00:00:00.002Z"}]}
+> p POST /jobs {"queue":"mail","key":"m1","payload":"a","max_tries":1}
+201
+{"id":"j_5","queue":"mail","key":"m1","state":"queued","payload":"a","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> p POST /jobs {"queue":"mail","key":"m2","payload":"b","max_tries":1}
+201
+{"id":"j_6","queue":"mail","key":"m2","state":"queued","payload":"b","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> p POST /jobs {"queue":"mail","key":"m3","payload":"c","max_tries":1}
+201
+{"id":"j_7","queue":"mail","key":"m3","state":"queued","payload":"c","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> p POST /jobs {"queue":"push","key":"p1","payload":"d","max_tries":1}
+201
+{"id":"j_8","queue":"push","key":"p1","state":"queued","payload":"d","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> p POST /jobs {"queue":"push","key":"p2","payload":"e","max_tries":1}
+201
+{"id":"j_9","queue":"push","key":"p2","state":"queued","payload":"e","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> w POST /queues/mail/lease
+200
+{"id":"j_5","queue":"mail","key":"m1","state":"leased","payload":"a","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z","worker":"w","lease_until":"2026-09-17T00:00:30.000Z"}
+> w POST /jobs/{id}/ack
+200
+{"id":"j_5","queue":"mail","key":"m1","state":"done","payload":"a","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> w POST /queues/push/lease
+200
+{"id":"j_8","queue":"push","key":"p1","state":"leased","payload":"d","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z","worker":"w","lease_until":"2026-09-17T00:00:30.000Z"}
+> w POST /jobs/{id}/ack
+200
+{"id":"j_8","queue":"push","key":"p1","state":"done","payload":"d","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> clock +3600000
+> w POST /queues/mail/lease
+200
+{"id":"j_6","queue":"mail","key":"m2","state":"leased","payload":"b","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T01:00:00.000Z","worker":"w","lease_until":"2026-09-17T01:00:30.000Z"}
+> w POST /jobs/{id}/ack
+200
+{"id":"j_6","queue":"mail","key":"m2","state":"done","payload":"b","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T01:00:00.000Z"}
+> clock +82800001
+> p GET /archive
+200
+{"archived":5,"oldest_archived_at":"2026-09-15T00:00:00.001Z","bytes":1338}
+> clock +3600000
+> p GET /archive
+200
+{"archived":6,"oldest_archived_at":"2026-09-15T00:00:00.001Z","bytes":1594}
+> compact
+compacted
+> p POST /queues/mail/rename {"to":"letters"}
+200
+{"queue":"letters","moved":3}
+> p POST /jobs {"queue":"mail","key":"m1","payload":"m1 again","max_tries":1}
+201
+{"id":"j_10","queue":"mail","key":"m1","state":"queued","payload":"m1 again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-18T01:00:00.001Z","updated_at":"2026-09-18T01:00:00.001Z"}
+> p GET /jobs?queue=mail&key=m1
+200
+{"jobs":[{"id":"j_10","queue":"mail","key":"m1","state":"queued","payload":"m1 again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-18T01:00:00.001Z","updated_at":"2026-09-18T01:00:00.001Z"}]}
+> p GET /jobs?queue=letters&key=m1
+200
+{"jobs":[{"id":"j_5","queue":"letters","key":"m1","state":"done","payload":"a","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z","archived_at":"2026-09-18T00:00:00.001Z"}]}
+> clock +1800000
+> p POST /archive/prune {"older_than_ms":999}
+400
+{"error":"requires failed: older_than_ms is 1_000 to 3_153_600_000_000"}
+> p POST /archive/prune {"older_than_ms":3600000}
+200
+{"pruned":5,"remaining":1}
+> p POST /archive/prune {"older_than_ms":3600000}
+200
+{"pruned":0,"remaining":1}
+> restart
+> verify
+4 jobs: queued 4, scheduled 0, leased 0, done 0, dead 0; next id j_11; archived 1
+> p POST /jobs {"queue":"push","key":"p1","payload":"p1 again","max_tries":1}
+201
+{"id":"j_11","queue":"push","key":"p1","state":"queued","payload":"p1 again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-18T01:30:00.001Z","updated_at":"2026-09-18T01:30:00.001Z"}
+> p POST /jobs {"queue":"push","key":"p2","payload":"used","max_tries":1}
+200
+{"id":"j_9","queue":"push","key":"p2","state":"queued","payload":"e","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"}
+> p POST /jobs {"queue":"letters","key":"m2","payload":"used","max_tries":1}
+200
+{"id":"j_6","queue":"letters","key":"m2","state":"done","payload":"b","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T01:00:00.000Z","archived_at":"2026-09-18T01:00:00.001Z"}
+> p GET /jobs?queue=letters&key=m1
+200
+{"jobs":[]}
+> w POST /queues/letters/lease
+200
+{"id":"j_7","queue":"letters","key":"m3","state":"leased","payload":"c","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-18T01:30:00.001Z","worker":"w","lease_until":"2026-09-18T01:30:30.001Z"}
+> w POST /jobs/{id}/ack
+200
+{"id":"j_7","queue":"letters","key":"m3","state":"done","payload":"c","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-18T01:30:00.001Z"}
+> p GET /jobs
+200
+{"jobs":[{"id":"j_2","queue":"sales","key":"o2","state":"queued","payload":"second order","tries":0,"max_tries":2,"backoff_ms":0,"created_at":"2026-09-14T00:00:00.000Z","updated_at":"2026-09-14T00:00:00.000Z"},{"id":"j_7","queue":"letters","key":"m3","state":"done","payload":"c","tries":1,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-18T01:30:00.001Z"},{"id":"j_9","queue":"push","key":"p2","state":"queued","payload":"e","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-17T00:00:00.000Z","updated_at":"2026-09-17T00:00:00.000Z"},{"id":"j_10","queue":"mail","key":"m1","state":"queued","payload":"m1 again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-18T01:00:00.001Z","updated_at":"2026-09-18T01:00:00.001Z"},{"id":"j_11","queue":"push","key":"p1","state":"queued","payload":"p1 again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-18T01:30:00.001Z","updated_at":"2026-09-18T01:30:00.001Z"}]}
+> p GET /queues
+200
+{"queues":[{"name":"letters","queued":0,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"mail","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"push","queued":2,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"sales","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> p GET /archive
+200
+{"archived":1,"oldest_archived_at":"2026-09-18T01:00:00.001Z","bytes":1593}
+> - GET /health
+200
+{"queued":4,"scheduled":0,"leased":0,"done":1,"dead":0,"archived":1,"uptime_ms":0,"restarts":0}
+> compact
+compacted
+> p POST /queues/mail/rename {"to":"inbox"}
+200
+{"queue":"inbox","moved":1}
+> restart
+> verify
+5 jobs: queued 4, scheduled 0, leased 0, done 1, dead 0; next id j_12; archived 1
+> p GET /jobs?queue=inbox&key=m1
+200
+{"jobs":[{"id":"j_10","queue":"inbox","key":"m1","state":"queued","payload":"m1 again","tries":0,"max_tries":1,"backoff_ms":0,"created_at":"2026-09-18T01:00:00.001Z","updated_at":"2026-09-18T01:00:00.001Z"}]}
+> p GET /queues
+200
+{"queues":[{"name":"inbox","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"letters","queued":0,"scheduled":0,"leased":0,"done":1,"dead":0},{"name":"push","queued":2,"scheduled":0,"leased":0,"done":0,"dead":0},{"name":"sales","queued":1,"scheduled":0,"leased":0,"done":0,"dead":0}]}
+> p GET /archive
+200
+{"archived":1,"oldest_archived_at":"2026-09-18T01:00:00.001Z","bytes":259}

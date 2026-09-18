@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -16,8 +17,10 @@ import (
 var checkEpoch = time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
 
 // step is one script line: a request, `clock +<ms>`, `restart` (stop and
-// start the service), or `crash` (the next write the board applies fails, and
-// the board restarts itself).
+// start the service), `crash` (the next write the board applies fails, and
+// the board restarts itself), `compact` or `verify` (stop the service, run
+// the command on the folder, print its line, and start it again). `{id}` in
+// a request's path is the id of the last response that named one.
 type step struct {
 	raw                          string
 	kind                         string
@@ -42,7 +45,7 @@ func parseScript(text string) ([]step, error) {
 }
 
 func parseStep(line string) (step, error) {
-	if line == "restart" || line == "crash" {
+	if line == "restart" || line == "crash" || line == "compact" || line == "verify" {
 		return step{raw: line, kind: line}, nil
 	}
 	if ms, ok := strings.CutPrefix(line, "clock +"); ok {
@@ -101,6 +104,7 @@ func runCheck(dir string, steps []step, out io.Writer) error {
 		return err
 	}
 	client := newHTTPClient()
+	lastID := ""
 	for _, s := range steps {
 		fmt.Fprintf(out, "> %s\n", s.raw)
 		switch s.kind {
@@ -114,15 +118,34 @@ func runCheck(dir string, steps []step, out io.Writer) error {
 			if svc, err = start(); err != nil {
 				return err
 			}
+		case "compact", "verify":
+			client.CloseIdleConnections()
+			if err := svc.stop(); err != nil {
+				return err
+			}
+			line, err := offline(s.kind, dir)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(out, line)
+			if svc, err = start(); err != nil {
+				return err
+			}
 		case "crash":
 			svc.board.crashNext()
 		case "request":
-			status, body, err := doRequest(client, svc.addr, s.token, s.method, s.path, s.payload)
+			status, body, err := doRequest(client, svc.addr, s.token, s.method, strings.ReplaceAll(s.path, "{id}", lastID), s.payload)
 			if err != nil {
 				_ = svc.stop()
 				return err
 			}
 			printResponse(out, status, body)
+			var named struct {
+				ID string `json:"id"`
+			}
+			if json.Unmarshal(body, &named) == nil && named.ID != "" {
+				lastID = named.ID
+			}
 			// A request the crash failed is followed by the restart; the
 			// next line waits for it, so the output is the same on every run.
 			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
@@ -136,4 +159,21 @@ func runCheck(dir string, steps []step, out io.Writer) error {
 	}
 	client.CloseIdleConnections()
 	return svc.stop()
+}
+
+// offline runs compact or verify on dir, as the command would, and returns
+// its line.
+func offline(kind, dir string) (string, error) {
+	var out, errOut strings.Builder
+	var code int
+	if kind == "compact" {
+		code = cmdCompact([]string{dir}, &errOut)
+		out.WriteString("compacted")
+	} else {
+		code = cmdVerify([]string{dir}, &out, &errOut)
+	}
+	if code != 0 {
+		return "", fmt.Errorf("%s: %s", kind, strings.TrimSpace(errOut.String()))
+	}
+	return strings.TrimSpace(out.String()), nil
 }

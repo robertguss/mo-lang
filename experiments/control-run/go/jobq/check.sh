@@ -13,7 +13,12 @@
 # failure inside the window exits 70 and the folder verifies. 7: keys and
 # the archive on the served process, through a restart and a compaction.
 # 8: a handoff and a rename on the served process, through a stop and start,
-# a compaction that folds the rename, and verify.
+# a compaction that folds the rename, and verify. 9: change 6's sequence
+# (testdata/sequence.script: keys, the archive, compact, a rename, a create
+# into the old name, a prune, a stop, verify, and the reads) on a fresh
+# folder and on a copy of testdata/v5, which the change-5 program wrote; then
+# a compaction killed between each file's rename and the fsync of its
+# directory, the folder whole after each; the offline prune; and --retention.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 tmp="$(mktemp -d)"
@@ -188,4 +193,41 @@ serve "$tmp/move"
 expect 200 '"name":"new","queued":1,"scheduled":0,"leased":0,"done":1' prod GET /queues
 expect 201 '"queue":"old"' prod POST /jobs '{"queue":"old","key":"once","payload":"fresh","max_tries":1}'
 stop
+# 9: the sequence on a fresh folder and on a change-5 folder.
+mkdir "$tmp/seq" "$tmp/seq5"
+cp "$here/testdata/v5/jobq.log" "$here/testdata/v5/jobq.archive" "$tmp/seq5/"
+timeout 60 "$jobq" check "$tmp/seq" "$here/testdata/sequence.script" > "$tmp/seq.out"
+diff -u "$here/testdata/sequence.expected" "$tmp/seq.out"
+timeout 60 "$jobq" check "$tmp/seq5" "$here/testdata/sequence.script" > "$tmp/seq5.out"
+diff -u "$here/testdata/sequence-v5.expected" "$tmp/seq5.out"
+want="$(timeout 30 "$jobq" verify "$tmp/seq5")"
+[ "$want" = "5 jobs: queued 4, scheduled 0, leased 0, done 1, dead 0; next id j_12; archived 1" ] || {
+  echo "check.sh: verify after the change-5 sequence printed '$want'" >&2; exit 1; }
+# Persistence is named twice: a record's bytes (fsync of the file) and a
+# file's name (fsync of its directory). A kill between a compaction's rename
+# and that fsync leaves a whole folder: the old pair of files or the new.
+for point in compact-log-renamed compact-archive-renamed; do
+  code=0; JOBQ_CRASH_AT="$point" timeout 30 "$jobq" compact "$tmp/seq5" || code=$?
+  [ "$code" = 137 ] || { echo "check.sh: compact at $point exited $code, want 137 (killed)" >&2; exit 1; }
+  if [ "$point" = compact-log-renamed ] && [ ! -e "$tmp/seq5/jobq.archive.compact" ]; then
+    echo "check.sh: the kill at $point left no archive to finish" >&2; exit 1
+  fi
+  got="$(timeout 30 "$jobq" verify "$tmp/seq5")"
+  [ "$got" = "$want" ] || { echo "check.sh: verify after a kill at $point printed '$got', want '$want'" >&2; exit 1; }
+  if python3 -c 'import os, sys; sys.exit(not any(f.endswith(".compact") for f in os.listdir(sys.argv[1])))' "$tmp/seq5"; then
+    echo "check.sh: the open after a kill at $point left a temporary file" >&2; exit 1
+  fi
+done
+serve "$tmp/seq5" --retention 3600000
+expect 200 '"archived":1' prod GET /archive
+expect 200 '"queue":"inbox"' prod GET /jobs?queue=inbox\&key=m1
+expect 400 'older_than_ms' prod POST /archive/prune '{"older_than_ms":999}'
+stop
+if timeout 10 "$jobq" serve "$tmp/seq5" --retention 999 2> /dev/null; then
+  echo "check.sh: serve took --retention 999" >&2; exit 1
+fi
+out="$(timeout 30 "$jobq" prune "$tmp/seq5" --older-than-ms 1000)"
+[ "$out" = "pruned 1, remaining 0" ] || { echo "check.sh: prune printed '$out'" >&2; exit 1; }
+timeout 30 "$jobq" verify "$tmp/seq5" | grep -q '; archived 0$' || {
+  echo "check.sh: verify after the offline prune" >&2; exit 1; }
 echo "check.sh: ok"

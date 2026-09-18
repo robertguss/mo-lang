@@ -35,9 +35,15 @@ type BoardConfig struct {
 	Window      time.Duration
 	CrashEvery  uint64        // 0 never fails
 	Retain      time.Duration // 0 is the default, a day
+	Retention   time.Duration // the background prune's age; 0 never prunes
 
-	crash func(n int) bool // the tests' chaos, in place of CrashEvery
+	crash      func(n int) bool       // the tests' chaos, in place of CrashEvery
+	pruneTicks <-chan time.Time       // the tests' ticks, in place of every 60 s
+	onPrune    func(n int, err error) // told after each background prune
 }
+
+// pruneEvery is how often --retention prunes.
+const pruneEvery = 60 * time.Second
 
 // retain is the configured retain, the default when none is.
 func (c BoardConfig) retain() time.Duration {
@@ -76,17 +82,39 @@ type Board struct {
 	stopped  bool
 	done     chan struct{}
 	doneOnce sync.Once
+	quit     chan struct{} // closed by stop, ends the retention loop
+	quitOnce sync.Once
+	loops    sync.WaitGroup
 }
 
 // newBoard opens the first queue through open; its errors are the caller's.
 func newBoard(open func() (*Queue, *Store, error), clock Clock, cfg BoardConfig) (*Board, error) {
-	b := &Board{open: open, clock: clock, cfg: cfg, logf: func(string, ...any) {}, done: make(chan struct{})}
+	b := &Board{open: open, clock: clock, cfg: cfg, logf: func(string, ...any) {}, done: make(chan struct{}),
+		quit: make(chan struct{})}
 	q, s, err := open()
 	if err != nil {
 		return nil, err
 	}
 	b.started = q.started
 	b.install(q, s)
+	if cfg.Retention > 0 {
+		ticks := cfg.pruneTicks
+		if ticks == nil {
+			ticker := time.NewTicker(pruneEvery)
+			ticks = ticker.C
+			b.loops.Add(1)
+			go func() {
+				defer b.loops.Done()
+				select {
+				case <-b.quit:
+				case <-b.done:
+				}
+				ticker.Stop()
+			}()
+		}
+		b.loops.Add(1)
+		go b.retentionLoop(ticks)
+	}
 	return b, nil
 }
 
@@ -202,9 +230,11 @@ func (b *Board) waitReady(ctx context.Context) bool {
 	}
 }
 
-// stop waits for a restart in progress, then closes the live store under
+// stop ends the retention loop, waits for a restart in progress, then closes the live store under
 // the queue's lock so no change is half made.
 func (b *Board) stop(ctx context.Context) error {
+	b.quitOnce.Do(func() { close(b.quit) })
+	b.loops.Wait()
 	b.pending.Wait()
 	b.mu.Lock()
 	defer b.mu.Unlock()

@@ -40,7 +40,7 @@ func openQueue(dir string, clock Clock) (*Queue, *Store, error) {
 	if err == nil {
 		err = q.checkApart()
 		if err != nil {
-			err = errors.Join(err, s.Close(), q.closeArchive())
+			err = errors.Join(fmt.Errorf("%s: %w", dir, err), s.Close(), q.closeArchive())
 		}
 	} else if q.archive != nil {
 		_ = q.archive.Close()
@@ -109,7 +109,7 @@ func parsePort(s string) (int, bool) {
 func parseServe(args []string) (dir string, port int, cfg BoardConfig, msg string) {
 	port, cfg = defaultPort, defaultBoardConfig()
 	if len(args) == 0 || len(args)%2 != 1 || strings.HasPrefix(args[0], "--") {
-		return "", 0, cfg, "serve takes <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N]"
+		return "", 0, cfg, "serve takes <dir> [--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N] [--retention MS]"
 	}
 	dir = args[0]
 	seen := map[string]bool{}
@@ -148,6 +148,16 @@ func parseServe(args []string) (dir string, port int, cfg BoardConfig, msg strin
 				return "", 0, cfg, "--retain-ms is 1000 to 2678400000"
 			}
 			cfg.Retain = time.Duration(n) * time.Millisecond
+		case "--retention":
+			if val == "0" {
+				cfg.Retention = 0
+				break
+			}
+			age, ok := parseAge(val)
+			if !ok {
+				return "", 0, cfg, "--retention is 0 (never) or 1000 to 3153600000000"
+			}
+			cfg.Retention = age
 		default:
 			return "", 0, cfg, "serve has no option " + opt
 		}

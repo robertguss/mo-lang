@@ -1,0 +1,58 @@
+# Change 6's sequence, played by check.sh on a fresh folder and on a copy of
+# testdata/v5 (a folder the change-5 program wrote, up to 2026-09-16): keys
+# in two queues, some acked and archived at two times, a compaction, a
+# rename, a create into the old name, a prune that removes some archived
+# jobs and not others, a stop, verify, creates with a freed and a used key,
+# and every read. Then the generation-five bug: a compaction, one more
+# rename, a stop, and the folder reopens. T is 2026-09-17T00:00:00.000Z.
+clock +259200000
+# On the change-5 folder: o1 before the rename is in sales, o1 after it in orders.
+p GET /jobs?queue=sales&key=o1
+p GET /jobs?queue=orders&key=o1
+p POST /jobs {"queue":"mail","key":"m1","payload":"a","max_tries":1}
+p POST /jobs {"queue":"mail","key":"m2","payload":"b","max_tries":1}
+p POST /jobs {"queue":"mail","key":"m3","payload":"c","max_tries":1}
+p POST /jobs {"queue":"push","key":"p1","payload":"d","max_tries":1}
+p POST /jobs {"queue":"push","key":"p2","payload":"e","max_tries":1}
+w POST /queues/mail/lease
+w POST /jobs/{id}/ack
+w POST /queues/push/lease
+w POST /jobs/{id}/ack
+clock +3600000
+w POST /queues/mail/lease
+w POST /jobs/{id}/ack
+# Past retain_ms (a day): m1 and p1 archive at T+24h, m2 at T+25h.
+clock +82800001
+p GET /archive
+clock +3600000
+p GET /archive
+compact
+p POST /queues/mail/rename {"to":"letters"}
+p POST /jobs {"queue":"mail","key":"m1","payload":"m1 again","max_tries":1}
+p GET /jobs?queue=mail&key=m1
+p GET /jobs?queue=letters&key=m1
+# The cutoff is T+24h30m: m1 and p1 go, m2 stays, and every live job stays.
+clock +1800000
+p POST /archive/prune {"older_than_ms":999}
+p POST /archive/prune {"older_than_ms":3600000}
+p POST /archive/prune {"older_than_ms":3600000}
+restart
+verify
+p POST /jobs {"queue":"push","key":"p1","payload":"p1 again","max_tries":1}
+p POST /jobs {"queue":"push","key":"p2","payload":"used","max_tries":1}
+p POST /jobs {"queue":"letters","key":"m2","payload":"used","max_tries":1}
+p GET /jobs?queue=letters&key=m1
+w POST /queues/letters/lease
+w POST /jobs/{id}/ack
+p GET /jobs
+p GET /queues
+p GET /archive
+- GET /health
+# The generation-five bug: compact, one more rename, a stop, and reopen.
+compact
+p POST /queues/mail/rename {"to":"inbox"}
+restart
+verify
+p GET /jobs?queue=inbox&key=m1
+p GET /queues
+p GET /archive

@@ -145,19 +145,15 @@ func (s *benchServer) stop() error {
 	}
 }
 
-// rssMiB is the child's resident memory from /proc.
+// rssMiB is the child's resident memory, as ps reports it on Linux and
+// macOS alike.
 func (s *benchServer) rssMiB() float64 {
-	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", s.cmd.Process.Pid))
+	out, err := exec.Command("ps", "-o", "rss=", "-p", strconv.Itoa(s.cmd.Process.Pid)).Output()
 	if err != nil {
 		return 0
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if rest, ok := strings.CutPrefix(line, "VmRSS:"); ok {
-			kb, _ := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(rest), "kB")), 64)
-			return kb / 1024
-		}
-	}
-	return 0
+	kb, _ := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+	return kb / 1024
 }
 
 func benchReq(c *http.Client, addr, token, method, path string, body any) (int, map[string]any, error) {
