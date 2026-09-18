@@ -178,6 +178,14 @@ paragraph written, the numbers table, and a numbered list "Decisions the
 brief did not cover". One commit per part, subject `Step 36 part X`, pushed
 after each.
 
+## Fix, 17 Sep 2026, 7:30 PM ET: the KeyUpdate test hangs
+
+The lead's verification of part C found `zig build test` never finishing: the brick's test "a KeyUpdate round trip" (`toolchain/src/bricks/tls.zig`, line 1638) deadlocks. `gdb` on the hung suite: the main thread in `writeAllFd(fd=6, 762 bytes)` inside the test's handshake loop, blocked in the kernel's `unix_stream_sendmsg`; the client thread (`ClientRun.run`, Zig's `tls.Client` over `testing.io`) and the runner's threads in `futex_wait`. Deterministic on the VM: it hung in the full suite (21 minutes before the lead stopped it) and again in `zig test src/bricks/tls.zig` alone (tests 1 to 10 pass; 11 hangs until `timeout 300`). The worker's own runs passed, so the deadlock is timing-dependent: two blocking sides over a socketpair with nothing that guarantees one of them reads.
+
+**Write scope:** `toolchain/src/bricks/tls.zig`, its tests only; nothing in the brick's behaviour, its exports, the rows, or the runtimes changes.
+
+**Done when:** the cause of the deadlock is named in the commit message (why the client thread stops reading, and why only this test); the test harness is made unable to hang: the main thread's writes and reads are bounded (poll with a deadline before every write as `readSomeFd` already does before reads, or a nonblocking fd with a deadline loop), the client thread is bounded the same way, and a wrong test fails with a named error within 30 seconds instead of hanging; `zig test src/bricks/tls.zig` green five times in a row; `zig build test` green twice in a row; one commit, `Step 36 fix: the KeyUpdate test`, pushed. Say in the report whether the test still exercises a KeyUpdate from the client and one from the server.
+
 ## Related
 
 - [[bricks-and-the-cost-of-zero-dependencies]]
