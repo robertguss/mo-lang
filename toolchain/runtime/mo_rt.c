@@ -18,6 +18,7 @@
 #include <math.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <pthread.h>
 #include <setjmp.h>
@@ -8383,7 +8384,11 @@ static bool blocking_write(const char *path, const char *bytes, size_t len, bool
     return job.ok;
 }
 
+/* Every connection, connected or accepted, sends each write at once (TCP_NODELAY, step 38): with
+ * Nagle's algorithm on, a write-then-read pattern waited out the peer's delayed ACK (net.zig). */
 static uint32_t adopt(int fd) {
+    int one = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
     nonblocking(fd);
     Conn *c = calloc(1, sizeof(Conn));
     if (!c) out_of_memory();

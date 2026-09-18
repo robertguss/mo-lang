@@ -438,7 +438,11 @@ pub const Net = struct {
         }
     }
 
+    /// Every connection, connected or accepted, sends each write at once (TCP_NODELAY, step 38):
+    /// with Nagle's algorithm on, a write-then-read pattern waited out the peer's delayed ACK,
+    /// about 40 ms a window of lines on Linux.
     pub fn adopt(n: *Net, fd: posix.fd_t) Error!u32 {
+        posix.setsockopt(fd, posix.IPPROTO.TCP, posix.TCP.NODELAY, &std.mem.toBytes(@as(c_int, 1))) catch {};
         const c = try n.gpa.create(Conn);
         c.* = .{ .stream = .{ .socket = .{ .handle = fd, .address = .{ .ip4 = .loopback(0) } } } };
         const handle: u32 = @intCast(n.conns.items.len);
@@ -1220,4 +1224,37 @@ test "Net.fixture: bytes one end writes reach the other, lines are cut as on a s
     try std.testing.expectEqualStrings("None", (try f.call(&machine, &s, .read_line, read)).variant.fields[0].variant.name);
     try std.testing.expectEqualStrings("Closed", named(try f.call(&machine, &s, .write, &.{ conn, .{ .string = "late" }, d })));
     try std.testing.expectEqualStrings("Closed", named(try f.call(&machine, &s, .read_line, &.{ client, d })));
+}
+
+test "every Conn, accepted or connected, has TCP_NODELAY set (step 38)" {
+    var n: Net = .{ .io = std.testing.io, .gpa = std.testing.allocator };
+    defer {
+        for (n.conns.items) |c| {
+            _ = posix.system.close(c.fd());
+            std.testing.allocator.destroy(c);
+        }
+        n.conns.deinit(std.testing.allocator);
+    }
+    const bound = try bindLoopback(0);
+    defer _ = posix.system.close(bound.fd);
+    const rc = posix.system.socket(posix.AF.INET, posix.SOCK.STREAM, posix.IPPROTO.TCP);
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(rc));
+    const client: posix.fd_t = @intCast(rc);
+    var addr: posix.sockaddr.in = .{ .port = std.mem.nativeToBig(u16, bound.port), .addr = std.mem.nativeToBig(u32, 0x7f00_0001) };
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(posix.system.connect(client, @ptrCast(&addr), @sizeOf(posix.sockaddr.in))));
+    const server = for (0..200) |_| {
+        switch (acceptOne(bound.fd)) {
+            .ok => |fd| break fd,
+            else => std.Io.sleep(std.testing.io, .fromMilliseconds(5), .awake) catch {},
+        }
+    } else return error.NeverAccepted;
+    for ([_]posix.fd_t{ client, server }) |fd| {
+        var on: c_int = 0;
+        var len: posix.socklen_t = @sizeOf(c_int);
+        _ = posix.system.getsockopt(fd, posix.IPPROTO.TCP, posix.TCP.NODELAY, @ptrCast(&on), &len);
+        try std.testing.expectEqual(@as(c_int, 0), on);
+        const h = try n.adopt(fd);
+        _ = posix.system.getsockopt(n.conns.items[h].fd(), posix.IPPROTO.TCP, posix.TCP.NODELAY, @ptrCast(&on), &len);
+        try std.testing.expect(on != 0);
+    }
 }
