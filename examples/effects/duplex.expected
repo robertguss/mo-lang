@@ -1,0 +1,5 @@
+plain, main writes, lines reads: 1600 sent, 1600 back, under a second: true
+plain, a process writes, main reads: 1600 sent, 1600 back, under a second: true
+tls, main writes, lines reads: 1600 sent, 1600 back, under a second: true
+tls, a process writes, main reads: 1600 sent, 1600 back, under a second: true
+while a write waits (the pauses Error(Timeout) and Error(Timeout)): a second write Error(Busy), a read_line Error(Timeout), a read_line while another waits Error(Busy)

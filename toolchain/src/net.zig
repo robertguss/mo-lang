@@ -153,8 +153,16 @@ pub const Conn = struct {
     released: bool = false,
     /// After LineTooLong, the rest of that line is dropped.
     skipping: bool = false,
+    /// A read (`read_line`, a handshake's read) or a write waits on it: a second of either kind
+    /// is Busy. Each goes on while the other waits (step 38): a read proceeds while a write on the
+    /// same connection is blocked on the peer.
     reading: bool = false,
     writing: bool = false,
+    /// Behind TLS: ciphertext `mo_tls_flush` gave is on its way to the socket, and whoever took
+    /// it may be waiting to write the rest. Only that caller writes to the socket until it is
+    /// done, so a record is never cut by another (a read's KeyUpdate answer, an alert); the
+    /// engine seals each record whole into one queue, in order, under the runtime's lock.
+    flushing: bool = false,
     /// `lines` gave its reading to the runtime (sources.zig): a read_line on it is Busy.
     lining: bool = false,
     /// The listener that accepted it, or no_listener: a wait on that listener can hear from
@@ -512,8 +520,8 @@ pub const Net = struct {
         if (c.used.len == 0) c.used = "Conn.write";
         if (c.closed) return .Closed;
         if (c.writing) return .Busy;
-        if (c.tls) |t| return n.writeAllTls(vm, c, t, text, ms);
         c.writing = true;
+        if (c.tls) |t| return n.writeAllTls(vm, c, t, text, ms);
         const deadline = n.now() + @max(ms, 0);
         var done: usize = 0;
         var failed: ?Failure = null;
@@ -555,42 +563,34 @@ pub const Net = struct {
     /// The ciphertext a socket read or a flush moves at once: one record and its header.
     const wire_size = brick.max_ciphertext + 5;
 
-    /// Everything the engine owes the socket, written before anything is read. Null when it
-    /// all went; a Failure when the deadline passed or the stream broke.
+    /// Everything the engine owes the socket, waiting for the socket to take it: a write's
+    /// records, and a handshake's flight. Null when it all went; a Failure when the deadline
+    /// passed or the stream broke. The caller is the connection's one flusher while it runs
+    /// (`flushing`); what the engine queues meanwhile (a read's KeyUpdate answer) goes out in
+    /// this same loop, after the records before it.
     fn flushTls(n: *Net, vm: *Vm, c: *Conn, t: *brick.Conn, deadline: i64) Error!?Failure {
         var wire: [wire_size]u8 = undefined;
+        std.debug.assert(!c.flushing);
+        c.flushing = true;
+        defer c.flushing = false;
         while (true) {
             var got: usize = 0;
             if (brick.mo_tls_flush(t, &wire, wire.len, &got) != brick.ok) return .Closed;
             if (got == 0) return null;
             var done: usize = 0;
-            c.writing = true;
             defer brick.mo_tls_sent(t, done);
             while (done < got) {
                 switch (writeOne(c.fd(), wire[done..got])) {
                     .done => |k| done += k,
-                    .broke => {
-                        c.writing = false;
-                        return .Closed;
-                    },
+                    .broke => return .Closed,
                     .again => {
                         const left = deadline - n.now();
-                        const in_time = left > 0 and (n.wait(vm, c.fd(), .write, left) catch |err| {
-                            c.writing = false;
-                            return err;
-                        });
-                        if (c.closed) {
-                            c.writing = false;
-                            return .Closed;
-                        }
-                        if (!in_time) {
-                            c.writing = false;
-                            return .Timeout;
-                        }
+                        const in_time = left > 0 and try n.wait(vm, c.fd(), .write, left);
+                        if (c.closed) return .Closed;
+                        if (!in_time) return .Timeout;
                     },
                 }
             }
-            c.writing = false;
         }
     }
 
@@ -648,18 +648,18 @@ pub const Net = struct {
                     c.eof = true;
                     return .eof;
                 },
+                // The alert goes out if the socket takes it now and no write is mid-record.
                 brick.failed => {
-                    _ = try n.flushTls(vm, c, t, deadline);
+                    n.drainNow(c, t);
                     n.close(c);
                     return .closed;
                 },
                 else => {},
             }
-            if (try n.flushTls(vm, c, t, deadline)) |f| {
-                if (f == .Timeout) return .timeout;
-                n.close(c);
-                return .closed;
-            }
+            // What the engine owes the socket (a KeyUpdate answered) goes as far as the socket
+            // takes it now; a read never waits for the socket's send side, so it goes on while
+            // a write on the same connection waits for the peer (step 38).
+            n.drainNow(c, t);
             switch (try n.feedTls(vm, c, t, deadline)) {
                 .got => {},
                 .eof => {
@@ -668,9 +668,10 @@ pub const Net = struct {
                 },
                 .timeout => return .timeout,
                 .closed => return .closed,
-                // The engine answered with an alert: it goes out, then the connection closes.
+                // The engine answered with an alert: it goes out if it can, then the connection
+                // closes.
                 .broken => {
-                    _ = try n.flushTls(vm, c, t, deadline);
+                    n.drainNow(c, t);
                     n.close(c);
                     return .closed;
                 },
@@ -680,13 +681,22 @@ pub const Net = struct {
     }
 
     /// `writeAll` behind TLS: the text as records, then the ciphertext on the socket.
+    /// `c.writing` is set; it is let go here.
     fn writeAllTls(n: *Net, vm: *Vm, c: *Conn, t: *brick.Conn, text: []const u8, ms: i64) Error!?Failure {
         const deadline = n.now() + @max(ms, 0);
-        if (brick.mo_tls_write(t, text.ptr, text.len) != brick.ok) {
-            n.close(c);
+        const failed: ?Failure = if (brick.mo_tls_write(t, text.ptr, text.len) != brick.ok)
+            .Closed
+        else
+            n.flushTls(vm, c, t, deadline) catch |err| {
+                c.writing = false;
+                return err;
+            };
+        c.writing = false;
+        if (c.closed) {
+            n.release(c);
             return .Closed;
         }
-        if (try n.flushTls(vm, c, t, deadline)) |f| {
+        if (failed) |f| {
             n.close(c);
             return f;
         }
@@ -701,7 +711,7 @@ pub const Net = struct {
         const t = c.tls orelse return readOne(c.fd(), c.buf[c.end..]);
         var wire: [wire_size]u8 = undefined;
         while (true) {
-            n.drainNow(c, t, &wire);
+            n.drainNow(c, t);
             var got: usize = 0;
             const rc = brick.mo_tls_read(t, c.buf[c.end..].ptr, c.buf.len - c.end, &got);
             if (rc == brick.ok and got > 0) return .{ .done = got };
@@ -712,7 +722,7 @@ pub const Net = struct {
                 .done => |k| {
                     if (k == 0) return .{ .done = 0 };
                     if (brick.mo_tls_feed(t, &wire, k) != brick.ok) {
-                        n.drainNow(c, t, &wire);
+                        n.drainNow(c, t);
                         return .broke;
                     }
                 },
@@ -722,13 +732,15 @@ pub const Net = struct {
         }
     }
 
-    /// What the engine owes the socket, as far as a nonblocking write takes it now.
-    fn drainNow(n: *Net, c: *Conn, t: *brick.Conn, wire: []u8) void {
+    /// What the engine owes the socket, as far as a nonblocking write takes it now, unless a
+    /// flush is under way (`flushing`), which writes it after its own records. Never waits.
+    fn drainNow(n: *Net, c: *Conn, t: *brick.Conn) void {
         _ = n;
-        if (c.writing) return;
+        if (c.flushing or c.closed) return;
+        var wire: [wire_size]u8 = undefined;
         while (true) {
             var got: usize = 0;
-            if (brick.mo_tls_flush(t, wire.ptr, wire.len, &got) != brick.ok or got == 0) return;
+            if (brick.mo_tls_flush(t, &wire, wire.len, &got) != brick.ok or got == 0) return;
             switch (writeOne(c.fd(), wire[0..got])) {
                 .done => |k| {
                     brick.mo_tls_sent(t, k);
@@ -786,8 +798,10 @@ pub const Net = struct {
     pub fn close(n: *Net, c: *Conn) void {
         if (!c.closed) {
             // A TLS connection says goodbye before the socket goes: close_notify is written if
-            // it fits in the socket's buffer, and never waited for, since `close` cannot wait.
-            if (c.tls) |t| {
+            // it fits in the socket's buffer, and never waited for, since `close` cannot wait;
+            // not while a flush is under way, whose record it would cut.
+            if (c.tls != null and !c.flushing) {
+                const t = c.tls.?;
                 brick.mo_tls_close(t);
                 var wire: [4096]u8 = undefined;
                 var got: usize = 0;
@@ -806,7 +820,7 @@ pub const Net = struct {
 
     /// Closes the descriptor once no call is waiting on it.
     pub fn release(n: *Net, c: *Conn) void {
-        if (c.released or c.reading or c.writing) return;
+        if (c.released or c.reading or c.writing or c.flushing) return;
         c.released = true;
         c.stream.close(n.io);
         if (c.tls) |t| {

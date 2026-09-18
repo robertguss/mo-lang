@@ -8157,7 +8157,15 @@ typedef struct {
     bool released;
     /* After LineTooLong, the rest of that line is dropped. */
     bool skipping;
+    /* A read (read_line, a handshake's read) or a write waits on it: a second of either kind is
+     * Busy. Each goes on while the other waits (step 38): a read proceeds while a write on the
+     * same connection is blocked on the peer. */
     bool reading, writing;
+    /* Behind TLS: ciphertext mo_tls_flush gave is on its way to the socket, and whoever took it
+     * may be waiting to write the rest. Only that caller writes to the socket until it is done,
+     * so a record is never cut by another (a read's KeyUpdate answer, an alert); the engine seals
+     * each record whole into one queue, in order, under the runtime's lock (net.zig, flushing). */
+    bool flushing;
     /* The listener that accepted it, or UINT32_MAX (held sends). */
     uint32_t listener;
     /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
@@ -8395,7 +8403,7 @@ static MoValue conn_result(int64_t h) {
 
 /* Closes the descriptor once no call is waiting on it. */
 static void net_release(Conn *c) {
-    if (c->released || c->reading || c->writing) return;
+    if (c->released || c->reading || c->writing || c->flushing) return;
     c->released = true;
     close(c->fd);
     if (c->tls) {
@@ -8411,8 +8419,9 @@ static void net_release(Conn *c) {
 static void net_close(Conn *c) {
     if (!c->closed) {
         /* A TLS connection says goodbye before the socket goes: close_notify is written if it
-         * fits in the socket's buffer, and never waited for, since close cannot wait. */
-        if (c->tls) {
+         * fits in the socket's buffer, and never waited for, since close cannot wait; not while a
+         * flush is under way, whose record it would cut. */
+        if (c->tls && !c->flushing) {
             uint8_t wire[4096];
             size_t got = 0;
             mo_tls_close(c->tls);
@@ -8550,16 +8559,24 @@ enum { FILL_GOT, FILL_EOF, FILL_TIMEOUT, FILL_CLOSED, FILL_FULL };
 /* The ciphertext one socket read or one flush moves: a record and its header. */
 #define TLS_WIRE (MO_TLS_MAX_CIPHERTEXT + 5)
 
-/* Everything the engine owes the socket, written before anything is read. -1 when it all went,
- * else the NetError to give back. */
+/* Everything the engine owes the socket, waiting for the socket to take it: a write's records, and
+ * a handshake's flight. -1 when it all went, else the NetError to give back. The caller is the
+ * connection's one flusher while it runs (flushing); what the engine queues meanwhile (a read's
+ * KeyUpdate answer) goes out in this same loop, after the records before it. */
 static int tls_flush(Conn *c, int64_t deadline) {
     uint8_t wire[TLS_WIRE];
+    c->flushing = true;
     for (;;) {
         size_t got = 0;
-        if (mo_tls_flush(c->tls, wire, sizeof wire, &got) != MO_TLS_OK) return NET_CLOSED;
-        if (got == 0) return -1;
+        if (mo_tls_flush(c->tls, wire, sizeof wire, &got) != MO_TLS_OK) {
+            c->flushing = false;
+            return NET_CLOSED;
+        }
+        if (got == 0) {
+            c->flushing = false;
+            return -1;
+        }
         size_t done = 0;
-        c->writing = true;
         int failed = -1;
         while (done < got) {
             ssize_t w = write(c->fd, wire + done, got - done);
@@ -8581,11 +8598,14 @@ static int tls_flush(Conn *c, int64_t deadline) {
             break;
         }
         mo_tls_sent(c->tls, done);
-        c->writing = false;
-        if (c->closed) return NET_CLOSED;
-        if (failed >= 0) return failed;
+        if (c->closed || failed >= 0) {
+            c->flushing = false;
+            return c->closed ? NET_CLOSED : failed;
+        }
     }
 }
+
+static void tls_drain_now(Conn *c);
 
 /* One read of ciphertext off the socket into the engine: FILL_GOT, FILL_EOF, FILL_TIMEOUT,
  * FILL_CLOSED, or FILL_BROKEN when the engine refused a record. */
@@ -8635,17 +8655,16 @@ static int tls_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
             c->eof = true;
             return FILL_EOF;
         }
+        /* The alert goes out if the socket takes it now and no write is mid-record. */
         if (rc == MO_TLS_FAILED) {
-            tls_flush(c, deadline);
+            tls_drain_now(c);
             net_close(c);
             return FILL_CLOSED;
         }
-        int sent = tls_flush(c, deadline);
-        if (sent == NET_TIMEOUT) return FILL_TIMEOUT;
-        if (sent >= 0) {
-            net_close(c);
-            return FILL_CLOSED;
-        }
+        /* What the engine owes the socket (a KeyUpdate answered) goes as far as the socket takes
+         * it now; a read never waits for the socket's send side, so it goes on while a write on
+         * the same connection waits for the peer (step 38). */
+        tls_drain_now(c);
         int fed = tls_feed(c, deadline);
         if (fed == FILL_EOF) {
             c->eof = true;
@@ -8654,8 +8673,9 @@ static int tls_fill(Conn *c, int64_t ms, size_t initial, size_t cap) {
         if (fed == FILL_TIMEOUT) return FILL_TIMEOUT;
         if (fed == FILL_CLOSED) return FILL_CLOSED;
         if (fed == FILL_BROKEN) {
-            /* The engine answered with an alert: it goes out, then the connection closes. */
-            tls_flush(c, deadline);
+            /* The engine answered with an alert: it goes out if it can, then the connection
+             * closes. */
+            tls_drain_now(c);
             net_close(c);
             return FILL_CLOSED;
         }
@@ -8747,11 +8767,13 @@ static int net_write_all(Conn *c, const char *text, size_t n, int64_t ms) {
     if (c->writing) return NET_BUSY;
     if (c->tls) {
         int64_t deadline = now_ms() + max0(ms);
-        if (mo_tls_write(c->tls, (const uint8_t *)text, n) != MO_TLS_OK) {
-            net_close(c);
+        c->writing = true;
+        int failed = mo_tls_write(c->tls, (const uint8_t *)text, n) != MO_TLS_OK ? NET_CLOSED : tls_flush(c, deadline);
+        c->writing = false;
+        if (c->closed) {
+            net_release(c);
             return NET_CLOSED;
         }
-        int failed = tls_flush(c, deadline);
         if (failed >= 0) {
             net_close(c);
             return failed;
@@ -10445,12 +10467,12 @@ static void serve_server(Source *s, int64_t now) {
 
 /* Reads what has arrived on `c` without waiting: FILL_GOT, FILL_EOF, FILL_TIMEOUT when nothing
  * has, FILL_CLOSED when the stream broke, FILL_FULL when the buffer holds `cap` bytes. */
-/* What the engine owes the socket, as far as a nonblocking write takes it now: the runtime's
- * loops do their own waiting in the poller, so they never block here, and never touch the
- * engine's output while a write is in the middle of its own flush. */
+/* What the engine owes the socket, as far as a nonblocking write takes it now, unless a flush is
+ * under way (flushing), which writes it after its own records. Never waits: the runtime's loops do
+ * their own waiting in the poller, and a read goes on while a write waits. */
 static void tls_drain_now(Conn *c) {
     uint8_t wire[TLS_WIRE];
-    if (c->writing) return;
+    if (c->flushing || c->closed) return;
     for (;;) {
         size_t got = 0;
         if (mo_tls_flush(c->tls, wire, sizeof wire, &got) != MO_TLS_OK || got == 0) return;

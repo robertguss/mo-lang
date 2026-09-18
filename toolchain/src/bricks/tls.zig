@@ -2436,10 +2436,18 @@ const ClientThread = struct {
     }
 };
 
+/// Linux's system call on Linux, libc's elsewhere: Linux's numbers on macOS are SIGSYS.
 fn nonblock(fd: std.posix.fd_t) void {
-    const linux = std.os.linux;
-    const flags = linux.fcntl(fd, linux.F.GETFL, 0);
-    _ = linux.fcntl(fd, linux.F.SETFL, flags | @as(u32, @bitCast(std.posix.O{ .NONBLOCK = true })));
+    const nb: u32 = @bitCast(std.posix.O{ .NONBLOCK = true });
+    if (builtin.os.tag == .linux) {
+        const linux = std.os.linux;
+        const flags = linux.fcntl(fd, linux.F.GETFL, 0);
+        _ = linux.fcntl(fd, linux.F.SETFL, flags | nb);
+    } else {
+        const flags = std.c.fcntl(fd, std.c.F.GETFL);
+        if (flags < 0) return;
+        _ = std.c.fcntl(fd, std.c.F.SETFL, flags | @as(c_int, @bitCast(nb)));
+    }
 }
 
 /// Pumps the brick as a runtime would: ciphertext off `in_fd`, ciphertext onto `out_fd`, and
