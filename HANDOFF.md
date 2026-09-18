@@ -37,6 +37,22 @@ place.
 > `mo-wiki/spec/programs/07b-redis-subset-revision-2.md`; `audit/README.md`,
 > `audit/WORKFLOW.md`.
 >
+> **Update, 18 Sep 2026, 3:05 PM ET (read this before the State below).** Robert is
+> low on Fable credits: the lead checks the worker about once an hour, does no
+> side work, and **pauses when step 39 is accepted**. A second step 39 worker
+> (`mo-opus`, pane `w4:pA`, started 3:01 PM ET) continues from
+> `toolchain/bench/step39/WIP.md` with the lead's answers (a test-only row for
+> the simulator's fault count: the decision-log row of 18 Sep); it commits and
+> pushes `Step 39 part X` after each part, so if this session ends first, look
+> at `git log origin/main` for how far it got, read its pane or its last
+> report, and run the acceptance at the foot of the brief. A Linux baseline of
+> Redis's suite runs in pane `w4:pB` into
+> `audit/evidence/2026-09-18/program-7-spec-r2/linux/baseline.txt` (then the
+> README's table, an `evidence-updated` record, and the skip list as
+> `mo-wiki/spec/programs/07c-mored-skip-list.md`). Go's 30,000-job rerun on
+> Linux is still owed. The worktrees are in
+> `~/Projects/startups/mo-lang-worktrees/`.
+>
 > **State (18 Sep 2026, 12:40 PM ET).** Everything is on `main` and pushed.
 >
 > 1. **Five auditor readings and one research note** (PRs 7 to 11) received,
