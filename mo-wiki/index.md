@@ -275,3 +275,5 @@ type: index
 - [[hermes-research-monitoring]] — the plan of the Hermes lane: an independent daily evidence scan and Monday synthesis, wiki-only, reviewed through a research PR before merging
 - [[hermes-daily-2026-09-17]] — Crash-consistency fault models, capability API confinement boundaries, and daily validation.
 - [[hermes-daily-2026-09-16]] — Versioned restart-budget defaults, error-path coverage evidence, and daily scan validation.
+
+- [[07b-redis-subset-revision-2]] — program 7's spec, revision 2: persistence out of Redis's suite, expiries on rewrite, one size cap, the lead's skip list, RC2's core operation, R2 to R7 pinned, a package behind `/metrics`; sealed 18 Sep

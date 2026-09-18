@@ -1,0 +1,46 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 49256
+Testing unit/type/incr
+[ok]: INCR against non existing key (0 ms)
+[ok]: INCR against key created by incr itself (0 ms)
+[ok]: DECR against key created by incr (0 ms)
+[ok]: DECR against key is not exist and incr (1 ms)
+[ok]: INCR against key originally set with SET (0 ms)
+[ok]: INCR over 32bit value (0 ms)
+[ok]: INCRBY over 32bit value with over 32bit increment (1 ms)
+[ok]: INCR fails against key with spaces (left) (0 ms)
+[ok]: INCR fails against key with spaces (right) (0 ms)
+[ok]: INCR fails against key with spaces (both) (0 ms)
+[ok]: DECRBY negation overflow (0 ms)
+[ok]: INCR fails against a key holding a list (0 ms)
+[ok]: DECRBY over 32bit value with over 32bit increment, negative res (0 ms)
+[ok]: DECRBY against key is not exist (1 ms)
+[ok]: INCR uses shared objects in the 0-9999 range (1 ms)
+[ok]: INCR can modify objects in-place (1 ms)
+[ok]: INCRBYFLOAT against non existing key (1 ms)
+[ok]: INCRBYFLOAT against key originally set with SET (0 ms)
+[ok]: INCRBYFLOAT over 32bit value (1 ms)
+[ok]: INCRBYFLOAT over 32bit value with over 32bit increment (0 ms)
+[ok]: INCRBYFLOAT fails against key with spaces (left) (1 ms)
+[ok]: INCRBYFLOAT fails against key with spaces (right) (0 ms)
+[ok]: INCRBYFLOAT fails against key with spaces (both) (1 ms)
+[ok]: INCRBYFLOAT fails against a key holding a list (0 ms)
+[ok]: INCRBYFLOAT does not allow NaN or Infinity (0 ms)
+[ok]: INCRBYFLOAT decrement (0 ms)
+[ok]: string to double with null terminator (0 ms)
+[ok]: No negative zero (1 ms)
+[ok]: incr operation should update encoding from raw to int (1 ms)
+[ok]: decr operation should update encoding from raw to int (1 ms)
+[ok]: incrby operation should update encoding from raw to int (0 ms)
+[ok]: decrby operation should update encoding from raw to int (1 ms)
+[1/1 done]: unit/type/incr (0 seconds)
+
+                   The End
+
+Execution time of different units:
+  0 seconds - unit/type/incr
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK

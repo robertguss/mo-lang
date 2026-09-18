@@ -1,0 +1,152 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 49574
+Testing unit/type/set
+[ok]: SADD, SCARD, SISMEMBER, SMISMEMBER, SMEMBERS basics - listpack (1 ms)
+[ok]: SADD, SCARD, SISMEMBER, SMISMEMBER, SMEMBERS basics - hashtable (14 ms)
+[ok]: SADD, SCARD, SISMEMBER, SMISMEMBER, SMEMBERS basics - intset (2 ms)
+[ok]: SMISMEMBER SMEMBERS SCARD against non set (1 ms)
+[ok]: SMISMEMBER SMEMBERS SCARD against non existing key (0 ms)
+[ok]: SMISMEMBER requires one or more members (0 ms)
+[ok]: SADD against non set (1 ms)
+[ok]: SADD a non-integer against a small intset (1 ms)
+[ok]: SADD a non-integer against a large intset (11 ms)
+[ok]: SADD an integer larger than 64 bits (0 ms)
+[ok]: SADD an integer larger than 64 bits to a large intset (12 ms)
+[ok]: SADD overflows the maximum allowed integers in an intset - single (52 ms)
+[ok]: SADD overflows the maximum allowed elements in a listpack - single (13 ms)
+[ok]: SADD overflows the maximum allowed integers in an intset - multiple (1 ms)
+[ok]: SADD overflows the maximum allowed elements in a listpack - multiple (1 ms)
+[ok]: SADD overflows the maximum allowed integers in an intset - single_multiple (1 ms)
+[ok]: SADD overflows the maximum allowed elements in a listpack - single_multiple (1 ms)
+[ok]: Variadic SADD (1 ms)
+[ok]: Set encoding after DEBUG RELOAD (172 ms)
+[ok]: SREM basics - $type (1 ms)
+[ok]: SREM basics - $type (13 ms)
+[ok]: SREM basics - intset (0 ms)
+[ok]: SREM with multiple arguments (0 ms)
+[ok]: SREM variadic version with more args needed to destroy the key (0 ms)
+[ok]: SINTERCARD with illegal arguments (2 ms)
+[ok]: SINTERCARD against non-set should throw error (1 ms)
+[ok]: SINTERCARD against non-existing key (0 ms)
+[ok]: Generated sets must be encoded correctly - regular (1 ms)
+[ok]: SINTER with two sets - regular (0 ms)
+[ok]: SINTERCARD with two sets - regular (0 ms)
+[ok]: SINTERSTORE with two sets - regular (1 ms)
+[ok]: SINTERSTORE with two sets, after a DEBUG RELOAD - regular (7 ms)
+[ok]: SUNION with two sets - regular (3 ms)
+[ok]: SUNIONSTORE with two sets - regular (3 ms)
+[ok]: SINTER against three sets - regular (0 ms)
+[ok]: SINTERCARD against three sets - regular (1 ms)
+[ok]: SINTERSTORE with three sets - regular (0 ms)
+[ok]: SUNION with non existing keys - regular (2 ms)
+[ok]: SDIFF with two sets - regular (0 ms)
+[ok]: SDIFF with three sets - regular (0 ms)
+[ok]: SDIFFSTORE with three sets - regular (0 ms)
+[ok]: SINTER/SUNION/SDIFF with three same sets - regular (2 ms)
+[ok]: Generated sets must be encoded correctly - intset (0 ms)
+[ok]: SINTER with two sets - intset (0 ms)
+[ok]: SINTERCARD with two sets - intset (1 ms)
+[ok]: SINTERSTORE with two sets - intset (0 ms)
+[ok]: SINTERSTORE with two sets, after a DEBUG RELOAD - intset (5 ms)
+[ok]: SUNION with two sets - intset (2 ms)
+[ok]: SUNIONSTORE with two sets - intset (3 ms)
+[ok]: SINTER against three sets - intset (0 ms)
+[ok]: SINTERCARD against three sets - intset (0 ms)
+[ok]: SINTERSTORE with three sets - intset (1 ms)
+[ok]: SUNION with non existing keys - intset (2 ms)
+[ok]: SDIFF with two sets - intset (0 ms)
+[ok]: SDIFF with three sets - intset (0 ms)
+[ok]: SDIFFSTORE with three sets - intset (0 ms)
+[ok]: SINTER/SUNION/SDIFF with three same sets - intset (2 ms)
+[ok]: SINTERSTORE with two listpack sets where result is intset (1 ms)
+[ok]: SINTERSTORE with two hashtable sets where result is intset (25 ms)
+[ok]: SUNION hashtable and listpack (2 ms)
+[ok]: SDIFF with first set empty (0 ms)
+[ok]: SDIFF with same set two times (0 ms)
+[ok]: SDIFF fuzzing (3553 ms)
+[ok]: SDIFF against non-set should throw error (1 ms)
+[ok]: SDIFF should handle non existing key as empty (0 ms)
+[ok]: SDIFFSTORE against non-set should throw error (1 ms)
+[ok]: SDIFFSTORE should handle non existing key as empty (1 ms)
+[ok]: SINTER against non-set should throw error (1 ms)
+[ok]: SINTER should handle non existing key as empty (1 ms)
+[ok]: SINTER with same integer elements but different encoding (1 ms)
+[ok]: SINTERSTORE against non-set should throw error (2 ms)
+[ok]: SINTERSTORE against non existing keys should delete dstkey (1 ms)
+[ok]: SUNION against non-set should throw error (1 ms)
+[ok]: SUNION should handle non existing key as empty (1 ms)
+[ok]: SUNIONSTORE against non-set should throw error (2 ms)
+[ok]: SUNIONSTORE should handle non existing key as empty (2 ms)
+[ok]: SUNIONSTORE against non existing keys should delete dstkey (1 ms)
+[ok]: SPOP basics - listpack (1 ms)
+[ok]: SPOP with <count>=1 - listpack (1 ms)
+[ok]: SRANDMEMBER - listpack (9 ms)
+[ok]: SPOP basics - intset (1 ms)
+[ok]: SPOP with <count>=1 - intset (1 ms)
+[ok]: SRANDMEMBER - intset (11 ms)
+[ok]: SPOP integer from listpack set (1 ms)
+[ok]: SPOP with <count> - listpack (4 ms)
+[ok]: SPOP with <count> - intset (3 ms)
+[ok]: SPOP with <count> - hashtable (3 ms)
+[ok]: SPOP using integers, testing Knuth's and Floyd's algorithm (3 ms)
+[ok]: SPOP using integers with Knuth's algorithm (0 ms)
+[ok]: SPOP new implementation: code path #1 intset (2 ms)
+[ok]: SPOP new implementation: code path #2 intset (2 ms)
+[ok]: SPOP new implementation: code path #3 intset (2 ms)
+[ok]: SPOP new implementation: code path #1 listpack (2 ms)
+[ok]: SPOP new implementation: code path #2 listpack (2 ms)
+[ok]: SPOP new implementation: code path #3 listpack (2 ms)
+[ok]: SPOP new implementation: code path #1 propagate as DEL or UNLINK (30 ms)
+[ok]: SRANDMEMBER count of 0 is handled correctly (0 ms)
+[ok]: SRANDMEMBER with <count> against non existing key (1 ms)
+[ok]: SRANDMEMBER count overflow (0 ms)
+[ok]: SRANDMEMBER count of 0 is handled correctly - emptyarray (0 ms)
+[ok]: SRANDMEMBER with <count> against non existing key - emptyarray (0 ms)
+[ok]: SRANDMEMBER with <count> - listpack (17 ms)
+[ok]: SRANDMEMBER with <count> - intset (20 ms)
+[ok]: SRANDMEMBER with <count> - hashtable (18 ms)
+[ok]: SRANDMEMBER histogram distribution - listpack (71 ms)
+[ok]: SRANDMEMBER histogram distribution - intset (71 ms)
+[ok]: SRANDMEMBER histogram distribution - hashtable (68 ms)
+[exception]: Executing test client: key "pid" not known in dictionary.
+key "pid" not known in dictionary
+    while executing
+"dict get $srv $property"
+    (procedure "srv" line 10)
+    invoked from within
+"srv $idx pid"
+    (procedure "get_child_pid" line 2)
+    invoked from within
+"get_child_pid 0"
+    ("uplevel" body line 24)
+    invoked from within
+"uplevel 1 $code"
+    (procedure "test" line 58)
+    invoked from within
+"test "SRANDMEMBER with a dict containing long chain" {
+        set origin_save [config_get_set save ""]
+        set origin_max_lp [config_get_set set-..."
+    ("uplevel" body line 1025)
+    invoked from within
+"uplevel 2 $code"
+    (procedure "run_external_server_test" line 41)
+    invoked from within
+"run_external_server_test $code $overrides"
+    (procedure "start_server" line 55)
+    invoked from within
+"start_server {
+    tags {"set"}
+    overrides {
+        "set-max-intset-entries" 512
+        "set-max-listpack-entries" 128
+        "set-max-listpack-..."
+    (file "tests/unit/type/set.tcl" line 1)
+    invoked from within
+"source $path"
+    (procedure "execute_test_file" line 4)
+    invoked from within
+"execute_test_file $data"
+    (procedure "test_client_main" line 10)
+    invoked from within
+"test_client_main $::test_server_port "

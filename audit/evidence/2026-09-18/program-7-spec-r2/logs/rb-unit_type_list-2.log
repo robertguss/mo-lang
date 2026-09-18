@@ -1,0 +1,16 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 49384
+Testing unit/type/list-2
+[ok]: LTRIM stress testing - quicklist (5899 ms)
+[ok]: LTRIM stress testing - listpack (5804 ms)
+[1/1 done]: unit/type/list-2 (12 seconds)
+
+                   The End
+
+Execution time of different units:
+  12 seconds - unit/type/list-2
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK

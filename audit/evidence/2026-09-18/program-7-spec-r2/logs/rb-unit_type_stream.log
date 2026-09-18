@@ -1,0 +1,121 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 49603
+Testing unit/type/stream
+[ok]: XADD wrong number of args (1 ms)
+[ok]: XADD can add entries into a stream that XRANGE can fetch (1 ms)
+[ok]: XADD IDs are incremental (0 ms)
+[ok]: XADD IDs are incremental when ms is the same as well (1 ms)
+[ok]: XADD IDs correctly report an error when overflowing (0 ms)
+[ok]: XADD auto-generated sequence is incremented for last ID (0 ms)
+[ok]: XADD auto-generated sequence is zero for future timestamp ID (0 ms)
+[ok]: XADD auto-generated sequence can't be smaller than last ID (0 ms)
+[ok]: XADD auto-generated sequence can't overflow (1 ms)
+[ok]: XADD 0-* should succeed (0 ms)
+[ok]: XADD with MAXLEN option (102 ms)
+[ok]: XADD with MAXLEN option and the '=' argument (111 ms)
+[ok]: XADD with MAXLEN option and the '~' argument (104 ms)
+[ok]: XADD with NOMKSTREAM option (1 ms)
+[ok]: XADD with MINID option (103 ms)
+[ok]: XTRIM with MINID option (1 ms)
+[ok]: XTRIM with MINID option, big delta from master record (1 ms)
+[ok]: XADD mass insertion and XLEN (1352 ms)
+[ok]: XADD with ID 0-0 (0 ms)
+[ok]: XADD with LIMIT delete entries no more than limit (1 ms)
+[ok]: XRANGE COUNT works as expected (1 ms)
+[ok]: XREVRANGE COUNT works as expected (0 ms)
+[ok]: XRANGE can be used to iterate the whole stream (130 ms)
+[ok]: XREVRANGE returns the reverse of XRANGE (437 ms)
+[ok]: XRANGE exclusive ranges (3 ms)
+[ok]: XREAD with non empty stream (0 ms)
+[ok]: Non blocking XREAD with empty streams (0 ms)
+[ok]: XREAD with non empty second stream (1101 ms)
+[ok]: Blocking XREAD waiting new data (1 ms)
+[ok]: Blocking XREAD waiting old data (0 ms)
+[ok]: Blocking XREAD will not reply with an empty array (100 ms)
+[ok]: Blocking XREAD for stream that ran dry (issue #5299) (103 ms)
+[ok]: XREAD: XADD + DEL should not awake client (3 ms)
+[ok]: XREAD: XADD + DEL + LPUSH should not awake client (3 ms)
+[ok]: XREAD with same stream name multiple times should work (1 ms)
+[ok]: XREAD + multiple XADD inside transaction (2 ms)
+[ok]: XDEL basic test (1 ms)
+[ok]: XDEL multiply id test (1 ms)
+[ok]: XDEL fuzz test (1240 ms)
+[ok]: XRANGE fuzzing (2106 ms)
+[ok]: XREVRANGE regression test for issue #5006 (1 ms)
+[ok]: XREAD streamID edge (no-blocking) (0 ms)
+[ok]: XREAD streamID edge (blocking) (1 ms)
+[ok]: XADD streamID edge (1 ms)
+[ok]: XTRIM with MAXLEN option basic test (110 ms)
+[ok]: XADD with LIMIT consecutive calls (12 ms)
+[ok]: XTRIM with ~ is limited (10 ms)
+[ok]: XTRIM without ~ is not limited (10 ms)
+[ok]: XTRIM without ~ and with LIMIT (9 ms)
+[ok]: XTRIM with LIMIT delete entries no more than limit (0 ms)
+[ok]: XADD with MAXLEN > xlen can propagate correctly (12 ms)
+[ok]: XADD with MINID > lastid can propagate correctly (16 ms)
+[ok]: XADD with ~ MAXLEN can propagate correctly (25 ms)
+[ok]: XADD with ~ MAXLEN and LIMIT can propagate correctly (16 ms)
+[ok]: XADD with ~ MINID can propagate correctly (17 ms)
+[ok]: XADD with ~ MINID and LIMIT can propagate correctly (20 ms)
+[ok]: XTRIM with ~ MAXLEN can propagate correctly (17 ms)
+[ok]: XADD can CREATE an empty stream (0 ms)
+[ok]: XSETID can set a specific ID (1 ms)
+[ok]: XSETID cannot SETID with smaller ID (1 ms)
+[ok]: XSETID cannot SETID on non-existent key (0 ms)
+[ok]: XSETID cannot run with an offset but without a maximal tombstone (1 ms)
+[ok]: XSETID cannot run with a maximal tombstone but without an offset (0 ms)
+[ok]: XSETID errors on negstive offset (0 ms)
+[ok]: XSETID cannot set the maximal tombstone with larger ID (1 ms)
+[ok]: XSETID cannot set the offset to less than the length (1 ms)
+[ok]: XSETID cannot set smaller ID than current MAXDELETEDID (1 ms)
+[ok]: XADD advances the entries-added counter and sets the recorded-first-entry-id (1 ms)
+[ok]: XDEL/TRIM are reflected by recorded first entry (2 ms)
+[ok]: Maximum XDEL ID behaves correctly (1 ms)
+[ok]: XADD with artial ID with maximal seq (1 ms)
+bad argument "GET / HTTP/1.1": should be "nonewline"
+    while executing
+"read $fd $bytes"
+    (procedure "read_from_test_client" line 3)
+    invoked from within
+"read_from_test_client sock7"
+[exception]: Executing test client: I/O error reading reply.
+I/O error reading reply
+    while executing
+"[srv $level "client"] {*}$args"
+    (procedure "r" line 7)
+    invoked from within
+"{*}$r info"
+    (procedure "status" line 2)
+    invoked from within
+"status $r aof_rewrite_in_progress"
+    (procedure "waitForBgrewriteaof" line 3)
+    invoked from within
+"waitForBgrewriteaof r"
+    ("uplevel" body line 5)
+    invoked from within
+"uplevel 1 $code"
+    (procedure "test" line 58)
+    invoked from within
+"test {Empty stream can be rewrite into AOF correctly} {
+        r XADD mystream MAXLEN 0 * a b
+        assert {[dict get [r xinfo stream mystream] len..."
+    ("uplevel" body line 2)
+    invoked from within
+"uplevel 2 $code"
+    (procedure "run_external_server_test" line 41)
+    invoked from within
+"run_external_server_test $code $overrides"
+    (procedure "start_server" line 55)
+    invoked from within
+"start_server {tags {"stream needs:debug"} overrides {appendonly yes aof-use-rdb-preamble no}} {
+    test {Empty stream can be rewrite into AOF correct..."
+    (file "tests/unit/type/stream.tcl" line 906)
+    invoked from within
+"source $path"
+    (procedure "execute_test_file" line 4)
+    invoked from within
+"execute_test_file $data"
+    (procedure "test_client_main" line 10)
+    invoked from within
+"test_client_main $::test_server_port "

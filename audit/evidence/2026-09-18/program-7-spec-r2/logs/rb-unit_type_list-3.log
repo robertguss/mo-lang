@@ -1,0 +1,31 @@
+Cleanup: may take some time... OK
+Starting test server at port 21079
+[ready]: 49485
+Testing unit/type/list-3
+[ok]: Explicit regression for a list bug (1 ms)
+[ok]: Regression for quicklist #3343 bug (2 ms)
+[ok]: Check compression with recompress (2 ms)
+[ok]: Crash due to wrongly recompress after lrem (2 ms)
+[ok]: LINSERT correctly recompress full quicklistNode after inserting a element before it (1 ms)
+[ok]: LINSERT correctly recompress full quicklistNode after inserting a element after it (2 ms)
+[ok]: Stress tester for #3343-alike bugs comp: 2 (176 ms)
+[ok]: Stress tester for #3343-alike bugs comp: 1 (165 ms)
+[ok]: Stress tester for #3343-alike bugs comp: 0 (164 ms)
+[ok]: ziplist implementation: value encoding and backlink (566 ms)
+bad argument "GET / HTTP/1.1": should be "nonewline"
+    while executing
+"read $fd $bytes"
+    (procedure "read_from_test_client" line 3)
+    invoked from within
+"read_from_test_client sock7"
+[ok]: ziplist implementation: encoding stress testing (8914 ms)
+[1/1 done]: unit/type/list-3 (10 seconds)
+
+                   The End
+
+Execution time of different units:
+  10 seconds - unit/type/list-3
+
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK
