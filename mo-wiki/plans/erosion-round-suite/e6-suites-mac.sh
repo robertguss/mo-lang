@@ -61,9 +61,11 @@ suite() { # name cmd...
   grep -qE 'passed, [0-9]+ defects' $OUT/e6-$L-$name.txt || say "NO SUMMARY LINE: the suite did not reach its end"
   pkill -f 'serve /var/folders' 2>/dev/null; pkill -f 'serve /private/var' 2>/dev/null; drain
 }
+LF=$L; [ $L = morun ] && LF=mo
+if [ -n "$ONLY" ]; then case $ONLY in defects2) suite defects2 python3 -u $ES/defects2.py --serve "$SERVE" --verify "$VERIFY" --compact "$COMPACT" --log-format $LF --cwd $CWD;; *) die "ONLY=$ONLY is not wired";; esac; say "## $L done (ONLY=$ONLY) $(date '+%H:%M:%S')"; exit 0; fi
 suite regressions python3 -u $SU/control-run-8-suite/regressions.py --serve "$SERVE" --cwd $CWD
 suite defects1 python3 -u $SU/control-run-8-suite/defects.py --serve "$SERVE" --cwd $CWD --old-serve "$OLD" --old-cwd $OLDCWD --compact "$COMPACT"
-suite defects2 python3 -u $ES/defects2.py --serve "$SERVE" --verify "$VERIFY" --compact "$COMPACT" --cwd $CWD
+suite defects2 python3 -u $ES/defects2.py --serve "$SERVE" --verify "$VERIFY" --compact "$COMPACT" --log-format $LF --cwd $CWD
 suite defects3 python3 -u $ES/defects3.py --serve "$SERVE" --verify "$VERIFY" --cwd $CWD
 suite defects4 python3 -u $ES/defects4.py --serve "$SERVE" --verify "$VERIFY" --compact "$COMPACT" --cwd $CWD
 suite defects5 python3 -u $ES/defects5.py --serve "$SERVE" --verify "$VERIFY" --compact "$COMPACT" --cwd $CWD
