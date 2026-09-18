@@ -311,8 +311,11 @@ comparisons of the first two are merged; step 37's `ready` record and program
 7's sealed spec are published; the loop is on [[the-audit-workflow]]. The
 auditor's reading of step 36 found four things the lead's had not, all
 conceded and closed in step 37; the one open disagreement, what generation
-four's low memory number means, has a pre-registered control probe
-([[gen4-memory-control-probe]]).
+four's low memory number means, had a pre-registered control probe
+([[gen4-memory-control-probe]]) whose forty runs refuted both readings: the
+low number is an intermittent state of generation four's code, independent
+of the contract, and the rate loss is the contract's walk; the allocator's
+resident set is the open question.
 
 In that first session Robert ratified three stopping rules, before program 7
 exists and before generation six runs:

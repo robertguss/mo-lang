@@ -19,7 +19,7 @@ in detail and the history of every step.
 
 | what | who | since | page |
 |---|---|---|---|
-| Program 7's spec sealed and published to the auditor (18 Sep, 3:50 AM ET); waiting on the hidden suites and the P4 modification. Meanwhile the generation-four memory control probe runs (a worker in `w7:pR`), then step 38 | the auditor; an Opus worker on the probe | 18 Sep, 3:50 AM ET | [[07-redis-subset]], [[gen4-memory-control-probe]] |
+| Program 7's spec sealed and published to the auditor (18 Sep, 3:50 AM ET); waiting on the hidden suites and the P4 modification. The memory control probe is done (4:45 AM ET: none of the three hypotheses; a runtime allocator question instead). Generation six pre-registered, its sessions next when the machine is quiet; step 38 after | the auditor; Fable | 18 Sep, 4:45 AM ET | [[07-redis-subset]], [[gen4-memory-control-probe]], [[erosion-round]] |
 
 ## Next, in order
 
@@ -46,6 +46,8 @@ Rows marked "for Robert" in the [[decision-log]], newest first: the bricks page'
 
 | when | what | page |
 |---|---|---|
+| 18 Sep, 4:45 AM ET | The generation-four memory control probe: forty runs; the 46 MiB was one draw from a bimodal spread independent of the contract; the rate loss is the walk; both readings retire | [[gen4-memory-control-probe]] |
+| 18 Sep, 4:16 AM ET | Change 6 sealed and generation six pre-registered: the archive pruned, a speed budget, the rename rule corrected | [[01g-job-queue-change-6]] |
 | 18 Sep, 3:50 AM ET | Step 37, the TLS brick, part two: the client, the chain, ALPN, KeyUpdate; 1,000 sessions against OpenSSL at 0 mismatches, a fuzz hour at 0 crashes; two runtime defects found by the lead's probes and fixed the same night | [[interpreter-step-37]] |
 | 18 Sep, 3:50 AM ET | Program 7's spec sealed: `mored`, a Redis subset against Redis's own tests | [[07-redis-subset]] |
 | 17 Sep, 10:30 PM ET | Step 36's two readings compared: four points conceded to the auditor, all closed in step 37 | [[interpreter-step-36]] |

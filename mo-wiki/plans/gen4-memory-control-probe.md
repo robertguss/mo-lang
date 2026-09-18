@@ -9,7 +9,7 @@ sources:
     plans/erosion-round.md,
     decisions/decision-log.md,
   ]
-status: in-progress
+status: done
 ---
 
 # The generation-four memory control probe
@@ -106,6 +106,12 @@ beside it with the date and `uptime` at its head, the two variant diffs, the
 branch `erosion4-control` pushed, no `jobq` process left (`pgrep -x jobq`
 empty), and a report with the numbers and a numbered list "Decisions the
 brief did not cover".
+
+## Result (18 Sep 2026, 4:45 AM ET; the worker ran 3:57 to 4:33 AM ET; read by Fable)
+
+`audit/evidence/2026-09-18/gen4-memory-control/` (`RESULTS.md`, forty logs, the two diffs, the scripts; branch `erosion4-control`, not merged). Eight cells, five trials each instead of two (the first sixteen showed one cell moving 56 to 129 MiB), one compiler (`mo` at `972c872`). Medians after the pairs, contracts on / off: gen 3 186 / 233 MiB; gen 4 148 / 95; cheap 95 / 149; none 135 / 174. Pairs a second at 32 workers, contracts on: gen 3 1,893; gen 4 546; cheap 1,834; none 1,906.
+
+**None of H1, H2, H3 as written.** The low state (33 to 60 MiB after the creates) is intermittent in every generation-four-family cell (gen 4 off 3 of 5, cheap on 3 of 5, cheap off 2 of 5, none on 1 of 5) and absent in generation three (0 of 14); it does not follow the walk (against H3), it does not follow the compaction point the walk sets (against H1: the deleted variant does not return a steady 169), and neither variant sits near 46 with contracts on (against H2 as stated). The 46 MiB of 17 Sep was one draw. The rate is unambiguous: the walk is generation four's 3.5× loss, and a cheap or absent postcondition restores generation three's rate. Fable's rate prediction was low by a core; its RSS predictions held in 1 and 2 of 5 trials, which is to say they were wrong. The open question is the allocator's resident set outside the region (the surface's `region_bytes` 10 to 32 MB under `resident_bytes` 67 to 190), a runtime probe of its own. The rows of 18 Sep in the [[decision-log]] carry the reading for Robert and a measurement rule (a load near 3 is the run itself; `timeout --foreground`).
 
 ## Related
 
