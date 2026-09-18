@@ -1,10 +1,10 @@
 ---
 subject: program 7's sealed spec (`mored`), read against the two ratified stopping rules it is the test of
 author: Fable (the lead)
-date: 2026-09-18, about 10:25 AM ET
+date: 2026-09-18, between 9:30 and 9:50 AM ET, pushed at baf6683 (corrected 9:54 AM ET: the header first said "about 10:15" or "10:25", a time Fable guessed instead of reading the clock; nothing else in the file changed)
 filed_against: 972c872 (the ready record program-7-spec-ready-001)
 read_before_auditor: yes. Fable had not opened the auditor's reading, its checks, its evidence folder, or its `audit/state.md` lines on this subject when this was written; the receiver announced pointers only (kind, id, commit, path, the PR number). Robert said only that the PRs exist.
-evidence: mo-wiki/spec/programs/07-redis-subset.md; audit/mo-audit-2026-09-17-stopping-rule-runtime.md; audit/mo-audit-2026-09-17-stopping-rule-capabilities.md; Redis at tag 7.2.4, tests/ (fetched 18 Sep, 10:10 AM ET, to check the test files the spec names)
+evidence: mo-wiki/spec/programs/07-redis-subset.md; audit/mo-audit-2026-09-17-stopping-rule-runtime.md; audit/mo-audit-2026-09-17-stopping-rule-capabilities.md; Redis at tag 7.2.4, tests/ (fetched 18 Sep, about 9:40 AM ET, to check the test files the spec names)
 ---
 
 # Fable's reading: does program 7's spec let the two rules be read?

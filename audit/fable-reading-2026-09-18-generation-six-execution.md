@@ -1,8 +1,8 @@
 ---
 subject: generation six of the erosion round, its execution (not its result, which does not exist yet)
 author: Fable (the lead)
-date: 2026-09-18, about 10:15 AM ET
-filed_against: 64982b2 (the commit the auditor's branch names), with what Fable knows of the run up to 10:15 AM ET
+date: 2026-09-18, between 9:30 and 9:50 AM ET, pushed at baf6683 (corrected 9:54 AM ET: the header first said "about 10:15" or "10:25", a time Fable guessed instead of reading the clock; nothing else in the file changed)
+filed_against: 64982b2 (the commit the auditor's branch names), with what Fable knows of the run up to 9:50 AM ET
 read_before_auditor: yes. Fable had not opened the auditor's reading, its checks, its evidence folder, or its `audit/state.md` lines on this subject when this was written; the receiver announced pointers only (kind, id, commit, path, the PR number). Robert said only that the PRs exist.
 evidence: mo-wiki/plans/erosion-round.md (generation six, pre-registered, Started, Interrupted, Continued on the Mac); mo-wiki/spec/programs/01g-job-queue-change-6.md; mo-wiki/plans/erosion-round-suite/{e6-brief.sh,e6-brief-mac.sh,e6-suites.sh,e6-suites-mac.sh,defects6.py}; the branches erosion6-{mo,go,python,elixir} with REPORT-change-6*.md; the decision-log rows of 18 Sep
 ---

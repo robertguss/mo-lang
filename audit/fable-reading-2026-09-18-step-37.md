@@ -1,7 +1,7 @@
 ---
 subject: step 37, the TLS brick part two (the client, the chain, ALPN, KeyUpdate), with the fix b0b2ac4
 author: Fable (the lead)
-date: 2026-09-18, about 10:15 AM ET
+date: 2026-09-18, between 9:30 and 9:50 AM ET, pushed at baf6683 (corrected 9:54 AM ET: the header first said "about 10:15" or "10:25", a time Fable guessed instead of reading the clock; nothing else in the file changed)
 filed_against: 15fb2cb (the ready record step-37-ready-001) and b0b2ac4
 read_before_auditor: yes. Fable had not opened the auditor's reading, its checks, its evidence folder, or its `audit/state.md` lines on this subject when this was written; the receiver announced pointers only (kind, id, commit, path, the PR number). Robert said only that the PRs exist.
 evidence: audit/evidence/2026-09-18/step-37/ (the worker-raw folder, fable-probe/); mo-wiki/plans/interpreter-step-37.md (the brief, the Result, the Fix); toolchain/bench/step37/RESULTS.md
