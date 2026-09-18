@@ -1,4 +1,5 @@
 #!/bin/bash
+# (worktrees moved 18 Sep 2026 into ~/Projects/startups/mo-lang-worktrees/<name without the mo-lang- prefix>; paths below updated, never rerun from history)
 # usage: e6-brief-mac.sh <agent> <worktree> <lang: mo|go|elixir>   change 6's brief for the sessions resumed on Robert's Mac
 # (18 Sep 2026): e6-brief.sh word for word with the Mac's paths, the predecessor's work in progress named, and the
 # 4 GB guard stated (the out-of-memory rule). Disclosed on erosion-round.md: a resumed maintainer, not a fresh one.

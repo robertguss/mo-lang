@@ -91,12 +91,9 @@ place.
 >    change 7 with the `/queues` sentence settled and the Mo validation defect
 >    as a ticket; the seventh generation's suite smoke-run on generation six's
 >    programs and **read by the auditor before its seal**.
-> 5. **Robert's request, not yet done: move every `../mo-lang-*` worktree into
->    `~/Projects/startups/mo-lang-worktrees/<name without the prefix>`** with
->    `git worktree move` (count before and after; nothing deleted or merged:
->    they are evidence), fix the paths in `e6-suites-mac.sh`, `e6-speed-mac.sh`,
->    the skill's worktree line, one row mapping old to new. Do it when no
->    session or run is using them.
+> 5. (Done 18 Sep: every worktree now lives in
+>    `~/Projects/startups/mo-lang-worktrees/<name>`; the skill says how to
+>    read older `../mo-lang-<name>` paths.)
 > 6. Placement for what `main` starts; chapter 10's sections; the brick cache;
 >    the compile benchmark.
 >

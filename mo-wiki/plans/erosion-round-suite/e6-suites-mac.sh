@@ -1,4 +1,5 @@
 #!/bin/bash
+# (worktrees moved 18 Sep 2026 into ~/Projects/startups/mo-lang-worktrees/<name without the mo-lang- prefix>; paths below updated, never rerun from history)
 # usage: e6-suites-mac.sh <lang: go|python|elixir|mo|morun>   generation six's suites for one program, one after another, on Robert's Mac.
 # Rewritten 18 Sep 2026 after the auditor's reading (G6-3, G6-6): a failed build stops the run; every build's and suite's exit
 # status is written down (124 is a timeout); both suites' hashes are checked before anything runs; the 4 GB watchdog kills only
@@ -8,7 +9,7 @@
 L=$1; R=/Users/robertguss/Projects/startups; M=$R/mo-lang; SU=$M/mo-wiki/plans; ES=$SU/erosion-round-suite; OUT=$ES/results
 S=${SCRATCH:-/tmp/e6-scratch}; mkdir -p $S $OUT; LOG=$OUT/e${GEN:-6}${RERUN:+-rerun}-suites.out
 GEN=${GEN:-6}   # GEN=5 ONLY=defects2 reruns the third suite on a generation-five program (the correction row of 18 Sep); outputs are named e$GEN-...
-W=$R/mo-lang-erosion$GEN-$L; W5=$R/mo-lang-erosion5-$L; [ $L = morun ] && W=$R/mo-lang-erosion$GEN-mo && W5=$R/mo-lang-erosion5-mo
+W=$R/mo-lang-worktrees/erosion$GEN-$L; W5=$R/mo-lang-worktrees/erosion5-$L; [ $L = morun ] && W=$R/mo-lang-worktrees/erosion$GEN-mo && W5=$R/mo-lang-worktrees/erosion5-mo
 say() { echo "$@" | tee -a $LOG; }
 die() { say "## $L STOPPED: $*"; exit 1; }
 h6=$(shasum -a 256 $ES/defects6.py | cut -c1-16); h6b=$(shasum -a 256 $ES/defects6b.py | cut -c1-16)
@@ -20,12 +21,12 @@ build() { # name cmd...: a build whose failure stops the run
 case $L in
   go)   build e6 bash -c "cd $W/experiments/control-run/go/jobq && go build -o $S/jobq-e6-go ."
         build e5 bash -c "cd $W5/experiments/control-run/go/jobq && go build -o $S/jobq-e5-go ."
-        build r7 bash -c "cd $R/mo-lang-control7-go/experiments/control-run/go/jobq && go build -o $S/jobq-r7-go ."
-        B=$S/jobq-e6-go; CWD=$W; OLD="$S/jobq-r7-go serve {dir} --port {port}"; OLDCWD=$R/mo-lang-control7-go; B5=$S/jobq-e5-go; CWD5=$W5;;
-  python) CWD=$W/experiments/control-run/python/jobq; CWD5=$W5/experiments/control-run/python/jobq; OLDCWD=$R/mo-lang-control7-python/experiments/control-run/python/jobq
+        build r7 bash -c "cd $R/mo-lang-worktrees/control7-go/experiments/control-run/go/jobq && go build -o $S/jobq-r7-go ."
+        B=$S/jobq-e6-go; CWD=$W; OLD="$S/jobq-r7-go serve {dir} --port {port}"; OLDCWD=$R/mo-lang-worktrees/control7-go; B5=$S/jobq-e5-go; CWD5=$W5;;
+  python) CWD=$W/experiments/control-run/python/jobq; CWD5=$W5/experiments/control-run/python/jobq; OLDCWD=$R/mo-lang-worktrees/control7-python/experiments/control-run/python/jobq
         build e6 bash -c "cd $CWD && uv sync -q"; build e5 bash -c "cd $CWD5 && uv sync -q"; build r7 bash -c "cd $OLDCWD && uv sync -q"
         B="uv run jobq"; B5="uv run jobq"; OLD="uv run jobq serve {dir} --port {port}";;
-  elixir) CWD=$W/experiments/control-run/elixir/jobq; CWD5=$W5/experiments/control-run/elixir/jobq; OLDCWD=$R/mo-lang-control10-elixir/experiments/control-run/elixir/jobq
+  elixir) CWD=$W/experiments/control-run/elixir/jobq; CWD5=$W5/experiments/control-run/elixir/jobq; OLDCWD=$R/mo-lang-worktrees/control10-elixir/experiments/control-run/elixir/jobq
         cd $W && eval "$(mise env)"
         build e6 bash -c "cd $CWD && mix deps.get && mix escript.build"; build e5 bash -c "cd $W5 && eval \"\$(mise env)\" && cd $CWD5 && mix deps.get && mix escript.build"
         [ -x $OLDCWD/jobq ] || die "no round-10 escript at $OLDCWD/jobq"
@@ -33,9 +34,9 @@ case $L in
   mo|morun) MO=$W/toolchain/zig-out/bin/mo; G="python3 $M/toolchain/bench/step36/guard.py 600 --"
         build e6 bash -c "cd $S && $G $MO build --surface $W/examples/programs/jobq/main.mo -o jobq-e6"
         build e5 bash -c "cd $S && $G $W5/toolchain/zig-out/bin/mo build $W5/examples/programs/jobq/main.mo -o jobq-e5"
-        build r7 bash -c "cd $S && $G $R/mo-lang-control7-mo/toolchain/zig-out/bin/mo build $R/mo-lang-control7-mo/examples/programs/jobq/main.mo -o jobq-r7"
+        build r7 bash -c "cd $S && $G $R/mo-lang-worktrees/control7-mo/toolchain/zig-out/bin/mo build $R/mo-lang-worktrees/control7-mo/examples/programs/jobq/main.mo -o jobq-r7"
         B=$S/zig-out/mo-build/jobq-e6/jobq-e6; B5=$S/zig-out/mo-build/jobq-e5/jobq-e5; CWD=$W; CWD5=$W5
-        OLD="$S/zig-out/mo-build/jobq-r7/jobq-r7 serve {dir} --port {port}"; OLDCWD=$R/mo-lang-control7-mo
+        OLD="$S/zig-out/mo-build/jobq-r7/jobq-r7 serve {dir} --port {port}"; OLDCWD=$R/mo-lang-worktrees/control7-mo
         [ $L = morun ] && B="$MO run $W/examples/programs/jobq/main.mo --";;
 esac
 SERVE="$B serve {dir} --port {port}"; VERIFY="$B verify {dir}"; COMPACT="$B compact {dir}"; PRUNE="$B prune {dir} --older-than-ms {ms}"
