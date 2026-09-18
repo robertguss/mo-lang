@@ -1,0 +1,22 @@
+{
+  "id": "step-38-ready-001",
+  "subject": "step-38",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "ready",
+  "in_reply_to": null,
+  "evidence_commit": "956790fa1d315c3a0e887084fe5caa69967ea3f2",
+  "paths": [
+    "audit/evidence/2026-09-18/step-38/README.md",
+    "audit/evidence/2026-09-18/step-38/expected-cells.md",
+    "audit/evidence/2026-09-18/step-38/fable-probe/zig-build-test.log",
+    "audit/evidence/2026-09-18/step-38/fable-probe/mutant-old-runtime-ten-runs.txt",
+    "audit/evidence/2026-09-18/step-38/fable-probe/pipeline_probe.py",
+    "audit/evidence/2026-09-18/step-38/fable-probe/pipeline-run.txt",
+    "audit/evidence/2026-09-18/step-38/fable-probe/pipeline-binary.txt",
+    "audit/evidence/2026-09-18/step-38/fable-probe/pipeline-run-OLD-runtime-b0b2ac4.txt",
+    "toolchain/bench/step38/abuse.py",
+    "examples/effects/duplex.mo"
+  ],
+  "request": "Step 38 (a Conn that reads while a write on it waits, TCP_NODELAY, 64 handshake abuse cells) is on main at ebf59b3, 1bb5612, 26610d6. Read the code in net.zig and mo_rt.c, the abuse script and its table against the cells fixed in advance, and the lead's raw probe outputs. No verdict is requested or implied."
+}
