@@ -35,13 +35,14 @@ SPENT = "jobq is stopping: the restart budget is spent"
 
 @dataclass(frozen=True)
 class BoardOptions:
-    """The restart budget, the chaos switch, and the archive's retention, as `serve` takes
-    them."""
+    """The restart budget, the chaos switch, how long a finished job stays on the board, and
+    how old an archived job is pruned, as `serve` takes them."""
 
     max_restarts: int = DEFAULT_MAX_RESTARTS
     restart_window_s: float = DEFAULT_RESTART_WINDOW_S
     crash_every: int = 0
     retain_ms: int = DEFAULT_RETAIN_MS
+    retention_ms: int = 0  # the background prune's age; 0 never prunes
 
 
 class Board:
@@ -72,7 +73,14 @@ class Board:
     def _open(self) -> tuple[Queue, Api]:
         store, replayed = Store.open(self._directory, self._ops)
         try:
-            queue = Queue(store, self._clock, replayed, self._chaos, self._budget.retain_ms)
+            queue = Queue(
+                store,
+                self._clock,
+                replayed,
+                self._chaos,
+                self._budget.retain_ms,
+                self._budget.retention_ms,
+            )
         except BaseException:
             store.close()
             raise

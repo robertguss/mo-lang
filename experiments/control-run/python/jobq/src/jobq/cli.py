@@ -1,6 +1,6 @@
-"""The entry point: `serve`, `compact`, `verify`, `client`, and `check`. Exit 2 on a usage
-error, 1 if `<dir>` cannot be opened, holds an ill-formed record, or the port cannot be
-bound, and 70 when `serve` has spent its restart budget."""
+"""The entry point: `serve`, `compact`, `verify`, `prune`, `bench`, `client`, and `check`.
+Exit 2 on a usage error, 1 if `<dir>` cannot be opened, holds an ill-formed record, cannot be
+written, or the port cannot be bound, and 70 when `serve` has spent its restart budget."""
 
 import asyncio
 import re
@@ -11,23 +11,37 @@ from pathlib import Path
 from typing import TextIO
 
 from jobq import client
+from jobq.benchmark import BenchError, BenchOptions, bench
 from jobq.board import BoardOptions
-from jobq.jobs import DEFAULT_RETAIN_MS, MAX_RETAIN_MS, MIN_RETAIN_MS, STATES
+from jobq.clock import SystemClock
+from jobq.jobs import DEFAULT_RETAIN_MS, MAX_RETAIN_MS, MIN_PRUNE_AGE_MS, MIN_RETAIN_MS, STATES
+from jobq.queue import prune_folder
 from jobq.server import EXIT_SPENT, HOST, HttpServer, ServerThread, serve
-from jobq.store import Store, StoreOpenError, compact
+from jobq.store import Store, StoreError, StoreOpenError, compact
 
 USAGE = (
     "usage: jobq serve <dir> [--port N] [--max-restarts K] [--restart-window S] "
-    "[--crash-every N] [--retain-ms N] | jobq compact <dir> | jobq verify <dir> | "
+    "[--crash-every N] [--retain-ms N] [--retention MS] | jobq compact <dir> | "
+    "jobq verify <dir> | jobq prune <dir> --older-than-ms N | "
+    "jobq bench <dir> [--jobs N] [--workers N] [--serve-src PATH] | "
     "jobq client <host> <port> <token> <method> <path> [<json>] | jobq check <dir> <script>"
 )
 DEFAULT_PORT = 7900
 EXIT_OK, EXIT_FAILURE, EXIT_USAGE = 0, 1, 2
-SERVE_FLAGS = ("--port", "--max-restarts", "--restart-window", "--crash-every", "--retain-ms")
+SERVE_FLAGS = (
+    "--port",
+    "--max-restarts",
+    "--restart-window",
+    "--crash-every",
+    "--retain-ms",
+    "--retention",
+)
+BENCH_FLAGS = ("--jobs", "--workers", "--serve-src")
 NO_TOKEN = "-"  # noqa: S105 - the word for "send no authorization header"
 
 _DIGITS = re.compile(r"[0-9]{1,5}")
 _LONG_DIGITS = re.compile(r"[0-9]{1,10}")
+_AGE_DIGITS = re.compile(r"[0-9]{1,13}")  # up to 10^13 ms, about 317 years (chosen)
 _METHOD = re.compile(r"[A-Z]{1,16}")
 
 
@@ -53,6 +67,10 @@ def _dispatch(argv: list[str], stdout: TextIO, stderr: TextIO) -> int:
             return _compact(Path(directory), stdout, stderr)
         case ["verify", directory]:
             return _verify(Path(directory), stdout, stderr)
+        case ["prune", directory, "--older-than-ms", age]:
+            return _prune(Path(directory), parse_age("--older-than-ms", age), stdout, stderr)
+        case ["bench", directory, *flags]:
+            return _bench(Path(directory), parse_bench_flags(flags), stdout, stderr)
         case ["client", host, port, *words] if 3 <= len(words) <= 4:
             return _client(host, parse_port(port, allow_zero=False), words, stdout, stderr)
         case ["check", directory, script]:
@@ -68,18 +86,24 @@ def parse_port(text: str, allow_zero: bool) -> int:
     return port
 
 
-def parse_serve_flags(flags: Sequence[str]) -> tuple[int, BoardOptions]:
-    """`[--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N]`,
-    in any order, each at most once."""
+def parse_flags(command: str, flags: Sequence[str], known: Sequence[str]) -> dict[str, str]:
+    """`--flag value` pairs from `known`, in any order, each at most once."""
     if len(flags) % 2:
-        raise UsageError("every serve option takes a value")
+        raise UsageError(f"every {command} option takes a value")
     given: dict[str, str] = {}
     for flag, value in zip(flags[::2], flags[1::2], strict=True):
-        if flag not in SERVE_FLAGS:
-            raise UsageError(f"unknown serve option {flag!r}")
+        if flag not in known:
+            raise UsageError(f"unknown {command} option {flag!r}")
         if flag in given:
             raise UsageError(f"{flag} is given twice")
         given[flag] = value
+    return given
+
+
+def parse_serve_flags(flags: Sequence[str]) -> tuple[int, BoardOptions]:
+    """`[--port N] [--max-restarts K] [--restart-window S] [--crash-every N] [--retain-ms N]
+    [--retention MS]`, in any order, each at most once."""
+    given = parse_flags("serve", flags, SERVE_FLAGS)
     port = parse_port(given.get("--port", str(DEFAULT_PORT)), allow_zero=True)
     options = BoardOptions(
         max_restarts=parse_count("--max-restarts", given, BoardOptions.max_restarts, 0),
@@ -88,17 +112,50 @@ def parse_serve_flags(flags: Sequence[str]) -> tuple[int, BoardOptions]:
         ),
         crash_every=parse_count("--crash-every", given, BoardOptions.crash_every, 0),
         retain_ms=parse_retain_ms(given.get("--retain-ms")),
+        retention_ms=parse_retention(given.get("--retention")),
     )
     return port, options
 
 
-def parse_count(flag: str, given: dict[str, str], default: int, least: int) -> int:
-    """A whole number from `least` to 99,999, or `default` when the flag is not given."""
+def parse_age(flag: str, text: str) -> int:
+    """An age in milliseconds, from 1,000 up to 13 digits."""
+    if _AGE_DIGITS.fullmatch(text) is None or int(text) < MIN_PRUNE_AGE_MS:
+        raise UsageError(
+            f"{flag} must be a whole number of milliseconds of at least {MIN_PRUNE_AGE_MS}, "
+            f"got {text!r}"
+        )
+    return int(text)
+
+
+def parse_retention(text: str | None) -> int:
+    """`--retention`: 0 (never prune, the default) or an age as `parse_age` takes it."""
+    if text is None or text == "0":
+        return 0
+    return parse_age("--retention", text)
+
+
+def parse_bench_flags(flags: Sequence[str]) -> BenchOptions:
+    """`[--jobs N] [--workers N] [--serve-src PATH]`: at least 8 jobs (one per producer) and
+    1 worker."""
+    given = parse_flags("bench", flags, BENCH_FLAGS)
+    source = given.get("--serve-src")
+    return BenchOptions(
+        jobs=parse_count("--jobs", given, BenchOptions.jobs, 8, 10_000_000),
+        workers=parse_count("--workers", given, BenchOptions.workers, 1),
+        serve_src=None if source is None else Path(source),
+    )
+
+
+def parse_count(
+    flag: str, given: dict[str, str], default: int, least: int, top: int = 99_999
+) -> int:
+    """A whole number from `least` to `top`, or `default` when the flag is not given."""
     text = given.get(flag)
     if text is None:
         return default
-    if _DIGITS.fullmatch(text) is None or int(text) < least:
-        raise UsageError(f"{flag} must be a whole number from {least} to 99999, got {text!r}")
+    digits = text.isascii() and text.isdigit() and len(text) <= len(str(top))
+    if not digits or not least <= int(text) <= top:
+        raise UsageError(f"{flag} must be a whole number from {least} to {top}, got {text!r}")
     return int(text)
 
 
@@ -183,6 +240,29 @@ def _verify(directory: Path, stdout: TextIO, stderr: TextIO) -> int:
         f"archived {len(replayed.archived)}",
         file=stdout,
     )
+    return EXIT_OK
+
+
+def _prune(directory: Path, older_than_ms: int, stdout: TextIO, stderr: TextIO) -> int:
+    """The prune on a folder no service holds; the two counts on one line."""
+    try:
+        pruned, remaining = prune_folder(directory, older_than_ms, SystemClock())
+    except (StoreOpenError, StoreError) as failed:
+        print(f"jobq: {failed}", file=stderr)
+        return EXIT_FAILURE
+    print(f"jobq: pruned {directory}: pruned {pruned}, remaining {remaining}", file=stdout)
+    return EXIT_OK
+
+
+def _bench(directory: Path, options: BenchOptions, stdout: TextIO, stderr: TextIO) -> int:
+    if not directory.is_dir():
+        print(f"jobq: {directory}: no such directory", file=stderr)
+        return EXIT_FAILURE
+    try:
+        bench(directory, options, stdout)
+    except (BenchError, OSError) as failed:
+        print(f"jobq: bench failed: {failed}", file=stderr)
+        return EXIT_FAILURE
     return EXIT_OK
 
 

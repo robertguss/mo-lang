@@ -11,12 +11,17 @@ that holds each (queue, key), until that job is deleted.
 
 A lease may be handed to another worker (`handoff`, the one leased -> leased change: the
 worker changes, the deadline and the tries do not). A queue may be renamed with jobs in
-flight (`rename_step` over the board and the key map, written as one rename record).
+flight (`rename_step` over the board and the key map, written as one rename record that
+names `next_id`, so a job created into the old name afterwards is in a fresh queue).
+
+The archive is pruned (`prune_step` over the archive and the key map, written as one prune
+record): on demand, and every `PRUNE_EVERY_MS` at the idle look when a retention is set.
 """
 
 import heapq
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Concatenate
 
 from jobq.clock import Clock
@@ -40,6 +45,7 @@ from jobq.jobs import (
     MAX_RETAIN_MS,
     MAX_TRIES,
     MIN_LEASE_MS,
+    MIN_PRUNE_AGE_MS,
     MIN_RETAIN_MS,
     MIN_TRIES,
     STATES,
@@ -57,6 +63,7 @@ from jobq.store import (
     ArchivedRecord,
     ArchivePutRecord,
     DeleteRecord,
+    PruneRecord,
     PutRecord,
     RenameRecord,
     Replayed,
@@ -67,6 +74,8 @@ from jobq.store import (
 )
 
 type Edge = tuple[JobState | None, JobState | None]
+
+PRUNE_EVERY_MS = 60_000  # the background prune's period, as the idle look reads the clock
 
 _LEGAL: frozenset[Edge] = frozenset(
     {
@@ -115,7 +124,7 @@ def operation[**P, R](
         try:
             result = method(queue, *args, **kwargs)
             queue.check_invariants()
-        except (StoreError, ContractError, BoardFailure):
+        except StoreError, ContractError, BoardFailure:
             raise
         except Exception as unexpected:
             raise BoardFailure(f"{method.__name__}: {unexpected!r}") from unexpected
@@ -197,16 +206,78 @@ def rename_step(
     return after
 
 
+@dataclass(frozen=True)
+class Pruned:
+    """A prune's result: the archive and the key map after it, and the jobs it removed."""
+
+    archived: dict[int, Job]
+    keys: dict[tuple[str, str], int]
+    removed: list[Job]
+
+
+def prune_step(
+    jobs: dict[int, Job],
+    archived: dict[int, Job],
+    keys: dict[tuple[str, str], int],
+    now: int,
+    older_than_ms: int,
+) -> Pruned:
+    """The prune over the archive and the key map, apart from any file: every archived job
+    whose `archived_ms` is at least `older_than_ms` before `now` is gone, and its key is free.
+
+    requires: the age is at least 1,000 ms.
+    ensures: nothing live is touched; every removed job is at or before the cutoff and every
+    kept one after it; the removed jobs' keys are free and every other key is as it was.
+    """
+    require(older_than_ms >= MIN_PRUNE_AGE_MS, "older_than_ms is at least 1,000")
+    cutoff = now - older_than_ms
+    removed = [
+        job
+        for job in archived.values()
+        if job.archived_ms is not None and job.archived_ms <= cutoff
+    ]
+    gone = {job.number for job in removed}
+    after = Pruned(
+        archived={n: job for n, job in archived.items() if n not in gone},
+        keys={pair: n for pair, n in keys.items() if n not in gone},
+        removed=removed,
+    )
+    never(not gone & jobs.keys(), "a prune never removes a live job")
+    never(
+        all(
+            job.archived_ms is not None and job.archived_ms > cutoff
+            for job in after.archived.values()
+        ),
+        "a prune never removes an archived job younger than its age",
+    )
+    ensure(all(n in archived for n in gone), "every removed job was archived")
+    ensure(len(after.archived) + len(removed) == len(archived), "the rest of the archive stays")
+    ensure(
+        all((job.queue, job.key) not in after.keys for job in removed if job.key is not None),
+        "the removed jobs' keys are free",
+    )
+    ensure(
+        all(keys[pair] == n for pair, n in after.keys.items())
+        and all(n in gone for pair, n in keys.items() if pair not in after.keys),
+        "every other key is as it was",
+    )
+    return after
+
+
 class Queue:
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917 - the store, the clock, the replay, three options
         self,
         store: Store,
         clock: Clock,
         replayed: Replayed,
         chaos: Chaos | None = None,
         retain_ms: int = DEFAULT_RETAIN_MS,
+        retention_ms: int = 0,
     ) -> None:
         require(MIN_RETAIN_MS <= retain_ms <= MAX_RETAIN_MS, "retain_ms is 1,000 to 2,678,400,000")
+        require(retention_ms == 0 or retention_ms >= MIN_PRUNE_AGE_MS, "retention is 0 or 1,000+")
+        self._retention_ms = retention_ms
+        self._next_prune_ms = clock.now_ms()  # the first idle look prunes, then every minute
         self._store = store
         self._clock = clock
         self._chaos = chaos or Chaos()
@@ -216,6 +287,7 @@ class Queue:
         self._keys: dict[tuple[str, str], int] = key_map(replayed)
         self._next_number = replayed.next_number
         self._renames = replayed.renames
+        self._prunes = replayed.prunes
         self._counts: dict[JobState, int] = dict.fromkeys(STATES, 0)
         self._queued: dict[str, list[int]] = {}
         self._leases: list[tuple[int, int]] = []
@@ -282,6 +354,14 @@ class Queue:
     def archived_count(self) -> int:
         """How many jobs the archive holds; read after a look."""
         return len(self._archived)
+
+    @operation
+    def archive_info(self) -> tuple[int, int | None, int]:
+        """How many jobs the archive holds, the oldest `archived_ms` among them (None when it
+        is empty), and the archive file's size in bytes."""
+        self._look()
+        oldest = min((j.archived_ms or 0 for j in self._archived.values()), default=None)
+        return len(self._archived), oldest, self._store.archive_size
 
     @operation
     def queue_counts(self) -> dict[str, dict[JobState, int]]:
@@ -434,7 +514,7 @@ class Queue:
         if to == name or to in held:
             return Conflict("exists")
         after = rename_step(self._jobs, self._archived, self._keys, name, to)
-        self._store.append(RenameRecord(name=name, to=to))
+        self._store.append(RenameRecord(name=name, to=to, next_id=self._next_number))
         if self._chaos.fails(1):
             raise ChaosFailure(f"--crash-every {self._chaos.every} at a rename")
         leases = {n: (j.worker, j.lease_until_ms) for n, j in self._jobs.items()}
@@ -446,6 +526,9 @@ class Queue:
         heapq.heapify(waiting)
         self._queued[to] = waiting
         self._touched.extend(moved)
+        never(
+            all(n < self._next_number for n in moved), "a rename never moves a job created after it"
+        )
         never(
             all((j.worker, j.lease_until_ms) == leases[n] for n, j in self._jobs.items()),
             "a rename never touches a lease",
@@ -499,10 +582,42 @@ class Queue:
         return job
 
     @operation
+    def prune(self, older_than_ms: int) -> tuple[int, int]:
+        """Every archived job at least `older_than_ms` old removed, its key freed, in one
+        durable prune record; (how many were removed, how many archived jobs remain). A prune
+        that removes nothing writes nothing."""
+        require(older_than_ms >= MIN_PRUNE_AGE_MS, "older_than_ms is at least 1,000")
+        now = self._look()
+        after = prune_step(self._jobs, self._archived, self._keys, now, older_than_ms)
+        if after.removed:
+            # The jobs' `archived` marks go first in the same write, so no live record of a
+            # pruned job is left unmarked before its prune.
+            marks = [ArchivedRecord(number=n) for n in self._unmarked]
+            record = PruneRecord(cutoff_ms=now - older_than_ms, count=len(after.removed))
+            self._store.append_all([*marks, record])
+            self._unmarked.clear()
+            if self._chaos.fails(1):
+                raise ChaosFailure(f"--crash-every {self._chaos.every} at a prune")
+            self._archived, self._keys = after.archived, after.keys
+            self._prunes += 1
+            self._touched.extend(job.number for job in after.removed)
+        never(
+            all(job.number not in self._archived for job in after.removed),
+            "a pruned job never comes back",
+        )
+        return len(after.removed), len(self._archived)
+
+    @operation
     def expire_due(self) -> int:
         """The listener's idle look: return every lease that ran out and queue every scheduled
-        job that is due. How many jobs moved."""
-        return self._expire(self._clock.now_ms())
+        job that is due, and prune the archive when a retention is set and a minute has
+        passed since the last background prune. How many jobs moved or were pruned."""
+        now = self._clock.now_ms()
+        moved = self._expire(now)
+        if self._retention_ms and now >= self._next_prune_ms:
+            self._next_prune_ms = now + PRUNE_EVERY_MS
+            moved += self.prune(self._retention_ms)[0]
+        return moved
 
     # The one place a job changes.
 
@@ -562,7 +677,10 @@ class Queue:
         if moved:
             try:
                 self._store.append_archive(
-                    [ArchivePutRecord(job=job, renames=self._renames) for job in moved]
+                    [
+                        ArchivePutRecord(job=job, renames=self._renames, prunes=self._prunes)
+                        for job in moved
+                    ]
                 )
             except StoreError:
                 for entry in popped:
@@ -684,6 +802,22 @@ class Queue:
 
     def archived_snapshot(self) -> dict[int, Job]:
         return dict(self._archived)
+
+
+def prune_folder(directory: Path, older_than_ms: int, clock: Clock) -> tuple[int, int]:
+    """`jobq prune`: the prune on a folder no service holds, the same rule and the same
+    record, and nothing else changed (no lease returned, no job archived); (removed, left).
+    StoreOpenError when the folder cannot be opened, StoreError when the record cannot be
+    written."""
+    store, replayed = Store.open(directory)
+    try:
+        now = clock.now_ms()
+        after = prune_step(replayed.jobs, replayed.archived, key_map(replayed), now, older_than_ms)
+        if after.removed:
+            store.append(PruneRecord(cutoff_ms=now - older_than_ms, count=len(after.removed)))
+    finally:
+        store.close()
+    return len(after.removed), len(after.archived)
 
 
 def check_job(number: int, job: Job) -> None:

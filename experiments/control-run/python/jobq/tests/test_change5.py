@@ -388,7 +388,7 @@ class RenameTest(ArchiveCase):
         self.rename("emails", "mail")
         self.assertEqual(
             lines(self.dir / LOG_NAME),
-            [*before, {"kind": "rename", "name": "emails", "to": "mail"}],
+            [*before, {"kind": "rename", "name": "emails", "to": "mail", "next_id": 8}],
         )
         self.assertEqual((self.dir / ARCHIVE_NAME).read_bytes(), archive)
         self.assertEqual(replay(self.dir).jobs, self.queue.snapshot())

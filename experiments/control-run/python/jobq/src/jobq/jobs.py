@@ -19,6 +19,7 @@ MAX_DELAY_MS = 86_400_000
 MAX_BACKOFF_MS = 3_600_000
 LIST_LIMIT = 100
 MIN_RETAIN_MS, MAX_RETAIN_MS, DEFAULT_RETAIN_MS = 1_000, 2_678_400_000, 86_400_000
+MIN_PRUNE_AGE_MS = 1_000  # the least `older_than_ms` and `--retention` a prune takes
 
 _QUEUE_NAME = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _JOB_ID = re.compile(r"j_[1-9][0-9]{0,17}")
@@ -161,6 +162,35 @@ class RenameOut(BaseModel):
 
     queue: str
     moved: int = Field(ge=1)
+
+
+class PruneRequest(BaseModel):
+    """The body of `POST /archive/prune`: the age, at least a second, past which an archived
+    job is removed."""
+
+    model_config = _STRICT
+
+    older_than_ms: int = Field(ge=MIN_PRUNE_AGE_MS)
+
+
+class PruneOut(BaseModel):
+    """The answer to a prune: how many archived jobs it removed, and how many are left."""
+
+    model_config = _STRICT
+
+    pruned: int = Field(ge=0)
+    remaining: int = Field(ge=0)
+
+
+class ArchiveOut(BaseModel):
+    """`GET /archive`: the archived jobs, the oldest one's `archived_at` (null when there are
+    none), and the archive file's size in bytes."""
+
+    model_config = _STRICT
+
+    archived: int = Field(ge=0)
+    oldest_archived_at: str | None
+    bytes: int = Field(ge=0)
 
 
 class ListQuery(BaseModel):

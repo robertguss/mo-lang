@@ -8,9 +8,10 @@ from urllib.parse import parse_qsl
 
 from pydantic import BaseModel, ValidationError
 
-from jobq.clock import Clock
+from jobq.clock import Clock, iso_utc
 from jobq.contract import BoardFailure, ContractError
 from jobq.jobs import (
+    ArchiveOut,
     CreateJob,
     ErrorBody,
     FailRequest,
@@ -21,6 +22,8 @@ from jobq.jobs import (
     JobOut,
     LeaseRequest,
     ListQuery,
+    PruneOut,
+    PruneRequest,
     QueueCounts,
     QueueList,
     RenameOut,
@@ -90,7 +93,7 @@ class Api:
         """
         try:
             return self._answer(request)
-        except (ContractError, BoardFailure):
+        except ContractError, BoardFailure:
             raise
         except StoreError as failure:
             return error(503, f"store unavailable: {failure}")
@@ -109,7 +112,7 @@ class Api:
             return error(401, "missing bearer token")
         return handler(request, param)
 
-    def _match(self, path: str) -> tuple[dict[str, Handler] | None, str]:
+    def _match(self, path: str) -> tuple[dict[str, Handler] | None, str]:  # noqa: PLR0912 - a case per route
         match path.split("/"):
             case ["", "health"]:
                 return {"GET": self._health}, ""
@@ -127,6 +130,10 @@ class Api:
                 return {"POST": self._retry}, job_id
             case ["", "queues"]:
                 return {"GET": self._queues}, ""
+            case ["", "archive"]:
+                return {"GET": self._archive}, ""
+            case ["", "archive", "prune"]:
+                return {"POST": self._prune}, ""
             case ["", "queues", queue, "lease"]:
                 return {"POST": self._lease}, queue
             case ["", "queues", queue, "rename"]:
@@ -163,6 +170,20 @@ class Api:
             for name, counts in self._queue.queue_counts().items()
         ]
         return _json(200, QueueList(queues=queues))
+
+    def _archive(self, _request: Request, _param: str) -> Response:
+        archived, oldest, size = self._queue.archive_info()
+        shown = None if oldest is None else iso_utc(oldest)
+        info = ArchiveOut(archived=archived, oldest_archived_at=shown, bytes=size)
+        return Response(200, info.model_dump_json().encode())  # a null oldest is shown
+
+    def _prune(self, request: Request, _param: str) -> Response:
+        try:
+            body = PruneRequest.model_validate_json(request.body)
+        except ValidationError as invalid:
+            return error(400, _problem(invalid))
+        pruned, remaining = self._queue.prune(body.older_than_ms)
+        return _json(200, PruneOut(pruned=pruned, remaining=remaining))
 
     def _create(self, request: Request, _param: str) -> Response:
         try:

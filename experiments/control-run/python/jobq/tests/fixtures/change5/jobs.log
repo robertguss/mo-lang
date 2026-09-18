@@ -1,0 +1,9 @@
+{"kind":"counter","next_number":6}
+{"kind":"put","job":{"number":3,"queue":"old-a","state":"queued","payload":"p","tries":0,"max_tries":2,"backoff_ms":0,"created_ms":1789721625658,"updated_ms":1789721625658,"run_at_ms":null,"worker":null,"lease_until_ms":null,"reason":null,"key":"k3","archived_ms":null}}
+{"kind":"put","job":{"number":4,"queue":"old-b","state":"queued","payload":"p","tries":0,"max_tries":2,"backoff_ms":0,"created_ms":1789721625661,"updated_ms":1789721625661,"run_at_ms":null,"worker":null,"lease_until_ms":null,"reason":null,"key":"k1","archived_ms":null}}
+{"kind":"put","job":{"number":5,"queue":"old-b","state":"queued","payload":"p","tries":0,"max_tries":2,"backoff_ms":0,"created_ms":1789721625663,"updated_ms":1789721625663,"run_at_ms":null,"worker":null,"lease_until_ms":null,"reason":null,"key":null,"archived_ms":null}}
+{"kind":"rename","name":"old-a","to":"old-c"}
+{"kind":"put","job":{"number":6,"queue":"old-a","state":"queued","payload":"p","tries":0,"max_tries":2,"backoff_ms":0,"created_ms":1789721627000,"updated_ms":1789721627000,"run_at_ms":null,"worker":null,"lease_until_ms":null,"reason":null,"key":"k1","archived_ms":null}}
+{"kind":"put","job":{"number":3,"queue":"old-c","state":"leased","payload":"p","tries":1,"max_tries":2,"backoff_ms":0,"created_ms":1789721625658,"updated_ms":1789721627004,"run_at_ms":null,"worker":"w","lease_until_ms":1789721687004,"reason":null,"key":"k3","archived_ms":null}}
+{"kind":"put","job":{"number":3,"queue":"old-c","state":"done","payload":"p","tries":1,"max_tries":2,"backoff_ms":0,"created_ms":1789721625658,"updated_ms":1789721627007,"run_at_ms":null,"worker":null,"lease_until_ms":null,"reason":null,"key":"k3","archived_ms":null}}
+{"kind":"archived","number":3}

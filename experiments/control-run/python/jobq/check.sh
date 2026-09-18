@@ -11,6 +11,7 @@
 # know the archived job and its key.
 # Change 5: a check of handoffs and renames, a verify, a compaction, and a second check that
 # finds the handed-off lease and the renamed queue as they were.
+# Change 6: the prune, rename, and reopen sequence of checks/sequence.py, twice.
 set -euo pipefail
 cd "$(dirname "$0")"
 work=$(mktemp -d)
@@ -38,7 +39,7 @@ play_chaos() {
     --max-restarts 1 --restart-window 60 2> "$chaos/serve.err" &
   local pid=$! line="" port="" token method path body
   for _ in $(seq 100); do
-    line=$(head -n 1 "$chaos/serve.err")
+    line=$(head -n 1 "$chaos/serve.err" 2> /dev/null || true)  # the file may not exist yet
     [ -n "$line" ] && break
     sleep 0.1
   done
@@ -66,7 +67,7 @@ play_archive() {
     2> "$arch/serve.err" &
   local pid=$!
   for _ in $(seq 100); do
-    line=$(head -n 1 "$arch/serve.err")
+    line=$(head -n 1 "$arch/serve.err" 2> /dev/null || true)  # the file may not exist yet
     [ -n "$line" ] && break
     sleep 0.1
   done
@@ -78,7 +79,11 @@ play_archive() {
     timeout 60 uv run --quiet jobq client 127.0.0.1 "$port" "$token" "$method" "$path" \
       ${body:+"$body"}
   done < "$script"
-  kill -TERM "$pid"
+  # SIGTERM to the service itself, the leaf under timeout and uv: a signal to the wrapper
+  # races its forwarding and can end it with 143 before the service's own 0.
+  local leaf=$pid next
+  while next=$(pgrep -P "$leaf" | head -n 1) && [ -n "$next" ]; do leaf=$next; done
+  kill -TERM "$leaf"
   local code=0
   wait "$pid" || code=$?
   echo "serve exited $code"
@@ -128,6 +133,19 @@ if grep -q attempts "$old/jobs.log"; then
   echo "check.sh: the compacted round 7 log still holds an old name"
   exit 1
 fi
+
+# Change 6: the sequence (checks/sequence.py, every expected answer in it) on a fresh folder
+# and on a copy of the folder the change-5 program wrote, then a prune from the command line.
+seq_fresh=$(mktemp -d)
+seq_old=$(mktemp -d)
+trap 'rm -rf "$work" "$old" "$bad" "$chaos" "$arch" "$moved" "$actual" "$seq_fresh" "$seq_old"' EXIT
+cp tests/fixtures/change5/jobs.log tests/fixtures/change5/jobq.archive "$seq_old/"
+timeout 300 uv run --quiet python checks/sequence.py "$seq_fresh" > /dev/null
+timeout 300 uv run --quiet python checks/sequence.py "$seq_old" > /dev/null
+pruned=$(timeout 60 uv run --quiet jobq prune "$seq_old" --older-than-ms 1000)
+[ "$pruned" = "jobq: pruned $seq_old: pruned 1, remaining 0" ] ||
+  { echo "check.sh: jobq prune said: $pruned"; exit 1; }
+timeout 60 uv run --quiet jobq verify "$seq_old" > /dev/null
 
 set +e
 timeout 60 uv run --quiet jobq serve "$work/missing" --port 0 2> /dev/null
