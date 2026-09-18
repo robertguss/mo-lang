@@ -1,0 +1,57 @@
+{
+  "scratch": "/tmp/mo-harness-current-ly21ih3g",
+  "scope": "MOCK harness control flow, not real Mo/TLS behavior",
+  "seal": {
+    "actual16": "d4dab05cc331b7fa",
+    "expected_literal": "d4dab05cc331b7fa",
+    "matches": true
+  },
+  "runners": [
+    {
+      "file": "e6-suites.sh",
+      "injected_exit": 1,
+      "wrapper_exit": 0,
+      "stdout": "SUITE_FUNCTION_RC=0\ndone\n"
+    },
+    {
+      "file": "e6-suites.sh",
+      "injected_exit": 124,
+      "wrapper_exit": 0,
+      "stdout": "SUITE_FUNCTION_RC=0\ndone\n"
+    },
+    {
+      "file": "e6-suites-mac.sh",
+      "injected_exit": 1,
+      "wrapper_exit": 0,
+      "stdout": "## mock injected 19:31:19 load mock\nexit=1\nNO SUMMARY LINE: the suite did not reach its end\nSUITE_FUNCTION_RC=0\ndone\n"
+    },
+    {
+      "file": "e6-suites-mac.sh",
+      "injected_exit": 124,
+      "wrapper_exit": 0,
+      "stdout": "## mock injected 19:31:19 load mock\nexit=124 (TIMED OUT: incomplete, not a result)\nNO SUMMARY LINE: the suite did not reach its end\nSUITE_FUNCTION_RC=0\ndone\n"
+    }
+  ],
+  "abuse_injection": {
+    "injected": "every client_cell throws OSError; mocked expected Mo logs and healthy probes",
+    "cells": 20,
+    "passes": 20,
+    "first_row": [
+      "run",
+      "server",
+      "hello",
+      "alert",
+      "(OSError)",
+      "accept=Handshake",
+      "accept=Handshake",
+      "yes",
+      "pass"
+    ]
+  },
+  "invalid_runtime_mock_exit": 0,
+  "empty_selection_real": {
+    "exit": 0,
+    "stdout": "\n0 passed, 0 defects\n0 harness preconditions failed\n",
+    "stderr": ""
+  }
+}
