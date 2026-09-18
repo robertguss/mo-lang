@@ -1,0 +1,26 @@
+FAIL prune: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prune6-vazzts4r/dir --port 55194 --retain-ms 500
+FAIL retention: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/retention6-p8g4t8_l/dir --port 55198 --retain-ms 500 --retention 1500
+FAIL prunerecord: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunerecord6-e3v0l924/dir --port 55203 --retain-ms 500
+FAIL prunekill: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunekill6-lgtffbdd/dir --port 55207 --retain-ms 300
+FAIL renamerule: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerule6-moowxb3n/dir --port 55211 --retain-ms 500
+FAIL sequence: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/sequence6-v0yof861/dir --port 55215 --retain-ms 500
+FAIL bench: `jobq bench` exits 0 within four minutes on 300 jobs: (1, "creates: 296 in 0.0s = 9699/s\npairs, 1 workers: 296 in 0.1s = 2296/s\npairs, 4 workers: 0 in 0.0s = 0/s\njobq: bench failed: [Errno 2] No such file or directory: '/proc/97626/status'")
+ok   bench: it prints numbers for creates a second and pairs a second (at least four numbers)
+FAIL bench: its lines name creates, pairs, restart, and memory: creates: 296 in 0.0s = 9699/s
+pairs, 1 workers: 296 in 0.1s = 2296/s
+pairs, 4 workers: 0 in 0.0s = 0/s
+jobq: bench failed: [Errno 2] No such file or directory: '/proc/97626/status'
+ok   bench: no jobq process is left after it
+
+2 passed, 8 defects
+  - prune: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prune6-vazzts4r/dir --port 55194 --retain-ms 500
+  - retention: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/retention6-p8g4t8_l/dir --port 55198 --retain-ms 500 --retention 1500
+  - prunerecord: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunerecord6-e3v0l924/dir --port 55203 --retain-ms 500
+  - prunekill: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunekill6-lgtffbdd/dir --port 55207 --retain-ms 300
+  - renamerule: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerule6-moowxb3n/dir --port 55211 --retain-ms 500
+  - sequence: ran to the end: RuntimeError: server exited 2 before answering: uv run jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/sequence6-v0yof861/dir --port 55215 --retain-ms 500
+  - bench: `jobq bench` exits 0 within four minutes on 300 jobs: (1, "creates: 296 in 0.0s = 9699/s\npairs, 1 workers: 296 in 0.1s = 2296/s\npairs, 4 workers: 0 in 0.0s = 0/s\njobq: bench failed: [Errno 2] No such file or directory: '/proc/97626/status'")
+  - bench: its lines name creates, pairs, restart, and memory: creates: 296 in 0.0s = 9699/s
+pairs, 1 workers: 296 in 0.1s = 2296/s
+pairs, 4 workers: 0 in 0.0s = 0/s
+jobq: bench failed: [Errno 2] No such file or directory: '/proc/97626/status'

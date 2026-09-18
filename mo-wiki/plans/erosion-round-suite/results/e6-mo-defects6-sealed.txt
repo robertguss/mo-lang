@@ -1,0 +1,18 @@
+FAIL prune: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prune6-l03sznno/dir --port 49985 --retain-ms 500
+FAIL retention: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/retention6-q_varpyn/dir --port 49987 --retain-ms 500 --retention 1500
+FAIL prunerecord: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunerecord6-pwdph1h9/dir --port 49989 --retain-ms 500
+FAIL prunekill: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunekill6-8b1qfl_c/dir --port 49991 --retain-ms 300
+FAIL renamerule: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerule6-z3xvig51/dir --port 49993 --retain-ms 500
+FAIL sequence: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/sequence6-wpxrep4f/dir --port 49996 --retain-ms 500
+ok   bench: `jobq bench` exits 0 within four minutes on 300 jobs
+ok   bench: it prints numbers for creates a second and pairs a second (at least four numbers)
+ok   bench: its lines name creates, pairs, restart, and memory
+ok   bench: no jobq process is left after it
+
+4 passed, 6 defects
+  - prune: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prune6-l03sznno/dir --port 49985 --retain-ms 500
+  - retention: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/retention6-q_varpyn/dir --port 49987 --retain-ms 500 --retention 1500
+  - prunerecord: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunerecord6-pwdph1h9/dir --port 49989 --retain-ms 500
+  - prunekill: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/prunekill6-8b1qfl_c/dir --port 49991 --retain-ms 300
+  - renamerule: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/renamerule6-z3xvig51/dir --port 49993 --retain-ms 500
+  - sequence: ran to the end: RuntimeError: server exited 2 before answering: /tmp/e6-scratch/zig-out/mo-build/jobq-e6/jobq-e6 serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/sequence6-wpxrep4f/dir --port 49996 --retain-ms 500

@@ -1,0 +1,400 @@
+      193 +        mustCreateKeyed := jobLine("j_1", "a", "done", `,"key":"k"`)
+      194 +        if _, err := replay(strings.NewReader(lineFor(mustCreateKeyed)),
+          +q.applyRecord); err != nil {
+      195 +                t.Fatal(err)
+      196 +        }
+      197 +        rec, err := decodeLine([]byte(strings.TrimSuffix(lineFor(jobLine(
+          +"j_1", "a", "done", `,"key":"other","archived_at":"2026-09-14T00:00:02.00
+          +0Z"`)), "\n")))
+      198 +        if err != nil {
+      199 +                t.Fatal(err)
+      200 +        }
+      201 +        if err := q.applyArchived(rec, 0); err == nil || !strings.Contain
+          +s(err.Error(), "a job's key changes") {
+      202 +                t.Errorf("applyArchived = %v", err)
+      203 +        }
+      204 +}
+      205 +
+      206  // checkApart's first never cannot be reached from a folder: the archive
+           is
+      207  // read first, and the log's put of an archived job is stale. It is reach
+           ed
+      208  // here on a queue built by hand.
+  ⎿  Updated experiments/control-run/go/jobq/serve.go (+1 -1)
+      40          if err == nil {
+      41                  err = q.checkApart()
+      42                  if err != nil {
+      43 -                        err = errors.Join(err, s.Close(), q.closeArchive()
+         -)
+      43 +                        err = errors.Join(fmt.Errorf("%s: %w", dir, err),
+         +s.Close(), q.closeArchive())
+      44                  }
+      45          } else if q.archive != nil {
+      46                  _ = q.archive.Close()
+
+⏺ All the declared-error tests pass. Next I'll tidy that test file, write the error
+  declaration into store.go, and run the full suite and staticcheck.
+
+⏺ Bash(cd /Users/robertguss/Projects/startups/mo-lang-erosion6-go/experiments/control-run/g
+      o/jobq; python3 - <<'E'
+      p='errors_test.go'; s=open(p).read()…)
+  ⎿  sc=0
+     ok         controlrun/contract     0.191s
+     ok         controlrun/jobq 28.114s
+     ok         controlrun/logstat      0.294s
+  ⎿  Updated experiments/control-run/go/jobq/errors_test.go (+7 -13)
+      23          archived := func(id, queue, key string) string {
+      24                  return jobLine(id, queue, "done", `,"key":"`+key+`","archi
+          ved_at":"2026-09-14T00:00:02.000Z"`)
+      25          }
+      26 -        raw := func(lines ...string) string { return strings.Join(lines, "
+         -") }
+      26          for _, c := range []struct {
+      27                  name         string
+      29 -                log, archive string // record bodies, one per line, each g
+         -iven its checksum; raw when rawLog
+      30 -                rawLog       string
+      28 +                log, archive string // record bodies, one per line, each g
+         +iven its checksum
+      29 +                rawLog       string // the log's bytes as they are
+      30                  want         string
+      31          }{
+      32                  {name: "not a record line", rawLog: "garbage here\n", want
+          : "record 1: not a record line"},
+     ...
+      36                  {name: "a field no record has", log: `{"op":"meta","next_i
+          d":2,"extra":1}`, want: `unknown field "extra"`},
+      37                  {name: "an unknown op", log: `{"op":"mystery"}`, want: `un
+          known op "mystery"`},
+      38                  {name: "a put without a job", log: `{"op":"put"}`, want: "
+          put without a job"},
+      40 -                {name: "a bad record (ill-formed job)", log: raw(job("j_1"
+         -, "a", "k", "leased")), want: "record j_1: a leased job has a worker"},
+      39 +                {name: "a bad record (ill-formed job)", log: job("j_1", "a
+         +", "k", "leased"), want: "record j_1: a leased job has a worker"},
+      40                  {name: "a del of an unknown job", log: `{"op":"del","id":"
+          j_9"}`, want: `del of unknown job "j_9"`},
+      41                  {name: "an arch of a job not archived", log: `{"op":"arch"
+          ,"id":"j_9"}`, want: `arch of a job not in the archive "j_9"`},
+      42                  {name: "a rename record with a bad name", log: `{"op":"ren
+          ame","from":"a b","to":"c","next_id":2}`, want: `a rename's from and to ar
+          e 1 to 64 bytes`},
+      43                  {name: "a prune record with a bad cutoff", archive: archiv
+          ed("j_1", "a", "k"),
+      44                          log: `{"op":"prune","cutoff":"soon","count":1,"arc
+          hive_size":10}`, want: "a prune's cutoff is a time"},
+      46 -                {name: "a key clash", log: raw(job("j_1", "a", "k", "queue
+         -d")) + "\n" + job("j_2", "a", "k", "queued"),
+      45 +                {name: "a key clash", log: job("j_1", "a", "k", "queued")
+         ++ "\n" + job("j_2", "a", "k", "queued"),
+      46                          want: "a key names two jobs in one queue at once"}
+          ,
+      47                  {name: "a job's key changes", log: job("j_1", "a", "k", "q
+          ueued") + "\n" + job("j_1", "a", "other", "queued"),
+      48                          want: "a job's key changes"},
+     ...
+      57                          if bodies == "" {
+      58                                  return
+      59                          }
+      61 -                        var lines []string
+      62 -                        for _, b := range strings.Split(bodies, "\n") {
+      63 -                                lines = append(lines, b)
+      64 -                        }
+      65 -                        writeLines(t, filepath.Join(dir, name), lines...)
+      60 +                        writeLines(t, filepath.Join(dir, name), strings.Sp
+         +lit(bodies, "\n")...)
+      61                  }
+      62                  write(logName, c.log)
+      63                  write(archiveName, c.archive)
+     … 17 more lines
+  ⎿  Updated experiments/control-run/go/jobq/store.go (+19 -0)
+      35  // A log written before the tries rename still replays: decodeLine reads a
+      36  // job's old names (see storedJob), and every record written since, compac
+          t's
+      37  // included, has only the new ones.
+      38 +//
+      39 +// Persistence is named twice: a record is on the disk when its file is
+      40 +// synced (Append), and a file is when its directory is synced after the
+      41 +// file is made (openLog, lazyFile) or renamed into place (Compact,
+      42 +// finishCompaction). A response is written only after both.
+      43 +//
+      44 +// The errors the store declares, each reached by a test named in
+      45 +// REPORT-change-6.md (errors_test.go holds most):
+      46 +//   - at open: a missing folder, a file where the folder should be, a fol
+         +der
+      47 +//     in use by another jobq, a line that is not a record, a bad checksum
+      48 +//     field, a checksum mismatch, a record longer than maxRecordBytes, a
+      49 +//     field no record has, an unknown op, a put without a job, an ill-for
+         +med
+      50 +//     job (verify.go), a del or arch of a job the replay does not hold, a
+         + job
+      51 +//     archived twice, an unknown archive op, a rename record with a bad n
+         +ame,
+      52 +//     a prune record with a bad cutoff, count, or archive_size, a prune w
+         +hose
+      53 +//     count the replay does not find, a key clash, and a job whose key
+      54 +//     changes;
+      55 +//   - on a write (ErrStore, answered 503): a write that fails, a full dis
+         +k
+      56 +//     (ENOSPC), a sync that fails, and a cut of a torn tail that fails.
+      57
+      58  const (
+      59          logName        = "jobq.log"
+  ⎿  (timeout 10m)
+
+
+
+
+  Ran 1 shell command
+
+⏺ All tests pass, including the race detector and check scripts. Now I'll run the final
+  budget benchmarks, alternating between change 3 and change 6 to keep results comparable.
+
+  Ran 1 shell command
+
+
+⏺ While the budget runs go (about 15 minutes), I'm running nothing else of mine, only
+  reading their output.
+
+  Ran 2 shell commands
+
+⏺ The budget runs are still going. I'll write the report once all four finish.
+
+  Ran 2 shell commands
+
+⏺ Background command "cd
+/Users/robertguss/Projects/startups/mo-lang-erosion6-go/experiments/control-run/go;
+S=/private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang-erosion6-go/3dd25925-
+57fe-4417-b501-ffa8a30f7fe2/scratchpad;
+G=/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py; python3 $G
+300 -- go build -o $S/jobq-c6 ./jobq && cd $S && for r in 1 2; do for b in c3 c6; do
+python3 -c "import shutil;shutil.rmtree('$S/b-$b',ignore_errors=True)"; echo "== run $r,
+change ${b#c}, $(date '+%H:%M:%S'), load average before: $(sysctl -n vm.loadavg)"; echo "\$
+jobq bench $S/b-$b --serve $S/jobq-$b"; python3 $G 900 -- ./jobq-c6 bench $S/b-$b --serve
+$S/jobq-$b; echo "exit $?"; done; done > $S/budget.log 2>&1" completed (exit code 0)
+
+⏺ Budget met: creates/s and pairs/s at 32 workers are within ±1% of change 3 in both
+  alternated pairs. Writing the report and committing.
+
+  Ran 1 shell command
+
+⏺ Write(REPORT-change-6.md)
+  ⎿  Wrote 157 lines to REPORT-change-6.md
+       1 # jobq change 6: report (Go)
+       3 Change 6 is done and green. It covers the archive prune (on demand, in the
+         next_id`, and the spec's sequence. The work began on a Linux VM, which stop
+         4 cores, macOS, go1.27.1. Everything the predecessor measured on the VM was
+       4
+       5 ## Wall-clock
+          That includes about 15 minutes of final budget runs, during which nothing
+       7 - **The predecessor:** about **65 minutes** on the VM, not counting the 3-h
+       8 - **Together:** about **104 minutes**.
+      10 ## Loops to green (numbering continues from the predecessor's 1
+     … +262 lines
+
+⏺ The paragraph on unreachable errors wrongly lists "an archived job twice" (the table test
+  does reach it from a folder). Fixing that:
+
+  Ran 1 shell command
+
+⏺ Bash(cd /Users/robertguss/Projects/startups/mo-lang-erosion6-go; python3 - <<'E'
+      p='REPORT-change-6.md'; s=open(p).read()…)
+  ⎿  140:Two errors cannot be reached from a folder, because the archive always replay
+     s
+     141-before the log:
+     … +13 lines
+  ⎿  Updated REPORT-change-6.md (+5 -6)
+      137  | an archive file that cannot be made (a read-only folder)
+                                                        | `TestReadOnlyFolderNeverTa
+           kesTheServiceDown`
+                                 |
+      138  | a compaction killed between a rename and its directory's fsync
+                                                        | check.sh section 9, `JOBQ_
+           CRASH_AT` at both kill points
+                                 |
+      139
+      140 -Three errors cannot be reached from a folder:
+      140 +Two errors cannot be reached from a folder, because the archive always re
+          +plays
+      141 +before the log:
+      142
+      143  - "a job on the board and in the archive at once" (`checkApart`)
+      144  - "a job whose key changes" in the archive branch
+      144 -- "an archived job twice", in one respect: an arch-before-put order
+      145
+      146 -The archive always replays before the log, so a folder never produces the
+          - first
+      147 -two in that order. The archive-branch check is reachable in an incrementa
+          -l
+      148 -replay (the simulation's mirror), and both are kept as guards and reached
+          - by
+      149 -direct tests on a queue built by hand. No declared error was removed.
+      146 +The archive-branch check can be reached in an incremental replay (the
+      147 +simulation's mirror). Both are kept as guards and reached by direct tests
+          + on a
+      148 +queue built by hand. No declared error was removed.
+      149
+      150  ## Nevers, invariants and contracts
+      151
+
+⏺ Setting the wall-clock to the commit time, then committing:
+
+⏺ Bash(cd /Users/robertguss/Projects/startups/mo-lang-erosion6-go; python3 - <<'E'
+      p='REPORT-change-6.md'; s=open(p).read()…)
+  ⎿  A  REPORT-change-6.md
+     M  experiments/control-run/go/jobq/api.go
+     M  experiments/control-run/go/jobq/bench.go
+     … +21 lines
+  ⎿  Updated REPORT-change-6.md (+2 -2)
+       9
+      10  ## Wall-clock
+      11
+      12 -- **This session:** 09:23 to 10:02 ET on 18 Sep 2026, about **39 minutes**
+         -. That
+      12 +- **This session:** 09:23 to 10:00 ET on 18 Sep 2026, about **37 minutes**
+         +. That
+      13    includes about 15 minutes of final budget runs, during which nothing els
+          e of
+      14    mine ran.
+      15  - **The predecessor:** about **65 minutes** on the VM, not counting the 3-
+          hour
+      16    outage.
+      17 -- **Together:** about **104 minutes**.
+      17 +- **Together:** about **102 minutes**.
+      18
+      19  ## Loops to green (numbering continues from the predecessor's 1 to 4)
+      20
+
+⏺ Change 6 is finished and committed as 765aa6f jobq: change 6 (not pushed). Every check
+  and test passes and the speed budget is met. The full report is in REPORT-change-6.md at
+  the worktree root.
+
+  Wall-clock: about 37 minutes for me (09:23 to 10:00 ET), including about 15 minutes of
+  budget runs. My predecessor's was about 65 minutes on the VM, not counting its 3-hour
+  outage, so about 102 minutes together.
+
+  Loops (numbering continues from the predecessor's 1–4):
+
+  #: 1–4
+  Cause: build, vet, test, tooling
+  What failed: predecessor's; the test (loop 3) was the 300 s timeout
+  First fix worked?: yes, except 3 (cause found in loop 5)
+  ────────────────────────────────────────
+  #: 5
+  Cause: test, a hang
+  What failed: TestVerifyRefusesABadRenameRecord ran serve on a rename record without
+  next_id. The change now accepts that record, so serve ran forever. This was the cause of
+   the predecessor's timeout.
+  First fix worked?: yes
+  ────────────────────────────────────────
+  #: 6
+  Cause: gofmt
+  What failed: store.go was unformatted
+  First fix worked?: yes
+  ────────────────────────────────────────
+  #: 7
+  Cause: test
+  What failed: 6 new prune tests failed, mostly my own time arithmetic in the tests
+  First fix worked?: yes
+  ────────────────────────────────────────
+  #: 8
+  Cause: test
+  What failed: the key-clash message at open left out the folder's name, a real defect now
+  fixed in serve.go; and one test case could never happen from a folder
+  First fix worked?: yes
+
+  By cause: tests 4, build 1, vet 1, gofmt 1, tooling 1.
+
+  Files changed:
+  - Program: api.go, bench.go, board.go, check.go, check.sh, job.go, main.go, prune.go,
+    queue.go, serve.go, store.go, verify.go.
+  - Tests changed: archive_test.go, board_test.go, main_test.go, rename_test.go,
+    sim_test.go, store_test.go.
+  - New:
+    - tests: errors_test.go, nextid_test.go, prune_test.go
+    - the sequence: testdata/sequence.script and its two expected outputs
+    - the change-5 folder testdata/v5/, written by the change-5 build, and the script that
+      wrote it
+
+  Bench, this Mac: 30,000 jobs, 32 workers, run in the order change 3, change 6, change 3,
+  change 6. Load average from other sessions was 5 to 7.
+
+  ┌────────────┬──────────┬───────────┬─────────────┬──────────────┬────────┬─────────┐
+  │  Program   │  Load    │ creates/s │ pairs/s, 1  │ pairs/s, 32  │ memory │ restart │
+  │            │  before  │           │   worker    │   workers    │        │         │
+  ├────────────┼──────────┼───────────┼─────────────┼──────────────┼────────┼─────────┤
+  │ change 3,  │ 6.91     │ 196       │ 95          │ 105          │ 37.6   │ 0.175 s │
+  │ run 1      │          │           │             │              │ MiB    │         │
+  ├────────────┼──────────┼───────────┼─────────────┼──────────────┼────────┼─────────┤
+  │ change 6,  │ 6.07     │ 197       │ 110         │ 105          │ 40.4   │ 0.145 s │
+  │ run 1      │          │           │             │              │ MiB    │         │
+  ├────────────┼──────────┼───────────┼─────────────┼──────────────┼────────┼─────────┤
+  │ change 3,  │ 5.39     │ 205       │ 93          │ 105          │ 37.7   │ 0.134 s │
+  │ run 2      │          │           │             │              │ MiB    │         │
+  ├────────────┼──────────┼───────────┼─────────────┼──────────────┼────────┼─────────┤
+  │ change 6,  │ 5.56     │ 205       │ 100         │ 106          │ 39.8   │ 0.154 s │
+  │ run 2      │          │           │             │              │ MiB    │         │
+  └────────────┴──────────┴───────────┴─────────────┴──────────────┴────────┴─────────┘
+
+  - Change 6 against change 3 is 1.00–1.01× on both budget numbers; the floor is 0.8×. The
+    budget required no change to the service: on macOS every write waits about 5 ms for a
+    full disk flush, and that sets the pace for both programs.
+❯ You are a worker on a software project in the worktree /Users/robertguss/Projects/start…
+  - The 32-worker phase always stops at its 60 s cap, after about 6,300 of the 30,000
+    pairs.
+  - bench now reads memory with ps, because macOS has no /proc.
+  - The VM numbers compared change 3 with change 5 and were not used.
+
+  Declared errors: every one is reached by a test that checks its message. Most are in the
+  new TestEveryDeclaredOpenErrorIsReached, TestOpenErrorsOfTheFolderItself and
+  TestAFullDiskAndAFailingWrite (which injects "no space left on device" mid-write). The
+  error-by-error table is in the report.
+  - Two errors cannot happen from any folder, because the archive is always read before the
+    log: a job on the board and in the archive at once, and an archive record that changes
+    a live job's key.
+  - I kept both as safeguards and gave each a direct test rather than removing them. No
+    declared error was removed.
+
+  The sequence: check.sh runs the spec's sequence on a fresh folder and on the change-5
+  folder, and both match their expected output. It also kills compact between each file
+  rename and the directory sync; the folder verifies the same afterwards. The change-5
+  program always wrote next_id in its rename records, so the change-5 reading of a record
+  without it is tested on a hand-written log.
+
+  Decisions the spec did not cover:
+  1. bench runs the service as a child process and takes --serve <binary>, so the same
+     client can measure change 3 (predecessor).
+  2. A prune record stores the archive's length when it was written, so a replay spares
+     jobs archived after it even if the clock stepped back (predecessor).
+  3. The cutoff is inclusive (predecessor).
+  4. older_than_ms is capped at a hundred years (predecessor).
+  5. GET /archive bytes is the whole synced file, including pruned records until the next
+     compaction, and both new routes need a token (predecessor).
+  6. At open, a prune whose count doesn't match what it removes refuses the folder
+     (predecessor).
+  7. The offline jobq prune prints pruned k, remaining m. Like any request, it first
+     archives whatever is due before pruning.
+  8. --retention accepts 0 (never) or the prune's range. The first background prune runs 60
+     s after start. A failed one is logged and retried at the next tick, and the loop ends
+     before the store closes.
+  9. The background prune's ticks and a per-prune callback can be injected, which is how
+     the fixed-clock test drives it.
+  10. jobq check gained compact and verify steps and an {id} placeholder, so one script
+      serves both folders.
+  11. The change-5 folder is a checked-in fixture written by the change-5 build.
+  12. A key clash at open now names the folder.
+  13. bench reads memory with ps on both Linux and macOS.
+  14. The two safeguards no folder can trigger are kept and tested directly rather than
+      removed.
+
+✻ Crunched for 36m 7s · done 9:59 AM
+
+※ recap: Change 6 to the Go jobq program is done and committed as 765aa6f (not pushed):
+  tests, checks and the speed budget all pass, and the report is in REPORT-change-6.md.
+  Next, the lead reviews that report. (disable recaps in /config)
+
+───────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion6-go (erosion6-go) | Context: 76% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

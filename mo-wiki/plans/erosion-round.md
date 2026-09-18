@@ -16,7 +16,7 @@ sources:
 status: in-progress
 ---
 
-# The erosion round, generations two to six (the live round: generation six pre-registered)
+# The erosion round, generations two to six (generation six run and read, 18 Sep)
 
 [[d43-five-measurements|Direction 43]] §3: Mo's laws hold a program's quality
 across generations of fresh maintainers, Go and Python drift. Round 8 was
@@ -303,6 +303,46 @@ Fable's honest priors: P7 is the one this generation is for and the one most lik
 **Started** 18 Sep 2026, 4:45 AM ET (08:45 UTC), on the VM, after the memory control probe ended and with the machine quiet (load 0.26): the seventh suite `defects6.py` sealed at `48640d3` (sha256 `d4dab05cc331b7fa`), the four worktrees on `erosion6-*` from the generation-five commits (`23118a3`, `20b050c`, `a06375d`, `eb8a219`), the Mo one at `4ab5c24` with the spec as of step 37 and step 37's `mo` (`b0b2ac4`), agents `mo-e6-{mo,go,python,elixir}` in workspace `wD`, panes `wD:p1` to `p4`, the brief `e6-brief.sh`. Robert asleep; Fable watching every twenty minutes. **Interrupted:** at 5:21 AM ET a `mo` process of the Mo maintainer reached 13.4 GB and, unkillable under Herdr's `oom_score_adj -1000`, wedged the VM until Robert restarted it at 8:30 AM ET (the decision-log row of 18 Sep); the Python maintainer had finished at 5:43 AM ET; the other three sessions were resumed at 8:36 AM ET under the 4 GB guard, so their wall-clocks and loop counts carry a break, disclosed in the result.
 
 **Continued on the Mac** 18 Sep 2026, 9:23 AM ET: the VM sessions were stopped at 8:45 AM ET with their work committed as work in progress and pushed; on Robert's Mac (M3 Max, 14 cores) the three unfinished programs got one new session each (`mo-e6-{go,elixir,mo}`, workspace `w6`, Opus, medium effort), briefed by `erosion-round-suite/e6-brief-mac.sh`, which is `e6-brief.sh` with the Mac's paths, a sentence naming the predecessor's work in progress and its `REPORT-change-6-wip.md`, and the 4 GB guard on every process. **Disclosed:** these are resumed maintainers, not fresh ones, on a second machine; each wall-clock is the sum of two sessions and each loop count carries on; the Go and Elixir programs read `/proc` for memory in their `bench`, so the move itself is work for them. Python's maintainer finished on the VM and is not rerun. P7's 1,300 pairs a second was the VM's number; on the Mac P7 is read by the spec's own ratio (at least 0.8× change 3 on the same machine). All four programs' suites run on the Mac (`e6-suites-mac.sh`). The Mo maintainer's first session named the 13.4 GB process: `mo test --sim` on a queue whose prune sent itself a `Tick` every 60 s forever (the row of 18 Sep).
+
+### Generation six, the result (18 Sep 2026; read by Fable at 11:32 AM ET; the auditor's reading of the execution is `audit/mo-audit-2026-09-18-generation-six-execution.md`, conceded whole)
+
+**What this generation can and cannot say.** The sessions were broken by the VM's wedge and a move to the Mac, so time, loops, and tokens are recorded and compare with nothing. Fable's sealed seventh suite was invalid (every server start used a `--retain-ms` under the spec's 1,000; two logic errors the auditor found); it was run as sealed and failed at server start on every program, as predicted, and the reading is the corrected `defects6b.py`, sealed by hash before any suite ran and disclosed as written after two maintainers had finished. Change 6's own status paragraph named the slowdown's cause, so P7 is void as a test of discovery. What stands: the final programs under the six old suites and `defects6b`, run on the Mac one at a time with every exit status written (`erosion-round-suite/results/e6-*`, `e6-suites.out`), and the lead's speed rows.
+
+| program (commit) | regressions (121) | change 1 (189) | third (66) | fourth (55) | fifth (80) | sixth (94) | `defects6b` (95 to 97 checks) |
+|---|---|---|---|---|---|---|---|
+| Python (`6188537`, built on the VM, one session, 59 min) | 121 | 189 | 64: the queued-with-`worker` record verifies (carried) | 55 | 80 | 94 | 90 of 95: `bench` reads `/proc` (written on Linux, never run on a Mac: machine, 2 checks); the three below |
+| Go (`765aa6f`, 65 + 37 min) | 121 | 188: the `delay_ms` null (carried) | 66 | 55 | 79: `"key": null` (carried) | 92: `to` at 256 bytes (carried) | 95 of 97: the two `/queues` checks below |
+| Elixir (`1e46b99`, 115 + 52 min) | 120: a token with a space (carried) | 128 of 129: the old-log category unread (carried) | 63 of 65: the 1 MB body, the restart after a full disk (carried) | 53: the budget at the window's edge (carried) | 79: a repeated flag (carried) | 94 | 95 of 97: the two `/queues` checks below |
+| Mo (`53ee60d`, 68 + 23 min), binary and `mo run` alike | 121 | 189 | 64: the queued-with-`worker` record verifies (carried since generation three; generation five's table said 66 without having run it) | 55 | 80 | **94: generation five's Mo-only defect is fixed** (the folder reopens after a compaction, a rename, and a stop) | 92 of 95: the three below |
+
+**Every `defects6b` failure is the harness's or the machine's, none a program's.** (1) Two checks expect `/queues` to list a queue whose only job is archived; **all four programs omit it, identically**. Change 2 says "every queue that has at least one job in any state" and gives `/queues` no archived count; four maintainers in four languages read it the same way and Fable's suite read it the other. A spec sentence to settle, not a defect. (2) One `prunerecord` check looks for a number in the prune record to corrupt; Mo and Python write the cutoff as a timestamp, which the spec allows ("naming the cutoff"). (3) Python's `bench` reads `/proc`. The new category `change5` (each language's own change-5 program writes, archives, renames, compacts, renames again, stops; the change-6 program verifies, opens, counts, serves) passed in all four.
+
+**Generation five's third suite, measured today for the first time** (the correction above): Go 65 of 66 (the 1 MB body answered with a broken pipe, once), Python 64, Elixir 63 of 65, Mo 64 in both runtimes. Nothing new eroded there either; the claim now has its evidence.
+
+**Speed, the lead's rows** (`e6-speed-mac.sh`, `measure.py`, 30,000 jobs, `MO_CORES=1`, change 3 and change 6 alternating, two rounds; the Mac was not quiet: Robert's own use, load 6 to 8, Zoom and the window server at the head of `ps`; both Mo programs built with `main`'s `mo`):
+
+| program | creates a second, change 3 → 6 (rounds 1, 2) | pairs at 32 workers, change 3 → 6 | ratio on pairs | restart on the 30,000-job log |
+|---|---|---|---|---|
+| Mo, binary | 4,349 → 6,948; 7,431 → 7,709 | 2,429 → 3,177; 3,652 → 3,675 | 1.31, **1.01** (round 1's first run was cold) | 0.81 to 0.89 s → 0.98 s |
+| Python | 7,386 → 8,518; 8,805 → 8,892 | 3,377 → 4,213; 3,937 → 4,188 | 1.25, 1.06 | 0.70 → 0.75 s |
+| Elixir | 6,515 → 7,791; 6,748 → 7,866 | 3,986 → 4,876; 4,964 → 4,919 | 1.22, 0.99 | 1.9 to 2.0 s → 0.56 s (the maintainer's parallel replay) |
+| Go | 216 → 204 | 104 → 69, then at 5,000 jobs 101 → 100 and **67** → 108 (change 3 itself swings 67 to 104) | noise on a disk-flush-bound path | 0.16 → 0.17 s |
+
+Every program is at its change-3 rate. **Mo's lease path is back** (generation five: 425 pairs a second at 32 workers on this machine; now about 3,700), by the one-line postcondition change the spec pointed at. **The rates do not compare across languages on a Mac:** Go's `File.Sync` asks macOS for a full flush to the disk (`F_FULLFSYNC`) on every write; Mo's runtimes call plain `fsync` (`toolchain/src/blocking.zig:114`, `mo_rt.c:8303`), which on macOS does not reach the platter, and Python's `os.fsync` is the same. So on this machine Mo's "on disk before `Ok`" is weaker than Go's, and Go's 100 pairs a second is what the stronger promise costs. A semantic row; the fix is in step 39.
+
+**Against the predictions.**
+
+| prediction | outcome |
+|---|---|
+| P1, regressions: Mo 0, each baseline at most 1 new cause | **held**: no program has a new cause under any old suite; Mo lost one (the generation-five defect, fixed) |
+| P2, the seventh suite: Mo no more than each baseline | **held at a tie of zero**, under the corrected suite only |
+| P3, a baseline loses something under the prune and the kill | **failed**: nobody did, under an oracle that was broken as sealed and is right in `defects6b` |
+| P4, a program fails the sequence on a change-5 folder or the directory-entry case | **failed on the first half** (all four open their own change-5 folder); the second half is untestable from outside (no program but Go and Elixir offers a kill point between the rename and the directory's fsync; Mo has no `Fs` row that syncs a folder at all: the Mo maintainer's toolchain bug 6) |
+| P5, Mo takes more loops than Go | recorded, not read: Mo 29, Go 8, Elixir 18 by their reports, across broken sessions (Python, one session, lists its own by cause) |
+| P6, a Mo `never` or `invariant` trips on a wrong edit | **failed, the sixth time**: the Mo maintainer added one `never` and changed one `ensures`; none tripped on an edit; the same in Python, Go, and Elixir by their reports |
+| P7, the Mo maintainer finds the cost told only the budget | **void**: the spec named the cause. What is true: given a budget and the cause, the maintainer fixed it in one edit and the rate is back, 1.01× on the lead's second round |
+
+**Reading.** Generation six is the first generation in which Mo's count went down: six generations, one Mo-only defect shipped and then fixed by the next maintainer from a ticket. Nothing eroded in any language under any suite. The laws were silent again; at six of ten generations the language rule's ledger has zero catches, and its threshold is two. The budget worked as a device (every program at its change-3 rate, Mo back from one-ninth) and proved nothing about discovery. The generation's real findings are about the experiment and the runtime, not the programs: a sealed suite that had never been run; a runner that swallowed a usage error for a whole generation; a simulator that takes a machine down on a process with a perpetual timer; `for _ in 0..n` building its range; no way to sync a folder from Mo; and `fsync` on macOS.
 
 ## Related
 

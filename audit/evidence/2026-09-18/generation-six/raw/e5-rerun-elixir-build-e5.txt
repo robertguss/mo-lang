@@ -1,0 +1,12 @@
+Resolving Hex dependencies...
+Resolution completed in 0.032s
+Unchanged:
+  bunt 1.0.0
+  credo 1.7.19
+  dialyxir 1.4.8
+  erlex 0.2.9
+  file_system 1.1.1
+  jason 1.4.5
+  stream_data 1.4.0
+All dependencies are up to date
+Generated escript jobq with MIX_ENV=dev

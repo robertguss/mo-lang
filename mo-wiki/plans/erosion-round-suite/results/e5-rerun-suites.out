@@ -1,0 +1,48 @@
+## go start 2026-09-18 11:10:31 EDT load { 6.17 5.48 5.33 } commit 20b050c defects6 d4dab05cc331b7fa defects6b 183a992cb6893ca8
+build e6 exit=0
+build e5 exit=0
+build r7 exit=0
+## go defects2 11:10:32 load { 5.84 5.42 5.31 }
+exit=0
+FAIL contained: a body of 1 MB is answered: BrokenPipeError
+65 passed, 1 defects
+## go done (ONLY=defects2) 11:10:38
+## python start 2026-09-18 11:10:38 EDT load { 6.65 5.59 5.37 } commit a06375d defects6 d4dab05cc331b7fa defects6b 183a992cb6893ca8
+build e6 exit=0
+build e5 exit=0
+build r7 exit=0
+## python defects2 11:10:39 load { 6.65 5.59 5.37 }
+exit=0
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_21; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_21; archived 0')
+64 passed, 2 defects
+## python done (ONLY=defects2) 11:10:50
+## elixir start 2026-09-18 11:10:50 EDT load { 6.39 5.57 5.37 } commit eb8a219 defects6 d4dab05cc331b7fa defects6b 183a992cb6893ca8
+build e6 exit=0
+build e5 exit=0
+## elixir defects2 11:10:53 load { 6.52 5.61 5.38 }
+exit=0
+FAIL contained: a body of 1 MB is answered: ConnectionResetError
+FAIL unwritable: ran to the end: RuntimeError: server exited 1 before answering: /Users/robertguss/Projects/startups/mo-lang-erosion5-elixir/experiments/control-run/elixir/jobq/jobq serve /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/ramdisk-zv99q3a8/dir --port 61426
+63 passed, 2 defects
+## elixir done (ONLY=defects2) 11:11:02
+## mo start 2026-09-18 11:11:02 EDT load { 7.21 5.79 5.45 } commit 23118a3 defects6 d4dab05cc331b7fa defects6b 183a992cb6893ca8
+build e6 exit=0
+build e5 exit=0
+build r7 exit=0
+## mo defects2 11:11:08 load { 7.04 5.78 5.44 }
+exit=0
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+64 passed, 2 defects
+## mo done (ONLY=defects2) 11:11:47
+## morun start 2026-09-18 11:11:47 EDT load { 5.41 5.51 5.36 } commit 23118a3 defects6 d4dab05cc331b7fa defects6b 183a992cb6893ca8
+build e6 exit=0
+build e5 exit=0
+build r7 exit=0
+## morun defects2 11:11:48 load { 5.41 5.51 5.36 }
+exit=0
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+64 passed, 2 defects
+## morun done (ONLY=defects2) 11:12:27

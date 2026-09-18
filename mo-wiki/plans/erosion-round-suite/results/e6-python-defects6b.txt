@@ -1,0 +1,109 @@
+ok   prune: three done jobs archived to set up
+ok   prune: two younger done jobs archived (5 archived)
+ok   prune: GET /archive shows 5 archived, an oldest_archived_at, and bytes
+ok   prune: `{"older_than_ms": 999}` is 400
+ok   prune: `{"older_than_ms": "2000"}` is 400
+ok   prune: `{"older_than_ms": -5}` is 400
+ok   prune: `{}` is 400
+ok   prune: `{"older_than_ms": 1.5}` is 400
+ok   prune: no body is 400
+ok   prune: no token is 401
+ok   prune: GET on the route is 405
+ok   prune: POST /archive is 405
+ok   prune: the bad requests removed nothing (5 archived)
+ok   prune: an age of 2 s removes the three old ones, keeps the two young, 200 {pruned 3, remaining 2}
+ok   prune: each pruned job reads 404
+ok   prune: each young archived job still reads 200
+ok   prune: the live leased job is untouched
+ok   prune: /health counts 2 archived after
+ok   prune: /archive counts 2 after
+ok   prune: the pruned job's key is free (201, a new job)
+ok   prune: a kept archived job's key is still used (200, the same job)
+ok   prune: no pruned job in the listing
+ok   prune: an age nothing meets is 200 {pruned 0, remaining 2}
+ok   prune: a prune that removes nothing writes nothing (the folder's size unchanged)
+ok   prune: an age every archived job meets removes the two young ones
+ok   prune: the live leased job, older than the age, is still there
+ok   prune: /archive with nothing archived: 0 and oldest_archived_at null
+ok   prune: `jobq prune` offline exits 0 and prints the counts (4 and 0)
+ok   prune: after the offline prune and a start, 0 archived
+ok   prune: the offline-pruned jobs read 404
+ok   retention: the job archived to set up
+ok   retention: the archived job is gone within the minute under --retention 1500
+ok   retention: the live job is kept
+ok   retention: /health counts 0 archived
+ok   retention: the background prune is durable (404 after a stop and start)
+ok   prunerecord: the two archived before the prune are pruned
+ok   prunerecord: two archived after the prune record
+ok   prunerecord: before the restart: the pruned read 404, the later 200
+ok   prunerecord: the replay applies the prune in order (the same after a stop and start)
+ok   prunerecord: /health counts 2 archived after the replay
+ok   prunerecord: a pruned key is free after the replay (201)
+ok   prunerecord: verify exits 0 on a log with a prune record
+ok   prunerecord: compact exits 0
+ok   prunerecord: after compact no byte of a pruned job remains
+ok   prunerecord: after compact the later archived jobs are still on the disk
+ok   prunerecord: verify exits 0 after the compaction
+ok   prunerecord: the same view after the compaction
+ok   prunerecord: a file on the disk names the prune record
+FAIL prunerecord: the prune record carries a number to break (a cutoff): b'prunes":1}\n'
+ok   prunekill: forty archived jobs older than 2 s to set up
+ok   prunekill: verify exits 0 after the kill
+ok   prunekill: the old archived jobs are all present or all gone (the prune is one record)
+ok   prunekill: every old job reads 200 or 404, nothing else
+ok   prunekill: a pruned job's key is free after the reopen (201)
+ok   prunekill: every acknowledged ack reads 200 and done or archived (2786 acked, every one read)
+ok   prunekill: the young jobs are counted (created under the load, not older than the age, none pruned)
+ok   renamerule: `a` renamed to `b`, 200
+ok   renamerule: a job created into `a` after the rename, done and archived
+ok   renamerule: the early job is in `b`, the late one in `a`
+FAIL renamerule: /queues lists `a` and `b`: {'b'}
+ok   renamerule: the same after a stop and start (the rename does not move a job created after it)
+ok   renamerule: compact exits 0
+ok   renamerule: verify exits 0 after the compaction
+ok   renamerule: the same after the compaction
+ok   renamerule: `b` to `c`, then `a` to `b` (a name reused), both 200
+ok   renamerule: the early job is in `c`, the late one in `b`
+ok   renamerule: the same after a second stop and start
+ok   renamerule: the late job's key is used in `b` (200, the same job)
+ok   sequence: three done jobs archived
+ok   sequence: compact exits 0
+ok   sequence: rename `s1` to `s1b` after the compaction, 200
+ok   sequence: a create into the old name starts a fresh queue (201)
+ok   sequence: a prune with an age between removes the three older archived jobs and keeps the late one
+ok   sequence: verify exits 0 after the stop
+ok   sequence: a freed key (a pruned job's) creates a new job in the renamed queue (201)
+ok   sequence: a used key (the kept archived job's) answers 200 with the same job
+ok   sequence: a lease on the renamed queue hands out a queued job
+ok   sequence: its ack is 200
+FAIL sequence: /queues lists `s1b`, `s1`, `s2`, and `s3`: {'s2', 's1b', 's1'}
+ok   sequence: /archive counts 1
+ok   sequence: /health agrees (1 archived)
+ok   sequence: verify exits 0 after a kill right after the reopen
+ok   sequence: the write before the kill is present after the reopen
+ok   sequence: the pruned jobs are still gone after the kill and reopen
+ok   change5: verify exits 0 on a folder the change-5 program compacted, renamed, and closed
+ok   change5: /health counts what the change-5 program counted before its stop
+ok   change5: the archived job reads 200, with its `archived_at`, in the renamed queue `c1b`
+ok   change5: a used key in the queue renamed after the compaction answers 200, the same job
+ok   change5: the old name `c2` is a fresh queue (201)
+ok   change5: a lease on `c1b` hands out a job created before the rename
+ok   change5: verify exits 0 after the change-6 program wrote to the folder
+FAIL bench: `jobq bench` exits 0 within four minutes on 300 jobs: (1, "creates: 296 in 0.0s = 7518/s\npairs, 1 workers: 296 in 0.2s = 1833/s\npairs, 4 workers: 0 in 0.0s = 0/s\njobq: bench failed: [Errno 2] No such file or directory: '/proc/99408/status'")
+ok   bench: it prints numbers for creates a second and pairs a second (at least four numbers)
+FAIL bench: its lines name creates, pairs, restart, and memory: creates: 296 in 0.0s = 7518/s
+pairs, 1 workers: 296 in 0.2s = 1833/s
+pairs, 4 workers: 0 in 0.0s = 0/s
+jobq: bench failed: [Errno 2] No such file or directory: '/proc/99408/status'
+ok   bench: no jobq process is left after it
+
+90 passed, 5 defects
+  - prunerecord: the prune record carries a number to break (a cutoff): b'prunes":1}\n'
+  - renamerule: /queues lists `a` and `b`: {'b'}
+  - sequence: /queues lists `s1b`, `s1`, `s2`, and `s3`: {'s2', 's1b', 's1'}
+  - bench: `jobq bench` exits 0 within four minutes on 300 jobs: (1, "creates: 296 in 0.0s = 7518/s\npairs, 1 workers: 296 in 0.2s = 1833/s\npairs, 4 workers: 0 in 0.0s = 0/s\njobq: bench failed: [Errno 2] No such file or directory: '/proc/99408/status'")
+  - bench: its lines name creates, pairs, restart, and memory: creates: 296 in 0.0s = 7518/s
+pairs, 1 workers: 296 in 0.2s = 1833/s
+pairs, 4 workers: 0 in 0.0s = 0/s
+jobq: bench failed: [Errno 2] No such file or directory: '/proc/99408/status'
+0 harness preconditions failed

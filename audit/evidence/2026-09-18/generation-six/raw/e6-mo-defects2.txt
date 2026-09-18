@@ -1,0 +1,73 @@
+server up in 0.05s on 61235, dir /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/defects2-b_wfwlq1/dir
+ok   queues: no token is 401
+ok   queues: an empty service lists no queue
+ok   queues: 200 with a queues list
+ok   queues: sorted by name
+ok   queues: emails counts queued 1, leased 1, done 1
+ok   queues: alerts counts queued 1, scheduled 1
+ok   queues: reports has every state key and counts sum to 2
+ok   queues: /health queued is the sum over queues
+ok   queues: /health scheduled is the sum over queues
+ok   queues: /health leased is the sum over queues
+ok   queues: /health done is the sum over queues
+ok   queues: /health dead is the sum over queues
+ok   queues: a queue with only a scheduled job still shows
+ok   queues: a queue whose last job is deleted disappears
+ok   queues: a trailing slash or an unknown sub-route is not a 500
+ok   queues: POST /queues is 404 or 405
+ok   contained: a body of 1 MB is answered 4xx or 503, not 5xx
+ok   contained: the next request after a body of 1 MB is 200
+ok   contained: a body that is not JSON is answered 4xx or 503, not 5xx
+ok   contained: the next request after a body that is not JSON is 200
+ok   contained: a body with a NUL is answered 4xx or 503, not 5xx
+ok   contained: the next request after a body with a NUL is 200
+ok   contained: a lease body with a huge lease_ms is answered 4xx or 503, not 5xx
+ok   contained: the next request after a lease body with a huge lease_ms is 200
+ok   contained: a deeply nested body is answered 4xx or 503, not 5xx
+ok   contained: the next request after a deeply nested body is 200
+ok   contained: fifty failing acks later the service answers
+ok   end: the server is still alive
+ok   verify: no folder is a usage error, exit 2
+ok   verify: a folder the service wrote verifies with exit 0 and the counts line
+ok   verify: queued at its max_tries (round 8's outage record) is refused with exit 1
+ok   verify: queued at its max_tries (round 8's outage record) names the record's key
+ok   verify: serve refuses queued at its max_tries (round 8's outage record) with exit 1 and no /health
+ok   verify: compact refuses the impossible record with exit 1
+FAIL verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+FAIL verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+ok   verify: scheduled without run_at is refused with exit 1
+ok   verify: scheduled without run_at names the record's key
+ok   verify: serve refuses scheduled without run_at with exit 1 and no /health
+ok   verify: leased with tries 0 is refused with exit 1
+ok   verify: leased with tries 0 names the record's key
+ok   verify: leased without a worker is refused with exit 1
+ok   verify: leased without a worker names the record's key
+ok   verify: serve refuses leased without a worker with exit 1 and no /health
+ok   verify: done with tries 0 is refused with exit 1
+ok   verify: done with tries 0 names the record's key
+ok   verify: dead with tries above max_tries is refused with exit 1
+ok   verify: dead with tries above max_tries names the record's key
+ok   verify: dead with a run_at is refused with exit 1
+ok   verify: dead with a run_at names the record's key
+ok   verify: max_tries 0 is refused with exit 1
+ok   verify: max_tries 0 names the record's key
+ok   verify: backoff_ms above the bound is refused with exit 1
+ok   verify: backoff_ms above the bound names the record's key
+ok   verify: a queue name with a space is refused with exit 1
+ok   verify: a queue name with a space names the record's key
+ok   verify: a torn last line still opens under verify, exit 0, 4 jobs
+ok   verify: a torn last line still serves, with the 4 whole jobs
+ok   verify: a create after the torn line is 201 with an id above the four
+     unwritable: 15216 creates under load, statuses {201: 14620, 503: 596}; full for 1.5s
+ok   unwritable: every answer under load is 2xx, 4xx, or 503
+ok   unwritable: some request under the full disk was answered 503
+ok   unwritable: the service is still up after the full disk (a create is 201, no restart)
+ok   unwritable: a read while full is 200
+ok   unwritable: the ack while full was answered 2xx or 503, not another status
+ok   unwritable: every 2xx create under load is on the disk after a restart (14620 checked)
+ok   unwritable: /health after the restart agrees with the last /health
+     unwritable: the servers' output kept in /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/unwritable-logs-t8ef9oz4
+
+64 passed, 2 defects
+  - verify: queued with a worker is refused with exit 1: (0, '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')
+  - verify: queued with a worker names the record's key: ([], '2 jobs: queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archived 0')

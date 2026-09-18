@@ -6,8 +6,9 @@
 # Never two at once (the drains, the pkill of servers under the temp folder). Raw output in results/e6-<lang>-<suite>.txt,
 # one summary block per suite in results/e6-suites.out.
 L=$1; R=/Users/robertguss/Projects/startups; M=$R/mo-lang; SU=$M/mo-wiki/plans; ES=$SU/erosion-round-suite; OUT=$ES/results
-S=${SCRATCH:-/tmp/e6-scratch}; mkdir -p $S $OUT; LOG=$OUT/e6-suites.out
-W=$R/mo-lang-erosion6-$L; W5=$R/mo-lang-erosion5-$L; [ $L = morun ] && W=$R/mo-lang-erosion6-mo && W5=$R/mo-lang-erosion5-mo
+S=${SCRATCH:-/tmp/e6-scratch}; mkdir -p $S $OUT; LOG=$OUT/e${GEN:-6}${RERUN:+-rerun}-suites.out
+GEN=${GEN:-6}   # GEN=5 ONLY=defects2 reruns the third suite on a generation-five program (the correction row of 18 Sep); outputs are named e$GEN-...
+W=$R/mo-lang-erosion$GEN-$L; W5=$R/mo-lang-erosion5-$L; [ $L = morun ] && W=$R/mo-lang-erosion$GEN-mo && W5=$R/mo-lang-erosion5-mo
 say() { echo "$@" | tee -a $LOG; }
 die() { say "## $L STOPPED: $*"; exit 1; }
 h6=$(shasum -a 256 $ES/defects6.py | cut -c1-16); h6b=$(shasum -a 256 $ES/defects6b.py | cut -c1-16)
@@ -15,7 +16,7 @@ h6=$(shasum -a 256 $ES/defects6.py | cut -c1-16); h6b=$(shasum -a 256 $ES/defect
 [ "$h6b" = "${SEAL6B:?set SEAL6B to the sealed hash prefix of defects6b.py}" ] || die "defects6b.py is $h6b, not the sealed $SEAL6B"
 say "## $L start $(date '+%Y-%m-%d %H:%M:%S %Z') load $(sysctl -n vm.loadavg) commit $(git -C $W rev-parse --short HEAD) defects6 $h6 defects6b $h6b"
 build() { # name cmd...: a build whose failure stops the run
-  n=$1; shift; ( "$@" ) > $OUT/e6-$L-build-$n.txt 2>&1; rc=$?; say "build $n exit=$rc"; [ $rc = 0 ] || die "build $n failed, see e6-$L-build-$n.txt"; }
+  n=$1; shift; ( "$@" ) > $OUT/e$GEN${RERUN:+-rerun}-$L-build-$n.txt 2>&1; rc=$?; say "build $n exit=$rc"; [ $rc = 0 ] || die "build $n failed, see e6-$L-build-$n.txt"; }
 case $L in
   go)   build e6 bash -c "cd $W/experiments/control-run/go/jobq && go build -o $S/jobq-e6-go ."
         build e5 bash -c "cd $W5/experiments/control-run/go/jobq && go build -o $S/jobq-e5-go ."
@@ -51,14 +52,14 @@ while todo:
     for r in kids.get(todo.pop(),[]): mine.append(r); todo.append(r[0])
 for pid,ppid,rss,args in mine:
     if int(rss)>4*1024*1024: os.kill(int(pid),signal.SIGKILL); print('watchdog: killed',pid,int(rss)>>10,'MB',args[:80],flush=True)
-" >> $OUT/e6-$L-watchdog.txt; sleep 2; done ) & WD=$!; trap "kill $WD 2>/dev/null" EXIT
+" >> $OUT/e$GEN${RERUN:+-rerun}-$L-watchdog.txt; sleep 2; done ) & WD=$!; trap "kill $WD 2>/dev/null" EXIT
 drain() { for i in $(seq 1 60); do n=$(netstat -an | grep -c TIME_WAIT); [ "$n" -lt 1500 ] && return; sleep 3; done; }
 suite() { # name cmd...
   name=$1; shift; say "## $L $name $(date '+%H:%M:%S') load $(sysctl -n vm.loadavg)"
-  timeout 1500 "$@" > $OUT/e6-$L-$name.txt 2>&1; rc=$?
+  timeout 1500 "$@" > $OUT/e$GEN${RERUN:+-rerun}-$L-$name.txt 2>&1; rc=$?
   say "exit=$rc$([ $rc = 124 ] && echo ' (TIMED OUT: incomplete, not a result)')"
-  grep -E 'passed, [0-9]+ defects|harness preconditions failed|^FAIL|^HARNESS' $OUT/e6-$L-$name.txt | tail -14 | tee -a $LOG
-  grep -qE 'passed, [0-9]+ defects' $OUT/e6-$L-$name.txt || say "NO SUMMARY LINE: the suite did not reach its end"
+  grep -E 'passed, [0-9]+ defects|harness preconditions failed|^FAIL|^HARNESS' $OUT/e$GEN${RERUN:+-rerun}-$L-$name.txt | tail -14 | tee -a $LOG
+  grep -qE 'passed, [0-9]+ defects' $OUT/e$GEN${RERUN:+-rerun}-$L-$name.txt || say "NO SUMMARY LINE: the suite did not reach its end"
   pkill -f 'serve /var/folders' 2>/dev/null; pkill -f 'serve /private/var' 2>/dev/null; drain
 }
 LF=$L; [ $L = morun ] && LF=mo

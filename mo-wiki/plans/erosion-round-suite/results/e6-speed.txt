@@ -1,0 +1,123 @@
+# 2026-09-18 11:16:47 EDT load averages: 6.38 5.74 5.48
+# top by cpu: /PrivateFrameworks/SkyLight.framework/Resources/WindowServer; 58.8 /Applications/zoom.us.app/Contents/MacOS/zoom.us; 39.0 /Applications/Notion.app/Contents/Frameworks/Notion; 25.4 -zsh
+build mo3 exit=0
+build go3 exit=0
+build python3 exit=0
+build elixir3 exit=0
+build mo6 exit=0
+build go6 exit=0
+build python6 exit=0
+build elixir6 exit=0
+== mo change 3, binary, round 1 11:17:20 load { 7.29 5.99 5.58 }
+up in 0.32s; rss empty 2.4 MiB
+creates: 30000 in 6.9s = 4349/s, errors []; rss at 30000 jobs 36.6 MiB
+pairs, 1 worker: 7504 in 7.0s = 1073/s []
+pairs, 32 workers: 22496 in 9.3s = 2429/s []
+rss after pairs 45.7 MiB
+restart with a 29 MB log: 0.89s to /health; rss 34.3 MiB
+exit=0
+== python change 3, round 1 11:18:15 load { 6.12 5.99 5.61 }
+up in 0.27s; rss empty 27.1 MiB
+creates: 30000 in 4.1s = 7386/s, errors []; rss at 30000 jobs 27.1 MiB
+pairs, 1 worker: 7504 in 4.1s = 1839/s []
+pairs, 32 workers: 22496 in 6.7s = 3377/s []
+rss after pairs 27.0 MiB
+restart with a 31 MB log: 0.71s to /health; rss 27.1 MiB
+exit=0
+== elixir change 3, round 1 11:18:32 load { 6.32 6.05 5.65 }
+up in 0.28s; rss empty 89.3 MiB
+creates: 30000 in 4.6s = 6515/s, errors []; rss at 30000 jobs 129.8 MiB
+pairs, 1 worker: 7504 in 6.6s = 1134/s []
+pairs, 32 workers: 22496 in 5.6s = 3986/s []
+rss after pairs 129.8 MiB
+restart with a 24 MB log: 2.00s to /health; rss 173.2 MiB
+exit=0
+== mo change 6, binary, round 1 11:18:51 load { 7.80 6.38 5.77 }
+up in 0.28s; rss empty 2.5 MiB
+creates: 30000 in 4.3s = 6948/s, errors []; rss at 30000 jobs 38.5 MiB
+pairs, 1 worker: 7504 in 4.6s = 1642/s []
+pairs, 32 workers: 22496 in 7.1s = 3177/s []
+rss after pairs 54.9 MiB
+restart with a 29 MB log: 0.98s to /health; rss 39.4 MiB
+exit=0
+== python change 6, round 1 11:19:39 load { 7.36 6.49 5.84 }
+up in 0.16s; rss empty 27.0 MiB
+creates: 30000 in 3.5s = 8518/s, errors []; rss at 30000 jobs 27.0 MiB
+pairs, 1 worker: 7504 in 3.6s = 2076/s []
+pairs, 32 workers: 22496 in 5.3s = 4213/s []
+rss after pairs 26.9 MiB
+restart with a 34 MB log: 0.76s to /health; rss 27.0 MiB
+exit=0
+== elixir change 6, round 1 11:19:53 load { 7.26 6.51 5.86 }
+up in 0.28s; rss empty 88.2 MiB
+creates: 30000 in 3.9s = 7791/s, errors []; rss at 30000 jobs 129.6 MiB
+pairs, 1 worker: 7504 in 5.0s = 1487/s []
+pairs, 32 workers: 22496 in 4.6s = 4876/s []
+rss after pairs 138.7 MiB
+restart with a 24 MB log: 0.60s to /health; rss 251.7 MiB
+exit=0
+== mo change 3, binary, round 2 11:20:08 load { 7.88 6.68 5.93 }
+up in 0.06s; rss empty 2.4 MiB
+creates: 30000 in 4.0s = 7431/s, errors []; rss at 30000 jobs 35.7 MiB
+pairs, 1 worker: 7504 in 4.6s = 1626/s []
+pairs, 32 workers: 22496 in 6.2s = 3652/s []
+rss after pairs 45.6 MiB
+restart with a 29 MB log: 0.81s to /health; rss 34.6 MiB
+exit=0
+== python change 3, round 2 11:20:55 load { 7.23 6.71 5.98 }
+up in 0.16s; rss empty 27.0 MiB
+creates: 30000 in 3.4s = 8805/s, errors []; rss at 30000 jobs 27.0 MiB
+pairs, 1 worker: 7504 in 3.8s = 1977/s []
+pairs, 32 workers: 22496 in 5.7s = 3937/s []
+rss after pairs 26.9 MiB
+restart with a 31 MB log: 0.70s to /health; rss 27.1 MiB
+exit=0
+== elixir change 3, round 2 11:21:09 load { 7.55 6.81 6.03 }
+up in 0.22s; rss empty 87.3 MiB
+creates: 30000 in 4.4s = 6748/s, errors []; rss at 30000 jobs 135.5 MiB
+pairs, 1 worker: 7504 in 6.1s = 1233/s []
+pairs, 32 workers: 22496 in 4.5s = 4964/s []
+rss after pairs 127.5 MiB
+restart with a 24 MB log: 1.90s to /health; rss 178.8 MiB
+exit=0
+== mo change 6, binary, round 2 11:21:26 load { 7.51 6.83 6.05 }
+up in 0.06s; rss empty 2.6 MiB
+creates: 30000 in 3.9s = 7709/s, errors []; rss at 30000 jobs 38.9 MiB
+pairs, 1 worker: 7504 in 4.6s = 1616/s []
+pairs, 32 workers: 22496 in 6.1s = 3675/s []
+rss after pairs 56.9 MiB
+restart with a 29 MB log: 0.99s to /health; rss 39.9 MiB
+exit=0
+== python change 6, round 2 11:22:13 load { 6.01 6.54 5.99 }
+up in 0.16s; rss empty 27.1 MiB
+creates: 30000 in 3.4s = 8892/s, errors []; rss at 30000 jobs 27.1 MiB
+pairs, 1 worker: 7504 in 3.6s = 2062/s []
+pairs, 32 workers: 22496 in 5.4s = 4188/s []
+rss after pairs 27.0 MiB
+restart with a 34 MB log: 0.75s to /health; rss 27.0 MiB
+exit=0
+== elixir change 6, round 2 11:22:27 load { 6.57 6.65 6.04 }
+up in 0.23s; rss empty 88.4 MiB
+creates: 30000 in 3.8s = 7866/s, errors []; rss at 30000 jobs 129.4 MiB
+pairs, 1 worker: 7504 in 5.2s = 1446/s []
+pairs, 32 workers: 22496 in 4.6s = 4919/s []
+rss after pairs 138.1 MiB
+restart with a 24 MB log: 0.56s to /health; rss 256.9 MiB
+exit=0
+== go change 3, one round (one full flush a write: about 150 s of creates) 11:22:41 load { 6.10 6.54 6.00 }
+up in 0.38s; rss empty 12.1 MiB
+creates: 30000 in 139.1s = 216/s, errors []; rss at 30000 jobs 32.5 MiB
+pairs, 1 worker: 984 in 10.1s = 98/s []
+pairs, 32 workers: 1056 in 10.2s = 104/s []
+rss after pairs 35.1 MiB
+restart with a 11 MB log: 0.16s to /health; rss 32.5 MiB
+exit=0
+== go change 6, one round (one full flush a write: about 150 s of creates) 11:25:22 load { 6.32 6.34 6.00 }
+up in 0.44s; rss empty 12.3 MiB
+creates: 30000 in 147.3s = 204/s, errors []; rss at 30000 jobs 35.0 MiB
+pairs, 1 worker: 763 in 10.0s = 76/s []
+pairs, 32 workers: 704 in 10.2s = 69/s []
+rss after pairs 36.2 MiB
+restart with a 10 MB log: 0.17s to /health; rss 32.1 MiB
+exit=0
+# done 11:28:10

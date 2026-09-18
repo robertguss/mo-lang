@@ -1,0 +1,44 @@
+# 2026-09-18 11:29:21 EDT load averages: 3.59 5.15 5.58 ; go only, 5,000 jobs, three alternating rounds, after the first row showed change 6 at 0.66x on pairs
+== go change 3, round 1 11:29:21 load { 3.59 5.15 5.58 }
+up in 0.06s; rss empty 11.8 MiB
+creates: 5000 in 23.5s = 213/s, errors []; rss at 5000 jobs 20.3 MiB
+pairs, 1 worker: 898 in 10.0s = 90/s []
+pairs, 32 workers: 1028 in 10.2s = 101/s []
+rss after pairs 21.6 MiB
+restart with a 3 MB log: 0.05s to /health; rss 18.5 MiB
+== go change 6, round 1 11:30:10 load { 4.45 5.18 5.57 }
+up in 0.05s; rss empty 12.2 MiB
+creates: 5000 in 22.8s = 219/s, errors []; rss at 5000 jobs 20.9 MiB
+pairs, 1 worker: 1059 in 10.0s = 106/s []
+pairs, 32 workers: 1014 in 10.2s = 100/s []
+rss after pairs 22.7 MiB
+restart with a 3 MB log: 0.05s to /health; rss 20.1 MiB
+== go change 3, round 2 11:30:59 load { 4.63 5.19 5.55 }
+up in 0.05s; rss empty 11.8 MiB
+creates: 5000 in 22.7s = 221/s, errors []; rss at 5000 jobs 20.1 MiB
+pairs, 1 worker: 876 in 10.0s = 88/s []
+pairs, 32 workers: 688 in 10.2s = 67/s []
+rss after pairs 21.4 MiB
+restart with a 3 MB log: 0.06s to /health; rss 19.2 MiB
+== go change 6, round 2 11:31:47 load { 4.66 5.09 5.49 }
+up in 0.06s; rss empty 12.1 MiB
+creates: 5000 in 23.8s = 210/s, errors []; rss at 5000 jobs 20.5 MiB
+pairs, 1 worker: 929 in 10.0s = 93/s []
+pairs, 32 workers: 1093 in 10.2s = 108/s []
+rss after pairs 22.9 MiB
+restart with a 3 MB log: 0.06s to /health; rss 19.8 MiB
+== go change 3, round 3 11:32:37 load { 5.77 5.26 5.53 }
+up in 0.06s; rss empty 12.1 MiB
+creates: 5000 in 24.9s = 200/s, errors []; rss at 5000 jobs 20.0 MiB
+pairs, 1 worker: 961 in 10.0s = 96/s []
+pairs, 32 workers: 1019 in 10.3s = 99/s []
+rss after pairs 22.0 MiB
+restart with a 3 MB log: 0.05s to /health; rss 18.6 MiB
+== go change 6, round 3 11:33:27 load { 5.74 5.29 5.52 }
+up in 0.05s; rss empty 12.3 MiB
+creates: 5000 in 24.2s = 207/s, errors []; rss at 5000 jobs 20.8 MiB
+pairs, 1 worker: 891 in 10.0s = 89/s []
+pairs, 32 workers: 974 in 10.2s = 95/s []
+rss after pairs 22.1 MiB
+restart with a 3 MB log: 0.06s to /health; rss 18.7 MiB
+# done 11:34:17

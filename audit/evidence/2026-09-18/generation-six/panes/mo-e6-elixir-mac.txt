@@ -1,0 +1,55 @@
+  ├───────────────────────┼───────────────────┼───────────────────┼───────┤
+  │ pairs/s at 32 workers │ 10,720            │ 11,106            │ 0.97× │
+  └───────────────────────┴───────────────────┴───────────────────┴───────┘
+
+  One pair had creates at 0.75×, with the load rising to 8.8 during it. The next four pairs were all at 0.94× or higher. Change 6 also restarts much faster on the 23 MB folder (0.41 s
+  against 1.75 s), but its memory during the restart is higher (about 340 MiB against 190 MiB). The report has every run's lines and the load before each.
+
+  Loops: 18 in total, carrying on from my predecessor's 12.
+
+  ┌─────────────────────────────────────┬───────┬───────────────────────────────────────────────────────────────────────────────┐
+  │                Cause                │ Count │                               First fix worked?                               │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Environment or existing-test timing │ 4     │ 2 did; 2 needed a second fix (loops 1 and 13)                                 │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ New or updated tests                │ 4     │ yes                                                                           │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Test compile                        │ 1     │ yes                                                                           │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Lint                                │ 1     │ yes                                                                           │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Dialyzer                            │ 1     │ yes                                                                           │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Tooling                             │ 5     │ yes, except my predecessor's broken probe, which I replaced instead of fixing │
+  ├─────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────┤
+  │ Budget noise                        │ 2     │ no code change needed                                                         │
+  └─────────────────────────────────────┴───────┴───────────────────────────────────────────────────────────────────────────────┘
+
+  One thing I couldn't explain: in the first batch of 10 runs after the priority change, 5 runs had 1 failure each. My output filter cut off the test names, so I don't know which test
+  failed. Every run after that batch passed.
+
+  Files changed (change 6 against change 5, 17 files; all but the report are under experiments/control-run/elixir/jobq/):
+  - Code: bench.ex and prune.ex (both new), cli.ex, queue.ex, rename.ex, router.ex, server.ex, store.ex
+  - Checks: check.sh, script/sequence.py (new)
+  - Tests: change6_test.exs (new), change5_test.exs, test/support/never.ex, and the change-5 fixture folder (new)
+  - Docs: the program's README.md and bench/README.md
+
+  This session touched only bench.ex, queue.ex, store.ex, change6_test.exs and the report.
+
+  Declared errors: every error on the store's list has a test that reaches it; the report has the full table. Two error paths are handled but not declared, because no folder that opens
+  can make them fail: a file rename that fails during compaction, and a directory fsync that fails.
+
+  Decisions the spec did not cover: 21 in the report. The first 18 are my predecessor's, unchanged. Mine are:
+  19. The parallel replay applies only to logs of 20,000 lines or more.
+  20. The board is rebuilt at high process priority. Requests during a rebuild still get an immediate 503.
+  21. On macOS the bench reads the load average with sysctl -n vm.loadavg.
+
+  mise.toml is still untracked; I left it out of the commit.
+
+✻ Cogitated for 51m 23s · done 10:14 AM
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang-erosion6-elixir (erosion6-elixir*) | Context: 84% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

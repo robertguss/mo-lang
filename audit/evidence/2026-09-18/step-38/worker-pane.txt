@@ -1,0 +1,215 @@
+  ⎿  10:58  up  3:23, 2 users, load averages: 4.46 5.02 5.00
+  ⎿  Updated toolchain/bench/step38/README.md (+7 -0)
+      28    waits out the peer's delayed ACK under Nagle; `echo` is `mo-bench --net
+          work`'s
+      29    `echo-1k` rows; `duplex` times `examples/effects/duplex.mo` whole; `job
+          q` is
+      30    `mo build examples/programs/jobq` warm and the binary's size.
+      31 +- `linux.py [--best-of 5] [--trees label=toolchain,...]`: `measure.py`'s
+         +windows on Linux, where
+      32 +  the delayed ACK that Nagle's algorithm waits for lives (macOS's loopbac
+         +k shows none). Each tree's
+      33 +  `mo` is cross-compiled for aarch64 Linux and the programs are built wit
+         +h its own `mo build
+      34 +  --target aarch64-linux-musl`; the script then runs itself in a containe
+         +r (OrbStack's Docker,
+      35 +  `python:3.13-alpine`, 4 GB of memory). `work/linux.txt` has the table.
+      36 +- `abuse.py --mo <an older mo> --runtimes binary --out <file>` is the con
+         +trol: against step 37's
+      37 +  `mo` before its fix (`0493b26`) the server dies after the first reset,
+         +so the table can fail.
+
+⏺ The suite is running (started 10:58). Once it returns I'll commit part C: abuse.py, the
+  two Mo programs, the README additions, and RESULTS.md.
+
+✻ Baked for 1m 23s · done 10:58 AM
+
+⏺ Background command "cd /Users/robertguss/Projects/startups/mo-lang/toolchain &&
+L=/private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang/974d192d-936c-43d7-b
+468-d8e2824090c0/scratchpad/testC.log; uptime; S=$(date +%s); python3
+bench/step36/guard.py 2400 -- zig build test --summary all > $L 2>&1; echo "exit $? $((
+$(date +%s) - S )) s"; grep -E "Build Summary|error:" $L | head; uptime" completed (exit
+code 0)
+
+  Read 1 file, ran 1 shell command
+
+⏺ Bash(cd /Users/robertguss/Projects/startups/mo-lang && python3 - <<'EOF'
+      p='toolchain/bench/step38/RESULTS.md'; s=open(p).read()…)
+  ⎿  Created autostash: 225c43f
+     Applied autostash.
+     26610d6 Step 38 part C
+     … +61 lines
+  ⎿  Updated mo-wiki/plans/erosion-round-suite/results/e6-morun-defects3.txt (+4 -0)
+      52  ok   budget: the folder reopens
+      53  ok   budget: every 201 job is on the reopened board
+      54  ok   budget: restarts is 0 on the fresh start
+      55 +ok   budget: four failures 1.6 s apart under a window of 1 s and the serv
+         +ice is still serving
+      56 +ok   budget: and /health answers
+      57 +
+      58 +55 passed, 0 defects
+  ⎿  Updated mo-wiki/plans/erosion-round-suite/results/e6-suites.out (+2 -0)
+      194  FAIL verify: queued with a worker names the record's key: ([], '2 jobs:
+           queued 2, scheduled 0, leased 0, done 0, dead 0; next id j_1000; archive
+           d 0')
+      195  64 passed, 2 defects
+      196  ## morun defects3 11:04:29 load { 6.16 5.99 5.45 }
+      197 +exit=0
+      198 +55 passed, 0 defects
+  ⎿  Updated toolchain/bench/step38/RESULTS.md (+2 -2)
+      189  ## The suite
+      190
+      191  `zig build test --summary all`: 236 of 236 in 430 s at part A (load 7.03
+            6.38 5.94 at the start),
+      192 -237 of 237 in 863 s at part B (load 3.77 5.04 5.57, beside the worktree
+          -builds); the last run is in
+      193 -the report.
+      192 +237 of 237 in 863 s at part B (load 3.77 5.04 5.57, beside the worktree
+          +builds), and 237 of 237 in 434 s after the final numbers (load 4.46 5.02
+      193 +5.00 at the start, 5.06 5.74 5.40 at the end).
+
+⏺ All three parts are committed and pushed. The remaining changes in the tree are the
+  lead's. Removing my three measurement worktrees so they don't stay registered.
+
+  Ran 1 shell command
+
+⏺ Step 38 is done: parts A, B, and C are committed and pushed as ebf59b3, 1bb5612, and
+  26610d6, and every commit's suite was green. The abuse table is at 64 of 64.
+
+  python3 toolchain/bench/step36/guard.py 2400 -- zig build test --summary all (last run,
+  10:58 to 11:05 AM ET, load 4.46 5.02 5.00 at the start):
+  Build Summary: 5/5 steps succeeded; 237/237 tests passed
+  exit 0, 434 s
+  Earlier runs: 236/236 in 430 s at part A, 237/237 in 863 s at part B.
+
+  What part A found. The stall is TLS-only. A read on a connection whose write was parked
+  mid-flush did its own blocking flush: it took the same unsent bytes from the TLS engine,
+  wrote them a second time, and cleared the writer's flag. On the Mac it showed as a
+  read_line client getting 4 of 1,600 lines, then a 60.02 s stall (load 4.23 5.66 5.49).
+  Plain sockets, and main writing while lines reads, never stalled here.
+
+  The fix is in both runtimes: one writer at a time owns the engine's output queue, and
+  reads never wait on the send side. examples/effects/duplex.mo now covers plain and TLS,
+  main writing and main reading, and the Busy rows. It passes under both runtimes and the
+  fixture, and held under 100 seeds with faults.
+
+  Numbers (best of five; each row's load is its 1-, 5- and 15-minute average):
+
+
+  ┌──────────────────────┬────────────────────────────┬───────────────┬──────────────┐
+  │         what         │           before           │     after     │     load     │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ duplex.mo whole, mo  │ TLS read_line leg: 4 of    │               │ 4.47 4.45    │
+  │ run                  │ 1,600 lines, then 60.02 s  │ 0.819 s       │ 4.75         │
+  │                      │ (one run)                  │               │              │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ duplex.mo whole,     │ —                          │ 0.482 s       │ 5.64 4.69    │
+  │ binary               │                            │               │ 4.83         │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ Linux, windows of    │ 8.836 / 9.326 s            │ 0.190 / 0.653 │ container    │
+  │ 16, run plain / TLS  │                            │  s            │ 0.14–0.77    │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ Linux, windows of    │                            │ 0.059 / 0.492 │ container    │
+  │ 16, binary plain /   │ 8.703 / 9.663 s            │  s            │ 0.19–0.96    │
+  │ TLS                  │                            │               │              │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ Linux, windows of 1, │ 0.255 / 0.907 s            │ 0.242 / 0.837 │ container    │
+  │  run plain / TLS     │                            │  s            │ 0.04–0.66    │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ Linux, windows of    │ 0.110 / 0.584 s            │ 0.109 / 0.409 │ container    │
+  │ 256, run plain / TLS │                            │  s            │ 0.14–0.77    │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ Mac, windows of 16,  │ 0.150 / 0.239 s            │ 0.153 / 0.237 │ 3.75–4.41    │
+  │ run plain / TLS      │                            │  s            │              │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ echo-1k, a round     │ 33.9 µs                    │ 34.2 µs       │ 4.92 / 4.85  │
+  │ trip                 │                            │               │              │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ echo-1k-c, a round   │ 37.6 µs                    │ 36.3 µs       │ 4.92 / 4.85  │
+  │ trip                 │                            │               │              │
+  ├──────────────────────┼────────────────────────────┼───────────────┼──────────────┤
+  │ jobq warm build      │ 0.11 s (10.1 s; 780,072 B) │ 0.12 s (10.1  │ 5.62 / 5.60  │
+  │ (cold; binary size)  │                            │ s; 780,056 B) │              │
+  └──────────────────────┴────────────────────────────┴───────────────┴──────────────┘
+
+  "Before" is the part A commit for the window and echo rows, and the step's start for
+  jobq. The full per-window tables are in toolchain/bench/step38/RESULTS.md.
+
+  Abuse table (toolchain/bench/step38/work/abuse.txt; 2026-09-18 14:51 UTC, 10:51 up 3:16,
+  load averages: 3.91 4.41 4.76), 64 of 64. Each of the 32 cells below passed on both
+  runtimes, with the server or client alive afterwards:
+
+  ┌────────┬─────────────────┬────────────────┬──────────────┬───────────┬────────────┐
+  │  side  │      state      │     alert      │ close_notify │   reset   │  nothing   │
+  ├────────┼─────────────────┼────────────────┼──────────────┼───────────┼────────────┤
+  │ server │ before hello    │ Handshake      │ Closed       │ Closed    │ Timeout    │
+  ├────────┼─────────────────┼────────────────┼──────────────┼───────────┼────────────┤
+  │ server │ partial hello   │ Handshake      │ Closed       │ Closed    │ Timeout    │
+  │ server │ after server's  │ Handshake      │ Closed       │ Closed    │ Timeout    │
+  │        │ flight          │                │              │           │            │
+  │ server │ after client's  │ Ok, then read  │ Ok, then     │ Ok, then  │ Ok, then   │
+  │        │ Finished        │ Closed         │ None         │ Closed    │ Timeout    │
+  ├────────┼─────────────────┼────────────────┼──────────────┼───────────┼────────────┤
+  │ server │ after first     │ Ok, echoed 1,  │ Ok, 1, None  │ Ok, 1,    │ Ok, 1,     │
+  │        │ record          │ then Closed    │              │ Closed    │ Timeout    │
+  ├────────┼─────────────────┼────────────────┼──────────────┼───────────┼────────────┤
+  │ client │ before          │ Handshake      │ Closed       │ Closed    │ Timeout    │
+❯ You are the worker for step 38 of the Mo toolchain in this repo (/Users/robertguss/Pro…
+  │        │ ServerHello     │                │              │           │            │
+  ├────────┼─────────────────┼────────────────┼──────────────┼───────────┼────────────┤
+  │ client │ mid-flight      │ Handshake      │ Closed       │ Closed    │ Timeout    │
+  ├────────┼─────────────────┼────────────────┼──────────────┼───────────┼────────────┤
+  │ client │ after Finished  │ Ok, then read  │ Ok, then     │ Ok, then  │ Ok, then   │
+  │        │                 │ Closed         │ None         │ Closed    │ Timeout    │
+  └────────┴─────────────────┴────────────────┴──────────────┴───────────┴────────────┘
+
+  To show the table can fail, I ran the same script against the mo from just before step
+  37's double-free fix (0493b26). The binary server died with SIGSEGV after the first
+  reset mid-hello, and the client died too: 0 of 33 cells.
+
+  Decisions the brief did not cover
+  1. The SIGSYS crashes were an existing Mac failure that blocked a green suite, so I
+     fixed them. Two TLS brick tests (the ones "against Zig's own client") crashed on this
+     Mac, already at 64982b2, because a test helper called Linux's fcntl directly. It now
+     uses libc's off Linux. This is a test-only change inside bricks/tls.zig.
+  2. I measured TCP_NODELAY in a Linux container (OrbStack, aarch64, cross-built mo and
+     binaries), because the Mac's loopback never shows Nagle's delayed-ACK wait. The Mac's
+     before/after is in RESULTS.md too.
+  3. The bulk windows use a new client, bench/step38/window-dial.mo, instead of step 37's
+     measure.py, which only knows two windows of 64. It sends 3,200 lines; windows of 256
+     send 3,072 (whole windows only).
+  4. duplex.mo's main times each leg itself and prints "under a second: true/false", so
+     the corpus checks the one-second bound under both runtimes. If a heavily loaded
+     machine ever pushes a leg past one second, that line will flake.
+  5. The Busy checks in duplex.mo are sequenced by pausing main in an accept with a
+     timeout on an idle listener. That lets the process it just sent to reach its wait
+     first; without the pause the second write raced and came back Ok.
+  6. read_back is recursive, because the corpus forbids a for around read_line in
+     examples.
+  7. The handshake still flushes its flight before reading. A TLS 1.3 peer reads each
+     flight before sending its next, so a handshake read never waits on its own write. The
+     part of the brief's "an accept's handshake read proceeds" that could apply is that
+     nothing else writes to the socket mid-record during a handshake.
+  8. close now skips close_notify while a flush is halfway through a record, because it
+     would cut that record.
+  9. The abuse peer is Python's ssl (OpenSSL 3.6.4), not /usr/bin/openssl, which on this
+     Mac is LibreSSL 3.3.6.
+     - Alerts during the handshake go in the clear. At the server's flight state the alert
+       is OpenSSL's own unknown_ca, which it sends in the clear.
+     - Mid-flight the client gets a clear alert, because OpenSSL has already switched to
+       its application keys and can't write one under the handshake keys.
+     - After the handshake, alerts are encrypted by OpenSSL itself (bad_record_mac,
+       provoked by feeding it a record it can't open).
+  10. After the handshake, the expected answer to a close_notify is the end of the stream
+      (None), and to a fatal alert or reset it is Closed.
+  11. The suite is run under the brief's guard and 2400 s timeout, not the brief's timeout
+      2400; the step 37 corpus tests that start their own processes inside the suite
+      remain unguarded as they were.
+
+✻ Baked for 44s · done 11:06 AM
+
+──────────────────────────────────────────────────────────────────────────────────────────
+❯ This session was the worker on the step 38 brief
+──────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5 ~/P/s/mo-lang (main*) | Context: 61% left
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents
