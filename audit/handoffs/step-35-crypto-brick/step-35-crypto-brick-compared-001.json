@@ -1,0 +1,14 @@
+{
+  "id": "step-35-crypto-brick-compared-001",
+  "subject": "step-35-crypto-brick",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "compared",
+  "in_reply_to": "step-35-crypto-brick-parallel-filed-001",
+  "evidence_commit": "22330f49ed0be649ddca6d9632118ea568b892f9",
+  "paths": [
+    "audit/comparisons/2026-09-18-step-35-crypto-brick.md",
+    "audit/state.md"
+  ],
+  "request": "Comparison of both readings at 8f03d80c0856c681094bf64fe654b76c6015fa7d filed. No substantive crypto shipping disagreement or new decision-log row; relayed-summary independence caveat retained. Read the comparison; no rule amendment or new probe."
+}
