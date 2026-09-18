@@ -258,7 +258,7 @@ fn ran(http: Http, fs: Fs, clock: Clock, out: Out, err: Out, args: List(String))
     Trimming(dir: dir, older_than_ms: ms):
       opened = try opened_store(fs, err, dir)
       trimmed(fs, dir, opened, ms, clock.now)
-    Benching(measured): bench(http, fs, clock, err, measured)
+    Benching(measured): bench(http, fs, clock, err, None, measured)
   end
 end
 
@@ -375,7 +375,8 @@ end
 # from 1 worker and then from `workers`, the resident memory after the pairs, and the time a
 # second service takes to open the folder again and answer /health. The first service is left
 # serving until bench exits, so the restart measures the replay, not a stop.
-fn bench(http: Http, fs: Fs, clock: Clock, err: Out, measured: Measured) : Result(String, Problem)
+fn bench(http: Http, fs: Fs, clock: Clock, err: Out, runtime: Option(Runtime),
+  measured: Measured) : Result(String, Problem)
   dir = measured.dir
   jobs = measured.jobs
   workers = measured.workers
@@ -387,7 +388,7 @@ fn bench(http: Http, fs: Fs, clock: Clock, err: Out, measured: Measured) : Resul
   made = loaded(http, clock, port, jobs)
   one = paired(http, clock, port, 1, 10_000)
   many = paired(http, clock, port, workers, 10_000)
-  resident = resident_mib(fs) or "n/a"
+  resident = resident_mib(fs, runtime) or "n/a"
   began = clock.now
   opened = try opened_store(fs, err, dir)
   again = try served_on(http, fs, clock, err, dir)
@@ -653,7 +654,13 @@ end
 # since check serves a listener of its own.
 fn main(platform: Platform)
   args = platform.args
-  case ran(platform.http, platform.fs, platform.clock, platform.stdout, platform.stderr, args)
+  outcome = case task(args)
+    Ok(Benching(measured)):
+      bench(platform.http, platform.fs, platform.clock, platform.stderr, platform.runtime, measured)
+    Ok(_) | Error(_):
+      ran(platform.http, platform.fs, platform.clock, platform.stdout, platform.stderr, args)
+  end
+  case outcome
     Ok(text):
       platform.stdout.write(text)
       if !serving?(args)
@@ -1112,5 +1119,14 @@ test "a usage error exits 2, and a folder, a port, or a server that cannot be ha
   assert code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (24), property (0 seeds), sim (not run)
+test "a serve on a port another listener holds is Unbound, and exits 1"
+  http = Http.fixture()
+  fs = Fs.fixture()
+  assert fs.mkdir("d", within: 1.minute) is Ok(_)
+  assert http.listen(7_900, within: 1.minute) is Ok(_)
+  held = serve(http, fs, Clock.fixture(), Out.fixture(), Out.fixture(), place_of("d"))
+  assert held == Error(Unbound(port: 7_900)) and code_of(Unbound(port: 7_900)) == 1
+end
+
+verified: types, contracts, tests (25), property (0 seeds), sim (not run)
           proven: not run

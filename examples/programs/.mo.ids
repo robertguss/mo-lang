@@ -901,7 +901,7 @@
         { "id": "eb9ea1ecbfa5", "name": "test \"a route that does not exist is 404, whatever its method or token\"", "hash": "6be17d4a1b03ceff" },
         { "id": "282a953fa3b5", "name": "test \"a missing, empty, or malformed token is 401; health needs none, and the scheme's case does not matter\"", "hash": "ab299f248347c8e6" },
         { "id": "2e2517971b92", "name": "test \"each route becomes its call\"", "hash": "a7e6d36bddac17c6" },
-        { "id": "b4b56f862ccf", "name": "test \"a body that is not JSON, not an object, missing a field, or of the wrong shape is 400 with why\"", "hash": "f9f3eee1c9a0cceb" },
+        { "id": "b4b56f862ccf", "name": "test \"a body that is not JSON, not an object, missing a field, or of the wrong shape is 400 with why\"", "hash": "eb1ad0d9355010c2" },
         { "id": "84cd813686cc", "name": "test \"a delay and a backoff keep their ranges, and the names the previous version took are gone\"", "hash": "78934081894b8607" },
         { "id": "a1b4cfae7710", "name": "test \"the queues route takes GET with a token, and lists every queue with its counts\"", "hash": "a82f94da4a1071fb" },
         { "id": "d504d130fae5", "name": "test \"each outcome is its status and its JSON\"", "hash": "9d92c88d5d4106ed" },
@@ -914,7 +914,7 @@
         { "id": "ec30bc066769", "name": "test \"a prune answers how many jobs it removed and how many are left, and the archive its count, oldest, and size\"", "hash": "7ea221d65ab4bda6" },
         { "id": "45f4efc56278", "name": "property \"any valid payload sent as JSON becomes a create of that payload\"", "hash": "553e1c703d127efe" }
       ],
-      "verified": { "hash": "93a8f0bb147a333b", "declarations": "390ab6472e4568da", "uses": [{ "module": "Jobq.Board", "hash": "deac9262ba3b31df" }, { "module": "Jobq.Job", "hash": "1c848b0fae2af3ee" }] }
+      "verified": { "hash": "93a8f0bb147a333b", "declarations": "3ea6e41c982dc527", "uses": [{ "module": "Jobq.Board", "hash": "deac9262ba3b31df" }, { "module": "Jobq.Job", "hash": "1c848b0fae2af3ee" }] }
     },
     {
       "path": "jobq/bench.mo",
@@ -922,29 +922,31 @@
       "declarations": [
         { "id": "78f03c8714ec", "name": "module Jobq.Bench", "hash": "3c8eb94fba158c05" },
         { "id": "75d492d68c43", "name": "expose", "hash": "ce79667d40f2d86a" },
-        { "id": "2cec01ac4919", "name": "intent", "hash": "c4ca50903e8b97a4" },
+        { "id": "2cec01ac4919", "name": "intent", "hash": "b4898015cbab89ef" },
         { "id": "2c32b8c87a3e", "name": "struct Load", "hash": "3aee2067560589bc" },
         { "id": "5c15e6635abe", "name": "process Producer", "hash": "3b6fedb1b1434e32" },
         { "id": "b7efeeb00309", "name": "supervisor Producers", "hash": "1c20f46e9f39fe30" },
-        { "id": "4bed7240172a", "name": "process Pairer", "hash": "40b6ca7b6530f165" },
+        { "id": "4bed7240172a", "name": "process Pairer", "hash": "00ed9996fba63195" },
         { "id": "da57b464ac8e", "name": "supervisor Pairers", "hash": "0ab241930c0f9880" },
-        { "id": "ccc503909c13", "name": "fn rounds", "hash": "8aced764ac721b47" },
+        { "id": "ccc503909c13", "name": "fn rounds", "hash": "893e0d7e4de98722" },
         { "id": "c62036399a3f", "name": "fn create_body", "hash": "abc08839ec061e4c" },
         { "id": "e030af3e1a86", "name": "fn sent", "hash": "d2ad9a83c382007b" },
         { "id": "1e3d6685207b", "name": "fn status_of", "hash": "ecfa338c912448fb" },
         { "id": "98a22fa78c92", "name": "fn id_in", "hash": "158dd2092f804c09" },
         { "id": "1c140948b1fb", "name": "fn loaded", "hash": "2022fbb3ca7c4609" },
         { "id": "f4c8c28f7d55", "name": "fn share", "hash": "e8d1660e36f4692a" },
-        { "id": "e3fcdf833f9d", "name": "fn paired", "hash": "9be6e58170060c2c" },
+        { "id": "e3fcdf833f9d", "name": "fn paired", "hash": "eb924e6cf153cdc7" },
         { "id": "f0a672199361", "name": "fn rate_line", "hash": "f132d60a6e7fa59c" },
         { "id": "6641c4ab0720", "name": "fn seconds", "hash": "310eacac295e4afa" },
-        { "id": "f07043d89746", "name": "fn resident_mib", "hash": "e6129ae62432d18a" },
-        { "id": "562a60e66120", "name": "fn mib_of", "hash": "fc22a6cf7281abab" },
+        { "id": "f07043d89746", "name": "fn resident_mib", "hash": "bcf55db1fc58e6e6" },
+        { "id": "581030c9ee8f", "name": "fn mib_of_kb", "hash": "4dafe0d35fb94659" },
+        { "id": "562a60e66120", "name": "fn mib_of", "hash": "62e4c2729a202868" },
         { "id": "a2df4d041150", "name": "test \"a rate line is a count over seconds with two decimals, as measure.py prints it\"", "hash": "de897cfe668a70e9" },
         { "id": "1fdc648dd6d6", "name": "test \"a create's body names one of four queues by turn and carries 100 bytes\"", "hash": "1710b89a70655a0d" },
-        { "id": "dbd117dc3e20", "name": "test \"the resident memory is read from a status file's VmRSS line, and none where there is none\"", "hash": "cafdccb76f9dd7e9" }
+        { "id": "4886ecde36d7", "name": "test \"the resident memory is read from the runtime surface, else a status file's VmRSS line, else none\"", "hash": "4eb6e6ade67504d5" },
+        { "id": "7992a2765656", "name": "test \"pair workers with no service to lease from are done at once, and each answers its count\"", "hash": "1415983eba15e50b" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "966d19606e56cc05" }
+      "verified": { "hash": "d5eca57fd58baa94", "declarations": "96f4bd3e21986a9e" }
     },
     {
       "path": "jobq/board.mo",
@@ -1160,7 +1162,8 @@
         { "id": "d360644a28e2", "name": "test \"the key map and the archive are rebuilt from the records, and a job in both files is archived\"", "hash": "da4a025b186341bb" },
         { "id": "9100bdf096dd", "name": "test \"archive changes on disk from a batch the live log refused move the durable board too\"", "hash": "2f740fd858ef4ae2" },
         { "id": "58b823c1abb1", "name": "test \"the ids counter stays above the archive's jobs, and a new board numbers past them\"", "hash": "586da46cddae68a8" },
-        { "id": "45624c11c3a5", "name": "test \"an archive with a bad record, or a key on two jobs, is ill-formed by name\"", "hash": "fefbcce7c409d808" },
+        { "id": "45624c11c3a5", "name": "test \"an archive with a bad record, or a key on two jobs, is ill-formed by name\"", "hash": "a53d172126d26bd4" },
+        { "id": "067f5dfdf64b", "name": "test \"a step the API's checks keep out is 503 at the board, never a tripped contract\"", "hash": "a127fc8b011a141f" },
         { "id": "a59abd785796", "name": "test \"a handoff from the holder moves the lease; a stranger, a run-out lease, and an archived job are 409\"", "hash": "961cc7c8124c0732" },
         { "id": "6f84f895296b", "name": "test \"a handoff to the holder itself is 200 and changes nothing\"", "hash": "5517bbc827ac6940" },
         { "id": "e1102154b5e9", "name": "test \"A hands to B, B to C: A and B are 409 from then on, and C acks\"", "hash": "fed4510416a2498f" },
@@ -1184,7 +1187,7 @@
         { "id": "0db5bcf444a0", "name": "test rejects \"an empty board whose first number is 0\"", "hash": "d8744411d78e336b" },
         { "id": "7e707ef34361", "name": "property \"a job made then fetched gives back any valid payload\"", "hash": "90319db59211610c" }
       ],
-      "verified": { "hash": "53971caa856e661f", "declarations": "c073e190f2864a74", "uses": [{ "module": "Jobq.Job", "hash": "1c848b0fae2af3ee" }] }
+      "verified": { "hash": "800bd690b8234879", "declarations": "70b265a274171589", "uses": [{ "module": "Jobq.Job", "hash": "1c848b0fae2af3ee" }] }
     },
     {
       "path": "jobq/job.mo",
@@ -1330,7 +1333,7 @@
         { "id": "5bb07c2e32e0", "name": "fn checking", "hash": "f2bec088d4122e63" },
         { "id": "3229f0f654c5", "name": "fn dir_of", "hash": "8f551bd719d35933" },
         { "id": "aa8ce442cc1a", "name": "fn port_of", "hash": "d0a6efda928a988f" },
-        { "id": "e8505756e1ce", "name": "fn ran", "hash": "98c59bf609be4552" },
+        { "id": "e8505756e1ce", "name": "fn ran", "hash": "ceaf5a4eb6947ece" },
         { "id": "a73e709d4714", "name": "fn serve", "hash": "d38d3eba318a012e" },
         { "id": "b358d3f2f655", "name": "fn opening_of", "hash": "8de9daa8723316a4" },
         { "id": "7844efeb2376", "name": "fn compacted_from", "hash": "74fb8cf12b7c7f2d" },
@@ -1339,7 +1342,7 @@
         { "id": "ab1ff88a1f94", "name": "fn counted", "hash": "eebfcb2d8ca77c8d" },
         { "id": "55edd7c05823", "name": "fn trimmed", "hash": "d442928b42eb607b" },
         { "id": "38ee1b6ea4d1", "name": "fn written", "hash": "9cf4cfa35e1323e5" },
-        { "id": "2dbe4b9c2e82", "name": "fn bench", "hash": "867d89d9862fbd9a" },
+        { "id": "2dbe4b9c2e82", "name": "fn bench", "hash": "9bd8b17993cfb1c2" },
         { "id": "2a9c78777ec3", "name": "fn served_on", "hash": "bed00d8f4be76332" },
         { "id": "287df7aaa546", "name": "fn health_within", "hash": "838f435994b3cfac" },
         { "id": "4cf959a2e4b4", "name": "fn load_average", "hash": "b71493e553af0394" },
@@ -1365,7 +1368,7 @@
         { "id": "40184e50455e", "name": "fn said", "hash": "9b2e610e723ba7e1" },
         { "id": "2bb5ecfd07a7", "name": "fn code_of", "hash": "e9e0fb240362da37" },
         { "id": "93c72fe1b2c7", "name": "fn serving?", "hash": "125fd756f2ea7ea5" },
-        { "id": "e6c57b2043e7", "name": "fn main", "hash": "b7cbf91ce69cd957" },
+        { "id": "e6c57b2043e7", "name": "fn main", "hash": "015d36df3c3db614" },
         { "id": "619dad813d5c", "name": "fn old_record", "hash": "9bec28240af2b3fe" },
         { "id": "1fbaa90fe4e8", "name": "fn archived_record", "hash": "b63b239e3b96dff3" },
         { "id": "d57541006b93", "name": "fn queued_record", "hash": "87a713633baa7363" },
@@ -1392,9 +1395,10 @@
         { "id": "25d006a6d129", "name": "test \"the steadied transcript masks the archive's oldest time and size, and leaves a null alone\"", "hash": "95b9d4061653e012" },
         { "id": "0b667c1d5664", "name": "test \"verify refuses a folder with a bad rename record, and counts with the renames applied\"", "hash": "6eb38ad9b3e448d8" },
         { "id": "50db428a322d", "name": "test \"the steadied transcript masks archived_at\"", "hash": "3bf6f1ef654a839d" },
-        { "id": "48b970f36a7a", "name": "test \"a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1\"", "hash": "3e953113347988b5" }
+        { "id": "48b970f36a7a", "name": "test \"a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1\"", "hash": "3e953113347988b5" },
+        { "id": "60d8042eaa97", "name": "test \"a serve on a port another listener holds is Unbound, and exits 1\"", "hash": "740592da8570b82e" }
       ],
-      "verified": { "hash": "fb608edec35254de", "declarations": "9e35294927617624", "uses": [{ "module": "Jobq.Api", "hash": "29f91925250b8249" }, { "module": "Jobq.Bench", "hash": "b78b0cbb9c3ac3ca" }, { "module": "Jobq.Board", "hash": "deac9262ba3b31df" }, { "module": "Jobq.Job", "hash": "1c848b0fae2af3ee" }, { "module": "Jobq.Queue", "hash": "5407ea1b54e288c5" }, { "module": "Jobq.Server", "hash": "6cadc52f9a77e4fd" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
+      "verified": { "hash": "5748b65a940c3ea3", "declarations": "c0aec2b554cf43ab", "uses": [{ "module": "Jobq.Api", "hash": "29f91925250b8249" }, { "module": "Jobq.Bench", "hash": "29328cd6fd7701ad" }, { "module": "Jobq.Board", "hash": "deac9262ba3b31df" }, { "module": "Jobq.Job", "hash": "1c848b0fae2af3ee" }, { "module": "Jobq.Queue", "hash": "5407ea1b54e288c5" }, { "module": "Jobq.Server", "hash": "6cadc52f9a77e4fd" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
     },
     {
       "path": "jobq/queue.mo",
@@ -1644,12 +1648,13 @@
         { "id": "b12e31b11923", "name": "test \"replay applies SET and DEL in order, and stops open at a line that is neither\"", "hash": "3d90accddb95879b" },
         { "id": "3dfe90a50fc2", "name": "test \"a store opened again from its log holds as many keys as before it stopped\"", "hash": "ddae1241c04ecb57" },
         { "id": "8cffaaf1b6ca", "name": "test \"a change the log cannot take leaves the table as it was\"", "hash": "bd9daa64a646d5a9" },
+        { "id": "231fafb90841", "name": "test \"every way a store fails to open or to write whole is its own error\"", "hash": "a4c766f175378cc8" },
         { "id": "e49cbf82cc53", "name": "test \"a store writing to another log keeps its keys and leaves the first log alone\"", "hash": "5ce61d8aa3c15c8f" },
         { "id": "3399bab6b99a", "name": "test \"a store opened again after a restart holds both logs when it writes to another\"", "hash": "bfa65f53f7db0724" },
         { "id": "daa8ad35ef1c", "name": "test \"a store over another log in the folder opens, writes, and reopens on its own\"", "hash": "e13deaf9b93f66b5" },
         { "id": "e100950aab32", "name": "property \"any valid key and value read back as written, and again once the store is opened again\"", "hash": "a61c77eca87f7516" }
       ],
-      "verified": { "hash": "fc4083df7d89a92b", "declarations": "19ecfe7cb4e673a4" }
+      "verified": { "hash": "791c6816f80c28f0", "declarations": "306a443a275ddcf0" }
     },
     {
       "path": "kv/log.mo",

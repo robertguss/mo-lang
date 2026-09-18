@@ -140,3 +140,45 @@ Reproduction: `python3` a log of 20,000 jobs into a folder, `jobq serve <dir> --
 --max-restarts 1000`, then POST a job and GET /health 30 times; RSS goes from 117 MB to 1,380 MB and
 stderr to 685 MB. Not worked around: the report is the runtime's, the restart itself is 0.15 s on
 that log, and the restart budget (5 in 60 seconds by default) bounds how fast it grows.
+
+## 6. No `Fs` row syncs a folder
+
+`Fs.write` and `Fs.append` fsync the file, and `Fs.mkdir` says the folder is not synced, but no row
+syncs a folder after a file is created in it or renamed into it (`rename` in
+`toolchain/src/server.zig` and `mo_rt.c` is a bare `rename(2)`). Change 6's spec names persistence
+twice, the file's contents and the directory entry, and asks the check script to kill the service
+between compact's rename of `jobq.log.new` over `jobq.log` and the folder's fsync. The program
+cannot place that kill: there is no fsync to kill before. A power loss after `compact` renames the
+new log into place can leave the old log's entry, or no `jobq.log` at all for a folder's first
+archive file. On macOS, `fsync` is also not `F_FULLFSYNC`, so the file's own contents reach the
+drive's cache, not its platter.
+
+Reproduction: `grep -n "rename\|fsync" toolchain/runtime/mo_rt.c`. Not worked around: `sequence.py`
+reports the kill as not placed, and the folder holds no `.new` file after a clean `compact`.
+
+## 7. `mo fmt` broke a one-line `if` inside an anonymous function (not reproduced)
+
+Reported from the change-6 work on the Linux VM: `mo fmt` rewrote an anonymous function whose body
+was a one-line `if`, a `fold_lines` argument in `bench.mo`'s `resident_mib`, into lines that did not
+parse. The exact input was not kept. On the Mac, with the toolchain binary of 18 Sep 09:22, the same
+call written on one over-long line is wrapped by `mo fmt` after `within: 5_000.ms,` with the
+anonymous function whole on the next line, and `mo check` takes it. Recorded as seen once and not
+reproduced.
+
+## 8. `for _ in 0..N` builds the whole range before it walks it
+
+`for _ in 0..100_000_000` inside a process's update allocates the range whole: the first `jobq
+bench` binary reached 4 GB resident in 10 seconds and was killed by the guard. A range in a `for`
+should be walked, not built. Worked around: the pair worker loops `0..10_000` rounds of `0..1_000`
+pairs, each a small range (`bench.mo`, `Pairer` and `rounds`).
+
+## 9. A process that re-arms a delayed send to itself never lets a simulated test settle
+
+The first design of the background prune had the queue send itself a `Tick` with `delay: 60.seconds`
+from every `Tick`, for ever. Under `mo test --sim 100` the simulator passes time to the next delayed
+send at a test's end, so the chain never ends: the run went 30 minutes to its timeout, and the same
+file without `--sim` ended in `OutOfMemory` (the Linux VM reached 13.4 GB before it was restarted).
+A test's end could stop at the first delayed send past the test's own last wait, or report the
+chain. Worked around: the `Tick` is armed by activity, one at a time (a call, or the listener's idle
+sweep), so it stops once nothing happens.
+

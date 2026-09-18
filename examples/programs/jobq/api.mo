@@ -514,6 +514,12 @@ test "a body that is not JSON, not an object, missing a field, or of the wrong s
   assert fail_from("j_1", "{}") == Error("reason is missing")
   assert fail_from("j_1", "") == Error("the body is not JSON")
   assert fail_from("j_1", "{\"reason\": 5}") == Error("reason must be a string")
+  long = "{\"reason\": \"#{"x".repeat(4_097)}\"}"
+  too_long = fail_from("j_1", long)
+  assert too_long == Error("reason must be at most 4 KiB of text with no control characters but newlines")
+  assert fail_from("j_1", "{\"reason\": \"a\\u0007b\"}") is Error(_)
+  unnamed = listing_from(Map.new().set("queue", "a b"))
+  assert unnamed == Error("queue must be 1 to 64 letters, digits, - or _")
   assert status_of(route(by("POST", "/queues/a%20b/lease", "w", ""))) == 400
   assert status_of(route(by("POST", "/jobs", "w", "{\"queue\": 1}"))) == 400
   assert why(route(by("POST", "/jobs", "w", "nope"))) == "{\"error\": \"the body is not JSON\"}"

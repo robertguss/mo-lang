@@ -553,6 +553,22 @@ test "a change the log cannot take leaves the table as it was"
   assert put_all(Fs.fixture(delay: 1.minute), one, [("b", Some("2"))]) is Error(Torn)
 end
 
+test "every way a store fails to open or to write whole is its own error"
+  assert open(Fs.fixture(), "nowhere") is Error(NoFolder)
+  assert open(Fs.fixture(delay: 1.minute), "d") is Error(Slow)
+  fs = Fs.fixture()
+  assert fs.mkdir("d/jobq.log", within: 1.minute) is Ok(_)
+  assert open(fs, "d") is Error(Unreadable)
+  slow = Fs.fixture(delay: 120.seconds)
+  assert rewritten(slow, blank("d"), ["SET a 1\n"]) is Error(Unwritten)
+  assert compact(slow, blank("d")) is Error(Unwritten)
+  assert fs.mkdir("e", within: 1.minute) is Ok(_)
+  assert open(fs, "e") is Ok(empty)
+  assert put(fs, empty, "a", "1") is Ok(one)
+  assert fs.write("e/jobq.check.log", "SET b 2\nGET b\nSET c 3\n", within: 1.minute) is Ok(_)
+  assert reopened(fs, emptied(writing_to(one, "jobq.check.log"))) is Error(BadLine(2))
+end
+
 test "a store writing to another log keeps its keys and leaves the first log alone"
   fs = Fs.fixture()
   assert fs.mkdir("d", within: 1.minute) is Ok(_)
@@ -617,5 +633,5 @@ property "any valid key and value read back as written, and again once the store
   end
 end
 
-verified: types, contracts, tests (14), property (200 seeds), sim (not run)
+verified: types, contracts, tests (15), property (200 seeds), sim (not run)
           proven: not run

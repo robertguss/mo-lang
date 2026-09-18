@@ -2217,11 +2217,28 @@ test "an archive with a bad record, or a key on two jobs, is ill-formed by name"
   assert ill_formed([], queued) == Some(("archive j_1", "is not a job"))
   bare = records(one_done("k")).map(fn(r) ("j_1", r) end)
   assert ill_formed([], bare) == Some(("archive j_1", "an archived job has an archived_at"))
+  unfinished = bare.map(fn(e)
+    (e.0, e.1.replace("\"state\": \"done\"", "\"state\": \"queued\""))
+  end)
+  broken = ill_formed([], unfinished)
+  assert broken == Some(("archive j_1", "an archived job is done or dead, not queued"))
   assert ill_formed([], [("j_1", "{}")]) == Some(("archive j_1", "is not a job"))
   second = create_keyed(board(start(), 2), "a", "k", start()).board
   assert ill_formed(store_of(second), shelf) == Some(("j_2", "its key k is j_1's too"))
   elsewhere = create_keyed(board(start(), 2), "b", "k", start()).board
   assert ill_formed(store_of(elsewhere), shelf) is None
+end
+
+test "a step the API's checks keep out is 503 at the board, never a tripped contract"
+  b = with_jobs(["a", "a"])
+  refused = handed(b, 1, "a b", 1_000, start())
+  assert refused.outcome == Unavailable(reason: "j_1 is not in a state a lease can take")
+  lent = lease_by(b, "w1", "a", 1_000, start())
+  moved = passed_on(lent.board, "w1", "j_1", "a b", start())
+  assert moved.outcome == Unavailable(reason: "a b is not a worker a lease can go to")
+  assert moved.writes == []
+  assert renaming(b, "a b", "c").outcome == Unavailable(reason: "a rename names two queues")
+  assert renaming(b, "a", "").outcome == Unavailable(reason: "a rename names two queues")
 end
 
 test "a handoff from the holder moves the lease; a stranger, a run-out lease, and an archived job are 409"
@@ -2671,5 +2688,5 @@ property "a job made then fetched gives back any valid payload"
   end
 end
 
-verified: types, contracts, tests (47), property (200 seeds), sim (not run)
+verified: types, contracts, tests (48), property (200 seeds), sim (not run)
           proven: not run

@@ -1,7 +1,7 @@
 module Jobq.Bench
 expose Load, Producer, Producers, Pairer, Pairers, loaded, paired, rate_line, seconds, resident_mib, create_body
 
-intent "The client half of jobq bench: producers that create jobs and workers that lease and ack them, each a process of its own that sends one request per connection to a service on a port, and the lines bench prints, in the shape the round's measure.py prints them: creates a second, lease-and-ack pairs a second at 1 and at N workers, and the resident memory the program's process holds, read from /proc/self/status."
+intent "The client half of jobq bench: producers that create jobs and workers that lease and ack them, each a process of its own that sends one request per connection to a service on a port, and the lines bench prints, in the shape the round's measure.py prints them: creates a second, lease-and-ack pairs a second at 1 and at N workers, and the resident memory the program's process holds, read from the runtime surface or /proc/self/status."
 
 # What a run of the load gave: how many requests did what they were sent to do, how many did not,
 # and how long it took.
@@ -40,29 +40,44 @@ supervisor Producers(http: Http, port: UInt16, index: UInt64, count: UInt64)
   child Producer(http, port, index, count), restart: :never
 end
 
-# A worker that leases a job from its queue and acks it, again and again, until `until` or until
-# its queue has nothing left, and counts the pairs whose ack was 200.
+# A worker that leases a job from its queue and acks it, a round of up to 25 pairs a message, sending
+# itself the next round until `until` or until its queue has nothing left, and counts the pairs
+# whose ack was 200. The clock is frozen for an update (chapter 3), so the time is read once a
+# round; an ask for the count is kept and answered once the worker is done.
 process Pairer(http: Http, clock: Clock, port: UInt16, index: UInt64, until: Time)
   state
     pairs: UInt64
     failed: UInt64
+    over: Bool
+    waiting: List(Reply(UInt64))
   end
 
-  message Go
+  message Go(me: Handle(Pairer))
   message Pairs : UInt64
 
   fn update(state, message)
     case message
-      Go:
-        for _ in 0..10_000
-          done = rounds(http, clock, port, index, until)
-          state.pairs += done.0
-          state.failed += done.1
-          if done.2
-            break
+      Go(me):
+        done = rounds(http, clock, port, index, until)
+        state.pairs += done.0
+        state.failed += done.1
+        state.over = done.2
+        if state.over
+          for held in state.waiting
+            held.answer(state.pairs)
           end
+          state.waiting = []
+        else
+          me.send(Go(me: me))
         end
-      Pairs: state.pairs
+      Pairs:
+        state.waiting = state.waiting.push(reply_to)
+        if state.over
+          for held in state.waiting
+            held.answer(state.pairs)
+          end
+          state.waiting = []
+        end
     end
   end
 end
@@ -71,16 +86,15 @@ supervisor Pairers(http: Http, clock: Clock, port: UInt16, index: UInt64, until:
   child Pairer(http, clock, port, index, until), restart: :never
 end
 
-# Up to 1,000 lease-and-ack pairs, a small range each time since a range is built whole before a
-# for walks it: the pairs acked, the acks refused, and whether the worker is done, its time up or
-# its queue empty.
+# Up to 25 lease-and-ack pairs: the pairs acked, the acks refused, and whether the worker is done,
+# its time up or its queue empty.
 fn rounds(http: Http, clock: Clock, port: UInt16, index: UInt64, until: Time) : (UInt64, UInt64,
   Bool)
   worker = "w#{index}"
   var pairs = 0
   var failed = 0
   var over = false
-  for _ in 0..1_000
+  for _ in 0..25
     over = clock.now >= until
     lent = if over
       (0, "")
@@ -166,7 +180,7 @@ fn paired(http: Http, clock: Clock, port: UInt16, workers: UInt64, ms: UInt64) :
     pairers = pairers.push(Pairer.start(http, clock, port, i, until))
   end
   for p in pairers
-    p.send(Go)
+    p.send(Go(me: p))
   end
   var pairs = 0
   for p in pairers
@@ -192,22 +206,32 @@ fn seconds(ms: UInt64) : String
   "#{ms / 1_000}.#{pad}#{hundredths}"
 end
 
-# The resident memory of this process in MiB with one decimal, from the VmRSS line of
-# /proc/self/status, or None where there is no such file.
-fn resident_mib(fs: Fs) : Option(String)
-  line = case fs.read_only.fold_lines("/proc/self/status", "", within: 5_000.ms,
-    fn(found, next) if next.starts_with?("VmRSS:"): next else: found end)
-    Ok(found): found
-    Error(_): ""
+# The resident memory of this process in MiB with one decimal: the runtime surface's resident
+# bytes where the program holds its surface (a binary built with --surface, or mo run), else the
+# VmRSS line of /proc/self/status, or None where there is neither.
+fn resident_mib(fs: Fs, runtime: Option(Runtime)) : Option(String)
+  case runtime
+    Some(surface): Some(mib_of_kb(surface.memory(within: 5_000.ms).resident_bytes / 1_024))
+    None:
+      line = case fs.read_only.fold_lines("/proc/self/status", "", within: 5_000.ms,
+        fn(found, next) if next.starts_with?("VmRSS:"): next else: found end)
+        Ok(found): found
+        Error(_): ""
+      end
+      mib_of(line)
   end
-  mib_of(line)
+end
+
+# Kilobytes as MiB with one decimal: 3884 is 3.7.
+fn mib_of_kb(kb: UInt64) : String
+  "#{kb / 1_024}.#{kb % 1_024 * 10 / 1_024}"
 end
 
 # A VmRSS line's kB as MiB with one decimal: "VmRSS:\t    3884 kB" is 3.7.
 fn mib_of(line: String) : Option(String)
   words = line.replace("\t", " ").split(" ").filter(fn(w) w != "" and w != "VmRSS:" end)
   kb = try (words.first or "").trim.to_u64
-  Some("#{kb / 1_024}.#{kb % 1_024 * 10 / 1_024}")
+  Some(mib_of_kb(kb))
 end
 
 test "a rate line is a count over seconds with two decimals, as measure.py prints it"
@@ -227,10 +251,17 @@ test "a create's body names one of four queues by turn and carries 100 bytes"
   assert id_in("{\"id\": \"j_7\", \"queue\": \"q\"}") == "j_7" and id_in("nope") == ""
 end
 
-test "the resident memory is read from a status file's VmRSS line, and none where there is none"
-  assert resident_mib(Fs.fixture()) is None
+test "the resident memory is read from the runtime surface, else a status file's VmRSS line, else none"
+  assert resident_mib(Fs.fixture(), Some(Runtime.fixture())) is Some(_)
+  assert resident_mib(Fs.fixture(), None) is None
+  assert mib_of_kb(3_884) == "3.7" and mib_of_kb(0) == "0.0"
   assert mib_of("VmRSS:\t    3884 kB") == Some("3.7") and mib_of("") is None
 end
 
-verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+test "pair workers with no service to lease from are done at once, and each answers its count"
+  load = paired(Http.fixture(), Clock.fixture(), 1, 3, 10_000)
+  assert load.done == 0 and load.failed == 0
+end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
           proven: not run
