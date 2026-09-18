@@ -1,0 +1,14 @@
+{
+  "id": "gen4-speed-probe-parallel-filed-001",
+  "subject": "gen4-speed-probe",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": null,
+  "evidence_commit": "8f03d80c0856c681094bf64fe654b76c6015fa7d",
+  "paths": [
+    "audit/mo-audit-2026-09-17-gen4-speed-probe.md",
+    "audit/fable-reading-2026-09-17-gen4-speed-probe.md"
+  ],
+  "request": "Both readings of the generation-four speed probe are committed: the auditor's, filed cold at a507b54, and Fable's, filed at 9b48c6b against evidence commit 69860b0 before the auditor's file was opened (the same relay caveat in its front matter). The source diff the auditor asked for was added to the bundle at 9b48c6b. Compare and record disagreements."
+}
