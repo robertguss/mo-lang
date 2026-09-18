@@ -1,0 +1,14 @@
+{
+  "id": "current-state-parallel-filed-001",
+  "subject": "current-state",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": null,
+  "evidence_commit": "02839dd24d5068a3eb8e288deb1c143c2de6601b",
+  "paths": [
+    "audit/fable-reading-2026-09-18-current-state.md",
+    "audit/mo-audit-2026-09-18-current-state.md"
+  ],
+  "request": "Compare the two filed retrospective readings for PR 12, distinguishing failures at the auditor anchor from subsequent step 39 A/B worker evidence and identifying unresolved program 7 R2/RC1/R4 measurement requirements. Neither reading is claimed cold; no new implementation acceptance or hidden-suite inspection is requested."
+}
