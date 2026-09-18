@@ -385,11 +385,21 @@ defmodule Jobq.Bench do
     |> Enum.sum()
   end
 
+  # Linux keeps it in /proc; macOS answers `sysctl vm.loadavg` with `{ a b c }`.
   defp load_average do
     case File.read("/proc/loadavg") do
       {:ok, text} -> text |> String.split() |> Enum.take(3) |> Enum.join(" ")
-      {:error, _reason} -> "unknown"
+      {:error, _reason} -> sysctl_load_average()
     end
+  end
+
+  defp sysctl_load_average do
+    case System.cmd("sysctl", ["-n", "vm.loadavg"], stderr_to_stdout: true) do
+      {text, 0} -> text |> String.split() |> Enum.reject(&(&1 in ["{", "}"])) |> Enum.join(" ")
+      _other -> "unknown"
+    end
+  rescue
+    _error in ErlangError -> "unknown"
   end
 
   defp now_ms, do: System.monotonic_time(:millisecond)

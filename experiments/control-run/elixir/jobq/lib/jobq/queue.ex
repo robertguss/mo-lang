@@ -214,6 +214,11 @@ defmodule Jobq.Queue do
     clock = Keyword.get(opts, :clock, Jobq.Clock.system())
     sweep_ms = Keyword.get(opts, :sweep_ms, 100)
 
+    # The board is rebuilt at high priority: while it is down every request
+    # is a 503 at once, and clients retrying them would otherwise hold the
+    # schedulers the rebuild needs. It goes back to normal before it serves.
+    previous = Process.flag(:priority, :high)
+
     with {:ok, folder} <- Store.open(dir),
          {:ok, _owner} <- Registry.register(Jobq.Registry, {ref, :queue}, nil) do
       state =
@@ -233,6 +238,7 @@ defmodule Jobq.Queue do
 
       schedule_sweep(state)
       schedule_prune(state)
+      Process.flag(:priority, previous)
       {:ok, state}
     else
       {:error, reason} -> {:stop, reason}

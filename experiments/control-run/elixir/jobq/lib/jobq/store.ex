@@ -113,6 +113,11 @@ defmodule Jobq.Store do
   @archive_name "jobq.archive"
   @max_batch 512
   @replay_chunk 2_000
+  # Below this many lines the replay reads every line in the process that
+  # opens the folder: handing a few chunks to tasks and copying their records
+  # back costs more than it saves, and a board restart on a small log is what
+  # the chaos switch waits on.
+  @replay_parallel_from 20_000
 
   @type ref :: term()
   @type record ::
@@ -530,19 +535,28 @@ defmodule Jobq.Store do
     }
 
     # Reading a line and checking it as a job record owe nothing to the lines
-    # before it, so chunks of lines are read on every scheduler at once; the
+    # before it, so a long log's chunks are read on every scheduler at once; the
     # records are then applied one by one, in order, which is all the replay
     # needs to be sequential for. At most a chunk per scheduler is in flight.
     lines
     |> Enum.with_index(1)
+    |> prepared(length(lines))
+    |> Enum.reduce_while({:ok, empty}, &apply_chunk/2)
+    |> finish()
+  end
+
+  defp prepared(numbered, count) when count < @replay_parallel_from,
+    do: [Enum.map(numbered, &prepare/1)]
+
+  defp prepared(numbered, _count) do
+    numbered
     |> Enum.chunk_every(@replay_chunk)
     |> Task.async_stream(fn chunk -> Enum.map(chunk, &prepare/1) end,
       ordered: true,
       timeout: :infinity,
       max_concurrency: System.schedulers_online()
     )
-    |> Enum.reduce_while({:ok, empty}, fn {:ok, chunk}, acc -> apply_chunk(chunk, acc) end)
-    |> finish()
+    |> Stream.map(fn {:ok, chunk} -> chunk end)
   end
 
   defp apply_chunk(chunk, acc) do

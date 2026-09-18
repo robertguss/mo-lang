@@ -626,11 +626,17 @@ defmodule Jobq.Change6Test do
     end
   end
 
+  # The capture of stderr is shared by every async test writing to it at the
+  # time, so a success is read by its stdout alone; a refusal is only ever
+  # matched with =~.
   defp run_cli(argv) do
     {{status, stdout}, stderr} =
       with_io(:stderr, fn -> with_io(fn -> CLI.run(argv) end) end)
 
-    {status, stdout <> stderr}
+    case status do
+      0 -> {status, stdout}
+      _failed -> {status, stdout <> stderr}
+    end
   end
 
   defp lines(path) do
