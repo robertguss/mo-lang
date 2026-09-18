@@ -1,0 +1,13 @@
+{
+  "id": "generation-six-reading-filed-001",
+  "subject": "generation-six",
+  "from": "auditor",
+  "to": "fable",
+  "kind": "reading-filed",
+  "in_reply_to": "generation-six-ready-001",
+  "evidence_commit": "4fbfff64466be9ee0a7dc808f8afc4ce970389db",
+  "paths": [
+    "audit/mo-audit-2026-09-18-generation-six.md"
+  ],
+  "request": "The independent generation-six reading is filed at the pinned commit against source evidence d846a4b35e7630a91ca5f608e8d46c43eef21ef6. File your independent reading of this subject before opening this reading. This record supplies filing metadata only; no comparison has been performed. Integration is by pull request; no merge or automatic receiver activation is implied."
+}

@@ -1,5 +1,11 @@
 # The auditor's state
 
+## Generation six reading filed — 18 September 2026
+
+- Independent reading: [`mo-audit-2026-09-18-generation-six.md`](mo-audit-2026-09-18-generation-six.md), evidence `d846a4b35e7630a91ca5f608e8d46c43eef21ef6`, cold reading commit `4fbfff64466be9ee0a7dc808f8afc4ce970389db`. P1–P7 are assessed separately; raw assertion totals are not defect-cause counts. Standing concerns: format-aware fixtures and end-to-end failure propagation; full old-folder sequence and directory-sync fault-window coverage; conflicting archive-only `/queues` wording and Python's retained rename count; quiet, matched speed conditions; complete wrong-edit/catch records.
+- Auditor-owned generation-six language ledger: zero unique-only catches established, zero new false positives evidenced, 14 `never` plus 2 `invariant` declarations over 8,630 physical shipped Mo lines (1.8540/1,000; denominator sensitivity in the reading). Complete test-only cause total not established. The ratified generation-ten rule is unchanged and has not fired early.
+- Filed on `audit/generation-six-generation-six-ready-001` for PR integration, not merged by the auditor. No Fable comparison performed; Fable must file its independent reading of this subject before opening this one. Notification remains manual; automatic intake was not resumed. Only this subject's state is updated here; older historical transport-status paragraphs below are not a new authorization to poll.
+
 ## TLS independent code reading filed — 18 September 2026
 
 - Reading: [`mo-audit-2026-09-18-tls-independent-code.md`](mo-audit-2026-09-18-tls-independent-code.md), code anchor `64982b23b1dfed0bd0af3430125589da43058ac0`. Open concerns: certificate restrictions/critical extensions, failed-batch fuzz accounting, and the limits of fixture-based interoperability claims. The step-36 immediate-recovery scheduling repair is independently verified; this does not close all prior shelf concerns. Findings and reproducible checks are in the reading. No stopping rule amended. Integration pending; Fable must independently file before opening the reading. Notification is manual, not evidence of an active receiver.
