@@ -24,11 +24,49 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last rewritten:** 16 Sep 2026, late evening on Robert's Mac, after step 34 and
-generation five; amended 17 Sep, morning, for the research lane, and
-afternoon, for the auditor role, the three ratified stopping rules, and the
-bricks page. Five days since
-the first commit.
+**Last rewritten:** 16 Sep 2026; amended 17 Sep for the auditor role and the
+bricks page; **amended 18 Sep, 12:30 PM ET, at a pause on Robert's Mac**, for
+the morning below. Six days since the first commit.
+
+## The morning of 18 Sep, in one screen (read this first)
+
+The auditor read five subjects and the lead conceded every finding; three of
+them are the lead's own errors, and one runtime finding is new.
+
+- **The TLS brick is not complete.** Two independent auditor sessions made
+  real handshakes through the brick and showed its client accepting four
+  certificate chains OpenSSL rejects (a path-length violation, a CA without
+  signing rights, a client-only leaf, an unknown critical extension). Also: a
+  valid ALPN overlap past 64 names fails, the fuzz count can hide a failed
+  batch, and `tls-client.mo`'s tests pass with the handshake replaced by a
+  `Timeout`. [[interpreter-step-39]] is the correction, gated on the
+  auditor's own script; it was started at noon and stopped for this pause.
+  Program 7 is not blocked (`mored` verifies no chain).
+- **Generation six ran and the laws were silent a sixth time.** Nothing
+  eroded; Mo's generation-five defect was fixed from a ticket; Mo's lease path
+  is back to its change-3 rate. Read strictly, as the auditor read it: P1 not
+  met as written (Mo carries one real validation defect since generation
+  three), P3 and P4 and P6 failed, P7 void (the spec named the cause), time
+  and loops comparable with nothing. **The language rule's ledger: zero
+  catches at six of ten generations, threshold two.**
+- **The lead's instruments failed three times and an outsider or a rerun
+  caught each.** The sealed seventh suite had never been run and started
+  every server with an illegal flag; generation five's third-suite column was
+  never measured (a usage error the runner swallowed); a round-8 fixture
+  writer never wrote the illegal record for Python, so a "carried Python
+  defect" was the harness's for ten generations of suites. New rules: a suite
+  is smoke-run on the previous generation, and read by the auditor, before
+  its seal; runners write every exit status; a mutant per new corpus test
+  file, run at least five times at one core and at many.
+- **On macOS, Mo's "on disk before `Ok`" is not on the disk.** Both runtimes
+  call plain `fsync`; Go uses `F_FULLFSYNC`. Every Mac speed comparison with
+  Go is withdrawn; the Linux ones stand; the fix is in step 39.
+- **Step 38 accepted** (a `Conn` that reads while a write on it waits,
+  `TCP_NODELAY`, 64 handshake abuse cells), which is program 7's pipelining
+  prerequisite.
+- **Program 7's spec has a revision 2** ([[07b-redis-subset-revision-2]]),
+  published to the auditor. The next thing only Robert can do: open the
+  auditor's sealing session on it.
 
 ## In one paragraph
 
@@ -48,10 +86,10 @@ hidden suites and lost it by one in the sixth, holds the feedback loop every
 time, holds the dependency column by construction, has lost the speed column to
 Elixir and, in one generation of maintenance, to its own maintainer, has
 answered the BEAM's restart row, has built the first two bricks of its shelf at
-zero dependencies (crypto, 17 Sep; a whole TLS 1.3 brick, server and client,
-with its differential run at 0 mismatches and its fuzz hour at 0 crashes, 18
-Sep) so that program 7 can be written, and has sealed program 7's spec, and has not yet shown that its laws catch a bug an agent's own
-tests would miss: five generations of changes, three of them
+zero dependencies (crypto, 17 Sep; a TLS 1.3 brick, server and client, 18 Sep,
+**whose client the auditor showed accepting certificate chains it must refuse:
+not complete until step 39**) so that program 7 can be written, and has sealed program 7's spec, and has not yet shown that its laws catch a bug an agent's own
+tests would miss: six generations of changes, four of them
 written to press on a law, and no `never` has tripped on a wrong edit. That last
 sentence is the one the project turns on.
 
