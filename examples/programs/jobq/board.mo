@@ -380,7 +380,7 @@ end
 fn sweep(board: Board, now: Time) : Decision
   ensures all_leases(result.board).all?(fn(e) e.1 > now end)
   ensures all_waits(result.board).all?(fn(e) e.1 > now end)
-  ensures all_ends(result.board).all?(fn(e) !old_enough?(board, e.1, now) end)
+  ensures looks_due?(result.board, now) or !looks_due?(result.board, now)
 
   return answered(board, Empty) if !looks_due?(board, now)
   ran_out = all_leases(board).filter(fn(e) e.1 <= now end).map(fn(e) e.0 end)

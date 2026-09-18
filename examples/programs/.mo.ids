@@ -900,7 +900,7 @@
         { "id": "8b6d9172432e", "name": "test \"an archived job shows its archived_at, and a retry of it is 409\"", "hash": "7c78789347c67428" },
         { "id": "45f4efc56278", "name": "property \"any valid payload sent as JSON becomes a create of that payload\"", "hash": "553e1c703d127efe" }
       ],
-      "verified": { "hash": "f4557961a9a04681", "declarations": "2aa4a0175af4a3a1", "uses": [{ "module": "Jobq.Board", "hash": "c256e83a202986cd" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }] }
+      "verified": { "hash": "f4557961a9a04681", "declarations": "2aa4a0175af4a3a1", "uses": [{ "module": "Jobq.Board", "hash": "19f05293bb139adb" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }] }
     },
     {
       "path": "jobq/board.mo",
@@ -954,7 +954,7 @@
         { "id": "63df4aa2af81", "name": "fn tallies", "hash": "4ab93ad15d133caf" },
         { "id": "6e2fb329fc06", "name": "fn tallied", "hash": "a791452b20a074af" },
         { "id": "6e48c5a60419", "name": "fn in_state", "hash": "7eb2aba13db90b76" },
-        { "id": "675f5fefa7b5", "name": "fn sweep", "hash": "fed39fb4914356f4" },
+        { "id": "675f5fefa7b5", "name": "fn sweep", "hash": "1b17ef4851e3452b" },
         { "id": "531e834ef614", "name": "fn looks_due?", "hash": "e05f2599db11d75a" },
         { "id": "5b0d9998e78e", "name": "fn old_enough?", "hash": "e27ab658f547243d" },
         { "id": "2d02b582f3ed", "name": "fn shelved", "hash": "af3d7ad5db641b31" },
@@ -1054,7 +1054,7 @@
         { "id": "0db5bcf444a0", "name": "test rejects \"an empty board whose first number is 0\"", "hash": "d8744411d78e336b" },
         { "id": "7e707ef34361", "name": "property \"a job made then fetched gives back any valid payload\"", "hash": "90319db59211610c" }
       ],
-      "verified": { "hash": "b86cb298cafb9daa", "declarations": "f399e49bafc7fed8", "uses": [{ "module": "Jobq.Job", "hash": "99567146a38a25dc" }] }
+      "verified": { "hash": "b86cb298cafb9daa", "declarations": "84dbf38423c4eb08", "uses": [{ "module": "Jobq.Job", "hash": "99567146a38a25dc" }] }
     },
     {
       "path": "jobq/job.mo",
@@ -1232,7 +1232,7 @@
         { "id": "50db428a322d", "name": "test \"the steadied transcript masks archived_at\"", "hash": "3bf6f1ef654a839d" },
         { "id": "48b970f36a7a", "name": "test \"a usage error exits 2, and a folder, a port, or a server that cannot be had exits 1\"", "hash": "3e953113347988b5" }
       ],
-      "verified": { "hash": "1b66b0947d09e12e", "declarations": "7dffab2f9a78f3fe", "uses": [{ "module": "Jobq.Api", "hash": "b856961e572c8280" }, { "module": "Jobq.Board", "hash": "c256e83a202986cd" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }, { "module": "Jobq.Queue", "hash": "d988cb80b578ba23" }, { "module": "Jobq.Server", "hash": "6cadc52f9a77e4fd" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
+      "verified": { "hash": "1b66b0947d09e12e", "declarations": "7dffab2f9a78f3fe", "uses": [{ "module": "Jobq.Api", "hash": "b856961e572c8280" }, { "module": "Jobq.Board", "hash": "19f05293bb139adb" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }, { "module": "Jobq.Queue", "hash": "d988cb80b578ba23" }, { "module": "Jobq.Server", "hash": "6cadc52f9a77e4fd" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
     },
     {
       "path": "jobq/queue.mo",
@@ -1340,7 +1340,7 @@
         { "id": "3c8557586cd4", "name": "test rejects \"the chaos switch fails the queue once its third write is on disk\"", "hash": "954e686a533ae7ff" },
         { "id": "ad60ebb1a349", "name": "test rejects \"under faults, the chaos switch fails the queue at a seventh write in the middle of the workers' rounds\"", "hash": "e3ba08b89f1ca06d" }
       ],
-      "verified": { "hash": "46d3f6b3ac93b4b4", "declarations": "7f4f6d05dbf133b6", "uses": [{ "module": "Jobq.Api", "hash": "b856961e572c8280" }, { "module": "Jobq.Board", "hash": "c256e83a202986cd" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
+      "verified": { "hash": "46d3f6b3ac93b4b4", "declarations": "7f4f6d05dbf133b6", "uses": [{ "module": "Jobq.Api", "hash": "b856961e572c8280" }, { "module": "Jobq.Board", "hash": "19f05293bb139adb" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
     },
     {
       "path": "jobq/server.mo",
@@ -1389,7 +1389,7 @@
         { "id": "f031ea449e42", "name": "test \"over the wire, a job done longer ago than the retention is archived, read by id, and 409 to a retry\"", "hash": "596af8967a3b4d54" },
         { "id": "77128d610aab", "name": "test rejects \"over the wire, with the chaos switch on, every answer is 2xx, 4xx, or 503 while the queue fails and comes back\"", "hash": "ecc90e5d95d3375e" }
       ],
-      "verified": { "hash": "35cefa0db33a237c", "declarations": "0e13187045820835", "uses": [{ "module": "Jobq.Api", "hash": "b856961e572c8280" }, { "module": "Jobq.Board", "hash": "c256e83a202986cd" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }, { "module": "Jobq.Queue", "hash": "d988cb80b578ba23" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
+      "verified": { "hash": "35cefa0db33a237c", "declarations": "0e13187045820835", "uses": [{ "module": "Jobq.Api", "hash": "b856961e572c8280" }, { "module": "Jobq.Board", "hash": "19f05293bb139adb" }, { "module": "Jobq.Job", "hash": "99567146a38a25dc" }, { "module": "Jobq.Queue", "hash": "d988cb80b578ba23" }, { "module": "Jobq.Store", "hash": "dc505a18252f99c0" }] }
     },
     {
       "path": "jobq/store.mo",
