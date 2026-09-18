@@ -186,6 +186,14 @@ The lead's verification of part C found `zig build test` never finishing: the br
 
 **Done when:** the cause of the deadlock is named in the commit message (why the client thread stops reading, and why only this test); the test harness is made unable to hang: the main thread's writes and reads are bounded (poll with a deadline before every write as `readSomeFd` already does before reads, or a nonblocking fd with a deadline loop), the client thread is bounded the same way, and a wrong test fails with a named error within 30 seconds instead of hanging; `zig test src/bricks/tls.zig` green five times in a row; `zig build test` green twice in a row; one commit, `Step 36 fix: the KeyUpdate test`, pushed. Say in the report whether the test still exercises a KeyUpdate from the client and one from the server.
 
+## Fix 2, 17 Sep 2026, 9:30 PM ET: the example reads its certificate by the wrong path
+
+The fix worker's two full-suite runs (651 and 655 s) were 224 of 225: the corpus test of `examples/effects/tls-echo.mo` prints "no certificate", because `main` reads `examples/effects/tls/cert.pem` relative to the working directory and the corpus test runs a program from its own folder, `examples/effects`. The brief's part C said `tls/cert.pem` and `tls/key.pem`. The part C worker's claim that the corpus was green under both runtimes was wrong, as was its claim of a green suite at every commit (the KeyUpdate hang was in part A's tree).
+
+**Decision (Fable):** the program reads `tls/cert.pem` and `tls/key.pem`, relative to its own folder as the brief said and as every other corpus example with data does; `toolchain/bench/step36/common.py` runs the echo with `examples/effects` as the working directory (and its P-256 tree copies the pair under `tls/` there), so the bench's runs match the corpus's. The expected output does not change.
+
+**Write scope:** `examples/effects/tls-echo.mo` (the two paths and nothing else), `toolchain/bench/step36/common.py` (the working directory and the copy), `examples/effects/.mo.ids` if the `verified:` line moves. **Done when:** `mo run examples/effects/tls-echo.mo -- 18443 1000` from `examples/effects` prints the `.expected`; `zig build test` green (225 of 225) once under `timeout 1800`; `uv run python abuse.py` in `bench/step36` green under both runtimes after the change; one commit `Step 36 fix 2: the certificate path`, pushed.
+
 ## Related
 
 - [[bricks-and-the-cost-of-zero-dependencies]]
