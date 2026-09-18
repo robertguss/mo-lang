@@ -1,0 +1,10 @@
+{
+  "rows": 1000,
+  "unique_ids": 1000,
+  "filed_mismatches": 0,
+  "recomputed_mismatches": 0,
+  "roles": {
+    "mo-client": 516,
+    "mo-server": 484
+  }
+}

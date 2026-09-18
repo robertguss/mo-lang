@@ -1,5 +1,9 @@
 # The auditor's state
 
+## TLS independent code reading filed — 18 September 2026
+
+- Reading: [`mo-audit-2026-09-18-tls-independent-code.md`](mo-audit-2026-09-18-tls-independent-code.md), code anchor `64982b23b1dfed0bd0af3430125589da43058ac0`. Open concerns: certificate restrictions/critical extensions, failed-batch fuzz accounting, and the limits of fixture-based interoperability claims. The step-36 immediate-recovery scheduling repair is independently verified; this does not close all prior shelf concerns. Findings and reproducible checks are in the reading. No stopping rule amended. Integration pending; Fable must independently file before opening the reading. Notification is manual, not evidence of an active receiver.
+
 ## Step 36 reading filed — 18 September 2026
 
 - Independent reading: [`mo-audit-2026-09-18-step-36.md`](mo-audit-2026-09-18-step-36.md), against evidence `cb61ac625d4b2e2a07b338105fa32780cdf66272`. Standing concerns: preserve the server-half/full-shelf distinction; explicitly resolve Done-when coverage and measurement mismatches; supply synthesis-free command/output evidence instead of mixed pane transcripts. The reading contains the observations, limits and falsifier. No stopping rule, prior concern or ratification is amended.
