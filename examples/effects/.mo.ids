@@ -220,7 +220,7 @@
         { "id": "4804cbb464b3", "name": "fn serve", "hash": "525c15bacf08e9b6" },
         { "id": "cd7c00ad81e2", "name": "fn quieted", "hash": "22d2e31dba4bde31" },
         { "id": "528c697dbfec", "name": "fn options", "hash": "f8f914476d2cba0e" },
-        { "id": "ed1e5cee8a50", "name": "fn main", "hash": "6d530d0b643b18e1" },
+        { "id": "ed1e5cee8a50", "name": "fn main", "hash": "f2bed6d916c81a97" },
         { "id": "95895491a8f5", "name": "fn cert_pem", "hash": "34612801d229f3fd" },
         { "id": "199f11f3d6a9", "name": "fn key_pem", "hash": "d9251326741381db" },
         { "id": "29e13fa7cd35", "name": "fn other_key_pem", "hash": "da2c539d041244f5" },
@@ -228,7 +228,7 @@
         { "id": "597dd140de26", "name": "test \"a certificate and a key that are not a pair make no server\"", "hash": "af9f3a6e5f354687" },
         { "id": "d9ec1399b110", "name": "test \"a client that writes plain text where a hello belongs never handshakes\"", "hash": "d2336c4744301c7b" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "d1bf208f8a2d25f2" }
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "dad720bda6c1c014" }
     }
   ]
 }

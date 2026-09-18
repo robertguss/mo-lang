@@ -174,9 +174,9 @@ fn main(platform: Platform)
   net = platform.net
   tls = platform.tls
   fs = platform.fs
-  case fs.read("examples/effects/tls/cert.pem", within: 10.seconds)
+  case fs.read("tls/cert.pem", within: 10.seconds)
     Ok(cert):
-      case fs.read("examples/effects/tls/key.pem", within: 10.seconds)
+      case fs.read("tls/key.pem", within: 10.seconds)
         Ok(key): platform.exit(serve(net, tls, out, cert, key, options(platform.args)))
         Error(_): out.write_line("no key")
       end

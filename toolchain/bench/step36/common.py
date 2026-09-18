@@ -88,19 +88,20 @@ def start_echo(runtime: str, key: str = "ed25519", idle_ms: int = 600_000, secon
     """An echo listening on a free port. `runtime` is "run" or "binary"; `plain` is the baseline
     with no handshake.
 
-    The TLS echo reads `examples/effects/tls/cert.pem` and `key.pem` by name, so a run on the
-    P-256 pair copies that pair over those names in a working tree of its own.
+    The TLS echo reads `tls/cert.pem` and `tls/key.pem` relative to its working directory, and
+    runs from `examples/effects` as the corpus test runs it, so a run on the P-256 pair copies
+    that pair over those names under `tls/` in a working tree of its own.
     """
     WORK.mkdir(exist_ok=True)
     port = free_port()
-    cwd = ROOT
+    cwd = ECHO.parent
     source = PLAIN if plain else ECHO
     if not plain and key != "ed25519":
         cwd = WORK / f"tree-{key}"
-        (cwd / "examples" / "effects" / "tls").mkdir(parents=True, exist_ok=True)
+        (cwd / "tls").mkdir(parents=True, exist_ok=True)
         cert, secret = KEYS[key]
-        (cwd / "examples/effects/tls/cert.pem").write_bytes((CERTS / cert).read_bytes())
-        (cwd / "examples/effects/tls/key.pem").write_bytes((CERTS / secret).read_bytes())
+        (cwd / "tls/cert.pem").write_bytes((CERTS / cert).read_bytes())
+        (cwd / "tls/key.pem").write_bytes((CERTS / secret).read_bytes())
     argv = (
         [mo_exe(), "run", str(source), "--", str(port), str(idle_ms)]
         if runtime == "run"
