@@ -500,3 +500,6 @@
 - Program 7's spec written and sealed (`07-redis-subset.md`), a `ready` record for the auditor's suites; the generation-four memory control probe pre-registered with three hypotheses; step 38 (full-duplex `Conn`, `TCP_NODELAY`) queued before program 7's build.
 - 4:45 AM ET: the generation-four memory control probe ran (a worker, 3:57 to 4:33 AM ET): none of the three hypotheses as written; the low RSS is a bimodal state of generation four's family independent of the contract; the rate loss is the walk. Row for Robert; both readings retire; a working record to the auditor. Change 6 sealed and generation six pre-registered at 4:16 AM ET.
 
+## [2026-09-18] update | The VM wedged at 5:21 AM ET during generation six; restarted 8:30 AM ET
+- A `mo` process of the Mo maintainer reached 13.4 GB; every Herdr child is `oom_score_adj -1000`, so the kernel killed system daemons instead and the machine wedged. Robert restarted it at 8:30 AM ET; Herdr resumed the sessions. Python's maintainer had finished (5:43 AM ET, budget met at 1.01× and 1.03×); Mo, Go, Elixir resumed under the 4 GB guard with their wall-clocks broken by the gap. Row for Robert; the rule into the skill.
+
