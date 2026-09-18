@@ -2,7 +2,7 @@
 title:
   "The erosion round: changes 2 to 5 to four programs, generations two to five"
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-18
 type: plan
 tags: [agents, research, roadmap]
 sources:
@@ -299,6 +299,8 @@ Change 6 ([[01g-job-queue-change-6]], sealed by the commit that adds this sectio
 Fable's honest priors: P7 is the one this generation is for and the one most likely to hold; P6 has failed five times and is predicted to fail again (the laws catch shipped bugs at open, not edits); P4 is a coin toss. Recorded, not predicted: wall-clock, loops by cause, first-fix rate, lines changed, tokens read, the decision lists, which `never` each Mo edit touched, the two `bench` lines per program.
 
 **Started** 18 Sep 2026, 4:45 AM ET (08:45 UTC), on the VM, after the memory control probe ended and with the machine quiet (load 0.26): the seventh suite `defects6.py` sealed at `48640d3` (sha256 `d4dab05cc331b7fa`), the four worktrees on `erosion6-*` from the generation-five commits (`23118a3`, `20b050c`, `a06375d`, `eb8a219`), the Mo one at `4ab5c24` with the spec as of step 37 and step 37's `mo` (`b0b2ac4`), agents `mo-e6-{mo,go,python,elixir}` in workspace `wD`, panes `wD:p1` to `p4`, the brief `e6-brief.sh`. Robert asleep; Fable watching every twenty minutes. **Interrupted:** at 5:21 AM ET a `mo` process of the Mo maintainer reached 13.4 GB and, unkillable under Herdr's `oom_score_adj -1000`, wedged the VM until Robert restarted it at 8:30 AM ET (the decision-log row of 18 Sep); the Python maintainer had finished at 5:43 AM ET; the other three sessions were resumed at 8:36 AM ET under the 4 GB guard, so their wall-clocks and loop counts carry a break, disclosed in the result.
+
+**Continued on the Mac** 18 Sep 2026, 9:23 AM ET: the VM sessions were stopped at 8:45 AM ET with their work committed as work in progress and pushed; on Robert's Mac (M3 Max, 14 cores) the three unfinished programs got one new session each (`mo-e6-{go,elixir,mo}`, workspace `w6`, Opus, medium effort), briefed by `erosion-round-suite/e6-brief-mac.sh`, which is `e6-brief.sh` with the Mac's paths, a sentence naming the predecessor's work in progress and its `REPORT-change-6-wip.md`, and the 4 GB guard on every process. **Disclosed:** these are resumed maintainers, not fresh ones, on a second machine; each wall-clock is the sum of two sessions and each loop count carries on; the Go and Elixir programs read `/proc` for memory in their `bench`, so the move itself is work for them. Python's maintainer finished on the VM and is not rerun. P7's 1,300 pairs a second was the VM's number; on the Mac P7 is read by the spec's own ratio (at least 0.8× change 3 on the same machine). All four programs' suites run on the Mac (`e6-suites-mac.sh`). The Mo maintainer's first session named the 13.4 GB process: `mo test --sim` on a queue whose prune sent itself a `Tick` every 60 s forever (the row of 18 Sep).
 
 ## Related
 

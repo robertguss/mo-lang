@@ -503,3 +503,5 @@
 ## [2026-09-18] update | The VM wedged at 5:21 AM ET during generation six; restarted 8:30 AM ET
 - A `mo` process of the Mo maintainer reached 13.4 GB; every Herdr child is `oom_score_adj -1000`, so the kernel killed system daemons instead and the machine wedged. Robert restarted it at 8:30 AM ET; Herdr resumed the sessions. Python's maintainer had finished (5:43 AM ET, budget met at 1.01× and 1.03×); Mo, Go, Elixir resumed under the 4 GB guard with their wall-clocks broken by the gap. Row for Robert; the rule into the skill.
 
+## [2026-09-18] session | Morning on the Mac: generation six continued
+- 9:21 AM ET: onboarding; the auditor's inbox checked (four records the Mac's ledger had not seen, every one already answered from the VM; nothing unread). `main`'s toolchain built here; four `erosion6-*` worktrees; the Go, Elixir, and Mo maintainers resumed from their work in progress at 9:23 AM ET in workspace `w6` under `e6-brief-mac.sh`; the Mac suite runner `e6-suites-mac.sh` written. Two rows: the move and how P7 is read here; the 13.4 GB process named (the simulator on a perpetual `Tick`).
