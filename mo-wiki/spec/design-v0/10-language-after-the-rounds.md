@@ -7,7 +7,10 @@ recommendation as a decision-log row. Zero new syntax stays the default: nothing
 here adds a keyword. No change without a row behind it. Chapter 1 asked for this
 page; the roadmap named it `09-`, but chapter 9 was the stdlib by then, so it is
 chapter 10. Amended 16 Sep after P6 on Mo's change 2 program (§2, the table,
-the reading).
+the reading). Amended 17 Sep: the 3-in-5 budget is Elixir `Supervisor`'s default,
+not OTP's; Erlang's `supervisor` defaults to 1 in 5 s (Hermes, PR 2,
+`hermes-daily-2026-09-16`, from the versioned docs and the round-10 source).
+Amended 17 Sep, afternoon: §4 is now bound by a ratified stopping rule (below).
 
 ## What the rounds said, in one table
 
@@ -15,14 +18,13 @@ the reading).
 | --------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | a wait hidden as a message pattern                  | 8, the outage; 10, P6        | the queue crashed on a replayed record and the service never answered again: the worker sent `Want` and waited for `Done`, a wait the deadline law cannot see; Elixir's supervisor restored the same service in under 600 ms | §1, §2          |
 | a store that never restarts                         | P6 on Mo, 16 Sep             | the change 2 queue crashed by an input through the surface under load: `503` within 2 ms from then, nothing lost, no restart, because `opening` is computed in `main` and the line says `:never`; a restarted process re-runs its state initializers with its capabilities, so it could have reopened | §2, change 3    |
-| the restart budget by default                       | 10, P6                       | four kills in 2 s and the Elixir node exits on OTP's default of 3 restarts in 5 s, which the program never wrote; Mo's budget is on the `child` line                                                                         | §2              |
+| the restart budget by default                       | 10, P6                       | four kills in 2 s and the Elixir node exits on Elixir `Supervisor`'s default of 3 restarts in 5 s (Erlang's own `supervisor` defaults to 1 in 5 s), which the program never wrote; Mo's budget is on the `child` line                                                                         | §2              |
 | the six-parameter law                               | 8; measurement 1             | MO0303 cost the maintainer a loop and a `Making` struct, caught nothing                                                                                                                                                      | §3              |
 | a `never` keyed on `(number, tries)`                | 8                            | a retry reset `tries` and the `never` tripped twice as a false positive: two loops, no bug                                                                                                                                   | §4              |
 | MO0317 on a changed module's dependents             | measurement 2, round 8       | every regeneration and the maintainer lost a loop to it; first fix right 6 of 7                                                                                                                                              | §5, toolchain   |
 | MO0403, `Time.fixture()` outside a test             | measurement 1                | four of ten regenerations, the same fix every time                                                                                                                                                                           | §5, no change   |
 | a `never` at rest on the log                        | 10                           | the class of Elixir's torn-line defect; round 7's `store.mo` states it, Elixir has nowhere to                                                                                                                                | §4, keep        |
 | the grammar forms that cost a loop in every program | 6 to 8, measurements 1 and 2 | MO0101 5/5, MO0501 4/4: an assignment on a `case` arm's line, a `for` with a pure body                                                                                                                                       | §5              |
-| the "frozen fixture clock" note                     | measurement 1                | chapter 3 still says the fixture clock is frozen per test; step 24 moved it                                                                                                                                                  | §6              |
 
 ## 1. A reply awaited as a message
 
@@ -102,8 +104,9 @@ declaration (chapter 3: a store that does not replay its own state must say so)
 and nobody who held a `Handle(Queue)` could see it. The Elixir round says what
 the runtime's row is worth: `rest_for_one` in 70 lines of `server.ex` restored
 the service three times in 261 to 583 ms with nothing lost, then gave up on the
-fourth kill inside 2 s because OTP's default intensity is 3 in 5 s and the
-program never wrote a number. Mo's `max_restarts: 5 per 1.minute` is on the
+fourth kill inside 2 s because Elixir `Supervisor`'s default intensity is 3 in
+5 s (Erlang's own `supervisor` defaults to 1 in 5 s; the round-10 `server.ex`
+sets neither) and the program never wrote a number. Mo's `max_restarts: 5 per 1.minute` is on the
 `child` line where the reader is; the queue's line had no budget because
 `:never` has none.
 
@@ -181,6 +184,25 @@ program's own wrong claim, and one has caught a class of defect a baseline paid
 for. The `invariant` question stays open until the ledger is changed in the
 erosion round, the first program built around one.
 
+**Bound by a stopping rule** (17 Sep 2026). Option A stands, and it now has an
+end. Robert ratified the auditor's rule for this section
+([`audit/mo-audit-2026-09-17-stopping-rule-never-invariant.md`](https://github.com/robertguss/mo-lang/blob/main/audit/mo-audit-2026-09-17-stopping-rule-never-invariant.md)).
+He simplified it to one tier (L-2): the three tiers of the auditor's draft are
+kept only as its reasoning. By the reading of erosion generation ten, `never`
+and `invariant` keep their place in the claim only if they have caught at least
+2 Mo defects that no test would have caught, with false positives at most 1.5
+times the catches and at most 5 hand-written clauses per 1,000 lines. If any of
+the three fails, R-B follows on its own: both constructs stay in the language
+as tools set per project, and chapter 1's sentence about the language layer
+drops the claim that they catch bugs. Removing them from the grammar (R-A)
+comes up only if density passes 10 per 1,000 lines or false positives pass 3
+times the catches, and then it is Robert's call. The auditor keeps the ledger
+after each generation, and Fable files a separate reading of generation ten.
+This changes Option A in one way: the false-positive column it asked for is
+now an input to the rule, not a note. Fable's proposed floor on the R-A
+trigger (it fires on one false positive when catches are 0) is a decision-log
+row for Robert, not an edit to the rule.
+
 ## 5. Diagnostics that say what to write
 
 **The row.** Over rounds 6 to 8 and measurements 1 and 2 the same three
@@ -205,17 +227,19 @@ time is the language teaching, which is what the third layer is for.
 
 ## 6. Already decided, recorded here so the page is whole
 
-- **Placement** stays the runtime's (step 30: a process on the scheduler with
-  the fewest live processes; no syntax until a program needs one). The Mac
-  scaling run of 15 Sep is its measure.
+- **Placement** stays the runtime's, no syntax: step 30 put a process on the
+  scheduler with the fewest live processes; step 34 (16 Sep) places it with its
+  starter while that scheduler holds at most twice its share, and made the
+  crossing cheap (chapter 3, chapter 7). The Mac scaling run of 15 Sep and step
+  34's rows at 1, 4, and 14 cores are its measure.
 - **The runtime surface is a capability**, `platform.runtime`, chapter 3,
   direction 37. It has been used only by a worker's probe; program 7 is where an
   agent operates a service through it.
 - **A named function where an anonymous function goes** (Robert's item): zero
   syntax; chapter 4's call-argument rule admits a name. One step, first tested
   by the corpus.
-- **The "frozen fixture clock" note** in chapter 3 is stale since step 24; a
-  fixture call's wait moves the run's clock. One edit.
+- **The "frozen fixture clock" note** in chapter 3 was stale since step 24; a
+  fixture call's wait moves the run's clock. Edited (chapter 3 and chapter 9 carry step 28's rule).
 - **A contract tripped by replayed data** is a refusal at open, not a crash
   (change 2, the fourth oracle, both rounds' Go and Python). That is the
   program's and the spec's; the runtime did what chapter 3 says.

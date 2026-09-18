@@ -24,7 +24,7 @@ verified: types, contracts, tests (5), property (200 seeds), sim (1_000 runs)
 
 The headline is the weakest obligation, so a human can watch it climb. Editing it by hand is a compile error.
 
-The sim clause counts the file's invariants once it has run under `--sim` (Session 5, step 29): `sim (100 runs, invariants (kept 4, tripped 3))`. An invariant is tripped when a seed's message stopped a `test rejects` on it, and kept otherwise; the runner names each one either way. An invariant no message can trip is documentation with a keyword, and the count is where that shows; `mo check` says nothing about it. A file with no invariant has no clause.
+The sim clause counts the file's invariants once it has run under `--sim` (Session 6, step 29): `sim (100 runs, invariants (kept 4, tripped 3))`. An invariant is tripped when a seed's message stopped a `test rejects` on it, and kept otherwise; the runner names each one either way. An invariant no message can trip is documentation with a keyword, and the count is where that shows; `mo check` says nothing about it. A file with no invariant has no clause.
 
 ## Failure is a work queue
 
@@ -34,4 +34,4 @@ Two guards against gaming: a change that edits a contract or test while its proo
 
 ## Diagnostics teach
 
-Every diagnostic is a structured record: stable `code` (`MO0412`), `category`, `location` (declaration ID and line), `what`, `why`, zero or more machine-applicable `fix` candidates each with a confidence. Rendered as Elm-style prose for humans and JSON for agents. The `why` text is written once per code in the error catalog, which is where Mo's philosophy is taught to a model that has never seen it. Tier-3 counterexamples arrive the same way, never as raw prover output.
+Every diagnostic is a structured record: stable `code` (`MO0311`, say), `category`, `location` (declaration ID and line), `what`, `why`, zero or more machine-applicable `fix` candidates each with a confidence. Rendered as Elm-style prose for humans and JSON for agents. The `why` text is written once per code in the error catalog, which is where Mo's philosophy is taught to a model that has never seen it. Tier-3 counterexamples arrive the same way, never as raw prover output.

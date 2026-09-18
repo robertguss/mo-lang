@@ -50,6 +50,12 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `EntryKind` | `File`, `Folder` | enum | stdlib (09), step 28 |
 | `RuntimeError` | | error enum | stdlib (09), Session 5, step 23 |
 | `Event` | | enum: one of the runtime's events | stdlib (09), Session 5, step 23 |
+| `Hash`, `AesGcm`, `ChaCha`, `X25519`, `Ed25519`, `Password` | | rows only: the crypto brick's, called on the name, with no values of their own, so none is a type a signature can name (MO0202) | stdlib (09), step 35 |
+| `Random` | | capability: bytes from the OS CSPRNG, `platform.random`; `Random.fixture()` in a test | stdlib (09), step 35 |
+| `Tls` | | capability: the TLS brick, both sides, `platform.tls`; `Tls.fixture()` in a test | stdlib (09), steps 36 and 37 |
+| `TlsServer` | | capability: a certificate chain and its key, and its ALPN list; no authority beyond them, so a program hands one to every worker | stdlib (09), step 36 |
+| `TlsClient` | | capability: the root certificates a client trusts, and its ALPN list; no authority beyond them, so it may be stored and shared | stdlib (09), step 37 |
+| `TlsError` | | error enum: `BadPem`, `Handshake`, `Timeout`, `Closed`, `Untrusted` | stdlib (09), steps 36 and 37 |
 
 ## Stand-ins
 
@@ -106,6 +112,11 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `HttpError` | `Malformed` | | stdlib (09) |
 | `HttpError` | `TooLarge` | | stdlib (09) |
 | `HttpError` | `Unsupported` | | stdlib (09) |
+| `TlsError` | `BadPem` | | stdlib (09), step 36 |
+| `TlsError` | `Handshake` | | stdlib (09), step 36 |
+| `TlsError` | `Timeout` | | stdlib (09), step 36 |
+| `TlsError` | `Closed` | | stdlib (09), step 36 |
+| `TlsError` | `Untrusted` | | stdlib (09), step 37 |
 | `RuntimeError` | `NoProcess` | | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `Unparsed` | `why: String` | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `ReadOnly` | | stdlib (09), Session 5, step 23 |
@@ -206,6 +217,23 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Time` | `since` | `Time` | `Duration` | | | stdlib (09) |
 | `Duration` | `ms` | | `Int64` | | | stdlib (09) |
 | `Duration` | `seconds`, `minutes` | | `Float64` | | | stdlib (09) |
+| `Hash` (on type) | `sha256`, `sha512` | `List(UInt8)` | `List(UInt8)`: 32 or 64 bytes | | | stdlib (09), step 35 |
+| `Hash` (on type) | `hmac_sha256` | `List(UInt8)` (key), `List(UInt8)` | `List(UInt8)`: 32 bytes | | | stdlib (09), step 35 |
+| `Hash` (on type) | `hkdf_sha256` | `List(UInt8)` (ikm), `List(UInt8)` (salt), `List(UInt8)` (info), `UInt64` (size) | `List(UInt8)`; a size past 8,160 crashes | | | stdlib (09), step 35 |
+| `Hash` (on type) | `hex` | `List(UInt8)` | `String`, lowercase | | | stdlib (09), step 35 |
+| `Hash` (on type) | `from_hex` | `String` | `Option(List(UInt8))` | | | stdlib (09), step 35 |
+| `Hash` (on type) | `equal?` | `List(UInt8)`, `List(UInt8)` | `Bool`, in constant time | | | stdlib (09), step 35 |
+| `AesGcm`, `ChaCha` (on type) | `seal` | `List(UInt8)` (key, 32), `List(UInt8)` (nonce, 12), `List(UInt8)` (plain), `List(UInt8)` (aad) | `List(UInt8)`: the ciphertext, then the 16-byte tag | | | stdlib (09), step 35 |
+| `AesGcm`, `ChaCha` (on type) | `open` | key, nonce, `List(UInt8)` (sealed), aad | `Option(List(UInt8))` | | | stdlib (09), step 35 |
+| `X25519` (on type) | `public` | `List(UInt8)` (secret, 32) | `List(UInt8)` | | | stdlib (09), step 35 |
+| `X25519` (on type) | `shared` | `List(UInt8)` (secret, 32), `List(UInt8)` (public, 32) | `Option(List(UInt8))`: `None` for a low-order point | | | stdlib (09), step 35 |
+| `Ed25519` (on type) | `public` | `List(UInt8)` (seed, 32) | `List(UInt8)` | | | stdlib (09), step 35 |
+| `Ed25519` (on type) | `sign` | `List(UInt8)` (seed, 32), `List(UInt8)` | `List(UInt8)`: 64 bytes | | | stdlib (09), step 35 |
+| `Ed25519` (on type) | `verify?` | `List(UInt8)` (public, 32), `List(UInt8)`, `List(UInt8)` (signature, 64) | `Bool` | | | stdlib (09), step 35 |
+| `Password` (on type) | `hash` | `String`, `List(UInt8)` (salt, 16) | `String`: Argon2id, a PHC string | | | stdlib (09), step 35 |
+| `Password` (on type) | `verify?` | `String`, `String` (PHC) | `Bool` | | | stdlib (09), step 35 |
+| `Random` | `bytes` | `UInt64` | `List(UInt8)` | | | stdlib (09), step 35 |
+| `Random` (on type) | `fixture` | | `Random`: the run's seeded stream | | tests | stdlib (09), step 35 |
 | `Deadline` | `at_most` | `Duration` | `Deadline`: the earlier of the deadline and now plus the duration | | | stdlib (09), Session 5, step 22 |
 | `Deadline` | `remaining` | | `Duration`: what remains of the deadline, zero once it has passed | | | stdlib (09), Session 5, step 24 |
 | `Deadline` (on type) | `fixture` | `Duration` | `Deadline`: now plus the duration on the test's clock | | tests | stdlib (09), Session 5, step 22 |
@@ -240,6 +268,8 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `net` | | `Net` | | `main` | stdlib (09) |
 | `Platform` | `http` | | `Http` | | `main` | stdlib (09) |
 | `Platform` | `runtime` | | `Option(Runtime)`: `Some` under `mo run` and in a binary built with `--surface` | | `main` | stdlib (09), Session 5, step 23 |
+| `Platform` | `random` | | `Random` | | `main` | stdlib (09), step 35 |
+| `Platform` | `tls` | | `Tls` | | `main` | stdlib (09), step 36 |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
@@ -257,6 +287,14 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Listener` | `serve` | `into: Handle(P)`, `idle: Duration` | none: the runtime accepts from here on and sends `P` `Accepted(conn: Conn)` per connection and `Idle` after `idle` with none, which `P` declares (MO0223) | | | stdlib (09), Session 5, step 20 |
 | `Conn` | `lines` | `into: Handle(P)`, `idle: Duration` | none: the runtime reads from here on and sends `P` `Line(text: String)`, `LineTooLong`, `Closed` at the end, and `Idle` after `idle` with no line, closing the connection; `P` declares all four (MO0223) | | | stdlib (09), Session 5, step 20 |
 | `Net` (on type) | `fixture` | | `Net` | | tests | stdlib (09) |
+| `Tls` | `server` | `cert: String`, `key: String` | `Result(TlsServer, TlsError)`: PEM text, chain leaf first and a PKCS#8 key (Ed25519 or P-256); `BadPem` when either does not parse or the key is not the leaf's | | | stdlib (09), step 36 |
+| `TlsServer` | `accept` | `Conn` | `Result(Conn, TlsError)`: the server's half of the TLS 1.3 handshake, giving the same connection back with its bytes now records; the connection must have had no `read_line`, `write`, or `lines` on it | yes | | stdlib (09), step 36 |
+| `Tls` (on type) | `fixture` | | `Tls`: the same rows on `Net.fixture()`'s network | | tests | stdlib (09), step 36 |
+| `Tls` | `client` | `trust: String` | `Result(TlsClient, TlsError)`: PEM text holding one or more root certificates; `BadPem` when none parses | | | stdlib (09), step 37 |
+| `TlsClient` | `connect` | `Conn`, `host: String` | `Result(Conn, TlsError)`: the client's half of the TLS 1.3 handshake on a connection from `Net.connect`, the leaf checked for `host` and the chain up to a trusted root at the runtime's clock; `Untrusted` when the chain is refused (its alert sent); the connection must have had no `read_line`, `write`, or `lines` on it | yes | | stdlib (09), step 37 |
+| `TlsClient` | `offer` | `List(String)` | `TlsClient`: a new client offering these ALPN protocols in order, the old one unchanged; a name empty, past 255 bytes, or holding a NUL is a crash | | | stdlib (09), step 37 |
+| `TlsServer` | `offer` | `List(String)` | `TlsServer`: a new server accepting these ALPN protocols in its order of preference, the old one unchanged; the same crash rule | | | stdlib (09), step 37 |
+| `Conn` | `protocol` | | `Option(String)`: the ALPN protocol the handshake agreed; `None` on a plain `Conn` or when none was | | | stdlib (09), step 37 |
 | `Http` | `listen` | `UInt16` | `Result(HttpListener, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `accept` | | `Result(Exchange, HttpError)` | yes | | stdlib (09) |
 | `HttpListener` | `port` | | `UInt16` | | | stdlib (09) |

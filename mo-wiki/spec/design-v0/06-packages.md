@@ -41,7 +41,7 @@ Six layers, no new syntax:
 5. **The install conversation.** `mo add` prints the computed manifest. A capability widening on update is a breaking change that pulls a human in, the same rule as `never`. Four reputation signals served by the registry: known-malicious, similar name (namespace-aware), low use, new name. Every "ask the human" is a hard fail for an agent.
 6. **Offline and incident response.** A signed revocation bloom filter checks plain rebuilds cheaply. `mo find-hash` lists every package version containing a given declaration hash. No dependency bypasses the registry except an in-repo path.
 
-Each check has a documented boundary (fail, warn, or opt-in) and a stable error code in the catalog.
+Each check has a documented boundary (fail, warn, or opt-in) and a stable error code in the catalog (unassigned until the registry exists; `errors.md` carries one recipe code, `MO0326`, today).
 
 ## The norm
 

@@ -1,6 +1,6 @@
 # 9. Standard library
 
-The first shelf of chapter 6: first-party, audited once, the only code in a Mo program that is not yours. This chapter is the table a reader checks a call against. Every row is a built-in of the interpreter (`toolchain/src/vm.zig`), listed again as data in `toolchain/src/prelude.zig` and `toolchain/PRELUDE.md`, and exercised by one corpus file per group under `examples/stdlib/`. **A call that is not a row here or in `PRELUDE.md` does not exist.**
+The first shelf of chapter 6: first-party, audited once, the only code in a Mo program that is not yours. This chapter is the table a reader checks a call against. Every row is a built-in of the interpreter (`toolchain/src/vm.zig`), listed again as data in `toolchain/src/prelude.zig` and `toolchain/PRELUDE.md`, and exercised by a corpus file per group under `examples/stdlib/` where one exists (Net, Http, Runtime, and the process rows are exercised by `examples/processes/` and the programs instead). **A call that is not a row here or in `PRELUDE.md` does not exist.**
 
 This is the part of the box the first three programs need (`examples/GAPS.md`), and HTTP for the fourth (`## Http`), not the whole box. Regex, TLS, crypto, compression, and database drivers come when a program demands them.
 
@@ -54,6 +54,12 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `String` (on type) | `join` | `List(String)`, `sep: String` | `String` | the strings with `sep` between each two |
 | `String` | `byte_size` | | `UInt64` | the UTF-8 bytes, counted without building `bytes` |
 
+## Option
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Option(T)` | `map` | `fn(T) U` | `Option(U)` | `Some` of the function's value for a `Some`, and `None` for a `None`. Step 28, after program 1 wrote a `case` to turn a found change into its value |
+
 ## Lists
 
 | receiver | name | parameters | returns | |
@@ -61,7 +67,6 @@ Type variables: `T`, `U`, `A`, `K`, `V` are fresh at each call. `N` is the recei
 | `List(T)` | `size` | | `UInt64` | elements |
 | `List(T)` | `push` | `T` | `List(T)` | the element added at the end |
 | `List(T)` | `get` | `i: UInt64` | `Option(T)` | element `i`, from 0 |
-| `Option(T)` | `map` | `fn(T) U` | `Option(U)` | `Some` of the function's value for a `Some`, and `None` for a `None`. Step 28, after program 1 wrote a `case` to turn a found change into its value |
 | `List(T)` | `first`, `last` | | `Option(T)` | |
 | `List(T)` | `contains?` | `T` | `Bool` | whether an element equals it |
 | `List(T)` | `slice` | `from: UInt64`, `to: UInt64` | `List(T)` | elements `from` up to, not including, `to`, both clamped |
@@ -163,7 +168,7 @@ Every `Fs` row can wait, so it takes `within: Duration`. A name is relative to t
 | `Fs` | `read_only` | | `Fs` | narrowed to reading: a read-only `Fs`, its own type, which goes wherever an `Fs` goes (a `scoped` of it is read-only too) and is refused by the checker (`MO0404`) where a write reaches it, directly or through a function it is handed to |
 | `Fs` (on type) | `fixture` | | `Fs` | an empty file system: every read is `Missing`; `list` on the fixture's root is `Ok([])`, and on a folder that is not there (no `mkdir` made it and no file is under it) `Missing(".")`, as the real `Fs` answers; a path whose `..` climbs above a scope's folder, the fixture's root included, is refused as the real `Fs` refuses it, `Missing(path)`, and `list` on a scope that climbed out is `Missing(".")`; tests only. Session 5, step 21: the refusal, after round 4's logstat found the fixture climbing out of a scope where the real `Fs` does not. Session 5, step 22: `Missing(".")` for a folder that is not there, after program 1 found no test could show `jobq serve` refusing one |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | every call that waits less than `delay` is `Timeout`; tests only |
-| `Fs` | `write` | `path: String`, `text: String` | `Result(none, FsError)` | the file holds exactly the text, created when it is not there, and is on disk (`fsync`) before `Ok`; `Missing(path)` for a path outside the scope, a folder that is not there, or anything that is not a file. On an `Fs.fixture()` the files are in memory and every read sees what was written; a call that fails changes nothing. A read-only `Fs` handed to a process as a start argument, in a message field, or on a supervisor's `child` line is followed there too (Session 5, step 24): a write through it is refused by `mo check`.start`) is not followed, and a write through it there crashes |
+| `Fs` | `write` | `path: String`, `text: String` | `Result(none, FsError)` | the file holds exactly the text, created when it is not there, and is on disk (`fsync`) before `Ok`; `Missing(path)` for a path outside the scope, a folder that is not there, or anything that is not a file. On an `Fs.fixture()` the files are in memory and every read sees what was written; a call that fails changes nothing. A read-only `Fs` handed to a process as a start argument, in a message field, or on a supervisor's `child` line is followed there too (Session 5, step 24): a write through it is refused by `mo check` (`MO0404`); a read-only `Fs` a capability call cannot see (one sent in a start argument the checker cannot follow) is not followed, and a write through it there crashes |
 | `Fs` | `append` | `path: String`, `text: String` | `Result(none, FsError)` | the text added at the end of the file, created when it is not there; durable (`fsync`) before it returns `Ok`; a call past its deadline is `Timeout`, and what it wrote stays |
 | `Fs` | `remove` | `path: String` | `Result(none, FsError)` | the file is gone; `Missing(path)` when no such file is in the scope |
 | `Fs` | `rename` | `from: String`, `to: String` | `Result(none, FsError)` | the file at `from` is at `to`, replacing a file there; `Missing(from)` when no such file is in the scope, `Missing(to)` when `to` is outside it or in a folder that is not there |
@@ -231,7 +236,7 @@ A function, a capability, or a handle has no JSON; encoding one is a crash. `dec
 
 ## Not in this step
 
-Map and set literals; Unicode case mapping (`to_upper` is ASCII); full grapheme segmentation (a grapheme is a code point with the combining marks after it, as `size` counts); a float-to-integer conversion beyond `Json`'s `to_i64`; streaming reads; writing files. Each waits for a program that needs it.
+Map and set literals; Unicode case mapping (`to_upper` is ASCII); full grapheme segmentation (a grapheme is a code point with the combining marks after it, as `size` counts); a float-to-integer conversion beyond `Json`'s `to_i64`. Each waits for a program that needs it.
 
 ## Net
 
@@ -260,7 +265,7 @@ end
 | `Conn` | `lines` | `into: Handle(P)`, `idle: Duration` | none | from this call on, the runtime reads the connection and sends `P` `Line(text: String)` per line as `read_line` cuts it, `LineTooLong` for a line over 64 KiB (the next starts after it), `Closed` at the end of the stream, and `Idle` when no line came for `idle`, after which it closes the connection; `P` declares all four (MO0223); once this side closes the connection it is read no more, with no message; a `read_line` on it is `Busy`, and reading it into a process again is a crash |
 | `Net` (on type) | `fixture` | | `Net` | a network in memory, shared by every fixture in the test; tests only |
 
-**The runtime owns the loop.** A process never waits in a `for` around `accept` or `read_line`: `serve` and `lines` hand the waiting to the runtime, which delivers each result as a message and is itself the loop (as Erlang's active sockets are). Neither row waits, so neither takes `within:`; `idle:` is the deadline of the runtime's wait. A row's messages come from the runtime and take no reply. Backpressure: the runtime delivers while the target's mailbox holds fewer than its bound less a headroom of 4 waiting messages (half the bound, for a bound under 8), counting the requests an `HttpListener.serve` is still reading; at that it stops accepting or reading, so clients wait in the kernel's queues, and it starts again once the mailbox has drained to half its bound; while it waits for room, idle time does not run. A served listener keeps a program running after `main` returns, so a server stops when it is stopped; a `main` that calls `platform.exit` ends the program at once when it returns: the runtime's loops stop and their listeners close, every delayed send still pending is dropped with a `Dropped` event, what already waits in a mailbox is delivered, nothing is waited for, and the exit code is kept (Session 5, step 29, first tested by `programs/exit-pending.mo`). A process a source sends to is never ended while the source can send (chapter 3, processes). Session 5, step 20: `serve` and `lines`, after three servers wrote `for _ in 0..10_000` twice around `accept` to satisfy the no-`while` law with a bound nobody chose.
+**The runtime owns the loop.** A process never waits in a `for` around `accept` or `read_line`: `serve` and `lines` hand the waiting to the runtime, which delivers each result as a message and is itself the loop (as Erlang's active sockets are). Neither row waits, so neither takes `within:`; `idle:` is the deadline of the runtime's wait. A row's messages come from the runtime and take no reply. Backpressure: the runtime delivers while the target's mailbox holds fewer than its bound less a headroom of 4 waiting messages (half the bound, for a bound under 8), counting the requests an `HttpListener.serve` is still reading; at that it stops accepting or reading, so clients wait in the kernel's queues, and it starts again once the mailbox has drained to half its bound; while it waits for room, idle time does not run. A served listener keeps a program running after `main` returns, so a server stops when it is stopped; a `main` that calls `platform.exit` ends the program at once when it returns: the runtime's loops stop and their listeners close, every delayed send still pending is dropped with a `Dropped` event, what already waits in a mailbox is delivered, nothing is waited for, and the exit code is kept (Session 6, step 29, first tested by `programs/exit-pending.mo`). A process a source sends to is never ended while the source can send (chapter 3, processes). Session 5, step 20: `serve` and `lines`, after three servers wrote `for _ in 0..10_000` twice around `accept` to satisfy the no-`while` law with a bound nobody chose.
 
 A `Net.fixture()` lets a test start a server process, connect a client, and drive the protocol with no real socket. What one end writes waits for the other end to read it, and a closed end is the end of the stream for the other. `listen(0)` picks a port from 49152 up; `connect` to a port nothing listens on is `Refused`; the host is not looked at. A simulated call cannot wait for something to happen, so a call with nothing to take (an `accept` with no client, a `read_line` with no whole line) waits its whole deadline and is `Timeout`. Under `mo test --sim`, a fixture call that can wait times out by the seed, and a `read_line` or `write` finds its connection `Closed` by the seed; each leaves the connection as the real call would. A fixture's `serve` and `lines` deliver at the start of each round of deliveries, one message per source, in start order or the seed's, so a test's settle, an `ask` that delivers rounds, and `Http.fixture()`'s `send` all see them; nothing happens while a simulated call waits, so a source with nothing to take waits, and `Idle` comes only once fixture calls have waited past its deadline. Under `--faults`, a source about to deliver finds its connection `Closed`, or waits out its deadline and sends `Idle`, by the seed.
 
@@ -316,6 +321,40 @@ The wire, read and written the same way by both runtimes:
 `accept` reads the whole request before it gives the exchange, so a listener waits on one slow client at a time: a server that must not keep the others waiting passes each client a short deadline, or serves the listener, which reads each request apart. The body is read by its count from the connection's buffer, so `Conn` gains no row.
 
 An `Http.fixture()` runs on the network `Net.fixture()` does, so a test can connect with a `Net` fixture to an `HttpListener` and write a request by hand. As on `Net`, a call with nothing to take (an `accept` with no client, or with a request cut short) waits its whole deadline and is `Timeout`. `send` alone does not wait for nothing: while its response is not whole it delivers the processes' waiting messages a round at a time, as a settle does, and it is `Timeout` when no message is waiting. So a test that sends a server process a message to accept, or serves a listener into it, then sends a request in the same statement, gets the server's response. Under `mo test --sim`, `accept` and `send` time out by the seed, and `reply` and `send` find their connection `Closed` by the seed.
+
+## Tls
+
+`Tls` is TLS 1.3 for a listening program, `platform.tls` in `main` (step 36, [[bricks-and-the-cost-of-zero-dependencies]]). Like the crypto rows it is written once, in Zig over `std.crypto` (`toolchain/src/bricks/tls.zig`), and both runtimes call that code: the interpreter imports it, and `mo build` links it beside the C runtime. It is a capability like `Net`: passed as a parameter, never captured in an anonymous function (MO0409), never reached from a pure function (MO0403), and held by a process only when it is started with one. A `TlsServer` is a capability too, but it holds no authority beyond its own key and its own certificate, so a program makes one and hands it to every worker that answers a connection.
+
+What a connection it gives back does is what a plain `Conn` does: `read_line`, `write`, `close`, and `lines` are the same rows with the same buffering and the same `NetError`s, and every program written against a socket works behind TLS unchanged. `close` sends `close_notify` before the socket closes; a peer whose stream ends without one is the end of the stream, as a plain socket's end is.
+
+```ruby
+enum TlsError
+  BadPem
+  Handshake
+  Timeout
+  Closed
+  Untrusted
+end
+```
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Platform` | `tls` | | `Tls` | the TLS brick, in `main` alone |
+| `Tls` | `server` | `cert: String`, `key: String` | `Result(TlsServer, TlsError)` | PEM text, not a path: the certificate chain leaf first, and a PKCS#8 private key (`BEGIN PRIVATE KEY`, Ed25519 or ECDSA P-256). `BadPem` when either does not parse, when there is not exactly one key, or when the key is not the leaf certificate's. It does not wait |
+| `TlsServer` | `accept` | `Conn` | `Result(Conn, TlsError)` | the server's half of the handshake on that connection, within the deadline; the `Conn` it gives back is the same connection, its bytes now records. `Handshake` when the client's hello or finish is wrong or it sent an alert, `Timeout` when the handshake did not finish in time, `Closed` when the stream ended first; each closes the connection, after the alert RFC 8446 names has been written. The connection must have had no `read_line`, `write`, or `lines` on it: a crash names the row otherwise, since the caller broke a rule |
+| `Tls` (on type) | `fixture` | | `Tls` | the same rows on `Net.fixture()`'s network; tests only |
+| `Tls` | `client` | `trust: String` | `Result(TlsClient, TlsError)` | PEM text, not a path, holding one or more root certificates: the trust a server's chain must lead to. A block that is not a certificate the brick can read is left out; `BadPem` when none is left. A `TlsClient` is a capability as a `TlsServer` is, with no authority beyond its trust set, so it may be stored and shared. It does not wait |
+| `TlsClient` | `connect` | `Conn`, `host: String` | `Result(Conn, TlsError)` | the client's half of the handshake on a connection from `Net.connect`, within the deadline, for `host` (sent as SNI when it is a name, and what the leaf must be for); the `Conn` it gives back is the same connection, its bytes now records. `Untrusted` when the server's chain is refused (below), after the alert has been written; `Handshake`, `Timeout`, and `Closed` as `accept` gives them; each closes the connection. The connection must have had no `read_line`, `write`, or `lines` on it: a crash names the row otherwise |
+| `TlsClient` | `offer` | `List(String)` | `TlsClient` | ALPN (RFC 7301): a new client offering these protocols, in order; the client it is called on is unchanged. A name that is empty, longer than 255 bytes, or holds a NUL is a crash. It does not wait |
+| `TlsServer` | `offer` | `List(String)` | `TlsServer` | ALPN: a new server accepting these protocols, in its order of preference; the server it is called on is unchanged. The same crash rule. When both sides offer and share nothing, the server sends `no_application_protocol` and the client's `connect` is `Handshake`; when either side offers nothing, the handshake goes on without ALPN |
+| `Conn` | `protocol` | | `Option(String)` | the ALPN protocol the handshake agreed; `None` on a plain `Conn` or when none was. It does not wait |
+
+**What it speaks**, and nothing else (the bricks page's cut): TLS 1.3 alone, the two suites `TLS_AES_128_GCM_SHA256` and `TLS_CHACHA20_POLY1305_SHA256`, X25519 for the key exchange with one HelloRetryRequest when a client supports X25519 but sent no share for it, Ed25519 and ECDSA P-256 server certificates, `KeyUpdate` from the client answered, and `close_notify` both ways. A client that offers no TLS 1.3 is answered `protocol_version`, one with no X25519 at all `handshake_failure`, bytes that are not a record `unexpected_message`, a record past 16 KiB plus 256 `record_overflow`, a record whose tag does not check `bad_record_mac`, and a wrong Finished `decrypt_error`. Not here, in either direction: TLS 1.2, session tickets, PSK, 0-RTT, client certificates, renegotiation. SNI is read and ignored; ALPN is answered when the server was given a list with `offer` (step 37, which added the client side).
+
+Under `Tls.fixture()` the rows run on `Net.fixture()`'s in-memory network. Nothing happens while a simulated call waits, so `accept` sees only what the other end has already written: a client that has written nothing is `Timeout`, and one that wrote something that is not a hello is `Handshake`.
+
+**What the client checks** (step 37). `connect` offers what the server side speaks (TLS 1.3, the two suites, X25519, the signature schemes Ed25519 and ECDSA P-256 SHA-256), answers one HelloRetryRequest, and checks the server's flight: the transcript, the CertificateVerify against the leaf's key, and the Finished. Before the CertificateVerify it checks the chain the server sent, as sent, leaf first: at most five certificates; each one's issuer the next, until one is signed by a root in the trust set; every certificate between the leaf and that root a CA (basicConstraints); the leaf for `host` (a DNS name or an IP address among its subject alternative names, its common name only when it has none, a wildcard for one leftmost label); every signature good; and every certificate's dates, the root's too, around the runtime's clock, which under `Tls.fixture()` is the simulator's (`Time.fixture()`, 2026-01-01, moved by fixture waits). A refusal is `Untrusted`, after the alert OpenSSL 3.0 sends for the same chain: `bad_certificate` for a name that does not match or a date not yet begun, `certificate_expired`, `unknown_ca` for a root not trusted, a link missing, an issuer that is no CA, or a chain past five, and `unsupported_certificate` for RSA anywhere in the chain, which the cut does not cover. After the handshake either side may start a `KeyUpdate` and each answers one that asks; a client reads the server's session tickets and drops them, since there is no resumption. Under `Tls.fixture()` both halves of a handshake run on the one network, driven by the simulator: a `connect` or an `accept` with nothing to read lets the other end's engine read what it wrote and answer, and lets the other processes take their messages, so a test runs a whole handshake with the server in a process that `serve` hands the connection.
 
 ## Runtime
 
@@ -379,7 +418,7 @@ enum Event
 end
 ```
 
-`pid` is the process's id and `name` its name when the event happened, since a process that ended gives its id to one started later; `taking` is the message an update took, a crash's last message, or the message the surface sent, and `snapshot` a crashed process's state (Session 5, step 24: the fields were `process`, `message`, and `state`, which are keywords, so no pattern could name them); `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
+`pid` is the process's id and `name` its name when the event happened, since a process that ended gives its id to one started later; `taking` is the message an update took, a crash's last message, or the message the surface sent, and `snapshot` a crashed process's state (Session 5, step 24: the fields were `process`, `message`, and `state`, which are keywords, so no pattern could name them); `Overflowed` and `TimedOut` name `main` or the test when no process sent or waited. The structs, `Event`, and `RuntimeError` are prelude types, and a module that declares its own `Event` or `RuntimeError` (or `ProcessInfo`, `SourceInfo`, `MemoryInfo`, or `Reply`, as `examples/recipes/model-client.mo` does) means its own by the name, as with `Request`, while the `Runtime` rows still give the prelude's.
 
 | receiver | name | parameters | returns | |
 |---|---|---|---|---|
@@ -400,3 +439,41 @@ end
 Over HTTP the same rows are the development on-ramp: `mo run --surface PORT`, and `MO_SURFACE=PORT` for a binary built with `--surface`, serve them as JSON on 127.0.0.1 from a process of the toolchain's own the surface does not list, `GET /processes`, `/state/<id>`, `/recent/<id>?n=`, `/events?since=<ISO-8601>&n=`, `/crashes?n=`, `/sources`, `/memory`, `/slowest?n=`, and `POST /send/<id>` with the message's text as the body, `/pause/<id>`, `/resume/<id>`; a refusal is 404 for no process, 403 for read only, and 409 otherwise, with the `RuntimeError` as the body. An MCP wrapper is a later step.
 
 Session 5, step 23: the runtime surface and the events, from Robert's call of 13 Sep night (the surface is a capability, on in development, off in a binary unless held) and the nine questions program 1's worker wanted to ask its service.
+
+## Crypto
+
+The crypto brick (step 35, [[bricks-and-the-cost-of-zero-dependencies]]): pure rows on names that hold no values, so each follows the first rule, deterministic. They are written once, in Zig over `std.crypto` (`toolchain/src/bricks/crypto.zig`), and both runtimes call that code: the interpreter imports it, and `mo build` links it beside the C runtime. Bytes are `List(UInt8)`; a text is a `String`. Every key, nonce, seed, salt, and signature has one size, and another size is a crash whose message names the row and the size it got (`AesGcm.seal takes a key of 32 bytes, not 31`): the caller broke a rule. A sealed text, a public key, a signature, or a PHC string that comes from outside is checked by the row that reads it, and failing is a value.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Hash` (on type) | `sha256` | `bytes: List(UInt8)` | `List(UInt8)` | SHA-256 (FIPS 180-4), 32 bytes |
+| `Hash` (on type) | `sha512` | `bytes: List(UInt8)` | `List(UInt8)` | SHA-512, 64 bytes |
+| `Hash` (on type) | `hmac_sha256` | `key: List(UInt8)`, `bytes: List(UInt8)` | `List(UInt8)` | HMAC-SHA256 (RFC 2104), 32 bytes; a key of any size |
+| `Hash` (on type) | `hkdf_sha256` | `ikm: List(UInt8)`, `salt: List(UInt8)`, `info: List(UInt8)`, `size: UInt64` | `List(UInt8)` | HKDF-SHA256 (RFC 5869), extract then expand, `size` bytes; a size past 8,160 (255 blocks) crashes |
+| `Hash` (on type) | `hex` | `bytes: List(UInt8)` | `String` | lowercase hex, two digits a byte |
+| `Hash` (on type) | `from_hex` | `text: String` | `Option(List(UInt8))` | the bytes hex text spells, either case; `None` for an odd length or anything that is not a hex digit |
+| `Hash` (on type) | `equal?` | `a: List(UInt8)`, `b: List(UInt8)` | `Bool` | whether the bytes are equal, in time that depends only on the sizes; lists of other sizes are unequal at once |
+| `AesGcm` (on type) | `seal` | `key: List(UInt8)`, `nonce: List(UInt8)`, `plain: List(UInt8)`, `aad: List(UInt8)` | `List(UInt8)` | AES-256-GCM: the ciphertext, then the 16-byte tag; a key of 32 bytes and a nonce of 12, or a crash |
+| `AesGcm` (on type) | `open` | `key`, `nonce`, `sealed: List(UInt8)`, `aad` | `Option(List(UInt8))` | the plain text; `None` when the tag does not match the key, nonce, text, and aad, or the text is shorter than a tag; the sizes as `seal` |
+| `ChaCha` (on type) | `seal`, `open` | as `AesGcm`'s | as `AesGcm`'s | ChaCha20-Poly1305 (RFC 8439), the same shape and sizes |
+| `X25519` (on type) | `public` | `secret: List(UInt8)` | `List(UInt8)` | the 32-byte public key of a 32-byte secret (RFC 7748) |
+| `X25519` (on type) | `shared` | `secret: List(UInt8)`, `public: List(UInt8)` | `Option(List(UInt8))` | the 32-byte shared secret; `None` when `public` is a low-order point, whose secret would be all zeros; both 32 bytes, or a crash |
+| `Ed25519` (on type) | `public` | `seed: List(UInt8)` | `List(UInt8)` | the 32-byte public key of a 32-byte seed (RFC 8032) |
+| `Ed25519` (on type) | `sign` | `seed: List(UInt8)`, `bytes: List(UInt8)` | `List(UInt8)` | the 64-byte signature, deterministic |
+| `Ed25519` (on type) | `verify?` | `public: List(UInt8)`, `bytes: List(UInt8)`, `signature: List(UInt8)` | `Bool` | whether the signature is valid for the bytes under the key; a 32-byte key that is not a point is `false`; a key of another size or a signature of other than 64 bytes crashes |
+| `Password` (on type) | `hash` | `password: String`, `salt: List(UInt8)` | `String` | Argon2id (RFC 9106) at `m=65536,t=3,p=1`, a 32-byte tag, as a PHC string (`$argon2id$v=19$m=65536,t=3,p=1$<salt>$<tag>`, 97 bytes); the salt is 16 bytes, or a crash; take it from `random.bytes(16)` |
+| `Password` (on type) | `verify?` | `password: String`, `phc: String` | `Bool` | whether the password hashes to the string; a string `hash` does not write (malformed, another algorithm or version, other parameters, another salt or tag size, another spelling of the same values) is `false`, so a stored string cannot make a check cost more than a hash |
+
+Nothing else until a program asks: no SHA-3, no ECDSA, no RSA, no scrypt or bcrypt, no streaming hash. Step 35: the rows program 7 and the TLS brick of step 36 need.
+
+## Random
+
+`Random` is the one capability that gives bytes no row can predict, so it is not deterministic and is held like `Fs`: `platform.random` in `main`, passed down as a parameter, never captured by an anonymous function (MO0409), never stored in a value (MO0403), and held by a process only when it is started with one.
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Platform` | `random` | | `Random` | the operating system's generator: `getrandom(2)` on Linux, `arc4random_buf(3)` on macOS, read on every call |
+| `Random` | `bytes` | `size: UInt64` | `List(UInt8)` | `size` bytes; more than 1 GiB at once crashes |
+| `Random` (on type) | `fixture` | | `Random` | a stream from the run's seed (ChaCha20 keyed by SHA-256 of the seed), so a test that draws a key draws the same bytes every run, under `mo test`, `--sim`, and in a test binary; each fixture starts at the stream's beginning, and each draw goes on along it; tests only |
+
+Step 35.
