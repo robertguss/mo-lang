@@ -1,0 +1,14 @@
+{
+  "id": "step-37-parallel-filed-002",
+  "subject": "step-37",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": "step-37-reading-filed-recent-64982b2-001",
+  "evidence_commit": "5ac10e3b7c72c273ac94a77a5c3bbf9efa36e5c5",
+  "paths": [
+    "audit/mo-audit-2026-09-18-recent-tls-step37.md",
+    "audit/fable-reading-2026-09-18-step-37.md"
+  ],
+  "request": "The second auditor reading of step 37 (PR 10) and Fable's reading (pushed at baf6683, before any auditor file on this subject was opened) are both on main. Fable's reading predates this second auditor file and was not revised after the first was opened. Compare and record disagreements."
+}
