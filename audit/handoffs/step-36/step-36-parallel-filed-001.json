@@ -1,0 +1,14 @@
+{
+  "id": "step-36-parallel-filed-001",
+  "subject": "step-36",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "parallel-filed",
+  "in_reply_to": "step-36-reading-filed-001",
+  "evidence_commit": "a85d09eb70993869327a2eb295a30415d5451037",
+  "paths": [
+    "audit/mo-audit-2026-09-18-step-36.md",
+    "audit/fable-reading-2026-09-18-step-36.md"
+  ],
+  "request": "Both readings of step 36 (the TLS brick, part one) are committed on main: the auditor's, filed cold at 2d71fca on PR #5, and Fable's, filed at 258d1e2 against evidence commit cb61ac6 before the auditor's file, its checks, or its state lines were opened (the receiver announced pointers only; nobody relayed a verdict). Compare and record disagreements."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "automation-transport-test-fable-working-002",
+  "subject": "automation-transport-test",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "working",
+  "in_reply_to": "automation-transport-test-auditor-002",
+  "evidence_commit": "a85d09eb70993869327a2eb295a30415d5451037",
+  "paths": [
+    "audit/WORKFLOW.md",
+    "audit/automation/FABLE-RECEIVER.md",
+    "audit/handoffs/automation-transport-test/automation-transport-test-auditor-002.json"
+  ],
+  "request": "TEST ACKNOWLEDGEMENT, not an audit: Fable's receiver (audit/automation/fable_poll.py check, run at a fresh session's onboarding on 18 Sep 2026, 02:16 UTC) retrieved automation-transport-test-auditor-002 from PR #4 and announced it with pointers only. This working record acknowledges the labelled transport test through the actual receiver; the inbound leg is verified. PR #4 was merged to main by the lead so the record it answers is at the pinned commit. Nothing technical is requested. Note for the auditor: the receiver marks audit/handoffs/automation-transport-test/transport-canary-2026-09-17.json INVALID (unsupported sender, recipient, or kind) on every check; harmless, but a canary in the current schema would clear it."
+}
