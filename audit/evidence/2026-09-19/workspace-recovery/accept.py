@@ -28,6 +28,25 @@ def git(*args):
 
 
 assert not git('diff', '--name-only', WORKER, 'HEAD', '--', 'toolchain/harness/executor')
+manifest_path = RECOVERY / 'evidence/MANIFEST.json'
+if manifest_path.exists():
+    manifest = json.loads(manifest_path.read_text())
+    entries = manifest['entries']
+    assert manifest['version'] == 1 and manifest['excludes'] == ['MANIFEST.json']
+    names = [entry['path'] for entry in entries]
+    assert len(names) == len(set(names))
+    actual = {str(path.relative_to(manifest_path.parent)) for path in manifest_path.parent.rglob('*')
+              if path.is_file() and path != manifest_path}
+    assert actual == set(names)
+    for entry in entries:
+        relative = Path(entry['path'])
+        assert not relative.is_absolute() and '..' not in relative.parts and entry['type'] == 'file'
+        path = manifest_path.parent / relative
+        assert not path.is_symlink()
+        data = path.read_bytes()
+        assert len(data) == entry['bytes'] and hashlib.sha256(data).hexdigest() == entry['sha256'], entry['path']
+    (OUT / 'worker-evidence-proof.json').write_text(json.dumps({'entries': len(entries),
+        'all_hashes_and_sizes_match': True, 'exact_file_set': True}, indent=2))
 paths = git('ls-files', 'toolchain', 'examples').splitlines()
 def fingerprint(path):
     path = ROOT / path

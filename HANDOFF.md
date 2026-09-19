@@ -22,7 +22,7 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 3:57 AM ET
+### Active work, 19 Sep 2026, 4:09 AM ET
 
 Current application code is `aa7ec7623f634d5c05f6d602b894428c211b4869`;
 recovery brief base is `90858791f441d125f0187a6751beffec6ef2312b`. Published
@@ -101,8 +101,9 @@ lost reserve responses, late bootstrap barriers and preserved unknown outcomes.
 Machine exclusively released after lead application runtime cleanup. No image,
 slice or installed-input changes; full Mo/Zig CPU gate was released at 3:16 AM ET.
 Immutable product checkpoints08525c61 and00a06657 plus diagnostic c2ea7cf7/
-df816be3 are integrated locally through741be6ab for testing, not accepted or
-published. Corrected local59/recovery16 passed per worker receipt;
+df816be3 and final evidence/report ee48568c/6266d293 are integrated locally
+throughde71578d for testing, not accepted or published. Corrected local59/
+recovery16 passed per worker receipt;
 lead lifecycle and fresh proof/schema source reviews close the identified gaps.
 Broad checks failed: corrected workspace regression19/22 first had malformed
 snapshot JSON (raw successful transport bytes missing), then occupied registration
@@ -115,8 +116,9 @@ Worker run panes are w4:p22 and w4:p26; fresh review p25 was closed after report
 Lead independent local59 and21 multi-execution schema controls pass at741be6ab;
 unknown/empty/duplicate selections each exit2 before output creation. All5815
 tracked toolchain/examples files unchanged, child groups absent, outerexit0.
-Evidence is workspace-recovery/local-01. Lead machine/full acceptance and the
-final worker receipt remain pending.
+Evidence is workspace-recovery/local-01. Final worker tip is6266d293; its clean
+receipt explicitly released the machine. Lead machine/full acceptance remains
+pending; no worker machine/compiler work is permitted now.
 Observed rerun then failed before execution: missing slice control group after
 reboot. Inactive slice absence was sufficient cleanup evidence but insufficient
 execution readiness. Lead authorized reactivating the two existing unchanged
@@ -127,8 +129,29 @@ After activation, worker sequential workspace22/executor17/lifecycle1/app23 all
 passed. Final inventory proves178 workspace roots,234 execution resources,
 190 actual candidate cgroups and44 historical local groups absent, both active
 parents empty, shared5 unchanged. Two reboot-lost proofs remain API-unresolved
-despite exact authorized operator cleanup. Machine work stopped; worker runs
-full-test-02 alone in p22. No competing lead machine/compiler commands.
+despite exact authorized operator cleanup. Worker full-test-02 passed243/243,
+5/5 in406.5s,exit0,group absent; old failure remains unexplained. Final inventory
+refreshed after full suite and all47 worker groups are absent. Owned run panes
+p22/p26 closed, workerp21 available for corrections.
+
+Lead exclusively owns mo-executor-r01. Independent live acceptance is running
+in w4:p1D through audit/evidence/2026-09-19/workspace-recovery/launch.py recovery
+attempt-01 6266d293b17f11d7d8f761e427fa393f3f9e9bf9 (1800s guard). Verified all5311
+worker evidence entries/sizes/hashes and exact file set; readiness,recovery16
+and workspace22 passed so far. Observer-backed executor/lifecycle/application,
+post-effect lost-reply extra and final inventory follow sequentially. Do not
+start compiler/machine work concurrently. Lead full suite follows live cleanup.
+Launcher outer-timeout child-group cleanup has a retained passing fault control.
+
+Fresh read-only Astra low budget review finished and p27 closed. Report is
+workspace-wire-readiness/application-budget-review-01.md: fixed application mode
+can keep serialized Budget/Order unchanged (wall900000/tool2000), with separate
+candidate120000 and command-wait300000 caps in versioned profile metadata.
+Run needs explicit mode/config/dispatch, new application module/adapter and CLI;
+Tools/Registry can remain unchanged by starting Run without local Writer.
+Preserve diminishing15s reporting reserve within outer900s, terminal Book AND
+Run.Stopped before final reread, no local fallback. This is readiness only;
+HTTP/profile implementation still waits for recovery acceptance.
 
 Wire/encoding and cleanup reviews are retained under workspace-wire-readiness;
 their review panes are closed. Next: finish application acceptance and cleanup
