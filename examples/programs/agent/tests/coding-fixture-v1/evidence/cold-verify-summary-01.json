@@ -1,0 +1,16 @@
+{
+  "prior_evidence_files": 79,
+  "prior_evidence_changed": [],
+  "cold_source_files": 192,
+  "cold_source_changed": [],
+  "checks": 49,
+  "failed_checks": [],
+  "legacy_cases": 12,
+  "legacy_failed": [],
+  "build_before_legacy": true,
+  "working_tree_changed_paths": [
+    "examples/programs/agent/tests/coding-fixture-v1/README.md",
+    "examples/programs/agent/tests/coding-fixture-v1/legacy.py",
+    "examples/programs/agent/tests/coding-fixture-v1/verify.py"
+  ]
+}

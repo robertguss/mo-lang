@@ -1,0 +1,1 @@
+{"check": "native-executable", "executable": "/private/tmp/mo-coding-cold-fixed-01/zig-out/mo-build/coding-fixture/coding-fixture", "passed": false, "error": "native executable missing or not executable; run verify.py first"}

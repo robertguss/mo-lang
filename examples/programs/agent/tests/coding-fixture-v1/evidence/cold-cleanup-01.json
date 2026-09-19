@@ -1,0 +1,27 @@
+{
+  "pane": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 75247,
+        "foreground_processes": [
+          {
+            "argv": [
+              "-zsh"
+            ],
+            "argv0": "zsh",
+            "cmdline": "-zsh",
+            "cwd": "/private/tmp/mo-coding-invalid-native-01",
+            "name": "zsh",
+            "pid": 75247
+          }
+        ],
+        "pane_id": "w4:p1N",
+        "shell_pid": 75247
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "descendants": [],
+  "passed": true
+}

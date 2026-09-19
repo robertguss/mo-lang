@@ -197,3 +197,48 @@ of wall-clock Time subtraction. A delayed-book grace mode in the existing
 boundary group proves consumption; all waits retain the existing deadline cap.
 `cancel-green-prepare-1`, `race-prepare-1` and `race-before-stop-check` retain
 parser/shape and grace-assertion failures on the way to the final green result.
+
+## Cold verification orchestration correction
+
+Lead integration attempt-01 exposed a test-runner defect: `legacy.py` ran before
+`build-agent`, so a clean checkout had no native executable. Its exit/stdout-only
+comparison falsely accepted native fixtures 3, 5 and 6 when guard.py reported a
+launch exception. `cold-legacy-red-01.jsonl` reproduces this on unchanged 84d442e
+in a fresh archive: six interpreter passes, six native launch failures, three
+false native passes, overall exit 1. Earlier evidence remains byte-identical;
+its legacy pass flags did not check stderr and cannot establish that property.
+
+`verify.py` now builds current source before legacy execution and stops on a
+failed build. `legacy.py` requires an executable regular file before running
+cases and compares exact expected stderr as well as stdout goldens and exit
+codes. `cold-legacy-missing-01.jsonl` retains the corrected absent-executable
+failure (exit 1, explicit failed preflight, no cases counted as passed).
+
+For a cold check without removing any previous build artifacts, archive the
+correction commit into a newly created directory, then run the documented
+verification there in the owned right/no-focus Herdr run pane:
+
+```sh
+cold_copy=$(mktemp -d /tmp/mo-coding-cold.XXXXXX)
+git archive HEAD | tar -x -C "$cold_copy"
+cd "$cold_copy"
+MO_BIN=/path/to/existing/mo python3 toolchain/bench/step36/guard.py 600 -- python3 examples/programs/agent/tests/coding-fixture-v1/verify.py
+```
+
+Worker verification used `/tmp/mo-coding-cold-fixed-01`, archived from 84d442e
+with only the corrected verify.py/legacy.py copied in. `cold-verify-before-01.json`
+records absent zig-out/native output and source hashes before execution.
+`cold-verify-01.jsonl` completed all 49 checks with exit 0, including all 12
+legacy cases with exact stderr comparisons. `cold-verify-summary-01.json` records
+build-before-legacy ordering, unchanged 192 Mo source files in the cold copy,
+and unchanged 79 previously retained evidence files in the worker checkout.
+
+`cold-legacy-invalid-01.jsonl` tests the second line of defense: another fresh
+archive plus corrected legacy.py contained a mode-0755 native-path file with
+literal bytes `invalid executable format\n`. All six interpreter cases passed;
+all six native launch attempts failed with Exec format error and were marked
+failed, including fixtures 3/5/6 (overall exit 1). No historical binary was
+removed or overwritten. The three disposable copies remain retained under
+`/tmp/mo-coding-cold-red-01`, `/tmp/mo-coding-cold-fixed-01`, and
+`/tmp/mo-coding-invalid-native-01`. This corrects orchestration only; integrated
+acceptance and the full compiler suite remain the lead's responsibility.

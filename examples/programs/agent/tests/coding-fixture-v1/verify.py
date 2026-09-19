@@ -21,8 +21,9 @@ for name in ORDER:
     run('write-'+name, [MO,'test','--write','examples/programs/agent/'+name+'.mo']+(['--sim','100'] if name in SIM else ['--sim','100'] if name.endswith('/boundaries') else []))
 if failed: sys.exit(1)
 run('model-conformance', [MO,'check','examples/programs/agent/model.mo'])
+if not run('build-agent', [MO,'build','examples/programs/agent/main.mo','-o','coding-fixture']):
+    sys.exit(1)
 run('legacy-cli', [sys.executable, str(ROOT/'examples/programs/agent/tests/coding-fixture-v1/legacy.py')], 120)
-run('build-agent', [MO,'build','examples/programs/agent/main.mo','-o','coding-fixture'])
 for name in ['tests/coding-fixture-v1/boundaries','main','record','tools','steps','run','registry','transcript']:
     binary = 'coding-fixture-test-'+name.split('/')[-1]
     if run('build-tests-'+name,[MO,'build','--tests','examples/programs/agent/'+name+'.mo','-o',binary]):
