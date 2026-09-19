@@ -67,8 +67,10 @@ for eid in p['executions']:
 for group in p['cgroups']:r['cgroups'].append({'path':group,'exists':pathlib.Path(group).exists()})
 for parent in ('mo-executor.slice','mo-application.slice'):
  group=cmd(['systemctl','show','--property=ControlGroup','--value',parent]).strip()
+ if group!='/mo.slice/'+parent:raise RuntimeError('parent identity or activation missing')
  root=pathlib.Path('/sys/fs/cgroup'+group)
- r['parents'][parent]={'group':group,'tasks':{str(path):path.read_text() for path in root.rglob('cgroup.procs')}}
+ if not root.is_dir():raise RuntimeError('parent cgroup missing')
+ r['parents'][parent]={'group':group,'tasks':{str(path):path.read_text() for path in root.rglob('cgroup.procs')},'children':[str(path) for path in root.rglob('docker-*.scope')]}
 print(json.dumps(r))
 '''
 raw=remote(['python3','-c',source],data=json.dumps(selection).encode(),timeout=60)
@@ -83,5 +85,6 @@ assert len(shared.splitlines())==5
 assert all(not row['root_exists'] and not row['mounts'] for row in r['workspaces'])
 assert all(not any(row[k] for k in ('root_exists','container_present','unit_present')) for row in r['executions'])
 assert all(not row['exists'] for row in r['cgroups'])
+assert all(not parent['children'] for parent in r['parents'].values())
 assert all(not text.strip() for parent in r['parents'].values() for text in parent['tasks'].values())
 print(json.dumps({'workspaces':len(workspaces),'executions':len(executions),'actual_cgroups':len(cgroups),'shared':5,'local_groups':len(groups),'absent':True}))
