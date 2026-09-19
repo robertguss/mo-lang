@@ -13,8 +13,9 @@ This report is the last commit. Worktree was clean before it.
 | `f9bc1bfb0bdc3ab65798ba22b2a52395a946e524` | Hold a request until Begin; bind an unreadable tree |
 | `e7a05e3932fc96ac6ceb12987fb1285239a49b65` | `mo fmt`; journal unit test records four observations |
 | `d887d81ef485af209f7a7488ce55310a9e045e77` | Verified lines, evidence, README; `WIP.md` deleted |
+| `cd1b12a62bf82d6de573d4dd15157407f7343111` | First REPORT.md |
 
-This file is the commit after `d887d81e`.
+This file is the commit after `cd1b12a6`.
 
 ## Installed on this Linux VM
 
@@ -152,6 +153,22 @@ an unfinished 16 KiB header line.
 **F2.** `Json.decode` keeps the last of a repeated key. `schema.mo` counts
 keys in the raw text against the decoded tree.
 
+**F3, journal scope.** Requirement 6 asked for the journal as another `Fs`
+scope written only with `Fs.replace`. `server.mo:102` does
+`Journal.start(run, ...)`, so the journal process holds the whole run folder,
+which includes `capability.json` with both tokens. The operator's layout
+forces `owner.json`, `delivery.json` and `ready.json` to sit beside
+`capability.json`; a separate scope is not possible without moving files the
+existing tests read at the root. That is a deviation from requirement 6. The
+journal process only ever calls `run.replace` (`owner.json` in `written`,
+`delivery.json` on an unknown delivery). Grep of `run.` / `fs.` Fs calls in
+`journal.mo`: `run.replace("delivery.json", ...)` (line 102),
+`run.replace("owner.json", ...)` (line 126). No `read`, `list`, `scoped` or
+other `Fs` call on `run` inside the Journal process. The two `fs.read` hits
+are in unit tests, after the process has written, not inside it. Part B's
+cutover should give the journal `journal/` as its own scope once the layout
+is Mo's.
+
 **Handles / arity.** A handle cannot sit in a struct (MO0403). A function
 takes at most six parameters (MO0303). The token lives in the Gate; a
 per-connection Runner holds admission, worker and journal. `Door` is its own
@@ -199,6 +216,8 @@ groups.
   run; the tool did not simulate.
 - Production `command` is refused. Groups use the double.
 - F1: the wire is line-only; the adapter completes unfinished header lines.
+- F3: the journal process holds the whole run folder, not a separate scope
+  (see Findings). No code change.
 - Unfiltered full suite, Linux, and the machine are the lead's (part B).
 - Protected verifier is part B's (`verify` answers `verified: null`).
 - `proven: not run` on every module (no proof backend in this unit).
