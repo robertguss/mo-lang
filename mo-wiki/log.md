@@ -981,3 +981,6 @@
 
 ## [2026-09-19] accept | step 43, every number in source held to its range
 - 1:59 PM ET: merged to main through lead/verify-step43 (4ad89c1a). Darwin full suite 263 of 263 exit 0; Linux build and 15 of 15 focused tests; the Linux full suite still running. Four rows in decisions/decision-log.md; CHANGELOG entry; evidence in audit/evidence/2026-09-19/fable-lead-verification/step43/. This closes the auditor's PR 15 findings F1 to F3.
+
+## [2026-09-19] review | research PR 16 (Hermes, Bend2) read and merged
+- 2:03 PM ET: lint 282 pages, 26 inherited notices, no hash drift; two citations verified against upstream at the pin; one row in decisions/decision-log.md; review comment on the PR. Index total 282.

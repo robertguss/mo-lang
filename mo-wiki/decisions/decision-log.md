@@ -895,6 +895,12 @@ direction separately from the lead's conservative execution interpretation.
 | Robert approved sending worker reports and log excerpts to TypeSafe and has an API key. This settles the open item on [[report-claim-check]]. Never sent: auditor readings, sealed suites, secrets, anything outside the repository. | Robert | decided | the sender's refusal tests |
 | The first use is a calibration only, at `tools/claim-check/` (lead-side Python, `uv`), on labelled cases from this repository's history plus planted controls, at most 2,000 requests, model pinned by exact name. The lead's acceptance loop does not depend on it until its numbers exist and a row says so; it never accepts anything. The second use, Jev as the Mo harness's fast-judgment layer (typed Choice to a Mo enum), waits for `Exec` and HTTPS. | Fable lead | decided | `tools/claim-check/calibration/RESULTS.md` |
 
+## 19 Sep 2026 — Research PR 16 (Bend2) read and merged, 2:03 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Hermes's [[bend2]] comparison is merged after the lead's checks (lint and raw hashes, two citations against upstream at the pin, the executed checks found in the raw logs). Its proposals are recorded, not decided: (1) a task binds an owner-approved requirements bundle by hash, and an omitted, changed, failed or unrun obligation blocks acceptance; (2) a release-matched `mo guide` and symbol documentation shipped in the executable; (3) diagnostics and receipts that name the unmet obligation and a status (`tested`, `not_run`, `timed_out`...), never one broad "verified". (1) and (3) go into the Mo six-tool server's and the protected verifier's briefs as design inputs; (2) is a candidate toolchain step after steps 42 and the CI gate. Not adopted: a proof calculus, global affinity, a GPU scheduler. | Fable lead | recorded | the six-tool server's brief |
+
 ## Related
 
 - [[session-05]]
