@@ -2,6 +2,16 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Mo-first coding harness selected — 18 Sep 2026, 10:29 PM ET
+
+- Robert approved the lead/oracle recommendation: a Mo-written, Mo-first coding
+  harness, initially maintaining existing applications, with Pi as its practical
+  comparator. The bounded brief defines scope, evidence boundaries, exclusions
+  and unresolved readiness decisions. No worker or implementation started.
+- Recorded the final review's byte-identical duplication of the Kimi attachment;
+  there are four distinct bodies, not five. No new acceptance evidence.
+- Program 7 remains suspended; Step 39 and retained audit obligations unchanged.
+
 ## External review agreement — 18 Sep 2026, 9:36 PM ET
 
 - Recorded Robert's agreement with the oracle-assisted review synthesis:

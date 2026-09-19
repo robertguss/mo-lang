@@ -1,6 +1,21 @@
 # Mo Lang — Agent-native direction; implementation paused, 18 Sep 2026
 
-## Current instruction: document and discuss, do not resume work
+## Current instruction: prepare the Mo-first harness brief; no worker launch
+
+Robert approved the lead's choice of a Mo-first coding harness written in Mo,
+initially maintaining existing Mo applications, on 18 Sep 2026. The bounded
+brief is `mo-wiki/plans/mo-first-coding-harness.md`: thin headless CLI,
+machine-readable events, externally isolated execution, protected acceptance,
+and actual Pi as the practical comparator. Reuse the existing Agent selectively.
+No self-editing, compiler changes, full TUI or plugin ecosystem initially. The
+next lead action is resolving the brief's readiness checklist, not asking Robert
+to choose the application again. Provider/executor details, exact worker scope
+and trial budgets still need decisions; no readiness confirmation or worker
+launch is recorded. The implementation pause remains.
+
+The final attachment labelled DeepSeek was byte-identical to the supplied Kimi
+review (`cmp` and SHA-256 checked). Four distinct review bodies, not five; the
+cause of duplicate attribution is unknown. No new verdict follows from it.
 
 Robert approved an agent-native reframe: agents write and read code; humans
 judge requirements, behavior and evidence. Mo is an additional functional,
@@ -41,12 +56,12 @@ been compared with the oracle; a fifth was pending. Robert agreed to the revised
 sequence: trustworthy instruments, then the 401 workflow/onboarding pilot, then
 a useful application compared with a well-equipped existing-language option. The
 pilot is not proof of language value. Before it, obtain approval for a versioned
-recipe-policy change (shared recipe versus Agent specialization). The real
-application is the next discussion; scope and comparator are open. The lead
-records agreement with the direction, not a bounded execution start or readiness
-confirmation. See the external-review section of
-`mo-wiki/research/concepts/agent-native-research-synthesis.md`; the original
-review packet remains unchanged. No audit obligation is amended.
+recipe-policy change (shared recipe versus Agent specialization). At that
+checkpoint the application and comparator were open; the choice above now
+supersedes that question. The lead records agreement with the direction, not a
+bounded execution start or readiness confirmation. See the external-review
+section of `mo-wiki/research/concepts/agent-native-research-synthesis.md`; the
+original review packet remains unchanged. No audit obligation is amended.
 
 Upstream changed TLS and benchmark scripts during this discussion. Those changes
 were fetched and preserved, not tested or accepted here. Older statements that

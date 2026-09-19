@@ -26,24 +26,30 @@ New upstream TLS/script edits are not acceptance evidence.
 
 ### Next discussion and documentation work
 
-1. Choose a real application Robert would use and one well-equipped comparator
-   before finalizing workload-dependent scope. Four external strategic reviews
-   have been compared with the oracle in [[agent-native-research-synthesis]];
-   Robert agreed to the revised sequence. A fifth review was pending. Preserve
-   [[agent-native-independent-review-prompt]] v1.0 unchanged.
-2. Specify trustworthy instruments, then the proposed 401 workflow/onboarding
-   pilot, then representative application transfer. The pilot is calibration,
-   not proof of language value. Before it, obtain approval for a versioned
-   policy and resolve shared-recipe versus Agent-specific scope. Requirements,
-   implementation and verification are distinct correctness obligations.
-   Consider progress and uncertain external effects in the later workload; exact
-   task, models, budgets and acceptance criteria remain open.
+1. Application chosen: [[mo-first-coding-harness]], written in Mo and initially
+   maintaining Mo applications. Robert approved the lead/oracle recommendation.
+   Pi is the practical comparator; do not build a second Elixir harness first.
+   Resolve the brief's provider/executor, protected verification, worker write
+   scope and budget decisions before declaring implementation readiness.
+2. After implementation approval: truthful instruments, one complete headless
+   coding path, 401 policy calibration, then two or three bounded application
+   tasks and a matched Pi comparison. Add an affordable model after calibration.
+   Version the Agent-specific policy and settle its recipe binding first.
+   Requirements, implementation and verification remain distinct obligations;
+   the pilot is not proof of language value. No self-editing or compiler
+   changes.
 3. Agree and explicitly version program 7's replacement scope, metrics and
    relationship to retained audit obligations before any new sealing or build.
 4. Resume only after Robert explicitly approves starting and the lead confirms
    readiness. Agreement to this sequence is recorded; a bounded start and
    readiness confirmation are not. No workers, setup, experiments or
    implementation before then.
+
+The final DeepSeek-labelled attachment duplicated the supplied Kimi body
+exactly; it is not a fifth distinct assessment. Four distinct reviews remain.
+Preserve [[agent-native-independent-review-prompt]] v1.0 unchanged and compare
+evidence, not votes. The application choice supersedes the earlier open workload
+question.
 
 ### Four reports received and reviewed with the oracle
 

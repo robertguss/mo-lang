@@ -8,9 +8,10 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-18 | Total pages: 254
+> any question. Last updated: 2026-09-18 | Total pages: 255
 
 ## Directions we like
+
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
 - [[d02-spec-altitude|Direction 2: Human-readable, but at a higher altitude]] — Mo stays readable by humans because it is the shared language of understanding, but humans read intent, contracts, and effects, not bodies
 - [[d03-source-carries-its-evidence|Direction 3: The source carries its own evidence]] — Since review is gone, trust comes from what the compiler can check: contracts, effects, tests bound to requirements, proofs
@@ -134,6 +135,8 @@ type: index
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[mo-first-coding-harness]] — selected Mo-written coding application; headless
+  first slice, protected verification, matched Pi comparison; planning only
 - [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; accepted 15 Sep, the Mac table, the row that led to step 34
 - [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
 - [[interpreter-step-32|Step 32: crash reports apart from the ring, and the reopening store]] — what P6 on Mo found: `/crashes` empty under load, and the restart pattern no corpus file shows

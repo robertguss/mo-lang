@@ -611,3 +611,25 @@
   existing review flags, nine sizes; the expanded synthesis adds one size
   notice), no structural or raw-source-drift errors. `git diff --check` passed.
   Removed automatic formatting churn with content-invariance checks.
+
+## [2026-09-18] plan | Mo-first coding harness selected
+
+- 10:29 PM ET checkpoint: Robert approved the lead/oracle recommendation. Added
+  [[mo-first-coding-harness]] with the first useful deliverable, write
+  authority, parts, accounting, exclusions and readiness checklist. Updated
+  handoff, roadmap, state, decision log, index, research synthesis and
+  changelog.
+- Pi inspected through the librarian and a separate local clone; its small
+  loop/session/provider boundaries inform the plan, not a parity commitment. The
+  final DeepSeek-labelled review duplicates the Kimi attachment exactly;
+  comparison and SHA-256 establish four distinct bodies, not five opinions.
+- Oracle approved the planning direction with two corrections incorporated:
+  isolate candidate execution during final verification, and record the selected
+  application/comparator in the decision log. Provider/executor, exact worker
+  scope, task policy and budgets remain readiness decisions. No workers, setup,
+  experiments or implementation launched; no audit obligation changed.
+- Validation: `git diff --check` passed; wiki lint checked 255 pages with the
+  same 24 review/size notices (15 review flags, nine size notices), no
+  structural or raw-source-drift errors. No toolchain tests run for this
+  documentation-only checkpoint. Historical formatting restored with
+  content-invariance checks.

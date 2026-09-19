@@ -19,6 +19,19 @@ status: discussion
 
 ## Status and authority
 
+**Later decision, 18 Sep 2026, 10:29 PM ET:** Robert approved
+[[mo-first-coding-harness]] as the application: Mo-written, initially
+maintaining Mo programs, with actual Pi as the practical comparator. Its bounded
+brief now owns scope/readiness; earlier open workload questions below are
+historical. The 401 task remains calibration, not language-value proof.
+Implementation remains paused pending the bounded start and lead readiness.
+
+The final attachment labelled DeepSeek was byte-identical to the Kimi attachment
+listed below (comparison and SHA-256 verified); it adds no distinct assessment.
+The duplicate body's hash is
+`28c6acf7fb2c9af3a38abc03c3c94dc4628370e3c22c3a2006ee5e76dcc7c5db`. The cause is
+unknown; do not infer copying or count a fifth independent opinion.
+
 Amp read Robert's four reports, checked selected consequential primary sources,
 and consulted the oracle. This is a research synthesis, not an implementation
 acceptance or an exhaustive fact-check of the reports. Raw bodies are preserved

@@ -24,7 +24,21 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, 9:36 PM ET, external review agreement recorded.
+**Last updated:** 18 Sep 2026, 10:29 PM ET, Mo-first harness selected.
+
+**Application chosen:** Robert approved [[mo-first-coding-harness]], a small
+coding harness written in Mo, initially maintaining existing Mo applications. Pi
+is its architectural reference and practical comparator, not a parity target.
+The bounded brief defines a headless coding path, external isolation and
+protected acceptance. It reuses the Agent selectively and excludes self-editing,
+compiler changes and UI/plugin expansion. Provider/executor and exact trial
+decisions remain before lead readiness; no workers or implementation started.
+This supersedes the open application/comparator question in the preceding review
+checkpoint. Program 7's disposition and audit obligations do not change.
+
+The final review labelled DeepSeek was byte-identical to the supplied Kimi body,
+verified by comparison and SHA-256. Four distinct review bodies, not five; the
+reason for duplicate attribution is unknown.
 
 ## Agent-native direction agreed; implementation remains paused
 
@@ -71,17 +85,18 @@ workers, setup, experiments or implementation start until Robert explicitly
 approves and the lead confirms readiness. Documentation is not execution
 approval.
 
-Four additional external strategic reviews are now compared with the oracle in
-[[agent-native-research-synthesis]]. Robert agreed to narrower investment:
-trustworthy instruments, a 401 workflow/onboarding calibration pilot, then a
-useful application against one well-equipped existing-language comparator. The
-pilot does not establish language value. A versioned retry-policy approval is a
-prerequisite, with shared-recipe versus Agent scope unresolved. Choose the real
-application before finalizing workload-dependent roadmap details. Keep
-requirements, implementation and trustworthy acceptance distinct, and consider
-required progress and uncertain external effects in the later workload.
-Extraction remains an option, not the chosen destination. No bounded start or
-lead-readiness confirmation is recorded; the execution pause remains.
+At the preceding review checkpoint, four external strategic reviews were
+compared with the oracle in [[agent-native-research-synthesis]]. Robert agreed
+to narrower investment: trustworthy instruments, a 401 workflow/onboarding
+calibration pilot, then a useful application against one well-equipped
+existing-language comparator. The pilot does not establish language value. A
+versioned retry-policy approval is a prerequisite. The application is now chosen
+above; the brief recommends an Agent-specific policy, with its exact recipe
+binding still to be resolved. Keep requirements, implementation and trustworthy
+acceptance distinct, and consider required progress and uncertain external
+effects in the later workload. Extraction remains an option, not the chosen
+destination. No bounded start or lead-readiness confirmation is recorded; the
+execution pause remains.
 
 Step 39 remains unaccepted and the known acceptance/durability obligations
 remain. New upstream TLS and benchmark edits were fetched, not verified in this
