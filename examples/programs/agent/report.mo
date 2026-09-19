@@ -1,19 +1,44 @@
 module Agent.Report
-expose report, reporting_error
+expose report, reporting_error, application_report, application_error
 
 use Agent.Record{Record, Status, status_name}
 
-intent "Render recorded fixture steps and one recorded terminal result as JSONL; synthetic zero, unknown failed-call usage and tool usage are distinct."
+intent "Render recorded fixture steps and one recorded terminal result as JSONL; synthetic zero, unknown failed-call usage and tool usage are distinct. The application workspace report is the same rendering under its own versioned schema, after a line of its fixed profile caps."
 
-fn envelope(id: String, event: String, n: UInt64, payload: String) : String
-  "{\"schema\": \"mo-coding-fixture-v1\", \"run_id\": #{Json.encode(id)}, \"event\": #{Json.encode(event)}, \"step_number\": #{n}, \"payload\": #{payload}}\n"
+fn fixture_schema() : String
+  "mo-coding-fixture-v1"
+end
+
+fn application_schema() : String
+  "mo-application-workspace-v1"
+end
+
+fn envelope(schema: String, id: String, event: String, n: UInt64, payload: String) : String
+  "{\"schema\": #{Json.encode(schema)}, \"run_id\": #{Json.encode(id)}, \"event\": #{Json.encode(event)}, \"step_number\": #{n}, \"payload\": #{payload}}\n"
 end
 
 fn reporting_error(id: String, why: String) : String
-  envelope(id, "reporting_error", 0, "{\"error\": #{Json.encode(why)}}")
+  envelope(fixture_schema(), id, "reporting_error", 0, "{\"error\": #{Json.encode(why)}}")
+end
+
+# An application run that has no terminal report to give: why, and whether earlier writes to its
+# log are proved or uncertain.
+fn application_error(id: String, why: String, persistence: String) : String
+  envelope(application_schema(), id, "reporting_error", 0,
+    "{\"error\": #{Json.encode(why)}, \"persistence\": #{Json.encode(persistence)}}")
 end
 
 fn report(record: Record, steps: List(String)) : Result(String, String)
+  rendered(fixture_schema(), record, steps)
+end
+
+# The profile line (its caps as JSON), then the recorded steps and terminal result.
+fn application_report(record: Record, steps: List(String), profile: String) : Result(String, String)
+  body = try rendered(application_schema(), record, steps)
+  Ok("#{envelope(application_schema(), record.id, "profile", 0, profile)}#{body}")
+end
+
+fn rendered(schema: String, record: Record, steps: List(String)) : Result(String, String)
   return Error("run has no recorded terminal result") if record.status == Running
   var lines = ""
   # Cancellation can win before an in-flight call is recorded; no total is complete.
@@ -45,12 +70,12 @@ fn report(record: Record, steps: List(String)) : Result(String, String)
     end
     tokens = if known: Json.encode(fields.get("tokens") or Null) else: "null"
     payload = "{\"step\": #{step}, \"result\": #{Json.encode(structured)}, \"usage\": #{Json.encode(usage)}, \"tokens\": #{tokens}}"
-    lines = "#{lines}#{envelope(record.id, kind, number, payload)}"
+    lines = "#{lines}#{envelope(schema, record.id, kind, number, payload)}"
   end
   return Error("incomplete recorded transcript") if model_calls != record.steps_taken
   total = if complete: "#{record.tokens_used}" else: "null"
   terminal = "{\"state\": #{Json.encode(status_name(record.status))}, \"result\": #{Json.encode(record.answer)}, \"error\": #{Json.encode(record.why)}, \"usage\": #{Json.encode(if complete: "reported_synthetic" else: "unknown")}, \"tokens\": #{total}}"
-  Ok("#{lines}#{envelope(record.id, "terminal", number, terminal)}")
+  Ok("#{lines}#{envelope(schema, record.id, "terminal", number, terminal)}")
 end
 
 fn text(fields: Map(String, Json), key: String) : String

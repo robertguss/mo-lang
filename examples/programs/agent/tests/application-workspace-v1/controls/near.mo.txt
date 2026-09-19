@@ -1,0 +1,24 @@
+module Agent.Tests.Red.Near
+
+use Agent.Tools{Call}
+use Agent.WorkspaceAdapter{Settings, encoded, timed, tools}
+
+intent "Carried review finding 5 as a control over the adapter's dispatch seam: encoding takes no deadline, and the candidate timeout is taken afterwards; materialized outside the corpus."
+
+fn configured() : Settings
+  Settings(port: 1, run: "r", workspace: "0123456789abcdef0123456789abcdef", token: "ab".repeat(32))
+end
+
+test "finding 5: the candidate timeout is taken after the request is encoded"
+  call = Call(tool: "command", args: Map.new().set("command", "x".repeat(800_000)),
+    granted: tools(), hosts: [])
+  assert encoded(configured(), call, "1") is Ok(head)
+  assert head.ends_with?("\"timeout_ms\": ") and !head.contains?("ab".repeat(32))
+  assert timed(head, "command", Deadline.fixture(700.ms)) == Some("#{head}700}}")
+  assert timed(head, "command", Deadline.fixture(500.ms)) == Some("#{head}500}}")
+  assert timed(head, "command", Deadline.fixture(499.ms)) is None
+  assert timed(head, "command", Deadline.fixture(10.minute)) == Some("#{head}120000}}")
+  read = Call(tool: "read_file", args: Map.new().set("path", "a"), granted: tools(), hosts: [])
+  assert encoded(configured(), read, "1") is Ok(whole)
+  assert timed(whole, "read_file", Deadline.fixture(1.ms)) == Some(whole)
+end

@@ -13,6 +13,7 @@ module Agent.Main
 expose Task, Spot, Solo, Said, Problem, Words, task, serving?, main
 
 use Agent.Api{Command, Want}
+use Agent.Application{Application, Launch}
 use Agent.Book{Book}
 use Agent.Check{Place, checked}
 use Agent.Client{Trip, Sleeper, request_of, shown}
@@ -184,6 +185,9 @@ end
 fn ran(http: Http, fs: Fs, clock: Clock, err: Out, runtime: Option(Runtime),
   args: List(String)) : Result(Said, Problem)
   return coding_fixture(http, fs, clock, args.drop(1)) if args.first == Some("coding-fixture")
+  if args.first == Some("application-workspace")
+    return application_workspace(http, fs, clock, args.drop(1))
+  end
   given = try task(args)
   case given
     Serving(spot): serve(http, fs, clock, err, runtime, spot)
@@ -218,6 +222,33 @@ fn coding_fixture(http: Http, fs: Fs, clock: Clock, args: List(String)) : Result
     Ok(output): Ok(Said(text: output.text, code: output.code))
     Error(_):
       Ok(Said(text: "{\"schema\":\"mo-coding-fixture-v1\",\"run_id\":\"\",\"event\":\"reporting_error\",\"step_number\":0,\"payload\":{\"error\":\"fixture_deadline\"}}\n",
+        code: 3))
+  end
+end
+
+# The operator supplies a fresh root holding work/, the scripted model's loopback port and the
+# path of the private bridge configuration; no capability is ever a flag or a word here.
+fn application_workspace(http: Http, fs: Fs, clock: Clock, args: List(String)) : Result(Said,
+  Problem)
+  given = try words(args, ["--model", "--config"])
+  if given.plain.size < 2
+    return Error(Usage(detail: "application-workspace takes a fresh root and a goal"))
+  end
+  model = try model_of(given.flags.get("--model") or "")
+  return Error(Usage(detail: "the model endpoint must use 127.0.0.1")) if model.host != "127.0.0.1"
+  config = given.flags.get("--config") or ""
+  if config == "" or config.byte_size > 1_024
+    return Error(Usage(detail: "--config names the private bridge configuration"))
+  end
+  goal = String.join(given.plain.drop(1), " ")
+  return Error(Usage(detail: "goal is 1 byte to 4 KiB")) if !goal?(goal)
+  launch = Launch(version: "mo-application-workspace-v1", dir: try dir_of(given.plain.first or ""),
+    model_port: model.port, config: config, goal: goal)
+  worker = Application.start(fs, http, clock)
+  case worker.ask(Launched(launch: launch, me: worker), within: 900_000.ms)
+    Ok(output): Ok(Said(text: output.text, code: output.code))
+    Error(_):
+      Ok(Said(text: "{\"schema\": \"mo-application-workspace-v1\", \"run_id\": \"\", \"event\": \"reporting_error\", \"step_number\": 0, \"payload\": {\"error\": \"application_deadline\", \"persistence\": \"uncertain\"}}\n",
         code: 3))
   end
 end
@@ -442,6 +473,21 @@ test "a missing folder, model, or port, a flag out of place, or an unknown comma
   assert task(["stop"]) is Error(Usage(_))
 end
 
+test "application-workspace takes a loopback model, a configuration path and a goal, and no capability flag"
+  http = Http.fixture()
+  fs = Fs.fixture()
+  clock = Clock.fixture()
+  bare = application_workspace(http, fs, clock, ["root"])
+  assert bare is Error(Usage(_))
+  away = application_workspace(http, fs, clock, ["root", "g", "--model", "h:1", "--config", "c"])
+  assert away is Error(Usage(_))
+  token = application_workspace(http, fs, clock,
+    ["root", "g", "--model", "127.0.0.1:1", "--config", "c", "--token", "t"])
+  assert token is Error(Usage(_))
+  unnamed = application_workspace(http, fs, clock, ["root", "g", "--model", "127.0.0.1:1"])
+  assert unnamed is Error(Usage(_))
+end
+
 test "a step prints on one line, and a usage error exits 2 where a folder or port exits 1"
   step = "{\"n\": 2, \"kind\": \"tool\", \"name\": \"read_file\", \"args\": {}, \"result\": \"a\\nb\", \"tokens\": 0, \"took_ms\": 1, \"refused\": true}"
   assert step_line(step) == "2 tool read_file (refused): \"a\\nb\""
@@ -451,5 +497,5 @@ test "a step prints on one line, and a usage error exits 2 where a folder or por
   assert code_of(Unopened(dir: "d", why: "w")) == 1 and code_of(Unreached(host: "h", port: 1)) == 1
 end
 
-verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
           proven: not run

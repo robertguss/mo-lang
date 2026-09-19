@@ -9,6 +9,7 @@ use Agent.Shelf{Verdict, Ending, ending}
 use Agent.Steps{Setup, Phase, Progress, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome}
 use Agent.Tools{Writer, Used, Call, used}
 use Agent.Transcript{Step}
+use Agent.WorkspaceAdapter{Settings, sent, stops?, refusal?, tools}
 
 intent "A run as a process: its budget's deadline taken from the ask that begins it, then a loop of messages it sends itself (a model call, its step written, the tool the model named, that step written), every call on what remains of the deadline tightened by tool_ms; each step is in the book before the next call, the book's answer says whether the run goes on, and the run ends by asking the book to write its end."
 
@@ -19,6 +20,14 @@ struct Turn
   setup: Setup
   run: Progress
   fixture: Option(Endpoint)
+  application: Option(Settings)
+end
+
+# How a profiled step is recorded: on what is left of the report allowance, and judged by the
+# application adapter or by the fixture's rule.
+struct Recording
+  by: Option(Deadline)
+  application: Bool
 end
 
 struct Identity
@@ -31,6 +40,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
   state
     run: Progress = fresh(setup.id)
     fixture: Option(Endpoint)
+    application: Option(Settings)
     report_by: Option(Deadline)
     grace_ms: Int64 = 15_000
   end
@@ -44,6 +54,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
   end
 
   message ConfigureFixture(endpoint: Endpoint) : Bool
+  message ConfigureApplication(settings: Settings) : Bool
   message Begin(me: Handle(Run)) : Bool
   message Think(me: Handle(Run))
   message Thought(me: Handle(Run))
@@ -56,8 +67,18 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
   fn update(state, message)
     case message
       ConfigureFixture(endpoint):
-        if state.run.phase == Ready and state.fixture is None
+        if state.run.phase == Ready and state.fixture is None and state.application is None
           state.fixture = Some(endpoint)
+          state.report_by = Some(reply_by)
+          true
+        else
+          false
+        end
+      # Application mode, once and only while Ready: the asker's deadline is the whole run's,
+      # from which recording and the report keep their allowance.
+      ConfigureApplication(settings):
+        if state.run.phase == Ready and state.fixture is None and state.application is None
+          state.application = Some(settings)
           state.report_by = Some(reply_by)
           true
         else
@@ -68,21 +89,25 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
         me.send(Think(me: me))
         true
       Think(me):
-        state.run = thinking(me, http, clock, setup, state.run, state.fixture is Some(_))
+        state.run = thinking(me, http, clock, setup, state.run,
+          state.fixture is Some(_) or state.application is Some(_))
       Thought(me):
         remaining = remaining_ms(state.report_by)
         began = clock.now
         state.run = recorded_profile(me, book, setup, state.run, model_step(state.run, began),
-          capped(state.report_by, state.grace_ms))
+          Recording(by: capped(state.report_by, state.grace_ms),
+          application: state.application is Some(_)))
         state.grace_ms = grace_left(state.grace_ms, remaining, remaining_ms(state.report_by))
       Act(me):
         state.run = acting(me, reads, writer, http, clock,
-          Turn(setup: setup, run: state.run, fixture: state.fixture))
+          Turn(setup: setup, run: state.run, fixture: state.fixture,
+          application: state.application))
       Acted(me):
         remaining = remaining_ms(state.report_by)
         began = clock.now
         state.run = recorded_profile(me, book, setup, state.run, tool_step(state.run, began),
-          capped(state.report_by, state.grace_ms))
+          Recording(by: capped(state.report_by, state.grace_ms),
+          application: state.application is Some(_)))
         state.grace_ms = grace_left(state.grace_ms, remaining, remaining_ms(state.report_by))
       Close(me):
         remaining = remaining_ms(state.report_by)
@@ -147,45 +172,56 @@ fn acting(me: Handle(Run), reads: Fs, writer: Option(Handle(Writer)), http: Http
   setup = turn.setup
   run = turn.run
   fixture = turn.fixture
+  profiled = fixture is Some(_) or turn.application is Some(_)
   by = case run.by
     Some(by): by
     None:
       return closing(me, run, not_begun())
   end
-  if fixture is Some(_) and (run.n >= setup.order.budget.steps or run.tokens >= setup.order.budget.tokens)
+  if profiled and (run.n >= setup.order.budget.steps or run.tokens >= setup.order.budget.tokens)
     why = if run.n >= setup.order.budget.steps: "steps" else: "tokens"
     return closing(me, run, ending(OverBudget, None, Some(why)))
   end
   return held(me, run, setup, by) if !uses?(run, setup, by)
   call = call_for(setup, run, ran_of(run, setup, by))
   began = clock.now
-  tool = case fixture
-    Some(endpoint):
-      if call.tool == "command" or call.tool == "exact_edit"
-        fixture_used(writer, http, call, endpoint, Identity(run: setup.id, call: "#{run.n + 1}"),
-          by.at_most(call_ms(setup)))
-      else
-        used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
+  tool = case turn.application
+    Some(settings): remote(http, settings, call, "#{run.n + 1}", by)
+    None:
+      case fixture
+        Some(endpoint):
+          if call.tool == "command" or call.tool == "exact_edit"
+            fixture_used(writer, http, call, endpoint,
+              Identity(run: setup.id, call: "#{run.n + 1}"), by.at_most(call_ms(setup)))
+          else
+            used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
+          end
+        None: used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
       end
-    None: used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
   end
-  next = using(run, tool, if fixture is Some(_): began else: clock.now)
+  next = using(run, tool, if profiled: began else: clock.now)
   me.send(Acted(me: me))
   next
 end
 
 # Fixture recording is sent once. A failed acknowledgement stops dispatch and requests
-# a recorded failure, without replaying the uncertain step or its effect.
+# a recorded failure, without replaying the uncertain step or its effect. In application mode
+# every tool's recorded outcome is judged by the adapter's field-based decision.
 fn recorded_profile(me: Handle(Run), book: Handle(Book), setup: Setup, run: Progress, step: Step,
-  report_by: Option(Deadline)) : Progress
-  case report_by
+  recording: Recording) : Progress
+  case recording.by
     None: recorded(me, book, setup, run, step)
     Some(by):
       return run if run.phase != Recording
       case book.ask(Write(id: setup.id, step: step), within: by)
         Ok(Go):
           next = advanced(run, step)
-          if step.kind == "tool" and (step.name == "command" or step.name == "exact_edit") and terminal?(step.output)
+          stops = if recording.application
+            step.kind == "tool" and stops?(step.output)
+          else
+            step.kind == "tool" and (step.name == "command" or step.name == "exact_edit") and terminal?(step.output)
+          end
+          if stops
             return closing(me, next, ending(Failed, None, Some("uncertain_or_terminal_tool")))
           end
           went_on(me, next, setup, step)
@@ -210,6 +246,14 @@ fn fixture_used(writer: Option(Handle(Writer)), http: Http, call: Call, endpoint
     edit_handed(writer, call, by)
   end
   Used(output: output, refused: refused?(output), allowed: true)
+end
+
+# Application mode: every tool goes to the workspace bridge and never to a local tool. The next
+# Book step number names the call; the model's arguments are recorded unchanged.
+fn remote(http: Http, settings: Settings, call: Call, id: String, by: Deadline) : Used
+  output = sent(http, settings, call, id, by)
+  Used(output: output, refused: refusal?(output),
+    allowed: call.granted.contains?(call.tool) and tools().contains?(call.tool))
 end
 
 fn edit_handed(writer: Option(Handle(Writer)), call: Call, by: Deadline) : String
