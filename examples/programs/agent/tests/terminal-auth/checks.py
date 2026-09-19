@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Bounded recipe/unit/build verification with per-command logs and real exit codes."""
 import json
+import os
 import pathlib
 import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[5]
 HERE = pathlib.Path(__file__).resolve().parent
-MO = "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo"
+MO = os.environ.get("MO_BIN", str(ROOT / "toolchain/zig-out/bin/mo"))
 commands = [
     ("model-write", [MO, "test", "--write", "examples/programs/agent/model.mo"]),
     ("recipe-write", [MO, "test", "--write", "examples/recipes/agent-model-client-v1.mo"]),

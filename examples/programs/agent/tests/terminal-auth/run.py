@@ -2,6 +2,7 @@
 """Independent loopback HTTP statuses and received-request counts; no provider access."""
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import threading
@@ -11,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 ROOT = pathlib.Path(__file__).resolve().parents[5]
 HERE = pathlib.Path(__file__).resolve().parent
 GUARD = ["python3", str(ROOT / "toolchain/bench/step36/guard.py")]
-MO = "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo"
+MO = os.environ.get("MO_BIN", str(ROOT / "toolchain/zig-out/bin/mo"))
 VALID = '{"done":"7","tokens":5}'
 CASES = [
     ("immediate-401", [(401, "denied"), (200, VALID)], 2, 2000, False, 1, "Status(401)"),
@@ -28,7 +29,7 @@ CASES = [
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["interpreter", "compiled"])
-    parser.add_argument("--only")
+    parser.add_argument("--only", choices=[case[0] for case in CASES])
     args = parser.parse_args()
     failures = 0
     for name, replies, retries, budget, exhausted, count, expected in CASES:

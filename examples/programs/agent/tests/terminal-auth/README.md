@@ -53,9 +53,12 @@ outer command's real exit code. No failed run is presented as policy evidence.
 
 ## Reproduce
 
-Run from this worktree in a task-owned Herdr run pane. Use the verified native
-compiler at `/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo`.
-Every nested Mo/driver operation also has a numeric guard timeout.
+Run from this worktree in a task-owned Herdr run pane. Both Python runners
+default to this checkout's `toolchain/zig-out/bin/mo`. To use a verified compiler
+from another checkout, explicitly set `MO_BIN` to its executable path, for example
+`export MO_BIN=/path/to/main-checkout/toolchain/zig-out/bin/mo`. The compiled
+driver still runs from this worktree's `zig-out/`; `MO_BIN` selects the compiler,
+not the driver. Every nested Mo/driver operation has a numeric guard timeout.
 
 ```sh
 python3 toolchain/bench/step36/guard.py 600 -- python3 examples/programs/agent/tests/terminal-auth/checks.py
@@ -73,7 +76,9 @@ shared recipe, verbatim preservation of its test blocks, and exact ID diffs.
 
 The red run used `run.py interpreter --only immediate-401` before changing
 Agent.Model. Running that command now should pass; the retained baseline result
-is the red evidence.
+is the red evidence. `--only` accepts only the nine defined case names
+(as listed by `run.py --help`); an unknown name exits 2 instead of silently
+running no tests.
 
 ## Decisions and limitations
 
@@ -102,3 +107,20 @@ is the red evidence.
 6. Generated IDs live in shared sidecar files, but only `agent/model.mo` in
    `examples/programs/.mo.ids` and the new recipe record in
    `examples/recipes/.mo.ids` change. This exact scope was confirmed by lead.
+
+## Review correction verification
+
+`review-checks.py` checks compiler selection in both runners (default and explicit
+`MO_BIN`, with compiler subprocesses stubbed), rejects an unknown `--only` in
+both modes (exit 2), and runs only interpreter `immediate-401` against the real
+HTTP fixture using the selected compiler. It also checks all 28 prior evidence
+files byte-for-byte against the original implementation commit. Run with the
+same optional `MO_BIN` setting described above:
+
+```sh
+python3 toolchain/bench/step36/guard.py 120 -- python3 examples/programs/agent/tests/terminal-auth/review-checks.py
+```
+
+`evidence/review-corrections-1.jsonl` and its `.exit` record the passing focused
+run. The entire 18-case matrix was not rerun for these runner-only corrections;
+lead will repeat it after integration.
