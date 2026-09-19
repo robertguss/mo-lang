@@ -8,7 +8,8 @@ adapter.py, remote.py, and executor README. No nested agents, pushes, rebases,
 compiler/example edits or installed-file/image/unit/config changes. Existing
 slices were explicitly started only after later lead authorization.
 
-Status: bounded implementation and verification complete; not a lead acceptance.
+Status: worker implementation and verification complete; independent lead
+acceptance pending. Lead owns mo-executor-r01 exclusively after the final release.
 Machine and full compiler release were explicitly received before those runs.
 
 ## Numbered worker decisions
@@ -136,7 +137,7 @@ positive runtime absence, and 20/20 read-only inherited snapshot probes with
 actual rc and exact stdout/stderr retained. The machine was already running;
 no extra explicit restart was issued.
 
-The next regressions run sequentially with no compiler workload and a bounded
+The subsequent regressions ran sequentially with no compiler workload and a bounded
 test-only gzip transport observer. Existing control bodies remain unchanged;
 there is no swallowed failure, automatic retry, or product-source correction.
 The observer stores argv, input, real exit, stdout/stderr and timestamps; stream
@@ -147,12 +148,12 @@ attempt independently.
 `toolchain/src/corpus.zig:1243`: the fatal-alert/reset TLS test produced
 `Handshake/Closed` in a different order. This differs from the lead's earlier
 TCP-count failure. Its owned group is absent. Compiler/corpus source is unchanged;
-a fresh sequential suite is authorized after machine work stops, without any
-claim that a rerun fixes TLS ordering.
+the authorized fresh sequential suite completed after machine work stopped
+(see full-test-02 below), without any claim that a rerun fixes TLS ordering.
 
-The second owned right/no-focus run pane is `w4:p26`; it was created only for
-command execution, never another agent. Both owned run panes will be closed
-only after idle status and process-group absence are verified.
+The second owned right/no-focus run pane was `w4:p26`; it was created only for
+command execution, never another agent. Both owned run panes were closed
+after idle status and process-group absence were verified.
 
 ## Observed restart provisioning failure
 
@@ -170,7 +171,7 @@ only after exact cleanup. `readiness-probes-03` retains unchanged unit-content
 hashes before/after activation, active exact ControlGroup paths, effective
 memory/swap/CPU/PID limits, empty parents, pinned image/package identity and
 20/20 raw read-only snapshot probes. No installed unit/config/image changes or
-product auto-provisioning were made. Fresh observed regressions follow this gate.
+product auto-provisioning were made. Fresh observed regressions followed this gate.
 
 ## Reproduction and diagnostic boundaries
 
@@ -240,8 +241,8 @@ Reboot-lost started proofs for `c6dac6e58cfd4a119cdcf20afb2e46c2` and
 cleanup separately establishes physical absence and preserves ownership/terminal
 records. The first earlier malformed snapshot remains unexplained; the later
 inactive-slice failure is explained and is not evidence of the same cause.
-The retained first full compiler failure remains a failure; a green fresh run
-would establish non-reproduction, not fix TLS ordering. Lead acceptance and
+The retained first full compiler failure remains a failure; the green fresh run
+establishes non-reproduction, not a fix for TLS ordering. Lead acceptance and
 independent integration remain separate from this worker handoff.
 
 ## Final handoff
@@ -265,5 +266,5 @@ final inventory, original attempt directories and `MANIFEST.json` retain the
 reproducible evidence. All observed capture streams were untruncated.
 The report/evidence commit is separate from source; no evidence still has an
 active writer. No tracked compiler/example changes, push or rebase occurred.
-The final handoff explicitly releases dedicated mo-executor-r01 to lead w4:p1;
-independent lead acceptance remains pending.
+The final handoff explicitly released dedicated mo-executor-r01 to lead w4:p1,
+who acknowledged exclusive ownership; independent lead acceptance remains pending.
