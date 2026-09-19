@@ -595,5 +595,15 @@ test "a valid admitted outcome is kept verbatim, and a mismatched identity is un
   assert !stops?(local("refusal", "grant", "not_started"))
 end
 
-verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+test "a clamped command leaves the collection margin of what remains, so its late reply can arrive"
+  head = "{\"command\": \"x\", \"timeout_ms\": "
+  margin = candidate_margin_ms()
+  assert timed(head, "command", Deadline.fixture((margin + 3_000).ms)) == Some("#{head}3000}}")
+  assert timed(head, "command", Deadline.fixture((margin + 500).ms)) == Some("#{head}500}}")
+  assert timed(head, "command", Deadline.fixture((margin + 499).ms)) is None
+  assert timed(head, "command",
+    Deadline.fixture((candidate_ms() + margin + 1).ms)) == Some("#{head}120000}}")
+end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
           proven: not run

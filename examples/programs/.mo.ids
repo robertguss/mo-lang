@@ -1005,9 +1005,10 @@
         { "id": "631c81e8e1bf", "name": "fn configured", "hash": "ec356e2b2fd1095a" },
         { "id": "267deb2a2f61", "name": "test \"strict JSON counts members through arrays and objects, and escapes of either parity\"", "hash": "51f66f9cc83d2196" },
         { "id": "5261d9232780", "name": "test \"the operator's configuration is exact, and its errors never echo it\"", "hash": "c6d912e0ce1c8d2d" },
-        { "id": "7e27a0d03377", "name": "test \"a valid admitted outcome is kept verbatim, and a mismatched identity is unknown\"", "hash": "1562ec4955808f45" }
+        { "id": "7e27a0d03377", "name": "test \"a valid admitted outcome is kept verbatim, and a mismatched identity is unknown\"", "hash": "1562ec4955808f45" },
+        { "id": "2764b9dec4c9", "name": "test \"a clamped command leaves the collection margin of what remains, so its late reply can arrive\"", "hash": "eca9009b77c404ba" }
       ],
-      "verified": { "hash": "d077f8946b30c29c", "declarations": "139fc5ccb7c6bd85", "uses": [{ "module": "Agent.ExactEdit", "hash": "ca2869c702ee355b" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }] }
+      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "3f9ab6966c147de3", "uses": [{ "module": "Agent.ExactEdit", "hash": "ca2869c702ee355b" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }] }
     },
     {
       "path": "count-lines.mo",

@@ -14,9 +14,10 @@ test "finding 5: the candidate timeout is taken after the request is encoded"
     granted: tools(), hosts: [])
   assert encoded(configured(), call, "1") is Ok(head)
   assert head.ends_with?("\"timeout_ms\": ") and !head.contains?("ab".repeat(32))
-  assert timed(head, "command", Deadline.fixture(700.ms)) == Some("#{head}700}}")
-  assert timed(head, "command", Deadline.fixture(500.ms)) == Some("#{head}500}}")
-  assert timed(head, "command", Deadline.fixture(499.ms)) is None
+  # What remains less the 5 s collection margin (end to end v1's defect D1).
+  assert timed(head, "command", Deadline.fixture(5_700.ms)) == Some("#{head}700}}")
+  assert timed(head, "command", Deadline.fixture(5_500.ms)) == Some("#{head}500}}")
+  assert timed(head, "command", Deadline.fixture(5_499.ms)) is None
   assert timed(head, "command", Deadline.fixture(10.minute)) == Some("#{head}120000}}")
   read = Call(tool: "read_file", args: Map.new().set("path", "a"), granted: tools(), hosts: [])
   assert encoded(configured(), read, "1") is Ok(whole)
