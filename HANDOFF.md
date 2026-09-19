@@ -22,7 +22,7 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 6:58 AM ET
+### Active work, 19 Sep 2026, 7:01 AM ET
 
 Ten bounded foundations have independent lead acceptance: terminal401, offline
 provider, BusyBox executor, workspace, coding fixture, private auth, native-history
@@ -79,10 +79,13 @@ Owned runpane isw4:p2F. Adapter checkpoint0a74a0fc3a679eb98dd1c31892a32e6b41b3cb
 passes6 interpreter/6 native tests, actual Astra author+committer; application/Run
 work is separate and uncommitted. Lead raw/config review finds no scanner defect;
 large-request near-expiry dispatch remains a boundary check. Fresh Astra/low
-wire reviewerp2H/tabtR (PID23437) identified three source-backed gaps assigned
+wire reviewerp2H/tabtR (PID23437, now closed after done/process proof) identified three source-backed gaps assigned
 for retained RED/fixes: null-ID preadmission refusal loses not_started; unaccepted
 response can accept HTTP500/busy; success command accepts null output. Follow-up
-on mixed-null streams and success/exit consistency underway. No machine release.
+confirmed mixed-null streams and success/exit1 inconsistencies; both assigned
+as additional RED controls. First12 interpreter loopback cases passed on the
+pre-correction source. Worker retains five wire REDs and corrected11-test I green;
+native/final integration still pending. No machine release.
 Exact snapshot and reviews are at audit/evidence/2026-09-19/application-workspace/.
 See application-worker-release-01.json. Lead readiness
 reviews are in audit/evidence/2026-09-19/workspace-wire-readiness/; reviewerp2C
