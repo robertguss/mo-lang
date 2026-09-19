@@ -18,3 +18,9 @@ Branch `lead/verify-reportcap` at `78b093f3` (`main` plus the worker's
   "cgroups": 65, "clean": true}`.
 - The Linux full suite on the VM at `e3736f7d` was still running at acceptance;
   the change is Mo source in the agent only. Its result is added below.
+
+## The Linux full suite (3:07 PM ET)
+
+On the VM at `e3736f7d`: `Build Summary: 5/5 steps succeeded; 263/263 tests
+passed`, `run test 263 pass (263 total) 20m MaxRSS:467M`, exit 0
+(`linux-full-suite.log`, `linux-exits.txt`).
