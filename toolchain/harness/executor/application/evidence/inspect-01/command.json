@@ -1,0 +1,1 @@
+{"argv": ["/opt/homebrew/opt/python@3.14/bin/python3.14", "-B", "toolchain/bench/step36/guard.py", "60", "--", "python3", "-B", "toolchain/harness/executor/application/inspect_machine.py", "toolchain/harness/executor/application/evidence/inspect-01/inventory"], "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1"}

@@ -1,0 +1,8 @@
+test_archived_application_source_and_matching_ids_fit_import_bounds (__main__.Package.test_archived_application_source_and_matching_ids_fit_import_bounds) ... ok
+test_installed_distribution_must_match_verified_archive (__main__.Package.test_installed_distribution_must_match_verified_archive) ... ok
+test_package_inventory_rejects_links_and_empty (__main__.Package.test_package_inventory_rejects_links_and_empty) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.154s
+
+OK

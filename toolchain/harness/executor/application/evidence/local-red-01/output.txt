@@ -1,0 +1,49 @@
+test_application_deadline_and_fixed_identity (__main__.Policy.test_application_deadline_and_fixed_identity) ... ERROR
+test_default_stays_busybox_and_requires_explicit_application_identity (__main__.Policy.test_default_stays_busybox_and_requires_explicit_application_identity) ... ERROR
+test_effective_policy_rejects_every_application_limit_mutation (__main__.Policy.test_effective_policy_rejects_every_application_limit_mutation) ... ERROR
+test_application_registration_rejects_manifest_widening (__main__.Registration.test_application_registration_rejects_manifest_widening) ... ERROR
+
+======================================================================
+ERROR: test_application_deadline_and_fixed_identity (__main__.Policy.test_application_deadline_and_fixed_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/test_policy.py", line 37, in test_application_deadline_and_fixed_identity
+    run = workspace.WorkspaceRun('true', Path(root) / 'ok', 120, binding)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/workspace.py", line 57, in __init__
+    self._initialize(script, checks, result_dir, seconds)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/adapter.py", line 84, in _initialize
+    raise ValueError('deadline must be .5..10 seconds')
+ValueError: deadline must be .5..10 seconds
+
+======================================================================
+ERROR: test_default_stays_busybox_and_requires_explicit_application_identity (__main__.Policy.test_default_stays_busybox_and_requires_explicit_application_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/test_policy.py", line 25, in test_default_stays_busybox_and_requires_explicit_application_identity
+    self.assertEqual(remote.selection(), {})
+                     ^^^^^^^^^^^^^^^^
+AttributeError: module 'remote' has no attribute 'selection'. Did you mean: 'selectors'?
+
+======================================================================
+ERROR: test_effective_policy_rejects_every_application_limit_mutation (__main__.Policy.test_effective_policy_rejects_every_application_limit_mutation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/test_policy.py", line 51, in test_effective_policy_rejects_every_application_limit_mutation
+    effective['Config']['Env'] = remote.application_environment()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'remote' has no attribute 'application_environment'
+
+======================================================================
+ERROR: test_application_registration_rejects_manifest_widening (__main__.Registration.test_application_registration_rejects_manifest_widening)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/test_policy.py", line 75, in test_application_registration_rejects_manifest_widening
+    self.assertEqual({k: binding[k] for k in SELECTION}, SELECTION)
+                         ~~~~~~~^^^
+KeyError: 'policy'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.002s
+
+FAILED (errors=4)

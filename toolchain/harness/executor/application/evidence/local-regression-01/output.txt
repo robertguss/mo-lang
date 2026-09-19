@@ -1,0 +1,19 @@
+.................E.........
+======================================================================
+ERROR: test_snapshot_copies_modes_and_closes_dispatch (test_workspace.Controller.test_snapshot_copies_modes_and_closes_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/test_workspace.py", line 139, in test_snapshot_copies_modes_and_closes_dispatch
+    self.c.authorize({'run_id': execution, 'workspace': reserve['result']['workspace']})
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/workspace_controller.py", line 109, in authorize
+    manifest_policy(manifest)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/remote.py", line 53, in manifest_policy
+    raise ValueError('manifest policy differs from registered workspace')
+ValueError: manifest policy differs from registered workspace
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.139s
+
+FAILED (errors=1)

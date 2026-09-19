@@ -1,0 +1,1 @@
+{"argv": ["/opt/homebrew/opt/python@3.14/bin/python3.14", "-B", "toolchain/bench/step36/guard.py", "1200", "--", "sh", "-c", "cd toolchain && zig build"], "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1"}

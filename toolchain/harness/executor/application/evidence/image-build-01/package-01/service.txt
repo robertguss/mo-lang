@@ -1,0 +1,5 @@
+Result=exit-code
+ExecMainStatus=1
+ControlGroup=
+MemoryPeak=479313920
+ActiveState=failed

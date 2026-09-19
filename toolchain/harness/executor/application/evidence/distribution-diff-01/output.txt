@@ -1,0 +1,9 @@
+['orbctl', 'run', '-m', 'mo-executor-r01', '-u', 'root', 'systemd-run', '--quiet', '--collect', '--wait', '--pipe', '--unit=mo-appv1-distribution-diff-01', '--property=RuntimeMaxSec=60', '--property=MemoryMax=512M', '--property=MemorySwapMax=0', '--property=CPUQuota=100%', '--property=TasksMax=32', '--property=KillMode=control-group', '--slice=mo-application.slice', '/usr/bin/python3', '-B', '-c', "import hashlib,json,pathlib,sys,tarfile\nsys.path.insert(0,'/opt/mo-harness/application-build-v1/package-01')\nimport package\nroot=pathlib.Path('/opt/mo-harness/zig-aarch64-linux-0.16.0')\nactual={row['path']:row for row in package.inventory(root)}; expected={}\nwith tarfile.open('/opt/mo-harness/application-build-v1/package-01/zig.tar.xz','r:xz') as archive:\n for member in archive:\n  if not member.isfile(): continue\n  path='/'.join(pathlib.PurePosixPath(member.name).parts[1:])\n  expected[path]={'path':path,'length':member.size,'mode':member.mode,'sha256':hashlib.file_digest(archive.extractfile(member),'sha256').hexdigest()}\nmissing=sorted(set(expected)-set(actual)); extra=sorted(set(actual)-set(expected))\nchanged=[{'path':p,'expected':expected[p],'actual':actual[p]} for p in sorted(set(actual)&set(expected)) if actual[p]!=expected[p]]\nprint(json.dumps({'expected_count':len(expected),'actual_count':len(actual),'missing':missing[:30],'extra':extra[:30],'changed_count':len(changed),'changed':changed[:10]},indent=2))\n"]
+{
+  "expected_count": 19546,
+  "actual_count": 19546,
+  "missing": [],
+  "extra": [],
+  "changed_count": 0,
+  "changed": []
+}

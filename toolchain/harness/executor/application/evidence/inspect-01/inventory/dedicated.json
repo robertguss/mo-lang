@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "sh",
+    "-c",
+    "ls -la /opt/mo-harness; docker ps -a --no-trunc; docker image ls --no-trunc; systemctl show mo-application.slice mo-executor.slice -p ControlGroup -p MemoryMax -p MemorySwapMax -p CPUQuotaPerSecUSec -p TasksMax; cat /sys/fs/cgroup/mo.slice/mo-application.slice/memory.peak"
+  ],
+  "exit": 0,
+  "stdout": "total 0\ndrwxr-xr-x 1 root root 208 Sep 19 01:46 .\ndrwxr-xr-x 1 root root  68 Sep 19 01:13 ..\ndrwxr-xr-x 1 root root  58 Sep 19 01:46 bin\ndrwxr-xr-x 1 root root  62 Sep 19 01:46 source-e3a01bbf613c1f130955b6e123d5987a4c559d18\ndrwxr-xr-x 1 root root  50 Apr 13 19:57 zig-aarch64-linux-0.16.0\ndrwxr-xr-x 1 root root  14 Sep 19 01:13 zig-cache\ndrwxr-xr-x 1 root root  14 Sep 19 01:46 zig-cache-runtime-r01\nCONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES\nREPOSITORY            TAG       IMAGE ID                                                                  CREATED       SIZE\nmo-executor-fixture   r01       sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337   2 hours ago   2.97MB\nControlGroup=/mo.slice/mo-application.slice\nCPUQuotaPerSecUSec=1s\nMemoryMax=1610612736\nMemorySwapMax=0\nTasksMax=192\n\nControlGroup=/mo.slice/mo-executor.slice\nCPUQuotaPerSecUSec=1s\nMemoryMax=536870912\nMemorySwapMax=0\nTasksMax=128\n0\n",
+  "stderr": ""
+}
