@@ -1,0 +1,1099 @@
+{
+  "source_revision": "36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+  "execution": "Exact git TypeScript in .cache/runtime plus upstream.patch; npm provider implementation is not executed",
+  "selected_catalog": "catalog.json generated offline from the pinned generator; see evidence/catalog-comparison.json",
+  "comparison": "Embedded sourcemap TypeScript vs exact git archive; not a reproducible-build claim",
+  "files": [
+    {
+      "file": "src/api/anthropic-messages.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "9abf35ebe5dbe3a9d7a621c420aa0cbf474eb2ec7c79e1bea8e28966c564b7ab"
+    },
+    {
+      "file": "src/api/anthropic-messages.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "5d1925e8b2664c91a11ef4c73d8c400b4075597c8c4e8beb085f8e4ba137fc08"
+    },
+    {
+      "file": "src/api/azure-openai-responses.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "874ec8836a617c19fb337c2a8af68f591708aafb988d378578e6f0d61494c3ec"
+    },
+    {
+      "file": "src/api/azure-openai-responses.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "de36a9a2749ac4cb45a5449356bceadb676d1a16e6d46f4fc5522a3f700aa2fd"
+    },
+    {
+      "file": "src/api/bedrock-converse-stream.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "b8cff28740f8a549fc5fd2d466980f8900688c01fcad3df96ba68f7eaf4fbaf3"
+    },
+    {
+      "file": "src/api/bedrock-converse-stream.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "3ee8a1b2a2cd58927bee18ab5b4150401da810e9d5f4595822b3b10ded35de86"
+    },
+    {
+      "file": "src/api/cloudflare-ai-binding.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "57f702b91453810241fd50a5629628fcc3d556e75909a37fae857d0a5d27d8fb"
+    },
+    {
+      "file": "src/api/cloudflare.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "6333a0f78e8cd6b75e408fdeb594d5e1e02605206247c5a921c2f56dd99cf96a"
+    },
+    {
+      "file": "src/api/constrained-sampling.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "1b869f139e5cd1f09b4ebecb8f7ce9ea44b63e75dc6d6158ac8f5d00f2eaddbb"
+    },
+    {
+      "file": "src/api/github-copilot-headers.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "32d154965223d746140957ca6754f69955f1c631ed5e8445dcf2be11bb4b5180"
+    },
+    {
+      "file": "src/api/google-generative-ai.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "1395c3f2a90bf701b8b5fc1b6f7de8d323193ed339e07a60630900099a543757"
+    },
+    {
+      "file": "src/api/google-generative-ai.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ba7700f2e44838fb19da46f866f47f35f4e10f5068800be1ea698e9e95e1e1ce"
+    },
+    {
+      "file": "src/api/google-shared.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "fa9a45177b6c1e1636b8b1ef4c8b332e903e4b379039cb1bacbbc312a8e1662d"
+    },
+    {
+      "file": "src/api/google-vertex.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "ac86327759ebeb340c3c45573d754495c2d3298c5f5d19581f86de6609ff4526"
+    },
+    {
+      "file": "src/api/google-vertex.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "891f0e07eaaa1bb1df97f0a2d8f067df6acbab50078242108d93b96a710c4712"
+    },
+    {
+      "file": "src/api/lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ff4ce241fb72cdd1900d56865a6295815d8d073b321c2ed20435639ed74bf39a"
+    },
+    {
+      "file": "src/api/mistral-conversations.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "042e8886f68da48b4218726bcbc20ff440510b23dbdbffe5ea9c7fb8a876b762"
+    },
+    {
+      "file": "src/api/mistral-conversations.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "74267bc430c0c2562d166e4ae9d05966634e91b226bc564010b2b199db52dd86"
+    },
+    {
+      "file": "src/api/openai-codex-responses.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "0e314e541bfec8d4375d106f59f084da7d57079c08cfd637c58b1a60d7c6d98d"
+    },
+    {
+      "file": "src/api/openai-codex-responses.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "89e1883f937df0992b852970f574b5e1fc2a69fefaacc89628cd1d924a8af63f"
+    },
+    {
+      "file": "src/api/openai-completions.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "7c1002a6a17cd081f36a44defea533ea03f65e07477e4ddec49b402760e97df8"
+    },
+    {
+      "file": "src/api/openai-completions.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "a1defe07f6d7bd37de3933164cc88cfeb2d46cf390d0bbb52c85b280cc58d193"
+    },
+    {
+      "file": "src/api/openai-prompt-cache.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "78727b9b42d5c5cdc47d17f44d532cdf951cbee3b158cacfb3e640d8f792e8a4"
+    },
+    {
+      "file": "src/api/openai-responses-shared.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "2562ad7497bfe9cf71533b7584400751746b6a563229a615f6e23848780d2bee"
+    },
+    {
+      "file": "src/api/openai-responses.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "dea6113f21ab782bac450fc32ac8b8c99d8fd14f41cfe4c124fc6091c03910ed"
+    },
+    {
+      "file": "src/api/openai-responses.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ea6bf6019f6b2f949bce4ad248ec1e0fa25dd058a009cf70fb5eb0e99b4c94db"
+    },
+    {
+      "file": "src/api/openrouter-images.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c658f331cb2278e7accc925fa72eb3c3902d32d6ff37c4263b6bb6108888d440"
+    },
+    {
+      "file": "src/api/openrouter-images.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "04c18f8c065779c2f705850e593cee4e0d6207a4121473540a223fc83026a8f4"
+    },
+    {
+      "file": "src/api/pi-messages.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "c8bbdcaaa30064db24afa8e9b2fbc66f9d4be89149c170e2de94b8705e5830b4"
+    },
+    {
+      "file": "src/api/pi-messages.lazy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "620e55f1a498f70c8578deb6375f9433c6991c98f6c323465b1889c2f07a72d9"
+    },
+    {
+      "file": "src/api/simple-options.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "3a9ab7fa885d3a9c73a1aee8c8bf8bd7d205740edef0f0a5219714fd16e38e57"
+    },
+    {
+      "file": "src/api/transform-messages.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "cf309c00b943bc0a90ccaabb185730a3f27a3c92de6696ada3155b0185904161"
+    },
+    {
+      "file": "src/auth/context.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "03101bfa711fad214af111e25328b6f607d6b0a7ebfe289af58a89cd55baf639"
+    },
+    {
+      "file": "src/auth/credential-store.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "50ebde56b80b5862025e031719006ea303edd9aa80fec780fbc64319bb9e2847"
+    },
+    {
+      "file": "src/auth/helpers.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "2799858cc159794451870b86d2e2f50e2bd9453900f31b8ab50bb4ed8ca4a5fc"
+    },
+    {
+      "file": "src/auth/oauth/anthropic.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "8bf457ab5f0e7756898bff324d54d7ad9e4d4977c1053cb744791ac024945810"
+    },
+    {
+      "file": "src/auth/oauth/device-code.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "b402bbbf66d693ee7dd6c5e2c4e45544050722d5bfa3668b100df76284a4fb37"
+    },
+    {
+      "file": "src/auth/oauth/github-copilot.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "72b771b1aacb75707eb5b89eff4999762301f75d0fec0cbc22aa9b9e279fa9ba"
+    },
+    {
+      "file": "src/auth/oauth/kimi-coding.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "5461cc78e6bf118061b67ba2bb26109217863f332904f0601b6da85309ea3657"
+    },
+    {
+      "file": "src/auth/oauth/load.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "2efc92129803bd2eddacaaedfc4328c24c694b2d1916b30606fcc4fceeceacef"
+    },
+    {
+      "file": "src/auth/oauth/oauth-page.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "f58b133d271be4ff47352947fd4e55ab66230dc2647b7cbc7c79a574a93de632"
+    },
+    {
+      "file": "src/auth/oauth/openai-codex.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "757c6cff2bc67d89df30ad175eead549519e1d3756397b5b4189460ac9dbcaba"
+    },
+    {
+      "file": "src/auth/oauth/openrouter.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "3215ff89c9e4615d3b205455225f87763ef02973380abce070aced81bbe1fbed"
+    },
+    {
+      "file": "src/auth/oauth/pkce.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "33835111577490103dbb7509b7687db1643691d7b425845428f3cbeb873fe9cf"
+    },
+    {
+      "file": "src/auth/oauth/radius.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "a4c520d7ea0f605da1cb4499e8532c5e058cb9fda4d162bd347526bd66351801"
+    },
+    {
+      "file": "src/auth/oauth/xai.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "d78bc70b7031326d51bf1348266fcd576e77590ceefdea9a4ed962e403444a78"
+    },
+    {
+      "file": "src/auth/resolve.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "08dfcdcbd74dbae5b011b105b9b335321fea816ce262758729a2b29a630bd1b9"
+    },
+    {
+      "file": "src/auth/types.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "82e2209fd3291978afd7f77b10d81d8d411fd82d0e3ac52121cb41f735946ba5"
+    },
+    {
+      "file": "src/bedrock-provider.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "427a4e76812ea4ac42133e7f41e75df99e0edaff883659c96a0e4ec78f670f9f"
+    },
+    {
+      "file": "src/bun-oauth.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "27818a6489809c8b38cea6ca5a75ede67cbb17e3cd48de450a1d04300e95333d"
+    },
+    {
+      "file": "src/cli.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "e04e6cd5f0e9da829d10b9b285592d5170d59eff29ae985aecf3f5f9bd15cb2d"
+    },
+    {
+      "file": "src/compat/extension-oauth-types.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "52065af0c8958696c9e37852d5005bf410679f4afba1b92a6e107e9320c44ff3"
+    },
+    {
+      "file": "src/compat.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "c1212487653e4508243ddc2c420334166699470b9908326ff8f74b8aeb4fc8a5"
+    },
+    {
+      "file": "src/env-api-keys.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "6876b915ffe1342f8be69ef1f75721c8a265a332a1bbbf5afe36b6f80b332552"
+    },
+    {
+      "file": "src/image-models.generated.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "a3a3142b9d4c503477ea4fe76c7b3144f8d6d53044b099fffc316cf37dc4c883"
+    },
+    {
+      "file": "src/image-models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "58f11488a6623fe8528153235f9216c249d70e146b0f99f8b22db8d88a49ae74"
+    },
+    {
+      "file": "src/images-api-registry.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "604636b0a4b59d1798d79aad48a1dfdd96ee79e3f16b16cdc54dbd1b81c44ffe"
+    },
+    {
+      "file": "src/images-models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9a3a2bf47263e577925850b182d2b508d0bbf0e1437124b1240bff95b8deeb3a"
+    },
+    {
+      "file": "src/images.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "de83a96c1eb420cfb1b6f4e3ce8430f19b2312399d195fb786c76ebae4111dcf"
+    },
+    {
+      "file": "src/index.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "51a82f426d1a313d0566df07d449627699dce6a28ce83b9ad4e87655e28c8ab5"
+    },
+    {
+      "file": "src/legacy-api-aliases.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "784ae74c00b3cf2836b6ed930519b5d7d3aa1a7a4e7ace933af3bdad77df67e3"
+    },
+    {
+      "file": "src/model-catalog.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "49ea2292bcc7a1cec41dde2c7e263ecd7f5fd6784084619f6e5f85323fb43452"
+    },
+    {
+      "file": "src/models-store.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9b5b110a2cbd1b558f7facf4441b0b4b6824b033d34c9062add35e642a138fdf"
+    },
+    {
+      "file": "src/models.generated.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "d37f49ca5a7dc0f2981e8c52473359ed7c11192c24cc54573bf83e3a0a17a149"
+    },
+    {
+      "file": "src/models.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "7b4d831c10ad2bf0a24f231cf2a12e84b59d6001337ac33fb18d6d4fc7da1c6c"
+    },
+    {
+      "file": "src/oauth.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "1250a2a276dc310849e64a0fd306a896d42e47ad0fc8d9394279eaee4e11cdff"
+    },
+    {
+      "file": "src/providers/all.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "6f2107bd324c85133d5b4ca39f8247c1e07ed7b660849b94e8c546072b9fa552"
+    },
+    {
+      "file": "src/providers/amazon-bedrock.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "e32611e8d2d4e71ee5d0ba426da60c0aecf42d1bc34ccc3d0d49ce877c621a8c"
+    },
+    {
+      "file": "src/providers/amazon-bedrock.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9c9cbe9b1c977177454ed12dc48c521fdc88d257ee1b92bc3805aa77eaf9b982"
+    },
+    {
+      "file": "src/providers/ant-ling.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "20ba100f8a9150f809fc42bf60f1d23840cc358d636793f1ec9fddf0e9feb2a7"
+    },
+    {
+      "file": "src/providers/ant-ling.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "da223d56dbe033f48b96ed451591498cb7ffa8d4851785ea9ad7542377f6c855"
+    },
+    {
+      "file": "src/providers/anthropic.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "dda69449a53c84b8b0a17b28f80fba278988d85665557be2db0dc3b20557567a"
+    },
+    {
+      "file": "src/providers/anthropic.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "35fb58e216e45b3d1319b610f3f3021ef30e699a9e44250cbfcbefeeaaea2ff7"
+    },
+    {
+      "file": "src/providers/azure-openai-responses.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "76e9f5cde761fcd516370d4d99519e4658e0db1029518746d0d0c0550ce54fa5"
+    },
+    {
+      "file": "src/providers/azure-openai-responses.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9d0525eab9472b48dee748f7c6d2f3b65f25467389ff1facbf34dc2d40732717"
+    },
+    {
+      "file": "src/providers/baseten.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c3833be0c64c4d5c96810403e23e966bb779bf2c045619b6fbac18ff27ac92f5"
+    },
+    {
+      "file": "src/providers/baseten.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c3844bac330f9b0d04eef4349a37dbd6cbe5b6782b9f6726277148526c03ea0a"
+    },
+    {
+      "file": "src/providers/cerebras.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "457fc35499abea92be4ad7add4f08502d069293380be61bf05b11ae5352bce4f"
+    },
+    {
+      "file": "src/providers/cerebras.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "45412b6f921b67cf7b82276bac1d8b95f164c5bf2ff3297b950f94f773162c57"
+    },
+    {
+      "file": "src/providers/cloudflare-ai-gateway.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "6f19bdcb965750aa1367f1c09eb883da16526644ad3a3cbcb60da8b53ca418ff"
+    },
+    {
+      "file": "src/providers/cloudflare-ai-gateway.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c90e50ce6cd8b536e893ca7180a5b9731581d76b31125aff5bdfc62bd17efe26"
+    },
+    {
+      "file": "src/providers/cloudflare-auth.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "d0532efb4f00126286d71dbce6fcb95e581cd9477467dc4bd20f1df1a466f03e"
+    },
+    {
+      "file": "src/providers/cloudflare-stream.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "866117c0e12f6bba9da36842271d0208b200364dc785dc968fa5d31b6da6594b"
+    },
+    {
+      "file": "src/providers/cloudflare-workers-ai.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "5ab1575a34fd66e35706fcae8a38516d7c2e427521b7f8680e1f756d8420ec9c"
+    },
+    {
+      "file": "src/providers/cloudflare-workers-ai.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "95da6a78965178d952b46a4de4e2ea52723ac051ad37583537a3b79e4033ecde"
+    },
+    {
+      "file": "src/providers/deepseek.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "4d4ac9870d3dcdb13a90627a95598314459f5cc2f8a122f802fab3b0d2840fee"
+    },
+    {
+      "file": "src/providers/deepseek.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "afce9b250edda8c9df66e800cfa791f1a2c2546503956c45c5262204265624cf"
+    },
+    {
+      "file": "src/providers/faux.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "83f09999c95c355b4befcb47019836a1b3636593cd72b96f540108db0b5f570a"
+    },
+    {
+      "file": "src/providers/fireworks.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "72dbb53e3bb8b0bc6c42dd7937ec11dd0126efe3176f11153b1d599a0c7776af"
+    },
+    {
+      "file": "src/providers/fireworks.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "68f77ac268a3e643944401e96fdc71abe7b34e1ccc3c50f885eb3e236b4fb45e"
+    },
+    {
+      "file": "src/providers/github-copilot.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9f898d669b65e9650009e4e45518fc207416c94ca9570276ef9bd7f13fde8f3b"
+    },
+    {
+      "file": "src/providers/github-copilot.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "6bd4c4ae054ea91fe4c9eea8c8372901584e851532352cb621a9e9de6ecece5c"
+    },
+    {
+      "file": "src/providers/google-vertex.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "5e321e6d5b80824752ca96e7c9aba8a3fccce722a1793a40d5341a0406ef4878"
+    },
+    {
+      "file": "src/providers/google-vertex.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "964109cc69cadf77329846f4fb4baf6c86b00995f33a813230c5a9e54573e93e"
+    },
+    {
+      "file": "src/providers/google.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "2d807d5f9273ede8c23970fe0414883ab362c677df80e4603d30b621232a2036"
+    },
+    {
+      "file": "src/providers/google.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "cdb63f50fae431dc67c6627ae7a5b9580039b9807f014f838ebe568b11831d27"
+    },
+    {
+      "file": "src/providers/groq.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "a8bbced4fbc37370892fec68fb7f03cf634d08d134d9f003fa63edb5a8b60873"
+    },
+    {
+      "file": "src/providers/groq.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "41fbe59a9104788078b57b490ebf2312291905e579a67ceaeff803ff41ffc9c0"
+    },
+    {
+      "file": "src/providers/huggingface.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "51c4af194c9989ab033c5b3303831ec9e2df999f51d9fa40ab6d28f632e8ff43"
+    },
+    {
+      "file": "src/providers/huggingface.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "0da3c6e72a35d04571f1800989c3731df686a8ab1291065b6dd8855966f0e675"
+    },
+    {
+      "file": "src/providers/images/register-builtins.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "8c8bd4e614b8b733c0a4232f7cc974bf38c5a4bb6b9615c732e3b794ff1d908f"
+    },
+    {
+      "file": "src/providers/kimi-coding.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ef864d572eef11900f24bb6a5dc620982bd9c39fac600970deec55466348f8b0"
+    },
+    {
+      "file": "src/providers/kimi-coding.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "57ca50b17d1e96ba8f064b63adfe9773c2e494d7495c52336769ef6b86a7e2ff"
+    },
+    {
+      "file": "src/providers/minimax-cn.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ae3170234556ef355f7cffcfc666888992ae50caa8daf07352f22bac69cca0ba"
+    },
+    {
+      "file": "src/providers/minimax-cn.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "25dd4d8e980898f274a3c787a59e6e7570d596330c7f833f080b780817cdea74"
+    },
+    {
+      "file": "src/providers/minimax.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "d571a6a8b5a47daf40b034a2dae4ac902a252fbd44b073c4caee8eeb1d7035b5"
+    },
+    {
+      "file": "src/providers/minimax.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "e80186fef0f1b647990f029281604c435da5d8ceb659d3f6a79681cdb03c3b41"
+    },
+    {
+      "file": "src/providers/mistral.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "dfcd087d7317d6a6cd1acf701547567435f5eaf0c1cc1d8eb89eed7e977c2fb3"
+    },
+    {
+      "file": "src/providers/mistral.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "949f1e72e32a0028beb855db2642f13783c8697c4be236e9061c241f1d698a51"
+    },
+    {
+      "file": "src/providers/moonshotai-cn.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "da8ec0ed30a2cf42972cead61a93b1fcb64380095f9d062ee4ed9e4807ebd5bc"
+    },
+    {
+      "file": "src/providers/moonshotai-cn.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "059db388929164d03595ead666c3bcf56e8e078be072dc2d4d3a784b9e207cc2"
+    },
+    {
+      "file": "src/providers/moonshotai.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "2e269cca0231ebdbd2a58848ab3d19b0a43697e132b48a679e3c1b0cd4897665"
+    },
+    {
+      "file": "src/providers/moonshotai.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ddafd640693869455756b31e87d09df13388531cf8e0421bd3618d8836ac5eb2"
+    },
+    {
+      "file": "src/providers/nvidia.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "73c981d27b364f83a32983d19f4ded346acf6af7eb4a653334622f891aedf860"
+    },
+    {
+      "file": "src/providers/nvidia.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "15b8e279632a231d1794aec8083f00c17ac94cd5e89717393dd48fc182c0e4b4"
+    },
+    {
+      "file": "src/providers/openai-codex.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c63a59ad55921466182f2033240178fca715faf09dd7fd9878533829ca90a70f"
+    },
+    {
+      "file": "src/providers/openai-codex.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "11045582d310b854c4a55e510e3628b8a8652efab918f9f017541b9261db474f"
+    },
+    {
+      "file": "src/providers/openai.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "1904f9511221f47bbe890dc007571add9ac16ab28cd48c4090b58f13950cbfd0"
+    },
+    {
+      "file": "src/providers/openai.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9424770fdbf0ca5f3307c6b20217686d8c448379fd8548ac1c362ad678ac7898"
+    },
+    {
+      "file": "src/providers/opencode-go.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "222388196ed7178d1b2298676cdb745c761f855207c208d413ddd303080942c2"
+    },
+    {
+      "file": "src/providers/opencode-go.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "db2994d632b02692e3cb1a9c7fde97e5b7e4f77719f7d530c9a2cb2628aee52d"
+    },
+    {
+      "file": "src/providers/opencode.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "5907b03b4f4f24cb8457f2a1fadae2683e2ba5101da84f2b100c32c50b355954"
+    },
+    {
+      "file": "src/providers/opencode.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "ddbfa6ca1f40c0ed1bf96904d3e0ecdb9b8298a4fb8d12a084cd4e1669a6596c"
+    },
+    {
+      "file": "src/providers/openrouter-images.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "921e057fa1880412c29a849505ddd7dbe466996d78087c0c0628437ec2051880"
+    },
+    {
+      "file": "src/providers/openrouter.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "0985e9d352e1a9794c7ed807d81e06a254abce49aa231e7c5ccc7c4355f01d5e"
+    },
+    {
+      "file": "src/providers/openrouter.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "101afc36afce8bdac7f893b8c2b1dffddc13caf7774c1a371f37e82e69a87b90"
+    },
+    {
+      "file": "src/providers/qwen-token-plan-cn.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "1869aabbff4baaa12faef00071aab0a5b1b1d38d43f16ce735137fc0e13fa897"
+    },
+    {
+      "file": "src/providers/qwen-token-plan-cn.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "cf75bfef4683dd80f98a33cc8894d5b0a37930c13907f29b08e33a745b7d48f0"
+    },
+    {
+      "file": "src/providers/qwen-token-plan-individual.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "0336ecc9c677d9e295a4832fbc84d9197f58e0468fcd00daff3aec491b896375"
+    },
+    {
+      "file": "src/providers/qwen-token-plan-individual.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "a12f1307cece97d0a582b6ce09f34cef310012052bcb59582324fc26fbeab99c"
+    },
+    {
+      "file": "src/providers/qwen-token-plan.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c26b85ab529779c4c2e61f6dd749592b515ec25b121b49dc81989d8a767d51f5"
+    },
+    {
+      "file": "src/providers/qwen-token-plan.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "5a45908ccd14785c3aca0307f12e4e462702b0d469ea06bd90ba20b848c918c7"
+    },
+    {
+      "file": "src/providers/radius-config.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "1f82a7db25753be09374792ae0a3cd63417739018fb69b3212ad8b3b9eb11c21"
+    },
+    {
+      "file": "src/providers/radius.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "a65c0513e1999b318425a49117ebed6f38970702454730287287b644d4825f7f"
+    },
+    {
+      "file": "src/providers/together.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "cbf232b1bfe5753bba855f0a95e2c4d180db8155121effcbdffc955fe090738c"
+    },
+    {
+      "file": "src/providers/together.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "09e3a5b9a2afbced7314acb8bfd7f2d77a17283dab78a49ca786a04b466f9d15"
+    },
+    {
+      "file": "src/providers/vercel-ai-gateway.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "57b77111d50a2238128f56b7f4cc0680415b58c7d3d2eb51cc9f88e508b40343"
+    },
+    {
+      "file": "src/providers/vercel-ai-gateway.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "3c4227acdc66f716f4a0af4f84d1ba1e8582384763f6850ed9dcc2fdadee10c5"
+    },
+    {
+      "file": "src/providers/xai.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "841c361fc5ebb2d91c3f6aa46ce008f354ea287cce36ed2105ae815b7e5e9831"
+    },
+    {
+      "file": "src/providers/xai.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "8d0a7bf9fd4fc8a0030d9cf93dab88421625bf250030a6d3b2397eea48ea2298"
+    },
+    {
+      "file": "src/providers/xiaomi-token-plan-ams.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "59d03fc70eca720f8ca9a9f676aedaf241524dac26c179a78e2e30aabe116e0f"
+    },
+    {
+      "file": "src/providers/xiaomi-token-plan-ams.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "26bc2100a4471d0605e768b8aff2e82aedce9c880622b5c7046ac6e32c14fb8b"
+    },
+    {
+      "file": "src/providers/xiaomi-token-plan-cn.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "255528bca12e929f0f683bcbf5a6b8ef0de779bb484b128bdda23bf2fb80caa8"
+    },
+    {
+      "file": "src/providers/xiaomi-token-plan-cn.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "bcd190721ecfe6233f2d66e86e68f68e2a9d14a8d6afe27132131e5721793093"
+    },
+    {
+      "file": "src/providers/xiaomi-token-plan-sgp.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "536da73a1588741c6a70809b5e94ab5a1ba2b8e81f24116e3ed734d6bc60b5e8"
+    },
+    {
+      "file": "src/providers/xiaomi-token-plan-sgp.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "26f56144eac6a3e7d6c86d558a348dc96cea1bb7ec655beea04dc6088e67d761"
+    },
+    {
+      "file": "src/providers/xiaomi.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "d0d20dbcbcecca8b02948df1506ffa474461565546f7c24dfce44aebebef2344"
+    },
+    {
+      "file": "src/providers/xiaomi.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "326ec2a587d3f83a92aea6dd9548b317ba91ce9dd8dccdfd83ea14035897dcef"
+    },
+    {
+      "file": "src/providers/zai-coding-cn.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "89ff82b1f7b1a7e3427498598ce03574d76217f1c38b0d1731be82b6d8ff87a7"
+    },
+    {
+      "file": "src/providers/zai-coding-cn.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "b96ff0b9ebb1792993256178de1b6c89741a651dfd07a7735c38dd05bfc25708"
+    },
+    {
+      "file": "src/providers/zai.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "489a48539c3abc291315dad6f8b7c5554f5f3f9bf8b2a11a60d4ab2cbd3c2f74"
+    },
+    {
+      "file": "src/providers/zai.models.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "9ff2f0e33f4299651cd265543d6387ee3d9ef2715ab7315dfaf5e67130c14125"
+    },
+    {
+      "file": "src/session-resources.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "3e6d76f038d6b7fe515ede0b6650d41a7df16eb4b3a9f1aa91c9de329ff092e2"
+    },
+    {
+      "file": "src/types.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "ae0427bfba137623df3a27c545ab405d4a3ad4163ec94c9fec5d4e10eb36759c"
+    },
+    {
+      "file": "src/utils/abort-signals.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "320d17e2354c4e66afccf48337d79d1cdb78bc3c42a6f5be993702175711f4ab"
+    },
+    {
+      "file": "src/utils/abort.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "e81dc16de331e82d7f15759b27e38c7d0a3d28955693e0cf157dd52dadea7035"
+    },
+    {
+      "file": "src/utils/assistant-message-frame.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "e3db9eb5fb4a56f6c45b43ff6a5ef87347c8c19f28b0cbdf389b1ddf1928a6e9"
+    },
+    {
+      "file": "src/utils/deferred-tools.ts",
+      "match": false,
+      "source_present": false,
+      "shipped_source_sha256": "cab1dbf6c0b40a64e2db3079dd3efa23786ad4cdae64abdedc04b1088a301d65"
+    },
+    {
+      "file": "src/utils/diagnostics.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "d22b4f96a00f032220ff0cc27458c7a525dcec948bdbd2bbb67b4d7598cb395d"
+    },
+    {
+      "file": "src/utils/error-body.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "7170181ae6926709fe4ab7ac6b5b51c46ffe906868a7aac3c7627cb28ad77c09"
+    },
+    {
+      "file": "src/utils/estimate.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "8334f683185cc11d7e867f30963dfc4b9d89c3db79e852364e89a24cb89b316a"
+    },
+    {
+      "file": "src/utils/event-stream.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "55ddd6e6e4299f377fc3f8876ea9d8073f0051d569f1629f8817ec78e28d64e6"
+    },
+    {
+      "file": "src/utils/hash.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "2cdfce4af41810d1a92c7f0a55c78637a3173041038aafd85b378be345761ed8"
+    },
+    {
+      "file": "src/utils/headers.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "db52ff4621bef3e5a6b6ace56fd0ff09063ae840517c16b1690c60f89f85e106"
+    },
+    {
+      "file": "src/utils/json-parse.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "828440b19a64773f696ced9461166913ddaddd8479697fbde32d3f298872b153"
+    },
+    {
+      "file": "src/utils/node-http-proxy.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "a13ab6556d127e6fb097147b209c68e47aed8e724e2774e7dd7df21ff91d9d5b"
+    },
+    {
+      "file": "src/utils/overflow.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "ed4c74d82619562b2a760ef7953cfd39f6f88e0980d42e27945f8aa81a57a61d"
+    },
+    {
+      "file": "src/utils/pi-user-agent.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c60d2777f4362985b74f7d7cfadf35a47ae2c6f8b5cc0b809efbb4c546579b8e"
+    },
+    {
+      "file": "src/utils/provider-env.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "3829251ae0674cef7ca09800cee9f46d4e305770129b72b822ea2f6f85efe675"
+    },
+    {
+      "file": "src/utils/provider-retry.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "d0f68cfe9fe6a5d4be778eaefedc0b453021f89026810691dcd1479371dca699"
+    },
+    {
+      "file": "src/utils/retry.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "e92db2d47823c683d618d94d411a6a1600f69daaa9b3b65e199e7dbafff68f33"
+    },
+    {
+      "file": "src/utils/sanitize-unicode.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "f8ef2c957f9f13a77df45ebf344f1b852dfe8f2e3d164d815127ea7290c12e22"
+    },
+    {
+      "file": "src/utils/sleep.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "c6d01d46a40b0aa99d3308a5ecec37417f434bdc839ea8f8853f776e2fb1981c"
+    },
+    {
+      "file": "src/utils/text.ts",
+      "match": false,
+      "source_present": true,
+      "shipped_source_sha256": "442d027929fa6db4aa19638d64b55838ccada6c07f350610c53a521cd620ddf3"
+    },
+    {
+      "file": "src/utils/typebox-helpers.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "caf756258ce20c793dc8002cb8130a8efce18a7b5262ba0c54832b96f5a76e9f"
+    },
+    {
+      "file": "src/utils/uuid.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "234a48d4b999e69188fdfa49173ccfa7887d947e443ef206cc30219515105a1f"
+    },
+    {
+      "file": "src/utils/validation.ts",
+      "match": true,
+      "source_present": true,
+      "shipped_source_sha256": "460786b57dead200e411b9afec916a5049c96ebcff4da082096456ac06d44fb7"
+    }
+  ],
+  "catalog": {
+    "path": "dist/providers/data/openai-codex.json",
+    "bytes": 4233,
+    "sha256": "a10bfcfd34db6bcb98d8ee46175e154cab30530a137dbf31ac1434020ed3ffdd",
+    "origin": "npm artifact 0.85.1; generation inputs not attested by registry"
+  },
+  "artifact_integrity": {
+    "shasum": "3f5726032c30149f6060a3aeacb79436c7387a37",
+    "tarball": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.85.1.tgz",
+    "fileCount": 750,
+    "integrity": "sha512-+VgVIJDkDO2efYJKEEqvPTH4zmnIaXdAppGbO+vKFA9qy5PdhFiAenuFAkU+oiCSfOC4dMHDyrjdQeL4ZoC5CQ==",
+    "signatures": [
+      {
+        "sig": "MEUCIQDcUNgX34W1J3Ffjyxp60oYZ1XAREdLCgragaApFQ3dQgIgRuPlOA+xS9p6btiaGC60AIzAuNVLk5/3o12k1yzIqlY=",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEQCIE3Ux3LGmL/daUgy/Zmrz5jH9N0Dn/4NZ7sgA87LFCoCAiBfpsyPinrY34wckafPgUZzY5NNdPzez1MflP5duTU8Bg==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "attestations": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-ai@0.85.1",
+      "provenance": {
+        "predicateType": "https://slsa.dev/provenance/v1"
+      }
+    },
+    "unpackedSize": 4281282
+  }
+}

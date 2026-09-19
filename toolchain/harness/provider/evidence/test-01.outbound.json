@@ -1,0 +1,1358 @@
+[
+  {
+    "case": 1,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "reported",
+      "input": 5,
+      "output": 5,
+      "cacheRead": 3,
+      "cacheWrite": 2,
+      "total": 15,
+      "reasoning": 1
+    }
+  },
+  {
+    "case": 2,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "tool",
+    "usage": {
+      "status": "reported",
+      "input": 5,
+      "output": 5,
+      "cacheRead": 3,
+      "cacheWrite": 2,
+      "total": 15,
+      "reasoning": 1
+    }
+  },
+  {
+    "case": 2,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          },
+          {
+            "type": "reasoning",
+            "id": "rs_1",
+            "encrypted_content": "opaque-signature",
+            "summary": []
+          },
+          {
+            "type": "function_call",
+            "id": "fc_1",
+            "call_id": "call_1",
+            "name": "read",
+            "arguments": "{\"path\":\"a\"}"
+          },
+          {
+            "type": "function_call_output",
+            "call_id": "call_1",
+            "output": "file"
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "reported",
+      "input": 5,
+      "output": 5,
+      "cacheRead": 3,
+      "cacheWrite": 2,
+      "total": 15,
+      "reasoning": 1
+    }
+  },
+  {
+    "case": 3,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "unsupported"
+    }
+  },
+  {
+    "case": 4,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "unsupported"
+    }
+  },
+  {
+    "case": 5,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "unsupported"
+    }
+  },
+  {
+    "case": 6,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "unsupported"
+    }
+  },
+  {
+    "case": 7,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "reported",
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+    }
+  },
+  {
+    "case": 8,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "unknown"
+    }
+  },
+  {
+    "case": 9,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "unknown"
+    }
+  },
+  {
+    "case": 10,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "unknown"
+    }
+  },
+  {
+    "case": 11,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "unknown"
+    }
+  },
+  {
+    "case": 12,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "final",
+    "usage": {
+      "status": "unknown"
+    }
+  },
+  {
+    "case": 13,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "authentication"
+    }
+  },
+  {
+    "case": 14,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "provider"
+    }
+  },
+  {
+    "case": 15,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "provider"
+    }
+  },
+  {
+    "case": 16,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "cancelled"
+    }
+  },
+  {
+    "case": 17,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "timeout"
+    }
+  },
+  {
+    "case": 18,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "incomplete"
+    }
+  },
+  {
+    "case": 19,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "incomplete"
+    }
+  },
+  {
+    "case": 20,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "incomplete"
+    }
+  },
+  {
+    "case": 21,
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "store": false,
+        "stream": true,
+        "instructions": "You are a helpful assistant.",
+        "input": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "fixture"
+              }
+            ]
+          }
+        ],
+        "text": {
+          "verbosity": "low"
+        },
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "tool_choice": "auto",
+        "parallel_tool_calls": false,
+        "tools": [
+          {
+            "type": "function",
+            "name": "read",
+            "description": "Read a fixture",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": null
+          }
+        ],
+        "reasoning": {
+          "effort": "low",
+          "summary": "auto"
+        }
+      }
+    ],
+    "result": "error",
+    "usage": {
+      "status": "unknown"
+    },
+    "error": {
+      "code": "unsupported"
+    }
+  }
+]

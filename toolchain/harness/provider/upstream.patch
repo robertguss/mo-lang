@@ -1,0 +1,39 @@
+--- src/api/openai-codex-responses.ts
++++ src/api/openai-codex-responses.ts
+@@ -77,6 +77,7 @@
+ // ============================================================================
+ 
+ export interface OpenAICodexResponsesOptions extends StreamOptions {
++	onSseEvent?: (event: Record<string, unknown>) => void;
+ 	reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+ 	reasoningSummary?: "auto" | "concise" | "detailed" | "off" | "on" | null;
+ 	serviceTier?: ResponseCreateParamsStreaming["service_tier"];
+@@ -665,7 +666,7 @@
+ 	grammarToolInputProperties: ReadonlyMap<string, string>,
+ 	options?: OpenAICodexResponsesOptions,
+ ): Promise<void> {
+-	await processResponsesStream(mapCodexEvents(parseSSE(response, options?.signal), output), output, stream, model, {
++	await processResponsesStream(mapCodexEvents(parseSSE(response, options?.signal, options?.onSseEvent), output), output, stream, model, {
+ 		serviceTier: options?.serviceTier,
+ 		grammarToolInputProperties,
+ 		resolveServiceTier: resolveCodexServiceTier,
+@@ -770,7 +771,7 @@
+ // SSE Parsing
+ // ============================================================================
+ 
+-async function* parseSSE(response: Response, signal?: AbortSignal): AsyncGenerator<Record<string, unknown>> {
++async function* parseSSE(response: Response, signal?: AbortSignal, observe?: (event: Record<string, unknown>) => void): AsyncGenerator<Record<string, unknown>> {
+ 	if (!response.body) return;
+ 
+ 	const reader = response.body.getReader();
+@@ -807,7 +808,9 @@
+ 					const data = dataLines.join("\n").trim();
+ 					if (data && data !== "[DONE]") {
+ 						try {
+-							yield JSON.parse(data) as Record<string, unknown>;
++							const event = JSON.parse(data) as Record<string, unknown>;
++							observe?.(event);
++							yield event;
+ 						} catch (cause) {
+ 							throw new CodexProtocolError(`Invalid Codex SSE JSON: ${formatThrownValue(cause)}`, {
+ 								cause,

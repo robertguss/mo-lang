@@ -1,0 +1,13 @@
+{
+  "source_revision": "36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+  "source": {
+    "url": "https://codeload.github.com/earendil-works/pi/tar.gz/36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+    "bytes": 7833334,
+    "sha256": "c2a574794f1fc26510729f2341c4c4990cfa385caf47b011bdca19afa3d22903"
+  },
+  "artifact": {
+    "url": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.85.1.tgz",
+    "bytes": 798833,
+    "sha256": "af7d11986179445ce6fe88b37d57de22f823c0ffd3a65cae31c555b7f5e99253"
+  }
+}

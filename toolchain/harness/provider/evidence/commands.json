@@ -1,0 +1,91 @@
+{
+  "pane": "w4:pZ",
+  "focus_changed": false,
+  "base": "f093d6b6a988195561a6b57b35738b972bb5e94e",
+  "attempts": [
+    {
+      "attempt": "setup-01",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/setup.py",
+      "exit": 0,
+      "log": "setup-01.log"
+    },
+    {
+      "attempt": "install-01",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/run.py 1000 npm install --ignore-scripts --no-audit --no-fund",
+      "exit": 1,
+      "log": "install-01.log"
+    },
+    {
+      "attempt": "install-02",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/run.py 1000 npm install --ignore-scripts --no-audit --no-fund",
+      "exit": 0,
+      "log": "install-02.log"
+    },
+    {
+      "attempt": "install-03",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/run.py 1000 npm ci --ignore-scripts --no-audit --no-fund",
+      "exit": 0,
+      "log": "install-03.log"
+    },
+    {
+      "attempt": "prepare-01",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/prepare.py",
+      "exit": 0,
+      "log": "prepare-01.log"
+    },
+    {
+      "attempt": "prepare-02",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/prepare.py",
+      "exit": 0,
+      "log": "prepare-02.log"
+    },
+    {
+      "attempt": "provenance-01",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/provenance.py",
+      "exit": 0,
+      "log": "provenance-01.log"
+    },
+    {
+      "attempt": "provenance-02",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/provenance.py",
+      "exit": 0,
+      "log": "provenance-02.log"
+    },
+    {
+      "attempt": "provenance-03",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/provenance.py",
+      "exit": 0,
+      "log": "provenance-03.log"
+    },
+    {
+      "attempt": "verify-01",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/verify.py",
+      "exit": 0,
+      "log": "verify-01.log"
+    },
+    {
+      "attempt": "catalog-01",
+      "command": "python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/run.py 1000 node catalog.mjs",
+      "exit": 0,
+      "log": "catalog-01.log"
+    },
+    {
+      "attempt": "test-01",
+      "command": "python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/run.py 550 node test.mjs",
+      "exit": 0,
+      "log": "test-01.log"
+    },
+    {
+      "attempt": "test-02",
+      "command": "python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/run.py 550 node test.mjs evidence/test-02.outbound.json",
+      "exit": 0,
+      "log": "test-02.log"
+    },
+    {
+      "attempt": "test-03",
+      "command": "python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/run.py 550 node test.mjs evidence/test-03.outbound.json",
+      "exit": 0,
+      "log": "test-03.log"
+    }
+  ]
+}

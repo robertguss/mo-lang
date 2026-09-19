@@ -1,0 +1,862 @@
+--- git-pin/src/api/openai-codex-responses.ts
++++ npm-artifact/src/api/openai-codex-responses.ts
+@@ -11,16 +11,17 @@
+ import type {
+ 	Api,
+ 	AssistantMessage,
++	Context,
+ 	Model,
+ 	ProviderEnv,
+ 	ProviderHeaders,
+ 	SimpleStreamOptions,
+ 	StreamFunction,
+ 	StreamOptions,
+-	TranscriptContext,
+ 	Usage,
+ } from "../types.ts";
+ import { combineAbortSignals } from "../utils/abort-signals.ts";
++import { splitDeferredTools } from "../utils/deferred-tools.ts";
+ import {
+ 	appendAssistantMessageDiagnostic,
+ 	createAssistantMessageDiagnostic,
+@@ -31,14 +32,6 @@
+ import { headersToRecord } from "../utils/headers.ts";
+ import { resolveHttpProxyUrlForTarget } from "../utils/node-http-proxy.ts";
+ import { getPiUserAgent } from "../utils/pi-user-agent.ts";
+-import { getSystemMessageText } from "../utils/text.ts";
+-import {
+-	getDeclaredTools,
+-	getInitialSystemMessage,
+-	normalizeContext,
+-	resolveTranscript,
+-	resolveTranscriptTools,
+-} from "../utils/transcript.ts";
+ import { uuidv7 } from "../utils/uuid.ts";
+ import { createGrammarToolInputProperties } from "./constrained-sampling.ts";
+ import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
+@@ -236,11 +229,10 @@
+ 
+ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexResponsesOptions> = (
+ 	model: Model<"openai-codex-responses">,
+-	context: TranscriptContext,
++	context: Context,
+ 	options?: OpenAICodexResponsesOptions,
+ ): AssistantMessageEventStream => {
+ 	const stream = new AssistantMessageEventStream();
+-	const normalizedContext = resolveTranscript(context, model.compat?.supportsMidConvoSystemMessages);
+ 
+ 	(async () => {
+ 		const output: AssistantMessage = {
+@@ -269,12 +261,12 @@
+ 
+ 			const accountId = extractAccountId(apiKey);
+ 			const grammarToolInputProperties = createGrammarToolInputProperties(
+-				getDeclaredTools(normalizedContext.messages),
++				context.tools,
+ 				model.compat?.supportsOpenAIGrammarTools ?? false,
+ 			);
+ 			const cacheSessionId = options?.cacheRetention === "none" ? undefined : options?.sessionId;
+ 			const codexSessionId = clampOpenAIPromptCacheKey(cacheSessionId);
+-			let body = buildRequestBody(model, normalizedContext, options, codexSessionId, grammarToolInputProperties);
++			let body = buildRequestBody(model, context, options, codexSessionId, grammarToolInputProperties);
+ 			const nextBody = await options?.onPayload?.(body, model);
+ 			if (nextBody !== undefined) {
+ 				body = nextBody as RequestBody;
+@@ -357,7 +349,7 @@
+ 							output,
+ 							createAssistantMessageDiagnostic("provider_transport_failure", error, {
+ 								configuredTransport: transport,
+-								...(websocketStarted ? {} : { fallbackTransport: "sse" }),
++								fallbackTransport: websocketStarted ? undefined : "sse",
+ 								eventsEmitted: websocketStarted,
+ 								phase: websocketStarted ? "after_message_stream_start" : "before_message_stream_start",
+ 								requestBytes: new TextEncoder().encode(bodyJson).byteLength,
+@@ -499,7 +491,7 @@
+ 
+ export const streamSimple: StreamFunction<"openai-codex-responses", SimpleStreamOptions> = (
+ 	model: Model<"openai-codex-responses">,
+-	context: TranscriptContext,
++	context: Context,
+ 	options?: SimpleStreamOptions,
+ ): AssistantMessageEventStream => {
+ 	const apiKey = options?.apiKey;
+@@ -526,35 +518,39 @@
+ 
+ function buildRequestBody(
+ 	model: Model<"openai-codex-responses">,
+-	context: TranscriptContext,
++	context: Context,
+ 	options: OpenAICodexResponsesOptions | undefined,
+ 	cacheSessionId: string | undefined,
+ 	grammarToolInputProperties: ReadonlyMap<string, string> = createGrammarToolInputProperties(
+-		getDeclaredTools(context.messages),
++		context.tools,
+ 		model.compat?.supportsOpenAIGrammarTools ?? false,
+ 	),
+ ): RequestBody {
+ 	const supportsStrictMode = model.compat?.supportsStrictMode ?? true;
+ 	const supportsOpenAIGrammarTools = model.compat?.supportsOpenAIGrammarTools ?? false;
+-	const supportsAdditionalTools = model.compat?.supportsAdditionalTools ?? false;
+-	const supportsToolSearch = model.compat?.supportsToolSearch ?? false;
+-	const transcriptTools = resolveTranscriptTools(context.messages, supportsAdditionalTools || supportsToolSearch);
++	const deferredToolsMode = model.compat?.supportsAdditionalTools
++		? "additional-tools"
++		: model.compat?.supportsToolSearch
++			? "tool-search"
++			: undefined;
++	const toolPlacement = splitDeferredTools(context, deferredToolsMode !== undefined);
+ 	const messages = convertResponsesMessages(model, context, CODEX_TOOL_CALL_PROVIDERS, {
+ 		includeSystemPrompt: false,
+ 		grammarToolInputProperties,
+-		supportsMidConvoSystemMessages: model.compat?.supportsMidConvoSystemMessages ?? false,
+-		supportsAdditionalTools,
+-		supportsToolSearch,
+-		toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
++		deferredTools: toolPlacement.deferred,
++		deferredToolsMode,
++		toolOptions: {
++			strict: null,
++			supportsStrictMode,
++			supportsOpenAIGrammarTools,
++		},
+ 	});
+ 
+-	const initialSystemMessage = getInitialSystemMessage(context.messages);
+-	const instructions = initialSystemMessage ? getSystemMessageText(initialSystemMessage) : "";
+ 	const body: RequestBody = {
+ 		model: model.id,
+ 		store: false,
+ 		stream: true,
+-		instructions: instructions || "You are a helpful assistant.",
++		instructions: context.systemPrompt || "You are a helpful assistant.",
+ 		input: messages,
+ 		text: { verbosity: options?.textVerbosity || "low" },
+ 		include: ["reasoning.encrypted_content"],
+@@ -571,8 +567,8 @@
+ 		body.service_tier = options.serviceTier;
+ 	}
+ 
+-	if (transcriptTools.requestTools.length > 0) {
+-		body.tools = convertResponsesTools(transcriptTools.requestTools, {
++	if (toolPlacement.immediate.length > 0) {
++		body.tools = convertResponsesTools(toolPlacement.immediate, {
+ 			strict: null,
+ 			supportsStrictMode,
+ 			supportsOpenAIGrammarTools,
+@@ -582,9 +578,7 @@
+ 	if (options?.reasoningEffort !== undefined) {
+ 		const effort =
+ 			options.reasoningEffort === "none"
+-				? model.thinkingLevelMap?.off === undefined
+-					? "none"
+-					: model.thinkingLevelMap.off
++				? (model.thinkingLevelMap?.off ?? "none")
+ 				: (model.thinkingLevelMap?.[options.reasoningEffort] ?? options.reasoningEffort);
+ 		if (effort !== null) {
+ 			body.reasoning = {
+@@ -592,8 +586,6 @@
+ 				summary: options.reasoningSummary ?? "auto",
+ 			};
+ 		}
+-	} else if (model.reasoning && model.thinkingLevelMap?.off !== null) {
+-		body.reasoning = { effort: model.thinkingLevelMap?.off ?? "none" };
+ 	}
+ 
+ 	return body;
+@@ -1532,15 +1524,10 @@
+ 		if (options?.signal?.aborted) {
+ 			keepConnection = false;
+ 		} else if (useCachedContext && entry && output.responseId) {
+-			const responseItems = convertResponsesMessages(
+-				model,
+-				normalizeContext({ messages: [output] }),
+-				CODEX_TOOL_CALL_PROVIDERS,
+-				{
+-					includeSystemPrompt: false,
+-					grammarToolInputProperties,
+-				},
+-			).filter((item) => item.type !== "function_call_output" && item.type !== "custom_tool_call_output");
++			const responseItems = convertResponsesMessages(model, { messages: [output] }, CODEX_TOOL_CALL_PROVIDERS, {
++				includeSystemPrompt: false,
++				grammarToolInputProperties,
++			}).filter((item) => item.type !== "function_call_output" && item.type !== "custom_tool_call_output");
+ 			entry.continuation = {
+ 				lastRequestBody: fullBody,
+ 				lastResponseId: output.responseId,
+--- git-pin/src/api/openai-responses-shared.ts
++++ npm-artifact/src/api/openai-responses-shared.ts
+@@ -17,24 +17,21 @@
+ import type {
+ 	Api,
+ 	AssistantMessage,
++	Context,
+ 	ImageContent,
+ 	Model,
+ 	StopReason,
+-	SystemMessage,
+ 	TextContent,
+ 	TextSignatureV1,
+ 	ThinkingContent,
+ 	Tool,
+ 	ToolCall,
+-	TranscriptContext,
+ 	Usage,
+ } from "../types.ts";
+ import type { AssistantMessageEventStream } from "../utils/event-stream.ts";
+ import { shortHash } from "../utils/hash.ts";
+ import { parseStreamingJson } from "../utils/json-parse.ts";
+ import { sanitizeSurrogates } from "../utils/sanitize-unicode.ts";
+-import { getSystemMessageText, renderSystemMessageUpdate } from "../utils/text.ts";
+-import { resolveTranscript, resolveTranscriptTools } from "../utils/transcript.ts";
+ import {
+ 	appendGrammarToolInputJsonDelta,
+ 	type GrammarToolInputJsonBuffer,
+@@ -122,10 +119,8 @@
+ export interface ConvertResponsesMessagesOptions {
+ 	includeSystemPrompt?: boolean;
+ 	grammarToolInputProperties?: ReadonlyMap<string, string>;
+-	/** Whether later system messages are sent in place; otherwise they are folded into the leading prompt. */
+-	supportsMidConvoSystemMessages?: boolean;
+-	supportsAdditionalTools?: boolean;
+-	supportsToolSearch?: boolean;
++	deferredTools?: ReadonlyMap<string, Tool>;
++	deferredToolsMode?: "additional-tools" | "tool-search";
+ 	toolOptions?: ConvertResponsesToolsOptions;
+ }
+ 
+@@ -133,7 +128,7 @@
+ 	strict?: boolean | null;
+ 	supportsStrictMode?: boolean;
+ 	supportsOpenAIGrammarTools?: boolean;
+-	toolSearchResult?: boolean;
++	deferLoading?: boolean;
+ }
+ 
+ // =============================================================================
+@@ -142,12 +137,12 @@
+ 
+ export function convertResponsesMessages<TApi extends Api>(
+ 	model: Model<TApi>,
+-	context: TranscriptContext,
++	context: Context,
+ 	allowedToolCallProviders: ReadonlySet<string>,
+ 	options?: ConvertResponsesMessagesOptions,
+ ): ResponseInput {
+-	const normalizedContext = resolveTranscript(context, options?.supportsMidConvoSystemMessages);
+ 	const messages: ResponseInput = [];
++	const loadedToolNames = new Set<string>();
+ 
+ 	const normalizeIdPart = (part: string): string => {
+ 		const sanitized = part.replace(/[^a-zA-Z0-9_-]/g, "_");
+@@ -174,57 +169,21 @@
+ 		return `${normalizedCallId}|${normalizedItemId}`;
+ 	};
+ 
+-	const transformedMessages = transformMessages(normalizedContext.messages, model, normalizeToolCallId);
+-	const transcriptTools = resolveTranscriptTools(
+-		normalizedContext.messages,
+-		(options?.supportsAdditionalTools ?? false) || (options?.supportsToolSearch ?? false),
+-	);
+-	const appendSystemToolAdditions = (message: SystemMessage, seed: string): void => {
+-		const tools = transcriptTools.anchorsAdditions ? (message.toolsAdded ?? []) : [];
+-		if (tools.length === 0) return;
+-		if (options?.supportsAdditionalTools) {
+-			messages.push({
+-				type: "additional_tools",
+-				role: "developer",
+-				tools: convertResponsesTools(tools, options.toolOptions),
+-			} satisfies ResponseInputItem);
+-			return;
+-		}
+-		if (!options?.supportsToolSearch) return;
+-		const names = tools.map((tool) => tool.name);
+-		const callId = `pi_tool_load_${shortHash(`${seed}:${names.join(",")}`)}`;
++	const transformedMessages = transformMessages(context.messages, model, normalizeToolCallId);
++
++	const includeSystemPrompt = options?.includeSystemPrompt ?? true;
++	if (includeSystemPrompt && context.systemPrompt) {
++		const compat = model.compat as { supportsDeveloperRole?: boolean } | undefined;
++		const role = model.reasoning && compat?.supportsDeveloperRole !== false ? "developer" : "system";
+ 		messages.push({
+-			type: "tool_search_call",
+-			call_id: callId,
+-			execution: "client",
+-			status: "completed",
+-			arguments: { query: names.join(" "), limit: names.length },
+-		} satisfies ResponseInputItem);
+-		messages.push({
+-			type: "tool_search_output",
+-			call_id: callId,
+-			execution: "client",
+-			status: "completed",
+-			tools: convertResponsesTools(tools, { ...options.toolOptions, toolSearchResult: true }),
+-		} satisfies ResponseToolSearchOutputItemParam);
+-	};
+-	const includeInitialSystemMessage = options?.includeSystemPrompt ?? true;
+-	const compat = model.compat as { supportsDeveloperRole?: boolean } | undefined;
+-	const instructionRole = model.reasoning && compat?.supportsDeveloperRole !== false ? "developer" : "system";
++			role,
++			content: sanitizeSurrogates(context.systemPrompt),
++		});
++	}
+ 
+ 	let msgIndex = 0;
+-	let sourceIndex = 0;
+ 	for (const msg of transformedMessages) {
+-		const isLeadingSystemMessage = sourceIndex++ === 0 && msg.role === "system";
+-		if (msg.role === "system") {
+-			if (!isLeadingSystemMessage) appendSystemToolAdditions(msg, `system:${msgIndex}`);
+-			if (!isLeadingSystemMessage || includeInitialSystemMessage) {
+-				const text = isLeadingSystemMessage ? getSystemMessageText(msg) : renderSystemMessageUpdate(msg);
+-				if (text.length > 0) {
+-					messages.push({ role: instructionRole, content: sanitizeSurrogates(text) });
+-				}
+-			}
+-		} else if (msg.role === "user") {
++		if (msg.role === "user") {
+ 			if (typeof msg.content === "string") {
+ 				messages.push({
+ 					role: "user",
+@@ -303,6 +262,8 @@
+ 						itemId = undefined;
+ 					}
+ 
++					const canReplayNamespace = isSameModel || options?.deferredTools?.has(toolCall.name) === true;
++
+ 					if (customInputProperty !== undefined) {
+ 						output.push({
+ 							type: "custom_tool_call",
+@@ -312,7 +273,9 @@
+ 							input: sanitizeSurrogates(
+ 								getGrammarToolInput(toolCall.name, toolCall.arguments, customInputProperty),
+ 							),
+-							...(isSameModel && toolCall.namespace !== undefined ? { namespace: toolCall.namespace } : {}),
++							...(canReplayNamespace && toolCall.namespace !== undefined
++								? { namespace: toolCall.namespace }
++								: {}),
+ 						} satisfies ResponseOutputItem);
+ 					} else {
+ 						output.push({
+@@ -321,7 +284,9 @@
+ 							call_id: callId,
+ 							name: toolCall.name,
+ 							arguments: JSON.stringify(toolCall.arguments),
+-							...(isSameModel && toolCall.namespace !== undefined ? { namespace: toolCall.namespace } : {}),
++							...(canReplayNamespace && toolCall.namespace !== undefined
++								? { namespace: toolCall.namespace }
++								: {}),
+ 						});
+ 					}
+ 				}
+@@ -345,8 +310,43 @@
+ 					output,
+ 				});
+ 			}
+-		}
+-		if (!isLeadingSystemMessage) msgIndex++;
++
++			const deferredTools: Tool[] = [];
++			for (const name of msg.addedToolNames ?? []) {
++				const tool = options?.deferredTools?.get(name);
++				if (!tool || loadedToolNames.has(name)) continue;
++				loadedToolNames.add(name);
++				deferredTools.push(tool);
++			}
++			if (deferredTools.length > 0 && options?.deferredToolsMode === "additional-tools") {
++				messages.push({
++					type: "additional_tools",
++					role: "developer",
++					tools: convertResponsesTools(deferredTools, options.toolOptions),
++				} satisfies ResponseInputItem);
++			} else if (deferredTools.length > 0 && options?.deferredToolsMode === "tool-search") {
++				const names = deferredTools.map((tool) => tool.name);
++				const searchCallId = `pi_tool_load_${shortHash(`${msg.toolCallId}:${names.join(",")}`)}`;
++				messages.push({
++					type: "tool_search_call",
++					call_id: searchCallId,
++					execution: "client",
++					status: "completed",
++					arguments: { query: names.join(" "), limit: names.length },
++				} satisfies ResponseInputItem);
++				messages.push({
++					type: "tool_search_output",
++					call_id: searchCallId,
++					execution: "client",
++					status: "completed",
++					tools: convertResponsesTools(deferredTools, {
++						...options.toolOptions,
++						deferLoading: true,
++					}),
++				} satisfies ResponseToolSearchOutputItemParam);
++			}
++		}
++		msgIndex++;
+ 	}
+ 
+ 	return messages;
+@@ -373,7 +373,7 @@
+ 					syntax: grammar.format,
+ 					definition: grammar.definition,
+ 				},
+-				...(options?.toolSearchResult ? { defer_loading: true } : {}),
++				...(options?.deferLoading ? { defer_loading: true } : {}),
+ 			} satisfies OpenAITool;
+ 		}
+ 
+@@ -386,7 +386,7 @@
+ 			name: tool.name,
+ 			description: tool.description,
+ 			parameters: getJsonSchemaToolParameters(tool, strict === true) as Record<string, unknown>,
+-			...(options?.toolSearchResult ? { defer_loading: true } : {}),
++			...(options?.deferLoading ? { defer_loading: true } : {}),
+ 		};
+ 		if (supportsStrictMode) {
+ 			functionTool.strict = strict;
+--- git-pin/src/api/transform-messages.ts
++++ npm-artifact/src/api/transform-messages.ts
+@@ -75,8 +75,8 @@
+ 
+ 	// First pass: transform messages (unsupported image downgrade, thinking blocks, tool call ID normalization)
+ 	const transformed = imageAwareMessages.map((msg) => {
+-		// System and user messages pass through unchanged
+-		if (msg.role === "system" || msg.role === "user") {
++		// User messages pass through unchanged
++		if (msg.role === "user") {
+ 			return msg;
+ 		}
+ 
+@@ -160,11 +160,7 @@
+ 	const result: Message[] = [];
+ 	let pendingToolCalls: ToolCall[] = [];
+ 	let existingToolResultIds = new Set<string>();
+-	// System messages are transparent to tool-call accounting: one that lands between a tool
+-	// call and its results is held back and emitted after the results (synthetic ones
+-	// included), so it never causes a duplicate result for a call that is answered later.
+-	const heldSystemMessages: Message[] = [];
+-	const closePendingToolCalls = () => {
++	const insertSyntheticToolResults = () => {
+ 		if (pendingToolCalls.length > 0) {
+ 			for (const tc of pendingToolCalls) {
+ 				if (!existingToolResultIds.has(tc.id)) {
+@@ -181,8 +177,6 @@
+ 			pendingToolCalls = [];
+ 			existingToolResultIds = new Set();
+ 		}
+-		result.push(...heldSystemMessages);
+-		heldSystemMessages.length = 0;
+ 	};
+ 
+ 	for (let i = 0; i < transformed.length; i++) {
+@@ -190,7 +184,7 @@
+ 
+ 		if (msg.role === "assistant") {
+ 			// If we have pending orphaned tool calls from a previous assistant, insert synthetic results now
+-			closePendingToolCalls();
++			insertSyntheticToolResults();
+ 
+ 			// Skip errored/aborted assistant messages entirely.
+ 			// These are incomplete turns that shouldn't be replayed:
+@@ -213,15 +207,9 @@
+ 		} else if (msg.role === "toolResult") {
+ 			existingToolResultIds.add(msg.toolCallId);
+ 			result.push(msg);
+-		} else if (msg.role === "system") {
+-			if (pendingToolCalls.length > 0) {
+-				heldSystemMessages.push(msg);
+-			} else {
+-				result.push(msg);
+-			}
+ 		} else if (msg.role === "user") {
+-			// A new user turn interrupts tool flow - insert synthetic results for orphaned calls
+-			closePendingToolCalls();
++			// User message interrupts tool flow - insert synthetic results for orphaned calls
++			insertSyntheticToolResults();
+ 			result.push(msg);
+ 		} else {
+ 			result.push(msg);
+@@ -229,7 +217,7 @@
+ 	}
+ 
+ 	// If the conversation ends with unresolved tool calls, synthesize results now.
+-	closePendingToolCalls();
++	insertSyntheticToolResults();
+ 
+ 	return result;
+ }
+--- git-pin/src/models.ts
++++ npm-artifact/src/models.ts
+@@ -30,11 +30,9 @@
+ 	ProviderRequestOptions,
+ 	ProviderStreams,
+ 	SimpleStreamOptions,
+-	TranscriptContext,
+ 	Usage,
+ } from "./types.ts";
+ import { operationSignal, raceWithAbortSignal } from "./utils/abort.ts";
+-import { normalizeContext } from "./utils/transcript.ts";
+ 
+ export { ModelsError, type ModelsErrorCode } from "./auth/resolve.ts";
+ 
+@@ -135,18 +133,13 @@
+ 	 */
+ 	filterModels?(models: readonly Model<TApi>[], credential: Credential | undefined): readonly Model<TApi>[];
+ 
+-	/** Stream a normalized transcript. `Models` normalizes the caller's `Context` before dispatching here. */
+ 	stream<T extends TApi>(
+ 		model: Model<T>,
+-		context: TranscriptContext,
++		context: Context,
+ 		options?: ApiStreamOptions<T>,
+ 	): AssistantMessageEventStream;
+ 
+-	streamSimple(
+-		model: Model<TApi>,
+-		context: TranscriptContext,
+-		options?: SimpleStreamOptions,
+-	): AssistantMessageEventStream;
++	streamSimple(model: Model<TApi>, context: Context, options?: SimpleStreamOptions): AssistantMessageEventStream;
+ 	fetchDeferred?(
+ 		model: Model<TApi>,
+ 		handle: DeferredHandle,
+@@ -681,14 +674,13 @@
+ 		context: Context,
+ 		options?: ModelsApiStreamOptions<TApi>,
+ 	): AssistantMessageEventStream {
+-		const transcript = normalizeContext(context);
+ 		return lazyStream(model, async () => {
+ 			const provider = this.requireProvider(model);
+ 			const { requestModel, requestOptions } = await this.applyAuth(
+ 				model,
+ 				options as ModelsApiStreamOptions<Api> | undefined,
+ 			);
+-			return provider.stream(requestModel as Model<TApi>, transcript, requestOptions as ApiStreamOptions<TApi>);
++			return provider.stream(requestModel as Model<TApi>, context, requestOptions as ApiStreamOptions<TApi>);
+ 		});
+ 	}
+ 
+@@ -701,11 +693,10 @@
+ 	}
+ 
+ 	streamSimple(model: Model<Api>, context: Context, options?: ModelsSimpleStreamOptions): AssistantMessageEventStream {
+-		const transcript = normalizeContext(context);
+ 		return lazyStream(model, async () => {
+ 			const provider = this.requireProvider(model);
+ 			const { requestModel, requestOptions } = await this.applyAuth(model, options);
+-			return provider.streamSimple(requestModel, transcript, requestOptions as SimpleStreamOptions);
++			return provider.streamSimple(requestModel, context, requestOptions as SimpleStreamOptions);
+ 		});
+ 	}
+ 
+--- git-pin/src/types.ts
++++ npm-artifact/src/types.ts
+@@ -270,12 +270,8 @@
+  * `Provider.stream()` via `ApiStreamOptions`.
+  */
+ export interface ProviderStreams {
+-	stream(model: Model<Api>, context: TranscriptContext, options?: StreamOptions): AssistantMessageEventStream;
+-	streamSimple(
+-		model: Model<Api>,
+-		context: TranscriptContext,
+-		options?: SimpleStreamOptions,
+-	): AssistantMessageEventStream;
++	stream(model: Model<Api>, context: Context, options?: StreamOptions): AssistantMessageEventStream;
++	streamSimple(model: Model<Api>, context: Context, options?: SimpleStreamOptions): AssistantMessageEventStream;
+ 	fetchDeferred?(
+ 		model: Model<Api>,
+ 		handle: DeferredHandle,
+@@ -328,8 +324,6 @@
+ // Generic StreamFunction with typed options.
+ //
+ // Contract:
+-// - Receives a normalized transcript: the system prompt and tools live in the
+-//   leading system message, never on the context itself.
+ // - Must return an AssistantMessageEventStream.
+ // - Direct streamSimple() calls may throw synchronously when request auth is
+ //   missing. Once a stream is returned, request/model/runtime failures should
+@@ -338,7 +332,7 @@
+ //   "error" or "aborted" and errorMessage, emitted via the stream protocol.
+ export type StreamFunction<TApi extends Api = Api, TOptions extends StreamOptions = StreamOptions> = (
+ 	model: Model<TApi>,
+-	context: TranscriptContext,
++	context: Context,
+ 	options?: TOptions,
+ ) => AssistantMessageEventStream;
+ 
+@@ -380,7 +374,7 @@
+ 	type: "toolCall";
+ 	id: string;
+ 	name: string;
+-	arguments: JsonObject;
++	arguments: Record<string, any>;
+ 	thoughtSignature?: string; // Google-specific: opaque signature for reusing thought context
+ 	/** OpenAI Responses namespace for calls to dynamically loaded or namespaced tools. */
+ 	namespace?: string;
+@@ -411,53 +405,7 @@
+ 
+ export type StopReason = "pending" | "stop" | "length" | "toolUse" | "error" | "aborted" | "deferred";
+ 
+-export type JsonValue = null | boolean | number | string | readonly JsonValue[] | JsonObject;
+-export type JsonObject = { [key: string]: JsonValue };
+-
+-type IsAny<T> = 0 extends 1 & T ? true : false;
+-type IsExactlyJsonValue<T> = [T] extends [JsonValue] ? ([JsonValue] extends [T] ? true : false) : false;
+-type IsJsonProperty<T> = IsAny<T> extends true
+-	? false
+-	: unknown extends T
+-		? false
+-		: [Exclude<T, undefined>] extends [never]
+-			? true
+-			: IsJsonCompatible<Exclude<T, undefined>>;
+-type InvalidJsonKeys<T extends object> = {
+-	[TKey in keyof T]-?: TKey extends string | number ? (IsJsonProperty<T[TKey]> extends true ? never : TKey) : TKey;
+-}[keyof T];
+-type IsJsonCompatible<T> = IsAny<T> extends true
+-	? false
+-	: unknown extends T
+-		? false
+-		: IsExactlyJsonValue<T> extends true
+-			? true
+-			: T extends null | boolean | number | string
+-				? true
+-				: T extends undefined
+-					? false
+-					: T extends readonly (infer TItem)[]
+-						? IsJsonCompatible<TItem>
+-						: T extends (...args: never[]) => unknown
+-							? false
+-							: T extends object
+-								? [InvalidJsonKeys<T>] extends [never]
+-									? true
+-									: false
+-								: false;
+-
+-/** The JSON representation of a typed in-memory value. Optional object properties remain optional. */
+-export type JsonRepresentation<T> = IsAny<T> extends true
+-	? JsonValue
+-	: unknown extends T
+-		? JsonValue
+-		: [T] extends [JsonValue]
+-			? T
+-			: T extends readonly unknown[]
+-				? { [TKey in keyof T]: JsonRepresentation<Exclude<T[TKey], undefined>> }
+-				: T extends object
+-					? { [TKey in keyof T]: JsonRepresentation<Exclude<T[TKey], undefined>> }
+-					: never;
++export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+ 
+ export interface DeferredHandle {
+ 	provider: string;
+@@ -471,34 +419,6 @@
+ 	data?: JsonValue;
+ }
+ 
+-/**
+- * System instructions and tool declarations at one point in the transcript.
+- *
+- * The leading system message is the system prompt. Later system messages change it:
+- * `content` adds instructions from that point on, `sections` replace or remove named
+- * prompt sections, and `toolsAdded`/`toolsRemoved` change the tool set. Replaying
+- * every system message in order yields the current prompt and tools. Providers that
+- * accept system messages mid-conversation send each one in place; other providers
+- * rebuild the leading system message from the replayed state.
+- */
+-export interface SystemMessage {
+-	role: "system";
+-	/** Instruction text. On the leading message this is the base prompt; later, additional instructions. */
+-	content: string | TextContent[];
+-	/**
+-	 * Named, ordered prompt sections rendered verbatim after `content`. The leading message
+-	 * declares them; later messages replace sections by name, and `null` removes one. Keep
+-	 * each section self-delimiting (a tag, a heading) so the model can relate an update to
+-	 * the original. Avoid integer-like names; JSON objects reorder those.
+-	 */
+-	sections?: Record<string, string | null>;
+-	/** Complete definitions of tools that become available at this point. */
+-	toolsAdded?: Tool[];
+-	/** Tools that stop being available at this point. */
+-	toolsRemoved?: ToolReference[];
+-	timestamp: number; // Unix timestamp in milliseconds
+-}
+-
+ export interface UserMessage {
+ 	role: "user";
+ 	content: string | (TextContent | ImageContent)[];
+@@ -511,7 +431,7 @@
+ 	api: Api;
+ 	provider: ProviderId;
+ 	model: string;
+-	responseModel?: string; // Concrete model reported by the provider when different from the requested `model`
++	responseModel?: string; // Concrete `chunk.model` when different from the requested `model` (e.g. OpenRouter `auto` -> `anthropic/...`)
+ 	responseId?: string; // Provider-specific response/message identifier when the upstream API exposes one
+ 	/** Exact provider-native effort level used for this response. Absent for legacy or unmanaged responses. */
+ 	providerThinkingLevel?: string;
+@@ -529,21 +449,25 @@
+ 	timestamp: number; // Unix timestamp in milliseconds
+ }
+ 
+-export type ToolResultMessage<TDetails = JsonValue> = IsJsonCompatible<TDetails> extends true
+-	? {
+-			role: "toolResult";
+-			toolCallId: string;
+-			toolName: string;
+-			content: (TextContent | ImageContent)[]; // Supports text and images
+-			details?: JsonRepresentation<TDetails>;
+-			/** Usage from the tool execution itself, if available. Not part of main LLM context accounting. */
+-			usage?: Usage;
+-			isError: boolean;
+-			timestamp: number; // Unix timestamp in milliseconds
+-		}
+-	: never;
+-
+-export type Message = SystemMessage | UserMessage | AssistantMessage | ToolResultMessage;
++export interface ToolResultMessage<TDetails = any> {
++	role: "toolResult";
++	toolCallId: string;
++	toolName: string;
++	content: (TextContent | ImageContent)[]; // Supports text and images
++	details?: TDetails;
++	/** Usage from the tool execution itself, if available. Not part of main LLM context accounting. */
++	usage?: Usage;
++	/**
++	 * Names from `Context.tools` that became available after this result.
++	 * Providers with native deferred tool loading use this as the load point;
++	 * other providers ignore it and use `Context.tools` normally.
++	 */
++	addedToolNames?: string[];
++	isError: boolean;
++	timestamp: number; // Unix timestamp in milliseconds
++}
++
++export type Message = UserMessage | AssistantMessage | ToolResultMessage;
+ 
+ export type ImagesInputContent = TextContent | ImageContent;
+ export type ImagesOutputContent = TextContent | ImageContent;
+@@ -597,34 +521,11 @@
+ 	constrainedSampling?: false | ConstrainedSamplingConfig;
+ }
+ 
+-export interface ToolReference {
+-	name: string;
+-}
+-
+-/**
+- * Request input accepted by the public stream entry points (`Models.stream()`,
+- * `streamSimple()`, ...). `systemPrompt` and `tools` are shorthand for a leading
+- * system message; `normalizeContext()` folds them into one before the request
+- * reaches a provider.
+- */
+ export interface Context {
+ 	systemPrompt?: string;
+ 	messages: Message[];
+ 	tools?: Tool[];
+ }
+-
+-declare const transcriptContextBrand: unique symbol;
+-
+-/**
+- * Normalized request context passed to providers and API implementations. The
+- * prompt and tool declarations are carried by the transcript's system messages.
+- * Only `normalizeContext()` produces this type, so a raw `Context` cannot reach
+- * provider code by accident.
+- */
+-export type TranscriptContext = {
+-	messages: Message[];
+-	readonly [transcriptContextBrand]: true;
+-};
+ 
+ /**
+  * Event protocol for AssistantMessageEventStream.
+@@ -720,16 +621,14 @@
+ 	supportsThinkingTokenBudget?: boolean;
+ 	/** Whether the provider supports OpenAI custom tools with Lark/regex grammar formats. When false, grammar-constrained tools fall back to normal function tools. Default: false; the generated model catalog enables it for capable models. */
+ 	supportsOpenAIGrammarTools?: boolean;
+-	/** Whether the exact model accepts system or developer messages after the conversation has started. When false, later system messages are folded into the leading system message. Default: false; the generated model catalog enables it for verified models. */
+-	supportsMidConvoSystemMessages?: boolean;
+-	/** Whether system messages can introduce additional tools mid-conversation. Requires `supportsMidConvoSystemMessages`. Default: false; the generated model catalog enables it for capable models. */
+-	supportsMidConvoToolAdditions?: boolean;
+ 	/** Whether the provider supports the `strict` field in tool definitions. Default: true. */
+ 	supportsStrictMode?: boolean;
+ 	/** Cache control convention for prompt caching. "anthropic" applies Anthropic-style `cache_control` markers to the system prompt, last tool definition, and last user, assistant, or tool-result text content. */
+ 	cacheControlFormat?: "anthropic";
+-	/** Whether to send session-affinity data from `options.sessionId`. Default: true for OpenRouter endpoints, false otherwise. */
++	/** Whether to send session-affinity data from `options.sessionId`. Default: false. */
+ 	sendSessionAffinityHeaders?: boolean;
++	/** Provider-specific deferred tool serialization mode. */
++	deferredToolsMode?: "kimi";
+ 	/** Session-affinity header format: `openai` sends `session_id`, `x-client-request-id`, and `x-session-affinity`; `openai-nosession` sends `x-client-request-id` and `x-session-affinity`; `openrouter` sends `x-session-id`. Does not affect the `prompt_cache_key` body param, which is governed by cache retention. Default: auto-detected. */
+ 	sessionAffinityFormat?: SessionAffinityFormat;
+ 	/** Whether the provider supports long prompt cache retention (`prompt_cache_retention: "24h"` or Anthropic-style `cache_control.ttl: "1h"`, depending on format). Default: true. */
+@@ -747,8 +646,6 @@
+ export interface OpenAIResponsesCompat {
+ 	/** Whether the provider supports the `developer` role (vs `system`). Default: true. */
+ 	supportsDeveloperRole?: boolean;
+-	/** Whether the exact model accepts developer or system messages after the conversation has started. When false, later system messages are folded into the leading system message. Default: false; the generated model catalog enables it for verified models. */
+-	supportsMidConvoSystemMessages?: boolean;
+ 	/** Session-affinity header format: `openai` sends `session_id` and `x-client-request-id`; `openai-nosession` sends `x-client-request-id`; `openrouter` sends `x-session-id`. Does not affect the `prompt_cache_key` body param, which is governed by cache retention. Default: auto-detected. */
+ 	sessionAffinityFormat?: SessionAffinityFormat;
+ 	/** Whether the provider supports long prompt cache retention. This uses `prompt_cache_options.ttl: "30m"` on GPT-5.6+ and `prompt_cache_retention: "24h"` on earlier models. Default: true. */
+@@ -759,7 +656,7 @@
+ 	supportsOpenAIGrammarTools?: boolean;
+ 	/** Whether the model supports message-anchored `additional_tools` input items. Default: false. */
+ 	supportsAdditionalTools?: boolean;
+-	/** Whether the model supports client-executed tool search for transcript-anchored additions. Default: false. */
++	/** Whether the model supports client-executed tool search for deferred tools. Default: false. */
+ 	supportsToolSearch?: boolean;
+ 	/** Whether the model accepts `prompt_cache_options` (OpenAI GPT-5.6+ prompt caching). Older OpenAI models reject the parameter. Default: false. */
+ 	supportsExplicitPromptCacheMode?: boolean;
+@@ -787,8 +684,6 @@
+ 	 * Default: false.
+ 	 */
+ 	sendSessionAffinityHeaders?: boolean;
+-	/** Session-affinity format. `"openrouter"` sends `x-session-id`; when unset, sends `x-session-affinity`. */
+-	sessionAffinityFormat?: "openrouter";
+ 	/**
+ 	 * Whether the provider supports Anthropic-style `cache_control` markers on
+ 	 * tool definitions. When false, `cache_control` is omitted from tool params.
+@@ -819,10 +714,6 @@
+ 	supportsStrictTools?: boolean;
+ 	/** Whether the exact model transport supports effort-only system messages and thinking binding controls. Default: false. */
+ 	supportsMidConvoEffort?: boolean;
+-	/** Whether the exact model accepts system-role messages inside the conversation. When false, later system messages are folded into the top-level system prompt. Default: false. */
+-	supportsMidConvoSystemMessages?: boolean;
+-	/** Whether the exact model accepts mid-conversation `tool_addition` and `tool_removal` blocks. Requires `supportsMidConvoSystemMessages`. Default: false. */
+-	supportsMidConvoToolChanges?: boolean;
+ 	/**
+ 	 * Models Anthropic accepts in `fallbacks` for server-side refusal fallback,
+ 	 * with local pricing metadata for returned fallback responses. When absent or
+@@ -830,18 +721,18 @@
+ 	 * with no permitted fallback targets.
+ 	 */
+ 	allowedFallbackModels?: AnthropicAllowedFallbackModel[];
++	/**
++	 * Whether the provider supports deferred tools loaded by `tool_reference`
++	 * blocks in tool results. Default: true for first-party Anthropic models
++	 * except Haiku and models older than Claude 4.5; false for other providers.
++	 */
++	supportsToolReferences?: boolean;
+ }
+ 
+ /** Compatibility settings for Amazon Bedrock models. */
+ export interface BedrockCompat {
+ 	/** Whether the model supports Bedrock strict tool schemas. Default: false. */
+ 	supportsStrictMode?: boolean;
+-}
+-
+-/** Compatibility settings for the Mistral chat API. */
+-export interface MistralConversationsCompat {
+-	/** Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message. Default: false. */
+-	supportsMidConvoSystemMessages?: boolean;
+ }
+ 
+ /**
+@@ -977,9 +868,7 @@
+ 				? AnthropicMessagesCompat
+ 				: TApi extends "bedrock-converse-stream"
+ 					? BedrockCompat
+-					: TApi extends "mistral-conversations"
+-						? MistralConversationsCompat
+-						: never;
++					: never;
+ }
+ 
+ export interface ImagesModel<TApi extends ImagesApi>

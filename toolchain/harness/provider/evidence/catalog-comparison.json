@@ -1,0 +1,106 @@
+{
+  "origin": "Exact pinned generator codexModels literal and its complete metadata pass, evaluated offline; no remote catalog inputs",
+  "artifact": {
+    "id": "gpt-6-astra",
+    "name": "GPT-6 Astra",
+    "api": "openai-codex-responses",
+    "provider": "openai-codex",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "reasoning": true,
+    "input": [
+      "text",
+      "image"
+    ],
+    "cost": {
+      "input": 10,
+      "output": 50,
+      "cacheRead": 1,
+      "cacheWrite": 12.5,
+      "tiers": [
+        {
+          "inputTokensAbove": 272000,
+          "input": 20,
+          "output": 75,
+          "cacheRead": 2,
+          "cacheWrite": 25
+        }
+      ]
+    },
+    "contextWindow": 272000,
+    "maxTokens": 128000,
+    "thinkingLevelMap": {
+      "off": null,
+      "minimal": "low",
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "xhigh": "xhigh",
+      "max": "max"
+    },
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsAdditionalTools": true,
+      "supportsToolSearch": true
+    }
+  },
+  "selected": {
+    "id": "gpt-6-astra",
+    "name": "GPT-6 Astra",
+    "api": "openai-codex-responses",
+    "provider": "openai-codex",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "reasoning": true,
+    "input": [
+      "text",
+      "image"
+    ],
+    "cost": {
+      "input": 10,
+      "output": 50,
+      "cacheRead": 1,
+      "cacheWrite": 12.5,
+      "tiers": [
+        {
+          "inputTokensAbove": 272000,
+          "input": 20,
+          "output": 75,
+          "cacheRead": 2,
+          "cacheWrite": 25
+        }
+      ]
+    },
+    "contextWindow": 272000,
+    "maxTokens": 128000,
+    "thinkingLevelMap": {
+      "off": null,
+      "minimal": "low",
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "xhigh": "xhigh",
+      "max": "max"
+    },
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsAdditionalTools": true,
+      "supportsToolSearch": true,
+      "supportsMidConvoSystemMessages": true
+    }
+  },
+  "differences": {
+    "compat": {
+      "artifact": {
+        "supportsOpenAIGrammarTools": true,
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true
+      },
+      "pinnedGenerator": {
+        "supportsOpenAIGrammarTools": true,
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsMidConvoSystemMessages": true
+      }
+    }
+  },
+  "selected_sha256": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744"
+}
