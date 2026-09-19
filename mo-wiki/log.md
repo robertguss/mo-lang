@@ -987,3 +987,6 @@
 
 ## [2026-09-19] verify | step 43 on Linux: 263 of 263
 - 2:07 PM ET: the VM full suite at 4ad89c1a, exit 0, 18 minutes; added to the step 43 evidence. Step 43 is now green on both platforms.
+
+## [2026-09-19] accept | end to end v1: the Mo agent on the machine, the scripted Logstat repair
+- 2:20 PM ET: merged to main through lead/verify-e2e (5403d370). Lead rerun on the machine all exit 0, inventory clean, no token in the evidence. Three rows in decisions/decision-log.md; CHANGELOG entry. Defects D1 (to the report-cap brief) and D2 (to the six-tool server). Step 41's agent showed done while its corpus run continued: not finished.

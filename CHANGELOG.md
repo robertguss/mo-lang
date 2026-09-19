@@ -2,6 +2,22 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## The Mo agent runs end to end on the machine — 19 Sep 2026, 2:20 PM ET
+
+- For the first time the Mo agent (`mo run` and a `mo build` binary) drove the
+  real workspace service and real containers on `mo-executor-r01`: six tools,
+  each result equal to what the service journalled, the Book holding exactly
+  the prior steps before every dispatch.
+- The scripted Logstat repair: a semantic RED, read, exact edit, GREEN, and the
+  protected verdict on the frozen snapshot. The verdict refuses a forged
+  success and a candidate that rewrote its own test.
+- Negative runs (owner killed, candidate limit, outer deadline) end with
+  truthful reports; every workspace proved gone; inventories clean.
+- Two defects found at the joins, queued: the last clamped command is always
+  reported unknown (D1); after a client disconnect no verdict can be taken (D2).
+- A Claude Opus 5 worker; the lead reran smoke, Logstat, two negatives and the
+  inventory on the machine. A scripted model: plumbing, not model ability.
+
 ## Step 43: every number in source is held to its range — 19 Sep 2026, 1:59 PM ET
 
 - The auditor's PR 15 findings fixed. One reader of numbers

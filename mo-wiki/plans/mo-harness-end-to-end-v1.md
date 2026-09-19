@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification]
 sources: [plans/mo-first-coding-harness.md, plans/mo-application-workspace-v1.md]
-status: in-progress
+status: done
 ---
 
 # End to end on the machine, and the scripted Logstat repair
@@ -93,6 +93,28 @@ and summary lines. Evidence under 2 MiB. Small commits as yourself with a
 commits, the exact commands to rerun each part, defects found at the joins,
 decisions the brief did not cover, limitations. While anything runs, wait in
 the foreground so your tab does not look finished.
+
+## Result
+
+Accepted 2:20 PM ET, 19 Sep 2026, merged to `main` through `lead/verify-e2e`
+(`5403d370`). Worker: Claude Opus 5; report
+`examples/programs/agent/tests/end-to-end-v1/REPORT.md`. For the first time the
+Mo agent ran end to end on the machine, in `mo run` and as a binary: all six
+tools through the real service and real containers, each Book result equal to
+the journalled reply, the scripted Logstat repair RED then GREEN, the protected
+verdict passing it and refusing a forged success and a candidate that rewrote
+its own test, three negative runs with truthful reports, every workspace proved
+gone. Lead rerun on the machine (`evidence/lead-*`): smoke in both runtimes, the
+native Logstat repair with both controls, service-killed and candidate-limit,
+all exit 0 with no failed check; inventory `{"runs": 74, "workspaces": 56,
+"cgroups": 71, "clean": true}`; a lead scan of 175 evidence files for the seven
+run tokens found none. No full suite was run for this slice: it adds no `.mo`
+and no toolchain file, and the suite was 263 of 263 on both platforms on the
+tree beneath it. Two defects found and not fixed, by the brief: D1 (the clamped
+command's margin) joins [[mo-agent-report-cap]]; D2 (after a client disconnect
+the operator cannot freeze or verify, so a run that ends on a timed-out call
+loses its verdict) is a required control of the Mo six-tool server. The model
+was scripted: this proves the plumbing, not model ability or language value.
 
 ## Related
 

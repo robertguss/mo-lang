@@ -901,6 +901,14 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Hermes's [[bend2]] comparison is merged after the lead's checks (lint and raw hashes, two citations against upstream at the pin, the executed checks found in the raw logs). Its proposals are recorded, not decided: (1) a task binds an owner-approved requirements bundle by hash, and an omitted, changed, failed or unrun obligation blocks acceptance; (2) a release-matched `mo guide` and symbol documentation shipped in the executable; (3) diagnostics and receipts that name the unmet obligation and a status (`tested`, `not_run`, `timed_out`...), never one broad "verified". (1) and (3) go into the Mo six-tool server's and the protected verifier's briefs as design inputs; (2) is a candidate toolchain step after steps 42 and the CI gate. Not adopted: a proof calculus, global affinity, a GPU scheduler. | Fable lead | recorded | the six-tool server's brief |
 
+## 19 Sep 2026 — End to end v1 accepted, 2:20 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| The end-to-end slice is accepted: the Mo agent, a scripted model, the real service and real containers, in both runtimes, with the scripted Logstat repair and a protected verdict that refuses a forged success and a rewritten test. The lead reran it on the machine; inventory clean; no token in 175 evidence files. This closes the day's first "owed and unmet" item. It proves plumbing only. | Fable lead | accepted | the first model-driven task |
+| Defect D1 (the agent gives a late command all the time that is left and waits no longer than that, so the last clamped command is always "unknown" though it completed) is fixed in Mo with a named collection margin, in [[mo-agent-report-cap]]. `semantic` | Fable lead | decided | that brief's RED test |
+| Defect D2 (the frontend closes the operator's channel when the client disconnects, so a run that ends on a timed-out call can never be frozen or verified) is not patched in Python: the Mo six-tool server must keep the operator's path independent of any candidate connection, as a required control beside H1 to H7. **For Robert**: until that server exists, a real run that ends on a timeout loses its verdict; say if you want the Python patched first. `semantic` | Fable lead | decided | the six-tool server's controls |
+
 ## Related
 
 - [[session-05]]
