@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "negatives",
+    "native",
+    "deadline-native-01",
+    "--only",
+    "outer-deadline"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1",
+  "seconds": 1300,
+  "head": "9fef2e18a19afa3d10a6b0f2f0e6aa38b188a497",
+  "dirty": [
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/negatives-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/negatives-native-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/negatives-native-01/"
+  ]
+}
