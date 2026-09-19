@@ -8,7 +8,7 @@ from pathlib import Path
 
 from common import AGENT, HERE, MO, ROOT, Attempt, invoke, trimmed
 
-MO_CONTROLS = {'findings': 'controls/findings.mo.txt'}
+MO_CONTROLS = {'findings': 'controls/findings.mo.txt', 'near': 'controls/near.mo.txt'}
 PY_CONTROLS = {'guard': 'guard_control.py', 'evidence': 'evidence_control.py'}
 
 

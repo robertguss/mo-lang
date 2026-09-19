@@ -1,5 +1,7 @@
 module Agent.WorkspaceAdapter
-expose Settings, Scan, wire_version, file_ms, command_ms, candidate_ms, candidate_floor_ms, request_cap, response_cap, config_cap, strict, scanned, members, settings, local, checked, stops?
+expose Settings, Scan, wire_version, file_ms, command_ms, candidate_ms, candidate_floor_ms, request_cap, response_cap, config_cap, tools, strict, scanned, members, settings, local, sent, checked, stops?, refusal?
+
+use Agent.Tools{Call}
 
 intent "The six workspace tools over the accepted mo-workspace-http-v1 loopback bridge: trusted settings supply the endpoint, identities, capability and timeouts, the model supplies only tool arguments; each response is checked against the contract's exact envelope, status and per-operation shapes, and anything uncertain is unknown execution that stops dispatch."
 
@@ -167,6 +169,80 @@ end
 # An outcome the adapter states itself: a refusal before any request, or an uncertain result.
 fn local(state: String, error: String, execution: String) : String
   "{\"adapter\": \"mo-application-workspace-v1\", \"state\": #{Json.encode(state)}, \"execution\": #{Json.encode(execution)}, \"error\": #{Json.encode(error)}}"
+end
+
+# The six operations, each routed to the bridge and never to a local tool.
+fn tools() : List(String)
+  ["list_files", "read_file", "search", "write_file", "exact_edit", "command"]
+end
+
+# The arguments an operation takes from the model. The command's timeout is the adapter's.
+fn required(operation: String) : List(String)
+  case operation
+    "read_file": ["path"]
+    "search": ["query"]
+    "write_file": ["path", "text"]
+    "exact_edit": ["path", "old_text", "new_text"]
+    "command": ["command"]
+    _: []
+  end
+end
+
+fn optional(operation: String) : List(String)
+  if operation == "list_files" or operation == "search": ["path"] else: []
+end
+
+fn fitting?(args: Map(String, String), operation: String) : Bool
+  needed = required(operation)
+  allowed = needed.concat(optional(operation))
+  needed.all?(fn(key) args.has?(key) end) and args.keys.all?(fn(key) allowed.contains?(key) end)
+end
+
+fn opening(settings: Settings, operation: String, id: String) : String
+  "{\"version\": #{Json.encode(wire_version())}, \"run_id\": #{Json.encode(settings.run)}, \"workspace_id\": #{Json.encode(settings.workspace)}, \"call_id\": #{Json.encode(id)}, \"operation\": #{Json.encode(operation)}, \"args\": "
+end
+
+# One call, sent at most once. Grant, exact arguments, identity and the encoded size are checked
+# before anything is sent; the endpoint, identities, capability and timeouts are the operator's.
+fn sent(http: Http, settings: Settings, call: Call, id: String, by: Deadline) : String
+  return local("refusal", "grant", "not_started") if !call.granted.contains?(call.tool)
+  return local("refusal", "tool", "not_started") if !tools().contains?(call.tool)
+  return local("refusal", "arguments", "not_started") if !fitting?(call.args, call.tool)
+  return local("refusal", "call_id", "not_started") if !id?(id)
+  ms = min_of(candidate_ms(), by.remaining.ms)
+  if call.tool == "command" and ms < candidate_floor_ms()
+    return local("refusal", "deadline", "not_started")
+  end
+  head = opening(settings, call.tool, id)
+  body = if call.tool == "command"
+    "#{head}{\"command\": #{Json.encode(call.args.get("command") or "")}, \"timeout_ms\": #{ms}}}"
+  else
+    "#{head}#{Json.encode(call.args)}}"
+  end
+  return local("refusal", "request_too_large", "not_started") if body.byte_size > request_cap()
+  posted(http, settings, call.tool, id, body, by)
+end
+
+fn posted(http: Http, settings: Settings, operation: String, id: String, body: String,
+  by: Deadline) : String
+  wait = by.at_most(if operation == "command": command_ms().ms else: file_ms().ms)
+  return local("refusal", "deadline", "not_started") if wait.remaining == 0.ms
+  headers = Map.new().set("content-type", "application/json").set("x-mo-workspace-token",
+    settings.token)
+  request = Request(method: "POST", path: "/tool", headers: headers, body: body)
+  case http.send(request, host: "127.0.0.1", port: settings.port, within: wait)
+    Ok(response): checked(response.status, response.body, settings, id, operation)
+    Error(Timeout): local("timeout", "transport_timeout", "unknown")
+    Error(_): local("failure", "transport", "unknown")
+  end
+end
+
+# A refusal, judged from the outcome's own state field.
+fn refusal?(output: String) : Bool
+  case Json.decode(output)
+    Ok(Object(fields)): string_in(fields, "state") == Some("refusal")
+    Ok(_) | Error(_): false
+  end
 end
 
 fn states() : List(String)
