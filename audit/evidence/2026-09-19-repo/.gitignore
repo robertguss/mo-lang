@@ -1,0 +1,8 @@
+__pycache__/
+core/cache-global/
+core/cache-local/
+core/install/
+core/zig-out/
+core/suite-generated/
+core/suite-toolchain-cache/
+executor/tmp/

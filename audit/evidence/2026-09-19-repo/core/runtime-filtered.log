@@ -1,0 +1,7 @@
+Build Summary: 5/5 steps succeeded; 39/39 tests passed
+test success
++- run test 39 pass (39 total) 387ms MaxRSS:278M
+   +- compile test Debug native success 2s MaxRSS:221M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 8ms MaxRSS:40M
+

@@ -1,0 +1,4 @@
+mailbox-overflow.mo:3:9: MO0316 Counter is not a child of any supervisor; add a supervisor with child Counter.
+  process Counter() mailbox: 4294967296
+          ^
+  why: A process not under a supervisor does not compile (chapter 3, processes): every crash has someone to restart it.

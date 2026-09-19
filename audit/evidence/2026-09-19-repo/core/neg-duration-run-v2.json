@@ -1,0 +1,11 @@
+{
+  "command": [
+    "./install/bin/mo",
+    "run",
+    "neg-duration.mo"
+  ],
+  "cwd": "audit/evidence/2026-09-19-repo/core",
+  "timeout_seconds": "15",
+  "returncode": 1,
+  "elapsed_seconds": 0.002096950076520443
+}

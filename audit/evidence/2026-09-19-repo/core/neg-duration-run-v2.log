@@ -1,0 +1,4 @@
+neg-duration.mo:6:29: MO0206 - needs numbers, found Duration
+    platform.stdout.write("#{(-d).ms}\n")
+                              ^
+  why: Mo has no implicit conversion: a value is used only where its type is expected. Named conversions cross types.

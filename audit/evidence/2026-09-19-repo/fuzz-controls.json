@@ -1,0 +1,85 @@
+{
+  "kind": "MOCKED harness control flow, not TLS fuzz results",
+  "results": [
+    {
+      "minutes": ".001",
+      "returncode": 1,
+      "calls": [
+        {
+          "exit": 134,
+          "output": "mock panic"
+        },
+        {
+          "exit": 3,
+          "output": "mock hang"
+        },
+        {
+          "exit": 134,
+          "output": "MOCK BATCH FAILURE"
+        },
+        {
+          "exit": 0,
+          "output": ""
+        },
+        {
+          "exit": 0,
+          "output": ""
+        }
+      ],
+      "retained": [
+        "fuzz-1/failed-batches/batch-00001/in-000.bin",
+        "fuzz-1/failed-batches/batch-00001/in-001.bin",
+        "fuzz-1/failed-batches/batch-00001/output.txt"
+      ],
+      "output": "FAILED BATCH batch-00001: exit 134\n2 inputs in 1 batches, seed 1: 1 failed batches, 0 crashes; 1 CPU s (0.0 min), 0 s wall\n"
+    },
+    {
+      "minutes": "0",
+      "returncode": 0,
+      "calls": [
+        {
+          "exit": 134,
+          "output": "mock panic"
+        },
+        {
+          "exit": 3,
+          "output": "mock hang"
+        }
+      ],
+      "retained": [],
+      "output": "0 inputs in 0 batches, seed 1: 0 failed batches, 0 crashes; 1 CPU s (0.0 min), 0 s wall\n"
+    },
+    {
+      "minutes": "-1",
+      "returncode": 0,
+      "calls": [
+        {
+          "exit": 134,
+          "output": "mock panic"
+        },
+        {
+          "exit": 3,
+          "output": "mock hang"
+        }
+      ],
+      "retained": [],
+      "output": "0 inputs in 0 batches, seed 1: 0 failed batches, 0 crashes; 1 CPU s (0.0 min), 0 s wall\n"
+    },
+    {
+      "minutes": "nan",
+      "returncode": 0,
+      "calls": [
+        {
+          "exit": 134,
+          "output": "mock panic"
+        },
+        {
+          "exit": 3,
+          "output": "mock hang"
+        }
+      ],
+      "retained": [],
+      "output": "0 inputs in 0 batches, seed 1: 0 failed batches, 0 crashes; 1 CPU s (0.0 min), 0 s wall\n"
+    }
+  ]
+}

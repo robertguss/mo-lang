@@ -1,0 +1,7 @@
+Build Summary: 5/5 steps succeeded; 28/28 tests passed
+test success
++- run test 28 pass (28 total) 16s MaxRSS:46M
+   +- compile test Debug native success 2s MaxRSS:222M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 7ms MaxRSS:41M
+

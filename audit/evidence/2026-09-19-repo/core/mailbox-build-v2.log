@@ -1,0 +1,16 @@
+thread 178156 panic: integer does not fit in destination type
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/emit_c.zig:950:65: 0x12fc23b in run (mo)
+            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(parseInt(e.text(data.mailbox))),
+                                                                ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/emit_c.zig:61:14: 0x1183f34 in emit (mo)
+    try e.run();
+             ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/main.zig:280:36: 0x119030a in run (mo)
+        switch (try mo.cbuild.build(arena, io, init.environ_map, program, &checked, options)) {
+                                   ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/main.zig:77:19: 0x117c800 in onStack (mo)
+    result.* = run(init);
+                  ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/audit-tools/zig-x86_64-linux-0.16.0/lib/std/os/linux/x86_64.zig:105:5: 0x1177c91 in clone (mo)
+    asm volatile (
+    ^

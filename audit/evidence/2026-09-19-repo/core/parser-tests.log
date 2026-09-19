@@ -1,0 +1,7 @@
+src/cbuild.zig:42:34: error: unable to open 'mo_rt.h': FileNotFound
+pub const runtime_h = @embedFile("mo_rt.h");
+                                 ^~~~~~~~~
+referenced by:
+    test.the C runtime's depth limit is the interpreter's: src/contracts.zig:41:69
+    contracts: src/runner.zig:17:27
+    5 reference(s) hidden; use '-freference-trace=7' to see all references

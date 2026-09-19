@@ -1,0 +1,11 @@
+{
+  "command": [
+    "./install/bin/mo",
+    "build",
+    "mailbox-overflow.mo"
+  ],
+  "cwd": "audit/evidence/2026-09-19-repo/core",
+  "timeout_seconds": "15",
+  "returncode": 1,
+  "elapsed_seconds": 0.0019717940595000982
+}

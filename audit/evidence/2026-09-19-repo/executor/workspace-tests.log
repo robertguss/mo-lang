@@ -1,0 +1,21 @@
+test_claim_foreign_and_active_exclusion (test_workspace.Controller.test_claim_foreign_and_active_exclusion) ... ok
+test_json_result_limit_and_timeout_quarantine (test_workspace.Controller.test_json_result_limit_and_timeout_quarantine) ... ok
+test_programming_errors_are_not_refusals (test_workspace.Controller.test_programming_errors_are_not_refusals) ... ok
+test_refusal_before_claim_on_fresh_workspace_is_structured (test_workspace.Controller.test_refusal_before_claim_on_fresh_workspace_is_structured) ... ok
+test_snapshot_copies_modes_and_closes_dispatch (test_workspace.Controller.test_snapshot_copies_modes_and_closes_dispatch) ... ok
+test_state_write_is_durable_before_rename (test_workspace.Controller.test_state_write_is_durable_before_rename) ... ok
+test_truncated_or_undecodable_state_is_quarantine_not_refusal (test_workspace.Controller.test_truncated_or_undecodable_state_is_quarantine_not_refusal) ... ok
+test_command_refusal_is_structured_without_dispatch (test_workspace.Feedback.test_command_refusal_is_structured_without_dispatch) ... ok
+test_command_surfaces_programming_errors (test_workspace.Feedback.test_command_surfaces_programming_errors) ... ok
+test_feedback_has_no_fake_checks_and_run_stays_strict (test_workspace.Feedback.test_feedback_has_no_fake_checks_and_run_stays_strict) ... ok
+test_edit_refusals_preserve_bytes (test_workspace.Files.test_edit_refusals_preserve_bytes) ... ok
+test_hostile_entries (test_workspace.Files.test_hostile_entries) ... ok
+test_import_and_result_bounds (test_workspace.Files.test_import_and_result_bounds) ... ok
+test_paths (test_workspace.Files.test_paths) ... ok
+test_repair_and_inventory (test_workspace.Files.test_repair_and_inventory) ... ok
+test_utf8_and_modes (test_workspace.Files.test_utf8_and_modes) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.295s
+
+OK

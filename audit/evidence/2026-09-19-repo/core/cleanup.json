@@ -1,0 +1,12 @@
+{
+  "relocated_generated_artifacts": [
+    {
+      "from": "examples/zig-out",
+      "to": "audit/evidence/2026-09-19-repo/core/suite-generated"
+    },
+    {
+      "from": "toolchain/.zig-cache",
+      "to": "audit/evidence/2026-09-19-repo/core/suite-toolchain-cache"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "command": [
+    "./install/bin/mo",
+    "run",
+    "oversized.mo"
+  ],
+  "cwd": "audit/evidence/2026-09-19-repo/core",
+  "timeout_seconds": "15",
+  "returncode": 0,
+  "elapsed_seconds": 0.0026876479387283325
+}

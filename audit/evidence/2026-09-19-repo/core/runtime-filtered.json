@@ -1,0 +1,19 @@
+{
+  "command": [
+    "/home/exedev/.hermes/profiles/mo-auditor/workspace/audit-tools/zig-x86_64-linux-0.16.0/zig",
+    "build",
+    "test",
+    "-j2",
+    "-Dtest-filter=region",
+    "-Dtest-filter=contracts",
+    "-Dtest-filter=check",
+    "--prefix",
+    "../audit/evidence/2026-09-19-repo/core/install",
+    "--summary",
+    "all"
+  ],
+  "cwd": "toolchain",
+  "timeout_seconds": "90",
+  "returncode": 0,
+  "elapsed_seconds": 3.20062288409099
+}
