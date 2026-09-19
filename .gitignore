@@ -6,3 +6,7 @@ mo-wiki/.obsidian/workspace.json
 .amp/portals/*
 .zig-cache/
 __pycache__/
+
+# Local secrets (fnox, age-encrypted); never committed
+fnox.toml
+fnox.local.toml
