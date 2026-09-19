@@ -28,7 +28,8 @@ regressions and two new extras pass. Full243/243,5/5;17339 unchanged files,
 
 | board | current work |
 |---|---|
-| Now | [[mo-application-workspace-v1]], Mo routing to all six remote tools: **restarting from scratch** (19 Sep, 7:20 AM ET). Fable leads, Opus workers; Astra's unfinished attempt is preserved, not merged |
+| Now | [[mo-harness-in-mo]]: steps 1 and 8 accepted 9:03 AM ET; next step 2 (live suites as tables), the capabilities toolchain step ([[mo-capabilities-for-the-harness]]), and a toolchain brief for the raw-memory report defect |
+| Done today | [[mo-application-workspace-v1]], Mo routing to all six remote tools: **restarting from scratch** (19 Sep, 7:20 AM ET). Fable leads, Opus workers; Astra's unfinished attempt is preserved, not merged |
 | Next | [[mo-harness-in-mo]]: fix the overnight review's findings and move the harness into Mo (Robert, 19 Sep); scripted Logstat repair; then provider integration |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
 | Recently done | [[mo-workspace-http-v1]], [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |

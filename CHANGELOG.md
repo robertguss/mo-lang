@@ -2,6 +2,28 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Application workspace rebuilt; executor and Mo agent review fixes accepted — 19 Sep 2026, 9:03 AM ET
+
+- Fable leads with Claude Opus workers (Robert, 19 Sep). Astra's unfinished
+  application workspace was discarded and rebuilt from `030290b8`: the Mo agent
+  routes all six tools to the workspace service, with the seven carried wire
+  findings each closed by a control that failed first, in both runtimes.
+- Executor: a slow `docker rm` no longer powers off the machine (only a proven
+  populated cgroup does), pre-claim refusals no longer crash, corrupt state is
+  quarantine, the unit name is validated, state writes sync; six duplicate
+  runners became one, per-run probes became one inventory. Python 6,688 to
+  6,326 counted lines.
+- Mo agent: the boundary test can now fail (six mutants), two dormant matrix
+  cases run (24 of 24 per runtime), refusal reasons asserted, a completed
+  response is reported completed, the outer deadline has slack, one budget rule
+  in `steps.mo` with an explicit `Counting` value.
+- Lead checks: full suite 243 of 243, exit 0, on the combined tree; every live
+  suite on `mo-executor-r01` green (17, lifecycle, 22, recovery, 22, 22, 23) and
+  a clean inventory. An earlier full run was 242 of 243 on a TLS test that
+  fails about 1 in 5 alone; unexplained, with step 39.
+- Not met: the Mo agent against the real service on the machine end to end; the
+  two fault-injected power-off checks.
+
 ## Workspace HTTP accepted — 19 Sep 2026, 6:38 AM ET
 
 - Six remote tools use a private one-run interface with cleanup ownership beyond

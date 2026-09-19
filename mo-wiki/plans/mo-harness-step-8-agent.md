@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, verification, processes]
 sources: [plans/mo-harness-in-mo.md]
-status: in-progress
+status: done
 ---
 
 # Harness step 8: Mo agent findings
@@ -59,6 +59,10 @@ with `-Dtest-filter`; the full `zig build test` is the lead's. Report real
 summary lines and exit codes, Mo source lines before and after per file, the
 mutant outputs for part 1, decisions the brief did not cover. Evidence under
 1 MiB. Small commits as yourself with a `Co-Authored-By` line naming your model.
+
+## Result
+
+Accepted 19 Sep 2026, 9:03 AM ET ([[decision-log]]). The worker's report is committed with its work; the lead's runs are in `audit/evidence/2026-09-19/fable-lead-verification/`.
 
 ## Related
 

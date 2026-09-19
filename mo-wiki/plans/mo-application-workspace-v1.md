@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, processes]
 sources: [plans/mo-workspace-http-v1.md, plans/mo-coding-fixture-v1.md]
-status: in-progress
+status: done
 ---
 
 # Mo application workspace v1: recorded remote tools
@@ -226,6 +226,10 @@ selected counts and actual outcomes versus cleanup proofs. Release machine and
 close only idle run panes after process proof; preserve worktree/worker for review.
 Lead immutable review, independent integrated reruns and extra control determine
 acceptance. Then a separate Logstat repair brief tests the complete workflow.
+
+## Result
+
+Rebuilt by Claude Opus 5 and accepted 19 Sep 2026, 9:03 AM ET, at the level shown: local controls in both runtimes and the real Bridge front end; full suite 243 of 243. The end-to-end machine run is owed by the Logstat slice ([[decision-log]]).
 
 ## Related
 

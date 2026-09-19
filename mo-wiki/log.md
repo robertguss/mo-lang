@@ -954,3 +954,6 @@
 
 ## [2026-09-19] create | plans/mo-capabilities-for-the-harness.md and two step briefs
 - Design: `scoped` made to hold against symlinks, `Fs.replace`, `Exec` narrowed to fixed commands; three rows in decisions/decision-log.md. Briefs plans/mo-harness-step-1-executor.md and plans/mo-harness-step-8-agent.md, two Opus workers launched 8:22 AM ET. Lint 26 notices, none new errors.
+
+## [2026-09-19] accept | application workspace rebuild, harness steps 1 and 8
+- 9:03 AM ET: full suite 243 of 243 exit 0 on the combined tree; seven live suites and a clean inventory on the machine. Four rows in decisions/decision-log.md; CHANGELOG entry; evidence audit/evidence/2026-09-19/fable-lead-verification/. Lint: 26 notices of the inherited kinds, no errors.

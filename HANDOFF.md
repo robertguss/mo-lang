@@ -15,6 +15,46 @@ run pane remains; panes `p2E`/`p2F` named below are gone. Machine
 `edb75165` before this takeover's records. Auditor check at 7:15 AM ET: zero
 new records.
 
+**State at 9:03 AM ET, 19 Sep 2026.** Accepted today by the Fable lead, all
+implemented by Claude Opus 5 workers: the rebuilt application workspace
+(`ddd81c06`), harness step 1 (executor defects and deletion, `97202a81`,
+`ce2a3d13`) and step 8 (Mo agent findings, `d78cb017`). Lead full suite on the
+combined tree: 243 of 243, exit 0. Seven live suites and a clean inventory on
+`mo-executor-r01`. Evidence: `audit/evidence/2026-09-19/fable-lead-verification/`.
+Source review of Astra's night: `audit/evidence/2026-09-19/fable-overnight-review/`.
+No worker is running; no Herdr pane but the lead's (`w4:p1`). Workers go in
+their own Herdr tab, never a split of the lead's tab, with bypass permissions.
+
+**Plan of record:** `mo-wiki/plans/mo-harness-in-mo.md` (the harness moved into
+Mo, nine steps) and `mo-wiki/plans/mo-capabilities-for-the-harness.md` (the
+design: `scoped` made to hold against symlinks, `Fs.replace`, `Exec`).
+
+**Next, in order:**
+1. Step 2: the six live suites as case tables; replace recovery's four tests
+   that cannot fail (E3). Tell the worker that step 1 edited two strings in
+   `recovery/live.py`. Also fix the three provider READMEs and
+   `provider/auth/attempt.sh` that name deleted runners.
+2. The capabilities toolchain step (strict scope first: `Fs.scoped` is lexical
+   today and a symlink escapes it), brief to be written from the design page.
+3. A toolchain brief for the rebuild worker's defect: native binary prints raw
+   memory on application reports over about 0.35 MB, interpreter panic at
+   `vm.zig:1531` over about 0.8 MB; reproduce at worker commit `5caec127`
+   (`examples/programs/agent/tests/application-workspace-v1/evidence/toolchain-defect-01.md`).
+4. Steps 4 to 7 of the plan (the Mo six-tool server and onward), then the
+   scripted Logstat repair, whose brief must include a driver that runs the Mo
+   agent against the real workspace service on the machine: that end-to-end run
+   does not exist yet.
+
+**Owed and unmet:** two fault-injected power-off checks on the machine; refusing
+new runs after an unconfirmed cleanup; the TLS corpus test "a fatal alert where
+a hello belongs…" fails about 1 in 5 alone, unexplained; Step 39 unaccepted;
+Darwin `F_FULLFSYNC` unmet; Program 7 suspended; provider live blockers P1 to
+P5 wait for the live-provider slice, which needs Robert for the login. Size
+claims are reported only as measured (step 1: 6,688 to 6,326 Python lines,
+against an estimate of about 1,000 removed).
+
+## Earlier today (superseded detail, kept for the record)
+
 **Decided with Robert (decision-log, 19 Sep 7:20 AM ET):** the unfinished
 application workspace is scrapped and rebuilt from accepted base `030290b8` by
 a fresh Opus worker. The Astra worktree

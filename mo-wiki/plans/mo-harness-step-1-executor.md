@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, security]
 sources: [plans/mo-harness-in-mo.md]
-status: in-progress
+status: done
 ---
 
 # Harness step 1: executor defects and deletion
@@ -69,6 +69,10 @@ with the counting command. Small commits as yourself with a `Co-Authored-By`
 line naming your model. Final report to the lead: commits, decisions the brief
 did not cover, anything you chose not to delete and why, what the lead must
 re-run on the machine.
+
+## Result
+
+Accepted 19 Sep 2026, 9:03 AM ET ([[decision-log]]). The worker's report is committed with its work; the lead's runs are in `audit/evidence/2026-09-19/fable-lead-verification/`.
 
 ## Related
 
