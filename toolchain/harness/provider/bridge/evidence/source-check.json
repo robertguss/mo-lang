@@ -1,0 +1,12 @@
+{
+  "base": "5494e8fe5bf9c646f50d3a45fa6f485f2333a597",
+  "unchanged_foundation": {
+    "turn.mjs": "da6c1aafa6b9a89308df7eabff84caeab7d05dbccd6a4ee8974b1e676be28422",
+    "test.mjs": "d29eb8499f2608b12e26e48461e911e5081aec31e6551c1ec846b77239bc0b3e",
+    "catalog.json": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744",
+    "package-lock.json": "68d35f2958377cf94900cdfebaf244e7a80f759f32d36d208965315fef06fd09",
+    "upstream.patch": "3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660",
+    "pin.json": "7690aadb45c429938ecbabc9df9a7a74960b0d7d9f5026b928f02fe4f0977360"
+  },
+  "read_only_prepared_runtime_files_verified": 220
+}

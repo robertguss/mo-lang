@@ -1,0 +1,1 @@
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":82617,"foreground_processes":[{"argv":["-zsh"],"argv0":"zsh","cmdline":"-zsh","cwd":"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1","name":"zsh","pid":82617}],"pane_id":"w4:p1Q","shell_pid":82617},"type":"pane_process_info"}}

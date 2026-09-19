@@ -1,0 +1,17 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/independent-01/bridge/test.mjs:13
+const deny=()=>{denied++;throw new Error('egress denied');};
+                               ^
+
+Error: egress denied
+    at Object.deny (file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/independent-01/bridge/test.mjs:13:32)
+    at lookupAndListen (node:net:2652:7)
+    at Server.listen (node:net:2554:7)
+    at file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/independent-01/bridge/test.mjs:46:30
+    at new Promise (<anonymous>)
+    at file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/independent-01/bridge/test.mjs:46:7
+
+Node.js v24.20.0
+owned-command-exit=1

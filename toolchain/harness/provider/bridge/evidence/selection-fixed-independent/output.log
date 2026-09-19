@@ -1,0 +1,33 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+ok 1 - final
+ok 2 - continuation
+ok 3 - native
+ok 4 - schemas
+ok 5 - usage
+ok 6 - zero
+ok 7 - unknown-usage
+ok 8 - overflow
+ok 9 - overshoot
+ok 10 - duplicate
+ok 11 - stale
+ok 12 - altered
+ok 13 - skipped
+ok 14 - mismatched
+ok 15 - identity
+ok 16 - concurrent
+ok 17 - restart
+ok 18 - journal
+ok 19 - lost
+ok 20 - auth401
+ok 21 - provider
+ok 22 - deadlines
+ok 23 - stop
+ok 24 - limits
+ok 25 - structured
+ok 26 - sanitization
+ok 27 - http
+PASS 27 named controls; denied egress=3; Node=v24.20.0; Mo gate=not run
+cleanup fixture sockets=0; all bridge stop calls awaited
+owned-command-exit=0

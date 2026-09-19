@@ -1,0 +1,8 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+ok 1 - limits
+ok 2 - http
+PASS 2 named controls; denied egress=0; Node=v24.20.0; Mo gate=not run
+cleanup fixture sockets=0; all bridge stop calls awaited
+owned-command-exit=0

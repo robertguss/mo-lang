@@ -1,0 +1,38 @@
+{
+  "source": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/clean-setup-8f3xpo0r",
+  "copy": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/independent-03",
+  "base": "5494e8fe5bf9c646f50d3a45fa6f485f2333a597",
+  "selection": "independent",
+  "runtime_files_verified": 220,
+  "source_revision": "36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+  "hashes": {
+    "turn.mjs": "da6c1aafa6b9a89308df7eabff84caeab7d05dbccd6a4ee8974b1e676be28422",
+    "catalog.json": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744",
+    "package-lock.json": "68d35f2958377cf94900cdfebaf244e7a80f759f32d36d208965315fef06fd09",
+    "upstream.patch": "3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660"
+  },
+  "bridge_hashes": {
+    "test.mjs": "b8e2d47d511df955f9eff27340bacef0809d751219a886fda269e723dedb9234",
+    "run.py": "eb0858e2c2e997685a6835fcb7e5dfea0ca4d508f4962c1df624d41c4136c4d6",
+    "journal.mjs": "1843408678f17ff4ee424b980a23a388dd1f3a5ddbeb00532e065b254f80f3f8",
+    "protocol.mjs": "4d448da246bb31ebff5ebf58eaac23d4ac83b9acda94e7921236aa7fe58bc7c4",
+    ".gitignore": "70a213afeabe5ac38ae4c88b2c7002ce5068b91a3e57a032245ab809dc6fa460",
+    "server.mjs": "e9fe0380146bc1d27043939d82b4593c9b1e1fe38ab667f13051c9ad139767d5"
+  },
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/bench/step36/guard.py",
+    "580",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/independent-03/run.py",
+    "550",
+    "node",
+    "bridge/test.mjs",
+    "independent",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/evidence/independent-03/observations.json"
+  ],
+  "exit": 0,
+  "group_cleanup": "SIGKILL owned outer group after exit; inner foundation runner cleans Node group",
+  "evidence_bytes": 287261
+}

@@ -1,0 +1,19 @@
+{
+  "selection": "unknown",
+  "exit": 2,
+  "cases": 0,
+  "provider_calls": 0,
+  "node_started": false,
+  "dependency_copy_started": false,
+  "reason": "unknown, empty or duplicate explicit control selection",
+  "outer_command": [
+    "python3",
+    "toolchain/bench/step36/guard.py",
+    "600",
+    "--",
+    "python3",
+    "toolchain/harness/provider/bridge/run.py",
+    "reject-unknown",
+    "unknown"
+  ]
+}

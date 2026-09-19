@@ -1,0 +1,6 @@
+node=/Users/robertguss/.local/share/mise/installs/node/24/bin/node
+v24.20.0
+ok 1 - mo
+PASS 1 named controls; denied egress=0; Node=v24.20.0; Mo gate=released
+cleanup fixture sockets=0; all bridge stop calls awaited
+owned-node-group-cleaned; exit=0

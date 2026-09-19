@@ -1,0 +1,48 @@
+{
+  "source": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/clean-setup-8f3xpo0r",
+  "copy": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-02",
+  "base": "5494e8fe5bf9c646f50d3a45fa6f485f2333a597",
+  "selection": "mo",
+  "runtime_files_verified": 220,
+  "source_revision": "36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+  "hashes": {
+    "turn.mjs": "da6c1aafa6b9a89308df7eabff84caeab7d05dbccd6a4ee8974b1e676be28422",
+    "catalog.json": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744",
+    "package-lock.json": "68d35f2958377cf94900cdfebaf244e7a80f759f32d36d208965315fef06fd09",
+    "upstream.patch": "3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660"
+  },
+  "bridge_hashes": {
+    "test.mjs": "29245d26bd4ecea1260e16ea588eee74fbab485808e541c229b6780ec5776f3a",
+    "run.py": "98c59ac5bc86fbce2b6d914febd61f73ba34f7aed12820a5b92c51a288c63cc7",
+    "journal.mjs": "1843408678f17ff4ee424b980a23a388dd1f3a5ddbeb00532e065b254f80f3f8",
+    "mo.mjs": "52b8dc618c0a93b03f43ed1a293bcd860d9d1abc840456dc26e3f98a2c2f1887",
+    "execute.py": "99396f7dc2b24558a3644104e929b3c9b038b21e67c6fd8dc55231c11e997328",
+    "protocol.mjs": "4f191883c10d87357cb0d7a48a01cb1481e21a7e1d5d82bfbb422bbfb96e059a",
+    ".gitignore": "70a213afeabe5ac38ae4c88b2c7002ce5068b91a3e57a032245ab809dc6fa460",
+    "server.mjs": "e09bfcb761243aef1dcf7fe696925bddc0ec8f549d80e7bf8ce4a12664cf932d"
+  },
+  "moRelease": {
+    "explicitLeadRelease": true,
+    "acceptedCommit": "e6f04ce6358c85f22a86f26be0b5b388495fcc6e",
+    "sourceArchiveSha256": "f80c2a984c013892afd0a25904578e181b5823da538d702a13dd25f6d9b35de8",
+    "compilerSource": "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+    "compilerSha256": "acf1d5934260e4f55ca3f6d1b0bf998149f57bb0e2572c25a315ef4b3a12738a",
+    "ownedProject": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-02/bridge/mo-project",
+    "zig": "/opt/homebrew/bin/zig",
+    "release": "Lead explicit release after integrated coding fixture acceptance; 2026-09-19"
+  },
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/bench/step36/guard.py",
+    "580",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-02/bridge/execute.py",
+    "bridge/test.mjs",
+    "mo",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/evidence/mo-02/observations.json"
+  ],
+  "exit": 0,
+  "group_cleanup": "SIGKILL owned outer group after exit; inner foundation runner cleans Node group",
+  "evidence_bytes": 64061
+}

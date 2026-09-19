@@ -1,0 +1,27 @@
+node=/Users/robertguss/.local/share/mise/installs/node/24/bin/node
+v24.20.0
+not ok 1 - mo
+cleanup fixture sockets=0; all bridge stop calls awaited
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: {"command":["python3","/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/mo-project/guard.py","60","--","/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/mo-project/mo","run","examples/programs/agent/main.mo","--","coding-fixture","/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/evidence/private-8gpWUZ/mo-interpreter-1Dnhz0","--model","127.0.0.1:55714","--command","127.0.0.1:55713","--workspace","bridge-workspace","fixture goal"],"code":3,"stdout":"{\"schema\": \"mo-coding-fixture-v1\", \"run_id\": \"r_1\", \"event\": \"model\", \"step_number\": 1, \"payload\": {\"step\": {\"n\": 1, \"kind\": \"model\", \"name\": \"model\", \"args\": {}, \"result\": \"the model did not answer at its address\", \"tokens\": 0, \"took_ms\": 30, \"refused\": false}, \"result\": \"the model did not answer at its address\", \"usage\": \"unknown\", \"tokens\": null}}\n{\"schema\": \"mo-coding-fixture-v1\", \"run_id\": \"r_1\", \"event\": \"terminal\", \"step_number\": 1, \"payload\": {\"state\": \"failed\", \"result\": null, \"error\": \"the model did not answer at its address\", \"usage\": \"unknown\", \"tokens\": null}}\n","stderr":""}
+
+3 !== 0
+
+    at run (file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/mo.mjs:26:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async moControl (file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/mo.mjs:74:22)
+    at async Object.mo (file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/test.mjs:109:59)
+    at async file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mo-01/bridge/test.mjs:116:40 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 3,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.20.0
+owned-node-group-cleaned; exit=1

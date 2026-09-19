@@ -1,0 +1,52 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+ok 1 - final
+ok 2 - continuation
+ok 3 - native
+ok 4 - schemas
+ok 5 - usage
+ok 6 - zero
+ok 7 - unknown
+ok 8 - overflow
+ok 9 - overshoot
+ok 10 - duplicate
+ok 11 - stale
+ok 12 - altered
+ok 13 - skipped
+ok 14 - mismatched
+ok 15 - identity
+ok 16 - concurrent
+ok 17 - restart
+ok 18 - journal
+ok 19 - lost
+ok 20 - auth401
+ok 21 - provider
+not ok 22 - deadlines
+cleanup fixture sockets=0; all bridge stop calls awaited
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+[TypeError: fetch failed] {
+  [cause]: SocketError: other side closed
+      at Socket.onHttpSocketEnd (node:internal/deps/undici/undici:7833:26)
+      at Socket.emit (node:events:526:24)
+      at endReadableNT (node:internal/streams/readable:1757:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '127.0.0.1',
+      localPort: 50763,
+      remoteAddress: '127.0.0.1',
+      remotePort: 50762,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 304,
+      bytesRead: 0
+    }
+  }
+}
+
+Node.js v24.20.0
+owned-command-exit=1
