@@ -1,0 +1,5 @@
+Started mo-executor-6e5172ae04c4430d8b0a820eb62c736e.service - /usr/bin/python3 /tmp/mo-executor-6e5172ae04c4430d8b0a820eb62c736e/remote.py supervise /tmp/mo-executor-6e5172ae04c4430d8b0a820eb62c736e.
+Stopping mo-executor-6e5172ae04c4430d8b0a820eb62c736e.service - /usr/bin/python3 /tmp/mo-executor-6e5172ae04c4430d8b0a820eb62c736e/remote.py supervise /tmp/mo-executor-6e5172ae04c4430d8b0a820eb62c736e...
+mo-executor-6e5172ae04c4430d8b0a820eb62c736e.service: Control process exited, code=exited, status=1/FAILURE
+mo-executor-6e5172ae04c4430d8b0a820eb62c736e.service: Failed with result 'exit-code'.
+Stopped mo-executor-6e5172ae04c4430d8b0a820eb62c736e.service - /usr/bin/python3 /tmp/mo-executor-6e5172ae04c4430d8b0a820eb62c736e/remote.py supervise /tmp/mo-executor-6e5172ae04c4430d8b0a820eb62c736e.

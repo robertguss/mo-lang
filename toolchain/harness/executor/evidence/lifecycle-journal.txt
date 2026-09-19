@@ -1,0 +1,10 @@
+Started mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.service - /usr/bin/python3 /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81/remote.py supervise /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.
+Stopping mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.service - /usr/bin/python3 /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81/remote.py supervise /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81...
+mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.service: Deactivated successfully.
+Stopped mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.service - /usr/bin/python3 /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81/remote.py supervise /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.
+
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-executor-foundation-r01/toolchain/harness/executor/evidence/lifecycle_journal.py", line 10, in <module>
+    assert b'status=1/FAILURE' in raw, 'ExecStopPost failure was not observed'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ExecStopPost failure was not observed

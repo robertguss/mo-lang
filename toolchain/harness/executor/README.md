@@ -56,7 +56,12 @@ that run's machine-side directory; host evidence remains.
 
 A run registers its random ID, container name, fixture digest and deadline before
 execution. An exclusive registration lock rejects another active candidate.
-The checks are copied at construction. The manifest records policy/verifier
+Lifecycle calls use a per-run host file lock. Start is one-shot, including lost
+replies; collect or dispose closes future starts. Cancellation remains available
+while collection waits. After confirmed disposal, disposal is idempotent and
+collection rejects locally; the retained host result remains readable. Bootstrap, finalization and disposal share the machine's
+registration lock, so an in-flight bootstrap cannot dispatch a supervisor after
+cleanup proof. The checks are copied at construction. The manifest records policy/verifier
 versions and SHA-256 identities of both adapter and supervisor source. Docker's
 immutable image ID, effective command, and actual container ID are checked.
 A previous result cannot pass under a new run or candidate identity.
@@ -82,9 +87,13 @@ A previous result cannot pass under a new run or candidate identity.
   triggers at deadline + two seconds, kills any surviving supervisor, removes
   the container, checks absence, records its independent result, and unloads its
   timer. It therefore survives both Mac-controller and supervisor-process death.
-- Cleanup queries the daemon successfully, checks the **actual systemd cgroup
-  hierarchy**, and confirms no run units remain. The host does not publish a
-  pass before these checks. Unknown host cleanup requests `orbctl stop
+- Cleanup first stops **only the supervisor** and confirms it can no longer
+  create writers. With the independent reaper still armed, it removes the
+  container, queries the daemon successfully, and checks the **actual systemd
+  cgroup hierarchy**. It persists this proof before stopping the deadline
+  timer/service, then confirms all run units are absent. The result records this
+  exact order. Disposal requires that proof as well as current unit/container/
+  cgroup absence. The host does not publish a pass before these checks. Unknown host cleanup requests `orbctl stop
   mo-executor-r01`; unknown independent-reaper cleanup requests machine-local
   `systemctl poweroff`. No unqualified OrbStack stop exists in the adapter.
   The poweroff branches are unit-tested with simulated failures, not exercised
@@ -109,10 +118,11 @@ python3 toolchain/bench/step36/guard.py 60 -- python3 -B toolchain/harness/execu
 python3 toolchain/bench/step36/guard.py 600 -- python3 -B toolchain/harness/executor/selftest.py /private/tmp/mo-executor-live-unique
 ```
 
-The unit suite has nine tests, including missing/empty checks, missing
+The unit suite has fifteen tests, including missing/empty checks, missing
 observations, stale run/candidate identity, forged success, absent fault stimulus,
 effective-policy mutations, cgroup hierarchy, defensive check copying, and
-fail-closed machine-stop branches. Its effective-policy baseline is the retained
+fail-closed machine-stop branches, reaper-disarm ordering, uncertain removal,
+surviving cgroups, one-shot dispatch, and start/collect/dispose serialization. Its effective-policy baseline is the retained
 real record at `evidence/smoke-02/positive/result.json`.
 
 The live self-test has 17 fixed cases, one candidate at a time:
@@ -136,3 +146,19 @@ scope explicitly forbids that endpoint; independent lead acceptance owns that
 comparison and integrated-tree rerun. No claims are made for provider OAuth,
 application builds, Mo/Agent integration, the 401 recipe, Pi comparison, Step 39,
 Darwin full-sync, or suspended Program 7.
+
+## Lifecycle fault regression
+
+```sh
+python3 toolchain/bench/step36/guard.py 600 -- python3 -B toolchain/harness/executor/test_lifecycle_live.py /private/tmp/mo-executor-lifecycle-unique
+```
+
+This single fixed control injects a failing `ExecStopPost` into only its own
+transient supervisor, and an uncertain removal response into only its finalizer
+process. It observes the real surviving candidate/cgroup and active deadline
+timer, then SIGKILLs the collector before its host shutdown fallback can run.
+The untouched machine-local deadline reaper must remove the container/cgroup
+and unload its units before recovery collection. Fault code stays in the test;
+there are no production fault switches or daemon/global configuration changes.
+See `evidence/LIFECYCLE-CORRECTION.md` for the retained red test, corrected
+ordering, raw live proof, and exact guarded commands.

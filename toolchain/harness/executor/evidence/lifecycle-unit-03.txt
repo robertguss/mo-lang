@@ -1,0 +1,20 @@
+test_absent_fault_stimulus_and_prior_success_do_not_pass (__main__.ExecutorTests.test_absent_fault_stimulus_and_prior_success_do_not_pass) ... ok
+test_caller_check_mutation_does_not_change_registered_inventory (__main__.ExecutorTests.test_caller_check_mutation_does_not_change_registered_inventory) ... ok
+test_cgroup_path_uses_systemd_hierarchy (__main__.ExecutorTests.test_cgroup_path_uses_systemd_hierarchy) ... ok
+test_collect_after_confirmed_disposal_rejects_locally_without_machine_shutdown (__main__.ExecutorTests.test_collect_after_confirmed_disposal_rejects_locally_without_machine_shutdown) ... ok
+test_collect_and_dispose_serialize_with_start_and_close_future_start (__main__.ExecutorTests.test_collect_and_dispose_serialize_with_start_and_close_future_start) ... ok
+test_collector_never_unconditionally_stops_deadline_before_proof (__main__.ExecutorTests.test_collector_never_unconditionally_stops_deadline_before_proof) ... ok
+test_external_verifier_rejects_missing_observations_stale_forged_and_wrong_results (__main__.ExecutorTests.test_external_verifier_rejects_missing_observations_stale_forged_and_wrong_results) ... ok
+test_finalizer_keeps_reaper_armed_when_removal_is_uncertain (__main__.ExecutorTests.test_finalizer_keeps_reaper_armed_when_removal_is_uncertain) ... ok
+test_finalizer_proves_cgroup_absence_before_disarming (__main__.ExecutorTests.test_finalizer_proves_cgroup_absence_before_disarming) ... ok
+test_host_cleanup_failure_stops_only_named_machine_and_fails_closed (__main__.ExecutorTests.test_host_cleanup_failure_stops_only_named_machine_and_fails_closed) ... ok
+test_independent_reaper_requests_dedicated_machine_poweroff_if_cleanup_unknown (__main__.ExecutorTests.test_independent_reaper_requests_dedicated_machine_poweroff_if_cleanup_unknown) ... ok
+test_policy_rejects_effective_security_drift (__main__.ExecutorTests.test_policy_rejects_effective_security_drift) ... ok
+test_rejects_bad_fixtures_and_deadlines (__main__.ExecutorTests.test_rejects_bad_fixtures_and_deadlines) ... ok
+test_rejects_empty_missing_duplicate_and_vacuous_checks (__main__.ExecutorTests.test_rejects_empty_missing_duplicate_and_vacuous_checks) ... ok
+test_start_claim_is_one_shot_even_when_dispatch_reply_is_lost (__main__.ExecutorTests.test_start_claim_is_one_shot_even_when_dispatch_reply_is_lost) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.118s
+
+OK

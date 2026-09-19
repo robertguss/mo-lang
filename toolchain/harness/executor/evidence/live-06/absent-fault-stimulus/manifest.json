@@ -1,0 +1,27 @@
+{
+  "run_id": "60b5963ddcb9432baa75a40e09fe7321",
+  "name": "mo-executor-60b5963ddcb9432baa75a40e09fe7321",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-r01-v1",
+  "candidate_sha256": "7d10fced96b38c84f90db07708f266e83da48ca763189eaed7fe1a00348385eb",
+  "script": "ZWNobyBvaw==",
+  "checks": [
+    {
+      "id": "output",
+      "expected": "ok\n",
+      "stream": "stdout",
+      "mode": "exact"
+    },
+    {
+      "id": "fault",
+      "expected": "fault-ran",
+      "stream": "stdout",
+      "mode": "contains"
+    }
+  ],
+  "seconds": 5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "be497ce84e1bcc888132109ee27c4c9904604d6a915f97df6ab598f0ba4e02bc",
+  "supervisor_sha256": "d937cfb40eea21e51e1d150151c9996fb8a693bac1040756a6fe3c7c59ae286a",
+  "deadline": 1789793532.3815086
+}
