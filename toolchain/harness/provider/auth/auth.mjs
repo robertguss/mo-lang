@@ -51,9 +51,19 @@ export function installTransport(transport) {
     if (!(typeof init.body === 'string' || init.body instanceof URLSearchParams) ||
         Buffer.byteLength(String(init.body)) > 65536) fail('provider_failure');
     const request = new Operation(Math.min(10000, Math.max(1, op.deadline - Date.now())), { signal: op.signal });
-    let reader;
+    let reader, response, closed = false;
+    const cancelBody = value => {
+      try { void value?.body?.cancel().catch(() => {}); } catch {}
+    };
     try {
-      const response = await request.wait(Promise.resolve().then(() => transport(input, { ...init, redirect: 'error', signal: request.signal })));
+      const pending = Promise.resolve()
+        .then(() => transport(input, { ...init, redirect: 'error', signal: request.signal }))
+        .then(value => {
+          response = value;
+          if (closed || request.signal.aborted || op.signal.aborted) cancelBody(value);
+          return value;
+        });
+      await request.wait(pending);
       request.check();
       if (response.redirected || response.status >= 300 && response.status < 400 || response.url && response.url !== input) fail('provider_failure');
       const chunks = []; let size = 0;
@@ -73,7 +83,9 @@ export function installTransport(transport) {
       if (e instanceof AuthError) throw e;
       fail('provider_failure');
     } finally {
+      closed = true;
       if (reader) void reader.cancel().catch(() => {});
+      else cancelBody(response);
       request.close();
     }
   };

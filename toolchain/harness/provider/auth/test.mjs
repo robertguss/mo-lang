@@ -27,6 +27,7 @@ syncBuiltinESMExports();
 let handler;
 const requests = [];
 const ordering = [];
+const lateResponses = [];
 installTransport(async (url, options) => {
   requests.push({ path: new URL(url).pathname, method: options.method });
   return handler(url, options);
@@ -57,6 +58,21 @@ async function seed(auth, value = cred()) { await auth.credentialStore.modify(pr
 async function state(auth, expected) { assert.deepEqual(await auth.status(), {providerId, state:expected}); }
 const deferred = () => { let resolve; const promise = new Promise(r=>resolve=r); return {promise,resolve}; };
 const delay = ms => new Promise(r=>setTimeout(r,ms));
+async function lateResponseCleanup(reason) {
+  const entered=deferred(),release=deferred();let cancelled=false,calls=0;
+  handler=()=>{calls++;entered.resolve();return release.promise;};
+  const controller=new AbortController();
+  const pending=inOperation({signal:controller.signal,deadlineMs:40},()=>fetch('https://auth.openai.com/oauth/token',{
+    method:'POST',body:new URLSearchParams({grant_type:'refresh_token',refresh_token:'synthetic-only'}),
+  }));
+  await entered.promise;
+  if(reason==='abort')controller.abort();
+  await assert.rejects(pending);
+  release.resolve(new Response(new ReadableStream({cancel(){cancelled=true;}})));
+  await delay(50);
+  lateResponses.push({reason,calls,bodyCancelled:cancelled});
+  assert.equal(calls,1);assert.equal(cancelled,true);
+}
 function child(directory, mode) {
   const p = fork(new URL('./child.mjs', import.meta.url), [directory, mode, process.cwd()], { stdio:['ignore','ignore','ignore','ipc'], env:{PATH:process.env.PATH, HOME:process.env.HOME} });
   children.add(p); p.once('exit',()=>children.delete(p)); return p;
@@ -108,6 +124,7 @@ const tests = {
     handler=()=>new Promise(()=>{});
     const started=Date.now(); assert.equal((await auth.login({deadlineMs:15000})).code,'timeout');
     assert.ok(Date.now()-started>=9900 && Date.now()-started<13000);
+    await lateResponseCleanup('deadline');
   },
   async store_bounds() {
     const {auth,directory}=fresh(); await seed(auth); fs.writeFileSync(path.join(directory,'credential.json'),'x'.repeat(65537));
@@ -187,6 +204,7 @@ const tests = {
     assert.deepEqual(await login,{code:'cancelled'});release.resolve();await delay(30);await state(auth,'missing');
     const release2=deferred();handler=async(...args)=>{await release2.promise;return flow()(...args);};
     assert.deepEqual(await auth.login({deadlineMs:20}),{code:'timeout'});release2.resolve();await delay(30);await state(auth,'missing');
+    await lateResponseCleanup('abort');
   },
   async cross_process_lock() {
     const {auth,directory}=fresh(); await seed(auth); const p=child(directory,'hold'); assert.equal((await once(p,'message'))[0],'held');
@@ -254,5 +272,5 @@ try {
   await Promise.all([...children].map(p=>once(p,'exit')));
   fs.rmSync(parent,{recursive:true,force:true});
 }
-console.log(JSON.stringify({controls:results,passed:selected.length-failures,total:selected.length,requests,ordering,denied,fixtureListeners:0,children:children.size,tempRemoved:!fs.existsSync(parent)}));
+console.log(JSON.stringify({controls:results,passed:selected.length-failures,total:selected.length,requests,ordering,lateResponses,denied,fixtureListeners:0,children:children.size,tempRemoved:!fs.existsSync(parent)}));
 process.exitCode=failures?1:0;

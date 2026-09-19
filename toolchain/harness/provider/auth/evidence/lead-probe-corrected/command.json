@@ -1,0 +1,15 @@
+{
+  "command": [
+    "node",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/auth-readiness/late-response.mjs",
+    "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-auth-v1/toolchain/harness/provider/auth/auth.mjs"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-auth-v1/toolchain/harness/provider/auth",
+  "node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node",
+  "deadline_seconds": 550,
+  "environment_keys": [
+    "HOME",
+    "NO_COLOR",
+    "PATH"
+  ]
+}

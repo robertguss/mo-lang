@@ -47,6 +47,9 @@ retry exists. Pinned device polling is unchanged: immediate first poll, minimum
 one-second interval, pending responses repeat, slow_down adds five seconds;
 the caller deadline and request caps additionally bound it. Cancellation and
 deadline checks prevent late transport/provider completion from publishing.
+The transport promise remains observed after cancellation/deadline: a late
+Response has its body cancelled, without replaying the request. Rejected
+responses are also cancelled when failure occurs before acquiring a reader.
 
 CLI syntax (execute only when an operator explicitly wants live auth):
 

@@ -1,0 +1,12 @@
+{
+  "pane": "w4:p1S",
+  "before_close": {
+    "shell_pid": 87426,
+    "foreground_process_group_id": 87426,
+    "foreground_processes": [
+      "zsh"
+    ]
+  },
+  "closed_owned_pane": true,
+  "focus_changed": false
+}

@@ -1,0 +1,18 @@
+{
+  "command": [
+    "python3",
+    ".cache/prepared-01/run.py",
+    "500",
+    "node",
+    "test.mjs",
+    "evidence/auth-regression-corrected.outbound.json"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-auth-v1/toolchain/harness/provider/auth",
+  "node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node",
+  "deadline_seconds": 550,
+  "environment_keys": [
+    "HOME",
+    "NO_COLOR",
+    "PATH"
+  ]
+}

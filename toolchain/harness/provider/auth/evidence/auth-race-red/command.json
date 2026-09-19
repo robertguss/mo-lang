@@ -1,0 +1,17 @@
+{
+  "command": [
+    "node",
+    "test.mjs",
+    ".cache/prepared-01/.cache/runtime",
+    "late_success",
+    "response_bounds"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-auth-v1/toolchain/harness/provider/auth",
+  "node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node",
+  "deadline_seconds": 550,
+  "environment_keys": [
+    "HOME",
+    "NO_COLOR",
+    "PATH"
+  ]
+}
