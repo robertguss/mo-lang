@@ -12,6 +12,8 @@ from common import HERE, MO, ROOT, Attempt, invoke, trimmed
 import fake_bridge as fb
 from matrix import PROFILE, done, tool, steps_in
 
+MARGIN = PROFILE['candidate_margin_ms']
+
 DRIVER = HERE / 'driver.mo'
 NATIVE = ROOT / 'zig-out/mo-build/application-driver/application-driver'
 
@@ -23,19 +25,30 @@ def near(ms, size=100):
     return run
 
 
-def expect_near(refused, cap=None):
+def expect_near(refused, cap=None, completed=False):
+    """A clamped command's timeout leaves the collection margin before what remained, so the
+    bridge's reply, which comes after the timeout, can still arrive."""
     def check(env, line):
         reqs = env.bridge.requests
         found = dict(parsed='output' in line)
+        output = json.loads(line.get('output', '{}'))
         if refused:
-            found.update(refused=json.loads(line.get('output', '{}')).get('error') == 'deadline', no_http=not reqs)
+            found.update(refused=output.get('error') == 'deadline', no_http=not reqs)
         else:
             timeout = reqs[0]['args']['timeout_ms'] if reqs else -1
             found.update(one_request=len(reqs) == 1, floor=timeout >= 500,
-                         within_remaining=timeout <= line.get('before_ms', -1),
+                         within_margin=timeout <= line.get('before_ms', -1) - MARGIN,
                          capped=cap is None or timeout == cap)
+        if completed:
+            found.update(received=output.get('state') == 'success' and output.get('execution') == 'completed')
         return found
     return check
+
+
+def collected(seconds):
+    """The bridge answers a command this long after its timeout, as the service does once it has
+    collected the command and proved its cleanup (measured 0.5 to 1.4 s)."""
+    return lambda req, n: fb.success(req) + (req['args']['timeout_ms'] / 1000 + seconds,)
 
 
 def launch(ms, goal='repair'):
@@ -73,10 +86,15 @@ class Case:
 CASES = {
     # A command refused below the 500 ms minimum sends nothing.
     'near-refused': Case(near(499), expect_near(True)),
-    # A command near expiry is sent with a timeout no longer than what remained.
-    'near-sent': Case(near(1500), expect_near(False)),
+    # Or when what remains less the collection margin is below it.
+    'near-margin-refused': Case(near(MARGIN + 400), expect_near(True)),
+    # A command near expiry is sent with a timeout no longer than what remained less the margin.
+    'near-sent': Case(near(MARGIN + 1500), expect_near(False)),
+    # End to end v1's defect D1: the clamped command's reply, 1.4 s after its timeout, arrives,
+    # and its execution is known.
+    'near-collected': Case(near(MARGIN + 3000), expect_near(False, completed=True), script=collected(1.4)),
     # The largest command request: encoding first, the timeout taken afterwards.
-    'near-largest': Case(near(3000, 851000), expect_near(False)),
+    'near-largest': Case(near(MARGIN + 3000, 851000), expect_near(False)),
     # A command far from expiry is capped at the 120 s candidate allowance.
     'near-capped': Case(near(600000), expect_near(False, 120000)),
     # An outer deadline without room for the report reserve refuses before any request.
@@ -84,14 +102,14 @@ CASES = {
         error=[p.get('error') for p in event(report_of(line), 'reporting_error')] == ['work_deadline'],
         no_requests=not env.bridge.requests and not env.model.requests, **answered_once(line)),
         replies=[done()]),
-    # Work gets the outer deadline less 15 s; a command outlasting it is clamped, then reported
-    # inside the outer deadline.
-    'reserve-inside': Case(launch(18000), lambda env, line, extra: dict(
+    # Work gets the outer deadline less 15 s; a command outlasting it is clamped to that less the
+    # collection margin, then reported inside the outer deadline.
+    'reserve-inside': Case(launch(15000 + MARGIN + 5000), lambda env, line, extra: dict(
         terminal=[p.get('error') for p in event(report_of(line), 'terminal')] == ['uncertain_or_terminal_tool'],
-        clamped=bool(env.bridge.requests) and 500 <= env.bridge.requests[0]['args']['timeout_ms'] <= 3000,
-        inside_outer=extra['elapsed_ms'] < 18000, **answered_once(line)),
+        clamped=bool(env.bridge.requests) and 500 <= env.bridge.requests[0]['args']['timeout_ms'] <= 5000,
+        inside_outer=extra['elapsed_ms'] < 15000 + MARGIN + 5000, **answered_once(line)),
         replies=[tool('command', command='slow'), done()],
-        script=lambda req, n: fb.success(req) + (6.0,)),
+        script=lambda req, n: fb.success(req) + (MARGIN / 1000 + 8.0,)),
     # Normal completion answers once and stops scheduling.
     'poller-normal': Case(launch(60000), lambda env, line: dict(
         done=[p.get('state') for p in event(report_of(line), 'terminal')] == ['done'], **answered_once(line)),

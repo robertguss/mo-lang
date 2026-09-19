@@ -279,7 +279,7 @@ case('lost-ack', replies=[tool('read_file', path='a.txt'), done()], exit_code=3,
 PROFILE = dict(steps=16, tokens=4096, wall_ms=900000, retries=0, tool_ms=2000,
                grants=['list_files', 'read_file', 'search', 'write_file', 'exact_edit', 'command'],
                report_reserve_ms=15000, model_wait_ms=2000, file_wait_ms=2000, command_wait_ms=300000,
-               candidate_ms=120000, candidate_floor_ms=500, request_bytes=851968, response_bytes=524288,
+               candidate_ms=120000, candidate_floor_ms=500, candidate_margin_ms=5000, request_bytes=851968, response_bytes=524288,
                config_bytes=4096, report_bytes=16 * (851968 + 524288) + 1048576, wire='mo-workspace-http-v1')
 
 
