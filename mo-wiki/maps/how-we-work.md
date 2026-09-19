@@ -22,11 +22,13 @@ The working agreements, the roles, the loop, and the instruments, for anyone (or
 
 ## The roles
 
-The Astra lead stays in the same thread, writes briefs, verifies, decides, and
-records, using the oracle for substantive judgments. Workers write every line
-under `toolchain/` and `examples/`. Each approved worker/new work unit/phase
-gets a fresh Amp orb thread in `medium` mode on `a1.xxlarge`, through
-`create_thread`, not Herdr. Robert reviews the decision log.
+Robert has directed the Astra lead to move to his Mac (18 Sep 2026); see
+`HANDOFF.md` for the transfer checklist. After relocation, keep one continuing
+lead session. The lead writes briefs, verifies, decides, and records, using the
+oracle for substantive judgments. Workers write every line under `toolchain/`
+and `examples/`. Each approved worker/new work unit/phase gets a fresh Amp orb
+thread in `medium` mode on `a1.xxlarge`, through `create_thread`, not Herdr.
+Robert reviews the decision log.
 
 Threads have separate checkouts. Briefs identify the repository, exact base and
 write scope; unpushed work is transferred explicitly. The lead inspects and

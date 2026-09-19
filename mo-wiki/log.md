@@ -674,3 +674,23 @@
   `git diff --check` passed. No code tests needed for this guidance-only change.
   Auditor pointer check returned zero new records. Implementation remains
   paused.
+
+## [2026-09-18] maintain | Mac lead handoff and executor evidence
+
+- 11:44 PM ET checkpoint: Robert confirms OrbStack and directs the Astra lead to
+  move to his Mac too. Updated HANDOFF, active role guidance, roadmap, state,
+  harness brief, decision log and changelog. Worker mode/orb size and
+  fresh-thread ownership remain unchanged; no actual relocation here.
+- Separately approved executor probes ended with nine PASS records, exit 0.
+  Preserved the two earlier failed probe runs and final script under
+  `audit/evidence/2026-09-18/executor-feasibility/`; README distinguishes raw
+  output from reconstructed setup/teardown notes and narrow observations from
+  untested security claims. All temporary services/state were removed; ancestor
+  controller sets and existing workload limits restored.
+- Mac verification, provider support/entitlement, protected verdicts and scoped
+  implementation readiness remain open. No workers or OAuth login started. This
+  handoff does not authorize replaying privileged orb setup on the Mac.
+- Oracle found no handoff blockers. `git diff --check` passed; wiki lint checked
+  256 pages with 25 inherited review/size notices and no structural/raw-drift
+  errors. Evidence checks confirmed the 5/8/9 PASS records, retained failures,
+  final script syntax and SHA-256. No Mo build/test rerun for this docs handoff.

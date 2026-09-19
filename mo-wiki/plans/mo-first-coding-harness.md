@@ -28,6 +28,21 @@ ownership or audit rules. Transfer exact code between thread checkouts; no
 worker has launched. The lead model choice does not select the harness's
 reference model.
 
+**Later instruction, 18 Sep 2026, 11:44 PM ET:** move the Astra lead to Robert's
+Mac, where he confirms OrbStack works. Keep orb worker configuration unchanged.
+`HANDOFF.md` owns arrival checks. Nine final credential-free executor probes
+passed in this orb; the two earlier failed probe runs are also retained at
+`audit/evidence/2026-09-18/executor-feasibility/`. This is evidence of a tested
+Linux container configuration, not a built Mo executor, protected verdict, Mac
+validation or general security certification. Temporary privileged setup was
+dismantled and controller changes restored. A dedicated delegated subtree and
+bounded output-drain behavior are requirements learned from the probe.
+
+Readiness is scoped by work unit: full model-comparison budgets need not block a
+provider-independent fixture runner, but each brief must explicitly name its
+prerequisites, bounds and remaining unmet obligations. No implementation or
+login is authorized by the completed probe approvals or this relocation.
+
 The useful result is: **task + isolated checkout → candidate patch + independent
 behavioral verdict**, with command outcomes, time, usage and failures recorded.
 Two questions stay separate: is Mo useful for implementing this developer tool,

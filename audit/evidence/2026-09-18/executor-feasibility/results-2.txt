@@ -1,0 +1,17 @@
+{"check": "effective-kernel-limits", "result": "PASS", "details": {"cpu.max": "25000 100000", "memory.max": "33554432", "memory.swap.max": "0", "pids.max": "16"}}
+{"check": "filesystem-and-process-restrictions", "result": "PASS", "details": "nonroot; read-only root/reference; writable work; dummy sentinel/socket absent; seccomp=2; no-new-privileges=1; effective capabilities=0"}
+{"check": "network-denial", "result": "PASS", "details": "loopback only; no IPv4 routes; connection to TEST-NET address fails"}
+{"check": "cpu-throttling", "result": "PASS", "details": {"usage_usec": "530909", "user_usec": "526793", "system_usec": "4115", "nr_periods": "20", "nr_throttled": "20", "throttled_usec": "1449636", "nr_bursts": "0", "burst_usec": "0"}}
+{"check": "memory-enforcement", "result": "PASS", "details": "64 MiB finite write under 32 MiB memory limit: exit 137, OOMKilled=true"}
+{"check": "pids-enforcement", "result": "PASS", "details": {"pids.current": 15, "pids.events": {"max": "1"}}}
+{"check": "scratch-bound", "result": "PASS", "details": "finite 12 MiB write stops at 8 MiB tmpfs capacity"}
+{"check": "deadline-and-descendant-cleanup", "result": "PASS", "details": {"processes_removed": 3, "cgroup_empty_or_removed": true}}
+Traceback (most recent call last):
+  File "/tmp/mo-executor-feasibility/probe.py", line 149, in <module>
+    reader.wait(timeout=5)
+  File "/usr/local/lib/python3.11/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 2038, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['sudo', '-n', 'docker', '--host', 'unix:///tmp/mo-executor-feasibility/docker.sock', 'attach', '--sig-proxy=false', 'mo-probe-output']' timed out after 5 seconds

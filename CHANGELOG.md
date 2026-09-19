@@ -2,6 +2,15 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Mac lead handoff and executor feasibility — 18 Sep 2026, 11:44 PM ET
+
+- Robert directs the Astra lead to move to his Mac with OrbStack; workers stay
+  in fresh medium/xxlarge orb threads. Updated the handoff, active guidance and
+  readiness/status pages; destination verification is still owed.
+- Preserved the final nine-PASS executor probe and both failed precursor runs,
+  with setup, cleanup and evidence limitations. Temporary Docker and controller
+  changes were removed/restored. No harness implementation, login or worker.
+
 ## Amp orb/thread workflow — 18 Sep 2026, 11:14 PM ET
 
 - Active guidance now keeps the Astra lead in the same thread and launches each

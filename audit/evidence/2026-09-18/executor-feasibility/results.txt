@@ -1,0 +1,19 @@
+{"check": "effective-kernel-limits", "result": "PASS", "details": {"cpu.max": "25000 100000", "memory.max": "33554432", "memory.swap.max": "0", "pids.max": "16"}}
+{"check": "filesystem-and-process-restrictions", "result": "PASS", "details": "nonroot; read-only root/reference; writable work; dummy sentinel/socket absent; seccomp=2; no-new-privileges=1; effective capabilities=0"}
+{"check": "network-denial", "result": "PASS", "details": "loopback only; no IPv4 routes; connection to TEST-NET address fails"}
+{"check": "cpu-throttling", "result": "PASS", "details": {"usage_usec": "556537", "user_usec": "548292", "system_usec": "8245", "nr_periods": "21", "nr_throttled": "20", "throttled_usec": "1497572", "nr_bursts": "0", "burst_usec": "0"}}
+{"check": "memory-enforcement", "result": "PASS", "details": "64 MiB finite write under 32 MiB memory limit: exit 137, OOMKilled=true"}
+Traceback (most recent call last):
+  File "/tmp/mo-executor-feasibility/probe.py", line 99, in <module>
+    g = group(n)
+        ^^^^^^^^
+  File "/tmp/mo-executor-feasibility/probe.py", line 35, in group
+    path = pathlib.Path(f'/proc/{pid}/cgroup').read_text().split('0::', 1)[1].strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 1058, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/pathlib.py", line 1044, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/proc/0/cgroup'

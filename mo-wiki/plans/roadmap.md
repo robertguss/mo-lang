@@ -16,7 +16,18 @@ Robert approved the direction in [[01-premise]] and the supersession recorded in
 [[decision-log]]. Mo is another option, not a BEAM replacement. Agents are the
 code authors and readers; humans judge behavior and evidence. The complete,
 fast, trustworthy agent feedback loop for existing features takes priority over
-expansion. No workers, setup, experiments or implementation are authorized yet.
+expansion. Implementation workers remain paused. Robert subsequently approved
+bounded credential-free executor probes only; those are completed below, not
+permission for harness implementation or login.
+
+**Current checkpoint, 18 Sep 2026, 11:44 PM ET:** move the Astra lead to
+Robert's Mac, where he confirms OrbStack is working. Keep fresh medium/xxlarge
+orb workers; the move does not restore Herdr mechanics. `HANDOFF.md` gives the
+read-only arrival checks and preserves old Mac work. The orb's final executor
+probe produced nine PASS records, with earlier failed probe runs retained at
+`audit/evidence/2026-09-18/executor-feasibility/`. All temporary services and
+controller changes were cleaned up/restored. The Mac executor is unverified; no
+Mo harness has been built. See [[mo-first-coding-harness]].
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none
@@ -29,8 +40,9 @@ New upstream TLS/script edits are not acceptance evidence.
 1. Application chosen: [[mo-first-coding-harness]], written in Mo and initially
    maintaining Mo applications. Robert approved the lead/oracle recommendation.
    Pi is the practical comparator; do not build a second Elixir harness first.
-   Resolve the brief's provider/executor, protected verification, worker write
-   scope and budget decisions before declaring implementation readiness.
+   First verify the Mac checkout and OrbStack destination; then resolve the
+   brief's provider/executor, protected verification, worker write scope and
+   budget decisions before declaring implementation readiness.
 2. After implementation approval: truthful instruments, one complete headless
    coding path, 401 policy calibration, then two or three bounded application
    tasks and a matched Pi comparison. Add an affordable model after calibration.

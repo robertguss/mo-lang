@@ -14,9 +14,11 @@ for the lead. Worker threads read the role and safety rules, then follow their
 bounded brief; they do not check or operate the lead's audit inbox,
 publish/integrate audit records, or take over lead decisions.
 
-- The Astra lead stays in the same thread: it directs, verifies, decides, and
-  records, consulting the oracle for substantive evaluations and decisions.
-  Workers write code under `toolchain/` and `examples/`.
+- The Astra lead moves to Robert's Mac per the latest `HANDOFF.md`, then keeps
+  one continuing lead session rather than a new lead per phase. It directs,
+  verifies, decides, and records, consulting the oracle for substantive
+  evaluations and decisions. Workers write code under `toolchain/` and
+  `examples/`.
 - Launch each approved worker/new work unit/phase with `create_thread`,
   `agent_mode: "medium"`, `executor: "orb"`, `orb_size: "a1.xxlarge"`. Do not
   use Herdr or shell commands to launch agents. Workers use separate checkouts;

@@ -16,6 +16,15 @@ The onboarding/audit loop is lead-only. Worker threads identify themselves as
 workers, follow shared safety rules and their bounded brief, and do not run the
 lead's audit inbox, publication/integration or decision-recording workflow.
 
+**Lead relocation (Robert, 18 Sep 2026):** move the Astra lead to his Mac, with
+OrbStack Linux as the proposed execution environment. `HANDOFF.md` owns the
+transfer checklist. This is a one-time environment move, not a new lead per
+phase; retain one continuing lead session there. Worker threads remain
+medium-mode xxlarge Amp orbs. Confirm local tools and separate checkouts; do not
+restore historical Herdr mechanics. Orb-only service commands below apply only
+inside orbs, not to the Mac or an arbitrary OrbStack Linux VM. Preserve existing
+Mac services and Docker contexts; approve scoped setup before altering them.
+
 - **The lead (Astra, this same thread).** Writes briefs, verifies, decides,
   records. Consults the oracle for substantive evaluations and decisions. Never
   writes code or prose under `toolchain/` or `examples/` by hand. Owns the

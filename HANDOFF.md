@@ -1,6 +1,74 @@
-# Mo Lang — Agent-native direction; implementation paused, 18 Sep 2026
+# Mo Lang — Move the lead to Robert's Mac; implementation paused
 
-## Current instruction: prepare the Mo-first harness brief; no worker launch
+## Current instruction: Mac handoff, 18 Sep 2026, 11:44 PM ET
+
+Robert confirms OrbStack works on his Mac and explicitly wants **the Astra lead
+to move there too**, not merely use it as a remote executor. This supersedes the
+earlier requirement to keep the lead in this orb thread. Keep one continuing
+lead session after relocation; do not create a new lead for each phase. Workers
+remain separate fresh `medium`, `a1.xxlarge` Amp orb threads unless Robert
+changes that instruction. Do not revert to Herdr/Opus mechanics.
+
+Source conversation:
+https://ampcode.com/threads/T-01a0b649-dbdd-7299-b541-d4c48f1aecf4. This file is
+the portable context if the conversation cannot be continued in a Mac-backed
+session. Preparing it does not relocate a thread or select a model. No Mac
+checkout, runner, Docker context or credentials have been inspected here.
+
+### Resume in this order
+
+1. Load `mo-lead`, then read this current section, `mo-wiki/SCHEMA.md`, the top
+   of the roadmap/state page, and the latest decision/log entries. Inspect the
+   Mac checkout's status and branch before syncing; preserve existing
+   uncommitted work, local commits and historical worktrees. Fetch and integrate
+   the handoff commit without reset, forced checkout or blindly replaying old
+   patches.
+2. Run the lead's pointer-only auditor check. Its private receiver ledger is
+   machine-local: preserve an existing Mac ledger; do not interpret a fresh
+   ledger as proof a record was never handled. Never open an auditor reading
+   before the lead's own reading of that subject is on `main`.
+3. Verify the Mac/OrbStack destination read-only: exact repository and revision,
+   architecture, Zig 0.16, Docker context/endpoint and Linux VM availability. Do
+   not assume the native Mac and VM share files, binaries or paths. Existing
+   `~/Projects/startups/...` paths below are historical, not validated targets.
+4. Review `audit/evidence/2026-09-18/executor-feasibility/README.md` and
+   `mo-wiki/plans/mo-first-coding-harness.md`. The orb proved a bounded
+   container configuration feasible, not production-safe, Mac-verified or a
+   finished Mo executor. Adapt probes to a dedicated OrbStack test boundary
+   before proposing another run; do not copy the Amp cgroup commands onto macOS
+   or a shared daemon.
+5. Continue readiness one bounded piece at a time: executor lifecycle and
+   protected verdicts; provider support/client identity; exact write scopes and
+   acceptance owner; versioned 401 policy and scoped budgets. Staged readiness
+   is allowed, but no prerequisite is silently waived. Confirm readiness and
+   obtain a bounded start before implementation workers. No OAuth login starts
+   merely because this handoff is loaded.
+
+### What completed in the orb
+
+Robert separately approved credential-free feasibility probes, temporary rootful
+Docker setup and a reversible CPU-controller adjustment. The final probe run
+exited 0 with nine PASS records: effective cgroup limits, filesystem/process
+restrictions, network denial, CPU throttling, memory exhaustion, PID limits,
+scratch capacity, deadline/descendant cleanup and capped output. Two earlier
+runs failed in the probe (PID observation race; blocked output attach); their
+raw outputs are retained, not hidden. No Mo harness/compiler code changed.
+
+The temporary daemon, containers, image and fixture files were removed; its
+socket and service are gone. All three ancestor controller sets and the
+workload's numeric limits were restored. Docker/runc had enabled additional
+ancestor controllers, so future executor setup must own a dedicated delegated
+subtree rather than silently modifying shared ancestors. No packages or images
+were downloaded, no real credentials accessed, and no workers or login started.
+The probe approvals are completed, not standing permission to alter the Mac.
+
+The audit's requirements remain: Step 39 unaccepted, Program 7 suspended, no
+Linux result substitutes for Darwin `F_FULLFSYNC` evidence. OAuth subscription
+support/registration and real account/model entitlement are still unresolved; Pi
+is a provisional provider-only adapter, not approval from OpenAI. The separate
+TypeSafe report-check proposal remains unbuilt; sending logs out is unapproved.
+
+## Earlier planning checkpoint (superseded where the Mac handoff differs)
 
 **Worker configuration, Robert's latest instruction (18 Sep 2026, 11:01 PM
 ET):** use Amp orbs, Astra as lead, and a separate fresh thread for every worker

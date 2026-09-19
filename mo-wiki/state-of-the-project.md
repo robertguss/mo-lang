@@ -24,7 +24,23 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, 10:29 PM ET, Mo-first harness selected.
+**Last updated:** 18 Sep 2026, 11:44 PM ET, Mac lead handoff prepared.
+
+**Lead moving to the Mac:** Robert confirms OrbStack is available and wants the
+Astra lead there, not just a remote executor. Fresh medium/xxlarge orb worker
+threads remain the rule. No relocation or Mac verification has happened in this
+orb; `HANDOFF.md` tells the arriving lead how to preserve local work, inspect
+the destination and continue readiness without launching workers.
+
+**Executor feasibility, not harness acceptance:** separately authorized,
+credential-free orb probes ended with nine passing checks after correcting two
+probe failures. Raw outputs and the final script are preserved under
+`audit/evidence/2026-09-18/executor-feasibility/`. The checks exercised
+restricted containers, effective resource limits and cleanup, not a Mo executor
+or a protected behavioral verdict. Temporary Docker/services and all controller
+changes were removed/restored. Mac/OrbStack still needs its own verification;
+the host's outer VM isolation does not protect credentials from code inside it.
+OAuth remains provisional and untested. No implementation worker has started.
 
 **Application chosen:** Robert approved [[mo-first-coding-harness]], a small
 coding harness written in Mo, initially maintaining existing Mo applications. Pi

@@ -124,7 +124,8 @@ Add a tag here before using it. Keep it under 30.
 5. Fresh **web research** over training data when a topic calls for it; two lanes — Claude writes prompts into `research/prompts/`, Robert runs them (Perplexity) into `raw/research-runs/`; papers required.
 6. **Nothing is final until measured** (direction 28).
 7. **Lead and worker threads** (Robert, 18 Sep 2026, superseding Herdr): the
-   Astra lead stays in the same thread, owns judgment and documentation, and
+   Astra lead moves to Robert's Mac per `HANDOFF.md` (his later instruction),
+   then keeps one continuing lead session, owns judgment and documentation, and
    uses the oracle for substantive evaluations and decisions. Every approved
    worker/new work unit/phase gets a fresh Amp orb thread through
    `create_thread`, with `agent_mode: "medium"` and `orb_size: "a1.xxlarge"`.
