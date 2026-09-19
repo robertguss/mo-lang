@@ -162,18 +162,19 @@ def sweep(scored: list[Scored]) -> list[dict[str, Any]]:
 
 
 def choose(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Most false claims sent to the lead; then fewest true claims flagged; then the
-    highest confidence and lowest Noul threshold (the more cautious gate)."""
-    return sorted(
-        rows,
-        key=lambda r: (
-            -r["false_claims_to_lead"],
-            -r["planted_caught"],
-            r["true_claims_flagged"],
-            -r["confidence"],
-            r["noul"],
-        ),
-    )[0]
+    """The rows that send the most false claims to the lead and flag the fewest true
+    ones; of those, the highest confidence (the more cautious gate), and the middle of
+    the Noul thresholds tied there, so the Noul sits inside the gap the data shows and
+    not on its edge."""
+
+    def score(r: dict[str, Any]) -> tuple[int, int, int]:
+        return (-r["false_claims_to_lead"], -r["planted_caught"], r["true_claims_flagged"])
+
+    best = min(score(r) for r in rows)
+    tied = [r for r in rows if score(r) == best]
+    confidence = max(r["confidence"] for r in tied)
+    at = sorted((r for r in tied if r["confidence"] == confidence), key=lambda r: r["noul"])
+    return at[(len(at) - 1) // 2]
 
 
 def wrong(scored: list[Scored]) -> list[dict[str, Any]]:
