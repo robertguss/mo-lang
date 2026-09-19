@@ -53,7 +53,7 @@ pub const full_budget: usize = 4 << 20;
 /// The most address space a process's region grows to (settleRegion).
 pub const max_region: usize = 16 << 30;
 
-pub const Fault = enum { timeout, missing, closed };
+pub const Fault = enum { timeout, missing, closed, failed };
 
 /// `line`: the supervisor whose child line gave the policy, or none (a crash report names it).
 pub const Policy = struct { restart: bytecode.Restart, max_restarts: u32, window_ms: i64, line: u32 = none };
@@ -222,6 +222,8 @@ pub const Sim = struct {
     files: stdlib.FixtureFs = .{},
     /// What each `Out.fixture()` of the run was given, one text per call.
     outs: std.ArrayList(std.ArrayList([]const u8)) = .empty,
+    /// Each `Exec.fixture(fn)` of the run, and the Programs and Commands made from one (step 41).
+    exec: @import("exec.zig").Table = .{},
     /// Each `Random.fixture()` of the run, by its handle less one: how far into the run's
     /// stream it has drawn (step 35).
     randoms: std.ArrayList(u64) = .empty,

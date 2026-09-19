@@ -56,6 +56,13 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `TlsServer` | | capability: a certificate chain and its key, and its ALPN list; no authority beyond them, so a program hands one to every worker | stdlib (09), step 36 |
 | `TlsClient` | | capability: the root certificates a client trusts, and its ALPN list; no authority beyond them, so it may be stored and shared | stdlib (09), step 37 |
 | `TlsError` | | error enum: `BadPem`, `Handshake`, `Timeout`, `Closed`, `Untrusted` | stdlib (09), steps 36 and 37 |
+| `Exec` | | capability: runs child processes, `platform.exec`; `Exec.fixture(fn)` in a test; stays in `main` (`MO0407`) | stdlib (09), step 41 |
+| `Program` | | capability: one program by its absolute path, made by `Exec.program`; stays in `main` (`MO0407`) | stdlib (09), step 41 |
+| `Command` | | capability: a program and a fixed argument list, made by `Program.command`; the only one of the three that runs or travels | stdlib (09), step 41 |
+| `Arg` | `Fixed(text: String)`, `Hole` | enum: one argument of a command | stdlib (09), step 41 |
+| `Exit` | `Exited(code: UInt8)`, `Signalled(signal: UInt8)` | enum: how a child ended | stdlib (09), step 41 |
+| `ExecError` | `Missing`, `Refused`, `Timeout`, `Failed(why: String)` | error enum | stdlib (09), step 41 |
+| `Done` | `exit: Exit`, `stdout: List(UInt8)`, `stderr: List(UInt8)`, `truncated: Bool`, `took: Duration` | struct: what `Command.run` gives; a module's own variant or message named `Done` hides it in that module | stdlib (09), step 41 |
 
 ## Stand-ins
 
@@ -117,6 +124,14 @@ Types chapter 4's refund module takes from `Payments.Ledger` and the event log, 
 | `TlsError` | `Timeout` | | stdlib (09), step 36 |
 | `TlsError` | `Closed` | | stdlib (09), step 36 |
 | `TlsError` | `Untrusted` | | stdlib (09), step 37 |
+| `Arg` | `Fixed` | `text: String` | stdlib (09), step 41 |
+| `Arg` | `Hole` | | stdlib (09), step 41 |
+| `Exit` | `Exited` | `code: UInt8` | stdlib (09), step 41 |
+| `Exit` | `Signalled` | `signal: UInt8` | stdlib (09), step 41 |
+| `ExecError` | `Missing` | | stdlib (09), step 41 |
+| `ExecError` | `Refused` | | stdlib (09), step 41 |
+| `ExecError` | `Timeout` | | stdlib (09), step 41 |
+| `ExecError` | `Failed` | `why: String` | stdlib (09), step 41 |
 | `RuntimeError` | `NoProcess` | | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `Unparsed` | `why: String` | stdlib (09), Session 5, step 23 |
 | `RuntimeError` | `ReadOnly` | | stdlib (09), Session 5, step 23 |
@@ -273,6 +288,15 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Platform` | `random` | | `Random` | | `main` | stdlib (09), step 35 |
 | `Platform` | `tls` | | `Tls` | | `main` | stdlib (09), step 36 |
 | `Platform` | `exit` | `UInt8` | none | | `main` | grammar (Q18) |
+| `Platform` | `exec` | | `Exec` | | `main` | stdlib (09), step 41 |
+| `Exec` | `program` | `String` | `Program`: an absolute path, never searched for; a relative path or a NUL crashes | | | stdlib (09), step 41 |
+| `Program` | `command` | `List(Arg)` | `Command`: a fixed argument list, each `Hole` one whole argument filled at the run; a `Fixed` holding a NUL crashes | | | stdlib (09), step 41 |
+| `Command` | `env` | `Map(String, String)` | `Command`: the child's whole environment, empty by default | | | stdlib (09), step 41 |
+| `Command` | `in_folder` | `Fs` | `Command`: the child works in the scope's folder, reached as `Fs.list` reaches it; by default a new empty folder, removed after the run (the design's `in` is a keyword) | | | stdlib (09), step 41 |
+| `Command` | `output` | `UInt64` | `Command`: bytes kept of stdout and of stderr each, 65,536 by default, at most 16 MiB | | | stdlib (09), step 41 |
+| `Command` | `run` | `List(String)` | `Result(Done, ExecError)`: the holes filled in order; `Refused` for a wrong count or a NUL; at the deadline the child's process group is killed and reaped, then `Timeout` | yes | | stdlib (09), step 41 |
+| `Command` | `run` | `List(String)`, `stdin: String` | `Result(Done, ExecError)`: as above, `stdin` written to the child and then closed | yes | | stdlib (09), step 41 |
+| `Exec` (on type) | `fixture` | `fn(List(String), String) Done` | `Exec`: the function answers every run, given the program's path and the filled arguments, and the stdin; under `--sim` a run may fail with `Timeout` or `Failed` | | tests | stdlib (09), step 41 |
 | `Env` | `get` | `String` | `Option(String)` | | | grammar (Q18) |
 | `Out` | `write` | `String` | none | | | grammar (Q18) |
 | `Out` | `write_line` | `String` | none | | | stdlib (09) |

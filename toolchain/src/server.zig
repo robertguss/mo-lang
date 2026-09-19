@@ -19,6 +19,7 @@
 const std = @import("std");
 const sources = @import("sources.zig");
 const blocking = @import("blocking.zig");
+const exec_mod = @import("exec.zig");
 const Io = std.Io;
 const posix = std.posix;
 const sys = posix.system;
@@ -83,6 +84,8 @@ pub const Server = struct {
     files: []const diag.File = &.{},
     /// `platform.net`'s listeners and connections (net.zig).
     sockets: net.Net,
+    /// Every Program and Command made from `platform.exec` (exec.zig, step 41).
+    exec: exec_mod.Table = .{},
     /// `mo run --clock` (or MO_CLOCK): the time main's clock starts at, in milliseconds since
     /// the epoch, and the wall clock when it was set; the clock then advances with the wall.
     /// Null: the clock is the wall's.
@@ -223,6 +226,8 @@ pub const Server = struct {
             .{ .kind = .random }
         else if (std.mem.eql(u8, name, "tls"))
             .{ .kind = .tls }
+        else if (std.mem.eql(u8, name, "exec"))
+            .{ .kind = .exec }
         else
             .{ .kind = .clock };
         return .{ .cap = cap };
@@ -500,6 +505,18 @@ pub const Server = struct {
         if (s.late(t0, within_ms)) return timeout(vm);
         if (missed) |p| return missing(vm, p);
         return vm.variant("Ok", &.{.none});
+    }
+
+    /// The folder of the Fs whose handle is `fs`, opened as `list` reaches it (step 41,
+    /// `Command.in_folder`): null when the scope climbed out, the folder is not there, or a folder
+    /// on the way from the one `platform.fs.scoped` named is a link.
+    pub fn scopeFolder(s: *Server, fs: u32) Error!?posix.fd_t {
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const at = try s.place(scratch.allocator(), s.scopes.items[fs], ".") orelse return null;
+        if (at.name.len == 0) return at.dir;
+        defer at.close();
+        return openFolder(at.dir, at.name, at.follow);
     }
 
     /// Whether a call that began at `t0` took longer than its deadline. Enforced after the

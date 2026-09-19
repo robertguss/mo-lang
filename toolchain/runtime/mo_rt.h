@@ -87,7 +87,8 @@ enum {
     MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_ACCEPTED, MO_N_LINE, MO_N_IDLE, MO_N_NO_PROCESS, MO_N_UNPARSED,
     MO_N_READ_ONLY, MO_N_MAILBOX_FULL, MO_N_UPDATED, MO_N_STARTED, MO_N_ENDED, MO_N_RESTARTED, MO_N_CRASHED,
     MO_N_OVERFLOWED, MO_N_TIMED_OUT, MO_N_SOURCE_PAUSED, MO_N_SOURCE_RESUMED, MO_N_SENT, MO_N_PAUSED,
-    MO_N_RESUMED, MO_N_FILE, MO_N_FOLDER, MO_N_DROPPED, MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_UNTRUSTED, MO_N_LINK, MO_N_FIXED
+    MO_N_RESUMED, MO_N_FILE, MO_N_FOLDER, MO_N_DROPPED, MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_UNTRUSTED, MO_N_LINK,
+    MO_N_FIXED_ARG, MO_N_HOLE, MO_N_EXITED, MO_N_SIGNALLED, MO_N_FAILED, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -107,7 +108,8 @@ enum { MO_I8, MO_I16, MO_I32, MO_I64, MO_U8, MO_U16, MO_U32, MO_U64 };
 /* types.CapKind, in its order. */
 enum {
     MO_CAP_CLOCK, MO_CAP_FS, MO_CAP_EVENTS, MO_CAP_LEDGER, MO_CAP_PLATFORM, MO_CAP_ENV, MO_CAP_OUT, MO_CAP_NET,
-    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE, MO_CAP_RUNTIME, MO_CAP_RANDOM, MO_CAP_TLS, MO_CAP_TLS_SERVER, MO_CAP_TLS_CLIENT
+    MO_CAP_LISTENER, MO_CAP_CONN, MO_CAP_HTTP, MO_CAP_HTTP_LISTENER, MO_CAP_EXCHANGE, MO_CAP_RUNTIME, MO_CAP_RANDOM, MO_CAP_TLS, MO_CAP_TLS_SERVER, MO_CAP_TLS_CLIENT,
+    MO_CAP_EXEC, MO_CAP_PROGRAM, MO_CAP_COMMAND
 };
 
 /* check.DeclKind, in its order. */
@@ -184,6 +186,8 @@ extern const uint32_t mo_process_info_decl;
 extern const uint32_t mo_source_info_decl;
 extern const uint32_t mo_memory_info_decl;
 extern const uint32_t mo_entry_decl;
+/* What Command.run gives (step 41). */
+extern const uint32_t mo_done_decl;
 extern const bool mo_surface_built;
 /* The runtime surface's own process, in mo_processes, or UINT32_MAX; MO_SURFACE's port, or -1; and
  * the line that says where it listens. */
@@ -557,6 +561,8 @@ MO_ROW(mo_r_Platform_runtime); MO_ROW(mo_r_Runtime_processes); MO_ROW(mo_r_Runti
 MO_ROW(mo_r_Runtime_events); MO_ROW(mo_r_Runtime_crashes); MO_ROW(mo_r_Runtime_sources); MO_ROW(mo_r_Runtime_memory);
 MO_ROW(mo_r_Runtime_slowest); MO_ROW(mo_r_Runtime_send); MO_ROW(mo_r_Runtime_pause); MO_ROW(mo_r_Runtime_resume);
 MO_ROW(mo_r_Runtime_read_only); MO_ROW(mo_r_Runtime_fixture);
+MO_ROW(mo_r_Platform_exec); MO_ROW(mo_r_Exec_program); MO_ROW(mo_r_Exec_fixture); MO_ROW(mo_r_Program_command);
+MO_ROW(mo_r_Command_env); MO_ROW(mo_r_Command_in_folder); MO_ROW(mo_r_Command_output); MO_ROW(mo_r_Command_run); MO_ROW(mo_r_Command_run_stdin);
 MO_ROW(mo_r_Env_get); MO_ROW(mo_r_Out_write); MO_ROW(mo_r_Out_write_line); MO_ROW(mo_r_Out_flush);
 MO_ROW(mo_r_Out_fixture); MO_ROW(mo_r_Out_written);
 MO_ROW(mo_r_Json_encode); MO_ROW(mo_r_Json_decode); MO_ROW(mo_r_Json_to_i64); MO_ROW(mo_r_Deadline_at_most); MO_ROW(mo_r_Deadline_remaining); MO_ROW(mo_r_Deadline_fixture);

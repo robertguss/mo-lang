@@ -2,6 +2,26 @@
   "version": 1,
   "files": [
     {
+      "path": "exec.mo",
+      "module": "Stdlib.Exec",
+      "declarations": [
+        { "id": "91956eea308d", "name": "module Stdlib.Exec", "hash": "7c00445d1d6388a9" },
+        { "id": "8e6c5b8efea2", "name": "expose", "hash": "cc0b7885eb1051ff" },
+        { "id": "8d8a0cc626e7", "name": "intent", "hash": "7326a19811d170d2" },
+        { "id": "6da019969e05", "name": "enum Removal", "hash": "f98c2735eca42266" },
+        { "id": "321a338feef6", "name": "fn remove", "hash": "49f5d2a13ffacce5" },
+        { "id": "6491688b29c1", "name": "fn ended", "hash": "35fd514e2933dbbc" },
+        { "id": "2ad4240bf9b4", "name": "fn inspect", "hash": "f5f15f3ab971803a" },
+        { "id": "b99b7e3c8aad", "name": "fn removed_all", "hash": "fbed19597b9b8ffe" },
+        { "id": "3f65d152102e", "name": "fn docker", "hash": "be9c586c29783438" },
+        { "id": "130a43b8e21f", "name": "fn echoed", "hash": "33c44270de88dc6b" },
+        { "id": "f36b74a977ff", "name": "test \"a removal says how the child ended\"", "hash": "d02256e5b2ee552a" },
+        { "id": "71cc705ff9a6", "name": "test \"inspect reads what the child wrote, and nothing when it failed\"", "hash": "22dcaf3256c32980" },
+        { "id": "0f2270425146", "name": "test \"a hole is one whole argument, whatever it holds\"", "hash": "34ace77c5358da14" }
+      ],
+      "verified": { "hash": "d077f8946b30c29c", "declarations": "4dc8077c6c459b4a" }
+    },
+    {
       "path": "files.mo",
       "module": "Stdlib.Files",
       "declarations": [

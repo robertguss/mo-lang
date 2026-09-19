@@ -1095,7 +1095,9 @@ const Checker = struct {
             for (c.variants.items[d.variants.start..d.variants.end]) |v| {
                 const s = c.type_names.get(v.name) orelse continue;
                 const other = c.decls.items[s];
-                if (other.kind != .struct_ or other.module != c.module) continue;
+                // A stdlib struct (`Done`, `Entry`) is hidden in this module by its own variant or
+                // message of the name instead (step 41: programs already call a message `Done`).
+                if (other.kind != .struct_ or other.module != c.module or other.node == 0) continue;
                 try c.reportTok(.declared_twice, c.node(v.node).main_token, try c.print("{s} is a struct and a {s} of {s}; rename one, since {s}(...) could build either.", .{ v.name, if (d.kind == .process) "message" else "variant", d.name, v.name }));
             }
         }
@@ -2745,6 +2747,15 @@ const Checker = struct {
         }
     }
 
+    /// Whether an enum or a process in scope declares a variant or a message named `name`.
+    fn ownVariant(c: *Checker, name: []const u8) bool {
+        for (c.variants.items) |v| {
+            const owner = c.decls.items[v.owner];
+            if (owner.kind != .prelude_enum and std.mem.eql(u8, v.name, name) and c.type_names.get(owner.name) == v.owner) return true;
+        }
+        return false;
+    }
+
     fn findVariant(c: *Checker, name: []const u8, expected: Id) ?u32 {
         const b = c.bt(expected);
         const scope: ?u32 = switch (b.tag) {
@@ -3523,8 +3534,10 @@ const Checker = struct {
                 .none => unreachable,
             }
         }
-        if (c.type_names.get(name)) |d| {
+        if (c.type_names.get(name)) |d| stdlib: {
             const decl = c.decls.items[d];
+            // A module's own variant or message hides a stdlib struct of its name (step 41).
+            if (decl.node == 0 and decl.kind == .struct_ and c.ownVariant(name)) break :stdlib;
             switch (decl.kind) {
                 .struct_ => {
                     // A module's own Request or Response hides the stdlib's by name (step 23), but a
@@ -3667,6 +3680,7 @@ pub fn primitive(name: []const u8) ?Id {
         .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
         .{ "Runtime", types.cap(.runtime) },   .{ "Random", types.cap(.random) },
         .{ "Tls", types.cap(.tls) },           .{ "TlsServer", types.cap(.tls_server) }, .{ "TlsClient", types.cap(.tls_client) },
+        .{ "Exec", types.cap(.exec) },         .{ "Program", types.cap(.program) },     .{ "Command", types.cap(.command) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;

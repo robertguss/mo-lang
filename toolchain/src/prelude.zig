@@ -106,6 +106,15 @@ pub const types = [_]Type{
     // The client side (step 37): a trust set of roots and an ALPN list, no authority beyond them.
     .{ .name = "TlsClient", .kind = .capability, .origin = .stdlib, .hideable = true },
     .{ .name = "TlsError", .kind = .error_enum, .origin = .stdlib, .hideable = true },
+    // A child process narrowed to fixed commands (step 41; design: mo-capabilities-for-the-harness,
+    // section 3). `Exec` and `Program` stay in main (MO0407); only a `Command` runs or travels. Each
+    // is a name programs already give their own types (`Command`), so a module's own hides it.
+    .{ .name = "Exec", .kind = .capability, .origin = .stdlib, .hideable = true },
+    .{ .name = "Program", .kind = .capability, .origin = .stdlib, .hideable = true },
+    .{ .name = "Command", .kind = .capability, .origin = .stdlib, .hideable = true },
+    .{ .name = "Arg", .kind = .enum_, .origin = .stdlib, .hideable = true },
+    .{ .name = "Exit", .kind = .enum_, .origin = .stdlib, .hideable = true },
+    .{ .name = "ExecError", .kind = .error_enum, .origin = .stdlib, .hideable = true },
 };
 
 /// Stand-ins for types chapter 4's refund module takes from `Payments.Ledger` and the
@@ -180,6 +189,15 @@ pub const structs = [_]Struct{
         .{ .name = "links", .type = "UInt64" },
         .{ .name = "setuid", .type = "Bool" },
     } },
+    // What `Command.run` gives (step 41): how the child ended, what it wrote on each stream up to
+    // the command's bound, whether either stream went past it, and how long the run took.
+    .{ .name = "Done", .origin = .stdlib, .fields = &.{
+        .{ .name = "exit", .type = "Exit" },
+        .{ .name = "stdout", .type = "List(UInt8)" },
+        .{ .name = "stderr", .type = "List(UInt8)" },
+        .{ .name = "truncated", .type = "Bool" },
+        .{ .name = "took", .type = "Duration" },
+    } },
     .{ .name = "MemoryInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "resident_bytes", .type = "UInt64" },
         .{ .name = "region_bytes", .type = "UInt64" },
@@ -251,6 +269,15 @@ pub const variants = [_]Variant{
     .{ .owner = "TlsError", .name = "Timeout", .origin = .stdlib },
     .{ .owner = "TlsError", .name = "Closed", .origin = .stdlib },
     .{ .owner = "TlsError", .name = "Untrusted", .origin = .stdlib },
+    // Step 41: a command's argument, how a child ended, and why a run gave no Done.
+    .{ .owner = "Arg", .name = "Fixed", .fields = &.{.{ .name = "text", .type = "String" }}, .origin = .stdlib },
+    .{ .owner = "Arg", .name = "Hole", .origin = .stdlib },
+    .{ .owner = "Exit", .name = "Exited", .fields = &.{.{ .name = "code", .type = "UInt8" }}, .origin = .stdlib },
+    .{ .owner = "Exit", .name = "Signalled", .fields = &.{.{ .name = "signal", .type = "UInt8" }}, .origin = .stdlib },
+    .{ .owner = "ExecError", .name = "Missing", .origin = .stdlib },
+    .{ .owner = "ExecError", .name = "Refused", .origin = .stdlib },
+    .{ .owner = "ExecError", .name = "Timeout", .origin = .stdlib },
+    .{ .owner = "ExecError", .name = "Failed", .fields = &.{.{ .name = "why", .type = "String" }}, .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "NoProcess", .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "Unparsed", .fields = &.{.{ .name = "why", .type = "String" }}, .origin = .stdlib },
     .{ .owner = "RuntimeError", .name = "ReadOnly", .origin = .stdlib },
@@ -454,6 +481,17 @@ pub const fns = [_]Fn{
     .{ .recv = "Platform", .name = "random", .ret = "Random", .origin = .stdlib },
     .{ .recv = "Platform", .name = "tls", .ret = "Tls", .origin = .stdlib },
     .{ .recv = "Platform", .name = "exit", .params = &.{"UInt8"}, .ret = "none" },
+    .{ .recv = "Platform", .name = "exec", .ret = "Exec", .origin = .stdlib },
+    // Exec (step 41): an absolute path makes a Program, a fixed argument list makes a Command, and
+    // only a Command runs. `env`, `in_folder` and `output` give a new Command; nothing goes back up.
+    .{ .recv = "Exec", .name = "program", .params = &.{"String"}, .ret = "Program", .origin = .stdlib },
+    .{ .recv = "Program", .name = "command", .params = &.{"List(Arg)"}, .ret = "Command", .origin = .stdlib },
+    .{ .recv = "Command", .name = "env", .params = &.{"Map(String, String)"}, .ret = "Command", .origin = .stdlib },
+    .{ .recv = "Command", .name = "in_folder", .params = &.{"Fs"}, .ret = "Command", .origin = .stdlib },
+    .{ .recv = "Command", .name = "output", .params = &.{"UInt64"}, .ret = "Command", .origin = .stdlib },
+    .{ .recv = "Command", .name = "run", .params = &.{"List(String)"}, .ret = "Result(Done, ExecError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Command", .name = "run", .params = &.{"List(String)"}, .named = &.{.{ .name = "stdin", .type = "String" }}, .ret = "Result(Done, ExecError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Exec", .on_type = true, .name = "fixture", .params = &.{"fn(List(String), String) Done"}, .ret = "Exec", .only = .tests, .origin = .stdlib },
     .{ .recv = "Env", .name = "get", .params = &.{"String"}, .ret = "Option(String)" },
     .{ .recv = "Out", .name = "write", .params = &.{"String"}, .ret = "none" },
     .{ .recv = "Out", .name = "write_line", .params = &.{"String"}, .ret = "none", .origin = .stdlib },
