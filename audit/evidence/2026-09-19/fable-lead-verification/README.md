@@ -2,7 +2,7 @@
 
 Fable lead, on the lead checkout, every command under
 `toolchain/bench/step36/guard.py`. Each `<name>.exit` holds the real exit code
-and `<name>.tail.txt` the last 6,000 bytes of output. Times are ET.
+and `<name>.tail.txt` the last 6,000 bytes of output. Times are ET and approximate to a few minutes; the exact ones are the files' modification times.
 
 | run | tree | when | result |
 |---|---|---|---|
