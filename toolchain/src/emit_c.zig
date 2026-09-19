@@ -48,7 +48,7 @@ pub const Options = struct {
 pub const Error = error{OutOfMemory};
 
 /// The runtime's own variant names, in mo_rt.h's MO_N_* order.
-const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed", "File", "Folder", "Dropped", "BadPem", "Handshake", "Untrusted", "Link" };
+const fixed_names = [_][]const u8{ "Some", "None", "Ok", "Error", "Missing", "Timeout", "Syntax", "Object", "Array", "String", "Number", "Bool", "Null", "Down", "Refused", "Closed", "LineTooLong", "Busy", "Malformed", "TooLarge", "Unsupported", "NotText", "Accepted", "Line", "Idle", "NoProcess", "Unparsed", "ReadOnly", "MailboxFull", "Updated", "Started", "Ended", "Restarted", "Crashed", "Overflowed", "TimedOut", "SourcePaused", "SourceResumed", "Sent", "Paused", "Resumed", "File", "Folder", "Dropped", "BadPem", "Handshake", "Untrusted", "Link", "Fixed", "Hole", "Exited", "Signalled", "Failed" };
 
 /// The C translation unit for `checked`, loaded as `prog`; a program build needs its main.
 pub fn emit(gpa: std.mem.Allocator, checked: *const check.Checked, prog: program.Program, options: Options) Error![]const u8 {
@@ -1842,6 +1842,8 @@ const Emitter = struct {
             "_delay"
         else if (std.mem.eql(u8, head, "Charge") and std.mem.eql(u8, row.name, "fixture") and row.named.len == 2)
             "_at"
+        else if (std.mem.eql(u8, head, "Command") and std.mem.eql(u8, row.name, "run") and row.named.len == 1)
+            "_stdin"
         else
             "";
         if (head.len == 0) return e.print("mo_r_{s}", .{name.items});
@@ -2305,7 +2307,7 @@ const Emitter = struct {
         const charge = k.findDecl("Charge");
         try tables.print(gpa, "const uint32_t mo_charge_decl = {s};\n", .{if (charge) |c| try e.print("{d}", .{c}) else "UINT32_MAX"});
         try tables.print(gpa, "const uint32_t mo_request_decl = {d};\nconst uint32_t mo_response_decl = {d};\n", .{ k.preludeStruct("Request").?, k.preludeStruct("Response").? });
-        try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\nconst uint32_t mo_entry_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").?, k.preludeStruct("Entry").? });
+        try tables.print(gpa, "const uint32_t mo_process_info_decl = {d};\nconst uint32_t mo_source_info_decl = {d};\nconst uint32_t mo_memory_info_decl = {d};\nconst uint32_t mo_entry_decl = {d};\nconst uint32_t mo_done_decl = {d};\n", .{ k.preludeStruct("ProcessInfo").?, k.preludeStruct("SourceInfo").?, k.preludeStruct("MemoryInfo").?, k.preludeStruct("Entry").?, k.preludeStruct("Done").? });
         try tables.print(gpa, "const bool mo_surface_built = {s};\n", .{if (e.options.surface) "true" else "false"});
         // The runtime surface's own process, which the surface does not show (step 23).
         const surface_process: ?usize = if (!e.options.surface) null else if (surface_mod.declOf(k)) |d| for (e.processes.items, 0..) |p, pi| {

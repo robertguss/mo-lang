@@ -31,6 +31,8 @@ const Job = struct {
     read_fd: posix.fd_t = -1,
     write_fd: posix.fd_t = -1,
     next: ?*Job = null,
+    /// A job that runs on a thread of its own (alone), not on the pool.
+    alone: ?struct { ctx: *anyopaque, work: *const fn (*anyopaque) void } = null,
 
     const Op = enum { write, replace };
 
@@ -202,6 +204,48 @@ fn openSignal(job: *Job) bool {
 fn closeSignal(job: *Job) void {
     _ = posix.system.close(job.read_fd);
     if (job.write_fd != job.read_fd) _ = posix.system.close(job.write_fd);
+}
+
+/// A call that may wait its whole deadline (step 41, `Command.run`): `work(ctx)` runs on a thread of
+/// its own, never one of the pool's, so four long runs cannot hold up every write; SIGPIPE is
+/// blocked on that thread, so a write to a child that closed its end fails rather than ending the
+/// program. Under `mo run` with processes the caller waits on the thread's signal as a write's
+/// caller waits (turns.zig, block), holding no scheduler; without, it joins the thread. It returns
+/// only once `work` has, so `ctx` may live on the caller's stack.
+pub fn alone(vm: *vm_mod.Vm, ctx: *anyopaque, work: *const fn (*anyopaque) void) vm_mod.Error!void {
+    var job: Job = .{ .op = .write, .fd = -1, .text = "", .alone = .{ .ctx = ctx, .work = work } };
+    const sim = vm.sim;
+    const t = if (sim) |s| s.turns else null;
+    if (t == null or !openSignal(&job)) {
+        const th = std.Thread.spawn(.{ .stack_size = 256 << 10 }, aloneMain, .{ &job, false }) catch return aloneMain(&job, false);
+        th.join();
+        return;
+    }
+    defer closeSignal(&job);
+    const th = std.Thread.spawn(.{ .stack_size = 256 << 10 }, aloneMain, .{ &job, true }) catch {
+        aloneMain(&job, false);
+        return;
+    };
+    th.detach();
+    while (!job.done.load(.acquire)) {
+        _ = t.?.block(sim.?, job.read_fd, .read, 3_600_000) catch |e| {
+            // The job lives on this stack: wait it out (a run ends by its deadline) before leaving.
+            while (!job.done.load(.acquire)) std.Thread.yield() catch {};
+            return e;
+        };
+    }
+}
+
+fn aloneMain(job: *Job, signal: bool) void {
+    var pipe_only = posix.sigemptyset();
+    posix.sigaddset(&pipe_only, .PIPE);
+    posix.sigprocmask(posix.SIG.BLOCK, &pipe_only, null);
+    job.alone.?.work(job.alone.?.ctx);
+    job.done.store(true, .release);
+    if (signal) {
+        const one: u64 = 1;
+        _ = posix.system.write(job.write_fd, std.mem.asBytes(&one), if (builtin.os.tag == .linux) 8 else 1);
+    }
 }
 
 test "a write on the pool is on disk when it answers, and a replace leaves no temporary name" {

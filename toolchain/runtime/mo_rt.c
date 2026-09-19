@@ -36,8 +36,11 @@
 #elif defined(__linux__)
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/syscall.h>
 #endif
+#include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 #if defined(__APPLE__)
@@ -1621,6 +1624,9 @@ static void format_value(Buf *b, MoValue v) {
         case MO_CAP_TLS: buf_str(b, "a Tls"); return;
         case MO_CAP_TLS_SERVER: buf_str(b, "a TlsServer"); return;
         case MO_CAP_TLS_CLIENT: buf_str(b, "a TlsClient"); return;
+        case MO_CAP_EXEC: buf_str(b, server_mode ? "an Exec" : "Exec.fixture()"); return;
+        case MO_CAP_PROGRAM: buf_str(b, "a Program"); return;
+        case MO_CAP_COMMAND: buf_str(b, "a Command"); return;
         default: buf_str(b, !server_mode ? "Runtime.fixture()" : mo_cap_handle(v) == 1 ? "a read-only Runtime" : "a Runtime"); return;
         }
     case MO_HANDLE:
@@ -3781,7 +3787,10 @@ MO_ROW(mo_r_Random_bytes) {
     return out;
 }
 
+static void exec_reset(void);
+
 static void reset_fixtures(void) {
+    exec_reset();
     nrandom_fixtures = 0;
     nfix_systems = 0;
     nfix_scopes = 0;
@@ -8542,6 +8551,551 @@ static bool blocking_write(int fd, const char *bytes, size_t len) {
 static bool blocking_replace(int dir, const char *name, const char *bytes, size_t len) {
     return blocking_run((BlockingJob){.replace = true, .fd = dir, .name = name, .bytes = bytes, .len = len, .read_fd = -1, .write_fd = -1});
 }
+
+/* ==== Exec (exec.zig, step 41) ==================================================== */
+
+/* A child process narrowed to fixed commands: platform.exec makes a Program (one absolute path),
+ * which makes a Command (Fixed arguments and Holes); only a Command runs. Each value is an index into
+ * these tables, as an Fs is into `scopes`. An Exec's handle is 0 for the real one and one past its
+ * index for an Exec.fixture(fn), whose function answers every run of the commands made from it. */
+#define EXEC_DEFAULT_OUTPUT 65536
+#define EXEC_MAX_OUTPUT ((uint64_t)16 << 20)
+#define EXEC_REAL UINT32_MAX
+
+typedef struct { char *text; bool hole; } ExecArg;
+typedef struct { uint32_t fixture; char *path; } ExecProgram;
+typedef struct {
+    uint32_t fixture;
+    char *path;
+    ExecArg *args;
+    uint32_t nargs, holes;
+    /* The child's whole environment, each NAME=value; empty by default, never the parent's. */
+    char **env;
+    uint32_t nenv;
+    /* A name that is empty or holds = or a NUL, or a value holding a NUL: every run is Refused. */
+    bool env_refused;
+    /* The Fs whose folder the child works in, or -1: a new empty folder. */
+    int64_t folder;
+    uint64_t output;
+} ExecCommand;
+
+static ExecProgram *exec_programs;
+static size_t nexec_programs, capexec_programs;
+static ExecCommand *exec_commands;
+static size_t nexec_commands, capexec_commands;
+static Parcel **exec_fixtures;
+static size_t nexec_fixtures, capexec_fixtures;
+
+/* A test's fixtures are its own (reset_fixtures). */
+static void exec_reset(void) {
+    for (size_t i = 0; i < nexec_fixtures; i++) parcel_free(exec_fixtures[i]);
+    nexec_fixtures = 0;
+    nexec_programs = 0;
+    nexec_commands = 0;
+}
+
+static MoValue exec_error(uint32_t name, uint32_t n, const MoValue *fields) { return error_of(mo_variant(name, n, fields)); }
+
+static MoValue exec_failed(const char *why) {
+    MoValue w = heap_string(why, strlen(why));
+    return exec_error(MO_N_FAILED, 1, &w);
+}
+
+static MoValue add_command(ExecCommand c) {
+    GROW_ARRAY(exec_commands, nexec_commands, capexec_commands);
+    exec_commands[nexec_commands] = c;
+    return mo_cap(MO_CAP_COMMAND, (uint32_t)nexec_commands++, 0);
+}
+
+MO_ROW(mo_r_Platform_exec) { HOLD_RUNTIME(); (void)a; (void)kind; platform_only("Platform", "exec"); return mo_cap(MO_CAP_EXEC, 0, 0); }
+
+MO_ROW(mo_r_Exec_fixture) {
+    HOLD_RUNTIME();
+    (void)kind;
+    if (server_mode) mo_fail(MO_R_OTHER, "fixture", "Exec.fixture() runs only in a test");
+    /* Packed, so a compaction never moves what the function captured. */
+    GROW_ARRAY(exec_fixtures, nexec_fixtures, capexec_fixtures);
+    exec_fixtures[nexec_fixtures++] = pack(a[0]);
+    return mo_cap(MO_CAP_EXEC, (uint32_t)nexec_fixtures, 0);
+}
+
+MO_ROW(mo_r_Exec_program) {
+    HOLD_RUNTIME();
+    (void)kind;
+    MoValue path = a[1];
+    if (path.aux > 0 && memchr(path.as.s, 0, path.aux)) mo_fail(MO_R_OTHER, "program", "exec.program: the path holds a NUL, so it names no program");
+    if (path.aux == 0 || path.as.s[0] != '/') {
+        mo_fail(MO_R_OTHER, "program", "exec.program(\"%.*s\"): \"%.*s\" is not an absolute path; a program is named by its absolute path, and no PATH is searched", (int)path.aux, path.aux ? path.as.s : "", (int)path.aux, path.aux ? path.as.s : "");
+    }
+    uint32_t h = mo_cap_handle(a[0]);
+    GROW_ARRAY(exec_programs, nexec_programs, capexec_programs);
+    exec_programs[nexec_programs] = (ExecProgram){h == 0 ? EXEC_REAL : h - 1, name_dup(path.as.s, path.aux)};
+    return mo_cap(MO_CAP_PROGRAM, (uint32_t)nexec_programs++, 0);
+}
+
+MO_ROW(mo_r_Program_command) {
+    HOLD_RUNTIME();
+    (void)kind;
+    ExecProgram p = exec_programs[mo_cap_handle(a[0])];
+    MoValue list = a[1];
+    ExecArg *args = xmalloc(list.aux * sizeof(ExecArg));
+    uint32_t holes = 0;
+    for (uint32_t i = 0; i < list.aux; i++) {
+        MoValue v = list.as.xs[i];
+        if ((v.aux >> 16) == 0) {
+            args[i] = (ExecArg){NULL, true};
+            holes++;
+            continue;
+        }
+        MoValue text = v.as.xs[0];
+        if (text.aux > 0 && memchr(text.as.s, 0, text.aux)) mo_fail(MO_R_OTHER, "command", "%s.command: a Fixed argument holds a NUL, which no argument can carry", p.path);
+        args[i] = (ExecArg){name_dup(text.as.s, text.aux), false};
+    }
+    return add_command((ExecCommand){p.fixture, p.path, args, list.aux, holes, NULL, 0, false, -1, EXEC_DEFAULT_OUTPUT});
+}
+
+MO_ROW(mo_r_Command_env) {
+    HOLD_RUNTIME();
+    (void)kind;
+    ExecCommand c = exec_commands[mo_cap_handle(a[0])];
+    uint32_t len = map_len(a[1]);
+    const MoValue *entries = len ? a[1].as.m->entries : NULL;
+    c.nenv = len / 2;
+    c.env = xmalloc(c.nenv * sizeof(char *));
+    c.env_refused = false;
+    for (uint32_t i = 0; i < c.nenv; i++) {
+        MoValue name = entries[2 * i], value = entries[2 * i + 1];
+        bool bad_name = name.aux == 0 || memchr(name.as.s, '=', name.aux) || memchr(name.as.s, 0, name.aux);
+        if (bad_name || (value.aux > 0 && memchr(value.as.s, 0, value.aux))) c.env_refused = true;
+        char *e = xmalloc((size_t)name.aux + value.aux + 2);
+        if (name.aux) memcpy(e, name.as.s, name.aux);
+        e[name.aux] = '=';
+        if (value.aux) memcpy(e + name.aux + 1, value.as.s, value.aux);
+        e[name.aux + 1 + value.aux] = 0;
+        c.env[i] = e;
+    }
+    return add_command(c);
+}
+
+MO_ROW(mo_r_Command_in_folder) {
+    HOLD_RUNTIME();
+    (void)kind;
+    ExecCommand c = exec_commands[mo_cap_handle(a[0])];
+    c.folder = mo_cap_handle(a[1]);
+    return add_command(c);
+}
+
+MO_ROW(mo_r_Command_output) {
+    HOLD_RUNTIME();
+    (void)kind;
+    ExecCommand c = exec_commands[mo_cap_handle(a[0])];
+    uint64_t n = a[1].as.u;
+    if (n > EXEC_MAX_OUTPUT) mo_fail(MO_R_OTHER, "output", "command.output(%llu): a command keeps at most %llu bytes (16 MiB) of each stream", (unsigned long long)n, (unsigned long long)EXEC_MAX_OUTPUT);
+    c.output = n;
+    return add_command(c);
+}
+
+/* One real run (exec.zig, Job): what the child is given, and what came of it. */
+enum { EXEC_EXITED, EXEC_SIGNALLED, EXEC_TIMEOUT, EXEC_MISSING, EXEC_FAILED };
+typedef struct {
+    const char *path;
+    char *const *argv;
+    char *const *envp;
+    int dir;
+    const char *in;
+    size_t in_len;
+    uint64_t bound;
+    int64_t within_ms;
+    int outcome, code;
+    const char *why;
+    Buf out, err;
+    bool truncated;
+    int64_t took_ms;
+    _Atomic bool done;
+    int read_fd, write_fd;
+} ExecJob;
+
+static void close_one(int *fd) {
+    if (*fd >= 0) close(*fd);
+    *fd = -1;
+}
+
+/* A pipe whose ends are both 3 or above and close-on-exec, so the child's dup2 onto 0, 1 and 2 never
+ * lands on one it still needs. */
+static bool exec_pipe(int p[2]) {
+    int fds[2];
+    if (pipe(fds) != 0) return false;
+    for (int i = 0; i < 2; i++) {
+        if (fds[i] >= 3) {
+            fcntl(fds[i], F_SETFD, FD_CLOEXEC);
+            p[i] = fds[i];
+            continue;
+        }
+        int high = fcntl(fds[i], F_DUPFD_CLOEXEC, 3);
+        close(fds[i]);
+        if (high < 0) {
+            if (i == 1) close_one(&p[0]);
+            if (i == 0) close(fds[1]);
+            return false;
+        }
+        p[i] = high;
+    }
+    return true;
+}
+
+/* The child, between fork and execve: only system calls (exec.zig, child). It starts a session of its
+ * own, takes the pipes as 0, 1 and 2, works in the job's folder, has every signal at its default and
+ * none blocked, and closes every other descriptor but the one it reports a failure on. */
+_Noreturn static void exec_child(const ExecJob *job, int in_r, int out_w, int err_w, int report_w, int limit) {
+    int e = 0;
+    setsid();
+    if (dup2(in_r, 0) < 0 || dup2(out_w, 1) < 0 || dup2(err_w, 2) < 0 || fchdir(job->dir) != 0) {
+        e = errno;
+        goto bail;
+    }
+    struct sigaction dfl;
+    memset(&dfl, 0, sizeof dfl);
+    dfl.sa_handler = SIG_DFL;
+    sigemptyset(&dfl.sa_mask);
+    for (int sig = 1; sig < 32; sig++) {
+        if (sig != SIGKILL && sig != SIGSTOP) sigaction(sig, &dfl, NULL);
+    }
+    sigset_t none;
+    sigemptyset(&none);
+    sigprocmask(SIG_SETMASK, &none, NULL);
+#if defined(__linux__) && defined(SYS_close_range)
+    bool closed = (report_w == 3 || syscall(SYS_close_range, 3u, (unsigned)report_w - 1, 0u) == 0) && syscall(SYS_close_range, (unsigned)report_w + 1, ~0u, 0u) == 0;
+    if (!closed)
+#endif
+        for (int fd = 3; fd < limit; fd++) {
+            if (fd != report_w) close(fd);
+        }
+    execve(job->path, job->argv, job->envp);
+    e = errno;
+bail:;
+    uint32_t w = (uint32_t)e;
+    ssize_t n = write(report_w, &w, sizeof w);
+    (void)n;
+    _exit(127);
+}
+
+/* Whether the child has exited, asked without reaping it, so its id still names its group. */
+static bool exec_exited(pid_t pid) {
+    for (;;) {
+        siginfo_t info;
+        memset(&info, 0, sizeof info);
+        if (waitid(P_PID, (id_t)pid, &info, WEXITED | WNOHANG | WNOWAIT) == 0) return info.si_pid != 0;
+        if (errno != EINTR) return errno == ECHILD;
+    }
+}
+
+static int exec_reap(pid_t pid) {
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    }
+    return status;
+}
+
+static const char *exec_why(int e) {
+    switch (e) {
+    case EACCES: return "permission denied: not an executable file, or a folder on the way is not searchable";
+    case ENOEXEC: return "not a program this system can run";
+    case E2BIG: return "the arguments and environment are too long";
+    case ENOMEM:
+    case EAGAIN: return "the system is out of resources";
+    case ELOOP: return "too many links on the way to the program";
+    case ENAMETOOLONG: return "the path is too long";
+    case EISDIR: return "a folder, not a program";
+    case ETXTBSY: return "the program is being written";
+    default: return "the program could not be started";
+    }
+}
+
+/* The run, on this thread (exec.zig, spawnAndWait). The parent writes stdin and drains stdout and
+ * stderr while the child runs; bytes past the bound are dropped and `truncated` set. When the child
+ * exits, the rest of its group is killed before it is reaped; at the deadline the whole group is
+ * killed, the child reaped, and only then is the answer Timeout. */
+static void exec_now(ExecJob *job) {
+    int64_t t0 = awake_ns();
+    int64_t deadline = t0 + (job->within_ms > 0 ? job->within_ms : 0) * 1000000;
+    int in_p[2] = {-1, -1}, out_p[2] = {-1, -1}, err_p[2] = {-1, -1}, report[2] = {-1, -1};
+    job->outcome = EXEC_FAILED;
+    job->why = "no pipe could be made";
+    if (!exec_pipe(in_p) || !exec_pipe(out_p) || !exec_pipe(err_p) || !exec_pipe(report)) goto closed;
+    struct rlimit rl;
+    int limit = getrlimit(RLIMIT_NOFILE, &rl) == 0 ? (int)(rl.rlim_cur < (rlim_t)1 << 20 ? rl.rlim_cur : (rlim_t)1 << 20) : 1 << 16;
+    pid_t pid = fork();
+    if (pid < 0) {
+        job->why = "no process could be made";
+        goto closed;
+    }
+    if (pid == 0) exec_child(job, in_p[0], out_p[1], err_p[1], report[1], limit);
+    close_one(&in_p[0]);
+    close_one(&out_p[1]);
+    close_one(&err_p[1]);
+    close_one(&report[1]);
+    uint32_t why = 0;
+    size_t got = 0;
+    while (got < sizeof why) {
+        ssize_t n = read(report[0], (char *)&why + got, sizeof why - got);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) break;
+        got += (size_t)n;
+    }
+    if (got == sizeof why) {
+        exec_reap(pid);
+        if (why == ENOENT || why == ENOTDIR) job->outcome = EXEC_MISSING;
+        else job->why = exec_why((int)why);
+        goto closed;
+    }
+    if (job->in_len == 0) close_one(&in_p[1]);
+    else nonblocking(in_p[1]);
+    struct pollfd fds[3] = {{out_p[0], POLLIN, 0}, {err_p[0], POLLIN, 0}, {in_p[1], POLLOUT, 0}};
+    size_t sent = 0;
+    bool leader_done = false, timed_out = false;
+    int slice_ms = 1;
+    int64_t nap_ns = 20000;
+    static _Thread_local char chunk[1 << 16];
+    for (;;) {
+        if (!leader_done && exec_exited(pid)) {
+            leader_done = true;
+            kill(-pid, SIGKILL);
+        }
+        if (leader_done && fds[0].fd < 0 && fds[1].fd < 0) break;
+        int64_t left = deadline - awake_ns();
+        if (left <= 0) {
+            if (!leader_done) timed_out = true;
+            break;
+        }
+        if (fds[0].fd < 0 && fds[1].fd < 0 && fds[2].fd < 0) {
+            int64_t ns = nap_ns < left ? nap_ns : left;
+            struct timespec ts = {(time_t)(ns / 1000000000), (long)(ns % 1000000000)};
+            nanosleep(&ts, NULL);
+            nap_ns = nap_ns * 2 < 10000000 ? nap_ns * 2 : 10000000;
+            continue;
+        }
+        int64_t left_ms = left / 1000000 + 1;
+        int ready = poll(fds, 3, slice_ms < left_ms ? slice_ms : (int)left_ms);
+        if (ready <= 0) {
+            slice_ms = slice_ms * 2 < 50 ? slice_ms * 2 : 50;
+            continue;
+        }
+        slice_ms = 1;
+        for (int k = 0; k < 2; k++) {
+            if (fds[k].fd < 0 || fds[k].revents == 0) continue;
+            ssize_t n;
+            do n = read(fds[k].fd, chunk, sizeof chunk);
+            while (n < 0 && errno == EINTR);
+            if (n <= 0) {
+                close_one(&fds[k].fd);
+                continue;
+            }
+            Buf *b = k == 0 ? &job->out : &job->err;
+            size_t room = b->len < job->bound ? (size_t)(job->bound - b->len) : 0;
+            size_t keep = (size_t)n < room ? (size_t)n : room;
+            if (keep < (size_t)n) job->truncated = true;
+            buf_put(b, chunk, keep);
+        }
+        if (fds[2].fd >= 0 && fds[2].revents != 0) {
+            ssize_t n;
+            do n = write(fds[2].fd, job->in + sent, job->in_len - sent);
+            while (n < 0 && errno == EINTR);
+            if (n > 0) sent += (size_t)n;
+            else if (!(n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))) sent = job->in_len;
+            if (sent == job->in_len) close_one(&fds[2].fd);
+        }
+    }
+    out_p[0] = fds[0].fd;
+    err_p[0] = fds[1].fd;
+    in_p[1] = fds[2].fd;
+    if (timed_out) kill(-pid, SIGKILL);
+    int status = exec_reap(pid);
+    job->took_ms = (awake_ns() - t0) / 1000000;
+    if (timed_out) job->outcome = EXEC_TIMEOUT;
+    else if (WIFEXITED(status)) {
+        job->outcome = EXEC_EXITED;
+        job->code = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+        job->outcome = EXEC_SIGNALLED;
+        job->code = WTERMSIG(status);
+    } else job->why = "the child ended neither by exiting nor by a signal";
+closed:
+    close_one(&in_p[0]);
+    close_one(&in_p[1]);
+    close_one(&out_p[0]);
+    close_one(&out_p[1]);
+    close_one(&err_p[0]);
+    close_one(&err_p[1]);
+    close_one(&report[0]);
+    close_one(&report[1]);
+}
+
+static void *exec_thread(void *arg) {
+    ExecJob *job = arg;
+    exec_now(job);
+    atomic_store(&job->done, true);
+    uint64_t one = 1;
+#ifdef __linux__
+    ssize_t w = write(job->write_fd, &one, 8);
+#else
+    ssize_t w = write(job->write_fd, &one, 1);
+#endif
+    (void)w;
+    return NULL;
+}
+
+/* The run on a thread of its own, never one of the pool's, while the caller waits holding no
+ * scheduler (blocking.zig, alone); without processes, on this thread. */
+static void exec_alone(ExecJob *job) {
+    if (!turns_on) return exec_now(job);
+#ifdef __linux__
+    job->read_fd = job->write_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (job->read_fd < 0) return exec_now(job);
+#else
+    int fds[2];
+    if (pipe(fds) != 0) return exec_now(job);
+    nonblocking(fds[0]);
+    nonblocking(fds[1]);
+    job->read_fd = fds[0];
+    job->write_fd = fds[1];
+#endif
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, (size_t)256 << 10);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_t th;
+    bool started = pthread_create(&th, &attr, exec_thread, job) == 0;
+    pthread_attr_destroy(&attr);
+    if (!started) exec_now(job);
+    else
+        while (!atomic_load(&job->done)) net_wait(job->read_fd, POLLIN, 3600000);
+    close(job->read_fd);
+    if (job->write_fd != job->read_fd) close(job->write_fd);
+}
+
+/* Everything under the open folder `dir`, links removed and never followed; `dir` is closed. */
+static void remove_under(int dir) {
+    DIR *d = fdopendir(dir);
+    if (!d) {
+        close(dir);
+        return;
+    }
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
+        struct stat st;
+        if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) == 0 && S_ISDIR(st.st_mode)) {
+            int inner = openat(dirfd(d), e->d_name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+            if (inner >= 0) remove_under(inner);
+            unlinkat(dirfd(d), e->d_name, AT_REMOVEDIR);
+        } else unlinkat(dirfd(d), e->d_name, 0);
+    }
+    closedir(d);
+}
+
+static MoValue exec_run(const MoValue *a, bool with_stdin) {
+    HOLD_RUNTIME();
+    ExecCommand c = exec_commands[mo_cap_handle(a[0])];
+    MoValue values = a[1];
+    MoValue in = with_stdin ? a[2] : mo_str("", 0);
+    int64_t within = with_stdin ? a[3].as.i : a[2].as.i;
+    if (within < 0) return timed_out();
+    if (values.aux != c.holes || c.env_refused) return exec_error(MO_N_REFUSED, 0, NULL);
+    for (uint32_t i = 0; i < values.aux; i++) {
+        MoValue v = values.as.xs[i];
+        if (v.aux > 0 && memchr(v.as.s, 0, v.aux)) return exec_error(MO_N_REFUSED, 0, NULL);
+    }
+    if (c.fixture != EXEC_REAL) {
+        /* The argument list the child would get: the program's path, then each argument, each hole
+         * filled by the next value. */
+        MoValue *argv = mo_alloc_values((size_t)c.nargs + 1);
+        argv[0] = heap_string(c.path, strlen(c.path));
+        for (uint32_t i = 0, k = 0; i < c.nargs; i++) argv[i + 1] = c.args[i].hole ? values.as.xs[k++] : heap_string(c.args[i].text, strlen(c.args[i].text));
+        MoValue args[2] = {mo_list(argv, c.nargs + 1), in};
+        return ok_of(mo_invoke(exec_fixtures[c.fixture]->value, args));
+    }
+    if (!server_mode) mo_fail(MO_R_OTHER, "run", "a Command of the real Exec runs only under mo run");
+    char **argv = xmalloc(((size_t)c.nargs + 2) * sizeof(char *));
+    argv[0] = c.path;
+    for (uint32_t i = 0, k = 0; i < c.nargs; i++) {
+        if (!c.args[i].hole) {
+            argv[i + 1] = c.args[i].text;
+            continue;
+        }
+        MoValue v = values.as.xs[k++];
+        argv[i + 1] = name_dup(v.as.s, v.aux);
+    }
+    argv[c.nargs + 1] = NULL;
+    char **envp = xmalloc(((size_t)c.nenv + 1) * sizeof(char *));
+    for (uint32_t i = 0; i < c.nenv; i++) envp[i] = c.env[i];
+    envp[c.nenv] = NULL;
+    char *temp = NULL;
+    int dir = -1;
+    if (c.folder >= 0) {
+        Place at;
+        if (scope_place(&scopes[c.folder], ".", 1, &at)) {
+            dir = at.name[0] ? open_folder(at.dir, at.name, at.follow) : fcntl(at.dir, F_DUPFD_CLOEXEC, 0);
+            place_close(&at);
+        }
+    } else {
+        const char *base = getenv("TMPDIR");
+        if (!base || !*base) base = "/tmp";
+        size_t n = strlen(base);
+        while (n > 1 && base[n - 1] == '/') n--;
+        temp = xmalloc(n + 32);
+        snprintf(temp, n + 32, "%.*s/mo-exec-XXXXXXXXXXXX", (int)n, base);
+        if (mkdtemp(temp)) dir = open_folder(AT_FDCWD, temp, false);
+        else {
+            free(temp);
+            temp = NULL;
+        }
+    }
+    MoValue result;
+    if (dir < 0) {
+        result = exec_failed(c.folder >= 0 ? "the working folder is not there, or is reached through a link" : "no temporary folder could be made");
+    } else {
+        ExecJob job;
+        memset(&job, 0, sizeof job);
+        job.path = c.path;
+        job.argv = argv;
+        job.envp = envp;
+        job.dir = dir;
+        job.in = in.aux ? in.as.s : "";
+        job.in_len = in.aux;
+        job.bound = c.output;
+        job.within_ms = within;
+        job.read_fd = job.write_fd = -1;
+        exec_alone(&job);
+        close(dir);
+        switch (job.outcome) {
+        case EXEC_TIMEOUT: result = timed_out(); break;
+        case EXEC_MISSING: result = exec_error(MO_N_MISSING, 0, NULL); break;
+        case EXEC_FAILED: result = exec_failed(job.why); break;
+        default: {
+            MoValue code = mo_i64(job.code);
+            MoValue f[5] = {mo_variant(job.outcome == EXEC_EXITED ? MO_N_EXITED : MO_N_SIGNALLED, 1, &code), list_of_bytes((const uint8_t *)job.out.p, job.out.len), list_of_bytes((const uint8_t *)job.err.p, job.err.len), mo_bool(job.truncated), mo_duration(job.took_ms)};
+            result = ok_of(mo_record(mo_done_decl, 5, f));
+        }
+        }
+        free(job.out.p);
+        free(job.err.p);
+    }
+    if (temp) {
+        int folder = open_folder(AT_FDCWD, temp, false);
+        if (folder >= 0) remove_under(folder);
+        rmdir(temp);
+        free(temp);
+    }
+    for (uint32_t i = 0; i < c.nargs; i++) {
+        if (c.args[i].hole) free(argv[i + 1]);
+    }
+    free(argv);
+    free(envp);
+    return result;
+}
+
+MO_ROW(mo_r_Command_run) { (void)kind; return exec_run(a, false); }
+MO_ROW(mo_r_Command_run_stdin) { (void)kind; return exec_run(a, true); }
 
 /* Every connection, connected or accepted, sends each write at once (TCP_NODELAY, step 38): with
  * Nagle's algorithm on, a write-then-read pattern waited out the peer's delayed ACK (net.zig). */

@@ -7,9 +7,10 @@
 //! `flows(T, into: Cap)` is checked as "no value of type T reaches a call on Cap"
 //! through direct data flow: an argument whose type holds a T (a struct or enum
 //! field counts, and so do tuples, Option, and Result), a string that interpolates
-//! one, a construction that is given one, or a local name bound to any of those.
-//! Tier 1 does not chase through collections (a List(T) is not followed) or through
-//! the result of a function call; those wait for the interpreter.
+//! one, a construction or a list literal that is given one (step 41: a command's holes
+//! are a list), or a local name bound to any of those. Tier 1 does not chase through
+//! a collection's type (a List(T) value from elsewhere is not followed) or through the
+//! result of a function call; those wait for the interpreter.
 //!
 //! Every finding is an MO04xx record. Reads what check.zig decided: the type of each
 //! node and the function each call reached.
@@ -280,6 +281,12 @@ const Caps = struct {
         }
         for (c.k.decls) |d| {
             if (d.node != 0 and (d.kind == .process or d.kind == .supervisor)) try c.platformParams(d.name, d.params);
+            // A message line is a way out of main too (step 41): its field may not be one.
+            if (d.node != 0 and d.kind == .process) {
+                for (c.k.variants[d.variants.start..d.variants.end]) |v| {
+                    for (c.k.fields[v.fields.start..v.fields.end]) |f| if (f.node != 0) try c.mainOnlyParam(v.name, f.type, f.node);
+                }
+            }
         }
         for (c.items()) |it| {
             const n = c.node(it);
@@ -288,42 +295,72 @@ const Caps = struct {
     }
 
     fn platformParams(c: *Caps, owner: []const u8, r: checker.Range) Error!void {
-        for (c.k.params[r.start..r.end]) |p| {
-            if (!c.platformIn(p.type, 0)) continue;
-            try c.report(.platform_escapes, c.node(p.node).main_token, try c.print("{s} takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .{owner}));
-        }
+        for (c.k.params[r.start..r.end]) |p| try c.mainOnlyParam(owner, p.type, p.node);
     }
 
-    /// Whether a Platform is inside `t`, looking through lists, options, results, and tuples.
-    fn platformIn(c: *Caps, t: Id, depth: u8) bool {
-        if (depth > 8) return false;
+    fn mainOnlyParam(c: *Caps, owner: []const u8, t: Id, at: Index) Error!void {
+        const kind = c.mainOnlyIn(t, 0) orelse return;
+        const what = switch (kind) {
+            .exec => try c.print("{s} takes an Exec, which only main holds; take the Command it runs instead, made in main with exec.program(path).command(args).", .{owner}),
+            .program => try c.print("{s} takes a Program, which only main holds; take the Command it runs instead, made in main with program.command(args).", .{owner}),
+            else => try c.print("{s} takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.", .{owner}),
+        };
+        try c.report(.platform_escapes, c.node(at).main_token, what);
+    }
+
+    /// A capability that stays in main (step 41): a Platform, an Exec, or a Program.
+    fn mainOnly(r: Id) ?types.CapKind {
+        for ([_]types.CapKind{ .platform, .exec, .program }) |k| if (r == types.cap(k)) return k;
+        return null;
+    }
+
+    /// The main-only capability inside `t`, looking through lists, options, results, and tuples.
+    fn mainOnlyIn(c: *Caps, t: Id, depth: u8) ?types.CapKind {
+        if (depth > 8) return null;
         const r = c.k.pool.base(t);
         const b = c.k.pool.get(r);
         return switch (b.tag) {
-            .cap => r == types.cap(.platform),
-            .list, .option, .set => c.platformIn(b.a, depth + 1),
-            .result, .map => c.platformIn(b.a, depth + 1) or c.platformIn(b.b, depth + 1),
+            .cap => mainOnly(r),
+            .list, .option, .set => c.mainOnlyIn(b.a, depth + 1),
+            .result, .map => c.mainOnlyIn(b.a, depth + 1) orelse c.mainOnlyIn(b.b, depth + 1),
             .tuple => for (c.k.pool.elems(b)) |e| {
-                if (c.platformIn(e, depth + 1)) break true;
-            } else false,
-            else => false,
+                if (c.mainOnlyIn(e, depth + 1)) |k| break k;
+            } else null,
+            else => null,
         };
     }
 
-    /// A Platform is only ever read through a dot: `platform.fs`, `platform.exit(3)`.
-    /// Passed, bound, put in a list, or interpolated, it would leave main.
+    /// A Platform, an Exec, or a Program is only ever read through a dot: `platform.fs`,
+    /// `platform.exit(3)`, `exec.program(path)`, `docker.command(args)`. A name of one passed, bound
+    /// to another name, put in a list, sent, returned, or interpolated would leave main. An Exec or
+    /// a Program made on the spot (`platform.exec`, `exec.program(path)`) may be given a name, and
+    /// otherwise only read through a dot (step 41: the narrowing of `Exec` only goes down, and only
+    /// a `Command` travels).
     fn platformUses(c: *Caps) Error!void {
         const nodes = c.k.tree.nodes;
         const receiver = try c.gpa.alloc(bool, nodes.len);
         @memset(receiver, false);
-        for (nodes) |n| if (n.kind == .member or n.kind == .member_call) {
-            receiver[n.lhs] = true;
+        const named = try c.gpa.alloc(bool, nodes.len);
+        @memset(named, false);
+        for (nodes) |n| switch (n.kind) {
+            .member, .member_call => receiver[n.lhs] = true,
+            .binding, .var_binding => named[n.lhs] = true,
+            else => {},
         };
         for (nodes, 0..) |n, i| {
-            if (n.kind != .name_ref or receiver[i]) continue;
-            if (c.k.pool.base(c.k.typeOf(@intCast(i))) != types.cap(.platform)) continue;
-            const name = c.text(n.main_token);
-            try c.report(.platform_escapes, n.main_token, try c.print("{s} is a Platform, which stays in main; pass on a part of it, such as {s}.fs or {s}.stdout.", .{ name, name, name }));
+            if (receiver[i]) continue;
+            const kind = mainOnly(c.k.pool.base(c.k.typeOf(@intCast(i)))) orelse continue;
+            switch (n.kind) {
+                .name_ref => {},
+                .member, .member_call => if (kind == .platform or named[i]) continue,
+                else => continue,
+            }
+            const said = c.argText(@intCast(i));
+            try c.report(.platform_escapes, c.firstToken(@intCast(i)), switch (kind) {
+                .exec => try c.print("{s} is an Exec, which stays in main; hand on a Command made from it, such as {s}.program(path).command(args).", .{ said, said }),
+                .program => try c.print("{s} is a Program, which stays in main; hand on a Command made from it, such as {s}.command(args).", .{ said, said }),
+                else => try c.print("{s} is a Platform, which stays in main; pass on a part of it, such as {s}.fs or {s}.stdout.", .{ said, said, said }),
+            });
         }
     }
 
@@ -510,7 +547,7 @@ const Caps = struct {
                             const what = if (!std.mem.eql(u8, row.name, "fixture"))
                                 try c.print("{s}.{s} reads what an {s}.fixture() kept, which only a test has.", .{ row.recv, row.name, row.recv })
                             else if (capability)
-                                try c.print("{s}.fixture() builds a capability for tests; outside a test, take a {s} parameter instead.", .{ row.recv, row.recv })
+                                try c.print("{s}.fixture() builds a capability for tests; outside a test, take {s} {s} parameter instead.", .{ row.recv, if (std.mem.indexOfScalar(u8, "AEIOU", row.recv[0]) != null) "an" else "a", row.recv })
                             else
                                 try c.print("{s}.fixture() is a {s} for tests; outside a test, take a {s} parameter instead.", .{ row.recv, row.recv, row.recv });
                             try c.report(.outside_params, n.main_token, what);
@@ -1109,7 +1146,9 @@ const Caps = struct {
         if (c.holds(c.k.node_types[i], subject, 0)) return true;
         const n = c.node(i);
         switch (n.kind) {
-            .string_interp, .tuple => for (c.k.tree.span(n.lhs, n.rhs)) |part| {
+            // A list written where it is used carries what it is given, as a construction does (step
+            // 41: a command's holes are always a list); a List bound elsewhere is not followed.
+            .string_interp, .tuple, .list => for (c.k.tree.span(n.lhs, n.rhs)) |part| {
                 if (c.node(part).kind != .string_part and try c.carries(part, subject, tainted, depth + 1)) return true;
             },
             .name_ref => for (tainted) |name| {
@@ -1602,8 +1641,8 @@ test "step 41: Exec and Program stay in main, and a Command travels as an Fs doe
         \\end
         \\fn main(platform: Platform)
         \\  docker = platform.exec.program("/usr/bin/docker")
-        \\  rm = docker.command([Fixed("rm"), Fixed("-f"), Hole])
-        \\  quiet = rm.env(Map.new().set("HOME", "/nowhere")).output(1024).in(platform.fs.scoped("runs"))
+        \\  rm = docker.command([Fixed(text: "rm"), Fixed(text: "-f"), Hole])
+        \\  quiet = rm.env(Map.new().set("HOME", "/nowhere")).output(1024).in_folder(platform.fs.scoped("runs"))
         \\  if remove(quiet, "box")
         \\    platform.stdout.write_line("gone")
         \\  end
@@ -1635,28 +1674,34 @@ test "step 41: Exec and Program stay in main, and a Command travels as an Fs doe
         \\  message Keep(docker: Program)
         \\  fn update(state, message)
         \\    case message
-        \\      Keep(docker: _): state.n += 1
+        \\      Keep(_):
+        \\        state.n += 1
         \\    end
         \\  end
+        \\end
+        \\supervisor Keepers
+        \\  child Keeper(), restart: :always
         \\end
         \\fn main(platform: Platform)
         \\  keeper = Keeper.start()
         \\  keeper.send(Keep(docker: platform.exec.program("/bin/true")))
         \\end
-    , &.{"MO0407"});
+    , &.{ "MO0407", "MO0407" });
     try expectCodes(
         \\module T.ExecCaptured
         \\fn main(platform: Platform)
         \\  docker = platform.exec.program("/usr/bin/docker")
-        \\  made = ["rm", "ps"].map(fn(word) docker.command([Fixed(word)]) end)
+        \\  made = ["rm", "ps"].map(fn(word) docker.command([Fixed(text: word)]) end)
         \\  platform.stdout.write_line("#{made.size}")
         \\end
     , &.{"MO0409"});
     try expectCodes(
         \\module T.ExecFixture
-        \\fn made() : UInt8
-        \\  e = Exec.fixture(fn(argv, stdin) Done(exit: Exited(code: 0), stdout: [], stderr: [], truncated: false, took: 0.ms) end)
-        \\  0
+        \\fn said(argv: List(String), stdin: String) : Done
+        \\  Done(exit: Exited(code: argv.size.to_u8), stdout: stdin.bytes, stderr: [], truncated: false, took: 0.ms)
+        \\end
+        \\fn made() : Bool
+        \\  Exec.fixture(fn(argv, stdin) said(argv, stdin) end).program("/bin/true").command([]).run([], within: 1.seconds) is Ok(_)
         \\end
     , &.{"MO0403"});
     try expectCodes(

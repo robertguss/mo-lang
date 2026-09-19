@@ -16,7 +16,7 @@ pub const IntKind = enum(u8) { i8, i16, i32, i64, u8, u16, u32, u64 };
 /// `platform.tls`, and a `tls_server` and a `tls_client` come from its calls (steps 36 and 37);
 /// what `accept` and `connect` give is a `conn` again, so every row after the handshake is the
 /// same row.
-pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out, net, listener, conn, http, http_listener, exchange, runtime, random, tls, tls_server, tls_client };
+pub const CapKind = enum(u8) { clock, fs, events, ledger, platform, env, out, net, listener, conn, http, http_listener, exchange, runtime, random, tls, tls_server, tls_client, exec, program, command };
 
 pub const Tag = enum(u8) {
     /// Error recovery and "no expectation": unifies with everything.
@@ -351,6 +351,9 @@ pub const Pool = struct {
                 .tls => "Tls",
                 .tls_server => "TlsServer",
                 .tls_client => "TlsClient",
+                .exec => "Exec",
+                .program => "Program",
+                .command => "Command",
             }),
             .list, .option, .set => {
                 try w.writeAll(switch (t.tag) {

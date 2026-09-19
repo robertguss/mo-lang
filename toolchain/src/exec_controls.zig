@@ -222,7 +222,7 @@ test "corpus: step 41, Exec runs a fixed command: exit codes, a signal, a deadli
         \\  show(out, "big stderr, bound 1000", sizes(big.output(1000).run(["err"], within: 10.seconds)))
         \\  show(out, "big stdout, default bound", sizes(big.run(["out"], within: 10.seconds)))
         \\  show(out, "big stdout, bound 2 MiB", sizes(big.output(2_097_152).run(["out"], within: 10.seconds)))
-        \\  args = exec.program("#{dir}/args.sh").command([Fixed("-x"), Hole, Fixed("end")])
+        \\  args = exec.program("#{dir}/args.sh").command([Fixed(text: "-x"), Hole, Fixed(text: "end")])
         \\  odd = "a b  'q' \"d\" $(touch #{dir}/pwned) `touch #{dir}/pwned` ; x\nline two"
         \\  show(out, "odd hole", yes(out_of(args.run([odd], within: 10.seconds)) == "3\n[-x][#{odd}][end]"))
         \\  show(out, "dash hole", out_of(args.run(["--help"], within: 10.seconds)))
@@ -236,23 +236,23 @@ test "corpus: step 41, Exec runs a fixed command: exit codes, a signal, a deadli
         \\  show(out, "env by default", "[#{out_of(env.run([], within: 10.seconds))}]")
         \\  show(out, "env given", out_of(env.env(Map.new().set("A", "1").set("B", "two words")).run([], within: 10.seconds)))
         \\  pwd = exec.program("/bin/pwd").command([])
-        \\  show(out, "in work", yes(out_of(pwd.in(platform.fs.scoped("work")).run([], within: 10.seconds)) == "#{dir}/work\n"))
-        \\  show(out, "in the operator's link", yes(out_of(pwd.in(platform.fs.scoped("linked_work")).run([], within: 10.seconds)) == "#{dir}/work\n"))
-        \\  show(out, "in a link inside", out_of(pwd.in(platform.fs.scoped("work").scoped("dirlink")).run([], within: 10.seconds)))
-        \\  show(out, "in a folder not there", out_of(pwd.in(platform.fs.scoped("nothing")).run([], within: 10.seconds)))
-        \\  show(out, "in a scope that climbed out", out_of(pwd.in(platform.fs.scoped("work").scoped("..")).run([], within: 10.seconds)))
+        \\  show(out, "in work", yes(out_of(pwd.in_folder(platform.fs.scoped("work")).run([], within: 10.seconds)) == "#{dir}/work\n"))
+        \\  show(out, "in the operator's link", yes(out_of(pwd.in_folder(platform.fs.scoped("linked_work")).run([], within: 10.seconds)) == "#{dir}/work\n"))
+        \\  show(out, "in a link inside", out_of(pwd.in_folder(platform.fs.scoped("work").scoped("dirlink")).run([], within: 10.seconds)))
+        \\  show(out, "in a folder not there", out_of(pwd.in_folder(platform.fs.scoped("nothing")).run([], within: 10.seconds)))
+        \\  show(out, "in a scope that climbed out", out_of(pwd.in_folder(platform.fs.scoped("work").scoped("..")).run([], within: 10.seconds)))
         \\  first = out_of(pwd.run([], within: 10.seconds)).trim
         \\  show(out, "default folder is new", yes(first != dir and first != "#{dir}/work"))
-        \\  show(out, "default folder empty", "[#{out_of(exec.program("/bin/ls").command([Fixed("-A")]).run([], within: 10.seconds))}]")
-        \\  show(out, "default folder gone after", exit_of(exec.program("/bin/test").command([Fixed("-e"), Hole]).run([first], within: 10.seconds)))
+        \\  show(out, "default folder empty", "[#{out_of(exec.program("/bin/ls").command([Fixed(text: "-A")]).run([], within: 10.seconds))}]")
+        \\  show(out, "default folder gone after", exit_of(exec.program("/bin/test").command([Fixed(text: "-e"), Hole]).run([first], within: 10.seconds)))
         \\  cat = exec.program("/bin/cat").command([])
         \\  show(out, "stdin", out_of(cat.run([], stdin: "hello\nworld", within: 10.seconds)))
         \\  show(out, "no stdin", "[#{out_of(cat.run([], within: 10.seconds))}]")
         \\  show(out, "1 MiB through cat", sizes(cat.output(2_097_152).run([], stdin: "x".repeat(1_048_576), within: 10.seconds)))
         \\  sh = exec.program("/bin/sh")
-        \\  show(out, "descriptors", out_of(sh.command([Fixed("-c"), Fixed("for f in /dev/fd/*; do [ -e \"$f\" ] && printf '%s,' \"${f\#/dev/fd/}\"; done; exit 0")]).run([], within: 10.seconds)))
-        \\  show(out, "terminal", out_of(sh.command([Fixed("-c"), Fixed("if (exec 3</dev/tty) 2>/dev/null; then echo tty; else echo none; fi")]).run([], within: 10.seconds)))
-        \\  show(out, "group", out_of(sh.command([Fixed("-c"), Fixed("g=$(ps -o pgid= -p $$); [ $g -eq $$ ] && echo leads || echo joined")]).run([], within: 10.seconds)))
+        \\  show(out, "descriptors", out_of(sh.command([Fixed(text: "-c"), Fixed(text: "for f in /dev/fd/*; do [ -e \"$f\" ] && printf '%s,' \"${f\#/dev/fd/}\"; done; exit 0")]).run([], within: 10.seconds)))
+        \\  show(out, "terminal", out_of(sh.command([Fixed(text: "-c"), Fixed(text: "if (exec 3</dev/tty) 2>/dev/null; then echo tty; else echo none; fi")]).run([], within: 10.seconds)))
+        \\  show(out, "group", out_of(sh.command([Fixed(text: "-c"), Fixed(text: "g=$(ps -o pgid= -p $$); [ $g -eq $$ ] && echo leads || echo joined")]).run([], within: 10.seconds)))
         \\  show(out, "took", took(code.run(["0"], within: 10.seconds)))
         \\end
         \\
@@ -419,8 +419,12 @@ const fixture_module =
     \\  end
     \\end
     \\
+    \\supervisor Runners(rm: Command)
+    \\  child Runner(rm), restart: :always
+    \\end
+    \\
     \\test "a fixture answers every run, with the program's path first and the holes filled"
-    \\  rm = Exec.fixture(fn(argv, stdin) said(argv, stdin) end).program("/usr/bin/docker").command([Fixed("rm"), Fixed("-f"), Hole])
+    \\  rm = Exec.fixture(fn(argv, stdin) said(argv, stdin) end).program("/usr/bin/docker").command([Fixed(text: "rm"), Fixed(text: "-f"), Hole])
     \\  assert remove(rm, "box") == Ok(4)
     \\  case rm.run(["box"], within: 1.minute)
     \\    Ok(done):
@@ -438,7 +442,7 @@ const fixture_module =
     \\end
     \\
     \\test "a fixture refuses what the real Exec refuses"
-    \\  rm = Exec.fixture(fn(argv, stdin) said(argv, stdin) end).program("/usr/bin/docker").command([Fixed("rm"), Hole])
+    \\  rm = Exec.fixture(fn(argv, stdin) said(argv, stdin) end).program("/usr/bin/docker").command([Fixed(text: "rm"), Hole])
     \\  assert remove(rm, "a\u{0}b") == Error(Refused)
     \\  assert rm.run([], within: 1.minute) == Error(Refused)
     \\  assert rm.run(["a", "b"], within: 1.minute) == Error(Refused)
@@ -491,4 +495,92 @@ test "corpus: step 41, Exec.fixture answers every run under mo test, in a mo bui
     std.debug.print("---- mo test --sim, exit {d}\n{s}{s}", .{ sim.code, sim.stdout, sim.stderr });
     try std.testing.expectEqual(@as(u8, 0), sim.code);
     try std.testing.expect(std.mem.indexOf(u8, sim.stdout, "6 passed, 0 failed, 0 skipped; 3 tests under 40 seeds with 50% faults: 1 held under faults, 2 passed only without faults") != null);
+}
+
+/// With one scheduler (MO_CORES=1), main's code runs on the scheduler's thread, and main's send is
+/// delivered before its next statement: the update runs until it ends or waits. A run that held the
+/// scheduler would finish before main's next statement; one that waits holding none lets main go on
+/// while the child still runs. The child writes a marker when it ends, so main can tell which.
+const scheduler_program =
+    \\module Sched
+    \\expose main
+    \\
+    \\process Sleeper(nap: Command)
+    \\  state
+    \\    done: Bool
+    \\  end
+    \\  message Start
+    \\  message Done : Bool
+    \\  fn update(state, message)
+    \\    case message
+    \\      Start:
+    \\        state.done = nap.run([], within: 10.seconds) is Ok(_)
+    \\      Done: state.done
+    \\    end
+    \\  end
+    \\end
+    \\
+    \\process Counter()
+    \\  state
+    \\    n: UInt32
+    \\  end
+    \\  message Tick : UInt32
+    \\  fn update(state, message)
+    \\    case message
+    \\      Tick:
+    \\        state.n += 1
+    \\        state.n
+    \\    end
+    \\  end
+    \\end
+    \\
+    \\supervisor Both(nap: Command)
+    \\  child Sleeper(nap), restart: :always
+    \\  child Counter(), restart: :always
+    \\end
+    \\
+    \\fn main(platform: Platform)
+    \\  out = platform.stdout
+    \\  here = platform.fs.scoped(platform.args.first or ".")
+    \\  slow = platform.exec.program("/bin/sh").command([Fixed(text: "-c"), Fixed(text: "sleep 1; echo done > marker")])
+    \\  sleeper = Sleeper.start(slow.in_folder(here))
+    \\  counter = Counter.start()
+    \\  sleeper.send(Start)
+    \\  out.write_line("main went on while the child ran: #{here.size("marker", within: 1.seconds) is Error(_)}")
+    \\  out.write_line("another process answered meanwhile: #{counter.ask(Tick, within: 500.ms) is Ok(1)}")
+    \\  out.write_line("the run then answered: #{sleeper.ask(Done, within: 5.seconds) is Ok(true)}")
+    \\  out.write_line("and the child had finished: #{here.size("marker", within: 1.seconds) is Ok(_)}")
+    \\end
+    \\
+;
+
+test "corpus: step 41, a run waits holding no scheduler: with one scheduler main goes on while the child runs, under mo run and in a binary" {
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const s = try setup(arena, io, &tmp);
+    try tmp.dir.writeFile(io, .{ .sub_path = "sched.mo", .data = scheduler_program });
+    const want =
+        \\main went on while the child ran: true
+        \\another process answered meanwhile: true
+        \\the run then answered: true
+        \\and the child had finished: true
+        \\
+    ;
+    const bin = try s.built("sched.mo", "sched", false);
+    const runs = [_]struct { []const u8, []const []const u8 }{
+        .{ "mo run", &.{ "/usr/bin/env", "MO_CORES=1", s.mo_exe, "run", "sched.mo", "--", s.abs } },
+        .{ "binary", &.{ "/usr/bin/env", "MO_CORES=1", bin, s.abs } },
+    };
+    for (runs) |r| {
+        try s.sh("rm -f marker");
+        const ran = try s.guarded("60", r[1]);
+        std.debug.print("---- {s}, exit {d}\n{s}", .{ r[0], ran.code, ran.stdout });
+        if (ran.stderr.len > 0) std.debug.print("stderr: {s}\n", .{ran.stderr});
+        try std.testing.expectEqualStrings(want, ran.stdout);
+        try std.testing.expectEqual(@as(u8, 0), ran.code);
+    }
 }
