@@ -28,13 +28,7 @@ def require(value, detail='control failed'):
 
 
 def start_recorded(bridge):
-    original = subprocess.Popen
-    def launch(argv, **options):
-        argv = list(argv)
-        argv[argv.index('workspace_http.owner')] = 'workspace_http.live_owner'
-        return original(argv, **options)
-    with patch('workspace_http.bridge.subprocess.Popen', side_effect=launch):
-        return bridge.start()
+    return bridge.start(owner_module='workspace_http.live_owner')
 
 
 def request(bridge, operation='list_files', args=None, call_id=None):

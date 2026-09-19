@@ -56,7 +56,8 @@ class Bridge:
         self.slots = threading.BoundedSemaphore(4)
         self.deadline = 0
 
-    def start(self):
+    def start(self, owner_module='workspace_http.owner'):
+        # Local and recorded live controls name their own owner module; nothing is patched.
         if self.process is not None:
             raise RuntimeError('one start only')
         parent, child = socket.socketpair()
@@ -65,7 +66,7 @@ class Bridge:
         log = (self.directory / 'owner.log').open('xb')
         os.chmod(self.directory / 'owner.log', 0o600)
         try:
-            self.process = subprocess.Popen([sys.executable, '-B', '-m', 'workspace_http.owner',
+            self.process = subprocess.Popen([sys.executable, '-B', '-m', owner_module,
                                              str(child.fileno()), str(self.directory / 'config.json')],
                                             pass_fds=(child.fileno(),), env=env, stdout=log, stderr=log)
         finally:
