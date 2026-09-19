@@ -1,0 +1,16 @@
+{
+  "source": "1cf268b356a63665214ca8331bfc55828b643603",
+  "worker_tip": "7438a96e6f8bfdf49f903d3f125095c91533090d",
+  "machine": "mo-executor-r01",
+  "owner": "mo-workspace-http-v1",
+  "released": [
+    "fresh readiness",
+    "BusyBox HTTP22",
+    "application HTTP22",
+    "review-live2",
+    "final inventory"
+  ],
+  "compiler_released": false,
+  "core_regression_repeat_required_from_worker": false,
+  "integrated_lead_acceptance_pending": true
+}

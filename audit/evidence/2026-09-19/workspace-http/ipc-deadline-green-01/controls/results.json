@@ -1,0 +1,23 @@
+{
+  "status": 504,
+  "result": {
+    "version": "mo-workspace-http-v1",
+    "run_id": "probe",
+    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "call_id": "first",
+    "accepted": true,
+    "state": "timeout",
+    "execution": "unknown",
+    "error": "response_timeout",
+    "result": null
+  },
+  "elapsed_seconds": 2.0034287500020582,
+  "configured_file_wait": 2,
+  "admission_closed": true,
+  "passed": true,
+  "local_socketpair_only": true,
+  "machine_calls": 0,
+  "sender_errors": [
+    "BrokenPipeError"
+  ]
+}

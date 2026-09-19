@@ -1,0 +1,107 @@
+{
+  "tip": "1cf268b356a63665214ca8331bfc55828b643603",
+  "base": "3023a01a744d1580ca9814e595ddf990a12e456d",
+  "root": "/private/tmp/mo-workspace-http-review-1cf268b3",
+  "files": [
+    {
+      "path": "toolchain/harness/executor/workspace_http/CONTRACT.md",
+      "bytes": 7928,
+      "sha256": "606747ea9d1ed743fac16de8a395e03aac28f86f30b59f6855ad5c3ef65b987e"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/GROUPS.md",
+      "bytes": 2680,
+      "sha256": "dd1904986c23b58dee4cfccf62c771e7c3a26fe777be63131fff81ed19df3ad7"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/IPC.md",
+      "bytes": 2814,
+      "sha256": "f24e642f744de91390ac7aa9d8e4b1238f38dae3a440839ae679c574d81f3d7d"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/REVIEW-CHECKPOINT.md",
+      "bytes": 3625,
+      "sha256": "1ba14d32e14c8d1657a6728d4b6a36c196ea284fe11dfd0bc32c91ea4dda62a9"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/__init__.py",
+      "bytes": 125,
+      "sha256": "868cc62dc94fedf6f8cc562db1cf6396393db96ef5bc7227c955702877e1e9f2"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/bridge.py",
+      "bytes": 14460,
+      "sha256": "739c17c2cc9fe1bde13668cd5f988a2b07359b14c9249d6af28fa16be1f6c06b"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/frontend_control.py",
+      "bytes": 852,
+      "sha256": "e76ac556a98a8186d2301cd3a81dbf580e1d1f1f999190d90e4d20d2b48f5097"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/local.py",
+      "bytes": 20692,
+      "sha256": "5e3c6537b3a609018c3aeeddba5bfafca8fb20b55fec2b65ca952ff0a671dae2"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/owner.py",
+      "bytes": 8447,
+      "sha256": "19c98c9cb578b53d686c87ed1dbcd853e5765c96a7ba9e7ad60c348e19aa3285"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/protocol.py",
+      "bytes": 6255,
+      "sha256": "3f99f45fbc2b8e7f154a4ba174ebddc1c20596652d847cdeb6c2e9db52b56fec"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/red_lifetime.py",
+      "bytes": 1564,
+      "sha256": "f27e9ffb240630f6f6918821cb84269d4e1417f9119798b0e74c6e22fa2efd4e"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/run_guarded.py",
+      "bytes": 2856,
+      "sha256": "b7fc778c467b89d680dc0211cce545204c7b787f891c3c89d1006e941754a5d2"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_http/test_owner.py",
+      "bytes": 5142,
+      "sha256": "ddf19104a42c6322e709abfa4ae0643228b5cf8f65cf3cd19926066db843550e"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace.py",
+      "bytes": 12940,
+      "sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68"
+    },
+    {
+      "path": "toolchain/harness/executor/adapter.py",
+      "bytes": 11923,
+      "sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_controller.py",
+      "bytes": 15184,
+      "sha256": "a2c7dbcb38865ee3074fd64cb9a113c35f476c6efb7b75c2a0c48d30911c207e"
+    },
+    {
+      "path": "toolchain/harness/executor/workspace_files.py",
+      "bytes": 7758,
+      "sha256": "7a671d2270deb37dbaa70fabe8071ade78055198465bdf704c5f61c52272b5ef"
+    },
+    {
+      "path": "toolchain/harness/executor/remote.py",
+      "bytes": 19047,
+      "sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6"
+    },
+    {
+      "path": "toolchain/harness/executor/recovery/__init__.py",
+      "bytes": 10261,
+      "sha256": "c08ccab24315960507bb41717c311759ac82b910be091ba68fb130e559b7af61"
+    },
+    {
+      "path": "toolchain/harness/executor/application/HTTP-CONTRACT.md",
+      "bytes": 4429,
+      "sha256": "9612b743874bb72779aae09af5e22ebab49ae76b9f92da14ba690c433a9739fe"
+    }
+  ]
+}
