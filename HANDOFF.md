@@ -34,6 +34,20 @@ Run the full suite detached (`nohup`) with a 1,500 s guard: the tool's
 10-minute cap is shorter than the suite now, and `guard.py` does not kill
 grandchildren.
 
+**In flight, 12:59 PM ET.** (1) Step 40 on Linux: the VM's first run built
+(exit 0) and passed 5 of 6; the sixth aborted in the *test harness* (a raw
+`read` on a non-blocking pipe returns `-EAGAIN` in the result on Linux). Worker
+`step40-linux-fix-opus` fixed it (`3d24c001`) and audited every syscall step 40
+added: product code clean. Merged on `lead/verify-step40` (`0ab217c9`, pushed);
+the VM is rerunning build, step 40 tests and the **full suite**; results in the
+clone's `.lead-exits`, `.lead-test.log`, `.lead-full.log`. Accept and merge to
+`main` when green. (2) `e2e-logstat-opus` (own tab, pane `w4:p2Y`, branch
+`harness/end-to-end-v1`, brief `mo-wiki/plans/mo-harness-end-to-end-v1.md`):
+the Mo agent against the real service on the machine, then the scripted
+Logstat repair; **the machine is that worker's exclusively**. (3) Step 41
+(`Exec`) is briefed (`mo-wiki/plans/interpreter-step-41.md`) and launches from
+`main` once step 40 is accepted. Then the runtime memory-safety brief.
+
 **Step 40 verification, 12:47 PM ET.** Worker finished (`e2434d09`); merged on local
 and pushed branch `lead/verify-step40` (`6e04e1f9`), not on `main`. Darwin:
 build exit 0, step 40 tests 6 of 6, full suite 249 of 249 exit 0, and a lead
