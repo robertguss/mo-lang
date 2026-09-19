@@ -256,7 +256,8 @@ class Run:
         row = dict(part=self.attempt.part, case=self.name, runtime=self.runtime, passed=all(checks.values()),
                    exit_code=self.row['exit_code'], outcome=self.row['outcome'], guard_killed=self.row.get('guard_killed'),
                    elapsed_s=self.row['elapsed_s'], agent_s=self.agent_s, wall_s=self.wall_s,
-                   startup_ms=self.bridge.startup_ms, summary=summary(self.row['stdout']),
+                   startup_ms=self.bridge.startup_ms,
+                   summary=json.dumps((events.get('terminal') or events.get('reporting_error') or [{}])[-1])[:400],
                    terminal=terminal, checks=checks, calls=per_call, arrivals=arrivals,
                    model_requests=len(self.model.requests), model_gaps_s=model_times,
                    book_steps=len(steps), after=self.after, files_scanned_for_token=getattr(self, 'scanned', None),
@@ -301,6 +302,7 @@ def verdict(result, verifier):
                 elapsed_seconds=result.get('elapsed_seconds'), stdout_equals_expected=stdout == expected,
                 first_difference=None if first is None else dict(line=first + 1, got=stdout.splitlines()[first][:300],
                                                                   want=expected.splitlines()[first][:300]),
+                tests_hash_equal=stdout.splitlines()[-1:] == expected.splitlines()[-1:],
                 stdout_lines=len(stdout.splitlines()), expected_lines=len(expected.splitlines()),
                 stdout=stdout[:6000], stderr_tail=stderr[-1500:])
 
@@ -442,7 +444,7 @@ def part_logstat(s, only):
             calls = seen['calls']
             codes = [c.get('exit_code') for c in calls if c['tool'] == 'command']
             base = dict(
-                nine_steps=len(seen['steps']) == 9,
+                steps=len(seen['steps']) == (7 if kind == 'forged-success' else 9),
                 journal_matches_book=bool(calls) and all(c['reply']['received_equals_produced'] for c in calls),
                 commands_clean=all(isinstance(c['cleanup'], dict) and all(c['cleanup'].values())
                                    for c in calls if c['tool'] == 'command'),
@@ -453,7 +455,9 @@ def part_logstat(s, only):
                 base.update(green_last=codes[-1:] == [0], edit_ok=calls[2]['state'] == 'success', verdict=v.get('passed') is True)
             else:
                 base.update(candidate_claims_green=codes[-1:] == [0], verdict_refused=v.get('passed') is False,
-                            verifier_ran=v.get('execution') == 'completed')
+                            verifier_ran=v.get('execution') == 'completed', verifier_built=v.get('stdout', '').startswith('build=0\nbuild-tests=0\n'))
+                if kind == 'wrong-candidate':
+                    base['test_bytes_refused'] = v.get('tests_hash_equal') is False
             return base
 
         run = Run(s, kind, s.runtime, s.prefix, trees['faulty'], v, logstat_replies(kind),

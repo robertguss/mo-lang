@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "logstat",
+    "interpreter",
+    "logstat-interpreter-02"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1",
+  "seconds": 1800,
+  "head": "cae67f750c860c93f3258939ac4fdd4ada9ba62d",
+  "dirty": [
+    " M examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/logstat-interpreter-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/logstat-interpreter-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/logstat-interpreter-01/"
+  ]
+}
