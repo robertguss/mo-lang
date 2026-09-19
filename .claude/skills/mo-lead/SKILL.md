@@ -111,7 +111,16 @@ audit rules; do not treat unavailable evidence as passed.
    process code); preserve raw outputs and real exit codes through pipelines.
    For documentation-only work use lint and diff checks. Test/server processes
    run in owned Herdr run panes with explicit guards and cleanup; preserve
-   unrelated services. Linux execution needs its own verified OrbStack boundary.
+   unrelated services. Linux toolchain checks (builds, the test suite, benchmarks) run on Robert's
+   Linux VM, not on the Mac (Robert, 19 Sep 2026): `ssh -o IdentitiesOnly=yes -i
+   ~/.ssh/id_exe robertguss@aurora-but-gold.exe.xyz` (x86_64, 4 cores, 15 GB,
+   Zig 0.16 through `mise`; the `dev-box` alias points at the `.pub` file and
+   does not work). Use the dedicated clone `~/Projects/mo-lang-lead-verify`,
+   fetched from a pushed `lead/verify-<unit>` branch; never touch the VM's
+   historical checkouts and worktrees under `~/Projects`. Run detached
+   (`nohup`) under the guard and poll. The OrbStack machine `mo-executor-r01`
+   is only for the harness's live executor suites, which drive containers on it
+   by design.
    Linux checks do not satisfy Darwin full-sync obligations.
 5. **Record.** One commit (by path: `git commit -m <msg> -- <paths>`):
    decision-log rows in `mo-wiki/decisions/decision-log.md` (who, status, first

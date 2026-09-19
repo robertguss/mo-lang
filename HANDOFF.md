@@ -34,6 +34,22 @@ Run the full suite detached (`nohup`) with a 1,500 s guard: the tool's
 10-minute cap is shorter than the suite now, and `guard.py` does not kill
 grandchildren.
 
+**Step 40 verification, 12:47 PM ET.** Worker finished (`e2434d09`); merged on local
+and pushed branch `lead/verify-step40` (`6e04e1f9`), not on `main`. Darwin:
+build exit 0, step 40 tests 6 of 6, full suite 249 of 249 exit 0, and a lead
+race probe (300,000 reads while a folder is swapped with a link to a secret:
+39,238 inside, 260,762 refused, 0 secret). **Linux runs go on Robert's Linux VM
+from now on (his instruction), not on the Mac**: clone
+`~/Projects/mo-lang-lead-verify` on `aurora-but-gold` (access in the lead
+skill, step 4). A build plus the step 40 tests is running there detached;
+results in `.lead-exits`, `.lead-build.log`, `.lead-test.log` at the clone's
+root. An earlier attempt inside `mo-executor-r01`'s `/tmp/step40` may still be
+running; it is superseded, leave it to finish and ignore it. Accept step 40
+when Linux is green: merge `lead/verify-step40` into `main`. Two benchmark
+findings to decide: deep paths cost 3.5 times as much (one-call
+`O_NOFOLLOW_ANY` / `openat2` would remove the walk); `list_kinds` in the
+interpreter costs 3.3 times as much.
+
 **Update, 9:25 AM ET.** The raw-memory defect is found and fixed by
 `rawmem-toolchain-opus` (`44a4da08`, merged locally at `9304fc65`, tab closed):
 an `answer` to a kept ask held a bare value into the process's region until the
