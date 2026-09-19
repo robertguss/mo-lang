@@ -254,18 +254,46 @@ fn valid?(status: UInt16, body: String, settings: Settings, call: String, operat
   error = fields.get("error") or Null
   return false if error != Null and !core_errors().concat(bridge_errors()).contains?(string_in(fields,
     "error") or "")
-  return false if string_in(fields, "run_id") != Some(settings.run) or string_in(fields,
-    "workspace_id") != Some(settings.workspace) or string_in(fields, "call_id") != Some(call)
   case fields.get("accepted")
     Some(Bool(value)):
-      if value: admitted?(status, fields, operation) else: refused?(fields)
+      if value
+        bound?(fields, settings, call) and admitted?(status, fields, operation)
+      else
+        refused?(status, fields, settings, call)
+      end
     Some(_) | None: false
   end
 end
 
-fn refused?(fields: Map(String, Json)) : Bool
-  string_in(fields, "state") == Some("refusal") and string_in(fields,
-    "execution") == Some("not_started") and fields.get("result") == Some(Null) and fields.get("error") != Some(Null)
+fn bound?(fields: Map(String, Json), settings: Settings, call: String) : Bool
+  string_in(fields, "run_id") == Some(settings.run) and string_in(fields,
+    "workspace_id") == Some(settings.workspace) and string_in(fields, "call_id") == Some(call)
+end
+
+# A refusal before admission: nothing started, no result, and the status the contract gives its
+# error. Identities are null until the whole schema and binding check, which only the admission
+# refusals (409) follow, so they alone carry this call's identities.
+fn refused?(status: UInt16, fields: Map(String, Json), settings: Settings, call: String) : Bool
+  return false if string_in(fields, "state") != Some("refusal") or string_in(fields,
+    "execution") != Some("not_started") or fields.get("result") != Some(Null)
+  error = string_in(fields, "error") or ""
+  return false if status != refusal_status(error)
+  return bound?(fields, settings, call) if status == 409
+  ["run_id", "workspace_id", "call_id"].all?(fn(key) fields.get(key) == Some(Null) end)
+end
+
+fn refusal_status(error: String) : UInt16
+  case error
+    "malformed": 400
+    "unauthorized": 401
+    "unbound": 403
+    "not_found": 404
+    "method": 405
+    "busy" | "conflict" | "admission_closed" | "call_limit": 409
+    "oversized": 413
+    "unsupported_media": 415
+    _: 0
+  end
 end
 
 fn admitted?(status: UInt16, fields: Map(String, Json), operation: String) : Bool
@@ -278,14 +306,15 @@ fn admitted?(status: UInt16, fields: Map(String, Json), operation: String) : Boo
   return false if status != 200 or error == Some("response_timeout")
   return false if state == "success" and (execution != "completed" or error is Some(_))
   case fields.get("result")
-    Some(Object(result)): shaped?(operation, result, state)
+    Some(Object(result)): shaped?(operation, result, state, error)
     Some(Null): state != "success"
     Some(_) | None: false
   end
 end
 
-fn shaped?(operation: String, result: Map(String, Json), state: String) : Bool
-  return command?(result) if operation == "command"
+fn shaped?(operation: String, result: Map(String, Json), state: String,
+  error: Option(String)) : Bool
+  return command?(result, state, error) if operation == "command"
   key = case operation
     "list_files" | "search": "items"
     "read_file": "text"
@@ -333,7 +362,10 @@ fn row?(item: Json, keys: List(String)) : Bool
   end
 end
 
-fn command?(result: Map(String, Json)) : Bool
+# A command's result as the accepted projection makes it: both streams strings, or both null only
+# for failure/output_encoding; a success is a valid, untruncated, zero exit (a signal is not part
+# of the producer's success rule, so it is not checked).
+fn command?(result: Map(String, Json), state: String, error: Option(String)) : Bool
   keys = ["exit_code",
     "signal",
     "execution_valid",
@@ -351,7 +383,13 @@ fn command?(result: Map(String, Json)) : Bool
   return false if !nullable?(result.get("elapsed_ms") or Null, 0, 9_007_199_254_740_991)
   stdout = result.get("stdout") or Null
   stderr = result.get("stderr") or Null
-  return false if !(stdout == Null or stdout is String(_)) or !(stderr == Null or stderr is String(_))
+  strings = stdout is String(_) and stderr is String(_)
+  encoding = stdout == Null and stderr == Null and state == "failure" and error == Some("output_encoding")
+  return false if !strings and !encoding
+  if state == "success"
+    return false if (result.get("exit_code") or Null).to_i64 != Some(0)
+    return false if result.get("truncated") != Some(Bool(value: false)) or result.get("execution_valid") != Some(Bool(value: true))
+  end
   (string_in(result, "stdout") or "").byte_size + (string_in(result,
     "stderr") or "").byte_size <= 65_536
 end

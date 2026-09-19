@@ -1,10 +1,14 @@
 """Shared paths, guarded invocation and proportionate evidence for application workspace v1."""
+import contextlib
 import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
+import signal
+import subprocess
 import sys
+import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[5]
 HERE = Path(__file__).resolve().parent
@@ -13,19 +17,49 @@ EVIDENCE = HERE / 'evidence'
 MO = os.environ.get('MO_BIN', str(ROOT / 'toolchain/zig-out/bin/mo'))
 GUARD = ROOT / 'toolchain/bench/step36/guard.py'
 
-# RED baseline: the inherited coding-fixture-v1 wrapper, imported read-only.
-sys.path.insert(0, str(AGENT / 'tests/coding-fixture-v1'))
-from run import invoke  # noqa: E402,F401
+def invoke(args, seconds, cwd=ROOT, env=None):
+    """A guarded child in its own process group, killed with the group on every path.
+
+    exit_code is only ever the return code actually observed from the guard process; the
+    wrapper's own outcome (exited, outer_timeout, launch_error) and its reason are separate
+    fields, so an outer interruption never substitutes a synthetic code for an observed one."""
+    command = [sys.executable, str(GUARD), str(seconds), '--'] + [str(a) for a in args]
+    outcome, reason, code = 'exited', None, None
+    started = time.monotonic()
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        try:
+            proc = subprocess.Popen(command, cwd=cwd, env=env, stdout=out, stderr=err,
+                                    start_new_session=True)
+        except OSError as exc:
+            return dict(command=command, exit_code=None, outcome='launch_error', reason=repr(exc),
+                        elapsed_s=0.0, stdout='', stderr='')
+        try:
+            proc.wait(timeout=seconds + 5)
+        except subprocess.TimeoutExpired:
+            outcome, reason = 'outer_timeout', f'guard did not exit within {seconds + 5}s'
+        finally:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(proc.pid, signal.SIGKILL)
+            code = proc.wait()
+        out.seek(0)
+        err.seek(0)
+        stdout, stderr = out.read(4 << 20), err.read(4 << 20)
+    stderr = stderr.decode(errors='replace')
+    return dict(command=command, exit_code=code, outcome=outcome, reason=reason,
+                guard_killed='guard: killed' in stderr, elapsed_s=round(time.monotonic() - started, 3),
+                stdout=stdout.decode(errors='replace'), stderr=stderr)
 
 
 def retain_source(path, directory):
-    """RED baseline: keep a source copy under evidence."""
-    path = Path(path)
+    """Keep a source copy as a non-.mo artifact, with its repository path and SHA-256."""
+    path = Path(path).resolve()
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    target = directory / path.name
-    shutil.copy2(path, target)
-    return dict(path=str(path), retained=str(target), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    target = directory / (path.name + '.' + digest[:12] + '.txt')
+    target.write_bytes(data)
+    return dict(path=str(path.relative_to(ROOT)), retained=str(target), sha256=digest)
 
 
 class Attempt:
@@ -47,9 +81,10 @@ class Attempt:
 
 
 def summary(text):
-    """The last non-empty line a tool printed: its own count or verdict."""
+    """A test runner's count line when it printed one, else the last non-empty line."""
     lines = [line for line in text.splitlines() if line.strip()]
-    return lines[-1] if lines else ''
+    counts = [line for line in lines if ' passed, ' in line and ' failed' in line]
+    return (counts or lines or [''])[-1]
 
 
 def trimmed(row, passed):
