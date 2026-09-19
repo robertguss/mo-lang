@@ -1,0 +1,8 @@
+six-tools PASS
+output-encoding PASS
+byte-bounds PASS
+file-refusals PASS
+duplicate-calls PASS
+protected-verifier PASS
+application-binding PASS
+{"groups": 7, "passed": 7, "actual_workspace": true, "acceptance": false}

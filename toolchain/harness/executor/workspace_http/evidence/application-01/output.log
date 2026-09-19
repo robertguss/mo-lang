@@ -1,0 +1,24 @@
+six-tools PASS
+output-encoding PASS
+schema PASS
+framing PASS
+byte-bounds PASS
+identities-capability PASS
+duplicate-calls PASS
+concurrent-admission PASS
+file-refusals PASS
+deadlines PASS
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/live.py", line 382, in <module>
+    main(args.output.resolve(), groups, args.application)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/live.py", line 370, in main
+    raise failure
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/live.py", line 314, in main
+    action(group)
+    ~~~~~~^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/live.py", line 253, in action
+    result = finished(b.directory)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/live.py", line 105, in finished
+    raise AssertionError('owner cleanup not confirmed')
+AssertionError: owner cleanup not confirmed

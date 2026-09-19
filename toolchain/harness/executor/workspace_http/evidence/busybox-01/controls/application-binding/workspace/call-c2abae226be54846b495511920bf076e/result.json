@@ -1,0 +1,18 @@
+{
+  "run_id": "bbcdb1e43ecb4319af8aeaa5b6bf0ac0",
+  "workspace_id": "31b616fe56c14298906ca299f8bfc4cf",
+  "call_id": "c2abae226be54846b495511920bf076e",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "workspace": {
+      "workspace_id": "31b616fe56c14298906ca299f8bfc4cf",
+      "workspace_run_id": "bbcdb1e43ecb4319af8aeaa5b6bf0ac0",
+      "source": "/var/lib/mo-harness/mo-workspace-31b616fe56c14298906ca299f8bfc4cf/storage/data",
+      "readonly": false,
+      "snapshot": null
+    }
+  },
+  "elapsed_seconds": 0.00030153999978210777
+}

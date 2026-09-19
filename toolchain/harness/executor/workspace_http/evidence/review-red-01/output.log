@@ -1,0 +1,49 @@
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+groups=deadlines,shutdown
+test_deadlines (__main__.Controls.test_deadlines) ... ok
+test_shutdown (__main__.Controls.test_shutdown) ... 
+  test_shutdown (__main__.Controls.test_shutdown) (active_at_drain_expiry=False) ... FAIL
+  test_shutdown (__main__.Controls.test_shutdown) (active_at_drain_expiry=True) ... FAIL
+  test_shutdown (__main__.Controls.test_shutdown) (cleanup_transport_reserve=True) ... FAIL
+
+======================================================================
+FAIL: test_shutdown (__main__.Controls.test_shutdown) (active_at_drain_expiry=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 313, in test_shutdown
+    self.assertFalse(other.closed)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_shutdown (__main__.Controls.test_shutdown) (active_at_drain_expiry=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 310, in test_shutdown
+    self.assertEqual((status,r['state']),(200,'success'))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (200, 'failure') != (200, 'success')
+
+First differing element 1:
+'failure'
+'success'
+
+- (200, 'failure')
++ (200, 'success')
+
+======================================================================
+FAIL: test_shutdown (__main__.Controls.test_shutdown) (cleanup_transport_reserve=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 320, in test_shutdown
+    self.assertEqual(self.journal(budget)['cleanup']['cleanup'],'confirmed')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 11.315s
+
+FAILED (failures=3)

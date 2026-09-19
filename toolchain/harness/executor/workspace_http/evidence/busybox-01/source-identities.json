@@ -1,0 +1,23 @@
+{
+  "workspace.py": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+  "workspace_controller.py": "a2c7dbcb38865ee3074fd64cb9a113c35f476c6efb7b75c2a0c48d30911c207e",
+  "adapter.py": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "remote.py": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "workspace_files.py": "7a671d2270deb37dbaa70fabe8071ade78055198465bdf704c5f61c52272b5ef",
+  "workspace_http/run_guarded.py": "b7fc778c467b89d680dc0211cce545204c7b787f891c3c89d1006e941754a5d2",
+  "workspace_http/live_frontend.py": "e2f7c9bbc50733258132ebeb5fc4f390923715f28ec92f4c0250f04c19b3fd5d",
+  "workspace_http/local.py": "8b0397c2bb11b301762dc8fb5e131000cb752863e624b06a42be9520285582a3",
+  "workspace_http/protocol.py": "3f99f45fbc2b8e7f154a4ba174ebddc1c20596652d847cdeb6c2e9db52b56fec",
+  "workspace_http/bridge.py": "d5f7cc918278d3a64adc5721bb8c03a6284f4a40c56c83c2165f9d77065bdf8d",
+  "workspace_http/__init__.py": "868cc62dc94fedf6f8cc562db1cf6396393db96ef5bc7227c955702877e1e9f2",
+  "workspace_http/owner.py": "bc62159c01d928cf3294c0b77cb37234b84b074e4cafbedcdf36c555eba2ac0f",
+  "workspace_http/live_owner.py": "d374f2b85acd016606890ac33834f0461f9f8d127d137517299820b59cde55df",
+  "workspace_http/live.py": "0cf5dd8b1b16b72874d6284d2c0cf5fee75aa7c5fda7d0b2068bc0b1d809a9e3",
+  "workspace_http/frontend_control.py": "e76ac556a98a8186d2301cd3a81dbf580e1d1f1f999190d90e4d20d2b48f5097",
+  "workspace_http/red_lifetime.py": "f27e9ffb240630f6f6918821cb84269d4e1417f9119798b0e74c6e22fa2efd4e",
+  "workspace_http/test_owner.py": "b1e054111242b87768ad634acb287c82c892276fb54247e82e750224a0657735",
+  "workspace_http/CONTRACT.md": "2eafb8704a2e883bb0137550b4f0d12552f9374d1e0cf79839f211f3b8f68fd9",
+  "workspace_http/GROUPS.md": "dd1904986c23b58dee4cfccf62c771e7c3a26fe777be63131fff81ed19df3ad7",
+  "workspace_http/REVIEW-CHECKPOINT.md": "cbf80edd1c1695af2f1eeaa7a9b9c227a9207207b078275142635e94294a71da",
+  "workspace_http/IPC.md": "cbeaa346c69805b6ef813007c117278d8478301bee86e6ca44fe67964dc2e244"
+}

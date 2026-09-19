@@ -1,0 +1,84 @@
+immutable bridge sha256=fe325ae0e11704464f77a97eaa0a3f0fa3664beeced8df565821715f0a804f90
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+groups=deadlines,shutdown
+test_deadlines (workspace_http.local.Controls.test_deadlines) ... 
+  test_deadlines (workspace_http.local.Controls.test_deadlines) (scenario='partial-ipc') ... FAIL
+  test_deadlines (workspace_http.local.Controls.test_deadlines) (scenario='lease-active') ... FAIL
+test_shutdown (workspace_http.local.Controls.test_shutdown) ... 
+  test_shutdown (workspace_http.local.Controls.test_shutdown) (active_at_drain_expiry=False) ... FAIL
+  test_shutdown (workspace_http.local.Controls.test_shutdown) (active_at_drain_expiry=True) ... FAIL
+  test_shutdown (workspace_http.local.Controls.test_shutdown) (cleanup_transport_reserve=True) ... FAIL
+
+======================================================================
+FAIL: test_deadlines (workspace_http.local.Controls.test_deadlines) (scenario='partial-ipc')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 241, in test_deadlines
+    self.assertEqual((status,r['error'],r['execution']),(504,'response_timeout','unknown'))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (200, 'owner_unknown', 'unknown') != (504, 'response_timeout', 'unknown')
+
+First differing element 0:
+200
+504
+
+- (200, 'owner_unknown', 'unknown')
++ (504, 'response_timeout', 'unknown')
+
+======================================================================
+FAIL: test_deadlines (workspace_http.local.Controls.test_deadlines) (scenario='lease-active')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 241, in test_deadlines
+    self.assertEqual((status,r['error'],r['execution']),(504,'response_timeout','unknown'))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (200, 'owner_unknown', 'unknown') != (504, 'response_timeout', 'unknown')
+
+First differing element 0:
+200
+504
+
+- (200, 'owner_unknown', 'unknown')
++ (504, 'response_timeout', 'unknown')
+
+======================================================================
+FAIL: test_shutdown (workspace_http.local.Controls.test_shutdown) (active_at_drain_expiry=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 325, in test_shutdown
+    self.assertFalse(other.closed)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_shutdown (workspace_http.local.Controls.test_shutdown) (active_at_drain_expiry=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 322, in test_shutdown
+    self.assertEqual((status,r['state']),(200,'success'))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (200, 'failure') != (200, 'success')
+
+First differing element 1:
+'failure'
+'success'
+
+- (200, 'failure')
++ (200, 'success')
+
+======================================================================
+FAIL: test_shutdown (workspace_http.local.Controls.test_shutdown) (cleanup_transport_reserve=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/local.py", line 332, in test_shutdown
+    self.assertEqual(self.journal(budget)['cleanup']['cleanup'],'confirmed')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 11.014s
+
+FAILED (failures=5)

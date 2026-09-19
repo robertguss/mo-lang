@@ -1,0 +1,18 @@
+{
+  "run_id": "7b5973f43eb44a8b98d95fd922ca6eac",
+  "workspace_id": "0718ae3c0f8c424eacae92978f4db2be",
+  "call_id": "ffd3959b49204ed9bda401cb453f3c00",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "items": [
+      {
+        "path": "unicode",
+        "offset": 3
+      }
+    ],
+    "truncated": false
+  },
+  "elapsed_seconds": 0.000432288994488772
+}
