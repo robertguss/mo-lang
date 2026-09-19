@@ -162,3 +162,83 @@ and unload its units before recovery collection. Fault code stays in the test;
 there are no production fault switches or daemon/global configuration changes.
 See `evidence/LIFECYCLE-CORRECTION.md` for the retained red test, corrected
 ordering, raw live proof, and exact guarded commands.
+
+## Session workspace (bounded synthetic shell/file slice)
+
+`Workspace` in `workspace.py` is a trusted Python caller API. It has no HTTP or
+provider bridge. Use a fresh 32-hex run ID and private result directory, then
+`create({relative_path: bytes})`, `list_files`, `read_file`, `search`,
+`write_file`, `exact_edit`, and `command`. Call `freeze()` to close candidate
+writes and copy a protected snapshot; `verify(script, nonempty_checks)` runs
+independent synthetic BusyBox checks against that snapshot read-only. Finally
+`delete()` removes the owned mounts/directories. External checks and verifier
+scripts must come from the trusted caller, never candidate output or files.
+
+```python
+from workspace import Workspace
+import uuid
+
+ws = Workspace(uuid.uuid4().hex, "/private/tmp/mo-workspace-unique")
+ws.create({"answer.txt": b"wrong\n"})
+assert ws.command('test "$(cat answer.txt)" = right')["exit_code"] == 1
+assert ws.read_file("answer.txt") == "wrong\n"
+ws.exact_edit("answer.txt", "wrong", "right")
+assert ws.command('test "$(cat answer.txt)" = right')["state"] == "success"
+ws.freeze()
+result = ws.verify("cat answer.txt", [
+    {"id": "answer", "stream": "stdout", "mode": "exact", "expected": "right\n"},
+])
+assert result["passed"]
+ws.delete()
+```
+
+The registered source is the sole `/workspace` bind mount. The separate
+`mo-executor-workspace-v1` policy retains the fixture image, UID, resource,
+network, root-filesystem, output and lifecycle restrictions. Feedback command
+success means exit zero with valid execution/cleanup evidence; it is not a
+behavioral verdict. Feedback has no `passed` field and no fabricated checks.
+`start_command`, `cancel`, and `collect` expose bounded asynchronous control.
+Call collection even if dispatch raises after registration. Never automatically
+retry an uncertain call; inspect retained request/result and cleanup evidence.
+
+Each workspace uses a 64 MiB, 4096-inode noexec/nosuid/nodev tmpfs beneath a
+root-only administrative directory in `/var/lib/mo-harness/`. Effective mount
+options are checked at creation and dispatch. Only its data subtree belongs to
+UID/GID 65534. Registry, call claims, locks, snapshots and results remain outside
+candidate storage. Every operation has matching run/workspace/call identities
+and a finite deadline. Machine-side locks serialize claims and operations;
+active execution blocks file operations, freezing and deletion until the
+existing executor persists positive cleanup proof. A trusted retired-ID file
+prevents recreating a deleted workspace identity; workspace data has no
+reboot-persistence guarantee.
+
+Imports are explicit mappings (or ordered pairs, allowing duplicate detection),
+not archives or recursive host uploads: at most 1000 regular files, 64 KiB per
+file and 64 MiB total. Paths are canonical relative UTF-8, at most 4096 bytes and
+255 bytes/component. Only list/search accept `.`. Directory descriptor walks
+use no-follow opens for every component; nonblocking file opens are followed
+by type/link-count validation. Symlinks, hardlinks, special files and setuid,
+setgid or sticky bits are refused. Hostile candidate files are revalidated on
+each traversal. Text reads/search/edits require UTF-8. List/search return sorted
+bounded data with explicit truncation (1000 files, 200 hits, 64 KiB JSON cap).
+Read responses that cannot fit the serialized cap are explicitly refused.
+
+Exact edit counts overlapping literal byte matches and requires exactly one.
+It preserves surrounding bytes and uses a fresh same-directory temporary file
+plus rename, cleaning its temporary file on normal refusal/failure. Replacement
+is atomic to observers under the lock, not crash-durable. A timeout after rename
+can leave the new bytes in place: the outcome is unknown, never replayable.
+
+Snapshot inventory hashes sorted paths, byte lengths, content SHA-256 and the
+actual normalized mode: any executable bit becomes 0755, otherwise 0644.
+Empty directories are omitted. Snapshot bytes are copied, never hardlinked.
+Identity is rechecked immediately before dispatch. The frozen source mounts
+read-only with fresh bounded `/work` and `/tmp`; candidate commands cannot
+modify snapshot inventory, trusted checks/verifier or authoritative results.
+Verdicts bind workspace/run/snapshot, pinned image/policy, verifier source,
+check inventory, actual observations and positive cleanup evidence. This is
+synthetic shell/file acceptance only; it makes no Mo/compiler/application claim.
+
+Workspace evidence and bounded runners live under `evidence/workspace-v1/`.
+Keep each attempt, including failures. Live work requires exclusive release of
+`mo-executor-r01` by the lead; never use the shared Mac Docker endpoint.

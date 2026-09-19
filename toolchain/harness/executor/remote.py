@@ -14,6 +14,7 @@ import time
 IMAGE = 'sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337'
 CAP = 64 * 1024
 POLICY = 'mo-executor-r01-v1'
+WORKSPACE_POLICY = 'mo-executor-workspace-v1'
 
 
 def command(args, timeout=3, check=True):
@@ -36,7 +37,7 @@ def inspect(name):
     return json.loads(p.stdout)[0]
 
 
-def policy_errors(info, script, name):
+def policy_errors(info, script, name, workspace=None):
     h, c = info['HostConfig'], info['Config']
     expected = {'ReadonlyRootfs': True, 'Privileged': False,
                 'NetworkMode': 'none', 'NanoCpus': 250000000,
@@ -46,6 +47,8 @@ def policy_errors(info, script, name):
                 'PidMode': '', 'IpcMode': 'private', 'AutoRemove': False,
                 'CgroupnsMode': 'private', 'VolumesFrom': None, 'DeviceRequests': None,
                 'RestartPolicy': {'Name': 'no', 'MaximumRetryCount': 0}}
+    if workspace:
+        expected['Binds'] = [workspace['source'] + ':/workspace:' + ('ro' if workspace['readonly'] else 'rw')]
     errors = [k for k, v in expected.items() if k not in h or h[k] != v]
     if h.get('SecurityOpt') != ['no-new-privileges']: errors.append('SecurityOpt')
     if h.get('LogConfig', {}).get('Type') != 'none': errors.append('LogConfig')
@@ -56,9 +59,16 @@ def policy_errors(info, script, name):
     if c['User'] != '65534:65534': errors.append('User')
     if c['Cmd'] != ['/bin/sh', '-c', script]: errors.append('Cmd')
     if info['Name'] != '/' + name: errors.append('Name')
-    if info.get('Mounts') != []: errors.append('Mounts')
+    if workspace:
+        mounts = info.get('Mounts', [])
+        if len(mounts) != 1 or any(mounts[0].get(k) != v for k, v in {
+                'Type': 'bind', 'Source': workspace['source'], 'Destination': '/workspace',
+                'Mode': 'ro' if workspace['readonly'] else 'rw',
+                'RW': not workspace['readonly'], 'Propagation': 'rprivate'}.items()):
+            errors.append('Mounts')
+    elif info.get('Mounts') != []: errors.append('Mounts')
     if c.get('Entrypoint') is not None: errors.append('Entrypoint')
-    if c.get('WorkingDir') != '/work': errors.append('WorkingDir')
+    if c.get('WorkingDir') != ('/workspace' if workspace else '/work'): errors.append('WorkingDir')
     if c.get('Env') != ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']:
         errors.append('Env')
     return errors
@@ -108,6 +118,9 @@ def finalize(root):
         result = {'host_confirmed': True, 'host_cgroup': group,
                   'host_cgroup_absent': bool(group and not Path(group).exists()),
                   'ordering': ['supervisor_stopped', 'container_absent', 'cgroup_absent']}
+        if not group and (root / 'manifest.json').exists() and json.loads((root / 'manifest.json').read_text()).get('workspace'):
+            result['host_cgroup_absent'] = True
+            result['execution_not_started'] = True
         # Persist proof before disarming. A collector death before this point
         # cannot unload the timer; after this point no candidate can be created.
         write(root / 'cleanup-confirmed.json', result)
@@ -182,9 +195,10 @@ def supervise(root):
     script = base64.b64decode(m['script']).decode('utf-8')
     name = m['name']
     r = {'run_id': m['run_id'], 'name': name, 'candidate_sha256': hashlib.sha256(script.encode()).hexdigest(),
-         'image': IMAGE, 'policy': POLICY, 'status': 'infrastructure_failure',
+         'image': IMAGE, 'policy': WORKSPACE_POLICY if m.get('workspace') else POLICY, 'status': 'infrastructure_failure',
          'exit_code': None, 'signal': None, 'timed_out': False, 'cancelled': False,
          'truncated': False, 'stdout': '', 'stderr': '', 'counters': {}, 'cgroup': None}
+    if m.get('workspace'): r['workspace'] = m['workspace']
     streams = {'stdout': bytearray(), 'stderr': bytearray()}
     p = None
     start = time.monotonic()
@@ -193,16 +207,19 @@ def supervise(root):
                 '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges',
                 '--network=none', '--cpus=.25', '--memory=64m', '--memory-swap=64m',
                 '--pids-limit=16', '--cgroup-parent=mo-executor.slice', '--log-driver=none',
-                '--ipc=private', '--workdir=/work',
+                '--ipc=private', '--workdir=' + ('/workspace' if m.get('workspace') else '/work'),
                 '--env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']
         for path in ('/work', '/tmp'):
             args += ['--tmpfs', path + ':rw,noexec,nosuid,size=8388608,mode=1777']
+        if m.get('workspace'):
+            w = m['workspace']
+            args += ['--volume', w['source'] + ':/workspace:' + ('ro' if w['readonly'] else 'rw')]
         args += [IMAGE, '/bin/sh', '-c', script]
         r['container_id'] = command(args).stdout.decode().strip()
         r['cgroup'] = cgroup_path(r['container_id'])
         write(root / 'registration.json', {'container_id': r['container_id'], 'cgroup': r['cgroup']})
         r['effective'] = inspect(name)
-        r['policy_errors'] = policy_errors(r['effective'], script, name)
+        r['policy_errors'] = policy_errors(r['effective'], script, name, m.get('workspace'))
         if r['policy_errors']: raise RuntimeError('effective policy mismatch')
         if time.time() >= m['deadline']: raise RuntimeError('deadline expired before start')
         p = subprocess.Popen(['docker', 'start', '-a', name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)

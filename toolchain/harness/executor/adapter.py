@@ -49,7 +49,7 @@ def verify(manifest, observation):
                    ('run_id', 'name', 'candidate_sha256', 'image', 'policy'))
     script = base64.b64decode(manifest['script']).decode()
     try:
-        policy = not policy_errors(observation['effective'], script, manifest['name'])
+        policy = not policy_errors(observation['effective'], script, manifest['name'], manifest.get('workspace'))
         policy = policy and observation['container_id'] == observation['effective']['Id']
         outputs = {s: base64.b64decode(observation[s], validate=True) for s in ('stdout', 'stderr')}
         bounded = sum(map(len, outputs.values())) <= CAP
@@ -75,6 +75,9 @@ def verify(manifest, observation):
 class Run:
     def __init__(self, script, checks, result_dir, seconds=10):
         validate_checks(checks)
+        self._initialize(script, checks, result_dir, seconds)
+
+    def _initialize(self, script, checks, result_dir, seconds):
         if not isinstance(script, str) or not script or len(script.encode()) > 32768 or '\0' in script:
             raise ValueError('fixture must be nonempty UTF-8 text, <=32 KiB, without NUL')
         if not isinstance(seconds, (int, float)) or not .5 <= seconds <= 10:
@@ -109,7 +112,11 @@ class Run:
     def _start(self):
         # flock covers registration; a prior live run must expire before another starts.
         source = Path(__file__).with_name('remote.py').read_text()
-        payload = json.dumps({'source': source, 'manifest': self.manifest}).encode()
+        payload_data = {'source': source, 'manifest': self.manifest}
+        if 'workspace' in self.manifest:
+            payload_data['workspace_sources'] = {name: Path(__file__).with_name(name + '.py').read_text()
+                for name in ('workspace_controller', 'workspace_files')}
+        payload = json.dumps(payload_data).encode()
         bootstrap = '''import fcntl,json,pathlib,subprocess,sys,time
 p=json.load(sys.stdin); m=p['manifest']; root=pathlib.Path(sys.argv[1])
 with open('/tmp/mo-executor-registration.lock','w') as lock:
@@ -119,6 +126,15 @@ with open('/tmp/mo-executor-registration.lock','w') as lock:
  if units.strip() or containers.strip(): raise RuntimeError('another candidate is registered')
  root.mkdir(mode=0o700)
  (root/'remote.py').write_text(p['source'])
+ if 'workspace' in m:
+  (root/'manifest.json').write_text(json.dumps(m))
+  for module, source in p['workspace_sources'].items(): (root/(module+'.py')).write_text(source)
+  sys.path.insert(0,str(root))
+  from workspace_controller import authorize
+  try: authorize(m)
+  except Exception:
+   (root/'observation.json').write_text(json.dumps({'status':'refusal','execution':'not_started','error':'workspace_authorization_refused'}))
+   raise
  m['deadline']=time.time()+m['seconds']
  (root/'manifest.json').write_text(json.dumps(m))
  name=m['name']
@@ -167,11 +183,14 @@ with open('/tmp/mo-executor-registration.lock','w') as lock:
             # Only the dedicated machine; never an unqualified OrbStack stop.
             stopped = subprocess.run(['orbctl', 'stop', MACHINE], capture_output=True, timeout=10)
             observation['machine_stop_rc'] = stopped.returncode
-        result = verify(self.manifest, observation)
+        result = self._verify_result(observation)
         (self.directory / 'result.json').write_text(json.dumps(result, indent=2))
         for stream in ('stdout', 'stderr'):
             (self.directory / (stream + '.bin')).write_bytes(base64.b64decode(observation.get(stream, '')))
         return result
+
+    def _verify_result(self, observation):
+        return verify(self.manifest, observation)
 
     def dispose(self):
         """Delete machine evidence only after collection's positive cleanup proof."""
