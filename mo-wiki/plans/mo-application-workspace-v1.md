@@ -60,8 +60,11 @@ this is trusted local provisioning, not a new hostile-local-file security claim.
 Keep token out of argv, model requests, goals, Book, reports, exceptions and test
 logs. Retain hashes/source identity without printing the capability. No token flag.
 
-Use a fresh Book root with work/ placeholder. Open must prove no previous runs or
-restart before Create. Book.Create remains authoritative; require Made.record.id
+Use a fresh, exclusively operator-owned Book root with work/ placeholder. Before
+Book.Open, inspect its runs directory and refuse any existing artifacts, including
+empty/truncated or unrecognized logs. Ready(0,0) alone is insufficient and Open can
+append restart records. Retain that check after preflight. Book.Create remains
+authoritative; require Made.record.id
 matches the configured external run binding before Configure/Begin/HTTP. Fresh
 Book currently starts r_1; do not override IDs, adopt old runs or parse Book in
 Python to make product binding work. Tests may independently inspect its bytes.
@@ -103,7 +106,10 @@ actual parser limitation rather than inventing syntax or claiming a missing chec
 Preserve completed refusals and timeout/cancellation with completed execution.
 A valid failed command with completed execution and exit1 is repair feedback and
 may continue. Unknown execution, invalid execution proof, invalid body/binding,
-lost acknowledgement or closed admission stops new dispatch. Classify refusal
+lost acknowledgement or closed admission stops new dispatch. In Run recording,
+apply the application adapter terminal decision after the successful write for
+ALL six tools; existing fixture command/exact_edit logic alone is insufficient.
+Keep that legacy path exact. Classify refusal
 from fields, never stdout substring. No fabricated exit0, replacement text,
 private manifest/observation, host path or core exception crosses into model data.
 Keep controller result_too_large and output_encoding facts; do not pretend every
@@ -114,13 +120,18 @@ Keep controller result_too_large and output_encoding facts; do not pretend every
 Use the existing deferred Reply pattern in processes/deferred-reply.mo: retain
 Start's reply unconditionally, schedule bounded delayed self-polls, answer once,
 retire held reply and stop scheduling. No2250/45000 iteration proxy for a deadline.
-Startup failures must answer the retained reply too. Prove behavior with actual
+Startup failures must attempt the retained reply too; distinguish at-most-once
+answer invocation from caller receipt when its deadline has expired. Prove with actual
 compiler/native/simulator controls; no new process or reply semantics are assumed.
 
-Wait for terminal Book AND Run.Stopped, then acquire remaining ReportDeadline and
-reread final record/transcript. Keep the cancellation rule: terminal usage unknown/
-null even if recorded calls have positive synthetic tokens. Do not mutate Book
-or append after the report. Stopped proves Mo dispatch ended, not external cleanup.
+A successful terminal report requires terminal Book AND Run.Stopped. Ask
+ReportDeadline using the retained OUTER deadline (not a fresh2s cap), then share
+the returned deadline across final record/transcript reads. If Run stopped but
+Book remains Running or unavailable, return explicit versioned reporting_error,
+never a fabricated terminal result; request no further writes. An earlier
+unacknowledged Book write remains uncertain, not proof of an immutable log. Keep the cancellation rule: terminal usage unknown/
+null even if recorded calls have positive synthetic tokens. A successful terminal report must not be followed by a Book append; distinguish
+that proved outcome from reporting_error with uncertain earlier persistence. Stopped proves Mo dispatch ended, not external cleanup.
 The operator separately freezes/verifies/closes or explicitly recovers the owner.
 
 Version report schema `mo-application-workspace-v1` and include fixed profile caps

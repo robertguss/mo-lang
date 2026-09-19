@@ -45,11 +45,22 @@ A further fragmented-IPC probe returned200/success at2.413s for a2s file wait:
 recv resets its timeout per chunk. Narrow correction is assigned after the active
 compiler finishes. All failed attempts remain; HTTP acceptance is still pending.
 
+At5:31 AM ET the worker full suite has passed243/243,5/5 in415.26s. The exact
+fragmented-IPC failure was reproduced again, and ordinary local correction is
+underway. A platform Daybreak-unavailable notice was recorded; no rejected tool
+operation was identified, no model change or security tool was used.
+
+A fresh Astra/low read-only review of the Mo draft found four source-backed
+clarifications: preflight the exclusively owned runs directory before Book.Open;
+apply terminal classification to all six tools after recording; distinguish
+stopped-but-unsettled reporting_error; request ReportDeadline under the retained
+outer deadline. Draft updated; reviewer pane closed after its idle proof.
+
 ## Next
 
 [[mo-workspace-http-v1]] will expose six tools with cleanup ownership surviving
-request lifetime. A separate Mo application profile and then scripted Logstat
-repair follow. No live-provider, language-value or application-repair acceptance.
+request lifetime. The draft [[mo-application-workspace-v1|Mo application profile]] and then scripted
+Logstat repair follow. No live-provider, language-value or application-repair acceptance.
 
 ## Related
 

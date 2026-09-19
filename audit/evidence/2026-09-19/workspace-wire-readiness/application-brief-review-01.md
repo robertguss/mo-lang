@@ -1,0 +1,18 @@
+# Application brief review at02a717c0
+
+Read-only native GPT-6-Astra low worker mo-app-profile-review, pane w4:p2C.
+Own session 01a0b8fc-7471-7260-8ca9-f3d12cbd12b8. No implementation or test proof.
+
+Reviewed at `02a717c0e5ea40681a185415992f10157f1ddb49`. The design appears implementable within the proposed source ownership, with four corrections needed before release:
+
+1. **`Open` cannot prove a genuinely fresh root.** Draft lines 63–67 overstate its evidence. `Ready.runs` counts replayed entries ([shelf.mo:128](examples/programs/agent/shelf.mo#L128)); an empty/truncated recognized log advances the next ID without creating an entry ([filing.mo:67](examples/programs/agent/filing.mo#L67)). Unrecognized files are ignored. Consequently, `Ready(0,0)` can precede `Made(r_2)`. Opening an existing running log also appends a restart terminal before refusal ([filing.mo:87](examples/programs/agent/filing.mo#L87)). **Smallest correction:** Application performs a bounded directory preflight before `Book.Open`, rejecting existing run artifacts; retain `Ready(0,0)` and the authoritative post-Create ID comparison. State that freshness depends on exclusive operator ownership.
+
+2. **Application terminal classification needs explicit ownership in Run’s recording path.** Existing `recorded_profile` only checks `command`/`exact_edit`, using the fixture adapter’s `terminal?` ([run.mo:179](examples/programs/agent/run.mo#L179)). Routing all six tools remotely does not itself stop dispatch after an unknown `read_file`, `search`, or write outcome. **Smallest correction:** explicitly authorize an application-specific, field-based terminal decision after successful recording for **every application tool**, while retaining fixture behavior. This fits `run.mo` plus the new adapter; Steps need not change.
+
+3. **Terminal Book plus Stopped is not guaranteed, even after Run finishes.** Profile `Close` marks Run stopped for every `End` response, including `Ok(Running)` and errors ([run.mo:87](examples/programs/agent/run.mo#L87)). Filing returns `Running` when terminal append fails ([filing.mo:232](examples/programs/agent/filing.mo#L232)). Thus the watcher can wait until its outer deadline without ever satisfying draft line 120. **Smallest correction:** specify a distinct versioned `reporting_error` outcome for stopped-but-unsettled Book, with no fabricated terminal result and no subsequent writes. Separate this from the successful terminal-report requirement.
+
+4. **Report deadline inheritance can silently reduce the reserve to two seconds.** `ReportDeadline` returns the caller’s `reply_by` capped by remaining grace ([run.mo:99](examples/programs/agent/run.mo#L99)). The fixture requests it with a two-second deadline ([coding-fixture.mo:99](examples/programs/agent/coding-fixture.mo#L99)), so copying that sequence cannot expose the full remaining reporting allowance. **Smallest correction:** define the application request using the retained outer deadline, then reuse the returned deadline across both final reads. Alternatively, explicitly change application-mode `ReportDeadline` semantics within Run.
+
+The other requested seams exist: Ready-only configuration can gain symmetric exclusivity checks; distinct waits fit Run without changing Budget/Steps; direct `Run.start(..., None, ...)` avoids Registry’s Writer; deferred replies have a source example; report versioning fits `report.mo`.
+
+Deferred reply delivery at deadline expiry remains **untested**, especially distinguishing one `answer` invocation from successful caller receipt. No implementation, tests, builds, network activity, or edits performed. Returning idle; lead remains w4:p1.

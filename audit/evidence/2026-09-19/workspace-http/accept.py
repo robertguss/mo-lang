@@ -98,6 +98,8 @@ try:
     elif MODE == 'local':
         run('http-local', 180, ['python3', '-B', HTTP / 'local.py'])
         run('inherited-local', 120, ['python3', '-B', RECOVERY / 'local_suite.py'])
+        assert 'Ran 22 tests' in (OUT / 'http-local.stderr.txt').read_text()
+        assert 'Ran 59 tests' in (OUT / 'inherited-local.stderr.txt').read_text()
         for name, selection in [('unknown', 'not-a-group'), ('empty', ''),
                                 ('duplicate', 'deadlines,deadlines')]:
             for runner in ('local.py', 'live.py'):
@@ -122,6 +124,8 @@ try:
             assert [r['group'] for r in results] == selected['fixed'] and all(r['passed'] for r in results)
             assert selected['application'] == (MODE == 'application')
             run('review-live', 180, ['python3', '-B', HTTP / 'review_live.py', OUT / 'review-live'])
+            rows = json.loads((OUT / 'review-live/results.json').read_text())
+            assert [r['group'] for r in rows] == ['shutdown', 'deadlines']
         elif MODE == 'extra':
             run('extra', 180, ['python3', '-B', HERE / 'lead-controls.py', OUT / 'extra'])
         else:

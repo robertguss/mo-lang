@@ -1,0 +1,20 @@
+{
+  "worker": "mo-workspace-http-v1",
+  "pane": "w4:p28",
+  "message": "This content cannot be shown. Daybreak is not available for Astra. Some cybersecurity requests may still be limited.",
+  "visible_tool_rejection_identified": false,
+  "worker_report": "Exact local IPC probe completed exit 1, group 93915 absent; production remains 83a72dd4. No Daybreak rejection in visible tool results.",
+  "model_changed": false,
+  "security_tool_invoked": false,
+  "decision": "Continue ordinary scoped Python deadline maintenance only. If platform declines code editing, stop that task; no alternative model or bypass.",
+  "subsequent_worker_receipt": {
+    "ordinary_local_edit_continued": true,
+    "focused_deadlines_passed": true,
+    "same_probe_passed": true,
+    "groups_absent": [
+      95720,
+      95856
+    ],
+    "machine_or_compiler_repeat": false
+  }
+}

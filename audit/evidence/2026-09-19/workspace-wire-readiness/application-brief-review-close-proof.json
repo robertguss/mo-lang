@@ -1,0 +1,63 @@
+{
+  "pane": "w4:p2C",
+  "shell": 94222,
+  "agent": 94420,
+  "agent_done": true,
+  "descendants": [
+    [
+      "94420",
+      "94222",
+      "S+",
+      "codex"
+    ],
+    [
+      "94524",
+      "94420",
+      "S",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+    ],
+    [
+      "94525",
+      "94420",
+      "S",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
+    ],
+    [
+      "94535",
+      "94420",
+      "S",
+      "npm exec chrome-devtools-mcp@latest"
+    ],
+    [
+      "94643",
+      "94420",
+      "S",
+      "/Users/robertguss/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+    ],
+    [
+      "95033",
+      "94420",
+      "S",
+      "/opt/homebrew/Caskroom/codex/0.155.0/bin/codex-code-mode-host"
+    ],
+    [
+      "94538",
+      "94525",
+      "S",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+    ],
+    [
+      "94590",
+      "94535",
+      "S",
+      "chrome-devtools-mcp"
+    ],
+    [
+      "94647",
+      "94590",
+      "Ss",
+      "/Users/robertguss/.local/share/mise/installs/node/24.20.0/bin/node"
+    ]
+  ],
+  "read_only_review_only": true
+}

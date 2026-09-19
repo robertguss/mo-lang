@@ -22,7 +22,7 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 4:27 AM ET
+### Active work, 19 Sep 2026, 5:31 AM ET
 
 Nine bounded harness foundations now have independent lead acceptance:
 terminal-401, offline provider, BusyBox executor, workspace, coding fixture,
@@ -66,7 +66,12 @@ preflight and owner/API review; full compiler gate was released after machine
 workloads ended; see current details below. Actual Astra/low process74596 verified. Read-only contract review is retained at workspace-http/contract-review-01.md;
 p2A is closed. Brief clarifies admission lease, cleanup after in-flight work,
 outcome persistence before bounded IPC notification and terminal late-result handling. The lead retains application-profile-design.md
-as readiness only, awaiting frozen/accepted HTTP schema before Mo implementation.
+as readiness; draft mo-application-workspace-v1 is now at02a717c0, not released.
+Read-only Astra/low reviewer p2C found four implementability clarifications: fresh
+root preflight before Open, all-six-tool terminal handling after recording,
+stopped/unsettled reporting_error, and outer-deadline ReportDeadline request.
+The lead incorporates them. Exact report application-brief-review-01.md retained;
+p2C closed after done/process proof. HTTP acceptance still precedes implementation.
 HTTP immutable75680f31 review found drain-expiry and IPC/lease classification
 bugs. Worker correction83a72dd4 passed local and real22/22 on each profile;
 application normal cleanup is now confirmed with delete<=55s/core transport+5s
@@ -76,15 +81,19 @@ BusyBox/application and inherited workspace22/executor17/lifecycle1/app23 pass;
 worker final inventory205 workspace IDs/126 executions/123 actual cgroups absent,
 shared5 unchanged,23 prior groups gone, readiness20/20 raw probes/pins/limits exact.
 Machine explicitly returned to lead. Worker full compiler released sequentially:
-build0/38.13s/group89738 absent; full test running. Evidence checkpointcacb09c3.
+build0/38.13s/group89738 absent; full243/243,5/5,415.26s/group90041 absent.
+Evidence checkpointcacb09c3; compiler outputs not yet committed.
 
 Lead independent drain RED2/2 on75680 and GREEN2/2 on83a72 use identical probe
 bytes; snapshots unchanged/groups gone. Lead setup failure and partial RED remain.
 One new concrete IPC deadline finding: fragmented valid response resets recv wait,
 returning200/success at2.413s for2s file limit, admission open. ipc-deadline-red-01
-retains local socketpair proof/group91501 gone. Worker assigned narrow absolute
-IPC deadline/late-result correction AFTER active compiler ends; no machine release
-for further worker runs yet. See lead-correction-review-83a72dd4.md. p2A/p2B closed,
+retains local socketpair proof/group91501 gone. Worker reproduced exact RED at2.410s/group93915 gone and is assigned narrow
+absolute IPC deadline/late-result correction. A Daybreak-unavailable UI message
+ended one response; worker found no rejected tool, probe had completed. No model
+or security-tool change; ordinary local maintenance resumed, with instructions
+to stop if the platform actually declines that edit. No worker machine release
+for further runs yet. See lead-correction-review-83a72dd4.md. p2A/p2B closed,
 exact review copies preserved. Private tokens stay out of Book/model/log evidence.
 
 The HTTP owner must outlive a request and use cleanup-only recovery after owner
