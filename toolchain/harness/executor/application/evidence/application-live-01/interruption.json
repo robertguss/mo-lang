@@ -1,0 +1,1 @@
+{"signal":"SIGINT","pid":13223,"target":"owned controls.py process, not outer wrapper","reason":"stop repeated pre-execution Env ordering refusals; execute controller finally cleanup; no limit changes"}

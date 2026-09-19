@@ -1,0 +1,36 @@
+{
+  "run_id": "11b184e42c9249e8973b385d35a3f94a",
+  "name": "mo-executor-11b184e42c9249e8973b385d35a3f94a",
+  "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+  "policy": "application-build-v1",
+  "candidate_sha256": "78f2ce5b2c7dfaf8193cb0eeed776580095f1a2ec5730233cf51c69d3b2e9b23",
+  "script": "c2V0IC1ldTsgdGVzdCAteiAiJChscyAtQSAvYnVpbGQpIjsgY2QgL2J1aWxkOyBtbyBidWlsZCAvd29ya3NwYWNlL2xvZ3N0YXQvbWFpbi5tbyA+L2J1aWxkL2NvbXBpbGVyLmxvZyAyPiYxIHx8IHsgcmM9JD87IGNhdCAvYnVpbGQvY29tcGlsZXIubG9nID4mMjsgZXhpdCAiJHJjIjsgfTsgY2F0IC9idWlsZC9jb21waWxlci5sb2cgPiYyOyBjZCAvd29ya3NwYWNlL2xvZ3N0YXQ7IC9idWlsZC96aWctb3V0L21vLWJ1aWxkL2xvZ3N0YXQvbG9nc3RhdCBmaXh0dXJlOyBwcmludGYgIkZJTFRFUkVEXG4iOyAvYnVpbGQvemlnLW91dC9tby1idWlsZC9sb2dzdGF0L2xvZ3N0YXQgZml4dHVyZSAtLXRvcCAzIC0tc2luY2UgMjAyNi0wOS0xMlQxMDowMDoxMFogLS1qc29uOyBkZiAtayAvYnVpbGQgL3RtcCA+JjI7IGRmIC1pIC9idWlsZCAvdG1wID4mMg==",
+  "checks": [
+    {
+      "id": "output",
+      "expected": "requests    16\nerrors       3  (18.8%)\nmalformed    4\nper minute 4.6\n\nslowest\n  1_204 ms  POST /api/orders                         2026-09-12T10:00:21Z\n    610 ms  GET /api/cards/****************/charge   2026-09-12T10:01:30Z\n    340 ms  POST /api/orders                         2026-09-12T10:00:02Z\n    340 ms  DELETE /api/orders/17                    2026-09-12T10:00:15Z\n    340 ms  POST /api/orders                         2026-09-12T10:02:30Z\n\nbusiest\n  7  GET /api/users\n  4  POST /api/orders\n  2  GET /api/cards/****************/charge\n  2  GET /health\n  1  DELETE /api/orders/17\nFILTERED\n{\"requests\": 12, \"errors\": 2, \"error_rate\": 0.167, \"malformed\": 4, \"per_minute\": 3.6, \"slowest\": [{\"ms\": 1204, \"method\": \"POST\", \"path\": \"/api/orders\", \"at\": \"2026-09-12T10:00:21Z\"}, {\"ms\": 610, \"method\": \"GET\", \"path\": \"/api/cards/****************/charge\", \"at\": \"2026-09-12T10:01:30Z\"}, {\"ms\": 340, \"method\": \"DELETE\", \"path\": \"/api/orders/17\", \"at\": \"2026-09-12T10:00:15Z\"}], \"busiest\": [{\"count\": 5, \"method\": \"GET\", \"path\": \"/api/users\"}, {\"count\": 3, \"method\": \"POST\", \"path\": \"/api/orders\"}, {\"count\": 2, \"method\": \"GET\", \"path\": \"/health\"}]}\n",
+      "stream": "stdout",
+      "mode": "exact"
+    }
+  ],
+  "seconds": 120,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+  "supervisor_sha256": "e6005d2d4a6269e9b8ffa81ded2c673b5ede2cd082d314a8ff0f7b82a22209b3",
+  "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+  "workspace": {
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace_id": "e9264c21e3d14d08a50ca73e510815a6",
+    "workspace_run_id": "f27caccccb034a9996780a4ca335f3b9",
+    "source": "/var/lib/mo-harness/mo-workspace-e9264c21e3d14d08a50ca73e510815a6/snapshot/data",
+    "readonly": true,
+    "snapshot": "a5a4cd955763faeb94d221efcb39c31c9ee89c072b9175954ae517c842ae3e16"
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+  "check_inventory_sha256": "23c51f12a520fde61b40dfa16a7d5523e192021de2fef110437f21542cd20959",
+  "workspace_call_id": "6efeb3ce09b444abba17f3202045abe4",
+  "deadline": 1789800217.5132098
+}

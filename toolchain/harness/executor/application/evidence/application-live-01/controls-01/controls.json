@@ -1,0 +1,49 @@
+[
+  {
+    "case": "hello-cold-build",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 102, in run\n    success(app, build('hello.mo', '/build/zig-out/mo-build/hello/hello Ada'), 'Hello, Ada!\\n')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 85, in success\n    require(result['state'] == 'success', {'state': result['state'], 'exit': result['exit_code'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        'stderr': base64.b64decode(result['stderr']).decode(errors='replace')})\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: {'state': 'failure', 'exit': None, 'stderr': ''}\n"
+  },
+  {
+    "case": "logstat-cold-build",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 104, in run\n    success(app, log_script, expected)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 85, in success\n    require(result['state'] == 'success', {'state': result['state'], 'exit': result['exit_code'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        'stderr': base64.b64decode(result['stderr']).decode(errors='replace')})\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: {'state': 'failure', 'exit': 126, 'stderr': 'zig-out/mo-build/logstat/logstat\\n/bin/sh: /build/zig-out/mo-build/logstat/logstat: Permission denied\\n'}\n"
+  },
+  {
+    "case": "snapshot-rebuild",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 109, in run\n    require(result['passed'], result['state'])\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: failure\n"
+  },
+  {
+    "case": "failed-build-no-stale",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 135, in run\n    success(w, 'set -eu; test -z \"$(ls -A /build)\"; cd /build; '\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        'if mo build /workspace/missing.mo >/build/failure 2>&1; then exit 1; fi; '\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        'test ! -e /build/zig-out/mo-build/logstat/logstat; echo no-stale', 'no-stale\\n')\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 85, in success\n    require(result['state'] == 'success', {'state': result['state'], 'exit': result['exit_code'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        'stderr': base64.b64decode(result['stderr']).decode(errors='replace')})\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: {'state': 'failure', 'exit': None, 'stderr': ''}\n"
+  },
+  {
+    "case": "scratch-fresh",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 140, in run\n    success(w, 'test ! -e /build/marker && test -z \"$(ls -A /build)\" && echo fresh', 'fresh\\n')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 85, in success\n    require(result['state'] == 'success', {'state': result['state'], 'exit': result['exit_code'],\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        'stderr': base64.b64decode(result['stderr']).decode(errors='replace')})\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: {'state': 'failure', 'exit': None, 'stderr': ''}\n"
+  },
+  {
+    "case": "source-noexec",
+    "ok": true
+  },
+  {
+    "case": "image-root-immutable",
+    "ok": true
+  },
+  {
+    "case": "snapshot-immutable",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 114, in run\n    require(result['passed'], result['state'])\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: failure\n"
+  },
+  {
+    "case": "output-bound",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 149, in run\n    require(result['execution_valid'] and result['truncated'] and result['state'] == 'failure')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1/toolchain/harness/executor/application/controls.py\", line 53, in require\n    raise AssertionError(detail)\nAssertionError: None\n"
+  },
+  {
+    "case": "timeout-descendants",
+    "ok": true
+  }
+]
