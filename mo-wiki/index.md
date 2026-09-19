@@ -137,6 +137,8 @@ type: index
 ## Plans
 - [[report-claim-check]] — proposed TypeSafe triage of worker report claims
   against raw evidence; never acceptance; not built (18 Sep 2026)
+- [[mo-harness-step-2-live-tables]] — brief: six live suites as case tables, recovery's tests made able to fail
+- [[toolchain-raw-memory-report]] — brief: the native binary prints raw memory on a large report; interpreter panic at vm.zig:1531
 - [[mo-harness-step-1-executor]] — brief: the two high executor defects fixed, duplicate Python machinery deleted
 - [[mo-harness-step-8-agent]] — brief: the Mo agent's review findings, tests that can fail, one budget rule
 - [[mo-capabilities-for-the-harness]] — design: `scoped` made to hold against symlinks, `Fs.replace`, and `Exec` narrowed to fixed commands
