@@ -84,7 +84,7 @@ def summary(text):
     """A test runner's count line when it printed one, else the last non-empty line."""
     lines = [line for line in text.splitlines() if line.strip()]
     counts = [line for line in lines if ' passed, ' in line and ' failed' in line]
-    return (counts or lines or [''])[-1]
+    return (counts or lines or [''])[-1][:400]
 
 
 def trimmed(row, passed):
