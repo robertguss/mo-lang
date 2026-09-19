@@ -21,17 +21,17 @@ decide and drive bounded harness setup, implementation and verification while
 he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
 The prior implementation pause and Amp/oracle workflow are superseded.
 
-**Current checkpoint, 19 Sep 2026, 4:27 AM ET:** nine bounded components have
-independent acceptance. Recovery source review, local59/schema21, recovery16,
-old regressions and a real lost-response extra pass. Full243/243,5/5; cleanup
-and11128 unchanged files proved. Historical unknown outcomes stay unknown.
+**Current checkpoint, 19 Sep 2026, 6:38 AM ET:** ten bounded components have
+independent acceptance. HTTP local22/inherited59, real22 per profile, old
+regressions and two new extras pass. Full243/243,5/5;17339 unchanged files,
+100 execution/131 workspace-ID/97 cgroup closure. Historical unknowns remain.
 
 | board | current work |
 |---|---|
-| Now | [[mo-workspace-http-v1]] contract and Python six-tool routing with persistent cleanup ownership |
-| Next | Mo application profile; scripted Logstat repair and protected checks |
+| Now | [[mo-application-workspace-v1]] recorded Mo routing to all six remote tools |
+| Next | Scripted Logstat repair and protected checks; then provider integration |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
-| Recently done | [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |
+| Recently done | [[mo-workspace-http-v1]], [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none

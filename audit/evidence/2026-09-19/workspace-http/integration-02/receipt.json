@@ -1,0 +1,11 @@
+{
+  "before": "6ab555c273a1e3d09622caadd582643a64859e9c",
+  "worker_parent": "7438a96e6f8bfdf49f903d3f125095c91533090d",
+  "worker_tip": "42015b73cce5f4f97d4479413354780c94b13e6c",
+  "exit": 0,
+  "after": "cf99cd88e186cf293a4112582fe2d26a0f7b69ff",
+  "changed_paths": 1579,
+  "prior_evidence_unchanged": true,
+  "source_unchanged": true,
+  "exact_executor_tree": true
+}

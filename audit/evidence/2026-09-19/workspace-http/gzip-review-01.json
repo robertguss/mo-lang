@@ -1,0 +1,24 @@
+{
+  "initial_strict_inspection_failed": "EOFError: Compressed file ended before the end-of-stream marker was reached",
+  "incomplete_members": [
+    {
+      "path": "busybox-01/live/owner-death/transport.jsonl.gz",
+      "compressed_bytes": 59315,
+      "decoded_bytes": 300331,
+      "gzip_complete": false,
+      "decoded_ends_newline": true,
+      "json_rows": 5,
+      "rows_valid": true
+    },
+    {
+      "path": "application-01/live/owner-death/transport.jsonl.gz",
+      "compressed_bytes": 60195,
+      "decoded_bytes": 301886,
+      "gzip_complete": false,
+      "decoded_ends_newline": true,
+      "json_rows": 5,
+      "rows_valid": true
+    }
+  ],
+  "raw_bytes_preserved": true
+}

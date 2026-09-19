@@ -5,15 +5,15 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, processes]
 sources: [plans/mo-workspace-http-v1.md, plans/mo-coding-fixture-v1.md]
-status: planned
+status: in-progress
 ---
 
 # Mo application workspace v1: recorded remote tools
 
 ## Orientation
 
-Draft only: implementation release follows independent HTTP acceptance and an
-exact integrated base. Extend Mo's existing Book/Run recording loop to the six
+Released for local implementation after HTTP acceptance atcf99cd88; the lead
+supplies the exact checkout base. Extend Book/Run's recording loop to the six
 real isolated workspace tools. The separate scripted Logstat repair follows
 this slice. No live provider/authentication or language-value acceptance here.
 Read audit/evidence/2026-09-19/workspace-wire-readiness/application-profile-design.md
@@ -55,8 +55,9 @@ Use one versioned Config type; no ambient credentials or general mode framework.
 
 Trusted config contains fixed HTTP version,127.0.0.1 port, external run ID,
 workspace32hex identity and capability64hex token. Operator provisions0700 parent/
-0600 file outside Book and candidate. Mo bounds contents to4096 bytes and validates before Begin;
-this is trusted local provisioning, not a new hostile-local-file security claim.
+0600 file outside Book and candidate. On this trusted stable file, check fs.size
+before fs.read and returned byte_size<=4096 before Begin. This is an acceptance
+limit, not an atomic read/allocation bound or hostile-local-file security claim.
 Keep token out of argv, model requests, goals, Book, reports, exceptions and test
 logs. Retain hashes/source identity without printing the capability. No token flag.
 
@@ -97,11 +98,21 @@ later model/tool call; a failed write acknowledgement stops further dispatch.
 ### Bounded HTTP projection
 
 Use existing Http.send framing (HTTP/1.1, Host:port, Content-Length, close) and
-private capability header. Enforce accepted request851968/response524288 bounds,
+private capability header. Enforce encoded request851968 and received body524288
+acceptance limits before JSON decoding. Http.send retains its existing1MiB body/
+3MiB+8 connection-buffer limits;524288 is not a transport allocation bound. Check
 exact envelope keys/version/identities/types/enums, per-operation result shape,
 nullable fields, combined truncation, true exit/signal and elapsed_ms. Reject
-invalid/ambiguous JSON according to available proven parser behavior; report an
-actual parser limitation rather than inventing syntax or claiming a missing check.
+invalid/ambiguous JSON without changing the compiler. Json.decode rejects grammar,
+nonfinite numbers and unpaired surrogates, but silently collapses duplicate keys.
+After successful decode, count raw colons outside quoted strings (correct escape
+parity) and compare with recursive Object member counts through ALL arrays/objects;
+any mismatch refuses duplicates, including escaped-equal keys/discarded subtrees.
+Require integer lexical tokens (no fraction/exponent), then to_i64 and field ranges;
+all versioned numeric fields are integers/null. Test both runtimes, including
+quoted colons, even backslashes, nested duplicates and rounding-edge negatives.
+Read application-json-api-review-01.md and application-json-strict-review-01.md
+under the readiness evidence directory; source feasibility is not compiled proof.
 
 Preserve completed refusals and timeout/cancellation with completed execution.
 A valid failed command with completed execution and exit1 is repair feedback and

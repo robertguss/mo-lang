@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "240",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/recovery/observe_regression.py",
+    "workspace22",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/regression-01/workspace22"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T06:21:31.933763-04:00",
+  "finished": "2026-09-19T06:22:09.278771-04:00",
+  "exit": 0,
+  "expected_exit": 0,
+  "forced": false,
+  "group": 8207,
+  "cleanup_before": [],
+  "group_remaining": false
+}

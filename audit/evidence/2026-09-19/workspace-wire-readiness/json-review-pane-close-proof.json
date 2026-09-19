@@ -1,0 +1,121 @@
+{
+  "agent": {
+    "id": "cli:agent:get",
+    "result": {
+      "agent": {
+        "agent": "codex",
+        "agent_status": "done",
+        "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+        "focused": false,
+        "foreground_cwd": "/Users/robertguss/Projects/startups/mo-lang",
+        "interactive_ready": true,
+        "name": "mo-app-json-read-review",
+        "pane_id": "w4:p2D",
+        "revision": 48,
+        "state_change_seq": 343,
+        "tab_id": "w4:tN",
+        "terminal_id": "term_65bd36432a67756",
+        "terminal_title": "Investigate JSON and Fs APIs | mo-lang",
+        "terminal_title_stripped": "Investigate JSON and Fs APIs | mo-lang",
+        "workspace_id": "w4"
+      },
+      "type": "agent_info"
+    }
+  },
+  "pane": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 9191,
+        "foreground_processes": [
+          {
+            "argv": [
+              "codex",
+              "--model",
+              "gpt-6-astra",
+              "-c",
+              "model_reasoning_effort=\"low\"",
+              "--sandbox",
+              "read-only",
+              "--ask-for-approval",
+              "never",
+              "--no-alt-screen"
+            ],
+            "argv0": "codex",
+            "cmdline": "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox read-only --ask-for-approval never --no-alt-screen",
+            "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+            "name": "codex",
+            "pid": 9191
+          }
+        ],
+        "pane_id": "w4:p2D",
+        "shell_pid": 8900
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "descendants": [
+    [
+      "9435",
+      "9384",
+      "9435",
+      "/Users/robertguss/.local/share/mise/installs/node/24.20.0/bin/node /Users/robertguss/.npm/_npx/15c61037b1978c83/node_modules/chrome-devtools-mcp/build/src/telemetry/watchdog/main.js --parent-pid=9384 --app-version=1.9.0 --os-type=2"
+    ],
+    [
+      "8900",
+      "7491",
+      "8900",
+      "-zsh"
+    ],
+    [
+      "9191",
+      "8900",
+      "9191",
+      "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox read-only --ask-for-approval never --no-alt-screen"
+    ],
+    [
+      "9299",
+      "9191",
+      "9299",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node /Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules/@oai/cua-repl/bin/cua-repl.mjs"
+    ],
+    [
+      "9300",
+      "9191",
+      "9300",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+    ],
+    [
+      "9312",
+      "9191",
+      "9312",
+      "npm exec chrome-devtools-mcp@latest   "
+    ],
+    [
+      "9321",
+      "9299",
+      "9299",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+    ],
+    [
+      "9384",
+      "9312",
+      "9312",
+      "chrome-devtools-mcp "
+    ],
+    [
+      "9431",
+      "9191",
+      "9431",
+      "/Users/robertguss/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node /Users/robertguss/.codex/plugins/cache/openai-curated-remote/codex-security/0.1.24/scripts/../mcp/server.mjs --stdio"
+    ],
+    [
+      "10138",
+      "9191",
+      "10138",
+      "/opt/homebrew/Caskroom/codex/0.155.0/bin/codex-code-mode-host"
+    ]
+  ],
+  "review_complete": true,
+  "ownership": "read-only reviewer session and its helpers; no test/build/machine task was launched"
+}

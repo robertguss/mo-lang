@@ -1,0 +1,21 @@
+{
+  "run_id": "76e1091854554246971cc8cfa7d9247d",
+  "name": "mo-executor-76e1091854554246971cc8cfa7d9247d",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-r01-v1",
+  "candidate_sha256": "96ac775b04857ce8e96102fd9c09d8c2ab91e8c88a27bc17fc647120ed622db4",
+  "script": "ZWNobyBvdmVyd3JpdGUtcHJvYmUKbWtkaXIgL3RtcC9mYWtlLXJlc3VsdApwcmludGYgJ3sicGFzc2VkIjp0cnVlfScgPiAvdG1wL2Zha2UtcmVzdWx0L3Jlc3VsdC5qc29uCmlmIGVjaG8gZm9yZ2VkID4gL1VzZXJzL3JvYmVydGd1c3MvUHJvamVjdHMvc3RhcnR1cHMvbW8tbGFuZy9hdWRpdC9ldmlkZW5jZS8yMDI2LTA5LTE5L3dvcmtzcGFjZS1odHRwL3JlZ3Jlc3Npb24tMDEvZXhlY3V0b3IxNy9jb250cm9scy9vdmVyd3JpdGUtYXV0aG9yaXR5L3Jlc3VsdC5qc29uOyB0aGVuIGVjaG8gaG9zdC1vdmVyd3JpdGU7IGVsc2UgZWNobyBob3N0LXJlc3VsdC1kZW5pZWQ7IGZpCmlmIGVjaG8gZm9yZ2VkID4gL3Jlc3VsdC5qc29uOyB0aGVuIGVjaG8gcm9vdC1vdmVyd3JpdGU7IGVsc2UgZWNobyBkZW5pZWQ7IGZpCmVjaG8gd3Jvbmc=",
+  "checks": [
+    {
+      "id": "output",
+      "expected": "ok\n",
+      "stream": "stdout",
+      "mode": "exact"
+    }
+  ],
+  "seconds": 5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "deadline": 1789813337.8787823
+}

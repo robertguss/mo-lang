@@ -1,0 +1,69 @@
+{
+  "remaining_paths": [],
+  "containers": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "units": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "mounts": {
+    "exit": 0,
+    "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/\",\n         \"children\": [\n            {\n               \"target\": \"/run\",\n               \"children\": [\n                  {\n                     \"target\": \"/run/lock\"\n                  },{\n                     \"target\": \"/run/user/0\"\n                  },{\n                     \"target\": \"/run/user/501\"\n                  }\n               ]\n            },{\n               \"target\": \"/dev\",\n               \"children\": [\n                  {\n                     \"target\": \"/dev/shm\"\n                  },{\n                     \"target\": \"/dev/fuse\"\n                  },{\n                     \"target\": \"/dev/net/tun\"\n                  },{\n                     \"target\": \"/dev/vhost-net\"\n                  },{\n                     \"target\": \"/dev/ntsync\"\n                  },{\n                     \"target\": \"/dev/vdb1\",\n                     \"children\": [\n                        {\n                           \"target\": \"/dev/vdb1\"\n                        }\n                     ]\n                  },{\n                     \"target\": \"/dev/loop0\"\n                  },{\n                     \"target\": \"/dev/loop1\"\n                  },{\n                     \"target\": \"/dev/loop2\"\n                  },{\n                     \"target\": \"/dev/loop3\"\n                  },{\n                     \"target\": \"/dev/nbd0\"\n                  },{\n                     \"target\": \"/dev/nbd1\"\n                  },{\n                     \"target\": \"/dev/nbd2\"\n                  },{\n                     \"target\": \"/dev/nbd3\"\n                  },{\n                     \"target\": \"/dev/vda\"\n                  },{\n                     \"target\": \"/dev/vdb\"\n                  },{\n                     \"target\": \"/dev/vdc\"\n                  },{\n                     \"target\": \"/dev/zram0\"\n                  },{\n                     \"target\": \"/dev/mqueue\"\n                  },{\n                     \"target\": \"/dev/.lxc/proc\"\n                  },{\n                     \"target\": \"/dev/.lxc/sys\"\n                  },{\n                     \"target\": \"/dev/full\"\n                  },{\n                     \"target\": \"/dev/null\"\n                  },{\n                     \"target\": \"/dev/random\"\n                  },{\n                     \"target\": \"/dev/tty\"\n                  },{\n                     \"target\": \"/dev/urandom\"\n                  },{\n                     \"target\": \"/dev/zero\"\n                  },{\n                     \"target\": \"/dev/pts\"\n                  },{\n                     \"target\": \"/dev/ptmx\"\n                  },{\n                     \"target\": \"/dev/console\"\n                  }\n               ]\n            },{\n               \"target\": \"/proc\",\n               \"children\": [\n                  {\n                     \"target\": \"/proc/sys/kernel/random/boot_id\"\n                  }\n               ]\n            },{\n               \"target\": \"/sys\",\n               \"children\": [\n                  {\n                     \"target\": \"/sys/devices/virtual/net\"\n                  },{\n                     \"target\": \"/sys/fs/fuse/connections\"\n                  },{\n                     \"target\": \"/sys/kernel/security\"\n                  },{\n                     \"target\": \"/sys/kernel/tracing\"\n                  },{\n                     \"target\": \"/sys/fs/cgroup\"\n                  }\n               ]\n            },{\n               \"target\": \"/usr/lib/modules/7.0.14-orbstack-00380-ga7e0a2dc9535\"\n            },{\n               \"target\": \"/tmp\"\n            },{\n               \"target\": \"/opt/orbstack-guest\"\n            }\n         ]\n      }\n   ]\n}\n",
+    "stderr": ""
+  },
+  "processes": {
+    "exit": 0,
+    "stdout": "    PID    PPID COMMAND\n      1       0 /sbin/init\n     10       1 orbstack-agent: mo-executor-r01\n    122       1 /usr/lib/systemd/systemd-journald\n    171       1 /usr/lib/systemd/systemd-networkd\n    186       1 /usr/sbin/cron -f -P\n    187       1 @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only\n    191       1 /usr/lib/systemd/systemd-logind\n    198       1 /sbin/agetty -o -p -- \\u --noclear --keep-baud - 115200,38400,9600 vt220\n    201       1 /usr/bin/containerd\n    205       1 /usr/sbin/rsyslogd -n -iNONE\n    221       1 /usr/lib/systemd/systemd --user\n    224       1 /usr/lib/systemd/systemd --user\n    225     221 (sd-pam)\n    226     224 (sd-pam)\n    273       1 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock\n 212878      10 python3 -B -c import hashlib,json,pathlib,subprocess,sys p=json.load(sys.stdin) paths=['/tmp/'+v for v in p['runs']]+['/var/lib/mo-harness/mo-workspace-'+v for v in p['workspaces']]+p['cgroups'] r={'remaining_paths':[v for v in paths if pathlib.Path(v).exists()]} for k,args in {'containers':['docker','ps','-a','--no-trunc','--format','{{.ID}} {{.Names}}'], 'units':['systemctl','list-units','--all','--no-legend','mo-executor-*','mo-appv1-*'], 'mounts':['findmnt','--json','-o','TARGET'], 'processes':['ps','-eo','pid,ppid,args']}.items():  q=subprocess.run(args,capture_output=True,text=True,timeout=5);r[k]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr} r['owned_processes']=[v for v in r['processes']['stdout'].splitlines() if any('/tmp/'+n+'/' in v for n in p['runs'])] r['parents']={} for name in ('mo-application.slice','mo-executor.slice'):  d=pathlib.Path('/sys/fs/cgroup/mo.slice')/name  r['parents'][name]={f:(d/f).read_text() for f in ('memory.max','memory.swap.max','cpu.max','pids.max')}  r['parents'][name]['tasks']={str(f):f.read_text() for f in d.rglob('cgroup.procs') if f.read_text().strip()} r['slice_sha256']={n:hashlib.sha256(pathlib.Path('/etc/systemd/system/'+n).read_bytes()).hexdigest() for n in r['parents']} r['active']={} for name in r['parents']:  q=subprocess.run(['systemctl','is-active',name],capture_output=True,text=True,timeout=5)  r['active'][name]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr} r['images']={} for image in ('sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337','sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4'):  q=subprocess.run(['docker','image','inspect','--format','{{.Id}}',image],capture_output=True,text=True,timeout=5)  r['images'][image]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr} r['manifest_sha256']=hashlib.sha256(pathlib.Path('/opt/mo-harness/application-build-v1/package-02/package/manifest.json').read_bytes()).hexdigest() print(json.dumps(r)) \n 212893  212878 ps -eo pid,ppid,args\n",
+    "stderr": ""
+  },
+  "owned_processes": [],
+  "parents": {
+    "mo-application.slice": {
+      "memory.max": "1610612736\n",
+      "memory.swap.max": "0\n",
+      "cpu.max": "100000 100000\n",
+      "pids.max": "192\n",
+      "tasks": {}
+    },
+    "mo-executor.slice": {
+      "memory.max": "536870912\n",
+      "memory.swap.max": "0\n",
+      "cpu.max": "100000 100000\n",
+      "pids.max": "128\n",
+      "tasks": {}
+    }
+  },
+  "slice_sha256": {
+    "mo-application.slice": "ab7ea2ac24e3248cc436348ea11251db3d650c160bf443907b16bda6e1e00702",
+    "mo-executor.slice": "d1d127ae499351d04844684218743b84a50278a999b4f5cc87105828ea2da31d"
+  },
+  "active": {
+    "mo-application.slice": {
+      "exit": 0,
+      "stdout": "active\n",
+      "stderr": ""
+    },
+    "mo-executor.slice": {
+      "exit": 0,
+      "stdout": "active\n",
+      "stderr": ""
+    }
+  },
+  "images": {
+    "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337": {
+      "exit": 0,
+      "stdout": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337\n",
+      "stderr": ""
+    },
+    "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4": {
+      "exit": 0,
+      "stdout": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4\n",
+      "stderr": ""
+    }
+  },
+  "manifest_sha256": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb"
+}

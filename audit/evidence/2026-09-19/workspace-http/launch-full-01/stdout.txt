@@ -1,0 +1,2 @@
+{"check": "build", "exit": 0, "group_remaining": false}
+{"check": "test", "exit": 0, "group_remaining": false}

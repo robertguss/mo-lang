@@ -1,0 +1,1 @@
+{"run_id": "74a3c8f4b4b54c2785108deb93fc6d0a", "workspace_id": "295f5a40e4844b16a87a603290e3b974", "call_id": "7c2acdc229eb4e44812d73cd93df971e", "operation": "read_file", "args": {"path": "a/./b"}, "deadline": 1789813323.6715379}

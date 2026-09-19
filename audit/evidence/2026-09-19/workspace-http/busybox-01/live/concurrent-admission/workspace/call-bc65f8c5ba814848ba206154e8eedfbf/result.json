@@ -1,0 +1,17 @@
+{
+  "run_id": "87d5a4ad2e7c467f9ec43e715ca0022b",
+  "workspace_id": "c6254b5c0d1248a58e926497c6e0750f",
+  "call_id": "bc65f8c5ba814848ba206154e8eedfbf",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "mount": {
+      "target": "/var/lib/mo-harness/mo-workspace-c6254b5c0d1248a58e926497c6e0750f/storage",
+      "fstype": "tmpfs",
+      "options": "rw,nosuid,nodev,noexec,relatime,size=65536k,nr_inodes=4096,mode=700"
+    },
+    "workspace_id": "c6254b5c0d1248a58e926497c6e0750f"
+  },
+  "elapsed_seconds": 0.006586137002159376
+}

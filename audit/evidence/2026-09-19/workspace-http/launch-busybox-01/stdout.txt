@@ -1,0 +1,4 @@
+{"check": "readiness", "exit": 0, "group_remaining": false}
+{"check": "http-live", "exit": 0, "group_remaining": false}
+{"check": "review-live", "exit": 0, "group_remaining": false}
+{"check": "inventory", "exit": 0, "group_remaining": false}

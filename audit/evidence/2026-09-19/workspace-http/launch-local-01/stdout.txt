@@ -1,0 +1,8 @@
+{"check": "http-local", "exit": 0, "group_remaining": false}
+{"check": "inherited-local", "exit": 0, "group_remaining": false}
+{"check": "selection-unknown-local", "exit": 2, "group_remaining": false}
+{"check": "selection-unknown-live", "exit": 2, "group_remaining": false}
+{"check": "selection-empty-local", "exit": 2, "group_remaining": false}
+{"check": "selection-empty-live", "exit": 2, "group_remaining": false}
+{"check": "selection-duplicate-local", "exit": 2, "group_remaining": false}
+{"check": "selection-duplicate-live", "exit": 2, "group_remaining": false}

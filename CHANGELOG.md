@@ -2,6 +2,15 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Workspace HTTP accepted — 19 Sep 2026, 6:38 AM ET
+
+- Six remote tools use a private one-run interface with cleanup ownership beyond
+  request lifetime. Corrected response draining and fragmented IPC deadlines.
+- Lead local22/inherited59, real22 per profile, old runtime regressions, review
+  controls and two new extras pass; full243/243,5/5 and17339 unchanged files.
+- Cross-attempt100 executions/131 workspace IDs/97 cgroups absent,34 groups gone;
+  active parents empty/shared5 unchanged. Mo application routing starts separately.
+
 ## Cleanup-only workspace recovery accepted — 19 Sep 2026, 4:27 AM ET
 
 - Private ownership before effects, exact cleanup reconciliation and terminal

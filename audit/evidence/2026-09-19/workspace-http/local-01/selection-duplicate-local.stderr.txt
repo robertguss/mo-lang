@@ -1,0 +1,2 @@
+usage: local.py [-h] [--groups GROUPS]
+local.py: error: unknown, empty or duplicate group selection

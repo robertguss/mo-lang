@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "python3",
+    "-B",
+    "-c",
+    "import hashlib,json,pathlib,subprocess,sys\np=json.load(sys.stdin)\npaths=['/tmp/'+v for v in p['runs']]+['/var/lib/mo-harness/mo-workspace-'+v for v in p['workspaces']]+p['cgroups']\nr={'remaining_paths':[v for v in paths if pathlib.Path(v).exists()]}\nfor k,args in {'containers':['docker','ps','-a','--no-trunc','--format','{{.ID}} {{.Names}}'], 'units':['systemctl','list-units','--all','--no-legend','mo-executor-*','mo-appv1-*'], 'mounts':['findmnt','--json','-o','TARGET'], 'processes':['ps','-eo','pid,ppid,args']}.items():\n q=subprocess.run(args,capture_output=True,text=True,timeout=5);r[k]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr}\nr['owned_processes']=[v for v in r['processes']['stdout'].splitlines() if any('/tmp/'+n+'/' in v for n in p['runs'])]\nr['parents']={}\nfor name in ('mo-application.slice','mo-executor.slice'):\n d=pathlib.Path('/sys/fs/cgroup/mo.slice')/name\n r['parents'][name]={f:(d/f).read_text() for f in ('memory.max','memory.swap.max','cpu.max','pids.max')}\n r['parents'][name]['tasks']={str(f):f.read_text() for f in d.rglob('cgroup.procs') if f.read_text().strip()}\nr['slice_sha256']={n:hashlib.sha256(pathlib.Path('/etc/systemd/system/'+n).read_bytes()).hexdigest() for n in r['parents']}\nr['active']={}\nfor name in r['parents']:\n q=subprocess.run(['systemctl','is-active',name],capture_output=True,text=True,timeout=5)\n r['active'][name]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr}\nr['images']={}\nfor image in ('sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337','sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4'):\n q=subprocess.run(['docker','image','inspect','--format','{{.Id}}',image],capture_output=True,text=True,timeout=5)\n r['images'][image]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr}\nr['manifest_sha256']=hashlib.sha256(pathlib.Path('/opt/mo-harness/application-build-v1/package-02/package/manifest.json').read_bytes()).hexdigest()\nprint(json.dumps(r))\n"
+  ],
+  "input": {
+    "runs": [
+      "mo-executor-0a3cb4be0b144e408c7a5d83cea3ed6d"
+    ],
+    "workspaces": [
+      "17b2ea5b8cdb442990ee4fd4457605ed",
+      "406d1cf6d0044dd88a42994c1b666e21",
+      "9e722fd82ceb4347821d2a39e092bac5",
+      "ec1910e10c364225b89ce2c70f68394e"
+    ],
+    "cgroups": [
+      "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-885eb795d7afd2ba817c9f69044645462a9aae22964a358fe7e0b33add591831.scope"
+    ]
+  },
+  "exit": 0,
+  "stderr": ""
+}

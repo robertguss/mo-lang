@@ -1,0 +1,329 @@
+{
+  "run_id": "cc0ce0db3bcd4c8cb220d5d70e227d61",
+  "workspace_id": "c00a3b56e3184dce958e9209068d4c2c",
+  "call_id": "4603d59272eb4365bbe402bc4b025f73",
+  "state": "success",
+  "execution": "completed",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "dWlkPTY1NTM0IGdpZD02NTUzNCBncm91cHM9NjU1MzQKTmFtZToJY2F0ClVtYXNrOgkwMDIyClN0YXRlOglSIChydW5uaW5nKQpUZ2lkOgk4Ck5naWQ6CTAKUGlkOgk4ClBQaWQ6CTEKVHJhY2VyUGlkOgkwClVpZDoJNjU1MzQJNjU1MzQJNjU1MzQJNjU1MzQKR2lkOgk2NTUzNAk2NTUzNAk2NTUzNAk2NTUzNApGRFNpemU6CTY0Ckdyb3VwczoJNjU1MzQgCk5TdGdpZDoJOApOU3BpZDoJOApOU3BnaWQ6CTEKTlNzaWQ6CTEKS3RocmVhZDoJMApWbVBlYWs6CSAgICAyMjI0IGtCClZtU2l6ZToJICAgIDIyMjQga0IKVm1MY2s6CSAgICAgICAwIGtCClZtUGluOgkgICAgICAgMCBrQgpWbUhXTToJICAgIDEyOTYga0IKVm1SU1M6CSAgICAxMjk2IGtCClJzc0Fub246CSAgICAgIDQ0IGtCClJzc0ZpbGU6CSAgICAxMjUyIGtCClJzc1NobWVtOgkgICAgICAgMCBrQgpWbURhdGE6CSAgICAgMjM2IGtCClZtU3RrOgkgICAgIDEzMiBrQgpWbUV4ZToJICAgIDE4MDAga0IKVm1MaWI6CSAgICAgICA4IGtCClZtUFRFOgkgICAgICAzNiBrQgpWbVN3YXA6CSAgICAgICAwIGtCCkNvcmVEdW1waW5nOgkwClRIUF9lbmFibGVkOgkxCnVudGFnX21hc2s6CTB4ZmZmZmZmZmZmZmZmZmYKVGhyZWFkczoJMQpTaWdROgkwLzY0Mjc5ClNpZ1BuZDoJMDAwMDAwMDAwMDAwMDAwMApTaGRQbmQ6CTAwMDAwMDAwMDAwMDAwMDAKU2lnQmxrOgkwMDAwMDAwMDAwMDAwMDAwClNpZ0lnbjoJMDAwMDAwMDAwMDAwMDAwMApTaWdDZ3Q6CTAwMDAwMDAwMDAwMDAwMDAKQ2FwSW5oOgkwMDAwMDAwMDAwMDAwMDAwCkNhcFBybToJMDAwMDAwMDAwMDAwMDAwMApDYXBFZmY6CTAwMDAwMDAwMDAwMDAwMDAKQ2FwQm5kOgkwMDAwMDAwMDAwMDAwMDAwCkNhcEFtYjoJMDAwMDAwMDAwMDAwMDAwMApOb05ld1ByaXZzOgkxClNlY2NvbXA6CTIKU2VjY29tcF9maWx0ZXJzOgkyClNwZWN1bGF0aW9uX1N0b3JlX0J5cGFzczoJdnVsbmVyYWJsZQpTcGVjdWxhdGlvbkluZGlyZWN0QnJhbmNoOgl1bmtub3duCkNwdXNfYWxsb3dlZDoJM2ZmZgpDcHVzX2FsbG93ZWRfbGlzdDoJMC0xMwpNZW1zX2FsbG93ZWQ6CTEKTWVtc19hbGxvd2VkX2xpc3Q6CTAKdm9sdW50YXJ5X2N0eHRfc3dpdGNoZXM6CTAKbm9udm9sdW50YXJ5X2N0eHRfc3dpdGNoZXM6CTAKb3ZlcmxheSAvIG92ZXJsYXkgcm8scmVsYXRpbWUsbG93ZXJkaXI9L3Zhci9saWIvY29udGFpbmVyZC9pby5jb250YWluZXJkLnNuYXBzaG90dGVyLnYxLm92ZXJsYXlmcy9zbmFwc2hvdHMvMTk0Ny9mczovdmFyL2xpYi9jb250YWluZXJkL2lvLmNvbnRhaW5lcmQuc25hcHNob3R0ZXIudjEub3ZlcmxheWZzL3NuYXBzaG90cy81NjAvZnM6L3Zhci9saWIvY29udGFpbmVyZC9pby5jb250YWluZXJkLnNuYXBzaG90dGVyLnYxLm92ZXJsYXlmcy9zbmFwc2hvdHMvNTU3L2ZzOi92YXIvbGliL2NvbnRhaW5lcmQvaW8uY29udGFpbmVyZC5zbmFwc2hvdHRlci52MS5vdmVybGF5ZnMvc25hcHNob3RzLzU1My9mczovdmFyL2xpYi9jb250YWluZXJkL2lvLmNvbnRhaW5lcmQuc25hcHNob3R0ZXIudjEub3ZlcmxheWZzL3NuYXBzaG90cy8xL2ZzLHVwcGVyZGlyPS92YXIvbGliL2NvbnRhaW5lcmQvaW8uY29udGFpbmVyZC5zbmFwc2hvdHRlci52MS5vdmVybGF5ZnMvc25hcHNob3RzLzE5NDgvZnMsd29ya2Rpcj0vdmFyL2xpYi9jb250YWluZXJkL2lvLmNvbnRhaW5lcmQuc25hcHNob3R0ZXIudjEub3ZlcmxheWZzL3NuYXBzaG90cy8xOTQ4L3dvcmsscmVkaXJlY3RfZGlyPW5vZm9sbG93LHV1aWQ9bnVsbCAwIDAKcHJvYyAvcHJvYyBwcm9jIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCnRtcGZzIC9kZXYgdG1wZnMgcncsbm9zdWlkLHNpemU9NjU1MzZrLG1vZGU9NzU1IDAgMApkZXZwdHMgL2Rldi9wdHMgZGV2cHRzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsZ2lkPTUsbW9kZT02MjAscHRteG1vZGU9NjY2IDAgMApzeXNmcyAvc3lzIHN5c2ZzIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCmNncm91cCAvc3lzL2ZzL2Nncm91cCBjZ3JvdXAyIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsbnNkZWxlZ2F0ZSAwIDAKbXF1ZXVlIC9kZXYvbXF1ZXVlIG1xdWV1ZSBydyxub3N1aWQsbm9kZXYsbm9leGVjLHJlbGF0aW1lIDAgMApzaG0gL2Rldi9zaG0gdG1wZnMgcncsbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSxzaXplPTY1NTM2ayAwIDAKdG1wZnMgL2J1aWxkIHRtcGZzIHJ3LG5vc3VpZCxub2RldixyZWxhdGltZSxzaXplPTUyNDI4OGssbnJfaW5vZGVzPTE2Mzg0IDAgMAp0bXBmcyAvdG1wIHRtcGZzIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsc2l6ZT0xNjM4NGsgMCAwCm1vLXdvcmtzcGFjZSAvd29ya3NwYWNlIHRtcGZzIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsc2l6ZT02NTUzNmssbnJfaW5vZGVzPTQwOTYsbW9kZT03MDAgMCAwCi9kZXYvdmRiMSAvZXRjL3Jlc29sdi5jb25mIGJ0cmZzIHJvLG5vYXRpbWUsbm9kYXRhc3VtLG5vZGF0YWNvdyxzc2QsZGlzY2FyZCxzcGFjZV9jYWNoZT12MixzdWJ2b2xpZD0yNTYsc3Vidm9sPS9zY29uL2NvbnRhaW5lcnMvMDFNMlZZMEVZWDM1V1ZWRTI4RENBOU1OUzYgMCAwCi9kZXYvdmRiMSAvZXRjL2hvc3RuYW1lIGJ0cmZzIHJvLG5vYXRpbWUsbm9kYXRhc3VtLG5vZGF0YWNvdyxzc2QsZGlzY2FyZCxzcGFjZV9jYWNoZT12MixzdWJ2b2xpZD0yNTYsc3Vidm9sPS9zY29uL2NvbnRhaW5lcnMvMDFNMlZZMEVZWDM1V1ZWRTI4RENBOU1OUzYgMCAwCi9kZXYvdmRiMSAvZXRjL2hvc3RzIGJ0cmZzIHJvLG5vYXRpbWUsbm9kYXRhc3VtLG5vZGF0YWNvdyxzc2QsZGlzY2FyZCxzcGFjZV9jYWNoZT12MixzdWJ2b2xpZD0yNTYsc3Vidm9sPS9zY29uL2NvbnRhaW5lcnMvMDFNMlZZMEVZWDM1V1ZWRTI4RENBOU1OUzYgMCAwCmRldnRtcGZzIC9kZXYvbnVsbCBkZXZ0bXBmcyBydyxub3N1aWQsbm9leGVjLHJlbGF0aW1lLHNpemU9ODIxMTc1MmssbnJfaW5vZGVzPTIwNTI5MzgsbW9kZT03NTUgMCAwCmRldnRtcGZzIC9kZXYvcmFuZG9tIGRldnRtcGZzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsc2l6ZT04MjExNzUyayxucl9pbm9kZXM9MjA1MjkzOCxtb2RlPTc1NSAwIDAKZGV2dG1wZnMgL2Rldi9mdWxsIGRldnRtcGZzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsc2l6ZT04MjExNzUyayxucl9pbm9kZXM9MjA1MjkzOCxtb2RlPTc1NSAwIDAKZGV2dG1wZnMgL2Rldi90dHkgZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMApkZXZ0bXBmcyAvZGV2L3plcm8gZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMApkZXZ0bXBmcyAvZGV2L3VyYW5kb20gZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMApwcm9jIC9wcm9jL2J1cyBwcm9jIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCnByb2MgL3Byb2MvZnMgcHJvYyBybyxub3N1aWQsbm9kZXYsbm9leGVjLHJlbGF0aW1lIDAgMApwcm9jIC9wcm9jL2lycSBwcm9jIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCnByb2MgL3Byb2Mvc3lzIHByb2Mgcm8sbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSAwIDAKcHJvYyAvcHJvYy9zeXNycS10cmlnZ2VyIHByb2Mgcm8sbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSAwIDAKdG1wZnMgL3Byb2MvYXNvdW5kIHRtcGZzIHJvLHJlbGF0aW1lIDAgMApkZXZ0bXBmcyAvcHJvYy9pbnRlcnJ1cHRzIGRldnRtcGZzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsc2l6ZT04MjExNzUyayxucl9pbm9kZXM9MjA1MjkzOCxtb2RlPTc1NSAwIDAKZGV2dG1wZnMgL3Byb2Mva2V5cyBkZXZ0bXBmcyBydyxub3N1aWQsbm9leGVjLHJlbGF0aW1lLHNpemU9ODIxMTc1MmssbnJfaW5vZGVzPTIwNTI5MzgsbW9kZT03NTUgMCAwCmRldnRtcGZzIC9wcm9jL3RpbWVyX2xpc3QgZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMAp0bXBmcyAvc3lzL2Zpcm13YXJlIHRtcGZzIHJvLHJlbGF0aW1lIDAgMAo=",
+  "stderr": "",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": 1.286726484002429,
+  "execution_valid": true,
+  "manifest": {
+    "run_id": "9eb6f0088b834dcb8074adc712c3bc28",
+    "name": "mo-executor-9eb6f0088b834dcb8074adc712c3bc28",
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "candidate_sha256": "00f58c448ee71ab401b667f277f8c4094b372dde968a58f79c7ed1b3bb1d5bd0",
+    "script": "aWQ7IGNhdCAvcHJvYy9zZWxmL3N0YXR1czsgY2F0IC9wcm9jL21vdW50czsgc2xlZXAgMQ==",
+    "checks": null,
+    "seconds": 120,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+    "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace": {
+      "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "policy": "application-build-v1",
+      "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+      "workspace_id": "c00a3b56e3184dce958e9209068d4c2c",
+      "workspace_run_id": "cc0ce0db3bcd4c8cb220d5d70e227d61",
+      "source": "/var/lib/mo-harness/mo-workspace-c00a3b56e3184dce958e9209068d4c2c/storage/data",
+      "readonly": false,
+      "snapshot": null
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+    "check_inventory_sha256": null,
+    "workspace_call_id": "4603d59272eb4365bbe402bc4b025f73",
+    "deadline": 1789813631.126123
+  },
+  "observation": {
+    "attach_exit_code": 0,
+    "cancelled": false,
+    "candidate_sha256": "00f58c448ee71ab401b667f277f8c4094b372dde968a58f79c7ed1b3bb1d5bd0",
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-273cb8bbc95408639ba283f36aed33f3db2f7a82d7d6213d93429a90e3751e53.scope",
+    "cleanup": {
+      "absent": true,
+      "cgroup_absent": true,
+      "removed_rc": 0,
+      "host_confirmed": true,
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-273cb8bbc95408639ba283f36aed33f3db2f7a82d7d6213d93429a90e3751e53.scope",
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    },
+    "container_id": "273cb8bbc95408639ba283f36aed33f3db2f7a82d7d6213d93429a90e3751e53",
+    "counters": {
+      "cpu.stat:burst_usec": 0,
+      "cpu.stat:nice_usec": 0,
+      "cpu.stat:nr_bursts": 0,
+      "cpu.stat:nr_periods": 2,
+      "cpu.stat:nr_throttled": 0,
+      "cpu.stat:system_usec": 2011,
+      "cpu.stat:throttled_usec": 0,
+      "cpu.stat:usage_usec": 8044,
+      "cpu.stat:user_usec": 6033,
+      "memory.events:high": 0,
+      "memory.events:low": 0,
+      "memory.events:max": 0,
+      "memory.events:oom": 0,
+      "memory.events:oom_group_kill": 0,
+      "memory.events:oom_kill": 0,
+      "memory.events:sock_throttled": 0,
+      "memory.peak": 5320704,
+      "pids.events:max": 0
+    },
+    "effective": {
+      "AppArmorProfile": "",
+      "Args": [
+        "-c",
+        "id; cat /proc/self/status; cat /proc/mounts; sleep 1"
+      ],
+      "Config": {
+        "AttachStderr": true,
+        "AttachStdin": false,
+        "AttachStdout": true,
+        "Cmd": [
+          "/bin/sh",
+          "-c",
+          "id; cat /proc/self/status; cat /proc/mounts; sleep 1"
+        ],
+        "Domainname": "",
+        "Entrypoint": null,
+        "Env": [
+          "PATH=/opt/mo:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "HOME=/build",
+          "TMPDIR=/tmp",
+          "ZIG_GLOBAL_CACHE_DIR=/build/zig-global",
+          "ZIG_LOCAL_CACHE_DIR=/build/zig-local"
+        ],
+        "Hostname": "273cb8bbc954",
+        "Image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+        "Labels": {},
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Tty": false,
+        "User": "65534:65534",
+        "Volumes": null,
+        "WorkingDir": "/workspace"
+      },
+      "Created": "2026-09-19T10:25:11.157650716Z",
+      "Driver": "overlayfs",
+      "ExecIDs": null,
+      "HostConfig": {
+        "AutoRemove": false,
+        "Binds": [
+          "/var/lib/mo-harness/mo-workspace-c00a3b56e3184dce958e9209068d4c2c/storage/data:/workspace:rw"
+        ],
+        "BlkioDeviceReadBps": [],
+        "BlkioDeviceReadIOps": [],
+        "BlkioDeviceWriteBps": [],
+        "BlkioDeviceWriteIOps": [],
+        "BlkioWeight": 0,
+        "BlkioWeightDevice": [],
+        "CapAdd": null,
+        "CapDrop": [
+          "ALL"
+        ],
+        "Cgroup": "",
+        "CgroupParent": "mo-application.slice",
+        "CgroupnsMode": "private",
+        "ConsoleSize": [
+          0,
+          0
+        ],
+        "ContainerIDFile": "",
+        "CpuCount": 0,
+        "CpuPercent": 0,
+        "CpuPeriod": 0,
+        "CpuQuota": 0,
+        "CpuRealtimePeriod": 0,
+        "CpuRealtimeRuntime": 0,
+        "CpuShares": 0,
+        "CpusetCpus": "",
+        "CpusetMems": "",
+        "DeviceCgroupRules": null,
+        "DeviceRequests": null,
+        "Devices": [],
+        "Dns": null,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "ExtraHosts": null,
+        "GroupAdd": null,
+        "IOMaximumBandwidth": 0,
+        "IOMaximumIOps": 0,
+        "IpcMode": "private",
+        "Isolation": "",
+        "Links": null,
+        "LogConfig": {
+          "Config": {},
+          "Type": "none"
+        },
+        "MaskedPaths": [
+          "/proc/acpi",
+          "/proc/asound",
+          "/proc/interrupts",
+          "/proc/kcore",
+          "/proc/keys",
+          "/proc/latency_stats",
+          "/proc/sched_debug",
+          "/proc/scsi",
+          "/proc/timer_list",
+          "/proc/timer_stats",
+          "/sys/devices/virtual/powercap",
+          "/sys/firmware"
+        ],
+        "Memory": 1073741824,
+        "MemoryReservation": 0,
+        "MemorySwap": 1073741824,
+        "MemorySwappiness": null,
+        "NanoCpus": 1000000000,
+        "NetworkMode": "none",
+        "OomKillDisable": false,
+        "OomScoreAdj": 0,
+        "PidMode": "",
+        "PidsLimit": 128,
+        "PortBindings": {},
+        "Privileged": false,
+        "PublishAllPorts": false,
+        "ReadonlyPaths": [
+          "/proc/bus",
+          "/proc/fs",
+          "/proc/irq",
+          "/proc/sys",
+          "/proc/sysrq-trigger"
+        ],
+        "ReadonlyRootfs": true,
+        "RestartPolicy": {
+          "MaximumRetryCount": 0,
+          "Name": "no"
+        },
+        "Runtime": "runc",
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "ShmSize": 67108864,
+        "Tmpfs": {
+          "/build": "rw,exec,nosuid,nodev,size=536870912,nr_inodes=16384,mode=1777",
+          "/tmp": "rw,noexec,nosuid,nodev,size=16777216,mode=1777"
+        },
+        "UTSMode": "",
+        "Ulimits": [],
+        "UsernsMode": "",
+        "VolumeDriver": "",
+        "VolumesFrom": null
+      },
+      "HostnamePath": "",
+      "HostsPath": "",
+      "Id": "273cb8bbc95408639ba283f36aed33f3db2f7a82d7d6213d93429a90e3751e53",
+      "Image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "ImageManifestDescriptor": {
+        "digest": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "size": 969
+      },
+      "LogPath": "",
+      "MountLabel": "",
+      "Mounts": [
+        {
+          "Destination": "/workspace",
+          "Mode": "rw",
+          "Propagation": "rprivate",
+          "RW": true,
+          "Source": "/var/lib/mo-harness/mo-workspace-c00a3b56e3184dce958e9209068d4c2c/storage/data",
+          "Type": "bind"
+        }
+      ],
+      "Name": "/mo-executor-9eb6f0088b834dcb8074adc712c3bc28",
+      "NetworkSettings": {
+        "Networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": ""
+          }
+        },
+        "Ports": {},
+        "SandboxID": "",
+        "SandboxKey": ""
+      },
+      "Path": "/bin/sh",
+      "Platform": "linux",
+      "ProcessLabel": "",
+      "ResolvConfPath": "",
+      "RestartCount": 0,
+      "State": {
+        "Dead": false,
+        "Error": "",
+        "ExitCode": 0,
+        "FinishedAt": "0001-01-01T00:00:00Z",
+        "OOMKilled": false,
+        "Paused": false,
+        "Pid": 0,
+        "Restarting": false,
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "Status": "created"
+      },
+      "Storage": {
+        "RootFS": {
+          "Snapshot": {
+            "Name": "overlayfs"
+          }
+        }
+      }
+    },
+    "elapsed_seconds": 1.286726484002429,
+    "exit_code": 0,
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "name": "mo-executor-9eb6f0088b834dcb8074adc712c3bc28",
+    "oom_killed": false,
+    "policy": "application-build-v1",
+    "policy_errors": [],
+    "run_id": "9eb6f0088b834dcb8074adc712c3bc28",
+    "signal": null,
+    "signal_hint": null,
+    "status": "completed",
+    "stderr": "",
+    "stdout": "dWlkPTY1NTM0IGdpZD02NTUzNCBncm91cHM9NjU1MzQKTmFtZToJY2F0ClVtYXNrOgkwMDIyClN0YXRlOglSIChydW5uaW5nKQpUZ2lkOgk4Ck5naWQ6CTAKUGlkOgk4ClBQaWQ6CTEKVHJhY2VyUGlkOgkwClVpZDoJNjU1MzQJNjU1MzQJNjU1MzQJNjU1MzQKR2lkOgk2NTUzNAk2NTUzNAk2NTUzNAk2NTUzNApGRFNpemU6CTY0Ckdyb3VwczoJNjU1MzQgCk5TdGdpZDoJOApOU3BpZDoJOApOU3BnaWQ6CTEKTlNzaWQ6CTEKS3RocmVhZDoJMApWbVBlYWs6CSAgICAyMjI0IGtCClZtU2l6ZToJICAgIDIyMjQga0IKVm1MY2s6CSAgICAgICAwIGtCClZtUGluOgkgICAgICAgMCBrQgpWbUhXTToJICAgIDEyOTYga0IKVm1SU1M6CSAgICAxMjk2IGtCClJzc0Fub246CSAgICAgIDQ0IGtCClJzc0ZpbGU6CSAgICAxMjUyIGtCClJzc1NobWVtOgkgICAgICAgMCBrQgpWbURhdGE6CSAgICAgMjM2IGtCClZtU3RrOgkgICAgIDEzMiBrQgpWbUV4ZToJICAgIDE4MDAga0IKVm1MaWI6CSAgICAgICA4IGtCClZtUFRFOgkgICAgICAzNiBrQgpWbVN3YXA6CSAgICAgICAwIGtCCkNvcmVEdW1waW5nOgkwClRIUF9lbmFibGVkOgkxCnVudGFnX21hc2s6CTB4ZmZmZmZmZmZmZmZmZmYKVGhyZWFkczoJMQpTaWdROgkwLzY0Mjc5ClNpZ1BuZDoJMDAwMDAwMDAwMDAwMDAwMApTaGRQbmQ6CTAwMDAwMDAwMDAwMDAwMDAKU2lnQmxrOgkwMDAwMDAwMDAwMDAwMDAwClNpZ0lnbjoJMDAwMDAwMDAwMDAwMDAwMApTaWdDZ3Q6CTAwMDAwMDAwMDAwMDAwMDAKQ2FwSW5oOgkwMDAwMDAwMDAwMDAwMDAwCkNhcFBybToJMDAwMDAwMDAwMDAwMDAwMApDYXBFZmY6CTAwMDAwMDAwMDAwMDAwMDAKQ2FwQm5kOgkwMDAwMDAwMDAwMDAwMDAwCkNhcEFtYjoJMDAwMDAwMDAwMDAwMDAwMApOb05ld1ByaXZzOgkxClNlY2NvbXA6CTIKU2VjY29tcF9maWx0ZXJzOgkyClNwZWN1bGF0aW9uX1N0b3JlX0J5cGFzczoJdnVsbmVyYWJsZQpTcGVjdWxhdGlvbkluZGlyZWN0QnJhbmNoOgl1bmtub3duCkNwdXNfYWxsb3dlZDoJM2ZmZgpDcHVzX2FsbG93ZWRfbGlzdDoJMC0xMwpNZW1zX2FsbG93ZWQ6CTEKTWVtc19hbGxvd2VkX2xpc3Q6CTAKdm9sdW50YXJ5X2N0eHRfc3dpdGNoZXM6CTAKbm9udm9sdW50YXJ5X2N0eHRfc3dpdGNoZXM6CTAKb3ZlcmxheSAvIG92ZXJsYXkgcm8scmVsYXRpbWUsbG93ZXJkaXI9L3Zhci9saWIvY29udGFpbmVyZC9pby5jb250YWluZXJkLnNuYXBzaG90dGVyLnYxLm92ZXJsYXlmcy9zbmFwc2hvdHMvMTk0Ny9mczovdmFyL2xpYi9jb250YWluZXJkL2lvLmNvbnRhaW5lcmQuc25hcHNob3R0ZXIudjEub3ZlcmxheWZzL3NuYXBzaG90cy81NjAvZnM6L3Zhci9saWIvY29udGFpbmVyZC9pby5jb250YWluZXJkLnNuYXBzaG90dGVyLnYxLm92ZXJsYXlmcy9zbmFwc2hvdHMvNTU3L2ZzOi92YXIvbGliL2NvbnRhaW5lcmQvaW8uY29udGFpbmVyZC5zbmFwc2hvdHRlci52MS5vdmVybGF5ZnMvc25hcHNob3RzLzU1My9mczovdmFyL2xpYi9jb250YWluZXJkL2lvLmNvbnRhaW5lcmQuc25hcHNob3R0ZXIudjEub3ZlcmxheWZzL3NuYXBzaG90cy8xL2ZzLHVwcGVyZGlyPS92YXIvbGliL2NvbnRhaW5lcmQvaW8uY29udGFpbmVyZC5zbmFwc2hvdHRlci52MS5vdmVybGF5ZnMvc25hcHNob3RzLzE5NDgvZnMsd29ya2Rpcj0vdmFyL2xpYi9jb250YWluZXJkL2lvLmNvbnRhaW5lcmQuc25hcHNob3R0ZXIudjEub3ZlcmxheWZzL3NuYXBzaG90cy8xOTQ4L3dvcmsscmVkaXJlY3RfZGlyPW5vZm9sbG93LHV1aWQ9bnVsbCAwIDAKcHJvYyAvcHJvYyBwcm9jIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCnRtcGZzIC9kZXYgdG1wZnMgcncsbm9zdWlkLHNpemU9NjU1MzZrLG1vZGU9NzU1IDAgMApkZXZwdHMgL2Rldi9wdHMgZGV2cHRzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsZ2lkPTUsbW9kZT02MjAscHRteG1vZGU9NjY2IDAgMApzeXNmcyAvc3lzIHN5c2ZzIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCmNncm91cCAvc3lzL2ZzL2Nncm91cCBjZ3JvdXAyIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsbnNkZWxlZ2F0ZSAwIDAKbXF1ZXVlIC9kZXYvbXF1ZXVlIG1xdWV1ZSBydyxub3N1aWQsbm9kZXYsbm9leGVjLHJlbGF0aW1lIDAgMApzaG0gL2Rldi9zaG0gdG1wZnMgcncsbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSxzaXplPTY1NTM2ayAwIDAKdG1wZnMgL2J1aWxkIHRtcGZzIHJ3LG5vc3VpZCxub2RldixyZWxhdGltZSxzaXplPTUyNDI4OGssbnJfaW5vZGVzPTE2Mzg0IDAgMAp0bXBmcyAvdG1wIHRtcGZzIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsc2l6ZT0xNjM4NGsgMCAwCm1vLXdvcmtzcGFjZSAvd29ya3NwYWNlIHRtcGZzIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsc2l6ZT02NTUzNmssbnJfaW5vZGVzPTQwOTYsbW9kZT03MDAgMCAwCi9kZXYvdmRiMSAvZXRjL3Jlc29sdi5jb25mIGJ0cmZzIHJvLG5vYXRpbWUsbm9kYXRhc3VtLG5vZGF0YWNvdyxzc2QsZGlzY2FyZCxzcGFjZV9jYWNoZT12MixzdWJ2b2xpZD0yNTYsc3Vidm9sPS9zY29uL2NvbnRhaW5lcnMvMDFNMlZZMEVZWDM1V1ZWRTI4RENBOU1OUzYgMCAwCi9kZXYvdmRiMSAvZXRjL2hvc3RuYW1lIGJ0cmZzIHJvLG5vYXRpbWUsbm9kYXRhc3VtLG5vZGF0YWNvdyxzc2QsZGlzY2FyZCxzcGFjZV9jYWNoZT12MixzdWJ2b2xpZD0yNTYsc3Vidm9sPS9zY29uL2NvbnRhaW5lcnMvMDFNMlZZMEVZWDM1V1ZWRTI4RENBOU1OUzYgMCAwCi9kZXYvdmRiMSAvZXRjL2hvc3RzIGJ0cmZzIHJvLG5vYXRpbWUsbm9kYXRhc3VtLG5vZGF0YWNvdyxzc2QsZGlzY2FyZCxzcGFjZV9jYWNoZT12MixzdWJ2b2xpZD0yNTYsc3Vidm9sPS9zY29uL2NvbnRhaW5lcnMvMDFNMlZZMEVZWDM1V1ZWRTI4RENBOU1OUzYgMCAwCmRldnRtcGZzIC9kZXYvbnVsbCBkZXZ0bXBmcyBydyxub3N1aWQsbm9leGVjLHJlbGF0aW1lLHNpemU9ODIxMTc1MmssbnJfaW5vZGVzPTIwNTI5MzgsbW9kZT03NTUgMCAwCmRldnRtcGZzIC9kZXYvcmFuZG9tIGRldnRtcGZzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsc2l6ZT04MjExNzUyayxucl9pbm9kZXM9MjA1MjkzOCxtb2RlPTc1NSAwIDAKZGV2dG1wZnMgL2Rldi9mdWxsIGRldnRtcGZzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsc2l6ZT04MjExNzUyayxucl9pbm9kZXM9MjA1MjkzOCxtb2RlPTc1NSAwIDAKZGV2dG1wZnMgL2Rldi90dHkgZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMApkZXZ0bXBmcyAvZGV2L3plcm8gZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMApkZXZ0bXBmcyAvZGV2L3VyYW5kb20gZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMApwcm9jIC9wcm9jL2J1cyBwcm9jIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCnByb2MgL3Byb2MvZnMgcHJvYyBybyxub3N1aWQsbm9kZXYsbm9leGVjLHJlbGF0aW1lIDAgMApwcm9jIC9wcm9jL2lycSBwcm9jIHJvLG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUgMCAwCnByb2MgL3Byb2Mvc3lzIHByb2Mgcm8sbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSAwIDAKcHJvYyAvcHJvYy9zeXNycS10cmlnZ2VyIHByb2Mgcm8sbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSAwIDAKdG1wZnMgL3Byb2MvYXNvdW5kIHRtcGZzIHJvLHJlbGF0aW1lIDAgMApkZXZ0bXBmcyAvcHJvYy9pbnRlcnJ1cHRzIGRldnRtcGZzIHJ3LG5vc3VpZCxub2V4ZWMscmVsYXRpbWUsc2l6ZT04MjExNzUyayxucl9pbm9kZXM9MjA1MjkzOCxtb2RlPTc1NSAwIDAKZGV2dG1wZnMgL3Byb2Mva2V5cyBkZXZ0bXBmcyBydyxub3N1aWQsbm9leGVjLHJlbGF0aW1lLHNpemU9ODIxMTc1MmssbnJfaW5vZGVzPTIwNTI5MzgsbW9kZT03NTUgMCAwCmRldnRtcGZzIC9wcm9jL3RpbWVyX2xpc3QgZGV2dG1wZnMgcncsbm9zdWlkLG5vZXhlYyxyZWxhdGltZSxzaXplPTgyMTE3NTJrLG5yX2lub2Rlcz0yMDUyOTM4LG1vZGU9NzU1IDAgMAp0bXBmcyAvc3lzL2Zpcm13YXJlIHRtcGZzIHJvLHJlbGF0aW1lIDAgMAo=",
+    "timed_out": false,
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "truncated": false,
+    "workspace": {
+      "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "policy": "application-build-v1",
+      "readonly": false,
+      "snapshot": null,
+      "source": "/var/lib/mo-harness/mo-workspace-c00a3b56e3184dce958e9209068d4c2c/storage/data",
+      "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+      "workspace_id": "c00a3b56e3184dce958e9209068d4c2c",
+      "workspace_run_id": "cc0ce0db3bcd4c8cb220d5d70e227d61"
+    }
+  }
+}

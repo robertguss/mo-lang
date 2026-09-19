@@ -1,0 +1,2 @@
+wget: can't connect to remote host (192.0.2.1): Network is unreachable
+/bin/sh: can't create /root-write: Read-only file system

@@ -1,0 +1,104 @@
+[
+  {
+    "case": "post-dispatch-pipeline",
+    "passed": true,
+    "wire": {
+      "version": "mo-workspace-http-v1",
+      "run_id": "lead-pipeline",
+      "workspace_id": "9e722fd82ceb4347821d2a39e092bac5",
+      "call_id": "first",
+      "accepted": true,
+      "state": "failure",
+      "execution": "unknown",
+      "error": "owner_unknown",
+      "result": null
+    },
+    "actual_first": {
+      "version": "mo-workspace-http-v1",
+      "run_id": "lead-pipeline",
+      "workspace_id": "9e722fd82ceb4347821d2a39e092bac5",
+      "call_id": "first",
+      "accepted": true,
+      "state": "success",
+      "execution": "completed",
+      "error": null,
+      "result": {
+        "exit_code": 0,
+        "signal": null,
+        "execution_valid": true,
+        "stdout": "lead-pipeline\n",
+        "stderr": "",
+        "encoding": "utf-8",
+        "truncated": false,
+        "elapsed_ms": 3275
+      }
+    },
+    "claims": 1,
+    "second_claimed": false,
+    "original_cleanup": {
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "method": "Workspace.delete"
+    }
+  },
+  {
+    "case": "escaped-core-limit",
+    "passed": true,
+    "source_utf8_bytes": 36000,
+    "json_string_bytes": 72002,
+    "written": [
+      200,
+      {
+        "version": "mo-workspace-http-v1",
+        "run_id": "lead-escaped-size",
+        "workspace_id": "17b2ea5b8cdb442990ee4fd4457605ed",
+        "call_id": "write",
+        "accepted": true,
+        "state": "success",
+        "execution": "completed",
+        "error": null,
+        "result": {
+          "written": true,
+          "truncated": false
+        }
+      }
+    ],
+    "refused": [
+      200,
+      {
+        "version": "mo-workspace-http-v1",
+        "run_id": "lead-escaped-size",
+        "workspace_id": "17b2ea5b8cdb442990ee4fd4457605ed",
+        "call_id": "read",
+        "accepted": true,
+        "state": "refusal",
+        "execution": "completed",
+        "error": "result_too_large",
+        "result": null
+      }
+    ],
+    "later": [
+      200,
+      {
+        "version": "mo-workspace-http-v1",
+        "run_id": "lead-escaped-size",
+        "workspace_id": "17b2ea5b8cdb442990ee4fd4457605ed",
+        "call_id": "later",
+        "accepted": true,
+        "state": "success",
+        "execution": "completed",
+        "error": null,
+        "result": {
+          "text": "baseline\n",
+          "truncated": false
+        }
+      }
+    ],
+    "claims": 3,
+    "original_cleanup": {
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "method": "Workspace.delete"
+    }
+  }
+]

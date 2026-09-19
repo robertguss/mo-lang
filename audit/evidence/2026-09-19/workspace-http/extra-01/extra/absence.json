@@ -1,0 +1,23 @@
+[
+  {
+    "workspace_id": "ec1910e10c364225b89ce2c70f68394e",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "0a3cb4be0b144e408c7a5d83cea3ed6d",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-885eb795d7afd2ba817c9f69044645462a9aae22964a358fe7e0b33add591831.scope",
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "406d1cf6d0044dd88a42994c1b666e21",
+    "root_exists": false,
+    "mounts": [],
+    "executions": []
+  }
+]

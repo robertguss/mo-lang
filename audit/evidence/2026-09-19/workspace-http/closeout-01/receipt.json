@@ -1,0 +1,167 @@
+{
+  "attempts": [
+    {
+      "name": "local-01",
+      "exit": 0,
+      "seconds": 31.144877910614014,
+      "groups": [
+        5314,
+        5453,
+        5741,
+        5785,
+        5790,
+        5795,
+        5799,
+        5804,
+        5808
+      ],
+      "bytes": 3190205,
+      "source": {
+        "files": 15763,
+        "changed": [],
+        "tracked_bytes_unchanged": true
+      }
+    },
+    {
+      "name": "busybox-01",
+      "exit": 0,
+      "seconds": 57.28811693191528,
+      "groups": [
+        6181,
+        6219,
+        6247,
+        6909,
+        7019
+      ],
+      "bytes": 9799703,
+      "source": {
+        "files": 17339,
+        "changed": [],
+        "tracked_bytes_unchanged": true
+      }
+    },
+    {
+      "name": "application-01",
+      "exit": 0,
+      "seconds": 57.10764026641846,
+      "groups": [
+        7133,
+        7161,
+        7167,
+        7833,
+        7939
+      ],
+      "bytes": 9851716,
+      "source": {
+        "files": 17339,
+        "changed": [],
+        "tracked_bytes_unchanged": true
+      }
+    },
+    {
+      "name": "regression-01",
+      "exit": 0,
+      "seconds": 236.02248120307922,
+      "groups": [
+        8150,
+        8201,
+        8207,
+        8756,
+        9594,
+        9661,
+        11942
+      ],
+      "bytes": 10819838,
+      "source": {
+        "files": 17339,
+        "changed": [],
+        "tracked_bytes_unchanged": true
+      }
+    },
+    {
+      "name": "extra-01",
+      "exit": 0,
+      "seconds": 6.940812110900879,
+      "groups": [
+        12317,
+        12359,
+        12365,
+        12442
+      ],
+      "bytes": 3839987,
+      "source": {
+        "files": 17339,
+        "changed": [],
+        "tracked_bytes_unchanged": true
+      }
+    },
+    {
+      "name": "full-01",
+      "exit": 0,
+      "seconds": 409.32049202919006,
+      "groups": [
+        12693,
+        12727,
+        12741
+      ],
+      "bytes": 3502156,
+      "source": {
+        "files": 17339,
+        "changed": [],
+        "tracked_bytes_unchanged": true
+      }
+    }
+  ],
+  "inventory_exit": 0,
+  "identities": {
+    "runs": 100,
+    "workspaces": 131,
+    "cgroups": 97
+  },
+  "all_groups": [
+    5314,
+    5453,
+    5741,
+    5785,
+    5790,
+    5795,
+    5799,
+    5804,
+    5808,
+    6181,
+    6219,
+    6247,
+    6909,
+    7019,
+    7133,
+    7161,
+    7167,
+    7833,
+    7939,
+    8150,
+    8201,
+    8207,
+    8756,
+    9594,
+    9661,
+    11942,
+    12317,
+    12359,
+    12365,
+    12442,
+    12693,
+    12727,
+    12741,
+    18373
+  ],
+  "remaining": [],
+  "shared5_unchanged": true,
+  "private_capability_files_excluded": 48,
+  "no_capability_in_retained_bytes": true,
+  "incomplete_gzip_members": [
+    "busybox-01/live/owner-death/transport.jsonl.gz",
+    "application-01/live/owner-death/transport.jsonl.gz"
+  ],
+  "gzip_limit": "Actual owner SIGKILL leaves no final gzip footer; five complete JSON rows recover in each. No claim about unreturned in-flight transport.",
+  "manifest_entries": 2696
+}

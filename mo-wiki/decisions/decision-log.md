@@ -786,6 +786,14 @@ direction separately from the lead's conservative execution interpretation.
 | Accept recovery6266d293 integrated throughde71578d after independent local59/schema21, recovery16, regressions, post-effect lost-reply extra and full243/243,5/5. Preserve both14/1 operator outcomes and unknown original transport/TLS causes. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | workspace-recovery/README.md and immutable raw attempts |
 | Next expose only six tools through [[mo-workspace-http-v1]], with a serialized owner independent of request lifetime, exact call claims before effects and cleanup-only recovery after owner loss. Keep Mo application routing and scripted repair separate. | Astra lead | decided, semantic | accepted recovery and retained workspace-wire-readiness source reviews |
 
+## 19 Sep 2026 — Workspace HTTP acceptance, 6:38 AM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept worker42015b73/product1cf268b3 integrated atcf99cd88: exact6210 manifest entries, local22/inherited59, real22 per profile, old runtime regressions, review controls and two new extras. Full243/243,5/5;17339 tracked files unchanged;100 executions/131 workspace IDs/97 cgroups absent,34 groups gone/shared5 unchanged. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | workspace-http/README.md, immutable reviews and six lead attempts |
+| Keep delivery uncertainty separate from persisted execution and cleanup. Absolute fragmented-IPC deadlines now return504/unknown; completed-response drain cannot close later work. Preserve all reds, first cleanup deadline refusal and two owner-kill gzip streams lacking final footers. No client-receipt, crash-durability or unconditional synchronous bound claim. | Astra lead, informed by independent Astra/low reviews | decided, semantic | identical drain/IPC probes, actual pipeline extra, closeout-01 |
+| Release [[mo-application-workspace-v1]] locally in a fresh Astra/low worktree: remote all-six-tool routing, private config, fresh Book binding, separate command waits and terminal recording/reporting.4096/524288 are acceptance limits. Grammar decode plus raw-member counts and integer lexical validation must be proved in both runtimes; machine/full gates remain lead-controlled. | Astra lead, informed by four architecture and two JSON/API reviews | decided, semantic | exact-base worker brief and future versioned acceptance groups |
+
 ## Related
 
 - [[session-05]]

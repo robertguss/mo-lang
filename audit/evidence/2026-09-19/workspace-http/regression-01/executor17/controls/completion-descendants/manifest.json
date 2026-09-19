@@ -1,0 +1,45 @@
+{
+  "run_id": "f6f3f6bd384b4227973747a6bf916b7d",
+  "name": "mo-executor-f6f3f6bd384b4227973747a6bf916b7d",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-r01-v1",
+  "candidate_sha256": "17e0da4e713083b450508ddfc3df8eac168be73298748bbbdf305c183c536067",
+  "script": "ZWNobyBwYXJlbnQKL2Jpbi9zaCAtYyAnZWNobyBjaGlsZDsgL2Jpbi9zaCAtYyAiZWNobyBncmFuZGNoaWxkOyBzbGVlcCAzMCIgJiB3YWl0JyAmCnNldHNpZCAvYmluL3NoIC1jICdlY2hvIHNlc3Npb247IHNsZWVwIDMwJyAmCmVjaG8gc3RkZXJyLWNvbnRyb2wgPiYyOyBzbGVlcCAxOyBleGl0IDA=",
+  "checks": [
+    {
+      "id": "parent",
+      "expected": "parent\n",
+      "stream": "stdout",
+      "mode": "contains"
+    },
+    {
+      "id": "child",
+      "expected": "child\n",
+      "stream": "stdout",
+      "mode": "contains"
+    },
+    {
+      "id": "grandchild",
+      "expected": "grandchild\n",
+      "stream": "stdout",
+      "mode": "contains"
+    },
+    {
+      "id": "session",
+      "expected": "session\n",
+      "stream": "stdout",
+      "mode": "contains"
+    },
+    {
+      "id": "stderr",
+      "expected": "stderr-control\n",
+      "stream": "stderr",
+      "mode": "exact"
+    }
+  ],
+  "seconds": 5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "deadline": 1789813334.4335687
+}

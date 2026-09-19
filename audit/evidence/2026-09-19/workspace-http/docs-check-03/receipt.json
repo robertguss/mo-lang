@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/mo-wiki/tools/lint.py"
+  ],
+  "exit": 0,
+  "group": 18550,
+  "group_remaining": false,
+  "audit_scripts_parsed": 3
+}

@@ -1,0 +1,2 @@
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+groups=six-tools,output-encoding,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,disconnect,frontend-death,owner-death,lost-response,owner-stall,startup-failure,shutdown,protected-verifier,application-binding,cleanup-outcome,invalid-selection,journal-order-bound

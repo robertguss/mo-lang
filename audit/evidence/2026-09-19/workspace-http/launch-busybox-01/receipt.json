@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "1200",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/accept.py",
+    "busybox",
+    "busybox-01",
+    "42015b73cce5f4f97d4479413354780c94b13e6c"
+  ],
+  "exit": 0,
+  "forced": false,
+  "started": 1789813032.702317,
+  "finished": 1789813089.990434,
+  "groups": [
+    6181,
+    6219,
+    6247,
+    6909,
+    7019
+  ],
+  "interrupted_groups_killed": [],
+  "remaining": []
+}

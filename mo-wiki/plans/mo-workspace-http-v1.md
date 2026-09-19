@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-workspace-recovery-v1.md, plans/mo-application-build-v1.md]
-status: in-progress
+status: complete
 ---
 
 # Mo workspace HTTP v1: six tools and retained ownership
@@ -176,6 +176,18 @@ original execution versus cleanup outcome. Prove all owned groups/resources abse
 release machine explicitly, close only idle run panes; preserve worker worktree.
 Lead reviews immutable diff, independently reruns plus an extra control, then
 accepts. Receipt alone is not acceptance. Mo application profile follows separately.
+
+## Result, 19 Sep 2026, 6:38 AM ET
+
+Independently accepted atcf99cd88, worker42015b73/product1cf268b3. Exact6210
+manifest entries and unchanged core verified. Lead local22/inherited59, selection
+negatives, realHTTP22 each profile, review controls, inherited22/17/1/23 and two
+extras pass. Full243/243,5/5,outer0;17339 tracked files unchanged. Closure100
+executions/131 recorded workspace IDs/97 actual cgroups absent,34 groups gone,
+active parents empty/shared5 unchanged. Retain drain/IPC/deadline reds and actual
+owner-kill gzip-footer limits. No Mo/live-provider or unconditional cleanup claim.
+Commands, exact commits, limits and raw evidence: audit/evidence/2026-09-19/workspace-http/README.md.
+The separately versioned [[mo-application-workspace-v1]] follows.
 
 ## Related
 

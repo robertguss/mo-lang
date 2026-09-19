@@ -56,11 +56,27 @@ apply terminal classification to all six tools after recording; distinguish
 stopped-but-unsettled reporting_error; request ReportDeadline under the retained
 outer deadline. Draft updated; reviewer pane closed after its idle proof.
 
+## HTTP accepted, 6:38 AM ET
+
+Worker42015b73/product1cf268b3 is integrated unchanged atcf99cd88. Lead verifies
+exact6210 evidence entries, local22/inherited59, realHTTP22 each profile, existing
+22/17/1/23 regressions and two independent pipeline/escaped-JSON controls. Full
+243/243,5/5,outer0;17339 tracked files unchanged. Cross-attempt100 executions,
+131 workspace IDs/97 cgroups absent,34 local groups gone, active parents empty,
+shared5 unchanged. Deliberate owner-kill gzip streams retain five complete rows
+without closing footers; source/evidence limits are explicit. No Mo routing claim.
+
+Two additional source reviews confirm the duplicate-key decoder limitation and
+existing non-atomic Fs/HTTP allocation limits. The next Mo brief uses raw member
+counts plus integer lexical checks after grammar decode; compiled proof is owed.
+Both reviewer panes are closed. Worker implementation remains Astra/low and
+separate; no nested delegation or full compiler/machine concurrency.
+
 ## Next
 
-[[mo-workspace-http-v1]] will expose six tools with cleanup ownership surviving
-request lifetime. The draft [[mo-application-workspace-v1|Mo application profile]] and then scripted
-Logstat repair follow. No live-provider, language-value or application-repair acceptance.
+The released [[mo-application-workspace-v1|Mo application profile]] connects the
+recorded loop to accepted remote tools. Scripted Logstat repair follows separately.
+No live-provider, language-value or application-repair acceptance.
 
 ## Related
 

@@ -14,9 +14,9 @@ A map of content: the claim, the layers it stands on, and the page where each cl
 
 **Current direction, 19 Sep 2026:** [[01-premise]] leads with agent-native
 feedback loops. Robert authorized continuous overnight work under Astra lead
-with fresh Astra/low workers. Nine bounded foundations now pass independent
-acceptance; [[mo-workspace-recovery-v1]] precedes [[mo-workspace-http-v1]] and
-real application repair. [[overnight-harness-2026-09-19]] records this stage.
+with fresh Astra/low workers. Ten bounded foundations now pass independent
+acceptance, including [[mo-workspace-http-v1]]. [[mo-application-workspace-v1]]
+and real application repair follow. [[overnight-harness-2026-09-19]] records this stage.
 No language-value or live-provider claim follows from infrastructure controls.
 Program7 remains suspended and Step39 unaccepted; [[roadmap]] is current order.
 

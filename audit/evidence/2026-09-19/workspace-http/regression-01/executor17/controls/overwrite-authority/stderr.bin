@@ -1,0 +1,2 @@
+/bin/sh: can't create /Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/regression-01/executor17/controls/overwrite-authority/result.json: nonexistent directory
+/bin/sh: can't create /result.json: Read-only file system

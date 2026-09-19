@@ -52,7 +52,9 @@ verdict path for [[mo-first-coding-harness]]. [[mo-agent-terminal-auth]],
 and [[mo-provider-auth-v1]] have independent bounded acceptance, as does
 [[mo-provider-bridge-v1]] for recorded native-history continuation.
 [[mo-application-build-v1]] verifies the isolated pinned toolchain;
-[[mo-workspace-recovery-v1]] adds cleanup ownership before HTTP exposure.
+[[mo-workspace-recovery-v1]] adds cleanup ownership; [[mo-workspace-http-v1]]
+exposes six tools with independent owner lifetime. [[mo-application-workspace-v1]]
+adds the recorded Mo caller in a separate slice.
 Fixture acceptance does not replace application checks or historical obligations.
 
 The suites live beside their plans under `mo-wiki/plans/*-suite/`; see [[the-rounds]] for the list. `mo-wiki/tools/lint.py` checks links, frontmatter, tags, orphans, and sizes. The site is built by Quartz from `site/` and published on every push to `main`.

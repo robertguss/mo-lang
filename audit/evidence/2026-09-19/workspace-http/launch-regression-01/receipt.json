@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "1200",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/accept.py",
+    "regression",
+    "regression-01",
+    "42015b73cce5f4f97d4479413354780c94b13e6c"
+  ],
+  "exit": 0,
+  "forced": false,
+  "started": 1789813290.7117949,
+  "finished": 1789813526.734276,
+  "groups": [
+    8150,
+    8201,
+    8207,
+    8756,
+    9594,
+    9661,
+    11942
+  ],
+  "interrupted_groups_killed": [],
+  "remaining": []
+}

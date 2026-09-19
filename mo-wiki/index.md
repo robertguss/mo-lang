@@ -147,7 +147,7 @@ type: index
   commands and protected snapshot identity
 - [[mo-application-build-v1]] — pinned Linux application image and separately bounded build policy
 - [[mo-workspace-recovery-v1]] — accepted cleanup ownership after lost responses or owner death
-- [[mo-workspace-http-v1]] — bounded six-tool HTTP routing with independent cleanup ownership
+- [[mo-workspace-http-v1]] — accepted six-tool HTTP routing with independent cleanup ownership
 - [[mo-application-workspace-v1]] — draft Mo profile for six recorded remote tools and explicit command budgets
 - [[mo-provider-bridge-v1]] — native Pi history, strict recorded continuation
   and bounded offline Mo HTTP compatibility before live inference

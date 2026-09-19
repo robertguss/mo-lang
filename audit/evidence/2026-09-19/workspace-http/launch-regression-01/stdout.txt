@@ -1,0 +1,6 @@
+{"check": "readiness", "exit": 0, "group_remaining": false}
+{"check": "workspace22", "exit": 0, "group_remaining": false}
+{"check": "executor17", "exit": 0, "group_remaining": false}
+{"check": "lifecycle1", "exit": 0, "group_remaining": false}
+{"check": "application23", "exit": 0, "group_remaining": false}
+{"check": "inventory", "exit": 0, "group_remaining": false}

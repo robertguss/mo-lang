@@ -1,0 +1,3 @@
+{"check": "readiness", "exit": 0, "group_remaining": false}
+{"check": "extra", "exit": 0, "group_remaining": false}
+{"check": "inventory", "exit": 0, "group_remaining": false}

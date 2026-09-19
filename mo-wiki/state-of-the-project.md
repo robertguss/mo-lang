@@ -24,7 +24,7 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 4:27 AM ET, cleanup recovery accepted; workspace HTTP contract next.
+**Last updated:** 19 Sep 2026, 6:38 AM ET, workspace HTTP accepted; Mo application routing next.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
@@ -68,10 +68,14 @@ parents empty and shared5 unchanged. Earlier malformed snapshot and TLS failures
 remain unexplained. Two reboot-lost outcomes remain API-unresolved despite
 separate authorized physical cleanup; this is not whole-machine recovery.
 
-[[mo-workspace-http-v1]] is next: six remote tools with an owner independent of
-HTTP request lifetime. A Mo application profile and scripted Logstat repair
-follow separately. Language value and matched Pi comparison remain unmeasured.
-The last published application checkpoint1edc1259 and wiki35429060879 passed.
+[[mo-workspace-http-v1]] is independently accepted atcf99cd88: local22/inherited59,
+realHTTP22 per profile, existing runtime regressions, review controls and two
+extras pass. Full243/243,5/5;17339 files unchanged. Cleanup rechecks100 executions,
+131 recorded workspace IDs and97 cgroups absent,34 local groups gone, active
+parents empty/shared5 unchanged. Drain/IPC corrections and evidence limits remain
+recorded. [[mo-application-workspace-v1]] and scripted Logstat repair follow;
+language value and matched Pi comparison remain unmeasured. The last published
+recovery checkpoint68e50ed6 and wiki35432372898 passed.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations

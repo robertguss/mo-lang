@@ -1,0 +1,23 @@
+{
+  "before": "f0225c08051c44c93985b306248b3b1ef3f66046",
+  "worker_base": "3023a01a744d1580ca9814e595ddf990a12e456d",
+  "worker_tip": "7438a96e6f8bfdf49f903d3f125095c91533090d",
+  "worker_commits": [
+    "75680f31a03423d2990efaaf85fd84251f816a4a",
+    "83a72dd4ed55dd8728745af720a818399de4c81c",
+    "cacb09c35433e895a4ac6c22cfd141a8c20161e0",
+    "1cf268b356a63665214ca8331bfc55828b643603",
+    "7438a96e6f8bfdf49f903d3f125095c91533090d"
+  ],
+  "exit": 0,
+  "after": "6ab555c273a1e3d09622caadd582643a64859e9c",
+  "new_paths": 4635,
+  "integrated_commits": [
+    "1c0c2c95c276e877b48ef1e9ce52f9a2407ac9af",
+    "a7193009f301dd9916b098a058be8ab450956954",
+    "0d75a887f92b143847af93ed9246cb22400f2107",
+    "3ffda1725d33605a74744f8c5f04af7dfd22e650",
+    "6ab555c273a1e3d09622caadd582643a64859e9c"
+  ],
+  "exact_executor_tree": true
+}

@@ -919,3 +919,19 @@
   healthy run and deadline paths returning200 owner_unknown instead of504 timeout.
   Assigned retained reproductions/narrow fixes after current frozen attempt;
   no acceptance inferred from worker BusyBox22 green. Review pane closed.
+
+## [2026-09-19] update | Workspace HTTP accepted, 6:38 AM ET
+- Integrated final42015b73/product1cf268b3 atcf99cd88; exact6210 manifest entries,
+  contract/production/core hashes and all6211 new owned paths verified.
+- Lead local22/inherited59, six selection negatives, real22 per profile, review
+  controls, old22/17/1/23 regressions and two new extras pass. Full243/243,5/5,
+  outer0;17339 tracked source/evidence files unchanged.
+- Cross-attempt100 executions/131 workspace IDs/97 cgroups absent,34 groups gone,
+  parents/pins exact and empty/shared5 unchanged.48 private capabilities excluded
+  and absent from retained bytes. Two killed-owner gzip footers remain missing;
+  five full JSON rows recover in each, no in-flight transport completion claim.
+- Preserved all drain/IPC/deadline failures and exact independent probes. Next
+  Mo application profile incorporates four architecture and two JSON/API source
+  reviews; runtime proof still owed. Fresh Astra/low local implementation follows.
+- Wiki lint268 pages/25 inherited notices (15 review,10 size), no new issues.
+  Authored diff check passes;42 raw whitespace notices are preserved verbatim.

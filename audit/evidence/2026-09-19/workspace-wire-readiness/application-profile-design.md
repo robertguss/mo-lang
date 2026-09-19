@@ -25,7 +25,9 @@ before the local Tools path. Preserve profile=None and fixture behavior.
 Use a private bounded operator configuration file, not a token-valued CLI flag.
 It holds wire version, fixed loopback port, external run ID, workspace UUID and
 capability token. The trusted launcher writes it0700-parent/0600-file outside
-candidate and Book roots. Mo reads it before dispatch with a bounded Fs read;
+candidate and Book roots. Mo checks fs.size before fs.read and returned byte_size
+against4096 before dispatch; this trusted-stable-file acceptance check is not an
+atomic read/allocation bound. Existing Fs reads can buffer more than4096 bytes;
 its path is an operator input. No credential enters argv, goal, model Request,
 Book args/results, report or retained test logs. A token hash can identify test
 configuration. This is an operator provisioning boundary, not a new secret-store
@@ -81,6 +83,18 @@ injecting operator credentials (steps.mo:150-181). Record every observed outcome
 once before any subsequent model/tool dispatch.
 
 ## Result, failure and reporting semantics
+
+The subsequent API reviews atcf99cd88 refine the byte/JSON contract. Response
+body524288 is a post-receipt, pre-decode acceptance bound; Http.send retains its
+fixed1MiB body and3MiB+8 connection-buffer limits. No compiler change is justified.
+Json.decode rejects nonfinite numbers/surrogates but collapses duplicate keys.
+After grammar decode, compare raw outside-string colon count with recursive
+decoded object-member count; every discarded duplicate decreases the latter.
+Scan quote/escape state correctly, including even backslashes, and forbid decimal
+or exponent numeric tokens before to_i64/range checks. All wire numeric fields
+are integers/null. Existing String.bytes/reduce/Json/Map APIs support this narrow
+check; worker must prove it in both runtimes. The two immutable JSON reviews
+record source feasibility and limitations, not implementation or test results.
 
 Follow the accepted bridge schema and enum exactly after it freezes. Keep full
 wire identities and body bounds in the adapter check. Never pass Python private

@@ -1,0 +1,27 @@
+test_six_tools (__main__.Controls.test_six_tools) ... ok
+test_output_encoding (__main__.Controls.test_output_encoding) ... ok
+test_schema (__main__.Controls.test_schema) ... ok
+test_framing (__main__.Controls.test_framing) ... ok
+test_byte_bounds (__main__.Controls.test_byte_bounds) ... ok
+test_identities_capability (__main__.Controls.test_identities_capability) ... ok
+test_duplicate_calls (__main__.Controls.test_duplicate_calls) ... ok
+test_concurrent_admission (__main__.Controls.test_concurrent_admission) ... ok
+test_file_refusals (__main__.Controls.test_file_refusals) ... ok
+test_deadlines (__main__.Controls.test_deadlines) ... ok
+test_disconnect (__main__.Controls.test_disconnect) ... ok
+test_frontend_death (__main__.Controls.test_frontend_death) ... ok
+test_owner_death (__main__.Controls.test_owner_death) ... ok
+test_lost_response (__main__.Controls.test_lost_response) ... ok
+test_owner_stall (__main__.Controls.test_owner_stall) ... ok
+test_startup_failure (__main__.Controls.test_startup_failure) ... ok
+test_shutdown (__main__.Controls.test_shutdown) ... ok
+test_protected_verifier (__main__.Controls.test_protected_verifier) ... ok
+test_application_binding (__main__.Controls.test_application_binding) ... ok
+test_cleanup_outcome (__main__.Controls.test_cleanup_outcome) ... ok
+test_invalid_selection (__main__.Controls.test_invalid_selection) ... ok
+test_journal_order_bound (__main__.Controls.test_journal_order_bound) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 25.963s
+
+OK
