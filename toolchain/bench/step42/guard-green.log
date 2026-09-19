@@ -1,0 +1,4 @@
+timeout: guard exit 137 (want 137); child 35411 gone; grandchild 35413 gone; stderr 'guard: killed 35411 (rss 1 MB, 2 s)': ok
+term: guard exit 143 (want 143); child 35471 gone; grandchild 35473 gone; stderr '': ok
+int: guard exit 130 (want 130); child 35496 gone; grandchild 35498 gone; stderr '': ok
+guard_test: all held
