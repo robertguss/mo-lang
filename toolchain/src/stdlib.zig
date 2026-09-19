@@ -1152,6 +1152,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
         .fs_kind_of => {
             if (all.contains(full)) return vm.variant("Ok", &.{try entryOf(vm, path, .file, 1, false)});
             const under = if (std.mem.eql(u8, full, "/")) "/" else try std.fmt.allocPrint(gpa, "{s}/", .{full});
+            defer if (!std.mem.eql(u8, full, "/")) gpa.free(under);
             const folder = std.mem.eql(u8, full, "/") or for (all.keys()) |key| {
                 if (std.mem.startsWith(u8, key, under)) break true;
             } else false;

@@ -147,16 +147,20 @@ fn syncFd(fd: posix.fd_t) bool {
 /// The replace, on this thread (design: mo-capabilities-for-the-harness, section 2): the text is
 /// written to a new name in the same folder, unpredictable and created exclusively with mode 0600,
 /// synced, renamed over `name`, and the folder synced, so a reader sees the old file or the new
-/// one, never a part. Any failure removes the temporary name and leaves `name` as it was.
+/// one, never a part. Any failure before the rename removes the temporary name and leaves `name` as
+/// it was. A folder sync that fails after the rename is false too: the new text is in place, but the
+/// swap is not known to be on disk, as a `write` whose sync fails is not.
 pub fn replaceNow(io: std.Io, dir: posix.fd_t, name: [:0]const u8, text: []const u8) bool {
     const sys = posix.system;
-    var buf: [std.fs.max_name_bytes + 1]u8 = undefined;
+    // The temporary name is its own fixed length, not built from `name`, so every name a folder
+    // can hold can be replaced.
+    var buf: [64]u8 = undefined;
     var fd: posix.fd_t = -1;
     var temp: [:0]const u8 = undefined;
     for (0..8) |_| {
         var nonce: [12]u8 = undefined;
         io.randomSecure(&nonce) catch io.random(&nonce);
-        temp = std.fmt.bufPrintZ(&buf, ".{s}.mo-{x}", .{ name, nonce }) catch return false;
+        temp = std.fmt.bufPrintZ(&buf, ".mo-replace-{x}", .{nonce}) catch return false;
         const flags: posix.O = .{ .ACCMODE = .WRONLY, .CREAT = true, .EXCL = true, .NOFOLLOW = true, .CLOEXEC = true };
         const rc = sys.openat(dir, temp.ptr, flags, @as(posix.mode_t, 0o600));
         switch (posix.errno(rc)) {
@@ -233,8 +237,14 @@ test "a write on the pool is on disk when it answers, and a replace leaves no te
     const swapped = try std.Io.Dir.cwd().readFileAlloc(io, a, std.testing.allocator, .limited(1 << 10));
     defer std.testing.allocator.free(swapped);
     try std.testing.expectEqualStrings("whole\n", swapped);
-    // A name no temporary file can be made beside: nothing is left behind.
-    try std.testing.expect(!replaceNow(io, dir, "x" ** 250, "no"));
+    // The longest name a folder holds is replaced too: the temporary name is not built from it.
+    const long = "x" ** 255;
+    try std.testing.expect(replaceNow(io, dir, long, "long\n"));
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(sys.unlinkat(dir, long, 0)));
+    // A rename that fails (a folder is at the name): the folder stays and nothing is left behind.
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(sys.mkdirat(dir, "sub", 0o777)));
+    try std.testing.expect(!replaceNow(io, dir, "sub", "no"));
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(sys.unlinkat(dir, "sub", posix.AT.REMOVEDIR)));
     var opened = try std.Io.Dir.cwd().openDir(io, folder, .{ .iterate = true });
     defer opened.close(io);
     var it = opened.iterate();

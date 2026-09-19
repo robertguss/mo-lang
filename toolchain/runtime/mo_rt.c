@@ -3398,14 +3398,15 @@ static bool file_at(const Scope *scope, const char *path, size_t n, Place *at) {
 enum { OPEN_READ, OPEN_WRITE, OPEN_APPEND };
 
 /* A regular file inside the scope, opened (server.zig, openScoped): O_NOFOLLOW refuses a link at
- * the last name, O_NONBLOCK keeps a FIFO from blocking the open, and the descriptor must then be a
- * regular file, so a FIFO or a device is refused before a byte moves. -1 for anything else. */
+ * the last name, O_NONBLOCK keeps a FIFO from blocking the open and O_NOCTTY a terminal from becoming
+ * ours, and the descriptor must then be a regular file, so a FIFO or a device is refused before a
+ * byte moves. -1 for anything else. */
 static int open_scoped(const Scope *scope, const char *path, size_t n, int how) {
     Place at;
     if (!scope_place(scope, path, n, &at)) return -1;
     int fd = -1;
     if (at.name[0]) {
-        int flags = O_NONBLOCK | O_CLOEXEC | (at.follow ? 0 : O_NOFOLLOW) | (how == OPEN_READ ? O_RDONLY : O_WRONLY | O_CREAT) | (how == OPEN_APPEND ? O_APPEND : 0);
+        int flags = O_NONBLOCK | O_NOCTTY | O_CLOEXEC | (at.follow ? 0 : O_NOFOLLOW) | (how == OPEN_READ ? O_RDONLY : O_WRONLY | O_CREAT) | (how == OPEN_APPEND ? O_APPEND : 0);
         fd = openat(at.dir, at.name, flags, 0666);
         struct stat st;
         if (fd >= 0 && (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || (how == OPEN_WRITE && ftruncate(fd, 0) != 0))) {
@@ -8425,17 +8426,20 @@ static bool write_now(int fd, const char *bytes, size_t len) { return write_all(
 
 /* The replace, on this thread (blocking.zig, replaceNow): the text is written to a new name in the
  * same folder, unpredictable and created exclusively with mode 0600, synced, renamed over `name`, and
- * the folder synced, so a reader sees the old file or the new one, never a part. Any failure removes
- * the temporary name and leaves `name` as it was. */
+ * the folder synced, so a reader sees the old file or the new one, never a part. Any failure before
+ * the rename removes the temporary name and leaves `name` as it was; a folder sync that fails after it
+ * is false too, as a write whose sync fails is. */
 static bool replace_now(int dir, const char *name, const char *bytes, size_t len) {
-    char temp[NAME_MAX + 1];
+    /* The temporary name is its own fixed length, not built from `name`, so every name a folder can
+     * hold can be replaced (blocking.zig, replaceNow). */
+    char temp[64];
     int fd = -1;
     for (int k = 0; k < 8 && fd < 0; k++) {
         uint8_t nonce[12];
         if (mo_crypto_random(nonce, sizeof nonce) != MO_CRYPTO_OK) return false;
         char hex[2 * sizeof nonce + 1];
         for (size_t i = 0; i < sizeof nonce; i++) snprintf(hex + 2 * i, 3, "%02x", nonce[i]);
-        int n = snprintf(temp, sizeof temp, ".%s.mo-%s", name, hex);
+        int n = snprintf(temp, sizeof temp, ".mo-replace-%s", hex);
         if (n < 0 || (size_t)n >= sizeof temp) return false;
         fd = openat(dir, temp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
         if (fd < 0 && errno != EEXIST && errno != EINTR) return false;

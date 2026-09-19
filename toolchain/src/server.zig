@@ -561,13 +561,14 @@ pub const Server = struct {
 
     /// A regular file inside the scope, opened: for reading, or for writing (created when it is
     /// not there; emptied for `write`). `O_NOFOLLOW` refuses a link at the last name; `O_NONBLOCK`
-    /// keeps a FIFO from blocking the open, and the descriptor is then checked to be a regular file,
-    /// so a FIFO or a device is refused before a byte moves. Null for anything else.
+    /// keeps a FIFO from blocking the open and `O_NOCTTY` a terminal from becoming ours, and the
+    /// descriptor is then checked to be a regular file, so a FIFO or a device is refused before a
+    /// byte moves. Null for anything else.
     fn openScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8, how: Opening) Error!?posix.fd_t {
         const at = try s.place(gpa, scope, path) orelse return null;
         defer at.close();
         if (at.name.len == 0) return null;
-        var flags: posix.O = .{ .ACCMODE = if (how == .read) .RDONLY else .WRONLY, .NONBLOCK = true, .CLOEXEC = true, .NOFOLLOW = !at.follow };
+        var flags: posix.O = .{ .ACCMODE = if (how == .read) .RDONLY else .WRONLY, .NONBLOCK = true, .NOCTTY = true, .CLOEXEC = true, .NOFOLLOW = !at.follow };
         if (how != .read) flags.CREAT = true;
         if (how == .append) flags.APPEND = true;
         const rc = sys.openat(at.dir, at.name.ptr, flags, @as(posix.mode_t, 0o666));
@@ -586,16 +587,20 @@ pub const Server = struct {
         defer scratch.deinit();
         const fd = try s.openScoped(scratch.allocator(), scope, path, .read) orelse return null;
         defer _ = sys.close(fd);
+        // Sized from the descriptor, as readFileAlloc sized it from the path, and handed back at its
+        // length: the text lives as long as the program holds it, so no spare capacity goes with it.
         var text: std.ArrayList(u8) = .empty;
-        errdefer text.deinit(s.gpa);
+        defer text.deinit(s.gpa);
+        const hint: u64 = if ((Io.File{ .handle = fd, .flags = .{ .nonblocking = false } }).stat(s.io)) |st| st.size else |_| 0;
+        try text.ensureTotalCapacity(s.gpa, @min(hint, read_limit) + 1);
         while (true) {
-            try text.ensureUnusedCapacity(s.gpa, 1 << 16);
+            if (text.unusedCapacitySlice().len == 0) try text.ensureUnusedCapacity(s.gpa, 1 << 16);
             const n = readSome(fd, text.unusedCapacitySlice()) orelse return null;
             if (n == 0) break;
             text.items.len += n;
             if (text.items.len > read_limit) return null;
         }
-        return text.items;
+        return try text.toOwnedSlice(s.gpa);
     }
 
     const Listed = struct { name: []const u8, kind: stdlib.EntryKind = .file, links: u64 = 1, setuid: bool = false };
