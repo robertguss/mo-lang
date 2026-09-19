@@ -102,20 +102,33 @@ class Validation(unittest.TestCase):
                 self.assertEqual(result.returncode,2)
                 self.assertFalse(output.exists())
 
-    def test_conflicting_local_manifest_refused_before_transport(self):
-        with patch.object(self.ws,'require',side_effect=TimeoutError):
+    def lost_reserve(self, ws):
+        with patch.object(ws, 'require', side_effect=TimeoutError):
             with self.assertRaises(TimeoutError):
-                self.ws._prepare_command('true')
-        row = self.ws.ownership['executions'][0]
+                ws._prepare_command('true')
+        ws.__del__()
+        return ws.ownership['executions'][0]
+
+    def test_conflicting_local_manifest_refused_before_transport(self):
+        # Control: the same unmodified record reaches the machine and is confirmed.
+        own = Workspace(uuid.uuid4().hex, Path(self.temp.name) / 'control')
+        row = self.lost_reserve(own)
+        confirmed = {'run_id': own.run_id, 'workspace_id': own.workspace_id, 'cleanup': 'confirmed',
+                     'execution': 'unknown', 'completed': ['terminal_barrier', row['execution_id'], 'workspace_deleted'],
+                     'unresolved': []}
+        with patch('adapter.machine_call', return_value=json.dumps(confirmed).encode()) as transport:
+            self.assertEqual(self.r.recover(own.directory / 'ownership.json')['cleanup'], 'confirmed')
+            transport.assert_called_once()
+        row = self.lost_reserve(self.ws)
         path = self.ws.directory / row['directory'] / 'manifest.json'
         manifest = json.loads(path.read_text())
         manifest['run_id'] = uuid.uuid4().hex
         path.write_text(json.dumps(manifest))
-        self.ws.__del__()
-        with patch('adapter.remote') as transport:
+        with patch('adapter.machine_call') as transport:
             result = self.r.recover(self.path)
-            self.assertEqual(result['cleanup'],'unresolved')
+            self.assertEqual((result['cleanup'], result['error']), ('unresolved', 'recovery_unknown'))
             transport.assert_not_called()
+        self.assertFalse((self.ws.directory / 'recovery-requested').exists())
 
 
 class Machine(unittest.TestCase):
@@ -156,34 +169,71 @@ class Machine(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'recovery_closed'):
             self.c.bootstrap_barrier({'workspace': {'workspace_id': self.ws.workspace_id}})
 
-    def test_foreign_state_retained(self):
-        root = self.c.root_for(self.ws.workspace_id)
+    def owned(self):
+        """A second receipt with its own machine root, for a same-shape control."""
+        return Workspace(uuid.uuid4().hex, self.directory / ('host-' + uuid.uuid4().hex)).ownership
+
+    def ready(self, receipt, **changes):
+        root = self.c.root_for(receipt['workspace_id'])
         root.mkdir()
-        state = {'run_id': uuid.uuid4().hex, 'workspace_id': self.ws.workspace_id, 'phase': 'ready', 'active': None}
+        state = {'run_id': receipt['run_id'], 'workspace_id': receipt['workspace_id'],
+                 'phase': 'ready', 'active': None, **changes}
         self.c.state_write(root, state)
+        return root, state
+
+    def execution(self, receipt, dispatched):
+        eid = uuid.uuid4().hex
+        receipt['executions'].append({'execution_id': eid, 'call_id': uuid.uuid4().hex,
+            'directory': 'execution-' + eid, 'readonly': False, 'dispatch_requested': dispatched})
+        return eid
+
+    def absent_runtime(self):
+        from types import SimpleNamespace
+        return patch.object(self.m.remote, 'command', return_value=SimpleNamespace(stdout=b'', returncode=0))
+
+    def test_foreign_state_retained(self):
+        # Control: the same state, owned by the receipt, is read and cleaned.
+        own = self.owned()
+        root, _ = self.ready(own)
+        self.assertEqual(self.m.recover(own, 2)['cleanup'], 'confirmed')
+        self.assertFalse(root.exists())
+        root, state = self.ready(self.receipt, run_id=uuid.uuid4().hex)
         result = self.m.recover(self.receipt, 2)
-        self.assertEqual(result['cleanup'], 'unresolved')
+        self.assertEqual((result['cleanup'], result['completed']), ('unresolved', []))
         self.assertEqual(self.c.state_read(root), state)
         self.assertFalse(self.c.terminal_path(self.ws.workspace_id).exists())
 
     def test_missing_root_is_not_runtime_absence(self):
-        self.receipt['executions'].append({'execution_id': uuid.uuid4().hex, 'call_id': uuid.uuid4().hex,
-            'directory': '', 'readonly': False, 'dispatch_requested': False})
-        self.receipt['executions'][0]['directory'] = 'execution-' + self.receipt['executions'][0]['execution_id']
-        with patch.object(self.m.remote, 'command', side_effect=RuntimeError('transport')):
+        # Control: a missing execution root plus an empty runtime query is absence.
+        own = self.owned()
+        eid = self.execution(own, dispatched=False)
+        with self.absent_runtime():
+            self.assertEqual(self.m.recover(own, 2)['completed'], ['terminal_barrier', eid, 'workspace_deleted'])
+        eid = self.execution(self.receipt, dispatched=False)
+        with patch.object(self.m.remote, 'command', side_effect=RuntimeError('transport')) as command:
             result = self.m.recover(self.receipt, 2)
-        self.assertEqual(result['cleanup'], 'unresolved')
-        self.assertEqual(len(result['unresolved']), 1)
+        self.assertEqual((result['cleanup'], result['completed'], result['unresolved']),
+                         ('unresolved', ['terminal_barrier'], [eid]))
+        self.assertIn('name=^/mo-executor-' + eid + '$', command.call_args.args[0])
 
     def test_dispatched_missing_storage_requires_proof(self):
-        from types import SimpleNamespace
-        eid = uuid.uuid4().hex
-        self.receipt['executions'].append({'execution_id': eid, 'call_id': uuid.uuid4().hex,
-            'directory': 'execution-' + eid, 'readonly': False, 'dispatch_requested': True})
-        with patch.object(self.m.remote, 'command', return_value=SimpleNamespace(stdout=b'', returncode=0)):
+        proof = {'host_confirmed': True, 'host_cgroup_absent': True, 'services_absent': True, 'host_cgroup': None}
+        # Control: the same dispatched execution with its retained cleanup proof.
+        own = self.owned()
+        eid = self.execution(own, dispatched=True)
+        self.ready(own, completed_executions={eid: proof})
+        with self.absent_runtime():
+            self.assertEqual(self.m.recover(own, 2)['completed'], ['terminal_barrier', eid, 'workspace_deleted'])
+        eid = self.execution(self.receipt, dispatched=True)
+        root, _ = self.ready(self.receipt)
+        with self.absent_runtime() as command:
             result = self.m.recover(self.receipt, 2)
-        self.assertEqual(result['cleanup'], 'unresolved')
-        self.assertEqual(result['execution'], 'unknown')
+        self.assertEqual((result['cleanup'], result['execution'], result['completed'], result['unresolved']),
+                         ('unresolved', 'unknown', ['terminal_barrier'], [eid]))
+        self.assertEqual(command.call_count, 2)  # absence was proved; only the proof is missing
+        terminal = json.loads(self.c.terminal_path(self.ws.workspace_id).read_text())
+        self.assertEqual((terminal['phase'], terminal['executions']), ('cleaning', {}))
+        self.assertEqual(self.c.state_read(root)['phase'], 'quarantined')
 
     def test_interrupted_dispose_reuses_retained_proof(self):
         import remote
