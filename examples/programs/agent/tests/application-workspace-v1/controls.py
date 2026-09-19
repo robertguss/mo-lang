@@ -15,6 +15,8 @@ PY_CONTROLS = {'guard': 'guard_control.py', 'evidence': 'evidence_control.py'}
 def materialized(tmp, name):
     root = Path(tmp)
     (root / 'mo.root').write_text('')
+    # The aggregate sidecar keeps the copied sources' verified lines checkable.
+    shutil.copy2(AGENT.parent / '.mo.ids', root / '.mo.ids')
     shutil.copytree(AGENT, root / 'agent', ignore=shutil.ignore_patterns('tests', 'data', 'measure', '*.expected'))
     target = root / 'agent/tests/red' / (name + '.mo')
     target.parent.mkdir(parents=True)
