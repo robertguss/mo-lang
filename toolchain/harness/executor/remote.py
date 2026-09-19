@@ -17,6 +17,28 @@ CAP = 64 * 1024
 POLICY = 'mo-executor-r01-v1'
 WORKSPACE_POLICY = 'mo-executor-workspace-v1'
 APPLICATION_POLICY = 'application-build-v1'
+NAME = re.compile(r'mo-executor-[0-9a-f]{32}')
+# The deadline reaper retries an unconfirmed cleanup this many times, within this
+# many seconds, before it reports cleanup unconfirmed and leaves the evidence.
+REAP_ATTEMPTS = 3
+REAP_SECONDS = 7
+
+
+class Invalid(ValueError):
+    """Caller input refused by policy; other ValueErrors are programming errors."""
+
+
+class CleanupUnconfirmed(RuntimeError):
+    def __init__(self, message, containment_failed):
+        super().__init__(message)
+        self.containment_failed = containment_failed
+
+
+def run_name(name):
+    """Machine-side check before a name reaches docker or a systemd unit line."""
+    if not isinstance(name, str) or not NAME.fullmatch(name):
+        raise Invalid('invalid run name')
+    return name
 
 
 def selection(policy=WORKSPACE_POLICY, image=IMAGE, toolchain=None):
@@ -26,7 +48,7 @@ def selection(policy=WORKSPACE_POLICY, image=IMAGE, toolchain=None):
     if (policy != APPLICATION_POLICY or not isinstance(image, str) or
             not re.fullmatch(r'sha256:[0-9a-f]{64}', image) or image == IMAGE or
             not isinstance(toolchain, str) or not re.fullmatch(r'[0-9a-f]{64}', toolchain)):
-        raise ValueError('invalid policy/image/toolchain selection')
+        raise Invalid('invalid policy/image/toolchain selection')
     return {'policy': policy, 'image': image, 'toolchain': toolchain}
 
 
@@ -50,11 +72,11 @@ def manifest_policy(manifest):
     selected = workspace_selection(manifest.get('workspace'))
     expected = selected or {'policy': WORKSPACE_POLICY if manifest.get('workspace') else POLICY, 'image': IMAGE}
     if any(manifest.get(k) != v for k, v in expected.items()):
-        raise ValueError('manifest policy differs from registered workspace')
+        raise Invalid('manifest policy differs from registered workspace')
     maximum = 120 if selected else 10
     seconds = manifest['seconds']
     if type(seconds) not in (int, float) or not .5 <= seconds <= maximum:
-        raise ValueError('deadline outside registered policy')
+        raise Invalid('deadline outside registered policy')
     return selected
 
 
@@ -66,9 +88,18 @@ def command(args, timeout=3, check=True):
 
 
 def write(path, data):
+    """Durable replace: the bytes, then the directory entry, reach disk."""
     temp = path.with_suffix('.new')
-    temp.write_text(json.dumps(data, sort_keys=True))
+    with temp.open('w') as stream:
+        stream.write(json.dumps(data, sort_keys=True))
+        stream.flush()
+        os.fsync(stream.fileno())
     temp.replace(path)
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
 
 
 def inspect(name):
@@ -132,12 +163,35 @@ def cgroup_path(container_id, application=False):
 
 
 def cleanup(name, deadline=None):
+    """Remove the container. A slow or failing daemon is an unconfirmed result, not an exception."""
     deadline = deadline or time.monotonic() + 3
-    removal = command(['docker', 'rm', '-f', name], check=False, timeout=max(.01, min(2, deadline - time.monotonic())))
-    # A successful daemon query, not an inspect failure, proves absence.
-    listing = command(['docker', 'ps', '-aq', '--filter', 'name=^/' + name + '$'],
-                      timeout=max(.01, deadline - time.monotonic()))
-    return {'removed_rc': removal.returncode, 'absent': not listing.stdout.strip()}
+    result = {'removed_rc': None, 'absent': False}
+    try:
+        removal = command(['docker', 'rm', '-f', name], check=False, timeout=max(.01, min(2, deadline - time.monotonic())))
+        result['removed_rc'] = removal.returncode
+        # A successful daemon query, not an inspect failure, proves absence.
+        listing = command(['docker', 'ps', '-aq', '--filter', 'name=^/' + name + '$'],
+                          timeout=max(.01, deadline - time.monotonic()))
+        result['absent'] = not listing.stdout.strip()
+    except (subprocess.SubprocessError, RuntimeError, OSError) as exc:
+        result['error'] = repr(exc)
+    return result
+
+
+def escaped(group):
+    """Proven containment failure: the candidate's cgroup still holds processes.
+
+    True only on positive proof. A missing cgroup is not an escape; an unreadable
+    one is unknown (None), which never justifies a power-off."""
+    if not group:
+        return None
+    try:
+        events = Path(group, 'cgroup.events').read_text()
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return None
+    return 'populated 1' in events.splitlines()
 
 
 @contextmanager
@@ -161,7 +215,7 @@ def registration_lock(deadline=None):
 def finalize(root, *, locked=False):
     """Leave the independent reaper armed until writers and candidate are gone."""
     with (nullcontext() if locked else registration_lock()):
-        name = root.name
+        name = run_name(root.name)
         command(['systemctl', 'stop', name + '.service'], check=False)
         active = command(['systemctl', 'list-units', '--all', '--no-legend',
                           '--state=activating,active,reloading,deactivating', name + '.service'])
@@ -175,7 +229,8 @@ def finalize(root, *, locked=False):
         group = cgroup_path(cid, bool(workspace_selection(manifest.get('workspace')))) if cid else None
         removed = cleanup(name)
         if not removed['absent'] or (group and Path(group).exists()):
-            raise RuntimeError('candidate cleanup unconfirmed; deadline reaper remains armed')
+            raise CleanupUnconfirmed('candidate cleanup unconfirmed; deadline reaper remains armed',
+                                     escaped(group) is True)
         result = {'host_confirmed': True, 'host_cgroup': group,
                   'host_cgroup_absent': bool(group and not Path(group).exists()),
                   'ordering': ['supervisor_stopped', 'container_absent', 'cgroup_absent']}
@@ -199,9 +254,17 @@ def finalize(root, *, locked=False):
         return result
 
 
+def finalize_report(root):
+    """finalize() for the host: an unconfirmed cleanup is data, with its containment proof."""
+    try:
+        return finalize(root)
+    except CleanupUnconfirmed as exc:
+        return {'host_confirmed': False, 'containment_failed': exc.containment_failed, 'error': str(exc)}
+
+
 def dispose(root, *, locked=False):
     with (nullcontext() if locked else registration_lock()):
-        name = root.name
+        name = run_name(root.name)
         containers = command(['docker', 'ps', '-aq', '--filter', 'name=^/' + name + '$'])
         units = command(['systemctl', 'list-units', '--all', '--no-legend', name + '*'])
         if containers.stdout.strip() or units.stdout.strip():
@@ -216,25 +279,49 @@ def dispose(root, *, locked=False):
 
 
 def reap(root):
-    m = json.loads((root / 'manifest.json').read_text())
-    deadline = time.monotonic() + 3
+    """Deadline reaper. Only a proven containment failure powers the machine off.
+
+    An unconfirmed cleanup (slow daemon, timeout, unknown error) is retried up to
+    REAP_ATTEMPTS times within REAP_SECONDS, then recorded in reaped.json with the
+    run directory left in place as evidence; the deadline timer stays loaded."""
+    name = run_name(json.loads((root / 'manifest.json').read_text())['name'])
+    end = time.monotonic() + REAP_SECONDS
+    record = {'absent': False, 'containment': 'cleanup_unconfirmed', 'attempts': []}
+    group = None
+    for attempt in range(REAP_ATTEMPTS):
+        if attempt:
+            if time.monotonic() >= end - .5: break
+            time.sleep(.5)
+        try:
+            command(['systemctl', 'kill', '--kill-whom=main', '--signal=SIGKILL',
+                     name + '.service'], check=False, timeout=.5)
+        except (subprocess.SubprocessError, OSError):
+            pass
+        try:
+            result = cleanup(name, min(end, time.monotonic() + 3))
+            registration = root / 'registration.json'
+            if registration.exists():
+                group = json.loads(registration.read_text())['cgroup']
+                result['cgroup'] = group
+                result['cgroup_absent'] = not Path(group).exists()
+                result['absent'] = result['absent'] and result['cgroup_absent']
+        except Exception as exc:
+            result = {'absent': False, 'error': repr(exc)}
+        record['attempts'].append(result)
+        if result['absent']: break
+    if record['attempts'][-1]['absent']:
+        record.update(record['attempts'][-1], containment='confirmed', absent=True)
+        write(root / 'reaped.json', record)
+        command(['systemctl', 'stop', name + '-deadline.timer'], check=False)
+        return
+    if escaped(group) is True:
+        record['containment'] = 'failed'
     try:
-        command(['systemctl', 'kill', '--kill-whom=main', '--signal=SIGKILL',
-                 m['name'] + '.service'], check=False, timeout=.5)
-        result = cleanup(m['name'], deadline)
-        registration = root / 'registration.json'
-        if registration.exists():
-            group = json.loads(registration.read_text())['cgroup']
-            result['cgroup'] = group
-            result['cgroup_absent'] = not Path(group).exists()
-            result['absent'] = result['absent'] and result['cgroup_absent']
-        if not result['absent']: raise RuntimeError('deadline cleanup not confirmed')
-        write(root / 'reaped.json', result)
-        command(['systemctl', 'stop', m['name'] + '-deadline.timer'], check=False)
-    except Exception as exc:
-        write(root / 'reaped.json', {'absent': False, 'error': repr(exc)})
-        # This runs inside the dedicated machine, never on macOS or another VM.
-        command(['systemctl', 'poweroff'], check=False)
+        write(root / 'reaped.json', record)
+    finally:
+        if record['containment'] == 'failed':
+            # This runs inside the dedicated machine, never on macOS or another VM.
+            command(['systemctl', 'poweroff'], check=False)
 
 
 def counters(pid):
@@ -256,7 +343,7 @@ def counters(pid):
 def supervise(root):
     m = json.loads((root / 'manifest.json').read_text())
     script = base64.b64decode(m['script']).decode('utf-8')
-    name = m['name']
+    name = run_name(m['name'])
     r = {'run_id': m['run_id'], 'name': name, 'candidate_sha256': hashlib.sha256(script.encode()).hexdigest(),
          'image': m['image'], 'policy': m['policy'], 'status': 'infrastructure_failure',
          'exit_code': None, 'signal': None, 'timed_out': False, 'cancelled': False,

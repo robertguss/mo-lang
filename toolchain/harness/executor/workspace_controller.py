@@ -12,7 +12,7 @@ import shutil
 import signal
 import time
 
-from remote import command, write, selection, manifest_policy, registration_lock
+from remote import Invalid, command, write, selection, manifest_policy, registration_lock
 import workspace_files as files
 
 BASE = Path('/var/lib/mo-harness')
@@ -88,8 +88,18 @@ def data_fd(path):
         os.close(fd)
 
 
+class CorruptState(Exception):
+    """state.json cannot be decoded: the workspace is quarantined, never refused."""
+
+
 def state_read(root):
-    return json.loads((root / 'state.json').read_text())
+    try:
+        state = json.loads((root / 'state.json').read_bytes())
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CorruptState(repr(exc)) from None
+    if not isinstance(state, dict):
+        raise CorruptState('state is not an object')
+    return state
 
 
 def state_write(root, state):
@@ -317,7 +327,10 @@ def handle(request):
             response.update(state='refusal', error='result_too_large', truncated=True)
     except TimeoutError:
         response.update(state='timeout', execution='unknown', error='deadline')
-    except (files.Refusal, OSError, ValueError, KeyError, TypeError) as exc:
+    except CorruptState:
+        response.update(state='failure', execution='unknown', error='quarantined')
+    except (files.Refusal, Invalid, OSError) as exc:
+        # Other ValueError, KeyError and TypeError are programming errors below.
         code = str(exc) if isinstance(exc, files.Refusal) else 'filesystem_refusal'
         response.update(state='refusal', execution='completed', error=code)
     except Exception:
@@ -329,11 +342,17 @@ def handle(request):
     if root.exists() and response['execution'] == 'unknown':
         # Never reuse a state that may have been partly mutated on timeout.
         with lock(root, time.time() + 2):
-            state = state_read(root)
-            state['phase'] = 'quarantined'
-            state_write(root, state)
+            try:
+                state = state_read(root)
+            except CorruptState:
+                state = None  # Unreadable state is already quarantine; keep its bytes.
+            else:
+                state['phase'] = 'quarantined'
+                state_write(root, state)
     if root.exists():
         with lock(root, time.time() + 2):
+            # A refusal before claim() still records its outcome.
+            (root / 'calls').mkdir(mode=0o700, exist_ok=True)
             result = root / 'calls' / (request['call_id'] + '.result')
             # Duplicate requests cannot replace the authoritative first outcome.
             try:

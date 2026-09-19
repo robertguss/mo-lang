@@ -190,22 +190,13 @@ def recover(receipt_path, *, seconds=60):
             receipt = read_receipt(receipt_path)
             validate_supporting(receipt)
             Path(receipt['directory'], 'recovery-requested').touch()
-            source_dir = Path(__file__).resolve().parents[1]
-            sources = {name: (source_dir / (name + '.py')).read_text()
-                       for name in ('remote', 'workspace_files', 'workspace_controller')}
+            import adapter
+            sources = adapter.sources('remote', 'workspace_files', 'workspace_controller')
             sources['recovery'] = Path(__file__).read_text()
             sources['recovery_machine'] = Path(__file__).with_name('machine.py').read_text()
-            bootstrap = """import json,sys,types
-p=json.load(sys.stdin)
-for name,source in p['sources'].items():
- m=types.ModuleType(name);sys.modules[name]=m;exec(compile(source,name+'.py','exec'),m.__dict__)
-print(json.dumps(sys.modules['recovery_machine'].recover(p['receipt'],p['seconds'])))
-"""
-            import adapter
             remaining = max(.01, deadline - time.monotonic())
-            raw = adapter.remote(['python3', '-c', bootstrap],
-                                 data=json.dumps({'sources': sources, 'receipt': receipt, 'seconds': remaining}).encode(),
-                                 timeout=remaining)
+            raw = adapter.machine_call(sources, "sys.modules['recovery_machine'].recover(p['receipt'],p['seconds'])",
+                                       {'receipt': receipt, 'seconds': remaining}, remaining)
             response = validate_response(raw, receipt)
             result.update(response)
     except Exception as exc:

@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-from adapter import py, remote
+from adapter import machine_call, py, sources
 from workspace import Workspace
 from recovery import recover, persist
 
@@ -166,7 +166,7 @@ def main(output, selected):
                 persist(partial)
                 if suffix == 'partial-root':
                     def partial_bootstrap(source,*args,**kwargs):
-                        source=source.replace(" (root/'remote.py').write_text(p['source'])", " raise RuntimeError('test after root mkdir')\n (root/'remote.py').write_text(p['source'])")
+                        source=source.replace(" root.mkdir(mode=0o700)\n", " root.mkdir(mode=0o700)\n raise RuntimeError('test after root mkdir')\n")
                         return original(source,*args,**kwargs)
                     with patch.object(adapter,'py',side_effect=partial_bootstrap):
                         try: partial_run.start()
@@ -340,14 +340,8 @@ def main(output, selected):
 
 
 def send_request(request):
-    sources = {name:(HERE.parent / (name+'.py')).read_text() for name in ('remote','workspace_files','workspace_controller')}
-    source = """import json,sys,types
-p=json.load(sys.stdin)
-for name,source in p['sources'].items():
- m=types.ModuleType(name);sys.modules[name]=m;exec(compile(source,name+'.py','exec'),m.__dict__)
-print(json.dumps(sys.modules['workspace_controller'].handle(p['request'])))
-"""
-    return json.loads(remote(['python3','-c',source], data=json.dumps({'sources':sources,'request':request}).encode(), timeout=20))
+    return json.loads(machine_call(sources('remote','workspace_files','workspace_controller'),
+                                   "sys.modules['workspace_controller'].handle(p['request'])", {'request':request}, 20))
 
 
 if __name__ == '__main__':

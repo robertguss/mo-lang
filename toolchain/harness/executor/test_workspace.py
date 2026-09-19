@@ -117,6 +117,46 @@ class Controller(unittest.TestCase):
         self.assertEqual(self.c.handle(self.request('freeze'))['error'], 'cleanup_required')
         self.assertEqual(self.c.handle(self.request('delete'))['error'], 'cleanup_required')
 
+    def test_refusal_before_claim_on_fresh_workspace_is_structured(self):
+        # First call to a fresh workspace: no calls/ directory exists yet.
+        request = self.request('list_files', run_id=uuid.uuid4().hex)
+        result = self.c.handle(request)
+        self.assertEqual((result['state'], result['execution'], result['error']),
+                         ('refusal', 'completed', 'foreign_run'))
+        recorded = json.loads((self.admin / 'calls' / (request['call_id'] + '.result')).read_text())
+        self.assertEqual(recorded['error'], 'foreign_run')
+
+    def test_truncated_or_undecodable_state_is_quarantine_not_refusal(self):
+        for raw in (b'{"run_id": "', b'\xff\xfe', b'[]'):
+            with self.subTest(raw=raw):
+                (self.admin / 'state.json').write_bytes(raw)
+                result = self.c.handle(self.request('list_files'))
+                self.assertEqual((result['state'], result['execution'], result['error']),
+                                 ('failure', 'unknown', 'quarantined'))
+                # The unreadable state is retained as evidence, never rewritten.
+                self.assertEqual((self.admin / 'state.json').read_bytes(), raw)
+
+    def test_programming_errors_are_not_refusals(self):
+        for error in (ValueError('bug'), KeyError('bug'), TypeError('bug')):
+            with self.subTest(error=error), patch.object(self.c, 'dispatch', side_effect=error):
+                result = self.c.handle(self.request('list_files'))
+                self.assertEqual((result['state'], result['execution'], result['error']),
+                                 ('failure', 'unknown', 'controller_failure'))
+
+    def test_state_write_is_durable_before_rename(self):
+        import remote
+        events = []
+        real_replace = Path.replace
+        def replace(path, target):
+            events.append('replace')
+            return real_replace(path, target)
+        with patch.object(remote.os, 'fsync', side_effect=lambda fd: events.append('fsync')), \
+                patch.object(Path, 'replace', replace):
+            self.c.state_write(self.admin, {'run_id': self.run_id, 'workspace_id': self.workspace_id,
+                                            'phase': 'ready', 'active': None})
+        self.assertEqual(events[:2], ['fsync', 'replace'])
+        self.assertIn('fsync', events[2:], 'directory entry not synced after rename')
+
     def test_snapshot_copies_modes_and_closes_dispatch(self):
         (self.admin / 'storage/data/a').write_bytes(b'right')
         os.chmod(self.admin / 'storage/data/a', 0o711)
@@ -184,6 +224,14 @@ class Feedback(unittest.TestCase):
             w.active = previous
             self.assertEqual(w.command('true')['state'], 'refusal')
             self.assertIs(w.active, previous)
+
+    def test_command_surfaces_programming_errors(self):
+        from workspace import Workspace
+        with tempfile.TemporaryDirectory() as directory:
+            w = Workspace(uuid.uuid4().hex, Path(directory) / 'workspace')
+            with patch.object(w, 'start_command', side_effect=json.JSONDecodeError('garbled', '', 0)):
+                with self.assertRaises(json.JSONDecodeError):
+                    w.command('true')
 
     def test_exact_mount_policy(self):
         from remote import policy_errors
