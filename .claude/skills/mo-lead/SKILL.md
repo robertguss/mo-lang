@@ -70,8 +70,10 @@ audit rules; do not treat unavailable evidence as passed.
 
 1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A toolchain step's write scope always includes the corpus's `.mo.ids` sidecars and `toolchain/PRELUDE.md` when the corpus or the prelude changes (step 35, 17 Sep 2026). A step is one brief; a program has a spec page (the lead's) and a brief.
 2. **Fresh worker.** Read `herdr --skill` and verify `HERDR_ENV=1`. Discover
-   the calling workspace/pane; never reuse historical IDs. Split a fresh pane
-   to the right with explicit cwd and `--no-focus`; wait for its shell prompt.
+   the calling workspace/pane; never reuse historical IDs. Never split the lead's tab (Robert, 19 Sep 2026: stacked worker panes made
+   the lead unreadable, and he talks to the lead often). Put each worker in its
+   own tab: `herdr tab create --workspace <id> --cwd <worktree> --label
+   <worker name> --no-focus`, and use that tab's pane; wait for its shell prompt.
    Start a uniquely named agent with `herdr agent start <name> --kind claude
    --pane <id> -- --model opus --dangerously-skip-permissions` (Robert, 19 Sep
    2026, 7:33 AM ET: every worker runs with bypass permissions; the brief's
