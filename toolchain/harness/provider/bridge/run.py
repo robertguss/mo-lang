@@ -27,7 +27,7 @@ hashes = json.loads((root.parent / 'evidence/runtime-hashes.json').read_text())
 for file, digest in hashes.items():
     assert hashlib.sha256((cache / '.cache/runtime' / file).read_bytes()).hexdigest() == digest, file
 receipt = {'source': str(source), 'copy': str(cache), 'base': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(), 'selection': selection, 'runtime_files_verified': len(hashes), 'source_revision': json.loads((cache/'pin.json').read_text())['source_revision'], 'hashes': {f: hashlib.sha256((cache/f).read_bytes()).hexdigest() for f in ('turn.mjs','catalog.json','package-lock.json','upstream.patch')}, 'outer_command':['python3','toolchain/bench/step36/guard.py','600','--','python3','toolchain/harness/provider/bridge/run.py',name,selection], 'bridge_hashes': {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file()}}
-if selection == 'mo':
+if selection != 'foundation' and 'mo' in selected:
     main = pathlib.Path('/Users/robertguss/Projects/startups/mo-lang')
     accepted = 'e6f04ce6358c85f22a86f26be0b5b388495fcc6e'
     project = cache / 'bridge/mo-project'
@@ -43,8 +43,8 @@ if selection == 'mo':
 (out / 'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
 command = ['python3', str(repo/'toolchain/bench/step36/guard.py'), '580', '--', 'python3', str(cache/'run.py'), '550', 'python3', str(repo/'toolchain/bench/step36/guard.py'), '540', '--', 'node']
 command += ['test.mjs', str(out/'outbound.json')] if selection == 'foundation' else ['bridge/test.mjs', selection, str(out/'observations.json')]
-if selection == 'mo':
-    command = ['python3', str(repo/'toolchain/bench/step36/guard.py'), '580', '--', 'python3', str(cache/'bridge/execute.py'), 'bridge/test.mjs', 'mo', str(out/'observations.json')]
+if selection != 'foundation' and 'mo' in selected:
+    command = ['python3', str(repo/'toolchain/bench/step36/guard.py'), '580', '--', 'python3', str(cache/'bridge/execute.py'), 'bridge/test.mjs', selection, str(out/'observations.json')]
 receipt['command'] = command
 with (out/'output.log').open('wb') as log:
     p = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)

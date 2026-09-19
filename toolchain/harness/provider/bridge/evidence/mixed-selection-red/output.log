@@ -1,0 +1,24 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+ok 1 - final
+not ok 2 - mo
+cleanup fixture sockets=0; all bridge stop calls awaited
+node:internal/fs/promises:1345
+  return new FileHandle(await PromisePrototypeThen(
+                        ^
+
+Error: ENOENT: no such file or directory, open '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mixed-selection-red/bridge/release.json'
+    at async open (node:internal/fs/promises:1345:25)
+    at async Object.readFile (node:internal/fs/promises:1996:14)
+    at async moControl (file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mixed-selection-red/bridge/mo.mjs:9:28)
+    at async Object.mo (file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mixed-selection-red/bridge/test.mjs:114:59)
+    at async file:///Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mixed-selection-red/bridge/test.mjs:119:40 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-bridge-v1/toolchain/harness/provider/bridge/.cache/mixed-selection-red/bridge/release.json'
+}
+
+Node.js v24.20.0
+owned-command-exit=1
