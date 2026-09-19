@@ -24,7 +24,37 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 6:38 AM ET, workspace HTTP accepted; Mo application routing next.
+**Last updated:** 19 Sep 2026, 1:13 PM ET: a pause for a fresh lead session.
+
+**19 Sep, the day so far.** Robert made Fable (Claude Code) the lead at 7:18 AM
+ET, with Claude Opus workers, and asked for three things: review what Astra
+built overnight, fix what the review found, and write as much of the coding
+harness in Mo as possible "to really test Mo", leaving Python and JavaScript
+only what their roles need. He also decided Mo gains a child-process capability.
+
+The review (four Opus reviewers, sceptical by brief) found the overnight code
+sounder than its records suggested and the acceptance weaker: lead, workers and
+reviewers had been one model, and it had accepted five tests that cannot fail
+and two that assert a defect as intended. All ten components were kept and are
+being fixed. Accepted since, each after the lead's own runs: the application
+workspace rebuilt from scratch (the Mo agent routes all six tools to the
+workspace service); the executor's two serious defects; the Mo agent's tests
+made able to fail and its budget rule made one rule; the harness's live suites
+as tables; **a use-after-free in both Mo runtimes**, found by the rebuild and
+fixed (any Mo program answering a kept ask after a large update could receive
+freed memory); and step 40, which makes a narrowed `Fs` refuse links and adds an
+atomic write. The full suite stands at 249 of 249 on the Mac; Linux runs now
+happen on Robert's Linux VM, whose first use caught a Linux-only test bug.
+
+What is not true yet: the harness has never run whole. A worker is doing that
+now (the Mo agent, a scripted model, the real service and containers, then a
+scripted repair of Logstat), and another is building `Exec`. The Python has not
+shrunk (6,688, 6,326, then 6,643 counted lines); whether Mo needs less code for
+the same features is to be measured module by module as they move, not claimed.
+The plan is [[mo-harness-in-mo]]; the design of the new capabilities is
+[[mo-capabilities-for-the-harness]]; `HANDOFF.md` has the working state.
+
+**Before that, 6:38 AM ET (Astra's last update):** workspace HTTP accepted; Mo application routing next.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,

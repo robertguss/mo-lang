@@ -966,3 +966,6 @@
 
 ## [2026-09-19] accept | step 40, a scope that holds and Fs.replace
 - 1:08 PM ET: merged to main through lead/verify-step40. Four rows in decisions/decision-log.md; CHANGELOG entry; evidence in audit/evidence/2026-09-19/fable-lead-verification/. Linux checks now run on Robert's Linux VM. Briefs written: plans/mo-harness-end-to-end-v1.md (worker launched), plans/interpreter-step-41.md.
+
+## [2026-09-19] pause | handoff to a fresh lead session
+- 1:13 PM ET: HANDOFF.md has a START HERE section; state-of-the-project.md has the day's account. Two workers in flight (end to end with the Logstat repair; step 41 Exec) and the Linux full suite on the VM. Lint 26 notices of the inherited kinds.
