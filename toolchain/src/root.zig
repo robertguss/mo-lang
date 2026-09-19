@@ -51,6 +51,8 @@ pub const errors = @import("errors.zig");
 pub const fs_scope = @import("fs_scope.zig");
 /// Step 43: numbers from source, read exactly and held to their range.
 pub const number = @import("number.zig");
+/// Step 41's controls: `Exec`, a child process narrowed to fixed commands.
+pub const exec_controls = @import("exec_controls.zig");
 /// The crypto brick (step 35): both runtimes call its exports.
 pub const crypto_brick = @import("bricks/crypto.zig");
 /// The TLS brick (step 36): a TLS 1.3 server as an engine over bytes, driven by both runtimes.

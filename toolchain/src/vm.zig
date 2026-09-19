@@ -36,6 +36,7 @@ const http_mod = @import("http.zig");
 const surface_mod = @import("surface.zig");
 const sources = @import("sources.zig");
 const tls_rows = @import("tls_rows.zig");
+const exec_mod = @import("exec.zig");
 const prelude = @import("prelude.zig");
 const Region = @import("region.zig").Region;
 const region_stats = @import("region.zig");
@@ -1369,6 +1370,8 @@ pub const Vm = struct {
         /// A Runtime row (surface.zig, step 23).
         runtime_row,
         runtime_fixture,
+        /// An Exec, Program, or Command row (exec.zig, step 41).
+        exec_row,
         process,
         never_only,
         /// A design-v0/09 row stdlib.zig runs.
@@ -1412,6 +1415,9 @@ pub const Vm = struct {
         .{ "Runtime.sources", .runtime_row },       .{ "Runtime.memory", .runtime_row },          .{ "Runtime.slowest", .runtime_row },
         .{ "Runtime.send", .runtime_row },          .{ "Runtime.pause", .runtime_row },           .{ "Runtime.resume", .runtime_row },
         .{ "Runtime.read_only", .runtime_row },     .{ "Runtime.fixture", .runtime_fixture },
+        .{ "Platform.exec", .platform_part },       .{ "Exec.program", .exec_row },               .{ "Program.command", .exec_row },
+        .{ "Command.env", .exec_row },              .{ "Command.in_folder", .exec_row },          .{ "Command.output", .exec_row },
+        .{ "Command.run", .exec_row },              .{ "Exec.fixture", .exec_row },
     });
 
     /// Every prelude row has an implementation, or the toolchain does not build.
@@ -1443,7 +1449,7 @@ pub const Vm = struct {
         var table: [prelude.fns.len]bool = undefined;
         for (0..prelude.fns.len) |i| {
             table[i] = switch (prim_of[i]) {
-                .clock_now, .fs_read, .fs_narrow, .events_emit, .platform_part, .platform_exit, .env_get, .out_write, .net_row, .http_row, .tls_row, .runtime_row => true,
+                .clock_now, .fs_read, .fs_narrow, .events_emit, .platform_part, .platform_exit, .env_get, .out_write, .net_row, .http_row, .tls_row, .runtime_row, .exec_row => true,
                 .stdlib => std.mem.startsWith(u8, @tagName(stdlib.row_of[i]), "fs_") or std.mem.startsWith(u8, @tagName(stdlib.row_of[i]), "out_"),
                 else => false,
             };
@@ -1614,6 +1620,7 @@ pub const Vm = struct {
             .tls_fixture => .{ .cap = .{ .kind = .tls } },
             .runtime_row => try surface_mod.call(vm, std.meta.stringToEnum(surface_mod.Row, row.name).?, a),
             .runtime_fixture => .{ .cap = .{ .kind = .runtime } },
+            .exec_row => try exec_mod.call(vm, row, std.meta.stringToEnum(exec_mod.Row, row.name).?, a),
             .stdlib => try stdlib.call(vm, row, stdlib.row_of[row_index], a, kind_raw),
             // Lowered to spawn, send, and ask; never reached as a prelude call.
             .process => unreachable,
@@ -1665,7 +1672,7 @@ pub const Vm = struct {
         return switch (s.fault(if (can_miss) .missing else null, within) orelse return null) {
             .timeout => try vm.variant("Error", &.{try vm.variant("Timeout", &.{})}),
             .missing => try vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})}),
-            .closed => unreachable,
+            .closed, .failed => unreachable,
         };
     }
 
@@ -1929,6 +1936,9 @@ pub const Vm = struct {
                 .tls => "a Tls",
                 .tls_server => "a TlsServer",
                 .tls_client => "a TlsClient",
+                .exec => if (vm.server != null) "an Exec" else "Exec.fixture()",
+                .program => "a Program",
+                .command => "a Command",
                 .runtime => if (vm.server == null) "Runtime.fixture()" else if (c.handle == surface_mod.read_only_handle) "a read-only Runtime" else "a Runtime",
             }),
             .handle => |h| if (vm.sim) |s| {
