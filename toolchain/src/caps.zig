@@ -1304,6 +1304,15 @@ test "a write through an Fs narrowed to read_only, where the function can see it
         \\  wrote and kept and gone and moved
         \\end
     , &.{ "MO0404", "MO0404" });
+    // Step 40: replace writes, so a read-only Fs refuses it as it refuses write.
+    try expectCodes(
+        \\module T.ReadOnlyReplace
+        \\fn save(fs: Fs, text: String) : Bool
+        \\  replaced = fs.read_only.replace("a.txt", text, within: 1.minute) is Ok(_)
+        \\  asked = fs.read_only.kind_of("a.txt", within: 1.minute) is Ok(_)
+        \\  replaced and asked
+        \\end
+    , &.{"MO0404"});
 }
 
 test "a read-only Fs handed to a function that writes through it, or through a scope of it further down, is refused at the call" {
