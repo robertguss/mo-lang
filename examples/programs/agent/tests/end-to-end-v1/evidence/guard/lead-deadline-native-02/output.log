@@ -1,0 +1,3 @@
+{"part": "native-build", "passed": true, "exit_code": 0, "elapsed_s": 24.271, "summary": "zig-out/mo-build/e2e-agent/e2e-agent", "failed_checks": []}
+{"part": "negatives", "case": "outer-deadline", "runtime": "native", "passed": true, "exit_code": 3, "elapsed_s": 881.027, "summary": "{\"schema\": \"mo-application-workspace-v1\", \"run_id\": \"r_1\", \"event\": \"terminal\", \"step_number\": 16, \"payload\": {\"state\": \"over_budget\", \"result\": null, \"error\": \"steps\", \"usage\": \"reported_synthetic\", \"tokens\": 8}}", "failed_checks": []}
+{"attempt": "lead-deadline-native-02", "rows": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-reportcap/examples/programs/agent/tests/end-to-end-v1/evidence/lead-deadline-native-02.jsonl", "failed": false}
