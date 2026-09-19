@@ -22,7 +22,7 @@ implemented by Claude Opus 5 workers: the rebuilt application workspace
 combined tree: 243 of 243, exit 0. Seven live suites and a clean inventory on
 `mo-executor-r01`. Evidence: `audit/evidence/2026-09-19/fable-lead-verification/`.
 Source review of Astra's night: `audit/evidence/2026-09-19/fable-overnight-review/`.
-No worker is running; no Herdr pane but the lead's (`w4:p1`). Workers go in
+In flight since 9:05 AM ET, each in its own Herdr tab, Opus 5 with bypass permissions, both based on `31ad3ba9`: `step2-tables-opus` (tab `w4:tS`, pane `w4:p2Q`, branch `harness/step-2-live-tables`, brief `mo-wiki/plans/mo-harness-step-2-live-tables.md`) and `rawmem-toolchain-opus` (tab `w4:tT`, pane `w4:p2R`, branch `toolchain/raw-memory-report`, brief `mo-wiki/plans/toolchain-raw-memory-report.md`). Each commits a report file its brief names. Neither may use the machine or run the full suite. Workers go in
 their own Herdr tab, never a split of the lead's tab, with bypass permissions.
 
 **Plan of record:** `mo-wiki/plans/mo-harness-in-mo.md` (the harness moved into
