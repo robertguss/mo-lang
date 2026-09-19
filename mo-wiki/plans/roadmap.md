@@ -10,6 +10,63 @@ status: in-progress
 
 # Roadmap
 
+## Current direction: agent-native, implementation paused (18 Sep 2026)
+
+Robert approved the direction in [[01-premise]] and the supersession recorded in
+[[decision-log]]. Mo is another option, not a BEAM replacement. Agents are the
+code authors and readers; humans judge behavior and evidence. The complete,
+fast, trustworthy agent feedback loop for existing features takes priority over
+expansion. No workers, setup, experiments or implementation are authorized yet.
+
+**Program 7 is on hold; its superiority thesis and runtime-claim retirement
+framing are superseded.** Its sealed specs and evidence remain historical; none
+of its old gates is declared passed. Capabilities requirements and the separate
+generation-ten contract-catch rule are not retired. Step 39 remains unaccepted.
+New upstream TLS/script edits are not acceptance evidence.
+
+### Next discussion and documentation work
+
+1. Receive Robert's four research results; review with the oracle and synthesize
+   primary evidence, counterevidence and applicable experiments.
+2. Agree a bounded agent-workflow milestone and its independent acceptance
+   evidence. Preserve semantics and plain source; test targeted changes rather
+   than assume a syntax redesign is needed.
+3. Agree and explicitly version program 7's replacement scope, metrics and
+   relationship to retained audit obligations before any new sealing or build.
+4. Resume implementation only on Robert's explicit instruction.
+
+### Research running externally with Robert
+
+| brief                                                                                                                                | decision it informs                                                       | status                   |
+|---|---|---|
+| Unfamiliar-language learning: task-local guidance, examples, diagnostics; compilation versus behavioral success                      | Minimal guide and teaching feedback; test both cold and guided onboarding | running; results pending |
+| Text versus semantic editing: declaration IDs, cross-file changes, invalid intermediate code and stale edits                         | Which safe operations should accompany source editing                     | running; results pending |
+| Useful language restrictions: errors, capabilities, deadlines, retries, concurrency and persistence; prevention versus repair cost   | Which rules belong in language, libraries or runtime                      | running; results pending |
+| Trustworthy verification: versions, configuration, skipped/incomplete checks, retries, evidence weakening and inspection permissions | What verification claims establish and who may change acceptance evidence | running; results pending |
+
+Research requests ask for primary sources, concrete examples, counterevidence
+and a small discriminating experiment. No results are accepted yet. Later model
+comparisons include affordable/open-weight models and count failed attempts and
+stronger-model assistance; smaller-model reliability is a hypothesis.
+
+### Proposed implementation sequence, not a work authorization
+
+Trustworthy evidence and bounded execution; security/durability containment; one
+complete discover/learn/edit/check/run/inspect/repair/verify slice on an
+existing application; measured diagnostic and latency improvements; then a
+versioned program 7 and broader model evaluation. Exact scope and ordering
+remain open. A smaller program-7 core, TLS make-versus-wrap, specific law
+changes, incremental compilation and acceptance thresholds are proposals, not
+ratified implementation decisions.
+
+## Historical board before the reframe
+
+The board and phase tables below preserve the earlier queue and evidence. Their
+"Next", "Later" and "Waiting" sections are not current execution instructions;
+in particular MCP/agent tooling is no longer relegated to later work.
+Outstanding defects remain outstanding; the new direction does not accept prior
+work.
+
 The board first: what is in flight, what comes next in order, what waits, what
 just landed. One line each, with the page that holds the detail. Fable rewrites
 it at every acceptance and every pause; the dates say when. Below it, the phases

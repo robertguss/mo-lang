@@ -542,3 +542,26 @@
 - Wiki lint: 252 pages, 21 existing review/size findings after removing
   automatic formatting churn; no broken-link, frontmatter, index or tag errors.
   No full toolchain acceptance run was performed for this audit integration.
+
+## [2026-09-18] decision | Agent-native direction; program 7 suspended
+
+- Robert clarified that agents are Mo's code authors and readers, humans judge
+  behavior and evidence, and Mo is another option rather than a BEAM
+  replacement. He prioritized the complete fast feedback loop over expansion,
+  both cold and guided onboarding, and later affordable-model evaluation.
+- Robert explicitly approved holding program 7 and superseding its superiority
+  thesis and runtime-claim retirement framing. Sealed specs, auditor rules and
+  evidence are preserved; no old gate passed and no correctness obligation was
+  waived. Capabilities and generation-ten contract-catch rules are not retired.
+- The current premise, board, state page, handoff and audit entry point now
+  distinguish agreed direction, open proposals and historical instructions. Four
+  research briefs are running with Robert; no results have arrived.
+- Oracle use is required for substantive lead decisions. Implementation remains
+  paused until Robert explicitly resumes it. No workers, setup or experiments
+  started. Existing upstream TLS/script edits were fetched and preserved at the
+  7:59 PM ET checkpoint, not tested or accepted; old patch instructions are
+  explicitly historical. Step 39 remains unaccepted.
+- Oracle consistency review: approved, no blockers. Wiki lint: 252 pages, 22
+  findings (15 existing review flags, seven size notices, including a new
+  roadmap size notice); no broken-link, frontmatter, index or tag errors.
+  `git diff --check` passed. Documentation only; no toolchain acceptance run.

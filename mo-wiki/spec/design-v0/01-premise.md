@@ -1,6 +1,61 @@
 # 1. Premise
 
-## The world Mo is for
+## Current premise: agent-native development (18 Sep 2026)
+
+Robert clarified and approved this direction in the lead discussion. Mo is a
+functional, statically typed, compiled language and runtime for **agents as the
+authors and readers of code**. Humans specify outcomes, authority and acceptable
+risk, and judge behavior and evidence; human source review is not a
+prerequisite. Mo is another option, influenced by Elixir/Erlang and the BEAM,
+not their replacement.
+
+The primary product is the complete agent loop: **discover, understand, edit,
+check, run, inspect, repair, verify**. Prioritize fast, accurate, actionable
+feedback and version-correct, task-local learning for existing features before
+language expansion, except where a missing capability blocks a representative
+application. Measure time and total cost to independently verified behavior, not
+merely compilation speed or an agent's completion claim.
+
+The language is not just syntax. Types, explicit results, capabilities and
+process semantics express obligations; the runtime implements them; tools make
+them discoverable and observable. Keep plain source with targeted semantic
+operations. MCP or a similar protocol can expose authoritative compiler/runtime
+services; it does not replace them. Preserve the core while testing targeted
+revisions, not undertaking a wholesale syntax redesign. These are priorities,
+not a claim that the planned tooling already exists or that compiler checks
+prove intent.
+
+Evaluate both cold discovery and a short introductory guide. Later, compare
+models, including affordable and open-weight models, on reliable outcomes,
+repair cycles, time and full cost including failures and assistance.
+Smaller-model success is a goal, not an established result. Open weights, model
+size and price are separate dimensions. Comparisons with supported existing
+languages reveal tradeoffs; Mo need not win every axis to be useful.
+
+**Program 7 is on hold.** Robert explicitly superseded its BEAM-superiority
+thesis and associated runtime-claim retirement framing (S-A/S-B/S-C). This is a
+prospective change of goal, not a pass, a failed-rule erasure, or an alteration
+of old measurements. The sealed program specifications and auditor rules remain
+historical records. Correctness and safety obligations are not waived. The
+capabilities rule and the separate generation-ten contract-catch rule are not
+retired by this decision; program 7 execution, including its capabilities
+evaluation, is suspended. Replacement scope, metrics and acceptance criteria
+remain to be agreed and versioned before any new experiment.
+
+Implementation remains paused pending Robert's explicit authorization. Research
+is in progress on unfamiliar-language learning, semantic editing, useful
+language restrictions and trustworthy verification evidence. The roadmap records
+the pending questions. The decision-log section "Agent-native direction and
+program 7 suspension" records authority and scope; no syntax, security strategy
+or replacement experiment is ratified by this chapter alone.
+
+## Historical premise through the morning of 18 Sep 2026
+
+The sections below preserve the earlier claims and their evidence. Their
+ordering, human source-review assumptions and program-7 superiority framing are
+not the current product direction. Unmet evidence remains unmet.
+
+### The world Mo was framed for
 
 - Agents write nearly 100% of the code. Humans no longer write or closely review bodies.
 - Humans still read. They read intent, contracts, effects, and what the toolchain has verified. That layer is the **spec altitude**. Bodies are the **implementation altitude**, collapsed by default.

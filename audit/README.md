@@ -1,5 +1,19 @@
 # The audit folder
 
+**Current disposition, approved by Robert 18 Sep 2026:** program 7 execution is
+on hold. Its BEAM-superiority thesis and runtime-claim retirement framing
+(S-A/S-B/S-C) are superseded prospectively by the agent-native product goal. See
+the appended "Agent-native direction and program 7 suspension" rows in
+`mo-wiki/decisions/decision-log.md` and the current `01-premise.md` section. No
+old gate passed by this decision; no evidence or sealed rule file is rewritten.
+Capabilities requirements and T-A/T-B/T-C are not retired, but their program-7
+evaluation is suspended. The generation-ten contract-catch rule and R-B are
+unchanged. Correctness and safety requirements remain. Do not act on old
+program-7 ready records as authorization for a new seal or build; replacement
+scope and criteria must be agreed and versioned first. The historical rule
+descriptions and preparation list below remain evidence of the earlier plan, not
+the active queue. No new audit session is requested by this notice.
+
 **Workflow update, approved by Robert 17 Sep 2026:** see the automated two-way handoff amendment in `CHARTER.md` and `WORKFLOW.md`. It supersedes older manual-only session starts, Perplexity-only wording, and direct auditor pushes to `main`. Auditor-side polling intake is deployed and canary-tested; Fable-side wake-up remains pending. See `automation/README.md`.
 
 **What this is.** A separate reviewer role for the Mo project. Fable is the lead — designer, executor, evaluator. The auditor reads the same evidence Fable does, cold, and files an independent reading before Fable's is read. Where the two readings disagree, that disagreement is a decision-log row with equal standing.

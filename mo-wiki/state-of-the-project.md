@@ -24,9 +24,51 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, after the lead transition and PR 12 review. The
-historical account was rewritten 16 Sep and extended on 17–18 Sep. Six days
-since the first commit.
+**Last updated:** 18 Sep 2026, after Robert approved the agent-native reframe.
+
+## Agent-native direction agreed; implementation remains paused
+
+Mo is a functional, statically typed, compiled, BEAM-inspired option, not a
+replacement for Elixir/Erlang. Agents are its intended code authors and readers;
+humans judge requirements, behavior and evidence rather than reviewing source.
+The primary product is the fast, trustworthy discover/learn/edit/check/run/
+inspect/repair/verify loop. Improve that loop for existing features before
+expanding the language, except where a missing capability blocks a
+representative application. [[01-premise]] is the current thesis;
+[[decision-log]] records Robert's decisions, and [[roadmap]] separates the
+discussion queue from proposals.
+
+**Program 7 is suspended. Its BEAM-superiority thesis and runtime-claim
+retirement framing are superseded prospectively, not passed.** Sealed specs,
+audit rules and evidence remain untouched historical records. Correctness and
+safety obligations are not waived. The capabilities rule and generation-ten
+contract-catch rule are not retired by this decision. Replacement program-7
+scope and acceptance criteria remain open and must be versioned before use.
+
+The core language remains; no wholesale syntax redesign is authorized. Plain
+source plus targeted semantic tools, version-correct just-in-time guidance and
+runtime inspection are the direction. Structured diagnostics, fixes and an HTTP
+runtime surface already exist; the complete proposed agent interface does not.
+Both cold and minimally guided onboarding should be evaluated, with broader
+affordable/open-weight model evaluation later. Cheap-model reliability remains
+unproven; prior cross-model failures are retained, not explained away.
+
+Robert is running four research briefs: unfamiliar-language learning, semantic
+editing, useful language restrictions, and trustworthy verification. The lead
+will synthesize the results with the oracle before agreeing the next milestone.
+Specific rule changes, a smaller program 7, TLS make-versus-wrap and exact
+performance/acceptance thresholds remain proposals. No worker, setup or
+experiment starts without Robert's explicit authorization.
+
+Step 39 remains unaccepted and the known acceptance/durability obligations
+remain. New upstream TLS and benchmark edits were fetched, not verified in this
+documentation session; the checkpoint counts below must not be represented as
+fresh measurements. The private environment restoration is still unverified.
+
+## Historical account below
+
+The earlier thesis, queue, claims and observations below retain their dates.
+They do not supersede the current direction or authorize work to resume.
 
 ## PR 12 reviewed; acceptance evidence still needs repair
 

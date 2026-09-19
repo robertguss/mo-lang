@@ -2,6 +2,19 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Agent-native direction; implementation paused — 18 Sep 2026
+
+- Robert approved Mo as an agent-native additional option, not a BEAM
+  replacement; prioritize the complete fast, trustworthy agent loop before
+  feature expansion.
+- Program 7 is on hold; its superiority thesis and runtime-claim retirement
+  framing are superseded prospectively. Historical specs and evidence remain
+  unchanged; no old gate is passed and no correctness requirement is waived.
+- Four research briefs are running with Robert. The roadmap separates agreed
+  direction from proposals; no replacement experiment, syntax overhaul or TLS
+  strategy is approved. Implementation remains paused, and step 39 unaccepted.
+- Documentation only. Upstream code changes were preserved, not verified here.
+
 ## Lead transition and PR 12 — 18 Sep 2026
 
 - Robert authorized Amp as lead. The current-state lead reading was published

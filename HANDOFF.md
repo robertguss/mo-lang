@@ -1,4 +1,40 @@
-# Mo Lang — Lead handoff after PR 12, 18 Sep 2026
+# Mo Lang — Agent-native direction; implementation paused, 18 Sep 2026
+
+## Current instruction: document and discuss, do not resume work
+
+Robert approved an agent-native reframe: agents write and read code; humans
+judge requirements, behavior and evidence. Mo is an additional functional,
+statically typed, compiled, BEAM-inspired option, not a replacement. Prioritize
+the fast, trustworthy discover/learn/edit/check/run/inspect/repair/verify loop
+for existing features over expansion. The current premise and roadmap carry the
+details; the decision log records the authority and unresolved proposals.
+
+**Program 7 execution is suspended and its BEAM-superiority thesis and runtime
+retirement framing are superseded.** Preserve sealed specs and audit evidence;
+do not score the old experiment as passed, start builds or request a new seal.
+Replacement scope and acceptance criteria remain open. Neither capabilities
+requirements nor the separate contract-catch rule are waived by this decision.
+
+Robert is running four research briefs in parallel: unfamiliar-language
+learning, semantic editing, useful language restrictions, and trustworthy
+verification. When results arrive, read and synthesize them with the oracle,
+separate evidence from proposals, and discuss the next milestone. Robert
+requires oracle use for substantive lead evaluations and decisions. **No
+workers, setup, experiments or implementation until he explicitly authorizes
+resumption.** Documentation maintenance is authorized; no implementation or
+security strategy is accepted.
+
+Upstream changed TLS and benchmark scripts during this discussion. Those changes
+were fetched and preserved, not tested or accepted here. Older statements that
+C/D's patch is unapplied are historical: inspect the current tree and patch
+before any future application; never apply the saved patch blindly. Step 39
+remains unaccepted; the old evidence counts below are checkpoint results, not
+fresh measurements of current main. Private environment restoration is still
+unverified.
+
+## Historical checkpoints below
+
+These preserve the prior queue and evidence, not authorization to restart it.
 
 Robert authorized Amp to take the lead role in the Linux Amp orb. Read the audit
 checkpoint below first; the older move and Mac notes are historical context. The
@@ -8,7 +44,7 @@ live in the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`), which
 queue, and what a fresh session must know that the wiki does not say in one
 place.
 
-## Latest checkpoint: lead transition and PR 12 reviewed
+## Previous checkpoint: lead transition and PR 12 reviewed
 
 18 Sep 2026, after the 5:28 PM ET harness reproductions. Amp filed
 `audit/fable-reading-2026-09-18-current-state.md` on main before opening the
