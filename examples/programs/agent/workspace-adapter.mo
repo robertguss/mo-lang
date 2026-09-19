@@ -587,3 +587,6 @@ test "a valid admitted outcome is kept verbatim, and a mismatched identity is un
   assert checked(500, body, settings, "1", "read_file") == bad
   assert !stops?(local("refusal", "grant", "not_started"))
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

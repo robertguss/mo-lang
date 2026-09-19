@@ -55,3 +55,6 @@ end
 fn main(platform: Platform)
   platform.stdout.write_line(probed(platform.fs, platform.http, platform.args))
 end
+
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run
