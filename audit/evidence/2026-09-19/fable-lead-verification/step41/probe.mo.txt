@@ -1,0 +1,45 @@
+module Lead.ExecProbe
+
+intent "Lead probes for step 41 that the brief did not name."
+
+fn show(label: String, r: Result(Done, ExecError)) : String
+  case r
+    Ok(done): "#{label}: #{done.exit} out=#{done.stdout.size} err=#{done.stderr.size} truncated=#{done.truncated}\n"
+    Error(why): "#{label}: #{why}\n"
+  end
+end
+
+fn ran(script: Command) : Int64
+  case script.run(["echo hi"], within: 5.seconds)
+    Ok(_): 1
+    Error(_): 0
+  end
+end
+
+fn main(platform: Platform)
+  sh = platform.exec.program("/bin/sh")
+  script = sh.command([Fixed(text: "-c"), Hole])
+  two = sh.command([Fixed(text: "-c"), Hole, Fixed(text: "sh"), Hole])
+  out = platform.stdout
+  # 1. a child that closes its own stdout and stderr, then sleeps past the deadline
+  out.write(show("closed-pipes-then-sleep", script.run(["exec >&- 2>&-; sleep 30"], within: 1.seconds)))
+  # 2. a very large single argument (256 KiB is past ARG_MAX on neither system; 3 MiB is past it on both)
+  out.write(show("arg-256k", two.run(["printf %s \"$1\" | wc -c", "x".repeat(262_144)], within: 10.seconds)))
+  out.write(show("arg-3m", two.run(["printf %s \"$1\" | wc -c", "x".repeat(3_145_728)], within: 10.seconds)))
+  # 3. an environment key holding '=' and one that is empty
+  out.write(show("env-key-equals", script.env(Map.new().set("A=B", "c")).run(["env"], within: 5.seconds)))
+  out.write(show("env-key-empty", script.env(Map.new().set("", "c")).run(["env"], within: 5.seconds)))
+  # 4. a child that daemonises: a grandchild in a NEW session, holding the pipes, outliving the leader
+  out.write(show("escaped-session", script.run(["(setsid sleep 20 >/dev/null 2>&1 &) ; (perl -e 'use POSIX; POSIX::setsid(); sleep 20' &) ; echo led"], within: 3.seconds)))
+  # 5. ten runs one after another, the descriptors of the parent must not grow
+  var n = 0
+  for _ in 0..10
+    n = n + ran(script)
+  end
+  out.write("ten runs ok: #{n}\n")
+  out.write(show("fds-after", script.run(["ls /dev/fd | wc -l"], within: 5.seconds)))
+  # 6. stdin larger than a pipe to a child that never reads it
+  out.write(show("stdin-unread", script.run(["sleep 1; echo done"], stdin: "y".repeat(1_048_576), within: 5.seconds)))
+  # 7. deadline of zero
+  out.write(show("within-zero", script.run(["echo hi"], within: 0.ms)))
+end

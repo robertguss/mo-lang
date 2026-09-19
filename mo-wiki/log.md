@@ -996,3 +996,6 @@
 
 ## [2026-09-19] accept | the agent's report cap and the collection margin (D1)
 - 3:06 PM ET: merged to main through lead/verify-reportcap (78b093f3). Darwin full suite 263 of 263; the machine's outer-deadline run green, the last clamped command received with execution known; inventory clean. Three rows in decisions/decision-log.md; CHANGELOG entry. real_bridge.py found stale since harness steps 1 and 2.
+
+## [2026-09-19] accept | step 41, Exec (on macOS; Linux owed)
+- 3:33 PM ET: merged to main through lead/verify-step41 (cdb36196). Darwin full suite 268 of 268, focused 6 of 6 after the follow-up, lead probes identical in both runtimes. One Linux run before Robert deferred Linux: 5 of 6, the failure a test predicate, fixed. Four rows in decisions/decision-log.md; CHANGELOG; the design page corrected (in_folder, Fixed(text:)). Robert set Linux aside for now: accept on macOS, keep a Linux owed list.

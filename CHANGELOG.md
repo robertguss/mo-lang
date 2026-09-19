@@ -2,6 +2,24 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Step 41: `Exec`, a child process narrowed to fixed commands — 19 Sep 2026, 3:33 PM ET
+
+- `platform.exec` exists only in `main`; it makes a `Program` (one absolute
+  path), which makes a `Command` (fixed arguments and whole-argument holes);
+  only a `Command` runs or travels. No shell, no `PATH`, an empty environment
+  by default, no descriptors but 0, 1 and 2, its own session and group, the
+  deadline kept by killing the group, bounded output with `truncated`.
+  `Exec.fixture` answers runs in tests and `mo test --sim` injects `Timeout`
+  and `Failed`. `MO0407` covers `Exec` and `Program`, now also in a message
+  line's field (and `Platform` there too).
+- A run waits on a thread of its own, never the pool's four. One run of
+  `/usr/bin/true` costs 1.1 to 1.2 ms against 0.93 ms for C.
+- Also fixed: a module's own variant now hides a stdlib struct of its name; a
+  `flows` rule follows a list literal written at the call.
+- A Claude Opus 5 worker. Lead: Darwin full suite 268 of 268 and probes in
+  both runtimes. **Linux is owed** (Robert deferred Linux runs today); the
+  fork path runs only there.
+
 ## The agent's report cap lifted; a late command's reply is no longer lost — 19 Sep 2026, 3:06 PM ET
 
 - `report_cap()` was 256 KiB because of a runtime defect that is fixed; it is

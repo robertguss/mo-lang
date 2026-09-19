@@ -931,6 +931,15 @@ direction separately from the lead's conservative execution interpretation.
 | Robert: the Linux builds and tests take too long; defer them and test on macOS for now. From here a toolchain step is accepted on the lead's Darwin checks alone (build, focused tests, full suite, probes). Linux is not waived, it is owed: the lead keeps a list in `HANDOFF.md` ("Linux owed") and runs it as one batch later, or the CI gate ([[ci-gate]]) brings it back on every pull request. Two things depend on Linux whatever the Mac says and are gated on that batch: step 41's fork child (only `posix_spawn` runs on Darwin) and part B of the Mo workspace server, which runs on the Linux machine. | Robert | decided | the Linux batch, or the CI gate's first run |
 | Owed on Linux at this row: step 41 (`-Dtest-filter="step 41"` and the full suite; first run 5 of 6, the one failure a test predicate, `took > 0.ms`, that a sub-millisecond run fails), and every toolchain step accepted after it. | Fable lead | recorded | the Linux batch |
 
+## 19 Sep 2026 — Step 41 (`Exec`) accepted on macOS, 3:33 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Step 41 is accepted on the lead's Darwin checks (full suite 268 of 268, focused tests, probes in both runtimes), under Robert's deferral of Linux. Its fork child runs only on Linux and stays on the owed list; nothing that runs on the Linux machine (the server's part B) launches before that run. `semantic` | Fable lead | accepted | the Linux batch |
+| The design said `Command.in`; the row is `in_folder`, because `in` is a keyword and taking it after a `.` would be new syntax. **For Robert**: if you want `cmd.in(fs)`, it is one arm in the parser plus the formatter, and a rename in seven places; the lead's default is to keep zero new syntax. The design page is corrected, with `Fixed(text: "rm")`. | Fable lead | decided | the server's part B, its first real user |
+| Ratified defaults of the worker (Claude Opus 5): a module's own variant or message hides a stdlib struct of the same name in that module (so the new `Done` did not break the agent); `flows` follows a list literal at the call; a message line's field may not be a `Platform`, `Exec` or `Program`; when the leader exits the rest of its group is killed before it is reaped; the child gets its own session, not only its own group; the fixture's function receives the program's path first; each run has its own thread with no cap on concurrent runs; Darwin uses one `posix_spawn` (`CLOEXEC_DEFAULT`) after the fork version cost 94 ms a run closing a million descriptors. `semantic` | Fable lead | decided | step 41's controls |
+| Recorded for later toolchain work, from the worker's report: no cap on concurrent runs; exit detection naps instead of `EVFILT_PROC` or a pidfd; output as `List(UInt8)` makes 1 MiB cost 2.3 to 3.9 times C (a `Bytes` type would fix it); `blocking.run` still returns if `block` errors while its job is on the pool (step 42's audit takes this one). | Fable lead | recorded | step 42 |
+
 ## Related
 
 - [[session-05]]

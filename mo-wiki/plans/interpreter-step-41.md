@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [stdlib, security, runtime, processes]
 sources: [plans/mo-capabilities-for-the-harness.md, spec/design-v0/09-stdlib.md]
-status: in-progress
+status: done
 ---
 
 # Step 41: `Exec`
@@ -91,6 +91,25 @@ RED output committed before GREEN. Small commits as yourself with a
 `Co-Authored-By` line naming your model. **Write your final report to
 `toolchain/STEP-41-REPORT.md` and commit it.** While anything runs, wait in the
 foreground so your tab does not look finished.
+
+## Result
+
+Accepted on macOS 3:33 PM ET, 19 Sep 2026, merged to `main` through
+`lead/verify-step41` (`cdb36196`). Worker: Claude Opus 5, report
+`toolchain/STEP-41-REPORT.md`. `Exec`, `Program` and `Command` exist in both
+runtimes with the fixture and `--sim` faults; `MO0407` keeps `Exec` and
+`Program` in `main`; a `Command` travels like an `Fs`. Darwin full suite 268
+of 268; lead probes green in both runtimes. Cost of one run of
+`/usr/bin/true`: 1.2 ms (`mo run`) and 1.1 ms (binary) against 0.93 ms for a C
+`posix_spawn` loop; a child writing 1 MiB costs 3.9 and 2.3 times the floor,
+because the bytes become a `List(UInt8)`. Darwin spawns with one
+`posix_spawn`; Linux forks, and **that path is owed its Linux run** (one run
+before the deferral: 41 of 42 control lines right, the one failure a test
+predicate since fixed). Three differences from the design, ratified on the
+decision log: the row is `in_folder` (`in` is a keyword), an argument is
+`Fixed(text: "rm")`, and a module's own variant hides a stdlib struct of its
+name (the new `Done` collided with the agent's). Evidence:
+`audit/evidence/2026-09-19/fable-lead-verification/step41/`.
 
 ## Related
 

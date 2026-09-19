@@ -1,0 +1,151 @@
+test
++- run test w
+---- mo run, exit 0, 2197 ms
+exit 0: exited 0
+exit 1: exited 1
+exit 255: exited 255
+signal: signalled 9
+stubborn: timeout
+leaver: exited 0
+big stdout, bound 1000: 1000 0 true exited 0
+big stderr, bound 1000: 0 1000 true exited 0
+big stdout, default bound: 65536 0 true exited 0
+big stdout, bound 2 MiB: 1048576 0 false exited 0
+odd hole: true
+dash hole: 3
+[-x][--help][end]
+empty hole: 3
+[-x][][end]
+NUL hole: refused
+no value: refused
+two values: refused
+missing: missing
+a folder as the program: failed
+env by default: []
+env given: A=1
+B=two words
+
+in work: true
+in the operator's link: true
+in a link inside: failed
+in a folder not there: failed
+in a scope that climbed out: failed
+default folder is new: true
+default folder empty: []
+default folder gone after: exited 1
+stdin: hello
+world
+no stdin: []
+1 MiB through cat: 1048576 0 false exited 0
+descriptors: 0,1,2,
+terminal: none
+
+group: leads
+
+took, a fast run: true
+took, a 0.2-second sleep: true
+---- binary, exit 0, 1645 ms
+exit 0: exited 0
+exit 1: exited 1
+exit 255: exited 255
+signal: signalled 9
+stubborn: timeout
+leaver: exited 0
+big stdout, bound 1000: 1000 0 true exited 0
+big stderr, bound 1000: 0 1000 true exited 0
+big stdout, default bound: 65536 0 true exited 0
+big stdout, bound 2 MiB: 1048576 0 false exited 0
+odd hole: true
+dash hole: 3
+[-x][--help][end]
+empty hole: 3
+[-x][][end]
+NUL hole: refused
+no value: refused
+two values: refused
+missing: missing
+a folder as the program: failed
+env by default: []
+env given: A=1
+B=two words
+
+in work: true
+in the operator's link: true
+in a link inside: failed
+in a folder not there: failed
+in a scope that climbed out: failed
+default folder is new: true
+default folder empty: []
+default folder gone after: exited 1
+stdin: hello
+world
+no stdin: []
+1 MiB through cat: 1048576 0 false exited 0
+descriptors: 0,1,2,
+terminal: none
+
+group: leads
+
+took, a fast run: true
+took, a 0.2-second sleep: true
+---- mo run, exit 70
+before
+stderr: main crashed: exec.program("bin/sh"): "bin/sh" is not an absolute path; a program is named by its absolute path, and no PATH is searched
+
+---- binary, exit 70
+before
+stderr: main crashed: exec.program("bin/sh"): "bin/sh" is not an absolute path; a program is named by its absolute path, and no PATH is searched
+
+---- mo test, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did"
+pass  test "no run ever times out"
+pass  test "no run ever fails"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did"
+pass  test "no run ever times out"
+pass  test "no run ever fails"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+---- mo test --sim, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did": 40 simulated runs
+pass  test "no run ever times out": 40 simulated runs, but passes only without faults
+      seed 1, with faults: remover.mo:94:3: assert runner.ask(Timeouts, within: 1.minute) is Ok(0) failed
+      mo test --sim 1 --seed 1 --faults 50 runs it again
+pass  test "no run ever fails": 40 simulated runs, but passes only without faults
+      seed 4, with faults: remover.mo:101:3: assert runner.ask(Failures, within: 1.minute) is Ok(0) failed
+      mo test --sim 1 --seed 4 --faults 50 runs it again
+6 passed, 0 failed, 0 skipped; 3 tests under 40 seeds with 50% faults: 1 held under faults, 2 passed only without faults
+verified: types, contracts, tests (6), property (0 seeds), sim (40 runs)
+          proven: not run
+---- mo run, exit 0
+main went on while the child ran: true
+another process answered meanwhile: true
+the run then answered: true
+and the child had finished: true
+---- binary, exit 0
+main went on while the child ran: true
+another process answered meanwhile: true
+the run then answered: true
+and the child had finished: true
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step41/toolchain/zig-out/bin/mo ./.zig-cache/o/d364c2014251a3bf25021993a423bc17/test --cache-dir=./.zig-cache --seed=0x8ebb9040 --listen=-
+
+Build Summary: 5/5 steps succeeded; 6/6 tests passed
+test success
++- run test 6 pass (6 total) 45s MaxRSS:224M
+   +- compile test Debug native success 10s MaxRSS:490M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 40s MaxRSS:1G
+

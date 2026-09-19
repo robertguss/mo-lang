@@ -1,0 +1,10 @@
+closed-pipes-then-sleep: Timeout
+arg-256k: Exited(0) out=9 err=0 truncated=false
+arg-3m: Failed("the arguments and environment are too long")
+env-key-equals: Refused
+env-key-empty: Refused
+escaped-session: Exited(0) out=4 err=0 truncated=false
+ten runs ok: 10
+fds-after: Exited(0) out=9 err=0 truncated=false
+stdin-unread: Exited(0) out=5 err=0 truncated=false
+within-zero: Timeout

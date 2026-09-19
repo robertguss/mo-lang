@@ -80,8 +80,8 @@ design answers that by never letting such a handle exist below `main`.
 ```ruby
 fn main(platform: Platform)
   docker = platform.exec.program("/usr/bin/docker")
-  remove = docker.command([Fixed("rm"), Fixed("-f"), Hole])   # one hole, a whole argument
-  inspect = docker.command([Fixed("inspect"), Fixed("--format"), Fixed("{{json .}}"), Hole])
+  remove = docker.command([Fixed(text: "rm"), Fixed(text: "-f"), Hole])   # one hole, a whole argument
+  inspect = docker.command([Fixed(text: "inspect"), Fixed(text: "--format"), Fixed(text: "{{json .}}"), Hole])
   Executor.start(remove, inspect, platform.fs.scoped("runs"))
 end
 
@@ -99,7 +99,7 @@ end
 | `Exec`           | `program` | `path: String`                             | `Program`                 | an absolute path; no `PATH` search, ever                                            |
 | `Program`        | `command` | `List(Arg)`                                | `Command`                 | a fixed argument list; `Arg` is an ordinary enum, `Fixed(text: String)` or `Hole`                        |
 | `Command`        | `env`     | `Map(String, String)`                      | `Command`                 | the child's whole environment; the default is empty, never the parent's             |
-| `Command`        | `in`      | `Fs`                                       | `Command`                 | the working folder is this scope's folder; the default is an empty temporary folder |
+| `Command`        | `in_folder` | `Fs`                                       | `Command`                 | the working folder is this scope's folder; the default is an empty temporary folder |
 | `Command`        | `output`  | `UInt64`                                   | `Command`                 | bytes kept of stdout and of stderr each; default 65,536, at most 16 MiB             |
 | `Command`        | `run`     | `List(String)`, `stdin: String` (optional) | `Result(Done, ExecError)` | fills the holes in order; waits, so it takes `within:`                              |
 | `Exec` (on type) | `fixture` | `fn(List(String), String) Done`            | `Exec`                    | tests and `mo test --sim`: the function answers every run                           |
@@ -134,6 +134,8 @@ Not in this version: streaming output, a child that outlives the run, signals
 other than the deadline's kill, a pseudo-terminal, pipes between children. The
 harness needs none of them; a long-running server is started by `systemd-run`,
 which returns.
+
+**As built (step 41, 19 Sep 2026):** the row is `in_folder`, because `in` is a keyword and accepting it after a `.` would be new syntax; an `Arg` is built as every variant is, `Fixed(text: "rm")`. The examples above are corrected to match.
 
 ## Order and acceptance
 

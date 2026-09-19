@@ -1,0 +1,257 @@
+test
++- run test 5 pass, 1 fail (6 total)
+---- mo run, exit 70
+before
+stderr: main crashed: exec.program("bin/sh"): "bin/sh" is not an absolute path; a program is named by its absolute path, and no PATH is searched
+
+---- binary, exit 70
+before
+stderr: main crashed: exec.program("bin/sh"): "bin/sh" is not an absolute path; a program is named by its absolute path, and no PATH is searched
+
+---- mo test, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did"
+pass  test "no run ever times out"
+pass  test "no run ever fails"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did"
+pass  test "no run ever times out"
+pass  test "no run ever fails"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+---- mo test --sim, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did": 40 simulated runs
+pass  test "no run ever times out": 40 simulated runs, but passes only without faults
+      seed 1, with faults: remover.mo:94:3: assert runner.ask(Timeouts, within: 1.minute) is Ok(0) failed
+      mo test --sim 1 --seed 1 --faults 50 runs it again
+pass  test "no run ever fails": 40 simulated runs, but passes only without faults
+      seed 4, with faults: remover.mo:101:3: assert runner.ask(Failures, within: 1.minute) is Ok(0) failed
+      mo test --sim 1 --seed 4 --faults 50 runs it again
+6 passed, 0 failed, 0 skipped; 3 tests under 40 seeds with 50% faults: 1 held under faults, 2 passed only without faults
+verified: types, contracts, tests (6), property (0 seeds), sim (40 runs)
+          proven: not run
+---- mo run, exit 0
+main went on while the child ran: true
+another process answered meanwhile: true
+the run then answered: true
+and the child had finished: true
+---- binary, exit 0
+main went on while the child ran: true
+another process answered meanwhile: true
+the run then answered: true
+and the child had finished: true
+error: 'exec_controls.test.corpus: step 41, Exec runs a fixed command: exit codes, a signal, a deadline kept by killing the group, bounded output, holes, the environment, the folder, stdin, and descriptors, under mo run and in a binary' failed:
+       ---- mo run, exit 0, 1264 ms
+       exit 0: exited 0
+       exit 1: exited 1
+       exit 255: exited 255
+       signal: signalled 9
+       stubborn: timeout
+       leaver: exited 0
+       big stdout, bound 1000: 1000 0 true exited 0
+       big stderr, bound 1000: 0 1000 true exited 0
+       big stdout, default bound: 65536 0 true exited 0
+       big stdout, bound 2 MiB: 1048576 0 false exited 0
+       odd hole: true
+       dash hole: 3
+       [-x][--help][end]
+       empty hole: 3
+       [-x][][end]
+       NUL hole: refused
+       no value: refused
+       two values: refused
+       missing: missing
+       a folder as the program: failed
+       env by default: []
+       env given: A=1
+       B=two words
+       
+       in work: true
+       in the operator's link: true
+       in a link inside: failed
+       in a folder not there: failed
+       in a scope that climbed out: failed
+       default folder is new: true
+       default folder empty: []
+       default folder gone after: exited 1
+       stdin: hello
+       world
+       no stdin: []
+       1 MiB through cat: 1048576 0 false exited 0
+       descriptors: 0,1,2,
+       terminal: none
+       
+       group: leads
+       
+       took: true
+       ---- binary, exit 0, 1075 ms
+       exit 0: exited 0
+       exit 1: exited 1
+       exit 255: exited 255
+       signal: signalled 9
+       stubborn: timeout
+       leaver: exited 0
+       big stdout, bound 1000: 1000 0 true exited 0
+       big stderr, bound 1000: 0 1000 true exited 0
+       big stdout, default bound: 65536 0 true exited 0
+       big stdout, bound 2 MiB: 1048576 0 false exited 0
+       odd hole: true
+       dash hole: 3
+       [-x][--help][end]
+       empty hole: 3
+       [-x][][end]
+       NUL hole: refused
+       no value: refused
+       two values: refused
+       missing: missing
+       a folder as the program: failed
+       env by default: []
+       env given: A=1
+       B=two words
+       
+       in work: true
+       in the operator's link: true
+       in a link inside: failed
+       in a folder not there: failed
+       in a scope that climbed out: failed
+       default folder is new: true
+       default folder empty: []
+       default folder gone after: exited 1
+       stdin: hello
+       world
+       no stdin: []
+       1 MiB through cat: 1048576 0 false exited 0
+       descriptors: 0,1,2,
+       terminal: none
+       
+       group: leads
+       
+       took: false
+       
+       ====== expected this output: =========
+       exit 0: exited 0
+       exit 1: exited 1
+       exit 255: exited 255
+       signal: signalled 9
+       stubborn: timeout
+       leaver: exited 0
+       big stdout, bound 1000: 1000 0 true exited 0
+       big stderr, bound 1000: 0 1000 true exited 0
+       big stdout, default bound: 65536 0 true exited 0
+       big stdout, bound 2 MiB: 1048576 0 false exited 0
+       odd hole: true
+       dash hole: 3
+       [-x][--help][end]
+       empty hole: 3
+       [-x][][end]
+       NUL hole: refused
+       no value: refused
+       two values: refused
+       missing: missing
+       a folder as the program: failed
+       env by default: []
+       env given: A=1
+       B=two words
+       
+       in work: true
+       in the operator's link: true
+       in a link inside: failed
+       in a folder not there: failed
+       in a scope that climbed out: failed
+       default folder is new: true
+       default folder empty: []
+       default folder gone after: exited 1
+       stdin: hello
+       world
+       no stdin: []
+       1 MiB through cat: 1048576 0 false exited 0
+       descriptors: 0,1,2,
+       terminal: none
+       
+       group: leads
+       
+       took: true
+       ␃
+       
+       ======== instead found this: =========
+       exit 0: exited 0
+       exit 1: exited 1
+       exit 255: exited 255
+       signal: signalled 9
+       stubborn: timeout
+       leaver: exited 0
+       big stdout, bound 1000: 1000 0 true exited 0
+       big stderr, bound 1000: 0 1000 true exited 0
+       big stdout, default bound: 65536 0 true exited 0
+       big stdout, bound 2 MiB: 1048576 0 false exited 0
+       odd hole: true
+       dash hole: 3
+       [-x][--help][end]
+       empty hole: 3
+       [-x][][end]
+       NUL hole: refused
+       no value: refused
+       two values: refused
+       missing: missing
+       a folder as the program: failed
+       env by default: []
+       env given: A=1
+       B=two words
+       
+       in work: true
+       in the operator's link: true
+       in a link inside: failed
+       in a folder not there: failed
+       in a scope that climbed out: failed
+       default folder is new: true
+       default folder empty: []
+       default folder gone after: exited 1
+       stdin: hello
+       world
+       no stdin: []
+       1 MiB through cat: 1048576 0 false exited 0
+       descriptors: 0,1,2,
+       terminal: none
+       
+       group: leads
+       
+       took: false
+       ␃
+       
+       ======================================
+       First difference occurs on line 42:
+       expected:
+       took: true
+             ^ ('\x74')
+       found:
+       took: false
+             ^ ('\x66')
+       /home/exedev/.local/share/mise/installs/zig/0.16.0/lib/std/testing.zig:682:9: 0x13c41b5 in expectEqualStrings (std.zig)
+               return error.TestExpectedEqual;
+               ^
+       /home/exedev/Projects/mo-lang-lead-verify/toolchain/src/exec_controls.zig:316:9: 0x13e7f22 in test.corpus: step 41, Exec runs a fixed command: exit codes, a signal, a deadline kept by killing the group, bounded output, holes, the environment, the folder, stdin, and descriptors, under mo run and in a binary (root.zig)
+               try std.testing.expectEqualStrings(want, ran.stdout);
+               ^
+failed command: MO_EXE=/home/exedev/Projects/mo-lang-lead-verify/toolchain/zig-out/bin/mo ./.zig-cache/o/9ea74f492d2842f071e8068084c1ac98/test --cache-dir=./.zig-cache --seed=0x7e9a88fa --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 5/6 tests passed (1 failed)
+test transitive failure
++- run test 5 pass, 1 fail (6 total)
+   +- compile test Debug native success 1s MaxRSS:190M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 6ms MaxRSS:38M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/99863e561e045960ed2fef7540a239f1/build /home/exedev/.local/share/mise/installs/zig/0.16.0/zig /home/exedev/.local/share/mise/installs/zig/0.16.0/lib /home/exedev/Projects/mo-lang-lead-verify/toolchain .zig-cache /home/exedev/.cache/zig --seed 0x7e9a88fa -Z10c8e03034a72858 test -Dtest-filter=step 41 --summary all
