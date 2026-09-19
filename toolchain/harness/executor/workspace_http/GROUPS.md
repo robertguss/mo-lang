@@ -7,15 +7,15 @@ its own evidence directory to retain the rejected invocation and real exit.
 
 | Group | Local control | Required real-machine extension |
 |---|---|---|
-| six-tools | six calls via HTTP and owner subprocess | all six actual Workspace tools |
+| six-tools | six calls via HTTP and owner subprocess; the five file tools' results come from the real controller | all six actual Workspace tools |
 | output-encoding | Unicode, binary, bad base64, actual exit metadata | Unicode and binary actual command |
 | schema | duplicates, nonfinite, surrogates, types, extras | no dispatch on rejection |
 | framing | method/path/version, framing/header rejection | same HTTP parser |
-| byte-bounds | header/body/response caps | actual controller result_too_large |
+| byte-bounds | header/body/response caps; real controller result_too_large and truncated search/listing | actual controller result_too_large |
 | identities-capability | token/binding/private modes | exact Workspace binding |
 | duplicate-calls | repeated/conflicting IDs execute once | core call count |
 | concurrent-admission | second request refused, no queue | running actual command |
-| file-refusals | completed refusal survives | containment/edit refusals |
+| file-refusals | real controller: lexical escapes, links at the last and a middle component, exact_edit missing/multiple/empty with bytes unchanged | containment/edit refusals |
 | deadlines | file wait expires, late completed result retained | candidate/lease deadlines |
 | disconnect | close during operation; owner cleans | actual candidate |
 | frontend-death | SIGKILL actual frontend process, surviving owner | actual running candidate |

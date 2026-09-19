@@ -30,7 +30,10 @@ python3 -B toolchain/harness/executor/guarded.py 120 NEW_EVIDENCE -- python3 -B 
 
 `local.py --groups deadlines,shutdown` selects existing named groups; unknown,
 empty and duplicate selections fail before setup. Local controls use a separate
-subprocess double and cannot prove remote isolation.
+subprocess double (`test_owner.py`) and cannot prove remote isolation; its five
+file tools run the real `workspace_controller.handle` on a local directory, so
+path containment, `exact_edit` matching and result bounds are the production
+code's. Commands, freeze, verify and delete stay scripted.
 
 Real execution requires the lead's exact machine release. With release, run
 `live.py NEW_CONTROLS` or `live.py NEW_CONTROLS --application` through the same

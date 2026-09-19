@@ -1,124 +1,72 @@
 """At most 30 fixed workspace controls. Dedicated released machine only."""
 import base64
+from functools import partial
 import json
 import subprocess
 from pathlib import Path
-import shutil
 import sys
 import time
-import traceback
 import uuid
 
 from adapter import py, remote
-from selftest import TREE, assert_clean, wait_running, snapshot
+import cases
+from cases import require
+from selftest import TREE, assert_clean, wait_running
 from test_executor import check
-from workspace import Workspace
+from workspace import Workspace, WorkspaceRun
 from workspace_files import Refusal
 
 
-def require(value, detail=None):
-    if not value:
-        raise AssertionError(detail)
+class Suite:
+    """The run's workspaces, including the two that several controls share."""
+    def __init__(self, root):
+        self.root, self.workspaces = root, []
+        self.named = cases.Shared(self.workspace)
+
+    def workspace(self, name, entries=None):
+        w = Workspace(uuid.uuid4().hex, self.root / name)
+        self.workspaces.append(w)
+        w.create(entries or {'answer.txt': b'wrong\n'})
+        return w
+
+
+def invalid_import(s):
+    failed = Workspace(uuid.uuid4().hex, s.root / 'invalid-import')
+    s.workspaces.append(failed)
+    entries = {f'tree{i}/a/b/c/d/file': b'x' for i in range(1000)}
+    try:
+        failed.create(entries)
+    except Refusal:
+        pass
+    else:
+        raise AssertionError('inode-exhausting import became ready')
+    require(failed.call('list_files')['error'] == 'quarantined')
+
+
+def hostile(s, name, script, path):
+    h = s.workspace(name)
+    require(h.command(script)['state'] == 'success')
+    require(h.call('read_file', {'path': path})['state'] == 'refusal')
+    require(h.call('freeze')['state'] == 'refusal')
 
 
 def main(directory):
     root = Path(directory)
     root.mkdir(parents=True, exist_ok=False)
-    records = []
-    workspaces = []
-    for name in ('workspace.py', 'workspace_controller.py', 'workspace_files.py', 'adapter.py', 'remote.py', 'test_workspace_live.py'):
-        shutil.copyfile(Path(__file__).with_name(name), root / name)
-
-    def workspace(name, entries=None):
-        w = Workspace(uuid.uuid4().hex, root / name)
-        workspaces.append(w)
-        w.create(entries or {'answer.txt': b'wrong\n'})
-        return w
-
-    def case(name, action):
-        record = {'case': name, 'ok': False}
-        try:
-            action()
-            record['ok'] = True
-        except Exception:
-            record['error'] = traceback.format_exc()
-        records.append(record)
-        print(json.dumps(record), flush=True)
-        (root / 'controls.json').write_text(json.dumps(records, indent=2))
-
-    def invalid_import():
-        failed = Workspace(uuid.uuid4().hex, root / 'invalid-import')
-        workspaces.append(failed)
-        entries = {f'tree{i}/a/b/c/d/file': b'x' for i in range(1000)}
-        try:
-            failed.create(entries)
-        except Refusal:
-            pass
-        else:
-            raise AssertionError('inode-exhausting import became ready')
-        require(failed.call('list_files')['error'] == 'quarantined')
-    case('invalid-import-never-ready', invalid_import)
-
-    w = workspace('repair')
-    case('real-failure-inspection-repair-success', lambda: repair(w))
-    case('duplicate-foreign-calls', lambda: identities(w))
-    case('invalid-paths-utf8-overlap', lambda: file_refusals(w))
-    case('freeze-independent-positive', lambda: frozen(w))
-    case('closed-dispatch-and-empty-checks', lambda: closed(w))
-    case('missing-stimulus-and-result-overwrite', lambda: verification_negatives(w))
-
-    bad = workspace('wrong')
-    case('wrong-candidate-forged-success', lambda: wrong(bad))
-
-    for name, script, path in (
-        ('final-symlink', 'ln -s answer.txt link', 'link'),
-        ('intermediate-symlink', 'ln -s . link', 'link/answer.txt'),
-        ('hardlink', 'ln answer.txt link', 'link'),
-        ('fifo', 'mkfifo link', 'link'),
-        ('unsupported-mode', 'mkdir link; chmod 4755 answer.txt', 'answer.txt'),
-    ):
-        def hostile(name=name, script=script, path=path):
-            h = workspace(name)
-            require(h.command(script)['state'] == 'success')
-            require(h.call('read_file', {'path': path})['state'] == 'refusal')
-            require(h.call('freeze')['state'] == 'refusal')
-        case(name, hostile)
-
-    case('tmpfs-byte-quota', lambda: quota(workspace('byte-quota'), False))
-    case('tmpfs-inode-quota', lambda: quota(workspace('inode-quota'), True))
-    case('timeout-descendants', lambda: lifecycle(workspace('timeout'), 'timeout'))
-    case('cancel-descendants', lambda: lifecycle(workspace('cancel'), 'cancel'))
-    case('exit-descendants', lambda: lifecycle(workspace('exit'), 'exit'))
-    case('supervisor-death-mounted', lambda: lifecycle(workspace('supervisor'), 'supervisor'))
-    case('controller-death-mounted', lambda: controller_death(workspace('controller')))
-    case('stale-mutated-snapshot', lambda: mutated(w))
-    case('snapshot-permission-drift', lambda: mode_drift(w))
-
-    cleanup_errors = []
-    for ws in workspaces:
-        try:
-            if ws.active:
-                ws.collect()
-            ws.delete()
-        except Exception:
-            cleanup_errors.append({'workspace_id': ws.workspace_id, 'error': traceback.format_exc()})
-    inventory = json.loads(py("""import json,pathlib,subprocess,sys
-ids=json.loads(sys.argv[1]); roots=[pathlib.Path('/var/lib/mo-harness/mo-workspace-'+i) for i in ids]
-r={'directories':[str(p) for p in roots if p.exists()]}
-for key,args in {'containers':['docker','ps','-aq','--filter','name=^/mo-executor-'], 'units':['systemctl','list-units','--all','--no-legend','mo-executor-*'], 'mounts':['findmnt','--json','-o','TARGET']}.items():
- p=subprocess.run(args,capture_output=True,text=True,timeout=3); r[key]={'rc':p.returncode,'stdout':p.stdout}
-print(json.dumps(r))
-""", json.dumps([ws.workspace_id for ws in workspaces])))
+    here = Path(__file__).parent
+    cases.keep_sources(root, [here / name for name in ('workspace.py', 'workspace_controller.py', 'workspace_files.py',
+                                                        'adapter.py', 'remote.py', 'test_workspace_live.py', 'cases.py')])
+    s = Suite(root)
+    run = cases.Cases(root / 'controls.json')
+    run.run(CONTROLS, cases.names(CONTROLS), s)
+    errors = cases.delete_all(s.workspaces)
+    ids = [w.workspace_id for w in s.workspaces]
+    inventory = cases.leftovers(ids)
     (root / 'final-inventory.json').write_text(json.dumps(inventory, indent=2))
-    summary = {'controls': len(records), 'passed': sum(r['ok'] for r in records), 'cleanup_errors': cleanup_errors}
-    (root / 'summary.json').write_text(json.dumps(summary, indent=2))
-    print(json.dumps(summary), flush=True)
-    require(not cleanup_errors, cleanup_errors)
-    require(not inventory['directories'], inventory)
-    for key in ('containers', 'units'):
-        require(inventory[key]['rc'] == 0 and not inventory[key]['stdout'].strip(), inventory)
-    require(not any(ws.workspace_id in inventory['mounts']['stdout'] for ws in workspaces), inventory)
-    require(len(records) <= 30 and all(r['ok'] for r in records), summary)
+    cases.summary(root / 'summary.json', {'controls': len(run.records), 'passed': run.passed, 'cleanup_errors': errors})
+    require(not errors, errors)
+    cases.require_no_leftovers(inventory, ids)
+    require(len(run.records) <= 30 and run.passed == len(run.records), run.records)
 
 
 def repair(w):
@@ -255,16 +203,6 @@ def mode_drift(w):
         raise AssertionError('snapshot permission drift dispatched')
 
 
-def resume_workspace_run(directory):
-    from workspace import WorkspaceRun
-    run = WorkspaceRun.__new__(WorkspaceRun)
-    run.directory = Path(directory)
-    run.manifest = json.loads((run.directory / 'manifest.json').read_text())
-    run.name = run.manifest['name']
-    run.root = '/tmp/' + run.name
-    return run
-
-
 def controller_death(w):
     run = w._prepare_command(TREE + 'wait', seconds=4)
     child = None
@@ -292,9 +230,36 @@ def controller_death(w):
             child.wait(timeout=2)
 
 
+HOSTILE = (('final-symlink', 'ln -s answer.txt link', 'link'),
+           ('intermediate-symlink', 'ln -s . link', 'link/answer.txt'),
+           ('hardlink', 'ln answer.txt link', 'link'),
+           ('fifo', 'mkfifo link', 'link'),
+           ('unsupported-mode', 'mkdir link; chmod 4755 answer.txt', 'answer.txt'))
+CONTROLS = [
+    ('invalid-import-never-ready', invalid_import),
+    ('real-failure-inspection-repair-success', lambda s: repair(s.named('repair'))),
+    ('duplicate-foreign-calls', lambda s: identities(s.named('repair'))),
+    ('invalid-paths-utf8-overlap', lambda s: file_refusals(s.named('repair'))),
+    ('freeze-independent-positive', lambda s: frozen(s.named('repair'))),
+    ('closed-dispatch-and-empty-checks', lambda s: closed(s.named('repair'))),
+    ('missing-stimulus-and-result-overwrite', lambda s: verification_negatives(s.named('repair'))),
+    ('wrong-candidate-forged-success', lambda s: wrong(s.named('wrong'))),
+    *[(name, partial(hostile, name=name, script=script, path=path)) for name, script, path in HOSTILE],
+    ('tmpfs-byte-quota', lambda s: quota(s.workspace('byte-quota'), False)),
+    ('tmpfs-inode-quota', lambda s: quota(s.workspace('inode-quota'), True)),
+    ('timeout-descendants', lambda s: lifecycle(s.workspace('timeout'), 'timeout')),
+    ('cancel-descendants', lambda s: lifecycle(s.workspace('cancel'), 'cancel')),
+    ('exit-descendants', lambda s: lifecycle(s.workspace('exit'), 'exit')),
+    ('supervisor-death-mounted', lambda s: lifecycle(s.workspace('supervisor'), 'supervisor')),
+    ('controller-death-mounted', lambda s: controller_death(s.workspace('controller'))),
+    ('stale-mutated-snapshot', lambda s: mutated(s.named('repair'))),
+    ('snapshot-permission-drift', lambda s: mode_drift(s.named('repair'))),
+]
+
+
 if __name__ == '__main__':
     if sys.argv[1] == '--controller':
-        run = resume_workspace_run(sys.argv[2])
+        run = cases.resume(sys.argv[2], WorkspaceRun)
         run.start()
         (run.directory / 'controller-ready').touch()
         run.collect()

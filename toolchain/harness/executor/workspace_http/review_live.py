@@ -8,16 +8,18 @@ from pathlib import Path
 import sys
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import cases
+from cases import require
 from workspace_http import Bridge
-from workspace_http.live import start_recorded, request, connect, response, registered, shared, require
+from workspace_http.client import connect, first_response, request
+from workspace_http.live import registered, response, start_recorded
 from workspace_http.owner import private_write
-from recovery.live import inventory
 from remote import IMAGE, WORKSPACE_POLICY
 
 
 def main(output):
     output.mkdir(parents=True, exist_ok=False)
-    before = shared()
+    before = cases.mac_docker()
     (output / 'shared-before.txt').write_bytes(before)
     bridges, rows = [], []
     try:
@@ -31,16 +33,7 @@ def main(output):
             if group == 'shutdown':
                 first = connect(b, request(b))
                 try:
-                    first.settimeout(3)
-                    header = bytearray()
-                    while b'\r\n\r\n' not in header:
-                        header.extend(first.recv(1))
-                    size = int(next(line.split(b':', 1)[1] for line in header.split(b'\r\n')
-                                    if line.startswith(b'Content-Length:')))
-                    body = bytearray()
-                    while len(body) < size:
-                        body.extend(first.recv(size - len(body)))
-                    require(json.loads(body)['state'] == 'success')
+                    require(first_response(first)['state'] == 'success')
                     time.sleep(1.5)
                     second = connect(b, request(b, 'command', {'command': 'sleep 1; echo SECOND', 'timeout_ms': 2000}))
                     status, result = response(second)
@@ -73,12 +66,10 @@ def main(output):
                 b.stop_owner()
             require(b.recover()['cleanup'] == 'confirmed')
             receipts.append(json.loads((b.directory / 'workspace/ownership.json').read_bytes()))
-        proof = inventory(receipts)
+        proof = cases.workspace_absence(receipts)
         private_write(output / 'absence.json', proof)
-        require(all(not row['root_exists'] and not row['mounts'] and all(
-            not e['root_exists'] and not e['containers'].strip() and not e['units'].strip() and not e['cgroup_exists']
-            for e in row['executions']) for row in proof), proof)
-        after = shared()
+        cases.require_absent(proof)
+        after = cases.mac_docker()
         (output / 'shared-after.txt').write_bytes(after)
         require(len(before.splitlines()) == 5 and sorted(before.splitlines()) == sorted(after.splitlines()))
     print('existing-group real review extensions: 2/2; no acceptance claim')

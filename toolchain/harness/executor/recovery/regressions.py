@@ -24,7 +24,7 @@ sys.path.insert(0, str(HERE.parent / 'application'))
 import controls
 original_load = controls.load
 controls.load = lambda _: original_load(root / 'application-source-cache')
-from live import IMAGE, TOOLCHAIN
+from cases import APPLICATION_IMAGE as IMAGE, APPLICATION_TOOLCHAIN as TOOLCHAIN
 with (root / 'application23.log').open('x') as out:
     import contextlib
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):

@@ -1,17 +1,18 @@
 """Fixed live acceptance controls. Run only through the repository guard (600s)."""
 import base64
+from functools import partial
 import json
 import os
 from pathlib import Path
 import signal
 import shlex
-import shutil
 import subprocess
 import sys
 import time
-import traceback
 
-from adapter import Run, py, remote, verify
+from adapter import Run, py, remote
+import cases
+from cases import require
 from test_executor import check
 
 TREE = '''echo parent
@@ -69,11 +70,7 @@ def assert_clean(run, snap=None):
 
 
 def resume(directory):
-    r = Run.__new__(Run)
-    r.directory = Path(directory)
-    r.manifest = json.loads((r.directory / 'manifest.json').read_text())
-    r.name = r.manifest['name']; r.root = '/tmp/' + r.name
-    return r
+    return cases.resume(directory, Run)
 
 
 def controller_child(directory):
@@ -83,102 +80,121 @@ def controller_child(directory):
     r.collect()
 
 
-def main(directory):
-    root = Path(directory)
-    root.mkdir(parents=True, exist_ok=False)
-    records = []
-    (root / 'sources').mkdir()
-    for name in ('adapter.py', 'remote.py', 'selftest.py', 'test_executor.py'):
-        shutil.copyfile(Path(__file__).with_name(name), root / 'sources' / name)
-    inventory = remote(['docker', 'ps', '-a', '--no-trunc', '--format', '{{json .}}'])
-    (root / 'inventory-before.txt').write_bytes(inventory)
+def executed(script, checks, outcome='completed', passed=True, seconds=5, action=None, assertion=None, *, root, name):
+    r = Run(script(root) if callable(script) else script, checks, root / name, seconds)
+    # Always explicit scoped cleanup, even when an assertion failed.
+    with cases.then(lambda: (r.collect(), r.dispose())):
+        r.start()
+        if action: action(r)
+        result = r.collect()
+        observation = result['observation']
+        assert observation['status'] == outcome, (observation['status'], observation.get('error'))
+        assert result['passed'] is passed, (result['passed'], result['checks'])
+        assert result['identity_valid'] and result['policy_valid'], (result['identity_valid'], result['policy_valid'])
+        assert all(observation['cleanup'].get(k) for k in ('absent', 'cgroup_absent', 'host_confirmed')), observation
+        if outcome != 'completed': assert all(c['passed'] for c in result['checks']), result['checks']
+        if assertion: assertion(result)
+        (r.directory / 'after.json').write_text(json.dumps(assert_clean(r), indent=2))
+        return {'status': observation['status'], 'exit_code': observation['exit_code'], 'check_count': len(result['checks'])}
 
-    def case(name, script, checks, outcome='completed', passed=True, seconds=5, action=None, assertion=None):
-        started = time.monotonic()
-        r = Run(script, checks, root / name, seconds)
-        record = {'case': name, 'ok': False}
-        try:
-            r.start()
-            if action: action(r)
-            result = r.collect()
-            observation = result['observation']
-            assert observation['status'] == outcome, (observation['status'], observation.get('error'))
-            assert result['passed'] is passed, (result['passed'], result['checks'])
-            assert result['identity_valid'] and result['policy_valid'], (result['identity_valid'], result['policy_valid'])
-            assert all(observation['cleanup'].get(k) for k in ('absent', 'cgroup_absent', 'host_confirmed')), observation
-            if outcome != 'completed': assert all(c['passed'] for c in result['checks']), result['checks']
-            if assertion: assertion(result)
-            (r.directory / 'after.json').write_text(json.dumps(assert_clean(r), indent=2))
-            record.update(ok=True, status=observation['status'], exit_code=observation['exit_code'],
-                          check_count=len(result['checks']))
-        except Exception:
-            record['error'] = traceback.format_exc()
-            print(record['error'], flush=True)
-        finally:
-            # Always explicit scoped cleanup, even when an assertion failed.
-            try:
-                r.collect()
-                r.dispose()
-            except Exception:
-                record['cleanup_error'] = traceback.format_exc(); record['ok'] = False
-            record['elapsed_seconds'] = time.monotonic() - started
-            records.append(record)
-            print(json.dumps(record), flush=True)
 
-    def completion_control(run):
-        wait_running(run)
-        try:
-            run.dispose()
-        except RuntimeError as exc:
-            assert 'cannot dispose an active run' in str(exc), str(exc)
-            (run.directory / 'active-dispose-rejected.txt').write_text(str(exc))
+def died(mode, *, root, name):
+    """The controller or the supervisor dies mid-run; the machine's own reaper cleans up."""
+    r = Run(TREE + 'wait', TREE_CHECKS, root / name, seconds=3)
+    record, child = {}, None
+    def cleanup():
+        if child and child.poll() is None: child.kill(); child.wait(timeout=2)
+        r.collect(); r.dispose()
+    with cases.then(cleanup):
+        if mode == 'controller':
+            with (r.directory / 'controller.log').open('wb') as log:
+                child = subprocess.Popen([sys.executable, '-B', __file__, '--controller', str(r.directory)], stdout=log, stderr=log)
+            def ready():
+                if child.poll() is not None: raise AssertionError('controller died before stimulus')
+                return (r.directory / 'controller-ready').exists()
+            cases.until(ready, 4, 'controller never started the run', .05)
+            r = resume(r.directory)
+            wait_running(r)
+            child.kill(); record['controller_exit_code'] = child.wait(timeout=2)
+            assert record['controller_exit_code'] == -signal.SIGKILL
         else:
-            raise AssertionError('active run disposal was allowed')
+            r.start(); wait_running(r)
+            remote(['systemctl', 'kill', '--kill-whom=main', '--signal=SIGKILL', r.name + '.service'])
+            record['kill_command_rc'] = 0
+        # No controller cleanup until an independent post-deadline observation.
+        time.sleep(max(0, r.manifest['deadline'] + 4 - time.time()))
+        snap = snapshot(r)
+        (r.directory / 'independent-after.json').write_text(json.dumps(snap, indent=2))
+        assert_clean(r, snap)
+        reaped = json.loads(py("from pathlib import Path; import sys; print(Path(sys.argv[1],'reaped.json').read_text())", r.root))
+        assert reaped['absent'], reaped
+        (r.directory / 'reaped.json').write_text(json.dumps(reaped, indent=2))
+        result = r.collect()
+        assert not result['passed']
+        if mode == 'supervisor': assert result['observation']['status'] == 'infrastructure_failure'
+        return dict(record, status=result['observation']['status'], check_count=len(result['checks']))
 
-    tree_checks = [check(x+'\n', x, 'contains') for x in ('parent', 'child', 'grandchild', 'session')]
-    case('completion-descendants', TREE + 'echo stderr-control >&2; sleep 1; exit 0',
-         tree_checks + [check('stderr-control\n', 'stderr', stream='stderr')], action=completion_control)
-    case('wrong-output', 'echo wrong', [check()], passed=False)
-    case('nonzero', 'echo ok; exit 7', [check()], passed=False,
-         assertion=lambda r: require(r['observation']['exit_code'] == 7))
-    case('forged-success', 'echo \'{"passed":true,"checks":["ok"]}\'', [check()], passed=False)
+
+def completion_control(run):
+    wait_running(run)
+    try:
+        run.dispose()
+    except RuntimeError as exc:
+        assert 'cannot dispose an active run' in str(exc), str(exc)
+        (run.directory / 'active-dispose-rejected.txt').write_text(str(exc))
+    else:
+        raise AssertionError('active run disposal was allowed')
+
+
+def overwrite_authority(root):
     target = shlex.quote(str((root / 'overwrite-authority' / 'result.json').resolve()))
-    case('overwrite-authority', f'''echo overwrite-probe
+    return f'''echo overwrite-probe
 mkdir /tmp/fake-result
 printf '{{"passed":true}}' > /tmp/fake-result/result.json
 if echo forged > {target}; then echo host-overwrite; else echo host-result-denied; fi
 if echo forged > /result.json; then echo root-overwrite; else echo denied; fi
-echo wrong''', [check()], passed=False,
-         assertion=lambda r: require(b'host-result-denied\n' in base64.b64decode(r['observation']['stdout'])))
-    case('fault-stimulus-control', 'if echo x > /root-write; then exit 1; else echo fault-ran; echo ok; fi',
-         [check('ok\n', mode='contains'), check('fault-ran\n', 'fault', 'contains')])
-    case('absent-fault-stimulus', 'echo ok', [check(), check('fault-ran', 'fault', 'contains')], passed=False)
-    case('timeout-descendants', TREE + 'wait', tree_checks, outcome='timeout', passed=False,
-         seconds=2.5, action=wait_running)
-    case('cancel-descendants', TREE + 'wait', tree_checks, outcome='cancelled', passed=False,
-         action=lambda r: (wait_running(r), r.cancel()))
-    case('output-overflow', 'echo output-probe; while :; do echo 012345678901234567890123456789 >&2; done',
-         [check('output-probe\n')], outcome='output_overflow', passed=False,
-         assertion=lambda r: require(sum(len(base64.b64decode(r['observation'][s])) for s in ('stdout','stderr')) == 65536))
-    case('cpu-enforcement', 'echo cpu-probe; while :; do :; done', [check('cpu-probe\n')],
-         outcome='timeout', passed=False, seconds=2,
-         assertion=lambda r: require(r['observation']['counters']['cpu.stat:nr_throttled'] > 0))
-    case('memory-enforcement', '''echo memory-probe
+echo wrong'''
+
+
+TREE_CHECKS = [check(x+'\n', x, 'contains') for x in ('parent', 'child', 'grandchild', 'session')]
+CASES = [(name, partial(action, *args, **options)) for name, action, args, options in [
+    ('completion-descendants', executed, (TREE + 'echo stderr-control >&2; sleep 1; exit 0',
+     TREE_CHECKS + [check('stderr-control\n', 'stderr', stream='stderr')]), dict(action=completion_control)),
+    ('wrong-output', executed, ('echo wrong', [check()]), dict(passed=False)),
+    ('nonzero', executed, ('echo ok; exit 7', [check()]), dict(passed=False,
+     assertion=lambda r: require(r['observation']['exit_code'] == 7))),
+    ('forged-success', executed, ('echo \'{"passed":true,"checks":["ok"]}\'', [check()]), dict(passed=False)),
+    ('overwrite-authority', executed, (overwrite_authority, [check()]), dict(passed=False,
+     assertion=lambda r: require(b'host-result-denied\n' in base64.b64decode(r['observation']['stdout'])))),
+    ('fault-stimulus-control', executed, ('if echo x > /root-write; then exit 1; else echo fault-ran; echo ok; fi',
+     [check('ok\n', mode='contains'), check('fault-ran\n', 'fault', 'contains')]), {}),
+    ('absent-fault-stimulus', executed, ('echo ok', [check(), check('fault-ran', 'fault', 'contains')]), dict(passed=False)),
+    ('timeout-descendants', executed, (TREE + 'wait', TREE_CHECKS), dict(outcome='timeout', passed=False,
+     seconds=2.5, action=wait_running)),
+    ('cancel-descendants', executed, (TREE + 'wait', TREE_CHECKS), dict(outcome='cancelled', passed=False,
+     action=lambda r: (wait_running(r), r.cancel()))),
+    ('output-overflow', executed, ('echo output-probe; while :; do echo 012345678901234567890123456789 >&2; done',
+     [check('output-probe\n')]), dict(outcome='output_overflow', passed=False,
+     assertion=lambda r: require(sum(len(base64.b64decode(r['observation'][s])) for s in ('stdout','stderr')) == 65536))),
+    ('cpu-enforcement', executed, ('echo cpu-probe; while :; do :; done', [check('cpu-probe\n')]),
+     dict(outcome='timeout', passed=False, seconds=2,
+     assertion=lambda r: require(r['observation']['counters']['cpu.stat:nr_throttled'] > 0))),
+    ('memory-enforcement', executed, ('''echo memory-probe
 awk 'BEGIN {s="x"; for (i=0;i<28;i++) s=s s; print length(s)}'
-r=$?; echo memory-exit:$r; sleep .5; exit $r''', [check('memory-probe\n', mode='contains')], passed=False,
-         assertion=lambda r: require(r['observation']['counters']['memory.events:oom_kill'] > 0 and all(c['passed'] for c in r['checks'])))
-    case('pid-enforcement', '''echo pid-probe
+r=$?; echo memory-exit:$r; sleep .5; exit $r''', [check('memory-probe\n', mode='contains')]), dict(passed=False,
+     assertion=lambda r: require(r['observation']['counters']['memory.events:oom_kill'] > 0 and all(c['passed'] for c in r['checks'])))),
+    ('pid-enforcement', executed, ('''echo pid-probe
 /bin/sh -c 'i=0; while [ "$i" -lt 40 ]; do sleep 30 & i=$((i+1)); done; wait' &
-while :; do :; done''', [check('pid-probe\n')], outcome='timeout', passed=False, seconds=2.5,
-         assertion=lambda r: require(r['observation']['counters']['pids.events:max'] > 0))
-    case('scratch-enforcement', '''echo scratch-probe
+while :; do :; done''', [check('pid-probe\n')]), dict(outcome='timeout', passed=False, seconds=2.5,
+     assertion=lambda r: require(r['observation']['counters']['pids.events:max'] > 0))),
+    ('scratch-enforcement', executed, ('''echo scratch-probe
 for p in /work /tmp; do
  echo writable > "$p/small" || exit 1
  rm "$p/small"
  if dd if=/dev/zero of="$p/full" bs=1048576 count=9 2>/dev/null; then exit 2; fi
  echo "$p:$(stat -c %s "$p/full")"
-done''', [check('scratch-probe\n/work:8388608\n/tmp:8388608\n')])
-    case('network-filesystem-denial', '''echo boundary-probe
+done''', [check('scratch-probe\n/work:8388608\n/tmp:8388608\n')]), {}),
+    ('network-filesystem-denial', executed, ('''echo boundary-probe
 id -u
 printf loopback-ok > /work/index.html
 httpd -f -p 127.0.0.1:8080 -h /work &
@@ -194,65 +210,31 @@ echo mounts-absent
 [ -r /proc/self/status ] || exit 5
 while read key value rest; do
  case "$key" in CapEff:|NoNewPrivs:) echo "$key$value";; esac
-done < /proc/self/status''', [check('boundary-probe\n65534\nloopback-ok\nnetwork-denied\nroot-denied\nmounts-absent\nCapEff:0000000000000000\nNoNewPrivs:1\n')])
+done < /proc/self/status''', [check('boundary-probe\n65534\nloopback-ok\nnetwork-denied\nroot-denied\nmounts-absent\nCapEff:0000000000000000\nNoNewPrivs:1\n')]), {}),
+    ('controller-death', died, ('controller',), {}),
+    ('supervisor-death', died, ('supervisor',), {}),
+]]
 
-    for mode in ('controller-death', 'supervisor-death'):
-        started = time.monotonic()
-        r = Run(TREE + 'wait', tree_checks, root / mode, seconds=3)
-        record = {'case': mode, 'ok': False}
-        child = None
-        try:
-            if mode == 'controller-death':
-                with (r.directory / 'controller.log').open('wb') as log:
-                    child = subprocess.Popen([sys.executable, '-B', __file__, '--controller', str(r.directory)], stdout=log, stderr=log)
-                end = time.monotonic() + 4
-                while not (r.directory / 'controller-ready').exists() and time.monotonic() < end:
-                    if child.poll() is not None: raise AssertionError('controller died before stimulus')
-                    time.sleep(.05)
-                assert (r.directory / 'controller-ready').exists()
-                r = resume(r.directory)
-                wait_running(r)
-                child.kill(); record['controller_exit_code'] = child.wait(timeout=2)
-                assert record['controller_exit_code'] == -signal.SIGKILL
-            else:
-                r.start(); wait_running(r)
-                remote(['systemctl', 'kill', '--kill-whom=main', '--signal=SIGKILL', r.name + '.service'])
-                record['kill_command_rc'] = 0
-            # No controller cleanup until an independent post-deadline observation.
-            time.sleep(max(0, r.manifest['deadline'] + 4 - time.time()))
-            snap = snapshot(r)
-            (r.directory / 'independent-after.json').write_text(json.dumps(snap, indent=2))
-            assert_clean(r, snap)
-            reaped = json.loads(py("from pathlib import Path; import sys; print(Path(sys.argv[1],'reaped.json').read_text())", r.root))
-            assert reaped['absent'], reaped
-            (r.directory / 'reaped.json').write_text(json.dumps(reaped, indent=2))
-            result = r.collect()
-            assert not result['passed']
-            if mode == 'supervisor-death': assert result['observation']['status'] == 'infrastructure_failure'
-            record.update(ok=True, status=result['observation']['status'], check_count=len(result['checks']))
-        except Exception:
-            record['error'] = traceback.format_exc(); print(record['error'], flush=True)
-        finally:
-            if child and child.poll() is None: child.kill(); child.wait(timeout=2)
-            try: r.collect(); r.dispose()
-            except Exception: record['cleanup_error'] = traceback.format_exc(); record['ok'] = False
-            record['elapsed_seconds'] = time.monotonic() - started
-            records.append(record); print(json.dumps(record), flush=True)
 
+def main(directory):
+    root = Path(directory)
+    root.mkdir(parents=True, exist_ok=False)
+    here = Path(__file__).parent
+    cases.keep_sources(root, [here / name for name in ('adapter.py', 'remote.py', 'selftest.py', 'test_executor.py', 'cases.py')])
+    inventory = remote(['docker', 'ps', '-a', '--no-trunc', '--format', '{{json .}}'])
+    (root / 'inventory-before.txt').write_bytes(inventory)
+    run = cases.Cases(root / 'cases.json')
+    for name, action in CASES:
+        run.one(name, partial(action, root=root, name=name))
     after = remote(['docker', 'ps', '-a', '--no-trunc', '--format', '{{json .}}'])
     (root / 'inventory-after.txt').write_bytes(after)
     units = remote(['systemctl', 'list-units', '--all', '--no-legend', 'mo-executor-*'])
     (root / 'units-after.txt').write_bytes(units)
-    final = {'cases': records, 'count': len(records), 'passed': sum(r['ok'] for r in records),
+    final = {'cases': run.records, 'count': len(run.records), 'passed': run.passed,
              'inventory_unchanged': inventory == after, 'units_empty': not units.strip(),
              'artifact_bytes': sum(p.stat().st_size for p in root.rglob('*') if p.is_file())}
-    (root / 'summary.json').write_text(json.dumps(final, indent=2))
-    print(json.dumps(final, indent=2), flush=True)
-    return 0 if all(r['ok'] for r in records) and inventory == after and not units.strip() and final['artifact_bytes'] <= 16*1024*1024 else 1
-
-
-def require(condition):
-    assert condition
+    cases.summary(root / 'summary.json', final, indent=2)
+    return 0 if run.passed == len(CASES) and inventory == after and not units.strip() and final['artifact_bytes'] <= 16*1024*1024 else 1
 
 
 if __name__ == '__main__':
