@@ -1,5 +1,5 @@
 module WorkspaceServer.Envelope
-expose Ids, Envelope, Row, Hit, Produced, Outcome, ids_of, refused, project, text, capped, result_text, bounded_output, output_cap, done, refusal, timed_out
+expose Ids, Envelope, Row, Hit, Produced, Outcome, ids_of, refused, project, text, capped, result_text, bounded_output, output_cap, done, refusal, timed_out, row_text, hit_text
 
 use WorkspaceServer.Schema{Call, version}
 use WorkspaceServer.Wire{response_cap}
@@ -160,6 +160,10 @@ end
 
 fn row_text(r: Row) : String
   "{\"path\": #{Json.encode(r.path)}, \"length\": #{r.length}, \"sha256\": \"#{r.sha256}\", \"mode\": 420}"
+end
+
+fn hit_text(h: Hit) : String
+  "{\"path\": #{Json.encode(h.path)}, \"offset\": #{h.offset}}"
 end
 
 fn items(texts: List(String), truncated: Bool) : String

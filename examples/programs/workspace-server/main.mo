@@ -3,30 +3,10 @@
 module WorkspaceServer.Main
 expose main
 
-intent "The stub of the Mo workspace server: it listens on two loopback ports, publishes them in the run folder's ready.json, and closes every connection unanswered, so every behaviour group is red before the server exists."
+use WorkspaceServer.Operator{Door}
+use WorkspaceServer.Server{serve_run}
 
-process Closer()
-  state
-    closed: UInt64
-  end
-
-  message Accepted(conn: Conn)
-  message Idle
-
-  fn update(state, message)
-    case message
-      Accepted(conn):
-        conn.close
-        state.closed += 1
-      Idle:
-        state.closed += 0
-    end
-  end
-end
-
-supervisor Stubs
-  child Closer, restart: :always
-end
+intent "Run the Mo workspace server for one run folder the operator has laid out: serve mo-workspace-http-v1's five file tools on one loopback port and the operator's path on another, and end, exit 0, once the operator closes the run or a minute past the lease; a folder that cannot be served exits 1, and no folder is a usage error, exit 2. This server does not serve command: that is part B's, through Exec."
 
 fn main(platform: Platform)
   folder = platform.args.first or ""
@@ -34,19 +14,14 @@ fn main(platform: Platform)
     platform.stdout.write_line("usage: workspace-server RUN_FOLDER")
     platform.exit(2)
   else
-    serve(platform.net, platform.fs.scoped(folder), platform.stderr)
-  end
-end
-
-fn serve(net: Net, run: Fs, err: Out)
-  case (net.listen(0, within: 5_000.ms), net.listen(0, within: 5_000.ms))
-    (Ok(tools), Ok(operator)):
-      tools.serve(into: Closer.start(), idle: 60_000.ms)
-      operator.serve(into: Closer.start(), idle: 60_000.ms)
-      ready = "{\"port\": #{tools.port}, \"operator_port\": #{operator.port}}"
-      if run.replace("ready.json", ready, within: 5_000.ms) is Error(e)
-        err.write_line("ready.json: #{e}")
-      end
-    _: err.write_line("no loopback port")
+    door = Door.start()
+    case serve_run(platform.fs.scoped(folder), platform.net, platform.clock, platform.random, false, door)
+      Ok(lease_ms):
+        let_go = door.ask(Wait, within: (lease_ms + 120_000).ms) == Ok(true)
+        platform.exit(if let_go: 0 else: 1)
+      Error(why):
+        platform.stderr.write_line("workspace-server: #{why}")
+        platform.exit(1)
+    end
   end
 end

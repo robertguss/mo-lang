@@ -33,10 +33,10 @@ fn too_large() : Refusal
   Refusal(status: 413, error: "malformed")
 end
 
-# Whether a head of these lines, each read without its line end, stays within 16,384 bytes
-# and 33 lines, counting the CRLF after each.
-fn head_fits?(bytes: UInt64, lines: UInt64) : Bool
-  bytes <= 16_384 and lines <= 33
+# Whether a head of this many bytes, counting the CRLF after each line, stays within 16,384.
+# Its line count is the head's own check: 32 fields past the request line is malformed.
+fn head_fits?(bytes: UInt64) : Bool
+  bytes <= 16_384
 end
 
 # The request line and header lines of one request, without their line ends, checked in the
@@ -182,10 +182,11 @@ test "headers: extra, repeated, unknown, missing, and bad lengths"
   assert head(lines.push("X: é"), 9) == Error(malformed())
 end
 
-test "a head is bounded in bytes and lines"
-  assert head_fits?(16_384, 33)
-  assert !head_fits?(16_385, 2)
-  assert !head_fits?(10, 34)
+test "a head is bounded in bytes, and past 32 fields it is malformed"
+  assert head_fits?(16_384)
+  assert !head_fits?(16_385)
+  fields = "X: 1\n".repeat(33).split("\n").take(33)
+  assert head(["POST /tool HTTP/1.1"].concat(fields), 9) == Error(malformed())
 end
 
 test "a response carries its length and closes"
