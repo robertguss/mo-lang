@@ -1,0 +1,200 @@
+╰───────────────────────────────────────────────╯
+
+  Tip: New Use /fast to enable our fastest inference with increased plan usage.
+
+• You have 1 usage limit reset available. Run /usage to use one.
+
+
+› You are an Astra worker (gpt-6-astra, low reasoning) in Herdr pane w4:pJ, reporting to the    
+  continuing Astra lead in w4:p1. Robert's latest instruction supersedes the stale Amp/oracle   
+  rules: we are on his Mac, lead Astra, fresh Astra workers at low reasoning in Herdr panes; no 
+  oracle requirement. You are not alone in this checkout: the lead is updating docs             
+  concurrently. Do not edit, revert, stage or commit any files. Do this bounded read-only       
+  readiness review yourself without nested agents. Do not run the lead auditor inbox, open      
+  audit/mo-audit-* readings or hidden/sealed suites, inspect credentials, log in, install       
+  anything, create/start containers or VMs, change Docker settings, or run tests/probes.        
+  Read .claude/skills/mo-lead/SKILL.md only for shared safety/role boundaries (current message  
+  overrides stale workflow), mo-wiki/plans/mo-first-coding-harness.md, audit/evidence/2026-09-  
+  18/executor-feasibility/README.md, and audit/evidence/2026-09-18/mac-arrival/README.md plus   
+  inspection.json. Review the next single provider-independent readiness unit: dedicated        
+  OrbStack executor boundary with lifecycle/descendant cleanup and protected external verdicts. 
+  Return a compact concrete proposal: smallest next unit, host/VM/candidate/verifier trust      
+  boundaries (especially Mac home sharing), exact provisional write scope, setup that would be  
+  needed, fixed resource/time/output bounds for a credential-free trial, acceptance             
+  observations and negative controls, and unresolved prerequisites. Separate already-observed   
+  evidence from proposed behavior. Research current official OrbStack/Docker docs if a claim    
+  depends on them; cite URLs. Do not assume a named OrbStack Linux machine exists; the list is  
+  empty and Docker already has other projects' stopped containers. Do not claim a VM alone      
+  protects credentials or that the prior orb probe is Mac evidence. Output your proposal        
+  directly here; stop after the report.                                                         
+
+
+• I’ll read the specified boundaries and evidence, then propose one bounded executor trial,
+  separating observed facts from untested behavior.
+
+• Ran cat .claude/skills/mo-lead/SKILL.md mo-wiki/plans/mo-first-coding-harness.md audit/
+  │ evidence/2026-09-18/executor-feasibility/README.md audit/evidence/2026-09-18/mac-arrival/
+  │ README.md audit/evidence/2026-09-18/mac-arrival/inspection.json
+  └ ---
+    name: mo-lead
+    … +837 lines (ctrl + t to view transcript)
+      "finished_at_et": "2026-09-18T23:58:50.378019-04:00"
+    }
+
+• Explored
+  └ Read mo-first-coding-harness.md
+
+• Searching the web
+
+• Searched the web for site.docs.orbstack.dev machines security macOS home sharing ...
+
+• Searching the web
+
+• Searched the web for https://docs.orbstack.dev/machines/isolation
+
+• Searching the web
+
+• Searched the web
+
+• I applied mo-lead only for the shared worker and safety boundaries. The key finding is that
+  OrbStack machines share one Linux kernel; ordinary machines also expose Mac files and
+  integrations. Current docs describe an isolated mode, but its availability and behavior on the
+  recorded 2.2.3 installation remain unverified.
+
+• Recommend one credential-free fixture-runner unit: establish a dedicated OrbStack executor,
+  prove bounded descendant cleanup, and produce one externally protected verdict. No provider,
+  login, Mo compiler change, or coding-agent loop belongs in this unit.
+
+  Already observed
+
+  - The Mac arrival bundle records OrbStack 2.2.3, Docker 29.4.0, arm64 Linux with cgroup v2,
+    zero named Linux machines, and five unrelated stopped containers.
+
+  - The earlier Amp orb produced nine passing checks after two failed probe runs. It
+    demonstrated selected resource limits and controller-driven cleanup there—not Mac
+    containment, supervisor-failure cleanup, or protected verdicts.
+
+  - This review read only the requested files and official documentation. No files changed; no
+    tests, probes, setup, or credential inspection occurred.
+
+  Proposed trust boundaries
+
+   Boundary             Proposed responsibility
+  ━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Mac host             Trusted controller, frozen fixture/check inventory, artifact hashes and
+                        authoritative verdict writer. Candidate bytes are data; never execute
+                        candidate commands on macOS.
+  ───────────────────  ─────────────────────────────────────────────────────────────────────────
+   OrbStack backend     Shared Linux kernel and trusted virtualization/runtime infrastructure.
+                        A named machine is an administrative boundary, not an independent-
+                        kernel VM.
+  ───────────────────  ─────────────────────────────────────────────────────────────────────────
+   Dedicated machine    New mo-executor-r01, isolated from Mac integrations, with its own
+                        executor service, local daemon/socket and delegated cgroup subtree. No
+                        use of the existing shared Docker endpoint.
+  ───────────────────  ─────────────────────────────────────────────────────────────────────────
+   Candidate            Non-root container; no daemon socket, host mounts, credentials,
+                        forwarded agents, host namespaces or network. Writable bounded scratch
+                        only; reference/runtime read-only.
+  ───────────────────  ─────────────────────────────────────────────────────────────────────────
+   Verifier             Trusted host-side checker evaluates observed behavior. Candidate
+                        execution during verification remains contained. Candidate output
+                        cannot select checks or write authoritative results.
+
+  Normal OrbStack machines expose Mac files through /mnt/mac and equivalent /Users/... paths.
+  Therefore “outside the checkout” does not protect home-directory credentials. File-sharing
+  documentation
+
+  Current isolated-machine documentation describes disabling Mac filesystem sharing, Mac-command
+  integration and default SSH-agent forwarding. --isolate-network additionally restricts host/
+  other-machine access but retains internet access. Candidate containers therefore still require
+  network denial. All machines share the kernel; this trial excludes kernel-exploit resistance.
+  Verify these features on installed 2.2.3 before relying on them. Isolated-machine
+  documentation
+
+  Exact provisional write scope—future authorization only
+
+  - Repository: new audit/evidence/2026-09-19/orbstack-executor-r01/ containing README.md,
+    manifest.json, controller.py, verifier.py, fixtures/, and runs/.
+
+  - Host runtime: new /Users/robertguss/.mo-executor/r01/, mode 0700; no sharing into Linux.
+  - New machine only: /opt/mo-executor/r01/, /var/lib/mo-executor-r01/, /run/mo-executor-r01/,
+    and explicitly named mo-executor-r01* service/slice definitions.
+
+  - Candidate: /work and /tmp inside disposable containers only.
+  - OrbStack-managed creation/configuration/storage for mo-executor-r01; required package
+    installation confined to that machine and recorded.
+
+  No existing evidence edits, toolchain/ or examples/ changes, shared Docker configuration
+  changes, global resource changes, prune operations, commits or publishing.
+
+  Setup needed
+
+  After a bounded setup authorization: confirm installed isolation/limit support; create the
+  named arm64 machine without mounts or forwarding; provision a pinned Linux fixture runtime and
+  private executor daemon; establish a dedicated delegated cgroup subtree without changing
+  unrelated ancestor limits. Copy only allowlisted fixtures—no whole home or checkout transfer.
+
+  Install an independent Linux deadline reaper before launching candidates. Register each run’s
+  container ID, cgroup identity and absolute deadline before start. Host-controller death must
+  not cancel cleanup. If machine-local cleanup fails, the host may stop only this dedicated
+  machine and record infrastructure failure. No automatic workload restart or replay.
+
+  Fixed proposed trial bounds
+
+  - Machine: 2 CPUs, 2 GiB RAM, 8 GiB disk; verify enforceability locally. Current docs describe
+    per-machine limits. Machine resource limits
+
+  - One candidate at a time: 0.25 CPU, 64 MiB RAM, no swap, 16 PIDs, read-only root, 8 MiB /work
+    plus 8 MiB /tmp, dropped capabilities, no-new-privileges.
+
+  - Each case: 10 seconds execution, 2 seconds termination grace, 3 seconds cleanup
+    verification.
+
+  - Retain 64 KiB combined stdout/stderr; terminate on overflow, drain/discard only within the
+    cleanup deadline. Disable persistent candidate logging.
+
+  - Maximum 20 fixed cases, one attempt each, 10-minute overall trial deadline; at most 1 MiB
+    artifact per case and 16 MiB evidence total. No automatic retries.
+
+  Docker limits require explicit configuration; acceptance must inspect effective limits and
+  observe enforcement. Docker resource constraints
+
+  Acceptance observations and negative controls
+
+  - A known-correct fixture passes independent behavioral checks; wrong output, nonzero exit,
+    failed build, empty/missing checks and absent fault stimulus cannot pass.
+
+  - Bind results to run ID, candidate digest, runtime/image digest, policy and verifier digests,
+    and complete expected check inventory. Stop all candidate writers before hashing/export;
+    reject stale artifacts and unsafe paths/symlinks.
+
+  - Forged “PASS” output and attempted verdict overwrite leave host results unchanged. Reusing a
+    prior successful artifact fails identity checks.
+
+  - Observe CPU throttling, memory/PID/scratch ceilings and output termination—not merely
+    configured flags.
+
+  - Exercise timeout, cancellation, host-controller death and supervisor death with child,
+    grandchild and new-session descendants. Require stopped container, empty run cgroup, no
+    continued writes, and bounded cleanup; missing cleanup evidence means infrastructure
+    failure.
+
+  - Use synthetic sentinels to test Mac-home aliases, reference/verdict access, socket access
+    and network denial. Include writable-scratch and reachable local-fixture positive controls.
+
+  - Record separate stdout/stderr, exit/signal, timestamps, truncation, stimulus evidence and
+    teardown. Confirm unrelated containers/configuration unchanged.
+
+  Unresolved prerequisites: installed-version feature support; private daemon and cgroup
+  delegation feasibility; independent reaper behavior; exact pinned fixture/runtime inventory;
+  setup authorization and lead acceptance ownership. No Linux Zig is needed for this fixture
+  unit. Provider identity/OAuth, application policy, Mo implementation, Darwin durability and
+  broader harness acceptance remain separate obligations.
+
+  Worked for 1m 11s · done 12:09 AM
+ 
+    ⠈                    ⢀  ⠈           ⠁        ⠐        ⠂ ⠄               ⠄      ⠄  ⠄⠈        
+›⠁Ask Codex to do anything         ⠈    ⠁                                  ⠂                    
+        ⠐                 ⠄                    ⢀    ⠠  ⠂                                        
+  gpt-6-astra low · ~/Projects/startups/mo-lang · Review readiness read-only

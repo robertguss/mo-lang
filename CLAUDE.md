@@ -3,7 +3,7 @@
 A programming language for the AI era, designed and built by Robert Guss and
 Claude. Start every session by loading the `mo-lead` skill
 (`.claude/skills/mo-lead/SKILL.md`; read it directly if it is not registered):
-it holds the roles, the Amp orb/thread worker loop, and the acceptance
+it holds the roles, the Astra/Herdr worker loop, and the acceptance
 checklist. Then read `HANDOFF.md` for the current state and queue, then
 `mo-wiki/SCHEMA.md` for the working agreements. Then, before any work, check
 what the auditor has posted since the last session:
@@ -14,23 +14,20 @@ for the lead. Worker threads read the role and safety rules, then follow their
 bounded brief; they do not check or operate the lead's audit inbox,
 publish/integrate audit records, or take over lead decisions.
 
-- The Astra lead moves to Robert's Mac per the latest `HANDOFF.md`, then keeps
-  one continuing lead session rather than a new lead per phase. It directs,
-  verifies, decides, and records, consulting the oracle for substantive
-  evaluations and decisions. Workers write code under `toolchain/` and
-  `examples/`.
-- Launch each approved worker/new work unit/phase with `create_thread`,
-  `agent_mode: "medium"`, `executor: "orb"`, `orb_size: "a1.xxlarge"`. Do not
-  use Herdr or shell commands to launch agents. Workers use separate checkouts;
-  transfer unpushed files explicitly and verify the exact integrated changes in
-  the lead checkout. Follow the skill's briefing and integration rules.
+- Astra remains the lead in this continuing Mac session. It directs, verifies,
+  decides and records; the former orb's oracle requirement is superseded.
+- Robert's 19 Sep 2026 instruction: spawn fresh Astra workers with low
+  reasoning in Herdr panes. Follow `mo-lead` for launch, ownership and acceptance.
+  Workers write code under `toolchain/` and `examples/`; implementation uses
+  separate worktrees, while read-only review may share the lead checkout.
 - Stage and commit only named paths (`git add <paths>` and
   `git commit -m <message> -- <paths>`), never `git add -A`. Inspect existing
   staged changes; do not sweep in someone else's work.
-- The implementation pause in `HANDOFF.md` remains in force until Robert
-  approves a bounded start and the lead confirms readiness. Workflow
-  instructions are not permission to launch workers, authenticate, or run
-  experiments.
+- Robert's 19 Sep overnight instruction authorizes the lead to choose and
+  drive setup, implementation and verification while he is AFK, including
+  decisions previously awaiting approval. The earlier harness implementation
+  pause is superseded. Record bounded decisions and verify readiness; continue
+  independent work around prerequisites that require Robert's presence.
 - Robert's decisions and the lead's are rows in `mo-wiki/decisions/decision-log.md`; he reviews the log, not the queue.
 - Never use `tr` in shell commands (aliased on this machine); use python3.
 - Install any tool a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for Python projects), `go install`.

@@ -1,0 +1,50 @@
+{
+  "at_et": "2026-09-19T00:16:12.435795-04:00",
+  "records": [
+    {
+      "argv": [
+        "orbctl",
+        "info",
+        "mo-executor-r01",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"record\": {\n    \"id\": \"01M2VY0EYX35WVVE28DCA9MNS6\",\n    \"name\": \"mo-executor-r01\",\n    \"image\": {\n      \"distro\": \"ubuntu\",\n      \"version\": \"noble\",\n      \"arch\": \"arm64\",\n      \"variant\": \"default\"\n    },\n    \"config\": {\n      \"isolated\": true,\n      \"forward_ssh_agent\": false,\n      \"isolate_network\": true,\n      \"default_username\": \"mo\",\n      \"http_port\": 0,\n      \"https_port\": 0,\n      \"memory_limit_mib\": 2048,\n      \"cpu_limit\": 2,\n      \"disk_limit_bytes\": 8589934592\n    },\n    \"builtin\": false,\n    \"state\": \"running\"\n  },\n  \"disk_size\": 669179904,\n  \"ip4\": \"192.168.139.52\",\n  \"ip6\": \"fd07:b51a:cc66:0:b0e3:5bff:fec4:428\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "orbctl",
+        "run",
+        "--machine",
+        "mo-executor-r01",
+        "--user",
+        "root",
+        "--",
+        "uname",
+        "-a"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Error: unknown flag --\nUsage:\n  orbctl run [flags] [COMMAND] [ARGS]...\n\nAliases:\n  run, exec, shell\n\nExamples:\n  orbctl run ls\n\nFlags:\n  -h, --help             help for run\n  -m, --machine string   Use a specific machine\n  -p, --path             Translate absolute macOS paths to Linux paths\n  -s, --shell            Use the login shell instead of running command directly\n  -u, --user string      Run as a specific user\n  -w, --workdir string   Set the working directory\n\n"
+    },
+    {
+      "argv": [
+        "orbctl",
+        "run",
+        "--machine",
+        "mo-executor-r01",
+        "--user",
+        "root",
+        "--",
+        "sh",
+        "-c",
+        "id; cat /etc/os-release; command -v python3; command -v systemctl; command -v docker; command -v macctl; cat /proc/self/cgroup; cat /sys/fs/cgroup/cpu.max /sys/fs/cgroup/memory.max; test -e /mnt/mac && echo MAC_MOUNT_PRESENT; test -e /Users && echo USERS_ALIAS_PRESENT; test -n \"$SSH_AUTH_SOCK\" && echo SSH_AGENT_PRESENT; findmnt -rno TARGET,FSTYPE; true"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Error: unknown flag --\nUsage:\n  orbctl run [flags] [COMMAND] [ARGS]...\n\nAliases:\n  run, exec, shell\n\nExamples:\n  orbctl run ls\n\nFlags:\n  -h, --help             help for run\n  -m, --machine string   Use a specific machine\n  -p, --path             Translate absolute macOS paths to Linux paths\n  -s, --shell            Use the login shell instead of running command directly\n  -u, --user string      Run as a specific user\n  -w, --workdir string   Set the working directory\n\n"
+    }
+  ]
+}

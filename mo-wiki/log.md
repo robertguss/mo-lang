@@ -715,3 +715,27 @@
   review/size notices and no structural/raw-source-drift errors;
   `git diff --check` passed. All 14 recorded inspection commands exited 0.
   Documentation only; no Mo build or runtime acceptance run.
+
+## [2026-09-19] maintain | Astra/Herdr workflow and overnight authority
+
+- 12:10 AM ET checkpoint: Robert clarified that Astra remains lead on this Mac,
+  with fresh Astra workers at low reasoning in Herdr panes and no oracle.
+  Updated active role guidance, schema, handoff and status pages.
+- Verified Herdr 0.9.0 caller context, local model support and actual worker
+  startup as `gpt-6-astra low`. The read-only executor review completed; saved
+  its pane output under `audit/evidence/2026-09-19/executor-readiness/` and
+  closed only its task-owned pane after receipt.
+- Robert then authorized continuous overnight work and lead decisions including
+  those previously awaiting approval. The harness implementation pause is
+  superseded. Starting dedicated isolated-machine readiness and bounded runner
+  implementation; existing Step 39/Program 7 evidence obligations remain.
+- Validation: 257 wiki pages checked, 25 inherited review/size notices,
+  no structural/raw-drift errors; diff check clean. Added
+  [[mo-executor-foundation]] with exact worker scope and acceptance criteria.
+- Dedicated isolated Ubuntu machine created with 2 CPU, 2 GiB RAM and 8 GiB
+  disk bounds. Mac sharing/SSH forwarding absent; Mac-command integration
+  attempt failed. Installed Docker 29.1.3 and a local BusyBox fixture; retained
+  package versions, setup source and output. No candidate acceptance yet.
+- Full staged diff check reports whitespace only in preserved terminal/package
+  outputs. Authored guidance, plan, setup source and JSON pass the whitespace
+  check; raw evidence is retained without whitespace rewriting.

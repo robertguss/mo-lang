@@ -1,6 +1,35 @@
-# Mo Lang — Mac arrival inspected; implementation paused
+# Mo Lang — Astra lead and low-reasoning Herdr workers; overnight work authorized
 
-## Current checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
+## Current instruction: autonomous Mac work, 19 Sep 2026, 12:10 AM ET
+
+Robert clarified the workflow: **Astra remains lead in this continuing Mac
+session; spawn fresh Astra workers at low reasoning in Herdr panes.** There
+is no oracle on the Mac and no oracle requirement. This supersedes Amp orb
+workers, medium reasoning and the prior workflow question. Launch/ownership
+details live in `.claude/skills/mo-lead/SKILL.md` and `CLAUDE.md`.
+
+Robert then asked the lead to keep working while he sleeps, make any decisions
+including those needing his approval, and keep moving. **The earlier harness
+implementation pause is superseded.** The lead chooses bounded setup and
+implementation slices, establishes technical readiness, delegates code,
+independently verifies and records checkpoints. An interactive login may need
+Robert later; use provider fixtures and continue independent work meanwhile.
+Do not broaden this into unrelated work or waive outstanding evidence.
+
+Herdr 0.9.0 is running; the lead is in the `mo-lang` workspace. A fresh worker
+was actually launched with `gpt-6-astra` and `model_reasoning_effort="low"`,
+confirmed in its startup UI. Its read-only executor review is retained under
+`audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
+receipt. Rediscover pane IDs before further work.
+
+Next: establish an isolated named OrbStack machine and provider-independent
+executor with protected verdicts; then one complete headless Mo coding path
+and the versioned 401 calibration task. Ordinary OrbStack file sharing must
+not expose the Mac home to candidates. The installed CLI supports isolated
+machines and per-machine resource bounds; behavior still needs probes.
+Step 39 remains unaccepted and Program 7 suspended. No old audit gate is passed.
+
+## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
 
 Robert asked this Codex (GPT-6) session to continue the handoff. Read-only
 arrival checks are recorded in `audit/evidence/2026-09-18/mac-arrival/`.

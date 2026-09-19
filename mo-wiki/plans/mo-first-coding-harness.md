@@ -9,7 +9,7 @@ sources:
     spec/programs/05-agent-harness.md,
     research/concepts/agent-native-research-synthesis.md,
   ]
-status: planning
+status: in-progress
 ---
 
 # Mo-first coding harness: bounded first deliverable
@@ -18,17 +18,18 @@ status: planning
 
 Robert approved the lead/oracle recommendation on 18 Sep 2026: build a small
 Mo-first coding harness in Mo, initially maintaining existing Mo applications.
-This brief prepares that work; it is not a worker launch or an experiment seal.
-Implementation still needs a bounded start approval and lead readiness.
+Robert's 19 Sep overnight instruction now authorizes the Astra lead to decide
+and drive bounded setup, implementation and verification while he is AFK.
+The lead establishes technical readiness and records each slice. This does
+not seal an experiment or accept an outstanding audit obligation.
 
-Robert's subsequent worker instruction: use Amp orbs, Astra as lead, fresh
-threads for every worker/new work unit/phase, `medium` worker mode and
-`a1.xxlarge` orb size. This supersedes Herdr/Opus launch mechanics, not role
-ownership or audit rules. Transfer exact code between thread checkouts; no
-worker has launched. The lead model choice does not select the harness's
-reference model.
+Current worker instruction (19 Sep): keep Astra as lead in this Mac session
+and spawn fresh Astra workers at low reasoning in Herdr panes. The former
+oracle requirement and Amp worker configuration are superseded. See `mo-lead`
+for ownership and verification. The lead/worker model does not select the
+harness's reference model.
 
-**Later instruction, 18 Sep 2026, 11:44 PM ET:** move the Astra lead to Robert's
+**Historical relocation instruction, 18 Sep 2026, 11:44 PM ET:** move the Astra lead to Robert's
 Mac, where he confirms OrbStack works. Keep orb worker configuration unchanged.
 `HANDOFF.md` owns arrival checks. Nine final credential-free executor probes
 passed in this orb; the two earlier failed probe runs are also retained at
@@ -48,7 +49,9 @@ native arm64 Zig 0.16.0 and OrbStack Docker endpoint are verified. No named
 Linux machine exists; a dedicated executor, Linux checkout/toolchain and
 protected verdict remain unverified. The Codex session lacks Amp oracle/thread
 tools; Robert's workflow choice is pending. Evidence is at
-`audit/evidence/2026-09-18/mac-arrival/`. No setup or implementation started.
+`audit/evidence/2026-09-18/mac-arrival/`. No setup or implementation had started
+at that checkpoint. The 19 Sep Herdr/overnight instructions above resolve the
+workflow and start authority.
 
 The useful result is: **task + isolated checkout → candidate patch + independent
 behavioral verdict**, with command outcomes, time, usage and failures recorded.
@@ -70,9 +73,8 @@ without assuming the recorded guarantees have been independently accepted.
 
 ## Write scope and ownership
 
-Current scope is lead-owned documentation only. No changes to `toolchain/`,
-`examples/`, sealed suites or historical evidence are authorized by this brief.
-Before launch, append an exact path allowlist for each implementation part and
+The lead chooses each bounded implementation slice under Robert's overnight
+authority. Before launch, append an exact path allowlist for each part and
 its independent acceptance owner. The designated worker owns future code under
 `toolchain/` and `examples/`; the lead owns requirements and acceptance
 readings. Do not choose a new worker environment implicitly or assume private
@@ -87,6 +89,9 @@ editing that copy must not change the harness actually executing the trial.
 ## Parts, in order after implementation approval
 
 ### A. Truthful evidence and bounded execution
+
+First bounded implementation brief: [[mo-executor-foundation]], with exact
+worker write scope, isolated-machine setup and lead-owned acceptance controls.
 
 Define a protected external runner that binds a verdict to the exact candidate,
 toolchain, configuration and expected check inventory. Development tests in the
@@ -231,7 +236,7 @@ Before a worker brief is ready, the lead must resolve and record:
 
 - Pi provider candidate: resolve registration/support, account/model access and
   maintained TLS/auth adapter contract; permitted network boundary.
-- Amp orb worker configuration is selected; verify executor isolation, resource
+- Astra/low Herdr worker configuration is selected; verify executor isolation, resource
   limits, credential separation and protected storage before readiness.
 - Exact code write scopes, command/API feasibility and acceptance ownership.
 - Versioned first-task policy and recipe relationship, budgets and trial plan.

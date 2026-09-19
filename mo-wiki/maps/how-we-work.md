@@ -1,7 +1,7 @@
 ---
 title: "How we work"
 created: 2026-09-16
-updated: 2026-09-18
+updated: 2026-09-19
 type: map
 tags: [process]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -22,22 +22,19 @@ The working agreements, the roles, the loop, and the instruments, for anyone (or
 
 ## The roles
 
-Robert has directed the Astra lead to move to his Mac (18 Sep 2026); see
-`HANDOFF.md` for the transfer checklist. After relocation, keep one continuing
-lead session. The lead writes briefs, verifies, decides, and records, using the
-oracle for substantive judgments. Workers write every line under `toolchain/`
-and `examples/`. Each approved worker/new work unit/phase gets a fresh Amp orb
-thread in `medium` mode on `a1.xxlarge`, through `create_thread`, not Herdr.
-Robert reviews the decision log.
+Robert's 19 Sep instructions keep Astra as lead in this Mac session, with fresh
+Astra workers at low reasoning in Herdr panes. The oracle requirement and Amp
+worker workflow are superseded. The lead writes briefs, verifies, decides and
+records; workers own code under `toolchain/` and `examples/`. Robert reviews
+the decision log. `mo-lead` holds the exact launch and acceptance procedure.
 
-Threads have separate checkouts. Briefs identify the repository, exact base and
-write scope; unpushed work is transferred explicitly. The lead inspects and
-integrates returned changes, preserves raw evidence, and reruns acceptance in
-its own checkout. A worker's green report is not acceptance. Use native thread
-coordination and supervised orb services; preserve historical experiment
-worktrees and keep sealed suites away from workers. See the lead skill for the
-full loop. Workflow migration does not lift the implementation pause in
-`HANDOFF.md`.
+Implementation workers have separate worktrees and exact base/write scopes;
+read-only reviews may share the lead checkout. The lead inspects returned
+changes, preserves raw evidence and reruns acceptance in its own checkout. A
+worker's green report is not acceptance. Preserve historical worktrees and keep
+sealed suites away from workers. Robert's overnight authority authorizes lead
+decisions and bounded setup/implementation while he is AFK; independent work
+continues around prerequisites requiring his presence.
 
 ## The auditor (17 Sep 2026)
 
@@ -48,6 +45,10 @@ A separate reader Robert installed after the outside review of 17 Sep: a Perplex
 Nothing is final until measured ([[d28-nothing-final-until-measured]]); every step ends in a numbers table, best of five, both runtimes. Zero new syntax where possible; a grammar change is Robert's call. The laws stay unless a round shows them costing loops without catching bugs. Worktrees are evidence and are never deleted or merged. A control run is pre-registered: predictions on the page before any session starts. The lead commits by path only. Verify with your own probes, on real inputs, with your own client: every finding that mattered came from an input no suite sent.
 
 ## The instruments
+
+[[mo-executor-foundation]] builds the first bounded executor and protected
+verdict path for [[mo-first-coding-harness]]. Its fixtures do not replace
+independent application acceptance or historical audit obligations.
 
 The suites live beside their plans under `mo-wiki/plans/*-suite/`; see [[the-rounds]] for the list. `mo-wiki/tools/lint.py` checks links, frontmatter, tags, orphans, and sizes. The site is built by Quartz from `site/` and published on every push to `main`.
 

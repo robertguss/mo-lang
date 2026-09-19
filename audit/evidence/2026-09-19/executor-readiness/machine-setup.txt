@@ -1,0 +1,25 @@
+
+busybox_sha256=52151e7f322f926b64049cdaa1410dc3ea6485525e0624b05813791c219ae933
+sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337
+
+command: ['docker', 'version', '--format', '{{.Server.Version}}']
+29.1.3
+
+command: ['docker', 'info', '--format', '{{.CgroupDriver}} {{.CgroupVersion}} {{json .SecurityOptions}}']
+systemd 2 ["name=seccomp,profile=builtin","name=cgroupns"]
+
+command: ['docker', 'image', 'inspect', 'mo-executor-fixture:r01', '--format', '{{.Id}}']
+sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337
+
+command: ['systemctl', 'show', 'mo-executor.slice', '--property=CPUQuotaPerSecUSec,MemoryMax,MemorySwapMax,TasksMax']
+CPUQuotaPerSecUSec=1s
+MemoryMax=536870912
+MemorySwapMax=0
+TasksMax=128
+
+command: ['dpkg-query', '-W', 'docker.io', 'busybox-static', 'containerd', 'runc']
+busybox-static	1:1.36.1-6ubuntu3.1
+containerd	2.2.1-0ubuntu1~24.04.3
+docker.io	29.1.3-0ubuntu3~24.04.2
+runc	1.3.4-0ubuntu1~24.04.1
+

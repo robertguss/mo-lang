@@ -2,6 +2,17 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Astra/Herdr workflow and overnight authority — 19 Sep 2026, 12:10 AM ET
+
+- Robert keeps Astra as lead on his Mac and selects fresh Astra workers at low
+  reasoning in Herdr panes, superseding Amp orbs and the oracle requirement.
+  A real worker launch confirmed the selected model/effort; its readiness
+  review was retained and its pane closed after receipt.
+- Robert authorizes the lead to drive setup, implementation and verification
+  while he sleeps and make decisions previously awaiting approval. Updated
+  active guidance; the harness implementation pause is superseded, while
+  bounded scope, independent verification and outstanding audit gates remain.
+
 ## Mac arrival inspection — 18 Sep 2026, 11:58 PM ET
 
 - Verified the clean handoff checkout, native Zig 0.16.0 and OrbStack Docker

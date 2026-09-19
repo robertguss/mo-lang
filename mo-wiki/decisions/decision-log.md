@@ -672,6 +672,14 @@ direction separately from the lead's conservative execution interpretation.
 | Continue the handoff in this Mac checkout. Arrival checks found clean main at the handoff commit, Zig 0.16.0, reachable OrbStack Docker, 68 existing worktree paths, 70 local branches and the private transfer package. Existing receiver ledger retained; zero new audit records. No restoration or executor acceptance claimed. | Robert requests continuation; Codex (GPT-6) records observations | recorded | `audit/evidence/2026-09-18/mac-arrival/inspection.json` |
 | No named Linux machine exists; dedicated execution and Linux toolchain remain unverified. This Codex session lacks the required Amp oracle/native thread tools. Asked Robert whether to adapt lead/review work to Codex or preserve Amp; no new design decision or implementation start. | Codex (GPT-6) | open | Robert's workflow choice, then scoped readiness review |
 
+## Astra/Herdr and overnight authority (19 Sep 2026, 12:10 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Astra remains lead in this Mac session; spawn fresh Astra workers at low reasoning in Herdr panes. The former orb's oracle and medium/xxlarge Amp worker requirements are superseded. | Robert | decided | actual gpt-6-astra/low worker startup and completed executor readiness review |
+| Keep working while Robert sleeps; the lead makes decisions, including those previously needing approval, and continues around blockers. Supersedes the harness implementation pause; the lead records bounded setup, implementation and verification work. | Robert | decided | isolated executor foundation, then headless coding path |
+| Start provider-independent executor work in a dedicated isolated OrbStack machine, using existing installation's isolation and resource-limit flags. Verify absent Mac sharing, effective limits and protected verdicts before running application candidates. Existing shared Docker daemon remains outside this scope. | Astra lead, informed by Astra/low review | decided, semantic | machine inspection and executor controls |
+
 ## Related
 
 - [[session-05]]

@@ -24,15 +24,23 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, 11:58 PM ET, Mac arrival inspected.
+**Last updated:** 19 Sep 2026, 12:10 AM ET, Herdr workflow and overnight authority.
+
+**Overnight work authorized:** Robert asks Astra to remain lead, spawn fresh
+Astra workers at low reasoning in Herdr panes, and keep driving the work while
+he sleeps, deciding matters previously needing approval. The oracle requirement
+and earlier harness implementation pause are superseded. A worker launch and
+read-only executor review are complete; next is a dedicated isolated OrbStack
+boundary, protected verdicts and the headless Mo coding path. The lead records
+bounded decisions and verifies results before acceptance.
 
 **Lead on the Mac:** this Codex (GPT-6) session inspected the clean handoff
 checkout, native Zig 0.16.0 and reachable OrbStack Docker backend. All 68
 historical worktree paths, 70 local branches and the private transfer package
 are present; the existing auditor ledger was retained and the pointer check
 found zero new records. No named OrbStack Linux machine exists, so a dedicated
-test boundary and Linux toolchain remain unverified. The session lacks Amp's
-oracle/native thread tools; Robert's lead/review workflow choice is pending.
+test boundary and Linux toolchain remain unverified. The subsequent Herdr
+instruction resolved the lead/review workflow choice.
 Evidence: `audit/evidence/2026-09-18/mac-arrival/`; next steps: `HANDOFF.md`.
 
 **Executor feasibility, not harness acceptance:** separately authorized,
@@ -59,7 +67,7 @@ The final review labelled DeepSeek was byte-identical to the supplied Kimi body,
 verified by comparison and SHA-256. Four distinct review bodies, not five; the
 reason for duplicate attribution is unknown.
 
-## Agent-native direction agreed; implementation remains paused
+## Agent-native direction agreed; bounded implementation now authorized
 
 Mo is a functional, statically typed, compiled, BEAM-inspired option, not a
 replacement for Elixir/Erlang. Agents are its intended code authors and readers;

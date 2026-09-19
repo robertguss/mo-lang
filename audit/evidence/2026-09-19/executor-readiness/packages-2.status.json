@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "env",
+    "DEBIAN_FRONTEND=noninteractive",
+    "apt-get",
+    "install",
+    "-y",
+    "--no-install-recommends",
+    "docker.io",
+    "busybox-static"
+  ],
+  "exit_code": 0
+}

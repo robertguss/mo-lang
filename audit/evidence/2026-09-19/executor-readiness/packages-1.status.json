@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "env",
+    "DEBIAN_FRONTEND=noninteractive",
+    "apt-get",
+    "update"
+  ],
+  "exit_code": 0
+}

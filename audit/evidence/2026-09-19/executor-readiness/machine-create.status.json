@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "orbctl",
+    "create",
+    "--isolated",
+    "--isolate-network",
+    "--cpus",
+    "2",
+    "--memory",
+    "2G",
+    "--disk",
+    "8G",
+    "--arch",
+    "arm64",
+    "--user",
+    "mo",
+    "ubuntu:24.04",
+    "mo-executor-r01"
+  ],
+  "exit_code": 0,
+  "provenance": "Transcribed from lead tool result; command returned no stdout or stderr"
+}

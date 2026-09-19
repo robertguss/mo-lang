@@ -1,0 +1,33 @@
+[
+  {
+    "argv": [
+      "orbctl",
+      "run",
+      "-m",
+      "mo-executor-r01",
+      "-u",
+      "root",
+      "uname",
+      "-a"
+    ],
+    "exit_code": 0,
+    "stdout": "Linux mo-executor-r01 7.0.14-orbstack-00380-ga7e0a2dc9535 #1 SMP PREEMPT Fri Aug  7 03:48:40 UTC 2026 aarch64 aarch64 aarch64 GNU/Linux\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "orbctl",
+      "run",
+      "-m",
+      "mo-executor-r01",
+      "-u",
+      "root",
+      "sh",
+      "-c",
+      "id; cat /etc/os-release; command -v python3; command -v systemctl; command -v docker; command -v macctl; cat /proc/self/cgroup; cat /sys/fs/cgroup/cpu.max /sys/fs/cgroup/memory.max; test -e /mnt/mac && echo MAC_MOUNT_PRESENT; test -e /Users && echo USERS_ALIAS_PRESENT; test -n \"$SSH_AUTH_SOCK\" && echo SSH_AGENT_PRESENT; findmnt -rno TARGET,FSTYPE; true"
+    ],
+    "exit_code": 0,
+    "stdout": "uid=0(root) gid=0(root) groups=0(root)\nPRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n/usr/bin/python3\n/usr/bin/systemctl\n/usr/local/bin/macctl\n0::/.lxc\n200000 100000\n2147483648\n/ btrfs\n/dev tmpfs\n/proc proc\n/sys sysfs\n/sys/devices/virtual/net sysfs\n/dev/fuse devtmpfs\n/dev/net/tun devtmpfs\n/dev/vhost-net devtmpfs\n/dev/ntsync devtmpfs\n/dev/vdb1 devtmpfs\n/dev/loop0 devtmpfs\n/dev/loop1 devtmpfs\n/dev/loop2 devtmpfs\n/dev/loop3 devtmpfs\n/dev/nbd0 devtmpfs\n/dev/nbd1 devtmpfs\n/dev/nbd2 devtmpfs\n/dev/nbd3 devtmpfs\n/dev/vda devtmpfs\n/dev/vdb devtmpfs\n/dev/vdb1 devtmpfs\n/dev/vdc devtmpfs\n/dev/zram0 devtmpfs\n/dev/mqueue mqueue\n/sys/fs/fuse/connections fusectl\n/sys/kernel/security securityfs\n/sys/kernel/tracing tracefs\n/usr/lib/modules/7.0.14-orbstack-00380-ga7e0a2dc9535 overlay\n/dev/.lxc/proc proc\n/dev/.lxc/sys sysfs\n/tmp tmpfs\n/opt/orbstack-guest overlay\n/sys/fs/cgroup cgroup2\n/dev/full devtmpfs\n/dev/null devtmpfs\n/dev/random devtmpfs\n/dev/tty devtmpfs\n/dev/urandom devtmpfs\n/dev/zero devtmpfs\n/dev/pts devpts\n/dev/ptmx devpts\n/dev/console devpts\n/proc/sys/kernel/random/boot_id tmpfs\n/dev/shm tmpfs\n/run tmpfs\n/run/lock tmpfs\n/run/user/0 tmpfs\n",
+    "stderr": ""
+  }
+]

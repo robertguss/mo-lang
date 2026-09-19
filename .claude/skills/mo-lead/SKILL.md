@@ -2,7 +2,7 @@
 name: mo-lead
 description:
   The lead's role and loop for building Mo. Use when starting or resuming a Mo
-  session, briefing an Amp worker thread, accepting a step, or recording a
+  session, briefing an Astra worker in Herdr, accepting a step, or recording a
   decision.
 ---
 
@@ -16,26 +16,26 @@ The onboarding/audit loop is lead-only. Worker threads identify themselves as
 workers, follow shared safety rules and their bounded brief, and do not run the
 lead's audit inbox, publication/integration or decision-recording workflow.
 
-**Lead relocation (Robert, 18 Sep 2026):** move the Astra lead to his Mac, with
-OrbStack Linux as the proposed execution environment. `HANDOFF.md` owns the
-transfer checklist. This is a one-time environment move, not a new lead per
-phase; retain one continuing lead session there. Worker threads remain
-medium-mode xxlarge Amp orbs. Confirm local tools and separate checkouts; do not
-restore historical Herdr mechanics. Orb-only service commands below apply only
-inside orbs, not to the Mac or an arbitrary OrbStack Linux VM. Preserve existing
-Mac services and Docker contexts; approve scoped setup before altering them.
+**Mac workflow (Robert, 19 Sep 2026):** Astra remains the lead in this session
+on Robert's Mac. Spawn fresh Astra workers with low reasoning in Herdr panes.
+This supersedes the Amp orb/thread workflow and oracle requirement; no oracle
+is available or required here. OrbStack is the proposed Linux execution
+environment, separate from where agents run. `HANDOFF.md` owns current readiness.
+Preserve existing Mac services, Docker contexts and historical worktrees.
 
 - **The lead (Astra, this same thread).** Writes briefs, verifies, decides,
-  records. Consults the oracle for substantive evaluations and decisions. Never
+  records. Owns substantive evaluations and decisions, using bounded worker
+  reviews when useful. Never
   writes code or prose under `toolchain/` or `examples/` by hand. Owns the
   syntheses, the spec chapters (`mo-wiki/spec/design-v0/`), the program specs
   (`mo-wiki/spec/programs/`), and the concept pages. Do not create a replacement
   lead thread for a new phase.
-- **The worker (medium mode, a1.xxlarge Amp orb).** Does every line of code and
+- **The worker (Astra, low reasoning, fresh Herdr pane).** Does every line of code and
   prose in `toolchain/`, `examples/`, and the generated or table files a brief
-  names. Each worker/new work unit/phase gets a fresh thread via
-  `create_thread`; do not inherit the lead model. It never writes under
-  `mo-wiki/` except the spec lines its brief lists. No Herdr is needed.
+  names. Each worker/new work unit/phase gets a fresh Codex session with
+  `--model gpt-6-astra -c 'model_reasoning_effort="low"'`. It never writes under
+  `mo-wiki/` except the spec lines its brief lists. Read-only review workers
+  may share the lead checkout; implementation workers use separate worktrees.
 - **Robert.** Reviews the decision log, not the queue. The lead's recommendation is the decision, made without waiting and recorded with who, status, and what first tests it. Overturning is cheap; nothing is a mistake at this stage. One question per message to him, code options first, a PL term defined in three lines before use, no phones. Every time given to him is US Eastern (Robert, 17 Sep 2026; the VM's clock is UTC: `TZ=America/New_York date`), labelled ET, in reports, wakeup reasons, and the rows and pages he reads. Frame every report: where the work sits in the whole against the "Where we are" table on `mo-wiki/plans/roadmap.md`, what was verified, the numbers, anything unmet, said plainly.
 
 ## The auditor (Robert, 17 Sep 2026)
@@ -58,54 +58,54 @@ The loop with the auditor, as it runs today (charter option B, manual, Robert-dr
 
 ## The loop, one step at a time
 
-**Execution gate:** follow the current `HANDOFF.md`. While implementation is
-paused, no workers, setup, authentication or experiments start without Robert's
-bounded approval and the lead's readiness confirmation. These instructions do
-not grant push, PR, merge, deployment or external-service permission; obtain the
-applicable authorization before those actions, including audit
-publication/integration.
+**Overnight authority (Robert, 19 Sep 2026):** follow current `HANDOFF.md`.
+Robert asked the lead to keep working while he sleeps, make decisions including
+those previously awaiting his approval, and keep moving. The lead chooses and
+records bounded setup, implementation and verification work for the Mo harness;
+the earlier implementation pause is superseded for that work. Confirm technical
+readiness with evidence, not another permission request. Continue independent
+work around prerequisites that inherently need Robert's presence, such as an
+interactive login. Retain scope, source ownership, independent acceptance and
+audit rules; do not treat unavailable evidence as passed.
 
 1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A toolchain step's write scope always includes the corpus's `.mo.ids` sidecars and `toolchain/PRELUDE.md` when the corpus or the prelude changes (step 35, 17 Sep 2026). A step is one brief; a program has a spec page (the lead's) and a brief.
-2. **Fresh worker.** Use `create_thread` with project `robertguss/mo-lang`,
-   `executor: "orb"`, `agent_mode: "medium"`, and `orb_size: "a1.xxlarge"`. Name
-   the worker role, parent lead thread, repository, exact base revision, brief,
-   write scope, constraints, checks and Done-when. Distinguish the lead's local
-   `main` from `origin/main`: a new orb does not inherit unpushed commits,
-   files, services or setup. Establish transfer before dependent work starts:
-   use thread file-transfer tools for an unpushed brief, patch/bundle or other
-   required files, and require the worker to confirm the base and applied state.
-   Give bounded ownership and tell it to do the work itself without nested
-   delegation. Request local commits per part when useful, raw outputs, summary
-   and exit codes, numbers, and a numbered "Decisions the brief did not cover"
-   list. No automatic worker push or PR. Attribute the actual model, not a
-   historical Opus trailer. Require a stable final handoff: stop at Done-when,
-   finish all task commands and file writers, collect final outputs and exit
-   codes, and stop task-owned services through supported service controls
-   without touching unrelated services. Export a fixed commit or immutable
-   patch/files with the recorded base and worktree status. Preserve the checkout
-   until the lead confirms receipt of both code and evidence.
-3. **While it works.** Keep the lead in this thread. Use native thread
-   messages/status; choose either a completion reply or `wait_for_threads`, not
-   both. Continue the same assignment in its worker thread; a new assignment or
-   phase gets a fresh one. No Herdr, shell-launched agents, wake-up timers or
-   pollers. Lead documentation commits name only owned paths; inspect the index
-   and never sweep in unrelated staged edits. Workers have independent
-   checkouts, not a shared tree.
+2. **Fresh worker.** Read `herdr --skill` and verify `HERDR_ENV=1`. Discover
+   the calling workspace/pane; never reuse historical IDs. Split a fresh pane
+   to the right with explicit cwd and `--no-focus`; wait for its shell prompt.
+   Start a uniquely named agent with `herdr agent start <name> --kind codex
+   --pane <id> -- --model gpt-6-astra -c 'model_reasoning_effort="low"'
+   --no-alt-screen`, adding the task-appropriate sandbox. Verify the startup
+   output names Astra and low before sending the brief with `herdr agent prompt`.
+   Use `--sandbox read-only --ask-for-approval never` for read-only reviews.
+   For implementation, create a separate worktree from the exact local base
+   under `~/Projects/startups/mo-lang-worktrees/`; a local branch may be ahead
+   of origin. Name role, lead pane, base, write scope, constraints, checks and
+   Done-when. Tell workers they are not alone, must preserve others' edits and
+   must do their own assignment without nested delegation. Request raw outputs,
+   real exit codes, local commits when useful and decisions the brief did not
+   cover. Worker pushes and PRs need separate authorization.
+3. **While it works.** Keep this lead session. Use `herdr agent get/read/wait`
+   and `prompt` for the same assignment; each new work unit gets a fresh worker.
+   A timeout or unknown state is not completion. Preserve the user's focus.
+   Finish task commands/writers and retain the worker's report, exact commit or
+   patch, base and status before closing only the pane created for that worker.
+   Keep historical worktrees. Lead documentation commits name only owned paths;
+   never sweep in unrelated staged edits.
 4. **Integrate and verify.** Save the worker's report and raw evidence. Inspect
    its exact diff before integration; a commit ID or message does not transfer
-   code. Download files or a patch/bundle into a staging directory first,
-   account for deletions, and reconcile against the recorded base and
+   code. Inspect the worker worktree's fixed commit or patch, account for
+   deletions, and reconcile against the recorded base and
    intervening lead/upstream changes without overwriting unrelated work. Run
    checks in the lead checkout containing the integrated result, using shell
-   tools and `shell_command_status` for ongoing commands, not another review orb
-   with stale code. For code acceptance: `zig build` and
+   tools and Herdr run panes for ongoing commands. For code acceptance: `zig build` and
    `zig build test --summary all` from `toolchain/`, under explicit
    timeouts/watchdogs, plus probes on inputs the brief did not name. Use both
    runtimes where affected (`mo run`, a `mo build` binary, `mo test --sim` for
    process code); preserve raw outputs and real exit codes through pipelines.
-   For documentation-only work use lint and diff checks. Long-lived services use
-   `amp orb services ensure` or `amp orb service start`, never Herdr, nohup or
-   detached shells. Linux checks do not satisfy Darwin full-sync obligations.
+   For documentation-only work use lint and diff checks. Test/server processes
+   run in owned Herdr run panes with explicit guards and cleanup; preserve
+   unrelated services. Linux execution needs its own verified OrbStack boundary.
+   Linux checks do not satisfy Darwin full-sync obligations.
 5. **Record.** One commit (by path: `git commit -m <msg> -- <paths>`):
    decision-log rows in `mo-wiki/decisions/decision-log.md` (who, status, first
    tested by; a ratified worker default names the actual worker/model; rows
@@ -135,20 +135,18 @@ publication/integration.
 
 - A worker's "green" is a claim, not a result (step 36, 17 Sep 2026: two defects behind a reported green suite). Every brief's Done-when asks for `zig build test --summary all` under a timeout with the summary line and exit code in the report; the lead runs the suite itself before any acceptance; a test that can block on a socket has a deadline on every read and write.
 - A historical Herdr VM memory incident motivates the retained guard, not
-  orb-wide process mutation. Every brief requires every `mo`, server, bench and
+  host-wide process mutation. Every brief requires every `mo`, server, bench and
   test process to run under `toolchain/bench/step36/guard.py` (timeout and 4 GB
   watchdog). Do not reset unrelated processes' OOM settings. Avoid competing
-  benchmarks in one orb; xxlarge capacity does not waive bounded execution.
+  benchmarks on one host; machine capacity does not waive bounded execution.
 - Nothing is final until measured; every step ends in a numbers table, best of five, both runtimes. Before any measurement read `uptime` and `ps -eo pid,etimes,pcpu,args --sort=-pcpu | head`, kill what is an orphan (17 Sep 2026: a 43-hour `python3 -` from a finished session held one of the VM's four cores through a whole day of numbers), and write the load average on the page beside the numbers.
 - Zero new syntax where possible; a grammar change is Robert's call, asked with code options.
 - The laws stay unless a control run shows them costing loops; five rounds have shown none.
 - Install what a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for a Python project, `uv tool install` for a command), `go install`; record it.
 - Historical experiment worktrees are evidence and are never deleted or merged.
-  The prior machine's `~/Projects/startups/mo-lang-worktrees/` and
-  `MOVED-2026-09-18.json` inventory are not assumed present in an orb;
-  `HANDOFF.md` records restoration limits. Preserve exact revisions, patches,
-  environment details and outputs from future worker orbs before relying on
-  their results; a thread message alone is not durable code/evidence transfer.
+  `HANDOFF.md` records Mac inventory and restoration limits. Preserve exact
+  revisions, patches, environment details and outputs from workers before
+  relying on their results; a pane message alone is not durable evidence.
   Rebuild moved dependency environments where necessary.
 - A control run (`mo-wiki/plans/control-run-N.md`) is pre-registered:
   predictions and conditions before any experimental session starts, fresh

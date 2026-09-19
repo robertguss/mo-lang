@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "python3",
+    "-c",
+    "import os,json,subprocess\nr=subprocess.run([\"macctl\",\"run\",\"/usr/bin/true\"],capture_output=True,text=True,timeout=5)\nprint(json.dumps({\"host_mount_present\":os.path.lexists(\"/mnt/mac\"),\"host_users_alias_present\":os.path.lexists(\"/Users\"),\"ssh_agent_forwarded\":bool(os.environ.get(\"SSH_AUTH_SOCK\")),\"macctl_run_true\":{\"exit\":r.returncode,\"stdout\":r.stdout,\"stderr\":r.stderr}}))\n"
+  ],
+  "exit_code": 0,
+  "stdout": "{\"host_mount_present\": false, \"host_users_alias_present\": false, \"ssh_agent_forwarded\": false, \"macctl_run_true\": {\"exit\": 1, \"stdout\": \"\", \"stderr\": \"dial: no such file or directory\\n\"}}\n",
+  "stderr": ""
+}

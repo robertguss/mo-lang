@@ -123,25 +123,24 @@ Add a tag here before using it. Keep it under 30.
 4. "Unpack this" / "ELI5" → deeper, still in tight bullets with a snippet.
 5. Fresh **web research** over training data when a topic calls for it; two lanes — Claude writes prompts into `research/prompts/`, Robert runs them (Perplexity) into `raw/research-runs/`; papers required.
 6. **Nothing is final until measured** (direction 28).
-7. **Lead and worker threads** (Robert, 18 Sep 2026, superseding Herdr): the
-   Astra lead moves to Robert's Mac per `HANDOFF.md` (his later instruction),
-   then keeps one continuing lead session, owns judgment and documentation, and
-   uses the oracle for substantive evaluations and decisions. Every approved
-   worker/new work unit/phase gets a fresh Amp orb thread through
-   `create_thread`, with `agent_mode: "medium"` and `orb_size: "a1.xxlarge"`.
-   Separate checkouts do not inherit local commits, files or services: name the
-   exact base, transfer unpushed work explicitly, and inspect and verify
-   returned changes in the lead checkout before acceptance. No Herdr panes,
-   shell agent launch or automatic worker push. Use native thread
-   messages/status/completion tools. Preserve bounded write scopes and the
-   worker's ownership of `toolchain/` and `examples/`; see `mo-lead` for the
-   full loop. The current implementation pause still requires a bounded start
-   approval and lead readiness.
+7. **Lead and workers** (Robert, 19 Sep 2026, superseding Amp orbs): Astra
+   stays the lead in this Mac session and owns judgment and documentation.
+   Fresh Astra workers run at low reasoning in Herdr panes; there is no oracle
+   requirement on the Mac. `mo-lead` owns the launch and acceptance procedure.
+   Implementation workers use separate worktrees with an exact local base;
+   read-only reviewers may share the lead checkout. Preserve bounded ownership
+   of `toolchain/` and `examples/`, inspect exact returned changes and verify
+   them in the lead checkout. Robert's subsequent overnight instruction
+   authorizes the lead to decide and drive bounded harness setup,
+   implementation and verification while he is AFK, including decisions
+   previously awaiting approval. The lead records the scope and readiness;
+   prerequisites requiring Robert's presence do not stop independent work.
 8. **The lead decides** (Robert, session 5; Astra succeeds Fable): the lead's
    recommendation is the decision within approved scope, recorded as a
    decision-log row with who, status, and first tested by. Robert reviews the
-   log, not the queue. Overturning is cheap and expected. Explicit approval
-   gates, including the implementation pause and external actions, still apply.
+   log, not the queue. Overturning is cheap and expected. Scope and evidence
+   requirements still apply; use the latest authorization
+   recorded in `HANDOFF.md` rather than a superseded pause.
 9. **Frame every report** (Robert, session 5, evening): each report on a worker's result says where that work sits in the whole, in a sentence or two: what phase it belongs to, what it unblocks, and what is left, against the "Where we are" table on `plans/roadmap.md`, which is updated at every acceptance.
 10. **Tools** (Robert, 14 Sep 2026, morning): Fable and the workers install or download whatever tool a step needs, without asking, with the package managers on the machine: Homebrew, `mise`, `uv`, `go install`. A Python project is made with `uv init` and everything it needs goes into its virtual environment, its checkers included (`uv add --dev mypy ruff`, run as `uv run mypy`); nothing Python is installed globally or as a `uv tool` (Robert, 14 Sep 2026, afternoon). Record what was installed in the decision log.
 12. **The auditor** (Robert, 17 Sep 2026): a Perplexity session only he opens reads raw evidence cold and files `audit/mo-audit-<date>-<subject>.md`; three stopping rules under `audit/` are ratified and change only by a decision-log row with a reason. The lead writes its reading of a subject as a decision-log row or `audit/fable-reading-<date>-<subject>.md` before it opens the auditor's file on that subject, files a disagreement as a row citing both, never opens an audit session, never reads or writes a hidden suite the auditor seals, and leaves raw pointers and outputs under `audit/evidence/<date>/` so an audit session can read the repo cold. Since 17 Sep evening the exchange is automated (PR #3, `audit/WORKFLOW.md`): the lead publishes `ready` records under `audit/handoffs/` on `main`, the auditor's intake polls hourly and answers by pull request, Robert tells the lead when it has (no poller on the lead's side, his choice), the lead runs `fable_poll.py check` and integrates; Robert gets outcome summaries. The whole loop: `plans/the-audit-workflow.md`.
