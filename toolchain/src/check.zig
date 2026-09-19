@@ -1649,15 +1649,7 @@ const Checker = struct {
         if (depth > 32) return null;
         const n = c.node(i);
         switch (n.kind) {
-            .int_lit => {
-                var v: i128 = 0;
-                for (c.text(n.main_token)) |ch| {
-                    if (ch == '_') continue;
-                    v = std.math.mul(i128, v, 10) catch return null;
-                    v = std.math.add(i128, v, @as(i128, ch - '0')) catch return null;
-                }
-                return .{ .int = v };
-            },
+            .int_lit => return .{ .int = number.int(c.text(n.main_token)) orelse return null },
             .true_lit => return .{ .boolean = true },
             .false_lit => return .{ .boolean = false },
             .name_ref => {
@@ -2899,12 +2891,12 @@ const Checker = struct {
                 const t = try c.expr(n.lhs, types.unknown);
                 const b = c.bt(t);
                 if (b.tag == .unknown or b.tag == .variable) return types.unknown;
-                const k = std.fmt.parseInt(u32, c.text(n.main_token), 10) catch std.math.maxInt(u32);
+                const k = number.int(c.text(n.main_token)) orelse std.math.maxInt(u64);
                 if (b.tag != .tuple or k >= b.b) {
                     try c.reportTok(.no_member, n.main_token, try c.print("{s} has no position {s}", .{ try c.tn(t), c.text(n.main_token) }));
                     return types.unknown;
                 }
-                return c.pool.items.items[b.a + k];
+                return c.pool.items.items[b.a + @as(u32, @intCast(k))];
             },
             .call => return c.callExpr(i, expected),
             .named_arg => {
