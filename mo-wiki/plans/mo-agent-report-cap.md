@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, runtime, verification]
 sources: [plans/toolchain-raw-memory-report.md, plans/mo-application-workspace-v1.md]
-status: briefed
+status: in-progress
 ---
 
 # The agent's report cap and the clamped command's margin
