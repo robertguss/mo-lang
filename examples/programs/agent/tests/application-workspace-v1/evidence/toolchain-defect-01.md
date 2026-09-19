@@ -18,7 +18,7 @@ Before the cap (commit 5caec127 source, no report cap; 500,000 row with a 1 MiB 
 | N                 | interpreter                                                                                    | native                                            |
 | ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | 60,000 to 250,000 | correct report                                                                                 | correct report                                    |
-| 350,000 / 450,000 | correct report (700 KB)                                                                        | exit 3, stdout is raw memory bytes (`\t\x00...`)  |
+| 350,000 / 450,000 | not run (200,000, 600,000 and 700,000 correct)                                                 | exit 3, stdout is raw memory bytes (`\t\x00...`)  |
 | 500,000           | correct report                                                                                 | raw memory bytes (matrix-native-03, report-bound) |
 | 700,000           | correct report                                                                                 | not run                                           |
 | 800,000 / 851,700 | exit 134, VM panic `access of union field 'string' while field 'none' is active` (vm.zig:1531) | raw memory bytes                                  |
