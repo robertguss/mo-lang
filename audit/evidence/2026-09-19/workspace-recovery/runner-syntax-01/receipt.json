@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "python3",
+    "toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "python3",
+    "-c",
+    "import ast; from pathlib import Path; paths=sorted(Path('audit/evidence/2026-09-19/workspace-recovery').glob('*.py')); [ast.parse(p.read_text(),filename=str(p)) for p in paths]; print('Parsed',len(paths),'lead evidence scripts')"
+  ],
+  "exit": 0,
+  "group": 54295,
+  "remaining": [],
+  "scope": "AST parse only, no module imports or machine commands"
+}
