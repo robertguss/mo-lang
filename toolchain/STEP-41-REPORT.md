@@ -227,3 +227,23 @@ Every process ran under `bench/step36/guard.py`. The only test binaries I saw ru
 | `29bb783a` | GREEN: `exec.zig`, both runtimes, the fixture and `--sim` faults, `MO0407` for `Exec` and `Program`, the `Done` and `flows` fixes, the fourth control |
 | `8ed27a20` | Darwin on one `posix_spawn` (`exec.zig`, `mo_rt.c`); Linux keeps fork and `close_range` |
 | this one | `PRELUDE.md`, chapter 09's `## Exec`, `examples/stdlib/exec.mo` and its `.mo.ids`, `bench/step41/`, this report |
+
+## Linux follow-up
+
+The lead's run on the Linux VM (x86_64, `lead/verify-step41` at `0b0f494b`, which is `6eafb762` merged with `main`): build exit 0, `-Dtest-filter="step 41"` 5 of 6. The main controls test failed on one line, and only in the binary: `took: true` expected, `took: false` printed. `mo run` printed `true`, and the other 41 lines were right in both runtimes (the fork child's descriptors, group, terminal, Timeout by killing, and the folder cases included).
+
+**How `took` is measured, checked in the source.**
+- Interpreter (`src/exec.zig`, `Job.spawnAndWait`): the start is `Io.Clock.Timestamp.now(io, .awake)`, the monotonic clock, taken before the pipes are made and the child is started. The end is taken after the child is reaped. `took_ms = @divFloor(end - start, ns_per_ms)`.
+- C runtime (`runtime/mo_rt.c`, `exec_now`): `awake_ns()`, which is `CLOCK_MONOTONIC`, is taken before the pipes and the spawn, and again after `exec_reap`. `took_ms = (end - start) / 1000000`.
+
+Both truncate to whole milliseconds, so a run shorter than 1 ms is `0.ms`. On Linux, the static binary forks and execs `sh` running `exit 0` in under a millisecond. The control's `done.took > 0.ms` asked a question about speed, not about measurement. The runtimes are unchanged, since truncation is acceptable.
+
+**The control, changed** (`src/exec_controls.zig`; nothing else touched):
+- `took, a fast run` now asserts `0.ms <= took < 10.seconds`.
+- A new line, `took, a 0.2-second sleep`, runs `/bin/sh -c 'sleep 0.2'` and asserts `150.ms <= took < 10.seconds`. It measures a known wait, and it would fail if `took` stayed 0 or were not measured across the run.
+
+**Rerun on this Mac**, under the guard, logged to `bench/step41/step41-darwin-followup.log`, exit code in `bench/step41/step41-darwin-followup.exit`:
+- `python3 bench/step36/guard.py 1500 -- zig build test -Dtest-filter="step 41" --summary all`: exit **0**, `Build Summary: 5/5 steps succeeded; 6/6 tests passed`.
+- Both new lines printed `true` under `mo run` and in the binary.
+
+The one test binary running before the rerun was the lead's (`lead-verify-step41`, working folder checked with `lsof`), and I left it alone; none of mine were left afterwards. Linux is the lead's to rerun from this commit.
