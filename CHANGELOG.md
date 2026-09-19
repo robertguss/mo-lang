@@ -2,6 +2,19 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Research synthesis and outside review brief — 18 Sep 2026
+
+- Four supplied reports preserved with hashes and reviewed with the oracle;
+  findings, selective source corrections and unratified proposals separated. The
+  evidence attachment's auditor designation and prior exposure are disclosed;
+  this is not a new cold audit reading or adoption of its suggested gates.
+- A bounded Agent maintenance/onboarding trial is proposed for discussion. A
+  self-contained prompt equips external models with web access to challenge
+  everything, including whether a new language/runtime is justified.
+- No workers, setup, implementation or experiments until Robert explicitly
+  approves starting and the lead confirms readiness. Program 7 stays suspended;
+  Step 39 remains unaccepted. Documentation only; no new toolchain results.
+
 ## Agent-native direction; implementation paused — 18 Sep 2026
 
 - Robert approved Mo as an agent-native additional option, not a BEAM

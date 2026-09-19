@@ -565,3 +565,31 @@
   findings (15 existing review flags, seven size notices, including a new
   roadmap size notice); no broken-link, frontmatter, index or tag errors.
   `git diff --check` passed. Documentation only; no toolchain acceptance run.
+## [2026-09-18] ingest | Agent-native research and external review packet
+
+- Preserved all four supplied reports byte-for-byte under
+  `raw/research-runs/2026-09-18-agent-native-*.md`, with provenance and body
+  hashes. [[agent-native-research-synthesis]] records the oracle-assisted
+  reading, selective primary-source corrections and the proposed bounded
+  maintenance/onboarding trial. Nothing was implemented or measured anew.
+- Disclosed that the evidence attachment labels itself an auditor draft and was
+  encountered during the research batch before a new independent reading. This
+  synthesis is not a cold audit reading; its proposed gates are unratified.
+- Robert approved discussion of a maintenance task first, not a locked trial. He
+  requires his explicit start approval and the lead's readiness agreement before
+  any workers, setup, experiments or implementation. Program 7 stays suspended,
+  Step 39 unaccepted. No hidden suite opened or audit rule changed.
+- Prepared [[agent-native-independent-review-prompt]] for web-enabled models
+  without assumed repo access. Robert invites challenges to everything. The
+  oracle reviewed the packet; its two material clarifications are incorporated:
+  `never` is test-scoped, and user-defined generic structs/enums are
+  unsupported. Current premise, roadmap, state, handoff, thesis map, decision
+  log, index and changelog reflect the discussion boundary and receipt of
+  research.
+- Validation: original report bodies/hash checks pass; source-citation mapping
+  checked; `git diff --check` clean. Wiki lint: 254 pages, 23 review/size
+  notices (15 existing review flags, eight size notices including the
+  intentionally comprehensive standalone prompt); no structural or
+  raw-source-drift errors. No toolchain acceptance run; documentation only.
+  Auditor pointer check found no new records. No research reviewers were
+  launched on Robert's behalf.

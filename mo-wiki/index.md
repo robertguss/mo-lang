@@ -7,9 +7,8 @@ type: index
 
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
-
-> Every wiki page, one line each. Read this after SCHEMA.md to find pages for any question.
-> Last updated: 2026-09-18 | Total pages: 251
+> Every wiki page, one line each. Read this after SCHEMA.md to find pages for
+> any question. Last updated: 2026-09-18 | Total pages: 254
 
 ## Directions we like
 - [[d01-agents-write-the-code|Direction 1: Agents write nearly 100% of the code]] — Humans no longer write or closely review code
@@ -213,6 +212,13 @@ type: index
 - [[session-04|Session 4 — 12 Sep 2026]] — expose line replaces pub, use A.B{X}, every for closes with end, loops vs combinators rule
 
 ## Research
+
+- [[agent-native-research-synthesis]] — four reports reviewed with the oracle;
+  selective source checks, limitations and the proposed maintenance-workflow
+  trial; implementation paused
+- [[agent-native-independent-review-prompt]] — self-contained web-enabled review
+  brief; challenge everything, including a new language/runtime; comparable
+  independent responses
 - [[elixir|Mo vs Elixir]] — comparison: inference-first gradual types, OTP supervision shapes vs Q7, typed processes
 - [[go|Mo vs Go]] — comparison: simplicity by tooling, error-syntax post-mortem, goroutine bugs, module supply chain
 - [[rust|Mo vs Rust]] — comparison: what Mo keeps (enums, matching, small traits) and drops (lifetimes); compile-time and LLM evidence
@@ -240,6 +246,7 @@ type: index
 - [[plang-landscape-2026|The PL landscape circa 2026]] — what's alive, growing, fading, and where the interesting design work is happening; extends [[language-landscape]]
 
 ### Language surveys (history + design + Mo lesson)
+
 - [[c|C]] — Ritchie 1972, Unix's portable assembler, why it won and what it cost; what Mo takes and rejects
 - [[lisp|Lisp / Scheme / Common Lisp]] — McCarthy 1958, homoiconicity, macros, why it never dominated; what Mo takes
 - [[smalltalk|Smalltalk]] — Kay/Ingalls/Goldberg, pure message-passing OO, image-based dev; why Mo is [[d06-never-oop]] but respects the insight
@@ -268,7 +275,6 @@ type: index
 - [[author-joe-armstrong|Author: Joe Armstrong (Erlang)]] — R3: the six requirements R1–R6, let it crash, restart is not storage, failed type retrofits, do away with modules
 - [[safety-critical-coding-standards|Safety-critical coding standards]] — R6: Power of 10, JPL C, MISRA, CERT, DO-178C, Ravenscar, SPARK and others compared; three rule categories, deviation records, the loop-annotation convergence
 - [[reliability-and-testing-philosophies|Reliability and testing philosophies]] — R6: FoundationDB, Antithesis sometimes-assertions, Jepsen, SQLite coverage, let-it-crash restart intensity, QuickCheck shrinking, SRE error budgets, mutation testing
-
 
 ## Research monitoring
 - [[hermes-daily-2026-09-18]] — TLS state-sequence coverage, harness limitations, and versioned EOF semantics.

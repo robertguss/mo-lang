@@ -15,14 +15,26 @@ do not score the old experiment as passed, start builds or request a new seal.
 Replacement scope and acceptance criteria remain open. Neither capabilities
 requirements nor the separate contract-catch rule are waived by this decision.
 
-Robert is running four research briefs in parallel: unfamiliar-language
-learning, semantic editing, useful language restrictions, and trustworthy
-verification. When results arrive, read and synthesize them with the oracle,
-separate evidence from proposals, and discuss the next milestone. Robert
-requires oracle use for substantive lead evaluations and decisions. **No
-workers, setup, experiments or implementation until he explicitly authorizes
-resumption.** Documentation maintenance is authorized; no implementation or
-security strategy is accepted.
+The four research reports are received, preserved and synthesized with the
+oracle in `mo-wiki/research/concepts/agent-native-research-synthesis.md`.
+Selected source checks found overstatements; the reports are not new acceptance
+rules. The evidence attachment labels itself an auditor draft; it was read in
+the research batch before a new independent reading, so this synthesis is not a
+cold audit reading. No hidden suite was opened.
+
+Robert agreed to discuss a bounded maintenance task first. The Agent model-call
+401/retry change, onboarding comparison and small model pilot are proposals, not
+a locked experiment. The self-contained external review prompt is
+`mo-wiki/research/prompts/agent-native-independent-review-prompt.md`: reviewers
+have web access and may challenge everything, including building a language.
+Robert will gather opinions; the lead should compare reasons and evidence, not
+count votes. No outside review or documentation commit authorizes execution.
+
+Robert requires oracle use for substantive lead evaluations and decisions. **No
+workers, setup, experiments or implementation until Robert explicitly approves
+starting and the lead confirms readiness.** Documentation maintenance is
+authorized; no implementation or security strategy is accepted. We remain in
+discussion and revision, awaiting the outside reviews and Robert's steering.
 
 Upstream changed TLS and benchmark scripts during this discussion. Those changes
 were fetched and preserved, not tested or accepted here. Older statements that

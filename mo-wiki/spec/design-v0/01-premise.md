@@ -42,12 +42,14 @@ retired by this decision; program 7 execution, including its capabilities
 evaluation, is suspended. Replacement scope, metrics and acceptance criteria
 remain to be agreed and versioned before any new experiment.
 
-Implementation remains paused pending Robert's explicit authorization. Research
-is in progress on unfamiliar-language learning, semantic editing, useful
-language restrictions and trustworthy verification evidence. The roadmap records
-the pending questions. The decision-log section "Agent-native direction and
-program 7 suspension" records authority and scope; no syntax, security strategy
-or replacement experiment is ratified by this chapter alone.
+Implementation remains paused until Robert explicitly approves starting and the
+lead confirms readiness. The four research reports have been reviewed with the
+oracle; [[agent-native-research-synthesis]] records supported findings, source
+limitations and a proposed maintenance-workflow trial. Neither that trial nor a
+new syntax, security strategy or replacement program 7 is ratified by this
+chapter. External reviews may challenge everything, including the need for a new
+language/runtime; [[agent-native-independent-review-prompt]] is the shared
+brief. The roadmap and appended decision-log rows record the current boundary.
 
 ## Historical premise through the morning of 18 Sep 2026
 

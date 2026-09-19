@@ -53,12 +53,23 @@ Both cold and minimally guided onboarding should be evaluated, with broader
 affordable/open-weight model evaluation later. Cheap-model reliability remains
 unproven; prior cross-model failures are retained, not explained away.
 
-Robert is running four research briefs: unfamiliar-language learning, semantic
-editing, useful language restrictions, and trustworthy verification. The lead
-will synthesize the results with the oracle before agreeing the next milestone.
-Specific rule changes, a smaller program 7, TLS make-versus-wrap and exact
-performance/acceptance thresholds remain proposals. No worker, setup or
-experiment starts without Robert's explicit authorization.
+The four reports are now preserved and reviewed with the oracle in
+[[agent-native-research-synthesis]]. Selective primary-source checks found
+overstatements; compilation gains do not establish behavioral parity, semantic
+edits do not prove correctness, and implementer-authored evidence is not an
+independent verdict. The evidence attachment calls itself an auditor draft and
+was read in the batch before a new independent reading; this is not a cold audit
+reading and its proposed gates are unratified.
+
+Robert agreed to discuss a bounded maintenance task first. The proposed Agent
+authentication-error change, onboarding comparison and small model pilot remain
+open. [[agent-native-independent-review-prompt]] equips outside models with web
+access to challenge everything, including whether a new language/runtime is
+justified. Review evidence and reasons, not vote counts. Specific law changes,
+program-7 scope, TLS strategy and acceptance thresholds remain proposals. No
+workers, setup, experiments or implementation start until Robert explicitly
+approves and the lead confirms readiness. Documentation is not execution
+approval.
 
 Step 39 remains unaccepted and the known acceptance/durability obligations
 remain. New upstream TLS and benchmark edits were fetched, not verified in this

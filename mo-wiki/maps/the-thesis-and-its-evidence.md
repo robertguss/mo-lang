@@ -15,10 +15,13 @@ A map of content: the claim, the layers it stands on, and the page where each cl
 **Current direction, 18 Sep 2026:** [[01-premise]] now leads with agent-native
 development and the complete feedback loop, not BEAM superiority. Robert's
 program-7 suspension and prospective supersession of its runtime-claim
-retirement framing are appended in [[decision-log]]. [[roadmap]] tracks four
-pending research briefs and the implementation pause. Links below preserve the
-older layers and evidence; they do not establish the new goals or authorize the
-old experiment to proceed.
+retirement framing are appended in [[decision-log]]. The four reports are
+reviewed in [[agent-native-research-synthesis]], with a proposed first workflow
+trial, not an execution brief. [[agent-native-independent-review-prompt]] asks
+outside models to challenge the entire approach. [[roadmap]] retains the pause
+until Robert's explicit approval and the lead's readiness agreement. Links below
+preserve the older layers and evidence; they do not establish the new goals or
+authorize the old experiment to proceed.
 
 ## The claim, and how it was restated
 

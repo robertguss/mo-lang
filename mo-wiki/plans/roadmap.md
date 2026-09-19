@@ -26,28 +26,35 @@ New upstream TLS/script edits are not acceptance evidence.
 
 ### Next discussion and documentation work
 
-1. Receive Robert's four research results; review with the oracle and synthesize
-   primary evidence, counterevidence and applicable experiments.
-2. Agree a bounded agent-workflow milestone and its independent acceptance
-   evidence. Preserve semantics and plain source; test targeted changes rather
-   than assume a syntax redesign is needed.
+1. Gather external model reviews using
+   [[agent-native-independent-review-prompt]]. Robert invites challenges to
+   everything, including a new language/runtime. Compare evidence and reasoning
+   rather than model votes.
+2. Revise the bounded maintenance-workflow proposal in
+   [[agent-native-research-synthesis]] and its independent acceptance evidence.
+   The Agent model-call policy change and onboarding comparison are candidates,
+   not a locked specification or authorized run.
 3. Agree and explicitly version program 7's replacement scope, metrics and
    relationship to retained audit obligations before any new sealing or build.
-4. Resume implementation only on Robert's explicit instruction.
+4. Resume only after Robert explicitly approves starting and the lead confirms
+   readiness. No workers, setup, experiments or implementation before then.
 
-### Research running externally with Robert
+### Four reports received and reviewed with the oracle
 
 | brief                                                                                                                                | decision it informs                                                       | status                   |
 |---|---|---|
-| Unfamiliar-language learning: task-local guidance, examples, diagnostics; compilation versus behavioral success                      | Minimal guide and teaching feedback; test both cold and guided onboarding | running; results pending |
-| Text versus semantic editing: declaration IDs, cross-file changes, invalid intermediate code and stale edits                         | Which safe operations should accompany source editing                     | running; results pending |
-| Useful language restrictions: errors, capabilities, deadlines, retries, concurrency and persistence; prevention versus repair cost   | Which rules belong in language, libraries or runtime                      | running; results pending |
-| Trustworthy verification: versions, configuration, skipped/incomplete checks, retries, evidence weakening and inspection permissions | What verification claims establish and who may change acceptance evidence | running; results pending |
+| Unfamiliar-language learning | Minimal guide and teaching feedback; compilation versus behavior | hypothesis to test                             |
+| Text versus semantic editing | Safe targeted operations alongside ordinary source               | defer new API pending measured need            |
+| Useful language restrictions | Compiler, runtime, OS and application responsibilities           | no law changes approved                        |
+| Trustworthy verification     | Evidence identity, actual coverage and verifier authority        | useful principles; proposed gates not ratified |
 
-Research requests ask for primary sources, concrete examples, counterevidence
-and a small discriminating experiment. No results are accepted yet. Later model
-comparisons include affordable/open-weight models and count failed attempts and
-stronger-model assistance; smaller-model reliability is a hypothesis.
+[[agent-native-research-synthesis]] separates findings, selective source checks,
+limitations and proposals; raw reports are preserved with hashes. The evidence
+attachment's auditor designation was encountered during the batch, so this is
+not a cold independent audit reading. No hidden suite or old gate changes. Later
+model comparisons include affordable/open-weight models and count failed
+attempts and stronger-model assistance; smaller-model reliability is a
+hypothesis.
 
 ### Proposed implementation sequence, not a work authorization
 
