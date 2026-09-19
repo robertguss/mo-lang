@@ -46,10 +46,12 @@ outer machine boundary. Do not interpret caller-service peak as whole-build peak
 ## Controls and evidence
 
 All Python/Mo/Zig checks run in the owned right/no-focus Herdr pane via
-`run_attempt.py NEW_ATTEMPT SECONDS COMMAND...` (maximum 1800 seconds), which wraps
-the repository numeric guard, kills its process group and records remaining
-processes. The wrapper preserves command, actual exit, elapsed time, output and
-HEAD. Use a new attempt directory for every run, including failed attempts.
+`executor/guarded.py SECONDS NEW_ATTEMPT -- COMMAND...` (maximum 1800 seconds), which
+wraps the repository numeric guard, kills its process group and records remaining
+processes. It preserves command, the child's real exit, elapsed time, output, HEAD
+and dirty paths. Use a new attempt directory for every run, including failed
+attempts. `executor/inventory.py NEW_DIRECTORY EVIDENCE...` is the read-only
+machine cleanup proof after a machine run.
 
 Local policy tests: `python3 -B toolchain/harness/executor/application/test_policy.py`.
 Existing local controls: `python3 -B -m unittest discover -s toolchain/harness/executor -p 'test_*.py'`.
