@@ -1,0 +1,66 @@
+{
+  "base": "3023a01a744d1580ca9814e595ddf990a12e456d",
+  "production_freeze": "83a72dd4ed55dd8728745af720a818399de4c81c",
+  "production": {
+    "toolchain/harness/executor/workspace_http/__init__.py": {
+      "bytes": 125,
+      "sha256": "868cc62dc94fedf6f8cc562db1cf6396393db96ef5bc7227c955702877e1e9f2"
+    },
+    "toolchain/harness/executor/workspace_http/bridge.py": {
+      "bytes": 14188,
+      "sha256": "e2dae3d7e9bbad6f91cb8a908ec6a102a5b70e579e4b9bc2bc9f9ca9dbdc7677"
+    },
+    "toolchain/harness/executor/workspace_http/owner.py": {
+      "bytes": 7972,
+      "sha256": "feca063cf90e01ef045b560c08b28c861baec03d16b9eb43cf4d8b56f260ebc1"
+    },
+    "toolchain/harness/executor/workspace_http/protocol.py": {
+      "bytes": 6255,
+      "sha256": "3f99f45fbc2b8e7f154a4ba174ebddc1c20596652d847cdeb6c2e9db52b56fec"
+    }
+  },
+  "contract": {
+    "toolchain/harness/executor/workspace_http/CONTRACT.md": {
+      "bytes": 7928,
+      "sha256": "606747ea9d1ed743fac16de8a395e03aac28f86f30b59f6855ad5c3ef65b987e"
+    },
+    "toolchain/harness/executor/workspace_http/GROUPS.md": {
+      "bytes": 2680,
+      "sha256": "dd1904986c23b58dee4cfccf62c771e7c3a26fe777be63131fff81ed19df3ad7"
+    },
+    "toolchain/harness/executor/workspace_http/IPC.md": {
+      "bytes": 2814,
+      "sha256": "f24e642f744de91390ac7aa9d8e4b1238f38dae3a440839ae679c574d81f3d7d"
+    }
+  },
+  "unchanged_core": {
+    "toolchain/harness/executor/workspace.py": {
+      "bytes": 12940,
+      "sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68"
+    },
+    "toolchain/harness/executor/workspace_files.py": {
+      "bytes": 7758,
+      "sha256": "7a671d2270deb37dbaa70fabe8071ade78055198465bdf704c5f61c52272b5ef"
+    },
+    "toolchain/harness/executor/workspace_controller.py": {
+      "bytes": 15184,
+      "sha256": "a2c7dbcb38865ee3074fd64cb9a113c35f476c6efb7b75c2a0c48d30911c207e"
+    },
+    "toolchain/harness/executor/adapter.py": {
+      "bytes": 11923,
+      "sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a"
+    },
+    "toolchain/harness/executor/remote.py": {
+      "bytes": 19047,
+      "sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6"
+    },
+    "toolchain/harness/executor/recovery/__init__.py": {
+      "bytes": 10261,
+      "sha256": "c08ccab24315960507bb41717c311759ac82b910be091ba68fb130e559b7af61"
+    },
+    "toolchain/harness/executor/recovery/machine.py": {
+      "bytes": 11694,
+      "sha256": "dfec9a8cdc219d242854f4f92a3991564a4f512069e74ea8c6bbf2d4a322de47"
+    }
+  }
+}

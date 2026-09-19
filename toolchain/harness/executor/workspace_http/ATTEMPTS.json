@@ -1,0 +1,357 @@
+[
+  {
+    "attempt": "application-01",
+    "exit": 1,
+    "seconds": 93.60445125000115,
+    "actual_bytes": 3426007,
+    "group": 81238,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/application-01/controls",
+      "--application"
+    ]
+  },
+  {
+    "attempt": "application-final-01",
+    "exit": 0,
+    "seconds": 45.81706779199885,
+    "actual_bytes": 6344701,
+    "group": 82877,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/application-final-01/controls",
+      "--application"
+    ]
+  },
+  {
+    "attempt": "busybox-01",
+    "exit": 0,
+    "seconds": 5.88827958299953,
+    "actual_bytes": 2474154,
+    "group": 80071,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/busybox-01/controls",
+      "--groups",
+      "six-tools,output-encoding,byte-bounds,file-refusals,duplicate-calls,protected-verifier,application-binding"
+    ]
+  },
+  {
+    "attempt": "busybox-02",
+    "exit": 0,
+    "seconds": 46.06776550000359,
+    "actual_bytes": 6271799,
+    "group": 80478,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/busybox-02/controls"
+    ]
+  },
+  {
+    "attempt": "busybox-final-01",
+    "exit": 0,
+    "seconds": 45.83370874999673,
+    "actual_bytes": 6291116,
+    "group": 83608,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/busybox-final-01/controls"
+    ]
+  },
+  {
+    "attempt": "final-machine-inventory-01",
+    "exit": 0,
+    "seconds": 0.46413379099976737,
+    "actual_bytes": 519875,
+    "group": 88543,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/final_inventory.py",
+      "toolchain/harness/executor/workspace_http/evidence",
+      "toolchain/harness/executor/workspace_http/evidence/final-machine-inventory-01/proof"
+    ]
+  },
+  {
+    "attempt": "inherited-local-01",
+    "exit": 0,
+    "seconds": 1.5253169999996317,
+    "actual_bytes": 251192,
+    "group": 78647,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/local_suite.py"
+    ]
+  },
+  {
+    "attempt": "local-01",
+    "exit": 1,
+    "seconds": 5.2333927910003695,
+    "actual_bytes": 277452,
+    "group": 77637,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py"
+    ]
+  },
+  {
+    "attempt": "local-02",
+    "exit": 1,
+    "seconds": 9.851405415996851,
+    "actual_bytes": 248085,
+    "group": 78323,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py"
+    ]
+  },
+  {
+    "attempt": "local-03",
+    "exit": 0,
+    "seconds": 9.79711108400079,
+    "actual_bytes": 245495,
+    "group": 78490,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py"
+    ]
+  },
+  {
+    "attempt": "local-04",
+    "exit": 0,
+    "seconds": 12.101311166996311,
+    "actual_bytes": 264505,
+    "group": 79273,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py"
+    ]
+  },
+  {
+    "attempt": "local-final-01",
+    "exit": 0,
+    "seconds": 21.144828707998386,
+    "actual_bytes": 296601,
+    "group": 82619,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py"
+    ]
+  },
+  {
+    "attempt": "readiness-01",
+    "exit": 0,
+    "seconds": 1.2963390419972711,
+    "actual_bytes": 307964,
+    "group": 79847,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/readiness_probes.py",
+      "toolchain/harness/executor/workspace_http/evidence/readiness-01/probes"
+    ]
+  },
+  {
+    "attempt": "readiness-02",
+    "exit": 0,
+    "seconds": 1.292200416995911,
+    "actual_bytes": 323537,
+    "group": 82783,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/readiness_probes.py",
+      "toolchain/harness/executor/workspace_http/evidence/readiness-02/probes"
+    ]
+  },
+  {
+    "attempt": "readiness-final-01",
+    "exit": 0,
+    "seconds": 1.2898574999999255,
+    "actual_bytes": 339961,
+    "group": 88631,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/readiness_probes.py",
+      "toolchain/harness/executor/workspace_http/evidence/readiness-final-01/probes"
+    ]
+  },
+  {
+    "attempt": "red-lifetime-01",
+    "exit": 1,
+    "seconds": 1.0973740830013412,
+    "actual_bytes": 198754,
+    "group": 76491,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/red_lifetime.py"
+    ]
+  },
+  {
+    "attempt": "regression-application23-01",
+    "exit": 0,
+    "seconds": 153.3931856249983,
+    "actual_bytes": 3492304,
+    "group": 86803,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/observe_regression.py",
+      "application23",
+      "toolchain/harness/executor/workspace_http/evidence/regression-application23-01/controls"
+    ]
+  },
+  {
+    "attempt": "regression-executor17-01",
+    "exit": 0,
+    "seconds": 33.0516391669953,
+    "actual_bytes": 1012021,
+    "group": 85723,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/observe_regression.py",
+      "executor17",
+      "toolchain/harness/executor/workspace_http/evidence/regression-executor17-01/controls"
+    ]
+  },
+  {
+    "attempt": "regression-lifecycle1-01",
+    "exit": 0,
+    "seconds": 9.681018542003585,
+    "actual_bytes": 373301,
+    "group": 86671,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/observe_regression.py",
+      "lifecycle1",
+      "toolchain/harness/executor/workspace_http/evidence/regression-lifecycle1-01/controls"
+    ]
+  },
+  {
+    "attempt": "regression-workspace22-01",
+    "exit": 0,
+    "seconds": 37.45399374999397,
+    "actual_bytes": 3601038,
+    "group": 85204,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/observe_regression.py",
+      "workspace22",
+      "toolchain/harness/executor/workspace_http/evidence/regression-workspace22-01/controls"
+    ]
+  },
+  {
+    "attempt": "review-baseline-red-01",
+    "exit": 1,
+    "seconds": 11.247343625000212,
+    "actual_bytes": 295329,
+    "group": 82269,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/review_baseline.py",
+      "--groups",
+      "deadlines,shutdown"
+    ]
+  },
+  {
+    "attempt": "review-green-01",
+    "exit": 0,
+    "seconds": 11.756263582996326,
+    "actual_bytes": 292310,
+    "group": 82420,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py",
+      "--groups",
+      "deadlines,shutdown"
+    ]
+  },
+  {
+    "attempt": "review-live-01",
+    "exit": 1,
+    "seconds": 8.622028292011237,
+    "actual_bytes": 568141,
+    "group": 84330,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/review_live.py",
+      "toolchain/harness/executor/workspace_http/evidence/review-live-01/controls"
+    ]
+  },
+  {
+    "attempt": "review-live-02",
+    "exit": 0,
+    "seconds": 8.61876520801161,
+    "actual_bytes": 567611,
+    "group": 84507,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/review_live.py",
+      "toolchain/harness/executor/workspace_http/evidence/review-live-02/controls"
+    ]
+  },
+  {
+    "attempt": "review-red-01",
+    "exit": 1,
+    "seconds": 11.507233666998218,
+    "actual_bytes": 290525,
+    "group": 82016,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py",
+      "--groups",
+      "deadlines,shutdown"
+    ]
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "run_id": "ea37214db1194916bb7a8f9ce8ae79f8",
+  "name": "mo-executor-ea37214db1194916bb7a8f9ce8ae79f8",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-r01-v1",
+  "candidate_sha256": "1cdb8bc5d41d56f39e928fe0cf9d3a4511acdeea8538662432c963558ead144a",
+  "script": "ZWNobyBzY3JhdGNoLXByb2JlCmZvciBwIGluIC93b3JrIC90bXA7IGRvCiBlY2hvIHdyaXRhYmxlID4gIiRwL3NtYWxsIiB8fCBleGl0IDEKIHJtICIkcC9zbWFsbCIKIGlmIGRkIGlmPS9kZXYvemVybyBvZj0iJHAvZnVsbCIgYnM9MTA0ODU3NiBjb3VudD05IDI+L2Rldi9udWxsOyB0aGVuIGV4aXQgMjsgZmkKIGVjaG8gIiRwOiQoc3RhdCAtYyAlcyAiJHAvZnVsbCIpIgpkb25l",
+  "checks": [
+    {
+      "id": "output",
+      "expected": "scratch-probe\n/work:8388608\n/tmp:8388608\n",
+      "stream": "stdout",
+      "mode": "exact"
+    }
+  ],
+  "seconds": 5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "deadline": 1789808695.724833
+}

@@ -1,0 +1,8 @@
+boundary-probe
+65534
+loopback-ok
+network-denied
+root-denied
+mounts-absent
+CapEff:0000000000000000
+NoNewPrivs:1

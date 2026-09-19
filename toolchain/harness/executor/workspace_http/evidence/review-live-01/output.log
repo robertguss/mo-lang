@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/review_live.py", line 87, in <module>
+    main(Path(sys.argv[1]).resolve())
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/review_live.py", line 61, in main
+    require(status == 504 and result['error'] == 'response_timeout' and result['execution'] == 'unknown', result)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/live.py", line 27, in require
+    raise AssertionError(detail)
+AssertionError: {'version': 'mo-workspace-http-v1', 'run_id': 'review-deadlines', 'workspace_id': 'ac30de9d2f984eb3a07a208c73a34878', 'call_id': 'dee89fa8b0be46f98bb044d3565d9aa8', 'accepted': True, 'state': 'failure', 'execution': 'unknown', 'error': 'owner_unknown', 'result': None}

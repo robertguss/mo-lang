@@ -1,0 +1,29 @@
+{
+  "run_id": "5f489fb3916945208877caf53de6883a",
+  "name": "mo-executor-5f489fb3916945208877caf53de6883a",
+  "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+  "policy": "application-build-v1",
+  "candidate_sha256": "78f2ce5b2c7dfaf8193cb0eeed776580095f1a2ec5730233cf51c69d3b2e9b23",
+  "script": "c2V0IC1ldTsgdGVzdCAteiAiJChscyAtQSAvYnVpbGQpIjsgY2QgL2J1aWxkOyBtbyBidWlsZCAvd29ya3NwYWNlL2xvZ3N0YXQvbWFpbi5tbyA+L2J1aWxkL2NvbXBpbGVyLmxvZyAyPiYxIHx8IHsgcmM9JD87IGNhdCAvYnVpbGQvY29tcGlsZXIubG9nID4mMjsgZXhpdCAiJHJjIjsgfTsgY2F0IC9idWlsZC9jb21waWxlci5sb2cgPiYyOyBjZCAvd29ya3NwYWNlL2xvZ3N0YXQ7IC9idWlsZC96aWctb3V0L21vLWJ1aWxkL2xvZ3N0YXQvbG9nc3RhdCBmaXh0dXJlOyBwcmludGYgIkZJTFRFUkVEXG4iOyAvYnVpbGQvemlnLW91dC9tby1idWlsZC9sb2dzdGF0L2xvZ3N0YXQgZml4dHVyZSAtLXRvcCAzIC0tc2luY2UgMjAyNi0wOS0xMlQxMDowMDoxMFogLS1qc29uOyBkZiAtayAvYnVpbGQgL3RtcCA+JjI7IGRmIC1pIC9idWlsZCAvdG1wID4mMg==",
+  "checks": null,
+  "seconds": 120,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+  "workspace": {
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace_id": "dacd168ac64747e5a8bae28b2c41058b",
+    "workspace_run_id": "6f457bb72d4344ee87272fe411c51ee3",
+    "source": "/var/lib/mo-harness/mo-workspace-dacd168ac64747e5a8bae28b2c41058b/storage/data",
+    "readonly": false,
+    "snapshot": null
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+  "check_inventory_sha256": null,
+  "workspace_call_id": "72be486701024b69ac194fadfde354e6",
+  "deadline": 1789808925.994214
+}
