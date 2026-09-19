@@ -61,9 +61,9 @@ a worker uses the host.
 Mo wherever possible, Python/JS at their minimum, Astra's verbosity cut
 (decision-log row). An Opus design map of the non-Mo code is running; its
 result decides the migration briefs and replaces the plain fix queue above
-where a module moves to Mo anyway. Open question put to Robert: whether Mo may
-gain a child-process capability, which the harness plan's "no compiler
-changes" rule currently forbids.
+where a module moves to Mo anyway. Robert answered at 8:20 AM ET: yes, Mo gains a
+scoped child-process capability (decision-log row); the lead writes its design
+page next, from the design map.
 
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
