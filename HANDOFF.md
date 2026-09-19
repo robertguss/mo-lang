@@ -88,12 +88,15 @@ Lead independent drain RED2/2 on75680 and GREEN2/2 on83a72 use identical probe
 bytes; snapshots unchanged/groups gone. Lead setup failure and partial RED remain.
 One new concrete IPC deadline finding: fragmented valid response resets recv wait,
 returning200/success at2.413s for2s file limit, admission open. ipc-deadline-red-01
-retains local socketpair proof/group91501 gone. Worker reproduced exact RED at2.410s/group93915 gone and is assigned narrow
-absolute IPC deadline/late-result correction. A Daybreak-unavailable UI message
-ended one response; worker found no rejected tool, probe had completed. No model
-or security-tool change; ordinary local maintenance resumed, with instructions
-to stop if the platform actually declines that edit. No worker machine release
-for further runs yet. See lead-correction-review-83a72dd4.md. p2A/p2B closed,
+retains local socketpair proof/group91501 gone. Worker reproduced exact RED at2.410s/group93915 gone. Narrow absolute IPC receive
+and final completion checks are frozen at1cf268b356a63665214ca8331bfc55828b643603,
+evidence7438a96e. Lead identical probe GREEN504/unknown at2.00343s/group1957 absent,
+20-file snapshot unchanged. Worker local22/focused/identical probe green, corrected
+BusyBox22/application22/review-live2 green. Final inventory/readiness in progress;
+worker exclusively owns machine until explicit release. Lead will integrate final
+immutable evidence and run independent acceptance (scripts prepared). The transient
+Daybreak-unavailable UI notice had no identified rejected tool; ordinary scoped
+maintenance continued without model/security-tool changes. See lead-correction-review-83a72dd4.md. p2A/p2B closed,
 exact review copies preserved. Private tokens stay out of Book/model/log evidence.
 
 The HTTP owner must outlive a request and use cleanup-only recovery after owner

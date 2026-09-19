@@ -35,6 +35,29 @@ assert not git('diff', '--name-only', BASE, WORKER, '--', 'toolchain/harness/exe
                ':(exclude)toolchain/harness/executor/workspace_http')
 (OUT / 'worker-scope-proof.json').write_text(json.dumps({'worker': WORKER, 'files': len(owned),
     'only_new_workspace_http': True, 'core_unchanged': True}, indent=2))
+manifest = json.loads((HTTP / 'EVIDENCE.json').read_text())
+entries = manifest['files']
+expected = set(git('ls-tree', '-r', '--name-only', WORKER, '--',
+                   'toolchain/harness/executor/workspace_http').splitlines())
+expected.remove('toolchain/harness/executor/workspace_http/EVIDENCE.json')
+assert set(entries) == expected, 'worker manifest exact file set'
+for name, record in entries.items():
+    path = ROOT / name
+    assert name.startswith('toolchain/harness/executor/workspace_http/')
+    assert '..' not in Path(name).parts and not path.is_symlink()
+    data = path.read_bytes()
+    assert len(data) == record['bytes'] and hashlib.sha256(data).hexdigest() == record['sha256'], name
+source = json.loads((HTTP / 'SOURCE.json').read_text())
+assert source['base'] == BASE
+for category in ('production', 'contract', 'unchanged_core'):
+    for name, record in source[category].items():
+        data = (ROOT / name).read_bytes()
+        assert len(data) == record['bytes'] and hashlib.sha256(data).hexdigest() == record['sha256'], name
+        ref = BASE if category == 'unchanged_core' else source['production_freeze']
+        assert data == subprocess.check_output(['git', 'show', ref + ':' + name], cwd=ROOT)
+(OUT / 'worker-evidence-proof.json').write_text(json.dumps({'files': len(entries),
+    'exact_file_set': True, 'all_hashes_and_sizes_match': True,
+    'production_freeze': source['production_freeze'], 'core_unchanged': True}, indent=2))
 paths = git('ls-files', 'toolchain', 'examples').splitlines()
 def fingerprint(path):
     path = ROOT / path
