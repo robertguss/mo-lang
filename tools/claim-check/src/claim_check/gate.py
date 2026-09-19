@@ -117,7 +117,12 @@ def verdict(claim: Claim, fact: Fact, judgment: Judgment | None, t: Thresholds) 
 
 def claim_sentence(claim: Claim) -> str:
     if claim.kind == "number":
-        return f"The measurement for {claim.label} is {claim.value}."
+        row, _, column = claim.label.partition(" / ")
+        unit = f" {claim.unit}" if claim.unit else ""
+        return (
+            f"The report's table gives {claim.value}{unit} for the row {row}, "
+            f"in the column {column}."
+        )
     exit_part = (
         f", and it exited with code {claim.exit_code}" if claim.exit_code is not None else ""
     )
@@ -132,6 +137,8 @@ def state_for(claim: Claim, fact: Fact) -> dict[str, str]:
     }
     if fact.exit_record:
         state["exit_record"] = fact.exit_record
+    if claim.kind == "number":
+        state["number_match"] = fact.reason  # code's arithmetic, so Jev need not do any
     return state
 
 

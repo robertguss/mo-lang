@@ -263,15 +263,13 @@ def _decimal(text: str) -> Decimal | None:
         return None
 
 
-def _matches(claimed: str, raw: Decimal) -> bool:
-    """True when a raw number, at the claim's precision, is the claimed one.
-
-    A report rounds (28.7 for 28.71) and may change the unit by a factor of
-    a thousand (4.75 ms for 4750 µs), so both are tried.
-    """
+def _scale(claimed: str, raw: Decimal) -> Decimal | None:
+    """The factor that turns a raw number into the claimed one at the claim's precision,
+    or None. A report rounds (28.7 for 28.71) and may change the unit by a factor of a
+    thousand (4.75 ms for 4750 µs); either rounding direction is accepted."""
     value = _decimal(claimed)
     if value is None:
-        return False
+        return None
     exponent = value.as_tuple().exponent
     places = -exponent if isinstance(exponent, int) and exponent < 0 else 0
     quantum = Decimal(1).scaleb(-places)
@@ -279,22 +277,49 @@ def _matches(claimed: str, raw: Decimal) -> bool:
         for rounding in (ROUND_HALF_UP, ROUND_HALF_EVEN):
             try:
                 if (raw / scale).quantize(quantum, rounding=rounding) == value:
-                    return True
+                    return scale
             except InvalidOperation:
                 continue
-    return False
+    return None
+
+
+def _matches(claimed: str, raw: Decimal) -> bool:
+    return _scale(claimed, raw) is not None
+
+
+def _label_words(label: str) -> set[str]:
+    """Words of a number's row and column ("`read` small file (2,000) / `mo run` before")."""
+    return {w for w in re.findall(r"[a-z_]{3,}", label.lower())}
 
 
 def check_number(claim: Claim, logs: list[Log]) -> Fact:
+    """A number is found when a raw number rounds to it. Of several such lines, the one
+    that names more of the claim's row and column wins; ties go to the first. Jev is
+    shown only that line and the table's header, and code says which number matched."""
+    words = _label_words(claim.label)
+    best: tuple[int, Log, int, str, Decimal] | None = None
     for log in logs:
         for i, line in enumerate(log.lines):
             for m in NUMBER.finditer(line):
                 raw = _decimal(m.group(0))
-                if raw is not None and _matches(claim.value, raw):
-                    return Fact(
-                        "found", "the number is in the raw output", log.path, excerpt(log, i)
-                    )
-    return Fact("not_found", "no number in the raw output rounds to it")
+                scale = _scale(claim.value, raw) if raw is not None else None
+                if scale is not None:
+                    score = sum(w in line.lower() for w in words)
+                    if best is None or score > best[0]:
+                        best = (score, log, i, m.group(0), scale)
+                    break
+    if best is None:
+        return Fact("not_found", "no number in the raw output rounds to it")
+    _, log, i, raw_text, scale = best
+    lines = log.lines
+    header = lines[0] if i > 0 and "\t" in lines[0] else ""
+    shown = "\n".join(x for x in (header, lines[i]) if x)
+    if scale == 1:
+        how = f"{raw_text} in this line rounds to the claimed {claim.value}"
+    else:
+        per = "thousandths" if scale == 1000 else "thousands"
+        how = f"{raw_text} in this line, counted in {per}, rounds to the claimed {claim.value}"
+    return Fact("found", how, log.path, shown)
 
 
 def check(claim: Claim, logs: list[Log], ref: str, repo: Path) -> Fact:

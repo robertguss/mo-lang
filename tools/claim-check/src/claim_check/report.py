@@ -59,6 +59,7 @@ class Claim:
     filtered: bool = False  # the command named a filter, so not every test ran
     counts: dict[str, int] = field(default_factory=dict)
     label: str = ""  # for a number: its row and column
+    unit: str = ""  # for a number: the unit written after it
 
 
 @dataclass(frozen=True)
@@ -141,8 +142,21 @@ def _exit_for(unit_text: str, start: int, end: int) -> int | None:
     return None if best is None else best[1]
 
 
+def _headers(header: list[str]) -> list[str]:
+    """Column names as a reader takes them: a lone "after" beside "`mo run` before" is
+    "`mo run` after", since the table leaves the runtime to the column before it."""
+    out: list[str] = []
+    for name in header:
+        prev = out[-1] if out else ""
+        words = prev.split()
+        if len(name.split()) == 1 and len(words) > 1 and words[-1] != name:
+            name = " ".join(words[:-1] + [name])
+        out.append(name)
+    return out
+
+
 def _numbers(unit: _Unit, next_id: int) -> list[Claim]:
-    header = unit.table_header or []
+    header = _headers(unit.table_header or [])
     cells = [c.strip() for c in unit.text.strip().strip("|").split("|")]
     if not cells:
         return []
@@ -152,7 +166,9 @@ def _numbers(unit: _Unit, next_id: int) -> list[Claim]:
         column = header[col] if col < len(header) else f"column {col}"
         if re.search(r"load", column, re.IGNORECASE):
             continue  # the load average is context, not a result
-        for m in NUMBER.finditer(cell.replace("*", "")):
+        plain = cell.replace("*", "")
+        for m in NUMBER.finditer(plain):
+            unit_word = re.match(r"\s*([^\s\d|,;()]+)", plain[m.end() :])
             claims.append(
                 Claim(
                     id=f"c{next_id + len(claims)}",
@@ -161,6 +177,7 @@ def _numbers(unit: _Unit, next_id: int) -> list[Claim]:
                     words=unit.text,
                     section=unit.section,
                     label=f"{row} / {column}",
+                    unit=unit_word.group(1) if unit_word else "",
                 )
             )
     return claims

@@ -116,3 +116,18 @@ def test_json_step_records_render_as_lines(tmp_path: Path) -> None:
         '"stderr": ""}\n'
     )
     assert render(path) == "## step a: exit 0\n1 passed, 0 failed, 0 skipped\n"
+
+
+def test_a_number_is_found_on_the_row_its_label_names(repo: Path) -> None:
+    tsv = Log(
+        "n.tsv",
+        "run\texe\truntime\trow\tbest_process_ms\tper_call_us\n"
+        "2\tbefore\tmo run\tnone\t26.4\t0.00\n"
+        "2\tbefore\tbinary\tread\t78.1\t26.35\n",
+    )
+    claim = Claim("c", "number", "26.4", "", "", label="`read` small file / binary before")
+    fact = check(claim, [tsv], "HEAD", repo)
+    assert fact.excerpt.splitlines()[-1].endswith("26.35")
+    assert fact.excerpt.splitlines()[0].startswith("run\texe")  # the header, then one line
+    assert len(fact.excerpt.splitlines()) == 2
+    assert fact.reason == "26.35 in this line rounds to the claimed 26.4"

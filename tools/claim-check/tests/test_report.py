@@ -87,3 +87,18 @@ def test_plain_text_reports_capitals_headings_and_commit_lists() -> None:
     fuzz = next(c for c in report.claims if "inputs" in c.value)
     assert fuzz.counts == {"inputs": 87440, "batches": 2186, "crashes": 0}
     assert sum(c.kind == "decision" for c in report.claims) == 2
+
+
+def test_a_lone_after_column_takes_the_runtime_of_the_column_before() -> None:
+    text = (
+        "## Numbers\n\n| row | `mo run` before | after | binary before | after |\n"
+        "|---|---:|---:|---:|---:|\n| `read` | 28.7 µs | 20.3 µs | 26.4 µs | 19.2 µs |\n"
+    )
+    numbers = [c for c in parse(text).claims if c.kind == "number"]
+    assert [n.label for n in numbers] == [
+        "`read` / `mo run` before",
+        "`read` / `mo run` after",
+        "`read` / binary before",
+        "`read` / binary after",
+    ]
+    assert {n.unit for n in numbers} == {"µs"}
