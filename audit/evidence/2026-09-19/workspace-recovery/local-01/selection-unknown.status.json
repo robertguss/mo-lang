@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/recovery/live.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-recovery/local-01/reject-unknown",
+    "--groups",
+    "not-a-group"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T03:55:36.845399-04:00",
+  "finished": "2026-09-19T03:55:37.125971-04:00",
+  "exit": 2,
+  "expected_exit": 2,
+  "forced": false,
+  "group": 57524,
+  "cleanup_before": [],
+  "group_remaining": false
+}

@@ -1,0 +1,2 @@
+usage: live.py [-h] [--groups GROUPS [GROUPS ...]] output
+live.py: error: unknown, empty, or duplicate recovery selection

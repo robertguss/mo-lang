@@ -13,7 +13,7 @@ import time
 ROOT = Path(__file__).resolve().parents[4]
 HERE = Path(__file__).resolve().parent
 MODE, NAME, WORKER = sys.argv[1:]
-assert MODE in ('recovery', 'full') and re.fullmatch(r'[a-z0-9-]+', NAME)
+assert MODE in ('local', 'recovery', 'full') and re.fullmatch(r'[a-z0-9-]+', NAME)
 assert re.fullmatch(r'[0-9a-f]{40}', WORKER)
 OUT = HERE / NAME
 OUT.mkdir(exist_ok=False)
@@ -80,8 +80,7 @@ try:
     if MODE == 'full':
         run('build', 180, ['zig', 'build'], ROOT / 'toolchain')
         run('test', 900, ['zig', 'build', 'test', '--summary', 'all'], ROOT / 'toolchain')
-    else:
-        run('readiness', 90, ['python3', '-B', HERE / 'inventory.py', OUT, '--readiness'])
+    elif MODE == 'local':
         run('local', 120, ['python3', '-B', RECOVERY / 'local_suite.py'])
         run('schema-extra', 30, ['python3', '-B', HERE / 'schema-controls.py', OUT / 'schema-extra'])
         for name, selection in [('unknown', ['not-a-group']), ('empty', []),
@@ -89,6 +88,8 @@ try:
             output = OUT / ('reject-' + name)
             run('selection-' + name, 30, ['python3', '-B', RECOVERY / 'live.py', output, '--groups', *selection], expected=2)
             assert not output.exists(), name
+    else:
+        run('readiness', 90, ['python3', '-B', HERE / 'inventory.py', OUT, '--readiness'])
         run('recovery', 900, ['python3', '-B', RECOVERY / 'live.py', OUT / 'live'])
         selected = json.loads((OUT / 'live/selected.json').read_text())
         results = json.loads((OUT / 'live/results.json').read_text())

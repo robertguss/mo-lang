@@ -22,7 +22,7 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 3:43 AM ET
+### Active work, 19 Sep 2026, 3:57 AM ET
 
 Current application code is `aa7ec7623f634d5c05f6d602b894428c211b4869`;
 recovery brief base is `90858791f441d125f0187a6751beffec6ef2312b`. Published
@@ -100,8 +100,9 @@ requires persisted ownership and cleanup-only recovery before HTTP, including
 lost reserve responses, late bootstrap barriers and preserved unknown outcomes.
 Machine exclusively released after lead application runtime cleanup. No image,
 slice or installed-input changes; full Mo/Zig CPU gate was released at 3:16 AM ET.
-Immutable product checkpoints08525c61 and00a06657 plus inventory-only c2ea7cf7
-remain unintegrated. Corrected local59/recovery16 passed per worker receipt;
+Immutable product checkpoints08525c61 and00a06657 plus diagnostic c2ea7cf7/
+df816be3 are integrated locally through741be6ab for testing, not accepted or
+published. Corrected local59/recovery16 passed per worker receipt;
 lead lifecycle and fresh proof/schema source reviews close the identified gaps.
 Broad checks failed: corrected workspace regression19/22 first had malformed
 snapshot JSON (raw successful transport bytes missing), then occupied registration
@@ -111,14 +112,23 @@ machine commands. Full build passed, full test failed242/243 on unchanged TLS
 fatal-alert/reset ordering at corpus.zig1243. Preserve both failures; no fixes
 claimed. Fresh regression and compiler runs must be sequential after cleanup.
 Worker run panes are w4:p22 and w4:p26; fresh review p25 was closed after report.
-Lead independent acceptance scripts are prepared under workspace-recovery audit
-evidence but not run. Machine release and final worker receipt remain pending.
+Lead independent local59 and21 multi-execution schema controls pass at741be6ab;
+unknown/empty/duplicate selections each exit2 before output creation. All5815
+tracked toolchain/examples files unchanged, child groups absent, outerexit0.
+Evidence is workspace-recovery/local-01. Lead machine/full acceptance and the
+final worker receipt remain pending.
 Observed rerun then failed before execution: missing slice control group after
 reboot. Inactive slice absence was sufficient cleanup evidence but insufficient
 execution readiness. Lead authorized reactivating the two existing unchanged
 slices after exact cleanup, with active cgroup/effective-limit/input checks
 before dispatch. No provisioning code or limit changes. Initial malformed
 response remains unexplained. See corrected lead review for both failures.
+After activation, worker sequential workspace22/executor17/lifecycle1/app23 all
+passed. Final inventory proves178 workspace roots,234 execution resources,
+190 actual candidate cgroups and44 historical local groups absent, both active
+parents empty, shared5 unchanged. Two reboot-lost proofs remain API-unresolved
+despite exact authorized operator cleanup. Machine work stopped; worker runs
+full-test-02 alone in p22. No competing lead machine/compiler commands.
 
 Wire/encoding and cleanup reviews are retained under workspace-wire-readiness;
 their review panes are closed. Next: finish application acceptance and cleanup

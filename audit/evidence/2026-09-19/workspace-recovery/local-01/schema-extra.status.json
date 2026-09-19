@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-recovery/schema-controls.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-recovery/local-01/schema-extra"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T03:55:36.616614-04:00",
+  "finished": "2026-09-19T03:55:36.844939-04:00",
+  "exit": 0,
+  "expected_exit": 0,
+  "forced": false,
+  "group": 57513,
+  "cleanup_before": [],
+  "group_remaining": false
+}

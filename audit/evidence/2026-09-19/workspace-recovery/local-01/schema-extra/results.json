@@ -1,0 +1,408 @@
+[
+  {
+    "case": "complete-ordered-three",
+    "expected_valid": true,
+    "accepted": true,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "valid-prefix-0",
+    "expected_valid": true,
+    "accepted": true,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier"
+      ],
+      "unresolved": [
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "omitted-unresolved-0",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier"
+      ],
+      "unresolved": [
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "valid-prefix-1",
+    "expected_valid": true,
+    "accepted": true,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111"
+      ],
+      "unresolved": [
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "omitted-unresolved-1",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111"
+      ],
+      "unresolved": [
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "duplicate-completed-1",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "11111111111111111111111111111111"
+      ],
+      "unresolved": [
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "valid-prefix-2",
+    "expected_valid": true,
+    "accepted": true,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222"
+      ],
+      "unresolved": [
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "omitted-unresolved-2",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222"
+      ],
+      "unresolved": [],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "duplicate-completed-2",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "22222222222222222222222222222222"
+      ],
+      "unresolved": [
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "valid-prefix-3",
+    "expected_valid": true,
+    "accepted": true,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333"
+      ],
+      "unresolved": [],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "duplicate-completed-3",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "33333333333333333333333333333333"
+      ],
+      "unresolved": [],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "before-terminal",
+    "expected_valid": true,
+    "accepted": true,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "unresolved",
+      "execution": "unknown",
+      "completed": [],
+      "unresolved": [
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333"
+      ],
+      "error": "cleanup_unknown"
+    }
+  },
+  {
+    "case": "foreign-run",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "cccccccccccccccccccccccccccccccc",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "foreign-workspace",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "dddddddddddddddddddddddddddddddd",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "reordered-completed",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "22222222222222222222222222222222",
+        "11111111111111111111111111111111",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "duplicate-completed-final",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "11111111111111111111111111111111",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "foreign-completed",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "ffffffffffffffffffffffffffffffff",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "premature-delete",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "unresolved-on-confirmation",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": [
+        "33333333333333333333333333333333"
+      ]
+    }
+  },
+  {
+    "case": "execution-success",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "success",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": []
+    }
+  },
+  {
+    "case": "error-on-confirmation",
+    "expected_valid": false,
+    "accepted": false,
+    "response": {
+      "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "workspace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cleanup": "confirmed",
+      "execution": "unknown",
+      "completed": [
+        "terminal_barrier",
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+        "33333333333333333333333333333333",
+        "workspace_deleted"
+      ],
+      "unresolved": [],
+      "error": "cleanup_unknown"
+    }
+  }
+]
