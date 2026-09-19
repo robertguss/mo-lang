@@ -64,8 +64,8 @@ def send(sock, value):
     sock.sendall(struct.pack('!I', len(data)) + data)
 
 
-def run(sock, config, factory=None):
-    # Factory injection is Python-only and used by local subprocess controls.
+def run(sock, config, factory=None, *, journal_cap=JOURNAL_CAP, clock=time.monotonic, transmit=send):
+    # Factory, journal bound, clock and IPC send are injected only by local subprocess controls.
     if factory is None:
         from workspace import Workspace
         factory = Workspace
@@ -76,7 +76,7 @@ def run(sock, config, factory=None):
                'owner_pid': os.getpid(), 'calls': {}, 'creation': 'intent',
                'cleanup': {'cleanup': 'unresolved', 'execution': 'unknown'}}
     def persist():
-        if len(encode(journal)) > JOURNAL_CAP:
+        if len(encode(journal)) > journal_cap:
             raise ValueError('journal bound')
         private_write(directory / 'owner.json', journal)
     persist()
@@ -90,13 +90,13 @@ def run(sock, config, factory=None):
         ws.create({key: base64.b64decode(value, validate=True) for key, value in config['source'].items()},
                   call_id=journal['creation_call_id'])
         journal['creation'] = 'completed'
-        deadline = time.monotonic() + 900
+        deadline = clock() + 900
         journal['ready_monotonic'] = deadline - 900
         persist()
         sock.settimeout(2)
-        send(sock, {'ready': True, 'deadline': deadline})
+        transmit(sock, {'ready': True, 'deadline': deadline})
         while True:
-            remaining = deadline - time.monotonic()
+            remaining = deadline - clock()
             if remaining <= 0:
                 break
             sock.settimeout(remaining)
@@ -107,14 +107,14 @@ def run(sock, config, factory=None):
             if kind == 'freeze':
                 result = ws.freeze()
                 sock.settimeout(2)
-                send(sock, {'operator_result': result})
+                transmit(sock, {'operator_result': result})
                 continue
             if kind == 'verify':
                 verifier = config['verifier']
                 result = ws.verify(verifier['script'], verifier['checks'], seconds=verifier['seconds'])
                 private_write(directory / 'verification.json', result)
                 sock.settimeout(2)
-                send(sock, {'operator_result': result})
+                transmit(sock, {'operator_result': result})
                 continue
             if kind != 'tool':
                 raise ValueError('invalid operator IPC')
@@ -125,14 +125,14 @@ def run(sock, config, factory=None):
                 refused = 'conflict'
             elif len(journal['calls']) >= 16:
                 refused = 'call_limit'
-            elif len(encode(journal)) + RESERVE > JOURNAL_CAP:
+            elif len(encode(journal)) + RESERVE > journal_cap:
                 refused = 'journal_full'
-            remaining = deadline - time.monotonic()
+            remaining = deadline - clock()
             if remaining < .5:
                 refused = 'admission_closed'
             if refused:
                 sock.settimeout(2)
-                send(sock, {'response': envelope(req, error=refused), 'status': 409})
+                transmit(sock, {'response': envelope(req, error=refused), 'status': 409})
                 continue
             core_id = uuid.uuid4().hex
             row = {'core_call_id': core_id, 'payload_sha256': hashlib.sha256(encode(req)).hexdigest(),
@@ -142,7 +142,7 @@ def run(sock, config, factory=None):
             try:
                 args = dict(req['args'])
                 if req['operation'] == 'command':
-                    seconds = min(args['timeout_ms'] / 1000, max(0, deadline - time.monotonic()))
+                    seconds = min(args['timeout_ms'] / 1000, max(0, deadline - clock()))
                     if seconds < .5:
                         core = {'state': 'refusal', 'execution': 'not_started', 'error': 'deadline',
                                 'exit_code': None, 'signal': None, 'stdout': '', 'stderr': '',
@@ -155,7 +155,7 @@ def run(sock, config, factory=None):
                     elif req['operation'] == 'exact_edit':
                         args['old'], args['new'] = args.pop('old_text'), args.pop('new_text')
                     core = ws.call(req['operation'], args, call_id=core_id,
-                                   seconds=min(2, max(.5, deadline - time.monotonic())))
+                                   seconds=min(2, max(.5, deadline - clock())))
                 # Raw operator evidence stays outside the candidate projection/journal cap.
                 private_write(directory / ('core-' + core_id + '.json'), core)
                 response = project(req, core)
@@ -166,7 +166,7 @@ def run(sock, config, factory=None):
             row['result'] = response
             persist()
             sock.settimeout(2)
-            send(sock, {'response': response, 'status': 200})
+            transmit(sock, {'response': response, 'status': 200})
             if response['execution'] == 'unknown':
                 break
     except (EOFError, OSError, ValueError, KeyError) as exc:
@@ -176,13 +176,13 @@ def run(sock, config, factory=None):
     finally:
         # No recovery while a Workspace owns its lock. A failed normal cleanup
         # remains unresolved for a separate explicit operator recovery invocation.
-        cleanup_deadline = time.monotonic() + 60
+        cleanup_deadline = clock() + 60
         if ws is not None:
             try:
                 if ws.active:
                     ws.collect()
                 # Workspace.call adds five seconds to its configured transport wait.
-                seconds = min(55, cleanup_deadline - time.monotonic() - 5)
+                seconds = min(55, cleanup_deadline - clock() - 5)
                 if seconds < .5:
                     raise TimeoutError('cleanup budget exhausted')
                 result = ws.delete(seconds=seconds)

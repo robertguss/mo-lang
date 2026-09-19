@@ -110,16 +110,18 @@ Tokens are structurally validated, not cryptographically verified here.
 
 ## Reproduce offline
 
-All commands run in an owned right/no-focus Herdr pane. `run.py` records exact
-commands/exits, supplies an empty HOME and minimal environment, imposes a
-550-second child process-group deadline, kills descendants and records absence.
-Use the outer 600-second step36 guard. Each attempt name must be new. Evidence
-is bounded to 16 MiB. No packages are added or fetched.
+All commands run in an owned right/no-focus Herdr pane. `executor/guarded.py`
+(which replaced `auth/run.py`) records exact commands/exits in
+`auth/evidence/<attempt>`, supplies an empty HOME and minimal environment, runs
+the command under the step36 guard with a 550-second deadline in its own process
+group, kills descendants and records their absence. Each attempt name must be
+new. Evidence is bounded to 16 MiB. No packages are added or fetched.
 
 ```sh
-python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/auth/run.py setup-review python3 setup.py ABS_PRIOR_PREPARED_COPY prepared-review
-python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/auth/run.py auth-review node test.mjs .cache/prepared-review/.cache/runtime $(cat toolchain/harness/provider/auth/controls.txt)
-python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/auth/run.py foundation-review python3 .cache/prepared-review/run.py 500 node test.mjs evidence/auth-review.outbound.json
+A=toolchain/harness/provider/auth
+python3 toolchain/harness/executor/guarded.py 550 $A/evidence/setup-review --cwd $A --home $A/.cache/home-setup-review -- python3 setup.py ABS_PRIOR_PREPARED_COPY prepared-review
+python3 toolchain/harness/executor/guarded.py 550 $A/evidence/auth-review --cwd $A --home $A/.cache/home-auth-review -- node test.mjs .cache/prepared-review/.cache/runtime $(cat $A/controls.txt)
+python3 toolchain/harness/executor/guarded.py 550 $A/evidence/foundation-review --cwd $A/.cache/prepared-review --home $A/.cache/prepared-review/.cache/home -- node test.mjs evidence/auth-review.outbound.json
 ```
 
 Setup copies only dependency material from an explicit existing prepared source,

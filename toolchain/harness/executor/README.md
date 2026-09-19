@@ -118,6 +118,13 @@ python3 toolchain/bench/step36/guard.py 60 -- python3 -B toolchain/harness/execu
 python3 toolchain/bench/step36/guard.py 600 -- python3 -B toolchain/harness/executor/selftest.py /private/tmp/mo-executor-live-unique
 ```
 
+The live suites (`selftest.py`, `test_workspace_live.py`, `recovery/live.py`,
+`workspace_http/live.py`, `application/controls.py`) are tables of named cases
+run by `cases.py`, which writes one record per case, prints it as a JSON line
+and prints the summary line. `test_cases.py` checks every table against the
+fixed case names and runs each suite offline against a stand-in `orbctl` and
+`docker`, so the runner, cleanup and summary are tested without the machine.
+
 The unit suite has fifteen tests, including missing/empty checks, missing
 observations, stale run/candidate identity, forged success, absent fault stimulus,
 effective-policy mutations, cgroup hierarchy, defensive check copying, and

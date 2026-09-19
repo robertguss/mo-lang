@@ -103,8 +103,9 @@ reserved two-runtime end-to-end control, explicitly released by the lead on
 19 September 2026 after accepted source commit
 `e6f04ce6358c85f22a86f26be0b5b388495fcc6e`. Comma-separated known names select a
 subset. Any valid selection containing `mo` (for example `final,mo`) prepares
-the released source/compiler and runs the whole requested selection through the
-Mo-capable guarded runner. `foundation` remains a separate regression command.
+the released source/compiler and runs the whole requested selection through
+`executor/guarded.py`, the one runner every selection uses (empty home, minimal
+PATH with node, npm and zig). `foundation` remains a separate regression command.
 The usage control is named `unknown-usage`; literal `unknown` is invalid.
 Empty, duplicate and unknown selections fail before dependency copying or Node
 startup, with zero cases/provider calls. `controls.json` is the shared fixed registry. The separately unchanged

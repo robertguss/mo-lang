@@ -85,7 +85,7 @@ are checked unchanged; setup outputs stay in the owned copy.
 python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/clean_setup.py evidence/clean-review-01
 ```
 
-The seven steps are a cold `run.py` invocation, `setup.py`, locked `npm ci`,
+The seven steps are a cold `node --version` under `executor/guarded.py --home`, `setup.py`, locked `npm ci`,
 `provenance.py`, `prepare.py`, `catalog.mjs`, and `verify.py`. Each has a 150-second
 guard; npm/Node runner children have an earlier 100-second process-group bound.
 The output directory records exact commands, real exit codes, logs, before/after
@@ -96,13 +96,14 @@ For provider tests after setup, use the copy path printed in the new
 `commands.json`, preserving the original provider directory. From repository root:
 
 ```sh
-python3 toolchain/bench/step36/guard.py 600 -- python3 <owned-copy>/run.py 550 node test.mjs evidence/review.outbound.json
+python3 toolchain/harness/executor/guarded.py 550 <owned-copy>/evidence/review-run --cwd <owned-copy> --home <owned-copy>/.cache/home -- node test.mjs evidence/review.outbound.json
 ```
 
-`run.py` resolves Node/npm from PATH before constructing an empty-home,
-isolated-npm environment and records paths/versions. It creates an owned process
-group with an earlier internal deadline and kills remaining descendants before
-returning. No npm lifecycle scripts run. Direct setup/provenance/prepare/catalog/
+`executor/guarded.py` (which replaced the copied `run.py` runner) resolves
+Node/npm/zig from PATH before constructing an empty-home, isolated-npm
+environment, and records the command, paths, git head and real exit code. It
+runs the command under `step36/guard.py` in an owned process group and kills
+remaining descendants before returning. No npm lifecycle scripts run. Direct setup/provenance/prepare/catalog/
 verify commands regenerate records in their own directory, so use the clean-copy
 command above instead of invoking them against historical evidence on main.
 

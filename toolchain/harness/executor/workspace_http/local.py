@@ -1,6 +1,5 @@
 """Fixed local registry. Subprocess doubles prove bridge behavior, not isolation."""
 import argparse
-import base64
 import json
 import os
 from pathlib import Path
@@ -8,23 +7,16 @@ import socket
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from workspace_http import Bridge
+from cases import choose
+from workspace_http import Bridge, client
 from workspace_http import protocol as p
-from workspace_http.owner import private_write
+from workspace_http.client import GROUPS
 from remote import IMAGE, WORKSPACE_POLICY
-
-GROUPS = ('six-tools', 'output-encoding', 'schema', 'framing', 'byte-bounds',
-          'identities-capability', 'duplicate-calls', 'concurrent-admission',
-          'file-refusals', 'deadlines', 'disconnect', 'frontend-death', 'owner-death',
-          'lost-response', 'owner-stall', 'startup-failure', 'shutdown',
-          'protected-verifier', 'application-binding', 'cleanup-outcome',
-          'invalid-selection', 'journal-order-bound')
 
 class Controls(unittest.TestCase):
     def setUp(self):
@@ -37,61 +29,25 @@ class Controls(unittest.TestCase):
                 bridge.stop_owner()
         self.temp.cleanup()
 
-    def bridge(self, scenario='', **kwargs):
-        bridge = Bridge('run-1', Path(self.temp.name) / str(len(self.bridges)), {'scenario': scenario.encode()},
+    def bridge(self, scenario='', files=None, **kwargs):
+        bridge = Bridge('run-1', Path(self.temp.name) / str(len(self.bridges)), {'scenario': scenario.encode(), **(files or {})},
                         selection={'policy': WORKSPACE_POLICY, 'image': IMAGE, 'toolchain': None},
                         verifier={'script': 'protected', 'checks': [{'id':'protected','stream':'stdout','mode':'exact','expected':'ok'}], 'seconds': 1}, **kwargs)
         self.bridges.append(bridge)
-        real = subprocess.Popen
-        def launch(argv, **options):
-            argv = list(argv)
-            argv[argv.index('workspace_http.owner')] = 'workspace_http.test_owner'
-            return real(argv, **options)
-        with patch('workspace_http.bridge.subprocess.Popen', side_effect=launch):
-            bridge.start()
+        bridge.start(owner_module='workspace_http.test_owner')
         return bridge
 
     def req(self, bridge, operation='list_files', args=None, call_id='call'):
-        return dict(version=p.VERSION, run_id=bridge.run_id, workspace_id=bridge.workspace_id,
-                    call_id=call_id, operation=operation, args=args or {})
+        return client.request(bridge, operation, args, call_id)
 
-    def connect(self, bridge, body, extra='', token=None, first='POST /tool HTTP/1.1', length=None):
-        conn = socket.create_connection(('127.0.0.1', bridge.port), timeout=3)
-        raw = body if isinstance(body, bytes) else p.encode(body)
-        headers = (f'{first}\r\nHost: 127.0.0.1:{bridge.port}\r\nContent-Type: application/json\r\n'
-                   f'Content-Length: {len(raw) if length is None else length}\r\n'
-                   f'X-Mo-Workspace-Token: {bridge.token if token is None else token}\r\n{extra}\r\n').encode()
-        conn.sendall(headers + raw)
-        return conn
+    def connect(self, bridge, body, **framing):
+        return client.connect(bridge, body, timeout=3, **framing)
 
     def read(self, conn):
-        conn.settimeout(4)
-        raw = bytearray()
-        try:
-            while True:
-                data = conn.recv(65536)
-                if not data:
-                    break
-                raw.extend(data)
-        finally:
-            conn.close()
-        head, body = bytes(raw).split(b'\r\n\r\n', 1)
-        self.assertIn(f'Content-Length: {len(body)}'.encode(), head)
-        self.assertIn(b'Connection: close', head)
-        self.assertLessEqual(len(body), p.RESPONSE_CAP)
-        return int(head.split(b' ')[1]), json.loads(body)
+        return client.response(conn, 4)
 
     def read_keep_open(self, conn):
-        conn.settimeout(3)
-        raw=bytearray()
-        while b'\r\n\r\n' not in raw:
-            raw.extend(conn.recv(1))
-        header=bytes(raw).split(b'\r\n\r\n')[0]
-        size=int(next(line.split(b':',1)[1] for line in header.split(b'\r\n') if line.startswith(b'Content-Length:')))
-        body=bytearray()
-        while len(body)<size:
-            body.extend(conn.recv(size-len(body)))
-        return json.loads(body)
+        return client.first_response(conn)
 
     def call(self, bridge, **kwargs):
         return self.read(self.connect(bridge, self.req(bridge, **kwargs)))
@@ -109,13 +65,19 @@ class Controls(unittest.TestCase):
         self.fail('missing event ' + event)
 
     def test_six_tools(self):
-        b = self.bridge()
+        b = self.bridge(files={'a': 'héllo'.encode()})
+        results = {}
         for op, args in [('list_files', {}), ('read_file', {'path':'a'}), ('search', {'query':'é'}),
                          ('write_file', {'path':'a','text':'b'}), ('exact_edit', {'path':'a','old_text':'b','new_text':'c'}),
                          ('command', {'command':'echo','timeout_ms':120000})]:
             status, response = self.call(b, operation=op, args=args, call_id=op)
             self.assertEqual((status, response['state'], response['execution']), (200, 'success', 'completed'))
             self.assertNotIn('manifest', json.dumps(response))
+            results[op] = response['result']
+        self.assertEqual([row['path'] for row in results['list_files']['items']], ['a', 'scenario'])
+        self.assertEqual(results['read_file'], {'text': 'héllo', 'truncated': False})
+        self.assertEqual(results['search']['items'], [{'path': 'a', 'offset': 1}])
+        self.assertEqual((results['write_file']['written'], results['exact_edit']['edited']), (True, True))
         self.assertTrue(b.close())
         self.assertEqual(len(self.journal(b)['calls']), 6)
 
@@ -177,6 +139,16 @@ class Controls(unittest.TestCase):
         valid=p.encode(self.req(b))
         self.assertEqual(p.request(valid+b' '*(p.REQUEST_CAP-len(valid)),b.run_id,b.workspace_id)['call_id'],'call')
         with self.assertRaises(p.Refused):p.request(valid+b' '*p.REQUEST_CAP,b.run_id,b.workspace_id)
+        # Result bounds come from the real controller: a full file is refused whole,
+        # and listings and searches are cut short and say so.
+        many=self.bridge(files={'large':b'x'*65536,'h/hits':b'x'*1000,**{f'd/{i:03}':b'' for i in range(600)}})
+        _,r=self.call(many,operation='read_file',args={'path':'large'},call_id='large')
+        self.assertEqual((r['state'],r['execution'],r['error'],r['result']),('refusal','completed','result_too_large',None))
+        _,r=self.call(many,operation='search',args={'query':'x','path':'h'},call_id='search')
+        self.assertEqual((len(r['result']['items']),r['result']['truncated']),(200,True))
+        _,r=self.call(many,call_id='list')
+        self.assertTrue(r['result']['truncated'])
+        self.assertLess(len(r['result']['items']),602)
 
     def test_identities_capability(self):
         b=self.bridge()
@@ -204,9 +176,27 @@ class Controls(unittest.TestCase):
         self.assertEqual(len(self.journal(b)['calls']),1)
 
     def test_file_refusals(self):
-        b=self.bridge()
-        _,r=self.call(b,operation='read_file',args={'path':'refuse'})
-        self.assertEqual((r['state'],r['execution'],r['error']),('refusal','completed','result_too_large'))
+        b=self.bridge(files={'answer':b'aaa\n'})
+        linked=self.bridge('links',files={'answer':b'aaa\n'})
+        def refused(bridge,operation,args,error):
+            status,r=self.call(bridge,operation=operation,args=args,call_id=f'c{len(self.journal(bridge)["calls"])}')
+            self.assertEqual((status,r['state'],r['execution'],r['error'],r['result']),(200,'refusal','completed',error,None),args)
+            self.assertNotIn('secret',json.dumps(r))
+        # Containment: lexical escapes are refused by name, before any file is opened.
+        for path in ('../escape','/etc/passwd','a//b','a/./b','answer/..'):
+            refused(b,'read_file',{'path':path},'invalid_path')
+        refused(b,'write_file',{'path':'../outside','text':'x'},'invalid_path')
+        # Links out of the root, at the last and at a middle component, are never followed;
+        # a tree holding a link refuses every write.
+        for path in ('link','dirlink/outside'):
+            refused(linked,'read_file',{'path':path},'filesystem_refusal')
+        refused(linked,'write_file',{'path':'answer','text':'x'},'filesystem_refusal')
+        self.assertEqual((linked.directory/'workspace/outside').read_bytes(),b'secret\n')
+        # exact_edit matches exactly one occurrence of a non-empty string, or changes nothing.
+        for old,error in (('zzz','missing_match'),('a','multiple_matches'),('','empty_old')):
+            refused(b,'exact_edit',{'path':'answer','old_text':old,'new_text':'b'},error)
+        _,r=self.call(b,operation='read_file',args={'path':'answer'},call_id='after')
+        self.assertEqual(r['result']['text'],'aaa\n')
 
     def test_deadlines(self):
         b=self.bridge('slow')
@@ -391,10 +381,7 @@ class Controls(unittest.TestCase):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--groups',default=','.join(GROUPS))
-    args=parser.parse_args()
-    groups=args.groups.split(',')
-    if not groups or len(groups)!=len(set(groups)) or any(group not in GROUPS for group in groups):
-        parser.error('unknown, empty or duplicate group selection')
+    groups=choose(parser,GROUPS,parser.parse_args().groups.split(','))
     print('LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE',flush=True)
     print('groups='+','.join(groups),flush=True)
     suite=unittest.TestSuite(Controls('test_'+group.replace('-','_')) for group in groups)
