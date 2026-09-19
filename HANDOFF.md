@@ -59,8 +59,10 @@ subsequent full passes are not claimed fixes. No compiler/example changes.
 
 Next: versioned Python six-tool workspace HTTP bridge, then Mo application
 profile, then scripted Logstat repair and protected checks. Fresh Astra/low
-workers in separate Herdr panes/worktrees own implementation. Lead is drafting
-the HTTP brief; no HTTP implementation worker yet. See retained source reviews
+workers in separate Herdr panes/worktrees own implementation. Fresh worker mo-workspace-http-v1 is active in w4:p28, tabw4:tK, at exact
+base3023a01a744d1580ca9814e595ddf990a12e456d on harness/workspace-http-v1.
+Only new executor/workspace_http/ is owned; local work released, machine/full
+compiler gates held. Actual Astra/low process74596 verified. See retained source reviews
 in audit/evidence/2026-09-19/workspace-wire-readiness/.
 
 The HTTP owner must outlive a request and use cleanup-only recovery after owner

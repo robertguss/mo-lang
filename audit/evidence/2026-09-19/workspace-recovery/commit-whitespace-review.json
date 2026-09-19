@@ -1,0 +1,38 @@
+{
+  "checks": [
+    {
+      "scope": "all",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "3023a01a^",
+        "3023a01a",
+        "--"
+      ],
+      "exit": 2,
+      "stdout": "audit/evidence/2026-09-19/workspace-recovery/attempt-01/application23/controls/effective-resources/execution-e1f32d21dcf3436791e743a603ea1fb0/stdout.bin:13: trailing whitespace.\n+Groups:\t65534 \naudit/evidence/2026-09-19/workspace-recovery/attempt-01/application23/source-cache/logstat/fixture/c.log:1: trailing whitespace.\n+2026-09-12T10:01:00Z GET /api/users 200 13\naudit/evidence/2026-09-19/workspace-recovery/full-01/test.stderr.txt:7: new blank line at EOF.\naudit/evidence/2026-09-19/workspace-recovery/launch-attempt-01/processes.txt:793: trailing whitespace.\n+51910   813 /usr/local/vanta/osqueryd                                            \naudit/evidence/2026-09-19/workspace-recovery/launch-attempt-01/processes.txt:897: trailing whitespace.\n+28323 28323 npm exec chrome-devtools-mcp@latest   \naudit/evidence/2026-09-19/workspace-recovery/launch-attempt-01/processes.txt:899: trailing whitespace.\n+28380 28323 chrome-devtools-mcp \naudit/evidence/2026-09-19/workspace-recovery/launch-attempt-01/processes.txt:908: trailing whitespace.\n+ 4516  4516 npm exec chrome-devtools-mcp@latest   \naudit/evidence/2026-09-19/workspace-recovery/launch-attempt-01/processes.txt:910: trailing whitespace.\n+ 4596  4516 chrome-devtools-mcp \naudit/evidence/2026-09-19/workspace-recovery/launch-full-01/processes.txt:793: trailing whitespace.\n+51910   813 /usr/local/vanta/osqueryd                                            \naudit/evidence/2026-09-19/workspace-recovery/launch-full-01/processes.txt:882: trailing whitespace.\n+28323 28323 npm exec chrome-devtools-mcp@latest   \naudit/evidence/2026-09-19/workspace-recovery/launch-full-01/processes.txt:884: trailing whitespace.\n+28380 28323 chrome-devtools-mcp \naudit/evidence/2026-09-19/workspace-recovery/launch-full-01/processes.txt:893: trailing whitespace.\n+ 4516  4516 npm exec chrome-devtools-mcp@latest   \naudit/evidence/2026-09-19/workspace-recovery/launch-full-01/processes.txt:895: trailing whitespace.\n+ 4596  4516 chrome-devtools-mcp \n",
+      "stderr": ""
+    },
+    {
+      "scope": "authored",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "3023a01a^",
+        "3023a01a",
+        "--",
+        "CHANGELOG.md",
+        "HANDOFF.md",
+        "mo-wiki",
+        "audit/evidence/2026-09-19/workspace-recovery/README.md",
+        "audit/evidence/2026-09-19/workspace-recovery/docs-check.py"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "decision": "Raw command output, CRLF fixture and process argv whitespace retained byte-for-byte. Authored docs/scripts check passes. Earlier pre-stage diff check covered only tracked edits."
+}

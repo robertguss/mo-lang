@@ -901,4 +901,9 @@
 - Next Python six-tool HTTP bridge owns cleanup beyond request lifetime; separate
   Mo application profile and scripted repair follow. Updated state/board/handoff.
 - Wiki lint267 pages/25 inherited notices (15 review,10 size), no new issues;
-  diff check clean. Closed idle recovery workerp21 after retained receipt.
+  authored docs/scripts diff check clean. Raw retained outputs/CRLF fixture
+  produce13 whitespace notices (exit2), preserved byte-for-byte in commit review.
+  Closed idle recovery workerp21 after retained receipt.
+- Fresh HTTP worker w4:p28/tabtK starts at exact3023a01a, actual Astra/low
+  verified; new workspace_http/ only, local work released and machine/full
+  compiler gates held. No competing machine workload.
