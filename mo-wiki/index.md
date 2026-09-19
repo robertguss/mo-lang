@@ -8,7 +8,7 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-19 | Total pages: 278
+> any question. Last updated: 2026-09-19 | Total pages: 282
 
 ## Directions we like
 
@@ -248,6 +248,7 @@ type: index
 - [[session-04|Session 4 — 12 Sep 2026]] — expose line replaces pub, use A.B{X}, every for closes with end, loops vs combinators rule
 
 ## Research
+- [[bend2|Mo vs Bend2]] — protected law/proof workflow, release-matched learning, evidence status and selective ownership; pinned source inspection and local checks, with GPU/proof caveats
 
 - [[agent-native-research-synthesis]] — four reports reviewed with the oracle;
   selective source checks, four additional strategic reviews and the agreed
