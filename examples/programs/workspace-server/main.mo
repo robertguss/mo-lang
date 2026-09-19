@@ -24,7 +24,7 @@ process Closer()
   end
 end
 
-supervisor Stubs()
+supervisor Stubs
   child Closer, restart: :always
 end
 
