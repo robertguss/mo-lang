@@ -137,5 +137,6 @@ and a missing program. Linux and Darwin both.
 
 ## Related
 
+- [[interpreter-step-40]]
 - [[mo-harness-in-mo]]
 - [[decision-log]]
