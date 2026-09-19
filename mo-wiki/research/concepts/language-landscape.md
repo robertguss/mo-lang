@@ -1,10 +1,10 @@
 ---
 title: "Language landscape: which languages deserve a deep comparison"
 created: 2026-09-12
-updated: 2026-09-17
+updated: 2026-09-19
 type: concept
 tags: [research, philosophy]
-sources: [raw/articles/agentlanguages-dev-catalogue-2026-09-12.md]
+sources: [raw/articles/agentlanguages-dev-catalogue-2026-09-12.md, raw/articles/bend2-source-inspection-2026-09-19.md]
 confidence: medium
 ---
 
@@ -59,7 +59,7 @@ Status labels are as of Sep 2026 from the cited source. `confidence: medium` bec
 - **Roc** — the *platform* concept we adopted in [[q11-platform-and-stdlib|Q11]].[15]
 - **Unison** — every definition identified by the hash of its syntax tree; code stored as ASTs in a database; exact dependencies by hash, no dependency hell, renames can't break references; 1.0 shipped (Nov 2025).[4][5] Direct ancestor of [[q10-semantic-ids-and-editing|Q10]] — and the cautionary tale (no text files).
 - **MoonBit** — self-described "AI-native language toolchain": Wasm-first, multi-backend, with *MoonBit Pilot*, a code agent built into the toolchain that generates libraries with docs and tests and does large refactors that pass CI.[2][3] The closest *shipping* competitor to Mo's premise; must be a comparison page.
-- **Bend / HVM** — Python-feel language on interaction nets, automatic massive parallelism on GPU; Bend2 planned with a parallel CPU runtime.[19] Not for Mo's domain, but the "parallel for free" claim deserves a look.
+- **Bend2** — **Hermes update, 19 Sep 2026:** the current repository is a new affine, dependently typed language with law/proof files and C/JS/CPU/GPU machinery, not the old Bend/HVM interaction-net system. The earlier survey's “Bend2 planned” and “not for Mo's domain” descriptions no longer capture its agent-verification focus. [[bend2|Mo vs Bend2]] ranks protected obligations, version-matched learning and honest evidence status ahead of adopting its proof calculus or GPU scheduler; source inspection and bounded local checks, not a performance endorsement. ^[raw/articles/bend2-source-inspection-2026-09-19.md]
 
 ## G. Built for AI authors (the new wave)
 
