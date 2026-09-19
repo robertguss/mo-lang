@@ -37,6 +37,16 @@ then live provider integration, which needs Robert for the subscription login.
 Still open from before: Step 39 unaccepted, Darwin `F_FULLFSYNC` unmet,
 Program 7 suspended pending a versioned replacement scope.
 
+**In flight, 19 Sep 2026, 8:00 AM ET:** Opus worker `app-workspace-v2-opus`
+(Herdr `w4:p2K`, Claude Code, Opus 5 confirmed at startup, accept-edits with
+shell allowed) on branch `harness/application-workspace-v2`, worktree
+`~/Projects/startups/mo-lang-worktrees/harness-application-workspace-v2`, base
+`030290b8`. Brief revised at `10a9e1a8` (seven carried findings RED first,
+evidence under 2 MiB). Released for local work and focused both-runtime tests
+only; machine runs and the full suite stay lead-gated. Follow with
+`herdr agent get/read app-workspace-v2-opus`. Lead commits `d5cfc150` and
+`10a9e1a8` are local, not yet pushed.
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
