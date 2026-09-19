@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [stdlib, security, runtime, compiler]
 sources: [plans/mo-capabilities-for-the-harness.md, spec/design-v0/09-stdlib.md]
-status: in-progress
+status: done
 ---
 
 # Step 40: a scope that holds, and `Fs.replace`
@@ -93,6 +93,10 @@ not check on Darwin. Small commits as yourself with a `Co-Authored-By` line
 naming your model. **Write your final report to `toolchain/STEP-40-REPORT.md`
 and commit it**: commits, decisions the brief did not cover, corpus programs
 touched, numbers, what the lead must rerun.
+
+## Result
+
+Accepted 19 Sep 2026, 1:08 PM ET ([[decision-log]]). Report: `toolchain/STEP-40-REPORT.md`. Darwin full suite 249 of 249; Linux x86_64 step 40 tests 6 of 6 after a Linux-only test harness fix. The brief's statement of the defect was partly wrong; the report's part A has what was really open.
 
 ## Related
 

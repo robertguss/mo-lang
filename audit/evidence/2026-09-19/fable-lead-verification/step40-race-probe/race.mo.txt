@@ -1,0 +1,25 @@
+module Race
+expose main
+
+intent "Reads sub/a.txt in a scope many times while something outside swaps sub between a folder and a link, and counts what it saw."
+
+fn main(platform: Platform)
+  work = platform.fs.scoped("scope")
+  n = (platform.args.get(0) or "0").to_u64 or 0
+  var inside = 0
+  var secret = 0
+  var missing = 0
+  for _ in 0..n
+    case work.read("sub/a.txt", within: 1.minute)
+      Ok(text):
+        if text.contains?("SECRET")
+          secret += 1
+        else
+          inside += 1
+        end
+      Error(_):
+        missing += 1
+    end
+  end
+  platform.stdout.write_line("inside #{inside} secret #{secret} missing #{missing}")
+end

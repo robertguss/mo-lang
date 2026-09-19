@@ -34,6 +34,8 @@ Run the full suite detached (`nohup`) with a 1,500 s guard: the tool's
 10-minute cap is shorter than the suite now, and `guard.py` does not kill
 grandchildren.
 
+**Step 40 accepted 1:08 PM ET** and merged to `main`; the VM's Linux full suite on it was still running (see `.lead-full.log` in the VM clone). Step 41's worker launches from this `main`.
+
 **In flight, 12:59 PM ET.** (1) Step 40 on Linux: the VM's first run built
 (exit 0) and passed 5 of 6; the sixth aborted in the *test harness* (a raw
 `read` on a non-blocking pipe returns `-EAGAIN` in the result on Linux). Worker

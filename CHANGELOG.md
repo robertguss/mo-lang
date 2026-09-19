@@ -2,6 +2,25 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Step 40: a scope that holds, and `Fs.replace` — 19 Sep 2026, 1:08 PM ET
+
+- A narrowed `Fs` now walks its path one folder at a time from the scope's
+  folder without following links, and every row acts on the descriptor it
+  resolved, in both runtimes. Closed: a program's own `fs.scoped("link")`
+  rooting a scope outside; links inside a scope being followed; writes, removes
+  and renames acting through links; a FIFO hanging both runtimes; the gap
+  between check and use. `list_kinds` reports `Link`; `fs.kind_of` gives
+  hardlink count and setuid.
+- `Fs.replace`: atomic write by temporary file, sync, rename, folder sync, mode
+  0600; the old file whole after a kill; 1,000 replaces with no partial read.
+- Cost: shallow reads, writes and appends 25 to 40% cheaper; a path 16 folders
+  deep 3.5 times dearer; `list_kinds` 3.3 times dearer in the interpreter and
+  5.7 times cheaper in the binary.
+- Two Claude Opus 5 workers (the first's tab closed mid-step; the second
+  reviewed and finished it) and a Linux follow-up. Lead: Darwin full suite 249
+  of 249; Linux x86_64 on Robert's VM 6 of 6 after a Linux-only test harness
+  bug was fixed.
+
 ## A runtime use-after-free fixed; harness step 2 accepted — 19 Sep 2026, 10:37 AM ET
 
 - Both runtimes: an `answer` to an ask a process kept was held as a bare value

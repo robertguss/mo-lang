@@ -963,3 +963,6 @@
 
 ## [2026-09-19] accept | the raw-memory runtime fix and harness step 2
 - 10:37 AM ET: full suite 244 of 244 exit 0 on `2a852d68`; four rows in decisions/decision-log.md; CHANGELOG entry. Two earlier full-suite runs were the lead's own doing (a 570 s guard limit, then an orphan from that kill deleting the shared zig-out) and are retained in the evidence README.
+
+## [2026-09-19] accept | step 40, a scope that holds and Fs.replace
+- 1:08 PM ET: merged to main through lead/verify-step40. Four rows in decisions/decision-log.md; CHANGELOG entry; evidence in audit/evidence/2026-09-19/fable-lead-verification/. Linux checks now run on Robert's Linux VM. Briefs written: plans/mo-harness-end-to-end-v1.md (worker launched), plans/interpreter-step-41.md.

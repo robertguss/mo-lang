@@ -28,6 +28,15 @@ Later the same day, on `main` at `2a852d68` (step 2 and the raw-memory fix merge
 | full suite, `test4`, started while `test3`'s orphaned test binary was still alive | **243 of 244, exit 1**: two `mo build`s lost `zig-out/mo-build/.bricks/<hash>` mid-run. `guard.py` kills its child, not the group, so the orphan finished and its cleanup deleted the shared `zig-out`. Explanation, not proof |
 | full suite, `test5`, no orphans, load 2.7 | **244 of 244, exit 0**, 10:37 AM ET |
 
+Step 40, on branch `lead/verify-step40` (accepted 1:08 PM ET):
+
+| run | result |
+|---|---|
+| Darwin: build, step 40 tests, full suite (`step40-darwin-full.*`) at `6e04e1f9` | exit 0; 6 of 6; **249 of 249, exit 0** |
+| lead race probe (`step40-race-probe/`): a Mo program reads `sub/a.txt` 300,000 times in a scope while `swap2.py` swaps `sub` between a real folder and a link to a folder holding a secret | inside 39,238, refused 260,762, **secret 0**. Not run against the old toolchain, so the probe's power is not shown |
+| Linux x86_64 on Robert's VM `aurora-but-gold`, first run at `6e04e1f9` | build exit 0; 5 of 6; the reader control aborted in the test harness (raw `read` returning `-EAGAIN` in its result) |
+| Linux, after the follow-up `3d24c001`, at `0ab217c9` (`step40-linux-vm.txt`) | build exit 0; **6 of 6, exit 0**. The Linux full suite was still running at acceptance and is reported separately |
+
 Not run: the two real-machine E1 checks the step 1 worker named (the reaper
 reading a populated `cgroup.events`; a stalled Docker daemon leaving
 `cleanup_unconfirmed` without a power-off). Both need a fault injected on the

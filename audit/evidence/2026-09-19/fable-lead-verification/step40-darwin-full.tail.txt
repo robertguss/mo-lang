@@ -1,0 +1,41 @@
+rd: killed 5837 (rss 61 MB, 2 s)
+
+8000000: guard: killed 5849 (rss 61 MB, 2 s)
+
+8000000: guard: killed 5861 (rss 61 MB, 2 s)
+
+8000000: guard: killed 5917 (rss 61 MB, 3 s)
+
+8000000: guard: killed 5933 (rss 61 MB, 3 s)
+
+8000000: guard: killed 6048 (rss 61 MB, 3 s)
+
+8000000: guard: killed 6073 (rss 61 MB, 3 s)
+
+---- /Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo: 8 of 8 rounds killed, 7 temporary files left, 6 of them whole (killed between write and rename); the target whole every time
+8000000: guard: killed 6088 (rss 28 MB, 1 s)
+
+8000000: guard: killed 6095 (rss 28 MB, 2 s)
+
+8000000: guard: killed 6154 (rss 28 MB, 2 s)
+
+8000000: guard: killed 6166 (rss 28 MB, 2 s)
+
+8000000: guard: killed 6211 (rss 28 MB, 3 s)
+
+8000000: guard: killed 6304 (rss 28 MB, 3 s)
+
+8000000: guard: killed 6327 (rss 28 MB, 3 s)
+
+8000000: guard: killed 6474 (rss 28 MB, 3 s)
+
+---- ./zig-out/mo-build/flip/flip: 8 of 8 rounds killed, 6 temporary files left, 6 of them whole (killed between write and rename); the target whole every time
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo ./.zig-cache/o/0dec728e9dc832cebc13658ff09afa89/test --cache-dir=./.zig-cache --seed=0x447d925a --listen=-
+
+Build Summary: 5/5 steps succeeded; 249/249 tests passed
+test success
++- run test 249 pass (249 total) 9m MaxRSS:463M
+   +- compile test Debug native success 7s MaxRSS:1G
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 58ms MaxRSS:35M
+

@@ -850,6 +850,15 @@ direction separately from the lead's conservative execution interpretation.
 | Accept [[mo-harness-step-2-live-tables]] (`699eed1d`). The lead's live rerun caught a regression the worker could not see without the machine; the fix's audit found five more rows leaking silently. Python rose to 6,643 counted lines: no more worker time goes into polishing Python that is moving to Mo, and `Exec` moves ahead of the Mo six-tool server so the server runs `docker` itself. | Fable lead; implementation Claude Opus 5 | accepted | unit 110 OK; eight live suites and a clean inventory on `mo-executor-r01` |
 | Robert pushes `main` himself, so `main` holds accepted work and lead records only: worker merges are verified on a local `lead/verify-<unit>` branch and reach `main` at acceptance. | Fable lead, after Robert's note | decided | step 40's integration |
 
+## 19 Sep 2026 — Step 40 accepted, 1:08 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept [[interpreter-step-40]] (`toolchain/step-40-scope` at `3d24c001`, merged through `lead/verify-step40`). The lead's first statement of the defect was half right and is corrected on [[mo-capabilities-for-the-harness]]: the real `Fs` already refused a read through a link pointing outside; the real holes were a program's own `scoped("link")`, links followed inside the scope, mutations through links, a FIFO hang, and check-then-use. **For Robert**: `list_kinds` now reports a link as `Link`, not as what it points at, and a narrowed `Fs` refuses every link. | Fable lead; implementation two Claude Opus 5 workers | accepted, semantic | Darwin full suite 249 of 249; Linux x86_64 6 of 6; lead race probe 0 secret reads of 300,000 |
+| The two costs past 10% are accepted for now: a deep path costs about 9.7 µs a folder (was 1.3), and the interpreter's `list_kinds` stats every entry. Correctness first; the one-call forms (`O_NOFOLLOW_ANY` on Darwin, `openat2` with `RESOLVE_NO_SYMLINKS` on Linux) are a later step if a real program is slowed, since they add a code path per platform. | Fable lead | decided | a corpus program or the harness showing the cost |
+| Linux toolchain checks run on Robert's Linux VM (`aurora-but-gold`, x86_64), not on the Mac; the OrbStack machine is for the harness's live executor suites only. Its first use found a Linux-only defect in a test harness that Darwin could not show. | Robert | decided | step 40's Linux run |
+| The harness proceeds on two tracks at once: the end-to-end run and scripted Logstat repair on the existing Python services ([[mo-harness-end-to-end-v1]]), which proves the design and yields the behaviour tests the Mo server must match; and the toolchain capabilities ([[interpreter-step-41]], then runtime memory safety). **For Robert**: say if the Mo port should come first instead. | Fable lead | decided | the end-to-end run's report |
+
 ## Related
 
 - [[session-05]]
