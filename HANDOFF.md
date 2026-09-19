@@ -99,7 +99,7 @@ open until its acceptance. The lead meanwhile writes the capability design page
 (strict scope, `Fs.replace`, `platform.exec`). Local `main` is ahead of origin
 and holds the unaccepted merge `ddd81c06`; push after acceptance.
 
-**Step 1 worker done, 8:41 AM ET; lead verification in progress, 8:50 AM ET:**
+**Step 1 worker done, 8:41 AM ET; lead verification in progress, 8:43 AM ET:**
 `harness/step-1-executor` at `cf5ed57b` (3 commits, 34 files, +575/-898) merged
 locally at `97202a81`. Lead reruns under the guard: executor unit tests 96 OK
 exit 0 (84 before), application 25 OK, `workspace_http/local.py` 22 OK exit 0.
@@ -115,7 +115,7 @@ rule, reversing an accepted test. Worker gaps: three provider READMEs and
 rewired provider scripts never ran; `recovery/readiness_probes.py` already
 failed to import before. It edited two strings in `recovery/live.py`, which the
 step 2 worker must know. Machine reruns owed, one at a time: `selftest.py`
-(running now), `test_lifecycle_live.py`, `test_workspace_live.py`,
+(lead run 8:44 AM ET: 17 of 17, exit 0, inventory unchanged), `test_lifecycle_live.py`, `test_workspace_live.py`,
 `recovery/live.py`, `workspace_http/live.py`, `application/controls.py`,
 `inventory.py`; plus two real-machine E1 checks (the reaper reads
 `cgroup.events`; a stalled daemon leaves `cleanup_unconfirmed` without power-off).
