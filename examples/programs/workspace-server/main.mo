@@ -3,7 +3,7 @@
 module WorkspaceServer.Main
 expose main
 
-use WorkspaceServer.Operator{Door}
+use WorkspaceServer.Door{Door}
 use WorkspaceServer.Server{serve_run}
 
 intent "Run the Mo workspace server for one run folder the operator has laid out: serve mo-workspace-http-v1's five file tools on one loopback port and the operator's path on another, and end, exit 0, once the operator closes the run or a minute past the lease; a folder that cannot be served exits 1, and no folder is a usage error, exit 2. This server does not serve command: that is part B's, through Exec."

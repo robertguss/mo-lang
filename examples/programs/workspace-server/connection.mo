@@ -1,7 +1,9 @@
+# sim: --faults 20 --until 0.5
 module WorkspaceServer.Connection
 expose Connection, Runner, Acceptor, Gate, Token, Identity, Reading, Next, Candidates, Handlers, fresh, took, ended, with_length, status_of
 
 use WorkspaceServer.Admission{Admission, Admitted}
+use WorkspaceServer.Door{Door}
 use WorkspaceServer.Envelope{Envelope, Ids, refused, ids_of, text}
 use WorkspaceServer.Journal{Journal}
 use WorkspaceServer.Schema{Call, call}
@@ -134,7 +136,8 @@ end
 # One connection's calls to admission, the worker and the journal. It asks admission, waits
 # for the worker at most the call's wait, journals the reply produced before the connection
 # writes it, and then the delivery the connection reports.
-process Runner(admission: Handle(Admission), worker: Handle(Worker), journal: Handle(Journal))
+process Runner(admission: Handle(Admission), worker: Handle(Worker), journal: Handle(Journal),
+  door: Handle(Door))
   state
     call_id: String
   end
@@ -165,10 +168,29 @@ process Runner(admission: Handle(Admission), worker: Handle(Worker), journal: Ha
         if peer_ended
           admission.send(Close(why: "observed_disconnect"))
         end
-        delivery = "{\"known\": false, \"written\": #{written}, \"peer_ended_during_call\": #{peer_ended}}"
-        noted = journal.ask(Delivered(call_id: state.call_id, delivery: delivery, unknown: !written or peer_ended), within: 1_000.ms)
+        known = written and !peer_ended
+        delivery = "{\"known\": #{known}, \"written\": #{written}, \"peer_ended_during_call\": #{peer_ended}}"
+        noted = journal.ask(Delivered(call_id: state.call_id, delivery: delivery, unknown: !known),
+          within: 1_000.ms)
         state.call_id = if noted == Ok(true): "" else: state.call_id
+        if peer_ended
+          lost(admission, journal, door)
+        end
     end
+  end
+end
+
+# An observed disconnect: admission is already closed, the in-flight call has finished,
+# cleanup is journaled, and main is let go. The contract's owner finishes and exits;
+# the operator path stayed its own process until then (D2).
+fn lost(admission: Handle(Admission), journal: Handle(Journal), door: Handle(Door))
+  still = admission.ask(Drained, within: 5_000.ms) == Ok(true)
+  verdict = if still: "confirmed" else: "unresolved"
+  record = "{\"cleanup\": \"#{verdict}\", \"execution\": \"unknown\", \"method\": \"observed disconnect\"}"
+  if journal.ask(Cleaned(cleanup: record), within: 5_000.ms) == Ok(true)
+    door.send(Knock)
+  else
+    door.send(Knock)
   end
 end
 
@@ -188,6 +210,7 @@ process Connection(conn: Conn, identity: Identity, gate: Handle(Gate), runner: H
     me: Option(Handle(Connection))
     reading: Reading = fresh()
     phase: String = "head"
+    held_body: String
     ids: Option(Ids)
     peer_ended: Bool
   end
@@ -205,6 +228,11 @@ process Connection(conn: Conn, identity: Identity, gate: Handle(Gate), runner: H
     case message
       Begin(me):
         state.me = Some(me)
+        if state.phase == "held"
+          state.phase = dispatched(conn, identity, gate, runner, state.me, state.held_body)
+          state.ids = ids_in(state.held_body, identity)
+          state.held_body = ""
+        end
       Line(text):
         if reading?(state.phase)
           step = took(state.reading, text)
@@ -213,6 +241,9 @@ process Connection(conn: Conn, identity: Identity, gate: Handle(Gate), runner: H
           state.phase = if phase == "same": state.phase else: phase
           if state.phase == "body" and state.reading.length == 0
             state.reading = with_length(state.reading, length_of(state.reading.head, identity.port))
+          end
+          if state.phase == "held"
+            state.held_body = body_of(step.1)
           end
           state.ids = if state.phase == "running": ids_in(body_of(step.1), identity) else: state.ids
         end
@@ -227,6 +258,9 @@ process Connection(conn: Conn, identity: Identity, gate: Handle(Gate), runner: H
         if reading?(state.phase)
           whole = ended(state.reading)
           state.phase = next_phase(conn, identity, gate, runner, state.me, whole)
+          if state.phase == "held"
+            state.held_body = body_of(whole)
+          end
           state.ids = if state.phase == "running": ids_in(body_of(whole), identity) else: state.ids
         end
       Idle:
@@ -236,8 +270,15 @@ process Connection(conn: Conn, identity: Identity, gate: Handle(Gate), runner: H
           state.phase = refuse(conn, gate, malformed())
         end
       Reply(status: status, envelope: envelope, journaled: _):
-        state.phase = answered(conn, gate, status, envelope)
-        runner.send(Delivery(written: state.phase == "done", peer_ended: state.peer_ended))
+        if state.peer_ended
+          conn.close
+          gate.send(Leave)
+          state.phase = "unwritten"
+          runner.send(Delivery(written: false, peer_ended: true))
+        else
+          state.phase = answered(conn, gate, status, envelope)
+          runner.send(Delivery(written: state.phase == "done", peer_ended: false))
+        end
       Refused(error):
         state.phase = answered(conn, gate, 409, refused(state.ids, error))
     end
@@ -305,7 +346,7 @@ fn dispatched(conn: Conn, identity: Identity, gate: Handle(Gate), runner: Handle
         Some(back):
           runner.send(Go(back: back, call: c, payload_sha256: Hash.hex(Hash.sha256(body.bytes))))
           "running"
-        None: answered(conn, gate, 409, refused(Some(ids_of(c)), "admission_closed"))
+        None: "held"
       end
   end
 end
@@ -325,7 +366,7 @@ end
 # Accepts candidate connections: four at most live; each gets a connection process and a
 # runner, the runtime reads its lines into it, and it is told when its two seconds end.
 process Acceptor(identity: Identity, gate: Handle(Gate), admission: Handle(Admission),
-  worker: Handle(Worker), journal: Handle(Journal))
+  worker: Handle(Worker), journal: Handle(Journal), door: Handle(Door))
   state
     accepted: UInt64
     turned_away: UInt64
@@ -338,7 +379,8 @@ process Acceptor(identity: Identity, gate: Handle(Gate), admission: Handle(Admis
     case message
       Accepted(conn):
         if gate.ask(Enter, within: 1_000.ms) == Ok(true)
-          handler = Connection.start(conn, identity, gate, Runner.start(admission, worker, journal))
+          handler = Connection.start(conn, identity, gate, Runner.start(admission, worker, journal,
+            door))
           handler.send(Begin(me: handler))
           conn.lines(into: handler, idle: 310_000.ms)
           handler.send(Expire, delay: 2_000.ms)
@@ -353,11 +395,18 @@ process Acceptor(identity: Identity, gate: Handle(Gate), admission: Handle(Admis
   end
 end
 
-supervisor Candidates(identity: Identity, token: Token, gate: Handle(Gate),
-  admission: Handle(Admission), worker: Handle(Worker), journal: Handle(Journal))
-  child Gate(4, token), restart: :never
-  child Acceptor(identity, gate, admission, worker, journal), restart: :always
-  child Runner(admission, worker, journal), restart: :never
+supervisor Gates(limit: UInt64, token: Token)
+  child Gate(limit, token), restart: :never
+end
+
+supervisor Candidates(identity: Identity, gate: Handle(Gate), admission: Handle(Admission),
+  worker: Handle(Worker), journal: Handle(Journal), door: Handle(Door))
+  child Acceptor(identity, gate, admission, worker, journal, door), restart: :always
+end
+
+supervisor Runners(admission: Handle(Admission), worker: Handle(Worker), journal: Handle(Journal),
+  door: Handle(Door))
+  child Runner(admission, worker, journal, door), restart: :never
 end
 
 supervisor Handlers(conn: Conn, identity: Identity, gate: Handle(Gate), runner: Handle(Runner))

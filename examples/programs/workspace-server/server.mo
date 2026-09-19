@@ -3,8 +3,9 @@ expose Settings, settings_of, secrets_of, serve_run
 
 use WorkspaceServer.Admission{Admission}
 use WorkspaceServer.Connection{Acceptor, Gate, Identity}
+use WorkspaceServer.Door{Door}
 use WorkspaceServer.Journal{Journal, binding_text}
-use WorkspaceServer.Operator{Desk, Door, OperatorDoor}
+use WorkspaceServer.Operator{Desk, OperatorDoor}
 use WorkspaceServer.Worker{Worker, Tap, Script, production}
 
 intent "Start one run from its folder: read the operator's config.json and capability.json, start the journal, admission, the worker holding the workspace folder, the gate holding the token and the desk holding the operator's, bind the journal to the hashes of the source and the verifier configuration before anything is served, listen on two loopback ports, open the lease, and publish readiness in ready.json. Each process is handed only what it uses."
@@ -15,6 +16,7 @@ struct Settings
   lease_ms: UInt64
   journal_cap: UInt64
   late_ms: UInt64
+  source_sha256: String
   verifier_sha256: String
 end
 
@@ -45,6 +47,7 @@ fn settings_of(text: String) : Result(Settings, String)
         lease_ms: count_in(fields, "lease_ms", 900_000, 900_000),
         journal_cap: count_in(fields, "journal_cap", 4_194_304, 4_194_304),
         late_ms: count_in(fields, "late_ms", 0, 60_000),
+        source_sha256: text_in(fields, "source_sha256"),
         verifier_sha256: Hash.hex(Hash.sha256(verifier.bytes))))
     Ok(Array(_)) | Ok(String(_)) | Ok(Number(_)) | Ok(Bool(_)) | Ok(Null) | Error(_):
       Error("config.json is not a JSON object")
@@ -71,25 +74,13 @@ fn read_in(run: Fs, name: String) : Result(String, String)
   end
 end
 
-fn hashed(worker: Handle(Worker)) : Result(String, String)
+# The worker's digest of the tree, or "unreadable" when a link or a special entry
+# refuses the walk. The operator's source_sha256 is what the journal binds; this
+# digest is recorded beside it and is never a reason not to serve.
+fn hashed(worker: Handle(Worker)) : String
   case worker.ask(Digest, within: 60_000.ms)
-    Ok(digest):
-      return Error("the source could not be read whole") if digest == "unreadable"
-      Ok(digest)
-    Error(_): Error("the source could not be hashed")
-  end
-end
-
-# The candidates' loopback port, served into the acceptor from here on.
-fn candidates(net: Net, given: Identity, gate: Handle(Gate), admission: Handle(Admission),
-  worker: Handle(Worker), journal: Handle(Journal)) : Result(UInt16, String)
-  case net.listen(0, within: 5_000.ms)
-    Ok(listener):
-      identity = Identity(run_id: given.run_id, workspace_id: given.workspace_id, port: listener.port,
-        commands: given.commands)
-      listener.serve(into: Acceptor.start(identity, gate, admission, worker, journal), idle: 60_000.ms)
-      Ok(listener.port)
-    Error(e): Error("candidate port: #{e}")
+    Ok(digest): digest
+    Error(_): "unreadable"
   end
 end
 
@@ -113,14 +104,21 @@ fn serve_run(run: Fs, net: Net, clock: Clock, random: Random, double: Bool, door
   tap = if double: Some(Tap.start(run.scoped("workspace"))) else: None
   worker = Worker.start(run.scoped("workspace/data"), journal, admission, script, tap)
   worker.send(Know(me: worker))
-  source = try hashed(worker)
-  binding = binding_text(settings.run_id, settings.workspace_id, source, settings.verifier_sha256)
+  observed = hashed(worker)
+  binding = binding_text(settings.run_id, settings.workspace_id, settings.source_sha256, observed,
+    settings.verifier_sha256)
   return Error("the journal could not be bound") if journal.ask(Bind(binding: binding), within: 5_000.ms) != Ok(true)
   gate = Gate.start(4, secrets.0)
   desk = Desk.start(secrets.1, admission, journal, worker, gate, door)
-  identity = Identity(run_id: settings.run_id, workspace_id: settings.workspace_id, port: 0,
-    commands: double)
-  port = try candidates(net, identity, gate, admission, worker, journal)
+  port = try case net.listen(0, within: 5_000.ms)
+    Ok(listener):
+      who = Identity(run_id: settings.run_id, workspace_id: settings.workspace_id,
+        port: listener.port, commands: double)
+      listener.serve(into: Acceptor.start(who, gate, admission, worker, journal, door),
+        idle: 60_000.ms)
+      Ok(listener.port)
+    Error(e): Error("candidate port: #{e}")
+  end
   operator_port = try operators(net, desk)
   return Error("the lease did not open") if admission.ask(Open, within: 5_000.ms) != Ok(true)
   desk.send(Expire, delay: (settings.lease_ms + 60_000).ms)

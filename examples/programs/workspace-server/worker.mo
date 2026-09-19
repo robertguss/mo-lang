@@ -1,3 +1,4 @@
+# sim: --faults 20 --until 0.5
 module WorkspaceServer.Worker
 expose Worker, Tap, Script, Workers, production, scripted_command, digest_of
 

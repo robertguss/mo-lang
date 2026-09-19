@@ -1,3 +1,4 @@
+# sim: --faults 20 --until 0.5
 module WorkspaceServer.Journal
 expose Journal, Entry, Journals, reserve, binding_text, entry_of, intent_first?
 
@@ -20,8 +21,16 @@ fn reserve() : UInt64
   524_288 + 8_192
 end
 
-fn binding_text(run_id: String, workspace_id: String, source: String, verifier: String) : String
-  "{\"run_id\": #{Json.encode(run_id)}, \"workspace_id\": #{Json.encode(workspace_id)}, \"source_sha256\": \"#{source}\", \"verifier_sha256\": \"#{verifier}\"}"
+fn hex_or_null(text: String) : String
+  if text == "" or text == "unreadable": "null" else: Json.encode(text)
+end
+
+# The first journal row: the operator's source hash (null when none was given), the
+# server's own digest of the tree (null when a link or a special entry refuses the walk),
+# and the hash of the verifier configuration.
+fn binding_text(run_id: String, workspace_id: String, source: String, observed: String,
+  verifier: String) : String
+  "{\"run_id\": #{Json.encode(run_id)}, \"workspace_id\": #{Json.encode(workspace_id)}, \"source_sha256\": #{hex_or_null(source)}, \"observed_sha256\": #{hex_or_null(observed)}, \"verifier_sha256\": \"#{verifier}\"}"
 end
 
 fn entry_of(core_id: String, payload_sha256: String, operation: String) : Entry
@@ -154,7 +163,7 @@ fn document(binding: String, calls: Map(String, Entry), cleanup: String, frozen:
 end
 
 fn bound() : String
-  binding_text("run-1", "0".repeat(32), "a".repeat(64), "b".repeat(64))
+  binding_text("run-1", "0".repeat(32), "a".repeat(64), "a".repeat(64), "b".repeat(64))
 end
 
 test "the binding is the first row, and each record rewrites the whole journal"

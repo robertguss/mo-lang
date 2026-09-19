@@ -1,5 +1,6 @@
 """Fixed local registry. Subprocess doubles prove bridge behavior, not isolation."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -56,7 +57,8 @@ class Served:
         config = dict(run_id=run_id, workspace_id=self.workspace_id, verifier=verifier,
                       lease_ms=self.LEASES.get(scenario, 900000),
                       journal_cap=524288 + 8192 + 300 if scenario == 'journal-full' else 4 * 1024 * 1024,
-                      late_ms=2300 if scenario in self.LATE else 0)
+                      late_ms=2300 if scenario in self.LATE else 0,
+                      source_sha256=self._source_sha256(data))
         for name, value in (('config.json', config), ('capability.json',
                             {'token': self.token, 'operator_token': self.operator_token})):
             fd = os.open(self.directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -64,6 +66,17 @@ class Served:
                 out.write(p.encode(value))
         self.process = None
         self.ipc, self.deadline = None, 0
+
+    @staticmethod
+    def _source_sha256(data):
+        """SHA-256 of the regular files only, `path hex\\n` per file, sorted. Symlinks are
+        the operator's and are not part of the binding; the server records its own digest
+        beside this (null when the tree cannot be walked)."""
+        rows = []
+        for path in sorted(p for p in data.rglob('*') if p.is_file() and not p.is_symlink()):
+            rel = path.relative_to(data).as_posix()
+            rows.append(f'{rel} {hashlib.sha256(path.read_bytes()).hexdigest()}\n')
+        return hashlib.sha256(''.join(rows).encode()).hexdigest()
 
     def start(self, owner_module=None):
         log = (self.directory / 'server.log').open('xb')

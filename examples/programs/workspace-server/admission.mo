@@ -1,3 +1,4 @@
+# sim: --faults 20 --until 0.5
 module WorkspaceServer.Admission
 expose Admission, Admitted, Standing, Admissions, wait_for
 
@@ -160,4 +161,18 @@ test "waits: two seconds for a file, 300 for a command, never past the lease"
   assert wait_for("read_file", 900_000) == 2_000
   assert wait_for("command", 900_000) == 300_000
   assert wait_for("command", 700) == 700
+end
+
+test "sixteen sequential calls are admitted, a seventeenth is call_limit, and a duplicate id is once"
+  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(), Random.fixture(), 900_000)
+  assert admission.ask(Open, within: 1.minute) == Ok(true)
+  ids = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]
+  for id in ids
+    assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"), within: 1.minute) is Ok(Yes(core_id: _, wait_ms: _))
+    admission.send(Finished(call_id: id))
+    assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"), within: 1.minute) == Ok(No(error: "conflict"))
+  end
+  assert admission.ask(Admit(call_id: "overflow", payload_sha256: "x", operation: "list_files"), within: 1.minute) == Ok(No(error: "call_limit"))
+  assert admission.ask(Status, within: 1.minute) is Ok(standing)
+  assert standing.calls == 16 and !standing.active
 end

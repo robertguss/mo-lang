@@ -1,8 +1,10 @@
+# sim: --faults 20 --until 0.5
 module WorkspaceServer.Operator
-expose Desk, Door, OperatorDoor, OperatorLine, OperatorToken, Operators, command_of
+expose Desk, OperatorDoor, OperatorLine, OperatorToken, Operators, command_of
 
 use WorkspaceServer.Admission{Admission, Standing}
 use WorkspaceServer.Connection{Gate}
+use WorkspaceServer.Door{Door}
 use WorkspaceServer.Journal{Journal}
 use WorkspaceServer.Worker{Worker}
 
@@ -22,36 +24,6 @@ type OperatorToken = String where value.byte_size == 64
 fn command_of(line: String) : (String, String)
   space = line.index_of(" ") or line.size
   (line.slice(0, space), line.slice(space + 1, line.size))
-end
-
-# What main waits on: the operator's close, or the end of the lease and its grace.
-process Door()
-  state
-    waiting: List(Reply(Bool))
-    knocked: Bool
-  end
-
-  message Wait : Bool
-  message Knock
-
-  fn update(state, message)
-    case message
-      Wait:
-        state.waiting = state.waiting.push(reply_to)
-        if state.knocked
-          for w in state.waiting
-            w.answer(true)
-          end
-          state.waiting = []
-        end
-      Knock:
-        state.knocked = true
-        for w in state.waiting
-          w.answer(true)
-        end
-        state.waiting = []
-    end
-  end
 end
 
 process Desk(token: OperatorToken, admission: Handle(Admission), journal: Handle(Journal),
@@ -183,7 +155,6 @@ end
 
 supervisor Operators(token: OperatorToken, admission: Handle(Admission), journal: Handle(Journal),
   worker: Handle(Worker), gate: Handle(Gate), door: Handle(Door))
-  child Door, restart: :never
   child Desk(token, admission, journal, worker, gate, door), restart: :always
 end
 
@@ -195,10 +166,4 @@ end
 test "an operator line is its token, a space, and its command"
   assert command_of("abc status") == ("abc", "status")
   assert command_of("abc") == ("abc", "")
-end
-
-test "the door lets main go once, whenever it is asked"
-  door = Door.start()
-  door.send(Knock)
-  assert door.ask(Wait, within: 1.minute) == Ok(true)
 end
