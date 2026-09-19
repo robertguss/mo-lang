@@ -1,0 +1,31 @@
+test_disconnect_retains_cleanup (__main__.RequestLifetime.test_disconnect_retains_cleanup) ... FAIL
+test_frontend_death_retains_cleanup (__main__.RequestLifetime.test_frontend_death_retains_cleanup) ... FAIL
+
+======================================================================
+FAIL: test_disconnect_retains_cleanup (__main__.RequestLifetime.test_disconnect_retains_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/red_lifetime.py", line 17, in test_disconnect_retains_cleanup
+    self.control('disconnect')
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/red_lifetime.py", line 38, in control
+    self.assertTrue(cleanup.exists(), reason + ': cleanup abandoned after effect')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : disconnect: cleanup abandoned after effect
+
+======================================================================
+FAIL: test_frontend_death_retains_cleanup (__main__.RequestLifetime.test_frontend_death_retains_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/red_lifetime.py", line 20, in test_frontend_death_retains_cleanup
+    self.control('frontend-death')
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1/toolchain/harness/executor/workspace_http/red_lifetime.py", line 38, in control
+    self.assertTrue(cleanup.exists(), reason + ': cleanup abandoned after effect')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : frontend-death: cleanup abandoned after effect
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.896s
+
+FAILED (failures=2)

@@ -1,0 +1,9 @@
+{
+  "workspace.py": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+  "workspace_controller.py": "a2c7dbcb38865ee3074fd64cb9a113c35f476c6efb7b75c2a0c48d30911c207e",
+  "adapter.py": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "remote.py": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "workspace_files.py": "7a671d2270deb37dbaa70fabe8071ade78055198465bdf704c5f61c52272b5ef",
+  "workspace_http/run_guarded.py": "5b72c788f8ac6814c117904312cd2138beec5a4812eaf626bec340e1e99b6b4f",
+  "workspace_http/red_lifetime.py": "f27e9ffb240630f6f6918821cb84269d4e1417f9119798b0e74c6e22fa2efd4e"
+}
