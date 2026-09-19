@@ -139,6 +139,7 @@ type: index
   against raw evidence; never acceptance; not built (18 Sep 2026)
 - [[mo-harness-step-1-executor]] — brief: the two high executor defects fixed, duplicate Python machinery deleted
 - [[mo-harness-step-8-agent]] — brief: the Mo agent's review findings, tests that can fail, one budget rule
+- [[mo-capabilities-for-the-harness]] — design: `scoped` made to hold against symlinks, `Fs.replace`, and `Exec` narrowed to fixed commands
 - [[mo-harness-in-mo]] — the harness moved into Mo: the capabilities Mo gains, the target shape, nine steps
 - [[mo-first-coding-harness]] — selected Mo-written coding application; headless
   first slice, protected verification, matched Pi comparison; implementation authorized

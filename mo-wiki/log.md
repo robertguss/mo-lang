@@ -951,3 +951,6 @@
 
 ## [2026-09-19] create | plans/mo-harness-in-mo.md
 - Robert: as much of the harness in Mo as possible; Mo gains a scoped child-process capability. The plan maps 8,800 non-Mo lines to stay, move now, or move with a named capability, in nine steps. Lead-verified finding: `Fs.scoped` is lexical only.
+
+## [2026-09-19] create | plans/mo-capabilities-for-the-harness.md and two step briefs
+- Design: `scoped` made to hold against symlinks, `Fs.replace`, `Exec` narrowed to fixed commands; three rows in decisions/decision-log.md. Briefs plans/mo-harness-step-1-executor.md and plans/mo-harness-step-8-agent.md, two Opus workers launched 8:22 AM ET. Lint 26 notices, none new errors.

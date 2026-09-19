@@ -824,6 +824,14 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Mo gains a scoped child-process capability so that as much of the harness as possible is written in Mo, "to really test Mo as much as possible". This lifts the harness plan's "no compiler changes" rule for this capability and the permission and hostile-file rows the executor needs; zero new syntax is still the aim (a `Platform` part, narrowed like `fs.scoped`). The lead writes the design page first, with code options for anything that touches the grammar. Provider auth stays outside Mo until the TLS client passes step 39. **For Robert** (his instruction). | Robert | decided, semantic | the design page, then a toolchain step with `mo test --sim` coverage of deadline, kill and bounded output in both runtimes |
 
+## 19 Sep 2026 — The harness capabilities' design, 8:24 AM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| `Fs.scoped` is made to hold instead of adding a stricter second scope: every component opened without following links, a refused path is `Missing`, `EntryKind` gains `Link`, regular files only. Chapter 09's sentence "nothing outside the scope is reachable" is false today (the check is lexical; a symlink inside a scope escapes it). **For Robert**: this changes existing behaviour for any program that reads through a link on purpose. | Fable lead | decided, semantic | the hostile-filesystem cases from `test_workspace.py` as corpus tests, both runtimes |
+| `Exec` is narrowed in `main` to `Program` then `Command` (a fixed argument list of `Fixed(text)` and `Hole`); only a `Command` runs or travels. No shell, no `PATH`, empty environment by default, own process group killed at the deadline, bounded output, `Exec.fixture` for the simulator. No new syntax. Containment of the child stays the operating system's. Design on [[mo-capabilities-for-the-harness]]. **For Robert.** | Fable lead, on Robert's decision to add the capability | decided, semantic | the step's deadline-kill, grandchild, output-bound and one-argument-hole controls on Linux and Darwin |
+| `Fs.replace`: atomic write by temporary file, sync, rename, folder sync, mode 0600. | Fable lead | decided, semantic | a kill between write and rename leaves the old file whole |
+
 ## Related
 
 - [[session-05]]
