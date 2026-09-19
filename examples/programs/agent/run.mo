@@ -1,5 +1,5 @@
 module Agent.Run
-expose Run, Runs, began?
+expose Run, Runs, began?, report_grace_ms
 
 use Agent.Book{Book}
 use Agent.CommandAdapter{Endpoint, dispatched, terminal?, refused?, failure}
@@ -42,7 +42,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
     fixture: Option(Endpoint)
     application: Option(Settings)
     report_by: Option(Deadline)
-    grace_ms: Int64 = 15_000
+    grace_ms: Int64 = report_grace_ms()
   end
 
   invariant "a run's deadline is taken once"
@@ -124,6 +124,11 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
       ReportDeadline: reply_by.at_most(state.grace_ms.ms)
     end
   end
+end
+
+# What a profiled run keeps past its wall budget for recording its steps and its end.
+fn report_grace_ms() : Int64
+  15_000
 end
 
 fn capped(by: Option(Deadline), ms: Int64) : Option(Deadline)
