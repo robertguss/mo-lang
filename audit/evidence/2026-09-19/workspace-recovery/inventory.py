@@ -31,7 +31,7 @@ def visit(value):
 
 
 for path in root.rglob('*.json'):
-    if path.name in ('source-before.json', 'source-after.json'):
+    if path.is_symlink() or path.name in ('source-before.json', 'source-after.json'):
         continue
     try:
         visit(json.loads(path.read_text()))

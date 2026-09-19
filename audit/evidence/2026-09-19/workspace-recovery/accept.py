@@ -29,9 +29,16 @@ def git(*args):
 
 assert not git('diff', '--name-only', WORKER, 'HEAD', '--', 'toolchain/harness/executor')
 paths = git('ls-files', 'toolchain', 'examples').splitlines()
-baseline = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in paths}
+def fingerprint(path):
+    path = ROOT / path
+    data = b'link:' + os.fsencode(os.readlink(path)) if path.is_symlink() else b'file:' + path.read_bytes()
+    return hashlib.sha256(data).hexdigest()
+
+
+baseline = {p: fingerprint(p) for p in paths}
 (OUT / 'source-before.json').write_text(json.dumps({'head': git('rev-parse', 'HEAD').strip(),
     'worker': WORKER, 'exact_worker_files': len(git('diff', '--name-only', BASE, WORKER).splitlines()),
+    'hashing': 'SHA256 of file: plus file bytes, or link: plus link target bytes',
     'hashes': baseline}, indent=2))
 
 
@@ -41,6 +48,7 @@ def run(name, seconds, args, cwd=ROOT, expected=0):
     forced = False
     with (OUT / (name + '.stdout.txt')).open('xb') as out, (OUT / (name + '.stderr.txt')).open('xb') as err:
         p = subprocess.Popen(argv, cwd=cwd, stdout=out, stderr=err, start_new_session=True)
+        (OUT / (name + '.started.json')).write_text(json.dumps({'group': p.pid, 'argv': argv, 'started': started}))
         try:
             rc = p.wait(timeout=seconds + 10)
         except subprocess.TimeoutExpired:
@@ -89,22 +97,32 @@ try:
             run('selection-' + name, 30, ['python3', '-B', RECOVERY / 'live.py', output, '--groups', *selection], expected=2)
             assert not output.exists(), name
     else:
-        run('readiness', 90, ['python3', '-B', HERE / 'inventory.py', OUT, '--readiness'])
-        run('recovery', 900, ['python3', '-B', RECOVERY / 'live.py', OUT / 'live'])
+        run('readiness', 60, ['python3', '-B', HERE / 'inventory.py', OUT, '--readiness'])
+        run('recovery', 600, ['python3', '-B', RECOVERY / 'live.py', OUT / 'live'])
         selected = json.loads((OUT / 'live/selected.json').read_text())
         results = json.loads((OUT / 'live/results.json').read_text())
         assert len(selected['fixed']) == 16 and selected['selected'] == selected['fixed']
         assert [r['group'] for r in results] == selected['fixed'] and all(r['ok'] for r in results)
         cleanup = json.loads((OUT / 'live/cleanup.json').read_text())
         assert cleanup and all(r['cleanup'] == 'confirmed' and r['execution'] == 'unknown' for r in cleanup)
-        run('regressions', 1500, ['python3', '-B', RECOVERY / 'regressions.py', OUT / 'regressions'])
-        exits = json.loads((OUT / 'regressions/exits.json').read_text())
-        assert [r['name'] for r in exits] == ['workspace22', 'executor17', 'lifecycle1', 'application23']
-        assert all(r['exit'] == 0 for r in exits)
-        run('extra', 180, ['python3', '-B', HERE / 'lead-controls.py', OUT / 'extra'])
-        run('inventory', 90, ['python3', '-B', HERE / 'inventory.py', OUT])
+        for suite, seconds, count in [('workspace22', 180, 22), ('executor17', 180, 17),
+                                      ('lifecycle1', 120, 1), ('application23', 420, 23)]:
+            run(suite, seconds, ['python3', '-B', RECOVERY / 'observe_regression.py', suite, OUT / suite])
+            controls = OUT / suite / 'controls'
+            if suite == 'lifecycle1':
+                assert json.loads((controls / 'collector-kill.json').read_text())['exit_code'] == -9
+                proof = json.loads((controls / 'reaped.json').read_text())
+                assert proof['absent'] and proof['cgroup_absent']
+            else:
+                summary = json.loads((controls / 'summary.json').read_text())
+                assert summary['passed'] == count and summary.get('controls', summary.get('count')) == count
+                if suite == 'application23':
+                    selection = json.loads((controls / 'selected.json').read_text())
+                    assert len(selection['fixed']) == count and selection['selected'] == selection['fixed']
+        run('extra', 120, ['python3', '-B', HERE / 'lead-controls.py', OUT / 'extra'])
+        run('inventory', 60, ['python3', '-B', HERE / 'inventory.py', OUT])
 finally:
-    changed = [p for p, digest in baseline.items() if hashlib.sha256((ROOT / p).read_bytes()).hexdigest() != digest]
+    changed = [p for p, digest in baseline.items() if fingerprint(p) != digest]
     (OUT / 'source-after.json').write_text(json.dumps({'files': len(baseline), 'changed': changed,
         'tracked_bytes_unchanged': not changed}, indent=2))
     if before is not None:

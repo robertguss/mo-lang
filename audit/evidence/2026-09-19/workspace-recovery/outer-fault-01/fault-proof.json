@@ -1,0 +1,16 @@
+{
+  "expected_outer_exit": 137,
+  "actual_guard_argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "1",
+    "--",
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-lead-launch-check-2v5rwi1u/stub.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-recovery/outer-fault-01"
+  ],
+  "stub_source": "import json,subprocess,sys,time\nfrom pathlib import Path\nout=Path(sys.argv[1]);out.mkdir()\np=subprocess.Popen([sys.executable,'-c','import time; time.sleep(300)'],start_new_session=True)\n(out/'interrupted.started.json').write_text(json.dumps({'group':p.pid,'argv':[sys.executable,'-c','import time; time.sleep(300)']}))\ntime.sleep(300)\n",
+  "owned_child_group_killed": true,
+  "remaining": [],
+  "passed": true
+}
