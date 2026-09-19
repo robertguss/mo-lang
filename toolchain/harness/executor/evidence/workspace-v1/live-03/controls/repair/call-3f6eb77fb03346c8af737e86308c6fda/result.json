@@ -1,0 +1,20 @@
+{
+  "run_id": "1d75864c80a540808552a165356a75ff",
+  "workspace_id": "7135a0a17ecc45b1b1f887f2e36ba844",
+  "call_id": "3f6eb77fb03346c8af737e86308c6fda",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "items": [
+      {
+        "path": "answer.txt",
+        "length": 6,
+        "sha256": "55c97802b397ef4da0d8e2ecf4a8fa33c1f4755da0eacec54c62cacbbcfd9713",
+        "mode": 420
+      }
+    ],
+    "truncated": false
+  },
+  "elapsed_seconds": 0.0008066720038186759
+}

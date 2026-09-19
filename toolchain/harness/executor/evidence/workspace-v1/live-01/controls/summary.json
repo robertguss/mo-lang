@@ -1,0 +1,10 @@
+{
+  "controls": 19,
+  "passed": 17,
+  "cleanup_errors": [
+    {
+      "workspace_id": "5e74253a222045dbabbbf56cd059a652",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 85, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py\", line 165, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py\", line 122, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: cleanup_unknown\n"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{"case": "real-failure-inspection-repair-success", "ok": true}
+{"case": "duplicate-foreign-calls", "ok": false, "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 40, in case\n    action()\n    ~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 50, in <lambda>\n    case('duplicate-foreign-calls', lambda: identities(w))\n                                            ~~~~~~~~~~^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 128, in identities\n    require(w.call('list_files', call_id=call)['error'] == 'duplicate_call')\n            ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py\", line 96, in call\n    attempt.mkdir(mode=0o700)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 1011, in mkdir\n    os.mkdir(self, mode)\n    ~~~~~~~~^^^^^^^^^^^^\nFileExistsError: [Errno 17] File exists: 'toolchain/harness/executor/evidence/workspace-v1/live-01/controls/repair/call-17c58a3c3e834ddead8d5392cce44a10'\n"}
+{"case": "invalid-paths-utf8-overlap", "ok": true}
+{"case": "freeze-independent-positive", "ok": true}
+{"case": "closed-dispatch-and-empty-checks", "ok": true}
+{"case": "missing-stimulus-and-result-overwrite", "ok": true}
+{"case": "wrong-candidate-forged-success", "ok": true}
+{"case": "final-symlink", "ok": true}
+{"case": "intermediate-symlink", "ok": true}
+{"case": "hardlink", "ok": true}
+{"case": "fifo", "ok": true}
+{"case": "special-socket", "ok": true}
+{"case": "tmpfs-byte-quota", "ok": false, "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 40, in case\n    action()\n    ~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 73, in <lambda>\n    case('tmpfs-byte-quota', lambda: quota(workspace('byte-quota'), False))\n                                     ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 184, in quota\n    require((b'inode-full' if inode else b'No space left on device') in out, out)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 20, in require\n    raise AssertionError(detail)\nAssertionError: b'Killed\\nbyte-full\\n'\n"}
+{"case": "tmpfs-inode-quota", "ok": true}
+{"case": "timeout-descendants", "ok": true}
+{"case": "cancel-descendants", "ok": true}
+{"case": "exit-descendants", "ok": true}
+{"case": "supervisor-death-mounted", "ok": true}
+{"case": "stale-mutated-snapshot", "ok": true}
+{"controls": 19, "passed": 17, "cleanup_errors": [{"workspace_id": "5e74253a222045dbabbbf56cd059a652", "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py\", line 85, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py\", line 165, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py\", line 122, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: cleanup_unknown\n"}]}
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py", line 217, in <module>
+    main(sys.argv[1])
+    ~~~~^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py", line 100, in main
+    require(not cleanup_errors, cleanup_errors)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py", line 20, in require
+    raise AssertionError(detail)
+AssertionError: [{'workspace_id': '5e74253a222045dbabbbf56cd059a652', 'error': 'Traceback (most recent call last):\n  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace_live.py", line 85, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 165, in collect\n    self.require(\'complete\', {\'execution_id\': run.manifest[\'run_id\']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 122, in require\n    raise files.Refusal(result.get(\'error\', result[\'state\']))\nworkspace_files.Refusal: cleanup_unknown\n'}]

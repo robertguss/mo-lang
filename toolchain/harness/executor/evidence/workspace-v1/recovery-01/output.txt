@@ -1,0 +1,4 @@
+b''
+{"execution": "unknown", "cleanup": {"host_confirmed": true, "host_cgroup": null, "host_cgroup_absent": true, "ordering": ["supervisor_stopped", "container_absent", "cgroup_absent", "deadline_units_stopped", "units_absent"], "execution_not_started": true, "services_absent": true}}
+{"deleted": true}
+b'False\n'

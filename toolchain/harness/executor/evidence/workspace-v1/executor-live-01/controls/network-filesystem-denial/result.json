@@ -1,0 +1,295 @@
+{
+  "passed": true,
+  "verifier": "mo-executor-external-checks-v1",
+  "identity_valid": true,
+  "policy_valid": true,
+  "checks": [
+    {
+      "id": "output",
+      "expected": "boundary-probe\n65534\nloopback-ok\nnetwork-denied\nroot-denied\nmounts-absent\nCapEff:0000000000000000\nNoNewPrivs:1\n",
+      "stream": "stdout",
+      "mode": "exact",
+      "passed": true
+    }
+  ],
+  "observation": {
+    "attach_exit_code": 0,
+    "cancelled": false,
+    "candidate_sha256": "6b4fa0ecf4f6acea78201b5264635acc6c01421c6b8e31e6121aaf5dda735fa9",
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-4e57c2f54e7470a39c3db91413d7006d2e2aa426ad453519d5ead99e16450ce7.scope",
+    "cleanup": {
+      "absent": true,
+      "cgroup_absent": true,
+      "removed_rc": 0,
+      "host_confirmed": true,
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-4e57c2f54e7470a39c3db91413d7006d2e2aa426ad453519d5ead99e16450ce7.scope",
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    },
+    "container_id": "4e57c2f54e7470a39c3db91413d7006d2e2aa426ad453519d5ead99e16450ce7",
+    "counters": {
+      "cpu.stat:burst_usec": 0,
+      "cpu.stat:nice_usec": 0,
+      "cpu.stat:nr_bursts": 0,
+      "cpu.stat:nr_periods": 2,
+      "cpu.stat:nr_throttled": 0,
+      "cpu.stat:system_usec": 4181,
+      "cpu.stat:throttled_usec": 0,
+      "cpu.stat:usage_usec": 7318,
+      "cpu.stat:user_usec": 3136,
+      "memory.events:high": 0,
+      "memory.events:low": 0,
+      "memory.events:max": 0,
+      "memory.events:oom": 0,
+      "memory.events:oom_group_kill": 0,
+      "memory.events:oom_kill": 0,
+      "memory.events:sock_throttled": 0,
+      "pids.events:max": 0
+    },
+    "effective": {
+      "AppArmorProfile": "",
+      "Args": [
+        "-c",
+        "echo boundary-probe\nid -u\nprintf loopback-ok > /work/index.html\nhttpd -f -p 127.0.0.1:8080 -h /work &\nsleep .2\nwget -qO- http://127.0.0.1:8080/ || exit 1\necho\nif wget -T 1 -qO /tmp/network http://192.0.2.1/; then exit 2; else echo network-denied; fi\nif echo x > /root-write; then exit 3; else echo root-denied; fi\nfor p in /var/run/docker.sock /mnt/mac /Users /run/host-services/ssh-auth.sock; do\n [ ! -e \"$p\" ] || exit 4\ndone\necho mounts-absent\n[ -r /proc/self/status ] || exit 5\nwhile read key value rest; do\n case \"$key\" in CapEff:|NoNewPrivs:) echo \"$key$value\";; esac\ndone < /proc/self/status"
+      ],
+      "Config": {
+        "AttachStderr": true,
+        "AttachStdin": false,
+        "AttachStdout": true,
+        "Cmd": [
+          "/bin/sh",
+          "-c",
+          "echo boundary-probe\nid -u\nprintf loopback-ok > /work/index.html\nhttpd -f -p 127.0.0.1:8080 -h /work &\nsleep .2\nwget -qO- http://127.0.0.1:8080/ || exit 1\necho\nif wget -T 1 -qO /tmp/network http://192.0.2.1/; then exit 2; else echo network-denied; fi\nif echo x > /root-write; then exit 3; else echo root-denied; fi\nfor p in /var/run/docker.sock /mnt/mac /Users /run/host-services/ssh-auth.sock; do\n [ ! -e \"$p\" ] || exit 4\ndone\necho mounts-absent\n[ -r /proc/self/status ] || exit 5\nwhile read key value rest; do\n case \"$key\" in CapEff:|NoNewPrivs:) echo \"$key$value\";; esac\ndone < /proc/self/status"
+        ],
+        "Domainname": "",
+        "Entrypoint": null,
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "Hostname": "4e57c2f54e74",
+        "Image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+        "Labels": {},
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Tty": false,
+        "User": "65534:65534",
+        "Volumes": null,
+        "WorkingDir": "/work"
+      },
+      "Created": "2026-09-19T05:40:17.141193935Z",
+      "Driver": "overlayfs",
+      "ExecIDs": null,
+      "HostConfig": {
+        "AutoRemove": false,
+        "Binds": null,
+        "BlkioDeviceReadBps": [],
+        "BlkioDeviceReadIOps": [],
+        "BlkioDeviceWriteBps": [],
+        "BlkioDeviceWriteIOps": [],
+        "BlkioWeight": 0,
+        "BlkioWeightDevice": [],
+        "CapAdd": null,
+        "CapDrop": [
+          "ALL"
+        ],
+        "Cgroup": "",
+        "CgroupParent": "mo-executor.slice",
+        "CgroupnsMode": "private",
+        "ConsoleSize": [
+          0,
+          0
+        ],
+        "ContainerIDFile": "",
+        "CpuCount": 0,
+        "CpuPercent": 0,
+        "CpuPeriod": 0,
+        "CpuQuota": 0,
+        "CpuRealtimePeriod": 0,
+        "CpuRealtimeRuntime": 0,
+        "CpuShares": 0,
+        "CpusetCpus": "",
+        "CpusetMems": "",
+        "DeviceCgroupRules": null,
+        "DeviceRequests": null,
+        "Devices": [],
+        "Dns": null,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "ExtraHosts": null,
+        "GroupAdd": null,
+        "IOMaximumBandwidth": 0,
+        "IOMaximumIOps": 0,
+        "IpcMode": "private",
+        "Isolation": "",
+        "Links": null,
+        "LogConfig": {
+          "Config": {},
+          "Type": "none"
+        },
+        "MaskedPaths": [
+          "/proc/acpi",
+          "/proc/asound",
+          "/proc/interrupts",
+          "/proc/kcore",
+          "/proc/keys",
+          "/proc/latency_stats",
+          "/proc/sched_debug",
+          "/proc/scsi",
+          "/proc/timer_list",
+          "/proc/timer_stats",
+          "/sys/devices/virtual/powercap",
+          "/sys/firmware"
+        ],
+        "Memory": 67108864,
+        "MemoryReservation": 0,
+        "MemorySwap": 67108864,
+        "MemorySwappiness": null,
+        "NanoCpus": 250000000,
+        "NetworkMode": "none",
+        "OomKillDisable": false,
+        "OomScoreAdj": 0,
+        "PidMode": "",
+        "PidsLimit": 16,
+        "PortBindings": {},
+        "Privileged": false,
+        "PublishAllPorts": false,
+        "ReadonlyPaths": [
+          "/proc/bus",
+          "/proc/fs",
+          "/proc/irq",
+          "/proc/sys",
+          "/proc/sysrq-trigger"
+        ],
+        "ReadonlyRootfs": true,
+        "RestartPolicy": {
+          "MaximumRetryCount": 0,
+          "Name": "no"
+        },
+        "Runtime": "runc",
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "ShmSize": 67108864,
+        "Tmpfs": {
+          "/tmp": "rw,noexec,nosuid,size=8388608,mode=1777",
+          "/work": "rw,noexec,nosuid,size=8388608,mode=1777"
+        },
+        "UTSMode": "",
+        "Ulimits": [],
+        "UsernsMode": "",
+        "VolumeDriver": "",
+        "VolumesFrom": null
+      },
+      "HostnamePath": "",
+      "HostsPath": "",
+      "Id": "4e57c2f54e7470a39c3db91413d7006d2e2aa426ad453519d5ead99e16450ce7",
+      "Image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "ImageManifestDescriptor": {
+        "digest": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "size": 405
+      },
+      "LogPath": "",
+      "MountLabel": "",
+      "Mounts": [],
+      "Name": "/mo-executor-5a33f0ffab5a418cb2881577efaf46cf",
+      "NetworkSettings": {
+        "Networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": ""
+          }
+        },
+        "Ports": {},
+        "SandboxID": "",
+        "SandboxKey": ""
+      },
+      "Path": "/bin/sh",
+      "Platform": "linux",
+      "ProcessLabel": "",
+      "ResolvConfPath": "",
+      "RestartCount": 0,
+      "State": {
+        "Dead": false,
+        "Error": "",
+        "ExitCode": 0,
+        "FinishedAt": "0001-01-01T00:00:00Z",
+        "OOMKilled": false,
+        "Paused": false,
+        "Pid": 0,
+        "Restarting": false,
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "Status": "created"
+      },
+      "Storage": {
+        "RootFS": {
+          "Snapshot": {
+            "Name": "overlayfs"
+          }
+        }
+      }
+    },
+    "elapsed_seconds": 0.48005372799525503,
+    "exit_code": 0,
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "name": "mo-executor-5a33f0ffab5a418cb2881577efaf46cf",
+    "oom_killed": false,
+    "policy": "mo-executor-r01-v1",
+    "policy_errors": [],
+    "run_id": "5a33f0ffab5a418cb2881577efaf46cf",
+    "signal": null,
+    "signal_hint": null,
+    "status": "completed",
+    "stderr": "d2dldDogY2FuJ3QgY29ubmVjdCB0byByZW1vdGUgaG9zdCAoMTkyLjAuMi4xKTogTmV0d29yayBpcyB1bnJlYWNoYWJsZQovYmluL3NoOiBjYW4ndCBjcmVhdGUgL3Jvb3Qtd3JpdGU6IFJlYWQtb25seSBmaWxlIHN5c3RlbQo=",
+    "stdout": "Ym91bmRhcnktcHJvYmUKNjU1MzQKbG9vcGJhY2stb2sKbmV0d29yay1kZW5pZWQKcm9vdC1kZW5pZWQKbW91bnRzLWFic2VudApDYXBFZmY6MDAwMDAwMDAwMDAwMDAwMApOb05ld1ByaXZzOjEK",
+    "timed_out": false,
+    "truncated": false
+  },
+  "manifest": {
+    "run_id": "5a33f0ffab5a418cb2881577efaf46cf",
+    "name": "mo-executor-5a33f0ffab5a418cb2881577efaf46cf",
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "policy": "mo-executor-r01-v1",
+    "candidate_sha256": "6b4fa0ecf4f6acea78201b5264635acc6c01421c6b8e31e6121aaf5dda735fa9",
+    "script": "ZWNobyBib3VuZGFyeS1wcm9iZQppZCAtdQpwcmludGYgbG9vcGJhY2stb2sgPiAvd29yay9pbmRleC5odG1sCmh0dHBkIC1mIC1wIDEyNy4wLjAuMTo4MDgwIC1oIC93b3JrICYKc2xlZXAgLjIKd2dldCAtcU8tIGh0dHA6Ly8xMjcuMC4wLjE6ODA4MC8gfHwgZXhpdCAxCmVjaG8KaWYgd2dldCAtVCAxIC1xTyAvdG1wL25ldHdvcmsgaHR0cDovLzE5Mi4wLjIuMS87IHRoZW4gZXhpdCAyOyBlbHNlIGVjaG8gbmV0d29yay1kZW5pZWQ7IGZpCmlmIGVjaG8geCA+IC9yb290LXdyaXRlOyB0aGVuIGV4aXQgMzsgZWxzZSBlY2hvIHJvb3QtZGVuaWVkOyBmaQpmb3IgcCBpbiAvdmFyL3J1bi9kb2NrZXIuc29jayAvbW50L21hYyAvVXNlcnMgL3J1bi9ob3N0LXNlcnZpY2VzL3NzaC1hdXRoLnNvY2s7IGRvCiBbICEgLWUgIiRwIiBdIHx8IGV4aXQgNApkb25lCmVjaG8gbW91bnRzLWFic2VudApbIC1yIC9wcm9jL3NlbGYvc3RhdHVzIF0gfHwgZXhpdCA1CndoaWxlIHJlYWQga2V5IHZhbHVlIHJlc3Q7IGRvCiBjYXNlICIka2V5IiBpbiBDYXBFZmY6fE5vTmV3UHJpdnM6KSBlY2hvICIka2V5JHZhbHVlIjs7IGVzYWMKZG9uZSA8IC9wcm9jL3NlbGYvc3RhdHVz",
+    "checks": [
+      {
+        "id": "output",
+        "expected": "boundary-probe\n65534\nloopback-ok\nnetwork-denied\nroot-denied\nmounts-absent\nCapEff:0000000000000000\nNoNewPrivs:1\n",
+        "stream": "stdout",
+        "mode": "exact"
+      }
+    ],
+    "seconds": 5,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "f2ee1692c0624157ccdac7805277e6fffed753d320972a254fd0dbd740fe21c1",
+    "supervisor_sha256": "81d3c2c9c89058837ae054ee7974228b91677f128c4280947ca3dfa8061e093a",
+    "deadline": 1789796422.1116278
+  }
+}

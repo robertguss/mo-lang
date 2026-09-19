@@ -1,0 +1,11 @@
+test_edit_refusals_preserve_bytes (__main__.Files.test_edit_refusals_preserve_bytes) ... ok
+test_hostile_entries (__main__.Files.test_hostile_entries) ... ok
+test_import_and_result_bounds (__main__.Files.test_import_and_result_bounds) ... ok
+test_paths (__main__.Files.test_paths) ... ok
+test_repair_and_inventory (__main__.Files.test_repair_and_inventory) ... ok
+test_utf8_and_modes (__main__.Files.test_utf8_and_modes) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.009s
+
+OK

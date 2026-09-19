@@ -1,0 +1,17 @@
+{
+  "containers": {
+    "rc": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "units": {
+    "rc": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "inspect": {
+    "rc": 1,
+    "stdout": "[]\n",
+    "stderr": "error: no such object: mo-executor-45cda5bf85a24f498c9dc21e933a4084\n"
+  }
+}

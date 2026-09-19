@@ -1,0 +1,1 @@
+['/opt/homebrew/opt/python@3.14/bin/python3.14', 'toolchain/bench/step36/guard.py', '600', '--', 'python3', '-B', 'toolchain/harness/executor/test_lifecycle_live.py', 'toolchain/harness/executor/evidence/workspace-v1/lifecycle-01/controls']

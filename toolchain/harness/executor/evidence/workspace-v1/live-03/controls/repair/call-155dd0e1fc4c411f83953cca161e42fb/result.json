@@ -1,0 +1,18 @@
+{
+  "run_id": "1d75864c80a540808552a165356a75ff",
+  "workspace_id": "7135a0a17ecc45b1b1f887f2e36ba844",
+  "call_id": "155dd0e1fc4c411f83953cca161e42fb",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "items": [
+      {
+        "path": "answer.txt",
+        "offset": 0
+      }
+    ],
+    "truncated": false
+  },
+  "elapsed_seconds": 0.0005790040013380349
+}

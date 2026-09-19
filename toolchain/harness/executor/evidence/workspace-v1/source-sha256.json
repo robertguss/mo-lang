@@ -1,0 +1,10 @@
+{
+  "README.md": "e976351fdc32c919bda0fb7f3721ee7b0caca35827fa6a85d7048a0c29985998",
+  "adapter.py": "f2ee1692c0624157ccdac7805277e6fffed753d320972a254fd0dbd740fe21c1",
+  "remote.py": "81d3c2c9c89058837ae054ee7974228b91677f128c4280947ca3dfa8061e093a",
+  "workspace.py": "5ffb652f021c0e2fc664c1a6b7b9b2001839adaa2a6d546bff6d397468c1362c",
+  "workspace_controller.py": "d9be1dc7a933e39d76f14e5ea1568762c101a5bc8fc1c0c1d5ed75dc7334d5e8",
+  "workspace_files.py": "7a671d2270deb37dbaa70fabe8071ade78055198465bdf704c5f61c52272b5ef",
+  "test_workspace.py": "3696886b264bb67f4975dc7834ce9c35c490c70bc319ff66eb34b7b210150d03",
+  "test_workspace_live.py": "962b5002dab6d297824c5b1a33e3bcd6e310e8aa0a77309ac3c4611bb8c4aea6"
+}

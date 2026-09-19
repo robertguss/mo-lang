@@ -1,0 +1,33 @@
+..................E........
+======================================================================
+ERROR: test_command_refusal_is_structured_without_dispatch (test_workspace.Feedback.test_command_refusal_is_structured_without_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 183, in command
+    self.start_command(script, seconds=seconds, call_id=call_id)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 166, in start_command
+    run = self._prepare_command(script, checks=checks, seconds=seconds, call_id=call_id)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 157, in _prepare_command
+    run = WorkspaceRun(script, self.directory / ('execution-' + uuid.uuid4().hex), seconds, {}, checks)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 57, in __init__
+    self._initialize(script, checks, result_dir, seconds)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/adapter.py", line 82, in _initialize
+    raise ValueError('fixture must be nonempty UTF-8 text, <=32 KiB, without NUL')
+ValueError: fixture must be nonempty UTF-8 text, <=32 KiB, without NUL
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/test_workspace.py", line 175, in test_command_refusal_is_structured_without_dispatch
+    result = w.command('')
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/workspace.py", line 184, in command
+    except (ValueError, Refusal):
+                        ^^^^^^^
+NameError: name 'Refusal' is not defined
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.139s
+
+FAILED (errors=1)

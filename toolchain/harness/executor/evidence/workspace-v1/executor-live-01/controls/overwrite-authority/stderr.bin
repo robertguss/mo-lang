@@ -1,0 +1,2 @@
+/bin/sh: can't create /Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1/toolchain/harness/executor/evidence/workspace-v1/executor-live-01/controls/overwrite-authority/result.json: nonexistent directory
+/bin/sh: can't create /result.json: Read-only file system

@@ -1,0 +1,78 @@
+mo-workspace worker receipt — 2026-09-19, 01:46 ET
+
+Branch: harness/workspace-foundation-v1
+Exact base: 2fc1235bd1f44ae7897ed059ece8cb9b30ce307d
+Implementation: 50f8a9d61839be62bae042b59ba781b0c49632e0
+Worktree: /Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-foundation-v1
+Author and committer: GPT-6-Astra <noreply@openai.com>
+Lead: w4:p1. Worker: w4:p1F. Owned run pane: w4:p1G.
+No push, rebase, nested worker, compiler/runtime/Mo/provider/wiki edits.
+
+Implemented the bounded trusted Python workspace API, machine registry and
+exclusive operation lock, unique call claims/deadlines, bounded tmpfs import,
+descriptor-only file tools, real BusyBox feedback using the accepted executor
+lifecycle, protected copied snapshots, exact normalized-mode validation,
+independent external checks and scoped deletion. Existing Run still requires
+nonempty checks; feedback does not fabricate checks or publish a behavioral
+passed field. README documents bounds, replacement/timeout semantics, mode
+normalization, synthetic-only acceptance and lifecycle responsibilities.
+
+Validation (all exits below are real retained exit.txt files):
+- local-08: 27/27, exit 0: existing 15 plus 12 workspace unit controls.
+- live-03: 22/22 workspace controls, exit 0, no cleanup errors.
+- executor-live-01: existing 17/17 live controls, exit 0.
+- lifecycle-01: existing collector-loss regression 1/1, exit 0; killed
+  collector exit -9, independent positive container/cgroup cleanup.
+- static-01: seven Python sources compiled in memory, git diff --check passed,
+  exit 0. No compiler suite is needed for this Python-only slice.
+
+The final live attempt demonstrates failure -> inspect/search -> exact repair
+-> command success -> freeze -> independent verdict; rejects wrong candidate,
+forged printed success, missing stimulus, result/snapshot overwrite, traversal,
+symlinks, hardlinks, FIFO, unsupported modes, invalid UTF-8, overlapping edits,
+duplicate/foreign calls, stale bytes and permission drift. It exercises both
+byte/inode quotas, a failed import that never becomes ready, timeout/cancel,
+main-shell exit with descendants, and mounted supervisor/controller death.
+operation-order.json indexes exact requests/results; import bytes are base64 in
+requests; command observations preserve distinct stdout/stderr and actual exits.
+
+Live-03 copied sources are the exact live-tested versions. After machine release,
+the host-only feedback formatting/refusal path gained explicit call identities
+and structured refusal without collecting an already-active operation. Those
+final host-side changes are covered by local-08; machine/controller/supervisor
+sources are unchanged from the final live run. Lead integrated acceptance must
+exercise the final commit. This receipt does not claim integrated acceptance.
+
+All failed attempts remain:
+- live-01: 17/19 controls, exit 1. Duplicate replay hit the local evidence path
+  before machine dispatch; byte quota hit cgroup memory before disk capacity.
+  Stale-snapshot rejection also exposed missing pre-authorization manifest
+  evidence, retaining one quarantined workspace. Ordering was fixed.
+- recovery-01: exit 0. Only that exact workspace/run was recovered; retained
+  positive cleanup proof, unmounted its storage/snapshot and deleted directory.
+  Original failed-attempt evidence was not overwritten.
+- local-06 and local-07: exit 1 for a missing exception-name import in the new
+  host refusal branch; corrected to ValueError and covered by local-08.
+- Earlier local-01 through local-05 and live-02 are retained successful steps.
+
+Every live attempt uses guard.py 600 inside the owned no-focus right Herdr pane.
+run_attempt.py places guard and descendants in a process group, kills remaining
+group members after exit, and records real exit and evidence size. Every attempt
+is far below 16 MiB; the largest retained attempts are under 1 MiB. Local initial
+unit attempts used numeric 600 guards and spawned no surviving children.
+
+Resource ownership:
+No machine command/setup/mount occurred before the lead's explicit release.
+No /opt changes, image build/pull, Linux compiler dependency, configuration or
+limit changes, shared Mac Docker access, or lead-build interference occurred.
+Final live-03/controls/final-inventory.json proves zero owned task directories,
+mounts, executor containers and services; all daemon inventory queries exited 0.
+Only small root-owned retired-ID registry files remain to prevent identity replay;
+they are not candidate data or mounted directories. Machine released to lead at
+01:43 ET; no machine commands followed release. The lead may run its binary smoke.
+
+Ownership gaps: none identified within the bounded implementation scope.
+Remaining: lead-owned final integrated rerun, extra independent control and
+read-only shared Mac Docker comparison. No HTTP/application/compiler acceptance
+is claimed, and the superseded helper-image/readiness recommendations were not
+implemented. No fixture history or old evidence was edited.
