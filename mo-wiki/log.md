@@ -739,3 +739,13 @@
 - Full staged diff check reports whitespace only in preserved terminal/package
   outputs. Authored guidance, plan, setup source and JSON pass the whitespace
   check; raw evidence is retained without whitespace rewriting.
+
+## [2026-09-19] plan | Agent terminal authentication v1
+
+- Chose an explicit Agent-specific recipe version for terminal HTTP 401 while
+  preserving the existing shared retry recipe. Added [[mo-agent-terminal-auth]]
+  with exact worker scope and nine independently counted status/deadline cases.
+- This is a changed requirement, not a retroactive defect verdict. It can run
+  in parallel with the executor foundation using trusted local HTTP fixtures.
+- Wiki lint: 258 pages, the same 25 inherited review/size notices and no
+  structural/raw-drift errors. Authored diff whitespace check passed.

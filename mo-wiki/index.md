@@ -8,7 +8,7 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-19 | Total pages: 257
+> any question. Last updated: 2026-09-19 | Total pages: 258
 
 ## Directions we like
 
@@ -141,6 +141,8 @@ type: index
   first slice, protected verification, matched Pi comparison; implementation authorized
 - [[mo-executor-foundation]] — first provider-independent executor slice with
   bounded containers, independent cleanup and protected behavioral verdicts
+- [[mo-agent-terminal-auth]] — versioned Agent-specific terminal-401 policy,
+  separate recipe binding and independently counted HTTP-status controls
 - [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; accepted 15 Sep, the Mac table, the row that led to step 34
 - [[interpreter-step-31|Step 31: a deferred reply, brief for the worker]] — chapter 10 §1: `reply_to` kept in state and answered later, the asker keeps its deadline and sees `Down` on a crash; the batching queue's fix for round 8's outage
 - [[interpreter-step-32|Step 32: crash reports apart from the ring, and the reopening store]] — what P6 on Mo found: `/crashes` empty under load, and the restart pattern no corpus file shows

@@ -176,6 +176,9 @@ claim exact billing caps or crash durability without evidence for those claims.
 
 ### C. Calibration and useful application tasks
 
+[[mo-agent-terminal-auth]] records the lead-selected v1 Agent specialization,
+separate recipe binding and exact fixture controls under overnight authority.
+
 Start with the Agent's terminal-401 policy change as workflow calibration, not a
 language-value test. The lead recommends an Agent-specific requirement for the
 test copy: after receiving 401, make no further request in that call and return

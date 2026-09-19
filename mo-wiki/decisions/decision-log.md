@@ -680,6 +680,12 @@ direction separately from the lead's conservative execution interpretation.
 | Keep working while Robert sleeps; the lead makes decisions, including those previously needing approval, and continues around blockers. Supersedes the harness implementation pause; the lead records bounded setup, implementation and verification work. | Robert | decided | isolated executor foundation, then headless coding path |
 | Start provider-independent executor work in a dedicated isolated OrbStack machine, using existing installation's isolation and resource-limit flags. Verify absent Mac sharing, effective limits and protected verdicts before running application candidates. Existing shared Docker daemon remains outside this scope. | Astra lead, informed by Astra/low review | decided, semantic | machine inspection and executor controls |
 
+## Agent terminal authentication policy v1 (19 Sep 2026)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Specialize Agent model calls: HTTP 401 returns its status error immediately and ends that call's retries; preserve all other retries and deadlines. Introduce Recipes.AgentModelClientV1.ModelClient and leave the generic Recipes.ModelClient recipe unchanged. This is a versioned application requirement, not a retroactive bug finding against the shared recipe. | Astra lead under Robert's overnight authority | decided, semantic | nine real-HTTP status/count controls in both runtimes, per [[mo-agent-terminal-auth]] |
+
 ## Related
 
 - [[session-05]]
