@@ -1,8 +1,85 @@
 //! Numbers from source (step 43): every integer, float, mailbox bound, restart budget, and
 //! Duration literal is held to its range by the checker, so neither runtime sees a number the
 //! source never wrote.
+//!
+//! This is the one reader of a number's text. The checker holds each literal to its range with
+//! it; the bytecode lowering and the C emitter read the same text with `lowered`, which may
+//! assume the checker passed.
 const std = @import("std");
 const Io = std.Io;
+
+/// An integer literal as the lexer took it, digits and underscores: its exact value, or null when
+/// it is past UInt64's largest, the widest any integer type holds. Every digit counts: there is
+/// no digit buffer and no saturation.
+pub fn int(raw: []const u8) ?u64 {
+    var v: u64 = 0;
+    for (raw) |ch| {
+        if (ch == '_') continue;
+        std.debug.assert(ch >= '0' and ch <= '9');
+        v = std.math.mul(u64, v, 10) catch return null;
+        v = std.math.add(u64, v, ch - '0') catch return null;
+    }
+    return v;
+}
+
+/// A float literal as the lexer took it, digits and underscores, a point, digits: the nearest
+/// Float64, or null when that is past Float64's largest, which would read as infinity. The
+/// underscores go first, since Zig's parseFloat takes one only between two digits.
+pub fn float(gpa: std.mem.Allocator, raw: []const u8) error{OutOfMemory}!?f64 {
+    const digits = try gpa.alloc(u8, raw.len);
+    defer gpa.free(digits);
+    var n: usize = 0;
+    for (raw) |ch| if (ch != '_') {
+        digits[n] = ch;
+        n += 1;
+    };
+    const x = std.fmt.parseFloat(f64, digits[0..n]) catch unreachable;
+    return if (std.math.isInf(x)) null else x;
+}
+
+/// An integer literal the checker accepted, for the lowerings.
+pub fn lowered(raw: []const u8) u64 {
+    return int(raw) orelse @panic("an integer literal the checker refused reached lowering");
+}
+
+/// A float literal the checker accepted, for the lowerings.
+pub fn loweredFloat(gpa: std.mem.Allocator, raw: []const u8) error{OutOfMemory}!f64 {
+    return try float(gpa, raw) orelse @panic("a float literal the checker refused reached lowering");
+}
+
+/// The largest mailbox bound: the runtimes count a mailbox in 32 bits. A bound of 0 is refused, since
+/// every send to it would crash its sender and the process could never take a message.
+pub const mailbox_max: u64 = std.math.maxInt(u32);
+
+/// The largest `max_restarts`: the lowering marks a child line with none by maxInt(u32).
+pub const restarts_max: u64 = std.math.maxInt(u32) - 1;
+
+/// A Duration's milliseconds per unit, for `N.ms`, `N.seconds`, `N.minute`, and `N.days`.
+pub fn unitMs(name: []const u8) ?u64 {
+    const units = [_]struct { []const u8, u64 }{ .{ "ms", 1 }, .{ "seconds", 1_000 }, .{ "minute", 60_000 }, .{ "days", 86_400_000 } };
+    for (units) |u| if (std.mem.eql(u8, u[0], name)) return u[1];
+    return null;
+}
+
+test "number: int reads every digit exactly and says when the value is past UInt64" {
+    try std.testing.expectEqual(@as(?u64, 0), int("0"));
+    try std.testing.expectEqual(@as(?u64, 255), int("2__5_5_"));
+    try std.testing.expectEqual(@as(?u64, std.math.maxInt(u64)), int("18_446_744_073_709_551_615"));
+    try std.testing.expectEqual(@as(?u64, null), int("18446744073709551616"));
+    try std.testing.expectEqual(@as(?u64, 256), int("0" ** 100 ++ "256"));
+    try std.testing.expectEqual(@as(?u64, null), int("9" ** 54));
+    try std.testing.expectEqual(@as(?u64, null), int("1" ++ "0" ** 20));
+}
+
+test "number: float ignores underscores and refuses what would be infinity" {
+    try std.testing.expectEqual(@as(?f64, 1.5), try float(std.testing.allocator, "1_.5"));
+    try std.testing.expectEqual(@as(?f64, 10.25), try float(std.testing.allocator, "1__0.25"));
+    try std.testing.expectEqual(@as(?f64, 1000.5), try float(std.testing.allocator, "1_000.5"));
+    try std.testing.expectEqual(@as(?f64, std.math.floatMax(f64)), try float(std.testing.allocator, "179769313486231570" ++ "0" ** 291 ++ ".0"));
+    try std.testing.expectEqual(@as(?f64, null), try float(std.testing.allocator, "9" ** 400 ++ ".5"));
+    try std.testing.expectEqual(@as(?f64, null), try float(std.testing.allocator, "9" ** 600 ++ ".5"));
+    try std.testing.expectEqual(@as(?f64, 0), try float(std.testing.allocator, "0." ++ "0" ** 600 ++ "1"));
+}
 
 // ---- tests
 
