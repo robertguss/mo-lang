@@ -239,6 +239,44 @@ fn setup_fault?(why: String) : Bool
     "grace unavailable"].contains?(why)
 end
 
+# A run whose one model call spends exactly its token budget, configured as a fixture run (recorded
+# steps count) or not (model calls count): the tool it named is used, and the next ask is refused.
+fn on_bound(fixture: Bool, fs: Fs, http: Http, clock: Clock, slow: Fs) : Result(Observation, String)
+  if fs.write("work/a", "before", within: 1.minute) is Error(_) or fs.mkdir("runs",
+    within: 1.minute) is Error(_)
+    return Error("setup unavailable")
+  end
+  book = Book.start(fs, clock, "runs", clock.now)
+  order = Order(goal: "g", folder: "work", tools: ["read_file"], hosts: [],
+    budget: Budget(steps: 16, tokens: 17, wall_ms: 30000, retries: 0, tool_ms: 2000))
+  made = case book.ask(Create(owner: "test", order: order), within: 1.minute)
+    Ok(Made(found)): found
+    Ok(_) | Error(_):
+      return Error("create unavailable")
+  end
+  replies = ["{\"tool\":\"read_file\",\"args\":{\"path\":\"a\"},\"tokens\":17}",
+    "{\"done\":\"past the budget\",\"tokens\":0}"]
+  fake = Fake.start(replies, slow)
+  listener = case http.listen(0, within: 1.minute)
+    Ok(found): found
+    Error(_):
+      return Error("listener unavailable")
+  end
+  listener.serve(into: fake, idle: 5000.ms)
+  model = Model(host: "localhost", port: listener.port, tools: fixture_tools())
+  run = Run.start(book, fs.scoped("work").read_only, None, http, clock,
+    Setup(id: made.id, order: order, model: model))
+  endpoint = Endpoint(host: "localhost", port: 1, workspace: "w")
+  if fixture and run.ask(ConfigureFixture(endpoint: endpoint), within: 1.minute) != Ok(true)
+    return Error("configure refused")
+  end
+  if run.ask(Begin(me: run), within: 30000.ms) is Error(_)
+    return Error("begin unanswered")
+  end
+  return Error("run never stopped") if !stopped?(run)
+  observation(book, run, fake, fs, made.id)
+end
+
 test "fixture value refusals and explicit reporting error"
   fs = Fs.fixture()
   assert fs.write("a", "before", within: 1.minute) is Ok(_)
@@ -288,5 +326,27 @@ test "a completed command response in hand is reported as completed though the d
   end
 end
 
-verified: types, contracts, tests (3), property (0 seeds), sim (100 runs)
+test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused"
+  for fixture in [true, false]
+    fs = Fs.fixture()
+    found = on_bound(fixture, fs, Http.fixture(), Clock.fixture(), Fs.fixture())
+    case found
+      Ok(seen):
+        tools = seen.steps.filter(fn(step) tool_step?(step) end)
+        assert seen.calls <= 1 and seen.kept.status != Done
+        # A fault may leave the model's call late past the wall budget; an end on the token bound
+        # always has the tool step before it.
+        if seen.kept.status == OverBudget
+          assert seen.kept.why == Some("tokens") or seen.kept.why == Some("wall_ms")
+        end
+        if seen.kept.why == Some("tokens")
+          assert seen.steps.size == 2 and tools.size == 1 and (tools.first or "").contains?("\"name\": \"read_file\"") and (tools.first or "").contains?("\"refused\": false")
+        end
+      Error(why):
+        assert setup_fault?(why)
+    end
+  end
+end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
           proven: not run

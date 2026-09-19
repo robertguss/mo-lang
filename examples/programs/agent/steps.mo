@@ -1,5 +1,5 @@
 module Agent.Steps
-expose Setup, Phase, Progress, Ran, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome, error_text, reply_text, took
+expose Setup, Phase, Counting, Progress, Ran, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome, error_text, reply_text, took
 
 use Agent.Model{Model, Reply, ModelError, Request, spent?, tokens_of}
 use Agent.Record{Budget, Order, Status}
@@ -31,6 +31,13 @@ enum Phase
   Using
   Closing
   Stopped
+end
+
+# What a run's steps budget counts, chosen once when the run is configured: a plain run counts its
+# model calls, and a fixture or application run counts every step it records, model and tool alike.
+enum Counting
+  ModelCalls
+  RecordedSteps
 end
 
 # A run's loop so far: its id (for whoever reads the run's state), its deadline, its phase, the steps written (as the model is shown them), the
@@ -117,21 +124,39 @@ fn advanced(run: Progress, step: Step) : Progress
   next
 end
 
-# Whether a run asks the model now: it is its turn, time is left, and steps and tokens are left.
-fn asks?(run: Progress, setup: Setup, by: Deadline) : Bool
-  budget = setup.order.budget
-  run.phase == Asking and !spent?(by) and run.taken < budget.steps and run.tokens < budget.tokens
+# Whether a run asks the model now: it is its turn, time is left, a model step fits the steps
+# budget, and tokens are left.
+fn asks?(run: Progress, setup: Setup, by: Deadline, counting: Counting) : Bool
+  run.phase == Asking and !spent?(by) and fits?(run, setup, counting,
+    "model") and run.tokens < setup.order.budget.tokens
 end
 
-# Whether a run uses the tool its model named now: it is its turn, and time and tokens are left.
-fn uses?(run: Progress, setup: Setup, by: Deadline) : Bool
-  run.phase == Using and !spent?(by) and run.tokens <= setup.order.budget.tokens
+# Whether a run uses the tool its model named now: it is its turn, time is left, a tool step fits
+# the steps budget, and tokens have not passed theirs; a model call that spent exactly the budget
+# still has its tool used.
+fn uses?(run: Progress, setup: Setup, by: Deadline, counting: Counting) : Bool
+  run.phase == Using and !spent?(by) and fits?(run, setup, counting,
+    "tool") and run.tokens <= setup.order.budget.tokens
 end
 
-# Which budget a run that may not go on has spent: its time, its steps, or its tokens.
-fn budget_end(run: Progress, setup: Setup, by: Deadline) : Ending
+# Whether one more step of this kind fits the steps budget: under ModelCalls only a model step
+# counts, and under RecordedSteps every step does.
+fn fits?(run: Progress, setup: Setup, counting: Counting, kind: String) : Bool
+  case counting
+    ModelCalls: kind != "model" or run.taken < setup.order.budget.steps
+    RecordedSteps: run.n < setup.order.budget.steps
+  end
+end
+
+# Which budget a run that may not go on has spent: its time, its steps as the run counts them, or its
+# tokens.
+fn budget_end(run: Progress, setup: Setup, by: Deadline, counting: Counting) : Ending
   return ending(OverBudget, None, Some("wall_ms")) if spent?(by)
-  return ending(OverBudget, None, Some("steps")) if run.taken >= setup.order.budget.steps
+  counted = case counting
+    ModelCalls: run.taken
+    RecordedSteps: run.n
+  end
+  return ending(OverBudget, None, Some("steps")) if counted >= setup.order.budget.steps
   ending(OverBudget, None, Some("tokens"))
 end
 
@@ -315,26 +340,53 @@ test "a run asks and uses a tool only in its turn, with time, steps, and tokens 
   setup = setup_with(10)
   by = Deadline.fixture(1.minute)
   ready = begun(fresh("r_1"), by)
-  assert asks?(ready, setup, by) and !uses?(ready, setup, by)
-  assert !asks?(ready, setup, Deadline.fixture(0.ms))
-  assert budget_end(ready, setup, Deadline.fixture(0.ms)) == ending(OverBudget, None,
+  assert asks?(ready, setup, by, ModelCalls) and !uses?(ready, setup, by, ModelCalls)
+  assert !asks?(ready, setup, Deadline.fixture(0.ms), ModelCalls)
+  assert budget_end(ready, setup, Deadline.fixture(0.ms), ModelCalls) == ending(OverBudget, None,
     Some("wall_ms"))
   var spent_steps = ready
   spent_steps.taken = 2
-  assert !asks?(spent_steps, setup, by)
-  assert budget_end(spent_steps, setup, by) == ending(OverBudget, None, Some("steps"))
+  assert !asks?(spent_steps, setup, by, ModelCalls)
+  assert budget_end(spent_steps, setup, by, ModelCalls) == ending(OverBudget, None, Some("steps"))
   var spent_tokens = ready
   spent_tokens.tokens = 10
-  assert !asks?(spent_tokens, setup, by)
-  assert budget_end(spent_tokens, setup, by) == ending(OverBudget, None, Some("tokens"))
+  assert !asks?(spent_tokens, setup, by, ModelCalls)
+  assert budget_end(spent_tokens, setup, by, ModelCalls) == ending(OverBudget, None, Some("tokens"))
   var tool_turn = asked(ready, read_reply(), Time.fixture())
   tool_turn.phase = Using
-  assert uses?(tool_turn, setup, by) and !asks?(tool_turn, setup, by)
+  assert uses?(tool_turn, setup, by, ModelCalls) and !asks?(tool_turn, setup, by, ModelCalls)
   assert call_for(setup, tool_turn, ran_of(tool_turn, setup, by)) == Call(tool: "read_file",
     args: Map.new().set("path", "a.txt"), granted: ["read_file"], hosts: ["h"])
   assert request_of(setup, ready) == Request(run: "r_1", goal: "g", tools: ["read_file"],
     transcript: [])
   assert call_ms(setup) == 5_000.ms
+end
+
+test "a steps budget counts model calls or every recorded step, and a tool is used at exactly the token budget"
+  setup = setup_with(10)
+  by = Deadline.fixture(1.minute)
+  var after_tool = begun(fresh("r_1"), by)
+  after_tool.taken = 1
+  after_tool.n = 2
+  assert asks?(after_tool, setup, by, ModelCalls) and !asks?(after_tool, setup, by, RecordedSteps)
+  assert budget_end(after_tool, setup, by, RecordedSteps) == ending(OverBudget, None, Some("steps"))
+  var named = asked(begun(fresh("r_1"), by), read_reply(), Time.fixture())
+  named.phase = Using
+  named.taken = 1
+  named.n = 1
+  assert uses?(named, setup, by, ModelCalls) and uses?(named, setup, by, RecordedSteps)
+  named.n = 2
+  assert uses?(named, setup, by, ModelCalls) and !uses?(named, setup, by, RecordedSteps)
+  named.n = 1
+  named.tokens = 10
+  assert uses?(named, setup, by, ModelCalls) and uses?(named, setup, by, RecordedSteps)
+  named.tokens = 11
+  assert !uses?(named, setup, by, ModelCalls) and !uses?(named, setup, by, RecordedSteps)
+  var at_bound = begun(fresh("r_1"), by)
+  at_bound.tokens = 10
+  assert !asks?(at_bound, setup, by, ModelCalls) and !asks?(at_bound, setup, by, RecordedSteps)
+  assert budget_end(at_bound, setup, by, ModelCalls) == ending(OverBudget, None, Some("tokens"))
+  assert budget_end(at_bound, setup, by, RecordedSteps) == ending(OverBudget, None, Some("tokens"))
 end
 
 test rejects "a tool call without the book's go"
@@ -361,5 +413,5 @@ test rejects "a tool call past the tokens budget"
     Ran(go: true, spent: false, taken: 0, steps: 2, tokens_used: 11, tokens: 10))
 end
 
-verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+verified: types, contracts, tests (8), property (0 seeds), sim (not run)
           proven: not run

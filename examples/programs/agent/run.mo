@@ -6,7 +6,7 @@ use Agent.CommandAdapter{Endpoint, dispatched, terminal?, refused?, failure}
 use Agent.Model{Model, complete, body}
 use Agent.Record{Order, Status, default_budget}
 use Agent.Shelf{Verdict, Ending, ending}
-use Agent.Steps{Setup, Phase, Progress, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome}
+use Agent.Steps{Setup, Phase, Counting, Progress, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome}
 use Agent.Tools{Writer, Used, Call, used}
 use Agent.Transcript{Step}
 use Agent.WorkspaceAdapter{Settings, sent, stops?, refusal?, tools}
@@ -19,6 +19,7 @@ intent "A run as a process: its budget's deadline taken from the ask that begins
 struct Turn
   setup: Setup
   run: Progress
+  counting: Counting
   fixture: Option(Endpoint)
   application: Option(Settings)
 end
@@ -43,6 +44,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
     application: Option(Settings)
     report_by: Option(Deadline)
     grace_ms: Int64 = report_grace_ms()
+    counting: Counting = ModelCalls
   end
 
   invariant "a run's deadline is taken once"
@@ -70,6 +72,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
         if state.run.phase == Ready and state.fixture is None and state.application is None
           state.fixture = Some(endpoint)
           state.report_by = Some(reply_by)
+          state.counting = RecordedSteps
           true
         else
           false
@@ -80,6 +83,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
         if state.run.phase == Ready and state.fixture is None and state.application is None
           state.application = Some(settings)
           state.report_by = Some(reply_by)
+          state.counting = RecordedSteps
           true
         else
           false
@@ -89,8 +93,9 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
         me.send(Think(me: me))
         true
       Think(me):
-        state.run = thinking(me, http, clock, setup, state.run,
-          state.fixture is Some(_) or state.application is Some(_))
+        state.run = thinking(me, http, clock,
+          Turn(setup: setup, run: state.run, counting: state.counting, fixture: state.fixture,
+          application: state.application))
       Thought(me):
         remaining = remaining_ms(state.report_by)
         began = clock.now
@@ -100,7 +105,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
         state.grace_ms = grace_left(state.grace_ms, remaining, remaining_ms(state.report_by))
       Act(me):
         state.run = acting(me, reads, writer, http, clock,
-          Turn(setup: setup, run: state.run, fixture: state.fixture,
+          Turn(setup: setup, run: state.run, counting: state.counting, fixture: state.fixture,
           application: state.application))
       Acted(me):
         remaining = remaining_ms(state.report_by)
@@ -150,24 +155,23 @@ fn grace_left(ms: Int64, before: Int64, after: Int64) : Int64
   if spent >= ms: 0 else: ms - spent
 end
 
-fn thinking(me: Handle(Run), http: Http, clock: Clock, setup: Setup, run: Progress,
-  fixture: Bool) : Progress
+fn thinking(me: Handle(Run), http: Http, clock: Clock, turn: Turn) : Progress
+  setup = turn.setup
+  run = turn.run
+  profiled = turn.fixture is Some(_) or turn.application is Some(_)
   by = case run.by
     Some(by): by
     None:
       return closing(me, run, not_begun())
   end
-  if fixture and run.n >= setup.order.budget.steps
-    return closing(me, run, ending(OverBudget, None, Some("steps")))
-  end
-  if fixture and body(request_of(setup, run)).byte_size > 65_536
+  if profiled and body(request_of(setup, run)).byte_size > 65_536
     return closing(me, run, ending(OverBudget, None, Some("context_bytes")))
   end
-  return held(me, run, setup, by) if !asks?(run, setup, by)
+  return held(me, run, setup, by, turn.counting) if !asks?(run, setup, by, turn.counting)
   began = clock.now
   reply = complete(http, setup.model, request_of(setup, run), setup.order.budget.retries,
     by.at_most(call_ms(setup)))
-  next = asked(run, reply, if fixture: began else: clock.now)
+  next = asked(run, reply, if profiled: began else: clock.now)
   me.send(Thought(me: me))
   next
 end
@@ -183,11 +187,7 @@ fn acting(me: Handle(Run), reads: Fs, writer: Option(Handle(Writer)), http: Http
     None:
       return closing(me, run, not_begun())
   end
-  if profiled and (run.n >= setup.order.budget.steps or run.tokens >= setup.order.budget.tokens)
-    why = if run.n >= setup.order.budget.steps: "steps" else: "tokens"
-    return closing(me, run, ending(OverBudget, None, Some(why)))
-  end
-  return held(me, run, setup, by) if !uses?(run, setup, by)
+  return held(me, run, setup, by, turn.counting) if !uses?(run, setup, by, turn.counting)
   call = call_for(setup, run, ran_of(run, setup, by))
   began = clock.now
   tool = case turn.application
@@ -284,9 +284,9 @@ end
 
 # A run in its turn that may not go on ends over the budget it spent; a message out of turn
 # changes nothing.
-fn held(me: Handle(Run), run: Progress, setup: Setup, by: Deadline) : Progress
+fn held(me: Handle(Run), run: Progress, setup: Setup, by: Deadline, counting: Counting) : Progress
   return run if run.phase != Asking and run.phase != Using
-  closing(me, run, budget_end(run, setup, by))
+  closing(me, run, budget_end(run, setup, by, counting))
 end
 
 # A run on its way to its end: the end kept until the book has written it.
