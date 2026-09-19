@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [compiler, types, verification]
 sources: [plans/interpreter-step-42.md]
-status: briefed
+status: in-progress
 ---
 
 # Step 43: numbers from source
@@ -24,7 +24,9 @@ copies at most 32 digits and drops the rest, and maps a parse overflow to
 the source never held; `mailbox` is narrowed with `@intCast`
 (`bytecode.zig:1318`, `emit_c.zig:950`) and never checked. Worker: a fresh
 Claude Opus session, bypass permissions, own worktree and Herdr tab, based on
-the `main` that holds step 41. Small and sharp. No new syntax.
+`main` at the PR 15 merge (launched before step 41 lands, because the defect is
+in the language's core claim; the lead accepts the merge work). Small and
+sharp. No new syntax.
 
 ## Write scope
 
@@ -34,7 +36,8 @@ or checker tests under `examples/` with sidecars, and in
 range if none exists (say which file in the report). No runtime C beyond what a
 test needs, no harness, no other wiki, no `audit/`, `HANDOFF.md`. No machine,
 no push. Never use `tr`; `ls` is aliased, use `/bin/ls`. Another worker (step
-42) edits `toolchain/src` and `toolchain/runtime` at the same time: keep the
+41, `Exec`) is editing `toolchain/src` (`check.zig`, `types.zig`, `vm.zig`,
+`caps.zig`, `prelude.zig`) at the same time in its own worktree: keep the
 diff small and local so the merge is easy.
 
 ## Parts
