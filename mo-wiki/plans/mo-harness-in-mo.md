@@ -87,6 +87,36 @@ sockets are not added: the bridge and owner split that wanted them goes away.
 Steps 1, 2 and 8 touch different files and can run in parallel. Step 3 is the
 first toolchain step and needs the lead's design page first.
 
+## The size question (Robert, 19 Sep 2026, 8:20 AM ET)
+
+Robert asked whether Mo lets the same features be written in less code. **The
+reductions on this page do not show that.** They are estimates by one reviewer,
+and they are mostly deletion of duplicates and evidence machinery plus code
+*moving* into Mo, where it will add lines that nobody has estimated yet. No
+like-for-like Python-to-Mo size has been measured.
+
+So it is measured, not claimed. For every module that moves:
+
+1. The Python or JavaScript is first cleaned (steps 1 and 2), so the comparison
+   is not against Astra's verbose draft. A second writing is always shorter than
+   a first; without this the result would flatter Mo.
+2. The same behavioural tests must pass against both versions before cutover
+   (step 4 already runs them side by side).
+3. At acceptance the lead records, per module, on this page: non-blank,
+   non-comment source lines before and after in each language, test lines
+   separately, the features dropped or added (so a smaller program that does
+   less is not counted as a win), and the defects found in each by the same
+   controls.
+4. Counted with one script, committed beside the table, so the auditor can
+   reproduce it.
+
+This is one application by one author, so it is evidence about this harness,
+not a general claim about the language.
+
+| module | before (lang, lines) | after (Mo lines) | tests before / after | feature differences | defects found before / after |
+|---|---|---|---|---|---|
+| (filled at each acceptance) | | | | | |
+
 ## Numbers and done when
 
 After step 7: at most 600 lines of Python (tests and packaging) and 600 of
